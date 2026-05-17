@@ -1,0 +1,154 @@
+{
+  "redirects": [
+    {
+      "source": "/tacticalpad-lite",
+      "destination": "/vision-board",
+      "permanent": false
+    },
+    {
+      "source": "/tacticalpad-lite/(.*)",
+      "destination": "/vision-board",
+      "permanent": false
+    },
+    {
+      "source": "/tacticalpad-lite-clean",
+      "destination": "/vision-board",
+      "permanent": false
+    },
+    {
+      "source": "/tacticalpad-lite-clean/(.*)",
+      "destination": "/vision-board",
+      "permanent": false
+    },
+    {
+      "source": "/flowlab",
+      "destination": "/vision-board",
+      "permanent": false
+    },
+    {
+      "source": "/flowlab/(.*)",
+      "destination": "/vision-board",
+      "permanent": false
+    },
+    {
+      "source": "/simulator",
+      "destination": "/vision-board",
+      "permanent": false
+    },
+    {
+      "source": "/simulator/(.*)",
+      "destination": "/vision-board",
+      "permanent": false
+    },
+    {
+      "source": "/whiteboard",
+      "destination": "/vision-board",
+      "permanent": false
+    },
+    {
+      "source": "/whiteboard/(.*)",
+      "destination": "/vision-board",
+      "permanent": false
+    },
+    {
+      "source": "/quickboard",
+      "destination": "/vision-board",
+      "permanent": false
+    },
+    {
+      "source": "/quickboard/(.*)",
+      "destination": "/vision-board",
+      "permanent": false
+    },
+    {
+      "source": "/stats",
+      "destination": "/flowstats",
+      "permanent": false
+    },
+    {
+      "source": "/stats/(.*)",
+      "destination": "/flowstats",
+      "permanent": false
+    },
+    {
+      "source": "/library",
+      "destination": "/notes",
+      "permanent": false
+    },
+    {
+      "source": "/library/(.*)",
+      "destination": "/notes",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/board",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/board/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/vision-board",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/vision-board/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/notes",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/notes/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/library",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/library/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/sessions",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/sessions/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/plans",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/plans/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/flowstats",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/flowstats/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/player-performance-tracker",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/player-performance-tracker/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PV tactical monogram app icon">
+  <defs>
+    <filter id="pv-icon-glow" x="-18%" y="-18%" width="136%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3.2" flood-color="#7AFFB2" flood-opacity="0.22" />
+    </filter>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="#0A4A34" />
+  <g filter="url(#pv-icon-glow)" shape-rendering="geometricPrecision">
+    <text
+      x="54"
+      y="156"
+      fill="#FFFFFF"
+      stroke="#FFFFFF"
+      stroke-width="8.7"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      paint-order="stroke fill"
+      font-size="118"
+      font-weight="840"
+      letter-spacing="-6"
+      font-family="Inter, Avenir Next, Segoe UI, Arial, sans-serif"
+    >
+      PV
+    </text>
+    <path d="M52 174L64 186" stroke="#FFFFFF" stroke-width="6.4" stroke-linecap="round" opacity="0.86" />
+    <path d="M64 174L52 186" stroke="#FFFFFF" stroke-width="6.4" stroke-linecap="round" opacity="0.86" />
+    <path
+      d="M78 180H178"
+      stroke="#FFFFFF"
+      stroke-width="4.2"
+      stroke-linecap="round"
+      stroke-dasharray="8 8"
+      opacity="0.82"
+    />
+    <circle cx="198" cy="180" r="6.1" fill="none" stroke="#FFFFFF" stroke-width="4.8" opacity="0.88" />
+  </g>
+</svg>

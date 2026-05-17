@@ -1,0 +1,24 @@
+{
+  "name": "PáircVision",
+  "short_name": "PV",
+  "description": "PáircVision coaching workspace",
+  "start_url": "/board",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#03100B",
+  "theme_color": "#03100B",
+  "icons": [
+    {
+      "src": "/pv-logo-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/pv-logo-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

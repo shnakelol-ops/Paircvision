@@ -1,0 +1,8 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Legacy TV symmetrical monogram">
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="#0E7A4E" />
+  <path
+    d="M52 58H204V90H144V124L188 198H156L128 156L100 198H68L112 124V90H52V58Z"
+    fill="#FFFFFF"
+    shape-rendering="geometricPrecision"
+  />
+</svg>

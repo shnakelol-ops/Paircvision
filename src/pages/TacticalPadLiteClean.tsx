@@ -1,0 +1,4735 @@
+import { useEffect, useRef, useState, type CSSProperties, type ChangeEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { createPortal } from "react-dom";
+
+import {
+  createTacticalPadLiteSurface,
+  type ItemMode,
+  type TacticalLabelMode,
+  type TacticalKitPattern,
+  type TacticalPlayerTokenStyle,
+  type TacticalPlayerKitPatch,
+  type TacticalPlayerKitSnapshot,
+  type TacticalPadLiteSurface,
+  type TacticalRouteState,
+  type TacticalItem,
+  type WhiteboardTokenColor,
+  sanitizeInitials,
+} from "../engine/pixi/createTacticalPadLiteSurface";
+import StatsModeSurface from "../StatsModeSurface";
+import OrientationGate, { usePortraitOrientation } from "../components/OrientationGate";
+import { captureQuickBoardSnapshot, restoreQuickBoardSnapshot } from "../features/quickboard/storage/quickboard-snapshot";
+import { generateQuickBoardThumbnail } from "../features/quickboard/storage/quickboard-thumbnail";
+import {
+  deleteBoard,
+  duplicateBoard,
+  formatBoardUpdatedAt,
+  hasReachedQuickBoardSaveLimit,
+  loadAllBoards,
+  loadBoard,
+  renameBoard,
+  saveBoard,
+  setBoardThumbnail,
+} from "../features/quickboard/storage/quickboard-storage";
+import { MAX_QUICKBOARD_SAVES, sanitizeBoardName, type SavedQuickBoard } from "../features/quickboard/storage/quickboard-types";
+import { useOverlayPortalRoot } from "../overlay/OverlayPortalContext";
+
+type PadMode = "tactical" | "stats" | "whiteboard";
+type TacticalPadLiteCleanProps = {
+  initialMode?: PadMode;
+};
+
+const CAN_USE_CSS_SUPPORTS = typeof window !== "undefined" && typeof window.CSS !== "undefined";
+const VIEWPORT_HEIGHT_UNIT = CAN_USE_CSS_SUPPORTS && window.CSS.supports("height: 100dvh") ? "100dvh" : "100vh";
+const VIEWPORT_WIDTH_UNIT = CAN_USE_CSS_SUPPORTS && window.CSS.supports("width: 100dvw") ? "100dvw" : "100vw";
+
+const CONTENT_WIDTH_EXPR =
+  `min(calc(${VIEWPORT_WIDTH_UNIT} - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc((${VIEWPORT_HEIGHT_UNIT} - 10px) * 1.6), 1360px)`;
+const WHITEBOARD_PLAYER_COLOR_CHOICES: ReadonlyArray<{
+  value: WhiteboardTokenColor;
+  css: string;
+}> = [
+  { value: "blue", css: "#2563eb" },
+  { value: "red", css: "#dc2626" },
+  { value: "yellow", css: "#facc15" },
+  { value: "black", css: "#1f2937" },
+];
+const WHITEBOARD_PEN_COLOR_CHOICES: ReadonlyArray<{ label: string; value: number; css: string }> = [
+  { label: "Black", value: 0x111111, css: "#111111" },
+  { label: "White", value: 0xffffff, css: "#ffffff" },
+  { label: "Yellow", value: 0xfacc15, css: "#facc15" },
+  { label: "Red", value: 0xdc2626, css: "#dc2626" },
+  { label: "Blue", value: 0x2563eb, css: "#2563eb" },
+];
+const WHITEBOARD_DRAW_COLOR = WHITEBOARD_PEN_COLOR_CHOICES[0]?.value ?? 0x111111;
+const PLAYBACK_SPEED_OPTIONS: ReadonlyArray<{ multiplier: number; label: string }> = [
+  { multiplier: 0.25, label: "0.25x" },
+  { multiplier: 0.5, label: "0.5x" },
+  { multiplier: 0.75, label: "0.75x" },
+  { multiplier: 1.0, label: "1.0x" },
+  { multiplier: 1.25, label: "1.25x" },
+  { multiplier: 1.5, label: "1.5x" },
+];
+const DEFAULT_PLAYBACK_SPEED_MULTIPLIER = 1.0;
+const TACTICAL_ITEM_CHOICES: ReadonlyArray<{ label: string; type: TacticalItem["type"] }> = [
+  { label: "Cone", type: "cone" },
+  { label: "Disc Cone", type: "discCone" },
+  { label: "Pole", type: "pole" },
+  { label: "Mini Goal", type: "miniGoal" },
+  { label: "Mannequin", type: "mannequin" },
+  { label: "Ladder", type: "ladder" },
+  { label: "Hurdle", type: "hurdle" },
+  { label: "Tackle Bag", type: "tackleBag" },
+  { label: "Football (S)", type: "footballSmall" },
+  { label: "Football (M)", type: "football" },
+  { label: "Football (L)", type: "footballLarge" },
+  { label: "Sliotar (S)", type: "sliotarSmall" },
+  { label: "Sliotar (M)", type: "sliotar" },
+  { label: "Sliotar (L)", type: "sliotarLarge" },
+];
+const ORIENTATION_SETTLE_DEBOUNCE_MS = 140;
+type WhiteboardToolControl =
+  | "move"
+  | "line"
+  | "arrow"
+  | "curved"
+  | "dashed"
+  | "wavy"
+  | "freePen"
+  | "rectangleZone"
+  | "circleZone"
+  | "eraser";
+type WhiteboardToolAction = WhiteboardToolControl;
+type MovementModePillOption = "move" | "route" | "ball";
+const WHITEBOARD_BUBBLE_SIZE = 36;
+const WHITEBOARD_BUBBLE_MARGIN = 12;
+const KIT_EDITOR_MARGIN = 10;
+const KIT_EDITOR_MAX_WIDTH = 260;
+const KIT_EDITOR_MAX_HEIGHT_RATIO = 0.56;
+const KIT_COLOR_CHOICES = [
+  "navy",
+  "blue",
+  "sky",
+  "cyan",
+  "green",
+  "lime",
+  "yellow",
+  "orange",
+  "red",
+  "maroon",
+  "purple",
+  "pink",
+  "white",
+  "grey",
+  "black",
+] as const;
+const KIT_COLOR_CSS: Record<(typeof KIT_COLOR_CHOICES)[number], string> = {
+  navy: "#1e3a8a",
+  blue: "#2563eb",
+  sky: "#0ea5e9",
+  cyan: "#06b6d4",
+  green: "#16a34a",
+  lime: "#84cc16",
+  orange: "#f97316",
+  red: "#dc2626",
+  maroon: "#7f1d1d",
+  purple: "#7c3aed",
+  pink: "#ec4899",
+  yellow: "#facc15",
+  white: "#ffffff",
+  grey: "#6b7280",
+  black: "#111827",
+};
+const KIT_PATTERN_CHOICES: TacticalKitPattern[] = ["plain", "hoops", "stripes", "slash"];
+const KIT_PATTERN_LABEL: Record<TacticalKitPattern, string> = {
+  plain: "Plain",
+  hoops: "Hoops",
+  stripes: "Stripes",
+  slash: "Slash",
+};
+const LABEL_MODE_CHOICES: TacticalLabelMode[] = ["number", "initials"];
+const TOKEN_STYLE_CHOICES: ReadonlyArray<{ value: TacticalPlayerTokenStyle; label: string }> = [
+  { value: "vision-v3", label: "Vision V3" },
+  { value: "classic", label: "Classic" },
+  { value: "premium", label: "Glow" },
+  { value: "pixi", label: "Pixi" },
+  { value: "phosphor", label: "Phosphor" },
+];
+type KitEditorTab = "base" | "pattern" | "label";
+const KIT_EDITOR_TABS: ReadonlyArray<{ id: KitEditorTab; label: string }> = [
+  { id: "base", label: "Base" },
+  { id: "pattern", label: "Pattern" },
+  { id: "label", label: "Label" },
+];
+
+type KitEditorState = {
+  playerId: string;
+  anchorLeft: number;
+  anchorTop: number;
+  revision: number;
+};
+
+type ViewportRect = { left: number; top: number; width: number; height: number };
+const COMPACT_LANDSCAPE_TOOLS_MAX_WIDTH = 900;
+
+function getViewportRect(): ViewportRect {
+  const viewport = window.visualViewport;
+  if (!viewport) {
+    return {
+      left: 0,
+      top: 0,
+      width: window.innerWidth,
+      height: window.innerHeight,
+    };
+  }
+  return {
+    left: viewport.offsetLeft,
+    top: viewport.offsetTop,
+    width: viewport.width,
+    height: viewport.height,
+  };
+}
+
+function clampWhiteboardBubblePosition(
+  position: { left: number; top: number },
+  viewport: ViewportRect,
+): { left: number; top: number } {
+  const minLeft = viewport.left + WHITEBOARD_BUBBLE_MARGIN;
+  const maxLeft = viewport.left + viewport.width - WHITEBOARD_BUBBLE_MARGIN - WHITEBOARD_BUBBLE_SIZE;
+  const minTop = viewport.top + WHITEBOARD_BUBBLE_MARGIN;
+  const maxTop = viewport.top + viewport.height - WHITEBOARD_BUBBLE_MARGIN - WHITEBOARD_BUBBLE_SIZE;
+  return {
+    left: Math.min(Math.max(position.left, minLeft), Math.max(minLeft, maxLeft)),
+    top: Math.min(Math.max(position.top, minTop), Math.max(minTop, maxTop)),
+  };
+}
+
+function getDefaultWhiteboardBubblePosition(viewport: ViewportRect): { left: number; top: number } {
+  return clampWhiteboardBubblePosition(
+    {
+      left: viewport.left + 14,
+      top: viewport.top + 14,
+    },
+    viewport,
+  );
+}
+
+function clampKitEditorPosition(anchor: { left: number; top: number }, viewport: ViewportRect): { left: number; top: number } {
+  const editorWidth = Math.min(KIT_EDITOR_MAX_WIDTH, Math.max(0, viewport.width - KIT_EDITOR_MARGIN * 2));
+  const editorHeight = Math.max(0, viewport.height * KIT_EDITOR_MAX_HEIGHT_RATIO);
+  const minLeft = viewport.left + KIT_EDITOR_MARGIN;
+  const maxLeft = viewport.left + viewport.width - KIT_EDITOR_MARGIN - editorWidth;
+  const minTop = viewport.top + KIT_EDITOR_MARGIN;
+  const maxTop = viewport.top + viewport.height - KIT_EDITOR_MARGIN - editorHeight;
+  return {
+    left: Math.min(Math.max(anchor.left, minLeft), Math.max(minLeft, maxLeft)),
+    top: Math.min(Math.max(anchor.top, minTop), Math.max(minTop, maxTop)),
+  };
+}
+
+function shouldUseCompactLandscapeToolsMenu(viewport: ViewportRect): boolean {
+  return viewport.width > viewport.height && viewport.width <= COMPACT_LANDSCAPE_TOOLS_MAX_WIDTH;
+}
+
+function isIphoneDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent ?? "";
+  const platform = navigator.platform ?? "";
+  const uaPlatform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? "";
+  return /iphone/i.test(ua) || /iphone/i.test(platform) || /iphone/i.test(uaPlatform);
+}
+
+function shouldUseIphoneLandscapeToolsOverride(viewport: ViewportRect): boolean {
+  return isIphoneDevice() && viewport.width > viewport.height;
+}
+
+const ROOT_STYLE: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  width: "100vw",
+  height: VIEWPORT_HEIGHT_UNIT,
+  minHeight: VIEWPORT_HEIGHT_UNIT,
+  background:
+    "linear-gradient(135deg, rgba(220, 238, 242, 1) 0%, rgba(180, 210, 220, 1) 45%, rgba(120, 170, 195, 1) 100%)",
+  margin: 0,
+  paddingTop: "max(4px, calc(env(safe-area-inset-top, 0px) + 2px))",
+  paddingRight: "max(4px, calc(env(safe-area-inset-right, 0px) + 2px))",
+  paddingBottom: "max(4px, calc(env(safe-area-inset-bottom, 0px) + 2px))",
+  paddingLeft: "max(4px, calc(env(safe-area-inset-left, 0px) + 2px))",
+  boxSizing: "border-box",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
+};
+
+const ROOT_WHITEBOARD_STYLE: CSSProperties = {
+  ...ROOT_STYLE,
+  background:
+    "linear-gradient(165deg, rgba(245, 248, 251, 1) 0%, rgba(236, 241, 246, 1) 52%, rgba(228, 235, 242, 1) 100%)",
+  paddingTop: "max(8px, calc(env(safe-area-inset-top, 0px) + 6px))",
+  paddingBottom: "max(8px, calc(env(safe-area-inset-bottom, 0px) + 6px))",
+  paddingLeft: "max(12px, calc(env(safe-area-inset-left, 0px) + 8px))",
+  paddingRight: "max(12px, calc(env(safe-area-inset-right, 0px) + 8px))",
+};
+
+const BACKGROUND_LAYER_STYLE: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  zIndex: 0,
+  pointerEvents: "none",
+  overflow: "hidden",
+};
+
+const BACKGROUND_BASE_STYLE: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  background:
+    "radial-gradient(circle at top left, rgba(0, 120, 100, 0.09), transparent 60%), radial-gradient(circle at top right, rgba(0, 120, 100, 0.09), transparent 60%), linear-gradient(to bottom, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0) 30%), linear-gradient(to top, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0) 35%), linear-gradient(to bottom, rgba(0, 0, 0, 0) 58%, rgba(0, 80, 60, 0.13) 100%), linear-gradient(135deg, rgba(220, 238, 242, 1) 0%, rgba(172, 203, 214, 1) 45%, rgba(108, 158, 183, 1) 100%)",
+};
+
+const BACKGROUND_VIGNETTE_STYLE: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  background:
+    "radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 42%, rgba(4, 12, 18, 0.28) 68%, rgba(0, 0, 0, 0.62) 100%)",
+};
+
+const STADIUM_FLOODLIGHT_CSS = `
+.stadium-light {
+  position: absolute;
+  top: 6%;
+  width: 88px;
+  height: 70px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.95;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.75))
+    drop-shadow(0 0 28px rgba(180, 235, 255, 0.55));
+}
+
+.stadium-light span {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.9),
+    0 0 22px rgba(185, 235, 255, 0.65);
+}
+
+.stadium-light-left {
+  left: 2.5%;
+  transform: rotate(14deg);
+}
+
+.stadium-light-right {
+  right: 2.5%;
+  transform: rotate(-14deg);
+}
+
+.stadium-light::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  width: 210px;
+  height: 220px;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at top,
+    rgba(210, 240, 255, 0.28) 0%,
+    rgba(160, 220, 235, 0.16) 35%,
+    rgba(100, 180, 190, 0.08) 58%,
+    transparent 78%
+  );
+  filter: blur(22px);
+  z-index: -1;
+}
+
+.stadium-light-left::before {
+  left: -25px;
+  transform: rotate(24deg);
+}
+
+.stadium-light-right::before {
+  right: -25px;
+  transform: rotate(-24deg);
+}
+
+.simulator-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse at 15% 0%, rgba(255, 255, 255, 0.18), transparent 35%),
+    radial-gradient(ellipse at 85% 0%, rgba(255, 255, 255, 0.18), transparent 35%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.18), transparent 40%);
+}
+
+.floating-bubble {
+  transition: transform 140ms ease, filter 140ms ease;
+}
+
+.floating-bubble:hover,
+.floating-bubble:active {
+  transform: scale(1.04);
+  filter: brightness(1.1);
+}
+
+.floating-bubble-tool {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.floating-bubble-tool:hover,
+.floating-bubble-tool:active {
+  transform: scale(0.96);
+  filter: brightness(1.15);
+}
+
+.tool-bubble-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+}
+
+.tool-bubble-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 4px 10px rgba(2, 8, 15, 0.26));
+}
+
+.control-button {
+  transition: transform 140ms ease, filter 140ms ease;
+}
+
+.control-button:hover,
+.control-button:active {
+  transform: scale(1.04);
+  filter: brightness(1.1);
+}
+
+.control-button:disabled {
+  cursor: not-allowed;
+  filter: none;
+}
+
+.control-button:disabled:hover,
+.control-button:disabled:active {
+  transform: none;
+  filter: none;
+}
+
+.speed-control-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 12px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.speed-control-range:focus {
+  outline: none;
+}
+
+.speed-control-range::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 999px;
+  border: 1px solid rgba(225, 232, 228, 0.42);
+  background: var(
+    --speed-track,
+    linear-gradient(90deg, rgba(34, 197, 94, 0.95) 0%, rgba(34, 197, 94, 0.95) 50%, rgba(255, 255, 255, 0.9) 50%, rgba(255, 255, 255, 0.9) 100%)
+  );
+}
+
+.speed-control-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(14, 20, 19, 0.8);
+  background: #f8fbfa;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 2px 5px rgba(0, 0, 0, 0.34);
+  margin-top: -4px;
+}
+
+.speed-control-range::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  border: 1px solid rgba(225, 232, 228, 0.42);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.speed-control-range::-moz-range-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.95);
+}
+
+.speed-control-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(14, 20, 19, 0.8);
+  background: #f8fbfa;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 2px 5px rgba(0, 0, 0, 0.34);
+}
+
+@media (max-width: 700px) and (orientation: portrait) {
+  .stadium-light {
+    top: 5%;
+    width: 62px;
+    height: 50px;
+    gap: 5px;
+  }
+
+  .stadium-light span {
+    width: 8px;
+    height: 8px;
+  }
+
+  .stadium-light::before {
+    width: 150px;
+    height: 160px;
+    top: 14px;
+  }
+}
+
+`;
+
+const STADIUM_BEAM_BASE_STYLE: CSSProperties = {
+  position: "absolute",
+  left: "50%",
+  transform: "translateX(-50%)",
+  bottom: "-20%",
+  width: "115%",
+  height: "75%",
+  pointerEvents: "none",
+  filter: "blur(32px)",
+  opacity: 1,
+  background:
+    "radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0.38) 35%, rgba(0, 0, 0, 0.2) 60%, rgba(0, 0, 0, 0.08) 75%, transparent 85%)",
+  zIndex: 0,
+};
+
+const STADIUM_BEAM_LEFT_STYLE: CSSProperties = {
+  ...STADIUM_BEAM_BASE_STYLE,
+};
+
+const STADIUM_BEAM_RIGHT_STYLE: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  pointerEvents: "none",
+  zIndex: 0,
+  background:
+    "linear-gradient(to bottom, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 30%), linear-gradient(to top, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0) 50%)",
+};
+
+const CONTENT_STYLE: CSSProperties = {
+  width: CONTENT_WIDTH_EXPR,
+  maxWidth: "calc(100vw - 24px)",
+  aspectRatio: "16 / 10",
+  maxHeight: `calc(${VIEWPORT_HEIGHT_UNIT} - 10px)`,
+  boxSizing: "border-box",
+  position: "relative",
+  zIndex: 1,
+  display: "flex",
+  alignItems: "stretch",
+};
+
+const WHITEBOARD_CONTENT_STYLE: CSSProperties = {
+  width: "100%",
+  maxWidth: `min(900px, calc((${VIEWPORT_HEIGHT_UNIT} - 16px) * 1.6))`,
+  aspectRatio: "16 / 10",
+  maxHeight: `calc(${VIEWPORT_HEIGHT_UNIT} - 16px)`,
+  boxSizing: "border-box",
+  position: "relative",
+  zIndex: 1,
+  display: "flex",
+  alignItems: "stretch",
+  margin: "0 auto",
+};
+
+const PITCH_STYLE: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  borderRadius: "12px",
+  overflow: "hidden",
+  boxShadow: "0 50px 110px rgba(0, 0, 0, 0.55), 0 18px 45px rgba(0, 0, 0, 0.35)",
+  background: "#13221d",
+};
+
+const PITCH_WHITEBOARD_STYLE: CSSProperties = {
+  ...PITCH_STYLE,
+  background: "#f8f9fb",
+  boxShadow: "0 40px 90px rgba(34, 42, 51, 0.22), 0 14px 30px rgba(45, 56, 68, 0.17)",
+};
+
+const PORTRAIT_INTERACTION_SHIELD_STYLE: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  zIndex: 3,
+  borderRadius: "12px",
+  background: "rgba(6, 14, 20, 0.03)",
+  pointerEvents: "auto",
+  touchAction: "pan-x pan-y pinch-zoom",
+};
+
+const BUBBLE_BASE_STYLE: CSSProperties = {
+  position: "fixed",
+  width: "40px",
+  height: "40px",
+  borderRadius: "999px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "rgba(255, 255, 255, 0.95)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 600,
+  letterSpacing: "0.3px",
+  border: "1px solid rgba(255, 255, 255, 0.24)",
+  background: "rgba(20, 25, 30, 0.65)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  boxShadow:
+    "0 8px 20px rgba(0, 0, 0, 0.42), 0 0 12px rgba(255, 255, 255, 0.1), inset 0 1px 2px rgba(255, 255, 255, 0.22)",
+  cursor: "pointer",
+  zIndex: 20,
+};
+
+const LEFT_BUBBLE_STYLE: CSSProperties = {
+  ...BUBBLE_BASE_STYLE,
+  left: "max(12px, calc(env(safe-area-inset-left, 0px) + 10px))",
+  bottom: "max(12px, calc(env(safe-area-inset-bottom, 0px) + 10px))",
+};
+
+const ACTIONS_BUBBLE_STYLE: CSSProperties = {
+  ...BUBBLE_BASE_STYLE,
+  left: "max(12px, calc(env(safe-area-inset-left, 0px) + 10px))",
+  top: "50%",
+  transform: "translateY(-50%)",
+  background: "rgba(32, 40, 50, 0.74)",
+  border: "1px solid rgba(233, 242, 255, 0.3)",
+  boxShadow: "0 8px 18px rgba(0, 0, 0, 0.38), inset 0 1px 2px rgba(255, 255, 255, 0.2)",
+  zIndex: 21,
+};
+
+const PORTRAIT_ACTIONS_BUBBLE_STYLE: CSSProperties = {
+  ...ACTIONS_BUBBLE_STYLE,
+  left: "auto",
+  right: "max(12px, calc(env(safe-area-inset-right, 0px) + 10px))",
+  top: "auto",
+  bottom: "max(12px, calc(env(safe-area-inset-bottom, 0px) + 10px))",
+  transform: "none",
+};
+
+const RIGHT_BUBBLE_STYLE: CSSProperties = {
+  ...BUBBLE_BASE_STYLE,
+  right: "max(12px, calc(env(safe-area-inset-right, 0px) + 10px))",
+  bottom: "max(12px, calc(env(safe-area-inset-bottom, 0px) + 10px))",
+};
+
+const TOOL_BUBBLE_STYLE: CSSProperties = {
+  ...RIGHT_BUBBLE_STYLE,
+  width: "52px",
+  height: "52px",
+  borderRadius: "16px",
+  background: "transparent",
+  border: "none",
+  backdropFilter: "none",
+  WebkitBackdropFilter: "none",
+  boxShadow: "0 4px 11px rgba(2, 8, 15, 0.24)",
+};
+
+const MOBILE_TOOLS_BUBBLE_STYLE: CSSProperties = {
+  ...RIGHT_BUBBLE_STYLE,
+  width: "52px",
+  height: "52px",
+  borderRadius: "16px",
+  border: "none",
+  background: "transparent",
+  backdropFilter: "none",
+  WebkitBackdropFilter: "none",
+  boxShadow: "0 4px 11px rgba(2, 8, 15, 0.24)",
+};
+
+const POPOUT_BASE_STYLE: CSSProperties = {
+  position: "fixed",
+  display: "flex",
+  flexDirection: "row",
+  gap: "6px",
+  padding: "6px",
+  borderRadius: "14px",
+  background: "rgba(10, 20, 25, 0.62)",
+  border: "1px solid rgba(215, 228, 224, 0.18)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  boxShadow: "0 10px 24px rgba(0, 0, 0, 0.2)",
+  zIndex: 19,
+};
+
+const KIT_EDITOR_STYLE: CSSProperties = {
+  position: "fixed",
+  width: `min(${KIT_EDITOR_MAX_WIDTH}px, calc(100vw - 20px))`,
+  maxWidth: `${KIT_EDITOR_MAX_WIDTH}px`,
+  maxHeight: "56vh",
+  overflowY: "auto",
+  overscrollBehavior: "contain",
+  display: "grid",
+  gap: "6px",
+  padding: "6px",
+  borderRadius: "12px",
+  border: "1px solid rgba(191, 214, 235, 0.24)",
+  background: "rgba(10, 20, 25, 0.9)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  boxShadow: "0 10px 22px rgba(2, 8, 15, 0.4)",
+  zIndex: 30,
+};
+
+const KIT_EDITOR_HEADER_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "6px",
+  position: "sticky",
+  top: 0,
+  zIndex: 1,
+  background: "rgba(10, 20, 25, 0.96)",
+  paddingBottom: "2px",
+};
+
+const KIT_EDITOR_TAB_ROW_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "4px",
+  flex: 1,
+};
+
+const KIT_EDITOR_CLOSE_STYLE: CSSProperties = {
+  width: "24px",
+  height: "24px",
+  borderRadius: "999px",
+  border: "1px solid rgba(198, 218, 236, 0.3)",
+  background: "rgba(15, 28, 40, 0.8)",
+  color: "#e8f2fd",
+  cursor: "pointer",
+  fontSize: "13px",
+  lineHeight: 1,
+  padding: 0,
+};
+
+const KIT_EDITOR_TAB_BUTTON_STYLE: CSSProperties = {
+  height: "24px",
+  borderRadius: "999px",
+  border: "1px solid rgba(148, 163, 184, 0.34)",
+  background: "rgba(15, 23, 42, 0.72)",
+  color: "#dbe7f5",
+  fontSize: "10px",
+  fontWeight: 650,
+  cursor: "pointer",
+  minWidth: 0,
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const KIT_EDITOR_TAB_BUTTON_ACTIVE_STYLE: CSSProperties = {
+  ...KIT_EDITOR_TAB_BUTTON_STYLE,
+  border: "1px solid rgba(125, 211, 252, 0.8)",
+  boxShadow: "0 0 0 1px rgba(125, 211, 252, 0.35) inset",
+  background: "rgba(38, 72, 102, 0.78)",
+  color: "#f8fcff",
+};
+
+const KIT_EDITOR_SECTION_STYLE: CSSProperties = {
+  display: "grid",
+  gap: "6px",
+};
+
+const KIT_EDITOR_COLOR_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+  gap: "4px",
+  justifyItems: "center",
+};
+
+const KIT_EDITOR_COLOR_BUTTON_STYLE: CSSProperties = {
+  width: "24px",
+  height: "24px",
+  borderRadius: "999px",
+  border: "1px solid rgba(150, 170, 190, 0.52)",
+  background: "transparent",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  padding: 0,
+};
+
+const KIT_EDITOR_MODE_ROW_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "4px",
+};
+
+const KIT_EDITOR_OPTION_BUTTON_STYLE: CSSProperties = {
+  height: "26px",
+  borderRadius: "8px",
+  border: "1px solid rgba(148, 163, 184, 0.36)",
+  background: "rgba(15, 23, 42, 0.82)",
+  color: "#dbe7f5",
+  fontSize: "9.5px",
+  fontWeight: 650,
+  letterSpacing: "0.2px",
+  cursor: "pointer",
+  fontFamily: "Inter, system-ui, sans-serif",
+  minWidth: 0,
+};
+
+const KIT_EDITOR_OPTION_BUTTON_ACTIVE_STYLE: CSSProperties = {
+  ...KIT_EDITOR_OPTION_BUTTON_STYLE,
+  border: "1px solid rgba(125, 211, 252, 0.66)",
+  background: "rgba(38, 72, 102, 0.72)",
+  color: "#f8fcff",
+  minWidth: 0,
+};
+
+const KIT_EDITOR_INPUT_STYLE: CSSProperties = {
+  height: "26px",
+  borderRadius: "8px",
+  border: "1px solid rgba(148, 163, 184, 0.38)",
+  background: "rgba(15, 23, 42, 0.86)",
+  color: "#e2e8f0",
+  fontSize: "11px",
+  fontWeight: 700,
+  letterSpacing: "0.2px",
+  fontFamily: "Inter, system-ui, sans-serif",
+  padding: "0 8px",
+  textTransform: "uppercase",
+};
+
+const CONTROLS_POPOUT_STYLE: CSSProperties = {
+  ...POPOUT_BASE_STYLE,
+  left: "50%",
+  transform: "translateX(-50%)",
+  bottom: "max(12px, calc(env(safe-area-inset-bottom, 0px) + 10px))",
+  width: "fit-content",
+  maxWidth: "calc(100vw - 128px)",
+  overflowX: "auto",
+  overflowY: "hidden",
+  whiteSpace: "nowrap",
+  flexWrap: "nowrap",
+  background: "rgba(20, 16, 17, 0.58)",
+  border: "1px solid rgba(238, 146, 146, 0.16)",
+};
+
+const ACTIONS_POPOUT_STYLE: CSSProperties = {
+  ...POPOUT_BASE_STYLE,
+  left: "max(58px, calc(env(safe-area-inset-left, 0px) + 56px))",
+  top: "50%",
+  transform: "translateY(-50%)",
+  flexDirection: "column",
+  width: "128px",
+  padding: "7px",
+  gap: "5px",
+  overflow: "hidden",
+  background: "rgba(22, 30, 38, 0.78)",
+  border: "1px solid rgba(218, 232, 246, 0.24)",
+  boxShadow: "0 10px 24px rgba(0, 0, 0, 0.36)",
+  zIndex: 21,
+};
+
+const PORTRAIT_POPOUT_BASE_STYLE: CSSProperties = {
+  left: "16px",
+  right: "16px",
+  top: "auto",
+  bottom: "max(64px, calc(env(safe-area-inset-bottom, 0px) + 62px))",
+  transform: "none",
+  width: "calc(100vw - 32px)",
+  maxWidth: "calc(100vw - 32px)",
+  boxSizing: "border-box",
+  overflowX: "hidden",
+};
+
+const PORTRAIT_ACTIONS_POPOUT_STYLE: CSSProperties = {
+  ...ACTIONS_POPOUT_STYLE,
+  ...PORTRAIT_POPOUT_BASE_STYLE,
+  width: "calc(100vw - 32px)",
+  maxWidth: "calc(100vw - 32px)",
+};
+
+const ACTIONS_MENU_BUTTON_STYLE: CSSProperties = {
+  borderRadius: "8px",
+  border: "1px solid rgba(224, 236, 248, 0.28)",
+  color: "rgba(255, 255, 255, 0.95)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontWeight: 620,
+  width: "100%",
+  height: "30px",
+  minWidth: 0,
+  fontSize: "10px",
+  letterSpacing: "0.2px",
+  padding: "0 9px",
+  cursor: "pointer",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  textAlign: "left",
+  background: "rgba(15, 24, 31, 0.82)",
+  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+};
+
+const TOKEN_STYLE_MENU_SECTION_STYLE: CSSProperties = {
+  borderRadius: "8px",
+  border: "1px solid rgba(224, 236, 248, 0.22)",
+  background: "rgba(12, 21, 27, 0.76)",
+  padding: "5px",
+  display: "grid",
+  gap: "4px",
+};
+
+const TOKEN_STYLE_MENU_LABEL_STYLE: CSSProperties = {
+  margin: 0,
+  color: "rgba(220, 233, 246, 0.9)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 650,
+  letterSpacing: "0.18px",
+  textTransform: "uppercase",
+};
+
+const TOKEN_STYLE_MENU_ROW_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "3px",
+};
+
+const TOKEN_STYLE_MENU_BUTTON_STYLE: CSSProperties = {
+  borderRadius: "7px",
+  border: "1px solid rgba(170, 196, 220, 0.3)",
+  background: "rgba(15, 24, 31, 0.82)",
+  color: "rgba(232, 241, 249, 0.95)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 620,
+  letterSpacing: "0.14px",
+  height: "25px",
+  cursor: "pointer",
+  padding: "0 3px",
+};
+
+const TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE: CSSProperties = {
+  ...TOKEN_STYLE_MENU_BUTTON_STYLE,
+  border: "1px solid rgba(124, 255, 114, 0.5)",
+  background: "rgba(124, 255, 114, 0.12)",
+  color: "#f3fff1",
+};
+
+const QUICK_SHARE_POPOUT_STYLE: CSSProperties = {
+  ...POPOUT_BASE_STYLE,
+  left: "max(194px, calc(env(safe-area-inset-left, 0px) + 192px))",
+  top: "50%",
+  transform: "translateY(-50%)",
+  flexDirection: "column",
+  width: "188px",
+  padding: "9px",
+  gap: "7px",
+  overflow: "hidden",
+  background: "rgba(20, 28, 36, 0.82)",
+  border: "1px solid rgba(212, 228, 244, 0.24)",
+  boxShadow: "0 12px 26px rgba(0, 0, 0, 0.34)",
+  zIndex: 22,
+};
+
+const PORTRAIT_QUICK_SHARE_POPOUT_STYLE: CSSProperties = {
+  ...QUICK_SHARE_POPOUT_STYLE,
+  ...PORTRAIT_POPOUT_BASE_STYLE,
+  width: "calc(100vw - 32px)",
+  maxWidth: "calc(100vw - 32px)",
+  maxHeight: "min(58vh, 360px)",
+  overflowY: "auto",
+};
+
+const QUICK_SHARE_TITLE_STYLE: CSSProperties = {
+  margin: 0,
+  color: "#eef7ff",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "11.5px",
+  fontWeight: 700,
+  letterSpacing: "0.14px",
+};
+
+const QUICK_SHARE_OPTION_BUTTON_STYLE: CSSProperties = {
+  ...ACTIONS_MENU_BUTTON_STYLE,
+  height: "40px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  justifyContent: "center",
+  gap: "2px",
+  padding: "6px 9px",
+  lineHeight: 1.1,
+};
+
+const QUICK_SHARE_OPTION_TITLE_STYLE: CSSProperties = {
+  color: "#eef6ff",
+  fontSize: "10px",
+  fontWeight: 650,
+  letterSpacing: "0.16px",
+};
+
+const QUICK_SHARE_OPTION_SUBTITLE_STYLE: CSSProperties = {
+  color: "rgba(206, 222, 238, 0.9)",
+  fontSize: "9px",
+  fontWeight: 520,
+  letterSpacing: "0.12px",
+  lineHeight: 1.25,
+};
+
+const QUICK_SHARE_ONBOARDING_OVERLAY_STYLE: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "max(16px, calc(env(safe-area-inset-top, 0px) + 10px)) max(16px, calc(env(safe-area-inset-right, 0px) + 8px)) max(16px, calc(env(safe-area-inset-bottom, 0px) + 10px)) max(16px, calc(env(safe-area-inset-left, 0px) + 8px))",
+  background: "rgba(5, 11, 17, 0.36)",
+  transition: "opacity 180ms ease-out",
+  zIndex: 22,
+};
+
+const QUICK_SHARE_ONBOARDING_CARD_STYLE: CSSProperties = {
+  width: "min(420px, calc(100vw - 32px))",
+  display: "flex",
+  flexDirection: "column",
+  gap: "9px",
+  padding: "12px",
+  borderRadius: "14px",
+  border: "1px solid rgba(194, 216, 235, 0.28)",
+  background: "rgba(11, 21, 29, 0.84)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  boxShadow: "0 16px 34px rgba(2, 8, 15, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.11)",
+  transition: "transform 180ms ease-out, opacity 180ms ease-out",
+  zIndex: 23,
+};
+
+const QUICK_SHARE_ONBOARDING_TITLE_STYLE: CSSProperties = {
+  margin: 0,
+  color: "#eff8ff",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "13px",
+  fontWeight: 700,
+  letterSpacing: "0.16px",
+};
+
+const QUICK_SHARE_ONBOARDING_BODY_STYLE: CSSProperties = {
+  margin: 0,
+  color: "rgba(220, 236, 247, 0.92)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 520,
+  lineHeight: 1.4,
+};
+
+const QUICK_SHARE_ONBOARDING_BUTTON_STYLE: CSSProperties = {
+  ...ACTIONS_MENU_BUTTON_STYLE,
+  height: "34px",
+  textAlign: "center",
+  fontSize: "10.5px",
+  fontWeight: 650,
+  justifyContent: "center",
+};
+
+const QUICK_SHARE_ONBOARDING_STORAGE_KEY = "flowlabs_quick_share_onboarding_seen";
+
+function safeReadLocalStorageFlag(key: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(key) === "true";
+  } catch (error) {
+    console.warn("[quickboard-storage] Could not read localStorage flag", { key, error });
+    return false;
+  }
+}
+
+function safeWriteLocalStorageFlag(key: string, value: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, value ? "true" : "false");
+  } catch (error) {
+    console.warn("[quickboard-storage] Could not write localStorage flag", { key, error });
+  }
+}
+
+const MY_BOARDS_POPOUT_STYLE: CSSProperties = {
+  ...POPOUT_BASE_STYLE,
+  left: "max(194px, calc(env(safe-area-inset-left, 0px) + 192px))",
+  top: "50%",
+  transform: "translateY(-50%)",
+  flexDirection: "column",
+  width: "min(240px, calc(100vw - 24px))",
+  maxHeight: "min(66vh, 430px)",
+  padding: "8px",
+  gap: "6px",
+  overflowY: "auto",
+  overflowX: "hidden",
+  background: "rgba(20, 28, 36, 0.86)",
+  border: "1px solid rgba(212, 228, 244, 0.24)",
+  boxShadow: "0 12px 26px rgba(0, 0, 0, 0.34)",
+  zIndex: 22,
+};
+
+const PORTRAIT_MY_BOARDS_POPOUT_STYLE: CSSProperties = {
+  ...MY_BOARDS_POPOUT_STYLE,
+  ...PORTRAIT_POPOUT_BASE_STYLE,
+  width: "calc(100vw - 32px)",
+  maxWidth: "calc(100vw - 32px)",
+  maxHeight: "min(60vh, 430px)",
+};
+
+const MY_BOARDS_HEADER_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "6px",
+};
+
+const MY_BOARDS_TITLE_STYLE: CSSProperties = {
+  margin: 0,
+  color: "#eef7ff",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "11.5px",
+  fontWeight: 700,
+  letterSpacing: "0.14px",
+};
+
+const MY_BOARDS_SAVE_BUTTON_STYLE: CSSProperties = {
+  ...ACTIONS_MENU_BUTTON_STYLE,
+  width: "fit-content",
+  height: "28px",
+  padding: "0 8px",
+  textAlign: "center",
+  fontSize: "9.5px",
+  lineHeight: 1,
+};
+
+const MY_BOARDS_CARD_STYLE: CSSProperties = {
+  borderRadius: "10px",
+  border: "1px solid rgba(183, 207, 230, 0.2)",
+  background: "rgba(13, 22, 30, 0.72)",
+  padding: "7px",
+  display: "grid",
+  gap: "5px",
+};
+
+const MY_BOARDS_THUMBNAIL_STYLE: CSSProperties = {
+  width: "100%",
+  height: "80px",
+  borderRadius: "8px",
+  objectFit: "cover",
+  border: "1px solid rgba(176, 203, 228, 0.22)",
+  background: "rgba(17, 32, 42, 0.86)",
+};
+
+const MY_BOARDS_META_STYLE: CSSProperties = {
+  margin: 0,
+  color: "rgba(214, 230, 244, 0.94)",
+  fontSize: "10px",
+  fontWeight: 620,
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const MY_BOARDS_TIMESTAMP_STYLE: CSSProperties = {
+  margin: 0,
+  color: "rgba(184, 206, 224, 0.86)",
+  fontSize: "9px",
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const MY_BOARDS_ACTION_ROW_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: "4px",
+};
+
+const MY_BOARDS_ACTION_BUTTON_STYLE: CSSProperties = {
+  ...ACTIONS_MENU_BUTTON_STYLE,
+  height: "26px",
+  minWidth: 0,
+  fontSize: "9px",
+  textAlign: "center",
+  justifyContent: "center",
+  padding: "0 2px",
+};
+
+const MY_BOARDS_EMPTY_STYLE: CSSProperties = {
+  margin: 0,
+  color: "rgba(188, 210, 228, 0.86)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9.5px",
+  lineHeight: 1.35,
+  textAlign: "center",
+  padding: "8px 4px",
+};
+
+const COACH_HUB_PANEL_STYLE: CSSProperties = {
+  ...POPOUT_BASE_STYLE,
+  display: "flex",
+  flexDirection: "column",
+  gap: "4px",
+  width: "clamp(112px, 13vw, 148px)",
+  maxWidth: "calc(100dvw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 12px)",
+  maxHeight: "min(54vh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 72px))",
+  overflowY: "auto",
+  overflowX: "hidden",
+  right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
+  bottom: "max(60px, calc(env(safe-area-inset-bottom, 0px) + 58px))",
+  padding: "5px",
+  background: "rgba(9, 17, 24, 0.68)",
+  border: "1px solid rgba(165, 194, 220, 0.2)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  boxShadow: "0 8px 18px rgba(2, 8, 15, 0.26)",
+  zIndex: 20,
+};
+
+const MOBILE_COACH_HUB_OVERLAY_STYLE: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  display: "flex",
+  justifyContent: "flex-end",
+  alignItems: "flex-end",
+  padding:
+    "max(8px, calc(env(safe-area-inset-top, 0px) + 4px)) max(10px, calc(env(safe-area-inset-right, 0px) + 10px)) max(8px, calc(env(safe-area-inset-bottom, 0px) + 8px)) max(10px, calc(env(safe-area-inset-left, 0px) + 10px))",
+  background: "rgba(5, 11, 17, 0.08)",
+  zIndex: 24,
+};
+
+const TOOLS_PORTAL_BACKDROP_STYLE: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "transparent",
+  pointerEvents: "auto",
+  zIndex: 24,
+};
+
+const MOBILE_COACH_HUB_PANEL_STYLE: CSSProperties = {
+  width: "min(52vw, 320px)",
+  maxWidth: "calc(100dvw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 20px)",
+  maxHeight: "min(58dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 18px))",
+  overflow: "hidden",
+  overscrollBehavior: "contain",
+  display: "flex",
+  flexDirection: "column",
+  gap: "4px",
+  padding: "6px",
+  borderRadius: "11px",
+  border: "1px solid rgba(140, 171, 159, 0.26)",
+  background: "linear-gradient(180deg, rgba(12, 22, 24, 0.82) 0%, rgba(9, 16, 19, 0.88) 100%)",
+  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 22px rgba(0, 0, 0, 0.26)",
+  backdropFilter: "blur(8px)",
+  WebkitBackdropFilter: "blur(8px)",
+};
+
+const MOBILE_COACH_HUB_HEADER_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "4px",
+  paddingBottom: "2px",
+  borderBottom: "1px solid rgba(135, 162, 151, 0.14)",
+};
+
+const MOBILE_COACH_HUB_TITLE_STYLE: CSSProperties = {
+  margin: 0,
+  color: "#ecf6ef",
+  fontSize: "10.5px",
+  fontWeight: 700,
+  letterSpacing: "0.12px",
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const MOBILE_COACH_HUB_CLOSE_STYLE: CSSProperties = {
+  ...ACTIONS_MENU_BUTTON_STYLE,
+  width: "fit-content",
+  minWidth: "46px",
+  height: "22px",
+  fontSize: "8.5px",
+  fontWeight: 620,
+  textAlign: "center",
+  justifyContent: "center",
+  borderRadius: "8px",
+  border: "1px solid rgba(142, 169, 155, 0.26)",
+  background: "rgba(13, 22, 25, 0.8)",
+};
+
+const MOBILE_COACH_HUB_BODY_STYLE: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "4px",
+  flex: "1 1 auto",
+  minHeight: 0,
+  overflowY: "auto",
+  overflowX: "hidden",
+  overscrollBehavior: "contain",
+  paddingRight: "1px",
+};
+
+const IPHONE_LANDSCAPE_TOOLS_OVERLAY_STYLE: CSSProperties = {
+  ...MOBILE_COACH_HUB_OVERLAY_STYLE,
+  justifyContent: "flex-end",
+  alignItems: "flex-end",
+};
+
+const IPHONE_LANDSCAPE_TOOLS_PANEL_STYLE: CSSProperties = {
+  position: "relative",
+  left: "auto",
+  right: "auto",
+  top: "auto",
+  bottom: "auto",
+  width: "min(320px, calc(100dvw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 20px))",
+  maxWidth: "calc(100dvw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 20px)",
+  maxHeight: "min(58dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 18px))",
+  height: "auto",
+  overflow: "hidden",
+  boxSizing: "border-box",
+};
+
+const IPHONE_LANDSCAPE_TOOLS_BODY_STYLE: CSSProperties = {
+  ...MOBILE_COACH_HUB_BODY_STYLE,
+  maxHeight: "100%",
+};
+
+const COACH_HUB_SECTION_STYLE: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "2px",
+};
+
+const COACH_HUB_SECTION_TITLE_STYLE: CSSProperties = {
+  margin: 0,
+  color: "#d7e8f5",
+  fontSize: "8.5px",
+  fontWeight: 700,
+  letterSpacing: "0.12px",
+  textTransform: "uppercase",
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const COACH_HUB_TOOL_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: "3px",
+};
+
+const COACH_HUB_TOOL_BUTTON_STYLE: CSSProperties = {
+  height: "30px",
+  minWidth: "100%",
+  borderRadius: "7px",
+  fontSize: "9.5px",
+  fontWeight: 600,
+  fontFamily: "Inter, system-ui, sans-serif",
+  letterSpacing: "0.1px",
+  lineHeight: 1,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  padding: "0 2px",
+  cursor: "pointer",
+  border: "1px solid rgba(121, 171, 208, 0.24)",
+  background: "rgba(17, 30, 40, 0.56)",
+  color: "#dbecfa",
+};
+
+const COACH_HUB_TOOL_BUTTON_ACTIVE_STYLE: CSSProperties = {
+  ...COACH_HUB_TOOL_BUTTON_STYLE,
+  border: "1px solid rgba(125, 211, 252, 0.68)",
+  background: "rgba(38, 72, 102, 0.68)",
+  color: "#f7fcff",
+};
+
+const COACH_HUB_COLOR_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+  gap: "2px",
+};
+
+const COACH_HUB_COLOR_BUTTON_STYLE: CSSProperties = {
+  width: "100%",
+  height: "20px",
+  borderRadius: "999px",
+  border: "1px solid rgba(147, 173, 196, 0.28)",
+  background: "rgba(15, 25, 36, 0.58)",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  padding: 0,
+};
+
+const COACH_HUB_COLOR_SWATCH_STYLE: CSSProperties = {
+  width: "12px",
+  height: "12px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255, 255, 255, 0.44)",
+};
+
+const COACH_HUB_ACTION_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "3px",
+};
+
+const COACH_HUB_ACTION_BUTTON_STYLE: CSSProperties = {
+  ...COACH_HUB_TOOL_BUTTON_STYLE,
+  minWidth: 0,
+};
+
+const COACH_HUB_TAB_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "3px",
+};
+
+const COACH_HUB_TAB_BUTTON_STYLE: CSSProperties = {
+  ...COACH_HUB_TOOL_BUTTON_STYLE,
+  height: "26px",
+  fontSize: "9px",
+  letterSpacing: "0.12px",
+};
+
+const COACH_HUB_TAB_BUTTON_ACTIVE_STYLE: CSSProperties = {
+  ...COACH_HUB_TAB_BUTTON_STYLE,
+  border: "1px solid rgba(125, 211, 252, 0.68)",
+  background: "rgba(38, 72, 102, 0.72)",
+  color: "#f7fcff",
+};
+
+const CONTROL_BUTTON_STYLE: CSSProperties = {
+  height: "34px",
+  minWidth: "78px",
+  borderRadius: "10px",
+  border: "1px solid rgba(255, 255, 255, 0.25)",
+  background: "rgba(20, 25, 30, 0.65)",
+  color: "rgba(255, 255, 255, 0.95)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "11px",
+  fontWeight: 600,
+  letterSpacing: "0.3px",
+  padding: "0 10px",
+  cursor: "pointer",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  boxShadow:
+    "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 18px rgba(255, 255, 255, 0.12), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
+  flex: "0 0 auto",
+};
+
+const DISABLED_CONTROL_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  opacity: 0.45,
+  boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.08)",
+  cursor: "not-allowed",
+};
+
+const SET_START_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  boxShadow:
+    "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 20px rgba(255, 255, 255, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
+};
+
+const ADD_PHASE_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  border: "1px solid rgba(59, 130, 246, 0.6)",
+  boxShadow:
+    "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 18px rgba(59, 130, 246, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
+};
+
+const PLAY_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  border: "1px solid rgba(34, 197, 94, 0.6)",
+  boxShadow:
+    "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 18px rgba(34, 197, 94, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
+};
+
+const PAUSE_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  border: "1px solid rgba(245, 158, 11, 0.62)",
+  boxShadow:
+    "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 18px rgba(245, 158, 11, 0.32), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
+};
+
+const RESET_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  border: "1px solid rgba(239, 68, 68, 0.6)",
+  boxShadow:
+    "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 18px rgba(239, 68, 68, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
+};
+
+const UNDO_PHASE_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  border: "1px solid rgba(168, 85, 247, 0.6)",
+  boxShadow:
+    "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 18px rgba(168, 85, 247, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
+};
+
+const PLAYBACK_SPEED_BAR_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "auto 56px auto",
+  alignItems: "center",
+  gap: "5px",
+  minWidth: "116px",
+  height: "30px",
+  padding: "0 7px",
+  borderRadius: "999px",
+  border: "1px solid rgba(211, 224, 217, 0.32)",
+  background: "rgba(10, 20, 16, 0.72)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 7px 20px rgba(0, 0, 0, 0.35)",
+  flex: "0 0 auto",
+};
+
+const PLAYBACK_SPEED_LABEL_STYLE: CSSProperties = {
+  color: "rgba(230, 238, 233, 0.62)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "8px",
+  fontWeight: 620,
+  letterSpacing: "0.22px",
+};
+
+const PLAYBACK_SPEED_VALUE_STYLE: CSSProperties = {
+  color: "#eef7f1",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 700,
+  letterSpacing: "0.14px",
+  textAlign: "right",
+};
+
+const PLAYBACK_SPEED_SLIDER_STYLE: CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+};
+
+const MOVEMENT_MODE_PILL_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "50%",
+  transform: "translateX(-50%)",
+  bottom: "max(54px, calc(env(safe-area-inset-bottom, 0px) + 52px))",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "4px",
+  padding: "4px",
+  borderRadius: "999px",
+  border: "1px solid rgba(220, 236, 228, 0.26)",
+  background: "rgba(9, 22, 18, 0.52)",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+  boxShadow: "0 12px 26px rgba(1, 7, 4, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+  zIndex: 20,
+};
+
+const MOVEMENT_MODE_PILL_BUTTON_STYLE: CSSProperties = {
+  minWidth: "58px",
+  height: "30px",
+  borderRadius: "999px",
+  border: "1px solid rgba(212, 229, 222, 0.26)",
+  background: "rgba(14, 30, 24, 0.66)",
+  color: "rgba(230, 244, 236, 0.9)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10.5px",
+  fontWeight: 640,
+  letterSpacing: "0.2px",
+  padding: "0 11px",
+  cursor: "pointer",
+  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.14)",
+};
+
+const MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE: CSSProperties = {
+  ...MOVEMENT_MODE_PILL_BUTTON_STYLE,
+  border: "1px solid rgba(124, 255, 114, 0.56)",
+  background: "linear-gradient(180deg, rgba(34, 112, 66, 0.82) 0%, rgba(14, 42, 27, 0.94) 100%)",
+  color: "#f4fff6",
+  boxShadow: "0 0 0 1px rgba(124, 255, 114, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+};
+
+const MOVEMENT_MODE_PILL_BUTTON_DISABLED_STYLE: CSSProperties = {
+  opacity: 0.46,
+  cursor: "not-allowed",
+};
+
+const SHARE_TIP_TOAST_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "max(62px, calc(env(safe-area-inset-left, 0px) + 60px))",
+  top: "calc(50% + 98px)",
+  width: "min(286px, calc(100vw - 72px))",
+  display: "flex",
+  flexDirection: "column",
+  gap: "6px",
+  padding: "9px 10px",
+  borderRadius: "12px",
+  border: "1px solid rgba(191, 214, 235, 0.26)",
+  background: "rgba(12, 22, 29, 0.84)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  boxShadow: "0 12px 26px rgba(2, 8, 15, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+  zIndex: 23,
+  pointerEvents: "none",
+};
+
+const SHARE_TIP_TEXT_STYLE: CSSProperties = {
+  margin: 0,
+  color: "#e5f2ff",
+  fontSize: "10.5px",
+  fontWeight: 600,
+  letterSpacing: "0.14px",
+  lineHeight: 1.35,
+  whiteSpace: "pre-line",
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const HOME_MENU_ICON_BUTTON_STYLE: CSSProperties = {
+  width: "34px",
+  height: "34px",
+  borderRadius: "10px",
+  border: "1px solid rgba(120, 168, 143, 0.34)",
+  background: "rgba(13, 35, 23, 0.72)",
+  color: "#f1f7f0",
+  fontSize: "16px",
+  lineHeight: 1,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 0,
+  cursor: "pointer",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+};
+
+const WHITEBOARD_TOOLS_BUTTON_STYLE: CSSProperties = {
+  ...COACH_HUB_TOOL_BUTTON_STYLE,
+  minWidth: 0,
+  fontWeight: 600,
+};
+
+const WHITEBOARD_TOOLS_BUTTON_ACTIVE_STYLE: CSSProperties = {
+  ...WHITEBOARD_TOOLS_BUTTON_STYLE,
+  border: "1px solid rgba(125, 211, 252, 0.66)",
+  background: "rgba(38, 72, 102, 0.72)",
+  color: "#f8fcff",
+};
+
+const PHASES_CHIP_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "max(12px, calc(env(safe-area-inset-left, 0px) + 10px))",
+  top: "max(12px, calc(env(safe-area-inset-top, 0px) + 10px))",
+  height: "32px",
+  borderRadius: "10px",
+  border: "1px solid rgba(226, 236, 232, 0.22)",
+  background: "rgba(10, 19, 20, 0.56)",
+  color: "#dce9e4",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10.5px",
+  fontWeight: 560,
+  padding: "0 10px",
+  cursor: "pointer",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  zIndex: 20,
+};
+
+const PHASES_TRAY_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "max(12px, calc(env(safe-area-inset-left, 0px) + 10px))",
+  top: "max(48px, calc(env(safe-area-inset-top, 0px) + 46px))",
+  width: "126px",
+  maxHeight: "156px",
+  overflowY: "auto",
+  padding: "6px",
+  borderRadius: "12px",
+  border: "1px solid rgba(226, 236, 232, 0.16)",
+  background: "rgba(10, 19, 20, 0.64)",
+  color: "#dce9e4",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  boxShadow: "0 10px 24px rgba(0, 0, 0, 0.2)",
+  zIndex: 19,
+};
+
+const PHASE_ITEM_STYLE: CSSProperties = {
+  height: "28px",
+  borderRadius: "8px",
+  border: "1px solid rgba(224, 235, 230, 0.18)",
+  background: "rgba(15, 24, 24, 0.58)",
+  color: "#dce9e4",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 550,
+  padding: "0 8px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const PHASES_EMPTY_STYLE: CSSProperties = {
+  ...PHASE_ITEM_STYLE,
+  opacity: 0.75,
+};
+
+const WHITEBOARD_HEAD_BUTTON_BASE_STYLE: CSSProperties = {
+  width: "36px",
+  height: "36px",
+  borderRadius: "999px",
+  border: "1px solid rgba(148, 163, 184, 0.32)",
+  background: "rgba(15, 23, 42, 0.72)",
+  backdropFilter: "blur(6px)",
+  WebkitBackdropFilter: "blur(6px)",
+  color: "#e2e8f0",
+  fontSize: "14px",
+  lineHeight: 1,
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxShadow: "0 0 0 1px rgba(148, 163, 184, 0.14), 0 0 6px rgba(148, 163, 184, 0.16)",
+};
+
+const WHITEBOARD_COUNT_SELECTOR_STYLE: CSSProperties = {
+  position: "fixed",
+  right: "max(8px, calc(env(safe-area-inset-right, 0px) + 6px))",
+  top: "max(16px, env(safe-area-inset-top, 0px))",
+  bottom: "auto",
+  zIndex: 22,
+  width: "clamp(148px, 23vw, 176px)",
+  display: "flex",
+  flexDirection: "column",
+  gap: "5px",
+  padding: "7px",
+  borderRadius: "12px",
+  border: "1px solid rgba(163, 190, 212, 0.26)",
+  background: "rgba(10, 19, 24, 0.74)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  boxShadow: "0 12px 24px rgba(2, 8, 15, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+  maxHeight: "min(62vh, 380px)",
+  overflowY: "auto",
+  overflowX: "hidden",
+};
+
+const WHITEBOARD_COUNT_SELECTOR_TITLE_STYLE: CSSProperties = {
+  color: "#d7e8f5",
+  fontSize: "8px",
+  fontWeight: 700,
+  letterSpacing: "0.2px",
+  textTransform: "uppercase",
+  margin: 0,
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const WHITEBOARD_SUBSECTION_TITLE_STYLE: CSSProperties = {
+  ...WHITEBOARD_COUNT_SELECTOR_TITLE_STYLE,
+  opacity: 0.78,
+};
+
+const WHITEBOARD_PANEL_SECTION_STYLE: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "4px",
+};
+
+const WHITEBOARD_TOOL_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "4px",
+};
+
+const WHITEBOARD_TEAM_SELECTOR_ROW_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "5px",
+};
+
+const WHITEBOARD_TEAM_OPTION_STYLE: CSSProperties = {
+  height: "28px",
+  borderRadius: "8px",
+  border: "1px solid rgba(148, 163, 184, 0.36)",
+  background: "rgba(15, 23, 42, 0.82)",
+  color: "#dbe7f5",
+  fontSize: "10px",
+  fontWeight: 650,
+  letterSpacing: "0.2px",
+  cursor: "pointer",
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const WHITEBOARD_TEAM_OPTION_ACTIVE_STYLE: CSSProperties = {
+  ...WHITEBOARD_TEAM_OPTION_STYLE,
+  border: "1px solid rgba(125, 211, 252, 0.6)",
+  background: "rgba(30, 64, 175, 0.52)",
+  color: "#f8fcff",
+};
+
+const WHITEBOARD_COUNT_SELECTOR_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+  gap: "4px",
+};
+
+const WHITEBOARD_COUNT_OPTION_STYLE: CSSProperties = {
+  height: "26px",
+  borderRadius: "8px",
+  border: "1px solid rgba(148, 163, 184, 0.36)",
+  background: "rgba(15, 23, 42, 0.86)",
+  color: "#dbe7f5",
+  fontSize: "10px",
+  fontWeight: 600,
+  lineHeight: 1,
+  letterSpacing: "0.2px",
+  cursor: "pointer",
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const WHITEBOARD_COUNT_OPTION_ACTIVE_STYLE: CSSProperties = {
+  ...WHITEBOARD_COUNT_OPTION_STYLE,
+  border: "1px solid rgba(125, 211, 252, 0.56)",
+  background: "rgba(30, 64, 175, 0.5)",
+  color: "#f8fcff",
+};
+
+const WHITEBOARD_COUNT_OPTIONS = Array.from({ length: 15 }, (_, index) => index + 1);
+
+const WHITEBOARD_TOKEN_COLOR_OPTION_STYLE: CSSProperties = {
+  width: "28px",
+  height: "28px",
+  borderRadius: "999px",
+  border: "1px solid rgba(130, 150, 170, 0.4)",
+  background: "rgba(15, 23, 42, 0.52)",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  padding: 0,
+};
+
+const WHITEBOARD_TOKEN_COLOR_SWATCH_STYLE: CSSProperties = {
+  width: "22px",
+  height: "22px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255, 255, 255, 0.48)",
+};
+
+const WHITEBOARD_HOME_BUTTON_STYLE: CSSProperties = {
+  ...HOME_MENU_ICON_BUTTON_STYLE,
+  position: "fixed",
+  top: "max(12px, calc(env(safe-area-inset-top, 0px) + 10px))",
+  right: "max(12px, calc(env(safe-area-inset-right, 0px) + 10px))",
+  zIndex: 23,
+};
+
+const WHITEBOARD_HOME_CONFIRM_STYLE: CSSProperties = {
+  position: "fixed",
+  top: "max(54px, calc(env(safe-area-inset-top, 0px) + 50px))",
+  right: "max(12px, calc(env(safe-area-inset-right, 0px) + 10px))",
+  width: "min(244px, calc(100vw - 24px))",
+  display: "flex",
+  flexDirection: "column",
+  gap: "7px",
+  padding: "9px",
+  borderRadius: "12px",
+  border: "1px solid rgba(163, 190, 212, 0.24)",
+  background: "rgba(10, 19, 24, 0.76)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  boxShadow: "0 12px 24px rgba(2, 8, 15, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+  zIndex: 24,
+};
+
+const WHITEBOARD_HOME_CONFIRM_TITLE_STYLE: CSSProperties = {
+  margin: 0,
+  color: "#e4eff8",
+  fontSize: "12px",
+  fontWeight: 700,
+  letterSpacing: "0.12px",
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const WHITEBOARD_HOME_CONFIRM_MESSAGE_STYLE: CSSProperties = {
+  margin: 0,
+  color: "rgba(215, 232, 245, 0.88)",
+  fontSize: "10px",
+  lineHeight: 1.35,
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const WHITEBOARD_HOME_CONFIRM_ACTIONS_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "6px",
+};
+
+const WHITEBOARD_HOME_CONFIRM_BUTTON_STYLE: CSSProperties = {
+  ...COACH_HUB_TOOL_BUTTON_STYLE,
+  minWidth: 0,
+  height: "31px",
+};
+
+const WHITEBOARD_HOME_CONFIRM_GO_BUTTON_STYLE: CSSProperties = {
+  ...WHITEBOARD_HOME_CONFIRM_BUTTON_STYLE,
+  border: "1px solid rgba(248, 113, 113, 0.5)",
+  background: "rgba(127, 29, 29, 0.62)",
+  color: "#ffe5e5",
+};
+
+export default function TacticalPadLiteClean({ initialMode = "tactical" }: TacticalPadLiteCleanProps) {
+  const overlayPortalRoot = useOverlayPortalRoot();
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const surfaceRef = useRef<TacticalPadLiteSurface | null>(null);
+  const latestThumbnailSaveTokenRef = useRef(0);
+  const tacticalItemCounterRef = useRef(0);
+  const actionsBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
+  const quickSharePopoverRef = useRef<HTMLDivElement | null>(null);
+  const quickShareOnboardingCardRef = useRef<HTMLDivElement | null>(null);
+  const myBoardsPopoverRef = useRef<HTMLDivElement | null>(null);
+  const toolsBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
+  const toolsMenuRef = useRef<HTMLDivElement | null>(null);
+  const shareTipTimerRef = useRef<number | null>(null);
+  const quickBoardFeedbackTimerRef = useRef<number | null>(null);
+  const whiteboardBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
+  const whiteboardBubbleMenuRef = useRef<HTMLDivElement | null>(null);
+  const whiteboardHomeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const whiteboardHomeConfirmRef = useRef<HTMLDivElement | null>(null);
+  const whiteboardHomeConfirmHistoryRef = useRef(false);
+  const whiteboardBubbleDragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    startLeft: number;
+    startTop: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressWhiteboardBubbleClickRef = useRef(false);
+  const mode: PadMode = initialMode;
+  const isPortraitOrientation = usePortraitOrientation();
+  const [whiteboardBlueCount, setWhiteboardBlueCount] = useState(1);
+  const [whiteboardRedCount, setWhiteboardRedCount] = useState(1);
+  const [whiteboardCountPickerTeam, setWhiteboardCountPickerTeam] = useState<"BLUE" | "RED">("BLUE");
+  const [whiteboardBubbleOpen, setWhiteboardBubbleOpen] = useState(false);
+  const [whiteboardHomeConfirmOpen, setWhiteboardHomeConfirmOpen] = useState(false);
+  const [whiteboardBubblePosition, setWhiteboardBubblePosition] = useState<{ left: number; top: number } | null>(
+    null,
+  );
+  const [whiteboardBubbleMenuSize, setWhiteboardBubbleMenuSize] = useState<{ width: number; height: number }>({
+    width: 176,
+    height: 300,
+  });
+  const [whiteboardBlueColor, setWhiteboardBlueColor] = useState<WhiteboardTokenColor>("blue");
+  const [whiteboardRedColor, setWhiteboardRedColor] = useState<WhiteboardTokenColor>("red");
+  const [whiteboardPenColor, setWhiteboardPenColor] = useState<number>(WHITEBOARD_DRAW_COLOR);
+  const [tacticalPenColor, setTacticalPenColor] = useState<number>(WHITEBOARD_DRAW_COLOR);
+  const whiteboardCountsRef = useRef({ blue: 1, red: 1 });
+  const whiteboardTeamColorsRef = useRef<{ blue: WhiteboardTokenColor; red: WhiteboardTokenColor }>({
+    blue: "blue",
+    red: "red",
+  });
+  const [whiteboardTool, setWhiteboardTool] = useState<WhiteboardToolControl>("move");
+  const [tacticalTool, setTacticalTool] = useState<WhiteboardToolControl>("move");
+  const [items, setItems] = useState<TacticalItem[]>([]);
+  const [itemMode, setItemMode] = useState<ItemMode>("locked");
+  const [phaseCount, setPhaseCount] = useState(0);
+  const [tacticalTokenStyle, setTacticalTokenStyle] = useState<TacticalPlayerTokenStyle>("vision-v3");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [movementModePillSelection, setMovementModePillSelection] = useState<MovementModePillOption>("move");
+  const [routeState, setRouteState] = useState<TacticalRouteState>({
+    isRouteCaptureMode: false,
+    routeCount: 0,
+    maxRoutes: 6,
+  });
+  const [playbackSpeedMultiplier, setPlaybackSpeedMultiplier] = useState<number>(DEFAULT_PLAYBACK_SPEED_MULTIPLIER);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [quickShareOpen, setQuickShareOpen] = useState(false);
+  const [myBoardsOpen, setMyBoardsOpen] = useState(false);
+  const [savedBoards, setSavedBoards] = useState<SavedQuickBoard[]>([]);
+  const [quickShareOnboardingOpen, setQuickShareOnboardingOpen] = useState(false);
+  const [quickShareOnboardingSeen, setQuickShareOnboardingSeen] = useState(false);
+  const [quickShareOnboardingEntered, setQuickShareOnboardingEntered] = useState(false);
+  const [shareTipMessage, setShareTipMessage] = useState<string | null>(null);
+  const [quickBoardFeedback, setQuickBoardFeedback] = useState<string | null>(null);
+  const [lastBoardSavedAtMillis, setLastBoardSavedAtMillis] = useState<number | null>(null);
+  const [loadedBoardName, setLoadedBoardName] = useState<string | null>(null);
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [activeToolsSection, setActiveToolsSection] = useState<"draw" | "teams" | "items" | "board">("draw");
+  const [isCompactLandscapeToolsMenu, setIsCompactLandscapeToolsMenu] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return shouldUseCompactLandscapeToolsMenu(getViewportRect());
+  });
+  const [isIphoneLandscapeToolsMenu, setIsIphoneLandscapeToolsMenu] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return shouldUseIphoneLandscapeToolsOverride(getViewportRect());
+  });
+  const [phasesOpen, setPhasesOpen] = useState(false);
+  const [kitEditorState, setKitEditorState] = useState<KitEditorState | null>(null);
+  const [kitEditorTab, setKitEditorTab] = useState<KitEditorTab>("base");
+
+  const isStatsMode = mode === "stats";
+  const isWhiteboardMode = mode === "whiteboard";
+  const isPortraitViewingMode = !isStatsMode && !isWhiteboardMode && isPortraitOrientation;
+  const isPortraitViewingModeRef = useRef(isPortraitViewingMode);
+  const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
+  const playbackSpeedMultiplierRef = useRef(playbackSpeedMultiplier);
+
+  useEffect(() => {
+    isPortraitViewingModeRef.current = isPortraitViewingMode;
+  }, [isPortraitViewingMode]);
+
+  useEffect(() => {
+    playbackSpeedMultiplierRef.current = playbackSpeedMultiplier;
+  }, [playbackSpeedMultiplier]);
+
+  useEffect(() => {
+    if (isWhiteboardMode || isStatsMode) {
+      setKitEditorState(null);
+      setKitEditorTab("base");
+      setMyBoardsOpen(false);
+    }
+  }, [isWhiteboardMode, isStatsMode]);
+
+  useEffect(() => {
+    if (kitEditorState == null) {
+      setKitEditorTab("base");
+    }
+  }, [kitEditorState]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const seen = safeReadLocalStorageFlag(QUICK_SHARE_ONBOARDING_STORAGE_KEY);
+    setQuickShareOnboardingSeen(seen);
+    setSavedBoards(loadAllBoards());
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const settleMs = isIphoneDevice() ? ORIENTATION_SETTLE_DEBOUNCE_MS : 0;
+    let settleTimer: number | null = null;
+    let settleRaf = 0;
+    const applyCompactLandscapeState = () => {
+      settleRaf = 0;
+      const viewport = getViewportRect();
+      setIsCompactLandscapeToolsMenu(shouldUseCompactLandscapeToolsMenu(viewport));
+      setIsIphoneLandscapeToolsMenu(shouldUseIphoneLandscapeToolsOverride(viewport));
+    };
+    const syncCompactLandscapeState = () => {
+      if (settleTimer != null) {
+        window.clearTimeout(settleTimer);
+        settleTimer = null;
+      }
+      if (settleRaf) {
+        window.cancelAnimationFrame(settleRaf);
+        settleRaf = 0;
+      }
+      if (settleMs <= 0) {
+        settleRaf = window.requestAnimationFrame(applyCompactLandscapeState);
+        return;
+      }
+      settleTimer = window.setTimeout(() => {
+        settleTimer = null;
+        settleRaf = window.requestAnimationFrame(applyCompactLandscapeState);
+      }, settleMs);
+    };
+    applyCompactLandscapeState();
+    window.addEventListener("resize", syncCompactLandscapeState);
+    window.addEventListener("orientationchange", syncCompactLandscapeState);
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", syncCompactLandscapeState);
+    viewport?.addEventListener("scroll", syncCompactLandscapeState);
+    return () => {
+      if (settleTimer != null) {
+        window.clearTimeout(settleTimer);
+      }
+      if (settleRaf) {
+        window.cancelAnimationFrame(settleRaf);
+      }
+      window.removeEventListener("resize", syncCompactLandscapeState);
+      window.removeEventListener("orientationchange", syncCompactLandscapeState);
+      viewport?.removeEventListener("resize", syncCompactLandscapeState);
+      viewport?.removeEventListener("scroll", syncCompactLandscapeState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!(isStatsMode || isWhiteboardMode)) return;
+    const typedNavigator = navigator as Navigator & {
+      wakeLock?: { request: (type: "screen") => Promise<{ release: () => Promise<void> }> };
+    };
+    if (!typedNavigator.wakeLock?.request) return;
+
+    let disposed = false;
+    const requestWakeLock = async () => {
+      try {
+        const sentinel = await typedNavigator.wakeLock?.request("screen");
+        if (disposed) {
+          await sentinel?.release?.();
+          return;
+        }
+        wakeLockRef.current = sentinel ?? null;
+      } catch {
+        wakeLockRef.current = null;
+      }
+    };
+    const releaseWakeLock = async () => {
+      try {
+        await wakeLockRef.current?.release?.();
+      } catch {
+        // Ignore wake lock release errors.
+      } finally {
+        wakeLockRef.current = null;
+      }
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void requestWakeLock();
+      } else {
+        void releaseWakeLock();
+      }
+    };
+
+    if (document.visibilityState === "visible") {
+      void requestWakeLock();
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      disposed = true;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      void releaseWakeLock();
+    };
+  }, [isStatsMode, isWhiteboardMode]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(orientation: landscape)");
+    const settleMs = isIphoneDevice() ? ORIENTATION_SETTLE_DEBOUNCE_MS : 0;
+    const resumeSettleMs = Math.max(180, settleMs);
+    let rafA = 0;
+    let rafB = 0;
+    let settleTimer: number | null = null;
+    let resumeTimer: number | null = null;
+
+    const runDoubleRafReflow = () => {
+      rafA = window.requestAnimationFrame(() => {
+        rafB = window.requestAnimationFrame(() => {
+          surfaceRef.current?.reflow();
+        });
+      });
+    };
+
+    const scheduleReflow = () => {
+      if (settleTimer != null) {
+        window.clearTimeout(settleTimer);
+        settleTimer = null;
+      }
+      window.cancelAnimationFrame(rafA);
+      window.cancelAnimationFrame(rafB);
+      if (settleMs <= 0) {
+        runDoubleRafReflow();
+        return;
+      }
+      settleTimer = window.setTimeout(() => {
+        settleTimer = null;
+        runDoubleRafReflow();
+      }, settleMs);
+    };
+
+    const scheduleResumeRecovery = () => {
+      scheduleReflow();
+      if (resumeTimer != null) {
+        window.clearTimeout(resumeTimer);
+        resumeTimer = null;
+      }
+      resumeTimer = window.setTimeout(() => {
+        resumeTimer = null;
+        scheduleReflow();
+        window.dispatchEvent(new Event("resize"));
+      }, resumeSettleMs);
+    };
+
+    const handleViewportChange = () => {
+      scheduleReflow();
+    };
+    const handleResume = () => {
+      scheduleResumeRecovery();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      scheduleResumeRecovery();
+    };
+
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", handleViewportChange);
+    } else {
+      media.addListener(handleViewportChange);
+    }
+    window.addEventListener("orientationchange", handleViewportChange);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("focus", handleResume);
+    window.addEventListener("pageshow", handleResume);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", handleViewportChange);
+    viewport?.addEventListener("scroll", handleViewportChange);
+
+    return () => {
+      if (settleTimer != null) {
+        window.clearTimeout(settleTimer);
+      }
+      if (resumeTimer != null) {
+        window.clearTimeout(resumeTimer);
+      }
+      window.cancelAnimationFrame(rafA);
+      window.cancelAnimationFrame(rafB);
+      if (typeof media.removeEventListener === "function") {
+        media.removeEventListener("change", handleViewportChange);
+      } else {
+        media.removeListener(handleViewportChange);
+      }
+      window.removeEventListener("orientationchange", handleViewportChange);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("focus", handleResume);
+      window.removeEventListener("pageshow", handleResume);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      viewport?.removeEventListener("resize", handleViewportChange);
+      viewport?.removeEventListener("scroll", handleViewportChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isStatsMode || isWhiteboardMode) return;
+
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "Save your board in My Boards before leaving or refreshing.";
+    };
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [isStatsMode, isWhiteboardMode]);
+
+  useEffect(() => {
+    whiteboardCountsRef.current = {
+      blue: whiteboardBlueCount,
+      red: whiteboardRedCount,
+    };
+  }, [whiteboardBlueCount, whiteboardRedCount]);
+
+  useEffect(() => {
+    whiteboardTeamColorsRef.current = {
+      blue: whiteboardBlueColor,
+      red: whiteboardRedColor,
+    };
+  }, [whiteboardBlueColor, whiteboardRedColor]);
+
+  useEffect(() => {
+    if (isStatsMode) return;
+    const host = hostRef.current;
+    if (!host) return;
+
+    let disposed = false;
+    let destroySurface: (() => void) | null = null;
+
+    void createTacticalPadLiteSurface(host, {
+      surfaceVariant: isWhiteboardMode ? "whiteboard" : "tactical",
+      whiteboardTeamCounts: isWhiteboardMode ? whiteboardCountsRef.current : undefined,
+      whiteboardTeamColors: whiteboardTeamColorsRef.current,
+      whiteboardDrawColor: isWhiteboardMode ? whiteboardPenColor : tacticalPenColor,
+      tacticalTokenStyle,
+      onPhaseCountChange: (count) => {
+        if (!disposed) {
+          setPhaseCount(count);
+        }
+      },
+      onPlaybackStateChange: (state) => {
+        if (disposed) return;
+        setIsPlaying(state.isPlaying);
+        setIsPaused(state.isPaused);
+      },
+      onRouteStateChange: (state) => {
+        if (disposed) return;
+        setRouteState(state);
+      },
+      onItemMove: (itemId, x, y) => {
+        if (disposed) return;
+        const nextX = Math.max(0, Math.min(100, x));
+        const nextY = Math.max(0, Math.min(100, y));
+        setItems((previous) =>
+          previous.map((item) =>
+            item.id === itemId
+              ? {
+                  ...item,
+                  x: nextX,
+                  y: nextY,
+                }
+              : item,
+          ),
+        );
+      },
+      onTacticalPlayerDoubleTap: ({ playerId, clientX, clientY }) => {
+        if (disposed || isWhiteboardMode || isPortraitViewingModeRef.current) return;
+        const player = surfaceRef.current?.getTacticalPlayer(playerId);
+        if (!player) return;
+        setKitEditorTab("base");
+        setKitEditorState({
+          playerId: player.id,
+          anchorLeft: clientX,
+          anchorTop: clientY,
+          revision: 0,
+        });
+      },
+    }).then((surface) => {
+      if (disposed) {
+        surface.destroy();
+        return;
+      }
+      surfaceRef.current = surface;
+      destroySurface = surface.destroy;
+      const initialDrawTool = isWhiteboardMode ? whiteboardTool : tacticalTool;
+      const initialDrawColor = isWhiteboardMode ? whiteboardPenColor : tacticalPenColor;
+      surface.setPlaybackSpeedMultiplier(playbackSpeedMultiplierRef.current);
+      surface.setWhiteboardDrawTool(initialDrawTool);
+      surface.setWhiteboardDrawColor(initialDrawColor);
+      if (!isWhiteboardMode) {
+        surface.setItems(items);
+        const initialSurfaceItemMode: ItemMode =
+          itemMode === "edit" && tacticalTool === "move" && !(isPlaying || isPaused)
+            ? "edit"
+            : "locked";
+        surface.setItemMode(initialSurfaceItemMode);
+        surface.setRouteCaptureMode(false);
+        const query = new URLSearchParams(window.location.search);
+        const boardIdFromQuery = query.get("boardId")?.trim() ?? "";
+        if (boardIdFromQuery.length > 0) {
+          handleOpenSavedBoard(boardIdFromQuery);
+          query.delete("boardId");
+          const nextQuery = query.toString();
+          const nextUrl = `${window.location.pathname}${nextQuery.length > 0 ? `?${nextQuery}` : ""}${window.location.hash}`;
+          window.history.replaceState(window.history.state, "", nextUrl);
+        }
+      }
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          surface.reflow();
+        });
+      });
+    });
+
+    return () => {
+      disposed = true;
+      surfaceRef.current = null;
+      destroySurface?.();
+    };
+  }, [isStatsMode, isWhiteboardMode]);
+
+  useEffect(() => {
+    if (isStatsMode) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const activeDrawTool = isWhiteboardMode ? whiteboardTool : tacticalTool;
+    const activeDrawColor = isWhiteboardMode ? whiteboardPenColor : tacticalPenColor;
+    surface.setWhiteboardDrawTool(activeDrawTool);
+    surface.setWhiteboardDrawColor(activeDrawColor);
+  }, [isStatsMode, isWhiteboardMode, whiteboardTool, whiteboardPenColor, tacticalTool, tacticalPenColor]);
+
+  useEffect(() => {
+    if (isStatsMode) return;
+    surfaceRef.current?.setPlaybackSpeedMultiplier(playbackSpeedMultiplier);
+  }, [isStatsMode, playbackSpeedMultiplier]);
+
+  useEffect(() => {
+    if (isStatsMode) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    surface.setWhiteboardTeamConfig({
+      counts: whiteboardCountsRef.current,
+      colors: whiteboardTeamColorsRef.current,
+    });
+  }, [isStatsMode, whiteboardBlueCount, whiteboardRedCount, whiteboardBlueColor, whiteboardRedColor]);
+
+  useEffect(() => {
+    if (isStatsMode || isWhiteboardMode) return;
+    surfaceRef.current?.setItems(items);
+  }, [isStatsMode, isWhiteboardMode, items]);
+
+  useEffect(() => {
+    if (isStatsMode || isWhiteboardMode) return;
+    surfaceRef.current?.setTacticalTokenStyle(tacticalTokenStyle);
+  }, [isStatsMode, isWhiteboardMode, tacticalTokenStyle]);
+
+  useEffect(() => {
+    if (isStatsMode || isWhiteboardMode || !isPortraitViewingMode) return;
+    setToolsOpen(false);
+    setKitEditorState(null);
+    setMovementModePillSelection("move");
+    setItemMode("locked");
+    setTacticalTool("move");
+    setRouteState((previous) => ({ ...previous, isRouteCaptureMode: false }));
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    surface.setItemMode("locked");
+    surface.setWhiteboardDrawTool("move");
+    surface.setRouteCaptureMode(false);
+  }, [isPortraitViewingMode, isStatsMode, isWhiteboardMode]);
+
+  const isPlaybackLocked = isPlaying || isPaused;
+  const hasAssignedRoutes = routeState.routeCount > 0;
+  const isAddPhaseBlocked = isPlaybackLocked || routeState.isRouteCaptureMode || hasAssignedRoutes;
+  const playbackSpeedOptionIndex = Math.max(
+    0,
+    PLAYBACK_SPEED_OPTIONS.findIndex((option) => option.multiplier === playbackSpeedMultiplier),
+  );
+  const playbackSpeedLabel = PLAYBACK_SPEED_OPTIONS[playbackSpeedOptionIndex]?.label ?? "1.0x";
+  const playbackSpeedTrackFillPercent =
+    (playbackSpeedOptionIndex / Math.max(1, PLAYBACK_SPEED_OPTIONS.length - 1)) * 100;
+  const playbackSpeedSliderStyle = {
+    ...PLAYBACK_SPEED_SLIDER_STYLE,
+    "--speed-track": `linear-gradient(90deg, rgba(34, 197, 94, 0.95) 0%, rgba(34, 197, 94, 0.95) ${playbackSpeedTrackFillPercent}%, rgba(255, 255, 255, 0.9) ${playbackSpeedTrackFillPercent}%, rgba(255, 255, 255, 0.9) 100%)`,
+  } as CSSProperties;
+  const effectiveItemMode: ItemMode =
+    isPortraitViewingMode || routeState.isRouteCaptureMode || (itemMode !== "edit" || tacticalTool !== "move" || isPlaybackLocked)
+      ? "locked"
+      : "edit";
+
+  useEffect(() => {
+    if (isStatsMode || isWhiteboardMode) return;
+    surfaceRef.current?.setItemMode(effectiveItemMode);
+  }, [isStatsMode, isWhiteboardMode, effectiveItemMode]);
+
+  useEffect(() => {
+    if (isStatsMode || isWhiteboardMode) return;
+    if (routeState.isRouteCaptureMode) {
+      setMovementModePillSelection("route");
+      return;
+    }
+    if (movementModePillSelection === "route") {
+      setMovementModePillSelection("move");
+    }
+    if (tacticalTool !== "move") return;
+    if (itemMode === "edit") {
+      setMovementModePillSelection("move");
+    }
+  }, [isStatsMode, isWhiteboardMode, routeState.isRouteCaptureMode, tacticalTool, itemMode, movementModePillSelection]);
+
+  useEffect(() => {
+    if (!isWhiteboardMode) return;
+    const syncBubblePosition = () => {
+      const viewport = getViewportRect();
+      setWhiteboardBubblePosition((prev) => {
+        const next =
+          prev == null ? getDefaultWhiteboardBubblePosition(viewport) : clampWhiteboardBubblePosition(prev, viewport);
+        if (prev && Math.abs(prev.left - next.left) < 0.5 && Math.abs(prev.top - next.top) < 0.5) {
+          return prev;
+        }
+        return next;
+      });
+    };
+
+    syncBubblePosition();
+    window.addEventListener("resize", syncBubblePosition);
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", syncBubblePosition);
+    viewport?.addEventListener("scroll", syncBubblePosition);
+
+    return () => {
+      window.removeEventListener("resize", syncBubblePosition);
+      viewport?.removeEventListener("resize", syncBubblePosition);
+      viewport?.removeEventListener("scroll", syncBubblePosition);
+    };
+  }, [isWhiteboardMode]);
+
+  useEffect(() => {
+    if (!isWhiteboardMode || !whiteboardBubbleOpen) return;
+
+    const measureMenu = () => {
+      const rect = whiteboardBubbleMenuRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setWhiteboardBubbleMenuSize((prev) => {
+        if (Math.abs(prev.width - rect.width) < 0.5 && Math.abs(prev.height - rect.height) < 0.5) {
+          return prev;
+        }
+        return { width: rect.width, height: rect.height };
+      });
+    };
+
+    measureMenu();
+    const rafId = window.requestAnimationFrame(measureMenu);
+    window.addEventListener("resize", measureMenu);
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", measureMenu);
+    viewport?.addEventListener("scroll", measureMenu);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", measureMenu);
+      viewport?.removeEventListener("resize", measureMenu);
+      viewport?.removeEventListener("scroll", measureMenu);
+    };
+  }, [isWhiteboardMode, whiteboardBubbleOpen]);
+
+  useEffect(() => {
+    if (isWhiteboardMode || !quickShareOpen) return;
+
+    const handlePointerDownOutside = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (actionsBubbleButtonRef.current?.contains(target)) return;
+      if (actionsMenuRef.current?.contains(target)) return;
+      if (quickSharePopoverRef.current?.contains(target)) return;
+      setQuickShareOpen(false);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setQuickShareOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDownOutside);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDownOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isWhiteboardMode, quickShareOpen]);
+
+  useEffect(() => {
+    if (isWhiteboardMode || !myBoardsOpen) return;
+
+    const handlePointerDownOutside = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (actionsBubbleButtonRef.current?.contains(target)) return;
+      if (actionsMenuRef.current?.contains(target)) return;
+      if (myBoardsPopoverRef.current?.contains(target)) return;
+      setMyBoardsOpen(false);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setMyBoardsOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDownOutside);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDownOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isWhiteboardMode, myBoardsOpen]);
+
+  useEffect(() => {
+    if (isWhiteboardMode || !quickShareOnboardingOpen) return;
+
+    const handlePointerDownOutside = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (quickShareOnboardingCardRef.current?.contains(target)) return;
+      dismissQuickShareOnboarding(false);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      dismissQuickShareOnboarding(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDownOutside);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDownOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isWhiteboardMode, quickShareOnboardingOpen]);
+
+  useEffect(() => {
+    if (!quickShareOnboardingOpen) {
+      setQuickShareOnboardingEntered(false);
+      return;
+    }
+    const rafId = window.requestAnimationFrame(() => {
+      setQuickShareOnboardingEntered(true);
+    });
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [quickShareOnboardingOpen]);
+
+  useEffect(() => {
+    if (isWhiteboardMode || !actionsOpen) return;
+
+    const handlePointerDownOutside = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (actionsBubbleButtonRef.current?.contains(target)) return;
+      if (actionsMenuRef.current?.contains(target)) return;
+      if (quickSharePopoverRef.current?.contains(target)) return;
+      if (myBoardsPopoverRef.current?.contains(target)) return;
+      setActionsOpen(false);
+      setQuickShareOpen(false);
+      setMyBoardsOpen(false);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setActionsOpen(false);
+      setQuickShareOpen(false);
+      setMyBoardsOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDownOutside);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDownOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isWhiteboardMode, actionsOpen]);
+
+  useEffect(() => {
+    if (!isWhiteboardMode || !whiteboardBubbleOpen) return;
+
+    const handlePointerDownOutside = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (whiteboardBubbleButtonRef.current?.contains(target)) return;
+      if (whiteboardBubbleMenuRef.current?.contains(target)) return;
+      setWhiteboardBubbleOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDownOutside);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDownOutside);
+    };
+  }, [isWhiteboardMode, whiteboardBubbleOpen]);
+
+  const handlePlayPress = () => {
+    if (isPaused) {
+      surfaceRef.current?.resumePlayback();
+    } else {
+      surfaceRef.current?.play();
+    }
+    setToolsOpen(false);
+    setControlsOpen(false);
+  };
+
+  const handlePausePress = () => {
+    surfaceRef.current?.pausePlayback();
+    setControlsOpen(false);
+  };
+
+  const handleToolsBackdropPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+    setToolsOpen(false);
+  };
+
+  const handlePlaybackSpeedChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextIndex = Number.parseInt(event.target.value, 10);
+    if (!Number.isFinite(nextIndex)) return;
+    const boundedIndex = Math.max(0, Math.min(PLAYBACK_SPEED_OPTIONS.length - 1, nextIndex));
+    const nextSpeed = PLAYBACK_SPEED_OPTIONS[boundedIndex]?.multiplier;
+    if (nextSpeed == null) return;
+    setPlaybackSpeedMultiplier(nextSpeed);
+  };
+
+  const phaseItems = Array.from({ length: phaseCount }, (_, index) => index + 1);
+  const floodlightDots = Array.from({ length: 12 }, (_, index) => index);
+  const activeTacticalPenColor = tacticalPenColor;
+  const refreshSavedBoards = () => {
+    setSavedBoards(loadAllBoards());
+  };
+  const showQuickBoardNotice = (message: string) => {
+    if (quickBoardFeedbackTimerRef.current !== null) {
+      window.clearTimeout(quickBoardFeedbackTimerRef.current);
+    }
+    setQuickBoardFeedback(message);
+    quickBoardFeedbackTimerRef.current = window.setTimeout(() => {
+      setQuickBoardFeedback(null);
+      quickBoardFeedbackTimerRef.current = null;
+    }, 2600);
+  };
+  const closeActionsMenu = () => {
+    setActionsOpen(false);
+    setQuickShareOpen(false);
+    setMyBoardsOpen(false);
+  };
+  const closeMyBoardsMenu = () => setMyBoardsOpen(false);
+  const closeControlsMenu = () => setControlsOpen(false);
+  const goHome = () => {
+    closeActionsMenu();
+    window.location.assign("/board");
+  };
+  const closeQuickShareMenu = () => setQuickShareOpen(false);
+  const showShareTip = (message: string) => {
+    if (shareTipTimerRef.current !== null) {
+      window.clearTimeout(shareTipTimerRef.current);
+    }
+    setShareTipMessage(message);
+    shareTipTimerRef.current = window.setTimeout(() => {
+      setShareTipMessage(null);
+      shareTipTimerRef.current = null;
+    }, 4000);
+  };
+  const handleQuickShareRecordClip = () => {
+    closeQuickShareMenu();
+    showShareTip("Use your phone’s screen recorder.\nShare the saved video directly to WhatsApp.");
+  };
+  const handleQuickShareSnapshot = () => {
+    closeQuickShareMenu();
+    showShareTip("Take a screenshot and share the saved image.");
+  };
+  const openMyBoardsEntry = () => {
+    setQuickShareOpen(false);
+    setActionsOpen(false);
+    refreshSavedBoards();
+    setMyBoardsOpen(true);
+  };
+  const handleSaveCurrentBoard = () => {
+    const surface = surfaceRef.current;
+    if (!surface || isWhiteboardMode || isStatsMode) {
+      showQuickBoardNotice("PáircVision Board not ready");
+      return;
+    }
+    if (hasReachedQuickBoardSaveLimit()) {
+      showQuickBoardNotice(
+        `Board limit reached (${MAX_QUICKBOARD_SAVES}).\nDelete old boards or export/share important ones.`,
+      );
+      return;
+    }
+    const snapshot = captureQuickBoardSnapshot(surface);
+    if (!snapshot) {
+      showQuickBoardNotice("Could not capture board");
+      return;
+    }
+    const now = new Date();
+    const fallbackName = `Board ${now.toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })}`;
+    const saved = saveBoard({ name: fallbackName, boardState: snapshot });
+    if (!saved) {
+      showQuickBoardNotice("Save failed");
+      return;
+    }
+    latestThumbnailSaveTokenRef.current += 1;
+    const thumbnailSaveToken = latestThumbnailSaveTokenRef.current;
+    refreshSavedBoards();
+    showQuickBoardNotice("Board saved");
+    setLastBoardSavedAtMillis(saved.updatedAt);
+    void generateQuickBoardThumbnail(surface).then((thumbnail) => {
+      if (!thumbnail) return;
+      if (thumbnailSaveToken !== latestThumbnailSaveTokenRef.current) return;
+      const updated = setBoardThumbnail(saved.id, thumbnail);
+      if (!updated) return;
+      refreshSavedBoards();
+    });
+  };
+  const handleOpenSavedBoard = (boardId: string) => {
+    const surface = surfaceRef.current;
+    if (!surface) {
+      showQuickBoardNotice("Board unavailable");
+      return;
+    }
+    const saved = loadBoard(boardId);
+    if (!saved) {
+      showQuickBoardNotice("Board not found");
+      refreshSavedBoards();
+      return;
+    }
+    const restored = restoreQuickBoardSnapshot(surface, saved.boardState);
+    if (!restored) {
+      showQuickBoardNotice("Load failed");
+      return;
+    }
+    const restoredItems: TacticalItem[] = Array.isArray(saved.boardState.items)
+      ? saved.boardState.items
+          .map((entry) => {
+            if (!entry || typeof entry !== "object") return null;
+            const item = entry as Record<string, unknown>;
+            const id = typeof item.id === "string" ? item.id.trim() : "";
+            const type = item.type;
+            const x = typeof item.x === "number" && Number.isFinite(item.x) ? Math.max(0, Math.min(100, item.x)) : null;
+            const y = typeof item.y === "number" && Number.isFinite(item.y) ? Math.max(0, Math.min(100, item.y)) : null;
+            if (
+              id.length <= 0 ||
+              x == null ||
+              y == null ||
+              (type !== "cone" &&
+                type !== "discCone" &&
+                type !== "pole" &&
+                type !== "miniGoal" &&
+                type !== "mannequin" &&
+                type !== "ladder" &&
+                type !== "hurdle" &&
+                type !== "tackleBag" &&
+                type !== "footballSmall" &&
+                type !== "football" &&
+                type !== "footballLarge" &&
+                type !== "sliotarSmall" &&
+                type !== "sliotar" &&
+                type !== "sliotarLarge")
+            ) {
+              return null;
+            }
+            return {
+              id,
+              type,
+              x,
+              y,
+              ...(typeof item.rotation === "number" && Number.isFinite(item.rotation) ? { rotation: item.rotation } : {}),
+              ...(typeof item.scale === "number" && Number.isFinite(item.scale) ? { scale: item.scale } : {}),
+            } satisfies TacticalItem;
+          })
+          .filter((entry): entry is TacticalItem => entry != null)
+      : [];
+    setItems(restoredItems);
+    setPhaseCount(Array.isArray(saved.boardState.phases) ? saved.boardState.phases.length : 0);
+    setIsPlaying(false);
+    setIsPaused(false);
+    setMyBoardsOpen(false);
+    setActionsOpen(false);
+    setQuickShareOpen(false);
+    showQuickBoardNotice("Board loaded");
+    setLoadedBoardName(saved.name);
+  };
+  const lastBoardSavedLabel =
+    lastBoardSavedAtMillis != null ? formatBoardUpdatedAt(lastBoardSavedAtMillis) : null;
+  const handleRenameBoard = (boardId: string, currentName: string) => {
+    const drafted = window.prompt("Rename board", currentName);
+    if (drafted == null) return;
+    const renamed = renameBoard(boardId, sanitizeBoardName(drafted));
+    if (!renamed) {
+      showQuickBoardNotice("Rename failed");
+      return;
+    }
+    refreshSavedBoards();
+    showQuickBoardNotice("Board renamed");
+  };
+  const handleDuplicateBoard = (boardId: string) => {
+    const duplicated = duplicateBoard(boardId);
+    if (!duplicated) {
+      showQuickBoardNotice("Duplicate failed");
+      return;
+    }
+    refreshSavedBoards();
+    showQuickBoardNotice("Board duplicated");
+  };
+  const handleDeleteBoard = (boardId: string, name: string) => {
+    const confirmed = window.confirm(`Delete "${name}"?`);
+    if (!confirmed) return;
+    const deleted = deleteBoard(boardId);
+    if (!deleted) {
+      showQuickBoardNotice("Delete failed");
+      return;
+    }
+    refreshSavedBoards();
+    showQuickBoardNotice("Board deleted");
+  };
+  const dismissQuickShareOnboarding = (openQuickShareAfter = false) => {
+    setQuickShareOnboardingOpen(false);
+    setQuickShareOnboardingSeen(true);
+    safeWriteLocalStorageFlag(QUICK_SHARE_ONBOARDING_STORAGE_KEY, true);
+    if (openQuickShareAfter) {
+      setQuickShareOpen(true);
+    }
+  };
+  const openQuickShareEntry = () => {
+    closeActionsMenu();
+    setQuickShareOpen(true);
+    if (quickShareOnboardingSeen) return;
+    showShareTip("Best results:\nUse your phone’s screen recorder.\nShare the saved video directly to WhatsApp.");
+    setQuickShareOnboardingSeen(true);
+    safeWriteLocalStorageFlag(QUICK_SHARE_ONBOARDING_STORAGE_KEY, true);
+  };
+  useEffect(() => {
+    return () => {
+      if (shareTipTimerRef.current !== null) {
+        window.clearTimeout(shareTipTimerRef.current);
+      }
+      if (quickBoardFeedbackTimerRef.current !== null) {
+        window.clearTimeout(quickBoardFeedbackTimerRef.current);
+      }
+    };
+  }, []);
+  const openWhiteboardHomeConfirm = () => {
+    if (whiteboardHomeConfirmOpen) return;
+    setWhiteboardHomeConfirmOpen(true);
+    if (!whiteboardHomeConfirmHistoryRef.current) {
+      window.history.pushState(
+        { ...(window.history.state as Record<string, unknown> | null), whiteboardHomeConfirmOpen: true },
+        "",
+        window.location.href,
+      );
+      whiteboardHomeConfirmHistoryRef.current = true;
+    }
+  };
+  const closeWhiteboardHomeConfirm = () => {
+    if (whiteboardHomeConfirmHistoryRef.current) {
+      whiteboardHomeConfirmHistoryRef.current = false;
+      window.history.back();
+      return;
+    }
+    setWhiteboardHomeConfirmOpen(false);
+  };
+  const confirmWhiteboardGoHome = () => {
+    whiteboardHomeConfirmHistoryRef.current = false;
+    setWhiteboardHomeConfirmOpen(false);
+    goHome();
+  };
+
+  useEffect(() => {
+    if (!isWhiteboardMode || !whiteboardHomeConfirmOpen) return;
+
+    const handlePointerDownOutside = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (whiteboardHomeButtonRef.current?.contains(target)) return;
+      if (whiteboardHomeConfirmRef.current?.contains(target)) return;
+      closeWhiteboardHomeConfirm();
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeWhiteboardHomeConfirm();
+    };
+    const handlePopState = () => {
+      if (!whiteboardHomeConfirmOpen) return;
+      whiteboardHomeConfirmHistoryRef.current = false;
+      setWhiteboardHomeConfirmOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDownOutside);
+    window.addEventListener("keydown", handleEscape);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDownOutside);
+      window.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [isWhiteboardMode, whiteboardHomeConfirmOpen]);
+
+  const setWhiteboardCount = (team: "BLUE" | "RED", count: number) => {
+    const clamped = Math.max(1, Math.min(15, Math.floor(count)));
+    if (team === "BLUE") {
+      setWhiteboardBlueCount(clamped);
+      return;
+    }
+    setWhiteboardRedCount(clamped);
+  };
+
+  const applyWhiteboardTool = (tool: WhiteboardToolAction) => {
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    setWhiteboardTool(tool);
+    surface.setWhiteboardDrawTool(tool);
+    surface.setWhiteboardDrawColor(whiteboardPenColor);
+  };
+
+  const applyWhiteboardPenColor = (color: number) => {
+    setWhiteboardPenColor(color);
+    surfaceRef.current?.setWhiteboardDrawColor(color);
+  };
+
+  const applyTacticalPenColor = (color: number) => {
+    if (isPortraitViewingMode) return;
+    setTacticalPenColor(color);
+    surfaceRef.current?.setWhiteboardDrawColor(color);
+  };
+
+  const setRouteCaptureMode = (enabled: boolean) => {
+    if (isPortraitViewingMode) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    surface.setRouteCaptureMode(enabled);
+  };
+
+  const clearCommittedRoutes = () => {
+    if (isPortraitViewingMode || isPlaybackLocked) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    surface.clearRoutes();
+    setMovementModePillSelection("move");
+    setItemMode("edit");
+    setTacticalTool("move");
+    surface.setWhiteboardDrawTool("move");
+  };
+
+  const applyTacticalTool = (tool: WhiteboardToolAction) => {
+    if (isPortraitViewingMode && tool !== "move") return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    if (tool !== "move") {
+      setRouteCaptureMode(false);
+    }
+    setTacticalTool(tool);
+    surface.setWhiteboardDrawTool(tool);
+    surface.setWhiteboardDrawColor(tacticalPenColor);
+  };
+  const applyTacticalToolFromMenu = (tool: WhiteboardToolAction) => {
+    applyTacticalTool(tool);
+    if (isCompactLandscapeToolsMenu) {
+      setToolsOpen(false);
+    }
+  };
+
+  const clearTacticalDrawings = () => {
+    if (isPortraitViewingMode) return;
+    surfaceRef.current?.clearWhiteboardStrokes();
+  };
+
+  const resetBoardFromTools = () => {
+    if (isPortraitViewingMode) return;
+    surfaceRef.current?.reset();
+    setIsPlaying(false);
+    setIsPaused(false);
+  };
+
+  const handleNewBoard = () => {
+    if (isWhiteboardMode || isStatsMode || isPortraitViewingMode) return;
+    const surface = surfaceRef.current;
+    if (!surface) {
+      showQuickBoardNotice("PáircVision Board not ready");
+      return;
+    }
+    const confirmed = window.confirm("Start a new board?\nUnsaved changes on the current board will be lost.");
+    if (!confirmed) return;
+    surface.newBoard();
+    tacticalItemCounterRef.current = 0;
+    setItems([]);
+    setMovementModePillSelection("move");
+    setRouteState((previous) => ({ ...previous, isRouteCaptureMode: false, routeCount: 0 }));
+    setItemMode("locked");
+    setTacticalTool("move");
+    setKitEditorState(null);
+    setPhaseCount(0);
+    setIsPlaying(false);
+    setIsPaused(false);
+    setPhasesOpen(false);
+    setToolsOpen(false);
+    setControlsOpen(false);
+    closeActionsMenu();
+    showQuickBoardNotice("New board ready");
+  };
+
+  const openMenuFromTools = () => {
+    setToolsOpen(false);
+    setActionsOpen((open) => {
+      const next = !open;
+      if (next) {
+        setControlsOpen(false);
+        setQuickShareOpen(false);
+        setMyBoardsOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const addTacticalPlayer = (team: "BLUE" | "RED") => {
+    if (isPortraitViewingMode) return;
+    surfaceRef.current?.addTacticalPlayer(team);
+    setKitEditorState(null);
+  };
+
+  const removeTacticalPlayer = (team: "BLUE" | "RED") => {
+    if (isPortraitViewingMode) return;
+    surfaceRef.current?.removeTacticalPlayer(team);
+    setKitEditorState(null);
+  };
+
+  const addItem = (type: TacticalItem["type"]) => {
+    if (isPortraitViewingMode) return;
+    tacticalItemCounterRef.current += 1;
+    const nextId = `item-${tacticalItemCounterRef.current}`;
+    setItems((previous) => {
+      const index = previous.length;
+      const column = index % 3;
+      const row = Math.floor(index / 3);
+      const nextX = Math.min(78, 30 + column * 12);
+      const nextY = Math.min(78, 26 + row * 10);
+      return [...previous, { id: nextId, type, x: nextX, y: nextY }];
+    });
+  };
+
+  const clearItems = () => {
+    if (isPortraitViewingMode) return;
+    setItems([]);
+  };
+
+  const freeBall = () => {
+    if (isPortraitViewingMode || isPlaybackLocked) return;
+    setRouteCaptureMode(false);
+    surfaceRef.current?.freeBall();
+    setMovementModePillSelection("ball");
+    setTacticalTool("move");
+    surfaceRef.current?.setWhiteboardDrawTool("move");
+  };
+
+  const applyMovementModePillSelection = (nextMode: MovementModePillOption) => {
+    if (isPortraitViewingMode || isPlaybackLocked) return;
+    setMovementModePillSelection(nextMode);
+    if (nextMode === "move") {
+      setRouteCaptureMode(false);
+      setItemMode("edit");
+      applyTacticalTool("move");
+      return;
+    }
+    if (nextMode === "route") {
+      setItemMode("locked");
+      applyTacticalTool("move");
+      setRouteCaptureMode(true);
+      return;
+    }
+    setItemMode("locked");
+    freeBall();
+  };
+
+  const handleWhiteboardBubblePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+    const viewport = getViewportRect();
+    const currentPosition =
+      whiteboardBubblePosition == null
+        ? getDefaultWhiteboardBubblePosition(viewport)
+        : whiteboardBubblePosition;
+    suppressWhiteboardBubbleClickRef.current = false;
+    whiteboardBubbleDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startLeft: currentPosition.left,
+      startTop: currentPosition.top,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleWhiteboardBubblePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = whiteboardBubbleDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const deltaX = event.clientX - drag.startX;
+    const deltaY = event.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(deltaX, deltaY) >= 4) {
+      drag.moved = true;
+    }
+    const viewport = getViewportRect();
+    setWhiteboardBubblePosition(
+      clampWhiteboardBubblePosition(
+        {
+          left: drag.startLeft + deltaX,
+          top: drag.startTop + deltaY,
+        },
+        viewport,
+      ),
+    );
+  };
+
+  const finishWhiteboardBubbleDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = whiteboardBubbleDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (drag.moved) {
+      suppressWhiteboardBubbleClickRef.current = true;
+    }
+    whiteboardBubbleDragRef.current = null;
+  };
+
+  const handleWhiteboardBubbleClick = () => {
+    if (suppressWhiteboardBubbleClickRef.current) {
+      suppressWhiteboardBubbleClickRef.current = false;
+      return;
+    }
+    setWhiteboardBubbleOpen((open) => !open);
+  };
+
+  const activeKitPlayer: TacticalPlayerKitSnapshot | null =
+    kitEditorState == null ? null : surfaceRef.current?.getTacticalPlayer(kitEditorState.playerId) ?? null;
+  const kitEditorPosition =
+    kitEditorState == null
+      ? null
+      : clampKitEditorPosition(
+          {
+            left: kitEditorState.anchorLeft + 8,
+            top: kitEditorState.anchorTop + 8,
+          },
+          getViewportRect(),
+        );
+
+  const applyPlayerKitPatch = (patch: TacticalPlayerKitPatch) => {
+    const editor = kitEditorState;
+    const surface = surfaceRef.current;
+    if (!editor || !surface) return;
+    surface.patchTacticalPlayer(editor.playerId, patch);
+    setKitEditorState((previous) =>
+      previous == null
+        ? previous
+        : {
+            ...previous,
+            revision: previous.revision + 1,
+          },
+    );
+  };
+
+  const handleKitInitialsChange = (rawValue: string) => {
+    const sanitized = sanitizeInitials(rawValue) ?? "";
+    applyPlayerKitPatch({ initials: sanitized });
+  };
+
+  const whiteboardBubbleStyle =
+    whiteboardBubblePosition == null
+      ? undefined
+      : {
+          left: `${whiteboardBubblePosition.left}px`,
+          top: `${whiteboardBubblePosition.top}px`,
+          right: "auto",
+          bottom: "auto",
+          touchAction: "none",
+          cursor: whiteboardBubbleDragRef.current ? "grabbing" : "grab",
+        };
+  const whiteboardBubbleMenuStyle = (() => {
+    const viewport = getViewportRect();
+    const availableHeight = viewport.height - WHITEBOARD_BUBBLE_MARGIN * 2;
+    const preferredHeight = whiteboardBubbleMenuSize.height + 40;
+    return {
+      maxHeight: `${Math.max(140, Math.min(availableHeight, preferredHeight))}px`,
+      zIndex: 22,
+    } as const;
+  })();
+  const actionsBubbleStyle = isPortraitViewingMode ? PORTRAIT_ACTIONS_BUBBLE_STYLE : ACTIONS_BUBBLE_STYLE;
+  const actionsPopoutStyle = isPortraitViewingMode ? PORTRAIT_ACTIONS_POPOUT_STYLE : ACTIONS_POPOUT_STYLE;
+  const quickSharePopoverStyle = isPortraitViewingMode ? PORTRAIT_QUICK_SHARE_POPOUT_STYLE : QUICK_SHARE_POPOUT_STYLE;
+  const myBoardsPopoverStyle = isPortraitViewingMode ? PORTRAIT_MY_BOARDS_POPOUT_STYLE : MY_BOARDS_POPOUT_STYLE;
+  const isToolsOverlayOpen = !isWhiteboardMode && !isPortraitViewingMode && toolsOpen;
+  const isCompactLandscapeTools = !isWhiteboardMode && !isPortraitViewingMode && isCompactLandscapeToolsMenu;
+  const isIphoneLandscapeTools = isCompactLandscapeTools && isIphoneLandscapeToolsMenu;
+  const compactLandscapeViewportWidth = isCompactLandscapeTools ? getViewportRect().width : 0;
+  const isTightCompactLandscapeTools = isCompactLandscapeTools && compactLandscapeViewportWidth <= 760;
+  const mobileCoachHubOverlayStyle = isIphoneLandscapeTools ? IPHONE_LANDSCAPE_TOOLS_OVERLAY_STYLE : MOBILE_COACH_HUB_OVERLAY_STYLE;
+  const mobileCoachHubPanelStyle = isCompactLandscapeTools
+    ? {
+        ...MOBILE_COACH_HUB_PANEL_STYLE,
+        ...(isTightCompactLandscapeTools
+          ? {
+              width: "min(49vw, 292px)",
+              gap: "3px",
+              padding: "5px",
+            }
+          : null),
+        ...(isIphoneLandscapeTools ? IPHONE_LANDSCAPE_TOOLS_PANEL_STYLE : null),
+      }
+    : MOBILE_COACH_HUB_PANEL_STYLE;
+  const toolsPortalOverlayStyle: CSSProperties = {
+    ...mobileCoachHubOverlayStyle,
+    pointerEvents: "auto",
+  };
+  const toolsPortalCompactPanelStyle: CSSProperties = {
+    ...mobileCoachHubPanelStyle,
+    pointerEvents: "auto",
+    zIndex: 25,
+  };
+  const toolsPortalPanelStyle: CSSProperties = {
+    ...COACH_HUB_PANEL_STYLE,
+    pointerEvents: "auto",
+    zIndex: 25,
+  };
+  const mobileCoachHubBodyStyle = isIphoneLandscapeTools ? IPHONE_LANDSCAPE_TOOLS_BODY_STYLE : MOBILE_COACH_HUB_BODY_STYLE;
+  const coachHubSectionTitleStyle = isCompactLandscapeTools
+    ? {
+        ...COACH_HUB_SECTION_TITLE_STYLE,
+        fontSize: "8px",
+        letterSpacing: "0.2px",
+        color: "rgba(202, 222, 213, 0.86)",
+        marginTop: "0px",
+      }
+    : COACH_HUB_SECTION_TITLE_STYLE;
+  const coachHubTabGridStyle = isCompactLandscapeTools
+    ? {
+        ...COACH_HUB_TAB_GRID_STYLE,
+        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+        gap: isTightCompactLandscapeTools ? "1px" : "2px",
+        padding: isTightCompactLandscapeTools ? "1px" : "2px",
+        alignItems: "stretch",
+        borderRadius: "9px",
+        border: "1px solid rgba(129, 157, 144, 0.12)",
+        background: "rgba(9, 16, 20, 0.44)",
+      }
+    : COACH_HUB_TAB_GRID_STYLE;
+  const coachHubTabButtonStyle = isCompactLandscapeTools
+    ? {
+        ...COACH_HUB_TAB_BUTTON_STYLE,
+        height: isTightCompactLandscapeTools ? "22px" : "24px",
+        borderRadius: "999px",
+        fontSize: isTightCompactLandscapeTools ? "8.4px" : "8.8px",
+        letterSpacing: "0.14px",
+        padding: isTightCompactLandscapeTools ? "0 3px" : "0 4px",
+        minWidth: 0,
+        width: "100%",
+        maxWidth: "100%",
+        border: "1px solid rgba(127, 156, 142, 0.24)",
+        background: "rgba(13, 22, 25, 0.68)",
+        color: "rgba(220, 235, 227, 0.9)",
+      }
+    : COACH_HUB_TAB_BUTTON_STYLE;
+  const coachHubTabButtonActiveStyle = isCompactLandscapeTools
+    ? {
+        ...coachHubTabButtonStyle,
+        border: "1px solid rgba(124, 255, 114, 0.42)",
+        background: "rgba(124, 255, 114, 0.12)",
+        color: "#f1f7f0",
+      }
+    : COACH_HUB_TAB_BUTTON_ACTIVE_STYLE;
+  const coachHubToolButtonStyle = isCompactLandscapeTools
+    ? {
+        ...COACH_HUB_TOOL_BUTTON_STYLE,
+        height: isTightCompactLandscapeTools ? "28px" : "30px",
+        borderRadius: "7px",
+        fontSize: isTightCompactLandscapeTools ? "8.8px" : "9px",
+        padding: isTightCompactLandscapeTools ? "0 3px" : "0 4px",
+        minWidth: 0,
+        width: "100%",
+        maxWidth: "100%",
+        border: "1px solid rgba(127, 156, 142, 0.22)",
+        background: "rgba(13, 22, 25, 0.68)",
+        color: "#e6f0ea",
+      }
+    : COACH_HUB_TOOL_BUTTON_STYLE;
+  const coachHubToolButtonActiveStyle = isCompactLandscapeTools
+    ? {
+        ...coachHubToolButtonStyle,
+        border: "1px solid rgba(124, 255, 114, 0.46)",
+        background: "rgba(124, 255, 114, 0.14)",
+        color: "#f7fcff",
+      }
+    : COACH_HUB_TOOL_BUTTON_ACTIVE_STYLE;
+  const coachHubColorGridStyle = isCompactLandscapeTools
+    ? {
+        ...COACH_HUB_COLOR_GRID_STYLE,
+        gap: isTightCompactLandscapeTools ? "1px" : "2px",
+      }
+    : COACH_HUB_COLOR_GRID_STYLE;
+  const coachHubColorButtonStyle = isCompactLandscapeTools
+    ? {
+        ...COACH_HUB_COLOR_BUTTON_STYLE,
+        height: isTightCompactLandscapeTools ? "18px" : "20px",
+        border: "1px solid rgba(129, 157, 144, 0.22)",
+        background: "rgba(10, 18, 22, 0.7)",
+      }
+    : COACH_HUB_COLOR_BUTTON_STYLE;
+  const coachHubColorSwatchStyle = isCompactLandscapeTools
+    ? {
+        ...COACH_HUB_COLOR_SWATCH_STYLE,
+        width: isTightCompactLandscapeTools ? "10px" : "11px",
+        height: isTightCompactLandscapeTools ? "10px" : "11px",
+      }
+    : COACH_HUB_COLOR_SWATCH_STYLE;
+  const coachHubActionButtonStyle = isCompactLandscapeTools
+    ? {
+        ...COACH_HUB_ACTION_BUTTON_STYLE,
+        height: isTightCompactLandscapeTools ? "28px" : "30px",
+        borderRadius: "7px",
+        fontSize: isTightCompactLandscapeTools ? "8.8px" : "9px",
+        padding: isTightCompactLandscapeTools ? "0 3px" : "0 4px",
+        minWidth: 0,
+        width: "100%",
+        maxWidth: "100%",
+        border: "1px solid rgba(127, 156, 142, 0.22)",
+        background: "rgba(13, 22, 25, 0.68)",
+        color: "#e6f0ea",
+      }
+    : COACH_HUB_ACTION_BUTTON_STYLE;
+  const pitchSurfaceStyle: CSSProperties =
+    !isWhiteboardMode && toolsOpen
+      ? {
+          ...PITCH_STYLE,
+          pointerEvents: "none" as const,
+        }
+      : isWhiteboardMode
+        ? PITCH_WHITEBOARD_STYLE
+        : PITCH_STYLE;
+
+  if (isStatsMode) {
+    return (
+      <>
+        <StatsModeSurface />
+      </>
+    );
+  }
+
+  return (
+    <OrientationGate modeLabel="PáircVision Board">
+      <div
+        style={isWhiteboardMode ? ROOT_WHITEBOARD_STYLE : ROOT_STYLE}
+        className={isWhiteboardMode ? undefined : "simulator-container"}
+      >
+        {!isWhiteboardMode ? <style>{STADIUM_FLOODLIGHT_CSS}</style> : null}
+        {!isWhiteboardMode ? (
+          <div style={BACKGROUND_LAYER_STYLE} aria-hidden="true">
+            <div style={BACKGROUND_BASE_STYLE} />
+            <div className="stadium-light stadium-light-left" aria-hidden="true">
+              {floodlightDots.map((dot) => (
+                <span key={`left-light-${dot}`} />
+              ))}
+            </div>
+            <div className="stadium-light stadium-light-right" aria-hidden="true">
+              {floodlightDots.map((dot) => (
+                <span key={`right-light-${dot}`} />
+              ))}
+            </div>
+            <div style={STADIUM_BEAM_LEFT_STYLE} />
+            <div style={STADIUM_BEAM_RIGHT_STYLE} />
+            <div style={BACKGROUND_VIGNETTE_STYLE} />
+          </div>
+        ) : null}
+        <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : CONTENT_STYLE}>
+          <div ref={hostRef} style={pitchSurfaceStyle} />
+          {!isWhiteboardMode && isPortraitViewingMode ? <div style={PORTRAIT_INTERACTION_SHIELD_STYLE} aria-hidden="true" /> : null}
+        </div>
+        {!isWhiteboardMode && !isPortraitViewingMode && kitEditorState && activeKitPlayer && kitEditorPosition ? (
+          <div
+            style={{
+              ...KIT_EDITOR_STYLE,
+              left: `${kitEditorPosition.left}px`,
+              top: `${kitEditorPosition.top}px`,
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="false"
+            aria-label="Player kit editor"
+          >
+            <div style={KIT_EDITOR_HEADER_STYLE}>
+              <div style={KIT_EDITOR_TAB_ROW_STYLE}>
+                {KIT_EDITOR_TABS.map((tab) => (
+                  <button
+                    key={`kit-editor-tab-${tab.id}`}
+                    type="button"
+                    style={kitEditorTab === tab.id ? KIT_EDITOR_TAB_BUTTON_ACTIVE_STYLE : KIT_EDITOR_TAB_BUTTON_STYLE}
+                    onClick={() => setKitEditorTab(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <button type="button" style={KIT_EDITOR_CLOSE_STYLE} onClick={() => setKitEditorState(null)} aria-label="Close kit editor">
+                ×
+              </button>
+            </div>
+            {kitEditorTab === "base" ? (
+              <div style={KIT_EDITOR_SECTION_STYLE}>
+                <div style={KIT_EDITOR_COLOR_GRID_STYLE}>
+                  {KIT_COLOR_CHOICES.map((color) => {
+                    const effectiveBaseColor = activeKitPlayer.kitBaseColor ?? (activeKitPlayer.team === "RED" ? "red" : "blue");
+                    const isActive = effectiveBaseColor === color;
+                    return (
+                      <button
+                        key={`kit-base-${activeKitPlayer.id}-${color}`}
+                        type="button"
+                        style={{
+                          ...KIT_EDITOR_COLOR_BUTTON_STYLE,
+                          ...(isActive ? { boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.95)" } : null),
+                        }}
+                        aria-label={`Set base colour ${color}`}
+                        onClick={() => applyPlayerKitPatch({ kitBaseColor: color })}
+                      >
+                        <span style={{ ...WHITEBOARD_TOKEN_COLOR_SWATCH_STYLE, background: KIT_COLOR_CSS[color] }} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {kitEditorTab === "pattern" ? (
+              <div style={KIT_EDITOR_SECTION_STYLE}>
+                <div style={KIT_EDITOR_MODE_ROW_STYLE}>
+                  {KIT_PATTERN_CHOICES.map((pattern) => {
+                    const effectivePattern = activeKitPlayer.kitPattern ?? "plain";
+                    const isActive = effectivePattern === pattern;
+                    return (
+                      <button
+                        key={`kit-pattern-${activeKitPlayer.id}-${pattern}`}
+                        type="button"
+                        style={isActive ? KIT_EDITOR_OPTION_BUTTON_ACTIVE_STYLE : KIT_EDITOR_OPTION_BUTTON_STYLE}
+                        onClick={() => applyPlayerKitPatch({ kitPattern: pattern })}
+                      >
+                        {KIT_PATTERN_LABEL[pattern]}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={KIT_EDITOR_COLOR_GRID_STYLE}>
+                  {KIT_COLOR_CHOICES.map((color) => {
+                    const effectiveBaseColor = activeKitPlayer.kitBaseColor ?? (activeKitPlayer.team === "RED" ? "red" : "blue");
+                    const effectivePatternColor = activeKitPlayer.kitPatternColor ?? (effectiveBaseColor === "white" ? "black" : "white");
+                    const isActive = effectivePatternColor === color;
+                    return (
+                      <button
+                        key={`kit-pattern-color-${activeKitPlayer.id}-${color}`}
+                        type="button"
+                        style={{
+                          ...KIT_EDITOR_COLOR_BUTTON_STYLE,
+                          ...(isActive ? { boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.95)" } : null),
+                        }}
+                        aria-label={`Set pattern colour ${color}`}
+                        onClick={() => applyPlayerKitPatch({ kitPatternColor: color })}
+                      >
+                        <span style={{ ...WHITEBOARD_TOKEN_COLOR_SWATCH_STYLE, background: KIT_COLOR_CSS[color] }} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {kitEditorTab === "label" ? (
+              <div style={KIT_EDITOR_SECTION_STYLE}>
+                <div style={KIT_EDITOR_MODE_ROW_STYLE}>
+                  {LABEL_MODE_CHOICES.map((modeValue) => {
+                    const effectiveLabelMode = activeKitPlayer.labelMode ?? "number";
+                    const isActive = effectiveLabelMode === modeValue;
+                    return (
+                      <button
+                        key={`kit-label-mode-${activeKitPlayer.id}-${modeValue}`}
+                        type="button"
+                        style={isActive ? KIT_EDITOR_OPTION_BUTTON_ACTIVE_STYLE : KIT_EDITOR_OPTION_BUTTON_STYLE}
+                        onClick={() => applyPlayerKitPatch({ labelMode: modeValue })}
+                      >
+                        {modeValue === "number" ? "Number" : "Initials"}
+                      </button>
+                    );
+                  })}
+                </div>
+                <input
+                  type="text"
+                  maxLength={3}
+                  value={sanitizeInitials(activeKitPlayer.initials) ?? ""}
+                  onChange={(event) => handleKitInitialsChange(event.target.value)}
+                  style={{
+                    ...KIT_EDITOR_INPUT_STYLE,
+                    ...(activeKitPlayer.labelMode === "initials" ? null : { opacity: 0.72 }),
+                  }}
+                  placeholder="ABC"
+                  aria-label="Player initials"
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {isWhiteboardMode ? (
+          <>
+            <button
+              ref={whiteboardBubbleButtonRef}
+              type="button"
+              style={{
+                ...WHITEBOARD_HEAD_BUTTON_BASE_STYLE,
+                position: "fixed",
+                left: "max(12px, calc(env(safe-area-inset-left, 0px) + 10px))",
+                top: "max(12px, calc(env(safe-area-inset-top, 0px) + 10px))",
+                zIndex: 23,
+                ...(whiteboardBubbleStyle ?? {}),
+              }}
+              aria-label="Toggle whiteboard bubble controls"
+              aria-expanded={whiteboardBubbleOpen}
+              onPointerDown={handleWhiteboardBubblePointerDown}
+              onPointerMove={handleWhiteboardBubblePointerMove}
+              onPointerUp={finishWhiteboardBubbleDrag}
+              onPointerCancel={finishWhiteboardBubbleDrag}
+              onClick={handleWhiteboardBubbleClick}
+            >
+              👤
+            </button>
+            {whiteboardBubbleOpen ? (
+              <div
+                ref={whiteboardBubbleMenuRef}
+                style={{
+                  ...WHITEBOARD_COUNT_SELECTOR_STYLE,
+                  ...(whiteboardBubbleMenuStyle ?? {}),
+                }}
+              >
+                <div style={WHITEBOARD_PANEL_SECTION_STYLE}>
+                  <p style={WHITEBOARD_COUNT_SELECTOR_TITLE_STYLE}>TOOLS</p>
+                  <div style={WHITEBOARD_TOOL_GRID_STYLE}>
+                    <button
+                      type="button"
+                      style={whiteboardTool === "move" ? WHITEBOARD_TOOLS_BUTTON_ACTIVE_STYLE : WHITEBOARD_TOOLS_BUTTON_STYLE}
+                      onClick={() => applyWhiteboardTool("move")}
+                    >
+                      Move
+                    </button>
+                    <button
+                      type="button"
+                      style={whiteboardTool === "line" ? WHITEBOARD_TOOLS_BUTTON_ACTIVE_STYLE : WHITEBOARD_TOOLS_BUTTON_STYLE}
+                      onClick={() => applyWhiteboardTool("line")}
+                    >
+                      Plain
+                    </button>
+                    <button
+                      type="button"
+                      style={whiteboardTool === "arrow" ? WHITEBOARD_TOOLS_BUTTON_ACTIVE_STYLE : WHITEBOARD_TOOLS_BUTTON_STYLE}
+                      onClick={() => applyWhiteboardTool("arrow")}
+                    >
+                      Straight
+                    </button>
+                    <button
+                      type="button"
+                      style={whiteboardTool === "curved" ? WHITEBOARD_TOOLS_BUTTON_ACTIVE_STYLE : WHITEBOARD_TOOLS_BUTTON_STYLE}
+                      onClick={() => applyWhiteboardTool("curved")}
+                    >
+                      Curved
+                    </button>
+                    <button
+                      type="button"
+                      style={whiteboardTool === "dashed" ? WHITEBOARD_TOOLS_BUTTON_ACTIVE_STYLE : WHITEBOARD_TOOLS_BUTTON_STYLE}
+                      onClick={() => applyWhiteboardTool("dashed")}
+                    >
+                      Dashed
+                    </button>
+                    <button
+                      type="button"
+                      style={whiteboardTool === "wavy" ? WHITEBOARD_TOOLS_BUTTON_ACTIVE_STYLE : WHITEBOARD_TOOLS_BUTTON_STYLE}
+                      onClick={() => applyWhiteboardTool("wavy")}
+                    >
+                      Wavy
+                    </button>
+                    <button
+                      type="button"
+                      style={whiteboardTool === "eraser" ? WHITEBOARD_TOOLS_BUTTON_ACTIVE_STYLE : WHITEBOARD_TOOLS_BUTTON_STYLE}
+                      onClick={() => applyWhiteboardTool("eraser")}
+                    >
+                      Eraser
+                    </button>
+                    <button
+                      type="button"
+                      style={WHITEBOARD_TOOLS_BUTTON_STYLE}
+                      onClick={() => surfaceRef.current?.undoWhiteboardStroke()}
+                    >
+                      Undo
+                    </button>
+                    <button
+                      type="button"
+                      style={WHITEBOARD_TOOLS_BUTTON_STYLE}
+                      onClick={() => surfaceRef.current?.clearWhiteboardStrokes()}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <div style={WHITEBOARD_PANEL_SECTION_STYLE}>
+                  <p style={WHITEBOARD_SUBSECTION_TITLE_STYLE}>COLOUR</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: "4px" }}>
+                    {WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => {
+                      const isActive = whiteboardPenColor === choice.value;
+                      return (
+                        <button
+                          key={`whiteboard-pen-color-${choice.label.toLowerCase()}`}
+                          type="button"
+                          aria-label={`Set pen colour ${choice.label}`}
+                          style={{
+                            ...WHITEBOARD_TOKEN_COLOR_OPTION_STYLE,
+                            width: "100%",
+                            ...(isActive
+                              ? {
+                                  boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.9)",
+                                  border: "1px solid rgba(125, 211, 252, 0.75)",
+                                }
+                              : null),
+                          }}
+                          onClick={() => applyWhiteboardPenColor(choice.value)}
+                        >
+                          <span style={{ ...WHITEBOARD_TOKEN_COLOR_SWATCH_STYLE, background: choice.css }} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div style={WHITEBOARD_PANEL_SECTION_STYLE}>
+                  <p style={WHITEBOARD_SUBSECTION_TITLE_STYLE}>PLAYERS</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "44px 1fr", gap: "6px", alignItems: "center" }}>
+                    <span style={{ color: "#dbe7f5", fontSize: "10px", fontWeight: 600, fontFamily: "Inter, system-ui, sans-serif" }}>
+                      Team A
+                    </span>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "4px" }}>
+                      {WHITEBOARD_PLAYER_COLOR_CHOICES.map((choice) => {
+                        const isActive = whiteboardBlueColor === choice.value;
+                        return (
+                          <button
+                            key={`whiteboard-blue-color-${choice.value}`}
+                            type="button"
+                            aria-label="Set Team A player colour"
+                            style={{
+                              ...WHITEBOARD_TOKEN_COLOR_OPTION_STYLE,
+                              ...(isActive
+                                ? { boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.9)", border: "1px solid rgba(125, 211, 252, 0.75)" }
+                                : null),
+                            }}
+                            onClick={() => setWhiteboardBlueColor(choice.value)}
+                          >
+                            <span style={{ ...WHITEBOARD_TOKEN_COLOR_SWATCH_STYLE, background: choice.css }} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "44px 1fr", gap: "6px", alignItems: "center" }}>
+                    <span style={{ color: "#dbe7f5", fontSize: "10px", fontWeight: 600, fontFamily: "Inter, system-ui, sans-serif" }}>
+                      Team B
+                    </span>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "4px" }}>
+                      {WHITEBOARD_PLAYER_COLOR_CHOICES.map((choice) => {
+                        const isActive = whiteboardRedColor === choice.value;
+                        return (
+                          <button
+                            key={`whiteboard-red-color-${choice.value}`}
+                            type="button"
+                            aria-label="Set Team B player colour"
+                            style={{
+                              ...WHITEBOARD_TOKEN_COLOR_OPTION_STYLE,
+                              ...(isActive
+                                ? { boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.9)", border: "1px solid rgba(125, 211, 252, 0.75)" }
+                                : null),
+                            }}
+                            onClick={() => setWhiteboardRedColor(choice.value)}
+                          >
+                            <span style={{ ...WHITEBOARD_TOKEN_COLOR_SWATCH_STYLE, background: choice.css }} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div style={WHITEBOARD_TEAM_SELECTOR_ROW_STYLE}>
+                    <button
+                      type="button"
+                      style={
+                        whiteboardCountPickerTeam === "BLUE"
+                          ? WHITEBOARD_TEAM_OPTION_ACTIVE_STYLE
+                          : WHITEBOARD_TEAM_OPTION_STYLE
+                      }
+                      onClick={() => setWhiteboardCountPickerTeam("BLUE")}
+                    >
+                      Team A
+                    </button>
+                    <button
+                      type="button"
+                      style={
+                        whiteboardCountPickerTeam === "RED"
+                          ? WHITEBOARD_TEAM_OPTION_ACTIVE_STYLE
+                          : WHITEBOARD_TEAM_OPTION_STYLE
+                      }
+                      onClick={() => setWhiteboardCountPickerTeam("RED")}
+                    >
+                      Team B
+                    </button>
+                  </div>
+                  <div style={WHITEBOARD_COUNT_SELECTOR_GRID_STYLE}>
+                    {WHITEBOARD_COUNT_OPTIONS.map((count) => {
+                      const isActive =
+                        whiteboardCountPickerTeam === "BLUE"
+                          ? whiteboardBlueCount === count
+                          : whiteboardRedCount === count;
+                      return (
+                        <button
+                          key={`${whiteboardCountPickerTeam}-count-${count}`}
+                          type="button"
+                          style={isActive ? WHITEBOARD_COUNT_OPTION_ACTIVE_STYLE : WHITEBOARD_COUNT_OPTION_STYLE}
+                          onClick={() => setWhiteboardCount(whiteboardCountPickerTeam, count)}
+                        >
+                          {count}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+        {!isWhiteboardMode ? (
+          <button
+            type="button"
+            style={PHASES_CHIP_STYLE}
+            aria-label="Toggle phases tray"
+            onClick={() => setPhasesOpen((open) => !open)}
+          >
+            Phases: {phaseCount}
+          </button>
+        ) : null}
+        {!isWhiteboardMode && phasesOpen ? (
+          <div style={PHASES_TRAY_STYLE}>
+            {phaseItems.length > 0 ? (
+              phaseItems.map((phase) => (
+                <div key={phase} style={PHASE_ITEM_STYLE}>
+                  Phase {phase}
+                </div>
+              ))
+            ) : (
+              <div style={PHASES_EMPTY_STYLE}>No phases</div>
+            )}
+          </div>
+        ) : null}
+        {!isWhiteboardMode && !isPortraitViewingMode && controlsOpen ? (
+          <div style={MOVEMENT_MODE_PILL_STYLE} role="group" aria-label="Movement mode">
+            {([
+              { id: "move", label: "Move" },
+              { id: "route", label: "Route" },
+              { id: "ball", label: "Ball" },
+            ] as const).map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className="control-button"
+                style={{
+                  ...(movementModePillSelection === option.id
+                    ? MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE
+                    : MOVEMENT_MODE_PILL_BUTTON_STYLE),
+                  ...(isPlaybackLocked ? MOVEMENT_MODE_PILL_BUTTON_DISABLED_STYLE : null),
+                }}
+                aria-pressed={movementModePillSelection === option.id}
+                disabled={isPlaybackLocked}
+                onClick={() => applyMovementModePillSelection(option.id)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {!isWhiteboardMode && (controlsOpen || isPortraitViewingMode) ? (
+          <div style={CONTROLS_POPOUT_STYLE}>
+            <div style={PLAYBACK_SPEED_BAR_STYLE}>
+              <span style={PLAYBACK_SPEED_LABEL_STYLE}>SPEED</span>
+              <input
+                type="range"
+                className="speed-control-range"
+                min={0}
+                max={PLAYBACK_SPEED_OPTIONS.length - 1}
+                step={1}
+                value={playbackSpeedOptionIndex}
+                onChange={handlePlaybackSpeedChange}
+                aria-label="Playback speed"
+                style={playbackSpeedSliderStyle}
+              />
+              <span style={PLAYBACK_SPEED_VALUE_STYLE}>{playbackSpeedLabel}</span>
+            </div>
+            {!isPortraitViewingMode ? (
+              <button
+                type="button"
+                className="control-button"
+                disabled={isPlaybackLocked}
+                style={isPlaybackLocked ? DISABLED_CONTROL_BUTTON_STYLE : SET_START_BUTTON_STYLE}
+                onClick={() => {
+                  surfaceRef.current?.setStart();
+                  setMovementModePillSelection("move");
+                  closeControlsMenu();
+                }}
+              >
+                Set Start
+              </button>
+            ) : null}
+            {!isPortraitViewingMode ? (
+              <button
+                type="button"
+                className="control-button"
+                disabled={isAddPhaseBlocked}
+                style={isAddPhaseBlocked ? DISABLED_CONTROL_BUTTON_STYLE : ADD_PHASE_BUTTON_STYLE}
+                onClick={() => {
+                  surfaceRef.current?.addPhase();
+                  closeControlsMenu();
+                }}
+              >
+                Add Phase
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="control-button"
+              disabled={isPlaying}
+              style={isPlaying ? DISABLED_CONTROL_BUTTON_STYLE : PLAY_BUTTON_STYLE}
+              onClick={handlePlayPress}
+            >
+              {hasAssignedRoutes ? "Play Routes" : "Play"}
+            </button>
+            {hasAssignedRoutes ? (
+              <button
+                type="button"
+                className="control-button"
+                disabled={isPlaybackLocked}
+                style={isPlaybackLocked ? DISABLED_CONTROL_BUTTON_STYLE : ADD_PHASE_BUTTON_STYLE}
+                onClick={() => {
+                  clearCommittedRoutes();
+                  closeControlsMenu();
+                }}
+              >
+                Clear Routes
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="control-button"
+              disabled={!isPlaying}
+              style={!isPlaying ? DISABLED_CONTROL_BUTTON_STYLE : PAUSE_BUTTON_STYLE}
+              onClick={handlePausePress}
+            >
+              Pause
+            </button>
+            {!isPortraitViewingMode ? (
+              <button
+                type="button"
+                className="control-button"
+                disabled={phaseCount <= 0}
+                style={phaseCount <= 0 ? DISABLED_CONTROL_BUTTON_STYLE : UNDO_PHASE_BUTTON_STYLE}
+                onClick={() => {
+                  surfaceRef.current?.undoPhase();
+                  closeControlsMenu();
+                }}
+              >
+                Undo Phase
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="control-button"
+              style={RESET_BUTTON_STYLE}
+              onClick={() => {
+                surfaceRef.current?.reset();
+                setIsPlaying(false);
+                setIsPaused(false);
+                closeControlsMenu();
+              }}
+            >
+              Reset
+            </button>
+          </div>
+        ) : null}
+        {isToolsOverlayOpen && overlayPortalRoot
+          ? createPortal(
+              isCompactLandscapeTools ? (
+            <div
+              style={toolsPortalOverlayStyle}
+              className={isIphoneLandscapeTools ? "isIphoneLandscapeTools" : undefined}
+              role="presentation"
+              onPointerDown={handleToolsBackdropPointerDown}
+            >
+              <div
+                ref={toolsMenuRef}
+                style={toolsPortalCompactPanelStyle}
+                role="dialog"
+                aria-modal="false"
+                aria-label="PáircVision Board tools"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div style={MOBILE_COACH_HUB_HEADER_STYLE}>
+                  <p style={MOBILE_COACH_HUB_TITLE_STYLE}>PáircVision Board Tools</p>
+                  <button type="button" className="control-button" style={MOBILE_COACH_HUB_CLOSE_STYLE} onClick={() => setToolsOpen(false)}>
+                    Close
+                  </button>
+                </div>
+                <div style={mobileCoachHubBodyStyle}>
+                  <div style={coachHubTabGridStyle}>
+                    <button
+                      type="button"
+                      style={activeToolsSection === "draw" ? coachHubTabButtonActiveStyle : coachHubTabButtonStyle}
+                      onClick={() => setActiveToolsSection("draw")}
+                    >
+                      Draw
+                    </button>
+                    <button
+                      type="button"
+                      style={activeToolsSection === "teams" ? coachHubTabButtonActiveStyle : coachHubTabButtonStyle}
+                      onClick={() => setActiveToolsSection("teams")}
+                    >
+                      Teams
+                    </button>
+                    <button
+                      type="button"
+                      style={activeToolsSection === "items" ? coachHubTabButtonActiveStyle : coachHubTabButtonStyle}
+                      onClick={() => setActiveToolsSection("items")}
+                    >
+                      Items
+                    </button>
+                    <button
+                      type="button"
+                      style={activeToolsSection === "board" ? coachHubTabButtonActiveStyle : coachHubTabButtonStyle}
+                      onClick={() => setActiveToolsSection("board")}
+                    >
+                      Board
+                    </button>
+                  </div>
+
+                  {activeToolsSection === "draw" ? (
+                    <div style={COACH_HUB_SECTION_STYLE}>
+                      <p style={coachHubSectionTitleStyle}>Draw</p>
+                      <div className="coach-hub-tool-grid" style={COACH_HUB_TOOL_GRID_STYLE}>
+                        <button
+                          type="button"
+                          style={tacticalTool === "move" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                          onClick={() => applyTacticalToolFromMenu("move")}
+                        >
+                          Move
+                        </button>
+                        <button
+                          type="button"
+                          style={tacticalTool === "line" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                          onClick={() => applyTacticalToolFromMenu("line")}
+                        >
+                          Line
+                        </button>
+                        <button
+                          type="button"
+                          style={tacticalTool === "arrow" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                          onClick={() => applyTacticalToolFromMenu("arrow")}
+                        >
+                          Arrow
+                        </button>
+                        <button
+                          type="button"
+                          style={tacticalTool === "curved" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                          onClick={() => applyTacticalToolFromMenu("curved")}
+                        >
+                          Curved
+                        </button>
+                        <button
+                          type="button"
+                          style={tacticalTool === "dashed" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                          onClick={() => applyTacticalToolFromMenu("dashed")}
+                        >
+                          Dash
+                        </button>
+                        <button
+                          type="button"
+                          style={tacticalTool === "wavy" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                          onClick={() => applyTacticalToolFromMenu("wavy")}
+                        >
+                          Pen
+                        </button>
+                        <button
+                          type="button"
+                          style={tacticalTool === "freePen" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                          onClick={() => applyTacticalToolFromMenu("freePen")}
+                        >
+                          Free Pen
+                        </button>
+                        <button
+                          type="button"
+                          style={tacticalTool === "rectangleZone" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                          onClick={() => applyTacticalToolFromMenu("rectangleZone")}
+                        >
+                          Rect Zone
+                        </button>
+                        <button
+                          type="button"
+                          style={tacticalTool === "circleZone" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                          onClick={() => applyTacticalToolFromMenu("circleZone")}
+                        >
+                          Circle Zone
+                        </button>
+                        <button
+                          type="button"
+                          style={tacticalTool === "eraser" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                          onClick={() => applyTacticalToolFromMenu("eraser")}
+                        >
+                          Eraser
+                        </button>
+                      </div>
+                      {isCompactLandscapeTools ? <p style={coachHubSectionTitleStyle}>Colour</p> : null}
+                      <div style={coachHubColorGridStyle}>
+                        {WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => {
+                          const isActive = activeTacticalPenColor === choice.value;
+                          return (
+                            <button
+                              key={`tactical-color-${choice.label.toLowerCase()}`}
+                              type="button"
+                              aria-label={`Set tactical drawing colour ${choice.label}`}
+                              style={{
+                                ...coachHubColorButtonStyle,
+                                ...(isActive
+                                  ? {
+                                      boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.88)",
+                                      border: "1px solid rgba(125, 211, 252, 0.8)",
+                                    }
+                                  : null),
+                              }}
+                              onClick={() => applyTacticalPenColor(choice.value)}
+                            >
+                              <span style={{ ...coachHubColorSwatchStyle, background: choice.css }} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {activeToolsSection === "teams" ? (
+                    <div style={COACH_HUB_SECTION_STYLE}>
+                      <p style={coachHubSectionTitleStyle}>{isCompactLandscapeTools ? "Players" : "Teams"}</p>
+                      <div style={COACH_HUB_ACTION_GRID_STYLE}>
+                        <button
+                          type="button"
+                          style={coachHubActionButtonStyle}
+                          disabled={isPlaybackLocked}
+                          onClick={() => addTacticalPlayer("BLUE")}
+                        >
+                          + Team A
+                        </button>
+                        <button
+                          type="button"
+                          style={coachHubActionButtonStyle}
+                          disabled={isPlaybackLocked}
+                          onClick={() => removeTacticalPlayer("BLUE")}
+                        >
+                          - Team A
+                        </button>
+                        <button
+                          type="button"
+                          style={coachHubActionButtonStyle}
+                          disabled={isPlaybackLocked}
+                          onClick={() => addTacticalPlayer("RED")}
+                        >
+                          + Team B
+                        </button>
+                        <button
+                          type="button"
+                          style={coachHubActionButtonStyle}
+                          disabled={isPlaybackLocked}
+                          onClick={() => removeTacticalPlayer("RED")}
+                        >
+                          - Team B
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {activeToolsSection === "items" ? (
+                    <div style={COACH_HUB_SECTION_STYLE}>
+                      <p style={coachHubSectionTitleStyle}>Items</p>
+                      <div style={COACH_HUB_ACTION_GRID_STYLE}>
+                        <button
+                          type="button"
+                          style={{ ...coachHubActionButtonStyle, gridColumn: "1 / -1" }}
+                          disabled={isPlaybackLocked}
+                          onClick={() => setItemMode((previous) => (previous === "edit" ? "locked" : "edit"))}
+                        >
+                          {effectiveItemMode === "edit" ? "Lock Items" : "Edit Items"}
+                        </button>
+                        <button
+                          type="button"
+                          style={{ ...coachHubActionButtonStyle, gridColumn: "1 / -1" }}
+                          disabled={isPlaybackLocked}
+                          onClick={freeBall}
+                        >
+                          Free Ball
+                        </button>
+                        {TACTICAL_ITEM_CHOICES.map((choice) => (
+                          <button
+                            key={`item-${choice.type}`}
+                            type="button"
+                            style={coachHubActionButtonStyle}
+                            disabled={isPlaybackLocked}
+                            onClick={() => addItem(choice.type)}
+                          >
+                            + {choice.label}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          style={{ ...coachHubActionButtonStyle, gridColumn: "1 / -1" }}
+                          disabled={isPlaybackLocked}
+                          onClick={clearItems}
+                        >
+                          Clear Items
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {activeToolsSection === "board" ? (
+                    <div style={COACH_HUB_SECTION_STYLE}>
+                      <p style={coachHubSectionTitleStyle}>Board</p>
+                      <div style={COACH_HUB_ACTION_GRID_STYLE}>
+                        <button type="button" style={coachHubActionButtonStyle} onClick={handleNewBoard}>
+                          New Board
+                        </button>
+                        <button type="button" style={coachHubActionButtonStyle} onClick={clearTacticalDrawings}>
+                          Clear Drawings
+                        </button>
+                        <button type="button" style={coachHubActionButtonStyle} onClick={resetBoardFromTools}>
+                          Reset Board
+                        </button>
+                        <button type="button" style={coachHubActionButtonStyle} onClick={goHome}>
+                          Home
+                        </button>
+                        <button type="button" style={coachHubActionButtonStyle} onClick={openMenuFromTools}>
+                          Menu
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+              ) : (
+            <div style={TOOLS_PORTAL_BACKDROP_STYLE} role="presentation" onPointerDown={handleToolsBackdropPointerDown}>
+              <div
+                ref={toolsMenuRef}
+                style={toolsPortalPanelStyle}
+                role="dialog"
+                aria-modal="false"
+                aria-label="PáircVision Board tools"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+              >
+            <div style={coachHubTabGridStyle}>
+              <button
+                type="button"
+                style={activeToolsSection === "draw" ? coachHubTabButtonActiveStyle : coachHubTabButtonStyle}
+                onClick={() => setActiveToolsSection("draw")}
+              >
+                Draw
+              </button>
+              <button
+                type="button"
+                style={activeToolsSection === "teams" ? coachHubTabButtonActiveStyle : coachHubTabButtonStyle}
+                onClick={() => setActiveToolsSection("teams")}
+              >
+                Teams
+              </button>
+              <button
+                type="button"
+                style={activeToolsSection === "items" ? coachHubTabButtonActiveStyle : coachHubTabButtonStyle}
+                onClick={() => setActiveToolsSection("items")}
+              >
+                Items
+              </button>
+              <button
+                type="button"
+                style={activeToolsSection === "board" ? coachHubTabButtonActiveStyle : coachHubTabButtonStyle}
+                onClick={() => setActiveToolsSection("board")}
+              >
+                Board
+              </button>
+            </div>
+
+            {activeToolsSection === "draw" ? (
+              <div style={COACH_HUB_SECTION_STYLE}>
+                <p style={coachHubSectionTitleStyle}>Draw</p>
+                <div className="coach-hub-tool-grid" style={COACH_HUB_TOOL_GRID_STYLE}>
+                  <button
+                    type="button"
+                    style={tacticalTool === "move" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                    onClick={() => applyTacticalToolFromMenu("move")}
+                  >
+                    Move
+                  </button>
+                  <button
+                    type="button"
+                    style={tacticalTool === "line" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                    onClick={() => applyTacticalToolFromMenu("line")}
+                  >
+                    Plain
+                  </button>
+                  <button
+                    type="button"
+                    style={tacticalTool === "arrow" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                    onClick={() => applyTacticalToolFromMenu("arrow")}
+                  >
+                    Straight
+                  </button>
+                  <button
+                    type="button"
+                    style={tacticalTool === "curved" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                    onClick={() => applyTacticalToolFromMenu("curved")}
+                  >
+                    Curved
+                  </button>
+                  <button
+                    type="button"
+                    style={tacticalTool === "dashed" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                    onClick={() => applyTacticalToolFromMenu("dashed")}
+                  >
+                    Dashed
+                  </button>
+                  <button
+                    type="button"
+                    style={tacticalTool === "wavy" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                    onClick={() => applyTacticalToolFromMenu("wavy")}
+                  >
+                    Wavy
+                  </button>
+                  <button
+                    type="button"
+                    style={tacticalTool === "freePen" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                    onClick={() => applyTacticalToolFromMenu("freePen")}
+                  >
+                    Free Pen
+                  </button>
+                  <button
+                    type="button"
+                    style={tacticalTool === "rectangleZone" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                    onClick={() => applyTacticalToolFromMenu("rectangleZone")}
+                  >
+                    Rect Zone
+                  </button>
+                  <button
+                    type="button"
+                    style={tacticalTool === "circleZone" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                    onClick={() => applyTacticalToolFromMenu("circleZone")}
+                  >
+                    Circle Zone
+                  </button>
+                  <button
+                    type="button"
+                    style={tacticalTool === "eraser" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                    onClick={() => applyTacticalToolFromMenu("eraser")}
+                  >
+                    Eraser
+                  </button>
+                </div>
+                {isCompactLandscapeTools ? <p style={coachHubSectionTitleStyle}>Colour</p> : null}
+                <div style={coachHubColorGridStyle}>
+                  {WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => {
+                    const isActive = activeTacticalPenColor === choice.value;
+                    return (
+                      <button
+                        key={`tactical-color-${choice.label.toLowerCase()}`}
+                        type="button"
+                        aria-label={`Set tactical drawing colour ${choice.label}`}
+                        style={{
+                          ...coachHubColorButtonStyle,
+                          ...(isActive
+                            ? {
+                                boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.88)",
+                                border: "1px solid rgba(125, 211, 252, 0.8)",
+                              }
+                            : null),
+                        }}
+                        onClick={() => applyTacticalPenColor(choice.value)}
+                      >
+                        <span style={{ ...coachHubColorSwatchStyle, background: choice.css }} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {activeToolsSection === "teams" ? (
+              <div style={COACH_HUB_SECTION_STYLE}>
+                <p style={coachHubSectionTitleStyle}>{isCompactLandscapeTools ? "Players" : "Teams"}</p>
+                <div style={COACH_HUB_ACTION_GRID_STYLE}>
+                  <button
+                    type="button"
+                    style={coachHubActionButtonStyle}
+                    disabled={isPlaybackLocked}
+                    onClick={() => addTacticalPlayer("BLUE")}
+                  >
+                    + Team A
+                  </button>
+                  <button
+                    type="button"
+                    style={coachHubActionButtonStyle}
+                    disabled={isPlaybackLocked}
+                    onClick={() => removeTacticalPlayer("BLUE")}
+                  >
+                    - Team A
+                  </button>
+                  <button
+                    type="button"
+                    style={coachHubActionButtonStyle}
+                    disabled={isPlaybackLocked}
+                    onClick={() => addTacticalPlayer("RED")}
+                  >
+                    + Team B
+                  </button>
+                  <button
+                    type="button"
+                    style={coachHubActionButtonStyle}
+                    disabled={isPlaybackLocked}
+                    onClick={() => removeTacticalPlayer("RED")}
+                  >
+                    - Team B
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {activeToolsSection === "items" ? (
+              <div style={COACH_HUB_SECTION_STYLE}>
+                <p style={coachHubSectionTitleStyle}>Items</p>
+                <div style={COACH_HUB_ACTION_GRID_STYLE}>
+                  <button
+                    type="button"
+                    style={{ ...coachHubActionButtonStyle, gridColumn: "1 / -1" }}
+                    disabled={isPlaybackLocked}
+                    onClick={() => setItemMode((previous) => (previous === "edit" ? "locked" : "edit"))}
+                  >
+                    {effectiveItemMode === "edit" ? "Lock Items" : "Edit Items"}
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...coachHubActionButtonStyle, gridColumn: "1 / -1" }}
+                    disabled={isPlaybackLocked}
+                    onClick={freeBall}
+                  >
+                    Free Ball
+                  </button>
+                  {TACTICAL_ITEM_CHOICES.map((choice) => (
+                    <button
+                      key={`item-${choice.type}`}
+                      type="button"
+                      style={coachHubActionButtonStyle}
+                      disabled={isPlaybackLocked}
+                      onClick={() => addItem(choice.type)}
+                    >
+                      + {choice.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    style={{ ...coachHubActionButtonStyle, gridColumn: "1 / -1" }}
+                    disabled={isPlaybackLocked}
+                    onClick={clearItems}
+                  >
+                    Clear Items
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {activeToolsSection === "board" ? (
+              <div style={COACH_HUB_SECTION_STYLE}>
+                <p style={coachHubSectionTitleStyle}>Board</p>
+                <div style={COACH_HUB_ACTION_GRID_STYLE}>
+                  <button type="button" style={coachHubActionButtonStyle} onClick={handleNewBoard}>
+                    New Board
+                  </button>
+                  <button type="button" style={coachHubActionButtonStyle} onClick={clearTacticalDrawings}>
+                    Clear Drawings
+                  </button>
+                  <button type="button" style={coachHubActionButtonStyle} onClick={resetBoardFromTools}>
+                    Reset Board
+                  </button>
+                  <button type="button" style={coachHubActionButtonStyle} onClick={goHome}>
+                    Home
+                  </button>
+                  <button type="button" style={coachHubActionButtonStyle} onClick={openMenuFromTools}>
+                    Menu
+                  </button>
+                </div>
+              </div>
+            ) : null}
+              </div>
+            </div>
+              ),
+            overlayPortalRoot,
+          )
+          : null}
+        {!isWhiteboardMode && actionsOpen ? (
+          <div ref={actionsMenuRef} style={actionsPopoutStyle}>
+            <div style={TOKEN_STYLE_MENU_SECTION_STYLE}>
+              <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Token Style</p>
+              <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
+                {TOKEN_STYLE_CHOICES.map((choice) => (
+                  <button
+                    key={`token-style-${choice.value}`}
+                    type="button"
+                    className="control-button"
+                    style={tacticalTokenStyle === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
+                    onClick={() => setTacticalTokenStyle(choice.value)}
+                  >
+                    {choice.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openQuickShareEntry}>
+              Quick Share (Beta)
+            </button>
+            <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openMyBoardsEntry}>
+              My Boards
+            </button>
+            <button
+              type="button"
+              className="control-button"
+              style={isPortraitViewingMode ? DISABLED_CONTROL_BUTTON_STYLE : ACTIONS_MENU_BUTTON_STYLE}
+              onClick={handleNewBoard}
+              disabled={isPortraitViewingMode}
+            >
+              New Board
+            </button>
+            <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={goHome}>
+              Home
+            </button>
+          </div>
+        ) : null}
+        {!isWhiteboardMode && myBoardsOpen ? (
+          <div ref={myBoardsPopoverRef} style={myBoardsPopoverStyle} role="dialog" aria-modal="false" aria-label="My Boards">
+            <div style={MY_BOARDS_HEADER_STYLE}>
+              <p style={MY_BOARDS_TITLE_STYLE}>My Boards</p>
+              <button type="button" className="control-button" style={MY_BOARDS_SAVE_BUTTON_STYLE} onClick={handleSaveCurrentBoard}>
+                Save Current
+              </button>
+            </div>
+            {savedBoards.length <= 0 ? (
+              <p style={MY_BOARDS_EMPTY_STYLE}>No saved boards yet. Save your current setup to build your board roll.</p>
+            ) : (
+              savedBoards.map((board) => (
+                <div key={board.id} style={MY_BOARDS_CARD_STYLE}>
+                  {board.thumbnail ? (
+                    <img src={board.thumbnail} alt={`${board.name} preview`} style={MY_BOARDS_THUMBNAIL_STYLE} loading="lazy" />
+                  ) : (
+                    <div style={{ ...MY_BOARDS_THUMBNAIL_STYLE, display: "grid", placeItems: "center", color: "#93afc4", fontSize: "9px" }}>
+                      No Preview
+                    </div>
+                  )}
+                  <p style={MY_BOARDS_META_STYLE}>{board.name}</p>
+                  <p style={MY_BOARDS_TIMESTAMP_STYLE}>Updated {formatBoardUpdatedAt(board.updatedAt)}</p>
+                  <div style={MY_BOARDS_ACTION_ROW_STYLE}>
+                    <button type="button" className="control-button" style={MY_BOARDS_ACTION_BUTTON_STYLE} onClick={() => handleOpenSavedBoard(board.id)}>
+                      Open
+                    </button>
+                    <button
+                      type="button"
+                      className="control-button"
+                      style={MY_BOARDS_ACTION_BUTTON_STYLE}
+                      onClick={() => handleRenameBoard(board.id, board.name)}
+                    >
+                      Rename
+                    </button>
+                    <button
+                      type="button"
+                      className="control-button"
+                      style={MY_BOARDS_ACTION_BUTTON_STYLE}
+                      onClick={() => handleDuplicateBoard(board.id)}
+                    >
+                      Copy
+                    </button>
+                    <button
+                      type="button"
+                      className="control-button"
+                      style={MY_BOARDS_ACTION_BUTTON_STYLE}
+                      onClick={() => handleDeleteBoard(board.id, board.name)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+            <button type="button" className="control-button" style={MY_BOARDS_ACTION_BUTTON_STYLE} onClick={closeMyBoardsMenu}>
+              Close
+            </button>
+          </div>
+        ) : null}
+        {!isWhiteboardMode ? (
+          <button
+            ref={actionsBubbleButtonRef}
+            type="button"
+            className="floating-bubble"
+            style={actionsBubbleStyle}
+            aria-label="Open actions"
+            onClick={() =>
+              setActionsOpen((open) => {
+                const next = !open;
+                if (next) {
+                  setControlsOpen(false);
+                  setQuickShareOpen(false);
+                  setMyBoardsOpen(false);
+                }
+                return next;
+              })
+            }
+          >
+            ⋯
+          </button>
+        ) : null}
+        {!isWhiteboardMode && !isPortraitViewingMode ? (
+          <button
+            type="button"
+            className="floating-bubble"
+            style={LEFT_BUBBLE_STYLE}
+            aria-label="Open controls"
+            onClick={() =>
+              setControlsOpen((open) => {
+                const next = !open;
+                if (next) {
+                  setActionsOpen(false);
+                  setQuickShareOpen(false);
+                  setMyBoardsOpen(false);
+                }
+                return next;
+              })
+            }
+          >
+            Ctrl
+          </button>
+        ) : null}
+        {!isWhiteboardMode && !isPortraitViewingMode ? (
+          <button
+            ref={toolsBubbleButtonRef}
+            type="button"
+            className={isCompactLandscapeTools ? "floating-bubble" : "floating-bubble floating-bubble-tool"}
+            style={isCompactLandscapeTools ? MOBILE_TOOLS_BUBBLE_STYLE : TOOL_BUBBLE_STYLE}
+            aria-label={toolsOpen ? "Close tools" : "Open tools"}
+            aria-expanded={toolsOpen}
+            onClick={() =>
+              setToolsOpen((open) => {
+                const next = !open;
+                if (next) {
+                  setActiveToolsSection("draw");
+                  setActionsOpen(false);
+                  setQuickShareOpen(false);
+                  setMyBoardsOpen(false);
+                  setControlsOpen(false);
+                }
+                return next;
+              })
+            }
+          >
+            <span className="tool-bubble-icon" aria-hidden="true">
+              <img className="tool-bubble-logo" src="/pv-logo-icon.svg" alt="PáircVision menu" />
+            </span>
+          </button>
+        ) : null}
+        {!isWhiteboardMode && quickShareOnboardingOpen ? (
+          <div
+            style={{
+              ...QUICK_SHARE_ONBOARDING_OVERLAY_STYLE,
+              opacity: quickShareOnboardingEntered ? 1 : 0,
+            }}
+            role="presentation"
+          >
+            <div
+              ref={quickShareOnboardingCardRef}
+              style={{
+                ...QUICK_SHARE_ONBOARDING_CARD_STYLE,
+                opacity: quickShareOnboardingEntered ? 1 : 0,
+                transform: quickShareOnboardingEntered ? "scale(1)" : "scale(0.98)",
+              }}
+              role="dialog"
+              aria-modal="false"
+              aria-label="Quick Share onboarding"
+            >
+              <p style={QUICK_SHARE_ONBOARDING_TITLE_STYLE}>PáircVision Board Share</p>
+              <p style={QUICK_SHARE_ONBOARDING_BODY_STYLE}>
+                Use your phone&apos;s screen recorder.
+                <br />
+                Share the saved video directly to WhatsApp.
+              </p>
+              <button
+                type="button"
+                className="control-button"
+                style={QUICK_SHARE_ONBOARDING_BUTTON_STYLE}
+                onClick={() => dismissQuickShareOnboarding(true)}
+              >
+                Continue to Quick Share
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {!isWhiteboardMode && quickShareOpen ? (
+          <div ref={quickSharePopoverRef} style={quickSharePopoverStyle} role="dialog" aria-modal="false" aria-label="Quick Share">
+            <p style={QUICK_SHARE_TITLE_STYLE}>PáircVision Board Share</p>
+            <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareRecordClip}>
+              <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>🎥 Record Coaching Clip</span>
+              <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>
+                Use your phone&apos;s screen recorder.
+                <br />
+                Share the saved video directly to WhatsApp.
+              </span>
+            </button>
+            <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareSnapshot}>
+              <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>📸 Share Snapshot</span>
+              <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Take a screenshot and share the saved image.</span>
+            </button>
+          </div>
+        ) : null}
+        {!isWhiteboardMode && shareTipMessage ? (
+          <div style={SHARE_TIP_TOAST_STYLE} role="status" aria-live="polite">
+            <p style={SHARE_TIP_TEXT_STYLE}>{shareTipMessage}</p>
+          </div>
+        ) : null}
+        {!isWhiteboardMode && quickBoardFeedback ? (
+          <div style={{ ...SHARE_TIP_TOAST_STYLE, top: "max(18px, calc(env(safe-area-inset-top, 0px) + 14px))" }} role="status" aria-live="polite">
+            <p style={{ ...SHARE_TIP_TEXT_STYLE, whiteSpace: "pre-line" }}>{quickBoardFeedback}</p>
+          </div>
+        ) : null}
+        {!isWhiteboardMode && (lastBoardSavedLabel || loadedBoardName) ? (
+          <div
+            style={{
+              position: "absolute",
+              top: "max(16px, calc(env(safe-area-inset-top, 0px) + 10px))",
+              left: "max(14px, calc(env(safe-area-inset-left, 0px) + 10px))",
+              zIndex: 30,
+              padding: "6px 10px",
+              borderRadius: "10px",
+              background: "rgba(15, 23, 42, 0.62)",
+              color: "rgba(241, 245, 249, 0.92)",
+              fontSize: "11px",
+              lineHeight: 1.25,
+              pointerEvents: "none",
+              maxWidth: "64vw",
+            }}
+          >
+            {lastBoardSavedLabel ? <div>Last saved: {lastBoardSavedLabel}</div> : null}
+            {loadedBoardName ? <div>Loaded: {loadedBoardName}</div> : null}
+          </div>
+        ) : null}
+        {isWhiteboardMode ? (
+          <>
+            <button
+              ref={whiteboardHomeButtonRef}
+              type="button"
+              style={WHITEBOARD_HOME_BUTTON_STYLE}
+              onClick={openWhiteboardHomeConfirm}
+              aria-label="Go to Home"
+              aria-expanded={whiteboardHomeConfirmOpen}
+            >
+              ⌂
+            </button>
+            {whiteboardHomeConfirmOpen ? (
+              <div ref={whiteboardHomeConfirmRef} style={WHITEBOARD_HOME_CONFIRM_STYLE} role="dialog" aria-modal="false">
+                <p style={WHITEBOARD_HOME_CONFIRM_TITLE_STYLE}>Leave PáircVision Board?</p>
+                <p style={WHITEBOARD_HOME_CONFIRM_MESSAGE_STYLE}>Your current board may not be saved.</p>
+                <div style={WHITEBOARD_HOME_CONFIRM_ACTIONS_STYLE}>
+                  <button type="button" style={WHITEBOARD_HOME_CONFIRM_BUTTON_STYLE} onClick={closeWhiteboardHomeConfirm}>
+                    Cancel
+                  </button>
+                  <button type="button" style={WHITEBOARD_HOME_CONFIRM_GO_BUTTON_STYLE} onClick={confirmWhiteboardGoHome}>
+                    Go Home
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+    </OrientationGate>
+  );
+}
