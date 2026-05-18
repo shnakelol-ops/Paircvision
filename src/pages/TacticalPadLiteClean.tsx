@@ -2263,6 +2263,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (isStatsMode || isWhiteboardMode) return;
 
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      const hasActiveDraft = loadQuickBoardDraft().draft != null;
+      const shouldWarn = hasActiveDraft || hasUnsavedBoardChanges();
+      if (!shouldWarn) return;
       event.preventDefault();
       event.returnValue = "Save your board in My Boards before leaving or refreshing.";
     };

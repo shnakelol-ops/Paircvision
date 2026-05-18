@@ -397,17 +397,22 @@ function sanitizeSavedMatches(matches: readonly SavedMatch[]): SavedMatch[] {
   }).slice(0, MAX_SAVED_MATCHES);
 }
 
-function parseStoredSavedMatches(input: string | null): SavedMatch[] {
-  if (!input) return [];
+type ReadSavedMatchesResult = {
+  matches: SavedMatch[];
+  isCorrupt: boolean;
+};
+
+function parseStoredSavedMatches(input: string | null): ReadSavedMatchesResult {
+  if (!input) return { matches: [], isCorrupt: false };
   try {
     const parsed = JSON.parse(input);
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) return { matches: [], isCorrupt: true };
     const matches = parsed
       .map((record) => parseStoredSavedMatch(record))
       .filter((record): record is SavedMatch => record != null);
-    return sanitizeSavedMatches(matches);
+    return { matches: sanitizeSavedMatches(matches), isCorrupt: false };
   } catch {
-    return [];
+    return { matches: [], isCorrupt: true };
   }
 }
 
@@ -504,8 +509,8 @@ function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActive
   }
 }
 
-function readSavedMatchesFromStorage(): SavedMatch[] {
-  if (typeof window === "undefined") return [];
+function readSavedMatchesFromStorage(): ReadSavedMatchesResult {
+  if (typeof window === "undefined") return { matches: [], isCorrupt: false };
   return parseStoredSavedMatches(safeReadLocalStorage(SAVED_MATCHES_STORAGE_KEY));
 }
 
@@ -1067,6 +1072,47 @@ function getRenderablePitchEvents(
     if (reviewZone === "OPPOSITION_HALF" && !isAttackingHalf) return false;
 
     return true;
+  });
+}
+
+type LiveSessionSignatureInput = {
+  currentMode: GaaModeKey;
+  teamNames: { HOME: string; AWAY: string };
+  venueName: string;
+  events: readonly LoggedMatchEvent[];
+  matchState: MatchState;
+  currentHalf: 1 | 2;
+  matchTimeSeconds: number;
+  firstHalfAttackingDirection: AttackingDirection;
+  fullTimeResumeState: MatchEngineState | null;
+};
+
+function buildLiveSessionSignature(input: LiveSessionSignatureInput): string {
+  return JSON.stringify({
+    currentMode: input.currentMode,
+    teamNames: {
+      HOME: input.teamNames.HOME,
+      AWAY: input.teamNames.AWAY,
+    },
+    venueName: input.venueName,
+    events: input.events,
+    restoreContext: {
+      matchState: input.matchState,
+      currentHalf: input.currentHalf,
+      matchTimeSeconds: Math.max(0, Math.floor(input.matchTimeSeconds)),
+      firstHalfAttackingDirection: input.firstHalfAttackingDirection,
+      ...(input.fullTimeResumeState &&
+      (input.fullTimeResumeState.matchState === "FIRST_HALF" ||
+        input.fullTimeResumeState.matchState === "SECOND_HALF")
+        ? {
+            fullTimeResumeState: {
+              matchState: input.fullTimeResumeState.matchState,
+              currentHalf: input.fullTimeResumeState.currentHalf,
+              matchTimeSeconds: Math.max(0, Math.floor(input.fullTimeResumeState.matchTimeSeconds)),
+            },
+          }
+        : {}),
+    },
   });
 }
 
@@ -2649,7 +2695,7 @@ export default function StatsModeSurface() {
   const [showReviewStrip, setShowReviewStrip] = useState(false);
   const [selectedReviewEventId, setSelectedReviewEventId] = useState<string | null>(null);
   const [loggedEvents, setLoggedEvents] = useState<readonly LoggedMatchEvent[]>([]);
-  const [savedMatches, setSavedMatches] = useState<SavedMatch[]>(() => readSavedMatchesFromStorage());
+  const [savedMatches, setSavedMatches] = useState<SavedMatch[]>(() => readSavedMatchesFromStorage().matches);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [saveLoadBlockedReason, setSaveLoadBlockedReason] = useState<string | null>(null);
   const [lastSavedAtMillis, setLastSavedAtMillis] = useState<number | null>(null);
@@ -2695,6 +2741,7 @@ export default function StatsModeSurface() {
   const matchEngineStateRef = useRef(createInitialMatchEngineState());
   const fullTimeResumeStateRef = useRef<MatchEngineState | null>(null);
   const currentMatchIdRef = useRef(currentMatchId);
+  const savedSessionSignatureRef = useRef<string | null>(null);
   const wakeLockRef = useRef<WakeLockSentinelLike>(null);
   const secondHalfSwitchBaselineEventCountRef = useRef<number | null>(null);
   const eventKindSwitchBaselineEventCountRef = useRef<number | null>(null);
@@ -3019,7 +3066,7 @@ export default function StatsModeSurface() {
     });
   };
 
-  const hasDirtyLiveSession =
+  const hasNonDefaultLiveSessionState =
     loggedEvents.length > 0 ||
     matchState !== "PRE_MATCH" ||
     currentHalf !== 1 ||
@@ -3028,6 +3075,34 @@ export default function StatsModeSurface() {
     teamNames.AWAY !== "Team B" ||
     venueName.trim().length > 0 ||
     currentMode !== "football";
+  const liveSessionSignature = useMemo(
+    () =>
+      buildLiveSessionSignature({
+        currentMode,
+        teamNames,
+        venueName,
+        events: loggedEvents,
+        matchState,
+        currentHalf,
+        matchTimeSeconds,
+        firstHalfAttackingDirection,
+        fullTimeResumeState: fullTimeResumeStateRef.current,
+      }),
+    [
+      currentMode,
+      teamNames,
+      venueName,
+      loggedEvents,
+      matchState,
+      currentHalf,
+      matchTimeSeconds,
+      firstHalfAttackingDirection,
+    ],
+  );
+  const hasDirtyLiveSession =
+    savedSessionSignatureRef.current == null
+      ? hasNonDefaultLiveSessionState
+      : liveSessionSignature !== savedSessionSignatureRef.current;
 
   const createActiveMatchDraftSnapshot = useCallback((): StatsActiveMatchDraft | null => {
     if (!hasDirtyLiveSession) return null;
@@ -3680,7 +3755,7 @@ export default function StatsModeSurface() {
 
   const openSavedMatchesPanel = () => {
     setShowReviewStrip(false);
-    setSavedMatches(readSavedMatchesFromStorage());
+    setSavedMatches(readSavedMatchesFromStorage().matches);
     setUtilityPanel("SAVED_MATCHES");
     setIsUtilityOpen(false);
     setIsPickerOpen(false);
@@ -3734,13 +3809,23 @@ export default function StatsModeSurface() {
             : {}),
         },
       };
-      const nextSavedMatches = sanitizeSavedMatches([savedRecord, ...readSavedMatchesFromStorage()]);
+      const savedMatchesResult = readSavedMatchesFromStorage();
+      if (savedMatchesResult.isCorrupt) {
+        console.warn("[stats-storage] Saved matches storage is corrupt; refusing to overwrite.", {
+          key: SAVED_MATCHES_STORAGE_KEY,
+        });
+        setSaveFeedback("Save blocked — saved matches storage is corrupted.");
+        return;
+      }
+      const nextSavedMatches = sanitizeSavedMatches([savedRecord, ...savedMatchesResult.matches]);
       const didPersist = persistSavedMatches(nextSavedMatches);
       if (!didPersist) {
         setSaveFeedback("Save failed — storage unavailable. Do not close this match yet.");
         return;
       }
+      savedSessionSignatureRef.current = liveSessionSignature;
       clearActiveMatchDraft();
+      setPendingRecoveredDraft(null);
       setSavedMatches(nextSavedMatches);
       setSaveFeedback("Match saved");
       setLastSavedAtMillis(savedRecord.createdAt);
@@ -3821,15 +3906,7 @@ export default function StatsModeSurface() {
       setSaveLoadBlockedReason("Load blocked: saved match is invalid.");
       return;
     }
-    const isDirtySession =
-      loggedEvents.length > 0 ||
-      matchTimeSeconds > 0 ||
-      currentHalf !== 1 ||
-      matchState !== "PRE_MATCH" ||
-      teamNames.HOME !== "Team A" ||
-      teamNames.AWAY !== "Team B" ||
-      venueName.trim().length > 0;
-    if (isDirtySession) {
+    if (hasDirtyLiveSession) {
       const confirmed = window.confirm("Loading this saved match will replace your current live session. Continue?");
       if (!confirmed) return;
     }
@@ -3863,6 +3940,20 @@ export default function StatsModeSurface() {
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel(parsedRecord.label);
     setUtilityPanel(null);
+    savedSessionSignatureRef.current = buildLiveSessionSignature({
+      currentMode,
+      teamNames: {
+        HOME: parsedRecord.homeTeamName,
+        AWAY: parsedRecord.awayTeamName,
+      },
+      venueName: parsedRecord.venue,
+      events: parsedRecord.events,
+      matchState: restoredContext.engineState.matchState,
+      currentHalf: restoredContext.engineState.currentHalf,
+      matchTimeSeconds: restoredContext.engineState.matchTimeSeconds,
+      firstHalfAttackingDirection: restoredContext.firstHalfAttackingDirection,
+      fullTimeResumeState: restoredContext.fullTimeResumeState,
+    });
   };
 
   const resumeRecoveredMatchDraft = () => {
@@ -3912,12 +4003,14 @@ export default function StatsModeSurface() {
     setLoadedMatchLabel("Recovered draft");
     setPendingRecoveredDraft(null);
     setSaveFeedback("Recovered unsaved match");
+    savedSessionSignatureRef.current = null;
   };
 
   const discardRecoveredMatchDraft = () => {
     clearActiveMatchDraft();
     setPendingRecoveredDraft(null);
     setSaveFeedback("Recovered draft discarded");
+    savedSessionSignatureRef.current = null;
   };
 
   const closeUtilityPanel = () => {
@@ -3977,7 +4070,19 @@ export default function StatsModeSurface() {
 
   const resetMatchNow = () => {
     clearActiveMatchDraft();
+    savedSessionSignatureRef.current = null;
+    setPendingRecoveredDraft(null);
     const nextMatchId = newMatchSessionId("live");
+    setCurrentMode("football");
+    setTeamNames({
+      HOME: "Team A",
+      AWAY: "Team B",
+    });
+    setVenueName("");
+    setLoadedMatchLabel(null);
+    setSaveLoadBlockedReason(null);
+    setActiveTeam("HOME");
+    activeTeamRef.current = "HOME";
     setCurrentMatchId(nextMatchId);
     currentMatchIdRef.current = nextMatchId;
     setLoggedEvents([]);
