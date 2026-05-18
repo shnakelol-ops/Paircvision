@@ -2440,13 +2440,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         boardBaselineSignatureRef.current = signature;
       }
       const isDirty = boardBaselineSignatureRef.current !== signature;
-      if (!isDirty) {
-        if (lastBoardDraftSignatureRef.current != null) {
-          clearQuickBoardDraft();
-          lastBoardDraftSignatureRef.current = null;
-        }
-        return;
-      }
+      if (!isDirty) return;
       if (lastBoardDraftSignatureRef.current === signature) return;
       const persisted = saveQuickBoardDraft(snapshot);
       if (!persisted) return;
