@@ -397,17 +397,22 @@ function sanitizeSavedMatches(matches: readonly SavedMatch[]): SavedMatch[] {
   }).slice(0, MAX_SAVED_MATCHES);
 }
 
-function parseStoredSavedMatches(input: string | null): SavedMatch[] {
-  if (!input) return [];
+type ReadSavedMatchesResult = {
+  matches: SavedMatch[];
+  isCorrupt: boolean;
+};
+
+function parseStoredSavedMatches(input: string | null): ReadSavedMatchesResult {
+  if (!input) return { matches: [], isCorrupt: false };
   try {
     const parsed = JSON.parse(input);
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) return { matches: [], isCorrupt: true };
     const matches = parsed
       .map((record) => parseStoredSavedMatch(record))
       .filter((record): record is SavedMatch => record != null);
-    return sanitizeSavedMatches(matches);
+    return { matches: sanitizeSavedMatches(matches), isCorrupt: false };
   } catch {
-    return [];
+    return { matches: [], isCorrupt: true };
   }
 }
 
@@ -504,8 +509,8 @@ function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActive
   }
 }
 
-function readSavedMatchesFromStorage(): SavedMatch[] {
-  if (typeof window === "undefined") return [];
+function readSavedMatchesFromStorage(): ReadSavedMatchesResult {
+  if (typeof window === "undefined") return { matches: [], isCorrupt: false };
   return parseStoredSavedMatches(safeReadLocalStorage(SAVED_MATCHES_STORAGE_KEY));
 }
 
@@ -2649,7 +2654,7 @@ export default function StatsModeSurface() {
   const [showReviewStrip, setShowReviewStrip] = useState(false);
   const [selectedReviewEventId, setSelectedReviewEventId] = useState<string | null>(null);
   const [loggedEvents, setLoggedEvents] = useState<readonly LoggedMatchEvent[]>([]);
-  const [savedMatches, setSavedMatches] = useState<SavedMatch[]>(() => readSavedMatchesFromStorage());
+  const [savedMatches, setSavedMatches] = useState<SavedMatch[]>(() => readSavedMatchesFromStorage().matches);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [saveLoadBlockedReason, setSaveLoadBlockedReason] = useState<string | null>(null);
   const [lastSavedAtMillis, setLastSavedAtMillis] = useState<number | null>(null);
@@ -3680,7 +3685,7 @@ export default function StatsModeSurface() {
 
   const openSavedMatchesPanel = () => {
     setShowReviewStrip(false);
-    setSavedMatches(readSavedMatchesFromStorage());
+    setSavedMatches(readSavedMatchesFromStorage().matches);
     setUtilityPanel("SAVED_MATCHES");
     setIsUtilityOpen(false);
     setIsPickerOpen(false);
@@ -3734,7 +3739,15 @@ export default function StatsModeSurface() {
             : {}),
         },
       };
-      const nextSavedMatches = sanitizeSavedMatches([savedRecord, ...readSavedMatchesFromStorage()]);
+      const savedMatchesResult = readSavedMatchesFromStorage();
+      if (savedMatchesResult.isCorrupt) {
+        console.warn("[stats-storage] Saved matches storage is corrupt; refusing to overwrite.", {
+          key: SAVED_MATCHES_STORAGE_KEY,
+        });
+        setSaveFeedback("Save blocked — saved matches storage is corrupted.");
+        return;
+      }
+      const nextSavedMatches = sanitizeSavedMatches([savedRecord, ...savedMatchesResult.matches]);
       const didPersist = persistSavedMatches(nextSavedMatches);
       if (!didPersist) {
         setSaveFeedback("Save failed — storage unavailable. Do not close this match yet.");
