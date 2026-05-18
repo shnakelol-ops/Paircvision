@@ -4071,7 +4071,18 @@ export default function StatsModeSurface() {
   const resetMatchNow = () => {
     clearActiveMatchDraft();
     savedSessionSignatureRef.current = null;
+    setPendingRecoveredDraft(null);
     const nextMatchId = newMatchSessionId("live");
+    setCurrentMode("football");
+    setTeamNames({
+      HOME: "Team A",
+      AWAY: "Team B",
+    });
+    setVenueName("");
+    setLoadedMatchLabel(null);
+    setSaveLoadBlockedReason(null);
+    setActiveTeam("HOME");
+    activeTeamRef.current = "HOME";
     setCurrentMatchId(nextMatchId);
     currentMatchIdRef.current = nextMatchId;
     setLoggedEvents([]);
