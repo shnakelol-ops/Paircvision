@@ -14,6 +14,14 @@ type SaveBoardInput = {
   boardState: QuickBoardBoardState;
 };
 
+export const QUICKBOARD_ACTIVE_DRAFT_STORAGE_KEY = "paircvision_board_active_draft_v1";
+
+export type QuickBoardActiveDraft = {
+  version: 1;
+  updatedAt: number;
+  boardState: QuickBoardBoardState;
+};
+
 function createBoardId(): string {
   const c = globalThis.crypto;
   if (c && "randomUUID" in c && typeof c.randomUUID === "function") {
@@ -168,4 +176,57 @@ export function formatBoardUpdatedAt(updatedAt: number): string {
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${day}/${month}/${year} ${hours}:${minutes}`;
+}
+
+export function loadQuickBoardDraft(): { draft: QuickBoardActiveDraft | null; isCorrupt: boolean } {
+  if (typeof window === "undefined") return { draft: null, isCorrupt: false };
+  try {
+    const raw = window.localStorage.getItem(QUICKBOARD_ACTIVE_DRAFT_STORAGE_KEY);
+    if (!raw) return { draft: null, isCorrupt: false };
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return { draft: null, isCorrupt: true };
+    const source = parsed as Record<string, unknown>;
+    const boardState = sanitizeQuickBoardState(source.boardState);
+    if (!boardState) return { draft: null, isCorrupt: true };
+    const updatedAt =
+      typeof source.updatedAt === "number" && Number.isFinite(source.updatedAt)
+        ? Math.max(0, Math.floor(source.updatedAt))
+        : Date.now();
+    return {
+      draft: {
+        version: 1,
+        updatedAt,
+        boardState,
+      },
+      isCorrupt: false,
+    };
+  } catch {
+    return { draft: null, isCorrupt: true };
+  }
+}
+
+export function saveQuickBoardDraft(boardState: QuickBoardBoardState): boolean {
+  if (typeof window === "undefined") return false;
+  const sanitized = sanitizeQuickBoardState(boardState);
+  if (!sanitized) return false;
+  try {
+    const payload: QuickBoardActiveDraft = {
+      version: 1,
+      updatedAt: Date.now(),
+      boardState: cloneQuickBoardState(sanitized),
+    };
+    window.localStorage.setItem(QUICKBOARD_ACTIVE_DRAFT_STORAGE_KEY, JSON.stringify(payload));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearQuickBoardDraft(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(QUICKBOARD_ACTIVE_DRAFT_STORAGE_KEY);
+  } catch {
+    // Ignore storage cleanup failures.
+  }
 }

@@ -100,6 +100,7 @@ export type TacticalBoardState = {
   drawings: unknown[];
   phases: unknown[];
   movementPaths: unknown[];
+  routes?: unknown;
   kits?: unknown;
   teamKits?: unknown;
   teamState?: unknown;
@@ -541,6 +542,26 @@ function sanitizeTacticalItemCandidate(input: unknown): TacticalItem | null {
     rotation: typeof input.rotation === "number" ? input.rotation : undefined,
     scale: typeof input.scale === "number" ? input.scale : undefined,
   });
+}
+
+function sanitizeBoardRoutes(input: unknown): Map<string, RoutePoint[]> {
+  if (!Array.isArray(input)) return new Map();
+  const parsed = new Map<string, RoutePoint[]>();
+  for (const entry of input) {
+    if (!isRecord(entry)) continue;
+    const playerId = typeof entry.playerId === "string" ? entry.playerId.trim() : "";
+    if (playerId.length <= 0) continue;
+    if (parsed.has(playerId)) continue;
+    const points = Array.isArray(entry.points)
+      ? entry.points
+          .map((point) => sanitizeNormalizedPoint(point))
+          .filter((point): point is NormalizedPoint => point != null)
+          .map((point) => ({ x: point.x, y: point.y }))
+      : [];
+    if (points.length < 2) continue;
+    parsed.set(playerId, points);
+  }
+  return parsed;
 }
 
 function sanitizePlayerKitPatch(patch: TacticalPlayerKitPatch): TacticalPlayerKitFields {
@@ -2896,6 +2917,10 @@ export async function createTacticalPadLiteSurface(
       drawings: drawingStates,
       phases: phaseStates,
       movementPaths: phaseStates.map((phase) => cloneSnapshot(phase)),
+      routes: Array.from(routeByPlayerId.entries()).map(([playerId, points]) => ({
+        playerId,
+        points: points.map((point) => ({ x: point.x, y: point.y })),
+      })),
       kits: kitsByPlayer,
       teamKits: currentTeamKits,
       teamState: currentTeamState,
@@ -2939,6 +2964,7 @@ export async function createTacticalPadLiteSurface(
           .map((entry) => sanitizePhaseSnapshot(entry))
           .filter((entry): entry is PhaseSnapshot => entry != null)
       : [];
+    const parsedRoutes = sanitizeBoardRoutes(state.routes);
     const parsedStart = sanitizePhaseSnapshot(state.startSnapshot);
     const parsedTeamState = isRecord(state.teamState) ? state.teamState : null;
     const nextBlueColor = sanitizeWhiteboardTokenColor(parsedTeamState?.colors && isRecord(parsedTeamState.colors) ? parsedTeamState.colors.blue : undefined);
@@ -3014,7 +3040,18 @@ export async function createTacticalPadLiteSurface(
     );
     startPositions = nextStartSnapshot;
     phases = parsedPhases.map((phase) => normalizePhaseForPlayerCount(phase, players.length));
+    routeByPlayerId = new Map(
+      Array.from(parsedRoutes.entries())
+        .filter(([playerId]) => players.some((player) => player.id === playerId))
+        .slice(0, MAX_BASIC_ROUTE_PLAYERS)
+        .map(
+          ([playerId, points]) =>
+            [playerId, points.map((point) => ({ x: point.x, y: point.y }))] as [string, RoutePoint[]],
+        ),
+    );
     options.onPhaseCountChange?.(phases.length);
+    renderBasicRoutePreview();
+    emitRouteStateChange();
 
     const parsedDrawTool = sanitizeDrawingTool(state.drawTool);
     if (parsedDrawTool) {

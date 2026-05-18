@@ -8,6 +8,7 @@ export type QuickBoardBoardState = {
   drawings: unknown[];
   phases: unknown[];
   movementPaths: unknown[];
+  routes?: unknown;
   kits?: unknown;
   teamKits?: unknown;
   teamState?: unknown;
@@ -51,6 +52,7 @@ export function sanitizeQuickBoardState(value: unknown): QuickBoardBoardState | 
     drawings: sanitizeArray(value.drawings),
     phases: sanitizeArray(value.phases),
     movementPaths: sanitizeArray(value.movementPaths),
+    ...(value.routes !== undefined ? { routes: value.routes } : {}),
     ...(value.kits !== undefined ? { kits: value.kits } : {}),
     ...(value.teamKits !== undefined ? { teamKits: value.teamKits } : {}),
     ...(value.teamState !== undefined ? { teamState: value.teamState } : {}),

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 
 import {
   createInitialMatchEngineState,
@@ -79,6 +79,17 @@ type SavedMatch = {
   scorelineSnapshot: string;
   restoreContext?: SavedMatchRestoreContext;
 };
+type StatsActiveMatchDraft = {
+  version: 1;
+  updatedAt: number;
+  matchId: string;
+  currentMode: GaaModeKey;
+  activeTeam: TeamSide;
+  teamNames: { HOME: string; AWAY: string };
+  venue: string;
+  events: readonly LoggedMatchEvent[];
+  restoreContext: SavedMatchRestoreContext;
+};
 type ModeScoringEventKind =
   | "GOAL"
   | "POINT"
@@ -124,6 +135,7 @@ const FORMATION_ROW_SIZES = [1, 3, 3, 2, 3, 3] as const;
 const SQUADS_STORAGE_KEY = "pitchsideclub.squads";
 const SAVED_SQUADS_STORAGE_KEY = "pitchflow_saved_squads_v1";
 const SAVED_MATCHES_STORAGE_KEY = "pitchflow_matches_v1";
+const ACTIVE_MATCH_DRAFT_STORAGE_KEY = "paircvision_stats_active_draft_v1";
 const MAX_SAVED_MATCHES = 10;
 const EVENT_PICKER_LOGO_STYLE: CSSProperties = {
   width: "40px",
@@ -152,6 +164,43 @@ function safeWriteLocalStorage(key: string, value: string): boolean {
   } catch (error) {
     return false;
   }
+}
+
+function safeRemoveLocalStorage(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Ignore storage removal failures.
+  }
+}
+
+function parseSavedMatchState(value: unknown): MatchState | null {
+  if (
+    value === "PRE_MATCH" ||
+    value === "FIRST_HALF" ||
+    value === "HALF_TIME" ||
+    value === "SECOND_HALF" ||
+    value === "FULL_TIME"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function parseCurrentHalf(value: unknown): 1 | 2 | null {
+  if (value === 1 || value === 2) return value;
+  return null;
+}
+
+function parseClockSeconds(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Math.max(0, Math.floor(value));
+}
+
+function parseAttackingDirection(value: unknown): AttackingDirection | null {
+  if (value === "LEFT" || value === "RIGHT") return value;
+  return null;
 }
 
 const REVIEW_FILTER_OPTIONS_BASE: ReadonlyArray<{ id: ReviewEventFilter; label: string }> = [
@@ -280,36 +329,12 @@ function parseStoredSavedMatch(input: unknown): SavedMatch | null {
   const events = parsedEvents.filter((event): event is LoggedMatchEvent => event != null);
   if (events.length === 0) return null;
   if (Math.floor(maybeEventCount) !== events.length) return null;
-  const parseSavedMatchState = (value: unknown): MatchState | null => {
-    if (
-      value === "PRE_MATCH" ||
-      value === "FIRST_HALF" ||
-      value === "HALF_TIME" ||
-      value === "SECOND_HALF" ||
-      value === "FULL_TIME"
-    ) {
-      return value;
-    }
-    return null;
-  };
-  const parseCurrentHalf = (value: unknown): 1 | 2 | null => {
-    if (value === 1 || value === 2) return value;
-    return null;
-  };
-  const parseClock = (value: unknown): number | null => {
-    if (typeof value !== "number" || !Number.isFinite(value)) return null;
-    return Math.max(0, Math.floor(value));
-  };
-  const parseAttackingDirection = (value: unknown): AttackingDirection | null => {
-    if (value === "LEFT" || value === "RIGHT") return value;
-    return null;
-  };
   const parseRestoreContext = (value: unknown): SavedMatchRestoreContext | undefined => {
     if (!value || typeof value !== "object") return undefined;
     const source = value as Record<string, unknown>;
     const parsedMatchState = parseSavedMatchState(source.matchState);
     const parsedCurrentHalf = parseCurrentHalf(source.currentHalf);
-    const parsedClock = parseClock(source.matchTimeSeconds);
+    const parsedClock = parseClockSeconds(source.matchTimeSeconds);
     const parsedDirection = parseAttackingDirection(source.firstHalfAttackingDirection);
     const parsedResumeSource =
       source.fullTimeResumeState && typeof source.fullTimeResumeState === "object"
@@ -317,7 +342,7 @@ function parseStoredSavedMatch(input: unknown): SavedMatch | null {
         : null;
     const parsedResumeMatchState = parseSavedMatchState(parsedResumeSource?.matchState);
     const parsedResumeHalf = parseCurrentHalf(parsedResumeSource?.currentHalf);
-    const parsedResumeClock = parseClock(parsedResumeSource?.matchTimeSeconds);
+    const parsedResumeClock = parseClockSeconds(parsedResumeSource?.matchTimeSeconds);
     const parsedResume =
       (parsedResumeMatchState === "FIRST_HALF" || parsedResumeMatchState === "SECOND_HALF") &&
       parsedResumeHalf != null &&
@@ -383,6 +408,99 @@ function parseStoredSavedMatches(input: string | null): SavedMatch[] {
     return sanitizeSavedMatches(matches);
   } catch {
     return [];
+  }
+}
+
+function parseSavedMatchRestoreContext(input: unknown): SavedMatchRestoreContext {
+  if (!input || typeof input !== "object") {
+    return {
+      matchState: "PRE_MATCH",
+      currentHalf: 1,
+      matchTimeSeconds: 0,
+      firstHalfAttackingDirection: "RIGHT",
+    };
+  }
+  const source = input as Record<string, unknown>;
+  const parsedMatchState = parseSavedMatchState(source.matchState) ?? "PRE_MATCH";
+  const parsedCurrentHalf = parseCurrentHalf(source.currentHalf) ?? 1;
+  const parsedClock = parseClockSeconds(source.matchTimeSeconds) ?? 0;
+  const parsedDirection = parseAttackingDirection(source.firstHalfAttackingDirection) ?? "RIGHT";
+  const parsedResumeSource =
+    source.fullTimeResumeState && typeof source.fullTimeResumeState === "object"
+      ? (source.fullTimeResumeState as Record<string, unknown>)
+      : null;
+  const parsedResumeMatchState = parseSavedMatchState(parsedResumeSource?.matchState);
+  const parsedResumeHalf = parseCurrentHalf(parsedResumeSource?.currentHalf);
+  const parsedResumeClock = parseClockSeconds(parsedResumeSource?.matchTimeSeconds);
+  const fullTimeResumeState =
+    (parsedResumeMatchState === "FIRST_HALF" || parsedResumeMatchState === "SECOND_HALF") &&
+    parsedResumeHalf != null &&
+    parsedResumeClock != null
+      ? {
+          matchState: parsedResumeMatchState,
+          currentHalf: parsedResumeHalf,
+          matchTimeSeconds: parsedResumeClock,
+        }
+      : undefined;
+  return {
+    matchState: parsedMatchState,
+    currentHalf: parsedCurrentHalf,
+    matchTimeSeconds: parsedClock,
+    firstHalfAttackingDirection: parsedDirection,
+    ...(fullTimeResumeState ? { fullTimeResumeState } : {}),
+  };
+}
+
+function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActiveMatchDraft | null; isCorrupt: boolean } {
+  if (!input) return { draft: null, isCorrupt: false };
+  try {
+    const parsed = JSON.parse(input);
+    if (!parsed || typeof parsed !== "object") return { draft: null, isCorrupt: true };
+    const source = parsed as Record<string, unknown>;
+    const matchId = typeof source.matchId === "string" ? source.matchId.trim() : "";
+    const updatedAt = parseClockSeconds(source.updatedAt);
+    const activeTeam = source.activeTeam === "HOME" || source.activeTeam === "AWAY" ? source.activeTeam : "HOME";
+    const mode =
+      source.currentMode === "football" ||
+      source.currentMode === "ladiesFootball" ||
+      source.currentMode === "hurling" ||
+      source.currentMode === "camogie"
+        ? source.currentMode
+        : "football";
+    const teamNamesSource =
+      source.teamNames && typeof source.teamNames === "object"
+        ? (source.teamNames as Record<string, unknown>)
+        : null;
+    const homeName =
+      typeof teamNamesSource?.HOME === "string" && teamNamesSource.HOME.trim().length > 0
+        ? teamNamesSource.HOME.trim().slice(0, 15)
+        : "Team A";
+    const awayName =
+      typeof teamNamesSource?.AWAY === "string" && teamNamesSource.AWAY.trim().length > 0
+        ? teamNamesSource.AWAY.trim().slice(0, 15)
+        : "Team B";
+    const events = Array.isArray(source.events)
+      ? source.events
+          .map((entry) => parseStoredLoggedMatchEvent(entry))
+          .filter((entry): entry is LoggedMatchEvent => entry != null)
+      : [];
+    if (matchId.length <= 0) return { draft: null, isCorrupt: true };
+    return {
+      draft: {
+        version: 1,
+        updatedAt: updatedAt ?? Date.now(),
+        matchId,
+        currentMode: mode,
+        activeTeam,
+        teamNames: { HOME: homeName, AWAY: awayName },
+        venue: typeof source.venue === "string" ? source.venue.trim().slice(0, 24) : "",
+        events,
+        restoreContext: parseSavedMatchRestoreContext(source.restoreContext),
+      },
+      isCorrupt: false,
+    };
+  } catch {
+    return { draft: null, isCorrupt: true };
   }
 }
 
@@ -481,6 +599,19 @@ function resolveSavedMatchRestoreContext(record: SavedMatch): {
 function persistSavedMatches(matches: readonly SavedMatch[]): boolean {
   if (typeof window === "undefined") return false;
   return safeWriteLocalStorage(SAVED_MATCHES_STORAGE_KEY, JSON.stringify(sanitizeSavedMatches(matches)));
+}
+
+function persistActiveMatchDraft(draft: StatsActiveMatchDraft): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return safeWriteLocalStorage(ACTIVE_MATCH_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  } catch {
+    return false;
+  }
+}
+
+function clearActiveMatchDraft(): void {
+  safeRemoveLocalStorage(ACTIVE_MATCH_DRAFT_STORAGE_KEY);
 }
 
 function formatSavedMatchCreatedAt(createdAtMillis: number): string {
@@ -2523,6 +2654,8 @@ export default function StatsModeSurface() {
   const [saveLoadBlockedReason, setSaveLoadBlockedReason] = useState<string | null>(null);
   const [lastSavedAtMillis, setLastSavedAtMillis] = useState<number | null>(null);
   const [loadedMatchLabel, setLoadedMatchLabel] = useState<string | null>(null);
+  const [pendingRecoveredDraft, setPendingRecoveredDraft] = useState<StatsActiveMatchDraft | null>(null);
+  const [isDraftRecoveryCheckComplete, setIsDraftRecoveryCheckComplete] = useState(false);
   const [visibilityMode, setVisibilityMode] = useState<VisibilityMode>("ALL");
   const [matchState, setMatchState] = useState<MatchState>("PRE_MATCH");
   const [currentHalf, setCurrentHalf] = useState<1 | 2>(1);
@@ -2886,6 +3019,61 @@ export default function StatsModeSurface() {
     });
   };
 
+  const hasDirtyLiveSession =
+    loggedEvents.length > 0 ||
+    matchState !== "PRE_MATCH" ||
+    currentHalf !== 1 ||
+    matchTimeSeconds > 0 ||
+    teamNames.HOME !== "Team A" ||
+    teamNames.AWAY !== "Team B" ||
+    venueName.trim().length > 0 ||
+    currentMode !== "football";
+
+  const createActiveMatchDraftSnapshot = useCallback((): StatsActiveMatchDraft | null => {
+    if (!hasDirtyLiveSession) return null;
+    const fullTimeResumeSource = fullTimeResumeStateRef.current;
+    return {
+      version: 1,
+      updatedAt: Date.now(),
+      matchId: currentMatchIdRef.current,
+      currentMode,
+      activeTeam,
+      teamNames: {
+        HOME: teamNames.HOME.trim() || "Team A",
+        AWAY: teamNames.AWAY.trim() || "Team B",
+      },
+      venue: venueName.trim().slice(0, 24),
+      events: [...loggedEvents],
+      restoreContext: {
+        matchState,
+        currentHalf,
+        matchTimeSeconds: Math.max(0, Math.floor(matchTimeSeconds)),
+        firstHalfAttackingDirection,
+        ...(fullTimeResumeSource &&
+        (fullTimeResumeSource.matchState === "FIRST_HALF" || fullTimeResumeSource.matchState === "SECOND_HALF")
+          ? {
+              fullTimeResumeState: {
+                matchState: fullTimeResumeSource.matchState,
+                currentHalf: fullTimeResumeSource.currentHalf,
+                matchTimeSeconds: Math.max(0, Math.floor(fullTimeResumeSource.matchTimeSeconds)),
+              },
+            }
+          : {}),
+      },
+    };
+  }, [
+    activeTeam,
+    currentHalf,
+    currentMode,
+    firstHalfAttackingDirection,
+    hasDirtyLiveSession,
+    loggedEvents,
+    matchState,
+    matchTimeSeconds,
+    teamNames,
+    venueName,
+  ]);
+
   useEffect(() => {
     activeTeamRef.current = activeTeam;
   }, [activeTeam]);
@@ -2969,6 +3157,17 @@ export default function StatsModeSurface() {
   }, [currentMatchId]);
 
   useEffect(() => {
+    const { draft, isCorrupt } = parseStoredActiveMatchDraft(safeReadLocalStorage(ACTIVE_MATCH_DRAFT_STORAGE_KEY));
+    if (draft) {
+      setPendingRecoveredDraft(draft);
+    } else if (isCorrupt) {
+      setSaveFeedback("Recovered match draft was invalid.");
+      clearActiveMatchDraft();
+    }
+    setIsDraftRecoveryCheckComplete(true);
+  }, []);
+
+  useEffect(() => {
     if (activeSquadId === "") {
       setActiveSquadId(squads[0]?.id ?? "");
       return;
@@ -3009,11 +3208,26 @@ export default function StatsModeSurface() {
   }, [saveFeedback]);
 
   useEffect(() => {
+    if (!isDraftRecoveryCheckComplete) return;
+    if (pendingRecoveredDraft) return;
+    const draft = createActiveMatchDraftSnapshot();
+    if (!draft) {
+      clearActiveMatchDraft();
+      return;
+    }
+    persistActiveMatchDraft(draft);
+  }, [createActiveMatchDraftSnapshot, isDraftRecoveryCheckComplete, pendingRecoveredDraft]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     const hasLiveMatchState = loggedEvents.length > 0 || matchState !== "PRE_MATCH";
     if (!hasLiveMatchState) return;
 
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      const draft = createActiveMatchDraftSnapshot();
+      if (draft) {
+        persistActiveMatchDraft(draft);
+      }
       event.preventDefault();
       event.returnValue = "Save match before leaving or refreshing.";
     };
@@ -3022,7 +3236,7 @@ export default function StatsModeSurface() {
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
-  }, [loggedEvents.length, matchState]);
+  }, [createActiveMatchDraftSnapshot, loggedEvents.length, matchState]);
 
   useEffect(() => {
     if (canEditTeamNames) return;
@@ -3526,6 +3740,7 @@ export default function StatsModeSurface() {
         setSaveFeedback("Save failed — storage unavailable. Do not close this match yet.");
         return;
       }
+      clearActiveMatchDraft();
       setSavedMatches(nextSavedMatches);
       setSaveFeedback("Match saved");
       setLastSavedAtMillis(savedRecord.createdAt);
@@ -3650,6 +3865,61 @@ export default function StatsModeSurface() {
     setUtilityPanel(null);
   };
 
+  const resumeRecoveredMatchDraft = () => {
+    const draft = pendingRecoveredDraft;
+    if (!draft) return;
+    const draftMatchId = draft.matchId.trim().length > 0 ? draft.matchId : newMatchSessionId("live");
+    setCurrentMode(draft.currentMode);
+    setActiveTeam(draft.activeTeam);
+    activeTeamRef.current = draft.activeTeam;
+    setCurrentMatchId(draftMatchId);
+    currentMatchIdRef.current = draftMatchId;
+    setLoggedEvents(draft.events);
+    setTeamNames({
+      HOME: draft.teamNames.HOME,
+      AWAY: draft.teamNames.AWAY,
+    });
+    setVenueName(draft.venue);
+    const restoredContext = resolveSavedMatchRestoreContext({
+      id: draftMatchId,
+      createdAt: draft.updatedAt,
+      label: "Recovered unsaved match",
+      homeTeamName: draft.teamNames.HOME,
+      awayTeamName: draft.teamNames.AWAY,
+      venue: draft.venue || "Unknown venue",
+      events: draft.events,
+      eventCount: draft.events.length,
+      scorelineSnapshot: "Recovered unsaved match",
+      restoreContext: draft.restoreContext,
+    });
+    setFirstHalfAttackingDirection(restoredContext.firstHalfAttackingDirection);
+    matchEngineStateRef.current = restoredContext.engineState;
+    fullTimeResumeStateRef.current = restoredContext.fullTimeResumeState;
+    setMatchState(restoredContext.engineState.matchState);
+    setCurrentHalf(restoredContext.engineState.currentHalf);
+    setMatchTimeSeconds(restoredContext.engineState.matchTimeSeconds);
+    setIsCountsOverlayOpen(false);
+    setIsResetConfirmOpen(false);
+    setIsPickerOpen(false);
+    setIsUtilityOpen(false);
+    setIsFullTimeActionsOpen(restoredContext.engineState.matchState === "FULL_TIME");
+    handleRef.current?.setEventContext({
+      half: restoredContext.engineState.currentHalf,
+      timestamp: restoredContext.engineState.matchTimeSeconds,
+      canLog: isLoggingActive(restoredContext.engineState.matchState) && draft.activeTeam === "HOME",
+    });
+    setSaveLoadBlockedReason(null);
+    setLoadedMatchLabel("Recovered draft");
+    setPendingRecoveredDraft(null);
+    setSaveFeedback("Recovered unsaved match");
+  };
+
+  const discardRecoveredMatchDraft = () => {
+    clearActiveMatchDraft();
+    setPendingRecoveredDraft(null);
+    setSaveFeedback("Recovered draft discarded");
+  };
+
   const closeUtilityPanel = () => {
     setUtilityPanel(null);
     setSaveLoadBlockedReason(null);
@@ -3706,6 +3976,7 @@ export default function StatsModeSurface() {
   };
 
   const resetMatchNow = () => {
+    clearActiveMatchDraft();
     const nextMatchId = newMatchSessionId("live");
     setCurrentMatchId(nextMatchId);
     currentMatchIdRef.current = nextMatchId;
@@ -3754,6 +4025,11 @@ export default function StatsModeSurface() {
   };
 
   const confirmResetMatch = () => {
+    if (hasDirtyLiveSession) {
+      const confirmedDiscard = window.confirm("Discard unsaved match progress and clear recovered draft?");
+      if (!confirmedDiscard) return;
+    }
+    clearActiveMatchDraft();
     resetMatchNow();
   };
 
@@ -5830,6 +6106,38 @@ export default function StatsModeSurface() {
           >
             ⋮
           </button>
+        </div>
+      ) : null}
+      {pendingRecoveredDraft ? (
+        <div
+          style={{
+            position: "fixed",
+            top: "max(18px, calc(env(safe-area-inset-top, 0px) + 14px))",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 40,
+            width: "min(88vw, 320px)",
+            borderRadius: "10px",
+            border: "1px solid rgba(125,211,252,0.5)",
+            background: "rgba(15,23,42,0.92)",
+            padding: "10px",
+            display: "grid",
+            gap: "8px",
+          }}
+          role="dialog"
+          aria-label="Recovered unsaved match"
+        >
+          <div className="utility-panel-title" style={{ fontSize: "10px", textTransform: "none", opacity: 0.95 }}>
+            Recovered unsaved match — Resume or Discard
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button type="button" className="utility-review-btn" onClick={resumeRecoveredMatchDraft}>
+              Resume
+            </button>
+            <button type="button" className="utility-review-btn" onClick={discardRecoveredMatchDraft}>
+              Discard
+            </button>
+          </div>
         </div>
       ) : null}
     </>
