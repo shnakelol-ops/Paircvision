@@ -1075,6 +1075,47 @@ function getRenderablePitchEvents(
   });
 }
 
+type LiveSessionSignatureInput = {
+  currentMode: GaaModeKey;
+  teamNames: { HOME: string; AWAY: string };
+  venueName: string;
+  events: readonly LoggedMatchEvent[];
+  matchState: MatchState;
+  currentHalf: 1 | 2;
+  matchTimeSeconds: number;
+  firstHalfAttackingDirection: AttackingDirection;
+  fullTimeResumeState: MatchEngineState | null;
+};
+
+function buildLiveSessionSignature(input: LiveSessionSignatureInput): string {
+  return JSON.stringify({
+    currentMode: input.currentMode,
+    teamNames: {
+      HOME: input.teamNames.HOME,
+      AWAY: input.teamNames.AWAY,
+    },
+    venueName: input.venueName,
+    events: input.events,
+    restoreContext: {
+      matchState: input.matchState,
+      currentHalf: input.currentHalf,
+      matchTimeSeconds: Math.max(0, Math.floor(input.matchTimeSeconds)),
+      firstHalfAttackingDirection: input.firstHalfAttackingDirection,
+      ...(input.fullTimeResumeState &&
+      (input.fullTimeResumeState.matchState === "FIRST_HALF" ||
+        input.fullTimeResumeState.matchState === "SECOND_HALF")
+        ? {
+            fullTimeResumeState: {
+              matchState: input.fullTimeResumeState.matchState,
+              currentHalf: input.fullTimeResumeState.currentHalf,
+              matchTimeSeconds: Math.max(0, Math.floor(input.fullTimeResumeState.matchTimeSeconds)),
+            },
+          }
+        : {}),
+    },
+  });
+}
+
 function oppositeAttackingDirection(direction: AttackingDirection): AttackingDirection {
   return direction === "RIGHT" ? "LEFT" : "RIGHT";
 }
@@ -2700,6 +2741,7 @@ export default function StatsModeSurface() {
   const matchEngineStateRef = useRef(createInitialMatchEngineState());
   const fullTimeResumeStateRef = useRef<MatchEngineState | null>(null);
   const currentMatchIdRef = useRef(currentMatchId);
+  const savedSessionSignatureRef = useRef<string | null>(null);
   const wakeLockRef = useRef<WakeLockSentinelLike>(null);
   const secondHalfSwitchBaselineEventCountRef = useRef<number | null>(null);
   const eventKindSwitchBaselineEventCountRef = useRef<number | null>(null);
@@ -3024,7 +3066,7 @@ export default function StatsModeSurface() {
     });
   };
 
-  const hasDirtyLiveSession =
+  const hasNonDefaultLiveSessionState =
     loggedEvents.length > 0 ||
     matchState !== "PRE_MATCH" ||
     currentHalf !== 1 ||
@@ -3033,6 +3075,34 @@ export default function StatsModeSurface() {
     teamNames.AWAY !== "Team B" ||
     venueName.trim().length > 0 ||
     currentMode !== "football";
+  const liveSessionSignature = useMemo(
+    () =>
+      buildLiveSessionSignature({
+        currentMode,
+        teamNames,
+        venueName,
+        events: loggedEvents,
+        matchState,
+        currentHalf,
+        matchTimeSeconds,
+        firstHalfAttackingDirection,
+        fullTimeResumeState: fullTimeResumeStateRef.current,
+      }),
+    [
+      currentMode,
+      teamNames,
+      venueName,
+      loggedEvents,
+      matchState,
+      currentHalf,
+      matchTimeSeconds,
+      firstHalfAttackingDirection,
+    ],
+  );
+  const hasDirtyLiveSession =
+    savedSessionSignatureRef.current == null
+      ? hasNonDefaultLiveSessionState
+      : liveSessionSignature !== savedSessionSignatureRef.current;
 
   const createActiveMatchDraftSnapshot = useCallback((): StatsActiveMatchDraft | null => {
     if (!hasDirtyLiveSession) return null;
@@ -3753,7 +3823,9 @@ export default function StatsModeSurface() {
         setSaveFeedback("Save failed — storage unavailable. Do not close this match yet.");
         return;
       }
+      savedSessionSignatureRef.current = liveSessionSignature;
       clearActiveMatchDraft();
+      setPendingRecoveredDraft(null);
       setSavedMatches(nextSavedMatches);
       setSaveFeedback("Match saved");
       setLastSavedAtMillis(savedRecord.createdAt);
@@ -3834,15 +3906,7 @@ export default function StatsModeSurface() {
       setSaveLoadBlockedReason("Load blocked: saved match is invalid.");
       return;
     }
-    const isDirtySession =
-      loggedEvents.length > 0 ||
-      matchTimeSeconds > 0 ||
-      currentHalf !== 1 ||
-      matchState !== "PRE_MATCH" ||
-      teamNames.HOME !== "Team A" ||
-      teamNames.AWAY !== "Team B" ||
-      venueName.trim().length > 0;
-    if (isDirtySession) {
+    if (hasDirtyLiveSession) {
       const confirmed = window.confirm("Loading this saved match will replace your current live session. Continue?");
       if (!confirmed) return;
     }
@@ -3876,6 +3940,20 @@ export default function StatsModeSurface() {
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel(parsedRecord.label);
     setUtilityPanel(null);
+    savedSessionSignatureRef.current = buildLiveSessionSignature({
+      currentMode,
+      teamNames: {
+        HOME: parsedRecord.homeTeamName,
+        AWAY: parsedRecord.awayTeamName,
+      },
+      venueName: parsedRecord.venue,
+      events: parsedRecord.events,
+      matchState: restoredContext.engineState.matchState,
+      currentHalf: restoredContext.engineState.currentHalf,
+      matchTimeSeconds: restoredContext.engineState.matchTimeSeconds,
+      firstHalfAttackingDirection: restoredContext.firstHalfAttackingDirection,
+      fullTimeResumeState: restoredContext.fullTimeResumeState,
+    });
   };
 
   const resumeRecoveredMatchDraft = () => {
@@ -3925,12 +4003,14 @@ export default function StatsModeSurface() {
     setLoadedMatchLabel("Recovered draft");
     setPendingRecoveredDraft(null);
     setSaveFeedback("Recovered unsaved match");
+    savedSessionSignatureRef.current = null;
   };
 
   const discardRecoveredMatchDraft = () => {
     clearActiveMatchDraft();
     setPendingRecoveredDraft(null);
     setSaveFeedback("Recovered draft discarded");
+    savedSessionSignatureRef.current = null;
   };
 
   const closeUtilityPanel = () => {
@@ -3990,6 +4070,7 @@ export default function StatsModeSurface() {
 
   const resetMatchNow = () => {
     clearActiveMatchDraft();
+    savedSessionSignatureRef.current = null;
     const nextMatchId = newMatchSessionId("live");
     setCurrentMatchId(nextMatchId);
     currentMatchIdRef.current = nextMatchId;
