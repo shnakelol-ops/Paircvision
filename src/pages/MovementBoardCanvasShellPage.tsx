@@ -5,8 +5,11 @@ import {
   createMovementCanvasShell,
 } from "../movement-board/shell/createMovementCanvasShell";
 import type {
+  MovementBoardMode,
+  MovementRouteEditState,
   MovementBoardToken,
   MovementCanvasShellHandle,
+  MovementPlaybackSpeed,
 } from "../movement-board/shell/types";
 
 const ROOT_STYLE: CSSProperties = {
@@ -27,22 +30,22 @@ const BOARD_STYLE: CSSProperties = {
   background: "#12241e",
 };
 
-const MODE_PILL_STYLE: CSSProperties = {
+const HUD_STYLE: CSSProperties = {
   position: "fixed",
   top: "10px",
   left: "50%",
   transform: "translateX(-50%)",
-  zIndex: 12,
+  zIndex: 14,
+  display: "grid",
+  gap: "8px",
+};
+
+const CONTROL_ROW_STYLE: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: "8px",
-  color: "#ecfff4",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "12px",
-  fontWeight: 700,
-  letterSpacing: "0.03em",
-  textTransform: "uppercase",
-  padding: "7px 11px",
+  justifyContent: "center",
+  gap: "6px",
+  padding: "6px",
   borderRadius: "999px",
   border: "1px solid rgba(214, 245, 225, 0.32)",
   background: "rgba(8, 20, 15, 0.74)",
@@ -50,12 +53,22 @@ const MODE_PILL_STYLE: CSSProperties = {
   WebkitBackdropFilter: "blur(8px)",
 };
 
-const MODE_DOT_STYLE: CSSProperties = {
-  width: "8px",
-  height: "8px",
+const CONTROL_BUTTON_STYLE: CSSProperties = {
+  border: "none",
   borderRadius: "999px",
-  background: "#71f2a2",
-  boxShadow: "0 0 0 3px rgba(113, 242, 162, 0.2)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "11px",
+  fontWeight: 700,
+  letterSpacing: "0.02em",
+  textTransform: "uppercase",
+  padding: "7px 10px",
+  color: "#e5fff0",
+  background: "rgba(255, 255, 255, 0.1)",
+};
+
+const ACTIVE_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  background: "rgba(113, 242, 162, 0.25)",
 };
 
 const INFO_STYLE: CSSProperties = {
@@ -77,23 +90,33 @@ const INFO_STYLE: CSSProperties = {
   WebkitBackdropFilter: "blur(8px)",
 };
 
+const ENTITY_LABEL_STYLE: CSSProperties = {
+  color: "#e8fff2",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "11px",
+  fontWeight: 700,
+  letterSpacing: "0.03em",
+  textTransform: "uppercase",
+  minWidth: "84px",
+  textAlign: "center",
+};
+
 export default function MovementBoardCanvasShellPage() {
   const isPortrait = usePortraitOrientation();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const shellRef = useRef<MovementCanvasShellHandle | null>(null);
+  const [mode, setMode] = useState<MovementBoardMode>("setup");
+  const [playbackSpeed, setPlaybackSpeed] = useState<MovementPlaybackSpeed>("normal");
   const [selectedToken, setSelectedToken] = useState<MovementBoardToken | null>(null);
   const [tokenCount, setTokenCount] = useState(0);
-  const [tokens, setTokens] = useState<MovementBoardToken[]>([]);
-
-  const upsertToken = (nextToken: MovementBoardToken) => {
-    setTokens((previous) => {
-      const index = previous.findIndex((token) => token.id === nextToken.id);
-      if (index < 0) return [...previous, nextToken];
-      const updated = previous.slice();
-      updated[index] = nextToken;
-      return updated;
-    });
-  };
+  const [routeCount, setRouteCount] = useState(0);
+  const [routeEditState, setRouteEditState] = useState<MovementRouteEditState>({
+    waypointCount: 0,
+    selectedWaypointIndex: null,
+    canRemoveSelectedWaypoint: false,
+  });
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -108,15 +131,24 @@ export default function MovementBoardCanvasShellPage() {
 
     const mountShell = () => {
       void createMovementCanvasShell(host, {
+        mode,
+        playbackSpeed,
         dragEnabled: !isPortrait,
         onTokenMove: (token) => {
-          upsertToken(token);
-          setSelectedToken((currentSelected) =>
-            currentSelected?.id === token.id ? token : currentSelected,
-          );
+          setSelectedToken((previous) => (previous?.id === token.id ? token : previous));
         },
         onSelectedTokenChange: (token) => {
           setSelectedToken(token);
+        },
+        onRoutesChange: (routes) => {
+          setRouteCount(routes.length);
+        },
+        onPlaybackStateChange: (state) => {
+          setIsPlaying(state.isPlaying);
+          setIsPaused(state.isPaused);
+        },
+        onRouteEditStateChange: (state) => {
+          setRouteEditState(state);
         },
       }).then((shell) => {
         if (disposed) {
@@ -124,9 +156,16 @@ export default function MovementBoardCanvasShellPage() {
           return;
         }
         shellRef.current = shell;
-        const initialTokens = shell.getTokens();
-        setTokenCount(initialTokens.length);
-        setTokens(initialTokens);
+        setTokenCount(shell.getTokens().length);
+        setMode(shell.getMode());
+        setPlaybackSpeed(shell.getPlaybackSpeed());
+        setRouteCount(shell.getRoutes().length);
+        const selected = shell.getSelectedToken();
+        setSelectedToken(selected);
+        setRouteEditState(shell.getRouteEditState());
+        const playbackState = shell.getPlaybackState();
+        setIsPlaying(playbackState.isPlaying);
+        setIsPaused(playbackState.isPaused);
         shell.setDragEnabled(!isPortrait);
         destroyShell = shell.destroy;
       });
@@ -172,24 +211,149 @@ export default function MovementBoardCanvasShellPage() {
   }, [isPortrait]);
 
   useEffect(() => {
-    setTokenCount(tokens.length);
-  }, [tokens]);
+    shellRef.current?.setMode(mode);
+  }, [mode]);
+
+  useEffect(() => {
+    shellRef.current?.setPlaybackSpeed(playbackSpeed);
+  }, [playbackSpeed]);
 
   const selectedLabel = selectedToken
     ? `P${selectedToken.number} • X ${selectedToken.position.x.toFixed(1)} • Y ${selectedToken.position.y.toFixed(1)}`
-    : isPortrait
-      ? `Rotate to landscape • ${tokenCount} players`
-      : `Tap a player • ${tokenCount} players`;
+    : `${mode.toUpperCase()} • ${tokenCount} players`;
+
+  const routeLabel = `Routes ${routeCount} • Selected bends ${Math.max(0, routeEditState.waypointCount - 2)}`;
+
+  const onPlayControlPress = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    if (isPlaying) {
+      shell.pausePlayback();
+      return;
+    }
+    if (isPaused) {
+      shell.resumePlayback();
+      return;
+    }
+    shell.playAll();
+  };
+
+  const cycleSelectedEntity = (direction: "prev" | "next") => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const tokens = shell.getTokens();
+    if (tokens.length <= 0) return;
+    const selectedId = shell.getSelectedToken()?.id ?? null;
+    const selectedIndex = tokens.findIndex((token) => token.id === selectedId);
+    const baseIndex = selectedIndex >= 0 ? selectedIndex : 0;
+    const delta = direction === "next" ? 1 : -1;
+    const nextIndex = (baseIndex + delta + tokens.length) % tokens.length;
+    const nextToken = tokens[nextIndex];
+    if (!nextToken) return;
+    shell.setSelectedToken(nextToken.id);
+  };
 
   return (
-    <OrientationGate modeLabel="Movement Board Setup Mode">
+    <OrientationGate modeLabel="Movement Board Playback Core">
       <div style={ROOT_STYLE}>
         <div ref={hostRef} style={BOARD_STYLE} />
-        <div style={MODE_PILL_STYLE} role="status" aria-live="polite">
-          <span style={MODE_DOT_STYLE} aria-hidden />
-          Setup Mode
+        <div style={HUD_STYLE}>
+          <div style={CONTROL_ROW_STYLE}>
+            <button
+              type="button"
+              style={mode === "setup" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
+              onClick={() => setMode("setup")}
+              disabled={isPlaying || isPaused}
+            >
+              Setup
+            </button>
+            <button
+              type="button"
+              style={mode === "route" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
+              onClick={() => setMode("route")}
+              disabled={isPlaying || isPaused}
+            >
+              Route
+            </button>
+            <button
+              type="button"
+              style={mode === "play" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
+              onClick={() => setMode("play")}
+            >
+              Play
+            </button>
+          </div>
+          <div style={CONTROL_ROW_STYLE}>
+            <button
+              type="button"
+              style={CONTROL_BUTTON_STYLE}
+              onClick={() => cycleSelectedEntity("prev")}
+              disabled={isPlaying}
+            >
+              Prev
+            </button>
+            <span style={ENTITY_LABEL_STYLE}>
+              {selectedToken ? `P${selectedToken.number}` : "No player"}
+            </span>
+            <button
+              type="button"
+              style={CONTROL_BUTTON_STYLE}
+              onClick={() => cycleSelectedEntity("next")}
+              disabled={isPlaying}
+            >
+              Next
+            </button>
+            <button
+              type="button"
+              style={CONTROL_BUTTON_STYLE}
+              onClick={() => shellRef.current?.removeSelectedWaypoint()}
+              disabled={mode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying}
+            >
+              Remove Point
+            </button>
+          </div>
+          <div style={CONTROL_ROW_STYLE}>
+            <button
+              type="button"
+              style={CONTROL_BUTTON_STYLE}
+              onClick={onPlayControlPress}
+              disabled={isPortrait}
+            >
+              {isPlaying ? "Pause" : isPaused ? "Resume" : "Play All"}
+            </button>
+            <button
+              type="button"
+              style={CONTROL_BUTTON_STYLE}
+              onClick={() => shellRef.current?.reset()}
+            >
+              Reset
+            </button>
+          </div>
+          <div style={CONTROL_ROW_STYLE}>
+            <button
+              type="button"
+              style={playbackSpeed === "slow" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
+              onClick={() => setPlaybackSpeed("slow")}
+            >
+              Slow
+            </button>
+            <button
+              type="button"
+              style={playbackSpeed === "normal" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
+              onClick={() => setPlaybackSpeed("normal")}
+            >
+              Normal
+            </button>
+            <button
+              type="button"
+              style={playbackSpeed === "fast" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
+              onClick={() => setPlaybackSpeed("fast")}
+            >
+              Fast
+            </button>
+          </div>
         </div>
-        <div style={INFO_STYLE}>{selectedLabel}</div>
+        <div style={INFO_STYLE}>{selectedLabel} • {routeLabel}</div>
       </div>
     </OrientationGate>
   );
