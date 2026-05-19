@@ -1,9 +1,13 @@
-import { Container } from "pixi.js";
+import { Container, Graphics } from "pixi.js";
 
 import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
 import type { WorldViewportMapper } from "../coordinates/viewport";
 import {
   createPremiumPlayerToken,
+  PREMIUM_TOKEN_DRAG_SCALE,
+  PREMIUM_TOKEN_DRAG_SHADOW_ALPHA,
+  PREMIUM_TOKEN_IDLE_SCALE,
+  PREMIUM_TOKEN_IDLE_SHADOW_ALPHA,
   type PremiumPlayerTokenColor,
 } from "./createPremiumPlayerToken";
 import type { MovementBoardToken } from "../shell/types";
@@ -11,6 +15,8 @@ import type { MovementBoardToken } from "../shell/types";
 type TokenVisual = {
   token: MovementBoardToken;
   node: Container;
+  shadow: Graphics;
+  selectionRing: Graphics;
 };
 
 type CreateTokenLayerOptions = {
@@ -23,7 +29,10 @@ export type TokenLayer = {
   setTokens: (tokens: readonly MovementBoardToken[]) => void;
   getTokens: () => MovementBoardToken[];
   getTokenById: (tokenId: string) => MovementBoardToken | null;
+  getSelectedTokenId: () => string | null;
   setTokenPosition: (tokenId: string, position: NormalizedPoint) => MovementBoardToken | null;
+  setSelectedToken: (tokenId: string | null) => MovementBoardToken | null;
+  setDraggingToken: (tokenId: string | null) => void;
   setOnTokenPointerDown: (handler: ((tokenId: string, event: unknown) => void) | null) => void;
   syncToMapper: () => void;
   destroy: () => void;
@@ -31,6 +40,7 @@ export type TokenLayer = {
 
 const TOKEN_RADIUS = 4.1;
 const TOKEN_TOUCH_HIT_DIAMETER_PX = 48;
+const SELECTED_TOKEN_SCALE = 1.04;
 
 function sanitizeTokenColor(input: PremiumPlayerTokenColor | string): PremiumPlayerTokenColor {
   if (input === "blue" || input === "red" || input === "yellow" || input === "black") return input;
@@ -49,8 +59,11 @@ function sanitizeToken(token: MovementBoardToken): MovementBoardToken {
 }
 
 export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
+  options.layer.sortableChildren = true;
   const visuals = new Map<string, TokenVisual>();
   let onTokenPointerDown = options.onTokenPointerDown ?? null;
+  let selectedTokenId: string | null = null;
+  let draggingTokenId: string | null = null;
 
   const setTouchHitArea = (visual: TokenVisual, mapper: WorldViewportMapper) => {
     const touchRadiusInWorld = (TOKEN_TOUCH_HIT_DIAMETER_PX * 0.5) / Math.max(0.001, mapper.transform.scale);
@@ -70,9 +83,35 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
     setTouchHitArea(visual, mapper);
   };
 
+  const copyToken = (token: MovementBoardToken): MovementBoardToken => ({
+    ...token,
+    position: { ...token.position },
+  });
+
+  const applyInteractionVisuals = (visual: TokenVisual) => {
+    const isSelected = selectedTokenId != null && visual.token.id === selectedTokenId;
+    const isDragging = draggingTokenId != null && visual.token.id === draggingTokenId;
+    visual.selectionRing.visible = isSelected;
+    visual.selectionRing.alpha = isDragging ? 1 : 0.92;
+    visual.node.scale.set(
+      isDragging ? PREMIUM_TOKEN_DRAG_SCALE : isSelected ? SELECTED_TOKEN_SCALE : PREMIUM_TOKEN_IDLE_SCALE,
+      isDragging ? PREMIUM_TOKEN_DRAG_SCALE : isSelected ? SELECTED_TOKEN_SCALE : PREMIUM_TOKEN_IDLE_SCALE,
+    );
+    visual.shadow.alpha = isDragging ? PREMIUM_TOKEN_DRAG_SHADOW_ALPHA : PREMIUM_TOKEN_IDLE_SHADOW_ALPHA;
+    visual.node.zIndex = isDragging ? 3 : isSelected ? 2 : 1;
+    visual.node.cursor = visual.token.draggable === false ? "default" : isDragging ? "grabbing" : "grab";
+  };
+
+  const refreshInteractionVisuals = () => {
+    for (const visual of visuals.values()) {
+      applyInteractionVisuals(visual);
+    }
+    options.layer.sortChildren();
+  };
+
   const createVisual = (token: MovementBoardToken): TokenVisual => {
     const nextToken = sanitizeToken(token);
-    const { token: node } = createPremiumPlayerToken({
+    const { token: node, shadow } = createPremiumPlayerToken({
       color: nextToken.color,
       number: nextToken.number,
       label: nextToken.label,
@@ -80,6 +119,15 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
     });
     node.eventMode = "static";
     node.cursor = nextToken.draggable === false ? "default" : "grab";
+    const selectionRing = new Graphics();
+    selectionRing
+      .circle(0, 0, TOKEN_RADIUS * 1.28)
+      .stroke({ color: 0xe9fff2, width: 0.66, alpha: 0.96, alignment: 0.5 })
+      .circle(0, 0, TOKEN_RADIUS * 1.48)
+      .stroke({ color: 0x7cedb8, width: 0.3, alpha: 0.84, alignment: 0.5 });
+    selectionRing.visible = false;
+    selectionRing.eventMode = "none";
+    node.addChild(selectionRing);
     node.on("pointerdown", (event) => {
       onTokenPointerDown?.(nextToken.id, event);
     });
@@ -87,8 +135,11 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
     const visual: TokenVisual = {
       token: nextToken,
       node,
+      shadow,
+      selectionRing,
     };
     syncVisual(visual, options.mapperProvider());
+    applyInteractionVisuals(visual);
     return visual;
   };
 
@@ -109,6 +160,13 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
       const visual = createVisual(sanitized);
       visuals.set(sanitized.id, visual);
     }
+    if (selectedTokenId != null && !visuals.has(selectedTokenId)) {
+      selectedTokenId = null;
+    }
+    if (draggingTokenId != null && !visuals.has(draggingTokenId)) {
+      draggingTokenId = null;
+    }
+    refreshInteractionVisuals();
   };
 
   return {
@@ -119,8 +177,9 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
     getTokenById: (tokenId) => {
       const visual = visuals.get(tokenId);
       if (!visual) return null;
-      return { ...visual.token, position: { ...visual.token.position } };
+      return copyToken(visual.token);
     },
+    getSelectedTokenId: () => selectedTokenId,
     setTokenPosition: (tokenId, position) => {
       const visual = visuals.get(tokenId);
       if (!visual) return null;
@@ -129,7 +188,24 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
         position: clampNormalizedPoint(position),
       };
       syncVisual(visual, options.mapperProvider());
-      return { ...visual.token, position: { ...visual.token.position } };
+      return copyToken(visual.token);
+    },
+    setSelectedToken: (tokenId) => {
+      const nextSelected = tokenId && visuals.has(tokenId) ? tokenId : null;
+      if (selectedTokenId === nextSelected) {
+        if (!nextSelected) return null;
+        const selected = visuals.get(nextSelected);
+        return selected ? copyToken(selected.token) : null;
+      }
+      selectedTokenId = nextSelected;
+      refreshInteractionVisuals();
+      if (!selectedTokenId) return null;
+      const selected = visuals.get(selectedTokenId);
+      return selected ? copyToken(selected.token) : null;
+    },
+    setDraggingToken: (tokenId) => {
+      draggingTokenId = tokenId && visuals.has(tokenId) ? tokenId : null;
+      refreshInteractionVisuals();
     },
     setOnTokenPointerDown: (handler) => {
       onTokenPointerDown = handler;
@@ -139,6 +215,7 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
       for (const visual of visuals.values()) {
         syncVisual(visual, mapper);
       }
+      refreshInteractionVisuals();
     },
     destroy: () => {
       for (const visual of visuals.values()) {
