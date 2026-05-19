@@ -122,9 +122,9 @@ const CONTROL_PANEL_STYLE: CSSProperties = {
   left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
   bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
   zIndex: 21,
-  width: "min(430px, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
+  width: "min(560px, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
   display: "grid",
-  gap: "6px",
+  gap: "4px",
 };
 
 const PANEL_ROW_STYLE: CSSProperties = {
@@ -134,28 +134,32 @@ const PANEL_ROW_STYLE: CSSProperties = {
   backdropFilter: "blur(14px)",
   WebkitBackdropFilter: "blur(14px)",
   boxShadow: "0 10px 22px rgba(1, 7, 4, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.16)",
-  padding: "4px",
+  padding: "3px",
   display: "flex",
   alignItems: "center",
   justifyContent: "flex-start",
-  gap: "4px",
-  flexWrap: "wrap",
+  gap: "3px",
+  flexWrap: "nowrap",
+  overflowX: "auto",
+  scrollbarWidth: "none",
+  MsOverflowStyle: "none",
 };
 
 const MODE_BUTTON_STYLE: CSSProperties = {
-  minWidth: "56px",
-  height: "30px",
+  minWidth: "52px",
+  height: "28px",
   borderRadius: "999px",
   border: "1px solid rgba(212, 229, 222, 0.26)",
   background: "rgba(14, 30, 24, 0.66)",
   color: "rgba(230, 244, 236, 0.9)",
   fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "10px",
+  fontSize: "9px",
   fontWeight: 640,
-  letterSpacing: "0.2px",
+  letterSpacing: "0.12px",
   textTransform: "uppercase",
-  padding: "0 10px",
+  padding: "0 9px",
   cursor: "pointer",
+  whiteSpace: "nowrap",
   boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.14)",
 };
 
@@ -168,19 +172,20 @@ const MODE_BUTTON_ACTIVE_STYLE: CSSProperties = {
 };
 
 const TOOL_BUTTON_STYLE: CSSProperties = {
-  height: "34px",
-  minWidth: "84px",
+  height: "31px",
+  minWidth: "70px",
   borderRadius: "999px",
   border: "1px solid rgba(255, 255, 255, 0.25)",
   background: "rgba(20, 25, 30, 0.65)",
   color: "rgba(255, 255, 255, 0.95)",
   fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "10px",
+  fontSize: "9px",
   fontWeight: 600,
-  letterSpacing: "0.2px",
-  padding: "0 11px",
+  letterSpacing: "0.1px",
+  padding: "0 10px",
   cursor: "pointer",
   textTransform: "uppercase",
+  whiteSpace: "nowrap",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
   boxShadow: "0 6px 16px rgba(0, 0, 0, 0.28), inset 0 1px 2px rgba(255, 255, 255, 0.18)",
@@ -202,31 +207,21 @@ const TOOL_DISABLED_STYLE: CSSProperties = {
 
 const COLLAPSE_BUTTON_STYLE: CSSProperties = {
   ...TOOL_BUTTON_STYLE,
-  minWidth: "74px",
-};
-
-const ROUTE_INFO_STYLE: CSSProperties = {
-  color: "rgba(228, 243, 236, 0.84)",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "10px",
-  fontWeight: 600,
-  letterSpacing: "0.16px",
-  textTransform: "uppercase",
-  padding: "0 8px",
+  minWidth: "62px",
 };
 
 const PLAYBACK_SIDE_STYLE: CSSProperties = {
   position: "fixed",
   right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
-  bottom: "max(92px, calc(env(safe-area-inset-bottom, 0px) + 90px))",
+  bottom: "max(84px, calc(env(safe-area-inset-bottom, 0px) + 82px))",
   zIndex: 21,
   display: "grid",
-  gap: "6px",
+  gap: "4px",
 };
 
 const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
   ...TOOL_BUTTON_STYLE,
-  minWidth: "102px",
+  minWidth: "88px",
 };
 
 export default function MovementBoardCanvasShellPage() {
@@ -503,6 +498,9 @@ export default function MovementBoardCanvasShellPage() {
                   {item.label}
                 </button>
               ))}
+              <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
+                Hide
+              </button>
             </div>
 
             <div style={PANEL_ROW_STYLE}>
@@ -528,7 +526,7 @@ export default function MovementBoardCanvasShellPage() {
                     onClick={() => cycleSelectedEntity("prev")}
                     disabled={isPlaying}
                   >
-                    Prev Player
+                    Prev
                   </button>
                   <button
                     type="button"
@@ -536,7 +534,7 @@ export default function MovementBoardCanvasShellPage() {
                     onClick={() => cycleSelectedEntity("next")}
                     disabled={isPlaying}
                   >
-                    Next Player
+                    Next
                   </button>
                   <button
                     type="button"
@@ -544,7 +542,7 @@ export default function MovementBoardCanvasShellPage() {
                     onClick={() => shellRef.current?.removeSelectedWaypoint()}
                     disabled={removePointDisabled}
                   >
-                    Remove Point
+                    Remove
                   </button>
                   <button
                     type="button"
@@ -562,9 +560,6 @@ export default function MovementBoardCanvasShellPage() {
                   >
                     Play Routes
                   </button>
-                  <span style={ROUTE_INFO_STYLE}>
-                    {selectedToken ? `P${selectedToken.number}` : "No player"}
-                  </span>
                 </>
               ) : null}
 
@@ -622,16 +617,10 @@ export default function MovementBoardCanvasShellPage() {
                     Pass
                   </button>
                   <button type="button" style={TOOL_DISABLED_STYLE} disabled>
-                    Free Ball
+                    Free
                   </button>
                 </>
               ) : null}
-            </div>
-
-            <div style={PANEL_ROW_STYLE}>
-              <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
-                Collapse
-              </button>
             </div>
           </div>
         ) : null}
