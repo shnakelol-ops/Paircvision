@@ -1,6 +1,6 @@
 import { Application, Container } from "pixi.js";
 
-import { clampNormalizedPoint } from "../coordinates/normalization";
+import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
 import {
   createWorldViewport,
   type WorldViewportMapper,
@@ -10,13 +10,19 @@ import {
   getPointerIdFromEvent,
   getWorldPointFromEvent,
 } from "../input/pointer-controller";
+import { createBasicRouteFollowSession, type BasicRouteFollowSession } from "../movement/basic-route-follow";
 import { createPitchRoot } from "../pitch/create-pitch-root";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
+import { createRouteLayer } from "../routes/route-layer";
+import { normalizeRoutePoints, sampleRoutePoints } from "../routes/route-sampling";
 import { createTokenLayer } from "../tokens/token-layer";
 import type {
+  MovementBoardMode,
   MovementBoardToken,
   MovementCanvasShellHandle,
   MovementCanvasShellOptions,
+  MovementPlaybackSpeed,
+  MovementRouteEditState,
 } from "./types";
 
 const WORLD_SIZE = {
@@ -24,17 +30,54 @@ const WORLD_SIZE = {
   height: BOARD_PITCH_VIEWBOX.h,
 } as const;
 
+const ROUTE_MIN_POINT_DISTANCE = 0.9;
+const BASIC_ROUTE_FOLLOW_SPEED = 18;
+const PLAY_ALL_STAGGER_MS = 90;
+const POSITION_EPSILON = 0.0001;
+const ROUTE_HANDLE_TOUCH_RADIUS_PX = 30;
+const ROUTE_INSERT_TOUCH_DISTANCE_PX = 24;
+
+const PLAYBACK_SPEED_MULTIPLIER: Record<MovementPlaybackSpeed, number> = {
+  slow: 0.75,
+  normal: 1,
+  fast: 1.3,
+};
+
 type DragState = {
   tokenId: string;
   pointerId: number | null;
   offsetWorld: { x: number; y: number };
 } | null;
 
+type RouteDraftState = {
+  tokenId: string;
+  pointerId: number | null;
+  points: NormalizedPoint[];
+} | null;
+
+type RouteHandleDragState = {
+  tokenId: string;
+  waypointIndex: number;
+  pointerId: number | null;
+  offsetWorld: { x: number; y: number };
+} | null;
+
+type ActivePlaybackRun = {
+  tokenId: string;
+  targetPoint: { x: number; y: number };
+  session: BasicRouteFollowSession;
+  delayMs: number;
+};
+
 function clampWorldPoint(point: { x: number; y: number }): { x: number; y: number } {
   return {
     x: Math.max(0, Math.min(WORLD_SIZE.width, point.x)),
     y: Math.max(0, Math.min(WORLD_SIZE.height, point.y)),
   };
+}
+
+function clonePoint(point: NormalizedPoint): NormalizedPoint {
+  return { x: point.x, y: point.y };
 }
 
 function buildDefaultTokens(): MovementBoardToken[] {
@@ -65,6 +108,96 @@ function isWorldPointInsidePitch(worldPoint: { x: number; y: number }): boolean 
     worldPoint.x <= WORLD_SIZE.width &&
     worldPoint.y <= WORLD_SIZE.height
   );
+}
+
+function routesAreEqual(a: readonly NormalizedPoint[], b: readonly NormalizedPoint[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let index = 0; index < a.length; index += 1) {
+    const aPoint = a[index];
+    const bPoint = b[index];
+    if (!aPoint || !bPoint) return false;
+    if (Math.abs(aPoint.x - bPoint.x) > POSITION_EPSILON) return false;
+    if (Math.abs(aPoint.y - bPoint.y) > POSITION_EPSILON) return false;
+  }
+  return true;
+}
+
+function hslToHex(h: number, s: number, l: number): number {
+  const hue = ((h % 360) + 360) % 360;
+  const sat = Math.max(0, Math.min(100, s)) / 100;
+  const light = Math.max(0, Math.min(100, l)) / 100;
+  const c = (1 - Math.abs(2 * light - 1)) * sat;
+  const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
+  const m = light - c / 2;
+  let rPrime = 0;
+  let gPrime = 0;
+  let bPrime = 0;
+  if (hue < 60) {
+    rPrime = c;
+    gPrime = x;
+  } else if (hue < 120) {
+    rPrime = x;
+    gPrime = c;
+  } else if (hue < 180) {
+    gPrime = c;
+    bPrime = x;
+  } else if (hue < 240) {
+    gPrime = x;
+    bPrime = c;
+  } else if (hue < 300) {
+    rPrime = x;
+    bPrime = c;
+  } else {
+    rPrime = c;
+    bPrime = x;
+  }
+  const r = Math.round((rPrime + m) * 255);
+  const g = Math.round((gPrime + m) * 255);
+  const b = Math.round((bPrime + m) * 255);
+  return (r << 16) | (g << 8) | b;
+}
+
+function routeStyleForToken(token: MovementBoardToken | null) {
+  if (!token) {
+    return {
+      coreColor: 0xf59e0b,
+      highlightColor: 0xffd8a1,
+      shadowColor: 0x1c1205,
+    };
+  }
+  const hueBaseByColor: Record<MovementBoardToken["color"], number> = {
+    blue: 210,
+    red: 8,
+    yellow: 42,
+    black: 240,
+  };
+  const hueOffset = (token.number * 23) % 38;
+  const coreHue = hueBaseByColor[token.color] + hueOffset;
+  return {
+    coreColor: hslToHex(coreHue, 84, 54),
+    highlightColor: hslToHex(coreHue + 7, 88, 80),
+    shadowColor: hslToHex(coreHue - 8, 44, 14),
+  };
+}
+
+function projectPointToSegment(
+  point: { x: number; y: number },
+  segmentStart: { x: number; y: number },
+  segmentEnd: { x: number; y: number },
+): { projected: { x: number; y: number }; distanceSquared: number } {
+  const vx = segmentEnd.x - segmentStart.x;
+  const vy = segmentEnd.y - segmentStart.y;
+  const wx = point.x - segmentStart.x;
+  const wy = point.y - segmentStart.y;
+  const vv = vx * vx + vy * vy;
+  const t = vv <= POSITION_EPSILON ? 0 : Math.max(0, Math.min(1, (wx * vx + wy * vy) / vv));
+  const projected = {
+    x: segmentStart.x + vx * t,
+    y: segmentStart.y + vy * t,
+  };
+  const dx = point.x - projected.x;
+  const dy = point.y - projected.y;
+  return { projected, distanceSquared: dx * dx + dy * dy };
 }
 
 export async function createMovementCanvasShell(
@@ -99,6 +232,10 @@ export async function createMovementCanvasShell(
   pitchMount.root.zIndex = 0;
   world.addChild(pitchMount.root);
 
+  const routeLayerContainer = new Container();
+  routeLayerContainer.zIndex = 12;
+  world.addChild(routeLayerContainer);
+
   const tokenLayerContainer = new Container();
   tokenLayerContainer.zIndex = 20;
   world.addChild(tokenLayerContainer);
@@ -108,22 +245,129 @@ export async function createMovementCanvasShell(
     width: host.clientWidth || 800,
     height: host.clientHeight || 520,
   });
+
   let dragEnabled = options.dragEnabled ?? true;
-  let activeDrag: DragState = null;
+  let mode: MovementBoardMode = options.mode ?? "setup";
+  let playbackSpeed: MovementPlaybackSpeed = options.playbackSpeed ?? "normal";
   let selectedTokenId: string | null = null;
+  let selectedWaypointIndex: number | null = null;
+  let activeDrag: DragState = null;
+  let activeRouteHandleDrag: RouteHandleDragState = null;
+  let routeDraft: RouteDraftState = null;
+  let routeByTokenId = new Map<string, NormalizedPoint[]>();
+  let startPositionByTokenId = new Map<string, NormalizedPoint>();
+  let activePlaybackRuns = new Map<string, ActivePlaybackRun>();
+  let isPlaying = false;
+  let isPaused = false;
 
   const tokenLayer = createTokenLayer({
     layer: tokenLayerContainer,
     mapperProvider: () => mapper,
   });
+  const routeLayer = createRouteLayer({
+    layer: routeLayerContainer,
+    mapperProvider: () => mapper,
+    styleProvider: (playerId) => routeStyleForToken(tokenLayer.getTokenById(playerId)),
+  });
 
   tokenLayer.setTokens(options.initialTokens ?? buildDefaultTokens());
+  for (const token of tokenLayer.getTokens()) {
+    startPositionByTokenId.set(token.id, clonePoint(token.position));
+  }
+
+  const emitPlaybackState = () => {
+    options.onPlaybackStateChange?.({ isPlaying, isPaused });
+  };
+
+  const isPlaybackLocked = () => isPlaying || isPaused;
+
+  const emitRoutes = () => {
+    options.onRoutesChange?.(
+      Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
+        playerId,
+        points: points.map((point) => clonePoint(point)),
+      })),
+    );
+  };
+
+  const getRouteEditState = (): MovementRouteEditState => {
+    const selectedRoute = selectedTokenId ? routeByTokenId.get(selectedTokenId) : null;
+    const waypointCount = selectedRoute?.length ?? 0;
+    const canRemoveSelectedWaypoint =
+      selectedRoute != null &&
+      selectedWaypointIndex != null &&
+      selectedWaypointIndex > 0 &&
+      selectedWaypointIndex < selectedRoute.length &&
+      selectedRoute.length > 2;
+    return {
+      waypointCount,
+      selectedWaypointIndex,
+      canRemoveSelectedWaypoint,
+    };
+  };
+
+  const emitRouteEditState = () => {
+    options.onRouteEditStateChange?.(getRouteEditState());
+  };
+
+  const clearRouteDraft = () => {
+    routeDraft = null;
+    routeLayer.setDraftRoute(null);
+  };
+
+  const refreshRouteLayer = () => {
+    routeLayer.setRoutes(
+      Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
+        playerId,
+        points: points.map((point) => clonePoint(point)),
+      })),
+    );
+    routeLayer.setDraftRoute(
+      routeDraft
+        ? {
+            playerId: routeDraft.tokenId,
+            points: routeDraft.points.map((point) => clonePoint(point)),
+          }
+        : null,
+    );
+    routeLayer.setSelectedPlayer(selectedTokenId);
+    routeLayer.setSelectedWaypoint(selectedTokenId, selectedWaypointIndex);
+  };
+
+  const setSelectedWaypoint = (nextIndex: number | null) => {
+    selectedWaypointIndex = nextIndex;
+    routeLayer.setSelectedWaypoint(selectedTokenId, selectedWaypointIndex);
+    emitRouteEditState();
+  };
 
   const setSelectedToken = (tokenId: string | null): MovementBoardToken | null => {
     const selectedToken = tokenLayer.setSelectedToken(tokenId);
     selectedTokenId = tokenLayer.getSelectedTokenId();
-    options.onSelectedTokenChange?.(selectedToken ? { ...selectedToken, position: { ...selectedToken.position } } : null);
+    selectedWaypointIndex = null;
+    routeLayer.setSelectedPlayer(selectedTokenId);
+    routeLayer.setSelectedWaypoint(selectedTokenId, selectedWaypointIndex);
+    options.onSelectedTokenChange?.(
+      selectedToken ? { ...selectedToken, position: { ...selectedToken.position } } : null,
+    );
+    emitRouteEditState();
     return selectedToken;
+  };
+
+  const cancelPlaybackRuns = () => {
+    for (const run of activePlaybackRuns.values()) {
+      run.session.cancel();
+    }
+    activePlaybackRuns.clear();
+  };
+
+  const stopPlayback = (optionsForStop?: { keepPausedState?: boolean }) => {
+    cancelPlaybackRuns();
+    const keepPaused = optionsForStop?.keepPausedState ?? false;
+    isPlaying = false;
+    if (!keepPaused) {
+      isPaused = false;
+    }
+    emitPlaybackState();
   };
 
   const syncToHost = () => {
@@ -138,14 +382,287 @@ export async function createMovementCanvasShell(
     world.scale.set(mapper.transform.scale, mapper.transform.scale);
     world.position.set(mapper.transform.offsetX, mapper.transform.offsetY);
     tokenLayer.syncToMapper();
+    routeLayer.syncToMapper();
+  };
+
+  const releaseDrag = () => {
+    activeDrag = null;
+    tokenLayer.setDraggingToken(null);
+  };
+
+  const releaseRouteHandleDrag = () => {
+    activeRouteHandleDrag = null;
+  };
+
+  const canDragTokens = () =>
+    dragEnabled &&
+    mode === "setup" &&
+    !isPlaybackLocked();
+
+  const setModeState = (nextMode: MovementBoardMode) => {
+    mode = nextMode;
+    releaseDrag();
+    releaseRouteHandleDrag();
+    clearRouteDraft();
+    if (mode !== "route") {
+      setSelectedWaypoint(null);
+    }
+  };
+
+  const setRouteForToken = (
+    tokenId: string,
+    nextPoints: readonly NormalizedPoint[],
+    optionsForSet?: { normalize?: boolean },
+  ) => {
+    const shouldNormalize = optionsForSet?.normalize !== false;
+    const updatedPoints = shouldNormalize
+      ? normalizeRoutePoints(nextPoints, ROUTE_MIN_POINT_DISTANCE)
+      : nextPoints.map((point) => clampNormalizedPoint(point));
+    if (updatedPoints.length < 2) {
+      routeByTokenId.delete(tokenId);
+      if (selectedTokenId === tokenId) {
+        setSelectedWaypoint(null);
+      }
+      emitRoutes();
+      refreshRouteLayer();
+      return;
+    }
+
+    routeByTokenId.set(tokenId, updatedPoints.map((point) => clonePoint(point)));
+    if (selectedTokenId === tokenId && selectedWaypointIndex != null) {
+      if (selectedWaypointIndex >= updatedPoints.length) {
+        selectedWaypointIndex = updatedPoints.length - 1;
+      }
+    }
+    emitRoutes();
+    refreshRouteLayer();
+    emitRouteEditState();
+  };
+
+  const appendRouteDraftPoint = (point: NormalizedPoint) => {
+    if (!routeDraft) return;
+    const previous = routeDraft.points[routeDraft.points.length - 1];
+    if (previous && Math.hypot(previous.x - point.x, previous.y - point.y) < ROUTE_MIN_POINT_DISTANCE) {
+      return;
+    }
+    routeDraft = {
+      ...routeDraft,
+      points: [...routeDraft.points, clonePoint(point)],
+    };
+    routeLayer.setDraftRoute({
+      playerId: routeDraft.tokenId,
+      points: routeDraft.points.map((entry) => clonePoint(entry)),
+    });
+  };
+
+  const finalizeRouteDraft = (event: unknown) => {
+    if (!routeDraft) return;
+    const pointerId = getPointerIdFromEvent(event);
+    if (routeDraft.pointerId != null && pointerId != null && pointerId !== routeDraft.pointerId) return;
+
+    const pointerWorld = getWorldPointFromEvent(event, app.stage, mapper);
+    if (pointerWorld && isWorldPointInsidePitch(pointerWorld)) {
+      appendRouteDraftPoint(clampNormalizedPoint(mapper.worldToNormalized(pointerWorld)));
+    }
+
+    const nextRoute = normalizeRoutePoints(routeDraft.points, ROUTE_MIN_POINT_DISTANCE);
+    if (nextRoute.length >= 2) {
+      const previousRoute = routeByTokenId.get(routeDraft.tokenId) ?? [];
+      if (!routesAreEqual(previousRoute, nextRoute)) {
+        setRouteForToken(routeDraft.tokenId, nextRoute);
+      }
+      setSelectedWaypoint(nextRoute.length - 1);
+    }
+    clearRouteDraft();
+    refreshRouteLayer();
+  };
+
+  const findEditableWaypointIndexAtWorldPoint = (
+    tokenId: string,
+    worldPoint: { x: number; y: number },
+  ): number | null => {
+    const route = routeByTokenId.get(tokenId);
+    if (!route || route.length < 2) return null;
+    const hitRadiusWorld = ROUTE_HANDLE_TOUCH_RADIUS_PX / Math.max(0.001, mapper.transform.scale);
+    const maxDistanceSquared = hitRadiusWorld * hitRadiusWorld;
+    let closestIndex: number | null = null;
+    let closestDistanceSquared = maxDistanceSquared;
+    for (let index = 1; index < route.length; index += 1) {
+      const point = route[index];
+      if (!point) continue;
+      const worldWaypoint = mapper.normalizedToWorld(point);
+      const dx = worldPoint.x - worldWaypoint.x;
+      const dy = worldPoint.y - worldWaypoint.y;
+      const distanceSquared = dx * dx + dy * dy;
+      if (distanceSquared > closestDistanceSquared) continue;
+      closestIndex = index;
+      closestDistanceSquared = distanceSquared;
+    }
+    return closestIndex;
+  };
+
+  const findInsertionCandidateOnRoute = (
+    tokenId: string,
+    worldPoint: { x: number; y: number },
+  ): { insertIndex: number; point: NormalizedPoint } | null => {
+    const route = routeByTokenId.get(tokenId);
+    if (!route || route.length < 2) return null;
+    const thresholdWorld = ROUTE_INSERT_TOUCH_DISTANCE_PX / Math.max(0.001, mapper.transform.scale);
+    const thresholdSquared = thresholdWorld * thresholdWorld;
+    let bestCandidate:
+      | {
+          insertIndex: number;
+          projectedWorld: { x: number; y: number };
+          distanceSquared: number;
+        }
+      | null = null;
+
+    for (let index = 0; index < route.length - 1; index += 1) {
+      const start = route[index];
+      const end = route[index + 1];
+      if (!start || !end) continue;
+      const projected = projectPointToSegment(
+        worldPoint,
+        mapper.normalizedToWorld(start),
+        mapper.normalizedToWorld(end),
+      );
+      if (projected.distanceSquared > thresholdSquared) continue;
+      if (bestCandidate && projected.distanceSquared >= bestCandidate.distanceSquared) continue;
+      bestCandidate = {
+        insertIndex: index + 1,
+        projectedWorld: projected.projected,
+        distanceSquared: projected.distanceSquared,
+      };
+    }
+
+    if (!bestCandidate) return null;
+    return {
+      insertIndex: bestCandidate.insertIndex,
+      point: clampNormalizedPoint(mapper.worldToNormalized(bestCandidate.projectedWorld)),
+    };
+  };
+
+  const buildPlaybackRuns = (): Map<string, ActivePlaybackRun> => {
+    const allTokens = tokenLayer.getTokens();
+    const runs = new Map<string, ActivePlaybackRun>();
+    let playAllIndex = 0;
+
+    for (const token of allTokens) {
+      const start = startPositionByTokenId.get(token.id) ?? token.position;
+      const route = routeByTokenId.get(token.id);
+      let playbackPath: NormalizedPoint[] = [];
+
+      if (route && route.length >= 2) {
+        playbackPath = [clonePoint(start), ...route.slice(1).map((point) => clonePoint(point))];
+      } else if (
+        Math.abs(token.position.x - start.x) > POSITION_EPSILON ||
+        Math.abs(token.position.y - start.y) > POSITION_EPSILON
+      ) {
+        playbackPath = [clonePoint(start), clonePoint(token.position)];
+      }
+      const sampled = sampleRoutePoints(playbackPath);
+      if (sampled.length < 2) continue;
+
+      tokenLayer.setTokenPosition(token.id, start);
+      const targetPoint = clonePoint(start);
+      const session = createBasicRouteFollowSession({
+        target: targetPoint,
+        route: sampled,
+        speed: BASIC_ROUTE_FOLLOW_SPEED,
+      });
+      if (!session.isActive()) continue;
+      runs.set(token.id, {
+        tokenId: token.id,
+        targetPoint,
+        session,
+        delayMs: playAllIndex * PLAY_ALL_STAGGER_MS,
+      });
+      playAllIndex += 1;
+    }
+    return runs;
+  };
+
+  const startPlayback = () => {
+    if (isPlaying) return;
+    if (isPaused && activePlaybackRuns.size > 0) {
+      isPaused = false;
+      isPlaying = true;
+      emitPlaybackState();
+      return;
+    }
+
+    releaseDrag();
+    releaseRouteHandleDrag();
+    clearRouteDraft();
+    isPaused = false;
+    const nextRuns = buildPlaybackRuns();
+    if (nextRuns.size <= 0) {
+      isPlaying = false;
+      emitPlaybackState();
+      return;
+    }
+    activePlaybackRuns = nextRuns;
+    isPlaying = true;
+    emitPlaybackState();
+  };
+
+  const pausePlayback = () => {
+    if (!isPlaying) return;
+    isPlaying = false;
+    isPaused = true;
+    emitPlaybackState();
+  };
+
+  const reset = () => {
+    stopPlayback();
+    clearRouteDraft();
+    releaseDrag();
+    releaseRouteHandleDrag();
+    for (const token of tokenLayer.getTokens()) {
+      const start = startPositionByTokenId.get(token.id);
+      if (!start) continue;
+      const movedToken = tokenLayer.setTokenPosition(token.id, start);
+      if (movedToken) {
+        options.onTokenMove?.(movedToken);
+      }
+    }
+  };
+
+  const stepPlayback = (deltaMs: number) => {
+    if (!isPlaying || activePlaybackRuns.size <= 0) return;
+    const multiplier = PLAYBACK_SPEED_MULTIPLIER[playbackSpeed];
+    const completedTokenIds: string[] = [];
+
+    for (const run of activePlaybackRuns.values()) {
+      if (run.delayMs > 0) {
+        run.delayMs = Math.max(0, run.delayMs - deltaMs);
+        continue;
+      }
+      run.session.step(deltaMs * multiplier);
+      const movedToken = tokenLayer.setTokenPosition(run.tokenId, clampNormalizedPoint(run.targetPoint));
+      if (movedToken) {
+        options.onTokenMove?.(movedToken);
+      }
+      if (!run.session.isActive()) {
+        completedTokenIds.push(run.tokenId);
+      }
+    }
+
+    for (const tokenId of completedTokenIds) {
+      activePlaybackRuns.delete(tokenId);
+    }
+    if (activePlaybackRuns.size <= 0) {
+      stopPlayback();
+    }
   };
 
   tokenLayer.setOnTokenPointerDown((tokenId, event) => {
     (event as { stopPropagation?: () => void }).stopPropagation?.();
     setSelectedToken(tokenId);
-    if (!dragEnabled) return;
+    if (!canDragTokens()) return;
     const token = tokenLayer.getTokenById(tokenId);
     if (!token || token.draggable === false) return;
+
     const pointerId = getPointerIdFromEvent(event);
     const pointerWorld = getWorldPointFromEvent(event, app.stage, mapper);
     if (!pointerWorld) return;
@@ -161,7 +678,7 @@ export async function createMovementCanvasShell(
     tokenLayer.setDraggingToken(tokenId);
   });
 
-  const handleStagePointerMove = (event: unknown) => {
+  const handleDragMove = (event: unknown) => {
     if (!activeDrag) return;
     const pointerId = getPointerIdFromEvent(event);
     if (activeDrag.pointerId != null && pointerId != null && pointerId !== activeDrag.pointerId) return;
@@ -172,48 +689,283 @@ export async function createMovementCanvasShell(
       x: pointerWorld.x + activeDrag.offsetWorld.x,
       y: pointerWorld.y + activeDrag.offsetWorld.y,
     });
-    const nextNormalized = clampNormalizedPoint(mapper.worldToNormalized(nextWorld));
-    const movedToken = tokenLayer.setTokenPosition(activeDrag.tokenId, nextNormalized);
-    if (movedToken) {
-      options.onTokenMove?.(movedToken);
+    const nextPosition = clampNormalizedPoint(mapper.worldToNormalized(nextWorld));
+    const movedToken = tokenLayer.setTokenPosition(activeDrag.tokenId, nextPosition);
+    if (!movedToken) return;
+
+    startPositionByTokenId.set(movedToken.id, clonePoint(movedToken.position));
+    const route = routeByTokenId.get(movedToken.id);
+    if (route && route.length > 0) {
+      const anchoredRoute = route.map((point, index) =>
+        index === 0 ? clonePoint(movedToken.position) : clonePoint(point),
+      );
+      setRouteForToken(movedToken.id, anchoredRoute);
+    }
+    options.onTokenMove?.(movedToken);
+  };
+
+  const handleRouteHandleDragMove = (event: unknown) => {
+    if (!activeRouteHandleDrag) return;
+    const pointerId = getPointerIdFromEvent(event);
+    if (
+      activeRouteHandleDrag.pointerId != null &&
+      pointerId != null &&
+      pointerId !== activeRouteHandleDrag.pointerId
+    ) {
+      return;
+    }
+    const pointerWorld = getWorldPointFromEvent(event, app.stage, mapper);
+    if (!pointerWorld) return;
+    const route = routeByTokenId.get(activeRouteHandleDrag.tokenId);
+    if (!route) {
+      releaseRouteHandleDrag();
+      return;
+    }
+    if (activeRouteHandleDrag.waypointIndex <= 0 || activeRouteHandleDrag.waypointIndex >= route.length) {
+      releaseRouteHandleDrag();
+      return;
+    }
+
+    const nextWorld = clampWorldPoint({
+      x: pointerWorld.x + activeRouteHandleDrag.offsetWorld.x,
+      y: pointerWorld.y + activeRouteHandleDrag.offsetWorld.y,
+    });
+    const nextPoint = clampNormalizedPoint(mapper.worldToNormalized(nextWorld));
+    const nextRoute = route.map((point) => clonePoint(point));
+    nextRoute[activeRouteHandleDrag.waypointIndex] = nextPoint;
+    setRouteForToken(activeRouteHandleDrag.tokenId, nextRoute, { normalize: false });
+    setSelectedWaypoint(activeRouteHandleDrag.waypointIndex);
+  };
+
+  const finalizeRouteHandleDrag = () => {
+    if (!activeRouteHandleDrag) return;
+    const route = routeByTokenId.get(activeRouteHandleDrag.tokenId);
+    if (route) {
+      setRouteForToken(activeRouteHandleDrag.tokenId, route, { normalize: true });
+    }
+    releaseRouteHandleDrag();
+  };
+
+  const handleRouteDraftMove = (event: unknown) => {
+    if (!routeDraft) return;
+    const pointerId = getPointerIdFromEvent(event);
+    if (routeDraft.pointerId != null && pointerId != null && pointerId !== routeDraft.pointerId) return;
+    const pointerWorld = getWorldPointFromEvent(event, app.stage, mapper);
+    if (!pointerWorld || !isWorldPointInsidePitch(pointerWorld)) return;
+    appendRouteDraftPoint(clampNormalizedPoint(mapper.worldToNormalized(pointerWorld)));
+  };
+
+  const handleStagePointerMove = (event: unknown) => {
+    if (activeDrag) {
+      handleDragMove(event);
+      return;
+    }
+    if (activeRouteHandleDrag) {
+      handleRouteHandleDragMove(event);
+      return;
+    }
+    if (routeDraft) {
+      handleRouteDraftMove(event);
     }
   };
 
-  const releaseDrag = () => {
-    activeDrag = null;
-    tokenLayer.setDraggingToken(null);
+  const handlePointerRelease = (event: unknown) => {
+    if (activeDrag) {
+      releaseDrag();
+      return;
+    }
+    if (activeRouteHandleDrag) {
+      const pointerId = getPointerIdFromEvent(event);
+      if (
+        activeRouteHandleDrag.pointerId != null &&
+        pointerId != null &&
+        pointerId !== activeRouteHandleDrag.pointerId
+      ) {
+        return;
+      }
+      finalizeRouteHandleDrag();
+      return;
+    }
+    if (routeDraft) {
+      finalizeRouteDraft(event);
+    }
   };
 
   app.stage.on("globalpointermove", handleStagePointerMove);
-  app.stage.on("pointerup", releaseDrag);
-  app.stage.on("pointerupoutside", releaseDrag);
-  app.stage.on("pointercancel", releaseDrag);
+  app.stage.on("pointerup", handlePointerRelease);
+  app.stage.on("pointerupoutside", handlePointerRelease);
+  app.stage.on("pointercancel", handlePointerRelease);
   app.stage.on("pointerdown", (event) => {
     const worldPoint = getWorldPointFromEvent(event, app.stage, mapper);
     if (!worldPoint || !isWorldPointInsidePitch(worldPoint)) return;
-    setSelectedToken(null);
+
+    if (mode === "route" && !isPlaybackLocked() && selectedTokenId) {
+      const route = routeByTokenId.get(selectedTokenId);
+      const editableWaypointIndex = findEditableWaypointIndexAtWorldPoint(selectedTokenId, worldPoint);
+      if (editableWaypointIndex != null && route) {
+        const waypoint = route[editableWaypointIndex];
+        if (waypoint) {
+          const pointerId = getPointerIdFromEvent(event);
+          const waypointWorld = mapper.normalizedToWorld(waypoint);
+          activeRouteHandleDrag = {
+            tokenId: selectedTokenId,
+            waypointIndex: editableWaypointIndex,
+            pointerId,
+            offsetWorld: {
+              x: waypointWorld.x - worldPoint.x,
+              y: waypointWorld.y - worldPoint.y,
+            },
+          };
+          setSelectedWaypoint(editableWaypointIndex);
+          clearRouteDraft();
+          return;
+        }
+      }
+
+      const insertionCandidate = findInsertionCandidateOnRoute(selectedTokenId, worldPoint);
+      if (insertionCandidate && route) {
+        const nextRoute = [
+          ...route.slice(0, insertionCandidate.insertIndex).map((point) => clonePoint(point)),
+          insertionCandidate.point,
+          ...route.slice(insertionCandidate.insertIndex).map((point) => clonePoint(point)),
+        ];
+        setRouteForToken(selectedTokenId, nextRoute);
+        setSelectedWaypoint(insertionCandidate.insertIndex);
+        const pointerId = getPointerIdFromEvent(event);
+        activeRouteHandleDrag = {
+          tokenId: selectedTokenId,
+          waypointIndex: insertionCandidate.insertIndex,
+          pointerId,
+          offsetWorld: { x: 0, y: 0 },
+        };
+        clearRouteDraft();
+        return;
+      }
+
+      const selectedToken = tokenLayer.getTokenById(selectedTokenId);
+      if (!selectedToken) {
+        setSelectedToken(null);
+        return;
+      }
+      const pointerId = getPointerIdFromEvent(event);
+      routeDraft = {
+        tokenId: selectedToken.id,
+        pointerId,
+        points: [clonePoint(selectedToken.position)],
+      };
+      setSelectedWaypoint(null);
+      appendRouteDraftPoint(clampNormalizedPoint(mapper.worldToNormalized(worldPoint)));
+      return;
+    }
+
+    if (mode === "setup" && !isPlaybackLocked()) {
+      setSelectedToken(null);
+    }
     const normalized = getNormalizedPointFromEvent(event, app.stage, mapper);
     if (!normalized) return;
     options.onPitchTap?.({ point: clampNormalizedPoint(normalized) });
   });
+
+  const tick = () => {
+    stepPlayback(app.ticker.deltaMS);
+  };
+  app.ticker.add(tick);
 
   const resizeObserver = new ResizeObserver(() => {
     syncToHost();
   });
   resizeObserver.observe(host);
   syncToHost();
+  refreshRouteLayer();
+  emitPlaybackState();
+  emitRouteEditState();
 
   return {
     getTokens: () => tokenLayer.getTokens(),
     getSelectedToken: () => (selectedTokenId ? tokenLayer.getTokenById(selectedTokenId) : null),
+    getMode: () => mode,
+    getRoutes: () =>
+      Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
+        playerId,
+        points: points.map((point) => clonePoint(point)),
+      })),
+    getPlaybackSpeed: () => playbackSpeed,
+    getPlaybackState: () => ({ isPlaying, isPaused }),
+    getRouteEditState: () => getRouteEditState(),
     setTokens: (tokens) => {
+      stopPlayback();
       tokenLayer.setTokens(tokens);
       tokenLayer.syncToMapper();
-      if (selectedTokenId) {
-        setSelectedToken(selectedTokenId);
+
+      const availableIds = new Set(tokenLayer.getTokens().map((token) => token.id));
+      for (const tokenId of Array.from(routeByTokenId.keys())) {
+        if (!availableIds.has(tokenId)) routeByTokenId.delete(tokenId);
       }
+      for (const tokenId of Array.from(startPositionByTokenId.keys())) {
+        if (!availableIds.has(tokenId)) startPositionByTokenId.delete(tokenId);
+      }
+      for (const token of tokenLayer.getTokens()) {
+        if (!startPositionByTokenId.has(token.id)) {
+          startPositionByTokenId.set(token.id, clonePoint(token.position));
+        }
+      }
+      if (selectedTokenId && !availableIds.has(selectedTokenId)) {
+        setSelectedToken(null);
+      }
+      emitRoutes();
+      refreshRouteLayer();
+      emitRouteEditState();
     },
     setSelectedToken: (tokenId) => setSelectedToken(tokenId),
+    setMode: (nextMode) => {
+      setModeState(nextMode);
+    },
+    setPlaybackSpeed: (speed) => {
+      playbackSpeed = speed;
+    },
+    removeSelectedWaypoint: () => {
+      if (!selectedTokenId) return false;
+      const route = routeByTokenId.get(selectedTokenId);
+      if (!route || selectedWaypointIndex == null) return false;
+      if (selectedWaypointIndex <= 0 || selectedWaypointIndex >= route.length) return false;
+      if (route.length <= 2) return false;
+      const nextRoute = route
+        .filter((_, index) => index !== selectedWaypointIndex)
+        .map((point) => clonePoint(point));
+      setRouteForToken(selectedTokenId, nextRoute);
+      setSelectedWaypoint(null);
+      return true;
+    },
+    clearSelectedRoute: () => {
+      if (!selectedTokenId) return false;
+      const hasRoute = routeByTokenId.has(selectedTokenId);
+      if (!hasRoute) return false;
+      routeByTokenId.delete(selectedTokenId);
+      if (routeDraft?.tokenId === selectedTokenId) {
+        clearRouteDraft();
+      }
+      setSelectedWaypoint(null);
+      emitRoutes();
+      refreshRouteLayer();
+      emitRouteEditState();
+      return true;
+    },
+    playAll: () => {
+      startPlayback();
+    },
+    pausePlayback: () => {
+      pausePlayback();
+    },
+    resumePlayback: () => {
+      if (isPaused && activePlaybackRuns.size > 0) {
+        isPaused = false;
+        isPlaying = true;
+        emitPlaybackState();
+      }
+    },
+    reset: () => {
+      reset();
+    },
     setDragEnabled: (enabled) => {
       dragEnabled = enabled;
       if (!enabled) {
@@ -224,8 +976,11 @@ export async function createMovementCanvasShell(
       syncToHost();
     },
     destroy: () => {
+      stopPlayback();
       resizeObserver.disconnect();
       tokenLayer.destroy();
+      routeLayer.destroy();
+      app.ticker.remove(tick);
       app.stage.removeAllListeners();
       pitchMount.dispose();
       try {
