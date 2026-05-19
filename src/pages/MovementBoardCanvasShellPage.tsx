@@ -122,9 +122,10 @@ const CONTROL_PANEL_STYLE: CSSProperties = {
   left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
   bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
   zIndex: 21,
-  width: "min(560px, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
+  width: "max-content",
+  maxWidth: "min(520px, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
   display: "grid",
-  gap: "4px",
+  gap: "3px",
 };
 
 const PANEL_ROW_STYLE: CSSProperties = {
@@ -134,11 +135,11 @@ const PANEL_ROW_STYLE: CSSProperties = {
   backdropFilter: "blur(14px)",
   WebkitBackdropFilter: "blur(14px)",
   boxShadow: "0 10px 22px rgba(1, 7, 4, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.16)",
-  padding: "3px",
+  padding: "2px",
   display: "flex",
   alignItems: "center",
   justifyContent: "flex-start",
-  gap: "3px",
+  gap: "2px",
   flexWrap: "nowrap",
   overflowX: "auto",
   scrollbarWidth: "none",
@@ -173,7 +174,7 @@ const MODE_BUTTON_ACTIVE_STYLE: CSSProperties = {
 
 const TOOL_BUTTON_STYLE: CSSProperties = {
   height: "31px",
-  minWidth: "70px",
+  minWidth: "68px",
   borderRadius: "999px",
   border: "1px solid rgba(255, 255, 255, 0.25)",
   background: "rgba(20, 25, 30, 0.65)",
@@ -216,12 +217,14 @@ const PLAYBACK_SIDE_STYLE: CSSProperties = {
   bottom: "max(84px, calc(env(safe-area-inset-bottom, 0px) + 82px))",
   zIndex: 21,
   display: "grid",
-  gap: "4px",
+  gap: "3px",
 };
 
 const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
   ...TOOL_BUTTON_STYLE,
-  minWidth: "88px",
+  minWidth: "76px",
+  height: "29px",
+  padding: "0 8px",
 };
 
 export default function MovementBoardCanvasShellPage() {
@@ -247,7 +250,6 @@ export default function MovementBoardCanvasShellPage() {
   const [menuMode, setMenuMode] = useState<MovementMenuMode>("move");
   const [playbackSpeed, setPlaybackSpeed] = useState<MovementPlaybackSpeed>("normal");
   const [selectedToken, setSelectedToken] = useState<MovementBoardToken | null>(null);
-  const [tokenCount, setTokenCount] = useState(0);
   const [routeCount, setRouteCount] = useState(0);
   const [routeEditState, setRouteEditState] = useState<MovementRouteEditState>({
     waypointCount: 0,
@@ -296,7 +298,6 @@ export default function MovementBoardCanvasShellPage() {
           return;
         }
         shellRef.current = shell;
-        setTokenCount(shell.getTokens().length);
         setMenuMode(toMenuMode(shell.getMode()));
         setPlaybackSpeed(shell.getPlaybackSpeed());
         setRouteCount(shell.getRoutes().length);
@@ -364,11 +365,15 @@ export default function MovementBoardCanvasShellPage() {
     }
   }, [isPlaying]);
 
-  const selectedLabel = selectedToken
-    ? `P${selectedToken.number} • X ${selectedToken.position.x.toFixed(1)} • Y ${selectedToken.position.y.toFixed(1)}`
-    : `${menuMode.toUpperCase()} • ${tokenCount} players`;
-
-  const routeLabel = `Routes ${routeCount} • Bends ${Math.max(0, routeEditState.waypointCount - 2)}`;
+  const modeLabelByMenu: Record<MovementMenuMode, string> = {
+    move: "Move Mode",
+    route: "Route Mode",
+    ball: "Ball Mode",
+    play: "Play Mode",
+  };
+  const coachInfoLabel = selectedToken
+    ? `Selected P${selectedToken.number} • Routes ${routeCount}`
+    : `${modeLabelByMenu[menuMode]} • Routes ${routeCount}`;
 
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
@@ -472,7 +477,7 @@ export default function MovementBoardCanvasShellPage() {
         <button type="button" style={BACK_BUTTON_STYLE} onClick={goBack}>
           Back
         </button>
-        <div style={INFO_PILL_STYLE}>{selectedLabel} • {routeLabel}</div>
+        <div style={INFO_PILL_STYLE}>{coachInfoLabel}</div>
 
         <div style={PV_BADGE_STYLE}>PV</div>
         <button type="button" style={CTRL_BUBBLE_STYLE} onClick={() => setIsControlsOpen((prev) => !prev)}>
@@ -633,7 +638,7 @@ export default function MovementBoardCanvasShellPage() {
               onClick={onPlayResumePress}
               disabled={isPlaying}
             >
-              {isPaused ? "Resume" : "Play / Resume"}
+              {isPaused ? "Resume" : "Play/Resume"}
             </button>
             <button
               type="button"
