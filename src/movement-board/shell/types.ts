@@ -62,6 +62,7 @@ export type MovementCanvasShellHandle = {
   setMode: (mode: MovementBoardMode) => void;
   setPlaybackSpeed: (speed: MovementPlaybackSpeed) => void;
   removeSelectedWaypoint: () => boolean;
+  clearSelectedRoute: () => boolean;
   playAll: () => void;
   pausePlayback: () => void;
   resumePlayback: () => void;
