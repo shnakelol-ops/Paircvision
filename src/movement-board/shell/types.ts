@@ -21,11 +21,14 @@ export type MovementCanvasShellOptions = {
   initialTokens?: MovementBoardToken[];
   onPitchTap?: (payload: MovementCanvasTapPayload) => void;
   onTokenMove?: (token: MovementBoardToken) => void;
+  onSelectedTokenChange?: (token: MovementBoardToken | null) => void;
 };
 
 export type MovementCanvasShellHandle = {
   getTokens: () => MovementBoardToken[];
+  getSelectedToken: () => MovementBoardToken | null;
   setTokens: (tokens: readonly MovementBoardToken[]) => void;
+  setSelectedToken: (tokenId: string | null) => MovementBoardToken | null;
   setDragEnabled: (enabled: boolean) => void;
   reflow: () => void;
   destroy: () => void;

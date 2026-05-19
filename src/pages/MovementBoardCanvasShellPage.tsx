@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
-import OrientationGate from "../components/OrientationGate";
+import OrientationGate, { usePortraitOrientation } from "../components/OrientationGate";
 import {
   createMovementCanvasShell,
 } from "../movement-board/shell/createMovementCanvasShell";
-import type { MovementCanvasShellHandle } from "../movement-board/shell/types";
+import type {
+  MovementBoardToken,
+  MovementCanvasShellHandle,
+} from "../movement-board/shell/types";
 
 const ROOT_STYLE: CSSProperties = {
   position: "fixed",
@@ -22,6 +25,37 @@ const BOARD_STYLE: CSSProperties = {
   overflow: "hidden",
   boxShadow: "0 20px 44px rgba(0, 0, 0, 0.38)",
   background: "#12241e",
+};
+
+const MODE_PILL_STYLE: CSSProperties = {
+  position: "fixed",
+  top: "10px",
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 12,
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "8px",
+  color: "#ecfff4",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "12px",
+  fontWeight: 700,
+  letterSpacing: "0.03em",
+  textTransform: "uppercase",
+  padding: "7px 11px",
+  borderRadius: "999px",
+  border: "1px solid rgba(214, 245, 225, 0.32)",
+  background: "rgba(8, 20, 15, 0.74)",
+  backdropFilter: "blur(8px)",
+  WebkitBackdropFilter: "blur(8px)",
+};
+
+const MODE_DOT_STYLE: CSSProperties = {
+  width: "8px",
+  height: "8px",
+  borderRadius: "999px",
+  background: "#71f2a2",
+  boxShadow: "0 0 0 3px rgba(113, 242, 162, 0.2)",
 };
 
 const INFO_STYLE: CSSProperties = {
@@ -44,10 +78,22 @@ const INFO_STYLE: CSSProperties = {
 };
 
 export default function MovementBoardCanvasShellPage() {
+  const isPortrait = usePortraitOrientation();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const shellRef = useRef<MovementCanvasShellHandle | null>(null);
-  const [lastTap, setLastTap] = useState<{ x: number; y: number } | null>(null);
+  const [selectedToken, setSelectedToken] = useState<MovementBoardToken | null>(null);
   const [tokenCount, setTokenCount] = useState(0);
+  const [tokens, setTokens] = useState<MovementBoardToken[]>([]);
+
+  const upsertToken = (nextToken: MovementBoardToken) => {
+    setTokens((previous) => {
+      const index = previous.findIndex((token) => token.id === nextToken.id);
+      if (index < 0) return [...previous, nextToken];
+      const updated = previous.slice();
+      updated[index] = nextToken;
+      return updated;
+    });
+  };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -62,14 +108,26 @@ export default function MovementBoardCanvasShellPage() {
 
     const mountShell = () => {
       void createMovementCanvasShell(host, {
-        onPitchTap: ({ point }) => setLastTap({ x: point.x, y: point.y }),
+        dragEnabled: !isPortrait,
+        onTokenMove: (token) => {
+          upsertToken(token);
+          setSelectedToken((currentSelected) =>
+            currentSelected?.id === token.id ? token : currentSelected,
+          );
+        },
+        onSelectedTokenChange: (token) => {
+          setSelectedToken(token);
+        },
       }).then((shell) => {
         if (disposed) {
           shell.destroy();
           return;
         }
         shellRef.current = shell;
-        setTokenCount(shell.getTokens().length);
+        const initialTokens = shell.getTokens();
+        setTokenCount(initialTokens.length);
+        setTokens(initialTokens);
+        shell.setDragEnabled(!isPortrait);
         destroyShell = shell.destroy;
       });
     };
@@ -109,15 +167,29 @@ export default function MovementBoardCanvasShellPage() {
     };
   }, []);
 
-  const tapLabel = lastTap
-    ? `Tap ${lastTap.x.toFixed(1)} / ${lastTap.y.toFixed(1)} • ${tokenCount} tokens`
-    : `Drag tokens to set shape • ${tokenCount} tokens`;
+  useEffect(() => {
+    shellRef.current?.setDragEnabled(!isPortrait);
+  }, [isPortrait]);
+
+  useEffect(() => {
+    setTokenCount(tokens.length);
+  }, [tokens]);
+
+  const selectedLabel = selectedToken
+    ? `P${selectedToken.number} • X ${selectedToken.position.x.toFixed(1)} • Y ${selectedToken.position.y.toFixed(1)}`
+    : isPortrait
+      ? `Rotate to landscape • ${tokenCount} players`
+      : `Tap a player • ${tokenCount} players`;
 
   return (
-    <OrientationGate modeLabel="Movement Board Canvas Shell">
+    <OrientationGate modeLabel="Movement Board Setup Mode">
       <div style={ROOT_STYLE}>
         <div ref={hostRef} style={BOARD_STYLE} />
-        <div style={INFO_STYLE}>{tapLabel}</div>
+        <div style={MODE_PILL_STYLE} role="status" aria-live="polite">
+          <span style={MODE_DOT_STYLE} aria-hidden />
+          Setup Mode
+        </div>
+        <div style={INFO_STYLE}>{selectedLabel}</div>
       </div>
     </OrientationGate>
   );

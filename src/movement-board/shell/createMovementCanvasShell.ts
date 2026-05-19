@@ -110,6 +110,7 @@ export async function createMovementCanvasShell(
   });
   let dragEnabled = options.dragEnabled ?? true;
   let activeDrag: DragState = null;
+  let selectedTokenId: string | null = null;
 
   const tokenLayer = createTokenLayer({
     layer: tokenLayerContainer,
@@ -117,6 +118,13 @@ export async function createMovementCanvasShell(
   });
 
   tokenLayer.setTokens(options.initialTokens ?? buildDefaultTokens());
+
+  const setSelectedToken = (tokenId: string | null): MovementBoardToken | null => {
+    const selectedToken = tokenLayer.setSelectedToken(tokenId);
+    selectedTokenId = tokenLayer.getSelectedTokenId();
+    options.onSelectedTokenChange?.(selectedToken ? { ...selectedToken, position: { ...selectedToken.position } } : null);
+    return selectedToken;
+  };
 
   const syncToHost = () => {
     const width = host.clientWidth;
@@ -134,6 +142,7 @@ export async function createMovementCanvasShell(
 
   tokenLayer.setOnTokenPointerDown((tokenId, event) => {
     (event as { stopPropagation?: () => void }).stopPropagation?.();
+    setSelectedToken(tokenId);
     if (!dragEnabled) return;
     const token = tokenLayer.getTokenById(tokenId);
     if (!token || token.draggable === false) return;
@@ -149,6 +158,7 @@ export async function createMovementCanvasShell(
         y: tokenWorld.y - pointerWorld.y,
       },
     };
+    tokenLayer.setDraggingToken(tokenId);
   });
 
   const handleStagePointerMove = (event: unknown) => {
@@ -171,14 +181,17 @@ export async function createMovementCanvasShell(
 
   const releaseDrag = () => {
     activeDrag = null;
+    tokenLayer.setDraggingToken(null);
   };
 
-  app.stage.on("pointermove", handleStagePointerMove);
+  app.stage.on("globalpointermove", handleStagePointerMove);
   app.stage.on("pointerup", releaseDrag);
   app.stage.on("pointerupoutside", releaseDrag);
+  app.stage.on("pointercancel", releaseDrag);
   app.stage.on("pointerdown", (event) => {
     const worldPoint = getWorldPointFromEvent(event, app.stage, mapper);
     if (!worldPoint || !isWorldPointInsidePitch(worldPoint)) return;
+    setSelectedToken(null);
     const normalized = getNormalizedPointFromEvent(event, app.stage, mapper);
     if (!normalized) return;
     options.onPitchTap?.({ point: clampNormalizedPoint(normalized) });
@@ -192,13 +205,20 @@ export async function createMovementCanvasShell(
 
   return {
     getTokens: () => tokenLayer.getTokens(),
+    getSelectedToken: () => (selectedTokenId ? tokenLayer.getTokenById(selectedTokenId) : null),
     setTokens: (tokens) => {
       tokenLayer.setTokens(tokens);
       tokenLayer.syncToMapper();
+      if (selectedTokenId) {
+        setSelectedToken(selectedTokenId);
+      }
     },
+    setSelectedToken: (tokenId) => setSelectedToken(tokenId),
     setDragEnabled: (enabled) => {
       dragEnabled = enabled;
-      if (!enabled) releaseDrag();
+      if (!enabled) {
+        releaseDrag();
+      }
     },
     reflow: () => {
       syncToHost();
