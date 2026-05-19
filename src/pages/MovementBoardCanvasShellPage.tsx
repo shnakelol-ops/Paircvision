@@ -49,6 +49,29 @@ const INFO_PILL_STYLE: CSSProperties = {
   WebkitBackdropFilter: "blur(10px)",
 };
 
+const BACK_BUTTON_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
+  top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))",
+  zIndex: 13,
+  height: "34px",
+  minWidth: "58px",
+  borderRadius: "999px",
+  border: "1px solid rgba(214, 245, 225, 0.3)",
+  background: "rgba(8, 20, 15, 0.74)",
+  color: "#e6f4eb",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 700,
+  letterSpacing: "0.03em",
+  textTransform: "uppercase",
+  padding: "0 12px",
+  cursor: "pointer",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  boxShadow: "0 8px 18px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+};
+
 const MODE_PILL_STYLE: CSSProperties = {
   position: "fixed",
   left: "50%",
@@ -113,6 +136,39 @@ const DOCK_CARD_STYLE: CSSProperties = {
   padding: "8px",
 };
 
+const DOCK_HEADER_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "8px",
+  marginBottom: "6px",
+};
+
+const DOCK_TITLE_STYLE: CSSProperties = {
+  color: "rgba(228, 243, 236, 0.84)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 700,
+  letterSpacing: "0.16px",
+  textTransform: "uppercase",
+};
+
+const COLLAPSE_BUTTON_STYLE: CSSProperties = {
+  height: "28px",
+  minWidth: "82px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255, 255, 255, 0.25)",
+  background: "rgba(20, 25, 30, 0.64)",
+  color: "rgba(255, 255, 255, 0.95)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 700,
+  letterSpacing: "0.2px",
+  textTransform: "uppercase",
+  padding: "0 10px",
+  cursor: "pointer",
+};
+
 const DOCK_ROW_STYLE: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -163,6 +219,20 @@ const ROUTE_INFO_STYLE: CSSProperties = {
   letterSpacing: "0.16px",
 };
 
+const COLLAPSED_BAR_STYLE: CSSProperties = {
+  ...DOCK_CARD_STYLE,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "6px",
+  flexWrap: "wrap",
+};
+
+const COLLAPSED_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  minWidth: "90px",
+};
+
 export default function MovementBoardCanvasShellPage() {
   type MovementMenuMode = "move" | "route" | "ball" | "play";
 
@@ -195,6 +265,7 @@ export default function MovementBoardCanvasShellPage() {
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isDockCollapsed, setIsDockCollapsed] = useState(false);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -296,6 +367,12 @@ export default function MovementBoardCanvasShellPage() {
     shellRef.current?.setPlaybackSpeed(playbackSpeed);
   }, [playbackSpeed]);
 
+  useEffect(() => {
+    if (isPlaying) {
+      setIsDockCollapsed(true);
+    }
+  }, [isPlaying]);
+
   const selectedLabel = selectedToken
     ? `P${selectedToken.number} • X ${selectedToken.position.x.toFixed(1)} • Y ${selectedToken.position.y.toFixed(1)}`
     : `${menuMode.toUpperCase()} • ${tokenCount} players`;
@@ -305,6 +382,7 @@ export default function MovementBoardCanvasShellPage() {
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
     if (!shell) return;
+    setIsDockCollapsed(true);
     shell.playAll();
     setMenuMode("play");
   };
@@ -312,6 +390,7 @@ export default function MovementBoardCanvasShellPage() {
   const onPlayAllPress = () => {
     const shell = shellRef.current;
     if (!shell) return;
+    setIsDockCollapsed(true);
     shell.playAll();
   };
 
@@ -350,6 +429,24 @@ export default function MovementBoardCanvasShellPage() {
     shellRef.current?.clearSelectedRoute();
   };
 
+  const goBack = () => {
+    if (typeof window === "undefined") return;
+    const referrer = document.referrer;
+    const hasSameOriginReferrer = (() => {
+      if (!referrer) return false;
+      try {
+        return new URL(referrer).origin === window.location.origin;
+      } catch {
+        return false;
+      }
+    })();
+    if (hasSameOriginReferrer || window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    window.location.assign("/vision-board");
+  };
+
   const modeIsPlaybackLocked = isPlaying || isPaused;
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
   const removePointDisabled = menuMode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying;
@@ -361,6 +458,9 @@ export default function MovementBoardCanvasShellPage() {
     <OrientationGate modeLabel="Movement Board Playback Core">
       <div style={ROOT_STYLE}>
         <div ref={hostRef} style={BOARD_STYLE} />
+        <button type="button" style={BACK_BUTTON_STYLE} onClick={goBack}>
+          Back
+        </button>
         <div style={INFO_PILL_STYLE}>{selectedLabel} • {routeLabel}</div>
 
         <div style={MODE_PILL_STYLE} role="group" aria-label="Movement mode">
@@ -383,87 +483,153 @@ export default function MovementBoardCanvasShellPage() {
         </div>
 
         <div style={DOCK_STYLE}>
-          <div style={DOCK_CARD_STYLE}>
-            {menuMode === "move" ? (
-              <div style={DOCK_ROW_STYLE}>
-                <button type="button" style={BUTTON_DISABLED_STYLE} disabled>
-                  Set Start
-                </button>
-                <button type="button" style={BUTTON_DISABLED_STYLE} disabled>
-                  Add Phase
-                </button>
-                <button type="button" style={CONTROL_BUTTON_STYLE} onClick={resetBoard}>
-                  Reset
+          {!isDockCollapsed ? (
+            <div style={DOCK_CARD_STYLE}>
+              <div style={DOCK_HEADER_STYLE}>
+                <div style={DOCK_TITLE_STYLE}>Movement Controls</div>
+                <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsDockCollapsed(true)}>
+                  Collapse
                 </button>
               </div>
-            ) : null}
+              {menuMode === "move" ? (
+                <div style={DOCK_ROW_STYLE}>
+                  <button type="button" style={BUTTON_DISABLED_STYLE} disabled>
+                    Set Start
+                  </button>
+                  <button type="button" style={BUTTON_DISABLED_STYLE} disabled>
+                    Add Phase
+                  </button>
+                  <button type="button" style={CONTROL_BUTTON_STYLE} onClick={resetBoard}>
+                    Reset
+                  </button>
+                </div>
+              ) : null}
 
-            {menuMode === "route" ? (
-              <>
-                <div style={DOCK_ROW_STYLE}>
-                  <button
-                    type="button"
-                    style={isPlaying ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
-                    onClick={() => cycleSelectedEntity("prev")}
-                    disabled={isPlaying}
-                  >
-                    Prev Player
-                  </button>
-                  <button
-                    type="button"
-                    style={isPlaying ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
-                    onClick={() => cycleSelectedEntity("next")}
-                    disabled={isPlaying}
-                  >
-                    Next Player
-                  </button>
-                  <button
-                    type="button"
-                    style={removePointDisabled ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
-                    onClick={() => shellRef.current?.removeSelectedWaypoint()}
-                    disabled={removePointDisabled}
-                  >
-                    Remove Point
-                  </button>
-                </div>
-                <div style={DOCK_ROW_STYLE}>
-                  <button
-                    type="button"
-                    style={clearRouteDisabled ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
-                    onClick={clearRoute}
-                    disabled={clearRouteDisabled}
-                  >
-                    Clear Route
-                  </button>
-                  <button
-                    type="button"
-                    style={playRoutesDisabled ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
-                    onClick={onPlayRoutesPress}
-                    disabled={playRoutesDisabled}
-                  >
-                    Play Routes
-                  </button>
-                </div>
-                <div style={ROUTE_INFO_STYLE}>
-                  {selectedToken ? `Selected P${selectedToken.number}` : "No player selected"}
-                </div>
-              </>
-            ) : null}
+              {menuMode === "route" ? (
+                <>
+                  <div style={DOCK_ROW_STYLE}>
+                    <button
+                      type="button"
+                      style={isPlaying ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
+                      onClick={() => cycleSelectedEntity("prev")}
+                      disabled={isPlaying}
+                    >
+                      Prev Player
+                    </button>
+                    <button
+                      type="button"
+                      style={isPlaying ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
+                      onClick={() => cycleSelectedEntity("next")}
+                      disabled={isPlaying}
+                    >
+                      Next Player
+                    </button>
+                    <button
+                      type="button"
+                      style={removePointDisabled ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
+                      onClick={() => shellRef.current?.removeSelectedWaypoint()}
+                      disabled={removePointDisabled}
+                    >
+                      Remove Point
+                    </button>
+                  </div>
+                  <div style={DOCK_ROW_STYLE}>
+                    <button
+                      type="button"
+                      style={clearRouteDisabled ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
+                      onClick={clearRoute}
+                      disabled={clearRouteDisabled}
+                    >
+                      Clear Route
+                    </button>
+                    <button
+                      type="button"
+                      style={playRoutesDisabled ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
+                      onClick={onPlayRoutesPress}
+                      disabled={playRoutesDisabled}
+                    >
+                      Play Routes
+                    </button>
+                  </div>
+                  <div style={ROUTE_INFO_STYLE}>
+                    {selectedToken ? `Selected P${selectedToken.number}` : "No player selected"}
+                  </div>
+                </>
+              ) : null}
 
-            {menuMode === "play" ? (
-              <>
+              {menuMode === "play" ? (
+                <>
+                  <div style={DOCK_ROW_STYLE}>
+                    <button
+                      type="button"
+                      style={playAllDisabled ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
+                      onClick={onPlayAllPress}
+                      disabled={playAllDisabled}
+                    >
+                      Play All
+                    </button>
+                    <button
+                      type="button"
+                      style={pauseResumeDisabled ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
+                      onClick={onPauseResumePress}
+                      disabled={pauseResumeDisabled}
+                    >
+                      {isPlaying ? "Pause" : "Resume"}
+                    </button>
+                    <button type="button" style={CONTROL_BUTTON_STYLE} onClick={resetBoard}>
+                      Reset
+                    </button>
+                  </div>
+                  <div style={DOCK_ROW_STYLE}>
+                    <button
+                      type="button"
+                      style={playbackSpeed === "slow" ? BUTTON_ACTIVE_STYLE : CONTROL_BUTTON_STYLE}
+                      onClick={() => setPlaybackSpeed("slow")}
+                    >
+                      Slow
+                    </button>
+                    <button
+                      type="button"
+                      style={playbackSpeed === "normal" ? BUTTON_ACTIVE_STYLE : CONTROL_BUTTON_STYLE}
+                      onClick={() => setPlaybackSpeed("normal")}
+                    >
+                      Normal
+                    </button>
+                    <button
+                      type="button"
+                      style={playbackSpeed === "fast" ? BUTTON_ACTIVE_STYLE : CONTROL_BUTTON_STYLE}
+                      onClick={() => setPlaybackSpeed("fast")}
+                    >
+                      Fast
+                    </button>
+                  </div>
+                </>
+              ) : null}
+
+              {menuMode === "ball" ? (
                 <div style={DOCK_ROW_STYLE}>
-                  <button
-                    type="button"
-                    style={playAllDisabled ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
-                    onClick={onPlayAllPress}
-                    disabled={playAllDisabled}
-                  >
-                    Play All
+                  <button type="button" style={BUTTON_DISABLED_STYLE} disabled>
+                    Attach
                   </button>
+                  <button type="button" style={BUTTON_DISABLED_STYLE} disabled>
+                    Pass
+                  </button>
+                  <button type="button" style={BUTTON_DISABLED_STYLE} disabled>
+                    Free Ball
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div style={COLLAPSED_BAR_STYLE}>
+              <button type="button" style={COLLAPSED_BUTTON_STYLE} onClick={() => setIsDockCollapsed(false)}>
+                Controls
+              </button>
+              {isPlaying || isPaused ? (
+                <>
                   <button
                     type="button"
-                    style={pauseResumeDisabled ? BUTTON_DISABLED_STYLE : CONTROL_BUTTON_STYLE}
+                    style={CONTROL_BUTTON_STYLE}
                     onClick={onPauseResumePress}
                     disabled={pauseResumeDisabled}
                   >
@@ -472,47 +638,10 @@ export default function MovementBoardCanvasShellPage() {
                   <button type="button" style={CONTROL_BUTTON_STYLE} onClick={resetBoard}>
                     Reset
                   </button>
-                </div>
-                <div style={DOCK_ROW_STYLE}>
-                  <button
-                    type="button"
-                    style={playbackSpeed === "slow" ? BUTTON_ACTIVE_STYLE : CONTROL_BUTTON_STYLE}
-                    onClick={() => setPlaybackSpeed("slow")}
-                  >
-                    Slow
-                  </button>
-                  <button
-                    type="button"
-                    style={playbackSpeed === "normal" ? BUTTON_ACTIVE_STYLE : CONTROL_BUTTON_STYLE}
-                    onClick={() => setPlaybackSpeed("normal")}
-                  >
-                    Normal
-                  </button>
-                  <button
-                    type="button"
-                    style={playbackSpeed === "fast" ? BUTTON_ACTIVE_STYLE : CONTROL_BUTTON_STYLE}
-                    onClick={() => setPlaybackSpeed("fast")}
-                  >
-                    Fast
-                  </button>
-                </div>
-              </>
-            ) : null}
-
-            {menuMode === "ball" ? (
-              <div style={DOCK_ROW_STYLE}>
-                <button type="button" style={BUTTON_DISABLED_STYLE} disabled>
-                  Attach
-                </button>
-                <button type="button" style={BUTTON_DISABLED_STYLE} disabled>
-                  Pass
-                </button>
-                <button type="button" style={BUTTON_DISABLED_STYLE} disabled>
-                  Free Ball
-                </button>
-              </div>
-            ) : null}
-          </div>
+                </>
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
     </OrientationGate>
