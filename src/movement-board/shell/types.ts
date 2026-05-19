@@ -29,6 +29,12 @@ export type MovementPlaybackState = {
   isPaused: boolean;
 };
 
+export type MovementRouteEditState = {
+  waypointCount: number;
+  selectedWaypointIndex: number | null;
+  canRemoveSelectedWaypoint: boolean;
+};
+
 export type MovementCanvasShellOptions = {
   sport?: PitchSport;
   mode?: MovementBoardMode;
@@ -40,6 +46,7 @@ export type MovementCanvasShellOptions = {
   onSelectedTokenChange?: (token: MovementBoardToken | null) => void;
   onRoutesChange?: (routes: MovementBoardRoute[]) => void;
   onPlaybackStateChange?: (state: MovementPlaybackState) => void;
+  onRouteEditStateChange?: (state: MovementRouteEditState) => void;
 };
 
 export type MovementCanvasShellHandle = {
@@ -49,10 +56,12 @@ export type MovementCanvasShellHandle = {
   getRoutes: () => MovementBoardRoute[];
   getPlaybackSpeed: () => MovementPlaybackSpeed;
   getPlaybackState: () => MovementPlaybackState;
+  getRouteEditState: () => MovementRouteEditState;
   setTokens: (tokens: readonly MovementBoardToken[]) => void;
   setSelectedToken: (tokenId: string | null) => MovementBoardToken | null;
   setMode: (mode: MovementBoardMode) => void;
   setPlaybackSpeed: (speed: MovementPlaybackSpeed) => void;
+  removeSelectedWaypoint: () => boolean;
   playAll: () => void;
   pausePlayback: () => void;
   resumePlayback: () => void;
