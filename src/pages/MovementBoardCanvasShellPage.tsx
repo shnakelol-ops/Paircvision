@@ -142,7 +142,7 @@ const PANEL_ROW_STYLE: CSSProperties = {
   flexWrap: "nowrap",
   overflowX: "auto",
   scrollbarWidth: "none",
-  MsOverflowStyle: "none",
+  msOverflowStyle: "none",
 };
 
 const MODE_BUTTON_STYLE: CSSProperties = {
