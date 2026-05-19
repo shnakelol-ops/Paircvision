@@ -6,6 +6,7 @@ import {
 } from "../movement-board/shell/createMovementCanvasShell";
 import type {
   MovementBoardMode,
+  MovementRouteEditState,
   MovementBoardToken,
   MovementCanvasShellHandle,
   MovementPlaybackSpeed,
@@ -89,6 +90,17 @@ const INFO_STYLE: CSSProperties = {
   WebkitBackdropFilter: "blur(8px)",
 };
 
+const ENTITY_LABEL_STYLE: CSSProperties = {
+  color: "#e8fff2",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "11px",
+  fontWeight: 700,
+  letterSpacing: "0.03em",
+  textTransform: "uppercase",
+  minWidth: "84px",
+  textAlign: "center",
+};
+
 export default function MovementBoardCanvasShellPage() {
   const isPortrait = usePortraitOrientation();
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -98,7 +110,11 @@ export default function MovementBoardCanvasShellPage() {
   const [selectedToken, setSelectedToken] = useState<MovementBoardToken | null>(null);
   const [tokenCount, setTokenCount] = useState(0);
   const [routeCount, setRouteCount] = useState(0);
-  const [selectedRouteBendCount, setSelectedRouteBendCount] = useState(0);
+  const [routeEditState, setRouteEditState] = useState<MovementRouteEditState>({
+    waypointCount: 0,
+    selectedWaypointIndex: null,
+    canRemoveSelectedWaypoint: false,
+  });
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -113,18 +129,6 @@ export default function MovementBoardCanvasShellPage() {
     let resizeFrameA = 0;
     let resizeFrameB = 0;
 
-    const updateSelectedRouteHint = (tokenId: string | null, routeSource?: ReturnType<MovementCanvasShellHandle["getRoutes"]>) => {
-      const shell = shellRef.current;
-      if (!shell || !tokenId) {
-        setSelectedRouteBendCount(0);
-        return;
-      }
-      const routes = routeSource ?? shell.getRoutes();
-      const selectedRoute = routes.find((route) => route.playerId === tokenId);
-      const bends = Math.max(0, (selectedRoute?.points.length ?? 0) - 2);
-      setSelectedRouteBendCount(bends);
-    };
-
     const mountShell = () => {
       void createMovementCanvasShell(host, {
         mode,
@@ -135,15 +139,16 @@ export default function MovementBoardCanvasShellPage() {
         },
         onSelectedTokenChange: (token) => {
           setSelectedToken(token);
-          updateSelectedRouteHint(token?.id ?? null);
         },
         onRoutesChange: (routes) => {
           setRouteCount(routes.length);
-          updateSelectedRouteHint(shellRef.current?.getSelectedToken()?.id ?? null, routes);
         },
         onPlaybackStateChange: (state) => {
           setIsPlaying(state.isPlaying);
           setIsPaused(state.isPaused);
+        },
+        onRouteEditStateChange: (state) => {
+          setRouteEditState(state);
         },
       }).then((shell) => {
         if (disposed) {
@@ -157,7 +162,7 @@ export default function MovementBoardCanvasShellPage() {
         setRouteCount(shell.getRoutes().length);
         const selected = shell.getSelectedToken();
         setSelectedToken(selected);
-        updateSelectedRouteHint(selected?.id ?? null, shell.getRoutes());
+        setRouteEditState(shell.getRouteEditState());
         const playbackState = shell.getPlaybackState();
         setIsPlaying(playbackState.isPlaying);
         setIsPaused(playbackState.isPaused);
@@ -217,7 +222,7 @@ export default function MovementBoardCanvasShellPage() {
     ? `P${selectedToken.number} • X ${selectedToken.position.x.toFixed(1)} • Y ${selectedToken.position.y.toFixed(1)}`
     : `${mode.toUpperCase()} • ${tokenCount} players`;
 
-  const routeLabel = `Routes ${routeCount} • Selected bends ${selectedRouteBendCount}`;
+  const routeLabel = `Routes ${routeCount} • Selected bends ${Math.max(0, routeEditState.waypointCount - 2)}`;
 
   const onPlayControlPress = () => {
     const shell = shellRef.current;
@@ -231,6 +236,21 @@ export default function MovementBoardCanvasShellPage() {
       return;
     }
     shell.playAll();
+  };
+
+  const cycleSelectedEntity = (direction: "prev" | "next") => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const tokens = shell.getTokens();
+    if (tokens.length <= 0) return;
+    const selectedId = shell.getSelectedToken()?.id ?? null;
+    const selectedIndex = tokens.findIndex((token) => token.id === selectedId);
+    const baseIndex = selectedIndex >= 0 ? selectedIndex : 0;
+    const delta = direction === "next" ? 1 : -1;
+    const nextIndex = (baseIndex + delta + tokens.length) % tokens.length;
+    const nextToken = tokens[nextIndex];
+    if (!nextToken) return;
+    shell.setSelectedToken(nextToken.id);
   };
 
   return (
@@ -261,6 +281,35 @@ export default function MovementBoardCanvasShellPage() {
               onClick={() => setMode("play")}
             >
               Play
+            </button>
+          </div>
+          <div style={CONTROL_ROW_STYLE}>
+            <button
+              type="button"
+              style={CONTROL_BUTTON_STYLE}
+              onClick={() => cycleSelectedEntity("prev")}
+              disabled={isPlaying}
+            >
+              Prev
+            </button>
+            <span style={ENTITY_LABEL_STYLE}>
+              {selectedToken ? `P${selectedToken.number}` : "No player"}
+            </span>
+            <button
+              type="button"
+              style={CONTROL_BUTTON_STYLE}
+              onClick={() => cycleSelectedEntity("next")}
+              disabled={isPlaying}
+            >
+              Next
+            </button>
+            <button
+              type="button"
+              style={CONTROL_BUTTON_STYLE}
+              onClick={() => shellRef.current?.removeSelectedWaypoint()}
+              disabled={mode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying}
+            >
+              Remove Point
             </button>
           </div>
           <div style={CONTROL_ROW_STYLE}>

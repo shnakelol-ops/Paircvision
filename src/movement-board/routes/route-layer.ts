@@ -26,10 +26,14 @@ export type RouteLayer = {
   setRoutes: (routes: readonly MovementBoardRoute[]) => void;
   setDraftRoute: (draft: RouteDraft) => void;
   setSelectedPlayer: (playerId: string | null) => void;
+  setSelectedWaypoint: (routePlayerId: string | null, waypointIndex: number | null) => void;
   syncToMapper: () => void;
   clear: () => void;
   destroy: () => void;
 };
+
+const HANDLE_VISUAL_RADIUS_PX = 11;
+const FLOW_DOT_SPACING = 6;
 
 function cloneRoute(route: MovementBoardRoute): MovementBoardRoute {
   return {
@@ -50,6 +54,12 @@ export function createRouteLayer(options: CreateRouteLayerOptions): RouteLayer {
   let routes: MovementBoardRoute[] = [];
   let draftRoute: RouteDraft = null;
   let selectedPlayerId: string | null = null;
+  let selectedWaypoint:
+    | {
+        playerId: string;
+        index: number | null;
+      }
+    | null = null;
 
   const strokePath = (
     worldPath: Array<{ x: number; y: number }>,
@@ -85,24 +95,34 @@ export function createRouteLayer(options: CreateRouteLayerOptions): RouteLayer {
     const style = options.styleProvider(route.playerId);
     const isDraft = optionsForRoute.isDraft;
     const alphaBoost = isDraft ? 0.75 : 1;
-    const widthBoost = isSelected ? 1.12 : 1;
-    const opacityScale = isSelected ? 1 : 0.76;
+    const widthBoost = isSelected ? 1.25 : 1;
+    const opacityScale = isSelected ? 1 : 0.62;
 
     strokePath(worldPath, {
       color: style.shadowColor,
-      width: 2.3 * widthBoost,
+      width: 2.8 * widthBoost,
       alpha: 0.32 * alphaBoost * opacityScale,
     });
     strokePath(worldPath, {
       color: style.coreColor,
-      width: 1.35 * widthBoost,
+      width: 1.7 * widthBoost,
       alpha: 0.95 * alphaBoost * opacityScale,
     });
     strokePath(worldPath, {
       color: style.highlightColor,
-      width: 0.58 * widthBoost,
+      width: 0.72 * widthBoost,
       alpha: 0.46 * alphaBoost * opacityScale,
     });
+
+    for (let index = FLOW_DOT_SPACING; index < worldPath.length; index += FLOW_DOT_SPACING) {
+      const point = worldPath[index];
+      if (!point) continue;
+      const flowAlpha = isSelected ? 0.22 : 0.12;
+      graphics.circle(point.x, point.y, isSelected ? 0.26 : 0.2).fill({
+        color: style.highlightColor,
+        alpha: flowAlpha,
+      });
+    }
 
     const start = worldPath[0];
     const end = worldPath[worldPath.length - 1];
@@ -115,6 +135,45 @@ export function createRouteLayer(options: CreateRouteLayerOptions): RouteLayer {
       color: style.coreColor,
       alpha: isSelected ? 0.9 : 0.72,
     });
+
+    if (!isSelected || isDraft) return;
+    const handleRadiusWorld = HANDLE_VISUAL_RADIUS_PX / Math.max(0.001, mapper.transform.scale);
+    for (let index = 0; index < route.points.length; index += 1) {
+      const point = route.points[index];
+      if (!point) continue;
+      const worldPoint = mapper.normalizedToWorld(point);
+      const isStart = index === 0;
+      const isSelectedWaypoint =
+        selectedWaypoint?.playerId === route.playerId &&
+        selectedWaypoint.index != null &&
+        selectedWaypoint.index === index;
+      const fillAlpha = isStart ? 0.28 : 0.88;
+      const fillColor = isStart ? style.shadowColor : style.coreColor;
+      graphics.circle(worldPoint.x, worldPoint.y, handleRadiusWorld * (isSelectedWaypoint ? 1.22 : 1)).fill({
+        color: fillColor,
+        alpha: fillAlpha,
+      });
+      graphics.circle(worldPoint.x, worldPoint.y, handleRadiusWorld * (isStart ? 0.56 : 0.62)).fill({
+        color: style.highlightColor,
+        alpha: isStart ? 0.55 : 0.84,
+      });
+      if (!isStart) {
+        graphics.circle(worldPoint.x, worldPoint.y, handleRadiusWorld * 1.18).stroke({
+          color: style.shadowColor,
+          width: handleRadiusWorld * 0.16,
+          alpha: 0.48,
+          alignment: 0.5,
+        });
+      }
+      if (isSelectedWaypoint) {
+        graphics.circle(worldPoint.x, worldPoint.y, handleRadiusWorld * 1.72).stroke({
+          color: style.highlightColor,
+          width: handleRadiusWorld * 0.22,
+          alpha: 0.92,
+          alignment: 0.5,
+        });
+      }
+    }
   };
 
   const render = () => {
@@ -145,12 +204,23 @@ export function createRouteLayer(options: CreateRouteLayerOptions): RouteLayer {
       selectedPlayerId = playerId;
       render();
     },
+    setSelectedWaypoint: (routePlayerId, waypointIndex) => {
+      selectedWaypoint =
+        routePlayerId == null
+          ? null
+          : {
+              playerId: routePlayerId,
+              index: waypointIndex,
+            };
+      render();
+    },
     syncToMapper: () => {
       render();
     },
     clear: () => {
       routes = [];
       draftRoute = null;
+      selectedWaypoint = null;
       graphics.clear();
     },
     destroy: () => {
