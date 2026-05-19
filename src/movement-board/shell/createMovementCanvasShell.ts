@@ -936,6 +936,20 @@ export async function createMovementCanvasShell(
       setSelectedWaypoint(null);
       return true;
     },
+    clearSelectedRoute: () => {
+      if (!selectedTokenId) return false;
+      const hasRoute = routeByTokenId.has(selectedTokenId);
+      if (!hasRoute) return false;
+      routeByTokenId.delete(selectedTokenId);
+      if (routeDraft?.tokenId === selectedTokenId) {
+        clearRouteDraft();
+      }
+      setSelectedWaypoint(null);
+      emitRoutes();
+      refreshRouteLayer();
+      emitRouteEditState();
+      return true;
+    },
     playAll: () => {
       startPlayback();
     },

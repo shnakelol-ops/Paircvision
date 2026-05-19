@@ -30,40 +30,114 @@ const BOARD_STYLE: CSSProperties = {
   background: "#12241e",
 };
 
-const HUD_STYLE: CSSProperties = {
+const MENU_TOGGLE_STYLE: CSSProperties = {
   position: "fixed",
-  top: "10px",
-  left: "50%",
-  transform: "translateX(-50%)",
-  zIndex: 14,
+  left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
+  bottom: "max(10px, calc(env(safe-area-inset-bottom, 0px) + 8px))",
+  zIndex: 21,
+  width: "44px",
+  height: "44px",
+  borderRadius: "999px",
+  border: "1px solid rgba(214, 245, 225, 0.38)",
+  background: "rgba(8, 20, 15, 0.82)",
+  color: "#e5fff0",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "18px",
+  fontWeight: 700,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  boxShadow: "0 8px 18px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+};
+
+const MENU_PANEL_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
+  bottom: "max(62px, calc(env(safe-area-inset-bottom, 0px) + 60px))",
+  zIndex: 20,
+  width: "min(320px, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
+  maxHeight: "min(76vh, 560px)",
+  overflowY: "auto",
+  borderRadius: "16px",
+  border: "1px solid rgba(214, 245, 225, 0.3)",
+  background: "rgba(8, 20, 15, 0.8)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  boxShadow: "0 14px 30px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+  padding: "10px",
+  display: "grid",
+  gap: "10px",
+};
+
+const MENU_HEADER_STYLE: CSSProperties = {
+  display: "grid",
+  gap: "4px",
+  padding: "4px 2px 6px",
+};
+
+const MENU_TITLE_STYLE: CSSProperties = {
+  color: "#eafff2",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "12px",
+  fontWeight: 800,
+  letterSpacing: "0.05em",
+  textTransform: "uppercase",
+};
+
+const MENU_SUBTITLE_STYLE: CSSProperties = {
+  color: "rgba(226, 249, 236, 0.86)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "11px",
+  fontWeight: 600,
+  letterSpacing: "0.01em",
+};
+
+const SECTION_STYLE: CSSProperties = {
+  borderRadius: "12px",
+  border: "1px solid rgba(214, 245, 225, 0.2)",
+  background: "rgba(12, 26, 19, 0.72)",
+  padding: "8px",
   display: "grid",
   gap: "8px",
 };
 
-const CONTROL_ROW_STYLE: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
+const SECTION_TITLE_STYLE: CSSProperties = {
+  color: "rgba(226, 249, 236, 0.9)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 800,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+};
+
+const BUTTON_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: "6px",
-  padding: "6px",
-  borderRadius: "999px",
-  border: "1px solid rgba(214, 245, 225, 0.32)",
-  background: "rgba(8, 20, 15, 0.74)",
-  backdropFilter: "blur(8px)",
-  WebkitBackdropFilter: "blur(8px)",
+};
+
+const MODE_GRID_STYLE: CSSProperties = {
+  ...BUTTON_GRID_STYLE,
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
 };
 
 const CONTROL_BUTTON_STYLE: CSSProperties = {
   border: "none",
-  borderRadius: "999px",
+  borderRadius: "10px",
   fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "11px",
+  fontSize: "10px",
   fontWeight: 700,
   letterSpacing: "0.02em",
   textTransform: "uppercase",
-  padding: "7px 10px",
+  padding: "8px 8px",
+  minHeight: "34px",
   color: "#e5fff0",
   background: "rgba(255, 255, 255, 0.1)",
+  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.08)",
+  cursor: "pointer",
 };
 
 const ACTIVE_BUTTON_STYLE: CSSProperties = {
@@ -71,34 +145,24 @@ const ACTIVE_BUTTON_STYLE: CSSProperties = {
   background: "rgba(113, 242, 162, 0.25)",
 };
 
-const INFO_STYLE: CSSProperties = {
-  position: "fixed",
-  left: "50%",
-  bottom: "14px",
-  transform: "translateX(-50%)",
-  zIndex: 10,
-  color: "#e6f4eb",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "13px",
-  fontWeight: 600,
-  letterSpacing: "0.01em",
-  padding: "8px 12px",
-  borderRadius: "10px",
-  border: "1px solid rgba(214, 245, 225, 0.24)",
-  background: "rgba(8, 20, 15, 0.74)",
-  backdropFilter: "blur(8px)",
-  WebkitBackdropFilter: "blur(8px)",
-};
-
 const ENTITY_LABEL_STYLE: CSSProperties = {
   color: "#e8fff2",
   fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "11px",
+  fontSize: "10px",
   fontWeight: 700,
   letterSpacing: "0.03em",
   textTransform: "uppercase",
-  minWidth: "84px",
+  minWidth: "68px",
   textAlign: "center",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const DISABLED_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  opacity: 0.44,
+  cursor: "not-allowed",
 };
 
 export default function MovementBoardCanvasShellPage() {
@@ -117,6 +181,7 @@ export default function MovementBoardCanvasShellPage() {
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(true);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -224,7 +289,13 @@ export default function MovementBoardCanvasShellPage() {
 
   const routeLabel = `Routes ${routeCount} • Selected bends ${Math.max(0, routeEditState.waypointCount - 2)}`;
 
-  const onPlayControlPress = () => {
+  const onPlayAllPress = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    shell.playAll();
+  };
+
+  const onPauseResumePress = () => {
     const shell = shellRef.current;
     if (!shell) return;
     if (isPlaying) {
@@ -233,9 +304,7 @@ export default function MovementBoardCanvasShellPage() {
     }
     if (isPaused) {
       shell.resumePlayback();
-      return;
     }
-    shell.playAll();
   };
 
   const cycleSelectedEntity = (direction: "prev" | "next") => {
@@ -253,107 +322,175 @@ export default function MovementBoardCanvasShellPage() {
     shell.setSelectedToken(nextToken.id);
   };
 
+  const onClearRoutePress = () => {
+    shellRef.current?.clearSelectedRoute();
+  };
+
   return (
     <OrientationGate modeLabel="Movement Board Playback Core">
       <div style={ROOT_STYLE}>
         <div ref={hostRef} style={BOARD_STYLE} />
-        <div style={HUD_STYLE}>
-          <div style={CONTROL_ROW_STYLE}>
-            <button
-              type="button"
-              style={mode === "setup" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
-              onClick={() => setMode("setup")}
-              disabled={isPlaying || isPaused}
-            >
-              Setup
-            </button>
-            <button
-              type="button"
-              style={mode === "route" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
-              onClick={() => setMode("route")}
-              disabled={isPlaying || isPaused}
-            >
-              Route
-            </button>
-            <button
-              type="button"
-              style={mode === "play" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
-              onClick={() => setMode("play")}
-            >
-              Play
-            </button>
-          </div>
-          <div style={CONTROL_ROW_STYLE}>
-            <button
-              type="button"
-              style={CONTROL_BUTTON_STYLE}
-              onClick={() => cycleSelectedEntity("prev")}
-              disabled={isPlaying}
-            >
-              Prev
-            </button>
-            <span style={ENTITY_LABEL_STYLE}>
-              {selectedToken ? `P${selectedToken.number}` : "No player"}
-            </span>
-            <button
-              type="button"
-              style={CONTROL_BUTTON_STYLE}
-              onClick={() => cycleSelectedEntity("next")}
-              disabled={isPlaying}
-            >
-              Next
-            </button>
-            <button
-              type="button"
-              style={CONTROL_BUTTON_STYLE}
-              onClick={() => shellRef.current?.removeSelectedWaypoint()}
-              disabled={mode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying}
-            >
-              Remove Point
-            </button>
-          </div>
-          <div style={CONTROL_ROW_STYLE}>
-            <button
-              type="button"
-              style={CONTROL_BUTTON_STYLE}
-              onClick={onPlayControlPress}
-              disabled={isPortrait}
-            >
-              {isPlaying ? "Pause" : isPaused ? "Resume" : "Play All"}
-            </button>
-            <button
-              type="button"
-              style={CONTROL_BUTTON_STYLE}
-              onClick={() => shellRef.current?.reset()}
-            >
-              Reset
-            </button>
-          </div>
-          <div style={CONTROL_ROW_STYLE}>
-            <button
-              type="button"
-              style={playbackSpeed === "slow" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
-              onClick={() => setPlaybackSpeed("slow")}
-            >
-              Slow
-            </button>
-            <button
-              type="button"
-              style={playbackSpeed === "normal" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
-              onClick={() => setPlaybackSpeed("normal")}
-            >
-              Normal
-            </button>
-            <button
-              type="button"
-              style={playbackSpeed === "fast" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
-              onClick={() => setPlaybackSpeed("fast")}
-            >
-              Fast
-            </button>
-          </div>
-        </div>
-        <div style={INFO_STYLE}>{selectedLabel} • {routeLabel}</div>
+        <button
+          type="button"
+          style={MENU_TOGGLE_STYLE}
+          onClick={() => setIsMenuOpen((previous) => !previous)}
+          aria-label={isMenuOpen ? "Close movement controls" : "Open movement controls"}
+        >
+          {isMenuOpen ? "×" : "≡"}
+        </button>
+        {isMenuOpen ? (
+          <aside style={MENU_PANEL_STYLE}>
+            <div style={MENU_HEADER_STYLE}>
+              <div style={MENU_TITLE_STYLE}>Movement Board</div>
+              <div style={MENU_SUBTITLE_STYLE}>{selectedLabel}</div>
+              <div style={MENU_SUBTITLE_STYLE}>{routeLabel}</div>
+            </div>
+
+            <section style={SECTION_STYLE}>
+              <div style={SECTION_TITLE_STYLE}>Mode</div>
+              <div style={MODE_GRID_STYLE}>
+                <button
+                  type="button"
+                  style={mode === "setup" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
+                  onClick={() => setMode("setup")}
+                  disabled={isPlaying || isPaused}
+                >
+                  Move
+                </button>
+                <button
+                  type="button"
+                  style={mode === "route" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
+                  onClick={() => setMode("route")}
+                  disabled={isPlaying || isPaused}
+                >
+                  Route
+                </button>
+                <button type="button" style={DISABLED_BUTTON_STYLE} disabled>
+                  Ball
+                </button>
+                <button
+                  type="button"
+                  style={mode === "play" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
+                  onClick={() => setMode("play")}
+                >
+                  Play
+                </button>
+              </div>
+            </section>
+
+            <section style={SECTION_STYLE}>
+              <div style={SECTION_TITLE_STYLE}>Route</div>
+              <div style={BUTTON_GRID_STYLE}>
+                <button
+                  type="button"
+                  style={CONTROL_BUTTON_STYLE}
+                  onClick={() => cycleSelectedEntity("prev")}
+                  disabled={isPlaying}
+                >
+                  Prev Player
+                </button>
+                <button
+                  type="button"
+                  style={CONTROL_BUTTON_STYLE}
+                  onClick={() => cycleSelectedEntity("next")}
+                  disabled={isPlaying}
+                >
+                  Next Player
+                </button>
+                <button
+                  type="button"
+                  style={mode === "route" ? CONTROL_BUTTON_STYLE : DISABLED_BUTTON_STYLE}
+                  onClick={() => shellRef.current?.removeSelectedWaypoint()}
+                  disabled={mode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying}
+                >
+                  Remove Point
+                </button>
+                <button
+                  type="button"
+                  style={mode === "route" ? CONTROL_BUTTON_STYLE : DISABLED_BUTTON_STYLE}
+                  onClick={onClearRoutePress}
+                  disabled={mode !== "route" || routeEditState.waypointCount < 2 || isPlaying}
+                >
+                  Clear Route
+                </button>
+              </div>
+              <div style={ENTITY_LABEL_STYLE}>
+                {selectedToken ? `Selected P${selectedToken.number}` : "No player selected"}
+              </div>
+            </section>
+
+            <section style={SECTION_STYLE}>
+              <div style={SECTION_TITLE_STYLE}>Playback</div>
+              <div style={BUTTON_GRID_STYLE}>
+                <button
+                  type="button"
+                  style={CONTROL_BUTTON_STYLE}
+                  onClick={onPlayAllPress}
+                  disabled={isPortrait || isPlaying || isPaused}
+                >
+                  Play Routes / All
+                </button>
+                <button
+                  type="button"
+                  style={isPlaying || isPaused ? CONTROL_BUTTON_STYLE : DISABLED_BUTTON_STYLE}
+                  onClick={onPauseResumePress}
+                  disabled={!isPlaying && !isPaused}
+                >
+                  {isPlaying ? "Pause" : "Resume"}
+                </button>
+                <button
+                  type="button"
+                  style={CONTROL_BUTTON_STYLE}
+                  onClick={() => shellRef.current?.reset()}
+                >
+                  Reset
+                </button>
+              </div>
+            </section>
+
+            <section style={SECTION_STYLE}>
+              <div style={SECTION_TITLE_STYLE}>Timing</div>
+              <div style={BUTTON_GRID_STYLE}>
+                <button
+                  type="button"
+                  style={playbackSpeed === "slow" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
+                  onClick={() => setPlaybackSpeed("slow")}
+                >
+                  Slow
+                </button>
+                <button
+                  type="button"
+                  style={playbackSpeed === "normal" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
+                  onClick={() => setPlaybackSpeed("normal")}
+                >
+                  Normal
+                </button>
+                <button
+                  type="button"
+                  style={playbackSpeed === "fast" ? ACTIVE_BUTTON_STYLE : CONTROL_BUTTON_STYLE}
+                  onClick={() => setPlaybackSpeed("fast")}
+                >
+                  Fast
+                </button>
+              </div>
+            </section>
+
+            <section style={SECTION_STYLE}>
+              <div style={SECTION_TITLE_STYLE}>Phase</div>
+              <div style={BUTTON_GRID_STYLE}>
+                <button type="button" style={DISABLED_BUTTON_STYLE} disabled>
+                  Set Start
+                </button>
+                <button type="button" style={DISABLED_BUTTON_STYLE} disabled>
+                  Add Phase
+                </button>
+                <button type="button" style={DISABLED_BUTTON_STYLE} disabled>
+                  Undo Phase
+                </button>
+              </div>
+            </section>
+          </aside>
+        ) : null}
       </div>
     </OrientationGate>
   );
