@@ -203,6 +203,9 @@ const ATTACHED_BALL_OFFSETS_WORLD: ReadonlyArray<Readonly<NormalizedPoint>> = [
 ];
 const ATTACHED_BALL_FOLLOW_MAX_LEAD_WORLD = 0.6;
 const ATTACHED_BALL_FOLLOW_SMOOTHING = 0.28;
+const BALL_DRAG_DEADZONE_WORLD = 0.18;
+const BALL_DRAG_SMOOTHING = 0.4;
+const BALL_DRAG_FAST_FOLLOW_DISTANCE_WORLD = 1.6;
 const BALL_PATH_MIN_POINT_DISTANCE = 0.35;
 const BASIC_ROUTE_FOLLOW_SPEED = 18;
 const BASIC_ROUTE_MIN_POINT_DISTANCE = 0.9;
@@ -309,6 +312,8 @@ type ActiveDragState =
       type: "item";
       itemId: string;
       dragOffset: { x: number; y: number };
+      dragOffsetWorld: { x: number; y: number };
+      lastAcceptedBallDragWorld: { x: number; y: number } | null;
     } & DragPointerState)
   | ({
       type: "player";
@@ -1906,16 +1911,26 @@ export async function createTacticalPadLiteSurface(
     const pointerId = getPointerIdFromEvent(event);
     const startStagePoint = getStagePointFromEvent(event, app.stage);
     const pointerNormalized = getBoundedNormalizedPointFromEvent(event);
+    const pointerWorld = getBoundedWorldPointFromEvent(event);
+    const itemWorld = mapper.normalizedToWorld(item);
     const dragOffset = pointerNormalized
       ? {
           x: item.x - pointerNormalized.x,
           y: item.y - pointerNormalized.y,
         }
       : { x: 0, y: 0 };
+    const dragOffsetWorld = pointerWorld
+      ? {
+          x: itemWorld.x - pointerWorld.x,
+          y: itemWorld.y - pointerWorld.y,
+        }
+      : { x: 0, y: 0 };
     activeDrag = {
       type: "item",
       itemId: item.id,
       dragOffset,
+      dragOffsetWorld,
+      lastAcceptedBallDragWorld: isBallItem(item) ? { x: itemWorld.x, y: itemWorld.y } : null,
       pointerId,
       startStagePoint,
       hasCrossedThreshold: false,
@@ -2007,12 +2022,40 @@ export async function createTacticalPadLiteSurface(
     if (!canInteractWithTacticalItem(item)) return;
     if (!hasExceededDragThreshold(event, activeDrag)) return;
     activeDrag.hasCrossedThreshold = true;
-    const pointerNormalized = getBoundedNormalizedPointFromEvent(event);
-    if (!pointerNormalized) return;
-    const normalized = {
-      x: clampNormalizedValue(pointerNormalized.x + activeDrag.dragOffset.x),
-      y: clampNormalizedValue(pointerNormalized.y + activeDrag.dragOffset.y),
-    };
+    let normalized: NormalizedPoint;
+    if (isBallItem(item)) {
+      const pointerWorld = getBoundedWorldPointFromEvent(event);
+      if (!pointerWorld) return;
+      const targetWorld = {
+        x: clampWorld(pointerWorld.x + activeDrag.dragOffsetWorld.x, WORLD_SIZE.width),
+        y: clampWorld(pointerWorld.y + activeDrag.dragOffsetWorld.y, WORLD_SIZE.height),
+      };
+      const lastAcceptedWorld = activeDrag.lastAcceptedBallDragWorld ?? mapper.normalizedToWorld(item);
+      // Suppress micro-jitter before we accept another drag sample.
+      if (Math.hypot(targetWorld.x - lastAcceptedWorld.x, targetWorld.y - lastAcceptedWorld.y) < BALL_DRAG_DEADZONE_WORLD) {
+        return;
+      }
+      activeDrag.lastAcceptedBallDragWorld = targetWorld;
+      const currentWorld = mapper.normalizedToWorld(item);
+      const distanceToTarget = Math.hypot(targetWorld.x - currentWorld.x, targetWorld.y - currentWorld.y);
+      const smoothing = distanceToTarget >= BALL_DRAG_FAST_FOLLOW_DISTANCE_WORLD ? 1 : BALL_DRAG_SMOOTHING;
+      const nextWorld = {
+        x: currentWorld.x + (targetWorld.x - currentWorld.x) * smoothing,
+        y: currentWorld.y + (targetWorld.y - currentWorld.y) * smoothing,
+      };
+      const nextNormalized = mapper.worldToNormalized(nextWorld);
+      normalized = {
+        x: clampNormalizedValue(nextNormalized.x),
+        y: clampNormalizedValue(nextNormalized.y),
+      };
+    } else {
+      const pointerNormalized = getBoundedNormalizedPointFromEvent(event);
+      if (!pointerNormalized) return;
+      normalized = {
+        x: clampNormalizedValue(pointerNormalized.x + activeDrag.dragOffset.x),
+        y: clampNormalizedValue(pointerNormalized.y + activeDrag.dragOffset.y),
+      };
+    }
     item.x = normalized.x;
     item.y = normalized.y;
     if (isBallItem(item)) {
@@ -2457,17 +2500,30 @@ export async function createTacticalPadLiteSurface(
       return fallbackPoint;
     }
 
-    const path = storedPath.map((point) => ({
+    let path = storedPath.map((point) => ({
       x: clampNormalizedValue(point.x),
       y: clampNormalizedValue(point.y),
     }));
-    const firstPoint = path[0];
-    if (
-      fromBall &&
-      firstPoint &&
-      Math.hypot(firstPoint.x - fromBall.x, firstPoint.y - fromBall.y) >= BALL_PATH_MIN_POINT_DISTANCE
-    ) {
-      path.unshift({ x: clampNormalizedValue(fromBall.x), y: clampNormalizedValue(fromBall.y) });
+
+    if (fromBall) {
+      const fromPoint = {
+        x: clampNormalizedValue(fromBall.x),
+        y: clampNormalizedValue(fromBall.y),
+      };
+      // Trim stale prefix points so each playback segment begins from the current segment origin.
+      const firstAlignedIndex = path.findIndex(
+        (point) => Math.hypot(point.x - fromPoint.x, point.y - fromPoint.y) < BALL_PATH_MIN_POINT_DISTANCE,
+      );
+      if (firstAlignedIndex > 0) {
+        path = path.slice(firstAlignedIndex);
+      }
+      const firstPoint = path[0];
+      if (
+        !firstPoint ||
+        Math.hypot(firstPoint.x - fromPoint.x, firstPoint.y - fromPoint.y) >= BALL_PATH_MIN_POINT_DISTANCE
+      ) {
+        path.unshift(fromPoint);
+      }
     }
 
     let totalDistance = 0;
