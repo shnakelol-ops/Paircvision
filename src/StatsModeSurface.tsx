@@ -3556,8 +3556,7 @@ export default function StatsModeSurface() {
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
-    setShowReviewStrip(false);
-    setUtilityPanel(null);
+    closeAllStatsMenus();
     const next = startSecondHalf(matchEngineStateRef.current, Date.now());
     matchEngineStateRef.current = next;
     setMatchState(next.matchState);
@@ -3577,6 +3576,7 @@ export default function StatsModeSurface() {
     setIsUtilityOpen(false);
     setUtilityPanel(null);
     setShowReviewStrip(false);
+    setSelectedReviewEventId(null);
     setIsCountsOverlayOpen(false);
     setIsFullTimeActionsOpen(false);
     setIsResetConfirmOpen(false);
