@@ -227,6 +227,8 @@ const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
   padding: "0 8px",
 };
 
+const PLAY_ALL_COLLAPSE_DELAY_MS = 350;
+
 export default function MovementBoardCanvasShellPage() {
   type MovementMenuMode = "move" | "route" | "ball" | "play";
 
@@ -247,6 +249,7 @@ export default function MovementBoardCanvasShellPage() {
   const isPortrait = usePortraitOrientation();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const shellRef = useRef<MovementCanvasShellHandle | null>(null);
+  const playAllDelayTimerRef = useRef<number | null>(null);
   const [menuMode, setMenuMode] = useState<MovementMenuMode>("move");
   const [playbackSpeed, setPlaybackSpeed] = useState<MovementPlaybackSpeed>("normal");
   const [selectedToken, setSelectedToken] = useState<MovementBoardToken | null>(null);
@@ -256,6 +259,7 @@ export default function MovementBoardCanvasShellPage() {
     selectedWaypointIndex: null,
     canRemoveSelectedWaypoint: false,
   });
+  const [isPlayAllPending, setIsPlayAllPending] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
@@ -342,6 +346,10 @@ export default function MovementBoardCanvasShellPage() {
       window.cancelAnimationFrame(mountFrameB);
       window.cancelAnimationFrame(resizeFrameA);
       window.cancelAnimationFrame(resizeFrameB);
+      if (playAllDelayTimerRef.current != null) {
+        window.clearTimeout(playAllDelayTimerRef.current);
+        playAllDelayTimerRef.current = null;
+      }
       shellRef.current = null;
       destroyShell?.();
     };
@@ -375,19 +383,32 @@ export default function MovementBoardCanvasShellPage() {
     ? `Selected P${selectedToken.number} • Routes ${routeCount}`
     : `${modeLabelByMenu[menuMode]} • Routes ${routeCount}`;
 
+  const clearPendingPlayAllDelay = () => {
+    if (playAllDelayTimerRef.current != null) {
+      window.clearTimeout(playAllDelayTimerRef.current);
+      playAllDelayTimerRef.current = null;
+    }
+    setIsPlayAllPending(false);
+  };
+
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
     if (!shell) return;
+    clearPendingPlayAllDelay();
     setIsControlsOpen(false);
     shell.playAll();
     setMenuMode("play");
   };
 
   const onPlayAllPress = () => {
-    const shell = shellRef.current;
-    if (!shell) return;
+    if (!shellRef.current || isPlayAllPending) return;
     setIsControlsOpen(false);
-    shell.playAll();
+    setIsPlayAllPending(true);
+    playAllDelayTimerRef.current = window.setTimeout(() => {
+      playAllDelayTimerRef.current = null;
+      setIsPlayAllPending(false);
+      shellRef.current?.playAll();
+    }, PLAY_ALL_COLLAPSE_DELAY_MS);
   };
 
   const onPauseResumePress = () => {
@@ -437,6 +458,7 @@ export default function MovementBoardCanvasShellPage() {
   };
 
   const resetBoard = () => {
+    clearPendingPlayAllDelay();
     shellRef.current?.reset();
   };
 
@@ -465,8 +487,8 @@ export default function MovementBoardCanvasShellPage() {
   const modeIsPlaybackLocked = isPlaying || isPaused;
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
   const removePointDisabled = menuMode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying;
-  const playRoutesDisabled = isPortrait || isPlaying || isPaused;
-  const playAllDisabled = isPortrait || isPlaying || isPaused;
+  const playRoutesDisabled = isPortrait || isPlaying || isPaused || isPlayAllPending;
+  const playAllDisabled = isPortrait || isPlaying || isPaused || isPlayAllPending;
   const pauseResumeDisabled = !isPlaying && !isPaused;
   const playbackFloatingVisible = isPlaying || isPaused;
 
