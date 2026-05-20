@@ -83,15 +83,13 @@ export class LayeredPlayerContainer extends Container {
     this.addChild(detailsOverlay);
 
     const playerNumberText = new Text(String(config.playerNumber), {
-      style: {
-        fontFamily: "Arial",
-        fontSize: 16,
-        fontWeight: "bold",
-        fill: "#ffffff",
-        stroke: "#000000",
-        strokeThickness: 4,
-        align: "center",
-      },
+      fontFamily: "Arial",
+      fontSize: 16,
+      fontWeight: "bold",
+      fill: "#ffffff",
+      stroke: "#000000",
+      strokeThickness: 4,
+      align: "center",
     });
     playerNumberText.anchor.set(0.5, 0.5);
     playerNumberText.position.set(0, 0);
