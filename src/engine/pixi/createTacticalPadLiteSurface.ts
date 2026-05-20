@@ -2689,7 +2689,23 @@ export async function createTacticalPadLiteSurface(
         if (!item || !isBallItem(item)) continue;
         const state = getBallRuntimeState(item);
         const targetAttachedPlayerId = toBall.isFree ? null : toBall.attachedPlayerId ?? null;
+        const sourceAttachedPlayerId = fromBall?.isFree ? null : fromBall?.attachedPlayerId ?? null;
+        const isAttachedToAttachedPassTransition =
+          sourceAttachedPlayerId != null &&
+          targetAttachedPlayerId != null &&
+          sourceAttachedPlayerId !== targetAttachedPlayerId;
         if (targetAttachedPlayerId) {
+          if (isAttachedToAttachedPassTransition && fromBall) {
+            // Replay holder-switch transitions using the recorded snapshot endpoints.
+            // This avoids stale/legacy path artifacts and keeps pass playback deterministic.
+            state.attachedPlayerId = null;
+            state.isFree = true;
+            state.path = [];
+            item.x = clampNormalizedValue(fromBall.x + (toBall.x - fromBall.x) * easedProgress);
+            item.y = clampNormalizedValue(fromBall.y + (toBall.y - fromBall.y) * easedProgress);
+            setItemWorldPosition(item, mapper);
+            continue;
+          }
           state.attachedPlayerId = targetAttachedPlayerId;
           state.isFree = false;
           state.path = [];
