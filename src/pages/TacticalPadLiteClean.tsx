@@ -403,7 +403,6 @@ const STADIUM_FLOODLIGHT_CSS = `
 }
 
 `;
-`;
 
 const CONTENT_STYLE: CSSProperties = {
   width: CONTENT_WIDTH_EXPR,
