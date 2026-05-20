@@ -207,6 +207,9 @@ const BALL_DRAG_DEADZONE_WORLD = 0.18;
 const BALL_DRAG_SMOOTHING = 0.4;
 const BALL_DRAG_FAST_FOLLOW_DISTANCE_WORLD = 1.6;
 const BALL_PATH_MIN_POINT_DISTANCE = 0.35;
+const BALL_PASS_STRAIGHTEN_BLEND = 0.2;
+const BALL_PASS_EASE_OUT_START_PROGRESS = 0.7;
+const BALL_ATTACH_SNAP_PROGRESS = 0.94;
 const BASIC_ROUTE_FOLLOW_SPEED = 18;
 const BASIC_ROUTE_MIN_POINT_DISTANCE = 0.9;
 const MAX_BASIC_ROUTE_PLAYERS = 6;
@@ -2491,9 +2494,13 @@ export async function createTacticalPadLiteSurface(
     progress: number,
   ): NormalizedPoint {
     const fallbackStart = fromBall ?? toBall;
+    const directEndPoint = {
+      x: clampNormalizedValue(toBall.x),
+      y: clampNormalizedValue(toBall.y),
+    };
     const fallbackPoint = {
-      x: fallbackStart.x + (toBall.x - fallbackStart.x) * progress,
-      y: fallbackStart.y + (toBall.y - fallbackStart.y) * progress,
+      x: fallbackStart.x + (directEndPoint.x - fallbackStart.x) * progress,
+      y: fallbackStart.y + (directEndPoint.y - fallbackStart.y) * progress,
     };
     const storedPath = toBall.path ?? [];
     if (storedPath.length < 2) {
@@ -2537,6 +2544,10 @@ export async function createTacticalPadLiteSurface(
       return fallbackPoint;
     }
 
+    const directStartPoint = path[0] ?? {
+      x: clampNormalizedValue(fallbackStart.x),
+      y: clampNormalizedValue(fallbackStart.y),
+    };
     const targetDistance = totalDistance * progress;
     let traveledDistance = 0;
     for (let index = 1; index < path.length; index += 1) {
@@ -2547,22 +2558,42 @@ export async function createTacticalPadLiteSurface(
       if (segmentDistance <= 0) continue;
       if (traveledDistance + segmentDistance >= targetDistance) {
         const segmentProgress = (targetDistance - traveledDistance) / segmentDistance;
-        return {
+        const pathPoint = {
           x: previous.x + (current.x - previous.x) * segmentProgress,
           y: previous.y + (current.y - previous.y) * segmentProgress,
+        };
+        const directPoint = {
+          x: directStartPoint.x + (directEndPoint.x - directStartPoint.x) * progress,
+          y: directStartPoint.y + (directEndPoint.y - directStartPoint.y) * progress,
+        };
+        return {
+          x: pathPoint.x + (directPoint.x - pathPoint.x) * BALL_PASS_STRAIGHTEN_BLEND,
+          y: pathPoint.y + (directPoint.y - pathPoint.y) * BALL_PASS_STRAIGHTEN_BLEND,
         };
       }
       traveledDistance += segmentDistance;
     }
-    return {
-      x: clampNormalizedValue(toBall.x),
-      y: clampNormalizedValue(toBall.y),
-    };
+    return directEndPoint;
   }
 
   function getPlaybackEaseProgress(progress: number): number {
     const clamped = Math.max(0, Math.min(1, progress));
     return clamped * clamped * (3 - 2 * clamped);
+  }
+
+  function getBallPlaybackProgress(progress: number): number {
+    const clamped = Math.max(0, Math.min(1, progress));
+    if (clamped <= BALL_PASS_EASE_OUT_START_PROGRESS) {
+      return clamped;
+    }
+    const tailWindow = 1 - BALL_PASS_EASE_OUT_START_PROGRESS;
+    if (tailWindow <= 0) {
+      return clamped;
+    }
+    const tailProgress = (clamped - BALL_PASS_EASE_OUT_START_PROGRESS) / tailWindow;
+    // Cubic Hermite tail: keeps momentum entering the tail and eases into the receiver.
+    const easedTail = tailProgress + tailProgress * tailProgress - tailProgress * tailProgress * tailProgress;
+    return BALL_PASS_EASE_OUT_START_PROGRESS + tailWindow * easedTail;
   }
 
   function stepPlayback(deltaMs: number): void {
@@ -2583,6 +2614,7 @@ export async function createTacticalPadLiteSurface(
       remainingMs -= stepMs;
       const progress = Math.max(0, Math.min(1, playElapsedMs / segmentDurationMs));
       const easedProgress = getPlaybackEaseProgress(progress);
+      const ballProgress = getBallPlaybackProgress(progress);
 
       for (const player of players) {
         if (routeControlledPlayerIds.has(player.id)) continue;
@@ -2611,7 +2643,7 @@ export async function createTacticalPadLiteSurface(
           const rawDx = attachedPoint.x - item.x;
           const rawDy = attachedPoint.y - item.y;
           const rawDistance = Math.hypot(rawDx, rawDy);
-          if (rawDistance <= ATTACHED_BALL_FOLLOW_MAX_LEAD_WORLD) {
+          if (progress >= BALL_ATTACH_SNAP_PROGRESS || rawDistance <= ATTACHED_BALL_FOLLOW_MAX_LEAD_WORLD) {
             item.x = attachedPoint.x;
             item.y = attachedPoint.y;
           } else {
@@ -2622,7 +2654,7 @@ export async function createTacticalPadLiteSurface(
             item.y += (cappedY - item.y) * ATTACHED_BALL_FOLLOW_SMOOTHING;
           }
         } else {
-          const freePoint = interpolateBallPath(fromBall, toBall, progress);
+          const freePoint = interpolateBallPath(fromBall, toBall, ballProgress);
           state.attachedPlayerId = null;
           state.isFree = true;
           state.path = toBall.path?.map((pathPoint) => ({ x: pathPoint.x, y: pathPoint.y })) ?? [];
