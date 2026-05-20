@@ -427,6 +427,15 @@ const CONTENT_STYLE: CSSProperties = {
   alignItems: "stretch",
 };
 
+const COMPACT_LANDSCAPE_CONTENT_WIDTH_EXPR =
+  `min(calc(${VIEWPORT_WIDTH_UNIT} - 88px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc((${VIEWPORT_HEIGHT_EXPR} - 56px) * 1.6), 1280px)`;
+const COMPACT_LANDSCAPE_CONTENT_STYLE: CSSProperties = {
+  ...CONTENT_STYLE,
+  width: COMPACT_LANDSCAPE_CONTENT_WIDTH_EXPR,
+  maxWidth: "calc(100vw - 88px)",
+  maxHeight: `calc(${VIEWPORT_HEIGHT_EXPR} - 56px)`,
+};
+
 const WHITEBOARD_CONTENT_STYLE: CSSProperties = {
   width: "100%",
   maxWidth: `min(900px, calc((${VIEWPORT_HEIGHT_EXPR} - 16px) * 1.6))`,
@@ -3504,6 +3513,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     ...(isWhiteboardMode ? ROOT_WHITEBOARD_STYLE : ROOT_STYLE),
     [BOARD_VIEWPORT_HEIGHT_CSS_VAR]: `${Math.max(0, Math.floor(appViewportHeight))}px`,
   } as CSSProperties;
+  const boardContentStyle: CSSProperties = isWhiteboardMode
+    ? WHITEBOARD_CONTENT_STYLE
+    : isCompactLandscapeToolsMenu && !isPortraitViewingMode
+      ? COMPACT_LANDSCAPE_CONTENT_STYLE
+      : CONTENT_STYLE;
 
   if (isStatsMode) {
     return (
@@ -3518,7 +3532,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       <div style={rootShellStyle}>
         {!isWhiteboardMode ? <style>{STADIUM_FLOODLIGHT_CSS}</style> : null}
         {!isWhiteboardMode ? <VisionStadiumBackground variant="board" /> : null}
-        <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : CONTENT_STYLE}>
+        <div style={boardContentStyle}>
           <div ref={hostRef} style={pitchSurfaceStyle} />
           {!isWhiteboardMode && isPortraitViewingMode ? <div style={PORTRAIT_INTERACTION_SHIELD_STYLE} aria-hidden="true" /> : null}
         </div>
