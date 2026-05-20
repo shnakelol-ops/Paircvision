@@ -2500,17 +2500,30 @@ export async function createTacticalPadLiteSurface(
       return fallbackPoint;
     }
 
-    const path = storedPath.map((point) => ({
+    let path = storedPath.map((point) => ({
       x: clampNormalizedValue(point.x),
       y: clampNormalizedValue(point.y),
     }));
-    const firstPoint = path[0];
-    if (
-      fromBall &&
-      firstPoint &&
-      Math.hypot(firstPoint.x - fromBall.x, firstPoint.y - fromBall.y) >= BALL_PATH_MIN_POINT_DISTANCE
-    ) {
-      path.unshift({ x: clampNormalizedValue(fromBall.x), y: clampNormalizedValue(fromBall.y) });
+
+    if (fromBall) {
+      const fromPoint = {
+        x: clampNormalizedValue(fromBall.x),
+        y: clampNormalizedValue(fromBall.y),
+      };
+      // Trim stale prefix points so each playback segment begins from the current segment origin.
+      const firstAlignedIndex = path.findIndex(
+        (point) => Math.hypot(point.x - fromPoint.x, point.y - fromPoint.y) < BALL_PATH_MIN_POINT_DISTANCE,
+      );
+      if (firstAlignedIndex > 0) {
+        path = path.slice(firstAlignedIndex);
+      }
+      const firstPoint = path[0];
+      if (
+        !firstPoint ||
+        Math.hypot(firstPoint.x - fromPoint.x, firstPoint.y - fromPoint.y) >= BALL_PATH_MIN_POINT_DISTANCE
+      ) {
+        path.unshift(fromPoint);
+      }
     }
 
     let totalDistance = 0;
