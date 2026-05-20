@@ -82,8 +82,7 @@ export class LayeredPlayerContainer extends Container {
     detailsOverlay.height = jerseyHeight;
     this.addChild(detailsOverlay);
 
-    const playerNumberText = new Text({
-      text: String(config.playerNumber),
+    const playerNumberText = new Text(String(config.playerNumber), {
       style: {
         fontFamily: "Arial",
         fontSize: 16,
