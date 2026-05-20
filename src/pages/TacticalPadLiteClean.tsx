@@ -960,8 +960,20 @@ function cloneBoardStateForDraft(state: QuickBoardBoardState): QuickBoardBoardSt
 
 function serializeBoardState(state: QuickBoardBoardState | null): string | null {
   if (!state) return null;
+  const recoverableState: QuickBoardBoardState = {
+    players: Array.isArray(state.players) ? state.players : [],
+    items: Array.isArray(state.items) ? state.items : [],
+    drawings: Array.isArray(state.drawings) ? state.drawings : [],
+    phases: Array.isArray(state.phases) ? state.phases : [],
+    movementPaths: Array.isArray(state.movementPaths) ? state.movementPaths : [],
+    ...(state.routes !== undefined ? { routes: state.routes } : {}),
+    ...(state.kits !== undefined ? { kits: state.kits } : {}),
+    ...(state.teamKits !== undefined ? { teamKits: state.teamKits } : {}),
+    ...(state.teamState !== undefined ? { teamState: state.teamState } : {}),
+    ...(state.startSnapshot !== undefined ? { startSnapshot: state.startSnapshot } : {}),
+  };
   try {
-    return JSON.stringify(state);
+    return JSON.stringify(recoverableState);
   } catch {
     return null;
   }
@@ -1860,7 +1872,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [myBoardsOpen, setMyBoardsOpen] = useState(false);
   const [savedBoards, setSavedBoards] = useState<SavedQuickBoard[]>([]);
   const [pendingRecoveredBoardDraft, setPendingRecoveredBoardDraft] = useState<QuickBoardBoardState | null>(null);
+  const [isRecoveredBoardPromptVisible, setIsRecoveredBoardPromptVisible] = useState(false);
   const [isBoardDraftCheckComplete, setIsBoardDraftCheckComplete] = useState(false);
+  const [boardSurfaceReadyNonce, setBoardSurfaceReadyNonce] = useState(0);
   const [quickShareOnboardingOpen, setQuickShareOnboardingOpen] = useState(false);
   const [quickShareOnboardingSeen, setQuickShareOnboardingSeen] = useState(false);
   const [quickShareOnboardingEntered, setQuickShareOnboardingEntered] = useState(false);
@@ -1923,10 +1937,14 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     const { draft, isCorrupt } = loadQuickBoardDraft();
     if (draft) {
       setPendingRecoveredBoardDraft(cloneBoardStateForDraft(draft.boardState));
+      setIsRecoveredBoardPromptVisible(false);
       lastBoardDraftSignatureRef.current = serializeBoardState(draft.boardState);
     } else if (isCorrupt) {
       showQuickBoardNotice("Recovered board draft was invalid and ignored.");
       clearQuickBoardDraft();
+      setIsRecoveredBoardPromptVisible(false);
+    } else {
+      setIsRecoveredBoardPromptVisible(false);
     }
     setIsBoardDraftCheckComplete(true);
   }, []);
@@ -2308,6 +2326,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           window.history.replaceState(window.history.state, "", nextUrl);
         }
       }
+      setBoardSurfaceReadyNonce((previous) => previous + 1);
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
           surface.reflow();
@@ -2388,6 +2407,27 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [isStatsMode, isWhiteboardMode, isBoardDraftCheckComplete, pendingRecoveredBoardDraft]);
+
+  useEffect(() => {
+    if (isStatsMode || isWhiteboardMode) {
+      setIsRecoveredBoardPromptVisible(false);
+      return;
+    }
+    if (!pendingRecoveredBoardDraft) {
+      setIsRecoveredBoardPromptVisible(false);
+      return;
+    }
+    const currentSignature = captureCurrentBoardSignature();
+    if (!currentSignature) return;
+    const draftSignature = serializeBoardState(pendingRecoveredBoardDraft);
+    if (!draftSignature || draftSignature === currentSignature) {
+      clearActiveBoardDraft();
+      setPendingRecoveredBoardDraft(null);
+      setIsRecoveredBoardPromptVisible(false);
+      return;
+    }
+    setIsRecoveredBoardPromptVisible(true);
+  }, [isStatsMode, isWhiteboardMode, pendingRecoveredBoardDraft, boardSurfaceReadyNonce]);
 
   useEffect(() => {
     if (isStatsMode || isWhiteboardMode || !isPortraitViewingMode) return;
@@ -2788,6 +2828,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (!draft || !surface) {
       showQuickBoardNotice("Recovered board unavailable");
       setPendingRecoveredBoardDraft(null);
+      setIsRecoveredBoardPromptVisible(false);
       return;
     }
     const restored = restoreQuickBoardSnapshot(surface, draft);
@@ -2805,12 +2846,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     const draftSignature = serializeBoardState(draft);
     boardBaselineSignatureRef.current = draftSignature;
     lastBoardDraftSignatureRef.current = draftSignature;
+    clearActiveBoardDraft();
     setPendingRecoveredBoardDraft(null);
+    setIsRecoveredBoardPromptVisible(false);
     showQuickBoardNotice("Recovered unsaved board");
   };
   const discardRecoveredBoardDraft = () => {
     clearActiveBoardDraft();
     setPendingRecoveredBoardDraft(null);
+    setIsRecoveredBoardPromptVisible(false);
     showQuickBoardNotice("Recovered board draft discarded");
   };
   const handleSaveCurrentBoard = () => {
@@ -4744,7 +4788,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             <p style={{ ...SHARE_TIP_TEXT_STYLE, whiteSpace: "pre-line" }}>{quickBoardFeedback}</p>
           </div>
         ) : null}
-        {!isWhiteboardMode && pendingRecoveredBoardDraft ? (
+        {!isWhiteboardMode && pendingRecoveredBoardDraft && isRecoveredBoardPromptVisible ? (
           <div
             style={{
               ...SHARE_TIP_TOAST_STYLE,
