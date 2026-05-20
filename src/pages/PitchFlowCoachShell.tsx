@@ -25,7 +25,7 @@ type PitchFlowCoachShellProps = {
 };
 
 type BottomNavItem = {
-  id: "home" | "flowlab" | "flowstats" | "notes";
+  id: "home" | "flowlab" | "flowstats" | "training" | "notes";
   label: string;
   short: string;
   path: string;
@@ -38,6 +38,7 @@ const BOTTOM_NAV_ITEMS: ReadonlyArray<BottomNavItem> = [
   { id: "home", label: "Home", short: "H", path: "/board" },
   { id: "flowlab", label: "Board", short: "V", path: "/vision-board" },
   { id: "flowstats", label: "Stats", short: "S", path: "/flowstats" },
+  { id: "training", label: "Training", short: "T", path: "/player-performance-tracker" },
   { id: "notes", label: "Notes", short: "N", path: "/notes" },
 ];
 
@@ -783,7 +784,7 @@ const SHELL_CSS = `
   backdrop-filter: blur(12px);
   box-shadow: 0 14px 28px rgba(0,0,0,0.36);
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   padding: 5px;
   z-index: 50;
 }
@@ -795,7 +796,7 @@ const SHELL_CSS = `
   background: transparent;
   color: var(--pf-text-muted);
   display: grid;
-  gap: 3px;
+  gap: 2px;
   justify-items: center;
   padding: 8px 2px 7px;
   font-size: 11px;
@@ -809,7 +810,7 @@ const SHELL_CSS = `
   width: 100%;
   text-align: center;
   line-height: 1.15;
-  font-size: 10.5px;
+  font-size: 10px;
 }
 
 .pf-nav-icon {
@@ -1611,6 +1612,8 @@ export default function PitchFlowCoachShell({ initialTab }: PitchFlowCoachShellP
       ? "flowlab"
       : normalizedPath === "/flowstats" || normalizedPath === "/stats"
         ? "flowstats"
+        : normalizedPath === "/player-performance-tracker"
+          ? "training"
         : normalizedPath === "/notes" ||
             normalizedPath === "/library" ||
             normalizedPath === "/sessions" ||
