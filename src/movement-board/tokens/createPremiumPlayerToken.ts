@@ -4,8 +4,8 @@ export type PremiumPlayerTokenColor = "blue" | "red" | "yellow" | "black";
 
 export const PREMIUM_TOKEN_IDLE_SCALE = 1;
 export const PREMIUM_TOKEN_DRAG_SCALE = 1.08;
-export const PREMIUM_TOKEN_IDLE_SHADOW_ALPHA = 0.24;
-export const PREMIUM_TOKEN_DRAG_SHADOW_ALPHA = 0.36;
+export const PREMIUM_TOKEN_IDLE_SHADOW_ALPHA = 0.22;
+export const PREMIUM_TOKEN_DRAG_SHADOW_ALPHA = 0.34;
 
 const JERSEY_TINT_BY_COLOR: Record<PremiumPlayerTokenColor, number> = {
   blue: 0x2563eb,
@@ -83,16 +83,16 @@ export class LayeredPlayerContainer extends Container {
     this.addChild(detailsOverlay);
 
     const playerNumberText = new Text(String(config.playerNumber), {
-      fontFamily: "Arial",
+      fontFamily: '"Barlow Condensed", "Inter Tight", Inter, Arial, system-ui, sans-serif',
       fontSize: 16,
-      fontWeight: "bold",
+      fontWeight: "800",
       fill: "#ffffff",
-      stroke: "#000000",
-      strokeThickness: 4,
+      stroke: "#020617",
+      strokeThickness: 1.1,
       align: "center",
     });
     playerNumberText.anchor.set(0.5, 0.5);
-    playerNumberText.position.set(0, 0);
+    playerNumberText.position.set(0, -1.5);
     playerNumberText.resolution =
       typeof window !== "undefined" ? Math.max(2, Math.min(3, window.devicePixelRatio || 1)) : 2;
     playerNumberText.roundPixels = true;
