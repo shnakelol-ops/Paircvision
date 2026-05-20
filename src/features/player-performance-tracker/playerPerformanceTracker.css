@@ -1,4 +1,5 @@
-.ppt-shell{min-height:100dvh;background:#07131c;color:#fff;font-family:Inter,system-ui,sans-serif}
+.ppt-page-shell{position:relative;min-height:100dvh;background:#050c14;overflow:hidden}
+.ppt-shell{position:relative;z-index:1;min-height:100dvh;color:#fff;font-family:Inter,system-ui,sans-serif}
 .ppt-container{max-width:430px;margin:0 auto;background:#0b1824;padding-bottom:92px}
 .ppt-header{border-bottom:1px solid #183044;padding:14px 16px}
 .ppt-sub{color:#93a7bd;font-size:14px}
