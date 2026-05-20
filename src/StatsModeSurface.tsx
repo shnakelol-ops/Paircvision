@@ -2935,7 +2935,10 @@ export default function StatsModeSurface() {
   const toggleMatchBubble = () => {
     setIsPickerOpen((prev) => {
       const next = !prev;
-      if (next) setIsUtilityOpen(false);
+      if (next) {
+        setIsUtilityOpen(false);
+        setUtilityPanel((prevPanel) => (prevPanel === "PLAYERS" ? null : prevPanel));
+      }
       return next;
     });
   };
