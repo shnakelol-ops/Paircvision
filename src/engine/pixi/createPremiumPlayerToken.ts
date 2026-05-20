@@ -87,8 +87,11 @@ export class LayeredPlayerContainer extends Container {
       fontSize: 16,
       fontWeight: "800",
       fill: "#ffffff",
-      stroke: "#020617",
-      strokeThickness: 1.1,
+      stroke: {
+        color: "#020617",
+        width: 1.1,
+        join: "round",
+      },
       align: "center",
     });
     playerNumberText.anchor.set(0.5, 0.5);
