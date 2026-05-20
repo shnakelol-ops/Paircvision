@@ -208,7 +208,9 @@ const BALL_DRAG_DEADZONE_WORLD = 0.18;
 const BALL_DRAG_SMOOTHING = 0.4;
 const BALL_DRAG_FAST_FOLLOW_DISTANCE_WORLD = 1.6;
 const BALL_PATH_MIN_POINT_DISTANCE = 0.35;
-const POSSESSION_PASS_SPEED_MULTIPLIER = 0.15;
+const POSSESSION_PASS_MIN_DURATION_MS = 900;
+const POSSESSION_PASS_MAX_DURATION_MS = 1800;
+const POSSESSION_PASS_REFERENCE_DISTANCE = 14;
 const BASIC_ROUTE_FOLLOW_SPEED = 18;
 const BASIC_ROUTE_MIN_POINT_DISTANCE = 0.9;
 const MAX_BASIC_ROUTE_PLAYERS = 6;
@@ -2628,6 +2630,25 @@ export async function createTacticalPadLiteSurface(
     return clamped * clamped * (3 - 2 * clamped);
   }
 
+  function resolvePossessionPassSegmentDurationMs(fromSnapshot: PhaseSnapshot, toSnapshot: PhaseSnapshot): number {
+    let maxBallDistance = 0;
+    for (const toBall of toSnapshot.football) {
+      const fromBall = fromSnapshot.football.find((point) => point.id === toBall.id);
+      if (!fromBall) continue;
+      const distance = Math.hypot(toBall.x - fromBall.x, toBall.y - fromBall.y);
+      if (distance > maxBallDistance) {
+        maxBallDistance = distance;
+      }
+    }
+    const distanceBasedDuration =
+      (PLAY_DURATION_MS * (Math.max(0, maxBallDistance) / POSSESSION_PASS_REFERENCE_DISTANCE)) /
+      Math.max(0.01, playbackSpeedMultiplier);
+    return Math.max(
+      POSSESSION_PASS_MIN_DURATION_MS,
+      Math.min(POSSESSION_PASS_MAX_DURATION_MS, distanceBasedDuration),
+    );
+  }
+
   function stepPlayback(deltaMs: number): void {
     if (!isPlaying || playbackPath.length < 2) return;
 
@@ -2640,11 +2661,10 @@ export async function createTacticalPadLiteSurface(
         return;
       }
 
-      const segmentSpeedMultiplier =
+      const segmentDurationMs =
         playbackKind === "possession-pass"
-          ? playbackSpeedMultiplier * POSSESSION_PASS_SPEED_MULTIPLIER
-          : playbackSpeedMultiplier;
-      const segmentDurationMs = PLAY_DURATION_MS / segmentSpeedMultiplier;
+          ? resolvePossessionPassSegmentDurationMs(fromSnapshot, toSnapshot)
+          : PLAY_DURATION_MS / playbackSpeedMultiplier;
       const stepMs = Math.min(remainingMs, Math.max(0, segmentDurationMs - playElapsedMs));
       playElapsedMs += stepMs;
       remainingMs -= stepMs;
