@@ -2607,6 +2607,7 @@ export default function StatsModeSurface() {
   const activePlayerRef = useRef<string | null>(null);
   const activePlayerNumberRef = useRef<number | null>(null);
   const activePlayerIdRef = useRef<string | null>(null);
+  const activePlayerEntryRef = useRef<SquadPlayer | null>(null);
   const reviewHalfRef = useRef<ReviewHalf>("FULL");
   const reviewEventFilterRef = useRef<ReviewEventFilter>("ALL");
   const reviewActivePlayerOnlyRef = useRef(false);
@@ -2682,6 +2683,8 @@ export default function StatsModeSurface() {
     setActivePlayer(null);
     setActivePlayerNumber(null);
     setActivePlayerId(null);
+    activePlayerRef.current = null;
+    activePlayerNumberRef.current = null;
     activePlayerIdRef.current = null;
     setPlayerDraft("");
   };
@@ -3085,6 +3088,10 @@ export default function StatsModeSurface() {
     if (!activePlayer) {
       setActivePlayerNumber(null);
       setActivePlayerId(null);
+      activePlayerRef.current = null;
+      activePlayerNumberRef.current = null;
+      activePlayerIdRef.current = null;
+      activePlayerEntryRef.current = null;
       return;
     }
     const matchedPlayer =
@@ -3095,12 +3102,27 @@ export default function StatsModeSurface() {
       setActivePlayer(null);
       setActivePlayerNumber(null);
       setActivePlayerId(null);
+      activePlayerRef.current = null;
+      activePlayerNumberRef.current = null;
+      activePlayerIdRef.current = null;
+      activePlayerEntryRef.current = null;
       return;
     }
     if (matchedPlayer.number !== activePlayerNumber) {
       setActivePlayerNumber(matchedPlayer.number);
     }
+    if (matchedPlayer.id !== activePlayerIdRef.current) {
+      setActivePlayerId(matchedPlayer.id);
+    }
+    activePlayerRef.current = matchedPlayer.name;
+    activePlayerNumberRef.current = matchedPlayer.number;
+    activePlayerIdRef.current = matchedPlayer.id;
+    activePlayerEntryRef.current = matchedPlayer;
   }, [activePlayer, activeSquadPlayers]);
+
+  useEffect(() => {
+    activePlayerEntryRef.current = activePlayerEntry;
+  }, [activePlayerEntry]);
 
   useEffect(() => {
     activeSquadIdRef.current = activeSquadId;
@@ -3243,12 +3265,18 @@ export default function StatsModeSurface() {
           team: teamSide,
         };
         if (teamSide === "HOME") {
-          nextEvent.playerId = activePlayerIdRef.current ?? null;
+          const activePlayerEntry = activePlayerEntryRef.current;
+          const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? null;
+          nextEvent.playerId = selectedPlayerId;
           if (SCORE_EVENT_KINDS.has(event.kind) && pendingScorerRef.current) {
             nextEvent.playerName = pendingScorerRef.current.name;
             nextEvent.playerNumber = pendingScorerRef.current.number;
             nextEvent.squadId = pendingScorerRef.current.squadId;
             pendingScorerRef.current = null;
+          } else if (activePlayerEntry) {
+            nextEvent.playerName = activePlayerEntry.name;
+            nextEvent.playerNumber = activePlayerEntry.number;
+            nextEvent.squadId = activeSquadIdRef.current;
           } else if (activePlayerRef.current) {
             nextEvent.playerName = activePlayerRef.current;
             nextEvent.playerNumber = activePlayerNumberRef.current ?? undefined;
