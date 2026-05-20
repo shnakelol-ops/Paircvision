@@ -126,6 +126,7 @@ export type TacticalPadLiteSurface = {
   pausePlayback: () => void;
   resumePlayback: () => void;
   setPlaybackSpeedMultiplier: (multiplier: number) => void;
+  setPossessionPassMode: (enabled: boolean) => void;
   freeBall: () => void;
   addTacticalPlayer: (team?: "BLUE" | "RED") => void;
   removeTacticalPlayer: (team?: "BLUE" | "RED") => void;
@@ -207,6 +208,7 @@ const BALL_DRAG_DEADZONE_WORLD = 0.18;
 const BALL_DRAG_SMOOTHING = 0.4;
 const BALL_DRAG_FAST_FOLLOW_DISTANCE_WORLD = 1.6;
 const BALL_PATH_MIN_POINT_DISTANCE = 0.35;
+const POSSESSION_PASS_SPEED_MULTIPLIER = 1.18;
 const BASIC_ROUTE_FOLLOW_SPEED = 18;
 const BASIC_ROUTE_MIN_POINT_DISTANCE = 0.9;
 const MAX_BASIC_ROUTE_PLAYERS = 6;
@@ -288,6 +290,14 @@ type ActiveBasicRouteFollow = {
   origin: NormalizedPoint;
   segmentIndex: number;
   session: BasicRouteFollowSession;
+};
+
+type PlaybackKind = "default" | "possession-pass";
+
+type PlaybackStartOptions = {
+  suppressRoutePlayback?: boolean;
+  kind?: PlaybackKind;
+  possessionReceiverId?: string | null;
 };
 
 type TacticalSurfaceItem = TacticalItem & {
@@ -1096,6 +1106,8 @@ export async function createTacticalPadLiteSurface(
   let playElapsedMs = 0;
   let playbackPath: PhaseSnapshot[] = [];
   let activeSegmentIndex = 0;
+  let playbackKind: PlaybackKind = "default";
+  let playbackPossessionReceiverId: string | null = null;
   let singlePlayTargetSnapshot: PhaseSnapshot | null = null;
   let startPositions: PhaseSnapshot = {
     players: players.map((player) => ({ ...player.current })),
@@ -1110,6 +1122,7 @@ export async function createTacticalPadLiteSurface(
   let currentRouteDraftPoints: RoutePoint[] = [];
   let currentRouteDraftPlayerId: string | null = null;
   let routeCapturePointerId: number | null = null;
+  let isPossessionPassModeEnabled = false;
 
   let activeDrag: ActiveDragState = null;
   let selectedItemId: string | null = null;
@@ -1353,6 +1366,46 @@ export async function createTacticalPadLiteSurface(
     setItemWorldPosition(ball, mapper);
     renderTacticalItems();
     syncWhiteboardTokenInputMode();
+  }
+
+  function handlePossessionPassTap(player: TacticalPlayer): void {
+    if (surfaceVariant !== "tactical" || isPlaybackInputLocked()) return;
+    const ball = findPrimaryBallItem();
+    if (!ball) return;
+    applyBallRuntimeStateToItem(ball);
+    const state = getBallRuntimeState(ball);
+    const currentHolderPlayerId = state.isFree ? null : state.attachedPlayerId;
+    if (!currentHolderPlayerId || currentHolderPlayerId === player.id) {
+      attachPrimaryBallToPlayer(player);
+      return;
+    }
+
+    const receiverAttachedPoint = getAttachedBallPositionForPlayer(player);
+    const passStartSnapshot = captureCurrentSnapshot();
+    const passTargetSnapshot = cloneSnapshot(passStartSnapshot);
+    const passTargetBall = passTargetSnapshot.football.find((entry) => entry.id === ball.id);
+    if (!passTargetBall) {
+      attachPrimaryBallToPlayer(player);
+      return;
+    }
+    const passStartPoint = {
+      x: clampNormalizedValue(ball.x),
+      y: clampNormalizedValue(ball.y),
+    };
+    const passTargetPoint = {
+      x: clampNormalizedValue(receiverAttachedPoint.x),
+      y: clampNormalizedValue(receiverAttachedPoint.y),
+    };
+    passTargetBall.x = passTargetPoint.x;
+    passTargetBall.y = passTargetPoint.y;
+    passTargetBall.attachedPlayerId = null;
+    passTargetBall.isFree = true;
+    passTargetBall.path = [passStartPoint, passTargetPoint];
+    startPlayback([passStartSnapshot, passTargetSnapshot], {
+      suppressRoutePlayback: true,
+      kind: "possession-pass",
+      possessionReceiverId: player.id,
+    });
   }
 
   function updateAttachedBallsForPlayer(playerId: string): void {
@@ -2418,19 +2471,29 @@ export async function createTacticalPadLiteSurface(
     playElapsedMs = 0;
     playbackPath = [];
     activeSegmentIndex = 0;
+    playbackKind = "default";
+    playbackPossessionReceiverId = null;
     emitPlaybackStateChange();
   }
 
-  function startPlayback(path: PhaseSnapshot[]): void {
+  function startPlayback(path: PhaseSnapshot[], optionsForPlayback?: PlaybackStartOptions): void {
     if (path.length < 2) return;
     playbackPath = path;
     activeSegmentIndex = 0;
     isPlaying = true;
     isPaused = false;
     playElapsedMs = 0;
+    playbackKind = optionsForPlayback?.kind ?? "default";
+    playbackPossessionReceiverId =
+      playbackKind === "possession-pass"
+        ? optionsForPlayback?.possessionReceiverId ?? null
+        : null;
     applySnapshotToSurface(path[0]!);
+    const shouldSuppressRoutePlayback = optionsForPlayback?.suppressRoutePlayback === true;
     activeRouteRunsByPlayerId =
-      routeByPlayerId.size > 0 ? buildBasicRouteRunsForCurrentPlayers(activeSegmentIndex) : new Map();
+      !shouldSuppressRoutePlayback && routeByPlayerId.size > 0
+        ? buildBasicRouteRunsForCurrentPlayers(activeSegmentIndex)
+        : new Map();
     routeControlledPlayerIds = new Set(activeRouteRunsByPlayerId.keys());
     emitPlaybackStateChange();
   }
@@ -2577,7 +2640,11 @@ export async function createTacticalPadLiteSurface(
         return;
       }
 
-      const segmentDurationMs = PLAY_DURATION_MS / playbackSpeedMultiplier;
+      const segmentSpeedMultiplier =
+        playbackKind === "possession-pass"
+          ? playbackSpeedMultiplier * POSSESSION_PASS_SPEED_MULTIPLIER
+          : playbackSpeedMultiplier;
+      const segmentDurationMs = PLAY_DURATION_MS / segmentSpeedMultiplier;
       const stepMs = Math.min(remainingMs, Math.max(0, segmentDurationMs - playElapsedMs));
       playElapsedMs += stepMs;
       remainingMs -= stepMs;
@@ -2637,7 +2704,15 @@ export async function createTacticalPadLiteSurface(
         activeSegmentIndex += 1;
         playElapsedMs = 0;
         if (activeSegmentIndex >= playbackPath.length - 1) {
+          const possessionReceiverId =
+            playbackKind === "possession-pass" ? playbackPossessionReceiverId : null;
           cancelPlaybackAnimation();
+          if (possessionReceiverId) {
+            const receiver = players.find((entry) => entry.id === possessionReceiverId);
+            if (receiver) {
+              attachPrimaryBallToPlayer(receiver);
+            }
+          }
           return;
         }
         // Avoid a boundary stall when a segment ends exactly on a frame.
@@ -2835,6 +2910,11 @@ export async function createTacticalPadLiteSurface(
       if (!activeDrag || activeDrag.type !== "player" || activeDrag.playerId !== player.id) return;
       if (activeDrag.hasCrossedThreshold) {
         lastTappedPlayer = null;
+        return;
+      }
+      if (isPossessionPassModeEnabled) {
+        lastTappedPlayer = null;
+        handlePossessionPassTap(player);
         return;
       }
       attachPrimaryBallToPlayer(player);
@@ -3403,6 +3483,11 @@ export async function createTacticalPadLiteSurface(
         const nextSegmentDurationMs = PLAY_DURATION_MS / playbackSpeedMultiplier;
         playElapsedMs = Math.max(0, Math.min(nextSegmentDurationMs, progress * nextSegmentDurationMs));
       }
+    },
+    setPossessionPassMode: (enabled) => {
+      if (surfaceVariant !== "tactical") return;
+      isPossessionPassModeEnabled = Boolean(enabled);
+      lastTappedPlayer = null;
     },
     freeBall: detachPrimaryBall,
     addTacticalPlayer,

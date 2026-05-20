@@ -2313,6 +2313,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             : "locked";
         surface.setItemMode(initialSurfaceItemMode);
         surface.setRouteCaptureMode(false);
+        surface.setPossessionPassMode(false);
         const initialSnapshot = captureQuickBoardSnapshot(surface);
         boardBaselineSignatureRef.current = serializeBoardState(initialSnapshot);
         const query = new URLSearchParams(window.location.search);
@@ -2467,6 +2468,14 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (isStatsMode || isWhiteboardMode) return;
     surfaceRef.current?.setItemMode(effectiveItemMode);
   }, [isStatsMode, isWhiteboardMode, effectiveItemMode]);
+
+  useEffect(() => {
+    if (isStatsMode || isWhiteboardMode) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const isPossessionPassModeActive = !isPortraitViewingMode && movementModePillSelection === "ball";
+    surface.setPossessionPassMode(isPossessionPassModeActive);
+  }, [isStatsMode, isWhiteboardMode, isPortraitViewingMode, movementModePillSelection]);
 
   useEffect(() => {
     if (isStatsMode || isWhiteboardMode) return;
