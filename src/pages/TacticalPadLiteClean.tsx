@@ -48,11 +48,12 @@ type TacticalPadLiteCleanProps = {
 };
 
 const CAN_USE_CSS_SUPPORTS = typeof window !== "undefined" && typeof window.CSS !== "undefined";
-const VIEWPORT_HEIGHT_UNIT = CAN_USE_CSS_SUPPORTS && window.CSS.supports("height: 100dvh") ? "100dvh" : "100vh";
 const VIEWPORT_WIDTH_UNIT = CAN_USE_CSS_SUPPORTS && window.CSS.supports("width: 100dvw") ? "100dvw" : "100vw";
+const BOARD_VIEWPORT_HEIGHT_CSS_VAR = "--board-app-height";
+const VIEWPORT_HEIGHT_EXPR = `var(${BOARD_VIEWPORT_HEIGHT_CSS_VAR}, 100dvh)`;
 
 const CONTENT_WIDTH_EXPR =
-  `min(calc(${VIEWPORT_WIDTH_UNIT} - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc((${VIEWPORT_HEIGHT_UNIT} - 10px) * 1.6), 1360px)`;
+  `min(calc(${VIEWPORT_WIDTH_UNIT} - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc((${VIEWPORT_HEIGHT_EXPR} - 10px) * 1.6), 1360px)`;
 const WHITEBOARD_PLAYER_COLOR_CHOICES: ReadonlyArray<{
   value: WhiteboardTokenColor;
   css: string;
@@ -198,6 +199,16 @@ function getViewportRect(): ViewportRect {
   };
 }
 
+function getMobileViewportHeight(): number {
+  if (typeof window === "undefined") return 0;
+  const viewport = window.visualViewport;
+  const visualViewportHeight =
+    viewport && Number.isFinite(viewport.height) ? Math.round(viewport.height) : 0;
+  const innerHeight =
+    Number.isFinite(window.innerHeight) ? Math.round(window.innerHeight) : 0;
+  return Math.max(0, visualViewportHeight || innerHeight);
+}
+
 function clampWhiteboardBubblePosition(
   position: { left: number; top: number },
   viewport: ViewportRect,
@@ -255,8 +266,8 @@ const ROOT_STYLE: CSSProperties = {
   position: "fixed",
   inset: 0,
   width: "100vw",
-  height: VIEWPORT_HEIGHT_UNIT,
-  minHeight: VIEWPORT_HEIGHT_UNIT,
+  height: VIEWPORT_HEIGHT_EXPR,
+  minHeight: VIEWPORT_HEIGHT_EXPR,
   background: "#050c14",
   margin: 0,
   paddingTop: "max(4px, calc(env(safe-area-inset-top, 0px) + 2px))",
@@ -408,7 +419,7 @@ const CONTENT_STYLE: CSSProperties = {
   width: CONTENT_WIDTH_EXPR,
   maxWidth: "calc(100vw - 24px)",
   aspectRatio: "16 / 10",
-  maxHeight: `calc(${VIEWPORT_HEIGHT_UNIT} - 10px)`,
+  maxHeight: `calc(${VIEWPORT_HEIGHT_EXPR} - 10px)`,
   boxSizing: "border-box",
   position: "relative",
   zIndex: 1,
@@ -418,9 +429,9 @@ const CONTENT_STYLE: CSSProperties = {
 
 const WHITEBOARD_CONTENT_STYLE: CSSProperties = {
   width: "100%",
-  maxWidth: `min(900px, calc((${VIEWPORT_HEIGHT_UNIT} - 16px) * 1.6))`,
+  maxWidth: `min(900px, calc((${VIEWPORT_HEIGHT_EXPR} - 16px) * 1.6))`,
   aspectRatio: "16 / 10",
-  maxHeight: `calc(${VIEWPORT_HEIGHT_UNIT} - 16px)`,
+  maxHeight: `calc(${VIEWPORT_HEIGHT_EXPR} - 16px)`,
   boxSizing: "border-box",
   position: "relative",
   zIndex: 1,
@@ -1868,6 +1879,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (typeof window === "undefined") return false;
     return shouldUseIphoneLandscapeToolsOverride(getViewportRect());
   });
+  const [appViewportHeight, setAppViewportHeight] = useState(() => getMobileViewportHeight());
   const [phasesOpen, setPhasesOpen] = useState(false);
   const [kitEditorState, setKitEditorState] = useState<KitEditorState | null>(null);
   const [kitEditorTab, setKitEditorTab] = useState<KitEditorTab>("base");
@@ -1965,6 +1977,68 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       window.removeEventListener("orientationchange", syncCompactLandscapeState);
       viewport?.removeEventListener("resize", syncCompactLandscapeState);
       viewport?.removeEventListener("scroll", syncCompactLandscapeState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let rafId = 0;
+    let timeoutId: number | null = null;
+    const clearScheduled = () => {
+      if (timeoutId != null) {
+        window.clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+    };
+    const syncViewportHeight = () => {
+      rafId = 0;
+      const nextHeight = getMobileViewportHeight();
+      setAppViewportHeight((prevHeight) =>
+        Math.abs(prevHeight - nextHeight) <= 1 ? prevHeight : nextHeight,
+      );
+    };
+    const scheduleSync = (defer: boolean) => {
+      clearScheduled();
+      const run = () => {
+        rafId = window.requestAnimationFrame(syncViewportHeight);
+      };
+      if (defer) {
+        timeoutId = window.setTimeout(run, 180);
+        return;
+      }
+      run();
+    };
+    const handleResize = () => scheduleSync(false);
+    const handleOrientationChange = () => scheduleSync(true);
+    const handleResume = () => scheduleSync(true);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      scheduleSync(true);
+    };
+
+    scheduleSync(false);
+    const viewport = window.visualViewport;
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleOrientationChange);
+    window.addEventListener("focus", handleResume);
+    window.addEventListener("pageshow", handleResume);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    viewport?.addEventListener("resize", handleResize);
+    viewport?.addEventListener("scroll", handleResize);
+
+    return () => {
+      clearScheduled();
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleOrientationChange);
+      window.removeEventListener("focus", handleResume);
+      window.removeEventListener("pageshow", handleResume);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      viewport?.removeEventListener("resize", handleResize);
+      viewport?.removeEventListener("scroll", handleResize);
     };
   }, []);
 
@@ -3382,6 +3456,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       : isWhiteboardMode
         ? PITCH_WHITEBOARD_STYLE
         : PITCH_STYLE;
+  const rootShellStyle: CSSProperties = {
+    ...(isWhiteboardMode ? ROOT_WHITEBOARD_STYLE : ROOT_STYLE),
+    [BOARD_VIEWPORT_HEIGHT_CSS_VAR]: `${Math.max(0, Math.floor(appViewportHeight))}px`,
+  } as CSSProperties;
 
   if (isStatsMode) {
     return (
@@ -3393,7 +3471,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   return (
     <OrientationGate modeLabel="PáircVision Board">
-      <div style={isWhiteboardMode ? ROOT_WHITEBOARD_STYLE : ROOT_STYLE}>
+      <div style={rootShellStyle}>
         {!isWhiteboardMode ? <style>{STADIUM_FLOODLIGHT_CSS}</style> : null}
         {!isWhiteboardMode ? <VisionStadiumBackground variant="board" /> : null}
         <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : CONTENT_STYLE}>
