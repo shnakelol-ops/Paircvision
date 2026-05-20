@@ -923,6 +923,9 @@ export async function createMovementCanvasShell(
     setPlaybackSpeed: (speed) => {
       playbackSpeed = speed;
     },
+    changeTeamColor: (teamId, newHexColor) => {
+      tokenLayer.changeTeamColor(teamId, newHexColor);
+    },
     removeSelectedWaypoint: () => {
       if (!selectedTokenId) return false;
       const route = routeByTokenId.get(selectedTokenId);

@@ -32,6 +32,7 @@ export type TokenLayer = {
   getSelectedTokenId: () => string | null;
   setTokenPosition: (tokenId: string, position: NormalizedPoint) => MovementBoardToken | null;
   setSelectedToken: (tokenId: string | null) => MovementBoardToken | null;
+  changeTeamColor: (teamId: PremiumPlayerTokenColor, newHexColor: string | number) => void;
   setDraggingToken: (tokenId: string | null) => void;
   setOnTokenPointerDown: (handler: ((tokenId: string, event: unknown) => void) | null) => void;
   syncToMapper: () => void;
@@ -42,9 +43,17 @@ const TOKEN_RADIUS = 4.1;
 const TOKEN_TOUCH_HIT_DIAMETER_PX = 48;
 const SELECTED_TOKEN_SCALE = 1.04;
 
+type TeamColorUpdatableNode = Container & {
+  updateTeamColor: (newColor: string | number) => void;
+};
+
 function sanitizeTokenColor(input: PremiumPlayerTokenColor | string): PremiumPlayerTokenColor {
   if (input === "blue" || input === "red" || input === "yellow" || input === "black") return input;
   return "blue";
+}
+
+function canUpdateTeamColor(node: Container): node is TeamColorUpdatableNode {
+  return typeof (node as TeamColorUpdatableNode).updateTeamColor === "function";
 }
 
 function sanitizeToken(token: MovementBoardToken): MovementBoardToken {
@@ -203,6 +212,13 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
       const selected = visuals.get(selectedTokenId);
       if (!selected) return null;
       return copyToken(selected.token);
+    },
+    changeTeamColor: (teamId, newHexColor) => {
+      for (const visual of visuals.values()) {
+        if (visual.token.color !== teamId) continue;
+        if (!canUpdateTeamColor(visual.node)) continue;
+        visual.node.updateTeamColor(newHexColor);
+      }
     },
     setDraggingToken: (tokenId) => {
       draggingTokenId = tokenId && visuals.has(tokenId) ? tokenId : null;
