@@ -3172,9 +3172,14 @@ export default function StatsModeSurface() {
     savedSessionSignatureRef.current == null
       ? hasNonDefaultLiveSessionState
       : liveSessionSignature !== savedSessionSignatureRef.current;
+  const shouldPersistLiveRecoveryDraft =
+    hasDirtyLiveSession ||
+    matchState === "FIRST_HALF" ||
+    matchState === "HALF_TIME" ||
+    matchState === "SECOND_HALF";
 
   const createActiveMatchDraftSnapshot = useCallback((): StatsActiveMatchDraft | null => {
-    if (!hasDirtyLiveSession) return null;
+    if (!shouldPersistLiveRecoveryDraft) return null;
     const fullTimeResumeSource = fullTimeResumeStateRef.current;
     return {
       version: 1,
@@ -3211,7 +3216,7 @@ export default function StatsModeSurface() {
     currentHalf,
     currentMode,
     firstHalfAttackingDirection,
-    hasDirtyLiveSession,
+    shouldPersistLiveRecoveryDraft,
     loggedEvents,
     matchState,
     matchTimeSeconds,
