@@ -40,6 +40,7 @@ import {
   type SavedQuickBoard,
 } from "../features/quickboard/storage/quickboard-types";
 import { useOverlayPortalRoot } from "../overlay/OverlayPortalContext";
+import { useScreenWakeLock } from "../hooks/useScreenWakeLock";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 
 type PadMode = "tactical" | "stats" | "whiteboard";
@@ -1902,10 +1903,12 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const isWhiteboardMode = mode === "whiteboard";
   const isPortraitViewingMode = !isStatsMode && !isWhiteboardMode && isPortraitOrientation;
   const isPortraitViewingModeRef = useRef(isPortraitViewingMode);
-  const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
+  const shouldKeepScreenAwakeForBoard = !isStatsMode && !isWhiteboardMode;
   const playbackSpeedMultiplierRef = useRef(playbackSpeedMultiplier);
   const boardBaselineSignatureRef = useRef<string | null>(null);
   const lastBoardDraftSignatureRef = useRef<string | null>(null);
+
+  useScreenWakeLock(shouldKeepScreenAwakeForBoard);
 
   useEffect(() => {
     isPortraitViewingModeRef.current = isPortraitViewingMode;
@@ -2059,55 +2062,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       viewport?.removeEventListener("scroll", handleResize);
     };
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!(isStatsMode || isWhiteboardMode)) return;
-    const typedNavigator = navigator as Navigator & {
-      wakeLock?: { request: (type: "screen") => Promise<{ release: () => Promise<void> }> };
-    };
-    if (!typedNavigator.wakeLock?.request) return;
-
-    let disposed = false;
-    const requestWakeLock = async () => {
-      try {
-        const sentinel = await typedNavigator.wakeLock?.request("screen");
-        if (disposed) {
-          await sentinel?.release?.();
-          return;
-        }
-        wakeLockRef.current = sentinel ?? null;
-      } catch {
-        wakeLockRef.current = null;
-      }
-    };
-    const releaseWakeLock = async () => {
-      try {
-        await wakeLockRef.current?.release?.();
-      } catch {
-        // Ignore wake lock release errors.
-      } finally {
-        wakeLockRef.current = null;
-      }
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void requestWakeLock();
-      } else {
-        void releaseWakeLock();
-      }
-    };
-
-    if (document.visibilityState === "visible") {
-      void requestWakeLock();
-    }
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => {
-      disposed = true;
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      void releaseWakeLock();
-    };
-  }, [isStatsMode, isWhiteboardMode]);
 
   useEffect(() => {
     const media = window.matchMedia("(orientation: landscape)");

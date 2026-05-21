@@ -217,6 +217,9 @@ const MAX_BASIC_ROUTE_PLAYERS = 6;
 const BASIC_ROUTE_PREVIEW_SHADOW_COLOR = 0x1c1205;
 const BASIC_ROUTE_PREVIEW_CORE_COLOR = 0xf59e0b;
 const BASIC_ROUTE_PREVIEW_HIGHLIGHT_COLOR = 0xffd8a1;
+const BASIC_ROUTE_SAMPLE_MIN_POINT_DISTANCE = 0.1;
+const BASIC_ROUTE_SAMPLES_PER_SEGMENT = 16;
+const BASIC_ROUTE_MIN_CORNER_TENSION_SCALE = 0.28;
 const WHITEBOARD_DEFAULT_STROKE_COLOR = 0x111111;
 const WHITEBOARD_BLUE_START_X = 30;
 const WHITEBOARD_RED_START_X = 70;
@@ -389,6 +392,94 @@ function clampTeamCount(value: number | undefined): number {
 function sanitizePlaybackSpeedMultiplier(value: number): number {
   if (!Number.isFinite(value)) return DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
   return Math.max(MIN_PLAYBACK_SPEED_MULTIPLIER, Math.min(MAX_PLAYBACK_SPEED_MULTIPLIER, value));
+}
+
+function cloneRoutePoint(point: RoutePoint): RoutePoint {
+  return { x: point.x, y: point.y };
+}
+
+function normalizeSampleRoutePoints(
+  points: readonly RoutePoint[],
+  minDistance = BASIC_ROUTE_SAMPLE_MIN_POINT_DISTANCE,
+): RoutePoint[] {
+  const normalized: RoutePoint[] = [];
+  for (const point of points) {
+    const next = {
+      x: clampNormalizedValue(point.x),
+      y: clampNormalizedValue(point.y),
+    };
+    const previous = normalized[normalized.length - 1];
+    if (!previous) {
+      normalized.push(next);
+      continue;
+    }
+    if (Math.hypot(previous.x - next.x, previous.y - next.y) < Math.max(0, minDistance)) {
+      continue;
+    }
+    normalized.push(next);
+  }
+  return normalized;
+}
+
+function cubicBezierRoutePoint(p0: RoutePoint, c1: RoutePoint, c2: RoutePoint, p3: RoutePoint, t: number): RoutePoint {
+  const u = 1 - t;
+  const tt = t * t;
+  const uu = u * u;
+  const uuu = uu * u;
+  const ttt = tt * t;
+  return {
+    x: uuu * p0.x + 3 * uu * t * c1.x + 3 * u * tt * c2.x + ttt * p3.x,
+    y: uuu * p0.y + 3 * uu * t * c1.y + 3 * u * tt * c2.y + ttt * p3.y,
+  };
+}
+
+function clampBetween(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function routeCornerTensionScale(previous: RoutePoint, current: RoutePoint, next: RoutePoint): number {
+  const inX = current.x - previous.x;
+  const inY = current.y - previous.y;
+  const outX = next.x - current.x;
+  const outY = next.y - current.y;
+  const inLength = Math.hypot(inX, inY);
+  const outLength = Math.hypot(outX, outY);
+  if (inLength <= 0.0001 || outLength <= 0.0001) {
+    return BASIC_ROUTE_MIN_CORNER_TENSION_SCALE;
+  }
+  const dot = clampBetween((inX * outX + inY * outY) / (inLength * outLength), -1, 1);
+  const turnSharpness = (1 - dot) * 0.5;
+  return Math.max(BASIC_ROUTE_MIN_CORNER_TENSION_SCALE, 1 - turnSharpness * 0.9);
+}
+
+function sampleRoutePoints(points: readonly RoutePoint[]): RoutePoint[] {
+  const normalized = normalizeSampleRoutePoints(points);
+  if (normalized.length <= 2) {
+    return normalized.map((point) => cloneRoutePoint(point));
+  }
+  const sampled: RoutePoint[] = [];
+  for (let index = 0; index < normalized.length - 1; index += 1) {
+    const p0 = normalized[Math.max(0, index - 1)]!;
+    const p1 = normalized[index]!;
+    const p2 = normalized[index + 1]!;
+    const p3 = normalized[Math.min(normalized.length - 1, index + 2)]!;
+    const tensionAtP1 = routeCornerTensionScale(p0, p1, p2);
+    const tensionAtP2 = routeCornerTensionScale(p1, p2, p3);
+    const c1: RoutePoint = {
+      x: p1.x + ((p2.x - p0.x) / 6) * tensionAtP1,
+      y: p1.y + ((p2.y - p0.y) / 6) * tensionAtP1,
+    };
+    const c2: RoutePoint = {
+      x: p2.x - ((p3.x - p1.x) / 6) * tensionAtP2,
+      y: p2.y - ((p3.y - p1.y) / 6) * tensionAtP2,
+    };
+    const sampleStart = index === 0 ? 0 : 1;
+    for (let sample = sampleStart; sample <= BASIC_ROUTE_SAMPLES_PER_SEGMENT; sample += 1) {
+      const t = sample / BASIC_ROUTE_SAMPLES_PER_SEGMENT;
+      sampled.push(cubicBezierRoutePoint(p1, c1, c2, p2, t));
+    }
+  }
+  return normalizeSampleRoutePoints(sampled);
 }
 
 function sanitizeKitColor(value: string | undefined): TacticalKitColor | undefined {
@@ -894,6 +985,13 @@ export async function createTacticalPadLiteSurface(
   const playersLayer = new Container();
   world.addChild(playersLayer);
 
+  const routeSelectionLayer = new Container();
+  routeSelectionLayer.eventMode = "none";
+  world.addChild(routeSelectionLayer);
+  const routeSelectionGraphic = new Graphics();
+  routeSelectionGraphic.eventMode = "none";
+  routeSelectionLayer.addChild(routeSelectionGraphic);
+
   const ballLayer = new Container();
   ballLayer.eventMode = "passive";
   world.addChild(ballLayer);
@@ -1124,6 +1222,7 @@ export async function createTacticalPadLiteSurface(
   let currentRouteDraftPoints: RoutePoint[] = [];
   let currentRouteDraftPlayerId: string | null = null;
   let routeCapturePointerId: number | null = null;
+  let routeSelectionPulseMs = 0;
   let isPossessionPassModeEnabled = false;
 
   let activeDrag: ActiveDragState = null;
@@ -1212,6 +1311,7 @@ export async function createTacticalPadLiteSurface(
     renderTacticalItems();
     renderAllWhiteboardDrawings();
     renderBasicRoutePreview();
+    renderRouteSelectionHighlight();
     renderPlayerOriginGraphic();
   }
 
@@ -1479,6 +1579,39 @@ export async function createTacticalPadLiteSurface(
     renderPlayerOriginGraphic();
   }
 
+  function renderRouteSelectionHighlight(): void {
+    routeSelectionGraphic.clear();
+    if (surfaceVariant !== "tactical") return;
+    if (!isRouteCaptureMode || isPlaybackInputLocked() || activeRouteRunsByPlayerId.size > 0) return;
+    if (!selectedPlayerId) return;
+    const selectedPlayer = players.find((player) => player.id === selectedPlayerId);
+    if (!selectedPlayer) return;
+    const worldPoint = mapper.normalizedToWorld(selectedPlayer.current);
+    const pulse = (Math.sin(routeSelectionPulseMs * 0.006) + 1) * 0.5;
+    const outerRadius = PLAYER_RADIUS * (1.56 + pulse * 0.12);
+    const innerRadius = PLAYER_RADIUS * (1.34 + pulse * 0.08);
+    routeSelectionGraphic
+      .circle(worldPoint.x, worldPoint.y, outerRadius)
+      .stroke({
+        color: 0x7cedb8,
+        width: 0.34,
+        alpha: 0.64 + pulse * 0.14,
+        alignment: 0.5,
+      })
+      .circle(worldPoint.x, worldPoint.y, innerRadius)
+      .stroke({
+        color: 0xe9fff2,
+        width: 0.24,
+        alpha: 0.68 + pulse * 0.14,
+        alignment: 0.5,
+      });
+  }
+
+  function animateRouteSelectionHighlight(deltaMs: number): void {
+    routeSelectionPulseMs += Math.max(0, deltaMs);
+    renderRouteSelectionHighlight();
+  }
+
   function syncWhiteboardTokenInputMode(): void {
     if (!isDrawingEnabledSurface) return;
     const canInteractItems = isItemInteractionEnabled();
@@ -1521,6 +1654,7 @@ export async function createTacticalPadLiteSurface(
     whiteboardInputLayer.eventMode = isDrawingInteractionActive ? "static" : "none";
     whiteboardInputLayer.cursor =
       isRouteCaptureMode || activeWhiteboardTool !== "eraser" ? "crosshair" : "not-allowed";
+    renderRouteSelectionHighlight();
   }
 
   function clearPlayerOriginGraphic(): void {
@@ -2357,36 +2491,74 @@ export async function createTacticalPadLiteSurface(
 
   function renderBasicRoutePreview(): void {
     clearBasicRoutePreview();
-    const worldPaths: Array<Array<{ x: number; y: number }>> = [];
-    const appendPath = (points: RoutePoint[]): void => {
-      if (points.length < 2) return;
-      worldPaths.push(points.map((point) => mapper.normalizedToWorld(point)));
+    const worldPaths: Array<{
+      points: Array<{ x: number; y: number }>;
+      isDraft: boolean;
+      isSelected: boolean;
+      isPlaybackActive: boolean;
+    }> = [];
+    const activeRoutePlayerIds = new Set(activeRouteRunsByPlayerId.keys());
+    const appendPath = (
+      points: RoutePoint[],
+      optionsForPath: { isDraft: boolean; isSelected: boolean; isPlaybackActive: boolean },
+    ): void => {
+      const sampled = sampleRoutePoints(points);
+      if (sampled.length < 2) return;
+      worldPaths.push({
+        ...optionsForPath,
+        points: sampled.map((point) => mapper.normalizedToWorld(point)),
+      });
     };
-    for (const route of routeByPlayerId.values()) {
-      appendPath(route);
+    for (const [playerId, route] of routeByPlayerId.entries()) {
+      appendPath(route, {
+        isDraft: false,
+        isSelected: selectedPlayerId === playerId,
+        isPlaybackActive: activeRoutePlayerIds.has(playerId),
+      });
     }
     if (currentRouteDraftPoints.length > 0) {
-      appendPath(currentRouteDraftPoints);
+      appendPath(currentRouteDraftPoints, {
+        isDraft: true,
+        isSelected: currentRouteDraftPlayerId != null && currentRouteDraftPlayerId === selectedPlayerId,
+        isPlaybackActive: false,
+      });
     }
     if (worldPaths.length <= 0) return;
 
+    const resolveAlphaScale = (path: (typeof worldPaths)[number]): number => {
+      if (path.isDraft) return 0.78;
+      if (!isPlaybackInputLocked()) return path.isSelected ? 1 : 0.9;
+      if (path.isPlaybackActive) return path.isSelected ? 1 : 0.92;
+      return path.isSelected ? 0.78 : 0.56;
+    };
+
+    const resolveWidthScale = (path: (typeof worldPaths)[number]): number => {
+      if (path.isSelected) return 1.18;
+      if (path.isPlaybackActive) return 1.06;
+      return 1;
+    };
+
     const strokePaths = (style: { color: number; width: number; alpha: number }): void => {
       for (const path of worldPaths) {
-        const first = path[0];
+        const first = path.points[0];
         if (!first) continue;
         basicRoutePreviewGraphic.moveTo(first.x, first.y);
-        for (let index = 1; index < path.length; index += 1) {
-          const point = path[index];
+        for (let index = 1; index < path.points.length; index += 1) {
+          const point = path.points[index];
           if (!point) continue;
           basicRoutePreviewGraphic.lineTo(point.x, point.y);
         }
+        const alphaScale = resolveAlphaScale(path);
+        const widthScale = resolveWidthScale(path);
+        basicRoutePreviewGraphic.stroke({
+          color: style.color,
+          width: style.width * widthScale,
+          alpha: style.alpha * alphaScale,
+          cap: "round",
+          join: "round",
+          alignment: 0.5,
+        });
       }
-      basicRoutePreviewGraphic.stroke({
-        ...style,
-        cap: "round",
-        join: "round",
-        alignment: 0.5,
-      });
     };
 
     // Layered tactical stroke keeps lines readable on dark pitch and screen share,
@@ -2410,6 +2582,7 @@ export async function createTacticalPadLiteSurface(
     routeByPlayerId.clear();
     selectedPlayerId = null;
     clearBasicRoutePreview();
+    renderRouteSelectionHighlight();
     emitRouteStateChange();
   }
 
@@ -2456,10 +2629,12 @@ export async function createTacticalPadLiteSurface(
     for (const [playerId, route] of routeByPlayerId.entries()) {
       const player = players.find((entry) => entry.id === playerId);
       if (!player || route.length < 2) continue;
+      const sampledRoute = sampleRoutePoints(route);
+      if (sampledRoute.length < 2) continue;
       const origin = { x: player.current.x, y: player.current.y };
       const session = createBasicRouteFollowSession({
         target: player.current,
-        route: route.map((point) => ({ ...point })),
+        route: sampledRoute.map((point) => ({ ...point })),
         speed: BASIC_ROUTE_FOLLOW_SPEED,
       });
       runs.set(player.id, { playerId: player.id, origin, segmentIndex, session });
@@ -3429,6 +3604,7 @@ export async function createTacticalPadLiteSurface(
     stepPlayback(app.ticker.deltaMS);
     stepBasicRouteFollow(app.ticker.deltaMS);
     animatePlayerDragVisuals(app.ticker.deltaMS);
+    animateRouteSelectionHighlight(app.ticker.deltaMS);
   });
 
   syncWhiteboardTokenInputMode();
