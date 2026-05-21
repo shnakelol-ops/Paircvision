@@ -33,6 +33,8 @@ export type TokenLayer = {
   setTokenPosition: (tokenId: string, position: NormalizedPoint) => MovementBoardToken | null;
   setSelectedToken: (tokenId: string | null) => MovementBoardToken | null;
   setDraggingToken: (tokenId: string | null) => void;
+  setRouteSelectionVisualActive: (active: boolean) => void;
+  setRouteSelectionPulseTime: (timeMs: number) => void;
   setOnTokenPointerDown: (handler: ((tokenId: string, event: unknown) => void) | null) => void;
   syncToMapper: () => void;
   destroy: () => void;
@@ -64,6 +66,8 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
   let onTokenPointerDown = options.onTokenPointerDown ?? null;
   let selectedTokenId: string | null = null;
   let draggingTokenId: string | null = null;
+  let routeSelectionVisualActive = false;
+  let routeSelectionPulseTimeMs = 0;
 
   const setTouchHitArea = (visual: TokenVisual, mapper: WorldViewportMapper) => {
     const touchRadiusInWorld = (TOKEN_TOUCH_HIT_DIAMETER_PX * 0.5) / Math.max(0.001, mapper.transform.scale);
@@ -91,11 +95,26 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
   const applyInteractionVisuals = (visual: TokenVisual) => {
     const isSelected = selectedTokenId != null && visual.token.id === selectedTokenId;
     const isDragging = draggingTokenId != null && visual.token.id === draggingTokenId;
+    const routeSelected = routeSelectionVisualActive && isSelected;
+    const pulse = routeSelected ? (Math.sin(routeSelectionPulseTimeMs * 0.006) + 1) * 0.5 : 0;
     visual.selectionRing.visible = isSelected;
-    visual.selectionRing.alpha = isDragging ? 1 : 0.92;
+    visual.selectionRing.alpha = isDragging ? 1 : routeSelected ? 0.9 + pulse * 0.1 : 0.92;
+    visual.selectionRing.scale.set(routeSelected ? 1.02 + pulse * 0.09 : 1);
     visual.node.scale.set(
-      isDragging ? PREMIUM_TOKEN_DRAG_SCALE : isSelected ? SELECTED_TOKEN_SCALE : PREMIUM_TOKEN_IDLE_SCALE,
-      isDragging ? PREMIUM_TOKEN_DRAG_SCALE : isSelected ? SELECTED_TOKEN_SCALE : PREMIUM_TOKEN_IDLE_SCALE,
+      isDragging
+        ? PREMIUM_TOKEN_DRAG_SCALE
+        : isSelected
+          ? routeSelected
+            ? SELECTED_TOKEN_SCALE + 0.02 + pulse * 0.01
+            : SELECTED_TOKEN_SCALE
+          : PREMIUM_TOKEN_IDLE_SCALE,
+      isDragging
+        ? PREMIUM_TOKEN_DRAG_SCALE
+        : isSelected
+          ? routeSelected
+            ? SELECTED_TOKEN_SCALE + 0.02 + pulse * 0.01
+            : SELECTED_TOKEN_SCALE
+          : PREMIUM_TOKEN_IDLE_SCALE,
     );
     visual.shadow.alpha = isDragging ? PREMIUM_TOKEN_DRAG_SHADOW_ALPHA : PREMIUM_TOKEN_IDLE_SHADOW_ALPHA;
     visual.node.zIndex = isDragging ? 3 : isSelected ? 2 : 1;
@@ -206,6 +225,17 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
     },
     setDraggingToken: (tokenId) => {
       draggingTokenId = tokenId && visuals.has(tokenId) ? tokenId : null;
+      refreshInteractionVisuals();
+    },
+    setRouteSelectionVisualActive: (active) => {
+      const next = Boolean(active);
+      if (routeSelectionVisualActive === next) return;
+      routeSelectionVisualActive = next;
+      refreshInteractionVisuals();
+    },
+    setRouteSelectionPulseTime: (timeMs) => {
+      routeSelectionPulseTimeMs = Number.isFinite(timeMs) ? timeMs : routeSelectionPulseTimeMs;
+      if (!routeSelectionVisualActive || !selectedTokenId) return;
       refreshInteractionVisuals();
     },
     setOnTokenPointerDown: (handler) => {
