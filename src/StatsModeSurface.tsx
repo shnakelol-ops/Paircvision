@@ -24,20 +24,15 @@ type TeamScore = { goals: number; points: number; total: number };
 type TeamSide = "HOME" | "AWAY";
 type UtilityPanel = "PLAYERS" | "REVIEW" | "SUMMARY" | "SAVED_MATCHES" | "NOTES" | null;
 type ReviewHalf = "H1" | "H2" | "FULL";
+type ReviewTeamContext = "ALL" | "FOR" | "OPP";
 type ReviewEventFilter =
   | "ALL"
   | "SCORES"
-  | "GOAL"
-  | "POINT"
-  | "TWO_POINT"
-  | "SHOT"
-  | "WIDE"
-  | "TURNOVER_WON"
-  | "TURNOVER_LOST"
-  | "KICKOUT_WON"
-  | "KICKOUT_LOST"
-  | "FREE_WON"
-  | "FREE_CONCEDED";
+  | "SHOTS"
+  | "WIDES"
+  | "TURNOVERS"
+  | "KICKOUTS"
+  | "FREES";
 type ReviewZone = "FULL" | "OWN_HALF" | "OPPOSITION_HALF";
 type AttackingDirection = "LEFT" | "RIGHT";
 type PlayerRole = "STARTER" | "SUB";
@@ -239,49 +234,40 @@ function deriveTeamSideFromLegacyMetadata(team: TeamSide | null, eventId: string
   return "own";
 }
 
+const REVIEW_TEAM_CONTEXT_OPTIONS: ReadonlyArray<{ id: ReviewTeamContext; label: string }> = [
+  { id: "ALL", label: "ALL" },
+  { id: "FOR", label: "FOR" },
+  { id: "OPP", label: "OPP" },
+];
+
 const REVIEW_FILTER_OPTIONS_BASE: ReadonlyArray<{ id: ReviewEventFilter; label: string }> = [
-  { id: "ALL", label: "All" },
-  { id: "SCORES", label: "Scores" },
-  { id: "GOAL", label: "GOAL" },
-  { id: "POINT", label: "POINT" },
-  { id: "TWO_POINT", label: "TWO_POINT" },
-  { id: "SHOT", label: "SHOT" },
-  { id: "WIDE", label: "WIDE" },
-  { id: "TURNOVER_WON", label: "T+" },
-  { id: "TURNOVER_LOST", label: "T-" },
-  { id: "KICKOUT_WON", label: "K+" },
-  { id: "KICKOUT_LOST", label: "K-" },
-  { id: "FREE_WON", label: "F+" },
-  { id: "FREE_CONCEDED", label: "F-" },
+  { id: "ALL", label: "CAT ALL" },
+  { id: "SCORES", label: "SCORES" },
+  { id: "SHOTS", label: "SHOTS" },
+  { id: "WIDES", label: "WIDES" },
+  { id: "TURNOVERS", label: "T/O" },
+  { id: "KICKOUTS", label: "K/O" },
+  { id: "FREES", label: "FREES" },
 ];
 const REVIEW_FILTER_KINDS: Record<
   Exclude<ReviewEventFilter, "ALL">,
   readonly MatchEventKind[]
 > = {
-  SCORES: ["GOAL", "POINT", "TWO_POINTER", "FREE_SCORED", "FORTY_FIVE_TWO_POINT"],
-  GOAL: ["GOAL"],
-  POINT: ["POINT"],
-  TWO_POINT: ["TWO_POINTER", "FORTY_FIVE_TWO_POINT"],
-  SHOT: ["SHOT"],
-  WIDE: ["WIDE"],
-  TURNOVER_WON: ["TURNOVER_WON"],
-  TURNOVER_LOST: ["TURNOVER_LOST"],
-  KICKOUT_WON: ["KICKOUT_WON"],
-  KICKOUT_LOST: ["KICKOUT_CONCEDED"],
-  FREE_WON: ["FREE_WON"],
-  FREE_CONCEDED: ["FREE_CONCEDED"],
+  SCORES: ["GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED"],
+  SHOTS: ["SHOT"],
+  WIDES: ["WIDE"],
+  TURNOVERS: ["TURNOVER_WON", "TURNOVER_LOST"],
+  KICKOUTS: ["KICKOUT_WON", "KICKOUT_CONCEDED"],
+  FREES: ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"],
 };
 const MATCH_EVENT_KIND_SET = new Set<MatchEventKind>(MATCH_EVENT_KINDS);
 function buildReviewFilterOptions(
   isHurlingMode: boolean,
 ): ReadonlyArray<{ id: ReviewEventFilter; label: string }> {
-  return REVIEW_FILTER_OPTIONS_BASE
-    .filter((option) => !(isHurlingMode && option.id === "TWO_POINT"))
-    .map((option) => {
-      if (option.id === "KICKOUT_WON") return { ...option, label: isHurlingMode ? "P+" : "K+" };
-      if (option.id === "KICKOUT_LOST") return { ...option, label: isHurlingMode ? "P-" : "K-" };
-      return option;
-    });
+  return REVIEW_FILTER_OPTIONS_BASE.map((option) => {
+    if (option.id === "KICKOUTS") return { ...option, label: isHurlingMode ? "P/O" : "K/O" };
+    return option;
+  });
 }
 
 function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
@@ -1104,6 +1090,7 @@ function deriveMyTeamReport(
 function getRenderablePitchEvents(
   events: readonly LoggedMatchEvent[],
   reviewHalf: ReviewHalf,
+  reviewTeamContext: ReviewTeamContext,
   reviewEventFilter: ReviewEventFilter,
   reviewFilterKinds: Record<
     Exclude<ReviewEventFilter, "ALL">,
@@ -1114,10 +1101,15 @@ function getRenderablePitchEvents(
   reviewActivePlayerOnly: boolean,
   activePlayerId: string | null,
 ): LoggedMatchEvent[] {
+  const teamSideFilter =
+    reviewTeamContext === "FOR"
+      ? "own"
+      : reviewTeamContext === "OPP"
+        ? "opposition"
+        : null;
+  const kindFilterId = reviewEventFilter === "ALL" ? null : reviewEventFilter;
   const filterKinds =
-    reviewEventFilter === "ALL"
-      ? null
-      : new Set<MatchEventKind>(reviewFilterKinds[reviewEventFilter]);
+    kindFilterId == null ? null : new Set<MatchEventKind>(reviewFilterKinds[kindFilterId]);
   return events.filter((event) => {
     if (event.id.includes("-instant-score-")) return false;
 
@@ -1125,6 +1117,41 @@ function getRenderablePitchEvents(
     if (reviewHalf === "H2" && event.half !== 2) return false;
 
     if (filterKinds && !filterKinds.has(event.kind)) return false;
+
+    const eventTeamSide = event.teamSide ?? deriveTeamSideFromTeam(event.team);
+    const isOwnEvent = eventTeamSide === "own";
+    const isOppositionEvent = eventTeamSide === "opposition";
+    const isInferredOppositionEvent =
+      isOwnEvent &&
+      (event.kind === "TURNOVER_LOST" || event.kind === "KICKOUT_CONCEDED" || event.kind === "FREE_CONCEDED");
+
+    if (teamSideFilter != null) {
+      if (teamSideFilter === "own" && !isOwnEvent) return false;
+      if (teamSideFilter === "opposition") {
+        if (!isOppositionEvent && !isInferredOppositionEvent) return false;
+      }
+    }
+
+    if (teamSideFilter === "opposition" && reviewEventFilter !== "ALL") {
+      if (reviewEventFilter === "TURNOVERS") {
+        if (!(event.kind === "TURNOVER_LOST" || (isOppositionEvent && event.kind === "TURNOVER_WON"))) return false;
+      }
+      if (reviewEventFilter === "KICKOUTS") {
+        if (!(event.kind === "KICKOUT_CONCEDED" || (isOppositionEvent && event.kind === "KICKOUT_WON"))) return false;
+      }
+      if (reviewEventFilter === "FREES") {
+        if (
+          !(
+            event.kind === "FREE_CONCEDED" ||
+            (isOppositionEvent &&
+              (event.kind === "FREE_WON" || event.kind === "FREE_SCORED" || event.kind === "FREE_MISSED"))
+          )
+        ) {
+          return false;
+        }
+      }
+    }
+
     if (reviewActivePlayerOnly && activePlayerId != null && event.playerId !== activePlayerId) return false;
 
     const isAttackingHalf = attackingDirection === "RIGHT" ? event.nx >= 0.5 : event.nx < 0.5;
@@ -1696,18 +1723,55 @@ const PANEL_CSS = `
   left: 12px;
   right: 12px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  padding: 5px 6px;
-  border-radius: 999px;
+  gap: 5px;
+  padding: 6px;
+  border-radius: 10px;
   border: 1px solid rgba(148, 163, 184, 0.3);
   background: rgba(10, 20, 35, 0.82);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   box-shadow: 0 8px 16px rgba(4, 12, 24, 0.28);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+}
+
+.review-strip-status {
+  min-height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.5);
+  background: rgba(14, 116, 144, 0.24);
+  color: #bae6fd;
+  font-size: 8.4px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.22px;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 9px;
+}
+
+.review-strip-meta {
+  color: rgba(203, 213, 225, 0.86);
+  font-size: 8.2px;
+  font-weight: 600;
+  letter-spacing: 0.16px;
+  text-transform: uppercase;
+}
+
+.review-strip-player {
+  max-width: min(44vw, 220px);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  text-transform: none;
+}
+
+.review-strip-spacer {
+  flex: 1 1 auto;
+  min-width: 6px;
 }
 
 .review-strip--portrait {
@@ -1716,22 +1780,34 @@ const PANEL_CSS = `
 
 .review-strip--landscape {
   top: max(8px, env(safe-area-inset-top));
+  left: max(90px, calc(env(safe-area-inset-left, 0px) + 86px));
+  right: max(10px, calc(env(safe-area-inset-right, 0px) + 8px));
 }
 
 .review-strip-chip {
-  min-height: 24px;
+  min-height: 26px;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.36);
   background: rgba(15, 23, 42, 0.88);
   color: #dbe7f5;
-  font-size: 9px;
+  font-size: 8.4px;
   font-weight: 700;
   line-height: 1;
-  letter-spacing: 0.16px;
+  letter-spacing: 0.14px;
   text-transform: uppercase;
-  padding: 0 8px;
+  padding: 0 7px;
   cursor: pointer;
   flex: 0 0 auto;
+}
+
+.review-strip-chip--half {
+  min-width: 36px;
+  padding: 0 6px;
+}
+
+.review-strip-chip--exit {
+  border: 1px solid rgba(248, 113, 113, 0.68);
+  background: rgba(127, 29, 29, 0.35);
 }
 
 .review-event-card {
@@ -2684,6 +2760,7 @@ export default function StatsModeSurface() {
   const [playerDraft, setPlayerDraft] = useState("");
   const [showPlayerInitials] = useState(true);
   const [reviewHalf, setReviewHalf] = useState<ReviewHalf>("FULL");
+  const [reviewTeamContext, setReviewTeamContext] = useState<ReviewTeamContext>("ALL");
   const [reviewEventFilter, setReviewEventFilter] = useState<ReviewEventFilter>("ALL");
   const [reviewActivePlayerOnly, setReviewActivePlayerOnly] = useState(false);
   const [reviewZone, setReviewZone] = useState<ReviewZone>("FULL");
@@ -2729,6 +2806,7 @@ export default function StatsModeSurface() {
   const activePlayerIdRef = useRef<string | null>(null);
   const activePlayerEntryRef = useRef<SquadPlayer | null>(null);
   const reviewHalfRef = useRef<ReviewHalf>("FULL");
+  const reviewTeamContextRef = useRef<ReviewTeamContext>("ALL");
   const reviewEventFilterRef = useRef<ReviewEventFilter>("ALL");
   const reviewActivePlayerOnlyRef = useRef(false);
   const reviewZoneRef = useRef<ReviewZone>("FULL");
@@ -2755,13 +2833,7 @@ export default function StatsModeSurface() {
   );
 
   useScreenWakeLock(isLiveMatchActive);
-  const REVIEW_FILTER_KINDS_FOR_MODE = useMemo(() => {
-    if (!isHurlingMode) return REVIEW_FILTER_KINDS;
-    return {
-      ...REVIEW_FILTER_KINDS,
-      TWO_POINT: [] as readonly MatchEventKind[],
-    };
-  }, [isHurlingMode]);
+  const REVIEW_FILTER_KINDS_FOR_MODE = REVIEW_FILTER_KINDS;
   const OPPOSITION_EVENT_KINDS = useMemo(
     () =>
       new Set<MatchEventKind>([
@@ -3101,9 +3173,14 @@ export default function StatsModeSurface() {
     savedSessionSignatureRef.current == null
       ? hasNonDefaultLiveSessionState
       : liveSessionSignature !== savedSessionSignatureRef.current;
+  const shouldPersistLiveRecoveryDraft =
+    hasDirtyLiveSession ||
+    matchState === "FIRST_HALF" ||
+    matchState === "HALF_TIME" ||
+    matchState === "SECOND_HALF";
 
   const createActiveMatchDraftSnapshot = useCallback((): StatsActiveMatchDraft | null => {
-    if (!hasDirtyLiveSession) return null;
+    if (!shouldPersistLiveRecoveryDraft) return null;
     const fullTimeResumeSource = fullTimeResumeStateRef.current;
     return {
       version: 1,
@@ -3140,7 +3217,7 @@ export default function StatsModeSurface() {
     currentHalf,
     currentMode,
     firstHalfAttackingDirection,
-    hasDirtyLiveSession,
+    shouldPersistLiveRecoveryDraft,
     loggedEvents,
     matchState,
     matchTimeSeconds,
@@ -3181,6 +3258,10 @@ export default function StatsModeSurface() {
   useEffect(() => {
     reviewHalfRef.current = reviewHalf;
   }, [reviewHalf]);
+
+  useEffect(() => {
+    reviewTeamContextRef.current = reviewTeamContext;
+  }, [reviewTeamContext]);
 
   useEffect(() => {
     reviewEventFilterRef.current = reviewEventFilter;
@@ -3635,10 +3716,12 @@ export default function StatsModeSurface() {
   const startSecondHalfAction = () => {
     secondHalfSwitchBaselineEventCountRef.current = loggedEvents.length;
     reviewHalfRef.current = "H2";
+    reviewTeamContextRef.current = "ALL";
     reviewEventFilterRef.current = "ALL";
     reviewZoneRef.current = "FULL";
     reviewActivePlayerOnlyRef.current = false;
     setReviewHalf("H2");
+    setReviewTeamContext("ALL");
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
@@ -4033,9 +4116,11 @@ export default function StatsModeSurface() {
 
   const exitReviewMode = () => {
     reviewHalfRef.current = "FULL";
+    reviewTeamContextRef.current = "ALL";
     reviewEventFilterRef.current = "ALL";
     reviewZoneRef.current = "FULL";
     setReviewHalf("FULL");
+    setReviewTeamContext("ALL");
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
@@ -4088,9 +4173,11 @@ export default function StatsModeSurface() {
     currentMatchIdRef.current = nextMatchId;
     setLoggedEvents([]);
     reviewHalfRef.current = "FULL";
+    reviewTeamContextRef.current = "ALL";
     reviewEventFilterRef.current = "ALL";
     reviewZoneRef.current = "FULL";
     setReviewHalf("FULL");
+    setReviewTeamContext("ALL");
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
@@ -4213,12 +4300,18 @@ export default function StatsModeSurface() {
   }, [showReviewStrip, utilityPanel]);
 
   useEffect(() => {
+    if (!(showReviewStrip || utilityPanel === "REVIEW")) return;
+    setIsPickerOpen(false);
+  }, [showReviewStrip, utilityPanel]);
+
+  useEffect(() => {
     handleRef.current?.setEvents(
       (() => {
         const isReviewModeActive = showReviewStrip || utilityPanel === "REVIEW";
         const renderableEvents = getRenderablePitchEvents(
           loggedEvents,
           reviewHalf,
+          reviewTeamContext,
           reviewEventFilter,
           REVIEW_FILTER_KINDS_FOR_MODE,
           reviewZone,
@@ -4237,6 +4330,7 @@ export default function StatsModeSurface() {
   }, [
     loggedEvents,
     reviewHalf,
+    reviewTeamContext,
     reviewEventFilter,
     reviewZone,
     firstHalfAttackingDirection,
@@ -4462,8 +4556,9 @@ export default function StatsModeSurface() {
   const visibleReviewEvents = getRenderablePitchEvents(
     loggedEvents,
     reviewHalf,
+    reviewTeamContext,
     reviewEventFilter,
-    REVIEW_FILTER_KINDS,
+    REVIEW_FILTER_KINDS_FOR_MODE,
     reviewZone,
     effectiveAttackingDirection,
     reviewActivePlayerOnly,
@@ -4789,6 +4884,15 @@ export default function StatsModeSurface() {
           }`}
         >
           {attackingDirectionLabel}
+        </button>
+      ) : isReviewModeActive ? (
+        <button
+          type="button"
+          className="scoreboard-attack-btn scoreboard-attack-btn--rail"
+          onClick={exitReviewMode}
+          style={{ border: "1px solid rgba(248,113,113,0.68)", background: "rgba(127,29,29,0.35)" }}
+        >
+          Exit Review
         </button>
       ) : (
         ownershipToggleControl
@@ -5385,9 +5489,9 @@ export default function StatsModeSurface() {
               Half
             </div>
             {([
-              { id: "H1", label: "H1" },
-              { id: "H2", label: "H2" },
-              { id: "FULL", label: "FULL" },
+              { id: "FULL", label: "ALL" },
+              { id: "H1", label: "1H" },
+              { id: "H2", label: "2H" },
             ] as const).map((option) => (
               <button
                 key={option.id}
@@ -5411,7 +5515,32 @@ export default function StatsModeSurface() {
               </button>
             ))}
             <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
-              Event Filter
+              Team Context
+            </div>
+            {REVIEW_TEAM_CONTEXT_OPTIONS.map((option) => (
+              <button
+                key={`team-${option.id}`}
+                type="button"
+                className="utility-review-btn"
+                onClick={() => {
+                  setReviewTeamContext(option.id);
+                  setShowReviewStrip(true);
+                  closeUtilityPanel();
+                }}
+                style={
+                  reviewTeamContext === option.id
+                    ? {
+                        border: "1px solid rgba(125,211,252,0.9)",
+                        background: "rgba(14,116,144,0.38)",
+                      }
+                    : undefined
+                }
+              >
+                {option.label}
+              </button>
+            ))}
+            <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
+              Event Category
             </div>
             {REVIEW_FILTER_OPTIONS.map((option) => (
               <button
@@ -5647,20 +5776,41 @@ export default function StatsModeSurface() {
           role="toolbar"
           aria-label="Review quick controls"
         >
+          <span className="review-strip-status">Review</span>
           {([
-            { id: "H1", label: "H1" },
-            { id: "H2", label: "H2" },
-            { id: "FULL", label: "FULL" },
+            { id: "FULL", label: "ALL" },
+            { id: "H1", label: "1H" },
+            { id: "H2", label: "2H" },
           ] as const).map((option) => (
             <button
               key={`strip-half-${option.id}`}
               type="button"
-              className="review-strip-chip"
+              className="review-strip-chip review-strip-chip--half"
               onClick={() => {
                 setReviewHalf(option.id);
               }}
               style={
                 reviewHalf === option.id
+                  ? {
+                      border: "1px solid rgba(125,211,252,0.9)",
+                      background: "rgba(14,116,144,0.38)",
+                    }
+                  : undefined
+              }
+            >
+              {option.label}
+            </button>
+          ))}
+          {REVIEW_TEAM_CONTEXT_OPTIONS.map((option) => (
+            <button
+              key={`strip-team-${option.id}`}
+              type="button"
+              className="review-strip-chip"
+              onClick={() => {
+                setReviewTeamContext(option.id);
+              }}
+              style={
+                reviewTeamContext === option.id
                   ? {
                       border: "1px solid rgba(125,211,252,0.9)",
                       background: "rgba(14,116,144,0.38)",
@@ -5694,67 +5844,22 @@ export default function StatsModeSurface() {
           <button
             type="button"
             className="review-strip-chip"
-            onClick={() => {
-              setReviewActivePlayerOnly((prev) => !prev);
-            }}
-            style={
-              reviewActivePlayerOnly
-                ? {
-                    border: "1px solid rgba(125,211,252,0.9)",
-                    background: "rgba(14,116,144,0.38)",
-                  }
-                : undefined
-            }
+            onClick={openPlayersPanel}
+            aria-label="Open players panel while reviewing"
           >
-            ACTIVE
+            Players
           </button>
+          <span className="review-strip-meta review-strip-player">
+            {activePlayerChipText ?? "No active player"}
+          </span>
+          <span className="review-strip-meta">{visibleReviewEvents.length} shown</span>
+          <span className="review-strip-spacer" aria-hidden="true" />
           <button
             type="button"
-            className="review-strip-chip"
-            onClick={() => {
-              setShowReviewHeatmap((prev) => !prev);
-            }}
-            style={
-              showReviewHeatmap
-                ? {
-                    border: "1px solid rgba(125,211,252,0.9)",
-                    background: "rgba(14,116,144,0.38)",
-                  }
-                : undefined
-            }
-          >
-            Heatmap {showReviewHeatmap ? "ON" : "OFF"}
-          </button>
-          {([
-            { id: "OWN_HALF", label: "DEF HALF" },
-            { id: "OPPOSITION_HALF", label: "ATT HALF" },
-          ] as const).map((option) => (
-            <button
-              key={`strip-zone-${option.id}`}
-              type="button"
-              className="review-strip-chip"
-              onClick={() => {
-                setReviewZone(option.id);
-              }}
-              style={
-                reviewZone === option.id
-                  ? {
-                      border: "1px solid rgba(125,211,252,0.9)",
-                      background: "rgba(14,116,144,0.38)",
-                    }
-                  : undefined
-              }
-            >
-              {option.label}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="review-strip-chip"
+            className="review-strip-chip review-strip-chip--exit"
             onClick={exitReviewMode}
-            style={{ border: "1px solid rgba(248,113,113,0.68)", background: "rgba(127,29,29,0.35)" }}
           >
-            Exit
+            Exit Review
           </button>
         </div>
       ) : null}
@@ -5816,8 +5921,8 @@ export default function StatsModeSurface() {
         ref={floatingControlsRef}
         className="floating-controls"
       >
-          {!isLandscape ? ownershipToggleControl : null}
-          {!isLandscape && isPickerOpen ? (
+          {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
+          {!isLandscape && isPickerOpen && !isReviewModeActive ? (
             <div className="event-panel">
               <div className="event-grid">
                 {visibleEventButtons.map((item, idx) => {
@@ -5926,7 +6031,7 @@ export default function StatsModeSurface() {
               </div>
             </div>
           ) : null}
-          {isLandscape && isPickerOpen ? (
+          {isLandscape && isPickerOpen && !isReviewModeActive ? (
             <div className="landscape-toolbar">
               <div className="landscape-toolbar-row">
                 {visibleEventButtons.slice(0, 5).map((item) => {
@@ -6092,14 +6197,17 @@ export default function StatsModeSurface() {
           <button
             type="button"
             onClick={() => {
+              if (isReviewModeActive) return;
               toggleMatchBubble();
             }}
             aria-label="Toggle event picker"
-            aria-expanded={isPickerOpen}
+            aria-expanded={!isReviewModeActive && isPickerOpen}
             className="bubble-btn"
+            disabled={isReviewModeActive}
             style={{
               border: "none",
               background: "transparent",
+              opacity: isReviewModeActive ? 0.52 : 1,
               boxShadow: isPickerOpen
                 ? "0 5px 12px rgba(2, 8, 15, 0.28)"
                 : "0 4px 10px rgba(2, 8, 15, 0.22)",
