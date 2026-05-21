@@ -81,6 +81,7 @@ export function drawStatsMarkers(
     const style = getStatsMarkerStyle(event);
     const worldPoint = boardNormToWorld(event.nx, event.ny);
     const isTwoPointer = event.kind === "TWO_POINTER";
+    const isOppositionEvent = event.teamSide === "opposition";
     const styleRadius = isTwoPointer ? style.radius * 1.06 : style.radius;
     const radius = Math.max(styleRadius, minWorldRadius);
     const fill = parseCssColorForPixi(style.fill);
@@ -119,12 +120,20 @@ export function drawStatsMarkers(
     }
 
     markerGraphic.circle(0, 0, radius)
-      .fill({ color: fill.color, alpha: fill.alpha })
+      .fill({ color: fill.color, alpha: isOppositionEvent ? Math.max(0.72, fill.alpha * 0.9) : fill.alpha })
       .stroke({
         width: ringWidth,
         color: stroke.color,
         alpha: stroke.alpha,
       });
+
+    if (isOppositionEvent) {
+      markerGraphic.circle(0, 0, radius + 0.34).stroke({
+        width: Math.max(0.92, minRingWidth),
+        color: 0xfca5a5,
+        alpha: 0.74,
+      });
+    }
 
     if (isTwoPointer) {
       markerGraphic.circle(0, 0, radius + 0.62).stroke({
