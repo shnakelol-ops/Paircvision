@@ -2934,23 +2934,32 @@ export default function StatsModeSurface() {
     selectEventKind(kind);
   };
 
+  const closeAllStatsMenus = useCallback(() => {
+    setUtilityPanel(null);
+    setShowReviewStrip(false);
+    setIsUtilityOpen(false);
+    setIsPickerOpen(false);
+    setIsCountsOverlayOpen(false);
+    setIsFullTimeActionsOpen(false);
+    setIsResetConfirmOpen(false);
+  }, []);
+
   const toggleMatchBubble = () => {
-    setIsPickerOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setIsUtilityOpen(false);
-        setUtilityPanel((prevPanel) => (prevPanel === "PLAYERS" ? null : prevPanel));
-      }
-      return next;
-    });
+    if (isPickerOpen) {
+      setIsPickerOpen(false);
+      return;
+    }
+    closeAllStatsMenus();
+    setIsPickerOpen(true);
   };
 
   const toggleCommandBubble = () => {
-    setIsUtilityOpen((prev) => {
-      const next = !prev;
-      if (next) setIsPickerOpen(false);
-      return next;
-    });
+    if (isUtilityOpen) {
+      setIsUtilityOpen(false);
+      return;
+    }
+    closeAllStatsMenus();
+    setIsUtilityOpen(true);
   };
 
   const hasNonDefaultLiveSessionState =
@@ -3533,36 +3542,27 @@ export default function StatsModeSurface() {
     setMatchState(next.matchState);
     setCurrentHalf(next.currentHalf);
     setMatchTimeSeconds(next.matchTimeSeconds);
-    setIsCountsOverlayOpen(false);
+    closeAllStatsMenus();
     setIsFullTimeActionsOpen(true);
-    setIsResetConfirmOpen(false);
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
   };
 
   const toggleCountsOverlay = () => {
     if (matchState === "FULL_TIME") return;
-    setIsCountsOverlayOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setIsFullTimeActionsOpen(false);
-        setIsResetConfirmOpen(false);
-        setIsUtilityOpen(false);
-        setIsPickerOpen(false);
-      }
-      return next;
-    });
+    if (isCountsOverlayOpen) {
+      setIsCountsOverlayOpen(false);
+      return;
+    }
+    closeAllStatsMenus();
+    setIsCountsOverlayOpen(true);
   };
 
   const toggleFullTimeActionsPanel = () => {
-    setIsFullTimeActionsOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setIsCountsOverlayOpen(false);
-        setIsResetConfirmOpen(false);
-      }
-      return next;
-    });
+    if (isFullTimeActionsOpen) {
+      setIsFullTimeActionsOpen(false);
+      return;
+    }
+    closeAllStatsMenus();
+    setIsFullTimeActionsOpen(true);
   };
 
   const resumeMatchFromFullTime = () => {
@@ -3596,39 +3596,30 @@ export default function StatsModeSurface() {
   };
 
   const openPlayersPanel = () => {
+    closeAllStatsMenus();
     setUtilityPanel("PLAYERS");
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
   };
 
   const openReviewPanel = () => {
+    closeAllStatsMenus();
     setShowReviewStrip(true);
-    setUtilityPanel(null);
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
   };
 
   const openMatchSummaryPanel = () => {
-    setShowReviewStrip(false);
+    closeAllStatsMenus();
     setUtilityPanel("SUMMARY");
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
   };
 
   const openSavedMatchesPanel = () => {
-    setShowReviewStrip(false);
+    closeAllStatsMenus();
     setSavedMatches(readSavedMatchesFromStorage().matches);
     setUtilityPanel("SAVED_MATCHES");
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
     setSaveLoadBlockedReason(null);
   };
 
   const openNotesPanel = () => {
-    setShowReviewStrip(false);
+    closeAllStatsMenus();
     setUtilityPanel("NOTES");
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
   };
 
   const saveCurrentMatchSnapshot = () => {
@@ -3789,10 +3780,7 @@ export default function StatsModeSurface() {
     setMatchState(restoredContext.engineState.matchState);
     setCurrentHalf(restoredContext.engineState.currentHalf);
     setMatchTimeSeconds(restoredContext.engineState.matchTimeSeconds);
-    setIsCountsOverlayOpen(false);
-    setIsResetConfirmOpen(false);
-    setIsPickerOpen(false);
-    setIsUtilityOpen(false);
+    closeAllStatsMenus();
     setIsFullTimeActionsOpen(restoredContext.engineState.matchState === "FULL_TIME");
     handleRef.current?.setEventContext({
       half: restoredContext.engineState.currentHalf,
@@ -3801,7 +3789,6 @@ export default function StatsModeSurface() {
     });
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel(parsedRecord.label);
-    setUtilityPanel(null);
     savedSessionSignatureRef.current = buildLiveSessionSignature({
       currentMode,
       teamNames: {
@@ -3851,10 +3838,7 @@ export default function StatsModeSurface() {
     setMatchState(restoredContext.engineState.matchState);
     setCurrentHalf(restoredContext.engineState.currentHalf);
     setMatchTimeSeconds(restoredContext.engineState.matchTimeSeconds);
-    setIsCountsOverlayOpen(false);
-    setIsResetConfirmOpen(false);
-    setIsPickerOpen(false);
-    setIsUtilityOpen(false);
+    closeAllStatsMenus();
     setIsFullTimeActionsOpen(restoredContext.engineState.matchState === "FULL_TIME");
     handleRef.current?.setEventContext({
       half: restoredContext.engineState.currentHalf,
@@ -3980,11 +3964,8 @@ export default function StatsModeSurface() {
   };
 
   const requestResetMatch = () => {
+    closeAllStatsMenus();
     setIsResetConfirmOpen(true);
-    setIsCountsOverlayOpen(false);
-    setIsFullTimeActionsOpen(false);
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
   };
 
   const cancelResetMatch = () => {
@@ -4002,11 +3983,9 @@ export default function StatsModeSurface() {
 
   useEffect(() => {
     if (matchState !== "FULL_TIME") return;
-    setIsCountsOverlayOpen(false);
+    closeAllStatsMenus();
     setIsFullTimeActionsOpen(true);
-    setIsPickerOpen(false);
-    setIsUtilityOpen(false);
-  }, [matchState]);
+  }, [closeAllStatsMenus, matchState]);
 
   useEffect(() => {
     if (!isCountsOverlayOpen || !isFullTimeActionsOpen) return;
@@ -4329,6 +4308,12 @@ export default function StatsModeSurface() {
     if (!canSetFirstHalfAttackingDirection) return;
     setFirstHalfAttackingDirection((prev) => oppositeAttackingDirection(prev));
   };
+  const isAnyStatsMainPanelOpen =
+    utilityPanel !== null ||
+    isUtilityOpen ||
+    isCountsOverlayOpen ||
+    isFullTimeActionsOpen ||
+    isResetConfirmOpen;
   const isReviewModeActive = showReviewStrip || utilityPanel === "REVIEW";
   const playerById = useMemo(() => {
     const next = new Map<string, SquadPlayer>();
@@ -5443,7 +5428,7 @@ export default function StatsModeSurface() {
           </button>
         </div>
       ) : null}
-      {showReviewStrip && utilityPanel !== "REVIEW" ? (
+      {showReviewStrip && utilityPanel !== "REVIEW" && !isAnyStatsMainPanelOpen ? (
         <div
           className={`review-strip ${isLandscape ? "review-strip--landscape" : "review-strip--portrait"}`}
           role="toolbar"
@@ -5618,7 +5603,7 @@ export default function StatsModeSurface() {
         ref={floatingControlsRef}
         className="floating-controls"
       >
-          {!isLandscape && isPickerOpen ? (
+          {!isLandscape && isPickerOpen && !isAnyStatsMainPanelOpen ? (
             <div className="event-panel">
               <div className="event-grid">
                 {EVENT_BUTTONS.map((item, idx) => {
@@ -5731,7 +5716,7 @@ export default function StatsModeSurface() {
               </div>
             </div>
           ) : null}
-          {isLandscape && isPickerOpen ? (
+          {isLandscape && isPickerOpen && !isAnyStatsMainPanelOpen ? (
             <div className="landscape-toolbar">
               <div className="landscape-toolbar-row">
                 {EVENT_BUTTONS.slice(0, 5).map((item) => {
