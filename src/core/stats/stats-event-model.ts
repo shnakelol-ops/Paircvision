@@ -26,6 +26,9 @@ export type MatchEvent = {
   ny: number;
   half: 1 | 2;
   timestamp: number;
+  teamSide?: "own" | "opposition";
+  matchTimeSeconds?: number;
+  halfSegment?: 1 | 2 | 3;
 };
 
 export type CreateMatchEventInput = {
@@ -34,6 +37,9 @@ export type CreateMatchEventInput = {
   ny: number;
   half: 1 | 2;
   timestamp: number;
+  teamSide?: "own" | "opposition";
+  matchTimeSeconds?: number;
+  halfSegment?: 1 | 2 | 3;
   id?: string;
 };
 
@@ -53,5 +59,10 @@ export function createMatchEvent(input: CreateMatchEventInput): MatchEvent {
     ny: clamp01(input.ny),
     half: input.half,
     timestamp: input.timestamp,
+    ...(input.teamSide ? { teamSide: input.teamSide } : {}),
+    ...(typeof input.matchTimeSeconds === "number" && Number.isFinite(input.matchTimeSeconds)
+      ? { matchTimeSeconds: Math.max(0, Math.floor(input.matchTimeSeconds)) }
+      : {}),
+    ...(input.halfSegment ? { halfSegment: input.halfSegment } : {}),
   };
 }

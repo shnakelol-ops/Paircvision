@@ -204,6 +204,33 @@ function parseAttackingDirection(value: unknown): AttackingDirection | null {
   return null;
 }
 
+const HALF_SEGMENT_DURATION_SECONDS = 10 * 60;
+
+function deriveMatchTimeSecondsFromTimestamp(timestamp: number): number {
+  return Math.max(0, Math.floor(timestamp));
+}
+
+function deriveHalfSegment(matchTimeSeconds: number, currentHalf: 1 | 2): 1 | 2 | 3 {
+  const clampedClock = Math.max(0, Math.floor(matchTimeSeconds));
+  const normalizedClock =
+    currentHalf === 2 && clampedClock > HALF_SEGMENT_DURATION_SECONDS * 3
+      ? clampedClock - HALF_SEGMENT_DURATION_SECONDS * 3
+      : clampedClock;
+  if (normalizedClock < HALF_SEGMENT_DURATION_SECONDS) return 1;
+  if (normalizedClock < HALF_SEGMENT_DURATION_SECONDS * 2) return 2;
+  return 3;
+}
+
+function deriveTeamSideFromTeam(team: TeamSide | null | undefined): "own" | "opposition" {
+  return team === "AWAY" ? "opposition" : "own";
+}
+
+function deriveTeamSideFromLegacyMetadata(team: TeamSide | null, eventId: string): "own" | "opposition" {
+  if (team === "HOME" || eventId.startsWith("team-home-")) return "own";
+  if (team === "AWAY" || eventId.startsWith("team-away-")) return "opposition";
+  return "own";
+}
+
 const REVIEW_FILTER_OPTIONS_BASE: ReadonlyArray<{ id: ReviewEventFilter; label: string }> = [
   { id: "ALL", label: "All" },
   { id: "SCORES", label: "Scores" },
@@ -257,6 +284,10 @@ function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
   const maybeNy = "ny" in input ? input.ny : null;
   const maybeHalf = "half" in input ? input.half : null;
   const maybeTimestamp = "timestamp" in input ? input.timestamp : null;
+  const maybeTeam = "team" in input ? input.team : null;
+  const maybeTeamSide = "teamSide" in input ? input.teamSide : null;
+  const maybeMatchTimeSeconds = "matchTimeSeconds" in input ? input.matchTimeSeconds : null;
+  const maybeHalfSegment = "halfSegment" in input ? input.halfSegment : null;
 
   if (typeof maybeId !== "string" || maybeId.trim().length === 0) return null;
   if (typeof maybeKind !== "string" || !MATCH_EVENT_KIND_SET.has(maybeKind as MatchEventKind)) return null;
@@ -264,6 +295,19 @@ function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
   if (typeof maybeNy !== "number" || !Number.isFinite(maybeNy)) return null;
   if (maybeHalf !== 1 && maybeHalf !== 2) return null;
   if (typeof maybeTimestamp !== "number" || !Number.isFinite(maybeTimestamp)) return null;
+  const parsedTeam: TeamSide | null = maybeTeam === "HOME" || maybeTeam === "AWAY" ? maybeTeam : null;
+  const derivedMatchTimeSeconds =
+    typeof maybeMatchTimeSeconds === "number" && Number.isFinite(maybeMatchTimeSeconds)
+      ? Math.max(0, Math.floor(maybeMatchTimeSeconds))
+      : deriveMatchTimeSecondsFromTimestamp(maybeTimestamp);
+  const derivedTeamSide =
+    maybeTeamSide === "own" || maybeTeamSide === "opposition"
+      ? maybeTeamSide
+      : deriveTeamSideFromLegacyMetadata(parsedTeam, maybeId);
+  const derivedHalfSegment =
+    maybeHalfSegment === 1 || maybeHalfSegment === 2 || maybeHalfSegment === 3
+      ? maybeHalfSegment
+      : deriveHalfSegment(derivedMatchTimeSeconds, maybeHalf);
 
   const next: LoggedMatchEvent = {
     id: maybeId,
@@ -272,6 +316,9 @@ function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
     ny: maybeNy,
     half: maybeHalf,
     timestamp: maybeTimestamp,
+    teamSide: derivedTeamSide,
+    matchTimeSeconds: derivedMatchTimeSeconds,
+    halfSegment: derivedHalfSegment,
   };
 
   const maybePlayerId = "playerId" in input ? input.playerId : null;
@@ -294,9 +341,8 @@ function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
     next.squadId = maybeSquadId;
   }
 
-  const maybeTeam = "team" in input ? input.team : null;
-  if (maybeTeam === "HOME" || maybeTeam === "AWAY") {
-    next.team = maybeTeam;
+  if (parsedTeam) {
+    next.team = parsedTeam;
   }
 
   return next;
@@ -2901,16 +2947,23 @@ export default function StatsModeSurface() {
 
   const logAwayInstantScore = (kind: MatchEventKind) => {
     setLoggedEvents((prev) => {
+      const currentHalf = matchEngineStateRef.current.currentHalf;
+      const matchTimeSeconds = deriveMatchTimeSecondsFromTimestamp(matchEngineStateRef.current.matchTimeSeconds);
+      const awayInstantEvent: LoggedMatchEvent = {
+        id: `team-away-instant-score-${newLocalEventId()}`,
+        kind,
+        nx: 0,
+        ny: 0,
+        half: currentHalf,
+        timestamp: matchTimeSeconds,
+        team: "AWAY",
+        teamSide: "opposition",
+        matchTimeSeconds,
+        halfSegment: deriveHalfSegment(matchTimeSeconds, currentHalf),
+      };
       const next = [
         ...prev,
-        {
-          id: `team-away-instant-score-${newLocalEventId()}`,
-          kind,
-          nx: 0,
-          ny: 0,
-          half: matchEngineStateRef.current.currentHalf,
-          timestamp: matchEngineStateRef.current.matchTimeSeconds,
-        },
+        awayInstantEvent,
       ];
       if (import.meta.env.DEV) {
         console.assert(
@@ -3263,13 +3316,17 @@ export default function StatsModeSurface() {
       activeEventKind: selectedEventRef.current,
       showPlayerInitials,
       onEventLogged: (event) => {
-        const teamSide = activeTeamRef.current;
+        const team = activeTeamRef.current;
+        const matchTimeSeconds = deriveMatchTimeSecondsFromTimestamp(event.timestamp);
         const nextEvent: LoggedMatchEvent = {
           ...event,
-          id: `team-${teamSide.toLowerCase()}-${event.id}`,
-          team: teamSide,
+          id: `team-${team.toLowerCase()}-${event.id}`,
+          team,
+          teamSide: deriveTeamSideFromTeam(team),
+          matchTimeSeconds,
+          halfSegment: deriveHalfSegment(matchTimeSeconds, event.half),
         };
-        if (teamSide === "HOME") {
+        if (team === "HOME") {
           const activePlayerEntry = activePlayerEntryRef.current;
           const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? null;
           nextEvent.playerId = selectedPlayerId;
