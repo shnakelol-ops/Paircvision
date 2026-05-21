@@ -1799,6 +1799,11 @@ const PANEL_CSS = `
   flex: 0 0 auto;
 }
 
+.review-strip-chip--half {
+  min-width: 36px;
+  padding: 0 6px;
+}
+
 .review-strip-chip--exit {
   border: 1px solid rgba(248, 113, 113, 0.68);
   background: rgba(127, 29, 29, 0.35);
@@ -5478,9 +5483,9 @@ export default function StatsModeSurface() {
               Half
             </div>
             {([
-              { id: "H1", label: "H1" },
-              { id: "H2", label: "H2" },
-              { id: "FULL", label: "FULL" },
+              { id: "FULL", label: "ALL" },
+              { id: "H1", label: "1H" },
+              { id: "H2", label: "2H" },
             ] as const).map((option) => (
               <button
                 key={option.id}
@@ -5766,6 +5771,30 @@ export default function StatsModeSurface() {
           aria-label="Review quick controls"
         >
           <span className="review-strip-status">Review</span>
+          {([
+            { id: "FULL", label: "ALL" },
+            { id: "H1", label: "1H" },
+            { id: "H2", label: "2H" },
+          ] as const).map((option) => (
+            <button
+              key={`strip-half-${option.id}`}
+              type="button"
+              className="review-strip-chip review-strip-chip--half"
+              onClick={() => {
+                setReviewHalf(option.id);
+              }}
+              style={
+                reviewHalf === option.id
+                  ? {
+                      border: "1px solid rgba(125,211,252,0.9)",
+                      background: "rgba(14,116,144,0.38)",
+                    }
+                  : undefined
+              }
+            >
+              {option.label}
+            </button>
+          ))}
           {REVIEW_TEAM_CONTEXT_OPTIONS.map((option) => (
             <button
               key={`strip-team-${option.id}`}
