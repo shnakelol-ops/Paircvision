@@ -89,6 +89,7 @@ type StatsActiveMatchDraft = {
   matchId: string;
   currentMode: GaaModeKey;
   activeTeam: TeamSide;
+  activeTeamSide?: "own" | "opposition";
   teamNames: { HOME: string; AWAY: string };
   venue: string;
   events: readonly LoggedMatchEvent[];
@@ -519,6 +520,10 @@ function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActive
     const matchId = typeof source.matchId === "string" ? source.matchId.trim() : "";
     const updatedAt = parseClockSeconds(source.updatedAt);
     const activeTeam = source.activeTeam === "HOME" || source.activeTeam === "AWAY" ? source.activeTeam : "HOME";
+    const activeTeamSide =
+      source.activeTeamSide === "own" || source.activeTeamSide === "opposition"
+        ? source.activeTeamSide
+        : deriveTeamSideFromTeam(activeTeam);
     const mode =
       source.currentMode === "football" ||
       source.currentMode === "ladiesFootball" ||
@@ -551,6 +556,7 @@ function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActive
         matchId,
         currentMode: mode,
         activeTeam,
+        activeTeamSide,
         teamNames: { HOME: homeName, AWAY: awayName },
         venue: typeof source.venue === "string" ? source.venue.trim().slice(0, 24) : "",
         events,
@@ -1131,6 +1137,7 @@ function getRenderablePitchEvents(
 
 type LiveSessionSignatureInput = {
   currentMode: GaaModeKey;
+  activeTeamSide: "own" | "opposition";
   teamNames: { HOME: string; AWAY: string };
   venueName: string;
   events: readonly LoggedMatchEvent[];
@@ -1144,6 +1151,7 @@ type LiveSessionSignatureInput = {
 function buildLiveSessionSignature(input: LiveSessionSignatureInput): string {
   return JSON.stringify({
     currentMode: input.currentMode,
+    activeTeamSide: input.activeTeamSide,
     teamNames: {
       HOME: input.teamNames.HOME,
       AWAY: input.teamNames.AWAY,
@@ -3047,6 +3055,7 @@ export default function StatsModeSurface() {
     matchState !== "PRE_MATCH" ||
     currentHalf !== 1 ||
     matchTimeSeconds > 0 ||
+    activeTeamSide !== "own" ||
     teamNames.HOME !== "Team A" ||
     teamNames.AWAY !== "Team B" ||
     venueName.trim().length > 0 ||
@@ -3055,6 +3064,7 @@ export default function StatsModeSurface() {
     () =>
       buildLiveSessionSignature({
         currentMode,
+        activeTeamSide,
         teamNames,
         venueName,
         events: loggedEvents,
@@ -3066,6 +3076,7 @@ export default function StatsModeSurface() {
       }),
     [
       currentMode,
+      activeTeamSide,
       teamNames,
       venueName,
       loggedEvents,
@@ -3088,7 +3099,8 @@ export default function StatsModeSurface() {
       updatedAt: Date.now(),
       matchId: currentMatchIdRef.current,
       currentMode,
-      activeTeam,
+      activeTeam: deriveTeamFromTeamSide(activeTeamSide),
+      activeTeamSide,
       teamNames: {
         HOME: teamNames.HOME.trim() || "Team A",
         AWAY: teamNames.AWAY.trim() || "Team B",
@@ -3113,7 +3125,7 @@ export default function StatsModeSurface() {
       },
     };
   }, [
-    activeTeam,
+    activeTeamSide,
     currentHalf,
     currentMode,
     firstHalfAttackingDirection,
@@ -3914,6 +3926,7 @@ export default function StatsModeSurface() {
     setUtilityPanel(null);
     savedSessionSignatureRef.current = buildLiveSessionSignature({
       currentMode,
+      activeTeamSide: activeTeamSideRef.current,
       teamNames: {
         HOME: parsedRecord.homeTeamName,
         AWAY: parsedRecord.awayTeamName,
@@ -3933,7 +3946,7 @@ export default function StatsModeSurface() {
     if (!draft) return;
     const draftMatchId = draft.matchId.trim().length > 0 ? draft.matchId : newMatchSessionId("live");
     setCurrentMode(draft.currentMode);
-    const recoveredTeamSide = deriveTeamSideFromTeam(draft.activeTeam);
+    const recoveredTeamSide = draft.activeTeamSide ?? deriveTeamSideFromTeam(draft.activeTeam);
     setActiveTeam("HOME");
     activeTeamRef.current = "HOME";
     setActiveTeamSide(recoveredTeamSide);
