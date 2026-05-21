@@ -13,17 +13,25 @@ import {
   type MatchState,
 } from "./core/match/match-state-store";
 import { createPixiPitchSurface } from "./core/pitch/create-pixi-pitch-surface";
-import { MATCH_EVENT_KINDS, type MatchEvent, type MatchEventKind } from "./core/stats/stats-event-model";
+import {
+  MATCH_EVENT_KINDS,
+  type MatchEvent,
+  type MatchEventKind,
+  type MatchEventPeriod,
+  type MatchEventSegment,
+} from "./core/stats/stats-event-model";
 import { gaaModeConfig, type GaaModeKey } from "./config/gaaModeConfig";
 import { useScreenWakeLock } from "./hooks/useScreenWakeLock";
 import { NotesQuickPanel } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
+import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
 type TeamSide = "HOME" | "AWAY";
 type UtilityPanel = "PLAYERS" | "REVIEW" | "SUMMARY" | "SAVED_MATCHES" | "NOTES" | null;
 type ReviewHalf = "H1" | "H2" | "FULL";
+type ReviewSegment = "ALL" | "S1" | "S2" | "S3" | "S4" | "S5" | "S6";
 type ReviewTeamContext = "ALL" | "FOR" | "OPP";
 type ReviewEventFilter =
   | "ALL"
@@ -32,7 +40,8 @@ type ReviewEventFilter =
   | "WIDES"
   | "TURNOVERS"
   | "KICKOUTS"
-  | "FREES";
+  | "FREES"
+  | "PLAYERS";
 type ReviewZone = "FULL" | "OWN_HALF" | "OPPOSITION_HALF";
 type AttackingDirection = "LEFT" | "RIGHT";
 type PlayerRole = "STARTER" | "SUB";
@@ -46,6 +55,14 @@ type SavedSquad = {
   updatedAt: number;
 };
 type LoggedMatchEvent = MatchEvent & {
+  type: MatchEventKind;
+  teamSide: "FOR" | "OPP";
+  x: number;
+  y: number;
+  period: MatchEventPeriod;
+  segment: MatchEventSegment;
+  matchClockSeconds: number;
+  createdAt: number;
   playerId?: string;
   playerName?: string;
   playerNumber?: number;
@@ -203,21 +220,12 @@ function parseAttackingDirection(value: unknown): AttackingDirection | null {
   return null;
 }
 
-const HALF_SEGMENT_DURATION_SECONDS = 10 * 60;
-
 function deriveMatchTimeSecondsFromTimestamp(timestamp: number): number {
   return Math.max(0, Math.floor(timestamp));
 }
 
-function deriveHalfSegment(matchTimeSeconds: number, currentHalf: 1 | 2): 1 | 2 | 3 {
-  const clampedClock = Math.max(0, Math.floor(matchTimeSeconds));
-  const normalizedClock =
-    currentHalf === 2 && clampedClock > HALF_SEGMENT_DURATION_SECONDS * 3
-      ? clampedClock - HALF_SEGMENT_DURATION_SECONDS * 3
-      : clampedClock;
-  if (normalizedClock < HALF_SEGMENT_DURATION_SECONDS) return 1;
-  if (normalizedClock < HALF_SEGMENT_DURATION_SECONDS * 2) return 2;
-  return 3;
+function deriveLegacyHalfSegment(segment: MatchEventSegment): 1 | 2 | 3 {
+  return (((segment - 1) % 3) + 1) as 1 | 2 | 3;
 }
 
 function deriveTeamSideFromTeam(team: TeamSide | null | undefined): "own" | "opposition" {
@@ -228,10 +236,20 @@ function deriveTeamFromTeamSide(teamSide: "own" | "opposition"): TeamSide {
   return teamSide === "opposition" ? "AWAY" : "HOME";
 }
 
-function deriveTeamSideFromLegacyMetadata(team: TeamSide | null, eventId: string): "own" | "opposition" {
-  if (team === "HOME" || eventId.startsWith("team-home-")) return "own";
-  if (team === "AWAY" || eventId.startsWith("team-away-")) return "opposition";
-  return "own";
+function deriveEventTeamSideFromLegacyMetadata(team: TeamSide | null, eventId: string): "FOR" | "OPP" {
+  if (team === "AWAY" || eventId.startsWith("team-away-")) return "OPP";
+  return "FOR";
+}
+
+function normalizeEventTeamSide(
+  teamSide: unknown,
+  team: TeamSide | null,
+  eventId: string,
+): "FOR" | "OPP" {
+  if (teamSide === "FOR" || teamSide === "OPP") return teamSide;
+  if (teamSide === "own") return "FOR";
+  if (teamSide === "opposition") return "OPP";
+  return deriveEventTeamSideFromLegacyMetadata(team, eventId);
 }
 
 const REVIEW_TEAM_CONTEXT_OPTIONS: ReadonlyArray<{ id: ReviewTeamContext; label: string }> = [
@@ -241,16 +259,26 @@ const REVIEW_TEAM_CONTEXT_OPTIONS: ReadonlyArray<{ id: ReviewTeamContext; label:
 ];
 
 const REVIEW_FILTER_OPTIONS_BASE: ReadonlyArray<{ id: ReviewEventFilter; label: string }> = [
-  { id: "ALL", label: "CAT ALL" },
+  { id: "ALL", label: "ALL" },
   { id: "SCORES", label: "SCORES" },
   { id: "SHOTS", label: "SHOTS" },
   { id: "WIDES", label: "WIDES" },
   { id: "TURNOVERS", label: "T/O" },
   { id: "KICKOUTS", label: "K/O" },
   { id: "FREES", label: "FREES" },
+  { id: "PLAYERS", label: "PLAYERS" },
+];
+const REVIEW_SEGMENT_OPTIONS: ReadonlyArray<{ id: ReviewSegment; label: string }> = [
+  { id: "ALL", label: "ALL" },
+  { id: "S1", label: "S1" },
+  { id: "S2", label: "S2" },
+  { id: "S3", label: "S3" },
+  { id: "S4", label: "S4" },
+  { id: "S5", label: "S5" },
+  { id: "S6", label: "S6" },
 ];
 const REVIEW_FILTER_KINDS: Record<
-  Exclude<ReviewEventFilter, "ALL">,
+  Exclude<ReviewEventFilter, "ALL" | "PLAYERS">,
   readonly MatchEventKind[]
 > = {
   SCORES: ["GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED"],
@@ -270,13 +298,47 @@ function buildReviewFilterOptions(
   });
 }
 
+function normalizeEventCoordinate(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0.5;
+  return Math.max(0, Math.min(1, value));
+}
+
+function normalizeMatchClockSeconds(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Math.max(0, Math.floor(value));
+}
+
+function normalizeCreatedAt(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.floor(value);
+  }
+  return Date.now();
+}
+
+function parseEventPeriod(value: unknown): MatchEventPeriod | null {
+  if (value === "1H" || value === "2H") return value;
+  return null;
+}
+
+function parseEventSegment(value: unknown): MatchEventSegment | null {
+  if (value === 1 || value === 2 || value === 3 || value === 4 || value === 5 || value === 6) return value;
+  return null;
+}
+
 function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
   if (!input || typeof input !== "object") return null;
   const maybeId = "id" in input ? input.id : null;
+  const maybeType = "type" in input ? input.type : null;
   const maybeKind = "kind" in input ? input.kind : null;
+  const maybeX = "x" in input ? input.x : null;
+  const maybeY = "y" in input ? input.y : null;
   const maybeNx = "nx" in input ? input.nx : null;
   const maybeNy = "ny" in input ? input.ny : null;
+  const maybePeriod = "period" in input ? input.period : null;
+  const maybeSegment = "segment" in input ? input.segment : null;
   const maybeHalf = "half" in input ? input.half : null;
+  const maybeMatchClockSeconds = "matchClockSeconds" in input ? input.matchClockSeconds : null;
+  const maybeCreatedAt = "createdAt" in input ? input.createdAt : null;
   const maybeTimestamp = "timestamp" in input ? input.timestamp : null;
   const maybeTeam = "team" in input ? input.team : null;
   const maybeTeamSide = "teamSide" in input ? input.teamSide : null;
@@ -284,35 +346,49 @@ function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
   const maybeHalfSegment = "halfSegment" in input ? input.halfSegment : null;
 
   if (typeof maybeId !== "string" || maybeId.trim().length === 0) return null;
-  if (typeof maybeKind !== "string" || !MATCH_EVENT_KIND_SET.has(maybeKind as MatchEventKind)) return null;
-  if (typeof maybeNx !== "number" || !Number.isFinite(maybeNx)) return null;
-  if (typeof maybeNy !== "number" || !Number.isFinite(maybeNy)) return null;
-  if (maybeHalf !== 1 && maybeHalf !== 2) return null;
-  if (typeof maybeTimestamp !== "number" || !Number.isFinite(maybeTimestamp)) return null;
-  const parsedTeam: TeamSide | null = maybeTeam === "HOME" || maybeTeam === "AWAY" ? maybeTeam : null;
-  const derivedMatchTimeSeconds =
-    typeof maybeMatchTimeSeconds === "number" && Number.isFinite(maybeMatchTimeSeconds)
-      ? Math.max(0, Math.floor(maybeMatchTimeSeconds))
-      : deriveMatchTimeSecondsFromTimestamp(maybeTimestamp);
-  const derivedTeamSide =
-    maybeTeamSide === "own" || maybeTeamSide === "opposition"
-      ? maybeTeamSide
-      : deriveTeamSideFromLegacyMetadata(parsedTeam, maybeId);
-  const derivedHalfSegment =
+  const rawKind = typeof maybeType === "string" ? maybeType : typeof maybeKind === "string" ? maybeKind : null;
+  if (rawKind == null || !MATCH_EVENT_KIND_SET.has(rawKind as MatchEventKind)) return null;
+  const parsedKind = rawKind as MatchEventKind;
+  const parsedX = normalizeEventCoordinate(maybeX ?? maybeNx);
+  const parsedY = normalizeEventCoordinate(maybeY ?? maybeNy);
+  const parsedPeriod =
+    parseEventPeriod(maybePeriod) ??
+    (maybeHalf === 1 || maybeHalf === 2 ? periodFromHalf(maybeHalf) : null) ??
+    "1H";
+  const parsedHalf = maybeHalf === 1 || maybeHalf === 2 ? maybeHalf : halfFromPeriod(parsedPeriod);
+  const parsedClockSeconds =
+    normalizeMatchClockSeconds(maybeMatchClockSeconds) ??
+    normalizeMatchClockSeconds(maybeMatchTimeSeconds) ??
+    normalizeMatchClockSeconds(maybeTimestamp) ??
+    0;
+  const parsedSegment =
+    parseEventSegment(maybeSegment) ?? deriveSegmentFromPeriodClock(parsedPeriod, parsedClockSeconds);
+  const parsedHalfSegment =
     maybeHalfSegment === 1 || maybeHalfSegment === 2 || maybeHalfSegment === 3
       ? maybeHalfSegment
-      : deriveHalfSegment(derivedMatchTimeSeconds, maybeHalf);
+      : deriveLegacyHalfSegment(parsedSegment);
+  const parsedTimestamp = normalizeMatchClockSeconds(maybeTimestamp) ?? parsedClockSeconds;
+  const parsedTeam: TeamSide | null = maybeTeam === "HOME" || maybeTeam === "AWAY" ? maybeTeam : null;
+  const parsedTeamSide = normalizeEventTeamSide(maybeTeamSide, parsedTeam, maybeId);
+  const parsedCreatedAt = normalizeCreatedAt(maybeCreatedAt);
 
   const next: LoggedMatchEvent = {
     id: maybeId,
-    kind: maybeKind as MatchEventKind,
-    nx: maybeNx,
-    ny: maybeNy,
-    half: maybeHalf,
-    timestamp: maybeTimestamp,
-    teamSide: derivedTeamSide,
-    matchTimeSeconds: derivedMatchTimeSeconds,
-    halfSegment: derivedHalfSegment,
+    kind: parsedKind,
+    type: parsedKind,
+    nx: parsedX,
+    ny: parsedY,
+    x: parsedX,
+    y: parsedY,
+    half: parsedHalf,
+    period: parsedPeriod,
+    segment: parsedSegment,
+    halfSegment: parsedHalfSegment,
+    timestamp: parsedTimestamp,
+    matchClockSeconds: parsedClockSeconds,
+    matchTimeSeconds: parsedClockSeconds,
+    createdAt: parsedCreatedAt,
+    teamSide: parsedTeamSide,
   };
 
   const maybePlayerId = "playerId" in input ? input.playerId : null;
@@ -356,20 +432,37 @@ function parseStoredSavedMatch(input: unknown): SavedMatch | null {
   const maybeRestoreContext = "restoreContext" in input ? input.restoreContext : null;
 
   if (typeof maybeId !== "string" || maybeId.trim().length === 0) return null;
-  if (typeof maybeCreatedAt !== "number" || !Number.isFinite(maybeCreatedAt) || maybeCreatedAt <= 0) return null;
-  if (typeof maybeLabel !== "string" || maybeLabel.trim().length === 0) return null;
-  if (typeof maybeHomeTeamName !== "string" || maybeHomeTeamName.trim().length === 0) return null;
-  if (typeof maybeAwayTeamName !== "string" || maybeAwayTeamName.trim().length === 0) return null;
-  if (typeof maybeVenue !== "string" || maybeVenue.trim().length === 0) return null;
+  const parsedCreatedAt = normalizeCreatedAt(maybeCreatedAt);
+  const homeTeamName =
+    typeof maybeHomeTeamName === "string" && maybeHomeTeamName.trim().length > 0
+      ? maybeHomeTeamName.trim().slice(0, 24)
+      : "Team A";
+  const awayTeamName =
+    typeof maybeAwayTeamName === "string" && maybeAwayTeamName.trim().length > 0
+      ? maybeAwayTeamName.trim().slice(0, 24)
+      : "Team B";
+  const parsedLabel =
+    typeof maybeLabel === "string" && maybeLabel.trim().length > 0
+      ? maybeLabel.trim().slice(0, 64)
+      : `${homeTeamName} v ${awayTeamName}`;
+  const parsedVenue =
+    typeof maybeVenue === "string" && maybeVenue.trim().length > 0
+      ? maybeVenue.trim().slice(0, 64)
+      : "Unknown venue";
   if (!Array.isArray(maybeEvents) || maybeEvents.length === 0) return null;
-  if (typeof maybeEventCount !== "number" || !Number.isFinite(maybeEventCount)) return null;
-  if (typeof maybeScorelineSnapshot !== "string" || maybeScorelineSnapshot.trim().length === 0) return null;
 
   const parsedEvents = maybeEvents.map((event) => parseStoredLoggedMatchEvent(event));
   if (parsedEvents.some((event) => event == null)) return null;
   const events = parsedEvents.filter((event): event is LoggedMatchEvent => event != null);
   if (events.length === 0) return null;
-  if (Math.floor(maybeEventCount) !== events.length) return null;
+  const parsedEventCount =
+    typeof maybeEventCount === "number" && Number.isFinite(maybeEventCount)
+      ? Math.max(0, Math.floor(maybeEventCount))
+      : events.length;
+  const parsedScorelineSnapshot =
+    typeof maybeScorelineSnapshot === "string" && maybeScorelineSnapshot.trim().length > 0
+      ? maybeScorelineSnapshot.trim().slice(0, 120)
+      : `${homeTeamName} v ${awayTeamName}`;
   const parseRestoreContext = (value: unknown): SavedMatchRestoreContext | undefined => {
     if (!value || typeof value !== "object") return undefined;
     const source = value as Record<string, unknown>;
@@ -407,14 +500,14 @@ function parseStoredSavedMatch(input: unknown): SavedMatch | null {
 
   return {
     id: maybeId,
-    createdAt: maybeCreatedAt,
-    label: maybeLabel.trim().slice(0, 64),
-    homeTeamName: maybeHomeTeamName.trim().slice(0, 24),
-    awayTeamName: maybeAwayTeamName.trim().slice(0, 24),
-    venue: maybeVenue.trim().slice(0, 64),
+    createdAt: parsedCreatedAt,
+    label: parsedLabel,
+    homeTeamName,
+    awayTeamName,
+    venue: parsedVenue,
     events,
-    eventCount: events.length,
-    scorelineSnapshot: maybeScorelineSnapshot.trim().slice(0, 120),
+    eventCount: parsedEventCount === events.length ? parsedEventCount : events.length,
+    scorelineSnapshot: parsedScorelineSnapshot,
     ...(restoreContext ? { restoreContext } : {}),
   };
 }
@@ -589,11 +682,11 @@ function resolveSavedMatchRestoreContext(record: SavedMatch): {
   const deriveLegacySnapshot = (): { matchState: MatchState; currentHalf: 1 | 2; matchTimeSeconds: number } => {
     const halfOneTimes = record.events
       .filter((event) => event.half === 1)
-      .map((event) => event.timestamp)
+      .map((event) => event.matchClockSeconds ?? event.timestamp)
       .filter((timestamp) => Number.isFinite(timestamp));
     const halfTwoTimes = record.events
       .filter((event) => event.half === 2)
-      .map((event) => event.timestamp)
+      .map((event) => event.matchClockSeconds ?? event.timestamp)
       .filter((timestamp) => Number.isFinite(timestamp));
     if (halfTwoTimes.length > 0) {
       return {
@@ -1090,10 +1183,11 @@ function deriveMyTeamReport(
 function getRenderablePitchEvents(
   events: readonly LoggedMatchEvent[],
   reviewHalf: ReviewHalf,
+  reviewSegment: ReviewSegment,
   reviewTeamContext: ReviewTeamContext,
   reviewEventFilter: ReviewEventFilter,
   reviewFilterKinds: Record<
-    Exclude<ReviewEventFilter, "ALL">,
+    Exclude<ReviewEventFilter, "ALL" | "PLAYERS">,
     readonly MatchEventKind[]
   >,
   reviewZone: ReviewZone,
@@ -1103,36 +1197,43 @@ function getRenderablePitchEvents(
 ): LoggedMatchEvent[] {
   const teamSideFilter =
     reviewTeamContext === "FOR"
-      ? "own"
+      ? "FOR"
       : reviewTeamContext === "OPP"
-        ? "opposition"
+        ? "OPP"
         : null;
-  const kindFilterId = reviewEventFilter === "ALL" ? null : reviewEventFilter;
+  const kindFilterId = reviewEventFilter === "ALL" || reviewEventFilter === "PLAYERS" ? null : reviewEventFilter;
   const filterKinds =
     kindFilterId == null ? null : new Set<MatchEventKind>(reviewFilterKinds[kindFilterId]);
+  const segmentFilter = reviewSegment === "ALL" ? null : Number(reviewSegment.slice(1));
   return events.filter((event) => {
     if (event.id.includes("-instant-score-")) return false;
 
-    if (reviewHalf === "H1" && event.half !== 1) return false;
-    if (reviewHalf === "H2" && event.half !== 2) return false;
+    const eventPeriod = event.period ?? periodFromHalf(event.half);
+    const eventClockSeconds = event.matchClockSeconds ?? event.matchTimeSeconds ?? event.timestamp;
+    const eventSegment = event.segment ?? deriveSegmentFromPeriodClock(eventPeriod, eventClockSeconds);
+
+    if (reviewHalf === "H1" && eventPeriod !== "1H") return false;
+    if (reviewHalf === "H2" && eventPeriod !== "2H") return false;
+    if (segmentFilter != null && eventSegment !== segmentFilter) return false;
 
     if (filterKinds && !filterKinds.has(event.kind)) return false;
+    if (reviewEventFilter === "PLAYERS" && event.playerId == null && event.playerName == null) return false;
 
-    const eventTeamSide = event.teamSide ?? deriveTeamSideFromTeam(event.team);
-    const isOwnEvent = eventTeamSide === "own";
-    const isOppositionEvent = eventTeamSide === "opposition";
+    const eventTeamSide = normalizeEventTeamSide(event.teamSide, event.team ?? null, event.id);
+    const isForEvent = eventTeamSide === "FOR";
+    const isOppositionEvent = eventTeamSide === "OPP";
     const isInferredOppositionEvent =
-      isOwnEvent &&
+      isForEvent &&
       (event.kind === "TURNOVER_LOST" || event.kind === "KICKOUT_CONCEDED" || event.kind === "FREE_CONCEDED");
 
     if (teamSideFilter != null) {
-      if (teamSideFilter === "own" && !isOwnEvent) return false;
-      if (teamSideFilter === "opposition") {
+      if (teamSideFilter === "FOR" && !isForEvent) return false;
+      if (teamSideFilter === "OPP") {
         if (!isOppositionEvent && !isInferredOppositionEvent) return false;
       }
     }
 
-    if (teamSideFilter === "opposition" && reviewEventFilter !== "ALL") {
+    if (teamSideFilter === "OPP" && reviewEventFilter !== "ALL" && reviewEventFilter !== "PLAYERS") {
       if (reviewEventFilter === "TURNOVERS") {
         if (!(event.kind === "TURNOVER_LOST" || (isOppositionEvent && event.kind === "TURNOVER_WON"))) return false;
       }
@@ -1154,7 +1255,8 @@ function getRenderablePitchEvents(
 
     if (reviewActivePlayerOnly && activePlayerId != null && event.playerId !== activePlayerId) return false;
 
-    const isAttackingHalf = attackingDirection === "RIGHT" ? event.nx >= 0.5 : event.nx < 0.5;
+    const eventX = event.x ?? event.nx;
+    const isAttackingHalf = attackingDirection === "RIGHT" ? eventX >= 0.5 : eventX < 0.5;
     if (reviewZone === "OWN_HALF" && isAttackingHalf) return false;
     if (reviewZone === "OPPOSITION_HALF" && !isAttackingHalf) return false;
 
@@ -2760,6 +2862,7 @@ export default function StatsModeSurface() {
   const [playerDraft, setPlayerDraft] = useState("");
   const [showPlayerInitials] = useState(true);
   const [reviewHalf, setReviewHalf] = useState<ReviewHalf>("FULL");
+  const [reviewSegment, setReviewSegment] = useState<ReviewSegment>("ALL");
   const [reviewTeamContext, setReviewTeamContext] = useState<ReviewTeamContext>("ALL");
   const [reviewEventFilter, setReviewEventFilter] = useState<ReviewEventFilter>("ALL");
   const [reviewActivePlayerOnly, setReviewActivePlayerOnly] = useState(false);
@@ -2806,6 +2909,7 @@ export default function StatsModeSurface() {
   const activePlayerIdRef = useRef<string | null>(null);
   const activePlayerEntryRef = useRef<SquadPlayer | null>(null);
   const reviewHalfRef = useRef<ReviewHalf>("FULL");
+  const reviewSegmentRef = useRef<ReviewSegment>("ALL");
   const reviewTeamContextRef = useRef<ReviewTeamContext>("ALL");
   const reviewEventFilterRef = useRef<ReviewEventFilter>("ALL");
   const reviewActivePlayerOnlyRef = useRef(false);
@@ -3260,6 +3364,10 @@ export default function StatsModeSurface() {
   }, [reviewHalf]);
 
   useEffect(() => {
+    reviewSegmentRef.current = reviewSegment;
+  }, [reviewSegment]);
+
+  useEffect(() => {
     reviewTeamContextRef.current = reviewTeamContext;
   }, [reviewTeamContext]);
 
@@ -3472,14 +3580,31 @@ export default function StatsModeSurface() {
       onEventLogged: (event) => {
         const teamSide = activeTeamSideRef.current;
         const team = deriveTeamFromTeamSide(teamSide);
-        const matchTimeSeconds = deriveMatchTimeSecondsFromTimestamp(event.timestamp);
+        const matchClockSeconds = deriveMatchTimeSecondsFromTimestamp(event.matchClockSeconds ?? event.timestamp);
+        const period = periodFromHalf(event.half);
+        const segment = deriveSegmentFromPeriodClock(period, matchClockSeconds);
+        const eventKind = event.type ?? event.kind;
         const nextEvent: LoggedMatchEvent = {
           ...event,
           id: `team-${team.toLowerCase()}-${event.id}`,
+          kind: eventKind,
+          type: eventKind,
+          x: typeof event.x === "number" && Number.isFinite(event.x) ? event.x : event.nx,
+          y: typeof event.y === "number" && Number.isFinite(event.y) ? event.y : event.ny,
+          nx: typeof event.x === "number" && Number.isFinite(event.x) ? event.x : event.nx,
+          ny: typeof event.y === "number" && Number.isFinite(event.y) ? event.y : event.ny,
           team,
-          teamSide,
-          matchTimeSeconds,
-          halfSegment: deriveHalfSegment(matchTimeSeconds, event.half),
+          teamSide: teamSide === "opposition" ? "OPP" : "FOR",
+          period,
+          segment,
+          halfSegment: deriveLegacyHalfSegment(segment),
+          timestamp: matchClockSeconds,
+          matchClockSeconds,
+          matchTimeSeconds: matchClockSeconds,
+          createdAt:
+            typeof event.createdAt === "number" && Number.isFinite(event.createdAt)
+              ? Math.floor(event.createdAt)
+              : Date.now(),
         };
         if (team === "HOME") {
           const activePlayerEntry = activePlayerEntryRef.current;
@@ -3716,11 +3841,13 @@ export default function StatsModeSurface() {
   const startSecondHalfAction = () => {
     secondHalfSwitchBaselineEventCountRef.current = loggedEvents.length;
     reviewHalfRef.current = "H2";
+    reviewSegmentRef.current = "ALL";
     reviewTeamContextRef.current = "ALL";
     reviewEventFilterRef.current = "ALL";
     reviewZoneRef.current = "FULL";
     reviewActivePlayerOnlyRef.current = false;
     setReviewHalf("H2");
+    setReviewSegment("ALL");
     setReviewTeamContext("ALL");
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
@@ -4116,10 +4243,12 @@ export default function StatsModeSurface() {
 
   const exitReviewMode = () => {
     reviewHalfRef.current = "FULL";
+    reviewSegmentRef.current = "ALL";
     reviewTeamContextRef.current = "ALL";
     reviewEventFilterRef.current = "ALL";
     reviewZoneRef.current = "FULL";
     setReviewHalf("FULL");
+    setReviewSegment("ALL");
     setReviewTeamContext("ALL");
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
@@ -4173,10 +4302,12 @@ export default function StatsModeSurface() {
     currentMatchIdRef.current = nextMatchId;
     setLoggedEvents([]);
     reviewHalfRef.current = "FULL";
+    reviewSegmentRef.current = "ALL";
     reviewTeamContextRef.current = "ALL";
     reviewEventFilterRef.current = "ALL";
     reviewZoneRef.current = "FULL";
     setReviewHalf("FULL");
+    setReviewSegment("ALL");
     setReviewTeamContext("ALL");
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
@@ -4311,6 +4442,7 @@ export default function StatsModeSurface() {
         const renderableEvents = getRenderablePitchEvents(
           loggedEvents,
           reviewHalf,
+          reviewSegment,
           reviewTeamContext,
           reviewEventFilter,
           REVIEW_FILTER_KINDS_FOR_MODE,
@@ -4321,7 +4453,7 @@ export default function StatsModeSurface() {
         );
         if (isReviewModeActive) return renderableEvents;
         return renderableEvents.map((event): LiveRenderablePitchEvent =>
-          event.teamSide === "opposition"
+          normalizeEventTeamSide(event.teamSide, event.team ?? null, event.id) === "OPP"
             ? { ...event, renderAsSubtleDot: true }
             : event,
         );
@@ -4330,6 +4462,7 @@ export default function StatsModeSurface() {
   }, [
     loggedEvents,
     reviewHalf,
+    reviewSegment,
     reviewTeamContext,
     reviewEventFilter,
     reviewZone,
@@ -4556,6 +4689,7 @@ export default function StatsModeSurface() {
   const visibleReviewEvents = getRenderablePitchEvents(
     loggedEvents,
     reviewHalf,
+    reviewSegment,
     reviewTeamContext,
     reviewEventFilter,
     REVIEW_FILTER_KINDS_FOR_MODE,
@@ -5515,6 +5649,31 @@ export default function StatsModeSurface() {
               </button>
             ))}
             <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
+              Segment
+            </div>
+            {REVIEW_SEGMENT_OPTIONS.map((option) => (
+              <button
+                key={`segment-${option.id}`}
+                type="button"
+                className="utility-review-btn"
+                onClick={() => {
+                  setReviewSegment(option.id);
+                  setShowReviewStrip(true);
+                  closeUtilityPanel();
+                }}
+                style={
+                  reviewSegment === option.id
+                    ? {
+                        border: "1px solid rgba(125,211,252,0.9)",
+                        background: "rgba(14,116,144,0.38)",
+                      }
+                    : undefined
+                }
+              >
+                {option.label}
+              </button>
+            ))}
+            <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
               Team Context
             </div>
             {REVIEW_TEAM_CONTEXT_OPTIONS.map((option) => (
@@ -5801,6 +5960,26 @@ export default function StatsModeSurface() {
               {option.label}
             </button>
           ))}
+          {REVIEW_SEGMENT_OPTIONS.map((option) => (
+            <button
+              key={`strip-segment-${option.id}`}
+              type="button"
+              className="review-strip-chip"
+              onClick={() => {
+                setReviewSegment(option.id);
+              }}
+              style={
+                reviewSegment === option.id
+                  ? {
+                      border: "1px solid rgba(125,211,252,0.9)",
+                      background: "rgba(14,116,144,0.38)",
+                    }
+                  : undefined
+              }
+            >
+              {option.label}
+            </button>
+          ))}
           {REVIEW_TEAM_CONTEXT_OPTIONS.map((option) => (
             <button
               key={`strip-team-${option.id}`}
@@ -5884,7 +6063,7 @@ export default function StatsModeSurface() {
           </div>
           <div className="review-event-card-row">
             <span className="review-event-card-row-label">Type</span>
-            <span className="review-event-card-row-value">{selectedReviewEvent.kind}</span>
+            <span className="review-event-card-row-value">{selectedReviewEvent.type}</span>
           </div>
           <div className="review-event-card-row">
             <span className="review-event-card-row-label">Player</span>
@@ -5892,12 +6071,16 @@ export default function StatsModeSurface() {
           </div>
           <div className="review-event-card-row">
             <span className="review-event-card-row-label">Half</span>
-            <span className="review-event-card-row-value">H{selectedReviewEvent.half}</span>
+            <span className="review-event-card-row-value">{selectedReviewEvent.period}</span>
+          </div>
+          <div className="review-event-card-row">
+            <span className="review-event-card-row-label">Segment</span>
+            <span className="review-event-card-row-value">S{selectedReviewEvent.segment}</span>
           </div>
           <div className="review-event-card-row">
             <span className="review-event-card-row-label">Time</span>
             <span className="review-event-card-row-value">
-              {formatMatchClock(selectedReviewEvent.timestamp)}
+              {formatMatchClock(selectedReviewEvent.matchClockSeconds)}
             </span>
           </div>
         </div>
