@@ -1339,9 +1339,15 @@ const PANEL_CSS = `
 
 .team-side-toggle--scoreboard {
   width: 100%;
-  padding: 2px;
-  gap: 2px;
-  border-radius: 8px;
+  min-width: 104px;
+  padding: 0;
+  gap: 4px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .team-side-toggle-btn {
@@ -1361,6 +1367,14 @@ const PANEL_CSS = `
   border: 1px solid rgba(34, 197, 94, 0.86);
   background: rgba(22, 101, 52, 0.74);
   box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.18), 0 0 8px rgba(34, 197, 94, 0.18);
+}
+
+.team-side-toggle--scoreboard .team-side-toggle-btn {
+  min-height: 34px;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  background: rgba(15, 23, 42, 0.84);
+  font-size: 8.6px;
+  letter-spacing: 0.18px;
 }
 
 .event-panel {
@@ -2526,9 +2540,9 @@ const PANEL_CSS = `
   }
 
   .team-side-toggle--scoreboard .team-side-toggle-btn {
-    min-height: 24px;
-    font-size: 8px;
-    letter-spacing: 0.16px;
+    min-height: 34px;
+    font-size: 8.6px;
+    letter-spacing: 0.18px;
   }
 }
 
