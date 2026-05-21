@@ -221,8 +221,8 @@ function deriveHalfSegment(matchTimeSeconds: number, currentHalf: 1 | 2): 1 | 2 
   return 3;
 }
 
-function deriveTeamSideFromTeam(team: TeamSide | null | undefined): "own" | "opposition" {
-  return team === "AWAY" ? "opposition" : "own";
+function deriveTeamFromTeamSide(teamSide: "own" | "opposition"): TeamSide {
+  return teamSide === "opposition" ? "AWAY" : "HOME";
 }
 
 function deriveTeamSideFromLegacyMetadata(team: TeamSide | null, eventId: string): "own" | "opposition" {
@@ -1306,6 +1306,39 @@ const PANEL_CSS = `
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
+}
+
+.team-side-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  width: 112px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  background: rgba(10, 20, 35, 0.72);
+  box-shadow: 0 3px 10px rgba(2, 8, 15, 0.22);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.team-side-toggle-btn {
+  min-height: 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.88);
+  color: #dbe7f5;
+  font-size: 8.4px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.team-side-toggle-btn.is-active {
+  border: 1px solid rgba(34, 197, 94, 0.86);
+  background: rgba(22, 101, 52, 0.74);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.18), 0 0 8px rgba(34, 197, 94, 0.18);
 }
 
 .event-panel {
@@ -2469,6 +2502,14 @@ const PANEL_CSS = `
     margin-left: 44px;
     margin-right: 0;
   }
+
+  .team-side-toggle {
+    position: fixed;
+    left: max(8px, calc(env(safe-area-inset-left, 0px) + 6px));
+    bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 10px));
+    width: 104px;
+    z-index: 22;
+  }
 }
 
 @media (orientation: portrait) {
@@ -2581,6 +2622,7 @@ export default function StatsModeSurface() {
   const mode = gaaModeConfig[currentMode];
   const [selectedEventKind, setSelectedEventKind] = useState<MatchEventKind>("POINT");
   const [activeTeam, setActiveTeam] = useState<TeamSide>("HOME");
+  const [activeTeamSide, setActiveTeamSide] = useState<"own" | "opposition">("own");
   const [teamNames, setTeamNames] = useState<{ HOME: string; AWAY: string }>({
     HOME: "Team A",
     AWAY: "Team B",
@@ -2650,6 +2692,7 @@ export default function StatsModeSurface() {
   const [appViewportHeight, setAppViewportHeight] = useState(() => getMobileViewportHeight());
   const selectedEventRef = useRef<MatchEventKind>("POINT");
   const activeTeamRef = useRef<TeamSide>("HOME");
+  const activeTeamSideRef = useRef<"own" | "opposition">("own");
   const activePlayerRef = useRef<string | null>(null);
   const activePlayerNumberRef = useRef<number | null>(null);
   const activePlayerIdRef = useRef<string | null>(null);
@@ -3094,6 +3137,10 @@ export default function StatsModeSurface() {
   }, [activeTeam]);
 
   useEffect(() => {
+    activeTeamSideRef.current = activeTeamSide;
+  }, [activeTeamSide]);
+
+  useEffect(() => {
     activePlayerRef.current = activePlayer;
   }, [activePlayer]);
 
@@ -3316,13 +3363,14 @@ export default function StatsModeSurface() {
       activeEventKind: selectedEventRef.current,
       showPlayerInitials,
       onEventLogged: (event) => {
-        const team = activeTeamRef.current;
+        const teamSide = activeTeamSideRef.current;
+        const team = deriveTeamFromTeamSide(teamSide);
         const matchTimeSeconds = deriveMatchTimeSecondsFromTimestamp(event.timestamp);
         const nextEvent: LoggedMatchEvent = {
           ...event,
           id: `team-${team.toLowerCase()}-${event.id}`,
           team,
-          teamSide: deriveTeamSideFromTeam(team),
+          teamSide,
           matchTimeSeconds,
           halfSegment: deriveHalfSegment(matchTimeSeconds, event.half),
         };
@@ -3346,6 +3394,8 @@ export default function StatsModeSurface() {
           } else {
             pendingScorerRef.current = null;
           }
+        } else {
+          pendingScorerRef.current = null;
         }
         setLoggedEvents((prev) => {
           const next = [...prev, nextEvent];
@@ -4002,6 +4052,8 @@ export default function StatsModeSurface() {
     setSaveLoadBlockedReason(null);
     setActiveTeam("HOME");
     activeTeamRef.current = "HOME";
+    setActiveTeamSide("own");
+    activeTeamSideRef.current = "own";
     setCurrentMatchId(nextMatchId);
     currentMatchIdRef.current = nextMatchId;
     setLoggedEvents([]);
@@ -5675,6 +5727,28 @@ export default function StatsModeSurface() {
         ref={floatingControlsRef}
         className="floating-controls"
       >
+          <div className="team-side-toggle" role="group" aria-label="Event ownership toggle">
+            <button
+              type="button"
+              className={activeTeamSide === "own" ? "team-side-toggle-btn is-active" : "team-side-toggle-btn"}
+              aria-pressed={activeTeamSide === "own"}
+              onClick={() => {
+                setActiveTeamSide("own");
+              }}
+            >
+              Ours
+            </button>
+            <button
+              type="button"
+              className={activeTeamSide === "opposition" ? "team-side-toggle-btn is-active" : "team-side-toggle-btn"}
+              aria-pressed={activeTeamSide === "opposition"}
+              onClick={() => {
+                setActiveTeamSide("opposition");
+              }}
+            >
+              Theirs
+            </button>
+          </div>
           {!isLandscape && isPickerOpen ? (
             <div className="event-panel">
               <div className="event-grid">
