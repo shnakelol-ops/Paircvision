@@ -24,11 +24,11 @@ type TeamScore = { goals: number; points: number; total: number };
 type TeamSide = "HOME" | "AWAY";
 type UtilityPanel = "PLAYERS" | "REVIEW" | "SUMMARY" | "SAVED_MATCHES" | "NOTES" | null;
 type ReviewHalf = "H1" | "H2" | "FULL";
+type ReviewTeamContext = "ALL" | "FOR" | "OPP";
 type ReviewEventFilter =
   | "ALL"
-  | "FOR"
-  | "OPP"
   | "SCORES"
+  | "SHOTS"
   | "WIDES"
   | "TURNOVERS"
   | "KICKOUTS"
@@ -234,21 +234,26 @@ function deriveTeamSideFromLegacyMetadata(team: TeamSide | null, eventId: string
   return "own";
 }
 
-const REVIEW_FILTER_OPTIONS_BASE: ReadonlyArray<{ id: ReviewEventFilter; label: string }> = [
+const REVIEW_TEAM_CONTEXT_OPTIONS: ReadonlyArray<{ id: ReviewTeamContext; label: string }> = [
   { id: "ALL", label: "ALL" },
   { id: "FOR", label: "FOR" },
   { id: "OPP", label: "OPP" },
+];
+
+const REVIEW_FILTER_OPTIONS_BASE: ReadonlyArray<{ id: ReviewEventFilter; label: string }> = [
   { id: "SCORES", label: "SCORES" },
+  { id: "SHOTS", label: "SHOTS" },
   { id: "WIDES", label: "WIDES" },
   { id: "TURNOVERS", label: "T/O" },
   { id: "KICKOUTS", label: "K/O" },
   { id: "FREES", label: "FREES" },
 ];
 const REVIEW_FILTER_KINDS: Record<
-  Exclude<ReviewEventFilter, "ALL" | "FOR" | "OPP">,
+  Exclude<ReviewEventFilter, "ALL">,
   readonly MatchEventKind[]
 > = {
   SCORES: ["GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED"],
+  SHOTS: ["SHOT"],
   WIDES: ["WIDE"],
   TURNOVERS: ["TURNOVER_WON", "TURNOVER_LOST"],
   KICKOUTS: ["KICKOUT_WON", "KICKOUT_CONCEDED"],
@@ -1084,9 +1089,10 @@ function deriveMyTeamReport(
 function getRenderablePitchEvents(
   events: readonly LoggedMatchEvent[],
   reviewHalf: ReviewHalf,
+  reviewTeamContext: ReviewTeamContext,
   reviewEventFilter: ReviewEventFilter,
   reviewFilterKinds: Record<
-    Exclude<ReviewEventFilter, "ALL" | "FOR" | "OPP">,
+    Exclude<ReviewEventFilter, "ALL">,
     readonly MatchEventKind[]
   >,
   reviewZone: ReviewZone,
@@ -1095,15 +1101,12 @@ function getRenderablePitchEvents(
   activePlayerId: string | null,
 ): LoggedMatchEvent[] {
   const teamSideFilter =
-    reviewEventFilter === "FOR"
+    reviewTeamContext === "FOR"
       ? "own"
-      : reviewEventFilter === "OPP"
+      : reviewTeamContext === "OPP"
         ? "opposition"
         : null;
-  const kindFilterId =
-    reviewEventFilter === "ALL" || reviewEventFilter === "FOR" || reviewEventFilter === "OPP"
-      ? null
-      : reviewEventFilter;
+  const kindFilterId = reviewEventFilter === "ALL" ? null : reviewEventFilter;
   const filterKinds =
     kindFilterId == null ? null : new Set<MatchEventKind>(reviewFilterKinds[kindFilterId]);
   return events.filter((event) => {
@@ -1112,11 +1115,42 @@ function getRenderablePitchEvents(
     if (reviewHalf === "H1" && event.half !== 1) return false;
     if (reviewHalf === "H2" && event.half !== 2) return false;
 
-    if (teamSideFilter != null) {
-      const eventTeamSide = event.teamSide ?? deriveTeamSideFromTeam(event.team);
-      if (eventTeamSide !== teamSideFilter) return false;
-    }
     if (filterKinds && !filterKinds.has(event.kind)) return false;
+
+    const eventTeamSide = event.teamSide ?? deriveTeamSideFromTeam(event.team);
+    const isOwnEvent = eventTeamSide === "own";
+    const isOppositionEvent = eventTeamSide === "opposition";
+    const isInferredOppositionEvent =
+      isOwnEvent &&
+      (event.kind === "TURNOVER_LOST" || event.kind === "KICKOUT_CONCEDED" || event.kind === "FREE_CONCEDED");
+
+    if (teamSideFilter != null) {
+      if (teamSideFilter === "own" && !isOwnEvent) return false;
+      if (teamSideFilter === "opposition") {
+        if (!isOppositionEvent && !isInferredOppositionEvent) return false;
+      }
+    }
+
+    if (teamSideFilter === "opposition" && reviewEventFilter !== "ALL") {
+      if (reviewEventFilter === "TURNOVERS") {
+        if (!(event.kind === "TURNOVER_LOST" || (isOppositionEvent && event.kind === "TURNOVER_WON"))) return false;
+      }
+      if (reviewEventFilter === "KICKOUTS") {
+        if (!(event.kind === "KICKOUT_CONCEDED" || (isOppositionEvent && event.kind === "KICKOUT_WON"))) return false;
+      }
+      if (reviewEventFilter === "FREES") {
+        if (
+          !(
+            event.kind === "FREE_CONCEDED" ||
+            (isOppositionEvent &&
+              (event.kind === "FREE_WON" || event.kind === "FREE_SCORED" || event.kind === "FREE_MISSED"))
+          )
+        ) {
+          return false;
+        }
+      }
+    }
+
     if (reviewActivePlayerOnly && activePlayerId != null && event.playerId !== activePlayerId) return false;
 
     const isAttackingHalf = attackingDirection === "RIGHT" ? event.nx >= 0.5 : event.nx < 0.5;
@@ -1724,6 +1758,14 @@ const PANEL_CSS = `
   font-weight: 600;
   letter-spacing: 0.16px;
   text-transform: uppercase;
+}
+
+.review-strip-player {
+  max-width: min(44vw, 220px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
 }
 
 .review-strip-spacer {
@@ -2712,6 +2754,7 @@ export default function StatsModeSurface() {
   const [playerDraft, setPlayerDraft] = useState("");
   const [showPlayerInitials] = useState(true);
   const [reviewHalf, setReviewHalf] = useState<ReviewHalf>("FULL");
+  const [reviewTeamContext, setReviewTeamContext] = useState<ReviewTeamContext>("ALL");
   const [reviewEventFilter, setReviewEventFilter] = useState<ReviewEventFilter>("ALL");
   const [reviewActivePlayerOnly, setReviewActivePlayerOnly] = useState(false);
   const [reviewZone, setReviewZone] = useState<ReviewZone>("FULL");
@@ -2757,6 +2800,7 @@ export default function StatsModeSurface() {
   const activePlayerIdRef = useRef<string | null>(null);
   const activePlayerEntryRef = useRef<SquadPlayer | null>(null);
   const reviewHalfRef = useRef<ReviewHalf>("FULL");
+  const reviewTeamContextRef = useRef<ReviewTeamContext>("ALL");
   const reviewEventFilterRef = useRef<ReviewEventFilter>("ALL");
   const reviewActivePlayerOnlyRef = useRef(false);
   const reviewZoneRef = useRef<ReviewZone>("FULL");
@@ -2783,13 +2827,7 @@ export default function StatsModeSurface() {
   );
 
   useScreenWakeLock(isLiveMatchActive);
-  const REVIEW_FILTER_KINDS_FOR_MODE = useMemo(() => {
-    if (!isHurlingMode) return REVIEW_FILTER_KINDS;
-    return {
-      ...REVIEW_FILTER_KINDS,
-      TWO_POINT: [] as readonly MatchEventKind[],
-    };
-  }, [isHurlingMode]);
+  const REVIEW_FILTER_KINDS_FOR_MODE = REVIEW_FILTER_KINDS;
   const OPPOSITION_EVENT_KINDS = useMemo(
     () =>
       new Set<MatchEventKind>([
@@ -3209,6 +3247,10 @@ export default function StatsModeSurface() {
   useEffect(() => {
     reviewHalfRef.current = reviewHalf;
   }, [reviewHalf]);
+
+  useEffect(() => {
+    reviewTeamContextRef.current = reviewTeamContext;
+  }, [reviewTeamContext]);
 
   useEffect(() => {
     reviewEventFilterRef.current = reviewEventFilter;
@@ -3663,10 +3705,12 @@ export default function StatsModeSurface() {
   const startSecondHalfAction = () => {
     secondHalfSwitchBaselineEventCountRef.current = loggedEvents.length;
     reviewHalfRef.current = "H2";
+    reviewTeamContextRef.current = "ALL";
     reviewEventFilterRef.current = "ALL";
     reviewZoneRef.current = "FULL";
     reviewActivePlayerOnlyRef.current = false;
     setReviewHalf("H2");
+    setReviewTeamContext("ALL");
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
@@ -4061,9 +4105,11 @@ export default function StatsModeSurface() {
 
   const exitReviewMode = () => {
     reviewHalfRef.current = "FULL";
+    reviewTeamContextRef.current = "ALL";
     reviewEventFilterRef.current = "ALL";
     reviewZoneRef.current = "FULL";
     setReviewHalf("FULL");
+    setReviewTeamContext("ALL");
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
@@ -4116,9 +4162,11 @@ export default function StatsModeSurface() {
     currentMatchIdRef.current = nextMatchId;
     setLoggedEvents([]);
     reviewHalfRef.current = "FULL";
+    reviewTeamContextRef.current = "ALL";
     reviewEventFilterRef.current = "ALL";
     reviewZoneRef.current = "FULL";
     setReviewHalf("FULL");
+    setReviewTeamContext("ALL");
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
@@ -4252,6 +4300,7 @@ export default function StatsModeSurface() {
         const renderableEvents = getRenderablePitchEvents(
           loggedEvents,
           reviewHalf,
+          reviewTeamContext,
           reviewEventFilter,
           REVIEW_FILTER_KINDS_FOR_MODE,
           reviewZone,
@@ -4270,6 +4319,7 @@ export default function StatsModeSurface() {
   }, [
     loggedEvents,
     reviewHalf,
+    reviewTeamContext,
     reviewEventFilter,
     reviewZone,
     firstHalfAttackingDirection,
@@ -4495,6 +4545,7 @@ export default function StatsModeSurface() {
   const visibleReviewEvents = getRenderablePitchEvents(
     loggedEvents,
     reviewHalf,
+    reviewTeamContext,
     reviewEventFilter,
     REVIEW_FILTER_KINDS_FOR_MODE,
     reviewZone,
@@ -5453,7 +5504,32 @@ export default function StatsModeSurface() {
               </button>
             ))}
             <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
-              Event Filter
+              Team Context
+            </div>
+            {REVIEW_TEAM_CONTEXT_OPTIONS.map((option) => (
+              <button
+                key={`team-${option.id}`}
+                type="button"
+                className="utility-review-btn"
+                onClick={() => {
+                  setReviewTeamContext(option.id);
+                  setShowReviewStrip(true);
+                  closeUtilityPanel();
+                }}
+                style={
+                  reviewTeamContext === option.id
+                    ? {
+                        border: "1px solid rgba(125,211,252,0.9)",
+                        background: "rgba(14,116,144,0.38)",
+                      }
+                    : undefined
+                }
+              >
+                {option.label}
+              </button>
+            ))}
+            <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
+              Event Category
             </div>
             {REVIEW_FILTER_OPTIONS.map((option) => (
               <button
@@ -5690,6 +5766,26 @@ export default function StatsModeSurface() {
           aria-label="Review quick controls"
         >
           <span className="review-strip-status">Review</span>
+          {REVIEW_TEAM_CONTEXT_OPTIONS.map((option) => (
+            <button
+              key={`strip-team-${option.id}`}
+              type="button"
+              className="review-strip-chip"
+              onClick={() => {
+                setReviewTeamContext(option.id);
+              }}
+              style={
+                reviewTeamContext === option.id
+                  ? {
+                      border: "1px solid rgba(125,211,252,0.9)",
+                      background: "rgba(14,116,144,0.38)",
+                    }
+                  : undefined
+              }
+            >
+              {option.label}
+            </button>
+          ))}
           {REVIEW_FILTER_OPTIONS.map((option) => (
             <button
               key={`strip-filter-${option.id}`}
@@ -5710,6 +5806,17 @@ export default function StatsModeSurface() {
               {option.label}
             </button>
           ))}
+          <button
+            type="button"
+            className="review-strip-chip"
+            onClick={openPlayersPanel}
+            aria-label="Open players panel while reviewing"
+          >
+            Players
+          </button>
+          <span className="review-strip-meta review-strip-player">
+            {activePlayerChipText ?? "No active player"}
+          </span>
           <span className="review-strip-meta">{visibleReviewEvents.length} shown</span>
           <span className="review-strip-spacer" aria-hidden="true" />
           <button
