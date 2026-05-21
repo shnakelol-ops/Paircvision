@@ -15,6 +15,7 @@ import {
 import { createPixiPitchSurface } from "./core/pitch/create-pixi-pitch-surface";
 import { MATCH_EVENT_KINDS, type MatchEvent, type MatchEventKind } from "./core/stats/stats-event-model";
 import { gaaModeConfig, type GaaModeKey } from "./config/gaaModeConfig";
+import { useScreenWakeLock } from "./hooks/useScreenWakeLock";
 import { NotesQuickPanel } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
 
@@ -49,7 +50,6 @@ type SavedSquad = {
   players: SavedSquadPlayer[];
   updatedAt: number;
 };
-type WakeLockSentinelLike = { release: () => Promise<void> } | null;
 type LoggedMatchEvent = MatchEvent & {
   playerId?: string;
   playerName?: string;
@@ -2622,17 +2622,19 @@ export default function StatsModeSurface() {
   const fullTimeResumeStateRef = useRef<MatchEngineState | null>(null);
   const currentMatchIdRef = useRef(currentMatchId);
   const savedSessionSignatureRef = useRef<string | null>(null);
-  const wakeLockRef = useRef<WakeLockSentinelLike>(null);
   const secondHalfSwitchBaselineEventCountRef = useRef<number | null>(null);
   const eventKindSwitchBaselineEventCountRef = useRef<number | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const EVENT_BUTTONS = mode.eventButtons;
   const EVENT_LABEL_BY_KIND = mode.eventLabels;
   const isHurlingMode = currentMode === "hurling" || currentMode === "camogie";
+  const isLiveMatchActive = matchState !== "PRE_MATCH" && matchState !== "FULL_TIME";
   const REVIEW_FILTER_OPTIONS = useMemo(
     () => buildReviewFilterOptions(isHurlingMode),
     [isHurlingMode],
   );
+
+  useScreenWakeLock(isLiveMatchActive);
   const REVIEW_FILTER_KINDS_FOR_MODE = useMemo(() => {
     if (!isHurlingMode) return REVIEW_FILTER_KINDS;
     return {
@@ -3354,56 +3356,6 @@ export default function StatsModeSurface() {
     return () => {
       window.clearInterval(timerId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const typedNavigator = navigator as Navigator & {
-      wakeLock?: { request: (type: "screen") => Promise<WakeLockSentinelLike> };
-    };
-    if (!typedNavigator.wakeLock?.request) return;
-
-    let disposed = false;
-    const requestWakeLock = async () => {
-      try {
-        const sentinel = await typedNavigator.wakeLock?.request("screen");
-        if (disposed) {
-          await sentinel?.release?.();
-          return;
-        }
-        wakeLockRef.current = sentinel ?? null;
-      } catch {
-        wakeLockRef.current = null;
-      }
-    };
-
-    const releaseWakeLock = async () => {
-      try {
-        await wakeLockRef.current?.release?.();
-      } catch {
-        // Fail silently if release is rejected.
-      } finally {
-        wakeLockRef.current = null;
-      }
-    };
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void requestWakeLock();
-      } else {
-        void releaseWakeLock();
-      }
-    };
-
-    if (document.visibilityState === "visible") {
-      void requestWakeLock();
-    }
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => {
-      disposed = true;
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      void releaseWakeLock();
     };
   }, []);
 

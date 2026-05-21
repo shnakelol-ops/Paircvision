@@ -5,6 +5,7 @@ import TrackerScreen from "../features/player-performance-tracker/components/Tra
 import RatingsScreen from "../features/player-performance-tracker/components/RatingsScreen";
 import SeasonScreen from "../features/player-performance-tracker/components/SeasonScreen";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
+import { useScreenWakeLock } from "../hooks/useScreenWakeLock";
 import { TRAINING_EVENTS } from "../features/player-performance-tracker/model/trainingScoring";
 import { loadSavedSquads, loadSeasonTable, loadSessionState, saveSavedSquads, saveSeasonTable, saveSessionState } from "../features/player-performance-tracker/storage/trainingSessionStorage";
 import { type SavedSquad, type SeasonPlayerStat, type TrainingLogEntry, type TrainingPeriod, type TrainingSessionState } from "../features/player-performance-tracker/model/trainingTypes";
@@ -22,6 +23,9 @@ export default function PlayerPerformanceTracker(){
   const [saveSessionFeedback,setSaveSessionFeedback]=useState<SaveSessionFeedbackState>("idle");
   const saveSessionFeedbackTimeoutRef=useRef<number|null>(null);
   const hasSavedCurrentSessionRef=useRef(false);
+  const isTrainingSessionActive = state.hasStarted;
+
+  useScreenWakeLock(isTrainingSessionActive);
 
   useEffect(()=>{saveSessionState(state);},[state]);
   useEffect(()=>{if(!state.hasStarted||!state.isRunning) return;const t=window.setInterval(()=>setState((s)=>({...s,elapsedSeconds:Math.max(0,(s.elapsedSeconds||0)+1)})),1000);return ()=>window.clearInterval(t);},[state.hasStarted,state.isRunning]);
