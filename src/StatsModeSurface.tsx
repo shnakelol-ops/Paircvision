@@ -5736,7 +5736,7 @@ export default function StatsModeSurface() {
                 setActiveTeamSide("own");
               }}
             >
-              Ours
+              For
             </button>
             <button
               type="button"
@@ -5746,7 +5746,7 @@ export default function StatsModeSurface() {
                 setActiveTeamSide("opposition");
               }}
             >
-              Theirs
+              Opp
             </button>
           </div>
           {!isLandscape && isPickerOpen ? (
