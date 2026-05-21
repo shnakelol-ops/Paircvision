@@ -241,6 +241,7 @@ const REVIEW_TEAM_CONTEXT_OPTIONS: ReadonlyArray<{ id: ReviewTeamContext; label:
 ];
 
 const REVIEW_FILTER_OPTIONS_BASE: ReadonlyArray<{ id: ReviewEventFilter; label: string }> = [
+  { id: "ALL", label: "CAT ALL" },
   { id: "SCORES", label: "SCORES" },
   { id: "SHOTS", label: "SHOTS" },
   { id: "WIDES", label: "WIDES" },
