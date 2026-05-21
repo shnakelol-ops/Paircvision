@@ -1328,7 +1328,9 @@ const PANEL_CSS = `
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 3px;
   width: 112px;
+  max-width: 100%;
   padding: 3px;
+  box-sizing: border-box;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.26);
   background: rgba(10, 20, 35, 0.72);
@@ -1339,13 +1341,21 @@ const PANEL_CSS = `
 
 .team-side-toggle--scoreboard {
   width: 100%;
-  padding: 2px;
+  max-width: 100%;
+  align-self: stretch;
+  padding: 0;
   gap: 2px;
-  border-radius: 8px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .team-side-toggle-btn {
   min-height: 26px;
+  min-width: 0;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.35);
   background: rgba(15, 23, 42, 0.88);
@@ -2526,9 +2536,10 @@ const PANEL_CSS = `
   }
 
   .team-side-toggle--scoreboard .team-side-toggle-btn {
-    min-height: 24px;
-    font-size: 8px;
-    letter-spacing: 0.16px;
+    min-height: 30px;
+    font-size: 8.2px;
+    letter-spacing: 0.14px;
+    padding: 0 2px;
   }
 }
 
