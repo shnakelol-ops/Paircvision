@@ -9,6 +9,7 @@ type RenderableMatchEvent = MatchEvent & {
   playerName?: string;
   playerNumber?: number;
   team?: "HOME" | "AWAY";
+  renderAsSubtleDot?: boolean;
 };
 
 function clampByte(n: number): number {
@@ -78,8 +79,34 @@ export function drawStatsMarkers(
   const onMarkerTap = opts?.onMarkerTap;
 
   for (const event of events) {
-    const style = getStatsMarkerStyle(event);
     const worldPoint = boardNormToWorld(event.nx, event.ny);
+    const renderAsSubtleDot = event.renderAsSubtleDot === true;
+    if (renderAsSubtleDot) {
+      const markerContainer = new Container();
+      markerContainer.position.set(worldPoint.x, worldPoint.y);
+      if (onMarkerTap) {
+        markerContainer.eventMode = "static";
+        markerContainer.cursor = "pointer";
+        markerContainer.on("pointerdown", (pointerEvent) => {
+          (pointerEvent as { stopPropagation?: () => void }).stopPropagation?.();
+        });
+        markerContainer.on("pointertap", (pointerEvent) => {
+          (pointerEvent as { stopPropagation?: () => void }).stopPropagation?.();
+          onMarkerTap(event.id);
+        });
+      }
+      const subtleGraphic = new Graphics();
+      markerContainer.addChild(subtleGraphic);
+      const subtleRadius = Math.max(minWorldRadius * 0.62, 1.1 / worldToScreenScale);
+      subtleGraphic.circle(0, 0, subtleRadius).fill({ color: 0xf1f5f9, alpha: 0.45 }).stroke({
+        width: Math.max(minRingWidth * 0.85, 0.72 / worldToScreenScale),
+        color: 0x475569,
+        alpha: 0.52,
+      });
+      g.addChild(markerContainer);
+      continue;
+    }
+    const style = getStatsMarkerStyle(event);
     const isTwoPointer = event.kind === "TWO_POINTER";
     const styleRadius = isTwoPointer ? style.radius * 1.06 : style.radius;
     const radius = Math.max(styleRadius, minWorldRadius);

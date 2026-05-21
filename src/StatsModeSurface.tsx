@@ -57,6 +57,9 @@ type LoggedMatchEvent = MatchEvent & {
   squadId?: string;
   team?: TeamSide;
 };
+type LiveRenderablePitchEvent = LoggedMatchEvent & {
+  renderAsSubtleDot?: boolean;
+};
 type SavedMatchRestoreContext = {
   matchState?: MatchState;
   currentHalf?: 1 | 2;
@@ -219,6 +222,10 @@ function deriveHalfSegment(matchTimeSeconds: number, currentHalf: 1 | 2): 1 | 2 
   if (normalizedClock < HALF_SEGMENT_DURATION_SECONDS) return 1;
   if (normalizedClock < HALF_SEGMENT_DURATION_SECONDS * 2) return 2;
   return 3;
+}
+
+function deriveTeamSideFromTeam(team: TeamSide | null | undefined): "own" | "opposition" {
+  return team === "AWAY" ? "opposition" : "own";
 }
 
 function deriveTeamFromTeamSide(teamSide: "own" | "opposition"): TeamSide {
@@ -2736,13 +2743,30 @@ export default function StatsModeSurface() {
       TWO_POINT: [] as readonly MatchEventKind[],
     };
   }, [isHurlingMode]);
-  const AWAY_INSTANT_SCORING_KINDS = useMemo(
-    () => new Set<MatchEventKind>(mode.scoringEvents),
-    [mode],
+  const OPPOSITION_EVENT_KINDS = useMemo(
+    () =>
+      new Set<MatchEventKind>([
+        "GOAL",
+        "POINT",
+        "TWO_POINTER",
+        "FORTY_FIVE_TWO_POINT",
+        "SHOT",
+        "WIDE",
+        "FREE_SCORED",
+        "FREE_MISSED",
+      ]),
+    [],
   );
   const SCORE_EVENT_KINDS = useMemo(
     () => new Set<MatchEventKind>(mode.scoringEvents),
     [mode],
+  );
+  const visibleEventButtons = useMemo(
+    () =>
+      activeTeamSide === "opposition"
+        ? EVENT_BUTTONS.filter((item) => OPPOSITION_EVENT_KINDS.has(item.kind))
+        : EVENT_BUTTONS,
+    [EVENT_BUTTONS, OPPOSITION_EVENT_KINDS, activeTeamSide],
   );
   const handleRef = useRef<{
     destroy: () => void;
@@ -2993,45 +3017,9 @@ export default function StatsModeSurface() {
     setIsPickerOpen(false);
   };
 
-  const logAwayInstantScore = (kind: MatchEventKind) => {
-    setLoggedEvents((prev) => {
-      const currentHalf = matchEngineStateRef.current.currentHalf;
-      const matchTimeSeconds = deriveMatchTimeSecondsFromTimestamp(matchEngineStateRef.current.matchTimeSeconds);
-      const awayInstantEvent: LoggedMatchEvent = {
-        id: `team-away-instant-score-${newLocalEventId()}`,
-        kind,
-        nx: 0,
-        ny: 0,
-        half: currentHalf,
-        timestamp: matchTimeSeconds,
-        team: "AWAY",
-        teamSide: "opposition",
-        matchTimeSeconds,
-        halfSegment: deriveHalfSegment(matchTimeSeconds, currentHalf),
-      };
-      const next = [
-        ...prev,
-        awayInstantEvent,
-      ];
-      if (import.meta.env.DEV) {
-        console.assert(
-          next.length === prev.length + 1,
-          "[stats-events] Away instant score should append exactly one event",
-          { previousCount: prev.length, nextCount: next.length, kind },
-        );
-      }
-      return next;
-    });
-  };
-
   const handleEventButtonPress = (kind: MatchEventKind) => {
     if (!isLoggingActive(matchState)) return;
-    if (activeTeam === "AWAY" && AWAY_INSTANT_SCORING_KINDS.has(kind)) {
-      selectEventKind(kind);
-      logAwayInstantScore(kind);
-      return;
-    }
-    if (activeTeam === "AWAY") return;
+    if (activeTeamSide === "opposition" && !OPPOSITION_EVENT_KINDS.has(kind)) return;
     selectEventKind(kind);
   };
 
@@ -3144,6 +3132,16 @@ export default function StatsModeSurface() {
   useEffect(() => {
     activeTeamSideRef.current = activeTeamSide;
   }, [activeTeamSide]);
+
+  useEffect(() => {
+    if (activeTeamSide !== "opposition") return;
+    if (visibleEventButtons.some((item) => item.kind === selectedEventKind)) return;
+    const fallbackKind = visibleEventButtons.find((item) => item.kind === "POINT")?.kind ?? visibleEventButtons[0]?.kind;
+    if (!fallbackKind) return;
+    setSelectedEventKind(fallbackKind);
+    selectedEventRef.current = fallbackKind;
+    handleRef.current?.setActiveEventKind(fallbackKind);
+  }, [activeTeamSide, selectedEventKind, visibleEventButtons]);
 
   useEffect(() => {
     activePlayerRef.current = activePlayer;
@@ -3935,8 +3933,11 @@ export default function StatsModeSurface() {
     if (!draft) return;
     const draftMatchId = draft.matchId.trim().length > 0 ? draft.matchId : newMatchSessionId("live");
     setCurrentMode(draft.currentMode);
-    setActiveTeam(draft.activeTeam);
-    activeTeamRef.current = draft.activeTeam;
+    const recoveredTeamSide = deriveTeamSideFromTeam(draft.activeTeam);
+    setActiveTeam("HOME");
+    activeTeamRef.current = "HOME";
+    setActiveTeamSide(recoveredTeamSide);
+    activeTeamSideRef.current = recoveredTeamSide;
     setCurrentMatchId(draftMatchId);
     currentMatchIdRef.current = draftMatchId;
     setLoggedEvents(draft.events);
@@ -3971,7 +3972,7 @@ export default function StatsModeSurface() {
     handleRef.current?.setEventContext({
       half: restoredContext.engineState.currentHalf,
       timestamp: restoredContext.engineState.matchTimeSeconds,
-      canLog: isLoggingActive(restoredContext.engineState.matchState) && draft.activeTeam === "HOME",
+      canLog: isLoggingActive(restoredContext.engineState.matchState),
     });
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel("Recovered draft");
@@ -4189,16 +4190,25 @@ export default function StatsModeSurface() {
 
   useEffect(() => {
     handleRef.current?.setEvents(
-      getRenderablePitchEvents(
-        loggedEvents,
-        reviewHalf,
-        reviewEventFilter,
-        REVIEW_FILTER_KINDS_FOR_MODE,
-        reviewZone,
-        getEffectiveAttackingDirection(firstHalfAttackingDirection, currentHalf),
-        reviewActivePlayerOnly,
-        activePlayerId,
-      ),
+      (() => {
+        const isReviewModeActive = showReviewStrip || utilityPanel === "REVIEW";
+        const renderableEvents = getRenderablePitchEvents(
+          loggedEvents,
+          reviewHalf,
+          reviewEventFilter,
+          REVIEW_FILTER_KINDS_FOR_MODE,
+          reviewZone,
+          getEffectiveAttackingDirection(firstHalfAttackingDirection, currentHalf),
+          reviewActivePlayerOnly,
+          activePlayerId,
+        );
+        if (isReviewModeActive) return renderableEvents;
+        return renderableEvents.map((event): LiveRenderablePitchEvent =>
+          event.teamSide === "opposition"
+            ? { ...event, renderAsSubtleDot: true }
+            : event,
+        );
+      })(),
     );
   }, [
     loggedEvents,
@@ -4210,6 +4220,8 @@ export default function StatsModeSurface() {
     reviewActivePlayerOnly,
     activePlayerId,
     REVIEW_FILTER_KINDS_FOR_MODE,
+    showReviewStrip,
+    utilityPanel,
   ]);
 
   useEffect(() => {
@@ -4663,9 +4675,12 @@ export default function StatsModeSurface() {
           <button
             type="button"
             className="scoreboard-rail-team-btn"
-            onClick={() => setActiveTeam("HOME")}
+            onClick={() => {
+              setActiveTeam("HOME");
+              setActiveTeamSide("own");
+            }}
             style={
-              activeTeam === "HOME"
+              activeTeamSide === "own"
                 ? {
                     border: "1px solid rgba(34,197,94,0.9)",
                     background: "rgba(22,101,52,0.72)",
@@ -4722,9 +4737,12 @@ export default function StatsModeSurface() {
           <button
             type="button"
             className="scoreboard-rail-team-btn"
-            onClick={() => setActiveTeam("AWAY")}
+            onClick={() => {
+              setActiveTeam("HOME");
+              setActiveTeamSide("opposition");
+            }}
             style={
-              activeTeam === "AWAY"
+              activeTeamSide === "opposition"
                 ? {
                     border: "1px solid rgba(34,197,94,0.9)",
                     background: "rgba(22,101,52,0.72)",
@@ -4833,10 +4851,13 @@ export default function StatsModeSurface() {
           <button
             type="button"
             className="scoreboard-side scoreboard-side-btn"
-            onClick={() => setActiveTeam("HOME")}
-            aria-pressed={activeTeam === "HOME"}
+            onClick={() => {
+              setActiveTeam("HOME");
+              setActiveTeamSide("own");
+            }}
+            aria-pressed={activeTeamSide === "own"}
             style={
-              activeTeam === "HOME"
+              activeTeamSide === "own"
                 ? {
                     border: "1px solid rgba(34,197,94,0.9)",
                     background: "rgba(22,101,52,0.72)",
@@ -4892,10 +4913,13 @@ export default function StatsModeSurface() {
           <button
             type="button"
             className="scoreboard-side scoreboard-side-btn"
-            onClick={() => setActiveTeam("AWAY")}
-            aria-pressed={activeTeam === "AWAY"}
+            onClick={() => {
+              setActiveTeam("HOME");
+              setActiveTeamSide("opposition");
+            }}
+            aria-pressed={activeTeamSide === "opposition"}
             style={
-              activeTeam === "AWAY"
+              activeTeamSide === "opposition"
                 ? {
                     border: "1px solid rgba(34,197,94,0.9)",
                     background: "rgba(22,101,52,0.72)",
@@ -5772,18 +5796,15 @@ export default function StatsModeSurface() {
           {!isLandscape && isPickerOpen ? (
             <div className="event-panel">
               <div className="event-grid">
-                {EVENT_BUTTONS.map((item, idx) => {
+                {visibleEventButtons.map((item, idx) => {
                   const isActive = item.kind === selectedEventKind;
                   const isScoring = idx <= 4;
                   const buttonLabel = getReadableEventButtonLabel(item.label);
-                  const isDisabledForAway =
-                    activeTeam === "AWAY" && !AWAY_INSTANT_SCORING_KINDS.has(item.kind);
                   return (
                     <button
                       key={item.kind}
                       type="button"
                       className="event-btn"
-                      disabled={isDisabledForAway}
                       onClick={() => {
                         handleEventButtonPress(item.kind);
                       }}
@@ -5799,7 +5820,6 @@ export default function StatsModeSurface() {
                             ? "rgba(21, 39, 62, 0.84)"
                             : "rgba(14, 24, 40, 0.72)",
                         fontWeight: isActive ? 800 : 700,
-                        opacity: isDisabledForAway ? 0.46 : 1,
                       }}
                     >
                       {buttonLabel}
@@ -5885,22 +5905,19 @@ export default function StatsModeSurface() {
           {isLandscape && isPickerOpen ? (
             <div className="landscape-toolbar">
               <div className="landscape-toolbar-row">
-                {EVENT_BUTTONS.slice(0, 5).map((item) => {
+                {visibleEventButtons.slice(0, 5).map((item) => {
                   const isActive = item.kind === selectedEventKind;
                   const buttonLabel = getReadableEventButtonLabel(item.label);
-                  const isDisabledForAway =
-                    activeTeam === "AWAY" && !AWAY_INSTANT_SCORING_KINDS.has(item.kind);
                   return (
                     <button
                       key={item.kind}
                       type="button"
                       className="landscape-toolbar-btn"
-                      disabled={isDisabledForAway}
                       onClick={() => {
                         handleEventButtonPress(item.kind);
                       }}
                       style={
-                        isActive || isDisabledForAway
+                        isActive
                           ? {
                               ...(isActive
                                 ? {
@@ -5908,7 +5925,6 @@ export default function StatsModeSurface() {
                                     background: "rgba(22,101,52,0.7)",
                                   }
                                 : {}),
-                              ...(isDisabledForAway ? { opacity: 0.46 } : {}),
                             }
                           : undefined
                       }
@@ -5919,22 +5935,19 @@ export default function StatsModeSurface() {
                 })}
               </div>
               <div className="landscape-toolbar-row">
-                {EVENT_BUTTONS.slice(5).map((item) => {
+                {visibleEventButtons.slice(5).map((item) => {
                   const isActive = item.kind === selectedEventKind;
                   const buttonLabel = getReadableEventButtonLabel(item.label);
-                  const isDisabledForAway =
-                    activeTeam === "AWAY" && !AWAY_INSTANT_SCORING_KINDS.has(item.kind);
                   return (
                     <button
                       key={item.kind}
                       type="button"
                       className="landscape-toolbar-btn"
-                      disabled={isDisabledForAway}
                       onClick={() => {
                         handleEventButtonPress(item.kind);
                       }}
                       style={
-                        isActive || isDisabledForAway
+                        isActive
                           ? {
                               ...(isActive
                                 ? {
@@ -5942,7 +5955,6 @@ export default function StatsModeSurface() {
                                     background: "rgba(22,101,52,0.7)",
                                   }
                                 : {}),
-                              ...(isDisabledForAway ? { opacity: 0.46 } : {}),
                             }
                           : undefined
                       }
