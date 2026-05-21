@@ -281,17 +281,6 @@ export async function createMovementCanvasShell(
 
   const isPlaybackLocked = () => isPlaying || isPaused;
 
-  const syncRoutePlaybackVisualState = () => {
-    routeLayer.setPlaybackState({
-      isActive: isPlaybackLocked(),
-      activePlayerIds: Array.from(activePlaybackRuns.keys()),
-    });
-  };
-
-  const syncRouteSelectionVisualState = () => {
-    tokenLayer.setRouteSelectionVisualActive(mode === "route" && selectedTokenId != null && !isPlaybackLocked());
-  };
-
   const emitRoutes = () => {
     options.onRoutesChange?.(
       Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
@@ -343,7 +332,6 @@ export async function createMovementCanvasShell(
     );
     routeLayer.setSelectedPlayer(selectedTokenId);
     routeLayer.setSelectedWaypoint(selectedTokenId, selectedWaypointIndex);
-    syncRoutePlaybackVisualState();
   };
 
   const setSelectedWaypoint = (nextIndex: number | null) => {
@@ -361,7 +349,6 @@ export async function createMovementCanvasShell(
     options.onSelectedTokenChange?.(
       selectedToken ? { ...selectedToken, position: { ...selectedToken.position } } : null,
     );
-    syncRouteSelectionVisualState();
     emitRouteEditState();
     return selectedToken;
   };
@@ -380,8 +367,6 @@ export async function createMovementCanvasShell(
     if (!keepPaused) {
       isPaused = false;
     }
-    syncRoutePlaybackVisualState();
-    syncRouteSelectionVisualState();
     emitPlaybackState();
   };
 
@@ -422,7 +407,6 @@ export async function createMovementCanvasShell(
     if (mode !== "route") {
       setSelectedWaypoint(null);
     }
-    syncRouteSelectionVisualState();
   };
 
   const setRouteForToken = (
@@ -603,8 +587,6 @@ export async function createMovementCanvasShell(
     if (isPaused && activePlaybackRuns.size > 0) {
       isPaused = false;
       isPlaying = true;
-      syncRoutePlaybackVisualState();
-      syncRouteSelectionVisualState();
       emitPlaybackState();
       return;
     }
@@ -616,15 +598,11 @@ export async function createMovementCanvasShell(
     const nextRuns = buildPlaybackRuns();
     if (nextRuns.size <= 0) {
       isPlaying = false;
-      syncRoutePlaybackVisualState();
-      syncRouteSelectionVisualState();
       emitPlaybackState();
       return;
     }
     activePlaybackRuns = nextRuns;
     isPlaying = true;
-    syncRoutePlaybackVisualState();
-    syncRouteSelectionVisualState();
     emitPlaybackState();
   };
 
@@ -632,8 +610,6 @@ export async function createMovementCanvasShell(
     if (!isPlaying) return;
     isPlaying = false;
     isPaused = true;
-    syncRoutePlaybackVisualState();
-    syncRouteSelectionVisualState();
     emitPlaybackState();
   };
 
@@ -674,9 +650,6 @@ export async function createMovementCanvasShell(
 
     for (const tokenId of completedTokenIds) {
       activePlaybackRuns.delete(tokenId);
-    }
-    if (completedTokenIds.length > 0) {
-      syncRoutePlaybackVisualState();
     }
     if (activePlaybackRuns.size <= 0) {
       stopPlayback();
@@ -895,7 +868,6 @@ export async function createMovementCanvasShell(
 
   const tick = () => {
     stepPlayback(app.ticker.deltaMS);
-    tokenLayer.setRouteSelectionPulseTime(performance.now());
   };
   app.ticker.add(tick);
 
@@ -905,7 +877,6 @@ export async function createMovementCanvasShell(
   resizeObserver.observe(host);
   syncToHost();
   refreshRouteLayer();
-  syncRouteSelectionVisualState();
   emitPlaybackState();
   emitRouteEditState();
 
@@ -988,8 +959,6 @@ export async function createMovementCanvasShell(
       if (isPaused && activePlaybackRuns.size > 0) {
         isPaused = false;
         isPlaying = true;
-        syncRoutePlaybackVisualState();
-        syncRouteSelectionVisualState();
         emitPlaybackState();
       }
     },

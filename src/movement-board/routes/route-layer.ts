@@ -27,7 +27,6 @@ export type RouteLayer = {
   setDraftRoute: (draft: RouteDraft) => void;
   setSelectedPlayer: (playerId: string | null) => void;
   setSelectedWaypoint: (routePlayerId: string | null, waypointIndex: number | null) => void;
-  setPlaybackState: (state: { isActive: boolean; activePlayerIds: readonly string[] }) => void;
   syncToMapper: () => void;
   clear: () => void;
   destroy: () => void;
@@ -61,8 +60,6 @@ export function createRouteLayer(options: CreateRouteLayerOptions): RouteLayer {
         index: number | null;
       }
     | null = null;
-  let playbackIsActive = false;
-  let playbackActivePlayerIds = new Set<string>();
 
   const strokePath = (
     worldPath: Array<{ x: number; y: number }>,
@@ -95,13 +92,11 @@ export function createRouteLayer(options: CreateRouteLayerOptions): RouteLayer {
     const mapper = options.mapperProvider();
     const worldPath = sampled.map((point) => mapper.normalizedToWorld(point));
     const isSelected = selectedPlayerId != null && selectedPlayerId === route.playerId;
-    const isPlaybackActiveRoute = playbackActivePlayerIds.has(route.playerId);
     const style = options.styleProvider(route.playerId);
     const isDraft = optionsForRoute.isDraft;
     const alphaBoost = isDraft ? 0.75 : 1;
-    const widthBoost = isSelected ? 1.25 : isPlaybackActiveRoute ? 1.08 : 1;
-    const playbackOpacityScale = playbackIsActive ? (isPlaybackActiveRoute ? 0.92 : 0.58) : 1;
-    const opacityScale = (isSelected ? 1 : 0.62) * playbackOpacityScale;
+    const widthBoost = isSelected ? 1.25 : 1;
+    const opacityScale = isSelected ? 1 : 0.62;
 
     strokePath(worldPath, {
       color: style.shadowColor,
@@ -122,7 +117,7 @@ export function createRouteLayer(options: CreateRouteLayerOptions): RouteLayer {
     for (let index = FLOW_DOT_SPACING; index < worldPath.length; index += FLOW_DOT_SPACING) {
       const point = worldPath[index];
       if (!point) continue;
-      const flowAlpha = (isSelected ? 0.22 : isPlaybackActiveRoute ? 0.17 : 0.12) * playbackOpacityScale;
+      const flowAlpha = isSelected ? 0.22 : 0.12;
       graphics.circle(point.x, point.y, isSelected ? 0.26 : 0.2).fill({
         color: style.highlightColor,
         alpha: flowAlpha,
@@ -134,11 +129,11 @@ export function createRouteLayer(options: CreateRouteLayerOptions): RouteLayer {
     if (!start || !end) return;
     graphics.circle(start.x, start.y, isSelected ? 0.54 : 0.42).fill({
       color: style.highlightColor,
-      alpha: (isSelected ? 0.52 : 0.28) * playbackOpacityScale,
+      alpha: isSelected ? 0.52 : 0.28,
     });
     graphics.circle(end.x, end.y, isSelected ? 0.86 : 0.68).fill({
       color: style.coreColor,
-      alpha: (isSelected ? 0.9 : 0.72) * playbackOpacityScale,
+      alpha: isSelected ? 0.9 : 0.72,
     });
 
     if (!isSelected || isDraft) return;
@@ -219,11 +214,6 @@ export function createRouteLayer(options: CreateRouteLayerOptions): RouteLayer {
             };
       render();
     },
-    setPlaybackState: (state) => {
-      playbackIsActive = state.isActive;
-      playbackActivePlayerIds = new Set(state.activePlayerIds);
-      render();
-    },
     syncToMapper: () => {
       render();
     },
@@ -231,8 +221,6 @@ export function createRouteLayer(options: CreateRouteLayerOptions): RouteLayer {
       routes = [];
       draftRoute = null;
       selectedWaypoint = null;
-      playbackIsActive = false;
-      playbackActivePlayerIds.clear();
       graphics.clear();
     },
     destroy: () => {
