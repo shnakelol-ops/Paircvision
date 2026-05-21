@@ -1322,6 +1322,13 @@ const PANEL_CSS = `
   -webkit-backdrop-filter: blur(4px);
 }
 
+.team-side-toggle--scoreboard {
+  width: 100%;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 8px;
+}
+
 .team-side-toggle-btn {
   min-height: 26px;
   border-radius: 999px;
@@ -2503,12 +2510,10 @@ const PANEL_CSS = `
     margin-right: 0;
   }
 
-  .team-side-toggle {
-    position: fixed;
-    left: max(8px, calc(env(safe-area-inset-left, 0px) + 6px));
-    bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 10px));
-    width: 104px;
-    z-index: 22;
+  .team-side-toggle--scoreboard .team-side-toggle-btn {
+    min-height: 24px;
+    font-size: 8px;
+    letter-spacing: 0.16px;
   }
 }
 
@@ -4438,6 +4443,38 @@ export default function StatsModeSurface() {
     if (!canSetFirstHalfAttackingDirection) return;
     setFirstHalfAttackingDirection((prev) => oppositeAttackingDirection(prev));
   };
+  const ownershipToggleControl = (
+    <div
+      className={
+        isLandscape
+          ? "team-side-toggle team-side-toggle--scoreboard"
+          : "team-side-toggle"
+      }
+      role="group"
+      aria-label="Event ownership toggle"
+    >
+      <button
+        type="button"
+        className={activeTeamSide === "own" ? "team-side-toggle-btn is-active" : "team-side-toggle-btn"}
+        aria-pressed={activeTeamSide === "own"}
+        onClick={() => {
+          setActiveTeamSide("own");
+        }}
+      >
+        For
+      </button>
+      <button
+        type="button"
+        className={activeTeamSide === "opposition" ? "team-side-toggle-btn is-active" : "team-side-toggle-btn"}
+        aria-pressed={activeTeamSide === "opposition"}
+        onClick={() => {
+          setActiveTeamSide("opposition");
+        }}
+      >
+        Opp
+      </button>
+    </div>
+  );
   const isReviewModeActive = showReviewStrip || utilityPanel === "REVIEW";
   const playerById = useMemo(() => {
     const next = new Map<string, SquadPlayer>();
@@ -4699,17 +4736,21 @@ export default function StatsModeSurface() {
           </button>
         )}
       </div>
-      <button
-        type="button"
-        className="scoreboard-attack-btn scoreboard-attack-btn--rail"
-        onClick={toggleFirstHalfAttackingDirection}
-        disabled={!canSetFirstHalfAttackingDirection}
-        aria-label={`Tracked team attacking ${
-          effectiveAttackingDirection === "RIGHT" ? "right" : "left"
-        }`}
-      >
-        {attackingDirectionLabel}
-      </button>
+      {canSetFirstHalfAttackingDirection ? (
+        <button
+          type="button"
+          className="scoreboard-attack-btn scoreboard-attack-btn--rail"
+          onClick={toggleFirstHalfAttackingDirection}
+          disabled={!canSetFirstHalfAttackingDirection}
+          aria-label={`Tracked team attacking ${
+            effectiveAttackingDirection === "RIGHT" ? "right" : "left"
+          }`}
+        >
+          {attackingDirectionLabel}
+        </button>
+      ) : (
+        ownershipToggleControl
+      )}
     </div>
   ) : (
     <div className="scoreboard-strip" aria-label="Match scoreboard">
@@ -5727,28 +5768,7 @@ export default function StatsModeSurface() {
         ref={floatingControlsRef}
         className="floating-controls"
       >
-          <div className="team-side-toggle" role="group" aria-label="Event ownership toggle">
-            <button
-              type="button"
-              className={activeTeamSide === "own" ? "team-side-toggle-btn is-active" : "team-side-toggle-btn"}
-              aria-pressed={activeTeamSide === "own"}
-              onClick={() => {
-                setActiveTeamSide("own");
-              }}
-            >
-              For
-            </button>
-            <button
-              type="button"
-              className={activeTeamSide === "opposition" ? "team-side-toggle-btn is-active" : "team-side-toggle-btn"}
-              aria-pressed={activeTeamSide === "opposition"}
-              onClick={() => {
-                setActiveTeamSide("opposition");
-              }}
-            >
-              Opp
-            </button>
-          </div>
+          {!isLandscape ? ownershipToggleControl : null}
           {!isLandscape && isPickerOpen ? (
             <div className="event-panel">
               <div className="event-grid">
