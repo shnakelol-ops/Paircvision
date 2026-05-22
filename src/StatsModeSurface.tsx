@@ -26,6 +26,7 @@ import { NotesQuickPanel } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 import { buildStatsShareCardPng } from "./stats/statsShareCard";
+import { createReviewSnapshot } from "./stats/statsReviewSnapshot";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -4239,6 +4240,69 @@ export default function StatsModeSurface() {
     setSaveFeedback("Summary image downloaded");
   };
 
+  const shareReviewSnapshot = async () => {
+    const snapshot = createReviewSnapshot({
+      events: loggedEvents,
+      teamAName: teamNames.HOME,
+      teamBName: teamNames.AWAY,
+      venue: venueName,
+      period: reviewHalf,
+      segment: reviewSegment,
+      teamSide: reviewTeamContext,
+      category: reviewEventFilter,
+      ...(reviewActivePlayerOnly && activePlayerId ? { activePlayerId } : {}),
+      matchClockSeconds: Math.max(0, Math.floor(matchTimeSeconds)),
+      generatedAt: Date.now(),
+    });
+
+    const rows: string[] = [];
+    const countsByType = Object.entries(snapshot.counts.byEventType)
+      .filter(([, count]) => typeof count === "number" && count > 0)
+      .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
+    const countsByTag = Object.entries(snapshot.counts.byTag)
+      .filter(([, count]) => typeof count === "number" && count > 0)
+      .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
+
+    for (const [kind, count] of countsByType.slice(0, 8)) rows.push(`- ${kind.replaceAll("_", " ")}: ${count}`);
+    for (const [tag, count] of countsByTag.slice(0, Math.max(0, 8 - rows.length))) rows.push(`- ${tag}: ${count}`);
+
+    const generatedLabel = new Date(snapshot.generatedAt).toLocaleString();
+    const subtitle = snapshot.subtitle.trim();
+    const shareLines = [
+      "PáircVision Review Snapshot",
+      snapshot.title,
+      subtitle.length > 0 ? subtitle : null,
+      "",
+      `Visible events: ${snapshot.counts.totalVisibleEvents}`,
+      snapshot.counts.forCount > 0 ? `FOR: ${snapshot.counts.forCount}` : null,
+      snapshot.counts.oppCount > 0 ? `OPP: ${snapshot.counts.oppCount}` : null,
+      "",
+      rows.length > 0 ? "Top event counts:" : null,
+      ...(rows.length > 0 ? rows : []),
+      "",
+      `Generated: ${generatedLabel}`,
+    ].filter((line): line is string => line != null);
+    const shareText = shareLines.join("\n");
+
+    const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void> };
+    if (typeof nav.share === "function") {
+      try {
+        await nav.share({ title: snapshot.title, text: shareText });
+        setSaveFeedback("Review snapshot shared");
+        return;
+      } catch {
+        // fall through to clipboard fallback
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setSaveFeedback("Review snapshot copied");
+    } catch {
+      setSaveFeedback("Share failed — copy unavailable on this device.");
+    }
+  };
+
   const loadSavedMatchRecord = (record: SavedMatch) => {
     const parsedRecord = parseStoredSavedMatch(record);
     if (!parsedRecord || parsedRecord.events.length === 0) {
@@ -6022,6 +6086,15 @@ export default function StatsModeSurface() {
                 ACTIVE: {activeReviewPlayerLabel} · {visibleReviewEvents.length} events
               </div>
             ) : null}
+            <button
+              type="button"
+              className="utility-review-btn"
+              onClick={() => {
+                void shareReviewSnapshot();
+              }}
+            >
+              Share Snapshot
+            </button>
           </div>
           <button
             type="button"
