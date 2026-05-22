@@ -50,6 +50,26 @@ function getTeam(event: LoggedEventLike): TeamSide | null {
 
 function buildBreakdown(events: readonly LoggedEventLike[]): Record<TeamSide, TeamBreakdown> {
   const r={HOME:init(),AWAY:init()} as Record<TeamSide,TeamBreakdown>;
+  let hasOppKickoutEvents = false;
+  let hasOppTurnoverEvents = false;
+  let hasOppFreeEvents = false;
+  for (const e of events) {
+    const t = getTeam(e);
+    if (t !== "AWAY") continue;
+    const k = e.kind;
+    if (k === "KICKOUT_WON" || k === "KICKOUT_CONCEDED") hasOppKickoutEvents = true;
+    if (k === "TURNOVER_WON" || k === "TURNOVER_LOST") hasOppTurnoverEvents = true;
+    if (
+      k === "FREE_WON" ||
+      k === "FREE_FOR" ||
+      k === "FREE_CONCEDED" ||
+      k === "FREE_AGAINST" ||
+      k === "FREE_SCORED" ||
+      k === "FREE_MISSED"
+    ) {
+      hasOppFreeEvents = true;
+    }
+  }
   for (const e of events){
     const t=getTeam(e); if(!t) continue; const b=r[t]; const k=e.kind; const tags=e.tags;
     if (k==="SHOT") { b.shots++; if(has(tags,"SHORT")) b.short++; if(has(tags,"POST")) b.post++; if(has(tags,"FORTY_FIVE")) b.fortyFive++; if(has(tags,"BLOCKED")) b.blocked++; }
@@ -68,6 +88,13 @@ function buildBreakdown(events: readonly LoggedEventLike[]): Record<TeamSide, Te
     if (k==="YELLOW_CARD") b.yellow++;
     if (k==="BLACK_CARD") b.black++;
     if (k==="RED_CARD") b.red++;
+
+    if (t === "HOME") {
+      // Legacy logging often captures opposition outcomes as FOR negative events.
+      if (!hasOppKickoutEvents && k === "KICKOUT_CONCEDED") r.AWAY.kickWon++;
+      if (!hasOppTurnoverEvents && k === "TURNOVER_LOST") r.AWAY.toWon++;
+      if (!hasOppFreeEvents && k === "FREE_CONCEDED") r.AWAY.freesFor++;
+    }
   }
   return r;
 }
@@ -152,7 +179,7 @@ export async function buildStatsShareCardPng(input: StatsShareCardInput): Promis
   ctx.lineTo(CARD_WIDTH - 56, footerY - 38);
   ctx.stroke();
   ctx.fillStyle="#9ca3af"; ctx.font="600 24px Inter,system-ui,sans-serif"; ctx.fillText(`Logged events: ${input.eventCount}`,72,footerY);
-  ctx.fillStyle="#6b7280"; ctx.font="500 24px Inter,system-ui,sans-serif"; ctx.textAlign="right"; ctx.fillText("Páirc Stats Lite summary",CARD_WIDTH-72,footerY); ctx.textAlign="left";
+  ctx.fillStyle="#6b7280"; ctx.font="500 24px Inter,system-ui,sans-serif"; ctx.textAlign="right"; ctx.fillText("PáircVision Stats Summary",CARD_WIDTH-72,footerY); ctx.textAlign="left";
   const blob = await new Promise<Blob | null>((resolve)=>c.toBlob((b)=>resolve(b),"image/png")); if(!blob) return null;
   const fileLabel=`${input.homeTeamName}-${input.awayTeamName}-${input.stageLabel}`.toLowerCase().replace(/[^a-z0-9-]+/g,"-").replace(/^-+|-+$/g,"");
   return new File([blob],`${fileLabel||"match"}-summary.png`,{type:"image/png"});
