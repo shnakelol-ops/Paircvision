@@ -1,5 +1,5 @@
-import { deriveSegmentFromPeriodClock, periodFromHalf } from "./statsSegments";
-import type { MatchEvent, MatchEventKind, MatchEventPeriod, MatchEventSegment, MatchEventTeamSide } from "../core/stats/stats-event-model";
+import { selectReviewEvents } from "./review-selectors";
+import type { MatchEvent, MatchEventKind, MatchEventTeamSide } from "../core/stats/stats-event-model";
 
 export type ReviewSnapshotCategory =
   | "ALL"
@@ -85,16 +85,6 @@ function normalizeEventTeamSide(teamSide: MatchEventTeamSide | undefined, team: 
   return "FOR";
 }
 
-function resolveEventPeriod(event: ReviewSnapshotInputEvent): MatchEventPeriod {
-  return event.period ?? periodFromHalf(event.half);
-}
-
-function resolveEventSegment(event: ReviewSnapshotInputEvent): MatchEventSegment {
-  if (event.segment != null) return event.segment;
-  const eventClockSeconds = event.matchClockSeconds ?? event.matchTimeSeconds ?? event.timestamp;
-  return deriveSegmentFromPeriodClock(resolveEventPeriod(event), eventClockSeconds);
-}
-
 function createSnapshotId(generatedAt: number): string {
   if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") return globalThis.crypto.randomUUID();
   return `review-snapshot-${generatedAt}-${Math.random().toString(36).slice(2, 11)}`;
@@ -104,48 +94,14 @@ export function filterReviewSnapshotEvents(
   events: readonly ReviewSnapshotInputEvent[],
   filters: ReviewSnapshotFilters,
 ): ReviewSnapshotInputEvent[] {
-  const segmentFilter = filters.segment === "ALL" ? null : Number(filters.segment.slice(1));
-  const categoryKinds =
-    filters.category === "ALL" || filters.category === "PLAYERS"
-      ? null
-      : new Set(CATEGORY_EVENT_KINDS[filters.category]);
-
-  return events.filter((event) => {
-    const period = resolveEventPeriod(event);
-    const segment = resolveEventSegment(event);
-
-    if (filters.period === "H1" && period !== "1H") return false;
-    if (filters.period === "H2" && period !== "2H") return false;
-    if (segmentFilter != null && segment !== segmentFilter) return false;
-
-    if (categoryKinds != null && !categoryKinds.has(event.kind)) return false;
-    if (filters.category === "PLAYERS" && event.playerId == null && event.playerName == null) return false;
-
-    const eventTeamSide = normalizeEventTeamSide(event.teamSide, event.team, event.id);
-    const isOppositionEvent = eventTeamSide === "OPP";
-    const isInferredOppositionEvent =
-      eventTeamSide === "FOR" &&
-      (event.kind === "TURNOVER_LOST" || event.kind === "KICKOUT_CONCEDED" || event.kind === "FREE_CONCEDED");
-
-    if (filters.teamSide === "FOR" && eventTeamSide !== "FOR") return false;
-    if (filters.teamSide === "OPP" && !isOppositionEvent && !isInferredOppositionEvent) return false;
-
-    if (filters.teamSide === "OPP" && filters.category !== "ALL" && filters.category !== "PLAYERS") {
-      if (filters.category === "TURNOVERS") {
-        if (!(event.kind === "TURNOVER_LOST" || (isOppositionEvent && event.kind === "TURNOVER_WON"))) return false;
-      }
-      if (filters.category === "KICKOUTS") {
-        if (!(event.kind === "KICKOUT_CONCEDED" || (isOppositionEvent && event.kind === "KICKOUT_WON"))) return false;
-      }
-      if (filters.category === "FREES") {
-        if (!(event.kind === "FREE_CONCEDED" || (isOppositionEvent && ["FREE_WON", "FREE_SCORED", "FREE_MISSED"].includes(event.kind)))) {
-          return false;
-        }
-      }
-    }
-
-    if (filters.activePlayerId && event.playerId !== filters.activePlayerId) return false;
-    return true;
+  return selectReviewEvents(events, {
+    half: filters.period,
+    segment: filters.segment,
+    teamSide: filters.teamSide,
+    category: filters.category,
+    categoryKinds: CATEGORY_EVENT_KINDS,
+    activePlayerOnly: filters.activePlayerId != null,
+    activePlayerId: filters.activePlayerId,
   });
 }
 
