@@ -1567,8 +1567,8 @@ const PANEL_CSS = `
   position: fixed;
   inset: 0;
   width: 100dvw;
-  height: var(--stats-app-height, 100dvh);
-  min-height: var(--stats-app-height, 100dvh);
+  height: 100dvh;
+  min-height: 100dvh;
   margin: 0;
   display: flex;
   align-items: center;
