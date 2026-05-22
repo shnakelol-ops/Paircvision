@@ -15,7 +15,7 @@ type StatsShareCardInput = {
 };
 
 type TeamBreakdown = {
-  shots: number; scores: number; wides: number; short: number; post: number; fortyFive: number; blocked: number;
+  shots: number; scores: number; wides: number; goals: number; points: number; twoPt: number; short: number; post: number; fortyFive: number; blocked: number;
   kickWon: number; kickLost: number; kickClean: number; kickBreak: number;
   kickFoulWon: number; kickFoulConceded: number; kickDead: number;
   toWon: number; toLost: number; toForced: number; toUnforced: number;
@@ -29,14 +29,14 @@ const CARD_WIDTH = 1080;
 const CARD_HEIGHT = 1640;
 const formatGaelicScore = (s: TeamScore) => `${s.goals}-${s.points}`;
 const pct = (n:number,d:number)=> d>0?`${Math.round((n/d)*100)}%`:'0%';
-const init = ():TeamBreakdown=>({shots:0,scores:0,wides:0,short:0,post:0,fortyFive:0,blocked:0,kickWon:0,kickLost:0,kickClean:0,kickBreak:0,kickFoulWon:0,kickFoulConceded:0,kickDead:0,toWon:0,toLost:0,toForced:0,toUnforced:0,toTackle:0,toPress:0,toSwarm:0,toIntercept:0,toSlackKP:0,toSlackHP:0,toOvercarried:0,toStripped:0,freesFor:0,freesAgainst:0,freeScored:0,freeMissed:0,yellow:0,black:0,red:0});
+const init = ():TeamBreakdown=>({shots:0,scores:0,wides:0,goals:0,points:0,twoPt:0,short:0,post:0,fortyFive:0,blocked:0,kickWon:0,kickLost:0,kickClean:0,kickBreak:0,kickFoulWon:0,kickFoulConceded:0,kickDead:0,toWon:0,toLost:0,toForced:0,toUnforced:0,toTackle:0,toPress:0,toSwarm:0,toIntercept:0,toSlackKP:0,toSlackHP:0,toOvercarried:0,toStripped:0,freesFor:0,freesAgainst:0,freeScored:0,freeMissed:0,yellow:0,black:0,red:0});
 const has=(tags:readonly string[]|undefined,t:string)=>!!tags?.includes(t);
 
 function getTeam(event: LoggedEventLike): TeamSide | null {
-  if (event.team === 'HOME' || String(event.id||'').startsWith('team-home-')) return 'HOME';
-  if (event.team === 'AWAY' || String(event.id||'').startsWith('team-away-')) return 'AWAY';
   if (event.teamSide === 'FOR') return 'HOME';
   if (event.teamSide === 'OPP') return 'AWAY';
+  if (event.team === 'HOME' || String(event.id||'').startsWith('team-home-')) return 'HOME';
+  if (event.team === 'AWAY' || String(event.id||'').startsWith('team-away-')) return 'AWAY';
   return null;
 }
 
@@ -46,8 +46,10 @@ function buildBreakdown(events: readonly LoggedEventLike[]): Record<TeamSide, Te
     const t=getTeam(e); if(!t) continue; const b=r[t]; const k=e.kind; const tags=e.tags;
     if (k==='SHOT') { b.shots++; if(has(tags,'SHORT')) b.short++; if(has(tags,'POST')) b.post++; if(has(tags,'FORTY_FIVE')) b.fortyFive++; if(has(tags,'BLOCKED')) b.blocked++; }
     if (k==='WIDE') { b.wides++; b.shots++; }
-    if (k==='GOAL'||k==='POINT'||k==='TWO_POINTER'||k==='FORTY_FIVE_TWO_POINT') { b.scores++; b.shots++; }
-    if (k==='FREE_SCORED') { b.freeScored++; b.scores++; b.shots++; }
+    if (k==='GOAL') { b.goals++; b.scores++; b.shots++; }
+    if (k==='POINT') { b.points++; b.scores++; b.shots++; }
+    if (k==='TWO_POINTER'||k==='FORTY_FIVE_TWO_POINT') { b.twoPt++; b.scores++; b.shots++; }
+    if (k==='FREE_SCORED') { b.freeScored++; b.points++; b.scores++; b.shots++; }
     if (k==='FREE_MISSED') { b.freeMissed++; b.wides++; b.shots++; }
     if (k==='FREE_WON' || k==='FREE_FOR') b.freesFor++;
     if (k==='FREE_CONCEDED' || k==='FREE_AGAINST') b.freesAgainst++;
@@ -90,9 +92,12 @@ export async function buildStatsShareCardPng(input: StatsShareCardInput): Promis
   ctx.fillStyle='#93c5fd'; ctx.font='700 28px Inter,system-ui,sans-serif'; ctx.fillText('Shooting',72,y); y+=34;
   row(ctx,y,'Shots',String(d.HOME.shots),String(d.AWAY.shots)); y+=42;
   row(ctx,y,'Scores',String(d.HOME.scores),String(d.AWAY.scores)); y+=42;
+  row(ctx,y,'Goals',String(d.HOME.goals),String(d.AWAY.goals)); y+=42;
+  row(ctx,y,'Points',String(d.HOME.points),String(d.AWAY.points)); y+=42;
+  row(ctx,y,'2PT',String(d.HOME.twoPt),String(d.AWAY.twoPt)); y+=42;
   row(ctx,y,'Wides',String(d.HOME.wides),String(d.AWAY.wides)); y+=42;
   row(ctx,y,'Conversion',pct(d.HOME.scores,d.HOME.shots),pct(d.AWAY.scores,d.AWAY.shots)); y+=42;
-  row(ctx,y,'Shot tags S/P/45/B',`${d.HOME.short}/${d.HOME.post}/${d.HOME.fortyFive}/${d.HOME.blocked}`,`${d.AWAY.short}/${d.AWAY.post}/${d.AWAY.fortyFive}/${d.AWAY.blocked}`); y+=56;
+  row(ctx,y,'Short/Post/45/Blk',`${d.HOME.short}/${d.HOME.post}/${d.HOME.fortyFive}/${d.HOME.blocked}`,`${d.AWAY.short}/${d.AWAY.post}/${d.AWAY.fortyFive}/${d.AWAY.blocked}`); y+=56;
   ctx.fillStyle='#93c5fd'; ctx.font='700 28px Inter,system-ui,sans-serif'; ctx.fillText('Kickouts',72,y); y+=34;
   row(ctx,y,'Won / Total',`${d.HOME.kickWon}/${d.HOME.kickWon+d.HOME.kickLost}`,`${d.AWAY.kickWon}/${d.AWAY.kickWon+d.AWAY.kickLost}`); y+=42;
   row(ctx,y,'Win %',pct(d.HOME.kickWon,d.HOME.kickWon+d.HOME.kickLost),pct(d.AWAY.kickWon,d.AWAY.kickWon+d.AWAY.kickLost)); y+=42;
@@ -103,12 +108,11 @@ export async function buildStatsShareCardPng(input: StatsShareCardInput): Promis
   row(ctx,y,'Won',String(d.HOME.toWon),String(d.AWAY.toWon)); y+=42;
   row(ctx,y,'Lost',String(d.HOME.toLost),String(d.AWAY.toLost)); y+=42;
   row(ctx,y,'Balance',String(d.HOME.toWon-d.HOME.toLost),String(d.AWAY.toWon-d.AWAY.toLost)); y+=42;
-  const homePressure = d.HOME.toTackle + d.HOME.toPress * 2 + d.HOME.toSwarm * 3 + d.HOME.toIntercept;
-  const awayPressure = d.AWAY.toTackle + d.AWAY.toPress * 2 + d.AWAY.toSwarm * 3 + d.AWAY.toIntercept;
-  row(ctx,y,'Pressure Score',String(homePressure),String(awayPressure)); y+=42;
-  row(ctx,y,'T/P/S/I',`${d.HOME.toTackle}/${d.HOME.toPress}/${d.HOME.toSwarm}/${d.HOME.toIntercept}`,`${d.AWAY.toTackle}/${d.AWAY.toPress}/${d.AWAY.toSwarm}/${d.AWAY.toIntercept}`); y+=42;
+  row(ctx,y,'Tackle / Press',`${d.HOME.toTackle}/${d.HOME.toPress}`,`${d.AWAY.toTackle}/${d.AWAY.toPress}`); y+=42;
+  row(ctx,y,'Swarm / Intercept',`${d.HOME.toSwarm}/${d.HOME.toIntercept}`,`${d.AWAY.toSwarm}/${d.AWAY.toIntercept}`); y+=42;
   row(ctx,y,'Unforced',`${d.HOME.toUnforced}`,`${d.AWAY.toUnforced}`); y+=42;
-  row(ctx,y,'SlackKP/HP/Ov/Str',`${d.HOME.toSlackKP}/${d.HOME.toSlackHP}/${d.HOME.toOvercarried}/${d.HOME.toStripped}`,`${d.AWAY.toSlackKP}/${d.AWAY.toSlackHP}/${d.AWAY.toOvercarried}/${d.AWAY.toStripped}`); y+=56;
+  row(ctx,y,'Slack KP / HP',`${d.HOME.toSlackKP}/${d.HOME.toSlackHP}`,`${d.AWAY.toSlackKP}/${d.AWAY.toSlackHP}`); y+=42;
+  row(ctx,y,'Overcarried / Stripped',`${d.HOME.toOvercarried}/${d.HOME.toStripped}`,`${d.AWAY.toOvercarried}/${d.AWAY.toStripped}`); y+=56;
   ctx.fillStyle='#93c5fd'; ctx.font='700 28px Inter,system-ui,sans-serif'; ctx.fillText('Frees',72,y); y+=34;
   row(ctx,y,'Frees For',String(d.HOME.freesFor),String(d.AWAY.freesFor)); y+=42;
   row(ctx,y,'Frees Against',String(d.HOME.freesAgainst),String(d.AWAY.freesAgainst)); y+=42;
