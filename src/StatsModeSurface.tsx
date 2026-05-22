@@ -1363,6 +1363,12 @@ function getReadableEventButtonLabel(label: string): string {
   return label;
 }
 
+function getReviewEventTypeLabel(kind: MatchEventKind): string {
+  if (kind === "KICKOUT_CONCEDED") return "KICKOUT LOST";
+  if (kind === "KICKOUT_WON") return "KICKOUT WON";
+  return kind;
+}
+
 function getViewportRect(): ViewportRect {
   if (typeof window === "undefined") {
     return { left: 0, top: 0, width: 0, height: 0 };
@@ -6197,7 +6203,7 @@ export default function StatsModeSurface() {
           </div>
           <div className="review-event-card-row">
             <span className="review-event-card-row-label">Type</span>
-            <span className="review-event-card-row-value">{selectedReviewEvent.type}</span>
+            <span className="review-event-card-row-value">{getReviewEventTypeLabel(selectedReviewEvent.type)}</span>
           </div>
           {selectedReviewKickoutTagLabel ? (
             <div className="review-event-card-row">
