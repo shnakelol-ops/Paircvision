@@ -5529,6 +5529,31 @@ export default function StatsModeSurface() {
     width: "min(250px, calc(100vw - 18px))",
     border: "1px solid rgba(248, 113, 113, 0.42)",
   };
+  const followupStripStyle: CSSProperties = isLandscape
+    ? {
+        bottom: `${Math.max(70, keyboardInset + 42)}px`,
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "min(360px, 72vw)",
+        justifyContent: "center",
+      }
+    : {
+        bottom: `${Math.max(106, keyboardInset + 104)}px`,
+        left: "50%",
+        right: "auto",
+        transform: "translateX(-50%)",
+        width: "fit-content",
+        maxWidth: "calc(100vw - 20px)",
+        justifyContent: "flex-start",
+        padding: "0",
+        border: "none",
+        background: "transparent",
+        backdropFilter: "none",
+        WebkitBackdropFilter: "none",
+        boxShadow: "none",
+        borderRadius: "0",
+        gap: "6px",
+      };
   return (
     <>
       <main className="app-root" style={appRootStyle}>
@@ -6134,13 +6159,7 @@ export default function StatsModeSurface() {
           className="review-quick-strip"
           role="group"
           aria-label="Event follow-up tag"
-          style={{
-            bottom: `${Math.max(70, keyboardInset + (isLandscape ? 42 : 68))}px`,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: isLandscape ? "min(360px, 72vw)" : "min(360px, 92vw)",
-            justifyContent: "center",
-          }}
+          style={followupStripStyle}
         >
           <span className="utility-panel-title" style={{ fontSize: "8px", alignSelf: "center", opacity: 0.9 }}>
             {pendingFollowupLabel}
