@@ -25,6 +25,7 @@ import { useScreenWakeLock } from "./hooks/useScreenWakeLock";
 import { NotesQuickPanel } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
+import { buildStatsShareCardPng } from "./stats/statsShareCard";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -4076,7 +4077,7 @@ export default function StatsModeSurface() {
       clearActiveMatchDraft();
       setPendingRecoveredDraft(null);
       setSavedMatches(nextSavedMatches);
-      setSaveFeedback("Match saved");
+      setSaveFeedback("Saved");
       setLastSavedAtMillis(savedRecord.createdAt);
       setSaveLoadBlockedReason(null);
     } catch {
@@ -4087,7 +4088,7 @@ export default function StatsModeSurface() {
   const shareOrExportMatch = async () => {
     const homeTeamName = safeShareLabel(teamNames.HOME, "Team A");
     const awayTeamName = safeShareLabel(teamNames.AWAY, "Team B");
-    const summaryText = buildMatchShareSummaryText({
+    const fallbackText = buildMatchShareSummaryText({
       homeTeamName,
       awayTeamName,
       venueLabel: venueName,
@@ -4098,55 +4099,38 @@ export default function StatsModeSurface() {
       eventCount: loggedEvents.length,
       liveCounts,
     });
-
-    const shareData: ShareData = {
-      title: `${homeTeamName} v ${awayTeamName}`,
-      text: summaryText,
-    };
-    const navWithShare = navigator as Navigator & {
-      share?: (data: ShareData) => Promise<void>;
-      canShare?: (data: ShareData) => boolean;
-    };
-
+    const cardFile = await buildStatsShareCardPng({
+      stageLabel: matchState === "FULL_TIME" ? "Full Time" : "Half Time",
+      homeTeamName,
+      awayTeamName,
+      venueLabel: safeShareLabel(venueName, "Unknown venue"),
+      clockLabel: formatMatchClock(matchTimeSeconds),
+      homeScore,
+      awayScore,
+      counts: liveCounts,
+      eventCount: loggedEvents.length,
+    });
+    if (!cardFile) {
+      setSaveFeedback("Share failed — could not generate summary image.");
+      return;
+    }
+    const shareData: ShareData & { files?: File[] } = { title: `${homeTeamName} v ${awayTeamName}`, text: fallbackText, files: [cardFile] };
+    const navWithShare = navigator as Navigator & { share?: (data: ShareData & { files?: File[] }) => Promise<void>; canShare?: (data: ShareData & { files?: File[] }) => boolean; };
     if (typeof navWithShare.share === "function") {
       const canShare = typeof navWithShare.canShare === "function" ? navWithShare.canShare(shareData) : true;
       if (canShare) {
-        try {
-          await navWithShare.share(shareData);
-          setSaveFeedback("Match shared");
-          return;
-        } catch {
-          // Fall through to export/copy fallback.
-        }
+        try { await navWithShare.share(shareData); setSaveFeedback("Summary image shared"); return; } catch {}
       }
     }
-
-    let copied = false;
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(summaryText);
-        copied = true;
-      } catch {
-        copied = false;
-      }
-    }
-
-    const fileSafeLabel = `${homeTeamName}-${awayTeamName}`
-      .toLowerCase()
-      .replace(/[^a-z0-9-]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    const exportFileName = `${fileSafeLabel || "match"}-summary.txt`;
-    const blob = new Blob([summaryText], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(cardFile);
     const link = document.createElement("a");
     link.href = url;
-    link.download = exportFileName;
+    link.download = cardFile.name;
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-
-    setSaveFeedback(copied ? "Summary copied + exported" : "Summary exported");
+    setSaveFeedback("Summary image downloaded");
   };
 
   const loadSavedMatchRecord = (record: SavedMatch) => {
@@ -4156,7 +4140,7 @@ export default function StatsModeSurface() {
       return;
     }
     if (hasDirtyLiveSession) {
-      const confirmed = window.confirm("Loading this saved match will replace your current live session. Continue?");
+      const confirmed = window.confirm("Load this saved match and replace current unsaved live session?");
       if (!confirmed) return;
     }
     const loadedMatchId =
@@ -5720,7 +5704,7 @@ export default function StatsModeSurface() {
               Half
             </div>
             {([
-              { id: "FULL", label: "ALL" },
+              { id: "FULL", label: "ALL (Reset)" },
               { id: "H1", label: "1H" },
               { id: "H2", label: "2H" },
             ] as const).map((option) => (
@@ -6077,7 +6061,7 @@ export default function StatsModeSurface() {
         >
           <span className="review-strip-status">Review</span>
           {([
-            { id: "FULL", label: "ALL" },
+            { id: "FULL", label: "ALL (Reset)" },
             { id: "H1", label: "1H" },
             { id: "H2", label: "2H" },
           ] as const).map((option) => (
@@ -6626,7 +6610,7 @@ export default function StatsModeSurface() {
                   saveCurrentMatchSnapshot();
                 }}
                 style={
-                  saveFeedback === "Match saved"
+                  saveFeedback === "Saved"
                     ? {
                         border: "1px solid rgba(34,197,94,0.92)",
                         background: "rgba(22,101,52,0.76)",
@@ -6634,7 +6618,7 @@ export default function StatsModeSurface() {
                     : undefined
                 }
               >
-                {saveFeedback === "Match saved" ? "Saved" : "Save Match"}
+                {saveFeedback === "Saved" ? "Saved" : "Save Match"}
               </button>
               <button type="button" className="utility-menu-btn" onClick={openSavedMatchesPanel}>
                 Load Match
