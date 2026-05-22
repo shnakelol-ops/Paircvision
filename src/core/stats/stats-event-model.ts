@@ -19,25 +19,43 @@ export const MATCH_EVENT_KINDS = [
 
 export type MatchEventKind = (typeof MATCH_EVENT_KINDS)[number];
 
+export type MatchEventTeamSide = "FOR" | "OPP" | "own" | "opposition";
+export type MatchEventPeriod = "1H" | "2H";
+export type MatchEventSegment = 1 | 2 | 3 | 4 | 5 | 6;
+
 export type MatchEvent = {
   id: string;
   kind: MatchEventKind;
+  type?: MatchEventKind;
   nx: number;
   ny: number;
+  x?: number;
+  y?: number;
   half: 1 | 2;
+  period?: MatchEventPeriod;
   timestamp: number;
-  teamSide?: "own" | "opposition";
+  matchClockSeconds?: number;
+  createdAt?: number;
+  segment?: MatchEventSegment;
+  teamSide?: MatchEventTeamSide;
   matchTimeSeconds?: number;
   halfSegment?: 1 | 2 | 3;
 };
 
 export type CreateMatchEventInput = {
   kind: MatchEventKind;
+  type?: MatchEventKind;
   nx: number;
   ny: number;
+  x?: number;
+  y?: number;
   half: 1 | 2;
+  period?: MatchEventPeriod;
   timestamp: number;
-  teamSide?: "own" | "opposition";
+  matchClockSeconds?: number;
+  createdAt?: number;
+  segment?: MatchEventSegment;
+  teamSide?: MatchEventTeamSide;
   matchTimeSeconds?: number;
   halfSegment?: 1 | 2 | 3;
   id?: string;
@@ -52,17 +70,47 @@ function newMatchEventId(): string {
 }
 
 export function createMatchEvent(input: CreateMatchEventInput): MatchEvent {
+  const normalizedKind = input.kind;
+  const normalizedX =
+    typeof input.x === "number" && Number.isFinite(input.x)
+      ? clamp01(input.x)
+      : clamp01(input.nx);
+  const normalizedY =
+    typeof input.y === "number" && Number.isFinite(input.y)
+      ? clamp01(input.y)
+      : clamp01(input.ny);
+  const normalizedPeriod: MatchEventPeriod = input.period ?? (input.half === 1 ? "1H" : "2H");
+  const normalizedClockSeconds =
+    typeof input.matchClockSeconds === "number" && Number.isFinite(input.matchClockSeconds)
+      ? Math.max(0, Math.floor(input.matchClockSeconds))
+      : typeof input.matchTimeSeconds === "number" && Number.isFinite(input.matchTimeSeconds)
+        ? Math.max(0, Math.floor(input.matchTimeSeconds))
+        : Math.max(0, Math.floor(input.timestamp));
+  const normalizedCreatedAt =
+    typeof input.createdAt === "number" && Number.isFinite(input.createdAt) && input.createdAt > 0
+      ? Math.floor(input.createdAt)
+      : Date.now();
+  const normalizedHalfSegment =
+    input.halfSegment ??
+    (input.segment != null
+      ? (((input.segment - 1) % 3) + 1) as 1 | 2 | 3
+      : undefined);
   return {
     id: input.id ?? newMatchEventId(),
-    kind: input.kind,
-    nx: clamp01(input.nx),
-    ny: clamp01(input.ny),
+    kind: normalizedKind,
+    type: input.type ?? normalizedKind,
+    nx: normalizedX,
+    ny: normalizedY,
+    x: normalizedX,
+    y: normalizedY,
     half: input.half,
-    timestamp: input.timestamp,
+    period: normalizedPeriod,
+    timestamp: normalizedClockSeconds,
+    matchClockSeconds: normalizedClockSeconds,
+    createdAt: normalizedCreatedAt,
+    ...(input.segment != null ? { segment: input.segment } : {}),
     ...(input.teamSide ? { teamSide: input.teamSide } : {}),
-    ...(typeof input.matchTimeSeconds === "number" && Number.isFinite(input.matchTimeSeconds)
-      ? { matchTimeSeconds: Math.max(0, Math.floor(input.matchTimeSeconds)) }
-      : {}),
-    ...(input.halfSegment ? { halfSegment: input.halfSegment } : {}),
+    matchTimeSeconds: normalizedClockSeconds,
+    ...(normalizedHalfSegment ? { halfSegment: normalizedHalfSegment } : {}),
   };
 }
