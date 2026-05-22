@@ -49,12 +49,30 @@ type PlayerRole = "STARTER" | "SUB";
 type FollowupTag =
   | "CLEAN"
   | "BREAK"
-  | "FORCED"
+  | "FOUL_WON"
+  | "FOUL_CONCEDED"
+  | "KICKED_DEAD"
+  | "TACKLE"
+  | "PRESS"
+  | "SWARM"
+  | "INTERCEPT"
   | "UNFORCED"
+  | "SLACK_KICK_PASS"
+  | "SLACK_HAND_PASS"
+  | "OVERCARRIED"
+  | "STRIPPED"
+  | "FORCED"
   | "SHORT"
   | "POST"
   | "FORTY_FIVE"
   | "BLOCKED";
+type PendingFollowupKind =
+  | "KICKOUT_WON"
+  | "KICKOUT_CONCEDED"
+  | "TURNOVER_WON"
+  | "TURNOVER_LOST"
+  | "SHOT";
+type FollowupOption = { label: string; tag: FollowupTag };
 type SquadPlayer = { id: string; name: string; number: number; role: PlayerRole };
 type Squad = { id: string; name: string; players: SquadPlayer[] };
 type SavedSquadPlayer = { id: string; number: number; name: string };
@@ -352,17 +370,28 @@ function parseEventTags(value: unknown): string[] | undefined {
   return normalized.length > 0 ? normalized : undefined;
 }
 
-function getKickoutTagLabel(tags: readonly string[] | undefined): "Clean" | "Break" | null {
+function getKickoutTagLabel(tags: readonly string[] | undefined): string | null {
   if (!tags || tags.length === 0) return null;
   if (tags.includes("CLEAN")) return "Clean";
   if (tags.includes("BREAK")) return "Break";
+  if (tags.includes("FOUL_WON")) return "Foul Won";
+  if (tags.includes("FOUL_CONCEDED")) return "Foul Conceded";
+  if (tags.includes("KICKED_DEAD")) return "Kicked Dead";
   return null;
 }
 
-function getTurnoverTagLabel(tags: readonly string[] | undefined): "Forced" | "Unforced" | null {
+function getTurnoverTagLabel(tags: readonly string[] | undefined): string | null {
   if (!tags || tags.length === 0) return null;
+  if (tags.includes("TACKLE")) return "Tackle";
+  if (tags.includes("PRESS")) return "Press";
+  if (tags.includes("SWARM")) return "Swarm";
+  if (tags.includes("INTERCEPT")) return "Intercept";
   if (tags.includes("FORCED")) return "Forced";
   if (tags.includes("UNFORCED")) return "Unforced";
+  if (tags.includes("SLACK_KICK_PASS")) return "Slack KP";
+  if (tags.includes("SLACK_HAND_PASS")) return "Slack HP";
+  if (tags.includes("OVERCARRIED")) return "Overcarried";
+  if (tags.includes("STRIPPED")) return "Stripped";
   return null;
 }
 
@@ -379,6 +408,65 @@ function getSegmentDisplayLabel(segment: number | undefined): string {
   if (segment == null) return "—";
   const option = REVIEW_SEGMENT_OPTIONS.find((entry) => entry.id === `S${segment}`);
   return option?.label ?? `S${segment}`;
+}
+
+function getFollowupOptions(kind: PendingFollowupKind): readonly FollowupOption[] {
+  switch (kind) {
+    case "TURNOVER_WON":
+      return [
+        { label: "Tackle +1", tag: "TACKLE" },
+        { label: "Press +2", tag: "PRESS" },
+        { label: "Swarm +3", tag: "SWARM" },
+        { label: "Intercept +1", tag: "INTERCEPT" },
+      ];
+    case "TURNOVER_LOST":
+      return [
+        { label: "Unforced", tag: "UNFORCED" },
+        { label: "Slack KP", tag: "SLACK_KICK_PASS" },
+        { label: "Slack HP", tag: "SLACK_HAND_PASS" },
+        { label: "Overcarried", tag: "OVERCARRIED" },
+        { label: "Stripped", tag: "STRIPPED" },
+      ];
+    case "KICKOUT_WON":
+      return [
+        { label: "Clean", tag: "CLEAN" },
+        { label: "Break", tag: "BREAK" },
+        { label: "Foul Won", tag: "FOUL_WON" },
+      ];
+    case "KICKOUT_CONCEDED":
+      return [
+        { label: "Clean Lost", tag: "CLEAN" },
+        { label: "Break Lost", tag: "BREAK" },
+        { label: "Foul Conceded", tag: "FOUL_CONCEDED" },
+        { label: "Kicked Dead", tag: "KICKED_DEAD" },
+      ];
+    case "SHOT":
+      return [
+        { label: "Short", tag: "SHORT" },
+        { label: "Post", tag: "POST" },
+        { label: "45", tag: "FORTY_FIVE" },
+        { label: "Blocked", tag: "BLOCKED" },
+      ];
+    default:
+      return [];
+  }
+}
+
+function getRemovableFollowupTags(kind: PendingFollowupKind): readonly string[] {
+  switch (kind) {
+    case "TURNOVER_WON":
+      return ["TACKLE", "PRESS", "SWARM", "INTERCEPT", "FORCED", "UNFORCED"];
+    case "TURNOVER_LOST":
+      return ["UNFORCED", "SLACK_KICK_PASS", "SLACK_HAND_PASS", "OVERCARRIED", "STRIPPED", "FORCED"];
+    case "KICKOUT_WON":
+      return ["CLEAN", "BREAK", "FOUL_WON"];
+    case "KICKOUT_CONCEDED":
+      return ["CLEAN", "BREAK", "FOUL_CONCEDED", "KICKED_DEAD"];
+    case "SHOT":
+      return ["SHORT", "POST", "FORTY_FIVE", "BLOCKED"];
+    default:
+      return [];
+  }
 }
 
 function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
@@ -2941,7 +3029,7 @@ export default function StatsModeSurface() {
   const [selectedReviewEventId, setSelectedReviewEventId] = useState<string | null>(null);
   const [pendingFollowup, setPendingFollowup] = useState<{
     eventId: string;
-    kind: "KICKOUT_WON" | "KICKOUT_CONCEDED" | "TURNOVER_WON" | "TURNOVER_LOST" | "SHOT";
+    kind: PendingFollowupKind;
   } | null>(null);
   const [loggedEvents, setLoggedEvents] = useState<readonly LoggedMatchEvent[]>([]);
   const [savedMatches, setSavedMatches] = useState<SavedMatch[]>(() => readSavedMatchesFromStorage().matches);
@@ -3018,6 +3106,12 @@ export default function StatsModeSurface() {
         "FORTY_FIVE_TWO_POINT",
         "SHOT",
         "WIDE",
+        "TURNOVER_WON",
+        "TURNOVER_LOST",
+        "KICKOUT_WON",
+        "KICKOUT_CONCEDED",
+        "FREE_WON",
+        "FREE_CONCEDED",
         "FREE_SCORED",
         "FREE_MISSED",
       ]),
@@ -3725,7 +3819,7 @@ export default function StatsModeSurface() {
         ) {
           setPendingFollowup({
             eventId: nextEvent.id,
-            kind: nextEvent.kind as "KICKOUT_WON" | "KICKOUT_CONCEDED" | "TURNOVER_WON" | "TURNOVER_LOST" | "SHOT",
+            kind: nextEvent.kind as PendingFollowupKind,
           });
         }
       },
@@ -4301,12 +4395,7 @@ export default function StatsModeSurface() {
     setLoggedEvents((prev) =>
       prev.map((event) => {
         if (event.id !== pending.eventId) return event;
-        const removableTags =
-          pending.kind === "TURNOVER_WON" || pending.kind === "TURNOVER_LOST"
-            ? ["FORCED", "UNFORCED"]
-            : pending.kind === "SHOT"
-              ? ["SHORT", "POST", "FORTY_FIVE", "BLOCKED"]
-              : ["CLEAN", "BREAK"];
+        const removableTags = getRemovableFollowupTags(pending.kind);
         const retainedTags = (event.tags ?? []).filter((entry) => !removableTags.includes(entry));
         return {
           ...event,
@@ -4900,6 +4989,8 @@ export default function StatsModeSurface() {
             : pendingFollowup?.kind === "SHOT"
               ? "SHOT TAG"
             : null;
+  const pendingFollowupOptions =
+    pendingFollowup == null ? [] : getFollowupOptions(pendingFollowup.kind);
   const myTeamReport = useMemo(
     () => deriveMyTeamReport(loggedEvents, matchState, teamNames, currentMode),
     [loggedEvents, matchState, teamNames, currentMode],
@@ -6080,66 +6171,18 @@ export default function StatsModeSurface() {
           <span className="utility-panel-title" style={{ fontSize: "8px", alignSelf: "center", opacity: 0.9 }}>
             {pendingFollowupLabel}
           </span>
-          <button
-            type="button"
-            className="review-quick-btn"
-            onClick={() => {
-              applyFollowupTag(
-                pendingFollowup.kind === "TURNOVER_WON" || pendingFollowup.kind === "TURNOVER_LOST"
-                  ? "FORCED"
-                  : pendingFollowup.kind === "SHOT"
-                    ? "SHORT"
-                    : "CLEAN",
-              );
-            }}
-          >
-            {pendingFollowup.kind === "TURNOVER_WON" || pendingFollowup.kind === "TURNOVER_LOST"
-              ? "Forced"
-              : pendingFollowup.kind === "SHOT"
-                ? "Short"
-                : "Clean"}
-          </button>
-          <button
-            type="button"
-            className="review-quick-btn"
-            onClick={() => {
-              applyFollowupTag(
-                pendingFollowup.kind === "TURNOVER_WON" || pendingFollowup.kind === "TURNOVER_LOST"
-                  ? "UNFORCED"
-                  : pendingFollowup.kind === "SHOT"
-                    ? "POST"
-                    : "BREAK",
-              );
-            }}
-          >
-            {pendingFollowup.kind === "TURNOVER_WON" || pendingFollowup.kind === "TURNOVER_LOST"
-              ? "Unforced"
-              : pendingFollowup.kind === "SHOT"
-                ? "Post"
-                : "Break"}
-          </button>
-          {pendingFollowup.kind === "SHOT" ? (
-            <>
-              <button
-                type="button"
-                className="review-quick-btn"
-                onClick={() => {
-                  applyFollowupTag("FORTY_FIVE");
-                }}
-              >
-                45
-              </button>
-              <button
-                type="button"
-                className="review-quick-btn"
-                onClick={() => {
-                  applyFollowupTag("BLOCKED");
-                }}
-              >
-                Blocked
-              </button>
-            </>
-          ) : null}
+          {pendingFollowupOptions.map((option) => (
+            <button
+              key={`followup-option-${pendingFollowup.kind}-${option.tag}`}
+              type="button"
+              className="review-quick-btn"
+              onClick={() => {
+                applyFollowupTag(option.tag);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
           <button
             type="button"
             className="review-quick-btn"
