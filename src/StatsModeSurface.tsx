@@ -4240,14 +4240,25 @@ export default function StatsModeSurface() {
     setSaveFeedback("Summary image downloaded");
   };
 
-  const shareReviewPitch = async () => {
-    if (!isReviewModeActive) {
-      setSaveFeedback("Open Review mode to share pitch");
+  const shareMatchPack = async () => {
+    const homeTeamName = safeShareLabel(teamNames.HOME, "Team A");
+    const awayTeamName = safeShareLabel(teamNames.AWAY, "Team B");
+    const summaryFile = await buildStatsShareCardPng({
+      stageLabel: matchState === "FULL_TIME" ? "Full Time" : "Half Time",
+      homeTeamName,
+      awayTeamName,
+      venueLabel: safeShareLabel(venueName, "Unknown venue"),
+      clockLabel: formatMatchClock(matchTimeSeconds),
+      homeScore,
+      awayScore,
+      eventCount: loggedEvents.length,
+      events: loggedEvents,
+    });
+    if (!summaryFile) {
+      setSaveFeedback("Share failed — could not generate summary image.");
       return;
     }
 
-    const homeTeamName = safeShareLabel(teamNames.HOME, "Team A");
-    const awayTeamName = safeShareLabel(teamNames.AWAY, "Team B");
     const segmentLabel =
       reviewSegment === "ALL"
         ? "ALL"
@@ -4269,52 +4280,44 @@ export default function StatsModeSurface() {
       generatedAt: Date.now(),
     });
     if (!pitchFile) {
-      setSaveFeedback("Share failed — could not generate review pitch image.");
+      // Preserve existing FT summary share path when pitch generation fails.
+      await shareOrExportMatch();
       return;
     }
 
-    const shareData: ShareData & { files?: File[] } = {
-      title: `${homeTeamName} v ${awayTeamName} Review Pitch`,
-      files: [pitchFile],
-    };
     const navWithShare = navigator as Navigator & {
       share?: (data: ShareData & { files?: File[] }) => Promise<void>;
       canShare?: (data: ShareData & { files?: File[] }) => boolean;
-      clipboard?: Clipboard;
     };
-
+    const packShareData: ShareData & { files?: File[] } = {
+      title: `${homeTeamName} v ${awayTeamName} Match Pack`,
+      files: [summaryFile, pitchFile],
+    };
     if (typeof navWithShare.share === "function") {
-      const canShare = typeof navWithShare.canShare === "function" ? navWithShare.canShare(shareData) : true;
-      if (canShare) {
+      const canSharePack =
+        typeof navWithShare.canShare === "function" ? navWithShare.canShare(packShareData) : true;
+      if (canSharePack) {
         try {
-          await navWithShare.share(shareData);
-          setSaveFeedback("Pitch image shared");
+          await navWithShare.share(packShareData);
+          setSaveFeedback("Match pack shared");
           return;
         } catch {
-          // no-op: fallback to clipboard/download below.
+          // no-op: fall back to summary-first flow below.
         }
       }
     }
 
-    if (typeof ClipboardItem !== "undefined" && navWithShare.clipboard?.write) {
-      try {
-        await navWithShare.clipboard.write([new ClipboardItem({ [pitchFile.type]: pitchFile })]);
-        setSaveFeedback("Pitch image copied");
-        return;
-      } catch {
-        // no-op: fallback to file download below.
-      }
-    }
-
-    const url = URL.createObjectURL(pitchFile);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = pitchFile.name;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    setSaveFeedback("Pitch image downloaded");
+    // Fallback path required for devices that do not support multi-file sharing.
+    await shareOrExportMatch();
+    const pitchUrl = URL.createObjectURL(pitchFile);
+    const pitchLink = document.createElement("a");
+    pitchLink.href = pitchUrl;
+    pitchLink.download = pitchFile.name;
+    document.body.appendChild(pitchLink);
+    pitchLink.click();
+    pitchLink.remove();
+    URL.revokeObjectURL(pitchUrl);
+    setSaveFeedback("Summary shared. Pitch image downloaded");
   };
 
   const loadSavedMatchRecord = (record: SavedMatch) => {
@@ -5692,22 +5695,11 @@ export default function StatsModeSurface() {
               type="button"
               className="utility-review-btn"
               onClick={() => {
-                void shareOrExportMatch();
+                void shareMatchPack();
               }}
             >
-              Share Summary PNG
+              Share Match Pack
             </button>
-            {isReviewModeActive ? (
-              <button
-                type="button"
-                className="utility-review-btn"
-                onClick={() => {
-                  void shareReviewPitch();
-                }}
-              >
-                Share Pitch
-              </button>
-            ) : null}
             <button type="button" className="utility-review-btn" onClick={resumeMatchFromFullTime}>
               Resume Match
             </button>
