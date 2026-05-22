@@ -26,6 +26,7 @@ import { NotesQuickPanel } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 import { buildStatsShareCardPng } from "./stats/statsShareCard";
+import { exportReviewContextImage } from "./stats/statsReviewContextImage";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -4239,6 +4240,83 @@ export default function StatsModeSurface() {
     setSaveFeedback("Summary image downloaded");
   };
 
+  const shareReviewPitch = async () => {
+    if (!isReviewModeActive) {
+      setSaveFeedback("Open Review mode to share pitch");
+      return;
+    }
+
+    const homeTeamName = safeShareLabel(teamNames.HOME, "Team A");
+    const awayTeamName = safeShareLabel(teamNames.AWAY, "Team B");
+    const segmentLabel =
+      reviewSegment === "ALL"
+        ? "ALL"
+        : REVIEW_SEGMENT_OPTIONS.find((option) => option.id === reviewSegment)?.label ?? reviewSegment;
+    const teamContextLabel =
+      REVIEW_TEAM_CONTEXT_OPTIONS.find((option) => option.id === reviewTeamContext)?.label ?? reviewTeamContext;
+    const filterLabel =
+      REVIEW_FILTER_OPTIONS.find((option) => option.id === reviewEventFilter)?.label ?? reviewEventFilter;
+
+    const pitchFile = await exportReviewContextImage({
+      events: visibleReviewEvents,
+      homeTeamName,
+      awayTeamName,
+      venueLabel: safeShareLabel(venueName, "Unknown venue"),
+      halfLabel: reviewHalf,
+      segmentLabel,
+      teamContextLabel,
+      filterLabel,
+      generatedAt: Date.now(),
+    });
+    if (!pitchFile) {
+      setSaveFeedback("Share failed — could not generate review pitch image.");
+      return;
+    }
+
+    const shareData: ShareData & { files?: File[] } = {
+      title: `${homeTeamName} v ${awayTeamName} Review Pitch`,
+      files: [pitchFile],
+    };
+    const navWithShare = navigator as Navigator & {
+      share?: (data: ShareData & { files?: File[] }) => Promise<void>;
+      canShare?: (data: ShareData & { files?: File[] }) => boolean;
+      clipboard?: Clipboard;
+    };
+
+    if (typeof navWithShare.share === "function") {
+      const canShare = typeof navWithShare.canShare === "function" ? navWithShare.canShare(shareData) : true;
+      if (canShare) {
+        try {
+          await navWithShare.share(shareData);
+          setSaveFeedback("Pitch image shared");
+          return;
+        } catch {
+          // no-op: fallback to clipboard/download below.
+        }
+      }
+    }
+
+    if (typeof ClipboardItem !== "undefined" && navWithShare.clipboard?.write) {
+      try {
+        await navWithShare.clipboard.write([new ClipboardItem({ [pitchFile.type]: pitchFile })]);
+        setSaveFeedback("Pitch image copied");
+        return;
+      } catch {
+        // no-op: fallback to file download below.
+      }
+    }
+
+    const url = URL.createObjectURL(pitchFile);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = pitchFile.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setSaveFeedback("Pitch image downloaded");
+  };
+
   const loadSavedMatchRecord = (record: SavedMatch) => {
     const parsedRecord = parseStoredSavedMatch(record);
     if (!parsedRecord || parsedRecord.events.length === 0) {
@@ -5619,6 +5697,17 @@ export default function StatsModeSurface() {
             >
               Share Summary PNG
             </button>
+            {isReviewModeActive ? (
+              <button
+                type="button"
+                className="utility-review-btn"
+                onClick={() => {
+                  void shareReviewPitch();
+                }}
+              >
+                Share Pitch
+              </button>
+            ) : null}
             <button type="button" className="utility-review-btn" onClick={resumeMatchFromFullTime}>
               Resume Match
             </button>
@@ -6269,14 +6358,6 @@ export default function StatsModeSurface() {
               {option.label}
             </button>
           ))}
-          <button
-            type="button"
-            className="review-strip-chip"
-            onClick={openPlayersPanel}
-            aria-label="Open players panel while reviewing"
-          >
-            Players
-          </button>
           <span className="review-strip-meta review-strip-player">
             {activePlayerChipText ?? "No active player"}
           </span>
