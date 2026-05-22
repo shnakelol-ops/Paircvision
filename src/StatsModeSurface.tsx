@@ -4334,6 +4334,19 @@ export default function StatsModeSurface() {
     setMatchState(restoredContext.engineState.matchState);
     setCurrentHalf(restoredContext.engineState.currentHalf);
     setMatchTimeSeconds(restoredContext.engineState.matchTimeSeconds);
+    if (restoredContext.engineState.matchState === "SECOND_HALF") {
+      reviewHalfRef.current = "H2";
+      setReviewHalf("H2");
+    } else if (
+      restoredContext.engineState.matchState === "FIRST_HALF" ||
+      restoredContext.engineState.matchState === "HALF_TIME"
+    ) {
+      reviewHalfRef.current = "H1";
+      setReviewHalf("H1");
+    } else {
+      reviewHalfRef.current = "FULL";
+      setReviewHalf("FULL");
+    }
     setIsCountsOverlayOpen(false);
     setIsResetConfirmOpen(false);
     setIsPickerOpen(false);
