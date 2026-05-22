@@ -26,6 +26,8 @@ import { NotesQuickPanel } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 import { buildStatsShareCardPng } from "./stats/statsShareCard";
+import { FOLLOWUP_TAG_GROUPS, getFollowupOptions } from "./stats/statsFollowupTagConfig";
+import { getTagLabel } from "./stats/statsTagLabels";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -46,15 +48,7 @@ type ReviewEventFilter =
 type ReviewZone = "FULL" | "OWN_HALF" | "OPPOSITION_HALF";
 type AttackingDirection = "LEFT" | "RIGHT";
 type PlayerRole = "STARTER" | "SUB";
-type FollowupTag =
-  | "CLEAN"
-  | "BREAK"
-  | "FORCED"
-  | "UNFORCED"
-  | "SHORT"
-  | "POST"
-  | "FORTY_FIVE"
-  | "BLOCKED";
+type FollowupTag = string;
 type SquadPlayer = { id: string; name: string; number: number; role: PlayerRole };
 type Squad = { id: string; name: string; players: SquadPlayer[] };
 type SavedSquadPlayer = { id: string; number: number; name: string };
@@ -352,26 +346,12 @@ function parseEventTags(value: unknown): string[] | undefined {
   return normalized.length > 0 ? normalized : undefined;
 }
 
-function getKickoutTagLabel(tags: readonly string[] | undefined): "Clean" | "Break" | null {
+function getFirstKnownTagLabel(tags: readonly string[] | undefined): string | null {
   if (!tags || tags.length === 0) return null;
-  if (tags.includes("CLEAN")) return "Clean";
-  if (tags.includes("BREAK")) return "Break";
-  return null;
-}
-
-function getTurnoverTagLabel(tags: readonly string[] | undefined): "Forced" | "Unforced" | null {
-  if (!tags || tags.length === 0) return null;
-  if (tags.includes("FORCED")) return "Forced";
-  if (tags.includes("UNFORCED")) return "Unforced";
-  return null;
-}
-
-function getShotTagLabel(tags: readonly string[] | undefined): "Short" | "Post" | "45" | "Blocked" | null {
-  if (!tags || tags.length === 0) return null;
-  if (tags.includes("SHORT")) return "Short";
-  if (tags.includes("POST")) return "Post";
-  if (tags.includes("FORTY_FIVE")) return "45";
-  if (tags.includes("BLOCKED")) return "Blocked";
+  for (const tag of tags) {
+    const label = getTagLabel(tag);
+    if (label) return label;
+  }
   return null;
 }
 
@@ -4301,12 +4281,7 @@ export default function StatsModeSurface() {
     setLoggedEvents((prev) =>
       prev.map((event) => {
         if (event.id !== pending.eventId) return event;
-        const removableTags =
-          pending.kind === "TURNOVER_WON" || pending.kind === "TURNOVER_LOST"
-            ? ["FORCED", "UNFORCED"]
-            : pending.kind === "SHOT"
-              ? ["SHORT", "POST", "FORTY_FIVE", "BLOCKED"]
-              : ["CLEAN", "BREAK"];
+        const removableTags = FOLLOWUP_TAG_GROUPS[pending.kind] ?? [];
         const retainedTags = (event.tags ?? []).filter((entry) => !removableTags.includes(entry));
         return {
           ...event,
@@ -4870,11 +4845,7 @@ export default function StatsModeSurface() {
             if (!matchedPlayer) return "Unknown player";
             return `#${matchedPlayer.number} ${matchedPlayer.name}`;
           })();
-  const selectedReviewKickoutTagLabel =
-    selectedReviewEvent == null ||
-    !KICKOUT_EVENT_KIND_SET.has(selectedReviewEvent.kind)
-      ? null
-      : getKickoutTagLabel(selectedReviewEvent.tags);
+  const selectedReviewTagLabel = selectedReviewEvent == null ? null : getFirstKnownTagLabel(selectedReviewEvent.tags);
   const activeReviewPlayerLabel =
     activePlayerId == null ? null : (() => {
       const player = playerById.get(activePlayerId);
@@ -4885,21 +4856,11 @@ export default function StatsModeSurface() {
       ? null
       : loggedEvents.find((event) => event.id === pendingFollowup.eventId) ?? null;
   const pendingFollowupLabel =
-    pendingFollowup?.kind === "KICKOUT_WON"
-      ? isHurlingMode
-        ? "P/O WON TAG"
-        : "K/O WON TAG"
-      : pendingFollowup?.kind === "KICKOUT_CONCEDED"
-        ? isHurlingMode
-          ? "P/O LOST TAG"
-          : "K/O LOST TAG"
-        : pendingFollowup?.kind === "TURNOVER_WON"
-          ? "T/O WON TAG"
-          : pendingFollowup?.kind === "TURNOVER_LOST"
-            ? "T/O LOST TAG"
-            : pendingFollowup?.kind === "SHOT"
-              ? "SHOT TAG"
-            : null;
+    pendingFollowup?.kind === "KICKOUT_WON" ? (isHurlingMode ? "P/O WON TAG" : "K/O WON TAG")
+    : pendingFollowup?.kind === "KICKOUT_CONCEDED" ? (isHurlingMode ? "P/O LOST TAG" : "K/O LOST TAG")
+    : pendingFollowup?.kind === "TURNOVER_WON" ? "T/O WON TAG"
+    : pendingFollowup?.kind === "TURNOVER_LOST" ? "T/O LOST TAG"
+    : pendingFollowup?.kind === "SHOT" ? "SHOT TAG" : null;
   const myTeamReport = useMemo(
     () => deriveMyTeamReport(loggedEvents, matchState, teamNames, currentMode),
     [loggedEvents, matchState, teamNames, currentMode],
@@ -6080,75 +6041,18 @@ export default function StatsModeSurface() {
           <span className="utility-panel-title" style={{ fontSize: "8px", alignSelf: "center", opacity: 0.9 }}>
             {pendingFollowupLabel}
           </span>
-          <button
-            type="button"
-            className="review-quick-btn"
-            onClick={() => {
-              applyFollowupTag(
-                pendingFollowup.kind === "TURNOVER_WON" || pendingFollowup.kind === "TURNOVER_LOST"
-                  ? "FORCED"
-                  : pendingFollowup.kind === "SHOT"
-                    ? "SHORT"
-                    : "CLEAN",
-              );
-            }}
-          >
-            {pendingFollowup.kind === "TURNOVER_WON" || pendingFollowup.kind === "TURNOVER_LOST"
-              ? "Forced"
-              : pendingFollowup.kind === "SHOT"
-                ? "Short"
-                : "Clean"}
-          </button>
-          <button
-            type="button"
-            className="review-quick-btn"
-            onClick={() => {
-              applyFollowupTag(
-                pendingFollowup.kind === "TURNOVER_WON" || pendingFollowup.kind === "TURNOVER_LOST"
-                  ? "UNFORCED"
-                  : pendingFollowup.kind === "SHOT"
-                    ? "POST"
-                    : "BREAK",
-              );
-            }}
-          >
-            {pendingFollowup.kind === "TURNOVER_WON" || pendingFollowup.kind === "TURNOVER_LOST"
-              ? "Unforced"
-              : pendingFollowup.kind === "SHOT"
-                ? "Post"
-                : "Break"}
-          </button>
-          {pendingFollowup.kind === "SHOT" ? (
-            <>
-              <button
-                type="button"
-                className="review-quick-btn"
-                onClick={() => {
-                  applyFollowupTag("FORTY_FIVE");
-                }}
-              >
-                45
-              </button>
-              <button
-                type="button"
-                className="review-quick-btn"
-                onClick={() => {
-                  applyFollowupTag("BLOCKED");
-                }}
-              >
-                Blocked
-              </button>
-            </>
-          ) : null}
-          <button
-            type="button"
-            className="review-quick-btn"
-            onClick={() => {
-              applyFollowupTag(null);
-            }}
-          >
-            Skip
-          </button>
+          {getFollowupOptions(pendingFollowup.kind).map((option) => (
+            <button
+              key={`${pendingFollowup.kind}-${option.label}`}
+              type="button"
+              className="review-quick-btn"
+              onClick={() => {
+                applyFollowupTag(option.tag);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       ) : null}
       {showReviewStrip && utilityPanel !== "REVIEW" ? (
@@ -6287,25 +6191,25 @@ export default function StatsModeSurface() {
             <span className="review-event-card-row-label">Type</span>
             <span className="review-event-card-row-value">{getReviewEventTypeLabel(selectedReviewEvent.type)}</span>
           </div>
-          {selectedReviewKickoutTagLabel ? (
+          {selectedReviewTagLabel && (selectedReviewEvent.kind === "KICKOUT_WON" || selectedReviewEvent.kind === "KICKOUT_CONCEDED") ? (
             <div className="review-event-card-row">
               <span className="review-event-card-row-label">K/O Tag</span>
-              <span className="review-event-card-row-value">{selectedReviewKickoutTagLabel}</span>
+              <span className="review-event-card-row-value">{selectedReviewTagLabel}</span>
             </div>
           ) : null}
           {selectedReviewEvent.kind === "TURNOVER_WON" || selectedReviewEvent.kind === "TURNOVER_LOST" ? (
-            getTurnoverTagLabel(selectedReviewEvent.tags) ? (
+            selectedReviewTagLabel ? (
               <div className="review-event-card-row">
                 <span className="review-event-card-row-label">T/O Tag</span>
-                <span className="review-event-card-row-value">{getTurnoverTagLabel(selectedReviewEvent.tags)}</span>
+                <span className="review-event-card-row-value">{selectedReviewTagLabel}</span>
               </div>
             ) : null
           ) : null}
           {selectedReviewEvent.kind === "SHOT" ? (
-            getShotTagLabel(selectedReviewEvent.tags) ? (
+            selectedReviewTagLabel ? (
               <div className="review-event-card-row">
                 <span className="review-event-card-row-label">Shot Tag</span>
-                <span className="review-event-card-row-value">{getShotTagLabel(selectedReviewEvent.tags)}</span>
+                <span className="review-event-card-row-value">{selectedReviewTagLabel}</span>
               </div>
             ) : null
           ) : null}
