@@ -4147,6 +4147,7 @@ export default function StatsModeSurface() {
       awayScore,
       counts: liveCounts,
       eventCount: loggedEvents.length,
+      events: loggedEvents,
     });
     if (!cardFile) {
       setSaveFeedback("Share failed — could not generate summary image.");
