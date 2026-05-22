@@ -1535,26 +1535,8 @@ function safeShareCount(value: unknown): number {
 }
 
 function buildMatchShareSummaryText(input: MatchShareSummaryInput): string {
-  return [
-    `${safeShareLabel(input.homeTeamName, "Team A")} ${formatGaelicScore(input.homeScore)} (${safeShareCount(input.homeScore.total)})`,
-    `${safeShareLabel(input.awayTeamName, "Team B")} ${formatGaelicScore(input.awayScore)} (${safeShareCount(input.awayScore.total)})`,
-    "",
-    `📍 Venue: ${safeShareLabel(input.venueLabel, "Unknown venue")}`,
-    `⏱ State: ${safeShareLabel(input.stateLabel, "Unknown")}`,
-    `🕒 Clock: ${safeShareLabel(input.clockLabel, "00:00")}`,
-    "",
-    "📊 Match Summary",
-    `Events: ${safeShareCount(input.eventCount)}`,
-    `Goals: ${safeShareCount(input.liveCounts.goals)}`,
-    `Points: ${safeShareCount(input.liveCounts.points)}`,
-    `Shots: ${safeShareCount(input.liveCounts.shots)}`,
-    `Wides: ${safeShareCount(input.liveCounts.wides)}`,
-    "",
-    "🔁 Coaching Metrics",
-    `Turnovers: ${safeShareCount(input.liveCounts.turnoverWon)} won / ${safeShareCount(input.liveCounts.turnoverLost)} lost`,
-    `Kickouts: ${safeShareCount(input.liveCounts.kickoutWon)} won / ${safeShareCount(input.liveCounts.kickoutLost)} lost`,
-    `Frees: ${safeShareCount(input.liveCounts.freeWon)} won / ${safeShareCount(input.liveCounts.freeConceded)} conceded`,
-  ].join("\n");
+  void safeShareCount(input.eventCount);
+  return "PáircVision Match Summary";
 }
 
 function clampUtilityBubblePosition(
@@ -3106,14 +3088,6 @@ export default function StatsModeSurface() {
         "FORTY_FIVE_TWO_POINT",
         "SHOT",
         "WIDE",
-        "TURNOVER_WON",
-        "TURNOVER_LOST",
-        "KICKOUT_WON",
-        "KICKOUT_CONCEDED",
-        "FREE_WON",
-        "FREE_CONCEDED",
-        "FREE_SCORED",
-        "FREE_MISSED",
       ]),
     [],
   );
@@ -6183,15 +6157,6 @@ export default function StatsModeSurface() {
               {option.label}
             </button>
           ))}
-          <button
-            type="button"
-            className="review-quick-btn"
-            onClick={() => {
-              applyFollowupTag(null);
-            }}
-          >
-            Skip
-          </button>
         </div>
       ) : null}
       {showReviewStrip && utilityPanel !== "REVIEW" ? (
