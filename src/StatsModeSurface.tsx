@@ -25,6 +25,7 @@ import { useScreenWakeLock } from "./hooks/useScreenWakeLock";
 import { NotesQuickPanel } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
+import { buildStatsShareCardPng } from "./stats/statsShareCard";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -45,7 +46,15 @@ type ReviewEventFilter =
 type ReviewZone = "FULL" | "OWN_HALF" | "OPPOSITION_HALF";
 type AttackingDirection = "LEFT" | "RIGHT";
 type PlayerRole = "STARTER" | "SUB";
-type KickoutFollowupTag = "CLEAN" | "BREAK";
+type FollowupTag =
+  | "CLEAN"
+  | "BREAK"
+  | "FORCED"
+  | "UNFORCED"
+  | "SHORT"
+  | "POST"
+  | "FORTY_FIVE"
+  | "BLOCKED";
 type SquadPlayer = { id: string; name: string; number: number; role: PlayerRole };
 type Squad = { id: string; name: string; players: SquadPlayer[] };
 type SavedSquadPlayer = { id: string; number: number; name: string };
@@ -270,14 +279,14 @@ const REVIEW_FILTER_OPTIONS_BASE: ReadonlyArray<{ id: ReviewEventFilter; label: 
   { id: "FREES", label: "FREES" },
   { id: "PLAYERS", label: "PLAYERS" },
 ];
-const REVIEW_SEGMENT_OPTIONS: ReadonlyArray<{ id: ReviewSegment; label: string }> = [
+const REVIEW_SEGMENT_OPTIONS: ReadonlyArray<{ id: ReviewSegment; label: string; compactLabel?: string }> = [
   { id: "ALL", label: "ALL" },
-  { id: "S1", label: "S1" },
-  { id: "S2", label: "S2" },
-  { id: "S3", label: "S3" },
-  { id: "S4", label: "S4" },
-  { id: "S5", label: "S5" },
-  { id: "S6", label: "S6" },
+  { id: "S1", label: "1H Early", compactLabel: "1H E" },
+  { id: "S2", label: "1H Mid", compactLabel: "1H M" },
+  { id: "S3", label: "1H Late", compactLabel: "1H L" },
+  { id: "S4", label: "2H Early", compactLabel: "2H E" },
+  { id: "S5", label: "2H Mid", compactLabel: "2H M" },
+  { id: "S6", label: "2H Late", compactLabel: "2H L" },
 ];
 const REVIEW_FILTER_KINDS: Record<
   Exclude<ReviewEventFilter, "ALL" | "PLAYERS">,
@@ -292,6 +301,8 @@ const REVIEW_FILTER_KINDS: Record<
 };
 const MATCH_EVENT_KIND_SET = new Set<MatchEventKind>(MATCH_EVENT_KINDS);
 const KICKOUT_EVENT_KIND_SET = new Set<MatchEventKind>(["KICKOUT_WON", "KICKOUT_CONCEDED"]);
+const TURNOVER_EVENT_KIND_SET = new Set<MatchEventKind>(["TURNOVER_WON", "TURNOVER_LOST"]);
+const SHOT_EVENT_KIND_SET = new Set<MatchEventKind>(["SHOT"]);
 function buildReviewFilterOptions(
   isHurlingMode: boolean,
 ): ReadonlyArray<{ id: ReviewEventFilter; label: string }> {
@@ -346,6 +357,28 @@ function getKickoutTagLabel(tags: readonly string[] | undefined): "Clean" | "Bre
   if (tags.includes("CLEAN")) return "Clean";
   if (tags.includes("BREAK")) return "Break";
   return null;
+}
+
+function getTurnoverTagLabel(tags: readonly string[] | undefined): "Forced" | "Unforced" | null {
+  if (!tags || tags.length === 0) return null;
+  if (tags.includes("FORCED")) return "Forced";
+  if (tags.includes("UNFORCED")) return "Unforced";
+  return null;
+}
+
+function getShotTagLabel(tags: readonly string[] | undefined): "Short" | "Post" | "45" | "Blocked" | null {
+  if (!tags || tags.length === 0) return null;
+  if (tags.includes("SHORT")) return "Short";
+  if (tags.includes("POST")) return "Post";
+  if (tags.includes("FORTY_FIVE")) return "45";
+  if (tags.includes("BLOCKED")) return "Blocked";
+  return null;
+}
+
+function getSegmentDisplayLabel(segment: number | undefined): string {
+  if (segment == null) return "—";
+  const option = REVIEW_SEGMENT_OPTIONS.find((entry) => entry.id === `S${segment}`);
+  return option?.label ?? `S${segment}`;
 }
 
 function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
@@ -1366,6 +1399,8 @@ function getReadableEventButtonLabel(label: string): string {
 function getReviewEventTypeLabel(kind: MatchEventKind): string {
   if (kind === "KICKOUT_CONCEDED") return "KICKOUT LOST";
   if (kind === "KICKOUT_WON") return "KICKOUT WON";
+  if (kind === "TURNOVER_LOST") return "TURNOVER LOST";
+  if (kind === "TURNOVER_WON") return "TURNOVER WON";
   return kind;
 }
 
@@ -2904,9 +2939,9 @@ export default function StatsModeSurface() {
     useState<AttackingDirection>("RIGHT");
   const [showReviewStrip, setShowReviewStrip] = useState(false);
   const [selectedReviewEventId, setSelectedReviewEventId] = useState<string | null>(null);
-  const [pendingKickoutFollowup, setPendingKickoutFollowup] = useState<{
+  const [pendingFollowup, setPendingFollowup] = useState<{
     eventId: string;
-    kind: "KICKOUT_WON" | "KICKOUT_CONCEDED";
+    kind: "KICKOUT_WON" | "KICKOUT_CONCEDED" | "TURNOVER_WON" | "TURNOVER_LOST" | "SHOT";
   } | null>(null);
   const [loggedEvents, setLoggedEvents] = useState<readonly LoggedMatchEvent[]>([]);
   const [savedMatches, setSavedMatches] = useState<SavedMatch[]>(() => readSavedMatchesFromStorage().matches);
@@ -3683,10 +3718,14 @@ export default function StatsModeSurface() {
           }
           return next;
         });
-        if (KICKOUT_EVENT_KIND_SET.has(nextEvent.kind)) {
-          setPendingKickoutFollowup({
+        if (
+          KICKOUT_EVENT_KIND_SET.has(nextEvent.kind) ||
+          TURNOVER_EVENT_KIND_SET.has(nextEvent.kind) ||
+          SHOT_EVENT_KIND_SET.has(nextEvent.kind)
+        ) {
+          setPendingFollowup({
             eventId: nextEvent.id,
-            kind: nextEvent.kind === "KICKOUT_WON" ? "KICKOUT_WON" : "KICKOUT_CONCEDED",
+            kind: nextEvent.kind as "KICKOUT_WON" | "KICKOUT_CONCEDED" | "TURNOVER_WON" | "TURNOVER_LOST" | "SHOT",
           });
         }
       },
@@ -4076,7 +4115,7 @@ export default function StatsModeSurface() {
       clearActiveMatchDraft();
       setPendingRecoveredDraft(null);
       setSavedMatches(nextSavedMatches);
-      setSaveFeedback("Match saved");
+      setSaveFeedback("Saved");
       setLastSavedAtMillis(savedRecord.createdAt);
       setSaveLoadBlockedReason(null);
     } catch {
@@ -4087,7 +4126,7 @@ export default function StatsModeSurface() {
   const shareOrExportMatch = async () => {
     const homeTeamName = safeShareLabel(teamNames.HOME, "Team A");
     const awayTeamName = safeShareLabel(teamNames.AWAY, "Team B");
-    const summaryText = buildMatchShareSummaryText({
+    const fallbackText = buildMatchShareSummaryText({
       homeTeamName,
       awayTeamName,
       venueLabel: venueName,
@@ -4098,55 +4137,38 @@ export default function StatsModeSurface() {
       eventCount: loggedEvents.length,
       liveCounts,
     });
-
-    const shareData: ShareData = {
-      title: `${homeTeamName} v ${awayTeamName}`,
-      text: summaryText,
-    };
-    const navWithShare = navigator as Navigator & {
-      share?: (data: ShareData) => Promise<void>;
-      canShare?: (data: ShareData) => boolean;
-    };
-
+    const cardFile = await buildStatsShareCardPng({
+      stageLabel: matchState === "FULL_TIME" ? "Full Time" : "Half Time",
+      homeTeamName,
+      awayTeamName,
+      venueLabel: safeShareLabel(venueName, "Unknown venue"),
+      clockLabel: formatMatchClock(matchTimeSeconds),
+      homeScore,
+      awayScore,
+      counts: liveCounts,
+      eventCount: loggedEvents.length,
+    });
+    if (!cardFile) {
+      setSaveFeedback("Share failed — could not generate summary image.");
+      return;
+    }
+    const shareData: ShareData & { files?: File[] } = { title: `${homeTeamName} v ${awayTeamName}`, text: fallbackText, files: [cardFile] };
+    const navWithShare = navigator as Navigator & { share?: (data: ShareData & { files?: File[] }) => Promise<void>; canShare?: (data: ShareData & { files?: File[] }) => boolean; };
     if (typeof navWithShare.share === "function") {
       const canShare = typeof navWithShare.canShare === "function" ? navWithShare.canShare(shareData) : true;
       if (canShare) {
-        try {
-          await navWithShare.share(shareData);
-          setSaveFeedback("Match shared");
-          return;
-        } catch {
-          // Fall through to export/copy fallback.
-        }
+        try { await navWithShare.share(shareData); setSaveFeedback("Summary image shared"); return; } catch {}
       }
     }
-
-    let copied = false;
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(summaryText);
-        copied = true;
-      } catch {
-        copied = false;
-      }
-    }
-
-    const fileSafeLabel = `${homeTeamName}-${awayTeamName}`
-      .toLowerCase()
-      .replace(/[^a-z0-9-]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    const exportFileName = `${fileSafeLabel || "match"}-summary.txt`;
-    const blob = new Blob([summaryText], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(cardFile);
     const link = document.createElement("a");
     link.href = url;
-    link.download = exportFileName;
+    link.download = cardFile.name;
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-
-    setSaveFeedback(copied ? "Summary copied + exported" : "Summary exported");
+    setSaveFeedback("Summary image downloaded");
   };
 
   const loadSavedMatchRecord = (record: SavedMatch) => {
@@ -4156,7 +4178,7 @@ export default function StatsModeSurface() {
       return;
     }
     if (hasDirtyLiveSession) {
-      const confirmed = window.confirm("Loading this saved match will replace your current live session. Continue?");
+      const confirmed = window.confirm("Load this saved match and replace current unsaved live session?");
       if (!confirmed) return;
     }
     const loadedMatchId =
@@ -4164,7 +4186,7 @@ export default function StatsModeSurface() {
     setCurrentMatchId(loadedMatchId);
     currentMatchIdRef.current = loadedMatchId;
     setLoggedEvents(parsedRecord.events);
-    setPendingKickoutFollowup(null);
+    setPendingFollowup(null);
     setTeamNames({
       HOME: parsedRecord.homeTeamName,
       AWAY: parsedRecord.awayTeamName,
@@ -4220,7 +4242,7 @@ export default function StatsModeSurface() {
     setCurrentMatchId(draftMatchId);
     currentMatchIdRef.current = draftMatchId;
     setLoggedEvents(draft.events);
-    setPendingKickoutFollowup(null);
+    setPendingFollowup(null);
     setTeamNames({
       HOME: draft.teamNames.HOME,
       AWAY: draft.teamNames.AWAY,
@@ -4272,14 +4294,20 @@ export default function StatsModeSurface() {
     setUtilityPanel(null);
     setSaveLoadBlockedReason(null);
   };
-  const applyKickoutFollowupTag = (tag: KickoutFollowupTag | null) => {
-    const pending = pendingKickoutFollowup;
-    setPendingKickoutFollowup(null);
+  const applyFollowupTag = (tag: FollowupTag | null) => {
+    const pending = pendingFollowup;
+    setPendingFollowup(null);
     if (!pending || tag == null) return;
     setLoggedEvents((prev) =>
       prev.map((event) => {
         if (event.id !== pending.eventId) return event;
-        const retainedTags = (event.tags ?? []).filter((entry) => entry !== "CLEAN" && entry !== "BREAK");
+        const removableTags =
+          pending.kind === "TURNOVER_WON" || pending.kind === "TURNOVER_LOST"
+            ? ["FORCED", "UNFORCED"]
+            : pending.kind === "SHOT"
+              ? ["SHORT", "POST", "FORTY_FIVE", "BLOCKED"]
+              : ["CLEAN", "BREAK"];
+        const retainedTags = (event.tags ?? []).filter((entry) => !removableTags.includes(entry));
         return {
           ...event,
           tags: [...retainedTags, tag],
@@ -4362,7 +4390,7 @@ export default function StatsModeSurface() {
     setCurrentMatchId(nextMatchId);
     currentMatchIdRef.current = nextMatchId;
     setLoggedEvents([]);
-    setPendingKickoutFollowup(null);
+    setPendingFollowup(null);
     reviewHalfRef.current = "FULL";
     reviewSegmentRef.current = "ALL";
     reviewTeamContextRef.current = "ALL";
@@ -4544,20 +4572,20 @@ export default function StatsModeSurface() {
   }, [loggedEvents, selectedReviewEventId]);
 
   useEffect(() => {
-    if (!pendingKickoutFollowup) return;
-    if (loggedEvents.some((event) => event.id === pendingKickoutFollowup.eventId)) return;
-    setPendingKickoutFollowup(null);
-  }, [loggedEvents, pendingKickoutFollowup]);
+    if (!pendingFollowup) return;
+    if (loggedEvents.some((event) => event.id === pendingFollowup.eventId)) return;
+    setPendingFollowup(null);
+  }, [loggedEvents, pendingFollowup]);
 
   useEffect(() => {
-    if (!pendingKickoutFollowup) return;
+    if (!pendingFollowup) return;
     const timerId = window.setTimeout(() => {
-      setPendingKickoutFollowup(null);
+      setPendingFollowup(null);
     }, 7000);
     return () => {
       window.clearTimeout(timerId);
     };
-  }, [pendingKickoutFollowup]);
+  }, [pendingFollowup]);
 
   useEffect(() => {
     const updateLandscape = () => {
@@ -4852,20 +4880,26 @@ export default function StatsModeSurface() {
       const player = playerById.get(activePlayerId);
       return player ? `#${player.number} ${player.name}` : null;
     })();
-  const pendingKickoutFollowupEvent =
-    pendingKickoutFollowup == null
+  const pendingFollowupEvent =
+    pendingFollowup == null
       ? null
-      : loggedEvents.find((event) => event.id === pendingKickoutFollowup.eventId) ?? null;
-  const pendingKickoutFollowupLabel =
-    pendingKickoutFollowup?.kind === "KICKOUT_WON"
+      : loggedEvents.find((event) => event.id === pendingFollowup.eventId) ?? null;
+  const pendingFollowupLabel =
+    pendingFollowup?.kind === "KICKOUT_WON"
       ? isHurlingMode
         ? "P/O WON TAG"
         : "K/O WON TAG"
-      : pendingKickoutFollowup?.kind === "KICKOUT_CONCEDED"
+      : pendingFollowup?.kind === "KICKOUT_CONCEDED"
         ? isHurlingMode
           ? "P/O LOST TAG"
           : "K/O LOST TAG"
-        : null;
+        : pendingFollowup?.kind === "TURNOVER_WON"
+          ? "T/O WON TAG"
+          : pendingFollowup?.kind === "TURNOVER_LOST"
+            ? "T/O LOST TAG"
+            : pendingFollowup?.kind === "SHOT"
+              ? "SHOT TAG"
+            : null;
   const myTeamReport = useMemo(
     () => deriveMyTeamReport(loggedEvents, matchState, teamNames, currentMode),
     [loggedEvents, matchState, teamNames, currentMode],
@@ -5493,7 +5527,7 @@ export default function StatsModeSurface() {
                 void shareOrExportMatch();
               }}
             >
-              Export / Share Match
+              Share Summary PNG
             </button>
             <button type="button" className="utility-review-btn" onClick={resumeMatchFromFullTime}>
               Resume Match
@@ -5720,7 +5754,7 @@ export default function StatsModeSurface() {
               Half
             </div>
             {([
-              { id: "FULL", label: "ALL" },
+              { id: "FULL", label: "ALL (Reset)" },
               { id: "H1", label: "1H" },
               { id: "H2", label: "2H" },
             ] as const).map((option) => (
@@ -6028,41 +6062,89 @@ export default function StatsModeSurface() {
       ) : null}
       {!isReviewModeActive &&
       utilityPanel == null &&
-      pendingKickoutFollowup &&
-      pendingKickoutFollowupEvent &&
-      pendingKickoutFollowupLabel ? (
+      pendingFollowup &&
+      pendingFollowupEvent &&
+      pendingFollowupLabel ? (
         <div
           className="review-quick-strip"
           role="group"
-          aria-label="Kickout follow-up tag"
-          style={{ bottom: `${Math.max(74, keyboardInset + (isLandscape ? 54 : 74))}px` }}
+          aria-label="Event follow-up tag"
+          style={{
+            bottom: `${Math.max(70, keyboardInset + (isLandscape ? 42 : 68))}px`,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: isLandscape ? "min(360px, 72vw)" : "min(360px, 92vw)",
+            justifyContent: "center",
+          }}
         >
           <span className="utility-panel-title" style={{ fontSize: "8px", alignSelf: "center", opacity: 0.9 }}>
-            {pendingKickoutFollowupLabel}
+            {pendingFollowupLabel}
           </span>
           <button
             type="button"
             className="review-quick-btn"
             onClick={() => {
-              applyKickoutFollowupTag("CLEAN");
+              applyFollowupTag(
+                pendingFollowup.kind === "TURNOVER_WON" || pendingFollowup.kind === "TURNOVER_LOST"
+                  ? "FORCED"
+                  : pendingFollowup.kind === "SHOT"
+                    ? "SHORT"
+                    : "CLEAN",
+              );
             }}
           >
-            Clean
+            {pendingFollowup.kind === "TURNOVER_WON" || pendingFollowup.kind === "TURNOVER_LOST"
+              ? "Forced"
+              : pendingFollowup.kind === "SHOT"
+                ? "Short"
+                : "Clean"}
           </button>
           <button
             type="button"
             className="review-quick-btn"
             onClick={() => {
-              applyKickoutFollowupTag("BREAK");
+              applyFollowupTag(
+                pendingFollowup.kind === "TURNOVER_WON" || pendingFollowup.kind === "TURNOVER_LOST"
+                  ? "UNFORCED"
+                  : pendingFollowup.kind === "SHOT"
+                    ? "POST"
+                    : "BREAK",
+              );
             }}
           >
-            Break
+            {pendingFollowup.kind === "TURNOVER_WON" || pendingFollowup.kind === "TURNOVER_LOST"
+              ? "Unforced"
+              : pendingFollowup.kind === "SHOT"
+                ? "Post"
+                : "Break"}
           </button>
+          {pendingFollowup.kind === "SHOT" ? (
+            <>
+              <button
+                type="button"
+                className="review-quick-btn"
+                onClick={() => {
+                  applyFollowupTag("FORTY_FIVE");
+                }}
+              >
+                45
+              </button>
+              <button
+                type="button"
+                className="review-quick-btn"
+                onClick={() => {
+                  applyFollowupTag("BLOCKED");
+                }}
+              >
+                Blocked
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             className="review-quick-btn"
             onClick={() => {
-              applyKickoutFollowupTag(null);
+              applyFollowupTag(null);
             }}
           >
             Skip
@@ -6077,7 +6159,7 @@ export default function StatsModeSurface() {
         >
           <span className="review-strip-status">Review</span>
           {([
-            { id: "FULL", label: "ALL" },
+            { id: "FULL", label: "ALL (Reset)" },
             { id: "H1", label: "1H" },
             { id: "H2", label: "2H" },
           ] as const).map((option) => (
@@ -6117,7 +6199,7 @@ export default function StatsModeSurface() {
                   : undefined
               }
             >
-              {option.label}
+              {isLandscape && option.compactLabel ? option.compactLabel : option.label}
             </button>
           ))}
           {REVIEW_TEAM_CONTEXT_OPTIONS.map((option) => (
@@ -6211,6 +6293,22 @@ export default function StatsModeSurface() {
               <span className="review-event-card-row-value">{selectedReviewKickoutTagLabel}</span>
             </div>
           ) : null}
+          {selectedReviewEvent.kind === "TURNOVER_WON" || selectedReviewEvent.kind === "TURNOVER_LOST" ? (
+            getTurnoverTagLabel(selectedReviewEvent.tags) ? (
+              <div className="review-event-card-row">
+                <span className="review-event-card-row-label">T/O Tag</span>
+                <span className="review-event-card-row-value">{getTurnoverTagLabel(selectedReviewEvent.tags)}</span>
+              </div>
+            ) : null
+          ) : null}
+          {selectedReviewEvent.kind === "SHOT" ? (
+            getShotTagLabel(selectedReviewEvent.tags) ? (
+              <div className="review-event-card-row">
+                <span className="review-event-card-row-label">Shot Tag</span>
+                <span className="review-event-card-row-value">{getShotTagLabel(selectedReviewEvent.tags)}</span>
+              </div>
+            ) : null
+          ) : null}
           <div className="review-event-card-row">
             <span className="review-event-card-row-label">Player</span>
             <span className="review-event-card-row-value">{selectedReviewPlayerLabel}</span>
@@ -6221,7 +6319,7 @@ export default function StatsModeSurface() {
           </div>
           <div className="review-event-card-row">
             <span className="review-event-card-row-label">Segment</span>
-            <span className="review-event-card-row-value">S{selectedReviewEvent.segment}</span>
+              <span className="review-event-card-row-value">{getSegmentDisplayLabel(selectedReviewEvent.segment)}</span>
           </div>
           <div className="review-event-card-row">
             <span className="review-event-card-row-label">Time</span>
@@ -6626,7 +6724,7 @@ export default function StatsModeSurface() {
                   saveCurrentMatchSnapshot();
                 }}
                 style={
-                  saveFeedback === "Match saved"
+                  saveFeedback === "Saved"
                     ? {
                         border: "1px solid rgba(34,197,94,0.92)",
                         background: "rgba(22,101,52,0.76)",
@@ -6634,7 +6732,7 @@ export default function StatsModeSurface() {
                     : undefined
                 }
               >
-                {saveFeedback === "Match saved" ? "Saved" : "Save Match"}
+                {saveFeedback === "Saved" ? "Saved" : "Save Match"}
               </button>
               <button type="button" className="utility-menu-btn" onClick={openSavedMatchesPanel}>
                 Load Match
