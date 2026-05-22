@@ -27,6 +27,7 @@ export type MatchEvent = {
   id: string;
   kind: MatchEventKind;
   type?: MatchEventKind;
+  tags?: string[];
   nx: number;
   ny: number;
   x?: number;
@@ -45,6 +46,7 @@ export type MatchEvent = {
 export type CreateMatchEventInput = {
   kind: MatchEventKind;
   type?: MatchEventKind;
+  tags?: readonly string[];
   nx: number;
   ny: number;
   x?: number;
@@ -67,6 +69,19 @@ function newMatchEventId(): string {
     return c.randomUUID();
   }
   return `evt-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function normalizeEventTags(tags: readonly string[] | undefined): string[] | undefined {
+  if (!Array.isArray(tags)) return undefined;
+  const normalized = Array.from(
+    new Set(
+      tags
+        .filter((tag): tag is string => typeof tag === "string")
+        .map((tag) => tag.trim().toUpperCase())
+        .filter((tag) => tag.length > 0),
+    ),
+  );
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 export function createMatchEvent(input: CreateMatchEventInput): MatchEvent {
@@ -95,10 +110,12 @@ export function createMatchEvent(input: CreateMatchEventInput): MatchEvent {
     (input.segment != null
       ? (((input.segment - 1) % 3) + 1) as 1 | 2 | 3
       : undefined);
+  const normalizedTags = normalizeEventTags(input.tags);
   return {
     id: input.id ?? newMatchEventId(),
     kind: normalizedKind,
     type: input.type ?? normalizedKind,
+    ...(normalizedTags ? { tags: normalizedTags } : {}),
     nx: normalizedX,
     ny: normalizedY,
     x: normalizedX,

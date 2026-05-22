@@ -45,6 +45,7 @@ type ReviewEventFilter =
 type ReviewZone = "FULL" | "OWN_HALF" | "OPPOSITION_HALF";
 type AttackingDirection = "LEFT" | "RIGHT";
 type PlayerRole = "STARTER" | "SUB";
+type KickoutFollowupTag = "CLEAN" | "BREAK";
 type SquadPlayer = { id: string; name: string; number: number; role: PlayerRole };
 type Squad = { id: string; name: string; players: SquadPlayer[] };
 type SavedSquadPlayer = { id: string; number: number; name: string };
@@ -56,6 +57,7 @@ type SavedSquad = {
 };
 type LoggedMatchEvent = MatchEvent & {
   type: MatchEventKind;
+  tags?: string[];
   teamSide: "FOR" | "OPP";
   x: number;
   y: number;
@@ -289,6 +291,7 @@ const REVIEW_FILTER_KINDS: Record<
   FREES: ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"],
 };
 const MATCH_EVENT_KIND_SET = new Set<MatchEventKind>(MATCH_EVENT_KINDS);
+const KICKOUT_EVENT_KIND_SET = new Set<MatchEventKind>(["KICKOUT_WON", "KICKOUT_CONCEDED"]);
 function buildReviewFilterOptions(
   isHurlingMode: boolean,
 ): ReadonlyArray<{ id: ReviewEventFilter; label: string }> {
@@ -325,6 +328,26 @@ function parseEventSegment(value: unknown): MatchEventSegment | null {
   return null;
 }
 
+function parseEventTags(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const normalized = Array.from(
+    new Set(
+      value
+        .filter((entry): entry is string => typeof entry === "string")
+        .map((entry) => entry.trim().toUpperCase())
+        .filter((entry) => entry.length > 0),
+    ),
+  );
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function getKickoutTagLabel(tags: readonly string[] | undefined): "Clean" | "Break" | null {
+  if (!tags || tags.length === 0) return null;
+  if (tags.includes("CLEAN")) return "Clean";
+  if (tags.includes("BREAK")) return "Break";
+  return null;
+}
+
 function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
   if (!input || typeof input !== "object") return null;
   const maybeId = "id" in input ? input.id : null;
@@ -344,6 +367,7 @@ function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
   const maybeTeamSide = "teamSide" in input ? input.teamSide : null;
   const maybeMatchTimeSeconds = "matchTimeSeconds" in input ? input.matchTimeSeconds : null;
   const maybeHalfSegment = "halfSegment" in input ? input.halfSegment : null;
+  const maybeTags = "tags" in input ? input.tags : null;
 
   if (typeof maybeId !== "string" || maybeId.trim().length === 0) return null;
   const rawKind = typeof maybeType === "string" ? maybeType : typeof maybeKind === "string" ? maybeKind : null;
@@ -371,6 +395,7 @@ function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
   const parsedTeam: TeamSide | null = maybeTeam === "HOME" || maybeTeam === "AWAY" ? maybeTeam : null;
   const parsedTeamSide = normalizeEventTeamSide(maybeTeamSide, parsedTeam, maybeId);
   const parsedCreatedAt = normalizeCreatedAt(maybeCreatedAt);
+  const parsedTags = parseEventTags(maybeTags);
 
   const next: LoggedMatchEvent = {
     id: maybeId,
@@ -389,6 +414,7 @@ function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
     matchTimeSeconds: parsedClockSeconds,
     createdAt: parsedCreatedAt,
     teamSide: parsedTeamSide,
+    ...(parsedTags ? { tags: parsedTags } : {}),
   };
 
   const maybePlayerId = "playerId" in input ? input.playerId : null;
@@ -1335,6 +1361,12 @@ function getReadableEventButtonLabel(label: string): string {
   if (label === "FS") return "FREE SCORED";
   if (label === "FM") return "FREE MISSED";
   return label;
+}
+
+function getReviewEventTypeLabel(kind: MatchEventKind): string {
+  if (kind === "KICKOUT_CONCEDED") return "KICKOUT LOST";
+  if (kind === "KICKOUT_WON") return "KICKOUT WON";
+  return kind;
 }
 
 function getViewportRect(): ViewportRect {
@@ -2872,6 +2904,10 @@ export default function StatsModeSurface() {
     useState<AttackingDirection>("RIGHT");
   const [showReviewStrip, setShowReviewStrip] = useState(false);
   const [selectedReviewEventId, setSelectedReviewEventId] = useState<string | null>(null);
+  const [pendingKickoutFollowup, setPendingKickoutFollowup] = useState<{
+    eventId: string;
+    kind: "KICKOUT_WON" | "KICKOUT_CONCEDED";
+  } | null>(null);
   const [loggedEvents, setLoggedEvents] = useState<readonly LoggedMatchEvent[]>([]);
   const [savedMatches, setSavedMatches] = useState<SavedMatch[]>(() => readSavedMatchesFromStorage().matches);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
@@ -3584,6 +3620,7 @@ export default function StatsModeSurface() {
         const period = periodFromHalf(event.half);
         const segment = deriveSegmentFromPeriodClock(period, matchClockSeconds);
         const eventKind = event.type ?? event.kind;
+        const eventTags = parseEventTags(event.tags);
         const nextEvent: LoggedMatchEvent = {
           ...event,
           id: `team-${team.toLowerCase()}-${event.id}`,
@@ -3605,6 +3642,7 @@ export default function StatsModeSurface() {
             typeof event.createdAt === "number" && Number.isFinite(event.createdAt)
               ? Math.floor(event.createdAt)
               : Date.now(),
+          ...(eventTags ? { tags: eventTags } : {}),
         };
         if (team === "HOME") {
           const activePlayerEntry = activePlayerEntryRef.current;
@@ -3645,6 +3683,12 @@ export default function StatsModeSurface() {
           }
           return next;
         });
+        if (KICKOUT_EVENT_KIND_SET.has(nextEvent.kind)) {
+          setPendingKickoutFollowup({
+            eventId: nextEvent.id,
+            kind: nextEvent.kind === "KICKOUT_WON" ? "KICKOUT_WON" : "KICKOUT_CONCEDED",
+          });
+        }
       },
     }).then((nextHandle) => {
       if (disposed) {
@@ -4120,6 +4164,7 @@ export default function StatsModeSurface() {
     setCurrentMatchId(loadedMatchId);
     currentMatchIdRef.current = loadedMatchId;
     setLoggedEvents(parsedRecord.events);
+    setPendingKickoutFollowup(null);
     setTeamNames({
       HOME: parsedRecord.homeTeamName,
       AWAY: parsedRecord.awayTeamName,
@@ -4175,6 +4220,7 @@ export default function StatsModeSurface() {
     setCurrentMatchId(draftMatchId);
     currentMatchIdRef.current = draftMatchId;
     setLoggedEvents(draft.events);
+    setPendingKickoutFollowup(null);
     setTeamNames({
       HOME: draft.teamNames.HOME,
       AWAY: draft.teamNames.AWAY,
@@ -4225,6 +4271,21 @@ export default function StatsModeSurface() {
   const closeUtilityPanel = () => {
     setUtilityPanel(null);
     setSaveLoadBlockedReason(null);
+  };
+  const applyKickoutFollowupTag = (tag: KickoutFollowupTag | null) => {
+    const pending = pendingKickoutFollowup;
+    setPendingKickoutFollowup(null);
+    if (!pending || tag == null) return;
+    setLoggedEvents((prev) =>
+      prev.map((event) => {
+        if (event.id !== pending.eventId) return event;
+        const retainedTags = (event.tags ?? []).filter((entry) => entry !== "CLEAN" && entry !== "BREAK");
+        return {
+          ...event,
+          tags: [...retainedTags, tag],
+        };
+      }),
+    );
   };
   const lastSavedLabel =
     lastSavedAtMillis != null
@@ -4301,6 +4362,7 @@ export default function StatsModeSurface() {
     setCurrentMatchId(nextMatchId);
     currentMatchIdRef.current = nextMatchId;
     setLoggedEvents([]);
+    setPendingKickoutFollowup(null);
     reviewHalfRef.current = "FULL";
     reviewSegmentRef.current = "ALL";
     reviewTeamContextRef.current = "ALL";
@@ -4480,6 +4542,22 @@ export default function StatsModeSurface() {
     if (loggedEvents.some((event) => event.id === selectedReviewEventId)) return;
     setSelectedReviewEventId(null);
   }, [loggedEvents, selectedReviewEventId]);
+
+  useEffect(() => {
+    if (!pendingKickoutFollowup) return;
+    if (loggedEvents.some((event) => event.id === pendingKickoutFollowup.eventId)) return;
+    setPendingKickoutFollowup(null);
+  }, [loggedEvents, pendingKickoutFollowup]);
+
+  useEffect(() => {
+    if (!pendingKickoutFollowup) return;
+    const timerId = window.setTimeout(() => {
+      setPendingKickoutFollowup(null);
+    }, 7000);
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [pendingKickoutFollowup]);
 
   useEffect(() => {
     const updateLandscape = () => {
@@ -4764,11 +4842,30 @@ export default function StatsModeSurface() {
             if (!matchedPlayer) return "Unknown player";
             return `#${matchedPlayer.number} ${matchedPlayer.name}`;
           })();
+  const selectedReviewKickoutTagLabel =
+    selectedReviewEvent == null ||
+    !KICKOUT_EVENT_KIND_SET.has(selectedReviewEvent.kind)
+      ? null
+      : getKickoutTagLabel(selectedReviewEvent.tags);
   const activeReviewPlayerLabel =
     activePlayerId == null ? null : (() => {
       const player = playerById.get(activePlayerId);
       return player ? `#${player.number} ${player.name}` : null;
     })();
+  const pendingKickoutFollowupEvent =
+    pendingKickoutFollowup == null
+      ? null
+      : loggedEvents.find((event) => event.id === pendingKickoutFollowup.eventId) ?? null;
+  const pendingKickoutFollowupLabel =
+    pendingKickoutFollowup?.kind === "KICKOUT_WON"
+      ? isHurlingMode
+        ? "P/O WON TAG"
+        : "K/O WON TAG"
+      : pendingKickoutFollowup?.kind === "KICKOUT_CONCEDED"
+        ? isHurlingMode
+          ? "P/O LOST TAG"
+          : "K/O LOST TAG"
+        : null;
   const myTeamReport = useMemo(
     () => deriveMyTeamReport(loggedEvents, matchState, teamNames, currentMode),
     [loggedEvents, matchState, teamNames, currentMode],
@@ -5929,6 +6026,49 @@ export default function StatsModeSurface() {
           </button>
         </div>
       ) : null}
+      {!isReviewModeActive &&
+      utilityPanel == null &&
+      pendingKickoutFollowup &&
+      pendingKickoutFollowupEvent &&
+      pendingKickoutFollowupLabel ? (
+        <div
+          className="review-quick-strip"
+          role="group"
+          aria-label="Kickout follow-up tag"
+          style={{ bottom: `${Math.max(74, keyboardInset + (isLandscape ? 54 : 74))}px` }}
+        >
+          <span className="utility-panel-title" style={{ fontSize: "8px", alignSelf: "center", opacity: 0.9 }}>
+            {pendingKickoutFollowupLabel}
+          </span>
+          <button
+            type="button"
+            className="review-quick-btn"
+            onClick={() => {
+              applyKickoutFollowupTag("CLEAN");
+            }}
+          >
+            Clean
+          </button>
+          <button
+            type="button"
+            className="review-quick-btn"
+            onClick={() => {
+              applyKickoutFollowupTag("BREAK");
+            }}
+          >
+            Break
+          </button>
+          <button
+            type="button"
+            className="review-quick-btn"
+            onClick={() => {
+              applyKickoutFollowupTag(null);
+            }}
+          >
+            Skip
+          </button>
+        </div>
+      ) : null}
       {showReviewStrip && utilityPanel !== "REVIEW" ? (
         <div
           className={`review-strip ${isLandscape ? "review-strip--landscape" : "review-strip--portrait"}`}
@@ -6063,8 +6203,14 @@ export default function StatsModeSurface() {
           </div>
           <div className="review-event-card-row">
             <span className="review-event-card-row-label">Type</span>
-            <span className="review-event-card-row-value">{selectedReviewEvent.type}</span>
+            <span className="review-event-card-row-value">{getReviewEventTypeLabel(selectedReviewEvent.type)}</span>
           </div>
+          {selectedReviewKickoutTagLabel ? (
+            <div className="review-event-card-row">
+              <span className="review-event-card-row-label">K/O Tag</span>
+              <span className="review-event-card-row-value">{selectedReviewKickoutTagLabel}</span>
+            </div>
+          ) : null}
           <div className="review-event-card-row">
             <span className="review-event-card-row-label">Player</span>
             <span className="review-event-card-row-value">{selectedReviewPlayerLabel}</span>
