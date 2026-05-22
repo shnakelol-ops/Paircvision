@@ -4145,7 +4145,6 @@ export default function StatsModeSurface() {
       clockLabel: formatMatchClock(matchTimeSeconds),
       homeScore,
       awayScore,
-      counts: liveCounts,
       eventCount: loggedEvents.length,
       events: loggedEvents,
     });
