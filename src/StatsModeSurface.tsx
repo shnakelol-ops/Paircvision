@@ -77,6 +77,17 @@ type PendingFollowupKind =
   | "TURNOVER_LOST"
   | "SHOT";
 type FollowupOption = { label: string; tag: FollowupTag };
+type EventKeyboardMenuId =
+  | "GOAL"
+  | "POINT"
+  | "TWO_POINTER"
+  | "WIDE"
+  | "TURNOVER_WON"
+  | "TURNOVER_LOST"
+  | "KICKOUT_WON"
+  | "KICKOUT_CONCEDED";
+type EventKeyboardTone = "score" | "wide" | "turnover" | "kickout" | "free";
+type EventKeyboardOption = { label: string; kind: MatchEventKind; tag?: string };
 type SquadPlayer = { id: string; name: string; number: number; role: PlayerRole };
 type Squad = { id: string; name: string; players: SquadPlayer[] };
 type SavedSquadPlayer = { id: string; number: number; name: string };
@@ -326,6 +337,23 @@ const MATCH_EVENT_KIND_SET = new Set<MatchEventKind>(MATCH_EVENT_KINDS);
 const KICKOUT_EVENT_KIND_SET = new Set<MatchEventKind>(["KICKOUT_WON", "KICKOUT_CONCEDED"]);
 const TURNOVER_EVENT_KIND_SET = new Set<MatchEventKind>(["TURNOVER_WON", "TURNOVER_LOST"]);
 const SHOT_EVENT_KIND_SET = new Set<MatchEventKind>(["SHOT"]);
+const EVENT_KEYBOARD_MENU_KIND: Record<EventKeyboardMenuId, MatchEventKind> = {
+  GOAL: "GOAL",
+  POINT: "POINT",
+  TWO_POINTER: "TWO_POINTER",
+  WIDE: "WIDE",
+  TURNOVER_WON: "TURNOVER_WON",
+  TURNOVER_LOST: "TURNOVER_LOST",
+  KICKOUT_WON: "KICKOUT_WON",
+  KICKOUT_CONCEDED: "KICKOUT_CONCEDED",
+};
+const SCORING_SOURCE_TAGS = {
+  PLAY: "SOURCE_PLAY",
+  FREE: "SOURCE_FREE",
+  PENALTY: "SOURCE_PENALTY",
+  MARK: "SOURCE_MARK",
+  FORTY_FIVE: "SOURCE_45",
+} as const;
 function buildReviewFilterOptions(
   isHurlingMode: boolean,
 ): ReadonlyArray<{ id: ReviewEventFilter; label: string }> {
@@ -472,6 +500,61 @@ function getRemovableFollowupTags(kind: PendingFollowupKind): readonly string[] 
     default:
       return [];
   }
+}
+
+function buildEventKeyboardMenuOptions(menuId: EventKeyboardMenuId): readonly EventKeyboardOption[] {
+  switch (menuId) {
+    case "GOAL":
+      return [
+        { label: "Play", kind: "GOAL", tag: SCORING_SOURCE_TAGS.PLAY },
+        { label: "Free", kind: "GOAL", tag: SCORING_SOURCE_TAGS.FREE },
+        { label: "Penalty", kind: "GOAL", tag: SCORING_SOURCE_TAGS.PENALTY },
+        { label: "Mark", kind: "GOAL", tag: SCORING_SOURCE_TAGS.MARK },
+      ];
+    case "POINT":
+      return [
+        { label: "Play", kind: "POINT", tag: SCORING_SOURCE_TAGS.PLAY },
+        { label: "Free", kind: "POINT", tag: SCORING_SOURCE_TAGS.FREE },
+        { label: "Penalty", kind: "POINT", tag: SCORING_SOURCE_TAGS.PENALTY },
+        { label: "Mark", kind: "POINT", tag: SCORING_SOURCE_TAGS.MARK },
+        { label: "45", kind: "POINT", tag: SCORING_SOURCE_TAGS.FORTY_FIVE },
+      ];
+    case "TWO_POINTER":
+      return [
+        { label: "Play", kind: "TWO_POINTER", tag: SCORING_SOURCE_TAGS.PLAY },
+        { label: "Free", kind: "TWO_POINTER", tag: SCORING_SOURCE_TAGS.FREE },
+        { label: "Mark", kind: "TWO_POINTER", tag: SCORING_SOURCE_TAGS.MARK },
+      ];
+    case "WIDE":
+      return [
+        { label: "Play", kind: "WIDE", tag: SCORING_SOURCE_TAGS.PLAY },
+        { label: "Free", kind: "WIDE", tag: SCORING_SOURCE_TAGS.FREE },
+        { label: "Penalty", kind: "WIDE", tag: SCORING_SOURCE_TAGS.PENALTY },
+        { label: "Mark", kind: "WIDE", tag: SCORING_SOURCE_TAGS.MARK },
+        { label: "45", kind: "WIDE", tag: SCORING_SOURCE_TAGS.FORTY_FIVE },
+      ];
+    case "TURNOVER_WON":
+    case "TURNOVER_LOST":
+    case "KICKOUT_WON":
+    case "KICKOUT_CONCEDED": {
+      return getFollowupOptions(menuId as PendingFollowupKind).map((option) => ({
+        label: option.label,
+        kind: EVENT_KEYBOARD_MENU_KIND[menuId],
+        tag: option.tag,
+      }));
+    }
+    default:
+      return [];
+  }
+}
+
+function getEventKeyboardToneByMenuId(menuId: EventKeyboardMenuId | null): EventKeyboardTone | null {
+  if (menuId == null) return null;
+  if (menuId === "GOAL" || menuId === "POINT" || menuId === "TWO_POINTER") return "score";
+  if (menuId === "WIDE") return "wide";
+  if (menuId === "TURNOVER_WON" || menuId === "TURNOVER_LOST") return "turnover";
+  if (menuId === "KICKOUT_WON" || menuId === "KICKOUT_CONCEDED") return "kickout";
+  return null;
 }
 
 function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
@@ -1421,18 +1504,6 @@ function modeHasScoringEvent(
   return scoringEvents.includes(kind);
 }
 
-function getReadableEventButtonLabel(label: string): string {
-  if (label === "T+") return "TURNOVER +";
-  if (label === "T-" || label === "T−") return "TURNOVER -";
-  if (label === "K+") return "KICKOUT +";
-  if (label === "K-" || label === "K−") return "KICKOUT -";
-  if (label === "F+") return "FREE +";
-  if (label === "F-" || label === "F−") return "FREE -";
-  if (label === "FS") return "FREE SCORED";
-  if (label === "FM") return "FREE MISSED";
-  return label;
-}
-
 function getReviewEventTypeLabel(kind: MatchEventKind): string {
   if (kind === "KICKOUT_CONCEDED") return "KICKOUT LOST";
   if (kind === "KICKOUT_WON") return "KICKOUT WON";
@@ -1594,46 +1665,239 @@ const PANEL_CSS = `
   gap: 5px;
   padding: 6px;
   border-radius: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 20, 35, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: linear-gradient(180deg, rgba(10, 20, 35, 0.82) 0%, rgba(8, 16, 28, 0.88) 100%);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  box-shadow: 0 8px 18px rgba(4, 12, 24, 0.26);
+  box-shadow: 0 8px 18px rgba(4, 12, 24, 0.32);
   width: min(calc(100vw - 32px), 308px);
   max-width: 95vw;
 }
 
-.event-grid {
+.event-keyboard {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.event-keyboard-row {
+  display: grid;
   gap: 3px;
 }
 
-.event-btn {
+.event-keyboard-btn {
   border-radius: 8px;
-  color: #e2e8f0;
-  font-size: 8.8px;
+  color: #edf4ff;
+  font-size: 9.2px;
   line-height: 1.1;
-  padding: 5px 4px;
-  min-height: 27px;
+  padding: 6px 4px;
+  min-height: 30px;
   cursor: pointer;
   text-align: center;
   white-space: nowrap;
-  letter-spacing: 0.18px;
-  font-weight: 700;
+  letter-spacing: 0.22px;
+  font-weight: 780;
   text-transform: uppercase;
-  transition: box-shadow 140ms ease, transform 120ms ease;
+  text-shadow: 0 0 6px rgba(2, 6, 23, 0.35);
+  transition: box-shadow 140ms ease, transform 120ms ease, border-color 140ms ease, background 140ms ease;
+  border: 1px solid rgba(148, 163, 184, 0.46);
+  background: linear-gradient(180deg, rgba(22, 34, 52, 0.9) 0%, rgba(13, 22, 37, 0.92) 100%);
 }
 
-.event-btn:hover {
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.16), 0 0 10px rgba(148, 163, 184, 0.14);
+.event-keyboard-btn:hover {
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.2), 0 0 10px rgba(148, 163, 184, 0.16);
 }
 
-.event-btn:active {
+.event-keyboard-btn:active {
   transform: translateY(0.5px);
 }
 
-.event-btn:disabled,
+.event-keyboard-btn--score {
+  border-color: rgba(74, 222, 128, 0.42);
+  background: linear-gradient(180deg, rgba(20, 59, 44, 0.86) 0%, rgba(12, 32, 24, 0.9) 100%);
+}
+
+.event-keyboard-btn--wide {
+  border-color: rgba(96, 165, 250, 0.44);
+  background: linear-gradient(180deg, rgba(21, 50, 88, 0.86) 0%, rgba(13, 28, 53, 0.9) 100%);
+}
+
+.event-keyboard-btn--turnover {
+  border-color: rgba(251, 146, 60, 0.44);
+  background: linear-gradient(180deg, rgba(87, 48, 18, 0.86) 0%, rgba(50, 28, 12, 0.9) 100%);
+}
+
+.event-keyboard-btn--kickout {
+  border-color: rgba(192, 132, 252, 0.46);
+  background: linear-gradient(180deg, rgba(66, 35, 106, 0.86) 0%, rgba(37, 20, 61, 0.9) 100%);
+}
+
+.event-keyboard-btn--free {
+  border-color: rgba(248, 113, 113, 0.46);
+  background: linear-gradient(180deg, rgba(87, 20, 33, 0.86) 0%, rgba(50, 13, 20, 0.9) 100%);
+}
+
+.event-keyboard-btn.is-open,
+.event-keyboard-btn.is-active {
+  border-color: rgba(226, 236, 255, 0.92);
+  box-shadow: 0 0 0 1px rgba(226, 236, 255, 0.18), 0 0 12px rgba(125, 211, 252, 0.2);
+}
+
+.event-keyboard-btn--score.is-open,
+.event-keyboard-btn--score.is-active {
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.24), 0 0 12px rgba(74, 222, 128, 0.2);
+}
+
+.event-keyboard-btn--wide.is-open,
+.event-keyboard-btn--wide.is-active {
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.26), 0 0 12px rgba(96, 165, 250, 0.22);
+}
+
+.event-keyboard-btn--turnover.is-open,
+.event-keyboard-btn--turnover.is-active {
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.24), 0 0 12px rgba(251, 146, 60, 0.2);
+}
+
+.event-keyboard-btn--kickout.is-open,
+.event-keyboard-btn--kickout.is-active {
+  box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.24), 0 0 12px rgba(192, 132, 252, 0.2);
+}
+
+.event-keyboard-btn--free.is-open,
+.event-keyboard-btn--free.is-active {
+  box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.24), 0 0 12px rgba(248, 113, 113, 0.18);
+}
+
+.event-keyboard-drawer {
+  margin-top: 1px;
+  display: grid;
+  gap: 5px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  background: linear-gradient(180deg, rgba(6, 12, 20, 0.98) 0%, rgba(7, 13, 23, 0.96) 100%);
+  padding: 7px 7px 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 16px rgba(2, 8, 15, 0.34);
+}
+
+.event-keyboard-drawer--score {
+  border-color: rgba(74, 222, 128, 0.42);
+  background: linear-gradient(180deg, rgba(8, 18, 14, 0.98) 0%, rgba(7, 13, 11, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(74, 222, 128, 0.2), 0 8px 18px rgba(16, 185, 129, 0.18);
+}
+
+.event-keyboard-drawer--wide {
+  border-color: rgba(96, 165, 250, 0.44);
+  background: linear-gradient(180deg, rgba(8, 16, 30, 0.98) 0%, rgba(7, 12, 23, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(96, 165, 250, 0.2), 0 8px 18px rgba(59, 130, 246, 0.18);
+}
+
+.event-keyboard-drawer--turnover {
+  border-color: rgba(251, 146, 60, 0.44);
+  background: linear-gradient(180deg, rgba(24, 14, 8, 0.98) 0%, rgba(16, 10, 6, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(251, 146, 60, 0.2), 0 8px 18px rgba(249, 115, 22, 0.17);
+}
+
+.event-keyboard-drawer--kickout {
+  border-color: rgba(192, 132, 252, 0.45);
+  background: linear-gradient(180deg, rgba(16, 11, 27, 0.98) 0%, rgba(12, 8, 20, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(192, 132, 252, 0.2), 0 8px 18px rgba(168, 85, 247, 0.18);
+}
+
+.event-keyboard-drawer--free {
+  border-color: rgba(248, 113, 113, 0.44);
+  background: linear-gradient(180deg, rgba(27, 9, 13, 0.98) 0%, rgba(20, 7, 10, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(248, 113, 113, 0.18), 0 8px 18px rgba(239, 68, 68, 0.14);
+}
+
+.event-keyboard-drawer-head {
+  color: #ebf4ff;
+  font-size: 8.4px;
+  line-height: 1.1;
+  letter-spacing: 0.26px;
+  font-weight: 760;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+
+.event-keyboard-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.event-keyboard-chip {
+  min-height: 25px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  background: linear-gradient(180deg, rgba(24, 36, 56, 0.92) 0%, rgba(16, 26, 43, 0.92) 100%);
+  color: #f4f8ff;
+  font-size: 8.6px;
+  font-weight: 780;
+  line-height: 1;
+  letter-spacing: 0.18px;
+  text-transform: uppercase;
+  padding: 0 10px;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 4px rgba(2, 8, 15, 0.2);
+}
+
+.event-keyboard-chip:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(226, 236, 255, 0.16), 0 4px 7px rgba(2, 8, 15, 0.24);
+}
+
+.event-keyboard-chip--score {
+  border-color: rgba(74, 222, 128, 0.42);
+}
+
+.event-keyboard-chip--wide {
+  border-color: rgba(96, 165, 250, 0.44);
+}
+
+.event-keyboard-chip--turnover {
+  border-color: rgba(251, 146, 60, 0.44);
+}
+
+.event-keyboard-chip--kickout {
+  border-color: rgba(192, 132, 252, 0.44);
+}
+
+.event-keyboard-chip--free {
+  border-color: rgba(248, 113, 113, 0.44);
+}
+
+.event-keyboard-chip.is-active {
+  border-color: rgba(226, 236, 255, 0.95);
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(226, 236, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 8px rgba(2, 8, 15, 0.26);
+}
+
+.event-keyboard-chip--score.is-active {
+  border-color: rgba(74, 222, 128, 0.92);
+  background: linear-gradient(180deg, rgba(17, 94, 59, 0.88) 0%, rgba(11, 68, 43, 0.9) 100%);
+}
+
+.event-keyboard-chip--wide.is-active {
+  border-color: rgba(96, 165, 250, 0.92);
+  background: linear-gradient(180deg, rgba(29, 78, 216, 0.88) 0%, rgba(30, 64, 175, 0.9) 100%);
+}
+
+.event-keyboard-chip--turnover.is-active {
+  border-color: rgba(251, 146, 60, 0.92);
+  background: linear-gradient(180deg, rgba(180, 83, 9, 0.88) 0%, rgba(146, 64, 14, 0.9) 100%);
+}
+
+.event-keyboard-chip--kickout.is-active {
+  border-color: rgba(192, 132, 252, 0.92);
+  background: linear-gradient(180deg, rgba(126, 34, 206, 0.88) 0%, rgba(107, 33, 168, 0.9) 100%);
+}
+
+.event-keyboard-chip--free.is-active {
+  border-color: rgba(248, 113, 113, 0.92);
+  background: linear-gradient(180deg, rgba(185, 28, 28, 0.88) 0%, rgba(153, 27, 27, 0.9) 100%);
+}
+
+.event-keyboard-btn:disabled,
+.event-keyboard-chip:disabled,
 .landscape-toolbar-btn:disabled,
 .landscape-toolbar-secondary-btn:disabled,
 .utility-player-btn:disabled,
@@ -1646,8 +1910,8 @@ const PANEL_CSS = `
   filter: none;
 }
 
-.event-btn:disabled:hover,
-.event-btn:disabled:active,
+.event-keyboard-btn:disabled:hover,
+.event-keyboard-btn:disabled:active,
 .landscape-toolbar-btn:disabled:hover,
 .landscape-toolbar-btn:disabled:active {
   transform: none;
@@ -1672,6 +1936,7 @@ const PANEL_CSS = `
   white-space: nowrap;
   letter-spacing: 0.3px;
   text-transform: uppercase;
+  transition: opacity 140ms ease, filter 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
 }
 
 .undo-wrap {
@@ -1693,6 +1958,17 @@ const PANEL_CSS = `
   white-space: nowrap;
   letter-spacing: 0.25px;
   text-transform: uppercase;
+  transition: opacity 140ms ease, filter 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.utility-quiet {
+  opacity: 0.52;
+  filter: saturate(0.7);
+}
+
+.utility-quiet:hover {
+  opacity: 0.66;
+  filter: saturate(0.82);
 }
 
 .active-chip {
@@ -3008,6 +3284,7 @@ export default function StatsModeSurface() {
   const reviewZoneRef = useRef<ReviewZone>("FULL");
   const firstHalfAttackingDirectionRef = useRef<AttackingDirection>("RIGHT");
   const pendingScorerRef = useRef<{ name: string; number: number; squadId: string } | null>(null);
+  const queuedEventTagRef = useRef<{ kind: MatchEventKind; tag: string } | null>(null);
   const activeSquadIdRef = useRef("");
   const homeNameInputRef = useRef<HTMLInputElement>(null);
   const awayNameInputRef = useRef<HTMLInputElement>(null);
@@ -3019,6 +3296,7 @@ export default function StatsModeSurface() {
   const secondHalfSwitchBaselineEventCountRef = useRef<number | null>(null);
   const eventKindSwitchBaselineEventCountRef = useRef<number | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [openEventKeyboardMenuId, setOpenEventKeyboardMenuId] = useState<EventKeyboardMenuId | null>(null);
   const EVENT_BUTTONS = mode.eventButtons;
   const EVENT_LABEL_BY_KIND = mode.eventLabels;
   const isHurlingMode = currentMode === "hurling" || currentMode === "camogie";
@@ -3052,6 +3330,14 @@ export default function StatsModeSurface() {
         ? EVENT_BUTTONS.filter((item) => OPPOSITION_EVENT_KINDS.has(item.kind))
         : EVENT_BUTTONS,
     [EVENT_BUTTONS, OPPOSITION_EVENT_KINDS, activeTeamSide],
+  );
+  const visibleEventKindSet = useMemo(
+    () => new Set<MatchEventKind>(visibleEventButtons.map((item) => item.kind)),
+    [visibleEventButtons],
+  );
+  const openEventKeyboardMenuOptions = useMemo<readonly EventKeyboardOption[]>(
+    () => (openEventKeyboardMenuId ? buildEventKeyboardMenuOptions(openEventKeyboardMenuId) : []),
+    [openEventKeyboardMenuId],
   );
   const handleRef = useRef<{
     destroy: () => void;
@@ -3303,9 +3589,19 @@ export default function StatsModeSurface() {
     setIsPickerOpen(false);
   };
 
+  const selectEventFromKeyboardOption = (option: EventKeyboardOption) => {
+    if (!isLoggingActive(matchState)) return;
+    if (activeTeamSide === "opposition" && !OPPOSITION_EVENT_KINDS.has(option.kind)) return;
+    queuedEventTagRef.current = option.tag ? { kind: option.kind, tag: option.tag } : null;
+    setOpenEventKeyboardMenuId(null);
+    selectEventKind(option.kind);
+  };
+
   const handleEventButtonPress = (kind: MatchEventKind) => {
     if (!isLoggingActive(matchState)) return;
     if (activeTeamSide === "opposition" && !OPPOSITION_EVENT_KINDS.has(kind)) return;
+    queuedEventTagRef.current = null;
+    setOpenEventKeyboardMenuId(null);
     selectEventKind(kind);
   };
 
@@ -3315,6 +3611,9 @@ export default function StatsModeSurface() {
       if (next) {
         setIsUtilityOpen(false);
         setUtilityPanel((prevPanel) => (prevPanel === "PLAYERS" ? null : prevPanel));
+        setOpenEventKeyboardMenuId(null);
+      } else {
+        setOpenEventKeyboardMenuId(null);
       }
       return next;
     });
@@ -3437,6 +3736,22 @@ export default function StatsModeSurface() {
     selectedEventRef.current = fallbackKind;
     handleRef.current?.setActiveEventKind(fallbackKind);
   }, [activeTeamSide, selectedEventKind, visibleEventButtons]);
+
+  useEffect(() => {
+    if (openEventKeyboardMenuId == null) return;
+    const menuKind = EVENT_KEYBOARD_MENU_KIND[openEventKeyboardMenuId];
+    if (visibleEventKindSet.has(menuKind)) return;
+    setOpenEventKeyboardMenuId(null);
+  }, [openEventKeyboardMenuId, visibleEventKindSet]);
+
+  useEffect(() => {
+    if (isPickerOpen) return;
+    setOpenEventKeyboardMenuId(null);
+  }, [isPickerOpen]);
+
+  useEffect(() => {
+    queuedEventTagRef.current = null;
+  }, [currentMatchId]);
 
   useEffect(() => {
     activePlayerRef.current = activePlayer;
@@ -3676,7 +3991,18 @@ export default function StatsModeSurface() {
         const period = periodFromHalf(event.half);
         const segment = deriveSegmentFromPeriodClock(period, matchClockSeconds);
         const eventKind = event.type ?? event.kind;
-        const eventTags = parseEventTags(event.tags);
+        const queuedTag =
+          queuedEventTagRef.current && queuedEventTagRef.current.kind === eventKind
+            ? queuedEventTagRef.current.tag
+            : null;
+        const rawEventTags =
+          queuedTag == null
+            ? event.tags
+            : [...(Array.isArray(event.tags) ? event.tags : []), queuedTag];
+        const eventTags = parseEventTags(rawEventTags);
+        if (queuedTag != null) {
+          queuedEventTagRef.current = null;
+        }
         const nextEvent: LoggedMatchEvent = {
           ...event,
           id: `team-${team.toLowerCase()}-${event.id}`,
@@ -3744,9 +4070,14 @@ export default function StatsModeSurface() {
           TURNOVER_EVENT_KIND_SET.has(nextEvent.kind) ||
           SHOT_EVENT_KIND_SET.has(nextEvent.kind)
         ) {
+          const pendingKind = nextEvent.kind as PendingFollowupKind;
+          const alreadyTagged = getRemovableFollowupTags(pendingKind).some((tag) =>
+            (nextEvent.tags ?? []).includes(tag),
+          );
+          if (alreadyTagged) return;
           setPendingFollowup({
             eventId: nextEvent.id,
-            kind: nextEvent.kind as PendingFollowupKind,
+            kind: pendingKind,
           });
         }
       },
@@ -5051,6 +5382,60 @@ export default function StatsModeSurface() {
             : null;
   const pendingFollowupOptions =
     pendingFollowup == null ? [] : getFollowupOptions(pendingFollowup.kind);
+  const scoringKeyboardButtons = [
+    { id: "GOAL" as const, kind: "GOAL" as const, label: "GOAL ▼", tone: "score" as const },
+    { id: "POINT" as const, kind: "POINT" as const, label: "POINT ▼", tone: "score" as const },
+    { id: "TWO_POINTER" as const, kind: "TWO_POINTER" as const, label: "2PT ▼", tone: "score" as const },
+    { id: "WIDE" as const, kind: "WIDE" as const, label: "WIDE ▼", tone: "wide" as const },
+  ];
+  const possessionKeyboardButtons = [
+    {
+      id: "TURNOVER_WON" as const,
+      kind: "TURNOVER_WON" as const,
+      label: "TURNOVER+ ▼",
+      tone: "turnover" as const,
+    },
+    {
+      id: "TURNOVER_LOST" as const,
+      kind: "TURNOVER_LOST" as const,
+      label: "TURNOVER- ▼",
+      tone: "turnover" as const,
+    },
+    {
+      id: "KICKOUT_WON" as const,
+      kind: "KICKOUT_WON" as const,
+      label: `${mode.restartLabel.toUpperCase()}+ ▼`,
+      tone: "kickout" as const,
+    },
+    {
+      id: "KICKOUT_CONCEDED" as const,
+      kind: "KICKOUT_CONCEDED" as const,
+      label: `${mode.restartLabel.toUpperCase()}- ▼`,
+      tone: "kickout" as const,
+    },
+  ];
+  const freeKeyboardButtons = [
+    { kind: "FREE_WON" as const, label: "FREE+", tone: "free" as const },
+    { kind: "FREE_CONCEDED" as const, label: "FREE-", tone: "free" as const },
+  ];
+  const openEventKeyboardMenuKind =
+    openEventKeyboardMenuId == null ? null : EVENT_KEYBOARD_MENU_KIND[openEventKeyboardMenuId];
+  const openEventKeyboardTone = getEventKeyboardToneByMenuId(openEventKeyboardMenuId);
+  const isOutcomeFocusActive = openEventKeyboardMenuId != null;
+  const openEventKeyboardMenuTitle =
+    openEventKeyboardMenuId === "TURNOVER_WON"
+      ? "Turnover+ options"
+      : openEventKeyboardMenuId === "TURNOVER_LOST"
+        ? "Turnover- options"
+        : openEventKeyboardMenuId === "KICKOUT_WON"
+          ? `${mode.restartLabel}+ options`
+          : openEventKeyboardMenuId === "KICKOUT_CONCEDED"
+            ? `${mode.restartLabel}- options`
+            : openEventKeyboardMenuId === "TWO_POINTER"
+              ? "2PT outcomes"
+              : openEventKeyboardMenuId != null
+                ? `${openEventKeyboardMenuId} outcomes`
+                : null;
   const myTeamReport = useMemo(
     () => deriveMyTeamReport(loggedEvents, matchState, teamNames, currentMode),
     [loggedEvents, matchState, teamNames, currentMode],
@@ -6530,39 +6915,109 @@ export default function StatsModeSurface() {
         className="floating-controls"
       >
           {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
-          {!isLandscape && isPickerOpen && !isReviewModeActive ? (
-            <div className="event-panel">
-              <div className="event-grid">
-                {visibleEventButtons.map((item, idx) => {
-                  const isActive = item.kind === selectedEventKind;
-                  const isScoring = idx <= 4;
-                  const buttonLabel = getReadableEventButtonLabel(item.label);
-                  return (
-                    <button
-                      key={item.kind}
-                      type="button"
-                      className="event-btn"
-                      onClick={() => {
-                        handleEventButtonPress(item.kind);
-                      }}
-                      style={{
-                        border: isActive
-                          ? "1px solid rgba(34,197,94,0.96)"
-                          : isScoring
-                            ? "1px solid rgba(148,163,184,0.52)"
-                            : "1px solid rgba(148,163,184,0.36)",
-                        background: isActive
-                          ? "rgba(22,101,52,0.7)"
-                          : isScoring
-                            ? "rgba(21, 39, 62, 0.84)"
-                            : "rgba(14, 24, 40, 0.72)",
-                        fontWeight: isActive ? 800 : 700,
-                      }}
-                    >
-                      {buttonLabel}
-                    </button>
-                  );
-                })}
+          {isPickerOpen && !isReviewModeActive ? (
+            <div className={isLandscape ? "landscape-toolbar" : "event-panel"}>
+              <div className="event-keyboard">
+                <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+                  {scoringKeyboardButtons.map((button) => {
+                    const isKindAvailable = visibleEventKindSet.has(button.kind);
+                    const isActive = selectedEventKind === button.kind;
+                    const isOpen = openEventKeyboardMenuId === button.id;
+                    return (
+                      <button
+                        key={`keyboard-scoring-${button.id}`}
+                        type="button"
+                        className={`event-keyboard-btn event-keyboard-btn--${button.tone} ${isActive ? "is-active" : ""} ${isOpen ? "is-open" : ""}`}
+                        aria-expanded={isOpen}
+                        onClick={() => {
+                          if (!isKindAvailable || !isLoggingActive(matchState)) return;
+                          setOpenEventKeyboardMenuId((prev) => (prev === button.id ? null : button.id));
+                        }}
+                        disabled={!isKindAvailable || !isLoggingActive(matchState)}
+                      >
+                        {button.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+                  {possessionKeyboardButtons.map((button) => {
+                    const isKindAvailable = visibleEventKindSet.has(button.kind);
+                    const isActive = selectedEventKind === button.kind;
+                    const isOpen = openEventKeyboardMenuId === button.id;
+                    return (
+                      <button
+                        key={`keyboard-possession-${button.id}`}
+                        type="button"
+                        className={`event-keyboard-btn event-keyboard-btn--${button.tone} ${isActive ? "is-active" : ""} ${isOpen ? "is-open" : ""}`}
+                        aria-expanded={isOpen}
+                        onClick={() => {
+                          if (!isKindAvailable || !isLoggingActive(matchState)) return;
+                          setOpenEventKeyboardMenuId((prev) => (prev === button.id ? null : button.id));
+                        }}
+                        disabled={!isKindAvailable || !isLoggingActive(matchState)}
+                      >
+                        {button.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                  {freeKeyboardButtons.map((button) => {
+                    const isKindAvailable = visibleEventKindSet.has(button.kind);
+                    const isActive = selectedEventKind === button.kind;
+                    return (
+                      <button
+                        key={`keyboard-free-${button.kind}`}
+                        type="button"
+                        className={`event-keyboard-btn event-keyboard-btn--${button.tone} ${isActive ? "is-active" : ""}`}
+                        onClick={() => {
+                          handleEventButtonPress(button.kind);
+                        }}
+                        disabled={!isKindAvailable || !isLoggingActive(matchState)}
+                      >
+                        {button.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {openEventKeyboardMenuId && openEventKeyboardMenuKind ? (
+                  <div
+                    className={`event-keyboard-drawer ${openEventKeyboardTone ? `event-keyboard-drawer--${openEventKeyboardTone}` : ""}`}
+                    role="group"
+                    aria-label="Event outcome options"
+                  >
+                    {openEventKeyboardMenuTitle ? (
+                      <span className="event-keyboard-drawer-head">{openEventKeyboardMenuTitle}</span>
+                    ) : null}
+                    <div className="event-keyboard-chip-row">
+                      {openEventKeyboardMenuOptions.map((option) => {
+                        const isActive =
+                          selectedEventKind === option.kind &&
+                          option.tag != null &&
+                          queuedEventTagRef.current?.kind === option.kind &&
+                          queuedEventTagRef.current?.tag === option.tag;
+                        return (
+                          <button
+                            key={`keyboard-option-${openEventKeyboardMenuId}-${option.label}-${option.tag ?? "none"}`}
+                            type="button"
+                            className={`event-keyboard-chip ${openEventKeyboardTone ? `event-keyboard-chip--${openEventKeyboardTone}` : ""} ${isActive ? "is-active" : ""}`}
+                            onClick={() => {
+                              selectEventFromKeyboardOption(option);
+                            }}
+                            disabled={
+                              !visibleEventKindSet.has(option.kind) ||
+                              !isLoggingActive(matchState) ||
+                              (activeTeamSide === "opposition" && !OPPOSITION_EVENT_KINDS.has(option.kind))
+                            }
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </div>
               <div className="visibility-row">
                 {([
@@ -6573,7 +7028,7 @@ export default function StatsModeSurface() {
                   <button
                     key={mode.id}
                     type="button"
-                    className="visibility-btn"
+                    className={`visibility-btn ${isOutcomeFocusActive && mode.id !== "ALL" ? "utility-quiet" : ""}`}
                     onClick={() => {
                       setVisibilityMode(mode.id);
                     }}
@@ -6610,7 +7065,7 @@ export default function StatsModeSurface() {
                 <div style={{ display: "flex", gap: "4px" }}>
                   <button
                     type="button"
-                    className="undo-btn"
+                    className={`undo-btn ${isOutcomeFocusActive ? "utility-quiet" : ""}`}
                     onClick={openReviewPanel}
                     style={{ border: "1px solid rgba(125,211,252,0.52)" }}
                   >
@@ -6618,7 +7073,7 @@ export default function StatsModeSurface() {
                   </button>
                   <button
                     type="button"
-                    className="undo-btn"
+                    className={`undo-btn ${isOutcomeFocusActive ? "utility-quiet" : ""}`}
                     onClick={openMatchSummaryPanel}
                     style={{ border: "1px solid rgba(125,211,252,0.52)" }}
                   >
@@ -6636,137 +7091,6 @@ export default function StatsModeSurface() {
                     Undo last
                   </button>
                 </div>
-              </div>
-            </div>
-          ) : null}
-          {isLandscape && isPickerOpen && !isReviewModeActive ? (
-            <div className="landscape-toolbar">
-              <div className="landscape-toolbar-row">
-                {visibleEventButtons.slice(0, 5).map((item) => {
-                  const isActive = item.kind === selectedEventKind;
-                  const buttonLabel = getReadableEventButtonLabel(item.label);
-                  return (
-                    <button
-                      key={item.kind}
-                      type="button"
-                      className="landscape-toolbar-btn"
-                      onClick={() => {
-                        handleEventButtonPress(item.kind);
-                      }}
-                      style={
-                        isActive
-                          ? {
-                              ...(isActive
-                                ? {
-                                    border: "1px solid rgba(34,197,94,0.96)",
-                                    background: "rgba(22,101,52,0.7)",
-                                  }
-                                : {}),
-                            }
-                          : undefined
-                      }
-                    >
-                      {buttonLabel}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="landscape-toolbar-row">
-                {visibleEventButtons.slice(5).map((item) => {
-                  const isActive = item.kind === selectedEventKind;
-                  const buttonLabel = getReadableEventButtonLabel(item.label);
-                  return (
-                    <button
-                      key={item.kind}
-                      type="button"
-                      className="landscape-toolbar-btn"
-                      onClick={() => {
-                        handleEventButtonPress(item.kind);
-                      }}
-                      style={
-                        isActive
-                          ? {
-                              ...(isActive
-                                ? {
-                                    border: "1px solid rgba(34,197,94,0.96)",
-                                    background: "rgba(22,101,52,0.7)",
-                                  }
-                                : {}),
-                            }
-                          : undefined
-                      }
-                    >
-                      {buttonLabel}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="landscape-toolbar-secondary">
-                {([
-                  { id: "ALL", label: "Show All" },
-                  { id: "LAST_5", label: "Last 5 mins" },
-                  { id: "LAST_10", label: "Last 10 mins" },
-                ] as const).map((mode) => (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    className="landscape-toolbar-secondary-btn"
-                    onClick={() => {
-                      setVisibilityMode(mode.id);
-                    }}
-                    style={{
-                      border:
-                        visibilityMode === mode.id
-                          ? "1px solid rgba(125,211,252,0.9)"
-                          : "1px solid rgba(148,163,184,0.36)",
-                      background:
-                        visibilityMode === mode.id
-                          ? "rgba(14,116,144,0.4)"
-                          : "rgba(15,23,42,0.84)",
-                    }}
-                  >
-                    {mode.label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className="landscape-toolbar-secondary-btn"
-                  aria-label="Open notes"
-                  title="Open Notes"
-                  onClick={openNotesPanel}
-                  style={{
-                    border: "1px solid rgba(125,211,252,0.58)",
-                    background: "rgba(15,23,42,0.84)",
-                    boxShadow: "0 0 0 1px rgba(125,211,252,0.16), 0 0 7px rgba(125,211,252,0.14)",
-                  }}
-                >
-                  🎤
-                </button>
-                <button
-                  type="button"
-                  className="landscape-toolbar-secondary-btn"
-                  onClick={openReviewPanel}
-                  style={{ border: "1px solid rgba(125,211,252,0.52)" }}
-                >
-                  Review
-                </button>
-                <button
-                  type="button"
-                  className="landscape-toolbar-secondary-btn"
-                  onClick={openMatchSummaryPanel}
-                  style={{ border: "1px solid rgba(125,211,252,0.52)" }}
-                >
-                  Match Summary
-                </button>
-                <button
-                  type="button"
-                  className="landscape-toolbar-secondary-btn"
-                  onClick={() => {
-                    undoLastEventAction();
-                  }}
-                >
-                  Undo
-                </button>
               </div>
             </div>
           ) : null}
