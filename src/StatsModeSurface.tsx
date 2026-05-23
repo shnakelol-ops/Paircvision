@@ -27,6 +27,7 @@ import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 import { buildStatsShareCardPng } from "./stats/statsShareCard";
 import { selectReviewEvents } from "./stats/review-selectors";
+import { createReviewSession, parseReviewSession, restoreReviewSession, serializeReviewSession } from "./stats/reviewSession";
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
 
@@ -185,6 +186,7 @@ const SQUADS_STORAGE_KEY = "pitchsideclub.squads";
 const SAVED_SQUADS_STORAGE_KEY = "pitchflow_saved_squads_v1";
 const SAVED_MATCHES_STORAGE_KEY = "pitchflow_matches_v1";
 const ACTIVE_MATCH_DRAFT_STORAGE_KEY = "paircvision_stats_active_draft_v1";
+const REVIEW_SESSION_STORAGE_KEY = "paircvision.reviewSession.v1.last";
 const MAX_SAVED_MATCHES = 10;
 const EVENT_PICKER_LOGO_STYLE: CSSProperties = {
   width: "40px",
@@ -4070,6 +4072,104 @@ export default function StatsModeSurface() {
     setSaveLoadBlockedReason(null);
   };
 
+  const saveReviewSession = () => {
+    try {
+      const reviewSession = createReviewSession({
+        matchInfo: {
+          homeTeam: teamNames.HOME.trim() || "Team A",
+          awayTeam: teamNames.AWAY.trim() || "Team B",
+          venue: venueName.trim() || undefined,
+        },
+        events: loggedEvents,
+        reviewContext: {
+          period: reviewHalf,
+          segment: reviewSegment,
+          teamSide: reviewTeamContext,
+          category: reviewEventFilter,
+          activePlayerId: activePlayerId ?? null,
+          activePlayerOnly: reviewActivePlayerOnly,
+          zone: reviewZone,
+        },
+      });
+      const didPersist = safeWriteLocalStorage(REVIEW_SESSION_STORAGE_KEY, serializeReviewSession(reviewSession));
+      if (!didPersist) {
+        setSaveFeedback("Review session save failed");
+        return;
+      }
+      setSaveFeedback("Review session saved");
+      setSaveLoadBlockedReason(null);
+    } catch {
+      setSaveFeedback("Review session save failed");
+    }
+  };
+
+  const openLastReviewSession = () => {
+    const rawSession = safeReadLocalStorage(REVIEW_SESSION_STORAGE_KEY);
+    if (rawSession == null || rawSession.trim().length === 0) {
+      setSaveFeedback("No saved review session found");
+      return;
+    }
+
+    let restoredSession: ReturnType<typeof restoreReviewSession> | null = null;
+    try {
+      const parsedReviewSession = parseReviewSession(rawSession);
+      if (!parsedReviewSession) {
+        setSaveFeedback("Saved review session is invalid");
+        return;
+      }
+      restoredSession = restoreReviewSession(parsedReviewSession);
+    } catch {
+      setSaveFeedback("Saved review session is invalid");
+      return;
+    }
+
+    const restoredEvents = restoredSession.events
+      .map((event) => parseStoredLoggedMatchEvent(event))
+      .filter((event): event is LoggedMatchEvent => event != null);
+    if (restoredEvents.length !== restoredSession.events.length) {
+      setSaveFeedback("Review session could not be restored");
+      return;
+    }
+
+    const restoredActivePlayerId = restoredSession.reviewContext.activePlayerId ?? null;
+    const restoredActivePlayerOnly = restoredSession.reviewContext.activePlayerOnly ?? (restoredActivePlayerId != null);
+    const restoredReviewZone = restoredSession.reviewContext.zone ?? "FULL";
+    reviewHalfRef.current = restoredSession.reviewContext.period;
+    reviewSegmentRef.current = restoredSession.reviewContext.segment;
+    reviewTeamContextRef.current = restoredSession.reviewContext.teamSide;
+    reviewEventFilterRef.current = restoredSession.reviewContext.category;
+    reviewActivePlayerOnlyRef.current = restoredActivePlayerOnly;
+    reviewZoneRef.current = restoredReviewZone;
+    activePlayerIdRef.current = restoredActivePlayerId;
+
+    setTeamNames({
+      HOME: restoredSession.matchInfo.homeTeam,
+      AWAY: restoredSession.matchInfo.awayTeam,
+    });
+    setVenueName(restoredSession.matchInfo.venue ?? "");
+    setLoggedEvents(restoredEvents);
+    setPendingFollowup(null);
+    setReviewHalf(restoredSession.reviewContext.period);
+    setReviewSegment(restoredSession.reviewContext.segment);
+    setReviewTeamContext(restoredSession.reviewContext.teamSide);
+    setReviewEventFilter(restoredSession.reviewContext.category);
+    setActivePlayerId(restoredActivePlayerId);
+    setReviewActivePlayerOnly(restoredActivePlayerOnly);
+    setReviewZone(restoredReviewZone);
+    setSelectedReviewEventId(null);
+    setShowReviewStrip(true);
+    setIsReviewStripCollapsed(false);
+    setUtilityPanel(null);
+    setIsUtilityOpen(false);
+    setIsPickerOpen(false);
+    setIsCountsOverlayOpen(false);
+    setIsFullTimeActionsOpen(false);
+    setIsResetConfirmOpen(false);
+    setSaveLoadBlockedReason(null);
+    setLoadedMatchLabel(`${restoredSession.matchInfo.homeTeam} v ${restoredSession.matchInfo.awayTeam} (Review Session)`);
+    setSaveFeedback("Review session opened");
+  };
+
   const openNotesPanel = () => {
     setShowReviewStrip(false);
     setUtilityPanel("NOTES");
@@ -5826,6 +5926,12 @@ export default function StatsModeSurface() {
         <div className={reviewPanelClass} role="dialog" aria-label="Review mode">
           <div className="utility-review-scroll">
             <div className="utility-panel-title">Review</div>
+            <button type="button" className="utility-review-btn" onClick={saveReviewSession}>
+              Save Review Session
+            </button>
+            <button type="button" className="utility-review-btn" onClick={openLastReviewSession}>
+              Open Last Review Session
+            </button>
             <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
               Half
             </div>
