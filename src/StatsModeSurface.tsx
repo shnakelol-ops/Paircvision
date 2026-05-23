@@ -76,6 +76,16 @@ type PendingFollowupKind =
   | "TURNOVER_LOST"
   | "SHOT";
 type FollowupOption = { label: string; tag: FollowupTag };
+type EventKeyboardMenuId =
+  | "GOAL"
+  | "POINT"
+  | "TWO_POINTER"
+  | "WIDE"
+  | "TURNOVER_WON"
+  | "TURNOVER_LOST"
+  | "KICKOUT_WON"
+  | "KICKOUT_CONCEDED";
+type EventKeyboardOption = { label: string; kind: MatchEventKind; tag?: string };
 type SquadPlayer = { id: string; name: string; number: number; role: PlayerRole };
 type Squad = { id: string; name: string; players: SquadPlayer[] };
 type SavedSquadPlayer = { id: string; number: number; name: string };
@@ -324,6 +334,23 @@ const MATCH_EVENT_KIND_SET = new Set<MatchEventKind>(MATCH_EVENT_KINDS);
 const KICKOUT_EVENT_KIND_SET = new Set<MatchEventKind>(["KICKOUT_WON", "KICKOUT_CONCEDED"]);
 const TURNOVER_EVENT_KIND_SET = new Set<MatchEventKind>(["TURNOVER_WON", "TURNOVER_LOST"]);
 const SHOT_EVENT_KIND_SET = new Set<MatchEventKind>(["SHOT"]);
+const EVENT_KEYBOARD_MENU_KIND: Record<EventKeyboardMenuId, MatchEventKind> = {
+  GOAL: "GOAL",
+  POINT: "POINT",
+  TWO_POINTER: "TWO_POINTER",
+  WIDE: "WIDE",
+  TURNOVER_WON: "TURNOVER_WON",
+  TURNOVER_LOST: "TURNOVER_LOST",
+  KICKOUT_WON: "KICKOUT_WON",
+  KICKOUT_CONCEDED: "KICKOUT_CONCEDED",
+};
+const SCORING_SOURCE_TAGS = {
+  PLAY: "SOURCE_PLAY",
+  FREE: "SOURCE_FREE",
+  PENALTY: "SOURCE_PENALTY",
+  MARK: "SOURCE_MARK",
+  FORTY_FIVE: "SOURCE_45",
+} as const;
 function buildReviewFilterOptions(
   isHurlingMode: boolean,
 ): ReadonlyArray<{ id: ReviewEventFilter; label: string }> {
@@ -467,6 +494,52 @@ function getRemovableFollowupTags(kind: PendingFollowupKind): readonly string[] 
       return ["CLEAN", "BREAK", "FOUL_CONCEDED", "KICKED_DEAD"];
     case "SHOT":
       return ["SHORT", "POST", "FORTY_FIVE", "BLOCKED"];
+    default:
+      return [];
+  }
+}
+
+function buildEventKeyboardMenuOptions(menuId: EventKeyboardMenuId): readonly EventKeyboardOption[] {
+  switch (menuId) {
+    case "GOAL":
+      return [
+        { label: "Play", kind: "GOAL", tag: SCORING_SOURCE_TAGS.PLAY },
+        { label: "Free", kind: "GOAL", tag: SCORING_SOURCE_TAGS.FREE },
+        { label: "Penalty", kind: "GOAL", tag: SCORING_SOURCE_TAGS.PENALTY },
+        { label: "Mark", kind: "GOAL", tag: SCORING_SOURCE_TAGS.MARK },
+      ];
+    case "POINT":
+      return [
+        { label: "Play", kind: "POINT", tag: SCORING_SOURCE_TAGS.PLAY },
+        { label: "Free", kind: "POINT", tag: SCORING_SOURCE_TAGS.FREE },
+        { label: "Penalty", kind: "POINT", tag: SCORING_SOURCE_TAGS.PENALTY },
+        { label: "Mark", kind: "POINT", tag: SCORING_SOURCE_TAGS.MARK },
+        { label: "45", kind: "POINT", tag: SCORING_SOURCE_TAGS.FORTY_FIVE },
+      ];
+    case "TWO_POINTER":
+      return [
+        { label: "Play", kind: "TWO_POINTER", tag: SCORING_SOURCE_TAGS.PLAY },
+        { label: "Free", kind: "TWO_POINTER", tag: SCORING_SOURCE_TAGS.FREE },
+        { label: "Mark", kind: "TWO_POINTER", tag: SCORING_SOURCE_TAGS.MARK },
+      ];
+    case "WIDE":
+      return [
+        { label: "Play", kind: "WIDE", tag: SCORING_SOURCE_TAGS.PLAY },
+        { label: "Free", kind: "WIDE", tag: SCORING_SOURCE_TAGS.FREE },
+        { label: "Penalty", kind: "WIDE", tag: SCORING_SOURCE_TAGS.PENALTY },
+        { label: "Mark", kind: "WIDE", tag: SCORING_SOURCE_TAGS.MARK },
+        { label: "45", kind: "WIDE", tag: SCORING_SOURCE_TAGS.FORTY_FIVE },
+      ];
+    case "TURNOVER_WON":
+    case "TURNOVER_LOST":
+    case "KICKOUT_WON":
+    case "KICKOUT_CONCEDED": {
+      return getFollowupOptions(menuId as PendingFollowupKind).map((option) => ({
+        label: option.label,
+        kind: EVENT_KEYBOARD_MENU_KIND[menuId],
+        tag: option.tag,
+      }));
+    }
     default:
       return [];
   }
@@ -1601,37 +1674,99 @@ const PANEL_CSS = `
   max-width: 95vw;
 }
 
-.event-grid {
+.event-keyboard {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.event-keyboard-row {
+  display: grid;
   gap: 3px;
 }
 
-.event-btn {
+.event-keyboard-btn {
   border-radius: 8px;
   color: #e2e8f0;
-  font-size: 8.8px;
+  font-size: 8.9px;
   line-height: 1.1;
-  padding: 5px 4px;
-  min-height: 27px;
+  padding: 6px 4px;
+  min-height: 30px;
   cursor: pointer;
   text-align: center;
   white-space: nowrap;
-  letter-spacing: 0.18px;
-  font-weight: 700;
+  letter-spacing: 0.2px;
+  font-weight: 760;
   text-transform: uppercase;
-  transition: box-shadow 140ms ease, transform 120ms ease;
+  transition: box-shadow 140ms ease, transform 120ms ease, border-color 140ms ease;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  background: rgba(14, 24, 40, 0.78);
 }
 
-.event-btn:hover {
+.event-keyboard-btn:hover {
   box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.16), 0 0 10px rgba(148, 163, 184, 0.14);
 }
 
-.event-btn:active {
+.event-keyboard-btn:active {
   transform: translateY(0.5px);
 }
 
-.event-btn:disabled,
+.event-keyboard-btn.is-open,
+.event-keyboard-btn.is-active {
+  border-color: rgba(125, 211, 252, 0.86);
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.2), 0 0 10px rgba(125, 211, 252, 0.16);
+}
+
+.event-keyboard-drawer {
+  margin-top: 1px;
+  display: grid;
+  gap: 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: rgba(10, 20, 35, 0.86);
+  padding: 5px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.event-keyboard-drawer-head {
+  color: #dbe7f5;
+  font-size: 8px;
+  line-height: 1.1;
+  letter-spacing: 0.22px;
+  font-weight: 700;
+  text-transform: uppercase;
+  opacity: 0.88;
+}
+
+.event-keyboard-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.event-keyboard-chip {
+  min-height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(15, 23, 42, 0.9);
+  color: #dbeafe;
+  font-size: 8.4px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.15px;
+  text-transform: uppercase;
+  padding: 0 8px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.event-keyboard-chip.is-active {
+  border-color: rgba(34, 197, 94, 0.9);
+  background: rgba(22, 101, 52, 0.72);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.16);
+}
+
+.event-keyboard-btn:disabled,
+.event-keyboard-chip:disabled,
 .landscape-toolbar-btn:disabled,
 .landscape-toolbar-secondary-btn:disabled,
 .utility-player-btn:disabled,
@@ -1644,8 +1779,8 @@ const PANEL_CSS = `
   filter: none;
 }
 
-.event-btn:disabled:hover,
-.event-btn:disabled:active,
+.event-keyboard-btn:disabled:hover,
+.event-keyboard-btn:disabled:active,
 .landscape-toolbar-btn:disabled:hover,
 .landscape-toolbar-btn:disabled:active {
   transform: none;
@@ -3006,6 +3141,7 @@ export default function StatsModeSurface() {
   const reviewZoneRef = useRef<ReviewZone>("FULL");
   const firstHalfAttackingDirectionRef = useRef<AttackingDirection>("RIGHT");
   const pendingScorerRef = useRef<{ name: string; number: number; squadId: string } | null>(null);
+  const queuedEventTagRef = useRef<{ kind: MatchEventKind; tag: string } | null>(null);
   const activeSquadIdRef = useRef("");
   const homeNameInputRef = useRef<HTMLInputElement>(null);
   const awayNameInputRef = useRef<HTMLInputElement>(null);
@@ -3017,6 +3153,7 @@ export default function StatsModeSurface() {
   const secondHalfSwitchBaselineEventCountRef = useRef<number | null>(null);
   const eventKindSwitchBaselineEventCountRef = useRef<number | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [openEventKeyboardMenuId, setOpenEventKeyboardMenuId] = useState<EventKeyboardMenuId | null>(null);
   const EVENT_BUTTONS = mode.eventButtons;
   const EVENT_LABEL_BY_KIND = mode.eventLabels;
   const isHurlingMode = currentMode === "hurling" || currentMode === "camogie";
@@ -3050,6 +3187,14 @@ export default function StatsModeSurface() {
         ? EVENT_BUTTONS.filter((item) => OPPOSITION_EVENT_KINDS.has(item.kind))
         : EVENT_BUTTONS,
     [EVENT_BUTTONS, OPPOSITION_EVENT_KINDS, activeTeamSide],
+  );
+  const visibleEventKindSet = useMemo(
+    () => new Set<MatchEventKind>(visibleEventButtons.map((item) => item.kind)),
+    [visibleEventButtons],
+  );
+  const openEventKeyboardMenuOptions = useMemo<readonly EventKeyboardOption[]>(
+    () => (openEventKeyboardMenuId ? buildEventKeyboardMenuOptions(openEventKeyboardMenuId) : []),
+    [openEventKeyboardMenuId],
   );
   const handleRef = useRef<{
     destroy: () => void;
@@ -3301,9 +3446,19 @@ export default function StatsModeSurface() {
     setIsPickerOpen(false);
   };
 
+  const selectEventFromKeyboardOption = (option: EventKeyboardOption) => {
+    if (!isLoggingActive(matchState)) return;
+    if (activeTeamSide === "opposition" && !OPPOSITION_EVENT_KINDS.has(option.kind)) return;
+    queuedEventTagRef.current = option.tag ? { kind: option.kind, tag: option.tag } : null;
+    setOpenEventKeyboardMenuId(null);
+    selectEventKind(option.kind);
+  };
+
   const handleEventButtonPress = (kind: MatchEventKind) => {
     if (!isLoggingActive(matchState)) return;
     if (activeTeamSide === "opposition" && !OPPOSITION_EVENT_KINDS.has(kind)) return;
+    queuedEventTagRef.current = null;
+    setOpenEventKeyboardMenuId(null);
     selectEventKind(kind);
   };
 
@@ -3313,6 +3468,9 @@ export default function StatsModeSurface() {
       if (next) {
         setIsUtilityOpen(false);
         setUtilityPanel((prevPanel) => (prevPanel === "PLAYERS" ? null : prevPanel));
+        setOpenEventKeyboardMenuId(null);
+      } else {
+        setOpenEventKeyboardMenuId(null);
       }
       return next;
     });
@@ -3435,6 +3593,22 @@ export default function StatsModeSurface() {
     selectedEventRef.current = fallbackKind;
     handleRef.current?.setActiveEventKind(fallbackKind);
   }, [activeTeamSide, selectedEventKind, visibleEventButtons]);
+
+  useEffect(() => {
+    if (openEventKeyboardMenuId == null) return;
+    const menuKind = EVENT_KEYBOARD_MENU_KIND[openEventKeyboardMenuId];
+    if (visibleEventKindSet.has(menuKind)) return;
+    setOpenEventKeyboardMenuId(null);
+  }, [openEventKeyboardMenuId, visibleEventKindSet]);
+
+  useEffect(() => {
+    if (isPickerOpen) return;
+    setOpenEventKeyboardMenuId(null);
+  }, [isPickerOpen]);
+
+  useEffect(() => {
+    queuedEventTagRef.current = null;
+  }, [currentMatchId]);
 
   useEffect(() => {
     activePlayerRef.current = activePlayer;
@@ -3674,7 +3848,18 @@ export default function StatsModeSurface() {
         const period = periodFromHalf(event.half);
         const segment = deriveSegmentFromPeriodClock(period, matchClockSeconds);
         const eventKind = event.type ?? event.kind;
-        const eventTags = parseEventTags(event.tags);
+        const queuedTag =
+          queuedEventTagRef.current && queuedEventTagRef.current.kind === eventKind
+            ? queuedEventTagRef.current.tag
+            : null;
+        const rawEventTags =
+          queuedTag == null
+            ? event.tags
+            : [...(Array.isArray(event.tags) ? event.tags : []), queuedTag];
+        const eventTags = parseEventTags(rawEventTags);
+        if (queuedTag != null) {
+          queuedEventTagRef.current = null;
+        }
         const nextEvent: LoggedMatchEvent = {
           ...event,
           id: `team-${team.toLowerCase()}-${event.id}`,
@@ -3742,9 +3927,14 @@ export default function StatsModeSurface() {
           TURNOVER_EVENT_KIND_SET.has(nextEvent.kind) ||
           SHOT_EVENT_KIND_SET.has(nextEvent.kind)
         ) {
+          const pendingKind = nextEvent.kind as PendingFollowupKind;
+          const alreadyTagged = getRemovableFollowupTags(pendingKind).some((tag) =>
+            (nextEvent.tags ?? []).includes(tag),
+          );
+          if (alreadyTagged) return;
           setPendingFollowup({
             eventId: nextEvent.id,
-            kind: nextEvent.kind as PendingFollowupKind,
+            kind: pendingKind,
           });
         }
       },
@@ -4951,6 +5141,46 @@ export default function StatsModeSurface() {
             : null;
   const pendingFollowupOptions =
     pendingFollowup == null ? [] : getFollowupOptions(pendingFollowup.kind);
+  const scoringKeyboardButtons = [
+    { id: "GOAL" as const, kind: "GOAL" as const, label: "GOAL ▼" },
+    { id: "POINT" as const, kind: "POINT" as const, label: "POINT ▼" },
+    { id: "TWO_POINTER" as const, kind: "TWO_POINTER" as const, label: "2PT ▼" },
+    { id: "WIDE" as const, kind: "WIDE" as const, label: "WIDE ▼" },
+  ];
+  const possessionKeyboardButtons = [
+    { id: "TURNOVER_WON" as const, kind: "TURNOVER_WON" as const, label: "TURNOVER+ ▼" },
+    { id: "TURNOVER_LOST" as const, kind: "TURNOVER_LOST" as const, label: "TURNOVER- ▼" },
+    {
+      id: "KICKOUT_WON" as const,
+      kind: "KICKOUT_WON" as const,
+      label: `${mode.restartLabel.toUpperCase()}+ ▼`,
+    },
+    {
+      id: "KICKOUT_CONCEDED" as const,
+      kind: "KICKOUT_CONCEDED" as const,
+      label: `${mode.restartLabel.toUpperCase()}- ▼`,
+    },
+  ];
+  const freeKeyboardButtons = [
+    { kind: "FREE_WON" as const, label: "FREE+" },
+    { kind: "FREE_CONCEDED" as const, label: "FREE-" },
+  ];
+  const openEventKeyboardMenuKind =
+    openEventKeyboardMenuId == null ? null : EVENT_KEYBOARD_MENU_KIND[openEventKeyboardMenuId];
+  const openEventKeyboardMenuTitle =
+    openEventKeyboardMenuId === "TURNOVER_WON"
+      ? "Turnover+ options"
+      : openEventKeyboardMenuId === "TURNOVER_LOST"
+        ? "Turnover- options"
+        : openEventKeyboardMenuId === "KICKOUT_WON"
+          ? `${mode.restartLabel}+ options`
+          : openEventKeyboardMenuId === "KICKOUT_CONCEDED"
+            ? `${mode.restartLabel}- options`
+            : openEventKeyboardMenuId === "TWO_POINTER"
+              ? "2PT outcomes"
+              : openEventKeyboardMenuId != null
+                ? `${openEventKeyboardMenuId} outcomes`
+                : null;
   const myTeamReport = useMemo(
     () => deriveMyTeamReport(loggedEvents, matchState, teamNames, currentMode),
     [loggedEvents, matchState, teamNames, currentMode],
@@ -6426,37 +6656,103 @@ export default function StatsModeSurface() {
           {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
           {!isLandscape && isPickerOpen && !isReviewModeActive ? (
             <div className="event-panel">
-              <div className="event-grid">
-                {visibleEventButtons.map((item, idx) => {
-                  const isActive = item.kind === selectedEventKind;
-                  const isScoring = idx <= 4;
-                  const buttonLabel = getReadableEventButtonLabel(item.label);
-                  return (
-                    <button
-                      key={item.kind}
-                      type="button"
-                      className="event-btn"
-                      onClick={() => {
-                        handleEventButtonPress(item.kind);
-                      }}
-                      style={{
-                        border: isActive
-                          ? "1px solid rgba(34,197,94,0.96)"
-                          : isScoring
-                            ? "1px solid rgba(148,163,184,0.52)"
-                            : "1px solid rgba(148,163,184,0.36)",
-                        background: isActive
-                          ? "rgba(22,101,52,0.7)"
-                          : isScoring
-                            ? "rgba(21, 39, 62, 0.84)"
-                            : "rgba(14, 24, 40, 0.72)",
-                        fontWeight: isActive ? 800 : 700,
-                      }}
-                    >
-                      {buttonLabel}
-                    </button>
-                  );
-                })}
+              <div className="event-keyboard">
+                <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+                  {scoringKeyboardButtons.map((button) => {
+                    const isKindAvailable = visibleEventKindSet.has(button.kind);
+                    const isActive = selectedEventKind === button.kind;
+                    const isOpen = openEventKeyboardMenuId === button.id;
+                    return (
+                      <button
+                        key={`keyboard-scoring-${button.id}`}
+                        type="button"
+                        className={`event-keyboard-btn ${isActive ? "is-active" : ""} ${isOpen ? "is-open" : ""}`}
+                        aria-expanded={isOpen}
+                        onClick={() => {
+                          if (!isKindAvailable || !isLoggingActive(matchState)) return;
+                          setOpenEventKeyboardMenuId((prev) => (prev === button.id ? null : button.id));
+                        }}
+                        disabled={!isKindAvailable || !isLoggingActive(matchState)}
+                      >
+                        {button.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+                  {possessionKeyboardButtons.map((button) => {
+                    const isKindAvailable = visibleEventKindSet.has(button.kind);
+                    const isActive = selectedEventKind === button.kind;
+                    const isOpen = openEventKeyboardMenuId === button.id;
+                    return (
+                      <button
+                        key={`keyboard-possession-${button.id}`}
+                        type="button"
+                        className={`event-keyboard-btn ${isActive ? "is-active" : ""} ${isOpen ? "is-open" : ""}`}
+                        aria-expanded={isOpen}
+                        onClick={() => {
+                          if (!isKindAvailable || !isLoggingActive(matchState)) return;
+                          setOpenEventKeyboardMenuId((prev) => (prev === button.id ? null : button.id));
+                        }}
+                        disabled={!isKindAvailable || !isLoggingActive(matchState)}
+                      >
+                        {button.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                  {freeKeyboardButtons.map((button) => {
+                    const isKindAvailable = visibleEventKindSet.has(button.kind);
+                    const isActive = selectedEventKind === button.kind;
+                    return (
+                      <button
+                        key={`keyboard-free-${button.kind}`}
+                        type="button"
+                        className={`event-keyboard-btn ${isActive ? "is-active" : ""}`}
+                        onClick={() => {
+                          handleEventButtonPress(button.kind);
+                        }}
+                        disabled={!isKindAvailable || !isLoggingActive(matchState)}
+                      >
+                        {button.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {openEventKeyboardMenuId && openEventKeyboardMenuKind ? (
+                  <div className="event-keyboard-drawer" role="group" aria-label="Event outcome options">
+                    {openEventKeyboardMenuTitle ? (
+                      <span className="event-keyboard-drawer-head">{openEventKeyboardMenuTitle}</span>
+                    ) : null}
+                    <div className="event-keyboard-chip-row">
+                      {openEventKeyboardMenuOptions.map((option) => {
+                        const isActive =
+                          selectedEventKind === option.kind &&
+                          option.tag != null &&
+                          queuedEventTagRef.current?.kind === option.kind &&
+                          queuedEventTagRef.current?.tag === option.tag;
+                        return (
+                          <button
+                            key={`keyboard-option-${openEventKeyboardMenuId}-${option.label}-${option.tag ?? "none"}`}
+                            type="button"
+                            className={`event-keyboard-chip ${isActive ? "is-active" : ""}`}
+                            onClick={() => {
+                              selectEventFromKeyboardOption(option);
+                            }}
+                            disabled={
+                              !visibleEventKindSet.has(option.kind) ||
+                              !isLoggingActive(matchState) ||
+                              (activeTeamSide === "opposition" && !OPPOSITION_EVENT_KINDS.has(option.kind))
+                            }
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </div>
               <div className="visibility-row">
                 {([
