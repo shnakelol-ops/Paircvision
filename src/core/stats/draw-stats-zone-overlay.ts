@@ -104,8 +104,10 @@ function drawZoneCountBadge(layer: Graphics, zone: ZoneOverlayZone): void {
       fontFamily: '"Inter Tight", Inter, system-ui, sans-serif',
       letterSpacing: 0.05,
       align: "center",
-      stroke: 0x03131f,
-      strokeThickness: 0.45,
+      stroke: {
+        color: 0x03131f,
+        width: 0.45,
+      },
     },
   });
   countLabel.anchor.set(0.5);
