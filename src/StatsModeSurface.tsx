@@ -26,6 +26,7 @@ import { NotesQuickPanel } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 import { buildStatsShareCardPng } from "./stats/statsShareCard";
+import { exportReviewContextImage } from "./stats/statsReviewContextImage";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -4239,6 +4240,86 @@ export default function StatsModeSurface() {
     setSaveFeedback("Summary image downloaded");
   };
 
+  const shareMatchPack = async () => {
+    const homeTeamName = safeShareLabel(teamNames.HOME, "Team A");
+    const awayTeamName = safeShareLabel(teamNames.AWAY, "Team B");
+    const summaryFile = await buildStatsShareCardPng({
+      stageLabel: matchState === "FULL_TIME" ? "Full Time" : "Half Time",
+      homeTeamName,
+      awayTeamName,
+      venueLabel: safeShareLabel(venueName, "Unknown venue"),
+      clockLabel: formatMatchClock(matchTimeSeconds),
+      homeScore,
+      awayScore,
+      eventCount: loggedEvents.length,
+      events: loggedEvents,
+    });
+    if (!summaryFile) {
+      setSaveFeedback("Share failed — could not generate summary image.");
+      return;
+    }
+
+    const segmentLabel =
+      reviewSegment === "ALL"
+        ? "ALL"
+        : REVIEW_SEGMENT_OPTIONS.find((option) => option.id === reviewSegment)?.label ?? reviewSegment;
+    const teamContextLabel =
+      REVIEW_TEAM_CONTEXT_OPTIONS.find((option) => option.id === reviewTeamContext)?.label ?? reviewTeamContext;
+    const filterLabel =
+      REVIEW_FILTER_OPTIONS.find((option) => option.id === reviewEventFilter)?.label ?? reviewEventFilter;
+
+    const pitchFile = await exportReviewContextImage({
+      events: visibleReviewEvents,
+      homeTeamName,
+      awayTeamName,
+      venueLabel: safeShareLabel(venueName, "Unknown venue"),
+      halfLabel: reviewHalf,
+      segmentLabel,
+      teamContextLabel,
+      filterLabel,
+      generatedAt: Date.now(),
+    });
+    if (!pitchFile) {
+      // Preserve existing FT summary share path when pitch generation fails.
+      await shareOrExportMatch();
+      return;
+    }
+
+    const navWithShare = navigator as Navigator & {
+      share?: (data: ShareData & { files?: File[] }) => Promise<void>;
+      canShare?: (data: ShareData & { files?: File[] }) => boolean;
+    };
+    const packShareData: ShareData & { files?: File[] } = {
+      title: `${homeTeamName} v ${awayTeamName} Match Pack`,
+      files: [summaryFile, pitchFile],
+    };
+    if (typeof navWithShare.share === "function") {
+      const canSharePack =
+        typeof navWithShare.canShare === "function" ? navWithShare.canShare(packShareData) : true;
+      if (canSharePack) {
+        try {
+          await navWithShare.share(packShareData);
+          setSaveFeedback("Match pack shared");
+          return;
+        } catch {
+          // no-op: fall back to summary-first flow below.
+        }
+      }
+    }
+
+    // Fallback path required for devices that do not support multi-file sharing.
+    await shareOrExportMatch();
+    const pitchUrl = URL.createObjectURL(pitchFile);
+    const pitchLink = document.createElement("a");
+    pitchLink.href = pitchUrl;
+    pitchLink.download = pitchFile.name;
+    document.body.appendChild(pitchLink);
+    pitchLink.click();
+    pitchLink.remove();
+    URL.revokeObjectURL(pitchUrl);
+    setSaveFeedback("Summary shared. Pitch image downloaded");
+  };
+
   const loadSavedMatchRecord = (record: SavedMatch) => {
     const parsedRecord = parseStoredSavedMatch(record);
     if (!parsedRecord || parsedRecord.events.length === 0) {
@@ -5627,10 +5708,10 @@ export default function StatsModeSurface() {
               type="button"
               className="utility-review-btn"
               onClick={() => {
-                void shareOrExportMatch();
+                void shareMatchPack();
               }}
             >
-              Share Summary PNG
+              Share Match Pack
             </button>
             <button type="button" className="utility-review-btn" onClick={resumeMatchFromFullTime}>
               Resume Match
@@ -6282,14 +6363,6 @@ export default function StatsModeSurface() {
               {option.label}
             </button>
           ))}
-          <button
-            type="button"
-            className="review-strip-chip"
-            onClick={openPlayersPanel}
-            aria-label="Open players panel while reviewing"
-          >
-            Players
-          </button>
           <span className="review-strip-meta review-strip-player">
             {activePlayerChipText ?? "No active player"}
           </span>
