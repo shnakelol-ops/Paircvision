@@ -3,6 +3,7 @@ import type { MatchEvent } from "../core/stats/stats-event-model";
 const REVIEW_PERIOD_VALUES = ["FULL", "H1", "H2"] as const;
 const REVIEW_SEGMENT_VALUES = ["ALL", "S1", "S2", "S3", "S4", "S5", "S6"] as const;
 const REVIEW_TEAM_SIDE_VALUES = ["ALL", "FOR", "OPP"] as const;
+const REVIEW_ZONE_VALUES = ["FULL", "OWN_HALF", "OPPOSITION_HALF"] as const;
 const REVIEW_CATEGORY_VALUES = [
   "ALL",
   "SCORES",
@@ -20,9 +21,12 @@ export type ReviewSessionContext = {
   teamSide: "ALL" | "FOR" | "OPP";
   category: "ALL" | "SCORES" | "SHOTS" | "WIDES" | "TURNOVERS" | "KICKOUTS" | "FREES" | "PLAYERS";
   activePlayerId?: string | null;
+  activePlayerOnly?: boolean;
+  zone?: "FULL" | "OWN_HALF" | "OPPOSITION_HALF";
 };
 
 export type ReviewSession = {
+  version: 1;
   id: string;
   createdAt: number;
   updatedAt: number;
@@ -105,6 +109,12 @@ function parseReviewCategory(value: unknown): ReviewSessionContext["category"] |
     : null;
 }
 
+function parseReviewZone(value: unknown): ReviewSessionContext["zone"] | null {
+  return REVIEW_ZONE_VALUES.includes(value as NonNullable<ReviewSessionContext["zone"]>)
+    ? (value as ReviewSessionContext["zone"])
+    : null;
+}
+
 function parseActivePlayerId(value: unknown): string | null {
   if (value == null) return null;
   if (typeof value !== "string") return null;
@@ -112,13 +122,22 @@ function parseActivePlayerId(value: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+function parseActivePlayerOnly(value: unknown): boolean | null {
+  if (typeof value !== "boolean") return null;
+  return value;
+}
+
 function normalizeReviewContext(input: ReviewSessionContext): ReviewSessionContext {
+  const activePlayerId = parseActivePlayerId(input.activePlayerId);
+  const activePlayerOnly = parseActivePlayerOnly(input.activePlayerOnly);
   return {
     period: parseReviewPeriod(input.period) ?? "FULL",
     segment: parseReviewSegment(input.segment) ?? "ALL",
     teamSide: parseReviewTeamSide(input.teamSide) ?? "ALL",
     category: parseReviewCategory(input.category) ?? "ALL",
-    activePlayerId: parseActivePlayerId(input.activePlayerId),
+    activePlayerId,
+    activePlayerOnly: activePlayerOnly ?? activePlayerId != null,
+    zone: parseReviewZone(input.zone) ?? "FULL",
   };
 }
 
@@ -136,6 +155,7 @@ export function createReviewSession(input: CreateReviewSessionInput): ReviewSess
   const createdAt = normalizeTimestamp(input.createdAt, now);
   const updatedAt = Math.max(createdAt, normalizeTimestamp(input.updatedAt, now));
   return {
+    version: 1,
     id: typeof input.id === "string" && input.id.trim().length > 0 ? input.id.trim() : createReviewSessionId(),
     createdAt,
     updatedAt,
@@ -179,6 +199,7 @@ export function parseReviewSession(raw: unknown): ReviewSession | null {
   }
 
   if (!isRecord(parsedValue)) return null;
+  if (parsedValue.version != null && parsedValue.version !== 1) return null;
   const maybeEvents = parsedValue.events;
   const maybeReviewContext = parsedValue.reviewContext;
   const maybeMatchInfo = parsedValue.matchInfo;
@@ -202,9 +223,12 @@ export function parseReviewSession(raw: unknown): ReviewSession | null {
   const createdAt = normalizeTimestamp(parsedValue.createdAt, now);
   const updatedAt = Math.max(createdAt, normalizeTimestamp(parsedValue.updatedAt, now));
   const activePlayerId = parseActivePlayerId(maybeReviewContext.activePlayerId);
+  const activePlayerOnly = parseActivePlayerOnly(maybeReviewContext.activePlayerOnly);
+  const zone = parseReviewZone(maybeReviewContext.zone);
   const venue = normalizeVenue(maybeMatchInfo.venue);
 
   return {
+    version: 1,
     id:
       typeof parsedValue.id === "string" && parsedValue.id.trim().length > 0
         ? parsedValue.id.trim()
@@ -223,6 +247,8 @@ export function parseReviewSession(raw: unknown): ReviewSession | null {
       teamSide,
       category,
       activePlayerId,
+      activePlayerOnly: activePlayerOnly ?? activePlayerId != null,
+      zone: zone ?? "FULL",
     },
   };
 }

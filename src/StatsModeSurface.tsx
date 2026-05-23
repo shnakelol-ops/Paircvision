@@ -4087,6 +4087,8 @@ export default function StatsModeSurface() {
           teamSide: reviewTeamContext,
           category: reviewEventFilter,
           activePlayerId: activePlayerId ?? null,
+          activePlayerOnly: reviewActivePlayerOnly,
+          zone: reviewZone,
         },
       });
       const didPersist = safeWriteLocalStorage(REVIEW_SESSION_STORAGE_KEY, serializeReviewSession(reviewSession));
@@ -4102,12 +4104,25 @@ export default function StatsModeSurface() {
   };
 
   const openLastReviewSession = () => {
-    const parsedReviewSession = parseReviewSession(safeReadLocalStorage(REVIEW_SESSION_STORAGE_KEY));
-    if (!parsedReviewSession) {
-      setSaveFeedback("No valid review session found");
+    const rawSession = safeReadLocalStorage(REVIEW_SESSION_STORAGE_KEY);
+    if (rawSession == null || rawSession.trim().length === 0) {
+      setSaveFeedback("No saved review session found");
       return;
     }
-    const restoredSession = restoreReviewSession(parsedReviewSession);
+
+    let restoredSession: ReturnType<typeof restoreReviewSession> | null = null;
+    try {
+      const parsedReviewSession = parseReviewSession(rawSession);
+      if (!parsedReviewSession) {
+        setSaveFeedback("Saved review session is invalid");
+        return;
+      }
+      restoredSession = restoreReviewSession(parsedReviewSession);
+    } catch {
+      setSaveFeedback("Saved review session is invalid");
+      return;
+    }
+
     const restoredEvents = restoredSession.events
       .map((event) => parseStoredLoggedMatchEvent(event))
       .filter((event): event is LoggedMatchEvent => event != null);
@@ -4117,6 +4132,16 @@ export default function StatsModeSurface() {
     }
 
     const restoredActivePlayerId = restoredSession.reviewContext.activePlayerId ?? null;
+    const restoredActivePlayerOnly = restoredSession.reviewContext.activePlayerOnly ?? (restoredActivePlayerId != null);
+    const restoredReviewZone = restoredSession.reviewContext.zone ?? "FULL";
+    reviewHalfRef.current = restoredSession.reviewContext.period;
+    reviewSegmentRef.current = restoredSession.reviewContext.segment;
+    reviewTeamContextRef.current = restoredSession.reviewContext.teamSide;
+    reviewEventFilterRef.current = restoredSession.reviewContext.category;
+    reviewActivePlayerOnlyRef.current = restoredActivePlayerOnly;
+    reviewZoneRef.current = restoredReviewZone;
+    activePlayerIdRef.current = restoredActivePlayerId;
+
     setTeamNames({
       HOME: restoredSession.matchInfo.homeTeam,
       AWAY: restoredSession.matchInfo.awayTeam,
@@ -4129,14 +4154,17 @@ export default function StatsModeSurface() {
     setReviewTeamContext(restoredSession.reviewContext.teamSide);
     setReviewEventFilter(restoredSession.reviewContext.category);
     setActivePlayerId(restoredActivePlayerId);
-    activePlayerIdRef.current = restoredActivePlayerId;
-    setReviewActivePlayerOnly(restoredActivePlayerId != null);
+    setReviewActivePlayerOnly(restoredActivePlayerOnly);
+    setReviewZone(restoredReviewZone);
     setSelectedReviewEventId(null);
     setShowReviewStrip(true);
     setIsReviewStripCollapsed(false);
     setUtilityPanel(null);
     setIsUtilityOpen(false);
     setIsPickerOpen(false);
+    setIsCountsOverlayOpen(false);
+    setIsFullTimeActionsOpen(false);
+    setIsResetConfirmOpen(false);
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel(`${restoredSession.matchInfo.homeTeam} v ${restoredSession.matchInfo.awayTeam} (Review Session)`);
     setSaveFeedback("Review session opened");
