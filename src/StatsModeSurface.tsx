@@ -24,6 +24,7 @@ import { gaaModeConfig, type GaaModeKey } from "./config/gaaModeConfig";
 import { useScreenWakeLock } from "./hooks/useScreenWakeLock";
 import { NotesQuickPanel } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
+import { StatsEventLauncher, type StatsEventLauncherGroup } from "./components/StatsEventLauncher";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 import { buildStatsShareCardPng } from "./stats/statsShareCard";
 import { selectReviewEvents } from "./stats/review-selectors";
@@ -3050,6 +3051,50 @@ export default function StatsModeSurface() {
         : EVENT_BUTTONS,
     [EVENT_BUTTONS, OPPOSITION_EVENT_KINDS, activeTeamSide],
   );
+  const eventLauncherGroups = useMemo<StatsEventLauncherGroup[]>(() => {
+    const eventByKind = new Map(visibleEventButtons.map((item) => [item.kind, item]));
+    const consumedKinds = new Set<MatchEventKind>();
+    const groups: StatsEventLauncherGroup[] = [];
+
+    const addGroup = (
+      id: string,
+      label: string,
+      tone: StatsEventLauncherGroup["tone"],
+      orderedKinds: readonly MatchEventKind[],
+    ) => {
+      const items = orderedKinds.flatMap((kind) => {
+        const matchButton = eventByKind.get(kind);
+        if (!matchButton) return [];
+        consumedKinds.add(kind);
+        return [{ kind, label: getReadableEventButtonLabel(matchButton.label) }];
+      });
+      if (items.length === 0) return;
+      groups.push({ id, label, tone, items });
+    };
+
+    addGroup("score", "SCORE", "green", ["POINT", "GOAL", "TWO_POINTER", "FORTY_FIVE_TWO_POINT"]);
+    addGroup("shot", "SHOT", "blue", ["SHOT", "WIDE"]);
+    addGroup("turnover", "TURNOVER", "orange", ["TURNOVER_WON", "TURNOVER_LOST"]);
+    addGroup("kickout", mode.restartLabel.toUpperCase(), "purple", ["KICKOUT_WON", "KICKOUT_CONCEDED"]);
+    addGroup("free", "FREE", "red", ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"]);
+
+    const fallbackItems = visibleEventButtons
+      .filter((item) => !consumedKinds.has(item.kind))
+      .map((item) => ({
+        kind: item.kind,
+        label: getReadableEventButtonLabel(item.label),
+      }));
+    if (fallbackItems.length > 0) {
+      groups.push({
+        id: "more",
+        label: "MORE",
+        tone: "slate",
+        items: fallbackItems,
+      });
+    }
+
+    return groups;
+  }, [mode.restartLabel, visibleEventButtons]);
   const handleRef = useRef<{
     destroy: () => void;
     setEvents: (events: readonly import("./core/stats/stats-event-model").MatchEvent[]) => void;
@@ -6391,38 +6436,14 @@ export default function StatsModeSurface() {
           {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
           {!isLandscape && isPickerOpen && !isReviewModeActive ? (
             <div className="event-panel">
-              <div className="event-grid">
-                {visibleEventButtons.map((item, idx) => {
-                  const isActive = item.kind === selectedEventKind;
-                  const isScoring = idx <= 4;
-                  const buttonLabel = getReadableEventButtonLabel(item.label);
-                  return (
-                    <button
-                      key={item.kind}
-                      type="button"
-                      className="event-btn"
-                      onClick={() => {
-                        handleEventButtonPress(item.kind);
-                      }}
-                      style={{
-                        border: isActive
-                          ? "1px solid rgba(34,197,94,0.96)"
-                          : isScoring
-                            ? "1px solid rgba(148,163,184,0.52)"
-                            : "1px solid rgba(148,163,184,0.36)",
-                        background: isActive
-                          ? "rgba(22,101,52,0.7)"
-                          : isScoring
-                            ? "rgba(21, 39, 62, 0.84)"
-                            : "rgba(14, 24, 40, 0.72)",
-                        fontWeight: isActive ? 800 : 700,
-                      }}
-                    >
-                      {buttonLabel}
-                    </button>
-                  );
-                })}
-              </div>
+              <StatsEventLauncher
+                groups={eventLauncherGroups}
+                selectedEventKind={selectedEventKind}
+                disabled={!isLoggingActive(matchState)}
+                onSelectEvent={(kind) => {
+                  handleEventButtonPress(kind);
+                }}
+              />
               <div className="visibility-row">
                 {([
                   { id: "ALL", label: "Show All" },
