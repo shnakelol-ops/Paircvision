@@ -3233,7 +3233,7 @@ export default function StatsModeSurface() {
   const [reviewEventFilter, setReviewEventFilter] = useState<ReviewEventFilter>("ALL");
   const [reviewActivePlayerOnly, setReviewActivePlayerOnly] = useState(false);
   const [reviewZone, setReviewZone] = useState<ReviewZone>("FULL");
-  const [showReviewHeatmap, setShowReviewHeatmap] = useState(false);
+  const [showReviewHeatmap] = useState(false);
   const [showReviewZones, setShowReviewZones] = useState(false);
   const [firstHalfAttackingDirection, setFirstHalfAttackingDirection] =
     useState<AttackingDirection>("RIGHT");
@@ -5359,11 +5359,6 @@ export default function StatsModeSurface() {
     !KICKOUT_EVENT_KIND_SET.has(selectedReviewEvent.kind)
       ? null
       : getKickoutTagLabel(selectedReviewEvent.tags);
-  const activeReviewPlayerLabel =
-    activePlayerId == null ? null : (() => {
-      const player = playerById.get(activePlayerId);
-      return player ? `#${player.number} ${player.name}` : null;
-    })();
   const pendingFollowupEvent =
     pendingFollowup == null
       ? null
@@ -5929,10 +5924,6 @@ export default function StatsModeSurface() {
   const utilityPanelClass = isLandscape
     ? "utility-overlay-panel utility-overlay-panel--landscape"
     : "utility-overlay-panel utility-overlay-panel--portrait";
-  const reviewPanelClass =
-    isLandscape && utilityPanel === "REVIEW"
-      ? `${utilityPanelClass} utility-overlay-panel--review-landscape`
-      : utilityPanelClass;
   const starterPlayers = activeSquadPlayers.filter((player) => player.role === "STARTER");
   const subPlayers = activeSquadPlayers.filter((player) => player.role === "SUB");
   const formationPlayers = starterPlayers.slice(0, 15);
