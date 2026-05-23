@@ -92,8 +92,19 @@ function buildBreakdown(events: readonly LoggedEventLike[]): Record<TeamSide, Te
     if (t === "HOME") {
       // Legacy logging often captures opposition outcomes as FOR negative events.
       if (!hasOppKickoutEvents && k === "KICKOUT_CONCEDED") r.AWAY.kickWon++;
+      if (!hasOppKickoutEvents && k === "KICKOUT_WON") r.AWAY.kickLost++;
       if (!hasOppTurnoverEvents && k === "TURNOVER_LOST") r.AWAY.toWon++;
+      if (!hasOppTurnoverEvents && k === "TURNOVER_WON") r.AWAY.toLost++;
       if (!hasOppFreeEvents && k === "FREE_CONCEDED") r.AWAY.freesFor++;
+      if (!hasOppFreeEvents && k === "FREE_WON") r.AWAY.freesAgainst++;
+    } else if (t === "AWAY") {
+      // Apply the same legacy mirroring in reverse when HOME opposition rows are missing.
+      if (!hasOppKickoutEvents && k === "KICKOUT_CONCEDED") r.HOME.kickWon++;
+      if (!hasOppKickoutEvents && k === "KICKOUT_WON") r.HOME.kickLost++;
+      if (!hasOppTurnoverEvents && k === "TURNOVER_LOST") r.HOME.toWon++;
+      if (!hasOppTurnoverEvents && k === "TURNOVER_WON") r.HOME.toLost++;
+      if (!hasOppFreeEvents && k === "FREE_CONCEDED") r.HOME.freesFor++;
+      if (!hasOppFreeEvents && k === "FREE_WON") r.HOME.freesAgainst++;
     }
   }
   return r;
