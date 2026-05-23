@@ -76,6 +76,13 @@ type PendingFollowupKind =
   | "TURNOVER_LOST"
   | "SHOT";
 type FollowupOption = { label: string; tag: FollowupTag };
+type EventClusterTone = "score" | "shot" | "turnover" | "kickout" | "free" | "more";
+type EventCluster = {
+  id: "SCORE" | "SHOT" | "TURNOVER" | "KICKOUT" | "FREE" | "MORE";
+  label: string;
+  tone: EventClusterTone;
+  items: ReadonlyArray<{ kind: MatchEventKind; label: string }>;
+};
 type SquadPlayer = { id: string; name: string; number: number; role: PlayerRole };
 type Squad = { id: string; name: string; players: SquadPlayer[] };
 type SavedSquadPlayer = { id: string; number: number; name: string };
@@ -1431,6 +1438,14 @@ function getReadableEventButtonLabel(label: string): string {
   return label;
 }
 
+function findEventClusterIdForKind(
+  clusters: readonly EventCluster[],
+  kind: MatchEventKind,
+): EventCluster["id"] | null {
+  const matched = clusters.find((cluster) => cluster.items.some((item) => item.kind === kind));
+  return matched?.id ?? null;
+}
+
 function getReviewEventTypeLabel(kind: MatchEventKind): string {
   if (kind === "KICKOUT_CONCEDED") return "KICKOUT LOST";
   if (kind === "KICKOUT_WON") return "KICKOUT WON";
@@ -1589,49 +1604,198 @@ const PANEL_CSS = `
 .event-panel {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 6px;
-  border-radius: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 20, 35, 0.75);
+  gap: 6px;
+  padding: 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(10, 20, 35, 0.78);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  box-shadow: 0 8px 18px rgba(4, 12, 24, 0.26);
-  width: min(calc(100vw - 32px), 308px);
+  box-shadow: 0 10px 20px rgba(4, 12, 24, 0.3);
+  width: min(calc(100vw - 32px), 318px);
   max-width: 95vw;
 }
 
-.event-grid {
+.event-main-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 3px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
 }
 
-.event-btn {
-  border-radius: 8px;
-  color: #e2e8f0;
-  font-size: 8.8px;
-  line-height: 1.1;
-  padding: 5px 4px;
-  min-height: 27px;
+.event-main-btn {
+  border-radius: 9px;
+  color: #f1f5f9;
+  line-height: 1.12;
+  min-height: 31px;
+  padding: 5px 4px 4px;
   cursor: pointer;
   text-align: center;
-  white-space: nowrap;
-  letter-spacing: 0.18px;
-  font-weight: 700;
+  letter-spacing: 0.24px;
+  font-weight: 750;
   text-transform: uppercase;
-  transition: box-shadow 140ms ease, transform 120ms ease;
+  transition: box-shadow 140ms ease, transform 120ms ease, border-color 140ms ease;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  background: rgba(15, 23, 42, 0.92);
+  display: grid;
+  gap: 1px;
+  justify-items: center;
+  align-content: center;
 }
 
-.event-btn:hover {
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.16), 0 0 10px rgba(148, 163, 184, 0.14);
+.event-main-btn-label {
+  font-size: 9.4px;
+  line-height: 1.08;
+  font-weight: 800;
 }
 
-.event-btn:active {
+.event-main-btn-meta {
+  font-size: 7px;
+  line-height: 1;
+  letter-spacing: 0.18px;
+  opacity: 0.82;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-main-btn--score {
+  background: rgba(21, 70, 46, 0.82);
+  border-color: rgba(74, 222, 128, 0.42);
+}
+
+.event-main-btn--shot {
+  background: rgba(19, 50, 84, 0.86);
+  border-color: rgba(96, 165, 250, 0.45);
+}
+
+.event-main-btn--turnover {
+  background: rgba(101, 50, 16, 0.84);
+  border-color: rgba(251, 146, 60, 0.45);
+}
+
+.event-main-btn--kickout {
+  background: rgba(62, 26, 105, 0.82);
+  border-color: rgba(192, 132, 252, 0.44);
+}
+
+.event-main-btn--free {
+  background: rgba(93, 16, 32, 0.84);
+  border-color: rgba(248, 113, 113, 0.44);
+}
+
+.event-main-btn--more {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(148, 163, 184, 0.42);
+}
+
+.event-main-btn:hover {
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.22), 0 0 10px rgba(148, 163, 184, 0.16);
+}
+
+.event-main-btn:active {
   transform: translateY(0.5px);
 }
 
-.event-btn:disabled,
+.event-main-btn.is-open,
+.event-main-btn.is-active {
+  border-color: rgba(125, 211, 252, 0.84);
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.2), 0 0 12px rgba(125, 211, 252, 0.18);
+}
+
+.event-main-btn.is-active .event-main-btn-meta {
+  opacity: 0.95;
+}
+
+.event-context-drawer {
+  border-radius: 9px;
+  border: 1px solid rgba(148, 163, 184, 0.36);
+  background: rgba(12, 22, 36, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  padding: 6px;
+  display: grid;
+  gap: 5px;
+}
+
+.event-context-title {
+  color: #dbe7f5;
+  font-size: 8px;
+  letter-spacing: 0.24px;
+  font-weight: 700;
+  text-transform: uppercase;
+  opacity: 0.86;
+}
+
+.event-context-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.event-context-btn {
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(15, 23, 42, 0.9);
+  color: #e2e8f0;
+  min-height: 31px;
+  padding: 5px 6px;
+  font-size: 9px;
+  line-height: 1.08;
+  font-weight: 750;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: left;
+}
+
+.event-context-btn.is-active {
+  border-color: rgba(34, 197, 94, 0.92);
+  background: rgba(22, 101, 52, 0.75);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
+}
+
+.event-followup-drawer {
+  border-radius: 9px;
+  border: 1px solid rgba(125, 211, 252, 0.34);
+  background: rgba(10, 20, 35, 0.86);
+  padding: 6px;
+  display: grid;
+  gap: 5px;
+}
+
+.event-followup-head {
+  color: #cfe8ff;
+  font-size: 8px;
+  letter-spacing: 0.22px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.event-followup-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.event-followup-btn {
+  min-height: 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  background: rgba(15, 23, 42, 0.9);
+  color: #dbeafe;
+  font-size: 8.8px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.18px;
+  text-transform: uppercase;
+  padding: 0 9px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.event-main-btn:disabled,
+.event-context-btn:disabled,
+.event-followup-btn:disabled,
 .landscape-toolbar-btn:disabled,
 .landscape-toolbar-secondary-btn:disabled,
 .utility-player-btn:disabled,
@@ -1644,8 +1808,10 @@ const PANEL_CSS = `
   filter: none;
 }
 
-.event-btn:disabled:hover,
-.event-btn:disabled:active,
+.event-main-btn:disabled:hover,
+.event-main-btn:disabled:active,
+.event-context-btn:disabled:hover,
+.event-context-btn:disabled:active,
 .landscape-toolbar-btn:disabled:hover,
 .landscape-toolbar-btn:disabled:active {
   transform: none;
@@ -3017,6 +3183,7 @@ export default function StatsModeSurface() {
   const secondHalfSwitchBaselineEventCountRef = useRef<number | null>(null);
   const eventKindSwitchBaselineEventCountRef = useRef<number | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [expandedEventClusterId, setExpandedEventClusterId] = useState<EventCluster["id"] | null>("SCORE");
   const EVENT_BUTTONS = mode.eventButtons;
   const EVENT_LABEL_BY_KIND = mode.eventLabels;
   const isHurlingMode = currentMode === "hurling" || currentMode === "camogie";
@@ -3050,6 +3217,58 @@ export default function StatsModeSurface() {
         ? EVENT_BUTTONS.filter((item) => OPPOSITION_EVENT_KINDS.has(item.kind))
         : EVENT_BUTTONS,
     [EVENT_BUTTONS, OPPOSITION_EVENT_KINDS, activeTeamSide],
+  );
+  const eventClusters = useMemo<EventCluster[]>(() => {
+    const eventByKind = new Map(visibleEventButtons.map((item) => [item.kind, item]));
+    const usedKinds = new Set<MatchEventKind>();
+    const clusters: EventCluster[] = [];
+
+    const pushCluster = (
+      id: EventCluster["id"],
+      label: string,
+      tone: EventClusterTone,
+      kinds: readonly MatchEventKind[],
+    ) => {
+      const items = kinds.flatMap((kind) => {
+        const eventButton = eventByKind.get(kind);
+        if (!eventButton) return [];
+        usedKinds.add(kind);
+        return [{ kind, label: getReadableEventButtonLabel(eventButton.label) }];
+      });
+      if (items.length === 0) return;
+      clusters.push({ id, label, tone, items });
+    };
+
+    pushCluster("SCORE", "SCORE", "score", ["POINT", "GOAL", "TWO_POINTER", "FORTY_FIVE_TWO_POINT"]);
+    pushCluster("SHOT", "SHOT", "shot", ["SHOT", "WIDE"]);
+    pushCluster("TURNOVER", "TURNOVER", "turnover", ["TURNOVER_WON", "TURNOVER_LOST"]);
+    pushCluster("KICKOUT", mode.restartLabel.toUpperCase(), "kickout", ["KICKOUT_WON", "KICKOUT_CONCEDED"]);
+    pushCluster("FREE", "FREE", "free", ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"]);
+
+    const remainingItems = visibleEventButtons
+      .filter((item) => !usedKinds.has(item.kind))
+      .map((item) => ({
+        kind: item.kind,
+        label: getReadableEventButtonLabel(item.label),
+      }));
+    if (remainingItems.length > 0) {
+      clusters.push({
+        id: "MORE",
+        label: "MORE",
+        tone: "more",
+        items: remainingItems,
+      });
+    }
+
+    return clusters;
+  }, [mode.restartLabel, visibleEventButtons]);
+  const expandedEventCluster = useMemo(
+    () => eventClusters.find((cluster) => cluster.id === expandedEventClusterId) ?? null,
+    [eventClusters, expandedEventClusterId],
+  );
+  const selectedEventClusterId = useMemo(
+    () => findEventClusterIdForKind(eventClusters, selectedEventKind),
+    [eventClusters, selectedEventKind],
   );
   const handleRef = useRef<{
     destroy: () => void;
@@ -3313,6 +3532,9 @@ export default function StatsModeSurface() {
       if (next) {
         setIsUtilityOpen(false);
         setUtilityPanel((prevPanel) => (prevPanel === "PLAYERS" ? null : prevPanel));
+        if (selectedEventClusterId) {
+          setExpandedEventClusterId(selectedEventClusterId);
+        }
       }
       return next;
     });
@@ -3435,6 +3657,15 @@ export default function StatsModeSurface() {
     selectedEventRef.current = fallbackKind;
     handleRef.current?.setActiveEventKind(fallbackKind);
   }, [activeTeamSide, selectedEventKind, visibleEventButtons]);
+
+  useEffect(() => {
+    if (eventClusters.length === 0) {
+      setExpandedEventClusterId(null);
+      return;
+    }
+    if (expandedEventClusterId && eventClusters.some((cluster) => cluster.id === expandedEventClusterId)) return;
+    setExpandedEventClusterId(selectedEventClusterId ?? eventClusters[0].id);
+  }, [eventClusters, expandedEventClusterId, selectedEventClusterId]);
 
   useEffect(() => {
     activePlayerRef.current = activePlayer;
@@ -4951,6 +5182,14 @@ export default function StatsModeSurface() {
             : null;
   const pendingFollowupOptions =
     pendingFollowup == null ? [] : getFollowupOptions(pendingFollowup.kind);
+  const hasPendingFollowupUi =
+    !isReviewModeActive &&
+    utilityPanel == null &&
+    pendingFollowup != null &&
+    pendingFollowupEvent != null &&
+    pendingFollowupLabel != null;
+  const shouldShowInlineFollowup = hasPendingFollowupUi && !isLandscape && isPickerOpen;
+  const shouldShowFloatingFollowup = hasPendingFollowupUi && !shouldShowInlineFollowup;
   const myTeamReport = useMemo(
     () => deriveMyTeamReport(loggedEvents, matchState, teamNames, currentMode),
     [loggedEvents, matchState, teamNames, currentMode],
@@ -6155,11 +6394,7 @@ export default function StatsModeSurface() {
           </button>
         </div>
       ) : null}
-      {!isReviewModeActive &&
-      utilityPanel == null &&
-      pendingFollowup &&
-      pendingFollowupEvent &&
-      pendingFollowupLabel ? (
+      {shouldShowFloatingFollowup && pendingFollowup && pendingFollowupLabel ? (
         <div
           className="review-quick-strip"
           role="group"
@@ -6426,38 +6661,83 @@ export default function StatsModeSurface() {
           {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
           {!isLandscape && isPickerOpen && !isReviewModeActive ? (
             <div className="event-panel">
-              <div className="event-grid">
-                {visibleEventButtons.map((item, idx) => {
-                  const isActive = item.kind === selectedEventKind;
-                  const isScoring = idx <= 4;
-                  const buttonLabel = getReadableEventButtonLabel(item.label);
+              <div className="event-main-grid">
+                {eventClusters.map((cluster) => {
+                  const selectedOption = cluster.items.find((item) => item.kind === selectedEventKind) ?? null;
+                  const isOpen = expandedEventClusterId === cluster.id;
+                  const isActive = selectedOption != null;
                   return (
                     <button
-                      key={item.kind}
+                      key={cluster.id}
                       type="button"
-                      className="event-btn"
+                      className={`event-main-btn event-main-btn--${cluster.tone} ${isOpen ? "is-open" : ""} ${isActive ? "is-active" : ""}`}
+                      aria-expanded={cluster.items.length > 1 ? isOpen : undefined}
                       onClick={() => {
-                        handleEventButtonPress(item.kind);
+                        if (cluster.items.length <= 1) {
+                          const onlyOption = cluster.items[0];
+                          if (!onlyOption) return;
+                          handleEventButtonPress(onlyOption.kind);
+                          return;
+                        }
+                        setExpandedEventClusterId((prev) => (prev === cluster.id ? null : cluster.id));
                       }}
-                      style={{
-                        border: isActive
-                          ? "1px solid rgba(34,197,94,0.96)"
-                          : isScoring
-                            ? "1px solid rgba(148,163,184,0.52)"
-                            : "1px solid rgba(148,163,184,0.36)",
-                        background: isActive
-                          ? "rgba(22,101,52,0.7)"
-                          : isScoring
-                            ? "rgba(21, 39, 62, 0.84)"
-                            : "rgba(14, 24, 40, 0.72)",
-                        fontWeight: isActive ? 800 : 700,
-                      }}
+                      disabled={!isLoggingActive(matchState)}
                     >
-                      {buttonLabel}
+                      <span className="event-main-btn-label">{cluster.label}</span>
+                      <span className="event-main-btn-meta">
+                        {selectedOption ? selectedOption.label : `${cluster.items.length} opts`}
+                        {cluster.items.length > 1 ? (isOpen ? " ▲" : " ▼") : ""}
+                      </span>
                     </button>
                   );
                 })}
               </div>
+              {expandedEventCluster && expandedEventCluster.items.length > 0 ? (
+                <div
+                  className="event-context-drawer"
+                  role="group"
+                  aria-label={`${expandedEventCluster.label} contextual options`}
+                >
+                  <span className="event-context-title">{expandedEventCluster.label}</span>
+                  <div className="event-context-grid">
+                    {expandedEventCluster.items.map((item) => {
+                      const isActive = item.kind === selectedEventKind;
+                      return (
+                        <button
+                          key={`${expandedEventCluster.id}-${item.kind}`}
+                          type="button"
+                          className={`event-context-btn ${isActive ? "is-active" : ""}`}
+                          onClick={() => {
+                            handleEventButtonPress(item.kind);
+                          }}
+                          disabled={!isLoggingActive(matchState)}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+              {shouldShowInlineFollowup && pendingFollowupLabel ? (
+                <div className="event-followup-drawer" role="group" aria-label="Event follow-up tag">
+                  <span className="event-followup-head">{pendingFollowupLabel}</span>
+                  <div className="event-followup-options">
+                    {pendingFollowupOptions.map((option) => (
+                      <button
+                        key={`inline-followup-option-${pendingFollowup?.kind ?? "none"}-${option.tag}`}
+                        type="button"
+                        className="event-followup-btn"
+                        onClick={() => {
+                          applyFollowupTag(option.tag);
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <div className="visibility-row">
                 {([
                   { id: "ALL", label: "Show All" },
