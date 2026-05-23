@@ -6216,8 +6216,11 @@ export default function StatsModeSurface() {
               type="button"
               className="review-strip-chip review-strip-chip--half"
               onClick={() => {
+                const didChange = reviewHalf !== option.id;
                 setReviewHalf(option.id);
-                collapseReviewStripAfterFilter();
+                if (didChange) {
+                  collapseReviewStripAfterFilter();
+                }
               }}
               style={
                 reviewHalf === option.id
@@ -6237,8 +6240,9 @@ export default function StatsModeSurface() {
               type="button"
               className="review-strip-chip"
               onClick={() => {
+                const didChange = reviewSegment !== option.id;
                 setReviewSegment(option.id);
-                if (option.id !== "ALL") {
+                if (didChange && option.id !== "ALL") {
                   collapseReviewStripAfterFilter();
                 }
               }}
@@ -6260,8 +6264,11 @@ export default function StatsModeSurface() {
               type="button"
               className="review-strip-chip"
               onClick={() => {
+                const didChange = reviewTeamContext !== option.id;
                 setReviewTeamContext(option.id);
-                collapseReviewStripAfterFilter();
+                if (didChange) {
+                  collapseReviewStripAfterFilter();
+                }
               }}
               style={
                 reviewTeamContext === option.id
@@ -6281,14 +6288,16 @@ export default function StatsModeSurface() {
               type="button"
               className="review-strip-chip"
               onClick={() => {
+                const didChange = reviewEventFilter !== option.id;
                 setReviewEventFilter(option.id);
                 if (
-                  option.id === "SCORES" ||
-                  option.id === "SHOTS" ||
-                  option.id === "WIDES" ||
-                  option.id === "TURNOVERS" ||
-                  option.id === "KICKOUTS" ||
-                  option.id === "FREES"
+                  didChange &&
+                  (option.id === "SCORES" ||
+                    option.id === "SHOTS" ||
+                    option.id === "WIDES" ||
+                    option.id === "TURNOVERS" ||
+                    option.id === "KICKOUTS" ||
+                    option.id === "FREES")
                 ) {
                   collapseReviewStripAfterFilter();
                 }
