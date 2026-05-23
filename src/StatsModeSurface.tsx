@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ChangeEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 import {
   createInitialMatchEngineState,
@@ -207,6 +216,7 @@ const EVENT_PICKER_LOGO_STYLE: CSSProperties = {
   imageRendering: "crisp-edges",
   filter: "drop-shadow(0 4px 10px rgba(2, 8, 15, 0.26))",
 };
+const REVIEW_SESSION_IMPORT_ACCEPT = ".json,application/json";
 
 function safeReadLocalStorage(key: string): string | null {
   if (typeof window === "undefined") return null;
@@ -235,6 +245,15 @@ function safeRemoveLocalStorage(key: string): void {
   } catch {
     // Ignore storage removal failures.
   }
+}
+
+function sanitizeReviewSessionFilenamePart(value: string, fallback: string): string {
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized.length > 0 ? normalized : fallback;
 }
 
 function parseSavedMatchState(value: unknown): MatchState | null {
@@ -3289,6 +3308,7 @@ export default function StatsModeSurface() {
   const homeNameInputRef = useRef<HTMLInputElement>(null);
   const awayNameInputRef = useRef<HTMLInputElement>(null);
   const venueInputRef = useRef<HTMLInputElement>(null);
+  const reviewSessionImportInputRef = useRef<HTMLInputElement>(null);
   const matchEngineStateRef = useRef(createInitialMatchEngineState());
   const fullTimeResumeStateRef = useRef<MatchEngineState | null>(null);
   const currentMatchIdRef = useRef(currentMatchId);
@@ -4382,7 +4402,7 @@ export default function StatsModeSurface() {
   const openReviewPanel = () => {
     setShowReviewStrip(true);
     setIsReviewStripCollapsed(false);
-    setUtilityPanel(null);
+    setUtilityPanel("REVIEW");
     setIsUtilityOpen(false);
     setIsPickerOpen(false);
   };
@@ -4434,33 +4454,31 @@ export default function StatsModeSurface() {
     }
   };
 
-  const openLastReviewSession = () => {
-    const rawSession = safeReadLocalStorage(REVIEW_SESSION_STORAGE_KEY);
-    if (rawSession == null || rawSession.trim().length === 0) {
-      setSaveFeedback("No saved review session found");
-      return;
-    }
+  const createReviewSessionSnapshot = () =>
+    createReviewSession({
+      matchInfo: {
+        homeTeam: teamNames.HOME.trim() || "Team A",
+        awayTeam: teamNames.AWAY.trim() || "Team B",
+        venue: venueName.trim() || undefined,
+      },
+      events: loggedEvents,
+      reviewContext: {
+        period: reviewHalf,
+        segment: reviewSegment,
+        teamSide: reviewTeamContext,
+        category: reviewEventFilter,
+        activePlayerId: activePlayerId ?? null,
+        activePlayerOnly: reviewActivePlayerOnly,
+        zone: reviewZone,
+      },
+    });
 
-    let restoredSession: ReturnType<typeof restoreReviewSession> | null = null;
-    try {
-      const parsedReviewSession = parseReviewSession(rawSession);
-      if (!parsedReviewSession) {
-        setSaveFeedback("Saved review session is invalid");
-        return;
-      }
-      restoredSession = restoreReviewSession(parsedReviewSession);
-    } catch {
-      setSaveFeedback("Saved review session is invalid");
-      return;
-    }
-
+  const applyReviewSessionRestore = (parsedReviewSession: NonNullable<ReturnType<typeof parseReviewSession>>): boolean => {
+    const restoredSession = restoreReviewSession(parsedReviewSession);
     const restoredEvents = restoredSession.events
       .map((event) => parseStoredLoggedMatchEvent(event))
       .filter((event): event is LoggedMatchEvent => event != null);
-    if (restoredEvents.length !== restoredSession.events.length) {
-      setSaveFeedback("Review session could not be restored");
-      return;
-    }
+    if (restoredEvents.length !== restoredSession.events.length) return false;
 
     const restoredActivePlayerId = restoredSession.reviewContext.activePlayerId ?? null;
     const restoredActivePlayerOnly = restoredSession.reviewContext.activePlayerOnly ?? (restoredActivePlayerId != null);
@@ -4498,6 +4516,92 @@ export default function StatsModeSurface() {
     setIsResetConfirmOpen(false);
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel(`${restoredSession.matchInfo.homeTeam} v ${restoredSession.matchInfo.awayTeam} (Review Session)`);
+    return true;
+  };
+
+  const exportReviewSession = () => {
+    if (typeof document === "undefined" || typeof URL === "undefined") {
+      setSaveFeedback("Review session export failed");
+      return;
+    }
+    try {
+      const reviewSession = createReviewSessionSnapshot();
+      const serialized = serializeReviewSession(reviewSession);
+      const home = sanitizeReviewSessionFilenamePart(reviewSession.matchInfo.homeTeam, "team-a");
+      const away = sanitizeReviewSessionFilenamePart(reviewSession.matchInfo.awayTeam, "team-b");
+      const dateLabel = new Date().toISOString().slice(0, 10);
+      const filename = `paircvision-review-${home}-vs-${away}-${dateLabel}.json`;
+      const blob = new Blob([serialized], { type: "application/json" });
+      const blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = filename;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(blobUrl);
+      setSaveFeedback("Review session exported");
+      setSaveLoadBlockedReason(null);
+    } catch {
+      setSaveFeedback("Review session export failed");
+    }
+  };
+
+  const triggerReviewSessionImport = () => {
+    reviewSessionImportInputRef.current?.click();
+  };
+
+  const importReviewSession = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.item(0) ?? null;
+    input.value = "";
+    if (!file) return;
+    const lowerName = file.name.toLowerCase();
+    const hasJsonType = file.type === "" || file.type === "application/json" || file.type === "text/json";
+    if (!lowerName.endsWith(".json") && !hasJsonType) {
+      setSaveFeedback("Review session import failed");
+      return;
+    }
+    try {
+      const rawText = await file.text();
+      const parsed = parseReviewSession(rawText);
+      if (!parsed) {
+        setSaveFeedback("Review session import failed");
+        return;
+      }
+      const didRestore = applyReviewSessionRestore(parsed);
+      if (!didRestore) {
+        setSaveFeedback("Review session import failed");
+        return;
+      }
+      setSaveFeedback("Review session imported");
+    } catch {
+      setSaveFeedback("Review session import failed");
+    }
+  };
+
+  const openLastReviewSession = () => {
+    const rawSession = safeReadLocalStorage(REVIEW_SESSION_STORAGE_KEY);
+    if (rawSession == null || rawSession.trim().length === 0) {
+      setSaveFeedback("No saved review session found");
+      return;
+    }
+
+    try {
+      const parsedReviewSession = parseReviewSession(rawSession);
+      if (!parsedReviewSession) {
+        setSaveFeedback("Saved review session is invalid");
+        return;
+      }
+      const didRestore = applyReviewSessionRestore(parsedReviewSession);
+      if (!didRestore) {
+        setSaveFeedback("Review session could not be restored");
+        return;
+      }
+    } catch {
+      setSaveFeedback("Saved review session is invalid");
+      return;
+    }
     setSaveFeedback("Review session opened");
   };
 
@@ -6317,6 +6421,19 @@ export default function StatsModeSurface() {
             <button type="button" className="utility-review-btn" onClick={openLastReviewSession}>
               Open Last Review Session
             </button>
+            <button type="button" className="utility-review-btn" onClick={exportReviewSession}>
+              Export Review Session
+            </button>
+            <button type="button" className="utility-review-btn" onClick={triggerReviewSessionImport}>
+              Import Review Session
+            </button>
+            <input
+              ref={reviewSessionImportInputRef}
+              type="file"
+              accept={REVIEW_SESSION_IMPORT_ACCEPT}
+              onChange={importReviewSession}
+              style={{ display: "none" }}
+            />
             <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
               Half
             </div>
@@ -6784,6 +6901,27 @@ export default function StatsModeSurface() {
           >
             ZONES
           </button>
+          <button
+            type="button"
+            className="review-strip-chip"
+            onClick={exportReviewSession}
+          >
+            Export Review
+          </button>
+          <button
+            type="button"
+            className="review-strip-chip"
+            onClick={triggerReviewSessionImport}
+          >
+            Import Review
+          </button>
+          <input
+            ref={reviewSessionImportInputRef}
+            type="file"
+            accept={REVIEW_SESSION_IMPORT_ACCEPT}
+            onChange={importReviewSession}
+            style={{ display: "none" }}
+          />
           <span className="review-strip-meta review-strip-player">
             {activePlayerChipText ?? "No active player"}
           </span>
