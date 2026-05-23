@@ -27,6 +27,8 @@ import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 import { buildStatsShareCardPng } from "./stats/statsShareCard";
 import { selectReviewEvents } from "./stats/review-selectors";
+import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
+import type { ZoneOverlayModel } from "./stats/zones/zone-types";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -2950,6 +2952,7 @@ export default function StatsModeSurface() {
   const [reviewActivePlayerOnly, setReviewActivePlayerOnly] = useState(false);
   const [reviewZone, setReviewZone] = useState<ReviewZone>("FULL");
   const [showReviewHeatmap, setShowReviewHeatmap] = useState(false);
+  const [showReviewZones, setShowReviewZones] = useState(false);
   const [firstHalfAttackingDirection, setFirstHalfAttackingDirection] =
     useState<AttackingDirection>("RIGHT");
   const [showReviewStrip, setShowReviewStrip] = useState(false);
@@ -3055,6 +3058,7 @@ export default function StatsModeSurface() {
     setShowPlayerInitials: (show: boolean) => void;
     setOnMarkerTap: (handler: ((eventId: string) => void) | null) => void;
     setHeatmapEnabled: (enabled: boolean) => void;
+    setZoneOverlayModel: (model: ZoneOverlayModel | null) => void;
     setVisibleEventLimit: (limit: number | null) => void;
     setEventContext: (context: { half: 1 | 2; timestamp: number; canLog: boolean }) => void;
   } | null>(null);
@@ -3654,6 +3658,7 @@ export default function StatsModeSurface() {
       undoLastEvent: () => void;
       setShowPlayerInitials: (show: boolean) => void;
       setOnMarkerTap: (handler: ((eventId: string) => void) | null) => void;
+      setZoneOverlayModel: (model: ZoneOverlayModel | null) => void;
       setVisibleEventLimit: (limit: number | null) => void;
       setEventContext: (context: { half: 1 | 2; timestamp: number; canLog: boolean }) => void;
     } | null = null;
@@ -4483,6 +4488,43 @@ export default function StatsModeSurface() {
     resetMatchNow();
   };
 
+  const effectiveAttackingDirection = useMemo(
+    () => getEffectiveAttackingDirection(firstHalfAttackingDirection, currentHalf),
+    [firstHalfAttackingDirection, currentHalf],
+  );
+  const visibleReviewEvents = useMemo(
+    () =>
+      getRenderablePitchEvents(
+        loggedEvents,
+        reviewHalf,
+        reviewSegment,
+        reviewTeamContext,
+        reviewEventFilter,
+        REVIEW_FILTER_KINDS_FOR_MODE,
+        reviewZone,
+        effectiveAttackingDirection,
+        reviewActivePlayerOnly,
+        activePlayerId,
+      ),
+    [
+      loggedEvents,
+      reviewHalf,
+      reviewSegment,
+      reviewTeamContext,
+      reviewEventFilter,
+      REVIEW_FILTER_KINDS_FOR_MODE,
+      reviewZone,
+      effectiveAttackingDirection,
+      reviewActivePlayerOnly,
+      activePlayerId,
+    ],
+  );
+  const reviewZoneOverlayModel: ZoneOverlayModel = useMemo(
+    () => selectZoneOverlayModel(visibleReviewEvents),
+    [visibleReviewEvents],
+  );
+  const isReviewModeActive = showReviewStrip || utilityPanel === "REVIEW";
+
   useEffect(() => {
     if (matchState !== "FULL_TIME") return;
     setIsCountsOverlayOpen(false);
@@ -4538,12 +4580,10 @@ export default function StatsModeSurface() {
   }, [showPlayerInitials]);
 
   useEffect(() => {
-    const isReviewModeActive = showReviewStrip || utilityPanel === "REVIEW";
     handleRef.current?.setHeatmapEnabled(showReviewHeatmap && isReviewModeActive);
-  }, [showReviewHeatmap, showReviewStrip, utilityPanel]);
+  }, [showReviewHeatmap, isReviewModeActive]);
 
   useEffect(() => {
-    const isReviewModeActive = showReviewStrip || utilityPanel === "REVIEW";
     handleRef.current?.setOnMarkerTap(
       isReviewModeActive
         ? (eventId) => {
@@ -4554,51 +4594,38 @@ export default function StatsModeSurface() {
     if (!isReviewModeActive) {
       setSelectedReviewEventId(null);
     }
-  }, [showReviewStrip, utilityPanel]);
+  }, [isReviewModeActive]);
 
   useEffect(() => {
-    if (!(showReviewStrip || utilityPanel === "REVIEW")) return;
+    if (!isReviewModeActive) return;
     setIsPickerOpen(false);
-  }, [showReviewStrip, utilityPanel]);
+  }, [isReviewModeActive]);
 
   useEffect(() => {
+    if (isReviewModeActive) {
+      handleRef.current?.setEvents(visibleReviewEvents);
+      return;
+    }
     handleRef.current?.setEvents(
-      (() => {
-        const isReviewModeActive = showReviewStrip || utilityPanel === "REVIEW";
-        const renderableEvents = getRenderablePitchEvents(
-          loggedEvents,
-          reviewHalf,
-          reviewSegment,
-          reviewTeamContext,
-          reviewEventFilter,
-          REVIEW_FILTER_KINDS_FOR_MODE,
-          reviewZone,
-          getEffectiveAttackingDirection(firstHalfAttackingDirection, currentHalf),
-          reviewActivePlayerOnly,
-          activePlayerId,
-        );
-        if (isReviewModeActive) return renderableEvents;
-        return renderableEvents.map((event): LiveRenderablePitchEvent =>
-          normalizeEventTeamSide(event.teamSide, event.team ?? null, event.id) === "OPP"
-            ? { ...event, renderAsSubtleDot: true }
-            : event,
-        );
-      })(),
+      visibleReviewEvents.map((event): LiveRenderablePitchEvent =>
+        normalizeEventTeamSide(event.teamSide, event.team ?? null, event.id) === "OPP"
+          ? { ...event, renderAsSubtleDot: true }
+          : event,
+      ),
     );
   }, [
-    loggedEvents,
-    reviewHalf,
-    reviewSegment,
-    reviewTeamContext,
-    reviewEventFilter,
-    reviewZone,
-    firstHalfAttackingDirection,
-    currentHalf,
-    reviewActivePlayerOnly,
-    activePlayerId,
-    REVIEW_FILTER_KINDS_FOR_MODE,
-    showReviewStrip,
-    utilityPanel,
+    isReviewModeActive,
+    visibleReviewEvents,
+  ]);
+
+  useEffect(() => {
+    handleRef.current?.setZoneOverlayModel(
+      isReviewModeActive && showReviewZones ? reviewZoneOverlayModel : null,
+    );
+  }, [
+    isReviewModeActive,
+    showReviewZones,
+    reviewZoneOverlayModel,
   ]);
 
   useEffect(() => {
@@ -4824,22 +4851,6 @@ export default function StatsModeSurface() {
               ? { label: isFullTimeActionsOpen ? "CLOSE" : "ACTIONS", onClick: toggleFullTimeActionsPanel }
               : null;
 
-  const effectiveAttackingDirection = getEffectiveAttackingDirection(
-    firstHalfAttackingDirection,
-    currentHalf,
-  );
-  const visibleReviewEvents = getRenderablePitchEvents(
-    loggedEvents,
-    reviewHalf,
-    reviewSegment,
-    reviewTeamContext,
-    reviewEventFilter,
-    REVIEW_FILTER_KINDS_FOR_MODE,
-    reviewZone,
-    effectiveAttackingDirection,
-    reviewActivePlayerOnly,
-    activePlayerId,
-  );
   const attackingDirectionHalfLabel = currentHalf === 2 ? "2H" : "1H";
   const attackingDirectionLabel =
     effectiveAttackingDirection === "RIGHT"
@@ -4882,7 +4893,6 @@ export default function StatsModeSurface() {
       </button>
     </div>
   );
-  const isReviewModeActive = showReviewStrip || utilityPanel === "REVIEW";
   const playerById = useMemo(() => {
     const next = new Map<string, SquadPlayer>();
     for (const squad of squads) {
@@ -5954,6 +5964,25 @@ export default function StatsModeSurface() {
               }
             >
               HEATMAP {showReviewHeatmap ? "ON" : "OFF"}
+            </button>
+            <button
+              type="button"
+              className="utility-review-btn"
+              onClick={() => {
+                setShowReviewZones((prev) => !prev);
+                setShowReviewStrip(true);
+                closeUtilityPanel();
+              }}
+              style={
+                showReviewZones
+                  ? {
+                      border: "1px solid rgba(125,211,252,0.9)",
+                      background: "rgba(14,116,144,0.38)",
+                    }
+                  : undefined
+              }
+            >
+              ZONES {showReviewZones ? "ON" : "OFF"}
             </button>
             <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
               Zone

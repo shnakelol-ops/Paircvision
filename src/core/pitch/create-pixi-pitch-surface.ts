@@ -8,12 +8,14 @@ import {
 } from "../coordinates/pitch-coordinates";
 import { drawStatsMarkers } from "../stats/draw-stats-markers";
 import { drawStatsHeatmap } from "../stats/draw-stats-heatmap";
+import { drawStatsZoneOverlay } from "../stats/draw-stats-zone-overlay";
 import {
   createMatchEvent,
   type MatchEvent,
   type MatchEventKind,
 } from "../stats/stats-event-model";
 import { createMatchEventStore } from "../stats/match-event-store";
+import type { ZoneOverlayModel } from "../../stats/zones/zone-types";
 
 type RenderableMatchEvent = MatchEvent & {
   playerName?: string;
@@ -41,6 +43,7 @@ export type PixiPitchSurfaceHandle = {
   setShowPlayerInitials: (show: boolean) => void;
   setOnMarkerTap: (handler: ((eventId: string) => void) | null) => void;
   setHeatmapEnabled: (enabled: boolean) => void;
+  setZoneOverlayModel: (model: ZoneOverlayModel | null) => void;
   setVisibleEventLimit: (limit: number | null) => void;
   undoLastEvent: () => void;
   destroy: () => void;
@@ -92,6 +95,9 @@ export async function createPixiPitchSurface(
   const heatmapLayer = new Graphics();
   heatmapLayer.eventMode = "none";
   world.addChild(heatmapLayer);
+  const zoneOverlayLayer = new Graphics();
+  zoneOverlayLayer.eventMode = "none";
+  world.addChild(zoneOverlayLayer);
   const statsMarkers = new Graphics();
   statsMarkers.eventMode = "none";
   world.addChild(statsMarkers);
@@ -105,6 +111,7 @@ export async function createPixiPitchSurface(
   let showPlayerInitialsState = options.showPlayerInitials ?? true;
   let onMarkerTapState = options.onMarkerTap ?? null;
   let heatmapEnabledState = false;
+  let zoneOverlayModelState: ZoneOverlayModel | null = null;
   let visibleEventLimitState: number | null = null;
   const onEventLoggedState = options.onEventLogged;
   const onPitchTapState = options.onPitchTap;
@@ -121,6 +128,7 @@ export async function createPixiPitchSurface(
     } else {
       heatmapLayer.clear();
     }
+    drawStatsZoneOverlay(zoneOverlayLayer, zoneOverlayModelState);
     drawStatsMarkers(statsMarkers, renderableEvents, {
       showPlayerLabels: showPlayerInitialsState,
       onMarkerTap: onMarkerTapState ?? undefined,
@@ -203,6 +211,10 @@ export async function createPixiPitchSurface(
       heatmapEnabledState = enabled;
       redrawMarkers();
     },
+    setZoneOverlayModel: (model) => {
+      zoneOverlayModelState = model;
+      redrawMarkers();
+    },
     setVisibleEventLimit: (limit) => {
       visibleEventLimitState = limit == null ? null : Math.max(1, Math.floor(limit));
       redrawMarkers();
@@ -217,6 +229,7 @@ export async function createPixiPitchSurface(
       pitchRoot.dispose();
       hitArea.destroy();
       heatmapLayer.destroy();
+      zoneOverlayLayer.destroy();
       statsMarkers.destroy();
       try {
         host.removeChild(app.canvas as HTMLCanvasElement);
