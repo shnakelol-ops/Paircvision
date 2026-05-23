@@ -26,6 +26,7 @@ import { NotesQuickPanel } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 import { buildStatsShareCardPng } from "./stats/statsShareCard";
+import { selectReviewEvents } from "./stats/review-selectors";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -1342,72 +1343,16 @@ function getRenderablePitchEvents(
   reviewActivePlayerOnly: boolean,
   activePlayerId: string | null,
 ): LoggedMatchEvent[] {
-  const teamSideFilter =
-    reviewTeamContext === "FOR"
-      ? "FOR"
-      : reviewTeamContext === "OPP"
-        ? "OPP"
-        : null;
-  const kindFilterId = reviewEventFilter === "ALL" || reviewEventFilter === "PLAYERS" ? null : reviewEventFilter;
-  const filterKinds =
-    kindFilterId == null ? null : new Set<MatchEventKind>(reviewFilterKinds[kindFilterId]);
-  const segmentFilter = reviewSegment === "ALL" ? null : Number(reviewSegment.slice(1));
-  return events.filter((event) => {
-    if (event.id.includes("-instant-score-")) return false;
-
-    const eventPeriod = event.period ?? periodFromHalf(event.half);
-    const eventClockSeconds = event.matchClockSeconds ?? event.matchTimeSeconds ?? event.timestamp;
-    const eventSegment = event.segment ?? deriveSegmentFromPeriodClock(eventPeriod, eventClockSeconds);
-
-    if (reviewHalf === "H1" && eventPeriod !== "1H") return false;
-    if (reviewHalf === "H2" && eventPeriod !== "2H") return false;
-    if (segmentFilter != null && eventSegment !== segmentFilter) return false;
-
-    if (filterKinds && !filterKinds.has(event.kind)) return false;
-    if (reviewEventFilter === "PLAYERS" && event.playerId == null && event.playerName == null) return false;
-
-    const eventTeamSide = normalizeEventTeamSide(event.teamSide, event.team ?? null, event.id);
-    const isForEvent = eventTeamSide === "FOR";
-    const isOppositionEvent = eventTeamSide === "OPP";
-    const isInferredOppositionEvent =
-      isForEvent &&
-      (event.kind === "TURNOVER_LOST" || event.kind === "KICKOUT_CONCEDED" || event.kind === "FREE_CONCEDED");
-
-    if (teamSideFilter != null) {
-      if (teamSideFilter === "FOR" && !isForEvent) return false;
-      if (teamSideFilter === "OPP") {
-        if (!isOppositionEvent && !isInferredOppositionEvent) return false;
-      }
-    }
-
-    if (teamSideFilter === "OPP" && reviewEventFilter !== "ALL" && reviewEventFilter !== "PLAYERS") {
-      if (reviewEventFilter === "TURNOVERS") {
-        if (!(event.kind === "TURNOVER_LOST" || (isOppositionEvent && event.kind === "TURNOVER_WON"))) return false;
-      }
-      if (reviewEventFilter === "KICKOUTS") {
-        if (!(event.kind === "KICKOUT_CONCEDED" || (isOppositionEvent && event.kind === "KICKOUT_WON"))) return false;
-      }
-      if (reviewEventFilter === "FREES") {
-        if (
-          !(
-            event.kind === "FREE_CONCEDED" ||
-            (isOppositionEvent &&
-              (event.kind === "FREE_WON" || event.kind === "FREE_SCORED" || event.kind === "FREE_MISSED"))
-          )
-        ) {
-          return false;
-        }
-      }
-    }
-
-    if (reviewActivePlayerOnly && activePlayerId != null && event.playerId !== activePlayerId) return false;
-
-    const eventX = event.x ?? event.nx;
-    const isAttackingHalf = attackingDirection === "RIGHT" ? eventX >= 0.5 : eventX < 0.5;
-    if (reviewZone === "OWN_HALF" && isAttackingHalf) return false;
-    if (reviewZone === "OPPOSITION_HALF" && !isAttackingHalf) return false;
-
-    return true;
+  return selectReviewEvents(events, {
+    half: reviewHalf,
+    segment: reviewSegment,
+    teamSide: reviewTeamContext,
+    category: reviewEventFilter,
+    categoryKinds: reviewFilterKinds,
+    zone: reviewZone,
+    attackingDirection,
+    activePlayerOnly: reviewActivePlayerOnly,
+    activePlayerId,
   });
 }
 
@@ -4328,6 +4273,21 @@ export default function StatsModeSurface() {
       scorelineSnapshot: "Recovered unsaved match",
       restoreContext: draft.restoreContext,
     });
+    if (restoredContext.engineState.matchState === "SECOND_HALF" && restoredContext.engineState.currentHalf === 2) {
+      // Mirror the same live visibility state used when 2H starts.
+      reviewHalfRef.current = "H2";
+      reviewSegmentRef.current = "ALL";
+      reviewTeamContextRef.current = "ALL";
+      reviewEventFilterRef.current = "ALL";
+      reviewZoneRef.current = "FULL";
+      reviewActivePlayerOnlyRef.current = false;
+      setReviewHalf("H2");
+      setReviewSegment("ALL");
+      setReviewTeamContext("ALL");
+      setReviewEventFilter("ALL");
+      setReviewZone("FULL");
+      setReviewActivePlayerOnly(false);
+    }
     setFirstHalfAttackingDirection(restoredContext.firstHalfAttackingDirection);
     matchEngineStateRef.current = restoredContext.engineState;
     fullTimeResumeStateRef.current = restoredContext.fullTimeResumeState;
