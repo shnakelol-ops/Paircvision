@@ -4273,6 +4273,21 @@ export default function StatsModeSurface() {
       scorelineSnapshot: "Recovered unsaved match",
       restoreContext: draft.restoreContext,
     });
+    if (restoredContext.engineState.matchState === "SECOND_HALF" && restoredContext.engineState.currentHalf === 2) {
+      // Mirror the same live visibility state used when 2H starts.
+      reviewHalfRef.current = "H2";
+      reviewSegmentRef.current = "ALL";
+      reviewTeamContextRef.current = "ALL";
+      reviewEventFilterRef.current = "ALL";
+      reviewZoneRef.current = "FULL";
+      reviewActivePlayerOnlyRef.current = false;
+      setReviewHalf("H2");
+      setReviewSegment("ALL");
+      setReviewTeamContext("ALL");
+      setReviewEventFilter("ALL");
+      setReviewZone("FULL");
+      setReviewActivePlayerOnly(false);
+    }
     setFirstHalfAttackingDirection(restoredContext.firstHalfAttackingDirection);
     matchEngineStateRef.current = restoredContext.engineState;
     fullTimeResumeStateRef.current = restoredContext.fullTimeResumeState;
