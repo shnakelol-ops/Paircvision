@@ -85,6 +85,7 @@ type EventKeyboardMenuId =
   | "TURNOVER_LOST"
   | "KICKOUT_WON"
   | "KICKOUT_CONCEDED";
+type EventKeyboardTone = "score" | "wide" | "turnover" | "kickout" | "free";
 type EventKeyboardOption = { label: string; kind: MatchEventKind; tag?: string };
 type SquadPlayer = { id: string; name: string; number: number; role: PlayerRole };
 type Squad = { id: string; name: string; players: SquadPlayer[] };
@@ -543,6 +544,15 @@ function buildEventKeyboardMenuOptions(menuId: EventKeyboardMenuId): readonly Ev
     default:
       return [];
   }
+}
+
+function getEventKeyboardToneByMenuId(menuId: EventKeyboardMenuId | null): EventKeyboardTone | null {
+  if (menuId == null) return null;
+  if (menuId === "GOAL" || menuId === "POINT" || menuId === "TWO_POINTER") return "score";
+  if (menuId === "WIDE") return "wide";
+  if (menuId === "TURNOVER_WON" || menuId === "TURNOVER_LOST") return "turnover";
+  if (menuId === "KICKOUT_WON" || menuId === "KICKOUT_CONCEDED") return "kickout";
+  return null;
 }
 
 function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
@@ -1665,11 +1675,11 @@ const PANEL_CSS = `
   gap: 5px;
   padding: 6px;
   border-radius: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 20, 35, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: linear-gradient(180deg, rgba(10, 20, 35, 0.82) 0%, rgba(8, 16, 28, 0.88) 100%);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  box-shadow: 0 8px 18px rgba(4, 12, 24, 0.26);
+  box-shadow: 0 8px 18px rgba(4, 12, 24, 0.32);
   width: min(calc(100vw - 32px), 308px);
   max-width: 95vw;
 }
@@ -1686,55 +1696,131 @@ const PANEL_CSS = `
 
 .event-keyboard-btn {
   border-radius: 8px;
-  color: #e2e8f0;
-  font-size: 8.9px;
+  color: #edf4ff;
+  font-size: 9.2px;
   line-height: 1.1;
   padding: 6px 4px;
   min-height: 30px;
   cursor: pointer;
   text-align: center;
   white-space: nowrap;
-  letter-spacing: 0.2px;
-  font-weight: 760;
+  letter-spacing: 0.22px;
+  font-weight: 780;
   text-transform: uppercase;
-  transition: box-shadow 140ms ease, transform 120ms ease, border-color 140ms ease;
-  border: 1px solid rgba(148, 163, 184, 0.42);
-  background: rgba(14, 24, 40, 0.78);
+  text-shadow: 0 0 6px rgba(2, 6, 23, 0.35);
+  transition: box-shadow 140ms ease, transform 120ms ease, border-color 140ms ease, background 140ms ease;
+  border: 1px solid rgba(148, 163, 184, 0.46);
+  background: linear-gradient(180deg, rgba(22, 34, 52, 0.9) 0%, rgba(13, 22, 37, 0.92) 100%);
 }
 
 .event-keyboard-btn:hover {
-  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.16), 0 0 10px rgba(148, 163, 184, 0.14);
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.2), 0 0 10px rgba(148, 163, 184, 0.16);
 }
 
 .event-keyboard-btn:active {
   transform: translateY(0.5px);
 }
 
+.event-keyboard-btn--score {
+  border-color: rgba(74, 222, 128, 0.42);
+  background: linear-gradient(180deg, rgba(20, 59, 44, 0.86) 0%, rgba(12, 32, 24, 0.9) 100%);
+}
+
+.event-keyboard-btn--wide {
+  border-color: rgba(96, 165, 250, 0.44);
+  background: linear-gradient(180deg, rgba(21, 50, 88, 0.86) 0%, rgba(13, 28, 53, 0.9) 100%);
+}
+
+.event-keyboard-btn--turnover {
+  border-color: rgba(251, 146, 60, 0.44);
+  background: linear-gradient(180deg, rgba(87, 48, 18, 0.86) 0%, rgba(50, 28, 12, 0.9) 100%);
+}
+
+.event-keyboard-btn--kickout {
+  border-color: rgba(192, 132, 252, 0.46);
+  background: linear-gradient(180deg, rgba(66, 35, 106, 0.86) 0%, rgba(37, 20, 61, 0.9) 100%);
+}
+
+.event-keyboard-btn--free {
+  border-color: rgba(248, 113, 113, 0.46);
+  background: linear-gradient(180deg, rgba(87, 20, 33, 0.86) 0%, rgba(50, 13, 20, 0.9) 100%);
+}
+
 .event-keyboard-btn.is-open,
 .event-keyboard-btn.is-active {
-  border-color: rgba(125, 211, 252, 0.86);
-  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.2), 0 0 10px rgba(125, 211, 252, 0.16);
+  border-color: rgba(226, 236, 255, 0.92);
+  box-shadow: 0 0 0 1px rgba(226, 236, 255, 0.18), 0 0 12px rgba(125, 211, 252, 0.2);
+}
+
+.event-keyboard-btn--score.is-open,
+.event-keyboard-btn--score.is-active {
+  box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.24), 0 0 12px rgba(74, 222, 128, 0.2);
+}
+
+.event-keyboard-btn--wide.is-open,
+.event-keyboard-btn--wide.is-active {
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.26), 0 0 12px rgba(96, 165, 250, 0.22);
+}
+
+.event-keyboard-btn--turnover.is-open,
+.event-keyboard-btn--turnover.is-active {
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.24), 0 0 12px rgba(251, 146, 60, 0.2);
+}
+
+.event-keyboard-btn--kickout.is-open,
+.event-keyboard-btn--kickout.is-active {
+  box-shadow: 0 0 0 1px rgba(192, 132, 252, 0.24), 0 0 12px rgba(192, 132, 252, 0.2);
+}
+
+.event-keyboard-btn--free.is-open,
+.event-keyboard-btn--free.is-active {
+  box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.24), 0 0 12px rgba(248, 113, 113, 0.18);
 }
 
 .event-keyboard-drawer {
   margin-top: 1px;
   display: grid;
-  gap: 4px;
+  gap: 5px;
   border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.34);
-  background: rgba(10, 20, 35, 0.86);
-  padding: 5px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(148, 163, 184, 0.36);
+  background: linear-gradient(180deg, rgba(7, 14, 24, 0.96) 0%, rgba(8, 15, 26, 0.94) 100%);
+  padding: 6px 6px 5px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 5px 12px rgba(2, 8, 15, 0.24);
+}
+
+.event-keyboard-drawer--score {
+  border-color: rgba(74, 222, 128, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(74, 222, 128, 0.16), 0 6px 14px rgba(16, 185, 129, 0.14);
+}
+
+.event-keyboard-drawer--wide {
+  border-color: rgba(96, 165, 250, 0.44);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(96, 165, 250, 0.16), 0 6px 14px rgba(59, 130, 246, 0.14);
+}
+
+.event-keyboard-drawer--turnover {
+  border-color: rgba(251, 146, 60, 0.44);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(251, 146, 60, 0.15), 0 6px 14px rgba(249, 115, 22, 0.14);
+}
+
+.event-keyboard-drawer--kickout {
+  border-color: rgba(192, 132, 252, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(192, 132, 252, 0.15), 0 6px 14px rgba(168, 85, 247, 0.14);
+}
+
+.event-keyboard-drawer--free {
+  border-color: rgba(248, 113, 113, 0.44);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(248, 113, 113, 0.14), 0 6px 14px rgba(239, 68, 68, 0.12);
 }
 
 .event-keyboard-drawer-head {
-  color: #dbe7f5;
-  font-size: 8px;
+  color: #ebf4ff;
+  font-size: 8.4px;
   line-height: 1.1;
-  letter-spacing: 0.22px;
-  font-weight: 700;
+  letter-spacing: 0.26px;
+  font-weight: 760;
   text-transform: uppercase;
-  opacity: 0.88;
+  opacity: 0.92;
 }
 
 .event-keyboard-chip-row {
@@ -1746,23 +1832,44 @@ const PANEL_CSS = `
 .event-keyboard-chip {
   min-height: 24px;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  background: rgba(15, 23, 42, 0.9);
-  color: #dbeafe;
-  font-size: 8.4px;
-  font-weight: 700;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: linear-gradient(180deg, rgba(24, 36, 56, 0.92) 0%, rgba(16, 26, 43, 0.92) 100%);
+  color: #eff6ff;
+  font-size: 8.6px;
+  font-weight: 760;
   line-height: 1;
-  letter-spacing: 0.15px;
+  letter-spacing: 0.17px;
   text-transform: uppercase;
-  padding: 0 8px;
+  padding: 0 9px;
   white-space: nowrap;
   cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.event-keyboard-chip--score {
+  border-color: rgba(74, 222, 128, 0.42);
+}
+
+.event-keyboard-chip--wide {
+  border-color: rgba(96, 165, 250, 0.44);
+}
+
+.event-keyboard-chip--turnover {
+  border-color: rgba(251, 146, 60, 0.44);
+}
+
+.event-keyboard-chip--kickout {
+  border-color: rgba(192, 132, 252, 0.44);
+}
+
+.event-keyboard-chip--free {
+  border-color: rgba(248, 113, 113, 0.44);
 }
 
 .event-keyboard-chip.is-active {
-  border-color: rgba(34, 197, 94, 0.9);
-  background: rgba(22, 101, 52, 0.72);
-  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.16);
+  border-color: rgba(125, 211, 252, 0.92);
+  background: linear-gradient(180deg, rgba(20, 61, 94, 0.88) 0%, rgba(12, 43, 70, 0.9) 100%);
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .event-keyboard-btn:disabled,
@@ -5142,31 +5249,44 @@ export default function StatsModeSurface() {
   const pendingFollowupOptions =
     pendingFollowup == null ? [] : getFollowupOptions(pendingFollowup.kind);
   const scoringKeyboardButtons = [
-    { id: "GOAL" as const, kind: "GOAL" as const, label: "GOAL ▼" },
-    { id: "POINT" as const, kind: "POINT" as const, label: "POINT ▼" },
-    { id: "TWO_POINTER" as const, kind: "TWO_POINTER" as const, label: "2PT ▼" },
-    { id: "WIDE" as const, kind: "WIDE" as const, label: "WIDE ▼" },
+    { id: "GOAL" as const, kind: "GOAL" as const, label: "GOAL ▼", tone: "score" as const },
+    { id: "POINT" as const, kind: "POINT" as const, label: "POINT ▼", tone: "score" as const },
+    { id: "TWO_POINTER" as const, kind: "TWO_POINTER" as const, label: "2PT ▼", tone: "score" as const },
+    { id: "WIDE" as const, kind: "WIDE" as const, label: "WIDE ▼", tone: "wide" as const },
   ];
   const possessionKeyboardButtons = [
-    { id: "TURNOVER_WON" as const, kind: "TURNOVER_WON" as const, label: "TURNOVER+ ▼" },
-    { id: "TURNOVER_LOST" as const, kind: "TURNOVER_LOST" as const, label: "TURNOVER- ▼" },
+    {
+      id: "TURNOVER_WON" as const,
+      kind: "TURNOVER_WON" as const,
+      label: "TURNOVER+ ▼",
+      tone: "turnover" as const,
+    },
+    {
+      id: "TURNOVER_LOST" as const,
+      kind: "TURNOVER_LOST" as const,
+      label: "TURNOVER- ▼",
+      tone: "turnover" as const,
+    },
     {
       id: "KICKOUT_WON" as const,
       kind: "KICKOUT_WON" as const,
       label: `${mode.restartLabel.toUpperCase()}+ ▼`,
+      tone: "kickout" as const,
     },
     {
       id: "KICKOUT_CONCEDED" as const,
       kind: "KICKOUT_CONCEDED" as const,
       label: `${mode.restartLabel.toUpperCase()}- ▼`,
+      tone: "kickout" as const,
     },
   ];
   const freeKeyboardButtons = [
-    { kind: "FREE_WON" as const, label: "FREE+" },
-    { kind: "FREE_CONCEDED" as const, label: "FREE-" },
+    { kind: "FREE_WON" as const, label: "FREE+", tone: "free" as const },
+    { kind: "FREE_CONCEDED" as const, label: "FREE-", tone: "free" as const },
   ];
   const openEventKeyboardMenuKind =
     openEventKeyboardMenuId == null ? null : EVENT_KEYBOARD_MENU_KIND[openEventKeyboardMenuId];
+  const openEventKeyboardTone = getEventKeyboardToneByMenuId(openEventKeyboardMenuId);
   const openEventKeyboardMenuTitle =
     openEventKeyboardMenuId === "TURNOVER_WON"
       ? "Turnover+ options"
@@ -6666,7 +6786,7 @@ export default function StatsModeSurface() {
                       <button
                         key={`keyboard-scoring-${button.id}`}
                         type="button"
-                        className={`event-keyboard-btn ${isActive ? "is-active" : ""} ${isOpen ? "is-open" : ""}`}
+                        className={`event-keyboard-btn event-keyboard-btn--${button.tone} ${isActive ? "is-active" : ""} ${isOpen ? "is-open" : ""}`}
                         aria-expanded={isOpen}
                         onClick={() => {
                           if (!isKindAvailable || !isLoggingActive(matchState)) return;
@@ -6688,7 +6808,7 @@ export default function StatsModeSurface() {
                       <button
                         key={`keyboard-possession-${button.id}`}
                         type="button"
-                        className={`event-keyboard-btn ${isActive ? "is-active" : ""} ${isOpen ? "is-open" : ""}`}
+                        className={`event-keyboard-btn event-keyboard-btn--${button.tone} ${isActive ? "is-active" : ""} ${isOpen ? "is-open" : ""}`}
                         aria-expanded={isOpen}
                         onClick={() => {
                           if (!isKindAvailable || !isLoggingActive(matchState)) return;
@@ -6709,7 +6829,7 @@ export default function StatsModeSurface() {
                       <button
                         key={`keyboard-free-${button.kind}`}
                         type="button"
-                        className={`event-keyboard-btn ${isActive ? "is-active" : ""}`}
+                        className={`event-keyboard-btn event-keyboard-btn--${button.tone} ${isActive ? "is-active" : ""}`}
                         onClick={() => {
                           handleEventButtonPress(button.kind);
                         }}
@@ -6721,7 +6841,11 @@ export default function StatsModeSurface() {
                   })}
                 </div>
                 {openEventKeyboardMenuId && openEventKeyboardMenuKind ? (
-                  <div className="event-keyboard-drawer" role="group" aria-label="Event outcome options">
+                  <div
+                    className={`event-keyboard-drawer ${openEventKeyboardTone ? `event-keyboard-drawer--${openEventKeyboardTone}` : ""}`}
+                    role="group"
+                    aria-label="Event outcome options"
+                  >
                     {openEventKeyboardMenuTitle ? (
                       <span className="event-keyboard-drawer-head">{openEventKeyboardMenuTitle}</span>
                     ) : null}
@@ -6736,7 +6860,7 @@ export default function StatsModeSurface() {
                           <button
                             key={`keyboard-option-${openEventKeyboardMenuId}-${option.label}-${option.tag ?? "none"}`}
                             type="button"
-                            className={`event-keyboard-chip ${isActive ? "is-active" : ""}`}
+                            className={`event-keyboard-chip ${openEventKeyboardTone ? `event-keyboard-chip--${openEventKeyboardTone}` : ""} ${isActive ? "is-active" : ""}`}
                             onClick={() => {
                               selectEventFromKeyboardOption(option);
                             }}
