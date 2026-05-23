@@ -1684,6 +1684,11 @@ const PANEL_CSS = `
   max-width: 95vw;
 }
 
+.event-panel--landscape {
+  width: min(380px, calc(100vw - 28px));
+  max-width: min(380px, calc(100vw - 28px));
+}
+
 .event-keyboard {
   display: grid;
   gap: 4px;
@@ -6821,8 +6826,8 @@ export default function StatsModeSurface() {
         className="floating-controls"
       >
           {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
-          {!isLandscape && isPickerOpen && !isReviewModeActive ? (
-            <div className="event-panel">
+          {isPickerOpen && !isReviewModeActive ? (
+            <div className={`event-panel ${isLandscape ? "event-panel--landscape" : ""}`}>
               <div className="event-keyboard">
                 <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
                   {scoringKeyboardButtons.map((button) => {
@@ -6997,137 +7002,6 @@ export default function StatsModeSurface() {
                     Undo last
                   </button>
                 </div>
-              </div>
-            </div>
-          ) : null}
-          {isLandscape && isPickerOpen && !isReviewModeActive ? (
-            <div className="landscape-toolbar">
-              <div className="landscape-toolbar-row">
-                {visibleEventButtons.slice(0, 5).map((item) => {
-                  const isActive = item.kind === selectedEventKind;
-                  const buttonLabel = getReadableEventButtonLabel(item.label);
-                  return (
-                    <button
-                      key={item.kind}
-                      type="button"
-                      className="landscape-toolbar-btn"
-                      onClick={() => {
-                        handleEventButtonPress(item.kind);
-                      }}
-                      style={
-                        isActive
-                          ? {
-                              ...(isActive
-                                ? {
-                                    border: "1px solid rgba(34,197,94,0.96)",
-                                    background: "rgba(22,101,52,0.7)",
-                                  }
-                                : {}),
-                            }
-                          : undefined
-                      }
-                    >
-                      {buttonLabel}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="landscape-toolbar-row">
-                {visibleEventButtons.slice(5).map((item) => {
-                  const isActive = item.kind === selectedEventKind;
-                  const buttonLabel = getReadableEventButtonLabel(item.label);
-                  return (
-                    <button
-                      key={item.kind}
-                      type="button"
-                      className="landscape-toolbar-btn"
-                      onClick={() => {
-                        handleEventButtonPress(item.kind);
-                      }}
-                      style={
-                        isActive
-                          ? {
-                              ...(isActive
-                                ? {
-                                    border: "1px solid rgba(34,197,94,0.96)",
-                                    background: "rgba(22,101,52,0.7)",
-                                  }
-                                : {}),
-                            }
-                          : undefined
-                      }
-                    >
-                      {buttonLabel}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="landscape-toolbar-secondary">
-                {([
-                  { id: "ALL", label: "Show All" },
-                  { id: "LAST_5", label: "Last 5 mins" },
-                  { id: "LAST_10", label: "Last 10 mins" },
-                ] as const).map((mode) => (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    className="landscape-toolbar-secondary-btn"
-                    onClick={() => {
-                      setVisibilityMode(mode.id);
-                    }}
-                    style={{
-                      border:
-                        visibilityMode === mode.id
-                          ? "1px solid rgba(125,211,252,0.9)"
-                          : "1px solid rgba(148,163,184,0.36)",
-                      background:
-                        visibilityMode === mode.id
-                          ? "rgba(14,116,144,0.4)"
-                          : "rgba(15,23,42,0.84)",
-                    }}
-                  >
-                    {mode.label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className="landscape-toolbar-secondary-btn"
-                  aria-label="Open notes"
-                  title="Open Notes"
-                  onClick={openNotesPanel}
-                  style={{
-                    border: "1px solid rgba(125,211,252,0.58)",
-                    background: "rgba(15,23,42,0.84)",
-                    boxShadow: "0 0 0 1px rgba(125,211,252,0.16), 0 0 7px rgba(125,211,252,0.14)",
-                  }}
-                >
-                  🎤
-                </button>
-                <button
-                  type="button"
-                  className="landscape-toolbar-secondary-btn"
-                  onClick={openReviewPanel}
-                  style={{ border: "1px solid rgba(125,211,252,0.52)" }}
-                >
-                  Review
-                </button>
-                <button
-                  type="button"
-                  className="landscape-toolbar-secondary-btn"
-                  onClick={openMatchSummaryPanel}
-                  style={{ border: "1px solid rgba(125,211,252,0.52)" }}
-                >
-                  Match Summary
-                </button>
-                <button
-                  type="button"
-                  className="landscape-toolbar-secondary-btn"
-                  onClick={() => {
-                    undoLastEventAction();
-                  }}
-                >
-                  Undo
-                </button>
               </div>
             </div>
           ) : null}
