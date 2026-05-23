@@ -6901,6 +6901,27 @@ export default function StatsModeSurface() {
           >
             ZONES
           </button>
+          <button
+            type="button"
+            className="review-strip-chip"
+            onClick={exportReviewSession}
+          >
+            Export Review
+          </button>
+          <button
+            type="button"
+            className="review-strip-chip"
+            onClick={triggerReviewSessionImport}
+          >
+            Import Review
+          </button>
+          <input
+            ref={reviewSessionImportInputRef}
+            type="file"
+            accept={REVIEW_SESSION_IMPORT_ACCEPT}
+            onChange={importReviewSession}
+            style={{ display: "none" }}
+          />
           <span className="review-strip-meta review-strip-player">
             {activePlayerChipText ?? "No active player"}
           </span>
