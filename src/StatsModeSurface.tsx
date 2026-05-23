@@ -1782,35 +1782,40 @@ const PANEL_CSS = `
   display: grid;
   gap: 5px;
   border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.36);
-  background: linear-gradient(180deg, rgba(7, 14, 24, 0.96) 0%, rgba(8, 15, 26, 0.94) 100%);
-  padding: 6px 6px 5px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 5px 12px rgba(2, 8, 15, 0.24);
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  background: linear-gradient(180deg, rgba(6, 12, 20, 0.98) 0%, rgba(7, 13, 23, 0.96) 100%);
+  padding: 7px 7px 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 16px rgba(2, 8, 15, 0.34);
 }
 
 .event-keyboard-drawer--score {
   border-color: rgba(74, 222, 128, 0.42);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(74, 222, 128, 0.16), 0 6px 14px rgba(16, 185, 129, 0.14);
+  background: linear-gradient(180deg, rgba(8, 18, 14, 0.98) 0%, rgba(7, 13, 11, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(74, 222, 128, 0.2), 0 8px 18px rgba(16, 185, 129, 0.18);
 }
 
 .event-keyboard-drawer--wide {
   border-color: rgba(96, 165, 250, 0.44);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(96, 165, 250, 0.16), 0 6px 14px rgba(59, 130, 246, 0.14);
+  background: linear-gradient(180deg, rgba(8, 16, 30, 0.98) 0%, rgba(7, 12, 23, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(96, 165, 250, 0.2), 0 8px 18px rgba(59, 130, 246, 0.18);
 }
 
 .event-keyboard-drawer--turnover {
   border-color: rgba(251, 146, 60, 0.44);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(251, 146, 60, 0.15), 0 6px 14px rgba(249, 115, 22, 0.14);
+  background: linear-gradient(180deg, rgba(24, 14, 8, 0.98) 0%, rgba(16, 10, 6, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(251, 146, 60, 0.2), 0 8px 18px rgba(249, 115, 22, 0.17);
 }
 
 .event-keyboard-drawer--kickout {
   border-color: rgba(192, 132, 252, 0.45);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(192, 132, 252, 0.15), 0 6px 14px rgba(168, 85, 247, 0.14);
+  background: linear-gradient(180deg, rgba(16, 11, 27, 0.98) 0%, rgba(12, 8, 20, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(192, 132, 252, 0.2), 0 8px 18px rgba(168, 85, 247, 0.18);
 }
 
 .event-keyboard-drawer--free {
   border-color: rgba(248, 113, 113, 0.44);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 0 0 1px rgba(248, 113, 113, 0.14), 0 6px 14px rgba(239, 68, 68, 0.12);
+  background: linear-gradient(180deg, rgba(27, 9, 13, 0.98) 0%, rgba(20, 7, 10, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0 0 1px rgba(248, 113, 113, 0.18), 0 8px 18px rgba(239, 68, 68, 0.14);
 }
 
 .event-keyboard-drawer-head {
@@ -1830,20 +1835,24 @@ const PANEL_CSS = `
 }
 
 .event-keyboard-chip {
-  min-height: 24px;
+  min-height: 25px;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.5);
   background: linear-gradient(180deg, rgba(24, 36, 56, 0.92) 0%, rgba(16, 26, 43, 0.92) 100%);
-  color: #eff6ff;
+  color: #f4f8ff;
   font-size: 8.6px;
-  font-weight: 760;
+  font-weight: 780;
   line-height: 1;
-  letter-spacing: 0.17px;
+  letter-spacing: 0.18px;
   text-transform: uppercase;
-  padding: 0 9px;
+  padding: 0 10px;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 4px rgba(2, 8, 15, 0.2);
+}
+
+.event-keyboard-chip:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(226, 236, 255, 0.16), 0 4px 7px rgba(2, 8, 15, 0.24);
 }
 
 .event-keyboard-chip--score {
@@ -1867,9 +1876,34 @@ const PANEL_CSS = `
 }
 
 .event-keyboard-chip.is-active {
-  border-color: rgba(125, 211, 252, 0.92);
-  background: linear-gradient(180deg, rgba(20, 61, 94, 0.88) 0%, rgba(12, 43, 70, 0.9) 100%);
-  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border-color: rgba(226, 236, 255, 0.95);
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(226, 236, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 8px rgba(2, 8, 15, 0.26);
+}
+
+.event-keyboard-chip--score.is-active {
+  border-color: rgba(74, 222, 128, 0.92);
+  background: linear-gradient(180deg, rgba(17, 94, 59, 0.88) 0%, rgba(11, 68, 43, 0.9) 100%);
+}
+
+.event-keyboard-chip--wide.is-active {
+  border-color: rgba(96, 165, 250, 0.92);
+  background: linear-gradient(180deg, rgba(29, 78, 216, 0.88) 0%, rgba(30, 64, 175, 0.9) 100%);
+}
+
+.event-keyboard-chip--turnover.is-active {
+  border-color: rgba(251, 146, 60, 0.92);
+  background: linear-gradient(180deg, rgba(180, 83, 9, 0.88) 0%, rgba(146, 64, 14, 0.9) 100%);
+}
+
+.event-keyboard-chip--kickout.is-active {
+  border-color: rgba(192, 132, 252, 0.92);
+  background: linear-gradient(180deg, rgba(126, 34, 206, 0.88) 0%, rgba(107, 33, 168, 0.9) 100%);
+}
+
+.event-keyboard-chip--free.is-active {
+  border-color: rgba(248, 113, 113, 0.92);
+  background: linear-gradient(180deg, rgba(185, 28, 28, 0.88) 0%, rgba(153, 27, 27, 0.9) 100%);
 }
 
 .event-keyboard-btn:disabled,
@@ -1912,6 +1946,7 @@ const PANEL_CSS = `
   white-space: nowrap;
   letter-spacing: 0.3px;
   text-transform: uppercase;
+  transition: opacity 140ms ease, filter 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
 }
 
 .undo-wrap {
@@ -1933,6 +1968,17 @@ const PANEL_CSS = `
   white-space: nowrap;
   letter-spacing: 0.25px;
   text-transform: uppercase;
+  transition: opacity 140ms ease, filter 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.utility-quiet {
+  opacity: 0.52;
+  filter: saturate(0.7);
+}
+
+.utility-quiet:hover {
+  opacity: 0.66;
+  filter: saturate(0.82);
 }
 
 .active-chip {
@@ -5287,6 +5333,7 @@ export default function StatsModeSurface() {
   const openEventKeyboardMenuKind =
     openEventKeyboardMenuId == null ? null : EVENT_KEYBOARD_MENU_KIND[openEventKeyboardMenuId];
   const openEventKeyboardTone = getEventKeyboardToneByMenuId(openEventKeyboardMenuId);
+  const isOutcomeFocusActive = openEventKeyboardMenuId != null;
   const openEventKeyboardMenuTitle =
     openEventKeyboardMenuId === "TURNOVER_WON"
       ? "Turnover+ options"
@@ -6887,7 +6934,7 @@ export default function StatsModeSurface() {
                   <button
                     key={mode.id}
                     type="button"
-                    className="visibility-btn"
+                    className={`visibility-btn ${isOutcomeFocusActive && mode.id !== "ALL" ? "utility-quiet" : ""}`}
                     onClick={() => {
                       setVisibilityMode(mode.id);
                     }}
@@ -6924,7 +6971,7 @@ export default function StatsModeSurface() {
                 <div style={{ display: "flex", gap: "4px" }}>
                   <button
                     type="button"
-                    className="undo-btn"
+                    className={`undo-btn ${isOutcomeFocusActive ? "utility-quiet" : ""}`}
                     onClick={openReviewPanel}
                     style={{ border: "1px solid rgba(125,211,252,0.52)" }}
                   >
@@ -6932,7 +6979,7 @@ export default function StatsModeSurface() {
                   </button>
                   <button
                     type="button"
-                    className="undo-btn"
+                    className={`undo-btn ${isOutcomeFocusActive ? "utility-quiet" : ""}`}
                     onClick={openMatchSummaryPanel}
                     style={{ border: "1px solid rgba(125,211,252,0.52)" }}
                   >
