@@ -6274,10 +6274,21 @@ export default function StatsModeSurface() {
           <button
             type="button"
             className="review-strip-chip"
-            onClick={openPlayersPanel}
-            aria-label="Open players panel while reviewing"
+            onClick={() => {
+              setShowReviewZones((prev) => !prev);
+            }}
+            aria-pressed={showReviewZones}
+            aria-label="Toggle review zones overlay"
+            style={
+              showReviewZones
+                ? {
+                    border: "1px solid rgba(125,211,252,0.9)",
+                    background: "rgba(14,116,144,0.38)",
+                  }
+                : undefined
+            }
           >
-            Players
+            ZONES
           </button>
           <span className="review-strip-meta review-strip-player">
             {activePlayerChipText ?? "No active player"}
