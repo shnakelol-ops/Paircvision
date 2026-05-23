@@ -26,9 +26,15 @@ function createZone(
 /**
  * Coordinate assumptions:
  * - v1 uses normalized pitch coordinates in a 0..100 domain.
- * - x runs along pitch length (defensive to attacking thirds).
- * - y runs across pitch width (left/centre/right channels).
+ * - Canonical rendered pitch orientation is left-to-right along x and top-to-bottom along y.
+ * - x runs along pitch length (left goal -> right goal in render space).
+ * - y runs across pitch width (top touchline -> bottom touchline in render space).
+ * - Zone naming uses canonical RIGHT-attacking semantics:
+ *   - low x => Defensive third
+ *   - high x => Attacking third
  * - left/centre/right channels are interpreted in data-space using low/mid/high y buckets.
+ *   In this canonical orientation, high y corresponds to the "Right" channel.
+ * - Example: { nx: 0.20, ny: 0.80 } -> (20, 80) -> Defensive Right.
  */
 export const ZONE_MAP_V1_NINE_GRID: ZoneMap = {
   id: "v1-nine-zone-grid",

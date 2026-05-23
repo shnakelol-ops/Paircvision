@@ -72,6 +72,9 @@ function buildHotspotsFromCounts(zoneCounts: readonly ZoneCount[]): ZoneHotspot[
 export function getPitchZone(x: number, y: number, zoneMap: ZoneMap = ZONE_MAP_V1_NINE_GRID): ZoneDefinition | null {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
 
+  // This function classifies in canonical render-space coordinates.
+  // It does not flip/mirror by half or attacking direction; callers should transform
+  // coordinates beforehand if team-relative orientation is required.
   const normalizedX = normalizeToZoneCoordinate(x, zoneMap);
   const normalizedY = normalizeToZoneCoordinate(y, zoneMap);
 
@@ -97,6 +100,9 @@ export function getEventZone<TEvent extends ZoneCoordinateEvent>(
   event: TEvent,
   zoneMap: ZoneMap = ZONE_MAP_V1_NINE_GRID,
 ): ZoneDefinition | null {
+  // Canonical coordinate fallback order:
+  // 1) x/y (if present), 2) nx/ny.
+  // Both 0..1 and 0..100 inputs are accepted via normalizeToZoneCoordinate.
   const resolvedX = extractCoordinateValue(event.x, event.nx, zoneMap);
   const resolvedY = extractCoordinateValue(event.y, event.ny, zoneMap);
   if (resolvedX == null || resolvedY == null) return null;
