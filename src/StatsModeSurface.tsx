@@ -2956,6 +2956,7 @@ export default function StatsModeSurface() {
   const [firstHalfAttackingDirection, setFirstHalfAttackingDirection] =
     useState<AttackingDirection>("RIGHT");
   const [showReviewStrip, setShowReviewStrip] = useState(false);
+  const [isReviewStripCollapsed, setIsReviewStripCollapsed] = useState(false);
   const [selectedReviewEventId, setSelectedReviewEventId] = useState<string | null>(null);
   const [pendingFollowup, setPendingFollowup] = useState<{
     eventId: string;
@@ -4047,6 +4048,7 @@ export default function StatsModeSurface() {
 
   const openReviewPanel = () => {
     setShowReviewStrip(true);
+    setIsReviewStripCollapsed(false);
     setUtilityPanel(null);
     setIsUtilityOpen(false);
     setIsPickerOpen(false);
@@ -4384,6 +4386,7 @@ export default function StatsModeSurface() {
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
     setShowReviewStrip(false);
+    setIsReviewStripCollapsed(false);
     setSelectedReviewEventId(null);
     setUtilityPanel(null);
   };
@@ -6180,7 +6183,7 @@ export default function StatsModeSurface() {
           ))}
         </div>
       ) : null}
-      {showReviewStrip && utilityPanel !== "REVIEW" ? (
+      {showReviewStrip && !isReviewStripCollapsed && utilityPanel !== "REVIEW" ? (
         <div
           className={`review-strip ${isLandscape ? "review-strip--landscape" : "review-strip--portrait"}`}
           role="toolbar"
@@ -6297,12 +6300,44 @@ export default function StatsModeSurface() {
           <span className="review-strip-spacer" aria-hidden="true" />
           <button
             type="button"
+            className="review-strip-chip"
+            onClick={() => {
+              setIsReviewStripCollapsed(true);
+            }}
+            aria-label="Hide review controls"
+          >
+            Hide
+          </button>
+          <button
+            type="button"
             className="review-strip-chip review-strip-chip--exit"
             onClick={exitReviewMode}
           >
             Exit Review
           </button>
         </div>
+      ) : null}
+      {showReviewStrip && isReviewStripCollapsed && utilityPanel !== "REVIEW" ? (
+        <button
+          type="button"
+          className="review-strip-chip"
+          onClick={() => {
+            setIsReviewStripCollapsed(false);
+          }}
+          aria-label="Show review controls"
+          style={{
+            position: "fixed",
+            zIndex: 23,
+            top: isLandscape
+              ? "max(8px, env(safe-area-inset-top, 0px))"
+              : "max(104px, calc(env(safe-area-inset-top, 0px) + 100px))",
+            left: isLandscape
+              ? "max(90px, calc(env(safe-area-inset-left, 0px) + 86px))"
+              : "12px",
+          }}
+        >
+          Review
+        </button>
       ) : null}
       {isReviewModeActive && selectedReviewEvent ? (
         <div
