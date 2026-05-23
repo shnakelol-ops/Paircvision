@@ -36,23 +36,23 @@ function drawZoneCell(layer: Graphics, zone: ZoneOverlayZone): void {
   if (isStrongestZone) {
     layer.roundRect(frame.x - 0.9, frame.y - 0.9, frame.w + 1.8, frame.h + 1.8, 1.8).fill({
       color: 0x6dd3ff,
-      alpha: 0.014 + activity * 0.028,
+      alpha: 0.022 + activity * 0.038,
     });
   }
 
   const fillAlpha = hasEvents
-    ? 0.002 + activity * 0.022 + (isStrongestZone ? 0.01 : 0)
-    : 0.0007;
+    ? 0.0038 + activity * 0.026 + (isStrongestZone ? 0.014 : 0)
+    : 0.0011;
   const borderAlpha = hasEvents
-    ? 0.03 + activity * 0.09 + (isStrongestZone ? 0.045 : 0)
-    : 0.012;
+    ? 0.045 + activity * 0.11 + (isStrongestZone ? 0.06 : 0)
+    : 0.02;
 
   layer.rect(frame.x, frame.y, frame.w, frame.h).fill({
     color: isStrongestZone ? 0x77d8ff : 0x70dcff,
     alpha: fillAlpha,
   }).stroke({
     color: isStrongestZone ? 0xbadcf1 : 0xa9d0e8,
-    width: 0.45,
+    width: 0.5,
     alpha: borderAlpha,
     alignment: 0.5,
   });
@@ -60,8 +60,8 @@ function drawZoneCell(layer: Graphics, zone: ZoneOverlayZone): void {
   if (!isStrongestZone) return;
   layer.roundRect(frame.x + 0.75, frame.y + 0.75, Math.max(0, frame.w - 1.5), Math.max(0, frame.h - 1.5), 1.2).stroke({
     color: 0xcbe8f8,
-    width: 0.4,
-    alpha: 0.08 + activity * 0.06,
+    width: 0.45,
+    alpha: 0.13 + activity * 0.08,
     alignment: 0.5,
   });
 }
@@ -86,24 +86,28 @@ function drawZoneCountBadge(layer: Graphics, zone: ZoneOverlayZone): void {
 
   const badgeBackground = new Graphics();
   badgeBackground.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 3.6).fill({
-    color: 0x082f49,
-    alpha: isStrongestZone ? 0.34 : 0.24,
+    color: 0x061f31,
+    alpha: isStrongestZone ? 0.48 : 0.36,
   }).stroke({
-    color: 0xb5d8eb,
+    color: 0xcce6f5,
     width: 0.35,
-    alpha: isStrongestZone ? 0.2 : 0.14,
+    alpha: isStrongestZone ? 0.34 : 0.24,
     alignment: 0.5,
   });
 
   const countLabel = new Text({
     text: textValue,
     style: {
-      fill: 0xf3f8ff,
+      fill: 0xffffff,
       fontSize: 4.7,
       fontWeight: "800",
       fontFamily: '"Inter Tight", Inter, system-ui, sans-serif',
       letterSpacing: 0.05,
       align: "center",
+      stroke: {
+        color: 0x03131f,
+        width: 0.45,
+      },
     },
   });
   countLabel.anchor.set(0.5);
