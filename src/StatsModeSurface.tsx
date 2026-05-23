@@ -4402,7 +4402,7 @@ export default function StatsModeSurface() {
   const openReviewPanel = () => {
     setShowReviewStrip(true);
     setIsReviewStripCollapsed(false);
-    setUtilityPanel(null);
+    setUtilityPanel("REVIEW");
     setIsUtilityOpen(false);
     setIsPickerOpen(false);
   };
