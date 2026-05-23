@@ -2953,6 +2953,7 @@ export default function StatsModeSurface() {
   const [reviewZone, setReviewZone] = useState<ReviewZone>("FULL");
   const [showReviewHeatmap, setShowReviewHeatmap] = useState(false);
   const [showReviewZones, setShowReviewZones] = useState(false);
+  const [isReviewVisualizationActive, setIsReviewVisualizationActive] = useState(false);
   const [firstHalfAttackingDirection, setFirstHalfAttackingDirection] =
     useState<AttackingDirection>("RIGHT");
   const [showReviewStrip, setShowReviewStrip] = useState(false);
@@ -3953,6 +3954,7 @@ export default function StatsModeSurface() {
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
+    setIsReviewVisualizationActive(false);
     setShowReviewStrip(false);
     setUtilityPanel(null);
     const next = startSecondHalf(matchEngineStateRef.current, Date.now());
@@ -4046,13 +4048,19 @@ export default function StatsModeSurface() {
   };
 
   const openReviewPanel = () => {
+    setIsReviewVisualizationActive(true);
     setShowReviewStrip(true);
     setUtilityPanel(null);
     setIsUtilityOpen(false);
     setIsPickerOpen(false);
   };
 
+  const collapseReviewStripAfterFilter = () => {
+    setShowReviewStrip(false);
+  };
+
   const openMatchSummaryPanel = () => {
+    setIsReviewVisualizationActive(false);
     setShowReviewStrip(false);
     setUtilityPanel("SUMMARY");
     setIsUtilityOpen(false);
@@ -4060,6 +4068,7 @@ export default function StatsModeSurface() {
   };
 
   const openSavedMatchesPanel = () => {
+    setIsReviewVisualizationActive(false);
     setShowReviewStrip(false);
     setSavedMatches(readSavedMatchesFromStorage().matches);
     setUtilityPanel("SAVED_MATCHES");
@@ -4069,6 +4078,7 @@ export default function StatsModeSurface() {
   };
 
   const openNotesPanel = () => {
+    setIsReviewVisualizationActive(false);
     setShowReviewStrip(false);
     setUtilityPanel("NOTES");
     setIsUtilityOpen(false);
@@ -4383,6 +4393,7 @@ export default function StatsModeSurface() {
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
+    setIsReviewVisualizationActive(false);
     setShowReviewStrip(false);
     setSelectedReviewEventId(null);
     setUtilityPanel(null);
@@ -4443,6 +4454,7 @@ export default function StatsModeSurface() {
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
+    setIsReviewVisualizationActive(false);
     setShowReviewStrip(false);
     setUtilityPanel(null);
     setActivePlayer(null);
@@ -4524,6 +4536,13 @@ export default function StatsModeSurface() {
     [visibleReviewEvents],
   );
   const isReviewModeActive = showReviewStrip || utilityPanel === "REVIEW";
+  const isReviewRenderingActive = isReviewModeActive || isReviewVisualizationActive;
+
+  useEffect(() => {
+    if (showReviewStrip || utilityPanel === "REVIEW") {
+      setIsReviewVisualizationActive(true);
+    }
+  }, [showReviewStrip, utilityPanel]);
 
   useEffect(() => {
     if (matchState !== "FULL_TIME") return;
@@ -4580,8 +4599,8 @@ export default function StatsModeSurface() {
   }, [showPlayerInitials]);
 
   useEffect(() => {
-    handleRef.current?.setHeatmapEnabled(showReviewHeatmap && isReviewModeActive);
-  }, [showReviewHeatmap, isReviewModeActive]);
+    handleRef.current?.setHeatmapEnabled(showReviewHeatmap && isReviewRenderingActive);
+  }, [showReviewHeatmap, isReviewRenderingActive]);
 
   useEffect(() => {
     handleRef.current?.setOnMarkerTap(
@@ -4602,7 +4621,7 @@ export default function StatsModeSurface() {
   }, [isReviewModeActive]);
 
   useEffect(() => {
-    if (isReviewModeActive) {
+    if (isReviewRenderingActive) {
       handleRef.current?.setEvents(visibleReviewEvents);
       return;
     }
@@ -4614,16 +4633,16 @@ export default function StatsModeSurface() {
       ),
     );
   }, [
-    isReviewModeActive,
+    isReviewRenderingActive,
     visibleReviewEvents,
   ]);
 
   useEffect(() => {
     handleRef.current?.setZoneOverlayModel(
-      isReviewModeActive && showReviewZones ? reviewZoneOverlayModel : null,
+      isReviewRenderingActive && showReviewZones ? reviewZoneOverlayModel : null,
     );
   }, [
-    isReviewModeActive,
+    isReviewRenderingActive,
     showReviewZones,
     reviewZoneOverlayModel,
   ]);
@@ -6198,6 +6217,7 @@ export default function StatsModeSurface() {
               className="review-strip-chip review-strip-chip--half"
               onClick={() => {
                 setReviewHalf(option.id);
+                collapseReviewStripAfterFilter();
               }}
               style={
                 reviewHalf === option.id
@@ -6218,6 +6238,9 @@ export default function StatsModeSurface() {
               className="review-strip-chip"
               onClick={() => {
                 setReviewSegment(option.id);
+                if (option.id !== "ALL") {
+                  collapseReviewStripAfterFilter();
+                }
               }}
               style={
                 reviewSegment === option.id
@@ -6238,6 +6261,7 @@ export default function StatsModeSurface() {
               className="review-strip-chip"
               onClick={() => {
                 setReviewTeamContext(option.id);
+                collapseReviewStripAfterFilter();
               }}
               style={
                 reviewTeamContext === option.id
@@ -6258,6 +6282,16 @@ export default function StatsModeSurface() {
               className="review-strip-chip"
               onClick={() => {
                 setReviewEventFilter(option.id);
+                if (
+                  option.id === "SCORES" ||
+                  option.id === "SHOTS" ||
+                  option.id === "WIDES" ||
+                  option.id === "TURNOVERS" ||
+                  option.id === "KICKOUTS" ||
+                  option.id === "FREES"
+                ) {
+                  collapseReviewStripAfterFilter();
+                }
               }}
               style={
                 reviewEventFilter === option.id
