@@ -3358,22 +3358,21 @@ export default function StatsModeSurface() {
   };
 
   const toggleMatchBubble = () => {
-    setIsPickerOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setIsUtilityOpen(false);
-        setUtilityPanel((prevPanel) => (prevPanel === "PLAYERS" ? null : prevPanel));
-      }
-      return next;
-    });
+    if (isPickerOpen) {
+      setIsPickerOpen(false);
+      return;
+    }
+    closeAllStatsMenus();
+    setIsPickerOpen(true);
   };
 
   const toggleCommandBubble = () => {
-    setIsUtilityOpen((prev) => {
-      const next = !prev;
-      if (next) setIsPickerOpen(false);
-      return next;
-    });
+    if (isUtilityOpen) {
+      setIsUtilityOpen(false);
+      return;
+    }
+    closeAllStatsMenus();
+    setIsUtilityOpen(true);
   };
 
   const hasNonDefaultLiveSessionState =
@@ -4003,8 +4002,7 @@ export default function StatsModeSurface() {
     setReviewEventFilter("ALL");
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
-    setShowReviewStrip(false);
-    setUtilityPanel(null);
+    closeAllStatsMenus();
     const next = startSecondHalf(matchEngineStateRef.current, Date.now());
     matchEngineStateRef.current = next;
     setMatchState(next.matchState);
@@ -4019,6 +4017,17 @@ export default function StatsModeSurface() {
     });
   };
 
+  const closeAllStatsMenus = () => {
+    setIsPickerOpen(false);
+    setIsUtilityOpen(false);
+    setUtilityPanel(null);
+    setShowReviewStrip(false);
+    setSelectedReviewEventId(null);
+    setIsCountsOverlayOpen(false);
+    setIsFullTimeActionsOpen(false);
+    setIsResetConfirmOpen(false);
+  };
+
   const endMatchAction = () => {
     const current = matchEngineStateRef.current;
     fullTimeResumeStateRef.current = isLoggingActive(current.matchState) ? current : null;
@@ -4027,36 +4036,27 @@ export default function StatsModeSurface() {
     setMatchState(next.matchState);
     setCurrentHalf(next.currentHalf);
     setMatchTimeSeconds(next.matchTimeSeconds);
-    setIsCountsOverlayOpen(false);
+    closeAllStatsMenus();
     setIsFullTimeActionsOpen(true);
-    setIsResetConfirmOpen(false);
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
   };
 
   const toggleCountsOverlay = () => {
     if (matchState === "FULL_TIME") return;
-    setIsCountsOverlayOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setIsFullTimeActionsOpen(false);
-        setIsResetConfirmOpen(false);
-        setIsUtilityOpen(false);
-        setIsPickerOpen(false);
-      }
-      return next;
-    });
+    if (isCountsOverlayOpen) {
+      setIsCountsOverlayOpen(false);
+      return;
+    }
+    closeAllStatsMenus();
+    setIsCountsOverlayOpen(true);
   };
 
   const toggleFullTimeActionsPanel = () => {
-    setIsFullTimeActionsOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setIsCountsOverlayOpen(false);
-        setIsResetConfirmOpen(false);
-      }
-      return next;
-    });
+    if (isFullTimeActionsOpen) {
+      setIsFullTimeActionsOpen(false);
+      return;
+    }
+    closeAllStatsMenus();
+    setIsFullTimeActionsOpen(true);
   };
 
   const resumeMatchFromFullTime = () => {
@@ -4090,39 +4090,30 @@ export default function StatsModeSurface() {
   };
 
   const openPlayersPanel = () => {
+    closeAllStatsMenus();
     setUtilityPanel("PLAYERS");
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
   };
 
   const openReviewPanel = () => {
+    closeAllStatsMenus();
     setShowReviewStrip(true);
-    setUtilityPanel(null);
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
   };
 
   const openMatchSummaryPanel = () => {
-    setShowReviewStrip(false);
+    closeAllStatsMenus();
     setUtilityPanel("SUMMARY");
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
   };
 
   const openSavedMatchesPanel = () => {
-    setShowReviewStrip(false);
+    closeAllStatsMenus();
     setSavedMatches(readSavedMatchesFromStorage().matches);
     setUtilityPanel("SAVED_MATCHES");
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
     setSaveLoadBlockedReason(null);
   };
 
   const openNotesPanel = () => {
-    setShowReviewStrip(false);
+    closeAllStatsMenus();
     setUtilityPanel("NOTES");
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
   };
 
   const saveCurrentMatchSnapshot = () => {
@@ -4503,11 +4494,8 @@ export default function StatsModeSurface() {
   };
 
   const requestResetMatch = () => {
+    closeAllStatsMenus();
     setIsResetConfirmOpen(true);
-    setIsCountsOverlayOpen(false);
-    setIsFullTimeActionsOpen(false);
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
   };
 
   const cancelResetMatch = () => {
@@ -4525,10 +4513,8 @@ export default function StatsModeSurface() {
 
   useEffect(() => {
     if (matchState !== "FULL_TIME") return;
-    setIsCountsOverlayOpen(false);
+    closeAllStatsMenus();
     setIsFullTimeActionsOpen(true);
-    setIsPickerOpen(false);
-    setIsUtilityOpen(false);
   }, [matchState]);
 
   useEffect(() => {
