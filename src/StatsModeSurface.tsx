@@ -388,11 +388,12 @@ function getTurnoverTagLabel(tags: readonly string[] | undefined): string | null
   if (tags.includes("SWARM")) return "Swarm";
   if (tags.includes("INTERCEPT")) return "Intercept";
   if (tags.includes("FORCED")) return "Forced";
-  if (tags.includes("UNFORCED")) return "Unforced";
-  if (tags.includes("SLACK_KICK_PASS")) return "Slack KP";
-  if (tags.includes("SLACK_HAND_PASS")) return "Slack HP";
+  // Keep legacy UNFORCED events readable without exposing old jargon.
+  if (tags.includes("UNFORCED")) return "HP Error";
+  if (tags.includes("SLACK_KICK_PASS")) return "KP Error";
+  if (tags.includes("SLACK_HAND_PASS")) return "HP Error";
   if (tags.includes("OVERCARRIED")) return "Overcarried";
-  if (tags.includes("STRIPPED")) return "Stripped";
+  if (tags.includes("STRIPPED")) return "Tackled";
   return null;
 }
 
@@ -422,11 +423,10 @@ function getFollowupOptions(kind: PendingFollowupKind): readonly FollowupOption[
       ];
     case "TURNOVER_LOST":
       return [
-        { label: "Unforced", tag: "UNFORCED" },
-        { label: "Slack KP", tag: "SLACK_KICK_PASS" },
-        { label: "Slack HP", tag: "SLACK_HAND_PASS" },
+        { label: "HP Error", tag: "SLACK_HAND_PASS" },
+        { label: "KP Error", tag: "SLACK_KICK_PASS" },
         { label: "Overcarried", tag: "OVERCARRIED" },
-        { label: "Stripped", tag: "STRIPPED" },
+        { label: "Tackled", tag: "STRIPPED" },
       ];
     case "KICKOUT_WON":
       return [
