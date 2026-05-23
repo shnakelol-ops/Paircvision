@@ -176,6 +176,17 @@ export async function createPixiPitchSurface(
   fitWorld(host, app, world);
   redrawMarkers();
 
+  const canvas = app.canvas as HTMLCanvasElement;
+  const onContextLost = (event: Event) => {
+    event.preventDefault();
+  };
+  const onContextRestored = () => {
+    fitWorld(host, app, world);
+    redrawMarkers();
+  };
+  canvas.addEventListener("webglcontextlost", onContextLost as EventListener, { passive: false });
+  canvas.addEventListener("webglcontextrestored", onContextRestored as EventListener);
+
   return {
     setEvents: (events) => {
       eventStore.clear();
@@ -218,6 +229,8 @@ export async function createPixiPitchSurface(
       hitArea.destroy();
       heatmapLayer.destroy();
       statsMarkers.destroy();
+      canvas.removeEventListener("webglcontextlost", onContextLost as EventListener);
+      canvas.removeEventListener("webglcontextrestored", onContextRestored as EventListener);
       try {
         host.removeChild(app.canvas as HTMLCanvasElement);
       } catch {
@@ -227,4 +240,3 @@ export async function createPixiPitchSurface(
     },
   };
 }
-

@@ -277,7 +277,6 @@ const REVIEW_FILTER_OPTIONS_BASE: ReadonlyArray<{ id: ReviewEventFilter; label: 
   { id: "TURNOVERS", label: "T/O" },
   { id: "KICKOUTS", label: "K/O" },
   { id: "FREES", label: "FREES" },
-  { id: "PLAYERS", label: "PLAYERS" },
 ];
 const REVIEW_SEGMENT_OPTIONS: ReadonlyArray<{ id: ReviewSegment; label: string; compactLabel?: string }> = [
   { id: "ALL", label: "ALL" },
@@ -4529,7 +4528,15 @@ export default function StatsModeSurface() {
     handleRef.current?.setEvents(
       (() => {
         const isReviewModeActive = showReviewStrip || utilityPanel === "REVIEW";
-        const renderableEvents = getRenderablePitchEvents(
+        if (!isReviewModeActive) {
+          const liveEvents = loggedEvents.filter((event) => event.half === currentHalf);
+          return liveEvents.map((event): LiveRenderablePitchEvent =>
+            normalizeEventTeamSide(event.teamSide, event.team ?? null, event.id) === "OPP"
+              ? { ...event, renderAsSubtleDot: true }
+              : event,
+          );
+        }
+        return getRenderablePitchEvents(
           loggedEvents,
           reviewHalf,
           reviewSegment,
@@ -4540,9 +4547,7 @@ export default function StatsModeSurface() {
           getEffectiveAttackingDirection(firstHalfAttackingDirection, currentHalf),
           reviewActivePlayerOnly,
           activePlayerId,
-        );
-        if (isReviewModeActive) return renderableEvents;
-        return renderableEvents.map((event): LiveRenderablePitchEvent =>
+        ).map((event): LiveRenderablePitchEvent =>
           normalizeEventTeamSide(event.teamSide, event.team ?? null, event.id) === "OPP"
             ? { ...event, renderAsSubtleDot: true }
             : event,
@@ -4563,6 +4568,64 @@ export default function StatsModeSurface() {
     REVIEW_FILTER_KINDS_FOR_MODE,
     showReviewStrip,
     utilityPanel,
+  ]);
+
+  useEffect(() => {
+    const refreshPitchAfterResume = () => {
+      if (document.visibilityState !== "visible") return;
+      const handle = handleRef.current;
+      if (!handle) return;
+      window.dispatchEvent(new Event("resize"));
+      const replayEvents =
+        showReviewStrip || utilityPanel === "REVIEW"
+          ? getRenderablePitchEvents(
+              loggedEvents,
+              reviewHalf,
+              reviewSegment,
+              reviewTeamContext,
+              reviewEventFilter,
+              REVIEW_FILTER_KINDS_FOR_MODE,
+              reviewZone,
+              getEffectiveAttackingDirection(firstHalfAttackingDirection, currentHalf),
+              reviewActivePlayerOnly,
+              activePlayerId,
+            )
+          : loggedEvents.filter((event) => event.half === currentHalf);
+      handle.setEvents(replayEvents);
+      handle.setEventContext({
+        half: currentHalf,
+        timestamp: matchTimeSeconds,
+        canLog: isLoggingActive(matchState) && activeTeam === "HOME",
+      });
+      handle.setHeatmapEnabled(showReviewHeatmap && (showReviewStrip || utilityPanel === "REVIEW"));
+    };
+
+    window.addEventListener("pageshow", refreshPitchAfterResume);
+    window.addEventListener("focus", refreshPitchAfterResume);
+    document.addEventListener("visibilitychange", refreshPitchAfterResume);
+    return () => {
+      window.removeEventListener("pageshow", refreshPitchAfterResume);
+      window.removeEventListener("focus", refreshPitchAfterResume);
+      document.removeEventListener("visibilitychange", refreshPitchAfterResume);
+    };
+  }, [
+    loggedEvents,
+    currentHalf,
+    matchTimeSeconds,
+    matchState,
+    activeTeam,
+    showReviewHeatmap,
+    showReviewStrip,
+    utilityPanel,
+    reviewHalf,
+    reviewSegment,
+    reviewTeamContext,
+    reviewEventFilter,
+    reviewZone,
+    reviewActivePlayerOnly,
+    activePlayerId,
+    REVIEW_FILTER_KINDS_FOR_MODE,
+    firstHalfAttackingDirection,
   ]);
 
   useEffect(() => {
