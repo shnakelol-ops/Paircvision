@@ -69,7 +69,8 @@ type FollowupTag =
   | "SHORT"
   | "POST"
   | "FORTY_FIVE"
-  | "BLOCKED";
+  | "BLOCKED"
+  | "BLOCK_SAVE";
 type PendingFollowupKind =
   | "KICKOUT_WON"
   | "KICKOUT_CONCEDED"
@@ -81,6 +82,7 @@ type EventKeyboardMenuId =
   | "GOAL"
   | "POINT"
   | "TWO_POINTER"
+  | "SHOT"
   | "WIDE"
   | "TURNOVER_WON"
   | "TURNOVER_LOST"
@@ -341,6 +343,7 @@ const EVENT_KEYBOARD_MENU_KIND: Record<EventKeyboardMenuId, MatchEventKind> = {
   GOAL: "GOAL",
   POINT: "POINT",
   TWO_POINTER: "TWO_POINTER",
+  SHOT: "SHOT",
   WIDE: "WIDE",
   TURNOVER_WON: "TURNOVER_WON",
   TURNOVER_LOST: "TURNOVER_LOST",
@@ -434,7 +437,7 @@ function getShotTagLabel(tags: readonly string[] | undefined): "Short" | "Post" 
   if (tags.includes("SHORT")) return "Short";
   if (tags.includes("POST")) return "Post";
   if (tags.includes("FORTY_FIVE")) return "45";
-  if (tags.includes("BLOCKED")) return "Blocked";
+  if (tags.includes("BLOCK_SAVE") || tags.includes("BLOCKED")) return "Blocked";
   return null;
 }
 
@@ -478,7 +481,7 @@ function getFollowupOptions(kind: PendingFollowupKind): readonly FollowupOption[
         { label: "Short", tag: "SHORT" },
         { label: "Post", tag: "POST" },
         { label: "45", tag: "FORTY_FIVE" },
-        { label: "Blocked", tag: "BLOCKED" },
+        { label: "Block/Save", tag: "BLOCK_SAVE" },
       ];
     default:
       return [];
@@ -496,7 +499,7 @@ function getRemovableFollowupTags(kind: PendingFollowupKind): readonly string[] 
     case "KICKOUT_CONCEDED":
       return ["CLEAN", "BREAK", "FOUL_CONCEDED", "KICKED_DEAD"];
     case "SHOT":
-      return ["SHORT", "POST", "FORTY_FIVE", "BLOCKED"];
+      return ["SHORT", "POST", "FORTY_FIVE", "BLOCK_SAVE", "BLOCKED"];
     default:
       return [];
   }
@@ -536,7 +539,8 @@ function buildEventKeyboardMenuOptions(menuId: EventKeyboardMenuId): readonly Ev
     case "TURNOVER_WON":
     case "TURNOVER_LOST":
     case "KICKOUT_WON":
-    case "KICKOUT_CONCEDED": {
+    case "KICKOUT_CONCEDED":
+    case "SHOT": {
       return getFollowupOptions(menuId as PendingFollowupKind).map((option) => ({
         label: option.label,
         kind: EVENT_KEYBOARD_MENU_KIND[menuId],
@@ -550,7 +554,7 @@ function buildEventKeyboardMenuOptions(menuId: EventKeyboardMenuId): readonly Ev
 
 function getEventKeyboardToneByMenuId(menuId: EventKeyboardMenuId | null): EventKeyboardTone | null {
   if (menuId == null) return null;
-  if (menuId === "GOAL" || menuId === "POINT" || menuId === "TWO_POINTER") return "score";
+  if (menuId === "GOAL" || menuId === "POINT" || menuId === "TWO_POINTER" || menuId === "SHOT") return "score";
   if (menuId === "WIDE") return "wide";
   if (menuId === "TURNOVER_WON" || menuId === "TURNOVER_LOST") return "turnover";
   if (menuId === "KICKOUT_WON" || menuId === "KICKOUT_CONCEDED") return "kickout";
@@ -5386,6 +5390,7 @@ export default function StatsModeSurface() {
     { id: "GOAL" as const, kind: "GOAL" as const, label: "GOAL ▼", tone: "score" as const },
     { id: "POINT" as const, kind: "POINT" as const, label: "POINT ▼", tone: "score" as const },
     { id: "TWO_POINTER" as const, kind: "TWO_POINTER" as const, label: "2PT ▼", tone: "score" as const },
+    { id: "SHOT" as const, kind: "SHOT" as const, label: "SHOT ▼", tone: "score" as const },
     { id: "WIDE" as const, kind: "WIDE" as const, label: "WIDE ▼", tone: "wide" as const },
   ];
   const possessionKeyboardButtons = [
@@ -6307,227 +6312,6 @@ export default function StatsModeSurface() {
           </button>
         </div>
       ) : null}
-      {utilityPanel === "REVIEW" ? (
-        <div className={reviewPanelClass} role="dialog" aria-label="Review mode">
-          <div className="utility-review-scroll">
-            <div className="utility-panel-title">Review</div>
-            <button type="button" className="utility-review-btn" onClick={saveReviewSession}>
-              Save Review Session
-            </button>
-            <button type="button" className="utility-review-btn" onClick={openLastReviewSession}>
-              Open Last Review Session
-            </button>
-            <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
-              Half
-            </div>
-            {([
-              { id: "FULL", label: "ALL (Reset)" },
-              { id: "H1", label: "1H" },
-              { id: "H2", label: "2H" },
-            ] as const).map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className="utility-review-btn"
-                onClick={() => {
-                  setReviewHalf(option.id);
-                  setShowReviewStrip(true);
-                  closeUtilityPanel();
-                }}
-                style={
-                  reviewHalf === option.id
-                    ? {
-                        border: "1px solid rgba(125,211,252,0.9)",
-                        background: "rgba(14,116,144,0.38)",
-                      }
-                    : undefined
-                }
-              >
-                {option.label}
-              </button>
-            ))}
-            <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
-              Segment
-            </div>
-            {REVIEW_SEGMENT_OPTIONS.map((option) => (
-              <button
-                key={`segment-${option.id}`}
-                type="button"
-                className="utility-review-btn"
-                onClick={() => {
-                  setReviewSegment(option.id);
-                  setShowReviewStrip(true);
-                  closeUtilityPanel();
-                }}
-                style={
-                  reviewSegment === option.id
-                    ? {
-                        border: "1px solid rgba(125,211,252,0.9)",
-                        background: "rgba(14,116,144,0.38)",
-                      }
-                    : undefined
-                }
-              >
-                {option.label}
-              </button>
-            ))}
-            <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
-              Team Context
-            </div>
-            {REVIEW_TEAM_CONTEXT_OPTIONS.map((option) => (
-              <button
-                key={`team-${option.id}`}
-                type="button"
-                className="utility-review-btn"
-                onClick={() => {
-                  setReviewTeamContext(option.id);
-                  setShowReviewStrip(true);
-                  closeUtilityPanel();
-                }}
-                style={
-                  reviewTeamContext === option.id
-                    ? {
-                        border: "1px solid rgba(125,211,252,0.9)",
-                        background: "rgba(14,116,144,0.38)",
-                      }
-                    : undefined
-                }
-              >
-                {option.label}
-              </button>
-            ))}
-            <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
-              Event Category
-            </div>
-            {REVIEW_FILTER_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className="utility-review-btn"
-                onClick={() => {
-                  setReviewEventFilter(option.id);
-                  setShowReviewStrip(true);
-                  closeUtilityPanel();
-                }}
-                style={
-                  reviewEventFilter === option.id
-                    ? {
-                        border: "1px solid rgba(125,211,252,0.9)",
-                        background: "rgba(14,116,144,0.38)",
-                      }
-                    : undefined
-                }
-              >
-                {option.label}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="utility-review-btn"
-              onClick={() => {
-                setReviewActivePlayerOnly((prev) => !prev);
-                setShowReviewStrip(true);
-                closeUtilityPanel();
-              }}
-              style={
-                reviewActivePlayerOnly
-                  ? {
-                      border: "1px solid rgba(125,211,252,0.9)",
-                      background: "rgba(14,116,144,0.38)",
-                    }
-                  : undefined
-              }
-            >
-              ACTIVE
-            </button>
-            <button
-              type="button"
-              className="utility-review-btn"
-              onClick={() => {
-                setShowReviewHeatmap((prev) => !prev);
-                setShowReviewStrip(true);
-                closeUtilityPanel();
-              }}
-              style={
-                showReviewHeatmap
-                  ? {
-                      border: "1px solid rgba(125,211,252,0.9)",
-                      background: "rgba(14,116,144,0.38)",
-                    }
-                  : undefined
-              }
-            >
-              HEATMAP {showReviewHeatmap ? "ON" : "OFF"}
-            </button>
-            <button
-              type="button"
-              className="utility-review-btn"
-              onClick={() => {
-                setShowReviewZones((prev) => !prev);
-                setShowReviewStrip(true);
-                closeUtilityPanel();
-              }}
-              style={
-                showReviewZones
-                  ? {
-                      border: "1px solid rgba(125,211,252,0.9)",
-                      background: "rgba(14,116,144,0.38)",
-                    }
-                  : undefined
-              }
-            >
-              ZONES {showReviewZones ? "ON" : "OFF"}
-            </button>
-            <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
-              Zone
-            </div>
-            {([
-              { id: "FULL", label: "FULL" },
-              { id: "OWN_HALF", label: "OWN HALF" },
-              { id: "OPPOSITION_HALF", label: "OPP HALF" },
-            ] as const).map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className="utility-review-btn"
-                onClick={() => {
-                  setReviewZone(option.id);
-                  setShowReviewStrip(true);
-                  closeUtilityPanel();
-                }}
-                style={
-                  reviewZone === option.id
-                    ? {
-                        border: "1px solid rgba(125,211,252,0.9)",
-                        background: "rgba(14,116,144,0.38)",
-                      }
-                    : undefined
-                }
-              >
-                {option.label}
-              </button>
-            ))}
-            <div
-              className="utility-panel-title"
-              style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}
-            >
-              {visibleReviewEvents.length} events shown
-            </div>
-            {reviewActivePlayerOnly && activePlayerId && activeReviewPlayerLabel ? (
-              <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
-                ACTIVE: {activeReviewPlayerLabel} · {visibleReviewEvents.length} events
-              </div>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            className="utility-panel-close utility-panel-close--sticky"
-            onClick={closeUtilityPanel}
-          >
-            Close
-          </button>
-        </div>
-      ) : null}
       {utilityPanel === "SUMMARY" ? (
         <div className={utilityPanelClass} role="dialog" aria-label="Match summary">
           <div className="utility-review-scroll">
@@ -6788,6 +6572,20 @@ export default function StatsModeSurface() {
             {activePlayerChipText ?? "No active player"}
           </span>
           <span className="review-strip-meta">{visibleReviewEvents.length} shown</span>
+          <button
+            type="button"
+            className="review-strip-chip"
+            onClick={saveReviewSession}
+          >
+            Export Review
+          </button>
+          <button
+            type="button"
+            className="review-strip-chip"
+            onClick={openLastReviewSession}
+          >
+            Import Review
+          </button>
           <span className="review-strip-spacer" aria-hidden="true" />
           <button
             type="button"
@@ -6918,7 +6716,7 @@ export default function StatsModeSurface() {
           {isPickerOpen && !isReviewModeActive ? (
             <div className={isLandscape ? "landscape-toolbar" : "event-panel"}>
               <div className="event-keyboard">
-                <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+                <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
                   {scoringKeyboardButtons.map((button) => {
                     const isKindAvailable = visibleEventKindSet.has(button.kind);
                     const isActive = selectedEventKind === button.kind;
