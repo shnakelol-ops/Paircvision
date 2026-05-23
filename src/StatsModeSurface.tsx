@@ -1672,22 +1672,6 @@ const PANEL_CSS = `
   max-width: 95vw;
 }
 
-.event-panel--landscape {
-  width: min(380px, calc(100vw - 154px));
-  max-width: min(380px, calc(100vw - 154px));
-  max-height: calc(
-    var(--stats-app-height, 100dvh) -
-      max(62px, calc(env(safe-area-inset-top, 0px) + 58px)) -
-      max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px))
-  );
-  max-height: calc(
-    100svh - max(62px, calc(env(safe-area-inset-top, 0px) + 58px)) -
-      max(20px, calc(env(safe-area-inset-bottom, 0px) + 16px))
-  );
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
 .event-keyboard {
   display: grid;
   gap: 4px;
@@ -3062,14 +3046,6 @@ const PANEL_CSS = `
 }
 
 @media (orientation: landscape) {
-  .floating-controls {
-    top: auto;
-    left: max(90px, calc(env(safe-area-inset-left, 0px) + 86px));
-    right: max(10px, calc(env(safe-area-inset-right, 0px) + 8px));
-    bottom: max(24px, calc(env(safe-area-inset-bottom, 0px) + 20px));
-    align-items: center;
-  }
-
   .scoreboard-rail {
     left: max(3px, env(safe-area-inset-left));
   }
@@ -6834,7 +6810,7 @@ export default function StatsModeSurface() {
       >
           {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
           {isPickerOpen && !isReviewModeActive ? (
-            <div className={`event-panel ${isLandscape ? "event-panel--landscape" : ""}`}>
+            <div className={isLandscape ? "landscape-toolbar" : "event-panel"}>
               <div className="event-keyboard">
                 <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
                   {scoringKeyboardButtons.map((button) => {
