@@ -1502,18 +1502,6 @@ function modeHasScoringEvent(
   return scoringEvents.includes(kind);
 }
 
-function getReadableEventButtonLabel(label: string): string {
-  if (label === "T+") return "TURNOVER +";
-  if (label === "T-" || label === "T−") return "TURNOVER -";
-  if (label === "K+") return "KICKOUT +";
-  if (label === "K-" || label === "K−") return "KICKOUT -";
-  if (label === "F+") return "FREE +";
-  if (label === "F-" || label === "F−") return "FREE -";
-  if (label === "FS") return "FREE SCORED";
-  if (label === "FM") return "FREE MISSED";
-  return label;
-}
-
 function getReviewEventTypeLabel(kind: MatchEventKind): string {
   if (kind === "KICKOUT_CONCEDED") return "KICKOUT LOST";
   if (kind === "KICKOUT_WON") return "KICKOUT WON";
