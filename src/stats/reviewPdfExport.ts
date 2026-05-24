@@ -517,7 +517,18 @@ function makeTacticalPage(
   return canvas;
 }
 
-/** Draws the symmetrical stats table for the summary page. */
+/**
+ * Draws two mirrored team stat blocks for the summary page.
+ *
+ * Layout: left block = FOR (home), right block = OPP (away).
+ * Both blocks are structurally identical — three labelled sections
+ * (SCORING / POSSESSION / DEAD BALL) each with the same row order.
+ * Derived stats (Conversion %, K/O %, Net T/O) are computed here and
+ * shown with colour accents for positive/negative Net T/O values.
+ *
+ * No external data or new event selectors — uses only the existing
+ * scoreFromEvents / countKinds helpers already in this file.
+ */
 function drawSummaryStatsTable(
   ctx: CanvasRenderingContext2D,
   events: readonly PdfExportEvent[],
@@ -531,100 +542,176 @@ function drawSummaryStatsTable(
     (e) => e.teamSide === "OPP" && !e.id.includes("-instant-score-"),
   );
 
-  const forScore = scoreFromEvents(forEvts);
-  const oppScore = scoreFromEvents(oppEvts);
-
   const SHOT_KINDS: MatchEventKind[] = [
     "SHOT", "GOAL", "POINT", "WIDE", "TWO_POINTER",
     "FORTY_FIVE_TWO_POINT", "FREE_MISSED", "FREE_SCORED",
   ];
-
-  // Symmetric rows — both FOR and OPP always rendered (no disappearing rows)
-  const rows: [string, string, string][] = [
-    ["Score",            fmtScore(forScore),                          fmtScore(oppScore)],
-    ["Goals",            String(countKinds(forEvts, "GOAL")),          String(countKinds(oppEvts, "GOAL"))],
-    ["Points",           String(forScore.points),                      String(oppScore.points)],
-    ["Shots",            String(countKinds(forEvts, ...SHOT_KINDS)),   String(countKinds(oppEvts, ...SHOT_KINDS))],
-    ["Wides",            String(countKinds(forEvts, "WIDE")),          String(countKinds(oppEvts, "WIDE"))],
-    ["K/O Won",          String(countKinds(forEvts, "KICKOUT_WON")),   String(countKinds(oppEvts, "KICKOUT_WON"))],
-    ["K/O Conceded",     String(countKinds(forEvts, "KICKOUT_CONCEDED")), String(countKinds(oppEvts, "KICKOUT_CONCEDED"))],
-    ["Turnover Won",     String(countKinds(forEvts, "TURNOVER_WON")), String(countKinds(oppEvts, "TURNOVER_WON"))],
-    ["Turnover Lost",    String(countKinds(forEvts, "TURNOVER_LOST")),String(countKinds(oppEvts, "TURNOVER_LOST"))],
-    ["Frees Won",        String(countKinds(forEvts, "FREE_WON")),      String(countKinds(oppEvts, "FREE_WON"))],
-    ["Frees Conceded",   String(countKinds(forEvts, "FREE_CONCEDED")), String(countKinds(oppEvts, "FREE_CONCEDED"))],
-    ["Free Scored",      String(countKinds(forEvts, "FREE_SCORED")),   String(countKinds(oppEvts, "FREE_SCORED"))],
-    ["Free Missed",      String(countKinds(forEvts, "FREE_MISSED")),   String(countKinds(oppEvts, "FREE_MISSED"))],
+  const SCORE_KINDS: MatchEventKind[] = [
+    "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED",
   ];
 
-  const tableLeft = 120;
-  const headerY = 280;
-  const rowH = 48;
-  const col0W = 280;
-  const col1W = 340;
-  const col2W = 340;
-  const tableW = col0W + col1W + col2W;
+  type BlockStats = {
+    score: ScoreResult;
+    shots: number; conv: string; wides: number;
+    koWon: number; koCon: number; koTotal: number; koPct: string;
+    toWon: number; toLost: number; netTo: number;
+    freesWon: number; freesCon: number; freeScored: number; freeMissed: number;
+  };
 
-  ctx.save();
-  ctx.textBaseline = "middle";
+  function buildStats(evts: readonly PdfExportEvent[]): BlockStats {
+    const score     = scoreFromEvents(evts);
+    const shots     = countKinds(evts, ...SHOT_KINDS);
+    const scoreKind = countKinds(evts, ...SCORE_KINDS);
+    const koWon     = countKinds(evts, "KICKOUT_WON");
+    const koCon     = countKinds(evts, "KICKOUT_CONCEDED");
+    const koTotal   = koWon + koCon;
+    const toWon     = countKinds(evts, "TURNOVER_WON");
+    const toLost    = countKinds(evts, "TURNOVER_LOST");
+    return {
+      score, shots, wides: countKinds(evts, "WIDE"),
+      conv:      shots > 0   ? `${Math.round((scoreKind / shots)  * 100)}%` : "—",
+      koWon, koCon, koTotal,
+      koPct:     koTotal > 0 ? `${Math.round((koWon   / koTotal)  * 100)}%` : "—",
+      toWon, toLost, netTo: toWon - toLost,
+      freesWon:  countKinds(evts, "FREE_WON"),
+      freesCon:  countKinds(evts, "FREE_CONCEDED"),
+      freeScored:countKinds(evts, "FREE_SCORED"),
+      freeMissed:countKinds(evts, "FREE_MISSED"),
+    };
+  }
 
-  // Header background
-  ctx.fillStyle = "rgba(125,211,252,0.13)";
-  ctx.fillRect(tableLeft, headerY, tableW, rowH);
+  const forStats = buildStats(forEvts);
+  const oppStats = buildStats(oppEvts);
 
-  ctx.fillStyle = "#7dd3fc";
-  ctx.font = "bold 20px sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("Stat", tableLeft + 12, headerY + rowH / 2);
-  ctx.textAlign = "center";
-  ctx.fillText(homeTeam.toUpperCase(), tableLeft + col0W + col1W / 2, headerY + rowH / 2);
-  ctx.fillText(awayTeam.toUpperCase(), tableLeft + col0W + col1W + col2W / 2, headerY + rowH / 2);
-  ctx.textAlign = "left";
+  // ── Block geometry ──────────────────────────────────────────────────────────
+  const blockW  = 848;
+  const blockX1 = 72;    // FOR (home) block left edge
+  const blockX2 = 1000;  // OPP (away) block left edge
+  const blockY  = 244;   // top of both blocks (below scoreline)
+  const rowH    = 40;
+  const secH    = 32;    // section-header bar height
+  const hdrH    = 40;    // team-name header height
+  const gap     = 12;    // vertical gap between sections
 
-  // Separator
-  ctx.strokeStyle = "rgba(125,211,252,0.25)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(tableLeft, headerY);
-  ctx.lineTo(tableLeft + tableW, headerY);
-  ctx.stroke();
+  // Three sections — identical structure for both blocks.
+  type SRow = { label: string; value: string; vColor?: string };
+  type Section = { label: string; accent: string; bg: string; rows: SRow[] };
 
-  // Data rows
-  rows.forEach(([label, forVal, oppVal], i) => {
-    const rowY = headerY + rowH + i * rowH;
-    if (i % 2 === 0) {
-      ctx.fillStyle = "rgba(255,255,255,0.025)";
-      ctx.fillRect(tableLeft, rowY, tableW, rowH);
-    }
-    ctx.strokeStyle = "rgba(255,255,255,0.055)";
+  function makeSections(st: BlockStats): Section[] {
+    const netStr   = st.netTo >= 0 ? `+${st.netTo}` : String(st.netTo);
+    const netColor = st.netTo > 0  ? "#4ade80" : st.netTo < 0 ? "#fb7185" : "#94a3b8";
+    return [
+      {
+        label: "SCORING", accent: "#7dd3fc", bg: "rgba(125,211,252,0.08)",
+        rows: [
+          { label: "Goals",       value: String(st.score.goals) },
+          { label: "Points",      value: String(st.score.points) },
+          { label: "Shots",       value: String(st.shots) },
+          { label: "Conversion",  value: st.conv },
+          { label: "Wides",       value: String(st.wides) },
+        ],
+      },
+      {
+        label: "POSSESSION", accent: "#a78bfa", bg: "rgba(167,139,250,0.08)",
+        rows: [
+          { label: "K/O Won",     value: `${st.koWon} / ${st.koTotal}` },
+          { label: "K/O %",       value: st.koPct },
+          { label: "T/O Won",     value: String(st.toWon) },
+          { label: "T/O Lost",    value: String(st.toLost) },
+          { label: "Net T/O",     value: netStr, vColor: netColor },
+        ],
+      },
+      {
+        label: "DEAD BALL", accent: "#34d399", bg: "rgba(52,211,153,0.08)",
+        rows: [
+          { label: "Frees Won",      value: String(st.freesWon) },
+          { label: "Frees Conceded", value: String(st.freesCon) },
+          { label: "Free Scored",    value: String(st.freeScored) },
+          { label: "Free Missed",    value: String(st.freeMissed) },
+        ],
+      },
+    ];
+  }
+
+  // Total block height:
+  //   hdr(40) + gap(8) + SCORING(32+5×40) + gap(12) + POSSESSION(32+5×40) + gap(12) + DEADBALL(32+4×40)
+  //   = 40+8+232+12+232+12+192 = 728px
+  const BLOCK_H = 728;
+
+  function drawBlock(bx: number, teamName: string, st: BlockStats, accent: string): void {
+    const sections = makeSections(st);
+    ctx.save();
+
+    // Card background + left accent bar
+    ctx.fillStyle = "rgba(255,255,255,0.022)";
+    ctx.fillRect(bx, blockY, blockW, BLOCK_H);
+    ctx.fillStyle = accent;
+    ctx.fillRect(bx, blockY, 4, BLOCK_H);
+
+    let cy = blockY;
+
+    // Team-name header
+    ctx.fillStyle = accent;
+    ctx.font = "bold 22px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(teamName.toUpperCase(), bx + 16, cy + hdrH / 2);
+    // Separator
+    ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(tableLeft, rowY + rowH);
-    ctx.lineTo(tableLeft + tableW, rowY + rowH);
+    ctx.moveTo(bx + 4, cy + hdrH);
+    ctx.lineTo(bx + blockW, cy + hdrH);
     ctx.stroke();
+    cy += hdrH + 8;  // 8px internal gap after header
 
-    const midY = rowY + rowH / 2;
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "19px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText(label, tableLeft + 12, midY);
-    ctx.fillStyle = "#f1f5f9";
-    ctx.textAlign = "center";
-    ctx.fillText(forVal,  tableLeft + col0W + col1W / 2,             midY);
-    ctx.fillText(oppVal,  tableLeft + col0W + col1W + col2W / 2,     midY);
-    ctx.textAlign = "left";
-  });
+    for (const sec of sections) {
+      // Section header bar
+      ctx.fillStyle = sec.bg;
+      ctx.fillRect(bx + 4, cy, blockW - 4, secH);
+      ctx.fillStyle = sec.accent;
+      ctx.fillRect(bx + 4, cy, 3, secH);  // inner accent pip
+      ctx.font = "bold 13px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.fillText(sec.label, bx + 20, cy + secH / 2);
+      cy += secH;
 
-  // Vertical column dividers
-  ctx.strokeStyle = "rgba(255,255,255,0.07)";
-  ctx.lineWidth = 1;
-  const tableH = rowH + rows.length * rowH;
-  [tableLeft + col0W, tableLeft + col0W + col1W].forEach((x) => {
-    ctx.beginPath();
-    ctx.moveTo(x, headerY);
-    ctx.lineTo(x, headerY + tableH);
-    ctx.stroke();
-  });
+      sec.rows.forEach(({ label, value, vColor }, ri) => {
+        // Alternate row tint
+        if (ri % 2 === 0) {
+          ctx.fillStyle = "rgba(255,255,255,0.03)";
+          ctx.fillRect(bx + 4, cy, blockW - 4, rowH);
+        }
+        const midY = cy + rowH / 2;
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "20px sans-serif";
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "left";
+        ctx.fillText(label, bx + 16, midY);
+        ctx.fillStyle = vColor ?? "#f1f5f9";
+        ctx.font = "bold 21px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(value, bx + blockW - 14, midY);
+        cy += rowH;
+      });
 
+      cy += gap;  // inter-section spacing
+    }
+
+    ctx.restore();
+  }
+
+  drawBlock(blockX1, homeTeam, forStats, "#7dd3fc");
+  drawBlock(blockX2, awayTeam, oppStats, "#fb7185");
+
+  // "v" label centred in the gap between the two blocks
+  ctx.save();
+  ctx.fillStyle = "#334155";
+  ctx.font = "bold 24px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+  ctx.fillText("v", 960, blockY + hdrH / 2);
   ctx.restore();
 }
 
@@ -654,7 +741,7 @@ function makeSummaryPage(
   ctx.save();
   ctx.textBaseline = "middle";
 
-  // Page title
+  // ── Page header ───────────────────────────────────────────────────────────────
   ctx.fillStyle = "#f8fafc";
   ctx.font = "bold 30px sans-serif";
   ctx.textAlign = "left";
@@ -678,29 +765,51 @@ function makeSummaryPage(
   ctx.lineTo(CANVAS_W, 74);
   ctx.stroke();
 
-  // Score display
-  const cx1 = Math.round(CANVAS_W * 0.25);
-  const cx2 = Math.round(CANVAS_W * 0.75);
-  ctx.fillStyle = "#f8fafc";
-  ctx.font = "bold 34px sans-serif";
+  // ── Scoreline zone: y=80–240 ──────────────────────────────────────────────────
+  // Centres align with the FOR and OPP stat blocks below
+  //   FOR block: x=72, w=848  → centre x=496
+  //   OPP block: x=1000, w=848 → centre x=1424
+  const forCX = 72 + 424;    // 496
+  const oppCX = 1000 + 424;  // 1424
+
+  // Team names — large, colour-coded to match their block accent
+  ctx.font = "bold 44px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(homeTeam, cx1, 145);
-  ctx.fillText(awayTeam, cx2, 145);
-  ctx.fillStyle = "#4ade80";
-  ctx.font = "bold 48px sans-serif";
-  ctx.fillText(fmtScore(forScore), cx1, 205);
+  ctx.fillStyle = "#7dd3fc";
+  ctx.fillText(homeTeam.toUpperCase(), forCX, 118);
   ctx.fillStyle = "#fb7185";
-  ctx.fillText(fmtScore(oppScore), cx2, 205);
-  ctx.fillStyle = "#475569";
-  ctx.font = "bold 34px sans-serif";
-  ctx.fillText("v", Math.round(CANVAS_W / 2), 175);
-  ctx.textAlign = "left";
+  ctx.fillText(awayTeam.toUpperCase(), oppCX, 118);
+
+  // Scores — large, boldly coloured
+  ctx.font = "bold 64px sans-serif";
+  ctx.fillStyle = "#4ade80";
+  ctx.fillText(fmtScore(forScore), forCX, 198);
+  ctx.fillStyle = "#fb7185";
+  ctx.fillText(fmtScore(oppScore), oppCX, 198);
+
+  // "v" centred between the two team columns
+  ctx.font = "bold 38px sans-serif";
+  ctx.fillStyle = "#334155";
+  ctx.fillText("v", Math.round(CANVAS_W / 2), 158);
+
+  // Gradient accent divider that separates the scoreline from the stat blocks
+  const dg = ctx.createLinearGradient(72, 0, CANVAS_W - 72, 0);
+  dg.addColorStop(0,   "rgba(125,211,252,0.45)");
+  dg.addColorStop(0.5, "rgba(255,255,255,0.08)");
+  dg.addColorStop(1,   "rgba(251,113,133,0.45)");
+  ctx.strokeStyle = dg;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(72, 240);
+  ctx.lineTo(CANVAS_W - 72, 240);
+  ctx.stroke();
 
   ctx.restore();
 
+  // ── Two-block stats table (starts at y=244) ───────────────────────────────────
   drawSummaryStatsTable(ctx, events, homeTeam, awayTeam);
 
-  // Footer
+  // ── Footer ────────────────────────────────────────────────────────────────────
   ctx.save();
   ctx.fillStyle = "#475569";
   ctx.font = "15px sans-serif";
@@ -732,6 +841,7 @@ function makeSegmentsPage(
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
 
+  // ── Page header ───────────────────────────────────────────────────────────────
   ctx.fillStyle = "#f8fafc";
   ctx.font = "bold 30px sans-serif";
   ctx.fillText("Game Segments Breakdown", 24, 38);
@@ -754,59 +864,74 @@ function makeSegmentsPage(
   const validEvts = events.filter((e) => !e.id.includes("-instant-score-"));
 
   type SegDef = { seg: MatchEventSegment; label: string; period: MatchEventPeriod };
+
+  // ── Table geometry (wider, centred — 260px margins each side) ────────────────
+  const tableLeft = 260;
+  const col0W     = 280;   // segment label column
+  const col1W     = 560;   // FOR score column
+  const col2W     = 560;   // OPP score column
+  const tableW    = col0W + col1W + col2W; // 1400; right edge=1660, right margin=260
+  const rowH      = 62;    // taller rows for readability
+  const labelH    = 38;    // height of the coloured section-title bar
+  const secGap    = 72;    // vertical gap between the two half tables
+
+  // Derived positions — each half block is: labelH + rowH×5 (hdr + 3 rows + total)
+  const blockH = labelH + rowH * 5;
+  const h1Top  = 88;
+  const h2Top  = h1Top + blockH + secGap;
+
   const halves: Array<{
-    title: string;
-    period: MatchEventPeriod;
-    segs: SegDef[];
-    tableTop: number;
+    title: string; accent: string; accentBg: string;
+    period: MatchEventPeriod; segs: SegDef[]; tableTop: number;
   }> = [
     {
-      title: "FIRST HALF",
-      period: "1H",
-      tableTop: 95,
+      title: "FIRST HALF", accent: "#7dd3fc", accentBg: "rgba(125,211,252,0.1)",
+      period: "1H", tableTop: h1Top,
       segs: [
-        { seg: 1, label: "1H Early", period: "1H" },
-        { seg: 2, label: "1H Mid",   period: "1H" },
-        { seg: 3, label: "1H Late",  period: "1H" },
+        { seg: 1, label: "1H Early  (0–10′)",   period: "1H" },
+        { seg: 2, label: "1H Mid    (11–20′)",   period: "1H" },
+        { seg: 3, label: "1H Late   (21–30′+)",  period: "1H" },
       ],
     },
     {
-      title: "SECOND HALF",
-      period: "2H",
-      tableTop: 575,
+      title: "SECOND HALF", accent: "#a78bfa", accentBg: "rgba(167,139,250,0.1)",
+      period: "2H", tableTop: h2Top,
       segs: [
-        { seg: 4, label: "2H Early", period: "2H" },
-        { seg: 5, label: "2H Mid",   period: "2H" },
-        { seg: 6, label: "2H Late",  period: "2H" },
+        { seg: 4, label: "2H Early  (0–10′)",   period: "2H" },
+        { seg: 5, label: "2H Mid    (11–20′)",   period: "2H" },
+        { seg: 6, label: "2H Late   (21–30′+)",  period: "2H" },
       ],
     },
   ];
 
-  const tableLeft = 200;
-  const col0W = 220;
-  const col1W = 320;
-  const col2W = 320;
-  const tableW  = col0W + col1W + col2W;
-  const rowH    = 58;
-
-  halves.forEach(({ title, period, segs, tableTop }) => {
-    // Section label
-    ctx.fillStyle = "#7dd3fc";
-    ctx.font = "bold 22px sans-serif";
+  halves.forEach(({ title, accent, accentBg, period, segs, tableTop }) => {
+    // ── Section title bar (full-width, coloured bg + left accent pip) ──────────
+    ctx.fillStyle = accentBg;
+    ctx.fillRect(tableLeft, tableTop, tableW, labelH);
+    ctx.fillStyle = accent;
+    ctx.fillRect(tableLeft, tableTop, 4, labelH);
+    ctx.fillStyle = accent;
+    ctx.font = "bold 20px sans-serif";
+    ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText(title, tableLeft, tableTop + 16);
+    ctx.fillText(title, tableLeft + 18, tableTop + labelH / 2);
 
-    const hY = tableTop + 36;
+    const hY = tableTop + labelH; // header row top
 
-    // Header row
-    ctx.fillStyle = "rgba(125,211,252,0.13)";
+    // ── Header row ─────────────────────────────────────────────────────────────
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
     ctx.fillRect(tableLeft, hY, tableW, rowH);
-    ctx.fillStyle = "#7dd3fc";
-    ctx.font = "bold 19px sans-serif";
+    ctx.fillStyle = accent;
+    ctx.fillRect(tableLeft, hY, 4, rowH);
+    ctx.fillStyle = "#64748b";
+    ctx.font = "bold 17px sans-serif";
+    ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText("Segment", tableLeft + 12, hY + rowH / 2);
+    ctx.fillText("SEGMENT", tableLeft + 18, hY + rowH / 2);
     ctx.textAlign = "center";
-    ctx.fillText(homeTeam.toUpperCase(), tableLeft + col0W + col1W / 2, hY + rowH / 2);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.fillText(homeTeam.toUpperCase(), tableLeft + col0W + col1W / 2,         hY + rowH / 2);
+    ctx.fillStyle = "#fb7185";
     ctx.fillText(awayTeam.toUpperCase(), tableLeft + col0W + col1W + col2W / 2, hY + rowH / 2);
     ctx.textAlign = "left";
 
@@ -814,17 +939,29 @@ function makeSegmentsPage(
     let totOpp: ScoreResult = { goals: 0, points: 0, total: 0 };
 
     segs.forEach(({ seg, label }, si) => {
-      const segEvts = validEvts.filter((e) => e.period === period && e.segment === seg);
+      const segEvts  = validEvts.filter((e) => e.period === period && e.segment === seg);
       const forScore = scoreFromEvents(segEvts.filter((e) => e.teamSide === "FOR"));
       const oppScore = scoreFromEvents(segEvts.filter((e) => e.teamSide === "OPP"));
-      totFor = { goals: totFor.goals + forScore.goals, points: totFor.points + forScore.points, total: totFor.total + forScore.total };
-      totOpp = { goals: totOpp.goals + oppScore.goals, points: totOpp.points + oppScore.points, total: totOpp.total + oppScore.total };
+      totFor = {
+        goals:  totFor.goals  + forScore.goals,
+        points: totFor.points + forScore.points,
+        total:  totFor.total  + forScore.total,
+      };
+      totOpp = {
+        goals:  totOpp.goals  + oppScore.goals,
+        points: totOpp.points + oppScore.points,
+        total:  totOpp.total  + oppScore.total,
+      };
 
       const rowY = hY + rowH + si * rowH;
+
+      // Alternate row tint
       if (si % 2 === 0) {
         ctx.fillStyle = "rgba(255,255,255,0.025)";
         ctx.fillRect(tableLeft, rowY, tableW, rowH);
       }
+
+      // Row separator
       ctx.strokeStyle = "rgba(255,255,255,0.055)";
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -834,39 +971,57 @@ function makeSegmentsPage(
 
       const midY = rowY + rowH / 2;
       ctx.fillStyle = "#94a3b8";
-      ctx.font = "18px sans-serif";
+      ctx.font = "19px sans-serif";
+      ctx.textBaseline = "middle";
       ctx.textAlign = "left";
-      ctx.fillText(label, tableLeft + 12, midY);
-      ctx.fillStyle = "#f1f5f9";
+      ctx.fillText(label, tableLeft + 18, midY);
+      ctx.font = "bold 20px sans-serif";
+      ctx.fillStyle = "#e2e8f0";
       ctx.textAlign = "center";
       ctx.fillText(fmtScore(forScore), tableLeft + col0W + col1W / 2,         midY);
       ctx.fillText(fmtScore(oppScore), tableLeft + col0W + col1W + col2W / 2, midY);
       ctx.textAlign = "left";
     });
 
-    // Total row
-    const totalRowY = hY + rowH + segs.length * rowH;
-    ctx.fillStyle = "rgba(125,211,252,0.08)";
+    // ── TOTAL row — prominent, with 2px accent line above ──────────────────────
+    const totalRowY = hY + rowH * (segs.length + 1);
+
+    // Accent line above
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(tableLeft, totalRowY);
+    ctx.lineTo(tableLeft + tableW, totalRowY);
+    ctx.stroke();
+
+    // Coloured bg fill + left pip
+    ctx.fillStyle = accentBg;
     ctx.fillRect(tableLeft, totalRowY, tableW, rowH);
-    ctx.fillStyle = "#7dd3fc";
-    ctx.font = "bold 18px sans-serif";
+    ctx.fillStyle = accent;
+    ctx.fillRect(tableLeft, totalRowY, 4, rowH);
+
+    const totalMidY = totalRowY + rowH / 2;
+    ctx.fillStyle = accent;
+    ctx.font = "bold 20px sans-serif";
+    ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText("TOTAL", tableLeft + 12, totalRowY + rowH / 2);
+    ctx.fillText("TOTAL", tableLeft + 18, totalMidY);
     ctx.textAlign = "center";
     ctx.fillStyle = "#4ade80";
-    ctx.fillText(fmtScore(totFor), tableLeft + col0W + col1W / 2,         totalRowY + rowH / 2);
+    ctx.font = "bold 22px sans-serif";
+    ctx.fillText(fmtScore(totFor), tableLeft + col0W + col1W / 2,         totalMidY);
     ctx.fillStyle = "#fb7185";
-    ctx.fillText(fmtScore(totOpp), tableLeft + col0W + col1W + col2W / 2, totalRowY + rowH / 2);
+    ctx.fillText(fmtScore(totOpp), tableLeft + col0W + col1W + col2W / 2, totalMidY);
     ctx.textAlign = "left";
 
-    // Vertical dividers
-    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    // ── Vertical column dividers (span header + data rows + total) ─────────────
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
     ctx.lineWidth = 1;
-    const tH = rowH * (segs.length + 2);
+    const divH = rowH * (segs.length + 2); // header(1) + rows(3) + total(1) = 5
     [tableLeft + col0W, tableLeft + col0W + col1W].forEach((x) => {
       ctx.beginPath();
       ctx.moveTo(x, hY);
-      ctx.lineTo(x, hY + tH);
+      ctx.lineTo(x, hY + divH);
       ctx.stroke();
     });
   });
