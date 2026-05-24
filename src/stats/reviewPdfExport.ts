@@ -1,7 +1,7 @@
 /**
  * reviewPdfExport.ts
  *
- * Builds a 22-page PáircVision Visual Review PDF report.
+ * Builds a PáircVision Visual Review PDF report (page count is dynamic).
  *
  * Key design decisions:
  * - Uses a standalone 2D canvas renderer (no PixiJS dependency, no preserveDrawingBuffer needed).
@@ -544,19 +544,22 @@ function makeTacticalPage(
 }
 
 /**
- * Draws two mirrored full-breakdown team stat blocks for the summary page.
+ * Draws two mirrored full-breakdown team stat blocks.
  *
  * Five sections per block: SCORING / SHOT DETAIL / KICKOUTS / TURNOVERS / FREES.
- * Sub-type stats (Short, Post, Clean Won, Tackle/Press, etc.) are derived from
- * the event `tags` array — same source the live review UI uses.
+ * All tracked sub-type tags are represented — nothing is omitted.
  *
- * Geometry: rowH=24, secH=20 → BLOCK_H=798px, bottom y=1042 (safe with 20px footer).
+ * Row counts: SCORING=7, SHOT DETAIL=4, KICKOUTS=10, TURNOVERS=8, FREES=4 → 33 data rows.
+ * Geometry: rowH=20, secH=18 → BLOCK_H≈793px.
+ * With default blockY=244: bottom y=1037 — safe within canvas (footer at y=1060).
+ * With blockY=162 (segment detail pages): bottom y=955 — very comfortable.
  */
 function drawSummaryStatsTable(
   ctx: CanvasRenderingContext2D,
   events: readonly PdfExportEvent[],
   homeTeam: string,
   awayTeam: string,
+  blockY = 244,
 ): void {
   const forEvts = events.filter(
     (e) => e.teamSide === "FOR" && !e.id.includes("-instant-score-"),
@@ -574,14 +577,16 @@ function drawSummaryStatsTable(
   ];
 
   type BlockStats = {
-    goals: number; points: number; twoPointers: number;
+    goals: number; points: number; twoPointers: number; scoreTotal: number;
     shots: number; wides: number; conv: string;
     shotShort: number; shotPost: number; shot45: number; shotBlock: number;
     koWon: number; koCon: number; koPct: string;
     koCleanWon: number; koBreakWon: number;
     koCleanLost: number; koBreakLost: number;
+    koFoulWon: number; koFoulCon: number; koKickedDead: number;
     toWon: number; toLost: number; netTo: number;
-    toTacklePress: number; toSwarmInt: number; toKpHpOC: number;
+    toTacklePress: number; toSwarmInt: number;
+    toUnforced: number; toSlackKpHp: number; toOcStripped: number;
     freesWon: number; freesCon: number; freeScored: number; freeMissed: number;
   };
 
@@ -598,6 +603,7 @@ function drawSummaryStatsTable(
       goals:          scoreR.goals,
       points:         scoreR.points,
       twoPointers:    countKinds(evts, "TWO_POINTER", "FORTY_FIVE_TWO_POINT"),
+      scoreTotal:     scoreR.total,
       shots,
       wides:          countKinds(evts, "WIDE"),
       conv:           shots > 0 ? `${Math.round((scoreKind / shots) * 100)}%` : "—",
@@ -607,19 +613,23 @@ function drawSummaryStatsTable(
       shot45:         countTagOnKinds(evts, "FORTY_FIVE", ...SHOT_KINDS),
       shotBlock:      countKindWithAnyTag(evts, "SHOT", "BLOCK_SAVE", "BLOCKED")
                     + countKindWithAnyTag(evts, "WIDE", "BLOCK_SAVE", "BLOCKED"),
-      // Kickouts
+      // Kickouts — all tracked tags
       koWon, koCon,
       koPct:          koTotal > 0 ? `${Math.round((koWon / koTotal) * 100)}%` : "—",
       koCleanWon:     countKindWithAnyTag(evts, "KICKOUT_WON",      "CLEAN"),
       koBreakWon:     countKindWithAnyTag(evts, "KICKOUT_WON",      "BREAK"),
       koCleanLost:    countKindWithAnyTag(evts, "KICKOUT_CONCEDED", "CLEAN"),
       koBreakLost:    countKindWithAnyTag(evts, "KICKOUT_CONCEDED", "BREAK"),
-      // Turnovers
+      koFoulWon:      countKindWithAnyTag(evts, "KICKOUT_WON",      "FOUL_WON"),
+      koFoulCon:      countKindWithAnyTag(evts, "KICKOUT_CONCEDED", "FOUL_CONCEDED"),
+      koKickedDead:   countKindWithAnyTag(evts, "KICKOUT_CONCEDED", "KICKED_DEAD"),
+      // Turnovers — all tracked tags (split, not merged)
       toWon, toLost, netTo: toWon - toLost,
       toTacklePress:  countKindWithAnyTag(evts, "TURNOVER_WON",  "TACKLE", "PRESS"),
       toSwarmInt:     countKindWithAnyTag(evts, "TURNOVER_WON",  "SWARM",  "INTERCEPT"),
-      toKpHpOC:       countKindWithAnyTag(evts, "TURNOVER_LOST", "SLACK_KICK_PASS",
-                                          "SLACK_HAND_PASS", "UNFORCED", "OVERCARRIED", "STRIPPED"),
+      toUnforced:     countKindWithAnyTag(evts, "TURNOVER_LOST", "UNFORCED"),
+      toSlackKpHp:    countKindWithAnyTag(evts, "TURNOVER_LOST", "SLACK_KICK_PASS", "SLACK_HAND_PASS"),
+      toOcStripped:   countKindWithAnyTag(evts, "TURNOVER_LOST", "OVERCARRIED", "STRIPPED"),
       // Frees
       freesWon:       countKinds(evts, "FREE_WON"),
       freesCon:       countKinds(evts, "FREE_CONCEDED"),
@@ -632,16 +642,16 @@ function drawSummaryStatsTable(
   const oppStats = buildStats(oppEvts);
 
   // ── Block geometry ────────────────────────────────────────────────────────────
+  // Rows: SCORING=7, SHOT DETAIL=4, KICKOUTS=10, TURNOVERS=8, FREES=4 → 33 data rows
+  // BLOCK_H = hdrH(28)+hdrGap(3) + 5×secH(90) + 33×rowH(660) + 4×gap(12) = 793px
   const blockW  = 848;
-  const blockX1 = 72;    // FOR (home) block left edge
-  const blockX2 = 1000;  // OPP (away) block left edge
-  const blockY  = 244;   // top of both blocks (below scoreline)
-  const rowH    = 24;    // data row height
-  const secH    = 20;    // section-header bar height
-  const hdrH    = 30;    // team-name header height
-  const gap     = 4;     // vertical gap between sections
-  // BLOCK_H = hdrH(30)+hdrGap(4) + 5×secH(100) + 27×rowH(648) + 4×gap(16) = 798px
-  const BLOCK_H = 798;
+  const blockX1 = 72;
+  const blockX2 = 1000;
+  const rowH    = 20;
+  const secH    = 18;
+  const hdrH    = 28;
+  const gap     = 3;
+  const BLOCK_H = 793;
 
   type SRow = { label: string; value: string; vColor?: string };
   type Section = { label: string; accent: string; bg: string; rows: SRow[] };
@@ -656,6 +666,7 @@ function drawSummaryStatsTable(
           { label: "Goals",          value: String(st.goals) },
           { label: "Points",         value: String(st.points) },
           { label: "2-Pointers",     value: String(st.twoPointers) },
+          { label: "Total Score",    value: String(st.scoreTotal) },
           { label: "Shots",          value: String(st.shots) },
           { label: "Wides",          value: String(st.wides) },
           { label: "Conversion",     value: st.conv },
@@ -678,8 +689,11 @@ function drawSummaryStatsTable(
           { label: "K/O %",          value: st.koPct },
           { label: "Clean Won",      value: String(st.koCleanWon) },
           { label: "Break Won",      value: String(st.koBreakWon) },
+          { label: "Foul Won",       value: String(st.koFoulWon) },
           { label: "Clean Lost",     value: String(st.koCleanLost) },
           { label: "Break Lost",     value: String(st.koBreakLost) },
+          { label: "Foul Conceded",  value: String(st.koFoulCon) },
+          { label: "Kicked Dead",    value: String(st.koKickedDead) },
         ],
       },
       {
@@ -690,7 +704,9 @@ function drawSummaryStatsTable(
           { label: "Net T/O",        value: netStr, vColor: netColor },
           { label: "Tackle / Press", value: String(st.toTacklePress) },
           { label: "Swarm / Int.",   value: String(st.toSwarmInt) },
-          { label: "KP/HP / OC",     value: String(st.toKpHpOC) },
+          { label: "Unforced",       value: String(st.toUnforced) },
+          { label: "Slack KP / HP",  value: String(st.toSlackKpHp) },
+          { label: "OC / Stripped",  value: String(st.toOcStripped) },
         ],
       },
       {
@@ -719,7 +735,7 @@ function drawSummaryStatsTable(
 
     // Team-name header
     ctx.fillStyle = accent;
-    ctx.font = "bold 18px sans-serif";
+    ctx.font = "bold 16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(teamName.toUpperCase(), bx + 16, cy + hdrH / 2);
@@ -729,7 +745,7 @@ function drawSummaryStatsTable(
     ctx.moveTo(bx + 4, cy + hdrH);
     ctx.lineTo(bx + blockW, cy + hdrH);
     ctx.stroke();
-    cy += hdrH + 4;
+    cy += hdrH + gap;
 
     for (const sec of sections) {
       // Section header bar
@@ -737,10 +753,10 @@ function drawSummaryStatsTable(
       ctx.fillRect(bx + 4, cy, blockW - 4, secH);
       ctx.fillStyle = sec.accent;
       ctx.fillRect(bx + 4, cy, 3, secH);
-      ctx.font = "bold 11px sans-serif";
+      ctx.font = "bold 10px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
-      ctx.fillText(sec.label, bx + 18, cy + secH / 2);
+      ctx.fillText(sec.label, bx + 16, cy + secH / 2);
       cy += secH;
 
       sec.rows.forEach(({ label, value, vColor }, ri) => {
@@ -750,14 +766,14 @@ function drawSummaryStatsTable(
         }
         const midY = cy + rowH / 2;
         ctx.fillStyle = "#94a3b8";
-        ctx.font = "14px sans-serif";
+        ctx.font = "12px sans-serif";
         ctx.textBaseline = "middle";
         ctx.textAlign = "left";
-        ctx.fillText(label, bx + 14, midY);
+        ctx.fillText(label, bx + 12, midY);
         ctx.fillStyle = vColor ?? "#f1f5f9";
-        ctx.font = "bold 15px sans-serif";
+        ctx.font = "bold 12px sans-serif";
         ctx.textAlign = "right";
-        ctx.fillText(value, bx + blockW - 12, midY);
+        ctx.fillText(value, bx + blockW - 10, midY);
         cy += rowH;
       });
 
@@ -773,7 +789,7 @@ function drawSummaryStatsTable(
   // "v" label centred in the gap between the two blocks
   ctx.save();
   ctx.fillStyle = "#334155";
-  ctx.font = "bold 22px sans-serif";
+  ctx.font = "bold 20px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
   ctx.fillText("v", 960, blockY + hdrH / 2);
@@ -1184,20 +1200,21 @@ function makeSegmentsPage(
   return canvas;
 }
 
-// ─── Player Breakdown page ───────────────────────────────────────────────────
+// ─── Segment detail page ─────────────────────────────────────────────────────
 
 /**
- * Builds the Player Breakdown canvas (page 3).
- *
- * Shows per-player involvement for all events that carry a player tag.
- * Grouped by team (FOR first, then OPP), sorted by playerNumber within each group.
- * Players without a name are shown as "#number".
- * If no events are player-tagged, shows a "no data" message.
+ * Builds a full-breakdown canvas for one game segment (pages 3–8).
+ * Uses the same 5-section stats table as the match summary, filtered to a
+ * single (period, segment) pair. Mini scoreline for that segment at the top.
  */
-function makePlayerPage(
+function makeSegmentDetailPage(
   events: readonly PdfExportEvent[],
+  period: MatchEventPeriod,
+  segment: MatchEventSegment,
+  segLabel: string,
   homeTeam: string,
   awayTeam: string,
+  pageNum: number,
   totalPages: number,
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
@@ -1208,30 +1225,94 @@ function makePlayerPage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Player Breakdown", `${homeTeam} v ${awayTeam}`, 3, totalPages);
+  drawPageHeader(ctx, segLabel, `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
+  // Filter to this segment only
+  const segEvts = events.filter(
+    (e) => !e.id.includes("-instant-score-") && e.period === period && e.segment === segment,
+  );
+  const forEvts  = segEvts.filter((e) => e.teamSide === "FOR");
+  const oppEvts  = segEvts.filter((e) => e.teamSide === "OPP");
+  const forScore = scoreFromEvents(forEvts);
+  const oppScore = scoreFromEvents(oppEvts);
+
+  // Mini scoreline — y=80 to y=158
+  const forCX = 72 + 424;   // 496 — centres align with stat blocks below
+  const oppCX = 1000 + 424; // 1424
+
+  ctx.save();
+  ctx.textBaseline = "middle";
+
+  ctx.font = "bold 26px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#7dd3fc";
+  ctx.fillText(homeTeam.toUpperCase(), forCX, 102);
+  ctx.fillStyle = "#fb7185";
+  ctx.fillText(awayTeam.toUpperCase(), oppCX, 102);
+
+  ctx.font = "bold 40px sans-serif";
+  ctx.fillStyle = "#4ade80";
+  ctx.fillText(fmtScore(forScore), forCX, 142);
+  ctx.fillStyle = "#fb7185";
+  ctx.fillText(fmtScore(oppScore), oppCX, 142);
+
+  ctx.font = "bold 28px sans-serif";
+  ctx.fillStyle = "#334155";
+  ctx.fillText("v", Math.round(CANVAS_W / 2), 122);
+
+  const dg = ctx.createLinearGradient(72, 0, CANVAS_W - 72, 0);
+  dg.addColorStop(0,   "rgba(125,211,252,0.35)");
+  dg.addColorStop(0.5, "rgba(255,255,255,0.06)");
+  dg.addColorStop(1,   "rgba(251,113,133,0.35)");
+  ctx.strokeStyle = dg;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(72, 158);
+  ctx.lineTo(CANVAS_W - 72, 158);
+  ctx.stroke();
+  ctx.restore();
+
+  // Full stats table, starting at y=162 (BLOCK_H≈793, bottom≈955 — very comfortable)
+  drawSummaryStatsTable(ctx, segEvts, homeTeam, awayTeam, 162);
+
+  // Footer
+  ctx.save();
+  ctx.fillStyle = "#475569";
+  ctx.font = "15px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "right";
+  ctx.fillText(`${segEvts.length} event${segEvts.length !== 1 ? "s" : ""} in segment`, CANVAS_W - 24, CANVAS_H - 20);
+  ctx.restore();
+
+  return canvas;
+}
+
+// ─── Player Breakdown pages ───────────────────────────────────────────────────
+
+/**
+ * Shared player stats type used by collectPlayerStats, calcPlayerPageCount,
+ * and makePlayerPages.
+ */
+type PlayerStatsFull = {
+  id: string;
+  number: number | null;
+  name: string | null;
+  teamSide: "FOR" | "OPP";
+  actions: number;
+  goals: number; scorePoints: number; scoreTotal: number;
+  shots: number; wides: number;
+  toWon: number; toLost: number;
+  koWon: number; koCon: number;
+  freesWon: number; freesCon: number;
+};
+
+/** Collects and sorts all player-tagged stats from events. */
+function collectPlayerStats(events: readonly PdfExportEvent[]): PlayerStatsFull[] {
+  const playerMap = new Map<string, PlayerStatsFull>();
   const validEvts = events.filter((e) => !e.id.includes("-instant-score-"));
 
-  // ── Collect per-player stats ───────────────────────────────────────────────────
-  type PlayerStats = {
-    id: string;
-    number: number | null;
-    name: string | null;
-    teamSide: "FOR" | "OPP";
-    actions: number;
-    goals: number; scorePoints: number; scoreTotal: number;
-    shots: number; wides: number;
-    toWon: number; toLost: number;
-    koWon: number; koCon: number;
-    freesWon: number; freesCon: number;
-  };
-
-  const playerMap = new Map<string, PlayerStats>();
-
   for (const e of validEvts) {
-    const hasPlayer = e.playerId != null || e.playerNumber != null;
-    if (!hasPlayer) continue;
-
+    if (e.playerId == null && e.playerNumber == null) continue;
     const key = e.playerId ?? `__num_${e.playerNumber ?? "?"}`;
     if (!playerMap.has(key)) {
       playerMap.set(key, {
@@ -1249,141 +1330,239 @@ function makePlayerPage(
     }
     const ps = playerMap.get(key)!;
     ps.actions++;
-    if (e.kind === "GOAL")                                           { ps.goals++;       ps.scoreTotal += 3; }
-    else if (e.kind === "TWO_POINTER" || e.kind === "FORTY_FIVE_TWO_POINT") { ps.scorePoints += 2; ps.scoreTotal += 2; }
-    else if (e.kind === "POINT" || e.kind === "FREE_SCORED")        { ps.scorePoints += 1; ps.scoreTotal += 1; }
-    if (PDF_KIND_SETS.SHOTS.has(e.kind))                             ps.shots++;
-    if (e.kind === "WIDE")                                           ps.wides++;
-    if (e.kind === "TURNOVER_WON")                                   ps.toWon++;
-    if (e.kind === "TURNOVER_LOST")                                  ps.toLost++;
-    if (e.kind === "KICKOUT_WON")                                    ps.koWon++;
-    if (e.kind === "KICKOUT_CONCEDED")                               ps.koCon++;
-    if (e.kind === "FREE_WON")                                       ps.freesWon++;
-    if (e.kind === "FREE_CONCEDED")                                  ps.freesCon++;
+    if (e.kind === "GOAL")                                                    { ps.goals++;         ps.scoreTotal += 3; }
+    else if (e.kind === "TWO_POINTER" || e.kind === "FORTY_FIVE_TWO_POINT")  { ps.scorePoints += 2; ps.scoreTotal += 2; }
+    else if (e.kind === "POINT" || e.kind === "FREE_SCORED")                 { ps.scorePoints += 1; ps.scoreTotal += 1; }
+    if (PDF_KIND_SETS.SHOTS.has(e.kind)) ps.shots++;
+    if (e.kind === "WIDE")               ps.wides++;
+    if (e.kind === "TURNOVER_WON")       ps.toWon++;
+    if (e.kind === "TURNOVER_LOST")      ps.toLost++;
+    if (e.kind === "KICKOUT_WON")        ps.koWon++;
+    if (e.kind === "KICKOUT_CONCEDED")   ps.koCon++;
+    if (e.kind === "FREE_WON")           ps.freesWon++;
+    if (e.kind === "FREE_CONCEDED")      ps.freesCon++;
   }
 
-  if (playerMap.size === 0) {
-    ctx.save();
-    ctx.fillStyle = "#475569";
-    ctx.font = "22px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "center";
-    ctx.fillText("No player-tagged events recorded.", CANVAS_W / 2, CANVAS_H / 2);
-    ctx.restore();
-    return canvas;
-  }
-
-  // Sort: FOR first, then OPP; within each group by playerNumber (nulls last), then name
-  const players = Array.from(playerMap.values()).sort((a, b) => {
+  return Array.from(playerMap.values()).sort((a, b) => {
     if (a.teamSide !== b.teamSide) return a.teamSide === "FOR" ? -1 : 1;
     if (a.number != null && b.number != null) return a.number - b.number;
     if (a.number != null) return -1;
     if (b.number != null) return 1;
     return (a.name ?? "").localeCompare(b.name ?? "");
   });
+}
 
-  // ── Table geometry ─────────────────────────────────────────────────────────────
-  // 12 columns; centered on 1920px canvas
-  // #(70) Name(250) Score(160) Shots(110) Wides(90) T/O Won(110) T/O Lost(110)
-  // K/O Won(110) K/O Lost(110) F Won(105) F Con(105) Actions(110)
-  const colWs   = [70, 250, 160, 110, 90, 110, 110, 110, 110, 105, 105, 110];
-  const colHdrs = ["#", "Name", "Score", "Shots", "Wides", "T/O Won", "T/O Lost",
+/**
+ * Pre-computes how many player breakdown pages will be needed.
+ * Mirrors the exact page-break logic in makePlayerPages — must stay in sync.
+ */
+function calcPlayerPageCount(events: readonly PdfExportEvent[]): number {
+  const players = collectPlayerStats(events);
+  if (players.length === 0) return 1; // "no data" page
+
+  const HDR_H = 44;   // table column header
+  const SEC_H = 30;   // team section banner
+  const ROW_H = 40;   // player data row
+  const BREAK_LIMIT = CANVAS_H - 28; // 1052
+
+  let pages = 1;
+  let ry = 82 + HDR_H; // start below page header + table header
+  let currentSide: "FOR" | "OPP" | null = null;
+
+  for (const p of players) {
+    // Section banner for new team?
+    if (p.teamSide !== currentSide) {
+      currentSide = p.teamSide;
+      if (ry + SEC_H > BREAK_LIMIT) {
+        pages++;
+        ry = 82 + HDR_H;
+      }
+      ry += SEC_H;
+    }
+    // Player row
+    if (ry + ROW_H > BREAK_LIMIT) {
+      pages++;
+      // On continuation pages we always redraw the section banner for context
+      ry = 82 + HDR_H + SEC_H;
+    }
+    ry += ROW_H;
+  }
+
+  return pages;
+}
+
+/**
+ * Builds the Player Breakdown canvas(es).
+ * Returns an array — one canvas per page. No players are ever silently dropped.
+ * Grouped by team (FOR first, then OPP), sorted by playerNumber within group.
+ */
+function makePlayerPages(
+  events: readonly PdfExportEvent[],
+  homeTeam: string,
+  awayTeam: string,
+  startPageNum: number,
+  totalPages: number,
+): HTMLCanvasElement[] {
+  const players = collectPlayerStats(events);
+
+  // ── Table geometry — 13 columns; Net T/O added; centered on 1920px canvas ────
+  // #(65) Name(230) Score(150) Shots(100) Wides(75) T/O Won(100) T/O Lost(100)
+  // Net T/O(80) K/O Won(100) K/O Lost(100) F Won(90) F Con(90) Actions(100)
+  const colWs   = [65, 230, 150, 100, 75, 100, 100, 80, 100, 100, 90, 90, 100];
+  const colHdrs = ["#", "Name", "Score", "Shots", "Wides",
+                   "T/O Won", "T/O Lost", "Net T/O",
                    "K/O Won", "K/O Lost", "F Won", "F Con", "Actions"];
-  const tableW  = colWs.reduce((a, b) => a + b, 0); // 1450
+  const tableW  = colWs.reduce((a, b) => a + b, 0); // 1380
   const tL      = Math.round((CANVAS_W - tableW) / 2); // centered
 
-  const hdrH    = 44;
-  const secH    = 30;
-  const rowH    = 40;
-  let ry        = 82; // below the page header divider at y=74
+  const HDR_H      = 44;
+  const SEC_H      = 30;
+  const ROW_H      = 40;
+  const BREAK_LIMIT = CANVAS_H - 28; // 1052
 
-  // Column start positions
   const colX: number[] = [];
-  let cx = tL;
-  for (const w of colWs) { colX.push(cx); cx += w; }
+  let cxStart = tL;
+  for (const w of colWs) { colX.push(cxStart); cxStart += w; }
 
-  // ── Draw table header ──────────────────────────────────────────────────────────
-  ctx.save();
-  ctx.fillStyle = "rgba(255,255,255,0.06)";
-  ctx.fillRect(tL, ry, tableW, hdrH);
-  ctx.fillStyle = "#7dd3fc";
-  ctx.fillRect(tL, ry, 4, hdrH);
-  const midHdr = ry + hdrH / 2;
-  colHdrs.forEach((hdr, i) => {
-    ctx.fillStyle = "#64748b";
-    ctx.font = "bold 13px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = i <= 1 ? "left" : "center";
-    ctx.fillText(hdr, i <= 1 ? colX[i] + 8 : colX[i] + colWs[i] / 2, midHdr);
-  });
-  ry += hdrH;
+  const results: HTMLCanvasElement[] = [];
+  let pageIdx = 0;
+  // These are reassigned on each new page — declared here for closure access.
+  let activeCanvas = document.createElement("canvas");
+  let activeCtx    = activeCanvas.getContext("2d")!;
+  let ry           = 0;
 
-  // ── Draw player rows ───────────────────────────────────────────────────────────
+  function startNewCanvas(): void {
+    activeCanvas         = document.createElement("canvas");
+    activeCanvas.width   = CANVAS_W;
+    activeCanvas.height  = CANVAS_H;
+    activeCtx            = activeCanvas.getContext("2d")!;
+    fillDarkBg(activeCtx);
+    drawTopAccentBar(activeCtx);
+    drawPageHeader(activeCtx, "Player Breakdown",
+      `${homeTeam} v ${awayTeam}`, startPageNum + pageIdx, totalPages);
+
+    // Table column header row
+    ry = 82;
+    activeCtx.fillStyle = "rgba(255,255,255,0.06)";
+    activeCtx.fillRect(tL, ry, tableW, HDR_H);
+    activeCtx.fillStyle = "#7dd3fc";
+    activeCtx.fillRect(tL, ry, 4, HDR_H);
+    const midHdr = ry + HDR_H / 2;
+    colHdrs.forEach((hdr, i) => {
+      activeCtx.fillStyle    = "#64748b";
+      activeCtx.font         = "bold 12px sans-serif";
+      activeCtx.textBaseline = "middle";
+      activeCtx.textAlign    = i <= 1 ? "left" : "center";
+      activeCtx.fillText(hdr, i <= 1 ? colX[i] + 8 : colX[i] + colWs[i] / 2, midHdr);
+    });
+    ry += HDR_H;
+  }
+
+  function drawSecBanner(teamSide: "FOR" | "OPP"): void {
+    const sAccent = teamSide === "FOR" ? "#7dd3fc" : "#fb7185";
+    const sBg     = teamSide === "FOR" ? "rgba(125,211,252,0.08)" : "rgba(251,113,133,0.08)";
+    const sLabel  = teamSide === "FOR" ? homeTeam.toUpperCase() : awayTeam.toUpperCase();
+    activeCtx.fillStyle = sBg;
+    activeCtx.fillRect(tL, ry, tableW, SEC_H);
+    activeCtx.fillStyle = sAccent;
+    activeCtx.fillRect(tL, ry, 4, SEC_H);
+    activeCtx.font         = "bold 13px sans-serif";
+    activeCtx.textBaseline = "middle";
+    activeCtx.textAlign    = "left";
+    activeCtx.fillText(sLabel, tL + 12, ry + SEC_H / 2);
+    ry += SEC_H;
+  }
+
+  // ── Handle empty state ────────────────────────────────────────────────────────
+  if (players.length === 0) {
+    startNewCanvas();
+    activeCtx.fillStyle    = "#475569";
+    activeCtx.font         = "22px sans-serif";
+    activeCtx.textBaseline = "middle";
+    activeCtx.textAlign    = "center";
+    activeCtx.fillText("No player-tagged events recorded.", CANVAS_W / 2, CANVAS_H / 2);
+    results.push(activeCanvas);
+    return results;
+  }
+
+  // ── Paginated player rows ─────────────────────────────────────────────────────
+  startNewCanvas();
   let currentSide: "FOR" | "OPP" | null = null;
   let rowIdx = 0;
 
   for (const ps of players) {
-    if (ry + rowH > CANVAS_H - 28) break; // safety cap
-
-    // Team section header
+    // Section banner for new team
     if (ps.teamSide !== currentSide) {
+      if (ry + SEC_H > BREAK_LIMIT) {
+        results.push(activeCanvas);
+        pageIdx++;
+        startNewCanvas();
+        currentSide = null; // re-draw banner on new page
+        rowIdx = 0;
+      }
       currentSide = ps.teamSide;
-      const sAccent = ps.teamSide === "FOR" ? "#7dd3fc" : "#fb7185";
-      const sBg     = ps.teamSide === "FOR" ? "rgba(125,211,252,0.08)" : "rgba(251,113,133,0.08)";
-      const sLabel  = ps.teamSide === "FOR" ? homeTeam.toUpperCase() : awayTeam.toUpperCase();
-      ctx.fillStyle = sBg;
-      ctx.fillRect(tL, ry, tableW, secH);
-      ctx.fillStyle = sAccent;
-      ctx.fillRect(tL, ry, 4, secH);
-      ctx.font = "bold 13px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "left";
-      ctx.fillText(sLabel, tL + 12, ry + secH / 2);
-      ry += secH;
+      drawSecBanner(ps.teamSide);
     }
 
-    if (ry + rowH > CANVAS_H - 28) break;
+    // Player row — page break if needed
+    if (ry + ROW_H > BREAK_LIMIT) {
+      results.push(activeCanvas);
+      pageIdx++;
+      startNewCanvas();
+      rowIdx = 0;
+      // Redraw section banner for context on continuation page
+      drawSecBanner(ps.teamSide);
+    }
 
-    // Alternate row tint
+    // Row tint
     if (rowIdx % 2 === 0) {
-      ctx.fillStyle = "rgba(255,255,255,0.02)";
-      ctx.fillRect(tL, ry, tableW, rowH);
+      activeCtx.fillStyle = "rgba(255,255,255,0.02)";
+      activeCtx.fillRect(tL, ry, tableW, ROW_H);
     }
     // Row separator
-    ctx.strokeStyle = "rgba(255,255,255,0.04)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(tL, ry + rowH);
-    ctx.lineTo(tL + tableW, ry + rowH);
-    ctx.stroke();
+    activeCtx.strokeStyle = "rgba(255,255,255,0.04)";
+    activeCtx.lineWidth   = 1;
+    activeCtx.beginPath();
+    activeCtx.moveTo(tL, ry + ROW_H);
+    activeCtx.lineTo(tL + tableW, ry + ROW_H);
+    activeCtx.stroke();
 
     const scoreStr = `${ps.goals}-${String(ps.scorePoints).padStart(2, "0")} (${ps.scoreTotal})`;
     const numStr   = ps.number != null ? `#${ps.number}` : "—";
     const nameStr  = ps.name ?? numStr;
     const accent   = ps.teamSide === "FOR" ? "#7dd3fc" : "#fb7185";
-    const midRow   = ry + rowH / 2;
+    const midRow   = ry + ROW_H / 2;
+    const netTo    = ps.toWon - ps.toLost;
+    const netToStr = netTo >= 0 ? `+${netTo}` : String(netTo);
+    const netColor = netTo > 0 ? "#4ade80" : netTo < 0 ? "#fb7185" : "#94a3b8";
 
-    const vals = [numStr, nameStr, scoreStr, String(ps.shots), String(ps.wides),
-                  String(ps.toWon), String(ps.toLost), String(ps.koWon), String(ps.koCon),
-                  String(ps.freesWon), String(ps.freesCon), String(ps.actions)];
+    // Columns: #, Name, Score, Shots, Wides, T/OWon, T/OLost, NetTO, K/OWon, K/OLost, FWon, FCon, Actions
+    const vals      = [numStr, nameStr, scoreStr,
+                       String(ps.shots), String(ps.wides),
+                       String(ps.toWon), String(ps.toLost), netToStr,
+                       String(ps.koWon), String(ps.koCon),
+                       String(ps.freesWon), String(ps.freesCon), String(ps.actions)];
+    const valColors = vals.map((_, i) =>
+      i === 0 ? accent : i === 1 ? "#f1f5f9" : i === 7 ? netColor : "#e2e8f0",
+    );
 
     vals.forEach((val, i) => {
-      ctx.fillStyle = i === 0 ? accent : i === 1 ? "#f1f5f9" : "#e2e8f0";
-      ctx.font      = i === 1 ? "15px sans-serif" : "bold 15px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign    = i <= 1 ? "left" : "center";
-      ctx.fillText(val, i <= 1 ? colX[i] + 8 : colX[i] + colWs[i] / 2, midRow, colWs[i] - 8);
+      activeCtx.fillStyle    = valColors[i];
+      activeCtx.font         = i === 1 ? "14px sans-serif" : "bold 14px sans-serif";
+      activeCtx.textBaseline = "middle";
+      activeCtx.textAlign    = i <= 1 ? "left" : "center";
+      activeCtx.fillText(val, i <= 1 ? colX[i] + 8 : colX[i] + colWs[i] / 2, midRow, colWs[i] - 6);
     });
 
-    ry += rowH;
+    ry += ROW_H;
     rowIdx++;
   }
-  ctx.restore();
 
-  return canvas;
+  results.push(activeCanvas);
+  return results;
 }
 
-// ─── 23-page spec table ───────────────────────────────────────────────────────
+// ─── Tactical page spec table (20 pages) ────────────────────────────────────
 
 type PageSpec = {
   title: string;
@@ -1393,7 +1572,7 @@ type PageSpec = {
 };
 
 const TACTICAL_PAGE_SPECS: readonly PageSpec[] = [
-  // FIRST HALF (pages 3–12)
+  // FIRST HALF tactical pitch maps
   { title: "1H — All Events",        half: "H1", teamSide: "ALL", category: "ALL"       },
   { title: "1H — Scores",            half: "H1", teamSide: "ALL", category: "SCORES"    },
   { title: "1H — Shots For",         half: "H1", teamSide: "FOR", category: "SHOTS"     },
@@ -1404,7 +1583,7 @@ const TACTICAL_PAGE_SPECS: readonly PageSpec[] = [
   { title: "1H — Turnovers Against", half: "H1", teamSide: "OPP", category: "TURNOVERS" },
   { title: "1H — Frees For",         half: "H1", teamSide: "FOR", category: "FREES"     },
   { title: "1H — Frees Against",     half: "H1", teamSide: "OPP", category: "FREES"     },
-  // SECOND HALF (pages 13–22)
+  // SECOND HALF tactical pitch maps
   { title: "2H — All Events",        half: "H2", teamSide: "ALL", category: "ALL"       },
   { title: "2H — Scores",            half: "H2", teamSide: "ALL", category: "SCORES"    },
   { title: "2H — Shots For",         half: "H2", teamSide: "FOR", category: "SHOTS"     },
@@ -1417,22 +1596,36 @@ const TACTICAL_PAGE_SPECS: readonly PageSpec[] = [
   { title: "2H — Frees Against",     half: "H2", teamSide: "OPP", category: "FREES"     },
 ] as const;
 
-/** Total page count: 3 fixed pages (Summary + Segments + Players) + 20 tactical = 23 */
-const TOTAL_PAGES = 3 + TACTICAL_PAGE_SPECS.length;
+/** Segment detail pages (3–8): one full breakdown per segment. */
+type SegmentDetailSpec = {
+  period: MatchEventPeriod;
+  segment: MatchEventSegment;
+  label: string;
+};
+
+const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
+  { period: "1H", segment: 1, label: "1H Early  (0 – 10 min)"  },
+  { period: "1H", segment: 2, label: "1H Mid    (11 – 20 min)" },
+  { period: "1H", segment: 3, label: "1H Late   (21 – 30+ min)"},
+  { period: "2H", segment: 4, label: "2H Early  (0 – 10 min)"  },
+  { period: "2H", segment: 5, label: "2H Mid    (11 – 20 min)" },
+  { period: "2H", segment: 6, label: "2H Late   (21 – 30+ min)"},
+] as const;
 
 // ─── Main export entry point ──────────────────────────────────────────────────
 
 /**
- * Generates the 23-page Visual Review PDF and triggers a browser download.
+ * Generates the PáircVision Visual Review PDF and triggers a browser download.
  *
  * Page order:
- *   1. Match Summary (full breakdown)
- *   2. Game Segments Breakdown (score + key stats per segment)
- *   3. Player Breakdown
- *   4–13. First Half tactical pages (All, Scores, Shots/For, Shots/Opp,
- *           Kickouts/For, Kickouts/Opp, Turnovers/For, Turnovers/Opp,
- *           Frees/For, Frees/Opp)
- *   14–23. Second Half mirror of 4–13.
+ *   1.       Match Summary (full 5-section breakdown, all tracked rows)
+ *   2.       Segment Overview (compact score + key stats table per segment)
+ *   3–8.     Segment Detail pages — 1H Early/Mid/Late, 2H Early/Mid/Late
+ *            Each shows the full 5-section breakdown filtered to that segment.
+ *   9+.      Player Breakdown — one or more pages, no truncation
+ *   (9+N)+.  20 tactical pitch map pages (N = player page count)
+ *
+ * Total pages = 28 + N  (N ≥ 1 → minimum 29 pages).
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
   const {
@@ -1442,6 +1635,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     venueName,
     sport = "gaelic",
   } = input;
+
+  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps
+  const playerPageCount = calcPlayerPageCount(events);
+  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length;
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -1468,22 +1665,31 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     false,
   );
 
-  // Page 2: Game Segments Breakdown
+  // Page 2: Segment Overview (compact table)
   addCanvasPage(
     makeSegmentsPage(events, homeTeamName, awayTeamName, TOTAL_PAGES),
     true,
   );
 
-  // Page 3: Player Breakdown
-  addCanvasPage(
-    makePlayerPage(events, homeTeamName, awayTeamName, TOTAL_PAGES),
-    true,
-  );
+  // Pages 3–8: Per-segment full breakdowns
+  SEGMENT_DETAIL_SPECS.forEach(({ period, segment, label }, i) => {
+    addCanvasPage(
+      makeSegmentDetailPage(
+        events, period, segment, label,
+        homeTeamName, awayTeamName, 3 + i, TOTAL_PAGES,
+      ),
+      true,
+    );
+  });
 
-  // Pages 4–23: Tactical pitch pages
+  // Pages 9+: Player Breakdown (1 or more pages — no truncation)
+  const playerCanvases = makePlayerPages(events, homeTeamName, awayTeamName, 9, TOTAL_PAGES);
+  playerCanvases.forEach((c) => addCanvasPage(c, true));
+
+  // Pages (9+N)+: 20 tactical pitch map pages
   TACTICAL_PAGE_SPECS.forEach((spec, i) => {
     const filtered = selectPdfEvents(events, spec.half, spec.teamSide, spec.category);
-    const pageNum = 4 + i;
+    const pageNum  = 9 + playerPageCount + i;
     let canvas: HTMLCanvasElement;
     try {
       canvas = makeTacticalPage(
@@ -1491,24 +1697,24 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
       );
     } catch {
       canvas = document.createElement("canvas");
-      canvas.width = CANVAS_W;
+      canvas.width  = CANVAS_W;
       canvas.height = CANVAS_H;
       const ctx2 = canvas.getContext("2d");
       if (ctx2) {
-        ctx2.fillStyle = "#0d1117";
+        ctx2.fillStyle    = "#0d1117";
         ctx2.fillRect(0, 0, CANVAS_W, CANVAS_H);
-        ctx2.fillStyle = "#64748b";
-        ctx2.font = "24px sans-serif";
-        ctx2.textAlign = "center";
+        ctx2.fillStyle    = "#64748b";
+        ctx2.font         = "24px sans-serif";
+        ctx2.textAlign    = "center";
         ctx2.textBaseline = "middle";
         ctx2.fillText(`${spec.title} — render failed`, CANVAS_W / 2, CANVAS_H / 2);
       }
     }
-    addCanvasPage(canvas, true);
+    addCanvasPage(canvas!, true);
   });
 
   // Download
   const safeName = (s: string) => s.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_\-]/g, "");
-  const filename = `${safeName(homeTeamName)}_v_${safeName(awayTeamName)}_review.pdf`;
+  const filename  = `${safeName(homeTeamName)}_v_${safeName(awayTeamName)}_review.pdf`;
   pdf.save(filename);
 }
