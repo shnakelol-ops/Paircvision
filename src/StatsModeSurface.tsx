@@ -1021,11 +1021,70 @@ function newMatchSessionId(prefix: "live" | "loaded"): string {
 }
 
 function createDefaultSquad(): Squad {
+  const players: SquadPlayer[] = Array.from({ length: 30 }, (_, idx) => {
+    const slotNumber = idx + 1;
+    return {
+      id: `player-${slotNumber}-${newLocalEventId()}`,
+      name: "",
+      number: slotNumber,
+      role: slotNumber <= 15 ? "STARTER" : "SUB",
+    };
+  });
   return {
     id: `squad-${newLocalEventId()}`,
     name: "HOME",
-    players: [],
+    players,
   };
+}
+
+function ensureStableSquadSlots(players: SquadPlayer[]): SquadPlayer[] {
+  const normalized = players.map((player, idx) => {
+    const boundedNumber = Math.max(1, Math.min(99, Math.floor(player.number)));
+    return {
+      ...player,
+      name: player.name.slice(0, 24),
+      number: boundedNumber,
+      role: player.role === "STARTER" || player.role === "SUB" ? player.role : idx < 15 ? "STARTER" : "SUB",
+    };
+  });
+  const byNumber = new Map<number, SquadPlayer>();
+  for (const player of normalized) {
+    if (!byNumber.has(player.number)) {
+      byNumber.set(player.number, player);
+    }
+  }
+  const byRoleFallback = {
+    STARTER: normalized.filter((player) => player.role === "STARTER"),
+    SUB: normalized.filter((player) => player.role === "SUB"),
+  };
+  const usedIds = new Set<string>();
+  const stablePlayers: SquadPlayer[] = [];
+  for (let slot = 1; slot <= 30; slot += 1) {
+    const role: PlayerRole = slot <= 15 ? "STARTER" : "SUB";
+    const bySlot = byNumber.get(slot);
+    const fromRolePool = byRoleFallback[role].find((candidate) => !usedIds.has(candidate.id));
+    const selected = bySlot && !usedIds.has(bySlot.id) ? bySlot : fromRolePool ?? null;
+    if (selected) {
+      usedIds.add(selected.id);
+      stablePlayers.push({
+        ...selected,
+        number: slot,
+        role,
+      });
+      continue;
+    }
+    stablePlayers.push({
+      id: `player-${slot}-${newLocalEventId()}`,
+      name: "",
+      number: slot,
+      role,
+    });
+  }
+  return stablePlayers;
+}
+
+function formatPlayerLabel(player: SquadPlayer): string {
+  return player.name.trim().length > 0 ? `#${player.number} ${player.name}` : `#${player.number}`;
 }
 
 function parseStoredPlayer(input: unknown, idx: number): SquadPlayer | null {
@@ -1078,9 +1137,11 @@ function parseStoredSquads(input: string | null): Squad[] {
         const maybePlayers = "players" in item ? item.players : null;
         if (typeof maybeId !== "string" || typeof maybeName !== "string") return null;
         if (!Array.isArray(maybePlayers)) return null;
-        const players = maybePlayers
+        const players = ensureStableSquadSlots(
+          maybePlayers
           .map((player, idx) => parseStoredPlayer(player, idx))
-          .filter((player): player is SquadPlayer => player !== null);
+          .filter((player): player is SquadPlayer => player !== null),
+        );
         return {
           id: maybeId,
           name: maybeName.slice(0, 24),
@@ -1244,8 +1305,16 @@ function deriveMyTeamReport(
   };
 
   const getPlayerNote = (event: LoggedMatchEvent) => {
-    if (!event.playerId) return null;
-    const existing = playerNotes.get(event.playerId);
+    const hasPlayerId = typeof event.playerId === "string" && event.playerId.trim().length > 0;
+    const hasPlayerNumber = typeof event.playerNumber === "number" && Number.isFinite(event.playerNumber);
+    const hasPlayerName = typeof event.playerName === "string" && event.playerName.trim().length > 0;
+    if (!hasPlayerId && !hasPlayerNumber && !hasPlayerName) return null;
+    const playerKey = hasPlayerId
+      ? `id:${event.playerId}`
+      : hasPlayerNumber
+        ? `num:${event.playerNumber}`
+        : `name:${event.playerName!.trim().toLowerCase()}`;
+    const existing = playerNotes.get(playerKey);
     if (existing) return existing;
     const created: MyTeamPlayerNote = {
       label: resolvePlayerLabel(event),
@@ -1257,7 +1326,7 @@ function deriveMyTeamReport(
       freesWon: 0,
       involved: 0,
     };
-    playerNotes.set(event.playerId, created);
+    playerNotes.set(playerKey, created);
     return created;
   };
 
@@ -3389,7 +3458,7 @@ export default function StatsModeSurface() {
     updater: (prevPlayers: SquadPlayer[]) => SquadPlayer[],
     nextActivePlayerId?: string | null,
   ) => {
-    const nextPlayersForActiveSquad = updater([...activeSquad.players]);
+    const nextPlayersForActiveSquad = ensureStableSquadSlots(updater([...activeSquad.players]));
     const nextSelectedPlayer =
       nextActivePlayerId === undefined
         ? undefined
@@ -3426,6 +3495,7 @@ export default function StatsModeSurface() {
       activePlayerRef.current = null;
       activePlayerNumberRef.current = null;
       activePlayerIdRef.current = null;
+      activePlayerEntryRef.current = null;
       return;
     }
     const player = activeSquadPlayers.find((entry) => entry.id === playerId);
@@ -3436,6 +3506,7 @@ export default function StatsModeSurface() {
       activePlayerRef.current = null;
       activePlayerNumberRef.current = null;
       activePlayerIdRef.current = null;
+      activePlayerEntryRef.current = null;
       return;
     }
     setActivePlayer(player.name);
@@ -3444,18 +3515,19 @@ export default function StatsModeSurface() {
     activePlayerRef.current = player.name;
     activePlayerNumberRef.current = player.number;
     activePlayerIdRef.current = player.id;
-  };
-
-  const toggleActivePlayerById = (playerId: string) => {
-    if (activePlayerEntry?.id === playerId) {
-      selectActivePlayerById(null);
-      return;
-    }
-    selectActivePlayerById(playerId);
+    activePlayerEntryRef.current = player;
+    activeSquadIdRef.current = activeSquad.id;
   };
 
   const handlePlayerPick = (player: SquadPlayer) => {
-    toggleActivePlayerById(player.id);
+    setActivePlayer(player.name);
+    setActivePlayerNumber(player.number);
+    setActivePlayerId(player.id);
+    activePlayerRef.current = player.name;
+    activePlayerNumberRef.current = player.number;
+    activePlayerIdRef.current = player.id;
+    activePlayerEntryRef.current = player;
+    activeSquadIdRef.current = activeSquad.id;
     closeUtilityPanel();
     setIsUtilityOpen(false);
   };
@@ -3529,12 +3601,12 @@ export default function StatsModeSurface() {
   };
 
   const loadSavedSquadIntoActive = (savedSquad: SavedSquad) => {
-    const restoredPlayers: SquadPlayer[] = savedSquad.players.map((player, idx) => ({
+    const restoredPlayers: SquadPlayer[] = ensureStableSquadSlots(savedSquad.players.map((player, idx) => ({
       id: player.id,
       number: Math.max(1, Math.min(99, Math.floor(player.number))),
       name: player.name.slice(0, 24),
       role: idx < 15 ? "STARTER" : "SUB",
-    }));
+    })));
     setSquads((prevSquads) => {
       const nextActiveSquad: Squad = {
         id: savedSquad.id,
@@ -3591,6 +3663,8 @@ export default function StatsModeSurface() {
     selectedEventRef.current = kind;
     handleRef.current?.setActiveEventKind(kind);
     setIsPickerOpen(false);
+    setUtilityPanel("PLAYERS");
+    setIsUtilityOpen(false);
   };
 
   const selectEventFromKeyboardOption = (option: EventKeyboardOption) => {
@@ -3815,7 +3889,11 @@ export default function StatsModeSurface() {
   }, [loggedEvents.length, selectedEventKind]);
 
   useEffect(() => {
-    if (!activePlayer) {
+    // Use strict null check: an empty string ("") is a valid name for a squad slot
+    // that has no name entered yet. Using !activePlayer would treat "" as "no player
+    // selected" and incorrectly clear all attribution refs, breaking player tagging
+    // for every default (unnamed) squad slot.
+    if (activePlayer === null) {
       setActivePlayerNumber(null);
       setActivePlayerId(null);
       activePlayerRef.current = null;
@@ -4043,8 +4121,12 @@ export default function StatsModeSurface() {
             nextEvent.playerName = activePlayerEntry.name;
             nextEvent.playerNumber = activePlayerEntry.number;
             nextEvent.squadId = activeSquadIdRef.current;
-          } else if (activePlayerRef.current) {
-            nextEvent.playerName = activePlayerRef.current;
+          } else if (activePlayerIdRef.current != null) {
+            // Use ID presence (not name truthiness) as the guard: a player with an
+            // empty name has activePlayerRef.current === "" which is falsy, so the
+            // old `if (activePlayerRef.current)` guard silently skipped attribution
+            // for every default (unnamed) squad slot.
+            nextEvent.playerName = activePlayerRef.current || undefined;
             nextEvent.playerNumber = activePlayerNumberRef.current ?? undefined;
             nextEvent.squadId = activeSquadIdRef.current;
           } else {
@@ -4069,6 +4151,7 @@ export default function StatsModeSurface() {
           }
           return next;
         });
+        selectActivePlayerById(null);
         if (
           KICKOUT_EVENT_KIND_SET.has(nextEvent.kind) ||
           TURNOVER_EVENT_KIND_SET.has(nextEvent.kind) ||
@@ -5936,7 +6019,7 @@ export default function StatsModeSurface() {
   }
   const activePlayerChipText =
     activePlayerEntry != null
-      ? `Active: #${activePlayerEntry.number} ${activePlayerEntry.name}`
+      ? `Active: ${formatPlayerLabel(activePlayerEntry)}`
       : null;
   const activePlayerChipFloatingStyle =
     keyboardInset > 0
@@ -6251,7 +6334,7 @@ export default function StatsModeSurface() {
                         }
                       >
                         {isActive ? "● " : ""}
-                        #{player.number} {player.name}
+                        {formatPlayerLabel(player)}
                       </button>
                     );
                   })}
@@ -6286,7 +6369,7 @@ export default function StatsModeSurface() {
                       }
                     >
                       {isActive ? "● " : ""}
-                      #{player.number} {player.name}
+                      {formatPlayerLabel(player)}
                     </button>
                   );
                 })}
