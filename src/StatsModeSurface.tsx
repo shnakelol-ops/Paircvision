@@ -30,6 +30,7 @@ import { selectReviewEvents } from "./stats/review-selectors";
 import { createReviewSession, parseReviewSession, restoreReviewSession, serializeReviewSession } from "./stats/reviewSession";
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
+import { buildReviewPdf } from "./stats/reviewPdfExport";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -3240,6 +3241,7 @@ export default function StatsModeSurface() {
   const [showReviewStrip, setShowReviewStrip] = useState(false);
   const [isReviewStripCollapsed, setIsReviewStripCollapsed] = useState(false);
   const [selectedReviewEventId, setSelectedReviewEventId] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [pendingFollowup, setPendingFollowup] = useState<{
     eventId: string;
     kind: PendingFollowupKind;
@@ -3343,6 +3345,7 @@ export default function StatsModeSurface() {
     () => (openEventKeyboardMenuId ? buildEventKeyboardMenuOptions(openEventKeyboardMenuId) : []),
     [openEventKeyboardMenuId],
   );
+  const reviewImportInputRef = useRef<HTMLInputElement | null>(null);
   const handleRef = useRef<{
     destroy: () => void;
     setEvents: (events: readonly import("./core/stats/stats-event-model").MatchEvent[]) => void;
@@ -4033,7 +4036,7 @@ export default function StatsModeSurface() {
         if (team === "HOME") {
           const activePlayerEntry = activePlayerEntryRef.current;
           const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? null;
-          nextEvent.playerId = selectedPlayerId;
+          nextEvent.playerId = selectedPlayerId ?? undefined;
           if (SCORE_EVENT_KINDS.has(event.kind) && pendingScorerRef.current) {
             nextEvent.playerName = pendingScorerRef.current.name;
             nextEvent.playerNumber = pendingScorerRef.current.number;
@@ -4407,57 +4410,17 @@ export default function StatsModeSurface() {
     setSaveLoadBlockedReason(null);
   };
 
-  const saveReviewSession = () => {
-    try {
-      const reviewSession = createReviewSession({
-        matchInfo: {
-          homeTeam: teamNames.HOME.trim() || "Team A",
-          awayTeam: teamNames.AWAY.trim() || "Team B",
-          venue: venueName.trim() || undefined,
-        },
-        events: loggedEvents,
-        reviewContext: {
-          period: reviewHalf,
-          segment: reviewSegment,
-          teamSide: reviewTeamContext,
-          category: reviewEventFilter,
-          activePlayerId: activePlayerId ?? null,
-          activePlayerOnly: reviewActivePlayerOnly,
-          zone: reviewZone,
-        },
-      });
-      const didPersist = safeWriteLocalStorage(REVIEW_SESSION_STORAGE_KEY, serializeReviewSession(reviewSession));
-      if (!didPersist) {
-        setSaveFeedback("Review session save failed");
-        return;
-      }
-      setSaveFeedback("Review session saved");
-      setSaveLoadBlockedReason(null);
-    } catch {
-      setSaveFeedback("Review session save failed");
-    }
-  };
-
-  const openLastReviewSession = () => {
-    const rawSession = safeReadLocalStorage(REVIEW_SESSION_STORAGE_KEY);
-    if (rawSession == null || rawSession.trim().length === 0) {
-      setSaveFeedback("No saved review session found");
-      return;
-    }
-
+  // Shared restore logic used by both localStorage import and file import.
+  const applyRestoredReviewJson = (rawSession: string): void => {
     let restoredSession: ReturnType<typeof restoreReviewSession> | null = null;
     try {
       const parsedReviewSession = parseReviewSession(rawSession);
-      if (!parsedReviewSession) {
-        setSaveFeedback("Saved review session is invalid");
-        return;
-      }
+      if (!parsedReviewSession) { setSaveFeedback("Review session is invalid"); return; }
       restoredSession = restoreReviewSession(parsedReviewSession);
     } catch {
-      setSaveFeedback("Saved review session is invalid");
+      setSaveFeedback("Review session is invalid");
       return;
     }
-
     const restoredEvents = restoredSession.events
       .map((event) => parseStoredLoggedMatchEvent(event))
       .filter((event): event is LoggedMatchEvent => event != null);
@@ -4465,7 +4428,6 @@ export default function StatsModeSurface() {
       setSaveFeedback("Review session could not be restored");
       return;
     }
-
     const restoredActivePlayerId = restoredSession.reviewContext.activePlayerId ?? null;
     const restoredActivePlayerOnly = restoredSession.reviewContext.activePlayerOnly ?? (restoredActivePlayerId != null);
     const restoredReviewZone = restoredSession.reviewContext.zone ?? "FULL";
@@ -4476,11 +4438,7 @@ export default function StatsModeSurface() {
     reviewActivePlayerOnlyRef.current = restoredActivePlayerOnly;
     reviewZoneRef.current = restoredReviewZone;
     activePlayerIdRef.current = restoredActivePlayerId;
-
-    setTeamNames({
-      HOME: restoredSession.matchInfo.homeTeam,
-      AWAY: restoredSession.matchInfo.awayTeam,
-    });
+    setTeamNames({ HOME: restoredSession.matchInfo.homeTeam, AWAY: restoredSession.matchInfo.awayTeam });
     setVenueName(restoredSession.matchInfo.venue ?? "");
     setLoggedEvents(restoredEvents);
     setPendingFollowup(null);
@@ -4504,6 +4462,128 @@ export default function StatsModeSurface() {
     setLoadedMatchLabel(`${restoredSession.matchInfo.homeTeam} v ${restoredSession.matchInfo.awayTeam} (Review Session)`);
     setSaveFeedback("Review session opened");
   };
+
+  const saveReviewSession = () => {
+    try {
+      const reviewSession = createReviewSession({
+        matchInfo: {
+          homeTeam: teamNames.HOME.trim() || "Team A",
+          awayTeam: teamNames.AWAY.trim() || "Team B",
+          venue: venueName.trim() || undefined,
+        },
+        events: loggedEvents,
+        reviewContext: {
+          period: reviewHalf,
+          segment: reviewSegment,
+          teamSide: reviewTeamContext,
+          category: reviewEventFilter,
+          activePlayerId: activePlayerId ?? null,
+          activePlayerOnly: reviewActivePlayerOnly,
+          zone: reviewZone,
+        },
+      });
+      const jsonString = serializeReviewSession(reviewSession);
+      // Persist to localStorage (existing behaviour — enables same-device Import Review).
+      safeWriteLocalStorage(REVIEW_SESSION_STORAGE_KEY, jsonString);
+      // Also trigger a JSON file download so the session can be transferred cross-device.
+      try {
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        const homeToken = (teamNames.HOME.trim() || "home").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const awayToken = (teamNames.AWAY.trim() || "away").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const dateStr = new Date().toISOString().slice(0, 10);
+        link.download = `paircvision-review-${homeToken}-vs-${awayToken}-${dateStr}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch {
+        // File download failed; localStorage save already succeeded above.
+      }
+      setSaveFeedback("Review exported");
+      setSaveLoadBlockedReason(null);
+    } catch {
+      setSaveFeedback("Review export failed");
+    }
+  };
+
+  const handleReviewFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset the input so the same file can be re-selected if needed.
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result;
+      if (typeof text !== "string") { setSaveFeedback("Import failed — could not read file"); return; }
+      applyRestoredReviewJson(text);
+    };
+    reader.onerror = () => setSaveFeedback("Import failed — could not read file");
+    reader.readAsText(file);
+  };
+
+  const exportReviewPdf = async () => {
+    const host = hostRef.current;
+    const handle = handleRef.current;
+    if (!host || !handle) {
+      setSaveFeedback("PDF export unavailable — pitch not ready");
+      return;
+    }
+    if (isExportingPdf) return;
+    setIsExportingPdf(true);
+    setSaveFeedback("Generating PDF…");
+    try {
+      // Generate the full PáircVision Match Summary card — the same PNG
+      // produced by Share Summary — and pass it to the PDF as Page 1.
+      // On any failure the PDF falls back to the built-in simplified stats.
+      let coverImageDataUrl: string | null = null;
+      try {
+        const cardFile = await buildStatsShareCardPng({
+          stageLabel: matchState === "FULL_TIME" ? "Full Time" : "Half Time",
+          homeTeamName: teamNames.HOME.trim() || "Team A",
+          awayTeamName: teamNames.AWAY.trim() || "Team B",
+          venueLabel: venueName.trim() || "Unknown venue",
+          clockLabel: formatMatchClock(matchTimeSeconds),
+          homeScore,
+          awayScore,
+          eventCount: loggedEvents.length,
+          events: loggedEvents,
+        });
+        if (cardFile) {
+          coverImageDataUrl = await new Promise<string | null>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(cardFile);
+          });
+        }
+      } catch {
+        // coverImageDataUrl stays null → PDF uses fallback stats table
+      }
+
+      await buildReviewPdf({
+        hostElement: host,
+        handle: { setEvents: handle.setEvents },
+        homeTeamName: teamNames.HOME.trim() || "Team A",
+        awayTeamName: teamNames.AWAY.trim() || "Team B",
+        venueName: venueName.trim() || undefined,
+        createdAt: Date.now(),
+        allEvents: loggedEvents,
+        originalDisplayedEvents: visibleReviewEvents,
+        reviewFilterKinds: REVIEW_FILTER_KINDS_FOR_MODE,
+        firstHalfAttackingDirection: effectiveAttackingDirection,
+        coverImageDataUrl,
+      });
+      setSaveFeedback("PDF downloaded");
+    } catch {
+      setSaveFeedback("PDF export failed");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
 
   const openNotesPanel = () => {
     setShowReviewStrip(false);
@@ -6570,12 +6650,31 @@ export default function StatsModeSurface() {
           >
             Export Review
           </button>
+          {/* Hidden file input for JSON review import */}
+          <input
+            ref={reviewImportInputRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: "none" }}
+            onChange={handleReviewFileImport}
+            aria-hidden="true"
+          />
           <button
             type="button"
             className="review-strip-chip"
-            onClick={openLastReviewSession}
+            onClick={() => reviewImportInputRef.current?.click()}
           >
             Import Review
+          </button>
+          <button
+            type="button"
+            className="review-strip-chip"
+            onClick={() => { void exportReviewPdf(); }}
+            disabled={isExportingPdf}
+            aria-busy={isExportingPdf}
+            aria-label="Export tactical review PDF"
+          >
+            {isExportingPdf ? "Exporting…" : "Export PDF"}
           </button>
           <span className="review-strip-spacer" aria-hidden="true" />
           <button
