@@ -85,20 +85,60 @@ const PDF_KIND_SETS: Record<Exclude<PdfCategory, "ALL">, ReadonlySet<MatchEventK
   FREES:     new Set<MatchEventKind>(["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"]),
 };
 
+// ─── Tactical side helper ─────────────────────────────────────────────────────
+
+/**
+ * Three event kinds where the recording team is NOT the tactical beneficiary:
+ *
+ *   TURNOVER_LOST    — the ball went to the other team
+ *   KICKOUT_CONCEDED — the other team won possession at the kickout
+ *   FREE_CONCEDED    — a free was awarded to the other team
+ *
+ * For these kinds, the tactical beneficiary is the OPPOSITE of event.teamSide.
+ * All other kinds benefit the recording team, so tacticalSide === event.teamSide.
+ */
+const TACTICAL_INVERT_KINDS: ReadonlySet<MatchEventKind> = new Set<MatchEventKind>([
+  "TURNOVER_LOST",
+  "KICKOUT_CONCEDED",
+  "FREE_CONCEDED",
+]);
+
+/**
+ * Returns the tactical beneficiary side of an event.
+ *
+ * Examples:
+ *   TURNOVER_LOST  (FOR) → "OPP"  (opposition gained the ball)
+ *   KICKOUT_CONCEDED (FOR) → "OPP" (opposition won our kickout)
+ *   FREE_CONCEDED  (FOR) → "OPP"  (opposition won the free)
+ *   TURNOVER_LOST  (OPP) → "FOR"  (we gained the ball from them)
+ *   KICKOUT_CONCEDED (OPP) → "FOR" (we won their kickout)
+ *   TURNOVER_WON   (FOR) → "FOR"  (we won possession — no inversion)
+ *   KICKOUT_WON    (FOR) → "FOR"  (we retained kickout — no inversion)
+ *   GOAL           (OPP) → "OPP"  (they scored — no inversion)
+ */
+function tacticalSide(event: PdfExportEvent): "FOR" | "OPP" {
+  const raw = event.teamSide === "OPP" ? "OPP" : "FOR";
+  return TACTICAL_INVERT_KINDS.has(event.kind) ? (raw === "FOR" ? "OPP" : "FOR") : raw;
+}
+
 // ─── Strict PDF event selector ────────────────────────────────────────────────
 
 /**
- * PDF-only strict selector. NO live-review inference leakage.
+ * PDF-only tactical event selector.
  *
  * Filtering rules:
- *   - Half  : strict period match ("1H" or "2H")
- *   - Kind  : only kinds in the category set pass (or all if category === "ALL")
- *   - Side  : event.teamSide must EQUAL the requested side exactly.
- *             There is NO inferred OPP treatment of FOR-tagged events.
- *             TURNOVER_LOST (teamSide="FOR") → FOR page only.
- *             KICKOUT_CONCEDED (teamSide="FOR") → FOR page only.
- *             OPP events → AGAINST page only.
- *             Zero overlap between FOR and AGAINST pages.
+ *   - Half     : strict period match ("1H" or "2H")
+ *   - Kind     : only kinds in the category set pass (or all if category === "ALL")
+ *   - Side     : filtered by TACTICAL BENEFICIARY, not raw event ownership.
+ *
+ * Tactical beneficiary logic (see tacticalSide()):
+ *   TURNOVER_WON   (FOR) → FOR   TURNOVER_LOST  (FOR) → OPP (they got the ball)
+ *   KICKOUT_WON    (FOR) → FOR   KICKOUT_CONCEDED (FOR) → OPP (they won possession)
+ *   FREE_WON       (FOR) → FOR   FREE_CONCEDED  (FOR) → OPP (their free)
+ *   Mirrors apply for OPP events.
+ *
+ * This is PDF-only. Live-review selectors are untouched.
+ * Each event appears on exactly one side — zero overlap.
  */
 function selectPdfEvents(
   events: readonly PdfExportEvent[],
@@ -116,8 +156,8 @@ function selectPdfEvents(
     if (event.period !== periodTarget) return false;
     // Kind filter
     if (kindSet !== null && !kindSet.has(event.kind)) return false;
-    // Strict side filter — no inference
-    if (teamSide !== "ALL" && event.teamSide !== teamSide) return false;
+    // Tactical side filter — groups by who BENEFITED, not raw event ownership
+    if (teamSide !== "ALL" && tacticalSide(event) !== teamSide) return false;
     return true;
   });
 }
