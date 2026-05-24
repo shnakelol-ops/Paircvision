@@ -630,56 +630,80 @@ function drawSummaryStatsTable(
     freesWon: number; freesCon: number; freeScored: number; freeMissed: number;
   };
 
-  function buildStats(evts: readonly PdfExportEvent[]): BlockStats {
-    const scoreR    = scoreFromEvents(evts);
-    const shots     = countKinds(evts, ...SHOT_KINDS);
-    const scoreKind = countKinds(evts, ...SCORE_KINDS);
-    const koWon     = countKinds(evts, "KICKOUT_WON");
-    const koCon     = countKinds(evts, "KICKOUT_CONCEDED");
-    const koTotal   = koWon + koCon;
-    const toWon     = countKinds(evts, "TURNOVER_WON");
-    const toLost    = countKinds(evts, "TURNOVER_LOST");
+  function buildStats(ownEvts: readonly PdfExportEvent[], otherEvts: readonly PdfExportEvent[]): BlockStats {
+    const scoreR    = scoreFromEvents(ownEvts);
+    const shots     = countKinds(ownEvts, ...SHOT_KINDS);
+    const scoreKind = countKinds(ownEvts, ...SCORE_KINDS);
+
+    // ── Tactical mirroring: count by beneficiary, not recorder ──
+    // K/O Won = kickouts we retained (ownKICKOUT_WON) + their kickouts we won (otherKICKOUT_CONCEDED)
+    // K/O Lost = our kickouts they won (ownKICKOUT_CONCEDED) + their kickouts they retained (otherKICKOUT_WON)
+    const koWon   = countKinds(ownEvts, "KICKOUT_WON")    + countKinds(otherEvts, "KICKOUT_CONCEDED");
+    const koCon   = countKinds(ownEvts, "KICKOUT_CONCEDED") + countKinds(otherEvts, "KICKOUT_WON");
+    const koTotal = koWon + koCon;
+
+    // T/O Won = our own turnovers won + their turnovers lost (which we gained)
+    const toWon  = countKinds(ownEvts, "TURNOVER_WON")  + countKinds(otherEvts, "TURNOVER_LOST");
+    const toLost = countKinds(ownEvts, "TURNOVER_LOST") + countKinds(otherEvts, "TURNOVER_WON");
+
+    // Frees Won = our own frees won + their frees conceded (which become our frees)
+    const freesWon = countKinds(ownEvts, "FREE_WON")      + countKinds(otherEvts, "FREE_CONCEDED");
+    const freesCon = countKinds(ownEvts, "FREE_CONCEDED") + countKinds(otherEvts, "FREE_WON");
+
     return {
       goals:          scoreR.goals,
       points:         scoreR.points,
-      twoPointers:    countKinds(evts, "TWO_POINTER", "FORTY_FIVE_TWO_POINT"),
+      twoPointers:    countKinds(ownEvts, "TWO_POINTER", "FORTY_FIVE_TWO_POINT"),
       scoreTotal:     scoreR.total,
       shots,
-      wides:          countKinds(evts, "WIDE"),
+      wides:          countKinds(ownEvts, "WIDE"),
       conv:           shots > 0 ? `${Math.round((scoreKind / shots) * 100)}%` : "—",
-      // Shot sub-types (from tags)
-      shotShort:      countTagOnKinds(evts, "SHORT",      ...SHOT_KINDS),
-      shotPost:       countTagOnKinds(evts, "POST",       ...SHOT_KINDS),
-      shot45:         countTagOnKinds(evts, "FORTY_FIVE", ...SHOT_KINDS),
-      shotBlock:      countKindWithAnyTag(evts, "SHOT", "BLOCK_SAVE", "BLOCKED")
-                    + countKindWithAnyTag(evts, "WIDE", "BLOCK_SAVE", "BLOCKED"),
-      // Kickouts — all tracked tags
+      // Shot sub-types — own events only (shots are not mirrored)
+      shotShort:      countTagOnKinds(ownEvts, "SHORT",      ...SHOT_KINDS),
+      shotPost:       countTagOnKinds(ownEvts, "POST",       ...SHOT_KINDS),
+      shot45:         countTagOnKinds(ownEvts, "FORTY_FIVE", ...SHOT_KINDS),
+      shotBlock:      countKindWithAnyTag(ownEvts, "SHOT", "BLOCK_SAVE", "BLOCKED")
+                    + countKindWithAnyTag(ownEvts, "WIDE", "BLOCK_SAVE", "BLOCKED"),
+      // Kickouts — mirrored top-level counts; sub-tags follow same mirror logic
       koWon, koCon,
       koPct:          koTotal > 0 ? `${Math.round((koWon / koTotal) * 100)}%` : "—",
-      koCleanWon:     countKindWithAnyTag(evts, "KICKOUT_WON",      "CLEAN"),
-      koBreakWon:     countKindWithAnyTag(evts, "KICKOUT_WON",      "BREAK"),
-      koCleanLost:    countKindWithAnyTag(evts, "KICKOUT_CONCEDED", "CLEAN"),
-      koBreakLost:    countKindWithAnyTag(evts, "KICKOUT_CONCEDED", "BREAK"),
-      koFoulWon:      countKindWithAnyTag(evts, "KICKOUT_WON",      "FOUL_WON"),
-      koFoulCon:      countKindWithAnyTag(evts, "KICKOUT_CONCEDED", "FOUL_CONCEDED"),
-      koKickedDead:   countKindWithAnyTag(evts, "KICKOUT_CONCEDED", "KICKED_DEAD"),
-      // Turnovers — all tracked tags (split, not merged)
+      koCleanWon:     countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "CLEAN")
+                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "CLEAN"),
+      koBreakWon:     countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "BREAK")
+                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "BREAK"),
+      koCleanLost:    countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "CLEAN")
+                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "CLEAN"),
+      koBreakLost:    countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "BREAK")
+                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "BREAK"),
+      koFoulWon:      countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "FOUL_WON")
+                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "FOUL_WON"),
+      koFoulCon:      countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "FOUL_CONCEDED")
+                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "FOUL_CONCEDED"),
+      koKickedDead:   countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "KICKED_DEAD")
+                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "KICKED_DEAD"),
+      // Turnovers — mirrored top-level counts; sub-tags on TURNOVER_WON are "how we won it",
+      // on TURNOVER_LOST are "how we lost it" — mirror by inverting the kind too
       toWon, toLost, netTo: toWon - toLost,
-      toTacklePress:  countKindWithAnyTag(evts, "TURNOVER_WON",  "TACKLE", "PRESS"),
-      toSwarmInt:     countKindWithAnyTag(evts, "TURNOVER_WON",  "SWARM",  "INTERCEPT"),
-      toUnforced:     countKindWithAnyTag(evts, "TURNOVER_LOST", "UNFORCED"),
-      toSlackKpHp:    countKindWithAnyTag(evts, "TURNOVER_LOST", "SLACK_KICK_PASS", "SLACK_HAND_PASS"),
-      toOcStripped:   countKindWithAnyTag(evts, "TURNOVER_LOST", "OVERCARRIED", "STRIPPED"),
-      // Frees
-      freesWon:       countKinds(evts, "FREE_WON"),
-      freesCon:       countKinds(evts, "FREE_CONCEDED"),
-      freeScored:     countKinds(evts, "FREE_SCORED"),
-      freeMissed:     countKinds(evts, "FREE_MISSED"),
+      toTacklePress:  countKindWithAnyTag(ownEvts,   "TURNOVER_WON",  "TACKLE", "PRESS")
+                    + countKindWithAnyTag(otherEvts, "TURNOVER_LOST", "TACKLE", "PRESS"),
+      toSwarmInt:     countKindWithAnyTag(ownEvts,   "TURNOVER_WON",  "SWARM",  "INTERCEPT")
+                    + countKindWithAnyTag(otherEvts, "TURNOVER_LOST", "SWARM",  "INTERCEPT"),
+      toUnforced:     countKindWithAnyTag(ownEvts,   "TURNOVER_LOST", "UNFORCED")
+                    + countKindWithAnyTag(otherEvts, "TURNOVER_WON",  "UNFORCED"),
+      toSlackKpHp:    countKindWithAnyTag(ownEvts,   "TURNOVER_LOST", "SLACK_KICK_PASS", "SLACK_HAND_PASS")
+                    + countKindWithAnyTag(otherEvts, "TURNOVER_WON",  "SLACK_KICK_PASS", "SLACK_HAND_PASS"),
+      toOcStripped:   countKindWithAnyTag(ownEvts,   "TURNOVER_LOST", "OVERCARRIED", "STRIPPED")
+                    + countKindWithAnyTag(otherEvts, "TURNOVER_WON",  "OVERCARRIED", "STRIPPED"),
+      // Frees — mirrored
+      freesWon,
+      freesCon,
+      freeScored:     countKinds(ownEvts, "FREE_SCORED"),
+      freeMissed:     countKinds(ownEvts, "FREE_MISSED"),
     };
   }
 
-  const forStats = buildStats(forEvts);
-  const oppStats = buildStats(oppEvts);
+  const forStats = buildStats(forEvts, oppEvts);
+  const oppStats = buildStats(oppEvts, forEvts);
 
   // ── Block geometry ────────────────────────────────────────────────────────────
   // Rows: SCORING=7, SHOT DETAIL=4, KICKOUTS=10, TURNOVERS=8, FREES=4 → 33 data rows
@@ -1037,19 +1061,22 @@ function makeSegmentsPage(
     },
   ];
 
-  // Helper: build per-segment stats for one side
+  // Helper: build per-segment stats for one side — with tactical mirroring
   function segStats(evts: readonly PdfExportEvent[], period: MatchEventPeriod, seg: MatchEventSegment, side: "FOR" | "OPP") {
-    const e = evts.filter((ev) => ev.period === period && ev.segment === seg && ev.teamSide === side);
-    const score  = scoreFromEvents(e);
-    const shots  = countKinds(e, "SHOT", "GOAL", "POINT", "WIDE", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_MISSED", "FREE_SCORED");
-    const wides  = countKinds(e, "WIDE");
-    const koWon  = countKinds(e, "KICKOUT_WON");
-    const koCon  = countKinds(e, "KICKOUT_CONCEDED");
+    const other = side === "FOR" ? "OPP" : "FOR";
+    const own = evts.filter((ev) => ev.period === period && ev.segment === seg && ev.teamSide === side);
+    const opp = evts.filter((ev) => ev.period === period && ev.segment === seg && ev.teamSide === other);
+    const score  = scoreFromEvents(own);
+    const shots  = countKinds(own, "SHOT", "GOAL", "POINT", "WIDE", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_MISSED", "FREE_SCORED");
+    const wides  = countKinds(own, "WIDE");
+    // Tactical mirroring: K/O Won = own retained + other conceded; K/O Lost = own conceded + other retained
+    const koWon  = countKinds(own, "KICKOUT_WON")    + countKinds(opp, "KICKOUT_CONCEDED");
+    const koCon  = countKinds(own, "KICKOUT_CONCEDED") + countKinds(opp, "KICKOUT_WON");
     const koTot  = koWon + koCon;
-    const toWon  = countKinds(e, "TURNOVER_WON");
-    const toLost = countKinds(e, "TURNOVER_LOST");
-    const fWon   = countKinds(e, "FREE_WON");
-    const fCon   = countKinds(e, "FREE_CONCEDED");
+    const toWon  = countKinds(own, "TURNOVER_WON")  + countKinds(opp, "TURNOVER_LOST");
+    const toLost = countKinds(own, "TURNOVER_LOST") + countKinds(opp, "TURNOVER_WON");
+    const fWon   = countKinds(own, "FREE_WON")      + countKinds(opp, "FREE_CONCEDED");
+    const fCon   = countKinds(own, "FREE_CONCEDED") + countKinds(opp, "FREE_WON");
     return { score, shots, wides, koWon, koCon, koTot, toWon, toLost, netTo: toWon - toLost, fWon, fCon };
   }
 
