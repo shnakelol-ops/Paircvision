@@ -1021,11 +1021,70 @@ function newMatchSessionId(prefix: "live" | "loaded"): string {
 }
 
 function createDefaultSquad(): Squad {
+  const players: SquadPlayer[] = Array.from({ length: 30 }, (_, idx) => {
+    const slotNumber = idx + 1;
+    return {
+      id: `player-${slotNumber}-${newLocalEventId()}`,
+      name: "",
+      number: slotNumber,
+      role: slotNumber <= 15 ? "STARTER" : "SUB",
+    };
+  });
   return {
     id: `squad-${newLocalEventId()}`,
     name: "HOME",
-    players: [],
+    players,
   };
+}
+
+function ensureStableSquadSlots(players: SquadPlayer[]): SquadPlayer[] {
+  const normalized = players.map((player, idx) => {
+    const boundedNumber = Math.max(1, Math.min(99, Math.floor(player.number)));
+    return {
+      ...player,
+      name: player.name.slice(0, 24),
+      number: boundedNumber,
+      role: player.role === "STARTER" || player.role === "SUB" ? player.role : idx < 15 ? "STARTER" : "SUB",
+    };
+  });
+  const byNumber = new Map<number, SquadPlayer>();
+  for (const player of normalized) {
+    if (!byNumber.has(player.number)) {
+      byNumber.set(player.number, player);
+    }
+  }
+  const byRoleFallback = {
+    STARTER: normalized.filter((player) => player.role === "STARTER"),
+    SUB: normalized.filter((player) => player.role === "SUB"),
+  };
+  const usedIds = new Set<string>();
+  const stablePlayers: SquadPlayer[] = [];
+  for (let slot = 1; slot <= 30; slot += 1) {
+    const role: PlayerRole = slot <= 15 ? "STARTER" : "SUB";
+    const bySlot = byNumber.get(slot);
+    const fromRolePool = byRoleFallback[role].find((candidate) => !usedIds.has(candidate.id));
+    const selected = bySlot && !usedIds.has(bySlot.id) ? bySlot : fromRolePool ?? null;
+    if (selected) {
+      usedIds.add(selected.id);
+      stablePlayers.push({
+        ...selected,
+        number: slot,
+        role,
+      });
+      continue;
+    }
+    stablePlayers.push({
+      id: `player-${slot}-${newLocalEventId()}`,
+      name: "",
+      number: slot,
+      role,
+    });
+  }
+  return stablePlayers;
+}
+
+function formatPlayerLabel(player: SquadPlayer): string {
+  return player.name.trim().length > 0 ? `#${player.number} ${player.name}` : `#${player.number}`;
 }
 
 function parseStoredPlayer(input: unknown, idx: number): SquadPlayer | null {
@@ -1078,9 +1137,11 @@ function parseStoredSquads(input: string | null): Squad[] {
         const maybePlayers = "players" in item ? item.players : null;
         if (typeof maybeId !== "string" || typeof maybeName !== "string") return null;
         if (!Array.isArray(maybePlayers)) return null;
-        const players = maybePlayers
+        const players = ensureStableSquadSlots(
+          maybePlayers
           .map((player, idx) => parseStoredPlayer(player, idx))
-          .filter((player): player is SquadPlayer => player !== null);
+          .filter((player): player is SquadPlayer => player !== null),
+        );
         return {
           id: maybeId,
           name: maybeName.slice(0, 24),
@@ -3389,7 +3450,7 @@ export default function StatsModeSurface() {
     updater: (prevPlayers: SquadPlayer[]) => SquadPlayer[],
     nextActivePlayerId?: string | null,
   ) => {
-    const nextPlayersForActiveSquad = updater([...activeSquad.players]);
+    const nextPlayersForActiveSquad = ensureStableSquadSlots(updater([...activeSquad.players]));
     const nextSelectedPlayer =
       nextActivePlayerId === undefined
         ? undefined
@@ -3529,12 +3590,12 @@ export default function StatsModeSurface() {
   };
 
   const loadSavedSquadIntoActive = (savedSquad: SavedSquad) => {
-    const restoredPlayers: SquadPlayer[] = savedSquad.players.map((player, idx) => ({
+    const restoredPlayers: SquadPlayer[] = ensureStableSquadSlots(savedSquad.players.map((player, idx) => ({
       id: player.id,
       number: Math.max(1, Math.min(99, Math.floor(player.number))),
       name: player.name.slice(0, 24),
       role: idx < 15 ? "STARTER" : "SUB",
-    }));
+    })));
     setSquads((prevSquads) => {
       const nextActiveSquad: Squad = {
         id: savedSquad.id,
@@ -3591,6 +3652,8 @@ export default function StatsModeSurface() {
     selectedEventRef.current = kind;
     handleRef.current?.setActiveEventKind(kind);
     setIsPickerOpen(false);
+    setUtilityPanel("PLAYERS");
+    setIsUtilityOpen(false);
   };
 
   const selectEventFromKeyboardOption = (option: EventKeyboardOption) => {
@@ -4069,6 +4132,7 @@ export default function StatsModeSurface() {
           }
           return next;
         });
+        selectActivePlayerById(null);
         if (
           KICKOUT_EVENT_KIND_SET.has(nextEvent.kind) ||
           TURNOVER_EVENT_KIND_SET.has(nextEvent.kind) ||
@@ -5936,7 +6000,7 @@ export default function StatsModeSurface() {
   }
   const activePlayerChipText =
     activePlayerEntry != null
-      ? `Active: #${activePlayerEntry.number} ${activePlayerEntry.name}`
+      ? `Active: ${formatPlayerLabel(activePlayerEntry)}`
       : null;
   const activePlayerChipFloatingStyle =
     keyboardInset > 0
@@ -6251,7 +6315,7 @@ export default function StatsModeSurface() {
                         }
                       >
                         {isActive ? "● " : ""}
-                        #{player.number} {player.name}
+                        {formatPlayerLabel(player)}
                       </button>
                     );
                   })}
@@ -6286,7 +6350,7 @@ export default function StatsModeSurface() {
                       }
                     >
                       {isActive ? "● " : ""}
-                      #{player.number} {player.name}
+                      {formatPlayerLabel(player)}
                     </button>
                   );
                 })}
