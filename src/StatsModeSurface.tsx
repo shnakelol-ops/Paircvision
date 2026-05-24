@@ -1305,8 +1305,16 @@ function deriveMyTeamReport(
   };
 
   const getPlayerNote = (event: LoggedMatchEvent) => {
-    if (!event.playerId) return null;
-    const existing = playerNotes.get(event.playerId);
+    const hasPlayerId = typeof event.playerId === "string" && event.playerId.trim().length > 0;
+    const hasPlayerNumber = typeof event.playerNumber === "number" && Number.isFinite(event.playerNumber);
+    const hasPlayerName = typeof event.playerName === "string" && event.playerName.trim().length > 0;
+    if (!hasPlayerId && !hasPlayerNumber && !hasPlayerName) return null;
+    const playerKey = hasPlayerId
+      ? `id:${event.playerId}`
+      : hasPlayerNumber
+        ? `num:${event.playerNumber}`
+        : `name:${event.playerName!.trim().toLowerCase()}`;
+    const existing = playerNotes.get(playerKey);
     if (existing) return existing;
     const created: MyTeamPlayerNote = {
       label: resolvePlayerLabel(event),
@@ -1318,7 +1326,7 @@ function deriveMyTeamReport(
       freesWon: 0,
       involved: 0,
     };
-    playerNotes.set(event.playerId, created);
+    playerNotes.set(playerKey, created);
     return created;
   };
 
