@@ -50,6 +50,12 @@ export type ReviewPdfInput = {
   /** Maps category names → MatchEventKind arrays used by selectReviewEvents. */
   reviewFilterKinds: Partial<Record<string, readonly string[]>>;
   firstHalfAttackingDirection: "LEFT" | "RIGHT";
+  /**
+   * Pre-rendered full summary card as a PNG data URL (base64).
+   * When provided, Page 1 shows this image (same card as Share Summary PNG).
+   * When null/undefined, Page 1 falls back to the built-in simplified stats table.
+   */
+  coverImageDataUrl?: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -400,8 +406,21 @@ export async function buildReviewPdf(input: ReviewPdfInput): Promise<void> {
 
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-  // ── Page 1: Cover / stats ──────────────────────────────────────────────
-  drawCoverPage(doc, input);
+  // ── Page 1: Cover ─────────────────────────────────────────────────────
+  // Prefer the full rich summary card (same image as Share Summary PNG).
+  // Fall back to the built-in simplified stats table when unavailable.
+  if (input.coverImageDataUrl) {
+    // Dark background first so transparent edges (if any) match the card.
+    doc.setFillColor(BG_R, BG_G, BG_B);
+    doc.rect(0, 0, PDF_W, PDF_H, "F");
+    // Stretch the card to fill the A4 page.  The card (1080×≥1640 px) is
+    // close enough in proportion to A4 (210×297 mm) that distortion is
+    // imperceptible in print / screen PDF viewing.
+    doc.addImage(input.coverImageDataUrl, "PNG", 0, 0, PDF_W, PDF_H);
+  } else {
+    // Fallback: lightweight stats table drawn directly with jsPDF primitives.
+    drawCoverPage(doc, input);
+  }
 
   // ── Pages 2-10: Pitch snapshots ────────────────────────────────────────
   for (const spec of CAPTURE_SPECS) {

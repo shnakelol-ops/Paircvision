@@ -4451,6 +4451,34 @@ export default function StatsModeSurface() {
     setIsExportingPdf(true);
     setSaveFeedback("Generating PDF…");
     try {
+      // Generate the full PáircVision Match Summary card — the same PNG
+      // produced by Share Summary — and pass it to the PDF as Page 1.
+      // On any failure the PDF falls back to the built-in simplified stats.
+      let coverImageDataUrl: string | null = null;
+      try {
+        const cardFile = await buildStatsShareCardPng({
+          stageLabel: matchState === "FULL_TIME" ? "Full Time" : "Half Time",
+          homeTeamName: teamNames.HOME.trim() || "Team A",
+          awayTeamName: teamNames.AWAY.trim() || "Team B",
+          venueLabel: venueName.trim() || "Unknown venue",
+          clockLabel: formatMatchClock(matchTimeSeconds),
+          homeScore,
+          awayScore,
+          eventCount: loggedEvents.length,
+          events: loggedEvents,
+        });
+        if (cardFile) {
+          coverImageDataUrl = await new Promise<string | null>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(cardFile);
+          });
+        }
+      } catch {
+        // coverImageDataUrl stays null → PDF uses fallback stats table
+      }
+
       await buildReviewPdf({
         hostElement: host,
         handle: { setEvents: handle.setEvents },
@@ -4462,6 +4490,7 @@ export default function StatsModeSurface() {
         originalDisplayedEvents: visibleReviewEvents,
         reviewFilterKinds: REVIEW_FILTER_KINDS_FOR_MODE,
         firstHalfAttackingDirection: effectiveAttackingDirection,
+        coverImageDataUrl,
       });
       setSaveFeedback("PDF downloaded");
     } catch {
