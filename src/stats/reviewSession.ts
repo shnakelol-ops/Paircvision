@@ -173,6 +173,18 @@ export function restoreReviewSession(session: ReviewSession): RestoredReviewSess
   };
 }
 
+export function buildReviewSessionFileName(session: ReviewSession): string {
+  const slug = (value: string): string =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  const home = slug(session.matchInfo.homeTeam) || "team-a";
+  const away = slug(session.matchInfo.awayTeam) || "team-b";
+  const stamp = new Date(session.updatedAt).toISOString().slice(0, 10);
+  return `review-${home}-v-${away}-${stamp}.json`;
+}
+
 export function serializeReviewSession(session: ReviewSession): string {
   const normalized = createReviewSession({
     id: session.id,

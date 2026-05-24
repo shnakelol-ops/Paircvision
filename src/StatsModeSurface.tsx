@@ -27,7 +27,7 @@ import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 import { buildStatsShareCardPng } from "./stats/statsShareCard";
 import { selectReviewEvents } from "./stats/review-selectors";
-import { createReviewSession, parseReviewSession, restoreReviewSession, serializeReviewSession } from "./stats/reviewSession";
+import { buildReviewSessionFileName, createReviewSession, parseReviewSession, restoreReviewSession, serializeReviewSession } from "./stats/reviewSession";
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
 
@@ -199,7 +199,6 @@ const SQUADS_STORAGE_KEY = "pitchsideclub.squads";
 const SAVED_SQUADS_STORAGE_KEY = "pitchflow_saved_squads_v1";
 const SAVED_MATCHES_STORAGE_KEY = "pitchflow_matches_v1";
 const ACTIVE_MATCH_DRAFT_STORAGE_KEY = "paircvision_stats_active_draft_v1";
-const REVIEW_SESSION_STORAGE_KEY = "paircvision.reviewSession.v1.last";
 const MAX_SAVED_MATCHES = 10;
 const EVENT_PICKER_LOGO_STYLE: CSSProperties = {
   width: "40px",
@@ -4407,7 +4406,7 @@ export default function StatsModeSurface() {
     setSaveLoadBlockedReason(null);
   };
 
-  const saveReviewSession = () => {
+  const exportReviewSession = () => {
     try {
       const reviewSession = createReviewSession({
         matchInfo: {
@@ -4426,22 +4425,25 @@ export default function StatsModeSurface() {
           zone: reviewZone,
         },
       });
-      const didPersist = safeWriteLocalStorage(REVIEW_SESSION_STORAGE_KEY, serializeReviewSession(reviewSession));
-      if (!didPersist) {
-        setSaveFeedback("Review session save failed");
-        return;
-      }
-      setSaveFeedback("Review session saved");
+      const blob = new Blob([serializeReviewSession(reviewSession)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = buildReviewSessionFileName(reviewSession);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setSaveFeedback("Review session exported");
       setSaveLoadBlockedReason(null);
     } catch {
-      setSaveFeedback("Review session save failed");
+      setSaveFeedback("Review session export failed");
     }
   };
 
-  const openLastReviewSession = () => {
-    const rawSession = safeReadLocalStorage(REVIEW_SESSION_STORAGE_KEY);
-    if (rawSession == null || rawSession.trim().length === 0) {
-      setSaveFeedback("No saved review session found");
+  const applyImportedReviewSession = (rawSession: string) => {
+    if (rawSession.trim().length === 0) {
+      setSaveFeedback("Review session file is empty");
       return;
     }
 
@@ -4449,12 +4451,12 @@ export default function StatsModeSurface() {
     try {
       const parsedReviewSession = parseReviewSession(rawSession);
       if (!parsedReviewSession) {
-        setSaveFeedback("Saved review session is invalid");
+        setSaveFeedback("Review session file is invalid");
         return;
       }
       restoredSession = restoreReviewSession(parsedReviewSession);
     } catch {
-      setSaveFeedback("Saved review session is invalid");
+      setSaveFeedback("Review session file is invalid");
       return;
     }
 
@@ -4502,7 +4504,26 @@ export default function StatsModeSurface() {
     setIsResetConfirmOpen(false);
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel(`${restoredSession.matchInfo.homeTeam} v ${restoredSession.matchInfo.awayTeam} (Review Session)`);
-    setSaveFeedback("Review session opened");
+    setSaveFeedback("Review session imported");
+  };
+
+  const importReviewSession = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json,.json";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        applyImportedReviewSession(typeof reader.result === "string" ? reader.result : "");
+      };
+      reader.onerror = () => {
+        setSaveFeedback("Review session import failed");
+      };
+      reader.readAsText(file);
+    };
+    input.click();
   };
 
   const openNotesPanel = () => {
@@ -6566,14 +6587,14 @@ export default function StatsModeSurface() {
           <button
             type="button"
             className="review-strip-chip"
-            onClick={saveReviewSession}
+            onClick={exportReviewSession}
           >
             Export Review
           </button>
           <button
             type="button"
             className="review-strip-chip"
-            onClick={openLastReviewSession}
+            onClick={importReviewSession}
           >
             Import Review
           </button>
