@@ -3345,6 +3345,7 @@ export default function StatsModeSurface() {
     () => (openEventKeyboardMenuId ? buildEventKeyboardMenuOptions(openEventKeyboardMenuId) : []),
     [openEventKeyboardMenuId],
   );
+  const reviewImportInputRef = useRef<HTMLInputElement | null>(null);
   const handleRef = useRef<{
     destroy: () => void;
     setEvents: (events: readonly import("./core/stats/stats-event-model").MatchEvent[]) => void;
@@ -4409,6 +4410,59 @@ export default function StatsModeSurface() {
     setSaveLoadBlockedReason(null);
   };
 
+  // Shared restore logic used by both localStorage import and file import.
+  const applyRestoredReviewJson = (rawSession: string): void => {
+    let restoredSession: ReturnType<typeof restoreReviewSession> | null = null;
+    try {
+      const parsedReviewSession = parseReviewSession(rawSession);
+      if (!parsedReviewSession) { setSaveFeedback("Review session is invalid"); return; }
+      restoredSession = restoreReviewSession(parsedReviewSession);
+    } catch {
+      setSaveFeedback("Review session is invalid");
+      return;
+    }
+    const restoredEvents = restoredSession.events
+      .map((event) => parseStoredLoggedMatchEvent(event))
+      .filter((event): event is LoggedMatchEvent => event != null);
+    if (restoredEvents.length !== restoredSession.events.length) {
+      setSaveFeedback("Review session could not be restored");
+      return;
+    }
+    const restoredActivePlayerId = restoredSession.reviewContext.activePlayerId ?? null;
+    const restoredActivePlayerOnly = restoredSession.reviewContext.activePlayerOnly ?? (restoredActivePlayerId != null);
+    const restoredReviewZone = restoredSession.reviewContext.zone ?? "FULL";
+    reviewHalfRef.current = restoredSession.reviewContext.period;
+    reviewSegmentRef.current = restoredSession.reviewContext.segment;
+    reviewTeamContextRef.current = restoredSession.reviewContext.teamSide;
+    reviewEventFilterRef.current = restoredSession.reviewContext.category;
+    reviewActivePlayerOnlyRef.current = restoredActivePlayerOnly;
+    reviewZoneRef.current = restoredReviewZone;
+    activePlayerIdRef.current = restoredActivePlayerId;
+    setTeamNames({ HOME: restoredSession.matchInfo.homeTeam, AWAY: restoredSession.matchInfo.awayTeam });
+    setVenueName(restoredSession.matchInfo.venue ?? "");
+    setLoggedEvents(restoredEvents);
+    setPendingFollowup(null);
+    setReviewHalf(restoredSession.reviewContext.period);
+    setReviewSegment(restoredSession.reviewContext.segment);
+    setReviewTeamContext(restoredSession.reviewContext.teamSide);
+    setReviewEventFilter(restoredSession.reviewContext.category);
+    setActivePlayerId(restoredActivePlayerId);
+    setReviewActivePlayerOnly(restoredActivePlayerOnly);
+    setReviewZone(restoredReviewZone);
+    setSelectedReviewEventId(null);
+    setShowReviewStrip(true);
+    setIsReviewStripCollapsed(false);
+    setUtilityPanel(null);
+    setIsUtilityOpen(false);
+    setIsPickerOpen(false);
+    setIsCountsOverlayOpen(false);
+    setIsFullTimeActionsOpen(false);
+    setIsResetConfirmOpen(false);
+    setSaveLoadBlockedReason(null);
+    setLoadedMatchLabel(`${restoredSession.matchInfo.homeTeam} v ${restoredSession.matchInfo.awayTeam} (Review Session)`);
+    setSaveFeedback("Review session opened");
+  };
+
   const saveReviewSession = () => {
     try {
       const reviewSession = createReviewSession({
@@ -4428,16 +4482,46 @@ export default function StatsModeSurface() {
           zone: reviewZone,
         },
       });
-      const didPersist = safeWriteLocalStorage(REVIEW_SESSION_STORAGE_KEY, serializeReviewSession(reviewSession));
-      if (!didPersist) {
-        setSaveFeedback("Review session save failed");
-        return;
+      const jsonString = serializeReviewSession(reviewSession);
+      // Persist to localStorage (existing behaviour — enables same-device Import Review).
+      safeWriteLocalStorage(REVIEW_SESSION_STORAGE_KEY, jsonString);
+      // Also trigger a JSON file download so the session can be transferred cross-device.
+      try {
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        const homeToken = (teamNames.HOME.trim() || "home").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const awayToken = (teamNames.AWAY.trim() || "away").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const dateStr = new Date().toISOString().slice(0, 10);
+        link.download = `paircvision-review-${homeToken}-vs-${awayToken}-${dateStr}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } catch {
+        // File download failed; localStorage save already succeeded above.
       }
-      setSaveFeedback("Review session saved");
+      setSaveFeedback("Review exported");
       setSaveLoadBlockedReason(null);
     } catch {
-      setSaveFeedback("Review session save failed");
+      setSaveFeedback("Review export failed");
     }
+  };
+
+  const handleReviewFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset the input so the same file can be re-selected if needed.
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result;
+      if (typeof text !== "string") { setSaveFeedback("Import failed — could not read file"); return; }
+      applyRestoredReviewJson(text);
+    };
+    reader.onerror = () => setSaveFeedback("Import failed — could not read file");
+    reader.readAsText(file);
   };
 
   const exportReviewPdf = async () => {
@@ -4500,72 +4584,6 @@ export default function StatsModeSurface() {
     }
   };
 
-  const openLastReviewSession = () => {
-    const rawSession = safeReadLocalStorage(REVIEW_SESSION_STORAGE_KEY);
-    if (rawSession == null || rawSession.trim().length === 0) {
-      setSaveFeedback("No saved review session found");
-      return;
-    }
-
-    let restoredSession: ReturnType<typeof restoreReviewSession> | null = null;
-    try {
-      const parsedReviewSession = parseReviewSession(rawSession);
-      if (!parsedReviewSession) {
-        setSaveFeedback("Saved review session is invalid");
-        return;
-      }
-      restoredSession = restoreReviewSession(parsedReviewSession);
-    } catch {
-      setSaveFeedback("Saved review session is invalid");
-      return;
-    }
-
-    const restoredEvents = restoredSession.events
-      .map((event) => parseStoredLoggedMatchEvent(event))
-      .filter((event): event is LoggedMatchEvent => event != null);
-    if (restoredEvents.length !== restoredSession.events.length) {
-      setSaveFeedback("Review session could not be restored");
-      return;
-    }
-
-    const restoredActivePlayerId = restoredSession.reviewContext.activePlayerId ?? null;
-    const restoredActivePlayerOnly = restoredSession.reviewContext.activePlayerOnly ?? (restoredActivePlayerId != null);
-    const restoredReviewZone = restoredSession.reviewContext.zone ?? "FULL";
-    reviewHalfRef.current = restoredSession.reviewContext.period;
-    reviewSegmentRef.current = restoredSession.reviewContext.segment;
-    reviewTeamContextRef.current = restoredSession.reviewContext.teamSide;
-    reviewEventFilterRef.current = restoredSession.reviewContext.category;
-    reviewActivePlayerOnlyRef.current = restoredActivePlayerOnly;
-    reviewZoneRef.current = restoredReviewZone;
-    activePlayerIdRef.current = restoredActivePlayerId;
-
-    setTeamNames({
-      HOME: restoredSession.matchInfo.homeTeam,
-      AWAY: restoredSession.matchInfo.awayTeam,
-    });
-    setVenueName(restoredSession.matchInfo.venue ?? "");
-    setLoggedEvents(restoredEvents);
-    setPendingFollowup(null);
-    setReviewHalf(restoredSession.reviewContext.period);
-    setReviewSegment(restoredSession.reviewContext.segment);
-    setReviewTeamContext(restoredSession.reviewContext.teamSide);
-    setReviewEventFilter(restoredSession.reviewContext.category);
-    setActivePlayerId(restoredActivePlayerId);
-    setReviewActivePlayerOnly(restoredActivePlayerOnly);
-    setReviewZone(restoredReviewZone);
-    setSelectedReviewEventId(null);
-    setShowReviewStrip(true);
-    setIsReviewStripCollapsed(false);
-    setUtilityPanel(null);
-    setIsUtilityOpen(false);
-    setIsPickerOpen(false);
-    setIsCountsOverlayOpen(false);
-    setIsFullTimeActionsOpen(false);
-    setIsResetConfirmOpen(false);
-    setSaveLoadBlockedReason(null);
-    setLoadedMatchLabel(`${restoredSession.matchInfo.homeTeam} v ${restoredSession.matchInfo.awayTeam} (Review Session)`);
-    setSaveFeedback("Review session opened");
-  };
 
   const openNotesPanel = () => {
     setShowReviewStrip(false);
@@ -6632,10 +6650,19 @@ export default function StatsModeSurface() {
           >
             Export Review
           </button>
+          {/* Hidden file input for JSON review import */}
+          <input
+            ref={reviewImportInputRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: "none" }}
+            onChange={handleReviewFileImport}
+            aria-hidden="true"
+          />
           <button
             type="button"
             className="review-strip-chip"
-            onClick={openLastReviewSession}
+            onClick={() => reviewImportInputRef.current?.click()}
           >
             Import Review
           </button>

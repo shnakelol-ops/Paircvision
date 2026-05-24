@@ -64,23 +64,44 @@ export type ReviewPdfInput = {
 // Capture specs — one per pitch page (pages 2-10)
 // ---------------------------------------------------------------------------
 
+// All shot outcomes used by the SHOTS pitch pages (broader than the live review strip's "SHOT" filter).
+const PDF_SHOTS_KINDS = [
+  "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED",
+  "SHOT", "WIDE", "FREE_MISSED",
+] as const;
+
 type CaptureSpec = {
   pageLabel: string;
   half: "FULL" | "H1" | "H2";
   teamSide: "ALL" | "FOR" | "OPP";
   category: string;
+  /**
+   * PDF-specific category kind list.
+   * When present, overrides the surface's reviewFilterKinds for this page.
+   * Allows strict FOR/OPP separation and broader shot coverage.
+   */
+  categoryKinds?: readonly string[];
 };
 
 const CAPTURE_SPECS: readonly CaptureSpec[] = [
-  { pageLabel: "Full Pitch — All Events", half: "FULL", teamSide: "ALL",  category: "ALL"       },
-  { pageLabel: "First Half",              half: "H1",   teamSide: "ALL",  category: "ALL"       },
-  { pageLabel: "Second Half",             half: "H2",   teamSide: "ALL",  category: "ALL"       },
-  { pageLabel: "Shots — For",             half: "FULL", teamSide: "FOR",  category: "SHOTS"     },
-  { pageLabel: "Shots — Against",         half: "FULL", teamSide: "OPP",  category: "SHOTS"     },
-  { pageLabel: "Turnovers — For",         half: "FULL", teamSide: "FOR",  category: "TURNOVERS" },
-  { pageLabel: "Turnovers — Against",     half: "FULL", teamSide: "OPP",  category: "TURNOVERS" },
-  { pageLabel: "Frees — For",             half: "FULL", teamSide: "FOR",  category: "FREES"     },
-  { pageLabel: "Frees — Against",         half: "FULL", teamSide: "OPP",  category: "FREES"     },
+  { pageLabel: "Full Pitch — All Events", half: "FULL", teamSide: "ALL", category: "ALL" },
+  { pageLabel: "First Half",              half: "H1",   teamSide: "ALL", category: "ALL" },
+  { pageLabel: "Second Half",             half: "H2",   teamSide: "ALL", category: "ALL" },
+  // Shots — all shot outcomes; FOR/OPP determined by teamSide, no leakage.
+  { pageLabel: "Shots — For",     half: "FULL", teamSide: "FOR", category: "SHOTS",
+    categoryKinds: PDF_SHOTS_KINDS },
+  { pageLabel: "Shots — Against", half: "FULL", teamSide: "OPP", category: "SHOTS",
+    categoryKinds: PDF_SHOTS_KINDS },
+  // Turnovers — FOR page shows won only; AGAINST page shows lost (inferred) + explicit OPP won.
+  { pageLabel: "Turnovers — For",     half: "FULL", teamSide: "FOR", category: "TURNOVERS",
+    categoryKinds: ["TURNOVER_WON"] },
+  { pageLabel: "Turnovers — Against", half: "FULL", teamSide: "OPP", category: "TURNOVERS",
+    categoryKinds: ["TURNOVER_WON", "TURNOVER_LOST"] },
+  // Frees — FOR page shows awarded + scored/missed; AGAINST shows conceded (inferred) + opp.
+  { pageLabel: "Frees — For",     half: "FULL", teamSide: "FOR", category: "FREES",
+    categoryKinds: ["FREE_WON", "FREE_SCORED", "FREE_MISSED"] },
+  { pageLabel: "Frees — Against", half: "FULL", teamSide: "OPP", category: "FREES",
+    categoryKinds: ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"] },
 ];
 
 // ---------------------------------------------------------------------------
@@ -162,6 +183,20 @@ function normaliseTeamSide(e: ReviewSelectableEvent): "FOR" | "OPP" {
 
 function computeStats(events: readonly ReviewSelectableEvent[]): { FOR: TeamStats; OPP: TeamStats } {
   const r = { FOR: emptyStats(), OPP: emptyStats() };
+
+  // Pre-scan: detect whether explicit OPP events exist for each category.
+  // Mirrors the same guard used in statsShareCard.ts so the mirroring logic is consistent.
+  let hasOppKickoutEvents = false;
+  let hasOppTurnoverEvents = false;
+  let hasOppFreeEvents = false;
+  for (const e of events) {
+    if (normaliseTeamSide(e) !== "OPP") continue;
+    const k = e.kind;
+    if (k === "KICKOUT_WON" || k === "KICKOUT_CONCEDED") hasOppKickoutEvents = true;
+    if (k === "TURNOVER_WON" || k === "TURNOVER_LOST") hasOppTurnoverEvents = true;
+    if (k === "FREE_WON" || k === "FREE_CONCEDED" || k === "FREE_SCORED" || k === "FREE_MISSED") hasOppFreeEvents = true;
+  }
+
   for (const e of events) {
     const side = normaliseTeamSide(e);
     const b = r[side];
@@ -171,12 +206,24 @@ function computeStats(events: readonly ReviewSelectableEvent[]): { FOR: TeamStat
       b.points++; b.shots++;
     } else if (k === "SHOT")  { b.shots++; }
     else if (k === "WIDE")    { b.wides++; b.shots++; }
-    else if (k === "TURNOVER_WON")    b.toWon++;
-    else if (k === "TURNOVER_LOST")   b.toLost++;
-    else if (k === "KICKOUT_WON")     b.kickWon++;
+    else if (k === "TURNOVER_WON")     b.toWon++;
+    else if (k === "TURNOVER_LOST")    b.toLost++;
+    else if (k === "KICKOUT_WON")      b.kickWon++;
     else if (k === "KICKOUT_CONCEDED") b.kickLost++;
     else if (k === "FREE_WON")         b.freesFor++;
     else if (k === "FREE_CONCEDED")    b.freesAgainst++;
+
+    // When no explicit OPP events exist for a category, mirror home-side negatives
+    // into the OPP bucket so opponent rows are always symmetrically populated.
+    // (Same logic as statsShareCard.ts buildBreakdown lines 92-99.)
+    if (side === "FOR") {
+      if (!hasOppTurnoverEvents && k === "TURNOVER_LOST")    r.OPP.toWon++;
+      if (!hasOppTurnoverEvents && k === "TURNOVER_WON")     r.OPP.toLost++;
+      if (!hasOppKickoutEvents  && k === "KICKOUT_CONCEDED") r.OPP.kickWon++;
+      if (!hasOppKickoutEvents  && k === "KICKOUT_WON")      r.OPP.kickLost++;
+      if (!hasOppFreeEvents     && k === "FREE_CONCEDED")    r.OPP.freesFor++;
+      if (!hasOppFreeEvents     && k === "FREE_WON")         r.OPP.freesAgainst++;
+    }
   }
   return r;
 }
@@ -241,6 +288,16 @@ function computeSegBreakdown(events: readonly ReviewSelectableEvent[]): SegmentB
   const init = (): { FOR: SegStats; OPP: SegStats } => ({ FOR: emptySegStats(), OPP: emptySegStats() });
   const result: SegmentBreakdown = { 1: init(), 2: init(), 3: init(), 4: init(), 5: init(), 6: init() };
 
+  // Pre-scan: same mirroring guard as computeStats / statsShareCard.ts.
+  let hasOppKickoutEvents = false;
+  let hasOppTurnoverEvents = false;
+  for (const e of events) {
+    if (normaliseTeamSide(e) !== "OPP") continue;
+    const k = e.kind;
+    if (k === "KICKOUT_WON" || k === "KICKOUT_CONCEDED") hasOppKickoutEvents = true;
+    if (k === "TURNOVER_WON" || k === "TURNOVER_LOST") hasOppTurnoverEvents = true;
+  }
+
   for (const e of events) {
     const seg = resolveEventSegment(e);
     const side = normaliseTeamSide(e);
@@ -256,6 +313,15 @@ function computeSegBreakdown(events: readonly ReviewSelectableEvent[]): SegmentB
     else if (k === "KICKOUT_WON")      b.kickWon++;
     else if (k === "KICKOUT_CONCEDED") b.kickLost++;
     else if (k === "FREE_WON")         b.freesWon++;
+
+    // Mirror home-side negatives into the OPP column for the same segment.
+    if (side === "FOR") {
+      const oppSeg = result[seg].OPP;
+      if (!hasOppTurnoverEvents && k === "TURNOVER_LOST")    oppSeg.toWon++;
+      if (!hasOppTurnoverEvents && k === "TURNOVER_WON")     oppSeg.toLost++;
+      if (!hasOppKickoutEvents  && k === "KICKOUT_CONCEDED") oppSeg.kickWon++;
+      if (!hasOppKickoutEvents  && k === "KICKOUT_WON")      oppSeg.kickLost++;
+    }
   }
   return result;
 }
@@ -668,11 +734,13 @@ export async function buildReviewPdf(input: ReviewPdfInput): Promise<void> {
 
   // ── Pages 3-11: Pitch snapshots ────────────────────────────────────────
   for (const spec of CAPTURE_SPECS) {
-    // 1. Build the filtered event list
+    // 1. Build the filtered event list.
+    // Use the spec's own categoryKinds when present (PDF-specific override);
+    // fall back to the surface's reviewFilterKinds for unconfigured categories.
+    const resolvedKinds: readonly string[] | undefined =
+      spec.categoryKinds ?? (spec.category !== "ALL" ? reviewFilterKinds[spec.category] : undefined);
     const categoryKinds: Partial<Record<string, readonly string[]>> =
-      spec.category === "ALL"
-        ? {}
-        : { [spec.category]: reviewFilterKinds[spec.category] ?? [] };
+      resolvedKinds != null ? { [spec.category]: resolvedKinds } : {};
 
     const filtered = selectReviewEvents(allEvents, {
       half: spec.half,
