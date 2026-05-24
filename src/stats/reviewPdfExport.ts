@@ -7,21 +7,23 @@
  * is mutated.
  *
  * Pages:
- *  1.  Cover — match title, teams, venue/date, key stats table
- *  2.  Full pitch  — ALL events
- *  3.  H1
- *  4.  H2
- *  5.  Shots — For
- *  6.  Shots — Against
- *  7.  Turnovers — For
- *  8.  Turnovers — Against
- *  9.  Frees — For
- *  10. Frees — Against
+ *  1.  Cover — match summary card (or fallback stats table)
+ *  2.  Game Segments Breakdown — 1H Early/Mid/Late vs 2H Early/Mid/Late
+ *  3.  Full pitch  — ALL events
+ *  4.  H1
+ *  5.  H2
+ *  6.  Shots — For
+ *  7.  Shots — Against
+ *  8.  Turnovers — For
+ *  9.  Turnovers — Against
+ *  10. Frees — For
+ *  11. Frees — Against
  */
 
 import { jsPDF } from "jspdf";
 import { selectReviewEvents } from "./review-selectors";
 import type { ReviewSelectableEvent } from "./review-types";
+import { deriveSegmentFromPeriodClock } from "./statsSegments";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -185,6 +187,244 @@ function pct(n: number, d: number): string {
 
 function gaelicScore(s: TeamStats): string {
   return `${s.goals}-${String(s.points).padStart(2, "0")} (${s.goals * 3 + s.points})`;
+}
+
+// ---------------------------------------------------------------------------
+// Segment stats — for Game Segments Breakdown page (Page 2)
+// ---------------------------------------------------------------------------
+
+const SEGMENT_LABELS: Record<1 | 2 | 3 | 4 | 5 | 6, string> = {
+  1: "1H EARLY",
+  2: "1H MID",
+  3: "1H LATE",
+  4: "2H EARLY",
+  5: "2H MID",
+  6: "2H LATE",
+};
+
+type SegStats = {
+  goals: number;
+  points: number;
+  twoPtr: number;
+  shots: number;
+  wides: number;
+  toWon: number;
+  toLost: number;
+  kickWon: number;
+  kickLost: number;
+  freesWon: number;
+};
+
+function emptySegStats(): SegStats {
+  return { goals: 0, points: 0, twoPtr: 0, shots: 0, wides: 0, toWon: 0, toLost: 0, kickWon: 0, kickLost: 0, freesWon: 0 };
+}
+
+function resolveEventSegment(e: ReviewSelectableEvent): 1 | 2 | 3 | 4 | 5 | 6 {
+  // Prefer explicit segment field
+  if (e.segment != null && e.segment >= 1 && e.segment <= 6) {
+    return e.segment as 1 | 2 | 3 | 4 | 5 | 6;
+  }
+  // Fall back to half + halfSegment
+  if (e.half != null && e.halfSegment != null && e.halfSegment >= 1 && e.halfSegment <= 3) {
+    const offset = e.half === 2 ? 3 : 0;
+    return (e.halfSegment + offset) as 1 | 2 | 3 | 4 | 5 | 6;
+  }
+  // Fall back to period + clock (guaranteed path — timestamp is always present)
+  const period = e.period ?? (e.half === 2 ? "2H" : "1H");
+  const clock = e.matchClockSeconds ?? e.matchTimeSeconds ?? e.timestamp ?? 0;
+  return deriveSegmentFromPeriodClock(period, clock);
+}
+
+type SegmentBreakdown = Record<1 | 2 | 3 | 4 | 5 | 6, { FOR: SegStats; OPP: SegStats }>;
+
+function computeSegBreakdown(events: readonly ReviewSelectableEvent[]): SegmentBreakdown {
+  const init = (): { FOR: SegStats; OPP: SegStats } => ({ FOR: emptySegStats(), OPP: emptySegStats() });
+  const result: SegmentBreakdown = { 1: init(), 2: init(), 3: init(), 4: init(), 5: init(), 6: init() };
+
+  for (const e of events) {
+    const seg = resolveEventSegment(e);
+    const side = normaliseTeamSide(e);
+    const b = result[seg][side];
+    const k = e.kind;
+    if (k === "GOAL")              { b.goals++; b.shots++; }
+    else if (k === "TWO_POINTER" || k === "FORTY_FIVE_TWO_POINT") { b.twoPtr++; b.points++; b.shots++; }
+    else if (k === "POINT" || k === "FREE_SCORED") { b.points++; b.shots++; }
+    else if (k === "SHOT")         { b.shots++; }
+    else if (k === "WIDE")         { b.wides++; b.shots++; }
+    else if (k === "TURNOVER_WON")     b.toWon++;
+    else if (k === "TURNOVER_LOST")    b.toLost++;
+    else if (k === "KICKOUT_WON")      b.kickWon++;
+    else if (k === "KICKOUT_CONCEDED") b.kickLost++;
+    else if (k === "FREE_WON")         b.freesWon++;
+  }
+  return result;
+}
+
+function segScoreLabel(s: SegStats): string {
+  const total = s.goals * 3 + s.points;
+  return `${s.goals}-${String(s.points).padStart(2, "0")} (${total})`;
+}
+
+// ---------------------------------------------------------------------------
+// Segment card drawing helpers
+// ---------------------------------------------------------------------------
+
+const CARD_W = 95;
+const CARD_H = 80;
+
+function drawSegmentCard(
+  doc: jsPDF,
+  cx: number,
+  cy: number,
+  segIndex: 1 | 2 | 3 | 4 | 5 | 6,
+  homeTeam: string,
+  awayTeam: string,
+  forStats: SegStats,
+  oppStats: SegStats,
+): void {
+  // Card background
+  doc.setFillColor(18, 26, 46);
+  doc.rect(cx, cy, CARD_W, CARD_H, "F");
+
+  // Colour-coded top strip: cyan = H1, violet = H2
+  const isH2 = segIndex > 3;
+  if (isH2) {
+    doc.setFillColor(139, 92, 246);   // violet-500
+  } else {
+    doc.setFillColor(6, 182, 212);    // cyan-500
+  }
+  doc.rect(cx, cy, CARD_W, 2.5, "F");
+
+  // Segment label
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  if (isH2) {
+    doc.setTextColor(196, 181, 253);  // violet-300
+  } else {
+    doc.setTextColor(103, 232, 249);  // cyan-300
+  }
+  doc.text(SEGMENT_LABELS[segIndex], cx + 3, cy + 8.5);
+
+  // Score header (FOR green, OPP red)
+  const colFor = cx + CARD_W * 0.57;
+  const colOpp = cx + CARD_W - 2;
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(34, 197, 94);
+  doc.text(segScoreLabel(forStats), colFor, cy + 8.5, { align: "right" });
+  doc.setTextColor(248, 113, 113);    // red-400
+  doc.text(segScoreLabel(oppStats), colOpp, cy + 8.5, { align: "right" });
+
+  // Column header labels
+  const headerY = cy + 14;
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(147, 197, 253);    // blue-300 for FOR/home
+  doc.text(homeTeam.slice(0, 9).toUpperCase(), colFor, headerY, { align: "right" });
+  doc.setTextColor(252, 165, 165);    // red-300 for OPP/away
+  doc.text(awayTeam.slice(0, 9).toUpperCase(), colOpp, headerY, { align: "right" });
+
+  // Divider under headers
+  doc.setDrawColor(55, 65, 81);
+  doc.setLineWidth(0.25);
+  doc.line(cx + 2, cy + 16, cx + CARD_W - 2, cy + 16);
+
+  // Stat rows
+  type StatLine = [string, number, number];
+  const rows: StatLine[] = [
+    ["Goals",    forStats.goals,    oppStats.goals],
+    ["Points",   forStats.points,   oppStats.points],
+    ["2-Pt",     forStats.twoPtr,   oppStats.twoPtr],
+    ["Shots",    forStats.shots,    oppStats.shots],
+    ["Wides",    forStats.wides,    oppStats.wides],
+    ["T/O Won",  forStats.toWon,    oppStats.toWon],
+    ["T/O Lost", forStats.toLost,   oppStats.toLost],
+    ["K/O Won",  forStats.kickWon,  oppStats.kickWon],
+    ["K/O Lost", forStats.kickLost, oppStats.kickLost],
+  ];
+
+  const STEP = (CARD_H - 19) / rows.length;  // distribute within card
+  let ry = cy + 19 + STEP * 0.5;
+
+  for (const [label, forVal, oppVal] of rows) {
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(156, 163, 175);
+    doc.text(label, cx + 3, ry);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(241, 245, 249);
+    doc.text(String(forVal), colFor, ry, { align: "right" });
+    doc.setTextColor(252, 165, 165);
+    doc.text(String(oppVal), colOpp, ry, { align: "right" });
+    ry += STEP;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Segments page (Page 2)
+// ---------------------------------------------------------------------------
+
+function drawSegmentsPage(doc: jsPDF, input: ReviewPdfInput): void {
+  const { homeTeamName, awayTeamName, allEvents } = input;
+
+  // Background
+  doc.setFillColor(BG_R, BG_G, BG_B);
+  doc.rect(0, 0, PDF_W, PDF_H, "F");
+
+  // Accent bar
+  doc.setFillColor(34, 197, 94);
+  doc.rect(0, 0, PDF_W, 3, "F");
+
+  // Branding line
+  doc.setTextColor(34, 197, 94);
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "normal");
+  doc.text("PÁIRCVISION — GAME SEGMENTS", 14, 11);
+
+  // Page title
+  doc.setTextColor(248, 250, 252);
+  doc.setFontSize(13);
+  doc.setFont("helvetica", "bold");
+  doc.text("GAME SEGMENTS BREAKDOWN", 14, 20);
+
+  // Half labels centred above each column
+  const leftCentre  = 7 + CARD_W / 2;
+  const rightCentre = 108 + CARD_W / 2;
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(103, 232, 249);    // cyan-300 = H1
+  doc.text("◀ FIRST HALF", leftCentre, 25.5, { align: "center" });
+  doc.setTextColor(196, 181, 253);    // violet-300 = H2
+  doc.text("SECOND HALF ▶", rightCentre, 25.5, { align: "center" });
+
+  // Compute breakdown
+  const breakdown = computeSegBreakdown(allEvents);
+
+  // 2 × 3 grid: [colX, rowY, segIndex]
+  const GRID: [number, number, 1 | 2 | 3 | 4 | 5 | 6][] = [
+    [  7,  28, 1], [108,  28, 4],
+    [  7, 112, 2], [108, 112, 5],
+    [  7, 196, 3], [108, 196, 6],
+  ];
+
+  for (const [cx, cy, seg] of GRID) {
+    drawSegmentCard(
+      doc, cx, cy, seg,
+      homeTeamName, awayTeamName,
+      breakdown[seg].FOR,
+      breakdown[seg].OPP,
+    );
+  }
+
+  // Footer
+  doc.setDrawColor(55, 65, 81);
+  doc.setLineWidth(0.3);
+  doc.line(14, PDF_H - 10, PDF_W - 14, PDF_H - 10);
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(107, 114, 128);
+  doc.text(`${allEvents.length} events total`, 14, PDF_H - 5.5);
+  doc.text("PáircVision", PDF_W - 14, PDF_H - 5.5, { align: "right" });
 }
 
 // ---------------------------------------------------------------------------
@@ -422,7 +662,11 @@ export async function buildReviewPdf(input: ReviewPdfInput): Promise<void> {
     drawCoverPage(doc, input);
   }
 
-  // ── Pages 2-10: Pitch snapshots ────────────────────────────────────────
+  // ── Page 2: Game Segments Breakdown ───────────────────────────────────
+  doc.addPage();
+  drawSegmentsPage(doc, input);
+
+  // ── Pages 3-11: Pitch snapshots ────────────────────────────────────────
   for (const spec of CAPTURE_SPECS) {
     // 1. Build the filtered event list
     const categoryKinds: Partial<Record<string, readonly string[]>> =
