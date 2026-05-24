@@ -30,6 +30,8 @@ import { selectReviewEvents } from "./stats/review-selectors";
 import { createReviewSession, parseReviewSession, restoreReviewSession, serializeReviewSession } from "./stats/reviewSession";
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
+import { buildReviewPdf } from "./stats/reviewPdfExport";
+import type { ReviewPdfKeyStats } from "./stats/reviewPdfExport";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -3180,6 +3182,50 @@ const HOME_ICON_BUTTON_STYLE: CSSProperties = {
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
 };
 
+// ─── PDF key-stats helper ─────────────────────────────────────────────────────
+
+function computePdfKeyStats(events: readonly LoggedMatchEvent[]): ReviewPdfKeyStats {
+  const pct = (n: number, d: number) =>
+    d > 0 ? `${Math.round((n / d) * 100)}%` : "0%";
+
+  const mk = () => ({
+    shots: 0, scores: 0, wides: 0,
+    turnoversWon: 0, turnoversLost: 0,
+    kickoutsWon: 0, kickoutsLost: 0,
+    freesFor: 0, freesAgainst: 0,
+  });
+
+  const forSide = mk();
+  const oppSide = mk();
+
+  for (const e of events) {
+    const s = e.teamSide === "FOR" ? forSide : e.teamSide === "OPP" ? oppSide : null;
+    if (!s) continue;
+    const k: string = e.kind;
+    if (k === "GOAL" || k === "POINT" || k === "TWO_POINTER" ||
+        k === "FORTY_FIVE_TWO_POINT" || k === "FREE_SCORED") {
+      s.shots++; s.scores++;
+    } else if (k === "SHOT") {
+      s.shots++;
+    } else if (k === "WIDE" || k === "FREE_MISSED") {
+      s.shots++; s.wides++;
+    }
+    if (k === "TURNOVER_WON")                          s.turnoversWon++;
+    if (k === "TURNOVER_LOST")                         s.turnoversLost++;
+    if (k === "KICKOUT_WON")                           s.kickoutsWon++;
+    if (k === "KICKOUT_CONCEDED")                      s.kickoutsLost++;
+    if (k === "FREE_WON"  || k === "FREE_FOR")         s.freesFor++;
+    if (k === "FREE_CONCEDED" || k === "FREE_AGAINST") s.freesAgainst++;
+  }
+
+  return {
+    home: { ...forSide, conversionPct: pct(forSide.scores, forSide.shots) },
+    away: { ...oppSide, conversionPct: pct(oppSide.scores, oppSide.shots) },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function StatsModeSurface() {
   const hostRef = useRef<HTMLDivElement>(null);
   const floatingControlsRef = useRef<HTMLDivElement>(null);
@@ -4503,6 +4549,69 @@ export default function StatsModeSurface() {
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel(`${restoredSession.matchInfo.homeTeam} v ${restoredSession.matchInfo.awayTeam} (Review Session)`);
     setSaveFeedback("Review session opened");
+  };
+
+  const exportVisualPdf = async () => {
+    try {
+      // 1. Capture pitch canvas snapshot (read-only, does not mutate state)
+      let pitchImageDataUrl: string | null = null;
+      const canvasEl = hostRef.current?.querySelector("canvas");
+      if (canvasEl instanceof HTMLCanvasElement) {
+        try {
+          pitchImageDataUrl = canvasEl.toDataURL("image/png");
+        } catch {
+          pitchImageDataUrl = null;
+        }
+      }
+
+      // 2. Key stats from ALL logged events (full-match totals for page 1)
+      const keyStats = computePdfKeyStats(loggedEvents);
+
+      // 3. Build context label strings for page 2
+      const contextLabels = {
+        period:      reviewHalf,
+        segment:     reviewSegment,
+        teamSide:    reviewTeamContext,
+        category:    reviewEventFilter,
+        activePlayer: activePlayer ?? null,
+      };
+
+      const matchDate = new Date().toISOString().slice(0, 10);
+
+      // 4. Compose PDF (pure, no DOM access)
+      const { filename, blob } = buildReviewPdf({
+        matchInfo: {
+          homeTeam:  teamNames.HOME.trim() || "Team A",
+          awayTeam:  teamNames.AWAY.trim() || "Team B",
+          venue:     venueName.trim() || undefined,
+          matchDate,
+        },
+        score: {
+          homeGoals:  homeScore.goals,
+          homePoints: homeScore.points,
+          homeTotal:  homeScore.total,
+          awayGoals:  awayScore.goals,
+          awayPoints: awayScore.points,
+          awayTotal:  awayScore.total,
+        },
+        keyStats,
+        contextLabels,
+        pitchImageDataUrl,
+      });
+
+      // 5. Trigger download
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setSaveFeedback("PDF downloaded");
+    } catch {
+      setSaveFeedback("PDF export failed");
+    }
   };
 
   const openNotesPanel = () => {
@@ -6576,6 +6685,15 @@ export default function StatsModeSurface() {
             onClick={openLastReviewSession}
           >
             Import Review
+          </button>
+          <button
+            type="button"
+            className="review-strip-chip"
+            onClick={() => { void exportVisualPdf(); }}
+            aria-label="Export Visual PDF"
+            style={{ background: "rgba(34,197,94,0.18)", border: "1px solid rgba(34,197,94,0.5)" }}
+          >
+            Export Visual PDF
           </button>
           <span className="review-strip-spacer" aria-hidden="true" />
           <button
