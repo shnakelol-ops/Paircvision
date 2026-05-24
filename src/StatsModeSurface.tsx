@@ -3889,7 +3889,11 @@ export default function StatsModeSurface() {
   }, [loggedEvents.length, selectedEventKind]);
 
   useEffect(() => {
-    if (!activePlayer) {
+    // Use strict null check: an empty string ("") is a valid name for a squad slot
+    // that has no name entered yet. Using !activePlayer would treat "" as "no player
+    // selected" and incorrectly clear all attribution refs, breaking player tagging
+    // for every default (unnamed) squad slot.
+    if (activePlayer === null) {
       setActivePlayerNumber(null);
       setActivePlayerId(null);
       activePlayerRef.current = null;
@@ -4117,8 +4121,12 @@ export default function StatsModeSurface() {
             nextEvent.playerName = activePlayerEntry.name;
             nextEvent.playerNumber = activePlayerEntry.number;
             nextEvent.squadId = activeSquadIdRef.current;
-          } else if (activePlayerRef.current) {
-            nextEvent.playerName = activePlayerRef.current;
+          } else if (activePlayerIdRef.current != null) {
+            // Use ID presence (not name truthiness) as the guard: a player with an
+            // empty name has activePlayerRef.current === "" which is falsy, so the
+            // old `if (activePlayerRef.current)` guard silently skipped attribution
+            // for every default (unnamed) squad slot.
+            nextEvent.playerName = activePlayerRef.current || undefined;
             nextEvent.playerNumber = activePlayerNumberRef.current ?? undefined;
             nextEvent.squadId = activeSquadIdRef.current;
           } else {
