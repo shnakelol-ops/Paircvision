@@ -2694,7 +2694,7 @@ export async function createTacticalPadLiteSurface(
   function playSingleStartToCurrent(): void {
     const shouldReplayStoredTarget = singlePlayTargetSnapshot != null && isCurrentAtStartPosition();
     const playbackTarget = shouldReplayStoredTarget
-      ? cloneSnapshot(singlePlayTargetSnapshot)
+      ? cloneSnapshot(singlePlayTargetSnapshot!)
       : captureCurrentSnapshot();
     if (!shouldReplayStoredTarget) {
       singlePlayTargetSnapshot = cloneSnapshot(playbackTarget);
@@ -3237,8 +3237,8 @@ export async function createTacticalPadLiteSurface(
     const phaseStates = phases.map((phase) => cloneSnapshot(phase));
     const currentTeamState: TacticalBoardTeamState = {
       colors: {
-        blue: tacticalTeamColors.blue ?? "blue",
-        red: tacticalTeamColors.red ?? "red",
+        blue: tacticalTeamColors?.blue ?? "blue",
+        red: tacticalTeamColors?.red ?? "red",
       },
       counts: {
         blue: playerStates.filter((player) => player.team === "BLUE").length,
@@ -3317,8 +3317,8 @@ export async function createTacticalPadLiteSurface(
     const nextBlueColor = sanitizeWhiteboardTokenColor(parsedTeamState?.colors && isRecord(parsedTeamState.colors) ? parsedTeamState.colors.blue : undefined);
     const nextRedColor = sanitizeWhiteboardTokenColor(parsedTeamState?.colors && isRecord(parsedTeamState.colors) ? parsedTeamState.colors.red : undefined);
     tacticalTeamColors = {
-      blue: nextBlueColor ?? tacticalTeamColors.blue ?? "blue",
-      red: nextRedColor ?? tacticalTeamColors.red ?? "red",
+      blue: nextBlueColor ?? tacticalTeamColors?.blue ?? "blue",
+      red: nextRedColor ?? tacticalTeamColors?.red ?? "red",
     };
     const defaultTeamKits = createDefaultTacticalTeamKits(tacticalTeamColors);
     const parsedTeamKits = sanitizeBoardTeamKitsState(state.teamKits);

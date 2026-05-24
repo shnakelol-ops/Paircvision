@@ -30,6 +30,7 @@ import { selectReviewEvents } from "./stats/review-selectors";
 import { createReviewSession, parseReviewSession, restoreReviewSession, serializeReviewSession } from "./stats/reviewSession";
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
+import { buildReviewPdf } from "./stats/reviewPdfExport";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -3240,6 +3241,7 @@ export default function StatsModeSurface() {
   const [showReviewStrip, setShowReviewStrip] = useState(false);
   const [isReviewStripCollapsed, setIsReviewStripCollapsed] = useState(false);
   const [selectedReviewEventId, setSelectedReviewEventId] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [pendingFollowup, setPendingFollowup] = useState<{
     eventId: string;
     kind: PendingFollowupKind;
@@ -4033,7 +4035,7 @@ export default function StatsModeSurface() {
         if (team === "HOME") {
           const activePlayerEntry = activePlayerEntryRef.current;
           const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? null;
-          nextEvent.playerId = selectedPlayerId;
+          nextEvent.playerId = selectedPlayerId ?? undefined;
           if (SCORE_EVENT_KINDS.has(event.kind) && pendingScorerRef.current) {
             nextEvent.playerName = pendingScorerRef.current.name;
             nextEvent.playerNumber = pendingScorerRef.current.number;
@@ -4435,6 +4437,37 @@ export default function StatsModeSurface() {
       setSaveLoadBlockedReason(null);
     } catch {
       setSaveFeedback("Review session save failed");
+    }
+  };
+
+  const exportReviewPdf = async () => {
+    const host = hostRef.current;
+    const handle = handleRef.current;
+    if (!host || !handle) {
+      setSaveFeedback("PDF export unavailable — pitch not ready");
+      return;
+    }
+    if (isExportingPdf) return;
+    setIsExportingPdf(true);
+    setSaveFeedback("Generating PDF…");
+    try {
+      await buildReviewPdf({
+        hostElement: host,
+        handle: { setEvents: handle.setEvents },
+        homeTeamName: teamNames.HOME.trim() || "Team A",
+        awayTeamName: teamNames.AWAY.trim() || "Team B",
+        venueName: venueName.trim() || undefined,
+        createdAt: Date.now(),
+        allEvents: loggedEvents,
+        originalDisplayedEvents: visibleReviewEvents,
+        reviewFilterKinds: REVIEW_FILTER_KINDS_FOR_MODE,
+        firstHalfAttackingDirection: effectiveAttackingDirection,
+      });
+      setSaveFeedback("PDF downloaded");
+    } catch {
+      setSaveFeedback("PDF export failed");
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -6576,6 +6609,16 @@ export default function StatsModeSurface() {
             onClick={openLastReviewSession}
           >
             Import Review
+          </button>
+          <button
+            type="button"
+            className="review-strip-chip"
+            onClick={() => { void exportReviewPdf(); }}
+            disabled={isExportingPdf}
+            aria-busy={isExportingPdf}
+            aria-label="Export tactical review PDF"
+          >
+            {isExportingPdf ? "Exporting…" : "Export PDF"}
           </button>
           <span className="review-strip-spacer" aria-hidden="true" />
           <button
