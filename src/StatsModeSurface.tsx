@@ -3487,6 +3487,7 @@ export default function StatsModeSurface() {
       activePlayerRef.current = null;
       activePlayerNumberRef.current = null;
       activePlayerIdRef.current = null;
+      activePlayerEntryRef.current = null;
       return;
     }
     const player = activeSquadPlayers.find((entry) => entry.id === playerId);
@@ -3497,6 +3498,7 @@ export default function StatsModeSurface() {
       activePlayerRef.current = null;
       activePlayerNumberRef.current = null;
       activePlayerIdRef.current = null;
+      activePlayerEntryRef.current = null;
       return;
     }
     setActivePlayer(player.name);
@@ -3505,18 +3507,19 @@ export default function StatsModeSurface() {
     activePlayerRef.current = player.name;
     activePlayerNumberRef.current = player.number;
     activePlayerIdRef.current = player.id;
-  };
-
-  const toggleActivePlayerById = (playerId: string) => {
-    if (activePlayerEntry?.id === playerId) {
-      selectActivePlayerById(null);
-      return;
-    }
-    selectActivePlayerById(playerId);
+    activePlayerEntryRef.current = player;
+    activeSquadIdRef.current = activeSquad.id;
   };
 
   const handlePlayerPick = (player: SquadPlayer) => {
-    toggleActivePlayerById(player.id);
+    setActivePlayer(player.name);
+    setActivePlayerNumber(player.number);
+    setActivePlayerId(player.id);
+    activePlayerRef.current = player.name;
+    activePlayerNumberRef.current = player.number;
+    activePlayerIdRef.current = player.id;
+    activePlayerEntryRef.current = player;
+    activeSquadIdRef.current = activeSquad.id;
     closeUtilityPanel();
     setIsUtilityOpen(false);
   };
