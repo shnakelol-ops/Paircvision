@@ -30,6 +30,7 @@ import { selectReviewEvents } from "./stats/review-selectors";
 import { createReviewSession, parseReviewSession, restoreReviewSession, serializeReviewSession } from "./stats/reviewSession";
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
+import { exportReviewPdf } from "./stats/reviewPdfExport";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -3316,6 +3317,7 @@ export default function StatsModeSurface() {
   const [loggedEvents, setLoggedEvents] = useState<readonly LoggedMatchEvent[]>([]);
   const [savedMatches, setSavedMatches] = useState<SavedMatch[]>(() => readSavedMatchesFromStorage().matches);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+  const [isPdfExporting, setIsPdfExporting] = useState(false);
   const [saveLoadBlockedReason, setSaveLoadBlockedReason] = useState<string | null>(null);
   const [lastSavedAtMillis, setLastSavedAtMillis] = useState<number | null>(null);
   const [loadedMatchLabel, setLoadedMatchLabel] = useState<string | null>(null);
@@ -4509,35 +4511,39 @@ export default function StatsModeSurface() {
           zone: reviewZone,
         },
       });
-      const didPersist = safeWriteLocalStorage(REVIEW_SESSION_STORAGE_KEY, serializeReviewSession(reviewSession));
-      if (!didPersist) {
-        setSaveFeedback("Review session save failed");
-        return;
-      }
-      setSaveFeedback("Review session saved");
+      const json = serializeReviewSession(reviewSession);
+      // Also persist to localStorage for session continuity
+      safeWriteLocalStorage(REVIEW_SESSION_STORAGE_KEY, json);
+      // Download as .json file
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const home = (teamNames.HOME.trim() || "TeamA").replace(/\s+/g, "_");
+      const away = (teamNames.AWAY.trim() || "TeamB").replace(/\s+/g, "_");
+      link.href = url;
+      link.download = `${home}_v_${away}_review.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setSaveFeedback("Review exported");
       setSaveLoadBlockedReason(null);
     } catch {
-      setSaveFeedback("Review session save failed");
+      setSaveFeedback("Review export failed");
     }
   };
 
-  const openLastReviewSession = () => {
-    const rawSession = safeReadLocalStorage(REVIEW_SESSION_STORAGE_KEY);
-    if (rawSession == null || rawSession.trim().length === 0) {
-      setSaveFeedback("No saved review session found");
-      return;
-    }
-
+  /** Restores review state from a raw JSON string (used by both localStorage
+   *  fallback and the file-picker import path). */
+  const applyRawReviewSession = (rawSession: string) => {
     let restoredSession: ReturnType<typeof restoreReviewSession> | null = null;
     try {
       const parsedReviewSession = parseReviewSession(rawSession);
       if (!parsedReviewSession) {
-        setSaveFeedback("Saved review session is invalid");
+        setSaveFeedback("Review file is invalid");
         return;
       }
       restoredSession = restoreReviewSession(parsedReviewSession);
     } catch {
-      setSaveFeedback("Saved review session is invalid");
+      setSaveFeedback("Review file is invalid");
       return;
     }
 
@@ -4585,7 +4591,56 @@ export default function StatsModeSurface() {
     setIsResetConfirmOpen(false);
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel(`${restoredSession.matchInfo.homeTeam} v ${restoredSession.matchInfo.awayTeam} (Review Session)`);
-    setSaveFeedback("Review session opened");
+    setSaveFeedback("Review imported");
+  };
+
+  /** Opens a file picker to import a .json Review export. */
+  const openLastReviewSession = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const raw = evt.target?.result;
+        if (typeof raw !== "string") {
+          setSaveFeedback("Import failed: could not read file");
+          return;
+        }
+        applyRawReviewSession(raw);
+      };
+      reader.onerror = () => setSaveFeedback("Import failed: file read error");
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  /** Exports the current match as a 22-page PDF Visual Review report. */
+  const handleExportPdf = () => {
+    if (isPdfExporting) return;
+    if (loggedEvents.length === 0) {
+      setSaveFeedback("No events to export");
+      return;
+    }
+    setIsPdfExporting(true);
+    void exportReviewPdf({
+      events: loggedEvents,
+      homeTeamName: teamNames.HOME.trim() || "Team A",
+      awayTeamName: teamNames.AWAY.trim() || "Team B",
+      venueName: venueName.trim() || undefined,
+      sport: mode.pitchSport,
+    })
+      .then(() => {
+        setSaveFeedback("PDF exported");
+      })
+      .catch(() => {
+        setSaveFeedback("PDF export failed");
+      })
+      .finally(() => {
+        setIsPdfExporting(false);
+      });
   };
 
   const openNotesPanel = () => {
@@ -6659,6 +6714,20 @@ export default function StatsModeSurface() {
             onClick={openLastReviewSession}
           >
             Import Review
+          </button>
+          <button
+            type="button"
+            className="review-strip-chip"
+            onClick={handleExportPdf}
+            disabled={isPdfExporting}
+            aria-label="Export 22-page Visual Review PDF"
+            style={
+              isPdfExporting
+                ? { opacity: 0.6, cursor: "wait" }
+                : undefined
+            }
+          >
+            {isPdfExporting ? "Building PDF…" : "Export PDF"}
           </button>
           <span className="review-strip-spacer" aria-hidden="true" />
           <button
