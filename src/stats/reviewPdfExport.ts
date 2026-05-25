@@ -1680,18 +1680,16 @@ function makeChainSummaryPage(
   const COL2_X       = COL1_X + COL_W + COL_GAP;
   const COL3_X       = COL2_X + COL_W + COL_GAP;
 
-  const PANEL_RADIUS = 6;
-
   // ── Helper: draw a labelled panel card ──────────────────────────────────────
   function drawPanelBg(
     x: number, y: number, w: number, h: number,
     accentColor: string,
   ): void {
     ctx.save();
+    // Use fillRect (not roundRect) — consistent with the existing PDF engine
+    // and avoids a dependency on ctx.roundRect which is absent in Safari < 15.4.
     ctx.fillStyle = "rgba(255,255,255,0.022)";
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, PANEL_RADIUS);
-    ctx.fill();
+    ctx.fillRect(x, y, w, h);
     ctx.fillStyle = accentColor;
     ctx.fillRect(x, y, 3, h);
     ctx.restore();
@@ -1903,13 +1901,9 @@ function makeChainSummaryPage(
       const wonFrac = ko.won / (ko.won + ko.lost);
       ctx.save();
       ctx.fillStyle = "rgba(255,255,255,0.06)";
-      ctx.beginPath();
-      ctx.roundRect(barX, barY, barW, barH, 3);
-      ctx.fill();
+      ctx.fillRect(barX, barY, barW, barH);
       ctx.fillStyle = "#22d3ee";
-      ctx.beginPath();
-      ctx.roundRect(barX, barY, Math.max(4, barW * wonFrac), barH, 3);
-      ctx.fill();
+      ctx.fillRect(barX, barY, Math.max(4, barW * wonFrac), barH);
       ctx.fillStyle = "#64748b";
       ctx.font = "10px sans-serif";
       ctx.textBaseline = "middle";

@@ -32,38 +32,23 @@
  *   MOMENTUM_RUN_3                — 3+ consecutive scores same side (handled by scoring run builder)
  */
 
+import type { MatchEventKind } from "../../core/stats/stats-event-model";
 import type { ChainRule } from "./chain-types";
 
-const SCORE_KINDS = new Set([
-  "GOAL",
-  "POINT",
-  "TWO_POINTER",
-  "FORTY_FIVE_TWO_POINT",
-  "FREE_SCORED",
-] as const);
+const SCORES: ReadonlySet<MatchEventKind> = new Set<MatchEventKind>([
+  "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED",
+]);
 
-const SHOT_AND_SCORE_KINDS = new Set([
-  "GOAL",
-  "POINT",
-  "TWO_POINTER",
-  "FORTY_FIVE_TWO_POINT",
-  "FREE_SCORED",
-  "SHOT",
-  "WIDE",
-  "FREE_MISSED",
-] as const);
+const SHOTS_AND_SCORES: ReadonlySet<MatchEventKind> = new Set<MatchEventKind>([
+  "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED",
+  "SHOT", "WIDE", "FREE_MISSED",
+]);
 
-// TypeScript needs a concrete Set<MatchEventKind> — use a cast via 'as' on
-// each set literal to avoid a separate import of all 14 kind literals here.
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const SCORES = SCORE_KINDS as unknown as ReadonlySet<import("../../core/stats/stats-event-model").MatchEventKind>;
-const SHOTS_AND_SCORES = SHOT_AND_SCORE_KINDS as unknown as ReadonlySet<import("../../core/stats/stats-event-model").MatchEventKind>;
-const GOALS = new Set(["GOAL"]) as unknown as ReadonlySet<import("../../core/stats/stats-event-model").MatchEventKind>;
-const KICKOUTS_WON = new Set(["KICKOUT_WON"]) as unknown as ReadonlySet<import("../../core/stats/stats-event-model").MatchEventKind>;
-const KICKOUTS_CONCEDED = new Set(["KICKOUT_CONCEDED"]) as unknown as ReadonlySet<import("../../core/stats/stats-event-model").MatchEventKind>;
-const TURNOVERS_WON = new Set(["TURNOVER_WON"]) as unknown as ReadonlySet<import("../../core/stats/stats-event-model").MatchEventKind>;
-const FREES_WON = new Set(["FREE_WON"]) as unknown as ReadonlySet<import("../../core/stats/stats-event-model").MatchEventKind>;
-/* eslint-enable @typescript-eslint/no-explicit-any */
+const GOALS: ReadonlySet<MatchEventKind> = new Set<MatchEventKind>(["GOAL"]);
+const KICKOUTS_WON: ReadonlySet<MatchEventKind> = new Set<MatchEventKind>(["KICKOUT_WON"]);
+const KICKOUTS_CONCEDED: ReadonlySet<MatchEventKind> = new Set<MatchEventKind>(["KICKOUT_CONCEDED"]);
+const TURNOVERS_WON: ReadonlySet<MatchEventKind> = new Set<MatchEventKind>(["TURNOVER_WON"]);
+const FREES_WON: ReadonlySet<MatchEventKind> = new Set<MatchEventKind>(["FREE_WON"]);
 
 export const CHAIN_RULES: readonly ChainRule[] = [
   // ── Kickout chains ──────────────────────────────────────────────────────────
