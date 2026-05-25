@@ -4711,6 +4711,448 @@ function makeZoneAnalysisPage(
   return canvas;
 }
 
+// ─── Page: Match Swing Timeline ──────────────────────────────────────────────
+
+/**
+ * Chronological factual summary of momentum and tactical shifts during the match.
+ * Two-column layout: LEFT = First Half, RIGHT = Second Half.
+ *
+ * Five swing event types derived from existing ChainAnalysis data:
+ *   SCORE_RUN        — unanswered scoring burst of ≥2 (from scoringRuns.runs)
+ *   KICKOUT_CLUSTER  — kickout(s) won that converted directly to score
+ *   TURNOVER_CLUSTER — turnover(s) that resulted in a score
+ *   LEAD_CHANGE      — one team takes the lead for the first time / retakes it
+ *   SCORE_EQUALISED  — scores drawn after previously behind
+ *
+ * Clock note: ScoringRun.startClockSeconds already includes SECOND_HALF_OFFSET (3600) for 2H
+ * events (resolved by chain-engine). Raw PdfExportEvent.matchClockSeconds is the logged
+ * value within the half; resolveRawClock() adds SECOND_HALF_OFFSET for 2H and falls back to
+ * segment midpoint when matchClockSeconds is absent.
+ */
+function makeMatchSwingTimelinePage(
+  events: readonly PdfExportEvent[],
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Match Swing Timeline", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+
+  // ── Layout constants ──────────────────────────────────────────────────────────
+  const CONTENT_TOP  = 86;
+  const CONTENT_BOT  = CANVAS_H - 36;     // 1044
+  const L_COL_X      = 24;
+  const L_COL_W      = 928;
+  const R_COL_X      = 968;
+  const COL_HDR_H    = 36;
+  const ITEMS_TOP    = CONTENT_TOP + COL_HDR_H;    // 122
+  const ITEM_H       = 65;
+  const MAX_ITEMS    = 13;
+  const DOT_OFFSET_X = 92;    // px from column left to dot centre
+  const CLOCK_MAX_X  = DOT_OFFSET_X - 12;   // 80 — right edge of clock label area (col-relative)
+  const DESC_OFFSET  = DOT_OFFSET_X + 16;   // 108 — left edge of description text (col-relative)
+  const DOT_HALF     = 4;                   // half-size of filled-square dot → 8×8 px
+  const RING_HALF    = DOT_HALF + 5;        // 9 — strokeRect halo half-size
+  // Description text available width (same for both columns since L_COL_W === R_COL_W)
+  const DESC_MAX_W   = L_COL_W - DESC_OFFSET - 16;   // 804
+
+  // Team accent colours
+  const FOR_COLOR    = "#4ade80";
+  const OPP_COLOR    = "#f87171";
+  const STRUCT_COLOR = "#fbbf24";
+
+  // ── Internal swing event type ─────────────────────────────────────────────────
+  type SwingKind =
+    | "SCORE_RUN"
+    | "KICKOUT_CLUSTER"
+    | "TURNOVER_CLUSTER"
+    | "LEAD_CHANGE"
+    | "SCORE_EQUALISED";
+
+  type SwingEvent = {
+    kind:       SwingKind;
+    teamSide:   "FOR" | "OPP" | null;
+    clockOrder: number;    // sort key; 2H = raw + 3600 (SECOND_HALF_OFFSET)
+    period:     "1H" | "2H";
+    label:      string;    // primary description line
+    sublabel:   string;    // clock / time range — shown left of dot
+    count:      number;    // run length / cluster size — drives priority cap
+  };
+
+  // ── Clock helpers ─────────────────────────────────────────────────────────────
+  function clockToMin(clockSecs: number, period: "1H" | "2H"): number {
+    const adjusted = period === "2H" ? clockSecs - 3600 : clockSecs;
+    return Math.floor(Math.max(0, adjusted) / 60);
+  }
+
+  // Segment midpoint in half-relative seconds (no SECOND_HALF_OFFSET applied here).
+  // Segment 1→4 (early), 2→5 (mid), 3→6 (late) collapse to 0,1,2 via mod-3.
+  function segMidRaw(segment: MatchEventSegment): number {
+    const halfSeg = (Number(segment) - 1) % 3;   // 0, 1, or 2 within the half
+    return halfSeg * 600 + 300;                    // 300, 900, 1500
+  }
+
+  // Resolve a sort-order clock for a raw PdfExportEvent.
+  // SECOND_HALF_OFFSET (3600) is added for 2H so all events remain sortable together.
+  function resolveRawClock(e: PdfExportEvent): number {
+    const base = e.period === "2H" ? 3600 : 0;
+    const mc   = e.matchClockSeconds;
+    if (typeof mc === "number" && Number.isFinite(mc) && mc > 0) return base + mc;
+    return base + segMidRaw(e.segment);
+  }
+
+  // Format a clockOrder + period into a display string: "1H 12'" or "2H ~8'".
+  function fmtClock(clockOrder: number, period: "1H" | "2H", approx: boolean): string {
+    return `${period} ${approx ? "~" : ""}${clockToMin(clockOrder, period)}'`;
+  }
+
+  function teamLabel(side: "FOR" | "OPP"): string {
+    return side === "FOR" ? homeTeam : awayTeam;
+  }
+
+  // ── Swing event derivation ────────────────────────────────────────────────────
+  const swings: SwingEvent[] = [];
+
+  // 1. Score runs — already ≥2 unanswered, already clock-sorted by chain-engine.
+  for (const run of analysis.scoringRuns.runs) {
+    const p: "1H" | "2H" = run.period === "2H" ? "2H" : "1H";
+    const startMin        = clockToMin(run.startClockSeconds, p);
+    const endMin          = clockToMin(run.endClockSeconds,   p);
+    const timeStr         = startMin === endMin
+      ? `${p} ${startMin}'`
+      : `${p} ${startMin}'–${endMin}'`;
+    swings.push({
+      kind:       "SCORE_RUN",
+      teamSide:   run.teamSide,
+      clockOrder: run.startClockSeconds,
+      period:     p,
+      label:      `${teamLabel(run.teamSide)} scored ${run.count} unanswered`,
+      sublabel:   timeStr,
+      count:      run.count,
+    });
+  }
+
+  // 2. Lead changes and equalisations — built from chronological raw score events.
+  {
+    const scoreEvts = events
+      .filter((e) => PDF_KIND_SETS.SCORES.has(e.kind))
+      .slice()
+      .sort((a, b) => resolveRawClock(a) - resolveRawClock(b));
+
+    let forG = 0;
+    let forP = 0;
+    let oppG = 0;
+    let oppP = 0;
+    let prevLeader: "FOR" | "OPP" | "LEVEL" = "LEVEL";
+
+    for (const e of scoreEvts) {
+      const isFor    = e.teamSide === "FOR";
+      const isGoal   = e.kind === "GOAL";
+      const isTwoPtr = e.kind === "TWO_POINTER" || e.kind === "FORTY_FIVE_TWO_POINT";
+
+      if      (isFor && isGoal)         { forG++; }
+      else if (isFor && isTwoPtr)       { forP += 2; }
+      else if (isFor)                   { forP++; }
+      else if (!isFor && isGoal)        { oppG++; }
+      else if (!isFor && isTwoPtr)      { oppP += 2; }
+      else                              { oppP++; }
+
+      const forTotal  = forG * 3 + forP;
+      const oppTotal  = oppG * 3 + oppP;
+      const newLeader: "FOR" | "OPP" | "LEVEL" =
+        forTotal > oppTotal ? "FOR" :
+        oppTotal > forTotal ? "OPP" : "LEVEL";
+
+      const clockOrd  = resolveRawClock(e);
+      const p: "1H" | "2H" = e.period === "2H" ? "2H" : "1H";
+      const mc        = e.matchClockSeconds;
+      const hasReal   = typeof mc === "number" && Number.isFinite(mc) && mc > 0;
+      const scoreStr  = `${forG}-${String(forP).padStart(2, "0")} v ${oppG}-${String(oppP).padStart(2, "0")}`;
+      const clkStr    = fmtClock(clockOrd, p, !hasReal);
+
+      if (newLeader === "LEVEL" && prevLeader !== "LEVEL") {
+        swings.push({
+          kind:       "SCORE_EQUALISED",
+          teamSide:   null,
+          clockOrder: clockOrd,
+          period:     p,
+          label:      `Scores level — ${scoreStr}`,
+          sublabel:   clkStr,
+          count:      0,
+        });
+      } else if (newLeader !== "LEVEL" && newLeader !== prevLeader) {
+        swings.push({
+          kind:       "LEAD_CHANGE",
+          teamSide:   newLeader,
+          clockOrder: clockOrd,
+          period:     p,
+          label:      `${teamLabel(newLeader)} took the lead — ${scoreStr}`,
+          sublabel:   clkStr,
+          count:      0,
+        });
+      }
+      prevLeader = newLeader;
+    }
+  }
+
+  // 3. Kickout clusters — kickout outcomes where the winning side converted to a score.
+  //    Consecutive outcomes for the same side within 300s are merged into one entry.
+  {
+    const koScored = analysis.kickouts.outcomes
+      .filter((o) => o.nextScore !== null)
+      .slice()
+      .sort((a, b) => resolveRawClock(a.kickoutEvent) - resolveRawClock(b.kickoutEvent));
+
+    if (koScored.length > 0) {
+      let cStart    = koScored[0]!;
+      let cSide     = koScored[0]!.winningSide;
+      let cCount    = 1;
+      let cMinClock = resolveRawClock(koScored[0]!.kickoutEvent);
+
+      for (let i = 1; i <= koScored.length; i++) {
+        const cur  = koScored[i];
+        const prev = koScored[i - 1]!;
+        const merge = cur != null &&
+          cur.winningSide === cSide &&
+          cur.kickoutEvent.period === cStart.kickoutEvent.period &&
+          Math.abs(resolveRawClock(cur.kickoutEvent) - resolveRawClock(prev.kickoutEvent)) <= 300;
+
+        if (!merge) {
+          const p: "1H" | "2H" = cStart.kickoutEvent.period === "2H" ? "2H" : "1H";
+          const ckMc            = cStart.kickoutEvent.matchClockSeconds;
+          const hasReal         = typeof ckMc === "number" && Number.isFinite(ckMc) && ckMc > 0;
+          const n               = cCount;
+          swings.push({
+            kind:       "KICKOUT_CLUSTER",
+            teamSide:   cSide,
+            clockOrder: cMinClock,
+            period:     p,
+            label:      `${teamLabel(cSide)} converted ${n} kickout${n !== 1 ? "s" : ""} into score${n !== 1 ? "s" : ""}`,
+            sublabel:   fmtClock(cMinClock, p, !hasReal),
+            count:      n,
+          });
+          if (cur != null) {
+            cStart    = cur;
+            cSide     = cur.winningSide;
+            cCount    = 1;
+            cMinClock = resolveRawClock(cur.kickoutEvent);
+          }
+        } else {
+          cCount++;
+        }
+      }
+    }
+  }
+
+  // 4. Turnover punishment clusters — turnover outcomes that resulted in a score.
+  //    Acting side: who benefited (team that won the ball and scored).
+  {
+    function actingSide(o: (typeof analysis.turnovers.outcomes)[number]): "FOR" | "OPP" {
+      if (o.direction === "WON") return o.turnoverEvent.teamSide;
+      return o.turnoverEvent.teamSide === "FOR" ? "OPP" : "FOR";
+    }
+
+    const tvScored = analysis.turnovers.outcomes
+      .filter((o) => o.resultedInScore)
+      .slice()
+      .sort((a, b) => resolveRawClock(a.turnoverEvent) - resolveRawClock(b.turnoverEvent));
+
+    if (tvScored.length > 0) {
+      let cStart    = tvScored[0]!;
+      let cSide     = actingSide(tvScored[0]!);
+      let cCount    = 1;
+      let cMinClock = resolveRawClock(tvScored[0]!.turnoverEvent);
+
+      for (let i = 1; i <= tvScored.length; i++) {
+        const cur  = tvScored[i];
+        const prev = tvScored[i - 1]!;
+        const merge = cur != null &&
+          actingSide(cur) === cSide &&
+          cur.turnoverEvent.period === cStart.turnoverEvent.period &&
+          Math.abs(resolveRawClock(cur.turnoverEvent) - resolveRawClock(prev.turnoverEvent)) <= 300;
+
+        if (!merge) {
+          const p: "1H" | "2H" = cStart.turnoverEvent.period === "2H" ? "2H" : "1H";
+          const tvMc            = cStart.turnoverEvent.matchClockSeconds;
+          const hasReal         = typeof tvMc === "number" && Number.isFinite(tvMc) && tvMc > 0;
+          const n               = cCount;
+          swings.push({
+            kind:       "TURNOVER_CLUSTER",
+            teamSide:   cSide,
+            clockOrder: cMinClock,
+            period:     p,
+            label:      `${teamLabel(cSide)} turnover${n !== 1 ? "s" : ""} led to score${n !== 1 ? "s" : ""}`,
+            sublabel:   fmtClock(cMinClock, p, !hasReal),
+            count:      n,
+          });
+          if (cur != null) {
+            cStart    = cur;
+            cSide     = actingSide(cur);
+            cCount    = 1;
+            cMinClock = resolveRawClock(cur.turnoverEvent);
+          }
+        } else {
+          cCount++;
+        }
+      }
+    }
+  }
+
+  // Sort all swing events chronologically by resolved clock.
+  swings.sort((a, b) => a.clockOrder - b.clockOrder);
+
+  // Split by period.
+  const h1Raw = swings.filter((s) => s.period === "1H");
+  const h2Raw = swings.filter((s) => s.period === "2H");
+
+  // Priority score for cap selection: structural events are always preserved first.
+  function priorityScore(s: SwingEvent): number {
+    if (s.kind === "LEAD_CHANGE" || s.kind === "SCORE_EQUALISED") return 10000;
+    return s.count;
+  }
+
+  // Cap at MAX_ITEMS by priority; restore chronological order among kept items.
+  function capItems(arr: SwingEvent[]): SwingEvent[] {
+    if (arr.length <= MAX_ITEMS) return arr;
+    const ranked  = [...arr].sort((a, b) => priorityScore(b) - priorityScore(a));
+    const keepIdx = new Set<number>(ranked.slice(0, MAX_ITEMS).map((item) => arr.indexOf(item)));
+    return arr.filter((_, i) => keepIdx.has(i));
+  }
+
+  const col1Items = capItems(h1Raw);
+  const col2Items = capItems(h2Raw);
+
+  // ── Rendering ─────────────────────────────────────────────────────────────────
+
+  function swingColor(s: SwingEvent): string {
+    if (s.teamSide === "FOR") return FOR_COLOR;
+    if (s.teamSide === "OPP") return OPP_COLOR;
+    return STRUCT_COLOR;
+  }
+
+  function drawColHeader(colX: number, label: string): void {
+    ctx.fillStyle    = "rgba(255,255,255,0.04)";
+    ctx.fillRect(colX, CONTENT_TOP, L_COL_W, COL_HDR_H);
+    ctx.fillStyle    = "#94a3b8";
+    ctx.font         = "bold 11px sans-serif";
+    ctx.textAlign    = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label.toUpperCase(), colX + 16, CONTENT_TOP + COL_HDR_H / 2);
+  }
+
+  function drawTimeline(colX: number, items: SwingEvent[], emptyText: string): void {
+    const dotX  = colX + DOT_OFFSET_X;
+    const descX = colX + DESC_OFFSET;
+
+    if (items.length === 0) {
+      ctx.fillStyle    = "#334155";
+      ctx.font         = "12px sans-serif";
+      ctx.textAlign    = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(emptyText, colX + 16, ITEMS_TOP + 32);
+      return;
+    }
+
+    for (let i = 0; i < items.length; i++) {
+      const s     = items[i]!;
+      const itemY = ITEMS_TOP + i * ITEM_H;
+      const midY  = itemY + ITEM_H / 2;
+      const color = swingColor(s);
+
+      // Connector: thin 1px-wide rectangle from bottom of previous dot to top of this one.
+      if (i > 0) {
+        const connY = itemY - ITEM_H / 2 + DOT_HALF + 2;
+        const connH = ITEM_H - (DOT_HALF + 2) * 2;
+        ctx.fillStyle = "rgba(255,255,255,0.10)";
+        ctx.fillRect(dotX, connY, 1, connH);
+      }
+
+      // Dot — filled square in team colour.
+      ctx.fillStyle = color;
+      ctx.fillRect(dotX - DOT_HALF, midY - DOT_HALF, DOT_HALF * 2, DOT_HALF * 2);
+
+      // Dot halo — strokeRect at low opacity.
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 1;
+      ctx.globalAlpha = 0.28;
+      ctx.strokeRect(dotX - RING_HALF, midY - RING_HALF, RING_HALF * 2, RING_HALF * 2);
+      ctx.globalAlpha = 1;
+
+      // Clock / time label — right-aligned, left of the dot.
+      ctx.fillStyle    = "#64748b";
+      ctx.font         = "10px sans-serif";
+      ctx.textAlign    = "right";
+      ctx.textBaseline = "middle";
+      ctx.fillText(s.sublabel, colX + CLOCK_MAX_X, midY);
+
+      // Primary description — coloured, slightly above centre.
+      ctx.fillStyle    = color;
+      ctx.font         = "bold 13px sans-serif";
+      ctx.textAlign    = "left";
+      ctx.textBaseline = "middle";
+      let primary = s.label;
+      if (ctx.measureText(primary).width > DESC_MAX_W) {
+        while (primary.length > 0 && ctx.measureText(primary + "…").width > DESC_MAX_W) {
+          primary = primary.slice(0, -1);
+        }
+        primary += "…";
+      }
+      ctx.fillText(primary, descX, midY - 10);
+
+      // Kind badge — muted label below primary.
+      const badge =
+        s.kind === "SCORE_RUN"        ? "scoring run"
+        : s.kind === "KICKOUT_CLUSTER"  ? "kickout"
+        : s.kind === "TURNOVER_CLUSTER" ? "turnover"
+        : s.kind === "LEAD_CHANGE"      ? "lead change"
+        :                                 "equalised";
+      ctx.fillStyle    = "rgba(255,255,255,0.28)";
+      ctx.font         = "10px sans-serif";
+      ctx.textAlign    = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(badge.toUpperCase(), descX, midY + 12);
+    }
+  }
+
+  // Full-page empty-state guard.
+  if (col1Items.length === 0 && col2Items.length === 0) {
+    ctx.fillStyle    = "#475569";
+    ctx.font         = "16px sans-serif";
+    ctx.textAlign    = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      "Insufficient match data to derive swing events — clock or score data may be absent.",
+      CANVAS_W / 2,
+      (CONTENT_TOP + CONTENT_BOT) / 2,
+    );
+    return canvas;
+  }
+
+  // Column headers.
+  drawColHeader(L_COL_X, "First Half");
+  drawColHeader(R_COL_X, "Second Half");
+
+  // Centre divider — 1px fillRect.
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.fillRect(R_COL_X - 20, CONTENT_TOP, 1, CONTENT_BOT - CONTENT_TOP);
+
+  // Render both halves.
+  drawTimeline(L_COL_X, col1Items, "No significant swings detected in the first half");
+  drawTimeline(R_COL_X, col2Items, "No significant swings detected in the second half");
+
+  return canvas;
+}
+
 // ─── Tactical page spec table (20 pages) ────────────────────────────────────
 
 type PageSpec = {
@@ -4773,16 +5215,17 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *            Each shows the full 5-section breakdown filtered to that segment.
  *   9+.      Player Breakdown — one or more pages, no truncation
  *   (9+N)+.  20 tactical pitch map pages (N = player page count)
- *   Last−7.  Kickout Chain Analysis page
- *   Last−6.  Turnover Punishment Analysis page
- *   Last−5.  Momentum & Scoring Runs page
- *   Last−4.  Tactical Chain Analysis summary page
- *   Last−3.  Tactical Intelligence Summary page
- *   Last−2.  Tactical Review Guide page
- *   Last−1.  Opposition Snapshot page
- *   Last.    Zone Analysis page
+ *   Last−8.  Kickout Chain Analysis page
+ *   Last−7.  Turnover Punishment Analysis page
+ *   Last−6.  Momentum & Scoring Runs page
+ *   Last−5.  Tactical Chain Analysis summary page
+ *   Last−4.  Tactical Intelligence Summary page
+ *   Last−3.  Tactical Review Guide page
+ *   Last−2.  Opposition Snapshot page
+ *   Last−1.  Zone Analysis page
+ *   Last.    Match Swing Timeline page
  *
- * Total pages = 34 + N  (N ≥ 1 → minimum 35 pages).
+ * Total pages = 35 + N  (N ≥ 1 → minimum 36 pages).
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
   const {
@@ -4793,9 +5236,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
   } = input;
 
-  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 6 chain pages + 1 review guide + 1 opposition snapshot + 1 zone analysis
+  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 6 chain pages + 1 review guide + 1 opposition snapshot + 1 zone analysis + 1 match swing timeline
   const playerPageCount = calcPlayerPageCount(events);
-  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 8;
+  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 9;
 
   // Chain analysis — computed once here and shared with all chain page builders.
   // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
@@ -4874,11 +5317,27 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(canvas!, true);
   });
 
-  // Eighth-to-last page: Kickout Chain Analysis
+  // Ninth-to-last page: Kickout Chain Analysis
   // chainAnalysis was computed once above; all chain builders consume slices of it.
   try {
     addCanvasPage(
       makeKickoutChainPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES - 8,   // ninth-to-last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
+
+  // Eighth-to-last page: Turnover Punishment Analysis
+  try {
+    addCanvasPage(
+      makeTurnoverPunishmentPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4891,10 +5350,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Seventh-to-last page: Turnover Punishment Analysis
+  // Seventh-to-last page: Momentum & Scoring Runs Analysis
   try {
     addCanvasPage(
-      makeTurnoverPunishmentPage(
+      makeMomentumRunsPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4907,10 +5366,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Sixth-to-last page: Momentum & Scoring Runs Analysis
+  // Sixth-to-last page: Tactical Chain Analysis summary
   try {
     addCanvasPage(
-      makeMomentumRunsPage(
+      makeChainSummaryPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4923,10 +5382,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Fifth-to-last page: Tactical Chain Analysis summary
+  // Fifth-to-last page: Tactical Intelligence Summary
   try {
     addCanvasPage(
-      makeChainSummaryPage(
+      makeTacticalIntelligencePage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4939,10 +5398,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Fourth-to-last page: Tactical Intelligence Summary
+  // Fourth-to-last page: Tactical Review Guide
   try {
     addCanvasPage(
-      makeTacticalIntelligencePage(
+      makeTacticalReviewGuidePage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4955,10 +5414,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Third-to-last page: Tactical Review Guide
+  // Third-to-last page: Opposition Snapshot
   try {
     addCanvasPage(
-      makeTacticalReviewGuidePage(
+      makeOppositionSnapshotPage(
+        events,
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4971,12 +5431,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Second-to-last page: Opposition Snapshot
+  // Second-to-last page: Zone Analysis
   try {
     addCanvasPage(
-      makeOppositionSnapshotPage(
+      makeZoneAnalysisPage(
         events,
-        chainAnalysis,
         homeTeamName,
         awayTeamName,
         TOTAL_PAGES - 1,   // second-to-last page
@@ -4988,11 +5447,12 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Last page: Zone Analysis
+  // Last page: Match Swing Timeline
   try {
     addCanvasPage(
-      makeZoneAnalysisPage(
+      makeMatchSwingTimelinePage(
         events,
+        chainAnalysis,
         homeTeamName,
         awayTeamName,
         TOTAL_PAGES,   // this IS the last page
