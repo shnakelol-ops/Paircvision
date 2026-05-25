@@ -4986,6 +4986,19 @@ export default function StatsModeSurface() {
   const addPlayer = () => {
     const nextPlayerName = playerDraft.trim();
     if (nextPlayerName.length === 0) return;
+    const firstBlankSlot = activeSquadPlayers.find((player) => player.name.trim().length === 0) ?? null;
+    if (firstBlankSlot) {
+      updateActiveSquadPlayers(
+        (prevPlayers) =>
+          prevPlayers.map((player) =>
+            player.id === firstBlankSlot.id ? { ...player, name: nextPlayerName.slice(0, 24) } : player,
+          ),
+        firstBlankSlot.id,
+      );
+      setPlayerDraft("");
+      return;
+    }
+
     const starterCount = activeSquadPlayers.filter((player) => player.role === "STARTER").length;
     const nextPlayerNumber =
       activeSquadPlayers.reduce((maxNumber, player) => Math.max(maxNumber, player.number), 0) + 1;
