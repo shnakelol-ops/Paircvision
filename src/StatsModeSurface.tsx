@@ -91,9 +91,16 @@ type EventKeyboardMenuId =
   | "KICKOUT_CONCEDED";
 type EventKeyboardTone = "score" | "wide" | "turnover" | "kickout" | "free";
 type EventKeyboardOption = { label: string; kind: MatchEventKind; tag?: string };
-type SquadPlayer = { id: string; name: string; number: number; role: PlayerRole };
-type Squad = { id: string; name: string; players: SquadPlayer[] };
-type SavedSquadPlayer = { id: string; number: number; name: string };
+type SquadPlayer = {
+  id: string;
+  name: string;
+  number: number;
+  role: PlayerRole;
+  isActive?: boolean;
+  activeSlot?: number;
+};
+type Squad = { id: string; name: string; players: SquadPlayer[]; team?: TeamSide };
+type SavedSquadPlayer = { id: string; number: number; name: string; isActive?: boolean };
 type SavedSquad = {
   id: string;
   name: string;
@@ -1021,7 +1028,7 @@ function newMatchSessionId(prefix: "live" | "loaded"): string {
   return `${prefix}-match-${newLocalEventId()}`;
 }
 
-function createDefaultSquad(): Squad {
+function createDefaultSquad(name: "HOME" | "AWAY" = "HOME"): Squad {
   const players: SquadPlayer[] = Array.from({ length: 30 }, (_, idx) => {
     const slotNumber = idx + 1;
     return {
@@ -1029,23 +1036,71 @@ function createDefaultSquad(): Squad {
       name: "",
       number: slotNumber,
       role: slotNumber <= 15 ? "STARTER" : "SUB",
+      isActive: slotNumber <= 15,
+      activeSlot: slotNumber <= 15 ? slotNumber : undefined,
     };
   });
   return {
     id: `squad-${newLocalEventId()}`,
-    name: "HOME",
+    name,
     players,
   };
+}
+function ensureHomeAwaySquads(input: Squad[]): { squads: Squad[]; byTeam: { HOME: string; AWAY: string } } {
+  const normalized = input.length > 0 ? input : [createDefaultSquad("HOME")];
+  const next = normalized.map((squad) => {
+    if (squad.team === "HOME" || squad.team === "AWAY") return squad;
+    if (squad.name.trim().toUpperCase() === "HOME") return { ...squad, team: "HOME" as const };
+    if (squad.name.trim().toUpperCase() === "AWAY") return { ...squad, team: "AWAY" as const };
+    return squad;
+  });
+  let home = next.find((s) => s.team === "HOME") ?? next.find((s) => s.name.trim().toUpperCase() === "HOME") ?? next[0] ?? null;
+  if (!home) {
+    home = createDefaultSquad("HOME");
+    next.unshift({ ...home, team: "HOME" });
+  } else if (home.team !== "HOME") {
+    home = { ...home, team: "HOME" };
+    const idx = next.findIndex((s) => s.id === home?.id);
+    if (idx >= 0) next[idx] = home;
+  }
+  let away = next.find((s) => s.team === "AWAY") ?? next.find((s) => s.name.trim().toUpperCase() === "AWAY") ?? null;
+  if (!away) {
+    away = createDefaultSquad("AWAY");
+    next.push({ ...away, team: "AWAY" });
+  } else if (away.id === home.id) {
+    away = { ...createDefaultSquad("AWAY"), team: "AWAY" };
+    next.push(away);
+  } else if (away.team !== "AWAY") {
+    away = { ...away, team: "AWAY" };
+    const idx = next.findIndex((s) => s.id === away?.id);
+    if (idx >= 0) next[idx] = away;
+  }
+  return { squads: next, byTeam: { HOME: home.id, AWAY: away.id } };
+}
+function defaultPlayerActiveForSlot(slotNumber: number): boolean {
+  return slotNumber <= 15;
 }
 
 function ensureStableSquadSlots(players: SquadPlayer[]): SquadPlayer[] {
   const normalized = players.map((player, idx) => {
     const boundedNumber = Math.max(1, Math.min(99, Math.floor(player.number)));
+    const slotNumber = idx + 1;
+    const parsedIsActive =
+      typeof player.isActive === "boolean" ? player.isActive : defaultPlayerActiveForSlot(slotNumber);
+    const rawActiveSlot = typeof player.activeSlot === "number" ? Math.floor(player.activeSlot) : null;
+    const parsedActiveSlot =
+      rawActiveSlot != null && rawActiveSlot >= 1 && rawActiveSlot <= 15
+        ? rawActiveSlot
+        : parsedIsActive
+          ? Math.min(15, slotNumber)
+          : undefined;
     return {
       ...player,
       name: player.name.slice(0, 24),
       number: boundedNumber,
       role: player.role === "STARTER" || player.role === "SUB" ? player.role : idx < 15 ? "STARTER" : "SUB",
+      isActive: parsedIsActive,
+      activeSlot: parsedActiveSlot,
     };
   });
   const byNumber = new Map<number, SquadPlayer>();
@@ -1071,6 +1126,13 @@ function ensureStableSquadSlots(players: SquadPlayer[]): SquadPlayer[] {
         ...selected,
         number: slot,
         role,
+        isActive: typeof selected.isActive === "boolean" ? selected.isActive : defaultPlayerActiveForSlot(slot),
+        activeSlot:
+          typeof selected.activeSlot === "number" && selected.activeSlot >= 1 && selected.activeSlot <= 15
+            ? Math.floor(selected.activeSlot)
+            : selected.isActive === true
+              ? Math.min(15, slot)
+              : undefined,
       });
       continue;
     }
@@ -1079,6 +1141,8 @@ function ensureStableSquadSlots(players: SquadPlayer[]): SquadPlayer[] {
       name: "",
       number: slot,
       role,
+      isActive: defaultPlayerActiveForSlot(slot),
+      activeSlot: defaultPlayerActiveForSlot(slot) ? slot : undefined,
     });
   }
   return stablePlayers;
@@ -1097,6 +1161,8 @@ function parseStoredPlayer(input: unknown, idx: number): SquadPlayer | null {
       name: trimmedName,
       number: idx + 1,
       role: idx < 15 ? "STARTER" : "SUB",
+      isActive: idx < 15,
+      activeSlot: idx < 15 ? idx + 1 : undefined,
     };
   }
   if (!input || typeof input !== "object") return null;
@@ -1117,11 +1183,22 @@ function parseStoredPlayer(input: unknown, idx: number): SquadPlayer | null {
     typeof rawId === "string" && rawId.trim().length > 0
       ? rawId
       : `player-${idx + 1}-${nextName.toLowerCase().replace(/\s+/g, "-")}`;
+  const rawIsActive = "isActive" in input ? input.isActive : null;
+  const parsedIsActive = typeof rawIsActive === "boolean" ? rawIsActive : idx < 15;
+  const rawActiveSlot = "activeSlot" in input ? input.activeSlot : null;
+  const parsedActiveSlot =
+    typeof rawActiveSlot === "number" && Number.isFinite(rawActiveSlot) && rawActiveSlot >= 1 && rawActiveSlot <= 15
+      ? Math.floor(rawActiveSlot)
+      : parsedIsActive
+        ? idx + 1
+        : undefined;
   return {
     id: nextId,
     name: nextName,
     number: parsedNumber,
     role: nextRole,
+    isActive: parsedIsActive,
+    activeSlot: parsedActiveSlot,
   };
 }
 
@@ -1131,10 +1208,11 @@ function parseStoredSquads(input: string | null): Squad[] {
     const parsed = JSON.parse(input);
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .map((item) => {
+      .map((item): Squad | null => {
         if (!item || typeof item !== "object") return null;
         const maybeId = "id" in item ? item.id : null;
         const maybeName = "name" in item ? item.name : null;
+        const maybeTeam = "team" in item ? item.team : null;
         const maybePlayers = "players" in item ? item.players : null;
         if (typeof maybeId !== "string" || typeof maybeName !== "string") return null;
         if (!Array.isArray(maybePlayers)) return null;
@@ -1146,6 +1224,7 @@ function parseStoredSquads(input: string | null): Squad[] {
         return {
           id: maybeId,
           name: maybeName.slice(0, 24),
+          team: maybeTeam === "HOME" || maybeTeam === "AWAY" ? maybeTeam : undefined,
           players,
         };
       })
@@ -1160,15 +1239,16 @@ function parseStoredSavedSquadPlayer(input: unknown): SavedSquadPlayer | null {
   const maybeId = "id" in input ? input.id : null;
   const maybeNumber = "number" in input ? input.number : null;
   const maybeName = "name" in input ? input.name : null;
+  const maybeIsActive = "isActive" in input ? input.isActive : null;
   if (typeof maybeId !== "string" || maybeId.trim().length === 0) return null;
   if (typeof maybeNumber !== "number" || !Number.isFinite(maybeNumber)) return null;
   if (typeof maybeName !== "string") return null;
   const trimmedName = maybeName.trim().slice(0, 24);
-  if (trimmedName.length === 0) return null;
   return {
     id: maybeId,
     number: Math.max(1, Math.min(99, Math.floor(maybeNumber))),
     name: trimmedName,
+    isActive: typeof maybeIsActive === "boolean" ? maybeIsActive : undefined,
   };
 }
 
@@ -3281,21 +3361,29 @@ export default function StatsModeSurface() {
   const [utilityPanel, setUtilityPanel] = useState<UtilityPanel>(null);
   const [squads, setSquads] = useState<Squad[]>(() => {
     if (typeof window === "undefined") {
-      return [createDefaultSquad()];
+      return ensureHomeAwaySquads([createDefaultSquad("HOME")]).squads;
     }
     const parsed = parseStoredSquads(safeReadLocalStorage(SQUADS_STORAGE_KEY));
-    return parsed.length > 0 ? parsed : [createDefaultSquad()];
+    return ensureHomeAwaySquads(parsed.length > 0 ? parsed : [createDefaultSquad("HOME")]).squads;
   });
   const [savedSquads, setSavedSquads] = useState<SavedSquad[]>(() => {
     if (typeof window === "undefined") return [];
     return parseStoredSavedSquads(safeReadLocalStorage(SAVED_SQUADS_STORAGE_KEY));
   });
-  const [activeSquadId, setActiveSquadId] = useState("");
+  const [activeSquadIdsByTeam, setActiveSquadIdsByTeam] = useState<{ HOME: string; AWAY: string }>(() =>
+    ensureHomeAwaySquads(
+      typeof window === "undefined"
+        ? [createDefaultSquad("HOME")]
+        : parseStoredSquads(safeReadLocalStorage(SQUADS_STORAGE_KEY)),
+    ).byTeam,
+  );
   const [squadDraft, setSquadDraft] = useState("");
   const [activePlayer, setActivePlayer] = useState<string | null>(null);
   const [activePlayerNumber, setActivePlayerNumber] = useState<number | null>(null);
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null);
   const [playerDraft, setPlayerDraft] = useState("");
+  const [selectedSubOutId, setSelectedSubOutId] = useState<string | null>(null);
+  const [selectedSubInId, setSelectedSubInId] = useState<string | null>(null);
   const [showPlayerInitials] = useState(true);
   const [reviewHalf, setReviewHalf] = useState<ReviewHalf>("FULL");
   const [reviewSegment, setReviewSegment] = useState<ReviewSegment>("ALL");
@@ -3434,8 +3522,14 @@ export default function StatsModeSurface() {
     [appViewportHeight],
   );
   const canEditTeamNames = matchState === "PRE_MATCH";
+  const isPreMatchSetup = matchState === "PRE_MATCH";
+  const playerSquadTeam: TeamSide = activeTeamSide === "opposition" ? "AWAY" : "HOME";
+  const activeSquadId = activeSquadIdsByTeam[playerSquadTeam];
   const activeSquad =
-    squads.find((squad) => squad.id === activeSquadId) ?? squads[0] ?? createDefaultSquad();
+    squads.find((squad) => squad.id === activeSquadId) ??
+    squads.find((squad) => squad.team === playerSquadTeam) ??
+    squads[0] ??
+    createDefaultSquad(playerSquadTeam);
   const activeSquadPlayers = activeSquad.players;
   const activePlayerEntry = activePlayer
     ? activeSquadPlayers.find(
@@ -3444,9 +3538,13 @@ export default function StatsModeSurface() {
       activeSquadPlayers.find((player) => player.name === activePlayer) ??
       null
     : null;
+  const activePlayers = activeSquadPlayers.filter((player) => player.isActive === true);
+  const inactivePlayers = activeSquadPlayers.filter((player) => player.isActive !== true);
 
   const setActiveSquadById = (nextSquadId: string) => {
-    setActiveSquadId(nextSquadId);
+    const selected = squads.find((squad) => squad.id === nextSquadId);
+    if (selected && selected.team && selected.team !== playerSquadTeam) return;
+    setActiveSquadIdsByTeam((prev) => ({ ...prev, [playerSquadTeam]: nextSquadId }));
     setActivePlayer(null);
     setActivePlayerNumber(null);
     setActivePlayerId(null);
@@ -3454,6 +3552,8 @@ export default function StatsModeSurface() {
     activePlayerNumberRef.current = null;
     activePlayerIdRef.current = null;
     setPlayerDraft("");
+    setSelectedSubOutId(null);
+    setSelectedSubInId(null);
   };
 
   const updateActiveSquadPlayers = (
@@ -3465,11 +3565,7 @@ export default function StatsModeSurface() {
       nextActivePlayerId === undefined
         ? undefined
         : nextPlayersForActiveSquad.find((player) => player.id === nextActivePlayerId) ?? null;
-    setSquads((prevSquads) =>
-      prevSquads.map((squad) =>
-        squad.id === activeSquad.id ? { ...squad, players: nextPlayersForActiveSquad } : squad,
-      ),
-    );
+    setSquads((prevSquads) => prevSquads.map((squad) => (squad.id === activeSquad.id ? { ...squad, players: nextPlayersForActiveSquad } : squad)));
     if (nextActivePlayerId !== undefined) {
       if (nextSelectedPlayer) {
         setActivePlayer(nextSelectedPlayer.name);
@@ -3522,6 +3618,7 @@ export default function StatsModeSurface() {
   };
 
   const handlePlayerPick = (player: SquadPlayer) => {
+    if (player.isActive !== true) return;
     setActivePlayer(player.name);
     setActivePlayerNumber(player.number);
     setActivePlayerId(player.id);
@@ -3532,6 +3629,23 @@ export default function StatsModeSurface() {
     activeSquadIdRef.current = activeSquad.id;
     closeUtilityPanel();
     setIsUtilityOpen(false);
+  };
+  const confirmSubstitution = () => {
+    if (!selectedSubOutId || !selectedSubInId || selectedSubOutId === selectedSubInId) return;
+    const incomingPlayerId = selectedSubInId;
+    const outgoingPlayer = activeSquadPlayers.find((player) => player.id === selectedSubOutId) ?? null;
+    const outgoingActiveSlot =
+      outgoingPlayer && typeof outgoingPlayer.activeSlot === "number" ? outgoingPlayer.activeSlot : undefined;
+    updateActiveSquadPlayers((prevPlayers) =>
+      prevPlayers.map((player) => {
+        if (player.id === selectedSubOutId) return { ...player, isActive: false, activeSlot: undefined };
+        if (player.id === selectedSubInId) return { ...player, isActive: true, activeSlot: outgoingActiveSlot };
+        return player;
+      }),
+    );
+    selectActivePlayerById(incomingPlayerId);
+    setSelectedSubOutId(null);
+    setSelectedSubInId(null);
   };
 
   const editPlayer = (playerId: string) => {
@@ -3566,6 +3680,7 @@ export default function StatsModeSurface() {
     const nextSquad: Squad = {
       id: `squad-${newLocalEventId()}`,
       name: nextName.slice(0, 24),
+      team: playerSquadTeam,
       players: [],
     };
     setSquads((prev) => [...prev, nextSquad]);
@@ -3593,6 +3708,7 @@ export default function StatsModeSurface() {
         id: player.id,
         number: player.number,
         name: player.name,
+        isActive: player.isActive,
       })),
       updatedAt: Date.now(),
     };
@@ -3608,11 +3724,13 @@ export default function StatsModeSurface() {
       number: Math.max(1, Math.min(99, Math.floor(player.number))),
       name: player.name.slice(0, 24),
       role: idx < 15 ? "STARTER" : "SUB",
+      isActive: typeof player.isActive === "boolean" ? player.isActive : idx < 15,
     })));
     setSquads((prevSquads) => {
       const nextActiveSquad: Squad = {
         id: savedSquad.id,
         name: savedSquad.name.slice(0, 24) || "HOME",
+        team: playerSquadTeam,
         players: restoredPlayers,
       };
       const remaining = prevSquads.filter((entry) => entry.id !== savedSquad.id);
@@ -3805,6 +3923,13 @@ export default function StatsModeSurface() {
 
   useEffect(() => {
     activeTeamSideRef.current = activeTeamSide;
+    setActivePlayer(null);
+    setActivePlayerNumber(null);
+    setActivePlayerId(null);
+    activePlayerRef.current = null;
+    activePlayerNumberRef.current = null;
+    activePlayerIdRef.current = null;
+    activePlayerEntryRef.current = null;
   }, [activeTeamSide]);
 
   useEffect(() => {
@@ -3954,16 +4079,15 @@ export default function StatsModeSurface() {
   }, []);
 
   useEffect(() => {
-    if (activeSquadId === "") {
-      setActiveSquadId(squads[0]?.id ?? "");
-      return;
+    const ensured = ensureHomeAwaySquads(squads);
+    if (ensured.squads.length !== squads.length) {
+      setSquads(ensured.squads);
     }
-    if (squads.some((squad) => squad.id === activeSquadId)) return;
-    setActiveSquadId(squads[0]?.id ?? "");
-    setActivePlayer(null);
-    setActivePlayerNumber(null);
-    setActivePlayerId(null);
-  }, [activeSquadId, squads]);
+    setActiveSquadIdsByTeam((prev) => ({
+      HOME: ensured.squads.some((s) => s.id === prev.HOME) ? prev.HOME : ensured.byTeam.HOME,
+      AWAY: ensured.squads.some((s) => s.id === prev.AWAY) ? prev.AWAY : ensured.byTeam.AWAY,
+    }));
+  }, [squads]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -4110,30 +4234,22 @@ export default function StatsModeSurface() {
               : Date.now(),
           ...(eventTags ? { tags: eventTags } : {}),
         };
-        if (team === "HOME") {
-          const activePlayerEntry = activePlayerEntryRef.current;
-          const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? null;
-          nextEvent.playerId = selectedPlayerId;
-          if (SCORE_EVENT_KINDS.has(event.kind) && pendingScorerRef.current) {
-            nextEvent.playerName = pendingScorerRef.current.name;
-            nextEvent.playerNumber = pendingScorerRef.current.number;
-            nextEvent.squadId = pendingScorerRef.current.squadId;
-            pendingScorerRef.current = null;
-          } else if (activePlayerEntry) {
-            nextEvent.playerName = activePlayerEntry.name;
-            nextEvent.playerNumber = activePlayerEntry.number;
-            nextEvent.squadId = activeSquadIdRef.current;
-          } else if (activePlayerIdRef.current != null) {
-            // Use ID presence (not name truthiness) as the guard: a player with an
-            // empty name has activePlayerRef.current === "" which is falsy, so the
-            // old `if (activePlayerRef.current)` guard silently skipped attribution
-            // for every default (unnamed) squad slot.
-            nextEvent.playerName = activePlayerRef.current || undefined;
-            nextEvent.playerNumber = activePlayerNumberRef.current ?? undefined;
-            nextEvent.squadId = activeSquadIdRef.current;
-          } else {
-            pendingScorerRef.current = null;
-          }
+        const activePlayerEntry = activePlayerEntryRef.current;
+        const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? null;
+        nextEvent.playerId = selectedPlayerId;
+        if (SCORE_EVENT_KINDS.has(event.kind) && pendingScorerRef.current) {
+          nextEvent.playerName = pendingScorerRef.current.name;
+          nextEvent.playerNumber = pendingScorerRef.current.number;
+          nextEvent.squadId = pendingScorerRef.current.squadId;
+          pendingScorerRef.current = null;
+        } else if (activePlayerEntry) {
+          nextEvent.playerName = activePlayerEntry.name;
+          nextEvent.playerNumber = activePlayerEntry.number;
+          nextEvent.squadId = activeSquadIdRef.current;
+        } else if (activePlayerIdRef.current != null) {
+          nextEvent.playerName = activePlayerRef.current || undefined;
+          nextEvent.playerNumber = activePlayerNumberRef.current ?? undefined;
+          nextEvent.squadId = activeSquadIdRef.current;
         } else {
           pendingScorerRef.current = null;
         }
@@ -4967,6 +5083,19 @@ export default function StatsModeSurface() {
   const addPlayer = () => {
     const nextPlayerName = playerDraft.trim();
     if (nextPlayerName.length === 0) return;
+    const firstBlankSlot = activeSquadPlayers.find((player) => player.name.trim().length === 0) ?? null;
+    if (firstBlankSlot) {
+      updateActiveSquadPlayers(
+        (prevPlayers) =>
+          prevPlayers.map((player) =>
+            player.id === firstBlankSlot.id ? { ...player, name: nextPlayerName.slice(0, 24) } : player,
+          ),
+        firstBlankSlot.id,
+      );
+      setPlayerDraft("");
+      return;
+    }
+
     const starterCount = activeSquadPlayers.filter((player) => player.role === "STARTER").length;
     const nextPlayerNumber =
       activeSquadPlayers.reduce((maxNumber, player) => Math.max(maxNumber, player.number), 0) + 1;
@@ -4980,11 +5109,37 @@ export default function StatsModeSurface() {
           name: nextPlayerName.slice(0, 24),
           number: Math.min(99, nextPlayerNumber),
           role: nextPlayerRole,
+          isActive: nextPlayerRole === "STARTER",
         },
       ],
       activePlayerEntry?.id ?? nextPlayerId,
     );
     setPlayerDraft("");
+  };
+
+  const resetSquadsToDefault = () => {
+    const nextHomeSquadId = `squad-${newLocalEventId()}`;
+    const nextAwaySquadId = `squad-${newLocalEventId()}`;
+    setSquads([
+      { ...createDefaultSquad("HOME"), id: nextHomeSquadId, name: "HOME", team: "HOME" },
+      { ...createDefaultSquad("AWAY"), id: nextAwaySquadId, name: "AWAY", team: "AWAY" },
+    ]);
+    setActiveSquadIdsByTeam({
+      HOME: nextHomeSquadId,
+      AWAY: nextAwaySquadId,
+    });
+    selectActivePlayerById(null);
+    setSelectedSubOutId(null);
+    setSelectedSubInId(null);
+    setPlayerDraft("");
+    setSquadDraft("");
+    setSaveFeedback("Squads reset to default");
+  };
+
+  const requestResetSquads = () => {
+    const shouldReset = window.confirm("Reset HOME and AWAY squads to blank #1–#30?");
+    if (!shouldReset) return;
+    resetSquadsToDefault();
   };
 
   const resetMatchNow = () => {
@@ -6062,10 +6217,19 @@ export default function StatsModeSurface() {
   const utilityPanelClass = isLandscape
     ? "utility-overlay-panel utility-overlay-panel--landscape"
     : "utility-overlay-panel utility-overlay-panel--portrait";
-  const starterPlayers = activeSquadPlayers.filter((player) => player.role === "STARTER");
-  const subPlayers = activeSquadPlayers.filter((player) => player.role === "SUB");
-  const formationPlayers = starterPlayers.slice(0, 15);
-  const subsPlayers = subPlayers;
+  const formationPlayers = [...activePlayers]
+    .sort((a, b) => {
+      const aSlot = typeof a.activeSlot === "number" ? a.activeSlot : Number.POSITIVE_INFINITY;
+      const bSlot = typeof b.activeSlot === "number" ? b.activeSlot : Number.POSITIVE_INFINITY;
+      if (aSlot !== bSlot) return aSlot - bSlot;
+      return a.number - b.number;
+    })
+    .slice(0, 15);
+  const benchPlayers = inactivePlayers;
+  const contextActivePillBorder =
+    playerSquadTeam === "HOME" ? "1px solid rgba(74, 222, 128, 0.65)" : "1px solid rgba(248, 113, 113, 0.62)";
+  const contextActivePillGlow =
+    playerSquadTeam === "HOME" ? "0 0 0 1px rgba(74, 222, 128, 0.24)" : "0 0 0 1px rgba(248, 113, 113, 0.24)";
   const formationRows: SquadPlayer[][] = [];
   let formationCursor = 0;
   for (const rowSize of FORMATION_ROW_SIZES) {
@@ -6265,58 +6429,67 @@ export default function StatsModeSurface() {
         <div
           className={utilityPanelClass}
           role="dialog"
-          aria-label="Home players"
+          aria-label={playerSquadTeam === "HOME" ? "Home players" : "Away players"}
           style={playersPanelStyle}
         >
           <div className="utility-review-scroll">
-          <div className="utility-panel-title">HOME Players</div>
-          <div className="utility-squad-row">
-            <select
-              className="utility-squad-select"
-              value={activeSquad.id}
-              onChange={(event) => {
-                setActiveSquadById(event.target.value);
-              }}
-              aria-label="Select home squad"
-            >
-              {squads.map((squad) => (
-                <option key={squad.id} value={squad.id}>
-                  {squad.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="utility-squad-create">
-            <input
-              type="text"
-              className="utility-squad-input"
-              value={squadDraft}
-              onChange={(event) => {
-                setSquadDraft(event.target.value);
-              }}
-              placeholder="New or rename squad"
-            />
-            <button type="button" className="utility-review-btn" onClick={createSquad}>
-              New
-            </button>
-            <button type="button" className="utility-review-btn" onClick={saveActiveSquadName}>
-              Rename
-            </button>
-            <button type="button" className="utility-review-btn" onClick={saveSquadSnapshot}>
-              Save Squad
-            </button>
-            <button
-              type="button"
-              className="utility-review-btn"
-              onClick={() => {
-                if (savedSquads.length === 0) return;
-                loadSavedSquadIntoActive(savedSquads[0]);
-              }}
-              disabled={savedSquads.length === 0}
-            >
-              Load Squad
-            </button>
-          </div>
+          <div className="utility-panel-title">{playerSquadTeam === "HOME" ? "HOME Players" : "AWAY Players"}</div>
+          {isPreMatchSetup ? (
+            <>
+              <div className="utility-squad-row">
+                <select
+                  className="utility-squad-select"
+                  value={activeSquad.id}
+                  onChange={(event) => {
+                    setActiveSquadById(event.target.value);
+                  }}
+                  aria-label="Select home squad"
+                >
+                  {squads.filter((squad) => !squad.team || squad.team === playerSquadTeam).map((squad) => (
+                    <option key={squad.id} value={squad.id}>
+                      {squad.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="utility-squad-create">
+                <input
+                  type="text"
+                  className="utility-squad-input"
+                  value={squadDraft}
+                  onChange={(event) => {
+                    setSquadDraft(event.target.value);
+                  }}
+                  placeholder="New or rename squad"
+                />
+                <button type="button" className="utility-review-btn" onClick={createSquad}>
+                  New
+                </button>
+                <button type="button" className="utility-review-btn" onClick={saveActiveSquadName}>
+                  Rename
+                </button>
+                <button type="button" className="utility-review-btn" onClick={saveSquadSnapshot}>
+                  Save Squad
+                </button>
+                <button
+                  type="button"
+                  className="utility-review-btn"
+                  onClick={() => {
+                    if (savedSquads.length === 0) return;
+                    loadSavedSquadIntoActive(savedSquads[0]);
+                  }}
+                  disabled={savedSquads.length === 0}
+                >
+                  Load Squad
+                </button>
+              </div>
+              <div style={{ display: "flex", marginTop: "6px" }}>
+                <button type="button" className="utility-review-btn" onClick={requestResetSquads}>
+                  Reset Squads
+                </button>
+              </div>
+            </>
+          ) : null}
           {savedSquads.length > 0 ? (
             <div className="utility-panel-title" style={{ fontSize: "8px", opacity: 0.78, textTransform: "none" }}>
               Last saved: {savedSquads[0].name} · {savedSquads[0].players.length} players
@@ -6343,24 +6516,29 @@ export default function StatsModeSurface() {
               </button>
             </div>
           ) : null}
-          <div className="utility-player-add-row">
-            <input
-              type="text"
-              className="utility-player-input"
-              value={playerDraft}
-              onChange={(event) => {
-                setPlayerDraft(event.target.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter") return;
-                event.preventDefault();
-                addPlayer();
-              }}
-              placeholder="Add player"
-            />
-            <button type="button" className="utility-review-btn" onClick={addPlayer}>
-              Add
-            </button>
+          {isPreMatchSetup ? (
+            <div className="utility-player-add-row">
+              <input
+                type="text"
+                className="utility-player-input"
+                value={playerDraft}
+                onChange={(event) => {
+                  setPlayerDraft(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  addPlayer();
+                }}
+                placeholder="Add player"
+              />
+              <button type="button" className="utility-review-btn" onClick={addPlayer}>
+                Add
+              </button>
+            </div>
+          ) : null}
+          <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.84 }}>
+            Active Players
           </div>
           <div className="utility-formation" aria-label="Home formation">
             {formationRows.map((row, rowIdx) =>
@@ -6379,14 +6557,15 @@ export default function StatsModeSurface() {
                         onDoubleClick={() => {
                           editPlayer(player.id);
                         }}
-                        style={
-                          isActive
+                        style={{
+                          ...(isActive
                             ? {
                                 border: "1px solid rgba(125,211,252,0.9)",
                                 background: "rgba(14,116,144,0.38)",
                               }
-                            : undefined
-                        }
+                            : { border: contextActivePillBorder, boxShadow: contextActivePillGlow }),
+                          ...(isPreMatchSetup ? {} : { fontSize: "11px", padding: "8px 10px" }),
+                        }}
                       >
                         {isActive ? "● " : ""}
                         {formatPlayerLabel(player)}
@@ -6397,35 +6576,70 @@ export default function StatsModeSurface() {
               ) : null,
             )}
           </div>
-          {subsPlayers.length > 0 ? (
+          <div className="utility-subs-wrap">
+            <div className="utility-subs-title">Subs V1 Lite</div>
+            <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.9 }}>
+              Select one active player to go off, and one bench player to come on.
+            </div>
+            <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.9 }}>
+              Sub Out
+            </div>
+            <div className="utility-subs-row" aria-label="Active players">
+              {activePlayers.map((player) => (
+                <button
+                  key={`sub-out-${player.id}`}
+                  type="button"
+                  className="utility-player-pill"
+                  onClick={() => setSelectedSubOutId(player.id)}
+                  style={selectedSubOutId === player.id ? { border: "1px solid rgba(248,113,113,0.92)" } : undefined}
+                >
+                  {formatPlayerLabel(player)}
+                </button>
+              ))}
+            </div>
+            <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.9 }}>
+              Sub In
+            </div>
+            <div className="utility-subs-row" aria-label="Bench players">
+              {inactivePlayers.map((player) => (
+                <button
+                  key={`sub-in-${player.id}`}
+                  type="button"
+                  className="utility-player-pill"
+                  onClick={() => setSelectedSubInId(player.id)}
+                  style={selectedSubInId === player.id ? { border: "1px solid rgba(74,222,128,0.9)" } : undefined}
+                >
+                  {formatPlayerLabel(player)}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="utility-review-btn"
+              onClick={confirmSubstitution}
+              disabled={!selectedSubOutId || !selectedSubInId}
+            >
+              Confirm Sub
+            </button>
+          </div>
+          {isPreMatchSetup && benchPlayers.length > 0 ? (
             <div className="utility-subs-wrap">
-              <div className="utility-subs-title">Subs</div>
+              <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.84 }}>
+                Bench
+              </div>
+              <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.72 }}>
+                Bench players are listed for substitution (Sub In), not direct event tagging.
+              </div>
               <div className="utility-subs-row" aria-label="Home substitutes">
-                {subsPlayers.map((player, idx) => {
-                  const isActive = activePlayerEntry?.id === player.id;
+                {benchPlayers.map((player, idx) => {
                   return (
-                    <button
-                      key={`sub-${idx}-${player.id}`}
-                      type="button"
+                    <div
+                      key={`bench-${idx}-${player.id}`}
                       className="utility-player-pill"
-                      onClick={() => {
-                        handlePlayerPick(player);
-                      }}
-                      onDoubleClick={() => {
-                        editPlayer(player.id);
-                      }}
-                      style={
-                        isActive
-                          ? {
-                              border: "1px solid rgba(125,211,252,0.9)",
-                              background: "rgba(14,116,144,0.38)",
-                            }
-                          : undefined
-                      }
+                      style={{ opacity: 0.78 }}
                     >
-                      {isActive ? "● " : ""}
                       {formatPlayerLabel(player)}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
