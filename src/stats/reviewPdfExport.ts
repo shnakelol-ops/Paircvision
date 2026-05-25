@@ -5153,6 +5153,310 @@ function makeMatchSwingTimelinePage(
   return canvas;
 }
 
+// ─── Page: Shot & Scoring Efficiency ─────────────────────────────────────────
+
+/**
+ * Overall shot conversion, source breakdown (Play/Free/Mark/45/Penalty/Unclassified),
+ * 2-point profile, and free conversion for FOR and OPP sides.
+ *
+ * Two-column layout: LEFT = FOR (homeTeam), RIGHT = OPP (awayTeam).
+ *
+ * Source classification:
+ *   FREE_SCORED / FREE_MISSED → "Free"       (kind-implicit, no SOURCE_ tag needed)
+ *   FORTY_FIVE_TWO_POINT      → "45"         (kind-implicit)
+ *   SHOT                      → "Unclassified" (no SOURCE_ tag assigned on this kind)
+ *   GOAL/POINT/TWO_POINTER/WIDE with SOURCE_* tag → classified accordingly
+ *   Any attempt with no SOURCE_ tag           → "Unclassified"
+ *
+ * Attempt kinds: SHOT, GOAL, POINT, WIDE, TWO_POINTER, FORTY_FIVE_TWO_POINT,
+ *                FREE_MISSED, FREE_SCORED  (= PDF_KIND_SETS.SHOTS)
+ * Score kinds:   GOAL, POINT, TWO_POINTER, FORTY_FIVE_TWO_POINT, FREE_SCORED
+ *                (= PDF_KIND_SETS.SCORES)
+ *
+ * All division guarded. No ctx.roundRect() — fillRect/strokeRect only.
+ */
+function makeShotEfficiencyPage(
+  events: readonly PdfExportEvent[],
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  const validEvts = events.filter((e) => !e.id.includes("-instant-score-"));
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Shot & Scoring Efficiency", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, validEvts.length);
+
+  // ── Layout constants ──────────────────────────────────────────────────────────
+  const CONTENT_TOP = 86;
+  const CONTENT_BOT = CANVAS_H - 36;    // 1044
+  const L_COL_X     = 24;
+  const L_COL_W     = 928;
+  const R_COL_X     = 968;
+  const COL_HDR_H   = 36;
+  const SEC_HDR_H   = 26;
+  const ROW_H       = 32;
+  const SEC_GAP     = 20;
+  // Source breakdown sub-column right-edge positions (relative to column left)
+  const SRC_ATT_X   = 520;
+  const SRC_SC_X    = 640;
+  const SRC_MISS_X  = 756;
+  const SRC_CONV_X  = L_COL_W - 12;    // 916
+
+  const FOR_COLOR = "#4ade80";
+  const OPP_COLOR = "#f87171";
+  const NEUTRAL   = "#f8fafc";
+  const MUTED     = "#94a3b8";
+
+  // ── Source classifier ─────────────────────────────────────────────────────────
+  function eventSource(e: PdfExportEvent): "PLAY" | "FREE" | "MARK" | "45" | "PENALTY" | "UNKNOWN" {
+    if (e.kind === "FREE_SCORED" || e.kind === "FREE_MISSED") return "FREE";
+    if (e.kind === "FORTY_FIVE_TWO_POINT")                    return "45";
+    if (e.kind === "SHOT")                                    return "UNKNOWN";
+    if (e.tags?.includes("SOURCE_FREE"))                      return "FREE";
+    if (e.tags?.includes("SOURCE_PLAY"))                      return "PLAY";
+    if (e.tags?.includes("SOURCE_MARK"))                      return "MARK";
+    if (e.tags?.includes("SOURCE_45"))                        return "45";
+    if (e.tags?.includes("SOURCE_PENALTY"))                   return "PENALTY";
+    return "UNKNOWN";
+  }
+
+  // ── Data derivation ───────────────────────────────────────────────────────────
+  type SrcKey = "PLAY" | "FREE" | "MARK" | "45" | "PENALTY" | "UNKNOWN";
+  type SrcRow = { label: string; att: number; sc: number; miss: number; conv: string };
+  type ShootingStats = {
+    totalAtt:     number;
+    totalSc:      number;
+    convPct:      number;
+    wides:        number;
+    blocked:      number;
+    srcRows:      SrcRow[];
+    twoPointerSc:   number;
+    fortyFiveTwoSc: number;
+    freeScored:   number;
+    freeMissed:   number;
+    freeConvPct:  number;
+  };
+
+  const SRC_KEYS: readonly SrcKey[] = ["PLAY", "FREE", "MARK", "45", "PENALTY", "UNKNOWN"];
+  const SRC_LABELS: Record<SrcKey, string> = {
+    PLAY:    "From Play",
+    FREE:    "Free",
+    MARK:    "Mark",
+    "45":    "45",
+    PENALTY: "Penalty",
+    UNKNOWN: "Unclassified",
+  };
+
+  function buildStats(evts: readonly PdfExportEvent[]): ShootingStats {
+    const attempts  = evts.filter((e) => PDF_KIND_SETS.SHOTS.has(e.kind));
+    const scores    = evts.filter((e) => PDF_KIND_SETS.SCORES.has(e.kind));
+    const totalAtt  = attempts.length;
+    const totalSc   = scores.length;
+    const convPct   = totalAtt > 0 ? Math.round((totalSc  / totalAtt) * 100) : 0;
+    const wides     = evts.filter((e) => e.kind === "WIDE").length;
+    const blocked   = evts.filter((e) => e.kind === "SHOT").length;
+
+    const srcRows: SrcRow[] = SRC_KEYS.map((src) => {
+      const srcAtt  = attempts.filter((e) => eventSource(e) === src).length;
+      const srcSc   = scores.filter((e)   => eventSource(e) === src).length;
+      const srcMiss = srcAtt - srcSc;
+      const srcConv = srcAtt > 0 ? `${Math.round((srcSc / srcAtt) * 100)}%` : "—";
+      return { label: SRC_LABELS[src], att: srcAtt, sc: srcSc, miss: srcMiss, conv: srcConv };
+    });
+
+    const twoPointerSc   = evts.filter((e) => e.kind === "TWO_POINTER").length;
+    const fortyFiveTwoSc = evts.filter((e) => e.kind === "FORTY_FIVE_TWO_POINT").length;
+    const freeScored     = evts.filter((e) => e.kind === "FREE_SCORED").length;
+    const freeMissed     = evts.filter((e) => e.kind === "FREE_MISSED").length;
+    const freeTotal      = freeScored + freeMissed;
+    const freeConvPct    = freeTotal  > 0 ? Math.round((freeScored / freeTotal) * 100) : 0;
+
+    return {
+      totalAtt, totalSc, convPct, wides, blocked, srcRows,
+      twoPointerSc, fortyFiveTwoSc, freeScored, freeMissed, freeConvPct,
+    };
+  }
+
+  const forEvts  = validEvts.filter((e) => e.teamSide === "FOR");
+  const oppEvts  = validEvts.filter((e) => e.teamSide === "OPP");
+  const forStats = buildStats(forEvts);
+  const oppStats = buildStats(oppEvts);
+
+  // ── Rendering helpers ─────────────────────────────────────────────────────────
+
+  function drawColHeader(colX: number, label: string, accentColor: string): void {
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(colX, CONTENT_TOP, L_COL_W, COL_HDR_H);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(colX, CONTENT_TOP, 3, COL_HDR_H);
+    ctx.fillStyle    = accentColor;
+    ctx.font         = "bold 12px sans-serif";
+    ctx.textAlign    = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label.toUpperCase(), colX + 14, CONTENT_TOP + COL_HDR_H / 2);
+  }
+
+  function drawSecHeader(colX: number, cy: number, label: string, accentColor: string): number {
+    ctx.fillStyle = "rgba(255,255,255,0.035)";
+    ctx.fillRect(colX, cy, L_COL_W, SEC_HDR_H);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(colX, cy, 3, SEC_HDR_H);
+    ctx.fillStyle    = accentColor;
+    ctx.font         = "bold 11px sans-serif";
+    ctx.textAlign    = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label.toUpperCase(), colX + 14, cy + SEC_HDR_H / 2);
+    return cy + SEC_HDR_H;
+  }
+
+  function drawRow(
+    colX: number, cy: number,
+    label: string, value: string,
+    valueColor: string, isAlt: boolean,
+  ): number {
+    if (isAlt) {
+      ctx.fillStyle = "rgba(255,255,255,0.022)";
+      ctx.fillRect(colX + 3, cy, L_COL_W - 3, ROW_H);
+    }
+    const mid = cy + ROW_H / 2;
+    ctx.fillStyle    = MUTED;
+    ctx.font         = "12px sans-serif";
+    ctx.textAlign    = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, colX + 14, mid);
+    ctx.fillStyle    = valueColor;
+    ctx.font         = "bold 13px sans-serif";
+    ctx.textAlign    = "right";
+    ctx.fillText(value, colX + L_COL_W - 12, mid);
+    return cy + ROW_H;
+  }
+
+  function drawSrcHeader(colX: number, cy: number): number {
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(colX + 3, cy, L_COL_W - 3, 22);
+    const mid = cy + 11;
+    ctx.fillStyle    = MUTED;
+    ctx.font         = "bold 9px sans-serif";
+    ctx.textBaseline = "middle";
+    const colDefs: Array<[number, string]> = [
+      [SRC_ATT_X,  "ATT"],
+      [SRC_SC_X,   "SC"],
+      [SRC_MISS_X, "MISS"],
+      [SRC_CONV_X, "CONV%"],
+    ];
+    for (const [rx, lbl] of colDefs) {
+      ctx.textAlign = "right";
+      ctx.fillText(lbl, colX + rx, mid);
+    }
+    ctx.textAlign = "left";
+    ctx.fillText("SOURCE", colX + 14, mid);
+    return cy + 22;
+  }
+
+  function drawSrcRow(
+    colX: number, cy: number,
+    row: SrcRow, accentColor: string, isAlt: boolean,
+  ): number {
+    if (isAlt) {
+      ctx.fillStyle = "rgba(255,255,255,0.022)";
+      ctx.fillRect(colX + 3, cy, L_COL_W - 3, ROW_H);
+    }
+    const mid      = cy + ROW_H / 2;
+    const hasData  = row.att > 0;
+    ctx.fillStyle    = hasData ? NEUTRAL : MUTED;
+    ctx.font         = "12px sans-serif";
+    ctx.textAlign    = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(row.label, colX + 14, mid);
+    const vc = hasData ? accentColor : MUTED;
+    const vals: Array<[number, string]> = [
+      [SRC_ATT_X,  row.att > 0 ? String(row.att)  : "—"],
+      [SRC_SC_X,   row.sc  > 0 ? String(row.sc)   : "—"],
+      [SRC_MISS_X, row.att > 0 ? String(row.miss) : "—"],
+      [SRC_CONV_X, row.conv],
+    ];
+    ctx.font      = "bold 12px sans-serif";
+    ctx.textAlign = "right";
+    for (const [rx, val] of vals) {
+      ctx.fillStyle = vc;
+      ctx.fillText(val, colX + rx, mid);
+    }
+    return cy + ROW_H;
+  }
+
+  function drawColumn(colX: number, stats: ShootingStats, accentColor: string): void {
+    let cy = CONTENT_TOP + COL_HDR_H + 8;
+
+    // ── Section 1: Overall Conversion ─────────────────────────────────────────
+    cy = drawSecHeader(colX, cy, "Overall Conversion", accentColor);
+    cy = drawRow(colX, cy, "Attempts",        String(stats.totalAtt),
+      NEUTRAL, false);
+    cy = drawRow(colX, cy, "Scores",          String(stats.totalSc),
+      stats.totalAtt > 0 ? accentColor : MUTED, true);
+    cy = drawRow(colX, cy, "Conversion",      stats.totalAtt > 0 ? `${stats.convPct}%` : "—",
+      stats.totalAtt > 0 ? accentColor : MUTED, false);
+    cy = drawRow(colX, cy, "Wides",           String(stats.wides),
+      NEUTRAL, true);
+    cy = drawRow(colX, cy, "Blocked / Saved", String(stats.blocked),
+      NEUTRAL, false);
+    cy += SEC_GAP;
+
+    // ── Section 2: Source Breakdown ───────────────────────────────────────────
+    cy = drawSecHeader(colX, cy, "Source Breakdown", accentColor);
+    cy = drawSrcHeader(colX, cy);
+    stats.srcRows.forEach((row, i) => {
+      cy = drawSrcRow(colX, cy, row, accentColor, i % 2 === 1);
+    });
+    cy += SEC_GAP;
+
+    // ── Section 3: 2-Point Profile ────────────────────────────────────────────
+    cy = drawSecHeader(colX, cy, "2-Point Profile", accentColor);
+    cy = drawRow(colX, cy, "TWO_POINTER Scores", String(stats.twoPointerSc),
+      stats.twoPointerSc   > 0 ? accentColor : MUTED, false);
+    cy = drawRow(colX, cy, "45+2 Scores",        String(stats.fortyFiveTwoSc),
+      stats.fortyFiveTwoSc > 0 ? accentColor : MUTED, true);
+    const totalTwoSc = stats.twoPointerSc + stats.fortyFiveTwoSc;
+    cy = drawRow(colX, cy, "Total 2PT Scores",   String(totalTwoSc),
+      totalTwoSc > 0 ? accentColor : MUTED, false);
+    cy = drawRow(colX, cy, "Total 2PT Pts Value", String(totalTwoSc * 2),
+      totalTwoSc > 0 ? NEUTRAL    : MUTED, true);
+    cy += SEC_GAP;
+
+    // ── Section 4: Free Conversion ────────────────────────────────────────────
+    cy = drawSecHeader(colX, cy, "Free Conversion", accentColor);
+    const freeTotal = stats.freeScored + stats.freeMissed;
+    cy = drawRow(colX, cy, "Free Scored", String(stats.freeScored),
+      stats.freeScored > 0 ? accentColor : MUTED, false);
+    cy = drawRow(colX, cy, "Free Missed", String(stats.freeMissed),
+      stats.freeMissed > 0 ? NEUTRAL    : MUTED, true);
+    cy = drawRow(colX, cy, "Free Conv %", freeTotal > 0 ? `${stats.freeConvPct}%` : "—",
+      freeTotal        > 0 ? accentColor : MUTED, false);
+  }
+
+  // Centre divider
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.fillRect(R_COL_X - 20, CONTENT_TOP, 1, CONTENT_BOT - CONTENT_TOP);
+
+  // Column headers
+  drawColHeader(L_COL_X, `FOR — ${homeTeam}`, FOR_COLOR);
+  drawColHeader(R_COL_X, `OPP — ${awayTeam}`, OPP_COLOR);
+
+  // Render both sides
+  drawColumn(L_COL_X, forStats, FOR_COLOR);
+  drawColumn(R_COL_X, oppStats, OPP_COLOR);
+
+  return canvas;
+}
+
 // ─── Tactical page spec table (20 pages) ────────────────────────────────────
 
 type PageSpec = {
@@ -5215,17 +5519,18 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *            Each shows the full 5-section breakdown filtered to that segment.
  *   9+.      Player Breakdown — one or more pages, no truncation
  *   (9+N)+.  20 tactical pitch map pages (N = player page count)
- *   Last−8.  Kickout Chain Analysis page
- *   Last−7.  Turnover Punishment Analysis page
- *   Last−6.  Momentum & Scoring Runs page
- *   Last−5.  Tactical Chain Analysis summary page
- *   Last−4.  Tactical Intelligence Summary page
- *   Last−3.  Tactical Review Guide page
- *   Last−2.  Opposition Snapshot page
- *   Last−1.  Zone Analysis page
- *   Last.    Match Swing Timeline page
+ *   Last−9.  Kickout Chain Analysis page
+ *   Last−8.  Turnover Punishment Analysis page
+ *   Last−7.  Momentum & Scoring Runs page
+ *   Last−6.  Tactical Chain Analysis summary page
+ *   Last−5.  Tactical Intelligence Summary page
+ *   Last−4.  Tactical Review Guide page
+ *   Last−3.  Opposition Snapshot page
+ *   Last−2.  Zone Analysis page
+ *   Last−1.  Match Swing Timeline page
+ *   Last.    Shot & Scoring Efficiency page
  *
- * Total pages = 35 + N  (N ≥ 1 → minimum 36 pages).
+ * Total pages = 36 + N  (N ≥ 1 → minimum 37 pages).
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
   const {
@@ -5236,9 +5541,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
   } = input;
 
-  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 6 chain pages + 1 review guide + 1 opposition snapshot + 1 zone analysis + 1 match swing timeline
+  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 6 chain pages + 1 review guide + 1 opposition snapshot + 1 zone analysis + 1 match swing timeline + 1 shot & scoring efficiency
   const playerPageCount = calcPlayerPageCount(events);
-  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 9;
+  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 10;
 
   // Chain analysis — computed once here and shared with all chain page builders.
   // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
@@ -5317,11 +5622,27 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(canvas!, true);
   });
 
-  // Ninth-to-last page: Kickout Chain Analysis
+  // Tenth-to-last page: Kickout Chain Analysis
   // chainAnalysis was computed once above; all chain builders consume slices of it.
   try {
     addCanvasPage(
       makeKickoutChainPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES - 9,   // tenth-to-last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
+
+  // Ninth-to-last page: Turnover Punishment Analysis
+  try {
+    addCanvasPage(
+      makeTurnoverPunishmentPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -5334,10 +5655,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Eighth-to-last page: Turnover Punishment Analysis
+  // Eighth-to-last page: Momentum & Scoring Runs Analysis
   try {
     addCanvasPage(
-      makeTurnoverPunishmentPage(
+      makeMomentumRunsPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -5350,10 +5671,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Seventh-to-last page: Momentum & Scoring Runs Analysis
+  // Seventh-to-last page: Tactical Chain Analysis summary
   try {
     addCanvasPage(
-      makeMomentumRunsPage(
+      makeChainSummaryPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -5366,10 +5687,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Sixth-to-last page: Tactical Chain Analysis summary
+  // Sixth-to-last page: Tactical Intelligence Summary
   try {
     addCanvasPage(
-      makeChainSummaryPage(
+      makeTacticalIntelligencePage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -5382,10 +5703,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Fifth-to-last page: Tactical Intelligence Summary
+  // Fifth-to-last page: Tactical Review Guide
   try {
     addCanvasPage(
-      makeTacticalIntelligencePage(
+      makeTacticalReviewGuidePage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -5398,10 +5719,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Fourth-to-last page: Tactical Review Guide
+  // Fourth-to-last page: Opposition Snapshot
   try {
     addCanvasPage(
-      makeTacticalReviewGuidePage(
+      makeOppositionSnapshotPage(
+        events,
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -5414,12 +5736,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Third-to-last page: Opposition Snapshot
+  // Third-to-last page: Zone Analysis
   try {
     addCanvasPage(
-      makeOppositionSnapshotPage(
+      makeZoneAnalysisPage(
         events,
-        chainAnalysis,
         homeTeamName,
         awayTeamName,
         TOTAL_PAGES - 2,   // third-to-last page
@@ -5431,11 +5752,12 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Second-to-last page: Zone Analysis
+  // Second-to-last page: Match Swing Timeline
   try {
     addCanvasPage(
-      makeZoneAnalysisPage(
+      makeMatchSwingTimelinePage(
         events,
+        chainAnalysis,
         homeTeamName,
         awayTeamName,
         TOTAL_PAGES - 1,   // second-to-last page
@@ -5447,12 +5769,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Last page: Match Swing Timeline
+  // Last page: Shot & Scoring Efficiency
   try {
     addCanvasPage(
-      makeMatchSwingTimelinePage(
+      makeShotEfficiencyPage(
         events,
-        chainAnalysis,
         homeTeamName,
         awayTeamName,
         TOTAL_PAGES,   // this IS the last page
