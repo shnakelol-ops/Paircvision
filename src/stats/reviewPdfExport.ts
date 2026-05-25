@@ -24,6 +24,8 @@ import { selectChainAnalysis } from "./chains/chain-selectors";
 import type { ChainAnalysis } from "./chains/chain-types";
 import { deriveReviewPrompts } from "./chains/review-prompts";
 import type { ReviewPrompt, ReviewPromptCategory } from "./chains/review-prompts";
+import { getZoneCounts, getZoneHotspots } from "./zones/zone-engine";
+import type { ZoneCount } from "./zones/zone-types";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -4408,6 +4410,307 @@ function makeOppositionSnapshotPage(
   return canvas;
 }
 
+// ─── Zone Analysis page ───────────────────────────────────────────────────────
+
+/**
+ * Renders the Zone Analysis page — the final PDF page.
+ *
+ * Data source: raw PdfExportEvent[] filtered by teamSide + kind.
+ * Zone classification: src/stats/zones/ — getZoneCounts / getZoneHotspots.
+ * Zone map: ZONE_MAP_V1_NINE_GRID (3×3 tactical grid, 0–100 coordinate domain).
+ * PdfExportEvent.nx/ny (0–1) is auto-scaled to 0–100 by the zone engine.
+ *
+ * Layout: two-column (L 928 px / R 928 px), dark background, #34d399 green accent.
+ *   Left  — FOR Zone Activity: Scores grid · Turnovers Won grid
+ *   Right — OPP Zone Activity: Scores Against grid · Opposition Gains grid
+ *   Bottom — Zone Notes strip: up to 5 deterministic factual bullets
+ *
+ * All rendering uses ctx.fillRect() — no ctx.roundRect() (Safari < 15.4 safe).
+ * No heatmaps, no gradients, no AI language, no tactical prescriptions.
+ */
+function makeZoneAnalysisPage(
+  events: readonly PdfExportEvent[],
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Zone Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, events.length);
+
+  // ── Layout constants ───────────────────────────────────────────────────────
+  const CONTENT_TOP = 86;
+  const CONTENT_BOT = CANVAS_H - 36;       // 1044
+  const L_COL_X     = 24;
+  const L_COL_W     = 928;
+  const R_COL_X     = 968;
+  const R_COL_W     = 928;
+  const GRID_W      = 456;                  // (L_COL_W − GRID_GAP) / 2 = (928 − 16) / 2 = 456
+  const GRID_GAP    = 16;                   // gap between the two grids in each column
+  const ZONE_ACCENT = "#34d399";            // green — FOR side and notes accent
+  const OPP_RED     = "#f87171";            // red   — OPP side
+
+  // Vertical geometry
+  const COL_HEADER_H = 36;                              // column team-name header height
+  const GRID_TITLE_H = 28;                              // per-grid label above cell rows
+  const CELL_W       = Math.floor(GRID_W / 3);          // 152  (3 × 152 = 456)
+  const CELL_H       = 226;                             // 3 × 226 = 678
+  const CELLS_H      = CELL_H * 3;                      // 678
+  const CELLS_TOP    = CONTENT_TOP + COL_HEADER_H + GRID_TITLE_H;  // 150
+  const GRID_SEC_H   = COL_HEADER_H + GRID_TITLE_H + CELLS_H;     // 742
+  const NOTES_GAP    = 16;
+  const NOTES_Y      = CONTENT_TOP + GRID_SEC_H + NOTES_GAP;       // 844
+  const NOTES_H      = CONTENT_BOT - NOTES_Y;                       // 200
+  const NOTES_X      = 24;
+  const NOTES_W      = CANVAS_W - 48;                               // 1872
+
+  // Grid x-positions (left col: two grids at 24 and 496; right col: two at 968 and 1440)
+  const L_GRID1_X = L_COL_X;                        //   24  FOR Scores
+  const L_GRID2_X = L_COL_X + GRID_W + GRID_GAP;   //  496  FOR Turnovers Won
+  const R_GRID3_X = R_COL_X;                        //  968  OPP Scores
+  const R_GRID4_X = R_COL_X + GRID_W + GRID_GAP;   // 1440  OPP Gains
+
+  // ── Event subsets ──────────────────────────────────────────────────────────
+  const forScoreEvts = events.filter(
+    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  const forTvWonEvts = events.filter(
+    (e) => e.teamSide === "FOR" && e.kind === "TURNOVER_WON",
+  );
+  const oppScoreEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  // OPP Gains: TURNOVER_LOST events (FOR team's side) record where OPP won possession
+  const oppGainEvts = events.filter(
+    (e) => e.teamSide === "FOR" && e.kind === "TURNOVER_LOST",
+  );
+
+  // ── Zone counts (9 entries each, stable order, zero-filled for empty zones) ──
+  const forScoreCounts = getZoneCounts(forScoreEvts);
+  const forTvWonCounts = getZoneCounts(forTvWonEvts);
+  const oppScoreCounts = getZoneCounts(oppScoreEvts);
+  const oppGainCounts  = getZoneCounts(oppGainEvts);
+
+  // ── Hotspots (sorted by count; empty array when no events — always safe to index) ──
+  const forScoreHots = getZoneHotspots(forScoreEvts);
+  const forTvWonHots = getZoneHotspots(forTvWonEvts);
+  const oppScoreHots = getZoneHotspots(oppScoreEvts);
+  const oppGainHots  = getZoneHotspots(oppGainEvts);
+
+  // ── Local helpers ──────────────────────────────────────────────────────────
+
+  /** Column heading: accent left-bar + team label + full-width separator line. */
+  function drawColHeader(
+    x: number, y: number, w: number, label: string, accentColor: string,
+  ): void {
+    ctx.save();
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(x, y, 3, COL_HEADER_H);
+    ctx.font = "bold 14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 12, y + COL_HEADER_H / 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, y + COL_HEADER_H);
+    ctx.lineTo(x + w, y + COL_HEADER_H);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** Small uppercase label rendered above a grid's cell rows. */
+  function drawGridTitle(x: number, label: string, accentColor: string): void {
+    ctx.save();
+    const titleY = CONTENT_TOP + COL_HEADER_H;
+    ctx.fillStyle = accentColor;
+    ctx.font = "bold 11px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label.toUpperCase(), x + 4, titleY + GRID_TITLE_H / 2);
+    ctx.restore();
+  }
+
+  /**
+   * Renders a 3×3 zone grid.
+   * Cell position derived from ZoneCount.bounds (0–100 → col/row 0–2).
+   * Zone-engine xMin values are exact multiples of 100/3, so the mapping is lossless.
+   * Highest-count cell is highlighted; zero-count cells show "—".
+   */
+  function drawZoneGrid(
+    counts: readonly ZoneCount[],
+    gridX: number,
+    accentColor: string,
+  ): void {
+    const isGreen  = accentColor === ZONE_ACCENT;
+    const hlFill   = isGreen ? "rgba(52,211,153,0.13)"  : "rgba(248,113,113,0.13)";
+    const hlStroke = isGreen ? "rgba(52,211,153,0.40)"  : "rgba(248,113,113,0.40)";
+    const maxCount = counts.reduce((m, c) => Math.max(m, c.count), 0);
+
+    for (const zone of counts) {
+      // xMin/yMin are exact multiples of 100/3 → result is exactly 0, 1, or 2
+      const col   = Math.round((zone.bounds.xMin / 100) * 3);
+      const row   = Math.round((zone.bounds.yMin / 100) * 3);
+      const cellX = gridX + col * CELL_W;
+      const cellY = CELLS_TOP + row * CELL_H;
+      const CW    = CELL_W - 1;  // 1 px inter-cell gap
+      const CH    = CELL_H - 1;
+      const isHot = zone.count > 0 && zone.count === maxCount;
+
+      // Background
+      ctx.fillStyle = isHot ? hlFill : "rgba(255,255,255,0.025)";
+      ctx.fillRect(cellX, cellY, CW, CH);
+
+      // Border
+      ctx.strokeStyle = isHot ? hlStroke : "rgba(255,255,255,0.07)";
+      ctx.lineWidth   = isHot ? 1.5 : 1;
+      ctx.strokeRect(cellX, cellY, CW, CH);
+
+      // Count (bold large) or dash
+      const midX = cellX + CELL_W / 2;
+      const midY = cellY + CELL_H / 2;
+      ctx.textAlign    = "center";
+      ctx.textBaseline = "middle";
+
+      if (zone.count > 0) {
+        ctx.fillStyle = isHot ? accentColor : "#f8fafc";
+        ctx.font = "bold 24px sans-serif";
+        ctx.fillText(String(zone.count), midX, midY - 10);
+      } else {
+        ctx.fillStyle = "#334155";
+        ctx.font = "18px sans-serif";
+        ctx.fillText("—", midX, midY - 10);
+      }
+
+      // Zone label (small, below count)
+      ctx.fillStyle = "#475569";
+      ctx.font = "9px sans-serif";
+      ctx.fillText(zone.label, midX, midY + 10);
+    }
+  }
+
+  // ── Empty state ────────────────────────────────────────────────────────────
+  if (events.length === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "16px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
+    return canvas;
+  }
+
+  // ── Column headers ─────────────────────────────────────────────────────────
+  drawColHeader(
+    L_COL_X, CONTENT_TOP, L_COL_W,
+    `${homeTeam.slice(0, 22)} — Zone Activity`, ZONE_ACCENT,
+  );
+  drawColHeader(
+    R_COL_X, CONTENT_TOP, R_COL_W,
+    `${awayTeam.slice(0, 22)} — Zone Activity`, OPP_RED,
+  );
+
+  // ── Grid titles ────────────────────────────────────────────────────────────
+  drawGridTitle(L_GRID1_X, "Scores (For)",       ZONE_ACCENT);
+  drawGridTitle(L_GRID2_X, "Turnovers Won",       ZONE_ACCENT);
+  drawGridTitle(R_GRID3_X, "Scores Against",      OPP_RED);
+  drawGridTitle(R_GRID4_X, "Opposition Gains",    OPP_RED);
+
+  // ── Zone grids ─────────────────────────────────────────────────────────────
+  drawZoneGrid(forScoreCounts, L_GRID1_X, ZONE_ACCENT);
+  drawZoneGrid(forTvWonCounts, L_GRID2_X, ZONE_ACCENT);
+  drawZoneGrid(oppScoreCounts, R_GRID3_X, OPP_RED);
+  drawZoneGrid(oppGainCounts,  R_GRID4_X, OPP_RED);
+
+  // ── Zone Notes strip ───────────────────────────────────────────────────────
+  // Background + green accent left-bar
+  ctx.fillStyle = "rgba(255,255,255,0.015)";
+  ctx.fillRect(NOTES_X, NOTES_Y, NOTES_W, NOTES_H);
+  ctx.fillStyle = ZONE_ACCENT;
+  ctx.fillRect(NOTES_X, NOTES_Y, 3, NOTES_H);
+
+  // Notes heading + separator
+  ctx.fillStyle = ZONE_ACCENT;
+  ctx.font = "bold 11px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText("ZONE NOTES", NOTES_X + 14, NOTES_Y + 16);
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(NOTES_X + 4, NOTES_Y + 28);
+  ctx.lineTo(NOTES_X + NOTES_W, NOTES_Y + 28);
+  ctx.stroke();
+
+  // Build bullets (deterministic, max 5, guarded against empty hotspot arrays)
+  const bullets: string[] = [];
+  if (forScoreHots.length > 0) {
+    const t = forScoreHots[0];
+    bullets.push(`Most scores for: ${t.label} (${t.count})`);
+  }
+  if (forTvWonHots.length > 0) {
+    const t = forTvWonHots[0];
+    bullets.push(`Most turnovers won: ${t.label} (${t.count})`);
+  }
+  if (oppScoreHots.length > 0) {
+    const t = oppScoreHots[0];
+    bullets.push(`Worth reviewing — opposition scoring in: ${t.label} (${t.count})`);
+  }
+  if (oppGainHots.length > 0) {
+    const t = oppGainHots[0];
+    bullets.push(`Highest concentration of opposition gains: ${t.label} (${t.count})`);
+  }
+  // Shared-zone note: same zone tops both FOR scores and OPP scores
+  if (
+    bullets.length < 5 &&
+    forScoreHots.length > 0 &&
+    oppScoreHots.length > 0 &&
+    forScoreHots[0].zoneId === oppScoreHots[0].zoneId
+  ) {
+    bullets.push(`${forScoreHots[0].label} zone: highest-activity scoring zone for both teams`);
+  }
+  if (bullets.length === 0) {
+    bullets.push("No zone data recorded for this match");
+  }
+  const displayBullets = bullets.slice(0, 5);
+
+  // Render bullets — alternating faint row tint, red dash prefix, text with overflow ellipsis
+  const BULLET_LINE_H = 32;
+  const bulletStartY  = NOTES_Y + 36;
+  displayBullets.forEach((bullet, idx) => {
+    const bulletY = bulletStartY + idx * BULLET_LINE_H;
+    if (idx % 2 === 1) {
+      ctx.fillStyle = "rgba(255,255,255,0.018)";
+      ctx.fillRect(NOTES_X + 4, bulletY - BULLET_LINE_H / 2, NOTES_W - 4, BULLET_LINE_H);
+    }
+    ctx.fillStyle    = ZONE_ACCENT;
+    ctx.font         = "bold 12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "left";
+    ctx.fillText("—", NOTES_X + 14, bulletY);
+    ctx.fillStyle = "#cbd5e1";
+    ctx.font = "12px sans-serif";
+    const maxW = NOTES_W - 50;
+    let display = bullet;
+    if (ctx.measureText(display).width > maxW) {
+      while (display.length > 0 && ctx.measureText(display + "…").width > maxW) {
+        display = display.slice(0, -1);
+      }
+      display += "…";
+    }
+    ctx.fillText(display, NOTES_X + 32, bulletY);
+  });
+
+  return canvas;
+}
+
 // ─── Tactical page spec table (20 pages) ────────────────────────────────────
 
 type PageSpec = {
@@ -4470,15 +4773,16 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *            Each shows the full 5-section breakdown filtered to that segment.
  *   9+.      Player Breakdown — one or more pages, no truncation
  *   (9+N)+.  20 tactical pitch map pages (N = player page count)
- *   Last−6.  Kickout Chain Analysis page
- *   Last−5.  Turnover Punishment Analysis page
- *   Last−4.  Momentum & Scoring Runs page
- *   Last−3.  Tactical Chain Analysis summary page
- *   Last−2.  Tactical Intelligence Summary page
- *   Last−1.  Tactical Review Guide page
- *   Last.    Opposition Snapshot page
+ *   Last−7.  Kickout Chain Analysis page
+ *   Last−6.  Turnover Punishment Analysis page
+ *   Last−5.  Momentum & Scoring Runs page
+ *   Last−4.  Tactical Chain Analysis summary page
+ *   Last−3.  Tactical Intelligence Summary page
+ *   Last−2.  Tactical Review Guide page
+ *   Last−1.  Opposition Snapshot page
+ *   Last.    Zone Analysis page
  *
- * Total pages = 33 + N  (N ≥ 1 → minimum 34 pages).
+ * Total pages = 34 + N  (N ≥ 1 → minimum 35 pages).
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
   const {
@@ -4489,9 +4793,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
   } = input;
 
-  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 6 chain pages + 1 review guide + 1 opposition snapshot
+  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 6 chain pages + 1 review guide + 1 opposition snapshot + 1 zone analysis
   const playerPageCount = calcPlayerPageCount(events);
-  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 7;
+  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 8;
 
   // Chain analysis — computed once here and shared with all chain page builders.
   // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
@@ -4570,11 +4874,27 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(canvas!, true);
   });
 
-  // Seventh-to-last page: Kickout Chain Analysis
+  // Eighth-to-last page: Kickout Chain Analysis
   // chainAnalysis was computed once above; all chain builders consume slices of it.
   try {
     addCanvasPage(
       makeKickoutChainPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES - 7,   // eighth-to-last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
+
+  // Seventh-to-last page: Turnover Punishment Analysis
+  try {
+    addCanvasPage(
+      makeTurnoverPunishmentPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4587,10 +4907,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Sixth-to-last page: Turnover Punishment Analysis
+  // Sixth-to-last page: Momentum & Scoring Runs Analysis
   try {
     addCanvasPage(
-      makeTurnoverPunishmentPage(
+      makeMomentumRunsPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4603,10 +4923,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Fifth-to-last page: Momentum & Scoring Runs Analysis
+  // Fifth-to-last page: Tactical Chain Analysis summary
   try {
     addCanvasPage(
-      makeMomentumRunsPage(
+      makeChainSummaryPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4619,10 +4939,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Fourth-to-last page: Tactical Chain Analysis summary
+  // Fourth-to-last page: Tactical Intelligence Summary
   try {
     addCanvasPage(
-      makeChainSummaryPage(
+      makeTacticalIntelligencePage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4635,10 +4955,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Third-to-last page: Tactical Intelligence Summary
+  // Third-to-last page: Tactical Review Guide
   try {
     addCanvasPage(
-      makeTacticalIntelligencePage(
+      makeTacticalReviewGuidePage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4651,10 +4971,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Second-to-last page: Tactical Review Guide
+  // Second-to-last page: Opposition Snapshot
   try {
     addCanvasPage(
-      makeTacticalReviewGuidePage(
+      makeOppositionSnapshotPage(
+        events,
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4667,12 +4988,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Last page: Opposition Snapshot
+  // Last page: Zone Analysis
   try {
     addCanvasPage(
-      makeOppositionSnapshotPage(
+      makeZoneAnalysisPage(
         events,
-        chainAnalysis,
         homeTeamName,
         awayTeamName,
         TOTAL_PAGES,   // this IS the last page
