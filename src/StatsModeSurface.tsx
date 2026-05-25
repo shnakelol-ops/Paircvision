@@ -5062,6 +5062,25 @@ export default function StatsModeSurface() {
     setPlayerDraft("");
   };
 
+  const resetSquadsToDefault = () => {
+    const nextHomeSquadId = `squad-${newLocalEventId()}`;
+    const nextAwaySquadId = `squad-${newLocalEventId()}`;
+    setSquads([
+      { ...createDefaultSquad("HOME"), id: nextHomeSquadId, name: "HOME", team: "HOME" },
+      { ...createDefaultSquad("AWAY"), id: nextAwaySquadId, name: "AWAY", team: "AWAY" },
+    ]);
+    setActiveSquadIdsByTeam({
+      HOME: nextHomeSquadId,
+      AWAY: nextAwaySquadId,
+    });
+    selectActivePlayerById(null);
+    setSelectedSubOutId(null);
+    setSelectedSubInId(null);
+    setPlayerDraft("");
+    setSquadDraft("");
+    setSaveFeedback("Squads reset to default");
+  };
+
   const resetMatchNow = () => {
     clearActiveMatchDraft();
     savedSessionSignatureRef.current = null;
@@ -6390,6 +6409,9 @@ export default function StatsModeSurface() {
                 </button>
                 <button type="button" className="utility-review-btn" onClick={saveSquadSnapshot}>
                   Save Squad
+                </button>
+                <button type="button" className="utility-review-btn" onClick={resetSquadsToDefault}>
+                  Reset Squads
                 </button>
                 <button
                   type="button"
