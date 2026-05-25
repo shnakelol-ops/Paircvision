@@ -2463,6 +2463,402 @@ function makeKickoutChainPage(
   return canvas;
 }
 
+// ─── Turnover Punishment Analysis page ───────────────────────────────────────
+
+/**
+ * Builds the Turnover Punishment Analysis canvas (second-to-last chain page).
+ *
+ * Three columns:
+ *   COL 1 — homeTeam attacking from turnovers (won TOs → consequences)
+ *   COL 2 — awayTeam attacking from turnovers (won TOs → consequences)
+ *   COL 3 — Comparative efficiency, chain rule matches, damage conceded
+ *
+ * Layout mirrors makeKickoutChainPage (3 × 606 px columns, 24 px gaps).
+ * All ctx.fillRect() — ctx.roundRect() is intentionally absent (Safari < 15.4).
+ *
+ * Important: wonToShot in the dataset INCLUDES scores. "Shot but no score"
+ * must be computed as wonToShot - wonToScore, never as raw wonToShot.
+ */
+function makeTurnoverPunishmentPage(
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Turnover Punishment Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+
+  const CONTENT_TOP = 86;
+  const CONTENT_BOT = CANVAS_H - 36;
+  const CONTENT_H   = CONTENT_BOT - CONTENT_TOP;
+  const COL_W       = 606;
+  const COL_GAP     = 24;
+  const COL1_X      = 24;
+  const COL2_X      = COL1_X + COL_W + COL_GAP;
+  const COL3_X      = COL2_X + COL_W + COL_GAP;
+
+  const to       = analysis.turnovers;
+  const outcomes = to.outcomes;
+
+  // ── Local helpers (same style as makeKickoutChainPage) ───────────────────────
+
+  function drawPanelBg(x: number, y: number, w: number, h: number, accentColor: string): void {
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.022)";
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(x, y, 3, h);
+    ctx.restore();
+  }
+
+  function drawPanelTitle(x: number, y: number, label: string, accentColor: string): number {
+    ctx.save();
+    ctx.fillStyle = accentColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label.toUpperCase(), x + 16, y + 13);
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 4, y + 26);
+    ctx.lineTo(x + COL_W, y + 26);
+    ctx.stroke();
+    ctx.restore();
+    return y + 28;
+  }
+
+  function drawStatRow(
+    x: number, cy: number, w: number,
+    label: string, value: string, valueColor: string,
+    isAlt: boolean,
+  ): number {
+    const ROW_H = 26;
+    if (isAlt) {
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
+    }
+    const mid = cy + ROW_H / 2;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 14, mid);
+    ctx.fillStyle = valueColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(value, x + w - 10, mid);
+    return cy + ROW_H;
+  }
+
+  function drawSubHeader(x: number, cy: number, w: number, label: string, accentColor: string): number {
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(x + 4, cy, w - 4, 20);
+    ctx.fillStyle = accentColor;
+    ctx.font = "bold 10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 14, cy + 10);
+    ctx.restore();
+    return cy + 20;
+  }
+
+  /** Two-segment bar: left = FOR side (accentFor), right = OPP side (accentOpp) */
+  function drawComparisonBar(
+    x: number, cy: number, w: number,
+    forVal: number, oppVal: number,
+    forLabel: string, oppLabel: string,
+    accentFor: string, accentOpp: string,
+  ): number {
+    const barH  = 14;
+    const barX  = x + 12;
+    const barW  = w - 24;
+    const total = forVal + oppVal;
+    const forFrac = total > 0 ? forVal / total : 0.5;
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    ctx.fillRect(barX, cy, barW, barH);
+    if (total > 0) {
+      ctx.fillStyle = accentFor;
+      ctx.fillRect(barX, cy, Math.max(4, Math.floor(barW * forFrac)), barH);
+      if (forFrac < 1) {
+        const oppW = Math.max(4, barW - Math.floor(barW * forFrac));
+        ctx.fillStyle = accentOpp;
+        ctx.fillRect(barX + barW - oppW, cy, oppW, barH);
+      }
+      const labelY = cy + barH + 12;
+      ctx.font = "11px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = accentFor;
+      ctx.textAlign = "left";
+      ctx.fillText(`${forLabel} ${Math.round(forFrac * 100)}%`, barX, labelY);
+      ctx.fillStyle = accentOpp;
+      ctx.textAlign = "right";
+      ctx.fillText(`${Math.round((1 - forFrac) * 100)}% ${oppLabel}`, barX + barW, labelY);
+    } else {
+      const labelY = cy + barH + 12;
+      ctx.font = "11px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#475569";
+      ctx.textAlign = "center";
+      ctx.fillText("No turnover data", barX + barW / 2, labelY);
+    }
+    ctx.restore();
+    return cy + barH + 26;
+  }
+
+  // ── Derive acting side — who gained possession from this turnover event ───────
+  // Engine logic: TURNOVER_WON → recording side gained ball;
+  //               TURNOVER_LOST → opposite side gained ball.
+  // Not stored in TurnoverOutcome; derived here.
+  function actingSide(o: typeof outcomes[number]): "FOR" | "OPP" {
+    if (o.direction === "WON") return o.turnoverEvent.teamSide;
+    return o.turnoverEvent.teamSide === "FOR" ? "OPP" : "FOR";
+  }
+
+  // ── Per-team attacking outcome slices ─────────────────────────────────────────
+  // "FOR attacking" = FOR gained possession (TURNOVER_WON by FOR, or TURNOVER_LOST by OPP)
+  // "OPP attacking" = OPP gained possession (TURNOVER_WON by OPP, or TURNOVER_LOST by FOR)
+  const forAttacking = outcomes.filter((o) => actingSide(o) === "FOR");
+  const oppAttacking = outcomes.filter((o) => actingSide(o) === "OPP");
+
+  // FOR attacking consequences
+  const forWonTotal       = forAttacking.length;
+  const forWonToScore     = forAttacking.filter((o) => o.resultedInScore).length;
+  // wonToShot includes scores — "shot but no score" = wonToShot minus wonToScore
+  const forWonToShotAny   = forAttacking.filter((o) => o.resultedInShot).length;
+  const forWonToShotOnly  = forWonToShotAny - forWonToScore;
+  const forWonNoShot      = forWonTotal - forWonToShotAny;
+  // Transition breakdown: next event immediately turned over again
+  const forBrokenAttacks  = forAttacking.filter((o) =>
+    o.nextEvent !== null &&
+    (o.nextEvent.kind === "TURNOVER_WON" || o.nextEvent.kind === "TURNOVER_LOST")
+  ).length;
+  // Average time to outcome (when available)
+  const forWithTime = forAttacking.filter((o) => o.secondsToOutcome !== null);
+  const forAvgSecs  = forWithTime.length > 0
+    ? Math.round(forWithTime.reduce((s, o) => s + (o.secondsToOutcome ?? 0), 0) / forWithTime.length)
+    : null;
+
+  // OPP attacking consequences (mirrors above)
+  const oppWonTotal       = oppAttacking.length;
+  const oppWonToScore     = oppAttacking.filter((o) => o.resultedInScore).length;
+  const oppWonToShotAny   = oppAttacking.filter((o) => o.resultedInShot).length;
+  const oppWonToShotOnly  = oppWonToShotAny - oppWonToScore;
+  const oppWonNoShot      = oppWonTotal - oppWonToShotAny;
+  const oppBrokenAttacks  = oppAttacking.filter((o) =>
+    o.nextEvent !== null &&
+    (o.nextEvent.kind === "TURNOVER_WON" || o.nextEvent.kind === "TURNOVER_LOST")
+  ).length;
+  const oppWithTime = oppAttacking.filter((o) => o.secondsToOutcome !== null);
+  const oppAvgSecs  = oppWithTime.length > 0
+    ? Math.round(oppWithTime.reduce((s, o) => s + (o.secondsToOutcome ?? 0), 0) / oppWithTime.length)
+    : null;
+
+  // ── Per-half slices (from FOR attacking perspective) ─────────────────────────
+  const forH1 = forAttacking.filter((o) => o.turnoverEvent.period === "1H");
+  const forH2 = forAttacking.filter((o) => o.turnoverEvent.period === "2H");
+  const oppH1 = oppAttacking.filter((o) => o.turnoverEvent.period === "1H");
+  const oppH2 = oppAttacking.filter((o) => o.turnoverEvent.period === "2H");
+
+  // ── Tag breakdown on turnover-won events (FOR) ────────────────────────────────
+  // Tags come from the turnoverEvent itself; count across all FOR-attacking outcomes
+  function countTag(slice: typeof outcomes, ...tags: string[]): number {
+    return slice.filter((o) => tags.some((t) => o.turnoverEvent.tags?.includes(t))).length;
+  }
+  const forTagTacklePress = countTag(forAttacking, "TACKLE", "PRESS");
+  const forTagSwarmInt    = countTag(forAttacking, "SWARM", "INTERCEPT");
+  const forTagUnforced    = countTag(forAttacking, "UNFORCED");
+  const forTagSlack       = countTag(forAttacking, "SLACK_KICK_PASS", "SLACK_HAND_PASS");
+
+  // ── Tag breakdown for OPP ─────────────────────────────────────────────────────
+  const oppTagTacklePress = countTag(oppAttacking, "TACKLE", "PRESS");
+  const oppTagSwarmInt    = countTag(oppAttacking, "SWARM", "INTERCEPT");
+  const oppTagUnforced    = countTag(oppAttacking, "UNFORCED");
+  const oppTagSlack       = countTag(oppAttacking, "SLACK_KICK_PASS", "SLACK_HAND_PASS");
+
+  // ── Chain rule matches ─────────────────────────────────────────────────────────
+  const toToScoreChains = analysis.byRule["TURNOVER_TO_SCORE"] ?? [];
+  const toToShotChains  = analysis.byRule["TURNOVER_TO_SHOT"]  ?? [];
+  const toToScoreFor    = toToScoreChains.filter((c) => c.teamSide === "FOR").length;
+  const toToScoreOpp    = toToScoreChains.filter((c) => c.teamSide === "OPP").length;
+  const toToShotFor     = toToShotChains.filter((c) => c.teamSide === "FOR").length;
+  const toToShotOpp     = toToShotChains.filter((c) => c.teamSide === "OPP").length;
+
+  // ── Formatting helpers ────────────────────────────────────────────────────────
+  function pctStr(num: number, den: number): string {
+    return den > 0 ? `${Math.round((num / den) * 100)}%` : "—";
+  }
+  function withPct(num: number, den: number): string {
+    return den > 0 ? `${num} (${pctStr(num, den)})` : String(num);
+  }
+
+  // ── COL 1: homeTeam — Attacking from Turnovers ───────────────────────────────
+  {
+    drawPanelBg(COL1_X, CONTENT_TOP, COL_W, CONTENT_H, "#a78bfa");
+    let cy = drawPanelTitle(COL1_X, CONTENT_TOP, `${homeTeam.slice(0, 18)} — Turnover Attack`, "#a78bfa");
+
+    if (forWonTotal === 0) {
+      ctx.save();
+      ctx.fillStyle = "#475569";
+      ctx.font = "16px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText("No FOR attacking turnovers recorded", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
+      ctx.restore();
+    } else {
+      // Consequence summary
+      cy = drawStatRow(COL1_X, cy, COL_W, "Turnovers won / gained",  String(forWonTotal),                    "#e2e8f0", false);
+      cy = drawStatRow(COL1_X, cy, COL_W, "→ Converted to score",    withPct(forWonToScore,   forWonTotal),  "#4ade80", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, "→ Shot / wide, no score", withPct(forWonToShotOnly, forWonTotal), "#fbbf24", false);
+      cy = drawStatRow(COL1_X, cy, COL_W, "→ No shot attempt",       withPct(forWonNoShot,    forWonTotal),  "#f97316", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, "→ Attack immediately lost", withPct(forBrokenAttacks, forWonTotal), "#94a3b8", false);
+      const avgStr = forAvgSecs !== null ? `${forAvgSecs}s` : "—";
+      cy = drawStatRow(COL1_X, cy, COL_W, "Avg time to outcome",     avgStr,                                "#e2e8f0", true);
+      cy += 8;
+
+      // Half split
+      cy = drawSubHeader(COL1_X, cy, COL_W, "BY HALF", "#a78bfa");
+      cy = drawStatRow(COL1_X, cy, COL_W, "1H — Turnovers won",   String(forH1.length),                                         "#e2e8f0", false);
+      cy = drawStatRow(COL1_X, cy, COL_W, "1H — Scored",          withPct(forH1.filter((o) => o.resultedInScore).length, forH1.length), "#4ade80", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, "2H — Turnovers won",   String(forH2.length),                                         "#e2e8f0", false);
+      cy = drawStatRow(COL1_X, cy, COL_W, "2H — Scored",          withPct(forH2.filter((o) => o.resultedInScore).length, forH2.length), "#4ade80", true);
+      cy += 8;
+
+      // How turnovers were won (pressure tags)
+      cy = drawSubHeader(COL1_X, cy, COL_W, "HOW TURNOVERS WERE WON / GAINED", "#a78bfa");
+      cy = drawStatRow(COL1_X, cy, COL_W, "Tackle / Press",     String(forTagTacklePress), "#22d3ee", false);
+      cy = drawStatRow(COL1_X, cy, COL_W, "Swarm / Intercept",  String(forTagSwarmInt),    "#22d3ee", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, "Opp unforced error", String(forTagUnforced),    "#fbbf24", false);
+      drawStatRow(COL1_X, cy, COL_W,      "Opp slack pass",     String(forTagSlack),       "#fbbf24", true);
+    }
+  }
+
+  // ── COL 2: awayTeam — Attacking from Turnovers ───────────────────────────────
+  {
+    drawPanelBg(COL2_X, CONTENT_TOP, COL_W, CONTENT_H, "#fb7185");
+    let cy = drawPanelTitle(COL2_X, CONTENT_TOP, `${awayTeam.slice(0, 18)} — Turnover Attack`, "#fb7185");
+
+    if (oppWonTotal === 0) {
+      ctx.save();
+      ctx.fillStyle = "#475569";
+      ctx.font = "16px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText("No OPP attacking turnovers recorded", COL2_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
+      ctx.restore();
+    } else {
+      cy = drawStatRow(COL2_X, cy, COL_W, "Turnovers won / gained",  String(oppWonTotal),                    "#e2e8f0", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, "→ Converted to score",    withPct(oppWonToScore,   oppWonTotal),  "#4ade80", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, "→ Shot / wide, no score", withPct(oppWonToShotOnly, oppWonTotal), "#fbbf24", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, "→ No shot attempt",       withPct(oppWonNoShot,    oppWonTotal),  "#f97316", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, "→ Attack immediately lost", withPct(oppBrokenAttacks, oppWonTotal), "#94a3b8", false);
+      const avgStr = oppAvgSecs !== null ? `${oppAvgSecs}s` : "—";
+      cy = drawStatRow(COL2_X, cy, COL_W, "Avg time to outcome",     avgStr,                                "#e2e8f0", true);
+      cy += 8;
+
+      cy = drawSubHeader(COL2_X, cy, COL_W, "BY HALF", "#fb7185");
+      cy = drawStatRow(COL2_X, cy, COL_W, "1H — Turnovers won",   String(oppH1.length),                                         "#e2e8f0", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, "1H — Scored",          withPct(oppH1.filter((o) => o.resultedInScore).length, oppH1.length), "#4ade80", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, "2H — Turnovers won",   String(oppH2.length),                                         "#e2e8f0", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, "2H — Scored",          withPct(oppH2.filter((o) => o.resultedInScore).length, oppH2.length), "#4ade80", true);
+      cy += 8;
+
+      cy = drawSubHeader(COL2_X, cy, COL_W, "HOW TURNOVERS WERE WON / GAINED", "#fb7185");
+      cy = drawStatRow(COL2_X, cy, COL_W, "Tackle / Press",     String(oppTagTacklePress), "#22d3ee", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, "Swarm / Intercept",  String(oppTagSwarmInt),    "#22d3ee", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, "Opp unforced error", String(oppTagUnforced),    "#fbbf24", false);
+      drawStatRow(COL2_X, cy, COL_W,      "Opp slack pass",     String(oppTagSlack),       "#fbbf24", true);
+    }
+  }
+
+  // ── COL 3: Comparative + Chain Outcomes + Damage Conceded ────────────────────
+  {
+    drawPanelBg(COL3_X, CONTENT_TOP, COL_W, CONTENT_H, "#fbbf24");
+    let cy = drawPanelTitle(COL3_X, CONTENT_TOP, "Turnover Punishment Summary", "#fbbf24");
+
+    // Transition efficiency comparison bar
+    cy = drawSubHeader(COL3_X, cy, COL_W, "TRANSITION EFFICIENCY (WON → SCORE %)", "#fbbf24");
+    cy = drawComparisonBar(
+      COL3_X, cy, COL_W,
+      forWonToScore, oppWonToScore,
+      homeTeam.slice(0, 10), awayTeam.slice(0, 10),
+      "#a78bfa", "#fb7185",
+    );
+    cy += 4;
+    cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} — Won → Score %`, pctStr(forWonToScore, forWonTotal),  "#a78bfa", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 16)} — Won → Score %`, pctStr(oppWonToScore, oppWonTotal),  "#fb7185", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} — Won → Shot %`,  pctStr(forWonToShotAny, forWonTotal), "#a78bfa", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 16)} — Won → Shot %`,  pctStr(oppWonToShotAny, oppWonTotal), "#fb7185", true);
+    cy += 10;
+
+    // Chain rule matches
+    cy = drawSubHeader(COL3_X, cy, COL_W, "CHAIN RULE MATCHES", "#fbbf24");
+    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score  (${homeTeam.slice(0, 10)})`,  String(toToScoreFor),  "#a78bfa", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score  (${awayTeam.slice(0, 10)})`,  String(toToScoreOpp),  "#fb7185", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Shot   (${homeTeam.slice(0, 10)})`,  String(toToShotFor),   "#a78bfa", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Shot   (${awayTeam.slice(0, 10)})`,  String(toToShotOpp),   "#fb7185", true);
+    cy += 10;
+
+    // Damage conceded
+    cy = drawSubHeader(COL3_X, cy, COL_W, "DAMAGE CONCEDED FROM TURNOVERS LOST", "#f97316");
+    // FOR lost TOs → OPP scored / shot (= oppAttacking outcomes where source was a FOR-lost TO)
+    const forLostToOppScore = oppAttacking.filter((o) => o.turnoverEvent.teamSide === "FOR" && o.resultedInScore).length;
+    const forLostToOppShot  = oppAttacking.filter((o) => o.turnoverEvent.teamSide === "FOR" && o.resultedInShot).length;
+    const forLostTotal      = outcomes.filter((o) => o.turnoverEvent.kind === "TURNOVER_LOST" && o.turnoverEvent.teamSide === "FOR").length;
+    // OPP lost TOs → FOR scored / shot
+    const oppLostToForScore = forAttacking.filter((o) => o.turnoverEvent.teamSide === "OPP" && o.resultedInScore).length;
+    const oppLostToForShot  = forAttacking.filter((o) => o.turnoverEvent.teamSide === "OPP" && o.resultedInShot).length;
+    const oppLostTotal      = outcomes.filter((o) => o.turnoverEvent.kind === "TURNOVER_LOST" && o.turnoverEvent.teamSide === "OPP").length;
+
+    cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 14)} lost → OPP scored`, withPct(forLostToOppScore, forLostTotal), "#f97316", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 14)} lost → OPP shot`,   withPct(forLostToOppShot,  forLostTotal), "#fbbf24", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 14)} lost → FOR scored`, withPct(oppLostToForScore, oppLostTotal), "#f97316", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 14)} lost → FOR shot`,   withPct(oppLostToForShot,  oppLostTotal), "#fbbf24", true);
+    cy += 10;
+
+    // Net turnover pressure
+    cy = drawSubHeader(COL3_X, cy, COL_W, "NET TURNOVER PRESSURE", "#4ade80");
+    const netScore = forWonToScore - oppWonToScore;
+    const netStr   = netScore > 0 ? `+${netScore} ${homeTeam.slice(0, 10)}` :
+                     netScore < 0 ? `${netScore} ${awayTeam.slice(0, 10)}` : "Level";
+    const netColor = netScore > 0 ? "#4ade80" : netScore < 0 ? "#fb7185" : "#94a3b8";
+    cy = drawStatRow(COL3_X, cy, COL_W, "Score differential from T/Os", netStr, netColor, false);
+
+    const netShot = forWonToShotAny - oppWonToShotAny;
+    const netShotStr = netShot > 0 ? `+${netShot} ${homeTeam.slice(0, 10)}` :
+                       netShot < 0 ? `${netShot} ${awayTeam.slice(0, 10)}` : "Level";
+    const netShotColor = netShot > 0 ? "#4ade80" : netShot < 0 ? "#fb7185" : "#94a3b8";
+    cy = drawStatRow(COL3_X, cy, COL_W, "Shot differential from T/Os",  netShotStr, netShotColor, true);
+    cy += 10;
+
+    // Transition breakdown summary
+    cy = drawSubHeader(COL3_X, cy, COL_W, "TRANSITION OUTCOMES (BOTH TEAMS)", "#94a3b8");
+    const bothTotal       = forWonTotal + oppWonTotal;
+    const bothScored      = forWonToScore + oppWonToScore;
+    const bothShotOnly    = forWonToShotOnly + oppWonToShotOnly;
+    const bothBroken      = forBrokenAttacks + oppBrokenAttacks;
+    const bothNoShot      = forWonNoShot + oppWonNoShot;
+    cy = drawStatRow(COL3_X, cy, COL_W, "Total turnovers gained",   String(bothTotal),                 "#e2e8f0", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, "Led to score",             withPct(bothScored, bothTotal),    "#4ade80", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, "Led to shot (no score)",   withPct(bothShotOnly, bothTotal),  "#fbbf24", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, "Attack immediately lost",  withPct(bothBroken, bothTotal),    "#94a3b8", true);
+    drawStatRow(COL3_X, cy, COL_W,      "No shot generated",        withPct(bothNoShot, bothTotal),    "#f97316", false);
+  }
+
+  return canvas;
+}
+
 // ─── Tactical page spec table (20 pages) ────────────────────────────────────
 
 type PageSpec = {
@@ -2525,10 +2921,11 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *            Each shows the full 5-section breakdown filtered to that segment.
  *   9+.      Player Breakdown — one or more pages, no truncation
  *   (9+N)+.  20 tactical pitch map pages (N = player page count)
- *   Last−1.  Kickout Chain Analysis page
+ *   Last−2.  Kickout Chain Analysis page
+ *   Last−1.  Turnover Punishment Analysis page
  *   Last.    Tactical Chain Analysis summary page
  *
- * Total pages = 30 + N  (N ≥ 1 → minimum 31 pages).
+ * Total pages = 31 + N  (N ≥ 1 → minimum 32 pages).
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
   const {
@@ -2539,9 +2936,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
   } = input;
 
-  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 2 chain pages
+  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 3 chain pages
   const playerPageCount = calcPlayerPageCount(events);
-  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 2;
+  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 3;
 
   // Chain analysis — computed once here and shared with all chain page builders.
   // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
@@ -2620,13 +3017,29 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(canvas!, true);
   });
 
-  // Second-to-last page: Kickout Chain Analysis
-  // chainAnalysis was computed once above; both chain builders consume slices of it.
-  // Future chain pages (turnover punishment, momentum) follow the same pattern:
+  // Third-to-last page: Kickout Chain Analysis
+  // chainAnalysis was computed once above; all chain builders consume slices of it.
+  // Future chain pages (momentum) follow the same pattern:
   // add a builder function, call addCanvasPage here, and increment TOTAL_PAGES by 1.
   try {
     addCanvasPage(
       makeKickoutChainPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES - 2,   // third-to-last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
+
+  // Second-to-last page: Turnover Punishment Analysis
+  try {
+    addCanvasPage(
+      makeTurnoverPunishmentPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
