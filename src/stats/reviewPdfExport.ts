@@ -24,6 +24,8 @@ import { selectChainAnalysis } from "./chains/chain-selectors";
 import type { ChainAnalysis } from "./chains/chain-types";
 import { deriveReviewPrompts } from "./chains/review-prompts";
 import type { ReviewPrompt, ReviewPromptCategory } from "./chains/review-prompts";
+import { getZoneCounts, getZoneHotspots } from "./zones/zone-engine";
+import type { ZoneCount } from "./zones/zone-types";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -3992,6 +3994,1469 @@ function makeTacticalReviewGuidePage(
   return canvas;
 }
 
+// ─── Opposition Snapshot page ──────────────────────────────────────────────────
+
+/**
+ * Renders the Opposition Snapshot — the final PDF page.
+ *
+ * Data sources:
+ *   - ChainAnalysis: byTeamSide.opp, kickouts, turnovers, scoringRuns, byRule,
+ *                    byPeriod, bySegment, summary.
+ *   - Raw events array: for score position (nx/ny) and OPP shot count derivation.
+ *
+ * Accent colour: #f87171 (OPP red) — distinct from all other chain page accents.
+ *
+ * Layout: Two-column (L 928 px / R 928 px), dark background.
+ *   Left  — Scoring Profile · Restart Threat · Turnover Threat
+ *   Right — Momentum Spell  · Chain Rate     · Rematch Watchlist
+ *
+ * All metrics are deterministic — no AI language, no prescriptions.
+ * Rematch Watchlist bullets are threshold-based rules only (max 5).
+ * No ctx.roundRect() — uses ctx.fillRect() throughout (Safari < 15.4 safe).
+ */
+function makeOppositionSnapshotPage(
+  events: readonly PdfExportEvent[],
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Opposition Snapshot", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+
+  // ── Layout constants ───────────────────────────────────────────────────────
+  const CONTENT_TOP = 86;
+  const CONTENT_BOT = CANVAS_H - 36;
+  const L_COL_X     = 24;
+  const L_COL_W     = 928;
+  const R_COL_X     = 968;
+  const R_COL_W     = 928;
+  const CARD_GAP    = 20;
+  const OPP_ACCENT  = "#f87171";
+
+  // ── Derived data ───────────────────────────────────────────────────────────
+
+  // Scoring profile
+  const oppScore   = scoreFromEvents(events.filter((e) => e.teamSide === "OPP"));
+  const oppScore1H = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && e.period === "1H"));
+  const oppScore2H = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && e.period === "2H"));
+
+  const oppShotsAll = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
+  ).length;
+  const oppShotAcc = oppShotsAll > 0
+    ? Math.round((oppScore.total / oppShotsAll) * 100)
+    : 0;
+
+  // Score zone: average normalised-x across OPP score events (nx always finite on PdfExportEvent)
+  const oppScoreEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind) && isFinite(e.nx),
+  );
+  let scoreZoneLabel = "—";
+  if (oppScoreEvts.length > 0) {
+    const avgNx = oppScoreEvts.reduce((sum, e) => sum + e.nx, 0) / oppScoreEvts.length;
+    scoreZoneLabel = avgNx < 0.35 ? "Left Channel" : avgNx > 0.65 ? "Right Channel" : "Central";
+  }
+
+  // Kickout restart threat
+  const ko          = analysis.kickouts;
+  const koOppWon    = ko.outcomes.filter((o) => o.winningSide === "OPP").length;
+  const koOppWinPct = ko.total > 0 ? Math.round((koOppWon / ko.total) * 100) : 0;
+  const koOppChains = (analysis.byRule["KICKOUT_TO_SCORE"]             ?? []).filter((c) => c.teamSide === "OPP").length;
+  const koFromLost  = (analysis.byRule["KICKOUT_LOST_TO_SCORE_AGAINST"] ?? []).filter((c) => c.teamSide === "OPP").length;
+  const koLostScore    = ko.lostAllowedScore;
+  const koLostScorePct = ko.lostAllowedScorePercent;
+
+  // Turnover threat
+  const tv           = analysis.turnovers;
+  const tvLost       = tv.lost;
+  const tvOppToScore = (analysis.byRule["TURNOVER_TO_SCORE"] ?? []).filter((c) => c.teamSide === "OPP").length;
+  const tvOppToShot  = (analysis.byRule["TURNOVER_TO_SHOT"]  ?? []).filter((c) => c.teamSide === "OPP").length;
+  const tvLostScore  = tv.lostAllowedScore;
+  const tvConvPct    = tvLost > 0 ? Math.round((tvLostScore / tvLost) * 100) : 0;
+
+  // Momentum spell
+  const sr         = analysis.scoringRuns;
+  const oppRuns    = sr.runs.filter((r) => r.teamSide === "OPP");
+  const longestOpp = sr.longestRunOpp;   // may be null — always null-checked below
+  const maxConsOpp = sr.maxConsecutiveOpp;
+
+  function clockToMin(clockSecs: number, period: "1H" | "2H"): number {
+    const adjusted = period === "2H" ? clockSecs - 3600 : clockSecs;
+    return Math.floor(Math.max(0, adjusted) / 60);
+  }
+
+  const longestOppTimeLabel = longestOpp != null
+    ? `${longestOpp.period === "1H" ? "1H" : "2H"} ~${clockToMin(longestOpp.startClockSeconds, longestOpp.period)}'`
+    : "—";
+
+  // Chain rate
+  const sm          = analysis.summary;
+  const oppChains   = sm.oppChains;
+  const chainTotal  = sm.totalChains;
+  const oppChainPct = chainTotal > 0 ? Math.round((oppChains / chainTotal) * 100) : 0;
+  const opp1HChains = (analysis.byPeriod["1H"] ?? []).filter((c) => c.teamSide === "OPP").length;
+  const opp2HChains = (analysis.byPeriod["2H"] ?? []).filter((c) => c.teamSide === "OPP").length;
+
+  // Strongest OPP segment (by OPP chain count per segment — iterate 1–6)
+  const SEG_LABELS: Record<number, string> = {
+    1: "Seg 1 (1H Early)", 2: "Seg 2 (1H Mid)", 3: "Seg 3 (1H Late)",
+    4: "Seg 4 (2H Early)", 5: "Seg 5 (2H Mid)", 6: "Seg 6 (2H Late)",
+  };
+  let strongestSeg   = 0;
+  let strongestCount = 0;
+  for (let seg = 1; seg <= 6; seg++) {
+    const key   = seg as MatchEventSegment;
+    const count = (analysis.bySegment[key] ?? []).filter((c) => c.teamSide === "OPP").length;
+    if (count > strongestCount) { strongestCount = count; strongestSeg = seg; }
+  }
+  const strongestSegLabel = strongestSeg > 0 ? (SEG_LABELS[strongestSeg] ?? "—") : "—";
+
+  // Rematch Watchlist — deterministic threshold rules only, max 5 bullets
+  const watchlist: string[] = [];
+  if (maxConsOpp >= 4)    watchlist.push(`Peak run of ${maxConsOpp} unanswered — sustained pressure threat`);
+  if (tvConvPct  >= 40)   watchlist.push(`${tvConvPct}% of gifted possession converted to opposition scores`);
+  if (koOppWinPct >= 55)  watchlist.push(`Opposition won ${koOppWinPct}% of kickout possession`);
+  if (koLostScore >= 2)   watchlist.push(`${koLostScore} score${koLostScore !== 1 ? "s" : ""} conceded directly from kickout losses`);
+  if (oppChainPct >= 55)  watchlist.push(`Held tactical chain advantage — ${oppChainPct}% of all detected chains`);
+  // Fallback: always at least one bullet
+  if (watchlist.length === 0) watchlist.push("No critical tactical thresholds exceeded in this match");
+  const bullets = watchlist.slice(0, 5);
+
+  // ── Local helpers ──────────────────────────────────────────────────────────
+
+  function drawCardBg(x: number, y: number, w: number, h: number, accentColor: string): void {
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.022)";
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(x, y, 3, h);
+    ctx.restore();
+  }
+
+  function drawCardTitle(x: number, y: number, w: number, label: string, accentColor: string): number {
+    ctx.save();
+    ctx.fillStyle = accentColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label.toUpperCase(), x + 16, y + 14);
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 4, y + 28);
+    ctx.lineTo(x + w, y + 28);
+    ctx.stroke();
+    ctx.restore();
+    return y + 30;
+  }
+
+  /** Large hero value (42 px bold) + small descriptor below. Returns cy + 76. */
+  function drawHeroStat(
+    x: number, cy: number, value: string, label: string, valueColor: string,
+  ): number {
+    ctx.save();
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign = "left";
+    ctx.fillStyle = valueColor;
+    ctx.font = "bold 42px sans-serif";
+    ctx.fillText(value, x + 20, cy + 46);
+    ctx.fillStyle = "#64748b";
+    ctx.font = "11px sans-serif";
+    ctx.fillText(label.toUpperCase(), x + 20, cy + 63);
+    ctx.restore();
+    return cy + 76;
+  }
+
+  /** Compact label/value row. Returns cy + 30. */
+  function drawMetricRow(
+    x: number, cy: number, w: number,
+    label: string, value: string, valueColor: string, isAlt: boolean,
+  ): number {
+    const ROW_H = 30;
+    if (isAlt) {
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
+    }
+    const mid = cy + ROW_H / 2;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 16, mid);
+    ctx.fillStyle = valueColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(value, x + w - 14, mid);
+    return cy + ROW_H;
+  }
+
+  // ── Empty state ────────────────────────────────────────────────────────────
+  if (analysis.totalEventsAnalysed === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "16px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
+    return canvas;
+  }
+
+  // ── Card geometry ──────────────────────────────────────────────────────────
+  // CONTENT_H = 958 (= CANVAS_H − 36 − 86)
+  // Left:  Scoring Profile 310 + gap + Restart Threat 220 + gap + Turnover Threat 388 = 958
+  // Right: Momentum Spell  240 + gap + Chain Rate    240 + gap + Rematch Watchlist 438 = 958
+  const CONTENT_H  = CONTENT_BOT - CONTENT_TOP;   // 958
+  const L_CARD_H_1 = 310;
+  const L_CARD_H_2 = 220;
+  const L_CARD_H_3 = CONTENT_H - L_CARD_H_1 - CARD_GAP - L_CARD_H_2 - CARD_GAP; // 388
+
+  const R_CARD_H_1 = 240;
+  const R_CARD_H_2 = 240;
+  const R_CARD_H_3 = CONTENT_H - R_CARD_H_1 - CARD_GAP - R_CARD_H_2 - CARD_GAP; // 438
+
+  const lCard1Y = CONTENT_TOP;                                     //  86
+  const lCard2Y = lCard1Y + L_CARD_H_1 + CARD_GAP;               // 416
+  const lCard3Y = lCard2Y + L_CARD_H_2 + CARD_GAP;               // 656
+
+  const rCard1Y = CONTENT_TOP;                                     //  86
+  const rCard2Y = rCard1Y + R_CARD_H_1 + CARD_GAP;               // 346
+  const rCard3Y = rCard2Y + R_CARD_H_2 + CARD_GAP;               // 606
+
+  // ── LEFT CARD 1: Opposition Scoring Profile ────────────────────────────────
+  drawCardBg(L_COL_X, lCard1Y, L_COL_W, L_CARD_H_1, OPP_ACCENT);
+  let cy = drawCardTitle(
+    L_COL_X, lCard1Y, L_COL_W,
+    `${awayTeam.slice(0, 20)} — Scoring Profile`, OPP_ACCENT,
+  );
+  if (oppScore.total === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No opposition scores recorded", L_COL_X + L_COL_W / 2, lCard1Y + L_CARD_H_1 / 2);
+  } else {
+    cy = drawHeroStat(L_COL_X, cy, fmtScore(oppScore), "Full match score line", OPP_ACCENT);
+    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "1st Half", fmtScore(oppScore1H), "#f8fafc", false);
+    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "2nd Half", fmtScore(oppScore2H), "#f8fafc", true);
+    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Goals", String(oppScore.goals),
+                       oppScore.goals >= 2 ? OPP_ACCENT : "#f8fafc", false);
+    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Points (incl. frees & 2-pointers)",
+                       String(oppScore.points), "#f8fafc", true);
+    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Shot accuracy",
+                       oppShotsAll > 0 ? `${oppShotAcc}%` : "—", "#f8fafc", false);
+    drawMetricRow(L_COL_X, cy, L_COL_W, "Score zone (avg position)",
+                  scoreZoneLabel, "#94a3b8", true);
+  }
+
+  // ── LEFT CARD 2: Opposition Restart Threat (Kickouts) ─────────────────────
+  drawCardBg(L_COL_X, lCard2Y, L_COL_W, L_CARD_H_2, "#fbbf24");
+  cy = drawCardTitle(L_COL_X, lCard2Y, L_COL_W, "Restart Threat (Kickouts)", "#fbbf24");
+  if (ko.total === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No kickout data recorded", L_COL_X + L_COL_W / 2, lCard2Y + L_CARD_H_2 / 2);
+  } else {
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "OPP kickout win rate", `${koOppWinPct}%  (${koOppWon} of ${ko.total})`,
+      koOppWinPct >= 55 ? OPP_ACCENT : "#f8fafc", false,
+    );
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Kickout won → score chains", String(koOppChains),
+      koOppChains >= 2 ? OPP_ACCENT : "#f8fafc", true,
+    );
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Scores from kickout losses", `${koLostScore}  (${koLostScorePct}%)`,
+      koLostScore >= 2 ? OPP_ACCENT : "#f8fafc", false,
+    );
+    drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Direct kickout lost → score", String(koFromLost),
+      koFromLost >= 2 ? OPP_ACCENT : "#f8fafc", true,
+    );
+  }
+
+  // ── LEFT CARD 3: Opposition Turnover Threat ────────────────────────────────
+  drawCardBg(L_COL_X, lCard3Y, L_COL_W, L_CARD_H_3, "#a78bfa");
+  cy = drawCardTitle(L_COL_X, lCard3Y, L_COL_W, "Turnover Threat", "#a78bfa");
+  if (tvLost === 0 && tvOppToScore === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No turnover data recorded", L_COL_X + L_COL_W / 2, lCard3Y + L_CARD_H_3 / 2);
+  } else {
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Turnovers gifted to OPP", String(tvLost),
+      tvLost >= 5 ? OPP_ACCENT : "#f8fafc", false,
+    );
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "OPP scores from turnovers", String(tvLostScore),
+      tvLostScore >= 2 ? OPP_ACCENT : "#f8fafc", true,
+    );
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Turnover conversion rate", tvLost > 0 ? `${tvConvPct}%` : "—",
+      tvConvPct >= 40 ? OPP_ACCENT : "#f8fafc", false,
+    );
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Turnover won → score chains", String(tvOppToScore),
+      tvOppToScore >= 2 ? OPP_ACCENT : "#f8fafc", true,
+    );
+    drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Turnover won → shot chains", String(tvOppToShot),
+      "#f8fafc", false,
+    );
+  }
+
+  // ── RIGHT CARD 1: Opposition Momentum Spell ────────────────────────────────
+  drawCardBg(R_COL_X, rCard1Y, R_COL_W, R_CARD_H_1, "#fbbf24");
+  cy = drawCardTitle(R_COL_X, rCard1Y, R_COL_W, "Momentum Spell", "#fbbf24");
+  if (longestOpp == null || maxConsOpp < 2) {
+    cy = drawHeroStat(R_COL_X, cy, "None", "No OPP unanswered run of 2+ detected", "#64748b");
+    drawMetricRow(R_COL_X, cy, R_COL_W, "Scoring runs ≥ 2", "0", "#f8fafc", false);
+  } else {
+    cy = drawHeroStat(
+      R_COL_X, cy,
+      String(maxConsOpp),
+      `Longest unanswered run — ${longestOppTimeLabel}`,
+      OPP_ACCENT,
+    );
+    cy = drawMetricRow(
+      R_COL_X, cy, R_COL_W,
+      "Total OPP runs ≥ 2", String(oppRuns.length),
+      oppRuns.length >= 3 ? OPP_ACCENT : "#f8fafc", false,
+    );
+    drawMetricRow(
+      R_COL_X, cy, R_COL_W,
+      "Half of peak run", longestOpp.period,
+      "#f8fafc", true,
+    );
+  }
+
+  // ── RIGHT CARD 2: Opposition Chain Rate ────────────────────────────────────
+  drawCardBg(R_COL_X, rCard2Y, R_COL_W, R_CARD_H_2, "#22d3ee");
+  cy = drawCardTitle(R_COL_X, rCard2Y, R_COL_W, "Chain Rate", "#22d3ee");
+  if (chainTotal === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No chain data recorded", R_COL_X + R_COL_W / 2, rCard2Y + R_CARD_H_2 / 2);
+  } else {
+    cy = drawHeroStat(
+      R_COL_X, cy,
+      `${oppChainPct}%`,
+      `OPP chain share  (${oppChains} of ${chainTotal} chains)`,
+      oppChainPct >= 55 ? OPP_ACCENT : "#22d3ee",
+    );
+    cy = drawMetricRow(R_COL_X, cy, R_COL_W,
+                       "OPP chains — 1st Half", String(opp1HChains), "#f8fafc", false);
+    cy = drawMetricRow(R_COL_X, cy, R_COL_W,
+                       "OPP chains — 2nd Half", String(opp2HChains), "#f8fafc", true);
+    drawMetricRow(R_COL_X, cy, R_COL_W,
+                  "Busiest OPP segment", strongestSegLabel, "#94a3b8", false);
+  }
+
+  // ── RIGHT CARD 3: Rematch Watchlist ────────────────────────────────────────
+  // Threshold-based bullets only — factual, no prescriptions, max 5.
+  drawCardBg(R_COL_X, rCard3Y, R_COL_W, R_CARD_H_3, OPP_ACCENT);
+  cy = drawCardTitle(R_COL_X, rCard3Y, R_COL_W, "Rematch Watchlist", OPP_ACCENT);
+
+  const WATCH_LINE_H = 52;
+  const watchStartY  = cy + 16;  // padding below title separator
+  bullets.forEach((bullet, idx) => {
+    const rowY = watchStartY + idx * WATCH_LINE_H;
+    const midY = rowY + WATCH_LINE_H / 2;
+    if (idx % 2 === 1) {
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fillRect(R_COL_X + 4, rowY, R_COL_W - 4, WATCH_LINE_H);
+    }
+    ctx.fillStyle = OPP_ACCENT;
+    ctx.font = "bold 14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText("—", R_COL_X + 16, midY);
+    ctx.fillStyle = "#cbd5e1";
+    ctx.font = "13px sans-serif";
+    const maxW = R_COL_W - 50;
+    let display = bullet;
+    if (ctx.measureText(display).width > maxW) {
+      while (display.length > 0 && ctx.measureText(display + "…").width > maxW) {
+        display = display.slice(0, -1);
+      }
+      display += "…";
+    }
+    ctx.fillText(display, R_COL_X + 34, midY);
+  });
+
+  return canvas;
+}
+
+// ─── Zone Analysis page ───────────────────────────────────────────────────────
+
+/**
+ * Renders the Zone Analysis page — the final PDF page.
+ *
+ * Data source: raw PdfExportEvent[] filtered by teamSide + kind.
+ * Zone classification: src/stats/zones/ — getZoneCounts / getZoneHotspots.
+ * Zone map: ZONE_MAP_V1_NINE_GRID (3×3 tactical grid, 0–100 coordinate domain).
+ * PdfExportEvent.nx/ny (0–1) is auto-scaled to 0–100 by the zone engine.
+ *
+ * Layout: two-column (L 928 px / R 928 px), dark background, #34d399 green accent.
+ *   Left  — FOR Zone Activity: Scores grid · Turnovers Won grid
+ *   Right — OPP Zone Activity: Scores Against grid · Opposition Gains grid
+ *   Bottom — Zone Notes strip: up to 5 deterministic factual bullets
+ *
+ * All rendering uses ctx.fillRect() — no ctx.roundRect() (Safari < 15.4 safe).
+ * No heatmaps, no gradients, no AI language, no tactical prescriptions.
+ */
+function makeZoneAnalysisPage(
+  events: readonly PdfExportEvent[],
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Zone Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, events.length);
+
+  // ── Layout constants ───────────────────────────────────────────────────────
+  const CONTENT_TOP = 86;
+  const CONTENT_BOT = CANVAS_H - 36;       // 1044
+  const L_COL_X     = 24;
+  const L_COL_W     = 928;
+  const R_COL_X     = 968;
+  const R_COL_W     = 928;
+  const GRID_W      = 456;                  // (L_COL_W − GRID_GAP) / 2 = (928 − 16) / 2 = 456
+  const GRID_GAP    = 16;                   // gap between the two grids in each column
+  const ZONE_ACCENT = "#34d399";            // green — FOR side and notes accent
+  const OPP_RED     = "#f87171";            // red   — OPP side
+
+  // Vertical geometry
+  const COL_HEADER_H = 36;                              // column team-name header height
+  const GRID_TITLE_H = 28;                              // per-grid label above cell rows
+  const CELL_W       = Math.floor(GRID_W / 3);          // 152  (3 × 152 = 456)
+  const CELL_H       = 226;                             // 3 × 226 = 678
+  const CELLS_H      = CELL_H * 3;                      // 678
+  const CELLS_TOP    = CONTENT_TOP + COL_HEADER_H + GRID_TITLE_H;  // 150
+  const GRID_SEC_H   = COL_HEADER_H + GRID_TITLE_H + CELLS_H;     // 742
+  const NOTES_GAP    = 16;
+  const NOTES_Y      = CONTENT_TOP + GRID_SEC_H + NOTES_GAP;       // 844
+  const NOTES_H      = CONTENT_BOT - NOTES_Y;                       // 200
+  const NOTES_X      = 24;
+  const NOTES_W      = CANVAS_W - 48;                               // 1872
+
+  // Grid x-positions (left col: two grids at 24 and 496; right col: two at 968 and 1440)
+  const L_GRID1_X = L_COL_X;                        //   24  FOR Scores
+  const L_GRID2_X = L_COL_X + GRID_W + GRID_GAP;   //  496  FOR Turnovers Won
+  const R_GRID3_X = R_COL_X;                        //  968  OPP Scores
+  const R_GRID4_X = R_COL_X + GRID_W + GRID_GAP;   // 1440  OPP Gains
+
+  // ── Event subsets ──────────────────────────────────────────────────────────
+  const forScoreEvts = events.filter(
+    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  const forTvWonEvts = events.filter(
+    (e) => e.teamSide === "FOR" && e.kind === "TURNOVER_WON",
+  );
+  const oppScoreEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  // OPP Gains: TURNOVER_LOST events (FOR team's side) record where OPP won possession
+  const oppGainEvts = events.filter(
+    (e) => e.teamSide === "FOR" && e.kind === "TURNOVER_LOST",
+  );
+
+  // ── Zone counts (9 entries each, stable order, zero-filled for empty zones) ──
+  const forScoreCounts = getZoneCounts(forScoreEvts);
+  const forTvWonCounts = getZoneCounts(forTvWonEvts);
+  const oppScoreCounts = getZoneCounts(oppScoreEvts);
+  const oppGainCounts  = getZoneCounts(oppGainEvts);
+
+  // ── Hotspots (sorted by count; empty array when no events — always safe to index) ──
+  const forScoreHots = getZoneHotspots(forScoreEvts);
+  const forTvWonHots = getZoneHotspots(forTvWonEvts);
+  const oppScoreHots = getZoneHotspots(oppScoreEvts);
+  const oppGainHots  = getZoneHotspots(oppGainEvts);
+
+  // ── Local helpers ──────────────────────────────────────────────────────────
+
+  /** Column heading: accent left-bar + team label + full-width separator line. */
+  function drawColHeader(
+    x: number, y: number, w: number, label: string, accentColor: string,
+  ): void {
+    ctx.save();
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(x, y, 3, COL_HEADER_H);
+    ctx.font = "bold 14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 12, y + COL_HEADER_H / 2);
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, y + COL_HEADER_H);
+    ctx.lineTo(x + w, y + COL_HEADER_H);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** Small uppercase label rendered above a grid's cell rows. */
+  function drawGridTitle(x: number, label: string, accentColor: string): void {
+    ctx.save();
+    const titleY = CONTENT_TOP + COL_HEADER_H;
+    ctx.fillStyle = accentColor;
+    ctx.font = "bold 11px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label.toUpperCase(), x + 4, titleY + GRID_TITLE_H / 2);
+    ctx.restore();
+  }
+
+  /**
+   * Renders a 3×3 zone grid.
+   * Cell position derived from ZoneCount.bounds (0–100 → col/row 0–2).
+   * Zone-engine xMin values are exact multiples of 100/3, so the mapping is lossless.
+   * Highest-count cell is highlighted; zero-count cells show "—".
+   */
+  function drawZoneGrid(
+    counts: readonly ZoneCount[],
+    gridX: number,
+    accentColor: string,
+  ): void {
+    const isGreen  = accentColor === ZONE_ACCENT;
+    const hlFill   = isGreen ? "rgba(52,211,153,0.13)"  : "rgba(248,113,113,0.13)";
+    const hlStroke = isGreen ? "rgba(52,211,153,0.40)"  : "rgba(248,113,113,0.40)";
+    const maxCount = counts.reduce((m, c) => Math.max(m, c.count), 0);
+
+    for (const zone of counts) {
+      // xMin/yMin are exact multiples of 100/3 → result is exactly 0, 1, or 2
+      const col   = Math.round((zone.bounds.xMin / 100) * 3);
+      const row   = Math.round((zone.bounds.yMin / 100) * 3);
+      const cellX = gridX + col * CELL_W;
+      const cellY = CELLS_TOP + row * CELL_H;
+      const CW    = CELL_W - 1;  // 1 px inter-cell gap
+      const CH    = CELL_H - 1;
+      const isHot = zone.count > 0 && zone.count === maxCount;
+
+      // Background
+      ctx.fillStyle = isHot ? hlFill : "rgba(255,255,255,0.025)";
+      ctx.fillRect(cellX, cellY, CW, CH);
+
+      // Border
+      ctx.strokeStyle = isHot ? hlStroke : "rgba(255,255,255,0.07)";
+      ctx.lineWidth   = isHot ? 1.5 : 1;
+      ctx.strokeRect(cellX, cellY, CW, CH);
+
+      // Count (bold large) or dash
+      const midX = cellX + CELL_W / 2;
+      const midY = cellY + CELL_H / 2;
+      ctx.textAlign    = "center";
+      ctx.textBaseline = "middle";
+
+      if (zone.count > 0) {
+        ctx.fillStyle = isHot ? accentColor : "#f8fafc";
+        ctx.font = "bold 24px sans-serif";
+        ctx.fillText(String(zone.count), midX, midY - 10);
+      } else {
+        ctx.fillStyle = "#334155";
+        ctx.font = "18px sans-serif";
+        ctx.fillText("—", midX, midY - 10);
+      }
+
+      // Zone label (small, below count)
+      ctx.fillStyle = "#475569";
+      ctx.font = "9px sans-serif";
+      ctx.fillText(zone.label, midX, midY + 10);
+    }
+  }
+
+  // ── Empty state ────────────────────────────────────────────────────────────
+  if (events.length === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "16px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
+    return canvas;
+  }
+
+  // ── Column headers ─────────────────────────────────────────────────────────
+  drawColHeader(
+    L_COL_X, CONTENT_TOP, L_COL_W,
+    `${homeTeam.slice(0, 22)} — Zone Activity`, ZONE_ACCENT,
+  );
+  drawColHeader(
+    R_COL_X, CONTENT_TOP, R_COL_W,
+    `${awayTeam.slice(0, 22)} — Zone Activity`, OPP_RED,
+  );
+
+  // ── Grid titles ────────────────────────────────────────────────────────────
+  drawGridTitle(L_GRID1_X, "Scores (For)",       ZONE_ACCENT);
+  drawGridTitle(L_GRID2_X, "Turnovers Won",       ZONE_ACCENT);
+  drawGridTitle(R_GRID3_X, "Scores Against",      OPP_RED);
+  drawGridTitle(R_GRID4_X, "Opposition Gains",    OPP_RED);
+
+  // ── Zone grids ─────────────────────────────────────────────────────────────
+  drawZoneGrid(forScoreCounts, L_GRID1_X, ZONE_ACCENT);
+  drawZoneGrid(forTvWonCounts, L_GRID2_X, ZONE_ACCENT);
+  drawZoneGrid(oppScoreCounts, R_GRID3_X, OPP_RED);
+  drawZoneGrid(oppGainCounts,  R_GRID4_X, OPP_RED);
+
+  // ── Zone Notes strip ───────────────────────────────────────────────────────
+  // Background + green accent left-bar
+  ctx.fillStyle = "rgba(255,255,255,0.015)";
+  ctx.fillRect(NOTES_X, NOTES_Y, NOTES_W, NOTES_H);
+  ctx.fillStyle = ZONE_ACCENT;
+  ctx.fillRect(NOTES_X, NOTES_Y, 3, NOTES_H);
+
+  // Notes heading + separator
+  ctx.fillStyle = ZONE_ACCENT;
+  ctx.font = "bold 11px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText("ZONE NOTES", NOTES_X + 14, NOTES_Y + 16);
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(NOTES_X + 4, NOTES_Y + 28);
+  ctx.lineTo(NOTES_X + NOTES_W, NOTES_Y + 28);
+  ctx.stroke();
+
+  // Build bullets (deterministic, max 5, guarded against empty hotspot arrays)
+  const bullets: string[] = [];
+  if (forScoreHots.length > 0) {
+    const t = forScoreHots[0];
+    bullets.push(`Most scores for: ${t.label} (${t.count})`);
+  }
+  if (forTvWonHots.length > 0) {
+    const t = forTvWonHots[0];
+    bullets.push(`Most turnovers won: ${t.label} (${t.count})`);
+  }
+  if (oppScoreHots.length > 0) {
+    const t = oppScoreHots[0];
+    bullets.push(`Worth reviewing — opposition scoring in: ${t.label} (${t.count})`);
+  }
+  if (oppGainHots.length > 0) {
+    const t = oppGainHots[0];
+    bullets.push(`Highest concentration of opposition gains: ${t.label} (${t.count})`);
+  }
+  // Shared-zone note: same zone tops both FOR scores and OPP scores
+  if (
+    bullets.length < 5 &&
+    forScoreHots.length > 0 &&
+    oppScoreHots.length > 0 &&
+    forScoreHots[0].zoneId === oppScoreHots[0].zoneId
+  ) {
+    bullets.push(`${forScoreHots[0].label} zone: highest-activity scoring zone for both teams`);
+  }
+  if (bullets.length === 0) {
+    bullets.push("No zone data recorded for this match");
+  }
+  const displayBullets = bullets.slice(0, 5);
+
+  // Render bullets — alternating faint row tint, red dash prefix, text with overflow ellipsis
+  const BULLET_LINE_H = 32;
+  const bulletStartY  = NOTES_Y + 36;
+  displayBullets.forEach((bullet, idx) => {
+    const bulletY = bulletStartY + idx * BULLET_LINE_H;
+    if (idx % 2 === 1) {
+      ctx.fillStyle = "rgba(255,255,255,0.018)";
+      ctx.fillRect(NOTES_X + 4, bulletY - BULLET_LINE_H / 2, NOTES_W - 4, BULLET_LINE_H);
+    }
+    ctx.fillStyle    = ZONE_ACCENT;
+    ctx.font         = "bold 12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "left";
+    ctx.fillText("—", NOTES_X + 14, bulletY);
+    ctx.fillStyle = "#cbd5e1";
+    ctx.font = "12px sans-serif";
+    const maxW = NOTES_W - 50;
+    let display = bullet;
+    if (ctx.measureText(display).width > maxW) {
+      while (display.length > 0 && ctx.measureText(display + "…").width > maxW) {
+        display = display.slice(0, -1);
+      }
+      display += "…";
+    }
+    ctx.fillText(display, NOTES_X + 32, bulletY);
+  });
+
+  return canvas;
+}
+
+// ─── Page: Match Swing Timeline ──────────────────────────────────────────────
+
+/**
+ * Chronological factual summary of momentum and tactical shifts during the match.
+ * Two-column layout: LEFT = First Half, RIGHT = Second Half.
+ *
+ * Five swing event types derived from existing ChainAnalysis data:
+ *   SCORE_RUN        — unanswered scoring burst of ≥2 (from scoringRuns.runs)
+ *   KICKOUT_CLUSTER  — kickout(s) won that converted directly to score
+ *   TURNOVER_CLUSTER — turnover(s) that resulted in a score
+ *   LEAD_CHANGE      — one team takes the lead for the first time / retakes it
+ *   SCORE_EQUALISED  — scores drawn after previously behind
+ *
+ * Clock note: ScoringRun.startClockSeconds already includes SECOND_HALF_OFFSET (3600) for 2H
+ * events (resolved by chain-engine). Raw PdfExportEvent.matchClockSeconds is the logged
+ * value within the half; resolveRawClock() adds SECOND_HALF_OFFSET for 2H and falls back to
+ * segment midpoint when matchClockSeconds is absent.
+ */
+function makeMatchSwingTimelinePage(
+  events: readonly PdfExportEvent[],
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Match Swing Timeline", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+
+  // ── Layout constants ──────────────────────────────────────────────────────────
+  const CONTENT_TOP  = 86;
+  const CONTENT_BOT  = CANVAS_H - 36;     // 1044
+  const L_COL_X      = 24;
+  const L_COL_W      = 928;
+  const R_COL_X      = 968;
+  const COL_HDR_H    = 36;
+  const ITEMS_TOP    = CONTENT_TOP + COL_HDR_H;    // 122
+  const ITEM_H       = 65;
+  const MAX_ITEMS    = 13;
+  const DOT_OFFSET_X = 92;    // px from column left to dot centre
+  const CLOCK_MAX_X  = DOT_OFFSET_X - 12;   // 80 — right edge of clock label area (col-relative)
+  const DESC_OFFSET  = DOT_OFFSET_X + 16;   // 108 — left edge of description text (col-relative)
+  const DOT_HALF     = 4;                   // half-size of filled-square dot → 8×8 px
+  const RING_HALF    = DOT_HALF + 5;        // 9 — strokeRect halo half-size
+  // Description text available width (same for both columns since L_COL_W === R_COL_W)
+  const DESC_MAX_W   = L_COL_W - DESC_OFFSET - 16;   // 804
+
+  // Team accent colours
+  const FOR_COLOR    = "#4ade80";
+  const OPP_COLOR    = "#f87171";
+  const STRUCT_COLOR = "#fbbf24";
+
+  // ── Internal swing event type ─────────────────────────────────────────────────
+  type SwingKind =
+    | "SCORE_RUN"
+    | "KICKOUT_CLUSTER"
+    | "TURNOVER_CLUSTER"
+    | "LEAD_CHANGE"
+    | "SCORE_EQUALISED";
+
+  type SwingEvent = {
+    kind:       SwingKind;
+    teamSide:   "FOR" | "OPP" | null;
+    clockOrder: number;    // sort key; 2H = raw + 3600 (SECOND_HALF_OFFSET)
+    period:     "1H" | "2H";
+    label:      string;    // primary description line
+    sublabel:   string;    // clock / time range — shown left of dot
+    count:      number;    // run length / cluster size — drives priority cap
+  };
+
+  // ── Clock helpers ─────────────────────────────────────────────────────────────
+  function clockToMin(clockSecs: number, period: "1H" | "2H"): number {
+    const adjusted = period === "2H" ? clockSecs - 3600 : clockSecs;
+    return Math.floor(Math.max(0, adjusted) / 60);
+  }
+
+  // Segment midpoint in half-relative seconds (no SECOND_HALF_OFFSET applied here).
+  // Segment 1→4 (early), 2→5 (mid), 3→6 (late) collapse to 0,1,2 via mod-3.
+  function segMidRaw(segment: MatchEventSegment): number {
+    const halfSeg = (Number(segment) - 1) % 3;   // 0, 1, or 2 within the half
+    return halfSeg * 600 + 300;                    // 300, 900, 1500
+  }
+
+  // Resolve a sort-order clock for a raw PdfExportEvent.
+  // SECOND_HALF_OFFSET (3600) is added for 2H so all events remain sortable together.
+  function resolveRawClock(e: PdfExportEvent): number {
+    const base = e.period === "2H" ? 3600 : 0;
+    const mc   = e.matchClockSeconds;
+    if (typeof mc === "number" && Number.isFinite(mc) && mc > 0) return base + mc;
+    return base + segMidRaw(e.segment);
+  }
+
+  // Format a clockOrder + period into a display string: "1H 12'" or "2H ~8'".
+  function fmtClock(clockOrder: number, period: "1H" | "2H", approx: boolean): string {
+    return `${period} ${approx ? "~" : ""}${clockToMin(clockOrder, period)}'`;
+  }
+
+  function teamLabel(side: "FOR" | "OPP"): string {
+    return side === "FOR" ? homeTeam : awayTeam;
+  }
+
+  // ── Swing event derivation ────────────────────────────────────────────────────
+  const swings: SwingEvent[] = [];
+
+  // 1. Score runs — already ≥2 unanswered, already clock-sorted by chain-engine.
+  for (const run of analysis.scoringRuns.runs) {
+    const p: "1H" | "2H" = run.period === "2H" ? "2H" : "1H";
+    const startMin        = clockToMin(run.startClockSeconds, p);
+    const endMin          = clockToMin(run.endClockSeconds,   p);
+    const timeStr         = startMin === endMin
+      ? `${p} ${startMin}'`
+      : `${p} ${startMin}'–${endMin}'`;
+    swings.push({
+      kind:       "SCORE_RUN",
+      teamSide:   run.teamSide,
+      clockOrder: run.startClockSeconds,
+      period:     p,
+      label:      `${teamLabel(run.teamSide)} scored ${run.count} unanswered`,
+      sublabel:   timeStr,
+      count:      run.count,
+    });
+  }
+
+  // 2. Lead changes and equalisations — built from chronological raw score events.
+  {
+    const scoreEvts = events
+      .filter((e) => PDF_KIND_SETS.SCORES.has(e.kind))
+      .slice()
+      .sort((a, b) => resolveRawClock(a) - resolveRawClock(b));
+
+    let forG = 0;
+    let forP = 0;
+    let oppG = 0;
+    let oppP = 0;
+    let prevLeader: "FOR" | "OPP" | "LEVEL" = "LEVEL";
+
+    for (const e of scoreEvts) {
+      const isFor    = e.teamSide === "FOR";
+      const isGoal   = e.kind === "GOAL";
+      const isTwoPtr = e.kind === "TWO_POINTER" || e.kind === "FORTY_FIVE_TWO_POINT";
+
+      if      (isFor && isGoal)         { forG++; }
+      else if (isFor && isTwoPtr)       { forP += 2; }
+      else if (isFor)                   { forP++; }
+      else if (!isFor && isGoal)        { oppG++; }
+      else if (!isFor && isTwoPtr)      { oppP += 2; }
+      else                              { oppP++; }
+
+      const forTotal  = forG * 3 + forP;
+      const oppTotal  = oppG * 3 + oppP;
+      const newLeader: "FOR" | "OPP" | "LEVEL" =
+        forTotal > oppTotal ? "FOR" :
+        oppTotal > forTotal ? "OPP" : "LEVEL";
+
+      const clockOrd  = resolveRawClock(e);
+      const p: "1H" | "2H" = e.period === "2H" ? "2H" : "1H";
+      const mc        = e.matchClockSeconds;
+      const hasReal   = typeof mc === "number" && Number.isFinite(mc) && mc > 0;
+      const scoreStr  = `${forG}-${String(forP).padStart(2, "0")} v ${oppG}-${String(oppP).padStart(2, "0")}`;
+      const clkStr    = fmtClock(clockOrd, p, !hasReal);
+
+      if (newLeader === "LEVEL" && prevLeader !== "LEVEL") {
+        swings.push({
+          kind:       "SCORE_EQUALISED",
+          teamSide:   null,
+          clockOrder: clockOrd,
+          period:     p,
+          label:      `Scores level — ${scoreStr}`,
+          sublabel:   clkStr,
+          count:      0,
+        });
+      } else if (newLeader !== "LEVEL" && newLeader !== prevLeader) {
+        swings.push({
+          kind:       "LEAD_CHANGE",
+          teamSide:   newLeader,
+          clockOrder: clockOrd,
+          period:     p,
+          label:      `${teamLabel(newLeader)} took the lead — ${scoreStr}`,
+          sublabel:   clkStr,
+          count:      0,
+        });
+      }
+      prevLeader = newLeader;
+    }
+  }
+
+  // 3. Kickout clusters — kickout outcomes where the winning side converted to a score.
+  //    Consecutive outcomes for the same side within 300s are merged into one entry.
+  {
+    const koScored = analysis.kickouts.outcomes
+      .filter((o) => o.nextScore !== null)
+      .slice()
+      .sort((a, b) => resolveRawClock(a.kickoutEvent) - resolveRawClock(b.kickoutEvent));
+
+    if (koScored.length > 0) {
+      let cStart    = koScored[0]!;
+      let cSide     = koScored[0]!.winningSide;
+      let cCount    = 1;
+      let cMinClock = resolveRawClock(koScored[0]!.kickoutEvent);
+
+      for (let i = 1; i <= koScored.length; i++) {
+        const cur  = koScored[i];
+        const prev = koScored[i - 1]!;
+        const merge = cur != null &&
+          cur.winningSide === cSide &&
+          cur.kickoutEvent.period === cStart.kickoutEvent.period &&
+          Math.abs(resolveRawClock(cur.kickoutEvent) - resolveRawClock(prev.kickoutEvent)) <= 300;
+
+        if (!merge) {
+          const p: "1H" | "2H" = cStart.kickoutEvent.period === "2H" ? "2H" : "1H";
+          const ckMc            = cStart.kickoutEvent.matchClockSeconds;
+          const hasReal         = typeof ckMc === "number" && Number.isFinite(ckMc) && ckMc > 0;
+          const n               = cCount;
+          swings.push({
+            kind:       "KICKOUT_CLUSTER",
+            teamSide:   cSide,
+            clockOrder: cMinClock,
+            period:     p,
+            label:      `${teamLabel(cSide)} converted ${n} kickout${n !== 1 ? "s" : ""} into score${n !== 1 ? "s" : ""}`,
+            sublabel:   fmtClock(cMinClock, p, !hasReal),
+            count:      n,
+          });
+          if (cur != null) {
+            cStart    = cur;
+            cSide     = cur.winningSide;
+            cCount    = 1;
+            cMinClock = resolveRawClock(cur.kickoutEvent);
+          }
+        } else {
+          cCount++;
+        }
+      }
+    }
+  }
+
+  // 4. Turnover punishment clusters — turnover outcomes that resulted in a score.
+  //    Acting side: who benefited (team that won the ball and scored).
+  {
+    function actingSide(o: (typeof analysis.turnovers.outcomes)[number]): "FOR" | "OPP" {
+      if (o.direction === "WON") return o.turnoverEvent.teamSide;
+      return o.turnoverEvent.teamSide === "FOR" ? "OPP" : "FOR";
+    }
+
+    const tvScored = analysis.turnovers.outcomes
+      .filter((o) => o.resultedInScore)
+      .slice()
+      .sort((a, b) => resolveRawClock(a.turnoverEvent) - resolveRawClock(b.turnoverEvent));
+
+    if (tvScored.length > 0) {
+      let cStart    = tvScored[0]!;
+      let cSide     = actingSide(tvScored[0]!);
+      let cCount    = 1;
+      let cMinClock = resolveRawClock(tvScored[0]!.turnoverEvent);
+
+      for (let i = 1; i <= tvScored.length; i++) {
+        const cur  = tvScored[i];
+        const prev = tvScored[i - 1]!;
+        const merge = cur != null &&
+          actingSide(cur) === cSide &&
+          cur.turnoverEvent.period === cStart.turnoverEvent.period &&
+          Math.abs(resolveRawClock(cur.turnoverEvent) - resolveRawClock(prev.turnoverEvent)) <= 300;
+
+        if (!merge) {
+          const p: "1H" | "2H" = cStart.turnoverEvent.period === "2H" ? "2H" : "1H";
+          const tvMc            = cStart.turnoverEvent.matchClockSeconds;
+          const hasReal         = typeof tvMc === "number" && Number.isFinite(tvMc) && tvMc > 0;
+          const n               = cCount;
+          swings.push({
+            kind:       "TURNOVER_CLUSTER",
+            teamSide:   cSide,
+            clockOrder: cMinClock,
+            period:     p,
+            label:      `${teamLabel(cSide)} turnover${n !== 1 ? "s" : ""} led to score${n !== 1 ? "s" : ""}`,
+            sublabel:   fmtClock(cMinClock, p, !hasReal),
+            count:      n,
+          });
+          if (cur != null) {
+            cStart    = cur;
+            cSide     = actingSide(cur);
+            cCount    = 1;
+            cMinClock = resolveRawClock(cur.turnoverEvent);
+          }
+        } else {
+          cCount++;
+        }
+      }
+    }
+  }
+
+  // Sort all swing events chronologically by resolved clock.
+  swings.sort((a, b) => a.clockOrder - b.clockOrder);
+
+  // Split by period.
+  const h1Raw = swings.filter((s) => s.period === "1H");
+  const h2Raw = swings.filter((s) => s.period === "2H");
+
+  // Priority score for cap selection: structural events are always preserved first.
+  function priorityScore(s: SwingEvent): number {
+    if (s.kind === "LEAD_CHANGE" || s.kind === "SCORE_EQUALISED") return 10000;
+    return s.count;
+  }
+
+  // Cap at MAX_ITEMS by priority; restore chronological order among kept items.
+  function capItems(arr: SwingEvent[]): SwingEvent[] {
+    if (arr.length <= MAX_ITEMS) return arr;
+    const ranked  = [...arr].sort((a, b) => priorityScore(b) - priorityScore(a));
+    const keepIdx = new Set<number>(ranked.slice(0, MAX_ITEMS).map((item) => arr.indexOf(item)));
+    return arr.filter((_, i) => keepIdx.has(i));
+  }
+
+  const col1Items = capItems(h1Raw);
+  const col2Items = capItems(h2Raw);
+
+  // ── Rendering ─────────────────────────────────────────────────────────────────
+
+  function swingColor(s: SwingEvent): string {
+    if (s.teamSide === "FOR") return FOR_COLOR;
+    if (s.teamSide === "OPP") return OPP_COLOR;
+    return STRUCT_COLOR;
+  }
+
+  function drawColHeader(colX: number, label: string): void {
+    ctx.fillStyle    = "rgba(255,255,255,0.04)";
+    ctx.fillRect(colX, CONTENT_TOP, L_COL_W, COL_HDR_H);
+    ctx.fillStyle    = "#94a3b8";
+    ctx.font         = "bold 11px sans-serif";
+    ctx.textAlign    = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label.toUpperCase(), colX + 16, CONTENT_TOP + COL_HDR_H / 2);
+  }
+
+  function drawTimeline(colX: number, items: SwingEvent[], emptyText: string): void {
+    const dotX  = colX + DOT_OFFSET_X;
+    const descX = colX + DESC_OFFSET;
+
+    if (items.length === 0) {
+      ctx.fillStyle    = "#334155";
+      ctx.font         = "12px sans-serif";
+      ctx.textAlign    = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(emptyText, colX + 16, ITEMS_TOP + 32);
+      return;
+    }
+
+    for (let i = 0; i < items.length; i++) {
+      const s     = items[i]!;
+      const itemY = ITEMS_TOP + i * ITEM_H;
+      const midY  = itemY + ITEM_H / 2;
+      const color = swingColor(s);
+
+      // Connector: thin 1px-wide rectangle from bottom of previous dot to top of this one.
+      if (i > 0) {
+        const connY = itemY - ITEM_H / 2 + DOT_HALF + 2;
+        const connH = ITEM_H - (DOT_HALF + 2) * 2;
+        ctx.fillStyle = "rgba(255,255,255,0.10)";
+        ctx.fillRect(dotX, connY, 1, connH);
+      }
+
+      // Dot — filled square in team colour.
+      ctx.fillStyle = color;
+      ctx.fillRect(dotX - DOT_HALF, midY - DOT_HALF, DOT_HALF * 2, DOT_HALF * 2);
+
+      // Dot halo — strokeRect at low opacity.
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 1;
+      ctx.globalAlpha = 0.28;
+      ctx.strokeRect(dotX - RING_HALF, midY - RING_HALF, RING_HALF * 2, RING_HALF * 2);
+      ctx.globalAlpha = 1;
+
+      // Clock / time label — right-aligned, left of the dot.
+      ctx.fillStyle    = "#64748b";
+      ctx.font         = "10px sans-serif";
+      ctx.textAlign    = "right";
+      ctx.textBaseline = "middle";
+      ctx.fillText(s.sublabel, colX + CLOCK_MAX_X, midY);
+
+      // Primary description — coloured, slightly above centre.
+      ctx.fillStyle    = color;
+      ctx.font         = "bold 13px sans-serif";
+      ctx.textAlign    = "left";
+      ctx.textBaseline = "middle";
+      let primary = s.label;
+      if (ctx.measureText(primary).width > DESC_MAX_W) {
+        while (primary.length > 0 && ctx.measureText(primary + "…").width > DESC_MAX_W) {
+          primary = primary.slice(0, -1);
+        }
+        primary += "…";
+      }
+      ctx.fillText(primary, descX, midY - 10);
+
+      // Kind badge — muted label below primary.
+      const badge =
+        s.kind === "SCORE_RUN"        ? "scoring run"
+        : s.kind === "KICKOUT_CLUSTER"  ? "kickout"
+        : s.kind === "TURNOVER_CLUSTER" ? "turnover"
+        : s.kind === "LEAD_CHANGE"      ? "lead change"
+        :                                 "equalised";
+      ctx.fillStyle    = "rgba(255,255,255,0.28)";
+      ctx.font         = "10px sans-serif";
+      ctx.textAlign    = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText(badge.toUpperCase(), descX, midY + 12);
+    }
+  }
+
+  // Full-page empty-state guard.
+  if (col1Items.length === 0 && col2Items.length === 0) {
+    ctx.fillStyle    = "#475569";
+    ctx.font         = "16px sans-serif";
+    ctx.textAlign    = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      "Insufficient match data to derive swing events — clock or score data may be absent.",
+      CANVAS_W / 2,
+      (CONTENT_TOP + CONTENT_BOT) / 2,
+    );
+    return canvas;
+  }
+
+  // Column headers.
+  drawColHeader(L_COL_X, "First Half");
+  drawColHeader(R_COL_X, "Second Half");
+
+  // Centre divider — 1px fillRect.
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.fillRect(R_COL_X - 20, CONTENT_TOP, 1, CONTENT_BOT - CONTENT_TOP);
+
+  // Render both halves.
+  drawTimeline(L_COL_X, col1Items, "No significant swings detected in the first half");
+  drawTimeline(R_COL_X, col2Items, "No significant swings detected in the second half");
+
+  return canvas;
+}
+
+// ─── Page: Shot & Scoring Efficiency ─────────────────────────────────────────
+
+/**
+ * Overall shot conversion, source breakdown (Play/Free/Mark/45/Penalty/Unclassified),
+ * 2-point profile, and free conversion for FOR and OPP sides.
+ *
+ * Two-column layout: LEFT = FOR (homeTeam), RIGHT = OPP (awayTeam).
+ *
+ * Source classification:
+ *   FREE_SCORED / FREE_MISSED → "Free"       (kind-implicit, no SOURCE_ tag needed)
+ *   FORTY_FIVE_TWO_POINT      → "45"         (kind-implicit)
+ *   SHOT                      → "Unclassified" (no SOURCE_ tag assigned on this kind)
+ *   GOAL/POINT/TWO_POINTER/WIDE with SOURCE_* tag → classified accordingly
+ *   Any attempt with no SOURCE_ tag           → "Unclassified"
+ *
+ * Attempt kinds: SHOT, GOAL, POINT, WIDE, TWO_POINTER, FORTY_FIVE_TWO_POINT,
+ *                FREE_MISSED, FREE_SCORED  (= PDF_KIND_SETS.SHOTS)
+ * Score kinds:   GOAL, POINT, TWO_POINTER, FORTY_FIVE_TWO_POINT, FREE_SCORED
+ *                (= PDF_KIND_SETS.SCORES)
+ *
+ * All division guarded. No ctx.roundRect() — fillRect/strokeRect only.
+ */
+function makeShotEfficiencyPage(
+  events: readonly PdfExportEvent[],
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  const validEvts = events.filter((e) => !e.id.includes("-instant-score-"));
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Shot & Scoring Efficiency", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, validEvts.length);
+
+  // ── Layout constants ──────────────────────────────────────────────────────────
+  const CONTENT_TOP = 86;
+  const CONTENT_BOT = CANVAS_H - 36;    // 1044
+  const L_COL_X     = 24;
+  const L_COL_W     = 928;
+  const R_COL_X     = 968;
+  const COL_HDR_H   = 36;
+  const SEC_HDR_H   = 26;
+  const ROW_H       = 32;
+  const SEC_GAP     = 20;
+  // Source breakdown sub-column right-edge positions (relative to column left)
+  const SRC_ATT_X   = 520;
+  const SRC_SC_X    = 640;
+  const SRC_MISS_X  = 756;
+  const SRC_CONV_X  = L_COL_W - 12;    // 916
+
+  const FOR_COLOR = "#4ade80";
+  const OPP_COLOR = "#f87171";
+  const NEUTRAL   = "#f8fafc";
+  const MUTED     = "#94a3b8";
+
+  // ── Source classifier ─────────────────────────────────────────────────────────
+  function eventSource(e: PdfExportEvent): "PLAY" | "FREE" | "MARK" | "45" | "PENALTY" | "UNKNOWN" {
+    if (e.kind === "FREE_SCORED" || e.kind === "FREE_MISSED") return "FREE";
+    if (e.kind === "FORTY_FIVE_TWO_POINT")                    return "45";
+    if (e.kind === "SHOT")                                    return "UNKNOWN";
+    if (e.tags?.includes("SOURCE_FREE"))                      return "FREE";
+    if (e.tags?.includes("SOURCE_PLAY"))                      return "PLAY";
+    if (e.tags?.includes("SOURCE_MARK"))                      return "MARK";
+    if (e.tags?.includes("SOURCE_45"))                        return "45";
+    if (e.tags?.includes("SOURCE_PENALTY"))                   return "PENALTY";
+    return "UNKNOWN";
+  }
+
+  // ── Data derivation ───────────────────────────────────────────────────────────
+  type SrcKey = "PLAY" | "FREE" | "MARK" | "45" | "PENALTY" | "UNKNOWN";
+  type SrcRow = { label: string; att: number; sc: number; miss: number; conv: string };
+  type ShootingStats = {
+    totalAtt:     number;
+    totalSc:      number;
+    convPct:      number;
+    wides:        number;
+    blocked:      number;
+    srcRows:      SrcRow[];
+    twoPointerSc:   number;
+    fortyFiveTwoSc: number;
+    freeScored:   number;
+    freeMissed:   number;
+    freeConvPct:  number;
+  };
+
+  const SRC_KEYS: readonly SrcKey[] = ["PLAY", "FREE", "MARK", "45", "PENALTY", "UNKNOWN"];
+  const SRC_LABELS: Record<SrcKey, string> = {
+    PLAY:    "From Play",
+    FREE:    "Free",
+    MARK:    "Mark",
+    "45":    "45",
+    PENALTY: "Penalty",
+    UNKNOWN: "Unclassified",
+  };
+
+  function buildStats(evts: readonly PdfExportEvent[]): ShootingStats {
+    const attempts  = evts.filter((e) => PDF_KIND_SETS.SHOTS.has(e.kind));
+    const scores    = evts.filter((e) => PDF_KIND_SETS.SCORES.has(e.kind));
+    const totalAtt  = attempts.length;
+    const totalSc   = scores.length;
+    const convPct   = totalAtt > 0 ? Math.round((totalSc  / totalAtt) * 100) : 0;
+    const wides     = evts.filter((e) => e.kind === "WIDE").length;
+    const blocked   = evts.filter((e) => e.kind === "SHOT").length;
+
+    const srcRows: SrcRow[] = SRC_KEYS.map((src) => {
+      const srcAtt  = attempts.filter((e) => eventSource(e) === src).length;
+      const srcSc   = scores.filter((e)   => eventSource(e) === src).length;
+      const srcMiss = srcAtt - srcSc;
+      const srcConv = srcAtt > 0 ? `${Math.round((srcSc / srcAtt) * 100)}%` : "—";
+      return { label: SRC_LABELS[src], att: srcAtt, sc: srcSc, miss: srcMiss, conv: srcConv };
+    });
+
+    const twoPointerSc   = evts.filter((e) => e.kind === "TWO_POINTER").length;
+    const fortyFiveTwoSc = evts.filter((e) => e.kind === "FORTY_FIVE_TWO_POINT").length;
+    const freeScored     = evts.filter((e) => e.kind === "FREE_SCORED").length;
+    const freeMissed     = evts.filter((e) => e.kind === "FREE_MISSED").length;
+    const freeTotal      = freeScored + freeMissed;
+    const freeConvPct    = freeTotal  > 0 ? Math.round((freeScored / freeTotal) * 100) : 0;
+
+    return {
+      totalAtt, totalSc, convPct, wides, blocked, srcRows,
+      twoPointerSc, fortyFiveTwoSc, freeScored, freeMissed, freeConvPct,
+    };
+  }
+
+  const forEvts  = validEvts.filter((e) => e.teamSide === "FOR");
+  const oppEvts  = validEvts.filter((e) => e.teamSide === "OPP");
+  const forStats = buildStats(forEvts);
+  const oppStats = buildStats(oppEvts);
+
+  // ── Rendering helpers ─────────────────────────────────────────────────────────
+
+  function drawColHeader(colX: number, label: string, accentColor: string): void {
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(colX, CONTENT_TOP, L_COL_W, COL_HDR_H);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(colX, CONTENT_TOP, 3, COL_HDR_H);
+    ctx.fillStyle    = accentColor;
+    ctx.font         = "bold 12px sans-serif";
+    ctx.textAlign    = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label.toUpperCase(), colX + 14, CONTENT_TOP + COL_HDR_H / 2);
+  }
+
+  function drawSecHeader(colX: number, cy: number, label: string, accentColor: string): number {
+    ctx.fillStyle = "rgba(255,255,255,0.035)";
+    ctx.fillRect(colX, cy, L_COL_W, SEC_HDR_H);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(colX, cy, 3, SEC_HDR_H);
+    ctx.fillStyle    = accentColor;
+    ctx.font         = "bold 11px sans-serif";
+    ctx.textAlign    = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label.toUpperCase(), colX + 14, cy + SEC_HDR_H / 2);
+    return cy + SEC_HDR_H;
+  }
+
+  function drawRow(
+    colX: number, cy: number,
+    label: string, value: string,
+    valueColor: string, isAlt: boolean,
+  ): number {
+    if (isAlt) {
+      ctx.fillStyle = "rgba(255,255,255,0.022)";
+      ctx.fillRect(colX + 3, cy, L_COL_W - 3, ROW_H);
+    }
+    const mid = cy + ROW_H / 2;
+    ctx.fillStyle    = MUTED;
+    ctx.font         = "12px sans-serif";
+    ctx.textAlign    = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, colX + 14, mid);
+    ctx.fillStyle    = valueColor;
+    ctx.font         = "bold 13px sans-serif";
+    ctx.textAlign    = "right";
+    ctx.fillText(value, colX + L_COL_W - 12, mid);
+    return cy + ROW_H;
+  }
+
+  function drawSrcHeader(colX: number, cy: number): number {
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(colX + 3, cy, L_COL_W - 3, 22);
+    const mid = cy + 11;
+    ctx.fillStyle    = MUTED;
+    ctx.font         = "bold 9px sans-serif";
+    ctx.textBaseline = "middle";
+    const colDefs: Array<[number, string]> = [
+      [SRC_ATT_X,  "ATT"],
+      [SRC_SC_X,   "SC"],
+      [SRC_MISS_X, "MISS"],
+      [SRC_CONV_X, "CONV%"],
+    ];
+    for (const [rx, lbl] of colDefs) {
+      ctx.textAlign = "right";
+      ctx.fillText(lbl, colX + rx, mid);
+    }
+    ctx.textAlign = "left";
+    ctx.fillText("SOURCE", colX + 14, mid);
+    return cy + 22;
+  }
+
+  function drawSrcRow(
+    colX: number, cy: number,
+    row: SrcRow, accentColor: string, isAlt: boolean,
+  ): number {
+    if (isAlt) {
+      ctx.fillStyle = "rgba(255,255,255,0.022)";
+      ctx.fillRect(colX + 3, cy, L_COL_W - 3, ROW_H);
+    }
+    const mid      = cy + ROW_H / 2;
+    const hasData  = row.att > 0;
+    ctx.fillStyle    = hasData ? NEUTRAL : MUTED;
+    ctx.font         = "12px sans-serif";
+    ctx.textAlign    = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(row.label, colX + 14, mid);
+    const vc = hasData ? accentColor : MUTED;
+    const vals: Array<[number, string]> = [
+      [SRC_ATT_X,  row.att > 0 ? String(row.att)  : "—"],
+      [SRC_SC_X,   row.sc  > 0 ? String(row.sc)   : "—"],
+      [SRC_MISS_X, row.att > 0 ? String(row.miss) : "—"],
+      [SRC_CONV_X, row.conv],
+    ];
+    ctx.font      = "bold 12px sans-serif";
+    ctx.textAlign = "right";
+    for (const [rx, val] of vals) {
+      ctx.fillStyle = vc;
+      ctx.fillText(val, colX + rx, mid);
+    }
+    return cy + ROW_H;
+  }
+
+  function drawColumn(colX: number, stats: ShootingStats, accentColor: string): void {
+    let cy = CONTENT_TOP + COL_HDR_H + 8;
+
+    // ── Section 1: Overall Conversion ─────────────────────────────────────────
+    cy = drawSecHeader(colX, cy, "Overall Conversion", accentColor);
+    cy = drawRow(colX, cy, "Attempts",        String(stats.totalAtt),
+      NEUTRAL, false);
+    cy = drawRow(colX, cy, "Scores",          String(stats.totalSc),
+      stats.totalAtt > 0 ? accentColor : MUTED, true);
+    cy = drawRow(colX, cy, "Conversion",      stats.totalAtt > 0 ? `${stats.convPct}%` : "—",
+      stats.totalAtt > 0 ? accentColor : MUTED, false);
+    cy = drawRow(colX, cy, "Wides",           String(stats.wides),
+      NEUTRAL, true);
+    cy = drawRow(colX, cy, "Blocked / Saved", String(stats.blocked),
+      NEUTRAL, false);
+    cy += SEC_GAP;
+
+    // ── Section 2: Source Breakdown ───────────────────────────────────────────
+    cy = drawSecHeader(colX, cy, "Source Breakdown", accentColor);
+    cy = drawSrcHeader(colX, cy);
+    stats.srcRows.forEach((row, i) => {
+      cy = drawSrcRow(colX, cy, row, accentColor, i % 2 === 1);
+    });
+    cy += SEC_GAP;
+
+    // ── Section 3: 2-Point Profile ────────────────────────────────────────────
+    cy = drawSecHeader(colX, cy, "2-Point Profile", accentColor);
+    cy = drawRow(colX, cy, "TWO_POINTER Scores", String(stats.twoPointerSc),
+      stats.twoPointerSc   > 0 ? accentColor : MUTED, false);
+    cy = drawRow(colX, cy, "45+2 Scores",        String(stats.fortyFiveTwoSc),
+      stats.fortyFiveTwoSc > 0 ? accentColor : MUTED, true);
+    const totalTwoSc = stats.twoPointerSc + stats.fortyFiveTwoSc;
+    cy = drawRow(colX, cy, "Total 2PT Scores",   String(totalTwoSc),
+      totalTwoSc > 0 ? accentColor : MUTED, false);
+    cy = drawRow(colX, cy, "Total 2PT Pts Value", String(totalTwoSc * 2),
+      totalTwoSc > 0 ? NEUTRAL    : MUTED, true);
+    cy += SEC_GAP;
+
+    // ── Section 4: Free Conversion ────────────────────────────────────────────
+    cy = drawSecHeader(colX, cy, "Free Conversion", accentColor);
+    const freeTotal = stats.freeScored + stats.freeMissed;
+    cy = drawRow(colX, cy, "Free Scored", String(stats.freeScored),
+      stats.freeScored > 0 ? accentColor : MUTED, false);
+    cy = drawRow(colX, cy, "Free Missed", String(stats.freeMissed),
+      stats.freeMissed > 0 ? NEUTRAL    : MUTED, true);
+    cy = drawRow(colX, cy, "Free Conv %", freeTotal > 0 ? `${stats.freeConvPct}%` : "—",
+      freeTotal        > 0 ? accentColor : MUTED, false);
+  }
+
+  // Centre divider
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.fillRect(R_COL_X - 20, CONTENT_TOP, 1, CONTENT_BOT - CONTENT_TOP);
+
+  // Column headers
+  drawColHeader(L_COL_X, `FOR — ${homeTeam}`, FOR_COLOR);
+  drawColHeader(R_COL_X, `OPP — ${awayTeam}`, OPP_COLOR);
+
+  // Render both sides
+  drawColumn(L_COL_X, forStats, FOR_COLOR);
+  drawColumn(R_COL_X, oppStats, OPP_COLOR);
+
+  return canvas;
+}
+
 // ─── Tactical page spec table (20 pages) ────────────────────────────────────
 
 type PageSpec = {
@@ -4054,14 +5519,18 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *            Each shows the full 5-section breakdown filtered to that segment.
  *   9+.      Player Breakdown — one or more pages, no truncation
  *   (9+N)+.  20 tactical pitch map pages (N = player page count)
- *   Last−5.  Kickout Chain Analysis page
- *   Last−4.  Turnover Punishment Analysis page
- *   Last−3.  Momentum & Scoring Runs page
- *   Last−2.  Tactical Chain Analysis summary page
- *   Last−1.  Tactical Intelligence Summary page
- *   Last.    Tactical Review Guide page
+ *   Last−9.  Kickout Chain Analysis page
+ *   Last−8.  Turnover Punishment Analysis page
+ *   Last−7.  Momentum & Scoring Runs page
+ *   Last−6.  Tactical Chain Analysis summary page
+ *   Last−5.  Tactical Intelligence Summary page
+ *   Last−4.  Tactical Review Guide page
+ *   Last−3.  Opposition Snapshot page
+ *   Last−2.  Zone Analysis page
+ *   Last−1.  Match Swing Timeline page
+ *   Last.    Shot & Scoring Efficiency page
  *
- * Total pages = 32 + N  (N ≥ 1 → minimum 33 pages).
+ * Total pages = 36 + N  (N ≥ 1 → minimum 37 pages).
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
   const {
@@ -4072,9 +5541,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
   } = input;
 
-  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 5 chain pages + 1 review guide
+  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 6 chain pages + 1 review guide + 1 opposition snapshot + 1 zone analysis + 1 match swing timeline + 1 shot & scoring efficiency
   const playerPageCount = calcPlayerPageCount(events);
-  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 6;
+  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 10;
 
   // Chain analysis — computed once here and shared with all chain page builders.
   // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
@@ -4153,11 +5622,75 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(canvas!, true);
   });
 
-  // Sixth-to-last page: Kickout Chain Analysis
+  // Tenth-to-last page: Kickout Chain Analysis
   // chainAnalysis was computed once above; all chain builders consume slices of it.
   try {
     addCanvasPage(
       makeKickoutChainPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES - 9,   // tenth-to-last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
+
+  // Ninth-to-last page: Turnover Punishment Analysis
+  try {
+    addCanvasPage(
+      makeTurnoverPunishmentPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES - 8,   // ninth-to-last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
+
+  // Eighth-to-last page: Momentum & Scoring Runs Analysis
+  try {
+    addCanvasPage(
+      makeMomentumRunsPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES - 7,   // eighth-to-last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
+
+  // Seventh-to-last page: Tactical Chain Analysis summary
+  try {
+    addCanvasPage(
+      makeChainSummaryPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES - 6,   // seventh-to-last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
+
+  // Sixth-to-last page: Tactical Intelligence Summary
+  try {
+    addCanvasPage(
+      makeTacticalIntelligencePage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4170,10 +5703,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Fifth-to-last page: Turnover Punishment Analysis
+  // Fifth-to-last page: Tactical Review Guide
   try {
     addCanvasPage(
-      makeTurnoverPunishmentPage(
+      makeTacticalReviewGuidePage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4186,10 +5719,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Fourth-to-last page: Momentum & Scoring Runs Analysis
+  // Fourth-to-last page: Opposition Snapshot
   try {
     addCanvasPage(
-      makeMomentumRunsPage(
+      makeOppositionSnapshotPage(
+        events,
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4202,11 +5736,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Third-to-last page: Tactical Chain Analysis summary
+  // Third-to-last page: Zone Analysis
   try {
     addCanvasPage(
-      makeChainSummaryPage(
-        chainAnalysis,
+      makeZoneAnalysisPage(
+        events,
         homeTeamName,
         awayTeamName,
         TOTAL_PAGES - 2,   // third-to-last page
@@ -4218,10 +5752,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Second-to-last page: Tactical Intelligence Summary
+  // Second-to-last page: Match Swing Timeline
   try {
     addCanvasPage(
-      makeTacticalIntelligencePage(
+      makeMatchSwingTimelinePage(
+        events,
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4234,11 +5769,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Last page: Tactical Review Guide
+  // Last page: Shot & Scoring Efficiency
   try {
     addCanvasPage(
-      makeTacticalReviewGuidePage(
-        chainAnalysis,
+      makeShotEfficiencyPage(
+        events,
         homeTeamName,
         awayTeamName,
         TOTAL_PAGES,   // this IS the last page

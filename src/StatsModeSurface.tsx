@@ -3469,7 +3469,9 @@ export default function StatsModeSurface() {
     [isHurlingMode],
   );
 
-  useScreenWakeLock(isLiveMatchActive);
+  // NOTE: useScreenWakeLock is intentionally positioned AFTER isReviewModeActive
+  // (line ~5257) so the combined condition covers both live-match and review sessions.
+  // See isReviewModeActive declaration below.
   const REVIEW_FILTER_KINDS_FOR_MODE = REVIEW_FILTER_KINDS;
   const OPPOSITION_EVENT_KINDS = useMemo(
     () =>
@@ -5255,6 +5257,13 @@ export default function StatsModeSurface() {
     [visibleReviewEvents],
   );
   const isReviewModeActive = showReviewStrip || utilityPanel === "REVIEW";
+
+  // Keep screen awake during live match AND during review sessions.
+  // isLiveMatchActive covers FIRST_HALF / HALF_TIME / SECOND_HALF.
+  // isReviewModeActive covers any active review strip or REVIEW utility panel.
+  // Positioned here (rather than near isLiveMatchActive above) so that
+  // isReviewModeActive is in scope for the combined condition.
+  useScreenWakeLock(isLiveMatchActive || isReviewModeActive);
 
   useEffect(() => {
     if (matchState !== "FULL_TIME") return;
