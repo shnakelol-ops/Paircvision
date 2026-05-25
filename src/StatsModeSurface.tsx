@@ -98,7 +98,7 @@ type SquadPlayer = {
   isActive?: boolean;
   activeSlot?: number;
 };
-type Squad = { id: string; name: string; players: SquadPlayer[] };
+type Squad = { id: string; name: string; players: SquadPlayer[]; team?: TeamSide };
 type SavedSquadPlayer = { id: string; number: number; name: string; isActive?: boolean };
 type SavedSquad = {
   id: string;
@@ -1047,16 +1047,32 @@ function createDefaultSquad(name: "HOME" | "AWAY" = "HOME"): Squad {
 }
 function ensureHomeAwaySquads(input: Squad[]): { squads: Squad[]; byTeam: { HOME: string; AWAY: string } } {
   const normalized = input.length > 0 ? input : [createDefaultSquad("HOME")];
-  let home = normalized.find((s) => s.name.trim().toUpperCase() === "HOME") ?? normalized[0] ?? null;
-  const next = [...normalized];
+  const next = normalized.map((squad) => {
+    if (squad.team === "HOME" || squad.team === "AWAY") return squad;
+    if (squad.name.trim().toUpperCase() === "HOME") return { ...squad, team: "HOME" as const };
+    if (squad.name.trim().toUpperCase() === "AWAY") return { ...squad, team: "AWAY" as const };
+    return squad;
+  });
+  let home = next.find((s) => s.team === "HOME") ?? next.find((s) => s.name.trim().toUpperCase() === "HOME") ?? next[0] ?? null;
   if (!home) {
     home = createDefaultSquad("HOME");
-    next.unshift(home);
+    next.unshift({ ...home, team: "HOME" });
+  } else if (home.team !== "HOME") {
+    home = { ...home, team: "HOME" };
+    const idx = next.findIndex((s) => s.id === home?.id);
+    if (idx >= 0) next[idx] = home;
   }
-  let away = next.find((s) => s.name.trim().toUpperCase() === "AWAY") ?? null;
+  let away = next.find((s) => s.team === "AWAY") ?? next.find((s) => s.name.trim().toUpperCase() === "AWAY") ?? null;
   if (!away) {
     away = createDefaultSquad("AWAY");
+    next.push({ ...away, team: "AWAY" });
+  } else if (away.id === home.id) {
+    away = { ...createDefaultSquad("AWAY"), team: "AWAY" };
     next.push(away);
+  } else if (away.team !== "AWAY") {
+    away = { ...away, team: "AWAY" };
+    const idx = next.findIndex((s) => s.id === away?.id);
+    if (idx >= 0) next[idx] = away;
   }
   return { squads: next, byTeam: { HOME: home.id, AWAY: away.id } };
 }
@@ -1191,10 +1207,11 @@ function parseStoredSquads(input: string | null): Squad[] {
     const parsed = JSON.parse(input);
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .map((item) => {
+      .map((item): Squad | null => {
         if (!item || typeof item !== "object") return null;
         const maybeId = "id" in item ? item.id : null;
         const maybeName = "name" in item ? item.name : null;
+        const maybeTeam = "team" in item ? item.team : null;
         const maybePlayers = "players" in item ? item.players : null;
         if (typeof maybeId !== "string" || typeof maybeName !== "string") return null;
         if (!Array.isArray(maybePlayers)) return null;
@@ -1206,6 +1223,7 @@ function parseStoredSquads(input: string | null): Squad[] {
         return {
           id: maybeId,
           name: maybeName.slice(0, 24),
+          team: maybeTeam === "HOME" || maybeTeam === "AWAY" ? maybeTeam : undefined,
           players,
         };
       })
@@ -3507,7 +3525,7 @@ export default function StatsModeSurface() {
   const activeSquadId = activeSquadIdsByTeam[playerSquadTeam];
   const activeSquad =
     squads.find((squad) => squad.id === activeSquadId) ??
-    squads.find((squad) => squad.name.trim().toUpperCase() === (playerSquadTeam === "HOME" ? "HOME" : "AWAY")) ??
+    squads.find((squad) => squad.team === playerSquadTeam) ??
     squads[0] ??
     createDefaultSquad(playerSquadTeam);
   const activeSquadPlayers = activeSquad.players;
@@ -3522,6 +3540,8 @@ export default function StatsModeSurface() {
   const inactivePlayers = activeSquadPlayers.filter((player) => player.isActive !== true);
 
   const setActiveSquadById = (nextSquadId: string) => {
+    const selected = squads.find((squad) => squad.id === nextSquadId);
+    if (selected && selected.team && selected.team !== playerSquadTeam) return;
     setActiveSquadIdsByTeam((prev) => ({ ...prev, [playerSquadTeam]: nextSquadId }));
     setActivePlayer(null);
     setActivePlayerNumber(null);
@@ -3658,6 +3678,7 @@ export default function StatsModeSurface() {
     const nextSquad: Squad = {
       id: `squad-${newLocalEventId()}`,
       name: nextName.slice(0, 24),
+      team: playerSquadTeam,
       players: [],
     };
     setSquads((prev) => [...prev, nextSquad]);
@@ -3707,6 +3728,7 @@ export default function StatsModeSurface() {
       const nextActiveSquad: Squad = {
         id: savedSquad.id,
         name: savedSquad.name.slice(0, 24) || "HOME",
+        team: playerSquadTeam,
         players: restoredPlayers,
       };
       const remaining = prevSquads.filter((entry) => entry.id !== savedSquad.id);
@@ -6339,7 +6361,7 @@ export default function StatsModeSurface() {
                   }}
                   aria-label="Select home squad"
                 >
-                  {squads.map((squad) => (
+                  {squads.filter((squad) => !squad.team || squad.team === playerSquadTeam).map((squad) => (
                     <option key={squad.id} value={squad.id}>
                       {squad.name}
                     </option>
