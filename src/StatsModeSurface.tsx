@@ -5081,6 +5081,12 @@ export default function StatsModeSurface() {
     setSaveFeedback("Squads reset to default");
   };
 
+  const requestResetSquads = () => {
+    const shouldReset = window.confirm("Reset HOME and AWAY squads to blank #1–#30?");
+    if (!shouldReset) return;
+    resetSquadsToDefault();
+  };
+
   const resetMatchNow = () => {
     clearActiveMatchDraft();
     savedSessionSignatureRef.current = null;
@@ -6410,9 +6416,6 @@ export default function StatsModeSurface() {
                 <button type="button" className="utility-review-btn" onClick={saveSquadSnapshot}>
                   Save Squad
                 </button>
-                <button type="button" className="utility-review-btn" onClick={resetSquadsToDefault}>
-                  Reset Squads
-                </button>
                 <button
                   type="button"
                   className="utility-review-btn"
@@ -6423,6 +6426,11 @@ export default function StatsModeSurface() {
                   disabled={savedSquads.length === 0}
                 >
                   Load Squad
+                </button>
+              </div>
+              <div style={{ display: "flex", marginTop: "6px" }}>
+                <button type="button" className="utility-review-btn" onClick={requestResetSquads}>
+                  Reset Squads
                 </button>
               </div>
             </>
