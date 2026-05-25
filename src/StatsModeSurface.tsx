@@ -3449,6 +3449,7 @@ export default function StatsModeSurface() {
     [appViewportHeight],
   );
   const canEditTeamNames = matchState === "PRE_MATCH";
+  const isPreMatchSetup = matchState === "PRE_MATCH";
   const activeSquad =
     squads.find((squad) => squad.id === activeSquadId) ?? squads[0] ?? createDefaultSquad();
   const activeSquadPlayers = activeSquad.players;
@@ -6252,53 +6253,57 @@ export default function StatsModeSurface() {
         >
           <div className="utility-review-scroll">
           <div className="utility-panel-title">HOME Players</div>
-          <div className="utility-squad-row">
-            <select
-              className="utility-squad-select"
-              value={activeSquad.id}
-              onChange={(event) => {
-                setActiveSquadById(event.target.value);
-              }}
-              aria-label="Select home squad"
-            >
-              {squads.map((squad) => (
-                <option key={squad.id} value={squad.id}>
-                  {squad.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="utility-squad-create">
-            <input
-              type="text"
-              className="utility-squad-input"
-              value={squadDraft}
-              onChange={(event) => {
-                setSquadDraft(event.target.value);
-              }}
-              placeholder="New or rename squad"
-            />
-            <button type="button" className="utility-review-btn" onClick={createSquad}>
-              New
-            </button>
-            <button type="button" className="utility-review-btn" onClick={saveActiveSquadName}>
-              Rename
-            </button>
-            <button type="button" className="utility-review-btn" onClick={saveSquadSnapshot}>
-              Save Squad
-            </button>
-            <button
-              type="button"
-              className="utility-review-btn"
-              onClick={() => {
-                if (savedSquads.length === 0) return;
-                loadSavedSquadIntoActive(savedSquads[0]);
-              }}
-              disabled={savedSquads.length === 0}
-            >
-              Load Squad
-            </button>
-          </div>
+          {isPreMatchSetup ? (
+            <>
+              <div className="utility-squad-row">
+                <select
+                  className="utility-squad-select"
+                  value={activeSquad.id}
+                  onChange={(event) => {
+                    setActiveSquadById(event.target.value);
+                  }}
+                  aria-label="Select home squad"
+                >
+                  {squads.map((squad) => (
+                    <option key={squad.id} value={squad.id}>
+                      {squad.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="utility-squad-create">
+                <input
+                  type="text"
+                  className="utility-squad-input"
+                  value={squadDraft}
+                  onChange={(event) => {
+                    setSquadDraft(event.target.value);
+                  }}
+                  placeholder="New or rename squad"
+                />
+                <button type="button" className="utility-review-btn" onClick={createSquad}>
+                  New
+                </button>
+                <button type="button" className="utility-review-btn" onClick={saveActiveSquadName}>
+                  Rename
+                </button>
+                <button type="button" className="utility-review-btn" onClick={saveSquadSnapshot}>
+                  Save Squad
+                </button>
+                <button
+                  type="button"
+                  className="utility-review-btn"
+                  onClick={() => {
+                    if (savedSquads.length === 0) return;
+                    loadSavedSquadIntoActive(savedSquads[0]);
+                  }}
+                  disabled={savedSquads.length === 0}
+                >
+                  Load Squad
+                </button>
+              </div>
+            </>
+          ) : null}
           {savedSquads.length > 0 ? (
             <div className="utility-panel-title" style={{ fontSize: "8px", opacity: 0.78, textTransform: "none" }}>
               Last saved: {savedSquads[0].name} · {savedSquads[0].players.length} players
@@ -6325,25 +6330,27 @@ export default function StatsModeSurface() {
               </button>
             </div>
           ) : null}
-          <div className="utility-player-add-row">
-            <input
-              type="text"
-              className="utility-player-input"
-              value={playerDraft}
-              onChange={(event) => {
-                setPlayerDraft(event.target.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter") return;
-                event.preventDefault();
-                addPlayer();
-              }}
-              placeholder="Add player"
-            />
-            <button type="button" className="utility-review-btn" onClick={addPlayer}>
-              Add
-            </button>
-          </div>
+          {isPreMatchSetup ? (
+            <div className="utility-player-add-row">
+              <input
+                type="text"
+                className="utility-player-input"
+                value={playerDraft}
+                onChange={(event) => {
+                  setPlayerDraft(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  addPlayer();
+                }}
+                placeholder="Add player"
+              />
+              <button type="button" className="utility-review-btn" onClick={addPlayer}>
+                Add
+              </button>
+            </div>
+          ) : null}
           <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.84 }}>
             Active Players
           </div>
@@ -6364,14 +6371,15 @@ export default function StatsModeSurface() {
                         onDoubleClick={() => {
                           editPlayer(player.id);
                         }}
-                        style={
-                          isActive
+                        style={{
+                          ...(isActive
                             ? {
                                 border: "1px solid rgba(125,211,252,0.9)",
                                 background: "rgba(14,116,144,0.38)",
                               }
-                            : { border: "1px solid rgba(74, 222, 128, 0.65)" }
-                        }
+                            : { border: "1px solid rgba(74, 222, 128, 0.65)" }),
+                          ...(isPreMatchSetup ? {} : { fontSize: "11px", padding: "8px 10px" }),
+                        }}
                       >
                         {isActive ? "● " : ""}
                         {formatPlayerLabel(player)}
@@ -6428,7 +6436,7 @@ export default function StatsModeSurface() {
               Confirm Sub
             </button>
           </div>
-          {benchPlayers.length > 0 ? (
+          {isPreMatchSetup && benchPlayers.length > 0 ? (
             <div className="utility-subs-wrap">
               <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.84 }}>
                 Bench
