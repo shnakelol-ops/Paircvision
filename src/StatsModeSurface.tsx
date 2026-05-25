@@ -6146,6 +6146,10 @@ export default function StatsModeSurface() {
     })
     .slice(0, 15);
   const benchPlayers = inactivePlayers;
+  const contextActivePillBorder =
+    playerSquadTeam === "HOME" ? "1px solid rgba(74, 222, 128, 0.65)" : "1px solid rgba(248, 113, 113, 0.62)";
+  const contextActivePillGlow =
+    playerSquadTeam === "HOME" ? "0 0 0 1px rgba(74, 222, 128, 0.24)" : "0 0 0 1px rgba(248, 113, 113, 0.24)";
   const formationRows: SquadPlayer[][] = [];
   let formationCursor = 0;
   for (const rowSize of FORMATION_ROW_SIZES) {
@@ -6474,7 +6478,7 @@ export default function StatsModeSurface() {
                                 border: "1px solid rgba(125,211,252,0.9)",
                                 background: "rgba(14,116,144,0.38)",
                               }
-                            : { border: "1px solid rgba(74, 222, 128, 0.65)" }),
+                            : { border: contextActivePillBorder, boxShadow: contextActivePillGlow }),
                           ...(isPreMatchSetup ? {} : { fontSize: "11px", padding: "8px 10px" }),
                         }}
                       >
