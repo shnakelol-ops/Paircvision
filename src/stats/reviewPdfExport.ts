@@ -20,6 +20,8 @@ import type {
   MatchEventPeriod,
   MatchEventSegment,
 } from "../core/stats/stats-event-model";
+import { selectChainAnalysis } from "./chains/chain-selectors";
+import type { ChainAnalysis } from "./chains/chain-types";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -42,6 +44,12 @@ export type PdfExportEvent = {
   y?: number | null;
   /** Sub-type tags (CLEAN, BREAK, TACKLE, SHORT, BLOCK_SAVE, etc.) from LoggedMatchEvent */
   tags?: string[] | null;
+  /**
+   * Match clock position in seconds. Present on LoggedMatchEvent; flows through to
+   * chain analysis for temporal sequencing. Optional — chain engine falls back to
+   * segment-based ordering when absent.
+   */
+  matchClockSeconds?: number | null;
   /** Player tagging — optional, present when an event was tagged to a specific player */
   playerId?: string | null;
   playerName?: string | null;
@@ -1629,6 +1637,388 @@ function makePlayerPages(
   return results;
 }
 
+// ─── Chain Summary page ───────────────────────────────────────────────────────
+
+/**
+ * Renders the Tactical Chain Analysis summary page.
+ *
+ * Layout (1920×1080):
+ *   Left panel  (x 24–630)  : Chain Pattern table — rule × FOR/OPP counts
+ *   Mid panel   (x 654–1260): Kickout chains  (top) + Turnover chains (bottom)
+ *   Right panel (x 1284–1896): Scoring runs + momentum summary
+ *
+ * This builder consumes a pre-computed ChainAnalysis so the engine runs
+ * exactly once per export regardless of how many chain pages are added later.
+ *
+ * Future chain pages (kickout analysis, turnover punishment, momentum) will
+ * each be separate builder functions that consume the same ChainAnalysis arg.
+ */
+function makeChainSummaryPage(
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Tactical Chain Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+
+  const CONTENT_TOP  = 86;
+  const CONTENT_BOT  = CANVAS_H - 36;
+  const CONTENT_H    = CONTENT_BOT - CONTENT_TOP;
+  const COL_W        = 606;
+  const COL_GAP      = 24;
+  const COL1_X       = 24;
+  const COL2_X       = COL1_X + COL_W + COL_GAP;
+  const COL3_X       = COL2_X + COL_W + COL_GAP;
+
+  // ── Helper: draw a labelled panel card ──────────────────────────────────────
+  function drawPanelBg(
+    x: number, y: number, w: number, h: number,
+    accentColor: string,
+  ): void {
+    ctx.save();
+    // Use fillRect (not roundRect) — consistent with the existing PDF engine
+    // and avoids a dependency on ctx.roundRect which is absent in Safari < 15.4.
+    ctx.fillStyle = "rgba(255,255,255,0.022)";
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(x, y, 3, h);
+    ctx.restore();
+  }
+
+  function drawPanelTitle(
+    x: number, y: number, label: string, accentColor: string,
+  ): number {
+    ctx.save();
+    ctx.fillStyle = accentColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label.toUpperCase(), x + 16, y + 13);
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 4, y + 26);
+    ctx.lineTo(x + COL_W, y + 26);
+    ctx.stroke();
+    ctx.restore();
+    return y + 28; // returns y after title area
+  }
+
+  function drawDataRow(
+    x: number, cy: number, w: number,
+    label: string, valFor: string, valOpp: string,
+    isAlt: boolean,
+    forColor = "#7dd3fc",
+    oppColor = "#fb7185",
+  ): number {
+    const ROW_H = 26;
+    if (isAlt) {
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
+    }
+    const mid = cy + ROW_H / 2;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 14, mid);
+    // FOR value — right-aligned in left two-thirds
+    const valCol = x + w * 0.58;
+    ctx.fillStyle = forColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(valFor, valCol, mid);
+    // OPP value
+    ctx.fillStyle = oppColor;
+    ctx.textAlign = "right";
+    ctx.fillText(valOpp, x + w - 10, mid);
+    return cy + ROW_H;
+  }
+
+  function drawColumnHeader(
+    x: number, cy: number, w: number,
+    forLabel: string, oppLabel: string,
+  ): number {
+    const H = 20;
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(x + 4, cy, w - 4, H);
+    const mid = cy + H / 2;
+    ctx.font = "bold 10px sans-serif";
+    ctx.textBaseline = "middle";
+    const valCol = x + w * 0.58;
+    ctx.fillStyle = "#7dd3fc";
+    ctx.textAlign = "right";
+    ctx.fillText(forLabel, valCol, mid);
+    ctx.fillStyle = "#fb7185";
+    ctx.textAlign = "right";
+    ctx.fillText(oppLabel, x + w - 10, mid);
+    ctx.fillStyle = "#64748b";
+    ctx.textAlign = "left";
+    ctx.fillText("PATTERN", x + 14, mid);
+    return cy + H;
+  }
+
+  function drawStatRow(
+    x: number, cy: number, w: number,
+    label: string, value: string, valueColor: string,
+    isAlt: boolean,
+  ): number {
+    const ROW_H = 26;
+    if (isAlt) {
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
+    }
+    const mid = cy + ROW_H / 2;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 14, mid);
+    ctx.fillStyle = valueColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(value, x + w - 10, mid);
+    return cy + ROW_H;
+  }
+
+  function pct(n: number): string {
+    return `${n}%`;
+  }
+
+  function val(n: number): string {
+    return String(n);
+  }
+
+  // ── COL 1: Chain Patterns Table ─────────────────────────────────────────────
+  {
+    const PANEL_H = CONTENT_H;
+    drawPanelBg(COL1_X, CONTENT_TOP, COL_W, PANEL_H, "#a78bfa");
+    let cy = drawPanelTitle(COL1_X, CONTENT_TOP, "Chain Patterns", "#a78bfa");
+    cy = drawColumnHeader(COL1_X, cy, COL_W, homeTeam.slice(0, 12), awayTeam.slice(0, 12));
+
+    const { byRule } = analysis;
+
+    const chainRows: { label: string; ruleId: import("./chains/chain-types").ChainRuleId }[] = [
+      { label: "Kickout Won → Score",        ruleId: "KICKOUT_TO_SCORE"               },
+      { label: "Kickout Lost → Score Agst",  ruleId: "KICKOUT_LOST_TO_SCORE_AGAINST"  },
+      { label: "Turnover Won → Score",       ruleId: "TURNOVER_TO_SCORE"              },
+      { label: "Turnover Won → Shot",        ruleId: "TURNOVER_TO_SHOT"               },
+      { label: "Free Won → Goal",            ruleId: "FREE_WON_TO_GOAL"               },
+    ];
+
+    chainRows.forEach(({ label, ruleId }, i) => {
+      const ruleChains = byRule[ruleId] ?? [];
+      const forCount   = ruleChains.filter((c) => c.teamSide === "FOR").length;
+      const oppCount   = ruleChains.filter((c) => c.teamSide === "OPP").length;
+      cy = drawDataRow(COL1_X, cy, COL_W, label, val(forCount), val(oppCount), i % 2 === 0);
+    });
+
+    // Divider
+    cy += 10;
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(COL1_X + 4, cy);
+    ctx.lineTo(COL1_X + COL_W, cy);
+    ctx.stroke();
+    ctx.restore();
+    cy += 10;
+
+    // Summary totals
+    const { summary } = analysis;
+    const totalFor = summary.forChains;
+    const totalOpp = summary.oppChains;
+    ctx.save();
+    ctx.fillStyle = "#64748b";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText("TOTAL CHAINS DETECTED", COL1_X + 14, cy + 10);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "bold 20px sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(val(totalFor), COL1_X + COL_W * 0.58, cy + 10);
+    ctx.fillStyle = "#fb7185";
+    ctx.fillText(val(totalOpp), COL1_X + COL_W - 10, cy + 10);
+    ctx.restore();
+    cy += 30;
+
+    // Momentum summary teaser
+    cy += 12;
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(COL1_X + 4, cy, COL_W - 4, 20);
+    ctx.fillStyle = "#fbbf24";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText("SCORING RUNS (≥2 consecutive)", COL1_X + 14, cy + 10);
+    ctx.restore();
+    cy += 20;
+
+    const { scoringRuns } = analysis;
+    cy = drawStatRow(COL1_X, cy, COL_W, "Longest run (For)", `${scoringRuns.maxConsecutiveFor} pts`, "#7dd3fc", false);
+    cy = drawStatRow(COL1_X, cy, COL_W, "Longest run (Opp)", `${scoringRuns.maxConsecutiveOpp} pts`, "#fb7185", true);
+    cy = drawStatRow(COL1_X, cy, COL_W, "Total runs detected", val(scoringRuns.runs.length), "#e2e8f0", false);
+  }
+
+  // ── COL 2: Kickout Chains (top half) + Turnover Chains (bottom half) ────────
+  {
+    const HALF_H  = Math.floor(CONTENT_H / 2) - 8;
+    const PANEL_Y1 = CONTENT_TOP;
+    const PANEL_Y2 = CONTENT_TOP + HALF_H + 16;
+
+    // Kickout panel
+    drawPanelBg(COL2_X, PANEL_Y1, COL_W, HALF_H, "#22d3ee");
+    let cy = drawPanelTitle(COL2_X, PANEL_Y1, "Kickout Chains", "#22d3ee");
+
+    const ko = analysis.kickouts;
+    cy = drawStatRow(COL2_X, cy, COL_W, "Total kickouts",     val(ko.total), "#e2e8f0", false);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Won",                val(ko.won),   "#7dd3fc", true);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Lost / Conceded",    val(ko.lost),  "#fb7185", false);
+    cy += 6;
+    cy = drawStatRow(COL2_X, cy, COL_W, "Won → Score",        `${val(ko.wonToScore)} (${pct(ko.wonToScorePercent)})`,           "#4ade80", true);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Lost → Score Against", `${val(ko.lostAllowedScore)} (${pct(ko.lostAllowedScorePercent)})`, "#f97316", false);
+
+    // Kickout possession efficiency bar
+    cy += 10;
+    if (ko.won + ko.lost > 0) {
+      const barW = COL_W - 24;
+      const barH = 12;
+      const barX = COL2_X + 12;
+      const barY = cy;
+      const wonFrac = ko.won / (ko.won + ko.lost);
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.06)";
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = "#22d3ee";
+      ctx.fillRect(barX, barY, Math.max(4, barW * wonFrac), barH);
+      ctx.fillStyle = "#64748b";
+      ctx.font = "10px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText(`Possession rate: ${Math.round(wonFrac * 100)}%`, barX + barW / 2, barY + barH + 10);
+      ctx.restore();
+    }
+
+    // Turnover panel
+    drawPanelBg(COL2_X, PANEL_Y2, COL_W, HALF_H, "#a78bfa");
+    cy = drawPanelTitle(COL2_X, PANEL_Y2, "Turnover Chains", "#a78bfa");
+
+    const to = analysis.turnovers;
+    cy = drawStatRow(COL2_X, cy, COL_W, "Total turnovers",    val(to.total), "#e2e8f0", false);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Won",                val(to.won),   "#7dd3fc", true);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Lost",               val(to.lost),  "#fb7185", false);
+    cy += 6;
+    cy = drawStatRow(COL2_X, cy, COL_W, "Won → Score",        `${val(to.wonToScore)} (${pct(to.wonToScorePercent)})`,  "#4ade80", true);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Won → Shot",         `${val(to.wonToShot)} (${pct(to.wonToShotPercent)})`,    "#a78bfa", false);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Lost → Score Agst",  val(to.lostAllowedScore),                                "#f97316", true);
+  }
+
+  // ── COL 3: Scoring Runs detail ──────────────────────────────────────────────
+  {
+    drawPanelBg(COL3_X, CONTENT_TOP, COL_W, CONTENT_H, "#fbbf24");
+    let cy = drawPanelTitle(COL3_X, CONTENT_TOP, "Scoring Momentum", "#fbbf24");
+
+    const { scoringRuns } = analysis;
+
+    // Best runs for each side
+    const { longestRunFor: lrf, longestRunOpp: lro } = scoringRuns;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(`${homeTeam.slice(0, 16)} — Best Run`, COL3_X + 14, cy + 10);
+    ctx.restore();
+    cy += 20;
+
+    if (lrf) {
+      const seg = lrf.period === "1H"
+        ? `1H · Seg ${lrf.events[0].segment}`
+        : `2H · Seg ${lrf.events[0].segment}`;
+      cy = drawStatRow(COL3_X, cy, COL_W, "Consecutive scores",  val(lrf.count), "#4ade80", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "Period / Segment",    seg,            "#e2e8f0", true);
+    } else {
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring run ≥2",   "—",            "#475569", false);
+      cy++;
+    }
+
+    cy += 8;
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
+    ctx.fillStyle = "#fb7185";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(`${awayTeam.slice(0, 16)} — Best Run`, COL3_X + 14, cy + 10);
+    ctx.restore();
+    cy += 20;
+
+    if (lro) {
+      const seg = lro.period === "1H"
+        ? `1H · Seg ${lro.events[0].segment}`
+        : `2H · Seg ${lro.events[0].segment}`;
+      cy = drawStatRow(COL3_X, cy, COL_W, "Consecutive scores",  val(lro.count), "#4ade80", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "Period / Segment",    seg,            "#e2e8f0", true);
+    } else {
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring run ≥2",   "—",            "#475569", false);
+      cy++;
+    }
+
+    // All runs list (up to 12, most recent first)
+    cy += 12;
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
+    ctx.fillStyle = "#fbbf24";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(`ALL SCORING RUNS (${scoringRuns.runs.length} total)`, COL3_X + 14, cy + 10);
+    ctx.restore();
+    cy += 20;
+
+    const runsToShow = [...scoringRuns.runs]
+      .sort((a, b) => b.startClockSeconds - a.startClockSeconds)
+      .slice(0, 12);
+
+    if (runsToShow.length === 0) {
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs detected", "—", "#475569", false);
+    } else {
+      runsToShow.forEach((run, i) => {
+        const sideLabel = run.teamSide === "FOR" ? homeTeam.slice(0, 10) : awayTeam.slice(0, 10);
+        const timeLabel = run.period === "1H" ? `1H S${run.events[0].segment}` : `2H S${run.events[0].segment}`;
+        const color     = run.teamSide === "FOR" ? "#7dd3fc" : "#fb7185";
+        cy = drawStatRow(
+          COL3_X, cy, COL_W,
+          `${sideLabel}  ×${run.count}  ${timeLabel}`,
+          `${run.count} pts`,
+          color,
+          i % 2 === 0,
+        );
+      });
+    }
+  }
+
+  return canvas;
+}
+
 // ─── Tactical page spec table (20 pages) ────────────────────────────────────
 
 type PageSpec = {
@@ -1691,8 +2081,9 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *            Each shows the full 5-section breakdown filtered to that segment.
  *   9+.      Player Breakdown — one or more pages, no truncation
  *   (9+N)+.  20 tactical pitch map pages (N = player page count)
+ *   Last.    Tactical Chain Analysis summary page (1 page)
  *
- * Total pages = 28 + N  (N ≥ 1 → minimum 29 pages).
+ * Total pages = 29 + N  (N ≥ 1 → minimum 30 pages).
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
   const {
@@ -1703,9 +2094,13 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
   } = input;
 
-  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps
+  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 1 chain summary
   const playerPageCount = calcPlayerPageCount(events);
-  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length;
+  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 1;
+
+  // Chain analysis — computed once here and shared with all chain page builders.
+  // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
+  const chainAnalysis = selectChainAnalysis(events);
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -1779,6 +2174,26 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     }
     addCanvasPage(canvas!, true);
   });
+
+  // Last page: Tactical Chain Analysis summary
+  // chainAnalysis was computed once above; this builder consumes a slice of it.
+  // Future chain pages (kickout analysis, turnover punishment, momentum) follow
+  // the same pattern: add a builder function, call addCanvasPage here, and
+  // increment TOTAL_PAGES by 1 per additional page — no other changes required.
+  try {
+    addCanvasPage(
+      makeChainSummaryPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES,   // this IS the last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
 
   // Download
   const safeName = (s: string) => s.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_\-]/g, "");
