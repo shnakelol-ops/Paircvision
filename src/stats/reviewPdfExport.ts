@@ -22,6 +22,8 @@ import type {
 } from "../core/stats/stats-event-model";
 import { selectChainAnalysis } from "./chains/chain-selectors";
 import type { ChainAnalysis } from "./chains/chain-types";
+import { deriveReviewPrompts } from "./chains/review-prompts";
+import type { ReviewPrompt, ReviewPromptCategory } from "./chains/review-prompts";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -3807,6 +3809,189 @@ function makeTacticalIntelligencePage(
   return canvas;
 }
 
+// ─── Tactical Review Guide page ───────────────────────────────────────────────
+
+/**
+ * Renders the Tactical Review Guide — the final PDF page.
+ *
+ * Calls deriveReviewPrompts() to obtain up to 10 deterministic, threshold-based
+ * review prompts, then renders them as a vertical list of full-width strips.
+ *
+ * Layout (1920×1080):
+ *   Row 1 (y 86–122):  Category summary chips (count per category)
+ *   Rows 2–11:         One prompt strip per prompt (h=64, gap=10)
+ *
+ * Each strip:
+ *   [4 px category-colour accent bar] [category chip] [prompt text] [evidence tag]
+ *
+ * All prompts from deriveReviewPrompts() are guaranteed to be:
+ *   - Factual, non-prescriptive, and non-judgmental
+ *   - Traceable to a specific metric via evidenceTag
+ *   - Free of tactical prescriptions or manager-style advice
+ *
+ * No ctx.roundRect() — uses ctx.fillRect() throughout (Safari < 15.4 safe).
+ * Empty state: "No review patterns identified — too few tactical events recorded."
+ */
+function makeTacticalReviewGuidePage(
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Tactical Review Guide", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+
+  const prompts = deriveReviewPrompts(analysis, homeTeam, awayTeam);
+
+  // ── Empty state ────────────────────────────────────────────────────────────
+  if (prompts.length === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "16px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      "No review patterns identified — too few tactical events recorded.",
+      CANVAS_W / 2, CANVAS_H / 2,
+    );
+    return canvas;
+  }
+
+  // ── Layout constants ───────────────────────────────────────────────────────
+  const CONTENT_TOP  = 86;
+  const STRIP_X      = 24;
+  const STRIP_W      = CANVAS_W - 48;   // 1872 px  (24 px margin each side)
+  const STRIP_H      = 64;
+  const STRIP_GAP    = 10;
+  const SUMMARY_H    = 30;
+  const SUMMARY_GAP  = 16;
+
+  // ── Category helpers ───────────────────────────────────────────────────────
+
+  function categoryColor(cat: ReviewPromptCategory): string {
+    switch (cat) {
+      case "KICKOUT":  return "#22d3ee";
+      case "TURNOVER": return "#a78bfa";
+      case "MOMENTUM": return "#fbbf24";
+      case "CHAIN":    return "#34d399";
+      case "GENERAL":  return "#94a3b8";
+    }
+  }
+
+  function categoryBgColor(cat: ReviewPromptCategory): string {
+    switch (cat) {
+      case "KICKOUT":  return "rgba(34,211,238,0.15)";
+      case "TURNOVER": return "rgba(167,139,250,0.15)";
+      case "MOMENTUM": return "rgba(251,191,36,0.15)";
+      case "CHAIN":    return "rgba(52,211,153,0.15)";
+      case "GENERAL":  return "rgba(148,163,184,0.15)";
+    }
+  }
+
+  // ── Summary chip row ───────────────────────────────────────────────────────
+  // Shows count per category before the prompt list.
+
+  const ORDERED_CATS: readonly ReviewPromptCategory[] = [
+    "KICKOUT", "TURNOVER", "MOMENTUM", "CHAIN", "GENERAL",
+  ];
+  const countByCategory = new Map<ReviewPromptCategory, number>();
+  for (const p of prompts) {
+    countByCategory.set(p.category, (countByCategory.get(p.category) ?? 0) + 1);
+  }
+
+  let cx = STRIP_X;
+  const summaryY = CONTENT_TOP;
+  ctx.font = "bold 11px sans-serif";
+  for (const cat of ORDERED_CATS) {
+    const count = countByCategory.get(cat) ?? 0;
+    if (count === 0) continue;
+    const label  = `${cat}  ${count}`;
+    const tw     = ctx.measureText(label).width;
+    const chipW  = tw + 22;
+    ctx.fillStyle = categoryBgColor(cat);
+    ctx.fillRect(cx, summaryY, chipW, SUMMARY_H);
+    ctx.fillStyle = categoryColor(cat);
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, cx + 11, summaryY + SUMMARY_H / 2);
+    cx += chipW + 12;
+  }
+
+  // ── Prompt strip renderer ──────────────────────────────────────────────────
+
+  function drawPromptStrip(p: ReviewPrompt, stripY: number): void {
+    const catColor = categoryColor(p.category);
+    const catBg    = categoryBgColor(p.category);
+
+    // Background panel
+    ctx.fillStyle = "rgba(255,255,255,0.022)";
+    ctx.fillRect(STRIP_X + 4, stripY, STRIP_W - 4, STRIP_H);
+
+    // Left category accent bar
+    ctx.fillStyle = catColor;
+    ctx.fillRect(STRIP_X, stripY, 4, STRIP_H);
+
+    // Vertical centre of the strip — content row 1
+    const ROW1_Y = stripY + 22;
+    const ROW2_Y = stripY + 50;
+
+    // Category chip (row 1, left)
+    ctx.font = "bold 10px sans-serif";
+    const chipLabel = p.category;
+    const chipTW    = ctx.measureText(chipLabel).width;
+    const chipW     = chipTW + 18;
+    const CHIP_X    = STRIP_X + 14;
+    const CHIP_TOP  = ROW1_Y - 10;  // chip h=20, centred on ROW1_Y
+    ctx.fillStyle = catBg;
+    ctx.fillRect(CHIP_X, CHIP_TOP, chipW, 20);
+    ctx.fillStyle = catColor;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(chipLabel, CHIP_X + 9, ROW1_Y);
+
+    // Prompt text (row 1, after chip)
+    const TEXT_X    = CHIP_X + chipW + 14;
+    const MAX_TW    = STRIP_X + STRIP_W - TEXT_X - 14;  // right margin
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "13px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    let display = p.text;
+    if (ctx.measureText(display).width > MAX_TW) {
+      while (display.length > 0 && ctx.measureText(display + "…").width > MAX_TW) {
+        display = display.slice(0, -1);
+      }
+      display += "…";
+    }
+    ctx.fillText(display, TEXT_X, ROW1_Y);
+
+    // Evidence tag (row 2, right-aligned — small, dimmed)
+    ctx.fillStyle = "#334155";
+    ctx.font = "10px sans-serif";
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign = "right";
+    ctx.fillText(p.evidenceTag, STRIP_X + STRIP_W - 10, ROW2_Y);
+  }
+
+  // ── Render all strips ──────────────────────────────────────────────────────
+
+  const stripStartY = CONTENT_TOP + SUMMARY_H + SUMMARY_GAP;
+  prompts.forEach((p, i) => {
+    const stripY = stripStartY + i * (STRIP_H + STRIP_GAP);
+    drawPromptStrip(p, stripY);
+  });
+
+  return canvas;
+}
+
 // ─── Tactical page spec table (20 pages) ────────────────────────────────────
 
 type PageSpec = {
@@ -3869,11 +4054,12 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *            Each shows the full 5-section breakdown filtered to that segment.
  *   9+.      Player Breakdown — one or more pages, no truncation
  *   (9+N)+.  20 tactical pitch map pages (N = player page count)
- *   Last−4.  Kickout Chain Analysis page
- *   Last−3.  Turnover Punishment Analysis page
- *   Last−2.  Momentum & Scoring Runs page
- *   Last−1.  Tactical Chain Analysis summary page
- *   Last.    Tactical Intelligence Summary page
+ *   Last−5.  Kickout Chain Analysis page
+ *   Last−4.  Turnover Punishment Analysis page
+ *   Last−3.  Momentum & Scoring Runs page
+ *   Last−2.  Tactical Chain Analysis summary page
+ *   Last−1.  Tactical Intelligence Summary page
+ *   Last.    Tactical Review Guide page
  *
  * Total pages = 32 + N  (N ≥ 1 → minimum 33 pages).
  */
@@ -3886,9 +4072,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
   } = input;
 
-  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 5 chain pages
+  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 5 chain pages + 1 review guide
   const playerPageCount = calcPlayerPageCount(events);
-  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 5;
+  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 6;
 
   // Chain analysis — computed once here and shared with all chain page builders.
   // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
@@ -3967,11 +4153,27 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(canvas!, true);
   });
 
-  // Fifth-to-last page: Kickout Chain Analysis
+  // Sixth-to-last page: Kickout Chain Analysis
   // chainAnalysis was computed once above; all chain builders consume slices of it.
   try {
     addCanvasPage(
       makeKickoutChainPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES - 5,   // sixth-to-last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
+
+  // Fifth-to-last page: Turnover Punishment Analysis
+  try {
+    addCanvasPage(
+      makeTurnoverPunishmentPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -3984,10 +4186,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Fourth-to-last page: Turnover Punishment Analysis
+  // Fourth-to-last page: Momentum & Scoring Runs Analysis
   try {
     addCanvasPage(
-      makeTurnoverPunishmentPage(
+      makeMomentumRunsPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4000,10 +4202,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Third-to-last page: Momentum & Scoring Runs Analysis
+  // Third-to-last page: Tactical Chain Analysis summary
   try {
     addCanvasPage(
-      makeMomentumRunsPage(
+      makeChainSummaryPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4016,10 +4218,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Second-to-last page: Tactical Chain Analysis summary
+  // Second-to-last page: Tactical Intelligence Summary
   try {
     addCanvasPage(
-      makeChainSummaryPage(
+      makeTacticalIntelligencePage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4032,10 +4234,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Last page: Tactical Intelligence Summary
+  // Last page: Tactical Review Guide
   try {
     addCanvasPage(
-      makeTacticalIntelligencePage(
+      makeTacticalReviewGuidePage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
