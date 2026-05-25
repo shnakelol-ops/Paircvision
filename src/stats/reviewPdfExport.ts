@@ -931,9 +931,9 @@ function makeSummaryPage(
   ctx.font = "bold 44px sans-serif";
   ctx.textAlign = "center";
   ctx.fillStyle = "#7dd3fc";
-  ctx.fillText(homeTeam.toUpperCase(), forCX, 118);
+  ctx.fillText(homeTeam.slice(0, 18).toUpperCase(), forCX, 118);
   ctx.fillStyle = "#fb7185";
-  ctx.fillText(awayTeam.toUpperCase(), oppCX, 118);
+  ctx.fillText(awayTeam.slice(0, 18).toUpperCase(), oppCX, 118);
 
   // Scores — large, boldly coloured
   ctx.font = "bold 64px sans-serif";
@@ -1056,7 +1056,7 @@ function makeSegmentsPage(
       period: "1H", top: h1Top,
       segs: [
         { seg: 1, label: "Early (0–10)",  period: "1H" },
-        { seg: 2, label: "Mid  (11–20)",  period: "1H" },
+        { seg: 2, label: "Mid (11–20)",  period: "1H" },
         { seg: 3, label: "Late (21–30+)", period: "1H" },
       ],
     },
@@ -1065,7 +1065,7 @@ function makeSegmentsPage(
       period: "2H", top: h2Top,
       segs: [
         { seg: 4, label: "Early (0–10)",  period: "2H" },
-        { seg: 5, label: "Mid  (11–20)",  period: "2H" },
+        { seg: 5, label: "Mid (11–20)",  period: "2H" },
         { seg: 6, label: "Late (21–30+)", period: "2H" },
       ],
     },
@@ -1115,9 +1115,9 @@ function makeSegmentsPage(
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillStyle = "#7dd3fc";
-    ctx.fillText(homeTeam.toUpperCase(), forX + teamW / 2, hdr1Y + hdr1H / 2);
+    ctx.fillText(homeTeam.slice(0, 18).toUpperCase(), forX + teamW / 2, hdr1Y + hdr1H / 2);
     ctx.fillStyle = "#fb7185";
-    ctx.fillText(awayTeam.toUpperCase(), oppX + teamW / 2, hdr1Y + hdr1H / 2);
+    ctx.fillText(awayTeam.slice(0, 18).toUpperCase(), oppX + teamW / 2, hdr1Y + hdr1H / 2);
 
     // Segment column label
     ctx.fillStyle = "#475569";
@@ -1323,9 +1323,9 @@ function makeSegmentDetailPage(
   ctx.font = "bold 26px sans-serif";
   ctx.textAlign = "center";
   ctx.fillStyle = "#7dd3fc";
-  ctx.fillText(homeTeam.toUpperCase(), forCX, 102);
+  ctx.fillText(homeTeam.slice(0, 18).toUpperCase(), forCX, 102);
   ctx.fillStyle = "#fb7185";
-  ctx.fillText(awayTeam.toUpperCase(), oppCX, 102);
+  ctx.fillText(awayTeam.slice(0, 18).toUpperCase(), oppCX, 102);
 
   ctx.font = "bold 40px sans-serif";
   ctx.fillStyle = "#4ade80";
@@ -1812,7 +1812,7 @@ function makeChainSummaryPage(
 
     const chainRows: { label: string; ruleId: import("./chains/chain-types").ChainRuleId }[] = [
       { label: "Kickout Won → Score",        ruleId: "KICKOUT_TO_SCORE"               },
-      { label: "Kickout Lost → Score Agst",  ruleId: "KICKOUT_LOST_TO_SCORE_AGAINST"  },
+      { label: "Kickout Lost → Score Against",  ruleId: "KICKOUT_LOST_TO_SCORE_AGAINST"  },
       { label: "Turnover Won → Score",       ruleId: "TURNOVER_TO_SCORE"              },
       { label: "Turnover Won → Shot",        ruleId: "TURNOVER_TO_SHOT"               },
       { label: "Free Won → Goal",            ruleId: "FREE_WON_TO_GOAL"               },
@@ -1925,7 +1925,7 @@ function makeChainSummaryPage(
     cy += 6;
     cy = drawStatRow(COL2_X, cy, COL_W, "Won → Score",        `${val(to.wonToScore)} (${pct(to.wonToScorePercent)})`,  "#4ade80", true);
     cy = drawStatRow(COL2_X, cy, COL_W, "Won → Shot",         `${val(to.wonToShot)} (${pct(to.wonToShotPercent)})`,    "#a78bfa", false);
-    cy = drawStatRow(COL2_X, cy, COL_W, "Lost → Score Agst",  val(to.lostAllowedScore),                                "#f97316", true);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Lost → Score Against",  val(to.lostAllowedScore),                                "#f97316", true);
   }
 
   // ── COL 3: Scoring Runs detail ──────────────────────────────────────────────
@@ -2298,7 +2298,7 @@ function makeKickoutChainPage(
       ctx.font = "14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
-      ctx.fillText("No FOR kickout events", COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
+      ctx.fillText("No " + homeTeam.slice(0, 18) + " kickout events", COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
       ctx.restore();
     } else {
       ctx.save();
@@ -2342,7 +2342,7 @@ function makeKickoutChainPage(
       ctx.font = "14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
-      ctx.fillText("No OPP kickout events", COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
+      ctx.fillText("No " + awayTeam.slice(0, 18) + " kickout events", COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
       ctx.restore();
     } else {
       ctx.save();
@@ -2401,8 +2401,8 @@ function makeKickoutChainPage(
 
     cy = drawStatRow(COL3_X, cy, COL_W, `KO Won → Score  (${homeTeam.slice(0, 10)})`,     String(koToScoreFor), "#7dd3fc", false);
     cy = drawStatRow(COL3_X, cy, COL_W, `KO Won → Score  (${awayTeam.slice(0, 10)})`,     String(koToScoreOpp), "#fb7185", true);
-    cy = drawStatRow(COL3_X, cy, COL_W, `KO Lost → Score Agst (${homeTeam.slice(0, 8)})`, String(koLostFor),    "#f97316", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `KO Lost → Score Agst (${awayTeam.slice(0, 8)})`, String(koLostOpp),    "#f97316", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `KO Lost → Score Against (${homeTeam.slice(0, 8)})`, String(koLostFor),    "#f97316", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `KO Lost → Score Against (${awayTeam.slice(0, 8)})`, String(koLostOpp),    "#f97316", true);
     cy += 12;
 
     // Scoring from kickout possession
@@ -2716,7 +2716,7 @@ function makeTurnoverPunishmentPage(
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
-      ctx.fillText("No FOR attacking turnovers recorded", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
+      ctx.fillText("No " + homeTeam.slice(0, 18) + " attacking turnovers recorded", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
       ctx.restore();
     } else {
       // Consequence summary
@@ -2757,7 +2757,7 @@ function makeTurnoverPunishmentPage(
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
-      ctx.fillText("No OPP attacking turnovers recorded", COL2_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
+      ctx.fillText("No " + awayTeam.slice(0, 18) + " attacking turnovers recorded", COL2_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
       ctx.restore();
     } else {
       cy = drawStatRow(COL2_X, cy, COL_W, "Turnovers won / gained",  String(oppWonTotal),                    "#e2e8f0", false);
@@ -4034,12 +4034,12 @@ type SegmentDetailSpec = {
 };
 
 const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
-  { period: "1H", segment: 1, label: "1H Early  (0 – 10 min)"  },
-  { period: "1H", segment: 2, label: "1H Mid    (11 – 20 min)" },
-  { period: "1H", segment: 3, label: "1H Late   (21 – 30+ min)"},
-  { period: "2H", segment: 4, label: "2H Early  (0 – 10 min)"  },
-  { period: "2H", segment: 5, label: "2H Mid    (11 – 20 min)" },
-  { period: "2H", segment: 6, label: "2H Late   (21 – 30+ min)"},
+  { period: "1H", segment: 1, label: "1H Early (0–10 min)"  },
+  { period: "1H", segment: 2, label: "1H Mid (11–20 min)" },
+  { period: "1H", segment: 3, label: "1H Late (21–30 min)"},
+  { period: "2H", segment: 4, label: "2H Early (0–10 min)"  },
+  { period: "2H", segment: 5, label: "2H Mid (11–20 min)" },
+  { period: "2H", segment: 6, label: "2H Late (21–30 min)"},
 ] as const;
 
 // ─── Main export entry point ──────────────────────────────────────────────────
@@ -4061,7 +4061,7 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *   Last−1.  Tactical Intelligence Summary page
  *   Last.    Tactical Review Guide page
  *
- * Total pages = 32 + N  (N ≥ 1 → minimum 33 pages).
+ * Total pages = 34 + N  (N ≥ 1 → minimum 35 pages).
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
   const {
