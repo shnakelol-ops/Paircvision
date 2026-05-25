@@ -2859,6 +2859,505 @@ function makeTurnoverPunishmentPage(
   return canvas;
 }
 
+// ─── Momentum & Scoring Runs page ────────────────────────────────────────────
+
+/**
+ * Builds the Momentum & Scoring Runs Analysis canvas (second-to-last chain page).
+ *
+ * Three columns:
+ *   COL 1 — Chronological run timeline (all unanswered runs ≥ 2, capped at 14 rows)
+ *   COL 2 — Half-by-half momentum breakdown (1H top panel, 2H bottom panel)
+ *   COL 3 — Run quality, response timing, and segment control
+ *
+ * Layout mirrors existing chain pages (3 × 606 px columns, 24 px gaps).
+ * All ctx.fillRect() — ctx.roundRect() intentionally absent (Safari < 15.4).
+ *
+ * Clock note: ScoringRun.startClockSeconds / endClockSeconds include
+ * SECOND_HALF_OFFSET = 3600 for 2H events. All time formatting subtracts
+ * 3600 before converting to minutes when period === "2H".
+ *
+ * "Unanswered runs" framing: the engine only records runs of length ≥ 2,
+ * so every entry in scoringRuns.runs is already an unanswered burst.
+ * Single isolated scores between bursts are absent by design.
+ */
+function makeMomentumRunsPage(
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Momentum & Scoring Runs", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+
+  const CONTENT_TOP = 86;
+  const CONTENT_BOT = CANVAS_H - 36;
+  const CONTENT_H   = CONTENT_BOT - CONTENT_TOP;
+  const COL_W       = 606;
+  const COL_GAP     = 24;
+  const COL1_X      = 24;
+  const COL2_X      = COL1_X + COL_W + COL_GAP;
+  const COL3_X      = COL2_X + COL_W + COL_GAP;
+
+  const { runs, longestRunFor: lrf, longestRunOpp: lro } = analysis.scoringRuns;
+
+  // ── Local helpers ─────────────────────────────────────────────────────────────
+
+  function drawPanelBg(x: number, y: number, w: number, h: number, accentColor: string): void {
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.022)";
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(x, y, 3, h);
+    ctx.restore();
+  }
+
+  function drawPanelTitle(x: number, y: number, label: string, accentColor: string): number {
+    ctx.save();
+    ctx.fillStyle = accentColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label.toUpperCase(), x + 16, y + 13);
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 4, y + 26);
+    ctx.lineTo(x + COL_W, y + 26);
+    ctx.stroke();
+    ctx.restore();
+    return y + 28;
+  }
+
+  function drawStatRow(
+    x: number, cy: number, w: number,
+    label: string, value: string, valueColor: string,
+    isAlt: boolean,
+  ): number {
+    const ROW_H = 26;
+    if (isAlt) {
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
+    }
+    const mid = cy + ROW_H / 2;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 14, mid);
+    ctx.fillStyle = valueColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(value, x + w - 10, mid);
+    return cy + ROW_H;
+  }
+
+  function drawSubHeader(x: number, cy: number, w: number, label: string, accentColor: string): number {
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(x + 4, cy, w - 4, 20);
+    ctx.fillStyle = accentColor;
+    ctx.font = "bold 10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 14, cy + 10);
+    ctx.restore();
+    return cy + 20;
+  }
+
+  // ── Clock formatting ──────────────────────────────────────────────────────────
+  // ScoringRun clocks include SECOND_HALF_OFFSET = 3600 for 2H events.
+  // Subtract before converting to display minutes.
+  function clockToMin(clockSecs: number, period: "1H" | "2H"): number {
+    const adjusted = period === "2H" ? clockSecs - 3600 : clockSecs;
+    return Math.floor(Math.max(0, adjusted) / 60);
+  }
+
+  function runTimeLabel(run: typeof runs[number]): string {
+    const startMin = clockToMin(run.startClockSeconds, run.period);
+    const endMin   = clockToMin(run.endClockSeconds,   run.period);
+    const halfLabel = run.period === "1H" ? "1H" : "2H";
+    if (startMin === endMin) return `${halfLabel} ${startMin}'`;
+    return `${halfLabel} ${startMin}'–${endMin}'`;
+  }
+
+  function runTeamLabel(run: typeof runs[number]): string {
+    return run.teamSide === "FOR" ? homeTeam.slice(0, 14) : awayTeam.slice(0, 14);
+  }
+
+  function runColor(run: typeof runs[number]): string {
+    return run.teamSide === "FOR" ? "#22d3ee" : "#fb7185";
+  }
+
+  // ── Derived data ──────────────────────────────────────────────────────────────
+
+  // Per-half run slices
+  const h1Runs = runs.filter((r) => r.period === "1H");
+  const h2Runs = runs.filter((r) => r.period === "2H");
+  const h1For  = h1Runs.filter((r) => r.teamSide === "FOR");
+  const h1Opp  = h1Runs.filter((r) => r.teamSide === "OPP");
+  const h2For  = h2Runs.filter((r) => r.teamSide === "FOR");
+  const h2Opp  = h2Runs.filter((r) => r.teamSide === "OPP");
+
+  // Total run-scores (sum of count) per side per half
+  const h1ForScore = h1For.reduce((s, r) => s + r.count, 0);
+  const h1OppScore = h1Opp.reduce((s, r) => s + r.count, 0);
+  const h2ForScore = h2For.reduce((s, r) => s + r.count, 0);
+  const h2OppScore = h2Opp.reduce((s, r) => s + r.count, 0);
+
+  // Longest run in each half
+  function longestInSet(set: typeof runs): typeof runs[number] | null {
+    if (set.length === 0) return null;
+    return set.reduce((best, r) => (r.count > best.count ? r : best));
+  }
+  const h1Longest = longestInSet(h1Runs);
+  const h2Longest = longestInSet(h2Runs);
+
+  // Late-game runs: segment 3 (1H late) and segment 6 (2H late)
+  const h1LateRuns = h1Runs.filter((r) => r.events[0].segment === 3);
+  const h2LateRuns = h2Runs.filter((r) => r.events[0].segment === 6);
+
+  // Response timing — alternating-side consecutive pairs only
+  type ResponsePair = { runnerSide: "FOR" | "OPP"; gapSeconds: number };
+  const responsePairs: ResponsePair[] = [];
+  for (let i = 0; i < runs.length - 1; i++) {
+    const curr = runs[i];
+    const next = runs[i + 1];
+    // Only meaningful when sides alternate (opposition responded)
+    if (curr.teamSide === next.teamSide) continue;
+    const gap = Math.max(0, next.startClockSeconds - curr.endClockSeconds);
+    responsePairs.push({ runnerSide: curr.teamSide, gapSeconds: gap });
+  }
+
+  // Split response pairs by who had to respond (next.teamSide responds)
+  // If curr = FOR run, next = OPP run → OPP responded to FOR
+  // So gapSeconds is OPP's response time; runnerSide = FOR means OPP responded
+  const forRanPairs  = responsePairs.filter((p) => p.runnerSide === "FOR");  // OPP responded after FOR run
+  const oppRanPairs  = responsePairs.filter((p) => p.runnerSide === "OPP"); // FOR responded after OPP run
+
+  function avgGap(pairs: ResponsePair[]): number | null {
+    if (pairs.length === 0) return null;
+    return Math.round(pairs.reduce((s, p) => s + p.gapSeconds, 0) / pairs.length);
+  }
+  function minGap(pairs: ResponsePair[]): number | null {
+    if (pairs.length === 0) return null;
+    return Math.min(...pairs.map((p) => p.gapSeconds));
+  }
+  const forResponseAvg = avgGap(oppRanPairs);  // FOR's avg response after OPP ran
+  const oppResponseAvg = avgGap(forRanPairs);  // OPP's avg response after FOR ran
+  const forResponseMin = minGap(oppRanPairs);
+  const oppResponseMin = minGap(forRanPairs);
+
+  function formatGap(secs: number | null): string {
+    if (secs === null) return "—";
+    if (secs < 60) return `${secs}s`;
+    return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+  }
+
+  // Segment control: for each segment 1–6, sum run counts by side
+  const SEG_LABELS: Record<number, string> = {
+    1: "1H Early (0–10)",
+    2: "1H Mid   (11–20)",
+    3: "1H Late  (21–30+)",
+    4: "2H Early (0–10)",
+    5: "2H Mid   (11–20)",
+    6: "2H Late  (21–30+)",
+  };
+  type SegControl = { forScore: number; oppScore: number };
+  const segControl: Record<number, SegControl> = {
+    1: { forScore: 0, oppScore: 0 },
+    2: { forScore: 0, oppScore: 0 },
+    3: { forScore: 0, oppScore: 0 },
+    4: { forScore: 0, oppScore: 0 },
+    5: { forScore: 0, oppScore: 0 },
+    6: { forScore: 0, oppScore: 0 },
+  };
+  for (const run of runs) {
+    const seg = run.events[0].segment as number;
+    if (seg >= 1 && seg <= 6) {
+      if (run.teamSide === "FOR") segControl[seg].forScore += run.count;
+      else                        segControl[seg].oppScore += run.count;
+    }
+  }
+
+  // Overall run totals
+  const forRuns       = runs.filter((r) => r.teamSide === "FOR");
+  const oppRuns       = runs.filter((r) => r.teamSide === "OPP");
+  const forRunTotal   = forRuns.length;
+  const oppRunTotal   = oppRuns.length;
+  const forRunScores  = forRuns.reduce((s, r) => s + r.count, 0);
+  const oppRunScores  = oppRuns.reduce((s, r) => s + r.count, 0);
+  const netRunScores  = forRunScores - oppRunScores;
+
+  // ── COL 1: Scoring Run Timeline ───────────────────────────────────────────────
+  {
+    drawPanelBg(COL1_X, CONTENT_TOP, COL_W, CONTENT_H, "#fbbf24");
+    let cy = drawPanelTitle(COL1_X, CONTENT_TOP, "Unanswered Scoring Runs (≥2 consecutive)", "#fbbf24");
+
+    if (runs.length === 0) {
+      ctx.save();
+      ctx.fillStyle = "#475569";
+      ctx.font = "16px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText("No unanswered scoring runs detected", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
+      ctx.restore();
+    } else {
+      // Column labels
+      cy = drawSubHeader(COL1_X, cy, COL_W, "TEAM  ×SCORES  WHEN  SCORE VALUE", "#fbbf24");
+
+      const MAX_VISIBLE = 14;
+      const visible = runs.slice(0, MAX_VISIBLE);
+
+      visible.forEach((run, i) => {
+        const ROW_H   = 26;
+        const isAlt   = i % 2 === 0;
+        const team    = runTeamLabel(run);
+        const color   = runColor(run);
+        const time    = runTimeLabel(run);
+        const score   = fmtScore(scoreFromEvents(run.events));
+        const runStr  = `×${run.count}`;
+
+        if (isAlt) {
+          ctx.fillStyle = "rgba(255,255,255,0.025)";
+          ctx.fillRect(COL1_X + 4, cy, COL_W - 4, ROW_H);
+        }
+
+        const mid = cy + ROW_H / 2;
+        ctx.save();
+        ctx.textBaseline = "middle";
+
+        // Team name
+        ctx.fillStyle = color;
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText(team, COL1_X + 14, mid);
+
+        // Run count — centre-ish
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "bold 13px sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText(runStr, COL1_X + 190, mid);
+
+        // Time
+        ctx.fillStyle = "#64748b";
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "left";
+        ctx.fillText(time, COL1_X + 260, mid);
+
+        // Score value
+        ctx.fillStyle = color;
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(score, COL1_X + COL_W - 10, mid);
+
+        ctx.restore();
+        cy += ROW_H;
+      });
+
+      if (runs.length > MAX_VISIBLE) {
+        cy += 4;
+        ctx.save();
+        ctx.fillStyle = "#475569";
+        ctx.font = "12px sans-serif";
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "left";
+        ctx.fillText(
+          `... and ${runs.length - MAX_VISIBLE} more run${runs.length - MAX_VISIBLE !== 1 ? "s" : ""}`,
+          COL1_X + 14,
+          cy + 10,
+        );
+        ctx.restore();
+      }
+    }
+  }
+
+  // ── COL 2: Half-by-Half Momentum ──────────────────────────────────────────────
+  {
+    const HALF_H   = Math.floor(CONTENT_H / 2) - 8;
+    const PANEL_Y1 = CONTENT_TOP;
+    const PANEL_Y2 = CONTENT_TOP + HALF_H + 16;
+
+    // ── 1H panel ─────────────────────────────────────────────────────────────────
+    drawPanelBg(COL2_X, PANEL_Y1, COL_W, HALF_H, "#7dd3fc");
+    let cy = drawPanelTitle(COL2_X, PANEL_Y1, "First Half — Scoring Runs", "#7dd3fc");
+
+    if (h1Runs.length === 0) {
+      ctx.save();
+      ctx.fillStyle = "#475569";
+      ctx.font = "14px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText("No unanswered runs in 1H", COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
+      ctx.restore();
+    } else {
+      cy = drawStatRow(COL2_X, cy, COL_W, `${homeTeam.slice(0, 16)} runs (≥2)`,   String(h1For.length),   "#22d3ee", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, `${homeTeam.slice(0, 16)} run-scores`,  String(h1ForScore),     "#22d3ee", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, `${awayTeam.slice(0, 16)} runs (≥2)`,   String(h1Opp.length),   "#fb7185", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, `${awayTeam.slice(0, 16)} run-scores`,  String(h1OppScore),     "#fb7185", true);
+      cy += 6;
+      if (h1Longest) {
+        const best = `${runTeamLabel(h1Longest)} ×${h1Longest.count}  ${runTimeLabel(h1Longest)}`;
+        cy = drawStatRow(COL2_X, cy, COL_W, "Longest 1H run", best, runColor(h1Longest), false);
+      }
+      const h1ControlColor = h1ForScore > h1OppScore ? "#22d3ee" : h1OppScore > h1ForScore ? "#fb7185" : "#94a3b8";
+      const h1Control = h1ForScore > h1OppScore
+        ? homeTeam.slice(0, 14)
+        : h1OppScore > h1ForScore ? awayTeam.slice(0, 14)
+        : "Level";
+      cy = drawStatRow(COL2_X, cy, COL_W, "1H momentum edge", h1Control, h1ControlColor, true);
+      cy += 6;
+      // Late 1H
+      const h1LateFor = h1LateRuns.filter((r) => r.teamSide === "FOR").reduce((s, r) => s + r.count, 0);
+      const h1LateOpp = h1LateRuns.filter((r) => r.teamSide === "OPP").reduce((s, r) => s + r.count, 0);
+      const h1LateStr = h1LateRuns.length === 0
+        ? "No burst in 1H closing phase"
+        : `${homeTeam.slice(0, 10)}: ${h1LateFor} pts  ${awayTeam.slice(0, 10)}: ${h1LateOpp} pts`;
+      const h1LateCol = h1LateRuns.length === 0 ? "#475569" : "#fbbf24";
+      drawStatRow(COL2_X, cy, COL_W, "1H late burst (seg 3)", h1LateStr, h1LateCol, false);
+    }
+
+    // ── 2H panel ─────────────────────────────────────────────────────────────────
+    drawPanelBg(COL2_X, PANEL_Y2, COL_W, HALF_H, "#a78bfa");
+    cy = drawPanelTitle(COL2_X, PANEL_Y2, "Second Half — Scoring Runs", "#a78bfa");
+
+    if (h2Runs.length === 0) {
+      ctx.save();
+      ctx.fillStyle = "#475569";
+      ctx.font = "14px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText("No unanswered runs in 2H", COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
+      ctx.restore();
+    } else {
+      cy = drawStatRow(COL2_X, cy, COL_W, `${homeTeam.slice(0, 16)} runs (≥2)`,   String(h2For.length),   "#22d3ee", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, `${homeTeam.slice(0, 16)} run-scores`,  String(h2ForScore),     "#22d3ee", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, `${awayTeam.slice(0, 16)} runs (≥2)`,   String(h2Opp.length),   "#fb7185", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, `${awayTeam.slice(0, 16)} run-scores`,  String(h2OppScore),     "#fb7185", true);
+      cy += 6;
+      if (h2Longest) {
+        const best = `${runTeamLabel(h2Longest)} ×${h2Longest.count}  ${runTimeLabel(h2Longest)}`;
+        cy = drawStatRow(COL2_X, cy, COL_W, "Longest 2H run", best, runColor(h2Longest), false);
+      }
+      const h2ControlColor = h2ForScore > h2OppScore ? "#22d3ee" : h2OppScore > h2ForScore ? "#fb7185" : "#94a3b8";
+      const h2Control = h2ForScore > h2OppScore
+        ? homeTeam.slice(0, 14)
+        : h2OppScore > h2ForScore ? awayTeam.slice(0, 14)
+        : "Level";
+      cy = drawStatRow(COL2_X, cy, COL_W, "2H momentum edge", h2Control, h2ControlColor, true);
+      cy += 6;
+      // Late 2H
+      const h2LateFor = h2LateRuns.filter((r) => r.teamSide === "FOR").reduce((s, r) => s + r.count, 0);
+      const h2LateOpp = h2LateRuns.filter((r) => r.teamSide === "OPP").reduce((s, r) => s + r.count, 0);
+      const h2LateStr = h2LateRuns.length === 0
+        ? "No burst in 2H closing phase"
+        : `${homeTeam.slice(0, 10)}: ${h2LateFor} pts  ${awayTeam.slice(0, 10)}: ${h2LateOpp} pts`;
+      const h2LateCol = h2LateRuns.length === 0 ? "#475569" : "#fbbf24";
+      drawStatRow(COL2_X, cy, COL_W, "2H late burst (seg 6)", h2LateStr, h2LateCol, false);
+    }
+  }
+
+  // ── COL 3: Run Quality, Response Timing, Segment Control ─────────────────────
+  {
+    drawPanelBg(COL3_X, CONTENT_TOP, COL_W, CONTENT_H, "#a78bfa");
+    let cy = drawPanelTitle(COL3_X, CONTENT_TOP, "Run Quality & Match Control", "#a78bfa");
+
+    // ── Best runs ─────────────────────────────────────────────────────────────────
+    cy = drawSubHeader(COL3_X, cy, COL_W, "BEST SCORING RUNS", "#fbbf24");
+
+    if (lrf) {
+      cy = drawStatRow(COL3_X, cy, COL_W,
+        `${homeTeam.slice(0, 16)} longest`,
+        `×${lrf.count}  ${runTimeLabel(lrf)}  ${fmtScore(scoreFromEvents(lrf.events))}`,
+        "#22d3ee", false,
+      );
+    } else {
+      cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} longest`, "No run ≥2", "#475569", false);
+    }
+    if (lro) {
+      cy = drawStatRow(COL3_X, cy, COL_W,
+        `${awayTeam.slice(0, 16)} longest`,
+        `×${lro.count}  ${runTimeLabel(lro)}  ${fmtScore(scoreFromEvents(lro.events))}`,
+        "#fb7185", true,
+      );
+    } else {
+      cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 16)} longest`, "No run ≥2", "#475569", true);
+    }
+
+    cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} total runs`,        String(forRunTotal),  "#22d3ee", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 16)} total runs`,        String(oppRunTotal),  "#fb7185", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} total run-scores`,  String(forRunScores), "#22d3ee", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 16)} total run-scores`,  String(oppRunScores), "#fb7185", true);
+
+    const netColor  = netRunScores > 0 ? "#4ade80" : netRunScores < 0 ? "#fb7185" : "#94a3b8";
+    const netStr    = netRunScores > 0 ? `+${netRunScores} ${homeTeam.slice(0, 10)}`
+                    : netRunScores < 0 ? `${netRunScores} ${awayTeam.slice(0, 10)}`
+                    : "Level";
+    cy = drawStatRow(COL3_X, cy, COL_W, "Net run-score advantage", netStr, netColor, false);
+    cy += 10;
+
+    // ── Response timing ───────────────────────────────────────────────────────────
+    cy = drawSubHeader(COL3_X, cy, COL_W, "RESPONSE AFTER OPPOSITION RUN", "#f97316");
+
+    if (responsePairs.length < 2) {
+      cy = drawStatRow(COL3_X, cy, COL_W, "Insufficient alternating runs", "—", "#475569", false);
+      cy++;
+    } else {
+      cy = drawStatRow(COL3_X, cy, COL_W,
+        `${homeTeam.slice(0, 16)} avg response`,
+        formatGap(forResponseAvg), "#22d3ee", false,
+      );
+      cy = drawStatRow(COL3_X, cy, COL_W,
+        `${homeTeam.slice(0, 16)} fastest response`,
+        formatGap(forResponseMin), "#22d3ee", true,
+      );
+      cy = drawStatRow(COL3_X, cy, COL_W,
+        `${awayTeam.slice(0, 16)} avg response`,
+        formatGap(oppResponseAvg), "#fb7185", false,
+      );
+      cy = drawStatRow(COL3_X, cy, COL_W,
+        `${awayTeam.slice(0, 16)} fastest response`,
+        formatGap(oppResponseMin), "#fb7185", true,
+      );
+    }
+    cy += 10;
+
+    // ── Segment control ───────────────────────────────────────────────────────────
+    cy = drawSubHeader(COL3_X, cy, COL_W, "SEGMENT CONTROL (BY RUN-SCORES)", "#22d3ee");
+
+    ([1, 2, 3, 4, 5, 6] as const).forEach((seg, i) => {
+      const { forScore, oppScore } = segControl[seg];
+      const total = forScore + oppScore;
+      let controlStr: string;
+      let controlColor: string;
+      if (total === 0) {
+        controlStr  = "No runs";
+        controlColor = "#475569";
+      } else if (forScore > oppScore) {
+        controlStr  = `${homeTeam.slice(0, 10)} +${forScore - oppScore}`;
+        controlColor = "#22d3ee";
+      } else if (oppScore > forScore) {
+        controlStr  = `${awayTeam.slice(0, 10)} +${oppScore - forScore}`;
+        controlColor = "#fb7185";
+      } else {
+        controlStr  = "Level";
+        controlColor = "#94a3b8";
+      }
+      cy = drawStatRow(COL3_X, cy, COL_W, SEG_LABELS[seg], controlStr, controlColor, i % 2 === 0);
+    });
+  }
+
+  return canvas;
+}
+
 // ─── Tactical page spec table (20 pages) ────────────────────────────────────
 
 type PageSpec = {
@@ -2921,11 +3420,12 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *            Each shows the full 5-section breakdown filtered to that segment.
  *   9+.      Player Breakdown — one or more pages, no truncation
  *   (9+N)+.  20 tactical pitch map pages (N = player page count)
- *   Last−2.  Kickout Chain Analysis page
- *   Last−1.  Turnover Punishment Analysis page
+ *   Last−3.  Kickout Chain Analysis page
+ *   Last−2.  Turnover Punishment Analysis page
+ *   Last−1.  Momentum & Scoring Runs page
  *   Last.    Tactical Chain Analysis summary page
  *
- * Total pages = 31 + N  (N ≥ 1 → minimum 32 pages).
+ * Total pages = 32 + N  (N ≥ 1 → minimum 33 pages).
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
   const {
@@ -2936,9 +3436,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
   } = input;
 
-  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 3 chain pages
+  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 4 chain pages
   const playerPageCount = calcPlayerPageCount(events);
-  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 3;
+  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 4;
 
   // Chain analysis — computed once here and shared with all chain page builders.
   // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
@@ -3017,13 +3517,29 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(canvas!, true);
   });
 
-  // Third-to-last page: Kickout Chain Analysis
+  // Fourth-to-last page: Kickout Chain Analysis
   // chainAnalysis was computed once above; all chain builders consume slices of it.
-  // Future chain pages (momentum) follow the same pattern:
-  // add a builder function, call addCanvasPage here, and increment TOTAL_PAGES by 1.
+  // Future chain pages follow the same pattern: add a builder function,
+  // call addCanvasPage here, and increment TOTAL_PAGES by 1.
   try {
     addCanvasPage(
       makeKickoutChainPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES - 3,   // fourth-to-last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
+
+  // Third-to-last page: Turnover Punishment Analysis
+  try {
+    addCanvasPage(
+      makeTurnoverPunishmentPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -3036,10 +3552,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Second-to-last page: Turnover Punishment Analysis
+  // Second-to-last page: Momentum & Scoring Runs Analysis
   try {
     addCanvasPage(
-      makeTurnoverPunishmentPage(
+      makeMomentumRunsPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
