@@ -3992,6 +3992,422 @@ function makeTacticalReviewGuidePage(
   return canvas;
 }
 
+// ─── Opposition Snapshot page ──────────────────────────────────────────────────
+
+/**
+ * Renders the Opposition Snapshot — the final PDF page.
+ *
+ * Data sources:
+ *   - ChainAnalysis: byTeamSide.opp, kickouts, turnovers, scoringRuns, byRule,
+ *                    byPeriod, bySegment, summary.
+ *   - Raw events array: for score position (nx/ny) and OPP shot count derivation.
+ *
+ * Accent colour: #f87171 (OPP red) — distinct from all other chain page accents.
+ *
+ * Layout: Two-column (L 928 px / R 928 px), dark background.
+ *   Left  — Scoring Profile · Restart Threat · Turnover Threat
+ *   Right — Momentum Spell  · Chain Rate     · Rematch Watchlist
+ *
+ * All metrics are deterministic — no AI language, no prescriptions.
+ * Rematch Watchlist bullets are threshold-based rules only (max 5).
+ * No ctx.roundRect() — uses ctx.fillRect() throughout (Safari < 15.4 safe).
+ */
+function makeOppositionSnapshotPage(
+  events: readonly PdfExportEvent[],
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Opposition Snapshot", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+
+  // ── Layout constants ───────────────────────────────────────────────────────
+  const CONTENT_TOP = 86;
+  const CONTENT_BOT = CANVAS_H - 36;
+  const L_COL_X     = 24;
+  const L_COL_W     = 928;
+  const R_COL_X     = 968;
+  const R_COL_W     = 928;
+  const CARD_GAP    = 20;
+  const OPP_ACCENT  = "#f87171";
+
+  // ── Derived data ───────────────────────────────────────────────────────────
+
+  // Scoring profile
+  const oppScore   = scoreFromEvents(events.filter((e) => e.teamSide === "OPP"));
+  const oppScore1H = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && e.period === "1H"));
+  const oppScore2H = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && e.period === "2H"));
+
+  const oppShotsAll = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
+  ).length;
+  const oppShotAcc = oppShotsAll > 0
+    ? Math.round((oppScore.total / oppShotsAll) * 100)
+    : 0;
+
+  // Score zone: average normalised-x across OPP score events (nx always finite on PdfExportEvent)
+  const oppScoreEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind) && isFinite(e.nx),
+  );
+  let scoreZoneLabel = "—";
+  if (oppScoreEvts.length > 0) {
+    const avgNx = oppScoreEvts.reduce((sum, e) => sum + e.nx, 0) / oppScoreEvts.length;
+    scoreZoneLabel = avgNx < 0.35 ? "Left Channel" : avgNx > 0.65 ? "Right Channel" : "Central";
+  }
+
+  // Kickout restart threat
+  const ko          = analysis.kickouts;
+  const koOppWon    = ko.outcomes.filter((o) => o.winningSide === "OPP").length;
+  const koOppWinPct = ko.total > 0 ? Math.round((koOppWon / ko.total) * 100) : 0;
+  const koOppChains = (analysis.byRule["KICKOUT_TO_SCORE"]             ?? []).filter((c) => c.teamSide === "OPP").length;
+  const koFromLost  = (analysis.byRule["KICKOUT_LOST_TO_SCORE_AGAINST"] ?? []).filter((c) => c.teamSide === "OPP").length;
+  const koLostScore    = ko.lostAllowedScore;
+  const koLostScorePct = ko.lostAllowedScorePercent;
+
+  // Turnover threat
+  const tv           = analysis.turnovers;
+  const tvLost       = tv.lost;
+  const tvOppToScore = (analysis.byRule["TURNOVER_TO_SCORE"] ?? []).filter((c) => c.teamSide === "OPP").length;
+  const tvOppToShot  = (analysis.byRule["TURNOVER_TO_SHOT"]  ?? []).filter((c) => c.teamSide === "OPP").length;
+  const tvLostScore  = tv.lostAllowedScore;
+  const tvConvPct    = tvLost > 0 ? Math.round((tvLostScore / tvLost) * 100) : 0;
+
+  // Momentum spell
+  const sr         = analysis.scoringRuns;
+  const oppRuns    = sr.runs.filter((r) => r.teamSide === "OPP");
+  const longestOpp = sr.longestRunOpp;   // may be null — always null-checked below
+  const maxConsOpp = sr.maxConsecutiveOpp;
+
+  function clockToMin(clockSecs: number, period: "1H" | "2H"): number {
+    const adjusted = period === "2H" ? clockSecs - 3600 : clockSecs;
+    return Math.floor(Math.max(0, adjusted) / 60);
+  }
+
+  const longestOppTimeLabel = longestOpp != null
+    ? `${longestOpp.period === "1H" ? "1H" : "2H"} ~${clockToMin(longestOpp.startClockSeconds, longestOpp.period)}'`
+    : "—";
+
+  // Chain rate
+  const sm          = analysis.summary;
+  const oppChains   = sm.oppChains;
+  const chainTotal  = sm.totalChains;
+  const oppChainPct = chainTotal > 0 ? Math.round((oppChains / chainTotal) * 100) : 0;
+  const opp1HChains = (analysis.byPeriod["1H"] ?? []).filter((c) => c.teamSide === "OPP").length;
+  const opp2HChains = (analysis.byPeriod["2H"] ?? []).filter((c) => c.teamSide === "OPP").length;
+
+  // Strongest OPP segment (by OPP chain count per segment — iterate 1–6)
+  const SEG_LABELS: Record<number, string> = {
+    1: "Seg 1 (1H Early)", 2: "Seg 2 (1H Mid)", 3: "Seg 3 (1H Late)",
+    4: "Seg 4 (2H Early)", 5: "Seg 5 (2H Mid)", 6: "Seg 6 (2H Late)",
+  };
+  let strongestSeg   = 0;
+  let strongestCount = 0;
+  for (let seg = 1; seg <= 6; seg++) {
+    const key   = seg as MatchEventSegment;
+    const count = (analysis.bySegment[key] ?? []).filter((c) => c.teamSide === "OPP").length;
+    if (count > strongestCount) { strongestCount = count; strongestSeg = seg; }
+  }
+  const strongestSegLabel = strongestSeg > 0 ? (SEG_LABELS[strongestSeg] ?? "—") : "—";
+
+  // Rematch Watchlist — deterministic threshold rules only, max 5 bullets
+  const watchlist: string[] = [];
+  if (maxConsOpp >= 4)    watchlist.push(`Peak run of ${maxConsOpp} unanswered — sustained pressure threat`);
+  if (tvConvPct  >= 40)   watchlist.push(`${tvConvPct}% of gifted possession converted to opposition scores`);
+  if (koOppWinPct >= 55)  watchlist.push(`Opposition won ${koOppWinPct}% of kickout possession`);
+  if (koLostScore >= 2)   watchlist.push(`${koLostScore} score${koLostScore !== 1 ? "s" : ""} conceded directly from kickout losses`);
+  if (oppChainPct >= 55)  watchlist.push(`Held tactical chain advantage — ${oppChainPct}% of all detected chains`);
+  // Fallback: always at least one bullet
+  if (watchlist.length === 0) watchlist.push("No critical tactical thresholds exceeded in this match");
+  const bullets = watchlist.slice(0, 5);
+
+  // ── Local helpers ──────────────────────────────────────────────────────────
+
+  function drawCardBg(x: number, y: number, w: number, h: number, accentColor: string): void {
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.022)";
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(x, y, 3, h);
+    ctx.restore();
+  }
+
+  function drawCardTitle(x: number, y: number, w: number, label: string, accentColor: string): number {
+    ctx.save();
+    ctx.fillStyle = accentColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label.toUpperCase(), x + 16, y + 14);
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 4, y + 28);
+    ctx.lineTo(x + w, y + 28);
+    ctx.stroke();
+    ctx.restore();
+    return y + 30;
+  }
+
+  /** Large hero value (42 px bold) + small descriptor below. Returns cy + 76. */
+  function drawHeroStat(
+    x: number, cy: number, value: string, label: string, valueColor: string,
+  ): number {
+    ctx.save();
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign = "left";
+    ctx.fillStyle = valueColor;
+    ctx.font = "bold 42px sans-serif";
+    ctx.fillText(value, x + 20, cy + 46);
+    ctx.fillStyle = "#64748b";
+    ctx.font = "11px sans-serif";
+    ctx.fillText(label.toUpperCase(), x + 20, cy + 63);
+    ctx.restore();
+    return cy + 76;
+  }
+
+  /** Compact label/value row. Returns cy + 30. */
+  function drawMetricRow(
+    x: number, cy: number, w: number,
+    label: string, value: string, valueColor: string, isAlt: boolean,
+  ): number {
+    const ROW_H = 30;
+    if (isAlt) {
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
+    }
+    const mid = cy + ROW_H / 2;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 16, mid);
+    ctx.fillStyle = valueColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(value, x + w - 14, mid);
+    return cy + ROW_H;
+  }
+
+  // ── Empty state ────────────────────────────────────────────────────────────
+  if (analysis.totalEventsAnalysed === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "16px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
+    return canvas;
+  }
+
+  // ── Card geometry ──────────────────────────────────────────────────────────
+  // CONTENT_H = 958 (= CANVAS_H − 36 − 86)
+  // Left:  Scoring Profile 310 + gap + Restart Threat 220 + gap + Turnover Threat 388 = 958
+  // Right: Momentum Spell  240 + gap + Chain Rate    240 + gap + Rematch Watchlist 438 = 958
+  const CONTENT_H  = CONTENT_BOT - CONTENT_TOP;   // 958
+  const L_CARD_H_1 = 310;
+  const L_CARD_H_2 = 220;
+  const L_CARD_H_3 = CONTENT_H - L_CARD_H_1 - CARD_GAP - L_CARD_H_2 - CARD_GAP; // 388
+
+  const R_CARD_H_1 = 240;
+  const R_CARD_H_2 = 240;
+  const R_CARD_H_3 = CONTENT_H - R_CARD_H_1 - CARD_GAP - R_CARD_H_2 - CARD_GAP; // 438
+
+  const lCard1Y = CONTENT_TOP;                                     //  86
+  const lCard2Y = lCard1Y + L_CARD_H_1 + CARD_GAP;               // 416
+  const lCard3Y = lCard2Y + L_CARD_H_2 + CARD_GAP;               // 656
+
+  const rCard1Y = CONTENT_TOP;                                     //  86
+  const rCard2Y = rCard1Y + R_CARD_H_1 + CARD_GAP;               // 346
+  const rCard3Y = rCard2Y + R_CARD_H_2 + CARD_GAP;               // 606
+
+  // ── LEFT CARD 1: Opposition Scoring Profile ────────────────────────────────
+  drawCardBg(L_COL_X, lCard1Y, L_COL_W, L_CARD_H_1, OPP_ACCENT);
+  let cy = drawCardTitle(
+    L_COL_X, lCard1Y, L_COL_W,
+    `${awayTeam.slice(0, 20)} — Scoring Profile`, OPP_ACCENT,
+  );
+  if (oppScore.total === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No opposition scores recorded", L_COL_X + L_COL_W / 2, lCard1Y + L_CARD_H_1 / 2);
+  } else {
+    cy = drawHeroStat(L_COL_X, cy, fmtScore(oppScore), "Full match score line", OPP_ACCENT);
+    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "1st Half", fmtScore(oppScore1H), "#f8fafc", false);
+    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "2nd Half", fmtScore(oppScore2H), "#f8fafc", true);
+    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Goals", String(oppScore.goals),
+                       oppScore.goals >= 2 ? OPP_ACCENT : "#f8fafc", false);
+    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Points (incl. frees & 2-pointers)",
+                       String(oppScore.points), "#f8fafc", true);
+    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Shot accuracy",
+                       oppShotsAll > 0 ? `${oppShotAcc}%` : "—", "#f8fafc", false);
+    drawMetricRow(L_COL_X, cy, L_COL_W, "Score zone (avg position)",
+                  scoreZoneLabel, "#94a3b8", true);
+  }
+
+  // ── LEFT CARD 2: Opposition Restart Threat (Kickouts) ─────────────────────
+  drawCardBg(L_COL_X, lCard2Y, L_COL_W, L_CARD_H_2, "#fbbf24");
+  cy = drawCardTitle(L_COL_X, lCard2Y, L_COL_W, "Restart Threat (Kickouts)", "#fbbf24");
+  if (ko.total === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No kickout data recorded", L_COL_X + L_COL_W / 2, lCard2Y + L_CARD_H_2 / 2);
+  } else {
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "OPP kickout win rate", `${koOppWinPct}%  (${koOppWon} of ${ko.total})`,
+      koOppWinPct >= 55 ? OPP_ACCENT : "#f8fafc", false,
+    );
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Kickout won → score chains", String(koOppChains),
+      koOppChains >= 2 ? OPP_ACCENT : "#f8fafc", true,
+    );
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Scores from kickout losses", `${koLostScore}  (${koLostScorePct}%)`,
+      koLostScore >= 2 ? OPP_ACCENT : "#f8fafc", false,
+    );
+    drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Direct kickout lost → score", String(koFromLost),
+      koFromLost >= 2 ? OPP_ACCENT : "#f8fafc", true,
+    );
+  }
+
+  // ── LEFT CARD 3: Opposition Turnover Threat ────────────────────────────────
+  drawCardBg(L_COL_X, lCard3Y, L_COL_W, L_CARD_H_3, "#a78bfa");
+  cy = drawCardTitle(L_COL_X, lCard3Y, L_COL_W, "Turnover Threat", "#a78bfa");
+  if (tvLost === 0 && tvOppToScore === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No turnover data recorded", L_COL_X + L_COL_W / 2, lCard3Y + L_CARD_H_3 / 2);
+  } else {
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Turnovers gifted to OPP", String(tvLost),
+      tvLost >= 5 ? OPP_ACCENT : "#f8fafc", false,
+    );
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "OPP scores from turnovers", String(tvLostScore),
+      tvLostScore >= 2 ? OPP_ACCENT : "#f8fafc", true,
+    );
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Turnover conversion rate", tvLost > 0 ? `${tvConvPct}%` : "—",
+      tvConvPct >= 40 ? OPP_ACCENT : "#f8fafc", false,
+    );
+    cy = drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Turnover won → score chains", String(tvOppToScore),
+      tvOppToScore >= 2 ? OPP_ACCENT : "#f8fafc", true,
+    );
+    drawMetricRow(
+      L_COL_X, cy, L_COL_W,
+      "Turnover won → shot chains", String(tvOppToShot),
+      "#f8fafc", false,
+    );
+  }
+
+  // ── RIGHT CARD 1: Opposition Momentum Spell ────────────────────────────────
+  drawCardBg(R_COL_X, rCard1Y, R_COL_W, R_CARD_H_1, "#fbbf24");
+  cy = drawCardTitle(R_COL_X, rCard1Y, R_COL_W, "Momentum Spell", "#fbbf24");
+  if (longestOpp == null || maxConsOpp < 2) {
+    cy = drawHeroStat(R_COL_X, cy, "None", "No OPP unanswered run of 2+ detected", "#64748b");
+    drawMetricRow(R_COL_X, cy, R_COL_W, "Scoring runs ≥ 2", "0", "#f8fafc", false);
+  } else {
+    cy = drawHeroStat(
+      R_COL_X, cy,
+      String(maxConsOpp),
+      `Longest unanswered run — ${longestOppTimeLabel}`,
+      OPP_ACCENT,
+    );
+    cy = drawMetricRow(
+      R_COL_X, cy, R_COL_W,
+      "Total OPP runs ≥ 2", String(oppRuns.length),
+      oppRuns.length >= 3 ? OPP_ACCENT : "#f8fafc", false,
+    );
+    drawMetricRow(
+      R_COL_X, cy, R_COL_W,
+      "Half of peak run", longestOpp.period,
+      "#f8fafc", true,
+    );
+  }
+
+  // ── RIGHT CARD 2: Opposition Chain Rate ────────────────────────────────────
+  drawCardBg(R_COL_X, rCard2Y, R_COL_W, R_CARD_H_2, "#22d3ee");
+  cy = drawCardTitle(R_COL_X, rCard2Y, R_COL_W, "Chain Rate", "#22d3ee");
+  if (chainTotal === 0) {
+    ctx.fillStyle = "#475569";
+    ctx.font = "14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No chain data recorded", R_COL_X + R_COL_W / 2, rCard2Y + R_CARD_H_2 / 2);
+  } else {
+    cy = drawHeroStat(
+      R_COL_X, cy,
+      `${oppChainPct}%`,
+      `OPP chain share  (${oppChains} of ${chainTotal} chains)`,
+      oppChainPct >= 55 ? OPP_ACCENT : "#22d3ee",
+    );
+    cy = drawMetricRow(R_COL_X, cy, R_COL_W,
+                       "OPP chains — 1st Half", String(opp1HChains), "#f8fafc", false);
+    cy = drawMetricRow(R_COL_X, cy, R_COL_W,
+                       "OPP chains — 2nd Half", String(opp2HChains), "#f8fafc", true);
+    drawMetricRow(R_COL_X, cy, R_COL_W,
+                  "Busiest OPP segment", strongestSegLabel, "#94a3b8", false);
+  }
+
+  // ── RIGHT CARD 3: Rematch Watchlist ────────────────────────────────────────
+  // Threshold-based bullets only — factual, no prescriptions, max 5.
+  drawCardBg(R_COL_X, rCard3Y, R_COL_W, R_CARD_H_3, OPP_ACCENT);
+  cy = drawCardTitle(R_COL_X, rCard3Y, R_COL_W, "Rematch Watchlist", OPP_ACCENT);
+
+  const WATCH_LINE_H = 52;
+  const watchStartY  = cy + 16;  // padding below title separator
+  bullets.forEach((bullet, idx) => {
+    const rowY = watchStartY + idx * WATCH_LINE_H;
+    const midY = rowY + WATCH_LINE_H / 2;
+    if (idx % 2 === 1) {
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fillRect(R_COL_X + 4, rowY, R_COL_W - 4, WATCH_LINE_H);
+    }
+    ctx.fillStyle = OPP_ACCENT;
+    ctx.font = "bold 14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText("—", R_COL_X + 16, midY);
+    ctx.fillStyle = "#cbd5e1";
+    ctx.font = "13px sans-serif";
+    const maxW = R_COL_W - 50;
+    let display = bullet;
+    if (ctx.measureText(display).width > maxW) {
+      while (display.length > 0 && ctx.measureText(display + "…").width > maxW) {
+        display = display.slice(0, -1);
+      }
+      display += "…";
+    }
+    ctx.fillText(display, R_COL_X + 34, midY);
+  });
+
+  return canvas;
+}
+
 // ─── Tactical page spec table (20 pages) ────────────────────────────────────
 
 type PageSpec = {
@@ -4054,14 +4470,15 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *            Each shows the full 5-section breakdown filtered to that segment.
  *   9+.      Player Breakdown — one or more pages, no truncation
  *   (9+N)+.  20 tactical pitch map pages (N = player page count)
- *   Last−5.  Kickout Chain Analysis page
- *   Last−4.  Turnover Punishment Analysis page
- *   Last−3.  Momentum & Scoring Runs page
- *   Last−2.  Tactical Chain Analysis summary page
- *   Last−1.  Tactical Intelligence Summary page
- *   Last.    Tactical Review Guide page
+ *   Last−6.  Kickout Chain Analysis page
+ *   Last−5.  Turnover Punishment Analysis page
+ *   Last−4.  Momentum & Scoring Runs page
+ *   Last−3.  Tactical Chain Analysis summary page
+ *   Last−2.  Tactical Intelligence Summary page
+ *   Last−1.  Tactical Review Guide page
+ *   Last.    Opposition Snapshot page
  *
- * Total pages = 32 + N  (N ≥ 1 → minimum 33 pages).
+ * Total pages = 33 + N  (N ≥ 1 → minimum 34 pages).
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
   const {
@@ -4072,9 +4489,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
   } = input;
 
-  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 5 chain pages + 1 review guide
+  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 6 chain pages + 1 review guide + 1 opposition snapshot
   const playerPageCount = calcPlayerPageCount(events);
-  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 6;
+  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 7;
 
   // Chain analysis — computed once here and shared with all chain page builders.
   // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
@@ -4153,11 +4570,27 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(canvas!, true);
   });
 
-  // Sixth-to-last page: Kickout Chain Analysis
+  // Seventh-to-last page: Kickout Chain Analysis
   // chainAnalysis was computed once above; all chain builders consume slices of it.
   try {
     addCanvasPage(
       makeKickoutChainPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES - 6,   // seventh-to-last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
+
+  // Sixth-to-last page: Turnover Punishment Analysis
+  try {
+    addCanvasPage(
+      makeTurnoverPunishmentPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4170,10 +4603,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Fifth-to-last page: Turnover Punishment Analysis
+  // Fifth-to-last page: Momentum & Scoring Runs Analysis
   try {
     addCanvasPage(
-      makeTurnoverPunishmentPage(
+      makeMomentumRunsPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4186,10 +4619,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Fourth-to-last page: Momentum & Scoring Runs Analysis
+  // Fourth-to-last page: Tactical Chain Analysis summary
   try {
     addCanvasPage(
-      makeMomentumRunsPage(
+      makeChainSummaryPage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4202,10 +4635,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Third-to-last page: Tactical Chain Analysis summary
+  // Third-to-last page: Tactical Intelligence Summary
   try {
     addCanvasPage(
-      makeChainSummaryPage(
+      makeTacticalIntelligencePage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4218,10 +4651,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Second-to-last page: Tactical Intelligence Summary
+  // Second-to-last page: Tactical Review Guide
   try {
     addCanvasPage(
-      makeTacticalIntelligencePage(
+      makeTacticalReviewGuidePage(
         chainAnalysis,
         homeTeamName,
         awayTeamName,
@@ -4234,10 +4667,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     // Chain page failure is non-fatal — PDF still saves cleanly
   }
 
-  // Last page: Tactical Review Guide
+  // Last page: Opposition Snapshot
   try {
     addCanvasPage(
-      makeTacticalReviewGuidePage(
+      makeOppositionSnapshotPage(
+        events,
         chainAnalysis,
         homeTeamName,
         awayTeamName,
