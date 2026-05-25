@@ -3541,6 +3541,7 @@ export default function StatsModeSurface() {
   };
 
   const handlePlayerPick = (player: SquadPlayer) => {
+    if (player.isActive !== true) return;
     setActivePlayer(player.name);
     setActivePlayerNumber(player.number);
     setActivePlayerId(player.id);
@@ -3554,6 +3555,7 @@ export default function StatsModeSurface() {
   };
   const confirmSubstitution = () => {
     if (!selectedSubOutId || !selectedSubInId || selectedSubOutId === selectedSubInId) return;
+    const incomingPlayerId = selectedSubInId;
     updateActiveSquadPlayers((prevPlayers) =>
       prevPlayers.map((player) => {
         if (player.id === selectedSubOutId) return { ...player, isActive: false };
@@ -3561,12 +3563,7 @@ export default function StatsModeSurface() {
         return player;
       }),
     );
-    if (activePlayerIdRef.current === selectedSubOutId) {
-      const incoming = activeSquadPlayers.find((player) => player.id === selectedSubInId) ?? null;
-      if (incoming) {
-        selectActivePlayerById(incoming.id);
-      }
-    }
+    selectActivePlayerById(incomingPlayerId);
     setSelectedSubOutId(null);
     setSelectedSubInId(null);
   };
@@ -6049,9 +6046,8 @@ export default function StatsModeSurface() {
   const utilityPanelClass = isLandscape
     ? "utility-overlay-panel utility-overlay-panel--landscape"
     : "utility-overlay-panel utility-overlay-panel--portrait";
-  const starterPlayers = activeSquadPlayers.filter((player) => player.role === "STARTER");
-  const formationPlayers = starterPlayers.slice(0, 15);
-  const benchPlayers = activeSquadPlayers.filter((player) => player.role === "SUB");
+  const formationPlayers = activePlayers.slice(0, 15);
+  const benchPlayers = inactivePlayers;
   const formationRows: SquadPlayer[][] = [];
   let formationCursor = 0;
   for (const rowSize of FORMATION_ROW_SIZES) {
