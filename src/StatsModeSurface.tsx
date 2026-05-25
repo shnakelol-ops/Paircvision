@@ -90,7 +90,14 @@ type EventKeyboardMenuId =
   | "KICKOUT_CONCEDED";
 type EventKeyboardTone = "score" | "wide" | "turnover" | "kickout" | "free";
 type EventKeyboardOption = { label: string; kind: MatchEventKind; tag?: string };
-type SquadPlayer = { id: string; name: string; number: number; role: PlayerRole; isActive?: boolean };
+type SquadPlayer = {
+  id: string;
+  name: string;
+  number: number;
+  role: PlayerRole;
+  isActive?: boolean;
+  activeSlot?: number;
+};
 type Squad = { id: string; name: string; players: SquadPlayer[] };
 type SavedSquadPlayer = { id: string; number: number; name: string; isActive?: boolean };
 type SavedSquad = {
@@ -1029,6 +1036,7 @@ function createDefaultSquad(): Squad {
       number: slotNumber,
       role: slotNumber <= 15 ? "STARTER" : "SUB",
       isActive: slotNumber <= 15,
+      activeSlot: slotNumber <= 15 ? slotNumber : undefined,
     };
   });
   return {
@@ -1047,12 +1055,20 @@ function ensureStableSquadSlots(players: SquadPlayer[]): SquadPlayer[] {
     const slotNumber = idx + 1;
     const parsedIsActive =
       typeof player.isActive === "boolean" ? player.isActive : defaultPlayerActiveForSlot(slotNumber);
+    const rawActiveSlot = typeof player.activeSlot === "number" ? Math.floor(player.activeSlot) : null;
+    const parsedActiveSlot =
+      rawActiveSlot != null && rawActiveSlot >= 1 && rawActiveSlot <= 15
+        ? rawActiveSlot
+        : parsedIsActive
+          ? Math.min(15, slotNumber)
+          : undefined;
     return {
       ...player,
       name: player.name.slice(0, 24),
       number: boundedNumber,
       role: player.role === "STARTER" || player.role === "SUB" ? player.role : idx < 15 ? "STARTER" : "SUB",
       isActive: parsedIsActive,
+      activeSlot: parsedActiveSlot,
     };
   });
   const byNumber = new Map<number, SquadPlayer>();
@@ -1079,6 +1095,12 @@ function ensureStableSquadSlots(players: SquadPlayer[]): SquadPlayer[] {
         number: slot,
         role,
         isActive: typeof selected.isActive === "boolean" ? selected.isActive : defaultPlayerActiveForSlot(slot),
+        activeSlot:
+          typeof selected.activeSlot === "number" && selected.activeSlot >= 1 && selected.activeSlot <= 15
+            ? Math.floor(selected.activeSlot)
+            : selected.isActive === true
+              ? Math.min(15, slot)
+              : undefined,
       });
       continue;
     }
@@ -1088,6 +1110,7 @@ function ensureStableSquadSlots(players: SquadPlayer[]): SquadPlayer[] {
       number: slot,
       role,
       isActive: defaultPlayerActiveForSlot(slot),
+      activeSlot: defaultPlayerActiveForSlot(slot) ? slot : undefined,
     });
   }
   return stablePlayers;
@@ -1107,6 +1130,7 @@ function parseStoredPlayer(input: unknown, idx: number): SquadPlayer | null {
       number: idx + 1,
       role: idx < 15 ? "STARTER" : "SUB",
       isActive: idx < 15,
+      activeSlot: idx < 15 ? idx + 1 : undefined,
     };
   }
   if (!input || typeof input !== "object") return null;
@@ -1129,12 +1153,20 @@ function parseStoredPlayer(input: unknown, idx: number): SquadPlayer | null {
       : `player-${idx + 1}-${nextName.toLowerCase().replace(/\s+/g, "-")}`;
   const rawIsActive = "isActive" in input ? input.isActive : null;
   const parsedIsActive = typeof rawIsActive === "boolean" ? rawIsActive : idx < 15;
+  const rawActiveSlot = "activeSlot" in input ? input.activeSlot : null;
+  const parsedActiveSlot =
+    typeof rawActiveSlot === "number" && Number.isFinite(rawActiveSlot) && rawActiveSlot >= 1 && rawActiveSlot <= 15
+      ? Math.floor(rawActiveSlot)
+      : parsedIsActive
+        ? idx + 1
+        : undefined;
   return {
     id: nextId,
     name: nextName,
     number: parsedNumber,
     role: nextRole,
     isActive: parsedIsActive,
+    activeSlot: parsedActiveSlot,
   };
 }
 
@@ -3557,10 +3589,13 @@ export default function StatsModeSurface() {
   const confirmSubstitution = () => {
     if (!selectedSubOutId || !selectedSubInId || selectedSubOutId === selectedSubInId) return;
     const incomingPlayerId = selectedSubInId;
+    const outgoingPlayer = activeSquadPlayers.find((player) => player.id === selectedSubOutId) ?? null;
+    const outgoingActiveSlot =
+      outgoingPlayer && typeof outgoingPlayer.activeSlot === "number" ? outgoingPlayer.activeSlot : undefined;
     updateActiveSquadPlayers((prevPlayers) =>
       prevPlayers.map((player) => {
-        if (player.id === selectedSubOutId) return { ...player, isActive: false };
-        if (player.id === selectedSubInId) return { ...player, isActive: true };
+        if (player.id === selectedSubOutId) return { ...player, isActive: false, activeSlot: undefined };
+        if (player.id === selectedSubInId) return { ...player, isActive: true, activeSlot: outgoingActiveSlot };
         return player;
       }),
     );
@@ -6047,7 +6082,14 @@ export default function StatsModeSurface() {
   const utilityPanelClass = isLandscape
     ? "utility-overlay-panel utility-overlay-panel--landscape"
     : "utility-overlay-panel utility-overlay-panel--portrait";
-  const formationPlayers = activePlayers.slice(0, 15);
+  const formationPlayers = [...activePlayers]
+    .sort((a, b) => {
+      const aSlot = typeof a.activeSlot === "number" ? a.activeSlot : Number.POSITIVE_INFINITY;
+      const bSlot = typeof b.activeSlot === "number" ? b.activeSlot : Number.POSITIVE_INFINITY;
+      if (aSlot !== bSlot) return aSlot - bSlot;
+      return a.number - b.number;
+    })
+    .slice(0, 15);
   const benchPlayers = inactivePlayers;
   const formationRows: SquadPlayer[][] = [];
   let formationCursor = 0;
