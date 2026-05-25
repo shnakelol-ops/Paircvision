@@ -2019,6 +2019,450 @@ function makeChainSummaryPage(
   return canvas;
 }
 
+// ─── Kickout Chain Analysis page ─────────────────────────────────────────────
+
+/**
+ * Builds the Kickout Chain Analysis canvas (second-to-last page).
+ *
+ * Three columns:
+ *   COL 1 — Overall possession overview with half split
+ *   COL 2 — Kickout type breakdown (CLEAN/BREAK/FOUL) for each team
+ *   COL 3 — Chain rule outcomes and possession efficiency
+ *
+ * Layout mirrors makeChainSummaryPage (3 × 606 px columns, 24 px gaps).
+ * All ctx.fillRect() — ctx.roundRect() is intentionally absent (Safari < 15.4).
+ */
+function makeKickoutChainPage(
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Kickout Chain Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+
+  const CONTENT_TOP = 86;
+  const CONTENT_BOT = CANVAS_H - 36;
+  const CONTENT_H   = CONTENT_BOT - CONTENT_TOP;
+  const COL_W       = 606;
+  const COL_GAP     = 24;
+  const COL1_X      = 24;
+  const COL2_X      = COL1_X + COL_W + COL_GAP;
+  const COL3_X      = COL2_X + COL_W + COL_GAP;
+
+  const ko       = analysis.kickouts;
+  const outcomes = ko.outcomes;
+
+  // ── Local helpers (same style as makeChainSummaryPage) ──────────────────────
+
+  function drawPanelBg(x: number, y: number, w: number, h: number, accentColor: string): void {
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.022)";
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(x, y, 3, h);
+    ctx.restore();
+  }
+
+  function drawPanelTitle(x: number, y: number, label: string, accentColor: string): number {
+    ctx.save();
+    ctx.fillStyle = accentColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label.toUpperCase(), x + 16, y + 13);
+    ctx.strokeStyle = "rgba(255,255,255,0.07)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 4, y + 26);
+    ctx.lineTo(x + COL_W, y + 26);
+    ctx.stroke();
+    ctx.restore();
+    return y + 28;
+  }
+
+  function drawStatRow(
+    x: number, cy: number, w: number,
+    label: string, value: string, valueColor: string,
+    isAlt: boolean,
+  ): number {
+    const ROW_H = 26;
+    if (isAlt) {
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
+    }
+    const mid = cy + ROW_H / 2;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(label, x + 14, mid);
+    ctx.fillStyle = valueColor;
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(value, x + w - 10, mid);
+    return cy + ROW_H;
+  }
+
+  /** Draws a two-segment possession bar (FOR left, OPP right) with percentage labels. */
+  function drawPossessionBar(
+    x: number, cy: number, w: number,
+    forCount: number, oppCount: number,
+    forLabel: string, oppLabel: string,
+  ): number {
+    const barH    = 14;
+    const barX    = x + 12;
+    const barW    = w - 24;
+    const total   = forCount + oppCount;
+    const forFrac = total > 0 ? forCount / total : 0.5;
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    ctx.fillRect(barX, cy, barW, barH);
+    if (total > 0) {
+      ctx.fillStyle = "#22d3ee";
+      ctx.fillRect(barX, cy, Math.max(4, Math.floor(barW * forFrac)), barH);
+      if (forFrac < 1) {
+        const oppW = Math.max(4, barW - Math.floor(barW * forFrac));
+        ctx.fillStyle = "#fb7185";
+        ctx.fillRect(barX + barW - oppW, cy, oppW, barH);
+      }
+      ctx.font = "11px sans-serif";
+      ctx.textBaseline = "middle";
+      const labelY = cy + barH + 12;
+      ctx.fillStyle = "#22d3ee";
+      ctx.textAlign = "left";
+      ctx.fillText(`${forLabel} ${Math.round(forFrac * 100)}%`, barX, labelY);
+      ctx.fillStyle = "#fb7185";
+      ctx.textAlign = "right";
+      ctx.fillText(`${Math.round((1 - forFrac) * 100)}% ${oppLabel}`, barX + barW, labelY);
+    } else {
+      ctx.fillStyle = "#475569";
+      ctx.font = "11px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText("No kickout data", barX + barW / 2, cy + barH + 12);
+    }
+    ctx.restore();
+    return cy + barH + 26;
+  }
+
+  // ── Derived data ─────────────────────────────────────────────────────────────
+
+  // Per-period possession split
+  const h1Out     = outcomes.filter((o) => o.kickoutEvent.period === "1H");
+  const h2Out     = outcomes.filter((o) => o.kickoutEvent.period === "2H");
+  const h1Won     = h1Out.filter((o) => o.winningSide === "FOR").length;
+  const h1Lost    = h1Out.filter((o) => o.winningSide === "OPP").length;
+  const h2Won     = h2Out.filter((o) => o.winningSide === "FOR").length;
+  const h2Lost    = h2Out.filter((o) => o.winningSide === "OPP").length;
+  const h1WonToScore = h1Out.filter((o) => o.winningSide === "FOR" && o.nextScore !== null).length;
+  const h2WonToScore = h2Out.filter((o) => o.winningSide === "FOR" && o.nextScore !== null).length;
+
+  // Tag counting helper (operates on a filtered sub-slice)
+  function countOutcomeTag(
+    sub: readonly typeof outcomes[number][],
+    ...tags: string[]
+  ): number {
+    return sub.filter((o) => tags.some((t) => o.kickoutEvent.tags?.includes(t))).length;
+  }
+
+  // FOR own kickout sub-slices
+  const forKoWonOut  = outcomes.filter((o) => o.kickoutEvent.kind === "KICKOUT_WON"      && o.kickoutEvent.teamSide === "FOR");
+  const forKoConOut  = outcomes.filter((o) => o.kickoutEvent.kind === "KICKOUT_CONCEDED"  && o.kickoutEvent.teamSide === "FOR");
+  const forCleanWon  = countOutcomeTag(forKoWonOut,  "CLEAN");
+  const forBreakWon  = countOutcomeTag(forKoWonOut,  "BREAK");
+  const forFoulWon   = countOutcomeTag(forKoWonOut,  "FOUL_WON");
+  const forCleanLost = countOutcomeTag(forKoConOut,  "CLEAN");
+  const forBreakLost = countOutcomeTag(forKoConOut,  "BREAK");
+  const forFoulCon   = countOutcomeTag(forKoConOut,  "FOUL_CONCEDED");
+  const forKickedDead = countOutcomeTag(
+    outcomes.filter((o) => o.kickoutEvent.teamSide === "FOR"),
+    "KICKED_DEAD",
+  );
+
+  // OPP own kickout sub-slices
+  const oppKoWonOut  = outcomes.filter((o) => o.kickoutEvent.kind === "KICKOUT_WON"      && o.kickoutEvent.teamSide === "OPP");
+  const oppKoConOut  = outcomes.filter((o) => o.kickoutEvent.kind === "KICKOUT_CONCEDED"  && o.kickoutEvent.teamSide === "OPP");
+  const oppCleanWon  = countOutcomeTag(oppKoWonOut,  "CLEAN");
+  const oppBreakWon  = countOutcomeTag(oppKoWonOut,  "BREAK");
+  const oppFoulWon   = countOutcomeTag(oppKoWonOut,  "FOUL_WON");
+  const oppCleanLost = countOutcomeTag(oppKoConOut,  "CLEAN");
+  const oppBreakLost = countOutcomeTag(oppKoConOut,  "BREAK");
+  const oppFoulCon   = countOutcomeTag(oppKoConOut,  "FOUL_CONCEDED");
+  const oppKickedDead = countOutcomeTag(
+    outcomes.filter((o) => o.kickoutEvent.teamSide === "OPP"),
+    "KICKED_DEAD",
+  );
+
+  // Possession outcome counts (FOR won possession)
+  const forWonTotal    = outcomes.filter((o) => o.winningSide === "FOR").length;
+  const forScoredFromKo = outcomes.filter((o) => o.winningSide === "FOR" && o.nextScore      !== null).length;
+  const forShotFromKo  = outcomes.filter((o) => o.winningSide === "FOR" && o.nextShotOrScore !== null).length;
+  const oppScoredFromKo = outcomes.filter((o) => o.winningSide === "OPP" && o.nextScore     !== null).length;
+
+  // Average seconds to score across all kickouts that led to a score
+  const scoringOuts    = outcomes.filter((o) => o.secondsToScore !== null);
+  const avgSecsToScore = scoringOuts.length > 0
+    ? Math.round(scoringOuts.reduce((s, o) => s + (o.secondsToScore ?? 0), 0) / scoringOuts.length)
+    : null;
+
+  // Chain rule matches
+  const koToScoreChains   = analysis.byRule["KICKOUT_TO_SCORE"]               ?? [];
+  const koLostScoreChains = analysis.byRule["KICKOUT_LOST_TO_SCORE_AGAINST"]  ?? [];
+
+  // ── COL 1: Overall Kickout Possession ─────────────────────────────────────────
+  {
+    drawPanelBg(COL1_X, CONTENT_TOP, COL_W, CONTENT_H, "#22d3ee");
+    let cy = drawPanelTitle(COL1_X, CONTENT_TOP, "Kickout Possession Overview", "#22d3ee");
+
+    if (ko.total === 0) {
+      ctx.save();
+      ctx.fillStyle = "#475569";
+      ctx.font = "16px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText("No kickout events recorded", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
+      ctx.restore();
+    } else {
+      // Possession bar
+      cy += 6;
+      cy = drawPossessionBar(COL1_X, cy, COL_W, ko.won, ko.lost, homeTeam.slice(0, 12), awayTeam.slice(0, 12));
+      cy += 4;
+
+      // Summary
+      cy = drawStatRow(COL1_X, cy, COL_W, "Total kickout events",         String(ko.total),         "#e2e8f0", false);
+      cy = drawStatRow(COL1_X, cy, COL_W, `${homeTeam.slice(0, 16)} won`, String(ko.won),            "#22d3ee", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, `${awayTeam.slice(0, 16)} won`, String(ko.lost),           "#fb7185", false);
+      cy += 8;
+
+      const wonPctStr  = ko.won  > 0 ? `${ko.wonToScore} (${ko.wonToScorePercent}%)`             : "0 (—)";
+      const lostPctStr = ko.lost > 0 ? `${ko.lostAllowedScore} (${ko.lostAllowedScorePercent}%)` : "0 (—)";
+      cy = drawStatRow(COL1_X, cy, COL_W, "Won → Score",          wonPctStr,  "#4ade80", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, "Lost → Score Against", lostPctStr, "#f97316", false);
+      cy += 8;
+
+      // Half split sub-header
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.04)";
+      ctx.fillRect(COL1_X + 4, cy, COL_W - 4, 20);
+      ctx.fillStyle = "#22d3ee";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.fillText("BY HALF", COL1_X + 14, cy + 10);
+      ctx.restore();
+      cy += 20;
+
+      const h1Total  = h1Won + h1Lost;
+      const h2Total  = h2Won + h2Lost;
+      const h1WonPct = h1Total > 0 ? `${Math.round((h1Won / h1Total) * 100)}%` : "—";
+      const h2WonPct = h2Total > 0 ? `${Math.round((h2Won / h2Total) * 100)}%` : "—";
+
+      cy = drawStatRow(COL1_X, cy, COL_W, "1H — Won / Lost",    `${h1Won} / ${h1Lost}`, "#e2e8f0", false);
+      cy = drawStatRow(COL1_X, cy, COL_W, "1H — Won %",         h1WonPct,               "#22d3ee", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, "1H — Won → Score",   String(h1WonToScore),   "#4ade80", false);
+      cy = drawStatRow(COL1_X, cy, COL_W, "2H — Won / Lost",    `${h2Won} / ${h2Lost}`, "#e2e8f0", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, "2H — Won %",         h2WonPct,               "#22d3ee", false);
+      cy = drawStatRow(COL1_X, cy, COL_W, "2H — Won → Score",   String(h2WonToScore),   "#4ade80", true);
+      cy += 8;
+
+      const avgStr = avgSecsToScore !== null ? `${avgSecsToScore}s` : "—";
+      drawStatRow(COL1_X, cy, COL_W, "Avg secs to score (won K/O)", avgStr, "#fbbf24", false);
+    }
+  }
+
+  // ── COL 2: Kickout Type Breakdown (FOR top, OPP bottom) ──────────────────────
+  {
+    const HALF_H   = Math.floor(CONTENT_H / 2) - 8;
+    const PANEL_Y1 = CONTENT_TOP;
+    const PANEL_Y2 = CONTENT_TOP + HALF_H + 16;
+
+    // FOR team panel
+    drawPanelBg(COL2_X, PANEL_Y1, COL_W, HALF_H, "#7dd3fc");
+    let cy = drawPanelTitle(COL2_X, PANEL_Y1, `${homeTeam.slice(0, 18)} — Kickout Types`, "#7dd3fc");
+
+    if (forKoWonOut.length + forKoConOut.length === 0) {
+      ctx.save();
+      ctx.fillStyle = "#475569";
+      ctx.font = "14px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText("No FOR kickout events", COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.04)";
+      ctx.fillRect(COL2_X + 4, cy, COL_W - 4, 20);
+      ctx.fillStyle = "#7dd3fc";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.fillText("OWN KICKOUTS RETAINED", COL2_X + 14, cy + 10);
+      ctx.restore();
+      cy += 20;
+      cy = drawStatRow(COL2_X, cy, COL_W, "Clean Won",     String(forCleanWon),  "#4ade80", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, "Break Won",     String(forBreakWon),  "#e2e8f0", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, "Foul Won",      String(forFoulWon),   "#fbbf24", false);
+      cy += 8;
+
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.04)";
+      ctx.fillRect(COL2_X + 4, cy, COL_W - 4, 20);
+      ctx.fillStyle = "#fb7185";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.fillText("OWN KICKOUTS CONCEDED", COL2_X + 14, cy + 10);
+      ctx.restore();
+      cy += 20;
+      cy = drawStatRow(COL2_X, cy, COL_W, "Clean Lost",    String(forCleanLost),   "#fb7185", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, "Break Lost",    String(forBreakLost),   "#e2e8f0", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, "Foul Conceded", String(forFoulCon),     "#f97316", false);
+      drawStatRow(COL2_X, cy, COL_W,      "Kicked Dead",   String(forKickedDead),  "#64748b", true);
+    }
+
+    // OPP team panel
+    drawPanelBg(COL2_X, PANEL_Y2, COL_W, HALF_H, "#fb7185");
+    cy = drawPanelTitle(COL2_X, PANEL_Y2, `${awayTeam.slice(0, 18)} — Kickout Types`, "#fb7185");
+
+    if (oppKoWonOut.length + oppKoConOut.length === 0) {
+      ctx.save();
+      ctx.fillStyle = "#475569";
+      ctx.font = "14px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText("No OPP kickout events", COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.04)";
+      ctx.fillRect(COL2_X + 4, cy, COL_W - 4, 20);
+      ctx.fillStyle = "#fb7185";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.fillText("OWN KICKOUTS RETAINED", COL2_X + 14, cy + 10);
+      ctx.restore();
+      cy += 20;
+      cy = drawStatRow(COL2_X, cy, COL_W, "Clean Won",     String(oppCleanWon),  "#4ade80", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, "Break Won",     String(oppBreakWon),  "#e2e8f0", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, "Foul Won",      String(oppFoulWon),   "#fbbf24", false);
+      cy += 8;
+
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,0.04)";
+      ctx.fillRect(COL2_X + 4, cy, COL_W - 4, 20);
+      ctx.fillStyle = "#22d3ee";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.fillText("OWN KICKOUTS CONCEDED", COL2_X + 14, cy + 10);
+      ctx.restore();
+      cy += 20;
+      cy = drawStatRow(COL2_X, cy, COL_W, "Clean Lost",    String(oppCleanLost),   "#fb7185", false);
+      cy = drawStatRow(COL2_X, cy, COL_W, "Break Lost",    String(oppBreakLost),   "#e2e8f0", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, "Foul Conceded", String(oppFoulCon),     "#f97316", false);
+      drawStatRow(COL2_X, cy, COL_W,      "Kicked Dead",   String(oppKickedDead),  "#64748b", true);
+    }
+  }
+
+  // ── COL 3: Chain Outcomes ─────────────────────────────────────────────────────
+  {
+    drawPanelBg(COL3_X, CONTENT_TOP, COL_W, CONTENT_H, "#fbbf24");
+    let cy = drawPanelTitle(COL3_X, CONTENT_TOP, "Kickout Chain Outcomes", "#fbbf24");
+
+    // Chain rule match counts
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
+    ctx.fillStyle = "#fbbf24";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText("CHAIN RULE MATCHES", COL3_X + 14, cy + 10);
+    ctx.restore();
+    cy += 20;
+
+    const koToScoreFor = koToScoreChains.filter((c) => c.teamSide === "FOR").length;
+    const koToScoreOpp = koToScoreChains.filter((c) => c.teamSide === "OPP").length;
+    const koLostFor    = koLostScoreChains.filter((c) => c.teamSide === "FOR").length;
+    const koLostOpp    = koLostScoreChains.filter((c) => c.teamSide === "OPP").length;
+
+    cy = drawStatRow(COL3_X, cy, COL_W, `KO Won → Score  (${homeTeam.slice(0, 10)})`,     String(koToScoreFor), "#7dd3fc", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `KO Won → Score  (${awayTeam.slice(0, 10)})`,     String(koToScoreOpp), "#fb7185", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `KO Lost → Score Agst (${homeTeam.slice(0, 8)})`, String(koLostFor),    "#f97316", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `KO Lost → Score Agst (${awayTeam.slice(0, 8)})`, String(koLostOpp),    "#f97316", true);
+    cy += 12;
+
+    // Scoring from kickout possession
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
+    ctx.fillStyle = "#4ade80";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText("SCORING FROM POSSESSION", COL3_X + 14, cy + 10);
+    ctx.restore();
+    cy += 20;
+
+    cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} — Scores from K/O`, String(forScoredFromKo),  "#4ade80", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} — Shots from K/O`,  String(forShotFromKo),    "#7dd3fc", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 16)} — Scores from K/O`, String(oppScoredFromKo),  "#fb7185", false);
+    cy += 12;
+
+    // FOR possession outcome breakdown
+    ctx.save();
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
+    ctx.fillStyle = "#22d3ee";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(`${homeTeam.slice(0, 16).toUpperCase()} POSSESSION OUTCOMES`, COL3_X + 14, cy + 10);
+    ctx.restore();
+    cy += 20;
+
+    const forNoShot    = Math.max(0, forWonTotal - forShotFromKo);
+    const forShotPct   = forWonTotal > 0 ? `${Math.round((forShotFromKo   / forWonTotal) * 100)}%` : "—";
+    const forScorePct  = forWonTotal > 0 ? `${Math.round((forScoredFromKo / forWonTotal) * 100)}%` : "—";
+
+    cy = drawStatRow(COL3_X, cy, COL_W, "Won kickouts total",   String(forWonTotal),                             "#e2e8f0", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, "→ Generated a shot",   `${forShotFromKo} (${forShotPct})`,              "#22d3ee", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, "→ Converted to score", `${forScoredFromKo} (${forScorePct})`,           "#4ade80", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, "→ No shot attempt",    String(forNoShot),                               "#f97316", true);
+    cy += 8;
+
+    const avgStr = avgSecsToScore !== null ? `${avgSecsToScore}s avg` : "—";
+    cy = drawStatRow(COL3_X, cy, COL_W, "Avg time to score (K/O)", avgStr, "#fbbf24", false);
+
+    // Possession rate summary bar
+    if (ko.won + ko.lost > 0) {
+      cy += 16;
+      ctx.save();
+      ctx.fillStyle = "#64748b";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.fillText("OVERALL POSSESSION RATE", COL3_X + 14, cy);
+      ctx.restore();
+      cy += 14;
+      drawPossessionBar(COL3_X, cy, COL_W, ko.won, ko.lost, homeTeam.slice(0, 10), awayTeam.slice(0, 10));
+    }
+  }
+
+  return canvas;
+}
+
 // ─── Tactical page spec table (20 pages) ────────────────────────────────────
 
 type PageSpec = {
@@ -2081,9 +2525,10 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *            Each shows the full 5-section breakdown filtered to that segment.
  *   9+.      Player Breakdown — one or more pages, no truncation
  *   (9+N)+.  20 tactical pitch map pages (N = player page count)
- *   Last.    Tactical Chain Analysis summary page (1 page)
+ *   Last−1.  Kickout Chain Analysis page
+ *   Last.    Tactical Chain Analysis summary page
  *
- * Total pages = 29 + N  (N ≥ 1 → minimum 30 pages).
+ * Total pages = 30 + N  (N ≥ 1 → minimum 31 pages).
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
   const {
@@ -2094,9 +2539,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
   } = input;
 
-  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 1 chain summary
+  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 2 chain pages
   const playerPageCount = calcPlayerPageCount(events);
-  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 1;
+  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 2;
 
   // Chain analysis — computed once here and shared with all chain page builders.
   // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
@@ -2175,11 +2620,26 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(canvas!, true);
   });
 
+  // Second-to-last page: Kickout Chain Analysis
+  // chainAnalysis was computed once above; both chain builders consume slices of it.
+  // Future chain pages (turnover punishment, momentum) follow the same pattern:
+  // add a builder function, call addCanvasPage here, and increment TOTAL_PAGES by 1.
+  try {
+    addCanvasPage(
+      makeKickoutChainPage(
+        chainAnalysis,
+        homeTeamName,
+        awayTeamName,
+        TOTAL_PAGES - 1,   // second-to-last page
+        TOTAL_PAGES,
+      ),
+      true,
+    );
+  } catch {
+    // Chain page failure is non-fatal — PDF still saves cleanly
+  }
+
   // Last page: Tactical Chain Analysis summary
-  // chainAnalysis was computed once above; this builder consumes a slice of it.
-  // Future chain pages (kickout analysis, turnover punishment, momentum) follow
-  // the same pattern: add a builder function, call addCanvasPage here, and
-  // increment TOTAL_PAGES by 1 per additional page — no other changes required.
   try {
     addCanvasPage(
       makeChainSummaryPage(
