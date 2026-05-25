@@ -6344,13 +6344,15 @@ export default function StatsModeSurface() {
               Add
             </button>
           </div>
+          <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.84 }}>
+            Active Players
+          </div>
           <div className="utility-formation" aria-label="Home formation">
             {formationRows.map((row, rowIdx) =>
               row.length > 0 ? (
                 <div key={`formation-row-${rowIdx}`} className="utility-formation-row">
                   {row.map((player, playerIdx) => {
                     const isActive = activePlayerEntry?.id === player.id;
-                    const isOnPitch = player.isActive === true;
                     return (
                       <button
                         key={`formation-${rowIdx}-${playerIdx}-${player.id}`}
@@ -6368,13 +6370,11 @@ export default function StatsModeSurface() {
                                 border: "1px solid rgba(125,211,252,0.9)",
                                 background: "rgba(14,116,144,0.38)",
                               }
-                            : isOnPitch
-                              ? { border: "1px solid rgba(74, 222, 128, 0.65)" }
-                              : { opacity: 0.62 }
+                            : { border: "1px solid rgba(74, 222, 128, 0.65)" }
                         }
                       >
                         {isActive ? "● " : ""}
-                        {formatPlayerLabel(player)} {isOnPitch ? "• Active" : "• Bench"}
+                        {formatPlayerLabel(player)}
                       </button>
                     );
                   })}
@@ -6430,36 +6430,22 @@ export default function StatsModeSurface() {
           </div>
           {benchPlayers.length > 0 ? (
             <div className="utility-subs-wrap">
-              <div className="utility-subs-title">Bench List</div>
+              <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.84 }}>
+                Bench
+              </div>
+              <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.72 }}>
+                Bench players are listed for substitution (Sub In), not direct event tagging.
+              </div>
               <div className="utility-subs-row" aria-label="Home substitutes">
                 {benchPlayers.map((player, idx) => {
-                  const isSelected = activePlayerEntry?.id === player.id;
-                  const isOnPitch = player.isActive === true;
                   return (
-                    <button
-                      key={`sub-${idx}-${player.id}`}
-                      type="button"
+                    <div
+                      key={`bench-${idx}-${player.id}`}
                       className="utility-player-pill"
-                      onClick={() => {
-                        handlePlayerPick(player);
-                      }}
-                      onDoubleClick={() => {
-                        editPlayer(player.id);
-                      }}
-                      style={
-                        isSelected
-                          ? {
-                              border: "1px solid rgba(125,211,252,0.9)",
-                              background: "rgba(14,116,144,0.38)",
-                            }
-                          : isOnPitch
-                            ? { border: "1px solid rgba(74, 222, 128, 0.65)" }
-                            : undefined
-                      }
+                      style={{ opacity: 0.78 }}
                     >
-                      {isSelected ? "● " : ""}
-                      {formatPlayerLabel(player)} {isOnPitch ? "• Active" : "• Bench"}
-                    </button>
+                      {formatPlayerLabel(player)}
+                    </div>
                   );
                 })}
               </div>
