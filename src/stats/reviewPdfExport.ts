@@ -70,6 +70,20 @@ export type ReviewPdfExportInput = {
   sport?: PitchSport;
 };
 
+// ─── Snapshot export types ────────────────────────────────────────────────────
+
+/**
+ * Lightweight report mode — each mode produces exactly 10 pages.
+ * - HALF_TIME_SNAPSHOT: first-half events only; ideal for half-time team talk.
+ * - FULL_TIME_SNAPSHOT: full-match events; concise post-match debrief.
+ */
+export type SnapshotMode = "HALF_TIME_SNAPSHOT" | "FULL_TIME_SNAPSHOT";
+
+export type SnapshotPdfExportInput = ReviewPdfExportInput & {
+  /** Controls which events are included and which 10 pages are rendered. */
+  snapshotMode: SnapshotMode;
+};
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const CANVAS_W = 1920;
@@ -5969,5 +5983,201 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // Download
   const safeName = (s: string) => s.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_\-]/g, "");
   const filename  = `${safeName(homeTeamName)}_v_${safeName(awayTeamName)}_review.pdf`;
+  pdf.save(filename);
+}
+
+// ─── Snapshot PDF export ──────────────────────────────────────────────────────
+//
+// Lightweight 10-page coaching reports. All rendering delegates to the same
+// page builders used by exportReviewPdf. exportReviewPdf and every page builder
+// function body are completely untouched.
+//
+// HT Snapshot: events pre-filtered to period "1H" before any builder is called.
+//   Chain analysis is computed from the H1 event set only — no builder changes
+//   needed; each builder naturally sees first-half data.
+//
+// FT Snapshot: all events, curated 10-page selection from the full builder set.
+
+export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<void> {
+  const {
+    events: allEvents,
+    homeTeamName,
+    awayTeamName,
+    venueName,
+    sport = "gaelic",
+    snapshotMode,
+  } = input;
+
+  const isHT = snapshotMode === "HALF_TIME_SNAPSHOT";
+
+  // HT: restrict every page to first-half data by pre-filtering events.
+  // MatchEventPeriod values are "1H" and "2H".
+  const events: readonly PdfExportEvent[] = isHT
+    ? allEvents.filter((e) => e.period === "1H")
+    : allEvents;
+
+  // Chain analysis scoped to the same event set — H1-only for HT, full for FT.
+  const chainAnalysis = selectChainAnalysis(events);
+
+  const TOTAL_PAGES = isHT ? 7 : 10;
+
+  const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  const PW = 297; // A4 landscape mm
+  const PH = 210;
+
+  function addPage(canvas: HTMLCanvasElement, addPageFirst: boolean, pageName?: string): void {
+    if (addPageFirst) pdf.addPage("a4", "landscape");
+    try {
+      const imgData = canvas.toDataURL("image/jpeg", 0.88);
+      pdf.addImage(imgData, "JPEG", 0, 0, PW, PH);
+    } catch (err) {
+      console.error(
+        `Snapshot PDF export failed for page${pageName ? ` "${pageName}"` : ""}`,
+        err,
+      );
+      pdf.setFillColor(13, 17, 23);
+      pdf.rect(0, 0, PW, PH, "F");
+      pdf.setTextColor(100, 116, 139);
+      pdf.setFontSize(12);
+      pdf.text("This review page could not be rendered.", PW / 2, PH / 2, { align: "center" });
+    }
+  }
+
+  const home = homeTeamName;
+  const away = awayTeamName;
+
+  if (isHT) {
+    // ── HT Snapshot ── 7 pages, first-half events only ───────────────────────
+
+    // 1. Match Summary
+    addPage(
+      makeSummaryPage(events, home, away, venueName, TOTAL_PAGES),
+      false,
+      "Match Summary",
+    );
+
+    // 2. Tactical Intelligence Summary
+    addPage(
+      makeTacticalIntelligencePage(chainAnalysis, home, away, 2, TOTAL_PAGES),
+      true,
+      "Tactical Intelligence Summary",
+    );
+
+    // 3. Match Swing Timeline
+    addPage(
+      makeMatchSwingTimelinePage(events, chainAnalysis, home, away, 3, TOTAL_PAGES),
+      true,
+      "Match Swing Timeline",
+    );
+
+    // 4. Kickout Chain Analysis
+    addPage(
+      makeKickoutChainPage(chainAnalysis, home, away, 4, TOTAL_PAGES),
+      true,
+      "Kickout Chain Analysis",
+    );
+
+    // 5. Turnover Punishment
+    addPage(
+      makeTurnoverPunishmentPage(chainAnalysis, home, away, 5, TOTAL_PAGES),
+      true,
+      "Turnover Punishment",
+    );
+
+    // 6. Shot + Wides Map — tactical pitch renderer, SHOTS category, H1 events
+    const htShotEvents = selectPdfEvents(events, "H1", "ALL", "SHOTS");
+    addPage(
+      makeTacticalPage(sport, htShotEvents, "Shot + Wides Map", home, away, 6, TOTAL_PAGES),
+      true,
+      "Shot + Wides Map",
+    );
+
+    // 7. Opposition Snapshot
+    addPage(
+      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 7, TOTAL_PAGES),
+      true,
+      "Opposition Snapshot",
+    );
+  } else {
+    // ── FT Snapshot ── 10 pages, full-match events ────────────────────────────
+
+    // 1. Match Summary
+    addPage(
+      makeSummaryPage(events, home, away, venueName, TOTAL_PAGES),
+      false,
+      "Match Summary",
+    );
+
+    // 2. Tactical Intelligence Summary
+    addPage(
+      makeTacticalIntelligencePage(chainAnalysis, home, away, 2, TOTAL_PAGES),
+      true,
+      "Tactical Intelligence Summary",
+    );
+
+    // 3. Match Swing Timeline
+    addPage(
+      makeMatchSwingTimelinePage(events, chainAnalysis, home, away, 3, TOTAL_PAGES),
+      true,
+      "Match Swing Timeline",
+    );
+
+    // 4. Kickout Chain Analysis
+    addPage(
+      makeKickoutChainPage(chainAnalysis, home, away, 4, TOTAL_PAGES),
+      true,
+      "Kickout Chain Analysis",
+    );
+
+    // 5. Turnover Punishment
+    addPage(
+      makeTurnoverPunishmentPage(chainAnalysis, home, away, 5, TOTAL_PAGES),
+      true,
+      "Turnover Punishment",
+    );
+
+    // 6. Shot Efficiency
+    addPage(
+      makeShotEfficiencyPage(events, home, away, 6, TOTAL_PAGES),
+      true,
+      "Shot Efficiency",
+    );
+
+    // 7. Shot + Wides Map — both halves combined; PDF_KIND_SETS["SHOTS"] used
+    //    directly (same file) to avoid the single-half restriction of selectPdfEvents.
+    const ftShotEvents = events.filter(
+      (e) => !e.id.includes("-instant-score-") && PDF_KIND_SETS["SHOTS"].has(e.kind),
+    );
+    addPage(
+      makeTacticalPage(sport, ftShotEvents, "Shot + Wides Map", home, away, 7, TOTAL_PAGES),
+      true,
+      "Shot + Wides Map",
+    );
+
+    // 8. Zone Analysis
+    addPage(
+      makeZoneAnalysisPage(events, home, away, 8, TOTAL_PAGES),
+      true,
+      "Zone Analysis",
+    );
+
+    // 9. Opposition Snapshot
+    addPage(
+      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 9, TOTAL_PAGES),
+      true,
+      "Opposition Snapshot",
+    );
+
+    // 10. Tactical Chain Analysis
+    addPage(
+      makeChainSummaryPage(chainAnalysis, home, away, 10, TOTAL_PAGES),
+      true,
+      "Tactical Chain Analysis",
+    );
+  }
+
+  const safeName = (s: string) => s.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_\-]/g, "");
+  const suffix   = isHT ? "ht_snapshot" : "ft_snapshot";
+  const filename  = `${safeName(homeTeamName)}_v_${safeName(awayTeamName)}_${suffix}.pdf`;
   pdf.save(filename);
 }

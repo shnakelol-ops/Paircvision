@@ -30,7 +30,7 @@ import { selectReviewEvents } from "./stats/review-selectors";
 import { createReviewSession, parseReviewSession, restoreReviewSession, serializeReviewSession } from "./stats/reviewSession";
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
-import { exportReviewPdf } from "./stats/reviewPdfExport";
+import { exportReviewPdf, exportSnapshotPdf } from "./stats/reviewPdfExport";
 import { generateDemoMatchEvents } from "./demo/demoMatchData";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
@@ -3408,6 +3408,8 @@ export default function StatsModeSurface() {
   const [savedMatches, setSavedMatches] = useState<SavedMatch[]>(() => readSavedMatchesFromStorage().matches);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [isPdfExporting, setIsPdfExporting] = useState(false);
+  /** "HT" | "FT" while a snapshot export is in progress; null when idle. */
+  const [snapshotExporting, setSnapshotExporting] = useState<"HT" | "FT" | null>(null);
   const [saveLoadBlockedReason, setSaveLoadBlockedReason] = useState<string | null>(null);
   const [lastSavedAtMillis, setLastSavedAtMillis] = useState<number | null>(null);
   const [loadedMatchLabel, setLoadedMatchLabel] = useState<string | null>(null);
@@ -4808,6 +4810,60 @@ export default function StatsModeSurface() {
       })
       .finally(() => {
         setIsPdfExporting(false);
+      });
+  };
+
+  /** Exports a 10-page Half Time Snapshot PDF (first-half events only). */
+  const handleExportHtSnapshot = () => {
+    if (snapshotExporting !== null || isPdfExporting) return;
+    if (loggedEvents.length === 0) {
+      setSaveFeedback("No events to export");
+      return;
+    }
+    setSnapshotExporting("HT");
+    void exportSnapshotPdf({
+      events: loggedEvents,
+      homeTeamName: teamNames.HOME.trim() || "Team A",
+      awayTeamName: teamNames.AWAY.trim() || "Team B",
+      venueName: venueName.trim() || undefined,
+      sport: mode.pitchSport,
+      snapshotMode: "HALF_TIME_SNAPSHOT",
+    })
+      .then(() => {
+        setSaveFeedback("HT Snapshot exported");
+      })
+      .catch(() => {
+        setSaveFeedback("HT Snapshot export failed");
+      })
+      .finally(() => {
+        setSnapshotExporting(null);
+      });
+  };
+
+  /** Exports a 10-page Full Time Snapshot PDF (full-match events). */
+  const handleExportFtSnapshot = () => {
+    if (snapshotExporting !== null || isPdfExporting) return;
+    if (loggedEvents.length === 0) {
+      setSaveFeedback("No events to export");
+      return;
+    }
+    setSnapshotExporting("FT");
+    void exportSnapshotPdf({
+      events: loggedEvents,
+      homeTeamName: teamNames.HOME.trim() || "Team A",
+      awayTeamName: teamNames.AWAY.trim() || "Team B",
+      venueName: venueName.trim() || undefined,
+      sport: mode.pitchSport,
+      snapshotMode: "FULL_TIME_SNAPSHOT",
+    })
+      .then(() => {
+        setSaveFeedback("FT Snapshot exported");
+      })
+      .catch(() => {
+        setSaveFeedback("FT Snapshot export failed");
+      })
+      .finally(() => {
+        setSnapshotExporting(null);
       });
   };
 
@@ -6996,9 +7052,37 @@ export default function StatsModeSurface() {
           <button
             type="button"
             className="review-strip-chip"
+            onClick={handleExportHtSnapshot}
+            disabled={snapshotExporting !== null || isPdfExporting}
+            aria-label="Export Half Time Snapshot PDF — 10 pages, first half only"
+            style={
+              snapshotExporting === "HT"
+                ? { opacity: 0.6, cursor: "wait" }
+                : undefined
+            }
+          >
+            {snapshotExporting === "HT" ? "Building…" : "HT Snapshot"}
+          </button>
+          <button
+            type="button"
+            className="review-strip-chip"
+            onClick={handleExportFtSnapshot}
+            disabled={snapshotExporting !== null || isPdfExporting}
+            aria-label="Export Full Time Snapshot PDF — 10 pages, full match"
+            style={
+              snapshotExporting === "FT"
+                ? { opacity: 0.6, cursor: "wait" }
+                : undefined
+            }
+          >
+            {snapshotExporting === "FT" ? "Building…" : "FT Snapshot"}
+          </button>
+          <button
+            type="button"
+            className="review-strip-chip"
             onClick={handleExportPdf}
-            disabled={isPdfExporting}
-            aria-label="Export 22-page Visual Review PDF"
+            disabled={isPdfExporting || snapshotExporting !== null}
+            aria-label="Export Full Tactical Report PDF — 40+ pages"
             style={
               isPdfExporting
                 ? { opacity: 0.6, cursor: "wait" }
