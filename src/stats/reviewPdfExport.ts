@@ -6398,20 +6398,21 @@ function drawPatternArrow(
  * They are TERRITORIAL PRESSURE CURRENTS — the repeated arrival direction
  * of tactical stress. A coach reads: "it keeps coming from here."
  *
- * Visual feel: weather radar · military overlay · pressure front
- * NOT: telestrator · coaching diagram · movement path
+ * Visual feel: tactical chalk-flow on dark board
+ * NOT: cinematic fog / VFX glow / telestrator route
  *
- * 3-pass rendering creates atmospheric depth:
- *   Pass 1 — wide glow   (α×0.40, w=9,   shadowBlur=16): ambient halo
- *   Pass 2 — core sweep  (α×1.00, w=4.5, shadowBlur=8):  tactical current
- *   Pass 3 — tip fade    (α×0.30, w=2,   shadowBlur=3):  soft direction hint
+ * 3-pass rendering — calibrated for phone/PDF/WhatsApp/outdoor readability:
+ *   Pass 1 — soft edge  (α×0.30, w=7,   shadowBlur=4):  chalk-edge softening
+ *   Pass 2 — core       (α×1.00, w=6,   shadowBlur=2):  clean chalk stroke
+ *   Pass 3 — tip fade   (α×0.45, w=3,   shadowBlur=0):  directional terminus
  *
- * intensity: 0–1 (drives alpha 0.18–0.38 and glow strength)
+ * intensity: 0–1 (drives alpha 0.42–0.70 and edge strength)
  * kind:
- *   PRESSURE_INWARD   — red   — OPP danger entering zone
- *   PRESSURE_EXIT     — teal  — FOR successful attacking release
- *   PRESSURE_COLLAPSE — amber — FOR attacks converging / dying in zone
+ *   PRESSURE_INWARD   — red   (248,113,113) — OPP danger entering zone
+ *   PRESSURE_EXIT     — teal  (52,211,153)  — FOR successful attacking release
+ *   PRESSURE_COLLAPSE — amber (251,191,36)  — FOR attacks converging / dying in zone
  *
+ * Colors match the existing zone fill palette for visual coherence.
  * Constraint: only called when zone threat level ≥ HIGH or pattern count ≥ 2.
  * Max 3 sweeps per page. Never across the full field — localised pressure only.
  */
@@ -6424,58 +6425,65 @@ function drawDirectionalPressureSweep(
   intensity: number,
   kind: "PRESSURE_INWARD" | "PRESSURE_EXIT" | "PRESSURE_COLLAPSE",
 ): void {
-  const baseAlpha = 0.18 + Math.min(intensity, 1) * 0.20;  // 0.18 – 0.38
+  // Chalk-flow alpha: 0.42 (min visible at 30% brightness) – 0.70 (readable, below arrow 0.82)
+  const baseAlpha = 0.42 + Math.min(intensity, 1) * 0.28;  // 0.42 – 0.70
+
+  // Colors match existing fill palette — sweeps read as directional extensions of zone fills
   const rgb =
-    kind === "PRESSURE_EXIT"     ? "34,211,153"  :   // teal-green
-    kind === "PRESSURE_COLLAPSE" ? "245,158,11"  :   // amber
-                                   "239,68,68";      // red (INWARD)
+    kind === "PRESSURE_EXIT"     ? "52,211,153"   :   // matches FOR score fill
+    kind === "PRESSURE_COLLAPSE" ? "251,191,36"   :   // matches FOR loss fill
+                                   "248,113,113"; // matches OPP score fill
 
   const dx  = x2 - x1;
   const dy  = y2 - y1;
   const len = Math.sqrt(dx * dx + dy * dy) || 1;
 
-  // Gentle arc — control point offset ~18% of length, perpendicular
-  const cpx = (x1 + x2) / 2 - (dy / len) * (len * 0.18);
-  const cpy = (y1 + y2) / 2 + (dx / len) * (len * 0.18);
+  // Gentle arc — 16% perpendicular (reduced from 18% for clearer directional read)
+  const cpx = (x1 + x2) / 2 - (dy / len) * (len * 0.16);
+  const cpy = (y1 + y2) / 2 + (dx / len) * (len * 0.16);
 
   ctx.save();
   ctx.lineCap  = "round";
   ctx.lineJoin = "round";
   ctx.setLineDash([]);
 
-  // ── Pass 1: Wide atmospheric glow ──────────────────────────────────────────
-  ctx.globalAlpha = baseAlpha * 0.40;
-  ctx.lineWidth   = 9;
+  // ── Pass 1: Soft chalk edge ─────────────────────────────────────────────────
+  // Low blur (4px) gives a clean soft edge, not cinematic fog. Survives PDF/JPEG.
+  ctx.globalAlpha = baseAlpha * 0.30;
+  ctx.lineWidth   = 7;
   ctx.strokeStyle = `rgba(${rgb},1)`;
-  ctx.shadowColor = `rgba(${rgb},0.55)`;
-  ctx.shadowBlur  = 16;
+  ctx.shadowColor = `rgba(${rgb},0.40)`;
+  ctx.shadowBlur  = 4;
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.quadraticCurveTo(cpx, cpy, x2, y2);
   ctx.stroke();
 
-  // ── Pass 2: Core tactical current ──────────────────────────────────────────
+  // ── Pass 2: Core chalk stroke ───────────────────────────────────────────────
+  // 6px at full baseAlpha: clearly readable at phone scale without dominating.
+  // shadowBlur=2 keeps edge crisp (no fog), just removes pixel aliasing.
   ctx.globalAlpha = baseAlpha;
-  ctx.lineWidth   = 4.5;
-  ctx.shadowColor = `rgba(${rgb},0.35)`;
-  ctx.shadowBlur  = 8;
+  ctx.lineWidth   = 6;
+  ctx.shadowColor = `rgba(${rgb},0.20)`;
+  ctx.shadowBlur  = 2;
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.quadraticCurveTo(cpx, cpy, x2, y2);
   ctx.stroke();
 
-  // ── Pass 3: Soft directional tip fade ──────────────────────────────────────
-  // A short diminishing segment at the endpoint — direction hint, not arrowhead
-  const tipLen = Math.min(len * 0.22, 45);
+  // ── Pass 3: Directional tip terminus ───────────────────────────────────────
+  // Slightly more visible (×0.45 vs old ×0.28) to clearly indicate direction.
+  // Zero blur — clean terminus, reads as "direction ends here", not arrowhead.
+  const tipLen = Math.min(len * 0.20, 38);
   const tx     = x2 - cpx;
   const ty     = y2 - cpy;
   const tl     = Math.sqrt(tx * tx + ty * ty) || 1;
   const tipX   = x2 - (tx / tl) * tipLen;
   const tipY   = y2 - (ty / tl) * tipLen;
 
-  ctx.globalAlpha = baseAlpha * 0.28;
-  ctx.lineWidth   = 2;
-  ctx.shadowBlur  = 3;
+  ctx.globalAlpha = baseAlpha * 0.45;
+  ctx.lineWidth   = 3;
+  ctx.shadowBlur  = 0;
   ctx.beginPath();
   ctx.moveTo(tipX, tipY);
   ctx.lineTo(x2, y2);
