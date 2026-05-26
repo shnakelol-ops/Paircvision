@@ -7141,6 +7141,816 @@ function makeHtGameFlowFactorsPage(
   return canvas;
 }
 
+// ─── FT Page 9: Attack Corridors ─────────────────────────────────────────────
+
+/**
+ * Attack Corridors — where FOR attacks form and where they die, by lateral channel.
+ *
+ * The pitch is divided into three lateral channels (LEFT / CENTRE / RIGHT)
+ * via ny < 0.33 / 0.33–0.67 / > 0.67. Subtle dashed lines mark the channel
+ * boundaries on the pitch.
+ *
+ * Zone fills:
+ *   GREEN — zones where FOR scored (score corridor, scaled by count)
+ *   RED   — zones where FOR had wides, missed frees, or lost possession
+ * Fills are layered: red first, green on top so success overrides waste.
+ *
+ * Show layer: territorial zone fills across the three channels.
+ * Tell layer: callout strip — which channel is the scoring corridor and
+ *             which channel is the main wastage zone.
+ *
+ * Data: FOR SHOTS events (full match, all periods).
+ */
+function makeFtAttackCorridorsPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Attack Corridors", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  const forScoreEvts = events.filter(
+    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  const forWideEvts = events.filter(
+    (e) => e.teamSide === "FOR" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"),
+  );
+  const forLossEvts = events.filter(
+    (e) => e.teamSide === "FOR" && e.kind === "TURNOVER_LOST",
+  );
+  const forFailEvts = [...forWideEvts, ...forLossEvts];
+  const forShotEvts = events.filter(
+    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind),
+  );
+
+  // ── Pitch + zone colour overlays ──────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  const scoreCounts = pdfZoneCounts(forScoreEvts);
+  const failCounts  = pdfZoneCounts(forFailEvts);
+  const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
+  const maxFail     = failCounts.reduce((m, z) => Math.max(m, z.count), 0);
+
+  // Red failure zone fills (drawn first, behind score fills)
+  for (const zone of failCounts) {
+    if (zone.count === 0) continue;
+    const alpha = 0.16 + (maxFail > 0 ? (zone.count / maxFail) * 0.34 : 0);
+    const rect  = zonePixelRect(zone.bounds, inner);
+    ctx.fillStyle = `rgba(239,68,68,${alpha.toFixed(2)})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // Green score zone fills (on top — success overrides waste visually)
+  for (const zone of scoreCounts) {
+    if (zone.count === 0) continue;
+    const alpha = 0.20 + (maxScore > 0 ? (zone.count / maxScore) * 0.42 : 0);
+    const rect  = zonePixelRect(zone.bounds, inner);
+    ctx.fillStyle = `rgba(52,211,153,${alpha.toFixed(2)})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Channel lane dividers (horizontal dashed lines at ny = 0.33 and 0.67) ─
+  const yAt33 = inner.y + inner.h * 0.33;
+  const yAt67 = inner.y + inner.h * 0.67;
+  ctx.save();
+  ctx.setLineDash([8, 8]);
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath(); ctx.moveTo(inner.x, yAt33); ctx.lineTo(inner.x + inner.w, yAt33); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(inner.x, yAt67); ctx.lineTo(inner.x + inner.w, yAt67); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Channel labels (left of pitch)
+  const LBL_X = HT_PITCH_AREA.x - 6;
+  const channelMids = [
+    { name: "LEFT",   yMid: inner.y + inner.h * 0.165 },
+    { name: "CENTRE", yMid: inner.y + inner.h * 0.500 },
+    { name: "RIGHT",  yMid: inner.y + inner.h * 0.835 },
+  ];
+  ctx.save();
+  ctx.font         = "bold 12px sans-serif";
+  ctx.fillStyle    = "#64748b";
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "right";
+  for (const ch of channelMids) ctx.fillText(ch.name, LBL_X, ch.yMid);
+  ctx.restore();
+
+  // ── Event markers ─────────────────────────────────────────────────────────
+  renderHtMarkers(ctx, forShotEvts, inner);
+
+  // ── Zone score / fail count badges ────────────────────────────────────────
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "center";
+  ctx.font         = "bold 13px sans-serif";
+
+  for (const zone of scoreCounts) {
+    if (zone.count === 0) continue;
+    const rect  = zonePixelRect(zone.bounds, inner);
+    const midX  = rect.x + rect.w / 2;
+    const midY  = rect.y + rect.h * 0.30;
+    const label = `⚡${zone.count}`;
+    const tw    = ctx.measureText(label).width + 14;
+    ctx.fillStyle = "rgba(52,211,153,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = "#0d1117";
+    ctx.fillText(label, midX, midY);
+  }
+
+  for (const zone of failCounts) {
+    if (zone.count === 0) continue;
+    const rect  = zonePixelRect(zone.bounds, inner);
+    const midX  = rect.x + rect.w / 2;
+    const midY  = rect.y + rect.h * 0.72;
+    const label = `✕${zone.count}`;
+    const tw    = ctx.measureText(label).width + 14;
+    ctx.fillStyle = "rgba(239,68,68,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(label, midX, midY);
+  }
+  ctx.restore();
+
+  // ── Right-side legend ─────────────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+  ctx.fillStyle = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "rgba(52,211,153,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Scores", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(239,68,68,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Wides / Losses", lx + 22, ly); ly += 36;
+  ctx.fillStyle = "#475569";
+  ctx.fillText("CHANNELS", lx, ly); ly += 20;
+  ctx.save();
+  ctx.setLineDash([6, 6]);
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 130, ly); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+  ctx.fillStyle = "#64748b";
+  ctx.font = "12px sans-serif";
+  ctx.fillText("Left / Centre / Right", lx, ly + 14);
+  ctx.restore();
+
+  // ── Channel corridor analysis ─────────────────────────────────────────────
+  type ChannelKey = "LEFT" | "CENTRE" | "RIGHT";
+  function channelOf(e: PdfExportEvent): ChannelKey {
+    return e.ny < 0.33 ? "LEFT" : e.ny < 0.67 ? "CENTRE" : "RIGHT";
+  }
+  const chScores: Record<ChannelKey, number> = { LEFT: 0, CENTRE: 0, RIGHT: 0 };
+  const chFails:  Record<ChannelKey, number> = { LEFT: 0, CENTRE: 0, RIGHT: 0 };
+  for (const e of forScoreEvts) chScores[channelOf(e)]++;
+  for (const e of forFailEvts)  chFails[channelOf(e)]++;
+
+  const allCh: ChannelKey[] = ["LEFT", "CENTRE", "RIGHT"];
+  const bestScoreCh   = allCh.reduce((a, b) => chScores[a] >= chScores[b] ? a : b);
+  const mostWastedCh  = allCh.reduce((a, b) => chFails[a]  >= chFails[b]  ? a : b);
+  const totalShots    = forShotEvts.length;
+  const totalScores   = forScoreEvts.length;
+  const shotEff       = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
+
+  const facts: string[] = [];
+  if (chScores[bestScoreCh] > 0)
+    facts.push(`Scoring corridor: ${bestScoreCh.toLowerCase()} channel (${chScores[bestScoreCh]} score${chScores[bestScoreCh] !== 1 ? "s" : ""})`);
+  if (chFails[mostWastedCh] > 0 && mostWastedCh !== bestScoreCh)
+    facts.push(`Most wastage: ${mostWastedCh.toLowerCase()} channel (${chFails[mostWastedCh]} miss${chFails[mostWastedCh] !== 1 ? "es" : ""})`);
+  if (totalShots > 0)
+    facts.push(`${totalScores} / ${totalShots} shots converted (${shotEff}%)`);
+  if (facts.length === 0) facts.push("No FOR attack data recorded.");
+
+  drawHtCalloutStrip(ctx, facts, ["#34d399", "#ef4444", "#94a3b8"]);
+  drawEventCountFooter(ctx, forShotEvts.length);
+  return canvas;
+}
+
+// ─── FT Page 10: Restart Escape Routes ───────────────────────────────────────
+
+/**
+ * Restart Escape Routes — kickout destination zones coloured by outcome.
+ *
+ * Each of the 9 pitch zones shows the FOR win/loss ratio for kickouts
+ * landing in that zone, derived from analysis.kickouts.outcomes[].
+ *
+ * Zone fill colour:
+ *   TEAL  — FOR won majority of kickouts in this zone (reliable escape route)
+ *   RED   — OPP won majority (territorial trap)
+ *   AMBER — Contested (within 1)
+ * Fill intensity scales with kickout volume in the zone.
+ *
+ * Right-side panel: "Best escape route" and "Main trap zone" with W/L breakdown.
+ * Bottom strip: overall kickout rate + conversion highlights.
+ *
+ * Data: analysis.kickouts.outcomes[] (kickoutEvent.nx/ny for zone placement).
+ */
+function makeFtRestartEscapeRoutesPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Restart Escape Routes", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Pitch ─────────────────────────────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  // ── Zone grid from kickout outcomes ──────────────────────────────────────
+  // 3×3 grid: col = nx depth (DEFENSIVE/MIDDLE/ATTACKING), row = ny lateral (LEFT/CENTRE/RIGHT)
+  type ZoneStats = { forWon: number; oppWon: number; forToScore: number; total: number };
+  const COL_BOUNDS = [
+    { xMin: 0,     xMax: 33.33 },
+    { xMin: 33.33, xMax: 66.67 },
+    { xMin: 66.67, xMax: 100   },
+  ];
+  const ROW_BOUNDS = [
+    { yMin: 0,     yMax: 33.33 },
+    { yMin: 33.33, yMax: 66.67 },
+    { yMin: 66.67, yMax: 100   },
+  ];
+  const COL_NAMES = ["Defensive", "Middle", "Attacking"];
+  const ROW_NAMES = ["Left", "Centre", "Right"];
+
+  const grid: ZoneStats[][] = Array.from({ length: 3 }, () =>
+    Array.from({ length: 3 }, () => ({ forWon: 0, oppWon: 0, forToScore: 0, total: 0 })),
+  );
+
+  for (const outcome of analysis.kickouts.outcomes) {
+    const { nx, ny } = outcome.kickoutEvent;
+    const col = nx < 0.333 ? 0 : nx < 0.667 ? 1 : 2;
+    const row = ny < 0.333 ? 0 : ny < 0.667 ? 1 : 2;
+    const cell = grid[col][row];
+    cell.total++;
+    if (outcome.winningSide === "FOR") {
+      cell.forWon++;
+      if (outcome.nextScore !== null) cell.forToScore++;
+    } else {
+      cell.oppWon++;
+    }
+  }
+
+  // ── Zone fills ────────────────────────────────────────────────────────────
+  const maxTotal = grid.flat().reduce((m, z) => Math.max(m, z.total), 0);
+  for (let col = 0; col < 3; col++) {
+    for (let row = 0; row < 3; row++) {
+      const cell = grid[col][row];
+      if (cell.total === 0) continue;
+      const bounds = {
+        xMin: COL_BOUNDS[col].xMin, xMax: COL_BOUNDS[col].xMax,
+        yMin: ROW_BOUNDS[row].yMin, yMax: ROW_BOUNDS[row].yMax,
+      };
+      const rect      = zonePixelRect(bounds, inner);
+      const volFactor = maxTotal > 0 ? cell.total / maxTotal : 0;
+      let fillStyle: string;
+      if (cell.forWon > cell.oppWon && cell.forWon >= 2) {
+        // Teal — FOR escape route
+        const alpha = 0.18 + volFactor * 0.40;
+        fillStyle = `rgba(20,184,166,${alpha.toFixed(2)})`;
+      } else if (cell.oppWon > cell.forWon) {
+        // Red — OPP trap zone
+        const alpha = 0.18 + volFactor * 0.40;
+        fillStyle = `rgba(239,68,68,${alpha.toFixed(2)})`;
+      } else {
+        // Amber — contested
+        fillStyle = `rgba(245,158,11,0.22)`;
+      }
+      ctx.fillStyle = fillStyle;
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    }
+  }
+
+  // ── Kickout event markers (spatial precision overlay) ─────────────────────
+  const kickoutEvts = events.filter(
+    (e) => e.kind === "KICKOUT_WON" || e.kind === "KICKOUT_CONCEDED",
+  );
+  renderHtMarkers(ctx, kickoutEvts, inner);
+
+  // ── Zone W/L badges ───────────────────────────────────────────────────────
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "center";
+  ctx.font         = "bold 12px sans-serif";
+  for (let col = 0; col < 3; col++) {
+    for (let row = 0; row < 3; row++) {
+      const cell = grid[col][row];
+      if (cell.total === 0) continue;
+      const bounds = {
+        xMin: COL_BOUNDS[col].xMin, xMax: COL_BOUNDS[col].xMax,
+        yMin: ROW_BOUNDS[row].yMin, yMax: ROW_BOUNDS[row].yMax,
+      };
+      const rect    = zonePixelRect(bounds, inner);
+      const midX    = rect.x + rect.w / 2;
+      const midY    = rect.y + rect.h / 2;
+      const label   = `${cell.forWon}W/${cell.oppWon}L`;
+      const tw      = ctx.measureText(label).width + 14;
+      const isEsc   = cell.forWon > cell.oppWon && cell.forWon >= 2;
+      ctx.fillStyle = isEsc ? "rgba(20,184,166,0.88)" : "rgba(239,68,68,0.88)";
+      ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(label, midX, midY);
+    }
+  }
+  ctx.restore();
+
+  // ── Right-side analysis panel ─────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+
+  // Legend
+  ctx.fillStyle = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "rgba(20,184,166,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("FOR wins", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(239,68,68,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("OPP wins", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(245,158,11,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Contested", lx + 22, ly); ly += 36;
+
+  // Find best escape route (highest FOR win rate, min 2 kicks)
+  let bestEscCol = -1, bestEscRow = -1, bestEscRate = 0;
+  let worstTrapCol = -1, worstTrapRow = -1, worstTrapRate = 0;
+  for (let col = 0; col < 3; col++) {
+    for (let row = 0; row < 3; row++) {
+      const cell = grid[col][row];
+      if (cell.total < 2) continue;
+      const winRate  = cell.forWon  / cell.total;
+      const lossRate = cell.oppWon / cell.total;
+      if (winRate > bestEscRate)   { bestEscRate  = winRate;  bestEscCol  = col; bestEscRow  = row; }
+      if (lossRate > worstTrapRate) { worstTrapRate = lossRate; worstTrapCol = col; worstTrapRow = row; }
+    }
+  }
+
+  if (bestEscCol >= 0) {
+    const esc = grid[bestEscCol][bestEscRow];
+    ctx.fillStyle = "#14b8a6";
+    ctx.font      = "bold 12px sans-serif";
+    ctx.fillText("ESCAPE ROUTE", lx, ly); ly += 20;
+    ctx.fillStyle = "#f1f5f9";
+    ctx.font      = "14px sans-serif";
+    ctx.fillText(`${COL_NAMES[bestEscCol]}`, lx, ly); ly += 18;
+    ctx.fillText(`${ROW_NAMES[bestEscRow]} channel`, lx, ly); ly += 18;
+    ctx.fillStyle = "#64748b";
+    ctx.fillText(`${esc.forWon}W / ${esc.oppWon}L`, lx, ly);
+    if (esc.forToScore > 0) {
+      ly += 16;
+      ctx.fillText(`${esc.forToScore} led to score`, lx, ly);
+    }
+    ly += 28;
+  }
+
+  if (worstTrapCol >= 0 && !(worstTrapCol === bestEscCol && worstTrapRow === bestEscRow)) {
+    const trap = grid[worstTrapCol][worstTrapRow];
+    ctx.fillStyle = "#ef4444";
+    ctx.font      = "bold 12px sans-serif";
+    ctx.fillText("TRAP ZONE", lx, ly); ly += 20;
+    ctx.fillStyle = "#f1f5f9";
+    ctx.font      = "14px sans-serif";
+    ctx.fillText(`${COL_NAMES[worstTrapCol]}`, lx, ly); ly += 18;
+    ctx.fillText(`${ROW_NAMES[worstTrapRow]} channel`, lx, ly); ly += 18;
+    ctx.fillStyle = "#64748b";
+    ctx.fillText(`${trap.forWon}W / ${trap.oppWon}L`, lx, ly);
+  }
+  ctx.restore();
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  const ko      = analysis.kickouts;
+  const koRate  = ko.total > 0 ? Math.round((ko.won / ko.total) * 100) : 0;
+  const facts: string[] = [];
+  if (ko.total > 0)
+    facts.push(`${ko.won} of ${ko.total} kickouts won (${koRate}%)`);
+  if (ko.wonToScore > 0)
+    facts.push(`${ko.wonToScore} kickout win→score conversion${ko.wonToScore !== 1 ? "s" : ""}`);
+  if (ko.lostAllowedScore > 0)
+    facts.push(`${ko.lostAllowedScore} kickout loss→score conceded`);
+  if (bestEscCol >= 0 && facts.length < 3) {
+    const esc = grid[bestEscCol][bestEscRow];
+    facts.push(`Best escape: ${COL_NAMES[bestEscCol].toLowerCase()} ${ROW_NAMES[bestEscRow].toLowerCase()} (${esc.forWon}W/${esc.oppWon}L)`);
+  }
+  if (facts.length === 0) facts.push("No kickout data recorded.");
+
+  drawHtCalloutStrip(ctx, facts, ["#14b8a6", "#14b8a6", "#ef4444"]);
+  drawEventCountFooter(ctx, kickoutEvts.length);
+  return canvas;
+}
+
+// ─── FT Page 12: Tactical Match Story ────────────────────────────────────────
+
+/**
+ * Tactical Match Story — the narrative arc of the match in visual + editorial form.
+ *
+ * Structure:
+ *   FLOW RIVER  Full-width segment control bar (green/red/amber, same logic as
+ *               makeHtGameFlowPage). The spine of the story — instant visual read.
+ *
+ *   STORY PINS  Up to 6 pinned moments hanging below the flow bar. Each pin
+ *               is a colour-coded vertical stem + card with a 2-line caption:
+ *               control swings, best/worst phases, scoring runs ≥ 3.
+ *
+ *   MATCH STORY  3–4 editorial sentences derived algorithmically from segment
+ *               control data, kickout analysis, shot efficiency, and scoring runs.
+ *               Template-based — no AI, no natural-language generation.
+ *               Reads like a match programme, not a stats dump.
+ *
+ * Show layer: flow river + story pins (spatial/visual narrative at a glance).
+ * Tell layer: match story sentences (confirm and deepen the visual read).
+ *
+ * Data: events (all periods) + ChainAnalysis (scoringRuns, kickouts, turnovers).
+ */
+function makeFtTacticalMatchStoryPage(
+  events: readonly PdfExportEvent[],
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Tactical Match Story", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Segment control data (same logic as makeHtGameFlowPage, inline) ───────
+  const segNums = Array.from(
+    new Set(
+      events
+        .map((e) => e.segment)
+        .filter((s): s is MatchEventSegment => s != null),
+    ),
+  ).sort((a, b) => a - b);
+
+  type SegControl = "FOR" | "OPP" | "CONTESTED";
+  type SegData = {
+    seg: MatchEventSegment;
+    label: string;
+    forScore: number;
+    oppScore: number;
+    kickoutBalance: number;
+    controlScore: number;
+    status: SegControl;
+  };
+
+  const segDataList: SegData[] = segNums.map((seg) => {
+    const segEvts       = events.filter((e) => e.segment === seg);
+    const forScore      = scoreFromEvents(segEvts.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind))).total;
+    const oppScore      = scoreFromEvents(segEvts.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind))).total;
+    const koWon         = segEvts.filter((e) => e.kind === "KICKOUT_WON").length;
+    const koConceded    = segEvts.filter((e) => e.kind === "KICKOUT_CONCEDED").length;
+    const toWon         = segEvts.filter((e) => e.kind === "TURNOVER_WON").length;
+    const toLost        = segEvts.filter((e) => e.kind === "TURNOVER_LOST").length;
+    const kickoutBalance  = koWon - koConceded;
+    const turnoverBalance = toWon - toLost;
+    const controlScore    = (forScore - oppScore) * 2 + kickoutBalance + Math.round(turnoverBalance * 0.5);
+    const status: SegControl = controlScore >= 2 ? "FOR" : controlScore <= -2 ? "OPP" : "CONTESTED";
+    const start = (seg - 1) * 10;
+    const end   = seg * 10;
+    return { seg, label: `${start}–${end}'`, forScore, oppScore, kickoutBalance, controlScore, status };
+  });
+
+  // ── Layout constants ──────────────────────────────────────────────────────
+  const RIVER_X  = 80;
+  const RIVER_Y  = 130;
+  const RIVER_W  = CANVAS_W - 160;
+  const RIVER_H  = 160;
+  const N        = segDataList.length;
+  const SEG_GAP  = 8;
+  const segW     = N > 0 ? Math.floor((RIVER_W - SEG_GAP * (N - 1)) / N) : RIVER_W;
+
+  // Sub-heading
+  ctx.fillStyle    = "#64748b";
+  ctx.font         = "16px sans-serif";
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign    = "left";
+  ctx.fillText("MATCH NARRATIVE  ·  Segment control + key moments + editorial summary", RIVER_X, RIVER_Y - 12);
+
+  // ── Draw flow river ───────────────────────────────────────────────────────
+  if (segDataList.length > 0) {
+    segDataList.forEach((sd, i) => {
+      const bx = RIVER_X + i * (segW + SEG_GAP);
+      const barColor =
+        sd.status === "FOR"  ? "#22c55e" :
+        sd.status === "OPP"  ? "#ef4444" :
+                               "#f59e0b";
+      ctx.globalAlpha = 0.88;
+      ctx.fillStyle   = barColor;
+      ctx.fillRect(bx, RIVER_Y, segW, RIVER_H);
+      ctx.globalAlpha = 1.0;
+
+      ctx.strokeStyle = "rgba(255,255,255,0.15)";
+      ctx.lineWidth   = 1;
+      ctx.strokeRect(bx, RIVER_Y, segW, RIVER_H);
+
+      // Score diff (large, centred)
+      const diff      = sd.forScore - sd.oppScore;
+      const diffLabel = diff > 0 ? `+${diff}` : String(diff);
+      ctx.font         = "bold 40px sans-serif";
+      ctx.fillStyle    = "rgba(255,255,255,0.90)";
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "center";
+      ctx.fillText(diffLabel, bx + segW / 2, RIVER_Y + RIVER_H / 2 + 4);
+
+      // Time label bottom of bar
+      ctx.font      = "bold 14px sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.65)";
+      ctx.fillText(sd.label, bx + segW / 2, RIVER_Y + RIVER_H - 12);
+    });
+  } else {
+    // No segment data fallback
+    ctx.fillStyle    = "#334155";
+    ctx.font         = "20px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "center";
+    ctx.fillText("No segment data available.", CANVAS_W / 2, RIVER_Y + RIVER_H / 2);
+  }
+
+  // ── Story pins ────────────────────────────────────────────────────────────
+  // Pins hang below the flow river: stem from RIVER_Y+RIVER_H downward, card below.
+  type StoryPin = {
+    segIdx: number;
+    title: string;
+    sub: string;
+    color: string;
+  };
+
+  const pins: StoryPin[] = [];
+
+  // 1. Control flips (adjacent segments switching between FOR and OPP)
+  for (let i = 1; i < segDataList.length && pins.length < 6; i++) {
+    const prev = segDataList[i - 1];
+    const curr = segDataList[i];
+    if (
+      prev.status !== "CONTESTED" &&
+      curr.status !== "CONTESTED" &&
+      prev.status !== curr.status
+    ) {
+      pins.push({
+        segIdx: i,
+        title:  "CONTROL SWING",
+        sub:    `${prev.status} → ${curr.status}`,
+        color:  curr.status === "OPP" ? "#ef4444" : "#22c55e",
+      });
+    }
+  }
+
+  // 2. Best FOR segment (control score ≥ 4)
+  const bestForIdx = segDataList.reduce(
+    (best, sd, idx) => sd.controlScore > (segDataList[best]?.controlScore ?? -Infinity) ? idx : best, 0,
+  );
+  const bestSd = segDataList[bestForIdx];
+  if (bestSd && bestSd.controlScore >= 4 && !pins.some((p) => p.segIdx === bestForIdx) && pins.length < 6) {
+    pins.push({
+      segIdx: bestForIdx,
+      title:  "BEST PHASE",
+      sub:    `+${bestSd.forScore - bestSd.oppScore} score diff`,
+      color:  "#22c55e",
+    });
+  }
+
+  // 3. Hardest FOR segment (control score ≤ -4)
+  const worstForIdx = segDataList.reduce(
+    (worst, sd, idx) => sd.controlScore < (segDataList[worst]?.controlScore ?? Infinity) ? idx : worst, 0,
+  );
+  const worstSd = segDataList[worstForIdx];
+  if (worstSd && worstSd.controlScore <= -4 && !pins.some((p) => p.segIdx === worstForIdx) && pins.length < 6) {
+    pins.push({
+      segIdx: worstForIdx,
+      title:  "TOUGH PHASE",
+      sub:    `${worstSd.forScore - worstSd.oppScore} score diff`,
+      color:  "#ef4444",
+    });
+  }
+
+  // 4. Scoring runs ≥ 3
+  for (const run of analysis.scoringRuns.runs) {
+    if (run.count < 3 || pins.length >= 6) break;
+    // Map clock seconds to segment index (600s = ~10 min per segment)
+    const rawIdx  = run.startClockSeconds > 0
+      ? Math.min(Math.floor(run.startClockSeconds / 600), segDataList.length - 1)
+      : (run.period === "1H" ? 1 : Math.max(3, segDataList.length - 2));
+    const segIdx  = Math.max(0, Math.min(rawIdx, segDataList.length - 1));
+    if (pins.some((p) => p.segIdx === segIdx)) continue;
+    const teamLabel = run.teamSide === "FOR" ? homeTeam : "Opposition";
+    pins.push({
+      segIdx,
+      title: `${run.count}-SCORE RUN`,
+      sub:   `${teamLabel}`,
+      color: run.teamSide === "FOR" ? "#22c55e" : "#ef4444",
+    });
+  }
+
+  // Sort pins by segment position
+  pins.sort((a, b) => a.segIdx - b.segIdx);
+
+  // Render pins
+  const PIN_STEM_TOP  = RIVER_Y + RIVER_H;
+  const PIN_STEM_H    = 28;
+  const PIN_CARD_H    = 72;
+  const PIN_CARD_ACCW = 4;
+
+  for (const pin of pins) {
+    if (pin.segIdx >= segDataList.length) continue;
+    const bx     = RIVER_X + pin.segIdx * (segW + SEG_GAP);
+    const stemX  = bx + segW / 2;
+    const cardY  = PIN_STEM_TOP + PIN_STEM_H;
+    const cardW  = Math.min(segW + SEG_GAP - 4, 260);
+    const cardX  = Math.max(RIVER_X, Math.min(stemX - cardW / 2, RIVER_X + RIVER_W - cardW));
+
+    // Stem
+    ctx.strokeStyle = pin.color;
+    ctx.lineWidth   = 2;
+    ctx.beginPath();
+    ctx.moveTo(stemX, PIN_STEM_TOP);
+    ctx.lineTo(stemX, PIN_STEM_TOP + PIN_STEM_H);
+    ctx.stroke();
+
+    // Stem circle
+    ctx.fillStyle = pin.color;
+    ctx.beginPath();
+    ctx.arc(stemX, PIN_STEM_TOP + PIN_STEM_H, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Card background
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    ctx.fillRect(cardX + PIN_CARD_ACCW, cardY, cardW - PIN_CARD_ACCW, PIN_CARD_H);
+
+    // Card accent bar
+    ctx.fillStyle = pin.color;
+    ctx.fillRect(cardX, cardY, PIN_CARD_ACCW, PIN_CARD_H);
+
+    // Card title
+    ctx.font         = "bold 16px sans-serif";
+    ctx.fillStyle    = "#f1f5f9";
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign    = "left";
+    ctx.fillText(pin.title, cardX + PIN_CARD_ACCW + 10, cardY + 28);
+
+    // Card sub-text
+    ctx.font      = "13px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText(pin.sub, cardX + PIN_CARD_ACCW + 10, cardY + 50);
+  }
+
+  // ── Editorial match story text ────────────────────────────────────────────
+  const STORY_Y = PIN_STEM_TOP + PIN_STEM_H + PIN_CARD_H + 44;
+
+  // Section label
+  ctx.fillStyle    = "#475569";
+  ctx.font         = "bold 13px sans-serif";
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign    = "left";
+  ctx.fillText("MATCH STORY", RIVER_X, STORY_Y);
+
+  // Separator line
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(RIVER_X, STORY_Y + 10);
+  ctx.lineTo(RIVER_X + RIVER_W, STORY_Y + 10);
+  ctx.stroke();
+
+  // Derive editorial sentences (template-based, no AI)
+  const forCtrlCount = segDataList.filter((s) => s.status === "FOR").length;
+  const oppCtrlCount = segDataList.filter((s) => s.status === "OPP").length;
+  const totalSegs    = segDataList.length;
+  const ko           = analysis.kickouts;
+  const forShots     = events.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind));
+  const forScoreEvts = events.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind));
+  const forWides     = events.filter((e) => e.teamSide === "FOR" && (e.kind === "WIDE" || e.kind === "FREE_MISSED")).length;
+  const shotEff      = forShots.length > 0 ? Math.round((forScoreEvts.length / forShots.length) * 100) : 0;
+
+  const sentences: string[] = [];
+
+  // 1. Control summary
+  if (forCtrlCount > oppCtrlCount) {
+    sentences.push(
+      `${homeTeam} controlled ${forCtrlCount} of ${totalSegs} segments, dominating possession for long periods.`,
+    );
+  } else if (oppCtrlCount > forCtrlCount) {
+    sentences.push(
+      `A difficult match — ${homeTeam} conceded control in ${oppCtrlCount} of ${totalSegs} segments.`,
+    );
+  } else if (totalSegs > 0) {
+    sentences.push(
+      `An evenly contested match — both teams controlled ${forCtrlCount} segment${forCtrlCount !== 1 ? "s" : ""} each.`,
+    );
+  }
+
+  // 2. Kickout narrative
+  if (ko.total >= 3) {
+    if (ko.won > ko.lost) {
+      sentences.push(
+        `Restart dominance was a clear platform: won ${ko.won} of ${ko.total} kickouts${ko.wonToScore > 0 ? `, converting ${ko.wonToScore} to score${ko.wonToScore !== 1 ? "s" : ""}` : ""}.`,
+      );
+    } else if (ko.lost > ko.won) {
+      sentences.push(
+        `Restart losses were costly — conceded ${ko.lost} of ${ko.total} kickouts${ko.lostAllowedScore > 0 ? `, allowing ${ko.lostAllowedScore} opposition score${ko.lostAllowedScore !== 1 ? "s" : ""}` : ""}.`,
+      );
+    }
+  }
+
+  // 3. Attack narrative
+  if (forShots.length >= 3) {
+    if (shotEff >= 60) {
+      sentences.push(
+        `Clinical in front of goal: ${forScoreEvts.length} scores from ${forShots.length} attempts (${shotEff}% efficiency).`,
+      );
+    } else if (forWides >= 4) {
+      sentences.push(
+        `${forWides} wides and misses undermined the tally — ${shotEff}% efficiency from ${forShots.length} attempts.`,
+      );
+    } else {
+      sentences.push(
+        `Shot accuracy: ${forScoreEvts.length} of ${forShots.length} attempts converted (${shotEff}%).`,
+      );
+    }
+  }
+
+  // 4. Momentum / scoring run narrative
+  const bestFor = analysis.scoringRuns.maxConsecutiveFor;
+  const bestOpp = analysis.scoringRuns.maxConsecutiveOpp;
+  if (bestFor >= 3 || bestOpp >= 3) {
+    if (bestFor >= bestOpp) {
+      sentences.push(`Best scoring run: ${bestFor} consecutive — a key period of momentum.`);
+    } else {
+      sentences.push(`Opposition mounted a ${bestOpp}-score run — a momentum shift to address.`);
+    }
+  } else if (analysis.turnovers.wonToScore > 0) {
+    sentences.push(
+      `Turnover-to-score: ${analysis.turnovers.wonToScore} possession win${analysis.turnovers.wonToScore !== 1 ? "s" : ""} converted directly into scores.`,
+    );
+  }
+
+  // Render sentences (22px, 44px line spacing)
+  const SENTENCE_X   = RIVER_X;
+  const SENTENCE_Y0  = STORY_Y + 30;
+  const LINE_SPACING = 42;
+  ctx.font         = "22px sans-serif";
+  ctx.fillStyle    = "#e2e8f0";
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign    = "left";
+  sentences.slice(0, 4).forEach((sentence, i) => {
+    ctx.fillText(sentence, SENTENCE_X, SENTENCE_Y0 + i * LINE_SPACING);
+  });
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  const forFinal  = scoreFromEvents(forScoreEvts);
+  const oppFinal  = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind)));
+  const scoreDiff = forFinal.total - oppFinal.total;
+  const facts: string[] = [];
+  facts.push(`${fmtScore(forFinal)} vs ${fmtScore(oppFinal)} — ${scoreDiff > 0 ? `${homeTeam} won by ${scoreDiff}` : scoreDiff < 0 ? `lost by ${Math.abs(scoreDiff)}` : "draw"}`);
+  if (forCtrlCount > 0) facts.push(`${forCtrlCount} segment${forCtrlCount !== 1 ? "s" : ""} controlled`);
+  if (ko.total > 0)     facts.push(`${ko.won} of ${ko.total} kickouts won`);
+
+  drawHtCalloutStrip(ctx, facts, ["#f8fafc", "#22c55e", "#14b8a6"]);
+  drawEventCountFooter(ctx, events.length);
+  return canvas;
+}
+
 // ─── Snapshot PDF export ──────────────────────────────────────────────────────
 //
 // Lightweight coaching reports. All rendering delegates to the same page builders
@@ -7153,15 +7963,15 @@ function makeHtGameFlowFactorsPage(
 //   Pages: Pressure & Damage → Game Flow → Kickout Vision →
 //          Attack Shape → Game Flow Factors
 //
-// FT Snapshot (10 pages): full-match events, curated selection from the full
-//   builder set, ordered for post-match debrief narrative flow.
+// FT Snapshot (12 pages): full-match events, two-part tactical narrative.
+//   PART 1 — SEE  (p.1–5): pitch-based visual intelligence (reuses HT builders)
+//   PART 2 — UNDERSTAND (p.6–12): analytical depth + narrative story
 
 export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<void> {
   const {
     events: allEvents,
     homeTeamName,
     awayTeamName,
-    venueName,
     sport = "gaelic",
     snapshotMode,
   } = input;
@@ -7177,7 +7987,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   // Chain analysis scoped to the same event set — H1-only for HT, full for FT.
   const chainAnalysis = selectChainAnalysis(events);
 
-  const TOTAL_PAGES = isHT ? 5 : 10;
+  const TOTAL_PAGES = isHT ? 5 : 12;
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -7251,91 +8061,115 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Game Flow Factors",
     );
   } else {
-    // ── FT Snapshot ── 10 pages, full-match events ────────────────────────────
+    // ── FT Snapshot ── 12 pages, two-part tactical narrative ─────────────────
     //
-    // 1. Match Summary
-    // 2. Tactical Intelligence Summary
-    // 3. Match Swing Timeline
-    // 4. Kickout Chain Analysis
-    // 5. Turnover Punishment
-    // 6. Shot Efficiency
-    // 7. Zone Analysis          (promoted — spatial context before shot map)
-    // 8. Shot + Wides Map       (full match, both halves combined)
-    // 9. Opposition Snapshot
-    // 10. Game Segments Breakdown
+    // PART 1 — SEE (pages 1–5): pitch-based visual intelligence.
+    //   Reuses HT builders unchanged — they operate on any event set.
+    //   Question: "Can the coach SEE the repeating tactical behaviour?"
+    //
+    // 1. Pressure & Damage        — where did the damage come from?
+    // 2. Game Flow                — who controlled each phase and why?
+    // 3. Kickout Vision           — who owned the restarts territorially?
+    // 4. Attack Shape             — where did we threaten and miss?
+    // 5. Game Flow Factors        — what worked for us and against us?
+    //
+    // PART 2 — UNDERSTAND (pages 6–12): analytical depth + narrative story.
+    //   Question: "Why did the match unfold this way?"
+    //
+    // 6.  Tactical Intelligence Summary — chain-based tactical patterns
+    // 7.  Turnover Punishment           — possession chain punishment
+    // 8.  Shot Efficiency               — scoring efficiency analysis
+    // 9.  Attack Corridors              — which channel did attacks live/die in?
+    // 10. Restart Escape Routes         — kickout landing zone outcome map
+    // 11. Opposition Snapshot           — opposition tactical profile
+    // 12. Tactical Match Story          — narrative arc of the match
 
-    // 1. Match Summary
+    // ── PART 1 — SEE ─────────────────────────────────────────────────────────
+
+    // 1. Pressure & Damage
     addPage(
-      makeSummaryPage(events, home, away, venueName, TOTAL_PAGES),
+      makeHtPressureDamageMapPage(events, sport, home, away, 1, TOTAL_PAGES),
       false,
-      "Match Summary",
+      "Pressure & Damage",
     );
 
-    // 2. Tactical Intelligence Summary
+    // 2. Game Flow
     addPage(
-      makeTacticalIntelligencePage(chainAnalysis, home, away, 2, TOTAL_PAGES),
+      makeHtGameFlowPage(events, chainAnalysis, home, away, 2, TOTAL_PAGES),
+      true,
+      "Game Flow",
+    );
+
+    // 3. Kickout Vision
+    addPage(
+      makeHtKickoutVisionPage(events, sport, home, away, 3, TOTAL_PAGES),
+      true,
+      "Kickout Vision",
+    );
+
+    // 4. Attack Shape
+    addPage(
+      makeHtAttackShotVisionPage(events, sport, home, away, 4, TOTAL_PAGES),
+      true,
+      "Attack Shape",
+    );
+
+    // 5. Game Flow Factors
+    addPage(
+      makeHtGameFlowFactorsPage(events, chainAnalysis, home, away, 5, TOTAL_PAGES),
+      true,
+      "Game Flow Factors",
+    );
+
+    // ── PART 2 — UNDERSTAND ───────────────────────────────────────────────────
+
+    // 6. Tactical Intelligence Summary
+    addPage(
+      makeTacticalIntelligencePage(chainAnalysis, home, away, 6, TOTAL_PAGES),
       true,
       "Tactical Intelligence Summary",
     );
 
-    // 3. Match Swing Timeline
+    // 7. Turnover Punishment
     addPage(
-      makeMatchSwingTimelinePage(events, chainAnalysis, home, away, 3, TOTAL_PAGES),
-      true,
-      "Match Swing Timeline",
-    );
-
-    // 4. Kickout Chain Analysis
-    addPage(
-      makeKickoutChainPage(chainAnalysis, home, away, 4, TOTAL_PAGES),
-      true,
-      "Kickout Chain Analysis",
-    );
-
-    // 5. Turnover Punishment
-    addPage(
-      makeTurnoverPunishmentPage(chainAnalysis, home, away, 5, TOTAL_PAGES),
+      makeTurnoverPunishmentPage(chainAnalysis, home, away, 7, TOTAL_PAGES),
       true,
       "Turnover Punishment",
     );
 
-    // 6. Shot Efficiency
+    // 8. Shot Efficiency
     addPage(
-      makeShotEfficiencyPage(events, home, away, 6, TOTAL_PAGES),
+      makeShotEfficiencyPage(events, home, away, 8, TOTAL_PAGES),
       true,
       "Shot Efficiency",
     );
 
-    // 7. Zone Analysis (promoted — gives spatial context before the shot map)
+    // 9. Attack Corridors — channel-based attack shape analysis
     addPage(
-      makeZoneAnalysisPage(events, home, away, 7, TOTAL_PAGES),
+      makeFtAttackCorridorsPage(events, sport, home, away, 9, TOTAL_PAGES),
       true,
-      "Zone Analysis",
+      "Attack Corridors",
     );
 
-    // 8. Shot + Wides Map — both halves combined; PDF_KIND_SETS["SHOTS"] used
-    //    directly (same file) to avoid the single-half restriction of selectPdfEvents.
-    const ftShotEvents = events.filter(
-      (e) => !e.id.includes("-instant-score-") && PDF_KIND_SETS["SHOTS"].has(e.kind),
-    );
+    // 10. Restart Escape Routes — kickout destination zone outcome map
     addPage(
-      makeTacticalPage(sport, ftShotEvents, "Shot + Wides Map", home, away, 8, TOTAL_PAGES),
+      makeFtRestartEscapeRoutesPage(events, sport, chainAnalysis, home, away, 10, TOTAL_PAGES),
       true,
-      "Shot + Wides Map",
+      "Restart Escape Routes",
     );
 
-    // 9. Opposition Snapshot
+    // 11. Opposition Snapshot
     addPage(
-      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 9, TOTAL_PAGES),
+      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 11, TOTAL_PAGES),
       true,
       "Opposition Snapshot",
     );
 
-    // 10. Game Segments Breakdown (replaces Chain Summary — richer segment view)
+    // 12. Tactical Match Story — narrative arc of the match
     addPage(
-      makeSegmentsPage(events, home, away, TOTAL_PAGES),
+      makeFtTacticalMatchStoryPage(events, chainAnalysis, home, away, 12, TOTAL_PAGES),
       true,
-      "Game Segments Breakdown",
+      "Tactical Match Story",
     );
   }
 
