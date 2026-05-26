@@ -31,6 +31,7 @@ import { createReviewSession, parseReviewSession, restoreReviewSession, serializ
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
 import { exportReviewPdf } from "./stats/reviewPdfExport";
+import { generateDemoMatchEvents } from "./demo/demoMatchData";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -3420,6 +3421,15 @@ export default function StatsModeSurface() {
   const [isFullTimeActionsOpen, setIsFullTimeActionsOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [currentMatchId, setCurrentMatchId] = useState<string>(() => newMatchSessionId("live"));
+  /** True only during an active demo session — blocks all localStorage persistence. */
+  const [isDemoSession, setIsDemoSession] = useState(false);
+  /** Evaluated once at mount. True when URL contains ?demo=1. */
+  const isDemoParam = useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("demo") === "1",
+    [],
+  );
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [utilityBubblePosition, setUtilityBubblePosition] = useState<{ left: number; top: number } | null>(null);
   const [utilityMenuSize, setUtilityMenuSize] = useState<{ width: number; height: number }>({
@@ -3868,10 +3878,11 @@ export default function StatsModeSurface() {
       ? hasNonDefaultLiveSessionState
       : liveSessionSignature !== savedSessionSignatureRef.current;
   const shouldPersistLiveRecoveryDraft =
-    hasDirtyLiveSession ||
-    matchState === "FIRST_HALF" ||
-    matchState === "HALF_TIME" ||
-    matchState === "SECOND_HALF";
+    !isDemoSession &&
+    (hasDirtyLiveSession ||
+      matchState === "FIRST_HALF" ||
+      matchState === "HALF_TIME" ||
+      matchState === "SECOND_HALF");
 
   const createActiveMatchDraftSnapshot = useCallback((): StatsActiveMatchDraft | null => {
     if (!shouldPersistLiveRecoveryDraft) return null;
@@ -4122,16 +4133,18 @@ export default function StatsModeSurface() {
   useEffect(() => {
     if (!isDraftRecoveryCheckComplete) return;
     if (pendingRecoveredDraft) return;
+    if (isDemoSession) return; // DEMO: never auto-persist demo data as a recovery draft
     const draft = createActiveMatchDraftSnapshot();
     if (!draft) {
       clearActiveMatchDraft();
       return;
     }
     persistActiveMatchDraft(draft);
-  }, [createActiveMatchDraftSnapshot, isDraftRecoveryCheckComplete, pendingRecoveredDraft]);
+  }, [createActiveMatchDraftSnapshot, isDraftRecoveryCheckComplete, pendingRecoveredDraft, isDemoSession]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (isDemoSession) return; // DEMO: no "save before leaving" prompt for demo sessions
     const hasLiveMatchState = loggedEvents.length > 0 || matchState !== "PRE_MATCH";
     if (!hasLiveMatchState) return;
 
@@ -4148,7 +4161,7 @@ export default function StatsModeSurface() {
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
-  }, [createActiveMatchDraftSnapshot, loggedEvents.length, matchState]);
+  }, [createActiveMatchDraftSnapshot, loggedEvents.length, matchState, isDemoSession]);
 
   useEffect(() => {
     if (canEditTeamNames) return;
@@ -4735,6 +4748,42 @@ export default function StatsModeSurface() {
     input.click();
   };
 
+  /**
+   * Loads deterministic demo match events into live state (Ballylanders [DEMO] 1-17
+   * v Galty Gaels 1-12) and transitions to FULL_TIME so the existing Review/PDF
+   * flow works exactly as it would for a real completed match.
+   *
+   * Only reachable when URL contains ?demo=1. Demo data is never persisted to
+   * localStorage (guarded by isDemoSession and shouldPersistLiveRecoveryDraft).
+   */
+  const loadDemoMatch = useCallback(() => {
+    // Cast is safe: DemoMatchEvent satisfies all required fields of LoggedMatchEvent.
+    const demoEvents = generateDemoMatchEvents() as unknown as readonly LoggedMatchEvent[];
+    setTeamNames({ HOME: "Ballylanders [DEMO]", AWAY: "Galty Gaels" });
+    setVenueName("An Cnoc");
+    setLoggedEvents(demoEvents);
+    setIsDemoSession(true);
+    // Simulate a completed match at full time
+    setMatchState("FULL_TIME");
+    setCurrentHalf(2);
+    setMatchTimeSeconds(1800);
+    matchEngineStateRef.current = {
+      matchState: "FULL_TIME",
+      currentHalf: 2,
+      matchTimeSeconds: 1800,
+      isRunning: false,
+      phaseStartTimeMs: null,
+      accumulatedElapsedSeconds: 1800,
+    };
+    handleRef.current?.setEventContext({ half: 2, timestamp: 1800, canLog: false });
+    // Open the full-time actions panel so Export PDF / Review are immediately accessible
+    setIsFullTimeActionsOpen(true);
+    setIsCountsOverlayOpen(false);
+    setIsResetConfirmOpen(false);
+    setIsPickerOpen(false);
+    setIsUtilityOpen(false);
+  }, []);
+
   /** Exports the current match as a 22-page PDF Visual Review report. */
   const handleExportPdf = () => {
     if (isPdfExporting) return;
@@ -4769,6 +4818,10 @@ export default function StatsModeSurface() {
   };
 
   const saveCurrentMatchSnapshot = () => {
+    if (isDemoSession) {
+      setSaveFeedback("Demo session — not saved");
+      return;
+    }
     if (loggedEvents.length === 0) {
       setSaveFeedback("No events to save");
       return;
@@ -5148,6 +5201,7 @@ export default function StatsModeSurface() {
     clearActiveMatchDraft();
     savedSessionSignatureRef.current = null;
     setPendingRecoveredDraft(null);
+    setIsDemoSession(false);
     const nextMatchId = newMatchSessionId("live");
     setCurrentMode("football");
     setTeamNames({
@@ -7070,6 +7124,17 @@ export default function StatsModeSurface() {
               onClick={contextualAction.onClick}
             >
               {contextualAction.label}
+            </button>
+          ) : null}
+          {isPreMatchSetup && isDemoParam ? (
+            <button
+              type="button"
+              className="match-stopwatch-btn"
+              onClick={loadDemoMatch}
+              title="Load Ballylanders [DEMO] 1-17 v Galty Gaels 1-12"
+              style={{ background: "rgba(234,179,8,0.15)", borderColor: "rgba(234,179,8,0.5)" }}
+            >
+              DEMO
             </button>
           ) : null}
         </div>
