@@ -507,6 +507,10 @@ function renderEventMarkers(
   for (const event of events) {
     const ex = typeof event.x === "number" ? event.x : event.nx;
     const ey = typeof event.y === "number" ? event.y : event.ny;
+    // Skip rendering if coordinates are invalid
+    if (ex == null || ey == null || !isFinite(ex) || !isFinite(ey)) {
+      continue;
+    }
     const cx = inner.x + ex * inner.w;
     const cy = inner.y + ey * inner.h;
     ctx.beginPath();
@@ -3549,8 +3553,11 @@ function makeTacticalIntelligencePage(
     const maxW = w - 32;  // 16 px margin each side
     let display = text;
     if (ctx.measureText(display).width > maxW) {
-      while (display.length > 0 && ctx.measureText(display + "…").width > maxW) {
+      let iterations = 0;
+      const maxIterations = 1000;
+      while (display.length > 0 && ctx.measureText(display + "…").width > maxW && iterations < maxIterations) {
         display = display.slice(0, -1);
+        iterations++;
       }
       display += "…";
     }
@@ -3980,8 +3987,11 @@ function makeTacticalReviewGuidePage(
     ctx.textAlign = "left";
     let display = p.text;
     if (ctx.measureText(display).width > MAX_TW) {
-      while (display.length > 0 && ctx.measureText(display + "…").width > MAX_TW) {
+      let iterations = 0;
+      const maxIterations = 1000;
+      while (display.length > 0 && ctx.measureText(display + "…").width > MAX_TW && iterations < maxIterations) {
         display = display.slice(0, -1);
+        iterations++;
       }
       display += "…";
     }
@@ -4411,8 +4421,11 @@ function makeOppositionSnapshotPage(
     const maxW = R_COL_W - 50;
     let display = bullet;
     if (ctx.measureText(display).width > maxW) {
-      while (display.length > 0 && ctx.measureText(display + "…").width > maxW) {
+      let iterations = 0;
+      const maxIterations = 1000;
+      while (display.length > 0 && ctx.measureText(display + "…").width > maxW && iterations < maxIterations) {
         display = display.slice(0, -1);
+        iterations++;
       }
       display += "…";
     }
@@ -4712,8 +4725,11 @@ function makeZoneAnalysisPage(
     const maxW = NOTES_W - 50;
     let display = bullet;
     if (ctx.measureText(display).width > maxW) {
-      while (display.length > 0 && ctx.measureText(display + "…").width > maxW) {
+      let iterations = 0;
+      const maxIterations = 1000;
+      while (display.length > 0 && ctx.measureText(display + "…").width > maxW && iterations < maxIterations) {
         display = display.slice(0, -1);
+        iterations++;
       }
       display += "…";
     }
@@ -5114,8 +5130,11 @@ function makeMatchSwingTimelinePage(
       ctx.textBaseline = "middle";
       let primary = s.label;
       if (ctx.measureText(primary).width > DESC_MAX_W) {
-        while (primary.length > 0 && ctx.measureText(primary + "…").width > DESC_MAX_W) {
+        let iterations = 0;
+        const maxIterations = 1000;
+        while (primary.length > 0 && ctx.measureText(primary + "…").width > DESC_MAX_W && iterations < maxIterations) {
           primary = primary.slice(0, -1);
+          iterations++;
         }
         primary += "…";
       }
