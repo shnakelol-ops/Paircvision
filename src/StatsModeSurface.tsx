@@ -4751,7 +4751,7 @@ export default function StatsModeSurface() {
 
   /**
    * Loads deterministic demo match events into live state (Ballylanders [DEMO] 1-17
-   * v Galty Gaels 1-12) and transitions to FULL_TIME so the existing Review/PDF
+   * v Galtee Gaels 1-12) and transitions to FULL_TIME so the existing Review/PDF
    * flow works exactly as it would for a real completed match.
    *
    * Only reachable when URL contains ?demo=1. Demo data is never persisted to
@@ -4760,7 +4760,7 @@ export default function StatsModeSurface() {
   const loadDemoMatch = useCallback(() => {
     // Cast is safe: DemoMatchEvent satisfies all required fields of LoggedMatchEvent.
     const demoEvents = generateDemoMatchEvents() as unknown as readonly LoggedMatchEvent[];
-    setTeamNames({ HOME: "Ballylanders [DEMO]", AWAY: "Galty Gaels" });
+    setTeamNames({ HOME: "Ballylanders [DEMO]", AWAY: "Galtee Gaels" });
     setVenueName("An Cnoc");
     setLoggedEvents(demoEvents);
     setIsDemoSession(true);
@@ -7132,7 +7132,7 @@ export default function StatsModeSurface() {
               type="button"
               className="match-stopwatch-btn"
               onClick={loadDemoMatch}
-              title="Load Ballylanders [DEMO] 1-17 v Galty Gaels 1-12"
+              title="Load Ballylanders [DEMO] 1-17 v Galtee Gaels 1-12"
               style={{ background: "rgba(234,179,8,0.15)", borderColor: "rgba(234,179,8,0.5)" }}
             >
               DEMO
