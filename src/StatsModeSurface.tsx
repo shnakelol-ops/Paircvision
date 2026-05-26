@@ -4789,7 +4789,7 @@ export default function StatsModeSurface() {
 
   /** Exports the current match as a 22-page PDF Visual Review report. */
   const handleExportPdf = () => {
-    if (isPdfExporting) return;
+    if (snapshotExporting !== null || isPdfExporting) return;
     if (loggedEvents.length === 0) {
       setSaveFeedback("No events to export");
       return;
@@ -4813,11 +4813,15 @@ export default function StatsModeSurface() {
       });
   };
 
-  /** Exports a 10-page Half Time Snapshot PDF (first-half events only). */
+  /** Exports a 5-page Half Time Snapshot PDF (first-half events only, VISION FIRST). */
   const handleExportHtSnapshot = () => {
     if (snapshotExporting !== null || isPdfExporting) return;
     if (loggedEvents.length === 0) {
       setSaveFeedback("No events to export");
+      return;
+    }
+    if (!loggedEvents.some((e) => e.period === "1H")) {
+      setSaveFeedback("No first-half events to export");
       return;
     }
     setSnapshotExporting("HT");
@@ -4832,7 +4836,8 @@ export default function StatsModeSurface() {
       .then(() => {
         setSaveFeedback("HT Snapshot exported");
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        console.error("HT Snapshot PDF export failed", err);
         setSaveFeedback("HT Snapshot export failed");
       })
       .finally(() => {
@@ -4859,7 +4864,8 @@ export default function StatsModeSurface() {
       .then(() => {
         setSaveFeedback("FT Snapshot exported");
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        console.error("FT Snapshot PDF export failed", err);
         setSaveFeedback("FT Snapshot export failed");
       })
       .finally(() => {
@@ -7054,7 +7060,7 @@ export default function StatsModeSurface() {
             className="review-strip-chip"
             onClick={handleExportHtSnapshot}
             disabled={snapshotExporting !== null || isPdfExporting}
-            aria-label="Export Half Time Snapshot PDF — 10 pages, first half only"
+            aria-label="Export Half Time Snapshot PDF — 5 pages, first half only"
             style={
               snapshotExporting === "HT"
                 ? { opacity: 0.6, cursor: "wait" }

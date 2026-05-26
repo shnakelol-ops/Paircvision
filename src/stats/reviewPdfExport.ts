@@ -73,14 +73,15 @@ export type ReviewPdfExportInput = {
 // ─── Snapshot export types ────────────────────────────────────────────────────
 
 /**
- * Lightweight report mode — each mode produces exactly 10 pages.
- * - HALF_TIME_SNAPSHOT: first-half events only; ideal for half-time team talk.
- * - FULL_TIME_SNAPSHOT: full-match events; concise post-match debrief.
+ * Lightweight report mode.
+ * - HALF_TIME_SNAPSHOT: first-half events only; 5 visual/spatial pages for a
+ *   90-second sideline intervention. VISION FIRST — spatial before statistical.
+ * - FULL_TIME_SNAPSHOT: full-match events; 10 pages for concise post-match debrief.
  */
 export type SnapshotMode = "HALF_TIME_SNAPSHOT" | "FULL_TIME_SNAPSHOT";
 
 export type SnapshotPdfExportInput = ReviewPdfExportInput & {
-  /** Controls which events are included and which 10 pages are rendered. */
+  /** Controls which events are included and which pages are rendered. */
   snapshotMode: SnapshotMode;
 };
 
@@ -5986,17 +5987,734 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   pdf.save(filename);
 }
 
+// ─── HT Vision Page Builders ──────────────────────────────────────────────────
+//
+// Four canvas builders for the 5-page VISION FIRST halftime snapshot.
+// Events are pre-filtered to period "1H" by exportSnapshotPdf before any
+// builder is called — no individual builder changes are required.
+//
+// Shared pitch geometry (120 px callout strip reserved at the bottom):
+//   HT_PITCH_AREA = { x: 24, y: 80, w: 1728, h: 842 }
+//   HT_STRIP_TOP  = 932    HT_STRIP_H = 138
+//
+// Zone fill rendering order for pitch pages:
+//   1. fillDarkBg
+//   2. renderPitch(ctx, sport, HT_PITCH_AREA) → inner
+//   3. ctx.fillRect(zone pixel bounds)    — semi-transparent colour overlays
+//   4. renderEventMarkers(ctx, events, inner) — event dots on top
+//   5. zone badge pills                   — count labels at zone centres
+//   6. bottom callout strip               — 2–3 tactical facts
+
+const HT_PITCH_AREA: PitchArea = {
+  x: 24,
+  y: 80,
+  w: CANVAS_W - 24 - 168,       // 1728 — right 168 px reserved for legend
+  h: CANVAS_H - 80 - 38 - 120,  // 842  — 120 px reserved for bottom strip
+};
+const HT_STRIP_TOP = HT_PITCH_AREA.y + HT_PITCH_AREA.h + 10; // 932
+const HT_STRIP_H   = CANVAS_H - HT_STRIP_TOP - 10;            // 138
+
+// Zone engine type-bridge helpers.
+// PdfExportEvent.x / .y are typed as number | null | undefined, but the zone
+// engine's ZoneCoordinateEvent expects x?: number (no null). At runtime the zone
+// engine uses nx/ny (0–1 normalised) for zone assignment — x/y are never read —
+// so null vs undefined is inconsequential. The casts below silence the mismatch
+// without touching the zone engine or PdfExportEvent schema.
+function pdfZoneCounts(evts: readonly PdfExportEvent[]) {
+  return getZoneCounts(evts as unknown as Parameters<typeof getZoneCounts>[0]);
+}
+function pdfZoneHotspots(evts: readonly PdfExportEvent[]) {
+  return getZoneHotspots(evts as unknown as Parameters<typeof getZoneHotspots>[0]);
+}
+
+/**
+ * Maps a zone's normalised bounds (0–100 domain) to canvas pixel coordinates
+ * within `inner` (the inner pitch rectangle returned by renderPitch).
+ */
+function zonePixelRect(
+  bounds: { xMin: number; xMax: number; yMin: number; yMax: number },
+  inner: InnerPitch,
+): { x: number; y: number; w: number; h: number } {
+  return {
+    x: inner.x + (bounds.xMin / 100) * inner.w,
+    y: inner.y + (bounds.yMin / 100) * inner.h,
+    w: ((bounds.xMax - bounds.xMin) / 100) * inner.w,
+    h: ((bounds.yMax - bounds.yMin) / 100) * inner.h,
+  };
+}
+
+// ─── HT Page 1: Pressure & Damage Map ────────────────────────────────────────
+
+/**
+ * Pressure & Damage Map — territorial scoring danger and possession loss zones.
+ *
+ * Zone fills:
+ *   RED   — zones where the opposition scored FROM (scoring danger territory)
+ *   AMBER — zones where the FOR team lost possession (pressure loss zones)
+ * Fill intensity scales with zone count so the hottest zones are most visible.
+ * Event dots are overlaid on top for spatial precision.
+ * Bottom strip surfaces 2–3 territorial facts.
+ *
+ * Data: OPP SCORES events + FOR TURNOVER_LOST events (H1 only, pre-filtered).
+ */
+function makeHtPressureDamageMapPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Pressure & Damage Map", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  const oppScoreEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  const forLossEvts = events.filter(
+    (e) => e.teamSide === "FOR" && e.kind === "TURNOVER_LOST",
+  );
+  const mapEvts = [...oppScoreEvts, ...forLossEvts];
+
+  // ── Pitch + zone colour overlays ──────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  const oppScoreCounts = pdfZoneCounts(oppScoreEvts);
+  const forLossCounts  = pdfZoneCounts(forLossEvts);
+  const maxOpp = oppScoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
+  const maxFor = forLossCounts.reduce((m, z) => Math.max(m, z.count), 0);
+
+  // OPP scoring zone fills (red)
+  for (const zone of oppScoreCounts) {
+    if (zone.count === 0) continue;
+    const alpha = 0.15 + (maxOpp > 0 ? (zone.count / maxOpp) * 0.35 : 0);
+    const rect  = zonePixelRect(zone.bounds, inner);
+    ctx.fillStyle = `rgba(248,113,113,${alpha.toFixed(2)})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // FOR possession-loss zone fills (amber)
+  for (const zone of forLossCounts) {
+    if (zone.count === 0) continue;
+    const alpha = 0.12 + (maxFor > 0 ? (zone.count / maxFor) * 0.28 : 0);
+    const rect  = zonePixelRect(zone.bounds, inner);
+    ctx.fillStyle = `rgba(251,191,36,${alpha.toFixed(2)})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Event markers ─────────────────────────────────────────────────────────
+  renderEventMarkers(ctx, mapEvts, inner);
+
+  // ── Zone badge pills ──────────────────────────────────────────────────────
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "center";
+  ctx.font         = "bold 13px sans-serif";
+
+  // OPP score badges (red pill, top-third of zone)
+  for (const zone of oppScoreCounts) {
+    if (zone.count === 0) continue;
+    const rect  = zonePixelRect(zone.bounds, inner);
+    const midX  = rect.x + rect.w / 2;
+    const midY  = rect.y + rect.h * 0.30;
+    const label = `▾${zone.count}`;
+    const tw    = ctx.measureText(label).width + 14;
+    ctx.fillStyle = "rgba(248,113,113,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(label, midX, midY);
+  }
+
+  // FOR loss badges (amber pill, bottom-third of zone)
+  for (const zone of forLossCounts) {
+    if (zone.count === 0) continue;
+    const rect  = zonePixelRect(zone.bounds, inner);
+    const midX  = rect.x + rect.w / 2;
+    const midY  = rect.y + rect.h * 0.70;
+    const label = `✕${zone.count}`;
+    const tw    = ctx.measureText(label).width + 14;
+    ctx.fillStyle = "rgba(251,191,36,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = "#0d1117";
+    ctx.fillText(label, midX, midY);
+  }
+  ctx.restore();
+
+  // ── Right-side legend ─────────────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+  ctx.fillStyle = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "rgba(248,113,113,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("OPP Score", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(251,191,36,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Possession Lost", lx + 22, ly);
+  ctx.restore();
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(24, HT_STRIP_TOP);
+  ctx.lineTo(CANVAS_W - 24, HT_STRIP_TOP);
+  ctx.stroke();
+
+  const totalOppScores = oppScoreEvts.length;
+  const totalForLosses = forLossEvts.length;
+  const oppScoreHot    = pdfZoneHotspots(oppScoreEvts)[0];
+  const forLossHot     = pdfZoneHotspots(forLossEvts)[0];
+
+  const facts: string[] = [];
+  if (totalOppScores > 0) facts.push(`${totalOppScores} opposition score${totalOppScores !== 1 ? "s" : ""} conceded`);
+  if (oppScoreHot)        facts.push(`Scoring danger: ${oppScoreHot.label} (${oppScoreHot.count})`);
+  if (totalForLosses > 0) facts.push(`${totalForLosses} possession loss${totalForLosses !== 1 ? "es" : ""} recorded`);
+  if (forLossHot && facts.length < 3) facts.push(`Loss zone: ${forLossHot.label} (${forLossHot.count})`);
+  if (facts.length === 0) facts.push("No scoring threats or possession losses recorded.");
+
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "15px sans-serif";
+  const factsToShow = facts.slice(0, 3);
+  const colW = Math.floor((CANVAS_W - 48) / Math.max(factsToShow.length, 1));
+  factsToShow.forEach((fact, i) => {
+    const fx = 24 + i * colW;
+    const fy = HT_STRIP_TOP + HT_STRIP_H / 2;
+    ctx.fillStyle = i === 0 ? "#f87171" : i === 1 ? "#fbbf24" : "#94a3b8";
+    ctx.beginPath();
+    ctx.arc(fx + 8, fy, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillText(fact, fx + 20, fy);
+  });
+  ctx.restore();
+
+  drawEventCountFooter(ctx, mapEvts.length);
+  return canvas;
+}
+
+// ─── HT Page 3: Kickout Vision ────────────────────────────────────────────────
+
+/**
+ * Kickout Vision — territorial kickout dominance map.
+ *
+ * Zone fills per-zone kickout outcome:
+ *   TEAL  — FOR team won majority in this zone (territorial dominance)
+ *   RED   — OPP team won majority (concession territory)
+ *   AMBER — contested zone (within 1 possession)
+ * Fill intensity scales with zone kickout volume.
+ * "X W / Y L" badge pills at zone centres for instant read.
+ * Bottom strip: total won/lost ratio, dominant zone, main concession zone.
+ *
+ * Data: KICKOUT_WON + KICKOUT_CONCEDED events (H1 only, pre-filtered).
+ */
+function makeHtKickoutVisionPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Kickout Vision", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  // FOR won = KICKOUT_WON recorded by FOR, OR KICKOUT_CONCEDED recorded by OPP
+  const forWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
+  );
+  // OPP won = KICKOUT_CONCEDED recorded by FOR, OR KICKOUT_WON recorded by OPP
+  const oppWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR") ||
+           (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP"),
+  );
+  const allKickoutEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind));
+
+  // ── Pitch + zone colour overlays ──────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  const forWonCounts = pdfZoneCounts(forWonEvts);
+  const oppWonCounts = pdfZoneCounts(oppWonEvts);
+
+  for (let i = 0; i < forWonCounts.length; i++) {
+    const forZone = forWonCounts[i];
+    const oppZone = oppWonCounts[i];
+    const total   = forZone.count + oppZone.count;
+    if (total === 0) continue;
+
+    const rect      = zonePixelRect(forZone.bounds, inner);
+    const diff      = forZone.count - oppZone.count;
+    const intensity = Math.min(total / 4, 1); // saturates at 4 events per zone
+
+    if (diff > 1) {
+      ctx.fillStyle = `rgba(20,184,166,${(0.15 + intensity * 0.30).toFixed(2)})`;
+    } else if (diff < -1) {
+      ctx.fillStyle = `rgba(248,113,113,${(0.15 + intensity * 0.30).toFixed(2)})`;
+    } else {
+      ctx.fillStyle = "rgba(251,191,36,0.20)";
+    }
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Event markers ─────────────────────────────────────────────────────────
+  renderEventMarkers(ctx, allKickoutEvts, inner);
+
+  // ── Zone badge pills ──────────────────────────────────────────────────────
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "center";
+  ctx.font         = "bold 12px sans-serif";
+
+  for (let i = 0; i < forWonCounts.length; i++) {
+    const forZone = forWonCounts[i];
+    const oppZone = oppWonCounts[i];
+    const total   = forZone.count + oppZone.count;
+    if (total === 0) continue;
+
+    const rect   = zonePixelRect(forZone.bounds, inner);
+    const midX   = rect.x + rect.w / 2;
+    const midY   = rect.y + rect.h / 2;
+    const label  = `${forZone.count}W / ${oppZone.count}L`;
+    const tw     = ctx.measureText(label).width + 16;
+    const isTeal = forZone.count > oppZone.count;
+    const isRed  = oppZone.count > forZone.count;
+    ctx.fillStyle = isTeal ? "rgba(20,184,166,0.88)"
+                 : isRed  ? "rgba(248,113,113,0.88)"
+                 :           "rgba(251,191,36,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = (isTeal || isRed) ? "#ffffff" : "#0d1117";
+    ctx.fillText(label, midX, midY);
+  }
+  ctx.restore();
+
+  // ── Right-side legend ─────────────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+  ctx.fillStyle = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "rgba(20,184,166,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("FOR Dominated", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(248,113,113,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("OPP Dominated", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(251,191,36,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Contested", lx + 22, ly);
+  ctx.restore();
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(24, HT_STRIP_TOP);
+  ctx.lineTo(CANVAS_W - 24, HT_STRIP_TOP);
+  ctx.stroke();
+
+  const totalFor = forWonEvts.length;
+  const totalOpp = oppWonEvts.length;
+  const totalKO  = totalFor + totalOpp;
+  const forPct   = totalKO > 0 ? Math.round((totalFor / totalKO) * 100) : 0;
+  const forHot   = pdfZoneHotspots(forWonEvts)[0];
+  const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
+
+  const facts: string[] = [];
+  if (totalKO > 0) facts.push(`${totalFor} / ${totalKO} kickouts won (${forPct}%)`);
+  if (forHot)      facts.push(`Dominant zone: ${forHot.label}`);
+  if (oppHot)      facts.push(`Ceded most in: ${oppHot.label}`);
+  if (facts.length === 0) facts.push("No kickout data recorded in the first half.");
+
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "15px sans-serif";
+  const factsToShow = facts.slice(0, 3);
+  const colW = Math.floor((CANVAS_W - 48) / Math.max(factsToShow.length, 1));
+  factsToShow.forEach((fact, i) => {
+    const fx = 24 + i * colW;
+    const fy = HT_STRIP_TOP + HT_STRIP_H / 2;
+    ctx.fillStyle = i === 0 ? "#14b8a6" : i === 1 ? "#14b8a6" : "#f87171";
+    ctx.beginPath();
+    ctx.arc(fx + 8, fy, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillText(fact, fx + 20, fy);
+  });
+  ctx.restore();
+
+  drawEventCountFooter(ctx, allKickoutEvts.length);
+  return canvas;
+}
+
+// ─── HT Page 4: Attack Shape & Shot Vision ────────────────────────────────────
+
+/**
+ * Attack Shape & Shot Vision — scoring origin heat map.
+ *
+ * Zone fills:
+ *   GREEN — zones where FOR team scored FROM (scoring corridors)
+ *   GREY  — zones where FOR team had wides / missed frees (inefficient zones)
+ * Fill intensity scales with event count per zone (grey drawn first, green on top).
+ * All FOR shot events overlaid as event dots for spatial precision.
+ * Bottom strip: shot efficiency, wide count, hottest scoring zone.
+ *
+ * Data: FOR SHOTS events (H1 only, pre-filtered).
+ */
+function makeHtAttackShotVisionPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Attack Shape & Shot Vision", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  const forScoreEvts = events.filter(
+    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  const forWideEvts = events.filter(
+    (e) => e.teamSide === "FOR" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"),
+  );
+  const forShotEvts = events.filter(
+    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind),
+  );
+
+  // ── Pitch + zone colour overlays ──────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  const scoreCounts = pdfZoneCounts(forScoreEvts);
+  const wideCounts  = pdfZoneCounts(forWideEvts);
+  const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
+  const maxWide     = wideCounts.reduce((m, z) => Math.max(m, z.count), 0);
+
+  // Grey wide zone fills (drawn first, behind score fills)
+  for (const zone of wideCounts) {
+    if (zone.count === 0) continue;
+    const alpha = 0.10 + (maxWide > 0 ? (zone.count / maxWide) * 0.20 : 0);
+    const rect  = zonePixelRect(zone.bounds, inner);
+    ctx.fillStyle = `rgba(148,163,184,${alpha.toFixed(2)})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // Green score zone fills (drawn on top of grey)
+  for (const zone of scoreCounts) {
+    if (zone.count === 0) continue;
+    const alpha = 0.15 + (maxScore > 0 ? (zone.count / maxScore) * 0.40 : 0);
+    const rect  = zonePixelRect(zone.bounds, inner);
+    ctx.fillStyle = `rgba(52,211,153,${alpha.toFixed(2)})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Event markers ─────────────────────────────────────────────────────────
+  renderEventMarkers(ctx, forShotEvts, inner);
+
+  // ── Zone badge pills ──────────────────────────────────────────────────────
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "center";
+  ctx.font         = "bold 13px sans-serif";
+
+  // Score badges (green, top-third of zone)
+  for (const zone of scoreCounts) {
+    if (zone.count === 0) continue;
+    const rect  = zonePixelRect(zone.bounds, inner);
+    const midX  = rect.x + rect.w / 2;
+    const midY  = rect.y + rect.h * 0.30;
+    const label = `⚡${zone.count}`;
+    const tw    = ctx.measureText(label).width + 14;
+    ctx.fillStyle = "rgba(52,211,153,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = "#0d1117";
+    ctx.fillText(label, midX, midY);
+  }
+
+  // Wide badges (grey, bottom-third of zone)
+  for (const zone of wideCounts) {
+    if (zone.count === 0) continue;
+    const rect  = zonePixelRect(zone.bounds, inner);
+    const midX  = rect.x + rect.w / 2;
+    const midY  = rect.y + rect.h * 0.72;
+    const label = `✕${zone.count}`;
+    const tw    = ctx.measureText(label).width + 14;
+    ctx.fillStyle = "rgba(148,163,184,0.75)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = "#0d1117";
+    ctx.fillText(label, midX, midY);
+  }
+  ctx.restore();
+
+  // ── Right-side legend ─────────────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+  ctx.fillStyle = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "rgba(52,211,153,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Scores", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(148,163,184,0.75)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Wides / Misses", lx + 22, ly);
+  ctx.restore();
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(24, HT_STRIP_TOP);
+  ctx.lineTo(CANVAS_W - 24, HT_STRIP_TOP);
+  ctx.stroke();
+
+  const totalShots  = forShotEvts.length;
+  const totalScores = forScoreEvts.length;
+  const totalWides  = forWideEvts.length;
+  const shotEff     = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
+  const scoreHot    = pdfZoneHotspots(forScoreEvts)[0];
+
+  const facts: string[] = [];
+  if (totalShots > 0)  facts.push(`${totalScores} / ${totalShots} shots scored (${shotEff}%)`);
+  if (totalWides > 0)  facts.push(`${totalWides} wide${totalWides !== 1 ? "s" : ""} / miss${totalWides !== 1 ? "es" : ""}`);
+  if (scoreHot)        facts.push(`Top scoring zone: ${scoreHot.label} (${scoreHot.count})`);
+  if (facts.length === 0) facts.push("No FOR shot data recorded in the first half.");
+
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "15px sans-serif";
+  const factsToShow = facts.slice(0, 3);
+  const colW = Math.floor((CANVAS_W - 48) / Math.max(factsToShow.length, 1));
+  factsToShow.forEach((fact, i) => {
+    const fx = 24 + i * colW;
+    const fy = HT_STRIP_TOP + HT_STRIP_H / 2;
+    ctx.fillStyle = i === 0 ? "#34d399" : i === 1 ? "#94a3b8" : "#34d399";
+    ctx.beginPath();
+    ctx.arc(fx + 8, fy, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillText(fact, fx + 20, fy);
+  });
+  ctx.restore();
+
+  drawEventCountFooter(ctx, forShotEvts.length);
+  return canvas;
+}
+
+// ─── HT Page 5: Coach Intelligence Card ──────────────────────────────────────
+
+/**
+ * Coach Intelligence Card — maximum 3 tactical truths for the 90-second team talk.
+ *
+ * Calls deriveReviewPrompts() on the H1 chain analysis (already scoped to first half).
+ * Extracts the factual statement from each prompt (text before ". Worth reviewing").
+ * Renders up to 3 prompts as large, high-contrast cards with category colour chips.
+ *
+ * Card layout (per card):
+ *   6 px left accent bar (category colour)
+ *   Category chip (colour-coded badge, top-left of card)
+ *   Factual statement (22 px bold, word-wrapped to 2 lines if needed)
+ *   Evidence tag (12 px, right-aligned, dimmed, bottom-right of card)
+ *
+ * Empty state: "Not enough tactical data to identify patterns in the first half."
+ * No AI language. No prescriptions. Facts only.
+ */
+function makeCoachIntelligenceCardPage(
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Coach Intelligence", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  const allPrompts = deriveReviewPrompts(analysis, homeTeam, awayTeam);
+  const prompts    = allPrompts.slice(0, 3);
+
+  // ── Empty state ────────────────────────────────────────────────────────────
+  if (prompts.length === 0) {
+    ctx.fillStyle    = "#475569";
+    ctx.font         = "20px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "center";
+    ctx.fillText(
+      "Not enough tactical data to identify patterns in the first half.",
+      CANVAS_W / 2,
+      CANVAS_H / 2,
+    );
+    drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+    return canvas;
+  }
+
+  // ── Category colour helpers ────────────────────────────────────────────────
+  function catColor(cat: ReviewPromptCategory): string {
+    switch (cat) {
+      case "KICKOUT":  return "#22d3ee";
+      case "TURNOVER": return "#a78bfa";
+      case "MOMENTUM": return "#fbbf24";
+      case "CHAIN":    return "#34d399";
+      case "GENERAL":  return "#94a3b8";
+    }
+  }
+  function catBg(cat: ReviewPromptCategory): string {
+    switch (cat) {
+      case "KICKOUT":  return "rgba(34,211,238,0.13)";
+      case "TURNOVER": return "rgba(167,139,250,0.13)";
+      case "MOMENTUM": return "rgba(251,191,36,0.13)";
+      case "CHAIN":    return "rgba(52,211,153,0.13)";
+      case "GENERAL":  return "rgba(148,163,184,0.13)";
+    }
+  }
+
+  // ── Layout constants ───────────────────────────────────────────────────────
+  const CARD_X      = 48;
+  const CARD_W      = CANVAS_W - 96;  // 1824 px
+  const CARD_H      = 210;
+  const CARD_GAP    = 30;
+  const CARDS_START = 106;
+
+  // ── Render cards ───────────────────────────────────────────────────────────
+  prompts.forEach((p, i) => {
+    const cardY = CARDS_START + i * (CARD_H + CARD_GAP);
+    const color = catColor(p.category);
+    const bg    = catBg(p.category);
+
+    // Card background panel
+    ctx.fillStyle = "rgba(255,255,255,0.035)";
+    ctx.fillRect(CARD_X + 6, cardY, CARD_W - 6, CARD_H);
+
+    // Left accent bar (6 px wide, full card height)
+    ctx.fillStyle = color;
+    ctx.fillRect(CARD_X, cardY, 6, CARD_H);
+
+    // Category chip
+    ctx.font = "bold 13px sans-serif";
+    const chipLabel = p.category;
+    const chipTW    = ctx.measureText(chipLabel).width;
+    const chipW     = chipTW + 24;
+    const chipY     = cardY + 34;
+    ctx.fillStyle   = bg;
+    ctx.fillRect(CARD_X + 20, chipY - 14, chipW, 28);
+    ctx.fillStyle    = color;
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "left";
+    ctx.fillText(chipLabel, CARD_X + 32, chipY);
+
+    // Extract factual statement (text before ". Worth reviewing")
+    const worthIdx = p.text.indexOf(". Worth reviewing");
+    const factText = worthIdx > -1 ? p.text.substring(0, worthIdx) : p.text;
+
+    // Render factual statement — word-wrap to two lines if too wide
+    const TEXT_X = CARD_X + 20;
+    const TEXT_Y = cardY + 88;
+    const MAX_TW = CARD_W - 56;
+    ctx.font         = "bold 22px sans-serif";
+    ctx.fillStyle    = "#f1f5f9";
+    ctx.textBaseline = "alphabetic";
+    ctx.textAlign    = "left";
+
+    if (ctx.measureText(factText).width <= MAX_TW) {
+      ctx.fillText(factText, TEXT_X, TEXT_Y);
+    } else {
+      // Split at the word boundary closest to 55% of total width
+      const words = factText.split(" ");
+      let line1   = "";
+      let line2   = factText;
+      for (let w = 1; w <= words.length; w++) {
+        const candidate = words.slice(0, w).join(" ");
+        if (ctx.measureText(candidate).width > MAX_TW * 0.55) {
+          line1 = words.slice(0, w - 1).join(" ");
+          line2 = words.slice(w - 1).join(" ");
+          break;
+        }
+        if (w === words.length) {
+          line1 = candidate;
+          line2 = "";
+        }
+      }
+      ctx.fillText(line1 || factText, TEXT_X, TEXT_Y - 14);
+      if (line2) ctx.fillText(line2, TEXT_X, TEXT_Y + 14);
+    }
+
+    // Evidence tag (bottom-right of card)
+    ctx.font         = "12px sans-serif";
+    ctx.fillStyle    = "#475569";
+    ctx.textAlign    = "right";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(p.evidenceTag, CARD_X + CARD_W - 16, cardY + CARD_H - 16);
+  });
+
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+  return canvas;
+}
+
 // ─── Snapshot PDF export ──────────────────────────────────────────────────────
 //
-// Lightweight 10-page coaching reports. All rendering delegates to the same
-// page builders used by exportReviewPdf. exportReviewPdf and every page builder
+// Lightweight coaching reports. All rendering delegates to the same page builders
+// used by exportReviewPdf. exportReviewPdf and every pre-existing page builder
 // function body are completely untouched.
 //
-// HT Snapshot: events pre-filtered to period "1H" before any builder is called.
+// HT Snapshot (5 pages): VISION FIRST — events pre-filtered to period "1H".
 //   Chain analysis is computed from the H1 event set only — no builder changes
 //   needed; each builder naturally sees first-half data.
+//   Pages: Pressure & Damage Map → Momentum & Swing → Kickout Vision →
+//          Attack Shape & Shot Vision → Coach Intelligence Card
 //
-// FT Snapshot: all events, curated 10-page selection from the full builder set.
+// FT Snapshot (10 pages): full-match events, curated selection from the full
+//   builder set, ordered for post-match debrief narrative flow.
 
 export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<void> {
   const {
@@ -6019,7 +6737,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   // Chain analysis scoped to the same event set — H1-only for HT, full for FT.
   const chainAnalysis = selectChainAnalysis(events);
 
-  const TOTAL_PAGES = isHT ? 7 : 10;
+  const TOTAL_PAGES = isHT ? 5 : 10;
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -6047,59 +6765,64 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   const away = awayTeamName;
 
   if (isHT) {
-    // ── HT Snapshot ── 7 pages, first-half events only ───────────────────────
+    // ── HT Snapshot ── 5 pages, VISION FIRST, first-half events only ─────────
+    //
+    // Question: "Can the coach SEE the repeating tactical behaviour fast enough
+    //            to change the second half?"
+    //
+    // 1. Pressure & Damage Map  — where did the damage come from?
+    // 2. Momentum & Swing       — who controlled the tempo?
+    // 3. Kickout Vision         — who owned the restarts?
+    // 4. Attack Shape           — where did we threaten and where did we miss?
+    // 5. Coach Intelligence     — top 3 tactical facts in plain language
 
-    // 1. Match Summary
+    // 1. Pressure & Damage Map
     addPage(
-      makeSummaryPage(events, home, away, venueName, TOTAL_PAGES),
+      makeHtPressureDamageMapPage(events, sport, home, away, 1, TOTAL_PAGES),
       false,
-      "Match Summary",
+      "Pressure & Damage Map",
     );
 
-    // 2. Tactical Intelligence Summary
+    // 2. Momentum & Swing Timeline
     addPage(
-      makeTacticalIntelligencePage(chainAnalysis, home, away, 2, TOTAL_PAGES),
+      makeMatchSwingTimelinePage(events, chainAnalysis, home, away, 2, TOTAL_PAGES),
       true,
-      "Tactical Intelligence Summary",
+      "Momentum & Swing",
     );
 
-    // 3. Match Swing Timeline
+    // 3. Kickout Vision
     addPage(
-      makeMatchSwingTimelinePage(events, chainAnalysis, home, away, 3, TOTAL_PAGES),
+      makeHtKickoutVisionPage(events, sport, home, away, 3, TOTAL_PAGES),
       true,
-      "Match Swing Timeline",
+      "Kickout Vision",
     );
 
-    // 4. Kickout Chain Analysis
+    // 4. Attack Shape & Shot Vision
     addPage(
-      makeKickoutChainPage(chainAnalysis, home, away, 4, TOTAL_PAGES),
+      makeHtAttackShotVisionPage(events, sport, home, away, 4, TOTAL_PAGES),
       true,
-      "Kickout Chain Analysis",
+      "Attack Shape & Shot Vision",
     );
 
-    // 5. Turnover Punishment
+    // 5. Coach Intelligence Card
     addPage(
-      makeTurnoverPunishmentPage(chainAnalysis, home, away, 5, TOTAL_PAGES),
+      makeCoachIntelligenceCardPage(chainAnalysis, home, away, 5, TOTAL_PAGES),
       true,
-      "Turnover Punishment",
-    );
-
-    // 6. Shot + Wides Map — tactical pitch renderer, SHOTS category, H1 events
-    const htShotEvents = selectPdfEvents(events, "H1", "ALL", "SHOTS");
-    addPage(
-      makeTacticalPage(sport, htShotEvents, "Shot + Wides Map", home, away, 6, TOTAL_PAGES),
-      true,
-      "Shot + Wides Map",
-    );
-
-    // 7. Opposition Snapshot
-    addPage(
-      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 7, TOTAL_PAGES),
-      true,
-      "Opposition Snapshot",
+      "Coach Intelligence",
     );
   } else {
     // ── FT Snapshot ── 10 pages, full-match events ────────────────────────────
+    //
+    // 1. Match Summary
+    // 2. Tactical Intelligence Summary
+    // 3. Match Swing Timeline
+    // 4. Kickout Chain Analysis
+    // 5. Turnover Punishment
+    // 6. Shot Efficiency
+    // 7. Zone Analysis          (promoted — spatial context before shot map)
+    // 8. Shot + Wides Map       (full match, both halves combined)
+    // 9. Opposition Snapshot
+    // 10. Game Segments Breakdown
 
     // 1. Match Summary
     addPage(
@@ -6143,22 +6866,22 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Shot Efficiency",
     );
 
-    // 7. Shot + Wides Map — both halves combined; PDF_KIND_SETS["SHOTS"] used
+    // 7. Zone Analysis (promoted — gives spatial context before the shot map)
+    addPage(
+      makeZoneAnalysisPage(events, home, away, 7, TOTAL_PAGES),
+      true,
+      "Zone Analysis",
+    );
+
+    // 8. Shot + Wides Map — both halves combined; PDF_KIND_SETS["SHOTS"] used
     //    directly (same file) to avoid the single-half restriction of selectPdfEvents.
     const ftShotEvents = events.filter(
       (e) => !e.id.includes("-instant-score-") && PDF_KIND_SETS["SHOTS"].has(e.kind),
     );
     addPage(
-      makeTacticalPage(sport, ftShotEvents, "Shot + Wides Map", home, away, 7, TOTAL_PAGES),
+      makeTacticalPage(sport, ftShotEvents, "Shot + Wides Map", home, away, 8, TOTAL_PAGES),
       true,
       "Shot + Wides Map",
-    );
-
-    // 8. Zone Analysis
-    addPage(
-      makeZoneAnalysisPage(events, home, away, 8, TOTAL_PAGES),
-      true,
-      "Zone Analysis",
     );
 
     // 9. Opposition Snapshot
@@ -6168,11 +6891,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Opposition Snapshot",
     );
 
-    // 10. Tactical Chain Analysis
+    // 10. Game Segments Breakdown (replaces Chain Summary — richer segment view)
     addPage(
-      makeChainSummaryPage(chainAnalysis, home, away, 10, TOTAL_PAGES),
+      makeSegmentsPage(events, home, away, TOTAL_PAGES),
       true,
-      "Tactical Chain Analysis",
+      "Game Segments Breakdown",
     );
   }
 
