@@ -6391,6 +6391,103 @@ function drawPatternArrow(
   ctx.restore();
 }
 
+/**
+ * Draw an atmospheric directional pressure sweep inside a hot zone.
+ *
+ * These are NOT route arrows, NOT ball trajectories, NOT coaching lines.
+ * They are TERRITORIAL PRESSURE CURRENTS — the repeated arrival direction
+ * of tactical stress. A coach reads: "it keeps coming from here."
+ *
+ * Visual feel: weather radar · military overlay · pressure front
+ * NOT: telestrator · coaching diagram · movement path
+ *
+ * 3-pass rendering creates atmospheric depth:
+ *   Pass 1 — wide glow   (α×0.40, w=9,   shadowBlur=16): ambient halo
+ *   Pass 2 — core sweep  (α×1.00, w=4.5, shadowBlur=8):  tactical current
+ *   Pass 3 — tip fade    (α×0.30, w=2,   shadowBlur=3):  soft direction hint
+ *
+ * intensity: 0–1 (drives alpha 0.18–0.38 and glow strength)
+ * kind:
+ *   PRESSURE_INWARD   — red   — OPP danger entering zone
+ *   PRESSURE_EXIT     — teal  — FOR successful attacking release
+ *   PRESSURE_COLLAPSE — amber — FOR attacks converging / dying in zone
+ *
+ * Constraint: only called when zone threat level ≥ HIGH or pattern count ≥ 2.
+ * Max 3 sweeps per page. Never across the full field — localised pressure only.
+ */
+function drawDirectionalPressureSweep(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  intensity: number,
+  kind: "PRESSURE_INWARD" | "PRESSURE_EXIT" | "PRESSURE_COLLAPSE",
+): void {
+  const baseAlpha = 0.18 + Math.min(intensity, 1) * 0.20;  // 0.18 – 0.38
+  const rgb =
+    kind === "PRESSURE_EXIT"     ? "34,211,153"  :   // teal-green
+    kind === "PRESSURE_COLLAPSE" ? "245,158,11"  :   // amber
+                                   "239,68,68";      // red (INWARD)
+
+  const dx  = x2 - x1;
+  const dy  = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+
+  // Gentle arc — control point offset ~18% of length, perpendicular
+  const cpx = (x1 + x2) / 2 - (dy / len) * (len * 0.18);
+  const cpy = (y1 + y2) / 2 + (dx / len) * (len * 0.18);
+
+  ctx.save();
+  ctx.lineCap  = "round";
+  ctx.lineJoin = "round";
+  ctx.setLineDash([]);
+
+  // ── Pass 1: Wide atmospheric glow ──────────────────────────────────────────
+  ctx.globalAlpha = baseAlpha * 0.40;
+  ctx.lineWidth   = 9;
+  ctx.strokeStyle = `rgba(${rgb},1)`;
+  ctx.shadowColor = `rgba(${rgb},0.55)`;
+  ctx.shadowBlur  = 16;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.quadraticCurveTo(cpx, cpy, x2, y2);
+  ctx.stroke();
+
+  // ── Pass 2: Core tactical current ──────────────────────────────────────────
+  ctx.globalAlpha = baseAlpha;
+  ctx.lineWidth   = 4.5;
+  ctx.shadowColor = `rgba(${rgb},0.35)`;
+  ctx.shadowBlur  = 8;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.quadraticCurveTo(cpx, cpy, x2, y2);
+  ctx.stroke();
+
+  // ── Pass 3: Soft directional tip fade ──────────────────────────────────────
+  // A short diminishing segment at the endpoint — direction hint, not arrowhead
+  const tipLen = Math.min(len * 0.22, 45);
+  const tx     = x2 - cpx;
+  const ty     = y2 - cpy;
+  const tl     = Math.sqrt(tx * tx + ty * ty) || 1;
+  const tipX   = x2 - (tx / tl) * tipLen;
+  const tipY   = y2 - (ty / tl) * tipLen;
+
+  ctx.globalAlpha = baseAlpha * 0.28;
+  ctx.lineWidth   = 2;
+  ctx.shadowBlur  = 3;
+  ctx.beginPath();
+  ctx.moveTo(tipX, tipY);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  // ── Cleanup ────────────────────────────────────────────────────────────────
+  ctx.globalAlpha = 1.0;
+  ctx.shadowBlur  = 0;
+  ctx.shadowColor = "transparent";
+  ctx.restore();
+}
+
 // ─── HT Page 1: Pressure & Damage Map ────────────────────────────────────────
 
 /**
@@ -6514,6 +6611,50 @@ function makeHtPressureDamageMapPage(
       level === "HIGH"     ? "SCORING THREAT" :
                              "WATCH";
     drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
+
+  // ── Directional Pressure Sweeps ───────────────────────────────────────────
+  // Sweeps convey WHERE pressure is repeatedly arriving from — not event paths.
+  // "They keep coming through here" — atmospheric directional language.
+  // Max 3 sweeps total. Only renders on zones with threat level ≥ HIGH.
+  {
+    // Find hottest combined OPP threat zone (OPP scores + FOR losses combined)
+    let bestOppIdx = -1, bestOppScore = 0;
+    for (let i = 0; i < oppScoreCounts.length; i++) {
+      const s = computeZoneThreatScore(oppScoreCounts[i].count, forLossCounts[i].count, 0);
+      if (s > bestOppScore) { bestOppScore = s; bestOppIdx = i; }
+    }
+    // Find hottest standalone FOR loss zone (separate from OPP hotspot)
+    let bestForIdx = -1, bestForScore = 0;
+    for (let i = 0; i < forLossCounts.length; i++) {
+      if (i === bestOppIdx) continue;
+      const s = computeZoneThreatScore(0, forLossCounts[i].count, 0);
+      if (s > bestForScore) { bestForScore = s; bestForIdx = i; }
+    }
+
+    let sweepsDrawn = 0;
+
+    if (bestOppIdx >= 0 && getThreatLevel(bestOppScore) !== "NONE") {
+      const rect      = zonePixelRect(oppScoreCounts[bestOppIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestOppScore / 10, 1.0);
+      // OPP scoring pressure arrives from the midfield side (right = high nx in pixel space)
+      drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy - rect.h * 0.22, cx - rect.w * 0.08, cy, intensity, "PRESSURE_INWARD");
+      sweepsDrawn++;
+      if (getThreatLevel(bestOppScore) === "CRITICAL" && sweepsDrawn < 3) {
+        drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy + rect.h * 0.22, cx - rect.w * 0.08, cy, intensity * 0.70, "PRESSURE_INWARD");
+        sweepsDrawn++;
+      }
+    }
+    if (bestForIdx >= 0 && getThreatLevel(bestForScore) !== "NONE" && sweepsDrawn < 3) {
+      const rect      = zonePixelRect(forLossCounts[bestForIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestForScore / 6, 1.0);
+      // FOR possession lost — pressure converging from entry direction
+      drawDirectionalPressureSweep(ctx, cx - rect.w * 0.40, cy - rect.h * 0.22, cx, cy, intensity, "PRESSURE_COLLAPSE");
+    }
   }
 
   // ── Right-side legend ─────────────────────────────────────────────────────
@@ -6675,6 +6816,29 @@ function makeHtKickoutVisionPage(
       level === "HIGH"     ? "CONCESSION ZONE" :
                              "WATCH";
     drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
+
+  // ── Directional Pressure Sweeps ───────────────────────────────────────────
+  // "OPP keeps winning possession HERE" — OPP players flooding the landing zone.
+  // Sweep direction: pressure inward from field toward contested zone.
+  {
+    let bestIdx = -1, bestScore = 0;
+    for (let i = 0; i < oppWonCounts.length; i++) {
+      const s = computeZoneThreatScore(oppWonCounts[i].count, 0, forWonCounts[i].count);
+      if (s > bestScore) { bestScore = s; bestIdx = i; }
+    }
+    if (bestIdx >= 0 && getThreatLevel(bestScore) !== "NONE") {
+      const rect      = zonePixelRect(oppWonCounts[bestIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestScore / 10, 1.0);
+      // OPP flooding kickout zone from midfield direction (right = high nx)
+      drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy - rect.h * 0.24, cx - rect.w * 0.08, cy, intensity, "PRESSURE_INWARD");
+      if (getThreatLevel(bestScore) === "CRITICAL") {
+        // Critical trap: second converging sweep from opposite lateral edge
+        drawDirectionalPressureSweep(ctx, cx - rect.w * 0.36, cy + rect.h * 0.24, cx, cy, intensity * 0.65, "PRESSURE_COLLAPSE");
+      }
+    }
   }
 
   // ── Right-side legend ─────────────────────────────────────────────────────
@@ -6845,6 +7009,48 @@ function makeHtAttackShotVisionPage(
       level === "HIGH"     ? "WASTAGE ZONE" :
                              "WATCH";
     drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
+
+  // ── Directional Pressure Sweeps ───────────────────────────────────────────
+  // Wide zones: attacks entering and dying — COLLAPSE sweeps converging inward.
+  // Score zones: successful attacking release — EXIT sweep outward.
+  {
+    // Hottest waste zone (for COLLAPSE sweeps)
+    let bestWideIdx = -1, bestWideScore = 0;
+    for (let i = 0; i < wideCounts.length; i++) {
+      const s = computeZoneThreatScore(wideCounts[i].count, 0, scoreCounts[i].count);
+      if (s > bestWideScore) { bestWideScore = s; bestWideIdx = i; }
+    }
+    // Hottest scoring zone (for EXIT sweep) — must differ from waste zone
+    let bestScoreIdx = -1, bestScoreCount = 0;
+    for (let i = 0; i < scoreCounts.length; i++) {
+      if (i === bestWideIdx) continue;
+      if (scoreCounts[i].count > bestScoreCount) { bestScoreCount = scoreCounts[i].count; bestScoreIdx = i; }
+    }
+
+    let sweepsDrawn = 0;
+
+    if (bestWideIdx >= 0 && getThreatLevel(bestWideScore) !== "NONE") {
+      const rect      = zonePixelRect(wideCounts[bestWideIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestWideScore / 8, 1.0);
+      // Wasted attacks converging — enter from left (FOR attacks left→right in pixel space)
+      drawDirectionalPressureSweep(ctx, cx - rect.w * 0.40, cy - rect.h * 0.22, cx, cy, intensity, "PRESSURE_COLLAPSE");
+      sweepsDrawn++;
+      if (getThreatLevel(bestWideScore) === "CRITICAL" && sweepsDrawn < 3) {
+        drawDirectionalPressureSweep(ctx, cx + rect.w * 0.38, cy + rect.h * 0.22, cx, cy, intensity * 0.65, "PRESSURE_COLLAPSE");
+        sweepsDrawn++;
+      }
+    }
+    if (bestScoreIdx >= 0 && bestScoreCount >= 2 && sweepsDrawn < 3) {
+      const rect      = zonePixelRect(scoreCounts[bestScoreIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestScoreCount / 5, 1.0);
+      // Successful exit direction — FOR scoring corridor opening outward
+      drawDirectionalPressureSweep(ctx, cx - rect.w * 0.20, cy + rect.h * 0.10, cx + rect.w * 0.40, cy - rect.h * 0.22, intensity, "PRESSURE_EXIT");
+    }
   }
 
   // ── Right-side legend ─────────────────────────────────────────────────────
@@ -7523,6 +7729,48 @@ function makeFtAttackCorridorsPage(
     drawThreatBadge(ctx, cx, cy - 50, lbl, level);
   }
 
+  // ── Directional Pressure Sweeps ───────────────────────────────────────────
+  // Failure zones: attacks entering and collapsing — COLLAPSE sweep.
+  // Scoring zones: successful corridor opening — EXIT sweep.
+  {
+    // Hottest failure zone
+    let bestFailIdx = -1, bestFailScore = 0;
+    for (let i = 0; i < failCounts.length; i++) {
+      const s = computeZoneThreatScore(failCounts[i].count, 0, scoreCounts[i].count);
+      if (s > bestFailScore) { bestFailScore = s; bestFailIdx = i; }
+    }
+    // Hottest scoring zone (distinct from failure zone)
+    let bestScoIdx = -1, bestScoCount = 0;
+    for (let i = 0; i < scoreCounts.length; i++) {
+      if (i === bestFailIdx) continue;
+      if (scoreCounts[i].count > bestScoCount) { bestScoCount = scoreCounts[i].count; bestScoIdx = i; }
+    }
+
+    let sweepsDrawn = 0;
+
+    if (bestFailIdx >= 0 && getThreatLevel(bestFailScore) !== "NONE") {
+      const rect      = zonePixelRect(failCounts[bestFailIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestFailScore / 8, 1.0);
+      // FOR attack entering from left (defensive side), dying in zone
+      drawDirectionalPressureSweep(ctx, cx - rect.w * 0.40, cy - rect.h * 0.22, cx, cy, intensity, "PRESSURE_COLLAPSE");
+      sweepsDrawn++;
+      if (getThreatLevel(bestFailScore) === "CRITICAL" && sweepsDrawn < 3) {
+        drawDirectionalPressureSweep(ctx, cx + rect.w * 0.38, cy + rect.h * 0.22, cx, cy, intensity * 0.65, "PRESSURE_COLLAPSE");
+        sweepsDrawn++;
+      }
+    }
+    if (bestScoIdx >= 0 && bestScoCount >= 2 && sweepsDrawn < 3) {
+      const rect      = zonePixelRect(scoreCounts[bestScoIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestScoCount / 5, 1.0);
+      // Successful corridor: FOR scoring release direction
+      drawDirectionalPressureSweep(ctx, cx - rect.w * 0.20, cy + rect.h * 0.10, cx + rect.w * 0.40, cy - rect.h * 0.22, intensity, "PRESSURE_EXIT");
+    }
+  }
+
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
   let ly = 90;
@@ -7745,6 +7993,35 @@ function makeFtRestartEscapeRoutesPage(
         level === "HIGH"     ? "DANGER RESTART" :
                                "WATCH";
       drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+    }
+  }
+
+  // ── Directional Pressure Sweeps ───────────────────────────────────────────
+  // Drawn BEFORE pattern arrows so arrows render on top (higher precision).
+  // Sweeps: "OPP repeatedly dominating HERE" — territorial pressure current.
+  // Max 1–2 sweeps (page already has TRAP arrows; keep total density low).
+  {
+    let bestCol = -1, bestRow = -1, bestScore = 0;
+    for (let col = 0; col < 3; col++) {
+      for (let row = 0; row < 3; row++) {
+        const s = computeZoneThreatScore(grid[col][row].oppWon, 0, grid[col][row].forWon);
+        if (s > bestScore) { bestScore = s; bestCol = col; bestRow = row; }
+      }
+    }
+    if (bestCol >= 0 && getThreatLevel(bestScore) !== "NONE") {
+      const rect = zonePixelRect({
+        xMin: COL_BOUNDS[bestCol].xMin, xMax: COL_BOUNDS[bestCol].xMax,
+        yMin: ROW_BOUNDS[bestRow].yMin, yMax: ROW_BOUNDS[bestRow].yMax,
+      }, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestScore / 10, 1.0);
+      // OPP flooding this kickout landing zone from midfield direction
+      drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy - rect.h * 0.24, cx - rect.w * 0.08, cy, intensity, "PRESSURE_INWARD");
+      if (getThreatLevel(bestScore) === "CRITICAL") {
+        // Critical trap: converging second sweep from lateral edge
+        drawDirectionalPressureSweep(ctx, cx - rect.w * 0.36, cy + rect.h * 0.24, cx, cy, intensity * 0.60, "PRESSURE_COLLAPSE");
+      }
     }
   }
 
