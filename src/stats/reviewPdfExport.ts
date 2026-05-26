@@ -6231,6 +6231,166 @@ function drawHtCalloutStrip(
   ctx.restore();
 }
 
+// ─── Tactical Threat Engine — Phase 1 helpers ─────────────────────────────────
+//
+// Four shared drawing primitives used by all five pitch-map builders.
+// All functions take an explicit `ctx` parameter — no closures — so the
+// TypeScript build-time analyser sees a non-null CanvasRenderingContext2D.
+//
+// Threat formula (per zone):
+//   score = (3 × primary) + (2 × secondary) − mitigating
+//   CRITICAL ≥ 8  / HIGH ≥ 5  / ELEVATED ≥ 3  / NONE < 3
+//
+// Product voice: SHOW the threat. LABEL the pattern. STOP.
+// No prescriptive coaching advice. Observational truth only.
+
+/**
+ * Compute a raw threat score for a pitch zone.
+ *   primary    — highest-weight danger signal (3×): OPP scores, OPP kickout wins
+ *   secondary  — medium-weight danger signal  (2×): FOR losses, FOR wides
+ *   mitigating — FOR success in same zone    (1×): reduces raw score
+ */
+function computeZoneThreatScore(
+  primary: number,
+  secondary: number,
+  mitigating: number,
+): number {
+  return Math.max(0, 3 * primary + 2 * secondary - mitigating);
+}
+
+type ThreatLevel = "CRITICAL" | "HIGH" | "ELEVATED" | "NONE";
+
+function getThreatLevel(score: number): ThreatLevel {
+  if (score >= 8) return "CRITICAL";
+  if (score >= 5) return "HIGH";
+  if (score >= 3) return "ELEVATED";
+  return "NONE";
+}
+
+/**
+ * Draw concentric dashed danger rings centred on a zone.
+ *   CRITICAL → 3 rings (red)
+ *   HIGH     → 2 rings (orange)
+ *   ELEVATED → 1 ring  (yellow)
+ * Semi-transparent (α=0.55) so existing fills and markers remain visible.
+ */
+function drawThreatRings(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  level: ThreatLevel,
+): void {
+  if (level === "NONE") return;
+  const radii = level === "CRITICAL" ? [30, 48, 66] : level === "HIGH" ? [30, 48] : [30];
+  const rgb   = level === "CRITICAL" ? "239,68,68" : level === "HIGH" ? "249,115,22" : "250,204,21";
+  ctx.save();
+  ctx.setLineDash([8, 6]);
+  ctx.lineWidth = 2.5;
+  for (const r of radii) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${rgb},0.55)`;
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+/**
+ * Draw a threat badge (pill chip) centred at (cx, cy).
+ * Position cy ~50 px above zone centre so badge floats inside the zone.
+ * label: short UPPER CASE, max ~16 chars for sideline legibility.
+ */
+function drawThreatBadge(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  label: string,
+  level: ThreatLevel,
+): void {
+  if (level === "NONE") return;
+  ctx.save();
+  ctx.font         = "bold 18px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "center";
+  const tw = ctx.measureText(label).width;
+  const pw = tw + 24;
+  const ph = 30;
+  const px = cx - pw / 2;
+  const py = cy - ph / 2;
+  const r  = 8;
+  const rgb       = level === "CRITICAL" ? "239,68,68" : level === "HIGH" ? "249,115,22" : "250,204,21";
+  const textColor = level === "ELEVATED" ? "#0d1117" : "#ffffff";
+  // Rounded-rect pill
+  ctx.fillStyle = `rgba(${rgb},0.88)`;
+  ctx.beginPath();
+  ctx.moveTo(px + r, py);
+  ctx.lineTo(px + pw - r, py);
+  ctx.quadraticCurveTo(px + pw, py, px + pw, py + r);
+  ctx.lineTo(px + pw, py + ph - r);
+  ctx.quadraticCurveTo(px + pw, py + ph, px + pw - r, py + ph);
+  ctx.lineTo(px + r, py + ph);
+  ctx.quadraticCurveTo(px, py + ph, px, py + ph - r);
+  ctx.lineTo(px, py + r);
+  ctx.quadraticCurveTo(px, py, px + r, py);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = textColor;
+  ctx.fillText(label, cx, cy);
+  ctx.restore();
+}
+
+/**
+ * Draw a pattern arrow from zone centre (x1,y1) to zone centre (x2,y2).
+ * Called ONLY with explicit chain-analysis evidence (≥2 occurrences).
+ * Quadratic curve prevents visual overlap with existing fills.
+ *   TRAP        — red   — OPP won kickout here → OPP scored there
+ *   ENTRY_SCORE — green — FOR entered here → FOR scored there
+ *   ENTRY_FAIL  — amber — FOR entered here → FOR failed there
+ */
+function drawPatternArrow(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  kind: "TRAP" | "ENTRY_SCORE" | "ENTRY_FAIL",
+): void {
+  const color = kind === "TRAP" ? "#ef4444" : kind === "ENTRY_SCORE" ? "#22c55e" : "#f59e0b";
+  const dx    = x2 - x1;
+  const dy    = y2 - y1;
+  const len   = Math.sqrt(dx * dx + dy * dy) || 1;
+  const mx    = (x1 + x2) / 2;
+  const my    = (y1 + y2) / 2;
+  // Perpendicular control-point offset → curved arc, not a straight overlay
+  const cpx = mx - (dy / len) * 60;
+  const cpy = my + (dx / len) * 60;
+  ctx.save();
+  ctx.globalAlpha = 0.82;
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = 4;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.quadraticCurveTo(cpx, cpy, x2, y2);
+  ctx.stroke();
+  // Arrowhead: tangent direction at destination
+  const tx = x2 - cpx;
+  const ty = y2 - cpy;
+  const tl = Math.sqrt(tx * tx + ty * ty) || 1;
+  const ax = (tx / tl) * 14;
+  const ay = (ty / tl) * 14;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - ax - ay * 0.4, y2 - ay + ax * 0.4);
+  ctx.lineTo(x2 - ax + ay * 0.4, y2 - ay - ax * 0.4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1.0;
+  ctx.restore();
+}
+
 // ─── HT Page 1: Pressure & Damage Map ────────────────────────────────────────
 
 /**
@@ -6335,6 +6495,26 @@ function makeHtPressureDamageMapPage(
     ctx.fillText(label, midX, midY);
   }
   ctx.restore();
+
+  // ── Tactical Threat Overlays ──────────────────────────────────────────────
+  // Rings + badges: primary=OPP scores (3×), secondary=FOR losses (2×)
+  // Observational labels only — no prescriptions.
+  for (let i = 0; i < oppScoreCounts.length; i++) {
+    const oZone = oppScoreCounts[i];
+    const fZone = forLossCounts[i];
+    const score = computeZoneThreatScore(oZone.count, fZone.count, 0);
+    const level = getThreatLevel(score);
+    if (level === "NONE") continue;
+    const rect = zonePixelRect(oZone.bounds, inner);
+    const cx   = rect.x + rect.w / 2;
+    const cy   = rect.y + rect.h / 2;
+    drawThreatRings(ctx, cx, cy, level);
+    const lbl =
+      level === "CRITICAL" ? "DANGER ZONE" :
+      level === "HIGH"     ? "SCORING THREAT" :
+                             "WATCH";
+    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
@@ -6476,6 +6656,26 @@ function makeHtKickoutVisionPage(
     ctx.fillText(label, midX, midY);
   }
   ctx.restore();
+
+  // ── Tactical Threat Overlays ──────────────────────────────────────────────
+  // primary=OPP kickout wins (3×), mitigating=FOR kickout wins (1×)
+  // OPP-dominant zones surface as danger; FOR dominance reduces the signal.
+  for (let i = 0; i < oppWonCounts.length; i++) {
+    const oZone = oppWonCounts[i];
+    const fZone = forWonCounts[i];
+    const score = computeZoneThreatScore(oZone.count, 0, fZone.count);
+    const level = getThreatLevel(score);
+    if (level === "NONE") continue;
+    const rect = zonePixelRect(oZone.bounds, inner);
+    const cx   = rect.x + rect.w / 2;
+    const cy   = rect.y + rect.h / 2;
+    drawThreatRings(ctx, cx, cy, level);
+    const lbl =
+      level === "CRITICAL" ? "KICKOUT TRAP" :
+      level === "HIGH"     ? "CONCESSION ZONE" :
+                             "WATCH";
+    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
@@ -6626,6 +6826,26 @@ function makeHtAttackShotVisionPage(
     ctx.fillText(label, midX, midY);
   }
   ctx.restore();
+
+  // ── Tactical Threat Overlays (wasted attack zones) ───────────────────────
+  // primary=wides (3×), mitigating=scores in same zone (1×)
+  // Zones where FOR keeps missing while scoring nothing are the highest threat.
+  for (let i = 0; i < wideCounts.length; i++) {
+    const wZone = wideCounts[i];
+    const sZone = scoreCounts[i];
+    const score = computeZoneThreatScore(wZone.count, 0, sZone.count);
+    const level = getThreatLevel(score);
+    if (level === "NONE") continue;
+    const rect = zonePixelRect(wZone.bounds, inner);
+    const cx   = rect.x + rect.w / 2;
+    const cy   = rect.y + rect.h / 2;
+    drawThreatRings(ctx, cx, cy, level);
+    const lbl =
+      level === "CRITICAL" ? "WIDES ALERT" :
+      level === "HIGH"     ? "WASTAGE ZONE" :
+                             "WATCH";
+    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
@@ -7283,6 +7503,26 @@ function makeFtAttackCorridorsPage(
   }
   ctx.restore();
 
+  // ── Tactical Threat Overlays (attack failure zones) ──────────────────────
+  // primary=failures/wides/losses (3×), mitigating=scores in same zone (1×)
+  // Zones where attacks consistently die but never convert = highest threat.
+  for (let i = 0; i < failCounts.length; i++) {
+    const fZone = failCounts[i];
+    const sZone = scoreCounts[i];
+    const score = computeZoneThreatScore(fZone.count, 0, sZone.count);
+    const level = getThreatLevel(score);
+    if (level === "NONE") continue;
+    const rect = zonePixelRect(fZone.bounds, inner);
+    const cx   = rect.x + rect.w / 2;
+    const cy   = rect.y + rect.h / 2;
+    drawThreatRings(ctx, cx, cy, level);
+    const lbl =
+      level === "CRITICAL" ? "ATTACK STALLING" :
+      level === "HIGH"     ? "FAILURE ZONE" :
+                             "WATCH";
+    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
+
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
   let ly = 90;
@@ -7482,6 +7722,84 @@ function makeFtRestartEscapeRoutesPage(
     }
   }
   ctx.restore();
+
+  // ── Tactical Threat Overlays + Pattern Arrows ─────────────────────────────
+  // Threat rings/badges on OPP-dominant zones.
+  // primary=OPP kickout wins (3×), mitigating=FOR kickout wins (1×)
+  for (let col = 0; col < 3; col++) {
+    for (let row = 0; row < 3; row++) {
+      const cell  = grid[col][row];
+      const score = computeZoneThreatScore(cell.oppWon, 0, cell.forWon);
+      const level = getThreatLevel(score);
+      if (level === "NONE") continue;
+      const bounds = {
+        xMin: COL_BOUNDS[col].xMin, xMax: COL_BOUNDS[col].xMax,
+        yMin: ROW_BOUNDS[row].yMin, yMax: ROW_BOUNDS[row].yMax,
+      };
+      const rect = zonePixelRect(bounds, inner);
+      const cx   = rect.x + rect.w / 2;
+      const cy   = rect.y + rect.h / 2;
+      drawThreatRings(ctx, cx, cy, level);
+      const lbl =
+        level === "CRITICAL" ? "KICKOUT TRAP" :
+        level === "HIGH"     ? "DANGER RESTART" :
+                               "WATCH";
+      drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+    }
+  }
+
+  // Pattern arrows: TRAP (OPP wins kickout → OPP scores next).
+  // Source = kickout landing zone; destination = OPP's next score zone.
+  // Uses explicit KickoutOutcome chain data — no spatial inference.
+  // Threshold: ≥2 occurrences per zone pair; max 3 arrows.
+  {
+    const trapCounts = new Map<string, {
+      srcCol: number; srcRow: number; dstCol: number; dstRow: number; count: number;
+    }>();
+
+    for (const outcome of analysis.kickouts.outcomes) {
+      if (outcome.winningSide !== "OPP") continue;
+      if (outcome.nextScore === null) continue;
+      const kNx    = outcome.kickoutEvent.nx;
+      const kNy    = outcome.kickoutEvent.ny;
+      const sNx    = outcome.nextScore.nx;
+      const sNy    = outcome.nextScore.ny;
+      const srcCol = kNx < 0.333 ? 0 : kNx < 0.667 ? 1 : 2;
+      const srcRow = kNy < 0.333 ? 0 : kNy < 0.667 ? 1 : 2;
+      const dstCol = sNx < 0.333 ? 0 : sNx < 0.667 ? 1 : 2;
+      const dstRow = sNy < 0.333 ? 0 : sNy < 0.667 ? 1 : 2;
+      if (srcCol === dstCol && srcRow === dstRow) continue;   // same zone — no arrow
+      const key = `${srcCol},${srcRow}→${dstCol},${dstRow}`;
+      const existing = trapCounts.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        trapCounts.set(key, { srcCol, srcRow, dstCol, dstRow, count: 1 });
+      }
+    }
+
+    const arrowList = [...trapCounts.values()]
+      .filter((a) => a.count >= 2)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+
+    for (const arrow of arrowList) {
+      const srcRect = zonePixelRect({
+        xMin: COL_BOUNDS[arrow.srcCol].xMin, xMax: COL_BOUNDS[arrow.srcCol].xMax,
+        yMin: ROW_BOUNDS[arrow.srcRow].yMin, yMax: ROW_BOUNDS[arrow.srcRow].yMax,
+      }, inner);
+      const dstRect = zonePixelRect({
+        xMin: COL_BOUNDS[arrow.dstCol].xMin, xMax: COL_BOUNDS[arrow.dstCol].xMax,
+        yMin: ROW_BOUNDS[arrow.dstRow].yMin, yMax: ROW_BOUNDS[arrow.dstRow].yMax,
+      }, inner);
+      drawPatternArrow(
+        ctx,
+        srcRect.x + srcRect.w / 2, srcRect.y + srcRect.h / 2,
+        dstRect.x + dstRect.w / 2, dstRect.y + dstRect.h / 2,
+        "TRAP",
+      );
+    }
+  }
 
   // ── Right-side analysis panel ─────────────────────────────────────────────
   const lx = CANVAS_W - 158;
