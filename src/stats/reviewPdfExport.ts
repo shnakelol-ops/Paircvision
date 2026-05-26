@@ -6261,7 +6261,7 @@ function makeHtPressureDamageMapPage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Pressure & Damage Map", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Pressure & Damage", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Event subsets ─────────────────────────────────────────────────────────
   const oppScoreEvts = events.filter(
@@ -6550,7 +6550,7 @@ function makeHtAttackShotVisionPage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Attack Shape & Shot Vision", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Attack Shape", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Event subsets ─────────────────────────────────────────────────────────
   const forScoreEvts = events.filter(
@@ -6665,25 +6665,272 @@ function makeHtAttackShotVisionPage(
   return canvas;
 }
 
-// ─── HT Page 5: Coach Intelligence Card ──────────────────────────────────────
+// ─── HT Page 2: Game Flow ─────────────────────────────────────────────────────
 
 /**
- * Coach Intelligence Card — maximum 3 tactical truths for the 90-second team talk.
+ * Game Flow — segment-by-segment control dominance.
  *
- * Calls deriveReviewPrompts() on the H1 chain analysis (already scoped to first half).
- * Extracts the factual statement from each prompt (text before ". Worth reviewing").
- * Renders up to 3 prompts as large, high-contrast cards with category colour chips.
+ * Large horizontal flow bar divided into match segments (3 per first half, ~10 min each).
+ * Each segment block is coloured:
+ *   GREEN  — FOR team controlled (positive score + kickout differential)
+ *   RED    — OPP team controlled
+ *   AMBER  — contested (close differential)
+ *
+ * Under each block: segment time label + up to 3 short tactical bullet causes.
+ * Answers: "When did we lose/gain control, and why?"
+ *
+ * Data: pre-filtered H1 events (scores, kickouts, turnovers per segment).
+ */
+function makeHtGameFlowPage(
+  events: readonly PdfExportEvent[],
+  _analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Game Flow", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Gather unique segments present in events ──────────────────────────────
+  const segNums = Array.from(
+    new Set(
+      events
+        .map((e) => e.segment)
+        .filter((s): s is MatchEventSegment => s != null),
+    ),
+  ).sort((a, b) => a - b);
+
+  // Fallback: no segment data
+  if (segNums.length === 0) {
+    ctx.fillStyle    = "#475569";
+    ctx.font         = "20px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "center";
+    ctx.fillText("No segment data available for this half.", CANVAS_W / 2, CANVAS_H / 2);
+    drawEventCountFooter(ctx, events.length);
+    return canvas;
+  }
+
+  // ── Segment time label helper (~10 min bands, H1 uses segments 1–3) ───────
+  function segLabel(s: MatchEventSegment): string {
+    const start = (s - 1) * 10;
+    const end   = s * 10;
+    return `${start}–${end}'`;
+  }
+
+  // ── Per-segment data computation ──────────────────────────────────────────
+  type SegControl = "FOR" | "OPP" | "CONTESTED";
+  type SegData = {
+    seg: MatchEventSegment;
+    label: string;
+    forScore: number;
+    oppScore: number;
+    kickoutBalance: number;
+    turnoverBalance: number;
+    controlScore: number;
+    status: SegControl;
+    bullets: string[];
+  };
+
+  const segDataList: SegData[] = segNums.map((seg) => {
+    const segEvts    = events.filter((e) => e.segment === seg);
+    const forSEvts   = segEvts.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind));
+    const oppSEvts   = segEvts.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind));
+    const forScore   = scoreFromEvents(forSEvts).total;
+    const oppScore   = scoreFromEvents(oppSEvts).total;
+    const koWon      = segEvts.filter((e) => e.kind === "KICKOUT_WON").length;
+    const koConceded = segEvts.filter((e) => e.kind === "KICKOUT_CONCEDED").length;
+    const toWon      = segEvts.filter((e) => e.kind === "TURNOVER_WON").length;
+    const toLost     = segEvts.filter((e) => e.kind === "TURNOVER_LOST").length;
+
+    const kickoutBalance  = koWon - koConceded;
+    const turnoverBalance = toWon - toLost;
+
+    // Composite control score: scoring weighted 2×, kickout balance 1×, turnover 0.5×
+    const controlScore =
+      (forScore - oppScore) * 2 + kickoutBalance + Math.round(turnoverBalance * 0.5);
+
+    const status: SegControl =
+      controlScore >= 2 ? "FOR" : controlScore <= -2 ? "OPP" : "CONTESTED";
+
+    // Tactical bullet causes (up to 3, highest impact first)
+    const bullets: string[] = [];
+    const scoreDiff = forScore - oppScore;
+    if (scoreDiff > 0)           bullets.push(`• Scored ${forScore}${oppScore === 0 ? ", nil conceded" : ` — opp ${oppScore}`}`);
+    else if (scoreDiff < 0)      bullets.push(`• Conceded ${oppScore}${forScore === 0 ? ", scored nil" : ` — scored ${forScore}`}`);
+    if (kickoutBalance > 0)      bullets.push(`• Kickout dominance (+${kickoutBalance})`);
+    else if (kickoutBalance < 0) bullets.push(`• Kickout losses (${kickoutBalance})`);
+    if (turnoverBalance > 1)     bullets.push(`• Won possession (+${turnoverBalance} turnovers)`);
+    else if (turnoverBalance < -1) bullets.push(`• Turnover vulnerability (${turnoverBalance})`);
+    if (bullets.length === 0)    bullets.push("• Even — no clear advantage");
+
+    return {
+      seg, label: segLabel(seg),
+      forScore, oppScore,
+      kickoutBalance, turnoverBalance,
+      controlScore, status,
+      bullets: bullets.slice(0, 3),
+    };
+  });
+
+  // ── Layout constants ──────────────────────────────────────────────────────
+  const FLOW_X  = 80;
+  const FLOW_Y  = 130;
+  const FLOW_W  = CANVAS_W - 160;  // 1760
+  const FLOW_H  = 230;
+  const N       = segDataList.length;
+  const SEG_GAP = 8;
+  const segW    = Math.floor((FLOW_W - SEG_GAP * (N - 1)) / N);
+
+  // Sub-title context line
+  ctx.fillStyle    = "#64748b";
+  ctx.font         = "16px sans-serif";
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign    = "left";
+  ctx.fillText("SEGMENT CONTROL FLOW  ·  Who controlled each phase and why?", FLOW_X, FLOW_Y - 12);
+
+  // ── Draw dominance flow bar ───────────────────────────────────────────────
+  segDataList.forEach((sd, i) => {
+    const bx = FLOW_X + i * (segW + SEG_GAP);
+    const by = FLOW_Y;
+
+    const barColor =
+      sd.status === "FOR"  ? "#22c55e" :
+      sd.status === "OPP"  ? "#ef4444" :
+                             "#f59e0b";
+
+    ctx.globalAlpha = 0.88;
+    ctx.fillStyle   = barColor;
+    ctx.fillRect(bx, by, segW, FLOW_H);
+    ctx.globalAlpha = 1.0;
+
+    // Subtle inner border
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth   = 1;
+    ctx.strokeRect(bx, by, segW, FLOW_H);
+
+    // Status label (top of bar, subtle dark overlay)
+    ctx.font         = "bold 16px sans-serif";
+    ctx.fillStyle    = "rgba(0,0,0,0.50)";
+    ctx.textBaseline = "top";
+    ctx.textAlign    = "center";
+    ctx.fillText(sd.status, bx + segW / 2, by + 10);
+
+    // Score differential — large, centred
+    const diff      = sd.forScore - sd.oppScore;
+    const diffLabel = diff > 0 ? `+${diff}` : String(diff);
+    ctx.font         = "bold 56px sans-serif";
+    ctx.fillStyle    = "rgba(255,255,255,0.92)";
+    ctx.textBaseline = "middle";
+    ctx.fillText(diffLabel, bx + segW / 2, by + FLOW_H / 2 + 6);
+
+    // Time label bottom of bar
+    ctx.font      = "bold 15px sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.68)";
+    ctx.fillText(sd.label, bx + segW / 2, by + FLOW_H - 14);
+  });
+
+  // ── Bullet analysis blocks below flow bar ─────────────────────────────────
+  const BULLET_TOP = FLOW_Y + FLOW_H + 38;
+
+  segDataList.forEach((sd, i) => {
+    const bx = FLOW_X + i * (segW + SEG_GAP);
+
+    // Segment chip header
+    ctx.fillStyle    = "rgba(255,255,255,0.06)";
+    ctx.fillRect(bx, BULLET_TOP - 6, segW, 36);
+    ctx.fillStyle    = "#94a3b8";
+    ctx.font         = "bold 16px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "center";
+    ctx.fillText(sd.label, bx + segW / 2, BULLET_TOP + 12);
+
+    // Bullet items
+    sd.bullets.forEach((bullet, bi) => {
+      const by = BULLET_TOP + 50 + bi * 38;
+      ctx.font         = "18px sans-serif";
+      ctx.fillStyle    = "#e2e8f0";
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "left";
+      const MAX_TW = segW - 20;
+      let display  = bullet;
+      if (ctx.measureText(display).width > MAX_TW) {
+        while (display.length > 0 && ctx.measureText(display + "…").width > MAX_TW) {
+          display = display.slice(0, -1);
+        }
+        display += "…";
+      }
+      ctx.fillText(display, bx + 10, by);
+    });
+  });
+
+  // ── Colour legend ─────────────────────────────────────────────────────────
+  const LEG_Y = BULLET_TOP + 50 + 3 * 38 + 30;
+  ctx.save();
+  const legendItems: [string, string][] = [
+    ["#22c55e", "FOR control"],
+    ["#ef4444", "OPP control"],
+    ["#f59e0b", "Contested"],
+  ];
+  let lx = FLOW_X;
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  for (const [color, label] of legendItems) {
+    ctx.globalAlpha = 0.88;
+    ctx.fillStyle   = color;
+    ctx.fillRect(lx, LEG_Y - 9, 18, 18);
+    ctx.globalAlpha = 1.0;
+    ctx.fillStyle = "#64748b";
+    ctx.font      = "14px sans-serif";
+    ctx.fillText(label, lx + 26, LEG_Y);
+    lx += 140;
+  }
+  ctx.restore();
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  const forCtrl      = segDataList.filter((s) => s.status === "FOR").length;
+  const oppCtrl      = segDataList.filter((s) => s.status === "OPP").length;
+  const contestedCt  = segDataList.filter((s) => s.status === "CONTESTED").length;
+  const facts: string[] = [];
+  if (forCtrl > 0)     facts.push(`${forCtrl} segment${forCtrl !== 1 ? "s" : ""} in control`);
+  if (oppCtrl > 0)     facts.push(`${oppCtrl} segment${oppCtrl !== 1 ? "s" : ""} conceded`);
+  if (contestedCt > 0) facts.push(`${contestedCt} contested segment${contestedCt !== 1 ? "s" : ""}`);
+  if (facts.length === 0) facts.push("No segment data available.");
+
+  drawHtCalloutStrip(ctx, facts, ["#22c55e", "#ef4444", "#f59e0b"]);
+  drawEventCountFooter(ctx, events.length);
+  return canvas;
+}
+
+// ─── HT Page 5: Game Flow Factors ─────────────────────────────────────────────
+
+/**
+ * Game Flow Factors — two-column "Working For Us / Working Against Us" debrief.
+ *
+ * Left column (green header): up to 3 positive tactical facts.
+ * Right column (red header): up to 3 negative tactical facts.
  *
  * Card layout (per card):
- *   6 px left accent bar (category colour)
- *   Category chip (colour-coded badge, top-left of card)
- *   Factual statement (22 px bold, word-wrapped to 2 lines if needed)
- *   Evidence tag (12 px, right-aligned, dimmed, bottom-right of card)
+ *   6 px left accent bar (green or red)
+ *   Bold 22 px headline — the fact
+ *   16 px evidence subline — supporting data
  *
- * Empty state: "Not enough tactical data to identify patterns in the first half."
+ * Fact priority order:
+ *   FOR: kickout control → shot efficiency → turnovers→scores → score lead → scoring run
+ *   AGAINST: trailing → kickout deficit → turnovers allowed → wides → OPP scoring run
+ *
  * No AI language. No prescriptions. Facts only.
  */
-function makeCoachIntelligenceCardPage(
+function makeHtGameFlowFactorsPage(
+  events: readonly PdfExportEvent[],
   analysis: ChainAnalysis<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
@@ -6698,124 +6945,198 @@ function makeCoachIntelligenceCardPage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Coach Intelligence", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Game Flow Factors", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
-  const allPrompts = deriveReviewPrompts(analysis, homeTeam, awayTeam);
-  const prompts    = allPrompts.slice(0, 3);
+  // ── Derive raw data ────────────────────────────────────────────────────────
+  const forShotEvts  = events.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind));
+  const forScoreEvts = events.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind));
+  const forWideEvts  = events.filter((e) => e.teamSide === "FOR" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"));
+  const oppScoreEvts = events.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind));
 
-  // ── Empty state ────────────────────────────────────────────────────────────
-  if (prompts.length === 0) {
-    ctx.fillStyle    = "#475569";
-    ctx.font         = "20px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign    = "center";
-    ctx.fillText(
-      "Not enough tactical data to identify patterns in the first half.",
-      CANVAS_W / 2,
-      CANVAS_H / 2,
-    );
-    drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
-    return canvas;
-  }
+  const forScoreTotal = scoreFromEvents(forScoreEvts).total;
+  const oppScoreTotal = scoreFromEvents(oppScoreEvts).total;
+  const scoreDiff     = forScoreTotal - oppScoreTotal;
+  const shotTotal     = forShotEvts.length;
+  const shotEff       = shotTotal > 0 ? Math.round((forScoreEvts.length / shotTotal) * 100) : 0;
+  const wideCount     = forWideEvts.length;
 
-  // ── Category colour helpers ────────────────────────────────────────────────
-  function catColor(cat: ReviewPromptCategory): string {
-    switch (cat) {
-      case "KICKOUT":  return "#22d3ee";
-      case "TURNOVER": return "#a78bfa";
-      case "MOMENTUM": return "#fbbf24";
-      case "CHAIN":    return "#34d399";
-      case "GENERAL":  return "#94a3b8";
+  const ko   = analysis.kickouts;
+  const tos  = analysis.turnovers;
+  const runs = analysis.scoringRuns;
+
+  // ── Build FOR factors (what is working for us) ─────────────────────────────
+  type FactCard = { headline: string; evidence: string };
+
+  const forFacts: FactCard[] = [];
+  if (ko.won > ko.lost)
+    forFacts.push({
+      headline: `Kickout control: ${ko.won} of ${ko.total} won`,
+      evidence: `${ko.won}W / ${ko.lost}L — dominant on restarts`,
+    });
+  if (shotEff >= 50 && shotTotal >= 3)
+    forFacts.push({
+      headline: `Shot efficiency: ${forScoreEvts.length} / ${shotTotal} (${shotEff}%)`,
+      evidence: `${shotTotal - forScoreEvts.length} miss${(shotTotal - forScoreEvts.length) !== 1 ? "es" : ""} in the half`,
+    });
+  if (tos.wonToScore > 0)
+    forFacts.push({
+      headline: `${tos.wonToScore} turnover→score conversion${tos.wonToScore !== 1 ? "s" : ""}`,
+      evidence: `from ${tos.won} possession${tos.won !== 1 ? "s" : ""} won`,
+    });
+  if (scoreDiff > 0)
+    forFacts.push({
+      headline: `Leading by ${scoreDiff} point${scoreDiff !== 1 ? "s" : ""}`,
+      evidence: `${fmtScore(scoreFromEvents(forScoreEvts))} vs ${fmtScore(scoreFromEvents(oppScoreEvts))}`,
+    });
+  if ((runs.maxConsecutiveFor ?? 0) >= 3)
+    forFacts.push({
+      headline: `${runs.maxConsecutiveFor}-score run (best FOR run)`,
+      evidence: "best scoring sequence this half",
+    });
+
+  // ── Build AGAINST factors (what is working against us) ────────────────────
+  const againstFacts: FactCard[] = [];
+  if (scoreDiff < 0)
+    againstFacts.push({
+      headline: `Trailing by ${Math.abs(scoreDiff)} point${Math.abs(scoreDiff) !== 1 ? "s" : ""}`,
+      evidence: `${fmtScore(scoreFromEvents(forScoreEvts))} vs ${fmtScore(scoreFromEvents(oppScoreEvts))}`,
+    });
+  if (ko.lost > ko.won)
+    againstFacts.push({
+      headline: `Kickout deficit: ${ko.lost} of ${ko.total} lost`,
+      evidence: `${ko.won}W / ${ko.lost}L — restarts conceded`,
+    });
+  if (tos.lostAllowedScore > 0)
+    againstFacts.push({
+      headline: `${tos.lostAllowedScore} turnover→score against`,
+      evidence: `from ${tos.lost} possession${tos.lost !== 1 ? "s" : ""} lost`,
+    });
+  if (wideCount >= 2)
+    againstFacts.push({
+      headline: `${wideCount} wide${wideCount !== 1 ? "s" : ""} / miss${wideCount !== 1 ? "es" : ""} in the half`,
+      evidence: `${wideCount} scoring chance${wideCount !== 1 ? "s" : ""} wasted`,
+    });
+  if ((runs.maxConsecutiveOpp ?? 0) >= 3)
+    againstFacts.push({
+      headline: `OPP ${runs.maxConsecutiveOpp}-score run this half`,
+      evidence: "opposition best scoring sequence",
+    });
+
+  // ── Layout ─────────────────────────────────────────────────────────────────
+  const COL_W    = (CANVAS_W - 144) / 2;  // ~888 px each
+  const COL_L_X  = 48;
+  const COL_R_X  = COL_L_X + COL_W + 48;
+  const HDR_Y    = 100;
+  const CARD_TOP = 160;
+  const CARD_H   = 185;
+  const CARD_GAP = 18;
+  const ACCENT_W = 6;
+
+  // ── Column headers ─────────────────────────────────────────────────────────
+  // "Working For Us" — green
+  ctx.fillStyle    = "rgba(34,197,94,0.12)";
+  ctx.fillRect(COL_L_X, HDR_Y - 10, COL_W, 52);
+  ctx.fillStyle    = "#22c55e";
+  ctx.fillRect(COL_L_X, HDR_Y - 10, ACCENT_W, 52);
+  ctx.font         = "bold 24px sans-serif";
+  ctx.fillStyle    = "#22c55e";
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.fillText("Working For Us ▲", COL_L_X + 18, HDR_Y + 16);
+
+  // Separator line
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth   = 2;
+  ctx.beginPath();
+  ctx.moveTo(COL_L_X + COL_W + 24, HDR_Y - 10);
+  ctx.lineTo(COL_L_X + COL_W + 24, CARD_TOP + 3 * (CARD_H + CARD_GAP) + 10);
+  ctx.stroke();
+
+  // "Working Against Us" — red
+  ctx.fillStyle    = "rgba(239,68,68,0.12)";
+  ctx.fillRect(COL_R_X, HDR_Y - 10, COL_W, 52);
+  ctx.fillStyle    = "#ef4444";
+  ctx.fillRect(COL_R_X, HDR_Y - 10, ACCENT_W, 52);
+  ctx.font         = "bold 24px sans-serif";
+  ctx.fillStyle    = "#ef4444";
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.fillText("Working Against Us ▼", COL_R_X + 18, HDR_Y + 16);
+
+  // ── Render fact cards helper ───────────────────────────────────────────────
+  // ctx passed explicitly so the build-time type-checker sees it as non-null.
+  function renderFactCards(
+    c: CanvasRenderingContext2D,
+    facts: FactCard[],
+    colX: number,
+    accentColor: string,
+  ): void {
+    const toRender = facts.slice(0, 3);
+    if (toRender.length === 0) {
+      c.fillStyle    = "#334155";
+      c.font         = "18px sans-serif";
+      c.textBaseline = "middle";
+      c.textAlign    = "left";
+      c.fillText("No significant patterns recorded.", colX + 18, CARD_TOP + CARD_H / 2);
+      return;
     }
-  }
-  function catBg(cat: ReviewPromptCategory): string {
-    switch (cat) {
-      case "KICKOUT":  return "rgba(34,211,238,0.13)";
-      case "TURNOVER": return "rgba(167,139,250,0.13)";
-      case "MOMENTUM": return "rgba(251,191,36,0.13)";
-      case "CHAIN":    return "rgba(52,211,153,0.13)";
-      case "GENERAL":  return "rgba(148,163,184,0.13)";
-    }
-  }
+    toRender.forEach((fact, i) => {
+      const cardY = CARD_TOP + i * (CARD_H + CARD_GAP);
 
-  // ── Layout constants ───────────────────────────────────────────────────────
-  const CARD_X      = 48;
-  const CARD_W      = CANVAS_W - 96;  // 1824 px
-  const CARD_H      = 210;
-  const CARD_GAP    = 30;
-  const CARDS_START = 106;
+      // Card background
+      c.fillStyle = "rgba(255,255,255,0.04)";
+      c.fillRect(colX + ACCENT_W, cardY, COL_W - ACCENT_W, CARD_H);
 
-  // ── Render cards ───────────────────────────────────────────────────────────
-  prompts.forEach((p, i) => {
-    const cardY = CARDS_START + i * (CARD_H + CARD_GAP);
-    const color = catColor(p.category);
-    const bg    = catBg(p.category);
+      // Accent bar
+      c.fillStyle = accentColor;
+      c.fillRect(colX, cardY, ACCENT_W, CARD_H);
 
-    // Card background panel
-    ctx.fillStyle = "rgba(255,255,255,0.035)";
-    ctx.fillRect(CARD_X + 6, cardY, CARD_W - 6, CARD_H);
-
-    // Left accent bar (6 px wide, full card height)
-    ctx.fillStyle = color;
-    ctx.fillRect(CARD_X, cardY, 6, CARD_H);
-
-    // Category chip
-    ctx.font = "bold 13px sans-serif";
-    const chipLabel = p.category;
-    const chipTW    = ctx.measureText(chipLabel).width;
-    const chipW     = chipTW + 24;
-    const chipY     = cardY + 34;
-    ctx.fillStyle   = bg;
-    ctx.fillRect(CARD_X + 20, chipY - 14, chipW, 28);
-    ctx.fillStyle    = color;
-    ctx.textBaseline = "middle";
-    ctx.textAlign    = "left";
-    ctx.fillText(chipLabel, CARD_X + 32, chipY);
-
-    // Extract factual statement (text before ". Worth reviewing")
-    const worthIdx = p.text.indexOf(". Worth reviewing");
-    const factText = worthIdx > -1 ? p.text.substring(0, worthIdx) : p.text;
-
-    // Render factual statement — word-wrap to two lines if too wide
-    const TEXT_X = CARD_X + 20;
-    const TEXT_Y = cardY + 88;
-    const MAX_TW = CARD_W - 56;
-    ctx.font         = "bold 22px sans-serif";
-    ctx.fillStyle    = "#f1f5f9";
-    ctx.textBaseline = "alphabetic";
-    ctx.textAlign    = "left";
-
-    if (ctx.measureText(factText).width <= MAX_TW) {
-      ctx.fillText(factText, TEXT_X, TEXT_Y);
-    } else {
-      // Split at the word boundary closest to 55% of total width
-      const words = factText.split(" ");
-      let line1   = "";
-      let line2   = factText;
-      for (let w = 1; w <= words.length; w++) {
-        const candidate = words.slice(0, w).join(" ");
-        if (ctx.measureText(candidate).width > MAX_TW * 0.55) {
-          line1 = words.slice(0, w - 1).join(" ");
-          line2 = words.slice(w - 1).join(" ");
-          break;
+      // Headline — 22px bold, word-wrap to 2 lines
+      const HEADLINE_X  = colX + ACCENT_W + 18;
+      const HEADLINE_Y  = cardY + 60;
+      const MAX_TW      = COL_W - ACCENT_W - 36;
+      c.font          = "bold 22px sans-serif";
+      c.fillStyle     = "#f1f5f9";
+      c.textBaseline  = "alphabetic";
+      c.textAlign     = "left";
+      const hl          = fact.headline;
+      if (c.measureText(hl).width <= MAX_TW) {
+        c.fillText(hl, HEADLINE_X, HEADLINE_Y);
+      } else {
+        const words = hl.split(" ");
+        let line1 = "";
+        let line2 = hl;
+        for (let w = 1; w <= words.length; w++) {
+          const candidate = words.slice(0, w).join(" ");
+          if (c.measureText(candidate).width > MAX_TW * 0.55) {
+            line1 = words.slice(0, w - 1).join(" ");
+            line2 = words.slice(w - 1).join(" ");
+            break;
+          }
+          if (w === words.length) { line1 = candidate; line2 = ""; }
         }
-        if (w === words.length) {
-          line1 = candidate;
-          line2 = "";
-        }
+        c.fillText(line1 || hl, HEADLINE_X, HEADLINE_Y - 13);
+        if (line2) c.fillText(line2, HEADLINE_X, HEADLINE_Y + 13);
       }
-      ctx.fillText(line1 || factText, TEXT_X, TEXT_Y - 14);
-      if (line2) ctx.fillText(line2, TEXT_X, TEXT_Y + 14);
-    }
 
-    // Evidence tag (bottom-right of card)
-    ctx.font         = "12px sans-serif";
-    ctx.fillStyle    = "#475569";
-    ctx.textAlign    = "right";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText(p.evidenceTag, CARD_X + CARD_W - 16, cardY + CARD_H - 16);
-  });
+      // Evidence subline — 16px, dimmed
+      c.font         = "16px sans-serif";
+      c.fillStyle    = "#64748b";
+      c.textBaseline = "alphabetic";
+      c.fillText(fact.evidence, HEADLINE_X, cardY + CARD_H - 22);
+    });
+  }
 
+  renderFactCards(ctx, forFacts,     COL_L_X, "#22c55e");
+  renderFactCards(ctx, againstFacts, COL_R_X, "#ef4444");
+
+  // ── Bottom callout strip ───────────────────────────────────────────────────
+  const facts: string[] = [];
+  if (forFacts.length > 0)     facts.push(`${forFacts.length} positive factor${forFacts.length !== 1 ? "s" : ""} identified`);
+  if (againstFacts.length > 0) facts.push(`${againstFacts.length} challenge${againstFacts.length !== 1 ? "s" : ""} to address`);
+  if (facts.length === 0)      facts.push("Not enough data to identify clear patterns.");
+
+  drawHtCalloutStrip(ctx, facts, ["#22c55e", "#ef4444", "#94a3b8"]);
   drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
   return canvas;
 }
@@ -6829,8 +7150,8 @@ function makeCoachIntelligenceCardPage(
 // HT Snapshot (5 pages): VISION FIRST — events pre-filtered to period "1H".
 //   Chain analysis is computed from the H1 event set only — no builder changes
 //   needed; each builder naturally sees first-half data.
-//   Pages: Pressure & Damage Map → Momentum & Swing → Kickout Vision →
-//          Attack Shape & Shot Vision → Coach Intelligence Card
+//   Pages: Pressure & Damage → Game Flow → Kickout Vision →
+//          Attack Shape → Game Flow Factors
 //
 // FT Snapshot (10 pages): full-match events, curated selection from the full
 //   builder set, ordered for post-match debrief narrative flow.
@@ -6889,24 +7210,24 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     // Question: "Can the coach SEE the repeating tactical behaviour fast enough
     //            to change the second half?"
     //
-    // 1. Pressure & Damage Map  — where did the damage come from?
-    // 2. Momentum & Swing       — who controlled the tempo?
-    // 3. Kickout Vision         — who owned the restarts?
-    // 4. Attack Shape           — where did we threaten and where did we miss?
-    // 5. Coach Intelligence     — top 3 tactical facts in plain language
+    // 1. Pressure & Damage   — where did the damage come from?
+    // 2. Game Flow           — who controlled each segment and why?
+    // 3. Kickout Vision      — who owned the restarts?
+    // 4. Attack Shape        — where did we threaten and where did we miss?
+    // 5. Game Flow Factors   — what is helping us and what is hurting us?
 
-    // 1. Pressure & Damage Map
+    // 1. Pressure & Damage
     addPage(
       makeHtPressureDamageMapPage(events, sport, home, away, 1, TOTAL_PAGES),
       false,
-      "Pressure & Damage Map",
+      "Pressure & Damage",
     );
 
-    // 2. Momentum & Swing Timeline
+    // 2. Game Flow
     addPage(
-      makeMatchSwingTimelinePage(events, chainAnalysis, home, away, 2, TOTAL_PAGES),
+      makeHtGameFlowPage(events, chainAnalysis, home, away, 2, TOTAL_PAGES),
       true,
-      "Momentum & Swing",
+      "Game Flow",
     );
 
     // 3. Kickout Vision
@@ -6916,18 +7237,18 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Kickout Vision",
     );
 
-    // 4. Attack Shape & Shot Vision
+    // 4. Attack Shape
     addPage(
       makeHtAttackShotVisionPage(events, sport, home, away, 4, TOTAL_PAGES),
       true,
-      "Attack Shape & Shot Vision",
+      "Attack Shape",
     );
 
-    // 5. Coach Intelligence Card
+    // 5. Game Flow Factors
     addPage(
-      makeCoachIntelligenceCardPage(chainAnalysis, home, away, 5, TOTAL_PAGES),
+      makeHtGameFlowFactorsPage(events, chainAnalysis, home, away, 5, TOTAL_PAGES),
       true,
-      "Coach Intelligence",
+      "Game Flow Factors",
     );
   } else {
     // ── FT Snapshot ── 10 pages, full-match events ────────────────────────────
