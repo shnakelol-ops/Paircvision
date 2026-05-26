@@ -204,8 +204,8 @@ const KIND_LABELS: Record<MatchEventKind, string> = {
   FREE_SCORED:          "Free Scored",
   TURNOVER_WON:         "Turnover Won",
   TURNOVER_LOST:        "Turnover Lost",
-  KICKOUT_WON:          "K/O Won",
-  KICKOUT_CONCEDED:     "K/O Conceded",
+  KICKOUT_WON:          "Kickout Won",
+  KICKOUT_CONCEDED:     "Kickout Conceded",
   FREE_WON:             "Free Won",
   FREE_CONCEDED:        "Free Conceded",
 };
@@ -776,9 +776,9 @@ function drawSummaryStatsTable(
       {
         label: "KICKOUTS", accent: "#22d3ee", bg: "rgba(34,211,238,0.06)",
         rows: [
-          { label: "K/O Won",        value: String(st.koWon) },
-          { label: "K/O Lost",       value: String(st.koCon) },
-          { label: "K/O %",          value: st.koPct },
+          { label: "Kickout Won",        value: String(st.koWon) },
+          { label: "Kickout Lost",       value: String(st.koCon) },
+          { label: "Kickout %",          value: st.koPct },
           { label: "Clean Won",      value: String(st.koCleanWon) },
           { label: "Break Won",      value: String(st.koBreakWon) },
           { label: "Foul Won",       value: String(st.koFoulWon) },
@@ -1150,7 +1150,7 @@ function makeSegmentsPage(
     ctx.fillStyle = accent;
     ctx.fillRect(tL, hdr2Y, 4, hdr2H);
 
-    const subLabels = ["Score", "Shots/W", "K/O W-L", "Net T/O", "Frees W/C"];
+    const subLabels = ["Score", "Shots/W", "Kickout W-L", "Net T/O", "Frees W/C"];
     const subOffsets = [cScore + wScore / 2, cShots + wShots / 2, cKO + wKO / 2, cTO + wTO / 2, cFree + wFree / 2];
 
     ctx.fillStyle = "#64748b";
@@ -1506,7 +1506,7 @@ function makePlayerPages(
   const colWs   = [65, 230, 150, 100, 75, 100, 100, 80, 100, 100, 90, 90, 100];
   const colHdrs = ["#", "Name", "Score", "Shots", "Wides",
                    "T/O Won", "T/O Lost", "Net T/O",
-                   "K/O Won", "K/O Lost", "F Won", "F Con", "Actions"];
+                   "Kickout Won", "Kickout Lost", "F Won", "F Con", "Actions"];
   const tableW  = colWs.reduce((a, b) => a + b, 0); // 1380
   const tL      = Math.round((CANVAS_W - tableW) / 2); // centered
 
@@ -1974,7 +1974,7 @@ function makeChainSummaryPage(
       cy = drawStatRow(COL3_X, cy, COL_W, "Consecutive scores",  val(lrf.count), "#4ade80", false);
       cy = drawStatRow(COL3_X, cy, COL_W, "Period / Segment",    seg,            "#e2e8f0", true);
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring run ≥2",   "—",            "#475569", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            "#475569", false);
       cy++;
     }
 
@@ -1997,7 +1997,7 @@ function makeChainSummaryPage(
       cy = drawStatRow(COL3_X, cy, COL_W, "Consecutive scores",  val(lro.count), "#4ade80", false);
       cy = drawStatRow(COL3_X, cy, COL_W, "Period / Segment",    seg,            "#e2e8f0", true);
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring run ≥2",   "—",            "#475569", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            "#475569", false);
       cy++;
     }
 
@@ -2296,7 +2296,7 @@ function makeKickoutChainPage(
       cy += 8;
 
       const avgStr = avgSecsToScore !== null ? `${avgSecsToScore}s` : "—";
-      drawStatRow(COL1_X, cy, COL_W, "Avg secs to score (won K/O)", avgStr, "#fbbf24", false);
+      drawStatRow(COL1_X, cy, COL_W, "Avg secs to score (won Kickout)", avgStr, "#fbbf24", false);
     }
   }
 
@@ -2316,7 +2316,7 @@ function makeKickoutChainPage(
       ctx.font = "14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
-      ctx.fillText("No FOR kickout events", COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
+      ctx.fillText("No kickouts recorded", COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
       ctx.restore();
     } else {
       ctx.save();
@@ -2360,7 +2360,7 @@ function makeKickoutChainPage(
       ctx.font = "14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
-      ctx.fillText("No OPP kickout events", COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
+      ctx.fillText("No kickouts recorded", COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
       ctx.restore();
     } else {
       ctx.save();
@@ -2435,9 +2435,9 @@ function makeKickoutChainPage(
     ctx.restore();
     cy += 20;
 
-    cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} — Scores from K/O`, String(forScoredFromKo),  "#4ade80", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} — Shots from K/O`,  String(forShotFromKo),    "#7dd3fc", true);
-    cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 16)} — Scores from K/O`, String(oppScoredFromKo),  "#fb7185", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} — Scores from Kickout`, String(forScoredFromKo),  "#4ade80", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} — Shots from Kickout`,  String(forShotFromKo),    "#7dd3fc", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 16)} — Scores from Kickout`, String(oppScoredFromKo),  "#fb7185", false);
     cy += 12;
 
     // FOR possession outcome breakdown
@@ -2463,7 +2463,7 @@ function makeKickoutChainPage(
     cy += 8;
 
     const avgStr = avgSecsToScore !== null ? `${avgSecsToScore}s avg` : "—";
-    cy = drawStatRow(COL3_X, cy, COL_W, "Avg time to score (K/O)", avgStr, "#fbbf24", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, "Avg time to score (Kickout)", avgStr, "#fbbf24", false);
 
     // Possession rate summary bar
     if (ko.won + ko.lost > 0) {
@@ -2734,7 +2734,7 @@ function makeTurnoverPunishmentPage(
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
-      ctx.fillText("No FOR attacking turnovers recorded", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
+      ctx.fillText("No attacking turnovers recorded", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
       ctx.restore();
     } else {
       // Consequence summary
@@ -2775,7 +2775,7 @@ function makeTurnoverPunishmentPage(
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
-      ctx.fillText("No OPP attacking turnovers recorded", COL2_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
+      ctx.fillText("No attacking turnovers recorded", COL2_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
       ctx.restore();
     } else {
       cy = drawStatRow(COL2_X, cy, COL_W, "Turnovers won / gained",  String(oppWonTotal),                    "#e2e8f0", false);
