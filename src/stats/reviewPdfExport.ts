@@ -6009,10 +6009,10 @@ const HT_PITCH_AREA: PitchArea = {
   x: 24,
   y: 80,
   w: CANVAS_W - 24 - 168,       // 1728 — right 168 px reserved for legend
-  h: CANVAS_H - 80 - 38 - 120,  // 842  — 120 px reserved for bottom strip
+  h: CANVAS_H - 80 - 38 - 152,  // 810  — 152 px reserved for bottom callout strip
 };
-const HT_STRIP_TOP = HT_PITCH_AREA.y + HT_PITCH_AREA.h + 10; // 932
-const HT_STRIP_H   = CANVAS_H - HT_STRIP_TOP - 10;            // 138
+const HT_STRIP_TOP = HT_PITCH_AREA.y + HT_PITCH_AREA.h + 10; // 900
+const HT_STRIP_H   = CANVAS_H - HT_STRIP_TOP - 10;            // 170
 
 // Zone engine type-bridge helpers.
 // PdfExportEvent.x / .y are typed as number | null | undefined, but the zone
@@ -6041,6 +6041,194 @@ function zonePixelRect(
     w: ((bounds.xMax - bounds.xMin) / 100) * inner.w,
     h: ((bounds.yMax - bounds.yMin) / 100) * inner.h,
   };
+}
+
+/** High-contrast event marker colours for HT Vision pages. Sideline-optimised palette. */
+const HT_MARKER_COLORS: Partial<Record<MatchEventKind, string>> = {
+  GOAL:                 "#ef4444",   // vivid red — largest marker (×1.38)
+  POINT:                "#4ade80",   // bright green
+  TWO_POINTER:          "#60a5fa",   // sky blue
+  FORTY_FIVE_TWO_POINT: "#7dd3fc",   // light blue
+  FREE_SCORED:          "#34d399",   // emerald
+  // WIDE / FREE_MISSED / KICKOUT_CONCEDED → drawn as ✕, handled separately
+  KICKOUT_WON:          "#22d3ee",   // teal
+  TURNOVER_WON:         "#a78bfa",   // purple
+  TURNOVER_LOST:        "#f97316",   // orange
+  FREE_WON:             "#818cf8",   // indigo
+  FREE_CONCEDED:        "#f472b6",   // pink
+};
+
+/**
+ * High-contrast, symbol-rich event marker renderer for HT Vision pages only.
+ * Replaces generic renderEventMarkers() — never called by the full-report path.
+ *
+ * Visual language (coach reads at arm's length in 3 seconds, outdoors):
+ *   SCORE (GOAL, POINT, FREE_SCORED…) — filled coloured circle; GOAL is 38% larger
+ *   WIDE / FREE_MISSED                — aggressive red ✕   (possession wasted)
+ *   KICKOUT_CONCEDED                  — pink ✕             (restart territory lost)
+ *   SHOT + BLOCK_SAVE tag             — cyan hollow ring    (keeper stopped it)
+ *   SHOT + SHORT tag                  — amber ↓            (possession ceded short)
+ *   SHOT (other)                      — amber filled circle (neutral attempt)
+ *   KICKOUT_WON / TURNOVER… / etc.   — filled coloured circle
+ *
+ * Every marker has a dark halo drawn first for pitch-line separation.
+ * Marker radius: max(9, inner.w × 0.007) — slightly larger than generic (0.006).
+ */
+function renderHtMarkers(
+  ctx: CanvasRenderingContext2D,
+  events: readonly PdfExportEvent[],
+  inner: InnerPitch,
+): void {
+  const r = Math.max(9, inner.w * 0.007);
+
+  for (const event of events) {
+    const ex = typeof event.x === "number" ? event.x : event.nx;
+    const ey = typeof event.y === "number" ? event.y : event.ny;
+    if (ex == null || ey == null || !isFinite(ex) || !isFinite(ey)) continue;
+
+    const cx   = inner.x + ex * inner.w;
+    const cy   = inner.y + ey * inner.h;
+    const kind = event.kind;
+    const tags = event.tags ?? [];
+
+    ctx.save();
+
+    if (kind === "WIDE" || kind === "FREE_MISSED" || kind === "KICKOUT_CONCEDED") {
+      // ✕ marker: red for WIDE, orange-red for FREE_MISSED, pink for KICKOUT_CONCEDED
+      const color = kind === "KICKOUT_CONCEDED" ? "#fb7185"
+                  : kind === "FREE_MISSED"       ? "#f97316"
+                  :                                "#ef4444";
+      const sz = r * 0.90;
+
+      // Dark halo first (separates X from pitch lines)
+      ctx.save();
+      ctx.globalAlpha = 0.32;
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth   = Math.max(6.5, r * 0.75);
+      ctx.lineCap     = "round";
+      ctx.beginPath(); ctx.moveTo(cx - sz, cy - sz); ctx.lineTo(cx + sz, cy + sz); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + sz, cy - sz); ctx.lineTo(cx - sz, cy + sz); ctx.stroke();
+      ctx.restore();
+
+      // Coloured ✕ on top
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = Math.max(3.0, r * 0.38);
+      ctx.lineCap     = "round";
+      ctx.beginPath(); ctx.moveTo(cx - sz, cy - sz); ctx.lineTo(cx + sz, cy + sz); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + sz, cy - sz); ctx.lineTo(cx - sz, cy + sz); ctx.stroke();
+
+    } else if (kind === "SHOT" && tags.includes("BLOCK_SAVE")) {
+      // Cyan hollow ring — keeper save
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      ctx.beginPath(); ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
+      ctx.fillStyle = "#06b6d4"; ctx.fill();
+      ctx.restore();
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = "#22d3ee";
+      ctx.lineWidth   = Math.max(2.5, r * 0.28);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, r * 0.33, 0, Math.PI * 2);
+      ctx.fillStyle = "#22d3ee"; ctx.fill();
+
+    } else if (kind === "SHOT" && tags.includes("SHORT")) {
+      // ↓ amber symbol — possession ceded short of target
+      const fontSize = Math.round(r * 2.4);
+      ctx.font         = `bold ${fontSize}px sans-serif`;
+      ctx.textAlign    = "center";
+      ctx.textBaseline = "middle";
+      ctx.save();
+      ctx.globalAlpha = 0.32;
+      ctx.fillStyle   = "#000000";
+      ctx.fillText("↓", cx + 1.5, cy + 1.5);
+      ctx.restore();
+      ctx.fillStyle = "#fbbf24";
+      ctx.fillText("↓", cx, cy);
+
+    } else {
+      // Filled coloured circle: GOAL (larger), POINT, SHOT/other, KICKOUT_WON, TURNOVER, etc.
+      const fill    = HT_MARKER_COLORS[kind] ?? (kind === "SHOT" ? "#fbbf24" : "#ffffff");
+      const markerR = kind === "GOAL" ? r * 1.38 : r;
+      ctx.beginPath(); ctx.arc(cx, cy, markerR, 0, Math.PI * 2);
+      ctx.fillStyle = fill; ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.70)";
+      ctx.lineWidth   = kind === "GOAL" ? 2.2 : 1.8;
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+}
+
+/**
+ * Renders the bottom tactical callout strip — shared across all HT vision pages.
+ * Each fact gets its own panel with a coloured accent block at the left edge.
+ *
+ * Designed for outdoor, arm's-length readability:
+ *   - 24 px bold white text on dark panel backgrounds
+ *   - 8 px coloured accent block at each panel's left edge
+ *   - 2 px separator line between pitch and strip (dark, not translucent)
+ *   - No decorative dots — direct and unambiguous
+ *
+ * @param facts   Up to 3 tactical fact strings (longer strings are truncated with …).
+ * @param colors  Accent block colour per fact (index-matched; fallback: slate).
+ */
+function drawHtCalloutStrip(
+  ctx: CanvasRenderingContext2D,
+  facts: readonly string[],
+  colors: readonly string[],
+): void {
+  const factsToShow = facts.slice(0, 3);
+  ctx.save();
+
+  // Separator line — dark solid, clearly legible
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth   = 2;
+  ctx.beginPath();
+  ctx.moveTo(24, HT_STRIP_TOP);
+  ctx.lineTo(CANVAS_W - 24, HT_STRIP_TOP);
+  ctx.stroke();
+
+  if (factsToShow.length === 0) { ctx.restore(); return; }
+
+  const STRIP_X    = 24;
+  const STRIP_USEW = CANVAS_W - 48;                                               // 1872 px
+  const GAP        = factsToShow.length > 1 ? 20 : 0;
+  const panelW     = Math.floor((STRIP_USEW - GAP * (factsToShow.length - 1)) / factsToShow.length);
+  const panelY     = HT_STRIP_TOP + 10;
+  const panelH     = HT_STRIP_H - 18;
+  const ACCENT_W   = 8;
+  const TEXT_X_OFF = ACCENT_W + 14;
+
+  factsToShow.forEach((fact, i) => {
+    const px    = STRIP_X + i * (panelW + GAP);
+    const color = colors[i] ?? "#94a3b8";
+
+    // Panel background
+    ctx.fillStyle = "rgba(255,255,255,0.045)";
+    ctx.fillRect(px, panelY, panelW, panelH);
+
+    // Left accent colour block
+    ctx.fillStyle = color;
+    ctx.fillRect(px, panelY, ACCENT_W, panelH);
+
+    // Fact text — bold 24 px, full white, vertically centred
+    ctx.font         = "bold 24px sans-serif";
+    ctx.fillStyle    = "#ffffff";
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "left";
+    const MAX_TW = panelW - TEXT_X_OFF - 12;
+    let display  = fact;
+    if (ctx.measureText(display).width > MAX_TW) {
+      while (display.length > 0 && ctx.measureText(display + "…").width > MAX_TW) {
+        display = display.slice(0, -1);
+      }
+      display += "…";
+    }
+    ctx.fillText(display, px + TEXT_X_OFF, panelY + panelH / 2);
+  });
+
+  ctx.restore();
 }
 
 // ─── HT Page 1: Pressure & Damage Map ────────────────────────────────────────
@@ -6092,26 +6280,26 @@ function makeHtPressureDamageMapPage(
   const maxOpp = oppScoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
   const maxFor = forLossCounts.reduce((m, z) => Math.max(m, z.count), 0);
 
-  // OPP scoring zone fills (red)
+  // OPP scoring zone fills (red — increased opacity for sideline visibility)
   for (const zone of oppScoreCounts) {
     if (zone.count === 0) continue;
-    const alpha = 0.15 + (maxOpp > 0 ? (zone.count / maxOpp) * 0.35 : 0);
+    const alpha = 0.20 + (maxOpp > 0 ? (zone.count / maxOpp) * 0.42 : 0);
     const rect  = zonePixelRect(zone.bounds, inner);
     ctx.fillStyle = `rgba(248,113,113,${alpha.toFixed(2)})`;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   }
 
-  // FOR possession-loss zone fills (amber)
+  // FOR possession-loss zone fills (amber — increased opacity)
   for (const zone of forLossCounts) {
     if (zone.count === 0) continue;
-    const alpha = 0.12 + (maxFor > 0 ? (zone.count / maxFor) * 0.28 : 0);
+    const alpha = 0.18 + (maxFor > 0 ? (zone.count / maxFor) * 0.37 : 0);
     const rect  = zonePixelRect(zone.bounds, inner);
     ctx.fillStyle = `rgba(251,191,36,${alpha.toFixed(2)})`;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   }
 
-  // ── Event markers ─────────────────────────────────────────────────────────
-  renderEventMarkers(ctx, mapEvts, inner);
+  // ── Event markers (vision-first: symbol-rich, high contrast) ──────────────
+  renderHtMarkers(ctx, mapEvts, inner);
 
   // ── Zone badge pills ──────────────────────────────────────────────────────
   ctx.save();
@@ -6168,14 +6356,6 @@ function makeHtPressureDamageMapPage(
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.07)";
-  ctx.lineWidth   = 1;
-  ctx.beginPath();
-  ctx.moveTo(24, HT_STRIP_TOP);
-  ctx.lineTo(CANVAS_W - 24, HT_STRIP_TOP);
-  ctx.stroke();
-
   const totalOppScores = oppScoreEvts.length;
   const totalForLosses = forLossEvts.length;
   const oppScoreHot    = pdfZoneHotspots(oppScoreEvts)[0];
@@ -6188,22 +6368,7 @@ function makeHtPressureDamageMapPage(
   if (forLossHot && facts.length < 3) facts.push(`Loss zone: ${forLossHot.label} (${forLossHot.count})`);
   if (facts.length === 0) facts.push("No scoring threats or possession losses recorded.");
 
-  ctx.textBaseline = "middle";
-  ctx.textAlign    = "left";
-  ctx.font         = "15px sans-serif";
-  const factsToShow = facts.slice(0, 3);
-  const colW = Math.floor((CANVAS_W - 48) / Math.max(factsToShow.length, 1));
-  factsToShow.forEach((fact, i) => {
-    const fx = 24 + i * colW;
-    const fy = HT_STRIP_TOP + HT_STRIP_H / 2;
-    ctx.fillStyle = i === 0 ? "#f87171" : i === 1 ? "#fbbf24" : "#94a3b8";
-    ctx.beginPath();
-    ctx.arc(fx + 8, fy, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#e2e8f0";
-    ctx.fillText(fact, fx + 20, fy);
-  });
-  ctx.restore();
+  drawHtCalloutStrip(ctx, facts, ["#ef4444", "#fbbf24", "#94a3b8"]);
 
   drawEventCountFooter(ctx, mapEvts.length);
   return canvas;
@@ -6272,17 +6437,17 @@ function makeHtKickoutVisionPage(
     const intensity = Math.min(total / 4, 1); // saturates at 4 events per zone
 
     if (diff > 1) {
-      ctx.fillStyle = `rgba(20,184,166,${(0.15 + intensity * 0.30).toFixed(2)})`;
+      ctx.fillStyle = `rgba(20,184,166,${(0.20 + intensity * 0.38).toFixed(2)})`;
     } else if (diff < -1) {
-      ctx.fillStyle = `rgba(248,113,113,${(0.15 + intensity * 0.30).toFixed(2)})`;
+      ctx.fillStyle = `rgba(248,113,113,${(0.20 + intensity * 0.38).toFixed(2)})`;
     } else {
-      ctx.fillStyle = "rgba(251,191,36,0.20)";
+      ctx.fillStyle = "rgba(251,191,36,0.28)";
     }
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   }
 
-  // ── Event markers ─────────────────────────────────────────────────────────
-  renderEventMarkers(ctx, allKickoutEvts, inner);
+  // ── Event markers (vision-first: symbol-rich, high contrast) ──────────────
+  renderHtMarkers(ctx, allKickoutEvts, inner);
 
   // ── Zone badge pills ──────────────────────────────────────────────────────
   ctx.save();
@@ -6336,14 +6501,6 @@ function makeHtKickoutVisionPage(
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.07)";
-  ctx.lineWidth   = 1;
-  ctx.beginPath();
-  ctx.moveTo(24, HT_STRIP_TOP);
-  ctx.lineTo(CANVAS_W - 24, HT_STRIP_TOP);
-  ctx.stroke();
-
   const totalFor = forWonEvts.length;
   const totalOpp = oppWonEvts.length;
   const totalKO  = totalFor + totalOpp;
@@ -6357,22 +6514,7 @@ function makeHtKickoutVisionPage(
   if (oppHot)      facts.push(`Ceded most in: ${oppHot.label}`);
   if (facts.length === 0) facts.push("No kickout data recorded in the first half.");
 
-  ctx.textBaseline = "middle";
-  ctx.textAlign    = "left";
-  ctx.font         = "15px sans-serif";
-  const factsToShow = facts.slice(0, 3);
-  const colW = Math.floor((CANVAS_W - 48) / Math.max(factsToShow.length, 1));
-  factsToShow.forEach((fact, i) => {
-    const fx = 24 + i * colW;
-    const fy = HT_STRIP_TOP + HT_STRIP_H / 2;
-    ctx.fillStyle = i === 0 ? "#14b8a6" : i === 1 ? "#14b8a6" : "#f87171";
-    ctx.beginPath();
-    ctx.arc(fx + 8, fy, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#e2e8f0";
-    ctx.fillText(fact, fx + 20, fy);
-  });
-  ctx.restore();
+  drawHtCalloutStrip(ctx, facts, ["#14b8a6", "#14b8a6", "#ef4444"]);
 
   drawEventCountFooter(ctx, allKickoutEvts.length);
   return canvas;
@@ -6385,9 +6527,9 @@ function makeHtKickoutVisionPage(
  *
  * Zone fills:
  *   GREEN — zones where FOR team scored FROM (scoring corridors)
- *   GREY  — zones where FOR team had wides / missed frees (inefficient zones)
- * Fill intensity scales with event count per zone (grey drawn first, green on top).
- * All FOR shot events overlaid as event dots for spatial precision.
+ *   RED   — zones where FOR team had wides / missed frees (danger/waste zones)
+ * Fill intensity scales with event count per zone (red drawn first, green on top).
+ * All FOR shot events overlaid as vision-first markers for spatial precision.
  * Bottom strip: shot efficiency, wide count, hottest scoring zone.
  *
  * Data: FOR SHOTS events (H1 only, pre-filtered).
@@ -6429,26 +6571,26 @@ function makeHtAttackShotVisionPage(
   const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
   const maxWide     = wideCounts.reduce((m, z) => Math.max(m, z.count), 0);
 
-  // Grey wide zone fills (drawn first, behind score fills)
+  // Red wide zone fills (drawn first, behind score fills) — aggressive danger signal
   for (const zone of wideCounts) {
     if (zone.count === 0) continue;
-    const alpha = 0.10 + (maxWide > 0 ? (zone.count / maxWide) * 0.20 : 0);
+    const alpha = 0.18 + (maxWide > 0 ? (zone.count / maxWide) * 0.32 : 0);
     const rect  = zonePixelRect(zone.bounds, inner);
-    ctx.fillStyle = `rgba(148,163,184,${alpha.toFixed(2)})`;
+    ctx.fillStyle = `rgba(239,68,68,${alpha.toFixed(2)})`;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   }
 
-  // Green score zone fills (drawn on top of grey)
+  // Green score zone fills (drawn on top of red — success overrides waste)
   for (const zone of scoreCounts) {
     if (zone.count === 0) continue;
-    const alpha = 0.15 + (maxScore > 0 ? (zone.count / maxScore) * 0.40 : 0);
+    const alpha = 0.20 + (maxScore > 0 ? (zone.count / maxScore) * 0.45 : 0);
     const rect  = zonePixelRect(zone.bounds, inner);
     ctx.fillStyle = `rgba(52,211,153,${alpha.toFixed(2)})`;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   }
 
-  // ── Event markers ─────────────────────────────────────────────────────────
-  renderEventMarkers(ctx, forShotEvts, inner);
+  // ── Event markers (vision-first: symbol-rich, high contrast) ──────────────
+  renderHtMarkers(ctx, forShotEvts, inner);
 
   // ── Zone badge pills ──────────────────────────────────────────────────────
   ctx.save();
@@ -6470,7 +6612,7 @@ function makeHtAttackShotVisionPage(
     ctx.fillText(label, midX, midY);
   }
 
-  // Wide badges (grey, bottom-third of zone)
+  // Wide badges (red — aggressive miss indicator, bottom-third of zone)
   for (const zone of wideCounts) {
     if (zone.count === 0) continue;
     const rect  = zonePixelRect(zone.bounds, inner);
@@ -6478,9 +6620,9 @@ function makeHtAttackShotVisionPage(
     const midY  = rect.y + rect.h * 0.72;
     const label = `✕${zone.count}`;
     const tw    = ctx.measureText(label).width + 14;
-    ctx.fillStyle = "rgba(148,163,184,0.75)";
+    ctx.fillStyle = "rgba(239,68,68,0.88)";
     ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = "#0d1117";
+    ctx.fillStyle = "#ffffff";
     ctx.fillText(label, midX, midY);
   }
   ctx.restore();
@@ -6498,21 +6640,13 @@ function makeHtAttackShotVisionPage(
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
   ctx.fillText("Scores", lx + 22, ly); ly += 26;
-  ctx.fillStyle = "rgba(148,163,184,0.75)";
+  ctx.fillStyle = "rgba(239,68,68,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
   ctx.fillText("Wides / Misses", lx + 22, ly);
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.07)";
-  ctx.lineWidth   = 1;
-  ctx.beginPath();
-  ctx.moveTo(24, HT_STRIP_TOP);
-  ctx.lineTo(CANVAS_W - 24, HT_STRIP_TOP);
-  ctx.stroke();
-
   const totalShots  = forShotEvts.length;
   const totalScores = forScoreEvts.length;
   const totalWides  = forWideEvts.length;
@@ -6525,22 +6659,7 @@ function makeHtAttackShotVisionPage(
   if (scoreHot)        facts.push(`Top scoring zone: ${scoreHot.label} (${scoreHot.count})`);
   if (facts.length === 0) facts.push("No FOR shot data recorded in the first half.");
 
-  ctx.textBaseline = "middle";
-  ctx.textAlign    = "left";
-  ctx.font         = "15px sans-serif";
-  const factsToShow = facts.slice(0, 3);
-  const colW = Math.floor((CANVAS_W - 48) / Math.max(factsToShow.length, 1));
-  factsToShow.forEach((fact, i) => {
-    const fx = 24 + i * colW;
-    const fy = HT_STRIP_TOP + HT_STRIP_H / 2;
-    ctx.fillStyle = i === 0 ? "#34d399" : i === 1 ? "#94a3b8" : "#34d399";
-    ctx.beginPath();
-    ctx.arc(fx + 8, fy, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#e2e8f0";
-    ctx.fillText(fact, fx + 20, fy);
-  });
-  ctx.restore();
+  drawHtCalloutStrip(ctx, facts, ["#34d399", "#ef4444", "#34d399"]);
 
   drawEventCountFooter(ctx, forShotEvts.length);
   return canvas;
