@@ -573,7 +573,19 @@ function makeTacticalPage(
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  if (!ctx) {
+    const ctx2 = canvas.getContext("2d");
+    if (ctx2) {
+      ctx2.fillStyle = "#0d1117";
+      ctx2.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx2.fillStyle = "#94a3b8";
+      ctx2.font = "24px sans-serif";
+      ctx2.textAlign = "center";
+      ctx2.textBaseline = "middle";
+      ctx2.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
+    }
+    return canvas;
+  }
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -5553,18 +5565,18 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   const PW = 297; // A4 landscape mm
   const PH = 210;
 
-  function addCanvasPage(canvas: HTMLCanvasElement, addPageFirst: boolean): void {
+  function addCanvasPage(canvas: HTMLCanvasElement, addPageFirst: boolean, pageName?: string): void {
     if (addPageFirst) pdf.addPage("a4", "landscape");
     try {
       const imgData = canvas.toDataURL("image/jpeg", 0.88);
       pdf.addImage(imgData, "JPEG", 0, 0, PW, PH);
-    } catch {
-      // Insert placeholder if canvas capture fails — report continues
+    } catch (err) {
+      console.error(`PDF export failed for page${pageName ? ` "${pageName}"` : ""}`, err);
       pdf.setFillColor(13, 17, 23);
       pdf.rect(0, 0, PW, PH, "F");
       pdf.setTextColor(100, 116, 139);
       pdf.setFontSize(12);
-      pdf.text("Page capture failed", PW / 2, PH / 2, { align: "center" });
+      pdf.text("This review page could not be rendered.", PW / 2, PH / 2, { align: "center" });
     }
   }
 
@@ -5634,9 +5646,24 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
+      "Kickout Chain Analysis",
     );
-  } catch {
-    // Chain page failure is non-fatal — PDF still saves cleanly
+  } catch (err) {
+    console.error("Kickout Chain Analysis page generation failed", err);
+    const fallback = document.createElement("canvas");
+    fallback.width = CANVAS_W;
+    fallback.height = CANVAS_H;
+    const ctx = fallback.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#0d1117";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
+    }
+    addCanvasPage(fallback, true, "Kickout Chain Analysis");
   }
 
   // Ninth-to-last page: Turnover Punishment Analysis
@@ -5650,9 +5677,24 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
+      "Turnover Punishment Analysis",
     );
-  } catch {
-    // Chain page failure is non-fatal — PDF still saves cleanly
+  } catch (err) {
+    console.error("Turnover Punishment Analysis page generation failed", err);
+    const fallback = document.createElement("canvas");
+    fallback.width = CANVAS_W;
+    fallback.height = CANVAS_H;
+    const ctx = fallback.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#0d1117";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
+    }
+    addCanvasPage(fallback, true, "Turnover Punishment Analysis");
   }
 
   // Eighth-to-last page: Momentum & Scoring Runs Analysis
@@ -5666,9 +5708,24 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
+      "Momentum & Scoring Runs Analysis",
     );
-  } catch {
-    // Chain page failure is non-fatal — PDF still saves cleanly
+  } catch (err) {
+    console.error("Momentum & Scoring Runs Analysis page generation failed", err);
+    const fallback = document.createElement("canvas");
+    fallback.width = CANVAS_W;
+    fallback.height = CANVAS_H;
+    const ctx = fallback.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#0d1117";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
+    }
+    addCanvasPage(fallback, true, "Momentum & Scoring Runs Analysis");
   }
 
   // Seventh-to-last page: Tactical Chain Analysis summary
@@ -5682,9 +5739,24 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
+      "Tactical Chain Analysis Summary",
     );
-  } catch {
-    // Chain page failure is non-fatal — PDF still saves cleanly
+  } catch (err) {
+    console.error("Tactical Chain Analysis Summary page generation failed", err);
+    const fallback = document.createElement("canvas");
+    fallback.width = CANVAS_W;
+    fallback.height = CANVAS_H;
+    const ctx = fallback.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#0d1117";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
+    }
+    addCanvasPage(fallback, true, "Tactical Chain Analysis Summary");
   }
 
   // Sixth-to-last page: Tactical Intelligence Summary
@@ -5698,9 +5770,24 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
+      "Tactical Intelligence Summary",
     );
-  } catch {
-    // Chain page failure is non-fatal — PDF still saves cleanly
+  } catch (err) {
+    console.error("Tactical Intelligence Summary page generation failed", err);
+    const fallback = document.createElement("canvas");
+    fallback.width = CANVAS_W;
+    fallback.height = CANVAS_H;
+    const ctx = fallback.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#0d1117";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
+    }
+    addCanvasPage(fallback, true, "Tactical Intelligence Summary");
   }
 
   // Fifth-to-last page: Tactical Review Guide
@@ -5714,9 +5801,24 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
+      "Tactical Review Guide",
     );
-  } catch {
-    // Chain page failure is non-fatal — PDF still saves cleanly
+  } catch (err) {
+    console.error("Tactical Review Guide page generation failed", err);
+    const fallback = document.createElement("canvas");
+    fallback.width = CANVAS_W;
+    fallback.height = CANVAS_H;
+    const ctx = fallback.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#0d1117";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
+    }
+    addCanvasPage(fallback, true, "Tactical Review Guide");
   }
 
   // Fourth-to-last page: Opposition Snapshot
@@ -5731,9 +5833,24 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
+      "Opposition Snapshot",
     );
-  } catch {
-    // Chain page failure is non-fatal — PDF still saves cleanly
+  } catch (err) {
+    console.error("Opposition Snapshot page generation failed", err);
+    const fallback = document.createElement("canvas");
+    fallback.width = CANVAS_W;
+    fallback.height = CANVAS_H;
+    const ctx = fallback.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#0d1117";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
+    }
+    addCanvasPage(fallback, true, "Opposition Snapshot");
   }
 
   // Third-to-last page: Zone Analysis
@@ -5747,9 +5864,24 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
+      "Zone Analysis",
     );
-  } catch {
-    // Chain page failure is non-fatal — PDF still saves cleanly
+  } catch (err) {
+    console.error("Zone Analysis page generation failed", err);
+    const fallback = document.createElement("canvas");
+    fallback.width = CANVAS_W;
+    fallback.height = CANVAS_H;
+    const ctx = fallback.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#0d1117";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
+    }
+    addCanvasPage(fallback, true, "Zone Analysis");
   }
 
   // Second-to-last page: Match Swing Timeline
@@ -5764,9 +5896,24 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
+      "Match Swing Timeline",
     );
-  } catch {
-    // Chain page failure is non-fatal — PDF still saves cleanly
+  } catch (err) {
+    console.error("Match Swing Timeline page generation failed", err);
+    const fallback = document.createElement("canvas");
+    fallback.width = CANVAS_W;
+    fallback.height = CANVAS_H;
+    const ctx = fallback.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#0d1117";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
+    }
+    addCanvasPage(fallback, true, "Match Swing Timeline");
   }
 
   // Last page: Shot & Scoring Efficiency
@@ -5780,9 +5927,24 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
+      "Shot & Scoring Efficiency",
     );
-  } catch {
-    // Chain page failure is non-fatal — PDF still saves cleanly
+  } catch (err) {
+    console.error("Shot & Scoring Efficiency page generation failed", err);
+    const fallback = document.createElement("canvas");
+    fallback.width = CANVAS_W;
+    fallback.height = CANVAS_H;
+    const ctx = fallback.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#0d1117";
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
+    }
+    addCanvasPage(fallback, true, "Shot & Scoring Efficiency");
   }
 
   // Download
