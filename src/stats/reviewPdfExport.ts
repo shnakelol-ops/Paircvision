@@ -6019,7 +6019,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   // Chain analysis scoped to the same event set — H1-only for HT, full for FT.
   const chainAnalysis = selectChainAnalysis(events);
 
-  const TOTAL_PAGES = 10;
+  const TOTAL_PAGES = isHT ? 7 : 10;
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -6047,86 +6047,13 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   const away = awayTeamName;
 
   if (isHT) {
-    // ── HT Snapshot ── 10 pages, first-half events only ──────────────────────
+    // ── HT Snapshot ── 7 pages, first-half events only ───────────────────────
 
-    // 1. Match Snapshot
+    // 1. Match Summary
     addPage(
       makeSummaryPage(events, home, away, venueName, TOTAL_PAGES),
       false,
-      "Match Snapshot",
-    );
-
-    // 2. Momentum Timeline
-    addPage(
-      makeMatchSwingTimelinePage(events, chainAnalysis, home, away, 2, TOTAL_PAGES),
-      true,
-      "Momentum Timeline",
-    );
-
-    // 3. Kickout Intelligence
-    addPage(
-      makeKickoutChainPage(chainAnalysis, home, away, 3, TOTAL_PAGES),
-      true,
-      "Kickout Intelligence",
-    );
-
-    // 4. Turnover Punishment
-    addPage(
-      makeTurnoverPunishmentPage(chainAnalysis, home, away, 4, TOTAL_PAGES),
-      true,
-      "Turnover Punishment",
-    );
-
-    // 5. Shot + Wides Map — tactical pitch renderer, SHOTS category, H1 events
-    const shotEvents = selectPdfEvents(events, "H1", "ALL", "SHOTS");
-    addPage(
-      makeTacticalPage(sport, shotEvents, "Shot + Wides Map", home, away, 5, TOTAL_PAGES),
-      true,
-      "Shot + Wides Map",
-    );
-
-    // 6. Zone Dominance
-    addPage(
-      makeZoneAnalysisPage(events, home, away, 6, TOTAL_PAGES),
-      true,
-      "Zone Dominance",
-    );
-
-    // 7. Opposition Snapshot
-    addPage(
-      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 7, TOTAL_PAGES),
-      true,
-      "Opposition Snapshot",
-    );
-
-    // 8. Scoring Source Breakdown
-    addPage(
-      makeChainSummaryPage(chainAnalysis, home, away, 8, TOTAL_PAGES),
-      true,
-      "Scoring Source Breakdown",
-    );
-
-    // 9. 1H Segment Breakdown
-    addPage(
-      makeSegmentsPage(events, home, away, TOTAL_PAGES),
-      true,
-      "1H Segment Breakdown",
-    );
-
-    // 10. Tactical Intelligence Summary
-    addPage(
-      makeTacticalIntelligencePage(chainAnalysis, home, away, 10, TOTAL_PAGES),
-      true,
-      "Tactical Intelligence Summary",
-    );
-  } else {
-    // ── FT Snapshot ── 10 pages, full-match events ────────────────────────────
-
-    // 1. Match Snapshot
-    addPage(
-      makeSummaryPage(events, home, away, venueName, TOTAL_PAGES),
-      false,
-      "Match Snapshot",
+      "Match Summary",
     );
 
     // 2. Tactical Intelligence Summary
@@ -6136,46 +6063,102 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Tactical Intelligence Summary",
     );
 
-    // 3. Kickout Intelligence
+    // 3. Match Swing Timeline
     addPage(
-      makeKickoutChainPage(chainAnalysis, home, away, 3, TOTAL_PAGES),
+      makeMatchSwingTimelinePage(events, chainAnalysis, home, away, 3, TOTAL_PAGES),
       true,
-      "Kickout Intelligence",
+      "Match Swing Timeline",
     );
 
-    // 4. Turnover Punishment
+    // 4. Kickout Chain Analysis
     addPage(
-      makeTurnoverPunishmentPage(chainAnalysis, home, away, 4, TOTAL_PAGES),
+      makeKickoutChainPage(chainAnalysis, home, away, 4, TOTAL_PAGES),
+      true,
+      "Kickout Chain Analysis",
+    );
+
+    // 5. Turnover Punishment
+    addPage(
+      makeTurnoverPunishmentPage(chainAnalysis, home, away, 5, TOTAL_PAGES),
       true,
       "Turnover Punishment",
     );
 
-    // 5. Shot Efficiency + Wides
+    // 6. Shot + Wides Map — tactical pitch renderer, SHOTS category, H1 events
+    const htShotEvents = selectPdfEvents(events, "H1", "ALL", "SHOTS");
     addPage(
-      makeShotEfficiencyPage(events, home, away, 5, TOTAL_PAGES),
+      makeTacticalPage(sport, htShotEvents, "Shot + Wides Map", home, away, 6, TOTAL_PAGES),
       true,
-      "Shot Efficiency + Wides",
+      "Shot + Wides Map",
     );
 
-    // 6. Zone Analysis
+    // 7. Opposition Snapshot
     addPage(
-      makeZoneAnalysisPage(events, home, away, 6, TOTAL_PAGES),
+      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 7, TOTAL_PAGES),
+      true,
+      "Opposition Snapshot",
+    );
+  } else {
+    // ── FT Snapshot ── 10 pages, full-match events ────────────────────────────
+
+    // 1. Match Summary
+    addPage(
+      makeSummaryPage(events, home, away, venueName, TOTAL_PAGES),
+      false,
+      "Match Summary",
+    );
+
+    // 2. Tactical Intelligence Summary
+    addPage(
+      makeTacticalIntelligencePage(chainAnalysis, home, away, 2, TOTAL_PAGES),
+      true,
+      "Tactical Intelligence Summary",
+    );
+
+    // 3. Match Swing Timeline
+    addPage(
+      makeMatchSwingTimelinePage(events, chainAnalysis, home, away, 3, TOTAL_PAGES),
+      true,
+      "Match Swing Timeline",
+    );
+
+    // 4. Kickout Chain Analysis
+    addPage(
+      makeKickoutChainPage(chainAnalysis, home, away, 4, TOTAL_PAGES),
+      true,
+      "Kickout Chain Analysis",
+    );
+
+    // 5. Turnover Punishment
+    addPage(
+      makeTurnoverPunishmentPage(chainAnalysis, home, away, 5, TOTAL_PAGES),
+      true,
+      "Turnover Punishment",
+    );
+
+    // 6. Shot Efficiency
+    addPage(
+      makeShotEfficiencyPage(events, home, away, 6, TOTAL_PAGES),
+      true,
+      "Shot Efficiency",
+    );
+
+    // 7. Shot + Wides Map — both halves combined; PDF_KIND_SETS["SHOTS"] used
+    //    directly (same file) to avoid the single-half restriction of selectPdfEvents.
+    const ftShotEvents = events.filter(
+      (e) => !e.id.includes("-instant-score-") && PDF_KIND_SETS["SHOTS"].has(e.kind),
+    );
+    addPage(
+      makeTacticalPage(sport, ftShotEvents, "Shot + Wides Map", home, away, 7, TOTAL_PAGES),
+      true,
+      "Shot + Wides Map",
+    );
+
+    // 8. Zone Analysis
+    addPage(
+      makeZoneAnalysisPage(events, home, away, 8, TOTAL_PAGES),
       true,
       "Zone Analysis",
-    );
-
-    // 7. Momentum Timeline
-    addPage(
-      makeMatchSwingTimelinePage(events, chainAnalysis, home, away, 7, TOTAL_PAGES),
-      true,
-      "Momentum Timeline",
-    );
-
-    // 8. Segment Breakdown
-    addPage(
-      makeSegmentsPage(events, home, away, TOTAL_PAGES),
-      true,
-      "Segment Breakdown",
     );
 
     // 9. Opposition Snapshot
@@ -6185,11 +6168,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Opposition Snapshot",
     );
 
-    // 10. Key Tactical Chains
+    // 10. Tactical Chain Analysis
     addPage(
       makeChainSummaryPage(chainAnalysis, home, away, 10, TOTAL_PAGES),
       true,
-      "Key Tactical Chains",
+      "Tactical Chain Analysis",
     );
   }
 
