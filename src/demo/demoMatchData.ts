@@ -109,8 +109,6 @@ const BL_H1_FREE_SCORED   = [0.85, 0.50] as const;
 const BL_H1_TO_WIN_R      = [0.58, 0.68] as const;
 /** MIDDLE_CENTRE — BL wins ball centrally in transition */
 const BL_H1_TO_WIN_CTR    = [0.53, 0.52] as const;
-/** MIDDLE_CENTRE — BL loses possession in central midfield */
-const BL_H1_TO_LOST       = [0.55, 0.44] as const;
 /** MIDDLE_RIGHT — BL retains own kickout, right midfield corridor */
 const BL_H1_KO_WIN_OWN_R  = [0.54, 0.66] as const;
 /** MIDDLE_CENTRE — BL retains own kickout slightly left of centre */
@@ -131,8 +129,6 @@ const GG_H1_SCORE_LONG_L  = [0.20, 0.30] as const;
 const GG_H1_WIDE_CRN_R    = [0.13, 0.88] as const;
 /** DEFENSIVE_LEFT — GG corner shot, trademark wide from left corner */
 const GG_H1_WIDE_CRN_L    = [0.17, 0.08] as const;
-/** DEFENSIVE_LEFT — long-range attempt, drifted wide */
-const GG_H1_WIDE_LONG     = [0.24, 0.24] as const;
 /** MIDDLE_CENTRE — GG free won deep in their own attacking effort */
 const GG_H1_FREE_WON      = [0.32, 0.56] as const;
 /** DEFENSIVE_CENTRE — GG free scored centrally */
