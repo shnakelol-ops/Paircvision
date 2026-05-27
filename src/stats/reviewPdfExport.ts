@@ -9159,6 +9159,30 @@ function makeChainPressurePage(
   );
   renderHtMarkers(ctx, pitchEvts, inner);
 
+  // ── Soft amber ground-tone: PRESSURE_PATTERN / turnover-pressure zones ───
+  // Drawn first so stronger rank-based fills render on top.
+  // Covers all ranked patterns of the pressure/turnover type — including rank #3
+  // which the main overlay loop intentionally skips for labels/rings/arrows.
+  // Green = success platform · Amber = pressure building · Red = active damage.
+  // No rings, no badges, no arrows — ambient fill only.
+  for (const pattern of patterns) {
+    const isTurnoverConceded = pattern.headline === "Turnover Conceded";
+    if (pattern.kind !== "PRESSURE_PATTERN" && !isTurnoverConceded) continue;
+    if (pattern.zoneCol === null || pattern.zoneRow === null) continue;
+
+    const col    = pattern.zoneCol;
+    const row    = pattern.zoneRow;
+    const bounds = {
+      xMin: CP_COL_BOUNDS[col].xMin, xMax: CP_COL_BOUNDS[col].xMax,
+      yMin: CP_ROW_BOUNDS[row].yMin, yMax: CP_ROW_BOUNDS[row].yMax,
+    };
+    const rect = zonePixelRect(bounds, inner);
+    // rank #1 → 0.22; rank #2 → 0.18; rank #3 → 0.14 (lightest — no other decoration)
+    const alpha = pattern.rank === 1 ? 0.22 : pattern.rank === 2 ? 0.18 : 0.14;
+    ctx.fillStyle = `rgba(245,158,11,${alpha})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
   // ── Pitch overlays: rank #1 and rank #2 ONLY ─────────────────────────────
   const seenZones = new Set<string>();
 
