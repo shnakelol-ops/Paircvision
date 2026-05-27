@@ -98,6 +98,7 @@ function startReasonFromEvent(event: ProEvent): PossessionStartReason {
   if (kind === "BREAK_WON") return "BREAK_WON";
   if (kind === "FREE_WON") return "FREE_WON";
   if (kind === "DELIVERY_WON") return "DELIVERY_WON";
+  if (kind === "MARK") return "MARK";
   return "POSSESSION_WON"; // fallback
 }
 

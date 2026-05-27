@@ -4,7 +4,10 @@
  * PáircVision Pro Tagging — Gaelic Football Sport Profile
  *
  * Football has more pauses than hurling, allowing slightly richer tagging.
- * The 2PT event is included. Delivery and effort sections are same as hurling.
+ * Events: 2PT, MARK (football-specific), plus shared event set.
+ * Delivery and effort sections are collapsible secondary capture.
+ *
+ * Phase 4: MARK added — ProEventKind only, no MatchEventKind equivalent.
  */
 
 import {
@@ -21,6 +24,7 @@ export const FOOTBALL_PROFILE: SportProfile = {
   restartLabel: "Kickout",
 
   enabledProKinds: new Set([
+    // Scoring
     "GOAL",
     "POINT",
     "WIDE",
@@ -28,20 +32,27 @@ export const FOOTBALL_PROFILE: SportProfile = {
     "FREE_SCORED",
     "FREE_MISSED",
     "TWO_POINTER",
+    // Football-specific
+    "MARK",
+    // Restarts
     "RESTART_WON",
     "RESTART_LOST",
     "SHORT_RESTART",
     "LONG_RESTART",
+    // Possession
     "TURNOVER_WON",
     "TURNOVER_LOST",
     "POSSESSION_WON",
     "POSSESSION_LOST",
+    // Frees
     "FREE_WON",
     "FREE_CONCEDED",
+    // Delivery
     "DELIVERY_WON",
     "DELIVERY_LOST",
     "INSIDE_BALL_WON",
     "INSIDE_BALL_LOST",
+    // Effort/Quality
     "GOOD_DECISION",
     "BAD_DECISION",
     "GOOD_PASS",
@@ -64,12 +75,15 @@ export const FOOTBALL_PROFILE: SportProfile = {
       {
         id: "scoring",
         label: "Scoring",
+        // 6 buttons: 3 columns × 2 rows
         buttons: [
           { proKind: "GOAL",        label: "GOAL",   shortLabel: "G",   tone: "score", category: "scoring" },
           { proKind: "POINT",       label: "POINT",  shortLabel: "P",   tone: "score", category: "scoring" },
           { proKind: "TWO_POINTER", label: "2PT",    shortLabel: "2",   tone: "score", category: "scoring" },
           { proKind: "WIDE",        label: "WIDE",   shortLabel: "W",   tone: "wide",  category: "scoring" },
           { proKind: "SHOT",        label: "SHOT",   shortLabel: "SH",  tone: "wide",  category: "scoring" },
+          // MARK: football/LGFA specific — ball won from kickout/pass + free position
+          { proKind: "MARK",        label: "MARK",   shortLabel: "MK",  tone: "restart", category: "football-specific" },
         ],
       },
       {
@@ -135,6 +149,7 @@ export const FOOTBALL_PROFILE: SportProfile = {
     { anchorKind: "RESTART_LOST", maxGapSeconds: 90, maxWindowSeconds: 90 },
     { anchorKind: "TURNOVER_WON", maxGapSeconds: 60, maxWindowSeconds: 60 },
     { anchorKind: "FREE_WON",     maxGapSeconds: 30, maxWindowSeconds: 30 },
+    { anchorKind: "MARK",         maxGapSeconds: 30, maxWindowSeconds: 30 },
   ],
 
   possessionRule: {

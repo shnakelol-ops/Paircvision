@@ -60,6 +60,11 @@ export const PRO_EVENT_KINDS = [
   "INSIDE_BALL_WON",
   "INSIDE_BALL_LOST",
 
+  // FOOTBALL / LADIES FOOTBALL SPECIFIC
+  // MARK: player claims a mark from a kickout or kick-pass (20m+).
+  // No MatchEventKind equivalent — stays as ProEventKind only.
+  "MARK",
+
   // HURLING / CAMOGIE SPECIFIC
   "BREAK_WON",
   "BREAK_LOST",
@@ -90,6 +95,7 @@ export type ProEventCategory =
   | "possession"
   | "frees"
   | "delivery"
+  | "football-specific"
   | "hurling-specific"
   | "effort";
 
@@ -102,6 +108,7 @@ export const PRO_EVENT_CATEGORY_MAP: Record<ProEventKind, ProEventCategory> = {
   FREE_MISSED:          "scoring",
   TWO_POINTER:          "scoring",
   FORTY_FIVE_TWO_POINT: "scoring",
+  MARK:                 "football-specific",
   RESTART_WON:          "restarts",
   RESTART_LOST:         "restarts",
   SHORT_RESTART:        "restarts",
@@ -143,6 +150,7 @@ export type PossessionStartReason =
   | "BREAK_WON"
   | "FREE_WON"
   | "DELIVERY_WON"
+  | "MARK"
   | "MATCH_START";
 
 export type PossessionEndReason =
@@ -161,6 +169,7 @@ export const POSSESSION_START_KINDS: ReadonlySet<ProEventKind> = new Set<ProEven
   "BREAK_WON",
   "FREE_WON",
   "DELIVERY_WON",
+  "MARK",  // a mark = ball won + free position
 ]);
 
 export const POSSESSION_END_KINDS: ReadonlySet<ProEventKind> = new Set<ProEventKind>([

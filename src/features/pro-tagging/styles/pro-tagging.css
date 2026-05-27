@@ -719,3 +719,292 @@
   font-size: 11px;
   color: var(--pro-text-secondary);
 }
+
+/* ---------------------------------------------------------------------------
+   Session Setup Screen (Phase 4)
+   --------------------------------------------------------------------------- */
+.session-setup {
+  width: 100%;
+  min-height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--pro-gap-lg) var(--pro-gap-lg) calc(var(--pro-gap-xl) * 2);
+}
+
+.session-setup__inner {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-lg);
+}
+
+/* ── Top row: back btn + experiment badge ─────────────────────────────── */
+.session-setup__toprow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--pro-gap-xs);
+}
+
+.session-setup__back-btn {
+  background: none;
+  border: none;
+  color: var(--pro-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 0;
+  touch-action: manipulation;
+  letter-spacing: 0.02em;
+}
+
+.session-setup__back-btn:active {
+  color: var(--pro-text-primary);
+}
+
+.session-setup__exp-badge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--pro-text-muted);
+  background: var(--pro-surface-2);
+  border: 1px solid var(--pro-border);
+  padding: 3px 8px;
+  border-radius: 12px;
+}
+
+/* ── Profile card ──────────────────────────────────────────────────────── */
+.session-setup__profile-card {
+  background: var(--pro-surface);
+  border: 1px solid var(--pro-border);
+  border-radius: 14px;
+  padding: var(--pro-gap-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-sm);
+}
+
+.session-setup__profile-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--pro-text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.session-setup__profile-sub {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tone-score-active);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.session-setup__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pro-gap-xs);
+  margin-top: var(--pro-gap-xs);
+}
+
+/* Feature chips */
+.setup-chip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 6px;
+  color: #fff;
+}
+
+.setup-chip--score      { background: var(--tone-score); }
+.setup-chip--restart    { background: var(--tone-restart); }
+.setup-chip--hurling    { background: var(--tone-hurling); }
+.setup-chip--free       { background: var(--tone-free); }
+.setup-chip--possession { background: var(--tone-turnover); }
+.setup-chip--football   { background: var(--tone-delivery); }
+
+/* ── Form ──────────────────────────────────────────────────────────────── */
+.session-setup__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-md);
+}
+
+.session-setup__field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.session-setup__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pro-text-muted);
+}
+
+.session-setup__label-opt {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--pro-text-muted);
+  opacity: 0.7;
+}
+
+.session-setup__input {
+  width: 100%;
+  background: var(--pro-surface);
+  border: 1.5px solid var(--pro-border);
+  border-radius: 10px;
+  color: var(--pro-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  padding: 12px var(--pro-gap-md);
+  outline: none;
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  /* Prevent iOS zoom on focus (font-size ≥ 16px) */
+}
+
+.session-setup__input:focus {
+  border-color: var(--tone-restart);
+}
+
+.session-setup__input::placeholder {
+  color: var(--pro-text-muted);
+  font-weight: 400;
+}
+
+/* ── Direction toggle ──────────────────────────────────────────────────── */
+.session-setup__direction-row {
+  display: flex;
+  align-items: center;
+  gap: var(--pro-gap-sm);
+}
+
+.session-setup__direction-btn {
+  flex: 0 0 auto;
+  background: var(--pro-surface);
+  border: 1.5px solid var(--pro-border);
+  border-radius: 10px;
+  color: var(--pro-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.session-setup__direction-btn--active {
+  background: var(--tone-restart);
+  border-color: var(--tone-restart-active);
+  color: #fff;
+}
+
+.session-setup__direction-btn:active:not(.session-setup__direction-btn--active) {
+  background: var(--pro-surface-2);
+}
+
+.session-setup__direction-pitch {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-setup__direction-pitch svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* ── Half selector ─────────────────────────────────────────────────────── */
+.session-setup__half-row {
+  display: flex;
+  gap: var(--pro-gap-sm);
+}
+
+.session-setup__half-btn {
+  flex: 1;
+  background: var(--pro-surface);
+  border: 1.5px solid var(--pro-border);
+  border-radius: 10px;
+  color: var(--pro-text-secondary);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 14px var(--pro-gap-md);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.session-setup__half-btn--active {
+  background: var(--tone-score);
+  border-color: var(--tone-score-active);
+  color: #fff;
+}
+
+.session-setup__half-btn:active:not(.session-setup__half-btn--active) {
+  background: var(--pro-surface-2);
+}
+
+/* ── Actions ───────────────────────────────────────────────────────────── */
+.session-setup__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-md);
+  padding-top: var(--pro-gap-xs);
+}
+
+.session-setup__start-btn {
+  width: 100%;
+  background: var(--tone-score);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  padding: 18px var(--pro-gap-xl);
+  cursor: pointer;
+  touch-action: manipulation;
+  letter-spacing: 0.02em;
+  transition: filter 0.1s ease, transform 0.08s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.session-setup__start-btn:active {
+  filter: brightness(1.15);
+  transform: scale(0.98);
+}
+
+.session-setup__resume-btn {
+  width: 100%;
+  background: var(--pro-surface);
+  border: 1.5px solid var(--pro-border);
+  border-radius: 12px;
+  color: var(--pro-text-secondary);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 14px var(--pro-gap-xl);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.1s ease, border-color 0.1s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.session-setup__resume-btn:active {
+  background: var(--pro-surface-2);
+  border-color: var(--tone-score-active);
+}

@@ -42,6 +42,9 @@ export const DEFAULT_WEIGHTS: ProContributionWeights = {
   SHOT:                  0,  // neutral — neither positive nor negative by default
   FREE_MISSED:          -1,
 
+  // Football-specific
+  MARK:                  1,  // winning a mark = ball won + free position
+
   // Restarts
   RESTART_WON:           1,
   RESTART_LOST:         -1,
@@ -139,6 +142,7 @@ const KIND_TO_BREAKDOWN: Partial<Record<ProEventKind, BreakdownKey>> = {
   WIDE:                  "scoring",
   SHOT:                  "scoring",
   FREE_MISSED:           "scoring",
+  MARK:                  "possession",  // football-specific: ball won + free position
   RESTART_WON:           "restarts",
   RESTART_LOST:          "restarts",
   SHORT_RESTART:         "restarts",

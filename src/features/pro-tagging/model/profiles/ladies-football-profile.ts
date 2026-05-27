@@ -3,7 +3,9 @@
  *
  * PáircVision Pro Tagging — Ladies Football Sport Profile
  *
- * Same as football but adds FORTY_FIVE_TWO_POINT.
+ * Same as football but adds FORTY_FIVE_TWO_POINT and MARK.
+ *
+ * Phase 4: MARK added — ProEventKind only, no MatchEventKind equivalent.
  */
 
 import {
@@ -19,6 +21,7 @@ export const LADIES_FOOTBALL_PROFILE: SportProfile = {
   restartLabel: "Kickout",
 
   enabledProKinds: new Set([
+    // Scoring
     "GOAL",
     "POINT",
     "WIDE",
@@ -27,20 +30,27 @@ export const LADIES_FOOTBALL_PROFILE: SportProfile = {
     "FREE_MISSED",
     "TWO_POINTER",
     "FORTY_FIVE_TWO_POINT",
+    // Football-specific
+    "MARK",
+    // Restarts
     "RESTART_WON",
     "RESTART_LOST",
     "SHORT_RESTART",
     "LONG_RESTART",
+    // Possession
     "TURNOVER_WON",
     "TURNOVER_LOST",
     "POSSESSION_WON",
     "POSSESSION_LOST",
+    // Frees
     "FREE_WON",
     "FREE_CONCEDED",
+    // Delivery
     "DELIVERY_WON",
     "DELIVERY_LOST",
     "INSIDE_BALL_WON",
     "INSIDE_BALL_LOST",
+    // Effort/Quality
     "GOOD_DECISION",
     "BAD_DECISION",
     "GOOD_PASS",
@@ -63,13 +73,16 @@ export const LADIES_FOOTBALL_PROFILE: SportProfile = {
       {
         id: "scoring",
         label: "Scoring",
+        // 7 buttons: 3-column auto-grid (3+3+1)
         buttons: [
-          { proKind: "GOAL",               label: "GOAL",   shortLabel: "G",  tone: "score", category: "scoring" },
-          { proKind: "POINT",              label: "POINT",  shortLabel: "P",  tone: "score", category: "scoring" },
-          { proKind: "TWO_POINTER",        label: "2PT",    shortLabel: "2",  tone: "score", category: "scoring" },
-          { proKind: "FORTY_FIVE_TWO_POINT",label: "45+2",  shortLabel: "45", tone: "score", category: "scoring" },
-          { proKind: "WIDE",               label: "WIDE",   shortLabel: "W",  tone: "wide",  category: "scoring" },
-          { proKind: "SHOT",               label: "SHOT",   shortLabel: "SH", tone: "wide",  category: "scoring" },
+          { proKind: "GOAL",               label: "GOAL",  shortLabel: "G",  tone: "score",   category: "scoring" },
+          { proKind: "POINT",              label: "POINT", shortLabel: "P",  tone: "score",   category: "scoring" },
+          { proKind: "TWO_POINTER",        label: "2PT",   shortLabel: "2",  tone: "score",   category: "scoring" },
+          { proKind: "FORTY_FIVE_TWO_POINT",label: "45+2", shortLabel: "45", tone: "score",   category: "scoring" },
+          { proKind: "WIDE",               label: "WIDE",  shortLabel: "W",  tone: "wide",    category: "scoring" },
+          { proKind: "SHOT",               label: "SHOT",  shortLabel: "SH", tone: "wide",    category: "scoring" },
+          // MARK: football/LGFA specific
+          { proKind: "MARK",               label: "MARK",  shortLabel: "MK", tone: "restart", category: "football-specific" },
         ],
       },
       {
@@ -135,6 +148,7 @@ export const LADIES_FOOTBALL_PROFILE: SportProfile = {
     { anchorKind: "RESTART_LOST", maxGapSeconds: 90, maxWindowSeconds: 90 },
     { anchorKind: "TURNOVER_WON", maxGapSeconds: 60, maxWindowSeconds: 60 },
     { anchorKind: "FREE_WON",     maxGapSeconds: 30, maxWindowSeconds: 30 },
+    { anchorKind: "MARK",         maxGapSeconds: 30, maxWindowSeconds: 30 },
   ],
 
   possessionRule: {

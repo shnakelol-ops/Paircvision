@@ -3,13 +3,14 @@
  *
  * PáircVision Pro Tagging — Main Experiment Shell
  *
- * Wires together the full capture loop:
- *   EVENT KEYBOARD → PLAYER PICKER → PITCH TAP → back to EVENT KEYBOARD
+ * Shell view state machine:
+ *   SETUP  — ProSessionSetup screen (team names, direction, half, profile badge)
+ *   LIVE   — Event keyboard → player picker → pitch tap capture loop
  *
- * State machine:
- *   IDLE           — showing Event Keyboard
- *   AWAITING_PLAYER — showing Player Picker (event kind selected)
- *   AWAITING_PITCH  — showing Pitch Tap Surface (player selected or skipped)
+ * Capture loop state machine (within LIVE):
+ *   IDLE           — Event Keyboard shown
+ *   AWAITING_PLAYER — Player Picker shown
+ *   AWAITING_PITCH  — Pitch Tap Surface shown
  *
  * Nothing blocks the next event.
  * No confirmation modals.
@@ -17,12 +18,14 @@
  * Event is committed when pitch is tapped (or skipped).
  *
  * Phase 3 — Event → Player → Pitch Loop
+ * Phase 4 — Sport Profile Switching (setup screen added)
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import EventKeyboard from "./EventKeyboard";
 import ProPlayerPicker from "./ProPlayerPicker";
 import PitchTapSurface, { type PitchCoords } from "./PitchTapSurface";
+import ProSessionSetup from "./ProSessionSetup";
 import { getSportProfile } from "../model/profiles/index";
 import type { EventButtonDef } from "../model/sport-profile-types";
 import type { SportProfileId } from "../model/sport-profile-types";
@@ -32,6 +35,7 @@ import {
   createInitialProSession,
   loadProSession,
   saveProSession,
+  clearProSession,
 } from "../storage/pro-session-storage";
 import { deriveContributions, DEFAULT_WEIGHTS } from "../engine/contribution-engine";
 
@@ -39,6 +43,10 @@ import { deriveContributions, DEFAULT_WEIGHTS } from "../engine/contribution-eng
 // Types
 // ---------------------------------------------------------------------------
 
+/** Top-level shell view — what the analyst sees */
+type ShellView = "SETUP" | "LIVE";
+
+/** Capture-loop phase within LIVE view */
 type CaptureState =
   | { phase: "IDLE" }
   | { phase: "AWAITING_PLAYER"; proKind: ProEventKind; button: EventButtonDef }
@@ -63,7 +71,6 @@ function newEventId(): string {
 }
 
 function deriveSegment(clockSeconds: number, half: 1 | 2): 1 | 2 | 3 | 4 | 5 | 6 {
-  // Simple 10-minute segment splits within each half
   const halfClock = half === 1 ? clockSeconds : clockSeconds - 35 * 60;
   if (halfClock < 12 * 60) return half === 1 ? 1 : 4;
   if (halfClock < 25 * 60) return half === 1 ? 2 : 5;
@@ -83,14 +90,23 @@ function formatClock(seconds: number): string {
 export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellProps) {
   const profile = getSportProfile(profileId);
 
-  // Session state
+  // Load saved session for this profile (or create blank template)
   const [session, setSession] = useState<ProSessionState>(() => {
     const saved = loadProSession();
     if (saved && saved.sportProfile === profileId) return saved;
     return createInitialProSession(profileId);
   });
 
-  // Capture loop state machine
+  // Whether we have a saved session with events to offer a resume option
+  const hasExistingSession = session.events.length > 0;
+
+  // Shell view: start in SETUP so analyst always confirms profile + team names
+  // If they have an active session already running, drop straight into LIVE
+  const [shellView, setShellView] = useState<ShellView>(() =>
+    session.hasStarted && session.events.length > 0 ? "LIVE" : "SETUP",
+  );
+
+  // Capture loop state machine (only active when shellView === "LIVE")
   const [capture, setCapture] = useState<CaptureState>({ phase: "IDLE" });
 
   // Match clock ticker
@@ -98,12 +114,12 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
-  // Persist session on change
+  // Persist on every session change
   useEffect(() => {
     saveProSession(session);
   }, [session]);
 
-  // Clock tick
+  // Clock ticker — starts/stops with isRunning
   useEffect(() => {
     if (session.isRunning) {
       clockRef.current = setInterval(() => {
@@ -122,6 +138,46 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
   }, [session.isRunning]);
 
   // ---------------------------------------------------------------------------
+  // Setup screen handlers
+  // ---------------------------------------------------------------------------
+
+  const handleSetupStart = useCallback(
+    (draft: Pick<ProSessionState, "homeTeamName" | "awayTeamName" | "venueName" | "attackingDirection" | "half">) => {
+      // Clear any existing session and apply the new setup values
+      const fresh = createInitialProSession(profileId);
+      const newSession: ProSessionState = {
+        ...fresh,
+        homeTeamName:      draft.homeTeamName,
+        awayTeamName:      draft.awayTeamName,
+        venueName:         draft.venueName,
+        attackingDirection: draft.attackingDirection,
+        half:              draft.half,
+        // If starting at 2H, pre-set clock to 35:00
+        matchClockSeconds: draft.half === 2 ? 35 * 60 : 0,
+      };
+      clearProSession();
+      setSession(newSession);
+      setCapture({ phase: "IDLE" });
+      setShellView("LIVE");
+    },
+    [profileId],
+  );
+
+  const handleSetupResume = useCallback(() => {
+    // Go directly to live with the existing session unchanged
+    setCapture({ phase: "IDLE" });
+    setShellView("LIVE");
+  }, []);
+
+  // Open setup from the live shell (settings tap)
+  const handleOpenSetup = useCallback(() => {
+    // Pause clock before going to setup
+    setSession((prev) => ({ ...prev, isRunning: false }));
+    setCapture({ phase: "IDLE" });
+    setShellView("SETUP");
+  }, []);
+
+  // ---------------------------------------------------------------------------
   // Capture loop handlers
   // ---------------------------------------------------------------------------
 
@@ -132,16 +188,13 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
     [],
   );
 
-  const handlePlayerSelected = useCallback(
-    (player: ProPlayer) => {
-      setCapture((prev) => {
-        if (prev.phase !== "AWAITING_PLAYER") return prev;
-        return { phase: "AWAITING_PITCH", proKind: prev.proKind, button: prev.button, player };
-      });
-      setSession((prev) => ({ ...prev, activePlayerId: player.id }));
-    },
-    [],
-  );
+  const handlePlayerSelected = useCallback((player: ProPlayer) => {
+    setCapture((prev) => {
+      if (prev.phase !== "AWAITING_PLAYER") return prev;
+      return { phase: "AWAITING_PITCH", proKind: prev.proKind, button: prev.button, player };
+    });
+    setSession((prev) => ({ ...prev, activePlayerId: player.id }));
+  }, []);
 
   const handlePlayerSkipped = useCallback(() => {
     setCapture((prev) => {
@@ -153,9 +206,9 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
   const commitEvent = useCallback(
     (proKind: ProEventKind, player: ProPlayer | null, coords: PitchCoords) => {
       const now = Date.now();
-      const currentSession = sessionRef.current;
-      const half = currentSession.half;
-      const clockSeconds = currentSession.matchClockSeconds;
+      const cur = sessionRef.current;
+      const half = cur.half;
+      const clockSeconds = cur.matchClockSeconds;
       const segment = deriveSegment(clockSeconds, half);
 
       const newEvent: ProEvent = {
@@ -171,8 +224,8 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
         matchClockSeconds: clockSeconds,
         teamSide: "FOR",
         sportProfile: profileId,
-        playerId: player?.id ?? null,
-        playerName: player?.name ?? null,
+        playerId:     player?.id     ?? null,
+        playerName:   player?.name   ?? null,
         playerNumber: player?.number ?? null,
         tags: null,
         possessionId: null,
@@ -182,7 +235,7 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
         ...prev,
         events: [...prev.events, newEvent],
         hasStarted: true,
-        isRunning: prev.isRunning || true,
+        isRunning: true,
       }));
 
       setCapture({ phase: "IDLE" });
@@ -210,10 +263,7 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
   }, [commitEvent]);
 
   const handleUndo = useCallback(() => {
-    setSession((prev) => ({
-      ...prev,
-      events: prev.events.slice(0, -1),
-    }));
+    setSession((prev) => ({ ...prev, events: prev.events.slice(0, -1) }));
     setCapture({ phase: "IDLE" });
   }, []);
 
@@ -251,10 +301,14 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
   // State bar label
   // ---------------------------------------------------------------------------
 
-  const stateBarLabel = (): { text: string; mod: string } => {
-    if (capture.phase === "IDLE") return { text: "Select event", mod: "" };
+  const stateBarInfo = (): { text: string; mod: string } => {
+    if (capture.phase === "IDLE")
+      return { text: `${session.homeTeamName} vs ${session.awayTeamName}`, mod: "" };
     if (capture.phase === "AWAITING_PLAYER")
-      return { text: `${capture.button.label} — Select player`, mod: "pro-tagging-shell__state-bar--player" };
+      return {
+        text: `${capture.button.label} — Select player`,
+        mod: "pro-tagging-shell__state-bar--player",
+      };
     if (capture.phase === "AWAITING_PITCH") {
       const playerLabel = capture.player ? `#${capture.player.number}` : "no player";
       return {
@@ -265,16 +319,32 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
     return { text: "", mod: "" };
   };
 
-  const { text: stateText, mod: stateMod } = stateBarLabel();
+  const { text: stateText, mod: stateMod } = stateBarInfo();
 
-  // Pending event label for sub-screens
   const pendingLabel =
-    capture.phase !== "IDLE"
-      ? capture.button.label
-      : "";
+    capture.phase !== "IDLE" ? capture.button.label : "";
 
   // ---------------------------------------------------------------------------
-  // Render
+  // SETUP view
+  // ---------------------------------------------------------------------------
+
+  if (shellView === "SETUP") {
+    return (
+      <div className="pro-tagging-shell">
+        <ProSessionSetup
+          profile={profile}
+          currentSession={session}
+          hasExistingSession={hasExistingSession}
+          onStart={handleSetupStart}
+          onResume={handleSetupResume}
+          onBack={onExit}
+        />
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // LIVE view
   // ---------------------------------------------------------------------------
 
   return (
@@ -284,17 +354,25 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
         <button
           type="button"
           className="pro-tagging-shell__back-btn"
-          onClick={onExit}
+          onClick={handleOpenSetup}
+          title="Setup / change sport"
         >
-          ← Back
+          ⚙
         </button>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-          <span className="pro-tagging-shell__topbar-sport">{profile.displayName} · Pro</span>
-          <span className="pro-tagging-shell__topbar-clock" onClick={handleClockToggle}>
+          <span className="pro-tagging-shell__topbar-sport">
+            {profile.displayName} · {profile.restartLabel}
+          </span>
+          <button
+            type="button"
+            className="pro-tagging-shell__topbar-clock"
+            onClick={handleClockToggle}
+            title={session.isRunning ? "Pause clock" : "Start clock"}
+          >
             {formatClock(session.matchClockSeconds)}
             {session.isRunning ? " ▶" : " ⏸"}
-          </span>
+          </button>
         </div>
 
         <button
@@ -308,11 +386,15 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
       </div>
 
       {/* State bar */}
-      <div className={["pro-tagging-shell__state-bar", stateMod].filter(Boolean).join(" ")}>
-        {stateText || "PáircVision Pro Tagging"}
+      <div
+        className={["pro-tagging-shell__state-bar", stateMod]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {stateText}
       </div>
 
-      {/* Main content */}
+      {/* Main content — capture loop */}
       <div className="pro-tagging-shell__content">
         {capture.phase === "IDLE" && (
           <EventKeyboard
