@@ -1,0 +1,721 @@
+/* =============================================================================
+   PáircVision Pro Tagging — Design System
+   Branch: experiment/pro-tagging-system-vision-labs
+
+   Design principles:
+   - Portrait-first, phone-first, thumb-first
+   - All primary events visible without scroll
+   - Minimum 56px touch targets (64px preferred)
+   - High contrast — white/near-white text on coloured backgrounds
+   - Usable in rain / dark / sideline pressure
+   - Fast muscle-memory layout
+   ============================================================================= */
+
+/* ---------------------------------------------------------------------------
+   CSS Variables — Tone System
+   --------------------------------------------------------------------------- */
+:root {
+  --pro-bg:            #0a0c10;
+  --pro-surface:       #141820;
+  --pro-surface-2:     #1e2430;
+  --pro-border:        #2a3040;
+  --pro-text-primary:  #f0f4ff;
+  --pro-text-secondary:#8090a8;
+  --pro-text-muted:    #4a5568;
+
+  /* Event tone colours */
+  --tone-score:        #1d8a44;   /* deep green — score */
+  --tone-score-active: #25b055;
+  --tone-wide:         #b05800;   /* amber — miss/wide */
+  --tone-wide-active:  #d96e00;
+  --tone-turnover:     #8b3e12;   /* burnt orange — possession */
+  --tone-turnover-active: #b55020;
+  --tone-restart:      #1a4f8a;   /* blue — kickout/puckout */
+  --tone-restart-active: #2261af;
+  --tone-free:         #4a1d8a;   /* purple — free */
+  --tone-free-active:  #6025b0;
+  --tone-delivery:     #0d6b6b;   /* teal — delivery */
+  --tone-delivery-active: #107f7f;
+  --tone-hurling:      #8a1d1d;   /* dark red — hurling specific */
+  --tone-hurling-active: #af2525;
+  --tone-effort:       #2a3040;   /* dark grey — quality/effort */
+  --tone-effort-active: #384455;
+
+  /* Spacing */
+  --pro-gap-xs:   4px;
+  --pro-gap-sm:   8px;
+  --pro-gap-md:   12px;
+  --pro-gap-lg:   16px;
+  --pro-gap-xl:   24px;
+
+  /* Button sizing */
+  --btn-height-primary:   64px;
+  --btn-height-secondary: 56px;
+  --btn-radius:           10px;
+  --btn-font-size:        13px;
+  --btn-font-weight:      700;
+}
+
+/* ---------------------------------------------------------------------------
+   Global Reset for Pro surfaces
+   --------------------------------------------------------------------------- */
+.pro-lab-setup,
+.pro-tagging-shell {
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--pro-bg);
+  color: var(--pro-text-primary);
+  min-height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Setup / Sport Selection Screen
+   --------------------------------------------------------------------------- */
+.pro-lab-setup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pro-gap-xl);
+}
+
+.pro-lab-setup__inner {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pro-gap-md);
+}
+
+.pro-lab-setup__badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: var(--pro-text-secondary);
+  text-transform: uppercase;
+  background: var(--pro-surface-2);
+  border: 1px solid var(--pro-border);
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.pro-lab-setup__title {
+  font-size: 32px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.15;
+  margin: 0;
+  color: var(--pro-text-primary);
+}
+
+.pro-lab-setup__title-pro {
+  color: var(--tone-score-active);
+}
+
+.pro-lab-setup__subtitle {
+  font-size: 14px;
+  color: var(--pro-text-secondary);
+  text-align: center;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.pro-lab-setup__divider {
+  width: 40px;
+  height: 2px;
+  background: var(--pro-border);
+  border-radius: 2px;
+  margin: var(--pro-gap-sm) 0;
+}
+
+.pro-lab-setup__choose-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pro-text-muted);
+  margin: 0;
+}
+
+.pro-lab-setup__sport-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--pro-gap-md);
+  width: 100%;
+}
+
+.pro-lab-setup__sport-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pro-gap-sm);
+  padding: var(--pro-gap-xl) var(--pro-gap-md);
+  background: var(--pro-surface);
+  border: 2px solid var(--pro-border);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  min-height: 100px;
+  touch-action: manipulation;
+}
+
+.pro-lab-setup__sport-btn:active {
+  background: var(--pro-surface-2);
+  transform: scale(0.97);
+}
+
+.pro-lab-setup__sport-btn:hover {
+  border-color: var(--tone-restart);
+}
+
+.pro-lab-setup__sport-emoji {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.pro-lab-setup__sport-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pro-text-primary);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.pro-lab-setup__footer {
+  margin-top: var(--pro-gap-lg);
+}
+
+.pro-lab-setup__footer-note {
+  font-size: 11px;
+  color: var(--pro-text-muted);
+  text-align: center;
+  margin: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Pro Tagging Shell
+   --------------------------------------------------------------------------- */
+.pro-tagging-shell {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Top bar */
+.pro-tagging-shell__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px var(--pro-gap-lg);
+  background: var(--pro-surface);
+  border-bottom: 1px solid var(--pro-border);
+  flex-shrink: 0;
+  min-height: 52px;
+}
+
+.pro-tagging-shell__topbar-sport {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tone-score-active);
+}
+
+.pro-tagging-shell__topbar-clock {
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--pro-text-primary);
+  letter-spacing: 0.05em;
+}
+
+.pro-tagging-shell__topbar-half {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pro-text-secondary);
+}
+
+.pro-tagging-shell__back-btn {
+  background: none;
+  border: none;
+  color: var(--pro-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  touch-action: manipulation;
+}
+
+.pro-tagging-shell__back-btn:active {
+  background: var(--pro-surface-2);
+}
+
+/* Main content area */
+.pro-tagging-shell__content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* State indicator bar */
+.pro-tagging-shell__state-bar {
+  padding: var(--pro-gap-sm) var(--pro-gap-lg);
+  background: var(--pro-surface-2);
+  border-bottom: 1px solid var(--pro-border);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.pro-tagging-shell__state-bar--awaiting {
+  color: var(--tone-score-active);
+  background: rgba(29, 138, 68, 0.1);
+  border-bottom-color: rgba(29, 138, 68, 0.25);
+}
+
+.pro-tagging-shell__state-bar--player {
+  color: var(--tone-restart-active);
+  background: rgba(26, 79, 138, 0.1);
+  border-bottom-color: rgba(26, 79, 138, 0.25);
+}
+
+.pro-tagging-shell__state-bar--pitch {
+  color: var(--tone-turnover-active);
+  background: rgba(139, 62, 18, 0.1);
+  border-bottom-color: rgba(139, 62, 18, 0.25);
+}
+
+/* Bottom log strip */
+.pro-tagging-shell__log {
+  padding: var(--pro-gap-sm) var(--pro-gap-lg);
+  background: var(--pro-surface);
+  border-top: 1px solid var(--pro-border);
+  display: flex;
+  align-items: center;
+  gap: var(--pro-gap-sm);
+  overflow-x: auto;
+  flex-shrink: 0;
+  min-height: 44px;
+}
+
+.pro-tagging-shell__log-empty {
+  font-size: 11px;
+  color: var(--pro-text-muted);
+}
+
+.pro-tagging-shell__log-item {
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--pro-surface-2);
+  color: var(--pro-text-secondary);
+  border: 1px solid var(--pro-border);
+}
+
+.pro-tagging-shell__log-undo {
+  background: none;
+  border: 1px solid var(--pro-border);
+  color: var(--pro-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+  touch-action: manipulation;
+}
+
+/* ---------------------------------------------------------------------------
+   Event Keyboard
+   --------------------------------------------------------------------------- */
+.event-keyboard {
+  padding: var(--pro-gap-sm) var(--pro-gap-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-sm);
+}
+
+.event-keyboard__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-xs);
+}
+
+.event-keyboard__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px var(--pro-gap-sm);
+}
+
+.event-keyboard__section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pro-text-muted);
+}
+
+.event-keyboard__section-toggle {
+  background: none;
+  border: none;
+  color: var(--pro-text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  touch-action: manipulation;
+  line-height: 1;
+}
+
+.event-keyboard__section-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: var(--pro-gap-xs);
+}
+
+/* For sections with exactly 2 buttons — wider targets */
+.event-keyboard__section-buttons--cols-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.event-keyboard__section-buttons--cols-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.event-keyboard__section-buttons--cols-4 {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
+/* Event Button */
+.event-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pro-gap-xs) var(--pro-gap-sm);
+  min-height: var(--btn-height-primary);
+  border: none;
+  border-radius: var(--btn-radius);
+  font-size: var(--btn-font-size);
+  font-weight: var(--btn-font-weight);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: filter 0.1s ease, transform 0.08s ease;
+  line-height: 1.2;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.event-btn:active {
+  transform: scale(0.95);
+  filter: brightness(1.2);
+}
+
+/* Tone variants */
+.event-btn--score    { background: var(--tone-score);    color: #fff; }
+.event-btn--wide     { background: var(--tone-wide);     color: #fff; }
+.event-btn--turnover { background: var(--tone-turnover); color: #fff; }
+.event-btn--restart  { background: var(--tone-restart);  color: #fff; }
+.event-btn--free     { background: var(--tone-free);     color: #fff; }
+.event-btn--delivery { background: var(--tone-delivery); color: #fff; }
+.event-btn--hurling  { background: var(--tone-hurling);  color: #fff; }
+.event-btn--effort   { background: var(--tone-effort);   color: var(--pro-text-secondary); border: 1px solid var(--pro-border); }
+
+/* Secondary buttons (in collapsible sections) */
+.event-btn--secondary {
+  min-height: var(--btn-height-secondary);
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* ---------------------------------------------------------------------------
+   Player Picker
+   --------------------------------------------------------------------------- */
+.player-picker {
+  padding: var(--pro-gap-sm) var(--pro-gap-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-sm);
+}
+
+.player-picker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--pro-gap-xs) 0;
+}
+
+.player-picker__pending-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pro-text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.player-picker__skip-btn {
+  background: var(--pro-surface-2);
+  border: 1px solid var(--pro-border);
+  color: var(--pro-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.player-picker__skip-btn:active {
+  background: var(--pro-surface);
+}
+
+.player-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--pro-gap-sm);
+}
+
+.player-picker__player-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pro-gap-sm) var(--pro-gap-xs);
+  min-height: 64px;
+  background: var(--pro-surface);
+  border: 2px solid var(--pro-border);
+  border-radius: var(--btn-radius);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.1s ease, border-color 0.1s ease, transform 0.08s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.player-picker__player-btn:active {
+  transform: scale(0.95);
+  background: var(--pro-surface-2);
+}
+
+.player-picker__player-btn--active {
+  border-color: var(--tone-score-active);
+  background: rgba(29, 138, 68, 0.1);
+}
+
+.player-picker__player-number {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--pro-text-primary);
+  line-height: 1;
+}
+
+.player-picker__player-name {
+  font-size: 9px;
+  color: var(--pro-text-secondary);
+  text-align: center;
+  line-height: 1.2;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.player-picker__rating-chip {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-top: 2px;
+  color: #fff;
+}
+
+.player-picker__divider {
+  width: 100%;
+  height: 1px;
+  background: var(--pro-border);
+  margin: var(--pro-gap-xs) 0;
+}
+
+.player-picker__subs-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pro-text-muted);
+  padding: 2px 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Pitch Tap Surface
+   --------------------------------------------------------------------------- */
+.pitch-tap-surface {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pro-gap-sm);
+  padding: var(--pro-gap-sm) var(--pro-gap-md);
+}
+
+.pitch-tap-surface__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pro-text-secondary);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.pitch-tap-surface__skip-btn {
+  background: none;
+  border: 1px solid var(--pro-border);
+  color: var(--pro-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.pitch-tap-surface__canvas-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  aspect-ratio: 0.6;  /* ~140x230 — portrait GAA pitch shape */
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.pitch-tap-surface__svg {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pitch-tap-surface__indicator {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: 3px solid var(--tone-score-active);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: pitch-tap-fade 0.8s ease forwards;
+  box-shadow: 0 0 0 4px rgba(37, 176, 85, 0.3);
+}
+
+@keyframes pitch-tap-fade {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  60%  { opacity: 0.9; transform: translate(-50%, -50%) scale(1.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+}
+
+/* ---------------------------------------------------------------------------
+   Contribution View (Phase 6)
+   --------------------------------------------------------------------------- */
+.contribution-view {
+  padding: var(--pro-gap-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-md);
+}
+
+.contribution-view__title {
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pro-text-secondary);
+  margin: 0;
+}
+
+.contribution-card {
+  background: var(--pro-surface);
+  border: 1px solid var(--pro-border);
+  border-radius: 12px;
+  padding: var(--pro-gap-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-sm);
+}
+
+.contribution-card--top {
+  border-color: var(--tone-score-active);
+}
+
+.contribution-card--low {
+  border-color: #d73a49;
+}
+
+.contribution-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.contribution-card__player {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--pro-text-primary);
+}
+
+.contribution-card__score {
+  font-size: 20px;
+  font-weight: 800;
+  border-radius: 8px;
+  padding: 4px 12px;
+  color: #fff;
+}
+
+.contribution-card__breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--pro-gap-xs);
+}
+
+.contribution-card__breakdown-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--pro-surface-2);
+  border-radius: 6px;
+  padding: 6px 4px;
+}
+
+.contribution-card__breakdown-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--pro-text-primary);
+}
+
+.contribution-card__breakdown-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--pro-text-muted);
+  text-align: center;
+  margin-top: 2px;
+}
+
+.contribution-card__involvements {
+  font-size: 11px;
+  color: var(--pro-text-secondary);
+}

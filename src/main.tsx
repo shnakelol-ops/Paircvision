@@ -6,6 +6,9 @@ import PitchFlowCoachShell from "./pages/PitchFlowCoachShell";
 import TacticalPadLiteClean from "./pages/TacticalPadLiteClean";
 import PlayerPerformanceTracker from "./pages/PlayerPerformanceTracker";
 import MovementBoardCanvasShellPage from "./pages/MovementBoardCanvasShellPage";
+// EXPERIMENT — Vision Labs: Pro Tagging System
+// Branch: experiment/pro-tagging-system-vision-labs
+import ProTaggingLabPage from "./pages/ProTaggingLabPage";
 
 const boardShell = () => <PitchFlowCoachShell initialTab="home" />;
 const VISION_BOARD_PATH = "/vision-board";
@@ -14,6 +17,8 @@ const FLOW_STATS_PATH = "/flowstats";
 const NOTES_PATH = "/notes";
 const PLAYER_PERFORMANCE_TRACKER_PATH = "/player-performance-tracker";
 const MOVEMENT_BOARD_LABS_PATH = "/movement-board-labs";
+// EXPERIMENT path — not linked from any production UI
+const PRO_TAGGING_LAB_PATH = "/vision-labs/pro-tagging";
 
 function redirectToBoard() {
   if (window.location.pathname !== "/board") {
@@ -95,6 +100,10 @@ function pickRootComponent() {
   }
   if (normalizedPath === MOVEMENT_BOARD_LABS_PATH) {
     return MovementBoardCanvasShellPage;
+  }
+  // EXPERIMENT — Vision Labs: Pro Tagging System
+  if (normalizedPath === PRO_TAGGING_LAB_PATH) {
+    return ProTaggingLabPage;
   }
   return redirectToBoard();
 }
