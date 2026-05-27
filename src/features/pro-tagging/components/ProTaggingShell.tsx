@@ -21,6 +21,7 @@
  * Phase 4 — Sport Profile Switching (setup screen added)
  * Phase 5 — Possession Review Panel (REVIEW view added)
  * Phase 6 — Player Contribution Review (CONTRIBUTION view added)
+ * Phase 7 — Visual Pitch Map Review (VISUAL view added)
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -30,6 +31,7 @@ import PitchTapSurface, { type PitchCoords } from "./PitchTapSurface";
 import ProSessionSetup from "./ProSessionSetup";
 import PossessionReviewPanel from "./PossessionReviewPanel";
 import ContributionReviewPanel from "./ContributionReviewPanel";
+import VisualReviewPanel from "./VisualReviewPanel";
 import { getSportProfile } from "../model/profiles/index";
 import type { EventButtonDef } from "../model/sport-profile-types";
 import type { SportProfileId } from "../model/sport-profile-types";
@@ -49,7 +51,7 @@ import { derivePossessions } from "../engine/possession-engine";
 // ---------------------------------------------------------------------------
 
 /** Top-level shell view — what the analyst sees */
-type ShellView = "SETUP" | "LIVE" | "REVIEW" | "CONTRIBUTION";
+type ShellView = "SETUP" | "LIVE" | "REVIEW" | "CONTRIBUTION" | "VISUAL";
 
 /** Capture-loop phase within LIVE view */
 type CaptureState =
@@ -306,6 +308,17 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
     setShellView("LIVE");
   }, []);
 
+  // Open visual pitch map — pauses clock
+  const handleOpenVisual = useCallback(() => {
+    setSession((prev) => ({ ...prev, isRunning: false }));
+    setCapture({ phase: "IDLE" });
+    setShellView("VISUAL");
+  }, []);
+
+  const handleCloseVisual = useCallback(() => {
+    setShellView("LIVE");
+  }, []);
+
   // ---------------------------------------------------------------------------
   // Derived state
   // ---------------------------------------------------------------------------
@@ -366,6 +379,23 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
 
   const pendingLabel =
     capture.phase !== "IDLE" ? capture.button.label : "";
+
+  // ---------------------------------------------------------------------------
+  // VISUAL view
+  // ---------------------------------------------------------------------------
+
+  if (shellView === "VISUAL") {
+    return (
+      <div className="pro-tagging-shell">
+        <VisualReviewPanel
+          session={session}
+          profile={profile}
+          events={session.events}
+          onBack={handleCloseVisual}
+        />
+      </div>
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // CONTRIBUTION view
@@ -537,6 +567,14 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
               title="Player impact"
             >
               👤
+            </button>
+            <button
+              type="button"
+              className="pro-tagging-shell__log-review"
+              onClick={handleOpenVisual}
+              title="Pitch map"
+            >
+              📍
             </button>
             <button
               type="button"
