@@ -8686,6 +8686,750 @@ function makeFtTacticalMatchStoryPage(
   return canvas;
 }
 
+// ─── Chain Pressure — FT Page 6 ──────────────────────────────────────────────
+//
+// The tactical prioritisation layer of PáircVision.
+// Answers ONE question: "What must the coach react to RIGHT NOW?"
+//
+// Replaces makeTacticalIntelligencePage in the FT Snapshot dispatch.
+// makeTacticalIntelligencePage stays in file but is no longer called.
+//
+// Architecture:
+//   rankChainPatterns      → pure deterministic ranking from existing ChainAnalysis
+//   makeChainPressurePage  → split-field (pitch 55% left · ranked cards 42% right)
+//
+// Ranking formula (deterministic, no AI, no probability):
+//   PRIORITY_SCORE = (scoresCreatedOrConceded × 5) + (occurrences × 2) + (shots × 1)
+//   Minimum threshold: occurrences ≥ 2
+//
+// Anti-clutter law (locked):
+//   Rank 1: zone fill + rings + badge + sweep + optional TRAP/ENTRY arrow
+//   Rank 2: zone fill + ring + sweep (lighter treatment)
+//   Rank 3: CARD ONLY — zero pitch overlay
+//
+// Product voice: "Kickout Trap" / "Chain Weapon" / "Pressure Pattern" / "Wasted Chain"
+// Observational only. No advice. No AI language.
+
+type ChainPressureKind =
+  | "DANGER_CHAIN"
+  | "CHAIN_WEAPON"
+  | "PRESSURE_PATTERN"
+  | "WASTED_CHAIN";
+
+type ChainPressurePattern = {
+  rank:          1 | 2 | 3;
+  kind:          ChainPressureKind;
+  badge:         string;          // chip label: "DANGER CHAIN" / "CHAIN WEAPON" etc.
+  headline:      string;          // e.g. "Kickout Trap"
+  observation:   string;          // e.g. "3 of 5 conceded kickouts led to opposition score"
+  primaryMetric: number;          // the large number shown in card
+  metricLabel:   string;          // e.g. "scores conceded"
+  occurrences:   number;          // total pattern repetitions
+  priorityScore: number;          // ranking score
+  side:          "FOR" | "OPP";
+  zoneCol:       0 | 1 | 2 | null;   // pitch zone for overlay (null = no spatial overlay)
+  zoneRow:       0 | 1 | 2 | null;
+  arrowKind:     "TRAP" | "ENTRY_SCORE" | null;  // pattern arrow for rank #1 only
+};
+
+// Helper: grid col (0–2) from normalised x
+function cpCol(nx: number): 0 | 1 | 2 {
+  if (nx < 0.333) return 0;
+  if (nx < 0.667) return 1;
+  return 2;
+}
+// Helper: grid row (0–2) from normalised y
+function cpRow(ny: number): 0 | 1 | 2 {
+  if (ny < 0.333) return 0;
+  if (ny < 0.667) return 1;
+  return 2;
+}
+// Helper: 1|2|3 from index
+function cpRank(n: number): 1 | 2 | 3 {
+  if (n === 0) return 1;
+  if (n === 1) return 2;
+  return 3;
+}
+// Helper: dominant zone col/row from a list of nx/ny pairs
+function cpDominantZone(
+  items: ReadonlyArray<{ nx: number; ny: number }>,
+): { col: 0 | 1 | 2; row: 0 | 1 | 2 } | null {
+  if (items.length === 0) return null;
+  const tally = new Map<string, { col: 0|1|2; row: 0|1|2; n: number }>();
+  for (const { nx, ny } of items) {
+    const col = cpCol(nx);
+    const row = cpRow(ny);
+    const k   = `${col},${row}`;
+    const v   = tally.get(k);
+    if (v) v.n++; else tally.set(k, { col, row, n: 1 });
+  }
+  let best: { col: 0|1|2; row: 0|1|2; n: number } | null = null;
+  for (const v of tally.values()) {
+    if (!best || v.n > best.n) best = v;
+  }
+  return best ? { col: best.col, row: best.row } : null;
+}
+
+/**
+ * Ranks possession chain patterns from the pre-computed ChainAnalysis.
+ * Returns 0–3 ChainPressurePattern objects ordered by priority score.
+ *
+ * Pure function — no canvas, no side effects, no new chain computation.
+ * All data consumed is already present in the ChainAnalysis object.
+ */
+function rankChainPatterns(
+  analysis: ChainAnalysis<PdfExportEvent>,
+): ChainPressurePattern[] {
+  const ko = analysis.kickouts;
+  const to = analysis.turnovers;
+
+  // Candidate shape (rank assigned after sorting)
+  type Candidate = Omit<ChainPressurePattern, "rank">;
+  const candidates: Candidate[] = [];
+
+  // ── 1. KICKOUT TRAP (DANGER_CHAIN) ─────────────────────────────────────────
+  // OPP scored directly from kickouts we conceded.
+  if (ko.lostAllowedScore >= 1 && ko.lost >= 2) {
+    const trapOutcomes = ko.outcomes.filter(
+      (o) => o.winningSide === "OPP" && o.nextScore !== null,
+    );
+    const zone = cpDominantZone(
+      trapOutcomes.map((o) => ({ nx: o.kickoutEvent.nx, ny: o.kickoutEvent.ny })),
+    );
+    candidates.push({
+      kind:          "DANGER_CHAIN",
+      badge:         "DANGER CHAIN",
+      headline:      "Kickout Trap",
+      observation:   `${ko.lostAllowedScore} of ${ko.lost} conceded kickouts led to opposition score`,
+      primaryMetric: ko.lostAllowedScore,
+      metricLabel:   "scores conceded",
+      occurrences:   ko.lost,
+      priorityScore: ko.lostAllowedScore * 5 + ko.lost * 2,
+      side:          "OPP",
+      zoneCol:       zone?.col ?? null,
+      zoneRow:       zone?.row ?? null,
+      arrowKind:     trapOutcomes.length >= 2 ? "TRAP" : null,
+    });
+  }
+
+  // ── 2. KICKOUT PLATFORM (CHAIN_WEAPON) ─────────────────────────────────────
+  // FOR scored directly from kickouts we won.
+  if (ko.wonToScore >= 1 && ko.won >= 2) {
+    const weaponOutcomes = ko.outcomes.filter(
+      (o) => o.winningSide === "FOR" && o.nextScore !== null,
+    );
+    const zone = cpDominantZone(
+      weaponOutcomes.map((o) => ({ nx: o.kickoutEvent.nx, ny: o.kickoutEvent.ny })),
+    );
+    candidates.push({
+      kind:          "CHAIN_WEAPON",
+      badge:         "CHAIN WEAPON",
+      headline:      "Kickout Platform",
+      observation:   `${ko.wonToScore} of ${ko.won} kickout win${ko.won !== 1 ? "s" : ""} converted to score`,
+      primaryMetric: ko.wonToScore,
+      metricLabel:   "scores created",
+      occurrences:   ko.won,
+      priorityScore: ko.wonToScore * 5 + ko.won * 2,
+      side:          "FOR",
+      zoneCol:       zone?.col ?? null,
+      zoneRow:       zone?.row ?? null,
+      arrowKind:     "ENTRY_SCORE",
+    });
+  }
+
+  // ── 3. TURNOVER DANGER (DANGER_CHAIN) ──────────────────────────────────────
+  // OPP scored after winning possession from a FOR turnover.
+  if (to.lostAllowedScore >= 1 && to.lost >= 2) {
+    const dangerOutcomes = to.outcomes.filter(
+      (o) => o.direction === "LOST" &&
+             o.turnoverEvent.teamSide === "FOR" &&
+             o.resultedInScore,
+    );
+    const zone = cpDominantZone(
+      dangerOutcomes.map((o) => ({ nx: o.turnoverEvent.nx, ny: o.turnoverEvent.ny })),
+    );
+    candidates.push({
+      kind:          "DANGER_CHAIN",
+      badge:         "DANGER CHAIN",
+      headline:      "Turnover Conceded",
+      observation:   `${to.lostAllowedScore} possession loss${to.lostAllowedScore !== 1 ? "es" : ""} led directly to opposition score`,
+      primaryMetric: to.lostAllowedScore,
+      metricLabel:   "scores conceded",
+      occurrences:   to.lost,
+      priorityScore: to.lostAllowedScore * 5 + to.lost * 2,
+      side:          "OPP",
+      zoneCol:       zone?.col ?? null,
+      zoneRow:       zone?.row ?? null,
+      arrowKind:     null,
+    });
+  }
+
+  // ── 4. TURNOVER WEAPON (CHAIN_WEAPON) ──────────────────────────────────────
+  // FOR won possession from a turnover and scored.
+  if (to.wonToScore >= 1 && to.won >= 2) {
+    const weaponOutcomes = to.outcomes.filter(
+      (o) => o.direction === "WON" &&
+             o.turnoverEvent.teamSide === "FOR" &&
+             o.resultedInScore,
+    );
+    const zone = cpDominantZone(
+      weaponOutcomes.map((o) => ({ nx: o.turnoverEvent.nx, ny: o.turnoverEvent.ny })),
+    );
+    candidates.push({
+      kind:          "CHAIN_WEAPON",
+      badge:         "CHAIN WEAPON",
+      headline:      "Turnover Weapon",
+      observation:   `${to.wonToScore} of ${to.won} possession win${to.won !== 1 ? "s" : ""} converted to score`,
+      primaryMetric: to.wonToScore,
+      metricLabel:   "scores created",
+      occurrences:   to.won,
+      priorityScore: to.wonToScore * 5 + to.won * 2 + to.wonToShot,
+      side:          "FOR",
+      zoneCol:       zone?.col ?? null,
+      zoneRow:       zone?.row ?? null,
+      arrowKind:     "ENTRY_SCORE",
+    });
+  }
+
+  // ── 5. PRESSURE PATTERNS ────────────────────────────────────────────────────
+  // High-frequency patterns without decisive conversion — only when no specific
+  // chain for the same ball-source already qualifies above.
+  {
+    const hasKoPattern = candidates.some(
+      (c) => c.headline === "Kickout Trap" || c.headline === "Kickout Platform",
+    );
+    const hasTvPattern = candidates.some(
+      (c) => c.headline === "Turnover Conceded" || c.headline === "Turnover Weapon",
+    );
+
+    // Kickout battle: lots of restarts, none yet scoring
+    if (!hasKoPattern && ko.total >= 4) {
+      candidates.push({
+        kind:          "PRESSURE_PATTERN",
+        badge:         "PRESSURE PATTERN",
+        headline:      "Kickout Battle",
+        observation:   `${ko.total} contested restarts — ${ko.wonToScore} converted, ${ko.lostAllowedScore} conceded to score`,
+        primaryMetric: ko.total,
+        metricLabel:   "contested kickouts",
+        occurrences:   ko.total,
+        priorityScore: ko.total * 2,
+        side:          ko.won >= ko.lost ? "FOR" : "OPP",
+        zoneCol:       null,
+        zoneRow:       null,
+        arrowKind:     null,
+      });
+    }
+
+    // Turnover pressure: won possessions producing shots but not converting
+    if (!hasTvPattern && to.won >= 3 && to.wonToShot >= 2) {
+      candidates.push({
+        kind:          "PRESSURE_PATTERN",
+        badge:         "PRESSURE PATTERN",
+        headline:      "Turnover Pressure",
+        observation:   `${to.won} possession win${to.won !== 1 ? "s" : ""} produced ${to.wonToShot} shot${to.wonToShot !== 1 ? "s" : ""} — ${to.wonToScore} score${to.wonToScore !== 1 ? "s" : ""}`,
+        primaryMetric: to.won,
+        metricLabel:   "possession wins",
+        occurrences:   to.won,
+        priorityScore: to.won * 2 + to.wonToShot,
+        side:          "FOR",
+        zoneCol:       null,
+        zoneRow:       null,
+        arrowKind:     null,
+      });
+    }
+  }
+
+  // ── 6. WASTED CHAIN (WASTED_CHAIN) ─────────────────────────────────────────
+  // FOR creating shots from turnovers but failing to convert.
+  {
+    const unconverted = to.wonToShot - to.wonToScore;
+    if (unconverted >= 2 && to.won >= 2) {
+      const missOutcomes = to.outcomes.filter(
+        (o) => o.direction === "WON" &&
+               o.turnoverEvent.teamSide === "FOR" &&
+               o.resultedInShot &&
+               !o.resultedInScore,
+      );
+      const zone = cpDominantZone(
+        missOutcomes.map((o) => ({ nx: o.turnoverEvent.nx, ny: o.turnoverEvent.ny })),
+      );
+      candidates.push({
+        kind:          "WASTED_CHAIN",
+        badge:         "WASTED CHAIN",
+        headline:      "Wasted Chain",
+        observation:   `${to.wonToShot} shot${to.wonToShot !== 1 ? "s" : ""} from ${to.won} turnover win${to.won !== 1 ? "s" : ""} — only ${to.wonToScore} converted`,
+        primaryMetric: unconverted,
+        metricLabel:   "unconverted shots",
+        occurrences:   to.won,
+        priorityScore: to.wonToScore * 5 + to.won * 2 + unconverted,
+        side:          "FOR",
+        zoneCol:       zone?.col ?? null,
+        zoneRow:       zone?.row ?? null,
+        arrowKind:     null,
+      });
+    }
+  }
+
+  // ── Sort descending by priority score ──────────────────────────────────────
+  candidates.sort((a, b) => b.priorityScore - a.priorityScore);
+
+  // ── Select top 3, at most 2 of the same kind ──────────────────────────────
+  const selected: Candidate[] = [];
+  const kindCount = new Map<ChainPressureKind, number>();
+  for (const c of candidates) {
+    if (selected.length >= 3) break;
+    const n = kindCount.get(c.kind) ?? 0;
+    if (n >= 2) continue;   // don't show 3 of the same class
+    selected.push(c);
+    kindCount.set(c.kind, n + 1);
+  }
+
+  return selected.map((c, i) => ({ ...c, rank: cpRank(i) }));
+}
+
+/**
+ * CHAIN PRESSURE — FT Page 6
+ *
+ * Split-field layout:
+ *   LEFT  (55%): pitch with overlays for rank #1 and #2 patterns only
+ *   RIGHT (42%): three ranked insight cards, largest at top
+ *
+ * Builder signature follows existing FT page convention (events + sport + analysis).
+ */
+function makeChainPressurePage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Chain Pressure", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Rank patterns ──────────────────────────────────────────────────────────
+  const patterns = rankChainPatterns(analysis);
+
+  // ── Colour helpers (all based on kind — no new palette colours) ───────────
+  function cpRgb(kind: ChainPressureKind): string {
+    if (kind === "DANGER_CHAIN")     return "239,68,68";
+    if (kind === "CHAIN_WEAPON")     return "34,197,94";
+    if (kind === "PRESSURE_PATTERN") return "245,158,11";
+    return "129,140,248";
+  }
+  function cpHex(kind: ChainPressureKind): string {
+    if (kind === "DANGER_CHAIN")     return "#ef4444";
+    if (kind === "CHAIN_WEAPON")     return "#22c55e";
+    if (kind === "PRESSURE_PATTERN") return "#f59e0b";
+    return "#818cf8";
+  }
+  function cpSeverity(score: number): "CRITICAL" | "HIGH" | "ELEVATED" | "WATCH" {
+    if (score >= 15) return "CRITICAL";
+    if (score >= 10) return "HIGH";
+    if (score >= 6)  return "ELEVATED";
+    return "WATCH";
+  }
+  function cpThreatLevel(score: number): ThreatLevel {
+    if (score >= 15) return "CRITICAL";
+    if (score >= 10) return "HIGH";
+    if (score >= 6)  return "ELEVATED";
+    return "NONE";
+  }
+
+  // ── Pitch (narrower than full-width — panel reserved on right) ─────────────
+  // w=1044: same math as HT_PITCH_AREA but stopping before the right panel gap.
+  const CP_PITCH = { x: 24, y: 80, w: 1044, h: 810 };
+  const inner    = renderPitch(ctx, sport, CP_PITCH);
+
+  const CP_COL_BOUNDS = [
+    { xMin: 0,     xMax: 33.33 },
+    { xMin: 33.33, xMax: 66.67 },
+    { xMin: 66.67, xMax: 100   },
+  ] as const;
+  const CP_ROW_BOUNDS = [
+    { yMin: 0,     yMax: 33.33 },
+    { yMin: 33.33, yMax: 66.67 },
+    { yMin: 66.67, yMax: 100   },
+  ] as const;
+
+  // ── Pitch event markers ────────────────────────────────────────────────────
+  // Show kickout + turnover events so the pitch has spatial reference.
+  const pitchEvts = events.filter(
+    (e) => e.kind === "KICKOUT_WON"    ||
+           e.kind === "KICKOUT_CONCEDED" ||
+           e.kind === "TURNOVER_WON"   ||
+           e.kind === "TURNOVER_LOST",
+  );
+  renderHtMarkers(ctx, pitchEvts, inner);
+
+  // ── Pitch overlays: rank #1 and rank #2 ONLY ─────────────────────────────
+  const seenZones = new Set<string>();
+
+  for (const pattern of patterns) {
+    if (pattern.rank === 3) continue;                          // anti-clutter law
+    if (pattern.zoneCol === null || pattern.zoneRow === null) continue;
+
+    const col  = pattern.zoneCol;
+    const row  = pattern.zoneRow;
+    const zKey = `${col},${row}`;
+
+    // If rank #2 wants the same zone as rank #1, skip its overlay — card still renders
+    if (seenZones.has(zKey)) continue;
+    seenZones.add(zKey);
+
+    const bounds = {
+      xMin: CP_COL_BOUNDS[col].xMin, xMax: CP_COL_BOUNDS[col].xMax,
+      yMin: CP_ROW_BOUNDS[row].yMin, yMax: CP_ROW_BOUNDS[row].yMax,
+    };
+    const rect      = zonePixelRect(bounds, inner);
+    const cx        = rect.x + rect.w / 2;
+    const cy        = rect.y + rect.h / 2;
+    const rgb       = cpRgb(pattern.kind);
+    const hex       = cpHex(pattern.kind);
+    const fillAlpha = pattern.rank === 1 ? 0.26 : 0.16;
+
+    // Zone fill
+    ctx.fillStyle = `rgba(${rgb},${fillAlpha})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+
+    // Threat rings
+    const ringLevel = cpThreatLevel(pattern.priorityScore);
+    if (ringLevel !== "NONE") {
+      drawThreatRings(ctx, cx, cy, ringLevel);
+    }
+
+    // Threat badge — rank #1 only (keeps rank #2 visually quieter)
+    if (pattern.rank === 1) {
+      const badgeLbl =
+        pattern.kind === "DANGER_CHAIN"     ? "DANGER ZONE"  :
+        pattern.kind === "CHAIN_WEAPON"     ? "CHAIN WEAPON" :
+        pattern.kind === "PRESSURE_PATTERN" ? "PRESSURE"     :
+                                              "WASTED";
+      drawThreatBadge(ctx, cx, cy - 52, badgeLbl, ringLevel !== "NONE" ? ringLevel : "ELEVATED");
+    }
+
+    // Directional pressure sweep
+    {
+      const intensity =
+        pattern.rank === 1
+          ? Math.min(pattern.priorityScore / 20, 1.0)
+          : Math.min(pattern.priorityScore / 32, 0.65);
+      const sweepKind =
+        pattern.kind === "DANGER_CHAIN"     ? "PRESSURE_INWARD"  :
+        pattern.kind === "CHAIN_WEAPON"     ? "PRESSURE_EXIT"    :
+        pattern.kind === "PRESSURE_PATTERN" ? "PRESSURE_INWARD"  :
+                                              "PRESSURE_COLLAPSE";
+      drawDirectionalPressureSweep(
+        ctx,
+        cx + rect.w * 0.36, cy - rect.h * 0.22,
+        cx,                  cy,
+        intensity, sweepKind,
+      );
+    }
+
+    // Pattern arrow — rank #1 only, requires explicit chain evidence (≥2 occurrences)
+    if (pattern.rank === 1 && pattern.arrowKind !== null) {
+      if (pattern.arrowKind === "TRAP" && pattern.headline === "Kickout Trap") {
+        // TRAP: OPP won kickout here → OPP scored there
+        // Zone-pair deduplication + ≥2 threshold (identical guard as RestartEscapeRoutes)
+        const trapMap = new Map<string, {
+          sc: number; sr: number; dc: number; dr: number; n: number;
+        }>();
+        for (const o of analysis.kickouts.outcomes) {
+          if (o.winningSide !== "OPP" || o.nextScore === null) continue;
+          const sc = cpCol(o.kickoutEvent.nx); const sr = cpRow(o.kickoutEvent.ny);
+          const dc = cpCol(o.nextScore.nx);    const dr = cpRow(o.nextScore.ny);
+          if (sc === dc && sr === dr) continue;
+          const k = `${sc},${sr}→${dc},${dr}`;
+          const v = trapMap.get(k);
+          if (v) v.n++; else trapMap.set(k, { sc, sr, dc, dr, n: 1 });
+        }
+        const topTrap = [...trapMap.values()]
+          .filter((a) => a.n >= 2)
+          .sort((a, b) => b.n - a.n)
+          .slice(0, 1);
+        for (const a of topTrap) {
+          const sr = zonePixelRect({ xMin: CP_COL_BOUNDS[a.sc].xMin, xMax: CP_COL_BOUNDS[a.sc].xMax, yMin: CP_ROW_BOUNDS[a.sr].yMin, yMax: CP_ROW_BOUNDS[a.sr].yMax }, inner);
+          const dr = zonePixelRect({ xMin: CP_COL_BOUNDS[a.dc].xMin, xMax: CP_COL_BOUNDS[a.dc].xMax, yMin: CP_ROW_BOUNDS[a.dr].yMin, yMax: CP_ROW_BOUNDS[a.dr].yMax }, inner);
+          drawPatternArrow(ctx, sr.x + sr.w / 2, sr.y + sr.h / 2, dr.x + dr.w / 2, dr.y + dr.h / 2, "TRAP");
+        }
+
+      } else if (pattern.arrowKind === "ENTRY_SCORE") {
+        // ENTRY_SCORE: FOR won possession here → FOR scored there
+        const entryMap = new Map<string, {
+          sc: number; sr: number; dc: number; dr: number; n: number;
+        }>();
+        // Source outcomes: kickout wins or turnover wins that led to FOR score
+        const entryOutcomes: Array<{ srcNx: number; srcNy: number; dstNx: number; dstNy: number }> = [];
+        if (pattern.headline === "Kickout Platform") {
+          for (const o of analysis.kickouts.outcomes) {
+            if (o.winningSide !== "FOR" || o.nextScore === null) continue;
+            entryOutcomes.push({ srcNx: o.kickoutEvent.nx, srcNy: o.kickoutEvent.ny, dstNx: o.nextScore.nx, dstNy: o.nextScore.ny });
+          }
+        } else {
+          for (const o of analysis.turnovers.outcomes) {
+            if (o.direction !== "WON" || o.turnoverEvent.teamSide !== "FOR" || !o.resultedInScore) continue;
+            const dst = o.nextEvent;
+            if (!dst) continue;
+            entryOutcomes.push({ srcNx: o.turnoverEvent.nx, srcNy: o.turnoverEvent.ny, dstNx: dst.nx, dstNy: dst.ny });
+          }
+        }
+        for (const { srcNx, srcNy, dstNx, dstNy } of entryOutcomes) {
+          const sc = cpCol(srcNx); const sr = cpRow(srcNy);
+          const dc = cpCol(dstNx); const dr = cpRow(dstNy);
+          if (sc === dc && sr === dr) continue;
+          const k = `${sc},${sr}→${dc},${dr}`;
+          const v = entryMap.get(k);
+          if (v) v.n++; else entryMap.set(k, { sc, sr, dc, dr, n: 1 });
+        }
+        const topEntry = [...entryMap.values()]
+          .filter((a) => a.n >= 2)
+          .sort((a, b) => b.n - a.n)
+          .slice(0, 1);
+        for (const a of topEntry) {
+          const sr = zonePixelRect({ xMin: CP_COL_BOUNDS[a.sc].xMin, xMax: CP_COL_BOUNDS[a.sc].xMax, yMin: CP_ROW_BOUNDS[a.sr].yMin, yMax: CP_ROW_BOUNDS[a.sr].yMax }, inner);
+          const dr = zonePixelRect({ xMin: CP_COL_BOUNDS[a.dc].xMin, xMax: CP_COL_BOUNDS[a.dc].xMax, yMin: CP_ROW_BOUNDS[a.dr].yMin, yMax: CP_ROW_BOUNDS[a.dr].yMax }, inner);
+          drawPatternArrow(ctx, sr.x + sr.w / 2, sr.y + sr.h / 2, dr.x + dr.w / 2, dr.y + dr.h / 2, "ENTRY_SCORE");
+        }
+      }
+    }
+
+    // Rank indicator — filled circle with numeral, topmost layer on pitch
+    {
+      const IR  = 14;   // indicator radius
+      const IX  = rect.x + 10 + IR;
+      const IY  = rect.y + 10 + IR;
+      ctx.save();
+      ctx.fillStyle   = hex;
+      ctx.globalAlpha = pattern.rank === 1 ? 0.95 : 0.78;
+      ctx.beginPath();
+      ctx.arc(IX, IY, IR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+      ctx.fillStyle    = "#ffffff";
+      ctx.font         = `bold 14px sans-serif`;
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "center";
+      ctx.fillText(String(pattern.rank), IX, IY);
+      ctx.restore();
+    }
+  }
+
+  // ── Right-side ranked card panel ───────────────────────────────────────────
+  const PANEL_X   = 1080;
+  const PANEL_W   = CANVAS_W - PANEL_X - 20;    // 820px; 20px right gutter
+  const PANEL_TOP = 80;
+  const PANEL_BOT = HT_STRIP_TOP - 10;           // 890
+  const PANEL_H   = PANEL_BOT - PANEL_TOP;       // 810
+
+  if (patterns.length === 0) {
+    // Empty state — degrade cleanly
+    ctx.save();
+    ctx.fillStyle    = "#334155";
+    ctx.font         = "18px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "center";
+    const EX = PANEL_X + PANEL_W / 2;
+    const EY = PANEL_TOP + PANEL_H / 2;
+    ctx.fillText("Insufficient chain data to rank patterns.", EX, EY - 14);
+    ctx.font = "15px sans-serif";
+    ctx.fillStyle = "#475569";
+    ctx.fillText("Tag at least 6 events to generate chain pressure.", EX, EY + 14);
+    ctx.restore();
+  } else {
+    // ── Card height proportions: [43%, 33%, 24%] ────────────────────────────
+    const CARD_GAP  = 20;
+    const totalGaps = (patterns.length - 1) * CARD_GAP;
+    const usableH   = PANEL_H - totalGaps;
+
+    const WEIGHT_TABLE: number[][] = [[1.0], [0.55, 0.45], [0.43, 0.33, 0.24]];
+    const weights    = WEIGHT_TABLE[patterns.length - 1];
+    const cardHeights = weights.map((w) => Math.floor(usableH * w));
+
+    // Give rounding remainder to rank #1 card
+    const sumH = cardHeights.reduce((s, h) => s + h, 0);
+    if (cardHeights.length > 0) cardHeights[0] += usableH - sumH;
+
+    let cardY = PANEL_TOP;
+
+    for (let i = 0; i < patterns.length; i++) {
+      const p     = patterns[i];
+      const cardH = cardHeights[i];
+      const rgb   = cpRgb(p.kind);
+      const hex   = cpHex(p.kind);
+
+      // Accent bar width: 8 / 6 / 4 px by rank
+      const AW    = p.rank === 1 ? 8 : p.rank === 2 ? 6 : 4;
+      const IX    = PANEL_X + AW + 18;  // inner content X
+      const IW    = PANEL_W - AW - 28;  // inner content width
+
+      // Card background
+      const bgA = p.rank === 1 ? 0.062 : p.rank === 2 ? 0.040 : 0.026;
+      ctx.fillStyle = `rgba(255,255,255,${bgA})`;
+      ctx.fillRect(PANEL_X, cardY, PANEL_W, cardH);
+
+      // Accent bar (rank #1 has subtle glow)
+      ctx.save();
+      if (p.rank === 1) {
+        ctx.shadowColor = hex;
+        ctx.shadowBlur  = 6;
+      }
+      ctx.fillStyle = hex;
+      ctx.fillRect(PANEL_X, cardY, AW, cardH);
+      ctx.restore();
+
+      // ── HEADER: rank circle + badge chip ────────────────────────────────
+      const HDR_MID = cardY + 24;
+
+      // Rank circle
+      {
+        const R = 13;
+        const CX = PANEL_X + AW + 10 + R;
+        const CY = HDR_MID;
+        ctx.save();
+        ctx.fillStyle   = hex;
+        ctx.globalAlpha = p.rank === 1 ? 1.0 : 0.82;
+        ctx.beginPath();
+        ctx.arc(CX, CY, R, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha  = 1.0;
+        ctx.fillStyle    = "#ffffff";
+        ctx.font         = `bold ${p.rank === 1 ? 14 : 13}px sans-serif`;
+        ctx.textBaseline = "middle";
+        ctx.textAlign    = "center";
+        ctx.fillText(String(p.rank), CX, CY);
+        ctx.restore();
+      }
+
+      // Badge chip
+      {
+        const BX   = PANEL_X + AW + 36;
+        const CHIP_H = 24;
+        const BY   = HDR_MID - CHIP_H / 2;
+        ctx.save();
+        ctx.font = "bold 10px sans-serif";
+        const chipTW = ctx.measureText(p.badge).width;
+        const CHIP_W = chipTW + 18;
+        ctx.fillStyle    = `rgba(${rgb},0.20)`;
+        ctx.fillRect(BX, BY, CHIP_W, CHIP_H);
+        ctx.fillStyle    = hex;
+        ctx.textBaseline = "middle";
+        ctx.textAlign    = "left";
+        ctx.fillText(p.badge, BX + 9, HDR_MID);
+        ctx.restore();
+      }
+
+      // ── HEADLINE ────────────────────────────────────────────────────────
+      const HL_SZ = p.rank === 1 ? 26 : p.rank === 2 ? 22 : 19;
+      const HL_Y  = cardY + 56;
+      ctx.save();
+      ctx.font         = `bold ${HL_SZ}px sans-serif`;
+      ctx.fillStyle    = "#f1f5f9";
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign    = "left";
+      ctx.fillText(p.headline, IX, HL_Y);
+      ctx.restore();
+
+      // ── OBSERVATION ─────────────────────────────────────────────────────
+      const OBS_SZ = p.rank === 1 ? 16 : p.rank === 2 ? 15 : 14;
+      const OBS_Y  = HL_Y + HL_SZ + 9;
+      ctx.save();
+      ctx.font         = `${OBS_SZ}px sans-serif`;
+      ctx.fillStyle    = "#64748b";
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign    = "left";
+      let obsText = p.observation;
+      if (ctx.measureText(obsText).width > IW) {
+        while (obsText.length > 0 && ctx.measureText(obsText + "…").width > IW) {
+          obsText = obsText.slice(0, -1);
+        }
+        obsText += "…";
+      }
+      ctx.fillText(obsText, IX, OBS_Y);
+      ctx.restore();
+
+      // ── PRIMARY METRIC ───────────────────────────────────────────────────
+      // Hero number — largest element in the card, immediately readable
+      const MET_SZ   = p.rank === 1 ? 68 : p.rank === 2 ? 52 : 40;
+      const MET_GAPA = p.rank === 1 ? 22 : 16;
+      const MET_Y    = OBS_Y + OBS_SZ + MET_GAPA;
+      ctx.save();
+      ctx.font         = `bold ${MET_SZ}px sans-serif`;
+      ctx.fillStyle    = hex;
+      ctx.globalAlpha  = p.rank === 1 ? 1.0 : 0.85;
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign    = "left";
+      ctx.fillText(String(p.primaryMetric), IX, MET_Y);
+      ctx.globalAlpha  = 1.0;
+      // Metric label — right of (or below) the number
+      const numW = ctx.measureText(String(p.primaryMetric)).width;
+      ctx.font      = `${p.rank === 1 ? 14 : 13}px sans-serif`;
+      ctx.fillStyle = "#475569";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(p.metricLabel, IX + numW + 12, MET_Y - 10);
+      ctx.restore();
+
+      // ── META STRIP ───────────────────────────────────────────────────────
+      // Occurrences count + severity chip — anchored to card bottom
+      const META_BOT  = p.rank === 1 ? 26 : 22;
+      const META_ABS  = cardY + cardH - META_BOT;
+      const severity  = cpSeverity(p.priorityScore);
+      const sevColor  =
+        severity === "CRITICAL" ? "#ef4444" :
+        severity === "HIGH"     ? "#f97316" :
+        severity === "ELEVATED" ? "#fbbf24" :
+                                  "#475569";
+      ctx.save();
+      ctx.font         = `${p.rank === 1 ? 14 : 13}px sans-serif`;
+      ctx.fillStyle    = "#475569";
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "left";
+      const occStr  = `${p.occurrences} occurrence${p.occurrences !== 1 ? "s" : ""}`;
+      ctx.fillText(occStr, IX, META_ABS);
+      const occW    = ctx.measureText(occStr).width;
+      // Severity chip
+      const SEV_H   = 20;
+      const SEV_W   = ctx.measureText(severity).width + 16;
+      ctx.font = "bold 10px sans-serif";
+      ctx.fillStyle = sevColor;
+      ctx.fillRect(IX + occW + 12, META_ABS - SEV_H / 2, SEV_W, SEV_H);
+      ctx.fillStyle    = severity === "ELEVATED" ? "#0d1117" : "#ffffff";
+      ctx.textBaseline = "middle";
+      ctx.fillText(severity, IX + occW + 12 + 8, META_ABS);
+      ctx.restore();
+
+      cardY += cardH + CARD_GAP;
+    }
+  }
+
+  // ── Bottom callout strip ───────────────────────────────────────────────────
+  const cpFacts: string[] = [];
+  const cpColors: string[] = [];
+
+  if (patterns.length === 0) {
+    cpFacts.push("No chain patterns ranked — insufficient data");
+    cpFacts.push(`${analysis.totalEventsAnalysed} events analysed`);
+    cpColors.push("#475569", "#475569");
+  } else {
+    cpFacts.push(`${patterns.length} chain pattern${patterns.length !== 1 ? "s" : ""} ranked by match impact`);
+    cpFacts.push(`${analysis.totalEventsAnalysed} events analysed`);
+    cpFacts.push("Ranked: scores ×5  ·  occurrences ×2  ·  shots ×1");
+    cpColors.push(cpHex(patterns[0].kind), "#94a3b8", "#475569");
+  }
+
+  drawHtCalloutStrip(ctx, cpFacts, cpColors);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+  return canvas;
+}
+
 // ─── Snapshot PDF export ──────────────────────────────────────────────────────
 //
 // Lightweight coaching reports. All rendering delegates to the same page builders
@@ -8811,7 +9555,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     // PART 2 — UNDERSTAND (pages 6–12): analytical depth + narrative story.
     //   Question: "Why did the match unfold this way?"
     //
-    // 6.  Tactical Intelligence Summary — chain-based tactical patterns
+    // 6.  Chain Pressure                — ranked tactical chain patterns
     // 7.  Turnover Punishment           — possession chain punishment
     // 8.  Shot Efficiency               — scoring efficiency analysis
     // 9.  Attack Corridors              — which channel did attacks live/die in?
@@ -8858,11 +9602,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // ── PART 2 — UNDERSTAND ───────────────────────────────────────────────────
 
-    // 6. Tactical Intelligence Summary
+    // 6. Chain Pressure
     addPage(
-      makeTacticalIntelligencePage(chainAnalysis, home, away, 6, TOTAL_PAGES),
+      makeChainPressurePage(events, sport, chainAnalysis, home, away, 6, TOTAL_PAGES),
       true,
-      "Tactical Intelligence Summary",
+      "Chain Pressure",
     );
 
     // 7. Turnover Punishment
