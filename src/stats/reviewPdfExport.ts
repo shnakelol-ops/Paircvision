@@ -2889,6 +2889,26 @@ function makeTurnoverPunishmentPage(
     cy = drawStatRow(COL3_X, cy, COL_W, "Led to shot (no score)",   withPct(bothShotOnly, bothTotal),  "#fbbf24", false);
     cy = drawStatRow(COL3_X, cy, COL_W, "Attack immediately lost",  withPct(bothBroken, bothTotal),    "#94a3b8", true);
     drawStatRow(COL3_X, cy, COL_W,      "No shot generated",        withPct(bothNoShot, bothTotal),    "#f97316", false);
+
+    // ── Possession Chain V1 observations ─────────────────────────────────────
+    // Placed at bottom of COL3 when space allows; renders nothing below threshold.
+    {
+      const chainObs = derivePossessionChainObservations(analysis);
+      if (chainObs.length > 0) {
+        let chainCy = cy + 26 + 16;  // advance past last row + spacing
+        chainCy = drawSubHeader(COL3_X, chainCy, COL_W, "POSSESSION CHAIN INSIGHTS", "#60a5fa");
+        ctx.save();
+        ctx.font         = "12px sans-serif";
+        ctx.fillStyle    = "#64748b";
+        ctx.textBaseline = "middle";
+        ctx.textAlign    = "left";
+        for (const ob of chainObs) {
+          ctx.fillText(`• ${ob}`, COL3_X + 14, chainCy + 13);
+          chainCy += 26;
+        }
+        ctx.restore();
+      }
+    }
   }
 
   return canvas;
@@ -6496,6 +6516,97 @@ function drawDirectionalPressureSweep(
   ctx.restore();
 }
 
+// ─── Possession Chain Lite V1 helpers ─────────────────────────────────────────
+//
+// Read-only consumers of the pre-computed ChainAnalysis object.
+// No new chain computation — all data flows from selectChainAnalysis(events).
+//
+// Product voice: observational only. No tactical advice. No false certainty.
+// Low-event matches (ko.total < 3 AND to.total < 3) degrade cleanly to [].
+
+/**
+ * Derives 0–3 possession chain observation strings from existing ChainAnalysis.
+ * Returns an empty array when neither kickouts nor turnovers meet the threshold
+ * so pages with insufficient data render without spurious insights.
+ */
+function derivePossessionChainObservations(
+  analysis: ChainAnalysis<PdfExportEvent>,
+): string[] {
+  const ko  = analysis.kickouts;
+  const to  = analysis.turnovers;
+  const obs: string[] = [];
+
+  if (ko.total >= 3) {
+    if (ko.wonToScore > 0) {
+      const pct = Math.round(ko.wonToScorePercent);
+      obs.push(
+        `Kickout retention converted to score on ${ko.wonToScore} of ${ko.won} occasion${ko.wonToScore !== 1 ? "s" : ""} (${pct}%)`,
+      );
+    }
+    if (ko.lostAllowedScore > 0) {
+      const lostPct = Math.round(ko.lostAllowedScorePercent);
+      obs.push(
+        `Conceded restarts led to opposition score in ${lostPct}% of cases (${ko.lostAllowedScore} of ${ko.lost})`,
+      );
+    }
+  }
+
+  if (to.total >= 3 && to.wonToScore > 0) {
+    const pct = Math.round(to.wonToScorePercent);
+    obs.push(
+      `Turnover possession produced direct scores ${to.wonToScore} time${to.wonToScore !== 1 ? "s" : ""} (${pct}% conversion)`,
+    );
+  }
+
+  return obs.slice(0, 3);
+}
+
+/**
+ * Renders a labelled possession chain observation block onto a canvas page.
+ * Used on p.12 (Tactical Match Story) which has space in the narrative area.
+ * Other pages inject possession chain observations into their existing strip/facts.
+ * Renders nothing when observations array is empty.
+ */
+function drawPossessionChainBlock(
+  ctx: CanvasRenderingContext2D,
+  observations: string[],
+  x: number,
+  y: number,
+  w: number,
+): void {
+  if (observations.length === 0) return;
+
+  ctx.save();
+
+  // Section label
+  ctx.fillStyle    = "#475569";
+  ctx.font         = "bold 13px sans-serif";
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign    = "left";
+  ctx.fillText("POSSESSION CHAINS", x, y);
+
+  // Separator line
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 6);
+  ctx.lineTo(x + w, y + 6);
+  ctx.stroke();
+
+  // Observation rows: accent bar + text
+  const LINE_H = 36;
+  observations.forEach((obs, i) => {
+    ctx.fillStyle = "rgba(96,165,250,0.55)";
+    ctx.fillRect(x, y + 16 + i * LINE_H, 3, 24);
+    ctx.font         = "20px sans-serif";
+    ctx.fillStyle    = "#94a3b8";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(obs, x + 12, y + 34 + i * LINE_H);
+  });
+
+  ctx.restore();
+}
+
 // ─── HT Page 1: Pressure & Damage Map ────────────────────────────────────────
 
 /**
@@ -7570,6 +7681,12 @@ function makeHtGameFlowFactorsPage(
   if (againstFacts.length > 0) facts.push(`${againstFacts.length} challenge${againstFacts.length !== 1 ? "s" : ""} to address`);
   if (facts.length === 0)      facts.push("Not enough data to identify clear patterns.");
 
+  // ── Possession Chain V1: kickout win-to-score efficiency (threshold ≥ 3) ──
+  if (ko.total >= 3 && ko.wonToScore > 0 && facts.length < 3) {
+    const pct = Math.round(ko.wonToScorePercent);
+    facts.push(`Kickout win→score: ${ko.wonToScore} of ${ko.won} won converted (${pct}%)`);
+  }
+
   drawHtCalloutStrip(ctx, facts, ["#22c55e", "#ef4444", "#94a3b8"]);
   drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
   return canvas;
@@ -8162,10 +8279,15 @@ function makeFtRestartEscapeRoutesPage(
   const facts: string[] = [];
   if (ko.total > 0)
     facts.push(`${ko.won} of ${ko.total} kickouts won (${koRate}%)`);
-  if (ko.wonToScore > 0)
-    facts.push(`${ko.wonToScore} kickout win→score conversion${ko.wonToScore !== 1 ? "s" : ""}`);
-  if (ko.lostAllowedScore > 0)
-    facts.push(`${ko.lostAllowedScore} kickout loss→score conceded`);
+  // Possession Chain V1: richer conversion language (rate, not just count)
+  if (ko.wonToScore > 0) {
+    const wsPct = Math.round(ko.wonToScorePercent);
+    facts.push(`${ko.wonToScore} of ${ko.won} wins converted to score (${wsPct}%)`);
+  }
+  if (ko.lostAllowedScore > 0) {
+    const lsPct = Math.round(ko.lostAllowedScorePercent);
+    facts.push(`${ko.lostAllowedScore} conceded restarts led to opposition score (${lsPct}%)`);
+  }
   if (bestEscCol >= 0 && facts.length < 3) {
     const esc = grid[bestEscCol][bestEscRow];
     facts.push(`Best escape: ${COL_NAMES[bestEscCol].toLowerCase()} ${ROW_NAMES[bestEscRow].toLowerCase()} (${esc.forWon}W/${esc.oppWon}L)`);
@@ -8539,6 +8661,16 @@ function makeFtTacticalMatchStoryPage(
   sentences.slice(0, 4).forEach((sentence, i) => {
     ctx.fillText(sentence, SENTENCE_X, SENTENCE_Y0 + i * LINE_SPACING);
   });
+
+  // ── Possession Chain V1 block ─────────────────────────────────────────────
+  // Rendered in the gap between the editorial sentences and the callout strip.
+  // drawPossessionChainBlock is a no-op when chain observations array is empty.
+  {
+    const pcObs = derivePossessionChainObservations(analysis);
+    const sentenceCount = Math.min(sentences.length, 4);
+    const pcY = SENTENCE_Y0 + sentenceCount * LINE_SPACING + 28;
+    drawPossessionChainBlock(ctx, pcObs, RIVER_X, pcY, RIVER_W);
+  }
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
   const forFinal  = scoreFromEvents(forScoreEvts);
