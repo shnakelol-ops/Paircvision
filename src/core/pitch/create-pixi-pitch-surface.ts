@@ -34,6 +34,7 @@ export type CreatePixiPitchSurfaceOptions = {
   onEventLogged?: (event: MatchEvent) => void;
   onPitchTap?: (nx: number, ny: number) => void;
   onMarkerTap?: (eventId: string) => void;
+  onContextLost?: () => void;
 };
 
 export type PixiPitchSurfaceHandle = {
@@ -78,6 +79,13 @@ export async function createPixiPitchSurface(
   });
 
   host.appendChild(app.canvas as HTMLCanvasElement);
+
+  const handleContextLost = (e: Event) => {
+    e.preventDefault();
+    options.onContextLost?.();
+  };
+  (app.canvas as HTMLCanvasElement).addEventListener("webglcontextlost", handleContextLost);
+
   app.canvas.style.width = "100%";
   app.canvas.style.height = "100%";
   app.canvas.style.display = "block";
@@ -231,6 +239,11 @@ export async function createPixiPitchSurface(
       heatmapLayer.destroy();
       zoneOverlayLayer.destroy();
       statsMarkers.destroy();
+      try {
+        (app.canvas as HTMLCanvasElement).removeEventListener("webglcontextlost", handleContextLost);
+      } catch {
+        // ignore listener removal errors
+      }
       try {
         host.removeChild(app.canvas as HTMLCanvasElement);
       } catch {
