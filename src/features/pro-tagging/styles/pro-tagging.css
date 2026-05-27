@@ -228,11 +228,34 @@
 }
 
 .pro-tagging-shell__topbar-clock {
+  /* 7.6 — explicit reset: mobile browsers render <button> with white system bg */
+  background: var(--pro-surface-2);
+  border: 1.5px solid var(--pro-border);
+  border-radius: 8px;
+  padding: 6px 12px;
   font-size: 18px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--pro-text-primary);
   letter-spacing: 0.05em;
+  cursor: pointer;
+  touch-action: manipulation;
+  min-height: 44px;
+  min-width: 84px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Running state — green border makes play/pause unambiguous in daylight */
+.pro-tagging-shell__topbar-clock--running {
+  border-color: var(--tone-score-active);
+  color: var(--tone-score-active);
+}
+
+.pro-tagging-shell__topbar-clock:active {
+  background: var(--pro-surface);
 }
 
 .pro-tagging-shell__topbar-half {
@@ -1055,6 +1078,63 @@
 .pro-tagging-shell__log-review:active {
   background: rgba(29, 138, 68, 0.15);
   border-color: var(--tone-score);
+}
+
+/* ---------------------------------------------------------------------------
+   Team Side Toggle Bar (Phase 7.6)
+   FOR = home / your team's events
+   OPP = opponent / away team events
+   --------------------------------------------------------------------------- */
+.pro-tagging-shell__team-bar {
+  display: flex;
+  flex-shrink: 0;
+  gap: 3px;
+  padding: 3px;
+  background: var(--pro-surface);
+  border-bottom: 1px solid var(--pro-border);
+}
+
+.pro-tagging-shell__team-btn {
+  flex: 1;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 800;
+  background: var(--pro-surface-2);
+  border: 1.5px solid var(--pro-border);
+  border-radius: 7px;
+  color: var(--pro-text-muted);
+  cursor: pointer;
+  touch-action: manipulation;
+  letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 var(--pro-gap-sm);
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+
+.pro-tagging-shell__team-btn--for {
+  background: var(--tone-score);
+  border-color: var(--tone-score-active);
+  color: #fff;
+}
+
+.pro-tagging-shell__team-btn--opp {
+  background: var(--tone-turnover);
+  border-color: var(--tone-turnover-active);
+  color: #fff;
+}
+
+.pro-tagging-shell__team-btn:active {
+  filter: brightness(1.12);
+}
+
+/* Log item — OPP events shown with warm tint */
+.pro-tagging-shell__log-item--opp {
+  border-color: var(--tone-turnover);
+  color: var(--tone-turnover-active);
+  background: rgba(139, 62, 18, 0.12);
 }
 
 /* ---------------------------------------------------------------------------

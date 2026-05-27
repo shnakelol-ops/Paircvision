@@ -22,6 +22,7 @@
  * Phase 5 — Possession Review Panel (REVIEW view added)
  * Phase 6 — Player Contribution Review (CONTRIBUTION view added)
  * Phase 7 — Visual Pitch Map Review (VISUAL view added)
+ * Phase 7.6 — Ghost tap fix, team side toggle, clock contrast fix
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -116,10 +117,17 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
   // Capture loop state machine (only active when shellView === "LIVE")
   const [capture, setCapture] = useState<CaptureState>({ phase: "IDLE" });
 
+  // Team side for next event — persists between events, starts as FOR
+  const [teamSide, setTeamSide] = useState<"FOR" | "OPP">("FOR");
+
   // Match clock ticker
   const clockRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sessionRef = useRef(session);
   sessionRef.current = session;
+
+  // Ghost tap prevention — locked for 300ms after a pitch commit so the
+  // touch release from the pitch tap surface cannot fire an event button
+  const inputLockRef = useRef<boolean>(false);
 
   // Persist on every session change
   useEffect(() => {
@@ -190,6 +198,7 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
 
   const handleEventSelected = useCallback(
     (proKind: ProEventKind, button: EventButtonDef) => {
+      if (inputLockRef.current) return;  // Block ghost tap from prior pitch commit
       setCapture({ phase: "AWAITING_PLAYER", proKind, button });
     },
     [],
@@ -229,7 +238,7 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
         segment,
         timestamp: now,
         matchClockSeconds: clockSeconds,
-        teamSide: "FOR",
+        teamSide,
         sportProfile: profileId,
         playerId:     player?.id     ?? null,
         playerName:   player?.name   ?? null,
@@ -245,9 +254,14 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
         isRunning: true,
       }));
 
+      // Lock event buttons for 300ms — prevents the pitch-tap touch release
+      // from ghost-firing an event button that appeared at the same position
+      inputLockRef.current = true;
+      setTimeout(() => { inputLockRef.current = false; }, 300);
+
       setCapture({ phase: "IDLE" });
     },
-    [profileId],
+    [profileId, teamSide],
   );
 
   const handlePitchTapped = useCallback(
@@ -473,7 +487,10 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
           </span>
           <button
             type="button"
-            className="pro-tagging-shell__topbar-clock"
+            className={[
+              "pro-tagging-shell__topbar-clock",
+              session.isRunning ? "pro-tagging-shell__topbar-clock--running" : "",
+            ].filter(Boolean).join(" ")}
             onClick={handleClockToggle}
             title={session.isRunning ? "Pause clock" : "Start clock"}
           >
@@ -499,6 +516,30 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
           .join(" ")}
       >
         {stateText}
+      </div>
+
+      {/* Team side toggle — FOR (home) vs OPP (away) */}
+      <div className="pro-tagging-shell__team-bar">
+        <button
+          type="button"
+          className={[
+            "pro-tagging-shell__team-btn",
+            teamSide === "FOR" ? "pro-tagging-shell__team-btn--for" : "",
+          ].filter(Boolean).join(" ")}
+          onClick={() => setTeamSide("FOR")}
+        >
+          FOR{session.homeTeamName ? ` · ${session.homeTeamName}` : ""}
+        </button>
+        <button
+          type="button"
+          className={[
+            "pro-tagging-shell__team-btn",
+            teamSide === "OPP" ? "pro-tagging-shell__team-btn--opp" : "",
+          ].filter(Boolean).join(" ")}
+          onClick={() => setTeamSide("OPP")}
+        >
+          OPP{session.awayTeamName ? ` · ${session.awayTeamName}` : ""}
+        </button>
       </div>
 
       {/* Main content — capture loop */}
@@ -542,7 +583,14 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
           <span className="pro-tagging-shell__log-empty">No events yet</span>
         ) : (
           recentEvents.map((event) => (
-            <span key={event.id} className="pro-tagging-shell__log-item">
+            <span
+              key={event.id}
+              className={[
+                "pro-tagging-shell__log-item",
+                event.teamSide === "OPP" ? "pro-tagging-shell__log-item--opp" : "",
+              ].filter(Boolean).join(" ")}
+            >
+              {event.teamSide === "OPP" ? "OPP " : ""}
               {event.proKind.replace(/_/g, " ")}
               {event.playerNumber !== null && event.playerNumber !== undefined
                 ? ` #${event.playerNumber}`
