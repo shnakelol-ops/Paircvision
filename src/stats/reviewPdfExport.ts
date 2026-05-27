@@ -6845,7 +6845,7 @@ function makeHtKickoutVisionPage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Kickout Vision", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, sport === "hurling" ? "Puckout Vision" : "Kickout Vision", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Event subsets ─────────────────────────────────────────────────────────
   // FOR won = KICKOUT_WON recorded by FOR, OR KICKOUT_CONCEDED recorded by OPP
@@ -6972,11 +6972,11 @@ function makeHtKickoutVisionPage(
   ctx.fillStyle = "rgba(20,184,166,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("FOR Dominated", lx + 22, ly); ly += 26;
+  ctx.fillText("Our possession", lx + 22, ly); ly += 26;
   ctx.fillStyle = "rgba(248,113,113,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("OPP Dominated", lx + 22, ly); ly += 26;
+  ctx.fillText("Their possession", lx + 22, ly); ly += 26;
   ctx.fillStyle = "rgba(251,191,36,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
@@ -6990,12 +6990,14 @@ function makeHtKickoutVisionPage(
   const forPct   = totalKO > 0 ? Math.round((totalFor / totalKO) * 100) : 0;
   const forHot   = pdfZoneHotspots(forWonEvts)[0];
   const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
+  // Sport-aware terminology: kickouts (GAA football) / puckouts (hurling)
+  const restartTerm = sport === "hurling" ? "puckouts" : "kickouts";
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`${totalFor} / ${totalKO} kickouts won (${forPct}%)`);
-  if (forHot)      facts.push(`Dominant zone: ${forHot.label}`);
-  if (oppHot)      facts.push(`Ceded most in: ${oppHot.label}`);
-  if (facts.length === 0) facts.push("No kickout data recorded in the first half.");
+  if (totalKO > 0) facts.push(`Our ${restartTerm}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
+  if (forHot)      facts.push(`Best zone: ${forHot.label}`);
+  if (oppHot)      facts.push(`Conceded most: ${oppHot.label}`);
+  if (facts.length === 0) facts.push(`No ${restartTerm} data recorded.`);
 
   drawHtCalloutStrip(ctx, facts, ["#14b8a6", "#14b8a6", "#ef4444"]);
 
@@ -7045,6 +7047,23 @@ function makeHtAttackShotVisionPage(
   const forShotEvts = events.filter(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind),
   );
+  // OPP shots — for callout comparison only; OPP zone fills/badges not drawn
+  // (page remains FOR-side visual to avoid clutter)
+  const oppScoreEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  const oppWideEvts = events.filter(
+    (e) => e.teamSide === "OPP" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"),
+  );
+  const oppShotEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
+  );
+  // Frees won/conceded — spatial markers only (small dots, already colour-coded
+  // in HT_MARKER_COLORS: FREE_WON=indigo, FREE_CONCEDED=pink).
+  // Only included when at least one free event is logged.
+  const freeEvts = events.filter(
+    (e) => e.kind === "FREE_WON" || e.kind === "FREE_CONCEDED",
+  );
 
   // ── Pitch + zone colour overlays ──────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
@@ -7073,7 +7092,9 @@ function makeHtAttackShotVisionPage(
   }
 
   // ── Event markers (vision-first: symbol-rich, high contrast) ──────────────
-  renderHtMarkers(ctx, forShotEvts, inner);
+  // FOR shots + any logged frees (spatial context — indigo=won, pink=conceded)
+  // freeEvts is empty when no frees are logged so this degrades cleanly.
+  renderHtMarkers(ctx, [...forShotEvts, ...freeEvts], inner);
 
   // ── Zone badge pills ──────────────────────────────────────────────────────
   ctx.save();
@@ -7184,29 +7205,54 @@ function makeHtAttackShotVisionPage(
   ctx.fillStyle = "rgba(52,211,153,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Scores", lx + 22, ly); ly += 26;
+  ctx.fillText("Our scores", lx + 22, ly); ly += 26;
   ctx.fillStyle = "rgba(239,68,68,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Wides / Misses", lx + 22, ly);
+  ctx.fillText("Our wides", lx + 22, ly); ly += 26;
+  // Free markers — only shown when frees are logged; colours match HT_MARKER_COLORS
+  if (freeEvts.length > 0) {
+    ctx.fillStyle = "#818cf8";
+    ctx.fillRect(lx, ly - 8, 16, 16);
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillText("Free won", lx + 22, ly); ly += 26;
+    ctx.fillStyle = "#f472b6";
+    ctx.fillRect(lx, ly - 8, 16, 16);
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillText("Free conceded", lx + 22, ly);
+  }
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  const totalShots  = forShotEvts.length;
-  const totalScores = forScoreEvts.length;
-  const totalWides  = forWideEvts.length;
-  const shotEff     = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
-  const scoreHot    = pdfZoneHotspots(forScoreEvts)[0];
+  const totalShots    = forShotEvts.length;
+  const totalScores   = forScoreEvts.length;
+  const totalWides    = forWideEvts.length;
+  const shotEff       = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
+  const totalOppShots  = oppShotEvts.length;
+  const totalOppScores = oppScoreEvts.length;
+  const totalOppWides  = oppWideEvts.length;
+  const oppShotEff     = totalOppShots > 0 ? Math.round((totalOppScores / totalOppShots) * 100) : 0;
+  const scoreHot      = pdfZoneHotspots(forScoreEvts)[0];
 
-  const facts: string[] = [];
-  if (totalShots > 0)  facts.push(`${totalScores} / ${totalShots} shots scored (${shotEff}%)`);
-  if (totalWides > 0)  facts.push(`${totalWides} wide${totalWides !== 1 ? "s" : ""} / miss${totalWides !== 1 ? "es" : ""}`);
-  if (scoreHot)        facts.push(`Top scoring zone: ${scoreHot.label} (${scoreHot.count})`);
-  if (facts.length === 0) facts.push("No FOR shot data recorded in the first half.");
+  const facts: string[]  = [];
+  const colors: string[] = [];
+  if (totalShots > 0) {
+    facts.push(`Our shots: ${totalScores} scored · ${totalWides} wide (${shotEff}%)`);
+    colors.push("#34d399");
+  }
+  if (totalOppShots > 0) {
+    facts.push(`Their shots: ${totalOppScores} scored · ${totalOppWides} wide (${oppShotEff}%)`);
+    colors.push("#ef4444");
+  }
+  if (scoreHot && facts.length < 3) {
+    facts.push(`Our top zone: ${scoreHot.label} (${scoreHot.count})`);
+    colors.push("#34d399");
+  }
+  if (facts.length === 0) facts.push("No shot data recorded.");
 
-  drawHtCalloutStrip(ctx, facts, ["#34d399", "#ef4444", "#34d399"]);
+  drawHtCalloutStrip(ctx, facts, colors.length > 0 ? colors : ["#34d399", "#ef4444", "#34d399"]);
 
-  drawEventCountFooter(ctx, forShotEvts.length);
+  drawEventCountFooter(ctx, forShotEvts.length + freeEvts.length);
   return canvas;
 }
 
@@ -8274,11 +8320,12 @@ function makeFtRestartEscapeRoutesPage(
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  const ko      = analysis.kickouts;
-  const koRate  = ko.total > 0 ? Math.round((ko.won / ko.total) * 100) : 0;
+  const ko          = analysis.kickouts;
+  const koRate      = ko.total > 0 ? Math.round((ko.won / ko.total) * 100) : 0;
+  const ftRestartTerm = sport === "hurling" ? "puckouts" : "kickouts";
   const facts: string[] = [];
   if (ko.total > 0)
-    facts.push(`${ko.won} of ${ko.total} kickouts won (${koRate}%)`);
+    facts.push(`Our ${ftRestartTerm}: ${ko.won}W · ${ko.total - ko.won}L (${koRate}% won)`);
   // Possession Chain V1: richer conversion language (rate, not just count)
   if (ko.wonToScore > 0) {
     const wsPct = Math.round(ko.wonToScorePercent);
@@ -8292,7 +8339,7 @@ function makeFtRestartEscapeRoutesPage(
     const esc = grid[bestEscCol][bestEscRow];
     facts.push(`Best escape: ${COL_NAMES[bestEscCol].toLowerCase()} ${ROW_NAMES[bestEscRow].toLowerCase()} (${esc.forWon}W/${esc.oppWon}L)`);
   }
-  if (facts.length === 0) facts.push("No kickout data recorded.");
+  if (facts.length === 0) facts.push(`No ${ftRestartTerm} data recorded.`);
 
   drawHtCalloutStrip(ctx, facts, ["#14b8a6", "#14b8a6", "#ef4444"]);
   drawEventCountFooter(ctx, kickoutEvts.length);
