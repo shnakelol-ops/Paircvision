@@ -19,6 +19,7 @@
  *
  * Phase 3 — Event → Player → Pitch Loop
  * Phase 4 — Sport Profile Switching (setup screen added)
+ * Phase 5 — Possession Review Panel (REVIEW view added)
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -26,6 +27,7 @@ import EventKeyboard from "./EventKeyboard";
 import ProPlayerPicker from "./ProPlayerPicker";
 import PitchTapSurface, { type PitchCoords } from "./PitchTapSurface";
 import ProSessionSetup from "./ProSessionSetup";
+import PossessionReviewPanel from "./PossessionReviewPanel";
 import { getSportProfile } from "../model/profiles/index";
 import type { EventButtonDef } from "../model/sport-profile-types";
 import type { SportProfileId } from "../model/sport-profile-types";
@@ -38,13 +40,14 @@ import {
   clearProSession,
 } from "../storage/pro-session-storage";
 import { deriveContributions, DEFAULT_WEIGHTS } from "../engine/contribution-engine";
+import { derivePossessions } from "../engine/possession-engine";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 /** Top-level shell view — what the analyst sees */
-type ShellView = "SETUP" | "LIVE";
+type ShellView = "SETUP" | "LIVE" | "REVIEW";
 
 /** Capture-loop phase within LIVE view */
 type CaptureState =
@@ -279,6 +282,17 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
     setSession((prev) => ({ ...prev, isRunning: !prev.isRunning }));
   }, []);
 
+  // Open possession review — pauses clock
+  const handleOpenReview = useCallback(() => {
+    setSession((prev) => ({ ...prev, isRunning: false }));
+    setCapture({ phase: "IDLE" });
+    setShellView("REVIEW");
+  }, []);
+
+  const handleCloseReview = useCallback(() => {
+    setShellView("LIVE");
+  }, []);
+
   // ---------------------------------------------------------------------------
   // Derived state
   // ---------------------------------------------------------------------------
@@ -295,6 +309,15 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
   const recentEvents = useMemo(
     () => [...session.events].slice(-8).reverse(),
     [session.events],
+  );
+
+  const possessionData = useMemo(
+    () =>
+      derivePossessions(session.events, {
+        sorted: true,
+        maxImplicitGapSeconds: profile.possessionRule.maxImplicitGapSeconds,
+      }),
+    [session.events, profile.possessionRule.maxImplicitGapSeconds],
   );
 
   // ---------------------------------------------------------------------------
@@ -323,6 +346,23 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
 
   const pendingLabel =
     capture.phase !== "IDLE" ? capture.button.label : "";
+
+  // ---------------------------------------------------------------------------
+  // REVIEW view
+  // ---------------------------------------------------------------------------
+
+  if (shellView === "REVIEW") {
+    return (
+      <div className="pro-tagging-shell">
+        <PossessionReviewPanel
+          session={session}
+          profile={profile}
+          possessionData={possessionData}
+          onBack={handleCloseReview}
+        />
+      </div>
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // SETUP view
@@ -444,13 +484,23 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
           ))
         )}
         {session.events.length > 0 && (
-          <button
-            type="button"
-            className="pro-tagging-shell__log-undo"
-            onClick={handleUndo}
-          >
-            Undo
-          </button>
+          <div className="pro-tagging-shell__log-actions">
+            <button
+              type="button"
+              className="pro-tagging-shell__log-review"
+              onClick={handleOpenReview}
+              title="Session review"
+            >
+              📊
+            </button>
+            <button
+              type="button"
+              className="pro-tagging-shell__log-undo"
+              onClick={handleUndo}
+            >
+              Undo
+            </button>
+          </div>
         )}
       </div>
     </div>

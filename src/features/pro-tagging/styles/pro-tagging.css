@@ -333,7 +333,6 @@
   padding: 3px 8px;
   border-radius: 4px;
   cursor: pointer;
-  margin-left: auto;
   flex-shrink: 0;
   touch-action: manipulation;
 }
@@ -1007,4 +1006,386 @@
 .session-setup__resume-btn:active {
   background: var(--pro-surface-2);
   border-color: var(--tone-score-active);
+}
+
+/* ---------------------------------------------------------------------------
+   Log strip actions wrapper (Phase 5 — Review button added)
+   --------------------------------------------------------------------------- */
+.pro-tagging-shell__log-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--pro-gap-xs);
+  flex-shrink: 0;
+}
+
+.pro-tagging-shell__log-review {
+  background: var(--pro-surface-2);
+  border: 1px solid var(--pro-border);
+  color: var(--pro-text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pro-tagging-shell__log-review:active {
+  background: rgba(29, 138, 68, 0.15);
+  border-color: var(--tone-score);
+}
+
+/* ---------------------------------------------------------------------------
+   Possession Review Panel (Phase 5)
+   --------------------------------------------------------------------------- */
+.possession-review {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.possession-review__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px var(--pro-gap-lg);
+  background: var(--pro-surface);
+  border-bottom: 1px solid var(--pro-border);
+  flex-shrink: 0;
+  min-height: 52px;
+  gap: var(--pro-gap-sm);
+}
+
+.possession-review__back-btn {
+  background: none;
+  border: none;
+  color: var(--pro-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 0;
+  touch-action: manipulation;
+  white-space: nowrap;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.possession-review__back-btn:active {
+  color: var(--pro-text-primary);
+}
+
+.possession-review__header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.possession-review__title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pro-text-primary);
+}
+
+.possession-review__sport-chip {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--tone-score-active);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.possession-review__header-spacer {
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+/* Scrollable body */
+.possession-review__body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--pro-gap-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-lg);
+}
+
+/* Context row */
+.possession-review__context {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--pro-gap-md);
+}
+
+.possession-review__match-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--pro-text-primary);
+  line-height: 1.2;
+}
+
+.possession-review__meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pro-gap-xs);
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.possession-review__meta-chip {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--pro-surface-2);
+  border: 1px solid var(--pro-border);
+  color: var(--pro-text-secondary);
+  white-space: nowrap;
+}
+
+/* Empty state */
+.possession-review__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pro-gap-md);
+  padding: var(--pro-gap-xl) var(--pro-gap-lg);
+  text-align: center;
+}
+
+.possession-review__empty-icon {
+  font-size: 36px;
+  line-height: 1;
+  opacity: 0.5;
+}
+
+.possession-review__empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--pro-text-secondary);
+  margin: 0;
+}
+
+.possession-review__empty-hint {
+  font-size: 12px;
+  color: var(--pro-text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Section wrapper */
+.possession-review__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-sm);
+}
+
+.possession-review__section-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pro-text-muted);
+  margin: 0;
+}
+
+/* Stat cards grid */
+.possession-review__stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: var(--pro-gap-sm);
+}
+
+.review-stat-card {
+  background: var(--pro-surface);
+  border: 1px solid var(--pro-border);
+  border-radius: 10px;
+  padding: var(--pro-gap-md) var(--pro-gap-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.review-stat-card--accent {
+  border-color: rgba(37, 176, 85, 0.35);
+  background: rgba(29, 138, 68, 0.07);
+}
+
+.review-stat-card__value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--pro-text-primary);
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.review-stat-card__label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pro-text-muted);
+  text-align: center;
+  margin-top: 1px;
+}
+
+.review-stat-card__sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tone-score-active);
+  margin-top: 1px;
+}
+
+/* Score return rate bar */
+.possession-review__rate-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.possession-review__rate-bar {
+  height: 8px;
+  background: var(--pro-surface-2);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--pro-border);
+}
+
+.possession-review__rate-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  min-width: 2px;
+  transition: width 0.4s ease;
+}
+
+.possession-review__rate-bar-fill--score {
+  background: var(--tone-score-active);
+}
+
+.possession-review__rate-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pro-text-secondary);
+}
+
+/* Possession source rows */
+.possession-review__sources {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.possession-review__source-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 28px;
+  align-items: center;
+  gap: var(--pro-gap-sm);
+  padding: 8px var(--pro-gap-sm);
+  border-radius: 8px;
+  background: var(--pro-surface);
+  border-left: 3px solid var(--pro-border);
+}
+
+.possession-review__source-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--pro-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.possession-review__source-bar-wrap {
+  height: 6px;
+  background: var(--pro-surface-2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.possession-review__source-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--pro-text-muted);
+  min-width: 3px;
+  transition: width 0.35s ease;
+}
+
+.possession-review__source-count {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--pro-text-primary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Source tone variants — left border + bar fill colour */
+.review-source-row--restart {
+  border-left-color: var(--tone-restart);
+}
+.review-source-row--restart .possession-review__source-bar-fill {
+  background: var(--tone-restart);
+}
+
+.review-source-row--turnover {
+  border-left-color: var(--tone-turnover);
+}
+.review-source-row--turnover .possession-review__source-bar-fill {
+  background: var(--tone-turnover);
+}
+
+.review-source-row--free {
+  border-left-color: var(--tone-free);
+}
+.review-source-row--free .possession-review__source-bar-fill {
+  background: var(--tone-free);
+}
+
+.review-source-row--football {
+  border-left-color: var(--tone-delivery);
+}
+.review-source-row--football .possession-review__source-bar-fill {
+  background: var(--tone-delivery);
+}
+
+.review-source-row--hurling {
+  border-left-color: var(--tone-hurling);
+}
+.review-source-row--hurling .possession-review__source-bar-fill {
+  background: var(--tone-hurling);
+}
+
+.review-source-row--delivery {
+  border-left-color: var(--tone-delivery);
+}
+.review-source-row--delivery .possession-review__source-bar-fill {
+  background: var(--tone-delivery);
+}
+
+.review-source-row--possession {
+  border-left-color: var(--tone-turnover);
+}
+.review-source-row--possession .possession-review__source-bar-fill {
+  background: var(--tone-turnover);
+}
+
+/* Footer */
+.possession-review__footer-note {
+  font-size: 10px;
+  color: var(--pro-text-muted);
+  text-align: center;
+  line-height: 1.5;
+  padding: var(--pro-gap-sm) 0 var(--pro-gap-xl);
 }
