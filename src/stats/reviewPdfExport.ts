@@ -303,7 +303,7 @@ function drawPageHeader(
   ctx.font = "20px sans-serif";
   ctx.fillText(subtitle, 24, 62);
 
-  ctx.fillStyle = "#64748b";
+  ctx.fillStyle = "#94a3b8";
   ctx.font = "17px sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(`${pageNum} / ${totalPages}`, CANVAS_W - 24, 38);
@@ -320,7 +320,7 @@ function drawPageHeader(
 
 function drawEventCountFooter(ctx: CanvasRenderingContext2D, count: number): void {
   ctx.save();
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#94a3b8";
   ctx.font = "16px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "right";
@@ -9380,16 +9380,18 @@ function makeChainPressurePage(
     const EY = PANEL_TOP + PANEL_H / 2;
     ctx.fillText("Insufficient chain data to rank patterns.", EX, EY - 14);
     ctx.font = "15px sans-serif";
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#94a3b8";
     ctx.fillText("Tag at least 6 events to generate chain pressure.", EX, EY + 14);
     ctx.restore();
   } else {
-    // ── Card height proportions: [43%, 33%, 24%] ────────────────────────────
+    // ── Card height proportions: [40%, 33%, 27%] — rank-3 bumped from 24% ───
+    // 24% gave rank-3 only 184px (too cramped). 27% = 207px allows readable
+    // text stack with proper breathing room around the metric number.
     const CARD_GAP  = 20;
     const totalGaps = (patterns.length - 1) * CARD_GAP;
     const usableH   = PANEL_H - totalGaps;
 
-    const WEIGHT_TABLE: number[][] = [[1.0], [0.55, 0.45], [0.43, 0.33, 0.24]];
+    const WEIGHT_TABLE: number[][] = [[1.0], [0.55, 0.45], [0.40, 0.33, 0.27]];
     const weights    = WEIGHT_TABLE[patterns.length - 1];
     const cardHeights = weights.map((w) => Math.floor(usableH * w));
 
@@ -9451,10 +9453,10 @@ function makeChainPressurePage(
       // Badge chip
       {
         const BX   = PANEL_X + AW + 36;
-        const CHIP_H = 24;
+        const CHIP_H = 26;   // was 24; larger chip accommodates 13px bold text
         const BY   = HDR_MID - CHIP_H / 2;
         ctx.save();
-        ctx.font = "bold 10px sans-serif";
+        ctx.font = "bold 13px sans-serif";  // was 10px — 4.4pt on PDF, unreadable
         const chipTW = ctx.measureText(p.badge).width;
         const CHIP_W = chipTW + 18;
         ctx.fillStyle    = `rgba(${rgb},0.20)`;
@@ -9467,7 +9469,7 @@ function makeChainPressurePage(
       }
 
       // ── HEADLINE ────────────────────────────────────────────────────────
-      const HL_SZ = p.rank === 1 ? 26 : p.rank === 2 ? 22 : 19;
+      const HL_SZ = p.rank === 1 ? 26 : p.rank === 2 ? 22 : 20;  // R3: 19→20px
       const HL_Y  = cardY + 56;
       ctx.save();
       ctx.font         = `bold ${HL_SZ}px sans-serif`;
@@ -9478,11 +9480,11 @@ function makeChainPressurePage(
       ctx.restore();
 
       // ── OBSERVATION ─────────────────────────────────────────────────────
-      const OBS_SZ = p.rank === 1 ? 16 : p.rank === 2 ? 15 : 14;
+      const OBS_SZ = p.rank === 1 ? 16 : p.rank === 2 ? 15 : 15;  // R3: 14→15px
       const OBS_Y  = HL_Y + HL_SZ + 9;
       ctx.save();
       ctx.font         = `${OBS_SZ}px sans-serif`;
-      ctx.fillStyle    = "#64748b";
+      ctx.fillStyle    = "#94a3b8";   // was #64748b — 4.07:1, below AA
       ctx.textBaseline = "alphabetic";
       ctx.textAlign    = "left";
       let obsText = p.observation;
@@ -9496,9 +9498,14 @@ function makeChainPressurePage(
       ctx.restore();
 
       // ── PRIMARY METRIC ───────────────────────────────────────────────────
-      // Hero number — largest element in the card, immediately readable
+      // Hero number — largest element in the card, immediately readable.
+      // MET_GAPA is set per rank so the metric cap-top clears the observation
+      // text descenders with ≥6px breathing room (previously 1–13px overlap).
+      //   Rank-1 (68px): cap-top ≈ MET_Y−48; needs MET_Y ≥ OBS descenders+54
+      //   Rank-2 (52px): cap-top ≈ MET_Y−36; needs MET_Y ≥ OBS descenders+42
+      //   Rank-3 (40px): cap-top ≈ MET_Y−28; needs MET_Y ≥ OBS descenders+34
       const MET_SZ   = p.rank === 1 ? 68 : p.rank === 2 ? 52 : 40;
-      const MET_GAPA = p.rank === 1 ? 22 : 16;
+      const MET_GAPA = p.rank === 1 ? 40 : p.rank === 2 ? 28 : 22;
       const MET_Y    = OBS_Y + OBS_SZ + MET_GAPA;
       ctx.save();
       ctx.font         = `bold ${MET_SZ}px sans-serif`;
@@ -9508,10 +9515,10 @@ function makeChainPressurePage(
       ctx.textAlign    = "left";
       ctx.fillText(String(p.primaryMetric), IX, MET_Y);
       ctx.globalAlpha  = 1.0;
-      // Metric label — right of (or below) the number
+      // Metric label — right of the number
       const numW = ctx.measureText(String(p.primaryMetric)).width;
-      ctx.font      = `${p.rank === 1 ? 14 : 13}px sans-serif`;
-      ctx.fillStyle = "#475569";
+      ctx.font      = "14px sans-serif";   // was 14/13px — unify at 14px; #475569→#94a3b8
+      ctx.fillStyle = "#94a3b8";
       ctx.textBaseline = "alphabetic";
       ctx.fillText(p.metricLabel, IX + numW + 12, MET_Y - 10);
       ctx.restore();
@@ -9536,17 +9543,17 @@ function makeChainPressurePage(
       const sevTextDark =
         severity === "ELEVATED" && (hex === "#f59e0b" || hex === "#22c55e");
       ctx.save();
-      ctx.font         = `${p.rank === 1 ? 14 : 13}px sans-serif`;
-      ctx.fillStyle    = "#475569";
+      ctx.font         = "14px sans-serif";   // was 14/13px — unify; #475569→#94a3b8
+      ctx.fillStyle    = "#94a3b8";
       ctx.textBaseline = "middle";
       ctx.textAlign    = "left";
       const occStr  = `${p.occurrences} occurrence${p.occurrences !== 1 ? "s" : ""}`;
       ctx.fillText(occStr, IX, META_ABS);
       const occW    = ctx.measureText(occStr).width;
-      // Severity chip
-      const SEV_H   = 20;
+      // Severity chip — SEV_H 22 (was 20) to accommodate 12px bold text
+      const SEV_H   = 22;
       const SEV_W   = ctx.measureText(severity).width + 16;
-      ctx.font = "bold 10px sans-serif";
+      ctx.font = "bold 12px sans-serif";   // was 10px — 4.4pt on PDF, unreadable
       ctx.fillStyle = sevBg;
       ctx.fillRect(IX + occW + 12, META_ABS - SEV_H / 2, SEV_W, SEV_H);
       ctx.fillStyle    = sevTextDark ? "#0d1117" : "#ffffff";
