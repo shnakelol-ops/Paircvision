@@ -8771,14 +8771,44 @@ function cpDominantZone(
 }
 
 /**
+ * Qualification gate for chain candidates.
+ *
+ * FT mode: requires at least 2 occurrences alongside a direct score — prevents
+ * single-event flukes from ranking.
+ *
+ * HT mode (halftime datasets are smaller): any of three conditions pass —
+ *   1. A direct score resulted   (1 kickout loss → goal qualifies immediately)
+ *   2. ≥50% conversion rate with ≥2 occurrences
+ *   3. ≥3 occurrences with ≥2 shots generated (high-frequency, low-conversion)
+ * This keeps halftime pages sharp without promoting harmless noise.
+ */
+function cpQualifies(
+  scores: number,
+  occurrences: number,
+  shots: number,
+  mode: "FT" | "HT",
+): boolean {
+  if (mode === "FT") return scores >= 1 && occurrences >= 2;
+  // HT: any of three conditions
+  if (scores >= 1) return true;
+  if (occurrences >= 2 && occurrences > 0 && scores / occurrences >= 0.5) return true;
+  if (occurrences >= 3 && shots >= 2) return true;
+  return false;
+}
+
+/**
  * Ranks possession chain patterns from the pre-computed ChainAnalysis.
  * Returns 0–3 ChainPressurePattern objects ordered by priority score.
  *
  * Pure function — no canvas, no side effects, no new chain computation.
  * All data consumed is already present in the ChainAnalysis object.
+ *
+ * mode — "FT" (default): standard thresholds for full-match datasets.
+ *        "HT": relaxed qualification for smaller halftime event volumes.
  */
 function rankChainPatterns(
   analysis: ChainAnalysis<PdfExportEvent>,
+  mode: "FT" | "HT" = "FT",
 ): ChainPressurePattern[] {
   const ko = analysis.kickouts;
   const to = analysis.turnovers;
@@ -8789,7 +8819,7 @@ function rankChainPatterns(
 
   // ── 1. KICKOUT TRAP (DANGER_CHAIN) ─────────────────────────────────────────
   // OPP scored directly from kickouts we conceded.
-  if (ko.lostAllowedScore >= 1 && ko.lost >= 2) {
+  if (cpQualifies(ko.lostAllowedScore, ko.lost, 0, mode)) {
     const trapOutcomes = ko.outcomes.filter(
       (o) => o.winningSide === "OPP" && o.nextScore !== null,
     );
@@ -8814,7 +8844,7 @@ function rankChainPatterns(
 
   // ── 2. KICKOUT PLATFORM (CHAIN_WEAPON) ─────────────────────────────────────
   // FOR scored directly from kickouts we won.
-  if (ko.wonToScore >= 1 && ko.won >= 2) {
+  if (cpQualifies(ko.wonToScore, ko.won, 0, mode)) {
     const weaponOutcomes = ko.outcomes.filter(
       (o) => o.winningSide === "FOR" && o.nextScore !== null,
     );
@@ -8839,7 +8869,7 @@ function rankChainPatterns(
 
   // ── 3. TURNOVER DANGER (DANGER_CHAIN) ──────────────────────────────────────
   // OPP scored after winning possession from a FOR turnover.
-  if (to.lostAllowedScore >= 1 && to.lost >= 2) {
+  if (cpQualifies(to.lostAllowedScore, to.lost, 0, mode)) {
     const dangerOutcomes = to.outcomes.filter(
       (o) => o.direction === "LOST" &&
              o.turnoverEvent.teamSide === "FOR" &&
@@ -8866,7 +8896,7 @@ function rankChainPatterns(
 
   // ── 4. TURNOVER WEAPON (CHAIN_WEAPON) ──────────────────────────────────────
   // FOR won possession from a turnover and scored.
-  if (to.wonToScore >= 1 && to.won >= 2) {
+  if (cpQualifies(to.wonToScore, to.won, to.wonToShot, mode)) {
     const weaponOutcomes = to.outcomes.filter(
       (o) => o.direction === "WON" &&
              o.turnoverEvent.teamSide === "FOR" &&
@@ -8903,7 +8933,8 @@ function rankChainPatterns(
     );
 
     // Kickout battle: lots of restarts, none yet scoring
-    if (!hasKoPattern && ko.total >= 4) {
+    // HT: threshold lowered to 3 — smaller first-half dataset
+    if (!hasKoPattern && ko.total >= (mode === "HT" ? 3 : 4)) {
       candidates.push({
         kind:          "PRESSURE_PATTERN",
         badge:         "PRESSURE PATTERN",
@@ -8921,7 +8952,8 @@ function rankChainPatterns(
     }
 
     // Turnover pressure: won possessions producing shots but not converting
-    if (!hasTvPattern && to.won >= 3 && to.wonToShot >= 2) {
+    // HT: lower win threshold to 2 — half a match produces fewer events
+    if (!hasTvPattern && to.won >= (mode === "HT" ? 2 : 3) && to.wonToShot >= 2) {
       candidates.push({
         kind:          "PRESSURE_PATTERN",
         badge:         "PRESSURE PATTERN",
@@ -8941,9 +8973,10 @@ function rankChainPatterns(
 
   // ── 6. WASTED CHAIN (WASTED_CHAIN) ─────────────────────────────────────────
   // FOR creating shots from turnovers but failing to convert.
+  // HT: 1 unconverted shot qualifies — a missed chance at halftime is urgent.
   {
     const unconverted = to.wonToShot - to.wonToScore;
-    if (unconverted >= 2 && to.won >= 2) {
+    if (unconverted >= (mode === "HT" ? 1 : 2) && to.won >= (mode === "HT" ? 1 : 2)) {
       const missOutcomes = to.outcomes.filter(
         (o) => o.direction === "WON" &&
                o.turnoverEvent.teamSide === "FOR" &&
@@ -9004,6 +9037,7 @@ function makeChainPressurePage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  mode: "FT" | "HT" = "FT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -9016,7 +9050,7 @@ function makeChainPressurePage(
   drawPageHeader(ctx, "Chain Pressure", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Rank patterns ──────────────────────────────────────────────────────────
-  const patterns = rankChainPatterns(analysis);
+  const patterns = rankChainPatterns(analysis, mode);
 
   // ── Colour helpers (all based on kind — no new palette colours) ───────────
   function cpRgb(kind: ChainPressureKind): string {
@@ -9414,13 +9448,17 @@ function makeChainPressurePage(
   const cpFacts: string[] = [];
   const cpColors: string[] = [];
 
+  const eventsLabel = mode === "HT"
+    ? "1H chain sequences analysed"
+    : `${analysis.totalEventsAnalysed} events analysed`;
+
   if (patterns.length === 0) {
-    cpFacts.push("No chain patterns ranked — insufficient data");
-    cpFacts.push(`${analysis.totalEventsAnalysed} events analysed`);
+    cpFacts.push("No chain patterns ranked — insufficient first-half data");
+    cpFacts.push(eventsLabel);
     cpColors.push("#475569", "#475569");
   } else {
     cpFacts.push(`${patterns.length} chain pattern${patterns.length !== 1 ? "s" : ""} ranked by match impact`);
-    cpFacts.push(`${analysis.totalEventsAnalysed} events analysed`);
+    cpFacts.push(eventsLabel);
     cpFacts.push("Ranked: scores ×5  ·  occurrences ×2  ·  shots ×1");
     cpColors.push(cpHex(patterns[0].kind), "#94a3b8", "#475569");
   }
@@ -9496,14 +9534,13 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   if (isHT) {
     // ── HT Snapshot ── 5 pages, VISION FIRST, first-half events only ─────────
     //
-    // Question: "Can the coach SEE the repeating tactical behaviour fast enough
-    //            to change the second half?"
+    // Question: "What is ACTUALLY deciding this match right now?"
     //
     // 1. Pressure & Damage   — where did the damage come from?
     // 2. Game Flow           — who controlled each segment and why?
     // 3. Kickout Vision      — who owned the restarts?
     // 4. Attack Shape        — where did we threaten and where did we miss?
-    // 5. Game Flow Factors   — what is helping us and what is hurting us?
+    // 5. Chain Pressure      — what chain patterns must the coach react to NOW?
 
     // 1. Pressure & Damage
     addPage(
@@ -9533,11 +9570,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Attack Shape",
     );
 
-    // 5. Game Flow Factors
+    // 5. Chain Pressure — ranked chain patterns from the first half
     addPage(
-      makeHtGameFlowFactorsPage(events, chainAnalysis, home, away, 5, TOTAL_PAGES),
+      makeChainPressurePage(events, sport, chainAnalysis, home, away, 5, TOTAL_PAGES, "HT"),
       true,
-      "Game Flow Factors",
+      "Chain Pressure",
     );
   } else {
     // ── FT Snapshot ── 12 pages, two-part tactical narrative ─────────────────
