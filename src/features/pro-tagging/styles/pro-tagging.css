@@ -1389,3 +1389,362 @@
   line-height: 1.5;
   padding: var(--pro-gap-sm) 0 var(--pro-gap-xl);
 }
+
+/* ---------------------------------------------------------------------------
+   Contribution Review Panel (Phase 6)
+   — Header/body/context/meta/empty/section follow same pattern as
+     possession-review but with contribution-review__ prefix.
+   --------------------------------------------------------------------------- */
+
+/* Panel container */
+.contribution-review {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.contribution-review__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px var(--pro-gap-lg);
+  background: var(--pro-surface);
+  border-bottom: 1px solid var(--pro-border);
+  flex-shrink: 0;
+  min-height: 52px;
+  gap: var(--pro-gap-sm);
+}
+
+.contribution-review__back-btn {
+  background: none;
+  border: none;
+  color: var(--pro-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 0;
+  touch-action: manipulation;
+  white-space: nowrap;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.contribution-review__back-btn:active {
+  color: var(--pro-text-primary);
+}
+
+.contribution-review__header-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.contribution-review__title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pro-text-primary);
+}
+
+.contribution-review__sport-chip {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--tone-score-active);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.contribution-review__header-spacer {
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+/* Scrollable body */
+.contribution-review__body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--pro-gap-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-lg);
+}
+
+/* Context row */
+.contribution-review__context {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--pro-gap-md);
+}
+
+.contribution-review__match-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--pro-text-primary);
+  line-height: 1.2;
+}
+
+.contribution-review__meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pro-gap-xs);
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.contribution-review__meta-chip {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--pro-surface-2);
+  border: 1px solid var(--pro-border);
+  color: var(--pro-text-secondary);
+  white-space: nowrap;
+}
+
+/* Unattributed events notice */
+.contribution-review__unattributed {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pro-text-secondary);
+  background: rgba(139, 62, 18, 0.08);
+  border: 1px solid rgba(139, 62, 18, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  line-height: 1.4;
+}
+
+/* Empty state */
+.contribution-review__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pro-gap-md);
+  padding: var(--pro-gap-xl) var(--pro-gap-lg);
+  text-align: center;
+}
+
+.contribution-review__empty-icon {
+  font-size: 36px;
+  line-height: 1;
+  opacity: 0.5;
+}
+
+.contribution-review__empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--pro-text-secondary);
+  margin: 0;
+}
+
+.contribution-review__empty-hint {
+  font-size: 12px;
+  color: var(--pro-text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Section */
+.contribution-review__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-sm);
+}
+
+.contribution-review__section-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pro-text-muted);
+  margin: 0;
+}
+
+/* Player card list */
+.contribution-review__player-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pro-gap-sm);
+}
+
+/* Footer */
+.contribution-review__footer-note {
+  font-size: 10px;
+  color: var(--pro-text-muted);
+  text-align: center;
+  line-height: 1.5;
+  padding: var(--pro-gap-sm) 0 var(--pro-gap-xl);
+}
+
+/* ---------------------------------------------------------------------------
+   Player Card (Phase 6)
+   --------------------------------------------------------------------------- */
+.player-card {
+  background: var(--pro-surface);
+  border: 1px solid var(--pro-border);
+  border-radius: 12px;
+  padding: var(--pro-gap-md);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Header row: number · identity · score badge */
+.player-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.player-card__number {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--pro-text-secondary);
+  min-width: 44px;
+  text-align: center;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.player-card__identity {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.player-card__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pro-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.player-card__role-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--pro-text-muted);
+  line-height: 1;
+}
+
+.player-card__score-badge {
+  font-size: 15px;
+  font-weight: 900;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 11px;
+  min-width: 46px;
+  text-align: center;
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* Helped us / Hurt us row */
+.player-card__help-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.player-card__helped {
+  color: var(--tone-score-active);
+}
+
+.player-card__help-dot {
+  color: var(--pro-text-muted);
+}
+
+.player-card__hurt {
+  color: #d73a49;
+}
+
+/* Category breakdown chips */
+.player-card__breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.player-card__chip {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 5px;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.player-card__chip--pos {
+  background: rgba(29, 138, 68, 0.18);
+  color: var(--tone-score-active);
+  border: 1px solid rgba(29, 138, 68, 0.28);
+}
+
+.player-card__chip--neg {
+  background: rgba(215, 58, 73, 0.14);
+  color: #d73a49;
+  border: 1px solid rgba(215, 58, 73, 0.24);
+}
+
+.player-card__chip--zero {
+  background: var(--pro-surface-2);
+  color: var(--pro-text-muted);
+  border: 1px solid var(--pro-border);
+}
+
+/* Involvement meta chips */
+.player-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.player-card__meta-chip {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: var(--pro-surface-2);
+  border: 1px solid var(--pro-border);
+  color: var(--pro-text-secondary);
+  white-space: nowrap;
+}
+
+.player-card__meta-chip--score {
+  background: rgba(29, 138, 68, 0.1);
+  border-color: rgba(29, 138, 68, 0.22);
+  color: var(--tone-score-active);
+}
+
+/* Repeated mistake warning */
+.player-card__mistake-warning {
+  font-size: 10px;
+  font-weight: 700;
+  color: #d73a49;
+  background: rgba(215, 58, 73, 0.1);
+  border: 1px solid rgba(215, 58, 73, 0.2);
+  border-radius: 5px;
+  padding: 3px 8px;
+  margin: 0;
+  display: inline-block;
+  width: fit-content;
+}

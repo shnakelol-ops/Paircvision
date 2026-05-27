@@ -20,6 +20,7 @@
  * Phase 3 — Event → Player → Pitch Loop
  * Phase 4 — Sport Profile Switching (setup screen added)
  * Phase 5 — Possession Review Panel (REVIEW view added)
+ * Phase 6 — Player Contribution Review (CONTRIBUTION view added)
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -28,6 +29,7 @@ import ProPlayerPicker from "./ProPlayerPicker";
 import PitchTapSurface, { type PitchCoords } from "./PitchTapSurface";
 import ProSessionSetup from "./ProSessionSetup";
 import PossessionReviewPanel from "./PossessionReviewPanel";
+import ContributionReviewPanel from "./ContributionReviewPanel";
 import { getSportProfile } from "../model/profiles/index";
 import type { EventButtonDef } from "../model/sport-profile-types";
 import type { SportProfileId } from "../model/sport-profile-types";
@@ -47,7 +49,7 @@ import { derivePossessions } from "../engine/possession-engine";
 // ---------------------------------------------------------------------------
 
 /** Top-level shell view — what the analyst sees */
-type ShellView = "SETUP" | "LIVE" | "REVIEW";
+type ShellView = "SETUP" | "LIVE" | "REVIEW" | "CONTRIBUTION";
 
 /** Capture-loop phase within LIVE view */
 type CaptureState =
@@ -293,24 +295,27 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
     setShellView("LIVE");
   }, []);
 
+  // Open player contribution panel — pauses clock
+  const handleOpenContribution = useCallback(() => {
+    setSession((prev) => ({ ...prev, isRunning: false }));
+    setCapture({ phase: "IDLE" });
+    setShellView("CONTRIBUTION");
+  }, []);
+
+  const handleCloseContribution = useCallback(() => {
+    setShellView("LIVE");
+  }, []);
+
   // ---------------------------------------------------------------------------
   // Derived state
   // ---------------------------------------------------------------------------
-
-  const contributions = useMemo(() => {
-    const dataset = deriveContributions(session.events, [], DEFAULT_WEIGHTS);
-    const map = new Map<string, number>();
-    for (const card of dataset.players) {
-      map.set(card.playerId, card.totalScore);
-    }
-    return map;
-  }, [session.events]);
 
   const recentEvents = useMemo(
     () => [...session.events].slice(-8).reverse(),
     [session.events],
   );
 
+  // Possession data feeds into contribution data (scoring/possession involvements)
   const possessionData = useMemo(
     () =>
       derivePossessions(session.events, {
@@ -319,6 +324,21 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
       }),
     [session.events, profile.possessionRule.maxImplicitGapSeconds],
   );
+
+  // Full contribution dataset with possession involvements wired in
+  const contributionDataset = useMemo(
+    () => deriveContributions(session.events, possessionData.possessions, DEFAULT_WEIGHTS),
+    [session.events, possessionData.possessions],
+  );
+
+  // Score map for the live player picker (derived from full dataset)
+  const contributions = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const card of contributionDataset.players) {
+      map.set(card.playerId, card.totalScore);
+    }
+    return map;
+  }, [contributionDataset]);
 
   // ---------------------------------------------------------------------------
   // State bar label
@@ -346,6 +366,23 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
 
   const pendingLabel =
     capture.phase !== "IDLE" ? capture.button.label : "";
+
+  // ---------------------------------------------------------------------------
+  // CONTRIBUTION view
+  // ---------------------------------------------------------------------------
+
+  if (shellView === "CONTRIBUTION") {
+    return (
+      <div className="pro-tagging-shell">
+        <ContributionReviewPanel
+          session={session}
+          profile={profile}
+          contributionData={contributionDataset}
+          onBack={handleCloseContribution}
+        />
+      </div>
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // REVIEW view
@@ -489,9 +526,17 @@ export default function ProTaggingShell({ profileId, onExit }: ProTaggingShellPr
               type="button"
               className="pro-tagging-shell__log-review"
               onClick={handleOpenReview}
-              title="Session review"
+              title="Possession review"
             >
               📊
+            </button>
+            <button
+              type="button"
+              className="pro-tagging-shell__log-review"
+              onClick={handleOpenContribution}
+              title="Player impact"
+            >
+              👤
             </button>
             <button
               type="button"
