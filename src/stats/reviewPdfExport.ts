@@ -9053,14 +9053,22 @@ function makeChainPressurePage(
   const patterns = rankChainPatterns(analysis, mode);
 
   // ── Colour helpers (all based on kind — no new palette colours) ───────────
-  function cpRgb(kind: ChainPressureKind): string {
-    if (kind === "DANGER_CHAIN")     return "239,68,68";
+  // headline is threaded through so "Turnover Conceded" (a DANGER_CHAIN whose
+  // root cause is possession loss, not a kickout error) renders amber instead
+  // of red — amber = possession-loss/turnover pressure across pitch AND cards.
+  function cpRgb(kind: ChainPressureKind, headline?: string): string {
+    if (kind === "DANGER_CHAIN") {
+      // Turnover Conceded: amber — possession loss. Kickout Trap: red — opp scoring danger.
+      return headline === "Turnover Conceded" ? "245,158,11" : "239,68,68";
+    }
     if (kind === "CHAIN_WEAPON")     return "34,197,94";
     if (kind === "PRESSURE_PATTERN") return "245,158,11";
     return "129,140,248";
   }
-  function cpHex(kind: ChainPressureKind): string {
-    if (kind === "DANGER_CHAIN")     return "#ef4444";
+  function cpHex(kind: ChainPressureKind, headline?: string): string {
+    if (kind === "DANGER_CHAIN") {
+      return headline === "Turnover Conceded" ? "#f59e0b" : "#ef4444";
+    }
     if (kind === "CHAIN_WEAPON")     return "#22c55e";
     if (kind === "PRESSURE_PATTERN") return "#f59e0b";
     return "#818cf8";
@@ -9126,8 +9134,8 @@ function makeChainPressurePage(
     const rect      = zonePixelRect(bounds, inner);
     const cx        = rect.x + rect.w / 2;
     const cy        = rect.y + rect.h / 2;
-    const rgb       = cpRgb(pattern.kind);
-    const hex       = cpHex(pattern.kind);
+    const rgb       = cpRgb(pattern.kind, pattern.headline);
+    const hex       = cpHex(pattern.kind, pattern.headline);
     const fillAlpha = pattern.rank === 1 ? 0.26 : 0.16;
 
     // Zone fill
@@ -9136,17 +9144,40 @@ function makeChainPressurePage(
 
     // Threat rings
     const ringLevel = cpThreatLevel(pattern.priorityScore);
-    if (ringLevel !== "NONE") {
+    const isTurnoverConceded = pattern.headline === "Turnover Conceded";
+    if (isTurnoverConceded && ringLevel !== "NONE") {
+      // Amber dashed ring — signals possession-loss origin, not scoring danger.
+      // Mirrors drawThreatRings ring count logic but locks colour to amber so
+      // the pitch reads: amber zone + amber ring = turnover pressure.
+      ctx.save();
+      ctx.setLineDash([8, 6]);
+      ctx.lineWidth = 2.5;
+      const amberRgb = "245,158,11";
+      const tcRadii = ringLevel === "CRITICAL" ? [30, 48, 66]
+                    : ringLevel === "HIGH"      ? [30, 48]
+                    :                            [30];
+      for (const r of tcRadii) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${amberRgb},0.55)`;
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
+    } else if (ringLevel !== "NONE") {
       drawThreatRings(ctx, cx, cy, ringLevel);
     }
 
     // Threat badge — rank #1 only (keeps rank #2 visually quieter)
     if (pattern.rank === 1) {
+      // "Turnover Conceded" gets a distinct "TURNOVER" label; badge colour is still
+      // threat-level driven (communicates urgency separately from pattern type).
       const badgeLbl =
-        pattern.kind === "DANGER_CHAIN"     ? "DANGER ZONE"  :
-        pattern.kind === "CHAIN_WEAPON"     ? "CHAIN WEAPON" :
-        pattern.kind === "PRESSURE_PATTERN" ? "PRESSURE"     :
-                                              "WASTED";
+        isTurnoverConceded                   ? "TURNOVER"     :
+        pattern.kind === "DANGER_CHAIN"      ? "DANGER ZONE"  :
+        pattern.kind === "CHAIN_WEAPON"      ? "CHAIN WEAPON" :
+        pattern.kind === "PRESSURE_PATTERN"  ? "PRESSURE"     :
+                                               "WASTED";
       drawThreatBadge(ctx, cx, cy - 52, badgeLbl, ringLevel !== "NONE" ? ringLevel : "ELEVATED");
     }
 
@@ -9156,11 +9187,14 @@ function makeChainPressurePage(
         pattern.rank === 1
           ? Math.min(pattern.priorityScore / 20, 1.0)
           : Math.min(pattern.priorityScore / 32, 0.65);
+      // Turnover Conceded uses PRESSURE_COLLAPSE (amber sweep) — possession lost
+      // in zone, not an active scoring threat entering from outside.
       const sweepKind =
-        pattern.kind === "DANGER_CHAIN"     ? "PRESSURE_INWARD"  :
-        pattern.kind === "CHAIN_WEAPON"     ? "PRESSURE_EXIT"    :
-        pattern.kind === "PRESSURE_PATTERN" ? "PRESSURE_INWARD"  :
-                                              "PRESSURE_COLLAPSE";
+        pattern.kind === "CHAIN_WEAPON"                                            ? "PRESSURE_EXIT"    :
+        isTurnoverConceded                                                         ? "PRESSURE_COLLAPSE" :
+        pattern.kind === "DANGER_CHAIN"                                            ? "PRESSURE_INWARD"  :
+        pattern.kind === "PRESSURE_PATTERN"                                        ? "PRESSURE_INWARD"  :
+                                                                                     "PRESSURE_COLLAPSE";
       drawDirectionalPressureSweep(
         ctx,
         cx + rect.w * 0.36, cy - rect.h * 0.22,
@@ -9297,8 +9331,8 @@ function makeChainPressurePage(
     for (let i = 0; i < patterns.length; i++) {
       const p     = patterns[i];
       const cardH = cardHeights[i];
-      const rgb   = cpRgb(p.kind);
-      const hex   = cpHex(p.kind);
+      const rgb   = cpRgb(p.kind, p.headline);
+      const hex   = cpHex(p.kind, p.headline);
 
       // Accent bar width: 8 / 6 / 4 px by rank
       const AW    = p.rank === 1 ? 8 : p.rank === 2 ? 6 : 4;
@@ -9416,11 +9450,20 @@ function makeChainPressurePage(
       const META_BOT  = p.rank === 1 ? 26 : 22;
       const META_ABS  = cardY + cardH - META_BOT;
       const severity  = cpSeverity(p.priorityScore);
-      const sevColor  =
+      // ELEVATED chip inherits the pattern's accent colour — amber for
+      // possession-loss patterns (Turnover Conceded, PRESSURE_PATTERN),
+      // red for scoring-danger patterns (Kickout Trap). This ends the
+      // yellow-chip-on-red-card confusion.
+      // CRITICAL and HIGH keep universal urgency colours (red / orange).
+      const sevBg =
         severity === "CRITICAL" ? "#ef4444" :
         severity === "HIGH"     ? "#f97316" :
-        severity === "ELEVATED" ? "#fbbf24" :
+        severity === "ELEVATED" ? hex        :
                                   "#475569";
+      // Contrast: amber (#f59e0b) and green (#22c55e) are light-valued —
+      // use dark text. All other chip backgrounds use white.
+      const sevTextDark =
+        severity === "ELEVATED" && (hex === "#f59e0b" || hex === "#22c55e");
       ctx.save();
       ctx.font         = `${p.rank === 1 ? 14 : 13}px sans-serif`;
       ctx.fillStyle    = "#475569";
@@ -9433,9 +9476,9 @@ function makeChainPressurePage(
       const SEV_H   = 20;
       const SEV_W   = ctx.measureText(severity).width + 16;
       ctx.font = "bold 10px sans-serif";
-      ctx.fillStyle = sevColor;
+      ctx.fillStyle = sevBg;
       ctx.fillRect(IX + occW + 12, META_ABS - SEV_H / 2, SEV_W, SEV_H);
-      ctx.fillStyle    = severity === "ELEVATED" ? "#0d1117" : "#ffffff";
+      ctx.fillStyle    = sevTextDark ? "#0d1117" : "#ffffff";
       ctx.textBaseline = "middle";
       ctx.fillText(severity, IX + occW + 12 + 8, META_ABS);
       ctx.restore();
@@ -9460,7 +9503,7 @@ function makeChainPressurePage(
     cpFacts.push(`${patterns.length} chain pattern${patterns.length !== 1 ? "s" : ""} ranked by match impact`);
     cpFacts.push(eventsLabel);
     cpFacts.push("Ranked: scores ×5  ·  occurrences ×2  ·  shots ×1");
-    cpColors.push(cpHex(patterns[0].kind), "#94a3b8", "#475569");
+    cpColors.push(cpHex(patterns[0].kind, patterns[0].headline), "#94a3b8", "#475569");
   }
 
   drawHtCalloutStrip(ctx, cpFacts, cpColors);
