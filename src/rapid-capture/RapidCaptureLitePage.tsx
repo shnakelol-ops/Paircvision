@@ -8,10 +8,23 @@ import {
   createMatchEvent,
   type MatchEvent,
   type MatchEventKind,
-  type MatchEventTeamSide,
 } from "../core/stats/stats-event-model";
+import {
+  inferNextPossession,
+  type PossessionSide,
+} from "../tactical/possession-inference";
 
 type Sport = "hurling" | "camogie" | "gaelic" | "soccer";
+
+// Possession metadata stamped on every Rapid Capture event.
+// Optional fields — MatchEvent schema is not changed.
+type RapidEventMeta = {
+  possessionBefore?: PossessionSide;
+  possessionAfter?: PossessionSide;
+  possessionSource?: "EVENT_RULE" | "MANUAL_OVERRIDE" | "UNCHANGED";
+};
+
+type RapidMatchEvent = MatchEvent & RapidEventMeta;
 
 type RapidBarItem = {
   kind: MatchEventKind;
@@ -23,15 +36,15 @@ type RapidBarItem = {
 
 // TWO_POINTER is the existing enum (not TWO_POINT — confirmed absent from schema)
 const RAPID_BAR: RapidBarItem[] = [
-  { kind: "SHOT",          label: "Shot"                                          },
-  { kind: "POINT",         label: "Point"                                         },
-  { kind: "GOAL",          label: "Goal"                                          },
-  { kind: "TWO_POINTER",   label: "2pt",    hideFor: ["hurling", "camogie"]       },
-  { kind: "WIDE",          label: "Wide"                                          },
-  { kind: "TURNOVER_WON",  label: "Turn+"                                         },
-  { kind: "TURNOVER_LOST", label: "Turn−"                                         },
-  { kind: "KICKOUT_WON",   label: "Restart", puckoutLabel: "Puckout"              },
-  { kind: "FREE_WON",      label: "Free"                                          },
+  { kind: "SHOT",          label: "Shot"                                    },
+  { kind: "POINT",         label: "Point"                                   },
+  { kind: "GOAL",          label: "Goal"                                    },
+  { kind: "TWO_POINTER",   label: "2pt",  hideFor: ["hurling", "camogie"]   },
+  { kind: "WIDE",          label: "Wide"                                    },
+  { kind: "TURNOVER_WON",  label: "Turn+"                                   },
+  { kind: "TURNOVER_LOST", label: "Turn−"                                   },
+  { kind: "KICKOUT_WON",   label: "Restart", puckoutLabel: "Puckout"        },
+  { kind: "FREE_WON",      label: "Free"                                    },
 ];
 
 function fmtClock(totalSeconds: number): string {
@@ -43,47 +56,55 @@ function fmtClock(totalSeconds: number): string {
 export default function RapidCaptureLitePage() {
   const [sport, setSport] = useState<Sport>("hurling");
   const [half, setHalf] = useState<1 | 2>(1);
-  const [teamSide, setTeamSide] = useState<MatchEventTeamSide>("FOR");
+  // possession is inferred by the engine; FOR/OPP buttons are manual correction only
+  const [possession, setPossession] = useState<PossessionSide>("FOR");
   const [armedKind, setArmedKind] = useState<MatchEventKind | null>(null);
-  const [loggedEvents, setLoggedEvents] = useState<MatchEvent[]>([]);
+  const [loggedEvents, setLoggedEvents] = useState<RapidMatchEvent[]>([]);
   const [clockSeconds, setClockSeconds] = useState(0);
   const [clockRunning, setClockRunning] = useState(false);
 
   const pitchHostRef = useRef<HTMLDivElement>(null);
   const pixiHandleRef = useRef<PixiPitchSurfaceHandle | null>(null);
 
-  // Refs keep latest values accessible inside the Pixi onPitchTap closure
+  // Refs provide synchronous latest values for the Pixi closure and for undo
   const armedKindRef = useRef<MatchEventKind | null>(null);
-  const teamSideRef = useRef<MatchEventTeamSide>("FOR");
+  const possessionRef = useRef<PossessionSide>("FOR");
   const halfRef = useRef<1 | 2>(1);
   const clockSecondsRef = useRef(0);
+  const loggedEventsRef = useRef<RapidMatchEvent[]>([]);
   const clockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clockStartRef = useRef<number | null>(null);
 
+  // Keep mutable refs in sync with state
   useEffect(() => { armedKindRef.current = armedKind; }, [armedKind]);
-  useEffect(() => { teamSideRef.current = teamSide; }, [teamSide]);
+  useEffect(() => { possessionRef.current = possession; }, [possession]);
   useEffect(() => { halfRef.current = half; }, [half]);
+  useEffect(() => { loggedEventsRef.current = loggedEvents; }, [loggedEvents]);
 
-  // Push every state change to the Pixi surface for dot rendering
+  // Push every event array change to the Pixi surface for dot rendering
   useEffect(() => {
     pixiHandleRef.current?.setEvents(loggedEvents);
   }, [loggedEvents]);
 
-  // Clear interval on unmount
+  // Clear clock interval on unmount
   useEffect(() => {
     return () => {
       if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
     };
   }, []);
 
-  // Re-init Pixi when sport changes; also resets the session
+  // Re-init Pixi when sport changes; resets the whole session
   useEffect(() => {
     const host = pitchHostRef.current;
     if (!host) return;
 
-    // Reset session state for new sport
+    // Reset all session state synchronously before creating new surface
     setLoggedEvents([]);
+    loggedEventsRef.current = [];
     setArmedKind(null);
+    armedKindRef.current = null;
+    setPossession("FOR");
+    possessionRef.current = "FOR";
     setClockRunning(false);
     setClockSeconds(0);
     clockSecondsRef.current = 0;
@@ -102,25 +123,48 @@ export default function RapidCaptureLitePage() {
       onPitchTap: (nx, ny) => {
         const kind = armedKindRef.current;
         if (!kind) return;
+
+        const possessionBefore = possessionRef.current;
         const ts = clockSecondsRef.current;
-        const event = createMatchEvent({
+
+        // Create base event via the existing factory — no schema change
+        const baseEvent = createMatchEvent({
           kind,
           nx,
           ny,
           half: halfRef.current,
           timestamp: ts,
           matchClockSeconds: ts,
-          teamSide: teamSideRef.current,
+          teamSide: possessionBefore,
           createdAt: Date.now(),
         });
-        setLoggedEvents((prev) => [...prev, event]);
+
+        // Derive next possession deterministically
+        const inferred = inferNextPossession(possessionBefore, kind);
+
+        // Enrich with possession metadata (intersection type, not MatchEvent mutation)
+        const event: RapidMatchEvent = {
+          ...baseEvent,
+          possessionBefore: inferred.possessionBefore,
+          possessionAfter: inferred.possessionAfter,
+          possessionSource: inferred.inferredBy,
+        };
+
+        // Update events (ref first for immediate sync, then state for re-render)
+        const next = [...loggedEventsRef.current, event];
+        loggedEventsRef.current = next;
+        setLoggedEvents(next);
+
+        // Advance possession to the inferred next state
+        possessionRef.current = inferred.possessionAfter;
+        setPossession(inferred.possessionAfter);
+
+        // Disarm — next tap must re-select an event type
+        armedKindRef.current = null;
         setArmedKind(null);
       },
     }).then((h) => {
-      if (destroyed) {
-        h.destroy();
-        return;
-      }
+      if (destroyed) { h.destroy(); return; }
       handle = h;
       pixiHandleRef.current = h;
     });
@@ -131,6 +175,12 @@ export default function RapidCaptureLitePage() {
       pixiHandleRef.current = null;
     };
   }, [sport]);
+
+  // Manual possession override — FOR/OPP buttons call this
+  const handlePossessionOverride = useCallback((side: PossessionSide) => {
+    possessionRef.current = side;
+    setPossession(side);
+  }, []);
 
   const toggleClock = useCallback(() => {
     if (clockRunning) {
@@ -151,8 +201,17 @@ export default function RapidCaptureLitePage() {
     }
   }, [clockRunning]);
 
+  // Undo removes the last event and restores possession to before that event
   const undo = useCallback(() => {
-    setLoggedEvents((prev) => (prev.length > 0 ? prev.slice(0, -1) : prev));
+    const last = loggedEventsRef.current.at(-1);
+    if (!last) return;
+    if (last.possessionBefore) {
+      possessionRef.current = last.possessionBefore;
+      setPossession(last.possessionBefore);
+    }
+    const next = loggedEventsRef.current.slice(0, -1);
+    loggedEventsRef.current = next;
+    setLoggedEvents(next);
   }, []);
 
   const handleExport = useCallback(() => {
@@ -172,10 +231,8 @@ export default function RapidCaptureLitePage() {
   }, [sport, loggedEvents]);
 
   const isPuckout = sport === "hurling" || sport === "camogie";
-
   const visibleBar = RAPID_BAR.filter((item) => !item.hideFor?.includes(sport));
-
-  // Look up in full RAPID_BAR so armed label survives a sport toggle mid-session
+  // Full RAPID_BAR lookup so armed label survives a sport toggle
   const armedItem = armedKind ? RAPID_BAR.find((b) => b.kind === armedKind) : null;
 
   return (
@@ -211,14 +268,15 @@ export default function RapidCaptureLitePage() {
 
       {/* ── Controls row ───────────────────────── */}
       <div style={S.controlsRow}>
+        {/* FOR / OPP: inferred possession indicator + manual override */}
         <div style={S.teamGroup}>
           {(["FOR", "OPP"] as const).map((side) => (
             <button
               key={side}
-              onClick={() => setTeamSide(side)}
+              onClick={() => handlePossessionOverride(side)}
               style={{
                 ...S.teamBtn,
-                ...(teamSide === side
+                ...(possession === side
                   ? side === "FOR"
                     ? S.teamBtnFor
                     : S.teamBtnOpp
@@ -271,8 +329,10 @@ export default function RapidCaptureLitePage() {
       {/* ── Status banner ──────────────────────── */}
       <div style={S.statusBanner}>
         {armedItem ? (
-          <>
-            Tap pitch to log{" "}
+          <span>
+            <span style={{ ...S.possessionPip, ...(possession === "FOR" ? S.pipFor : S.pipOpp) }} />
+            {possession}
+            {" · Tap pitch · "}
             <strong>
               {armedItem.puckoutLabel && isPuckout
                 ? armedItem.puckoutLabel
@@ -281,10 +341,11 @@ export default function RapidCaptureLitePage() {
             {loggedEvents.length > 0 && (
               <span style={S.eventCount}>{loggedEvents.length} logged</span>
             )}
-          </>
+          </span>
         ) : (
           <span style={S.hint}>
-            Select an event then tap the pitch
+            <span style={{ ...S.possessionPip, ...(possession === "FOR" ? S.pipFor : S.pipOpp) }} />
+            {possession} · Select event then tap pitch
             {loggedEvents.length > 0 && (
               <span style={S.eventCount}>{loggedEvents.length} logged</span>
             )}
@@ -356,7 +417,7 @@ const S: Record<string, CSSProperties> = {
     color: "#ffffff",
   },
 
-  // Pitch
+  // Pitch — dominant visual, fills remaining height
   pitchHost: {
     flex: 1,
     minHeight: 0,
@@ -437,7 +498,7 @@ const S: Record<string, CSSProperties> = {
     outline: "none",
   },
 
-  // Rapid bar
+  // Rapid event bar
   rapidBar: {
     display: "flex",
     gap: 6,
@@ -469,7 +530,7 @@ const S: Record<string, CSSProperties> = {
     color: "#0d1117",
   },
 
-  // Status banner
+  // Status banner — shows inferred possession + action hint
   statusBanner: {
     textAlign: "center",
     fontSize: 13,
@@ -480,6 +541,17 @@ const S: Record<string, CSSProperties> = {
     color: "#e6edf3",
   },
   hint: { color: "#8b949e" },
+  possessionPip: {
+    display: "inline-block",
+    width: 7,
+    height: 7,
+    borderRadius: "50%",
+    marginRight: 5,
+    verticalAlign: "middle",
+    flexShrink: 0,
+  },
+  pipFor: { background: "#388bfd" },
+  pipOpp: { background: "#f87171" },
   eventCount: {
     marginLeft: 10,
     color: "#8b949e",
