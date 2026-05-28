@@ -7268,10 +7268,10 @@ export default function StatsModeSurface() {
         className="floating-controls"
       >
           {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
-          {captureMode === "VISUAL_PRO" && !isLandscape && !isReviewModeActive ? (
+          {captureMode === "VISUAL_PRO" && !isReviewModeActive ? (
             <div
-              className="event-panel"
-              style={{ width: "min(calc(100vw - 16px), 380px)" }}
+              className={isLandscape ? "landscape-toolbar" : "event-panel"}
+              style={isLandscape ? undefined : { width: "min(calc(100vw - 16px), 380px)" }}
             >
               <VisualProTagPanel
                 config={VISUAL_PRO_CONFIG}
@@ -7492,7 +7492,7 @@ export default function StatsModeSurface() {
               Cts
             </button>
           ) : null}
-          {!isReviewModeActive && !isLandscape ? (
+          {!isReviewModeActive ? (
             <button
               type="button"
               aria-label={captureMode === "VISUAL_PRO" ? "Switch to Lite tagging" : "Switch to Visual Pro tagging"}
