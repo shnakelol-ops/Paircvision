@@ -9,22 +9,8 @@ import {
   type MatchEvent,
   type MatchEventKind,
 } from "../core/stats/stats-event-model";
-import {
-  inferNextPossession,
-  type PossessionSide,
-} from "../tactical/possession-inference";
 
 type Sport = "hurling" | "camogie" | "gaelic" | "soccer";
-
-// Possession metadata stamped on every Rapid Capture event.
-// Optional fields — MatchEvent schema is not changed.
-type RapidEventMeta = {
-  possessionBefore?: PossessionSide;
-  possessionAfter?: PossessionSide;
-  possessionSource?: "EVENT_RULE" | "MANUAL_OVERRIDE" | "UNCHANGED";
-};
-
-type RapidMatchEvent = MatchEvent & RapidEventMeta;
 
 type RapidBarItem = {
   kind: MatchEventKind;
@@ -56,10 +42,11 @@ function fmtClock(totalSeconds: number): string {
 export default function RapidCaptureLitePage() {
   const [sport, setSport] = useState<Sport>("hurling");
   const [half, setHalf] = useState<1 | 2>(1);
-  // possession is inferred by the engine; FOR/OPP buttons are manual correction only
-  const [possession, setPossession] = useState<PossessionSide>("FOR");
+  // teamSide = annotation perspective (whose story is this event).
+  // Sticky manual context — never auto-switches. Mirrors Stats Lite semantics.
+  const [teamSide, setTeamSide] = useState<"FOR" | "OPP">("FOR");
   const [armedKind, setArmedKind] = useState<MatchEventKind | null>(null);
-  const [loggedEvents, setLoggedEvents] = useState<RapidMatchEvent[]>([]);
+  const [loggedEvents, setLoggedEvents] = useState<MatchEvent[]>([]);
   const [clockSeconds, setClockSeconds] = useState(0);
   const [clockRunning, setClockRunning] = useState(false);
 
@@ -68,16 +55,16 @@ export default function RapidCaptureLitePage() {
 
   // Refs provide synchronous latest values for the Pixi closure and for undo
   const armedKindRef = useRef<MatchEventKind | null>(null);
-  const possessionRef = useRef<PossessionSide>("FOR");
+  const teamSideRef = useRef<"FOR" | "OPP">("FOR");
   const halfRef = useRef<1 | 2>(1);
   const clockSecondsRef = useRef(0);
-  const loggedEventsRef = useRef<RapidMatchEvent[]>([]);
+  const loggedEventsRef = useRef<MatchEvent[]>([]);
   const clockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clockStartRef = useRef<number | null>(null);
 
   // Keep mutable refs in sync with state
   useEffect(() => { armedKindRef.current = armedKind; }, [armedKind]);
-  useEffect(() => { possessionRef.current = possession; }, [possession]);
+  useEffect(() => { teamSideRef.current = teamSide; }, [teamSide]);
   useEffect(() => { halfRef.current = half; }, [half]);
   useEffect(() => { loggedEventsRef.current = loggedEvents; }, [loggedEvents]);
 
@@ -103,8 +90,8 @@ export default function RapidCaptureLitePage() {
     loggedEventsRef.current = [];
     setArmedKind(null);
     armedKindRef.current = null;
-    setPossession("FOR");
-    possessionRef.current = "FOR";
+    setTeamSide("FOR");
+    teamSideRef.current = "FOR";
     setClockRunning(false);
     setClockSeconds(0);
     clockSecondsRef.current = 0;
@@ -124,40 +111,24 @@ export default function RapidCaptureLitePage() {
         const kind = armedKindRef.current;
         if (!kind) return;
 
-        const possessionBefore = possessionRef.current;
         const ts = clockSecondsRef.current;
 
-        // Create base event via the existing factory — no schema change
-        const baseEvent = createMatchEvent({
+        // teamSide = annotation perspective at log time — no inference, no auto-advance
+        const event = createMatchEvent({
           kind,
           nx,
           ny,
           half: halfRef.current,
           timestamp: ts,
           matchClockSeconds: ts,
-          teamSide: possessionBefore,
+          teamSide: teamSideRef.current,
           createdAt: Date.now(),
         });
-
-        // Derive next possession deterministically
-        const inferred = inferNextPossession(possessionBefore, kind);
-
-        // Enrich with possession metadata (intersection type, not MatchEvent mutation)
-        const event: RapidMatchEvent = {
-          ...baseEvent,
-          possessionBefore: inferred.possessionBefore,
-          possessionAfter: inferred.possessionAfter,
-          possessionSource: inferred.inferredBy,
-        };
 
         // Update events (ref first for immediate sync, then state for re-render)
         const next = [...loggedEventsRef.current, event];
         loggedEventsRef.current = next;
         setLoggedEvents(next);
-
-        // Advance possession to the inferred next state
-        possessionRef.current = inferred.possessionAfter;
-        setPossession(inferred.possessionAfter);
 
         // Disarm — next tap must re-select an event type
         armedKindRef.current = null;
@@ -176,10 +147,10 @@ export default function RapidCaptureLitePage() {
     };
   }, [sport]);
 
-  // Manual possession override — FOR/OPP buttons call this
-  const handlePossessionOverride = useCallback((side: PossessionSide) => {
-    possessionRef.current = side;
-    setPossession(side);
+  // FOR/OPP toggle — sets annotation context, persists until coach changes it
+  const handleTeamSideChange = useCallback((side: "FOR" | "OPP") => {
+    teamSideRef.current = side;
+    setTeamSide(side);
   }, []);
 
   const toggleClock = useCallback(() => {
@@ -201,14 +172,9 @@ export default function RapidCaptureLitePage() {
     }
   }, [clockRunning]);
 
-  // Undo removes the last event and restores possession to before that event
+  // Undo removes the last logged event — teamSide is not affected
   const undo = useCallback(() => {
-    const last = loggedEventsRef.current.at(-1);
-    if (!last) return;
-    if (last.possessionBefore) {
-      possessionRef.current = last.possessionBefore;
-      setPossession(last.possessionBefore);
-    }
+    if (loggedEventsRef.current.length === 0) return;
     const next = loggedEventsRef.current.slice(0, -1);
     loggedEventsRef.current = next;
     setLoggedEvents(next);
@@ -268,15 +234,15 @@ export default function RapidCaptureLitePage() {
 
       {/* ── Controls row ───────────────────────── */}
       <div style={S.controlsRow}>
-        {/* FOR / OPP: inferred possession indicator + manual override */}
+        {/* FOR / OPP: annotation context toggle — whose story is this event? */}
         <div style={S.teamGroup}>
           {(["FOR", "OPP"] as const).map((side) => (
             <button
               key={side}
-              onClick={() => handlePossessionOverride(side)}
+              onClick={() => handleTeamSideChange(side)}
               style={{
                 ...S.teamBtn,
-                ...(possession === side
+                ...(teamSide === side
                   ? side === "FOR"
                     ? S.teamBtnFor
                     : S.teamBtnOpp
@@ -330,8 +296,8 @@ export default function RapidCaptureLitePage() {
       <div style={S.statusBanner}>
         {armedItem ? (
           <span>
-            <span style={{ ...S.possessionPip, ...(possession === "FOR" ? S.pipFor : S.pipOpp) }} />
-            {possession}
+            <span style={{ ...S.contextPip, ...(teamSide === "FOR" ? S.pipFor : S.pipOpp) }} />
+            {teamSide}
             {" · Tap pitch · "}
             <strong>
               {armedItem.puckoutLabel && isPuckout
@@ -344,8 +310,8 @@ export default function RapidCaptureLitePage() {
           </span>
         ) : (
           <span style={S.hint}>
-            <span style={{ ...S.possessionPip, ...(possession === "FOR" ? S.pipFor : S.pipOpp) }} />
-            {possession} · Select event then tap pitch
+            <span style={{ ...S.contextPip, ...(teamSide === "FOR" ? S.pipFor : S.pipOpp) }} />
+            {teamSide} · Select event then tap pitch
             {loggedEvents.length > 0 && (
               <span style={S.eventCount}>{loggedEvents.length} logged</span>
             )}
@@ -530,7 +496,7 @@ const S: Record<string, CSSProperties> = {
     color: "#0d1117",
   },
 
-  // Status banner — shows inferred possession + action hint
+  // Status banner — shows current annotation context + action hint
   statusBanner: {
     textAlign: "center",
     fontSize: 13,
@@ -541,7 +507,7 @@ const S: Record<string, CSSProperties> = {
     color: "#e6edf3",
   },
   hint: { color: "#8b949e" },
-  possessionPip: {
+  contextPip: {
     display: "inline-block",
     width: 7,
     height: 7,
