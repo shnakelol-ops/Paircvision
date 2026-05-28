@@ -6,6 +6,7 @@ import PitchFlowCoachShell from "./pages/PitchFlowCoachShell";
 import TacticalPadLiteClean from "./pages/TacticalPadLiteClean";
 import PlayerPerformanceTracker from "./pages/PlayerPerformanceTracker";
 import MovementBoardCanvasShellPage from "./pages/MovementBoardCanvasShellPage";
+import RapidCaptureLitePage from "./rapid-capture/RapidCaptureLitePage";
 
 const boardShell = () => <PitchFlowCoachShell initialTab="home" />;
 const VISION_BOARD_PATH = "/vision-board";
@@ -14,6 +15,7 @@ const FLOW_STATS_PATH = "/flowstats";
 const NOTES_PATH = "/notes";
 const PLAYER_PERFORMANCE_TRACKER_PATH = "/player-performance-tracker";
 const MOVEMENT_BOARD_LABS_PATH = "/movement-board-labs";
+const RAPID_CAPTURE_PATH = "/rapid-capture";
 
 function redirectToBoard() {
   if (window.location.pathname !== "/board") {
@@ -95,6 +97,9 @@ function pickRootComponent() {
   }
   if (normalizedPath === MOVEMENT_BOARD_LABS_PATH) {
     return MovementBoardCanvasShellPage;
+  }
+  if (normalizedPath === RAPID_CAPTURE_PATH) {
+    return RapidCaptureLitePage;
   }
   return redirectToBoard();
 }
