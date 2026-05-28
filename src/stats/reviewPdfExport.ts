@@ -206,6 +206,8 @@ const EVENT_COLORS: Record<MatchEventKind, string> = {
   KICKOUT_CONCEDED:     "#fb7185",
   FREE_WON:             "#818cf8",
   FREE_CONCEDED:        "#f472b6",
+  POSSESSION_WON:       "#94a3b8",
+  POSSESSION_LOST:      "#94a3b8",
 };
 
 const KIND_LABELS: Record<MatchEventKind, string> = {
@@ -223,6 +225,8 @@ const KIND_LABELS: Record<MatchEventKind, string> = {
   KICKOUT_CONCEDED:     "Kickout Conceded",
   FREE_WON:             "Free Won",
   FREE_CONCEDED:        "Free Conceded",
+  POSSESSION_WON:       "P+",
+  POSSESSION_LOST:      "P−",
 };
 
 // ─── Score helpers ────────────────────────────────────────────────────────────

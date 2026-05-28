@@ -12,6 +12,7 @@ type GaaModeDefinition = {
 
 type ModeLabelOverrides = {
   includeTwoPointer: boolean;
+  includePossession?: boolean;
   kickoutWonLabel: string;
   kickoutConcededLabel: string;
   placeBallLabel: string | null;
@@ -20,6 +21,7 @@ type ModeLabelOverrides = {
 
 function buildEventButtons({
   includeTwoPointer,
+  includePossession,
   kickoutWonLabel,
   kickoutConcededLabel,
   placeBallLabel,
@@ -44,6 +46,12 @@ function buildEventButtons({
   }
   if (includeTwoPointer) {
     baseButtons.splice(2, 0, { label: "2PT", kind: "TWO_POINTER" });
+  }
+  if (includePossession) {
+    baseButtons.push(
+      { label: "P+", kind: "POSSESSION_WON" },
+      { label: "P−", kind: "POSSESSION_LOST" },
+    );
   }
   return baseButtons;
 }
@@ -70,6 +78,8 @@ function buildEventLabels({
     FREE_SCORED: "FS",
     FREE_MISSED: "FM",
     FORTY_FIVE_TWO_POINT: "45+2",
+    POSSESSION_WON: "P+",
+    POSSESSION_LOST: "P−",
   };
 }
 
@@ -125,6 +135,7 @@ export const gaaModeConfig = {
     pitchSport: "hurling",
     eventButtons: buildEventButtons({
       includeTwoPointer: false,
+      includePossession: true,
       kickoutWonLabel: "P+",
       kickoutConcededLabel: "P-",
       placeBallLabel: null,
@@ -142,6 +153,7 @@ export const gaaModeConfig = {
     pitchSport: "hurling",
     eventButtons: buildEventButtons({
       includeTwoPointer: false,
+      includePossession: true,
       kickoutWonLabel: "P+",
       kickoutConcededLabel: "P-",
       placeBallLabel: null,
