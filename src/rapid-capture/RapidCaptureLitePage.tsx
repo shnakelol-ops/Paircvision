@@ -17,16 +17,21 @@ type RapidBarItem = {
   kind: MatchEventKind;
   label: string;
   puckoutLabel?: string;
+  // sports for which this button is hidden; omit = visible for all
+  hideFor?: readonly Sport[];
 };
 
+// TWO_POINTER is the existing enum (not TWO_POINT — confirmed absent from schema)
 const RAPID_BAR: RapidBarItem[] = [
-  { kind: "SHOT",          label: "Shot"       },
-  { kind: "POINT",         label: "Point"      },
-  { kind: "WIDE",          label: "Wide"       },
-  { kind: "TURNOVER_WON",  label: "Turn+"      },
-  { kind: "TURNOVER_LOST", label: "Turn−" },
-  { kind: "KICKOUT_WON",   label: "Restart", puckoutLabel: "Puckout" },
-  { kind: "FREE_WON",      label: "Free"       },
+  { kind: "SHOT",          label: "Shot"                                          },
+  { kind: "POINT",         label: "Point"                                         },
+  { kind: "GOAL",          label: "Goal"                                          },
+  { kind: "TWO_POINTER",   label: "2pt",    hideFor: ["hurling", "camogie"]       },
+  { kind: "WIDE",          label: "Wide"                                          },
+  { kind: "TURNOVER_WON",  label: "Turn+"                                         },
+  { kind: "TURNOVER_LOST", label: "Turn−"                                         },
+  { kind: "KICKOUT_WON",   label: "Restart", puckoutLabel: "Puckout"              },
+  { kind: "FREE_WON",      label: "Free"                                          },
 ];
 
 function fmtClock(totalSeconds: number): string {
@@ -168,6 +173,9 @@ export default function RapidCaptureLitePage() {
 
   const isPuckout = sport === "hurling" || sport === "camogie";
 
+  const visibleBar = RAPID_BAR.filter((item) => !item.hideFor?.includes(sport));
+
+  // Look up in full RAPID_BAR so armed label survives a sport toggle mid-session
   const armedItem = armedKind ? RAPID_BAR.find((b) => b.kind === armedKind) : null;
 
   return (
@@ -244,7 +252,7 @@ export default function RapidCaptureLitePage() {
 
       {/* ── Rapid event bar ────────────────────── */}
       <div style={S.rapidBar}>
-        {RAPID_BAR.map((item) => {
+        {visibleBar.map((item) => {
           const label =
             item.puckoutLabel && isPuckout ? item.puckoutLabel : item.label;
           const isArmed = armedKind === item.kind;
