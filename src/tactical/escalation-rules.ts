@@ -4,9 +4,9 @@
 export const PRESSURE_WINDOW_SECONDS = 240; // 4-minute rolling window
 
 export const ESCALATION_THRESHOLDS = {
-  notable: 2, // 2–3 events in window → notable
-  amber:   4, // 4–5 events in window → amber
-  red:     6, // 6+  events in window → red
+  notable: 2, // 2 events in window → notable (not surfaced to coach)
+  amber:   3, // 3–4 events in window → amber (first visible signal)
+  red:     5, // 5+  events in window → red
 } as const;
 
 export type EscalationLevel = 0 | 1 | 2 | 3;
