@@ -1,0 +1,480 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import type { CSSProperties } from "react";
+import {
+  createPixiPitchSurface,
+  type PixiPitchSurfaceHandle,
+} from "../core/pitch/create-pixi-pitch-surface";
+import {
+  createMatchEvent,
+  type MatchEvent,
+  type MatchEventKind,
+  type MatchEventTeamSide,
+} from "../core/stats/stats-event-model";
+
+type Sport = "hurling" | "camogie" | "gaelic" | "soccer";
+
+type RapidBarItem = {
+  kind: MatchEventKind;
+  label: string;
+  puckoutLabel?: string;
+};
+
+const RAPID_BAR: RapidBarItem[] = [
+  { kind: "SHOT",          label: "Shot"       },
+  { kind: "POINT",         label: "Point"      },
+  { kind: "WIDE",          label: "Wide"       },
+  { kind: "TURNOVER_WON",  label: "Turn+"      },
+  { kind: "TURNOVER_LOST", label: "Turn−" },
+  { kind: "KICKOUT_WON",   label: "Restart", puckoutLabel: "Puckout" },
+  { kind: "FREE_WON",      label: "Free"       },
+];
+
+function fmtClock(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
+  const s = (totalSeconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+export default function RapidCaptureLitePage() {
+  const [sport, setSport] = useState<Sport>("hurling");
+  const [half, setHalf] = useState<1 | 2>(1);
+  const [teamSide, setTeamSide] = useState<MatchEventTeamSide>("FOR");
+  const [armedKind, setArmedKind] = useState<MatchEventKind | null>(null);
+  const [loggedEvents, setLoggedEvents] = useState<MatchEvent[]>([]);
+  const [clockSeconds, setClockSeconds] = useState(0);
+  const [clockRunning, setClockRunning] = useState(false);
+
+  const pitchHostRef = useRef<HTMLDivElement>(null);
+  const pixiHandleRef = useRef<PixiPitchSurfaceHandle | null>(null);
+
+  // Refs keep latest values accessible inside the Pixi onPitchTap closure
+  const armedKindRef = useRef<MatchEventKind | null>(null);
+  const teamSideRef = useRef<MatchEventTeamSide>("FOR");
+  const halfRef = useRef<1 | 2>(1);
+  const clockSecondsRef = useRef(0);
+  const clockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const clockStartRef = useRef<number | null>(null);
+
+  useEffect(() => { armedKindRef.current = armedKind; }, [armedKind]);
+  useEffect(() => { teamSideRef.current = teamSide; }, [teamSide]);
+  useEffect(() => { halfRef.current = half; }, [half]);
+
+  // Push every state change to the Pixi surface for dot rendering
+  useEffect(() => {
+    pixiHandleRef.current?.setEvents(loggedEvents);
+  }, [loggedEvents]);
+
+  // Clear interval on unmount
+  useEffect(() => {
+    return () => {
+      if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
+    };
+  }, []);
+
+  // Re-init Pixi when sport changes; also resets the session
+  useEffect(() => {
+    const host = pitchHostRef.current;
+    if (!host) return;
+
+    // Reset session state for new sport
+    setLoggedEvents([]);
+    setArmedKind(null);
+    setClockRunning(false);
+    setClockSeconds(0);
+    clockSecondsRef.current = 0;
+    clockStartRef.current = null;
+    if (clockIntervalRef.current) {
+      clearInterval(clockIntervalRef.current);
+      clockIntervalRef.current = null;
+    }
+
+    let handle: PixiPitchSurfaceHandle | null = null;
+    let destroyed = false;
+
+    createPixiPitchSurface(host, {
+      sport,
+      canLogEvents: true,
+      onPitchTap: (nx, ny) => {
+        const kind = armedKindRef.current;
+        if (!kind) return;
+        const ts = clockSecondsRef.current;
+        const event = createMatchEvent({
+          kind,
+          nx,
+          ny,
+          half: halfRef.current,
+          timestamp: ts,
+          matchClockSeconds: ts,
+          teamSide: teamSideRef.current,
+          createdAt: Date.now(),
+        });
+        setLoggedEvents((prev) => [...prev, event]);
+        setArmedKind(null);
+      },
+    }).then((h) => {
+      if (destroyed) {
+        h.destroy();
+        return;
+      }
+      handle = h;
+      pixiHandleRef.current = h;
+    });
+
+    return () => {
+      destroyed = true;
+      handle?.destroy();
+      pixiHandleRef.current = null;
+    };
+  }, [sport]);
+
+  const toggleClock = useCallback(() => {
+    if (clockRunning) {
+      if (clockIntervalRef.current) {
+        clearInterval(clockIntervalRef.current);
+        clockIntervalRef.current = null;
+      }
+      setClockRunning(false);
+    } else {
+      // Resume from current elapsed time
+      clockStartRef.current = Date.now() - clockSecondsRef.current * 1000;
+      clockIntervalRef.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - clockStartRef.current!) / 1000);
+        clockSecondsRef.current = elapsed;
+        setClockSeconds(elapsed);
+      }, 500);
+      setClockRunning(true);
+    }
+  }, [clockRunning]);
+
+  const undo = useCallback(() => {
+    setLoggedEvents((prev) => (prev.length > 0 ? prev.slice(0, -1) : prev));
+  }, []);
+
+  const handleExport = useCallback(() => {
+    if (loggedEvents.length === 0) return;
+    const payload = JSON.stringify(
+      { version: 1, sport, events: loggedEvents, exportedAt: new Date().toISOString() },
+      null,
+      2,
+    );
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rapid-capture-${sport}-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [sport, loggedEvents]);
+
+  const isPuckout = sport === "hurling" || sport === "camogie";
+
+  const armedItem = armedKind ? RAPID_BAR.find((b) => b.kind === armedKind) : null;
+
+  return (
+    <div style={S.shell}>
+      {/* ── Header ─────────────────────────────── */}
+      <div style={S.header}>
+        <span style={S.title}>Rapid Capture</span>
+        <select
+          value={sport}
+          onChange={(e) => setSport(e.target.value as Sport)}
+          style={S.sportSelect}
+        >
+          <option value="hurling">Hurling</option>
+          <option value="camogie">Camogie</option>
+          <option value="gaelic">Gaelic</option>
+          <option value="soccer">Soccer</option>
+        </select>
+        <div style={S.halfGroup}>
+          {([1, 2] as const).map((h) => (
+            <button
+              key={h}
+              onClick={() => setHalf(h)}
+              style={{ ...S.halfBtn, ...(half === h ? S.halfBtnOn : {}) }}
+            >
+              {h}H
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Pitch ──────────────────────────────── */}
+      <div ref={pitchHostRef} style={S.pitchHost} />
+
+      {/* ── Controls row ───────────────────────── */}
+      <div style={S.controlsRow}>
+        <div style={S.teamGroup}>
+          {(["FOR", "OPP"] as const).map((side) => (
+            <button
+              key={side}
+              onClick={() => setTeamSide(side)}
+              style={{
+                ...S.teamBtn,
+                ...(teamSide === side
+                  ? side === "FOR"
+                    ? S.teamBtnFor
+                    : S.teamBtnOpp
+                  : {}),
+              }}
+            >
+              {side}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={undo}
+          disabled={loggedEvents.length === 0}
+          style={S.undoBtn}
+        >
+          ↩ Undo
+        </button>
+        <span style={S.spacer} />
+        <span style={S.clock}>{fmtClock(clockSeconds)}</span>
+        <button onClick={toggleClock} style={S.clockBtn}>
+          {clockRunning ? "⏸" : "▶"}
+        </button>
+        <button
+          onClick={handleExport}
+          disabled={loggedEvents.length === 0}
+          style={S.exportBtn}
+        >
+          ↓ JSON
+        </button>
+      </div>
+
+      {/* ── Rapid event bar ────────────────────── */}
+      <div style={S.rapidBar}>
+        {RAPID_BAR.map((item) => {
+          const label =
+            item.puckoutLabel && isPuckout ? item.puckoutLabel : item.label;
+          const isArmed = armedKind === item.kind;
+          return (
+            <button
+              key={item.kind}
+              onClick={() => setArmedKind(isArmed ? null : item.kind)}
+              style={{ ...S.rapidBtn, ...(isArmed ? S.rapidBtnArmed : {}) }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Status banner ──────────────────────── */}
+      <div style={S.statusBanner}>
+        {armedItem ? (
+          <>
+            Tap pitch to log{" "}
+            <strong>
+              {armedItem.puckoutLabel && isPuckout
+                ? armedItem.puckoutLabel
+                : armedItem.label}
+            </strong>
+            {loggedEvents.length > 0 && (
+              <span style={S.eventCount}>{loggedEvents.length} logged</span>
+            )}
+          </>
+        ) : (
+          <span style={S.hint}>
+            Select an event then tap the pitch
+            {loggedEvents.length > 0 && (
+              <span style={S.eventCount}>{loggedEvents.length} logged</span>
+            )}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Styles ─────────────────────────────────────────────────────────────────
+
+const S: Record<string, CSSProperties> = {
+  shell: {
+    display: "flex",
+    flexDirection: "column",
+    height: "100dvh",
+    width: "100%",
+    background: "#0d1117",
+    color: "#e6edf3",
+    fontFamily: "'Inter', 'Helvetica Neue', system-ui, sans-serif",
+    userSelect: "none",
+    overflow: "hidden",
+    WebkitTapHighlightColor: "transparent",
+  },
+
+  // Header
+  header: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "10px 14px 8px",
+    background: "#161b22",
+    borderBottom: "1px solid #21262d",
+    flexShrink: 0,
+  },
+  title: {
+    fontWeight: 700,
+    fontSize: 15,
+    letterSpacing: "-0.3px",
+    flex: 1,
+    whiteSpace: "nowrap",
+  },
+  sportSelect: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#e6edf3",
+    fontSize: 13,
+    padding: "4px 8px",
+    cursor: "pointer",
+    outline: "none",
+  },
+  halfGroup: { display: "flex", gap: 4 },
+  halfBtn: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "4px 10px",
+    cursor: "pointer",
+    outline: "none",
+  },
+  halfBtnOn: {
+    background: "#238636",
+    borderColor: "#2ea043",
+    color: "#ffffff",
+  },
+
+  // Pitch
+  pitchHost: {
+    flex: 1,
+    minHeight: 0,
+    position: "relative",
+    background: "#0d1117",
+  },
+
+  // Controls row
+  controlsRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "8px 12px",
+    background: "#161b22",
+    borderTop: "1px solid #21262d",
+    flexShrink: 0,
+  },
+  teamGroup: { display: "flex", gap: 4 },
+  teamBtn: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 13,
+    fontWeight: 700,
+    padding: "6px 12px",
+    cursor: "pointer",
+    minWidth: 48,
+    outline: "none",
+  },
+  teamBtnFor: {
+    background: "#1f6feb",
+    borderColor: "#388bfd",
+    color: "#ffffff",
+  },
+  teamBtnOpp: {
+    background: "#b91c1c",
+    borderColor: "#f87171",
+    color: "#ffffff",
+  },
+  undoBtn: {
+    background: "transparent",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 13,
+    padding: "6px 10px",
+    cursor: "pointer",
+    outline: "none",
+  },
+  spacer: { flex: 1 },
+  clock: {
+    fontVariantNumeric: "tabular-nums",
+    fontSize: 15,
+    fontWeight: 700,
+    color: "#e6edf3",
+    minWidth: 48,
+    textAlign: "center",
+  },
+  clockBtn: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#e6edf3",
+    fontSize: 15,
+    padding: "6px 10px",
+    cursor: "pointer",
+    outline: "none",
+  },
+  exportBtn: {
+    background: "transparent",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 12,
+    padding: "6px 10px",
+    cursor: "pointer",
+    outline: "none",
+  },
+
+  // Rapid bar
+  rapidBar: {
+    display: "flex",
+    gap: 6,
+    padding: "10px 12px",
+    background: "#0d1117",
+    borderTop: "1px solid #21262d",
+    overflowX: "auto",
+    flexShrink: 0,
+  },
+  rapidBtn: {
+    background: "#161b22",
+    border: "1.5px solid #30363d",
+    borderRadius: 8,
+    color: "#e6edf3",
+    fontSize: 14,
+    fontWeight: 600,
+    padding: "11px 16px",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+    minWidth: 64,
+    textAlign: "center",
+    outline: "none",
+    transition: "background 0.08s, border-color 0.08s, color 0.08s",
+  },
+  rapidBtnArmed: {
+    background: "#f0883e",
+    borderColor: "#f0883e",
+    color: "#0d1117",
+  },
+
+  // Status banner
+  statusBanner: {
+    textAlign: "center",
+    fontSize: 13,
+    padding: "6px 14px 10px",
+    background: "#0d1117",
+    flexShrink: 0,
+    minHeight: 32,
+    color: "#e6edf3",
+  },
+  hint: { color: "#8b949e" },
+  eventCount: {
+    marginLeft: 10,
+    color: "#8b949e",
+    fontWeight: 400,
+  },
+};
