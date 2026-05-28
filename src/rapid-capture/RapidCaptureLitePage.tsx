@@ -9,18 +9,35 @@ import {
   type MatchEvent,
   type MatchEventKind,
 } from "../core/stats/stats-event-model";
+import type {
+  RapidSession,
+  Sport,
+  MatchType,
+  AttackDirection,
+} from "./rapid-session";
 
-type Sport = "hurling" | "camogie" | "gaelic" | "soccer";
+const SPORT_LABELS: Record<Sport, string> = {
+  hurling: "Hurling",
+  camogie: "Camogie",
+  gaelic: "Gaelic",
+  soccer: "Soccer",
+};
+
+const MATCH_TYPE_LABELS: Record<MatchType, string> = {
+  league: "League",
+  championship: "Championship",
+  friendly: "Friendly",
+  training: "Training",
+};
 
 type RapidBarItem = {
   kind: MatchEventKind;
   label: string;
   puckoutLabel?: string;
-  // sports for which this button is hidden; omit = visible for all
   hideFor?: readonly Sport[];
 };
 
-// TWO_POINTER is the existing enum (not TWO_POINT — confirmed absent from schema)
+// TWO_POINTER is the correct enum value (TWO_POINT does not exist in schema)
 const RAPID_BAR: RapidBarItem[] = [
   { kind: "SHOT",          label: "Shot"                                    },
   { kind: "POINT",         label: "Point"                                   },
@@ -39,8 +56,175 @@ function fmtClock(totalSeconds: number): string {
   return `${m}:${s}`;
 }
 
-export default function RapidCaptureLitePage() {
+// ── Setup Screen ─────────────────────────────────────────────────────────────
+
+function RapidSetupScreen({ onStart }: { onStart: (s: RapidSession) => void }) {
   const [sport, setSport] = useState<Sport>("hurling");
+  const [forTeamName, setForTeamName] = useState("");
+  const [oppTeamName, setOppTeamName] = useState("");
+  const [venue, setVenue] = useState("");
+  const [matchType, setMatchType] = useState<MatchType>("league");
+  const [forColour, setForColour] = useState("#1f6feb");
+  const [oppColour, setOppColour] = useState("#b91c1c");
+  const [attackDir, setAttackDir] = useState<AttackDirection>("right");
+  const [halfDuration, setHalfDuration] = useState(35);
+
+  function handleStart() {
+    onStart({
+      sport,
+      forTeamName: forTeamName.trim(),
+      oppTeamName: oppTeamName.trim(),
+      venue: venue.trim(),
+      matchType,
+      forTeamColour: forColour,
+      oppTeamColour: oppColour,
+      attackDirection: attackDir,
+      halfDurationMinutes: halfDuration,
+    });
+  }
+
+  return (
+    <div style={S.shell}>
+      <div style={S.header}>
+        <span style={S.title}>⚡ Rapid Capture</span>
+        <span style={S.setupBadge}>Setup</span>
+      </div>
+
+      <div style={S.setupBody}>
+        {/* Sport */}
+        <span style={S.sectionLabel}>Sport</span>
+        <div style={S.chipGroup}>
+          {(["hurling", "camogie", "gaelic", "soccer"] as Sport[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => setSport(s)}
+              style={{ ...S.chip, ...(sport === s ? S.chipActive : {}) }}
+            >
+              {SPORT_LABELS[s]}
+            </button>
+          ))}
+        </div>
+
+        {/* Teams */}
+        <span style={S.sectionLabel}>Teams</span>
+        <div style={S.teamInputRow}>
+          <span style={{ ...S.teamSwatch, background: forColour }} />
+          <span style={S.teamSideLabel}>FOR</span>
+          <input
+            type="text"
+            placeholder="Team name"
+            value={forTeamName}
+            onChange={(e) => setForTeamName(e.target.value)}
+            style={S.textInput}
+          />
+        </div>
+        <div style={S.teamInputRow}>
+          <span style={{ ...S.teamSwatch, background: oppColour }} />
+          <span style={S.teamSideLabel}>OPP</span>
+          <input
+            type="text"
+            placeholder="Team name"
+            value={oppTeamName}
+            onChange={(e) => setOppTeamName(e.target.value)}
+            style={S.textInput}
+          />
+        </div>
+
+        {/* Venue */}
+        <span style={S.sectionLabel}>
+          Venue <span style={S.optionalTag}>(optional)</span>
+        </span>
+        <input
+          type="text"
+          placeholder="e.g. Croke Park"
+          value={venue}
+          onChange={(e) => setVenue(e.target.value)}
+          style={{ ...S.textInput, width: "100%", boxSizing: "border-box" } as CSSProperties}
+        />
+
+        {/* Match type */}
+        <span style={S.sectionLabel}>Match Type</span>
+        <div style={S.chipGroup}>
+          {(["league", "championship", "friendly", "training"] as MatchType[]).map((mt) => (
+            <button
+              key={mt}
+              onClick={() => setMatchType(mt)}
+              style={{ ...S.chip, ...(matchType === mt ? S.chipActive : {}) }}
+            >
+              {MATCH_TYPE_LABELS[mt]}
+            </button>
+          ))}
+        </div>
+
+        {/* Team colours */}
+        <span style={S.sectionLabel}>Team Colours</span>
+        <div style={S.colourRow}>
+          <div style={S.colourItem}>
+            <span style={{ ...S.colourSwatch, background: forColour }} />
+            <span style={S.colourName}>FOR</span>
+            <input
+              type="color"
+              value={forColour}
+              onChange={(e) => setForColour(e.target.value)}
+              style={S.colourPicker}
+            />
+          </div>
+          <div style={S.colourItem}>
+            <span style={{ ...S.colourSwatch, background: oppColour }} />
+            <span style={S.colourName}>OPP</span>
+            <input
+              type="color"
+              value={oppColour}
+              onChange={(e) => setOppColour(e.target.value)}
+              style={S.colourPicker}
+            />
+          </div>
+        </div>
+
+        {/* Attack direction */}
+        <span style={S.sectionLabel}>1H Attacking Direction</span>
+        <div style={S.chipGroup}>
+          <button
+            onClick={() => setAttackDir("left")}
+            style={{ ...S.chip, ...(attackDir === "left" ? S.chipActive : {}) }}
+          >
+            ← Left
+          </button>
+          <button
+            onClick={() => setAttackDir("right")}
+            style={{ ...S.chip, ...(attackDir === "right" ? S.chipActive : {}) }}
+          >
+            Right →
+          </button>
+        </div>
+
+        {/* Half duration */}
+        <span style={S.sectionLabel}>Half Duration</span>
+        <div style={S.chipGroup}>
+          {[25, 30, 35, 40].map((d) => (
+            <button
+              key={d}
+              onClick={() => setHalfDuration(d)}
+              style={{ ...S.chip, ...(halfDuration === d ? S.chipActive : {}) }}
+            >
+              {d} min
+            </button>
+          ))}
+        </div>
+
+        <button onClick={handleStart} style={S.startBtn}>
+          Start Match
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Live Screen ───────────────────────────────────────────────────────────────
+
+function RapidLiveScreen({ session }: { session: RapidSession }) {
+  const { sport } = session;
+
   const [half, setHalf] = useState<1 | 2>(1);
   // teamSide = annotation perspective (whose story is this event).
   // Sticky manual context — never auto-switches. Mirrors Stats Lite semantics.
@@ -53,7 +237,7 @@ export default function RapidCaptureLitePage() {
   const pitchHostRef = useRef<HTMLDivElement>(null);
   const pixiHandleRef = useRef<PixiPitchSurfaceHandle | null>(null);
 
-  // Refs provide synchronous latest values for the Pixi closure and for undo
+  // Refs provide synchronous latest values for the Pixi tap closure and for undo
   const armedKindRef = useRef<MatchEventKind | null>(null);
   const teamSideRef = useRef<"FOR" | "OPP">("FOR");
   const halfRef = useRef<1 | 2>(1);
@@ -62,44 +246,25 @@ export default function RapidCaptureLitePage() {
   const clockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clockStartRef = useRef<number | null>(null);
 
-  // Keep mutable refs in sync with state
   useEffect(() => { armedKindRef.current = armedKind; }, [armedKind]);
   useEffect(() => { teamSideRef.current = teamSide; }, [teamSide]);
   useEffect(() => { halfRef.current = half; }, [half]);
   useEffect(() => { loggedEventsRef.current = loggedEvents; }, [loggedEvents]);
 
-  // Push every event array change to the Pixi surface for dot rendering
   useEffect(() => {
     pixiHandleRef.current?.setEvents(loggedEvents);
   }, [loggedEvents]);
 
-  // Clear clock interval on unmount
   useEffect(() => {
     return () => {
       if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
     };
   }, []);
 
-  // Re-init Pixi when sport changes; resets the whole session
+  // Sport is fixed for the lifetime of this screen — initialises Pixi once on mount
   useEffect(() => {
     const host = pitchHostRef.current;
     if (!host) return;
-
-    // Reset all session state synchronously before creating new surface
-    setLoggedEvents([]);
-    loggedEventsRef.current = [];
-    setArmedKind(null);
-    armedKindRef.current = null;
-    setTeamSide("FOR");
-    teamSideRef.current = "FOR";
-    setClockRunning(false);
-    setClockSeconds(0);
-    clockSecondsRef.current = 0;
-    clockStartRef.current = null;
-    if (clockIntervalRef.current) {
-      clearInterval(clockIntervalRef.current);
-      clockIntervalRef.current = null;
-    }
 
     let handle: PixiPitchSurfaceHandle | null = null;
     let destroyed = false;
@@ -125,7 +290,7 @@ export default function RapidCaptureLitePage() {
           createdAt: Date.now(),
         });
 
-        // Update events (ref first for immediate sync, then state for re-render)
+        // Update ref first for immediate sync, then state for re-render
         const next = [...loggedEventsRef.current, event];
         loggedEventsRef.current = next;
         setLoggedEvents(next);
@@ -147,7 +312,6 @@ export default function RapidCaptureLitePage() {
     };
   }, [sport]);
 
-  // FOR/OPP toggle — sets annotation context, persists until coach changes it
   const handleTeamSideChange = useCallback((side: "FOR" | "OPP") => {
     teamSideRef.current = side;
     setTeamSide(side);
@@ -161,7 +325,6 @@ export default function RapidCaptureLitePage() {
       }
       setClockRunning(false);
     } else {
-      // Resume from current elapsed time
       clockStartRef.current = Date.now() - clockSecondsRef.current * 1000;
       clockIntervalRef.current = setInterval(() => {
         const elapsed = Math.floor((Date.now() - clockStartRef.current!) / 1000);
@@ -172,7 +335,7 @@ export default function RapidCaptureLitePage() {
     }
   }, [clockRunning]);
 
-  // Undo removes the last logged event — teamSide is not affected
+  // Undo removes the last logged event — teamSide context is not affected
   const undo = useCallback(() => {
     if (loggedEventsRef.current.length === 0) return;
     const next = loggedEventsRef.current.slice(0, -1);
@@ -183,7 +346,22 @@ export default function RapidCaptureLitePage() {
   const handleExport = useCallback(() => {
     if (loggedEvents.length === 0) return;
     const payload = JSON.stringify(
-      { version: 1, sport, events: loggedEvents, exportedAt: new Date().toISOString() },
+      {
+        version: 2,
+        session: {
+          sport: session.sport,
+          forTeamName: session.forTeamName,
+          oppTeamName: session.oppTeamName,
+          venue: session.venue,
+          matchType: session.matchType,
+          forTeamColour: session.forTeamColour,
+          oppTeamColour: session.oppTeamColour,
+          attackDirection: session.attackDirection,
+          halfDurationMinutes: session.halfDurationMinutes,
+        },
+        events: loggedEvents,
+        exportedAt: new Date().toISOString(),
+      },
       null,
       2,
     );
@@ -194,28 +372,21 @@ export default function RapidCaptureLitePage() {
     a.download = `rapid-capture-${sport}-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [sport, loggedEvents]);
+  }, [session, sport, loggedEvents]);
 
   const isPuckout = sport === "hurling" || sport === "camogie";
   const visibleBar = RAPID_BAR.filter((item) => !item.hideFor?.includes(sport));
-  // Full RAPID_BAR lookup so armed label survives a sport toggle
   const armedItem = armedKind ? RAPID_BAR.find((b) => b.kind === armedKind) : null;
+
+  const forLabel = session.forTeamName || "FOR";
+  const oppLabel = session.oppTeamName || "OPP";
 
   return (
     <div style={S.shell}>
       {/* ── Header ─────────────────────────────── */}
       <div style={S.header}>
         <span style={S.title}>Rapid Capture</span>
-        <select
-          value={sport}
-          onChange={(e) => setSport(e.target.value as Sport)}
-          style={S.sportSelect}
-        >
-          <option value="hurling">Hurling</option>
-          <option value="camogie">Camogie</option>
-          <option value="gaelic">Gaelic</option>
-          <option value="soccer">Soccer</option>
-        </select>
+        <span style={S.sportBadge}>{SPORT_LABELS[sport]}</span>
         <div style={S.halfGroup}>
           {([1, 2] as const).map((h) => (
             <button
@@ -249,7 +420,7 @@ export default function RapidCaptureLitePage() {
                   : {}),
               }}
             >
-              {side}
+              {side === "FOR" ? forLabel : oppLabel}
             </button>
           ))}
         </div>
@@ -297,7 +468,7 @@ export default function RapidCaptureLitePage() {
         {armedItem ? (
           <span>
             <span style={{ ...S.contextPip, ...(teamSide === "FOR" ? S.pipFor : S.pipOpp) }} />
-            {teamSide}
+            {teamSide === "FOR" ? forLabel : oppLabel}
             {" · Tap pitch · "}
             <strong>
               {armedItem.puckoutLabel && isPuckout
@@ -311,7 +482,7 @@ export default function RapidCaptureLitePage() {
         ) : (
           <span style={S.hint}>
             <span style={{ ...S.contextPip, ...(teamSide === "FOR" ? S.pipFor : S.pipOpp) }} />
-            {teamSide} · Select event then tap pitch
+            {teamSide === "FOR" ? forLabel : oppLabel} · Select event then tap pitch
             {loggedEvents.length > 0 && (
               <span style={S.eventCount}>{loggedEvents.length} logged</span>
             )}
@@ -320,6 +491,18 @@ export default function RapidCaptureLitePage() {
       </div>
     </div>
   );
+}
+
+// ── Page Phase Controller ─────────────────────────────────────────────────────
+
+export default function RapidCaptureLitePage() {
+  const [session, setSession] = useState<RapidSession | null>(null);
+
+  if (!session) {
+    return <RapidSetupScreen onStart={setSession} />;
+  }
+
+  return <RapidLiveScreen session={session} />;
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────
@@ -338,7 +521,7 @@ const S: Record<string, CSSProperties> = {
     WebkitTapHighlightColor: "transparent",
   },
 
-  // Header
+  // ── Shared: Header ───────────────────────────────────────────────────────
   header: {
     display: "flex",
     alignItems: "center",
@@ -355,15 +538,161 @@ const S: Record<string, CSSProperties> = {
     flex: 1,
     whiteSpace: "nowrap",
   },
-  sportSelect: {
+
+  // ── Setup: Header badges ─────────────────────────────────────────────────
+  setupBadge: {
     background: "#21262d",
     border: "1px solid #30363d",
     borderRadius: 6,
-    color: "#e6edf3",
-    fontSize: 13,
-    padding: "4px 8px",
+    color: "#8b949e",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "3px 8px",
+    whiteSpace: "nowrap",
+  },
+
+  // ── Setup: Scrollable body ───────────────────────────────────────────────
+  setupBody: {
+    flex: 1,
+    overflowY: "auto",
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    padding: "16px 16px 48px",
+  },
+
+  // ── Setup: Section labels ────────────────────────────────────────────────
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: "#8b949e",
+    marginTop: 4,
+  },
+  optionalTag: {
+    fontWeight: 400,
+    textTransform: "none",
+    letterSpacing: 0,
+    fontSize: 11,
+    color: "#6e7681",
+  },
+
+  // ── Setup: Chip selector ─────────────────────────────────────────────────
+  chipGroup: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  chip: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 8,
+    color: "#8b949e",
+    fontSize: 14,
+    fontWeight: 600,
+    padding: "8px 14px",
     cursor: "pointer",
     outline: "none",
+    whiteSpace: "nowrap",
+  },
+  chipActive: {
+    background: "#238636",
+    borderColor: "#2ea043",
+    color: "#ffffff",
+  },
+
+  // ── Setup: Team input row ────────────────────────────────────────────────
+  teamInputRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  teamSwatch: {
+    width: 14,
+    height: 14,
+    borderRadius: "50%",
+    flexShrink: 0,
+    border: "1.5px solid rgba(255,255,255,0.15)",
+  },
+  teamSideLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#8b949e",
+    minWidth: 28,
+  },
+  textInput: {
+    flex: 1,
+    background: "#161b22",
+    border: "1px solid #30363d",
+    borderRadius: 8,
+    color: "#e6edf3",
+    fontSize: 14,
+    padding: "10px 12px",
+    outline: "none",
+    fontFamily: "inherit",
+  },
+
+  // ── Setup: Colour pickers ────────────────────────────────────────────────
+  colourRow: {
+    display: "flex",
+    gap: 16,
+    alignItems: "center",
+  },
+  colourItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  colourSwatch: {
+    width: 28,
+    height: 28,
+    borderRadius: "50%",
+    border: "2px solid rgba(255,255,255,0.15)",
+    flexShrink: 0,
+  },
+  colourName: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#8b949e",
+    minWidth: 28,
+  },
+  colourPicker: {
+    width: 36,
+    height: 36,
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    background: "none",
+    cursor: "pointer",
+    padding: 2,
+  },
+
+  // ── Setup: Start button ──────────────────────────────────────────────────
+  startBtn: {
+    background: "#238636",
+    border: "1px solid #2ea043",
+    borderRadius: 10,
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: 700,
+    padding: "16px",
+    width: "100%",
+    cursor: "pointer",
+    marginTop: 8,
+    outline: "none",
+    letterSpacing: "-0.2px",
+  },
+
+  // ── Live: Header ─────────────────────────────────────────────────────────
+  sportBadge: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "3px 8px",
+    whiteSpace: "nowrap",
   },
   halfGroup: { display: "flex", gap: 4 },
   halfBtn: {
@@ -383,7 +712,7 @@ const S: Record<string, CSSProperties> = {
     color: "#ffffff",
   },
 
-  // Pitch — dominant visual, fills remaining height
+  // ── Live: Pitch ──────────────────────────────────────────────────────────
   pitchHost: {
     flex: 1,
     minHeight: 0,
@@ -391,7 +720,7 @@ const S: Record<string, CSSProperties> = {
     background: "#0d1117",
   },
 
-  // Controls row
+  // ── Live: Controls row ───────────────────────────────────────────────────
   controlsRow: {
     display: "flex",
     alignItems: "center",
@@ -407,11 +736,15 @@ const S: Record<string, CSSProperties> = {
     border: "1px solid #30363d",
     borderRadius: 6,
     color: "#8b949e",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 700,
-    padding: "6px 12px",
+    padding: "6px 10px",
     cursor: "pointer",
-    minWidth: 48,
+    minWidth: 44,
+    maxWidth: 100,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
     outline: "none",
   },
   teamBtnFor: {
@@ -464,7 +797,7 @@ const S: Record<string, CSSProperties> = {
     outline: "none",
   },
 
-  // Rapid event bar
+  // ── Live: Rapid event bar ────────────────────────────────────────────────
   rapidBar: {
     display: "flex",
     gap: 6,
@@ -496,7 +829,7 @@ const S: Record<string, CSSProperties> = {
     color: "#0d1117",
   },
 
-  // Status banner — shows current annotation context + action hint
+  // ── Live: Status banner ──────────────────────────────────────────────────
   statusBanner: {
     textAlign: "center",
     fontSize: 13,
