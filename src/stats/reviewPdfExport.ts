@@ -10524,9 +10524,9 @@ function makeHtTacticalSummaryPage(
   if (sr.maxConsecutiveOpp >= 2) {
     swingItems.push(`Best OPP run: ${sr.maxConsecutiveOpp} unanswered`);
   }
-  if (sr.longestRunFor > sr.longestRunOpp && sr.longestRunFor > 0) {
+  if (sr.maxConsecutiveFor > sr.maxConsecutiveOpp && sr.maxConsecutiveFor > 0) {
     swingItems.push(`${homeTeam} controlled the scoring`);
-  } else if (sr.longestRunOpp > sr.longestRunFor && sr.longestRunOpp > 0) {
+  } else if (sr.maxConsecutiveOpp > sr.maxConsecutiveFor && sr.maxConsecutiveOpp > 0) {
     swingItems.push(`${awayTeam} controlled the scoring`);
   }
   if (swingItems.length === 0) {
