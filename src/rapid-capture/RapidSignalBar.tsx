@@ -16,25 +16,21 @@ export function RapidSignalBar({ events, clockSeconds }: Props) {
     return computeTacticalSignals(states);
   }, [events, clockSeconds]);
 
-  // No events yet — hide entirely so pitch size is unaffected at match start
-  if (events.length === 0) return null;
+  // Hide entirely when no signals — bar adds chrome only when it has something to say
+  if (signals.length === 0) return null;
 
   return (
     <div style={S.bar}>
-      {signals.length === 0 ? (
-        <div style={S.empty}>No tactical signals detected yet</div>
-      ) : (
-        signals.map((sig) => (
-          <div key={sig.id} style={S.row}>
-            <span style={{ ...S.icon, ...(sig.level === "red" ? S.iconRed : S.iconAmber) }}>
-              ⚠
-            </span>
-            <span style={{ ...S.text, ...(sig.level === "red" ? S.textRed : S.textAmber) }}>
-              {sig.text}
-            </span>
-          </div>
-        ))
-      )}
+      {signals.map((sig) => (
+        <div key={sig.id} style={S.row}>
+          <span style={{ ...S.icon, ...(sig.level === "red" ? S.iconRed : S.iconAmber) }}>
+            ⚠
+          </span>
+          <span style={{ ...S.text, ...(sig.level === "red" ? S.textRed : S.textAmber) }}>
+            {sig.text}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -71,13 +67,4 @@ const S: Record<string, CSSProperties> = {
   },
   textAmber: { color: "#e3b341" },
   textRed:   { color: "#f85149" },
-  empty: {
-    fontSize: 11,
-    color: "#6e7681",
-    fontStyle: "italic",
-    paddingLeft: 12,
-    paddingRight: 12,
-    paddingTop: 2,
-    paddingBottom: 2,
-  },
 };
