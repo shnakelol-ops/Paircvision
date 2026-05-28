@@ -100,8 +100,6 @@ export const VISUAL_PRO_CONFIG: VisualProConfig = {
         kWonTile("Clean",    "CLEAN"),
         kWonTile("Break",    "BREAK"),
         kWonTile("Foul Won", "FOUL_WON"),
-        // 4th slot reserved — SHORT delivery tag is valid here in Phase 1+
-        // kWonTile("Short", "SHORT"),
       ],
     },
 
@@ -122,10 +120,9 @@ export const VISUAL_PRO_CONFIG: VisualProConfig = {
       heading: "T+ Turnover Won",
       section: "POSSESSION",
       tiles: [
-        tWonTile("Tackle",    "TACKLE"),
-        tWonTile("Press",     "PRESS"),
-        tWonTile("Swarm",     "SWARM"),
-        tWonTile("Intercept", "INTERCEPT"),
+        tWonTile("Tackle",      "TACKLE"),
+        tWonTile("Intercepted", "INTERCEPT"),
+        tWonTile("Opp Error",   "UNFORCED"),
       ],
     },
 

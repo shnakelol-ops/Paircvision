@@ -32,6 +32,9 @@ import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
 import { exportReviewPdf, exportSnapshotPdf } from "./stats/reviewPdfExport";
 import { generateDemoMatchEvents } from "./demo/demoMatchData";
+import { VisualProTagPanel } from "./stats/visual-pro/VisualProTagPanel";
+import { VISUAL_PRO_CONFIG } from "./stats/visual-pro/visual-pro-config";
+import type { VisualProTile } from "./stats/visual-pro/visual-pro-types";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
@@ -3461,6 +3464,7 @@ export default function StatsModeSurface() {
   const firstHalfAttackingDirectionRef = useRef<AttackingDirection>("RIGHT");
   const pendingScorerRef = useRef<{ name: string; number: number; squadId: string } | null>(null);
   const queuedEventTagRef = useRef<{ kind: MatchEventKind; tag: string } | null>(null);
+  const visualProArmedTileRef = useRef<VisualProTile | null>(null);
   const activeSquadIdRef = useRef("");
   const homeNameInputRef = useRef<HTMLInputElement>(null);
   const awayNameInputRef = useRef<HTMLInputElement>(null);
@@ -3472,6 +3476,8 @@ export default function StatsModeSurface() {
   const secondHalfSwitchBaselineEventCountRef = useRef<number | null>(null);
   const eventKindSwitchBaselineEventCountRef = useRef<number | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [captureMode, setCaptureMode] = useState<"LITE" | "VISUAL_PRO">("LITE");
+  const [visualProArmedTile, setVisualProArmedTile] = useState<VisualProTile | null>(null);
   const [openEventKeyboardMenuId, setOpenEventKeyboardMenuId] = useState<EventKeyboardMenuId | null>(null);
   const EVENT_BUTTONS = mode.eventButtons;
   const EVENT_LABEL_BY_KIND = mode.eventLabels;
@@ -3818,6 +3824,24 @@ export default function StatsModeSurface() {
     selectEventKind(kind);
   };
 
+  const handleVisualProTileTap = (tile: VisualProTile) => {
+    if (!isLoggingActive(matchState)) return;
+    // Resolve tile's fixed team context onto the shared mutable refs so that the
+    // existing onEventLogged path in the Pixi callback reads the correct teamSide.
+    const nextTeamSide: "own" | "opposition" = tile.teamSide === "FOR" ? "own" : "opposition";
+    setActiveTeamSide(nextTeamSide);
+    activeTeamSideRef.current = nextTeamSide;
+    // Arm the event kind on the Pixi surface (no picker close — panel stays open).
+    setSelectedEventKind(tile.kind);
+    selectedEventRef.current = tile.kind;
+    handleRef.current?.setActiveEventKind(tile.kind);
+    // Queue the detail tag so onEventLogged injects it into event.tags[].
+    queuedEventTagRef.current = { kind: tile.kind, tag: tile.detailTag };
+    // Track which tile is armed for the status banner.
+    setVisualProArmedTile(tile);
+    visualProArmedTileRef.current = tile;
+  };
+
   const toggleMatchBubble = () => {
     setIsPickerOpen((prev) => {
       const next = !prev;
@@ -3936,6 +3960,10 @@ export default function StatsModeSurface() {
   useEffect(() => {
     activeTeamRef.current = activeTeam;
   }, [activeTeam]);
+
+  useEffect(() => {
+    visualProArmedTileRef.current = visualProArmedTile;
+  }, [visualProArmedTile]);
 
   useEffect(() => {
     activeTeamSideRef.current = activeTeamSide;
@@ -4288,6 +4316,11 @@ export default function StatsModeSurface() {
           return next;
         });
         selectActivePlayerById(null);
+        // Clear Visual Pro armed tile — the pitch tap has committed the event.
+        if (visualProArmedTileRef.current) {
+          setVisualProArmedTile(null);
+          visualProArmedTileRef.current = null;
+        }
         if (
           KICKOUT_EVENT_KIND_SET.has(nextEvent.kind) ||
           TURNOVER_EVENT_KIND_SET.has(nextEvent.kind) ||
@@ -7235,7 +7268,20 @@ export default function StatsModeSurface() {
         className="floating-controls"
       >
           {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
-          {isPickerOpen && !isReviewModeActive ? (
+          {captureMode === "VISUAL_PRO" && !isLandscape && !isReviewModeActive ? (
+            <div
+              className="event-panel"
+              style={{ width: "min(calc(100vw - 16px), 380px)" }}
+            >
+              <VisualProTagPanel
+                config={VISUAL_PRO_CONFIG}
+                armedTile={visualProArmedTile}
+                onTileTap={handleVisualProTileTap}
+                canLog={isLoggingActive(matchState)}
+              />
+            </div>
+          ) : null}
+          {captureMode === "LITE" && isPickerOpen && !isReviewModeActive ? (
             <div className={isLandscape ? "landscape-toolbar" : "event-panel"}>
               <div className="event-keyboard">
                 <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
@@ -7414,7 +7460,7 @@ export default function StatsModeSurface() {
               </div>
             </div>
           ) : null}
-          {!isPickerOpen && !isLandscape ? (
+          {captureMode === "LITE" && !isPickerOpen && !isLandscape ? (
             <div aria-live="polite" className="active-chip">
               {EVENT_LABEL_BY_KIND[selectedEventKind]}
             </div>
@@ -7444,6 +7490,52 @@ export default function StatsModeSurface() {
               }}
             >
               Cts
+            </button>
+          ) : null}
+          {!isReviewModeActive && !isLandscape ? (
+            <button
+              type="button"
+              aria-label={captureMode === "VISUAL_PRO" ? "Switch to Lite tagging" : "Switch to Visual Pro tagging"}
+              onClick={() => {
+                setCaptureMode((prev) => {
+                  const next = prev === "LITE" ? "VISUAL_PRO" : "LITE";
+                  if (next === "LITE") {
+                    // Restore LITE state: close picker so the bubble is the entry point again
+                    setIsPickerOpen(false);
+                  }
+                  return next;
+                });
+                setVisualProArmedTile(null);
+                visualProArmedTileRef.current = null;
+                queuedEventTagRef.current = null;
+              }}
+              style={{
+                minWidth: "36px",
+                minHeight: "30px",
+                borderRadius: "8px",
+                padding: "0 7px",
+                fontSize: "8px",
+                fontWeight: 760,
+                letterSpacing: "0.3px",
+                textTransform: "uppercase",
+                cursor: "pointer",
+                border: captureMode === "VISUAL_PRO"
+                  ? "1px solid rgba(96, 165, 250, 0.72)"
+                  : "1px solid rgba(148, 163, 184, 0.42)",
+                background: captureMode === "VISUAL_PRO"
+                  ? "rgba(21, 50, 88, 0.88)"
+                  : "rgba(10, 20, 35, 0.82)",
+                color: captureMode === "VISUAL_PRO"
+                  ? "rgba(147, 210, 255, 0.95)"
+                  : "rgba(203, 213, 225, 0.78)",
+                boxShadow: captureMode === "VISUAL_PRO"
+                  ? "0 0 0 1px rgba(96,165,250,0.16), 0 0 8px rgba(96,165,250,0.18)"
+                  : "0 2px 6px rgba(2,8,15,0.22)",
+                backdropFilter: "blur(4px)",
+                WebkitBackdropFilter: "blur(4px)",
+              }}
+            >
+              {captureMode === "VISUAL_PRO" ? "PRO" : "PRO"}
             </button>
           ) : null}
           <button
