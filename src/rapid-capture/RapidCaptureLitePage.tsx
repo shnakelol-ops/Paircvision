@@ -15,6 +15,7 @@ import type {
   MatchType,
   AttackDirection,
 } from "./rapid-session";
+import { RapidSignalBar } from "./RapidSignalBar";
 
 const SPORT_LABELS: Record<Sport, string> = {
   hurling: "Hurling",
@@ -444,6 +445,9 @@ function RapidLiveScreen({ session }: { session: RapidSession }) {
           ↓ JSON
         </button>
       </div>
+
+      {/* ── Signal bar ─────────────────────────── */}
+      <RapidSignalBar events={loggedEvents} clockSeconds={clockSeconds} />
 
       {/* ── Rapid event bar ────────────────────── */}
       <div style={S.rapidBar}>
