@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rapid Capture Phase 2D + 3C — Layout Mockup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0e14;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 40px;
+      padding: 40px 32px;
+      font-family: 'Inter', 'Helvetica Neue', system-ui, sans-serif;
+    }
+
+    h1 {
+      width: 100%;
+      text-align: center;
+      color: #8b949e;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .col-label {
+      color: #8b949e;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+
+    /* ─── Phone Frame ─────────────────────────────────── */
+    .phone {
+      width: 375px;
+      height: 812px;
+      background: #0d1117;
+      display: flex;
+      flex-direction: column;
+      color: #e6edf3;
+      border-radius: 24px;
+      border: 1.5px solid #30363d;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+    }
+
+    /* ─── Match Context Header ────────────────────────── */
+    .match-header {
+      background: #161b22;
+      border-bottom: 1px solid #21262d;
+      padding: 10px 14px 9px;
+      flex-shrink: 0;
+    }
+
+    .header-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .app-wordmark {
+      font-size: 11px;
+      font-weight: 700;
+      color: #8b949e;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    .header-top-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sport-chip {
+      font-size: 11px;
+      color: #8b949e;
+      background: #21262d;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid #30363d;
+    }
+
+    .half-chip {
+      font-size: 11px;
+      font-weight: 600;
+      color: #2ea043;
+      background: rgba(46,160,67,0.12);
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid rgba(46,160,67,0.3);
+    }
+
+    .scoreboard-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .team-block {
+      flex: 1;
+    }
+
+    .team-block.right {
+      text-align: right;
+    }
+
+    .team-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: #8b949e;
+      letter-spacing: 0.3px;
+      line-height: 1;
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .team-score {
+      font-size: 22px;
+      font-weight: 800;
+      color: #e6edf3;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+
+    .centre-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+      min-width: 80px;
+    }
+
+    .clock-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #e6edf3;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+
+    .clock-running { color: #56d364; }
+    .clock-paused  { color: #8b949e; }
+
+    .attack-direction {
+      font-size: 10px;
+      color: #8b949e;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+
+    /* ─── Pitch ───────────────────────────────────────── */
+    .pitch-host {
+      flex: 1;
+      min-height: 0;
+      max-height: 300px;        /* KEY: caps pitch, gives keyboard room */
+      position: relative;
+      background: #1a4220;
+      border-bottom: 1px solid #21262d;
+      overflow: hidden;
+    }
+
+    .pitch-surface {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    /* Simple pitch markings */
+    .pitch-marking {
+      position: absolute;
+      background: rgba(255,255,255,0.10);
+    }
+
+    .pm-centre-circle {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: transparent;
+      left: 50%; top: 50%;
+      transform: translate(-50%,-50%);
+    }
+
+    .pm-centre-line {
+      left: 50%; top: 8%; bottom: 8%; width: 1px;
+    }
+
+    .pm-goal-left {
+      left: 8%; top: 35%; height: 30%; width: 1px;
+    }
+    .pm-goal-right {
+      right: 8%; top: 35%; height: 30%; width: 1px;
+    }
+
+    .pitch-tap-hint {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 10px;
+      color: rgba(255,255,255,0.18);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      font-weight: 500;
+      pointer-events: none;
+    }
+
+    /* Live dots — small, calm */
+    .live-dot {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .dot-for  { background: rgba(56,139,253,0.9);  box-shadow: 0 0 4px rgba(56,139,253,0.4); }
+    .dot-opp  { background: rgba(248,113,113,0.9); box-shadow: 0 0 4px rgba(248,113,113,0.3); }
+
+    /* ─── Controls Row ────────────────────────────────── */
+    .controls-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 12px;
+      background: #161b22;
+      border-top: 1px solid #21262d;
+      flex-shrink: 0;
+    }
+
+    .ctx-group { display: flex; gap: 3px; }
+
+    .ctx-btn {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 13px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #21262d;
+      color: #8b949e;
+      min-width: 50px;
+      text-align: center;
+    }
+
+    .ctx-btn.for-active {
+      background: #1f6feb;
+      border-color: #388bfd;
+      color: #fff;
+    }
+
+    .ctx-btn.opp-active {
+      background: #b91c1c;
+      border-color: #f87171;
+      color: #fff;
+    }
+
+    .spacer { flex: 1; }
+
+    .util-btn {
+      font-size: 11px;
+      padding: 6px 9px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: transparent;
+      color: #8b949e;
+      white-space: nowrap;
+    }
+
+    .clock-btn {
+      font-size: 13px;
+      padding: 6px 9px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+      background: #21262d;
+      color: #e6edf3;
+    }
+
+    /* ─── Signal Bar ──────────────────────────────────── */
+    .signal-bar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px 5px;
+      background: #0d1117;
+      border-top: 1px solid #21262d;
+      flex-shrink: 0;
+      min-height: 34px;
+      flex-wrap: nowrap;
+      overflow: hidden;
+    }
+
+    .signal-pill {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 9px;
+      border-radius: 4px;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 320px;
+    }
+
+    .sig-amber {
+      background: #3a1a00;
+      border: 1px solid #c07000;
+      color: #f0a520;
+    }
+
+    .sig-red {
+      background: #300808;
+      border: 1px solid #c02020;
+      color: #f08080;
+    }
+
+    .signal-empty-state {
+      font-size: 11px;
+      color: #2d3340;
+      font-style: italic;
+    }
+
+    /* ─── Event Keyboard ──────────────────────────────── */
+    .event-keyboard {
+      background: #0d1117;
+      border-top: 1px solid #21262d;
+      padding: 8px 10px 6px;
+      flex-shrink: 0;
+    }
+
+    .key-row {
+      display: grid;
+      gap: 5px;
+      margin-bottom: 5px;
+    }
+
+    .key-row:last-child { margin-bottom: 0; }
+
+    .r4 { grid-template-columns: repeat(4, 1fr); }
+    .r3 { grid-template-columns: repeat(3, 1fr); }
+    .r2 { grid-template-columns: repeat(2, 1fr); }
+
+    .key-btn {
+      padding: 10px 2px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: center;
+      border: 1.5px solid transparent;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: -0.1px;
+    }
+
+    /* Semantic colour groups */
+    .k-score    { background:rgba(240,136,62,0.09);  border-color:rgba(240,136,62,0.28);  color:#e08844; }
+    .k-turnover { background:rgba(56,139,253,0.09);  border-color:rgba(56,139,253,0.28);  color:#6cabf0; }
+    .k-restart  { background:rgba(46,160,67,0.09);   border-color:rgba(46,160,67,0.28);   color:#4aba52; }
+    .k-free     { background:rgba(167,100,240,0.09); border-color:rgba(167,100,240,0.28); color:#b580e8; }
+
+    .key-btn.armed {
+      background: #f0883e;
+      border-color: #f0883e;
+      color: #0d1117;
+    }
+
+    /* ─── Status Banner ───────────────────────────────── */
+    .status-banner {
+      padding: 5px 14px 8px;
+      background: #0d1117;
+      text-align: center;
+      font-size: 12px;
+      color: #8b949e;
+      flex-shrink: 0;
+    }
+
+    .status-active { color: #e6edf3; }
+
+    .ctx-pip {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .pip-for { background: #388bfd; }
+    .pip-opp { background: #f87171; }
+
+    .ev-count {
+      margin-left: 10px;
+      color: #3d444d;
+      font-weight: 400;
+    }
+
+    /* ─── Annotation callouts ─────────────────────────── */
+    .annotations {
+      position: relative;
+      width: 0;
+    }
+
+    /* ─── Legend ──────────────────────────────────────── */
+    .legend {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 16px;
+      background: #161b22;
+      border: 1px solid #21262d;
+      border-radius: 10px;
+      min-width: 200px;
+      max-width: 240px;
+    }
+
+    .legend-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 4px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #8b949e;
+    }
+
+    .legend-swatch {
+      width: 28px; height: 22px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .sw-score    { background:rgba(240,136,62,0.12);  border:1.5px solid rgba(240,136,62,0.35);  }
+    .sw-turnover { background:rgba(56,139,253,0.12);  border:1.5px solid rgba(56,139,253,0.35);  }
+    .sw-restart  { background:rgba(46,160,67,0.12);   border:1.5px solid rgba(46,160,67,0.35);   }
+    .sw-free     { background:rgba(167,100,240,0.12); border:1.5px solid rgba(167,100,240,0.35); }
+
+    .change-note {
+      width: 100%;
+      max-width: 840px;
+      background: #161b22;
+      border: 1px solid #21262d;
+      border-radius: 10px;
+      padding: 16px 20px;
+      color: #8b949e;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .change-note h2 {
+      color: #e6edf3;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 10px;
+    }
+
+    .change-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .change-col {
+      flex: 1;
+      min-width: 160px;
+    }
+
+    .change-col h3 {
+      font-size: 11px;
+      font-weight: 700;
+      color: #56d364;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .change-col.removed h3 { color: #f87171; }
+
+    .change-col li {
+      list-style: none;
+      margin-bottom: 3px;
+      padding-left: 12px;
+      position: relative;
+    }
+
+    .change-col li::before {
+      content: '·';
+      position: absolute;
+      left: 2px;
+      color: #3d444d;
+    }
+  </style>
+</head>
+<body>
+
+<h1>PáircVision — Rapid Capture Phase 2D + 3C Layout Mockup</h1>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- HURLING — signal active, event armed                   -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="col">
+  <span class="col-label">Hurling · Signal active · Event armed</span>
+  <div class="phone">
+
+    <!-- MATCH CONTEXT HEADER -->
+    <div class="match-header">
+      <div class="header-top-row">
+        <span class="app-wordmark">Rapid Capture</span>
+        <div class="header-top-right">
+          <span class="sport-chip">Hurling</span>
+          <span class="half-chip">1H</span>
+        </div>
+      </div>
+      <div class="scoreboard-row">
+        <div class="team-block">
+          <div class="team-name">Connacht</div>
+          <div class="team-score">1-07</div>
+        </div>
+        <div class="centre-block">
+          <div class="clock-value clock-running">27:14</div>
+          <div class="attack-direction">Attacking →</div>
+        </div>
+        <div class="team-block right">
+          <div class="team-name">Leinster</div>
+          <div class="team-score">0-09</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PITCH -->
+    <div class="pitch-host">
+      <div class="pitch-surface">
+        <div class="pitch-marking pm-centre-line"></div>
+        <div class="pitch-marking pm-centre-circle"></div>
+        <div class="pitch-marking pm-goal-left"></div>
+        <div class="pitch-marking pm-goal-right"></div>
+        <div class="pitch-tap-hint">arm · tap to log</div>
+        <!-- FOR dots (blue) — clustered right side attacking -->
+        <div class="live-dot dot-for" style="left:68%;top:38%;"></div>
+        <div class="live-dot dot-for" style="left:72%;top:52%;"></div>
+        <div class="live-dot dot-for" style="left:79%;top:45%;"></div>
+        <div class="live-dot dot-for" style="left:65%;top:61%;"></div>
+        <div class="live-dot dot-for" style="left:83%;top:50%;"></div>
+        <!-- OPP dots (red) — defensive pressure cluster -->
+        <div class="live-dot dot-opp" style="left:24%;top:44%;"></div>
+        <div class="live-dot dot-opp" style="left:28%;top:56%;"></div>
+        <div class="live-dot dot-opp" style="left:31%;top:40%;"></div>
+        <div class="live-dot dot-opp" style="left:22%;top:62%;"></div>
+        <div class="live-dot dot-opp" style="left:35%;top:50%;"></div>
+      </div>
+    </div>
+
+    <!-- CONTROLS ROW -->
+    <div class="controls-row">
+      <div class="ctx-group">
+        <div class="ctx-btn for-active">FOR</div>
+        <div class="ctx-btn">OPP</div>
+      </div>
+      <span class="spacer"></span>
+      <div class="util-btn">↩ Undo</div>
+      <div class="clock-btn">▶</div>
+      <div class="util-btn">↓ JSON</div>
+    </div>
+
+    <!-- SIGNAL BAR — 1 amber signal -->
+    <div class="signal-bar">
+      <span class="signal-pill sig-amber">Opposition restarts landing in right midfield.</span>
+    </div>
+
+    <!-- EVENT KEYBOARD — HURLING (3 rows) -->
+    <div class="event-keyboard">
+      <div class="key-row r4">
+        <div class="key-btn k-score">Goal</div>
+        <div class="key-btn k-score armed">Point</div>
+        <div class="key-btn k-score">Shot</div>
+        <div class="key-btn k-score">Wide</div>
+      </div>
+      <div class="key-row r4">
+        <div class="key-btn k-turnover">Turn+</div>
+        <div class="key-btn k-turnover">Turn−</div>
+        <div class="key-btn k-restart">Puck+</div>
+        <div class="key-btn k-restart">Puck−</div>
+      </div>
+      <div class="key-row r2">
+        <div class="key-btn k-free">Free+</div>
+        <div class="key-btn k-free">Free−</div>
+      </div>
+    </div>
+
+    <!-- STATUS BANNER -->
+    <div class="status-banner">
+      <span class="status-active">
+        <span class="ctx-pip pip-for"></span>
+        FOR · Tap pitch · <strong>Point</strong>
+      </span>
+      <span class="ev-count">9 logged</span>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- FOOTBALL — 2 signals, OPP context                     -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="col">
+  <span class="col-label">Football · 2 signals · OPP context</span>
+  <div class="phone">
+
+    <div class="match-header">
+      <div class="header-top-row">
+        <span class="app-wordmark">Rapid Capture</span>
+        <div class="header-top-right">
+          <span class="sport-chip">Football</span>
+          <span class="half-chip">2H</span>
+        </div>
+      </div>
+      <div class="scoreboard-row">
+        <div class="team-block">
+          <div class="team-name">Home</div>
+          <div class="team-score">2-11</div>
+        </div>
+        <div class="centre-block">
+          <div class="clock-value clock-running">48:22</div>
+          <div class="attack-direction">← Attacking</div>
+        </div>
+        <div class="team-block right">
+          <div class="team-name">Away</div>
+          <div class="team-score">1-14</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pitch-host">
+      <div class="pitch-surface">
+        <div class="pitch-marking pm-centre-line"></div>
+        <div class="pitch-marking pm-centre-circle"></div>
+        <div class="pitch-marking pm-goal-left"></div>
+        <div class="pitch-marking pm-goal-right"></div>
+        <div class="pitch-tap-hint">arm · tap to log</div>
+        <div class="live-dot dot-for"  style="left:45%;top:42%;"></div>
+        <div class="live-dot dot-for"  style="left:38%;top:55%;"></div>
+        <div class="live-dot dot-for"  style="left:30%;top:48%;"></div>
+        <div class="live-dot dot-for"  style="left:22%;top:44%;"></div>
+        <div class="live-dot dot-for"  style="left:18%;top:52%;"></div>
+        <div class="live-dot dot-opp"  style="left:62%;top:46%;"></div>
+        <div class="live-dot dot-opp"  style="left:70%;top:40%;"></div>
+        <div class="live-dot dot-opp"  style="left:66%;top:58%;"></div>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <div class="ctx-group">
+        <div class="ctx-btn">FOR</div>
+        <div class="ctx-btn opp-active">OPP</div>
+      </div>
+      <span class="spacer"></span>
+      <div class="util-btn">↩ Undo</div>
+      <div class="clock-btn">⏸</div>
+      <div class="util-btn">↓ JSON</div>
+    </div>
+
+    <!-- SIGNAL BAR — 2 signals -->
+    <div class="signal-bar" style="gap:5px;">
+      <span class="signal-pill sig-red"   style="max-width:195px;">Turnovers in left defensive channel.</span>
+      <span class="signal-pill sig-amber" style="max-width:155px;">Frees building centrally.</span>
+    </div>
+
+    <!-- EVENT KEYBOARD — FOOTBALL (3 rows) -->
+    <div class="event-keyboard">
+      <div class="key-row r4">
+        <div class="key-btn k-score">Goal</div>
+        <div class="key-btn k-score">Point</div>
+        <div class="key-btn k-score">2pt</div>
+        <div class="key-btn k-score">Wide</div>
+      </div>
+      <div class="key-row r4">
+        <div class="key-btn k-score">Shot</div>
+        <div class="key-btn k-turnover">Turn+</div>
+        <div class="key-btn k-turnover">Turn−</div>
+        <div class="key-btn k-restart">Kick+</div>
+      </div>
+      <div class="key-row r3">
+        <div class="key-btn k-restart">Kick−</div>
+        <div class="key-btn k-free">Free+</div>
+        <div class="key-btn k-free">Free−</div>
+      </div>
+    </div>
+
+    <div class="status-banner">
+      <span class="ctx-pip pip-opp"></span>
+      OPP · Select event then tap pitch
+      <span class="ev-count">14 logged</span>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- HURLING — no signal, idle state                        -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="col">
+  <span class="col-label">Hurling · No signal · Idle</span>
+  <div class="phone">
+
+    <div class="match-header">
+      <div class="header-top-row">
+        <span class="app-wordmark">Rapid Capture</span>
+        <div class="header-top-right">
+          <span class="sport-chip">Camogie</span>
+          <span class="half-chip">1H</span>
+        </div>
+      </div>
+      <div class="scoreboard-row">
+        <div class="team-block">
+          <div class="team-name">Home</div>
+          <div class="team-score">0-02</div>
+        </div>
+        <div class="centre-block">
+          <div class="clock-value clock-paused">05:40</div>
+          <div class="attack-direction">Attacking →</div>
+        </div>
+        <div class="team-block right">
+          <div class="team-name">Away</div>
+          <div class="team-score">0-01</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pitch-host">
+      <div class="pitch-surface">
+        <div class="pitch-marking pm-centre-line"></div>
+        <div class="pitch-marking pm-centre-circle"></div>
+        <div class="pitch-marking pm-goal-left"></div>
+        <div class="pitch-marking pm-goal-right"></div>
+        <div class="pitch-tap-hint">arm · tap to log</div>
+        <div class="live-dot dot-for" style="left:74%;top:44%;"></div>
+        <div class="live-dot dot-opp" style="left:28%;top:50%;"></div>
+        <div class="live-dot dot-for" style="left:85%;top:52%;"></div>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <div class="ctx-group">
+        <div class="ctx-btn for-active">FOR</div>
+        <div class="ctx-btn">OPP</div>
+      </div>
+      <span class="spacer"></span>
+      <div class="util-btn" style="color:#3d444d;pointer-events:none;">↩ Undo</div>
+      <div class="clock-btn">▶</div>
+      <div class="util-btn">↓ JSON</div>
+    </div>
+
+    <!-- SIGNAL BAR — hidden / no signals -->
+    <!-- (no signal bar rendered = bar collapses) -->
+
+    <!-- EVENT KEYBOARD — CAMOGIE same as HURLING -->
+    <div class="event-keyboard" style="margin-top:0; border-top:1px solid #21262d;">
+      <div class="key-row r4">
+        <div class="key-btn k-score">Goal</div>
+        <div class="key-btn k-score">Point</div>
+        <div class="key-btn k-score">Shot</div>
+        <div class="key-btn k-score">Wide</div>
+      </div>
+      <div class="key-row r4">
+        <div class="key-btn k-turnover">Turn+</div>
+        <div class="key-btn k-turnover">Turn−</div>
+        <div class="key-btn k-restart">Puck+</div>
+        <div class="key-btn k-restart">Puck−</div>
+      </div>
+      <div class="key-row r2">
+        <div class="key-btn k-free">Free+</div>
+        <div class="key-btn k-free">Free−</div>
+      </div>
+    </div>
+
+    <div class="status-banner">
+      <span class="ctx-pip pip-for"></span>
+      FOR · Select event then tap pitch
+      <span class="ev-count">3 logged</span>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- LEGEND + CHANGE SUMMARY                                -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="col" style="gap:16px;align-items:flex-start;">
+
+  <div class="legend">
+    <div class="legend-title">Keyboard colour groups</div>
+    <div class="legend-item"><div class="legend-swatch sw-score"></div>Scoring + Shots (Goal, Point, Shot, Wide, 2pt)</div>
+    <div class="legend-item"><div class="legend-swatch sw-turnover"></div>Turnovers (Turn+, Turn−)</div>
+    <div class="legend-item"><div class="legend-swatch sw-restart"></div>Restarts (Puck+/Kick+, Puck−/Kick−)</div>
+    <div class="legend-item"><div class="legend-swatch sw-free"></div>Frees (Free+, Free−)</div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-title">Signal bar states</div>
+    <div class="legend-item">
+      <span class="signal-pill sig-amber" style="font-size:10px;padding:2px 7px;">Opposition restarts …</span>
+      Amber — 4–5 events
+    </div>
+    <div class="legend-item">
+      <span class="signal-pill sig-red" style="font-size:10px;padding:2px 7px;">Turnovers repeating …</span>
+      Red — 6+ events
+    </div>
+    <div class="legend-item" style="color:#3d444d;">— no bar — &nbsp;&nbsp;Zero signals</div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-title">New in Phase 2D + 3C</div>
+    <div class="legend-item" style="color:#56d364;">+ Match scoreboard header</div>
+    <div class="legend-item" style="color:#56d364;">+ Team names + score display</div>
+    <div class="legend-item" style="color:#56d364;">+ Attacking direction indicator</div>
+    <div class="legend-item" style="color:#56d364;">+ Pitch height capped (max 300px)</div>
+    <div class="legend-item" style="color:#56d364;">+ 2-3 row grouped keyboard (no scroll)</div>
+    <div class="legend-item" style="color:#56d364;">+ Semantic colour groups on buttons</div>
+    <div class="legend-item" style="color:#56d364;">+ Puck−/Kick− (KICKOUT_CONCEDED)</div>
+    <div class="legend-item" style="color:#56d364;">+ Free− (FREE_CONCEDED)</div>
+    <div class="legend-item" style="color:#56d364;">+ Signal bar (Phase 3C wiring)</div>
+    <div class="legend-item" style="color:#f87171;margin-top:4px;">− Horizontal scroll event row</div>
+    <div class="legend-item" style="color:#f87171;">− Generic flat single-row bar</div>
+    <div class="legend-item" style="color:#f87171;">− No match context</div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-title">Files changed</div>
+    <div class="legend-item" style="color:#56d364;">src/rapid-capture/RapidCaptureLitePage.tsx</div>
+    <div class="legend-item" style="color:#3d444d;margin-top:4px;">All other files: untouched</div>
+  </div>
+
+</div>
+
+</body>
+</html>
