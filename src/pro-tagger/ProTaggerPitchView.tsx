@@ -120,14 +120,18 @@ export function ProTaggerPitchView({
             fill="none" stroke={markingColour} strokeWidth="0.35"
           />
 
-          {/* Two-point arcs (radius=31 ≈ 45m, centered on goal face) */}
+          {/* Two-point arcs
+              Center on goal face (x=1 or x=99, cy=31), radius ≈ 32.7.
+              r = √((14-1)²+(1-31)²) = √1069 ≈ 32.7 ensures the arc
+              intersects the sidelines exactly at the 20m line (x=14/86),
+              then peaks at x≈33.7 (just past the 45m line) at centre height. */}
           <path
-            d="M 8.8,1 A 31,31 0 0 1 8.8,61"
-            fill="none" stroke={subLineColour} strokeWidth="0.4"
+            d="M 14,1 A 32.7,32.7 0 0 1 14,61"
+            fill="none" stroke={subLineColour} strokeWidth="0.5"
           />
           <path
-            d="M 91.2,1 A 31,31 0 0 0 91.2,61"
-            fill="none" stroke={subLineColour} strokeWidth="0.4"
+            d="M 86,1 A 32.7,32.7 0 0 0 86,61"
+            fill="none" stroke={subLineColour} strokeWidth="0.5"
           />
         </>
       )}
