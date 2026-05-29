@@ -59,9 +59,8 @@ type FollowupTag =
   | "FOUL_CONCEDED"
   | "KICKED_DEAD"
   | "TACKLE"
-  | "PRESS"
-  | "SWARM"
   | "INTERCEPT"
+  | "OPP_ERROR"
   | "UNFORCED"
   | "SLACK_KICK_PASS"
   | "SLACK_HAND_PASS"
@@ -428,9 +427,11 @@ function getKickoutTagLabel(tags: readonly string[] | undefined): string | null 
 function getTurnoverTagLabel(tags: readonly string[] | undefined): string | null {
   if (!tags || tags.length === 0) return null;
   if (tags.includes("TACKLE")) return "Tackle";
+  if (tags.includes("INTERCEPT")) return "Intercept";
+  if (tags.includes("OPP_ERROR")) return "Opp Error";
+  // Legacy labels — kept for display on events tagged before the terminology cleanup.
   if (tags.includes("PRESS")) return "Press";
   if (tags.includes("SWARM")) return "Swarm";
-  if (tags.includes("INTERCEPT")) return "Intercept";
   if (tags.includes("FORCED")) return "Forced";
   // Keep legacy UNFORCED events readable without exposing old jargon.
   if (tags.includes("UNFORCED")) return "HP Error";
@@ -460,10 +461,9 @@ function getFollowupOptions(kind: PendingFollowupKind): readonly FollowupOption[
   switch (kind) {
     case "TURNOVER_WON":
       return [
-        { label: "Tackle +1", tag: "TACKLE" },
-        { label: "Press +2", tag: "PRESS" },
-        { label: "Swarm +3", tag: "SWARM" },
-        { label: "Intercept +1", tag: "INTERCEPT" },
+        { label: "Tackle",    tag: "TACKLE" },
+        { label: "Intercept", tag: "INTERCEPT" },
+        { label: "Opp Error", tag: "OPP_ERROR" },
       ];
     case "TURNOVER_LOST":
       return [
@@ -500,7 +500,7 @@ function getFollowupOptions(kind: PendingFollowupKind): readonly FollowupOption[
 function getRemovableFollowupTags(kind: PendingFollowupKind): readonly string[] {
   switch (kind) {
     case "TURNOVER_WON":
-      return ["TACKLE", "PRESS", "SWARM", "INTERCEPT", "FORCED", "UNFORCED"];
+      return ["TACKLE", "INTERCEPT", "OPP_ERROR", "PRESS", "SWARM", "FORCED", "UNFORCED"];
     case "TURNOVER_LOST":
       return ["UNFORCED", "SLACK_KICK_PASS", "SLACK_HAND_PASS", "OVERCARRIED", "STRIPPED", "FORCED"];
     case "KICKOUT_WON":
@@ -2815,6 +2815,13 @@ const PANEL_CSS = `
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   box-shadow: 0 2px 8px rgba(2, 6, 23, 0.3);
+}
+
+@media (min-width: 600px) and (max-width: 900px) {
+  .scoreboard-strip {
+    width: min(195px, calc(100vw - 12px));
+    max-width: 195px;
+  }
 }
 
 .scoreboard-strip-line {

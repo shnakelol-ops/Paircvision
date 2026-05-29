@@ -1,6 +1,6 @@
-import { Container, Graphics } from "pixi.js";
+import { Circle, Container, Graphics } from "pixi.js";
 
-import type { MatchEvent } from "./stats-event-model";
+import type { MatchEvent, MatchEventKind } from "./stats-event-model";
 import { getStatsMarkerStyle } from "./stats-marker-style";
 import { boardNormToWorld } from "../coordinates/pitch-coordinates";
 
@@ -53,6 +53,8 @@ function parseCssColorForPixi(css: string): ParsedCssColor {
   return { color: 0xffffff, alpha: 1 };
 }
 
+const SCORING_KINDS = new Set<MatchEventKind>(["GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT"]);
+
 export function drawStatsMarkers(
   g: Graphics,
   events: readonly RenderableMatchEvent[],
@@ -72,9 +74,6 @@ export function drawStatsMarkers(
   const worldToScreenScale = Math.max(opts?.worldToScreenScale ?? 1, 0.004);
   const minPx = opts?.minScreenRadiusPx ?? 4;
   const minWorldRadius = minPx / worldToScreenScale;
-  const minRingWidth = 1 / worldToScreenScale;
-  const minHaloRadius = 2 / worldToScreenScale;
-  const minTwoPointOuterRingWidth = 1.15 / worldToScreenScale;
   const showPlayerLabels = opts?.showPlayerLabels ?? true;
   const onMarkerTap = opts?.onMarkerTap;
 
@@ -99,7 +98,7 @@ export function drawStatsMarkers(
       markerContainer.addChild(subtleGraphic);
       const subtleRadius = Math.max(minWorldRadius * 0.62, 1.1 / worldToScreenScale);
       subtleGraphic.circle(0, 0, subtleRadius).fill({ color: 0xf1f5f9, alpha: 0.45 }).stroke({
-        width: Math.max(minRingWidth * 0.85, 0.72 / worldToScreenScale),
+        width: Math.max(0.85 / worldToScreenScale, 0.72 / worldToScreenScale),
         color: 0x475569,
         alpha: 0.52,
       });
@@ -108,12 +107,10 @@ export function drawStatsMarkers(
     }
     const style = getStatsMarkerStyle(event);
     const isTwoPointer = event.kind === "TWO_POINTER";
+    const isScoring = SCORING_KINDS.has(event.kind);
     const styleRadius = isTwoPointer ? style.radius * 1.06 : style.radius;
     const radius = Math.max(styleRadius, minWorldRadius);
     const fill = parseCssColorForPixi(style.fill);
-    const stroke = parseCssColorForPixi(style.stroke);
-    const ringWidth = Math.max(style.strokeWidth, minRingWidth);
-    const haloRadius = radius + minHaloRadius + (isTwoPointer ? 0.42 : 0);
 
     const markerContainer = new Container();
     markerContainer.position.set(worldPoint.x, worldPoint.y);
@@ -131,39 +128,22 @@ export function drawStatsMarkers(
     const markerGraphic = new Graphics();
     markerContainer.addChild(markerGraphic);
 
-    // Subtle dark halo improves readability against bright turf stripes.
-    markerGraphic.circle(0, 0, haloRadius).fill({
-      color: 0x020617,
-      alpha: isTwoPointer ? 0.26 : 0.22,
-    });
-
-    if (isTwoPointer) {
-      // Give 2PT a subtle mint aura to increase priority without GOAL-level intensity.
-      markerGraphic.circle(0, 0, haloRadius + 0.8).fill({
-        color: 0x6ee7b7,
-        alpha: 0.13,
-      });
+    if (isScoring) {
+      // TWO_POINTER gets slightly wider, denser glow to stay visually distinct from POINT/GOAL.
+      const glowOuter = isTwoPointer ? radius * 1.95 : radius * 1.85;
+      const glowMid   = isTwoPointer ? radius * 1.42 : radius * 1.38;
+      markerGraphic.circle(0, 0, glowOuter).fill({ color: fill.color, alpha: isTwoPointer ? 0.16 : 0.11 });
+      markerGraphic.circle(0, 0, glowMid).fill({ color: fill.color, alpha: isTwoPointer ? 0.24 : 0.17 });
     }
 
-    markerGraphic.circle(0, 0, radius)
-      .fill({ color: fill.color, alpha: fill.alpha })
-      .stroke({
-        width: ringWidth,
-        color: stroke.color,
-        alpha: stroke.alpha,
-      });
+    markerGraphic.circle(0, 0, radius).fill({ color: fill.color, alpha: fill.alpha });
 
-    if (isTwoPointer) {
-      markerGraphic.circle(0, 0, radius + 0.62).stroke({
-        width: Math.max(1.02, minTwoPointOuterRingWidth),
-        color: 0xecfdf5,
-        alpha: 0.92,
-      });
-    }
-
-    // Bright center dot helps identify stacked/overlapping markers quickly.
-    const innerDotRadius = Math.max(radius * 0.32, 1.25 / worldToScreenScale);
-    markerGraphic.circle(0, 0, innerDotRadius).fill({ color: 0xffffff, alpha: 0.9 });
+    // Tap area is explicitly decoupled from visual radius so small non-scoring dots
+    // remain reliably tappable at sideline distances and match pace.
+    const tapRadius = isScoring
+      ? Math.max(radius * 1.8, 16 / worldToScreenScale)
+      : Math.max(radius * 2.4, 16 / worldToScreenScale);
+    markerContainer.hitArea = new Circle(0, 0, tapRadius);
 
     const shouldShowPlayerNumber =
       showPlayerLabels &&
