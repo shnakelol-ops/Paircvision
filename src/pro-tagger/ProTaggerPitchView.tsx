@@ -10,6 +10,29 @@ interface Props {
   onTap: (nx: number, ny: number) => void;
 }
 
+// ── Pitch geometry constants ───────────────────────────────────────────────
+//
+// viewBox: 0 0 100 62   (pitch is ~145m × 88m; scale ≈ 0.69 SVG/m x, 0.70 SVG/m y)
+// Goals sit at x=1 (left) and x=99 (right), centred on cy=31.
+// Goal opening spans y=26–36 (≈ 10 SVG units ≈ 14m).
+
+// Football (gaelic / ladies_football):
+//   13m line  → x ≈  9 / 91
+//   20m line  → x ≈ 14 / 86
+//   45m line  → x ≈ 31 / 69
+//
+// Hurling / Camogie:
+//   14m line  → x ≈ 10 / 90
+//   21m line  → x ≈ 14 / 86   (same as football 20m in SVG space)
+//   65m line  → x ≈ 45 / 55
+
+// Two-point arc: centered on goal face (x=1 or x=99, cy=31), radius = 31 SVG (≈45m).
+// At the pitch sidelines (y=1, y=61) the arc crosses x ≈ 8.8 / 91.2.
+// Arc formula: at y=1, (x-1)^2 + (1-31)^2 = 31^2  →  x ≈ 8.81
+
+// D arc: centered on goal face, radius ≈ 9.43 SVG (≈13m).
+// Arc endpoints match goal post Y positions (y=26, y=36) exactly.
+
 export function ProTaggerPitchView({
   sport,
   attackDirection,
@@ -18,19 +41,18 @@ export function ProTaggerPitchView({
   interactive,
   onTap,
 }: Props) {
-  const isHurling = sport === "hurling" || sport === "camogie";
+  const isHurling   = sport === "hurling" || sport === "camogie";
+  const isFootball  = !isHurling;
 
-  // x positions in viewBox units (0–100). GAA pitch ~145m long.
-  // Football: 45m lines at 31/69, 20m at 14/86, 13m at 9/91
-  // Hurling:  65m lines at 45/55, 21m at 14/86, 14m at 10/90
-  const bigLine1 = isHurling ? 45 : 31;
-  const bigLine2 = isHurling ? 55 : 69;
-  const midLine1 = 14;
-  const midLine2 = 86;
+  // ── Line positions ──────────────────────────────────────────────────
+  const bigLine1  = isHurling ? 45 : 31;
+  const bigLine2  = isHurling ? 55 : 69;
+  const midLine1  = 14;
+  const midLine2  = 86;
   const smallLine1 = isHurling ? 10 : 9;
   const smallLine2 = isHurling ? 90 : 91;
 
-  // Which end the home team attacks toward in this half
+  // Which end home team attacks toward this half
   const attackingRight =
     (half === 1 && attackDirection === "right") ||
     (half === 2 && attackDirection === "left");
@@ -44,14 +66,27 @@ export function ProTaggerPitchView({
     onTap(nx, ny);
   }
 
+  // ── Football-only geometry ──────────────────────────────────────────
+  // Small goal area rect: 4.5m deep × 14m wide — matches y=26–36 exactly.
+  // Large rectangle:      ~20m deep × ~43m wide (ends at 20m line, ≈14 SVG units deep).
+  // D arc:                radius = sqrt((9-1)^2 + (26-31)^2) = sqrt(89) ≈ 9.43
+  //                       M 9,26 A 9.43,9.43 0 0 1 9,36  — bulges into field (CW)
+  // Two-point arc:        radius = 31 (≈45m), arc endpoints at (8.8, 1) and (8.8, 61)
+  //                       M 8.8,1 A 31,31 0 0 1 8.8,61   — short CW arc, bulges right
+
+  const lineColour       = "rgba(255,255,255,0.65)";
+  const subLineColour    = "rgba(255,255,255,0.45)";
+  const thinLineColour   = "rgba(255,255,255,0.30)";
+  const markingColour    = "rgba(255,255,255,0.40)";
+
   return (
     <svg
       viewBox="0 0 100 62"
       style={svgStyle(interactive)}
       onPointerDown={handlePointerDown}
-      aria-label="Football pitch — tap to place event"
+      aria-label="Pitch — tap to place event"
     >
-      {/* Grass background */}
+      {/* Grass */}
       <rect x="0" y="0" width="100" height="62" fill="#166534" />
 
       {/* Outer boundary */}
@@ -60,38 +95,87 @@ export function ProTaggerPitchView({
         fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="0.5"
       />
 
+      {/* ── Football-only markings ──────────────────────────────────── */}
+      {isFootball && (
+        <>
+          {/* Small goal area rectangles (4.5m × 14m) */}
+          <rect x="1" y="26" width="3" height="10"
+            fill="none" stroke={markingColour} strokeWidth="0.35" />
+          <rect x="96" y="26" width="3" height="10"
+            fill="none" stroke={markingColour} strokeWidth="0.35" />
+
+          {/* Large rectangles (≈20m deep × ≈43m wide, ends at 20m line) */}
+          <rect x="1" y="16" width="13" height="30"
+            fill="none" stroke={markingColour} strokeWidth="0.35" />
+          <rect x="86" y="16" width="13" height="30"
+            fill="none" stroke={markingColour} strokeWidth="0.35" />
+
+          {/* D arcs at 13m line (radius ≈ 9.43, centered on goal face) */}
+          <path
+            d="M 9,26 A 9.43,9.43 0 0 1 9,36"
+            fill="none" stroke={markingColour} strokeWidth="0.35"
+          />
+          <path
+            d="M 91,26 A 9.43,9.43 0 0 0 91,36"
+            fill="none" stroke={markingColour} strokeWidth="0.35"
+          />
+
+          {/* Two-point arcs (radius=31 ≈ 45m, centered on goal face) */}
+          <path
+            d="M 8.8,1 A 31,31 0 0 1 8.8,61"
+            fill="none" stroke={subLineColour} strokeWidth="0.4"
+          />
+          <path
+            d="M 91.2,1 A 31,31 0 0 0 91.2,61"
+            fill="none" stroke={subLineColour} strokeWidth="0.4"
+          />
+        </>
+      )}
+
+      {/* ── Lines (both sports) ─────────────────────────────────────── */}
+
       {/* 13m / 14m lines */}
-      <line x1={smallLine1} y1="1" x2={smallLine1} y2="61" stroke="rgba(255,255,255,0.3)" strokeWidth="0.3" />
-      <line x1={smallLine2} y1="1" x2={smallLine2} y2="61" stroke="rgba(255,255,255,0.3)" strokeWidth="0.3" />
+      <line x1={smallLine1} y1="1" x2={smallLine1} y2="61"
+        stroke={thinLineColour} strokeWidth="0.3" />
+      <line x1={smallLine2} y1="1" x2={smallLine2} y2="61"
+        stroke={thinLineColour} strokeWidth="0.3" />
 
       {/* 20m / 21m lines */}
-      <line x1={midLine1} y1="1" x2={midLine1} y2="61" stroke="rgba(255,255,255,0.5)" strokeWidth="0.35" />
-      <line x1={midLine2} y1="1" x2={midLine2} y2="61" stroke="rgba(255,255,255,0.5)" strokeWidth="0.35" />
+      <line x1={midLine1} y1="1" x2={midLine1} y2="61"
+        stroke={subLineColour} strokeWidth="0.35" />
+      <line x1={midLine2} y1="1" x2={midLine2} y2="61"
+        stroke={subLineColour} strokeWidth="0.35" />
 
       {/* 45m / 65m lines */}
-      <line x1={bigLine1} y1="1" x2={bigLine1} y2="61" stroke="rgba(255,255,255,0.65)" strokeWidth="0.4" />
-      <line x1={bigLine2} y1="1" x2={bigLine2} y2="61" stroke="rgba(255,255,255,0.65)" strokeWidth="0.4" />
+      <line x1={bigLine1} y1="1" x2={bigLine1} y2="61"
+        stroke={lineColour} strokeWidth="0.4" />
+      <line x1={bigLine2} y1="1" x2={bigLine2} y2="61"
+        stroke={lineColour} strokeWidth="0.4" />
 
-      {/* Center line */}
-      <line x1="50" y1="1" x2="50" y2="61" stroke="rgba(255,255,255,0.65)" strokeWidth="0.4" />
+      {/* Halfway line */}
+      <line x1="50" y1="1" x2="50" y2="61"
+        stroke={lineColour} strokeWidth="0.4" />
 
-      {/* Center circle */}
-      <circle cx="50" cy="31" r="5" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="0.4" />
+      {/* Centre circle */}
+      <circle cx="50" cy="31" r="5"
+        fill="none" stroke={subLineColour} strokeWidth="0.4" />
       <circle cx="50" cy="31" r="0.8" fill="rgba(255,255,255,0.5)" />
 
-      {/* Left goal posts (goals at x=1, posts span y=26–36) */}
+      {/* ── Goal posts ─────────────────────────────────────────────── */}
+
+      {/* Left goal */}
       <line x1="1" y1="26" x2="1" y2="36" stroke="white" strokeWidth="1.5" />
       <line x1="1" y1="26" x2="5" y2="26" stroke="rgba(255,255,255,0.55)" strokeWidth="0.45" />
       <line x1="1" y1="36" x2="5" y2="36" stroke="rgba(255,255,255,0.55)" strokeWidth="0.45" />
       <line x1="5" y1="26" x2="5" y2="36" stroke="rgba(255,255,255,0.35)" strokeWidth="0.4" />
 
-      {/* Right goal posts */}
+      {/* Right goal */}
       <line x1="99" y1="26" x2="99" y2="36" stroke="white" strokeWidth="1.5" />
       <line x1="99" y1="26" x2="95" y2="26" stroke="rgba(255,255,255,0.55)" strokeWidth="0.45" />
       <line x1="99" y1="36" x2="95" y2="36" stroke="rgba(255,255,255,0.55)" strokeWidth="0.45" />
       <line x1="95" y1="26" x2="95" y2="36" stroke="rgba(255,255,255,0.35)" strokeWidth="0.4" />
 
-      {/* Attack direction indicator */}
+      {/* ── Attack direction indicator ──────────────────────────────── */}
       <text
         x={attackingRight ? 77 : 23}
         y="8"

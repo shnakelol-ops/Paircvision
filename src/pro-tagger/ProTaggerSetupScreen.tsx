@@ -9,7 +9,7 @@ import type {
 import { newSessionId, buildDefaultSquad } from "./pro-tagger-session";
 
 interface Props {
-  onStart: (session: ProTaggerSession) => void;
+  onContinue: (session: ProTaggerSession) => void;
 }
 
 const SPORT_LABELS: Record<ProTaggerSport, string> = {
@@ -26,7 +26,7 @@ const MATCH_TYPE_LABELS: Record<ProTaggerMatchType, string> = {
   training:     "Training",
 };
 
-export function ProTaggerSetupScreen({ onStart }: Props) {
+export function ProTaggerSetupScreen({ onContinue }: Props) {
   const [sport, setSport]             = useState<ProTaggerSport>("gaelic");
   const [homeTeam, setHomeTeam]       = useState("");
   const [awayTeam, setAwayTeam]       = useState("");
@@ -36,7 +36,7 @@ export function ProTaggerSetupScreen({ onStart }: Props) {
   const [halfMins, setHalfMins]       = useState(35);
 
   function handleStart() {
-    onStart({
+    onContinue({
       id:                 newSessionId(),
       sport,
       homeTeamName:       homeTeam.trim(),
@@ -150,7 +150,7 @@ export function ProTaggerSetupScreen({ onStart }: Props) {
         </div>
 
         <button onClick={handleStart} style={S.startBtn}>
-          Start Match
+          Continue → Squads
         </button>
       </div>
     </div>

@@ -127,8 +127,9 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
     textColour: "#ffffff",
     tiles: [
       { label: "Tackle" },
-      { label: "Intercept" },
-      { label: "Error" },
+      { label: "HP Error" },
+      { label: "KP Error" },
+      { label: "Overcarried" },
     ],
     hasMinus: true,
   },
@@ -140,8 +141,6 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
     tiles: [
       { label: "Won" },
       { label: "Conceded" },
-      { label: "Scored" },
-      { label: "Missed" },
     ],
     hasMinus: false,
   },

@@ -8,12 +8,17 @@ export type ProTaggerSquadPlayer = {
   id: string;
   number: number;
   name: string;
+  position?: string; // "GK", "RB", "SUB" etc — optional for backward compat
 };
 
 export type ProTaggerSquad = {
   id: string;
   teamSide: "HOME" | "AWAY";
   players: ProTaggerSquadPlayer[];
+  // Future team identity — hooks present, not populated in Phase 1:
+  teamName?: string;
+  primaryColour?: string;
+  secondaryColour?: string;
 };
 
 export interface ProTaggerSession {
@@ -42,10 +47,23 @@ function newId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+// GAA football/hurling positional defaults — 15 starters + 5 subs = 20 players.
+const GAA_POSITIONS: readonly string[] = [
+  "GK",
+  "RB", "FB", "LB",
+  "RHB", "CHB", "LHB",
+  "MF", "MF",
+  "RHF", "CHF", "LHF",
+  "RF", "FF", "LF",
+  "SUB", "SUB", "SUB", "SUB", "SUB",
+];
+
 export function buildDefaultSquad(side: "HOME" | "AWAY"): ProTaggerSquad {
-  const players: ProTaggerSquadPlayer[] = [];
-  for (let n = 1; n <= 25; n++) {
-    players.push({ id: newId(), number: n, name: "" });
-  }
+  const players: ProTaggerSquadPlayer[] = GAA_POSITIONS.map((pos, i) => ({
+    id:       newId(),
+    number:   i + 1,
+    name:     "",
+    position: pos,
+  }));
   return { id: newId(), teamSide: side, players };
 }
