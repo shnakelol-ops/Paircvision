@@ -10388,6 +10388,455 @@ function makeOppRestartPlatformPage(
   return canvas;
 }
 
+// ─── Comparison callout strip ─────────────────────────────────────────────────
+/**
+ * Two-panel callout strip for pages that compare two sides directly.
+ * Each panel renders a heading (accent-coloured) followed by up to 3 detail lines.
+ * Drop-in companion to drawHtCalloutStrip; shares the same strip geometry.
+ */
+function drawTwoColumnHtStrip(
+  ctx: CanvasRenderingContext2D,
+  left: { heading: string; lines: readonly string[]; color: string },
+  right: { heading: string; lines: readonly string[]; color: string },
+): void {
+  ctx.save();
+
+  // Separator line — matches drawHtCalloutStrip
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth   = 2;
+  ctx.beginPath();
+  ctx.moveTo(24, HT_STRIP_TOP);
+  ctx.lineTo(CANVAS_W - 24, HT_STRIP_TOP);
+  ctx.stroke();
+
+  const STRIP_X  = 24;
+  const STRIP_W  = CANVAS_W - 48;          // 1872 px
+  const GAP      = 20;
+  const panelW   = Math.floor((STRIP_W - GAP) / 2);
+  const panelY   = HT_STRIP_TOP + 10;
+  const panelH   = HT_STRIP_H - 18;
+  const ACCENT_W = 8;
+  const TEXT_X   = ACCENT_W + 14;
+
+  [left, right].forEach((panel, i) => {
+    const px = STRIP_X + i * (panelW + GAP);
+
+    // Panel background
+    ctx.fillStyle = "rgba(255,255,255,0.045)";
+    ctx.fillRect(px, panelY, panelW, panelH);
+
+    // Left accent block
+    ctx.fillStyle = panel.color;
+    ctx.fillRect(px, panelY, ACCENT_W, panelH);
+
+    let ty = panelY + 18;
+
+    // Heading (accent colour)
+    ctx.font         = "bold 20px sans-serif";
+    ctx.fillStyle    = panel.color;
+    ctx.textBaseline = "top";
+    ctx.textAlign    = "left";
+    ctx.fillText(panel.heading, px + TEXT_X, ty);
+    ty += 28;
+
+    // Detail lines
+    ctx.font      = "22px sans-serif";
+    ctx.fillStyle = "#ffffff";
+    const MAX_TW  = panelW - TEXT_X - 12;
+    for (const line of panel.lines.slice(0, 3)) {
+      let display = line;
+      if (ctx.measureText(display).width > MAX_TW) {
+        while (display.length > 0 && ctx.measureText(display + "…").width > MAX_TW) {
+          display = display.slice(0, -1);
+        }
+        display += "…";
+      }
+      ctx.fillText(display, px + TEXT_X, ty);
+      ty += 28;
+    }
+  });
+
+  ctx.restore();
+}
+
+// ─── p.3 Restart Battle ───────────────────────────────────────────────────────
+/**
+ * Restart Battle — single comparative pitch showing who is winning possession
+ * at restarts and where. Replaces the two-page Our/Opp restart split.
+ *
+ * Zone colour:
+ *   Teal  = FOR wins possession here (we retained / we won theirs)
+ *   Red   = OPP wins possession here (they retained / they won ours)
+ *   Amber = contested (diff ≤ 1 each way)
+ *
+ * Threat rings on OPP-dominant zones; directional sweep on worst zone.
+ * Bottom strip: drawTwoColumnHtStrip — Our record vs Their record side-by-side.
+ */
+function makeRestartBattlePage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  const restartTerm   = sport === "hurling" ? "Puckout" : "Kickout";
+  const restartTermLC = sport === "hurling" ? "puckouts" : "kickouts";
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Restart Battle", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  // FOR won = our kickout retained + their kickout we won
+  const forWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
+  );
+  // OPP won = their kickout retained + our kickout they won
+  const oppWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR"),
+  );
+  const allKickoutEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind));
+
+  // ── Pitch + zone overlays ─────────────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  const forWonCounts = pdfZoneCounts(forWonEvts);
+  const oppWonCounts = pdfZoneCounts(oppWonEvts);
+
+  for (let i = 0; i < forWonCounts.length; i++) {
+    const forZone = forWonCounts[i];
+    const oppZone = oppWonCounts[i];
+    const total   = forZone.count + oppZone.count;
+    if (total === 0) continue;
+    const rect      = zonePixelRect(forZone.bounds, inner);
+    const diff      = forZone.count - oppZone.count;
+    const intensity = Math.min(total / 4, 1);
+    if (diff > 1) {
+      ctx.fillStyle = `rgba(20,184,166,${(0.20 + intensity * 0.38).toFixed(2)})`;
+    } else if (diff < -1) {
+      ctx.fillStyle = `rgba(248,113,113,${(0.20 + intensity * 0.38).toFixed(2)})`;
+    } else {
+      ctx.fillStyle = "rgba(251,191,36,0.28)";
+    }
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Event markers ─────────────────────────────────────────────────────────
+  renderHtMarkers(ctx, allKickoutEvts, inner);
+
+  // ── Zone badge pills (W / L counts per zone) ──────────────────────────────
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "center";
+  ctx.font         = "bold 12px sans-serif";
+  for (let i = 0; i < forWonCounts.length; i++) {
+    const forZone = forWonCounts[i];
+    const oppZone = oppWonCounts[i];
+    const total   = forZone.count + oppZone.count;
+    if (total === 0) continue;
+    const rect  = zonePixelRect(forZone.bounds, inner);
+    const midX  = rect.x + rect.w / 2;
+    const midY  = rect.y + rect.h / 2;
+    const label = `${forZone.count}W / ${oppZone.count}L`;
+    const tw    = ctx.measureText(label).width + 16;
+    const isTeal = forZone.count > oppZone.count;
+    const isRed  = oppZone.count > forZone.count;
+    ctx.fillStyle = isTeal ? "rgba(20,184,166,0.88)"
+                 : isRed  ? "rgba(248,113,113,0.88)"
+                 :           "rgba(251,191,36,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = (isTeal || isRed) ? "#ffffff" : "#0d1117";
+    ctx.fillText(label, midX, midY);
+  }
+  ctx.restore();
+
+  // ── Threat overlays on OPP-dominant zones ─────────────────────────────────
+  for (let i = 0; i < oppWonCounts.length; i++) {
+    const oZone = oppWonCounts[i];
+    const fZone = forWonCounts[i];
+    const score = computeZoneThreatScore(oZone.count, 0, fZone.count);
+    const level = getThreatLevel(score);
+    if (level === "NONE") continue;
+    const rect = zonePixelRect(oZone.bounds, inner);
+    const cx   = rect.x + rect.w / 2;
+    const cy   = rect.y + rect.h / 2;
+    drawThreatRings(ctx, cx, cy, level);
+    const lbl = level === "CRITICAL" ? "THEIR ZONE"
+              : level === "HIGH"     ? "DANGER RESTART"
+              :                        "WATCH";
+    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
+
+  // ── Directional sweep on highest OPP-threat zone ──────────────────────────
+  {
+    let bestIdx = -1, bestScore = 0;
+    for (let i = 0; i < oppWonCounts.length; i++) {
+      const s = computeZoneThreatScore(oppWonCounts[i].count, 0, forWonCounts[i].count);
+      if (s > bestScore) { bestScore = s; bestIdx = i; }
+    }
+    if (bestIdx >= 0 && getThreatLevel(bestScore) !== "NONE") {
+      const rect      = zonePixelRect(oppWonCounts[bestIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestScore / 10, 1.0);
+      drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy - rect.h * 0.24, cx - rect.w * 0.08, cy, intensity, "PRESSURE_INWARD");
+      if (getThreatLevel(bestScore) === "CRITICAL") {
+        drawDirectionalPressureSweep(ctx, cx - rect.w * 0.36, cy + rect.h * 0.24, cx, cy, intensity * 0.65, "PRESSURE_COLLAPSE");
+      }
+    }
+  }
+
+  // ── Right-side legend ─────────────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+  ctx.fillStyle    = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "rgba(20,184,166,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("We won", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(248,113,113,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("They won", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(251,191,36,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Contested", lx + 22, ly);
+  ctx.restore();
+
+  // ── Two-column bottom strip ───────────────────────────────────────────────
+  const totalFor = forWonEvts.length;
+  const totalOpp = oppWonEvts.length;
+  const totalKO  = totalFor + totalOpp;
+  const forPct   = totalKO > 0 ? Math.round((totalFor / totalKO) * 100) : 0;
+  const oppPct   = totalKO > 0 ? Math.round((totalOpp / totalKO) * 100) : 0;
+  const forHot   = pdfZoneHotspots(forWonEvts)[0];
+  const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
+
+  drawTwoColumnHtStrip(ctx,
+    {
+      heading: `Our ${restartTerm}s`,
+      lines: [
+        totalKO > 0
+          ? `Won ${totalFor} · Lost ${totalOpp} (${forPct}% won)`
+          : `No ${restartTermLC} logged`,
+        forHot ? `Best zone: ${forHot.label}` : "Best zone: —",
+        oppHot ? `Danger: ${oppHot.label}`     : "Danger zone: —",
+      ],
+      color: "#14b8a6",
+    },
+    {
+      heading: `Their ${restartTerm}s`,
+      lines: [
+        totalKO > 0
+          ? `Won ${totalOpp} · Lost ${totalFor} (${oppPct}% won)`
+          : `No ${restartTermLC} logged`,
+        oppHot ? `Best zone: ${oppHot.label}`    : "Best zone: —",
+        forHot ? `Our pressure: ${forHot.label}` : "Our pressure: —",
+      ],
+      color: "#f87171",
+    },
+  );
+
+  drawEventCountFooter(ctx, allKickoutEvts.length);
+  return canvas;
+}
+
+// ─── p.4 Turnover & Territory ─────────────────────────────────────────────────
+/**
+ * Turnover & Territory — pure territorial possession pressure map.
+ * Shows WHERE we win and lose the ball, not chain outcomes or scoring outcomes.
+ *
+ * Event semantics:
+ *   wonEvts  = TURNOVER_WON by FOR  → we won possession
+ *   lostEvts = TURNOVER_LOST by FOR OR TURNOVER_WON by OPP → they won possession
+ *
+ * Zone colour:
+ *   Teal  = we dominate (wonCount > lostCount + 1)
+ *   Red   = they dominate (lostCount > wonCount + 1)
+ *   Amber = contested (both sides active ≥ 2)
+ *
+ * Callouts: DANGER ZONE on high-loss zones; teal PRESSURE ZONE on best win zone.
+ */
+function makeTurnoverTerritoryPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Turnover & Territory", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  const wonEvts = events.filter(
+    (e) => e.kind === "TURNOVER_WON" && e.teamSide === "FOR",
+  );
+  const lostEvts = events.filter(
+    (e) => (e.kind === "TURNOVER_LOST" && e.teamSide === "FOR") ||
+           (e.kind === "TURNOVER_WON"  && e.teamSide === "OPP"),
+  );
+  const allTurnoverEvts = events.filter((e) => PDF_KIND_SETS.TURNOVERS.has(e.kind));
+
+  // ── Pitch ─────────────────────────────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  const wonCounts  = pdfZoneCounts(wonEvts);
+  const lostCounts = pdfZoneCounts(lostEvts);
+
+  // ── Zone overlays ─────────────────────────────────────────────────────────
+  for (let i = 0; i < wonCounts.length; i++) {
+    const wZone = wonCounts[i];
+    const lZone = lostCounts[i];
+    const total = wZone.count + lZone.count;
+    if (total === 0) continue;
+    const rect      = zonePixelRect(wZone.bounds, inner);
+    const intensity = Math.min(total / 4, 1);
+    const contested = wZone.count >= 2 && lZone.count >= 2;
+    if (contested) {
+      ctx.fillStyle = `rgba(251,191,36,${(0.22 + intensity * 0.28).toFixed(2)})`;
+    } else if (wZone.count > lZone.count + 1) {
+      ctx.fillStyle = `rgba(20,184,166,${(0.20 + intensity * 0.38).toFixed(2)})`;
+    } else if (lZone.count > wZone.count + 1) {
+      ctx.fillStyle = `rgba(248,113,113,${(0.20 + intensity * 0.38).toFixed(2)})`;
+    }
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Event markers (purple = won, orange = lost) ───────────────────────────
+  renderHtMarkers(ctx, allTurnoverEvts, inner);
+
+  // ── Danger zone callouts (threat rings on high-loss zones) ────────────────
+  for (let i = 0; i < lostCounts.length; i++) {
+    const lZone = lostCounts[i];
+    const wZone = wonCounts[i];
+    const score = computeZoneThreatScore(lZone.count, 0, wZone.count);
+    const level = getThreatLevel(score);
+    if (level === "NONE") continue;
+    const rect = zonePixelRect(lZone.bounds, inner);
+    const cx   = rect.x + rect.w / 2;
+    const cy   = rect.y + rect.h / 2;
+    drawThreatRings(ctx, cx, cy, level);
+    const lbl = level === "CRITICAL" || level === "HIGH" ? "DANGER ZONE" : "WATCH";
+    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
+
+  // ── Pressure zone badge (teal pill on highest-win zone) ───────────────────
+  {
+    let bestIdx = -1, bestCount = 0;
+    for (let i = 0; i < wonCounts.length; i++) {
+      if (wonCounts[i].count > bestCount) { bestCount = wonCounts[i].count; bestIdx = i; }
+    }
+    if (bestIdx >= 0 && bestCount >= 2) {
+      const rect = zonePixelRect(wonCounts[bestIdx].bounds, inner);
+      const cx   = rect.x + rect.w / 2;
+      const cy   = rect.y + rect.h / 2 + 50;
+      ctx.save();
+      ctx.font         = "bold 18px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "center";
+      const lbl = "PRESSURE ZONE";
+      const tw  = ctx.measureText(lbl).width;
+      const pw  = tw + 24;
+      const ph  = 30;
+      const bx  = cx - pw / 2;
+      const by  = cy - ph / 2;
+      const br  = 8;
+      ctx.fillStyle = "rgba(20,184,166,0.88)";
+      ctx.beginPath();
+      ctx.moveTo(bx + br, by);
+      ctx.lineTo(bx + pw - br, by);
+      ctx.quadraticCurveTo(bx + pw, by, bx + pw, by + br);
+      ctx.lineTo(bx + pw, by + ph - br);
+      ctx.quadraticCurveTo(bx + pw, by + ph, bx + pw - br, by + ph);
+      ctx.lineTo(bx + br, by + ph);
+      ctx.quadraticCurveTo(bx, by + ph, bx, by + ph - br);
+      ctx.lineTo(bx, by + br);
+      ctx.quadraticCurveTo(bx, by, bx + br, by);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#0d1117";
+      ctx.fillText(lbl, cx, cy);
+      ctx.restore();
+    }
+  }
+
+  // ── Right-side legend ─────────────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+  ctx.fillStyle    = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "#a78bfa";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Turnover Won", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "#f97316";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Turnover Lost", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(251,191,36,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Contested", lx + 22, ly);
+  ctx.restore();
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  const totalWon  = wonEvts.length;
+  const totalLost = lostEvts.length;
+  const totalTO   = totalWon + totalLost;
+  const wonPct    = totalTO > 0 ? Math.round((totalWon / totalTO) * 100) : 0;
+  const wonHot    = pdfZoneHotspots(wonEvts)[0];
+  const lostHot   = pdfZoneHotspots(lostEvts)[0];
+
+  const facts: string[] = [];
+  const colors: string[] = [];
+  if (totalTO > 0) {
+    facts.push(`Won ${totalWon} · Lost ${totalLost} (${wonPct}% possession won)`);
+    colors.push(totalWon >= totalLost ? "#22c55e" : "#ef4444");
+  } else {
+    facts.push("No turnover data recorded");
+    colors.push("#94a3b8");
+  }
+  if (wonHot) {
+    facts.push(`Best zone: ${wonHot.label}`);
+    colors.push("#a78bfa");
+  }
+  if (lostHot) {
+    facts.push(`Danger zone: ${lostHot.label}`);
+    colors.push("#ef4444");
+  }
+
+  drawHtCalloutStrip(ctx, facts, colors);
+  drawEventCountFooter(ctx, allTurnoverEvts.length);
+  return canvas;
+}
+
 // ─── p.6 Tactical Match Summary ───────────────────────────────────────────────
 /**
  * Tactical Match Summary — "What are the actual coaching messages?"
@@ -10775,18 +11224,18 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Their Shots",
     );
 
-    // 3. Our Restart Platform
+    // 3. Restart Battle
     addPage(
-      makeOurRestartPlatformPage(events, sport, home, away, 3, TOTAL_PAGES),
+      makeRestartBattlePage(events, sport, home, away, 3, TOTAL_PAGES),
       true,
-      "Our Kickouts",
+      "Restart Battle",
     );
 
-    // 4. Opposition Restart Platform
+    // 4. Turnover & Territory
     addPage(
-      makeOppRestartPlatformPage(events, sport, home, away, 4, TOTAL_PAGES),
+      makeTurnoverTerritoryPage(events, sport, home, away, 4, TOTAL_PAGES),
       true,
-      "Their Kickouts",
+      "Turnover & Territory",
     );
 
     // 5. Chain Pressure — HT-calibrated (relaxed thresholds for smaller H1 dataset)
@@ -10840,18 +11289,18 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Their Shots",
     );
 
-    // 3. Our Restart Platform
+    // 3. Restart Battle
     addPage(
-      makeOurRestartPlatformPage(events, sport, home, away, 3, TOTAL_PAGES),
+      makeRestartBattlePage(events, sport, home, away, 3, TOTAL_PAGES),
       true,
-      "Our Kickouts",
+      "Restart Battle",
     );
 
-    // 4. Opposition Restart Platform
+    // 4. Turnover & Territory
     addPage(
-      makeOppRestartPlatformPage(events, sport, home, away, 4, TOTAL_PAGES),
+      makeTurnoverTerritoryPage(events, sport, home, away, 4, TOTAL_PAGES),
       true,
-      "Their Kickouts",
+      "Turnover & Territory",
     );
 
     // 5. Chain Pressure — FT-calibrated (standard thresholds for full-match dataset)
