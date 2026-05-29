@@ -7493,10 +7493,11 @@ export default function StatsModeSurface() {
           ref={hostRef}
           style={{
             position: "absolute",
-            inset: 0,
+            top: 0,
+            bottom: 0,
+            left: isLandscape ? 112 : 0,
+            right: isLandscape ? 100 : 0,
             zIndex: 1,
-            width: "100%",
-            height: "100%",
             background: isPitchReady
               ? "transparent"
               : "radial-gradient(ellipse at center, rgba(29,90,54,0.96) 0%, rgba(29,90,54,0.88) 40%, rgba(29,90,54,0) 70%)",
