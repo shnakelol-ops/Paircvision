@@ -148,6 +148,14 @@
       "destination": "/index.html"
     },
     {
+      "source": "/pro-tagger",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/pro-tagger/(.*)",
+      "destination": "/index.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
