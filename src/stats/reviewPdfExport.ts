@@ -303,7 +303,7 @@ function drawPageHeader(
   ctx.font = "20px sans-serif";
   ctx.fillText(subtitle, 24, 62);
 
-  ctx.fillStyle = "#64748b";
+  ctx.fillStyle = "#94a3b8";
   ctx.font = "17px sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(`${pageNum} / ${totalPages}`, CANVAS_W - 24, 38);
@@ -320,7 +320,7 @@ function drawPageHeader(
 
 function drawEventCountFooter(ctx: CanvasRenderingContext2D, count: number): void {
   ctx.save();
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#94a3b8";
   ctx.font = "16px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "right";
@@ -2889,6 +2889,26 @@ function makeTurnoverPunishmentPage(
     cy = drawStatRow(COL3_X, cy, COL_W, "Led to shot (no score)",   withPct(bothShotOnly, bothTotal),  "#fbbf24", false);
     cy = drawStatRow(COL3_X, cy, COL_W, "Attack immediately lost",  withPct(bothBroken, bothTotal),    "#94a3b8", true);
     drawStatRow(COL3_X, cy, COL_W,      "No shot generated",        withPct(bothNoShot, bothTotal),    "#f97316", false);
+
+    // ── Possession Chain V1 observations ─────────────────────────────────────
+    // Placed at bottom of COL3 when space allows; renders nothing below threshold.
+    {
+      const chainObs = derivePossessionChainObservations(analysis);
+      if (chainObs.length > 0) {
+        let chainCy = cy + 26 + 16;  // advance past last row + spacing
+        chainCy = drawSubHeader(COL3_X, chainCy, COL_W, "POSSESSION CHAIN INSIGHTS", "#60a5fa");
+        ctx.save();
+        ctx.font         = "12px sans-serif";
+        ctx.fillStyle    = "#64748b";
+        ctx.textBaseline = "middle";
+        ctx.textAlign    = "left";
+        for (const ob of chainObs) {
+          ctx.fillText(`• ${ob}`, COL3_X + 14, chainCy + 13);
+          chainCy += 26;
+        }
+        ctx.restore();
+      }
+    }
   }
 
   return canvas;
@@ -6496,6 +6516,97 @@ function drawDirectionalPressureSweep(
   ctx.restore();
 }
 
+// ─── Possession Chain Lite V1 helpers ─────────────────────────────────────────
+//
+// Read-only consumers of the pre-computed ChainAnalysis object.
+// No new chain computation — all data flows from selectChainAnalysis(events).
+//
+// Product voice: observational only. No tactical advice. No false certainty.
+// Low-event matches (ko.total < 3 AND to.total < 3) degrade cleanly to [].
+
+/**
+ * Derives 0–3 possession chain observation strings from existing ChainAnalysis.
+ * Returns an empty array when neither kickouts nor turnovers meet the threshold
+ * so pages with insufficient data render without spurious insights.
+ */
+function derivePossessionChainObservations(
+  analysis: ChainAnalysis<PdfExportEvent>,
+): string[] {
+  const ko  = analysis.kickouts;
+  const to  = analysis.turnovers;
+  const obs: string[] = [];
+
+  if (ko.total >= 3) {
+    if (ko.wonToScore > 0) {
+      const pct = Math.round(ko.wonToScorePercent);
+      obs.push(
+        `Kickout retention converted to score on ${ko.wonToScore} of ${ko.won} occasion${ko.wonToScore !== 1 ? "s" : ""} (${pct}%)`,
+      );
+    }
+    if (ko.lostAllowedScore > 0) {
+      const lostPct = Math.round(ko.lostAllowedScorePercent);
+      obs.push(
+        `Conceded restarts led to opposition score in ${lostPct}% of cases (${ko.lostAllowedScore} of ${ko.lost})`,
+      );
+    }
+  }
+
+  if (to.total >= 3 && to.wonToScore > 0) {
+    const pct = Math.round(to.wonToScorePercent);
+    obs.push(
+      `Turnover possession produced direct scores ${to.wonToScore} time${to.wonToScore !== 1 ? "s" : ""} (${pct}% conversion)`,
+    );
+  }
+
+  return obs.slice(0, 3);
+}
+
+/**
+ * Renders a labelled possession chain observation block onto a canvas page.
+ * Used on p.12 (Tactical Match Story) which has space in the narrative area.
+ * Other pages inject possession chain observations into their existing strip/facts.
+ * Renders nothing when observations array is empty.
+ */
+function drawPossessionChainBlock(
+  ctx: CanvasRenderingContext2D,
+  observations: string[],
+  x: number,
+  y: number,
+  w: number,
+): void {
+  if (observations.length === 0) return;
+
+  ctx.save();
+
+  // Section label
+  ctx.fillStyle    = "#475569";
+  ctx.font         = "bold 13px sans-serif";
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign    = "left";
+  ctx.fillText("POSSESSION CHAINS", x, y);
+
+  // Separator line
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y + 6);
+  ctx.lineTo(x + w, y + 6);
+  ctx.stroke();
+
+  // Observation rows: accent bar + text
+  const LINE_H = 36;
+  observations.forEach((obs, i) => {
+    ctx.fillStyle = "rgba(96,165,250,0.55)";
+    ctx.fillRect(x, y + 16 + i * LINE_H, 3, 24);
+    ctx.font         = "20px sans-serif";
+    ctx.fillStyle    = "#94a3b8";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(obs, x + 12, y + 34 + i * LINE_H);
+  });
+
+  ctx.restore();
+}
+
 // ─── HT Page 1: Pressure & Damage Map ────────────────────────────────────────
 
 /**
@@ -6734,7 +6845,7 @@ function makeHtKickoutVisionPage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Kickout Vision", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, sport === "hurling" ? "Puckout Vision" : "Kickout Vision", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Event subsets ─────────────────────────────────────────────────────────
   // FOR won = KICKOUT_WON recorded by FOR, OR KICKOUT_CONCEDED recorded by OPP
@@ -6861,11 +6972,11 @@ function makeHtKickoutVisionPage(
   ctx.fillStyle = "rgba(20,184,166,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("FOR Dominated", lx + 22, ly); ly += 26;
+  ctx.fillText("Our possession", lx + 22, ly); ly += 26;
   ctx.fillStyle = "rgba(248,113,113,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("OPP Dominated", lx + 22, ly); ly += 26;
+  ctx.fillText("Their possession", lx + 22, ly); ly += 26;
   ctx.fillStyle = "rgba(251,191,36,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
@@ -6879,12 +6990,14 @@ function makeHtKickoutVisionPage(
   const forPct   = totalKO > 0 ? Math.round((totalFor / totalKO) * 100) : 0;
   const forHot   = pdfZoneHotspots(forWonEvts)[0];
   const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
+  // Sport-aware terminology: kickouts (GAA football) / puckouts (hurling)
+  const restartTerm = sport === "hurling" ? "puckouts" : "kickouts";
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`${totalFor} / ${totalKO} kickouts won (${forPct}%)`);
-  if (forHot)      facts.push(`Dominant zone: ${forHot.label}`);
-  if (oppHot)      facts.push(`Ceded most in: ${oppHot.label}`);
-  if (facts.length === 0) facts.push("No kickout data recorded in the first half.");
+  if (totalKO > 0) facts.push(`Our ${restartTerm}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
+  if (forHot)      facts.push(`Best zone: ${forHot.label}`);
+  if (oppHot)      facts.push(`Conceded most: ${oppHot.label}`);
+  if (facts.length === 0) facts.push(`No ${restartTerm} data recorded.`);
 
   drawHtCalloutStrip(ctx, facts, ["#14b8a6", "#14b8a6", "#ef4444"]);
 
@@ -6934,6 +7047,23 @@ function makeHtAttackShotVisionPage(
   const forShotEvts = events.filter(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind),
   );
+  // OPP shots — for callout comparison only; OPP zone fills/badges not drawn
+  // (page remains FOR-side visual to avoid clutter)
+  const oppScoreEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  const oppWideEvts = events.filter(
+    (e) => e.teamSide === "OPP" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"),
+  );
+  const oppShotEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
+  );
+  // Frees won/conceded — spatial markers only (small dots, already colour-coded
+  // in HT_MARKER_COLORS: FREE_WON=indigo, FREE_CONCEDED=pink).
+  // Only included when at least one free event is logged.
+  const freeEvts = events.filter(
+    (e) => e.kind === "FREE_WON" || e.kind === "FREE_CONCEDED",
+  );
 
   // ── Pitch + zone colour overlays ──────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
@@ -6962,7 +7092,9 @@ function makeHtAttackShotVisionPage(
   }
 
   // ── Event markers (vision-first: symbol-rich, high contrast) ──────────────
-  renderHtMarkers(ctx, forShotEvts, inner);
+  // FOR shots + any logged frees (spatial context — indigo=won, pink=conceded)
+  // freeEvts is empty when no frees are logged so this degrades cleanly.
+  renderHtMarkers(ctx, [...forShotEvts, ...freeEvts], inner);
 
   // ── Zone badge pills ──────────────────────────────────────────────────────
   ctx.save();
@@ -7073,29 +7205,54 @@ function makeHtAttackShotVisionPage(
   ctx.fillStyle = "rgba(52,211,153,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Scores", lx + 22, ly); ly += 26;
+  ctx.fillText("Our scores", lx + 22, ly); ly += 26;
   ctx.fillStyle = "rgba(239,68,68,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Wides / Misses", lx + 22, ly);
+  ctx.fillText("Our wides", lx + 22, ly); ly += 26;
+  // Free markers — only shown when frees are logged; colours match HT_MARKER_COLORS
+  if (freeEvts.length > 0) {
+    ctx.fillStyle = "#818cf8";
+    ctx.fillRect(lx, ly - 8, 16, 16);
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillText("Free won", lx + 22, ly); ly += 26;
+    ctx.fillStyle = "#f472b6";
+    ctx.fillRect(lx, ly - 8, 16, 16);
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillText("Free conceded", lx + 22, ly);
+  }
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  const totalShots  = forShotEvts.length;
-  const totalScores = forScoreEvts.length;
-  const totalWides  = forWideEvts.length;
-  const shotEff     = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
-  const scoreHot    = pdfZoneHotspots(forScoreEvts)[0];
+  const totalShots    = forShotEvts.length;
+  const totalScores   = forScoreEvts.length;
+  const totalWides    = forWideEvts.length;
+  const shotEff       = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
+  const totalOppShots  = oppShotEvts.length;
+  const totalOppScores = oppScoreEvts.length;
+  const totalOppWides  = oppWideEvts.length;
+  const oppShotEff     = totalOppShots > 0 ? Math.round((totalOppScores / totalOppShots) * 100) : 0;
+  const scoreHot      = pdfZoneHotspots(forScoreEvts)[0];
 
-  const facts: string[] = [];
-  if (totalShots > 0)  facts.push(`${totalScores} / ${totalShots} shots scored (${shotEff}%)`);
-  if (totalWides > 0)  facts.push(`${totalWides} wide${totalWides !== 1 ? "s" : ""} / miss${totalWides !== 1 ? "es" : ""}`);
-  if (scoreHot)        facts.push(`Top scoring zone: ${scoreHot.label} (${scoreHot.count})`);
-  if (facts.length === 0) facts.push("No FOR shot data recorded in the first half.");
+  const facts: string[]  = [];
+  const colors: string[] = [];
+  if (totalShots > 0) {
+    facts.push(`Our shots: ${totalScores} scored · ${totalWides} wide (${shotEff}%)`);
+    colors.push("#34d399");
+  }
+  if (totalOppShots > 0) {
+    facts.push(`Their shots: ${totalOppScores} scored · ${totalOppWides} wide (${oppShotEff}%)`);
+    colors.push("#ef4444");
+  }
+  if (scoreHot && facts.length < 3) {
+    facts.push(`Our top zone: ${scoreHot.label} (${scoreHot.count})`);
+    colors.push("#34d399");
+  }
+  if (facts.length === 0) facts.push("No shot data recorded.");
 
-  drawHtCalloutStrip(ctx, facts, ["#34d399", "#ef4444", "#34d399"]);
+  drawHtCalloutStrip(ctx, facts, colors.length > 0 ? colors : ["#34d399", "#ef4444", "#34d399"]);
 
-  drawEventCountFooter(ctx, forShotEvts.length);
+  drawEventCountFooter(ctx, forShotEvts.length + freeEvts.length);
   return canvas;
 }
 
@@ -7569,6 +7726,12 @@ function makeHtGameFlowFactorsPage(
   if (forFacts.length > 0)     facts.push(`${forFacts.length} positive factor${forFacts.length !== 1 ? "s" : ""} identified`);
   if (againstFacts.length > 0) facts.push(`${againstFacts.length} challenge${againstFacts.length !== 1 ? "s" : ""} to address`);
   if (facts.length === 0)      facts.push("Not enough data to identify clear patterns.");
+
+  // ── Possession Chain V1: kickout win-to-score efficiency (threshold ≥ 3) ──
+  if (ko.total >= 3 && ko.wonToScore > 0 && facts.length < 3) {
+    const pct = Math.round(ko.wonToScorePercent);
+    facts.push(`Kickout win→score: ${ko.wonToScore} of ${ko.won} won converted (${pct}%)`);
+  }
 
   drawHtCalloutStrip(ctx, facts, ["#22c55e", "#ef4444", "#94a3b8"]);
   drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
@@ -8157,20 +8320,26 @@ function makeFtRestartEscapeRoutesPage(
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  const ko      = analysis.kickouts;
-  const koRate  = ko.total > 0 ? Math.round((ko.won / ko.total) * 100) : 0;
+  const ko          = analysis.kickouts;
+  const koRate      = ko.total > 0 ? Math.round((ko.won / ko.total) * 100) : 0;
+  const ftRestartTerm = sport === "hurling" ? "puckouts" : "kickouts";
   const facts: string[] = [];
   if (ko.total > 0)
-    facts.push(`${ko.won} of ${ko.total} kickouts won (${koRate}%)`);
-  if (ko.wonToScore > 0)
-    facts.push(`${ko.wonToScore} kickout win→score conversion${ko.wonToScore !== 1 ? "s" : ""}`);
-  if (ko.lostAllowedScore > 0)
-    facts.push(`${ko.lostAllowedScore} kickout loss→score conceded`);
+    facts.push(`Our ${ftRestartTerm}: ${ko.won}W · ${ko.total - ko.won}L (${koRate}% won)`);
+  // Possession Chain V1: richer conversion language (rate, not just count)
+  if (ko.wonToScore > 0) {
+    const wsPct = Math.round(ko.wonToScorePercent);
+    facts.push(`${ko.wonToScore} of ${ko.won} wins converted to score (${wsPct}%)`);
+  }
+  if (ko.lostAllowedScore > 0) {
+    const lsPct = Math.round(ko.lostAllowedScorePercent);
+    facts.push(`${ko.lostAllowedScore} conceded restarts led to opposition score (${lsPct}%)`);
+  }
   if (bestEscCol >= 0 && facts.length < 3) {
     const esc = grid[bestEscCol][bestEscRow];
     facts.push(`Best escape: ${COL_NAMES[bestEscCol].toLowerCase()} ${ROW_NAMES[bestEscRow].toLowerCase()} (${esc.forWon}W/${esc.oppWon}L)`);
   }
-  if (facts.length === 0) facts.push("No kickout data recorded.");
+  if (facts.length === 0) facts.push(`No ${ftRestartTerm} data recorded.`);
 
   drawHtCalloutStrip(ctx, facts, ["#14b8a6", "#14b8a6", "#ef4444"]);
   drawEventCountFooter(ctx, kickoutEvts.length);
@@ -8540,6 +8709,16 @@ function makeFtTacticalMatchStoryPage(
     ctx.fillText(sentence, SENTENCE_X, SENTENCE_Y0 + i * LINE_SPACING);
   });
 
+  // ── Possession Chain V1 block ─────────────────────────────────────────────
+  // Rendered in the gap between the editorial sentences and the callout strip.
+  // drawPossessionChainBlock is a no-op when chain observations array is empty.
+  {
+    const pcObs = derivePossessionChainObservations(analysis);
+    const sentenceCount = Math.min(sentences.length, 4);
+    const pcY = SENTENCE_Y0 + sentenceCount * LINE_SPACING + 28;
+    drawPossessionChainBlock(ctx, pcObs, RIVER_X, pcY, RIVER_W);
+  }
+
   // ── Bottom callout strip ──────────────────────────────────────────────────
   const forFinal  = scoreFromEvents(forScoreEvts);
   const oppFinal  = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind)));
@@ -8551,6 +8730,2406 @@ function makeFtTacticalMatchStoryPage(
 
   drawHtCalloutStrip(ctx, facts, ["#f8fafc", "#22c55e", "#14b8a6"]);
   drawEventCountFooter(ctx, events.length);
+  return canvas;
+}
+
+// ─── Chain Pressure — FT Page 6 ──────────────────────────────────────────────
+//
+// The tactical prioritisation layer of PáircVision.
+// Answers ONE question: "What must the coach react to RIGHT NOW?"
+//
+// Replaces makeTacticalIntelligencePage in the FT Snapshot dispatch.
+// makeTacticalIntelligencePage stays in file but is no longer called.
+//
+// Architecture:
+//   rankChainPatterns      → pure deterministic ranking from existing ChainAnalysis
+//   makeChainPressurePage  → split-field (pitch 55% left · ranked cards 42% right)
+//
+// Ranking formula (deterministic, no AI, no probability):
+//   PRIORITY_SCORE = (scoresCreatedOrConceded × 5) + (occurrences × 2) + (shots × 1)
+//   Minimum threshold: occurrences ≥ 2
+//
+// Anti-clutter law (locked):
+//   Rank 1: zone fill + rings + badge + sweep + optional TRAP/ENTRY arrow
+//   Rank 2: zone fill + ring + sweep (lighter treatment)
+//   Rank 3: CARD ONLY — zero pitch overlay
+//
+// Product voice: "Kickout Trap" / "Chain Weapon" / "Pressure Pattern" / "Wasted Chain"
+// Observational only. No advice. No AI language.
+
+type ChainPressureKind =
+  | "DANGER_CHAIN"
+  | "CHAIN_WEAPON"
+  | "PRESSURE_PATTERN"
+  | "WASTED_CHAIN";
+
+type ChainPressurePattern = {
+  rank:          1 | 2 | 3;
+  kind:          ChainPressureKind;
+  badge:         string;          // chip label: "DANGER CHAIN" / "CHAIN WEAPON" etc.
+  headline:      string;          // e.g. "Kickout Trap"
+  observation:   string;          // e.g. "3 of 5 conceded kickouts led to opposition score"
+  primaryMetric: number;          // the large number shown in card
+  metricLabel:   string;          // e.g. "scores conceded"
+  occurrences:   number;          // total pattern repetitions
+  priorityScore: number;          // ranking score
+  side:          "FOR" | "OPP";
+  zoneCol:       0 | 1 | 2 | null;   // pitch zone for overlay (null = no spatial overlay)
+  zoneRow:       0 | 1 | 2 | null;
+  arrowKind:     "TRAP" | "ENTRY_SCORE" | null;  // pattern arrow for rank #1 only
+};
+
+// Helper: grid col (0–2) from normalised x
+function cpCol(nx: number): 0 | 1 | 2 {
+  if (nx < 0.333) return 0;
+  if (nx < 0.667) return 1;
+  return 2;
+}
+// Helper: grid row (0–2) from normalised y
+function cpRow(ny: number): 0 | 1 | 2 {
+  if (ny < 0.333) return 0;
+  if (ny < 0.667) return 1;
+  return 2;
+}
+// Helper: 1|2|3 from index
+function cpRank(n: number): 1 | 2 | 3 {
+  if (n === 0) return 1;
+  if (n === 1) return 2;
+  return 3;
+}
+// Helper: dominant zone col/row from a list of nx/ny pairs
+function cpDominantZone(
+  items: ReadonlyArray<{ nx: number; ny: number }>,
+): { col: 0 | 1 | 2; row: 0 | 1 | 2 } | null {
+  if (items.length === 0) return null;
+  const tally = new Map<string, { col: 0|1|2; row: 0|1|2; n: number }>();
+  for (const { nx, ny } of items) {
+    const col = cpCol(nx);
+    const row = cpRow(ny);
+    const k   = `${col},${row}`;
+    const v   = tally.get(k);
+    if (v) v.n++; else tally.set(k, { col, row, n: 1 });
+  }
+  let best: { col: 0|1|2; row: 0|1|2; n: number } | null = null;
+  for (const v of tally.values()) {
+    if (!best || v.n > best.n) best = v;
+  }
+  return best ? { col: best.col, row: best.row } : null;
+}
+
+/**
+ * Qualification gate for chain candidates.
+ *
+ * FT mode: requires at least 2 occurrences alongside a direct score — prevents
+ * single-event flukes from ranking.
+ *
+ * HT mode (halftime datasets are smaller): any of three conditions pass —
+ *   1. A direct score resulted   (1 kickout loss → goal qualifies immediately)
+ *   2. ≥50% conversion rate with ≥2 occurrences
+ *   3. ≥3 occurrences with ≥2 shots generated (high-frequency, low-conversion)
+ * This keeps halftime pages sharp without promoting harmless noise.
+ */
+function cpQualifies(
+  scores: number,
+  occurrences: number,
+  shots: number,
+  mode: "FT" | "HT",
+): boolean {
+  if (mode === "FT") return scores >= 1 && occurrences >= 2;
+  // HT: any of three conditions
+  if (scores >= 1) return true;
+  if (occurrences >= 2 && occurrences > 0 && scores / occurrences >= 0.5) return true;
+  if (occurrences >= 3 && shots >= 2) return true;
+  return false;
+}
+
+/**
+ * Ranks possession chain patterns from the pre-computed ChainAnalysis.
+ * Returns 0–3 ChainPressurePattern objects ordered by priority score.
+ *
+ * Pure function — no canvas, no side effects, no new chain computation.
+ * All data consumed is already present in the ChainAnalysis object.
+ *
+ * mode — "FT" (default): standard thresholds for full-match datasets.
+ *        "HT": relaxed qualification for smaller halftime event volumes.
+ */
+function rankChainPatterns(
+  analysis: ChainAnalysis<PdfExportEvent>,
+  mode: "FT" | "HT" = "FT",
+): ChainPressurePattern[] {
+  const ko = analysis.kickouts;
+  const to = analysis.turnovers;
+
+  // Candidate shape (rank assigned after sorting)
+  type Candidate = Omit<ChainPressurePattern, "rank">;
+  const candidates: Candidate[] = [];
+
+  // ── 1. KICKOUT TRAP (DANGER_CHAIN) ─────────────────────────────────────────
+  // OPP scored directly from kickouts we conceded.
+  if (cpQualifies(ko.lostAllowedScore, ko.lost, 0, mode)) {
+    const trapOutcomes = ko.outcomes.filter(
+      (o) => o.winningSide === "OPP" && o.nextScore !== null,
+    );
+    const zone = cpDominantZone(
+      trapOutcomes.map((o) => ({ nx: o.kickoutEvent.nx, ny: o.kickoutEvent.ny })),
+    );
+    candidates.push({
+      kind:          "DANGER_CHAIN",
+      badge:         "DANGER CHAIN",
+      headline:      "Kickout Trap",
+      observation:   `${ko.lostAllowedScore} of ${ko.lost} conceded kickouts led to opposition score`,
+      primaryMetric: ko.lostAllowedScore,
+      metricLabel:   "scores conceded",
+      occurrences:   ko.lost,
+      priorityScore: ko.lostAllowedScore * 5 + ko.lost * 2,
+      side:          "OPP",
+      zoneCol:       zone?.col ?? null,
+      zoneRow:       zone?.row ?? null,
+      arrowKind:     trapOutcomes.length >= 2 ? "TRAP" : null,
+    });
+  }
+
+  // ── 2. KICKOUT PLATFORM (CHAIN_WEAPON) ─────────────────────────────────────
+  // FOR scored directly from kickouts we won.
+  if (cpQualifies(ko.wonToScore, ko.won, 0, mode)) {
+    const weaponOutcomes = ko.outcomes.filter(
+      (o) => o.winningSide === "FOR" && o.nextScore !== null,
+    );
+    const zone = cpDominantZone(
+      weaponOutcomes.map((o) => ({ nx: o.kickoutEvent.nx, ny: o.kickoutEvent.ny })),
+    );
+    candidates.push({
+      kind:          "CHAIN_WEAPON",
+      badge:         "CHAIN WEAPON",
+      headline:      "Kickout Platform",
+      observation:   `${ko.wonToScore} of ${ko.won} kickout win${ko.won !== 1 ? "s" : ""} converted to score`,
+      primaryMetric: ko.wonToScore,
+      metricLabel:   "scores created",
+      occurrences:   ko.won,
+      priorityScore: ko.wonToScore * 5 + ko.won * 2,
+      side:          "FOR",
+      zoneCol:       zone?.col ?? null,
+      zoneRow:       zone?.row ?? null,
+      arrowKind:     "ENTRY_SCORE",
+    });
+  }
+
+  // ── 3. TURNOVER DANGER (DANGER_CHAIN) ──────────────────────────────────────
+  // OPP scored after winning possession from a FOR turnover.
+  if (cpQualifies(to.lostAllowedScore, to.lost, 0, mode)) {
+    const dangerOutcomes = to.outcomes.filter(
+      (o) => o.direction === "LOST" &&
+             o.turnoverEvent.teamSide === "FOR" &&
+             o.resultedInScore,
+    );
+    const zone = cpDominantZone(
+      dangerOutcomes.map((o) => ({ nx: o.turnoverEvent.nx, ny: o.turnoverEvent.ny })),
+    );
+    candidates.push({
+      kind:          "DANGER_CHAIN",
+      badge:         "DANGER CHAIN",
+      headline:      "Turnover Conceded",
+      observation:   `${to.lostAllowedScore} possession loss${to.lostAllowedScore !== 1 ? "es" : ""} led directly to opposition score`,
+      primaryMetric: to.lostAllowedScore,
+      metricLabel:   "scores conceded",
+      occurrences:   to.lost,
+      priorityScore: to.lostAllowedScore * 5 + to.lost * 2,
+      side:          "OPP",
+      zoneCol:       zone?.col ?? null,
+      zoneRow:       zone?.row ?? null,
+      arrowKind:     null,
+    });
+  }
+
+  // ── 4. TURNOVER WEAPON (CHAIN_WEAPON) ──────────────────────────────────────
+  // FOR won possession from a turnover and scored.
+  if (cpQualifies(to.wonToScore, to.won, to.wonToShot, mode)) {
+    const weaponOutcomes = to.outcomes.filter(
+      (o) => o.direction === "WON" &&
+             o.turnoverEvent.teamSide === "FOR" &&
+             o.resultedInScore,
+    );
+    const zone = cpDominantZone(
+      weaponOutcomes.map((o) => ({ nx: o.turnoverEvent.nx, ny: o.turnoverEvent.ny })),
+    );
+    candidates.push({
+      kind:          "CHAIN_WEAPON",
+      badge:         "CHAIN WEAPON",
+      headline:      "Turnover Weapon",
+      observation:   `${to.wonToScore} of ${to.won} possession win${to.won !== 1 ? "s" : ""} converted to score`,
+      primaryMetric: to.wonToScore,
+      metricLabel:   "scores created",
+      occurrences:   to.won,
+      priorityScore: to.wonToScore * 5 + to.won * 2 + to.wonToShot,
+      side:          "FOR",
+      zoneCol:       zone?.col ?? null,
+      zoneRow:       zone?.row ?? null,
+      arrowKind:     "ENTRY_SCORE",
+    });
+  }
+
+  // ── 5. PRESSURE PATTERNS ────────────────────────────────────────────────────
+  // High-frequency patterns without decisive conversion — only when no specific
+  // chain for the same ball-source already qualifies above.
+  {
+    const hasKoPattern = candidates.some(
+      (c) => c.headline === "Kickout Trap" || c.headline === "Kickout Platform",
+    );
+    const hasTvPattern = candidates.some(
+      (c) => c.headline === "Turnover Conceded" || c.headline === "Turnover Weapon",
+    );
+
+    // Kickout battle: lots of restarts, none yet scoring
+    // HT: threshold lowered to 3 — smaller first-half dataset
+    if (!hasKoPattern && ko.total >= (mode === "HT" ? 3 : 4)) {
+      candidates.push({
+        kind:          "PRESSURE_PATTERN",
+        badge:         "PRESSURE PATTERN",
+        headline:      "Kickout Battle",
+        observation:   `${ko.total} contested restarts — ${ko.wonToScore} converted, ${ko.lostAllowedScore} conceded to score`,
+        primaryMetric: ko.total,
+        metricLabel:   "contested kickouts",
+        occurrences:   ko.total,
+        priorityScore: ko.total * 2,
+        side:          ko.won >= ko.lost ? "FOR" : "OPP",
+        zoneCol:       null,
+        zoneRow:       null,
+        arrowKind:     null,
+      });
+    }
+
+    // Turnover pressure: won possessions producing shots but not converting
+    // HT: lower win threshold to 2 — half a match produces fewer events
+    if (!hasTvPattern && to.won >= (mode === "HT" ? 2 : 3) && to.wonToShot >= 2) {
+      candidates.push({
+        kind:          "PRESSURE_PATTERN",
+        badge:         "PRESSURE PATTERN",
+        headline:      "Turnover Pressure",
+        observation:   `${to.won} possession win${to.won !== 1 ? "s" : ""} produced ${to.wonToShot} shot${to.wonToShot !== 1 ? "s" : ""} — ${to.wonToScore} score${to.wonToScore !== 1 ? "s" : ""}`,
+        primaryMetric: to.won,
+        metricLabel:   "possession wins",
+        occurrences:   to.won,
+        priorityScore: to.won * 2 + to.wonToShot,
+        side:          "FOR",
+        zoneCol:       null,
+        zoneRow:       null,
+        arrowKind:     null,
+      });
+    }
+  }
+
+  // ── 6. WASTED CHAIN (WASTED_CHAIN) ─────────────────────────────────────────
+  // FOR creating shots from turnovers but failing to convert.
+  // HT: 1 unconverted shot qualifies — a missed chance at halftime is urgent.
+  {
+    const unconverted = to.wonToShot - to.wonToScore;
+    if (unconverted >= (mode === "HT" ? 1 : 2) && to.won >= (mode === "HT" ? 1 : 2)) {
+      const missOutcomes = to.outcomes.filter(
+        (o) => o.direction === "WON" &&
+               o.turnoverEvent.teamSide === "FOR" &&
+               o.resultedInShot &&
+               !o.resultedInScore,
+      );
+      const zone = cpDominantZone(
+        missOutcomes.map((o) => ({ nx: o.turnoverEvent.nx, ny: o.turnoverEvent.ny })),
+      );
+      candidates.push({
+        kind:          "WASTED_CHAIN",
+        badge:         "WASTED CHAIN",
+        headline:      "Wasted Chain",
+        observation:   `${to.wonToShot} shot${to.wonToShot !== 1 ? "s" : ""} from ${to.won} turnover win${to.won !== 1 ? "s" : ""} — only ${to.wonToScore} converted`,
+        primaryMetric: unconverted,
+        metricLabel:   "unconverted shots",
+        occurrences:   to.won,
+        priorityScore: to.wonToScore * 5 + to.won * 2 + unconverted,
+        side:          "FOR",
+        zoneCol:       zone?.col ?? null,
+        zoneRow:       zone?.row ?? null,
+        arrowKind:     null,
+      });
+    }
+  }
+
+  // ── Sort descending by priority score ──────────────────────────────────────
+  candidates.sort((a, b) => b.priorityScore - a.priorityScore);
+
+  // ── Select top 3, at most 2 of the same kind ──────────────────────────────
+  const selected: Candidate[] = [];
+  const kindCount = new Map<ChainPressureKind, number>();
+  for (const c of candidates) {
+    if (selected.length >= 3) break;
+    const n = kindCount.get(c.kind) ?? 0;
+    if (n >= 2) continue;   // don't show 3 of the same class
+    selected.push(c);
+    kindCount.set(c.kind, n + 1);
+  }
+
+  return selected.map((c, i) => ({ ...c, rank: cpRank(i) }));
+}
+
+/**
+ * CHAIN PRESSURE — FT Page 6
+ *
+ * Split-field layout:
+ *   LEFT  (55%): pitch with overlays for rank #1 and #2 patterns only
+ *   RIGHT (42%): three ranked insight cards, largest at top
+ *
+ * Builder signature follows existing FT page convention (events + sport + analysis).
+ */
+function makeChainPressurePage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+  mode: "FT" | "HT" = "FT",
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Chain Pressure", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Rank patterns ──────────────────────────────────────────────────────────
+  const patterns = rankChainPatterns(analysis, mode);
+
+  // ── Colour helpers (all based on kind — no new palette colours) ───────────
+  // headline is threaded through so "Turnover Conceded" (a DANGER_CHAIN whose
+  // root cause is possession loss, not a kickout error) renders amber instead
+  // of red — amber = possession-loss/turnover pressure across pitch AND cards.
+  function cpRgb(kind: ChainPressureKind, headline?: string): string {
+    if (kind === "DANGER_CHAIN") {
+      // Turnover Conceded: amber — possession loss. Kickout Trap: red — opp scoring danger.
+      return headline === "Turnover Conceded" ? "245,158,11" : "239,68,68";
+    }
+    if (kind === "CHAIN_WEAPON")     return "34,197,94";
+    if (kind === "PRESSURE_PATTERN") return "245,158,11";
+    return "129,140,248";
+  }
+  function cpHex(kind: ChainPressureKind, headline?: string): string {
+    if (kind === "DANGER_CHAIN") {
+      return headline === "Turnover Conceded" ? "#f59e0b" : "#ef4444";
+    }
+    if (kind === "CHAIN_WEAPON")     return "#22c55e";
+    if (kind === "PRESSURE_PATTERN") return "#f59e0b";
+    return "#818cf8";
+  }
+  function cpSeverity(score: number): "CRITICAL" | "HIGH" | "ELEVATED" | "WATCH" {
+    if (score >= 15) return "CRITICAL";
+    if (score >= 10) return "HIGH";
+    if (score >= 6)  return "ELEVATED";
+    return "WATCH";
+  }
+  function cpThreatLevel(score: number): ThreatLevel {
+    if (score >= 15) return "CRITICAL";
+    if (score >= 10) return "HIGH";
+    if (score >= 6)  return "ELEVATED";
+    return "NONE";
+  }
+
+  // ── Pitch (narrower than full-width — panel reserved on right) ─────────────
+  // w=1044: same math as HT_PITCH_AREA but stopping before the right panel gap.
+  const CP_PITCH = { x: 24, y: 80, w: 1044, h: 810 };
+  const inner    = renderPitch(ctx, sport, CP_PITCH);
+
+  const CP_COL_BOUNDS = [
+    { xMin: 0,     xMax: 33.33 },
+    { xMin: 33.33, xMax: 66.67 },
+    { xMin: 66.67, xMax: 100   },
+  ] as const;
+  const CP_ROW_BOUNDS = [
+    { yMin: 0,     yMax: 33.33 },
+    { yMin: 33.33, yMax: 66.67 },
+    { yMin: 66.67, yMax: 100   },
+  ] as const;
+
+  // ── Pitch event markers ────────────────────────────────────────────────────
+  // Show kickout + turnover events so the pitch has spatial reference.
+  const pitchEvts = events.filter(
+    (e) => e.kind === "KICKOUT_WON"    ||
+           e.kind === "KICKOUT_CONCEDED" ||
+           e.kind === "TURNOVER_WON"   ||
+           e.kind === "TURNOVER_LOST",
+  );
+  renderHtMarkers(ctx, pitchEvts, inner);
+
+  // ── Soft amber ground-tone: PRESSURE_PATTERN / turnover-pressure zones ───
+  // Drawn first so stronger rank-based fills render on top.
+  // Covers all ranked patterns of the pressure/turnover type — including rank #3
+  // which the main overlay loop intentionally skips for labels/rings/arrows.
+  // Green = success platform · Amber = pressure building · Red = active damage.
+  // No rings, no badges, no arrows — ambient fill only.
+  for (const pattern of patterns) {
+    const isTurnoverConceded = pattern.headline === "Turnover Conceded";
+    if (pattern.kind !== "PRESSURE_PATTERN" && !isTurnoverConceded) continue;
+    if (pattern.zoneCol === null || pattern.zoneRow === null) continue;
+
+    const col    = pattern.zoneCol;
+    const row    = pattern.zoneRow;
+    const bounds = {
+      xMin: CP_COL_BOUNDS[col].xMin, xMax: CP_COL_BOUNDS[col].xMax,
+      yMin: CP_ROW_BOUNDS[row].yMin, yMax: CP_ROW_BOUNDS[row].yMax,
+    };
+    const rect = zonePixelRect(bounds, inner);
+    // rank #1 → 0.22; rank #2 → 0.18; rank #3 → 0.14 (lightest — no other decoration)
+    const alpha = pattern.rank === 1 ? 0.22 : pattern.rank === 2 ? 0.18 : 0.14;
+    ctx.fillStyle = `rgba(245,158,11,${alpha})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Pitch overlays: rank #1 and rank #2 ONLY ─────────────────────────────
+  const seenZones = new Set<string>();
+
+  for (const pattern of patterns) {
+    if (pattern.rank === 3) continue;                          // anti-clutter law
+    if (pattern.zoneCol === null || pattern.zoneRow === null) continue;
+
+    const col  = pattern.zoneCol;
+    const row  = pattern.zoneRow;
+    const zKey = `${col},${row}`;
+
+    // If rank #2 wants the same zone as rank #1, skip its overlay — card still renders
+    if (seenZones.has(zKey)) continue;
+    seenZones.add(zKey);
+
+    const bounds = {
+      xMin: CP_COL_BOUNDS[col].xMin, xMax: CP_COL_BOUNDS[col].xMax,
+      yMin: CP_ROW_BOUNDS[row].yMin, yMax: CP_ROW_BOUNDS[row].yMax,
+    };
+    const rect      = zonePixelRect(bounds, inner);
+    const cx        = rect.x + rect.w / 2;
+    const cy        = rect.y + rect.h / 2;
+    const rgb       = cpRgb(pattern.kind, pattern.headline);
+    const hex       = cpHex(pattern.kind, pattern.headline);
+    const fillAlpha = pattern.rank === 1 ? 0.26 : 0.16;
+
+    // Zone fill
+    ctx.fillStyle = `rgba(${rgb},${fillAlpha})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+
+    // Threat rings
+    const ringLevel = cpThreatLevel(pattern.priorityScore);
+    const isTurnoverConceded = pattern.headline === "Turnover Conceded";
+    if (isTurnoverConceded && ringLevel !== "NONE") {
+      // Amber dashed ring — signals possession-loss origin, not scoring danger.
+      // Mirrors drawThreatRings ring count logic but locks colour to amber so
+      // the pitch reads: amber zone + amber ring = turnover pressure.
+      ctx.save();
+      ctx.setLineDash([8, 6]);
+      ctx.lineWidth = 2.5;
+      const amberRgb = "245,158,11";
+      const tcRadii = ringLevel === "CRITICAL" ? [30, 48, 66]
+                    : ringLevel === "HIGH"      ? [30, 48]
+                    :                            [30];
+      for (const r of tcRadii) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${amberRgb},0.55)`;
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
+    } else if (ringLevel !== "NONE") {
+      drawThreatRings(ctx, cx, cy, ringLevel);
+    }
+
+    // Threat badge — rank #1 only (keeps rank #2 visually quieter)
+    if (pattern.rank === 1) {
+      // "Turnover Conceded" gets a distinct "TURNOVER" label; badge colour is still
+      // threat-level driven (communicates urgency separately from pattern type).
+      const badgeLbl =
+        isTurnoverConceded                   ? "TURNOVER"     :
+        pattern.kind === "DANGER_CHAIN"      ? "DANGER ZONE"  :
+        pattern.kind === "CHAIN_WEAPON"      ? "CHAIN WEAPON" :
+        pattern.kind === "PRESSURE_PATTERN"  ? "PRESSURE"     :
+                                               "WASTED";
+      drawThreatBadge(ctx, cx, cy - 52, badgeLbl, ringLevel !== "NONE" ? ringLevel : "ELEVATED");
+    }
+
+    // Directional pressure sweep
+    {
+      const intensity =
+        pattern.rank === 1
+          ? Math.min(pattern.priorityScore / 20, 1.0)
+          : Math.min(pattern.priorityScore / 32, 0.65);
+      // Turnover Conceded uses PRESSURE_COLLAPSE (amber sweep) — possession lost
+      // in zone, not an active scoring threat entering from outside.
+      const sweepKind =
+        pattern.kind === "CHAIN_WEAPON"                                            ? "PRESSURE_EXIT"    :
+        isTurnoverConceded                                                         ? "PRESSURE_COLLAPSE" :
+        pattern.kind === "DANGER_CHAIN"                                            ? "PRESSURE_INWARD"  :
+        pattern.kind === "PRESSURE_PATTERN"                                        ? "PRESSURE_INWARD"  :
+                                                                                     "PRESSURE_COLLAPSE";
+      drawDirectionalPressureSweep(
+        ctx,
+        cx + rect.w * 0.36, cy - rect.h * 0.22,
+        cx,                  cy,
+        intensity, sweepKind,
+      );
+    }
+
+    // Pattern arrow — rank #1 only, requires explicit chain evidence (≥2 occurrences)
+    if (pattern.rank === 1 && pattern.arrowKind !== null) {
+      if (pattern.arrowKind === "TRAP" && pattern.headline === "Kickout Trap") {
+        // TRAP: OPP won kickout here → OPP scored there
+        // Zone-pair deduplication + ≥2 threshold (identical guard as RestartEscapeRoutes)
+        const trapMap = new Map<string, {
+          sc: number; sr: number; dc: number; dr: number; n: number;
+        }>();
+        for (const o of analysis.kickouts.outcomes) {
+          if (o.winningSide !== "OPP" || o.nextScore === null) continue;
+          const sc = cpCol(o.kickoutEvent.nx); const sr = cpRow(o.kickoutEvent.ny);
+          const dc = cpCol(o.nextScore.nx);    const dr = cpRow(o.nextScore.ny);
+          if (sc === dc && sr === dr) continue;
+          const k = `${sc},${sr}→${dc},${dr}`;
+          const v = trapMap.get(k);
+          if (v) v.n++; else trapMap.set(k, { sc, sr, dc, dr, n: 1 });
+        }
+        const topTrap = [...trapMap.values()]
+          .filter((a) => a.n >= 2)
+          .sort((a, b) => b.n - a.n)
+          .slice(0, 1);
+        for (const a of topTrap) {
+          const sr = zonePixelRect({ xMin: CP_COL_BOUNDS[a.sc].xMin, xMax: CP_COL_BOUNDS[a.sc].xMax, yMin: CP_ROW_BOUNDS[a.sr].yMin, yMax: CP_ROW_BOUNDS[a.sr].yMax }, inner);
+          const dr = zonePixelRect({ xMin: CP_COL_BOUNDS[a.dc].xMin, xMax: CP_COL_BOUNDS[a.dc].xMax, yMin: CP_ROW_BOUNDS[a.dr].yMin, yMax: CP_ROW_BOUNDS[a.dr].yMax }, inner);
+          drawPatternArrow(ctx, sr.x + sr.w / 2, sr.y + sr.h / 2, dr.x + dr.w / 2, dr.y + dr.h / 2, "TRAP");
+        }
+
+      } else if (pattern.arrowKind === "ENTRY_SCORE") {
+        // ENTRY_SCORE: FOR won possession here → FOR scored there
+        const entryMap = new Map<string, {
+          sc: number; sr: number; dc: number; dr: number; n: number;
+        }>();
+        // Source outcomes: kickout wins or turnover wins that led to FOR score
+        const entryOutcomes: Array<{ srcNx: number; srcNy: number; dstNx: number; dstNy: number }> = [];
+        if (pattern.headline === "Kickout Platform") {
+          for (const o of analysis.kickouts.outcomes) {
+            if (o.winningSide !== "FOR" || o.nextScore === null) continue;
+            entryOutcomes.push({ srcNx: o.kickoutEvent.nx, srcNy: o.kickoutEvent.ny, dstNx: o.nextScore.nx, dstNy: o.nextScore.ny });
+          }
+        } else {
+          for (const o of analysis.turnovers.outcomes) {
+            if (o.direction !== "WON" || o.turnoverEvent.teamSide !== "FOR" || !o.resultedInScore) continue;
+            const dst = o.nextEvent;
+            if (!dst) continue;
+            entryOutcomes.push({ srcNx: o.turnoverEvent.nx, srcNy: o.turnoverEvent.ny, dstNx: dst.nx, dstNy: dst.ny });
+          }
+        }
+        for (const { srcNx, srcNy, dstNx, dstNy } of entryOutcomes) {
+          const sc = cpCol(srcNx); const sr = cpRow(srcNy);
+          const dc = cpCol(dstNx); const dr = cpRow(dstNy);
+          if (sc === dc && sr === dr) continue;
+          const k = `${sc},${sr}→${dc},${dr}`;
+          const v = entryMap.get(k);
+          if (v) v.n++; else entryMap.set(k, { sc, sr, dc, dr, n: 1 });
+        }
+        const topEntry = [...entryMap.values()]
+          .filter((a) => a.n >= 2)
+          .sort((a, b) => b.n - a.n)
+          .slice(0, 1);
+        for (const a of topEntry) {
+          const sr = zonePixelRect({ xMin: CP_COL_BOUNDS[a.sc].xMin, xMax: CP_COL_BOUNDS[a.sc].xMax, yMin: CP_ROW_BOUNDS[a.sr].yMin, yMax: CP_ROW_BOUNDS[a.sr].yMax }, inner);
+          const dr = zonePixelRect({ xMin: CP_COL_BOUNDS[a.dc].xMin, xMax: CP_COL_BOUNDS[a.dc].xMax, yMin: CP_ROW_BOUNDS[a.dr].yMin, yMax: CP_ROW_BOUNDS[a.dr].yMax }, inner);
+          drawPatternArrow(ctx, sr.x + sr.w / 2, sr.y + sr.h / 2, dr.x + dr.w / 2, dr.y + dr.h / 2, "ENTRY_SCORE");
+        }
+      }
+    }
+
+    // Rank indicator — filled circle with numeral, topmost layer on pitch
+    {
+      const IR  = 14;   // indicator radius
+      const IX  = rect.x + 10 + IR;
+      const IY  = rect.y + 10 + IR;
+      ctx.save();
+      ctx.fillStyle   = hex;
+      ctx.globalAlpha = pattern.rank === 1 ? 0.95 : 0.78;
+      ctx.beginPath();
+      ctx.arc(IX, IY, IR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+      ctx.fillStyle    = "#ffffff";
+      ctx.font         = `bold 14px sans-serif`;
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "center";
+      ctx.fillText(String(pattern.rank), IX, IY);
+      ctx.restore();
+    }
+  }
+
+  // ── Right-side ranked card panel ───────────────────────────────────────────
+  const PANEL_X   = 1080;
+  const PANEL_W   = CANVAS_W - PANEL_X - 20;    // 820px; 20px right gutter
+  const PANEL_TOP = 80;
+  const PANEL_BOT = HT_STRIP_TOP - 10;           // 890
+  const PANEL_H   = PANEL_BOT - PANEL_TOP;       // 810
+
+  if (patterns.length === 0) {
+    // Empty state — degrade cleanly
+    ctx.save();
+    ctx.fillStyle    = "#334155";
+    ctx.font         = "18px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "center";
+    const EX = PANEL_X + PANEL_W / 2;
+    const EY = PANEL_TOP + PANEL_H / 2;
+    ctx.fillText("Insufficient chain data to rank patterns.", EX, EY - 14);
+    ctx.font = "15px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText("Tag at least 6 events to generate chain pressure.", EX, EY + 14);
+    ctx.restore();
+  } else {
+    // ── Card height proportions: [40%, 33%, 27%] — rank-3 bumped from 24% ───
+    // 24% gave rank-3 only 184px (too cramped). 27% = 207px allows readable
+    // text stack with proper breathing room around the metric number.
+    const CARD_GAP  = 20;
+    const totalGaps = (patterns.length - 1) * CARD_GAP;
+    const usableH   = PANEL_H - totalGaps;
+
+    const WEIGHT_TABLE: number[][] = [[1.0], [0.55, 0.45], [0.40, 0.33, 0.27]];
+    const weights    = WEIGHT_TABLE[patterns.length - 1];
+    const cardHeights = weights.map((w) => Math.floor(usableH * w));
+
+    // Give rounding remainder to rank #1 card
+    const sumH = cardHeights.reduce((s, h) => s + h, 0);
+    if (cardHeights.length > 0) cardHeights[0] += usableH - sumH;
+
+    let cardY = PANEL_TOP;
+
+    for (let i = 0; i < patterns.length; i++) {
+      const p     = patterns[i];
+      const cardH = cardHeights[i];
+      const rgb   = cpRgb(p.kind, p.headline);
+      const hex   = cpHex(p.kind, p.headline);
+
+      // Accent bar width: 8 / 6 / 4 px by rank
+      const AW    = p.rank === 1 ? 8 : p.rank === 2 ? 6 : 4;
+      const IX    = PANEL_X + AW + 18;  // inner content X
+      const IW    = PANEL_W - AW - 28;  // inner content width
+
+      // Card background
+      const bgA = p.rank === 1 ? 0.062 : p.rank === 2 ? 0.040 : 0.026;
+      ctx.fillStyle = `rgba(255,255,255,${bgA})`;
+      ctx.fillRect(PANEL_X, cardY, PANEL_W, cardH);
+
+      // Accent bar (rank #1 has subtle glow)
+      ctx.save();
+      if (p.rank === 1) {
+        ctx.shadowColor = hex;
+        ctx.shadowBlur  = 6;
+      }
+      ctx.fillStyle = hex;
+      ctx.fillRect(PANEL_X, cardY, AW, cardH);
+      ctx.restore();
+
+      // ── HEADER: rank circle + badge chip ────────────────────────────────
+      const HDR_MID = cardY + 24;
+
+      // Rank circle
+      {
+        const R = 13;
+        const CX = PANEL_X + AW + 10 + R;
+        const CY = HDR_MID;
+        ctx.save();
+        ctx.fillStyle   = hex;
+        ctx.globalAlpha = p.rank === 1 ? 1.0 : 0.82;
+        ctx.beginPath();
+        ctx.arc(CX, CY, R, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha  = 1.0;
+        ctx.fillStyle    = "#ffffff";
+        ctx.font         = `bold ${p.rank === 1 ? 14 : 13}px sans-serif`;
+        ctx.textBaseline = "middle";
+        ctx.textAlign    = "center";
+        ctx.fillText(String(p.rank), CX, CY);
+        ctx.restore();
+      }
+
+      // Badge chip
+      {
+        const BX   = PANEL_X + AW + 36;
+        const CHIP_H = 26;   // was 24; larger chip accommodates 13px bold text
+        const BY   = HDR_MID - CHIP_H / 2;
+        ctx.save();
+        ctx.font = "bold 13px sans-serif";  // was 10px — 4.4pt on PDF, unreadable
+        const chipTW = ctx.measureText(p.badge).width;
+        const CHIP_W = chipTW + 18;
+        ctx.fillStyle    = `rgba(${rgb},0.20)`;
+        ctx.fillRect(BX, BY, CHIP_W, CHIP_H);
+        ctx.fillStyle    = hex;
+        ctx.textBaseline = "middle";
+        ctx.textAlign    = "left";
+        ctx.fillText(p.badge, BX + 9, HDR_MID);
+        ctx.restore();
+      }
+
+      // ── HEADLINE ────────────────────────────────────────────────────────
+      const HL_SZ = p.rank === 1 ? 26 : p.rank === 2 ? 22 : 20;  // R3: 19→20px
+      const HL_Y  = cardY + 56;
+      ctx.save();
+      ctx.font         = `bold ${HL_SZ}px sans-serif`;
+      ctx.fillStyle    = "#f1f5f9";
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign    = "left";
+      ctx.fillText(p.headline, IX, HL_Y);
+      ctx.restore();
+
+      // ── OBSERVATION ─────────────────────────────────────────────────────
+      const OBS_SZ = p.rank === 1 ? 16 : p.rank === 2 ? 15 : 15;  // R3: 14→15px
+      const OBS_Y  = HL_Y + HL_SZ + 9;
+      ctx.save();
+      ctx.font         = `${OBS_SZ}px sans-serif`;
+      ctx.fillStyle    = "#94a3b8";   // was #64748b — 4.07:1, below AA
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign    = "left";
+      let obsText = p.observation;
+      if (ctx.measureText(obsText).width > IW) {
+        while (obsText.length > 0 && ctx.measureText(obsText + "…").width > IW) {
+          obsText = obsText.slice(0, -1);
+        }
+        obsText += "…";
+      }
+      ctx.fillText(obsText, IX, OBS_Y);
+      ctx.restore();
+
+      // ── PRIMARY METRIC ───────────────────────────────────────────────────
+      // Hero number — largest element in the card, immediately readable.
+      // MET_GAPA is set per rank so the metric cap-top clears the observation
+      // text descenders with ≥6px breathing room (previously 1–13px overlap).
+      //   Rank-1 (68px): cap-top ≈ MET_Y−48; needs MET_Y ≥ OBS descenders+54
+      //   Rank-2 (52px): cap-top ≈ MET_Y−36; needs MET_Y ≥ OBS descenders+42
+      //   Rank-3 (40px): cap-top ≈ MET_Y−28; needs MET_Y ≥ OBS descenders+34
+      const MET_SZ   = p.rank === 1 ? 68 : p.rank === 2 ? 52 : 40;
+      const MET_GAPA = p.rank === 1 ? 40 : p.rank === 2 ? 28 : 22;
+      const MET_Y    = OBS_Y + OBS_SZ + MET_GAPA;
+      ctx.save();
+      ctx.font         = `bold ${MET_SZ}px sans-serif`;
+      ctx.fillStyle    = hex;
+      ctx.globalAlpha  = p.rank === 1 ? 1.0 : 0.85;
+      ctx.textBaseline = "alphabetic";
+      ctx.textAlign    = "left";
+      ctx.fillText(String(p.primaryMetric), IX, MET_Y);
+      ctx.globalAlpha  = 1.0;
+      // Metric label — right of the number
+      const numW = ctx.measureText(String(p.primaryMetric)).width;
+      ctx.font      = "14px sans-serif";   // was 14/13px — unify at 14px; #475569→#94a3b8
+      ctx.fillStyle = "#94a3b8";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(p.metricLabel, IX + numW + 12, MET_Y - 10);
+      ctx.restore();
+
+      // ── META STRIP ───────────────────────────────────────────────────────
+      // Occurrences count + severity chip — anchored to card bottom
+      const META_BOT  = p.rank === 1 ? 26 : 22;
+      const META_ABS  = cardY + cardH - META_BOT;
+      const severity  = cpSeverity(p.priorityScore);
+      // ELEVATED chip inherits the pattern's accent colour — amber for
+      // possession-loss patterns (Turnover Conceded, PRESSURE_PATTERN),
+      // red for scoring-danger patterns (Kickout Trap). This ends the
+      // yellow-chip-on-red-card confusion.
+      // CRITICAL and HIGH keep universal urgency colours (red / orange).
+      const sevBg =
+        severity === "CRITICAL" ? "#ef4444" :
+        severity === "HIGH"     ? "#f97316" :
+        severity === "ELEVATED" ? hex        :
+                                  "#475569";
+      // Contrast: amber (#f59e0b) and green (#22c55e) are light-valued —
+      // use dark text. All other chip backgrounds use white.
+      const sevTextDark =
+        severity === "ELEVATED" && (hex === "#f59e0b" || hex === "#22c55e");
+      ctx.save();
+      ctx.font         = "14px sans-serif";   // was 14/13px — unify; #475569→#94a3b8
+      ctx.fillStyle    = "#94a3b8";
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "left";
+      const occStr  = `${p.occurrences} occurrence${p.occurrences !== 1 ? "s" : ""}`;
+      ctx.fillText(occStr, IX, META_ABS);
+      const occW    = ctx.measureText(occStr).width;
+      // Severity chip — SEV_H 22 (was 20) to accommodate 12px bold text
+      const SEV_H   = 22;
+      const SEV_W   = ctx.measureText(severity).width + 16;
+      ctx.font = "bold 12px sans-serif";   // was 10px — 4.4pt on PDF, unreadable
+      ctx.fillStyle = sevBg;
+      ctx.fillRect(IX + occW + 12, META_ABS - SEV_H / 2, SEV_W, SEV_H);
+      ctx.fillStyle    = sevTextDark ? "#0d1117" : "#ffffff";
+      ctx.textBaseline = "middle";
+      ctx.fillText(severity, IX + occW + 12 + 8, META_ABS);
+      ctx.restore();
+
+      cardY += cardH + CARD_GAP;
+    }
+  }
+
+  // ── Bottom callout strip ───────────────────────────────────────────────────
+  const cpFacts: string[] = [];
+  const cpColors: string[] = [];
+
+  const eventsLabel = mode === "HT"
+    ? "1H chain sequences analysed"
+    : `${analysis.totalEventsAnalysed} events analysed`;
+
+  if (patterns.length === 0) {
+    cpFacts.push("No chain patterns ranked — insufficient first-half data");
+    cpFacts.push(eventsLabel);
+    cpColors.push("#475569", "#475569");
+  } else {
+    cpFacts.push(`${patterns.length} chain pattern${patterns.length !== 1 ? "s" : ""} ranked by match impact`);
+    cpFacts.push(eventsLabel);
+    cpFacts.push("Ranked: scores ×5  ·  occurrences ×2  ·  shots ×1");
+    cpColors.push(cpHex(patterns[0].kind, patterns[0].headline), "#94a3b8", "#475569");
+  }
+
+  drawHtCalloutStrip(ctx, cpFacts, cpColors);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+  return canvas;
+}
+
+// ─── Phase 6 coaching page builders ──────────────────────────────────────────
+//
+// Five new builders that form the permanent HT/FT coaching review structure.
+// Inserted here (after makeChainPressurePage, before exportSnapshotPdf) so
+// they share the same scope as all supporting helpers without touching anything
+// above this line.
+//
+// Pages: Our Shot Profile · Opp Shot Profile · Our Restart Platform ·
+//        Opp Restart Platform · Tactical Match Summary
+//
+// Free-event integration rules:
+//   FREE_SCORED / FREE_MISSED are already in PDF_KIND_SETS.SHOTS → render as
+//   regular shot markers and zone fills with no extra code.
+//   FREE_WON  (Our Shots) — spatial marker dots when events exist.
+//   FREE_CONCEDED (Opp Shots) — spatial marker dots when events exist.
+//   Callout language (placed-ball counts) only from event.kind directly.
+//   No schema changes. No fake inference.
+
+// ─── p.1 Our Shot Profile ─────────────────────────────────────────────────────
+/**
+ * Our Shot Profile — "Where are we getting joy?"
+ * FOR shots only (green = scores, red = wides). STRICT: no OPP shots.
+ * FREE_SCORED / FREE_MISSED already in SHOTS → zone fills render naturally.
+ * FREE_WON spatial markers added when logged (indigo dots).
+ * Callout: placed-ball scores/wides + frees won count when non-zero.
+ */
+function makeOurShotProfilePage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Our Shot Profile", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  const forScoreEvts = events.filter(
+    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  const forWideEvts = events.filter(
+    (e) => e.teamSide === "FOR" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"),
+  );
+  const forShotEvts = events.filter(
+    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind),
+  );
+  // FREE_WON spatial markers — where we won frees on the pitch
+  const freeWonEvts = events.filter(
+    (e) => e.teamSide === "FOR" && e.kind === "FREE_WON",
+  );
+  // Placed-ball counts — directly from event.kind; safe inference, no schema change
+  const forFreeScored = events.filter(
+    (e) => e.teamSide === "FOR" && e.kind === "FREE_SCORED",
+  ).length;
+  const forFreeMissed = events.filter(
+    (e) => e.teamSide === "FOR" && e.kind === "FREE_MISSED",
+  ).length;
+
+  // ── Pitch + zone colour overlays ──────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  const scoreCounts = pdfZoneCounts(forScoreEvts);
+  const wideCounts  = pdfZoneCounts(forWideEvts);
+  const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
+  const maxWide     = wideCounts.reduce((m, z) => Math.max(m, z.count), 0);
+
+  // Red wide zone fills (drawn first, behind score fills)
+  for (const zone of wideCounts) {
+    if (zone.count === 0) continue;
+    const alpha = 0.18 + (maxWide > 0 ? (zone.count / maxWide) * 0.32 : 0);
+    const rect  = zonePixelRect(zone.bounds, inner);
+    ctx.fillStyle = `rgba(239,68,68,${alpha.toFixed(2)})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // Green score zone fills (drawn on top — success overrides waste)
+  for (const zone of scoreCounts) {
+    if (zone.count === 0) continue;
+    const alpha = 0.20 + (maxScore > 0 ? (zone.count / maxScore) * 0.45 : 0);
+    const rect  = zonePixelRect(zone.bounds, inner);
+    ctx.fillStyle = `rgba(52,211,153,${alpha.toFixed(2)})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Event markers ─────────────────────────────────────────────────────────
+  // FOR shots + FREE_WON spatial markers (indigo) when logged
+  renderHtMarkers(ctx, [...forShotEvts, ...freeWonEvts], inner);
+
+  // ── Zone badge pills ──────────────────────────────────────────────────────
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "center";
+  ctx.font         = "bold 13px sans-serif";
+
+  // Score badges (green, top-third of zone)
+  for (const zone of scoreCounts) {
+    if (zone.count === 0) continue;
+    const rect  = zonePixelRect(zone.bounds, inner);
+    const midX  = rect.x + rect.w / 2;
+    const midY  = rect.y + rect.h * 0.30;
+    const label = `⚡${zone.count}`;
+    const tw    = ctx.measureText(label).width + 14;
+    ctx.fillStyle = "rgba(52,211,153,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = "#0d1117";
+    ctx.fillText(label, midX, midY);
+  }
+
+  // Wide badges (red, bottom-third of zone)
+  for (const zone of wideCounts) {
+    if (zone.count === 0) continue;
+    const rect  = zonePixelRect(zone.bounds, inner);
+    const midX  = rect.x + rect.w / 2;
+    const midY  = rect.y + rect.h * 0.72;
+    const label = `✕${zone.count}`;
+    const tw    = ctx.measureText(label).width + 14;
+    ctx.fillStyle = "rgba(239,68,68,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(label, midX, midY);
+  }
+  ctx.restore();
+
+  // ── Tactical Threat Overlays (wasted attack zones) ────────────────────────
+  for (let i = 0; i < wideCounts.length; i++) {
+    const wZone = wideCounts[i];
+    const sZone = scoreCounts[i];
+    const score = computeZoneThreatScore(wZone.count, 0, sZone.count);
+    const level = getThreatLevel(score);
+    if (level === "NONE") continue;
+    const rect = zonePixelRect(wZone.bounds, inner);
+    const cx   = rect.x + rect.w / 2;
+    const cy   = rect.y + rect.h / 2;
+    drawThreatRings(ctx, cx, cy, level);
+    const lbl =
+      level === "CRITICAL" ? "WIDES ALERT" :
+      level === "HIGH"     ? "WASTAGE ZONE" :
+                             "WATCH";
+    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
+
+  // ── Directional Pressure Sweeps ───────────────────────────────────────────
+  {
+    let bestWideIdx = -1, bestWideScore = 0;
+    for (let i = 0; i < wideCounts.length; i++) {
+      const s = computeZoneThreatScore(wideCounts[i].count, 0, scoreCounts[i].count);
+      if (s > bestWideScore) { bestWideScore = s; bestWideIdx = i; }
+    }
+    let bestScoreIdx = -1, bestScoreCount = 0;
+    for (let i = 0; i < scoreCounts.length; i++) {
+      if (i === bestWideIdx) continue;
+      if (scoreCounts[i].count > bestScoreCount) { bestScoreCount = scoreCounts[i].count; bestScoreIdx = i; }
+    }
+    let sweepsDrawn = 0;
+    if (bestWideIdx >= 0 && getThreatLevel(bestWideScore) !== "NONE") {
+      const rect      = zonePixelRect(wideCounts[bestWideIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestWideScore / 8, 1.0);
+      drawDirectionalPressureSweep(ctx, cx - rect.w * 0.40, cy - rect.h * 0.22, cx, cy, intensity, "PRESSURE_COLLAPSE");
+      sweepsDrawn++;
+      if (getThreatLevel(bestWideScore) === "CRITICAL" && sweepsDrawn < 3) {
+        drawDirectionalPressureSweep(ctx, cx + rect.w * 0.38, cy + rect.h * 0.22, cx, cy, intensity * 0.65, "PRESSURE_COLLAPSE");
+        sweepsDrawn++;
+      }
+    }
+    if (bestScoreIdx >= 0 && bestScoreCount >= 2 && sweepsDrawn < 3) {
+      const rect      = zonePixelRect(scoreCounts[bestScoreIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestScoreCount / 5, 1.0);
+      drawDirectionalPressureSweep(ctx, cx - rect.w * 0.20, cy + rect.h * 0.10, cx + rect.w * 0.40, cy - rect.h * 0.22, intensity, "PRESSURE_EXIT");
+    }
+  }
+
+  // ── Right-side legend ─────────────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+  ctx.fillStyle = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "rgba(52,211,153,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Our scores", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(239,68,68,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Our wides", lx + 22, ly); ly += 26;
+  if (freeWonEvts.length > 0) {
+    ctx.fillStyle = "#818cf8";
+    ctx.fillRect(lx, ly - 8, 16, 16);
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillText("Free won", lx + 22, ly);
+  }
+  ctx.restore();
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  const totalShots  = forShotEvts.length;
+  const totalScores = forScoreEvts.length;
+  const totalWides  = forWideEvts.length;
+  const shotEff     = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
+  const scoreHot    = pdfZoneHotspots(forScoreEvts)[0];
+
+  const facts: string[]  = [];
+  const colors: string[] = [];
+
+  if (totalShots > 0) {
+    facts.push(`Our shots: ${totalScores} scored · ${totalWides} wide (${shotEff}%)`);
+    colors.push("#34d399");
+  }
+  if (forFreeScored > 0 || forFreeMissed > 0) {
+    const parts: string[] = [];
+    if (forFreeScored > 0) parts.push(`${forFreeScored} placed-ball score${forFreeScored !== 1 ? "s" : ""}`);
+    if (forFreeMissed > 0) parts.push(`${forFreeMissed} placed-ball wide${forFreeMissed !== 1 ? "s" : ""}`);
+    facts.push(parts.join(" · "));
+    colors.push("#818cf8");
+  } else if (freeWonEvts.length > 0 && facts.length < 2) {
+    facts.push(`${freeWonEvts.length} free${freeWonEvts.length !== 1 ? "s" : ""} won`);
+    colors.push("#818cf8");
+  }
+  if (scoreHot && facts.length < 3) {
+    facts.push(`Best scoring zone: ${scoreHot.label} (${scoreHot.count})`);
+    colors.push("#34d399");
+  }
+  if (facts.length === 0) facts.push("No shot data recorded.");
+
+  drawHtCalloutStrip(ctx, facts, colors.length > 0 ? colors : ["#34d399", "#818cf8", "#34d399"]);
+  drawEventCountFooter(ctx, forShotEvts.length + freeWonEvts.length);
+  return canvas;
+}
+
+// ─── p.2 Opposition Shot Profile ─────────────────────────────────────────────
+/**
+ * Opposition Shot Profile — "Where are they hurting us?"
+ * OPP shots only (red = scores, amber = wides). STRICT: no FOR shots.
+ * FREE_CONCEDED (FOR teamSide) = where we gave away frees to OPP — pink spatial markers.
+ * Callout: OPP placed-ball scores/wides when non-zero.
+ */
+function makeOppShotProfilePage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Opposition Shot Profile", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  const oppScoreEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  const oppWideEvts = events.filter(
+    (e) => e.teamSide === "OPP" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"),
+  );
+  const oppShotEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
+  );
+  // FREE_CONCEDED (FOR) = positions where we gave away frees — pink danger markers
+  const freeConcededEvts = events.filter(
+    (e) => e.teamSide === "FOR" && e.kind === "FREE_CONCEDED",
+  );
+  // OPP placed-ball counts — directly from event.kind; safe inference
+  const oppFreeScored = events.filter(
+    (e) => e.teamSide === "OPP" && e.kind === "FREE_SCORED",
+  ).length;
+  const oppFreeMissed = events.filter(
+    (e) => e.teamSide === "OPP" && e.kind === "FREE_MISSED",
+  ).length;
+
+  // ── Pitch + zone colour overlays ──────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  const scoreCounts = pdfZoneCounts(oppScoreEvts);
+  const wideCounts  = pdfZoneCounts(oppWideEvts);
+  const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
+  const maxWide     = wideCounts.reduce((m, z) => Math.max(m, z.count), 0);
+
+  // Amber wide zone fills (territorial pressure, they threatened but missed)
+  for (const zone of wideCounts) {
+    if (zone.count === 0) continue;
+    const alpha = 0.15 + (maxWide > 0 ? (zone.count / maxWide) * 0.28 : 0);
+    const rect  = zonePixelRect(zone.bounds, inner);
+    ctx.fillStyle = `rgba(245,158,11,${alpha.toFixed(2)})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // Red score zone fills (drawn on top — their success is our danger)
+  for (const zone of scoreCounts) {
+    if (zone.count === 0) continue;
+    const alpha = 0.20 + (maxScore > 0 ? (zone.count / maxScore) * 0.45 : 0);
+    const rect  = zonePixelRect(zone.bounds, inner);
+    ctx.fillStyle = `rgba(248,113,113,${alpha.toFixed(2)})`;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Event markers ─────────────────────────────────────────────────────────
+  // OPP shots + FREE_CONCEDED spatial markers (pink) when logged
+  renderHtMarkers(ctx, [...oppShotEvts, ...freeConcededEvts], inner);
+
+  // ── Zone badge pills ──────────────────────────────────────────────────────
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "center";
+  ctx.font         = "bold 13px sans-serif";
+
+  // Score badges (red pill, top-third — their scoring zones)
+  for (const zone of scoreCounts) {
+    if (zone.count === 0) continue;
+    const rect  = zonePixelRect(zone.bounds, inner);
+    const midX  = rect.x + rect.w / 2;
+    const midY  = rect.y + rect.h * 0.30;
+    const label = `⚡${zone.count}`;
+    const tw    = ctx.measureText(label).width + 14;
+    ctx.fillStyle = "rgba(248,113,113,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(label, midX, midY);
+  }
+
+  // Wide badges (amber pill, bottom-third — their threat zones)
+  for (const zone of wideCounts) {
+    if (zone.count === 0) continue;
+    const rect  = zonePixelRect(zone.bounds, inner);
+    const midX  = rect.x + rect.w / 2;
+    const midY  = rect.y + rect.h * 0.72;
+    const label = `✕${zone.count}`;
+    const tw    = ctx.measureText(label).width + 14;
+    ctx.fillStyle = "rgba(245,158,11,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = "#0d1117";
+    ctx.fillText(label, midX, midY);
+  }
+  ctx.restore();
+
+  // ── Tactical Threat Overlays (OPP scoring danger zones) ──────────────────
+  for (let i = 0; i < scoreCounts.length; i++) {
+    const sZone = scoreCounts[i];
+    const score = computeZoneThreatScore(sZone.count, 0, 0);
+    const level = getThreatLevel(score);
+    if (level === "NONE") continue;
+    const rect = zonePixelRect(sZone.bounds, inner);
+    const cx   = rect.x + rect.w / 2;
+    const cy   = rect.y + rect.h / 2;
+    drawThreatRings(ctx, cx, cy, level);
+    const lbl =
+      level === "CRITICAL" ? "DANGER ZONE" :
+      level === "HIGH"     ? "SCORING ZONE" :
+                             "WATCH";
+    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
+
+  // ── Directional Pressure Sweeps ───────────────────────────────────────────
+  {
+    let bestScoreIdx = -1, bestScoreCount = 0;
+    for (let i = 0; i < scoreCounts.length; i++) {
+      if (scoreCounts[i].count > bestScoreCount) { bestScoreCount = scoreCounts[i].count; bestScoreIdx = i; }
+    }
+    if (bestScoreIdx >= 0 && bestScoreCount >= 2) {
+      const rect      = zonePixelRect(scoreCounts[bestScoreIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestScoreCount / 5, 1.0);
+      // OPP penetrating our defence — INWARD sweep
+      drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy - rect.h * 0.22, cx - rect.w * 0.08, cy, intensity, "PRESSURE_INWARD");
+    }
+  }
+
+  // ── Right-side legend ─────────────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+  ctx.fillStyle = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "rgba(248,113,113,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Their scores", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(245,158,11,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Their wides", lx + 22, ly); ly += 26;
+  if (freeConcededEvts.length > 0) {
+    ctx.fillStyle = "#f472b6";
+    ctx.fillRect(lx, ly - 8, 16, 16);
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillText("Free conceded", lx + 22, ly);
+  }
+  ctx.restore();
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  const totalOppShots  = oppShotEvts.length;
+  const totalOppScores = oppScoreEvts.length;
+  const totalOppWides  = oppWideEvts.length;
+  const oppShotEff     = totalOppShots > 0 ? Math.round((totalOppScores / totalOppShots) * 100) : 0;
+  const oppScoreHot    = pdfZoneHotspots(oppScoreEvts)[0];
+
+  const facts: string[]  = [];
+  const colors: string[] = [];
+
+  if (totalOppShots > 0) {
+    facts.push(`Their shots: ${totalOppScores} scored · ${totalOppWides} wide (${oppShotEff}%)`);
+    colors.push("#ef4444");
+  }
+  if (oppFreeScored > 0 || oppFreeMissed > 0) {
+    const parts: string[] = [];
+    if (oppFreeScored > 0) parts.push(`${oppFreeScored} placed-ball score${oppFreeScored !== 1 ? "s" : ""}`);
+    if (oppFreeMissed > 0) parts.push(`${oppFreeMissed} placed-ball wide${oppFreeMissed !== 1 ? "s" : ""}`);
+    facts.push(parts.join(" · "));
+    colors.push("#f472b6");
+  } else if (freeConcededEvts.length > 0 && facts.length < 2) {
+    facts.push(`${freeConcededEvts.length} free${freeConcededEvts.length !== 1 ? "s" : ""} conceded`);
+    colors.push("#f472b6");
+  }
+  if (oppScoreHot && facts.length < 3) {
+    facts.push(`Their best zone: ${oppScoreHot.label} (${oppScoreHot.count})`);
+    colors.push("#ef4444");
+  }
+  if (facts.length === 0) facts.push("No opposition shot data recorded.");
+
+  drawHtCalloutStrip(ctx, facts, colors.length > 0 ? colors : ["#ef4444", "#f472b6", "#ef4444"]);
+  drawEventCountFooter(ctx, oppShotEvts.length + freeConcededEvts.length);
+  return canvas;
+}
+
+// ─── p.3 Our Restart Platform ─────────────────────────────────────────────────
+/**
+ * Our Restart Platform — "How are our kickouts/puckouts functioning?"
+ * Teal = zones we won; red = zones we lost (OPP won).
+ * Threat overlays surface OPP-dominant zones as danger.
+ */
+function makeOurRestartPlatformPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  const restartTitle = sport === "hurling" ? "Our Puckout Platform" : "Our Kickout Platform";
+  const restartTermLC = sport === "hurling" ? "puckouts" : "kickouts";
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, restartTitle, `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  // FOR won = KICKOUT_WON by FOR, or KICKOUT_CONCEDED by OPP
+  const forWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
+  );
+  // OPP won = KICKOUT_CONCEDED by FOR, or KICKOUT_WON by OPP
+  const oppWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR") ||
+           (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP"),
+  );
+  const allKickoutEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind));
+
+  // ── Pitch + zone colour overlays ──────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  const forWonCounts = pdfZoneCounts(forWonEvts);
+  const oppWonCounts = pdfZoneCounts(oppWonEvts);
+
+  for (let i = 0; i < forWonCounts.length; i++) {
+    const forZone = forWonCounts[i];
+    const oppZone = oppWonCounts[i];
+    const total   = forZone.count + oppZone.count;
+    if (total === 0) continue;
+    const rect      = zonePixelRect(forZone.bounds, inner);
+    const diff      = forZone.count - oppZone.count;
+    const intensity = Math.min(total / 4, 1);
+    if (diff > 1) {
+      ctx.fillStyle = `rgba(20,184,166,${(0.20 + intensity * 0.38).toFixed(2)})`;
+    } else if (diff < -1) {
+      ctx.fillStyle = `rgba(248,113,113,${(0.20 + intensity * 0.38).toFixed(2)})`;
+    } else {
+      ctx.fillStyle = "rgba(251,191,36,0.28)";
+    }
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Event markers ─────────────────────────────────────────────────────────
+  renderHtMarkers(ctx, allKickoutEvts, inner);
+
+  // ── Zone badge pills ──────────────────────────────────────────────────────
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "center";
+  ctx.font         = "bold 12px sans-serif";
+
+  for (let i = 0; i < forWonCounts.length; i++) {
+    const forZone = forWonCounts[i];
+    const oppZone = oppWonCounts[i];
+    const total   = forZone.count + oppZone.count;
+    if (total === 0) continue;
+    const rect   = zonePixelRect(forZone.bounds, inner);
+    const midX   = rect.x + rect.w / 2;
+    const midY   = rect.y + rect.h / 2;
+    const label  = `${forZone.count}W / ${oppZone.count}L`;
+    const tw     = ctx.measureText(label).width + 16;
+    const isTeal = forZone.count > oppZone.count;
+    const isRed  = oppZone.count > forZone.count;
+    ctx.fillStyle = isTeal ? "rgba(20,184,166,0.88)"
+                 : isRed  ? "rgba(248,113,113,0.88)"
+                 :           "rgba(251,191,36,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = (isTeal || isRed) ? "#ffffff" : "#0d1117";
+    ctx.fillText(label, midX, midY);
+  }
+  ctx.restore();
+
+  // ── Tactical Threat Overlays ──────────────────────────────────────────────
+  // OPP-dominant zones = kickout loss zones (we are conceding possession there)
+  for (let i = 0; i < oppWonCounts.length; i++) {
+    const oZone = oppWonCounts[i];
+    const fZone = forWonCounts[i];
+    const score = computeZoneThreatScore(oZone.count, 0, fZone.count);
+    const level = getThreatLevel(score);
+    if (level === "NONE") continue;
+    const rect = zonePixelRect(oZone.bounds, inner);
+    const cx   = rect.x + rect.w / 2;
+    const cy   = rect.y + rect.h / 2;
+    drawThreatRings(ctx, cx, cy, level);
+    const lbl =
+      level === "CRITICAL" ? "KICKOUT TRAP" :
+      level === "HIGH"     ? "CONCESSION ZONE" :
+                             "WATCH";
+    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
+
+  // ── Directional Pressure Sweeps ───────────────────────────────────────────
+  {
+    let bestIdx = -1, bestScore = 0;
+    for (let i = 0; i < oppWonCounts.length; i++) {
+      const s = computeZoneThreatScore(oppWonCounts[i].count, 0, forWonCounts[i].count);
+      if (s > bestScore) { bestScore = s; bestIdx = i; }
+    }
+    if (bestIdx >= 0 && getThreatLevel(bestScore) !== "NONE") {
+      const rect      = zonePixelRect(oppWonCounts[bestIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestScore / 10, 1.0);
+      drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy - rect.h * 0.24, cx - rect.w * 0.08, cy, intensity, "PRESSURE_INWARD");
+      if (getThreatLevel(bestScore) === "CRITICAL") {
+        drawDirectionalPressureSweep(ctx, cx - rect.w * 0.36, cy + rect.h * 0.24, cx, cy, intensity * 0.65, "PRESSURE_COLLAPSE");
+      }
+    }
+  }
+
+  // ── Right-side legend ─────────────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+  ctx.fillStyle = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "rgba(20,184,166,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("We won", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(248,113,113,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("They won", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(251,191,36,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Contested", lx + 22, ly);
+  ctx.restore();
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  const totalFor = forWonEvts.length;
+  const totalOpp = oppWonEvts.length;
+  const totalKO  = totalFor + totalOpp;
+  const forPct   = totalKO > 0 ? Math.round((totalFor / totalKO) * 100) : 0;
+  const forHot   = pdfZoneHotspots(forWonEvts)[0];
+  const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
+
+  const facts: string[] = [];
+  if (totalKO > 0) facts.push(`Our ${restartTermLC}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
+  if (forHot)      facts.push(`Best zone: ${forHot.label}`);
+  if (oppHot)      facts.push(`Conceded most: ${oppHot.label}`);
+  if (facts.length === 0) facts.push(`No ${restartTermLC} data recorded.`);
+
+  drawHtCalloutStrip(ctx, facts, ["#14b8a6", "#14b8a6", "#ef4444"]);
+  drawEventCountFooter(ctx, allKickoutEvts.length);
+  return canvas;
+}
+
+// ─── p.4 Opposition Restart Platform ─────────────────────────────────────────
+/**
+ * Opposition Restart Platform — "What are they trying to do on restarts?"
+ * Amber = zones they won; teal = zones we won (our pressure on their kickouts).
+ * Badge: `${oppCount}W / ${forCount}L` (THEIR wins / THEIR losses = OUR wins on their ball).
+ * Threat: OPP-dominant zones = their kickout weapon.
+ */
+function makeOppRestartPlatformPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  const restartTitle = sport === "hurling" ? "Opposition Puckout Platform" : "Opposition Kickout Platform";
+  const restartTermLC = sport === "hurling" ? "puckouts" : "kickouts";
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, restartTitle, `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  // OPP won = KICKOUT_WON by OPP, or KICKOUT_CONCEDED by FOR
+  const oppWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR"),
+  );
+  // FOR won = KICKOUT_WON by FOR, or KICKOUT_CONCEDED by OPP (our pressure on their restarts)
+  const forWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
+  );
+  const allKickoutEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind));
+
+  // ── Pitch + zone colour overlays ──────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  const oppWonCounts = pdfZoneCounts(oppWonEvts);
+  const forWonCounts = pdfZoneCounts(forWonEvts);
+
+  for (let i = 0; i < oppWonCounts.length; i++) {
+    const oppZone = oppWonCounts[i];
+    const forZone = forWonCounts[i];
+    const total   = oppZone.count + forZone.count;
+    if (total === 0) continue;
+    const rect      = zonePixelRect(oppZone.bounds, inner);
+    const diff      = oppZone.count - forZone.count;
+    const intensity = Math.min(total / 4, 1);
+    if (diff > 1) {
+      // They dominate — amber danger
+      ctx.fillStyle = `rgba(245,158,11,${(0.20 + intensity * 0.38).toFixed(2)})`;
+    } else if (diff < -1) {
+      // We win here — teal (our pressure working)
+      ctx.fillStyle = `rgba(20,184,166,${(0.20 + intensity * 0.38).toFixed(2)})`;
+    } else {
+      ctx.fillStyle = "rgba(251,191,36,0.22)";
+    }
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Event markers ─────────────────────────────────────────────────────────
+  renderHtMarkers(ctx, allKickoutEvts, inner);
+
+  // ── Zone badge pills ──────────────────────────────────────────────────────
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "center";
+  ctx.font         = "bold 12px sans-serif";
+
+  for (let i = 0; i < oppWonCounts.length; i++) {
+    const oppZone = oppWonCounts[i];
+    const forZone = forWonCounts[i];
+    const total   = oppZone.count + forZone.count;
+    if (total === 0) continue;
+    const rect    = zonePixelRect(oppZone.bounds, inner);
+    const midX    = rect.x + rect.w / 2;
+    const midY    = rect.y + rect.h / 2;
+    // THEIR wins / THEIR losses (= our wins on their ball)
+    const label   = `${oppZone.count}W / ${forZone.count}L`;
+    const tw      = ctx.measureText(label).width + 16;
+    const isAmber = oppZone.count > forZone.count;
+    const isTeal  = forZone.count > oppZone.count;
+    ctx.fillStyle = isAmber ? "rgba(245,158,11,0.88)"
+                 : isTeal  ? "rgba(20,184,166,0.88)"
+                 :            "rgba(251,191,36,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = isAmber ? "#0d1117" : "#ffffff";
+    ctx.fillText(label, midX, midY);
+  }
+  ctx.restore();
+
+  // ── Tactical Threat Overlays ──────────────────────────────────────────────
+  // OPP-dominant zones = their kickout weapon
+  for (let i = 0; i < oppWonCounts.length; i++) {
+    const oZone = oppWonCounts[i];
+    const fZone = forWonCounts[i];
+    const score = computeZoneThreatScore(oZone.count, 0, fZone.count);
+    const level = getThreatLevel(score);
+    if (level === "NONE") continue;
+    const rect = zonePixelRect(oZone.bounds, inner);
+    const cx   = rect.x + rect.w / 2;
+    const cy   = rect.y + rect.h / 2;
+    drawThreatRings(ctx, cx, cy, level);
+    const lbl =
+      level === "CRITICAL" ? "THEIR ZONE" :
+      level === "HIGH"     ? "DANGER RESTART" :
+                             "WATCH";
+    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
+
+  // ── Directional Pressure Sweeps ───────────────────────────────────────────
+  {
+    let bestIdx = -1, bestScore = 0;
+    for (let i = 0; i < oppWonCounts.length; i++) {
+      const s = computeZoneThreatScore(oppWonCounts[i].count, 0, forWonCounts[i].count);
+      if (s > bestScore) { bestScore = s; bestIdx = i; }
+    }
+    if (bestIdx >= 0 && getThreatLevel(bestScore) !== "NONE") {
+      const rect      = zonePixelRect(oppWonCounts[bestIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestScore / 10, 1.0);
+      // OPP sweeping possession in this zone
+      drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy - rect.h * 0.24, cx - rect.w * 0.08, cy, intensity, "PRESSURE_INWARD");
+      if (getThreatLevel(bestScore) === "CRITICAL") {
+        drawDirectionalPressureSweep(ctx, cx - rect.w * 0.36, cy + rect.h * 0.24, cx, cy, intensity * 0.65, "PRESSURE_COLLAPSE");
+      }
+    }
+  }
+
+  // ── Right-side legend ─────────────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+  ctx.fillStyle = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "rgba(245,158,11,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("They won", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(20,184,166,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("We won", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(251,191,36,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Contested", lx + 22, ly);
+  ctx.restore();
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  const totalOpp = oppWonEvts.length;
+  const totalFor = forWonEvts.length;
+  const totalKO  = totalOpp + totalFor;
+  const oppPct   = totalKO > 0 ? Math.round((totalOpp / totalKO) * 100) : 0;
+  const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
+  const forHot   = pdfZoneHotspots(forWonEvts)[0];
+
+  const facts: string[] = [];
+  if (totalKO > 0) facts.push(`Their ${restartTermLC}: ${totalOpp}W · ${totalFor}L (${oppPct}% won)`);
+  if (oppHot)      facts.push(`Their best zone: ${oppHot.label}`);
+  if (forHot)      facts.push(`Best pressure point: ${forHot.label}`);
+  if (facts.length === 0) facts.push(`No ${restartTermLC} data recorded.`);
+
+  drawHtCalloutStrip(ctx, facts, ["#ef4444", "#ef4444", "#14b8a6"]);
+  drawEventCountFooter(ctx, allKickoutEvts.length);
+  return canvas;
+}
+
+// ─── Comparison callout strip ─────────────────────────────────────────────────
+/**
+ * Two-panel callout strip for pages that compare two sides directly.
+ * Each panel renders a heading (accent-coloured) followed by up to 3 detail lines.
+ * Drop-in companion to drawHtCalloutStrip; shares the same strip geometry.
+ */
+function drawTwoColumnHtStrip(
+  ctx: CanvasRenderingContext2D,
+  left: { heading: string; lines: readonly string[]; color: string },
+  right: { heading: string; lines: readonly string[]; color: string },
+): void {
+  ctx.save();
+
+  // Separator line — matches drawHtCalloutStrip
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth   = 2;
+  ctx.beginPath();
+  ctx.moveTo(24, HT_STRIP_TOP);
+  ctx.lineTo(CANVAS_W - 24, HT_STRIP_TOP);
+  ctx.stroke();
+
+  const STRIP_X  = 24;
+  const STRIP_W  = CANVAS_W - 48;          // 1872 px
+  const GAP      = 20;
+  const panelW   = Math.floor((STRIP_W - GAP) / 2);
+  const panelY   = HT_STRIP_TOP + 10;
+  const panelH   = HT_STRIP_H - 18;
+  const ACCENT_W = 8;
+  const TEXT_X   = ACCENT_W + 14;
+
+  [left, right].forEach((panel, i) => {
+    const px = STRIP_X + i * (panelW + GAP);
+
+    // Panel background
+    ctx.fillStyle = "rgba(255,255,255,0.045)";
+    ctx.fillRect(px, panelY, panelW, panelH);
+
+    // Left accent block
+    ctx.fillStyle = panel.color;
+    ctx.fillRect(px, panelY, ACCENT_W, panelH);
+
+    let ty = panelY + 18;
+
+    // Heading (accent colour)
+    ctx.font         = "bold 20px sans-serif";
+    ctx.fillStyle    = panel.color;
+    ctx.textBaseline = "top";
+    ctx.textAlign    = "left";
+    ctx.fillText(panel.heading, px + TEXT_X, ty);
+    ty += 28;
+
+    // Detail lines
+    ctx.font      = "22px sans-serif";
+    ctx.fillStyle = "#ffffff";
+    const MAX_TW  = panelW - TEXT_X - 12;
+    for (const line of panel.lines.slice(0, 3)) {
+      let display = line;
+      if (ctx.measureText(display).width > MAX_TW) {
+        while (display.length > 0 && ctx.measureText(display + "…").width > MAX_TW) {
+          display = display.slice(0, -1);
+        }
+        display += "…";
+      }
+      ctx.fillText(display, px + TEXT_X, ty);
+      ty += 28;
+    }
+  });
+
+  ctx.restore();
+}
+
+// ─── p.3 Restart Battle ───────────────────────────────────────────────────────
+/**
+ * Restart Battle — single comparative pitch showing who is winning possession
+ * at restarts and where. Replaces the two-page Our/Opp restart split.
+ *
+ * Zone colour:
+ *   Teal  = FOR wins possession here (we retained / we won theirs)
+ *   Red   = OPP wins possession here (they retained / they won ours)
+ *   Amber = contested (diff ≤ 1 each way)
+ *
+ * Threat rings on OPP-dominant zones; directional sweep on worst zone.
+ * Bottom strip: drawTwoColumnHtStrip — Our record vs Their record side-by-side.
+ */
+function makeRestartBattlePage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  const restartTerm   = sport === "hurling" ? "Puckout" : "Kickout";
+  const restartTermLC = sport === "hurling" ? "puckouts" : "kickouts";
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Restart Battle", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  // FOR won = our kickout retained + their kickout we won
+  const forWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
+  );
+  // OPP won = their kickout retained + our kickout they won
+  const oppWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR"),
+  );
+  const allKickoutEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind));
+
+  // ── Pitch + zone overlays ─────────────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  const forWonCounts = pdfZoneCounts(forWonEvts);
+  const oppWonCounts = pdfZoneCounts(oppWonEvts);
+
+  for (let i = 0; i < forWonCounts.length; i++) {
+    const forZone = forWonCounts[i];
+    const oppZone = oppWonCounts[i];
+    const total   = forZone.count + oppZone.count;
+    if (total === 0) continue;
+    const rect      = zonePixelRect(forZone.bounds, inner);
+    const diff      = forZone.count - oppZone.count;
+    const intensity = Math.min(total / 4, 1);
+    if (diff > 1) {
+      ctx.fillStyle = `rgba(20,184,166,${(0.20 + intensity * 0.38).toFixed(2)})`;
+    } else if (diff < -1) {
+      ctx.fillStyle = `rgba(248,113,113,${(0.20 + intensity * 0.38).toFixed(2)})`;
+    } else {
+      ctx.fillStyle = "rgba(251,191,36,0.28)";
+    }
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Event markers ─────────────────────────────────────────────────────────
+  renderHtMarkers(ctx, allKickoutEvts, inner);
+
+  // ── Zone badge pills (W / L counts per zone) ──────────────────────────────
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "center";
+  ctx.font         = "bold 12px sans-serif";
+  for (let i = 0; i < forWonCounts.length; i++) {
+    const forZone = forWonCounts[i];
+    const oppZone = oppWonCounts[i];
+    const total   = forZone.count + oppZone.count;
+    if (total === 0) continue;
+    const rect  = zonePixelRect(forZone.bounds, inner);
+    const midX  = rect.x + rect.w / 2;
+    const midY  = rect.y + rect.h / 2;
+    const label = `${forZone.count}W / ${oppZone.count}L`;
+    const tw    = ctx.measureText(label).width + 16;
+    const isTeal = forZone.count > oppZone.count;
+    const isRed  = oppZone.count > forZone.count;
+    ctx.fillStyle = isTeal ? "rgba(20,184,166,0.88)"
+                 : isRed  ? "rgba(248,113,113,0.88)"
+                 :           "rgba(251,191,36,0.88)";
+    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+    ctx.fillStyle = (isTeal || isRed) ? "#ffffff" : "#0d1117";
+    ctx.fillText(label, midX, midY);
+  }
+  ctx.restore();
+
+  // ── Threat overlays on OPP-dominant zones ─────────────────────────────────
+  for (let i = 0; i < oppWonCounts.length; i++) {
+    const oZone = oppWonCounts[i];
+    const fZone = forWonCounts[i];
+    const score = computeZoneThreatScore(oZone.count, 0, fZone.count);
+    const level = getThreatLevel(score);
+    if (level === "NONE") continue;
+    const rect = zonePixelRect(oZone.bounds, inner);
+    const cx   = rect.x + rect.w / 2;
+    const cy   = rect.y + rect.h / 2;
+    drawThreatRings(ctx, cx, cy, level);
+    const lbl = level === "CRITICAL" ? "THEIR ZONE"
+              : level === "HIGH"     ? "DANGER RESTART"
+              :                        "WATCH";
+    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
+
+  // ── Directional sweep on highest OPP-threat zone ──────────────────────────
+  {
+    let bestIdx = -1, bestScore = 0;
+    for (let i = 0; i < oppWonCounts.length; i++) {
+      const s = computeZoneThreatScore(oppWonCounts[i].count, 0, forWonCounts[i].count);
+      if (s > bestScore) { bestScore = s; bestIdx = i; }
+    }
+    if (bestIdx >= 0 && getThreatLevel(bestScore) !== "NONE") {
+      const rect      = zonePixelRect(oppWonCounts[bestIdx].bounds, inner);
+      const cx        = rect.x + rect.w / 2;
+      const cy        = rect.y + rect.h / 2;
+      const intensity = Math.min(bestScore / 10, 1.0);
+      drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy - rect.h * 0.24, cx - rect.w * 0.08, cy, intensity, "PRESSURE_INWARD");
+      if (getThreatLevel(bestScore) === "CRITICAL") {
+        drawDirectionalPressureSweep(ctx, cx - rect.w * 0.36, cy + rect.h * 0.24, cx, cy, intensity * 0.65, "PRESSURE_COLLAPSE");
+      }
+    }
+  }
+
+  // ── Right-side legend ─────────────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+  ctx.fillStyle    = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "rgba(20,184,166,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("We won", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(248,113,113,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("They won", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(251,191,36,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Contested", lx + 22, ly);
+  ctx.restore();
+
+  // ── Two-column bottom strip ───────────────────────────────────────────────
+  const totalFor = forWonEvts.length;
+  const totalOpp = oppWonEvts.length;
+  const totalKO  = totalFor + totalOpp;
+  const forPct   = totalKO > 0 ? Math.round((totalFor / totalKO) * 100) : 0;
+  const oppPct   = totalKO > 0 ? Math.round((totalOpp / totalKO) * 100) : 0;
+  const forHot   = pdfZoneHotspots(forWonEvts)[0];
+  const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
+
+  drawTwoColumnHtStrip(ctx,
+    {
+      heading: `Our ${restartTerm}s`,
+      lines: [
+        totalKO > 0
+          ? `Won ${totalFor} · Lost ${totalOpp} (${forPct}% won)`
+          : `No ${restartTermLC} logged`,
+        forHot ? `Best zone: ${forHot.label}` : "Best zone: —",
+        oppHot ? `Danger: ${oppHot.label}`     : "Danger zone: —",
+      ],
+      color: "#14b8a6",
+    },
+    {
+      heading: `Their ${restartTerm}s`,
+      lines: [
+        totalKO > 0
+          ? `Won ${totalOpp} · Lost ${totalFor} (${oppPct}% won)`
+          : `No ${restartTermLC} logged`,
+        oppHot ? `Best zone: ${oppHot.label}`    : "Best zone: —",
+        forHot ? `Our pressure: ${forHot.label}` : "Our pressure: —",
+      ],
+      color: "#f87171",
+    },
+  );
+
+  drawEventCountFooter(ctx, allKickoutEvts.length);
+  return canvas;
+}
+
+// ─── p.4 Turnover & Territory ─────────────────────────────────────────────────
+/**
+ * Turnover & Territory — pure territorial possession pressure map.
+ * Shows WHERE we win and lose the ball, not chain outcomes or scoring outcomes.
+ *
+ * Event semantics:
+ *   wonEvts  = TURNOVER_WON by FOR  → we won possession
+ *   lostEvts = TURNOVER_LOST by FOR OR TURNOVER_WON by OPP → they won possession
+ *
+ * Zone colour:
+ *   Teal  = we dominate (wonCount > lostCount + 1)
+ *   Red   = they dominate (lostCount > wonCount + 1)
+ *   Amber = contested (both sides active ≥ 2)
+ *
+ * Callouts: DANGER ZONE on high-loss zones; teal PRESSURE ZONE on best win zone.
+ */
+function makeTurnoverTerritoryPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Turnover & Territory", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  const wonEvts = events.filter(
+    (e) => e.kind === "TURNOVER_WON" && e.teamSide === "FOR",
+  );
+  const lostEvts = events.filter(
+    (e) => (e.kind === "TURNOVER_LOST" && e.teamSide === "FOR") ||
+           (e.kind === "TURNOVER_WON"  && e.teamSide === "OPP"),
+  );
+  const allTurnoverEvts = events.filter((e) => PDF_KIND_SETS.TURNOVERS.has(e.kind));
+
+  // ── Pitch ─────────────────────────────────────────────────────────────────
+  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+
+  const wonCounts  = pdfZoneCounts(wonEvts);
+  const lostCounts = pdfZoneCounts(lostEvts);
+
+  // ── Zone overlays ─────────────────────────────────────────────────────────
+  for (let i = 0; i < wonCounts.length; i++) {
+    const wZone = wonCounts[i];
+    const lZone = lostCounts[i];
+    const total = wZone.count + lZone.count;
+    if (total === 0) continue;
+    const rect      = zonePixelRect(wZone.bounds, inner);
+    const intensity = Math.min(total / 4, 1);
+    const contested = wZone.count >= 2 && lZone.count >= 2;
+    if (contested) {
+      ctx.fillStyle = `rgba(251,191,36,${(0.22 + intensity * 0.28).toFixed(2)})`;
+    } else if (wZone.count > lZone.count + 1) {
+      ctx.fillStyle = `rgba(20,184,166,${(0.20 + intensity * 0.38).toFixed(2)})`;
+    } else if (lZone.count > wZone.count + 1) {
+      ctx.fillStyle = `rgba(248,113,113,${(0.20 + intensity * 0.38).toFixed(2)})`;
+    }
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // ── Event markers (purple = won, orange = lost) ───────────────────────────
+  renderHtMarkers(ctx, allTurnoverEvts, inner);
+
+  // ── Danger zone callouts (threat rings on high-loss zones) ────────────────
+  for (let i = 0; i < lostCounts.length; i++) {
+    const lZone = lostCounts[i];
+    const wZone = wonCounts[i];
+    const score = computeZoneThreatScore(lZone.count, 0, wZone.count);
+    const level = getThreatLevel(score);
+    if (level === "NONE") continue;
+    const rect = zonePixelRect(lZone.bounds, inner);
+    const cx   = rect.x + rect.w / 2;
+    const cy   = rect.y + rect.h / 2;
+    drawThreatRings(ctx, cx, cy, level);
+    const lbl = level === "CRITICAL" || level === "HIGH" ? "DANGER ZONE" : "WATCH";
+    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  }
+
+  // ── Pressure zone badge (teal pill on highest-win zone) ───────────────────
+  {
+    let bestIdx = -1, bestCount = 0;
+    for (let i = 0; i < wonCounts.length; i++) {
+      if (wonCounts[i].count > bestCount) { bestCount = wonCounts[i].count; bestIdx = i; }
+    }
+    if (bestIdx >= 0 && bestCount >= 2) {
+      const rect = zonePixelRect(wonCounts[bestIdx].bounds, inner);
+      const cx   = rect.x + rect.w / 2;
+      const cy   = rect.y + rect.h / 2 + 50;
+      ctx.save();
+      ctx.font         = "bold 18px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "center";
+      const lbl = "PRESSURE ZONE";
+      const tw  = ctx.measureText(lbl).width;
+      const pw  = tw + 24;
+      const ph  = 30;
+      const bx  = cx - pw / 2;
+      const by  = cy - ph / 2;
+      const br  = 8;
+      ctx.fillStyle = "rgba(20,184,166,0.88)";
+      ctx.beginPath();
+      ctx.moveTo(bx + br, by);
+      ctx.lineTo(bx + pw - br, by);
+      ctx.quadraticCurveTo(bx + pw, by, bx + pw, by + br);
+      ctx.lineTo(bx + pw, by + ph - br);
+      ctx.quadraticCurveTo(bx + pw, by + ph, bx + pw - br, by + ph);
+      ctx.lineTo(bx + br, by + ph);
+      ctx.quadraticCurveTo(bx, by + ph, bx, by + ph - br);
+      ctx.lineTo(bx, by + br);
+      ctx.quadraticCurveTo(bx, by, bx + br, by);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#0d1117";
+      ctx.fillText(lbl, cx, cy);
+      ctx.restore();
+    }
+  }
+
+  // ── Right-side legend ─────────────────────────────────────────────────────
+  const lx = CANVAS_W - 158;
+  let ly = 90;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.font         = "13px sans-serif";
+  ctx.fillStyle    = "#475569";
+  ctx.fillText("LEGEND", lx, ly); ly += 26;
+  ctx.fillStyle = "#a78bfa";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Turnover Won", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "#f97316";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Turnover Lost", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "rgba(251,191,36,0.88)";
+  ctx.fillRect(lx, ly - 8, 16, 16);
+  ctx.fillStyle = "#cbd5e1";
+  ctx.fillText("Contested", lx + 22, ly);
+  ctx.restore();
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  const totalWon  = wonEvts.length;
+  const totalLost = lostEvts.length;
+  const totalTO   = totalWon + totalLost;
+  const wonPct    = totalTO > 0 ? Math.round((totalWon / totalTO) * 100) : 0;
+  const wonHot    = pdfZoneHotspots(wonEvts)[0];
+  const lostHot   = pdfZoneHotspots(lostEvts)[0];
+
+  const facts: string[] = [];
+  const colors: string[] = [];
+  if (totalTO > 0) {
+    facts.push(`Won ${totalWon} · Lost ${totalLost} (${wonPct}% possession won)`);
+    colors.push(totalWon >= totalLost ? "#22c55e" : "#ef4444");
+  } else {
+    facts.push("No turnover data recorded");
+    colors.push("#94a3b8");
+  }
+  if (wonHot) {
+    facts.push(`Best zone: ${wonHot.label}`);
+    colors.push("#a78bfa");
+  }
+  if (lostHot) {
+    facts.push(`Danger zone: ${lostHot.label}`);
+    colors.push("#ef4444");
+  }
+
+  drawHtCalloutStrip(ctx, facts, colors);
+  drawEventCountFooter(ctx, allTurnoverEvts.length);
+  return canvas;
+}
+
+// ─── p.6 Tactical Match Summary ───────────────────────────────────────────────
+/**
+ * Tactical Match Summary — "What are the actual coaching messages?"
+ * 2×2 panel layout, no pitch canvas. Content derived from chain analysis.
+ *
+ * Panels:
+ *   Working (green)      — our best tactical platform this period
+ *   Danger  (red)        — their most dangerous threat pattern
+ *   Match Swing (amber)  — scoring run / period of control context
+ *   Watch   (blue)       — the repeating pattern that needs addressing
+ *
+ * All text is observational — metric-driven, no prescriptive coaching advice.
+ */
+function makeHtTacticalSummaryPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+  mode: "FT" | "HT" = "HT",
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  const restartTerm = sport === "hurling" ? "puckout" : "kickout";
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Tactical Match Summary", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Layout constants ──────────────────────────────────────────────────────
+  const GAP   = 16;
+  const P_TOP = 88;
+  const P_BOT = HT_STRIP_TOP - 10;             // 890
+  const COL_W = Math.floor((CANVAS_W - GAP) / 2);   // 952
+  const ROW_H = Math.floor((P_BOT - P_TOP - GAP) / 2); // 393
+
+  // ── Derive panel content from chain analysis ──────────────────────────────
+  const patterns = rankChainPatterns(analysis, mode);
+  const ko = analysis.kickouts;
+  const to = analysis.turnovers;
+  const sr = analysis.scoringRuns;
+
+  const forScoreEvts = events.filter(
+    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  const oppScoreEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
+  );
+  const forShotEvts = events.filter(
+    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind),
+  );
+  const oppShotEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
+  );
+  const totalForKO = events.filter(
+    (e) => (e.kind === "KICKOUT_WON" && e.teamSide === "FOR") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
+  ).length;
+  const totalAllKO = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind)).length;
+  const koWinPct   = totalAllKO > 0 ? Math.round((totalForKO / totalAllKO) * 100) : 0;
+  const forShotEff = forShotEvts.length > 0
+    ? Math.round((forScoreEvts.length / forShotEvts.length) * 100) : 0;
+  const oppShotEff = oppShotEvts.length > 0
+    ? Math.round((oppScoreEvts.length / oppShotEvts.length) * 100) : 0;
+
+  // Inline colour helper (mirrors cpHex inside makeChainPressurePage)
+  function summaryPatternHex(kind: ChainPressureKind, headline?: string): string {
+    if (kind === "DANGER_CHAIN")     return headline === "Turnover Conceded" ? "#f59e0b" : "#ef4444";
+    if (kind === "CHAIN_WEAPON")     return "#22c55e";
+    if (kind === "PRESSURE_PATTERN") return "#f59e0b";
+    return "#818cf8";
+  }
+
+  // ── Build panel bullet items ──────────────────────────────────────────────
+  const workingItems: string[] = [];
+  const dangerItems:  string[] = [];
+  const swingItems:   string[] = [];
+  const watchItems:   string[] = [];
+
+  // Working — our best platform
+  if (ko.wonToScore > 0) {
+    workingItems.push(`${ko.wonToScore} ${restartTerm} win${ko.wonToScore !== 1 ? "s" : ""} → direct score`);
+  }
+  if (totalAllKO > 0 && koWinPct >= 50) {
+    workingItems.push(`${koWinPct}% ${restartTerm} retention`);
+  }
+  if (forShotEff >= 50 && forShotEvts.length >= 3) {
+    workingItems.push(`${forShotEff}% shooting efficiency`);
+  }
+  if (to.wonToScore > 0) {
+    workingItems.push(`${to.wonToScore} turnover win${to.wonToScore !== 1 ? "s" : ""} → score`);
+  }
+  const weaponPattern = patterns.find((p) => p.kind === "CHAIN_WEAPON");
+  if (weaponPattern && workingItems.length < 4) {
+    workingItems.push(weaponPattern.observation);
+  }
+  if (workingItems.length === 0) {
+    workingItems.push("Insufficient chain data this period");
+    if (forScoreEvts.length > 0) {
+      workingItems.push(`${forScoreEvts.length} score${forScoreEvts.length !== 1 ? "s" : ""} logged`);
+    }
+  }
+
+  // Danger — their key threat
+  const dangerPattern = patterns.find((p) => p.kind === "DANGER_CHAIN");
+  if (dangerPattern) {
+    dangerItems.push(dangerPattern.observation);
+  }
+  if (ko.lostAllowedScore > 0) {
+    dangerItems.push(`${ko.lostAllowedScore} ${restartTerm} concession${ko.lostAllowedScore !== 1 ? "s" : ""} → score`);
+  }
+  if (oppShotEff >= 50 && oppShotEvts.length >= 3 && dangerItems.length < 3) {
+    dangerItems.push(`OPP shooting ${oppShotEff}% efficiency`);
+  }
+  if (to.lostAllowedScore > 0 && dangerItems.length < 4) {
+    dangerItems.push(`${to.lostAllowedScore} turnover${to.lostAllowedScore !== 1 ? "s" : ""} conceded → their score`);
+  }
+  if (dangerItems.length === 0) {
+    dangerItems.push("No critical danger chain detected");
+    if (oppScoreEvts.length > 0) {
+      dangerItems.push(`${oppScoreEvts.length} opposition score${oppScoreEvts.length !== 1 ? "s" : ""}`);
+    }
+  }
+
+  // Match Swing — scoring run context
+  if (sr.maxConsecutiveFor >= 2) {
+    swingItems.push(`Best FOR run: ${sr.maxConsecutiveFor} unanswered`);
+  }
+  if (sr.maxConsecutiveOpp >= 2) {
+    swingItems.push(`Best OPP run: ${sr.maxConsecutiveOpp} unanswered`);
+  }
+  if (sr.maxConsecutiveFor > sr.maxConsecutiveOpp && sr.maxConsecutiveFor > 0) {
+    swingItems.push(`${homeTeam} controlled the scoring`);
+  } else if (sr.maxConsecutiveOpp > sr.maxConsecutiveFor && sr.maxConsecutiveOpp > 0) {
+    swingItems.push(`${awayTeam} controlled the scoring`);
+  }
+  if (swingItems.length === 0) {
+    const forTotal = forScoreEvts.length;
+    const oppTotal = oppScoreEvts.length;
+    if (forTotal > 0 || oppTotal > 0) {
+      swingItems.push(`${homeTeam}: ${forTotal} score${forTotal !== 1 ? "s" : ""} · ${awayTeam}: ${oppTotal} score${oppTotal !== 1 ? "s" : ""}`);
+    } else {
+      swingItems.push("No scoring run data available");
+    }
+  }
+
+  // Watch — repeating pressure pattern
+  const pressurePattern = patterns.find(
+    (p) => p.kind === "PRESSURE_PATTERN" || p.kind === "WASTED_CHAIN",
+  );
+  if (pressurePattern) {
+    watchItems.push(pressurePattern.observation);
+  }
+  if (totalAllKO > 0 && koWinPct < 50 && watchItems.length < 2) {
+    watchItems.push(`${100 - koWinPct}% ${restartTerm} possession lost`);
+  }
+  if (to.wonToShotPercent < 40 && to.won >= 3 && watchItems.length < 3) {
+    watchItems.push(`Low turnover-to-shot conversion (${to.wonToShotPercent}%)`);
+  }
+  if (watchItems.length === 0) {
+    watchItems.push("No repeating pressure pattern ranked");
+    if (patterns.length > 0) {
+      watchItems.push(`${patterns.length} chain pattern${patterns.length !== 1 ? "s" : ""} in review`);
+    }
+  }
+
+  // ── Panel definitions ─────────────────────────────────────────────────────
+  type SummaryPanel = {
+    title: string;
+    color: string;
+    rgb: string;
+    items: string[];
+    x: number;
+    y: number;
+  };
+
+  const panels: SummaryPanel[] = [
+    {
+      title: "WORKING",
+      color: "#22c55e",
+      rgb:   "34,197,94",
+      items: workingItems,
+      x: 0,
+      y: P_TOP,
+    },
+    {
+      title: "DANGER",
+      color: "#ef4444",
+      rgb:   "239,68,68",
+      items: dangerItems,
+      x: COL_W + GAP,
+      y: P_TOP,
+    },
+    {
+      title: "MATCH SWING",
+      color: "#f59e0b",
+      rgb:   "245,158,11",
+      items: swingItems,
+      x: 0,
+      y: P_TOP + ROW_H + GAP,
+    },
+    {
+      title: "WATCH",
+      color: "#60a5fa",
+      rgb:   "96,165,250",
+      items: watchItems,
+      x: COL_W + GAP,
+      y: P_TOP + ROW_H + GAP,
+    },
+  ];
+
+  // ── Draw panels ───────────────────────────────────────────────────────────
+  ctx.save();
+  for (const panel of panels) {
+    const px = panel.x;
+    const py = panel.y;
+
+    // Panel background
+    ctx.fillStyle = `rgba(${panel.rgb},0.07)`;
+    ctx.fillRect(px, py, COL_W, ROW_H);
+
+    // 8px left accent bar
+    ctx.fillStyle = panel.color;
+    ctx.fillRect(px, py, 8, ROW_H);
+
+    // Section title
+    ctx.font         = "bold 22px sans-serif";
+    ctx.fillStyle    = panel.color;
+    ctx.textBaseline = "top";
+    ctx.textAlign    = "left";
+    ctx.fillText(panel.title, px + 24, py + 14);
+
+    // Separator line under title
+    ctx.strokeStyle = `rgba(${panel.rgb},0.30)`;
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(px + 24, py + 46);
+    ctx.lineTo(px + COL_W - 16, py + 46);
+    ctx.stroke();
+
+    // Bullet items — up to 4, truncated if overlong
+    ctx.font         = "18px sans-serif";
+    ctx.fillStyle    = "#cbd5e1";
+    ctx.textBaseline = "top";
+    const MAX_ITEM_W  = COL_W - 50;
+    const itemsToShow = panel.items.slice(0, 4);
+    itemsToShow.forEach((item, idx) => {
+      const iy = py + 66 + idx * 72;
+      // Bullet dot
+      ctx.fillStyle = `rgba(${panel.rgb},0.60)`;
+      ctx.beginPath();
+      ctx.arc(px + 32, iy + 10, 4, 0, Math.PI * 2);
+      ctx.fill();
+      // Item text (truncated if too wide)
+      ctx.fillStyle = "#cbd5e1";
+      let display   = item;
+      if (ctx.measureText(display).width > MAX_ITEM_W) {
+        while (display.length > 0 && ctx.measureText(display + "…").width > MAX_ITEM_W) {
+          display = display.slice(0, -1);
+        }
+        display += "…";
+      }
+      ctx.fillText(display, px + 44, iy);
+    });
+  }
+  ctx.restore();
+
+  // ── Bottom callout strip ──────────────────────────────────────────────────
+  const summaryFacts: string[]  = [];
+  const summaryColors: string[] = [];
+
+  summaryFacts.push(
+    `${homeTeam}: ${forScoreEvts.length} · ${awayTeam}: ${oppScoreEvts.length}`,
+  );
+  summaryColors.push("#94a3b8");
+
+  if (patterns.length > 0) {
+    summaryFacts.push(`${patterns.length} chain pattern${patterns.length !== 1 ? "s" : ""} ranked`);
+    summaryColors.push(summaryPatternHex(patterns[0].kind, patterns[0].headline));
+  }
+
+  if (totalAllKO > 0) {
+    summaryFacts.push(`${restartTerm} retention: ${koWinPct}%`);
+    summaryColors.push(koWinPct >= 50 ? "#14b8a6" : "#f59e0b");
+  }
+
+  drawHtCalloutStrip(ctx, summaryFacts, summaryColors);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
   return canvas;
 }
 
@@ -8590,7 +11169,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   // Chain analysis scoped to the same event set — H1-only for HT, full for FT.
   const chainAnalysis = selectChainAnalysis(events);
 
-  const TOTAL_PAGES = isHT ? 5 : 12;
+  const TOTAL_PAGES = isHT ? 6 : 12;
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -8618,120 +11197,127 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   const away = awayTeamName;
 
   if (isHT) {
-    // ── HT Snapshot ── 5 pages, VISION FIRST, first-half events only ─────────
+    // ── HT Snapshot ── 6 pages, coaching-first, first-half events only ────────
     //
-    // Question: "Can the coach SEE the repeating tactical behaviour fast enough
-    //            to change the second half?"
+    // Locked architecture (Phase 6). Coach-readable in under 90 seconds.
+    // VISION FIRST: one page per side for shots, one page per side for restarts,
+    // then chain pressure, then a 2×2 summary panel.
     //
-    // 1. Pressure & Damage   — where did the damage come from?
-    // 2. Game Flow           — who controlled each segment and why?
-    // 3. Kickout Vision      — who owned the restarts?
-    // 4. Attack Shape        — where did we threaten and where did we miss?
-    // 5. Game Flow Factors   — what is helping us and what is hurting us?
+    // 1. Our Shot Profile          — "Where are we getting joy?"
+    // 2. Opposition Shot Profile   — "Where are they hurting us?"
+    // 3. Our Restart Platform      — "How are our kickouts functioning?"
+    // 4. Opposition Restart        — "What are they trying to do on restarts?"
+    // 5. Chain Pressure            — ranked chain patterns (HT-calibrated)
+    // 6. Tactical Match Summary    — 2×2 coaching panel (Working/Danger/Swing/Watch)
 
-    // 1. Pressure & Damage
+    // 1. Our Shot Profile
     addPage(
-      makeHtPressureDamageMapPage(events, sport, home, away, 1, TOTAL_PAGES),
+      makeOurShotProfilePage(events, sport, home, away, 1, TOTAL_PAGES),
       false,
-      "Pressure & Damage",
+      "Our Shots",
     );
 
-    // 2. Game Flow
+    // 2. Opposition Shot Profile
     addPage(
-      makeHtGameFlowPage(events, chainAnalysis, home, away, 2, TOTAL_PAGES),
+      makeOppShotProfilePage(events, sport, home, away, 2, TOTAL_PAGES),
       true,
-      "Game Flow",
+      "Their Shots",
     );
 
-    // 3. Kickout Vision
+    // 3. Restart Battle
     addPage(
-      makeHtKickoutVisionPage(events, sport, home, away, 3, TOTAL_PAGES),
+      makeRestartBattlePage(events, sport, home, away, 3, TOTAL_PAGES),
       true,
-      "Kickout Vision",
+      "Restart Battle",
     );
 
-    // 4. Attack Shape
+    // 4. Turnover & Territory
     addPage(
-      makeHtAttackShotVisionPage(events, sport, home, away, 4, TOTAL_PAGES),
+      makeTurnoverTerritoryPage(events, sport, home, away, 4, TOTAL_PAGES),
       true,
-      "Attack Shape",
+      "Turnover & Territory",
     );
 
-    // 5. Game Flow Factors
+    // 5. Chain Pressure — HT-calibrated (relaxed thresholds for smaller H1 dataset)
     addPage(
-      makeHtGameFlowFactorsPage(events, chainAnalysis, home, away, 5, TOTAL_PAGES),
+      makeChainPressurePage(events, sport, chainAnalysis, home, away, 5, TOTAL_PAGES, "HT"),
       true,
-      "Game Flow Factors",
+      "Chain Pressure",
+    );
+
+    // 6. Tactical Match Summary — 2×2 panel, no pitch, coaching message board
+    addPage(
+      makeHtTacticalSummaryPage(events, sport, chainAnalysis, home, away, 6, TOTAL_PAGES, "HT"),
+      true,
+      "Tactical Summary",
     );
   } else {
-    // ── FT Snapshot ── 12 pages, two-part tactical narrative ─────────────────
+    // ── FT Snapshot ── 12 pages ───────────────────────────────────────────────
     //
-    // PART 1 — SEE (pages 1–5): pitch-based visual intelligence.
-    //   Reuses HT builders unchanged — they operate on any event set.
-    //   Question: "Can the coach SEE the repeating tactical behaviour?"
+    // PART 1 — COACHING LAYER (p.1–6): same 6-page coaching structure as HT.
+    //   Full-match events; chain pressure uses FT-calibrated thresholds.
     //
-    // 1. Pressure & Damage        — where did the damage come from?
-    // 2. Game Flow                — who controlled each phase and why?
-    // 3. Kickout Vision           — who owned the restarts territorially?
-    // 4. Attack Shape             — where did we threaten and miss?
-    // 5. Game Flow Factors        — what worked for us and against us?
+    // 1. Our Shot Profile          — "Where are we getting joy?"
+    // 2. Opposition Shot Profile   — "Where are they hurting us?"
+    // 3. Our Restart Platform      — "How are our kickouts functioning?"
+    // 4. Opposition Restart        — "What are they trying to do on restarts?"
+    // 5. Chain Pressure            — ranked chain patterns (FT-calibrated)
+    // 6. Tactical Match Summary    — 2×2 coaching panel
     //
-    // PART 2 — UNDERSTAND (pages 6–12): analytical depth + narrative story.
-    //   Question: "Why did the match unfold this way?"
+    // PART 2 — ANALYTICAL DEPTH (p.7–12): unchanged analytical review pages.
     //
-    // 6.  Tactical Intelligence Summary — chain-based tactical patterns
-    // 7.  Turnover Punishment           — possession chain punishment
-    // 8.  Shot Efficiency               — scoring efficiency analysis
-    // 9.  Attack Corridors              — which channel did attacks live/die in?
-    // 10. Restart Escape Routes         — kickout landing zone outcome map
-    // 11. Opposition Snapshot           — opposition tactical profile
-    // 12. Tactical Match Story          — narrative arc of the match
+    // 7.  Turnover Punishment      — possession chain punishment
+    // 8.  Shot Efficiency          — scoring efficiency analysis
+    // 9.  Attack Corridors         — channel-based attack shape
+    // 10. Restart Escape Routes    — kickout landing zone outcome map
+    // 11. Opposition Snapshot      — opposition tactical profile
+    // 12. Tactical Match Story     — narrative arc of the match
 
-    // ── PART 1 — SEE ─────────────────────────────────────────────────────────
+    // ── PART 1 — COACHING LAYER ───────────────────────────────────────────────
 
-    // 1. Pressure & Damage
+    // 1. Our Shot Profile
     addPage(
-      makeHtPressureDamageMapPage(events, sport, home, away, 1, TOTAL_PAGES),
+      makeOurShotProfilePage(events, sport, home, away, 1, TOTAL_PAGES),
       false,
-      "Pressure & Damage",
+      "Our Shots",
     );
 
-    // 2. Game Flow
+    // 2. Opposition Shot Profile
     addPage(
-      makeHtGameFlowPage(events, chainAnalysis, home, away, 2, TOTAL_PAGES),
+      makeOppShotProfilePage(events, sport, home, away, 2, TOTAL_PAGES),
       true,
-      "Game Flow",
+      "Their Shots",
     );
 
-    // 3. Kickout Vision
+    // 3. Restart Battle
     addPage(
-      makeHtKickoutVisionPage(events, sport, home, away, 3, TOTAL_PAGES),
+      makeRestartBattlePage(events, sport, home, away, 3, TOTAL_PAGES),
       true,
-      "Kickout Vision",
+      "Restart Battle",
     );
 
-    // 4. Attack Shape
+    // 4. Turnover & Territory
     addPage(
-      makeHtAttackShotVisionPage(events, sport, home, away, 4, TOTAL_PAGES),
+      makeTurnoverTerritoryPage(events, sport, home, away, 4, TOTAL_PAGES),
       true,
-      "Attack Shape",
+      "Turnover & Territory",
     );
 
-    // 5. Game Flow Factors
+    // 5. Chain Pressure — FT-calibrated (standard thresholds for full-match dataset)
     addPage(
-      makeHtGameFlowFactorsPage(events, chainAnalysis, home, away, 5, TOTAL_PAGES),
+      makeChainPressurePage(events, sport, chainAnalysis, home, away, 5, TOTAL_PAGES),
       true,
-      "Game Flow Factors",
+      "Chain Pressure",
     );
 
-    // ── PART 2 — UNDERSTAND ───────────────────────────────────────────────────
-
-    // 6. Tactical Intelligence Summary
+    // 6. Tactical Match Summary — 2×2 panel, no pitch, coaching message board
     addPage(
-      makeTacticalIntelligencePage(chainAnalysis, home, away, 6, TOTAL_PAGES),
+      makeHtTacticalSummaryPage(events, sport, chainAnalysis, home, away, 6, TOTAL_PAGES, "FT"),
       true,
-      "Tactical Intelligence Summary",
+      "Tactical Summary",
     );
+
+    // ── PART 2 — ANALYTICAL DEPTH ─────────────────────────────────────────────
 
     // 7. Turnover Punishment
     addPage(

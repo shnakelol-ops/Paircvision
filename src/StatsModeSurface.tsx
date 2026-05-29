@@ -3420,6 +3420,7 @@ export default function StatsModeSurface() {
   const [currentHalf, setCurrentHalf] = useState<1 | 2>(1);
   const [matchTimeSeconds, setMatchTimeSeconds] = useState(0);
   const [isPitchReady, setIsPitchReady] = useState(false);
+  const [pixiSurfaceKey, setPixiSurfaceKey] = useState(0);
   const [isCountsOverlayOpen, setIsCountsOverlayOpen] = useState(false);
   const [isFullTimeActionsOpen, setIsFullTimeActionsOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
@@ -3462,6 +3463,10 @@ export default function StatsModeSurface() {
   const pendingScorerRef = useRef<{ name: string; number: number; squadId: string } | null>(null);
   const queuedEventTagRef = useRef<{ kind: MatchEventKind; tag: string } | null>(null);
   const activeSquadIdRef = useRef("");
+  // Monotonic counter for event IDs — survives Pixi surface remount (avoids ID collision after context loss recovery).
+  const eventIdCounterRef = useRef(0);
+  // Mirror of loggedEvents state for access inside the Pixi mount effect closure after remount.
+  const loggedEventsRef = useRef<readonly LoggedMatchEvent[]>([]);
   const homeNameInputRef = useRef<HTMLInputElement>(null);
   const awayNameInputRef = useRef<HTMLInputElement>(null);
   const venueInputRef = useRef<HTMLInputElement>(null);
@@ -4011,6 +4016,10 @@ export default function StatsModeSurface() {
   }, [reviewZone]);
 
   useEffect(() => {
+    loggedEventsRef.current = loggedEvents;
+  }, [loggedEvents]);
+
+  useEffect(() => {
     firstHalfAttackingDirectionRef.current = firstHalfAttackingDirection;
   }, [firstHalfAttackingDirection]);
 
@@ -4210,6 +4219,7 @@ export default function StatsModeSurface() {
       sport: mode.pitchSport,
       activeEventKind: selectedEventRef.current,
       showPlayerInitials,
+      onContextLost: () => { setPixiSurfaceKey((k) => k + 1); },
       onEventLogged: (event) => {
         const teamSide = activeTeamSideRef.current;
         const team = deriveTeamFromTeamSide(teamSide);
@@ -4231,7 +4241,7 @@ export default function StatsModeSurface() {
         }
         const nextEvent: LoggedMatchEvent = {
           ...event,
-          id: `team-${team.toLowerCase()}-${event.id}`,
+          id: `team-${team.toLowerCase()}-${eventIdCounterRef.current++}`,
           kind: eventKind,
           type: eventKind,
           x: typeof event.x === "number" && Number.isFinite(event.x) ? event.x : event.nx,
@@ -4318,6 +4328,10 @@ export default function StatsModeSurface() {
           isLoggingActive(matchEngineStateRef.current.matchState) &&
           activeTeamRef.current === "HOME",
       });
+      // On context-loss remount, push existing logged events back into the fresh surface.
+      if (pixiSurfaceKey > 0) {
+        nextHandle.setEvents([...loggedEventsRef.current]);
+      }
       pitchReadyRafA = window.requestAnimationFrame(() => {
         pitchReadyRafB = window.requestAnimationFrame(() => {
           if (disposed) return;
@@ -4333,7 +4347,7 @@ export default function StatsModeSurface() {
       handleRef.current = null;
       handle?.destroy();
     };
-  }, [mode.pitchSport]);
+  }, [mode.pitchSport, pixiSurfaceKey]);
 
   useEffect(() => {
     const syncRealtimeClock = () => {
