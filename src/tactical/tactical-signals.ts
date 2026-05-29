@@ -84,6 +84,15 @@ function deriveBenefit(
         ? (rawPositive ? "positive" : "negative")
         : (rawPositive ? "negative" : "positive");
     }
+    case "POSSESSION": {
+      const won  = eventKinds.includes("POSSESSION_WON");
+      const lost = eventKinds.includes("POSSESSION_LOST");
+      if (won && lost) return "mixed";
+      const rawPositive = won;
+      return teamSide === "FOR"
+        ? (rawPositive ? "positive" : "negative")
+        : (rawPositive ? "negative" : "positive"); // OPP winning possession = bad for us
+    }
   }
 }
 
@@ -146,6 +155,19 @@ function generateSignalText(state: TerritorialPressureState): string {
       return state.teamSide === "FOR"
         ? `Attacks building through ${zone}.`
         : `Opposition attacking from ${zone}.`;
+
+    case "POSSESSION":
+      if (benefit === "positive") {
+        return state.teamSide === "FOR"
+          ? `Winning possession in ${zone}.`
+          : `Disrupting opposition possession in ${zone}.`;
+      }
+      if (benefit === "negative") {
+        return state.teamSide === "FOR"
+          ? `Losing possession in ${zone}.`
+          : `Opposition winning possession in ${zone}.`;
+      }
+      return `Possession contest in ${zone}.`;
   }
 }
 

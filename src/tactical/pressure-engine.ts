@@ -12,7 +12,7 @@ import { PRESSURE_WINDOW_SECONDS, countToEscalation } from "./escalation-rules";
 import { classifyEventZone } from "./classify-event-zone";
 import type { SemanticZoneId, TacticalCategory } from "./semantic-zones";
 
-export type PressureCategory = "TURNOVER" | "RESTART" | "FREE" | "SCORING_CORRIDOR";
+export type PressureCategory = "TURNOVER" | "RESTART" | "FREE" | "SCORING_CORRIDOR" | "POSSESSION";
 
 export type PressureLevel = "notable" | "amber" | "red";
 
@@ -55,6 +55,8 @@ const KIND_TO_CATEGORY: Partial<Record<MatchEventKind, PressureCategory>> = {
   TWO_POINTER:          "SCORING_CORRIDOR",
   FORTY_FIVE_TWO_POINT: "SCORING_CORRIDOR",
   FREE_SCORED:          "SCORING_CORRIDOR",
+  POSSESSION_WON:       "POSSESSION",
+  POSSESSION_LOST:      "POSSESSION",
 };
 
 type GroupAccumulator = {
