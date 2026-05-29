@@ -1,6 +1,6 @@
 import { Container, Graphics } from "pixi.js";
 
-import type { MatchEvent } from "./stats-event-model";
+import type { MatchEvent, MatchEventKind } from "./stats-event-model";
 import { getStatsMarkerStyle } from "./stats-marker-style";
 import { boardNormToWorld } from "../coordinates/pitch-coordinates";
 
@@ -52,6 +52,8 @@ function parseCssColorForPixi(css: string): ParsedCssColor {
   }
   return { color: 0xffffff, alpha: 1 };
 }
+
+const SCORING_KINDS = new Set<MatchEventKind>(["GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT"]);
 
 export function drawStatsMarkers(
   g: Graphics,
@@ -108,6 +110,7 @@ export function drawStatsMarkers(
     }
     const style = getStatsMarkerStyle(event);
     const isTwoPointer = event.kind === "TWO_POINTER";
+    const isScoring = SCORING_KINDS.has(event.kind);
     const styleRadius = isTwoPointer ? style.radius * 1.06 : style.radius;
     const radius = Math.max(styleRadius, minWorldRadius);
     const fill = parseCssColorForPixi(style.fill);
@@ -131,11 +134,13 @@ export function drawStatsMarkers(
     const markerGraphic = new Graphics();
     markerContainer.addChild(markerGraphic);
 
-    // Subtle dark halo improves readability against bright turf stripes.
-    markerGraphic.circle(0, 0, haloRadius).fill({
-      color: 0x020617,
-      alpha: isTwoPointer ? 0.26 : 0.22,
-    });
+    if (isScoring) {
+      // Subtle dark halo improves readability against bright turf stripes.
+      markerGraphic.circle(0, 0, haloRadius).fill({
+        color: 0x020617,
+        alpha: isTwoPointer ? 0.26 : 0.22,
+      });
+    }
 
     if (isTwoPointer) {
       // Give 2PT a subtle mint aura to increase priority without GOAL-level intensity.
@@ -146,9 +151,9 @@ export function drawStatsMarkers(
     }
 
     markerGraphic.circle(0, 0, radius)
-      .fill({ color: fill.color, alpha: fill.alpha })
+      .fill({ color: fill.color, alpha: isScoring ? fill.alpha : fill.alpha * 0.28 })
       .stroke({
-        width: ringWidth,
+        width: isScoring ? ringWidth : Math.max(style.strokeWidth * 1.35, minRingWidth),
         color: stroke.color,
         alpha: stroke.alpha,
       });
