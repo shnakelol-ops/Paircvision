@@ -2817,6 +2817,13 @@ const PANEL_CSS = `
   box-shadow: 0 2px 8px rgba(2, 6, 23, 0.3);
 }
 
+@media (min-width: 600px) and (max-width: 900px) {
+  .scoreboard-strip {
+    width: min(195px, calc(100vw - 12px));
+    max-width: 195px;
+  }
+}
+
 .scoreboard-strip-line {
   display: flex;
   align-items: center;
