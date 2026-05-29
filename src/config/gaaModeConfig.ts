@@ -38,8 +38,6 @@ function buildEventButtons({
     { label: kickoutConcededLabel, kind: "KICKOUT_CONCEDED" },
     { label: "F+", kind: "FREE_WON" },
     { label: "F−", kind: "FREE_CONCEDED" },
-    { label: "FS", kind: "FREE_SCORED" },
-    { label: "FM", kind: "FREE_MISSED" },
   ];
   if (placeBallLabel && placeBallKind) {
     baseButtons.push({ label: placeBallLabel, kind: placeBallKind });
