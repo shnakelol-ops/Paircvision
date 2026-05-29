@@ -10674,6 +10674,7 @@ function makeRestartBattlePage(
  */
 function makeTurnoverTerritoryPage(
   events: readonly PdfExportEvent[],
+  analysis: ChainAnalysis<PdfExportEvent>,
   sport: PitchSport,
   homeTeam: string,
   awayTeam: string,
@@ -10806,7 +10807,8 @@ function makeTurnoverTerritoryPage(
   ctx.fillText("Contested", lx + 22, ly);
   ctx.restore();
 
-  // ── Bottom callout strip ──────────────────────────────────────────────────
+  // ── Bottom callout strip — 4 coaching panels ─────────────────────────────
+  const to        = analysis.turnovers;
   const totalWon  = wonEvts.length;
   const totalLost = lostEvts.length;
   const totalTO   = totalWon + totalLost;
@@ -10814,25 +10816,83 @@ function makeTurnoverTerritoryPage(
   const wonHot    = pdfZoneHotspots(wonEvts)[0];
   const lostHot   = pdfZoneHotspots(lostEvts)[0];
 
-  const facts: string[] = [];
-  const colors: string[] = [];
-  if (totalTO > 0) {
-    facts.push(`Won ${totalWon} · Lost ${totalLost} (${wonPct}% possession won)`);
-    colors.push(totalWon >= totalLost ? "#22c55e" : "#ef4444");
-  } else {
-    facts.push("No turnover data recorded");
-    colors.push("#94a3b8");
-  }
-  if (wonHot) {
-    facts.push(`Best zone: ${wonHot.label}`);
-    colors.push("#a78bfa");
-  }
-  if (lostHot) {
-    facts.push(`Danger zone: ${lostHot.label}`);
-    colors.push("#ef4444");
-  }
+  type StripPanel = { label: string; text: string; accent: string; highlight: boolean };
+  const panels: StripPanel[] = [
+    {
+      label: "Territory Balance",
+      text: totalTO > 0 ? `Won ${totalWon} · Lost ${totalLost} (${wonPct}% won)` : "No turnovers recorded",
+      accent: totalWon >= totalLost ? "#22c55e" : "#ef4444",
+      highlight: false,
+    },
+    {
+      label: "Best Press Zone",
+      text: wonHot ? wonHot.label : "—",
+      accent: "#a78bfa",
+      highlight: false,
+    },
+    {
+      label: "Danger Zone",
+      text: lostHot ? lostHot.label : "—",
+      accent: "#ef4444",
+      highlight: false,
+    },
+    {
+      label: "Consequence",
+      text: totalTO > 0 ? `Created ${to.wonToScore} · Conceded ${to.lostAllowedScore}` : "—",
+      accent: to.wonToScore > to.lostAllowedScore ? "#22c55e" : to.lostAllowedScore > to.wonToScore ? "#ef4444" : "#f59e0b",
+      highlight: true,
+    },
+  ];
 
-  drawHtCalloutStrip(ctx, facts, colors);
+  ctx.save();
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth   = 2;
+  ctx.beginPath();
+  ctx.moveTo(24, HT_STRIP_TOP);
+  ctx.lineTo(CANVAS_W - 24, HT_STRIP_TOP);
+  ctx.stroke();
+
+  const STRIP_X  = 24;
+  const STRIP_W  = CANVAS_W - 48;
+  const GAP_PX   = 20;
+  const panelW   = Math.floor((STRIP_W - GAP_PX * 3) / 4);
+  const panelY   = HT_STRIP_TOP + 10;
+  const panelH   = HT_STRIP_H - 18;
+  const contentH = 15 + 10 + 24;
+  const contentY = panelY + Math.floor((panelH - contentH) / 2);
+
+  for (let i = 0; i < panels.length; i++) {
+    const pd    = panels[i];
+    const px    = STRIP_X + i * (panelW + GAP_PX);
+    const bgA   = pd.highlight ? 0.09 : 0.045;
+    const acW   = pd.highlight ? 10   : 8;
+    const TEXT_X = acW + 14;
+    const MAX_TW = panelW - TEXT_X - 12;
+
+    ctx.fillStyle = `rgba(255,255,255,${bgA})`;
+    ctx.fillRect(px, panelY, panelW, panelH);
+
+    ctx.fillStyle = pd.accent;
+    ctx.fillRect(px, panelY, acW, panelH);
+
+    ctx.font         = "bold 15px sans-serif";
+    ctx.fillStyle    = pd.accent;
+    ctx.textBaseline = "top";
+    ctx.textAlign    = "left";
+    ctx.fillText(pd.label, px + TEXT_X, contentY);
+
+    ctx.font      = "bold 24px sans-serif";
+    ctx.fillStyle = "#ffffff";
+    let display   = pd.text;
+    if (ctx.measureText(display).width > MAX_TW) {
+      while (display.length > 0 && ctx.measureText(display + "…").width > MAX_TW) {
+        display = display.slice(0, -1);
+      }
+      display += "…";
+    }
+    ctx.fillText(display, px + TEXT_X, contentY + 15 + 10);
+  }
+  ctx.restore();
   drawEventCountFooter(ctx, allTurnoverEvts.length);
   return canvas;
 }
@@ -11233,7 +11293,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 4. Turnover & Territory
     addPage(
-      makeTurnoverTerritoryPage(events, sport, home, away, 4, TOTAL_PAGES),
+      makeTurnoverTerritoryPage(events, chainAnalysis, sport, home, away, 4, TOTAL_PAGES),
       true,
       "Turnover & Territory",
     );
@@ -11298,7 +11358,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 4. Turnover & Territory
     addPage(
-      makeTurnoverTerritoryPage(events, sport, home, away, 4, TOTAL_PAGES),
+      makeTurnoverTerritoryPage(events, chainAnalysis, sport, home, away, 4, TOTAL_PAGES),
       true,
       "Turnover & Territory",
     );
