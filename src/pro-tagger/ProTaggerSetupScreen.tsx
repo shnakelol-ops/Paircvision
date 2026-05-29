@@ -6,7 +6,7 @@ import type {
   ProTaggerMatchType,
   ProTaggerAttackDirection,
 } from "./pro-tagger-session";
-import { newSessionId } from "./pro-tagger-session";
+import { newSessionId, buildDefaultSquad } from "./pro-tagger-session";
 
 interface Props {
   onStart: (session: ProTaggerSession) => void;
@@ -46,6 +46,8 @@ export function ProTaggerSetupScreen({ onStart }: Props) {
       attackDirection:    attackDir,
       halfDurationMinutes: halfMins,
       createdAt:          Date.now(),
+      homeSquad:          buildDefaultSquad("HOME"),
+      awaySquad:          buildDefaultSquad("AWAY"),
     });
   }
 

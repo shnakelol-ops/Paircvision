@@ -402,7 +402,21 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
           />
           <div style={S.pickerWrap}>
             <ProTaggerPlayerPicker
-              forTeamName={session.homeTeamName}
+              teamLabel={
+                pending.teamSide === "FOR"
+                  ? (session.homeTeamName.trim() || "Home")
+                  : (session.awayTeamName.trim() || "Away")
+              }
+              squad={
+                pending.teamSide === "FOR"
+                  ? session.homeSquad.players
+                  : session.awaySquad.players
+              }
+              squadId={
+                pending.teamSide === "FOR"
+                  ? session.homeSquad.id
+                  : session.awaySquad.id
+              }
               onSelect={handlePlayerSelect}
             />
           </div>

@@ -72,6 +72,7 @@ export function ProTaggerFamilyGrid({ sport, onTileTap }: Props) {
 const S: Record<string, CSSProperties> = {
   scroll: {
     flex: 1,
+    minHeight: 0,
     overflowY: "auto",
     padding: "8px 10px 24px",
     display: "flex",
