@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import type { CSSProperties } from "react";
 import type { ProTaggerSession } from "./pro-tagger-session";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
+import { PRO_TAGGER_FAMILIES, getFamilyLabel } from "./pro-tagger-families";
 import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
@@ -19,11 +20,14 @@ interface Props {
 type CapturePhase = "IDLE" | "PLAYER_PICK" | "PITCH_TAP";
 
 type PendingAction = {
-  familyId: ProTaggerFamilyId;
-  tileLabel: string;
-  teamSide: "FOR" | "OPP";
-  player: SelectedPlayer | null;
+  familyId:       ProTaggerFamilyId;
+  tileLabel:      string;
+  teamSide:       "FOR" | "OPP";
+  player:         SelectedPlayer | null;
+  playerResolved: boolean; // true once player step completed (even if null = skipped)
 };
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function newEventId(): string {
   const c = globalThis.crypto;
@@ -51,21 +55,138 @@ function fmtClock(s: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
+// ── PendingContextBar ─────────────────────────────────────────────────────────
+// Shown at the top of the PLAYER_PICK and PITCH_TAP screens.
+
+function PendingContextBar({
+  pending,
+  sport,
+  showPlayer,
+  onCancel,
+}: {
+  pending: PendingAction;
+  sport: ProTaggerSession["sport"];
+  showPlayer: boolean;
+  onCancel: () => void;
+}) {
+  const family = PRO_TAGGER_FAMILIES.find((f) => f.id === pending.familyId);
+  const colour = family?.colour ?? "#8b949e";
+  const familyLabel = family ? getFamilyLabel(family, sport) : pending.familyId;
+  const isOpp = pending.teamSide === "OPP";
+
+  return (
+    <div style={{ ...CB.bar, borderLeftColor: colour }}>
+      <div style={CB.left}>
+        <span style={{ ...CB.dot, background: colour }} />
+        <span style={CB.familyText}>{familyLabel}</span>
+        <span style={CB.sep}>·</span>
+        <span style={CB.tileText}>{isOpp ? "−" : ""}{pending.tileLabel}</span>
+        {isOpp && <span style={CB.oppBadge}>OPP</span>}
+        {showPlayer && (
+          <span style={CB.playerText}>
+            {pending.player
+              ? ` · #${pending.player.playerNumber} ${pending.player.playerName}`
+              : " · No player"}
+          </span>
+        )}
+      </div>
+      <button style={CB.cancelBtn} onClick={onCancel}>Cancel</button>
+    </div>
+  );
+}
+
+const CB: Record<string, CSSProperties> = {
+  bar: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "8px 12px 8px 10px",
+    background: "#161b22",
+    borderBottom: "1px solid #21262d",
+    borderLeft: "3px solid transparent",
+    flexShrink: 0,
+    gap: 8,
+  },
+  left: {
+    display: "flex",
+    alignItems: "center",
+    gap: 5,
+    minWidth: 0,
+    overflow: "hidden",
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: "50%",
+    flexShrink: 0,
+  },
+  familyText: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#e6edf3",
+    whiteSpace: "nowrap" as const,
+    flexShrink: 0,
+  },
+  sep: {
+    color: "#30363d",
+    fontSize: 12,
+    flexShrink: 0,
+  },
+  tileText: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#e6edf3",
+    whiteSpace: "nowrap" as const,
+    flexShrink: 0,
+  },
+  oppBadge: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#f87171",
+    background: "rgba(248,113,113,0.12)",
+    borderRadius: 4,
+    padding: "1px 5px",
+    flexShrink: 0,
+  },
+  playerText: {
+    fontSize: 12,
+    color: "#8b949e",
+    whiteSpace: "nowrap" as const,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  cancelBtn: {
+    background: "transparent",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "4px 10px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+    whiteSpace: "nowrap" as const,
+  },
+};
+
+// ── ProTaggerLiveScreen ───────────────────────────────────────────────────────
+
 export function ProTaggerLiveScreen({ session, onEnd }: Props) {
-  const [phase, setPhase]           = useState<CapturePhase>("IDLE");
-  const [pending, setPending]       = useState<PendingAction | null>(null);
+  const [phase, setPhase]               = useState<CapturePhase>("IDLE");
+  const [pending, setPending]           = useState<PendingAction | null>(null);
   const [loggedEvents, setLoggedEvents] = useState<readonly LoggedMatchEvent[]>([]);
-  const [half, setHalf]             = useState<1 | 2>(1);
+  const [half, setHalf]                 = useState<1 | 2>(1);
   const [clockSeconds, setClockSeconds] = useState(0);
   const [clockRunning, setClockRunning] = useState(false);
   const [feedbackDot, setFeedbackDot]   = useState<{ nx: number; ny: number } | null>(null);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
 
-  const clockStartRef   = useRef<number | null>(null);
+  const clockStartRef    = useRef<number | null>(null);
   const clockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const clockSecondsRef = useRef(0);
-  const halfRef         = useRef<1 | 2>(1);
-  const loggedRef       = useRef<readonly LoggedMatchEvent[]>([]);
+  const clockSecondsRef  = useRef(0);
+  const halfRef          = useRef<1 | 2>(1);
+  const loggedRef        = useRef<readonly LoggedMatchEvent[]>([]);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { clockSecondsRef.current = clockSeconds; }, [clockSeconds]);
@@ -78,6 +199,8 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     };
   }, []);
+
+  // ── Clock ──────────────────────────────────────────────────────────────────
 
   const toggleClock = useCallback(() => {
     if (clockRunning) {
@@ -95,19 +218,26 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     }
   }, [clockRunning]);
 
+  // ── Capture flow ───────────────────────────────────────────────────────────
+
+  // Step 1: tile tapped → go to player pick screen
   const handleTileTap = useCallback(
     (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP") => {
-      setPending({ familyId, tileLabel, teamSide, player: null });
+      setPending({ familyId, tileLabel, teamSide, player: null, playerResolved: false });
       setPhase("PLAYER_PICK");
     },
     [],
   );
 
+  // Step 2: player selected or skipped → go to pitch screen
   const handlePlayerSelect = useCallback((player: SelectedPlayer | null) => {
-    setPending((prev) => (prev ? { ...prev, player } : null));
+    setPending((prev) =>
+      prev ? { ...prev, player, playerResolved: true } : null,
+    );
     setPhase("PITCH_TAP");
   }, []);
 
+  // Step 3: pitch tapped → save event, brief dot feedback, return to IDLE
   const handlePitchTap = useCallback(
     (nx: number, ny: number) => {
       const p = pending;
@@ -128,15 +258,29 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
       });
 
       setLoggedEvents((prev) => [...prev, event]);
+
+      // Stay on pitch screen briefly to show the confirmation dot, then return.
       setFeedbackDot({ nx, ny });
-      setPending(null);
-      setPhase("IDLE");
 
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-      feedbackTimerRef.current = setTimeout(() => setFeedbackDot(null), 600);
+      feedbackTimerRef.current = setTimeout(() => {
+        setFeedbackDot(null);
+        setPending(null);
+        setPhase("IDLE");
+      }, 450);
     },
     [pending],
   );
+
+  // Cancel from any mid-flow screen
+  const cancelFlow = useCallback(() => {
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    setFeedbackDot(null);
+    setPending(null);
+    setPhase("IDLE");
+  }, []);
+
+  // ── Undo / Save ────────────────────────────────────────────────────────────
 
   const undo = useCallback(() => {
     setLoggedEvents((prev) => prev.slice(0, -1));
@@ -158,14 +302,14 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     const oppScore = computeScoreSide(events, "OPP");
 
     const record: SavedMatch = {
-      id:               `pro-tagger-${newEventId()}`,
-      createdAt:        Date.now(),
-      label:            `${home} v ${away}`,
-      homeTeamName:     home,
-      awayTeamName:     away,
+      id:                `pro-tagger-${newEventId()}`,
+      createdAt:         Date.now(),
+      label:             `${home} v ${away}`,
+      homeTeamName:      home,
+      awayTeamName:      away,
       venue,
-      events:           events as LoggedMatchEvent[],
-      eventCount:       events.length,
+      events:            events as LoggedMatchEvent[],
+      eventCount:        events.length,
       scorelineSnapshot: `${home} ${fmtScore(forScore)} v ${away} ${fmtScore(oppScore)}`,
       restoreContext: {
         matchState:                  halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF",
@@ -184,12 +328,17 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     onEnd();
   }, [session, onEnd]);
 
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   const homeLabel = session.homeTeamName.trim() || "Home";
   const awayLabel = session.awayTeamName.trim() || "Away";
+  const canUndo   = phase === "IDLE" && loggedEvents.length > 0;
+  const canSave   = phase === "IDLE" && loggedEvents.length > 0;
 
   return (
     <div style={S.shell}>
-      {/* ── Header ─────────────────────────────────────────────────── */}
+
+      {/* ── Header — always visible ─────────────────────────────────── */}
       <div style={S.header}>
         <span style={S.matchLabel}>{homeLabel} v {awayLabel}</span>
         <div style={S.halfGroup}>
@@ -210,73 +359,90 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
         </button>
         <button
           onClick={undo}
-          disabled={loggedEvents.length === 0}
-          style={{ ...S.iconBtn, ...(loggedEvents.length === 0 ? S.btnDisabled : {}) }}
+          disabled={!canUndo}
+          style={{ ...S.iconBtn, ...(!canUndo ? S.btnDisabled : {}) }}
         >
           ↩
         </button>
         <button
           onClick={handleSaveAndEnd}
-          style={S.saveBtn}
-          disabled={loggedEvents.length === 0}
+          disabled={!canSave}
+          style={{ ...S.saveBtn, ...(!canSave ? S.btnDisabled : {}) }}
         >
           Save
         </button>
       </div>
 
-      {/* ── Pitch ──────────────────────────────────────────────────── */}
-      <ProTaggerPitchView
-        sport={session.sport}
-        attackDirection={session.attackDirection}
-        half={half}
-        feedbackDot={feedbackDot}
-        interactive={phase === "PITCH_TAP"}
-        onTap={handlePitchTap}
-      />
-
-      {/* ── Bottom panel ───────────────────────────────────────────── */}
-      <div style={S.bottom}>
-        {phase === "IDLE" && (
+      {/* ══ SCREEN: IDLE — event family grid only ══════════════════════ */}
+      {phase === "IDLE" && (
+        <>
           <ProTaggerFamilyGrid sport={session.sport} onTileTap={handleTileTap} />
-        )}
-        {phase === "PLAYER_PICK" && (
-          <ProTaggerPlayerPicker
-            forTeamName={session.homeTeamName}
-            onSelect={handlePlayerSelect}
-          />
-        )}
-        {phase === "PITCH_TAP" && (
-          <div style={S.pitchInstruction}>
-            <span style={S.instructionText}>
-              Tap the pitch to place the event
-            </span>
-            <button style={S.cancelBtn} onClick={() => { setPending(null); setPhase("IDLE"); }}>
-              Cancel
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* ── Event count strip ──────────────────────────────────────── */}
-      <div style={S.strip}>
-        {saveFeedback ? (
-          <span style={S.saveFeedback}>{saveFeedback}</span>
-        ) : (
-          <span style={S.eventCount}>
-            {loggedEvents.length} event{loggedEvents.length !== 1 ? "s" : ""} logged
-            {phase === "PLAYER_PICK" && pending && (
-              <span style={S.pendingHint}>
-                {" · "}
-                {pending.teamSide === "OPP" ? "−" : ""}
-                {pending.tileLabel}
+          <div style={S.strip}>
+            {saveFeedback ? (
+              <span style={S.saveFeedbackText}>{saveFeedback}</span>
+            ) : (
+              <span style={S.eventCount}>
+                {loggedEvents.length > 0
+                  ? `${loggedEvents.length} event${loggedEvents.length !== 1 ? "s" : ""} logged`
+                  : "Tap a tile to log an event"}
               </span>
             )}
-          </span>
-        )}
-      </div>
+          </div>
+        </>
+      )}
+
+      {/* ══ SCREEN: PLAYER_PICK — player picker only ═══════════════════ */}
+      {phase === "PLAYER_PICK" && pending && (
+        <>
+          <PendingContextBar
+            pending={pending}
+            sport={session.sport}
+            showPlayer={false}
+            onCancel={cancelFlow}
+          />
+          <div style={S.pickerWrap}>
+            <ProTaggerPlayerPicker
+              forTeamName={session.homeTeamName}
+              onSelect={handlePlayerSelect}
+            />
+          </div>
+        </>
+      )}
+
+      {/* ══ SCREEN: PITCH_TAP — SVG pitch only ═════════════════════════ */}
+      {phase === "PITCH_TAP" && pending && (
+        <>
+          <PendingContextBar
+            pending={pending}
+            sport={session.sport}
+            showPlayer={true}
+            onCancel={cancelFlow}
+          />
+          <div style={S.pitchWrap}>
+            <ProTaggerPitchView
+              sport={session.sport}
+              attackDirection={session.attackDirection}
+              half={half}
+              feedbackDot={feedbackDot}
+              interactive={feedbackDot === null}
+              onTap={handlePitchTap}
+            />
+          </div>
+          <div style={S.pitchFooter}>
+            {feedbackDot ? (
+              <span style={S.savedText}>✓ Event saved</span>
+            ) : (
+              <span style={S.tapHintText}>Tap the pitch to place the event</span>
+            )}
+          </div>
+        </>
+      )}
+
     </div>
   );
 }
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const S: Record<string, CSSProperties> = {
   shell: {
@@ -291,6 +457,8 @@ const S: Record<string, CSSProperties> = {
     overflow: "hidden",
     WebkitTapHighlightColor: "transparent",
   },
+
+  // ── Header ──────────────────────────────────────────────────────────────
   header: {
     display: "flex",
     alignItems: "center",
@@ -309,6 +477,7 @@ const S: Record<string, CSSProperties> = {
     overflow: "hidden",
     textOverflow: "ellipsis",
     maxWidth: 120,
+    flexShrink: 1,
   },
   halfGroup: { display: "flex", gap: 3, flexShrink: 0 },
   halfBtn: {
@@ -364,46 +533,13 @@ const S: Record<string, CSSProperties> = {
     outline: "none",
     flexShrink: 0,
   },
-  bottom: {
-    flex: 1,
-    minHeight: 0,
-    display: "flex",
-    flexDirection: "column",
-    overflow: "hidden",
-  },
-  pitchInstruction: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 14,
-    padding: "0 16px",
-  },
-  instructionText: {
-    fontSize: 16,
-    fontWeight: 600,
-    color: "#e6edf3",
-    textAlign: "center" as const,
-    letterSpacing: "-0.2px",
-  },
-  cancelBtn: {
-    background: "transparent",
-    border: "1px solid #30363d",
-    borderRadius: 8,
-    color: "#8b949e",
-    fontSize: 14,
-    fontWeight: 600,
-    padding: "10px 24px",
-    cursor: "pointer",
-    outline: "none",
-  },
+
+  // ── IDLE: strip ──────────────────────────────────────────────────────────
   strip: {
-    padding: "6px 14px 8px",
+    padding: "7px 14px 9px",
     background: "#0d1117",
     borderTop: "1px solid #21262d",
     flexShrink: 0,
-    minHeight: 28,
     display: "flex",
     alignItems: "center",
   },
@@ -412,13 +548,49 @@ const S: Record<string, CSSProperties> = {
     color: "#8b949e",
     fontVariantNumeric: "tabular-nums",
   },
-  pendingHint: {
-    color: "#e6edf3",
-    fontWeight: 600,
-  },
-  saveFeedback: {
+  saveFeedbackText: {
     fontSize: 12,
     color: "#f85149",
     fontWeight: 600,
+  },
+
+  // ── PLAYER_PICK: picker wrapper ──────────────────────────────────────────
+  pickerWrap: {
+    flex: 1,
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+
+  // ── PITCH_TAP: pitch area + footer ───────────────────────────────────────
+  pitchWrap: {
+    flex: 1,
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    background: "#0d1117",
+    overflow: "hidden",
+  },
+  pitchFooter: {
+    padding: "10px 14px 12px",
+    background: "#161b22",
+    borderTop: "1px solid #21262d",
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 40,
+  },
+  tapHintText: {
+    fontSize: 13,
+    color: "#8b949e",
+    fontWeight: 500,
+  },
+  savedText: {
+    fontSize: 13,
+    color: "#2ea043",
+    fontWeight: 700,
   },
 };
