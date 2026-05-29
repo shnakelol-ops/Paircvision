@@ -51,7 +51,7 @@ function styleForType(type: MatchEventKind): StatsMarkerStyle {
       };
     case "WIDE":
       return {
-        radius: 2.6,
+        radius: 2.28,
         fill: "rgba(244, 63, 94, 1)",
         stroke: "rgba(190, 18, 60, 1)",
         strokeWidth: 0.85,
@@ -62,7 +62,7 @@ function styleForType(type: MatchEventKind): StatsMarkerStyle {
       };
     case "TURNOVER_WON":
       return {
-        radius: 2.36,
+        radius: 2.08,
         fill: "rgba(6, 182, 212, 1)",
         stroke: "rgba(3, 105, 161, 1)",
         strokeWidth: 0.74,
@@ -73,7 +73,7 @@ function styleForType(type: MatchEventKind): StatsMarkerStyle {
       };
     case "TURNOVER_LOST":
       return {
-        radius: 2.36,
+        radius: 2.08,
         fill: "rgba(194, 65, 12, 1)",
         stroke: "rgba(124, 45, 18, 1)",
         strokeWidth: 0.74,
@@ -106,7 +106,7 @@ function styleForType(type: MatchEventKind): StatsMarkerStyle {
       };
     case "SHOT":
       return {
-        radius: 2.45,
+        radius: 2.16,
         fill: "rgba(251, 191, 36, 1)",
         stroke: "rgba(146, 64, 14, 1)",
         strokeWidth: 0.8,
@@ -117,7 +117,7 @@ function styleForType(type: MatchEventKind): StatsMarkerStyle {
       };
     case "FREE_WON":
       return {
-        radius: 2.4,
+        radius: 2.11,
         fill: "rgba(34, 197, 94, 1)",
         stroke: "rgba(21, 128, 61, 1)",
         strokeWidth: 0.76,
@@ -128,7 +128,7 @@ function styleForType(type: MatchEventKind): StatsMarkerStyle {
       };
     case "FREE_CONCEDED":
       return {
-        radius: 2.4,
+        radius: 2.11,
         fill: "rgba(248, 113, 113, 1)",
         stroke: "rgba(185, 28, 28, 1)",
         strokeWidth: 0.76,
@@ -139,7 +139,7 @@ function styleForType(type: MatchEventKind): StatsMarkerStyle {
       };
     case "FREE_SCORED":
       return {
-        radius: 2.5,
+        radius: 2.2,
         fill: "rgba(56, 189, 248, 1)",
         stroke: "rgba(14, 116, 144, 1)",
         strokeWidth: 0.8,
@@ -150,7 +150,7 @@ function styleForType(type: MatchEventKind): StatsMarkerStyle {
       };
     case "FREE_MISSED":
       return {
-        radius: 2.5,
+        radius: 2.2,
         fill: "rgba(249, 115, 22, 1)",
         stroke: "rgba(154, 52, 18, 1)",
         strokeWidth: 0.8,
@@ -161,7 +161,7 @@ function styleForType(type: MatchEventKind): StatsMarkerStyle {
       };
     case "KICKOUT_WON":
       return {
-        radius: 2.5,
+        radius: 2.2,
         fill: "rgba(45, 212, 191, 1)",
         stroke: "rgba(15, 118, 110, 1)",
         strokeWidth: 0.78,
@@ -172,7 +172,7 @@ function styleForType(type: MatchEventKind): StatsMarkerStyle {
       };
     case "KICKOUT_CONCEDED":
       return {
-        radius: 2.5,
+        radius: 2.2,
         fill: "rgba(168, 85, 247, 1)",
         stroke: "rgba(107, 33, 168, 1)",
         strokeWidth: 0.78,
