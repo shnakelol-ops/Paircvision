@@ -328,6 +328,16 @@ function drawEventCountFooter(ctx: CanvasRenderingContext2D, count: number): voi
   ctx.restore();
 }
 
+function drawShotAttemptFooter(ctx: CanvasRenderingContext2D, count: number): void {
+  ctx.save();
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "16px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "right";
+  ctx.fillText(`${count} shot attempt${count !== 1 ? "s" : ""}`, CANVAS_W - 24, CANVAS_H - 20);
+  ctx.restore();
+}
+
 // ─── Pitch rendering ──────────────────────────────────────────────────────────
 
 type PitchArea = { x: number; y: number; w: number; h: number };
@@ -9800,7 +9810,7 @@ function makeOurShotProfilePage(
   // ── Bottom callout strip ──────────────────────────────────────────────────
   const totalShots  = forShotEvts.length;
   const totalScores = forScoreEvts.length;
-  const totalWides  = forWideEvts.length;
+  const totalMisses = totalShots - totalScores;
   const shotEff     = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
   const scoreHot    = pdfZoneHotspots(forScoreEvts)[0];
 
@@ -9808,7 +9818,7 @@ function makeOurShotProfilePage(
   const colors: string[] = [];
 
   if (totalShots > 0) {
-    facts.push(`Our shots: ${totalScores} scored · ${totalWides} wide (${shotEff}%)`);
+    facts.push(`Our shots: ${totalScores} scored from ${totalShots} attempts · ${totalMisses} missed (${shotEff}%)`);
     colors.push("#34d399");
   }
   if (forFreeScored > 0 || forFreeMissed > 0) {
@@ -9828,7 +9838,7 @@ function makeOurShotProfilePage(
   if (facts.length === 0) facts.push("No shot data recorded.");
 
   drawHtCalloutStrip(ctx, facts, colors.length > 0 ? colors : ["#34d399", "#818cf8", "#34d399"]);
-  drawEventCountFooter(ctx, forShotEvts.length + freeWonEvts.length);
+  drawShotAttemptFooter(ctx, totalShots);
   return canvas;
 }
 
@@ -10005,7 +10015,7 @@ function makeOppShotProfilePage(
   // ── Bottom callout strip ──────────────────────────────────────────────────
   const totalOppShots  = oppShotEvts.length;
   const totalOppScores = oppScoreEvts.length;
-  const totalOppWides  = oppWideEvts.length;
+  const totalOppMisses = totalOppShots - totalOppScores;
   const oppShotEff     = totalOppShots > 0 ? Math.round((totalOppScores / totalOppShots) * 100) : 0;
   const oppScoreHot    = pdfZoneHotspots(oppScoreEvts)[0];
 
@@ -10013,7 +10023,7 @@ function makeOppShotProfilePage(
   const colors: string[] = [];
 
   if (totalOppShots > 0) {
-    facts.push(`Their shots: ${totalOppScores} scored · ${totalOppWides} wide (${oppShotEff}%)`);
+    facts.push(`Their shots: ${totalOppScores} scored from ${totalOppShots} attempts · ${totalOppMisses} missed (${oppShotEff}%)`);
     colors.push("#ef4444");
   }
   if (oppFreeScored > 0 || oppFreeMissed > 0) {
@@ -10033,7 +10043,7 @@ function makeOppShotProfilePage(
   if (facts.length === 0) facts.push("No opposition shot data recorded.");
 
   drawHtCalloutStrip(ctx, facts, colors.length > 0 ? colors : ["#ef4444", "#f472b6", "#ef4444"]);
-  drawEventCountFooter(ctx, oppShotEvts.length + freeConcededEvts.length);
+  drawShotAttemptFooter(ctx, totalOppShots);
   return canvas;
 }
 
@@ -11173,8 +11183,12 @@ function makeHtTacticalSummaryPage(
   const summaryFacts: string[]  = [];
   const summaryColors: string[] = [];
 
+  const forFinal  = scoreFromEvents(forScoreEvts);
+  const oppFinal  = scoreFromEvents(oppScoreEvts);
+  const scoreDiff = forFinal.total - oppFinal.total;
+
   summaryFacts.push(
-    `${homeTeam}: ${forScoreEvts.length} · ${awayTeam}: ${oppScoreEvts.length}`,
+    `${fmtScore(forFinal)} vs ${fmtScore(oppFinal)} — ${scoreDiff > 0 ? `${homeTeam} won by ${scoreDiff}` : scoreDiff < 0 ? `lost by ${Math.abs(scoreDiff)}` : "draw"}`,
   );
   summaryColors.push("#94a3b8");
 
