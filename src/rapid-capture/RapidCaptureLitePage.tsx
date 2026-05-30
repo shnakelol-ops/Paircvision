@@ -42,6 +42,7 @@ const RAPID_BAR: RapidBarItem[] = [
   { kind: "SHOT",              label: "Shot"                                      },
   { kind: "POINT",             label: "Point"                                     },
   { kind: "GOAL",              label: "Goal"                                      },
+  { kind: "TWO_POINTER",       label: "2pt",      hideFor: ["hurling", "camogie"] },
   { kind: "WIDE",              label: "Wide"                                      },
   { kind: "TURNOVER_WON",      label: "Turn+"                                     },
   { kind: "TURNOVER_LOST",     label: "Turn−"                                     },
