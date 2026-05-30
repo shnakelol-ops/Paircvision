@@ -9810,7 +9810,7 @@ function makeOurShotProfilePage(
   // ── Bottom callout strip ──────────────────────────────────────────────────
   const totalShots  = forShotEvts.length;
   const totalScores = forScoreEvts.length;
-  const totalWides  = forWideEvts.length;
+  const totalMisses = totalShots - totalScores;
   const shotEff     = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
   const scoreHot    = pdfZoneHotspots(forScoreEvts)[0];
 
@@ -9818,7 +9818,7 @@ function makeOurShotProfilePage(
   const colors: string[] = [];
 
   if (totalShots > 0) {
-    facts.push(`Our shots: ${totalScores} scored · ${totalWides} wide (${shotEff}%)`);
+    facts.push(`Our shots: ${totalScores} scored from ${totalShots} attempts · ${totalMisses} missed (${shotEff}%)`);
     colors.push("#34d399");
   }
   if (forFreeScored > 0 || forFreeMissed > 0) {
@@ -10015,7 +10015,7 @@ function makeOppShotProfilePage(
   // ── Bottom callout strip ──────────────────────────────────────────────────
   const totalOppShots  = oppShotEvts.length;
   const totalOppScores = oppScoreEvts.length;
-  const totalOppWides  = oppWideEvts.length;
+  const totalOppMisses = totalOppShots - totalOppScores;
   const oppShotEff     = totalOppShots > 0 ? Math.round((totalOppScores / totalOppShots) * 100) : 0;
   const oppScoreHot    = pdfZoneHotspots(oppScoreEvts)[0];
 
@@ -10023,7 +10023,7 @@ function makeOppShotProfilePage(
   const colors: string[] = [];
 
   if (totalOppShots > 0) {
-    facts.push(`Their shots: ${totalOppScores} scored · ${totalOppWides} wide (${oppShotEff}%)`);
+    facts.push(`Their shots: ${totalOppScores} scored from ${totalOppShots} attempts · ${totalOppMisses} missed (${oppShotEff}%)`);
     colors.push("#ef4444");
   }
   if (oppFreeScored > 0 || oppFreeMissed > 0) {
