@@ -85,6 +85,7 @@ const LEVEL_RANK: Record<PressureLevel, number> = {
 export function computeTerritorialPressure(
   events: readonly PressureEngineInput[],
   clockNow: number,
+  options?: { screenSpace?: boolean },
 ): TerritorialPressureState[] {
   const windowStart = clockNow - PRESSURE_WINDOW_SECONDS;
   const groups = new Map<string, GroupAccumulator>();
@@ -99,9 +100,11 @@ export function computeTerritorialPressure(
     const category = KIND_TO_CATEGORY[event.kind];
     if (category === undefined) continue;
 
-    // classifyEventZone applies OPP x-mirror so both teams are evaluated
-    // in team-relative space — attacking-right, defending-left.
-    const classification = classifyEventZone({ nx: event.nx, ny: event.ny, teamSide: side });
+    // screenSpace mode (Rapid live capture): omit teamSide so the OPP x-mirror
+    // never fires — zone matches the visible tap location on screen.
+    // Default (no option): mirror is applied for team-relative analysis.
+    const classifySide = options?.screenSpace ? undefined : side;
+    const classification = classifyEventZone({ nx: event.nx, ny: event.ny, teamSide: classifySide });
     if (classification === null) continue;
 
     const key = `${side}:${category}:${classification.zone}`;

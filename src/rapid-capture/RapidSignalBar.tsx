@@ -12,7 +12,7 @@ interface Props {
 export function RapidSignalBar({ events, clockSeconds }: Props) {
   const signals = useMemo<TacticalSignal[]>(() => {
     if (events.length === 0) return [];
-    const states = computeTerritorialPressure(events, clockSeconds);
+    const states = computeTerritorialPressure(events, clockSeconds, { screenSpace: true });
     return computeTacticalSignals(states);
   }, [events, clockSeconds]);
 
