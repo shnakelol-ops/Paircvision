@@ -61,6 +61,7 @@ export type MovementCanvasShellHandle = {
   setSelectedToken: (tokenId: string | null) => MovementBoardToken | null;
   setMode: (mode: MovementBoardMode) => void;
   setPlaybackSpeed: (speed: MovementPlaybackSpeed) => void;
+  changeTeamColor: (teamId: PremiumPlayerTokenColor, newHexColor: string | number) => void;
   removeSelectedWaypoint: () => boolean;
   clearSelectedRoute: () => boolean;
   playAll: () => void;
