@@ -143,12 +143,12 @@ function generateSignalText(state: TerritorialPressureState): string {
       if (benefit === "positive") {
         return state.teamSide === "FOR"
           ? `Scoring from ${zone}.`
-          : `Opposition scoring from ${zone}.`;
+          : `Opposition misfiring from ${zone}.`;
       }
       if (benefit === "negative") {
         return state.teamSide === "FOR"
           ? `Wides building from ${zone}.`
-          : `Opposition misfiring from ${zone}.`;
+          : `Opposition scoring from ${zone}.`;
       }
       // neutral (SHOT-only) or mixed
       return state.teamSide === "FOR"
