@@ -38,17 +38,19 @@ type RapidBarItem = {
   hideFor?: readonly Sport[];
 };
 
-// TWO_POINTER is the correct enum value (TWO_POINT does not exist in schema)
 const RAPID_BAR: RapidBarItem[] = [
-  { kind: "SHOT",          label: "Shot"                                    },
-  { kind: "POINT",         label: "Point"                                   },
-  { kind: "GOAL",          label: "Goal"                                    },
-  { kind: "TWO_POINTER",   label: "2pt",  hideFor: ["hurling", "camogie"]   },
-  { kind: "WIDE",          label: "Wide"                                    },
-  { kind: "TURNOVER_WON",  label: "Turn+"                                   },
-  { kind: "TURNOVER_LOST", label: "Turn−"                                   },
-  { kind: "KICKOUT_WON",   label: "Restart", puckoutLabel: "Puckout"        },
-  { kind: "FREE_WON",      label: "Free"                                    },
+  { kind: "SHOT",              label: "Shot"                                      },
+  { kind: "POINT",             label: "Point"                                     },
+  { kind: "GOAL",              label: "Goal"                                      },
+  { kind: "WIDE",              label: "Wide"                                      },
+  { kind: "TURNOVER_WON",      label: "Turn+"                                     },
+  { kind: "TURNOVER_LOST",     label: "Turn−"                                     },
+  { kind: "KICKOUT_WON",       label: "Kickout+", puckoutLabel: "Puckout+"        },
+  { kind: "KICKOUT_CONCEDED",  label: "Kickout−", puckoutLabel: "Puckout−"        },
+  { kind: "POSSESSION_WON",    label: "Poss+",    hideFor: ["gaelic", "soccer"]   },
+  { kind: "POSSESSION_LOST",   label: "Poss−",    hideFor: ["gaelic", "soccer"]   },
+  { kind: "FREE_WON",          label: "Free+"                                     },
+  { kind: "FREE_CONCEDED",     label: "Free−"                                     },
 ];
 
 function fmtClock(totalSeconds: number): string {
@@ -296,9 +298,6 @@ function RapidLiveScreen({ session }: { session: RapidSession }) {
         loggedEventsRef.current = next;
         setLoggedEvents(next);
 
-        // Disarm — next tap must re-select an event type
-        armedKindRef.current = null;
-        setArmedKind(null);
       },
     }).then((h) => {
       if (destroyed) { h.destroy(); return; }
@@ -803,12 +802,12 @@ const S: Record<string, CSSProperties> = {
 
   // ── Live: Rapid event bar ────────────────────────────────────────────────
   rapidBar: {
-    display: "flex",
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
     gap: 6,
     padding: "10px 12px",
     background: "#0d1117",
     borderTop: "1px solid #21262d",
-    overflowX: "auto",
     flexShrink: 0,
   },
   rapidBtn: {
@@ -818,13 +817,11 @@ const S: Record<string, CSSProperties> = {
     color: "#e6edf3",
     fontSize: 14,
     fontWeight: 600,
-    padding: "11px 16px",
+    height: 52,
     cursor: "pointer",
-    whiteSpace: "nowrap",
-    flexShrink: 0,
-    minWidth: 64,
     textAlign: "center",
     outline: "none",
+    width: "100%",
     transition: "background 0.08s, border-color 0.08s, color 0.08s",
   },
   rapidBtnArmed: {
