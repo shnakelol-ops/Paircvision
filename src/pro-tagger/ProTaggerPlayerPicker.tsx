@@ -12,6 +12,7 @@ interface Props {
   teamLabel: string;
   squad: ProTaggerSquadPlayer[];
   squadId: string;
+  teamColour?: string;
   onSelect: (player: SelectedPlayer | null) => void;
 }
 
@@ -25,7 +26,7 @@ const FORMATION_ROWS: readonly (readonly number[])[] = [
   [12, 13, 14],      // #13 #14 #15 (RF FF LF)
 ];
 
-export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, onSelect }: Props) {
+export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, onSelect }: Props) {
   const starters = squad.slice(0, 15);
   const subs     = squad.slice(15);        // players 16–20
 
@@ -41,7 +42,7 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, onSelect }: P
   return (
     <div style={S.shell}>
       {/* Header */}
-      <div style={S.header}>
+      <div style={{ ...S.header, borderLeft: `3px solid ${teamColour ?? "#238636"}` }}>
         <span style={S.title}>{teamLabel} — Player</span>
       </div>
 

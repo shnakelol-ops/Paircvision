@@ -8,7 +8,14 @@ interface Props {
   onStart: (session: ProTaggerSession) => void;
 }
 
-type TeamTab = "home" | "away";
+type TeamTab   = "home" | "away";
+type ColourSet = { primary: string; secondary: string };
+
+function genId(): string {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
 
 export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
   const [activeTab, setActiveTab]   = useState<TeamTab>("home");
@@ -18,38 +25,67 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
   const [awayPlayers, setAwayPlayers] = useState<ProTaggerSquadPlayer[]>(
     () => session.awaySquad.players.map((p) => ({ ...p })),
   );
+  const [homeColours, setHomeColours] = useState<ColourSet>({
+    primary:   session.homeSquad.primaryColour   ?? "#16a34a",
+    secondary: session.homeSquad.secondaryColour ?? "#ffffff",
+  });
+  const [awayColours, setAwayColours] = useState<ColourSet>({
+    primary:   session.awaySquad.primaryColour   ?? "#dc2626",
+    secondary: session.awaySquad.secondaryColour ?? "#ffffff",
+  });
+
+  const homeLabel    = session.homeTeamName.trim() || "Home";
+  const awayLabel    = session.awayTeamName.trim() || "Away";
+  const players      = activeTab === "home" ? homePlayers : awayPlayers;
+  const activeColours = activeTab === "home" ? homeColours : awayColours;
 
   const setName = useCallback(
     (team: TeamTab, index: number, name: string) => {
-      if (team === "home") {
-        setHomePlayers((prev) => {
-          const next = [...prev];
-          next[index] = { ...next[index], name };
-          return next;
-        });
-      } else {
-        setAwayPlayers((prev) => {
-          const next = [...prev];
-          next[index] = { ...next[index], name };
-          return next;
-        });
-      }
+      const setter = team === "home" ? setHomePlayers : setAwayPlayers;
+      setter((prev) => {
+        const next = [...prev];
+        next[index] = { ...next[index], name };
+        return next;
+      });
     },
     [],
   );
 
+  function handleColourChange(type: "primary" | "secondary", value: string) {
+    if (activeTab === "home") {
+      setHomeColours((prev) => ({ ...prev, [type]: value }));
+    } else {
+      setAwayColours((prev) => ({ ...prev, [type]: value }));
+    }
+  }
+
+  function addPlayer() {
+    const current = activeTab === "home" ? homePlayers : awayPlayers;
+    if (current.length >= 30) return;
+    const setter = activeTab === "home" ? setHomePlayers : setAwayPlayers;
+    setter((prev) => [
+      ...prev,
+      { id: genId(), number: prev.length + 1, name: "", position: "SUB" },
+    ]);
+  }
+
   function handleStart() {
     onStart({
       ...session,
-      homeSquad: { ...session.homeSquad, players: homePlayers },
-      awaySquad: { ...session.awaySquad, players: awayPlayers },
+      homeSquad: {
+        ...session.homeSquad,
+        players:         homePlayers,
+        primaryColour:   homeColours.primary,
+        secondaryColour: homeColours.secondary,
+      },
+      awaySquad: {
+        ...session.awaySquad,
+        players:         awayPlayers,
+        primaryColour:   awayColours.primary,
+        secondaryColour: awayColours.secondary,
+      },
     });
   }
-
-  const homeLabel = session.homeTeamName.trim() || "Home";
-  const awayLabel = session.awayTeamName.trim() || "Away";
-  const players   = activeTab === "home" ? homePlayers : awayPlayers;
-  const teamLabel = activeTab === "home" ? homeLabel : awayLabel;
 
   return (
     <div style={S.shell}>
@@ -77,10 +113,38 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
         </button>
       </div>
 
-      {/* ── Player list ────────────────────────────────────────────── */}
+      {/* ── Scrollable content ─────────────────────────────────────── */}
       <div style={S.list}>
         <div style={S.listInner}>
-          <div style={S.teamHeading}>{teamLabel}</div>
+
+          {/* Team colours */}
+          <div style={S.colourSection}>
+            <span style={S.colourHeading}>Team Colours</span>
+            <div style={S.colourRow}>
+              {(["primary", "secondary"] as const).map((type) => (
+                <div key={type} style={S.colourItem}>
+                  <span style={S.colourItemLabel}>
+                    {type === "primary" ? "Primary" : "Secondary"}
+                  </span>
+                  <input
+                    type="color"
+                    value={activeColours[type]}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      handleColourChange(type, e.target.value)
+                    }
+                    style={{
+                      ...S.colourInput,
+                      // Use accent border to show selected colour clearly
+                      outline: `2px solid ${activeColours[type]}`,
+                      outlineOffset: 2,
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Player rows */}
           {players.map((p, i) => (
             <div key={p.id} style={S.row}>
               <span style={S.number}>{p.number}</span>
@@ -99,10 +163,21 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
               />
             </div>
           ))}
+
+          {/* Add Player control */}
+          {players.length < 30 ? (
+            <button style={S.addBtn} onClick={addPlayer}>
+              + Add Player
+              <span style={S.addCount}>{players.length} / 30</span>
+            </button>
+          ) : (
+            <div style={S.addMax}>Squad full (30 / 30)</div>
+          )}
+
         </div>
       </div>
 
-      {/* ── Footer Start button ────────────────────────────────────── */}
+      {/* ── Footer ─────────────────────────────────────────────────── */}
       <div style={S.footer}>
         <button style={S.footerStartBtn} onClick={handleStart}>
           Start Match
@@ -126,7 +201,7 @@ const S: Record<string, CSSProperties> = {
     overflow: "hidden",
   },
 
-  // ── Header ────────────────────────────────────────────────────────────
+  // ── Header ──────────────────────────────────────────────────────────────
   header: {
     display: "flex",
     alignItems: "center",
@@ -170,7 +245,7 @@ const S: Record<string, CSSProperties> = {
     whiteSpace: "nowrap" as const,
   },
 
-  // ── Tabs ──────────────────────────────────────────────────────────────
+  // ── Tabs ────────────────────────────────────────────────────────────────
   tabs: {
     display: "flex",
     borderBottom: "1px solid #21262d",
@@ -187,7 +262,6 @@ const S: Record<string, CSSProperties> = {
     padding: "10px 12px",
     cursor: "pointer",
     outline: "none",
-    transition: "color 0.1s",
     whiteSpace: "nowrap" as const,
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -197,31 +271,67 @@ const S: Record<string, CSSProperties> = {
     borderBottomColor: "#2ea043",
   },
 
-  // ── List ──────────────────────────────────────────────────────────────
+  // ── List ────────────────────────────────────────────────────────────────
   list: {
     flex: 1,
     minHeight: 0,
     overflowY: "auto",
   },
   listInner: {
-    padding: "8px 12px 8px",
+    padding: "8px 12px 16px",
     display: "flex",
     flexDirection: "column",
-    gap: 4,
+    gap: 0,
   },
-  teamHeading: {
+
+  // ── Colours section ─────────────────────────────────────────────────────
+  colourSection: {
+    paddingBottom: 10,
+    marginBottom: 8,
+    borderBottom: "1px solid #21262d",
+  },
+  colourHeading: {
+    display: "block",
     fontSize: 10,
     fontWeight: 700,
     letterSpacing: "0.08em",
     textTransform: "uppercase" as const,
     color: "#8b949e",
-    padding: "2px 0 6px",
+    padding: "6px 0 8px",
   },
+  colourRow: {
+    display: "flex",
+    gap: 12,
+    alignItems: "center",
+  },
+  colourItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    cursor: "pointer",
+  },
+  colourItemLabel: {
+    fontSize: 12,
+    color: "#8b949e",
+    fontWeight: 500,
+  },
+  colourInput: {
+    width: 36,
+    height: 28,
+    borderRadius: 6,
+    border: "1px solid #30363d",
+    background: "transparent",
+    cursor: "pointer",
+    padding: 0,
+    WebkitAppearance: "none",
+  } as CSSProperties,
+
+  // ── Player rows ──────────────────────────────────────────────────────────
   row: {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    padding: "4px 0",
+    padding: "5px 0",
     borderBottom: "1px solid #21262d",
   },
   number: {
@@ -254,7 +364,42 @@ const S: Record<string, CSSProperties> = {
     userSelect: "text",
   },
 
-  // ── Footer ────────────────────────────────────────────────────────────
+  // ── Add Player ───────────────────────────────────────────────────────────
+  addBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
+    background: "transparent",
+    border: "1px dashed #30363d",
+    borderRadius: 8,
+    color: "#8b949e",
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "10px 14px",
+    cursor: "pointer",
+    outline: "none",
+    width: "100%",
+    textAlign: "left" as const,
+    WebkitTapHighlightColor: "transparent",
+    boxSizing: "border-box" as const,
+  },
+  addCount: {
+    marginLeft: "auto",
+    fontSize: 11,
+    color: "#6e7681",
+    fontWeight: 400,
+    fontVariantNumeric: "tabular-nums",
+  },
+  addMax: {
+    marginTop: 10,
+    fontSize: 12,
+    color: "#6e7681",
+    textAlign: "center" as const,
+    padding: "8px 0",
+  },
+
+  // ── Footer ───────────────────────────────────────────────────────────────
   footer: {
     padding: "10px 12px 16px",
     background: "#0d1117",

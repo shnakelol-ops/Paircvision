@@ -417,6 +417,11 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
                   ? session.homeSquad.id
                   : session.awaySquad.id
               }
+              teamColour={
+                pending.teamSide === "FOR"
+                  ? (session.homeSquad.primaryColour ?? "#16a34a")
+                  : (session.awaySquad.primaryColour ?? "#dc2626")
+              }
               onSelect={handlePlayerSelect}
             />
           </div>
