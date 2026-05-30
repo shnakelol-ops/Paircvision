@@ -2,8 +2,7 @@
 // No React, no Pixi, no DOM.
 //
 // Translates territorial pressure states into at most 2 calm, factual
-// signal messages. Only surfaces amber and red states — notable is
-// intentionally excluded as too low to be meaningful at match pace.
+// signal messages. Surfaces yellow (early warning), amber, and red states.
 // No recommendations, no AI language, no player references.
 
 import type { SemanticZoneId } from "./semantic-zones";
@@ -11,7 +10,7 @@ import type { TerritorialPressureState, PressureCategory } from "./pressure-engi
 
 export type TacticalSignal = {
   id: string;
-  level: "amber" | "red";
+  level: "yellow" | "amber" | "red";
   text: string;
 };
 
@@ -178,8 +177,6 @@ export function computeTacticalSignals(
 
   for (const state of states) {
     if (signals.length >= 2) break;
-    if (state.level === "notable") continue;
-
     signals.push({
       id: state.id,
       level: state.level,

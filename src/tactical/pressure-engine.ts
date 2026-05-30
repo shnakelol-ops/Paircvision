@@ -14,7 +14,7 @@ import type { SemanticZoneId, TacticalCategory } from "./semantic-zones";
 
 export type PressureCategory = "TURNOVER" | "RESTART" | "FREE" | "SCORING_CORRIDOR" | "POSSESSION";
 
-export type PressureLevel = "notable" | "amber" | "red";
+export type PressureLevel = "yellow" | "amber" | "red";
 
 // Minimal structural input — any MatchEvent satisfies this.
 export type PressureEngineInput = {
@@ -71,7 +71,7 @@ type GroupAccumulator = {
 };
 
 const LEVEL_MAP: Record<1 | 2 | 3, PressureLevel> = {
-  1: "notable",
+  1: "yellow",
   2: "amber",
   3: "red",
 };
@@ -79,7 +79,7 @@ const LEVEL_MAP: Record<1 | 2 | 3, PressureLevel> = {
 const LEVEL_RANK: Record<PressureLevel, number> = {
   red: 3,
   amber: 2,
-  notable: 1,
+  yellow: 1,
 };
 
 export function computeTerritorialPressure(

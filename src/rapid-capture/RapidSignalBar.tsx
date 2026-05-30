@@ -23,10 +23,10 @@ export function RapidSignalBar({ events, clockSeconds }: Props) {
     <div style={S.bar}>
       {signals.map((sig) => (
         <div key={sig.id} style={S.row}>
-          <span style={{ ...S.icon, ...(sig.level === "red" ? S.iconRed : S.iconAmber) }}>
+          <span style={{ ...S.icon, ...(sig.level === "red" ? S.iconRed : sig.level === "amber" ? S.iconAmber : S.iconYellow) }}>
             ⚠
           </span>
-          <span style={{ ...S.text, ...(sig.level === "red" ? S.textRed : S.textAmber) }}>
+          <span style={{ ...S.text, ...(sig.level === "red" ? S.textRed : sig.level === "amber" ? S.textAmber : S.textYellow) }}>
             {sig.text}
           </span>
         </div>
@@ -57,14 +57,16 @@ const S: Record<string, CSSProperties> = {
     flexShrink: 0,
     lineHeight: "1.6",
   },
-  iconAmber: { color: "#d29922" },
-  iconRed:   { color: "#f85149" },
+  iconYellow: { color: "#9e8a28" },
+  iconAmber:  { color: "#d29922" },
+  iconRed:    { color: "#f85149" },
   text: {
     fontSize: 12,
     fontWeight: 600,
     lineHeight: "1.4",
     letterSpacing: "-0.1px",
   },
-  textAmber: { color: "#e3b341" },
-  textRed:   { color: "#f85149" },
+  textYellow: { color: "#b8a72a" },
+  textAmber:  { color: "#e3b341" },
+  textRed:    { color: "#f85149" },
 };
