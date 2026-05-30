@@ -63,7 +63,8 @@ const postX2  = smallX + smallWide;
 const penYt = yAt(11 / Lm);
 const penYb = pB - (11 / Lm) * pH;
 
-// D arc — centred on 20m line, half-ellipse (west→east via south/north)
+// D arc — centred on outer edge of large rectangle (= 13m line), half-ellipse
+// facing into field (west→east via south/north).
 const rxD = (13 / Wm) * pW;   // 13.867  width-axis radius
 const ryD = (13 / Lm) * pH;   // 13.986  length-axis radius
 
@@ -90,8 +91,8 @@ const DASH13   = "4.2 3.6";
 const n = (v: number) => Math.round(v * 1000) / 1000;
 
 // Pre-built arc path strings
-const dArcTop  = `M ${n(cX - rxD)},${n(y20t)} A ${n(rxD)},${n(ryD)} 0 0 1 ${n(cX + rxD)},${n(y20t)}`;
-const dArcBot  = `M ${n(cX - rxD)},${n(y20b)} A ${n(rxD)},${n(ryD)} 0 0 0 ${n(cX + rxD)},${n(y20b)}`;
+const dArcTop  = `M ${n(cX - rxD)},${n(y13t)} A ${n(rxD)},${n(ryD)} 0 0 1 ${n(cX + rxD)},${n(y13t)}`;
+const dArcBot  = `M ${n(cX - rxD)},${n(y13b)} A ${n(rxD)},${n(ryD)} 0 0 0 ${n(cX + rxD)},${n(y13b)}`;
 const pt2Top   = `M ${n(arc2x1)},${n(y20t)} A ${n(rx2)},${n(ry2)} 0 0 0 ${n(arc2x2)},${n(y20t)}`;
 const pt2Bot   = `M ${n(arc2x1)},${n(y20b)} A ${n(rx2)},${n(ry2)} 0 0 1 ${n(arc2x2)},${n(y20b)}`;
 
