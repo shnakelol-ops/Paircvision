@@ -7,6 +7,7 @@ import TacticalPadLiteClean from "./pages/TacticalPadLiteClean";
 import PlayerPerformanceTracker from "./pages/PlayerPerformanceTracker";
 import MovementBoardCanvasShellPage from "./pages/MovementBoardCanvasShellPage";
 import RapidCaptureLitePage from "./rapid-capture/RapidCaptureLitePage";
+import { ProTaggerPitchView } from "./pro-tagger/ProTaggerPitchView";
 
 const boardShell = () => <PitchFlowCoachShell initialTab="home" />;
 const VISION_BOARD_PATH = "/vision-board";
@@ -16,6 +17,32 @@ const NOTES_PATH = "/notes";
 const PLAYER_PERFORMANCE_TRACKER_PATH = "/player-performance-tracker";
 const MOVEMENT_BOARD_LABS_PATH = "/movement-board-labs";
 const RAPID_CAPTURE_PATH = "/rapid-capture";
+const PRO_TAGGER_PATH = "/pro-tagger";
+
+function ProTaggerRoute() {
+  return (
+    <div
+      style={{
+        minHeight: "100dvh",
+        background: "#06150F",
+        display: "grid",
+        placeItems: "center",
+        padding: "16px",
+      }}
+    >
+      <div style={{ width: "min(420px, 100%)" }}>
+        <ProTaggerPitchView
+          sport="gaelic"
+          attackDirection="right"
+          half={1}
+          feedbackDot={null}
+          interactive={false}
+          onTap={() => {}}
+        />
+      </div>
+    </div>
+  );
+}
 
 function redirectToBoard() {
   if (window.location.pathname !== "/board") {
@@ -100,6 +127,9 @@ function pickRootComponent() {
   }
   if (normalizedPath === RAPID_CAPTURE_PATH) {
     return RapidCaptureLitePage;
+  }
+  if (normalizedPath === PRO_TAGGER_PATH) {
+    return ProTaggerRoute;
   }
   return redirectToBoard();
 }
