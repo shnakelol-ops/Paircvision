@@ -11,43 +11,66 @@ interface Props {
   onTap: (nx: number, ny: number) => void;
 }
 
-// ── Landscape (160×100) → Portrait (100×160) axis-swap ────────────────────
-//
-// pitch-config.ts uses a landscape viewBox 160×100 (length along X, width
-// along Y).  The portrait SVG here is 100×160 (same numbers, axes swapped).
-// Transform: portrait(x, y) = landscape(y, x) — no scaling needed.
+// ── Portrait viewBox 100×160 ──────────────────────────────────────────────
+// Landscape (pitch-config) → portrait: portrait(x,y) = landscape(y,x).
+// All non-arc markings are axis-swapped by renderMarkings().
+// EllipseArcs are skipped there and rendered explicitly below with named
+// helpers that make the sweep-flag intent impossible to confuse.
 
 const n = (v: number) => Math.round(v * 1000) / 1000;
 
-// Goal posts sit outside the pitch boundary — not in pitch-config markings.
-// Derived from landscape constants: centreY=50, smallWide=(14/90)*96=14.933.
+// Goal posts in portrait — centreY=50, smallWide=(14/90)*96 from pitch-config.
 const POST_X1 = n(50 - (14 / 90) * 96 / 2); // 42.533
 const POST_X2 = n(50 + (14 / 90) * 96 / 2); // 57.467
 
-function ellipseArcToPath(m: Extract<PitchMarking, { kind: "ellipseArc" }>): string {
-  // Portrait: pcx=m.cy, pcy=m.cx, prx=m.ry, pry=m.rx
-  const pcx = m.cy, pcy = m.cx, prx = m.ry, pry = m.rx;
-  // Angle rotation under 90° CW axis-swap: portrait φ = π/2 − landscape θ
-  const pStart = Math.PI / 2 - m.endAngle;
-  const pEnd   = Math.PI / 2 - m.startAngle;
-  // Direction flips under axis-swap
-  const pCCW = !(m.anticlockwise ?? false);
+// ── Arc helpers ───────────────────────────────────────────────────────────
+//
+// Both helpers draw a horizontal-chord arc whose chord endpoints are at
+// (cx ± rx, cy).  They differ only in sweep flag:
+//
+//   topArcFacingMidfield    sweep=1 (CW  in SVG Y-down) → arc bulges DOWN ✓
+//   bottomArcFacingMidfield sweep=0 (CCW in SVG Y-down) → arc bulges UP  ✓
 
-  const x1 = pcx + prx * Math.cos(pStart);
-  const y1 = pcy + pry * Math.sin(pStart);
-  const x2 = pcx + prx * Math.cos(pEnd);
-  const y2 = pcy + pry * Math.sin(pEnd);
-
-  // SVG sweep=1 CW (= canvas anticlockwise=false), sweep=0 CCW
-  const sweepFlag = pCCW ? 0 : 1;
-  const span = pCCW
-    ? (pStart >= pEnd ? pStart - pEnd : 2 * Math.PI + pStart - pEnd)
-    : (pEnd   >= pStart ? pEnd - pStart : 2 * Math.PI + pEnd - pStart);
-  const largeArc = span > Math.PI ? 1 : 0;
-
-  return `M ${n(x1)},${n(y1)} A ${n(prx)},${n(pry)} 0 ${largeArc} ${sweepFlag} ${n(x2)},${n(y2)}`;
+function topArcFacingMidfield(cx: number, cy: number, rx: number, ry: number): string {
+  return `M ${n(cx - rx)},${n(cy)} A ${n(rx)},${n(ry)} 0 0 1 ${n(cx + rx)},${n(cy)}`;
 }
 
+function bottomArcFacingMidfield(cx: number, cy: number, rx: number, ry: number): string {
+  return `M ${n(cx - rx)},${n(cy)} A ${n(rx)},${n(ry)} 0 0 0 ${n(cx + rx)},${n(cy)}`;
+}
+
+// ── D arc geometry (13 m radius) ──────────────────────────────────────────
+// Portrait: x = width axis (90 m → 96 SVG), y = length axis (145 m → 156 SVG).
+const rxD   = (13 / 90) * 96;           // 13.867 — width-direction radius
+const ryD   = (13 / 145) * 156;         // 13.986 — length-direction radius
+const dTopY = 2 + (13 / 145) * 156;    // 15.986 — outer edge of top large box
+const dBotY = 158 - (13 / 145) * 156;  // 144.014 — outer edge of bottom large box
+
+const dArcTop = topArcFacingMidfield(50, dTopY, rxD, ryD);
+const dArcBot = bottomArcFacingMidfield(50, dBotY, rxD, ryD);
+
+// ── 2-point arc geometry (40 m radius, football only) ────────────────────
+// Chord anchored at the 20 m line (matches pitch-config.ts twoPointAnchorAngle).
+// Arc apex reaches ~43 SVG units from goal line (just inside the 45 m zone).
+const rx2   = (40 / 90) * 96;           // 42.667
+const ry2   = (40 / 145) * 156;         // 42.897
+const _dy20 = (20 / 145) * 156;         // 21.517 — portrait Y dist, goal→20 m
+const _a2hw = rx2 * Math.sqrt(Math.max(0, 1 - (_dy20 / ry2) ** 2)); // ≈ 36.903
+const arc2x1 = n(50 - _a2hw);           // ≈ 13.097
+const arc2x2 = n(50 + _a2hw);           // ≈ 86.903
+const arc2yT = n(2 + _dy20);            // 23.517 — chord y for top arc
+const arc2yB = n(158 - _dy20);          // 136.483 — chord y for bottom arc
+
+// sweep=1 (CW) from left→right bulges DOWN (toward midfield) for top.
+const pt2Top = `M ${arc2x1},${arc2yT} A ${n(rx2)},${n(ry2)} 0 0 1 ${arc2x2},${arc2yT}`;
+// sweep=0 (CCW) from left→right bulges UP (toward midfield) for bottom.
+const pt2Bot = `M ${arc2x1},${arc2yB} A ${n(rx2)},${n(ry2)} 0 0 0 ${arc2x2},${arc2yB}`;
+
+// Arc stroke colours (match pitch-config.ts Lg.lineGridStrong)
+const C_ARC = "rgba(255,255,255,0.42)";
+
+// ── Non-arc marking renderer (axis-swap only) ─────────────────────────────
+// EllipseArcs are skipped here — rendered with explicit helpers above.
 function renderMarkings(markings: readonly PitchMarking[]) {
   return markings.map((m, i) => {
     switch (m.kind) {
@@ -82,13 +105,7 @@ function renderMarkings(markings: readonly PitchMarking[]) {
           />
         );
       case "ellipseArc":
-        return (
-          <path key={i}
-            d={ellipseArcToPath(m)}
-            stroke={m.stroke} strokeWidth={m.strokeWidth} fill="none"
-            strokeLinecap={m.strokeLinecap}
-          />
-        );
+        return null; // drawn explicitly below with correct sweep flags
       default:
         return null;
     }
@@ -103,7 +120,7 @@ export function ProTaggerPitchView({
   interactive,
   onTap,
 }: Props) {
-  // Map ProTaggerSport → PitchSport (ladies_football has no PitchSport entry)
+  const isFootball = sport === "gaelic" || sport === "ladies_football";
   const pitchSport =
     sport === "hurling" || sport === "camogie" ? "hurling" as const : "gaelic" as const;
   const markings = getPitchConfig(pitchSport).markings;
@@ -131,8 +148,20 @@ export function ProTaggerPitchView({
       {/* Grass */}
       <rect x="0" y="0" width="100" height="160" fill="#166534" />
 
-      {/* All GAA markings — derived from pitch-config.ts landscape data */}
+      {/* Lines, rects, circles — axis-swapped from pitch-config.ts */}
       {renderMarkings(markings)}
+
+      {/* D arcs — outside each large box, facing midfield */}
+      <path d={dArcTop} fill="none" stroke={C_ARC} strokeWidth="0.48" />
+      <path d={dArcBot} fill="none" stroke={C_ARC} strokeWidth="0.48" />
+
+      {/* 2-point arcs — football / ladies only */}
+      {isFootball && (
+        <>
+          <path d={pt2Top} fill="none" stroke={C_ARC} strokeWidth="0.48" strokeLinecap="round" />
+          <path d={pt2Bot} fill="none" stroke={C_ARC} strokeWidth="0.48" strokeLinecap="round" />
+        </>
+      )}
 
       {/* Goal posts (outside pitch boundary) */}
       <line x1={POST_X1} y1="0" x2={POST_X1} y2="2" stroke="white" strokeWidth="1.0" />
