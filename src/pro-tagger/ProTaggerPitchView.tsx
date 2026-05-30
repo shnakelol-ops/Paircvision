@@ -12,33 +12,88 @@ interface Props {
 
 // ── Portrait pitch geometry ────────────────────────────────────────────────
 //
-// viewBox: 0 0 75 122
-// Pitch boundary: x=1, y=6, width=73, height=110  (endlines at y=6 and y=116)
-// Goal posts: two uprights centred on x=37.5 ± 3.5  →  x=34 and x=41
-//   Top goal posts from y=2 to y=6 (above pitch boundary)
-//   Bot goal posts from y=116 to y=120
+// Physical constants are identical to src/core/pitch/pitch-config.ts.
+// Axes are rotated 90°: length (145 m) → SVG Y, width (90 m) → SVG X.
+// ViewBox 0 0 100 160  (landscape 160×100 rotated).
+// Pitch inner: x=2, y=2, w=96, h=156.
 //
-// All Y positions measured from top endline (y=6):
-//   Football  13m → y=16        Hurling 14m → y=17
-//   Football  20m → y=22        Hurling 21m → y=23
-//   Football  45m → y=42        Hurling 65m → y=56
-//   Halfway       → y=61
-//   Football  45m → y=80        Hurling 65m → y=66
-//   Football  20m → y=100       Hurling 21m → y=99
-//   Football  13m → y=106       Hurling 14m → y=105
-//
-// Small goal box:  width=11 centred (x=32..43), depth=3 (y=6..9 / y=113..116)
-// Large rectangle: width=55 centred (x=10..65), depth=16 (y=6..22 / y=100..116)
-//
-// D arc (football): centred on goal face midpoint (37.5, 6) or (37.5, 116),
-//   radius=10. Endpoints at x=27.5 and x=47.5 on goal line.
-//   Top:  M 27.5,6  A 10,10 0 0 1 47.5,6   (bulges downward into field)
-//   Bot:  M 27.5,116 A 10,10 0 0 0 47.5,116 (bulges upward into field)
-//
-// Two-point arc (football only): centred on goal face midpoint, radius=32.
-//   Endpoints at x≈5.5 and x≈69.5 (near-sidelines at endline level).
-//   Top:  M 5.5,6  A 32,32 0 0 1 69.5,6   (dome sweeps down into field)
-//   Bot:  M 5.5,116 A 32,32 0 0 0 69.5,116
+// Arc sweep flags (SVG Y-down, sweep=1 = clockwise on screen):
+//   D arc top   west→east via south (into field) = sweep 1
+//   D arc bot   west→east via north (into field) = sweep 0
+//   2PT arc top SW→SE via south (into field)     = sweep 0
+//   2PT arc bot NW→NE via north (into field)     = sweep 1
+
+const Lm = 145;
+const Wm = 90;
+
+const pL = 2;            // pitchLeft
+const pT = 2;            // pitchTop
+const pW = 96;           // pitchWidth
+const pH = 156;          // pitchHeight
+const pR = pL + pW;      // 98
+const pB = pT + pH;      // 158
+const cX = pL + pW / 2;  // 50 — centre X
+const cY = pT + pH / 2;  // 80 — centre Y
+
+const yAt = (lf: number) => pT + lf * pH;
+
+// Line Y positions — both sports use the same fractions (mirrors pitch-config.ts)
+const y13t = yAt(13 / Lm);
+const y13b = pB - (13 / Lm) * pH;
+const y20t = yAt(20 / Lm);
+const y20b = pB - (20 / Lm) * pH;
+const y45t = yAt(45 / Lm);
+const y45b = pB - (45 / Lm) * pH;
+const y65t = yAt(65 / Lm);
+const y65b = pB - (65 / Lm) * pH;
+
+// Goal box dimensions (SVG units)
+const smallWide = (14 / Wm) * pW;   // 14.933
+const smallDeep = (4.5 / Lm) * pH;  // 4.841
+const largeWide = (19 / Wm) * pW;   // 20.267
+const largeDeep = (13 / Lm) * pH;   // 13.986
+const smallX    = cX - smallWide / 2;
+const largeX    = cX - largeWide / 2;
+
+// Goal posts (same mouth width as small box)
+const postX1 = smallX;
+const postX2  = smallX + smallWide;
+
+// Penalty spots
+const penYt = yAt(11 / Lm);
+const penYb = pB - (11 / Lm) * pH;
+
+// D arc — centred on 20m line, half-ellipse (west→east via south/north)
+const rxD = (13 / Wm) * pW;   // 13.867  width-axis radius
+const ryD = (13 / Lm) * pH;   // 13.986  length-axis radius
+
+// Two-point arc — centred on goal line; endpoints land at 20m-line level.
+// Formula matches pitch-config.ts: anchorSin = dy/ry → anchorDx = rx*cos.
+const rx2   = (40 / Wm) * pW;                              // 42.667
+const ry2   = (40 / Lm) * pH;                              // 43.034
+const a2sin = (y20t - pT) / ry2;                           // ≈ 0.500
+const a2cos = Math.sqrt(Math.max(0, 1 - a2sin * a2sin));   // ≈ 0.866
+const a2dx  = rx2 * a2cos;
+const arc2x1 = cX - a2dx;   // ≈ 13.044
+const arc2x2 = cX + a2dx;   // ≈ 86.956
+
+// Colours — match PITCH_STYLE_TOKENS.lines.gaelic
+const C_STRONG = "rgba(255,255,255,0.42)";
+const C_MID    = "rgba(255,255,255,0.40)";
+const C_SOFT   = "rgba(255,255,255,0.38)";
+const C_END    = "rgba(255,255,255,0.40)";
+const C_CENTRE = "rgba(255,255,255,0.52)";
+const C_SPOT   = "rgba(255,255,255,0.55)";
+const DASH13   = "4.2 3.6";
+
+// 3-dp rounding for clean SVG output (mirrors rnd3 in pitch-config.ts)
+const n = (v: number) => Math.round(v * 1000) / 1000;
+
+// Pre-built arc path strings
+const dArcTop  = `M ${n(cX - rxD)},${n(y20t)} A ${n(rxD)},${n(ryD)} 0 0 1 ${n(cX + rxD)},${n(y20t)}`;
+const dArcBot  = `M ${n(cX - rxD)},${n(y20b)} A ${n(rxD)},${n(ryD)} 0 0 0 ${n(cX + rxD)},${n(y20b)}`;
+const pt2Top   = `M ${n(arc2x1)},${n(y20t)} A ${n(rx2)},${n(ry2)} 0 0 0 ${n(arc2x2)},${n(y20t)}`;
+const pt2Bot   = `M ${n(arc2x1)},${n(y20b)} A ${n(rx2)},${n(ry2)} 0 0 1 ${n(arc2x2)},${n(y20b)}`;
 
 export function ProTaggerPitchView({
   sport,
@@ -48,16 +103,7 @@ export function ProTaggerPitchView({
   interactive,
   onTap,
 }: Props) {
-  const isHurling  = sport === "hurling" || sport === "camogie";
-  const isFootball = !isHurling;
-
-  // ── Horizontal line Y positions ─────────────────────────────────────
-  const smallLineTop = isHurling ? 17 : 16;
-  const smallLineBot = isHurling ? 105 : 106;
-  const midLineTop   = isHurling ? 23 : 22;
-  const midLineBot   = isHurling ? 99 : 100;
-  const bigLineTop   = isHurling ? 56 : 42;
-  const bigLineBot   = isHurling ? 66 : 80;
+  const isHurling = sport === "hurling" || sport === "camogie";
 
   const attackingDown =
     (half === 1 && attackDirection === "right") ||
@@ -72,108 +118,99 @@ export function ProTaggerPitchView({
     onTap(nx, ny);
   }
 
-  const lineColour     = "rgba(255,255,255,0.65)";
-  const subLineColour  = "rgba(255,255,255,0.45)";
-  const thinLineColour = "rgba(255,255,255,0.30)";
-  const markColour     = "rgba(255,255,255,0.40)";
-
   return (
     <svg
-      viewBox="0 0 75 122"
+      viewBox="0 0 100 160"
       style={svgStyle(interactive)}
       onPointerDown={handlePointerDown}
       aria-label="Pitch — tap to place event"
     >
       {/* Grass */}
-      <rect x="0" y="0" width="75" height="122" fill="#166534" />
+      <rect x="0" y="0" width="100" height="160" fill="#166534" />
 
       {/* Pitch boundary */}
       <rect
-        x="1" y="6" width="73" height="110"
-        fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="0.5"
+        x={pL} y={pT} width={pW} height={pH}
+        fill="none" stroke={C_STRONG} strokeWidth="0.52"
       />
 
-      {/* ── Goal posts (above/below pitch boundary) ─────────────────── */}
+      {/* ── Goal posts (outside pitch boundary) ─────────────────────── */}
+      {/* Top */}
+      <line x1={n(postX1)} y1="0" x2={n(postX1)} y2={pT} stroke="white" strokeWidth="1.0" />
+      <line x1={n(postX2)} y1="0" x2={n(postX2)} y2={pT} stroke="white" strokeWidth="1.0" />
+      <line x1={n(postX1)} y1="0.3" x2={n(postX2)} y2="0.3" stroke="rgba(255,255,255,0.55)" strokeWidth="0.4" />
+      {/* Bottom */}
+      <line x1={n(postX1)} y1={pB} x2={n(postX1)} y2="160" stroke="white" strokeWidth="1.0" />
+      <line x1={n(postX2)} y1={pB} x2={n(postX2)} y2="160" stroke="white" strokeWidth="1.0" />
+      <line x1={n(postX1)} y1="159.7" x2={n(postX2)} y2="159.7" stroke="rgba(255,255,255,0.55)" strokeWidth="0.4" />
 
-      {/* Top goal posts */}
-      <line x1="34" y1="2" x2="34" y2="6" stroke="white" strokeWidth="1.2" />
-      <line x1="41" y1="2" x2="41" y2="6" stroke="white" strokeWidth="1.2" />
-      <line x1="34" y1="2" x2="41" y2="2" stroke="rgba(255,255,255,0.5)" strokeWidth="0.5" />
+      {/* ── Small goal boxes ─────────────────────────────────────────── */}
+      <rect
+        x={n(smallX)} y={pT} width={n(smallWide)} height={n(smallDeep)}
+        fill="none" stroke={C_END} strokeWidth="0.42"
+      />
+      <rect
+        x={n(smallX)} y={n(pB - smallDeep)} width={n(smallWide)} height={n(smallDeep)}
+        fill="none" stroke={C_END} strokeWidth="0.42"
+      />
 
-      {/* Bottom goal posts */}
-      <line x1="34" y1="116" x2="34" y2="120" stroke="white" strokeWidth="1.2" />
-      <line x1="41" y1="116" x2="41" y2="120" stroke="white" strokeWidth="1.2" />
-      <line x1="34" y1="120" x2="41" y2="120" stroke="rgba(255,255,255,0.5)" strokeWidth="0.5" />
+      {/* ── Large rectangles ─────────────────────────────────────────── */}
+      <rect
+        x={n(largeX)} y={pT} width={n(largeWide)} height={n(largeDeep)}
+        fill="none" stroke={C_END} strokeWidth="0.46"
+      />
+      <rect
+        x={n(largeX)} y={n(pB - largeDeep)} width={n(largeWide)} height={n(largeDeep)}
+        fill="none" stroke={C_END} strokeWidth="0.46"
+      />
 
-      {/* ── Small goal boxes ────────────────────────────────────────── */}
-      <rect x="32" y="6"   width="11" height="3" fill="none" stroke={markColour} strokeWidth="0.35" />
-      <rect x="32" y="113" width="11" height="3" fill="none" stroke={markColour} strokeWidth="0.35" />
+      {/* ── D arcs (centred on 20m line, half-ellipse into field) ────── */}
+      <path d={dArcTop} fill="none" stroke={C_STRONG} strokeWidth="0.48" />
+      <path d={dArcBot} fill="none" stroke={C_STRONG} strokeWidth="0.48" />
 
-      {/* ── Large rectangles ────────────────────────────────────────── */}
-      <rect x="10" y="6"   width="55" height="16" fill="none" stroke={markColour} strokeWidth="0.35" />
-      <rect x="10" y="100" width="55" height="16" fill="none" stroke={markColour} strokeWidth="0.35" />
-
-      {/* ── Football-only markings ──────────────────────────────────── */}
-      {isFootball && (
+      {/* ── Two-point arcs (football / LGFA only) ───────────────────── */}
+      {!isHurling && (
         <>
-          {/* D arcs at 13m (radius=10, centre on goal line midpoint) */}
-          <path
-            d="M 27.5,6 A 10,10 0 0 1 47.5,6"
-            fill="none" stroke={markColour} strokeWidth="0.35"
-          />
-          <path
-            d="M 27.5,116 A 10,10 0 0 0 47.5,116"
-            fill="none" stroke={markColour} strokeWidth="0.35"
-          />
-
-          {/* Two-point arcs (radius=32, centre on goal face midpoint) */}
-          <path
-            d="M 5.5,6 A 32,32 0 0 1 69.5,6"
-            fill="none" stroke={subLineColour} strokeWidth="0.5"
-          />
-          <path
-            d="M 5.5,116 A 32,32 0 0 0 69.5,116"
-            fill="none" stroke={subLineColour} strokeWidth="0.5"
-          />
+          <path d={pt2Top} fill="none" stroke={C_STRONG} strokeWidth="0.48" strokeLinecap="round" />
+          <path d={pt2Bot} fill="none" stroke={C_STRONG} strokeWidth="0.48" strokeLinecap="round" />
         </>
       )}
 
-      {/* ── Horizontal lines ────────────────────────────────────────── */}
+      {/* ── Horizontal lines (both sports) ──────────────────────────── */}
 
-      {/* 13m / 14m lines */}
-      <line x1="1" y1={smallLineTop} x2="74" y2={smallLineTop}
-        stroke={thinLineColour} strokeWidth="0.3" />
-      <line x1="1" y1={smallLineBot} x2="74" y2={smallLineBot}
-        stroke={thinLineColour} strokeWidth="0.3" />
+      {/* 13m lines — dashed */}
+      <line x1={pL} y1={n(y13t)} x2={pR} y2={n(y13t)} stroke={C_SOFT} strokeWidth="0.32" strokeDasharray={DASH13} />
+      <line x1={pL} y1={n(y13b)} x2={pR} y2={n(y13b)} stroke={C_SOFT} strokeWidth="0.32" strokeDasharray={DASH13} />
 
-      {/* 20m / 21m lines */}
-      <line x1="1" y1={midLineTop} x2="74" y2={midLineTop}
-        stroke={subLineColour} strokeWidth="0.35" />
-      <line x1="1" y1={midLineBot} x2="74" y2={midLineBot}
-        stroke={subLineColour} strokeWidth="0.35" />
+      {/* 20m lines */}
+      <line x1={pL} y1={n(y20t)} x2={pR} y2={n(y20t)} stroke={C_MID} strokeWidth="0.48" />
+      <line x1={pL} y1={n(y20b)} x2={pR} y2={n(y20b)} stroke={C_MID} strokeWidth="0.48" />
 
-      {/* 45m / 65m lines */}
-      <line x1="1" y1={bigLineTop} x2="74" y2={bigLineTop}
-        stroke={lineColour} strokeWidth="0.4" />
-      <line x1="1" y1={bigLineBot} x2="74" y2={bigLineBot}
-        stroke={lineColour} strokeWidth="0.4" />
+      {/* 45m lines */}
+      <line x1={pL} y1={n(y45t)} x2={pR} y2={n(y45t)} stroke={C_STRONG} strokeWidth="0.54" />
+      <line x1={pL} y1={n(y45b)} x2={pR} y2={n(y45b)} stroke={C_STRONG} strokeWidth="0.54" />
 
-      {/* Halfway line — dashed */}
-      <line x1="1" y1="61" x2="74" y2="61"
-        stroke={lineColour} strokeWidth="0.4" strokeDasharray="2 2" />
+      {/* 65m lines */}
+      <line x1={pL} y1={n(y65t)} x2={pR} y2={n(y65t)} stroke={C_STRONG} strokeWidth="0.54" />
+      <line x1={pL} y1={n(y65b)} x2={pR} y2={n(y65b)} stroke={C_STRONG} strokeWidth="0.54" />
 
-      {/* Centre circle */}
-      <circle cx="37.5" cy="61" r="5"
-        fill="none" stroke={subLineColour} strokeWidth="0.4" />
-      <circle cx="37.5" cy="61" r="0.8" fill="rgba(255,255,255,0.5)" />
+      {/* Halfway — full-width dashed (portrait legibility, no centre circle in GAA Pixi) */}
+      <line x1={pL} y1={cY} x2={pR} y2={cY} stroke={C_CENTRE} strokeWidth="0.6" strokeDasharray="2 2" />
 
-      {/* ── Attack direction indicator ──────────────────────────────── */}
+      {/* ── Centre spot ──────────────────────────────────────────────── */}
+      <circle cx={cX} cy={cY} r="0.85" fill={C_SPOT} />
+
+      {/* ── Penalty spots ────────────────────────────────────────────── */}
+      <circle cx={cX} cy={n(penYt)} r="0.36" fill={C_SPOT} />
+      <circle cx={cX} cy={n(penYb)} r="0.36" fill={C_SPOT} />
+
+      {/* ── Attack direction indicator ───────────────────────────────── */}
       <text
-        x="37.5"
-        y={attackingDown ? 75 : 47}
+        x={cX}
+        y={attackingDown ? 142 : 22}
         textAnchor="middle"
-        fontSize="4"
-        fill="rgba(255,255,255,0.85)"
+        fontSize="3.8"
+        fill="rgba(255,255,255,0.80)"
         fontFamily="system-ui, sans-serif"
         fontWeight="600"
       >
@@ -182,23 +219,23 @@ export function ProTaggerPitchView({
 
       {/* Dim overlay when not interactive */}
       {!interactive && (
-        <rect x="0" y="0" width="75" height="122" fill="rgba(0,0,0,0.18)" />
+        <rect x="0" y="0" width="100" height="160" fill="rgba(0,0,0,0.18)" />
       )}
 
       {/* Feedback dot */}
       {feedbackDot && (
         <>
           <circle
-            cx={feedbackDot.nx * 75}
-            cy={feedbackDot.ny * 122}
+            cx={feedbackDot.nx * 100}
+            cy={feedbackDot.ny * 160}
             r="4"
             fill="none"
             stroke="rgba(255,255,255,0.6)"
             strokeWidth="0.6"
           />
           <circle
-            cx={feedbackDot.nx * 75}
-            cy={feedbackDot.ny * 122}
+            cx={feedbackDot.nx * 100}
+            cy={feedbackDot.ny * 160}
             r="2"
             fill="white"
           />
