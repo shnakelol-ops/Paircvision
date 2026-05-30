@@ -237,17 +237,23 @@ export function ProTaggerPitchView({
       <g transform={PORTRAIT_MARKINGS_TRANSFORM}>
         {GAELIC_PITCH_CONFIG.markings.map(renderPitchMarking)}
         {feedbackWorld && (
-          <>
+          // key forces animation restart if the dot position changes mid-flow
+          <g key={`${feedbackDot!.nx.toFixed(4)}-${feedbackDot!.ny.toFixed(4)}`}>
+            {/* Expanding pulse ring */}
             <circle
               cx={feedbackWorld.x}
               cy={feedbackWorld.y}
-              r="3.3"
+              r="2"
               fill="none"
-              stroke="rgba(255,255,255,0.6)"
-              strokeWidth="0.5"
-            />
+              stroke="rgba(255,255,255,0.75)"
+              strokeWidth="0.45"
+            >
+              <animate attributeName="r" from="2" to="12" dur="0.75s" fill="freeze" />
+              <animate attributeName="stroke-opacity" from="0.75" to="0" dur="0.75s" fill="freeze" />
+            </circle>
+            {/* Solid centre dot */}
             <circle cx={feedbackWorld.x} cy={feedbackWorld.y} r="1.55" fill="white" />
-          </>
+          </g>
         )}
       </g>
 

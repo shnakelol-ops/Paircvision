@@ -3,6 +3,9 @@ import type { CSSProperties } from "react";
 import type { ProTaggerSession } from "./pro-tagger-session";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
 import { PRO_TAGGER_FAMILIES, getFamilyLabel } from "./pro-tagger-families";
+
+// Families where a placement in the wrong attacking half is suspicious.
+const SCORING_FAMILY_IDS = new Set<ProTaggerFamilyId>(["GOAL", "POINT", "TWO_POINT", "SHOT", "WIDE"]);
 import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
@@ -179,8 +182,9 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
   const [half, setHalf]                 = useState<1 | 2>(1);
   const [clockSeconds, setClockSeconds] = useState(0);
   const [clockRunning, setClockRunning] = useState(false);
-  const [feedbackDot, setFeedbackDot]   = useState<{ nx: number; ny: number } | null>(null);
-  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+  const [feedbackDot, setFeedbackDot]     = useState<{ nx: number; ny: number } | null>(null);
+  const [saveFeedback, setSaveFeedback]   = useState<string | null>(null);
+  const [wrongWayActive, setWrongWayActive] = useState(false);
 
   const clockStartRef    = useRef<number | null>(null);
   const clockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -188,6 +192,8 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
   const halfRef          = useRef<1 | 2>(1);
   const loggedRef        = useRef<readonly LoggedMatchEvent[]>([]);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrongWayActiveRef  = useRef(false);
+  const wrongWayTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { clockSecondsRef.current = clockSeconds; }, [clockSeconds]);
   useEffect(() => { halfRef.current = half; }, [half]);
@@ -197,6 +203,7 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     return () => {
       if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+      if (wrongWayTimerRef.current) clearTimeout(wrongWayTimerRef.current);
     };
   }, []);
 
@@ -237,11 +244,45 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     setPhase("PITCH_TAP");
   }, []);
 
-  // Step 3: pitch tapped → save event, brief dot feedback, return to IDLE
+  // Step 3: pitch tapped → wrong-way guard, then save + pulse dot, return to IDLE.
+  //
+  // Attack direction logic: `nx` is normalised landscape-X [0,1], i.e. the
+  // length-of-pitch axis.  attackingDown=true means FOR attacks toward nx=1.
+  // Scoring events in the wrong half trigger a 3-second override window.
+  // A second tap within that window (or any tap in the correct half) saves.
   const handlePitchTap = useCallback(
     (nx: number, ny: number) => {
       const p = pending;
       if (!p) return;
+
+      if (SCORING_FAMILY_IDS.has(p.familyId)) {
+        const attackingDown =
+          (halfRef.current === 1 && session.attackDirection === "right") ||
+          (halfRef.current === 2 && session.attackDirection === "left");
+        const forExpectsHighNx = attackingDown;
+        const tapHighNx = nx > 0.5;
+        const inCorrectHalf =
+          p.teamSide === "FOR"
+            ? tapHighNx === forExpectsHighNx
+            : tapHighNx !== forExpectsHighNx;
+
+        if (!inCorrectHalf && !wrongWayActiveRef.current) {
+          // First wrong-way tap — show warning, do not save.
+          setWrongWayActive(true);
+          wrongWayActiveRef.current = true;
+          if (wrongWayTimerRef.current) clearTimeout(wrongWayTimerRef.current);
+          wrongWayTimerRef.current = setTimeout(() => {
+            setWrongWayActive(false);
+            wrongWayActiveRef.current = false;
+          }, 3000);
+          return;
+        }
+      }
+
+      // Clear wrong-way state (normal tap or override second tap).
+      if (wrongWayTimerRef.current) clearTimeout(wrongWayTimerRef.current);
+      setWrongWayActive(false);
+      wrongWayActiveRef.current = false;
 
       const event = adaptProTaggerAction({
         familyId:          p.familyId,
@@ -259,7 +300,7 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
 
       setLoggedEvents((prev) => [...prev, event]);
 
-      // Stay on pitch screen briefly to show the confirmation dot, then return.
+      // Show pulse confirmation dot for 750 ms, then return to IDLE.
       setFeedbackDot({ nx, ny });
 
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
@@ -267,14 +308,17 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
         setFeedbackDot(null);
         setPending(null);
         setPhase("IDLE");
-      }, 450);
+      }, 750);
     },
-    [pending],
+    [pending, session.attackDirection],
   );
 
   // Cancel from any mid-flow screen
   const cancelFlow = useCallback(() => {
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    if (wrongWayTimerRef.current) clearTimeout(wrongWayTimerRef.current);
+    setWrongWayActive(false);
+    wrongWayActiveRef.current = false;
     setFeedbackDot(null);
     setPending(null);
     setPhase("IDLE");
@@ -450,6 +494,8 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
           <div style={S.pitchFooter}>
             {feedbackDot ? (
               <span style={S.savedText}>✓ Event saved</span>
+            ) : wrongWayActive ? (
+              <span style={S.wrongWayText}>Wrong way? Tap again to override</span>
             ) : (
               <span style={S.tapHintText}>Tap the pitch to place the event</span>
             )}
@@ -610,6 +656,11 @@ const S: Record<string, CSSProperties> = {
   savedText: {
     fontSize: 13,
     color: "#2ea043",
+    fontWeight: 700,
+  },
+  wrongWayText: {
+    fontSize: 13,
+    color: "#f59e0b",
     fontWeight: 700,
   },
 };
