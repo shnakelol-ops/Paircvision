@@ -20,6 +20,14 @@ import {
   type MatchEventPeriod,
   type MatchEventSegment,
 } from "./core/stats/stats-event-model";
+import {
+  type LoggedMatchEvent,
+  type SavedMatch,
+  type SavedMatchRestoreContext,
+  SAVED_MATCHES_STORAGE_KEY,
+  SAVED_SQUADS_STORAGE_KEY,
+  MAX_SAVED_MATCHES,
+} from "./core/stats/saved-match";
 import { gaaModeConfig, type GaaModeKey } from "./config/gaaModeConfig";
 import { useScreenWakeLock } from "./hooks/useScreenWakeLock";
 import { NotesQuickPanel } from "./features/notes";
@@ -107,48 +115,11 @@ type SavedSquad = {
   players: SavedSquadPlayer[];
   updatedAt: number;
 };
-type LoggedMatchEvent = MatchEvent & {
-  type: MatchEventKind;
-  tags?: string[];
-  teamSide: "FOR" | "OPP";
-  x: number;
-  y: number;
-  period: MatchEventPeriod;
-  segment: MatchEventSegment;
-  matchClockSeconds: number;
-  createdAt: number;
-  playerId?: string;
-  playerName?: string;
-  playerNumber?: number;
-  squadId?: string;
-  team?: TeamSide;
-};
+// LoggedMatchEvent is defined in core/stats/saved-match.ts and imported below.
 type LiveRenderablePitchEvent = LoggedMatchEvent & {
   renderAsSubtleDot?: boolean;
 };
-type SavedMatchRestoreContext = {
-  matchState?: MatchState;
-  currentHalf?: 1 | 2;
-  matchTimeSeconds?: number;
-  firstHalfAttackingDirection?: AttackingDirection;
-  fullTimeResumeState?: {
-    matchState: "FIRST_HALF" | "SECOND_HALF";
-    currentHalf: 1 | 2;
-    matchTimeSeconds: number;
-  };
-};
-type SavedMatch = {
-  id: string;
-  createdAt: number;
-  label: string;
-  homeTeamName: string;
-  awayTeamName: string;
-  venue: string;
-  events: readonly LoggedMatchEvent[];
-  eventCount: number;
-  scorelineSnapshot: string;
-  restoreContext?: SavedMatchRestoreContext;
-};
+// SavedMatchRestoreContext and SavedMatch are defined in core/stats/saved-match.ts and imported below.
 type StatsActiveMatchDraft = {
   version: 1;
   updatedAt: number;
@@ -204,11 +175,10 @@ const MODE_MENU_OPTIONS: ReadonlyArray<{ key: GaaModeKey; label: string }> = [
 ];
 const FORMATION_ROW_SIZES = [1, 3, 3, 2, 3, 3] as const;
 const SQUADS_STORAGE_KEY = "pitchsideclub.squads";
-const SAVED_SQUADS_STORAGE_KEY = "pitchflow_saved_squads_v1";
-const SAVED_MATCHES_STORAGE_KEY = "pitchflow_matches_v1";
+// SAVED_SQUADS_STORAGE_KEY and SAVED_MATCHES_STORAGE_KEY imported from core/stats/saved-match.
 const ACTIVE_MATCH_DRAFT_STORAGE_KEY = "paircvision_stats_active_draft_v1";
 const REVIEW_SESSION_STORAGE_KEY = "paircvision.reviewSession.v1.last";
-const MAX_SAVED_MATCHES = 10;
+// MAX_SAVED_MATCHES imported from core/stats/saved-match.
 const EVENT_PICKER_LOGO_STYLE: CSSProperties = {
   width: "40px",
   height: "40px",
