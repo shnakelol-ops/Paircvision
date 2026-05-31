@@ -52,7 +52,7 @@ function resolveKindAndSide(familyId: ProTaggerFamilyId, rawLabel: string, teamS
 
     case "TURNOVER":
       return {
-        kind: teamSide === "FOR" ? "TURNOVER_WON" : "TURNOVER_LOST",
+        kind: "TURNOVER_WON",
         teamSide,
         tag,
       };

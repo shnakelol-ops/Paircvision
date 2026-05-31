@@ -115,7 +115,6 @@ type ProTaggerCounts = {
   shots: number;
   wides: number;
   turnoverWon: number;
-  turnoverLost: number;
   kickoutWon: number;
   kickoutLost: number;
   freeWon: number;
@@ -131,7 +130,6 @@ function computeProTaggerCounts(events: readonly LoggedMatchEvent[], side: "FOR"
     shots:        s.filter((e) => e.kind === "SHOT").length,
     wides:        s.filter((e) => e.kind === "WIDE").length,
     turnoverWon:  s.filter((e) => e.kind === "TURNOVER_WON").length,
-    turnoverLost: s.filter((e) => e.kind === "TURNOVER_LOST").length,
     kickoutWon:   s.filter((e) => e.kind === "KICKOUT_WON").length,
     kickoutLost:  s.filter((e) => e.kind === "KICKOUT_CONCEDED").length,
     freeWon:      s.filter((e) => e.kind === "FREE_WON").length,
@@ -982,7 +980,6 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
                 ["Shots",          forCts.shots,        oppCts.shots],
                 ["Wides",          forCts.wides,        oppCts.wides],
                 ["Turnover Won",   forCts.turnoverWon,  oppCts.turnoverWon],
-                ["Turnover Lost",  forCts.turnoverLost, oppCts.turnoverLost],
                 ["Kickout Won",    forCts.kickoutWon,   oppCts.kickoutWon],
                 ["Kickout Lost",   forCts.kickoutLost,  oppCts.kickoutLost],
                 ["Free Won",       forCts.freeWon,      oppCts.freeWon],
