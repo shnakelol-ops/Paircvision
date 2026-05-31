@@ -27,6 +27,8 @@ export function ProTaggerMiniJersey({ primary, secondary, size = 24 }: Props) {
         d="M7,5 L10,8 L13,5 Q10,2 7,5 Z"
         fill={secondary}
       />
+      {/* Chest stripe — secondary, horizontal band across body */}
+      <rect x="4" y="10" width="12" height="3" fill={secondary} />
     </svg>
   );
 }
