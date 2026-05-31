@@ -3,9 +3,6 @@ import type { CSSProperties } from "react";
 import type { ProTaggerSession } from "./pro-tagger-session";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
 import { PRO_TAGGER_FAMILIES, getFamilyLabel } from "./pro-tagger-families";
-
-// Families where a placement in the wrong attacking half is suspicious.
-const SCORING_FAMILY_IDS = new Set<ProTaggerFamilyId>(["GOAL", "POINT", "TWO_POINT", "SHOT", "WIDE"]);
 import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
@@ -20,6 +17,38 @@ interface Props {
   onEnd: () => void;
 }
 
+// Families where a placement in the wrong attacking half is suspicious.
+const SCORING_FAMILY_IDS = new Set<ProTaggerFamilyId>([
+  "GOAL", "POINT", "TWO_POINT", "SHOT", "WIDE",
+]);
+
+// ── Match state machine ───────────────────────────────────────────────────────
+
+type MatchState =
+  | "PRE_MATCH"
+  | "FIRST_HALF"
+  | "HALF_TIME"
+  | "SECOND_HALF"
+  | "FULL_TIME";
+
+const MATCH_STATE_LABEL: Record<MatchState, string> = {
+  PRE_MATCH:   "PRE",
+  FIRST_HALF:  "1H",
+  HALF_TIME:   "HT",
+  SECOND_HALF: "2H",
+  FULL_TIME:   "FT",
+};
+
+const MATCH_STATE_COLOUR: Record<MatchState, string> = {
+  PRE_MATCH:   "#6e7681",
+  FIRST_HALF:  "#2ea043",
+  HALF_TIME:   "#d97706",
+  SECOND_HALF: "#2ea043",
+  FULL_TIME:   "#6e7681",
+};
+
+// ── Capture phase ─────────────────────────────────────────────────────────────
+
 type CapturePhase = "IDLE" | "PLAYER_PICK" | "PITCH_TAP";
 
 type PendingAction = {
@@ -27,7 +56,7 @@ type PendingAction = {
   tileLabel:      string;
   teamSide:       "FOR" | "OPP";
   player:         SelectedPlayer | null;
-  playerResolved: boolean; // true once player step completed (even if null = skipped)
+  playerResolved: boolean;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -50,6 +79,11 @@ function computeScoreSide(
   return { goals, points: pts, total: goals * 3 + pts };
 }
 
+// Compact Goals-Points scoreboard format: "1-12"
+function fmtGP(goals: number, points: number): string {
+  return `${goals}-${String(points).padStart(2, "0")}`;
+}
+
 function fmtScore(s: { goals: number; points: number; total: number }): string {
   return `${s.goals}-${String(s.points).padStart(2, "0")} (${s.total})`;
 }
@@ -59,7 +93,6 @@ function fmtClock(s: number): string {
 }
 
 // ── PendingContextBar ─────────────────────────────────────────────────────────
-// Shown at the top of the PLAYER_PICK and PITCH_TAP screens.
 
 function PendingContextBar({
   pending,
@@ -117,59 +150,19 @@ const CB: Record<string, CSSProperties> = {
     minWidth: 0,
     overflow: "hidden",
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: "50%",
-    flexShrink: 0,
-  },
-  familyText: {
-    fontSize: 12,
-    fontWeight: 700,
-    color: "#e6edf3",
-    whiteSpace: "nowrap" as const,
-    flexShrink: 0,
-  },
-  sep: {
-    color: "#30363d",
-    fontSize: 12,
-    flexShrink: 0,
-  },
-  tileText: {
-    fontSize: 12,
-    fontWeight: 600,
-    color: "#e6edf3",
-    whiteSpace: "nowrap" as const,
-    flexShrink: 0,
-  },
+  dot:       { width: 8, height: 8, borderRadius: "50%", flexShrink: 0 },
+  familyText: { fontSize: 12, fontWeight: 700, color: "#e6edf3", whiteSpace: "nowrap" as const, flexShrink: 0 },
+  sep:        { color: "#30363d", fontSize: 12, flexShrink: 0 },
+  tileText:   { fontSize: 12, fontWeight: 600, color: "#e6edf3", whiteSpace: "nowrap" as const, flexShrink: 0 },
   oppBadge: {
-    fontSize: 10,
-    fontWeight: 700,
-    color: "#f87171",
-    background: "rgba(248,113,113,0.12)",
-    borderRadius: 4,
-    padding: "1px 5px",
-    flexShrink: 0,
+    fontSize: 10, fontWeight: 700, color: "#f87171",
+    background: "rgba(248,113,113,0.12)", borderRadius: 4, padding: "1px 5px", flexShrink: 0,
   },
-  playerText: {
-    fontSize: 12,
-    color: "#8b949e",
-    whiteSpace: "nowrap" as const,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
+  playerText: { fontSize: 12, color: "#8b949e", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" },
   cancelBtn: {
-    background: "transparent",
-    border: "1px solid #30363d",
-    borderRadius: 6,
-    color: "#8b949e",
-    fontSize: 12,
-    fontWeight: 600,
-    padding: "4px 10px",
-    cursor: "pointer",
-    outline: "none",
-    flexShrink: 0,
-    whiteSpace: "nowrap" as const,
+    background: "transparent", border: "1px solid #30363d", borderRadius: 6,
+    color: "#8b949e", fontSize: 12, fontWeight: 600, padding: "4px 10px",
+    cursor: "pointer", outline: "none", flexShrink: 0, whiteSpace: "nowrap" as const,
   },
 };
 
@@ -181,9 +174,9 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
   const [loggedEvents, setLoggedEvents] = useState<readonly LoggedMatchEvent[]>([]);
   const [half, setHalf]                 = useState<1 | 2>(1);
   const [clockSeconds, setClockSeconds] = useState(0);
-  const [clockRunning, setClockRunning] = useState(false);
-  const [feedbackDot, setFeedbackDot]     = useState<{ nx: number; ny: number } | null>(null);
-  const [saveFeedback, setSaveFeedback]   = useState<string | null>(null);
+  const [matchState, setMatchState]     = useState<MatchState>("PRE_MATCH");
+  const [feedbackDot, setFeedbackDot]   = useState<{ nx: number; ny: number } | null>(null);
+  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [wrongWayActive, setWrongWayActive] = useState(false);
 
   const clockStartRef    = useRef<number | null>(null);
@@ -192,12 +185,15 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
   const halfRef          = useRef<1 | 2>(1);
   const loggedRef        = useRef<readonly LoggedMatchEvent[]>([]);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const matchStateRef    = useRef<MatchState>("PRE_MATCH");
   const wrongWayActiveRef  = useRef(false);
   const wrongWayTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { clockSecondsRef.current = clockSeconds; }, [clockSeconds]);
   useEffect(() => { halfRef.current = half; }, [half]);
   useEffect(() => { loggedRef.current = loggedEvents; }, [loggedEvents]);
+  useEffect(() => { matchStateRef.current = matchState; }, [matchState]);
+  useEffect(() => { wrongWayActiveRef.current = wrongWayActive; }, [wrongWayActive]);
 
   useEffect(() => {
     return () => {
@@ -207,36 +203,77 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     };
   }, []);
 
-  // ── Clock ──────────────────────────────────────────────────────────────────
+  // ── Match flow transitions ────────────────────────────────────────────────
 
-  const toggleClock = useCallback(() => {
-    if (clockRunning) {
-      clearInterval(clockIntervalRef.current!);
+  const handleStartMatch = useCallback(() => {
+    clockSecondsRef.current = 0;
+    setClockSeconds(0);
+    clockStartRef.current = Date.now();
+    if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
+    clockIntervalRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - clockStartRef.current!) / 1000);
+      clockSecondsRef.current = elapsed;
+      setClockSeconds(elapsed);
+    }, 500);
+    halfRef.current = 1;
+    setHalf(1);
+    matchStateRef.current = "FIRST_HALF";
+    setMatchState("FIRST_HALF");
+  }, []);
+
+  function freezeMatch(nextState: "HALF_TIME" | "FULL_TIME") {
+    if (clockIntervalRef.current) {
+      clearInterval(clockIntervalRef.current);
       clockIntervalRef.current = null;
-      setClockRunning(false);
-    } else {
-      clockStartRef.current = Date.now() - clockSecondsRef.current * 1000;
-      clockIntervalRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - clockStartRef.current!) / 1000);
-        clockSecondsRef.current = elapsed;
-        setClockSeconds(elapsed);
-      }, 500);
-      setClockRunning(true);
     }
-  }, [clockRunning]);
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    if (wrongWayTimerRef.current) { clearTimeout(wrongWayTimerRef.current); wrongWayTimerRef.current = null; }
+    wrongWayActiveRef.current = false;
+    setWrongWayActive(false);
+    setFeedbackDot(null);
+    setPending(null);
+    setPhase("IDLE");
+    matchStateRef.current = nextState;
+    setMatchState(nextState);
+  }
 
-  // ── Capture flow ───────────────────────────────────────────────────────────
+  const handleHalfTime = useCallback(() => {
+    freezeMatch("HALF_TIME");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Step 1: tile tapped → go to player pick screen
+  const handleStartSecondHalf = useCallback(() => {
+    clockStartRef.current = Date.now() - clockSecondsRef.current * 1000;
+    if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
+    clockIntervalRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - clockStartRef.current!) / 1000);
+      clockSecondsRef.current = elapsed;
+      setClockSeconds(elapsed);
+    }, 500);
+    halfRef.current = 2;
+    setHalf(2);
+    matchStateRef.current = "SECOND_HALF";
+    setMatchState("SECOND_HALF");
+  }, []);
+
+  const handleFullTime = useCallback(() => {
+    freezeMatch("FULL_TIME");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Capture flow ──────────────────────────────────────────────────────────
+
+  // Tagging is only allowed during active halves.
   const handleTileTap = useCallback(
     (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP") => {
+      const ms = matchStateRef.current;
+      if (ms !== "FIRST_HALF" && ms !== "SECOND_HALF") return;
       setPending({ familyId, tileLabel, teamSide, player: null, playerResolved: false });
       setPhase("PLAYER_PICK");
     },
     [],
   );
 
-  // Step 2: player selected or skipped → go to pitch screen
   const handlePlayerSelect = useCallback((player: SelectedPlayer | null) => {
     setPending((prev) =>
       prev ? { ...prev, player, playerResolved: true } : null,
@@ -244,9 +281,7 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     setPhase("PITCH_TAP");
   }, []);
 
-  // Step 3: pitch tapped → wrong-way guard, then save + pulse dot, return to IDLE.
-  //
-  // Attack direction logic: `nx` is normalised landscape-X [0,1], i.e. the
+  // Attack direction logic: `nx` is normalised landscape-X [0,1] — the
   // length-of-pitch axis.  attackingDown=true means FOR attacks toward nx=1.
   // Scoring events in the wrong half trigger a 3-second override window.
   // A second tap within that window (or any tap in the correct half) saves.
@@ -274,13 +309,14 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
           wrongWayTimerRef.current = setTimeout(() => {
             setWrongWayActive(false);
             wrongWayActiveRef.current = false;
+            wrongWayTimerRef.current = null;
           }, 3000);
           return;
         }
       }
 
       // Clear wrong-way state (normal tap or override second tap).
-      if (wrongWayTimerRef.current) clearTimeout(wrongWayTimerRef.current);
+      if (wrongWayTimerRef.current) { clearTimeout(wrongWayTimerRef.current); wrongWayTimerRef.current = null; }
       setWrongWayActive(false);
       wrongWayActiveRef.current = false;
 
@@ -300,7 +336,6 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
 
       setLoggedEvents((prev) => [...prev, event]);
 
-      // Show pulse confirmation dot for 750 ms, then return to IDLE.
       setFeedbackDot({ nx, ny });
 
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
@@ -313,18 +348,17 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     [pending, session.attackDirection],
   );
 
-  // Cancel from any mid-flow screen
   const cancelFlow = useCallback(() => {
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-    if (wrongWayTimerRef.current) clearTimeout(wrongWayTimerRef.current);
-    setWrongWayActive(false);
+    if (wrongWayTimerRef.current) { clearTimeout(wrongWayTimerRef.current); wrongWayTimerRef.current = null; }
     wrongWayActiveRef.current = false;
+    setWrongWayActive(false);
     setFeedbackDot(null);
     setPending(null);
     setPhase("IDLE");
   }, []);
 
-  // ── Undo / Save ────────────────────────────────────────────────────────────
+  // ── Undo / Save ───────────────────────────────────────────────────────────
 
   const undo = useCallback(() => {
     setLoggedEvents((prev) => prev.slice(0, -1));
@@ -372,134 +406,208 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     onEnd();
   }, [session, onEnd]);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   const homeLabel = session.homeTeamName.trim() || "Home";
   const awayLabel = session.awayTeamName.trim() || "Away";
   const canUndo   = phase === "IDLE" && loggedEvents.length > 0;
   const canSave   = phase === "IDLE" && loggedEvents.length > 0;
 
+  // Scores derived from events — always live, never stored separately.
+  const forScore = computeScoreSide(loggedEvents, "FOR");
+  const oppScore = computeScoreSide(loggedEvents, "OPP");
+
+  const badgeAccent = MATCH_STATE_COLOUR[matchState];
+
   return (
     <div style={S.shell}>
 
-      {/* ── Header — always visible ─────────────────────────────────── */}
+      {/* ── Compact match header (always visible) ──────────────────────── */}
       <div style={S.header}>
-        <span style={S.matchLabel}>{homeLabel} v {awayLabel}</span>
-        <div style={S.halfGroup}>
-          {([1, 2] as const).map((h) => (
-            <button
-              key={h}
-              onClick={() => setHalf(h)}
-              style={{ ...S.halfBtn, ...(half === h ? S.halfBtnOn : {}) }}
-            >
-              {h}H
-            </button>
-          ))}
+
+        {/* Scoreboard row */}
+        <div style={S.scoreboard}>
+          <span style={S.teamNameLeft}>{homeLabel}</span>
+          <span style={S.scoreLeft}>{fmtGP(forScore.goals, forScore.points)}</span>
+          <span style={S.vSep}>v</span>
+          <span style={S.scoreRight}>{fmtGP(oppScore.goals, oppScore.points)}</span>
+          <span style={S.teamNameRight}>{awayLabel}</span>
         </div>
-        <span style={S.spacer} />
-        <span style={S.clock}>{fmtClock(clockSeconds)}</span>
-        <button onClick={toggleClock} style={S.iconBtn}>
-          {clockRunning ? "⏸" : "▶"}
-        </button>
-        <button
-          onClick={undo}
-          disabled={!canUndo}
-          style={{ ...S.iconBtn, ...(!canUndo ? S.btnDisabled : {}) }}
-        >
-          ↩
-        </button>
-        <button
-          onClick={handleSaveAndEnd}
-          disabled={!canSave}
-          style={{ ...S.saveBtn, ...(!canSave ? S.btnDisabled : {}) }}
-        >
-          Save
-        </button>
+
+        {/* Controls row */}
+        <div style={S.controls}>
+          <span style={{ ...S.stateBadge, borderColor: badgeAccent, color: badgeAccent }}>
+            {MATCH_STATE_LABEL[matchState]}
+          </span>
+          <span style={S.clock}>{fmtClock(clockSeconds)}</span>
+          <span style={S.spacer} />
+
+          {matchState === "PRE_MATCH" && (
+            <button onClick={handleStartMatch} style={S.startBtn}>▶ Start</button>
+          )}
+          {matchState === "FIRST_HALF" && (
+            <button onClick={handleHalfTime} style={S.htBtn}>HT</button>
+          )}
+          {matchState === "SECOND_HALF" && (
+            <button onClick={handleFullTime} style={S.ftBtn}>FT</button>
+          )}
+
+          <button
+            onClick={undo}
+            disabled={!canUndo}
+            style={{ ...S.iconBtn, ...(!canUndo ? S.btnDisabled : {}) }}
+          >
+            ↩
+          </button>
+          <button
+            onClick={handleSaveAndEnd}
+            disabled={!canSave}
+            style={{ ...S.saveBtn, ...(!canSave ? S.btnDisabled : {}) }}
+          >
+            Save
+          </button>
+        </div>
       </div>
 
-      {/* ══ SCREEN: IDLE — event family grid only ══════════════════════ */}
-      {phase === "IDLE" && (
-        <>
-          <ProTaggerFamilyGrid sport={session.sport} onTileTap={handleTileTap} />
-          <div style={S.strip}>
-            {saveFeedback ? (
-              <span style={S.saveFeedbackText}>{saveFeedback}</span>
-            ) : (
-              <span style={S.eventCount}>
-                {loggedEvents.length > 0
-                  ? `${loggedEvents.length} event${loggedEvents.length !== 1 ? "s" : ""} logged`
-                  : "Tap a tile to log an event"}
-              </span>
-            )}
+      {/* ══ MATCH BREAK SCREENS ════════════════════════════════════════════ */}
+
+      {matchState === "HALF_TIME" && (
+        <div style={S.breakScreen}>
+          <span style={S.breakLabel}>HALF TIME</span>
+          <div style={S.breakScoreLine}>
+            <span style={S.breakScoreTeam}>{homeLabel}</span>
+            <span style={S.breakScoreValue}>
+              {fmtGP(forScore.goals, forScore.points)}
+            </span>
+            <span style={S.breakScoreVSep}>–</span>
+            <span style={S.breakScoreValue}>
+              {fmtGP(oppScore.goals, oppScore.points)}
+            </span>
+            <span style={S.breakScoreTeam}>{awayLabel}</span>
           </div>
-        </>
+          <button onClick={handleStartSecondHalf} style={S.resumeBtn}>
+            START SECOND HALF
+          </button>
+          {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
+        </div>
       )}
 
-      {/* ══ SCREEN: PLAYER_PICK — player picker only ═══════════════════ */}
-      {phase === "PLAYER_PICK" && pending && (
-        <>
-          <PendingContextBar
-            pending={pending}
-            sport={session.sport}
-            showPlayer={false}
-            onCancel={cancelFlow}
-          />
-          <div style={S.pickerWrap}>
-            <ProTaggerPlayerPicker
-              teamLabel={
-                pending.teamSide === "FOR"
-                  ? (session.homeTeamName.trim() || "Home")
-                  : (session.awayTeamName.trim() || "Away")
-              }
-              squad={
-                pending.teamSide === "FOR"
-                  ? session.homeSquad.players
-                  : session.awaySquad.players
-              }
-              squadId={
-                pending.teamSide === "FOR"
-                  ? session.homeSquad.id
-                  : session.awaySquad.id
-              }
-              teamColour={
-                pending.teamSide === "FOR"
-                  ? (session.homeSquad.primaryColour ?? "#16a34a")
-                  : (session.awaySquad.primaryColour ?? "#dc2626")
-              }
-              onSelect={handlePlayerSelect}
-            />
+      {matchState === "FULL_TIME" && (
+        <div style={S.breakScreen}>
+          <span style={S.breakLabel}>MATCH COMPLETE</span>
+          <div style={S.breakScoreLine}>
+            <span style={S.breakScoreTeam}>{homeLabel}</span>
+            <span style={S.breakScoreValue}>
+              {fmtGP(forScore.goals, forScore.points)}
+            </span>
+            <span style={S.breakScoreVSep}>–</span>
+            <span style={S.breakScoreValue}>
+              {fmtGP(oppScore.goals, oppScore.points)}
+            </span>
+            <span style={S.breakScoreTeam}>{awayLabel}</span>
           </div>
-        </>
+          {canSave ? (
+            <button onClick={handleSaveAndEnd} style={S.resumeBtn}>Save &amp; Finish</button>
+          ) : (
+            <button onClick={onEnd} style={{ ...S.resumeBtn, background: "#21262d", borderColor: "#30363d" }}>
+              Finish
+            </button>
+          )}
+          {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
+        </div>
       )}
 
-      {/* ══ SCREEN: PITCH_TAP — SVG pitch only ═════════════════════════ */}
-      {phase === "PITCH_TAP" && pending && (
+      {/* ══ NORMAL CAPTURE FLOW (hidden during break screens) ═══════════════ */}
+
+      {matchState !== "HALF_TIME" && matchState !== "FULL_TIME" && (
         <>
-          <PendingContextBar
-            pending={pending}
-            sport={session.sport}
-            showPlayer={true}
-            onCancel={cancelFlow}
-          />
-          <div style={S.pitchWrap}>
-            <ProTaggerPitchView
-              sport={session.sport}
-              attackDirection={session.attackDirection}
-              half={half}
-              feedbackDot={feedbackDot}
-              interactive={feedbackDot === null}
-              onTap={handlePitchTap}
-            />
-          </div>
-          <div style={S.pitchFooter}>
-            {feedbackDot ? (
-              <span style={S.savedText}>✓ Event saved</span>
-            ) : wrongWayActive ? (
-              <span style={S.wrongWayText}>Wrong way? Tap again to override</span>
-            ) : (
-              <span style={S.tapHintText}>Tap the pitch to place the event</span>
-            )}
-          </div>
+          {/* SCREEN: IDLE */}
+          {phase === "IDLE" && (
+            <>
+              <ProTaggerFamilyGrid sport={session.sport} onTileTap={handleTileTap} />
+              <div style={S.strip}>
+                {saveFeedback ? (
+                  <span style={S.saveFeedbackText}>{saveFeedback}</span>
+                ) : matchState === "PRE_MATCH" ? (
+                  <span style={S.eventCount}>Press ▶ Start to begin</span>
+                ) : (
+                  <span style={S.eventCount}>
+                    {loggedEvents.length > 0
+                      ? `${loggedEvents.length} event${loggedEvents.length !== 1 ? "s" : ""} logged`
+                      : "Tap a tile to log an event"}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* SCREEN: PLAYER_PICK */}
+          {phase === "PLAYER_PICK" && pending && (
+            <>
+              <PendingContextBar
+                pending={pending}
+                sport={session.sport}
+                showPlayer={false}
+                onCancel={cancelFlow}
+              />
+              <div style={S.pickerWrap}>
+                <ProTaggerPlayerPicker
+                  teamLabel={
+                    pending.teamSide === "FOR"
+                      ? (session.homeTeamName.trim() || "Home")
+                      : (session.awayTeamName.trim() || "Away")
+                  }
+                  squad={
+                    pending.teamSide === "FOR"
+                      ? session.homeSquad.players
+                      : session.awaySquad.players
+                  }
+                  squadId={
+                    pending.teamSide === "FOR"
+                      ? session.homeSquad.id
+                      : session.awaySquad.id
+                  }
+                  teamColour={
+                    pending.teamSide === "FOR"
+                      ? (session.homeSquad.primaryColour ?? "#16a34a")
+                      : (session.awaySquad.primaryColour ?? "#dc2626")
+                  }
+                  onSelect={handlePlayerSelect}
+                />
+              </div>
+            </>
+          )}
+
+          {/* SCREEN: PITCH_TAP */}
+          {phase === "PITCH_TAP" && pending && (
+            <>
+              <PendingContextBar
+                pending={pending}
+                sport={session.sport}
+                showPlayer={true}
+                onCancel={cancelFlow}
+              />
+              <div style={S.pitchWrap}>
+                <ProTaggerPitchView
+                  sport={session.sport}
+                  attackDirection={session.attackDirection}
+                  half={half}
+                  feedbackDot={feedbackDot}
+                  interactive={feedbackDot === null}
+                  onTap={handlePitchTap}
+                />
+              </div>
+              <div style={S.pitchFooter}>
+                {feedbackDot ? (
+                  <span style={S.savedText}>✓ Event saved</span>
+                ) : wrongWayActive ? (
+                  <span style={S.wrongWayText}>Wrong way? Tap again to override</span>
+                ) : (
+                  <span style={S.tapHintText}>Tap the pitch to place the event</span>
+                )}
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -523,45 +631,84 @@ const S: Record<string, CSSProperties> = {
     WebkitTapHighlightColor: "transparent",
   },
 
-  // ── Header ──────────────────────────────────────────────────────────────
+  // ── Header ─────────────────────────────────────────────────────────────────
   header: {
     display: "flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "9px 12px 8px",
+    flexDirection: "column",
     background: "#161b22",
     borderBottom: "1px solid #21262d",
     flexShrink: 0,
   },
-  matchLabel: {
-    fontSize: 13,
+
+  // Scoreboard row
+  scoreboard: {
+    display: "flex",
+    alignItems: "center",
+    padding: "8px 14px 4px",
+    gap: 6,
+  },
+  teamNameLeft: {
+    flex: 1,
+    fontSize: 11,
     fontWeight: 700,
-    color: "#e6edf3",
-    letterSpacing: "-0.2px",
-    whiteSpace: "nowrap" as const,
+    color: "#8b949e",
     overflow: "hidden",
     textOverflow: "ellipsis",
-    maxWidth: 120,
-    flexShrink: 1,
+    whiteSpace: "nowrap" as const,
+    textAlign: "left" as const,
   },
-  halfGroup: { display: "flex", gap: 3, flexShrink: 0 },
-  halfBtn: {
-    background: "#21262d",
-    border: "1px solid #30363d",
-    borderRadius: 5,
-    color: "#8b949e",
-    fontSize: 12,
+  teamNameRight: {
+    flex: 1,
+    fontSize: 11,
     fontWeight: 700,
-    padding: "4px 9px",
-    cursor: "pointer",
-    outline: "none",
+    color: "#8b949e",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+    textAlign: "right" as const,
   },
-  halfBtnOn: {
-    background: "#1f6feb",
-    borderColor: "#388bfd",
-    color: "#ffffff",
+  scoreLeft: {
+    fontSize: 22,
+    fontWeight: 800,
+    color: "#e6edf3",
+    fontVariantNumeric: "tabular-nums",
+    letterSpacing: "-0.5px",
+    flexShrink: 0,
   },
-  spacer: { flex: 1 },
+  scoreRight: {
+    fontSize: 22,
+    fontWeight: 800,
+    color: "#e6edf3",
+    fontVariantNumeric: "tabular-nums",
+    letterSpacing: "-0.5px",
+    flexShrink: 0,
+  },
+  vSep: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#30363d",
+    padding: "0 2px",
+    flexShrink: 0,
+  },
+
+  // Controls row
+  controls: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "0 12px 8px",
+    borderTop: "1px solid #21262d",
+  },
+  stateBadge: {
+    fontSize: 10,
+    fontWeight: 800,
+    letterSpacing: "0.06em",
+    border: "1px solid",
+    borderRadius: 4,
+    padding: "2px 6px",
+    flexShrink: 0,
+    fontVariantNumeric: "tabular-nums",
+  },
   clock: {
     fontVariantNumeric: "tabular-nums",
     fontSize: 14,
@@ -569,6 +716,45 @@ const S: Record<string, CSSProperties> = {
     color: "#e6edf3",
     minWidth: 44,
     textAlign: "center" as const,
+    flexShrink: 0,
+  },
+  spacer: { flex: 1 },
+  startBtn: {
+    background: "#238636",
+    border: "1px solid #2ea043",
+    borderRadius: 6,
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "4px 12px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+  },
+  htBtn: {
+    background: "rgba(180,83,9,0.18)",
+    border: "1px solid #d97706",
+    borderRadius: 6,
+    color: "#fbbf24",
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: "0.06em",
+    padding: "4px 11px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+  },
+  ftBtn: {
+    background: "rgba(185,28,28,0.18)",
+    border: "1px solid #dc2626",
+    borderRadius: 6,
+    color: "#f87171",
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: "0.06em",
+    padding: "4px 11px",
+    cursor: "pointer",
+    outline: "none",
     flexShrink: 0,
   },
   iconBtn: {
@@ -582,10 +768,7 @@ const S: Record<string, CSSProperties> = {
     outline: "none",
     flexShrink: 0,
   },
-  btnDisabled: {
-    opacity: 0.35,
-    cursor: "default",
-  },
+  btnDisabled: { opacity: 0.35, cursor: "default" },
   saveBtn: {
     background: "#238636",
     border: "1px solid #2ea043",
@@ -599,7 +782,64 @@ const S: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
 
-  // ── IDLE: strip ──────────────────────────────────────────────────────────
+  // ── Break screens (HALF_TIME / FULL_TIME) ───────────────────────────────────
+  breakScreen: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 20,
+    background: "#0d1117",
+    padding: "24px 20px",
+  },
+  breakLabel: {
+    fontSize: 28,
+    fontWeight: 800,
+    color: "#e6edf3",
+    letterSpacing: "0.06em",
+    textAlign: "center" as const,
+  },
+  breakScoreLine: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+  breakScoreTeam: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#6e7681",
+    maxWidth: 80,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  },
+  breakScoreValue: {
+    fontSize: 26,
+    fontWeight: 800,
+    color: "#e6edf3",
+    fontVariantNumeric: "tabular-nums",
+    letterSpacing: "-0.5px",
+  },
+  breakScoreVSep: {
+    fontSize: 20,
+    fontWeight: 600,
+    color: "#30363d",
+  },
+  resumeBtn: {
+    background: "#1f6feb",
+    border: "1px solid #388bfd",
+    borderRadius: 8,
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: 700,
+    padding: "12px 28px",
+    cursor: "pointer",
+    outline: "none",
+    letterSpacing: "0.03em",
+  },
+
+  // ── IDLE: strip ─────────────────────────────────────────────────────────────
   strip: {
     padding: "7px 14px 9px",
     background: "#0d1117",
@@ -608,18 +848,10 @@ const S: Record<string, CSSProperties> = {
     display: "flex",
     alignItems: "center",
   },
-  eventCount: {
-    fontSize: 12,
-    color: "#8b949e",
-    fontVariantNumeric: "tabular-nums",
-  },
-  saveFeedbackText: {
-    fontSize: 12,
-    color: "#f85149",
-    fontWeight: 600,
-  },
+  eventCount:       { fontSize: 12, color: "#8b949e", fontVariantNumeric: "tabular-nums" },
+  saveFeedbackText: { fontSize: 12, color: "#f85149", fontWeight: 600 },
 
-  // ── PLAYER_PICK: picker wrapper ──────────────────────────────────────────
+  // ── PLAYER_PICK ─────────────────────────────────────────────────────────────
   pickerWrap: {
     flex: 1,
     minHeight: 0,
@@ -628,7 +860,7 @@ const S: Record<string, CSSProperties> = {
     overflow: "hidden",
   },
 
-  // ── PITCH_TAP: pitch area + footer ───────────────────────────────────────
+  // ── PITCH_TAP ───────────────────────────────────────────────────────────────
   pitchWrap: {
     flex: 1,
     minHeight: 0,
@@ -648,19 +880,7 @@ const S: Record<string, CSSProperties> = {
     justifyContent: "center",
     minHeight: 40,
   },
-  tapHintText: {
-    fontSize: 13,
-    color: "#8b949e",
-    fontWeight: 500,
-  },
-  savedText: {
-    fontSize: 13,
-    color: "#2ea043",
-    fontWeight: 700,
-  },
-  wrongWayText: {
-    fontSize: 13,
-    color: "#f59e0b",
-    fontWeight: 700,
-  },
+  tapHintText:  { fontSize: 13, color: "#8b949e", fontWeight: 500 },
+  savedText:    { fontSize: 13, color: "#2ea043", fontWeight: 700 },
+  wrongWayText: { fontSize: 13, color: "#f59e0b", fontWeight: 700 },
 };
