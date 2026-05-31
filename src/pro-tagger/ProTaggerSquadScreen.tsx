@@ -233,6 +233,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
                     }
                     style={{
                       ...S.colourInput,
+                      background: activeColours[type],
                       outline: `2px solid ${activeColours[type]}`,
                       outlineOffset: 2,
                     }}

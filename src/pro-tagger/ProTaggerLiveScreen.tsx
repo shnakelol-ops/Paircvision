@@ -454,8 +454,8 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const homeLabel = session.homeTeamName.trim() || "Home";
-  const awayLabel = session.awayTeamName.trim() || "Away";
+  const homeLabel = session.homeTeamName.trim() || session.homeSquad.teamName?.trim() || "Home";
+  const awayLabel = session.awayTeamName.trim() || session.awaySquad.teamName?.trim() || "Away";
   const canUndo   = phase === "IDLE" && loggedEvents.length > 0;
   const canSave   = phase === "IDLE" && loggedEvents.length > 0;
 
