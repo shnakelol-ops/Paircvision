@@ -11,6 +11,7 @@ import { ProTaggerFamilyGrid } from "./ProTaggerFamilyGrid";
 import { ProTaggerPlayerPicker } from "./ProTaggerPlayerPicker";
 import type { SelectedPlayer } from "./ProTaggerPlayerPicker";
 import { ProTaggerPitchView } from "./ProTaggerPitchView";
+import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 
 interface Props {
   session: ProTaggerSession;
@@ -463,8 +464,10 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
   const oppScore = computeScoreSide(loggedEvents, "OPP");
 
   const badgeAccent   = MATCH_STATE_COLOUR[matchState];
-  const homeColour    = session.homeSquad.primaryColour ?? "#16a34a";
-  const awayColour    = session.awaySquad.primaryColour ?? "#dc2626";
+  const homeColour          = session.homeSquad.primaryColour   ?? "#16a34a";
+  const awayColour          = session.awaySquad.primaryColour   ?? "#dc2626";
+  const homeSecondaryColour = session.homeSquad.secondaryColour ?? "#ffffff";
+  const awaySecondaryColour = session.awaySquad.secondaryColour ?? "#ffffff";
 
   // Subs sheet derived values (computed once per render, outside JSX).
   const subSquadState     = subTeam === "home" ? homeSquadState : awaySquadState;
@@ -484,11 +487,13 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
 
         {/* Scoreboard row */}
         <div style={S.scoreboard}>
+          <ProTaggerMiniJersey primary={homeColour} secondary={homeSecondaryColour} size={18} />
           <span style={{ ...S.teamNameLeft, color: homeColour }}>{homeLabel}</span>
           <span style={S.scoreLeft}>{fmtGP(forScore.goals, forScore.points)}</span>
           <span style={S.vSep}>v</span>
           <span style={S.scoreRight}>{fmtGP(oppScore.goals, oppScore.points)}</span>
           <span style={{ ...S.teamNameRight, color: awayColour }}>{awayLabel}</span>
+          <ProTaggerMiniJersey primary={awayColour} secondary={awaySecondaryColour} size={18} />
         </div>
 
         {/* Controls row */}
@@ -629,6 +634,9 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
                   }
                   teamColour={
                     pending.teamSide === "FOR" ? homeColour : awayColour
+                  }
+                  secondaryColour={
+                    pending.teamSide === "FOR" ? homeSecondaryColour : awaySecondaryColour
                   }
                   onSelect={handlePlayerSelect}
                 />
