@@ -7,6 +7,7 @@ import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
 import { saveProTaggerMatch } from "./pro-tagger-storage";
+import { buildStatsShareCardPng } from "../stats/statsShareCard";
 import { ProTaggerFamilyGrid } from "./ProTaggerFamilyGrid";
 import { ProTaggerPlayerPicker } from "./ProTaggerPlayerPicker";
 import type { SelectedPlayer } from "./ProTaggerPlayerPicker";
@@ -72,11 +73,15 @@ function computeScoreSide(
   events: readonly LoggedMatchEvent[],
   side: "FOR" | "OPP",
 ): { goals: number; points: number; total: number } {
-  const scored = events.filter((e) => e.teamSide === side);
-  const goals  = scored.filter((e) => e.kind === "GOAL").length;
-  const pts    = scored.filter((e) =>
-    (["POINT", "FREE_SCORED", "TWO_POINTER", "FORTY_FIVE_TWO_POINT"] as MatchEventKind[]).includes(e.kind),
+  const scored      = events.filter((e) => e.teamSide === side);
+  const goals       = scored.filter((e) => e.kind === "GOAL").length;
+  const onePointers = scored.filter((e) =>
+    (["POINT", "FREE_SCORED"] as MatchEventKind[]).includes(e.kind),
   ).length;
+  const twoPointers = scored.filter((e) =>
+    (["TWO_POINTER", "FORTY_FIVE_TWO_POINT"] as MatchEventKind[]).includes(e.kind),
+  ).length;
+  const pts = onePointers + twoPointers * 2;
   return { goals, points: pts, total: goals * 3 + pts };
 }
 
@@ -99,6 +104,39 @@ function initSquad(players: ProTaggerSquadPlayer[]): ProTaggerSquadPlayer[] {
     isActive:   i < 15,
     activeSlot: i < 15 ? i + 1 : undefined,
   }));
+}
+
+// ── CTS counts ────────────────────────────────────────────────────────────────
+
+type ProTaggerCounts = {
+  goals: number;
+  points: number;
+  twoPointers: number;
+  shots: number;
+  wides: number;
+  turnoverWon: number;
+  turnoverLost: number;
+  kickoutWon: number;
+  kickoutLost: number;
+  freeWon: number;
+  freeConceded: number;
+};
+
+function computeProTaggerCounts(events: readonly LoggedMatchEvent[], side: "FOR" | "OPP"): ProTaggerCounts {
+  const s = events.filter((e) => e.teamSide === side);
+  return {
+    goals:        s.filter((e) => e.kind === "GOAL").length,
+    points:       s.filter((e) => (["POINT", "FREE_SCORED"] as MatchEventKind[]).includes(e.kind)).length,
+    twoPointers:  s.filter((e) => (["TWO_POINTER", "FORTY_FIVE_TWO_POINT"] as MatchEventKind[]).includes(e.kind)).length,
+    shots:        s.filter((e) => e.kind === "SHOT").length,
+    wides:        s.filter((e) => e.kind === "WIDE").length,
+    turnoverWon:  s.filter((e) => e.kind === "TURNOVER_WON").length,
+    turnoverLost: s.filter((e) => e.kind === "TURNOVER_LOST").length,
+    kickoutWon:   s.filter((e) => e.kind === "KICKOUT_WON").length,
+    kickoutLost:  s.filter((e) => e.kind === "KICKOUT_CONCEDED").length,
+    freeWon:      s.filter((e) => e.kind === "FREE_WON").length,
+    freeConceded: s.filter((e) => e.kind === "FREE_CONCEDED").length,
+  };
 }
 
 // ── PendingContextBar ─────────────────────────────────────────────────────────
@@ -200,15 +238,22 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
   const [subOutId, setSubOutId]         = useState<string | null>(null);
   const [subInId, setSubInId]           = useState<string | null>(null);
 
-  const clockStartRef    = useRef<number | null>(null);
-  const clockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const clockSecondsRef  = useRef(0);
-  const halfRef          = useRef<1 | 2>(1);
-  const loggedRef        = useRef<readonly LoggedMatchEvent[]>([]);
-  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const matchStateRef    = useRef<MatchState>("PRE_MATCH");
-  const wrongWayActiveRef  = useRef(false);
-  const wrongWayTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ── CTS / Actions / Reset state ───────────────────────────────────────────
+  const [ctsOpen, setCtsOpen]                   = useState(false);
+  const [actionsOpen, setActionsOpen]           = useState(false);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [actionsFeedback, setActionsFeedback]   = useState<string | null>(null);
+
+  const clockStartRef          = useRef<number | null>(null);
+  const clockIntervalRef       = useRef<ReturnType<typeof setInterval> | null>(null);
+  const clockSecondsRef        = useRef(0);
+  const halfRef                = useRef<1 | 2>(1);
+  const loggedRef              = useRef<readonly LoggedMatchEvent[]>([]);
+  const feedbackTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const matchStateRef          = useRef<MatchState>("PRE_MATCH");
+  const wrongWayActiveRef      = useRef(false);
+  const wrongWayTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const actionsFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { clockSecondsRef.current = clockSeconds; }, [clockSeconds]);
   useEffect(() => { halfRef.current = half; }, [half]);
@@ -218,9 +263,10 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
 
   useEffect(() => {
     return () => {
-      if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
-      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-      if (wrongWayTimerRef.current) clearTimeout(wrongWayTimerRef.current);
+      if (clockIntervalRef.current)        clearInterval(clockIntervalRef.current);
+      if (feedbackTimerRef.current)        clearTimeout(feedbackTimerRef.current);
+      if (wrongWayTimerRef.current)        clearTimeout(wrongWayTimerRef.current);
+      if (actionsFeedbackTimerRef.current) clearTimeout(actionsFeedbackTimerRef.current);
     };
   }, []);
 
@@ -411,6 +457,7 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     setLoggedEvents((prev) => prev.slice(0, -1));
   }, []);
 
+  // Used only by FT "Save & Finish" — saves AND exits.
   const handleSaveAndEnd = useCallback(() => {
     const events = loggedRef.current;
     if (events.length === 0) {
@@ -453,6 +500,128 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     onEnd();
   }, [session, onEnd]);
 
+  // Actions → Save Match: saves to localStorage, stays in match, no onEnd().
+  const handleSaveMatch = useCallback(() => {
+    const events = loggedRef.current;
+    if (actionsFeedbackTimerRef.current) clearTimeout(actionsFeedbackTimerRef.current);
+
+    if (events.length === 0) {
+      setActionsFeedback("No events to save yet.");
+      actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
+      return;
+    }
+
+    const home  = session.homeTeamName.trim() || "Team A";
+    const away  = session.awayTeamName.trim() || "Team B";
+    const venue = session.venue.trim() || "Unknown venue";
+
+    const forScore = computeScoreSide(events, "FOR");
+    const oppScore = computeScoreSide(events, "OPP");
+
+    const record: SavedMatch = {
+      id:                `pro-tagger-${newEventId()}`,
+      createdAt:         Date.now(),
+      label:             `${home} v ${away}`,
+      homeTeamName:      home,
+      awayTeamName:      away,
+      venue,
+      events:            events as LoggedMatchEvent[],
+      eventCount:        events.length,
+      scorelineSnapshot: `${home} ${fmtScore(forScore)} v ${away} ${fmtScore(oppScore)}`,
+      restoreContext: {
+        matchState:                  halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF",
+        currentHalf:                 halfRef.current,
+        matchTimeSeconds:            clockSecondsRef.current,
+        firstHalfAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
+      },
+    };
+
+    const ok = saveProTaggerMatch(record);
+    if (!ok) {
+      setActionsFeedback("Save failed — storage unavailable.");
+      actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 3000);
+      return;
+    }
+    setActionsFeedback("✓ Match saved");
+    actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
+    setActionsOpen(false);
+  }, [session]);
+
+  // Actions → Share Summary PNG.
+  const handleShare = useCallback(async () => {
+    const events = loggedRef.current;
+    const home   = session.homeTeamName.trim() || "Home";
+    const away   = session.awayTeamName.trim() || "Away";
+    const venue  = session.venue.trim() || "";
+    const ms     = matchStateRef.current;
+    const stageLabel: "Half Time" | "Full Time" = ms === "FULL_TIME" ? "Full Time" : "Half Time";
+
+    const forScore = computeScoreSide(events, "FOR");
+    const oppScore = computeScoreSide(events, "OPP");
+
+    const file = await buildStatsShareCardPng({
+      stageLabel,
+      homeTeamName: home,
+      awayTeamName: away,
+      venueLabel:   venue,
+      clockLabel:   fmtClock(clockSecondsRef.current),
+      homeScore:    forScore,
+      awayScore:    oppScore,
+      eventCount:   events.length,
+      events,
+    });
+
+    if (!file) {
+      if (actionsFeedbackTimerRef.current) clearTimeout(actionsFeedbackTimerRef.current);
+      setActionsFeedback("Share failed — could not build image.");
+      actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 3000);
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${home} v ${away}`, files: [file] });
+      } catch {
+        // User cancelled share — no error needed
+      }
+    } else {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      a.click();
+    }
+    URL.revokeObjectURL(url);
+    setActionsOpen(false);
+  }, [session]);
+
+  // Actions → Reset Match (called after confirm).
+  const handleReset = useCallback(() => {
+    if (clockIntervalRef.current) { clearInterval(clockIntervalRef.current); clockIntervalRef.current = null; }
+    if (feedbackTimerRef.current) { clearTimeout(feedbackTimerRef.current); feedbackTimerRef.current = null; }
+    if (wrongWayTimerRef.current) { clearTimeout(wrongWayTimerRef.current); wrongWayTimerRef.current = null; }
+    if (actionsFeedbackTimerRef.current) { clearTimeout(actionsFeedbackTimerRef.current); actionsFeedbackTimerRef.current = null; }
+    clockSecondsRef.current = 0;
+    halfRef.current = 1;
+    loggedRef.current = [];
+    matchStateRef.current = "PRE_MATCH";
+    wrongWayActiveRef.current = false;
+    setLoggedEvents([]);
+    setClockSeconds(0);
+    setHalf(1);
+    setMatchState("PRE_MATCH");
+    setPhase("IDLE");
+    setPending(null);
+    setFeedbackDot(null);
+    setWrongWayActive(false);
+    setSaveFeedback(null);
+    setActionsFeedback(null);
+    setResetConfirmOpen(false);
+    setActionsOpen(false);
+    setHomeSquadState(initSquad(session.homeSquad.players));
+    setAwaySquadState(initSquad(session.awaySquad.players));
+  }, [session]);
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   const homeLabel = session.homeTeamName.trim() || session.homeSquad.teamName?.trim() || "Home";
@@ -463,21 +632,26 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
   const forScore = computeScoreSide(loggedEvents, "FOR");
   const oppScore = computeScoreSide(loggedEvents, "OPP");
 
-  const badgeAccent   = MATCH_STATE_COLOUR[matchState];
+  const badgeAccent         = MATCH_STATE_COLOUR[matchState];
   const homeColour          = session.homeSquad.primaryColour   ?? "#16a34a";
   const awayColour          = session.awaySquad.primaryColour   ?? "#dc2626";
   const homeSecondaryColour = session.homeSquad.secondaryColour ?? "#ffffff";
   const awaySecondaryColour = session.awaySquad.secondaryColour ?? "#ffffff";
 
   // Subs sheet derived values (computed once per render, outside JSX).
-  const subSquadState     = subTeam === "home" ? homeSquadState : awaySquadState;
-  const subTeamLabel      = subTeam === "home" ? homeLabel : awayLabel;
-  const subTeamColour     = subTeam === "home" ? homeColour : awayColour;
-  const subActivePlayers  = subSquadState.filter((p) => p.isActive !== false);
-  const subBenchPlayers   = subSquadState.filter((p) => p.isActive === false);
-  const subCanConfirm     = subOutId !== null && subInId !== null;
+  const subSquadState    = subTeam === "home" ? homeSquadState : awaySquadState;
+  const subTeamLabel     = subTeam === "home" ? homeLabel : awayLabel;
+  const subTeamColour    = subTeam === "home" ? homeColour : awayColour;
+  const subActivePlayers = subSquadState.filter((p) => p.isActive !== false);
+  const subBenchPlayers  = subSquadState.filter((p) => p.isActive === false);
+  const subCanConfirm    = subOutId !== null && subInId !== null;
 
   const isActivePlaying = matchState === "FIRST_HALF" || matchState === "SECOND_HALF";
+  const isHurlingOrCamogie = session.sport === "hurling" || session.sport === "camogie";
+
+  // CTS counts — only computed when CTS sheet is open.
+  const forCts = ctsOpen ? computeProTaggerCounts(loggedEvents, "FOR") : null;
+  const oppCts = ctsOpen ? computeProTaggerCounts(loggedEvents, "OPP") : null;
 
   return (
     <div style={S.shell}>
@@ -525,11 +699,16 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
             ↩
           </button>
           <button
-            onClick={handleSaveAndEnd}
-            disabled={!canSave}
-            style={{ ...S.saveBtn, ...(!canSave ? S.btnDisabled : {}) }}
+            style={S.ctsBtn}
+            onClick={() => setCtsOpen(true)}
           >
-            Save
+            CTS
+          </button>
+          <button
+            style={S.actionsBtn}
+            onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
+          >
+            Actions
           </button>
         </div>
       </div>
@@ -552,6 +731,12 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
           </div>
           <button onClick={handleStartSecondHalf} style={S.resumeBtn}>
             START SECOND HALF
+          </button>
+          <button
+            style={S.htActionsBtn}
+            onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
+          >
+            Actions
           </button>
           {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
         </div>
@@ -771,6 +956,128 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
         </div>
       )}
 
+      {/* ── CTS sheet ─────────────────────────────────────────────── */}
+      {ctsOpen && forCts && oppCts && (
+        <div style={CS.overlay} onClick={() => setCtsOpen(false)}>
+          <div style={CS.sheet} onClick={(e) => e.stopPropagation()}>
+
+            <div style={CS.header}>
+              <span style={CS.title}>Counts Sheet</span>
+              <button style={CS.closeBtn} onClick={() => setCtsOpen(false)}>✕</button>
+            </div>
+
+            <div style={CS.body}>
+              {/* Column headers */}
+              <div style={CS.colRow}>
+                <span style={{ ...CS.colLabel, color: homeColour }}>{homeLabel}</span>
+                <span style={CS.colCenter} />
+                <span style={{ ...CS.colLabel, color: awayColour, textAlign: "right" as const }}>{awayLabel}</span>
+              </div>
+
+              {/* Rows */}
+              {([
+                ["Goals",          forCts.goals,        oppCts.goals],
+                ["Points",         forCts.points,       oppCts.points],
+                ...(!isHurlingOrCamogie ? [["2PT", forCts.twoPointers, oppCts.twoPointers] as [string, number, number]] : []),
+                ["Shots",          forCts.shots,        oppCts.shots],
+                ["Wides",          forCts.wides,        oppCts.wides],
+                ["Turnover Won",   forCts.turnoverWon,  oppCts.turnoverWon],
+                ["Turnover Lost",  forCts.turnoverLost, oppCts.turnoverLost],
+                ["Kickout Won",    forCts.kickoutWon,   oppCts.kickoutWon],
+                ["Kickout Lost",   forCts.kickoutLost,  oppCts.kickoutLost],
+                ["Free Won",       forCts.freeWon,      oppCts.freeWon],
+                ["Free Conceded",  forCts.freeConceded, oppCts.freeConceded],
+              ] as [string, number, number][]).map(([label, fv, ov]) => (
+                <div key={label} style={CS.row}>
+                  <span style={CS.val}>{fv}</span>
+                  <span style={CS.rowLabel}>{label}</span>
+                  <span style={{ ...CS.val, textAlign: "right" as const }}>{ov}</span>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── Actions sheet ─────────────────────────────────────────── */}
+      {actionsOpen && (
+        <div style={AS.overlay} onClick={() => setActionsOpen(false)}>
+          <div style={AS.sheet} onClick={(e) => e.stopPropagation()}>
+
+            <div style={AS.header}>
+              <span style={AS.title}>Actions</span>
+              <button style={AS.closeBtn} onClick={() => setActionsOpen(false)}>✕</button>
+            </div>
+
+            <div style={AS.body}>
+              {actionsFeedback && (
+                <div style={AS.feedbackBanner}>{actionsFeedback}</div>
+              )}
+
+              <button style={AS.actionBtn} onClick={handleSaveMatch}>
+                Save Match
+              </button>
+
+              <button style={AS.actionBtn} onClick={handleShare}>
+                Share Summary PNG
+              </button>
+
+              <button style={{ ...AS.actionBtn, ...AS.actionBtnDisabled }} disabled>
+                Reviews (coming soon)
+              </button>
+
+              {(matchState === "HALF_TIME" || matchState === "FULL_TIME") && (
+                <button
+                  style={matchState === "HALF_TIME" ? AS.actionBtn : { ...AS.actionBtn, ...AS.actionBtnDisabled }}
+                  disabled={matchState === "FULL_TIME"}
+                  onClick={matchState === "HALF_TIME"
+                    ? () => { handleStartSecondHalf(); setActionsOpen(false); }
+                    : undefined
+                  }
+                >
+                  Resume Match{matchState === "FULL_TIME" ? " (FT — not available)" : ""}
+                </button>
+              )}
+
+              <button
+                style={{ ...AS.actionBtn, ...AS.actionBtnDanger }}
+                onClick={() => setResetConfirmOpen(true)}
+              >
+                Reset Match
+              </button>
+            </div>
+
+            <div style={AS.footer}>
+              <button style={AS.closeActionBtn} onClick={() => setActionsOpen(false)}>
+                Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ── Reset confirm overlay ──────────────────────────────────── */}
+      {resetConfirmOpen && (
+        <div style={RC.overlay} onClick={() => setResetConfirmOpen(false)}>
+          <div style={RC.sheet} onClick={(e) => e.stopPropagation()}>
+            <span style={RC.title}>Reset Match?</span>
+            <span style={RC.body}>
+              All {loggedEvents.length} logged event{loggedEvents.length !== 1 ? "s" : ""} will be permanently deleted and the match will restart from the beginning.
+            </span>
+            <div style={RC.btnRow}>
+              <button style={RC.cancelBtn} onClick={() => setResetConfirmOpen(false)}>
+                Cancel
+              </button>
+              <button style={RC.confirmBtn} onClick={handleReset}>
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -940,17 +1247,31 @@ const S: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
   btnDisabled: { opacity: 0.35, cursor: "default" },
-  saveBtn: {
-    background: "#238636",
-    border: "1px solid #2ea043",
+  ctsBtn: {
+    background: "#21262d",
+    border: "1px solid #30363d",
     borderRadius: 6,
-    color: "#ffffff",
-    fontSize: 12,
+    color: "#8b949e",
+    fontSize: 11,
     fontWeight: 700,
-    padding: "5px 12px",
+    padding: "5px 9px",
     cursor: "pointer",
     outline: "none",
     flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
+  },
+  actionsBtn: {
+    background: "#21262d",
+    border: "1px solid #388bfd",
+    borderRadius: 6,
+    color: "#79c0ff",
+    fontSize: 11,
+    fontWeight: 700,
+    padding: "5px 9px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
   },
 
   // ── Break screens (HALF_TIME / FULL_TIME) ───────────────────────────────────
@@ -1009,6 +1330,18 @@ const S: Record<string, CSSProperties> = {
     outline: "none",
     letterSpacing: "0.03em",
   },
+  htActionsBtn: {
+    background: "#21262d",
+    border: "1px solid #388bfd",
+    borderRadius: 8,
+    color: "#79c0ff",
+    fontSize: 13,
+    fontWeight: 700,
+    padding: "10px 24px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+  },
 
   // ── IDLE: strip ─────────────────────────────────────────────────────────────
   strip: {
@@ -1061,10 +1394,7 @@ const S: Record<string, CSSProperties> = {
 const SS: Record<string, CSSProperties> = {
   overlay: {
     position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: 0, left: 0, right: 0, bottom: 0,
     background: "rgba(0,0,0,0.65)",
     zIndex: 100,
     display: "flex",
@@ -1087,11 +1417,7 @@ const SS: Record<string, CSSProperties> = {
     borderBottom: "1px solid #21262d",
     flexShrink: 0,
   },
-  teamToggle: {
-    display: "flex",
-    gap: 6,
-    flexShrink: 0,
-  },
+  teamToggle: { display: "flex", gap: 6, flexShrink: 0 },
   teamBtn: {
     background: "#21262d",
     border: "1px solid #30363d",
@@ -1104,10 +1430,7 @@ const SS: Record<string, CSSProperties> = {
     outline: "none",
     WebkitTapHighlightColor: "transparent",
   },
-  teamBtnOn: {
-    background: "transparent",
-    fontWeight: 800,
-  },
+  teamBtnOn: { background: "transparent", fontWeight: 800 },
   title: {
     flex: 1,
     fontSize: 13,
@@ -1143,12 +1466,7 @@ const SS: Record<string, CSSProperties> = {
     color: "#8b949e",
     paddingBottom: 2,
   },
-  pillRow: {
-    display: "flex",
-    flexWrap: "wrap" as const,
-    gap: 6,
-    marginBottom: 4,
-  },
+  pillRow: { display: "flex", flexWrap: "wrap" as const, gap: 6, marginBottom: 4 },
   pill: {
     background: "#0d1117",
     border: "1px solid #30363d",
@@ -1162,26 +1480,10 @@ const SS: Record<string, CSSProperties> = {
     WebkitTapHighlightColor: "transparent",
     whiteSpace: "nowrap" as const,
   },
-  emptyNote: {
-    fontSize: 12,
-    color: "#6e7681",
-    fontStyle: "italic",
-    padding: "4px 0",
-  },
-  preview: {
-    padding: "8px 0 2px",
-    borderTop: "1px solid #21262d",
-  },
-  previewText: {
-    fontSize: 12,
-    color: "#2ea043",
-    fontWeight: 600,
-  },
-  footer: {
-    padding: "10px 14px 20px",
-    borderTop: "1px solid #21262d",
-    flexShrink: 0,
-  },
+  emptyNote: { fontSize: 12, color: "#6e7681", fontStyle: "italic", padding: "4px 0" },
+  preview: { padding: "8px 0 2px", borderTop: "1px solid #21262d" },
+  previewText: { fontSize: 12, color: "#2ea043", fontWeight: 600 },
+  footer: { padding: "10px 14px 20px", borderTop: "1px solid #21262d", flexShrink: 0 },
   confirmBtn: {
     width: "100%",
     background: "#238636",
@@ -1202,5 +1504,277 @@ const SS: Record<string, CSSProperties> = {
     color: "#6e7681",
     cursor: "default",
     opacity: 0.6,
+  },
+};
+
+// ── CTS sheet styles ──────────────────────────────────────────────────────────
+
+const CS: Record<string, CSSProperties> = {
+  overlay: {
+    position: "absolute",
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: "rgba(0,0,0,0.65)",
+    zIndex: 100,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    background: "#161b22",
+    borderRadius: "14px 14px 0 0",
+    maxHeight: "80vh",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    padding: "12px 14px 10px",
+    borderBottom: "1px solid #21262d",
+    flexShrink: 0,
+  },
+  title: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#e6edf3",
+    letterSpacing: "-0.2px",
+  },
+  closeBtn: {
+    background: "transparent",
+    border: "none",
+    color: "#6e7681",
+    fontSize: 18,
+    cursor: "pointer",
+    padding: "0 2px",
+    lineHeight: 1,
+    outline: "none",
+  },
+  body: {
+    flex: 1,
+    overflowY: "auto",
+    padding: "10px 14px 20px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+  },
+  colRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr auto 1fr",
+    gap: 8,
+    padding: "4px 0 8px",
+    borderBottom: "1px solid #21262d",
+    marginBottom: 4,
+  },
+  colLabel: {
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: "0.04em",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  },
+  colCenter: { width: 110 },
+  row: {
+    display: "grid",
+    gridTemplateColumns: "1fr auto 1fr",
+    gap: 8,
+    alignItems: "center",
+    padding: "7px 0",
+    borderBottom: "1px solid #161b22",
+  },
+  val: {
+    fontSize: 20,
+    fontWeight: 800,
+    color: "#e6edf3",
+    fontVariantNumeric: "tabular-nums",
+  },
+  rowLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    color: "#8b949e",
+    textAlign: "center" as const,
+    whiteSpace: "nowrap" as const,
+    letterSpacing: "0.02em",
+    width: 110,
+  },
+};
+
+// ── Actions sheet styles ──────────────────────────────────────────────────────
+
+const AS: Record<string, CSSProperties> = {
+  overlay: {
+    position: "absolute",
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: "rgba(0,0,0,0.65)",
+    zIndex: 100,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    background: "#161b22",
+    borderRadius: "14px 14px 0 0",
+    maxHeight: "70vh",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    padding: "12px 14px 10px",
+    borderBottom: "1px solid #21262d",
+    flexShrink: 0,
+  },
+  title: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#e6edf3",
+    letterSpacing: "-0.2px",
+  },
+  closeBtn: {
+    background: "transparent",
+    border: "none",
+    color: "#6e7681",
+    fontSize: 18,
+    cursor: "pointer",
+    padding: "0 2px",
+    lineHeight: 1,
+    outline: "none",
+  },
+  body: {
+    flex: 1,
+    overflowY: "auto",
+    padding: "10px 14px 4px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+  feedbackBanner: {
+    background: "rgba(46,160,67,0.15)",
+    border: "1px solid #2ea043",
+    borderRadius: 8,
+    color: "#2ea043",
+    fontSize: 13,
+    fontWeight: 700,
+    padding: "10px 14px",
+    textAlign: "center" as const,
+  },
+  actionBtn: {
+    width: "100%",
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 8,
+    color: "#e6edf3",
+    fontSize: 14,
+    fontWeight: 600,
+    padding: "13px 14px",
+    cursor: "pointer",
+    outline: "none",
+    textAlign: "left" as const,
+    boxSizing: "border-box" as const,
+    WebkitTapHighlightColor: "transparent",
+  },
+  actionBtnDisabled: {
+    color: "#6e7681",
+    cursor: "default",
+    opacity: 0.5,
+  },
+  actionBtnDanger: {
+    color: "#f87171",
+    border: "1px solid rgba(248,113,113,0.3)",
+  },
+  footer: {
+    padding: "10px 14px 20px",
+    borderTop: "1px solid #21262d",
+    flexShrink: 0,
+  },
+  closeActionBtn: {
+    width: "100%",
+    background: "transparent",
+    border: "1px solid #30363d",
+    borderRadius: 8,
+    color: "#8b949e",
+    fontSize: 14,
+    fontWeight: 600,
+    padding: "12px",
+    cursor: "pointer",
+    outline: "none",
+    boxSizing: "border-box" as const,
+    WebkitTapHighlightColor: "transparent",
+  },
+};
+
+// ── Reset confirm styles ──────────────────────────────────────────────────────
+
+const RC: Record<string, CSSProperties> = {
+  overlay: {
+    position: "absolute",
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: "rgba(0,0,0,0.75)",
+    zIndex: 200,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "20px",
+  },
+  sheet: {
+    background: "#161b22",
+    border: "1px solid #30363d",
+    borderRadius: 14,
+    padding: "24px 20px 20px",
+    maxWidth: 360,
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+    boxSizing: "border-box" as const,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: 800,
+    color: "#f87171",
+    textAlign: "center" as const,
+    letterSpacing: "-0.2px",
+  },
+  body: {
+    fontSize: 13,
+    color: "#8b949e",
+    textAlign: "center" as const,
+    lineHeight: "1.5",
+  },
+  btnRow: {
+    display: "flex",
+    gap: 10,
+    marginTop: 4,
+  },
+  cancelBtn: {
+    flex: 1,
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 8,
+    color: "#e6edf3",
+    fontSize: 14,
+    fontWeight: 600,
+    padding: "12px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+  },
+  confirmBtn: {
+    flex: 1,
+    background: "rgba(248,113,113,0.15)",
+    border: "1px solid #f87171",
+    borderRadius: 8,
+    color: "#f87171",
+    fontSize: 14,
+    fontWeight: 700,
+    padding: "12px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
   },
 };
