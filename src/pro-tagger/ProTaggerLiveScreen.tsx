@@ -74,9 +74,13 @@ function computeScoreSide(
 ): { goals: number; points: number; total: number } {
   const scored = events.filter((e) => e.teamSide === side);
   const goals  = scored.filter((e) => e.kind === "GOAL").length;
-  const pts    = scored.filter((e) =>
-    (["POINT", "FREE_SCORED", "TWO_POINTER", "FORTY_FIVE_TWO_POINT"] as MatchEventKind[]).includes(e.kind),
+  const onePointers = scored.filter((e) =>
+    (["POINT", "FREE_SCORED"] as MatchEventKind[]).includes(e.kind),
   ).length;
+  const twoPointers = scored.filter((e) =>
+    (["TWO_POINTER", "FORTY_FIVE_TWO_POINT"] as MatchEventKind[]).includes(e.kind),
+  ).length;
+  const pts = onePointers + twoPointers * 2;
   return { goals, points: pts, total: goals * 3 + pts };
 }
 
