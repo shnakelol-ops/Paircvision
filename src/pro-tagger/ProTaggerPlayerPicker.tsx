@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
+import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 
 export type SelectedPlayer = {
   playerId: string;
@@ -13,6 +14,7 @@ interface Props {
   squad: ProTaggerSquadPlayer[];
   squadId: string;
   teamColour?: string;
+  secondaryColour?: string;
   onSelect: (player: SelectedPlayer | null) => void;
 }
 
@@ -26,7 +28,7 @@ const FORMATION_ROWS: readonly (readonly number[])[] = [
   [13, 14, 15],   // #13 #14 #15 (RF FF LF)
 ];
 
-export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, onSelect }: Props) {
+export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, onSelect }: Props) {
   const colour = teamColour ?? "#238636";
 
   // Active players in formation slots (1–15).
@@ -51,6 +53,7 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, o
     <div style={S.shell}>
       {/* Header */}
       <div style={{ ...S.header, borderLeft: `3px solid ${colour}` }}>
+        <ProTaggerMiniJersey primary={colour} secondary={secondaryColour ?? "#ffffff"} size={18} />
         <span style={S.title}>{teamLabel} — Player</span>
       </div>
 

@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
+import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 import type { ProTaggerSession, ProTaggerSquadPlayer } from "./pro-tagger-session";
 import {
   loadSavedTeams,
@@ -220,6 +221,11 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
           <div style={S.colourSection}>
             <span style={S.colourHeading}>Team Colours</span>
             <div style={S.colourRow}>
+              <ProTaggerMiniJersey
+                primary={activeColours.primary}
+                secondary={activeColours.secondary}
+                size={32}
+              />
               {(["primary", "secondary"] as const).map((type) => (
                 <div key={type} style={S.colourItem}>
                   <span style={S.colourItemLabel}>
