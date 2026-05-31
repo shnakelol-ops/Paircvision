@@ -8,7 +8,9 @@ export type ProTaggerSquadPlayer = {
   id: string;
   number: number;
   name: string;
-  position?: string; // "GK", "RB", "SUB" etc — optional for backward compat
+  position?: string;  // "GK", "RB", "SUB" etc — optional for backward compat
+  isActive?: boolean; // undefined/true = on pitch; false = subbed off
+  activeSlot?: number; // 1–15 formation slot while active
 };
 
 export type ProTaggerSquad = {

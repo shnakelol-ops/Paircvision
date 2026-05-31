@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { CSSProperties } from "react";
-import type { ProTaggerSession } from "./pro-tagger-session";
+import type { ProTaggerSession, ProTaggerSquadPlayer } from "./pro-tagger-session";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
 import { PRO_TAGGER_FAMILIES, getFamilyLabel } from "./pro-tagger-families";
 import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
@@ -79,7 +79,6 @@ function computeScoreSide(
   return { goals, points: pts, total: goals * 3 + pts };
 }
 
-// Compact Goals-Points scoreboard format: "1-12"
 function fmtGP(goals: number, points: number): string {
   return `${goals}-${String(points).padStart(2, "0")}`;
 }
@@ -90,6 +89,15 @@ function fmtScore(s: { goals: number; points: number; total: number }): string {
 
 function fmtClock(s: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+// Initialise live squad from session — always starts with starters 1–15 active.
+function initSquad(players: ProTaggerSquadPlayer[]): ProTaggerSquadPlayer[] {
+  return players.map((p, i) => ({
+    ...p,
+    isActive:   i < 15,
+    activeSlot: i < 15 ? i + 1 : undefined,
+  }));
 }
 
 // ── PendingContextBar ─────────────────────────────────────────────────────────
@@ -178,6 +186,18 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
   const [feedbackDot, setFeedbackDot]   = useState<{ nx: number; ny: number } | null>(null);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [wrongWayActive, setWrongWayActive] = useState(false);
+
+  // ── Live squad state (substitutions) ─────────────────────────────────────
+  const [homeSquadState, setHomeSquadState] = useState<ProTaggerSquadPlayer[]>(() =>
+    initSquad(session.homeSquad.players),
+  );
+  const [awaySquadState, setAwaySquadState] = useState<ProTaggerSquadPlayer[]>(() =>
+    initSquad(session.awaySquad.players),
+  );
+  const [subSheetOpen, setSubSheetOpen] = useState(false);
+  const [subTeam, setSubTeam]           = useState<"home" | "away">("home");
+  const [subOutId, setSubOutId]         = useState<string | null>(null);
+  const [subInId, setSubInId]           = useState<string | null>(null);
 
   const clockStartRef    = useRef<number | null>(null);
   const clockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -282,7 +302,7 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
   }, []);
 
   // Attack direction logic: `nx` is normalised landscape-X [0,1] — the
-  // length-of-pitch axis.  attackingDown=true means FOR attacks toward nx=1.
+  // length-of-pitch axis. attackingDown=true means FOR attacks toward nx=1.
   // Scoring events in the wrong half trigger a 3-second override window.
   // A second tap within that window (or any tap in the correct half) saves.
   const handlePitchTap = useCallback(
@@ -358,6 +378,32 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     setPhase("IDLE");
   }, []);
 
+  // ── Substitutions ─────────────────────────────────────────────────────────
+
+  const openSubSheet = useCallback(() => {
+    setSubTeam("home");
+    setSubOutId(null);
+    setSubInId(null);
+    setSubSheetOpen(true);
+  }, []);
+
+  const confirmSub = useCallback(() => {
+    if (!subOutId || !subInId) return;
+    const setter = subTeam === "home" ? setHomeSquadState : setAwaySquadState;
+    setter((prev) => {
+      const outgoing = prev.find((p) => p.id === subOutId);
+      const outgoingSlot = outgoing?.activeSlot;
+      return prev.map((p) => {
+        if (p.id === subOutId) return { ...p, isActive: false as const, activeSlot: undefined };
+        if (p.id === subInId)  return { ...p, isActive: true as const,  activeSlot: outgoingSlot };
+        return p;
+      });
+    });
+    setSubOutId(null);
+    setSubInId(null);
+    setSubSheetOpen(false);
+  }, [subOutId, subInId, subTeam]);
+
   // ── Undo / Save ───────────────────────────────────────────────────────────
 
   const undo = useCallback(() => {
@@ -413,11 +459,22 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
   const canUndo   = phase === "IDLE" && loggedEvents.length > 0;
   const canSave   = phase === "IDLE" && loggedEvents.length > 0;
 
-  // Scores derived from events — always live, never stored separately.
   const forScore = computeScoreSide(loggedEvents, "FOR");
   const oppScore = computeScoreSide(loggedEvents, "OPP");
 
-  const badgeAccent = MATCH_STATE_COLOUR[matchState];
+  const badgeAccent   = MATCH_STATE_COLOUR[matchState];
+  const homeColour    = session.homeSquad.primaryColour ?? "#16a34a";
+  const awayColour    = session.awaySquad.primaryColour ?? "#dc2626";
+
+  // Subs sheet derived values (computed once per render, outside JSX).
+  const subSquadState     = subTeam === "home" ? homeSquadState : awaySquadState;
+  const subTeamLabel      = subTeam === "home" ? homeLabel : awayLabel;
+  const subTeamColour     = subTeam === "home" ? homeColour : awayColour;
+  const subActivePlayers  = subSquadState.filter((p) => p.isActive !== false);
+  const subBenchPlayers   = subSquadState.filter((p) => p.isActive === false);
+  const subCanConfirm     = subOutId !== null && subInId !== null;
+
+  const isActivePlaying = matchState === "FIRST_HALF" || matchState === "SECOND_HALF";
 
   return (
     <div style={S.shell}>
@@ -427,11 +484,11 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
 
         {/* Scoreboard row */}
         <div style={S.scoreboard}>
-          <span style={S.teamNameLeft}>{homeLabel}</span>
+          <span style={{ ...S.teamNameLeft, color: homeColour }}>{homeLabel}</span>
           <span style={S.scoreLeft}>{fmtGP(forScore.goals, forScore.points)}</span>
           <span style={S.vSep}>v</span>
           <span style={S.scoreRight}>{fmtGP(oppScore.goals, oppScore.points)}</span>
-          <span style={S.teamNameRight}>{awayLabel}</span>
+          <span style={{ ...S.teamNameRight, color: awayColour }}>{awayLabel}</span>
         </div>
 
         {/* Controls row */}
@@ -450,6 +507,9 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
           )}
           {matchState === "SECOND_HALF" && (
             <button onClick={handleFullTime} style={S.ftBtn}>FT</button>
+          )}
+          {isActivePlaying && (
+            <button style={S.subsBtn} onClick={openSubSheet}>⇄ Subs</button>
           )}
 
           <button
@@ -559,8 +619,8 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
                   }
                   squad={
                     pending.teamSide === "FOR"
-                      ? session.homeSquad.players
-                      : session.awaySquad.players
+                      ? homeSquadState
+                      : awaySquadState
                   }
                   squadId={
                     pending.teamSide === "FOR"
@@ -568,9 +628,7 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
                       : session.awaySquad.id
                   }
                   teamColour={
-                    pending.teamSide === "FOR"
-                      ? (session.homeSquad.primaryColour ?? "#16a34a")
-                      : (session.awaySquad.primaryColour ?? "#dc2626")
+                    pending.teamSide === "FOR" ? homeColour : awayColour
                   }
                   onSelect={handlePlayerSelect}
                 />
@@ -611,11 +669,105 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
         </>
       )}
 
+      {/* ── Substitutions sheet ────────────────────────────────────── */}
+      {subSheetOpen && (
+        <div style={SS.overlay} onClick={() => setSubSheetOpen(false)}>
+          <div style={SS.sheet} onClick={(e) => e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={SS.header}>
+              <div style={SS.teamToggle}>
+                <button
+                  style={{ ...SS.teamBtn, ...(subTeam === "home" ? { ...SS.teamBtnOn, borderColor: homeColour, color: homeColour } : {}) }}
+                  onClick={() => { setSubTeam("home"); setSubOutId(null); setSubInId(null); }}
+                >
+                  {homeLabel}
+                </button>
+                <button
+                  style={{ ...SS.teamBtn, ...(subTeam === "away" ? { ...SS.teamBtnOn, borderColor: awayColour, color: awayColour } : {}) }}
+                  onClick={() => { setSubTeam("away"); setSubOutId(null); setSubInId(null); }}
+                >
+                  {awayLabel}
+                </button>
+              </div>
+              <span style={SS.title}>Substitutions</span>
+              <button style={SS.closeBtn} onClick={() => setSubSheetOpen(false)}>✕</button>
+            </div>
+
+            {/* Body */}
+            <div style={SS.body}>
+              <div style={SS.sectionLabel}>Sub Out — Active ({subActivePlayers.length})</div>
+              <div style={SS.pillRow}>
+                {subActivePlayers.map((p) => (
+                  <button
+                    key={p.id}
+                    style={{
+                      ...SS.pill,
+                      ...(subOutId === p.id
+                        ? { border: `1px solid ${subTeamColour}`, color: "#e6edf3", background: "#21262d" }
+                        : {}),
+                    }}
+                    onClick={() => setSubOutId((prev) => prev === p.id ? null : p.id)}
+                  >
+                    #{p.number}{p.name.trim() ? ` ${p.name.trim()}` : ""}
+                  </button>
+                ))}
+                {subActivePlayers.length === 0 && (
+                  <span style={SS.emptyNote}>No active players</span>
+                )}
+              </div>
+
+              <div style={SS.sectionLabel}>Sub In — Bench ({subBenchPlayers.length})</div>
+              <div style={SS.pillRow}>
+                {subBenchPlayers.map((p) => (
+                  <button
+                    key={p.id}
+                    style={{
+                      ...SS.pill,
+                      ...(subInId === p.id
+                        ? { border: "1px solid #2ea043", color: "#e6edf3", background: "#21262d" }
+                        : {}),
+                    }}
+                    onClick={() => setSubInId((prev) => prev === p.id ? null : p.id)}
+                  >
+                    #{p.number}{p.name.trim() ? ` ${p.name.trim()}` : ""}
+                  </button>
+                ))}
+                {subBenchPlayers.length === 0 && (
+                  <span style={SS.emptyNote}>No bench players</span>
+                )}
+              </div>
+
+              {subOutId && subInId && (
+                <div style={SS.preview}>
+                  <span style={SS.previewText}>
+                    #{subSquadState.find(p => p.id === subOutId)?.number} off →{" "}
+                    #{subSquadState.find(p => p.id === subInId)?.number} on ({subTeamLabel})
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={SS.footer}>
+              <button
+                style={{ ...SS.confirmBtn, ...(!subCanConfirm ? SS.confirmDisabled : {}) }}
+                disabled={!subCanConfirm}
+                onClick={confirmSub}
+              >
+                Confirm Sub
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ── Main styles ───────────────────────────────────────────────────────────────
 
 const S: Record<string, CSSProperties> = {
   shell: {
@@ -629,6 +781,7 @@ const S: Record<string, CSSProperties> = {
     userSelect: "none",
     overflow: "hidden",
     WebkitTapHighlightColor: "transparent",
+    position: "relative",
   },
 
   // ── Header ─────────────────────────────────────────────────────────────────
@@ -651,7 +804,6 @@ const S: Record<string, CSSProperties> = {
     flex: 1,
     fontSize: 11,
     fontWeight: 700,
-    color: "#8b949e",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap" as const,
@@ -661,7 +813,6 @@ const S: Record<string, CSSProperties> = {
     flex: 1,
     fontSize: 11,
     fontWeight: 700,
-    color: "#8b949e",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap" as const,
@@ -687,7 +838,6 @@ const S: Record<string, CSSProperties> = {
     fontSize: 13,
     fontWeight: 600,
     color: "#30363d",
-    padding: "0 2px",
     flexShrink: 0,
   },
 
@@ -756,6 +906,19 @@ const S: Record<string, CSSProperties> = {
     cursor: "pointer",
     outline: "none",
     flexShrink: 0,
+  },
+  subsBtn: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 11,
+    fontWeight: 700,
+    padding: "4px 9px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
   },
   iconBtn: {
     background: "#21262d",
@@ -883,4 +1046,153 @@ const S: Record<string, CSSProperties> = {
   tapHintText:  { fontSize: 13, color: "#8b949e", fontWeight: 500 },
   savedText:    { fontSize: 13, color: "#2ea043", fontWeight: 700 },
   wrongWayText: { fontSize: 13, color: "#f59e0b", fontWeight: 700 },
+};
+
+// ── Subs sheet styles ─────────────────────────────────────────────────────────
+
+const SS: Record<string, CSSProperties> = {
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: "rgba(0,0,0,0.65)",
+    zIndex: 100,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    background: "#161b22",
+    borderRadius: "14px 14px 0 0",
+    maxHeight: "72vh",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "12px 14px 10px",
+    borderBottom: "1px solid #21262d",
+    flexShrink: 0,
+  },
+  teamToggle: {
+    display: "flex",
+    gap: 6,
+    flexShrink: 0,
+  },
+  teamBtn: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "4px 10px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+  },
+  teamBtnOn: {
+    background: "transparent",
+    fontWeight: 800,
+  },
+  title: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#e6edf3",
+    letterSpacing: "-0.2px",
+    textAlign: "center" as const,
+  },
+  closeBtn: {
+    background: "transparent",
+    border: "none",
+    color: "#6e7681",
+    fontSize: 18,
+    cursor: "pointer",
+    padding: "0 2px",
+    lineHeight: 1,
+    outline: "none",
+    flexShrink: 0,
+  },
+  body: {
+    flex: 1,
+    overflowY: "auto",
+    padding: "12px 14px 8px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase" as const,
+    color: "#8b949e",
+    paddingBottom: 2,
+  },
+  pillRow: {
+    display: "flex",
+    flexWrap: "wrap" as const,
+    gap: 6,
+    marginBottom: 4,
+  },
+  pill: {
+    background: "#0d1117",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "6px 10px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+    whiteSpace: "nowrap" as const,
+  },
+  emptyNote: {
+    fontSize: 12,
+    color: "#6e7681",
+    fontStyle: "italic",
+    padding: "4px 0",
+  },
+  preview: {
+    padding: "8px 0 2px",
+    borderTop: "1px solid #21262d",
+  },
+  previewText: {
+    fontSize: 12,
+    color: "#2ea043",
+    fontWeight: 600,
+  },
+  footer: {
+    padding: "10px 14px 20px",
+    borderTop: "1px solid #21262d",
+    flexShrink: 0,
+  },
+  confirmBtn: {
+    width: "100%",
+    background: "#238636",
+    border: "1px solid #2ea043",
+    borderRadius: 8,
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: 700,
+    padding: "12px",
+    cursor: "pointer",
+    outline: "none",
+    boxSizing: "border-box" as const,
+    WebkitTapHighlightColor: "transparent",
+  },
+  confirmDisabled: {
+    background: "#21262d",
+    borderColor: "#30363d",
+    color: "#6e7681",
+    cursor: "default",
+    opacity: 0.6,
+  },
 };
