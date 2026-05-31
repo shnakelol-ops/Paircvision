@@ -16,19 +16,27 @@ interface Props {
   onSelect: (player: SelectedPlayer | null) => void;
 }
 
-// GAA formation rows: indices into the 0–14 starter slice.
+// GAA formation: 1-based active slot numbers matching LiveScreen initialisation.
 const FORMATION_ROWS: readonly (readonly number[])[] = [
-  [0],                // #1  GK
-  [1, 2, 3],         // #2  #3  #4  (RB FB LB)
-  [4, 5, 6],         // #5  #6  #7  (RHB CHB LHB)
-  [7, 8],            // #8  #9      (MF MF)
-  [9, 10, 11],       // #10 #11 #12 (RHF CHF LHF)
-  [12, 13, 14],      // #13 #14 #15 (RF FF LF)
+  [1],            // #1  GK
+  [2, 3, 4],      // #2  #3  #4  (RB FB LB)
+  [5, 6, 7],      // #5  #6  #7  (RHB CHB LHB)
+  [8, 9],         // #8  #9      (MF MF)
+  [10, 11, 12],   // #10 #11 #12 (RHF CHF LHF)
+  [13, 14, 15],   // #13 #14 #15 (RF FF LF)
 ];
 
 export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, onSelect }: Props) {
-  const starters = squad.slice(0, 15);
-  const subs     = squad.slice(15);        // players 16–20
+  const colour = teamColour ?? "#238636";
+
+  // Active players in formation slots (1–15).
+  // isActive === false means subbed off — excluded entirely.
+  function findSlot(slot: number): ProTaggerSquadPlayer | null {
+    return squad.find((p) => p.activeSlot === slot && p.isActive !== false) ?? null;
+  }
+
+  // Active bench players — on the squad but not yet in a formation slot.
+  const bench = squad.filter((p) => p.isActive !== false && p.activeSlot === undefined);
 
   function tap(p: ProTaggerSquadPlayer) {
     onSelect({
@@ -42,21 +50,25 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, o
   return (
     <div style={S.shell}>
       {/* Header */}
-      <div style={{ ...S.header, borderLeft: `3px solid ${teamColour ?? "#238636"}` }}>
+      <div style={{ ...S.header, borderLeft: `3px solid ${colour}` }}>
         <span style={S.title}>{teamLabel} — Player</span>
       </div>
 
-      {/* Scrollable formation + subs area */}
+      {/* Scrollable formation + bench */}
       <div style={S.scroll}>
 
-        {/* Formation rows */}
-        {FORMATION_ROWS.map((indices, ri) => (
+        {/* Formation rows — slot-based */}
+        {FORMATION_ROWS.map((slots, ri) => (
           <div key={ri} style={S.formRow}>
-            {indices.map((idx) => {
-              const p = starters[idx];
+            {slots.map((slot) => {
+              const p = findSlot(slot);
               if (!p) return null;
               return (
-                <button key={p.id} style={S.playerBtn} onClick={() => tap(p)}>
+                <button
+                  key={slot}
+                  style={{ ...S.playerBtn, border: `1px solid ${colour}` }}
+                  onClick={() => tap(p)}
+                >
                   <span style={S.number}>{p.number}</span>
                   {p.name.trim()
                     ? <span style={S.name}>{p.name.trim()}</span>
@@ -68,12 +80,12 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, o
           </div>
         ))}
 
-        {/* Substitutes */}
-        {subs.length > 0 && (
+        {/* Bench — active but not in formation */}
+        {bench.length > 0 && (
           <>
-            <div style={S.subsDivider}>Subs</div>
+            <div style={S.subsDivider}>Bench</div>
             <div style={S.subsRow}>
-              {subs.map((p) => (
+              {bench.map((p) => (
                 <button key={p.id} style={S.subBtn} onClick={() => tap(p)}>
                   <span style={S.number}>{p.number}</span>
                   {p.name.trim()
@@ -143,7 +155,6 @@ const S: Record<string, CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     background: "#161b22",
-    border: "1px solid #30363d",
     borderRadius: 8,
     cursor: "pointer",
     outline: "none",
@@ -154,7 +165,7 @@ const S: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
 
-  // ── Subs ───────────────────────────────────────────────────────────────────
+  // ── Bench ──────────────────────────────────────────────────────────────────
   subsDivider: {
     width: "100%",
     fontSize: 10,
