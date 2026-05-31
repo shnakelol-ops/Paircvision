@@ -1,6 +1,14 @@
 import { useState, useCallback } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
 import type { ProTaggerSession, ProTaggerSquadPlayer } from "./pro-tagger-session";
+import {
+  loadSavedTeams,
+  saveTeam,
+  deleteTeam,
+  exportTeamAsSquad,
+  buildNewTeam,
+} from "./pro-tagger-team-storage";
+import type { SavedTeam } from "./pro-tagger-team-storage";
 
 interface Props {
   session: ProTaggerSession;
@@ -10,6 +18,7 @@ interface Props {
 
 type TeamTab   = "home" | "away";
 type ColourSet = { primary: string; secondary: string };
+type SaveStatus = "idle" | "success" | "full";
 
 function genId(): string {
   const c = globalThis.crypto;
@@ -18,7 +27,7 @@ function genId(): string {
 }
 
 export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
-  const [activeTab, setActiveTab]   = useState<TeamTab>("home");
+  const [activeTab, setActiveTab]     = useState<TeamTab>("home");
   const [homePlayers, setHomePlayers] = useState<ProTaggerSquadPlayer[]>(
     () => session.homeSquad.players.map((p) => ({ ...p })),
   );
@@ -33,10 +42,26 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
     primary:   session.awaySquad.primaryColour   ?? "#dc2626",
     secondary: session.awaySquad.secondaryColour ?? "#ffffff",
   });
+  const [homeSquadTeamName, setHomeSquadTeamName] = useState<string | undefined>(
+    session.homeSquad.teamName,
+  );
+  const [awaySquadTeamName, setAwaySquadTeamName] = useState<string | undefined>(
+    session.awaySquad.teamName,
+  );
 
-  const homeLabel    = session.homeTeamName.trim() || "Home";
-  const awayLabel    = session.awayTeamName.trim() || "Away";
-  const players      = activeTab === "home" ? homePlayers : awayPlayers;
+  // Library overlay
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [savedTeams, setSavedTeams]   = useState<SavedTeam[]>([]);
+
+  // Save prompt overlay
+  const [saveOpen, setSaveOpen]       = useState(false);
+  const [saveName, setSaveName]       = useState("");
+  const [saveStatus, setSaveStatus]   = useState<SaveStatus>("idle");
+
+  const homeLabel     = session.homeTeamName.trim() || "Home";
+  const awayLabel     = session.awayTeamName.trim() || "Away";
+  const activeLabel   = activeTab === "home" ? homeLabel : awayLabel;
+  const players       = activeTab === "home" ? homePlayers : awayPlayers;
   const activeColours = activeTab === "home" ? homeColours : awayColours;
 
   const setName = useCallback(
@@ -69,6 +94,72 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
     ]);
   }
 
+  // ── Library ──────────────────────────────────────────────────────────────
+
+  function openLibrary() {
+    setSavedTeams(loadSavedTeams());
+    setLibraryOpen(true);
+  }
+
+  function closeLibrary() {
+    setLibraryOpen(false);
+  }
+
+  function loadTeam(team: SavedTeam) {
+    const side  = activeTab === "home" ? "HOME" : "AWAY";
+    const squad = exportTeamAsSquad(team, side);
+    const playerSetter = activeTab === "home" ? setHomePlayers : setAwayPlayers;
+    const colourSetter = activeTab === "home" ? setHomeColours : setAwayColours;
+    const nameSetter   = activeTab === "home" ? setHomeSquadTeamName : setAwaySquadTeamName;
+    playerSetter(squad.players);
+    colourSetter({ primary: team.primaryColour, secondary: team.secondaryColour });
+    nameSetter(team.teamName);
+    setLibraryOpen(false);
+  }
+
+  function removeTeam(id: string) {
+    deleteTeam(id);
+    setSavedTeams((prev) => prev.filter((t) => t.id !== id));
+  }
+
+  // ── Save prompt ──────────────────────────────────────────────────────────
+
+  function openSave() {
+    const fallback = activeLabel === "Home" || activeLabel === "Away" ? "" : activeLabel;
+    setSaveName(fallback);
+    setSaveStatus("idle");
+    setSaveOpen(true);
+  }
+
+  function closeSave() {
+    setSaveOpen(false);
+  }
+
+  function confirmSave() {
+    const currentPlayers = activeTab === "home" ? homePlayers : awayPlayers;
+    const currentColours = activeTab === "home" ? homeColours : awayColours;
+    const team = buildNewTeam({
+      teamName:        saveName.trim() || activeLabel,
+      primaryColour:   currentColours.primary,
+      secondaryColour: currentColours.secondary,
+      players: currentPlayers.map((p) => ({
+        id:       p.id,
+        number:   p.number,
+        name:     p.name,
+        position: p.position,
+      })),
+    });
+    const ok = saveTeam(team);
+    if (ok) {
+      setSaveStatus("success");
+      setTimeout(() => setSaveOpen(false), 900);
+    } else {
+      setSaveStatus("full");
+    }
+  }
+
+  // ── Start match ──────────────────────────────────────────────────────────
+
   function handleStart() {
     onStart({
       ...session,
@@ -77,12 +168,14 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
         players:         homePlayers,
         primaryColour:   homeColours.primary,
         secondaryColour: homeColours.secondary,
+        teamName:        homeSquadTeamName,
       },
       awaySquad: {
         ...session.awaySquad,
         players:         awayPlayers,
         primaryColour:   awayColours.primary,
         secondaryColour: awayColours.secondary,
+        teamName:        awaySquadTeamName,
       },
     });
   }
@@ -113,6 +206,12 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
         </button>
       </div>
 
+      {/* ── Library toolbar ────────────────────────────────────────── */}
+      <div style={S.libraryBar}>
+        <button style={S.libBtn} onClick={openLibrary}>↓ Load Team</button>
+        <button style={S.libBtn} onClick={openSave}>↑ Save Team</button>
+      </div>
+
       {/* ── Scrollable content ─────────────────────────────────────── */}
       <div style={S.list}>
         <div style={S.listInner}>
@@ -134,7 +233,6 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
                     }
                     style={{
                       ...S.colourInput,
-                      // Use accent border to show selected colour clearly
                       outline: `2px solid ${activeColours[type]}`,
                       outlineOffset: 2,
                     }}
@@ -184,6 +282,72 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
         </button>
       </div>
 
+      {/* ── Library overlay (bottom sheet) ─────────────────────────── */}
+      {libraryOpen && (
+        <div style={S.overlay} onClick={closeLibrary}>
+          <div style={S.sheet} onClick={(e) => e.stopPropagation()}>
+            <div style={S.sheetHeader}>
+              <span style={S.sheetTitle}>Team Library — {activeLabel}</span>
+              <button style={S.sheetClose} onClick={closeLibrary}>✕</button>
+            </div>
+            {savedTeams.length === 0 ? (
+              <div style={S.emptyState}>No saved teams yet</div>
+            ) : (
+              <div style={S.teamList}>
+                {savedTeams.map((team) => (
+                  <div key={team.id} style={S.teamRow}>
+                    <div style={{ ...S.colourDot, background: team.primaryColour }} />
+                    <div style={S.teamInfo}>
+                      <span style={S.teamRowName}>{team.teamName}</span>
+                      <span style={S.teamRowMeta}>{team.players.length} players</span>
+                    </div>
+                    <button style={S.loadBtn} onClick={() => loadTeam(team)}>Load</button>
+                    <button style={S.deleteBtn} onClick={() => removeTeam(team.id)}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Save prompt overlay (bottom sheet) ─────────────────────── */}
+      {saveOpen && (
+        <div style={S.overlay} onClick={closeSave}>
+          <div style={S.savePrompt} onClick={(e) => e.stopPropagation()}>
+            <span style={S.sheetTitle}>Save {activeLabel} to Library</span>
+            <input
+              type="text"
+              placeholder={activeLabel}
+              value={saveName}
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setSaveName(e.target.value)}
+              style={S.saveNameInput}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            {saveStatus === "full" && (
+              <span style={S.saveError}>Library is full (50 / 50). Delete a team first.</span>
+            )}
+            {saveStatus === "success" && (
+              <span style={S.saveSuccess}>Saved!</span>
+            )}
+            <div style={S.saveActions}>
+              <button style={S.cancelBtn} onClick={closeSave}>Cancel</button>
+              <button
+                style={{ ...S.confirmBtn, ...(saveStatus === "success" ? S.confirmDone : {}) }}
+                onClick={confirmSave}
+                disabled={saveStatus === "success"}
+              >
+                {saveStatus === "success" ? "Saved!" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -199,6 +363,7 @@ const S: Record<string, CSSProperties> = {
     fontFamily: "'Inter', 'Helvetica Neue', system-ui, sans-serif",
     userSelect: "none",
     overflow: "hidden",
+    position: "relative",
   },
 
   // ── Header ──────────────────────────────────────────────────────────────
@@ -269,6 +434,29 @@ const S: Record<string, CSSProperties> = {
   tabOn: {
     color: "#e6edf3",
     borderBottomColor: "#2ea043",
+  },
+
+  // ── Library toolbar ──────────────────────────────────────────────────────
+  libraryBar: {
+    display: "flex",
+    gap: 8,
+    padding: "7px 12px",
+    background: "#0d1117",
+    borderBottom: "1px solid #21262d",
+    flexShrink: 0,
+  },
+  libBtn: {
+    flex: 1,
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "7px 10px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
   },
 
   // ── List ────────────────────────────────────────────────────────────────
@@ -419,5 +607,192 @@ const S: Record<string, CSSProperties> = {
     outline: "none",
     letterSpacing: "-0.2px",
     boxSizing: "border-box" as const,
+  },
+
+  // ── Shared overlay backdrop ───────────────────────────────────────────────
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: "rgba(0,0,0,0.65)",
+    zIndex: 100,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-end",
+  },
+
+  // ── Library sheet ─────────────────────────────────────────────────────────
+  sheet: {
+    background: "#161b22",
+    borderRadius: "14px 14px 0 0",
+    maxHeight: "70vh",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+  sheetHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "14px 16px 10px",
+    borderBottom: "1px solid #21262d",
+    flexShrink: 0,
+  },
+  sheetTitle: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#e6edf3",
+    letterSpacing: "-0.2px",
+  },
+  sheetClose: {
+    background: "transparent",
+    border: "none",
+    color: "#6e7681",
+    fontSize: 18,
+    cursor: "pointer",
+    padding: "0 2px",
+    lineHeight: 1,
+    outline: "none",
+  },
+  emptyState: {
+    flex: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#6e7681",
+    fontSize: 13,
+    padding: 32,
+  },
+  teamList: {
+    flex: 1,
+    overflowY: "auto",
+  },
+  teamRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    padding: "11px 16px",
+    borderBottom: "1px solid #21262d",
+  },
+  colourDot: {
+    width: 14,
+    height: 14,
+    borderRadius: "50%",
+    flexShrink: 0,
+    border: "1px solid rgba(255,255,255,0.1)",
+  },
+  teamInfo: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    gap: 2,
+    minWidth: 0,
+  },
+  teamRowName: {
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#e6edf3",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  },
+  teamRowMeta: {
+    fontSize: 11,
+    color: "#6e7681",
+  },
+  loadBtn: {
+    background: "#238636",
+    border: "1px solid #2ea043",
+    borderRadius: 6,
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "6px 14px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
+  },
+  deleteBtn: {
+    background: "transparent",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#6e7681",
+    fontSize: 13,
+    cursor: "pointer",
+    padding: "5px 9px",
+    outline: "none",
+    flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
+  },
+
+  // ── Save prompt ───────────────────────────────────────────────────────────
+  savePrompt: {
+    background: "#161b22",
+    borderRadius: "14px 14px 0 0",
+    padding: "20px 16px 36px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 14,
+  },
+  saveNameInput: {
+    background: "#0d1117",
+    border: "1px solid #30363d",
+    borderRadius: 8,
+    color: "#e6edf3",
+    fontSize: 15,
+    padding: "12px 12px",
+    outline: "none",
+    fontFamily: "inherit",
+    width: "100%",
+    boxSizing: "border-box" as const,
+  },
+  saveError: {
+    fontSize: 12,
+    color: "#f85149",
+    marginTop: -4,
+  },
+  saveSuccess: {
+    fontSize: 13,
+    color: "#2ea043",
+    fontWeight: 600,
+    marginTop: -4,
+  },
+  saveActions: {
+    display: "flex",
+    gap: 10,
+  },
+  cancelBtn: {
+    flex: 1,
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 8,
+    color: "#8b949e",
+    fontSize: 14,
+    fontWeight: 600,
+    padding: "12px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+  },
+  confirmBtn: {
+    flex: 1,
+    background: "#238636",
+    border: "1px solid #2ea043",
+    borderRadius: 8,
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: 700,
+    padding: "12px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+  },
+  confirmDone: {
+    background: "#1a7f37",
+    borderColor: "#2ea043",
+    opacity: 0.7,
   },
 };
