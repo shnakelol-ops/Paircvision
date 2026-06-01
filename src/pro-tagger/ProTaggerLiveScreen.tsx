@@ -6,7 +6,8 @@ import { PRO_TAGGER_FAMILIES, getFamilyLabel } from "./pro-tagger-families";
 import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
-import { saveProTaggerMatch } from "./pro-tagger-storage";
+import { saveProTaggerMatch, saveProTaggerMatchFull } from "./pro-tagger-storage";
+import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildStatsShareCardPng } from "../stats/statsShareCard";
 import { ProTaggerFamilyGrid } from "./ProTaggerFamilyGrid";
 import { ProTaggerPlayerPicker } from "./ProTaggerPlayerPicker";
@@ -14,9 +15,19 @@ import type { SelectedPlayer } from "./ProTaggerPlayerPicker";
 import { ProTaggerPitchView } from "./ProTaggerPitchView";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 
+export interface RestoreState {
+  events: readonly LoggedMatchEvent[];
+  homeSquadLiveState: ProTaggerSquadPlayer[];
+  awaySquadLiveState: ProTaggerSquadPlayer[];
+  matchState: MatchState;
+  half: 1 | 2;
+  clockSeconds: number;
+}
+
 interface Props {
   session: ProTaggerSession;
   onEnd: () => void;
+  restoreState?: RestoreState;
 }
 
 // Families where a placement in the wrong attacking half is suspicious.
@@ -211,23 +222,25 @@ const CB: Record<string, CSSProperties> = {
 
 // ── ProTaggerLiveScreen ───────────────────────────────────────────────────────
 
-export function ProTaggerLiveScreen({ session, onEnd }: Props) {
+export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const [phase, setPhase]               = useState<CapturePhase>("IDLE");
   const [pending, setPending]           = useState<PendingAction | null>(null);
-  const [loggedEvents, setLoggedEvents] = useState<readonly LoggedMatchEvent[]>([]);
-  const [half, setHalf]                 = useState<1 | 2>(1);
-  const [clockSeconds, setClockSeconds] = useState(0);
-  const [matchState, setMatchState]     = useState<MatchState>("PRE_MATCH");
+  const [loggedEvents, setLoggedEvents] = useState<readonly LoggedMatchEvent[]>(
+    () => restoreState?.events ?? [],
+  );
+  const [half, setHalf]                 = useState<1 | 2>(restoreState?.half ?? 1);
+  const [clockSeconds, setClockSeconds] = useState(restoreState?.clockSeconds ?? 0);
+  const [matchState, setMatchState]     = useState<MatchState>(restoreState?.matchState ?? "PRE_MATCH");
   const [feedbackDot, setFeedbackDot]   = useState<{ nx: number; ny: number } | null>(null);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [wrongWayActive, setWrongWayActive] = useState(false);
 
   // ── Live squad state (substitutions) ─────────────────────────────────────
   const [homeSquadState, setHomeSquadState] = useState<ProTaggerSquadPlayer[]>(() =>
-    initSquad(session.homeSquad.players),
+    restoreState ? restoreState.homeSquadLiveState : initSquad(session.homeSquad.players),
   );
   const [awaySquadState, setAwaySquadState] = useState<ProTaggerSquadPlayer[]>(() =>
-    initSquad(session.awaySquad.players),
+    restoreState ? restoreState.awaySquadLiveState : initSquad(session.awaySquad.players),
   );
   const [subSheetOpen, setSubSheetOpen] = useState(false);
   const [subTeam, setSubTeam]           = useState<"home" | "away">("home");
@@ -242,11 +255,11 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
 
   const clockStartRef          = useRef<number | null>(null);
   const clockIntervalRef       = useRef<ReturnType<typeof setInterval> | null>(null);
-  const clockSecondsRef        = useRef(0);
-  const halfRef                = useRef<1 | 2>(1);
-  const loggedRef              = useRef<readonly LoggedMatchEvent[]>([]);
+  const clockSecondsRef        = useRef(restoreState?.clockSeconds ?? 0);
+  const halfRef                = useRef<1 | 2>(restoreState?.half ?? 1);
+  const loggedRef              = useRef<readonly LoggedMatchEvent[]>(restoreState?.events ?? []);
   const feedbackTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const matchStateRef          = useRef<MatchState>("PRE_MATCH");
+  const matchStateRef          = useRef<MatchState>(restoreState?.matchState ?? "PRE_MATCH");
   const wrongWayActiveRef      = useRef(false);
   const wrongWayTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const actionsFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -465,12 +478,15 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     const home  = session.homeTeamName.trim() || "Team A";
     const away  = session.awayTeamName.trim() || "Team B";
     const venue = session.venue.trim() || "Unknown venue";
+    const currentMatchState = matchStateRef.current;
 
     const forScore = computeScoreSide(events, "FOR");
     const oppScore = computeScoreSide(events, "OPP");
+    const scoreSnap = `${home} ${fmtScore(forScore)} v ${away} ${fmtScore(oppScore)}`;
+    const matchId = `pro-tagger-${newEventId()}`;
 
     const record: SavedMatch = {
-      id:                `pro-tagger-${newEventId()}`,
+      id:                matchId,
       createdAt:         Date.now(),
       label:             `${home} v ${away}`,
       homeTeamName:      home,
@@ -478,23 +494,48 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
       venue,
       events:            events as LoggedMatchEvent[],
       eventCount:        events.length,
-      scorelineSnapshot: `${home} ${fmtScore(forScore)} v ${away} ${fmtScore(oppScore)}`,
+      scorelineSnapshot: scoreSnap,
       restoreContext: {
-        matchState:                  halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF",
+        matchState:                  currentMatchState === "FULL_TIME" ? "FULL_TIME" : halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF",
         currentHalf:                 halfRef.current,
         matchTimeSeconds:            clockSecondsRef.current,
         firstHalfAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
       },
     };
 
-    const ok = saveProTaggerMatch(record);
+    const fullRecord: ProTaggerSavedMatch = {
+      id:                  matchId,
+      createdAt:           record.createdAt,
+      homeTeamName:        home,
+      awayTeamName:        away,
+      venue,
+      sport:               session.sport,
+      matchType:           session.matchType,
+      halfDurationMinutes: session.halfDurationMinutes,
+      scorelineSnapshot:   scoreSnap,
+      eventCount:          events.length,
+      events:              events as LoggedMatchEvent[],
+      homeSquad:           session.homeSquad,
+      awaySquad:           session.awaySquad,
+      homeSquadLiveState:  homeSquadState,
+      awaySquadLiveState:  awaySquadState,
+      restoreContext: {
+        matchState:                  currentMatchState === "FULL_TIME" ? "FULL_TIME" : halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF",
+        currentHalf:                 halfRef.current,
+        matchTimeSeconds:            clockSecondsRef.current,
+        firstHalfAttackingDirection: session.attackDirection,
+      },
+    };
+
+    saveProTaggerMatch(record);
+    const ok = saveProTaggerMatchFull(fullRecord);
     if (!ok) {
       setSaveFeedback("Save failed — storage unavailable.");
       setTimeout(() => setSaveFeedback(null), 3000);
       return;
     }
     onEnd();
-  }, [session, onEnd]);
+  }, [session, onEnd, homeSquadState, awaySquadState]);
 
   // Actions → Save Match: saves to localStorage, stays in match, no onEnd().
   const handleSaveMatch = useCallback(() => {
@@ -510,12 +551,15 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     const home  = session.homeTeamName.trim() || "Team A";
     const away  = session.awayTeamName.trim() || "Team B";
     const venue = session.venue.trim() || "Unknown venue";
+    const currentMatchState = matchStateRef.current;
 
     const forScore = computeScoreSide(events, "FOR");
     const oppScore = computeScoreSide(events, "OPP");
+    const scoreSnap = `${home} ${fmtScore(forScore)} v ${away} ${fmtScore(oppScore)}`;
+    const matchId = `pro-tagger-${newEventId()}`;
 
     const record: SavedMatch = {
-      id:                `pro-tagger-${newEventId()}`,
+      id:                matchId,
       createdAt:         Date.now(),
       label:             `${home} v ${away}`,
       homeTeamName:      home,
@@ -523,16 +567,41 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
       venue,
       events:            events as LoggedMatchEvent[],
       eventCount:        events.length,
-      scorelineSnapshot: `${home} ${fmtScore(forScore)} v ${away} ${fmtScore(oppScore)}`,
+      scorelineSnapshot: scoreSnap,
       restoreContext: {
-        matchState:                  halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF",
+        matchState:                  currentMatchState === "FULL_TIME" ? "FULL_TIME" : halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF",
         currentHalf:                 halfRef.current,
         matchTimeSeconds:            clockSecondsRef.current,
         firstHalfAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
       },
     };
 
-    const ok = saveProTaggerMatch(record);
+    const fullRecord: ProTaggerSavedMatch = {
+      id:                  matchId,
+      createdAt:           record.createdAt,
+      homeTeamName:        home,
+      awayTeamName:        away,
+      venue,
+      sport:               session.sport,
+      matchType:           session.matchType,
+      halfDurationMinutes: session.halfDurationMinutes,
+      scorelineSnapshot:   scoreSnap,
+      eventCount:          events.length,
+      events:              events as LoggedMatchEvent[],
+      homeSquad:           session.homeSquad,
+      awaySquad:           session.awaySquad,
+      homeSquadLiveState:  homeSquadState,
+      awaySquadLiveState:  awaySquadState,
+      restoreContext: {
+        matchState:                  currentMatchState === "FULL_TIME" ? "FULL_TIME" : halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF",
+        currentHalf:                 halfRef.current,
+        matchTimeSeconds:            clockSecondsRef.current,
+        firstHalfAttackingDirection: session.attackDirection,
+      },
+    };
+
+    saveProTaggerMatch(record);
+    const ok = saveProTaggerMatchFull(fullRecord);
     if (!ok) {
       setActionsFeedback("Save failed — storage unavailable.");
       actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 3000);
@@ -541,7 +610,7 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
     setActionsFeedback("✓ Match saved");
     actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
     setActionsOpen(false);
-  }, [session]);
+  }, [session, homeSquadState, awaySquadState]);
 
   // Actions → Share Summary PNG.
   const handleShare = useCallback(async () => {
