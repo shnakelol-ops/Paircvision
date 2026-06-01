@@ -45,14 +45,14 @@ function resolveKindAndSide(familyId: ProTaggerFamilyId, rawLabel: string, teamS
 
     case "RESTART":
       return {
-        kind: teamSide === "FOR" ? "KICKOUT_WON" : "KICKOUT_CONCEDED",
+        kind: "KICKOUT_WON",
         teamSide,
         tag,
       };
 
     case "TURNOVER":
       return {
-        kind: teamSide === "FOR" ? "TURNOVER_WON" : "TURNOVER_LOST",
+        kind: "TURNOVER_WON",
         teamSide,
         tag,
       };
