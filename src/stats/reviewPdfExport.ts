@@ -1890,6 +1890,223 @@ function makeInfluencePage(
   return canvas;
 }
 
+// ─── Influence Battles page ───────────────────────────────────────────────────
+
+/**
+ * Builds the Influence Battles canvas page.
+ * Three-column layout: FOR category leader | category label | OPP category leader.
+ * Five categories (Most Involved, Attack Battle, Defensive Battle, Restart Battle,
+ * Free Impact) — leaders are selected independently per side from collectPlayerStats().
+ * No positional pairing, no jersey matching, no winner indicator, no ratings.
+ * All values are raw event counts. Returns null when no player-tagged events exist.
+ */
+function makeInfluenceBattlesPage(
+  events: readonly PdfExportEvent[],
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+  periodLabel: string,
+): HTMLCanvasElement | null {
+  const allPlayers = collectPlayerStats(events);
+  if (allPlayers.length === 0) return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(
+    ctx,
+    "Influence Battles",
+    `${homeTeam} v ${awayTeam}  ·  ${periodLabel}`,
+    pageNum,
+    totalPages,
+  );
+
+  const forPlayers = allPlayers.filter((p) => p.teamSide === "FOR");
+  const oppPlayers = allPlayers.filter((p) => p.teamSide === "OPP");
+
+  // ── Column geometry ───────────────────────────────────────────────────────────
+  // Outer margin 24px each side; inner 1872px split as 720|432|720.
+  const CONTENT_TOP = 82;
+  const LEFT_X      = 24;
+  const LEFT_W      = 720;
+  const CENTRE_X    = LEFT_X + LEFT_W;          // 744
+  const CENTRE_W    = 432;
+  const RIGHT_X     = CENTRE_X + CENTRE_W;      // 1176
+  const RIGHT_W     = 720;                       // ends at 1896 (+24 right margin = 1920)
+
+  // ── Team header banners ───────────────────────────────────────────────────────
+  const BANNER_H = 44;
+  const BANNER_Y = CONTENT_TOP;
+
+  ctx.fillStyle = "rgba(125,211,252,0.08)";
+  ctx.fillRect(LEFT_X, BANNER_Y, LEFT_W, BANNER_H);
+  ctx.fillStyle = "#7dd3fc";
+  ctx.fillRect(LEFT_X, BANNER_Y, 4, BANNER_H);
+  ctx.fillStyle    = "#f8fafc";
+  ctx.font         = "bold 16px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.fillText(homeTeam.toUpperCase(), LEFT_X + 14, BANNER_Y + BANNER_H / 2);
+
+  ctx.fillStyle = "rgba(251,113,133,0.08)";
+  ctx.fillRect(RIGHT_X, BANNER_Y, RIGHT_W, BANNER_H);
+  ctx.fillStyle = "#fb7185";
+  ctx.fillRect(RIGHT_X + RIGHT_W - 4, BANNER_Y, 4, BANNER_H);
+  ctx.fillStyle    = "#f8fafc";
+  ctx.font         = "bold 16px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "right";
+  ctx.fillText(awayTeam.toUpperCase(), RIGHT_X + RIGHT_W - 14, BANNER_Y + BANNER_H / 2);
+
+  // ── Band layout constants ─────────────────────────────────────────────────────
+  const CAT_H    = 22; // category label row height
+  const NAME_H   = 36; // player name row height
+  const DETAIL_H = 28; // stat detail row height
+  const DIV_GAP  = 14; // space above the divider line
+
+  let cy = BANNER_Y + BANNER_H + 20;
+
+  // ── Band helpers ──────────────────────────────────────────────────────────────
+
+  function fmtPlayerName(p: PlayerStatsFull): string {
+    const num  = p.number !== null ? `#${p.number}` : "—";
+    return `${num}  ${p.name ?? "Unknown"}`;
+  }
+
+  function fmtAttackDetail(p: PlayerStatsFull): string {
+    const parts: string[] = [];
+    if (p.goals > 0)       parts.push(`${p.goals}G`);
+    if (p.scorePoints > 0) parts.push(`${p.scorePoints}pts`);
+    if (p.shots > 0)       parts.push(`${p.shots} shot${p.shots !== 1 ? "s" : ""}`);
+    if (p.wides > 0)       parts.push(`${p.wides} wide`);
+    return parts.join(", ") || "—";
+  }
+
+  function drawBand(
+    categoryLabel: string,
+    forLeader: PlayerStatsFull | undefined,
+    oppLeader: PlayerStatsFull | undefined,
+    fmtDetail: (p: PlayerStatsFull) => string,
+  ): void {
+    if (!forLeader && !oppLeader) return; // omit band when neither side qualifies
+
+    // Category label — centred
+    ctx.fillStyle    = "#64748b";
+    ctx.font         = "bold 11px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "center";
+    ctx.fillText(categoryLabel.toUpperCase(), CENTRE_X + CENTRE_W / 2, cy + CAT_H / 2);
+    cy += CAT_H;
+
+    // Player name row
+    ctx.font         = "bold 15px sans-serif";
+    ctx.textBaseline = "middle";
+    if (forLeader) {
+      ctx.fillStyle = "#e2e8f0";
+      ctx.textAlign = "left";
+      ctx.fillText(fmtPlayerName(forLeader), LEFT_X + 14, cy + NAME_H / 2);
+    } else {
+      ctx.fillStyle = "#475569";
+      ctx.textAlign = "left";
+      ctx.fillText("— No data", LEFT_X + 14, cy + NAME_H / 2);
+    }
+    if (oppLeader) {
+      ctx.fillStyle = "#e2e8f0";
+      ctx.textAlign = "right";
+      ctx.fillText(fmtPlayerName(oppLeader), RIGHT_X + RIGHT_W - 14, cy + NAME_H / 2);
+    } else {
+      ctx.fillStyle = "#475569";
+      ctx.textAlign = "right";
+      ctx.fillText("No data —", RIGHT_X + RIGHT_W - 14, cy + NAME_H / 2);
+    }
+    cy += NAME_H;
+
+    // Detail row
+    ctx.font         = "14px sans-serif";
+    ctx.textBaseline = "middle";
+    if (forLeader) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.textAlign = "left";
+      ctx.fillText(fmtDetail(forLeader), LEFT_X + 14, cy + DETAIL_H / 2);
+    }
+    if (oppLeader) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.textAlign = "right";
+      ctx.fillText(fmtDetail(oppLeader), RIGHT_X + RIGHT_W - 14, cy + DETAIL_H / 2);
+    }
+    cy += DETAIL_H + DIV_GAP;
+
+    // Divider spanning full content width
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(LEFT_X, cy);
+    ctx.lineTo(RIGHT_X + RIGHT_W, cy);
+    ctx.stroke();
+    cy += 14;
+  }
+
+  // ── 1. Most Involved ─────────────────────────────────────────────────────────
+  drawBand(
+    "Most Involved",
+    [...forPlayers].sort((a, b) => b.actions - a.actions).find((p) => p.actions > 0),
+    [...oppPlayers].sort((a, b) => b.actions - a.actions).find((p) => p.actions > 0),
+    (p) => `${p.actions} involvement${p.actions !== 1 ? "s" : ""}`,
+  );
+
+  // ── 2. Attack Battle ──────────────────────────────────────────────────────────
+  drawBand(
+    "Attack Battle",
+    [...forPlayers]
+      .sort((a, b) => b.scoreTotal - a.scoreTotal || b.shots - a.shots || b.goals - a.goals)
+      .find((p) => p.scoreTotal > 0 || p.shots > 0),
+    [...oppPlayers]
+      .sort((a, b) => b.scoreTotal - a.scoreTotal || b.shots - a.shots || b.goals - a.goals)
+      .find((p) => p.scoreTotal > 0 || p.shots > 0),
+    fmtAttackDetail,
+  );
+
+  // ── 3. Defensive Battle ───────────────────────────────────────────────────────
+  drawBand(
+    "Defensive Battle",
+    [...forPlayers].sort((a, b) => b.toWon - a.toWon).find((p) => p.toWon > 0),
+    [...oppPlayers].sort((a, b) => b.toWon - a.toWon).find((p) => p.toWon > 0),
+    (p) => `${p.toWon} turnover${p.toWon !== 1 ? "s" : ""} won`,
+  );
+
+  // ── 4. Restart Battle ─────────────────────────────────────────────────────────
+  drawBand(
+    "Restart Battle",
+    [...forPlayers].sort((a, b) => b.koWon - a.koWon).find((p) => p.koWon > 0),
+    [...oppPlayers].sort((a, b) => b.koWon - a.koWon).find((p) => p.koWon > 0),
+    (p) => `${p.koWon} kickout${p.koWon !== 1 ? "s" : ""} won`,
+  );
+
+  // ── 5. Free Impact ────────────────────────────────────────────────────────────
+  drawBand(
+    "Free Impact",
+    [...forPlayers]
+      .sort((a, b) =>
+        (b.freesWon + b.freesCon) - (a.freesWon + a.freesCon) || b.freesWon - a.freesWon,
+      )
+      .find((p) => p.freesWon > 0 || p.freesCon > 0),
+    [...oppPlayers]
+      .sort((a, b) =>
+        (b.freesWon + b.freesCon) - (a.freesWon + a.freesCon) || b.freesWon - a.freesWon,
+      )
+      .find((p) => p.freesWon > 0 || p.freesCon > 0),
+    (p) => `${p.freesWon} won / ${p.freesCon} conceded`,
+  );
+
+  return canvas;
+}
+
 // ─── Chain Summary page ───────────────────────────────────────────────────────
 
 /**
@@ -5828,7 +6045,8 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 6 chain pages + 1 review guide + 1 opposition snapshot + 1 zone analysis + 1 match swing timeline + 1 shot & scoring efficiency
   const playerPageCount    = calcPlayerPageCount(events);
   const influencePageCount = hasInfluencePlayers(events) ? 1 : 0;
-  const TOTAL_PAGES = 8 + playerPageCount + influencePageCount + TACTICAL_PAGE_SPECS.length + 10;
+  const matchupPageCount   = influencePageCount; // Influence Battles always pairs with Player Influence
+  const TOTAL_PAGES = 8 + playerPageCount + influencePageCount + matchupPageCount + TACTICAL_PAGE_SPECS.length + 10;
 
   // Chain analysis — computed once here and shared with all chain page builders.
   // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
@@ -5889,10 +6107,19 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     if (ipCanvas) addCanvasPage(ipCanvas, true, "Player Influence");
   }
 
-  // Pages (9+N+ip)+: 20 tactical pitch map pages
+  // Influence Battles page (immediately after Player Influence — same suppression guard)
+  if (matchupPageCount > 0) {
+    const ibCanvas = makeInfluenceBattlesPage(
+      events, homeTeamName, awayTeamName,
+      9 + playerPageCount + influencePageCount, TOTAL_PAGES, "Full Match",
+    );
+    if (ibCanvas) addCanvasPage(ibCanvas, true, "Influence Battles");
+  }
+
+  // Pages (9+N+ip+mp)+: 20 tactical pitch map pages
   TACTICAL_PAGE_SPECS.forEach((spec, i) => {
     const filtered = selectPdfEvents(events, spec.half, spec.teamSide, spec.category);
-    const pageNum  = 9 + playerPageCount + influencePageCount + i;
+    const pageNum  = 9 + playerPageCount + influencePageCount + matchupPageCount + i;
     let canvas: HTMLCanvasElement;
     try {
       canvas = makeTacticalPage(
@@ -11462,7 +11689,10 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   const chainAnalysis = selectChainAnalysis(events);
 
   const influencePageCount = hasInfluencePlayers(events) ? 1 : 0;
-  const TOTAL_PAGES = isHT ? (6 + influencePageCount) : (12 + influencePageCount);
+  const matchupPageCount   = influencePageCount; // Influence Battles always pairs with Player Influence
+  const TOTAL_PAGES = isHT
+    ? (6 + influencePageCount + matchupPageCount)
+    : (12 + influencePageCount + matchupPageCount);
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -11550,6 +11780,14 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       const ipCanvas = makeInfluencePage(events, home, away, 7, TOTAL_PAGES, "First Half");
       if (ipCanvas) addPage(ipCanvas, true, "Player Influence");
     }
+
+    // 8 (conditional). Influence Battles — first-half events only
+    if (matchupPageCount > 0) {
+      const ibCanvas = makeInfluenceBattlesPage(
+        events, home, away, 7 + influencePageCount, TOTAL_PAGES, "First Half",
+      );
+      if (ibCanvas) addPage(ibCanvas, true, "Influence Battles");
+    }
   } else {
     // ── FT Snapshot ── 12 pages ───────────────────────────────────────────────
     //
@@ -11624,44 +11862,54 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       if (ipCanvas) addPage(ipCanvas, true, "Player Influence");
     }
 
-    // 7+ip. Turnover Punishment
+    // 8 (conditional). Influence Battles — full match
+    if (matchupPageCount > 0) {
+      const ibCanvas = makeInfluenceBattlesPage(
+        events, home, away, 7 + influencePageCount, TOTAL_PAGES, "Full Match",
+      );
+      if (ibCanvas) addPage(ibCanvas, true, "Influence Battles");
+    }
+
+    const playerPagesOffset = influencePageCount + matchupPageCount;
+
+    // 7+pp. Turnover Punishment
     addPage(
-      makeTurnoverPunishmentPage(chainAnalysis, home, away, 7 + influencePageCount, TOTAL_PAGES),
+      makeTurnoverPunishmentPage(chainAnalysis, home, away, 7 + playerPagesOffset, TOTAL_PAGES),
       true,
       "Turnover Punishment",
     );
 
-    // 8+ip. Shot Efficiency
+    // 8+pp. Shot Efficiency
     addPage(
-      makeShotEfficiencyPage(events, home, away, 8 + influencePageCount, TOTAL_PAGES),
+      makeShotEfficiencyPage(events, home, away, 8 + playerPagesOffset, TOTAL_PAGES),
       true,
       "Shot Efficiency",
     );
 
-    // 9+ip. Attack Corridors — channel-based attack shape analysis
+    // 9+pp. Attack Corridors — channel-based attack shape analysis
     addPage(
-      makeFtAttackCorridorsPage(events, sport, home, away, 9 + influencePageCount, TOTAL_PAGES),
+      makeFtAttackCorridorsPage(events, sport, home, away, 9 + playerPagesOffset, TOTAL_PAGES),
       true,
       "Attack Corridors",
     );
 
-    // 10+ip. Restart Escape Routes — kickout destination zone outcome map
+    // 10+pp. Restart Escape Routes — kickout destination zone outcome map
     addPage(
-      makeFtRestartEscapeRoutesPage(events, sport, chainAnalysis, home, away, 10 + influencePageCount, TOTAL_PAGES),
+      makeFtRestartEscapeRoutesPage(events, sport, chainAnalysis, home, away, 10 + playerPagesOffset, TOTAL_PAGES),
       true,
       "Restart Escape Routes",
     );
 
-    // 11+ip. Opposition Snapshot
+    // 11+pp. Opposition Snapshot
     addPage(
-      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 11 + influencePageCount, TOTAL_PAGES),
+      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 11 + playerPagesOffset, TOTAL_PAGES),
       true,
       "Opposition Snapshot",
     );
 
-    // 12+ip. Tactical Match Story — narrative arc of the match
+    // 12+pp. Tactical Match Story — narrative arc of the match
     addPage(
-      makeFtTacticalMatchStoryPage(events, chainAnalysis, home, away, 12 + influencePageCount, TOTAL_PAGES),
+      makeFtTacticalMatchStoryPage(events, chainAnalysis, home, away, 12 + playerPagesOffset, TOTAL_PAGES),
       true,
       "Tactical Match Story",
     );
