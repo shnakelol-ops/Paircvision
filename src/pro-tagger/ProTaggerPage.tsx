@@ -65,8 +65,9 @@ export default function ProTaggerPage() {
         </div>
 
         <div style={H.body}>
-          <div style={H.logoWrap}>
-            <span style={H.logo}>⬡</span>
+          <div style={H.hero}>
+            <span style={H.heroHex}>⬢</span>
+            <span style={H.heroSubtitle}>Live Match Intelligence</span>
           </div>
           <button
             style={H.primaryBtn}
@@ -241,16 +242,28 @@ const H: Record<string, CSSProperties> = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: 14,
+    gap: 40,
     padding: "0 32px 48px",
   },
-  logoWrap: {
-    marginBottom: 8,
+  hero: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 18,
   },
-  logo: {
-    fontSize: 56,
-    opacity: 0.15,
+  heroHex: {
+    fontSize: 96,
+    color: "#21262d",
+    lineHeight: 1,
     display: "block",
+    textShadow: "0 0 48px rgba(46, 160, 67, 0.12)",
+  },
+  heroSubtitle: {
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: "0.16em",
+    textTransform: "uppercase" as const,
+    color: "#484f58",
   },
   primaryBtn: {
     background: "#238636",
