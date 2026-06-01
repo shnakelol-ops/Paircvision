@@ -60,7 +60,7 @@ function resolveKindAndSide(familyId: ProTaggerFamilyId, rawLabel: string, teamS
     case "FREE": {
       const FREE_MAP: Record<string, Resolved> = {
         WON:      { kind: "FREE_WON",      teamSide: "FOR", tag: "WON" },
-        CONCEDED: { kind: "FREE_CONCEDED", teamSide: "OPP", tag: "CONCEDED" },
+        CONCEDED: { kind: "FREE_CONCEDED", teamSide: "FOR", tag: "CONCEDED" },
       };
       return FREE_MAP[tag] ?? { kind: "FREE_WON", teamSide: "FOR", tag };
     }
