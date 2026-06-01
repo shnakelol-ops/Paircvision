@@ -6,10 +6,11 @@ import { ProTaggerSquadScreen } from "./ProTaggerSquadScreen";
 import { ProTaggerLiveScreen } from "./ProTaggerLiveScreen";
 import type { RestoreState } from "./ProTaggerLiveScreen";
 import { ProTaggerSavedMatchesScreen } from "./ProTaggerSavedMatchesScreen";
+import { ProTaggerReviewScreen } from "./ProTaggerReviewScreen";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { readProTaggerMatches } from "./pro-tagger-storage";
 
-type AppPhase = "home" | "setup" | "squads" | "live" | "saved-matches";
+type AppPhase = "home" | "setup" | "squads" | "live" | "saved-matches" | "review";
 
 function savedMatchToSession(m: ProTaggerSavedMatch): ProTaggerSession {
   return {
@@ -44,6 +45,7 @@ export default function ProTaggerPage() {
   const [restoreState, setRestoreState] = useState<RestoreState | undefined>(undefined);
   const [savedCount, setSavedCount]     = useState(() => readProTaggerMatches().length);
   const [menuOpen, setMenuOpen]         = useState(false);
+  const [reviewMatch, setReviewMatch]   = useState<ProTaggerSavedMatch | null>(null);
 
   // ── Home landing ────────────────────────────────────────────────────────────
 
@@ -142,6 +144,21 @@ export default function ProTaggerPage() {
           setRestoreState(restore);
           setPhase("live");
         }}
+        onReview={(match: ProTaggerSavedMatch) => {
+          setReviewMatch(match);
+          setPhase("review");
+        }}
+      />
+    );
+  }
+
+  // ── Review ──────────────────────────────────────────────────────────────────
+
+  if (phase === "review" && reviewMatch) {
+    return (
+      <ProTaggerReviewScreen
+        match={reviewMatch}
+        onBack={() => setPhase("saved-matches")}
       />
     );
   }
