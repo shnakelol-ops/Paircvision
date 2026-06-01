@@ -981,8 +981,8 @@ export function ProTaggerLiveScreen({ session, onEnd }: Props) {
                 ["Turnover Lost",  oppCts.turnoverWon,  forCts.turnoverWon],
                 ["Kickout Won",    forCts.kickoutWon,   oppCts.kickoutWon],
                 ["Kickout Lost",   oppCts.kickoutWon,   forCts.kickoutWon],
-                ["Free Won",       forCts.freeWon,      oppCts.freeWon],
-                ["Free Conceded",  forCts.freeConceded, oppCts.freeConceded],
+                ["Free Won",       forCts.freeWon,       oppCts.freeConceded],
+                ["Free Conceded",  oppCts.freeConceded,  forCts.freeWon],
               ] as [string, number, number][]).map(([label, fv, ov]) => (
                 <div key={label} style={CS.row}>
                   <span style={CS.val}>{fv}</span>
