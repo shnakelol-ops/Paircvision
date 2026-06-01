@@ -9,6 +9,8 @@ import { adaptProTaggerAction } from "./pro-tagger-adapter";
 import { saveProTaggerMatch, saveProTaggerMatchFull } from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildStatsShareCardPng } from "../stats/statsShareCard";
+import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
+import { buildLivePdfInput, buildLiveSnapshotInput } from "./pro-tagger-review-adapter";
 import { ProTaggerFamilyGrid } from "./ProTaggerFamilyGrid";
 import { ProTaggerPlayerPicker } from "./ProTaggerPlayerPicker";
 import type { SelectedPlayer } from "./ProTaggerPlayerPicker";
@@ -252,6 +254,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const [actionsOpen, setActionsOpen]           = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [actionsFeedback, setActionsFeedback]   = useState<string | null>(null);
+  const [pdfExporting, setPdfExporting]         = useState<"ht" | "ft" | "full" | null>(null);
 
   const clockStartRef          = useRef<number | null>(null);
   const clockIntervalRef       = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -659,6 +662,63 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     URL.revokeObjectURL(url);
     setActionsOpen(false);
   }, [session]);
+
+  // Actions → HT Snapshot PDF (first-half debrief).
+  const handleHtSnapshotPdf = useCallback(() => {
+    const events = loggedRef.current;
+    if (!events.some((e) => e.period === "1H")) return;
+    if (pdfExporting !== null) return;
+    if (actionsFeedbackTimerRef.current) clearTimeout(actionsFeedbackTimerRef.current);
+    setPdfExporting("ht");
+    void exportSnapshotPdf(buildLiveSnapshotInput(session, events, "HALF_TIME_SNAPSHOT"))
+      .then(() => {
+        setActionsFeedback("✓ HT PDF exported");
+        actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
+      })
+      .catch(() => {
+        setActionsFeedback("Export failed");
+        actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 3000);
+      })
+      .finally(() => setPdfExporting(null));
+  }, [session, pdfExporting]);
+
+  // Actions → Full Review PDF.
+  const handleFullReviewPdf = useCallback(() => {
+    const events = loggedRef.current;
+    if (events.length === 0) return;
+    if (pdfExporting !== null) return;
+    if (actionsFeedbackTimerRef.current) clearTimeout(actionsFeedbackTimerRef.current);
+    setPdfExporting("full");
+    void exportReviewPdf(buildLivePdfInput(session, events))
+      .then(() => {
+        setActionsFeedback("✓ Review PDF exported");
+        actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
+      })
+      .catch(() => {
+        setActionsFeedback("Export failed");
+        actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 3000);
+      })
+      .finally(() => setPdfExporting(null));
+  }, [session, pdfExporting]);
+
+  // Actions → FT Snapshot PDF (full-match summary, only at full time).
+  const handleFtSnapshotPdf = useCallback(() => {
+    const events = loggedRef.current;
+    if (matchStateRef.current !== "FULL_TIME" || events.length === 0) return;
+    if (pdfExporting !== null) return;
+    if (actionsFeedbackTimerRef.current) clearTimeout(actionsFeedbackTimerRef.current);
+    setPdfExporting("ft");
+    void exportSnapshotPdf(buildLiveSnapshotInput(session, events, "FULL_TIME_SNAPSHOT"))
+      .then(() => {
+        setActionsFeedback("✓ FT PDF exported");
+        actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
+      })
+      .catch(() => {
+        setActionsFeedback("Export failed");
+        actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 3000);
+      })
+      .finally(() => setPdfExporting(null));
+  }, [session, pdfExporting]);
 
   // Actions → Reset Match (called after confirm).
   const handleReset = useCallback(() => {
@@ -1088,9 +1148,42 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 Share Summary PNG
               </button>
 
-              <button style={{ ...AS.actionBtn, ...AS.actionBtnDisabled }} disabled>
-                Reviews (coming soon)
-              </button>
+              {(() => {
+                const events      = loggedEvents;
+                const hasAny      = events.length > 0;
+                const has1H       = events.some((e) => e.period === "1H");
+                const isFullTime  = matchState === "FULL_TIME";
+                const pdfBusy     = pdfExporting !== null;
+                return (
+                  <>
+                    <button
+                      style={{ ...AS.actionBtn, ...((!has1H || pdfBusy) ? AS.actionBtnDisabled : {}) }}
+                      disabled={!has1H || pdfBusy}
+                      onClick={handleHtSnapshotPdf}
+                    >
+                      {pdfExporting === "ht" ? "Exporting…" : "HT Snapshot PDF"}
+                    </button>
+
+                    <button
+                      style={{ ...AS.actionBtn, ...((!hasAny || pdfBusy) ? AS.actionBtnDisabled : {}) }}
+                      disabled={!hasAny || pdfBusy}
+                      onClick={handleFullReviewPdf}
+                    >
+                      {pdfExporting === "full" ? "Exporting…" : "Full Review PDF"}
+                    </button>
+
+                    {isFullTime && (
+                      <button
+                        style={{ ...AS.actionBtn, ...((!hasAny || pdfBusy) ? AS.actionBtnDisabled : {}) }}
+                        disabled={!hasAny || pdfBusy}
+                        onClick={handleFtSnapshotPdf}
+                      >
+                        {pdfExporting === "ft" ? "Exporting…" : "FT Snapshot PDF"}
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
 
               {(matchState === "HALF_TIME" || matchState === "FULL_TIME") && (
                 <button

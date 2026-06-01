@@ -23,11 +23,12 @@ function fmtDate(ts: number): string {
 }
 
 interface Props {
-  onOpen: (match: ProTaggerSavedMatch) => void;
-  onBack: () => void;
+  onOpen:   (match: ProTaggerSavedMatch) => void;
+  onReview: (match: ProTaggerSavedMatch) => void;
+  onBack:   () => void;
 }
 
-export function ProTaggerSavedMatchesScreen({ onOpen, onBack }: Props) {
+export function ProTaggerSavedMatchesScreen({ onOpen, onReview, onBack }: Props) {
   const [matches, setMatches]           = useState<ProTaggerSavedMatch[]>(() => readProTaggerMatches());
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -75,7 +76,7 @@ export function ProTaggerSavedMatchesScreen({ onOpen, onBack }: Props) {
               <div style={S.scoreline}>{m.scorelineSnapshot}</div>
             </div>
 
-            {/* Delete button / confirm */}
+            {/* Review + Delete actions */}
             <div style={S.cardActions}>
               {confirmDeleteId === m.id ? (
                 <>
@@ -93,13 +94,22 @@ export function ProTaggerSavedMatchesScreen({ onOpen, onBack }: Props) {
                   </button>
                 </>
               ) : (
-                <button
-                  style={S.deleteBtn}
-                  onClick={() => setConfirmDeleteId(m.id)}
-                  aria-label="Delete match"
-                >
-                  🗑
-                </button>
+                <>
+                  <button
+                    style={S.reviewBtn}
+                    onClick={() => onReview(m)}
+                    aria-label="Review match"
+                  >
+                    Review
+                  </button>
+                  <button
+                    style={S.deleteBtn}
+                    onClick={() => setConfirmDeleteId(m.id)}
+                    aria-label="Delete match"
+                  >
+                    🗑
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -247,6 +257,18 @@ const S: Record<string, CSSProperties> = {
     padding: "8px 10px",
     borderLeft: "1px solid #21262d",
     flexShrink: 0,
+  },
+  reviewBtn: {
+    background: "transparent",
+    border: "1px solid #1f6feb",
+    borderRadius: 6,
+    color: "#388bfd",
+    fontSize: 11,
+    fontWeight: 600,
+    padding: "5px 8px",
+    cursor: "pointer",
+    outline: "none",
+    whiteSpace: "nowrap" as const,
   },
   deleteBtn: {
     background: "transparent",
