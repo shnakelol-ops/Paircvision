@@ -188,7 +188,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
       <div style={S.header}>
         <button style={S.backBtn} onClick={onBack}>← Back</button>
         <span style={S.title}>Squads</span>
-        <button style={S.startBtn} onClick={handleStart}>Start Match</button>
+        <button style={S.startBtn} onClick={handleStart}>Go To Game</button>
       </div>
 
       {/* ── Team tabs ──────────────────────────────────────────────── */}
@@ -285,7 +285,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
       {/* ── Footer ─────────────────────────────────────────────────── */}
       <div style={S.footer}>
         <button style={S.footerStartBtn} onClick={handleStart}>
-          Start Match
+          Go To Game
         </button>
       </div>
 
