@@ -319,20 +319,29 @@ const STADIUM_FLOODLIGHT_CSS = `
 
 .tool-bubble-icon {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 52px;
-  height: 52px;
+  gap: 3px;
 }
 
 .tool-bubble-logo {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   object-fit: contain;
   display: block;
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
   filter: drop-shadow(0 4px 10px rgba(2, 8, 15, 0.26));
+}
+
+.tool-bubble-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: 0.5px;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .control-button {
@@ -525,7 +534,7 @@ const RIGHT_BUBBLE_STYLE: CSSProperties = {
 const TOOL_BUBBLE_STYLE: CSSProperties = {
   ...RIGHT_BUBBLE_STYLE,
   width: "52px",
-  height: "52px",
+  height: "64px",
   borderRadius: "16px",
   background: "transparent",
   border: "none",
@@ -537,7 +546,7 @@ const TOOL_BUBBLE_STYLE: CSSProperties = {
 const MOBILE_TOOLS_BUBBLE_STYLE: CSSProperties = {
   ...RIGHT_BUBBLE_STYLE,
   width: "52px",
-  height: "52px",
+  height: "64px",
   borderRadius: "16px",
   border: "none",
   background: "transparent",
@@ -4730,6 +4739,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           >
             <span className="tool-bubble-icon" aria-hidden="true">
               <img className="tool-bubble-logo" src="/pv-logo-icon.svg" alt="PáircVision menu" />
+              <span className="tool-bubble-label">Tools</span>
             </span>
           </button>
         ) : null}
