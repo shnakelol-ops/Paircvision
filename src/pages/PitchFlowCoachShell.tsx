@@ -1633,28 +1633,32 @@ export default function PitchFlowCoachShell({ initialTab }: PitchFlowCoachShellP
           ? "notes"
           : "home";
 
+  const isHome = initialTab === "home";
+
   return (
     <main className="pf-shell">
       <style>{SHELL_CSS}</style>
-      <div className="pf-content">{renderPage(initialTab)}</div>
-      <nav className="pf-bottom-nav" aria-label="Bottom navigation">
-        {BOTTOM_NAV_ITEMS.map((item) => {
-          const isActive = activeNav === item.id;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className={isActive ? "pf-nav-item is-active" : "pf-nav-item"}
-              onClick={() => navigateTo(item.path)}
-            >
-              <span className="pf-nav-icon" aria-hidden="true">
-                {item.short}
-              </span>
-              <span className="pf-nav-label">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      <div className="pf-content" style={isHome ? { paddingBottom: 24 } : undefined}>{renderPage(initialTab)}</div>
+      {!isHome && (
+        <nav className="pf-bottom-nav" aria-label="Bottom navigation">
+          {BOTTOM_NAV_ITEMS.map((item) => {
+            const isActive = activeNav === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={isActive ? "pf-nav-item is-active" : "pf-nav-item"}
+                onClick={() => navigateTo(item.path)}
+              >
+                <span className="pf-nav-icon" aria-hidden="true">
+                  {item.short}
+                </span>
+                <span className="pf-nav-label">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
     </main>
   );
 }
