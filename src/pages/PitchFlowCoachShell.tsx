@@ -963,27 +963,29 @@ function BoardPage() {
           <br />
           Capture matchday.
         </p>
-        <div className="pf-home-primary-wrap">
-          <button type="button" className="pf-home-primary-btn" onClick={() => navigateTo("/flowstats")}>
-            <span className="pf-home-primary-label">START MATCH</span>
-            <span className="pf-home-primary-sub">Launch PáircVision Stats</span>
-          </button>
-        </div>
       </div>
-      <p className="pf-section-title pf-home-section-title-actions">Quick Actions</p>
+      <p className="pf-section-title pf-home-section-title-actions">Tools</p>
       <div className="pf-card">
         <div className="pf-home-secondary-grid">
           <button type="button" className="pf-home-secondary-btn" onClick={() => navigateToVisionBoard()}>
-            <span>PáircVision Board</span>
-            <small>Open PáircVision Board</small>
+            <span>Vision Board</span>
+            <small>Tactical board &amp; drawing</small>
           </button>
-          <button type="button" className="pf-home-secondary-btn" onClick={() => navigateTo("/notes")}>
-            <span>Written Notes</span>
-            <small>Open Notes</small>
+          <button type="button" className="pf-home-secondary-btn" onClick={() => navigateTo("/flowstats")}>
+            <span>Match Stats</span>
+            <small>Live match tracking</small>
+          </button>
+          <button type="button" className="pf-home-secondary-btn" onClick={() => navigateTo("/pro-tagger")}>
+            <span>Pro Tagger</span>
+            <small>Live clip tagging</small>
           </button>
           <button type="button" className="pf-home-secondary-btn" onClick={() => navigateTo("/player-performance-tracker")}>
-            <span>Vision Training</span>
-            <small>Player Performance Tracker</small>
+            <span>Training</span>
+            <small>Player performance</small>
+          </button>
+          <button type="button" className="pf-home-secondary-btn" onClick={() => navigateTo("/notes")}>
+            <span>Notes</span>
+            <small>Coaching notes</small>
           </button>
         </div>
       </div>
