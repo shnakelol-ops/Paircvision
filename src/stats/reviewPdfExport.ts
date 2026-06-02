@@ -6501,6 +6501,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
   } = input;
 
+  // Chain analysis — computed once here and shared with all chain page builders.
+  // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
+  // Must be declared before chainIntelPageCount which reads chainAnalysis.allChains.
+  const chainAnalysis = selectChainAnalysis(events);
+
   // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 6 chain pages + 1 review guide + 1 opposition snapshot + 1 zone analysis + 1 match swing timeline + 1 shot & scoring efficiency
   const playerPageCount    = calcPlayerPageCount(events);
   const influencePageCount = hasInfluencePlayers(events) ? 1 : 0;
@@ -6508,10 +6513,6 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   const zonesPageCount     = influencePageCount; // Influential Zones always pairs with Player Influence
   const chainIntelPageCount = influencePageCount > 0 && chainAnalysis.allChains.length >= 1 ? 1 : 0; // Scoring Chains
   const TOTAL_PAGES = 8 + playerPageCount + influencePageCount + matchupPageCount + zonesPageCount + chainIntelPageCount + TACTICAL_PAGE_SPECS.length + 10;
-
-  // Chain analysis — computed once here and shared with all chain page builders.
-  // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
-  const chainAnalysis = selectChainAnalysis(events);
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
