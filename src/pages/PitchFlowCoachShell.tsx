@@ -968,16 +968,7 @@ function BoardPage() {
             <span className="pf-title-accent" aria-hidden="true" />
           </div>
         </div>
-        <p className="pf-subtitle">
-          Built for GAA coaches.
-          <br />
-          <br />
-          Create the vision.
-          <br />
-          Track the game.
-          <br />
-          Capture matchday.
-        </p>
+        <p className="pf-subtitle">Gaelic Games Coaching Hub</p>
       </div>
       <p className="pf-section-title pf-home-section-title-actions">Tools</p>
       <div className="pf-card">
