@@ -26,6 +26,7 @@ import { deriveReviewPrompts } from "./chains/review-prompts";
 import type { ReviewPrompt, ReviewPromptCategory } from "./chains/review-prompts";
 import { getZoneCounts, getZoneHotspots } from "./zones/zone-engine";
 import type { ZoneCount } from "./zones/zone-types";
+import { classifyEventZone } from "../tactical/classify-event-zone";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -2103,6 +2104,178 @@ function makeInfluenceBattlesPage(
       .find((p) => p.freesWon > 0 || p.freesCon > 0),
     (p) => `${p.freesWon} won / ${p.freesCon} conceded`,
   );
+
+  return canvas;
+}
+
+// ─── Influential Zones page ───────────────────────────────────────────────────
+
+/**
+ * Builds the Influential Zones canvas page.
+ * For each player, classifies their tagged events into team-relative semantic
+ * zones using classifyEventZone() — OPP events are mirrored automatically so
+ * zone labels are always from that player's attacking perspective.
+ * Displays each player's most-active zone as a transparent event count.
+ * Two-panel layout (home left, away right), top 8 players per team by actions.
+ * Returns null when no player-tagged events exist — caller must skip the page.
+ */
+function makeInfluentialZonesPage(
+  events: readonly PdfExportEvent[],
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+  periodLabel: string,
+): HTMLCanvasElement | null {
+  const allPlayers = collectPlayerStats(events);
+  if (allPlayers.length === 0) return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(
+    ctx,
+    "Influential Zones",
+    `${homeTeam} v ${awayTeam}  ·  ${periodLabel}`,
+    pageNum,
+    totalPages,
+  );
+
+  // Coach-facing labels for each SemanticZoneId (team-relative — classifyEventZone
+  // already mirrors OPP events, so "Attacking Centre" always means near their goal).
+  const ZONE_LABELS: Record<string, string> = {
+    DEF_LEFT:         "Defensive Left",
+    DEF_CENTRE:       "Defensive Centre",
+    DEF_RIGHT:        "Defensive Right",
+    MID_LEFT:         "Midfield Left",
+    MID_CENTRE:       "Midfield Centre",
+    MID_RIGHT:        "Midfield Right",
+    ATK_ENTRY_LEFT:   "Attack Entry Left",
+    ATK_ENTRY_CENTRE: "Attack Entry Centre",
+    ATK_ENTRY_RIGHT:  "Attack Entry Right",
+    SCORING_LEFT:     "Scoring Left",
+    SCORING_CENTRE:   "Scoring Centre",
+    SCORING_RIGHT:    "Scoring Right",
+  };
+
+  // Strip synthetic events (same filter as collectPlayerStats).
+  const validEvts = events.filter((e) => !e.id.includes("-instant-score-"));
+
+  // Per-player zone histogram — find the zone where this player has the most events.
+  function playerTopZone(p: PlayerStatsFull): { label: string; count: number } | null {
+    const key = p.id;
+    const pEvts = validEvts.filter((e) => {
+      if (!Number.isFinite(e.nx) || !Number.isFinite(e.ny)) return false;
+      return (e.playerId ?? `__num_${e.playerNumber ?? "?"}`) === key;
+    });
+    if (pEvts.length === 0) return null;
+
+    const zoneCounts = new Map<string, number>();
+    for (const e of pEvts) {
+      const clf = classifyEventZone({ nx: e.nx, ny: e.ny, teamSide: e.teamSide });
+      if (!clf) continue;
+      zoneCounts.set(clf.zone, (zoneCounts.get(clf.zone) ?? 0) + 1);
+    }
+    if (zoneCounts.size === 0) return null;
+
+    const [topId, topCount] = [...zoneCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+    return { label: ZONE_LABELS[topId] ?? topId, count: topCount };
+  }
+
+  // ── Panel geometry (matches Player Influence) ─────────────────────────────────
+  const CONTENT_TOP = 82;
+  const PANEL_W     = (CANVAS_W - 72) / 2; // 24px outer + 24px gap = 72; panel = 924px
+  const LEFT_X      = 24;
+  const RIGHT_X     = LEFT_X + PANEL_W + 24;
+  const PANEL_H     = CANVAS_H - CONTENT_TOP - 28;
+
+  const forPlayers = allPlayers
+    .filter((p) => p.teamSide === "FOR")
+    .sort((a, b) => b.actions - a.actions)
+    .slice(0, 8);
+  const oppPlayers = allPlayers
+    .filter((p) => p.teamSide === "OPP")
+    .sort((a, b) => b.actions - a.actions)
+    .slice(0, 8);
+
+  function drawZonePanel(
+    panelX: number,
+    panelY: number,
+    panelW: number,
+    players: PlayerStatsFull[],
+    teamName: string,
+    side: "FOR" | "OPP",
+  ): void {
+    const accent   = side === "FOR" ? "#7dd3fc" : "#fb7185";
+    const accentBg = side === "FOR" ? "rgba(125,211,252,0.08)" : "rgba(251,113,133,0.08)";
+
+    // Team banner
+    const BANNER_H = 44;
+    ctx.fillStyle = accentBg;
+    ctx.fillRect(panelX, panelY, panelW, BANNER_H);
+    ctx.fillStyle = accent;
+    ctx.fillRect(panelX, panelY, 4, BANNER_H);
+    ctx.fillStyle    = "#f8fafc";
+    ctx.font         = "bold 16px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "left";
+    ctx.fillText(teamName.toUpperCase(), panelX + 14, panelY + BANNER_H / 2);
+
+    let cy = panelY + BANNER_H + 14;
+
+    if (players.length === 0) {
+      ctx.fillStyle    = "#475569";
+      ctx.font         = "15px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "left";
+      ctx.fillText("No player-tagged events", panelX + 14, cy + 14);
+      return;
+    }
+
+    const ROW_H = 52;
+
+    for (const p of players) {
+      const zoneInfo = playerTopZone(p);
+      const num  = p.number !== null ? `#${p.number}` : "—";
+      const name = p.name ?? "Unknown";
+
+      ctx.fillStyle    = "#e2e8f0";
+      ctx.font         = "bold 15px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "left";
+      ctx.fillText(`${num}  ${name}`, panelX + 14, cy + 18);
+
+      ctx.font = "13px sans-serif";
+      if (zoneInfo) {
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText(
+          `${zoneInfo.label}  ·  ${zoneInfo.count} event${zoneInfo.count !== 1 ? "s" : ""}`,
+          panelX + 14, cy + 37,
+        );
+      } else {
+        ctx.fillStyle = "#475569";
+        ctx.fillText("No location data", panelX + 14, cy + 37);
+      }
+
+      cy += ROW_H;
+    }
+  }
+
+  drawZonePanel(LEFT_X,  CONTENT_TOP, PANEL_W, forPlayers, homeTeam, "FOR");
+  drawZonePanel(RIGHT_X, CONTENT_TOP, PANEL_W, oppPlayers, awayTeam, "OPP");
+
+  // Centre divider
+  ctx.strokeStyle = "rgba(255,255,255,0.06)";
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(RIGHT_X - 12, CONTENT_TOP + 4);
+  ctx.lineTo(RIGHT_X - 12, CONTENT_TOP + PANEL_H);
+  ctx.stroke();
 
   return canvas;
 }
@@ -6046,7 +6219,8 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   const playerPageCount    = calcPlayerPageCount(events);
   const influencePageCount = hasInfluencePlayers(events) ? 1 : 0;
   const matchupPageCount   = influencePageCount; // Influence Battles always pairs with Player Influence
-  const TOTAL_PAGES = 8 + playerPageCount + influencePageCount + matchupPageCount + TACTICAL_PAGE_SPECS.length + 10;
+  const zonesPageCount     = influencePageCount; // Influential Zones always pairs with Player Influence
+  const TOTAL_PAGES = 8 + playerPageCount + influencePageCount + matchupPageCount + zonesPageCount + TACTICAL_PAGE_SPECS.length + 10;
 
   // Chain analysis — computed once here and shared with all chain page builders.
   // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
@@ -6116,10 +6290,19 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     if (ibCanvas) addCanvasPage(ibCanvas, true, "Influence Battles");
   }
 
-  // Pages (9+N+ip+mp)+: 20 tactical pitch map pages
+  // Influential Zones page (immediately after Influence Battles — same suppression guard)
+  if (zonesPageCount > 0) {
+    const izCanvas = makeInfluentialZonesPage(
+      events, homeTeamName, awayTeamName,
+      9 + playerPageCount + influencePageCount + matchupPageCount, TOTAL_PAGES, "Full Match",
+    );
+    if (izCanvas) addCanvasPage(izCanvas, true, "Influential Zones");
+  }
+
+  // Pages (9+N+ip+mp+zp)+: 20 tactical pitch map pages
   TACTICAL_PAGE_SPECS.forEach((spec, i) => {
     const filtered = selectPdfEvents(events, spec.half, spec.teamSide, spec.category);
-    const pageNum  = 9 + playerPageCount + influencePageCount + matchupPageCount + i;
+    const pageNum  = 9 + playerPageCount + influencePageCount + matchupPageCount + zonesPageCount + i;
     let canvas: HTMLCanvasElement;
     try {
       canvas = makeTacticalPage(
@@ -11690,9 +11873,10 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
   const influencePageCount = hasInfluencePlayers(events) ? 1 : 0;
   const matchupPageCount   = influencePageCount; // Influence Battles always pairs with Player Influence
+  const zonesPageCount     = influencePageCount; // Influential Zones always pairs with Player Influence
   const TOTAL_PAGES = isHT
-    ? (6 + influencePageCount + matchupPageCount)
-    : (12 + influencePageCount + matchupPageCount);
+    ? (6 + influencePageCount + matchupPageCount + zonesPageCount)
+    : (12 + influencePageCount + matchupPageCount + zonesPageCount);
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -11788,6 +11972,14 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       );
       if (ibCanvas) addPage(ibCanvas, true, "Influence Battles");
     }
+
+    // 9 (conditional). Influential Zones — first-half events only
+    if (zonesPageCount > 0) {
+      const izCanvas = makeInfluentialZonesPage(
+        events, home, away, 7 + influencePageCount + matchupPageCount, TOTAL_PAGES, "First Half",
+      );
+      if (izCanvas) addPage(izCanvas, true, "Influential Zones");
+    }
   } else {
     // ── FT Snapshot ── 12 pages ───────────────────────────────────────────────
     //
@@ -11870,7 +12062,15 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       if (ibCanvas) addPage(ibCanvas, true, "Influence Battles");
     }
 
-    const playerPagesOffset = influencePageCount + matchupPageCount;
+    // 9 (conditional). Influential Zones — full match
+    if (zonesPageCount > 0) {
+      const izCanvas = makeInfluentialZonesPage(
+        events, home, away, 7 + influencePageCount + matchupPageCount, TOTAL_PAGES, "Full Match",
+      );
+      if (izCanvas) addPage(izCanvas, true, "Influential Zones");
+    }
+
+    const playerPagesOffset = influencePageCount + matchupPageCount + zonesPageCount;
 
     // 7+pp. Turnover Punishment
     addPage(
