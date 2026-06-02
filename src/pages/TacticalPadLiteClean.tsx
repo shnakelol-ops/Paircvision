@@ -1309,6 +1309,30 @@ const COACH_HUB_ACTION_GRID_STYLE: CSSProperties = {
   gap: "3px",
 };
 
+const GAELIC_FORMATION_BASE: ReadonlyArray<{ number: number; x: number; y: number }> = [
+  { number: 1,  x: 8,  y: 50 },
+  { number: 2,  x: 20, y: 22 },
+  { number: 3,  x: 20, y: 50 },
+  { number: 4,  x: 20, y: 78 },
+  { number: 5,  x: 34, y: 18 },
+  { number: 6,  x: 34, y: 50 },
+  { number: 7,  x: 34, y: 82 },
+  { number: 8,  x: 48, y: 38 },
+  { number: 9,  x: 48, y: 62 },
+  { number: 10, x: 62, y: 18 },
+  { number: 11, x: 62, y: 50 },
+  { number: 12, x: 62, y: 82 },
+  { number: 13, x: 78, y: 25 },
+  { number: 14, x: 78, y: 50 },
+  { number: 15, x: 78, y: 75 },
+];
+
+function getGaelicFormationPos(team: "BLUE" | "RED", number: number): { x: number; y: number } {
+  const base = GAELIC_FORMATION_BASE.find((p) => p.number === number);
+  if (!base) return { x: team === "BLUE" ? 30 : 70, y: 50 };
+  return team === "RED" ? { x: 100 - base.x, y: base.y } : { x: base.x, y: base.y };
+}
+
 const COACH_HUB_ACTION_BUTTON_STYLE: CSSProperties = {
   ...COACH_HUB_TOOL_BUTTON_STYLE,
   minWidth: 0,
@@ -1847,6 +1871,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [whiteboardRedCount, setWhiteboardRedCount] = useState(1);
   const [bluePlayerCount, setBluePlayerCount] = useState(0);
   const [redPlayerCount, setRedPlayerCount] = useState(0);
+  const [blueActiveNumbers, setBlueActiveNumbers] = useState<Set<number>>(new Set());
+  const [redActiveNumbers, setRedActiveNumbers] = useState<Set<number>>(new Set());
   const [whiteboardCountPickerTeam, setWhiteboardCountPickerTeam] = useState<"BLUE" | "RED">("BLUE");
   const [whiteboardBubbleOpen, setWhiteboardBubbleOpen] = useState(false);
   const [whiteboardHomeConfirmOpen, setWhiteboardHomeConfirmOpen] = useState(false);
@@ -3138,9 +3164,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const syncTeamCounts = () => {
     const board = surfaceRef.current?.exportBoardState();
     if (!board) return;
-    const ps = board.players;
-    setBluePlayerCount(ps.filter((p) => typeof p === "object" && p !== null && (p as Record<string, unknown>).team === "BLUE").length);
-    setRedPlayerCount(ps.filter((p) => typeof p === "object" && p !== null && (p as Record<string, unknown>).team === "RED").length);
+    const ps = board.players as Array<Record<string, unknown>>;
+    const bluePs = ps.filter((p) => p.team === "BLUE");
+    const redPs = ps.filter((p) => p.team === "RED");
+    setBluePlayerCount(bluePs.length);
+    setRedPlayerCount(redPs.length);
+    setBlueActiveNumbers(new Set(bluePs.map((p) => Number(p.number)).filter((n) => n >= 1 && n <= 15)));
+    setRedActiveNumbers(new Set(redPs.map((p) => Number(p.number)).filter((n) => n >= 1 && n <= 15)));
   };
 
   const clearTacticalDrawings = () => {
@@ -3221,22 +3251,43 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     syncTeamCounts();
   };
 
-  const fillTeam = (team: "BLUE" | "RED") => {
-    if (isPortraitViewingMode) return;
+  const applyTeamNumbers = (team: "BLUE" | "RED", numbers: Set<number>) => {
     const surface = surfaceRef.current;
-    if (!surface) return;
-    for (let i = 0; i < 15; i++) surface.addTacticalPlayer(team);
+    if (!surface || isPortraitViewingMode) return;
+    const boardState = surface.exportBoardState();
+    const prefix = team === "BLUE" ? "B" : "R";
+    const teamColor = team === "BLUE" ? "blue" : "red";
+    const otherPlayers = (boardState.players as Array<Record<string, unknown>>).filter(
+      (p) => p.team !== team,
+    );
+    const teamPlayers = Array.from(numbers)
+      .sort((a, b) => a - b)
+      .map((number) => {
+        const pos = getGaelicFormationPos(team, number);
+        return { id: `${prefix}${number}`, number, team, teamColor, x: pos.x, y: pos.y };
+      });
+    surface.importBoardState({ ...boardState, players: [...otherPlayers, ...teamPlayers] });
     setKitEditorState(null);
     syncTeamCounts();
   };
 
+  const fillTeam = (team: "BLUE" | "RED") => {
+    applyTeamNumbers(team, new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
+  };
+
   const clearTeam = (team: "BLUE" | "RED") => {
-    if (isPortraitViewingMode) return;
-    const surface = surfaceRef.current;
-    if (!surface) return;
-    for (let i = 0; i < 15; i++) surface.removeTacticalPlayer(team);
-    setKitEditorState(null);
-    syncTeamCounts();
+    applyTeamNumbers(team, new Set());
+  };
+
+  const togglePlayerNumber = (team: "BLUE" | "RED", number: number) => {
+    const currentNumbers = team === "BLUE" ? blueActiveNumbers : redActiveNumbers;
+    const next = new Set(currentNumbers);
+    if (next.has(number)) {
+      next.delete(number);
+    } else {
+      next.add(number);
+    }
+    applyTeamNumbers(team, next);
   };
 
   const addItem = (type: TacticalItem["type"]) => {
@@ -4250,15 +4301,24 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                       <p style={{ ...coachHubSectionTitleStyle, color: "#93c5fd", marginTop: 4 }}>
                         Team A — {bluePlayerCount}/15
                       </p>
-                      <div style={COACH_HUB_ACTION_GRID_STYLE}>
-                        <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => addTacticalPlayer("BLUE")}>
-                          + Add
-                        </button>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: "3px" }}>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((n) => (
+                          <button
+                            key={`blue-${n}`}
+                            type="button"
+                            disabled={isPlaybackLocked}
+                            style={blueActiveNumbers.has(n)
+                              ? { ...COACH_HUB_TOOL_BUTTON_STYLE, border: "1px solid rgba(147,197,253,0.70)", background: "rgba(30,58,138,0.70)", color: "#e0f2fe" }
+                              : COACH_HUB_TOOL_BUTTON_STYLE}
+                            onClick={() => togglePlayerNumber("BLUE", n)}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ ...COACH_HUB_ACTION_GRID_STYLE, marginTop: 3 }}>
                         <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => fillTeam("BLUE")}>
-                          Fill (15)
-                        </button>
-                        <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => removeTacticalPlayer("BLUE")}>
-                          − Remove
+                          Fill 15
                         </button>
                         <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => clearTeam("BLUE")}>
                           Clear All
@@ -4267,15 +4327,24 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                       <p style={{ ...coachHubSectionTitleStyle, color: "#fca5a5", marginTop: 6 }}>
                         Team B — {redPlayerCount}/15
                       </p>
-                      <div style={COACH_HUB_ACTION_GRID_STYLE}>
-                        <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => addTacticalPlayer("RED")}>
-                          + Add
-                        </button>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: "3px" }}>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((n) => (
+                          <button
+                            key={`red-${n}`}
+                            type="button"
+                            disabled={isPlaybackLocked}
+                            style={redActiveNumbers.has(n)
+                              ? { ...COACH_HUB_TOOL_BUTTON_STYLE, border: "1px solid rgba(252,165,165,0.70)", background: "rgba(127,29,29,0.70)", color: "#fee2e2" }
+                              : COACH_HUB_TOOL_BUTTON_STYLE}
+                            onClick={() => togglePlayerNumber("RED", n)}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ ...COACH_HUB_ACTION_GRID_STYLE, marginTop: 3 }}>
                         <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => fillTeam("RED")}>
-                          Fill (15)
-                        </button>
-                        <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => removeTacticalPlayer("RED")}>
-                          − Remove
+                          Fill 15
                         </button>
                         <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => clearTeam("RED")}>
                           Clear All
@@ -4503,15 +4572,24 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 <p style={{ ...coachHubSectionTitleStyle, color: "#93c5fd", marginTop: 4 }}>
                   Team A — {bluePlayerCount}/15
                 </p>
-                <div style={COACH_HUB_ACTION_GRID_STYLE}>
-                  <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => addTacticalPlayer("BLUE")}>
-                    + Add
-                  </button>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: "3px" }}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((n) => (
+                    <button
+                      key={`blue-${n}`}
+                      type="button"
+                      disabled={isPlaybackLocked}
+                      style={blueActiveNumbers.has(n)
+                        ? { ...COACH_HUB_TOOL_BUTTON_STYLE, border: "1px solid rgba(147,197,253,0.70)", background: "rgba(30,58,138,0.70)", color: "#e0f2fe" }
+                        : COACH_HUB_TOOL_BUTTON_STYLE}
+                      onClick={() => togglePlayerNumber("BLUE", n)}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ ...COACH_HUB_ACTION_GRID_STYLE, marginTop: 3 }}>
                   <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => fillTeam("BLUE")}>
-                    Fill (15)
-                  </button>
-                  <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => removeTacticalPlayer("BLUE")}>
-                    − Remove
+                    Fill 15
                   </button>
                   <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => clearTeam("BLUE")}>
                     Clear All
@@ -4520,15 +4598,24 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 <p style={{ ...coachHubSectionTitleStyle, color: "#fca5a5", marginTop: 6 }}>
                   Team B — {redPlayerCount}/15
                 </p>
-                <div style={COACH_HUB_ACTION_GRID_STYLE}>
-                  <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => addTacticalPlayer("RED")}>
-                    + Add
-                  </button>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: "3px" }}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((n) => (
+                    <button
+                      key={`red-${n}`}
+                      type="button"
+                      disabled={isPlaybackLocked}
+                      style={redActiveNumbers.has(n)
+                        ? { ...COACH_HUB_TOOL_BUTTON_STYLE, border: "1px solid rgba(252,165,165,0.70)", background: "rgba(127,29,29,0.70)", color: "#fee2e2" }
+                        : COACH_HUB_TOOL_BUTTON_STYLE}
+                      onClick={() => togglePlayerNumber("RED", n)}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ ...COACH_HUB_ACTION_GRID_STYLE, marginTop: 3 }}>
                   <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => fillTeam("RED")}>
-                    Fill (15)
-                  </button>
-                  <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => removeTacticalPlayer("RED")}>
-                    − Remove
+                    Fill 15
                   </button>
                   <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => clearTeam("RED")}>
                     Clear All
