@@ -523,11 +523,26 @@ const SHELL_CSS = `
 
 .pf-home-secondary-btn small {
   display: block;
-  margin-top: 4px;
+  margin-top: 5px;
   color: var(--pf-text-dim);
   font-size: 10px;
   font-weight: 500;
+  line-height: 1.3;
 }
+
+.pf-home-tile-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  line-height: 1.15;
+}
+
+.pf-home-tile--green  { border-top: 2px solid rgba(34, 197, 94, 0.50);  box-shadow: 0 0 0 0.5px rgba(34, 197, 94, 0.08),  0 4px 14px rgba(0,0,0,0.20); }
+.pf-home-tile--blue   { border-top: 2px solid rgba(59, 130, 246, 0.50); box-shadow: 0 0 0 0.5px rgba(59, 130, 246, 0.08), 0 4px 14px rgba(0,0,0,0.20); }
+.pf-home-tile--amber  { border-top: 2px solid rgba(245, 158, 11, 0.50); box-shadow: 0 0 0 0.5px rgba(245, 158, 11, 0.08), 0 4px 14px rgba(0,0,0,0.20); }
+.pf-home-tile--orange { border-top: 2px solid rgba(249, 115, 22, 0.50); box-shadow: 0 0 0 0.5px rgba(249, 115, 22, 0.08), 0 4px 14px rgba(0,0,0,0.20); }
+.pf-home-tile--purple { border-top: 2px solid rgba(168, 85, 247, 0.50); box-shadow: 0 0 0 0.5px rgba(168, 85, 247, 0.08), 0 4px 14px rgba(0,0,0,0.20); }
 
 .pf-card.pf-card-soft {
   background: linear-gradient(180deg, rgba(14,34,23,0.82) 0%, rgba(11,28,18,0.86) 100%);
@@ -953,39 +968,30 @@ function BoardPage() {
             <span className="pf-title-accent" aria-hidden="true" />
           </div>
         </div>
-        <p className="pf-subtitle">
-          Built for GAA coaches.
-          <br />
-          <br />
-          Create the vision.
-          <br />
-          Track the game.
-          <br />
-          Capture matchday.
-        </p>
+        <p className="pf-subtitle">Gaelic Games Coaching Hub</p>
       </div>
       <p className="pf-section-title pf-home-section-title-actions">Tools</p>
       <div className="pf-card">
         <div className="pf-home-secondary-grid">
-          <button type="button" className="pf-home-secondary-btn" onClick={() => navigateToVisionBoard()}>
-            <span>Vision Board</span>
-            <small>Tactical board &amp; drawing</small>
+          <button type="button" className="pf-home-secondary-btn pf-home-tile--green" onClick={() => navigateToVisionBoard()}>
+            <span className="pf-home-tile-name">Vision Canvas</span>
+            <small>Build tactics and movement</small>
           </button>
-          <button type="button" className="pf-home-secondary-btn" onClick={() => navigateTo("/flowstats")}>
-            <span>Match Stats</span>
-            <small>Live match tracking</small>
+          <button type="button" className="pf-home-secondary-btn pf-home-tile--blue" onClick={() => navigateTo("/flowstats")}>
+            <span className="pf-home-tile-name">Match Stats</span>
+            <small>Track live matches</small>
           </button>
-          <button type="button" className="pf-home-secondary-btn" onClick={() => navigateTo("/pro-tagger")}>
-            <span>Pro Tagger</span>
-            <small>Live clip tagging</small>
+          <button type="button" className="pf-home-secondary-btn pf-home-tile--amber" onClick={() => navigateTo("/pro-tagger")}>
+            <span className="pf-home-tile-name">Stats Pro</span>
+            <small>Advanced match analysis</small>
           </button>
-          <button type="button" className="pf-home-secondary-btn" onClick={() => navigateTo("/player-performance-tracker")}>
-            <span>Training</span>
-            <small>Player performance</small>
+          <button type="button" className="pf-home-secondary-btn pf-home-tile--orange" onClick={() => navigateTo("/player-performance-tracker")}>
+            <span className="pf-home-tile-name">Training Tracker</span>
+            <small>Track player performance</small>
           </button>
-          <button type="button" className="pf-home-secondary-btn" onClick={() => navigateTo("/notes")}>
-            <span>Notes</span>
-            <small>Coaching notes</small>
+          <button type="button" className="pf-home-secondary-btn pf-home-tile--purple" onClick={() => navigateTo("/notes")}>
+            <span className="pf-home-tile-name">Notes</span>
+            <small>Coaching notes and observations</small>
           </button>
         </div>
       </div>
@@ -1627,28 +1633,32 @@ export default function PitchFlowCoachShell({ initialTab }: PitchFlowCoachShellP
           ? "notes"
           : "home";
 
+  const isHome = initialTab === "home";
+
   return (
     <main className="pf-shell">
       <style>{SHELL_CSS}</style>
-      <div className="pf-content">{renderPage(initialTab)}</div>
-      <nav className="pf-bottom-nav" aria-label="Bottom navigation">
-        {BOTTOM_NAV_ITEMS.map((item) => {
-          const isActive = activeNav === item.id;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className={isActive ? "pf-nav-item is-active" : "pf-nav-item"}
-              onClick={() => navigateTo(item.path)}
-            >
-              <span className="pf-nav-icon" aria-hidden="true">
-                {item.short}
-              </span>
-              <span className="pf-nav-label">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      <div className="pf-content" style={isHome ? { paddingBottom: 24 } : undefined}>{renderPage(initialTab)}</div>
+      {!isHome && (
+        <nav className="pf-bottom-nav" aria-label="Bottom navigation">
+          {BOTTOM_NAV_ITEMS.map((item) => {
+            const isActive = activeNav === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={isActive ? "pf-nav-item is-active" : "pf-nav-item"}
+                onClick={() => navigateTo(item.path)}
+              >
+                <span className="pf-nav-icon" aria-hidden="true">
+                  {item.short}
+                </span>
+                <span className="pf-nav-label">{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      )}
     </main>
   );
 }
