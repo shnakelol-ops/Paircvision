@@ -1966,10 +1966,10 @@ function makeInfluenceBattlesPage(
   ctx.fillText(awayTeam.toUpperCase(), RIGHT_X + RIGHT_W - 14, BANNER_Y + BANNER_H / 2);
 
   // ── Band layout constants ─────────────────────────────────────────────────────
-  const CAT_H    = 22; // category label row height
-  const NAME_H   = 36; // player name row height
-  const DETAIL_H = 28; // stat detail row height
-  const DIV_GAP  = 14; // space above the divider line
+  const CAT_H    = 30; // category label row height
+  const NAME_H   = 48; // player name row height
+  const DETAIL_H = 36; // stat detail row height
+  const DIV_GAP  = 12; // space above the divider line
 
   let cy = BANNER_Y + BANNER_H + 20;
 
@@ -1999,14 +1999,14 @@ function makeInfluenceBattlesPage(
 
     // Category label — centred
     ctx.fillStyle    = "#64748b";
-    ctx.font         = "bold 11px sans-serif";
+    ctx.font         = "bold 14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
     ctx.fillText(categoryLabel.toUpperCase(), CENTRE_X + CENTRE_W / 2, cy + CAT_H / 2);
     cy += CAT_H;
 
     // Player name row
-    ctx.font         = "bold 15px sans-serif";
+    ctx.font         = "bold 18px sans-serif";
     ctx.textBaseline = "middle";
     if (forLeader) {
       ctx.fillStyle = "#e2e8f0";
@@ -2029,7 +2029,7 @@ function makeInfluenceBattlesPage(
     cy += NAME_H;
 
     // Detail row
-    ctx.font         = "14px sans-serif";
+    ctx.font         = "16px sans-serif";
     ctx.textBaseline = "middle";
     if (forLeader) {
       ctx.fillStyle = "#94a3b8";
@@ -2050,7 +2050,7 @@ function makeInfluenceBattlesPage(
     ctx.moveTo(LEFT_X, cy);
     ctx.lineTo(RIGHT_X + RIGHT_W, cy);
     ctx.stroke();
-    cy += 14;
+    cy += 12;
   }
 
   // ── 1. Most Involved ─────────────────────────────────────────────────────────
@@ -2197,11 +2197,11 @@ function makeInfluentialZonesPage(
   const forPlayers = allPlayers
     .filter((p) => p.teamSide === "FOR")
     .sort((a, b) => b.actions - a.actions)
-    .slice(0, 8);
+    .slice(0, 6);
   const oppPlayers = allPlayers
     .filter((p) => p.teamSide === "OPP")
     .sort((a, b) => b.actions - a.actions)
-    .slice(0, 8);
+    .slice(0, 6);
 
   function drawZonePanel(
     panelX: number,
@@ -2237,7 +2237,7 @@ function makeInfluentialZonesPage(
       return;
     }
 
-    const ROW_H = 52;
+    const ROW_H = 72;
 
     for (const p of players) {
       const zoneInfo = playerTopZone(p);
@@ -2245,21 +2245,21 @@ function makeInfluentialZonesPage(
       const name = p.name ?? "Unknown";
 
       ctx.fillStyle    = "#e2e8f0";
-      ctx.font         = "bold 15px sans-serif";
+      ctx.font         = "bold 19px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign    = "left";
-      ctx.fillText(`${num}  ${name}`, panelX + 14, cy + 18);
+      ctx.fillText(`${num}  ${name}`, panelX + 14, cy + 22);
 
-      ctx.font = "13px sans-serif";
+      ctx.font = "16px sans-serif";
       if (zoneInfo) {
         ctx.fillStyle = "#94a3b8";
         ctx.fillText(
           `${zoneInfo.label}  ·  ${zoneInfo.count} event${zoneInfo.count !== 1 ? "s" : ""}`,
-          panelX + 14, cy + 37,
+          panelX + 14, cy + 50,
         );
       } else {
         ctx.fillStyle = "#475569";
-        ctx.fillText("No location data", panelX + 14, cy + 37);
+        ctx.fillText("No location data", panelX + 14, cy + 50);
       }
 
       cy += ROW_H;
@@ -2414,8 +2414,8 @@ function makeChainIntelligencePage(
   const LEFT_X      = 24;
   const RIGHT_X     = LEFT_X + PANEL_W + 24;
   const BANNER_H    = 44;
-  const ROW_H       = 40;
-  const SECTION_H   = 26;
+  const ROW_H       = 52;
+  const SECTION_H   = 34;
   const GAP         = 10;
 
   function drawChainPanel(
@@ -2458,7 +2458,7 @@ function makeChainIntelligencePage(
 
     function drawSectionLabel(label: string): void {
       ctx.fillStyle    = accent;
-      ctx.font         = "bold 12px sans-serif";
+      ctx.font         = "bold 14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign    = "left";
       ctx.fillText(label.toUpperCase(), panelX + 14, cy + SECTION_H / 2);
@@ -2480,12 +2480,12 @@ function makeChainIntelligencePage(
       const numStr  = number !== null ? `#${number}` : "—";
       const nameStr = name ?? "Unknown";
       ctx.fillStyle    = "#e2e8f0";
-      ctx.font         = "bold 14px sans-serif";
+      ctx.font         = "bold 17px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign    = "left";
       ctx.fillText(`${numStr}  ${nameStr}`, panelX + 14, cy + ROW_H / 2);
       ctx.textAlign = "right";
-      ctx.font      = "13px sans-serif";
+      ctx.font      = "15px sans-serif";
       ctx.fillStyle = "#94a3b8";
       ctx.fillText(`${count} ${countLabel}`, panelX + PANEL_W - 14, cy + ROW_H / 2);
       cy += ROW_H;
@@ -2493,7 +2493,7 @@ function makeChainIntelligencePage(
 
     // ── Chain Leaders ─────────────────────────────────────────────────────────
     drawSectionLabel("Chain Leaders");
-    for (const p of players.slice(0, 4)) {
+    for (const p of players.slice(0, 3)) {
       drawPlayerRow(p.number, p.name, p.totalChainCount, p.totalChainCount === 1 ? "chain" : "chains");
     }
 
@@ -2501,7 +2501,7 @@ function makeChainIntelligencePage(
     const koStarters = [...players]
       .filter((p) => p.kickoutStartCount > 0)
       .sort((a, b) => b.kickoutStartCount - a.kickoutStartCount)
-      .slice(0, 3);
+      .slice(0, 2);
     if (koStarters.length > 0) {
       cy += GAP;
       drawSectionLabel("Kickout Chain Starters");
@@ -2514,7 +2514,7 @@ function makeChainIntelligencePage(
     const toStarters = [...players]
       .filter((p) => p.turnoverStartCount > 0)
       .sort((a, b) => b.turnoverStartCount - a.turnoverStartCount)
-      .slice(0, 3);
+      .slice(0, 2);
     if (toStarters.length > 0) {
       cy += GAP;
       drawSectionLabel("Turnover Chain Starters");
@@ -2527,7 +2527,7 @@ function makeChainIntelligencePage(
     const finishers = [...players]
       .filter((p) => p.finishCount > 0)
       .sort((a, b) => b.finishCount - a.finishCount)
-      .slice(0, 3);
+      .slice(0, 2);
     if (finishers.length > 0) {
       cy += GAP;
       drawSectionLabel("Chain Finishers");
@@ -2543,7 +2543,7 @@ function makeChainIntelligencePage(
     const contributors = [...players]
       .filter((p) => p.finishCount === 0 && p.totalChainCount >= 2)
       .sort((a, b) => b.totalChainCount - a.totalChainCount)
-      .slice(0, 3);
+      .slice(0, 2);
     if (contributors.length > 0) {
       cy += GAP;
       drawSectionLabel("Chain Contributors");
