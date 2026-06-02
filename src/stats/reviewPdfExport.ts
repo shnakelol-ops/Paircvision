@@ -21,7 +21,7 @@ import type {
   MatchEventSegment,
 } from "../core/stats/stats-event-model";
 import { selectChainAnalysis } from "./chains/chain-selectors";
-import type { ChainAnalysis } from "./chains/chain-types";
+import type { ChainAnalysis, ChainMatch } from "./chains/chain-types";
 import { deriveReviewPrompts } from "./chains/review-prompts";
 import type { ReviewPrompt, ReviewPromptCategory } from "./chains/review-prompts";
 import { getZoneCounts, getZoneHotspots } from "./zones/zone-engine";
@@ -2275,6 +2275,292 @@ function makeInfluentialZonesPage(
   ctx.beginPath();
   ctx.moveTo(RIGHT_X - 12, CONTENT_TOP + 4);
   ctx.lineTo(RIGHT_X - 12, CONTENT_TOP + PANEL_H);
+  ctx.stroke();
+
+  return canvas;
+}
+
+// ─── Scoring Chains page ─────────────────────────────────────────────────────
+
+/**
+ * Player-level view of scoring chains.
+ *
+ * Consumes a pre-computed ChainAnalysis so the engine runs exactly once per
+ * export. Only chains that converted directly to a score are included:
+ * KICKOUT_TO_SCORE, TURNOVER_TO_SCORE, and FREE_WON_TO_GOAL.
+ *
+ * Two-panel layout (FOR left, OPP right) with four sections per panel:
+ *   Chain Leaders       — most total appearances in scoring chains
+ *   Kickout Starters    — players on anchor events of kickout scoring chains
+ *   Turnover Starters   — players on anchor events of turnover scoring chains
+ *   Chain Finishers     — players on the scoring event of a chain
+ *   Chain Contributors  — appeared in ≥2 chains but never as the scorer
+ */
+function makeChainIntelligencePage(
+  chainAnalysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+  periodLabel: string,
+): HTMLCanvasElement | null {
+  const SCORING_CHAIN_RULES = new Set(["KICKOUT_TO_SCORE", "TURNOVER_TO_SCORE", "FREE_WON_TO_GOAL"]);
+  const forScoringChains = chainAnalysis.allChains.filter(
+    (c) => c.teamSide === "FOR" && SCORING_CHAIN_RULES.has(c.ruleId),
+  );
+  const oppScoringChains = chainAnalysis.allChains.filter(
+    (c) => c.teamSide === "OPP" && SCORING_CHAIN_RULES.has(c.ruleId),
+  );
+
+  // Guard: at least one player-attributed event exists across all scoring chains.
+  const allScoringChains = [...forScoringChains, ...oppScoringChains];
+  const hasData = allScoringChains.some((c) =>
+    c.events.some((e) => e.playerId != null || e.playerNumber != null),
+  );
+  if (!hasData) return null;
+
+  type ChainPlayerStat = {
+    key: string;
+    number: number | null;
+    name: string | null;
+    totalChainCount: number;
+    kickoutStartCount: number;
+    turnoverStartCount: number;
+    freeStartCount: number;
+    finishCount: number;
+  };
+
+  function buildChainStats(
+    chains: readonly ChainMatch<PdfExportEvent>[],
+    side: "FOR" | "OPP",
+  ): ChainPlayerStat[] {
+    const statsMap = new Map<string, ChainPlayerStat>();
+
+    function getOrCreate(e: PdfExportEvent): ChainPlayerStat | null {
+      if (e.teamSide !== side) return null;
+      const key = e.playerId ?? (e.playerNumber != null ? `__num_${e.playerNumber}` : null);
+      if (!key) return null;
+      if (!statsMap.has(key)) {
+        statsMap.set(key, {
+          key,
+          number: e.playerNumber ?? null,
+          name: e.playerName ?? null,
+          totalChainCount: 0,
+          kickoutStartCount: 0,
+          turnoverStartCount: 0,
+          freeStartCount: 0,
+          finishCount: 0,
+        });
+      }
+      return statsMap.get(key)!;
+    }
+
+    for (const chain of chains) {
+      const anchor = chain.events[0];
+      const final  = chain.events[chain.events.length - 1];
+      const seenInChain = new Set<string>();
+
+      // Anchor player — the player who won possession to start this scoring chain.
+      const anchorStat = getOrCreate(anchor);
+      if (anchorStat) {
+        if (!seenInChain.has(anchorStat.key)) {
+          seenInChain.add(anchorStat.key);
+          anchorStat.totalChainCount++;
+        }
+        if (chain.ruleId === "KICKOUT_TO_SCORE") anchorStat.kickoutStartCount++;
+        else if (chain.ruleId === "TURNOVER_TO_SCORE") anchorStat.turnoverStartCount++;
+        else if (chain.ruleId === "FREE_WON_TO_GOAL") anchorStat.freeStartCount++;
+      }
+
+      // Final event player — the scorer who converted the chain.
+      if (final !== anchor) {
+        const finalStat = getOrCreate(final);
+        if (finalStat) {
+          if (!seenInChain.has(finalStat.key)) {
+            seenInChain.add(finalStat.key);
+            finalStat.totalChainCount++;
+          }
+          finalStat.finishCount++;
+        }
+      } else if (anchorStat) {
+        anchorStat.finishCount++;
+      }
+    }
+
+    return [...statsMap.values()].sort((a, b) => b.totalChainCount - a.totalChainCount);
+  }
+
+  const forStats = buildChainStats(forScoringChains, "FOR");
+  const oppStats = buildChainStats(oppScoringChains, "OPP");
+
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(
+    ctx,
+    "Scoring Chains",
+    `${homeTeam} v ${awayTeam}  ·  ${periodLabel}`,
+    pageNum,
+    totalPages,
+  );
+
+  const CONTENT_TOP = 82;
+  const PANEL_W     = (CANVAS_W - 72) / 2;
+  const LEFT_X      = 24;
+  const RIGHT_X     = LEFT_X + PANEL_W + 24;
+  const BANNER_H    = 44;
+  const ROW_H       = 40;
+  const SECTION_H   = 26;
+  const GAP         = 10;
+
+  function drawChainPanel(
+    panelX: number,
+    players: ChainPlayerStat[],
+    chains: readonly ChainMatch<PdfExportEvent>[],
+    teamName: string,
+    side: "FOR" | "OPP",
+  ): void {
+    const accent   = side === "FOR" ? "#7dd3fc" : "#fb7185";
+    const accentBg = side === "FOR" ? "rgba(125,211,252,0.08)" : "rgba(251,113,133,0.08)";
+
+    ctx.fillStyle = accentBg;
+    ctx.fillRect(panelX, CONTENT_TOP, PANEL_W, BANNER_H);
+    ctx.fillStyle = accent;
+    ctx.fillRect(panelX, CONTENT_TOP, 4, BANNER_H);
+    ctx.fillStyle    = "#f8fafc";
+    ctx.font         = "bold 16px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "left";
+    ctx.fillText(teamName.toUpperCase(), panelX + 14, CONTENT_TOP + BANNER_H / 2);
+    ctx.textAlign = "right";
+    ctx.font      = "13px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.fillText(
+      `${chains.length} scoring chain${chains.length !== 1 ? "s" : ""}`,
+      panelX + PANEL_W - 14, CONTENT_TOP + BANNER_H / 2,
+    );
+
+    let cy = CONTENT_TOP + BANNER_H + GAP;
+
+    if (players.length === 0) {
+      ctx.fillStyle    = "#475569";
+      ctx.font         = "15px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "left";
+      ctx.fillText("No chain data tagged for this team", panelX + 14, cy + 14);
+      return;
+    }
+
+    function drawSectionLabel(label: string): void {
+      ctx.fillStyle    = accent;
+      ctx.font         = "bold 12px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "left";
+      ctx.fillText(label.toUpperCase(), panelX + 14, cy + SECTION_H / 2);
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
+      ctx.lineWidth   = 1;
+      ctx.beginPath();
+      ctx.moveTo(panelX + 14, cy + SECTION_H - 2);
+      ctx.lineTo(panelX + PANEL_W - 14, cy + SECTION_H - 2);
+      ctx.stroke();
+      cy += SECTION_H;
+    }
+
+    function drawPlayerRow(
+      number: number | null,
+      name: string | null,
+      count: number,
+      countLabel: string,
+    ): void {
+      const numStr  = number !== null ? `#${number}` : "—";
+      const nameStr = name ?? "Unknown";
+      ctx.fillStyle    = "#e2e8f0";
+      ctx.font         = "bold 14px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign    = "left";
+      ctx.fillText(`${numStr}  ${nameStr}`, panelX + 14, cy + ROW_H / 2);
+      ctx.textAlign = "right";
+      ctx.font      = "13px sans-serif";
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText(`${count} ${countLabel}`, panelX + PANEL_W - 14, cy + ROW_H / 2);
+      cy += ROW_H;
+    }
+
+    // ── Chain Leaders ─────────────────────────────────────────────────────────
+    drawSectionLabel("Chain Leaders");
+    for (const p of players.slice(0, 4)) {
+      drawPlayerRow(p.number, p.name, p.totalChainCount, p.totalChainCount === 1 ? "chain" : "chains");
+    }
+
+    // ── Kickout Chain Starters ────────────────────────────────────────────────
+    const koStarters = [...players]
+      .filter((p) => p.kickoutStartCount > 0)
+      .sort((a, b) => b.kickoutStartCount - a.kickoutStartCount)
+      .slice(0, 3);
+    if (koStarters.length > 0) {
+      cy += GAP;
+      drawSectionLabel("Kickout Chain Starters");
+      for (const p of koStarters) {
+        drawPlayerRow(p.number, p.name, p.kickoutStartCount, p.kickoutStartCount === 1 ? "kickout chain" : "kickout chains");
+      }
+    }
+
+    // ── Turnover Chain Starters ───────────────────────────────────────────────
+    const toStarters = [...players]
+      .filter((p) => p.turnoverStartCount > 0)
+      .sort((a, b) => b.turnoverStartCount - a.turnoverStartCount)
+      .slice(0, 3);
+    if (toStarters.length > 0) {
+      cy += GAP;
+      drawSectionLabel("Turnover Chain Starters");
+      for (const p of toStarters) {
+        drawPlayerRow(p.number, p.name, p.turnoverStartCount, p.turnoverStartCount === 1 ? "turnover chain" : "turnover chains");
+      }
+    }
+
+    // ── Chain Finishers ───────────────────────────────────────────────────────
+    const finishers = [...players]
+      .filter((p) => p.finishCount > 0)
+      .sort((a, b) => b.finishCount - a.finishCount)
+      .slice(0, 3);
+    if (finishers.length > 0) {
+      cy += GAP;
+      drawSectionLabel("Chain Finishers");
+      for (const p of finishers) {
+        drawPlayerRow(p.number, p.name, p.finishCount, p.finishCount === 1 ? "chain converted" : "chains converted");
+      }
+    }
+
+    // ── Chain Contributors ────────────────────────────────────────────────────
+    // Players appearing in ≥2 scoring chains but never as the final scorer.
+    // These are the possession-winners and link players who drive chains without
+    // converting — their contribution is entirely transparent from tagged events.
+    const contributors = [...players]
+      .filter((p) => p.finishCount === 0 && p.totalChainCount >= 2)
+      .sort((a, b) => b.totalChainCount - a.totalChainCount)
+      .slice(0, 3);
+    if (contributors.length > 0) {
+      cy += GAP;
+      drawSectionLabel("Chain Contributors");
+      for (const p of contributors) {
+        drawPlayerRow(p.number, p.name, p.totalChainCount, p.totalChainCount === 1 ? "chain" : "chains");
+      }
+    }
+  }
+
+  drawChainPanel(LEFT_X,  forStats, forScoringChains, homeTeam, "FOR");
+  drawChainPanel(RIGHT_X, oppStats, oppScoringChains, awayTeam, "OPP");
+
+  ctx.strokeStyle = "rgba(255,255,255,0.06)";
+  ctx.lineWidth   = 1;
+  ctx.beginPath();
+  ctx.moveTo(RIGHT_X - 12, CONTENT_TOP + 4);
+  ctx.lineTo(RIGHT_X - 12, CANVAS_H - 28);
   ctx.stroke();
 
   return canvas;
@@ -6220,7 +6506,8 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   const influencePageCount = hasInfluencePlayers(events) ? 1 : 0;
   const matchupPageCount   = influencePageCount; // Influence Battles always pairs with Player Influence
   const zonesPageCount     = influencePageCount; // Influential Zones always pairs with Player Influence
-  const TOTAL_PAGES = 8 + playerPageCount + influencePageCount + matchupPageCount + zonesPageCount + TACTICAL_PAGE_SPECS.length + 10;
+  const chainIntelPageCount = influencePageCount > 0 && chainAnalysis.allChains.length >= 1 ? 1 : 0; // Scoring Chains
+  const TOTAL_PAGES = 8 + playerPageCount + influencePageCount + matchupPageCount + zonesPageCount + chainIntelPageCount + TACTICAL_PAGE_SPECS.length + 10;
 
   // Chain analysis — computed once here and shared with all chain page builders.
   // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
@@ -6299,10 +6586,19 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     if (izCanvas) addCanvasPage(izCanvas, true, "Influential Zones");
   }
 
-  // Pages (9+N+ip+mp+zp)+: 20 tactical pitch map pages
+  // Scoring Chains page (immediately after Influential Zones)
+  if (chainIntelPageCount > 0) {
+    const ciCanvas = makeChainIntelligencePage(
+      chainAnalysis, homeTeamName, awayTeamName,
+      9 + playerPageCount + influencePageCount + matchupPageCount + zonesPageCount, TOTAL_PAGES, "Full Match",
+    );
+    if (ciCanvas) addCanvasPage(ciCanvas, true, "Scoring Chains");
+  }
+
+  // Pages (9+N+ip+mp+zp+ci)+: 20 tactical pitch map pages
   TACTICAL_PAGE_SPECS.forEach((spec, i) => {
     const filtered = selectPdfEvents(events, spec.half, spec.teamSide, spec.category);
-    const pageNum  = 9 + playerPageCount + influencePageCount + matchupPageCount + zonesPageCount + i;
+    const pageNum  = 9 + playerPageCount + influencePageCount + matchupPageCount + zonesPageCount + chainIntelPageCount + i;
     let canvas: HTMLCanvasElement;
     try {
       canvas = makeTacticalPage(
@@ -11872,11 +12168,12 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   const chainAnalysis = selectChainAnalysis(events);
 
   const influencePageCount = hasInfluencePlayers(events) ? 1 : 0;
-  const matchupPageCount   = influencePageCount; // Influence Battles always pairs with Player Influence
-  const zonesPageCount     = influencePageCount; // Influential Zones always pairs with Player Influence
+  const matchupPageCount    = influencePageCount; // Influence Battles always pairs with Player Influence
+  const zonesPageCount      = influencePageCount; // Influential Zones always pairs with Player Influence
+  const chainIntelPageCount = !isHT && influencePageCount > 0 && chainAnalysis.allChains.length >= 1 ? 1 : 0; // Scoring Chains — FT only
   const TOTAL_PAGES = isHT
     ? (6 + influencePageCount + matchupPageCount + zonesPageCount)
-    : (12 + influencePageCount + matchupPageCount + zonesPageCount);
+    : (12 + influencePageCount + matchupPageCount + zonesPageCount + chainIntelPageCount);
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -12070,7 +12367,16 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       if (izCanvas) addPage(izCanvas, true, "Influential Zones");
     }
 
-    const playerPagesOffset = influencePageCount + matchupPageCount + zonesPageCount;
+    // 10 (conditional). Scoring Chains — full match
+    if (chainIntelPageCount > 0) {
+      const ciCanvas = makeChainIntelligencePage(
+        chainAnalysis, home, away,
+        7 + influencePageCount + matchupPageCount + zonesPageCount, TOTAL_PAGES, "Full Match",
+      );
+      if (ciCanvas) addPage(ciCanvas, true, "Scoring Chains");
+    }
+
+    const playerPagesOffset = influencePageCount + matchupPageCount + zonesPageCount + chainIntelPageCount;
 
     // 7+pp. Turnover Punishment
     addPage(
