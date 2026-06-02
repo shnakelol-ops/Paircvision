@@ -57,7 +57,7 @@ export default function ProTaggerPage() {
 
         <div style={H.body}>
           <div style={H.logoWrap}>
-            <span style={H.logo}>⬡</span>
+            <img src="/pv-logo-icon.svg" alt="PáircVision" style={H.logo} />
           </div>
           <button
             style={H.primaryBtn}
@@ -204,12 +204,14 @@ const H: Record<string, CSSProperties> = {
     padding: "0 32px 48px",
   },
   logoWrap: {
-    marginBottom: 8,
+    marginBottom: 16,
   },
   logo: {
-    fontSize: 56,
-    opacity: 0.15,
+    width: 84,
+    height: 84,
+    borderRadius: 20,
     display: "block",
+    filter: "drop-shadow(0 0 14px rgba(122,255,178,0.18))",
   },
   primaryBtn: {
     background: "#238636",
