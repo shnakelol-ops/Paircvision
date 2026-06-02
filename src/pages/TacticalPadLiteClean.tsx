@@ -2780,6 +2780,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const handleQuickShareSnapshot = async () => {
     if (isExportingSnapshotRef.current) return;
     const surface = surfaceRef.current;
+    console.debug("[PV share] surface:", surface ? "ok" : "null", "exportImageCanvas:", typeof surface?.exportImageCanvas);
     if (!surface) {
       showShareTip("Board not ready — please try again.");
       return;
@@ -2790,6 +2791,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     try {
       const file = await exportBoardSetupAsPng(surface);
       if (!file) {
+        console.debug("[PV share] exportBoardSetupAsPng returned null");
         showShareTip("Could not generate image — please try again.");
         return;
       }
@@ -2815,7 +2817,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           URL.revokeObjectURL(url);
         }
       }
-    } catch {
+    } catch (err) {
+      console.error("[PV share] export threw:", err);
       showShareTip("Share failed — please try again.");
     } finally {
       isExportingSnapshotRef.current = false;
