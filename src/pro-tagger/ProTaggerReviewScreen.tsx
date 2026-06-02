@@ -29,6 +29,24 @@ function fmtDate(ts: number): string {
 type ExportKey = "full" | "ht" | "ft";
 type ExportResult = { ok: boolean; text: string };
 
+const EXPORT_FILENAMES: Record<ExportKey, (home: string, away: string) => string> = {
+  full: (h, a) => `${safePdfName(h)}_v_${safePdfName(a)}_review.pdf`,
+  ht:   (h, a) => `${safePdfName(h)}_v_${safePdfName(a)}_ht_snapshot.pdf`,
+  ft:   (h, a) => `${safePdfName(h)}_v_${safePdfName(a)}_ft_snapshot.pdf`,
+};
+
+function safePdfName(s: string): string {
+  return s.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_\-]/g, "");
+}
+
+function canShareFiles(file: File): boolean {
+  return (
+    typeof navigator.share === "function" &&
+    typeof navigator.canShare === "function" &&
+    navigator.canShare({ files: [file] })
+  );
+}
+
 interface Props {
   match: ProTaggerSavedMatch;
   onBack: () => void;
@@ -37,6 +55,7 @@ interface Props {
 export function ProTaggerReviewScreen({ match, onBack }: Props) {
   const [exporting, setExporting]     = useState<ExportKey | null>(null);
   const [results, setResults]         = useState<Partial<Record<ExportKey, ExportResult>>>({});
+  const [files, setFiles]             = useState<Partial<Record<ExportKey, File>>>({});
 
   const hasFirstHalfEvents = match.events.some((e) => e.period === "1H");
   const busy = exporting !== null;
@@ -45,12 +64,17 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
     setResults((prev) => ({ ...prev, [key]: result }));
   }
 
+  function storeFile(key: ExportKey, blob: Blob) {
+    const name = EXPORT_FILENAMES[key](match.homeTeamName || "Home", match.awayTeamName || "Away");
+    setFiles((prev) => ({ ...prev, [key]: new File([blob], name, { type: "application/pdf" }) }));
+  }
+
   function handleFullReview() {
     if (busy) return;
     setExporting("full");
     setResult("full", { ok: true, text: "" });
     void exportReviewPdf(proTaggerMatchToPdfInput(match))
-      .then(() => setResult("full", { ok: true, text: "Exported" }))
+      .then((blob) => { storeFile("full", blob); setResult("full", { ok: true, text: "Exported" }); })
       .catch(() => setResult("full", { ok: false, text: "Export failed" }))
       .finally(() => setExporting(null));
   }
@@ -60,7 +84,7 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
     setExporting("ht");
     setResult("ht", { ok: true, text: "" });
     void exportSnapshotPdf(proTaggerMatchToSnapshotInput(match, "HALF_TIME_SNAPSHOT"))
-      .then(() => setResult("ht", { ok: true, text: "Exported" }))
+      .then((blob) => { storeFile("ht", blob); setResult("ht", { ok: true, text: "Exported" }); })
       .catch(() => setResult("ht", { ok: false, text: "Export failed" }))
       .finally(() => setExporting(null));
   }
@@ -70,7 +94,7 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
     setExporting("ft");
     setResult("ft", { ok: true, text: "" });
     void exportSnapshotPdf(proTaggerMatchToSnapshotInput(match, "FULL_TIME_SNAPSHOT"))
-      .then(() => setResult("ft", { ok: true, text: "Exported" }))
+      .then((blob) => { storeFile("ft", blob); setResult("ft", { ok: true, text: "Exported" }); })
       .catch(() => setResult("ft", { ok: false, text: "Export failed" }))
       .finally(() => setExporting(null));
   }
@@ -117,6 +141,7 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
           description="37+ pages · complete match analysis"
           loading={exporting === "full"}
           result={results.full}
+          file={files.full}
           disabled={busy && exporting !== "full"}
           onClick={handleFullReview}
         />
@@ -126,6 +151,7 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
           description="5 pages · first-half debrief"
           loading={exporting === "ht"}
           result={results.ht}
+          file={files.ht}
           disabled={(busy && exporting !== "ht") || !hasFirstHalfEvents}
           disabledReason={!hasFirstHalfEvents ? "No first-half events" : undefined}
           onClick={handleHtSnapshot}
@@ -136,13 +162,10 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
           description="10 pages · full-match summary"
           loading={exporting === "ft"}
           result={results.ft}
+          file={files.ft}
           disabled={busy && exporting !== "ft"}
           onClick={handleFtSnapshot}
         />
-
-        <span style={S.footNote}>
-          PDF opens or downloads depending on your browser.
-        </span>
       </div>
     </div>
   );
@@ -155,13 +178,14 @@ interface ExportRowProps {
   description: string;
   loading: boolean;
   result: ExportResult | undefined;
+  file?: File;
   disabled: boolean;
   disabledReason?: string;
   onClick: () => void;
 }
 
 function ExportRow({
-  label, description, loading, result, disabled, disabledReason, onClick,
+  label, description, loading, result, file, disabled, disabledReason, onClick,
 }: ExportRowProps) {
   let statusText = "";
   let statusColor = "#8b949e";
@@ -174,6 +198,15 @@ function ExportRow({
   }
 
   const isDisabled = disabled || loading;
+  const exported = result?.ok && file != null && !loading;
+  const shareSupported = exported && file != null && canShareFiles(file);
+
+  function handleShare() {
+    if (!file) return;
+    void navigator.share({ files: [file] }).catch(() => {
+      // User cancelled or share failed — no action needed.
+    });
+  }
 
   return (
     <div style={S.exportRow}>
@@ -197,6 +230,15 @@ function ExportRow({
           <span style={{ ...S.exportStatus, color: statusColor }}>{statusText}</span>
         ) : null}
       </div>
+      {exported && (
+        shareSupported ? (
+          <button style={S.shareBtn} onClick={handleShare}>
+            Share PDF
+          </button>
+        ) : (
+          <span style={S.shareNote}>PDF exported. Open Downloads to share.</span>
+        )
+      )}
     </div>
   );
 }
@@ -375,10 +417,23 @@ const S: Record<string, CSSProperties> = {
     fontWeight: 600,
     flexShrink: 0,
   },
-  footNote: {
+  shareBtn: {
+    background: "#1a3d22",
+    border: "1px solid #2ea043",
+    borderRadius: 8,
+    color: "#3fb950",
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "9px 14px",
+    cursor: "pointer",
+    outline: "none",
+    width: "100%",
+    textAlign: "left" as const,
+    letterSpacing: "-0.2px",
+  },
+  shareNote: {
     fontSize: 11,
-    color: "#484f58",
-    textAlign: "center" as const,
-    marginTop: 8,
+    color: "#6e7681",
+    paddingLeft: 4,
   },
 };

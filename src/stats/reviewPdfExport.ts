@@ -6492,7 +6492,7 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *
  * Total pages = 36 + N  (N ≥ 1 → minimum 37 pages).
  */
-export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
+export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<Blob> {
   const {
     events,
     homeTeamName,
@@ -6936,10 +6936,12 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallback, true, "Shot & Scoring Efficiency");
   }
 
-  // Download
+  // Download + return blob for in-app sharing
   const safeName = (s: string) => s.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_\-]/g, "");
   const filename  = `${safeName(homeTeamName)}_v_${safeName(awayTeamName)}_review.pdf`;
+  const blob = pdf.output("blob");
   pdf.save(filename);
+  return blob;
 }
 
 // ─── HT Vision Page Builders ──────────────────────────────────────────────────
@@ -12148,7 +12150,7 @@ function makeHtTacticalSummaryPage(
 //   PART 1 — SEE  (p.1–5): pitch-based visual intelligence (reuses HT builders)
 //   PART 2 — UNDERSTAND (p.6–12): analytical depth + narrative story
 
-export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<void> {
+export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<Blob> {
   const {
     events: allEvents,
     homeTeamName,
@@ -12425,5 +12427,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   const safeName = (s: string) => s.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_\-]/g, "");
   const suffix   = isHT ? "ht_snapshot" : "ft_snapshot";
   const filename  = `${safeName(homeTeamName)}_v_${safeName(awayTeamName)}_${suffix}.pdf`;
+  const blob = pdf.output("blob");
   pdf.save(filename);
+  return blob;
 }
