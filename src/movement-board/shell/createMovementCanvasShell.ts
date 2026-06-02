@@ -1,27 +1,25 @@
 import { Application, Container } from "pixi.js";
 
 import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
-import {
-  createWorldViewport,
-  type WorldViewportMapper,
-} from "../coordinates/viewport";
+import { createWorldViewport, type WorldViewportMapper } from "../coordinates/viewport";
 import {
   getNormalizedPointFromEvent,
   getPointerIdFromEvent,
   getWorldPointFromEvent,
 } from "../input/pointer-controller";
-import { createBasicRouteFollowSession, type BasicRouteFollowSession } from "../movement/basic-route-follow";
 import { createPitchRoot } from "../pitch/create-pitch-root";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
+import { createPlaybackOrchestrator } from "../playback/playback-orchestrator";
+import { routeStyleForToken } from "../routes/route-colors";
 import { createRouteLayer } from "../routes/route-layer";
-import { normalizeRoutePoints, sampleRoutePoints } from "../routes/route-sampling";
+import { normalizeRoutePoints } from "../routes/route-sampling";
+import { buildDefaultTokens } from "../tokens/default-tokens";
 import { createTokenLayer } from "../tokens/token-layer";
 import type {
   MovementBoardMode,
   MovementBoardToken,
   MovementCanvasShellHandle,
   MovementCanvasShellOptions,
-  MovementPlaybackSpeed,
   MovementRouteEditState,
 } from "./types";
 
@@ -31,17 +29,9 @@ const WORLD_SIZE = {
 } as const;
 
 const ROUTE_MIN_POINT_DISTANCE = 0.9;
-const BASIC_ROUTE_FOLLOW_SPEED = 18;
-const PLAY_ALL_STAGGER_MS = 90;
 const POSITION_EPSILON = 0.0001;
 const ROUTE_HANDLE_TOUCH_RADIUS_PX = 30;
 const ROUTE_INSERT_TOUCH_DISTANCE_PX = 24;
-
-const PLAYBACK_SPEED_MULTIPLIER: Record<MovementPlaybackSpeed, number> = {
-  slow: 0.75,
-  normal: 1,
-  fast: 1.3,
-};
 
 type DragState = {
   tokenId: string;
@@ -62,13 +52,6 @@ type RouteHandleDragState = {
   offsetWorld: { x: number; y: number };
 } | null;
 
-type ActivePlaybackRun = {
-  tokenId: string;
-  targetPoint: { x: number; y: number };
-  session: BasicRouteFollowSession;
-  delayMs: number;
-};
-
 function clampWorldPoint(point: { x: number; y: number }): { x: number; y: number } {
   return {
     x: Math.max(0, Math.min(WORLD_SIZE.width, point.x)),
@@ -78,27 +61,6 @@ function clampWorldPoint(point: { x: number; y: number }): { x: number; y: numbe
 
 function clonePoint(point: NormalizedPoint): NormalizedPoint {
   return { x: point.x, y: point.y };
-}
-
-function buildDefaultTokens(): MovementBoardToken[] {
-  const rowSizes = [1, 2, 3, 4, 5] as const;
-  const tokens: MovementBoardToken[] = [];
-  let jersey = 1;
-  for (let row = 0; row < rowSizes.length; row += 1) {
-    const rowSize = rowSizes[row]!;
-    const x = 12 + row * 18;
-    for (let i = 0; i < rowSize; i += 1) {
-      const y = ((i + 1) * 100) / (rowSize + 1);
-      tokens.push({
-        id: `setup-token-${jersey}`,
-        number: jersey,
-        color: "blue",
-        position: { x, y },
-      });
-      jersey += 1;
-    }
-  }
-  return tokens;
 }
 
 function isWorldPointInsidePitch(worldPoint: { x: number; y: number }): boolean {
@@ -120,64 +82,6 @@ function routesAreEqual(a: readonly NormalizedPoint[], b: readonly NormalizedPoi
     if (Math.abs(aPoint.y - bPoint.y) > POSITION_EPSILON) return false;
   }
   return true;
-}
-
-function hslToHex(h: number, s: number, l: number): number {
-  const hue = ((h % 360) + 360) % 360;
-  const sat = Math.max(0, Math.min(100, s)) / 100;
-  const light = Math.max(0, Math.min(100, l)) / 100;
-  const c = (1 - Math.abs(2 * light - 1)) * sat;
-  const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
-  const m = light - c / 2;
-  let rPrime = 0;
-  let gPrime = 0;
-  let bPrime = 0;
-  if (hue < 60) {
-    rPrime = c;
-    gPrime = x;
-  } else if (hue < 120) {
-    rPrime = x;
-    gPrime = c;
-  } else if (hue < 180) {
-    gPrime = c;
-    bPrime = x;
-  } else if (hue < 240) {
-    gPrime = x;
-    bPrime = c;
-  } else if (hue < 300) {
-    rPrime = x;
-    bPrime = c;
-  } else {
-    rPrime = c;
-    bPrime = x;
-  }
-  const r = Math.round((rPrime + m) * 255);
-  const g = Math.round((gPrime + m) * 255);
-  const b = Math.round((bPrime + m) * 255);
-  return (r << 16) | (g << 8) | b;
-}
-
-function routeStyleForToken(token: MovementBoardToken | null) {
-  if (!token) {
-    return {
-      coreColor: 0xf59e0b,
-      highlightColor: 0xffd8a1,
-      shadowColor: 0x1c1205,
-    };
-  }
-  const hueBaseByColor: Record<MovementBoardToken["color"], number> = {
-    blue: 210,
-    red: 8,
-    yellow: 42,
-    black: 240,
-  };
-  const hueOffset = (token.number * 23) % 38;
-  const coreHue = hueBaseByColor[token.color] + hueOffset;
-  return {
-    coreColor: hslToHex(coreHue, 84, 54),
-    highlightColor: hslToHex(coreHue + 7, 88, 80),
-    shadowColor: hslToHex(coreHue - 8, 44, 14),
-  };
 }
 
 function projectPointToSegment(
@@ -248,7 +152,6 @@ export async function createMovementCanvasShell(
 
   let dragEnabled = options.dragEnabled ?? true;
   let mode: MovementBoardMode = options.mode ?? "setup";
-  let playbackSpeed: MovementPlaybackSpeed = options.playbackSpeed ?? "normal";
   let selectedTokenId: string | null = null;
   let selectedWaypointIndex: number | null = null;
   let activeDrag: DragState = null;
@@ -256,9 +159,6 @@ export async function createMovementCanvasShell(
   let routeDraft: RouteDraftState = null;
   let routeByTokenId = new Map<string, NormalizedPoint[]>();
   let startPositionByTokenId = new Map<string, NormalizedPoint>();
-  let activePlaybackRuns = new Map<string, ActivePlaybackRun>();
-  let isPlaying = false;
-  let isPaused = false;
 
   const tokenLayer = createTokenLayer({
     layer: tokenLayerContainer,
@@ -275,11 +175,23 @@ export async function createMovementCanvasShell(
     startPositionByTokenId.set(token.id, clonePoint(token.position));
   }
 
-  const emitPlaybackState = () => {
-    options.onPlaybackStateChange?.({ isPlaying, isPaused });
-  };
+  const orchestrator = createPlaybackOrchestrator(options.playbackSpeed ?? "normal", {
+    getTokens: () => tokenLayer.getTokens(),
+    getRoute: (tokenId) => routeByTokenId.get(tokenId) ?? null,
+    getStartPosition: (tokenId) => startPositionByTokenId.get(tokenId) ?? null,
+    onPlaybackReset: (tokenId, startPosition) => {
+      tokenLayer.setTokenPosition(tokenId, startPosition);
+    },
+    onTokenStep: (tokenId, position) => {
+      const movedToken = tokenLayer.setTokenPosition(tokenId, position);
+      if (movedToken) options.onTokenMove?.(movedToken);
+    },
+    onStateChange: (state) => {
+      options.onPlaybackStateChange?.(state);
+    },
+  });
 
-  const isPlaybackLocked = () => isPlaying || isPaused;
+  const isPlaybackLocked = () => orchestrator.isLocked();
 
   const emitRoutes = () => {
     options.onRoutesChange?.(
@@ -353,23 +265,6 @@ export async function createMovementCanvasShell(
     return selectedToken;
   };
 
-  const cancelPlaybackRuns = () => {
-    for (const run of activePlaybackRuns.values()) {
-      run.session.cancel();
-    }
-    activePlaybackRuns.clear();
-  };
-
-  const stopPlayback = (optionsForStop?: { keepPausedState?: boolean }) => {
-    cancelPlaybackRuns();
-    const keepPaused = optionsForStop?.keepPausedState ?? false;
-    isPlaying = false;
-    if (!keepPaused) {
-      isPaused = false;
-    }
-    emitPlaybackState();
-  };
-
   const syncToHost = () => {
     const width = host.clientWidth;
     const height = host.clientHeight;
@@ -394,10 +289,7 @@ export async function createMovementCanvasShell(
     activeRouteHandleDrag = null;
   };
 
-  const canDragTokens = () =>
-    dragEnabled &&
-    mode === "setup" &&
-    !isPlaybackLocked();
+  const canDragTokens = () => dragEnabled && mode === "setup" && !isPlaybackLocked();
 
   const setModeState = (nextMode: MovementBoardMode) => {
     mode = nextMode;
@@ -542,79 +434,19 @@ export async function createMovementCanvasShell(
     };
   };
 
-  const buildPlaybackRuns = (): Map<string, ActivePlaybackRun> => {
-    const allTokens = tokenLayer.getTokens();
-    const runs = new Map<string, ActivePlaybackRun>();
-    let playAllIndex = 0;
-
-    for (const token of allTokens) {
-      const start = startPositionByTokenId.get(token.id) ?? token.position;
-      const route = routeByTokenId.get(token.id);
-      let playbackPath: NormalizedPoint[] = [];
-
-      if (route && route.length >= 2) {
-        playbackPath = [clonePoint(start), ...route.slice(1).map((point) => clonePoint(point))];
-      } else if (
-        Math.abs(token.position.x - start.x) > POSITION_EPSILON ||
-        Math.abs(token.position.y - start.y) > POSITION_EPSILON
-      ) {
-        playbackPath = [clonePoint(start), clonePoint(token.position)];
-      }
-      const sampled = sampleRoutePoints(playbackPath);
-      if (sampled.length < 2) continue;
-
-      tokenLayer.setTokenPosition(token.id, start);
-      const targetPoint = clonePoint(start);
-      const session = createBasicRouteFollowSession({
-        target: targetPoint,
-        route: sampled,
-        speed: BASIC_ROUTE_FOLLOW_SPEED,
-      });
-      if (!session.isActive()) continue;
-      runs.set(token.id, {
-        tokenId: token.id,
-        targetPoint,
-        session,
-        delayMs: playAllIndex * PLAY_ALL_STAGGER_MS,
-      });
-      playAllIndex += 1;
-    }
-    return runs;
-  };
-
   const startPlayback = () => {
-    if (isPlaying) return;
-    if (isPaused && activePlaybackRuns.size > 0) {
-      isPaused = false;
-      isPlaying = true;
-      emitPlaybackState();
-      return;
+    const state = orchestrator.getState();
+    if (state.isPlaying) return;
+    if (!state.isPaused || !orchestrator.hasActiveRuns()) {
+      releaseDrag();
+      releaseRouteHandleDrag();
+      clearRouteDraft();
     }
-
-    releaseDrag();
-    releaseRouteHandleDrag();
-    clearRouteDraft();
-    isPaused = false;
-    const nextRuns = buildPlaybackRuns();
-    if (nextRuns.size <= 0) {
-      isPlaying = false;
-      emitPlaybackState();
-      return;
-    }
-    activePlaybackRuns = nextRuns;
-    isPlaying = true;
-    emitPlaybackState();
-  };
-
-  const pausePlayback = () => {
-    if (!isPlaying) return;
-    isPlaying = false;
-    isPaused = true;
-    emitPlaybackState();
+    orchestrator.start();
   };
 
   const reset = () => {
-    stopPlayback();
+    orchestrator.stop();
     clearRouteDraft();
     releaseDrag();
     releaseRouteHandleDrag();
@@ -625,34 +457,6 @@ export async function createMovementCanvasShell(
       if (movedToken) {
         options.onTokenMove?.(movedToken);
       }
-    }
-  };
-
-  const stepPlayback = (deltaMs: number) => {
-    if (!isPlaying || activePlaybackRuns.size <= 0) return;
-    const multiplier = PLAYBACK_SPEED_MULTIPLIER[playbackSpeed];
-    const completedTokenIds: string[] = [];
-
-    for (const run of activePlaybackRuns.values()) {
-      if (run.delayMs > 0) {
-        run.delayMs = Math.max(0, run.delayMs - deltaMs);
-        continue;
-      }
-      run.session.step(deltaMs * multiplier);
-      const movedToken = tokenLayer.setTokenPosition(run.tokenId, clampNormalizedPoint(run.targetPoint));
-      if (movedToken) {
-        options.onTokenMove?.(movedToken);
-      }
-      if (!run.session.isActive()) {
-        completedTokenIds.push(run.tokenId);
-      }
-    }
-
-    for (const tokenId of completedTokenIds) {
-      activePlaybackRuns.delete(tokenId);
-    }
-    if (activePlaybackRuns.size <= 0) {
-      stopPlayback();
     }
   };
 
@@ -867,7 +671,7 @@ export async function createMovementCanvasShell(
   });
 
   const tick = () => {
-    stepPlayback(app.ticker.deltaMS);
+    orchestrator.step(app.ticker.deltaMS);
   };
   app.ticker.add(tick);
 
@@ -877,7 +681,7 @@ export async function createMovementCanvasShell(
   resizeObserver.observe(host);
   syncToHost();
   refreshRouteLayer();
-  emitPlaybackState();
+  options.onPlaybackStateChange?.(orchestrator.getState());
   emitRouteEditState();
 
   return {
@@ -889,11 +693,11 @@ export async function createMovementCanvasShell(
         playerId,
         points: points.map((point) => clonePoint(point)),
       })),
-    getPlaybackSpeed: () => playbackSpeed,
-    getPlaybackState: () => ({ isPlaying, isPaused }),
+    getPlaybackSpeed: () => orchestrator.getSpeed(),
+    getPlaybackState: () => orchestrator.getState(),
     getRouteEditState: () => getRouteEditState(),
     setTokens: (tokens) => {
-      stopPlayback();
+      orchestrator.stop();
       tokenLayer.setTokens(tokens);
       tokenLayer.syncToMapper();
 
@@ -921,7 +725,7 @@ export async function createMovementCanvasShell(
       setModeState(nextMode);
     },
     setPlaybackSpeed: (speed) => {
-      playbackSpeed = speed;
+      orchestrator.setSpeed(speed);
     },
     removeSelectedWaypoint: () => {
       if (!selectedTokenId) return false;
@@ -953,14 +757,10 @@ export async function createMovementCanvasShell(
       startPlayback();
     },
     pausePlayback: () => {
-      pausePlayback();
+      orchestrator.pause();
     },
     resumePlayback: () => {
-      if (isPaused && activePlaybackRuns.size > 0) {
-        isPaused = false;
-        isPlaying = true;
-        emitPlaybackState();
-      }
+      orchestrator.resume();
     },
     reset: () => {
       reset();
@@ -975,7 +775,7 @@ export async function createMovementCanvasShell(
       syncToHost();
     },
     destroy: () => {
-      stopPlayback();
+      orchestrator.stop();
       resizeObserver.disconnect();
       tokenLayer.destroy();
       routeLayer.destroy();
@@ -991,4 +791,3 @@ export async function createMovementCanvasShell(
     },
   };
 }
-
