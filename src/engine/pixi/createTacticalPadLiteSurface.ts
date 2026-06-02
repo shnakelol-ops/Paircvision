@@ -3811,8 +3811,9 @@ export async function createTacticalPadLiteSurface(
           canvas?: (target: unknown) => unknown;
         };
       };
-      const extractCanvas = rendererWithExtract.extract?.canvas;
-      if (typeof extractCanvas !== "function") {
+      // Keep the reference on the object so `this` is preserved when canvas() is called.
+      const extract = rendererWithExtract.extract;
+      if (!extract || typeof extract.canvas !== "function") {
         return null;
       }
 
@@ -3820,7 +3821,7 @@ export async function createTacticalPadLiteSurface(
         typeof HTMLCanvasElement !== "undefined" && candidate instanceof HTMLCanvasElement ? candidate : null;
 
       try {
-        const extractedFromStage = resolveHtmlCanvas(extractCanvas(app.stage));
+        const extractedFromStage = resolveHtmlCanvas(extract.canvas(app.stage));
         if (extractedFromStage) {
           return extractedFromStage;
         }
@@ -3830,7 +3831,7 @@ export async function createTacticalPadLiteSurface(
 
       const generatedTexture = app.renderer.textureGenerator.generateTexture(app.stage);
       try {
-        return resolveHtmlCanvas(extractCanvas(generatedTexture));
+        return resolveHtmlCanvas(extract.canvas(generatedTexture));
       } catch {
         return null;
       } finally {
