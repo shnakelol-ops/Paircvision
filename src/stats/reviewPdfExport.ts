@@ -2149,18 +2149,18 @@ function makeInfluentialZonesPage(
   // Coach-facing labels for each SemanticZoneId (team-relative — classifyEventZone
   // already mirrors OPP events, so "Attacking Centre" always means near their goal).
   const ZONE_LABELS: Record<string, string> = {
-    DEF_LEFT:         "Defensive Left",
-    DEF_CENTRE:       "Defensive Centre",
-    DEF_RIGHT:        "Defensive Right",
-    MID_LEFT:         "Midfield Left",
-    MID_CENTRE:       "Midfield Centre",
-    MID_RIGHT:        "Midfield Right",
-    ATK_ENTRY_LEFT:   "Attack Entry Left",
-    ATK_ENTRY_CENTRE: "Attack Entry Centre",
-    ATK_ENTRY_RIGHT:  "Attack Entry Right",
-    SCORING_LEFT:     "Scoring Left",
-    SCORING_CENTRE:   "Scoring Centre",
-    SCORING_RIGHT:    "Scoring Right",
+    DEF_LEFT:         "Left Defensive 3rd",
+    DEF_CENTRE:       "Centre Defensive 3rd",
+    DEF_RIGHT:        "Right Defensive 3rd",
+    MID_LEFT:         "Left Middle 3rd",
+    MID_CENTRE:       "Centre Middle 3rd",
+    MID_RIGHT:        "Right Middle 3rd",
+    ATK_ENTRY_LEFT:   "Left Attacking 3rd",
+    ATK_ENTRY_CENTRE: "Centre Attacking 3rd",
+    ATK_ENTRY_RIGHT:  "Right Attacking 3rd",
+    SCORING_LEFT:     "Left Scoring Zone",
+    SCORING_CENTRE:   "Centre Scoring Zone",
+    SCORING_RIGHT:    "Right Scoring Zone",
   };
 
   // Strip synthetic events (same filter as collectPlayerStats).
@@ -2569,7 +2569,7 @@ function makeChainIntelligencePage(
 // ─── Chain Summary page ───────────────────────────────────────────────────────
 
 /**
- * Renders the Tactical Chain Analysis summary page.
+ * Renders the Chain Analysis summary page.
  *
  * Layout (1920×1080):
  *   Left panel  (x 24–630)  : Chain Pattern table — rule × FOR/OPP counts
@@ -2597,7 +2597,7 @@ function makeChainSummaryPage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Tactical Chain Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Chain Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
   drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
 
   const CONTENT_TOP  = 86;
@@ -3392,10 +3392,10 @@ function makeKickoutChainPage(
   return canvas;
 }
 
-// ─── Turnover Punishment Analysis page ───────────────────────────────────────
+// ─── Turnover Analysis page ──────────────────────────────────────────────────
 
 /**
- * Builds the Turnover Punishment Analysis canvas (second-to-last chain page).
+ * Builds the Turnover Analysis canvas (second-to-last chain page).
  *
  * Three columns:
  *   COL 1 — homeTeam attacking from turnovers (won TOs → consequences)
@@ -3423,7 +3423,7 @@ function makeTurnoverPunishmentPage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Turnover Punishment Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Turnover Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
   drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
 
   const CONTENT_TOP = 86;
@@ -4307,10 +4307,10 @@ function makeMomentumRunsPage(
   return canvas;
 }
 
-// ─── Tactical Intelligence Summary page ───────────────────────────────────────
+// ─── Tactical Summary page ───────────────────────────────────────────────────
 
 /**
- * Renders the Tactical Intelligence Summary — the closing briefing page.
+ * Renders the Tactical Summary — the closing briefing page.
  *
  * Synthesises kickout, turnover, momentum and chain-efficiency data into a
  * premium two-column layout with large insight cards and coach-readable
@@ -4340,7 +4340,7 @@ function makeTacticalIntelligencePage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Tactical Intelligence Summary", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Tactical Summary", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
   drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
 
   // ── Layout constants ───────────────────────────────────────────────────────
@@ -6480,10 +6480,10 @@ const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
  *   9+.      Player Breakdown — one or more pages, no truncation
  *   (9+N)+.  20 tactical pitch map pages (N = player page count)
  *   Last−9.  Kickout Chain Analysis page
- *   Last−8.  Turnover Punishment Analysis page
+ *   Last−8.  Turnover Analysis page
  *   Last−7.  Momentum & Scoring Runs page
- *   Last−6.  Tactical Chain Analysis summary page
- *   Last−5.  Tactical Intelligence Summary page
+ *   Last−6.  Chain Analysis summary page
+ *   Last−5.  Tactical Summary page
  *   Last−4.  Tactical Review Guide page
  *   Last−3.  Opposition Snapshot page
  *   Last−2.  Zone Analysis page
@@ -6654,7 +6654,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallback, true, "Kickout Chain Analysis");
   }
 
-  // Ninth-to-last page: Turnover Punishment Analysis
+  // Ninth-to-last page: Turnover Analysis
   try {
     addCanvasPage(
       makeTurnoverPunishmentPage(
@@ -6665,10 +6665,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
-      "Turnover Punishment Analysis",
+      "Turnover Analysis",
     );
   } catch (err) {
-    console.error("Turnover Punishment Analysis page generation failed", err);
+    console.error("Turnover Analysis page generation failed", err);
     const fallback = document.createElement("canvas");
     fallback.width = CANVAS_W;
     fallback.height = CANVAS_H;
@@ -6682,7 +6682,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
       ctx.textBaseline = "middle";
       ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
     }
-    addCanvasPage(fallback, true, "Turnover Punishment Analysis");
+    addCanvasPage(fallback, true, "Turnover Analysis");
   }
 
   // Eighth-to-last page: Momentum & Scoring Runs Analysis
@@ -6716,7 +6716,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallback, true, "Momentum & Scoring Runs Analysis");
   }
 
-  // Seventh-to-last page: Tactical Chain Analysis summary
+  // Seventh-to-last page: Chain Analysis summary
   try {
     addCanvasPage(
       makeChainSummaryPage(
@@ -6727,10 +6727,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
-      "Tactical Chain Analysis Summary",
+      "Chain Analysis Summary",
     );
   } catch (err) {
-    console.error("Tactical Chain Analysis Summary page generation failed", err);
+    console.error("Chain Analysis Summary page generation failed", err);
     const fallback = document.createElement("canvas");
     fallback.width = CANVAS_W;
     fallback.height = CANVAS_H;
@@ -6744,10 +6744,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
       ctx.textBaseline = "middle";
       ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
     }
-    addCanvasPage(fallback, true, "Tactical Chain Analysis Summary");
+    addCanvasPage(fallback, true, "Chain Analysis Summary");
   }
 
-  // Sixth-to-last page: Tactical Intelligence Summary
+  // Sixth-to-last page: Tactical Summary
   try {
     addCanvasPage(
       makeTacticalIntelligencePage(
@@ -6758,10 +6758,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
         TOTAL_PAGES,
       ),
       true,
-      "Tactical Intelligence Summary",
+      "Tactical Summary",
     );
   } catch (err) {
-    console.error("Tactical Intelligence Summary page generation failed", err);
+    console.error("Tactical Summary page generation failed", err);
     const fallback = document.createElement("canvas");
     fallback.width = CANVAS_W;
     fallback.height = CANVAS_H;
@@ -6775,7 +6775,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
       ctx.textBaseline = "middle";
       ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
     }
-    addCanvasPage(fallback, true, "Tactical Intelligence Summary");
+    addCanvasPage(fallback, true, "Tactical Summary");
   }
 
   // Fifth-to-last page: Tactical Review Guide
@@ -12378,11 +12378,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     const playerPagesOffset = influencePageCount + matchupPageCount + zonesPageCount + chainIntelPageCount;
 
-    // 7+pp. Turnover Punishment
+    // 7+pp. Turnover Analysis
     addPage(
       makeTurnoverPunishmentPage(chainAnalysis, home, away, 7 + playerPagesOffset, TOTAL_PAGES),
       true,
-      "Turnover Punishment",
+      "Turnover Analysis",
     );
 
     // 8+pp. Shot Efficiency

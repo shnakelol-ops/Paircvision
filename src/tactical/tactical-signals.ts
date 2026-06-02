@@ -16,18 +16,18 @@ export type TacticalSignal = {
 };
 
 const ZONE_DISPLAY_NAMES: Record<SemanticZoneId, string> = {
-  DEF_LEFT:          "left defensive channel",
-  DEF_CENTRE:        "central defensive zone",
-  DEF_RIGHT:         "right defensive channel",
-  MID_LEFT:          "left midfield",
-  MID_CENTRE:        "central midfield",
-  MID_RIGHT:         "right midfield",
-  ATK_ENTRY_LEFT:    "left forward entry",
-  ATK_ENTRY_CENTRE:  "central forward entry",
-  ATK_ENTRY_RIGHT:   "right forward entry",
-  SCORING_LEFT:      "left scoring channel",
-  SCORING_CENTRE:    "central scoring zone",
-  SCORING_RIGHT:     "right scoring channel",
+  DEF_LEFT:          "left defensive 3rd",
+  DEF_CENTRE:        "centre defensive 3rd",
+  DEF_RIGHT:         "right defensive 3rd",
+  MID_LEFT:          "left middle 3rd",
+  MID_CENTRE:        "centre middle 3rd",
+  MID_RIGHT:         "right middle 3rd",
+  ATK_ENTRY_LEFT:    "left attacking 3rd",
+  ATK_ENTRY_CENTRE:  "centre attacking 3rd",
+  ATK_ENTRY_RIGHT:   "right attacking 3rd",
+  SCORING_LEFT:      "left scoring zone",
+  SCORING_CENTRE:    "centre scoring zone",
+  SCORING_RIGHT:     "right scoring zone",
 };
 
 type BenefitDirection = "positive" | "negative" | "mixed" | "neutral";
