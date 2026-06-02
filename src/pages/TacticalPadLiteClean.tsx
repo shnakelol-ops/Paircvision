@@ -1845,6 +1845,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const isPortraitOrientation = usePortraitOrientation();
   const [whiteboardBlueCount, setWhiteboardBlueCount] = useState(1);
   const [whiteboardRedCount, setWhiteboardRedCount] = useState(1);
+  const [bluePlayerCount, setBluePlayerCount] = useState(0);
+  const [redPlayerCount, setRedPlayerCount] = useState(0);
   const [whiteboardCountPickerTeam, setWhiteboardCountPickerTeam] = useState<"BLUE" | "RED">("BLUE");
   const [whiteboardBubbleOpen, setWhiteboardBubbleOpen] = useState(false);
   const [whiteboardHomeConfirmOpen, setWhiteboardHomeConfirmOpen] = useState(false);
@@ -2951,6 +2953,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setPendingRecoveredBoardDraft(null);
     showQuickBoardNotice("Board loaded");
     setLoadedBoardName(saved.name);
+    syncTeamCounts();
   };
   const lastBoardSavedLabel =
     lastBoardSavedAtMillis != null ? formatBoardUpdatedAt(lastBoardSavedAtMillis) : null;
@@ -3132,6 +3135,14 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     }
   };
 
+  const syncTeamCounts = () => {
+    const board = surfaceRef.current?.exportBoardState();
+    if (!board) return;
+    const ps = board.players;
+    setBluePlayerCount(ps.filter((p) => typeof p === "object" && p !== null && (p as Record<string, unknown>).team === "BLUE").length);
+    setRedPlayerCount(ps.filter((p) => typeof p === "object" && p !== null && (p as Record<string, unknown>).team === "RED").length);
+  };
+
   const clearTacticalDrawings = () => {
     if (isPortraitViewingMode) return;
     surfaceRef.current?.clearWhiteboardStrokes();
@@ -3148,6 +3159,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     boardBaselineSignatureRef.current = serializeBoardState(resetSnapshot);
     clearActiveBoardDraft();
     setPendingRecoveredBoardDraft(null);
+    syncTeamCounts();
   };
 
   const handleNewBoard = () => {
@@ -3179,6 +3191,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setControlsOpen(false);
     closeActionsMenu();
     showQuickBoardNotice("New board ready");
+    syncTeamCounts();
   };
 
   const openMenuFromTools = () => {
@@ -3198,12 +3211,32 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (isPortraitViewingMode) return;
     surfaceRef.current?.addTacticalPlayer(team);
     setKitEditorState(null);
+    syncTeamCounts();
   };
 
   const removeTacticalPlayer = (team: "BLUE" | "RED") => {
     if (isPortraitViewingMode) return;
     surfaceRef.current?.removeTacticalPlayer(team);
     setKitEditorState(null);
+    syncTeamCounts();
+  };
+
+  const fillTeam = (team: "BLUE" | "RED") => {
+    if (isPortraitViewingMode) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    for (let i = 0; i < 15; i++) surface.addTacticalPlayer(team);
+    setKitEditorState(null);
+    syncTeamCounts();
+  };
+
+  const clearTeam = (team: "BLUE" | "RED") => {
+    if (isPortraitViewingMode) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    for (let i = 0; i < 15; i++) surface.removeTacticalPlayer(team);
+    setKitEditorState(null);
+    syncTeamCounts();
   };
 
   const addItem = (type: TacticalItem["type"]) => {
@@ -4213,39 +4246,39 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
                   {activeToolsSection === "teams" ? (
                     <div style={COACH_HUB_SECTION_STYLE}>
-                      <p style={coachHubSectionTitleStyle}>{isCompactLandscapeTools ? "Players" : "Teams"}</p>
+                      <p style={coachHubSectionTitleStyle}>Teams</p>
+                      <p style={{ ...coachHubSectionTitleStyle, color: "#93c5fd", marginTop: 4 }}>
+                        Team A — {bluePlayerCount}/15
+                      </p>
                       <div style={COACH_HUB_ACTION_GRID_STYLE}>
-                        <button
-                          type="button"
-                          style={coachHubActionButtonStyle}
-                          disabled={isPlaybackLocked}
-                          onClick={() => addTacticalPlayer("BLUE")}
-                        >
-                          + Team A
+                        <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => addTacticalPlayer("BLUE")}>
+                          + Add
                         </button>
-                        <button
-                          type="button"
-                          style={coachHubActionButtonStyle}
-                          disabled={isPlaybackLocked}
-                          onClick={() => removeTacticalPlayer("BLUE")}
-                        >
-                          - Team A
+                        <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => fillTeam("BLUE")}>
+                          Fill (15)
                         </button>
-                        <button
-                          type="button"
-                          style={coachHubActionButtonStyle}
-                          disabled={isPlaybackLocked}
-                          onClick={() => addTacticalPlayer("RED")}
-                        >
-                          + Team B
+                        <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => removeTacticalPlayer("BLUE")}>
+                          − Remove
                         </button>
-                        <button
-                          type="button"
-                          style={coachHubActionButtonStyle}
-                          disabled={isPlaybackLocked}
-                          onClick={() => removeTacticalPlayer("RED")}
-                        >
-                          - Team B
+                        <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => clearTeam("BLUE")}>
+                          Clear All
+                        </button>
+                      </div>
+                      <p style={{ ...coachHubSectionTitleStyle, color: "#fca5a5", marginTop: 6 }}>
+                        Team B — {redPlayerCount}/15
+                      </p>
+                      <div style={COACH_HUB_ACTION_GRID_STYLE}>
+                        <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => addTacticalPlayer("RED")}>
+                          + Add
+                        </button>
+                        <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => fillTeam("RED")}>
+                          Fill (15)
+                        </button>
+                        <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => removeTacticalPlayer("RED")}>
+                          − Remove
+                        </button>
+                        <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => clearTeam("RED")}>
+                          Clear All
                         </button>
                       </div>
                     </div>
@@ -4466,39 +4499,39 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
             {activeToolsSection === "teams" ? (
               <div style={COACH_HUB_SECTION_STYLE}>
-                <p style={coachHubSectionTitleStyle}>{isCompactLandscapeTools ? "Players" : "Teams"}</p>
+                <p style={coachHubSectionTitleStyle}>Teams</p>
+                <p style={{ ...coachHubSectionTitleStyle, color: "#93c5fd", marginTop: 4 }}>
+                  Team A — {bluePlayerCount}/15
+                </p>
                 <div style={COACH_HUB_ACTION_GRID_STYLE}>
-                  <button
-                    type="button"
-                    style={coachHubActionButtonStyle}
-                    disabled={isPlaybackLocked}
-                    onClick={() => addTacticalPlayer("BLUE")}
-                  >
-                    + Team A
+                  <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => addTacticalPlayer("BLUE")}>
+                    + Add
                   </button>
-                  <button
-                    type="button"
-                    style={coachHubActionButtonStyle}
-                    disabled={isPlaybackLocked}
-                    onClick={() => removeTacticalPlayer("BLUE")}
-                  >
-                    - Team A
+                  <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => fillTeam("BLUE")}>
+                    Fill (15)
                   </button>
-                  <button
-                    type="button"
-                    style={coachHubActionButtonStyle}
-                    disabled={isPlaybackLocked}
-                    onClick={() => addTacticalPlayer("RED")}
-                  >
-                    + Team B
+                  <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => removeTacticalPlayer("BLUE")}>
+                    − Remove
                   </button>
-                  <button
-                    type="button"
-                    style={coachHubActionButtonStyle}
-                    disabled={isPlaybackLocked}
-                    onClick={() => removeTacticalPlayer("RED")}
-                  >
-                    - Team B
+                  <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => clearTeam("BLUE")}>
+                    Clear All
+                  </button>
+                </div>
+                <p style={{ ...coachHubSectionTitleStyle, color: "#fca5a5", marginTop: 6 }}>
+                  Team B — {redPlayerCount}/15
+                </p>
+                <div style={COACH_HUB_ACTION_GRID_STYLE}>
+                  <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => addTacticalPlayer("RED")}>
+                    + Add
+                  </button>
+                  <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => fillTeam("RED")}>
+                    Fill (15)
+                  </button>
+                  <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => removeTacticalPlayer("RED")}>
+                    − Remove
+                  </button>
+                  <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => clearTeam("RED")}>
+                    Clear All
                   </button>
                 </div>
               </div>
