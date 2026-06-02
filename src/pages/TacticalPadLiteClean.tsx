@@ -42,6 +42,7 @@ import {
 import { useOverlayPortalRoot } from "../overlay/OverlayPortalContext";
 import { useScreenWakeLock } from "../hooks/useScreenWakeLock";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
+import { exportBoardSetupAsPng } from "../features/quickboard/export/board-png-export";
 
 type PadMode = "tactical" | "stats" | "whiteboard";
 type TacticalPadLiteCleanProps = {
@@ -1815,6 +1816,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const toolsBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
   const toolsMenuRef = useRef<HTMLDivElement | null>(null);
   const shareTipTimerRef = useRef<number | null>(null);
+  const isExportingSnapshotRef = useRef(false);
   const quickBoardFeedbackTimerRef = useRef<number | null>(null);
   const whiteboardBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
   const whiteboardBubbleMenuRef = useRef<HTMLDivElement | null>(null);
@@ -2775,9 +2777,49 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     closeQuickShareMenu();
     showShareTip("Use your phone’s screen recorder.\nShare the saved video directly to WhatsApp.");
   };
-  const handleQuickShareSnapshot = () => {
+  const handleQuickShareSnapshot = async () => {
+    if (isExportingSnapshotRef.current) return;
+    const surface = surfaceRef.current;
+    if (!surface) {
+      showShareTip("Board not ready — please try again.");
+      return;
+    }
+    isExportingSnapshotRef.current = true;
     closeQuickShareMenu();
-    showShareTip("Take a screenshot and share the saved image.");
+    surface.pausePlayback();
+    try {
+      const file = await exportBoardSetupAsPng(surface);
+      if (!file) {
+        showShareTip("Could not generate image — please try again.");
+        return;
+      }
+      const canShareFiles =
+        typeof navigator !== "undefined" &&
+        typeof (navigator as Navigator & { canShare?: (data?: ShareData) => boolean }).canShare === "function" &&
+        (navigator as Navigator & { canShare?: (data?: ShareData) => boolean }).canShare!({ files: [file] });
+      if (canShareFiles) {
+        try {
+          await navigator.share({ title: "PáircVision Board", files: [file] });
+        } catch {
+          // User cancelled the share sheet — no error toast needed.
+        }
+      } else {
+        const url = URL.createObjectURL(file);
+        try {
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "paircvision-board.png";
+          a.click();
+          showShareTip("Image saved — check your downloads.");
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      }
+    } catch {
+      showShareTip("Share failed — please try again.");
+    } finally {
+      isExportingSnapshotRef.current = false;
+    }
   };
   const openMyBoardsEntry = () => {
     setQuickShareOpen(false);
@@ -4737,7 +4779,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             </button>
             <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareSnapshot}>
               <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>📸 Share Snapshot</span>
-              <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Take a screenshot and share the saved image.</span>
+              <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Export current setup as PNG and share to WhatsApp or Photos.</span>
             </button>
           </div>
         ) : null}
