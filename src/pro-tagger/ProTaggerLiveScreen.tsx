@@ -1199,6 +1199,16 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               )}
 
               <button
+                style={AS.actionBtn}
+                onClick={() => {
+                  setActionsOpen(false);
+                  onEnd();
+                }}
+              >
+                Home
+              </button>
+
+              <button
                 style={{ ...AS.actionBtn, ...AS.actionBtnDanger }}
                 onClick={() => setResetConfirmOpen(true)}
               >

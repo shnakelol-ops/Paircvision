@@ -44,7 +44,6 @@ export default function ProTaggerPage() {
   const [draftSession, setDraftSession] = useState<ProTaggerSession | null>(null);
   const [restoreState, setRestoreState] = useState<RestoreState | undefined>(undefined);
   const [savedCount, setSavedCount]     = useState(() => readProTaggerMatches().length);
-  const [menuOpen, setMenuOpen]         = useState(false);
   const [reviewMatch, setReviewMatch]   = useState<ProTaggerSavedMatch | null>(null);
 
   // ── Home landing ────────────────────────────────────────────────────────────
@@ -54,76 +53,43 @@ export default function ProTaggerPage() {
       <div style={H.shell}>
         <div style={H.header}>
           <span style={H.title}>Pro Tagger</span>
-          <button
-            style={H.menuBtn}
-            onClick={() => {
-              setSavedCount(readProTaggerMatches().length);
-              setMenuOpen(true);
-            }}
-            aria-label="Menu"
-          >
-            ☰
-          </button>
         </div>
 
-        <div style={H.body}>
-          <div style={H.logoWrap}>
-            <span style={H.logo}>⬡</span>
-          </div>
+        <div style={H.nav}>
           <button
-            style={H.primaryBtn}
+            style={H.newMatchBtn}
             onClick={() => setPhase("setup")}
           >
-            Setup Match
+            <span style={H.navIcon}>🟢</span>
+            <span style={H.navLabel}>New Match</span>
+          </button>
+
+          <button
+            style={H.navBtn}
+            onClick={() => {
+              setSavedCount(readProTaggerMatches().length);
+              setPhase("saved-matches");
+            }}
+          >
+            <span style={H.navIcon}>📂</span>
+            <span style={H.navLabel}>Saved Matches</span>
+            {savedCount > 0 && (
+              <span style={H.navBadge}>{savedCount}</span>
+            )}
+          </button>
+
+          <button style={{ ...H.navBtn, ...H.navBtnDisabled }} disabled>
+            <span style={H.navIcon}>👥</span>
+            <span style={H.navLabel}>Team Library</span>
+            <span style={H.navPill}>Soon</span>
+          </button>
+
+          <button style={{ ...H.navBtn, ...H.navBtnDisabled }} disabled>
+            <span style={H.navIcon}>ℹ️</span>
+            <span style={H.navLabel}>About</span>
+            <span style={H.navPill}>Soon</span>
           </button>
         </div>
-
-        {/* ── Menu sheet ────────────────────────────────────────────── */}
-        {menuOpen && (
-          <div
-            style={H.overlay}
-            onClick={() => setMenuOpen(false)}
-          >
-            <div
-              style={H.sheet}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={H.sheetHandle} />
-
-              <button
-                style={H.menuItem}
-                onClick={() => {
-                  setMenuOpen(false);
-                  setPhase("saved-matches");
-                }}
-              >
-                <span style={H.menuItemIcon}>📋</span>
-                <span style={H.menuItemLabel}>Saved Matches</span>
-                {savedCount > 0 && (
-                  <span style={H.menuBadge}>{savedCount}</span>
-                )}
-              </button>
-
-              <button style={{ ...H.menuItem, ...H.menuItemDisabled }} disabled>
-                <span style={H.menuItemIcon}>👥</span>
-                <span style={H.menuItemLabel}>Team Library</span>
-                <span style={H.menuItemPill}>Soon</span>
-              </button>
-
-              <button style={{ ...H.menuItem, ...H.menuItemDisabled }} disabled>
-                <span style={H.menuItemIcon}>📊</span>
-                <span style={H.menuItemLabel}>Saved Reviews</span>
-                <span style={H.menuItemPill}>Soon</span>
-              </button>
-
-              <button style={{ ...H.menuItem, ...H.menuItemDisabled }} disabled>
-                <span style={H.menuItemIcon}>📄</span>
-                <span style={H.menuItemLabel}>Reports</span>
-                <span style={H.menuItemPill}>Soon</span>
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
@@ -240,123 +206,77 @@ const H: Record<string, CSSProperties> = {
     letterSpacing: "-0.4px",
     flex: 1,
   },
-  menuBtn: {
-    background: "none",
-    border: "1px solid #30363d",
-    borderRadius: 8,
-    color: "#8b949e",
-    fontSize: 16,
-    lineHeight: 1,
-    padding: "5px 9px",
-    cursor: "pointer",
-    outline: "none",
-    flexShrink: 0,
-  },
-  body: {
+  nav: {
     flex: 1,
     display: "flex",
     flexDirection: "column",
+    padding: "20px 20px 32px",
+    gap: 10,
+    overflowY: "auto" as const,
+  },
+  newMatchBtn: {
+    display: "flex",
     alignItems: "center",
-    justifyContent: "center",
     gap: 14,
-    padding: "0 32px 48px",
-  },
-  logoWrap: {
-    marginBottom: 8,
-  },
-  logo: {
-    fontSize: 56,
-    opacity: 0.15,
-    display: "block",
-  },
-  primaryBtn: {
-    background: "#238636",
+    background: "#1a3d22",
     border: "1px solid #2ea043",
-    borderRadius: 12,
+    borderRadius: 14,
     color: "#ffffff",
     fontSize: 17,
     fontWeight: 700,
-    padding: "18px 0",
-    width: "100%",
-    maxWidth: 360,
+    padding: "20px 20px",
     cursor: "pointer",
     outline: "none",
+    width: "100%",
+    textAlign: "left" as const,
     letterSpacing: "-0.3px",
+  },
+  navBtn: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.55)",
-    zIndex: 200,
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "flex-end",
-  },
-  sheet: {
+    gap: 14,
     background: "#161b22",
-    borderTop: "1px solid #30363d",
-    borderRadius: "16px 16px 0 0",
-    paddingBottom: 32,
-    display: "flex",
-    flexDirection: "column",
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    background: "#30363d",
-    borderRadius: 2,
-    margin: "10px auto 12px",
-    flexShrink: 0,
-  },
-  menuItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    background: "none",
-    border: "none",
-    borderTop: "1px solid #21262d",
+    border: "1px solid #21262d",
+    borderRadius: 14,
     color: "#e6edf3",
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: 500,
-    padding: "15px 20px",
+    padding: "18px 20px",
     cursor: "pointer",
     outline: "none",
     width: "100%",
     textAlign: "left" as const,
   },
-  menuItemDisabled: {
+  navBtnDisabled: {
     color: "#484f58",
     cursor: "default",
+    borderColor: "#1c2128",
   },
-  menuItemIcon: {
-    fontSize: 18,
+  navIcon: {
+    fontSize: 20,
     flexShrink: 0,
-    width: 24,
+    width: 28,
     textAlign: "center" as const,
   },
-  menuItemLabel: {
+  navLabel: {
     flex: 1,
   },
-  menuBadge: {
+  navBadge: {
     background: "#21262d",
     border: "1px solid #30363d",
     borderRadius: 10,
     color: "#8b949e",
     fontSize: 12,
     fontWeight: 700,
-    padding: "1px 7px",
-    lineHeight: "1.4",
+    padding: "1px 8px",
+    lineHeight: "1.5",
     flexShrink: 0,
   },
-  menuItemPill: {
+  navPill: {
     background: "#21262d",
-    border: "1px solid #30363d",
+    border: "1px solid #1c2128",
     borderRadius: 8,
-    color: "#6e7681",
+    color: "#484f58",
     fontSize: 11,
     fontWeight: 600,
     padding: "2px 7px",
