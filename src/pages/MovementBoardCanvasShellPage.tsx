@@ -387,6 +387,7 @@ export default function MovementBoardCanvasShellPage() {
     route: "Route",
     play: "Play",
   };
+  const modeIsPlaybackLocked = isPlaying || isPaused;
   const selectedHasBall = selectedToken != null && selectedToken.id === ballCarrierId;
   const canPassTo =
     selectedHasBall && !passInFlight && !awaitingPass && !modeIsPlaybackLocked;
@@ -500,7 +501,6 @@ export default function MovementBoardCanvasShellPage() {
     window.location.assign("/vision-board");
   };
 
-  const modeIsPlaybackLocked = isPlaying || isPaused;
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
   const removePointDisabled = menuMode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying;
   const playRoutesDisabled = isPortrait || isPlaying || isPaused;
