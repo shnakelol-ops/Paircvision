@@ -140,8 +140,8 @@ export function createPremiumPlayerToken({
   const safeLabel = (label?.trim().slice(0, 3) ?? "") || String(number);
   const isNumeric = /^\d+$/.test(safeLabel);
   const fontSize = isNumeric
-    ? safeLabel.length >= 2 ? radius * 0.52 : radius * 0.60
-    : radius * 0.44;
+    ? safeLabel.length >= 2 ? radius * 0.74 : radius * 0.84
+    : radius * 0.62;
 
   const numberLabel = new Text({
     text: safeLabel,
@@ -152,11 +152,11 @@ export function createPremiumPlayerToken({
       align: "center",
       fontFamily: '"Barlow Condensed", "Inter Tight", Inter, system-ui, sans-serif',
       letterSpacing: isNumeric && safeLabel.length >= 2 ? 0 : 0.1,
-      stroke: { color: 0x000000, width: 0.6, join: "round" },
+      stroke: { color: 0x000000, width: 1.4, join: "round" },
     },
   });
   numberLabel.anchor.set(0.5);
-  numberLabel.position.set(0, radius * 0.10);
+  numberLabel.position.set(0, radius * 0.05);
   numberLabel.resolution = textResolution;
   numberLabel.roundPixels = true;
   body.addChild(numberLabel);
