@@ -227,6 +227,13 @@ const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
   padding: "0 8px",
 };
 
+const PLAYBACK_SIDE_ACTIVE_STYLE: CSSProperties = {
+  ...PLAYBACK_SIDE_BUTTON_STYLE,
+  border: "1px solid rgba(124, 255, 114, 0.58)",
+  background: "rgba(22, 67, 44, 0.78)",
+  color: "#f4fff6",
+};
+
 export default function MovementBoardCanvasShellPage() {
   type MovementMenuMode = "move" | "route" | "play";
 
@@ -256,6 +263,8 @@ export default function MovementBoardCanvasShellPage() {
   const [isPaused, setIsPaused] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
   const [ballCarrierId, setBallCarrierId] = useState<string | null>(null);
+  const [passInFlight, setPassInFlight] = useState(false);
+  const [awaitingPass, setAwaitingPass] = useState(false);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -291,6 +300,10 @@ export default function MovementBoardCanvasShellPage() {
         },
         onBallStateChange: (state) => {
           setBallCarrierId(state.carrierId ?? null);
+          setPassInFlight(state.inFlight ?? false);
+        },
+        onPassSelectStateChange: (active) => {
+          setAwaitingPass(active);
         },
       }).then((shell) => {
         if (disposed) {
@@ -307,7 +320,10 @@ export default function MovementBoardCanvasShellPage() {
         const playbackState = shell.getPlaybackState();
         setIsPlaying(playbackState.isPlaying);
         setIsPaused(playbackState.isPaused);
-        setBallCarrierId(shell.getBallState().carrierId ?? null);
+        const bs = shell.getBallState();
+        setBallCarrierId(bs.carrierId ?? null);
+        setPassInFlight(bs.inFlight ?? false);
+        setAwaitingPass(false);
         shell.setDragEnabled(!isPortrait);
         destroyShell = shell.destroy;
       });
@@ -372,11 +388,15 @@ export default function MovementBoardCanvasShellPage() {
     play: "Play",
   };
   const selectedHasBall = selectedToken != null && selectedToken.id === ballCarrierId;
-  const coachInfoLabel = selectedToken
-    ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""} · Routes ${routeCount}`
-    : ballCarrierId
-      ? `Ball Assigned · Routes ${routeCount}`
-      : `${modeLabelByMenu[menuMode]} · Routes ${routeCount}`;
+  const canPassTo =
+    selectedHasBall && !passInFlight && !awaitingPass && !modeIsPlaybackLocked;
+  const coachInfoLabel = awaitingPass
+    ? "Tap player to receive"
+    : selectedToken
+      ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""} · Routes ${routeCount}`
+      : ballCarrierId
+        ? `Ball Assigned · Routes ${routeCount}`
+        : `${modeLabelByMenu[menuMode]} · Routes ${routeCount}`;
 
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
@@ -452,6 +472,14 @@ export default function MovementBoardCanvasShellPage() {
     const token = selectedToken;
     if (!shell || !token) return;
     shell.giveBall(token.id);
+  };
+
+  const initiatePassToAction = () => {
+    shellRef.current?.initiatePassTo();
+  };
+
+  const cancelPassToAction = () => {
+    shellRef.current?.cancelPassTo();
   };
 
   const goBack = () => {
@@ -538,6 +566,15 @@ export default function MovementBoardCanvasShellPage() {
                       {selectedHasBall ? "Has Ball" : "Give Ball"}
                     </button>
                   ) : null}
+                  {awaitingPass ? (
+                    <button type="button" style={TOOL_ACTIVE_STYLE} onClick={cancelPassToAction}>
+                      Cancel
+                    </button>
+                  ) : canPassTo ? (
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={initiatePassToAction}>
+                      Pass To
+                    </button>
+                  ) : null}
                 </>
               ) : null}
 
@@ -590,6 +627,15 @@ export default function MovementBoardCanvasShellPage() {
                       onClick={giveSelectedPlayerBall}
                     >
                       {selectedHasBall ? "Has Ball" : "Give Ball"}
+                    </button>
+                  ) : null}
+                  {awaitingPass ? (
+                    <button type="button" style={TOOL_ACTIVE_STYLE} onClick={cancelPassToAction}>
+                      Cancel
+                    </button>
+                  ) : canPassTo ? (
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={initiatePassToAction}>
+                      Pass To
                     </button>
                   ) : null}
                 </>
@@ -665,6 +711,15 @@ export default function MovementBoardCanvasShellPage() {
             <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetBoard}>
               Reset
             </button>
+            {awaitingPass ? (
+              <button type="button" style={PLAYBACK_SIDE_ACTIVE_STYLE} onClick={cancelPassToAction}>
+                Cancel
+              </button>
+            ) : ballCarrierId && !passInFlight ? (
+              <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={initiatePassToAction}>
+                Pass To
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

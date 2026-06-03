@@ -17,6 +17,7 @@ import { normalizeRoutePoints } from "../routes/route-sampling";
 import { buildDefaultTokens } from "../tokens/default-tokens";
 import { createTokenLayer } from "../tokens/token-layer";
 import type {
+  BallPass,
   BallState,
   MovementBoardMode,
   MovementBoardToken,
@@ -34,6 +35,15 @@ const ROUTE_MIN_POINT_DISTANCE = 0.9;
 const POSITION_EPSILON = 0.0001;
 const ROUTE_HANDLE_TOUCH_RADIUS_PX = 30;
 const ROUTE_INSERT_TOUCH_DISTANCE_PX = 24;
+const PASS_ARC_LIFT = 9;
+const PASS_SPEED_MS_PER_UNIT = 22;
+const PASS_DURATION_MIN_MS = 350;
+const PASS_DURATION_MAX_MS = 800;
+
+function qBez(a: number, m: number, b: number, t: number): number {
+  const u = 1 - t;
+  return u * u * a + 2 * u * t * m + t * t * b;
+}
 
 type DragState = {
   tokenId: string;
@@ -200,11 +210,28 @@ export async function createMovementCanvasShell(
   const ballLayer = createBallLayer(ballLayerContainer);
   let ballState: BallState = {};
   let ballStateAtPlayStart: BallState = {};
+  let awaitingPassReceiver = false;
 
   const BALL_CARRIER_OFFSET_X = 3.5;
   const BALL_CARRIER_OFFSET_Y = -2.5;
 
+  const completePass = () => {
+    if (!ballState.pass) return;
+    ballState = { carrierId: ballState.pass.toPlayerId };
+    options.onBallStateChange?.({ ...ballState });
+  };
+
   const syncBallPosition = () => {
+    if (ballState.inFlight && ballState.pass) {
+      const { fromPos, toPos, startedAt, durationMs } = ballState.pass;
+      const t = Math.min(1, (performance.now() - startedAt) / durationMs);
+      const midX = (fromPos.x + toPos.x) / 2;
+      const midY = (fromPos.y + toPos.y) / 2 - PASS_ARC_LIFT;
+      ballLayer.setVisible(true);
+      ballLayer.setBallPosition(qBez(fromPos.x, midX, toPos.x, t), qBez(fromPos.y, midY, toPos.y, t));
+      if (t >= 1) completePass();
+      return;
+    }
     if (!ballState.carrierId) {
       ballLayer.setVisible(false);
       return;
@@ -223,6 +250,42 @@ export async function createMovementCanvasShell(
 
   const emitBallState = () => {
     options.onBallStateChange?.({ ...ballState });
+  };
+
+  const emitPassSelectState = () => {
+    options.onPassSelectStateChange?.(awaitingPassReceiver);
+  };
+
+  const cancelPassReceiver = () => {
+    if (!awaitingPassReceiver) return;
+    awaitingPassReceiver = false;
+    emitPassSelectState();
+  };
+
+  const confirmPassReceiver = (receiverId: string) => {
+    if (!awaitingPassReceiver || !ballState.carrierId || ballState.inFlight) return;
+    awaitingPassReceiver = false;
+    emitPassSelectState();
+    if (receiverId === ballState.carrierId) return;
+    const fromId = ballState.carrierId;
+    const fromPos = tokenLayer.getTokenWorldPosition(fromId);
+    const toPos = tokenLayer.getTokenWorldPosition(receiverId);
+    if (!fromPos || !toPos) return;
+    const dist = Math.hypot(toPos.x - fromPos.x, toPos.y - fromPos.y);
+    const durationMs = Math.max(
+      PASS_DURATION_MIN_MS,
+      Math.min(PASS_DURATION_MAX_MS, dist * PASS_SPEED_MS_PER_UNIT),
+    );
+    const pass: BallPass = {
+      fromPlayerId: fromId,
+      toPlayerId: receiverId,
+      fromPos: { x: fromPos.x, y: fromPos.y },
+      toPos: { x: toPos.x, y: toPos.y },
+      startedAt: performance.now(),
+      durationMs,
+    };
+    ballState = { inFlight: true, pass };
+    emitBallState();
   };
 
   const isPlaybackLocked = () => orchestrator.isLocked();
@@ -494,13 +557,19 @@ export async function createMovementCanvasShell(
         options.onTokenMove?.(movedToken);
       }
     }
+    awaitingPassReceiver = false;
     ballState = { ...ballStateAtPlayStart };
     syncBallPosition();
     emitBallState();
+    emitPassSelectState();
   };
 
   tokenLayer.setOnTokenPointerDown((tokenId, event) => {
     (event as { stopPropagation?: () => void }).stopPropagation?.();
+    if (awaitingPassReceiver) {
+      confirmPassReceiver(tokenId);
+      return;
+    }
     setSelectedToken(tokenId);
     if (!canDragTokens()) return;
     const token = tokenLayer.getTokenById(tokenId);
@@ -642,6 +711,11 @@ export async function createMovementCanvasShell(
   app.stage.on("pointerdown", (event) => {
     const worldPoint = getWorldPointFromEvent(event, app.stage, mapper);
     if (!worldPoint || !isWorldPointInsidePitch(worldPoint)) return;
+
+    if (awaitingPassReceiver) {
+      cancelPassReceiver();
+      return;
+    }
 
     if (mode === "route" && !isPlaybackLocked() && selectedTokenId) {
       const route = routeByTokenId.get(selectedTokenId);
@@ -822,6 +896,14 @@ export async function createMovementCanvasShell(
       emitBallState();
     },
     getBallState: () => ({ ...ballState }),
+    initiatePassTo: () => {
+      if (!ballState.carrierId || ballState.inFlight || awaitingPassReceiver) return;
+      awaitingPassReceiver = true;
+      emitPassSelectState();
+    },
+    cancelPassTo: () => {
+      cancelPassReceiver();
+    },
     setDragEnabled: (enabled) => {
       dragEnabled = enabled;
       if (!enabled) {

@@ -2,8 +2,19 @@ import type { PitchSport } from "../pitch/pitch-config";
 import type { NormalizedPoint } from "../coordinates/normalization";
 import type { PremiumPlayerTokenColor } from "../tokens/createPremiumPlayerToken";
 
+export type BallPass = {
+  fromPlayerId: string;
+  toPlayerId: string;
+  fromPos: { x: number; y: number };
+  toPos: { x: number; y: number };
+  startedAt: number;
+  durationMs: number;
+};
+
 export type BallState = {
   carrierId?: string;
+  inFlight?: boolean;
+  pass?: BallPass;
 };
 
 export type MovementBoardToken = {
@@ -52,6 +63,7 @@ export type MovementCanvasShellOptions = {
   onPlaybackStateChange?: (state: MovementPlaybackState) => void;
   onRouteEditStateChange?: (state: MovementRouteEditState) => void;
   onBallStateChange?: (state: BallState) => void;
+  onPassSelectStateChange?: (active: boolean) => void;
 };
 
 export type MovementCanvasShellHandle = {
@@ -74,6 +86,8 @@ export type MovementCanvasShellHandle = {
   reset: () => void;
   giveBall: (playerId: string) => void;
   getBallState: () => BallState;
+  initiatePassTo: () => void;
+  cancelPassTo: () => void;
   setDragEnabled: (enabled: boolean) => void;
   reflow: () => void;
   destroy: () => void;
