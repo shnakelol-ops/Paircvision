@@ -187,9 +187,19 @@ export async function createMovementCanvasShell(
     getStartPosition: (tokenId) => startPositionByTokenId.get(tokenId) ?? null,
     onPlaybackReset: (tokenId, startPosition) => {
       tokenLayer.setTokenPosition(tokenId, startPosition);
+      tokenLayer.setTokenMoving(tokenId, null);
     },
     onTokenStep: (tokenId, position) => {
+      const prev = tokenLayer.getTokenById(tokenId)?.position;
       const movedToken = tokenLayer.setTokenPosition(tokenId, position);
+      if (movedToken && prev) {
+        const dx = position.x - prev.x;
+        const dy = position.y - prev.y;
+        if (Math.abs(dx) + Math.abs(dy) > POSITION_EPSILON) {
+          // +π/2 aligns atan2 heading with the token's default upward orientation
+          tokenLayer.setTokenMoving(tokenId, Math.atan2(dy, dx) + Math.PI / 2);
+        }
+      }
       if (movedToken) options.onTokenMove?.(movedToken);
     },
     onStateChange: (state) => {
@@ -487,6 +497,7 @@ export async function createMovementCanvasShell(
     releaseDrag();
     releaseRouteHandleDrag();
     for (const token of tokenLayer.getTokens()) {
+      tokenLayer.setTokenMoving(token.id, null);
       const start = startPositionByTokenId.get(token.id);
       if (!start) continue;
       const movedToken = tokenLayer.setTokenPosition(token.id, start);
@@ -827,6 +838,9 @@ export async function createMovementCanvasShell(
       if (!enabled) {
         releaseDrag();
       }
+    },
+    setBallCarrier: (tokenId) => {
+      tokenLayer.setBallCarrier(tokenId);
     },
     reflow: () => {
       syncToHost();

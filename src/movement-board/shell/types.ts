@@ -13,6 +13,7 @@ export type MovementBoardToken = {
   color: PremiumPlayerTokenColor;
   position: NormalizedPoint;
   draggable?: boolean;
+  isGhost?: boolean;
 };
 
 export type MovementCanvasTapPayload = {
@@ -75,6 +76,7 @@ export type MovementCanvasShellHandle = {
   giveBall: (playerId: string) => void;
   getBallState: () => BallState;
   setDragEnabled: (enabled: boolean) => void;
+  setBallCarrier: (tokenId: string | null) => void;
   reflow: () => void;
   destroy: () => void;
 };
