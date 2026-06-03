@@ -9,6 +9,7 @@ import {
 } from "../input/pointer-controller";
 import { createPitchRoot } from "../pitch/create-pitch-root";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
+import { createBallLayer } from "../ball/ball-layer";
 import { createPlaybackOrchestrator } from "../playback/playback-orchestrator";
 import { routeStyleForToken } from "../routes/route-colors";
 import { createRouteLayer } from "../routes/route-layer";
@@ -16,6 +17,7 @@ import { normalizeRoutePoints } from "../routes/route-sampling";
 import { buildDefaultTokens } from "../tokens/default-tokens";
 import { createTokenLayer } from "../tokens/token-layer";
 import type {
+  BallState,
   MovementBoardMode,
   MovementBoardToken,
   MovementCanvasShellHandle,
@@ -140,6 +142,10 @@ export async function createMovementCanvasShell(
   routeLayerContainer.zIndex = 12;
   world.addChild(routeLayerContainer);
 
+  const ballLayerContainer = new Container();
+  ballLayerContainer.zIndex = 15;
+  world.addChild(ballLayerContainer);
+
   const tokenLayerContainer = new Container();
   tokenLayerContainer.zIndex = 20;
   world.addChild(tokenLayerContainer);
@@ -190,6 +196,34 @@ export async function createMovementCanvasShell(
       options.onPlaybackStateChange?.(state);
     },
   });
+
+  const ballLayer = createBallLayer(ballLayerContainer);
+  let ballState: BallState = {};
+  let ballStateAtPlayStart: BallState = {};
+
+  const BALL_CARRIER_OFFSET_X = 3.5;
+  const BALL_CARRIER_OFFSET_Y = -2.5;
+
+  const syncBallPosition = () => {
+    if (!ballState.carrierId) {
+      ballLayer.setVisible(false);
+      return;
+    }
+    const worldPos = tokenLayer.getTokenWorldPosition(ballState.carrierId);
+    if (!worldPos) {
+      ballLayer.setVisible(false);
+      return;
+    }
+    ballLayer.setVisible(true);
+    ballLayer.setBallPosition(
+      worldPos.x + BALL_CARRIER_OFFSET_X,
+      worldPos.y + BALL_CARRIER_OFFSET_Y,
+    );
+  };
+
+  const emitBallState = () => {
+    options.onBallStateChange?.({ ...ballState });
+  };
 
   const isPlaybackLocked = () => orchestrator.isLocked();
 
@@ -278,6 +312,7 @@ export async function createMovementCanvasShell(
     world.position.set(mapper.transform.offsetX, mapper.transform.offsetY);
     tokenLayer.syncToMapper();
     routeLayer.syncToMapper();
+    syncBallPosition();
   };
 
   const releaseDrag = () => {
@@ -441,6 +476,7 @@ export async function createMovementCanvasShell(
       releaseDrag();
       releaseRouteHandleDrag();
       clearRouteDraft();
+      ballStateAtPlayStart = { ...ballState };
     }
     orchestrator.start();
   };
@@ -458,6 +494,9 @@ export async function createMovementCanvasShell(
         options.onTokenMove?.(movedToken);
       }
     }
+    ballState = { ...ballStateAtPlayStart };
+    syncBallPosition();
+    emitBallState();
   };
 
   tokenLayer.setOnTokenPointerDown((tokenId, event) => {
@@ -506,6 +545,7 @@ export async function createMovementCanvasShell(
       setRouteForToken(movedToken.id, anchoredRoute);
     }
     options.onTokenMove?.(movedToken);
+    syncBallPosition();
   };
 
   const handleRouteHandleDragMove = (event: unknown) => {
@@ -672,6 +712,7 @@ export async function createMovementCanvasShell(
 
   const tick = () => {
     orchestrator.step(app.ticker.deltaMS);
+    syncBallPosition();
   };
   app.ticker.add(tick);
 
@@ -715,6 +756,12 @@ export async function createMovementCanvasShell(
       }
       if (selectedTokenId && !availableIds.has(selectedTokenId)) {
         setSelectedToken(null);
+      }
+      if (ballState.carrierId && !availableIds.has(ballState.carrierId)) {
+        ballState = {};
+        ballStateAtPlayStart = {};
+        syncBallPosition();
+        emitBallState();
       }
       emitRoutes();
       refreshRouteLayer();
@@ -765,6 +812,16 @@ export async function createMovementCanvasShell(
     reset: () => {
       reset();
     },
+    giveBall: (playerId) => {
+      if (!tokenLayer.getTokenById(playerId)) return;
+      ballState = { carrierId: playerId };
+      if (!orchestrator.isLocked()) {
+        ballStateAtPlayStart = { ...ballState };
+      }
+      syncBallPosition();
+      emitBallState();
+    },
+    getBallState: () => ({ ...ballState }),
     setDragEnabled: (enabled) => {
       dragEnabled = enabled;
       if (!enabled) {
@@ -779,6 +836,7 @@ export async function createMovementCanvasShell(
       resizeObserver.disconnect();
       tokenLayer.destroy();
       routeLayer.destroy();
+      ballLayer.destroy();
       app.ticker.remove(tick);
       app.stage.removeAllListeners();
       pitchMount.dispose();
