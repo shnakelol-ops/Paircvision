@@ -11,9 +11,13 @@ import {
   type PremiumPlayerTokenColor,
 } from "./createPremiumPlayerToken";
 import { createSimpleJerseyToken } from "./createSimpleJerseyToken";
+import { createJerseyTokenV2 } from "./createJerseyTokenV2";
 
-// Prototype toggle — true = simple jersey, false = full athlete token
-const USE_SIMPLE_JERSEY = true;
+// Renderer toggle — swap here to compare variants at /movement-board-labs
+//   createPremiumPlayerToken  → full athlete token
+//   createSimpleJerseyToken   → plain rounded-rect badge
+//   createJerseyTokenV2       → Pro Stats jersey silhouette (current)
+const activeRenderer = createJerseyTokenV2;
 import type { MovementBoardToken } from "../shell/types";
 
 type TokenVisual = {
@@ -159,8 +163,7 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
 
   const createVisual = (token: MovementBoardToken): TokenVisual => {
     const nextToken = sanitizeToken(token);
-    const renderer = USE_SIMPLE_JERSEY ? createSimpleJerseyToken : createPremiumPlayerToken;
-    const { token: node, body, shadow, ballMarker } = renderer({
+    const { token: node, body, shadow, ballMarker } = activeRenderer({
       color: nextToken.color,
       number: nextToken.number,
       label: nextToken.label,
