@@ -12,13 +12,27 @@ import {
 } from "./createPremiumPlayerToken";
 import { createSimpleJerseyToken } from "./createSimpleJerseyToken";
 import { createJerseyTokenV2 } from "./createJerseyTokenV2";
+import type { MovementBoardToken } from "../shell/types";
 
-// Renderer toggle — swap here to compare variants at /movement-board-labs
+// Renderer toggle — one line to compare variants at /movement-board-labs
 //   createPremiumPlayerToken  → full athlete token
 //   createSimpleJerseyToken   → plain rounded-rect badge
 //   createJerseyTokenV2       → Pro Stats jersey silhouette (current)
 const activeRenderer = createJerseyTokenV2;
-import type { MovementBoardToken } from "../shell/types";
+
+// ── Token Size Mode ───────────────────────────────────────────────────────────
+// small  (0.75×) — 25–30 player tactical view, numbers hidden
+// medium (1.00×) — default coaching mode
+// large  (1.25×) — teaching, Vision Flow clips, presentations
+export type TokenSize = "small" | "medium" | "large";
+
+const SIZE_FACTOR: Record<TokenSize, number> = {
+  small: 0.75,
+  medium: 1.0,
+  large: 1.25,
+};
+
+const DEFAULT_TOKEN_SIZE: TokenSize = "medium";
 
 type TokenVisual = {
   token: MovementBoardToken;
@@ -27,6 +41,8 @@ type TokenVisual = {
   shadow: Graphics;
   ballMarker: Graphics;
   selectionRing: Graphics;
+  // Optional number label — present when renderer exposes it (V2+)
+  numberLabel: { visible: boolean } | null;
   movementAngle: number | null;
 };
 
@@ -34,6 +50,7 @@ type CreateTokenLayerOptions = {
   layer: Container;
   mapperProvider: () => WorldViewportMapper;
   onTokenPointerDown?: (tokenId: string, event: unknown) => void;
+  initialTokenSize?: TokenSize;
 };
 
 export type TokenLayer = {
@@ -46,6 +63,8 @@ export type TokenLayer = {
   setDraggingToken: (tokenId: string | null) => void;
   setTokenMoving: (tokenId: string, angle: number | null) => void;
   setBallCarrier: (tokenId: string | null) => void;
+  setTokenSize: (size: TokenSize) => void;
+  getTokenSize: () => TokenSize;
   setOnTokenPointerDown: (handler: ((tokenId: string, event: unknown) => void) | null) => void;
   syncToMapper: () => void;
   destroy: () => void;
@@ -79,6 +98,7 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
   let selectedTokenId: string | null = null;
   let draggingTokenId: string | null = null;
   let ballCarrierTokenId: string | null = null;
+  let currentSize: TokenSize = options.initialTokenSize ?? DEFAULT_TOKEN_SIZE;
 
   const setTouchHitArea = (visual: TokenVisual, mapper: WorldViewportMapper) => {
     const touchRadiusInWorld = (TOKEN_TOUCH_HIT_DIAMETER_PX * 0.5) / Math.max(0.001, mapper.transform.scale);
@@ -102,9 +122,10 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
   };
 
   /**
-   * Single consolidated state application — handles all visual dimensions
-   * (scale, shadow, rotation, ring, ghost, ball marker, z-index, cursor).
-   * Call whenever any state variable changes.
+   * Single consolidated state application — covers scale, shadow, number
+   * visibility, ring, ghost, ball marker, z-index, cursor.
+   * Body rotation is intentionally not set here — tokens remain upright.
+   * Movement direction is communicated through routes, not token tilt.
    */
   const applyVisualState = (visual: TokenVisual) => {
     const isSelected = selectedTokenId === visual.token.id;
@@ -112,19 +133,20 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
     const isMoving = visual.movementAngle !== null;
     const isBallCarrier = ballCarrierTokenId === visual.token.id;
     const isGhost = visual.token.isGhost === true;
+    const sizeFactor = SIZE_FACTOR[currentSize];
 
-    // Body rotation toward movement heading (inner container only)
-    visual.body.rotation = isMoving ? visual.movementAngle! : 0;
+    // Tokens always remain upright — movement is shown through routes
+    visual.body.rotation = 0;
 
-    // Outer scale
-    const scale = isDragging
+    // Scale = interaction multiplier × size mode factor
+    const baseScale = isDragging
       ? PREMIUM_TOKEN_DRAG_SCALE
       : isSelected
         ? SELECTED_TOKEN_SCALE
         : PREMIUM_TOKEN_IDLE_SCALE;
-    visual.node.scale.set(scale, scale);
+    visual.node.scale.set(baseScale * sizeFactor, baseScale * sizeFactor);
 
-    // Shadow — stays in outer container (never rotates), stretches on move/drag
+    // Shadow — never rotates, stretches subtly during movement/drag
     if (isMoving) {
       visual.shadow.alpha = 0.28;
       visual.shadow.scale.x = 1.22;
@@ -136,8 +158,13 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
       visual.shadow.scale.x = 1.0;
     }
 
-    // Ghost: fade the entire outer container (shadow included via inheritance)
+    // Ghost: fade entire outer container
     visual.node.alpha = isGhost ? 0.48 : 1.0;
+
+    // Number visibility — hidden in small mode to reduce clutter
+    if (visual.numberLabel) {
+      visual.numberLabel.visible = currentSize !== "small";
+    }
 
     // Selection ring
     visual.selectionRing.visible = isSelected;
@@ -163,12 +190,15 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
 
   const createVisual = (token: MovementBoardToken): TokenVisual => {
     const nextToken = sanitizeToken(token);
-    const { token: node, body, shadow, ballMarker } = activeRenderer({
+    const result = activeRenderer({
       color: nextToken.color,
       number: nextToken.number,
       label: nextToken.label,
       radius: TOKEN_RADIUS,
     });
+    const { token: node, body, shadow, ballMarker } = result;
+    const numberLabel = "numberLabel" in result ? result.numberLabel : null;
+
     node.eventMode = "static";
     node.cursor = nextToken.draggable === false ? "default" : "grab";
 
@@ -194,6 +224,7 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
       shadow,
       ballMarker,
       selectionRing: ringNode,
+      numberLabel,
       movementAngle: null,
     };
     syncVisual(visual, options.mapperProvider());
@@ -218,15 +249,9 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
       const visual = createVisual(sanitized);
       visuals.set(sanitized.id, visual);
     }
-    if (selectedTokenId != null && !visuals.has(selectedTokenId)) {
-      selectedTokenId = null;
-    }
-    if (draggingTokenId != null && !visuals.has(draggingTokenId)) {
-      draggingTokenId = null;
-    }
-    if (ballCarrierTokenId != null && !visuals.has(ballCarrierTokenId)) {
-      ballCarrierTokenId = null;
-    }
+    if (selectedTokenId != null && !visuals.has(selectedTokenId)) selectedTokenId = null;
+    if (draggingTokenId != null && !visuals.has(draggingTokenId)) draggingTokenId = null;
+    if (ballCarrierTokenId != null && !visuals.has(ballCarrierTokenId)) ballCarrierTokenId = null;
     refreshAllVisualState();
   };
 
@@ -235,23 +260,16 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
       rebuild(tokens);
     },
     getTokens: () =>
-      Array.from(visuals.values()).map((visual) => ({
-        ...visual.token,
-        position: { ...visual.token.position },
-      })),
+      Array.from(visuals.values()).map((v) => ({ ...v.token, position: { ...v.token.position } })),
     getTokenById: (tokenId) => {
       const visual = visuals.get(tokenId);
-      if (!visual) return null;
-      return copyToken(visual.token);
+      return visual ? copyToken(visual.token) : null;
     },
     getSelectedTokenId: () => selectedTokenId,
     setTokenPosition: (tokenId, position) => {
       const visual = visuals.get(tokenId);
       if (!visual) return null;
-      visual.token = {
-        ...visual.token,
-        position: clampNormalizedPoint(position),
-      };
+      visual.token = { ...visual.token, position: clampNormalizedPoint(position) };
       syncVisual(visual, options.mapperProvider());
       return copyToken(visual.token);
     },
@@ -266,8 +284,7 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
       refreshAllVisualState();
       if (!selectedTokenId) return null;
       const selected = visuals.get(selectedTokenId);
-      if (!selected) return null;
-      return copyToken(selected.token);
+      return selected ? copyToken(selected.token) : null;
     },
     setDraggingToken: (tokenId) => {
       draggingTokenId = tokenId && visuals.has(tokenId) ? tokenId : null;
@@ -282,7 +299,6 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
     setBallCarrier: (tokenId) => {
       const prev = ballCarrierTokenId;
       ballCarrierTokenId = tokenId && visuals.has(tokenId) ? tokenId : null;
-      // Update previous carrier (clear marker) and new carrier (show marker)
       if (prev) {
         const prevVisual = visuals.get(prev);
         if (prevVisual) applyVisualState(prevVisual);
@@ -292,6 +308,11 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
         if (nextVisual) applyVisualState(nextVisual);
       }
     },
+    setTokenSize: (size) => {
+      currentSize = size;
+      refreshAllVisualState();
+    },
+    getTokenSize: () => currentSize,
     setOnTokenPointerDown: (handler) => {
       onTokenPointerDown = handler;
     },

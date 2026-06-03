@@ -50,7 +50,7 @@ export function createJerseyTokenV2({
   number: number;
   label?: string;
   radius: number;
-}): { token: Container; body: Container; shadow: Graphics; ballMarker: Graphics } {
+}): { token: Container; body: Container; shadow: Graphics; ballMarker: Graphics; numberLabel: Text } {
   const { primary, secondary } = PALETTE[color];
   const r = radius;
   // Each SVG unit = r/10 world units, SVG centre (10,11) maps to (0,0).
@@ -151,5 +151,5 @@ export function createJerseyTokenV2({
   ballMarker.visible = false;
   token.addChild(ballMarker);
 
-  return { token, body, shadow, ballMarker };
+  return { token, body, shadow, ballMarker, numberLabel };
 }
