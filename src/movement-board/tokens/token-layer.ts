@@ -10,6 +10,10 @@ import {
   PREMIUM_TOKEN_IDLE_SHADOW_ALPHA,
   type PremiumPlayerTokenColor,
 } from "./createPremiumPlayerToken";
+import { createSimpleJerseyToken } from "./createSimpleJerseyToken";
+
+// Prototype toggle — true = simple jersey, false = full athlete token
+const USE_SIMPLE_JERSEY = true;
 import type { MovementBoardToken } from "../shell/types";
 
 type TokenVisual = {
@@ -155,7 +159,8 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
 
   const createVisual = (token: MovementBoardToken): TokenVisual => {
     const nextToken = sanitizeToken(token);
-    const { token: node, body, shadow, ballMarker } = createPremiumPlayerToken({
+    const renderer = USE_SIMPLE_JERSEY ? createSimpleJerseyToken : createPremiumPlayerToken;
+    const { token: node, body, shadow, ballMarker } = renderer({
       color: nextToken.color,
       number: nextToken.number,
       label: nextToken.label,
