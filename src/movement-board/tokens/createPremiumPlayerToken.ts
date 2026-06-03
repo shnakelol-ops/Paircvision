@@ -53,8 +53,13 @@ const PALETTE_BY_COLOR: Record<
  *        ████           shorts   (y ≈ +0.30–0.50r)
  *     ˜˜˜˜˜˜˜˜˜˜˜       ground shadow ellipse
  *
- * Outer container (token): holds shadow, body, ballMarker — never rotated.
- * Inner container (body):  holds all athlete shapes + number — rotates toward heading.
+ * Structure:
+ *   token (Container)  — outer, never rotated; holds shadow, body, ballMarker
+ *   body  (Container)  — rotates toward movement heading
+ *     g   (Graphics)   — all athlete shapes drawn here (shorts→jersey→sleeves→head→hair)
+ *     numberLabel (Text) — chest-centred jersey number
+ *   shadow (Graphics)  — flat oval on ground, scale.x stretches on move
+ *   ballMarker (Graphics) — possession dot at feet, hidden by default
  */
 export function createPremiumPlayerToken({
   color,
@@ -74,77 +79,68 @@ export function createPremiumPlayerToken({
   token.eventMode = "static";
   token.cursor = "grab";
 
-  // Ground shadow — child of outer container so it never rotates with body
+  // Ground shadow — never rotates, stretches on move via scale.x in token-layer
   const shadow = new Graphics();
   shadow
     .ellipse(0, radius * 0.94, radius * 1.08, radius * 0.27)
     .fill({ color: 0x020617, alpha: PREMIUM_TOKEN_IDLE_SHADOW_ALPHA });
   token.addChild(shadow);
 
-  // ── Inner body container — this is what rotates toward movement heading ──
+  // ── Body container — rotates toward movement heading ─────────────────────
   const body = new Container();
   token.addChild(body);
 
-  // ── Shorts (drawn before jersey so jersey overlaps at waistband) ──────────
-  body
-    .roundRect(-radius * 0.23, radius * 0.28, radius * 0.46, radius * 0.22, radius * 0.07)
+  // All athlete shapes on a single Graphics child so we can draw them in order
+  const g = new Graphics();
+  body.addChild(g);
+
+  // Shorts — drawn first so jersey overlaps at waistband
+  g.roundRect(-radius * 0.23, radius * 0.28, radius * 0.46, radius * 0.22, radius * 0.07)
     .fill({ color: palette.shorts });
 
-  // ── Jersey body (tapered trapezoid) ──────────────────────────────────────
-  body
-    .poly([
-      -radius * 0.38, -radius * 0.06,
-       radius * 0.38, -radius * 0.06,
-       radius * 0.24,  radius * 0.30,
-      -radius * 0.24,  radius * 0.30,
-    ])
+  // Jersey body — tapered trapezoid (wider at shoulder, narrower at waist)
+  g.poly([
+    -radius * 0.38, -radius * 0.06,
+     radius * 0.38, -radius * 0.06,
+     radius * 0.24,  radius * 0.30,
+    -radius * 0.24,  radius * 0.30,
+  ]).fill({ color: palette.shirt });
+
+  // Subtle chest highlight — lighter V overlay for depth
+  g.poly([
+    -radius * 0.20, -radius * 0.06,
+     radius * 0.20, -radius * 0.06,
+     radius * 0.08,  radius * 0.16,
+    -radius * 0.08,  radius * 0.16,
+  ]).fill({ color: 0xffffff, alpha: 0.12 });
+
+  // Long sleeves — jersey colour (not skin)
+  g.roundRect(-radius * 0.52, radius * 0.01, radius * 0.15, radius * 0.27, radius * 0.06)
+    .fill({ color: palette.shirt });
+  g.roundRect( radius * 0.37, radius * 0.01, radius * 0.15, radius * 0.27, radius * 0.06)
     .fill({ color: palette.shirt });
 
-  // Subtle chest highlight (lighter V-shape overlay)
-  body
-    .poly([
-      -radius * 0.20, -radius * 0.06,
-       radius * 0.20, -radius * 0.06,
-       radius * 0.08,  radius * 0.16,
-      -radius * 0.08,  radius * 0.16,
-    ])
-    .fill({ color: 0xffffff, alpha: 0.12 });
-
-  // ── Long sleeves (jersey colour, extend past shoulder) ───────────────────
-  body
-    .roundRect(-radius * 0.52, radius * 0.01, radius * 0.15, radius * 0.27, radius * 0.06)
-    .fill({ color: palette.shirt });
-  body
-    .roundRect( radius * 0.37, radius * 0.01, radius * 0.15, radius * 0.27, radius * 0.06)
-    .fill({ color: palette.shirt });
-
-  // Sleeve shade (lower half slightly darker for depth)
-  body
-    .roundRect(-radius * 0.52, radius * 0.15, radius * 0.15, radius * 0.13, radius * 0.06)
+  // Sleeve shade — lower half darker for depth
+  g.roundRect(-radius * 0.52, radius * 0.15, radius * 0.15, radius * 0.13, radius * 0.06)
     .fill({ color: palette.shirtShade, alpha: 0.45 });
-  body
-    .roundRect( radius * 0.37, radius * 0.15, radius * 0.15, radius * 0.13, radius * 0.06)
+  g.roundRect( radius * 0.37, radius * 0.15, radius * 0.15, radius * 0.13, radius * 0.06)
     .fill({ color: palette.shirtShade, alpha: 0.45 });
 
-  // ── Head ─────────────────────────────────────────────────────────────────
-  body
-    .circle(0, -radius * 0.38, radius * 0.19)
+  // Head
+  g.circle(0, -radius * 0.38, radius * 0.19)
     .fill({ color: palette.skin });
 
-  // Hair cap (ellipse behind/over head top — drawn after head to overlay)
-  body
-    .ellipse(0, -radius * 0.47, radius * 0.19, radius * 0.10)
+  // Hair cap — overlays top of head
+  g.ellipse(0, -radius * 0.47, radius * 0.19, radius * 0.10)
     .fill({ color: palette.hair, alpha: 0.96 });
 
-  // ── Jersey number — CHEST position ───────────────────────────────────────
+  // ── Jersey number — CHEST position (not feet) ────────────────────────────
   const textResolution =
     typeof window !== "undefined" ? Math.max(2, Math.min(3, window.devicePixelRatio || 1)) : 2;
   const safeLabel = (label?.trim().slice(0, 3) ?? "") || String(number);
   const isNumeric = /^\d+$/.test(safeLabel);
   const fontSize = isNumeric
-    ? safeLabel.length >= 2
-      ? radius * 0.52
-      : radius * 0.60
+    ? safeLabel.length >= 2 ? radius * 0.52 : radius * 0.60
     : radius * 0.44;
 
   const numberLabel = new Text({
@@ -160,13 +156,12 @@ export function createPremiumPlayerToken({
     },
   });
   numberLabel.anchor.set(0.5);
-  // Number sits on the chest — vertically centred in the jersey body
   numberLabel.position.set(0, radius * 0.10);
   numberLabel.resolution = textResolution;
   numberLabel.roundPixels = true;
   body.addChild(numberLabel);
 
-  // ── Ball marker — child of outer container (never rotates) ───────────────
+  // ── Ball marker — outer container, never rotates ─────────────────────────
   const ballMarker = new Graphics();
   ballMarker
     .circle(0, radius * 0.82, radius * 0.105)
