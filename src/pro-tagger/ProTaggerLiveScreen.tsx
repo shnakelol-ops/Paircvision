@@ -1140,6 +1140,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 <div style={AS.feedbackBanner}>{actionsFeedback}</div>
               )}
 
+              <button style={AS.actionBtn} onClick={() => { setActionsOpen(false); onEnd(); }}>
+                Home
+              </button>
+
               <button style={AS.actionBtn} onClick={handleSaveMatch}>
                 Save Match
               </button>

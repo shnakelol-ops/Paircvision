@@ -44,7 +44,6 @@ export default function ProTaggerPage() {
   const [draftSession, setDraftSession] = useState<ProTaggerSession | null>(null);
   const [restoreState, setRestoreState] = useState<RestoreState | undefined>(undefined);
   const [savedCount, setSavedCount]     = useState(() => readProTaggerMatches().length);
-  const [menuOpen, setMenuOpen]         = useState(false);
   const [reviewMatch, setReviewMatch]   = useState<ProTaggerSavedMatch | null>(null);
 
   // ── Home landing ────────────────────────────────────────────────────────────
@@ -53,77 +52,32 @@ export default function ProTaggerPage() {
     return (
       <div style={H.shell}>
         <div style={H.header}>
-          <span style={H.title}>Pro Tagger</span>
-          <button
-            style={H.menuBtn}
-            onClick={() => {
-              setSavedCount(readProTaggerMatches().length);
-              setMenuOpen(true);
-            }}
-            aria-label="Menu"
-          >
-            ☰
-          </button>
+          <span style={H.title}>Stats Pro</span>
         </div>
 
         <div style={H.body}>
           <div style={H.logoWrap}>
-            <span style={H.logo}>⬡</span>
+            <img src="/pv-logo-icon.svg" alt="PáircVision" style={H.logo} />
           </div>
           <button
             style={H.primaryBtn}
             onClick={() => setPhase("setup")}
           >
-            Setup Match
+            New Match
+          </button>
+          <button
+            style={H.secondaryBtn}
+            onClick={() => {
+              setSavedCount(readProTaggerMatches().length);
+              setPhase("saved-matches");
+            }}
+          >
+            Saved Matches
+            {savedCount > 0 && (
+              <span style={H.badge}>{savedCount}</span>
+            )}
           </button>
         </div>
-
-        {/* ── Menu sheet ────────────────────────────────────────────── */}
-        {menuOpen && (
-          <div
-            style={H.overlay}
-            onClick={() => setMenuOpen(false)}
-          >
-            <div
-              style={H.sheet}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={H.sheetHandle} />
-
-              <button
-                style={H.menuItem}
-                onClick={() => {
-                  setMenuOpen(false);
-                  setPhase("saved-matches");
-                }}
-              >
-                <span style={H.menuItemIcon}>📋</span>
-                <span style={H.menuItemLabel}>Saved Matches</span>
-                {savedCount > 0 && (
-                  <span style={H.menuBadge}>{savedCount}</span>
-                )}
-              </button>
-
-              <button style={{ ...H.menuItem, ...H.menuItemDisabled }} disabled>
-                <span style={H.menuItemIcon}>👥</span>
-                <span style={H.menuItemLabel}>Team Library</span>
-                <span style={H.menuItemPill}>Soon</span>
-              </button>
-
-              <button style={{ ...H.menuItem, ...H.menuItemDisabled }} disabled>
-                <span style={H.menuItemIcon}>📊</span>
-                <span style={H.menuItemLabel}>Saved Reviews</span>
-                <span style={H.menuItemPill}>Soon</span>
-              </button>
-
-              <button style={{ ...H.menuItem, ...H.menuItemDisabled }} disabled>
-                <span style={H.menuItemIcon}>📄</span>
-                <span style={H.menuItemLabel}>Reports</span>
-                <span style={H.menuItemPill}>Soon</span>
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
@@ -240,18 +194,6 @@ const H: Record<string, CSSProperties> = {
     letterSpacing: "-0.4px",
     flex: 1,
   },
-  menuBtn: {
-    background: "none",
-    border: "1px solid #30363d",
-    borderRadius: 8,
-    color: "#8b949e",
-    fontSize: 16,
-    lineHeight: 1,
-    padding: "5px 9px",
-    cursor: "pointer",
-    outline: "none",
-    flexShrink: 0,
-  },
   body: {
     flex: 1,
     display: "flex",
@@ -262,12 +204,14 @@ const H: Record<string, CSSProperties> = {
     padding: "0 32px 48px",
   },
   logoWrap: {
-    marginBottom: 8,
+    marginBottom: 16,
   },
   logo: {
-    fontSize: 56,
-    opacity: 0.15,
+    width: 84,
+    height: 84,
+    borderRadius: 20,
     display: "block",
+    filter: "drop-shadow(0 0 14px rgba(122,255,178,0.18))",
   },
   primaryBtn: {
     background: "#238636",
@@ -287,61 +231,25 @@ const H: Record<string, CSSProperties> = {
     justifyContent: "center",
     gap: 8,
   },
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.55)",
-    zIndex: 200,
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "flex-end",
-  },
-  sheet: {
+  secondaryBtn: {
     background: "#161b22",
-    borderTop: "1px solid #30363d",
-    borderRadius: "16px 16px 0 0",
-    paddingBottom: 32,
-    display: "flex",
-    flexDirection: "column",
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    background: "#30363d",
-    borderRadius: 2,
-    margin: "10px auto 12px",
-    flexShrink: 0,
-  },
-  menuItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    background: "none",
-    border: "none",
-    borderTop: "1px solid #21262d",
+    border: "1px solid #30363d",
+    borderRadius: 12,
     color: "#e6edf3",
-    fontSize: 15,
-    fontWeight: 500,
-    padding: "15px 20px",
+    fontSize: 17,
+    fontWeight: 600,
+    padding: "18px 0",
+    width: "100%",
+    maxWidth: 360,
     cursor: "pointer",
     outline: "none",
-    width: "100%",
-    textAlign: "left" as const,
+    letterSpacing: "-0.3px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
   },
-  menuItemDisabled: {
-    color: "#484f58",
-    cursor: "default",
-  },
-  menuItemIcon: {
-    fontSize: 18,
-    flexShrink: 0,
-    width: 24,
-    textAlign: "center" as const,
-  },
-  menuItemLabel: {
-    flex: 1,
-  },
-  menuBadge: {
+  badge: {
     background: "#21262d",
     border: "1px solid #30363d",
     borderRadius: 10,
@@ -350,16 +258,6 @@ const H: Record<string, CSSProperties> = {
     fontWeight: 700,
     padding: "1px 7px",
     lineHeight: "1.4",
-    flexShrink: 0,
-  },
-  menuItemPill: {
-    background: "#21262d",
-    border: "1px solid #30363d",
-    borderRadius: 8,
-    color: "#6e7681",
-    fontSize: 11,
-    fontWeight: 600,
-    padding: "2px 7px",
     flexShrink: 0,
   },
 };
