@@ -228,7 +228,7 @@ const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
 };
 
 export default function MovementBoardCanvasShellPage() {
-  type MovementMenuMode = "move" | "route" | "ball" | "play";
+  type MovementMenuMode = "move" | "route" | "play";
 
   const toShellMode = (menuMode: MovementMenuMode): MovementBoardMode =>
     menuMode === "route"
@@ -238,11 +238,7 @@ export default function MovementBoardCanvasShellPage() {
         : "setup";
 
   const toMenuMode = (shellMode: MovementBoardMode): MovementMenuMode =>
-    shellMode === "route"
-      ? "route"
-      : shellMode === "play"
-        ? "play"
-        : "move";
+    shellMode === "route" ? "route" : shellMode === "play" ? "play" : "move";
 
   const isPortrait = usePortraitOrientation();
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -259,6 +255,7 @@ export default function MovementBoardCanvasShellPage() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
+  const [ballCarrierId, setBallCarrierId] = useState<string | null>(null);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -292,6 +289,9 @@ export default function MovementBoardCanvasShellPage() {
         onRouteEditStateChange: (state) => {
           setRouteEditState(state);
         },
+        onBallStateChange: (state) => {
+          setBallCarrierId(state.carrierId ?? null);
+        },
       }).then((shell) => {
         if (disposed) {
           shell.destroy();
@@ -307,6 +307,7 @@ export default function MovementBoardCanvasShellPage() {
         const playbackState = shell.getPlaybackState();
         setIsPlaying(playbackState.isPlaying);
         setIsPaused(playbackState.isPaused);
+        setBallCarrierId(shell.getBallState().carrierId ?? null);
         shell.setDragEnabled(!isPortrait);
         destroyShell = shell.destroy;
       });
@@ -366,14 +367,16 @@ export default function MovementBoardCanvasShellPage() {
   }, [isPlaying]);
 
   const modeLabelByMenu: Record<MovementMenuMode, string> = {
-    move: "Move Mode",
-    route: "Route Mode",
-    ball: "Ball Mode",
-    play: "Play Mode",
+    move: "Move",
+    route: "Route",
+    play: "Play",
   };
+  const selectedHasBall = selectedToken != null && selectedToken.id === ballCarrierId;
   const coachInfoLabel = selectedToken
-    ? `Selected P${selectedToken.number} • Routes ${routeCount}`
-    : `${modeLabelByMenu[menuMode]} • Routes ${routeCount}`;
+    ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""} · Routes ${routeCount}`
+    : ballCarrierId
+      ? `Ball Assigned · Routes ${routeCount}`
+      : `${modeLabelByMenu[menuMode]} · Routes ${routeCount}`;
 
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
@@ -444,6 +447,13 @@ export default function MovementBoardCanvasShellPage() {
     shellRef.current?.clearSelectedRoute();
   };
 
+  const giveSelectedPlayerBall = () => {
+    const shell = shellRef.current;
+    const token = selectedToken;
+    if (!shell || !token) return;
+    shell.giveBall(token.id);
+  };
+
   const goBack = () => {
     if (typeof window === "undefined") return;
     const referrer = document.referrer;
@@ -490,7 +500,6 @@ export default function MovementBoardCanvasShellPage() {
               {([
                 { id: "move", label: "Move" },
                 { id: "route", label: "Route" },
-                { id: "ball", label: "Ball" },
                 { id: "play", label: "Play" },
               ] as const).map((item) => (
                 <button
@@ -520,6 +529,15 @@ export default function MovementBoardCanvasShellPage() {
                   <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetBoard}>
                     Reset
                   </button>
+                  {selectedToken && !modeIsPlaybackLocked ? (
+                    <button
+                      type="button"
+                      style={selectedHasBall ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                      onClick={giveSelectedPlayerBall}
+                    >
+                      {selectedHasBall ? "Has Ball" : "Give Ball"}
+                    </button>
+                  ) : null}
                 </>
               ) : null}
 
@@ -565,6 +583,15 @@ export default function MovementBoardCanvasShellPage() {
                   >
                     Play Routes
                   </button>
+                  {selectedToken && !isPlaying ? (
+                    <button
+                      type="button"
+                      style={selectedHasBall ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                      onClick={giveSelectedPlayerBall}
+                    >
+                      {selectedHasBall ? "Has Ball" : "Give Ball"}
+                    </button>
+                  ) : null}
                 </>
               ) : null}
 
@@ -613,19 +640,6 @@ export default function MovementBoardCanvasShellPage() {
                 </>
               ) : null}
 
-              {menuMode === "ball" ? (
-                <>
-                  <button type="button" style={TOOL_DISABLED_STYLE} disabled>
-                    Attach
-                  </button>
-                  <button type="button" style={TOOL_DISABLED_STYLE} disabled>
-                    Pass
-                  </button>
-                  <button type="button" style={TOOL_DISABLED_STYLE} disabled>
-                    Free
-                  </button>
-                </>
-              ) : null}
             </div>
           </div>
         ) : null}

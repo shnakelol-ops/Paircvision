@@ -29,6 +29,7 @@ export type TokenLayer = {
   setTokens: (tokens: readonly MovementBoardToken[]) => void;
   getTokens: () => MovementBoardToken[];
   getTokenById: (tokenId: string) => MovementBoardToken | null;
+  getTokenWorldPosition: (tokenId: string) => { x: number; y: number } | null;
   getSelectedTokenId: () => string | null;
   setTokenPosition: (tokenId: string, position: NormalizedPoint) => MovementBoardToken | null;
   setSelectedToken: (tokenId: string | null) => MovementBoardToken | null;
@@ -178,6 +179,11 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
       const visual = visuals.get(tokenId);
       if (!visual) return null;
       return copyToken(visual.token);
+    },
+    getTokenWorldPosition: (tokenId) => {
+      const visual = visuals.get(tokenId);
+      if (!visual) return null;
+      return { x: visual.node.position.x, y: visual.node.position.y };
     },
     getSelectedTokenId: () => selectedTokenId,
     setTokenPosition: (tokenId, position) => {
