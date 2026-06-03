@@ -235,14 +235,18 @@ export default function MovementBoardCanvasShellPage() {
       ? "route"
       : menuMode === "play"
         ? "play"
-        : "setup";
+        : menuMode === "ball"
+          ? "ball"
+          : "setup";
 
   const toMenuMode = (shellMode: MovementBoardMode): MovementMenuMode =>
     shellMode === "route"
       ? "route"
       : shellMode === "play"
         ? "play"
-        : "move";
+        : shellMode === "ball"
+          ? "ball"
+          : "move";
 
   const isPortrait = usePortraitOrientation();
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -621,7 +625,7 @@ export default function MovementBoardCanvasShellPage() {
                   <button type="button" style={TOOL_DISABLED_STYLE} disabled>
                     Pass
                   </button>
-                  <button type="button" style={TOOL_DISABLED_STYLE} disabled>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => shellRef.current?.freeBall()}>
                     Free
                   </button>
                 </>

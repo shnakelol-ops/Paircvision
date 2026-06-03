@@ -15,7 +15,7 @@ export type MovementCanvasTapPayload = {
   point: NormalizedPoint;
 };
 
-export type MovementBoardMode = "setup" | "route" | "play";
+export type MovementBoardMode = "setup" | "route" | "play" | "ball";
 
 export type MovementPlaybackSpeed = "slow" | "normal" | "fast";
 
@@ -27,6 +27,19 @@ export type MovementBoardRoute = {
 export type MovementPlaybackState = {
   isPlaying: boolean;
   isPaused: boolean;
+};
+
+export type MovementBoardBallState = {
+  position: NormalizedPoint;
+  carrierId: string | null;
+};
+
+/** Type-only — no implementation in Phase 2a. Reserved for Phase 3 pass flow. */
+export type MovementBoardPassEvent = {
+  fromTokenId: string;
+  toTokenId: string;
+  triggerWaypointIndex: number;
+  flightMs: number;
 };
 
 export type MovementRouteEditState = {
@@ -70,5 +83,7 @@ export type MovementCanvasShellHandle = {
   setDragEnabled: (enabled: boolean) => void;
   reflow: () => void;
   destroy: () => void;
+  getBallState: () => MovementBoardBallState | null;
+  freeBall: () => void;
 };
 

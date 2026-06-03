@@ -29,6 +29,8 @@ export type PlaybackOrchestratorCallbacks = {
   onTokenStep: (tokenId: string, position: NormalizedPoint) => void;
   /** Called whenever isPlaying or isPaused changes. */
   onStateChange: (state: MovementPlaybackState) => void;
+  /** Called once per frame after all onTokenStep calls and run cleanup. Stable hook point for derived state (e.g. ball carrier position). */
+  onFrameComplete?: () => void;
   getTokens: () => readonly TokenRef[];
   getRoute: (tokenId: string) => readonly NormalizedPoint[] | null;
   getStartPosition: (tokenId: string) => NormalizedPoint | null;
@@ -147,6 +149,7 @@ export function createPlaybackOrchestrator(
     for (const id of completedIds) {
       activePlaybackRuns.delete(id);
     }
+    callbacks.onFrameComplete?.();
     if (activePlaybackRuns.size === 0) {
       stop();
     }

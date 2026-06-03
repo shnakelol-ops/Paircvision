@@ -1,4 +1,4 @@
-import { Application, Container } from "pixi.js";
+import { Application, Container, Graphics } from "pixi.js";
 
 import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
 import { createWorldViewport, type WorldViewportMapper } from "../coordinates/viewport";
@@ -16,6 +16,7 @@ import { normalizeRoutePoints } from "../routes/route-sampling";
 import { buildDefaultTokens } from "../tokens/default-tokens";
 import { createTokenLayer } from "../tokens/token-layer";
 import type {
+  MovementBoardBallState,
   MovementBoardMode,
   MovementBoardToken,
   MovementCanvasShellHandle,
@@ -32,6 +33,8 @@ const ROUTE_MIN_POINT_DISTANCE = 0.9;
 const POSITION_EPSILON = 0.0001;
 const ROUTE_HANDLE_TOUCH_RADIUS_PX = 30;
 const ROUTE_INSERT_TOUCH_DISTANCE_PX = 24;
+const BALL_RADIUS_WORLD = 3.8;
+const BALL_HIT_RADIUS_PX = 28;
 
 type DragState = {
   tokenId: string;
@@ -48,6 +51,16 @@ type RouteDraftState = {
 type RouteHandleDragState = {
   tokenId: string;
   waypointIndex: number;
+  pointerId: number | null;
+  offsetWorld: { x: number; y: number };
+} | null;
+
+type BallEntity = {
+  position: NormalizedPoint;
+  carrierId: string | null;
+};
+
+type BallDragState = {
   pointerId: number | null;
   offsetWorld: { x: number; y: number };
 } | null;
@@ -143,6 +156,15 @@ export async function createMovementCanvasShell(
   const tokenLayerContainer = new Container();
   tokenLayerContainer.zIndex = 20;
   world.addChild(tokenLayerContainer);
+
+  const ballLayerContainer = new Container();
+  ballLayerContainer.zIndex = 25;
+  world.addChild(ballLayerContainer);
+
+  const ballGraphics = new Graphics();
+  ballGraphics.eventMode = "none";
+  ballLayerContainer.addChild(ballGraphics);
+
   world.sortChildren();
 
   let mapper: WorldViewportMapper = createWorldViewport(WORLD_SIZE, {
@@ -159,6 +181,9 @@ export async function createMovementCanvasShell(
   let routeDraft: RouteDraftState = null;
   let routeByTokenId = new Map<string, NormalizedPoint[]>();
   let startPositionByTokenId = new Map<string, NormalizedPoint>();
+  let ball: BallEntity | null = null;
+  let ballStart: { position: NormalizedPoint; carrierId: string | null } | null = null;
+  let ballDrag: BallDragState = null;
 
   const tokenLayer = createTokenLayer({
     layer: tokenLayerContainer,
@@ -192,6 +217,24 @@ export async function createMovementCanvasShell(
   });
 
   const isPlaybackLocked = () => orchestrator.isLocked();
+
+  const renderBall = () => {
+    ballGraphics.clear();
+    if (!ball) return;
+    const wp = mapper.normalizedToWorld(ball.position);
+    ballGraphics.position.set(wp.x, wp.y);
+    ballGraphics.circle(0, 0, BALL_RADIUS_WORLD).fill({ color: 0xffffff, alpha: 0.92 });
+    ballGraphics.circle(0, 0, BALL_RADIUS_WORLD * 0.62).fill({ color: 0xf5d060, alpha: 0.85 });
+  };
+
+  const isBallHit = (worldPoint: { x: number; y: number }): boolean => {
+    if (!ball) return false;
+    const bw = mapper.normalizedToWorld(ball.position);
+    const dx = worldPoint.x - bw.x;
+    const dy = worldPoint.y - bw.y;
+    const hitRadius = BALL_HIT_RADIUS_PX / Math.max(0.001, mapper.transform.scale);
+    return dx * dx + dy * dy <= hitRadius * hitRadius;
+  };
 
   const emitRoutes = () => {
     options.onRoutesChange?.(
@@ -278,6 +321,7 @@ export async function createMovementCanvasShell(
     world.position.set(mapper.transform.offsetX, mapper.transform.offsetY);
     tokenLayer.syncToMapper();
     routeLayer.syncToMapper();
+    renderBall();
   };
 
   const releaseDrag = () => {
@@ -450,6 +494,11 @@ export async function createMovementCanvasShell(
     clearRouteDraft();
     releaseDrag();
     releaseRouteHandleDrag();
+    ballDrag = null;
+    if (ballStart) {
+      ball = { position: clonePoint(ballStart.position), carrierId: ballStart.carrierId };
+      renderBall();
+    }
     for (const token of tokenLayer.getTokens()) {
       const start = startPositionByTokenId.get(token.id);
       if (!start) continue;
@@ -481,6 +530,20 @@ export async function createMovementCanvasShell(
     };
     tokenLayer.setDraggingToken(tokenId);
   });
+
+  const handleBallDragMove = (event: unknown) => {
+    if (!ballDrag || !ball) return;
+    const pointerId = getPointerIdFromEvent(event);
+    if (ballDrag.pointerId != null && pointerId != null && pointerId !== ballDrag.pointerId) return;
+    const pointerWorld = getWorldPointFromEvent(event, app.stage, mapper);
+    if (!pointerWorld) return;
+    const nextWorld = clampWorldPoint({
+      x: pointerWorld.x + ballDrag.offsetWorld.x,
+      y: pointerWorld.y + ballDrag.offsetWorld.y,
+    });
+    ball.position = clampNormalizedPoint(mapper.worldToNormalized(nextWorld));
+    renderBall();
+  };
 
   const handleDragMove = (event: unknown) => {
     if (!activeDrag) return;
@@ -560,6 +623,10 @@ export async function createMovementCanvasShell(
   };
 
   const handleStagePointerMove = (event: unknown) => {
+    if (ballDrag) {
+      handleBallDragMove(event);
+      return;
+    }
     if (activeDrag) {
       handleDragMove(event);
       return;
@@ -574,6 +641,13 @@ export async function createMovementCanvasShell(
   };
 
   const handlePointerRelease = (event: unknown) => {
+    if (ballDrag) {
+      const pointerId = getPointerIdFromEvent(event);
+      if (ballDrag.pointerId != null && pointerId != null && pointerId !== ballDrag.pointerId) return;
+      ballDrag = null;
+      if (ball) ballStart = { position: clonePoint(ball.position), carrierId: ball.carrierId };
+      return;
+    }
     if (activeDrag) {
       releaseDrag();
       return;
@@ -602,6 +676,26 @@ export async function createMovementCanvasShell(
   app.stage.on("pointerdown", (event) => {
     const worldPoint = getWorldPointFromEvent(event, app.stage, mapper);
     if (!worldPoint || !isWorldPointInsidePitch(worldPoint)) return;
+
+    if (mode === "ball" && !isPlaybackLocked()) {
+      if (ball && isBallHit(worldPoint)) {
+        const bw = mapper.normalizedToWorld(ball.position);
+        ballDrag = {
+          pointerId: getPointerIdFromEvent(event),
+          offsetWorld: {
+            x: bw.x - worldPoint.x,
+            y: bw.y - worldPoint.y,
+          },
+        };
+        return;
+      }
+      if (!ball) {
+        ball = { position: clampNormalizedPoint(mapper.worldToNormalized(worldPoint)), carrierId: null };
+        ballStart = { position: clonePoint(ball.position), carrierId: null };
+        renderBall();
+      }
+      return;
+    }
 
     if (mode === "route" && !isPlaybackLocked() && selectedTokenId) {
       const route = routeByTokenId.get(selectedTokenId);
@@ -773,6 +867,16 @@ export async function createMovementCanvasShell(
     },
     reflow: () => {
       syncToHost();
+    },
+    getBallState: (): MovementBoardBallState | null => {
+      if (!ball) return null;
+      return { position: clonePoint(ball.position), carrierId: ball.carrierId };
+    },
+    freeBall: () => {
+      if (ball) {
+        ball.carrierId = null;
+        renderBall();
+      }
     },
     destroy: () => {
       orchestrator.stop();
