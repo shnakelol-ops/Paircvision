@@ -68,15 +68,6 @@ export function createPremiumPlayerToken({
     .fill({ color: 0x020617, alpha: PREMIUM_TOKEN_IDLE_SHADOW_ALPHA });
   token.addChild(shadow);
 
-  const base = new Graphics();
-  const baseWidth = radius * 1.1;
-  const baseHeight = radius * 0.42;
-  const baseY = radius * 0.86;
-  base.ellipse(0, baseY + radius * 0.08, baseWidth * 0.94, baseHeight * 0.95).fill({ color: 0x000000, alpha: 0.18 });
-  base.ellipse(0, baseY, baseWidth, baseHeight).fill({ color: 0x111827, alpha: 0.98 });
-  base.ellipse(0, baseY - baseHeight * 0.1, baseWidth * 0.92, baseHeight * 0.78).fill({ color: 0x1f2937, alpha: 0.5 });
-  token.addChild(base);
-
   const athlete = new Graphics();
   // Legs
   athlete.roundRect(-radius * 0.16, radius * 0.34, radius * 0.12, radius * 0.44, radius * 0.05).fill({ color: palette.socks });
@@ -120,22 +111,26 @@ export function createPremiumPlayerToken({
     typeof window !== "undefined" ? Math.max(2, Math.min(3, window.devicePixelRatio || 1)) : 2;
   const safeLabel = (label?.trim().slice(0, 3) ?? "") || String(number);
   const isNumericLabel = /^\d+$/.test(safeLabel);
+  const isYellow = color === "yellow";
+  const numberFill = isYellow ? 0x1a0800 : 0xffffff;
+  const numberStrokeColor = isYellow ? 0xf5d080 : 0x000000;
+  const numberStrokeWidth = isYellow ? 0.28 : 0.52;
   const numberLabel = new Text({
     text: safeLabel,
     style: {
-      fill: 0xffffff,
+      fill: numberFill,
       fontSize: isNumericLabel
-        ? safeLabel.length >= 2 ? radius * 0.5 : radius * 0.58
-        : radius * 0.42,
+        ? safeLabel.length >= 2 ? radius * 0.58 : radius * 0.68
+        : radius * 0.44,
       fontWeight: "900",
       align: "center",
       fontFamily: '"Barlow Condensed", "Inter Tight", Inter, system-ui, sans-serif',
       letterSpacing: isNumericLabel && safeLabel.length >= 2 ? 0 : 0.1,
-      stroke: { color: 0x000000, width: 0.52, join: "round" },
+      stroke: { color: numberStrokeColor, width: numberStrokeWidth, join: "round" },
     },
   });
   numberLabel.anchor.set(0.5);
-  numberLabel.position.set(0, baseY - radius * 0.02);
+  numberLabel.position.set(0, radius * 0.12);
   numberLabel.resolution = textResolution;
   numberLabel.roundPixels = true;
   token.addChild(numberLabel);
