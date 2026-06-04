@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import OrientationGate, { usePortraitOrientation } from "../../components/OrientationGate";
+import VisionStadiumBackground from "../../components/VisionStadiumBackground";
 import { createMovementCanvasShell } from "../../movement-board/shell/createMovementCanvasShell";
 import type {
   BallType,
@@ -11,21 +12,56 @@ import type {
   MovementRouteEditState,
 } from "../../movement-board/shell/types";
 
+const _CAN_DVW = typeof window !== "undefined" && typeof window.CSS !== "undefined" && window.CSS.supports("width: 100dvw");
+const _VW = _CAN_DVW ? "100dvw" : "100vw";
+const TP_HEIGHT_VAR = "--tp-app-height";
+const TP_H = `var(${TP_HEIGHT_VAR}, 100dvh)`;
+const TP_CONTENT_WIDTH = `min(calc(${_VW} - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc((${TP_H} - 10px) * 1.6), 1360px)`;
+
+function getTPViewportHeight(): number {
+  if (typeof window === "undefined") return 0;
+  const vp = window.visualViewport;
+  const vpH = vp && Number.isFinite(vp.height) ? Math.round(vp.height) : 0;
+  return Math.max(0, vpH || (Number.isFinite(window.innerHeight) ? Math.round(window.innerHeight) : 0));
+}
+
 const ROOT_STYLE: CSSProperties = {
   position: "fixed",
   inset: 0,
+  width: "100vw",
+  height: TP_H,
+  minHeight: TP_H,
   margin: 0,
   background: "radial-gradient(ellipse at 50% 50%, #0f1e35 0%, #080f1d 55%, #040b16 100%)",
-  display: "grid",
-  placeItems: "center",
+  paddingTop: "max(4px, calc(env(safe-area-inset-top, 0px) + 2px))",
+  paddingRight: "max(4px, calc(env(safe-area-inset-right, 0px) + 2px))",
+  paddingBottom: "max(4px, calc(env(safe-area-inset-bottom, 0px) + 2px))",
+  paddingLeft: "max(4px, calc(env(safe-area-inset-left, 0px) + 2px))",
+  boxSizing: "border-box",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
 };
 
-const BOARD_STYLE: CSSProperties = {
-  width: "min(98vw, 1400px)",
-  height: "min(92vh, 840px)",
-  borderRadius: "14px",
+const CONTENT_STYLE: CSSProperties = {
+  width: TP_CONTENT_WIDTH,
+  maxWidth: "calc(100vw - 24px)",
+  aspectRatio: "16 / 10",
+  maxHeight: `calc(${TP_H} - 10px)`,
+  boxSizing: "border-box",
+  position: "relative",
+  zIndex: 1,
+  display: "flex",
+  alignItems: "stretch",
+};
+
+const PITCH_STYLE: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  borderRadius: "12px",
   overflow: "hidden",
-  boxShadow: "0 24px 60px rgba(0, 0, 0, 0.56), 0 0 0 1px rgba(59, 130, 246, 0.10)",
+  boxShadow: "0 50px 110px rgba(0, 0, 0, 0.55), 0 18px 45px rgba(0, 0, 0, 0.35)",
   background: "#0c1829",
 };
 
@@ -260,6 +296,42 @@ export default function TacticalPlaySurface() {
   const [ballOnPitch, setBallOnPitch] = useState(false);
   type BallMenuStep = "root" | "football-size" | "sliotar-size" | "existing";
   const [ballMenuStep, setBallMenuStep] = useState<BallMenuStep | null>(null);
+  const [appViewportHeight, setAppViewportHeight] = useState(() => getTPViewportHeight());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let rafId = 0;
+    let timeoutId: number | null = null;
+    const clearScheduled = () => {
+      if (timeoutId != null) { window.clearTimeout(timeoutId); timeoutId = null; }
+      if (rafId) { window.cancelAnimationFrame(rafId); rafId = 0; }
+    };
+    const syncHeight = () => {
+      rafId = 0;
+      const next = getTPViewportHeight();
+      setAppViewportHeight((prev) => Math.abs(prev - next) <= 1 ? prev : next);
+    };
+    const schedule = (defer: boolean) => {
+      clearScheduled();
+      if (defer) { timeoutId = window.setTimeout(() => { rafId = window.requestAnimationFrame(syncHeight); }, 180); return; }
+      rafId = window.requestAnimationFrame(syncHeight);
+    };
+    schedule(false);
+    const vp = window.visualViewport;
+    const onResize = () => schedule(false);
+    const onOrient = () => schedule(true);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onOrient);
+    vp?.addEventListener("resize", onResize);
+    vp?.addEventListener("scroll", onResize);
+    return () => {
+      clearScheduled();
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onOrient);
+      vp?.removeEventListener("resize", onResize);
+      vp?.removeEventListener("scroll", onResize);
+    };
+  }, []);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -515,10 +587,18 @@ export default function TacticalPlaySurface() {
   const pauseResumeDisabled = !isPlaying && !isPaused;
   const playbackFloatingVisible = isPlaying || isPaused;
 
+  const rootStyle: CSSProperties = {
+    ...ROOT_STYLE,
+    [TP_HEIGHT_VAR]: `${Math.max(0, Math.floor(appViewportHeight))}px`,
+  } as CSSProperties;
+
   return (
     <OrientationGate modeLabel="Tactical Play">
-      <div style={ROOT_STYLE}>
-        <div ref={hostRef} style={BOARD_STYLE} />
+      <div style={rootStyle}>
+        <VisionStadiumBackground variant="board" />
+        <div style={CONTENT_STYLE}>
+          <div ref={hostRef} style={PITCH_STYLE} />
+        </div>
 
         <button type="button" style={BACK_BUTTON_STYLE} onClick={goBack}>
           Vision Tactics
