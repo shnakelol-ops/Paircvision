@@ -18,6 +18,7 @@ import { buildDefaultTokens } from "../tokens/default-tokens";
 import { createTokenLayer } from "../tokens/token-layer";
 import type {
   BallState,
+  BallType,
   MovementBoardMode,
   MovementBoardToken,
   MovementCanvasShellHandle,
@@ -215,20 +216,31 @@ export async function createMovementCanvasShell(
   const BALL_CARRIER_OFFSET_Y = -2.5;
 
   const syncBallPosition = () => {
-    if (!ballState.carrierId) {
+    if (!ballState.carrierId && !ballState.position) {
       ballLayer.setVisible(false);
       return;
     }
-    const worldPos = tokenLayer.getTokenWorldPosition(ballState.carrierId);
-    if (!worldPos) {
-      ballLayer.setVisible(false);
-      return;
+
+    let worldX: number;
+    let worldY: number;
+
+    if (ballState.carrierId) {
+      const worldPos = tokenLayer.getTokenWorldPosition(ballState.carrierId);
+      if (!worldPos) {
+        ballLayer.setVisible(false);
+        return;
+      }
+      worldX = worldPos.x + BALL_CARRIER_OFFSET_X;
+      worldY = worldPos.y + BALL_CARRIER_OFFSET_Y;
+    } else {
+      const worldPos = mapper.normalizedToWorld(ballState.position!);
+      worldX = worldPos.x;
+      worldY = worldPos.y;
     }
+
+    ballLayer.setBallType(ballState.ballType ?? "footballSmall");
     ballLayer.setVisible(true);
-    ballLayer.setBallPosition(
-      worldPos.x + BALL_CARRIER_OFFSET_X,
-      worldPos.y + BALL_CARRIER_OFFSET_Y,
-    );
+    ballLayer.setBallPosition(worldX, worldY);
   };
 
   const emitBallState = () => {
@@ -825,7 +837,37 @@ export async function createMovementCanvasShell(
     },
     giveBall: (playerId) => {
       if (!tokenLayer.getTokenById(playerId)) return;
-      ballState = { carrierId: playerId };
+      ballState = { carrierId: playerId, ballType: ballState.ballType ?? "footballSmall" };
+      if (!orchestrator.isLocked()) {
+        ballStateAtPlayStart = { ...ballState };
+      }
+      syncBallPosition();
+      emitBallState();
+    },
+    placeBall: (ballType: BallType, position?) => {
+      const pos = position ?? { x: 50, y: 50 };
+      ballState = { position: pos, ballType };
+      if (!orchestrator.isLocked()) {
+        ballStateAtPlayStart = { ...ballState };
+      }
+      syncBallPosition();
+      emitBallState();
+    },
+    removeBall: () => {
+      ballState = {};
+      if (!orchestrator.isLocked()) {
+        ballStateAtPlayStart = {};
+      }
+      syncBallPosition();
+      emitBallState();
+    },
+    freeBall: () => {
+      if (!ballState.carrierId) return;
+      const worldPos = tokenLayer.getTokenWorldPosition(ballState.carrierId);
+      const position = worldPos
+        ? clampNormalizedPoint(mapper.worldToNormalized(worldPos))
+        : { x: 50, y: 50 };
+      ballState = { position, ballType: ballState.ballType };
       if (!orchestrator.isLocked()) {
         ballStateAtPlayStart = { ...ballState };
       }

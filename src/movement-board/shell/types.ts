@@ -2,8 +2,12 @@ import type { PitchSport } from "../pitch/pitch-config";
 import type { NormalizedPoint } from "../coordinates/normalization";
 import type { PremiumPlayerTokenColor } from "../tokens/createPremiumPlayerToken";
 
+export type BallType = "footballSmall" | "footballMedium" | "sliotarSmall" | "sliotarMedium";
+
 export type BallState = {
   carrierId?: string;
+  position?: NormalizedPoint;
+  ballType?: BallType;
 };
 
 export type MovementBoardToken = {
@@ -74,6 +78,9 @@ export type MovementCanvasShellHandle = {
   resumePlayback: () => void;
   reset: () => void;
   giveBall: (playerId: string) => void;
+  placeBall: (ballType: BallType, position?: NormalizedPoint) => void;
+  removeBall: () => void;
+  freeBall: () => void;
   getBallState: () => BallState;
   setDragEnabled: (enabled: boolean) => void;
   setBallCarrier: (tokenId: string | null) => void;
