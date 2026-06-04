@@ -844,6 +844,12 @@ export async function createMovementCanvasShell(
     reset: () => {
       reset();
     },
+    setStartPositions: () => {
+      if (isPlaybackLocked()) return;
+      for (const token of tokenLayer.getTokens()) {
+        startPositionByTokenId.set(token.id, clonePoint(token.position));
+      }
+    },
     giveBall: (playerId) => {
       if (!tokenLayer.getTokenById(playerId)) return;
       ballState = { carrierId: playerId, ballType: ballState.ballType ?? "footballSmall" };

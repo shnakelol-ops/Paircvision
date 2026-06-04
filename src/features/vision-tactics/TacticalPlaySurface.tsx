@@ -297,6 +297,7 @@ export default function TacticalPlaySurface() {
   type BallMenuStep = "root" | "football-size" | "sliotar-size" | "existing";
   const [ballMenuStep, setBallMenuStep] = useState<BallMenuStep | null>(null);
   const [appViewportHeight, setAppViewportHeight] = useState(() => getTPViewportHeight());
+  const [startFlash, setStartFlash] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -527,6 +528,12 @@ export default function TacticalPlaySurface() {
     shellRef.current?.reset();
   };
 
+  const onSetStart = () => {
+    shellRef.current?.setStartPositions();
+    setStartFlash(true);
+    setTimeout(() => { setStartFlash(false); }, 700);
+  };
+
   const clearRoute = () => {
     shellRef.current?.clearSelectedRoute();
   };
@@ -698,7 +705,12 @@ export default function TacticalPlaySurface() {
             <div style={PANEL_ROW_STYLE}>
               {menuMode === "move" ? (
                 <>
-                  <button type="button" style={TOOL_DISABLED_STYLE} disabled>
+                  <button
+                    type="button"
+                    style={modeIsPlaybackLocked ? TOOL_DISABLED_STYLE : startFlash ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                    disabled={modeIsPlaybackLocked}
+                    onClick={onSetStart}
+                  >
                     Set Start
                   </button>
                   <button type="button" style={TOOL_DISABLED_STYLE} disabled>

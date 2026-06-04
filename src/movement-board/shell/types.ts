@@ -77,6 +77,7 @@ export type MovementCanvasShellHandle = {
   pausePlayback: () => void;
   resumePlayback: () => void;
   reset: () => void;
+  setStartPositions: () => void;
   giveBall: (playerId: string) => void;
   placeBall: (ballType: BallType, position?: NormalizedPoint) => void;
   removeBall: () => void;
