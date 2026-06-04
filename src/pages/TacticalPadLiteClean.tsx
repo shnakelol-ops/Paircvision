@@ -1512,6 +1512,21 @@ const MOVEMENT_MODE_PILL_BUTTON_DISABLED_STYLE: CSSProperties = {
   cursor: "not-allowed",
 };
 
+const BALL_POPUP_STYLE: CSSProperties = {
+  ...POPOUT_BASE_STYLE,
+  left: "50%",
+  transform: "translateX(-50%)",
+  bottom: "max(100px, calc(env(safe-area-inset-bottom, 0px) + 98px))",
+  flexDirection: "row",
+  gap: "4px",
+  padding: "4px",
+  borderRadius: "999px",
+  border: "1px solid rgba(220, 236, 228, 0.26)",
+  background: "rgba(9, 22, 18, 0.72)",
+  boxShadow: "0 12px 26px rgba(1, 7, 4, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.16)",
+  zIndex: 20,
+};
+
 const SHARE_TIP_TOAST_STYLE: CSSProperties = {
   position: "fixed",
   left: "max(62px, calc(env(safe-area-inset-left, 0px) + 60px))",
@@ -1923,6 +1938,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [lastBoardSavedAtMillis, setLastBoardSavedAtMillis] = useState<number | null>(null);
   const [loadedBoardName, setLoadedBoardName] = useState<string | null>(null);
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [ballPopupStep, setBallPopupStep] = useState<"root" | "football-size" | "sliotar-size" | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [activeToolsSection, setActiveToolsSection] = useState<"draw" | "teams" | "items" | "board">("draw");
   const [isCompactLandscapeToolsMenu, setIsCompactLandscapeToolsMenu] = useState(() => {
@@ -3097,6 +3113,14 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     };
   }, [isWhiteboardMode, whiteboardHomeConfirmOpen]);
 
+  useEffect(() => {
+    if (isPlaybackLocked) setBallPopupStep(null);
+  }, [isPlaybackLocked]);
+
+  useEffect(() => {
+    if (!controlsOpen) setBallPopupStep(null);
+  }, [controlsOpen]);
+
   const setWhiteboardCount = (team: "BLUE" | "RED", count: number) => {
     const clamped = Math.max(1, Math.min(15, Math.floor(count)));
     if (team === "BLUE") {
@@ -3316,6 +3340,17 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setMovementModePillSelection("ball");
     setTacticalTool("move");
     surfaceRef.current?.setWhiteboardDrawTool("move");
+  };
+
+  const handleBallButtonPress = () => {
+    if (isPortraitViewingMode || isPlaybackLocked) return;
+    setBallPopupStep((prev) => (prev === null ? "root" : null));
+  };
+
+  const onSelectBallSize = (type: TacticalItem["type"]) => {
+    addItem(type);
+    setBallPopupStep(null);
+    applyMovementModePillSelection("ball");
   };
 
   const applyMovementModePillSelection = (nextMode: MovementModePillOption) => {
@@ -4003,6 +4038,86 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             )}
           </div>
         ) : null}
+        {!isWhiteboardMode && !isPortraitViewingMode && controlsOpen && ballPopupStep !== null ? (
+          <div style={BALL_POPUP_STYLE} role="group" aria-label="Ball type selection">
+            {ballPopupStep === "root" ? (
+              <>
+                <button
+                  type="button"
+                  className="control-button"
+                  style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                  onClick={() => setBallPopupStep("football-size")}
+                >
+                  ⚽ Football
+                </button>
+                <button
+                  type="button"
+                  className="control-button"
+                  style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                  onClick={() => setBallPopupStep("sliotar-size")}
+                >
+                  🥎 Sliotar
+                </button>
+              </>
+            ) : null}
+            {ballPopupStep === "football-size" ? (
+              <>
+                <button
+                  type="button"
+                  className="control-button"
+                  style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                  onClick={() => setBallPopupStep("root")}
+                >
+                  ← Back
+                </button>
+                <button
+                  type="button"
+                  className="control-button"
+                  style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                  onClick={() => onSelectBallSize("footballSmall")}
+                >
+                  ⚽ Small
+                </button>
+                <button
+                  type="button"
+                  className="control-button"
+                  style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                  onClick={() => onSelectBallSize("football")}
+                >
+                  ⚽ Medium
+                </button>
+              </>
+            ) : null}
+            {ballPopupStep === "sliotar-size" ? (
+              <>
+                <button
+                  type="button"
+                  className="control-button"
+                  style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                  onClick={() => setBallPopupStep("root")}
+                >
+                  ← Back
+                </button>
+                <button
+                  type="button"
+                  className="control-button"
+                  style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                  onClick={() => onSelectBallSize("sliotarSmall")}
+                >
+                  🥎 Small
+                </button>
+                <button
+                  type="button"
+                  className="control-button"
+                  style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                  onClick={() => onSelectBallSize("sliotar")}
+                >
+                  🥎 Medium
+                </button>
+              </>
+            ) : null}
+          </div>
+        ) : null}
         {!isWhiteboardMode && !isPortraitViewingMode && controlsOpen ? (
           <div style={MOVEMENT_MODE_PILL_STYLE} role="group" aria-label="Movement mode">
             {([
@@ -4015,14 +4130,18 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 type="button"
                 className="control-button"
                 style={{
-                  ...(movementModePillSelection === option.id
-                    ? MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE
-                    : MOVEMENT_MODE_PILL_BUTTON_STYLE),
+                  ...(option.id === "ball"
+                    ? (ballPopupStep !== null || movementModePillSelection === "ball")
+                        ? MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE
+                        : MOVEMENT_MODE_PILL_BUTTON_STYLE
+                    : movementModePillSelection === option.id
+                      ? MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE
+                      : MOVEMENT_MODE_PILL_BUTTON_STYLE),
                   ...(isPlaybackLocked ? MOVEMENT_MODE_PILL_BUTTON_DISABLED_STYLE : null),
                 }}
-                aria-pressed={movementModePillSelection === option.id}
+                aria-pressed={option.id === "ball" ? ballPopupStep !== null : movementModePillSelection === option.id}
                 disabled={isPlaybackLocked}
-                onClick={() => applyMovementModePillSelection(option.id)}
+                onClick={() => option.id === "ball" ? handleBallButtonPress() : applyMovementModePillSelection(option.id)}
               >
                 {option.label}
               </button>
