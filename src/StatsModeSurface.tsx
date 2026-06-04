@@ -131,6 +131,7 @@ type StatsActiveMatchDraft = {
   venue: string;
   events: readonly LoggedMatchEvent[];
   restoreContext: SavedMatchRestoreContext;
+  squadLiveStates?: Record<string, ReadonlyArray<{ id: string; isActive?: boolean; activeSlot?: number }>>;
 };
 type ModeScoringEventKind =
   | "GOAL"
@@ -846,6 +847,25 @@ function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActive
           .filter((entry): entry is LoggedMatchEvent => entry != null)
       : [];
     if (matchId.length <= 0) return { draft: null, isCorrupt: true };
+    const squadLiveStates = (() => {
+      if (!source.squadLiveStates || typeof source.squadLiveStates !== "object" || Array.isArray(source.squadLiveStates)) return undefined;
+      const result: Record<string, Array<{ id: string; isActive?: boolean; activeSlot?: number }>> = {};
+      for (const [squadId, entries] of Object.entries(source.squadLiveStates as Record<string, unknown>)) {
+        if (!Array.isArray(entries)) continue;
+        result[squadId] = (entries as unknown[])
+          .filter((e): e is Record<string, unknown> => !!e && typeof e === "object")
+          .map((e) => ({
+            id: typeof e.id === "string" ? e.id : "",
+            isActive: typeof e.isActive === "boolean" ? e.isActive : undefined,
+            activeSlot:
+              typeof e.activeSlot === "number" && Number.isFinite(e.activeSlot) && e.activeSlot >= 1 && e.activeSlot <= 15
+                ? Math.floor(e.activeSlot)
+                : undefined,
+          }))
+          .filter((e) => e.id.length > 0);
+      }
+      return result;
+    })();
     return {
       draft: {
         version: 1,
@@ -858,6 +878,7 @@ function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActive
         venue: typeof source.venue === "string" ? source.venue.trim().slice(0, 24) : "",
         events,
         restoreContext: parseSavedMatchRestoreContext(source.restoreContext),
+        squadLiveStates,
       },
       isCorrupt: false,
     };
@@ -3901,6 +3922,12 @@ export default function StatsModeSurface() {
             }
           : {}),
       },
+      squadLiveStates: Object.fromEntries(
+        squads.map((squad) => [
+          squad.id,
+          squad.players.map(({ id, isActive, activeSlot }) => ({ id, isActive, activeSlot })),
+        ]),
+      ),
     };
   }, [
     activeTeamSide,
@@ -3911,6 +3938,7 @@ export default function StatsModeSurface() {
     loggedEvents,
     matchState,
     matchTimeSeconds,
+    squads,
     teamNames,
     venueName,
   ]);
@@ -5127,6 +5155,28 @@ export default function StatsModeSurface() {
     setPendingRecoveredDraft(null);
     setSaveFeedback("Recovered unsaved match");
     savedSessionSignatureRef.current = null;
+    if (draft.squadLiveStates) {
+      const liveStates = draft.squadLiveStates;
+      setSquads((prevSquads) =>
+        prevSquads.map((squad) => {
+          const playerStates = liveStates[squad.id];
+          if (!playerStates || playerStates.length === 0) return squad;
+          const stateById = new Map(playerStates.map((s) => [s.id, s]));
+          return {
+            ...squad,
+            players: squad.players.map((player) => {
+              const live = stateById.get(player.id);
+              if (!live) return player;
+              return {
+                ...player,
+                isActive: typeof live.isActive === "boolean" ? live.isActive : player.isActive,
+                activeSlot: live.activeSlot !== undefined ? live.activeSlot : (live.isActive === false ? undefined : player.activeSlot),
+              };
+            }),
+          };
+        }),
+      );
+    }
   };
 
   const discardRecoveredMatchDraft = () => {
@@ -6342,7 +6392,6 @@ export default function StatsModeSurface() {
       return a.number - b.number;
     })
     .slice(0, 15);
-  const benchPlayers = inactivePlayers;
   const contextActivePillBorder =
     playerSquadTeam === "HOME" ? "1px solid rgba(74, 222, 128, 0.65)" : "1px solid rgba(248, 113, 113, 0.62)";
   const contextActivePillGlow =
@@ -6693,75 +6742,115 @@ export default function StatsModeSurface() {
               ) : null,
             )}
           </div>
-          <div className="utility-subs-wrap">
-            <div className="utility-subs-title">Subs V1 Lite</div>
-            <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.9 }}>
-              Select one active player to go off, and one bench player to come on.
-            </div>
-            <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.9 }}>
-              Sub Out
-            </div>
-            <div className="utility-subs-row" aria-label="Active players">
-              {activePlayers.map((player) => (
-                <button
-                  key={`sub-out-${player.id}`}
-                  type="button"
-                  className="utility-player-pill"
-                  onClick={() => setSelectedSubOutId(player.id)}
-                  style={selectedSubOutId === player.id ? { border: "1px solid rgba(248,113,113,0.92)" } : undefined}
-                >
-                  {formatPlayerLabel(player)}
-                </button>
-              ))}
-            </div>
-            <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.9 }}>
-              Sub In
-            </div>
-            <div className="utility-subs-row" aria-label="Bench players">
-              {inactivePlayers.map((player) => (
-                <button
-                  key={`sub-in-${player.id}`}
-                  type="button"
-                  className="utility-player-pill"
-                  onClick={() => setSelectedSubInId(player.id)}
-                  style={selectedSubInId === player.id ? { border: "1px solid rgba(74,222,128,0.9)" } : undefined}
-                >
-                  {formatPlayerLabel(player)}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="utility-review-btn"
-              onClick={confirmSubstitution}
-              disabled={!selectedSubOutId || !selectedSubInId}
-            >
-              Confirm Sub
-            </button>
-          </div>
-          {isPreMatchSetup && benchPlayers.length > 0 ? (
-            <div className="utility-subs-wrap">
-              <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.84 }}>
-                Bench
+          <div className="subs-lite-panel">
+            <div className="subs-lite-panel__header">Substitution</div>
+            <div className="subs-lite-panel__section">
+              <div className={`subs-lite-panel__section-label subs-lite-panel__section-label--off${selectedSubOutId ? " subs-lite-panel__section-label--chosen" : ""}`}>
+                {selectedSubOutId ? "Going OFF" : "Step 1 — Player going OFF"}
               </div>
-              <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.72 }}>
-                Bench players are listed for substitution (Sub In), not direct event tagging.
-              </div>
-              <div className="utility-subs-row" aria-label="Home substitutes">
-                {benchPlayers.map((player, idx) => {
-                  return (
-                    <div
-                      key={`bench-${idx}-${player.id}`}
-                      className="utility-player-pill"
-                      style={{ opacity: 0.78 }}
+              {!selectedSubOutId ? (
+                <div className="subs-lite-panel__list" aria-label="Active players — choose player going off">
+                  {activePlayers.map((player) => (
+                    <button
+                      key={`sub-out-${player.id}`}
+                      type="button"
+                      className="subs-lite-panel__player-btn"
+                      onClick={() => setSelectedSubOutId(player.id)}
                     >
-                      {formatPlayerLabel(player)}
-                    </div>
-                  );
-                })}
-              </div>
+                      <span className="subs-lite-panel__player-number">#{player.number}</span>
+                      {player.name.trim().length > 0 && (
+                        <span className="subs-lite-panel__player-name">{player.name}</span>
+                      )}
+                    </button>
+                  ))}
+                  {activePlayers.length === 0 && (
+                    <div className="subs-lite-panel__empty">No active players</div>
+                  )}
+                </div>
+              ) : (
+                (() => {
+                  const off = activePlayers.find((p) => p.id === selectedSubOutId);
+                  return off ? (
+                    <button
+                      type="button"
+                      className="subs-lite-panel__player-btn subs-lite-panel__player-btn--selected-off"
+                      onClick={() => setSelectedSubOutId(null)}
+                    >
+                      <span className="subs-lite-panel__player-number">#{off.number}</span>
+                      {off.name.trim().length > 0 && (
+                        <span className="subs-lite-panel__player-name">{off.name}</span>
+                      )}
+                      <span className="subs-lite-panel__tap-hint">tap to change</span>
+                    </button>
+                  ) : null;
+                })()
+              )}
             </div>
-          ) : null}
+            {selectedSubOutId ? (
+              <div className="subs-lite-panel__section">
+                <div className={`subs-lite-panel__section-label subs-lite-panel__section-label--on${selectedSubInId ? " subs-lite-panel__section-label--chosen" : ""}`}>
+                  {selectedSubInId ? "Coming ON" : "Step 2 — Player coming ON"}
+                </div>
+                {!selectedSubInId ? (
+                  <div className="subs-lite-panel__list" aria-label="Bench players — choose player coming on">
+                    {inactivePlayers.map((player) => (
+                      <button
+                        key={`sub-in-${player.id}`}
+                        type="button"
+                        className="subs-lite-panel__player-btn"
+                        onClick={() => setSelectedSubInId(player.id)}
+                      >
+                        <span className="subs-lite-panel__player-number">#{player.number}</span>
+                        {player.name.trim().length > 0 && (
+                          <span className="subs-lite-panel__player-name">{player.name}</span>
+                        )}
+                      </button>
+                    ))}
+                    {inactivePlayers.length === 0 && (
+                      <div className="subs-lite-panel__empty">No bench players available</div>
+                    )}
+                  </div>
+                ) : (
+                  (() => {
+                    const on = inactivePlayers.find((p) => p.id === selectedSubInId);
+                    return on ? (
+                      <button
+                        type="button"
+                        className="subs-lite-panel__player-btn subs-lite-panel__player-btn--selected-on"
+                        onClick={() => setSelectedSubInId(null)}
+                      >
+                        <span className="subs-lite-panel__player-number">#{on.number}</span>
+                        {on.name.trim().length > 0 && (
+                          <span className="subs-lite-panel__player-name">{on.name}</span>
+                        )}
+                        <span className="subs-lite-panel__tap-hint">tap to change</span>
+                      </button>
+                    ) : null;
+                  })()
+                )}
+              </div>
+            ) : null}
+            {selectedSubOutId && selectedSubInId ? (
+              <div className="subs-lite-panel__confirm">
+                {(() => {
+                  const off = activePlayers.find((p) => p.id === selectedSubOutId);
+                  const on = inactivePlayers.find((p) => p.id === selectedSubInId);
+                  return off && on ? (
+                    <div className="subs-lite-panel__confirm-summary">
+                      #{off.number}{off.name.trim().length > 0 ? ` ${off.name}` : ""} OFF → #{on.number}{on.name.trim().length > 0 ? ` ${on.name}` : ""} ON
+                    </div>
+                  ) : null;
+                })()}
+                <button
+                  type="button"
+                  className="subs-lite-panel__confirm-btn"
+                  onClick={confirmSubstitution}
+                >
+                  Confirm Sub
+                </button>
+              </div>
+            ) : null}
+          </div>
           </div>
           <button
             type="button"
