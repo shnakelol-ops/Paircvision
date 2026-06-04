@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import OrientationGate, { usePortraitOrientation } from "../components/OrientationGate";
 import { createMovementCanvasShell } from "../movement-board/shell/createMovementCanvasShell";
 import type {
+  BallType,
   MovementBoardMode,
   MovementBoardToken,
   MovementCanvasShellHandle,
@@ -256,6 +257,9 @@ export default function MovementBoardCanvasShellPage() {
   const [isPaused, setIsPaused] = useState(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
   const [ballCarrierId, setBallCarrierId] = useState<string | null>(null);
+  const [ballOnPitch, setBallOnPitch] = useState(false);
+  type BallMenuStep = "root" | "football-size" | "sliotar-size" | "existing";
+  const [ballMenuStep, setBallMenuStep] = useState<BallMenuStep | null>(null);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -291,6 +295,7 @@ export default function MovementBoardCanvasShellPage() {
         },
         onBallStateChange: (state) => {
           setBallCarrierId(state.carrierId ?? null);
+          setBallOnPitch(!!(state.carrierId || state.position));
         },
       }).then((shell) => {
         if (disposed) {
@@ -307,7 +312,9 @@ export default function MovementBoardCanvasShellPage() {
         const playbackState = shell.getPlaybackState();
         setIsPlaying(playbackState.isPlaying);
         setIsPaused(playbackState.isPaused);
-        setBallCarrierId(shell.getBallState().carrierId ?? null);
+        const initialBallState = shell.getBallState();
+        setBallCarrierId(initialBallState.carrierId ?? null);
+        setBallOnPitch(!!(initialBallState.carrierId || initialBallState.position));
         shell.setDragEnabled(!isPortrait);
         destroyShell = shell.destroy;
       });
@@ -363,8 +370,13 @@ export default function MovementBoardCanvasShellPage() {
   useEffect(() => {
     if (isPlaying) {
       setIsControlsOpen(false);
+      setBallMenuStep(null);
     }
   }, [isPlaying]);
+
+  useEffect(() => {
+    if (!isControlsOpen) setBallMenuStep(null);
+  }, [isControlsOpen]);
 
   const modeLabelByMenu: Record<MovementMenuMode, string> = {
     move: "Move",
@@ -376,7 +388,9 @@ export default function MovementBoardCanvasShellPage() {
     ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""} · Routes ${routeCount}`
     : ballCarrierId
       ? `Ball Assigned · Routes ${routeCount}`
-      : `${modeLabelByMenu[menuMode]} · Routes ${routeCount}`;
+      : ballOnPitch
+        ? `Ball on Pitch · Routes ${routeCount}`
+        : `${modeLabelByMenu[menuMode]} · Routes ${routeCount}`;
 
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
@@ -454,6 +468,29 @@ export default function MovementBoardCanvasShellPage() {
     shell.giveBall(token.id);
   };
 
+  const onBallButtonPress = () => {
+    if (ballOnPitch) {
+      setBallMenuStep((prev) => (prev === "existing" ? null : "existing"));
+    } else {
+      setBallMenuStep((prev) => (prev === null ? "root" : null));
+    }
+  };
+
+  const onSelectBallType = (ballType: BallType) => {
+    shellRef.current?.placeBall(ballType);
+    setBallMenuStep(null);
+  };
+
+  const onFreeBall = () => {
+    shellRef.current?.freeBall();
+    setBallMenuStep(null);
+  };
+
+  const onRemoveBall = () => {
+    shellRef.current?.removeBall();
+    setBallMenuStep(null);
+  };
+
   const goBack = () => {
     if (typeof window === "undefined") return;
     const referrer = document.referrer;
@@ -512,10 +549,71 @@ export default function MovementBoardCanvasShellPage() {
                   {item.label}
                 </button>
               ))}
+              <button
+                type="button"
+                style={ballOnPitch ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                disabled={modeIsPlaybackLocked}
+                onClick={onBallButtonPress}
+              >
+                Ball
+              </button>
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
               </button>
             </div>
+
+            {ballMenuStep !== null ? (
+              <div style={PANEL_ROW_STYLE}>
+                {ballMenuStep === "root" ? (
+                  <>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setBallMenuStep("football-size")}>
+                      ⚽ Football
+                    </button>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setBallMenuStep("sliotar-size")}>
+                      🥎 Sliotar
+                    </button>
+                  </>
+                ) : null}
+                {ballMenuStep === "football-size" ? (
+                  <>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setBallMenuStep("root")}>
+                      ← Back
+                    </button>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onSelectBallType("footballSmall")}>
+                      ⚽ Small
+                    </button>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onSelectBallType("footballMedium")}>
+                      ⚽ Medium
+                    </button>
+                  </>
+                ) : null}
+                {ballMenuStep === "sliotar-size" ? (
+                  <>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setBallMenuStep("root")}>
+                      ← Back
+                    </button>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onSelectBallType("sliotarSmall")}>
+                      🥎 Small
+                    </button>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onSelectBallType("sliotarMedium")}>
+                      🥎 Medium
+                    </button>
+                  </>
+                ) : null}
+                {ballMenuStep === "existing" ? (
+                  <>
+                    {ballCarrierId ? (
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={onFreeBall}>
+                        Free Ball
+                      </button>
+                    ) : null}
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={onRemoveBall}>
+                      Remove Ball
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
 
             <div style={PANEL_ROW_STYLE}>
               {menuMode === "move" ? (
