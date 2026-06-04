@@ -912,12 +912,23 @@ export async function createTacticalPadLiteSurface(
     resolution: Math.min(2, window.devicePixelRatio || 1),
   });
 
-  host.appendChild(app.canvas as HTMLCanvasElement);
-  app.canvas.style.width = "100%";
-  app.canvas.style.height = "100%";
-  app.canvas.style.display = "block";
-  app.canvas.style.touchAction = "none";
-  app.canvas.style.userSelect = "none";
+  const canvas = app.canvas as HTMLCanvasElement;
+  host.appendChild(canvas);
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+  canvas.style.display = "block";
+  canvas.style.touchAction = "none";
+  canvas.style.userSelect = "none";
+
+  // Prevent the browser from permanently discarding the WebGL context when the
+  // page is hidden or memory pressure occurs. Without preventDefault(), the context
+  // is destroyed and can never be restored, leaving the canvas permanently black.
+  // webglcontextrestored fires after Pixi's internal system re-initialises GPU
+  // resources; fitToHost() recalculates viewport dimensions and redraws the scene.
+  const handleContextLost = (e: Event) => { e.preventDefault(); };
+  const handleContextRestored = () => { fitToHost(); };
+  canvas.addEventListener("webglcontextlost", handleContextLost);
+  canvas.addEventListener("webglcontextrestored", handleContextRestored);
 
   app.stage.eventMode = "static";
   app.stage.hitArea = app.screen;
@@ -3842,6 +3853,8 @@ export async function createTacticalPadLiteSurface(
       cancelBasicRouteFollow();
       clearRouteAssignments();
       resizeObserver.disconnect();
+      canvas.removeEventListener("webglcontextlost", handleContextLost);
+      canvas.removeEventListener("webglcontextrestored", handleContextRestored);
       app.stage.removeAllListeners();
       app.ticker.stop();
       pitchMount?.dispose();
@@ -3854,7 +3867,7 @@ export async function createTacticalPadLiteSurface(
         player.token.removeAllListeners();
       }
       try {
-        host.removeChild(app.canvas as HTMLCanvasElement);
+        host.removeChild(canvas);
       } catch {
         // Canvas may already be detached.
       }
