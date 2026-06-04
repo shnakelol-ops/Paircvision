@@ -271,10 +271,10 @@ export default function VisionTacticsHub() {
           aria-label="Open Tactical Slate"
         >
           <p className="vt-card-mode">Tactical Slate</p>
-          <h2 className="vt-card-title">Draw &amp;<br />Explain</h2>
-          <p className="vt-card-sub">Static diagrams</p>
+          <h2 className="vt-card-title">Plan &amp;<br />Explain</h2>
+          <p className="vt-card-sub">Players, movement, phases &amp; coaching tools</p>
           <p className="vt-card-desc">
-            Build tactical diagrams with players, arrows, notes, shapes and coaching marks.
+            Build tactical plans with players, arrows, movement, phases and visual coaching tools.
           </p>
           <span className="vt-card-cta" aria-hidden="true">Open Slate →</span>
         </button>
@@ -286,12 +286,12 @@ export default function VisionTacticsHub() {
           aria-label="Open Tactical Play"
         >
           <p className="vt-card-mode">Tactical Play</p>
-          <h2 className="vt-card-title">Animate &amp;<br />Teach</h2>
-          <p className="vt-card-sub">Movement &amp; playback</p>
+          <h2 className="vt-card-title">Rehearse &amp;<br />Teach</h2>
+          <p className="vt-card-sub">Movement, behaviour &amp; scenarios</p>
           <p className="vt-card-desc">
-            Bring movements to life with routes, playback, possession and future passing scenarios.
+            Bring football ideas to life with smooth movement, possession, passing and coordinated team behaviours.
           </p>
-          <span className="vt-card-cta" aria-hidden="true">Open Play →</span>
+          <span className="vt-card-cta" aria-hidden="true">Open Tactical Play →</span>
         </button>
       </div>
     </div>

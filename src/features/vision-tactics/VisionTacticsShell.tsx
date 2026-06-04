@@ -1,5 +1,5 @@
 import TacticalPadLiteClean from "../../pages/TacticalPadLiteClean";
-import TacticalPlayPlaceholder from "./TacticalPlayPlaceholder";
+import TacticalPlaySurface from "./TacticalPlaySurface";
 import VisionTacticsHub from "./VisionTacticsHub";
 import type { VisionTacticsView } from "./visionTacticsTypes";
 
@@ -14,6 +14,6 @@ function resolveView(): VisionTacticsView {
 export default function VisionTacticsShell() {
   const view = resolveView();
   if (view === "slate") return <TacticalPadLiteClean />;
-  if (view === "play") return <TacticalPlayPlaceholder />;
+  if (view === "play") return <TacticalPlaySurface />;
   return <VisionTacticsHub />;
 }
