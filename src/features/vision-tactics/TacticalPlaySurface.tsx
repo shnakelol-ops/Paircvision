@@ -264,6 +264,22 @@ const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
   padding: "0 8px",
 };
 
+const HINT_PILL_STYLE: CSSProperties = {
+  position: "fixed",
+  bottom: "max(54px, calc(env(safe-area-inset-bottom, 0px) + 52px))",
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 20,
+  color: "rgba(198, 228, 210, 0.44)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 500,
+  letterSpacing: "0.05em",
+  whiteSpace: "nowrap",
+  pointerEvents: "none",
+  userSelect: "none",
+};
+
 export default function TacticalPlaySurface() {
   type MovementMenuMode = "move" | "route" | "play";
 
@@ -456,12 +472,12 @@ export default function TacticalPlaySurface() {
 
   const selectedHasBall = selectedToken != null && selectedToken.id === ballCarrierId;
   const coachInfoLabel = selectedToken
-    ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""} · Routes ${routeCount}`
+    ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""} · Movements ${routeCount}`
     : ballCarrierId
-      ? `Ball Assigned · Routes ${routeCount}`
+      ? `Ball Assigned · Movements ${routeCount}`
       : ballOnPitch
-        ? `Ball on Pitch · Routes ${routeCount}`
-        : `${modeLabelByMenu[menuMode]} · Routes ${routeCount}`;
+        ? `Ball on Pitch · Movements ${routeCount}`
+        : `${modeLabelByMenu[menuMode]} · Movements ${routeCount}`;
 
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
@@ -618,6 +634,10 @@ export default function TacticalPlaySurface() {
           CTRL
         </button>
 
+        {!isControlsOpen && !isPlaying && !isPaused ? (
+          <div style={HINT_PILL_STYLE}>Move players → Set Start → Draw Movements → Play</div>
+        ) : null}
+
         {isControlsOpen ? (
           <div style={CONTROL_PANEL_STYLE}>
             <div style={PANEL_ROW_STYLE}>
@@ -714,7 +734,7 @@ export default function TacticalPlaySurface() {
                     Set Start
                   </button>
                   <button type="button" style={TOOL_DISABLED_STYLE} disabled>
-                    Add Phase
+                    Phases Soon
                   </button>
                   <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetBoard}>
                     Reset
