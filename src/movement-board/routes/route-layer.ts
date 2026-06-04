@@ -27,6 +27,7 @@ export type RouteLayer = {
   setDraftRoute: (draft: RouteDraft) => void;
   setSelectedPlayer: (playerId: string | null) => void;
   setSelectedWaypoint: (routePlayerId: string | null, waypointIndex: number | null) => void;
+  setPlaybackAlpha: (alpha: number) => void;
   syncToMapper: () => void;
   clear: () => void;
   destroy: () => void;
@@ -214,6 +215,9 @@ export function createRouteLayer(options: CreateRouteLayerOptions): RouteLayer {
             };
       render();
     },
+    setPlaybackAlpha: (alpha: number) => {
+      graphics.alpha = Math.max(0, Math.min(1, alpha));
+    },
     syncToMapper: () => {
       render();
     },
@@ -221,6 +225,7 @@ export function createRouteLayer(options: CreateRouteLayerOptions): RouteLayer {
       routes = [];
       draftRoute = null;
       selectedWaypoint = null;
+      graphics.alpha = 1;
       graphics.clear();
     },
     destroy: () => {

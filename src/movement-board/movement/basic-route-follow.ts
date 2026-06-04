@@ -17,6 +17,24 @@ export type BasicRouteFollowSession = {
 };
 
 const EPSILON = 0.0001;
+const EASE_MIN = 0.45;
+
+// Bell-shaped ease: 0.45 at start/end, 1.0 at midpoint.
+// Formula: MIN + (1 - MIN) * 4t(1-t), where 4t(1-t) peaks at 1.0 when t=0.5.
+function easeInOut(t: number): number {
+  const clamped = Math.max(0, Math.min(1, t));
+  return EASE_MIN + (1 - EASE_MIN) * 4 * clamped * (1 - clamped);
+}
+
+function computeTotalLength(pts: ReadonlyArray<{ x: number; y: number }>): number {
+  let total = 0;
+  for (let i = 1; i < pts.length; i += 1) {
+    const a = pts[i - 1]!;
+    const b = pts[i]!;
+    total += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  return total;
+}
 
 export function createBasicRouteFollowSession(options: BasicRouteFollowOptions): BasicRouteFollowSession {
   const { target, route, onComplete, onCancel } = options;
@@ -25,6 +43,8 @@ export function createBasicRouteFollowSession(options: BasicRouteFollowOptions):
     .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y))
     .map((point) => ({ x: point.x, y: point.y }));
 
+  const totalLength = computeTotalLength(points);
+  let traveledDistance = 0;
   let active = points.length > 0 && speed > 0;
   let index = 0;
 
@@ -48,7 +68,12 @@ export function createBasicRouteFollowSession(options: BasicRouteFollowOptions):
       return;
     }
 
-    let remainingDistance = speed * (deltaMs / 1000);
+    // Compute ease factor from current progress through the route.
+    // Progress is evaluated once at the start of the tick — accurate enough at 60fps.
+    const routeProgress = totalLength > 0 ? Math.min(1, traveledDistance / totalLength) : 0;
+    const ease = easeInOut(routeProgress);
+    let remainingDistance = speed * ease * (deltaMs / 1000);
+
     while (remainingDistance > 0 && active) {
       const nextPoint = points[index];
       if (!nextPoint) {
@@ -72,6 +97,7 @@ export function createBasicRouteFollowSession(options: BasicRouteFollowOptions):
       if (remainingDistance >= distance) {
         target.x = nextPoint.x;
         target.y = nextPoint.y;
+        traveledDistance += distance;
         remainingDistance -= distance;
         index += 1;
         if (index >= points.length) {
@@ -81,9 +107,10 @@ export function createBasicRouteFollowSession(options: BasicRouteFollowOptions):
         continue;
       }
 
-      const progress = remainingDistance / distance;
-      target.x += dx * progress;
-      target.y += dy * progress;
+      const segmentProgress = remainingDistance / distance;
+      target.x += dx * segmentProgress;
+      target.y += dy * segmentProgress;
+      traveledDistance += remainingDistance;
       remainingDistance = 0;
     }
   };

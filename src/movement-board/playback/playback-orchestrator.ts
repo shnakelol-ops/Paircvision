@@ -3,7 +3,9 @@ import { createBasicRouteFollowSession, type BasicRouteFollowSession } from "../
 import { sampleRoutePoints } from "../routes/route-sampling";
 import type { MovementPlaybackSpeed, MovementPlaybackState } from "../shell/types";
 
-const BASIC_ROUTE_FOLLOW_SPEED = 18;
+// Speed increased from 18 to 22 to preserve average travel time after ease-in-out
+// introduces an average speed factor of ~0.82 (22 × 0.82 ≈ 18).
+const BASIC_ROUTE_FOLLOW_SPEED = 22;
 const PLAY_ALL_STAGGER_MS = 90;
 const POSITION_EPSILON = 0.0001;
 
