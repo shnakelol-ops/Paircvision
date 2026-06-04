@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import OrientationGate, { usePortraitOrientation } from "../../components/OrientationGate";
+import VisionStadiumBackground from "../../components/VisionStadiumBackground";
 import { createMovementCanvasShell } from "../../movement-board/shell/createMovementCanvasShell";
 import type {
   BallType,
@@ -11,22 +12,57 @@ import type {
   MovementRouteEditState,
 } from "../../movement-board/shell/types";
 
+const _CAN_DVW = typeof window !== "undefined" && typeof window.CSS !== "undefined" && window.CSS.supports("width: 100dvw");
+const _VW = _CAN_DVW ? "100dvw" : "100vw";
+const TP_HEIGHT_VAR = "--tp-app-height";
+const TP_H = `var(${TP_HEIGHT_VAR}, 100dvh)`;
+const TP_CONTENT_WIDTH = `min(calc(${_VW} - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc((${TP_H} - 10px) * 1.6), 1360px)`;
+
+function getTPViewportHeight(): number {
+  if (typeof window === "undefined") return 0;
+  const vp = window.visualViewport;
+  const vpH = vp && Number.isFinite(vp.height) ? Math.round(vp.height) : 0;
+  return Math.max(0, vpH || (Number.isFinite(window.innerHeight) ? Math.round(window.innerHeight) : 0));
+}
+
 const ROOT_STYLE: CSSProperties = {
   position: "fixed",
   inset: 0,
+  width: "100vw",
+  height: TP_H,
+  minHeight: TP_H,
   margin: 0,
-  background: "#0b1210",
-  display: "grid",
-  placeItems: "center",
+  background: "radial-gradient(ellipse at 50% 50%, #0f1e35 0%, #080f1d 55%, #040b16 100%)",
+  paddingTop: "max(4px, calc(env(safe-area-inset-top, 0px) + 2px))",
+  paddingRight: "max(4px, calc(env(safe-area-inset-right, 0px) + 2px))",
+  paddingBottom: "max(4px, calc(env(safe-area-inset-bottom, 0px) + 2px))",
+  paddingLeft: "max(4px, calc(env(safe-area-inset-left, 0px) + 2px))",
+  boxSizing: "border-box",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
 };
 
-const BOARD_STYLE: CSSProperties = {
-  width: "min(98vw, 1400px)",
-  height: "min(92vh, 840px)",
-  borderRadius: "14px",
+const CONTENT_STYLE: CSSProperties = {
+  width: TP_CONTENT_WIDTH,
+  maxWidth: "calc(100vw - 24px)",
+  aspectRatio: "16 / 10",
+  maxHeight: `calc(${TP_H} - 10px)`,
+  boxSizing: "border-box",
+  position: "relative",
+  zIndex: 1,
+  display: "flex",
+  alignItems: "stretch",
+};
+
+const PITCH_STYLE: CSSProperties = {
+  width: "100%",
+  height: "100%",
+  borderRadius: "12px",
   overflow: "hidden",
-  boxShadow: "0 20px 44px rgba(0, 0, 0, 0.38)",
-  background: "#12241e",
+  boxShadow: "0 50px 110px rgba(0, 0, 0, 0.55), 0 18px 45px rgba(0, 0, 0, 0.35)",
+  background: "#0c1829",
 };
 
 const INFO_PILL_STYLE: CSSProperties = {
@@ -35,15 +71,15 @@ const INFO_PILL_STYLE: CSSProperties = {
   left: "50%",
   transform: "translateX(-50%)",
   zIndex: 12,
-  color: "#e6f4eb",
+  color: "#e8f0ff",
   fontFamily: "Inter, system-ui, sans-serif",
   fontSize: "11px",
   fontWeight: 600,
   letterSpacing: "0.02em",
   padding: "6px 10px",
   borderRadius: "999px",
-  border: "1px solid rgba(214, 245, 225, 0.24)",
-  background: "rgba(8, 20, 15, 0.74)",
+  border: "1px solid rgba(180, 210, 255, 0.20)",
+  background: "rgba(6, 12, 26, 0.82)",
   backdropFilter: "blur(10px)",
   WebkitBackdropFilter: "blur(10px)",
 };
@@ -56,9 +92,9 @@ const BACK_BUTTON_STYLE: CSSProperties = {
   height: "34px",
   minWidth: "58px",
   borderRadius: "999px",
-  border: "1px solid rgba(214, 245, 225, 0.3)",
-  background: "rgba(8, 20, 15, 0.74)",
-  color: "#e6f4eb",
+  border: "1px solid rgba(180, 210, 255, 0.22)",
+  background: "rgba(6, 12, 26, 0.82)",
+  color: "#e8f0ff",
   fontFamily: "Inter, system-ui, sans-serif",
   fontSize: "10px",
   fontWeight: 700,
@@ -68,7 +104,7 @@ const BACK_BUTTON_STYLE: CSSProperties = {
   cursor: "pointer",
   backdropFilter: "blur(10px)",
   WebkitBackdropFilter: "blur(10px)",
-  boxShadow: "0 8px 18px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+  boxShadow: "0 8px 20px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.10)",
 };
 
 const CTRL_BUBBLE_STYLE: CSSProperties = {
@@ -79,9 +115,9 @@ const CTRL_BUBBLE_STYLE: CSSProperties = {
   height: "38px",
   minWidth: "68px",
   borderRadius: "999px",
-  border: "1px solid rgba(220, 236, 228, 0.28)",
-  background: "rgba(9, 22, 18, 0.62)",
-  color: "#f2fff5",
+  border: "1px solid rgba(180, 210, 255, 0.20)",
+  background: "rgba(6, 14, 30, 0.72)",
+  color: "#eef4ff",
   fontFamily: "Inter, system-ui, sans-serif",
   fontSize: "11px",
   fontWeight: 800,
@@ -91,7 +127,7 @@ const CTRL_BUBBLE_STYLE: CSSProperties = {
   cursor: "pointer",
   backdropFilter: "blur(14px)",
   WebkitBackdropFilter: "blur(14px)",
-  boxShadow: "0 12px 26px rgba(1, 7, 4, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+  boxShadow: "0 12px 28px rgba(0, 4, 14, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.18)",
 };
 
 const PV_BADGE_STYLE: CSSProperties = {
@@ -102,9 +138,9 @@ const PV_BADGE_STYLE: CSSProperties = {
   height: "22px",
   minWidth: "32px",
   borderRadius: "999px",
-  border: "1px solid rgba(220, 236, 228, 0.2)",
-  background: "rgba(9, 22, 18, 0.5)",
-  color: "rgba(232, 245, 238, 0.92)",
+  border: "1px solid rgba(180, 210, 255, 0.16)",
+  background: "rgba(6, 14, 30, 0.58)",
+  color: "rgba(220, 235, 255, 0.88)",
   fontFamily: "Inter, system-ui, sans-serif",
   fontSize: "9px",
   fontWeight: 700,
@@ -131,11 +167,11 @@ const CONTROL_PANEL_STYLE: CSSProperties = {
 
 const PANEL_ROW_STYLE: CSSProperties = {
   borderRadius: "999px",
-  border: "1px solid rgba(220, 236, 228, 0.26)",
-  background: "rgba(9, 22, 18, 0.62)",
+  border: "1px solid rgba(180, 210, 255, 0.18)",
+  background: "rgba(6, 14, 30, 0.72)",
   backdropFilter: "blur(14px)",
   WebkitBackdropFilter: "blur(14px)",
-  boxShadow: "0 10px 22px rgba(1, 7, 4, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.16)",
+  boxShadow: "0 10px 24px rgba(0, 4, 14, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
   padding: "2px",
   display: "flex",
   alignItems: "center",
@@ -151,9 +187,9 @@ const MODE_BUTTON_STYLE: CSSProperties = {
   minWidth: "52px",
   height: "28px",
   borderRadius: "999px",
-  border: "1px solid rgba(212, 229, 222, 0.26)",
-  background: "rgba(14, 30, 24, 0.66)",
-  color: "rgba(230, 244, 236, 0.9)",
+  border: "1px solid rgba(180, 210, 255, 0.18)",
+  background: "rgba(8, 18, 38, 0.72)",
+  color: "rgba(220, 235, 255, 0.88)",
   fontFamily: "Inter, system-ui, sans-serif",
   fontSize: "9px",
   fontWeight: 640,
@@ -162,7 +198,7 @@ const MODE_BUTTON_STYLE: CSSProperties = {
   padding: "0 9px",
   cursor: "pointer",
   whiteSpace: "nowrap",
-  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.14)",
+  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.10)",
 };
 
 const MODE_BUTTON_ACTIVE_STYLE: CSSProperties = {
@@ -177,9 +213,9 @@ const TOOL_BUTTON_STYLE: CSSProperties = {
   height: "31px",
   minWidth: "68px",
   borderRadius: "999px",
-  border: "1px solid rgba(255, 255, 255, 0.25)",
-  background: "rgba(20, 25, 30, 0.65)",
-  color: "rgba(255, 255, 255, 0.95)",
+  border: "1px solid rgba(180, 210, 255, 0.22)",
+  background: "rgba(10, 18, 38, 0.72)",
+  color: "rgba(220, 235, 255, 0.95)",
   fontFamily: "Inter, system-ui, sans-serif",
   fontSize: "9px",
   fontWeight: 600,
@@ -190,7 +226,7 @@ const TOOL_BUTTON_STYLE: CSSProperties = {
   whiteSpace: "nowrap",
   backdropFilter: "blur(12px)",
   WebkitBackdropFilter: "blur(12px)",
-  boxShadow: "0 6px 16px rgba(0, 0, 0, 0.28), inset 0 1px 2px rgba(255, 255, 255, 0.18)",
+  boxShadow: "0 6px 18px rgba(0, 4, 14, 0.36), inset 0 1px 2px rgba(255, 255, 255, 0.14)",
 };
 
 const TOOL_ACTIVE_STYLE: CSSProperties = {
@@ -260,6 +296,42 @@ export default function TacticalPlaySurface() {
   const [ballOnPitch, setBallOnPitch] = useState(false);
   type BallMenuStep = "root" | "football-size" | "sliotar-size" | "existing";
   const [ballMenuStep, setBallMenuStep] = useState<BallMenuStep | null>(null);
+  const [appViewportHeight, setAppViewportHeight] = useState(() => getTPViewportHeight());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let rafId = 0;
+    let timeoutId: number | null = null;
+    const clearScheduled = () => {
+      if (timeoutId != null) { window.clearTimeout(timeoutId); timeoutId = null; }
+      if (rafId) { window.cancelAnimationFrame(rafId); rafId = 0; }
+    };
+    const syncHeight = () => {
+      rafId = 0;
+      const next = getTPViewportHeight();
+      setAppViewportHeight((prev) => Math.abs(prev - next) <= 1 ? prev : next);
+    };
+    const schedule = (defer: boolean) => {
+      clearScheduled();
+      if (defer) { timeoutId = window.setTimeout(() => { rafId = window.requestAnimationFrame(syncHeight); }, 180); return; }
+      rafId = window.requestAnimationFrame(syncHeight);
+    };
+    schedule(false);
+    const vp = window.visualViewport;
+    const onResize = () => schedule(false);
+    const onOrient = () => schedule(true);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onOrient);
+    vp?.addEventListener("resize", onResize);
+    vp?.addEventListener("scroll", onResize);
+    return () => {
+      clearScheduled();
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onOrient);
+      vp?.removeEventListener("resize", onResize);
+      vp?.removeEventListener("scroll", onResize);
+    };
+  }, []);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -515,10 +587,18 @@ export default function TacticalPlaySurface() {
   const pauseResumeDisabled = !isPlaying && !isPaused;
   const playbackFloatingVisible = isPlaying || isPaused;
 
+  const rootStyle: CSSProperties = {
+    ...ROOT_STYLE,
+    [TP_HEIGHT_VAR]: `${Math.max(0, Math.floor(appViewportHeight))}px`,
+  } as CSSProperties;
+
   return (
     <OrientationGate modeLabel="Tactical Play">
-      <div style={ROOT_STYLE}>
-        <div ref={hostRef} style={BOARD_STYLE} />
+      <div style={rootStyle}>
+        <VisionStadiumBackground variant="board" />
+        <div style={CONTENT_STYLE}>
+          <div ref={hostRef} style={PITCH_STYLE} />
+        </div>
 
         <button type="button" style={BACK_BUTTON_STYLE} onClick={goBack}>
           Vision Tactics

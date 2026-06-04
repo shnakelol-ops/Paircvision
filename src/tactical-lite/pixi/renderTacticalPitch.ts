@@ -25,11 +25,11 @@ function createStripeTexture(sport: PitchSport): Texture {
     const stripe = (x / band) % 2 === 0;
     ctx.fillStyle = stripe
       ? isSoccer
-        ? "rgba(255,255,255,0.26)"
-        : "rgba(255,255,255,0.28)"
+        ? "rgba(255,255,255,0.32)"
+        : "rgba(255,255,255,0.30)"
       : isSoccer
-        ? "rgba(0,0,0,0.18)"
-        : "rgba(0,0,0,0.17)";
+        ? "rgba(0,0,0,0.22)"
+        : "rgba(0,0,0,0.18)";
     ctx.fillRect(x, 0, band * 0.52, H);
   }
   ctx.fillStyle = "rgba(255,255,255,0.03)";
@@ -53,13 +53,13 @@ function turfRecipe(sport: PitchSport): TurfRecipe {
   if (sport === "soccer") {
     return {
       wash: [
-        { t: 0, c: "#050d0a" },
-        { t: 0.35, c: "#10261c" },
-        { t: 0.52, c: "#16382a" },
-        { t: 0.68, c: "#122c22" },
-        { t: 1, c: "#060f0c" },
+        { t: 0, c: "#071210" },
+        { t: 0.35, c: "#142e22" },
+        { t: 0.52, c: "#1c4634" },
+        { t: 0.68, c: "#163626" },
+        { t: 1, c: "#071210" },
       ],
-      centreWash: "rgba(198, 228, 208, 0.065)",
+      centreWash: "rgba(210, 240, 218, 0.090)",
       verticalBands: 3.85,
       grain: 0.01,
     };
@@ -353,7 +353,7 @@ export function createTacticalPitchVisualRoot(
   const pad = 2.95;
   const cornerR = 2.35;
   chassis.roundRect(-pad, -pad, vbW + pad * 2, vbH + pad * 2, cornerR).fill({
-    color: isWhiteboardTheme ? 0xd6dbe1 : 0x020706,
+    color: isWhiteboardTheme ? 0xd6dbe1 : 0x050b1c,
     alpha: 1,
   });
   panel.addChild(chassis);
@@ -390,7 +390,7 @@ export function createTacticalPitchVisualRoot(
     const verticalBands = turfRecipe(sport).verticalBands;
     const density = 2.15 / Math.max(2.8, verticalBands);
     stripes.tileScale.set(2.05, density);
-    stripes.alpha = sport === "soccer" ? 0.36 : 0.31;
+    stripes.alpha = sport === "soccer" ? 0.42 : 0.33;
     stripes.blendMode = "multiply";
     stripes.zIndex = 1;
     face.addChild(stripes);
@@ -418,9 +418,9 @@ export function createTacticalPitchVisualRoot(
       colorStops: isSoccer
         ? [
             { offset: 0.32, color: "#00000000" },
-            { offset: 0.64, color: "rgba(0, 14, 10, 0.035)" },
-            { offset: 0.82, color: "rgba(0, 14, 10, 0.1)" },
-            { offset: 1, color: "rgba(0, 18, 12, 0.2)" },
+            { offset: 0.64, color: "rgba(0, 14, 10, 0.018)" },
+            { offset: 0.82, color: "rgba(0, 14, 10, 0.064)" },
+            { offset: 1, color: "rgba(0, 18, 12, 0.14)" },
           ]
         : [
             { offset: 0.34, color: "#00000000" },
@@ -434,7 +434,7 @@ export function createTacticalPitchVisualRoot(
     depth.zIndex = 2;
     depth.rect(0, 0, vbW, vbH).fill(vignette);
     depth.blendMode = "multiply";
-    depth.alpha = sport === "soccer" ? 0.38 : 0.24;
+    depth.alpha = sport === "soccer" ? 0.26 : 0.22;
     face.addChild(depth);
 
     if (!isSoccer) {
@@ -506,7 +506,7 @@ export function createTacticalPitchVisualRoot(
   } else {
     if (!isSoccer) markingsClarity.tint = 0xffffff;
     markingsClarity.blendMode = "screen";
-    markingsClarity.alpha = isSoccer ? 0.12 : 0.16;
+    markingsClarity.alpha = isSoccer ? 0.20 : 0.18;
   }
   face.addChild(markingsClarity);
 
