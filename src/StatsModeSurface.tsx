@@ -6837,7 +6837,13 @@ export default function StatsModeSurface() {
                   const on = inactivePlayers.find((p) => p.id === selectedSubInId);
                   return off && on ? (
                     <div className="subs-lite-panel__confirm-summary">
-                      #{off.number}{off.name.trim().length > 0 ? ` ${off.name}` : ""} OFF → #{on.number}{on.name.trim().length > 0 ? ` ${on.name}` : ""} ON
+                      <span className="subs-lite-panel__confirm-off">
+                        #{off.number}{off.name.trim().length > 0 ? ` ${off.name}` : ""}
+                      </span>
+                      <span className="subs-lite-panel__confirm-arrow">→</span>
+                      <span className="subs-lite-panel__confirm-on">
+                        #{on.number}{on.name.trim().length > 0 ? ` ${on.name}` : ""}
+                      </span>
                     </div>
                   ) : null;
                 })()}
