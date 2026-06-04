@@ -3489,6 +3489,99 @@ const PANEL_CSS = `
   outline: none;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 2px rgba(74, 222, 128, 0.45), 0 2px 10px rgba(74, 222, 128, 0.12);
 }
+
+/* Subs formation — formation-style OFF selector inside subs panel */
+.subs-formation {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.subs-formation__row {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.subs-formation__chip {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 222, 128, 0.45);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(8, 13, 26, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(74, 222, 128, 0.1);
+  color: rgba(248, 250, 252, 0.92);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.1px;
+}
+
+.subs-formation__chip--selected-off {
+  border-color: rgba(248, 113, 113, 0.9);
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.48), rgba(80, 15, 15, 0.56));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(248, 113, 113, 0.26), 0 0 10px rgba(248, 113, 113, 0.14);
+  color: #fca5a5;
+}
+
+/* Subs bench — 2-column chip grid for ON selector */
+.subs-bench {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+}
+
+.subs-bench__chip {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(74, 222, 128, 0.38);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(8, 13, 26, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(74, 222, 128, 0.1);
+  color: rgba(248, 250, 252, 0.92);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 6px 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+}
+
+.subs-bench__chip--selected-on {
+  border-color: rgba(74, 222, 128, 0.9);
+  background: linear-gradient(180deg, rgba(20, 83, 45, 0.52), rgba(10, 52, 28, 0.6));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(74, 222, 128, 0.3), 0 0 10px rgba(74, 222, 128, 0.14);
+}
+
+.subs-bench__number {
+  font-size: 12px;
+  font-weight: 800;
+  color: #93c5fd;
+  line-height: 1;
+}
+
+.subs-bench__name {
+  font-size: 9px;
+  color: rgba(248, 250, 252, 0.75);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  letter-spacing: 0.06px;
+}
 `;
 
 const HOME_ICON_BUTTON_STYLE: CSSProperties = {
@@ -6925,88 +7018,53 @@ export default function StatsModeSurface() {
             <div className="subs-lite-panel__header">Substitution</div>
             <div className="subs-lite-panel__section">
               <div className={`subs-lite-panel__section-label subs-lite-panel__section-label--off${selectedSubOutId ? " subs-lite-panel__section-label--chosen" : ""}`}>
-                {selectedSubOutId ? "Going OFF" : "Step 1 — Player going OFF"}
+                {selectedSubOutId ? "Going OFF — tap to change" : "Tap player going OFF"}
               </div>
-              {!selectedSubOutId ? (
-                <div className="subs-lite-panel__list" aria-label="Active players — choose player going off">
-                  {activePlayers.map((player) => (
-                    <button
-                      key={`sub-out-${player.id}`}
-                      type="button"
-                      className="subs-lite-panel__player-btn"
-                      onClick={() => setSelectedSubOutId(player.id)}
-                    >
-                      <span className="subs-lite-panel__player-number">#{player.number}</span>
-                      {player.name.trim().length > 0 && (
-                        <span className="subs-lite-panel__player-name">{player.name}</span>
-                      )}
-                    </button>
-                  ))}
-                  {activePlayers.length === 0 && (
-                    <div className="subs-lite-panel__empty">No active players</div>
-                  )}
-                </div>
-              ) : (
-                (() => {
-                  const off = activePlayers.find((p) => p.id === selectedSubOutId);
-                  return off ? (
-                    <button
-                      type="button"
-                      className="subs-lite-panel__player-btn subs-lite-panel__player-btn--selected-off"
-                      onClick={() => setSelectedSubOutId(null)}
-                    >
-                      <span className="subs-lite-panel__player-number">#{off.number}</span>
-                      {off.name.trim().length > 0 && (
-                        <span className="subs-lite-panel__player-name">{off.name}</span>
-                      )}
-                      <span className="subs-lite-panel__tap-hint">tap to change</span>
-                    </button>
-                  ) : null;
-                })()
+              <div className="subs-formation" aria-label="Active players — tap player going off">
+                {formationRows.map((row, rowIdx) =>
+                  row.length > 0 ? (
+                    <div key={`sf-row-${rowIdx}`} className="subs-formation__row">
+                      {row.map((player, playerIdx) => (
+                        <button
+                          key={`sf-${rowIdx}-${playerIdx}-${player.id}`}
+                          type="button"
+                          className={`subs-formation__chip${selectedSubOutId === player.id ? " subs-formation__chip--selected-off" : ""}`}
+                          onClick={() => setSelectedSubOutId(selectedSubOutId === player.id ? null : player.id)}
+                        >
+                          #{player.number}{player.name.trim().length > 0 ? ` ${player.name.slice(0, 7)}` : ""}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null,
+                )}
+              </div>
+              {activePlayers.length === 0 && (
+                <div className="subs-lite-panel__empty">No active players</div>
               )}
             </div>
             {selectedSubOutId ? (
               <div className="subs-lite-panel__section">
                 <div className={`subs-lite-panel__section-label subs-lite-panel__section-label--on${selectedSubInId ? " subs-lite-panel__section-label--chosen" : ""}`}>
-                  {selectedSubInId ? "Coming ON" : "Step 2 — Player coming ON"}
+                  {selectedSubInId ? "Coming ON — tap to change" : "Tap replacement"}
                 </div>
-                {!selectedSubInId ? (
-                  <div className="subs-lite-panel__list" aria-label="Bench players — choose player coming on">
-                    {inactivePlayers.map((player) => (
-                      <button
-                        key={`sub-in-${player.id}`}
-                        type="button"
-                        className="subs-lite-panel__player-btn"
-                        onClick={() => setSelectedSubInId(player.id)}
-                      >
-                        <span className="subs-lite-panel__player-number">#{player.number}</span>
-                        {player.name.trim().length > 0 && (
-                          <span className="subs-lite-panel__player-name">{player.name}</span>
-                        )}
-                      </button>
-                    ))}
-                    {inactivePlayers.length === 0 && (
-                      <div className="subs-lite-panel__empty">No bench players available</div>
-                    )}
-                  </div>
-                ) : (
-                  (() => {
-                    const on = inactivePlayers.find((p) => p.id === selectedSubInId);
-                    return on ? (
-                      <button
-                        type="button"
-                        className="subs-lite-panel__player-btn subs-lite-panel__player-btn--selected-on"
-                        onClick={() => setSelectedSubInId(null)}
-                      >
-                        <span className="subs-lite-panel__player-number">#{on.number}</span>
-                        {on.name.trim().length > 0 && (
-                          <span className="subs-lite-panel__player-name">{on.name}</span>
-                        )}
-                        <span className="subs-lite-panel__tap-hint">tap to change</span>
-                      </button>
-                    ) : null;
-                  })()
-                )}
+                <div className="subs-bench" aria-label="Bench players — tap player coming on">
+                  {inactivePlayers.map((player) => (
+                    <button
+                      key={`sb-${player.id}`}
+                      type="button"
+                      className={`subs-bench__chip${selectedSubInId === player.id ? " subs-bench__chip--selected-on" : ""}`}
+                      onClick={() => setSelectedSubInId(selectedSubInId === player.id ? null : player.id)}
+                    >
+                      <span className="subs-bench__number">#{player.number}</span>
+                      {player.name.trim().length > 0 && (
+                        <span className="subs-bench__name">{player.name}</span>
+                      )}
+                    </button>
+                  ))}
+                  {inactivePlayers.length === 0 && (
+                    <div className="subs-lite-panel__empty">No bench players available</div>
+                  )}
+                </div>
               </div>
             ) : null}
             {selectedSubOutId && selectedSubInId ? (
