@@ -98,6 +98,17 @@ const TACTICAL_ITEM_CHOICES: ReadonlyArray<{ label: string; type: TacticalItem["
   { label: "Sliotar (M)", type: "sliotar" },
   { label: "Sliotar (L)", type: "sliotarLarge" },
 ];
+
+function isBallItemType(type: TacticalItem["type"]): boolean {
+  return (
+    type === "footballSmall" ||
+    type === "football" ||
+    type === "footballLarge" ||
+    type === "sliotarSmall" ||
+    type === "sliotar" ||
+    type === "sliotarLarge"
+  );
+}
 const ORIENTATION_SETTLE_DEBOUNCE_MS = 140;
 type WhiteboardToolControl =
   | "move"
@@ -2455,6 +2466,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   }, [isPortraitViewingMode, isStatsMode, isWhiteboardMode]);
 
   const isPlaybackLocked = isPlaying || isPaused;
+  const hasBallOnPitch = items.some((item) => isBallItemType(item.type));
   const hasAssignedRoutes = routeState.routeCount > 0;
   const isAddPhaseBlocked = isPlaybackLocked || routeState.isRouteCaptureMode || hasAssignedRoutes;
   const playbackSpeedOptionIndex = Math.max(
@@ -3348,9 +3360,24 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   };
 
   const onSelectBallSize = (type: TacticalItem["type"]) => {
-    addItem(type);
+    tacticalItemCounterRef.current += 1;
+    const nextId = `item-${tacticalItemCounterRef.current}`;
+    setItems((previous) => {
+      const withoutBalls = previous.filter((item) => !isBallItemType(item.type));
+      const index = withoutBalls.length;
+      const column = index % 3;
+      const row = Math.floor(index / 3);
+      const nextX = Math.min(78, 30 + column * 12);
+      const nextY = Math.min(78, 26 + row * 10);
+      return [...withoutBalls, { id: nextId, type, x: nextX, y: nextY }];
+    });
     setBallPopupStep(null);
     applyMovementModePillSelection("ball");
+  };
+
+  const removeCurrentBall = () => {
+    setItems((previous) => previous.filter((item) => !isBallItemType(item.type)));
+    setBallPopupStep(null);
   };
 
   const applyMovementModePillSelection = (nextMode: MovementModePillOption) => {
@@ -4042,6 +4069,16 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           <div style={BALL_POPUP_STYLE} role="group" aria-label="Ball type selection">
             {ballPopupStep === "root" ? (
               <>
+                {hasBallOnPitch ? (
+                  <button
+                    type="button"
+                    className="control-button"
+                    style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                    onClick={removeCurrentBall}
+                  >
+                    🗑 Remove Ball
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="control-button"
