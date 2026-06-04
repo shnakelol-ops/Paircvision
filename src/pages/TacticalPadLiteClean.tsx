@@ -4070,14 +4070,24 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             {ballPopupStep === "root" ? (
               <>
                 {hasBallOnPitch ? (
-                  <button
-                    type="button"
-                    className="control-button"
-                    style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
-                    onClick={removeCurrentBall}
-                  >
-                    🗑 Remove Ball
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="control-button"
+                      style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                      onClick={() => { freeBall(); setBallPopupStep(null); }}
+                    >
+                      Free Ball
+                    </button>
+                    <button
+                      type="button"
+                      className="control-button"
+                      style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                      onClick={removeCurrentBall}
+                    >
+                      🗑 Remove Ball
+                    </button>
+                  </>
                 ) : null}
                 <button
                   type="button"
