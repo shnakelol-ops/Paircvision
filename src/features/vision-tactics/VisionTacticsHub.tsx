@@ -1,17 +1,17 @@
 const HUB_CSS = `
 .vt-hub {
-  --vt-bg-deep: #03100B;
-  --vt-bg: #06150F;
-  --vt-border: #275C3B;
-  --vt-text: #F1F7F0;
-  --vt-text-muted: #8FA099;
-  --vt-text-dim: #65736C;
+  --vt-bg-deep: #030914;
+  --vt-bg: #060f20;
+  --vt-border: #1b3a5c;
+  --vt-text: #F0F5FF;
+  --vt-text-muted: #8A9CB8;
+  --vt-text-dim: #5C6D84;
 
   min-height: 100dvh;
   background:
-    radial-gradient(circle at 14% 0%, rgba(124,255,114,0.07), transparent 34%),
-    radial-gradient(circle at 86% 4%, rgba(34,197,94,0.06), transparent 30%),
-    linear-gradient(180deg, var(--vt-bg-deep) 0%, var(--vt-bg) 42%, #072016 100%);
+    radial-gradient(circle at 14% 0%, rgba(59,130,246,0.06), transparent 34%),
+    radial-gradient(circle at 86% 4%, rgba(37,99,235,0.05), transparent 30%),
+    linear-gradient(180deg, var(--vt-bg-deep) 0%, var(--vt-bg) 42%, #050f1e 100%);
   color: var(--vt-text);
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   box-sizing: border-box;
@@ -95,7 +95,7 @@ const HUB_CSS = `
 }
 
 .vt-card {
-  background: linear-gradient(180deg, rgba(20,52,33,0.92) 0%, rgba(13,34,22,0.97) 100%);
+  background: linear-gradient(180deg, rgba(12,28,54,0.92) 0%, rgba(6,16,34,0.97) 100%);
   border: 1px solid var(--vt-border);
   border-radius: 20px;
   padding: 26px 22px 22px;
@@ -124,7 +124,7 @@ const HUB_CSS = `
 }
 
 .vt-card--play::before {
-  background: linear-gradient(90deg, rgba(6,182,212,0.9), rgba(6,182,212,0.3));
+  background: linear-gradient(90deg, rgba(59,130,246,0.9), rgba(59,130,246,0.3));
 }
 
 .vt-card--slate {
@@ -136,8 +136,8 @@ const HUB_CSS = `
 
 .vt-card--play {
   box-shadow:
-    0 0 0 0.5px rgba(6,182,212,0.10),
-    0 8px 28px rgba(0,0,0,0.30),
+    0 0 0 0.5px rgba(59,130,246,0.12),
+    0 8px 28px rgba(0,0,0,0.34),
     inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
@@ -155,7 +155,7 @@ const HUB_CSS = `
 }
 
 .vt-card--slate .vt-card-mode { color: rgba(34,197,94,0.80); }
-.vt-card--play  .vt-card-mode { color: rgba(6,182,212,0.80);  }
+.vt-card--play  .vt-card-mode { color: rgba(99,160,255,0.85);  }
 
 .vt-card-title {
   font-size: clamp(24px, 6vw, 30px);
@@ -203,9 +203,9 @@ const HUB_CSS = `
 }
 
 .vt-card--play .vt-card-cta {
-  background: rgba(6,182,212,0.12);
-  color: rgba(6,182,212,0.95);
-  outline: 1px solid rgba(6,182,212,0.20);
+  background: rgba(59,130,246,0.12);
+  color: rgba(99,160,255,0.95);
+  outline: 1px solid rgba(59,130,246,0.22);
 }
 
 @media (min-width: 600px) {
