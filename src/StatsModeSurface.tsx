@@ -3310,6 +3310,185 @@ const PANEL_CSS = `
   position: absolute;
   inset: -5px;
 }
+
+/* Stats Lite substitution panel — premium dark glass */
+.subs-lite-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.subs-lite-panel__header {
+  color: rgba(219, 231, 245, 0.52);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.subs-lite-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subs-lite-panel__section-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  opacity: 0.6;
+  color: #dbe7f5;
+}
+
+.subs-lite-panel__section-label--off {
+  color: #fca5a5;
+}
+
+.subs-lite-panel__section-label--on {
+  color: #86efac;
+}
+
+.subs-lite-panel__section-label--chosen {
+  opacity: 1;
+}
+
+.subs-lite-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 148px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 2px;
+}
+
+.subs-lite-panel__player-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 222, 128, 0.45);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(8, 13, 26, 0.98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(74, 222, 128, 0.12), 0 8px 18px rgba(0, 0, 0, 0.25);
+  color: rgba(248, 250, 252, 0.96);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 12px 0 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.subs-lite-panel__player-btn:focus {
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 2px rgba(74, 222, 128, 0.45), 0 8px 18px rgba(0, 0, 0, 0.25);
+}
+
+.subs-lite-panel__player-btn--selected-off {
+  border-color: rgba(248, 113, 113, 0.88);
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.45), rgba(80, 15, 15, 0.52));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px rgba(248, 113, 113, 0.24), 0 0 12px rgba(248, 113, 113, 0.12);
+}
+
+.subs-lite-panel__player-btn--selected-on {
+  border-color: rgba(74, 222, 128, 0.88);
+  background: linear-gradient(180deg, rgba(20, 83, 45, 0.5), rgba(10, 52, 28, 0.58));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(74, 222, 128, 0.3), 0 0 12px rgba(74, 222, 128, 0.12);
+}
+
+.subs-lite-panel__player-number {
+  font-size: 12px;
+  font-weight: 800;
+  min-width: 24px;
+  color: #93c5fd;
+  line-height: 1;
+}
+
+.subs-lite-panel__player-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: rgba(248, 250, 252, 0.92);
+  letter-spacing: 0.08px;
+}
+
+.subs-lite-panel__tap-hint {
+  font-size: 7.5px;
+  font-weight: 400;
+  opacity: 0.46;
+  white-space: nowrap;
+  letter-spacing: 0;
+  margin-left: auto;
+}
+
+.subs-lite-panel__empty {
+  font-size: 9px;
+  color: rgba(219, 231, 245, 0.38);
+  padding: 3px 4px;
+  font-style: italic;
+}
+
+.subs-lite-panel__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: rgba(8, 18, 32, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.subs-lite-panel__confirm-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12px;
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+
+.subs-lite-panel__confirm-off {
+  color: #fca5a5;
+}
+
+.subs-lite-panel__confirm-arrow {
+  color: rgba(219, 231, 245, 0.38);
+  font-size: 11px;
+}
+
+.subs-lite-panel__confirm-on {
+  color: #86efac;
+}
+
+.subs-lite-panel__confirm-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(74, 222, 128, 0.62);
+  background: linear-gradient(180deg, rgba(22, 101, 52, 0.68), rgba(10, 52, 28, 0.72));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(74, 222, 128, 0.2), 0 2px 10px rgba(74, 222, 128, 0.12);
+  color: #bbf7d0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  width: 100%;
+}
+
+.subs-lite-panel__confirm-btn:focus {
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 2px rgba(74, 222, 128, 0.45), 0 2px 10px rgba(74, 222, 128, 0.12);
+}
 `;
 
 const HOME_ICON_BUTTON_STYLE: CSSProperties = {
