@@ -973,25 +973,25 @@ function BoardPage() {
       <p className="pf-section-title pf-home-section-title-actions">Tools</p>
       <div className="pf-card">
         <div className="pf-home-secondary-grid">
-          <button type="button" className="pf-home-secondary-btn pf-home-tile--green" onClick={() => navigateToVisionBoard()}>
-            <span className="pf-home-tile-name">Vision Canvas</span>
-            <small>Build tactics and movement</small>
+          <button type="button" className="pf-home-secondary-btn pf-home-tile--green" onClick={() => navigateTo("/vision-tactics")}>
+            <span className="pf-home-tile-name">Vision Tactics</span>
+            <small>Plan, explain and teach the game.</small>
           </button>
           <button type="button" className="pf-home-secondary-btn pf-home-tile--blue" onClick={() => navigateTo("/flowstats")}>
             <span className="pf-home-tile-name">Match Stats</span>
-            <small>Track live matches</small>
+            <small>Event-first match tracking.</small>
           </button>
           <button type="button" className="pf-home-secondary-btn pf-home-tile--amber" onClick={() => navigateTo("/pro-tagger")}>
             <span className="pf-home-tile-name">Stats Pro</span>
-            <small>Advanced match analysis</small>
+            <small>Outcome-first match tracking.</small>
           </button>
           <button type="button" className="pf-home-secondary-btn pf-home-tile--orange" onClick={() => navigateTo("/player-performance-tracker")}>
             <span className="pf-home-tile-name">Training Tracker</span>
-            <small>Track player performance</small>
+            <small>Develop player performance.</small>
           </button>
           <button type="button" className="pf-home-secondary-btn pf-home-tile--purple" onClick={() => navigateTo("/notes")}>
             <span className="pf-home-tile-name">Notes</span>
-            <small>Coaching notes and observations</small>
+            <small>Keep yourself organised.</small>
           </button>
         </div>
       </div>

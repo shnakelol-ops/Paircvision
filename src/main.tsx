@@ -8,9 +8,11 @@ import PlayerPerformanceTracker from "./pages/PlayerPerformanceTracker";
 import MovementBoardCanvasShellPage from "./pages/MovementBoardCanvasShellPage";
 import RapidCaptureLitePage from "./rapid-capture/RapidCaptureLitePage";
 import ProTaggerPage from "./pro-tagger/ProTaggerPage";
+import VisionTacticsShell from "./features/vision-tactics/VisionTacticsShell";
 
 const boardShell = () => <PitchFlowCoachShell initialTab="home" />;
 const VISION_BOARD_PATH = "/vision-board";
+const VISION_TACTICS_PATH = "/vision-tactics";
 const QUICK_BOARD_PATH = "/quickboard";
 const FLOW_STATS_PATH = "/flowstats";
 const NOTES_PATH = "/notes";
@@ -105,6 +107,9 @@ function pickRootComponent() {
   }
   if (normalizedPath === PRO_TAGGER_PATH) {
     return ProTaggerPage;
+  }
+  if (normalizedPath.startsWith(VISION_TACTICS_PATH)) {
+    return VisionTacticsShell;
   }
   return redirectToBoard();
 }
