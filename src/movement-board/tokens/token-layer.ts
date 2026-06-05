@@ -3,25 +3,24 @@ import { Container, Graphics } from "pixi.js";
 import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
 import type { WorldViewportMapper } from "../coordinates/viewport";
 import {
-  createPremiumPlayerToken,
   PREMIUM_TOKEN_DRAG_SCALE,
   PREMIUM_TOKEN_DRAG_SHADOW_ALPHA,
   PREMIUM_TOKEN_IDLE_SCALE,
   PREMIUM_TOKEN_IDLE_SHADOW_ALPHA,
   type PremiumPlayerTokenColor,
 } from "./createPremiumPlayerToken";
-import { createSimpleJerseyToken } from "./createSimpleJerseyToken";
 import { createJerseyTokenV2 } from "./createJerseyTokenV2";
+import { createPixiToken, createPhosphorToken } from "./createCleanTokenAdapters";
 import type { MovementBoardToken } from "../shell/types";
 
-export type TokenRendererName = "jersey" | "badge" | "athlete";
+export type TokenRendererName = "pixi" | "phosphor" | "jersey";
 
 type AnyRendererFn = typeof createJerseyTokenV2;
 
 const RENDERER_MAP: Record<TokenRendererName, AnyRendererFn> = {
+  pixi: createPixiToken as AnyRendererFn,
+  phosphor: createPhosphorToken as AnyRendererFn,
   jersey: createJerseyTokenV2,
-  badge: createSimpleJerseyToken as AnyRendererFn,
-  athlete: createPremiumPlayerToken as AnyRendererFn,
 };
 
 let _renderer: AnyRendererFn = createJerseyTokenV2;
@@ -83,7 +82,10 @@ const TOKEN_TOUCH_HIT_DIAMETER_PX = 48;
 const SELECTED_TOKEN_SCALE = 1.04;
 
 function sanitizeTokenColor(input: PremiumPlayerTokenColor | string): PremiumPlayerTokenColor {
-  if (input === "blue" || input === "red" || input === "yellow" || input === "black") return input;
+  if (
+    input === "blue" || input === "red" || input === "yellow" || input === "black" ||
+    input === "green" || input === "orange" || input === "purple" || input === "white"
+  ) return input;
   return "blue";
 }
 
@@ -93,6 +95,7 @@ function sanitizeToken(token: MovementBoardToken): MovementBoardToken {
     number: Number.isFinite(token.number) ? Math.max(1, Math.floor(token.number)) : 1,
     label: token.label?.trim() || undefined,
     color: sanitizeTokenColor(token.color),
+    secondaryColor: token.secondaryColor ? sanitizeTokenColor(token.secondaryColor) : undefined,
     position: clampNormalizedPoint(token.position),
     draggable: token.draggable !== false,
     isGhost: token.isGhost === true,
@@ -200,6 +203,7 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
     const nextToken = sanitizeToken(token);
     const result = _renderer({
       color: nextToken.color,
+      secondaryColor: nextToken.secondaryColor,
       number: nextToken.number,
       label: nextToken.label,
       radius: TOKEN_RADIUS,

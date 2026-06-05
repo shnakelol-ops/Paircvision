@@ -34,6 +34,10 @@ const SHIRT_BY_COLOR: Record<PremiumPlayerTokenColor, number> = {
   red: 0xdc2626,
   yellow: 0xf2c94c,
   black: 0x111827,
+  green: 0x16a34a,
+  orange: 0xea580c,
+  purple: 0x7c3aed,
+  white: 0xf1f5f9,
 };
 
 // Slightly darker shade for the bottom half of the badge
@@ -42,6 +46,10 @@ const SHADE_BY_COLOR: Record<PremiumPlayerTokenColor, number> = {
   red: 0x991b1b,
   yellow: 0xd4a021,
   black: 0x020617,
+  green: 0x14532d,
+  orange: 0x7c2d12,
+  purple: 0x4c1d95,
+  white: 0x94a3b8,
 };
 
 export function createSimpleJerseyToken({

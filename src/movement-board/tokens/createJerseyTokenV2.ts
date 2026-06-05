@@ -38,20 +38,27 @@ const PALETTE: Record<
   red:    { primary: 0xdc2626, secondary: 0x991b1b },
   yellow: { primary: 0xf2c94c, secondary: 0xd4a021 },
   black:  { primary: 0x111827, secondary: 0x4b5563 },
+  green:  { primary: 0x16a34a, secondary: 0x14532d },
+  orange: { primary: 0xea580c, secondary: 0x7c2d12 },
+  purple: { primary: 0x7c3aed, secondary: 0x4c1d95 },
+  white:  { primary: 0xf1f5f9, secondary: 0x94a3b8 },
 };
 
 export function createJerseyTokenV2({
   color,
+  secondaryColor,
   number,
   label,
   radius,
 }: {
   color: PremiumPlayerTokenColor;
+  secondaryColor?: PremiumPlayerTokenColor;
   number: number;
   label?: string;
   radius: number;
 }): { token: Container; body: Container; shadow: Graphics; ballMarker: Graphics; numberLabel: Text } {
-  const { primary, secondary } = PALETTE[color];
+  const { primary } = PALETTE[color];
+  const secondary = secondaryColor != null ? PALETTE[secondaryColor].primary : PALETTE[color].secondary;
   const r = radius;
   // Each SVG unit = r/10 world units, SVG centre (10,11) maps to (0,0).
   const s = r / 10;

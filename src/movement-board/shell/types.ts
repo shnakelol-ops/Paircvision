@@ -3,6 +3,7 @@ import type { NormalizedPoint } from "../coordinates/normalization";
 import type { PremiumPlayerTokenColor } from "../tokens/createPremiumPlayerToken";
 import type { TokenSize, TokenRendererName } from "../tokens/token-layer";
 
+export type { PremiumPlayerTokenColor };
 export type { TokenSize, TokenRendererName };
 
 export type BallType = "footballSmall" | "footballMedium" | "sliotarSmall" | "sliotarMedium";
@@ -18,6 +19,7 @@ export type MovementBoardToken = {
   number: number;
   label?: string;
   color: PremiumPlayerTokenColor;
+  secondaryColor?: PremiumPlayerTokenColor;
   position: NormalizedPoint;
   draggable?: boolean;
   isGhost?: boolean;
@@ -73,6 +75,9 @@ export type MovementCanvasShellHandle = {
   setTokens: (tokens: readonly MovementBoardToken[]) => void;
   setRoutes: (routes: readonly MovementBoardRoute[]) => void;
   setSelectedToken: (tokenId: string | null) => MovementBoardToken | null;
+  setTokenSize: (size: TokenSize) => void;
+  getTokenSize: () => TokenSize;
+  setTokenRenderer: (name: TokenRendererName) => void;
   setMode: (mode: MovementBoardMode) => void;
   setPlaybackSpeed: (speed: MovementPlaybackSpeed) => void;
   removeSelectedWaypoint: () => boolean;
@@ -87,9 +92,6 @@ export type MovementCanvasShellHandle = {
   removeBall: () => void;
   freeBall: () => void;
   getBallState: () => BallState;
-  setTokenSize: (size: TokenSize) => void;
-  getTokenSize: () => TokenSize;
-  setTokenRenderer: (name: TokenRendererName) => void;
   setDragEnabled: (enabled: boolean) => void;
   setBallCarrier: (tokenId: string | null) => void;
   reflow: () => void;

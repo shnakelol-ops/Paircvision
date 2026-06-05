@@ -1,6 +1,6 @@
 import { Container, Graphics, Text } from "pixi.js";
 
-export type PremiumPlayerTokenColor = "blue" | "red" | "yellow" | "black";
+export type PremiumPlayerTokenColor = "blue" | "red" | "yellow" | "black" | "green" | "orange" | "purple" | "white";
 
 export const PREMIUM_TOKEN_IDLE_SCALE = 1;
 export const PREMIUM_TOKEN_DRAG_SCALE = 1.08;
@@ -38,6 +38,34 @@ const PALETTE_BY_COLOR: Record<
     shorts: 0x000000,
     skin: 0xe7b784,
     hair: 0x000000,
+  },
+  green: {
+    shirt: 0x16a34a,
+    shirtShade: 0x14532d,
+    shorts: 0x052e16,
+    skin: 0xf1c27d,
+    hair: 0x0f172a,
+  },
+  orange: {
+    shirt: 0xea580c,
+    shirtShade: 0x7c2d12,
+    shorts: 0x431407,
+    skin: 0xf1c27d,
+    hair: 0x1c1917,
+  },
+  purple: {
+    shirt: 0x7c3aed,
+    shirtShade: 0x4c1d95,
+    shorts: 0x2e1065,
+    skin: 0xf1c27d,
+    hair: 0x0f172a,
+  },
+  white: {
+    shirt: 0xf1f5f9,
+    shirtShade: 0x94a3b8,
+    shorts: 0x475569,
+    skin: 0xf1c27d,
+    hair: 0x1e293b,
   },
 };
 
