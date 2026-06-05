@@ -20,6 +20,7 @@ import type {
   BallState,
   BallType,
   MovementBoardMode,
+  MovementBoardRoute,
   MovementBoardToken,
   MovementCanvasShellHandle,
   MovementCanvasShellOptions,
@@ -799,6 +800,20 @@ export async function createMovementCanvasShell(
       refreshRouteLayer();
       emitRouteEditState();
     },
+    setRoutes: (routes: readonly MovementBoardRoute[]) => {
+      if (isPlaybackLocked()) return;
+      routeByTokenId.clear();
+      for (const route of routes) {
+        const normalized = normalizeRoutePoints(route.points, ROUTE_MIN_POINT_DISTANCE);
+        if (normalized.length >= 2) {
+          routeByTokenId.set(route.playerId, normalized.map(clonePoint));
+        }
+      }
+      setSelectedWaypoint(null);
+      emitRoutes();
+      refreshRouteLayer();
+      emitRouteEditState();
+    },
     setSelectedToken: (tokenId) => setSelectedToken(tokenId),
     setMode: (nextMode) => {
       setModeState(nextMode);
@@ -890,6 +905,9 @@ export async function createMovementCanvasShell(
       emitBallState();
     },
     getBallState: () => ({ ...ballState }),
+    setTokenSize: (size) => tokenLayer.setTokenSize(size),
+    getTokenSize: () => tokenLayer.getTokenSize(),
+    setTokenRenderer: (name) => tokenLayer.setRenderer(name),
     setDragEnabled: (enabled) => {
       dragEnabled = enabled;
       if (!enabled) {

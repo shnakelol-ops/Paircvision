@@ -1,6 +1,9 @@
 import type { PitchSport } from "../pitch/pitch-config";
 import type { NormalizedPoint } from "../coordinates/normalization";
 import type { PremiumPlayerTokenColor } from "../tokens/createPremiumPlayerToken";
+import type { TokenSize, TokenRendererName } from "../tokens/token-layer";
+
+export type { TokenSize, TokenRendererName };
 
 export type BallType = "footballSmall" | "footballMedium" | "sliotarSmall" | "sliotarMedium";
 
@@ -68,6 +71,7 @@ export type MovementCanvasShellHandle = {
   getPlaybackState: () => MovementPlaybackState;
   getRouteEditState: () => MovementRouteEditState;
   setTokens: (tokens: readonly MovementBoardToken[]) => void;
+  setRoutes: (routes: readonly MovementBoardRoute[]) => void;
   setSelectedToken: (tokenId: string | null) => MovementBoardToken | null;
   setMode: (mode: MovementBoardMode) => void;
   setPlaybackSpeed: (speed: MovementPlaybackSpeed) => void;
@@ -83,6 +87,9 @@ export type MovementCanvasShellHandle = {
   removeBall: () => void;
   freeBall: () => void;
   getBallState: () => BallState;
+  setTokenSize: (size: TokenSize) => void;
+  getTokenSize: () => TokenSize;
+  setTokenRenderer: (name: TokenRendererName) => void;
   setDragEnabled: (enabled: boolean) => void;
   setBallCarrier: (tokenId: string | null) => void;
   reflow: () => void;
