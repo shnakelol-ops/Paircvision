@@ -336,6 +336,50 @@ const HINT_PILL_STYLE: CSSProperties = {
   userSelect: "none",
 };
 
+const ACTIVE_TEMPLATE_PILL_STYLE: CSSProperties = {
+  position: "fixed",
+  top: "max(48px, calc(env(safe-area-inset-top, 0px) + 46px))",
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 12,
+  color: "rgba(200, 230, 255, 0.72)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 500,
+  letterSpacing: "0.02em",
+  padding: "5px 11px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.14)",
+  background: "rgba(6, 12, 26, 0.68)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  whiteSpace: "nowrap",
+  pointerEvents: "none",
+  userSelect: "none",
+};
+
+const TEMPLATE_BUTTON_STYLE: CSSProperties = {
+  height: "auto",
+  minHeight: "38px",
+  minWidth: "68px",
+  borderRadius: "12px",
+  border: "1px solid rgba(180, 210, 255, 0.22)",
+  background: "rgba(10, 18, 38, 0.72)",
+  color: "rgba(220, 235, 255, 0.95)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  padding: "5px 10px",
+  cursor: "pointer",
+  textAlign: "center",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "2px",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  boxShadow: "0 6px 18px rgba(0, 4, 14, 0.36), inset 0 1px 2px rgba(255, 255, 255, 0.14)",
+};
+
 const TOKEN_COLOR_BG: Record<PremiumPlayerTokenColor, string> = {
   blue:   "rgba(37, 99, 235, 0.78)",
   red:    "rgba(220, 38, 38, 0.78)",
@@ -401,6 +445,7 @@ export default function TacticalPlaySurface() {
   const [setupOpen, setSetupOpen] = useState(false);
   const [playersOpen, setPlayersOpen] = useState(false);
   const [activeSetupCategory, setActiveSetupCategory] = useState<TacticalTemplateCategory | null>(null);
+  const [activeTemplate, setActiveTemplate] = useState<TacticalTemplate | null>(null);
   const [tokenSize, setTokenSizeState] = useState<TokenSize>("medium");
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("jersey");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
@@ -697,6 +742,7 @@ export default function TacticalPlaySurface() {
       shell.setRoutes(routes);
     }
     shell.setStartPositions();
+    setActiveTemplate(template);
     setSetupOpen(false);
   };
 
@@ -773,6 +819,12 @@ export default function TacticalPlaySurface() {
         </button>
 
         <div style={INFO_PILL_STYLE}>{coachInfoLabel}</div>
+
+        {activeTemplate !== null ? (
+          <div style={ACTIVE_TEMPLATE_PILL_STYLE}>
+            {activeTemplate.category.charAt(0) + activeTemplate.category.slice(1).toLowerCase()} • {activeTemplate.name}
+          </div>
+        ) : null}
 
         <div style={PV_BADGE_STYLE}>PV</div>
         <button
@@ -1050,10 +1102,11 @@ export default function TacticalPlaySurface() {
                   <button
                     key={tmpl.id}
                     type="button"
-                    style={TOOL_BUTTON_STYLE}
+                    style={TEMPLATE_BUTTON_STYLE}
                     onClick={() => onLoadTemplate(tmpl)}
                   >
-                    {tmpl.name}
+                    <span style={{ fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08px" }}>{tmpl.name}</span>
+                    <span style={{ fontSize: "8px", fontWeight: 400, opacity: 0.62, letterSpacing: "0.02em", textTransform: "none", lineHeight: 1.2 }}>{tmpl.description}</span>
                   </button>
                 ))}
               </div>

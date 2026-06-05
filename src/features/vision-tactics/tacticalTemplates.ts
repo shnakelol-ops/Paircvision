@@ -41,7 +41,7 @@ const kickoutTemplate: TacticalTemplate = {
   id: "kickout",
   name: "Kickout",
   category: "KICKOUT",
-  description: "Short kickout shape with a spread receiving structure across three lines.",
+  description: "Short restart, spread receiving structure.",
   positions: {
     1:  { x: 8,  y: 50 }, // GK  — near own goal, center
     2:  { x: 16, y: 22 }, // RCB — right side, wide short option
@@ -68,7 +68,7 @@ const attackingTemplate: TacticalTemplate = {
   id: "attacking",
   name: "Attacking",
   category: "ATTACK",
-  description: "Forward unit pushed high and wide with support runners in behind.",
+  description: "High & wide forward attack shape.",
   positions: {
     1:  { x: 10, y: 50 }, // GK  — high sweeper position
     2:  { x: 20, y: 22 }, // RCB
@@ -95,7 +95,7 @@ const defensiveTemplate: TacticalTemplate = {
   id: "defensive",
   name: "Defensive",
   category: "DEFENCE",
-  description: "Compact low block — bodies behind the ball, forward unit in first-press positions.",
+  description: "Compact low block, bodies behind ball.",
   positions: {
     1:  { x: 5,  y: 50 }, // GK  — in goal
     2:  { x: 14, y: 25 }, // RCB — tight right
@@ -123,7 +123,7 @@ const demoTemplate: TacticalTemplate = {
   id: "demo",
   name: "Demo",
   category: "DEMO",
-  description: "Forward support movement — four converging runs from the attacking shape.",
+  description: "Four converging forward runs.",
   positions: attackingTemplate.positions,
   routes: [
     {
@@ -170,7 +170,7 @@ const kickoutFlat4Template: TacticalTemplate = {
   id: "kickout-flat-4",
   name: "Flat 4",
   category: "KICKOUT",
-  description: "Four players spread in a flat line across midfield — creates a width option from every angle.",
+  description: "Wide short-restart structure.",
   positions: {
     1:  { x: 8,  y: 50 }, // GK
     2:  { x: 18, y: 22 }, // RCB
@@ -198,7 +198,7 @@ const kickoutClusterBreakTemplate: TacticalTemplate = {
   id: "kickout-cluster-break",
   name: "Cluster & Break",
   category: "KICKOUT",
-  description: "Tight cluster in the 45 draws opposition — forwards break wide the moment the kick is struck.",
+  description: "Explosive midfield separation.",
   positions: {
     1:  { x: 8,  y: 50 }, // GK
     2:  { x: 18, y: 22 }, // RCB
@@ -226,7 +226,7 @@ const kickoutMidfieldContestTemplate: TacticalTemplate = {
   id: "kickout-midfield-contest",
   name: "Midfield Contest",
   category: "KICKOUT",
-  description: "Clean midfield battle — 8 and 9 contest directly, 6 provides close support.",
+  description: "Direct aerial contest.",
   positions: {
     1:  { x: 8,  y: 50 }, // GK
     2:  { x: 18, y: 22 }, // RCB
@@ -254,7 +254,7 @@ const attackUmbrellaTemplate: TacticalTemplate = {
   id: "attack-umbrella",
   name: "Umbrella",
   category: "ATTACK",
-  description: "Wide arc from right wing to left wing — overloads wide channels and creates the apex scoring run.",
+  description: "Wide recycling attack shape.",
   positions: {
     1:  { x: 10, y: 50 }, // GK
     2:  { x: 20, y: 22 }, // RCB
@@ -282,7 +282,7 @@ const attackChannelOverloadTemplate: TacticalTemplate = {
   id: "attack-channel-overload",
   name: "Channel Overload",
   category: "ATTACK",
-  description: "Right channel flooded with runners — draw defenders across then switch to isolated left side.",
+  description: "Overload one side to create space.",
   positions: {
     1:  { x: 10, y: 50 }, // GK
     2:  { x: 22, y: 18 }, // RCB — pushed right
@@ -310,7 +310,7 @@ const defenceSweepTemplate: TacticalTemplate = {
   id: "defence-sweeper",
   name: "Sweeper",
   category: "DEFENCE",
-  description: "CB drops as a free sweeper behind the full-back line — covers space and cleans up loose ball.",
+  description: "Extra cover in front of full-back line.",
   positions: {
     1:  { x: 5,  y: 50 }, // GK
     2:  { x: 14, y: 24 }, // RCB — tight right
@@ -338,7 +338,7 @@ const defenceArcTemplate: TacticalTemplate = {
   id: "defence-arc",
   name: "Arc Defence",
   category: "DEFENCE",
-  description: "D-shaped arc floods the central scoring zone — forces play wide and eliminates through-balls.",
+  description: "Compact central scoring protection.",
   positions: {
     1:  { x: 5,  y: 50 }, // GK — in goal
     2:  { x: 12, y: 30 }, // RCB — arc base right
@@ -366,7 +366,7 @@ const pressFullPressTemplate: TacticalTemplate = {
   id: "press-full-press",
   name: "Full Press",
   category: "PRESS",
-  description: "All 14 outfield players push into opposition half — GK sweeps behind to cover the vacated space.",
+  description: "All-out press with GK as sweeper.",
   positions: {
     1:  { x: 18, y: 50 }, // GK  — sweeper behind press
     2:  { x: 34, y: 22 }, // RCB — pushed right
@@ -394,7 +394,7 @@ const pressFunnelPressTemplate: TacticalTemplate = {
   id: "press-funnel-press",
   name: "Funnel Press",
   category: "PRESS",
-  description: "Diagonal press funnels play to the right sideline — trap, turn over, counter from a packed right side.",
+  description: "Press funnels play to sideline trap.",
   positions: {
     1:  { x: 12, y: 50 }, // GK  — slightly forward as sweeper
     2:  { x: 26, y: 18 }, // RCB — pressing right
