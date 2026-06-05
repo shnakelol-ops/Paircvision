@@ -10,8 +10,11 @@ import type {
   MovementCanvasShellHandle,
   MovementPlaybackSpeed,
   MovementRouteEditState,
+  TokenRendererName,
+  TokenSize,
 } from "../../movement-board/shell/types";
 import { FORMATION_PRESETS, applyPreset, type FormationPreset } from "./tacticalPlayPresets";
+import { DEMO_ROUTES } from "./tacticalPlayDemo";
 
 const _CAN_DVW = typeof window !== "undefined" && typeof window.CSS !== "undefined" && window.CSS.supports("width: 100dvw");
 const _VW = _CAN_DVW ? "100dvw" : "100vw";
@@ -316,6 +319,9 @@ export default function TacticalPlaySurface() {
   const [appViewportHeight, setAppViewportHeight] = useState(() => getTPViewportHeight());
   const [startFlash, setStartFlash] = useState(false);
   const [presetsOpen, setPresetsOpen] = useState(false);
+  const [tokensOpen, setTokensOpen] = useState(false);
+  const [tokenSize, setTokenSizeState] = useState<TokenSize>("medium");
+  const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("jersey");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -396,6 +402,7 @@ export default function TacticalPlaySurface() {
         shellRef.current = shell;
         setMenuMode(toMenuMode(shell.getMode()));
         setPlaybackSpeed(shell.getPlaybackSpeed());
+        setTokenSizeState(shell.getTokenSize());
         setRouteCount(shell.getRoutes().length);
         const selected = shell.getSelectedToken();
         setSelectedToken(selected);
@@ -466,6 +473,7 @@ export default function TacticalPlaySurface() {
     if (!isControlsOpen) {
       setBallMenuStep(null);
       setPresetsOpen(false);
+      setTokensOpen(false);
     }
   }, [isControlsOpen]);
 
@@ -568,6 +576,7 @@ export default function TacticalPlaySurface() {
 
   const onBallButtonPress = () => {
     setPresetsOpen(false);
+    setTokensOpen(false);
     if (ballOnPitch) {
       setBallMenuStep((prev) => (prev === "existing" ? null : "existing"));
     } else {
@@ -577,7 +586,45 @@ export default function TacticalPlaySurface() {
 
   const onShapesPress = () => {
     setBallMenuStep(null);
+    setTokensOpen(false);
     setPresetsOpen((prev) => !prev);
+  };
+
+  const onTokensPress = () => {
+    setBallMenuStep(null);
+    setPresetsOpen(false);
+    setTokensOpen((prev) => !prev);
+  };
+
+  const onSetTokenSize = (size: TokenSize) => {
+    shellRef.current?.setTokenSize(size);
+    setTokenSizeState(size);
+  };
+
+  const onSetTokenRenderer = (name: TokenRendererName) => {
+    shellRef.current?.setTokenRenderer(name);
+    setTokenRendererState(name);
+  };
+
+  const onLoadDemo = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    for (const token of shell.getTokens()) {
+      shell.setSelectedToken(token.id);
+      shell.clearSelectedRoute();
+    }
+    shell.setSelectedToken(null);
+    const attackingPreset = FORMATION_PRESETS.find((p) => p.id === "attacking");
+    if (!attackingPreset) return;
+    shell.setTokens(applyPreset(shell.getTokens(), attackingPreset));
+    const tokens = shell.getTokens();
+    const routes = DEMO_ROUTES.flatMap((dr) => {
+      const token = tokens.find((t) => t.number === dr.jerseyNumber);
+      return token ? [{ playerId: token.id, points: dr.points }] : [];
+    });
+    shell.setRoutes(routes);
+    shell.setStartPositions();
+    setPresetsOpen(false);
   };
 
   const onLoadPreset = (preset: FormationPreset) => {
@@ -698,6 +745,14 @@ export default function TacticalPlaySurface() {
               >
                 Shapes
               </button>
+              <button
+                type="button"
+                style={tokensOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                disabled={modeIsPlaybackLocked}
+                onClick={onTokensPress}
+              >
+                Tokens
+              </button>
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
               </button>
@@ -768,6 +823,56 @@ export default function TacticalPlaySurface() {
                     {preset.label}
                   </button>
                 ))}
+                <button type="button" style={TOOL_BUTTON_STYLE} onClick={onLoadDemo}>
+                  Demo
+                </button>
+              </div>
+            ) : null}
+
+            {tokensOpen ? (
+              <div style={PANEL_ROW_STYLE}>
+                <button
+                  type="button"
+                  style={tokenSize === "small" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => onSetTokenSize("small")}
+                >
+                  Sm
+                </button>
+                <button
+                  type="button"
+                  style={tokenSize === "medium" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => onSetTokenSize("medium")}
+                >
+                  Md
+                </button>
+                <button
+                  type="button"
+                  style={tokenSize === "large" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => onSetTokenSize("large")}
+                >
+                  Lg
+                </button>
+                <button
+                  type="button"
+                  style={tokenRenderer === "jersey" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => onSetTokenRenderer("jersey")}
+                >
+                  Jersey
+                </button>
+                <button
+                  type="button"
+                  style={tokenRenderer === "badge" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => onSetTokenRenderer("badge")}
+                >
+                  Badge
+                </button>
+                <button
+                  type="button"
+                  style={tokenRenderer === "athlete" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => onSetTokenRenderer("athlete")}
+                >
+                  Athlete
+                </button>
               </div>
             ) : null}
 

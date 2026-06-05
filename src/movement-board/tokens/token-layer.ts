@@ -14,11 +14,17 @@ import { createSimpleJerseyToken } from "./createSimpleJerseyToken";
 import { createJerseyTokenV2 } from "./createJerseyTokenV2";
 import type { MovementBoardToken } from "../shell/types";
 
-// Renderer toggle — one line to compare variants at /movement-board-labs
-//   createPremiumPlayerToken  → full athlete token
-//   createSimpleJerseyToken   → plain rounded-rect badge
-//   createJerseyTokenV2       → Pro Stats jersey silhouette (current)
-const activeRenderer = createJerseyTokenV2;
+export type TokenRendererName = "jersey" | "badge" | "athlete";
+
+type AnyRendererFn = typeof createJerseyTokenV2;
+
+const RENDERER_MAP: Record<TokenRendererName, AnyRendererFn> = {
+  jersey: createJerseyTokenV2,
+  badge: createSimpleJerseyToken as AnyRendererFn,
+  athlete: createPremiumPlayerToken as AnyRendererFn,
+};
+
+let _renderer: AnyRendererFn = createJerseyTokenV2;
 
 // ── Token Size Mode ───────────────────────────────────────────────────────────
 // small  (0.75×) — 25–30 player tactical view, numbers hidden
@@ -66,6 +72,7 @@ export type TokenLayer = {
   setBallCarrier: (tokenId: string | null) => void;
   setTokenSize: (size: TokenSize) => void;
   getTokenSize: () => TokenSize;
+  setRenderer: (name: TokenRendererName) => void;
   setOnTokenPointerDown: (handler: ((tokenId: string, event: unknown) => void) | null) => void;
   syncToMapper: () => void;
   destroy: () => void;
@@ -191,7 +198,7 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
 
   const createVisual = (token: MovementBoardToken): TokenVisual => {
     const nextToken = sanitizeToken(token);
-    const result = activeRenderer({
+    const result = _renderer({
       color: nextToken.color,
       number: nextToken.number,
       label: nextToken.label,
@@ -256,6 +263,9 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
     refreshAllVisualState();
   };
 
+  const getCurrentTokenData = (): MovementBoardToken[] =>
+    Array.from(visuals.values()).map((v) => ({ ...v.token, position: { ...v.token.position } }));
+
   return {
     setTokens: (tokens) => {
       rebuild(tokens);
@@ -315,10 +325,15 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
       }
     },
     setTokenSize: (size) => {
+      if (currentSize === size) return;
       currentSize = size;
       refreshAllVisualState();
     },
     getTokenSize: () => currentSize,
+    setRenderer: (name) => {
+      _renderer = RENDERER_MAP[name];
+      rebuild(getCurrentTokenData());
+    },
     setOnTokenPointerDown: (handler) => {
       onTokenPointerDown = handler;
     },
