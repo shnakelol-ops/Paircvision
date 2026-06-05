@@ -596,8 +596,8 @@ export default function TacticalPlaySurface() {
   const [scenariosOpen, setScenariosOpen] = useState(false);
   const [scenarios, setScenarios] = useState<TacticalScenario[]>([]);
   const [scenarioNameDraft, setScenarioNameDraft] = useState("");
-  const [movementPanelOpen, setMovementPanelOpen] = useState(false);
-  const panelTriggerRef = useRef<{ playerId: string; waypointCount: number }>({ playerId: "", waypointCount: 0 });
+  const [movementsOpen, setMovementsOpen] = useState(false);
+  const [movementsSelectedPlayerId, setMovementsSelectedPlayerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -750,6 +750,7 @@ export default function TacticalPlaySurface() {
       setIsControlsOpen(false);
       setSetupOpen(false);
       setBallMenuStep(null);
+      setMovementsOpen(false);
     }
   }, [isPlaying]);
 
@@ -759,41 +760,27 @@ export default function TacticalPlaySurface() {
     }
   }, [isControlsOpen]);
 
-  useEffect(() => {
-    const id = selectedToken?.id ?? "";
-    const wc = routeEditState.waypointCount;
-    const prev = panelTriggerRef.current;
-    if (id !== prev.playerId) {
-      panelTriggerRef.current = { playerId: id, waypointCount: wc };
-      setMovementPanelOpen(false);
-      return;
-    }
-    if (prev.waypointCount < 2 && wc >= 2) {
-      setMovementPanelOpen(true);
-    }
-    panelTriggerRef.current = { playerId: id, waypointCount: wc };
-  }, [selectedToken?.id, routeEditState.waypointCount]);
-
   const selectedRoute = routes.find((r) => r.playerId === selectedToken?.id) ?? null;
   const selectedRouteConcept = selectedRoute?.concept ?? null;
-  const selectedRouteDelay = selectedRoute?.delayMs ?? null;
-  const selectedRouteTrigger = selectedRoute?.triggeredBy ?? null;
-  const showMovementPanel =
-    movementPanelOpen &&
-    menuMode === "route" &&
-    selectedToken != null &&
-    routeEditState.waypointCount >= 2 &&
-    !isPlaying &&
-    !isPaused;
-  const otherRoutedPlayers = routes
-    .filter((r) => r.playerId !== selectedToken?.id)
-    .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
-    .sort((a, b) => a.number - b.number);
   const sortedSequence = [...routes].sort((a, b) => {
     const aOrd = a.triggeredBy != null ? Infinity : (a.delayMs ?? 0);
     const bOrd = b.triggeredBy != null ? Infinity : (b.delayMs ?? 0);
     return aOrd - bOrd;
   });
+
+  const movementsRoute = movementsSelectedPlayerId
+    ? routes.find((r) => r.playerId === movementsSelectedPlayerId) ?? null
+    : null;
+  const movementsRouteConcept = movementsRoute?.concept ?? null;
+  const movementsRouteDelay = movementsRoute?.delayMs ?? null;
+  const movementsRouteTrigger = movementsRoute?.triggeredBy ?? null;
+  const movementsRoutedPlayers = routes
+    .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
+    .sort((a, b) => a.number - b.number);
+  const movementsOtherPlayers = routes
+    .filter((r) => r.playerId !== movementsSelectedPlayerId)
+    .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
+    .sort((a, b) => a.number - b.number);
 
   const modeLabelByMenu: Record<MovementMenuMode, string> = {
     move: "Move",
@@ -984,22 +971,22 @@ export default function TacticalPlaySurface() {
     window.location.assign("/vision-tactics");
   };
 
-  const onSetConcept = (concept: MovementConcept | null) => {
+  const onMovementsSetConcept = (concept: MovementConcept | null) => {
     const shell = shellRef.current;
-    if (!shell || !selectedToken) return;
-    shell.setRouteMeta(selectedToken.id, { concept: concept ?? undefined });
+    if (!shell || !movementsSelectedPlayerId) return;
+    shell.setRouteMeta(movementsSelectedPlayerId, { concept: concept ?? undefined });
   };
 
-  const onSetDelay = (delayMs: number) => {
+  const onMovementsSetDelay = (delayMs: number) => {
     const shell = shellRef.current;
-    if (!shell || !selectedToken) return;
-    shell.setRouteMeta(selectedToken.id, { delayMs, triggeredBy: undefined });
+    if (!shell || !movementsSelectedPlayerId) return;
+    shell.setRouteMeta(movementsSelectedPlayerId, { delayMs, triggeredBy: undefined });
   };
 
-  const onSetTrigger = (triggeredBy: string | null) => {
+  const onMovementsSetTrigger = (triggeredBy: string | null) => {
     const shell = shellRef.current;
-    if (!shell || !selectedToken) return;
-    shell.setRouteMeta(selectedToken.id, { triggeredBy: triggeredBy ?? undefined, delayMs: undefined });
+    if (!shell || !movementsSelectedPlayerId) return;
+    shell.setRouteMeta(movementsSelectedPlayerId, { triggeredBy: triggeredBy ?? undefined, delayMs: undefined });
   };
 
   const onSaveScenario = () => {
@@ -1078,7 +1065,7 @@ export default function TacticalPlaySurface() {
         <button
           type="button"
           style={CTRL_BUBBLE_STYLE}
-          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setScenariosOpen(false); }}
+          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setScenariosOpen(false); setMovementsOpen(false); }}
         >
           CTRL
         </button>
@@ -1156,13 +1143,22 @@ export default function TacticalPlaySurface() {
                 Ball
               </button>
               {routes.length > 0 ? (
-                <button
-                  type="button"
-                  style={sequenceOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
-                  onClick={() => setSequenceOpen((prev) => !prev)}
-                >
-                  Seq
-                </button>
+                <>
+                  <button
+                    type="button"
+                    style={sequenceOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                    onClick={() => setSequenceOpen((prev) => !prev)}
+                  >
+                    Seq
+                  </button>
+                  <button
+                    type="button"
+                    style={movementsOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                    onClick={() => { setMovementsOpen((prev) => !prev); setIsControlsOpen(false); }}
+                  >
+                    Movements
+                  </button>
+                </>
               ) : null}
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
@@ -1378,113 +1374,127 @@ export default function TacticalPlaySurface() {
           </div>
         ) : null}
 
-        {showMovementPanel && selectedToken ? (
+        {movementsOpen && routes.length > 0 ? (
           <div style={MOVEMENT_PANEL_STYLE}>
             <div style={MP_HEADER_STYLE}>
-              <span style={MP_TITLE_STYLE}>P{selectedToken.number} Movement</span>
+              <span style={MP_TITLE_STYLE}>Movements</span>
               <button
                 type="button"
                 style={MP_CLOSE_STYLE}
-                onClick={() => { shellRef.current?.setSelectedToken(null); setMovementPanelOpen(false); }}
+                onClick={() => setMovementsOpen(false)}
               >
                 ×
               </button>
             </div>
 
             <div>
-              <div style={MP_SECTION_LABEL_STYLE}>Movement Type</div>
+              <div style={MP_SECTION_LABEL_STYLE}>Player</div>
               <div style={MP_BUTTON_ROW}>
-                {([
-                  { id: "support-run" as MovementConcept, label: "Support" },
-                  { id: "overlap" as MovementConcept, label: "Overlap" },
-                  { id: "shadow-run" as MovementConcept, label: "Shadow" },
-                  { id: "rotation" as MovementConcept, label: "Rotation" },
-                  { id: "custom" as MovementConcept, label: "Custom" },
-                ] as const).map((opt) => (
+                {movementsRoutedPlayers.map((p) => (
                   <button
-                    key={opt.id}
+                    key={p.playerId}
                     type="button"
-                    style={selectedRouteConcept === opt.id ? MP_BTN_ACTIVE : MP_BTN}
-                    onClick={() => onSetConcept(selectedRouteConcept === opt.id ? null : opt.id)}
+                    style={movementsSelectedPlayerId === p.playerId ? MP_BTN_ACTIVE : MP_BTN}
+                    onClick={() => setMovementsSelectedPlayerId(
+                      movementsSelectedPlayerId === p.playerId ? null : p.playerId
+                    )}
                   >
-                    {opt.label}
+                    P{p.number}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div>
-              <div style={MP_SECTION_LABEL_STYLE}>Timing</div>
-              <div style={MP_BUTTON_ROW}>
-                {([
-                  { ms: 0, label: "Now" },
-                  { ms: 1000, label: "+1s" },
-                  { ms: 2000, label: "+2s" },
-                  { ms: 3000, label: "+3s" },
-                  { ms: 4000, label: "+4s" },
-                ] as const).map((opt) => (
-                  <button
-                    key={opt.ms}
-                    type="button"
-                    style={
-                      selectedRouteTrigger == null &&
-                      (selectedRouteDelay === opt.ms || (opt.ms === 0 && selectedRouteDelay == null))
-                        ? MP_BTN_ACTIVE
-                        : MP_BTN
-                    }
-                    onClick={() => onSetDelay(opt.ms)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              {otherRoutedPlayers.length > 0 ? (
-                <div style={{ ...MP_BUTTON_ROW, marginTop: "5px" }}>
-                  <span
-                    style={{
-                      ...MP_SECTION_LABEL_STYLE,
-                      marginBottom: 0,
-                      alignSelf: "center",
-                      flexShrink: 0,
-                      paddingRight: "2px",
-                    }}
-                  >
-                    After
-                  </span>
-                  {selectedRouteTrigger != null ? (
-                    <button type="button" style={MP_BTN_SECONDARY} onClick={() => onSetTrigger(null)}>
-                      Clear
-                    </button>
-                  ) : null}
-                  {otherRoutedPlayers.map((p) => (
-                    <button
-                      key={p.playerId}
-                      type="button"
-                      style={selectedRouteTrigger === p.playerId ? MP_BTN_ACTIVE : MP_BTN}
-                      onClick={() => onSetTrigger(p.playerId)}
-                    >
-                      P{p.number}
-                    </button>
-                  ))}
+            {movementsSelectedPlayerId ? (
+              <>
+                <div>
+                  <div style={MP_SECTION_LABEL_STYLE}>Movement Type</div>
+                  <div style={MP_BUTTON_ROW}>
+                    {([
+                      { id: "support-run" as MovementConcept, label: "Support" },
+                      { id: "overlap" as MovementConcept, label: "Overlap" },
+                      { id: "shadow-run" as MovementConcept, label: "Shadow" },
+                      { id: "rotation" as MovementConcept, label: "Rotation" },
+                      { id: "custom" as MovementConcept, label: "Custom" },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        style={movementsRouteConcept === opt.id ? MP_BTN_ACTIVE : MP_BTN}
+                        onClick={() => onMovementsSetConcept(movementsRouteConcept === opt.id ? null : opt.id)}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              ) : null}
-            </div>
 
-            <div style={{ display: "flex", gap: "6px" }}>
+                <div>
+                  <div style={MP_SECTION_LABEL_STYLE}>Timing</div>
+                  <div style={MP_BUTTON_ROW}>
+                    {([
+                      { ms: 0, label: "Now" },
+                      { ms: 1000, label: "+1s" },
+                      { ms: 2000, label: "+2s" },
+                      { ms: 3000, label: "+3s" },
+                      { ms: 4000, label: "+4s" },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.ms}
+                        type="button"
+                        style={
+                          movementsRouteTrigger == null &&
+                          (movementsRouteDelay === opt.ms || (opt.ms === 0 && movementsRouteDelay == null))
+                            ? MP_BTN_ACTIVE
+                            : MP_BTN
+                        }
+                        onClick={() => onMovementsSetDelay(opt.ms)}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {movementsOtherPlayers.length > 0 ? (
+                    <div style={{ ...MP_BUTTON_ROW, marginTop: "5px" }}>
+                      <span
+                        style={{
+                          ...MP_SECTION_LABEL_STYLE,
+                          marginBottom: 0,
+                          alignSelf: "center",
+                          flexShrink: 0,
+                          paddingRight: "2px",
+                        }}
+                      >
+                        After
+                      </span>
+                      {movementsRouteTrigger != null ? (
+                        <button type="button" style={MP_BTN_SECONDARY} onClick={() => onMovementsSetTrigger(null)}>
+                          Clear
+                        </button>
+                      ) : null}
+                      {movementsOtherPlayers.map((p) => (
+                        <button
+                          key={p.playerId}
+                          type="button"
+                          style={movementsRouteTrigger === p.playerId ? MP_BTN_ACTIVE : MP_BTN}
+                          onClick={() => onMovementsSetTrigger(p.playerId)}
+                        >
+                          P{p.number}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
+
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button
                 type="button"
-                style={MP_BTN_SECONDARY}
-                onClick={() => { clearRoute(); setMovementPanelOpen(false); }}
+                style={{ ...MP_BTN_PRIMARY, flex: "0 0 auto", minWidth: "80px" }}
+                onClick={() => setMovementsOpen(false)}
               >
-                Clear Route
-              </button>
-              <button
-                type="button"
-                style={isPortrait ? { ...MP_BTN_PRIMARY, opacity: 0.4, cursor: "not-allowed" } : MP_BTN_PRIMARY}
-                disabled={isPortrait}
-                onClick={onPlayRoutesPress}
-              >
-                Play Sequence
+                Done
               </button>
             </div>
           </div>
