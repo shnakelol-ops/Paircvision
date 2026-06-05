@@ -417,16 +417,16 @@ const MOVEMENT_PANEL_STYLE: CSSProperties = {
   transform: "translateX(-50%)",
   bottom: "max(58px, calc(env(safe-area-inset-bottom, 0px) + 56px))",
   zIndex: 23,
-  width: "min(500px, calc(100vw - 176px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
-  background: "rgba(4, 10, 22, 0.95)",
+  width: "min(480px, calc(100vw - 176px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
+  background: "rgba(4, 10, 22, 0.96)",
   backdropFilter: "blur(20px)",
   WebkitBackdropFilter: "blur(20px)",
-  border: "1px solid rgba(180, 210, 255, 0.15)",
-  borderRadius: "16px",
-  boxShadow: "0 20px 50px rgba(0, 0, 0, 0.65), 0 6px 16px rgba(0, 0, 0, 0.40)",
-  padding: "10px 12px",
+  border: "1px solid rgba(180, 210, 255, 0.13)",
+  borderRadius: "12px",
+  boxShadow: "0 14px 36px rgba(0, 0, 0, 0.62), 0 4px 12px rgba(0, 0, 0, 0.38)",
+  padding: "8px 10px",
   display: "grid",
-  gap: "7px",
+  gap: "5px",
 };
 
 const MP_HEADER_STYLE: CSSProperties = {
@@ -436,24 +436,24 @@ const MP_HEADER_STYLE: CSSProperties = {
 };
 
 const MP_TITLE_STYLE: CSSProperties = {
-  color: "rgba(180, 210, 255, 0.55)",
+  color: "rgba(180, 210, 255, 0.42)",
   fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "9px",
+  fontSize: "8px",
   fontWeight: 700,
-  letterSpacing: "0.10em",
+  letterSpacing: "0.12em",
   textTransform: "uppercase",
   userSelect: "none",
 };
 
 const MP_CLOSE_STYLE: CSSProperties = {
-  width: "26px",
-  height: "26px",
+  width: "22px",
+  height: "22px",
   borderRadius: "50%",
-  border: "1px solid rgba(180, 210, 255, 0.18)",
+  border: "1px solid rgba(180, 210, 255, 0.15)",
   background: "rgba(10, 20, 42, 0.60)",
-  color: "rgba(180, 210, 255, 0.60)",
+  color: "rgba(180, 210, 255, 0.50)",
   fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "15px",
+  fontSize: "14px",
   fontWeight: 300,
   cursor: "pointer",
   display: "flex",
@@ -464,64 +464,93 @@ const MP_CLOSE_STYLE: CSSProperties = {
   flexShrink: 0,
 };
 
-const MP_SECTION_LABEL_STYLE: CSSProperties = {
-  color: "rgba(180, 210, 255, 0.36)",
+const MP_ROW: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "3px",
+  alignItems: "center",
+};
+
+const MP_ROW_LABEL: CSSProperties = {
+  color: "rgba(180, 210, 255, 0.28)",
   fontFamily: "Inter, system-ui, sans-serif",
   fontSize: "8px",
   fontWeight: 700,
   letterSpacing: "0.10em",
   textTransform: "uppercase",
   userSelect: "none",
-  marginBottom: "4px",
+  flexShrink: 0,
+  marginRight: "2px",
 };
 
-const MP_BUTTON_ROW: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: "5px",
-};
-
-const MP_BTN: CSSProperties = {
-  height: "40px",
-  minWidth: "60px",
-  borderRadius: "10px",
-  border: "1px solid rgba(180, 210, 255, 0.18)",
-  background: "rgba(14, 24, 50, 0.80)",
-  color: "rgba(210, 230, 255, 0.88)",
+const MP_CHIP: CSSProperties = {
+  height: "26px",
+  minWidth: "0",
+  borderRadius: "7px",
+  border: "1px solid rgba(180, 210, 255, 0.13)",
+  background: "rgba(12, 22, 48, 0.75)",
+  color: "rgba(200, 225, 255, 0.78)",
   fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "10px",
+  fontSize: "9px",
   fontWeight: 600,
   letterSpacing: "0.04em",
-  padding: "0 14px",
+  padding: "0 9px",
   cursor: "pointer",
   whiteSpace: "nowrap",
-  flex: "1 1 auto",
 };
 
-const MP_BTN_ACTIVE: CSSProperties = {
-  ...MP_BTN,
-  border: "1px solid rgba(124, 255, 114, 0.65)",
-  background: "rgba(22, 67, 44, 0.90)",
-  color: "#e6fff0",
-};
-
-const MP_BTN_SECONDARY: CSSProperties = {
-  ...MP_BTN,
-  flex: "0 0 auto",
-  background: "rgba(10, 16, 32, 0.70)",
-  color: "rgba(180, 210, 255, 0.60)",
-  border: "1px solid rgba(180, 210, 255, 0.14)",
-};
-
-const MP_BTN_PRIMARY: CSSProperties = {
-  ...MP_BTN,
-  flex: "1 1 auto",
-  height: "44px",
-  border: "1px solid rgba(124, 255, 114, 0.45)",
+const MP_CHIP_ACTIVE: CSSProperties = {
+  ...MP_CHIP,
+  border: "1px solid rgba(124, 255, 114, 0.54)",
   background: "rgba(18, 58, 36, 0.90)",
-  color: "#cdffc8",
+  color: "#d2ffce",
+};
+
+const MP_CHIP_SECONDARY: CSSProperties = {
+  ...MP_CHIP,
+  color: "rgba(180, 210, 255, 0.44)",
+  border: "1px solid rgba(180, 210, 255, 0.09)",
+};
+
+const MP_PLAYER_CHIP: CSSProperties = {
+  height: "28px",
+  minWidth: "0",
+  borderRadius: "8px",
+  border: "1px solid rgba(180, 210, 255, 0.13)",
+  background: "rgba(12, 22, 48, 0.75)",
+  color: "rgba(200, 225, 255, 0.85)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 600,
+  letterSpacing: "0.04em",
+  padding: "0 10px",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "4px",
+};
+
+const MP_PLAYER_CHIP_ACTIVE: CSSProperties = {
+  ...MP_PLAYER_CHIP,
+  border: "1px solid rgba(124, 255, 114, 0.54)",
+  background: "rgba(18, 58, 36, 0.90)",
+  color: "#d2ffce",
+};
+
+const MP_DONE: CSSProperties = {
+  height: "28px",
+  minWidth: "68px",
+  borderRadius: "7px",
+  border: "1px solid rgba(124, 255, 114, 0.34)",
+  background: "rgba(16, 52, 32, 0.90)",
+  color: "#c4ffbf",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
   fontWeight: 700,
-  fontSize: "11px",
+  letterSpacing: "0.05em",
+  padding: "0 14px",
+  cursor: "pointer",
 };
 
 const CONCEPT_LABELS: Record<MovementConcept, string> = {
@@ -1378,122 +1407,109 @@ export default function TacticalPlaySurface() {
           <div style={MOVEMENT_PANEL_STYLE}>
             <div style={MP_HEADER_STYLE}>
               <span style={MP_TITLE_STYLE}>Movements</span>
-              <button
-                type="button"
-                style={MP_CLOSE_STYLE}
-                onClick={() => setMovementsOpen(false)}
-              >
+              <button type="button" style={MP_CLOSE_STYLE} onClick={() => setMovementsOpen(false)}>
                 ×
               </button>
             </div>
 
-            <div>
-              <div style={MP_SECTION_LABEL_STYLE}>Player</div>
-              <div style={MP_BUTTON_ROW}>
-                {movementsRoutedPlayers.map((p) => (
+            <div style={MP_ROW}>
+              {movementsRoutedPlayers.map((p) => {
+                const r = routes.find((route) => route.playerId === p.playerId);
+                const conceptShort = r?.concept != null ? CONCEPT_LABELS[r.concept].split(" ")[0] : null;
+                const timingShort = r?.triggeredBy
+                  ? `P${tokenNumberById[r.triggeredBy] ?? "?"}`
+                  : r?.delayMs != null
+                    ? r.delayMs === 0 ? "Now" : `+${r.delayMs / 1000}s`
+                    : null;
+                const summary = [conceptShort, timingShort].filter(Boolean).join(" · ");
+                const isSelected = movementsSelectedPlayerId === p.playerId;
+                return (
                   <button
                     key={p.playerId}
                     type="button"
-                    style={movementsSelectedPlayerId === p.playerId ? MP_BTN_ACTIVE : MP_BTN}
-                    onClick={() => setMovementsSelectedPlayerId(
-                      movementsSelectedPlayerId === p.playerId ? null : p.playerId
-                    )}
+                    style={isSelected ? MP_PLAYER_CHIP_ACTIVE : MP_PLAYER_CHIP}
+                    onClick={() => setMovementsSelectedPlayerId(isSelected ? null : p.playerId)}
                   >
-                    P{p.number}
+                    <span>P{p.number}</span>
+                    {summary ? (
+                      <span style={{ opacity: 0.52, fontSize: "8px", letterSpacing: "0.02em" }}>{summary}</span>
+                    ) : null}
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
 
             {movementsSelectedPlayerId ? (
               <>
-                <div>
-                  <div style={MP_SECTION_LABEL_STYLE}>Movement Type</div>
-                  <div style={MP_BUTTON_ROW}>
-                    {([
-                      { id: "support-run" as MovementConcept, label: "Support" },
-                      { id: "overlap" as MovementConcept, label: "Overlap" },
-                      { id: "shadow-run" as MovementConcept, label: "Shadow" },
-                      { id: "rotation" as MovementConcept, label: "Rotation" },
-                      { id: "custom" as MovementConcept, label: "Custom" },
-                    ] as const).map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        style={movementsRouteConcept === opt.id ? MP_BTN_ACTIVE : MP_BTN}
-                        onClick={() => onMovementsSetConcept(movementsRouteConcept === opt.id ? null : opt.id)}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+                <div style={MP_ROW}>
+                  <span style={MP_ROW_LABEL}>Type</span>
+                  {([
+                    { id: "support-run" as MovementConcept, label: "Support" },
+                    { id: "overlap" as MovementConcept, label: "Overlap" },
+                    { id: "shadow-run" as MovementConcept, label: "Shadow" },
+                    { id: "rotation" as MovementConcept, label: "Rotation" },
+                    { id: "custom" as MovementConcept, label: "Custom" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      style={movementsRouteConcept === opt.id ? MP_CHIP_ACTIVE : MP_CHIP}
+                      onClick={() => onMovementsSetConcept(movementsRouteConcept === opt.id ? null : opt.id)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
 
-                <div>
-                  <div style={MP_SECTION_LABEL_STYLE}>Timing</div>
-                  <div style={MP_BUTTON_ROW}>
-                    {([
-                      { ms: 0, label: "Now" },
-                      { ms: 1000, label: "+1s" },
-                      { ms: 2000, label: "+2s" },
-                      { ms: 3000, label: "+3s" },
-                      { ms: 4000, label: "+4s" },
-                    ] as const).map((opt) => (
-                      <button
-                        key={opt.ms}
-                        type="button"
-                        style={
-                          movementsRouteTrigger == null &&
-                          (movementsRouteDelay === opt.ms || (opt.ms === 0 && movementsRouteDelay == null))
-                            ? MP_BTN_ACTIVE
-                            : MP_BTN
-                        }
-                        onClick={() => onMovementsSetDelay(opt.ms)}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+                <div style={MP_ROW}>
+                  <span style={MP_ROW_LABEL}>Time</span>
+                  {([
+                    { ms: 0, label: "Now" },
+                    { ms: 1000, label: "+1s" },
+                    { ms: 2000, label: "+2s" },
+                    { ms: 3000, label: "+3s" },
+                    { ms: 4000, label: "+4s" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.ms}
+                      type="button"
+                      style={
+                        movementsRouteTrigger == null &&
+                        (movementsRouteDelay === opt.ms || (opt.ms === 0 && movementsRouteDelay == null))
+                          ? MP_CHIP_ACTIVE
+                          : MP_CHIP
+                      }
+                      onClick={() => onMovementsSetDelay(opt.ms)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                   {movementsOtherPlayers.length > 0 ? (
-                    <div style={{ ...MP_BUTTON_ROW, marginTop: "5px" }}>
-                      <span
-                        style={{
-                          ...MP_SECTION_LABEL_STYLE,
-                          marginBottom: 0,
-                          alignSelf: "center",
-                          flexShrink: 0,
-                          paddingRight: "2px",
-                        }}
-                      >
-                        After
-                      </span>
+                    <>
+                      <span style={{ ...MP_ROW_LABEL, marginLeft: "3px" }}>After</span>
                       {movementsRouteTrigger != null ? (
-                        <button type="button" style={MP_BTN_SECONDARY} onClick={() => onMovementsSetTrigger(null)}>
-                          Clear
+                        <button type="button" style={MP_CHIP_SECONDARY} onClick={() => onMovementsSetTrigger(null)}>
+                          ×
                         </button>
                       ) : null}
                       {movementsOtherPlayers.map((p) => (
                         <button
                           key={p.playerId}
                           type="button"
-                          style={movementsRouteTrigger === p.playerId ? MP_BTN_ACTIVE : MP_BTN}
+                          style={movementsRouteTrigger === p.playerId ? MP_CHIP_ACTIVE : MP_CHIP}
                           onClick={() => onMovementsSetTrigger(p.playerId)}
                         >
                           P{p.number}
                         </button>
                       ))}
-                    </div>
+                    </>
                   ) : null}
                 </div>
               </>
             ) : null}
 
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                style={{ ...MP_BTN_PRIMARY, flex: "0 0 auto", minWidth: "80px" }}
-                onClick={() => setMovementsOpen(false)}
-              >
+              <button type="button" style={MP_DONE} onClick={() => setMovementsOpen(false)}>
                 Done
               </button>
             </div>
