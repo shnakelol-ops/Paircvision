@@ -11,6 +11,7 @@ import type {
   MovementPlaybackSpeed,
   MovementRouteEditState,
 } from "../../movement-board/shell/types";
+import { FORMATION_PRESETS, applyPreset, type FormationPreset } from "./tacticalPlayPresets";
 
 const _CAN_DVW = typeof window !== "undefined" && typeof window.CSS !== "undefined" && window.CSS.supports("width: 100dvw");
 const _VW = _CAN_DVW ? "100dvw" : "100vw";
@@ -314,6 +315,7 @@ export default function TacticalPlaySurface() {
   const [ballMenuStep, setBallMenuStep] = useState<BallMenuStep | null>(null);
   const [appViewportHeight, setAppViewportHeight] = useState(() => getTPViewportHeight());
   const [startFlash, setStartFlash] = useState(false);
+  const [presetsOpen, setPresetsOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -461,7 +463,10 @@ export default function TacticalPlaySurface() {
   }, [isPlaying]);
 
   useEffect(() => {
-    if (!isControlsOpen) setBallMenuStep(null);
+    if (!isControlsOpen) {
+      setBallMenuStep(null);
+      setPresetsOpen(false);
+    }
   }, [isControlsOpen]);
 
   const modeLabelByMenu: Record<MovementMenuMode, string> = {
@@ -562,11 +567,32 @@ export default function TacticalPlaySurface() {
   };
 
   const onBallButtonPress = () => {
+    setPresetsOpen(false);
     if (ballOnPitch) {
       setBallMenuStep((prev) => (prev === "existing" ? null : "existing"));
     } else {
       setBallMenuStep((prev) => (prev === null ? "root" : null));
     }
+  };
+
+  const onShapesPress = () => {
+    setBallMenuStep(null);
+    setPresetsOpen((prev) => !prev);
+  };
+
+  const onLoadPreset = (preset: FormationPreset) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    // Clear existing routes — old waypoints no longer align with new positions
+    for (const token of shell.getTokens()) {
+      shell.setSelectedToken(token.id);
+      shell.clearSelectedRoute();
+    }
+    shell.setSelectedToken(null);
+    // Move players to preset positions and anchor reset to them
+    shell.setTokens(applyPreset(shell.getTokens(), preset));
+    shell.setStartPositions();
+    setPresetsOpen(false);
   };
 
   const onSelectBallType = (ballType: BallType) => {
@@ -664,6 +690,14 @@ export default function TacticalPlaySurface() {
               >
                 Ball
               </button>
+              <button
+                type="button"
+                style={presetsOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                disabled={modeIsPlaybackLocked}
+                onClick={onShapesPress}
+              >
+                Shapes
+              </button>
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
               </button>
@@ -719,6 +753,21 @@ export default function TacticalPlaySurface() {
                     </button>
                   </>
                 ) : null}
+              </div>
+            ) : null}
+
+            {presetsOpen ? (
+              <div style={PANEL_ROW_STYLE}>
+                {FORMATION_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    style={TOOL_BUTTON_STYLE}
+                    onClick={() => onLoadPreset(preset)}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
               </div>
             ) : null}
 
