@@ -53,6 +53,14 @@ export type MovementBoardRoute = {
   sequenceIndex?: number;
 };
 
+export type TacticalPassEvent = {
+  id: string;
+  fromPlayerId: string;
+  toPlayerId: string;
+  delayMs?: number;
+  triggeredBy?: string;
+};
+
 export type MovementPlaybackState = {
   isPlaying: boolean;
   isPaused: boolean;
@@ -77,6 +85,7 @@ export type MovementCanvasShellOptions = {
   onPlaybackStateChange?: (state: MovementPlaybackState) => void;
   onRouteEditStateChange?: (state: MovementRouteEditState) => void;
   onBallStateChange?: (state: BallState) => void;
+  onPassEventsChange?: (events: TacticalPassEvent[]) => void;
 };
 
 export type MovementCanvasShellHandle = {
@@ -111,6 +120,10 @@ export type MovementCanvasShellHandle = {
   setBallCarrier: (tokenId: string | null) => void;
   setRouteMeta: (playerId: string, meta: Partial<RouteMetadata>) => void;
   getRouteMeta: (playerId: string) => RouteMetadata | null;
+  setPassEvents: (events: readonly TacticalPassEvent[]) => void;
+  getPassEvents: () => TacticalPassEvent[];
+  addPassEvent: (event: TacticalPassEvent) => void;
+  removePassEvent: (id: string) => void;
   reflow: () => void;
   destroy: () => void;
 };

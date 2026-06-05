@@ -1,7 +1,7 @@
 import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
 import { createBasicRouteFollowSession, type BasicRouteFollowSession } from "../movement/basic-route-follow";
 import { sampleRoutePoints } from "../routes/route-sampling";
-import type { MovementPlaybackSpeed, MovementPlaybackState } from "../shell/types";
+import type { MovementPlaybackSpeed, MovementPlaybackState, TacticalPassEvent } from "../shell/types";
 
 // Speed increased from 18 to 22 to preserve average travel time after ease-in-out
 // introduces an average speed factor of ~0.82 (22 × 0.82 ≈ 18).
@@ -29,6 +29,20 @@ type PendingTriggerRun = {
   startPosition: NormalizedPoint;
 };
 
+type ActivePassRun = {
+  passId: string;
+  fromPlayerId: string;
+  toPlayerId: string;
+  delayMs: number;
+};
+
+type PendingPassRun = {
+  passId: string;
+  fromPlayerId: string;
+  toPlayerId: string;
+  triggeredBy: string;
+};
+
 type TokenRef = { id: string; position: NormalizedPoint };
 
 export type PlaybackOrchestratorCallbacks = {
@@ -42,6 +56,9 @@ export type PlaybackOrchestratorCallbacks = {
   getRoute: (tokenId: string) => readonly NormalizedPoint[] | null;
   getRouteMeta: (tokenId: string) => { delayMs?: number; triggeredBy?: string } | null;
   getStartPosition: (tokenId: string) => NormalizedPoint | null;
+  getPassEvents: () => readonly TacticalPassEvent[];
+  /** Called when a pass should begin animating — shell handles the visual. */
+  onPassStart: (fromPlayerId: string, toPlayerId: string) => void;
 };
 
 export type PlaybackOrchestrator = {
@@ -74,6 +91,8 @@ export function createPlaybackOrchestrator(
   let playbackSpeed = initialSpeed;
   let activePlaybackRuns = new Map<string, ActivePlaybackRun>();
   let pendingTriggerRuns = new Map<string, PendingTriggerRun>();
+  let activePassRuns = new Map<string, ActivePassRun>();
+  let pendingPassRuns = new Map<string, PendingPassRun>();
 
   const emitState = () => {
     callbacks.onStateChange({ isPlaying, isPaused });
@@ -85,9 +104,16 @@ export function createPlaybackOrchestrator(
     }
     activePlaybackRuns.clear();
     pendingTriggerRuns.clear();
+    activePassRuns.clear();
+    pendingPassRuns.clear();
   };
 
-  const buildRuns = (): { active: Map<string, ActivePlaybackRun>; pending: Map<string, PendingTriggerRun> } => {
+  const buildRuns = (): {
+    active: Map<string, ActivePlaybackRun>;
+    pending: Map<string, PendingTriggerRun>;
+    activePasses: Map<string, ActivePassRun>;
+    pendingPasses: Map<string, PendingPassRun>;
+  } => {
     const tokens = callbacks.getTokens();
     const active = new Map<string, ActivePlaybackRun>();
     const pending = new Map<string, PendingTriggerRun>();
@@ -141,7 +167,28 @@ export function createPlaybackOrchestrator(
       });
       staggerIndex += 1;
     }
-    return { active, pending };
+
+    const activePasses = new Map<string, ActivePassRun>();
+    const pendingPasses = new Map<string, PendingPassRun>();
+    for (const pass of callbacks.getPassEvents()) {
+      if (pass.triggeredBy) {
+        pendingPasses.set(pass.id, {
+          passId: pass.id,
+          fromPlayerId: pass.fromPlayerId,
+          toPlayerId: pass.toPlayerId,
+          triggeredBy: pass.triggeredBy,
+        });
+      } else {
+        activePasses.set(pass.id, {
+          passId: pass.id,
+          fromPlayerId: pass.fromPlayerId,
+          toPlayerId: pass.toPlayerId,
+          delayMs: pass.delayMs ?? 0,
+        });
+      }
+    }
+
+    return { active, pending, activePasses, pendingPasses };
   };
 
   const stop = (opts?: { keepPausedState?: boolean }) => {
@@ -154,7 +201,13 @@ export function createPlaybackOrchestrator(
   };
 
   const step = (deltaMs: number) => {
-    if (!isPlaying || (activePlaybackRuns.size === 0 && pendingTriggerRuns.size === 0)) return;
+    const hasWork =
+      activePlaybackRuns.size > 0 ||
+      pendingTriggerRuns.size > 0 ||
+      activePassRuns.size > 0 ||
+      pendingPassRuns.size > 0;
+    if (!isPlaying || !hasWork) return;
+
     const multiplier = PLAYBACK_SPEED_MULTIPLIER[playbackSpeed];
     const completedIds: string[] = [];
 
@@ -170,9 +223,24 @@ export function createPlaybackOrchestrator(
       }
     }
 
+    // Advance delayed pass runs; fire any that reach 0.
+    const firedPassIds: string[] = [];
+    for (const run of activePassRuns.values()) {
+      if (run.delayMs > 0) {
+        run.delayMs = Math.max(0, run.delayMs - deltaMs);
+        if (run.delayMs > 0) continue;
+      }
+      callbacks.onPassStart(run.fromPlayerId, run.toPlayerId);
+      firedPassIds.push(run.passId);
+    }
+    for (const id of firedPassIds) {
+      activePassRuns.delete(id);
+    }
+
     for (const id of completedIds) {
       activePlaybackRuns.delete(id);
 
+      // Promote triggered token runs.
       const toPromote: Array<[string, PendingTriggerRun]> = [];
       for (const [pendingId, pending] of pendingTriggerRuns) {
         if (pending.triggeredBy === id) {
@@ -196,9 +264,26 @@ export function createPlaybackOrchestrator(
           });
         }
       }
+
+      // Promote triggered pass runs.
+      const passesToFire: PendingPassRun[] = [];
+      for (const pendingPass of pendingPassRuns.values()) {
+        if (pendingPass.triggeredBy === id) {
+          passesToFire.push(pendingPass);
+        }
+      }
+      for (const pass of passesToFire) {
+        pendingPassRuns.delete(pass.passId);
+        callbacks.onPassStart(pass.fromPlayerId, pass.toPlayerId);
+      }
     }
 
-    if (activePlaybackRuns.size === 0 && pendingTriggerRuns.size === 0) {
+    if (
+      activePlaybackRuns.size === 0 &&
+      pendingTriggerRuns.size === 0 &&
+      activePassRuns.size === 0 &&
+      pendingPassRuns.size === 0
+    ) {
       stop();
     }
   };
@@ -212,14 +297,16 @@ export function createPlaybackOrchestrator(
       return;
     }
     isPaused = false;
-    const { active: nextActive, pending: nextPending } = buildRuns();
-    if (nextActive.size === 0 && nextPending.size === 0) {
+    const { active: nextActive, pending: nextPending, activePasses: nextActivePasses, pendingPasses: nextPendingPasses } = buildRuns();
+    if (nextActive.size === 0 && nextPending.size === 0 && nextActivePasses.size === 0 && nextPendingPasses.size === 0) {
       isPlaying = false;
       emitState();
       return;
     }
     activePlaybackRuns = nextActive;
     pendingTriggerRuns = nextPending;
+    activePassRuns = nextActivePasses;
+    pendingPassRuns = nextPendingPasses;
     isPlaying = true;
     emitState();
   };
@@ -245,7 +332,11 @@ export function createPlaybackOrchestrator(
     stop,
     step,
     isLocked: () => isPlaying || isPaused,
-    hasActiveRuns: () => activePlaybackRuns.size > 0 || pendingTriggerRuns.size > 0,
+    hasActiveRuns: () =>
+      activePlaybackRuns.size > 0 ||
+      pendingTriggerRuns.size > 0 ||
+      activePassRuns.size > 0 ||
+      pendingPassRuns.size > 0,
     getState: () => ({ isPlaying, isPaused }),
     setSpeed: (speed) => { playbackSpeed = speed; },
     getSpeed: () => playbackSpeed,
