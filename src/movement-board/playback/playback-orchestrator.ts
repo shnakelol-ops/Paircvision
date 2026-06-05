@@ -22,6 +22,13 @@ type ActivePlaybackRun = {
   delayMs: number;
 };
 
+type PendingTriggerRun = {
+  tokenId: string;
+  triggeredBy: string;
+  sampled: NormalizedPoint[];
+  startPosition: NormalizedPoint;
+};
+
 type TokenRef = { id: string; position: NormalizedPoint };
 
 export type PlaybackOrchestratorCallbacks = {
@@ -33,6 +40,7 @@ export type PlaybackOrchestratorCallbacks = {
   onStateChange: (state: MovementPlaybackState) => void;
   getTokens: () => readonly TokenRef[];
   getRoute: (tokenId: string) => readonly NormalizedPoint[] | null;
+  getRouteMeta: (tokenId: string) => { delayMs?: number; triggeredBy?: string } | null;
   getStartPosition: (tokenId: string) => NormalizedPoint | null;
 };
 
@@ -65,6 +73,7 @@ export function createPlaybackOrchestrator(
   let isPaused = false;
   let playbackSpeed = initialSpeed;
   let activePlaybackRuns = new Map<string, ActivePlaybackRun>();
+  let pendingTriggerRuns = new Map<string, PendingTriggerRun>();
 
   const emitState = () => {
     callbacks.onStateChange({ isPlaying, isPaused });
@@ -75,16 +84,19 @@ export function createPlaybackOrchestrator(
       run.session.cancel();
     }
     activePlaybackRuns.clear();
+    pendingTriggerRuns.clear();
   };
 
-  const buildRuns = (): Map<string, ActivePlaybackRun> => {
+  const buildRuns = (): { active: Map<string, ActivePlaybackRun>; pending: Map<string, PendingTriggerRun> } => {
     const tokens = callbacks.getTokens();
-    const runs = new Map<string, ActivePlaybackRun>();
+    const active = new Map<string, ActivePlaybackRun>();
+    const pending = new Map<string, PendingTriggerRun>();
     let staggerIndex = 0;
 
     for (const token of tokens) {
       const start = callbacks.getStartPosition(token.id) ?? token.position;
       const route = callbacks.getRoute(token.id);
+      const meta = callbacks.getRouteMeta(token.id);
       let playbackPath: NormalizedPoint[] = [];
 
       if (route && route.length >= 2) {
@@ -101,6 +113,18 @@ export function createPlaybackOrchestrator(
 
       callbacks.onPlaybackReset(token.id, start);
 
+      if (meta?.triggeredBy) {
+        pending.set(token.id, {
+          tokenId: token.id,
+          triggeredBy: meta.triggeredBy,
+          sampled,
+          startPosition: clonePoint(start),
+        });
+        continue;
+      }
+
+      const delay = meta?.delayMs !== undefined ? meta.delayMs : staggerIndex * PLAY_ALL_STAGGER_MS;
+
       const targetPoint = clonePoint(start);
       const session = createBasicRouteFollowSession({
         target: targetPoint,
@@ -109,15 +133,15 @@ export function createPlaybackOrchestrator(
       });
       if (!session.isActive()) continue;
 
-      runs.set(token.id, {
+      active.set(token.id, {
         tokenId: token.id,
         targetPoint,
         session,
-        delayMs: staggerIndex * PLAY_ALL_STAGGER_MS,
+        delayMs: delay,
       });
       staggerIndex += 1;
     }
-    return runs;
+    return { active, pending };
   };
 
   const stop = (opts?: { keepPausedState?: boolean }) => {
@@ -130,7 +154,7 @@ export function createPlaybackOrchestrator(
   };
 
   const step = (deltaMs: number) => {
-    if (!isPlaying || activePlaybackRuns.size === 0) return;
+    if (!isPlaying || (activePlaybackRuns.size === 0 && pendingTriggerRuns.size === 0)) return;
     const multiplier = PLAYBACK_SPEED_MULTIPLIER[playbackSpeed];
     const completedIds: string[] = [];
 
@@ -148,8 +172,33 @@ export function createPlaybackOrchestrator(
 
     for (const id of completedIds) {
       activePlaybackRuns.delete(id);
+
+      const toPromote: Array<[string, PendingTriggerRun]> = [];
+      for (const [pendingId, pending] of pendingTriggerRuns) {
+        if (pending.triggeredBy === id) {
+          toPromote.push([pendingId, pending]);
+        }
+      }
+      for (const [pendingId, pending] of toPromote) {
+        pendingTriggerRuns.delete(pendingId);
+        const targetPoint = clonePoint(pending.startPosition);
+        const session = createBasicRouteFollowSession({
+          target: targetPoint,
+          route: pending.sampled,
+          speed: BASIC_ROUTE_FOLLOW_SPEED,
+        });
+        if (session.isActive()) {
+          activePlaybackRuns.set(pendingId, {
+            tokenId: pending.tokenId,
+            targetPoint,
+            session,
+            delayMs: 0,
+          });
+        }
+      }
     }
-    if (activePlaybackRuns.size === 0) {
+
+    if (activePlaybackRuns.size === 0 && pendingTriggerRuns.size === 0) {
       stop();
     }
   };
@@ -163,13 +212,14 @@ export function createPlaybackOrchestrator(
       return;
     }
     isPaused = false;
-    const nextRuns = buildRuns();
-    if (nextRuns.size === 0) {
+    const { active: nextActive, pending: nextPending } = buildRuns();
+    if (nextActive.size === 0 && nextPending.size === 0) {
       isPlaying = false;
       emitState();
       return;
     }
-    activePlaybackRuns = nextRuns;
+    activePlaybackRuns = nextActive;
+    pendingTriggerRuns = nextPending;
     isPlaying = true;
     emitState();
   };
@@ -195,7 +245,7 @@ export function createPlaybackOrchestrator(
     stop,
     step,
     isLocked: () => isPlaying || isPaused,
-    hasActiveRuns: () => activePlaybackRuns.size > 0,
+    hasActiveRuns: () => activePlaybackRuns.size > 0 || pendingTriggerRuns.size > 0,
     getState: () => ({ isPlaying, isPaused }),
     setSpeed: (speed) => { playbackSpeed = speed; },
     getSpeed: () => playbackSpeed,

@@ -6,8 +6,10 @@ import { createMovementCanvasShell } from "../../movement-board/shell/createMove
 import type {
   BallType,
   MovementBoardMode,
+  MovementBoardRoute,
   MovementBoardToken,
   MovementCanvasShellHandle,
+  MovementConcept,
   MovementPlaybackSpeed,
   MovementRouteEditState,
   PremiumPlayerTokenColor,
@@ -15,6 +17,14 @@ import type {
   TokenSize,
 } from "../../movement-board/shell/types";
 import { TACTICAL_TEMPLATES, applyTemplatePositions, type TacticalTemplate, type TacticalTemplateCategory } from "./tacticalTemplates";
+import {
+  deleteScenario,
+  duplicateScenario,
+  listScenarios,
+  renameScenario,
+  saveScenario,
+  type TacticalScenario,
+} from "./tacticalPlayStorage";
 
 const SETUP_CATEGORIES: Array<{ id: TacticalTemplateCategory; label: string }> = [
   { id: "KICKOUT", label: "Kickout" },
@@ -358,6 +368,68 @@ const TOKEN_COLOR_BORDER: Record<PremiumPlayerTokenColor, string> = {
   white:  "rgba(203, 213, 225, 0.60)",
 };
 
+const SEQ_PANEL_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
+  bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
+  zIndex: 21,
+  width: "max-content",
+  maxWidth: "min(420px, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
+  display: "grid",
+  gap: "3px",
+};
+
+const SEQ_CHIP_STYLE: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "4px",
+  height: "22px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.20)",
+  background: "rgba(8, 18, 40, 0.72)",
+  color: "rgba(200, 230, 255, 0.88)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 600,
+  letterSpacing: "0.06em",
+  padding: "0 8px",
+  whiteSpace: "nowrap",
+};
+
+const SCENARIO_INPUT_STYLE: CSSProperties = {
+  height: "31px",
+  minWidth: "120px",
+  maxWidth: "160px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.22)",
+  background: "rgba(8, 18, 38, 0.72)",
+  color: "rgba(220, 235, 255, 0.95)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 500,
+  padding: "0 10px",
+  outline: "none",
+};
+
+const CONCEPT_LABELS: Record<MovementConcept, string> = {
+  "support-run": "Support Run",
+  "overlap": "Overlap",
+  "shadow-run": "Shadow Run",
+  "rotation": "Rotation",
+  "custom": "Custom Run",
+};
+
+const CONCEPT_OPTIONS: Array<{ id: MovementConcept | null; label: string }> = [
+  { id: null, label: "—" },
+  { id: "support-run", label: "Support" },
+  { id: "overlap", label: "Overlap" },
+  { id: "shadow-run", label: "Shadow" },
+  { id: "rotation", label: "Rotation" },
+  { id: "custom", label: "Custom" },
+];
+
+const DELAY_PRESETS_MS = [0, 1000, 2000, 3000, 4000];
+
 const TOKEN_COLOR_IS_LIGHT = new Set<PremiumPlayerTokenColor>(["yellow", "white"]);
 
 const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
@@ -405,6 +477,12 @@ export default function TacticalPlaySurface() {
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("jersey");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
   const [secondaryColor, setSecondaryColorState] = useState<PremiumPlayerTokenColor>("red");
+  const [routes, setRoutes] = useState<MovementBoardRoute[]>([]);
+  const [tokenNumberById, setTokenNumberById] = useState<Record<string, number>>({});
+  const [sequenceOpen, setSequenceOpen] = useState(false);
+  const [scenariosOpen, setScenariosOpen] = useState(false);
+  const [scenarios, setScenarios] = useState<TacticalScenario[]>([]);
+  const [scenarioNameDraft, setScenarioNameDraft] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -463,8 +541,9 @@ export default function TacticalPlaySurface() {
         onSelectedTokenChange: (token) => {
           setSelectedToken(token);
         },
-        onRoutesChange: (routes) => {
-          setRouteCount(routes.length);
+        onRoutesChange: (nextRoutes) => {
+          setRouteCount(nextRoutes.length);
+          setRoutes(nextRoutes);
         },
         onPlaybackStateChange: (state) => {
           setIsPlaying(state.isPlaying);
@@ -486,7 +565,12 @@ export default function TacticalPlaySurface() {
         setMenuMode(toMenuMode(shell.getMode()));
         setPlaybackSpeed(shell.getPlaybackSpeed());
         setTokenSizeState(shell.getTokenSize());
-        setRouteCount(shell.getRoutes().length);
+        const initialRoutes = shell.getRoutes();
+        setRouteCount(initialRoutes.length);
+        setRoutes(initialRoutes);
+        const nums: Record<string, number> = {};
+        for (const t of shell.getTokens()) nums[t.id] = t.number;
+        setTokenNumberById(nums);
         const selected = shell.getSelectedToken();
         setSelectedToken(selected);
         setRouteEditState(shell.getRouteEditState());
@@ -497,6 +581,7 @@ export default function TacticalPlaySurface() {
         setBallCarrierId(initialBallState.carrierId ?? null);
         setBallOnPitch(!!(initialBallState.carrierId || initialBallState.position));
         shell.setDragEnabled(!isPortrait);
+        setScenarios(listScenarios());
         destroyShell = shell.destroy;
       });
     };
@@ -566,13 +651,14 @@ export default function TacticalPlaySurface() {
   };
 
   const selectedHasBall = selectedToken != null && selectedToken.id === ballCarrierId;
+  const conceptSuffix = selectedRouteConcept ? ` · ${CONCEPT_LABELS[selectedRouteConcept]}` : "";
   const coachInfoLabel = selectedToken
-    ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""} · Movements ${routeCount}`
+    ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""}${conceptSuffix} · Moves ${routeCount}`
     : ballCarrierId
-      ? `Ball Assigned · Movements ${routeCount}`
+      ? `Ball Assigned · Moves ${routeCount}`
       : ballOnPitch
-        ? `Ball on Pitch · Movements ${routeCount}`
-        : `${modeLabelByMenu[menuMode]} · Movements ${routeCount}`;
+        ? `Ball on Pitch · Moves ${routeCount}`
+        : `${modeLabelByMenu[menuMode]} · Moves ${routeCount}`;
 
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
@@ -747,6 +833,89 @@ export default function TacticalPlaySurface() {
     window.location.assign("/vision-tactics");
   };
 
+  const selectedRoute = routes.find((r) => r.playerId === selectedToken?.id) ?? null;
+  const selectedRouteConcept = selectedRoute?.concept ?? null;
+  const selectedRouteDelay = selectedRoute?.delayMs ?? null;
+  const selectedRouteTrigger = selectedRoute?.triggeredBy ?? null;
+  const showSequencingPanel =
+    menuMode === "route" &&
+    selectedToken != null &&
+    (selectedRoute?.points.length ?? 0) >= 2 &&
+    !isPlaying;
+  const otherRoutedPlayers = routes
+    .filter((r) => r.playerId !== selectedToken?.id)
+    .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
+    .sort((a, b) => a.number - b.number);
+
+  const sortedSequence = [...routes].sort((a, b) => {
+    const aOrd = a.triggeredBy != null ? Infinity : (a.delayMs ?? 0);
+    const bOrd = b.triggeredBy != null ? Infinity : (b.delayMs ?? 0);
+    return aOrd - bOrd;
+  });
+
+  const onSetConcept = (concept: MovementConcept | null) => {
+    const shell = shellRef.current;
+    if (!shell || !selectedToken) return;
+    shell.setRouteMeta(selectedToken.id, { concept: concept ?? undefined });
+  };
+
+  const onSetDelay = (delayMs: number | null) => {
+    const shell = shellRef.current;
+    if (!shell || !selectedToken) return;
+    shell.setRouteMeta(selectedToken.id, { delayMs: delayMs ?? undefined, triggeredBy: undefined });
+  };
+
+  const onSetTrigger = (triggeredBy: string | null) => {
+    const shell = shellRef.current;
+    if (!shell || !selectedToken) return;
+    shell.setRouteMeta(selectedToken.id, { triggeredBy: triggeredBy ?? undefined, delayMs: undefined });
+  };
+
+  const onSaveScenario = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const saved = saveScenario(
+      scenarioNameDraft.trim() || "Scenario",
+      shell.getTokens(),
+      shell.getRoutes(),
+      shell.getBallState(),
+    );
+    void saved;
+    setScenarios(listScenarios());
+    setScenarioNameDraft("");
+  };
+
+  const onLoadScenario = (scenario: TacticalScenario) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    shell.setTokens(scenario.tokens);
+    shell.setRoutes(scenario.routes);
+    if (scenario.ballState.carrierId) {
+      shell.giveBall(scenario.ballState.carrierId);
+    } else if (scenario.ballState.position) {
+      shell.placeBall(scenario.ballState.ballType ?? "footballSmall", scenario.ballState.position);
+    } else {
+      shell.removeBall();
+    }
+    shell.setStartPositions();
+    setScenariosOpen(false);
+  };
+
+  const onDeleteScenario = (id: string) => {
+    deleteScenario(id);
+    setScenarios(listScenarios());
+  };
+
+  const onDuplicateScenario = (id: string) => {
+    duplicateScenario(id);
+    setScenarios(listScenarios());
+  };
+
+  const onRenameScenario = (id: string, name: string) => {
+    renameScenario(id, name);
+    setScenarios(listScenarios());
+  };
+
   const modeIsPlaybackLocked = isPlaying || isPaused;
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
   const removePointDisabled = menuMode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying;
@@ -778,7 +947,7 @@ export default function TacticalPlaySurface() {
         <button
           type="button"
           style={CTRL_BUBBLE_STYLE}
-          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); }}
+          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setScenariosOpen(false); }}
         >
           CTRL
         </button>
@@ -795,6 +964,38 @@ export default function TacticalPlaySurface() {
 
         {!isControlsOpen && !setupOpen && !isPlaying && !isPaused ? (
           <div style={HINT_PILL_STYLE}>Move players → Set Start → Draw Movements → Play</div>
+        ) : null}
+
+        {sequenceOpen && !isControlsOpen && routes.length > 0 ? (
+          <div style={SEQ_PANEL_STYLE}>
+            <div style={PANEL_ROW_STYLE}>
+              <span style={SETUP_SECTION_LABEL_STYLE}>Movement Chain</span>
+              {sortedSequence.map((r, idx) => {
+                const num = tokenNumberById[r.playerId] ?? "?";
+                const conceptText = r.concept ? CONCEPT_LABELS[r.concept] : "Run";
+                let timingText = "";
+                if (r.triggeredBy) {
+                  const trigNum = tokenNumberById[r.triggeredBy] ?? "?";
+                  timingText = `after P${trigNum}`;
+                } else if (r.delayMs != null && r.delayMs > 0) {
+                  timingText = `${(r.delayMs / 1000).toFixed(1)}s`;
+                } else {
+                  timingText = "0s";
+                }
+                return (
+                  <span key={r.playerId} style={SEQ_CHIP_STYLE}>
+                    <span style={{ opacity: 0.50 }}>{idx + 1}.</span>
+                    <span>P{num}</span>
+                    <span style={{ opacity: 0.65 }}>{conceptText}</span>
+                    <span style={{ opacity: 0.45 }}>{timingText}</span>
+                  </span>
+                );
+              })}
+              <button type="button" style={{ ...COLLAPSE_BUTTON_STYLE, minWidth: "44px" }} onClick={() => setSequenceOpen(false)}>
+                ×
+              </button>
+            </div>
+          </div>
         ) : null}
 
         {isControlsOpen ? (
@@ -823,10 +1024,45 @@ export default function TacticalPlaySurface() {
               >
                 Ball
               </button>
+              {routes.length > 0 ? (
+                <button
+                  type="button"
+                  style={sequenceOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                  onClick={() => setSequenceOpen((prev) => !prev)}
+                >
+                  Seq
+                </button>
+              ) : null}
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
               </button>
             </div>
+
+            {sequenceOpen && routes.length > 0 ? (
+              <div style={PANEL_ROW_STYLE}>
+                <span style={SETUP_SECTION_LABEL_STYLE}>Sequence</span>
+                {sortedSequence.map((r, idx) => {
+                  const num = tokenNumberById[r.playerId] ?? "?";
+                  const conceptText = r.concept ? CONCEPT_LABELS[r.concept] : "Run";
+                  let timingText = "";
+                  if (r.triggeredBy) {
+                    const trigNum = tokenNumberById[r.triggeredBy] ?? "?";
+                    timingText = `after P${trigNum}`;
+                  } else if (r.delayMs != null && r.delayMs > 0) {
+                    timingText = `${(r.delayMs / 1000).toFixed(1)}s`;
+                  } else {
+                    timingText = "0s";
+                  }
+                  return (
+                    <span key={r.playerId} style={SEQ_CHIP_STYLE}>
+                      <span style={{ opacity: 0.50 }}>{idx + 1}.</span>
+                      P{num} {conceptText}
+                      <span style={{ opacity: 0.45 }}>{timingText}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
 
             {ballMenuStep !== null ? (
               <div style={PANEL_ROW_STYLE}>
@@ -963,6 +1199,62 @@ export default function TacticalPlaySurface() {
                   ) : null}
                 </>
               ) : null}
+              {showSequencingPanel ? (
+                <>
+                  <div style={PANEL_ROW_STYLE}>
+                    <span style={SETUP_SECTION_LABEL_STYLE}>Concept</span>
+                    {CONCEPT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id ?? "none"}
+                        type="button"
+                        style={selectedRouteConcept === opt.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                        onClick={() => onSetConcept(opt.id)}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={PANEL_ROW_STYLE}>
+                    <span style={SETUP_SECTION_LABEL_STYLE}>Starts</span>
+                    {DELAY_PRESETS_MS.map((ms) => (
+                      <button
+                        key={ms}
+                        type="button"
+                        style={
+                          selectedRouteTrigger == null && selectedRouteDelay === ms
+                            ? TOOL_ACTIVE_STYLE
+                            : TOOL_BUTTON_STYLE
+                        }
+                        onClick={() => onSetDelay(ms === 0 ? null : ms)}
+                      >
+                        {ms === 0 ? "0s" : `${ms / 1000}s`}
+                      </button>
+                    ))}
+                  </div>
+                  {otherRoutedPlayers.length > 0 ? (
+                    <div style={PANEL_ROW_STYLE}>
+                      <span style={SETUP_SECTION_LABEL_STYLE}>After</span>
+                      <button
+                        type="button"
+                        style={selectedRouteTrigger == null ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                        onClick={() => onSetTrigger(null)}
+                      >
+                        None
+                      </button>
+                      {otherRoutedPlayers.map((p) => (
+                        <button
+                          key={p.playerId}
+                          type="button"
+                          style={selectedRouteTrigger === p.playerId ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                          onClick={() => onSetTrigger(p.playerId)}
+                        >
+                          P{p.number}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
 
               {menuMode === "play" ? (
                 <>
@@ -1042,6 +1334,13 @@ export default function TacticalPlaySurface() {
               >
                 Players
               </button>
+              <button
+                type="button"
+                style={scenariosOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                onClick={() => setScenariosOpen((prev) => !prev)}
+              >
+                Scenarios
+              </button>
             </div>
 
             {activeSetupCategory !== null ? (
@@ -1059,6 +1358,69 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
+
+            {scenariosOpen ? (
+              <>
+                <div style={PANEL_ROW_STYLE}>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Save</span>
+                  <input
+                    style={SCENARIO_INPUT_STYLE}
+                    type="text"
+                    placeholder="Scenario name…"
+                    value={scenarioNameDraft}
+                    maxLength={40}
+                    onChange={(e) => setScenarioNameDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") onSaveScenario(); }}
+                  />
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={onSaveScenario}>
+                    Save
+                  </button>
+                </div>
+                {scenarios.length > 0 ? (
+                  scenarios.map((s) => (
+                    <div key={s.id} style={PANEL_ROW_STYLE}>
+                      <span
+                        style={{
+                          ...SETUP_SECTION_LABEL_STYLE,
+                          maxWidth: "130px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          fontSize: "9px",
+                          color: "rgba(200, 230, 255, 0.72)",
+                          letterSpacing: "0.02em",
+                          textTransform: "none",
+                        }}
+                        title={s.name}
+                      >
+                        {s.name}
+                      </span>
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onLoadScenario(s)}>
+                        Load
+                      </button>
+                      <button
+                        type="button"
+                        style={TOOL_BUTTON_STYLE}
+                        onClick={() => onDuplicateScenario(s.id)}
+                      >
+                        Copy
+                      </button>
+                      <button
+                        type="button"
+                        style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 160, 160, 0.88)" }}
+                        onClick={() => onDeleteScenario(s.id)}
+                      >
+                        Del
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div style={PANEL_ROW_STYLE}>
+                    <span style={SETUP_SECTION_LABEL_STYLE}>No saved scenarios yet</span>
+                  </div>
+                )}
+              </>
+            ) : null}
 
             {playersOpen ? (
               <>

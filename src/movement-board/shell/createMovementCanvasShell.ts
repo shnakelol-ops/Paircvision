@@ -25,6 +25,7 @@ import type {
   MovementCanvasShellHandle,
   MovementCanvasShellOptions,
   MovementRouteEditState,
+  RouteMetadata,
 } from "./types";
 
 const WORLD_SIZE = {
@@ -166,6 +167,7 @@ export async function createMovementCanvasShell(
   let activeRouteHandleDrag: RouteHandleDragState = null;
   let routeDraft: RouteDraftState = null;
   let routeByTokenId = new Map<string, NormalizedPoint[]>();
+  let routeMetaByTokenId = new Map<string, RouteMetadata>();
   let startPositionByTokenId = new Map<string, NormalizedPoint>();
 
   const tokenLayer = createTokenLayer({
@@ -186,6 +188,7 @@ export async function createMovementCanvasShell(
   const orchestrator = createPlaybackOrchestrator(options.playbackSpeed ?? "normal", {
     getTokens: () => tokenLayer.getTokens(),
     getRoute: (tokenId) => routeByTokenId.get(tokenId) ?? null,
+    getRouteMeta: (tokenId) => routeMetaByTokenId.get(tokenId) ?? null,
     getStartPosition: (tokenId) => startPositionByTokenId.get(tokenId) ?? null,
     onPlaybackReset: (tokenId, startPosition) => {
       tokenLayer.setTokenPosition(tokenId, startPosition);
@@ -259,13 +262,15 @@ export async function createMovementCanvasShell(
 
   const isPlaybackLocked = () => orchestrator.isLocked();
 
+  const buildRoutesSnapshot = (): MovementBoardRoute[] =>
+    Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
+      playerId,
+      points: points.map((point) => clonePoint(point)),
+      ...(routeMetaByTokenId.get(playerId) ?? {}),
+    }));
+
   const emitRoutes = () => {
-    options.onRoutesChange?.(
-      Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
-        playerId,
-        points: points.map((point) => clonePoint(point)),
-      })),
-    );
+    options.onRoutesChange?.(buildRoutesSnapshot());
   };
 
   const getRouteEditState = (): MovementRouteEditState => {
@@ -762,11 +767,7 @@ export async function createMovementCanvasShell(
     getTokens: () => tokenLayer.getTokens(),
     getSelectedToken: () => (selectedTokenId ? tokenLayer.getTokenById(selectedTokenId) : null),
     getMode: () => mode,
-    getRoutes: () =>
-      Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
-        playerId,
-        points: points.map((point) => clonePoint(point)),
-      })),
+    getRoutes: () => buildRoutesSnapshot(),
     getPlaybackSpeed: () => orchestrator.getSpeed(),
     getPlaybackState: () => orchestrator.getState(),
     getRouteEditState: () => getRouteEditState(),
@@ -777,7 +778,10 @@ export async function createMovementCanvasShell(
 
       const availableIds = new Set(tokenLayer.getTokens().map((token) => token.id));
       for (const tokenId of Array.from(routeByTokenId.keys())) {
-        if (!availableIds.has(tokenId)) routeByTokenId.delete(tokenId);
+        if (!availableIds.has(tokenId)) {
+          routeByTokenId.delete(tokenId);
+          routeMetaByTokenId.delete(tokenId);
+        }
       }
       for (const tokenId of Array.from(startPositionByTokenId.keys())) {
         if (!availableIds.has(tokenId)) startPositionByTokenId.delete(tokenId);
@@ -803,10 +807,16 @@ export async function createMovementCanvasShell(
     setRoutes: (routes: readonly MovementBoardRoute[]) => {
       if (isPlaybackLocked()) return;
       routeByTokenId.clear();
+      routeMetaByTokenId.clear();
       for (const route of routes) {
         const normalized = normalizeRoutePoints(route.points, ROUTE_MIN_POINT_DISTANCE);
         if (normalized.length >= 2) {
           routeByTokenId.set(route.playerId, normalized.map(clonePoint));
+          const { playerId: _p, points: _pts, ...meta } = route;
+          const metaKeys = Object.keys(meta).filter((k) => (meta as Record<string, unknown>)[k] !== undefined);
+          if (metaKeys.length > 0) {
+            routeMetaByTokenId.set(route.playerId, meta as RouteMetadata);
+          }
         }
       }
       setSelectedWaypoint(null);
@@ -838,6 +848,7 @@ export async function createMovementCanvasShell(
       if (!selectedTokenId) return false;
       if (!routeByTokenId.has(selectedTokenId)) return false;
       routeByTokenId.delete(selectedTokenId);
+      routeMetaByTokenId.delete(selectedTokenId);
       if (routeDraft?.tokenId === selectedTokenId) {
         clearRouteDraft();
       }
@@ -905,6 +916,21 @@ export async function createMovementCanvasShell(
       emitBallState();
     },
     getBallState: () => ({ ...ballState }),
+    setRouteMeta: (playerId, meta) => {
+      if (!routeByTokenId.has(playerId)) return;
+      const existing = routeMetaByTokenId.get(playerId) ?? {};
+      const next: RouteMetadata = { ...existing };
+      for (const key of Object.keys(meta) as Array<keyof RouteMetadata>) {
+        if (meta[key] === undefined) {
+          delete next[key];
+        } else {
+          (next as Record<string, unknown>)[key] = meta[key];
+        }
+      }
+      routeMetaByTokenId.set(playerId, next);
+      emitRoutes();
+    },
+    getRouteMeta: (playerId) => routeMetaByTokenId.get(playerId) ?? null,
     setTokenSize: (size) => tokenLayer.setTokenSize(size),
     getTokenSize: () => tokenLayer.getTokenSize(),
     setTokenRenderer: (name) => tokenLayer.setRenderer(name),

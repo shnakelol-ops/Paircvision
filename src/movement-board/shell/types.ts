@@ -33,9 +33,24 @@ export type MovementBoardMode = "setup" | "route" | "play";
 
 export type MovementPlaybackSpeed = "slow" | "normal" | "fast";
 
+export type MovementConcept = "support-run" | "overlap" | "shadow-run" | "rotation" | "custom";
+
+export type RouteMetadata = {
+  concept?: MovementConcept;
+  label?: string;
+  delayMs?: number;
+  triggeredBy?: string;
+  sequenceIndex?: number;
+};
+
 export type MovementBoardRoute = {
   playerId: string;
   points: NormalizedPoint[];
+  concept?: MovementConcept;
+  label?: string;
+  delayMs?: number;
+  triggeredBy?: string;
+  sequenceIndex?: number;
 };
 
 export type MovementPlaybackState = {
@@ -94,6 +109,8 @@ export type MovementCanvasShellHandle = {
   getBallState: () => BallState;
   setDragEnabled: (enabled: boolean) => void;
   setBallCarrier: (tokenId: string | null) => void;
+  setRouteMeta: (playerId: string, meta: Partial<RouteMetadata>) => void;
+  getRouteMeta: (playerId: string) => RouteMetadata | null;
   reflow: () => void;
   destroy: () => void;
 };
