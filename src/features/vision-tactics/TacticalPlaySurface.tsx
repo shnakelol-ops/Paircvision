@@ -11,6 +11,7 @@ import type {
   MovementPlaybackSpeed,
   MovementRouteEditState,
 } from "../../movement-board/shell/types";
+import { FORMATION_PRESETS, applyPreset, type FormationPreset } from "./tacticalPlayPresets";
 
 const _CAN_DVW = typeof window !== "undefined" && typeof window.CSS !== "undefined" && window.CSS.supports("width: 100dvw");
 const _VW = _CAN_DVW ? "100dvw" : "100vw";
@@ -264,6 +265,22 @@ const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
   padding: "0 8px",
 };
 
+const HINT_PILL_STYLE: CSSProperties = {
+  position: "fixed",
+  bottom: "max(54px, calc(env(safe-area-inset-bottom, 0px) + 52px))",
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 20,
+  color: "rgba(198, 228, 210, 0.44)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 500,
+  letterSpacing: "0.05em",
+  whiteSpace: "nowrap",
+  pointerEvents: "none",
+  userSelect: "none",
+};
+
 export default function TacticalPlaySurface() {
   type MovementMenuMode = "move" | "route" | "play";
 
@@ -297,6 +314,8 @@ export default function TacticalPlaySurface() {
   type BallMenuStep = "root" | "football-size" | "sliotar-size" | "existing";
   const [ballMenuStep, setBallMenuStep] = useState<BallMenuStep | null>(null);
   const [appViewportHeight, setAppViewportHeight] = useState(() => getTPViewportHeight());
+  const [startFlash, setStartFlash] = useState(false);
+  const [presetsOpen, setPresetsOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -444,7 +463,10 @@ export default function TacticalPlaySurface() {
   }, [isPlaying]);
 
   useEffect(() => {
-    if (!isControlsOpen) setBallMenuStep(null);
+    if (!isControlsOpen) {
+      setBallMenuStep(null);
+      setPresetsOpen(false);
+    }
   }, [isControlsOpen]);
 
   const modeLabelByMenu: Record<MovementMenuMode, string> = {
@@ -455,12 +477,12 @@ export default function TacticalPlaySurface() {
 
   const selectedHasBall = selectedToken != null && selectedToken.id === ballCarrierId;
   const coachInfoLabel = selectedToken
-    ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""} · Routes ${routeCount}`
+    ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""} · Movements ${routeCount}`
     : ballCarrierId
-      ? `Ball Assigned · Routes ${routeCount}`
+      ? `Ball Assigned · Movements ${routeCount}`
       : ballOnPitch
-        ? `Ball on Pitch · Routes ${routeCount}`
-        : `${modeLabelByMenu[menuMode]} · Routes ${routeCount}`;
+        ? `Ball on Pitch · Movements ${routeCount}`
+        : `${modeLabelByMenu[menuMode]} · Movements ${routeCount}`;
 
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
@@ -527,6 +549,12 @@ export default function TacticalPlaySurface() {
     shellRef.current?.reset();
   };
 
+  const onSetStart = () => {
+    shellRef.current?.setStartPositions();
+    setStartFlash(true);
+    setTimeout(() => { setStartFlash(false); }, 700);
+  };
+
   const clearRoute = () => {
     shellRef.current?.clearSelectedRoute();
   };
@@ -539,11 +567,32 @@ export default function TacticalPlaySurface() {
   };
 
   const onBallButtonPress = () => {
+    setPresetsOpen(false);
     if (ballOnPitch) {
       setBallMenuStep((prev) => (prev === "existing" ? null : "existing"));
     } else {
       setBallMenuStep((prev) => (prev === null ? "root" : null));
     }
+  };
+
+  const onShapesPress = () => {
+    setBallMenuStep(null);
+    setPresetsOpen((prev) => !prev);
+  };
+
+  const onLoadPreset = (preset: FormationPreset) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    // Clear existing routes — old waypoints no longer align with new positions
+    for (const token of shell.getTokens()) {
+      shell.setSelectedToken(token.id);
+      shell.clearSelectedRoute();
+    }
+    shell.setSelectedToken(null);
+    // Move players to preset positions and anchor reset to them
+    shell.setTokens(applyPreset(shell.getTokens(), preset));
+    shell.setStartPositions();
+    setPresetsOpen(false);
   };
 
   const onSelectBallType = (ballType: BallType) => {
@@ -611,6 +660,10 @@ export default function TacticalPlaySurface() {
           CTRL
         </button>
 
+        {!isControlsOpen && !isPlaying && !isPaused ? (
+          <div style={HINT_PILL_STYLE}>Move players → Set Start → Draw Movements → Play</div>
+        ) : null}
+
         {isControlsOpen ? (
           <div style={CONTROL_PANEL_STYLE}>
             <div style={PANEL_ROW_STYLE}>
@@ -636,6 +689,14 @@ export default function TacticalPlaySurface() {
                 onClick={onBallButtonPress}
               >
                 Ball
+              </button>
+              <button
+                type="button"
+                style={presetsOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                disabled={modeIsPlaybackLocked}
+                onClick={onShapesPress}
+              >
+                Shapes
               </button>
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
@@ -695,14 +756,34 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
+            {presetsOpen ? (
+              <div style={PANEL_ROW_STYLE}>
+                {FORMATION_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    style={TOOL_BUTTON_STYLE}
+                    onClick={() => onLoadPreset(preset)}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
             <div style={PANEL_ROW_STYLE}>
               {menuMode === "move" ? (
                 <>
-                  <button type="button" style={TOOL_DISABLED_STYLE} disabled>
+                  <button
+                    type="button"
+                    style={modeIsPlaybackLocked ? TOOL_DISABLED_STYLE : startFlash ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                    disabled={modeIsPlaybackLocked}
+                    onClick={onSetStart}
+                  >
                     Set Start
                   </button>
                   <button type="button" style={TOOL_DISABLED_STYLE} disabled>
-                    Add Phase
+                    Phases Soon
                   </button>
                   <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetBoard}>
                     Reset

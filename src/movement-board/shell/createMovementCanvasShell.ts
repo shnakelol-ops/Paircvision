@@ -204,6 +204,15 @@ export async function createMovementCanvasShell(
       if (movedToken) options.onTokenMove?.(movedToken);
     },
     onStateChange: (state) => {
+      // Fade routes during playback so movement reads as animation, not diagram.
+      // Pause partially restores so the coach can still see the intended path.
+      if (state.isPlaying) {
+        routeLayer.setPlaybackAlpha(0.12);
+      } else if (state.isPaused) {
+        routeLayer.setPlaybackAlpha(0.50);
+      } else {
+        routeLayer.setPlaybackAlpha(1.0);
+      }
       options.onPlaybackStateChange?.(state);
     },
   });
@@ -834,6 +843,12 @@ export async function createMovementCanvasShell(
     },
     reset: () => {
       reset();
+    },
+    setStartPositions: () => {
+      if (isPlaybackLocked()) return;
+      for (const token of tokenLayer.getTokens()) {
+        startPositionByTokenId.set(token.id, clonePoint(token.position));
+      }
     },
     giveBall: (playerId) => {
       if (!tokenLayer.getTokenById(playerId)) return;
