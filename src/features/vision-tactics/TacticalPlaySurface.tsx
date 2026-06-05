@@ -411,6 +411,119 @@ const SCENARIO_INPUT_STYLE: CSSProperties = {
   outline: "none",
 };
 
+const MOVEMENT_PANEL_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "50%",
+  transform: "translateX(-50%)",
+  bottom: "max(58px, calc(env(safe-area-inset-bottom, 0px) + 56px))",
+  zIndex: 23,
+  width: "min(500px, calc(100vw - 176px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
+  background: "rgba(4, 10, 22, 0.95)",
+  backdropFilter: "blur(20px)",
+  WebkitBackdropFilter: "blur(20px)",
+  border: "1px solid rgba(180, 210, 255, 0.15)",
+  borderRadius: "16px",
+  boxShadow: "0 20px 50px rgba(0, 0, 0, 0.65), 0 6px 16px rgba(0, 0, 0, 0.40)",
+  padding: "10px 12px",
+  display: "grid",
+  gap: "7px",
+};
+
+const MP_HEADER_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+};
+
+const MP_TITLE_STYLE: CSSProperties = {
+  color: "rgba(180, 210, 255, 0.55)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 700,
+  letterSpacing: "0.10em",
+  textTransform: "uppercase",
+  userSelect: "none",
+};
+
+const MP_CLOSE_STYLE: CSSProperties = {
+  width: "26px",
+  height: "26px",
+  borderRadius: "50%",
+  border: "1px solid rgba(180, 210, 255, 0.18)",
+  background: "rgba(10, 20, 42, 0.60)",
+  color: "rgba(180, 210, 255, 0.60)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "15px",
+  fontWeight: 300,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  lineHeight: "1",
+  padding: "0",
+  flexShrink: 0,
+};
+
+const MP_SECTION_LABEL_STYLE: CSSProperties = {
+  color: "rgba(180, 210, 255, 0.36)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "8px",
+  fontWeight: 700,
+  letterSpacing: "0.10em",
+  textTransform: "uppercase",
+  userSelect: "none",
+  marginBottom: "4px",
+};
+
+const MP_BUTTON_ROW: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "5px",
+};
+
+const MP_BTN: CSSProperties = {
+  height: "40px",
+  minWidth: "60px",
+  borderRadius: "10px",
+  border: "1px solid rgba(180, 210, 255, 0.18)",
+  background: "rgba(14, 24, 50, 0.80)",
+  color: "rgba(210, 230, 255, 0.88)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 600,
+  letterSpacing: "0.04em",
+  padding: "0 14px",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+  flex: "1 1 auto",
+};
+
+const MP_BTN_ACTIVE: CSSProperties = {
+  ...MP_BTN,
+  border: "1px solid rgba(124, 255, 114, 0.65)",
+  background: "rgba(22, 67, 44, 0.90)",
+  color: "#e6fff0",
+};
+
+const MP_BTN_SECONDARY: CSSProperties = {
+  ...MP_BTN,
+  flex: "0 0 auto",
+  background: "rgba(10, 16, 32, 0.70)",
+  color: "rgba(180, 210, 255, 0.60)",
+  border: "1px solid rgba(180, 210, 255, 0.14)",
+};
+
+const MP_BTN_PRIMARY: CSSProperties = {
+  ...MP_BTN,
+  flex: "1 1 auto",
+  height: "44px",
+  border: "1px solid rgba(124, 255, 114, 0.45)",
+  background: "rgba(18, 58, 36, 0.90)",
+  color: "#cdffc8",
+  fontWeight: 700,
+  fontSize: "11px",
+};
+
 const CONCEPT_LABELS: Record<MovementConcept, string> = {
   "support-run": "Support Run",
   "overlap": "Overlap",
@@ -648,11 +761,12 @@ export default function TacticalPlaySurface() {
   const selectedRouteConcept = selectedRoute?.concept ?? null;
   const selectedRouteDelay = selectedRoute?.delayMs ?? null;
   const selectedRouteTrigger = selectedRoute?.triggeredBy ?? null;
-  const showSequencingPanel =
+  const showMovementPanel =
     menuMode === "route" &&
     selectedToken != null &&
     (selectedRoute?.points.length ?? 0) >= 2 &&
-    !isPlaying;
+    !isPlaying &&
+    !isPaused;
   const otherRoutedPlayers = routes
     .filter((r) => r.playerId !== selectedToken?.id)
     .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
@@ -858,10 +972,10 @@ export default function TacticalPlaySurface() {
     shell.setRouteMeta(selectedToken.id, { concept: concept ?? undefined });
   };
 
-  const onSetDelay = (delayMs: number | null) => {
+  const onSetDelay = (delayMs: number) => {
     const shell = shellRef.current;
     if (!shell || !selectedToken) return;
-    shell.setRouteMeta(selectedToken.id, { delayMs: delayMs ?? undefined, triggeredBy: undefined });
+    shell.setRouteMeta(selectedToken.id, { delayMs, triggeredBy: undefined });
   };
 
   const onSetTrigger = (triggeredBy: string | null) => {
@@ -1198,63 +1312,6 @@ export default function TacticalPlaySurface() {
                   ) : null}
                 </>
               ) : null}
-              {showSequencingPanel ? (
-                <>
-                  <div style={PANEL_ROW_STYLE}>
-                    <span style={SETUP_SECTION_LABEL_STYLE}>Concept</span>
-                    {CONCEPT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id ?? "none"}
-                        type="button"
-                        style={selectedRouteConcept === opt.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                        onClick={() => onSetConcept(opt.id)}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div style={PANEL_ROW_STYLE}>
-                    <span style={SETUP_SECTION_LABEL_STYLE}>Starts</span>
-                    {DELAY_PRESETS_MS.map((ms) => (
-                      <button
-                        key={ms}
-                        type="button"
-                        style={
-                          selectedRouteTrigger == null && selectedRouteDelay === ms
-                            ? TOOL_ACTIVE_STYLE
-                            : TOOL_BUTTON_STYLE
-                        }
-                        onClick={() => onSetDelay(ms === 0 ? null : ms)}
-                      >
-                        {ms === 0 ? "0s" : `${ms / 1000}s`}
-                      </button>
-                    ))}
-                  </div>
-                  {otherRoutedPlayers.length > 0 ? (
-                    <div style={PANEL_ROW_STYLE}>
-                      <span style={SETUP_SECTION_LABEL_STYLE}>After</span>
-                      <button
-                        type="button"
-                        style={selectedRouteTrigger == null ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                        onClick={() => onSetTrigger(null)}
-                      >
-                        None
-                      </button>
-                      {otherRoutedPlayers.map((p) => (
-                        <button
-                          key={p.playerId}
-                          type="button"
-                          style={selectedRouteTrigger === p.playerId ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                          onClick={() => onSetTrigger(p.playerId)}
-                        >
-                          P{p.number}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
-
               {menuMode === "play" ? (
                 <>
                   <button
@@ -1299,6 +1356,118 @@ export default function TacticalPlaySurface() {
                   </button>
                 </>
               ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {showMovementPanel && selectedToken ? (
+          <div style={MOVEMENT_PANEL_STYLE}>
+            <div style={MP_HEADER_STYLE}>
+              <span style={MP_TITLE_STYLE}>P{selectedToken.number} Movement</span>
+              <button
+                type="button"
+                style={MP_CLOSE_STYLE}
+                onClick={() => shellRef.current?.setSelectedToken(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div>
+              <div style={MP_SECTION_LABEL_STYLE}>Movement Type</div>
+              <div style={MP_BUTTON_ROW}>
+                {([
+                  { id: "support-run" as MovementConcept, label: "Support" },
+                  { id: "overlap" as MovementConcept, label: "Overlap" },
+                  { id: "shadow-run" as MovementConcept, label: "Shadow" },
+                  { id: "rotation" as MovementConcept, label: "Rotation" },
+                  { id: "custom" as MovementConcept, label: "Custom" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    style={selectedRouteConcept === opt.id ? MP_BTN_ACTIVE : MP_BTN}
+                    onClick={() => onSetConcept(selectedRouteConcept === opt.id ? null : opt.id)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div style={MP_SECTION_LABEL_STYLE}>Timing</div>
+              <div style={MP_BUTTON_ROW}>
+                {([
+                  { ms: 0, label: "Now" },
+                  { ms: 1000, label: "+1s" },
+                  { ms: 2000, label: "+2s" },
+                  { ms: 3000, label: "+3s" },
+                  { ms: 4000, label: "+4s" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.ms}
+                    type="button"
+                    style={
+                      selectedRouteTrigger == null &&
+                      (selectedRouteDelay === opt.ms || (opt.ms === 0 && selectedRouteDelay == null))
+                        ? MP_BTN_ACTIVE
+                        : MP_BTN
+                    }
+                    onClick={() => onSetDelay(opt.ms)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {otherRoutedPlayers.length > 0 ? (
+                <div style={{ ...MP_BUTTON_ROW, marginTop: "5px" }}>
+                  <span
+                    style={{
+                      ...MP_SECTION_LABEL_STYLE,
+                      marginBottom: 0,
+                      alignSelf: "center",
+                      flexShrink: 0,
+                      paddingRight: "2px",
+                    }}
+                  >
+                    After
+                  </span>
+                  {selectedRouteTrigger != null ? (
+                    <button type="button" style={MP_BTN_SECONDARY} onClick={() => onSetTrigger(null)}>
+                      Clear
+                    </button>
+                  ) : null}
+                  {otherRoutedPlayers.map((p) => (
+                    <button
+                      key={p.playerId}
+                      type="button"
+                      style={selectedRouteTrigger === p.playerId ? MP_BTN_ACTIVE : MP_BTN}
+                      onClick={() => onSetTrigger(p.playerId)}
+                    >
+                      P{p.number}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div style={{ display: "flex", gap: "6px" }}>
+              <button
+                type="button"
+                style={MP_BTN_SECONDARY}
+                onClick={clearRoute}
+              >
+                Clear Route
+              </button>
+              <button
+                type="button"
+                style={isPortrait ? { ...MP_BTN_PRIMARY, opacity: 0.4, cursor: "not-allowed" } : MP_BTN_PRIMARY}
+                disabled={isPortrait}
+                onClick={onPlayRoutesPress}
+              >
+                Play Sequence
+              </button>
             </div>
           </div>
         ) : null}
