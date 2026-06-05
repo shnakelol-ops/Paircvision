@@ -14,8 +14,7 @@ import type {
   TokenRendererName,
   TokenSize,
 } from "../../movement-board/shell/types";
-import { FORMATION_PRESETS, applyPreset, type FormationPreset } from "./tacticalPlayPresets";
-import { DEMO_ROUTES } from "./tacticalPlayDemo";
+import { TACTICAL_TEMPLATES, applyTemplatePositions, type TacticalTemplate } from "./tacticalTemplates";
 
 const _CAN_DVW = typeof window !== "undefined" && typeof window.CSS !== "undefined" && window.CSS.supports("width: 100dvw");
 const _VW = _CAN_DVW ? "100dvw" : "100vw";
@@ -672,7 +671,7 @@ export default function TacticalPlaySurface() {
     setTokenRendererState(name);
   };
 
-  const onLoadDemo = () => {
+  const onLoadTemplate = (template: TacticalTemplate) => {
     const shell = shellRef.current;
     if (!shell) return;
     for (const token of shell.getTokens()) {
@@ -680,15 +679,15 @@ export default function TacticalPlaySurface() {
       shell.clearSelectedRoute();
     }
     shell.setSelectedToken(null);
-    const attackingPreset = FORMATION_PRESETS.find((p) => p.id === "attacking");
-    if (!attackingPreset) return;
-    shell.setTokens(applyPreset(shell.getTokens(), attackingPreset));
-    const tokens = shell.getTokens();
-    const routes = DEMO_ROUTES.flatMap((dr) => {
-      const token = tokens.find((t) => t.number === dr.jerseyNumber);
-      return token ? [{ playerId: token.id, points: dr.points }] : [];
-    });
-    shell.setRoutes(routes);
+    shell.setTokens(applyTemplatePositions(shell.getTokens(), template));
+    if (template.routes) {
+      const tokens = shell.getTokens();
+      const routes = template.routes.flatMap((r) => {
+        const token = tokens.find((t) => t.number === r.jerseyNumber);
+        return token ? [{ playerId: token.id, points: r.points }] : [];
+      });
+      shell.setRoutes(routes);
+    }
     shell.setStartPositions();
     setSetupOpen(false);
   };
@@ -705,21 +704,6 @@ export default function TacticalPlaySurface() {
     if (!shell) return;
     shell.setTokens(shell.getTokens().map((t) => ({ ...t, secondaryColor: color })));
     setSecondaryColorState(color);
-  };
-
-  const onLoadPreset = (preset: FormationPreset) => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    // Clear existing routes — old waypoints no longer align with new positions
-    for (const token of shell.getTokens()) {
-      shell.setSelectedToken(token.id);
-      shell.clearSelectedRoute();
-    }
-    shell.setSelectedToken(null);
-    // Move players to preset positions and anchor reset to them
-    shell.setTokens(applyPreset(shell.getTokens(), preset));
-    shell.setStartPositions();
-    setSetupOpen(false);
   };
 
   const onSelectBallType = (ballType: BallType) => {
@@ -1023,19 +1007,16 @@ export default function TacticalPlaySurface() {
         {setupOpen ? (
           <div style={SETUP_PANEL_STYLE}>
             <div style={PANEL_ROW_STYLE}>
-              {FORMATION_PRESETS.map((preset) => (
+              {TACTICAL_TEMPLATES.map((tmpl) => (
                 <button
-                  key={preset.id}
+                  key={tmpl.id}
                   type="button"
                   style={TOOL_BUTTON_STYLE}
-                  onClick={() => onLoadPreset(preset)}
+                  onClick={() => onLoadTemplate(tmpl)}
                 >
-                  {preset.label}
+                  {tmpl.name}
                 </button>
               ))}
-              <button type="button" style={TOOL_BUTTON_STYLE} onClick={onLoadDemo}>
-                Demo
-              </button>
               <button
                 type="button"
                 style={playersOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
