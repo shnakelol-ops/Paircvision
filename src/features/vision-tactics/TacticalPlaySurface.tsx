@@ -596,6 +596,8 @@ export default function TacticalPlaySurface() {
   const [scenariosOpen, setScenariosOpen] = useState(false);
   const [scenarios, setScenarios] = useState<TacticalScenario[]>([]);
   const [scenarioNameDraft, setScenarioNameDraft] = useState("");
+  const [movementPanelOpen, setMovementPanelOpen] = useState(false);
+  const panelTriggerRef = useRef<{ playerId: string; waypointCount: number }>({ playerId: "", waypointCount: 0 });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -757,14 +759,30 @@ export default function TacticalPlaySurface() {
     }
   }, [isControlsOpen]);
 
+  useEffect(() => {
+    const id = selectedToken?.id ?? "";
+    const wc = routeEditState.waypointCount;
+    const prev = panelTriggerRef.current;
+    if (id !== prev.playerId) {
+      panelTriggerRef.current = { playerId: id, waypointCount: wc };
+      setMovementPanelOpen(false);
+      return;
+    }
+    if (prev.waypointCount < 2 && wc >= 2) {
+      setMovementPanelOpen(true);
+    }
+    panelTriggerRef.current = { playerId: id, waypointCount: wc };
+  }, [selectedToken?.id, routeEditState.waypointCount]);
+
   const selectedRoute = routes.find((r) => r.playerId === selectedToken?.id) ?? null;
   const selectedRouteConcept = selectedRoute?.concept ?? null;
   const selectedRouteDelay = selectedRoute?.delayMs ?? null;
   const selectedRouteTrigger = selectedRoute?.triggeredBy ?? null;
   const showMovementPanel =
+    movementPanelOpen &&
     menuMode === "route" &&
     selectedToken != null &&
-    (selectedRoute?.points.length ?? 0) >= 2 &&
+    routeEditState.waypointCount >= 2 &&
     !isPlaying &&
     !isPaused;
   const otherRoutedPlayers = routes
@@ -1367,7 +1385,7 @@ export default function TacticalPlaySurface() {
               <button
                 type="button"
                 style={MP_CLOSE_STYLE}
-                onClick={() => shellRef.current?.setSelectedToken(null)}
+                onClick={() => { shellRef.current?.setSelectedToken(null); setMovementPanelOpen(false); }}
               >
                 ×
               </button>
@@ -1456,7 +1474,7 @@ export default function TacticalPlaySurface() {
               <button
                 type="button"
                 style={MP_BTN_SECONDARY}
-                onClick={clearRoute}
+                onClick={() => { clearRoute(); setMovementPanelOpen(false); }}
               >
                 Clear Route
               </button>
