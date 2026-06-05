@@ -135,6 +135,40 @@ const CTRL_BUBBLE_STYLE: CSSProperties = {
   boxShadow: "0 12px 28px rgba(0, 4, 14, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.18)",
 };
 
+const SETUP_BUBBLE_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "max(84px, calc(env(safe-area-inset-left, 0px) + 82px))",
+  bottom: "max(10px, calc(env(safe-area-inset-bottom, 0px) + 8px))",
+  zIndex: 22,
+  height: "38px",
+  minWidth: "68px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.20)",
+  background: "rgba(6, 14, 30, 0.72)",
+  color: "#eef4ff",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "11px",
+  fontWeight: 800,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  padding: "0 14px",
+  cursor: "pointer",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+  boxShadow: "0 12px 28px rgba(0, 4, 14, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.18)",
+};
+
+const SETUP_SECTION_LABEL_STYLE: CSSProperties = {
+  fontSize: "8px",
+  fontWeight: 700,
+  letterSpacing: "0.10em",
+  textTransform: "uppercase",
+  color: "rgba(180, 210, 255, 0.40)",
+  padding: "0 6px",
+  pointerEvents: "none",
+  userSelect: "none",
+};
+
 const PV_BADGE_STYLE: CSSProperties = {
   position: "fixed",
   left: "max(12px, calc(env(safe-area-inset-left, 0px) + 10px))",
@@ -347,8 +381,7 @@ export default function TacticalPlaySurface() {
   const [ballMenuStep, setBallMenuStep] = useState<BallMenuStep | null>(null);
   const [appViewportHeight, setAppViewportHeight] = useState(() => getTPViewportHeight());
   const [startFlash, setStartFlash] = useState(false);
-  const [presetsOpen, setPresetsOpen] = useState(false);
-  const [tokensOpen, setTokensOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
   const [tokenSize, setTokenSizeState] = useState<TokenSize>("medium");
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("jersey");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
@@ -496,6 +529,7 @@ export default function TacticalPlaySurface() {
   useEffect(() => {
     if (isPlaying) {
       setIsControlsOpen(false);
+      setSetupOpen(false);
       setBallMenuStep(null);
     }
   }, [isPlaying]);
@@ -503,8 +537,6 @@ export default function TacticalPlaySurface() {
   useEffect(() => {
     if (!isControlsOpen) {
       setBallMenuStep(null);
-      setPresetsOpen(false);
-      setTokensOpen(false);
     }
   }, [isControlsOpen]);
 
@@ -606,8 +638,6 @@ export default function TacticalPlaySurface() {
   };
 
   const onBallButtonPress = () => {
-    setPresetsOpen(false);
-    setTokensOpen(false);
     if (ballOnPitch) {
       setBallMenuStep((prev) => (prev === "existing" ? null : "existing"));
     } else {
@@ -615,16 +645,9 @@ export default function TacticalPlaySurface() {
     }
   };
 
-  const onShapesPress = () => {
-    setBallMenuStep(null);
-    setTokensOpen(false);
-    setPresetsOpen((prev) => !prev);
-  };
-
-  const onTokensPress = () => {
-    setBallMenuStep(null);
-    setPresetsOpen(false);
-    setTokensOpen((prev) => !prev);
+  const onSetupPress = () => {
+    setIsControlsOpen(false);
+    setSetupOpen((prev) => !prev);
   };
 
   const onSetTokenSize = (size: TokenSize) => {
@@ -655,7 +678,7 @@ export default function TacticalPlaySurface() {
     });
     shell.setRoutes(routes);
     shell.setStartPositions();
-    setPresetsOpen(false);
+    setSetupOpen(false);
   };
 
   const onSetPrimaryColor = (color: PremiumPlayerTokenColor) => {
@@ -684,7 +707,7 @@ export default function TacticalPlaySurface() {
     // Move players to preset positions and anchor reset to them
     shell.setTokens(applyPreset(shell.getTokens(), preset));
     shell.setStartPositions();
-    setPresetsOpen(false);
+    setSetupOpen(false);
   };
 
   const onSelectBallType = (ballType: BallType) => {
@@ -748,11 +771,24 @@ export default function TacticalPlaySurface() {
         <div style={INFO_PILL_STYLE}>{coachInfoLabel}</div>
 
         <div style={PV_BADGE_STYLE}>PV</div>
-        <button type="button" style={CTRL_BUBBLE_STYLE} onClick={() => setIsControlsOpen((prev) => !prev)}>
+        <button
+          type="button"
+          style={CTRL_BUBBLE_STYLE}
+          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); }}
+        >
           CTRL
         </button>
+        <button
+          type="button"
+          style={setupOpen
+            ? { ...SETUP_BUBBLE_STYLE, border: "1px solid rgba(124, 255, 114, 0.40)", background: "rgba(14, 32, 22, 0.82)" }
+            : SETUP_BUBBLE_STYLE}
+          onClick={onSetupPress}
+        >
+          Setup
+        </button>
 
-        {!isControlsOpen && !isPlaying && !isPaused ? (
+        {!isControlsOpen && !setupOpen && !isPlaying && !isPaused ? (
           <div style={HINT_PILL_STYLE}>Move players → Set Start → Draw Movements → Play</div>
         ) : null}
 
@@ -781,22 +817,6 @@ export default function TacticalPlaySurface() {
                 onClick={onBallButtonPress}
               >
                 Ball
-              </button>
-              <button
-                type="button"
-                style={presetsOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
-                disabled={modeIsPlaybackLocked}
-                onClick={onShapesPress}
-              >
-                Shapes
-              </button>
-              <button
-                type="button"
-                style={tokensOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
-                disabled={modeIsPlaybackLocked}
-                onClick={onTokensPress}
-              >
-                Tokens
               </button>
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
@@ -854,109 +874,6 @@ export default function TacticalPlaySurface() {
                   </>
                 ) : null}
               </div>
-            ) : null}
-
-            {presetsOpen ? (
-              <div style={PANEL_ROW_STYLE}>
-                {FORMATION_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    style={TOOL_BUTTON_STYLE}
-                    onClick={() => onLoadPreset(preset)}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-                <button type="button" style={TOOL_BUTTON_STYLE} onClick={onLoadDemo}>
-                  Demo
-                </button>
-              </div>
-            ) : null}
-
-            {tokensOpen ? (
-              <>
-                <div style={PANEL_ROW_STYLE}>
-                  {([
-                    { id: "pixi", label: "Pixi" },
-                    { id: "phosphor", label: "Phosphor" },
-                    { id: "jersey", label: "Jersey" },
-                  ] as const).map((r) => (
-                    <button
-                      key={r.id}
-                      type="button"
-                      style={tokenRenderer === r.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                      disabled={modeIsPlaybackLocked}
-                      onClick={() => onSetTokenRenderer(r.id)}
-                    >
-                      {r.label}
-                    </button>
-                  ))}
-                  {([
-                    { id: "small", label: "Sm" },
-                    { id: "medium", label: "Md" },
-                    { id: "large", label: "Lg" },
-                  ] as const).map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      style={tokenSize === s.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                      disabled={modeIsPlaybackLocked}
-                      onClick={() => onSetTokenSize(s.id)}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-                <div style={PANEL_ROW_STYLE}>
-                  {ALL_TOKEN_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      disabled={modeIsPlaybackLocked}
-                      style={
-                        primaryColor === c
-                          ? {
-                              ...TOOL_BUTTON_STYLE,
-                              minWidth: "44px",
-                              padding: "0 8px",
-                              background: TOKEN_COLOR_BG[c],
-                              border: `1px solid ${TOKEN_COLOR_BORDER[c]}`,
-                              color: TOKEN_COLOR_IS_LIGHT.has(c) ? "#0f172a" : "#f8fafc",
-                            }
-                          : { ...TOOL_BUTTON_STYLE, minWidth: "44px", padding: "0 8px" }
-                      }
-                      onClick={() => onSetPrimaryColor(c)}
-                    >
-                      {c.charAt(0).toUpperCase() + c.slice(1)}
-                    </button>
-                  ))}
-                </div>
-                <div style={PANEL_ROW_STYLE}>
-                  {ALL_TOKEN_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      disabled={modeIsPlaybackLocked}
-                      style={
-                        secondaryColor === c
-                          ? {
-                              ...TOOL_BUTTON_STYLE,
-                              minWidth: "44px",
-                              padding: "0 8px",
-                              background: TOKEN_COLOR_BG[c],
-                              border: `1px solid ${TOKEN_COLOR_BORDER[c]}`,
-                              color: TOKEN_COLOR_IS_LIGHT.has(c) ? "#0f172a" : "#f8fafc",
-                            }
-                          : { ...TOOL_BUTTON_STYLE, minWidth: "44px", padding: "0 8px" }
-                      }
-                      onClick={() => onSetSecondaryColor(c)}
-                    >
-                      {c.charAt(0).toUpperCase() + c.slice(1)}
-                    </button>
-                  ))}
-                </div>
-              </>
             ) : null}
 
             <div style={PANEL_ROW_STYLE}>
@@ -1086,6 +1003,104 @@ export default function TacticalPlaySurface() {
                   </button>
                 </>
               ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {setupOpen ? (
+          <div style={CONTROL_PANEL_STYLE}>
+            <div style={PANEL_ROW_STYLE}>
+              {FORMATION_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  style={TOOL_BUTTON_STYLE}
+                  onClick={() => onLoadPreset(preset)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+              <button type="button" style={TOOL_BUTTON_STYLE} onClick={onLoadDemo}>
+                Demo
+              </button>
+            </div>
+            <div style={PANEL_ROW_STYLE}>
+              {([
+                { id: "pixi", label: "Pixi" },
+                { id: "phosphor", label: "Phosphor" },
+                { id: "jersey", label: "Jersey" },
+              ] as const).map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  style={tokenRenderer === r.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => onSetTokenRenderer(r.id)}
+                >
+                  {r.label}
+                </button>
+              ))}
+              {([
+                { id: "small", label: "Sm" },
+                { id: "medium", label: "Md" },
+                { id: "large", label: "Lg" },
+              ] as const).map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  style={tokenSize === s.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => onSetTokenSize(s.id)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+            <div style={PANEL_ROW_STYLE}>
+              <span style={SETUP_SECTION_LABEL_STYLE}>Primary</span>
+              {ALL_TOKEN_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  style={
+                    primaryColor === c
+                      ? {
+                          ...TOOL_BUTTON_STYLE,
+                          minWidth: "44px",
+                          padding: "0 8px",
+                          background: TOKEN_COLOR_BG[c],
+                          border: `1px solid ${TOKEN_COLOR_BORDER[c]}`,
+                          color: TOKEN_COLOR_IS_LIGHT.has(c) ? "#0f172a" : "#f8fafc",
+                        }
+                      : { ...TOOL_BUTTON_STYLE, minWidth: "44px", padding: "0 8px" }
+                  }
+                  onClick={() => onSetPrimaryColor(c)}
+                >
+                  {c.charAt(0).toUpperCase() + c.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div style={PANEL_ROW_STYLE}>
+              <span style={SETUP_SECTION_LABEL_STYLE}>2nd</span>
+              {ALL_TOKEN_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  style={
+                    secondaryColor === c
+                      ? {
+                          ...TOOL_BUTTON_STYLE,
+                          minWidth: "44px",
+                          padding: "0 8px",
+                          background: TOKEN_COLOR_BG[c],
+                          border: `1px solid ${TOKEN_COLOR_BORDER[c]}`,
+                          color: TOKEN_COLOR_IS_LIGHT.has(c) ? "#0f172a" : "#f8fafc",
+                        }
+                      : { ...TOOL_BUTTON_STYLE, minWidth: "44px", padding: "0 8px" }
+                  }
+                  onClick={() => onSetSecondaryColor(c)}
+                >
+                  {c.charAt(0).toUpperCase() + c.slice(1)}
+                </button>
+              ))}
             </div>
           </div>
         ) : null}
