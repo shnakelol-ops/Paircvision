@@ -15,6 +15,7 @@ import type {
   TokenSize,
 } from "../../movement-board/shell/types";
 import { TACTICAL_TEMPLATES, applyTemplatePositions, type TacticalTemplate, type TacticalTemplateCategory } from "./tacticalTemplates";
+import { BEHAVIOURS, applyBehaviour, type Behaviour } from "./behaviours";
 
 const SETUP_CATEGORIES: Array<{ id: TacticalTemplateCategory; label: string }> = [
   { id: "KICKOUT", label: "Kickout" },
@@ -437,6 +438,7 @@ export default function TacticalPlaySurface() {
   const [playersOpen, setPlayersOpen] = useState(false);
   const [activeSetupCategory, setActiveSetupCategory] = useState<TacticalTemplateCategory | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<TacticalTemplate | null>(null);
+  const [runsOpen, setRunsOpen] = useState(false);
   const [tokenSize, setTokenSizeState] = useState<TokenSize>("medium");
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("jersey");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
@@ -733,6 +735,16 @@ export default function TacticalPlaySurface() {
     shell.setStartPositions();
     setActiveTemplate(template);
     setSetupOpen(false);
+  };
+
+  const onApplyBehaviour = (behaviour: Behaviour) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const behaviourRoutes = applyBehaviour(shell.getTokens(), behaviour);
+    const behaviourIds = new Set(behaviourRoutes.map((r) => r.playerId));
+    const existing = shell.getRoutes().filter((r) => !behaviourIds.has(r.playerId));
+    shell.setRoutes([...existing, ...behaviourRoutes]);
+    setRunsOpen(false);
   };
 
   const onSetPrimaryColor = (color: PremiumPlayerTokenColor) => {
@@ -1070,6 +1082,13 @@ export default function TacticalPlaySurface() {
               ))}
               <button
                 type="button"
+                style={runsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                onClick={() => setRunsOpen((prev) => !prev)}
+              >
+                Runs
+              </button>
+              <button
+                type="button"
                 style={playersOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                 onClick={() => setPlayersOpen((prev) => !prev)}
               >
@@ -1105,6 +1124,33 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
+            {runsOpen ? (
+              <div style={TEMPLATE_DRAWER_STYLE}>
+                {BEHAVIOURS.map((b, idx, arr) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      width: "100%",
+                      padding: "10px 16px",
+                      border: "none",
+                      borderBottom: idx < arr.length - 1 ? "1px solid rgba(180, 210, 255, 0.08)" : "none",
+                      background: "transparent",
+                      color: "rgba(220, 235, 255, 0.95)",
+                      fontFamily: "Inter, system-ui, sans-serif",
+                      textAlign: "left",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => onApplyBehaviour(b)}
+                  >
+                    <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "3px" }}>{b.name}</span>
+                    <span style={{ fontSize: "9px", fontWeight: 400, opacity: 0.52, letterSpacing: "0.01em", lineHeight: 1.3 }}>{b.description}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
             {playersOpen ? (
               <>
