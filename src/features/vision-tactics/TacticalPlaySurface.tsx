@@ -14,7 +14,14 @@ import type {
   TokenRendererName,
   TokenSize,
 } from "../../movement-board/shell/types";
-import { TACTICAL_TEMPLATES, applyTemplatePositions, type TacticalTemplate } from "./tacticalTemplates";
+import { TACTICAL_TEMPLATES, applyTemplatePositions, type TacticalTemplate, type TacticalTemplateCategory } from "./tacticalTemplates";
+
+const SETUP_CATEGORIES: Array<{ id: TacticalTemplateCategory; label: string }> = [
+  { id: "KICKOUT", label: "Kickout" },
+  { id: "ATTACK", label: "Attack" },
+  { id: "DEFENCE", label: "Defence" },
+  { id: "PRESS", label: "Press" },
+];
 
 const _CAN_DVW = typeof window !== "undefined" && typeof window.CSS !== "undefined" && window.CSS.supports("width: 100dvw");
 const _VW = _CAN_DVW ? "100dvw" : "100vw";
@@ -393,6 +400,7 @@ export default function TacticalPlaySurface() {
   const [startFlash, setStartFlash] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [playersOpen, setPlayersOpen] = useState(false);
+  const [activeSetupCategory, setActiveSetupCategory] = useState<TacticalTemplateCategory | null>(null);
   const [tokenSize, setTokenSizeState] = useState<TokenSize>("medium");
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("jersey");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
@@ -1007,16 +1015,26 @@ export default function TacticalPlaySurface() {
         {setupOpen ? (
           <div style={SETUP_PANEL_STYLE}>
             <div style={PANEL_ROW_STYLE}>
-              {TACTICAL_TEMPLATES.map((tmpl) => (
+              {SETUP_CATEGORIES.map((cat) => (
                 <button
-                  key={tmpl.id}
+                  key={cat.id}
                   type="button"
-                  style={TOOL_BUTTON_STYLE}
-                  onClick={() => onLoadTemplate(tmpl)}
+                  style={activeSetupCategory === cat.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => setActiveSetupCategory((prev) => prev === cat.id ? null : cat.id)}
                 >
-                  {tmpl.name}
+                  {cat.label}
                 </button>
               ))}
+              <button
+                type="button"
+                style={TOOL_BUTTON_STYLE}
+                onClick={() => {
+                  const demo = TACTICAL_TEMPLATES.find((t) => t.id === "demo");
+                  if (demo) onLoadTemplate(demo);
+                }}
+              >
+                Demo
+              </button>
               <button
                 type="button"
                 style={playersOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
@@ -1025,6 +1043,22 @@ export default function TacticalPlaySurface() {
                 Players
               </button>
             </div>
+
+            {activeSetupCategory !== null ? (
+              <div style={PANEL_ROW_STYLE}>
+                {TACTICAL_TEMPLATES.filter((t) => t.category === activeSetupCategory).map((tmpl) => (
+                  <button
+                    key={tmpl.id}
+                    type="button"
+                    style={TOOL_BUTTON_STYLE}
+                    onClick={() => onLoadTemplate(tmpl)}
+                  >
+                    {tmpl.name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
 
             {playersOpen ? (
               <>
