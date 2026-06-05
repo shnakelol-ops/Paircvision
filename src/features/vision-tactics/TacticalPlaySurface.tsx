@@ -644,6 +644,25 @@ export default function TacticalPlaySurface() {
     }
   }, [isControlsOpen]);
 
+  const selectedRoute = routes.find((r) => r.playerId === selectedToken?.id) ?? null;
+  const selectedRouteConcept = selectedRoute?.concept ?? null;
+  const selectedRouteDelay = selectedRoute?.delayMs ?? null;
+  const selectedRouteTrigger = selectedRoute?.triggeredBy ?? null;
+  const showSequencingPanel =
+    menuMode === "route" &&
+    selectedToken != null &&
+    (selectedRoute?.points.length ?? 0) >= 2 &&
+    !isPlaying;
+  const otherRoutedPlayers = routes
+    .filter((r) => r.playerId !== selectedToken?.id)
+    .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
+    .sort((a, b) => a.number - b.number);
+  const sortedSequence = [...routes].sort((a, b) => {
+    const aOrd = a.triggeredBy != null ? Infinity : (a.delayMs ?? 0);
+    const bOrd = b.triggeredBy != null ? Infinity : (b.delayMs ?? 0);
+    return aOrd - bOrd;
+  });
+
   const modeLabelByMenu: Record<MovementMenuMode, string> = {
     move: "Move",
     route: "Route",
@@ -832,26 +851,6 @@ export default function TacticalPlaySurface() {
     }
     window.location.assign("/vision-tactics");
   };
-
-  const selectedRoute = routes.find((r) => r.playerId === selectedToken?.id) ?? null;
-  const selectedRouteConcept = selectedRoute?.concept ?? null;
-  const selectedRouteDelay = selectedRoute?.delayMs ?? null;
-  const selectedRouteTrigger = selectedRoute?.triggeredBy ?? null;
-  const showSequencingPanel =
-    menuMode === "route" &&
-    selectedToken != null &&
-    (selectedRoute?.points.length ?? 0) >= 2 &&
-    !isPlaying;
-  const otherRoutedPlayers = routes
-    .filter((r) => r.playerId !== selectedToken?.id)
-    .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
-    .sort((a, b) => a.number - b.number);
-
-  const sortedSequence = [...routes].sort((a, b) => {
-    const aOrd = a.triggeredBy != null ? Infinity : (a.delayMs ?? 0);
-    const bOrd = b.triggeredBy != null ? Infinity : (b.delayMs ?? 0);
-    return aOrd - bOrd;
-  });
 
   const onSetConcept = (concept: MovementConcept | null) => {
     const shell = shellRef.current;
