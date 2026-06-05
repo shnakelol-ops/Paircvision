@@ -3363,6 +3363,7 @@ export default function StatsModeSurface() {
   const [playerDraft, setPlayerDraft] = useState("");
   const [selectedSubOutId, setSelectedSubOutId] = useState<string | null>(null);
   const [selectedSubInId, setSelectedSubInId] = useState<string | null>(null);
+  const [subsMode, setSubsMode] = useState(false);
   const [showPlayerInitials] = useState(true);
   const [reviewHalf, setReviewHalf] = useState<ReviewHalf>("FULL");
   const [reviewSegment, setReviewSegment] = useState<ReviewSegment>("ALL");
@@ -3551,6 +3552,7 @@ export default function StatsModeSurface() {
     setPlayerDraft("");
     setSelectedSubOutId(null);
     setSelectedSubInId(null);
+    setSubsMode(false);
   };
 
   const updateActiveSquadPlayers = (
@@ -3643,6 +3645,7 @@ export default function StatsModeSurface() {
     selectActivePlayerById(incomingPlayerId);
     setSelectedSubOutId(null);
     setSelectedSubInId(null);
+    setSubsMode(false);
   };
 
   const editPlayer = (playerId: string) => {
@@ -5139,6 +5142,9 @@ export default function StatsModeSurface() {
   const closeUtilityPanel = () => {
     setUtilityPanel(null);
     setSaveLoadBlockedReason(null);
+    setSubsMode(false);
+    setSelectedSubOutId(null);
+    setSelectedSubInId(null);
   };
   const applyFollowupTag = (tag: FollowupTag | null) => {
     const pending = pendingFollowup;
@@ -5240,6 +5246,7 @@ export default function StatsModeSurface() {
     selectActivePlayerById(null);
     setSelectedSubOutId(null);
     setSelectedSubInId(null);
+    setSubsMode(false);
     setPlayerDraft("");
     setSquadDraft("");
     setSaveFeedback("Squads reset to default");
@@ -6654,114 +6661,186 @@ export default function StatsModeSurface() {
               </button>
             </div>
           ) : null}
-          <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.84 }}>
-            Active Players
-          </div>
-          <div className="utility-formation" aria-label="Home formation">
-            {formationRows.map((row, rowIdx) =>
-              row.length > 0 ? (
-                <div key={`formation-row-${rowIdx}`} className="utility-formation-row">
-                  {row.map((player, playerIdx) => {
-                    const isActive = activePlayerEntry?.id === player.id;
-                    return (
-                      <button
-                        key={`formation-${rowIdx}-${playerIdx}-${player.id}`}
-                        type="button"
-                        className="utility-player-pill"
-                        onClick={() => {
-                          handlePlayerPick(player);
-                        }}
-                        onDoubleClick={() => {
-                          editPlayer(player.id);
-                        }}
-                        style={{
-                          ...(isActive
-                            ? {
-                                border: "1px solid rgba(125,211,252,0.9)",
-                                background: "rgba(14,116,144,0.38)",
-                              }
-                            : { border: contextActivePillBorder, boxShadow: contextActivePillGlow }),
-                          ...(isPreMatchSetup ? {} : { fontSize: "11px", padding: "8px 10px" }),
-                        }}
-                      >
-                        {isActive ? "● " : ""}
-                        {formatPlayerLabel(player)}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null,
-            )}
-          </div>
-          <div className="utility-subs-wrap">
-            <div className="utility-subs-title">Subs V1 Lite</div>
-            <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.9 }}>
-              Select one active player to go off, and one bench player to come on.
-            </div>
-            <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.9 }}>
-              Sub Out
-            </div>
-            <div className="utility-subs-row" aria-label="Active players">
-              {activePlayers.map((player) => (
-                <button
-                  key={`sub-out-${player.id}`}
-                  type="button"
-                  className="utility-player-pill"
-                  onClick={() => setSelectedSubOutId(player.id)}
-                  style={selectedSubOutId === player.id ? { border: "1px solid rgba(248,113,113,0.92)" } : undefined}
-                >
-                  {formatPlayerLabel(player)}
-                </button>
-              ))}
-            </div>
-            <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.9 }}>
-              Sub In
-            </div>
-            <div className="utility-subs-row" aria-label="Bench players">
-              {inactivePlayers.map((player) => (
-                <button
-                  key={`sub-in-${player.id}`}
-                  type="button"
-                  className="utility-player-pill"
-                  onClick={() => setSelectedSubInId(player.id)}
-                  style={selectedSubInId === player.id ? { border: "1px solid rgba(74,222,128,0.9)" } : undefined}
-                >
-                  {formatPlayerLabel(player)}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="utility-review-btn"
-              onClick={confirmSubstitution}
-              disabled={!selectedSubOutId || !selectedSubInId}
-            >
-              Confirm Sub
-            </button>
-          </div>
-          {isPreMatchSetup && benchPlayers.length > 0 ? (
+          {subsMode && !isPreMatchSetup ? (
             <div className="utility-subs-wrap">
-              <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.84 }}>
-                Bench
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                <div className="utility-panel-title" style={{ fontSize: "9px", textTransform: "none", opacity: 0.95, marginBottom: 0 }}>
+                  Substitution
+                </div>
+                <button
+                  type="button"
+                  className="utility-review-btn"
+                  onClick={() => {
+                    setSubsMode(false);
+                    setSelectedSubOutId(null);
+                    setSelectedSubInId(null);
+                  }}
+                  style={{ fontSize: "10px", padding: "4px 10px" }}
+                >
+                  ✕ Cancel
+                </button>
               </div>
-              <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.72 }}>
-                Bench players are listed for substitution (Sub In), not direct event tagging.
+              <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.85 }}>
+                Sub Out
               </div>
-              <div className="utility-subs-row" aria-label="Home substitutes">
-                {benchPlayers.map((player, idx) => {
-                  return (
-                    <div
-                      key={`bench-${idx}-${player.id}`}
-                      className="utility-player-pill"
-                      style={{ opacity: 0.78 }}
-                    >
-                      {formatPlayerLabel(player)}
-                    </div>
-                  );
-                })}
+              <div className="utility-subs-row" aria-label="Active players — select player going off">
+                {activePlayers.map((player) => (
+                  <button
+                    key={`sub-out-${player.id}`}
+                    type="button"
+                    className="utility-player-pill"
+                    onClick={() => setSelectedSubOutId((prev) => (prev === player.id ? null : player.id))}
+                    style={{
+                      fontSize: "11px",
+                      padding: "10px 12px",
+                      minHeight: "44px",
+                      ...(selectedSubOutId === player.id
+                        ? { border: "1px solid rgba(248,113,113,0.92)", background: "rgba(127,29,29,0.35)" }
+                        : undefined),
+                    }}
+                  >
+                    {formatPlayerLabel(player)}
+                  </button>
+                ))}
               </div>
+              <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.85 }}>
+                Sub In
+              </div>
+              <div className="utility-subs-row" aria-label="Bench players — select player coming on">
+                {inactivePlayers.map((player) => (
+                  <button
+                    key={`sub-in-${player.id}`}
+                    type="button"
+                    className="utility-player-pill"
+                    onClick={() => setSelectedSubInId((prev) => (prev === player.id ? null : player.id))}
+                    style={{
+                      fontSize: "11px",
+                      padding: "10px 12px",
+                      minHeight: "44px",
+                      ...(selectedSubInId === player.id
+                        ? { border: "1px solid rgba(74,222,128,0.9)", background: "rgba(20,83,45,0.35)" }
+                        : undefined),
+                    }}
+                  >
+                    {formatPlayerLabel(player)}
+                  </button>
+                ))}
+                {inactivePlayers.length === 0 ? (
+                  <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.6 }}>
+                    No bench players
+                  </div>
+                ) : null}
+              </div>
+              {selectedSubOutId && selectedSubInId ? (() => {
+                const outPlayer = activePlayers.find((p) => p.id === selectedSubOutId);
+                const inPlayer = inactivePlayers.find((p) => p.id === selectedSubInId);
+                if (!outPlayer || !inPlayer) return null;
+                return (
+                  <div
+                    style={{
+                      border: "1px solid rgba(125,211,252,0.35)",
+                      borderRadius: "8px",
+                      background: "rgba(15,23,42,0.72)",
+                      padding: "8px 12px",
+                      marginTop: "6px",
+                      marginBottom: "2px",
+                      fontSize: "11px",
+                      color: "rgba(255,255,255,0.9)",
+                      textAlign: "center",
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    <span style={{ color: "rgba(248,113,113,0.92)" }}>{formatPlayerLabel(outPlayer)}</span>
+                    {" OFF → "}
+                    <span style={{ color: "rgba(74,222,128,0.9)" }}>{formatPlayerLabel(inPlayer)}</span>
+                    {" ON"}
+                  </div>
+                );
+              })() : null}
+              <button
+                type="button"
+                className="utility-review-btn"
+                onClick={confirmSubstitution}
+                disabled={!selectedSubOutId || !selectedSubInId}
+                style={{ marginTop: "6px" }}
+              >
+                Confirm
+              </button>
             </div>
-          ) : null}
+          ) : (
+            <>
+              <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.84 }}>
+                Active Players
+              </div>
+              <div className="utility-formation" aria-label="Active formation">
+                {formationRows.map((row, rowIdx) =>
+                  row.length > 0 ? (
+                    <div key={`formation-row-${rowIdx}`} className="utility-formation-row">
+                      {row.map((player, playerIdx) => {
+                        const isActive = activePlayerEntry?.id === player.id;
+                        return (
+                          <button
+                            key={`formation-${rowIdx}-${playerIdx}-${player.id}`}
+                            type="button"
+                            className="utility-player-pill"
+                            onClick={() => {
+                              handlePlayerPick(player);
+                            }}
+                            onDoubleClick={() => {
+                              editPlayer(player.id);
+                            }}
+                            style={{
+                              ...(isActive
+                                ? {
+                                    border: "1px solid rgba(125,211,252,0.9)",
+                                    background: "rgba(14,116,144,0.38)",
+                                  }
+                                : { border: contextActivePillBorder, boxShadow: contextActivePillGlow }),
+                              ...(isPreMatchSetup ? {} : { fontSize: "11px", padding: "8px 10px" }),
+                            }}
+                          >
+                            {isActive ? "● " : ""}
+                            {formatPlayerLabel(player)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null,
+                )}
+              </div>
+              {!isPreMatchSetup ? (
+                <button
+                  type="button"
+                  className="utility-review-btn"
+                  onClick={() => setSubsMode(true)}
+                  style={{ marginTop: "6px" }}
+                >
+                  ⇄ Subs
+                </button>
+              ) : null}
+              {isPreMatchSetup && benchPlayers.length > 0 ? (
+                <div className="utility-subs-wrap">
+                  <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.84 }}>
+                    Bench
+                  </div>
+                  <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.72 }}>
+                    Bench players are listed for substitution (Sub In), not direct event tagging.
+                  </div>
+                  <div className="utility-subs-row" aria-label="Bench substitutes">
+                    {benchPlayers.map((player, idx) => (
+                      <div
+                        key={`bench-${idx}-${player.id}`}
+                        className="utility-player-pill"
+                        style={{ opacity: 0.78 }}
+                      >
+                        {formatPlayerLabel(player)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </>
+          )}
           </div>
           <button
             type="button"
