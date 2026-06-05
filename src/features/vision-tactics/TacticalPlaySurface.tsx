@@ -10,6 +10,7 @@ import type {
   MovementCanvasShellHandle,
   MovementPlaybackSpeed,
   MovementRouteEditState,
+  PremiumPlayerTokenColor,
   TokenRendererName,
   TokenSize,
 } from "../../movement-board/shell/types";
@@ -284,6 +285,34 @@ const HINT_PILL_STYLE: CSSProperties = {
   userSelect: "none",
 };
 
+const TOKEN_COLOR_BG: Record<PremiumPlayerTokenColor, string> = {
+  blue:   "rgba(37, 99, 235, 0.78)",
+  red:    "rgba(220, 38, 38, 0.78)",
+  yellow: "rgba(242, 201, 76, 0.88)",
+  black:  "rgba(17, 24, 39, 0.90)",
+  green:  "rgba(22, 163, 74, 0.78)",
+  orange: "rgba(234, 88, 12, 0.78)",
+  purple: "rgba(124, 58, 237, 0.78)",
+  white:  "rgba(241, 245, 249, 0.88)",
+};
+
+const TOKEN_COLOR_BORDER: Record<PremiumPlayerTokenColor, string> = {
+  blue:   "rgba(147, 197, 253, 0.60)",
+  red:    "rgba(252, 165, 165, 0.60)",
+  yellow: "rgba(253, 224, 71, 0.60)",
+  black:  "rgba(107, 114, 128, 0.40)",
+  green:  "rgba(74, 222, 128, 0.60)",
+  orange: "rgba(251, 146, 60, 0.60)",
+  purple: "rgba(167, 139, 250, 0.60)",
+  white:  "rgba(203, 213, 225, 0.60)",
+};
+
+const TOKEN_COLOR_IS_LIGHT = new Set<PremiumPlayerTokenColor>(["yellow", "white"]);
+
+const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
+  "blue", "red", "green", "yellow", "orange", "purple", "black", "white",
+];
+
 export default function TacticalPlaySurface() {
   type MovementMenuMode = "move" | "route" | "play";
 
@@ -322,6 +351,8 @@ export default function TacticalPlaySurface() {
   const [tokensOpen, setTokensOpen] = useState(false);
   const [tokenSize, setTokenSizeState] = useState<TokenSize>("medium");
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("jersey");
+  const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
+  const [secondaryColor, setSecondaryColorState] = useState<PremiumPlayerTokenColor>("red");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -627,6 +658,20 @@ export default function TacticalPlaySurface() {
     setPresetsOpen(false);
   };
 
+  const onSetPrimaryColor = (color: PremiumPlayerTokenColor) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    shell.setTokens(shell.getTokens().map((t) => ({ ...t, color })));
+    setPrimaryColorState(color);
+  };
+
+  const onSetSecondaryColor = (color: PremiumPlayerTokenColor) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    shell.setTokens(shell.getTokens().map((t) => ({ ...t, secondaryColor: color })));
+    setSecondaryColorState(color);
+  };
+
   const onLoadPreset = (preset: FormationPreset) => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -830,50 +875,88 @@ export default function TacticalPlaySurface() {
             ) : null}
 
             {tokensOpen ? (
-              <div style={PANEL_ROW_STYLE}>
-                <button
-                  type="button"
-                  style={tokenSize === "small" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => onSetTokenSize("small")}
-                >
-                  Sm
-                </button>
-                <button
-                  type="button"
-                  style={tokenSize === "medium" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => onSetTokenSize("medium")}
-                >
-                  Md
-                </button>
-                <button
-                  type="button"
-                  style={tokenSize === "large" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => onSetTokenSize("large")}
-                >
-                  Lg
-                </button>
-                <button
-                  type="button"
-                  style={tokenRenderer === "jersey" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => onSetTokenRenderer("jersey")}
-                >
-                  Jersey
-                </button>
-                <button
-                  type="button"
-                  style={tokenRenderer === "badge" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => onSetTokenRenderer("badge")}
-                >
-                  Badge
-                </button>
-                <button
-                  type="button"
-                  style={tokenRenderer === "athlete" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => onSetTokenRenderer("athlete")}
-                >
-                  Athlete
-                </button>
-              </div>
+              <>
+                <div style={PANEL_ROW_STYLE}>
+                  {([
+                    { id: "pixi", label: "Pixi" },
+                    { id: "phosphor", label: "Phosphor" },
+                    { id: "jersey", label: "Jersey" },
+                  ] as const).map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      style={tokenRenderer === r.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                      disabled={modeIsPlaybackLocked}
+                      onClick={() => onSetTokenRenderer(r.id)}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                  {([
+                    { id: "small", label: "Sm" },
+                    { id: "medium", label: "Md" },
+                    { id: "large", label: "Lg" },
+                  ] as const).map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      style={tokenSize === s.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                      disabled={modeIsPlaybackLocked}
+                      onClick={() => onSetTokenSize(s.id)}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={PANEL_ROW_STYLE}>
+                  {ALL_TOKEN_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      disabled={modeIsPlaybackLocked}
+                      style={
+                        primaryColor === c
+                          ? {
+                              ...TOOL_BUTTON_STYLE,
+                              minWidth: "44px",
+                              padding: "0 8px",
+                              background: TOKEN_COLOR_BG[c],
+                              border: `1px solid ${TOKEN_COLOR_BORDER[c]}`,
+                              color: TOKEN_COLOR_IS_LIGHT.has(c) ? "#0f172a" : "#f8fafc",
+                            }
+                          : { ...TOOL_BUTTON_STYLE, minWidth: "44px", padding: "0 8px" }
+                      }
+                      onClick={() => onSetPrimaryColor(c)}
+                    >
+                      {c.charAt(0).toUpperCase() + c.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <div style={PANEL_ROW_STYLE}>
+                  {ALL_TOKEN_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      disabled={modeIsPlaybackLocked}
+                      style={
+                        secondaryColor === c
+                          ? {
+                              ...TOOL_BUTTON_STYLE,
+                              minWidth: "44px",
+                              padding: "0 8px",
+                              background: TOKEN_COLOR_BG[c],
+                              border: `1px solid ${TOKEN_COLOR_BORDER[c]}`,
+                              color: TOKEN_COLOR_IS_LIGHT.has(c) ? "#0f172a" : "#f8fafc",
+                            }
+                          : { ...TOOL_BUTTON_STYLE, minWidth: "44px", padding: "0 8px" }
+                      }
+                      onClick={() => onSetSecondaryColor(c)}
+                    >
+                      {c.charAt(0).toUpperCase() + c.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </>
             ) : null}
 
             <div style={PANEL_ROW_STYLE}>
