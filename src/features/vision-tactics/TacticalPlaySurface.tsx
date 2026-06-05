@@ -21,6 +21,7 @@ const SETUP_CATEGORIES: Array<{ id: TacticalTemplateCategory; label: string }> =
   { id: "ATTACK", label: "Attack" },
   { id: "DEFENCE", label: "Defence" },
   { id: "PRESS", label: "Press" },
+  { id: "DEMO", label: "Demo" },
 ];
 
 const _CAN_DVW = typeof window !== "undefined" && typeof window.CSS !== "undefined" && window.CSS.supports("width: 100dvw");
@@ -82,15 +83,15 @@ const INFO_PILL_STYLE: CSSProperties = {
   left: "50%",
   transform: "translateX(-50%)",
   zIndex: 12,
-  color: "#e8f0ff",
+  color: "rgba(220, 235, 255, 0.72)",
   fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "11px",
-  fontWeight: 600,
+  fontSize: "10px",
+  fontWeight: 500,
   letterSpacing: "0.02em",
-  padding: "6px 10px",
+  padding: "4px 9px",
   borderRadius: "999px",
-  border: "1px solid rgba(180, 210, 255, 0.20)",
-  background: "rgba(6, 12, 26, 0.82)",
+  border: "1px solid rgba(180, 210, 255, 0.14)",
+  background: "rgba(6, 12, 26, 0.72)",
   backdropFilter: "blur(10px)",
   WebkitBackdropFilter: "blur(10px)",
 };
@@ -358,26 +359,16 @@ const ACTIVE_TEMPLATE_PILL_STYLE: CSSProperties = {
   userSelect: "none",
 };
 
-const TEMPLATE_BUTTON_STYLE: CSSProperties = {
-  height: "auto",
-  minHeight: "38px",
-  minWidth: "68px",
-  borderRadius: "12px",
-  border: "1px solid rgba(180, 210, 255, 0.22)",
-  background: "rgba(10, 18, 38, 0.72)",
-  color: "rgba(220, 235, 255, 0.95)",
-  fontFamily: "Inter, system-ui, sans-serif",
-  padding: "5px 10px",
-  cursor: "pointer",
-  textAlign: "center",
+const TEMPLATE_DRAWER_STYLE: CSSProperties = {
+  borderRadius: "16px",
+  border: "1px solid rgba(180, 210, 255, 0.16)",
+  background: "rgba(6, 14, 30, 0.88)",
+  backdropFilter: "blur(18px)",
+  WebkitBackdropFilter: "blur(18px)",
+  boxShadow: "0 18px 44px rgba(0, 4, 14, 0.54), inset 0 1px 0 rgba(255, 255, 255, 0.09)",
+  overflow: "hidden",
   display: "flex",
   flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "2px",
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  boxShadow: "0 6px 18px rgba(0, 4, 14, 0.36), inset 0 1px 2px rgba(255, 255, 255, 0.14)",
 };
 
 const TOKEN_COLOR_BG: Record<PremiumPlayerTokenColor, string> = {
@@ -612,12 +603,10 @@ export default function TacticalPlaySurface() {
 
   const selectedHasBall = selectedToken != null && selectedToken.id === ballCarrierId;
   const coachInfoLabel = selectedToken
-    ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""} · Movements ${routeCount}`
-    : ballCarrierId
-      ? `Ball Assigned · Movements ${routeCount}`
-      : ballOnPitch
-        ? `Ball on Pitch · Movements ${routeCount}`
-        : `${modeLabelByMenu[menuMode]} · Movements ${routeCount}`;
+    ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""}`
+    : ballOnPitch
+      ? "Ball on Pitch"
+      : modeLabelByMenu[menuMode];
 
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
@@ -842,7 +831,9 @@ export default function TacticalPlaySurface() {
           disabled={modeIsPlaybackLocked}
           onClick={onSetupPress}
         >
-          Setup
+          {activeTemplate !== null
+            ? (SETUP_CATEGORIES.find((c) => c.id === activeTemplate.category)?.label ?? "Setup")
+            : "Setup"}
         </button>
 
         {!isControlsOpen && !setupOpen && !isPlaying && !isPaused ? (
@@ -1079,16 +1070,6 @@ export default function TacticalPlaySurface() {
               ))}
               <button
                 type="button"
-                style={TOOL_BUTTON_STYLE}
-                onClick={() => {
-                  const demo = TACTICAL_TEMPLATES.find((t) => t.id === "demo");
-                  if (demo) onLoadTemplate(demo);
-                }}
-              >
-                Demo
-              </button>
-              <button
-                type="button"
                 style={playersOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                 onClick={() => setPlayersOpen((prev) => !prev)}
               >
@@ -1097,16 +1078,28 @@ export default function TacticalPlaySurface() {
             </div>
 
             {activeSetupCategory !== null ? (
-              <div style={PANEL_ROW_STYLE}>
-                {TACTICAL_TEMPLATES.filter((t) => t.category === activeSetupCategory).map((tmpl) => (
+              <div style={TEMPLATE_DRAWER_STYLE}>
+                {TACTICAL_TEMPLATES.filter((t) => t.category === activeSetupCategory).map((tmpl, idx, arr) => (
                   <button
                     key={tmpl.id}
                     type="button"
-                    style={TEMPLATE_BUTTON_STYLE}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      width: "100%",
+                      padding: "10px 16px",
+                      border: "none",
+                      borderBottom: idx < arr.length - 1 ? "1px solid rgba(180, 210, 255, 0.08)" : "none",
+                      background: "transparent",
+                      color: "rgba(220, 235, 255, 0.95)",
+                      fontFamily: "Inter, system-ui, sans-serif",
+                      textAlign: "left",
+                      cursor: "pointer",
+                    }}
                     onClick={() => onLoadTemplate(tmpl)}
                   >
-                    <span style={{ fontSize: "9px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08px" }}>{tmpl.name}</span>
-                    <span style={{ fontSize: "8px", fontWeight: 400, opacity: 0.62, letterSpacing: "0.02em", textTransform: "none", lineHeight: 1.2 }}>{tmpl.description}</span>
+                    <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "3px" }}>{tmpl.name}</span>
+                    <span style={{ fontSize: "9px", fontWeight: 400, opacity: 0.52, letterSpacing: "0.01em", lineHeight: 1.3 }}>{tmpl.description}</span>
                   </button>
                 ))}
               </div>
