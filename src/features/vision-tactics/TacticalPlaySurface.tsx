@@ -137,7 +137,7 @@ const CTRL_BUBBLE_STYLE: CSSProperties = {
 
 const SETUP_BUBBLE_STYLE: CSSProperties = {
   position: "fixed",
-  left: "max(84px, calc(env(safe-area-inset-left, 0px) + 82px))",
+  right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
   bottom: "max(10px, calc(env(safe-area-inset-bottom, 0px) + 8px))",
   zIndex: 22,
   height: "38px",
@@ -156,6 +156,17 @@ const SETUP_BUBBLE_STYLE: CSSProperties = {
   backdropFilter: "blur(14px)",
   WebkitBackdropFilter: "blur(14px)",
   boxShadow: "0 12px 28px rgba(0, 4, 14, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.18)",
+};
+
+const SETUP_PANEL_STYLE: CSSProperties = {
+  position: "fixed",
+  right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
+  bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
+  zIndex: 21,
+  width: "max-content",
+  maxWidth: "min(520px, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
+  display: "grid",
+  gap: "3px",
 };
 
 const SETUP_SECTION_LABEL_STYLE: CSSProperties = {
@@ -382,6 +393,7 @@ export default function TacticalPlaySurface() {
   const [appViewportHeight, setAppViewportHeight] = useState(() => getTPViewportHeight());
   const [startFlash, setStartFlash] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
+  const [playersOpen, setPlayersOpen] = useState(false);
   const [tokenSize, setTokenSizeState] = useState<TokenSize>("medium");
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("jersey");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
@@ -783,6 +795,7 @@ export default function TacticalPlaySurface() {
           style={setupOpen
             ? { ...SETUP_BUBBLE_STYLE, border: "1px solid rgba(124, 255, 114, 0.40)", background: "rgba(14, 32, 22, 0.82)" }
             : SETUP_BUBBLE_STYLE}
+          disabled={modeIsPlaybackLocked}
           onClick={onSetupPress}
         >
           Setup
@@ -1008,7 +1021,7 @@ export default function TacticalPlaySurface() {
         ) : null}
 
         {setupOpen ? (
-          <div style={CONTROL_PANEL_STYLE}>
+          <div style={SETUP_PANEL_STYLE}>
             <div style={PANEL_ROW_STYLE}>
               {FORMATION_PRESETS.map((preset) => (
                 <button
@@ -1023,85 +1036,97 @@ export default function TacticalPlaySurface() {
               <button type="button" style={TOOL_BUTTON_STYLE} onClick={onLoadDemo}>
                 Demo
               </button>
+              <button
+                type="button"
+                style={playersOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                onClick={() => setPlayersOpen((prev) => !prev)}
+              >
+                Players
+              </button>
             </div>
-            <div style={PANEL_ROW_STYLE}>
-              {([
-                { id: "pixi", label: "Pixi" },
-                { id: "phosphor", label: "Phosphor" },
-                { id: "jersey", label: "Jersey" },
-              ] as const).map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  style={tokenRenderer === r.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => onSetTokenRenderer(r.id)}
-                >
-                  {r.label}
-                </button>
-              ))}
-              {([
-                { id: "small", label: "Sm" },
-                { id: "medium", label: "Md" },
-                { id: "large", label: "Lg" },
-              ] as const).map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  style={tokenSize === s.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => onSetTokenSize(s.id)}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-            <div style={PANEL_ROW_STYLE}>
-              <span style={SETUP_SECTION_LABEL_STYLE}>Primary</span>
-              {ALL_TOKEN_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  style={
-                    primaryColor === c
-                      ? {
-                          ...TOOL_BUTTON_STYLE,
-                          minWidth: "44px",
-                          padding: "0 8px",
-                          background: TOKEN_COLOR_BG[c],
-                          border: `1px solid ${TOKEN_COLOR_BORDER[c]}`,
-                          color: TOKEN_COLOR_IS_LIGHT.has(c) ? "#0f172a" : "#f8fafc",
-                        }
-                      : { ...TOOL_BUTTON_STYLE, minWidth: "44px", padding: "0 8px" }
-                  }
-                  onClick={() => onSetPrimaryColor(c)}
-                >
-                  {c.charAt(0).toUpperCase() + c.slice(1)}
-                </button>
-              ))}
-            </div>
-            <div style={PANEL_ROW_STYLE}>
-              <span style={SETUP_SECTION_LABEL_STYLE}>2nd</span>
-              {ALL_TOKEN_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  style={
-                    secondaryColor === c
-                      ? {
-                          ...TOOL_BUTTON_STYLE,
-                          minWidth: "44px",
-                          padding: "0 8px",
-                          background: TOKEN_COLOR_BG[c],
-                          border: `1px solid ${TOKEN_COLOR_BORDER[c]}`,
-                          color: TOKEN_COLOR_IS_LIGHT.has(c) ? "#0f172a" : "#f8fafc",
-                        }
-                      : { ...TOOL_BUTTON_STYLE, minWidth: "44px", padding: "0 8px" }
-                  }
-                  onClick={() => onSetSecondaryColor(c)}
-                >
-                  {c.charAt(0).toUpperCase() + c.slice(1)}
-                </button>
-              ))}
-            </div>
+
+            {playersOpen ? (
+              <>
+                <div style={PANEL_ROW_STYLE}>
+                  {([
+                    { id: "pixi", label: "Pixi" },
+                    { id: "phosphor", label: "Phosphor" },
+                    { id: "jersey", label: "Jersey" },
+                  ] as const).map((r) => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      style={tokenRenderer === r.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                      onClick={() => onSetTokenRenderer(r.id)}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                  {([
+                    { id: "small", label: "Small" },
+                    { id: "medium", label: "Medium" },
+                    { id: "large", label: "Large" },
+                  ] as const).map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      style={tokenSize === s.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                      onClick={() => onSetTokenSize(s.id)}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={PANEL_ROW_STYLE}>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Primary</span>
+                  {ALL_TOKEN_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      style={
+                        primaryColor === c
+                          ? {
+                              ...TOOL_BUTTON_STYLE,
+                              minWidth: "44px",
+                              padding: "0 8px",
+                              background: TOKEN_COLOR_BG[c],
+                              border: `1px solid ${TOKEN_COLOR_BORDER[c]}`,
+                              color: TOKEN_COLOR_IS_LIGHT.has(c) ? "#0f172a" : "#f8fafc",
+                            }
+                          : { ...TOOL_BUTTON_STYLE, minWidth: "44px", padding: "0 8px" }
+                      }
+                      onClick={() => onSetPrimaryColor(c)}
+                    >
+                      {c.charAt(0).toUpperCase() + c.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <div style={PANEL_ROW_STYLE}>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>2nd</span>
+                  {ALL_TOKEN_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      style={
+                        secondaryColor === c
+                          ? {
+                              ...TOOL_BUTTON_STYLE,
+                              minWidth: "44px",
+                              padding: "0 8px",
+                              background: TOKEN_COLOR_BG[c],
+                              border: `1px solid ${TOKEN_COLOR_BORDER[c]}`,
+                              color: TOKEN_COLOR_IS_LIGHT.has(c) ? "#0f172a" : "#f8fafc",
+                            }
+                          : { ...TOOL_BUTTON_STYLE, minWidth: "44px", padding: "0 8px" }
+                      }
+                      onClick={() => onSetSecondaryColor(c)}
+                    >
+                      {c.charAt(0).toUpperCase() + c.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
           </div>
         ) : null}
 
