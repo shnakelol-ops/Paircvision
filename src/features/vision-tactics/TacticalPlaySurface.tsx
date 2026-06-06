@@ -234,6 +234,27 @@ const TOOL_DISABLED_STYLE: CSSProperties = {
   cursor: "not-allowed",
 };
 
+const TOOL_PROMINENT_STYLE: CSSProperties = {
+  ...TOOL_BUTTON_STYLE,
+  border: "1px solid rgba(250, 180, 50, 0.62)",
+  background: "rgba(80, 48, 8, 0.84)",
+  color: "#fde68a",
+  boxShadow: "0 0 0 1px rgba(250, 180, 50, 0.22), 0 6px 18px rgba(0, 4, 14, 0.36), inset 0 1px 2px rgba(255, 255, 255, 0.14)",
+};
+
+const SHOOT_HINT_STYLE: CSSProperties = {
+  fontSize: "9px",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontWeight: 500,
+  color: "rgba(253, 230, 138, 0.62)",
+  letterSpacing: "0.04em",
+  padding: "0 6px",
+  whiteSpace: "nowrap",
+  pointerEvents: "none",
+  userSelect: "none",
+  alignSelf: "center",
+};
+
 const COLLAPSE_BUTTON_STYLE: CSSProperties = {
   ...TOOL_BUTTON_STYLE,
   minWidth: "62px",
@@ -823,7 +844,13 @@ export default function TacticalPlaySurface() {
                   {selectedToken && !modeIsPlaybackLocked ? (
                     <button
                       type="button"
-                      style={selectedHasBall ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                      style={
+                        selectedHasBall
+                          ? TOOL_ACTIVE_STYLE
+                          : ballOnPitch && !ballCarrierId
+                            ? TOOL_PROMINENT_STYLE
+                            : TOOL_BUTTON_STYLE
+                      }
                       onClick={giveSelectedPlayerBall}
                     >
                       {selectedHasBall ? "Has Ball" : "Give Ball"}
@@ -857,6 +884,11 @@ export default function TacticalPlaySurface() {
                         </>
                       ) : null}
                     </>
+                  ) : null}
+                  {ballOnPitch && !ballCarrierId && !modeIsPlaybackLocked ? (
+                    <span style={SHOOT_HINT_STYLE}>
+                      {selectedToken ? "Give Ball to shoot" : "Select a player → Give Ball to shoot"}
+                    </span>
                   ) : null}
                 </>
               ) : null}
