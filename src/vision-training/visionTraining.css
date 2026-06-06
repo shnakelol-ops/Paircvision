@@ -384,3 +384,89 @@
   border-color: #dc2626;
   color: #f87171;
 }
+
+/* ─── Review: attendance summary grid ─── */
+
+.vt-review-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.vt-review-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid #17324a;
+  border-radius: 10px;
+  background: #081726;
+  padding: 9px 12px;
+}
+
+.vt-review-stat--total {
+  grid-column: 1 / -1;
+}
+
+.vt-review-stat-label {
+  font-size: 12px;
+  color: #7a95ad;
+  font-weight: 600;
+}
+
+.vt-review-stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #dce8f4;
+  line-height: 1;
+}
+
+.vt-review-stat-value--present { color: #4ade80; }
+.vt-review-stat-value--late    { color: #fbbf24; }
+.vt-review-stat-value--injured { color: #fb923c; }
+.vt-review-stat-value--absent  { color: #f87171; }
+
+.vt-review-percent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #1c3a52;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #0a2134, #0a2820);
+  padding: 10px 14px;
+}
+
+.vt-review-percent-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7a95ad;
+}
+
+.vt-review-percent-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #4ade80;
+  line-height: 1;
+}
+
+/* ─── Review: textarea ─── */
+
+.vt-textarea {
+  width: 100%;
+  border: 1px solid #28445d;
+  background: #0a2236;
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  resize: vertical;
+  min-height: 70px;
+  color-scheme: dark;
+  transition: border-color 120ms ease;
+}
+
+.vt-textarea:focus  { border-color: #2563eb; }
+.vt-textarea::placeholder { color: #4a6070; }

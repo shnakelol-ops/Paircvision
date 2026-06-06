@@ -1,13 +1,15 @@
 import AttendanceScreen from "./AttendanceScreen";
 import NewSessionScreen from "./NewSessionScreen";
 import PerformanceTrackerEntry from "./PerformanceTrackerEntry";
+import SessionReviewScreen from "./SessionReviewScreen";
 import VisionTrainingHome from "./VisionTrainingHome";
 
 type Route =
   | { view: "home" }
   | { view: "performance" }
   | { view: "new-session" }
-  | { view: "attendance"; sessionId: string };
+  | { view: "attendance"; sessionId: string }
+  | { view: "review"; sessionId: string };
 
 function parsePath(): Route {
   const path =
@@ -21,6 +23,9 @@ function parsePath(): Route {
   const attendanceMatch = path.match(/^\/vision-training\/session\/([^/]+)\/attendance$/);
   if (attendanceMatch) return { view: "attendance", sessionId: attendanceMatch[1] };
 
+  const reviewMatch = path.match(/^\/vision-training\/session\/([^/]+)\/review$/);
+  if (reviewMatch) return { view: "review", sessionId: reviewMatch[1] };
+
   return { view: "home" };
 }
 
@@ -30,5 +35,6 @@ export default function VisionTrainingShell() {
   if (route.view === "performance") return <PerformanceTrackerEntry />;
   if (route.view === "new-session") return <NewSessionScreen />;
   if (route.view === "attendance") return <AttendanceScreen sessionId={route.sessionId} />;
+  if (route.view === "review") return <SessionReviewScreen sessionId={route.sessionId} />;
   return <VisionTrainingHome />;
 }

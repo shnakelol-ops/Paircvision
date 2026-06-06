@@ -152,10 +152,10 @@ export default function AttendanceScreen({ sessionId }: Props) {
           <button
             type="button"
             className="vt-ghost-btn"
-            disabled
             style={{ marginTop: 8 }}
+            onClick={() => navigate(`/vision-training/session/${sessionId}/review`)}
           >
-            Session Review — Coming Soon
+            Session Review →
           </button>
 
           <button

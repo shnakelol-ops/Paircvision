@@ -18,6 +18,24 @@ export type PlayerTrainingNote = {
   createdAt: string;
 };
 
+export type TrainingSessionReview = {
+  sessionId: string;
+  attendanceSummary: {
+    present: number;
+    late: number;
+    injured: number;
+    absent: number;
+    total: number;
+    attendancePercent: number;
+  };
+  standoutPlayers: string[];
+  concerns: string[];
+  coachActions: string[];
+  nextSessionFocus?: string;
+  summaryNote?: string;
+  updatedAt: string;
+};
+
 export type TrainingSession = {
   id: string;
   createdAt: string;
@@ -28,4 +46,5 @@ export type TrainingSession = {
   status: "draft" | "completed";
   attendance: AttendanceRecord[];
   playerNotes: PlayerTrainingNote[];
+  review?: TrainingSessionReview;
 };
