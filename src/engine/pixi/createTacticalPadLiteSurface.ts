@@ -2704,13 +2704,31 @@ export async function createTacticalPadLiteSurface(
 
   function playSingleStartToCurrent(): void {
     const shouldReplayStoredTarget = singlePlayTargetSnapshot != null && isCurrentAtStartPosition();
+    // Always capture current snapshot so we can use its ball state for the start
+    // snapshot regardless of the shouldReplayStoredTarget branch.
+    const currentSnapshot = captureCurrentSnapshot();
     const playbackTarget = shouldReplayStoredTarget
-      ? cloneSnapshot(singlePlayTargetSnapshot)
-      : captureCurrentSnapshot();
+      ? cloneSnapshot(singlePlayTargetSnapshot!)
+      : currentSnapshot;
     if (!shouldReplayStoredTarget) {
-      singlePlayTargetSnapshot = cloneSnapshot(playbackTarget);
+      singlePlayTargetSnapshot = cloneSnapshot(currentSnapshot);
     }
-    startPlayback([cloneSnapshot(startPositions), playbackTarget]);
+    // Use startPositions for player coordinates (so routes animate from their
+    // start positions) but carry the current ball state forward so that
+    // possession passes already completed don't snap the ball back to the
+    // original carrier when Play is pressed.
+    const startSnapshot: PhaseSnapshot = {
+      players: startPositions.players.map((p) => ({ x: p.x, y: p.y })),
+      football: currentSnapshot.football.map((b) => ({
+        id: b.id,
+        x: b.x,
+        y: b.y,
+        attachedPlayerId: b.attachedPlayerId ?? null,
+        isFree: b.isFree,
+        ...(b.path ? { path: b.path.map((pp) => ({ x: pp.x, y: pp.y })) } : {}),
+      })),
+    };
+    startPlayback([startSnapshot, playbackTarget]);
   }
 
   function playSavedPhaseSequence(): void {
