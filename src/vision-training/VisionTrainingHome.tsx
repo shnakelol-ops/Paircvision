@@ -1,5 +1,7 @@
 import "./visionTraining.css";
+import { useState } from "react";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
+import { loadActiveSessionId, loadSessionById } from "./trainingStorage";
 
 type HubCard = {
   name: string;
@@ -13,6 +15,11 @@ function navigate(path: string) {
 }
 
 export default function VisionTrainingHome() {
+  const [activeSession] = useState(() => {
+    const id = loadActiveSessionId();
+    return id ? loadSessionById(id) : null;
+  });
+
   const hubCards: HubCard[] = [
     {
       name: "New Session",
@@ -20,9 +27,23 @@ export default function VisionTrainingHome() {
       disabled: false,
       action: () => navigate("/vision-training/session/new"),
     },
-    { name: "Squad Attendance", sub: "Coming Soon", disabled: true },
+    {
+      name: "Squad Attendance",
+      sub: activeSession ? "Mark who trained" : "Start a session first",
+      disabled: !activeSession,
+      action: activeSession
+        ? () => navigate(`/vision-training/session/${activeSession.id}/attendance`)
+        : undefined,
+    },
     { name: "Player Notes", sub: "Coming Soon", disabled: true },
-    { name: "Session Review", sub: "Coming Soon", disabled: true },
+    {
+      name: "Session Review",
+      sub: activeSession ? "End-of-night summary" : "Start a session first",
+      disabled: !activeSession,
+      action: activeSession
+        ? () => navigate(`/vision-training/session/${activeSession.id}/review`)
+        : undefined,
+    },
   ];
 
   return (
