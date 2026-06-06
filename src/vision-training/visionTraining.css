@@ -470,3 +470,106 @@
 
 .vt-textarea:focus  { border-color: #2563eb; }
 .vt-textarea::placeholder { color: #4a6070; }
+
+/* ─── New Session: squad count / warning ─── */
+
+.vt-squad-count {
+  margin: 0;
+  font-size: 11px;
+  color: #2d7a4a;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.vt-squad-count-warn {
+  margin: 0;
+  font-size: 11px;
+  color: #8a5f30;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* ─── New Session: quick squad builder ─── */
+
+.vt-quick-squad-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vt-quick-squad-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #7a95ad;
+}
+
+.vt-quick-squad-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.vt-squad-action-btn {
+  border: 1px solid #1c3a52;
+  border-radius: 8px;
+  background: #0a1d2e;
+  color: #8fa5be;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 100ms ease;
+}
+
+.vt-squad-action-btn:active { opacity: 0.7; }
+.vt-squad-action-btn:disabled { opacity: 0.3; cursor: default; }
+
+.vt-quick-squad-players {
+  display: grid;
+  gap: 6px;
+}
+
+.vt-quick-player-row {
+  display: grid;
+  grid-template-columns: 52px 1fr 32px;
+  gap: 6px;
+  align-items: center;
+}
+
+.vt-quick-player-remove {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #2a1a1a;
+  border-radius: 8px;
+  background: #1a0a0a;
+  color: #8a6060;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+  transition: opacity 100ms ease;
+  padding: 0;
+}
+
+.vt-quick-player-remove:active { opacity: 0.7; }
+
+.vt-squad-add-btn {
+  width: 100%;
+  border: 1px dashed #1c3a52;
+  border-radius: 10px;
+  background: transparent;
+  color: #5a7888;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 100ms ease;
+}
+
+.vt-squad-add-btn:active { opacity: 0.7; }
