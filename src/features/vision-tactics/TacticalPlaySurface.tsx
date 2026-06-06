@@ -649,6 +649,7 @@ export default function TacticalPlaySurface() {
   const [passTimingMs, setPassTimingMs] = useState<number>(0);
   const [passTriggerId, setPassTriggerId] = useState<string | null>(null);
   const [shootDelayMs, setShootDelayMs] = useState<number>(0);
+  const [shotOpen, setShotOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1736,50 +1737,79 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
-            {ballCarrierId ? (
-              <div style={MP_ROW}>
-                <span style={MP_ROW_LABEL}>Shoot</span>
-                {([
-                  { ms: 0, label: "Now" },
-                  { ms: 1000, label: "+1s" },
-                  { ms: 2000, label: "+2s" },
-                ] as const).map((opt) => (
+            {shotOpen ? (() => {
+              const lastReceiverId = passEvents.length > 0 ? passEvents[passEvents.length - 1].toPlayerId : null;
+              const shooterNum = lastReceiverId
+                ? (tokenNumberById[lastReceiverId] ?? "?")
+                : ballCarrierId
+                  ? (tokenNumberById[ballCarrierId] ?? "?")
+                  : "?";
+              return (
+                <div style={MP_ROW}>
+                  <span style={MP_ROW_LABEL}>Shooter</span>
+                  <span style={MP_CHIP_SECONDARY}>P{shooterNum}</span>
+                  <span style={{ ...MP_ROW_LABEL, marginLeft: "4px" }}>Delay</span>
+                  {([
+                    { ms: 0, label: "Now" },
+                    { ms: 1000, label: "+1s" },
+                    { ms: 2000, label: "+2s" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.ms}
+                      type="button"
+                      style={shootDelayMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
+                      onClick={() => setShootDelayMs(opt.ms)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                   <button
-                    key={opt.ms}
                     type="button"
-                    style={shootDelayMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
-                    onClick={() => setShootDelayMs(opt.ms)}
+                    style={MP_CHIP_ACTIVE}
+                    onClick={() => {
+                      const delay = shootDelayMs;
+                      setShotOpen(false);
+                      setPassesOpen(false);
+                      if (delay > 0) {
+                        setTimeout(() => { shellRef.current?.shootToGoal(); }, delay);
+                      } else {
+                        shellRef.current?.shootToGoal();
+                      }
+                    }}
                   >
-                    {opt.label}
+                    Shoot →
                   </button>
-                ))}
-                <button
-                  type="button"
-                  style={MP_CHIP_ACTIVE}
-                  onClick={() => {
-                    const delay = shootDelayMs;
-                    setPassesOpen(false);
-                    if (delay > 0) {
-                      setTimeout(() => { shellRef.current?.shootToGoal(); }, delay);
-                    } else {
-                      shellRef.current?.shootToGoal();
-                    }
-                  }}
-                >
-                  Shoot →
-                </button>
-              </div>
-            ) : null}
+                  <button
+                    type="button"
+                    style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "14px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
+                    onClick={() => setShotOpen(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })() : null}
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <button
-                type="button"
-                style={passFromId && passToId ? MP_CHIP_ACTIVE : { ...MP_CHIP, opacity: 0.45, cursor: "not-allowed" }}
-                disabled={!passFromId || !passToId || passFromId === passToId}
-                onClick={onAddPass}
-              >
-                + Add Pass
-              </button>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  style={passFromId && passToId ? MP_CHIP_ACTIVE : { ...MP_CHIP, opacity: 0.45, cursor: "not-allowed" }}
+                  disabled={!passFromId || !passToId || passFromId === passToId}
+                  onClick={onAddPass}
+                >
+                  + Add Pass
+                </button>
+                {passEvents.length > 0 || ballCarrierId ? (
+                  <button
+                    type="button"
+                    style={shotOpen ? MP_CHIP_ACTIVE : MP_CHIP}
+                    onClick={() => setShotOpen((prev) => !prev)}
+                  >
+                    + Add Shot
+                  </button>
+                ) : null}
+              </div>
               <button type="button" style={MP_DONE} onClick={() => setPassesOpen(false)}>
                 Done
               </button>
