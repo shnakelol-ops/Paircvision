@@ -2,7 +2,7 @@ import "./visionTraining.css";
 import { useRef, useState } from "react";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import type { TrainingSessionReview } from "./types";
-import { loadSessionById, upsertSession } from "./trainingStorage";
+import { loadSessionById, saveActiveSessionId, upsertSession } from "./trainingStorage";
 
 type Props = { sessionId: string };
 
@@ -92,11 +92,8 @@ export default function SessionReviewScreen({ sessionId }: Props) {
   const attendancePercent =
     total > 0 ? Math.round((trained / total) * 100) : 0;
 
-  function saveReview() {
-    const current = loadSessionById(sessionId);
-    if (!current) return;
-
-    const review: TrainingSessionReview = {
+  function buildReview(): TrainingSessionReview {
+    return {
       sessionId,
       attendanceSummary: {
         present: counts.present,
@@ -113,8 +110,13 @@ export default function SessionReviewScreen({ sessionId }: Props) {
       summaryNote: summaryNote.trim() || undefined,
       updatedAt: new Date().toISOString(),
     };
+  }
 
-    upsertSession({ ...current, review });
+  function saveReview() {
+    const current = loadSessionById(sessionId);
+    if (!current) return;
+
+    upsertSession({ ...current, review: buildReview() });
 
     setSaveStatus("saved");
     if (feedbackTimerRef.current !== null) {
@@ -124,6 +126,21 @@ export default function SessionReviewScreen({ sessionId }: Props) {
       setSaveStatus("idle");
       feedbackTimerRef.current = null;
     }, 1800);
+  }
+
+  function handleFinishSession() {
+    const current = loadSessionById(sessionId);
+    if (!current) return;
+
+    upsertSession({
+      ...current,
+      review: buildReview(),
+      status: "completed",
+      completedAt: new Date().toISOString(),
+    });
+
+    saveActiveSessionId(null);
+    navigate("/vision-training/history");
   }
 
   return (
@@ -270,11 +287,11 @@ export default function SessionReviewScreen({ sessionId }: Props) {
 
           <button
             type="button"
-            className="vt-ghost-btn"
-            disabled
-            style={{ marginTop: 6 }}
+            className="vt-primary-btn"
+            style={{ marginTop: 6, background: "#0a5c2a", borderColor: "#0d7a37" }}
+            onClick={handleFinishSession}
           >
-            Finish Session — Coming Soon
+            Finish Session
           </button>
 
           <button

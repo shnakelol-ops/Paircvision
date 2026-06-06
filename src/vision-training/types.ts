@@ -44,6 +44,7 @@ export type TrainingSession = {
   focus?: string;
   squadId?: string;
   status: "draft" | "completed";
+  completedAt?: string;
   attendance: AttendanceRecord[];
   playerNotes: PlayerTrainingNote[];
   review?: TrainingSessionReview;

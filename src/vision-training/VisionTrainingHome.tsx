@@ -7,6 +7,7 @@ type HubCard = {
   name: string;
   sub: string;
   disabled: boolean;
+  wide?: boolean;
   action?: () => void;
 };
 
@@ -44,6 +45,13 @@ export default function VisionTrainingHome() {
         ? () => navigate(`/vision-training/session/${activeSession.id}/review`)
         : undefined,
     },
+    {
+      name: "History",
+      sub: "Past sessions",
+      disabled: false,
+      wide: true,
+      action: () => navigate("/vision-training/history"),
+    },
   ];
 
   return (
@@ -80,6 +88,7 @@ export default function VisionTrainingHome() {
                   className={[
                     "vt-hub-card",
                     card.disabled ? "vt-hub-card--disabled" : "",
+                    card.wide ? "vt-hub-card--wide" : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -99,13 +108,6 @@ export default function VisionTrainingHome() {
                   <span className="vt-hub-card-sub">{card.sub}</span>
                 </div>
               ))}
-              <div
-                className="vt-hub-card vt-hub-card--disabled vt-hub-card--wide"
-                aria-disabled="true"
-              >
-                <span className="vt-hub-card-name">History</span>
-                <span className="vt-hub-card-sub">Coming Soon</span>
-              </div>
             </div>
           </div>
 
