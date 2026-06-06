@@ -650,6 +650,7 @@ export default function TacticalPlaySurface() {
   const [passTriggerId, setPassTriggerId] = useState<string | null>(null);
   const [shootDelayMs, setShootDelayMs] = useState<number>(0);
   const [shotOpen, setShotOpen] = useState(false);
+  const [shotEvents, setShotEvents] = useState<Array<{ id: string; shooterId: string; delayMs: number }>>([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1636,12 +1637,12 @@ export default function TacticalPlaySurface() {
           <div style={MOVEMENT_PANEL_STYLE}>
             <div style={MP_HEADER_STYLE}>
               <span style={MP_TITLE_STYLE}>Passes</span>
-              <button type="button" style={MP_CLOSE_STYLE} onClick={() => setPassesOpen(false)}>
+              <button type="button" style={MP_CLOSE_STYLE} onClick={() => { setPassesOpen(false); setShotOpen(false); }}>
                 ×
               </button>
             </div>
 
-            {passEvents.length > 0 ? (
+            {passEvents.length > 0 || shotEvents.length > 0 ? (
               <div style={MP_ROW}>
                 {passEvents.map((p) => {
                   const fromNum = tokenNumberById[p.fromPlayerId] ?? "?";
@@ -1653,6 +1654,22 @@ export default function TacticalPlaySurface() {
                         type="button"
                         style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "11px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
                         onClick={() => onRemovePass(p.id)}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+                {shotEvents.map((s) => {
+                  const num = tokenNumberById[s.shooterId] ?? "?";
+                  const delayLabel = s.delayMs > 0 ? ` +${s.delayMs / 1000}s` : "";
+                  return (
+                    <span key={s.id} style={{ ...MP_CHIP_SECONDARY, display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <span style={{ color: "rgba(180, 255, 140, 0.80)" }}>P{num}→Goal{delayLabel}</span>
+                      <button
+                        type="button"
+                        style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "11px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
+                        onClick={() => setShotEvents((prev) => prev.filter((e) => e.id !== s.id))}
                       >
                         ×
                       </button>
@@ -1739,11 +1756,24 @@ export default function TacticalPlaySurface() {
 
             {shotOpen ? (() => {
               const lastReceiverId = passEvents.length > 0 ? passEvents[passEvents.length - 1].toPlayerId : null;
-              const shooterNum = lastReceiverId
-                ? (tokenNumberById[lastReceiverId] ?? "?")
-                : ballCarrierId
-                  ? (tokenNumberById[ballCarrierId] ?? "?")
-                  : "?";
+              const shooterId = lastReceiverId ?? ballCarrierId;
+              if (!shooterId) {
+                return (
+                  <div style={MP_ROW}>
+                    <span style={{ fontSize: "11px", color: "rgba(255, 200, 100, 0.70)", fontStyle: "italic" }}>
+                      Give ball to a player or add a pass first.
+                    </span>
+                    <button
+                      type="button"
+                      style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "14px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
+                      onClick={() => setShotOpen(false)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              }
+              const shooterNum = tokenNumberById[shooterId] ?? "?";
               return (
                 <div style={MP_ROW}>
                   <span style={MP_ROW_LABEL}>Shooter</span>
@@ -1768,8 +1798,9 @@ export default function TacticalPlaySurface() {
                     style={MP_CHIP_ACTIVE}
                     onClick={() => {
                       const delay = shootDelayMs;
+                      const sid = shooterId;
+                      setShotEvents((prev) => [...prev, { id: `shot-${Date.now()}`, shooterId: sid, delayMs: delay }]);
                       setShotOpen(false);
-                      setPassesOpen(false);
                       if (delay > 0) {
                         setTimeout(() => { shellRef.current?.shootToGoal(); }, delay);
                       } else {
@@ -1777,7 +1808,7 @@ export default function TacticalPlaySurface() {
                       }
                     }}
                   >
-                    Shoot →
+                    Add Shot
                   </button>
                   <button
                     type="button"
@@ -1810,7 +1841,7 @@ export default function TacticalPlaySurface() {
                   </button>
                 ) : null}
               </div>
-              <button type="button" style={MP_DONE} onClick={() => setPassesOpen(false)}>
+              <button type="button" style={MP_DONE} onClick={() => { setPassesOpen(false); setShotOpen(false); }}>
                 Done
               </button>
             </div>
