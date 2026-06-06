@@ -572,7 +572,12 @@ export async function createMovementCanvasShell(
       releaseDrag();
       releaseRouteHandleDrag();
       clearRouteDraft();
-      ballStateAtPlayStart = { ...ballState };
+      // Restore ball to coach-configured start state rather than capturing current
+      // (post-play) state — prevents ball looping back to previous pass destination.
+      activeBallPass = null;
+      ballState = { ...ballStateAtPlayStart };
+      tokenLayer.setBallCarrier(ballStateAtPlayStart.carrierId ?? null);
+      emitBallState();
     }
     orchestrator.start();
   };
@@ -593,6 +598,7 @@ export async function createMovementCanvasShell(
       }
     }
     ballState = { ...ballStateAtPlayStart };
+    tokenLayer.setBallCarrier(ballStateAtPlayStart.carrierId ?? null);
     syncBallPosition();
     emitBallState();
   };
