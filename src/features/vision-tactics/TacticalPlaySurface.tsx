@@ -131,28 +131,18 @@ const CTRL_BUBBLE_STYLE: CSSProperties = {
   boxShadow: "0 12px 28px rgba(0, 4, 14, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.18)",
 };
 
-const PV_BADGE_STYLE: CSSProperties = {
+const WATERMARK_STYLE: CSSProperties = {
   position: "fixed",
-  left: "max(12px, calc(env(safe-area-inset-left, 0px) + 10px))",
-  bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
-  zIndex: 21,
-  height: "22px",
-  minWidth: "32px",
-  borderRadius: "999px",
-  border: "1px solid rgba(180, 210, 255, 0.16)",
-  background: "rgba(6, 14, 30, 0.58)",
-  color: "rgba(220, 235, 255, 0.88)",
+  right: "max(14px, calc(env(safe-area-inset-right, 0px) + 12px))",
+  bottom: "max(14px, calc(env(safe-area-inset-bottom, 0px) + 12px))",
+  zIndex: 10,
+  color: "rgba(180, 210, 255, 0.28)",
   fontFamily: "Inter, system-ui, sans-serif",
   fontSize: "9px",
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "0 8px",
-  backdropFilter: "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
+  fontWeight: 600,
+  letterSpacing: "0.04em",
+  pointerEvents: "none",
+  userSelect: "none",
 };
 
 const CONTROL_PANEL_STYLE: CSSProperties = {
@@ -313,6 +303,8 @@ export default function TacticalPlaySurface() {
   const [ballOnPitch, setBallOnPitch] = useState(false);
   type BallMenuStep = "root" | "football-size" | "sliotar-size" | "existing";
   const [ballMenuStep, setBallMenuStep] = useState<BallMenuStep | null>(null);
+  const [shootStep, setShootStep] = useState<null | "pick-delay">(null);
+  const shootTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [appViewportHeight, setAppViewportHeight] = useState(() => getTPViewportHeight());
   const [startFlash, setStartFlash] = useState(false);
   const [presetsOpen, setPresetsOpen] = useState(false);
@@ -459,8 +451,19 @@ export default function TacticalPlaySurface() {
     if (isPlaying) {
       setIsControlsOpen(false);
       setBallMenuStep(null);
+      setShootStep(null);
     }
   }, [isPlaying]);
+
+  useEffect(() => {
+    const ref = shootTimeoutRef;
+    return () => {
+      if (ref.current != null) {
+        clearTimeout(ref.current);
+        ref.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!isControlsOpen) {
@@ -566,6 +569,35 @@ export default function TacticalPlaySurface() {
     shell.giveBall(token.id);
   };
 
+  const passHere = () => {
+    const shell = shellRef.current;
+    const token = selectedToken;
+    if (!shell || !token) return;
+    setShootStep(null);
+    shell.passBallTo(token.id);
+  };
+
+  const fireShot = () => {
+    shellRef.current?.shootToGoal();
+    setShootStep(null);
+  };
+
+  const onShootDelayPick = (delayMs: number) => {
+    if (shootTimeoutRef.current != null) {
+      clearTimeout(shootTimeoutRef.current);
+      shootTimeoutRef.current = null;
+    }
+    setShootStep(null);
+    if (delayMs <= 0) {
+      fireShot();
+    } else {
+      shootTimeoutRef.current = setTimeout(() => {
+        shootTimeoutRef.current = null;
+        fireShot();
+      }, delayMs);
+    }
+  };
+
   const onBallButtonPress = () => {
     setPresetsOpen(false);
     if (ballOnPitch) {
@@ -655,7 +687,7 @@ export default function TacticalPlaySurface() {
 
         <div style={INFO_PILL_STYLE}>{coachInfoLabel}</div>
 
-        <div style={PV_BADGE_STYLE}>PV</div>
+        <div style={WATERMARK_STYLE}>PáircVision</div>
         <button type="button" style={CTRL_BUBBLE_STYLE} onClick={() => setIsControlsOpen((prev) => !prev)}>
           CTRL
         </button>
@@ -797,6 +829,35 @@ export default function TacticalPlaySurface() {
                       {selectedHasBall ? "Has Ball" : "Give Ball"}
                     </button>
                   ) : null}
+                  {selectedToken && ballCarrierId && selectedToken.id !== ballCarrierId && !modeIsPlaybackLocked ? (
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={passHere}>
+                      Pass Here
+                    </button>
+                  ) : null}
+                  {ballCarrierId && !modeIsPlaybackLocked ? (
+                    <>
+                      <button
+                        type="button"
+                        style={shootStep === "pick-delay" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                        onClick={() => setShootStep((prev) => (prev === "pick-delay" ? null : "pick-delay"))}
+                      >
+                        Shoot
+                      </button>
+                      {shootStep === "pick-delay" ? (
+                        <>
+                          <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onShootDelayPick(0)}>
+                            Now
+                          </button>
+                          <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onShootDelayPick(1000)}>
+                            +1s
+                          </button>
+                          <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onShootDelayPick(2000)}>
+                            +2s
+                          </button>
+                        </>
+                      ) : null}
+                    </>
+                  ) : null}
                 </>
               ) : null}
 
@@ -862,7 +923,7 @@ export default function TacticalPlaySurface() {
                     onClick={onPlayAllPress}
                     disabled={playAllDisabled}
                   >
-                    Play All
+                    Play
                   </button>
                   <button
                     type="button"
@@ -910,7 +971,7 @@ export default function TacticalPlaySurface() {
               onClick={onPlayResumePress}
               disabled={isPlaying}
             >
-              {isPaused ? "Resume" : "Play/Resume"}
+              {isPaused ? "Resume" : "Play"}
             </button>
             <button
               type="button"

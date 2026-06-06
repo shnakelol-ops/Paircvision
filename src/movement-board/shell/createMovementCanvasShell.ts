@@ -55,11 +55,39 @@ type RouteHandleDragState = {
   offsetWorld: { x: number; y: number };
 } | null;
 
+type BallTween = {
+  fromX: number;
+  fromY: number;
+  ctrlX: number;
+  ctrlY: number;
+  toX: number;
+  toY: number;
+  elapsedMs: number;
+  durationMs: number;
+};
+
 function clampWorldPoint(point: { x: number; y: number }): { x: number; y: number } {
   return {
     x: Math.max(0, Math.min(WORLD_SIZE.width, point.x)),
     y: Math.max(0, Math.min(WORLD_SIZE.height, point.y)),
   };
+}
+
+function smoothstep(t: number): number {
+  const c = Math.max(0, Math.min(1, t));
+  return c * c * (3 - 2 * c);
+}
+
+function ballTweenPosition(tween: BallTween, t: number): { x: number; y: number } {
+  const u = 1 - t;
+  return {
+    x: u * u * tween.fromX + 2 * u * t * tween.ctrlX + t * t * tween.toX,
+    y: u * u * tween.fromY + 2 * u * t * tween.ctrlY + t * t * tween.toY,
+  };
+}
+
+function passDurationMs(normDistance: number): number {
+  return Math.max(850, Math.min(1800, normDistance * 24));
 }
 
 function clonePoint(point: NormalizedPoint): NormalizedPoint {
@@ -220,6 +248,7 @@ export async function createMovementCanvasShell(
   const ballLayer = createBallLayer(ballLayerContainer);
   let ballState: BallState = {};
   let ballStateAtPlayStart: BallState = {};
+  let activeBallTween: BallTween | null = null;
 
   const BALL_CARRIER_OFFSET_X = 3.5;
   const BALL_CARRIER_OFFSET_Y = -2.5;
@@ -513,6 +542,7 @@ export async function createMovementCanvasShell(
   };
 
   const reset = () => {
+    activeBallTween = null;
     orchestrator.stop();
     clearRouteDraft();
     releaseDrag();
@@ -744,7 +774,19 @@ export async function createMovementCanvasShell(
 
   const tick = () => {
     orchestrator.step(app.ticker.deltaMS);
-    syncBallPosition();
+    if (activeBallTween) {
+      activeBallTween.elapsedMs += app.ticker.deltaMS;
+      const rawT = Math.min(1, activeBallTween.elapsedMs / activeBallTween.durationMs);
+      const pos = ballTweenPosition(activeBallTween, smoothstep(rawT));
+      ballLayer.setBallPosition(pos.x, pos.y);
+      ballLayer.setVisible(true);
+      if (rawT >= 1) {
+        activeBallTween = null;
+        syncBallPosition();
+      }
+    } else {
+      syncBallPosition();
+    }
   };
   app.ticker.add(tick);
 
@@ -852,12 +894,119 @@ export async function createMovementCanvasShell(
     },
     giveBall: (playerId) => {
       if (!tokenLayer.getTokenById(playerId)) return;
+      activeBallTween = null;
       ballState = { carrierId: playerId, ballType: ballState.ballType ?? "footballSmall" };
       if (!orchestrator.isLocked()) {
         ballStateAtPlayStart = { ...ballState };
       }
       syncBallPosition();
       emitBallState();
+    },
+    passBallTo: (targetPlayerId) => {
+      if (!tokenLayer.getTokenById(targetPlayerId)) return;
+      const ballType = ballState.ballType ?? "footballSmall";
+
+      // Resolve current ball world position from carrier or free position.
+      let fromX: number;
+      let fromY: number;
+      if (ballState.carrierId) {
+        const worldPos = tokenLayer.getTokenWorldPosition(ballState.carrierId);
+        if (!worldPos) {
+          // Carrier position unavailable — fall back to instant snap.
+          activeBallTween = null;
+          ballState = { carrierId: targetPlayerId, ballType };
+          if (!orchestrator.isLocked()) ballStateAtPlayStart = { ...ballState };
+          syncBallPosition();
+          emitBallState();
+          return;
+        }
+        fromX = worldPos.x + BALL_CARRIER_OFFSET_X;
+        fromY = worldPos.y + BALL_CARRIER_OFFSET_Y;
+      } else if (ballState.position) {
+        const worldPos = mapper.normalizedToWorld(ballState.position);
+        fromX = worldPos.x;
+        fromY = worldPos.y;
+      } else {
+        // Ball not on pitch — just give it.
+        activeBallTween = null;
+        ballState = { carrierId: targetPlayerId, ballType };
+        if (!orchestrator.isLocked()) ballStateAtPlayStart = { ...ballState };
+        syncBallPosition();
+        emitBallState();
+        return;
+      }
+
+      // Resolve target world position.
+      const targetWorldPos = tokenLayer.getTokenWorldPosition(targetPlayerId);
+      if (!targetWorldPos) return;
+      const toX = targetWorldPos.x + BALL_CARRIER_OFFSET_X;
+      const toY = targetWorldPos.y + BALL_CARRIER_OFFSET_Y;
+
+      // Quadratic Bezier arc: control point offset perpendicular to the pass line.
+      const dx = toX - fromX;
+      const dy = toY - fromY;
+      const len = Math.hypot(dx, dy);
+      const arcHeight = len * 0.15;
+      const ctrlX = (fromX + toX) / 2 + (len > 0 ? (-dy / len) * arcHeight : 0);
+      const ctrlY = (fromY + toY) / 2 + (len > 0 ? (dx / len) * arcHeight : 0);
+
+      // Duration from normalized distance.
+      const fromNorm = mapper.worldToNormalized({ x: fromX, y: fromY });
+      const toNorm = mapper.worldToNormalized({ x: toX, y: toY });
+      const normDist = Math.hypot(toNorm.x - fromNorm.x, toNorm.y - fromNorm.y);
+      const durationMs = passDurationMs(normDist);
+
+      // Commit ball state change immediately so the carrier is updated.
+      ballState = { carrierId: targetPlayerId, ballType };
+      if (!orchestrator.isLocked()) ballStateAtPlayStart = { ...ballState };
+      emitBallState();
+
+      activeBallTween = { fromX, fromY, ctrlX, ctrlY, toX, toY, elapsedMs: 0, durationMs };
+    },
+    shootToGoal: () => {
+      if (!ballState.carrierId && !ballState.position) return;
+      const ballType = ballState.ballType ?? "footballSmall";
+
+      let fromX: number;
+      let fromY: number;
+      if (ballState.carrierId) {
+        const worldPos = tokenLayer.getTokenWorldPosition(ballState.carrierId);
+        if (!worldPos) return;
+        fromX = worldPos.x + BALL_CARRIER_OFFSET_X;
+        fromY = worldPos.y + BALL_CARRIER_OFFSET_Y;
+      } else if (ballState.position) {
+        const worldPos = mapper.normalizedToWorld(ballState.position);
+        fromX = worldPos.x;
+        fromY = worldPos.y;
+      } else {
+        return;
+      }
+
+      // Goal centre: x=100 (attacking end), y=50 (width centre) in normalised space.
+      const goalNorm: NormalizedPoint = { x: 100, y: 50 };
+      const goalWorld = mapper.normalizedToWorld(goalNorm);
+      const toX = goalWorld.x;
+      const toY = goalWorld.y;
+
+      // Slight upward arc toward goal.
+      const dx = toX - fromX;
+      const dy = toY - fromY;
+      const len = Math.hypot(dx, dy);
+      const arcHeight = len * 0.12;
+      const ctrlX = (fromX + toX) / 2 + (len > 0 ? (-dy / len) * arcHeight : 0);
+      const ctrlY = (fromY + toY) / 2 + (len > 0 ? (dx / len) * arcHeight : 0);
+
+      const fromNorm = mapper.worldToNormalized({ x: fromX, y: fromY });
+      const normDist = Math.hypot(goalNorm.x - fromNorm.x, goalNorm.y - fromNorm.y);
+      const durationMs = passDurationMs(normDist);
+
+      // Ball leaves carrier and rests at goal position.
+      const clampedGoal = clampNormalizedPoint(goalNorm);
+      ballState = { position: clampedGoal, ballType };
+      if (!orchestrator.isLocked()) ballStateAtPlayStart = { ...ballState };
+      emitBallState();
+
+      activeBallTween = { fromX, fromY, ctrlX, ctrlY, toX, toY, elapsedMs: 0, durationMs };
     },
     placeBall: (ballType: BallType, position?) => {
       const pos = position ?? { x: 50, y: 50 };

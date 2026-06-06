@@ -79,6 +79,10 @@ export type MovementCanvasShellHandle = {
   reset: () => void;
   setStartPositions: () => void;
   giveBall: (playerId: string) => void;
+  /** Animated pass: ball travels from current carrier to targetPlayerId over distance-based duration. */
+  passBallTo: (targetPlayerId: string) => void;
+  /** Animated shot: ball travels from current carrier to the attacking goal centre. */
+  shootToGoal: () => void;
   placeBall: (ballType: BallType, position?: NormalizedPoint) => void;
   removeBall: () => void;
   freeBall: () => void;
