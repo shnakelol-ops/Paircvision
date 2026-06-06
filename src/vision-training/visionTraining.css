@@ -1,0 +1,386 @@
+/* ─── Shared Vision Training screen styles ─── */
+
+.vt-page-shell {
+  position: relative;
+  min-height: 100dvh;
+  background: #050c14;
+  overflow-x: hidden;
+}
+
+.vt-shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  color: #fff;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.vt-container {
+  max-width: 430px;
+  margin: 0 auto;
+  padding:
+    calc(14px + env(safe-area-inset-top, 0px))
+    14px
+    calc(36px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  gap: 6px;
+}
+
+/* ─── Header ─── */
+
+.vt-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.vt-back-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #17324a;
+  background: rgba(10, 33, 52, 0.85);
+  color: #cbd5e1;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-top: 3px;
+  transition: opacity 120ms ease;
+}
+
+.vt-back-btn:active { opacity: 0.65; }
+
+.vt-heading {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.2px;
+}
+
+.vt-subheading {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: #7a95ad;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+/* ─── Section labels ─── */
+
+.vt-section-label {
+  margin: 10px 2px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5a7080;
+}
+
+/* ─── Generic panel / card ─── */
+
+.vt-panel {
+  border: 1px solid #17324a;
+  border-radius: 18px;
+  background: #0a2134;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.vt-panel-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #d0dde8;
+}
+
+.vt-panel-sub {
+  margin: 0;
+  font-size: 11px;
+  color: #5e7a8a;
+  font-weight: 500;
+}
+
+/* ─── Buttons ─── */
+
+.vt-primary-btn {
+  width: 100%;
+  border: 1px solid #16a34a;
+  border-radius: 12px;
+  background: #0a9349;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 14px;
+  text-align: center;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 120ms ease, transform 100ms ease;
+}
+
+.vt-primary-btn:active { opacity: 0.85; transform: scale(0.98); }
+.vt-primary-btn:disabled { opacity: 0.35; cursor: default; transform: none; }
+
+.vt-ghost-btn {
+  width: 100%;
+  border: 1px solid #1c3a52;
+  border-radius: 12px;
+  background: transparent;
+  color: #7a95ad;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 11px;
+  text-align: center;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 120ms ease;
+}
+
+.vt-ghost-btn:active { opacity: 0.7; }
+.vt-ghost-btn:disabled { opacity: 0.3; cursor: default; }
+
+/* ─── Form ─── */
+
+.vt-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #7a95ad;
+  display: grid;
+  gap: 6px;
+}
+
+.vt-input {
+  width: 100%;
+  border: 1px solid #28445d;
+  background: #0a2236;
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  color-scheme: dark;
+  transition: border-color 120ms ease;
+}
+
+.vt-input:focus { border-color: #2563eb; }
+.vt-input::placeholder { color: #4a6070; }
+
+/* ─── Home: Training Hub panel ─── */
+
+.vt-hub-panel {
+  border: 1px solid #17324a;
+  border-radius: 18px;
+  background: #0a2134;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.vt-hub-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.vt-hub-card {
+  border: 1px solid #17324a;
+  border-radius: 14px;
+  background: #081726;
+  padding: 12px 10px;
+  text-align: left;
+  min-height: 68px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.vt-hub-card--disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.vt-hub-card--wide {
+  grid-column: 1 / -1;
+  min-height: 52px;
+}
+
+.vt-hub-card:not(.vt-hub-card--disabled) {
+  cursor: pointer;
+  transition: opacity 120ms ease, transform 100ms ease;
+}
+
+.vt-hub-card:not(.vt-hub-card--disabled):active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+.vt-hub-card-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #c8d8e8;
+  line-height: 1.2;
+}
+
+.vt-hub-card-sub {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #4a6070;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.vt-hub-card:not(.vt-hub-card--disabled) .vt-hub-card-sub {
+  color: #2d7a4a;
+}
+
+/* ─── Home: Performance Tracker panel ─── */
+
+.vt-tracker-panel {
+  border: 1px solid #1c3d5c;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #0d2438 0%, #09192a 100%);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.vt-tracker-panel-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #eef4ff;
+}
+
+.vt-tracker-panel-sub {
+  margin: 0;
+  font-size: 12px;
+  color: #7a96b0;
+  line-height: 1.4;
+}
+
+/* ─── Attendance: summary strip ─── */
+
+.vt-summary-strip {
+  border: 1px solid #17324a;
+  border-radius: 12px;
+  background: #081726;
+  padding: 10px 14px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.vt-summary-chip {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.vt-summary-chip--present { color: #4ade80; }
+.vt-summary-chip--late    { color: #fbbf24; }
+.vt-summary-chip--injured { color: #fb923c; }
+.vt-summary-chip--absent  { color: #f87171; }
+
+/* ─── Attendance: player list ─── */
+
+.vt-player-list {
+  display: grid;
+  gap: 8px;
+}
+
+.vt-player-card {
+  border: 1px solid #17324a;
+  border-radius: 14px;
+  background: #081726;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.vt-player-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.vt-player-number {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #0a2236;
+  border: 1px solid #1c3a52;
+  color: #f0f6ff;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vt-player-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #dce8f4;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Attendance: status buttons ─── */
+
+.vt-status-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.vt-status-btn {
+  border-radius: 8px;
+  border: 1px solid #1a3248;
+  background: #0a1d2e;
+  color: #4a6070;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 7px 4px;
+  text-align: center;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+  transition: background-color 80ms ease, border-color 80ms ease, color 80ms ease, transform 80ms ease;
+}
+
+.vt-status-btn:active { transform: scale(0.95); }
+
+.vt-status-btn--present.vt-status-btn--active {
+  background: #052e16;
+  border-color: #16a34a;
+  color: #4ade80;
+}
+
+.vt-status-btn--late.vt-status-btn--active {
+  background: #2d1a00;
+  border-color: #d97706;
+  color: #fbbf24;
+}
+
+.vt-status-btn--injured.vt-status-btn--active {
+  background: #2a1500;
+  border-color: #c2410c;
+  color: #fb923c;
+}
+
+.vt-status-btn--absent.vt-status-btn--active {
+  background: #2a0d0d;
+  border-color: #dc2626;
+  color: #f87171;
+}
