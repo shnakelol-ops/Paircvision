@@ -269,7 +269,8 @@ export async function createMovementCanvasShell(
       tokenLayer.setBallCarrier(null);
       emitBallState();
     },
-    onShotStart: (_shooterId) => {
+    onShotStart: (shooterId) => {
+      if (ballState.carrierId !== shooterId) return;
       shootToGoalInternal();
     },
   });
@@ -852,6 +853,7 @@ export async function createMovementCanvasShell(
           ballState = { carrierId: toPlayerId, ballType: ballState.ballType ?? "footballSmall" };
           tokenLayer.setBallCarrier(toPlayerId);
           emitBallState();
+          orchestrator.notifyPassLanded(toPlayerId);
         }
       }
     }
