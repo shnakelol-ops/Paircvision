@@ -234,14 +234,6 @@ const TOOL_DISABLED_STYLE: CSSProperties = {
   cursor: "not-allowed",
 };
 
-const TOOL_PROMINENT_STYLE: CSSProperties = {
-  ...TOOL_BUTTON_STYLE,
-  border: "1px solid rgba(250, 180, 50, 0.62)",
-  background: "rgba(80, 48, 8, 0.84)",
-  color: "#fde68a",
-  boxShadow: "0 0 0 1px rgba(250, 180, 50, 0.22), 0 6px 18px rgba(0, 4, 14, 0.36), inset 0 1px 2px rgba(255, 255, 255, 0.14)",
-};
-
 const SHOOT_HINT_STYLE: CSSProperties = {
   fontSize: "9px",
   fontFamily: "Inter, system-ui, sans-serif",
@@ -276,6 +268,47 @@ const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
   padding: "0 8px",
 };
 
+type PassSeqEvent =
+  | { type: "pass"; fromId: string; fromNum: number; toId: string; toNum: number }
+  | { type: "shot"; shooterId: string; shooterNum: number; delayMs: number };
+
+const SEQ_LIST_STYLE: CSSProperties = {
+  borderRadius: "12px",
+  border: "1px solid rgba(180, 210, 255, 0.15)",
+  background: "rgba(6, 14, 30, 0.68)",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+  boxShadow: "0 8px 20px rgba(0, 4, 14, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.10)",
+  padding: "5px 8px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "3px",
+};
+
+const SEQ_EVENT_STYLE: CSSProperties = {
+  fontSize: "10px",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontWeight: 600,
+  color: "rgba(220, 235, 255, 0.88)",
+  letterSpacing: "0.03em",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "6px",
+};
+
+const SEQ_REMOVE_STYLE: CSSProperties = {
+  fontSize: "10px",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontWeight: 700,
+  color: "rgba(220, 235, 255, 0.40)",
+  background: "none",
+  border: "none",
+  padding: "0 2px",
+  cursor: "pointer",
+  lineHeight: 1,
+};
+
 const HINT_PILL_STYLE: CSSProperties = {
   position: "fixed",
   bottom: "max(54px, calc(env(safe-area-inset-bottom, 0px) + 52px))",
@@ -293,14 +326,10 @@ const HINT_PILL_STYLE: CSSProperties = {
 };
 
 export default function TacticalPlaySurface() {
-  type MovementMenuMode = "move" | "route" | "play";
+  type MovementMenuMode = "move" | "route" | "passes" | "play";
 
   const toShellMode = (menuMode: MovementMenuMode): MovementBoardMode =>
-    menuMode === "route"
-      ? "route"
-      : menuMode === "play"
-        ? "play"
-        : "setup";
+    menuMode === "route" ? "route" : menuMode === "play" ? "play" : "setup";
 
   const toMenuMode = (shellMode: MovementBoardMode): MovementMenuMode =>
     shellMode === "route" ? "route" : shellMode === "play" ? "play" : "move";
@@ -324,11 +353,26 @@ export default function TacticalPlaySurface() {
   const [ballOnPitch, setBallOnPitch] = useState(false);
   type BallMenuStep = "root" | "football-size" | "sliotar-size" | "existing";
   const [ballMenuStep, setBallMenuStep] = useState<BallMenuStep | null>(null);
-  const [shootStep, setShootStep] = useState<null | "pick-delay">(null);
-  const shootTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [appViewportHeight, setAppViewportHeight] = useState(() => getTPViewportHeight());
   const [startFlash, setStartFlash] = useState(false);
   const [presetsOpen, setPresetsOpen] = useState(false);
+
+  // Pass sequence authoring
+  const [allTokens, setAllTokens] = useState<MovementBoardToken[]>([]);
+  const [passSequence, setPassSequence] = useState<PassSeqEvent[]>([]);
+  const [seqPickingTarget, setSeqPickingTarget] = useState(false);
+  const [seqPickingShot, setSeqPickingShot] = useState(false);
+  const seqTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Mutable refs so stale shell callbacks can always read current React state
+  const seqPickingTargetRef = useRef(false);
+  seqPickingTargetRef.current = seqPickingTarget;
+  const passSequenceRef = useRef<PassSeqEvent[]>([]);
+  passSequenceRef.current = passSequence;
+  const allTokensRef = useRef<MovementBoardToken[]>([]);
+  allTokensRef.current = allTokens;
+  const ballCarrierIdRef = useRef<string | null>(null);
+  ballCarrierIdRef.current = ballCarrierId;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -383,9 +427,30 @@ export default function TacticalPlaySurface() {
         dragEnabled: !isPortrait,
         onTokenMove: (token) => {
           setSelectedToken((previous) => (previous?.id === token.id ? token : previous));
+          setAllTokens((prev) => prev.map((t) => (t.id === token.id ? token : t)));
         },
         onSelectedTokenChange: (token) => {
           setSelectedToken(token);
+          if (!seqPickingTargetRef.current || !token) return;
+          const seq = passSequenceRef.current;
+          const tokens = allTokensRef.current;
+          const carrier = ballCarrierIdRef.current;
+          let fromId: string | null = carrier;
+          let fromNum = tokens.find((t) => t.id === fromId)?.number ?? 0;
+          for (let i = seq.length - 1; i >= 0; i--) {
+            const ev = seq[i]!;
+            if (ev.type === "pass") { fromId = ev.toId; fromNum = ev.toNum; break; }
+            if (ev.type === "shot") { fromId = null; break; }
+          }
+          if (!fromId || fromId === token.id) return;
+          setPassSequence((prev) => [...prev, {
+            type: "pass" as const,
+            fromId,
+            fromNum,
+            toId: token.id,
+            toNum: token.number,
+          }]);
+          setSeqPickingTarget(false);
         },
         onRoutesChange: (routes) => {
           setRouteCount(routes.length);
@@ -419,6 +484,7 @@ export default function TacticalPlaySurface() {
         const initialBallState = shell.getBallState();
         setBallCarrierId(initialBallState.carrierId ?? null);
         setBallOnPitch(!!(initialBallState.carrierId || initialBallState.position));
+        setAllTokens(shell.getTokens());
         shell.setDragEnabled(!isPortrait);
         destroyShell = shell.destroy;
       });
@@ -462,6 +528,8 @@ export default function TacticalPlaySurface() {
 
   useEffect(() => {
     shellRef.current?.setMode(toShellMode(menuMode));
+    setSeqPickingTarget(false);
+    setSeqPickingShot(false);
   }, [menuMode]);
 
   useEffect(() => {
@@ -472,34 +540,48 @@ export default function TacticalPlaySurface() {
     if (isPlaying) {
       setIsControlsOpen(false);
       setBallMenuStep(null);
-      setShootStep(null);
+      setSeqPickingTarget(false);
+      setSeqPickingShot(false);
     }
   }, [isPlaying]);
 
   useEffect(() => {
-    const ref = shootTimeoutRef;
-    return () => {
-      if (ref.current != null) {
-        clearTimeout(ref.current);
-        ref.current = null;
-      }
-    };
+    const ref = seqTimeoutsRef;
+    return () => { ref.current.forEach(clearTimeout); };
   }, []);
 
   useEffect(() => {
     if (!isControlsOpen) {
       setBallMenuStep(null);
       setPresetsOpen(false);
+      setSeqPickingTarget(false);
+      setSeqPickingShot(false);
     }
   }, [isControlsOpen]);
 
   const modeLabelByMenu: Record<MovementMenuMode, string> = {
     move: "Move",
     route: "Route",
+    passes: "Passes",
     play: "Play",
   };
 
   const selectedHasBall = selectedToken != null && selectedToken.id === ballCarrierId;
+
+  // Derived sequence state
+  const seqIsTerminated =
+    passSequence.length > 0 && passSequence[passSequence.length - 1]!.type === "shot";
+  const seqNextFrom: string | null = seqIsTerminated
+    ? null
+    : (() => {
+        for (let i = passSequence.length - 1; i >= 0; i--) {
+          const ev = passSequence[i]!;
+          if (ev.type === "pass") return ev.toId;
+        }
+        return ballCarrierId;
+      })();
+  const seqNextFromNum: number | null =
+    seqNextFrom != null ? (allTokens.find((t) => t.id === seqNextFrom)?.number ?? null) : null;
   const coachInfoLabel = selectedToken
     ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""} · Movements ${routeCount}`
     : ballCarrierId
@@ -590,33 +672,42 @@ export default function TacticalPlaySurface() {
     shell.giveBall(token.id);
   };
 
-  const passHere = () => {
+  const addShotToSeq = (delayMs: number) => {
+    const shooterId = seqNextFrom ?? "";
+    const shooterNum = allTokens.find((t) => t.id === shooterId)?.number ?? 0;
+    setPassSequence((prev) => [...prev, { type: "shot", shooterId, shooterNum, delayMs }]);
+    setSeqPickingShot(false);
+  };
+
+  const playPassSequence = () => {
     const shell = shellRef.current;
-    const token = selectedToken;
-    if (!shell || !token) return;
-    setShootStep(null);
-    shell.passBallTo(token.id);
-  };
-
-  const fireShot = () => {
-    shellRef.current?.shootToGoal();
-    setShootStep(null);
-  };
-
-  const onShootDelayPick = (delayMs: number) => {
-    if (shootTimeoutRef.current != null) {
-      clearTimeout(shootTimeoutRef.current);
-      shootTimeoutRef.current = null;
+    if (!shell || passSequence.length === 0) return;
+    seqTimeoutsRef.current.forEach(clearTimeout);
+    seqTimeoutsRef.current = [];
+    const tokens = shell.getTokens();
+    let cumulativeDelay = 0;
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+    for (const event of passSequence) {
+      if (event.type === "pass") {
+        const fromToken = tokens.find((t) => t.id === event.fromId);
+        const toToken = tokens.find((t) => t.id === event.toId);
+        const delay = cumulativeDelay;
+        timeouts.push(setTimeout(() => { shellRef.current?.passBallTo(event.toId); }, delay));
+        if (fromToken && toToken) {
+          const dx = toToken.position.x - fromToken.position.x;
+          const dy = toToken.position.y - fromToken.position.y;
+          cumulativeDelay += Math.max(850, Math.min(1800, Math.sqrt(dx * dx + dy * dy) * 24));
+        } else {
+          cumulativeDelay += 1200;
+        }
+      } else {
+        cumulativeDelay += event.delayMs;
+        const delay = cumulativeDelay;
+        timeouts.push(setTimeout(() => { shellRef.current?.shootToGoal(); }, delay));
+        cumulativeDelay += 1800;
+      }
     }
-    setShootStep(null);
-    if (delayMs <= 0) {
-      fireShot();
-    } else {
-      shootTimeoutRef.current = setTimeout(() => {
-        shootTimeoutRef.current = null;
-        fireShot();
-      }, delayMs);
-    }
+    seqTimeoutsRef.current = timeouts;
   };
 
   const onBallButtonPress = () => {
@@ -645,6 +736,7 @@ export default function TacticalPlaySurface() {
     // Move players to preset positions and anchor reset to them
     shell.setTokens(applyPreset(shell.getTokens(), preset));
     shell.setStartPositions();
+    setAllTokens(shell.getTokens());
     setPresetsOpen(false);
   };
 
@@ -723,6 +815,7 @@ export default function TacticalPlaySurface() {
               {([
                 { id: "move", label: "Move" },
                 { id: "route", label: "Route" },
+                { id: "passes", label: "Passes" },
                 { id: "play", label: "Play" },
               ] as const).map((item) => (
                 <button
@@ -824,6 +917,29 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
+            {menuMode === "passes" && passSequence.length > 0 ? (
+              <div style={SEQ_LIST_STYLE}>
+                {passSequence.map((ev, i) => (
+                  <div key={i} style={SEQ_EVENT_STYLE}>
+                    <span>
+                      {ev.type === "pass"
+                        ? `P${ev.fromNum} → P${ev.toNum}`
+                        : ev.delayMs > 0
+                          ? `P${ev.shooterNum} → Goal  (+${ev.delayMs / 1000}s)`
+                          : `P${ev.shooterNum} → Goal`}
+                    </span>
+                    <button
+                      type="button"
+                      style={SEQ_REMOVE_STYLE}
+                      onClick={() => setPassSequence((prev) => prev.filter((_, j) => j !== i))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
             <div style={PANEL_ROW_STYLE}>
               {menuMode === "move" ? (
                 <>
@@ -844,51 +960,79 @@ export default function TacticalPlaySurface() {
                   {selectedToken && !modeIsPlaybackLocked ? (
                     <button
                       type="button"
-                      style={
-                        selectedHasBall
-                          ? TOOL_ACTIVE_STYLE
-                          : ballOnPitch && !ballCarrierId
-                            ? TOOL_PROMINENT_STYLE
-                            : TOOL_BUTTON_STYLE
-                      }
+                      style={selectedHasBall ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                       onClick={giveSelectedPlayerBall}
                     >
                       {selectedHasBall ? "Has Ball" : "Give Ball"}
                     </button>
                   ) : null}
-                  {selectedToken && ballCarrierId && selectedToken.id !== ballCarrierId && !modeIsPlaybackLocked ? (
-                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={passHere}>
-                      Pass Here
-                    </button>
-                  ) : null}
-                  {ballCarrierId && !modeIsPlaybackLocked ? (
+                </>
+              ) : null}
+
+              {menuMode === "passes" ? (
+                <>
+                  {!seqPickingTarget && !seqPickingShot ? (
                     <>
-                      <button
-                        type="button"
-                        style={shootStep === "pick-delay" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                        onClick={() => setShootStep((prev) => (prev === "pick-delay" ? null : "pick-delay"))}
-                      >
-                        Shoot
-                      </button>
-                      {shootStep === "pick-delay" ? (
-                        <>
-                          <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onShootDelayPick(0)}>
-                            Now
-                          </button>
-                          <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onShootDelayPick(1000)}>
-                            +1s
-                          </button>
-                          <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onShootDelayPick(2000)}>
-                            +2s
-                          </button>
-                        </>
+                      {!seqIsTerminated ? (
+                        <button
+                          type="button"
+                          style={seqNextFrom ? TOOL_BUTTON_STYLE : TOOL_DISABLED_STYLE}
+                          disabled={!seqNextFrom}
+                          onClick={() => setSeqPickingTarget(true)}
+                        >
+                          + Pass
+                        </button>
+                      ) : null}
+                      {!seqIsTerminated ? (
+                        <button
+                          type="button"
+                          style={seqNextFrom ? TOOL_BUTTON_STYLE : TOOL_DISABLED_STYLE}
+                          disabled={!seqNextFrom}
+                          onClick={() => setSeqPickingShot(true)}
+                        >
+                          + Shoot
+                        </button>
+                      ) : null}
+                      {passSequence.length > 0 ? (
+                        <button type="button" style={TOOL_BUTTON_STYLE} onClick={playPassSequence}>
+                          Play
+                        </button>
+                      ) : null}
+                      {passSequence.length > 0 ? (
+                        <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setPassSequence([])}>
+                          Clear
+                        </button>
+                      ) : null}
+                      {!seqNextFrom && !seqIsTerminated ? (
+                        <span style={SHOOT_HINT_STYLE}>Give Ball to a player first</span>
                       ) : null}
                     </>
                   ) : null}
-                  {ballOnPitch && !ballCarrierId && !modeIsPlaybackLocked ? (
-                    <span style={SHOOT_HINT_STYLE}>
-                      {selectedToken ? "Give Ball to shoot" : "Select a player → Give Ball to shoot"}
-                    </span>
+                  {seqPickingTarget ? (
+                    <>
+                      <span style={SHOOT_HINT_STYLE}>
+                        {seqNextFromNum != null ? `P${seqNextFromNum} →` : "→"} Tap receiver on pitch
+                      </span>
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setSeqPickingTarget(false)}>
+                        Cancel
+                      </button>
+                    </>
+                  ) : null}
+                  {seqPickingShot ? (
+                    <>
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => addShotToSeq(0)}>
+                        Now
+                      </button>
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => addShotToSeq(1000)}>
+                        +1s
+                      </button>
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => addShotToSeq(2000)}>
+                        +2s
+                      </button>
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setSeqPickingShot(false)}>
+                        Cancel
+                      </button>
+                    </>
                   ) : null}
                 </>
               ) : null}
