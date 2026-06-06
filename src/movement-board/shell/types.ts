@@ -61,6 +61,12 @@ export type TacticalPassEvent = {
   triggeredBy?: string;
 };
 
+export type TacticalShotEvent = {
+  id: string;
+  shooterId: string;
+  delayMs: number;
+};
+
 export type MovementPlaybackState = {
   isPlaying: boolean;
   isPaused: boolean;
@@ -126,6 +132,9 @@ export type MovementCanvasShellHandle = {
   removePassEvent: (id: string) => void;
   passBallTo: (targetPlayerId: string) => void;
   shootToGoal: () => void;
+  addShotEvent: (event: TacticalShotEvent) => void;
+  getShotEvents: () => TacticalShotEvent[];
+  removeShotEvent: (id: string) => void;
   reflow: () => void;
   destroy: () => void;
 };

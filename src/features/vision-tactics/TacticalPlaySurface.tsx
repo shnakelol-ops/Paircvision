@@ -1669,7 +1669,7 @@ export default function TacticalPlaySurface() {
                       <button
                         type="button"
                         style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "11px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
-                        onClick={() => setShotEvents((prev) => prev.filter((e) => e.id !== s.id))}
+                        onClick={() => { setShotEvents((prev) => prev.filter((e) => e.id !== s.id)); shellRef.current?.removeShotEvent(s.id); }}
                       >
                         ×
                       </button>
@@ -1799,13 +1799,10 @@ export default function TacticalPlaySurface() {
                     onClick={() => {
                       const delay = shootDelayMs;
                       const sid = shooterId;
-                      setShotEvents((prev) => [...prev, { id: `shot-${Date.now()}`, shooterId: sid, delayMs: delay }]);
+                      const entry = { id: `shot-${Date.now()}`, shooterId: sid, delayMs: delay };
+                      setShotEvents((prev) => [...prev, entry]);
+                      shellRef.current?.addShotEvent(entry);
                       setShotOpen(false);
-                      if (delay > 0) {
-                        setTimeout(() => { shellRef.current?.shootToGoal(); }, delay);
-                      } else {
-                        shellRef.current?.shootToGoal();
-                      }
                     }}
                   >
                     Add Shot

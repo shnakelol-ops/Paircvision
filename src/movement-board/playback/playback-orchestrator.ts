@@ -1,7 +1,7 @@
 import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
 import { createBasicRouteFollowSession, type BasicRouteFollowSession } from "../movement/basic-route-follow";
 import { sampleRoutePoints } from "../routes/route-sampling";
-import type { MovementPlaybackSpeed, MovementPlaybackState, TacticalPassEvent } from "../shell/types";
+import type { MovementPlaybackSpeed, MovementPlaybackState, TacticalPassEvent, TacticalShotEvent } from "../shell/types";
 
 // Speed increased from 18 to 22 to preserve average travel time after ease-in-out
 // introduces an average speed factor of ~0.82 (22 × 0.82 ≈ 18).
@@ -43,6 +43,12 @@ type PendingPassRun = {
   triggeredBy: string;
 };
 
+type ActiveShotRun = {
+  shotId: string;
+  shooterId: string;
+  delayMs: number;
+};
+
 type TokenRef = { id: string; position: NormalizedPoint };
 
 export type PlaybackOrchestratorCallbacks = {
@@ -59,6 +65,9 @@ export type PlaybackOrchestratorCallbacks = {
   getPassEvents: () => readonly TacticalPassEvent[];
   /** Called when a pass should begin animating — shell handles the visual. */
   onPassStart: (fromPlayerId: string, toPlayerId: string) => void;
+  getShotEvents: () => readonly TacticalShotEvent[];
+  /** Called when a shot delay expires — shell fires the goal animation. */
+  onShotStart: (shooterId: string) => void;
 };
 
 export type PlaybackOrchestrator = {
@@ -93,6 +102,7 @@ export function createPlaybackOrchestrator(
   let pendingTriggerRuns = new Map<string, PendingTriggerRun>();
   let activePassRuns = new Map<string, ActivePassRun>();
   let pendingPassRuns = new Map<string, PendingPassRun>();
+  let activeShotRuns = new Map<string, ActiveShotRun>();
 
   const emitState = () => {
     callbacks.onStateChange({ isPlaying, isPaused });
@@ -106,6 +116,7 @@ export function createPlaybackOrchestrator(
     pendingTriggerRuns.clear();
     activePassRuns.clear();
     pendingPassRuns.clear();
+    activeShotRuns.clear();
   };
 
   const buildRuns = (): {
@@ -113,6 +124,7 @@ export function createPlaybackOrchestrator(
     pending: Map<string, PendingTriggerRun>;
     activePasses: Map<string, ActivePassRun>;
     pendingPasses: Map<string, PendingPassRun>;
+    activeShots: Map<string, ActiveShotRun>;
   } => {
     const tokens = callbacks.getTokens();
     const active = new Map<string, ActivePlaybackRun>();
@@ -188,7 +200,16 @@ export function createPlaybackOrchestrator(
       }
     }
 
-    return { active, pending, activePasses, pendingPasses };
+    const activeShots = new Map<string, ActiveShotRun>();
+    for (const shot of callbacks.getShotEvents()) {
+      activeShots.set(shot.id, {
+        shotId: shot.id,
+        shooterId: shot.shooterId,
+        delayMs: shot.delayMs,
+      });
+    }
+
+    return { active, pending, activePasses, pendingPasses, activeShots };
   };
 
   const stop = (opts?: { keepPausedState?: boolean }) => {
@@ -205,7 +226,8 @@ export function createPlaybackOrchestrator(
       activePlaybackRuns.size > 0 ||
       pendingTriggerRuns.size > 0 ||
       activePassRuns.size > 0 ||
-      pendingPassRuns.size > 0;
+      pendingPassRuns.size > 0 ||
+      activeShotRuns.size > 0;
     if (!isPlaying || !hasWork) return;
 
     const multiplier = PLAYBACK_SPEED_MULTIPLIER[playbackSpeed];
@@ -235,6 +257,20 @@ export function createPlaybackOrchestrator(
     }
     for (const id of firedPassIds) {
       activePassRuns.delete(id);
+    }
+
+    // Advance delayed shot runs; fire any that reach 0.
+    const firedShotIds: string[] = [];
+    for (const run of activeShotRuns.values()) {
+      if (run.delayMs > 0) {
+        run.delayMs = Math.max(0, run.delayMs - deltaMs);
+        if (run.delayMs > 0) continue;
+      }
+      callbacks.onShotStart(run.shooterId);
+      firedShotIds.push(run.shotId);
+    }
+    for (const id of firedShotIds) {
+      activeShotRuns.delete(id);
     }
 
     for (const id of completedIds) {
@@ -282,7 +318,8 @@ export function createPlaybackOrchestrator(
       activePlaybackRuns.size === 0 &&
       pendingTriggerRuns.size === 0 &&
       activePassRuns.size === 0 &&
-      pendingPassRuns.size === 0
+      pendingPassRuns.size === 0 &&
+      activeShotRuns.size === 0
     ) {
       stop();
     }
@@ -297,8 +334,8 @@ export function createPlaybackOrchestrator(
       return;
     }
     isPaused = false;
-    const { active: nextActive, pending: nextPending, activePasses: nextActivePasses, pendingPasses: nextPendingPasses } = buildRuns();
-    if (nextActive.size === 0 && nextPending.size === 0 && nextActivePasses.size === 0 && nextPendingPasses.size === 0) {
+    const { active: nextActive, pending: nextPending, activePasses: nextActivePasses, pendingPasses: nextPendingPasses, activeShots: nextActiveShots } = buildRuns();
+    if (nextActive.size === 0 && nextPending.size === 0 && nextActivePasses.size === 0 && nextPendingPasses.size === 0 && nextActiveShots.size === 0) {
       isPlaying = false;
       emitState();
       return;
@@ -307,6 +344,7 @@ export function createPlaybackOrchestrator(
     pendingTriggerRuns = nextPending;
     activePassRuns = nextActivePasses;
     pendingPassRuns = nextPendingPasses;
+    activeShotRuns = nextActiveShots;
     isPlaying = true;
     emitState();
   };
@@ -336,7 +374,8 @@ export function createPlaybackOrchestrator(
       activePlaybackRuns.size > 0 ||
       pendingTriggerRuns.size > 0 ||
       activePassRuns.size > 0 ||
-      pendingPassRuns.size > 0,
+      pendingPassRuns.size > 0 ||
+      activeShotRuns.size > 0,
     getState: () => ({ isPlaying, isPaused }),
     setSpeed: (speed) => { playbackSpeed = speed; },
     getSpeed: () => playbackSpeed,
