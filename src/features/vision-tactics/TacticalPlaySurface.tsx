@@ -6,15 +6,26 @@ import { createMovementCanvasShell } from "../../movement-board/shell/createMove
 import type {
   BallType,
   MovementBoardMode,
+  MovementBoardRoute,
   MovementBoardToken,
   MovementCanvasShellHandle,
+  MovementConcept,
   MovementPlaybackSpeed,
   MovementRouteEditState,
   PremiumPlayerTokenColor,
+  TacticalPassEvent,
   TokenRendererName,
   TokenSize,
 } from "../../movement-board/shell/types";
 import { TACTICAL_TEMPLATES, applyTemplatePositions, type TacticalTemplate, type TacticalTemplateCategory } from "./tacticalTemplates";
+import {
+  deleteScenario,
+  duplicateScenario,
+  listScenarios,
+  renameScenario,
+  saveScenario,
+  type TacticalScenario,
+} from "./tacticalPlayStorage";
 
 const SETUP_CATEGORIES: Array<{ id: TacticalTemplateCategory; label: string }> = [
   { id: "KICKOUT", label: "Kickout" },
@@ -210,6 +221,20 @@ const PV_BADGE_STYLE: CSSProperties = {
   WebkitBackdropFilter: "blur(10px)",
 };
 
+const PV_WATERMARK_STYLE: CSSProperties = {
+  position: "fixed",
+  right: "max(14px, calc(env(safe-area-inset-right, 0px) + 12px))",
+  bottom: "max(14px, calc(env(safe-area-inset-bottom, 0px) + 12px))",
+  zIndex: 20,
+  color: "rgba(180, 210, 255, 0.28)",
+  fontSize: "9px",
+  fontWeight: 600,
+  letterSpacing: "0.06em",
+  fontFamily: "Inter, system-ui, sans-serif",
+  pointerEvents: "none",
+  userSelect: "none",
+};
+
 const CONTROL_PANEL_STYLE: CSSProperties = {
   position: "fixed",
   left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
@@ -358,6 +383,210 @@ const TOKEN_COLOR_BORDER: Record<PremiumPlayerTokenColor, string> = {
   white:  "rgba(203, 213, 225, 0.60)",
 };
 
+const SEQ_PANEL_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
+  bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
+  zIndex: 21,
+  width: "max-content",
+  maxWidth: "min(420px, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
+  display: "grid",
+  gap: "3px",
+};
+
+const SEQ_CHIP_STYLE: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "4px",
+  height: "22px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.20)",
+  background: "rgba(8, 18, 40, 0.72)",
+  color: "rgba(200, 230, 255, 0.88)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 600,
+  letterSpacing: "0.06em",
+  padding: "0 8px",
+  whiteSpace: "nowrap",
+};
+
+const SCENARIO_INPUT_STYLE: CSSProperties = {
+  height: "31px",
+  minWidth: "120px",
+  maxWidth: "160px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.22)",
+  background: "rgba(8, 18, 38, 0.72)",
+  color: "rgba(220, 235, 255, 0.95)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 500,
+  padding: "0 10px",
+  outline: "none",
+};
+
+const MOVEMENT_PANEL_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "50%",
+  transform: "translateX(-50%)",
+  bottom: "max(58px, calc(env(safe-area-inset-bottom, 0px) + 56px))",
+  zIndex: 23,
+  width: "min(480px, calc(100vw - 176px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
+  background: "rgba(4, 10, 22, 0.96)",
+  backdropFilter: "blur(20px)",
+  WebkitBackdropFilter: "blur(20px)",
+  border: "1px solid rgba(180, 210, 255, 0.13)",
+  borderRadius: "12px",
+  boxShadow: "0 14px 36px rgba(0, 0, 0, 0.62), 0 4px 12px rgba(0, 0, 0, 0.38)",
+  padding: "8px 10px",
+  display: "grid",
+  gap: "5px",
+};
+
+const MP_HEADER_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+};
+
+const MP_TITLE_STYLE: CSSProperties = {
+  color: "rgba(180, 210, 255, 0.42)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "8px",
+  fontWeight: 700,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+  userSelect: "none",
+};
+
+const MP_CLOSE_STYLE: CSSProperties = {
+  width: "22px",
+  height: "22px",
+  borderRadius: "50%",
+  border: "1px solid rgba(180, 210, 255, 0.15)",
+  background: "rgba(10, 20, 42, 0.60)",
+  color: "rgba(180, 210, 255, 0.50)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "14px",
+  fontWeight: 300,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  lineHeight: "1",
+  padding: "0",
+  flexShrink: 0,
+};
+
+const MP_ROW: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "3px",
+  alignItems: "center",
+};
+
+const MP_ROW_LABEL: CSSProperties = {
+  color: "rgba(180, 210, 255, 0.28)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "8px",
+  fontWeight: 700,
+  letterSpacing: "0.10em",
+  textTransform: "uppercase",
+  userSelect: "none",
+  flexShrink: 0,
+  marginRight: "2px",
+};
+
+const MP_CHIP: CSSProperties = {
+  height: "26px",
+  minWidth: "0",
+  borderRadius: "7px",
+  border: "1px solid rgba(180, 210, 255, 0.13)",
+  background: "rgba(12, 22, 48, 0.75)",
+  color: "rgba(200, 225, 255, 0.78)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 600,
+  letterSpacing: "0.04em",
+  padding: "0 9px",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+
+const MP_CHIP_ACTIVE: CSSProperties = {
+  ...MP_CHIP,
+  border: "1px solid rgba(124, 255, 114, 0.54)",
+  background: "rgba(18, 58, 36, 0.90)",
+  color: "#d2ffce",
+};
+
+const MP_CHIP_SECONDARY: CSSProperties = {
+  ...MP_CHIP,
+  color: "rgba(180, 210, 255, 0.44)",
+  border: "1px solid rgba(180, 210, 255, 0.09)",
+};
+
+const MP_PLAYER_CHIP: CSSProperties = {
+  height: "28px",
+  minWidth: "0",
+  borderRadius: "8px",
+  border: "1px solid rgba(180, 210, 255, 0.13)",
+  background: "rgba(12, 22, 48, 0.75)",
+  color: "rgba(200, 225, 255, 0.85)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 600,
+  letterSpacing: "0.04em",
+  padding: "0 10px",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "4px",
+};
+
+const MP_PLAYER_CHIP_ACTIVE: CSSProperties = {
+  ...MP_PLAYER_CHIP,
+  border: "1px solid rgba(124, 255, 114, 0.54)",
+  background: "rgba(18, 58, 36, 0.90)",
+  color: "#d2ffce",
+};
+
+const MP_DONE: CSSProperties = {
+  height: "28px",
+  minWidth: "68px",
+  borderRadius: "7px",
+  border: "1px solid rgba(124, 255, 114, 0.34)",
+  background: "rgba(16, 52, 32, 0.90)",
+  color: "#c4ffbf",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 700,
+  letterSpacing: "0.05em",
+  padding: "0 14px",
+  cursor: "pointer",
+};
+
+const CONCEPT_LABELS: Record<MovementConcept, string> = {
+  "support-run": "Support Run",
+  "overlap": "Overlap",
+  "shadow-run": "Shadow Run",
+  "rotation": "Rotation",
+  "custom": "Custom Run",
+};
+
+const CONCEPT_OPTIONS: Array<{ id: MovementConcept | null; label: string }> = [
+  { id: null, label: "—" },
+  { id: "support-run", label: "Support" },
+  { id: "overlap", label: "Overlap" },
+  { id: "shadow-run", label: "Shadow" },
+  { id: "rotation", label: "Rotation" },
+  { id: "custom", label: "Custom" },
+];
+
+const DELAY_PRESETS_MS = [0, 1000, 2000, 3000, 4000];
+
 const TOKEN_COLOR_IS_LIGHT = new Set<PremiumPlayerTokenColor>(["yellow", "white"]);
 
 const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
@@ -405,6 +634,23 @@ export default function TacticalPlaySurface() {
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("jersey");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
   const [secondaryColor, setSecondaryColorState] = useState<PremiumPlayerTokenColor>("red");
+  const [routes, setRoutes] = useState<MovementBoardRoute[]>([]);
+  const [tokenNumberById, setTokenNumberById] = useState<Record<string, number>>({});
+  const [sequenceOpen, setSequenceOpen] = useState(false);
+  const [scenariosOpen, setScenariosOpen] = useState(false);
+  const [scenarios, setScenarios] = useState<TacticalScenario[]>([]);
+  const [scenarioNameDraft, setScenarioNameDraft] = useState("");
+  const [movementsOpen, setMovementsOpen] = useState(false);
+  const [movementsSelectedPlayerId, setMovementsSelectedPlayerId] = useState<string | null>(null);
+  const [passEvents, setPassEvents] = useState<TacticalPassEvent[]>([]);
+  const [passesOpen, setPassesOpen] = useState(false);
+  const [passFromId, setPassFromId] = useState<string | null>(null);
+  const [passToId, setPassToId] = useState<string | null>(null);
+  const [passTimingMs, setPassTimingMs] = useState<number>(0);
+  const [passTriggerId, setPassTriggerId] = useState<string | null>(null);
+  const [shootDelayMs, setShootDelayMs] = useState<number>(0);
+  const [shotOpen, setShotOpen] = useState(false);
+  const [shotEvents, setShotEvents] = useState<Array<{ id: string; shooterId: string; delayMs: number }>>([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -463,8 +709,9 @@ export default function TacticalPlaySurface() {
         onSelectedTokenChange: (token) => {
           setSelectedToken(token);
         },
-        onRoutesChange: (routes) => {
-          setRouteCount(routes.length);
+        onRoutesChange: (nextRoutes) => {
+          setRouteCount(nextRoutes.length);
+          setRoutes(nextRoutes);
         },
         onPlaybackStateChange: (state) => {
           setIsPlaying(state.isPlaying);
@@ -477,6 +724,9 @@ export default function TacticalPlaySurface() {
           setBallCarrierId(state.carrierId ?? null);
           setBallOnPitch(!!(state.carrierId || state.position));
         },
+        onPassEventsChange: (events) => {
+          setPassEvents([...events]);
+        },
       }).then((shell) => {
         if (disposed) {
           shell.destroy();
@@ -486,7 +736,12 @@ export default function TacticalPlaySurface() {
         setMenuMode(toMenuMode(shell.getMode()));
         setPlaybackSpeed(shell.getPlaybackSpeed());
         setTokenSizeState(shell.getTokenSize());
-        setRouteCount(shell.getRoutes().length);
+        const initialRoutes = shell.getRoutes();
+        setRouteCount(initialRoutes.length);
+        setRoutes(initialRoutes);
+        const nums: Record<string, number> = {};
+        for (const t of shell.getTokens()) nums[t.id] = t.number;
+        setTokenNumberById(nums);
         const selected = shell.getSelectedToken();
         setSelectedToken(selected);
         setRouteEditState(shell.getRouteEditState());
@@ -497,6 +752,8 @@ export default function TacticalPlaySurface() {
         setBallCarrierId(initialBallState.carrierId ?? null);
         setBallOnPitch(!!(initialBallState.carrierId || initialBallState.position));
         shell.setDragEnabled(!isPortrait);
+        setScenarios(listScenarios());
+        setPassEvents(shell.getPassEvents());
         destroyShell = shell.destroy;
       });
     };
@@ -550,6 +807,8 @@ export default function TacticalPlaySurface() {
       setIsControlsOpen(false);
       setSetupOpen(false);
       setBallMenuStep(null);
+      setMovementsOpen(false);
+      setPassesOpen(false);
     }
   }, [isPlaying]);
 
@@ -559,6 +818,40 @@ export default function TacticalPlaySurface() {
     }
   }, [isControlsOpen]);
 
+  const selectedRoute = routes.find((r) => r.playerId === selectedToken?.id) ?? null;
+  const selectedRouteConcept = selectedRoute?.concept ?? null;
+
+  type SeqItem =
+    | { kind: "route"; route: MovementBoardRoute }
+    | { kind: "pass"; pass: TacticalPassEvent };
+
+  const sortedItems: SeqItem[] = [
+    ...routes.map((r): SeqItem => ({ kind: "route", route: r })),
+    ...passEvents.map((p): SeqItem => ({ kind: "pass", pass: p })),
+  ].sort((a, b) => {
+    const aTriggered = a.kind === "route" ? a.route.triggeredBy : a.pass.triggeredBy;
+    const bTriggered = b.kind === "route" ? b.route.triggeredBy : b.pass.triggeredBy;
+    const aDelay = a.kind === "route" ? (a.route.delayMs ?? 0) : (a.pass.delayMs ?? 0);
+    const bDelay = b.kind === "route" ? (b.route.delayMs ?? 0) : (b.pass.delayMs ?? 0);
+    const aOrd = aTriggered != null ? Infinity : aDelay;
+    const bOrd = bTriggered != null ? Infinity : bDelay;
+    return aOrd - bOrd;
+  });
+
+  const movementsRoute = movementsSelectedPlayerId
+    ? routes.find((r) => r.playerId === movementsSelectedPlayerId) ?? null
+    : null;
+  const movementsRouteConcept = movementsRoute?.concept ?? null;
+  const movementsRouteDelay = movementsRoute?.delayMs ?? null;
+  const movementsRouteTrigger = movementsRoute?.triggeredBy ?? null;
+  const movementsRoutedPlayers = routes
+    .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
+    .sort((a, b) => a.number - b.number);
+  const movementsOtherPlayers = routes
+    .filter((r) => r.playerId !== movementsSelectedPlayerId)
+    .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
+    .sort((a, b) => a.number - b.number);
+
   const modeLabelByMenu: Record<MovementMenuMode, string> = {
     move: "Move",
     route: "Route",
@@ -566,13 +859,14 @@ export default function TacticalPlaySurface() {
   };
 
   const selectedHasBall = selectedToken != null && selectedToken.id === ballCarrierId;
+  const conceptSuffix = selectedRouteConcept ? ` · ${CONCEPT_LABELS[selectedRouteConcept]}` : "";
   const coachInfoLabel = selectedToken
-    ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""} · Movements ${routeCount}`
+    ? `P${selectedToken.number}${selectedHasBall ? " · Ball" : ""}${conceptSuffix} · Moves ${routeCount}`
     : ballCarrierId
-      ? `Ball Assigned · Movements ${routeCount}`
+      ? `Ball Assigned · Moves ${routeCount}`
       : ballOnPitch
-        ? `Ball on Pitch · Movements ${routeCount}`
-        : `${modeLabelByMenu[menuMode]} · Movements ${routeCount}`;
+        ? `Ball on Pitch · Moves ${routeCount}`
+        : `${modeLabelByMenu[menuMode]} · Moves ${routeCount}`;
 
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
@@ -747,6 +1041,91 @@ export default function TacticalPlaySurface() {
     window.location.assign("/vision-tactics");
   };
 
+  const onMovementsSetConcept = (concept: MovementConcept | null) => {
+    const shell = shellRef.current;
+    if (!shell || !movementsSelectedPlayerId) return;
+    shell.setRouteMeta(movementsSelectedPlayerId, { concept: concept ?? undefined });
+  };
+
+  const onMovementsSetDelay = (delayMs: number) => {
+    const shell = shellRef.current;
+    if (!shell || !movementsSelectedPlayerId) return;
+    shell.setRouteMeta(movementsSelectedPlayerId, { delayMs, triggeredBy: undefined });
+  };
+
+  const onMovementsSetTrigger = (triggeredBy: string | null) => {
+    const shell = shellRef.current;
+    if (!shell || !movementsSelectedPlayerId) return;
+    shell.setRouteMeta(movementsSelectedPlayerId, { triggeredBy: triggeredBy ?? undefined, delayMs: undefined });
+  };
+
+  const onAddPass = () => {
+    const shell = shellRef.current;
+    if (!shell || !passFromId || !passToId || passFromId === passToId) return;
+    const event: TacticalPassEvent = {
+      id: `pass-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      fromPlayerId: passFromId,
+      toPlayerId: passToId,
+      ...(passTriggerId != null
+        ? { triggeredBy: passTriggerId }
+        : { delayMs: passTimingMs }),
+    };
+    shell.addPassEvent(event);
+    setPassFromId(passToId);
+    setPassToId(null);
+  };
+
+  const onRemovePass = (id: string) => {
+    shellRef.current?.removePassEvent(id);
+  };
+
+  const onSaveScenario = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const saved = saveScenario(
+      scenarioNameDraft.trim() || "Scenario",
+      shell.getTokens(),
+      shell.getRoutes(),
+      shell.getBallState(),
+      shell.getPassEvents(),
+    );
+    void saved;
+    setScenarios(listScenarios());
+    setScenarioNameDraft("");
+  };
+
+  const onLoadScenario = (scenario: TacticalScenario) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    shell.setTokens(scenario.tokens);
+    shell.setRoutes(scenario.routes);
+    if (scenario.ballState.carrierId) {
+      shell.giveBall(scenario.ballState.carrierId);
+    } else if (scenario.ballState.position) {
+      shell.placeBall(scenario.ballState.ballType ?? "footballSmall", scenario.ballState.position);
+    } else {
+      shell.removeBall();
+    }
+    shell.setPassEvents(scenario.passEvents ?? []);
+    shell.setStartPositions();
+    setScenariosOpen(false);
+  };
+
+  const onDeleteScenario = (id: string) => {
+    deleteScenario(id);
+    setScenarios(listScenarios());
+  };
+
+  const onDuplicateScenario = (id: string) => {
+    duplicateScenario(id);
+    setScenarios(listScenarios());
+  };
+
+  const onRenameScenario = (id: string, name: string) => {
+    renameScenario(id, name);
+    setScenarios(listScenarios());
+  };
+
   const modeIsPlaybackLocked = isPlaying || isPaused;
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
   const removePointDisabled = menuMode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying;
@@ -775,10 +1154,11 @@ export default function TacticalPlaySurface() {
         <div style={INFO_PILL_STYLE}>{coachInfoLabel}</div>
 
         <div style={PV_BADGE_STYLE}>PV</div>
+        <div style={PV_WATERMARK_STYLE}>PáircVision</div>
         <button
           type="button"
           style={CTRL_BUBBLE_STYLE}
-          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); }}
+          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setScenariosOpen(false); setMovementsOpen(false); setPassesOpen(false); }}
         >
           CTRL
         </button>
@@ -795,6 +1175,60 @@ export default function TacticalPlaySurface() {
 
         {!isControlsOpen && !setupOpen && !isPlaying && !isPaused ? (
           <div style={HINT_PILL_STYLE}>Move players → Set Start → Draw Movements → Play</div>
+        ) : null}
+
+        {sequenceOpen && !isControlsOpen && sortedItems.length > 0 ? (
+          <div style={SEQ_PANEL_STYLE}>
+            <div style={PANEL_ROW_STYLE}>
+              <span style={SETUP_SECTION_LABEL_STYLE}>Sequence</span>
+              {sortedItems.map((item, idx) => {
+                if (item.kind === "route") {
+                  const r = item.route;
+                  const num = tokenNumberById[r.playerId] ?? "?";
+                  const conceptText = r.concept ? CONCEPT_LABELS[r.concept] : "Run";
+                  let timingText = "";
+                  if (r.triggeredBy) {
+                    const trigNum = tokenNumberById[r.triggeredBy] ?? "?";
+                    timingText = `after P${trigNum}`;
+                  } else if (r.delayMs != null && r.delayMs > 0) {
+                    timingText = `${(r.delayMs / 1000).toFixed(1)}s`;
+                  } else {
+                    timingText = "0s";
+                  }
+                  return (
+                    <span key={r.playerId} style={SEQ_CHIP_STYLE}>
+                      <span style={{ opacity: 0.50 }}>{idx + 1}.</span>
+                      <span>P{num}</span>
+                      <span style={{ opacity: 0.65 }}>{conceptText}</span>
+                      <span style={{ opacity: 0.45 }}>{timingText}</span>
+                    </span>
+                  );
+                }
+                const p = item.pass;
+                const fromNum = tokenNumberById[p.fromPlayerId] ?? "?";
+                const toNum = tokenNumberById[p.toPlayerId] ?? "?";
+                let timingText = "";
+                if (p.triggeredBy) {
+                  const trigNum = tokenNumberById[p.triggeredBy] ?? "?";
+                  timingText = `after P${trigNum}`;
+                } else if (p.delayMs != null && p.delayMs > 0) {
+                  timingText = `${(p.delayMs / 1000).toFixed(1)}s`;
+                } else {
+                  timingText = "0s";
+                }
+                return (
+                  <span key={p.id} style={{ ...SEQ_CHIP_STYLE, border: "1px solid rgba(255, 210, 80, 0.30)", color: "rgba(255, 230, 140, 0.88)" }}>
+                    <span style={{ opacity: 0.50 }}>{idx + 1}.</span>
+                    <span>P{fromNum}→P{toNum}</span>
+                    <span style={{ opacity: 0.45 }}>{timingText}</span>
+                  </span>
+                );
+              })}
+              <button type="button" style={{ ...COLLAPSE_BUTTON_STYLE, minWidth: "44px" }} onClick={() => setSequenceOpen(false)}>
+                ×
+              </button>
+            </div>
+          </div>
         ) : null}
 
         {isControlsOpen ? (
@@ -823,10 +1257,85 @@ export default function TacticalPlaySurface() {
               >
                 Ball
               </button>
+              {routes.length > 0 || passEvents.length > 0 ? (
+                <button
+                  type="button"
+                  style={sequenceOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                  onClick={() => setSequenceOpen((prev) => !prev)}
+                >
+                  Seq
+                </button>
+              ) : null}
+              {routes.length > 0 ? (
+                <button
+                  type="button"
+                  style={movementsOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                  onClick={() => { setMovementsOpen((prev) => !prev); setPassesOpen(false); setIsControlsOpen(false); }}
+                >
+                  Movements
+                </button>
+              ) : null}
+              {ballOnPitch || passEvents.length > 0 ? (
+                <button
+                  type="button"
+                  style={passesOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                  onClick={() => { setPassesOpen((prev) => !prev); setMovementsOpen(false); setIsControlsOpen(false); }}
+                >
+                  Passes
+                </button>
+              ) : null}
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
               </button>
             </div>
+
+            {sequenceOpen && sortedItems.length > 0 ? (
+              <div style={PANEL_ROW_STYLE}>
+                <span style={SETUP_SECTION_LABEL_STYLE}>Sequence</span>
+                {sortedItems.map((item, idx) => {
+                  if (item.kind === "route") {
+                    const r = item.route;
+                    const num = tokenNumberById[r.playerId] ?? "?";
+                    const conceptText = r.concept ? CONCEPT_LABELS[r.concept] : "Run";
+                    let timingText = "";
+                    if (r.triggeredBy) {
+                      const trigNum = tokenNumberById[r.triggeredBy] ?? "?";
+                      timingText = `after P${trigNum}`;
+                    } else if (r.delayMs != null && r.delayMs > 0) {
+                      timingText = `${(r.delayMs / 1000).toFixed(1)}s`;
+                    } else {
+                      timingText = "0s";
+                    }
+                    return (
+                      <span key={r.playerId} style={SEQ_CHIP_STYLE}>
+                        <span style={{ opacity: 0.50 }}>{idx + 1}.</span>
+                        P{num} {conceptText}
+                        <span style={{ opacity: 0.45 }}>{timingText}</span>
+                      </span>
+                    );
+                  }
+                  const p = item.pass;
+                  const fromNum = tokenNumberById[p.fromPlayerId] ?? "?";
+                  const toNum = tokenNumberById[p.toPlayerId] ?? "?";
+                  let timingText = "";
+                  if (p.triggeredBy) {
+                    const trigNum = tokenNumberById[p.triggeredBy] ?? "?";
+                    timingText = `after P${trigNum}`;
+                  } else if (p.delayMs != null && p.delayMs > 0) {
+                    timingText = `${(p.delayMs / 1000).toFixed(1)}s`;
+                  } else {
+                    timingText = "0s";
+                  }
+                  return (
+                    <span key={p.id} style={{ ...SEQ_CHIP_STYLE, border: "1px solid rgba(255, 210, 80, 0.30)", color: "rgba(255, 230, 140, 0.88)" }}>
+                      <span style={{ opacity: 0.50 }}>{idx + 1}.</span>
+                      P{fromNum}→P{toNum}
+                      <span style={{ opacity: 0.45 }}>{timingText}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
 
             {ballMenuStep !== null ? (
               <div style={PANEL_ROW_STYLE}>
@@ -963,7 +1472,6 @@ export default function TacticalPlaySurface() {
                   ) : null}
                 </>
               ) : null}
-
               {menuMode === "play" ? (
                 <>
                   <button
@@ -1012,6 +1520,331 @@ export default function TacticalPlaySurface() {
           </div>
         ) : null}
 
+        {movementsOpen && routes.length > 0 ? (
+          <div style={MOVEMENT_PANEL_STYLE}>
+            <div style={MP_HEADER_STYLE}>
+              <span style={MP_TITLE_STYLE}>Movements</span>
+              <button type="button" style={MP_CLOSE_STYLE} onClick={() => setMovementsOpen(false)}>
+                ×
+              </button>
+            </div>
+
+            <div style={MP_ROW}>
+              {movementsRoutedPlayers.map((p) => {
+                const r = routes.find((route) => route.playerId === p.playerId);
+                const conceptShort = r?.concept != null ? CONCEPT_LABELS[r.concept].split(" ")[0] : null;
+                const timingShort = r?.triggeredBy
+                  ? `P${tokenNumberById[r.triggeredBy] ?? "?"}`
+                  : r?.delayMs != null
+                    ? r.delayMs === 0 ? "Now" : `+${r.delayMs / 1000}s`
+                    : null;
+                const summary = [conceptShort, timingShort].filter(Boolean).join(" · ");
+                const isSelected = movementsSelectedPlayerId === p.playerId;
+                return (
+                  <button
+                    key={p.playerId}
+                    type="button"
+                    style={isSelected ? MP_PLAYER_CHIP_ACTIVE : MP_PLAYER_CHIP}
+                    onClick={() => setMovementsSelectedPlayerId(isSelected ? null : p.playerId)}
+                  >
+                    <span>P{p.number}</span>
+                    {summary ? (
+                      <span style={{ opacity: 0.52, fontSize: "8px", letterSpacing: "0.02em" }}>{summary}</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+
+            {movementsSelectedPlayerId ? (
+              <>
+                <div style={MP_ROW}>
+                  <span style={MP_ROW_LABEL}>Type</span>
+                  {([
+                    { id: "support-run" as MovementConcept, label: "Support" },
+                    { id: "overlap" as MovementConcept, label: "Overlap" },
+                    { id: "shadow-run" as MovementConcept, label: "Shadow" },
+                    { id: "rotation" as MovementConcept, label: "Rotation" },
+                    { id: "custom" as MovementConcept, label: "Custom" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      style={movementsRouteConcept === opt.id ? MP_CHIP_ACTIVE : MP_CHIP}
+                      onClick={() => onMovementsSetConcept(movementsRouteConcept === opt.id ? null : opt.id)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={MP_ROW}>
+                  <span style={MP_ROW_LABEL}>Time</span>
+                  {([
+                    { ms: 0, label: "Now" },
+                    { ms: 1000, label: "+1s" },
+                    { ms: 2000, label: "+2s" },
+                    { ms: 3000, label: "+3s" },
+                    { ms: 4000, label: "+4s" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.ms}
+                      type="button"
+                      style={
+                        movementsRouteTrigger == null &&
+                        (movementsRouteDelay === opt.ms || (opt.ms === 0 && movementsRouteDelay == null))
+                          ? MP_CHIP_ACTIVE
+                          : MP_CHIP
+                      }
+                      onClick={() => onMovementsSetDelay(opt.ms)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                  {movementsOtherPlayers.length > 0 ? (
+                    <>
+                      <span style={{ ...MP_ROW_LABEL, marginLeft: "3px" }}>After</span>
+                      {movementsRouteTrigger != null ? (
+                        <button type="button" style={MP_CHIP_SECONDARY} onClick={() => onMovementsSetTrigger(null)}>
+                          ×
+                        </button>
+                      ) : null}
+                      {movementsOtherPlayers.map((p) => (
+                        <button
+                          key={p.playerId}
+                          type="button"
+                          style={movementsRouteTrigger === p.playerId ? MP_CHIP_ACTIVE : MP_CHIP}
+                          onClick={() => onMovementsSetTrigger(p.playerId)}
+                        >
+                          P{p.number}
+                        </button>
+                      ))}
+                    </>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
+
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" style={MP_DONE} onClick={() => setMovementsOpen(false)}>
+                Done
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {passesOpen ? (
+          <div style={MOVEMENT_PANEL_STYLE}>
+            <div style={MP_HEADER_STYLE}>
+              <span style={MP_TITLE_STYLE}>Passes</span>
+              <button type="button" style={MP_CLOSE_STYLE} onClick={() => { setPassesOpen(false); setShotOpen(false); }}>
+                ×
+              </button>
+            </div>
+
+            {passEvents.length > 0 || shotEvents.length > 0 ? (
+              <div style={MP_ROW}>
+                {passEvents.map((p) => {
+                  const fromNum = tokenNumberById[p.fromPlayerId] ?? "?";
+                  const toNum = tokenNumberById[p.toPlayerId] ?? "?";
+                  return (
+                    <span key={p.id} style={{ ...MP_CHIP_SECONDARY, display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <span style={{ color: "rgba(255, 220, 100, 0.80)" }}>P{fromNum}→P{toNum}</span>
+                      <button
+                        type="button"
+                        style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "11px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
+                        onClick={() => onRemovePass(p.id)}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+                {shotEvents.map((s) => {
+                  const num = tokenNumberById[s.shooterId] ?? "?";
+                  const delayLabel = s.delayMs > 0 ? ` +${s.delayMs / 1000}s` : "";
+                  return (
+                    <span key={s.id} style={{ ...MP_CHIP_SECONDARY, display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <span style={{ color: "rgba(180, 255, 140, 0.80)" }}>P{num}→Goal{delayLabel}</span>
+                      <button
+                        type="button"
+                        style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "11px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
+                        onClick={() => { setShotEvents((prev) => prev.filter((e) => e.id !== s.id)); shellRef.current?.removeShotEvent(s.id); }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            <div style={MP_ROW}>
+              <span style={MP_ROW_LABEL}>From</span>
+              {Object.entries(tokenNumberById).sort((a, b) => a[1] - b[1]).map(([id, num]) => (
+                <button
+                  key={id}
+                  type="button"
+                  style={passFromId === id ? MP_PLAYER_CHIP_ACTIVE : MP_PLAYER_CHIP}
+                  onClick={() => setPassFromId(passFromId === id ? null : id)}
+                >
+                  P{num}
+                </button>
+              ))}
+            </div>
+
+            {passFromId ? (
+              <div style={MP_ROW}>
+                <span style={MP_ROW_LABEL}>To</span>
+                {Object.entries(tokenNumberById).filter(([id]) => id !== passFromId).sort((a, b) => a[1] - b[1]).map(([id, num]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    style={passToId === id ? MP_PLAYER_CHIP_ACTIVE : MP_PLAYER_CHIP}
+                    onClick={() => setPassToId(passToId === id ? null : id)}
+                  >
+                    P{num}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {passFromId && passToId ? (
+              <div style={MP_ROW}>
+                <span style={MP_ROW_LABEL}>Time</span>
+                {([
+                  { ms: 0, label: "Now" },
+                  { ms: 1000, label: "+1s" },
+                  { ms: 2000, label: "+2s" },
+                  { ms: 3000, label: "+3s" },
+                  { ms: 4000, label: "+4s" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.ms}
+                    type="button"
+                    style={passTriggerId == null && passTimingMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
+                    onClick={() => { setPassTimingMs(opt.ms); setPassTriggerId(null); }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+                {routes.length > 0 || passEvents.length > 0 ? (
+                  <>
+                    <span style={{ ...MP_ROW_LABEL, marginLeft: "3px" }}>After</span>
+                    {passTriggerId != null ? (
+                      <button type="button" style={MP_CHIP_SECONDARY} onClick={() => setPassTriggerId(null)}>
+                        ×
+                      </button>
+                    ) : null}
+                    {routes.map((r) => {
+                      const num = tokenNumberById[r.playerId] ?? "?";
+                      return (
+                        <button
+                          key={r.playerId}
+                          type="button"
+                          style={passTriggerId === r.playerId ? MP_CHIP_ACTIVE : MP_CHIP}
+                          onClick={() => setPassTriggerId(passTriggerId === r.playerId ? null : r.playerId)}
+                        >
+                          P{num}
+                        </button>
+                      );
+                    })}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+
+            {shotOpen ? (() => {
+              const lastReceiverId = passEvents.length > 0 ? passEvents[passEvents.length - 1].toPlayerId : null;
+              const shooterId = lastReceiverId ?? ballCarrierId;
+              if (!shooterId) {
+                return (
+                  <div style={MP_ROW}>
+                    <span style={{ fontSize: "11px", color: "rgba(255, 200, 100, 0.70)", fontStyle: "italic" }}>
+                      Give ball to a player or add a pass first.
+                    </span>
+                    <button
+                      type="button"
+                      style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "14px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
+                      onClick={() => setShotOpen(false)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              }
+              const shooterNum = tokenNumberById[shooterId] ?? "?";
+              return (
+                <div style={MP_ROW}>
+                  <span style={MP_ROW_LABEL}>Shooter</span>
+                  <span style={MP_CHIP_SECONDARY}>P{shooterNum}</span>
+                  <span style={{ ...MP_ROW_LABEL, marginLeft: "4px" }}>Delay</span>
+                  {([
+                    { ms: 0, label: "Now" },
+                    { ms: 1000, label: "+1s" },
+                    { ms: 2000, label: "+2s" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.ms}
+                      type="button"
+                      style={shootDelayMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
+                      onClick={() => setShootDelayMs(opt.ms)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    style={MP_CHIP_ACTIVE}
+                    onClick={() => {
+                      const delay = shootDelayMs;
+                      const sid = shooterId;
+                      const entry = { id: `shot-${Date.now()}`, shooterId: sid, delayMs: delay };
+                      setShotEvents((prev) => [...prev, entry]);
+                      shellRef.current?.addShotEvent(entry);
+                      setShotOpen(false);
+                    }}
+                  >
+                    Add Shot
+                  </button>
+                  <button
+                    type="button"
+                    style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "14px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
+                    onClick={() => setShotOpen(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })() : null}
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  style={passFromId && passToId ? MP_CHIP_ACTIVE : { ...MP_CHIP, opacity: 0.45, cursor: "not-allowed" }}
+                  disabled={!passFromId || !passToId || passFromId === passToId}
+                  onClick={onAddPass}
+                >
+                  + Add Pass
+                </button>
+                {passEvents.length > 0 || ballCarrierId ? (
+                  <button
+                    type="button"
+                    style={shotOpen ? MP_CHIP_ACTIVE : MP_CHIP}
+                    onClick={() => setShotOpen((prev) => !prev)}
+                  >
+                    + Add Shot
+                  </button>
+                ) : null}
+              </div>
+              <button type="button" style={MP_DONE} onClick={() => { setPassesOpen(false); setShotOpen(false); }}>
+                Done
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {setupOpen ? (
           <div style={SETUP_PANEL_STYLE}>
             <div style={PANEL_ROW_STYLE}>
@@ -1042,6 +1875,13 @@ export default function TacticalPlaySurface() {
               >
                 Players
               </button>
+              <button
+                type="button"
+                style={scenariosOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                onClick={() => setScenariosOpen((prev) => !prev)}
+              >
+                Scenarios
+              </button>
             </div>
 
             {activeSetupCategory !== null ? (
@@ -1059,6 +1899,69 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
+
+            {scenariosOpen ? (
+              <>
+                <div style={PANEL_ROW_STYLE}>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Save</span>
+                  <input
+                    style={SCENARIO_INPUT_STYLE}
+                    type="text"
+                    placeholder="Scenario name…"
+                    value={scenarioNameDraft}
+                    maxLength={40}
+                    onChange={(e) => setScenarioNameDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") onSaveScenario(); }}
+                  />
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={onSaveScenario}>
+                    Save
+                  </button>
+                </div>
+                {scenarios.length > 0 ? (
+                  scenarios.map((s) => (
+                    <div key={s.id} style={PANEL_ROW_STYLE}>
+                      <span
+                        style={{
+                          ...SETUP_SECTION_LABEL_STYLE,
+                          maxWidth: "130px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          fontSize: "9px",
+                          color: "rgba(200, 230, 255, 0.72)",
+                          letterSpacing: "0.02em",
+                          textTransform: "none",
+                        }}
+                        title={s.name}
+                      >
+                        {s.name}
+                      </span>
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onLoadScenario(s)}>
+                        Load
+                      </button>
+                      <button
+                        type="button"
+                        style={TOOL_BUTTON_STYLE}
+                        onClick={() => onDuplicateScenario(s.id)}
+                      >
+                        Copy
+                      </button>
+                      <button
+                        type="button"
+                        style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 160, 160, 0.88)" }}
+                        onClick={() => onDeleteScenario(s.id)}
+                      >
+                        Del
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div style={PANEL_ROW_STYLE}>
+                    <span style={SETUP_SECTION_LABEL_STYLE}>No saved scenarios yet</span>
+                  </div>
+                )}
+              </>
+            ) : null}
 
             {playersOpen ? (
               <>

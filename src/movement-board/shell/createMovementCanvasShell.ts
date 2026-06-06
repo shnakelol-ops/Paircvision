@@ -25,6 +25,9 @@ import type {
   MovementCanvasShellHandle,
   MovementCanvasShellOptions,
   MovementRouteEditState,
+  RouteMetadata,
+  TacticalPassEvent,
+  TacticalShotEvent,
 } from "./types";
 
 const WORLD_SIZE = {
@@ -55,6 +58,15 @@ type RouteHandleDragState = {
   pointerId: number | null;
   offsetWorld: { x: number; y: number };
 } | null;
+
+type ActiveBallPass = {
+  fromWorld: { x: number; y: number };
+  toPlayerId: string;
+  toWorld?: { x: number; y: number };
+  elapsedMs: number;
+  durationMs: number;
+  ballType: BallType;
+};
 
 function clampWorldPoint(point: { x: number; y: number }): { x: number; y: number } {
   return {
@@ -166,6 +178,7 @@ export async function createMovementCanvasShell(
   let activeRouteHandleDrag: RouteHandleDragState = null;
   let routeDraft: RouteDraftState = null;
   let routeByTokenId = new Map<string, NormalizedPoint[]>();
+  let routeMetaByTokenId = new Map<string, RouteMetadata>();
   let startPositionByTokenId = new Map<string, NormalizedPoint>();
 
   const tokenLayer = createTokenLayer({
@@ -183,10 +196,28 @@ export async function createMovementCanvasShell(
     startPositionByTokenId.set(token.id, clonePoint(token.position));
   }
 
+  const shootToGoalInternal = () => {
+    if (!ballState.carrierId) return;
+    const fromWorldPos = tokenLayer.getTokenWorldPosition(ballState.carrierId);
+    if (!fromWorldPos) return;
+    const goalWorld = { x: WORLD_SIZE.width, y: WORLD_SIZE.height / 2 };
+    const dx = goalWorld.x - fromWorldPos.x;
+    const dy = goalWorld.y - fromWorldPos.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const durationMs = Math.max(PASS_MIN_DURATION_MS, Math.min(PASS_MAX_DURATION_MS, dist / PASS_SPEED_PX_PER_MS));
+    activeBallPass = { fromWorld: fromWorldPos, toPlayerId: "", toWorld: goalWorld, elapsedMs: 0, durationMs, ballType: ballState.ballType ?? "footballSmall" };
+    ballState = { ballType: ballState.ballType };
+    tokenLayer.setBallCarrier(null);
+    emitBallState();
+  };
+
   const orchestrator = createPlaybackOrchestrator(options.playbackSpeed ?? "normal", {
     getTokens: () => tokenLayer.getTokens(),
     getRoute: (tokenId) => routeByTokenId.get(tokenId) ?? null,
+    getRouteMeta: (tokenId) => routeMetaByTokenId.get(tokenId) ?? null,
     getStartPosition: (tokenId) => startPositionByTokenId.get(tokenId) ?? null,
+    getPassEvents: () => passEvents,
+    getShotEvents: () => shotEvents,
     onPlaybackReset: (tokenId, startPosition) => {
       tokenLayer.setTokenPosition(tokenId, startPosition);
       tokenLayer.setTokenMoving(tokenId, null);
@@ -216,16 +247,66 @@ export async function createMovementCanvasShell(
       }
       options.onPlaybackStateChange?.(state);
     },
+    onPassStart: (fromPlayerId, toPlayerId) => {
+      const fromWorldPos = tokenLayer.getTokenWorldPosition(fromPlayerId);
+      const toWorldPos = tokenLayer.getTokenWorldPosition(toPlayerId);
+      let durationMs = 350;
+      if (fromWorldPos && toWorldPos) {
+        const dx = toWorldPos.x - fromWorldPos.x;
+        const dy = toWorldPos.y - fromWorldPos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        durationMs = Math.max(PASS_MIN_DURATION_MS, Math.min(PASS_MAX_DURATION_MS, dist / PASS_SPEED_PX_PER_MS));
+      }
+      activeBallPass = {
+        fromWorld: fromWorldPos ?? { x: WORLD_SIZE.width / 2, y: WORLD_SIZE.height / 2 },
+        toPlayerId,
+        elapsedMs: 0,
+        durationMs,
+        ballType: ballState.ballType ?? "footballSmall",
+      };
+      // Detach ball from carrier while in flight
+      ballState = { ballType: ballState.ballType };
+      tokenLayer.setBallCarrier(null);
+      emitBallState();
+    },
+    onShotStart: (shooterId) => {
+      if (ballState.carrierId !== shooterId) return;
+      shootToGoalInternal();
+    },
   });
 
   const ballLayer = createBallLayer(ballLayerContainer);
   let ballState: BallState = {};
   let ballStateAtPlayStart: BallState = {};
+  let passEvents: TacticalPassEvent[] = [];
+  let shotEvents: TacticalShotEvent[] = [];
+  let activeBallPass: ActiveBallPass | null = null;
 
   const BALL_CARRIER_OFFSET_X = 3.5;
   const BALL_CARRIER_OFFSET_Y = -2.5;
+  const PASS_ARC_HEIGHT_PX = 10;
+  const PASS_MIN_DURATION_MS = 850;
+  const PASS_MAX_DURATION_MS = 1800;
+  const PASS_SPEED_PX_PER_MS = 0.067;
 
   const syncBallPosition = () => {
+    if (activeBallPass) {
+      const toWorldPos = activeBallPass.toWorld ?? tokenLayer.getTokenWorldPosition(activeBallPass.toPlayerId);
+      if (toWorldPos) {
+        const t = Math.min(1, activeBallPass.elapsedMs / activeBallPass.durationMs);
+        const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        const arcY = -Math.sin(Math.PI * t) * PASS_ARC_HEIGHT_PX;
+        const worldX = activeBallPass.fromWorld.x + (toWorldPos.x - activeBallPass.fromWorld.x) * eased;
+        const worldY = activeBallPass.fromWorld.y + (toWorldPos.y - activeBallPass.fromWorld.y) * eased + arcY;
+        ballLayer.setBallType(activeBallPass.ballType);
+        ballLayer.setVisible(true);
+        ballLayer.setBallPosition(worldX, worldY);
+        return;
+      }
+      // Target token gone — cancel pass, fall through to normal
+      activeBallPass = null;
+    }
+
     if (!ballState.carrierId && !ballState.position) {
       ballLayer.setVisible(false);
       return;
@@ -257,15 +338,21 @@ export async function createMovementCanvasShell(
     options.onBallStateChange?.({ ...ballState });
   };
 
+  const emitPassEvents = () => {
+    options.onPassEventsChange?.([...passEvents]);
+  };
+
   const isPlaybackLocked = () => orchestrator.isLocked();
 
+  const buildRoutesSnapshot = (): MovementBoardRoute[] =>
+    Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
+      playerId,
+      points: points.map((point) => clonePoint(point)),
+      ...(routeMetaByTokenId.get(playerId) ?? {}),
+    }));
+
   const emitRoutes = () => {
-    options.onRoutesChange?.(
-      Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
-        playerId,
-        points: points.map((point) => clonePoint(point)),
-      })),
-    );
+    options.onRoutesChange?.(buildRoutesSnapshot());
   };
 
   const getRouteEditState = (): MovementRouteEditState => {
@@ -508,13 +595,19 @@ export async function createMovementCanvasShell(
       releaseDrag();
       releaseRouteHandleDrag();
       clearRouteDraft();
-      ballStateAtPlayStart = { ...ballState };
+      // Restore ball to coach-configured start state rather than capturing current
+      // (post-play) state — prevents ball looping back to previous pass destination.
+      activeBallPass = null;
+      ballState = { ...ballStateAtPlayStart };
+      tokenLayer.setBallCarrier(ballStateAtPlayStart.carrierId ?? null);
+      emitBallState();
     }
     orchestrator.start();
   };
 
   const reset = () => {
     orchestrator.stop();
+    activeBallPass = null;
     clearRouteDraft();
     releaseDrag();
     releaseRouteHandleDrag();
@@ -528,6 +621,7 @@ export async function createMovementCanvasShell(
       }
     }
     ballState = { ...ballStateAtPlayStart };
+    tokenLayer.setBallCarrier(ballStateAtPlayStart.carrierId ?? null);
     syncBallPosition();
     emitBallState();
   };
@@ -745,6 +839,24 @@ export async function createMovementCanvasShell(
 
   const tick = () => {
     orchestrator.step(app.ticker.deltaMS);
+    if (activeBallPass) {
+      activeBallPass.elapsedMs += app.ticker.deltaMS;
+      if (activeBallPass.elapsedMs >= activeBallPass.durationMs) {
+        const toPlayerId = activeBallPass.toPlayerId;
+        const wasShot = activeBallPass.toWorld != null;
+        activeBallPass = null;
+        if (wasShot) {
+          ballState = {};
+          tokenLayer.setBallCarrier(null);
+          emitBallState();
+        } else if (tokenLayer.getTokenById(toPlayerId)) {
+          ballState = { carrierId: toPlayerId, ballType: ballState.ballType ?? "footballSmall" };
+          tokenLayer.setBallCarrier(toPlayerId);
+          emitBallState();
+          orchestrator.notifyPassLanded(toPlayerId);
+        }
+      }
+    }
     syncBallPosition();
   };
   app.ticker.add(tick);
@@ -762,11 +874,7 @@ export async function createMovementCanvasShell(
     getTokens: () => tokenLayer.getTokens(),
     getSelectedToken: () => (selectedTokenId ? tokenLayer.getTokenById(selectedTokenId) : null),
     getMode: () => mode,
-    getRoutes: () =>
-      Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
-        playerId,
-        points: points.map((point) => clonePoint(point)),
-      })),
+    getRoutes: () => buildRoutesSnapshot(),
     getPlaybackSpeed: () => orchestrator.getSpeed(),
     getPlaybackState: () => orchestrator.getState(),
     getRouteEditState: () => getRouteEditState(),
@@ -777,7 +885,10 @@ export async function createMovementCanvasShell(
 
       const availableIds = new Set(tokenLayer.getTokens().map((token) => token.id));
       for (const tokenId of Array.from(routeByTokenId.keys())) {
-        if (!availableIds.has(tokenId)) routeByTokenId.delete(tokenId);
+        if (!availableIds.has(tokenId)) {
+          routeByTokenId.delete(tokenId);
+          routeMetaByTokenId.delete(tokenId);
+        }
       }
       for (const tokenId of Array.from(startPositionByTokenId.keys())) {
         if (!availableIds.has(tokenId)) startPositionByTokenId.delete(tokenId);
@@ -803,10 +914,16 @@ export async function createMovementCanvasShell(
     setRoutes: (routes: readonly MovementBoardRoute[]) => {
       if (isPlaybackLocked()) return;
       routeByTokenId.clear();
+      routeMetaByTokenId.clear();
       for (const route of routes) {
         const normalized = normalizeRoutePoints(route.points, ROUTE_MIN_POINT_DISTANCE);
         if (normalized.length >= 2) {
           routeByTokenId.set(route.playerId, normalized.map(clonePoint));
+          const { playerId: _p, points: _pts, ...meta } = route;
+          const metaKeys = Object.keys(meta).filter((k) => (meta as Record<string, unknown>)[k] !== undefined);
+          if (metaKeys.length > 0) {
+            routeMetaByTokenId.set(route.playerId, meta as RouteMetadata);
+          }
         }
       }
       setSelectedWaypoint(null);
@@ -838,6 +955,7 @@ export async function createMovementCanvasShell(
       if (!selectedTokenId) return false;
       if (!routeByTokenId.has(selectedTokenId)) return false;
       routeByTokenId.delete(selectedTokenId);
+      routeMetaByTokenId.delete(selectedTokenId);
       if (routeDraft?.tokenId === selectedTokenId) {
         clearRouteDraft();
       }
@@ -905,6 +1023,58 @@ export async function createMovementCanvasShell(
       emitBallState();
     },
     getBallState: () => ({ ...ballState }),
+    setPassEvents: (events) => {
+      passEvents = events.map((e) => ({ ...e }));
+      emitPassEvents();
+    },
+    getPassEvents: () => [...passEvents],
+    addPassEvent: (event) => {
+      passEvents = passEvents.filter((e) => e.id !== event.id).concat({ ...event });
+      emitPassEvents();
+    },
+    removePassEvent: (id) => {
+      passEvents = passEvents.filter((e) => e.id !== id);
+      emitPassEvents();
+    },
+    passBallTo: (targetPlayerId) => {
+      if (!ballState.carrierId) return;
+      const fromWorldPos = tokenLayer.getTokenWorldPosition(ballState.carrierId);
+      const toWorldPos = tokenLayer.getTokenWorldPosition(targetPlayerId);
+      if (!fromWorldPos || !toWorldPos) return;
+      const dx = toWorldPos.x - fromWorldPos.x;
+      const dy = toWorldPos.y - fromWorldPos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const durationMs = Math.max(PASS_MIN_DURATION_MS, Math.min(PASS_MAX_DURATION_MS, dist / PASS_SPEED_PX_PER_MS));
+      activeBallPass = { fromWorld: fromWorldPos, toPlayerId: targetPlayerId, elapsedMs: 0, durationMs, ballType: ballState.ballType ?? "footballSmall" };
+      ballState = { ballType: ballState.ballType };
+      tokenLayer.setBallCarrier(null);
+      emitBallState();
+    },
+    shootToGoal: () => {
+      shootToGoalInternal();
+    },
+    addShotEvent: (event) => {
+      shotEvents = shotEvents.filter((e) => e.id !== event.id).concat({ ...event });
+    },
+    getShotEvents: () => [...shotEvents],
+    removeShotEvent: (id) => {
+      shotEvents = shotEvents.filter((e) => e.id !== id);
+    },
+    setRouteMeta: (playerId, meta) => {
+      if (!routeByTokenId.has(playerId)) return;
+      const existing = routeMetaByTokenId.get(playerId) ?? {};
+      const next: RouteMetadata = { ...existing };
+      for (const key of Object.keys(meta) as Array<keyof RouteMetadata>) {
+        if (meta[key] === undefined) {
+          delete next[key];
+        } else {
+          (next as Record<string, unknown>)[key] = meta[key];
+        }
+      }
+      routeMetaByTokenId.set(playerId, next);
+      emitRoutes();
+    },
+    getRouteMeta: (playerId) => routeMetaByTokenId.get(playerId) ?? null,
     setTokenSize: (size) => tokenLayer.setTokenSize(size),
     getTokenSize: () => tokenLayer.getTokenSize(),
     setTokenRenderer: (name) => tokenLayer.setRenderer(name),
