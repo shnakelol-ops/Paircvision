@@ -221,6 +221,20 @@ const PV_BADGE_STYLE: CSSProperties = {
   WebkitBackdropFilter: "blur(10px)",
 };
 
+const PV_WATERMARK_STYLE: CSSProperties = {
+  position: "fixed",
+  right: "max(14px, calc(env(safe-area-inset-right, 0px) + 12px))",
+  bottom: "max(14px, calc(env(safe-area-inset-bottom, 0px) + 12px))",
+  zIndex: 20,
+  color: "rgba(180, 210, 255, 0.28)",
+  fontSize: "9px",
+  fontWeight: 600,
+  letterSpacing: "0.06em",
+  fontFamily: "Inter, system-ui, sans-serif",
+  pointerEvents: "none",
+  userSelect: "none",
+};
+
 const CONTROL_PANEL_STYLE: CSSProperties = {
   position: "fixed",
   left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
@@ -634,6 +648,7 @@ export default function TacticalPlaySurface() {
   const [passToId, setPassToId] = useState<string | null>(null);
   const [passTimingMs, setPassTimingMs] = useState<number>(0);
   const [passTriggerId, setPassTriggerId] = useState<string | null>(null);
+  const [shootDelayMs, setShootDelayMs] = useState<number>(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1137,6 +1152,7 @@ export default function TacticalPlaySurface() {
         <div style={INFO_PILL_STYLE}>{coachInfoLabel}</div>
 
         <div style={PV_BADGE_STYLE}>PV</div>
+        <div style={PV_WATERMARK_STYLE}>PáircVision</div>
         <button
           type="button"
           style={CTRL_BUBBLE_STYLE}
@@ -1717,6 +1733,41 @@ export default function TacticalPlaySurface() {
                     })}
                   </>
                 ) : null}
+              </div>
+            ) : null}
+
+            {ballCarrierId ? (
+              <div style={MP_ROW}>
+                <span style={MP_ROW_LABEL}>Shoot</span>
+                {([
+                  { ms: 0, label: "Now" },
+                  { ms: 1000, label: "+1s" },
+                  { ms: 2000, label: "+2s" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.ms}
+                    type="button"
+                    style={shootDelayMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
+                    onClick={() => setShootDelayMs(opt.ms)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  style={MP_CHIP_ACTIVE}
+                  onClick={() => {
+                    const delay = shootDelayMs;
+                    setPassesOpen(false);
+                    if (delay > 0) {
+                      setTimeout(() => { shellRef.current?.shootToGoal(); }, delay);
+                    } else {
+                      shellRef.current?.shootToGoal();
+                    }
+                  }}
+                >
+                  Shoot →
+                </button>
               </div>
             ) : null}
 

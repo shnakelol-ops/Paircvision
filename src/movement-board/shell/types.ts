@@ -124,6 +124,8 @@ export type MovementCanvasShellHandle = {
   getPassEvents: () => TacticalPassEvent[];
   addPassEvent: (event: TacticalPassEvent) => void;
   removePassEvent: (id: string) => void;
+  passBallTo: (targetPlayerId: string) => void;
+  shootToGoal: () => void;
   reflow: () => void;
   destroy: () => void;
 };
