@@ -14,6 +14,7 @@ import type {
   MovementRouteEditState,
   PremiumPlayerTokenColor,
   TacticalPassEvent,
+  TacticalShotEvent,
   TokenRendererName,
   TokenSize,
 } from "../../movement-board/shell/types";
@@ -650,7 +651,9 @@ export default function TacticalPlaySurface() {
   const [passTriggerId, setPassTriggerId] = useState<string | null>(null);
   const [shootDelayMs, setShootDelayMs] = useState<number>(0);
   const [shotOpen, setShotOpen] = useState(false);
-  const [shotEvents, setShotEvents] = useState<Array<{ id: string; shooterId: string; delayMs: number }>>([]);
+  const [shotEvents, setShotEvents] = useState<TacticalShotEvent[]>([]);
+  const [scenarioRenameId, setScenarioRenameId] = useState<string | null>(null);
+  const [scenarioRenameDraft, setScenarioRenameDraft] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1082,14 +1085,15 @@ export default function TacticalPlaySurface() {
   const onSaveScenario = () => {
     const shell = shellRef.current;
     if (!shell) return;
-    const saved = saveScenario(
+    saveScenario(
       scenarioNameDraft.trim() || "Scenario",
       shell.getTokens(),
       shell.getRoutes(),
       shell.getBallState(),
       shell.getPassEvents(),
+      shell.getShotEvents(),
+      shell.getPlaybackSpeed(),
     );
-    void saved;
     setScenarios(listScenarios());
     setScenarioNameDraft("");
   };
@@ -1107,8 +1111,21 @@ export default function TacticalPlaySurface() {
       shell.removeBall();
     }
     shell.setPassEvents(scenario.passEvents ?? []);
+    setPassEvents(scenario.passEvents ?? []);
+    for (const existing of shell.getShotEvents()) {
+      shell.removeShotEvent(existing.id);
+    }
+    const loadedShots = scenario.shotEvents ?? [];
+    for (const shot of loadedShots) {
+      shell.addShotEvent(shot);
+    }
+    setShotEvents(loadedShots);
+    const speed = scenario.playbackSpeed ?? "normal";
+    setPlaybackSpeed(speed);
+    shell.setPlaybackSpeed(speed);
     shell.setStartPositions();
     setScenariosOpen(false);
+    setScenarioRenameId(null);
   };
 
   const onDeleteScenario = (id: string) => {
@@ -1919,40 +1936,93 @@ export default function TacticalPlaySurface() {
                 </div>
                 {scenarios.length > 0 ? (
                   scenarios.map((s) => (
-                    <div key={s.id} style={PANEL_ROW_STYLE}>
-                      <span
-                        style={{
-                          ...SETUP_SECTION_LABEL_STYLE,
-                          maxWidth: "130px",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                          fontSize: "9px",
-                          color: "rgba(200, 230, 255, 0.72)",
-                          letterSpacing: "0.02em",
-                          textTransform: "none",
-                        }}
-                        title={s.name}
-                      >
-                        {s.name}
-                      </span>
-                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onLoadScenario(s)}>
-                        Load
-                      </button>
-                      <button
-                        type="button"
-                        style={TOOL_BUTTON_STYLE}
-                        onClick={() => onDuplicateScenario(s.id)}
-                      >
-                        Copy
-                      </button>
-                      <button
-                        type="button"
-                        style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 160, 160, 0.88)" }}
-                        onClick={() => onDeleteScenario(s.id)}
-                      >
-                        Del
-                      </button>
+                    <div key={s.id} style={{ display: "grid", gap: "2px" }}>
+                      <div style={PANEL_ROW_STYLE}>
+                        <span
+                          style={{
+                            ...SETUP_SECTION_LABEL_STYLE,
+                            maxWidth: "130px",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            fontSize: "9px",
+                            color: "rgba(200, 230, 255, 0.72)",
+                            letterSpacing: "0.02em",
+                            textTransform: "none",
+                          }}
+                          title={s.name}
+                        >
+                          {s.name}
+                        </span>
+                        <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onLoadScenario(s)}>
+                          Load
+                        </button>
+                        <button
+                          type="button"
+                          style={scenarioRenameId === s.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                          onClick={() => {
+                            if (scenarioRenameId === s.id) {
+                              setScenarioRenameId(null);
+                            } else {
+                              setScenarioRenameId(s.id);
+                              setScenarioRenameDraft(s.name);
+                            }
+                          }}
+                        >
+                          Ren
+                        </button>
+                        <button
+                          type="button"
+                          style={TOOL_BUTTON_STYLE}
+                          onClick={() => onDuplicateScenario(s.id)}
+                        >
+                          Copy
+                        </button>
+                        <button
+                          type="button"
+                          style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 160, 160, 0.88)" }}
+                          onClick={() => onDeleteScenario(s.id)}
+                        >
+                          Del
+                        </button>
+                      </div>
+                      {scenarioRenameId === s.id ? (
+                        <div style={{ ...PANEL_ROW_STYLE, paddingLeft: "4px" }}>
+                          <input
+                            style={SCENARIO_INPUT_STYLE}
+                            type="text"
+                            value={scenarioRenameDraft}
+                            maxLength={40}
+                            autoFocus
+                            onChange={(e) => setScenarioRenameDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                onRenameScenario(s.id, scenarioRenameDraft);
+                                setScenarioRenameId(null);
+                              } else if (e.key === "Escape") {
+                                setScenarioRenameId(null);
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            style={TOOL_BUTTON_STYLE}
+                            onClick={() => {
+                              onRenameScenario(s.id, scenarioRenameDraft);
+                              setScenarioRenameId(null);
+                            }}
+                          >
+                            OK
+                          </button>
+                          <button
+                            type="button"
+                            style={TOOL_BUTTON_STYLE}
+                            onClick={() => setScenarioRenameId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   ))
                 ) : (
