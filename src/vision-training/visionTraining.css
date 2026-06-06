@@ -703,3 +703,119 @@
   color: #4a6070;
   font-style: italic;
 }
+
+/* ─── Player Notes screen ─── */
+
+.vt-notes-summary {
+  border: 1px solid #17324a;
+  border-radius: 12px;
+  background: #081726;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #7a95ad;
+}
+
+.vt-notes-summary-count {
+  color: #4ade80;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.vt-notes-player-list {
+  display: grid;
+  gap: 8px;
+}
+
+.vt-notes-player-card {
+  border: 1px solid #17324a;
+  border-radius: 14px;
+  background: #081726;
+  overflow: hidden;
+  transition: border-color 120ms ease;
+}
+
+.vt-notes-player-card--expanded {
+  border-color: #2563eb;
+}
+
+.vt-notes-player-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 80ms ease;
+}
+
+.vt-notes-player-head:active { opacity: 0.75; }
+
+.vt-notes-chevron {
+  margin-left: auto;
+  font-size: 14px;
+  color: #4a6070;
+  transition: transform 150ms ease;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.vt-notes-chevron--open {
+  transform: rotate(180deg);
+}
+
+.vt-notes-player-preview {
+  margin: 0 12px 12px;
+  font-size: 13px;
+  color: #7a95ad;
+  line-height: 1.5;
+  border-left: 2px solid #1c3a52;
+  padding-left: 10px;
+}
+
+.vt-notes-form {
+  padding: 0 12px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+/* ─── Player note row (review + history read-only) ─── */
+
+.vt-player-note-row {
+  display: grid;
+  gap: 4px;
+}
+
+.vt-player-note-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vt-player-note-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #0a2236;
+  border: 1px solid #1c3a52;
+  color: #8fa5be;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 2px 7px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.vt-player-note-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #c8d8e8;
+}
+
+.vt-player-note-text {
+  margin: 0;
+  font-size: 13px;
+  color: #8fa5be;
+  line-height: 1.5;
+  padding-left: 2px;
+}

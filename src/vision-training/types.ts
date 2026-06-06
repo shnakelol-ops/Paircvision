@@ -16,6 +16,7 @@ export type PlayerTrainingNote = {
   playerName: string;
   note: string;
   createdAt: string;
+  updatedAt?: string;
 };
 
 export type TrainingSessionReview = {

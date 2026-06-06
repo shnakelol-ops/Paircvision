@@ -36,7 +36,14 @@ export default function VisionTrainingHome() {
         ? () => navigate(`/vision-training/session/${activeSession.id}/attendance`)
         : undefined,
     },
-    { name: "Player Notes", sub: "Coming Soon", disabled: true },
+    {
+      name: "Player Notes",
+      sub: activeSession ? "Per-player observations" : "Start a session first",
+      disabled: !activeSession,
+      action: activeSession
+        ? () => navigate(`/vision-training/session/${activeSession.id}/notes`)
+        : undefined,
+    },
     {
       name: "Session Review",
       sub: activeSession ? "End-of-night summary" : "Start a session first",

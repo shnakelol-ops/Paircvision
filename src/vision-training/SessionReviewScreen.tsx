@@ -276,6 +276,25 @@ export default function SessionReviewScreen({ sessionId }: Props) {
 
           </div>
 
+          <p className="vt-section-label">Player Notes</p>
+          <div className="vt-panel">
+            {session.playerNotes.length === 0 ? (
+              <p className="vt-panel-sub" style={{ textAlign: "center", padding: "4px 0" }}>
+                No player notes recorded.
+              </p>
+            ) : (
+              session.playerNotes.map((note) => (
+                <div key={note.id} className="vt-player-note-row">
+                  <div className="vt-player-note-header">
+                    <span className="vt-player-note-badge">#{note.playerNumber}</span>
+                    <span className="vt-player-note-name">{note.playerName}</span>
+                  </div>
+                  <p className="vt-player-note-text">{note.note}</p>
+                </div>
+              ))
+            )}
+          </div>
+
           <button
             type="button"
             className="vt-primary-btn"
