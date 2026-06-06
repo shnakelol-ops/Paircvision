@@ -88,8 +88,9 @@ export default function SessionReviewScreen({ sessionId }: Props) {
     counts[rec.status] = (counts[rec.status] ?? 0) + 1;
   }
   const total = session.attendance.length;
+  const trained = counts.present + counts.late;
   const attendancePercent =
-    total > 0 ? Math.round((counts.present / total) * 100) : 0;
+    total > 0 ? Math.round((trained / total) * 100) : 0;
 
   function saveReview() {
     const current = loadSessionById(sessionId);
@@ -156,9 +157,9 @@ export default function SessionReviewScreen({ sessionId }: Props) {
           <div className="vt-panel">
             <div className="vt-review-stats">
               <div className="vt-review-stat">
-                <span className="vt-review-stat-label">Present</span>
+                <span className="vt-review-stat-label">Trained</span>
                 <span className="vt-review-stat-value vt-review-stat-value--present">
-                  {counts.present}
+                  {trained}
                 </span>
               </div>
               <div className="vt-review-stat">
