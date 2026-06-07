@@ -9,10 +9,12 @@ import MovementBoardCanvasShellPage from "./pages/MovementBoardCanvasShellPage";
 import RapidCaptureLitePage from "./rapid-capture/RapidCaptureLitePage";
 import ProTaggerPage from "./pro-tagger/ProTaggerPage";
 import VisionTacticsShell from "./features/vision-tactics/VisionTacticsShell";
+import VisionTrainingShell from "./vision-training/VisionTrainingShell";
 
 const boardShell = () => <PitchFlowCoachShell initialTab="home" />;
 const VISION_BOARD_PATH = "/vision-board";
 const VISION_TACTICS_PATH = "/vision-tactics";
+const VISION_TRAINING_PATH = "/vision-training";
 const QUICK_BOARD_PATH = "/quickboard";
 const FLOW_STATS_PATH = "/flowstats";
 const NOTES_PATH = "/notes";
@@ -95,6 +97,9 @@ function pickRootComponent() {
   }
   if (normalizedPath === "/plans") {
     return () => <PitchFlowCoachShell initialTab="plans" />;
+  }
+  if (normalizedPath.startsWith(VISION_TRAINING_PATH)) {
+    return VisionTrainingShell;
   }
   if (normalizedPath === PLAYER_PERFORMANCE_TRACKER_PATH) {
     return PlayerPerformanceTracker;

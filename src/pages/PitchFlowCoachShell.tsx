@@ -38,7 +38,7 @@ const BOTTOM_NAV_ITEMS: ReadonlyArray<BottomNavItem> = [
   { id: "home", label: "Home", short: "H", path: "/board" },
   { id: "flowlab", label: "Board", short: "V", path: "/vision-board" },
   { id: "flowstats", label: "Stats", short: "S", path: "/flowstats" },
-  { id: "training", label: "Training", short: "T", path: "/player-performance-tracker" },
+  { id: "training", label: "Training", short: "T", path: "/vision-training" },
   { id: "notes", label: "Notes", short: "N", path: "/notes" },
 ];
 
@@ -977,6 +977,10 @@ function BoardPage() {
             <span className="pf-home-tile-name">Vision Tactics</span>
             <small>Plan, explain and teach the game.</small>
           </button>
+          <button type="button" className="pf-home-secondary-btn pf-home-tile--orange" onClick={() => navigateTo("/vision-training")}>
+            <span className="pf-home-tile-name">Vision Training</span>
+            <small>Training Hub & Player Performance.</small>
+          </button>
           <button type="button" className="pf-home-secondary-btn pf-home-tile--blue" onClick={() => navigateTo("/flowstats")}>
             <span className="pf-home-tile-name">Match Stats</span>
             <small>Event-first match tracking.</small>
@@ -984,10 +988,6 @@ function BoardPage() {
           <button type="button" className="pf-home-secondary-btn pf-home-tile--amber" onClick={() => navigateTo("/pro-tagger")}>
             <span className="pf-home-tile-name">Stats Pro</span>
             <small>Outcome-first match tracking.</small>
-          </button>
-          <button type="button" className="pf-home-secondary-btn pf-home-tile--orange" onClick={() => navigateTo("/player-performance-tracker")}>
-            <span className="pf-home-tile-name">Training Tracker</span>
-            <small>Develop player performance.</small>
           </button>
           <button type="button" className="pf-home-secondary-btn pf-home-tile--purple" onClick={() => navigateTo("/notes")}>
             <span className="pf-home-tile-name">Notes</span>
@@ -1620,7 +1620,8 @@ export default function PitchFlowCoachShell({ initialTab }: PitchFlowCoachShellP
       ? "flowlab"
       : normalizedPath === "/flowstats" || normalizedPath === "/stats"
         ? "flowstats"
-        : normalizedPath === "/player-performance-tracker"
+        : normalizedPath === "/player-performance-tracker" ||
+            normalizedPath.startsWith("/vision-training")
           ? "training"
         : normalizedPath === "/notes" ||
             normalizedPath === "/library" ||
