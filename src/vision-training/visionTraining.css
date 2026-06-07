@@ -819,3 +819,128 @@
   line-height: 1.5;
   padding-left: 2px;
 }
+
+/* ─── New Session: Load / Save Training Hub squads ─── */
+
+.vt-load-squad-row {
+  display: flex;
+}
+
+.vt-load-squad-toggle {
+  border: 1px solid #1c3a52;
+  border-radius: 8px;
+  background: #0a1d2e;
+  color: #5a7888;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 100ms ease;
+}
+
+.vt-load-squad-toggle:active { opacity: 0.7; }
+
+.vt-load-squad-panel {
+  border: 1px solid #17324a;
+  border-radius: 10px;
+  background: #060f18;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.vt-load-squad-list {
+  display: grid;
+  gap: 4px;
+}
+
+.vt-load-squad-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid #17324a;
+  border-radius: 8px;
+  background: #0a1d2e;
+  padding: 9px 12px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 100ms ease;
+}
+
+.vt-load-squad-item:active { opacity: 0.75; }
+
+.vt-load-squad-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c8d8e8;
+}
+
+.vt-load-squad-item-count {
+  font-size: 11px;
+  color: #4a6070;
+  flex-shrink: 0;
+}
+
+/* ─── History: per-card delete button ─── */
+
+.vt-history-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #0e2030;
+  padding-top: 10px;
+}
+
+.vt-history-delete-btn {
+  border: none;
+  background: none;
+  color: #4a3838;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 3px 0;
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: color 100ms ease;
+}
+
+.vt-history-delete-btn:hover { color: #f87171; }
+.vt-history-delete-btn:active { color: #ef4444; }
+
+/* ─── History: hold-to-clear-all ─── */
+
+.vt-hold-delete-wrap {
+  position: relative;
+  width: 100%;
+  border: 1px solid #1c1010;
+  border-radius: 12px;
+  background: #060203;
+  color: #4a3030;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 11px 14px;
+  text-align: center;
+  cursor: pointer;
+  font-family: inherit;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.vt-hold-delete-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: rgba(220, 38, 38, 0.14);
+  pointer-events: none;
+  transition: none;
+}
+
+.vt-hold-delete-label {
+  position: relative;
+  z-index: 1;
+}

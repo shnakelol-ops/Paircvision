@@ -50,3 +50,17 @@ export type TrainingSession = {
   playerNotes: PlayerTrainingNote[];
   review?: TrainingSessionReview;
 };
+
+export type TrainingHubSquadPlayer = {
+  playerId: string;
+  playerNumber: number;
+  playerName: string;
+};
+
+export type TrainingHubSquad = {
+  id: string;
+  name: string;
+  players: TrainingHubSquadPlayer[];
+  createdAt: string;
+  updatedAt: string;
+};

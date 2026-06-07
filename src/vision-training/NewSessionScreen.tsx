@@ -2,8 +2,8 @@ import "./visionTraining.css";
 import { useState } from "react";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { loadSavedSquads } from "../features/player-performance-tracker/storage/trainingSessionStorage";
-import type { AttendanceRecord, TrainingSession } from "./types";
-import { saveActiveSessionId, upsertSession } from "./trainingStorage";
+import type { AttendanceRecord, TrainingHubSquad, TrainingSession } from "./types";
+import { loadTrainingHubSquads, saveActiveSessionId, upsertSession, upsertTrainingHubSquad } from "./trainingStorage";
 
 type QuickPlayer = { id: string; number: string; name: string };
 
@@ -37,6 +37,10 @@ export default function NewSessionScreen() {
 
   // Quick-squad path (used when no saved squads exist)
   const [quickPlayers, setQuickPlayers] = useState<QuickPlayer[]>([]);
+  const [trainingHubSquads, setTrainingHubSquads] = useState<TrainingHubSquad[]>(
+    () => loadTrainingHubSquads()
+  );
+  const [showLoadPanel, setShowLoadPanel] = useState(false);
 
   const selectedSquad = squads.find((s) => s.id === selectedSquadId) ?? null;
 
@@ -84,6 +88,42 @@ export default function NewSessionScreen() {
 
   function removeQuickPlayer(id: string) {
     setQuickPlayers((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  function handleSaveSquad() {
+    if (validQuickPlayers.length === 0) return;
+    const current = loadTrainingHubSquads();
+    if (current.length >= 10) {
+      window.alert("Maximum 10 saved training squads reached.");
+      return;
+    }
+    const name = window.prompt("Name this training squad:", "");
+    if (!name?.trim()) return;
+    const now = new Date().toISOString();
+    const squad: TrainingHubSquad = {
+      id: `ths-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: name.trim(),
+      players: validQuickPlayers.map((p) => ({
+        playerId: `sp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        playerNumber: parseInt(p.number, 10) || 0,
+        playerName: p.name.trim(),
+      })),
+      createdAt: now,
+      updatedAt: now,
+    };
+    upsertTrainingHubSquad(squad);
+    setTrainingHubSquads(loadTrainingHubSquads());
+  }
+
+  function handleLoadSquad(squad: TrainingHubSquad) {
+    setQuickPlayers(
+      squad.players.map((p, i) => ({
+        id: `qp-loaded-${Date.now()}-${i}`,
+        number: String(p.playerNumber),
+        name: p.playerName,
+      }))
+    );
+    setShowLoadPanel(false);
   }
 
   function handleStart() {
@@ -229,6 +269,42 @@ export default function NewSessionScreen() {
                 </div>
               </div>
 
+              <div className="vt-load-squad-row">
+                <button
+                  type="button"
+                  className="vt-load-squad-toggle"
+                  onClick={() => setShowLoadPanel((v) => !v)}
+                >
+                  {showLoadPanel ? "▴" : "▾"} Load a saved training squad
+                </button>
+              </div>
+
+              {showLoadPanel && (
+                <div className="vt-load-squad-panel">
+                  {trainingHubSquads.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: 12, color: "#4a6070", lineHeight: 1.5 }}>
+                      No saved training squads yet.
+                    </p>
+                  ) : (
+                    <div className="vt-load-squad-list">
+                      {trainingHubSquads.map((sq) => (
+                        <button
+                          key={sq.id}
+                          type="button"
+                          className="vt-load-squad-item"
+                          onClick={() => handleLoadSquad(sq)}
+                        >
+                          <span className="vt-load-squad-item-name">{sq.name}</span>
+                          <span className="vt-load-squad-item-count">
+                            {sq.players.length} players
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {quickPlayers.length === 0 ? (
                 <p style={{ margin: 0, fontSize: 12, color: "#4a6070", lineHeight: 1.5 }}>
                   No saved squads found. Create a quick squad for this session.
@@ -281,6 +357,17 @@ export default function NewSessionScreen() {
                 <p style={{ margin: 0, fontSize: 11, color: "#5a7080" }}>
                   Maximum 30 players reached.
                 </p>
+              )}
+
+              {validQuickPlayers.length > 0 && (
+                <button
+                  type="button"
+                  className="vt-squad-action-btn"
+                  style={{ width: "100%", padding: "8px 12px", textAlign: "left" }}
+                  onClick={handleSaveSquad}
+                >
+                  ↑ Save as Training Squad
+                </button>
               )}
 
               {playerCount > 0 ? (

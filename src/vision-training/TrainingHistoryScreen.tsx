@@ -1,8 +1,8 @@
 import "./visionTraining.css";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import type { TrainingSession } from "./types";
-import { loadSessions } from "./trainingStorage";
+import { deleteAllCompletedSessions, deleteSessionById, loadSessions } from "./trainingStorage";
 
 function navigate(path: string) {
   window.location.assign(path);
@@ -15,7 +15,7 @@ function formatDate(iso: string): string {
 }
 
 export default function TrainingHistoryScreen() {
-  const [sessions] = useState<TrainingSession[]>(() =>
+  const [sessions, setSessions] = useState<TrainingSession[]>(() =>
     loadSessions()
       .filter((s) => s.status === "completed")
       .sort((a, b) => {
@@ -24,6 +24,48 @@ export default function TrainingHistoryScreen() {
         return tb.localeCompare(ta);
       })
   );
+
+  const [holdProgress, setHoldProgress] = useState(0);
+  const holdIntervalRef = useRef<number | null>(null);
+  const holdStartRef = useRef<number>(0);
+
+  function handleDelete(id: string) {
+    if (!window.confirm("Delete this completed training session?")) return;
+    deleteSessionById(id);
+    setSessions((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  function startHold() {
+    holdStartRef.current = Date.now();
+    holdIntervalRef.current = window.setInterval(() => {
+      const elapsed = Date.now() - holdStartRef.current;
+      const progress = Math.min((elapsed / 1200) * 100, 100);
+      setHoldProgress(progress);
+      if (elapsed >= 1200) {
+        if (holdIntervalRef.current !== null) {
+          clearInterval(holdIntervalRef.current);
+          holdIntervalRef.current = null;
+        }
+        setHoldProgress(0);
+        if (
+          window.confirm(
+            "Delete all completed training sessions? This cannot be undone."
+          )
+        ) {
+          deleteAllCompletedSessions();
+          setSessions([]);
+        }
+      }
+    }, 30);
+  }
+
+  function cancelHold() {
+    if (holdIntervalRef.current !== null) {
+      clearInterval(holdIntervalRef.current);
+      holdIntervalRef.current = null;
+    }
+    setHoldProgress(0);
+  }
 
   return (
     <div className="vt-page-shell">
@@ -101,16 +143,48 @@ export default function TrainingHistoryScreen() {
                         <span className="vt-history-stat-label">Attendance</span>
                       </div>
                     </div>
+                    <div className="vt-history-card-footer">
+                      <button
+                        type="button"
+                        className="vt-history-delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(session.id);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 );
               })}
             </div>
           )}
 
+          {sessions.length > 0 && (
+            <div
+              className="vt-hold-delete-wrap"
+              style={{ marginTop: 8 }}
+              onMouseDown={startHold}
+              onMouseUp={cancelHold}
+              onMouseLeave={cancelHold}
+              onTouchStart={startHold}
+              onTouchEnd={cancelHold}
+              onTouchMove={cancelHold}
+            >
+              <div
+                className="vt-hold-delete-fill"
+                style={{ width: `${holdProgress}%` }}
+                aria-hidden="true"
+              />
+              <span className="vt-hold-delete-label">Hold to clear history</span>
+            </div>
+          )}
+
           <button
             type="button"
             className="vt-ghost-btn"
-            style={{ marginTop: 8 }}
+            style={{ marginTop: 6 }}
             onClick={() => navigate("/vision-training")}
           >
             ← Back to Training Hub
