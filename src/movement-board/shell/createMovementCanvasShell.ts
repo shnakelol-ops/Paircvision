@@ -1087,6 +1087,7 @@ export async function createMovementCanvasShell(
     setBallCarrier: (tokenId) => {
       tokenLayer.setBallCarrier(tokenId);
     },
+    getCanvas: () => app.canvas as HTMLCanvasElement,
     reflow: () => {
       syncToHost();
     },

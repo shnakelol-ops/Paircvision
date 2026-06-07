@@ -524,6 +524,81 @@ const PLAYS_INPUT_STYLE: CSSProperties = {
   outline: "none",
 };
 
+const RECORD_BUBBLE_BASE: CSSProperties = {
+  position: "fixed",
+  left: "50%",
+  transform: "translateX(-50%)",
+  bottom: "max(10px, calc(env(safe-area-inset-bottom, 0px) + 8px))",
+  zIndex: 22,
+  height: "38px",
+  minWidth: "80px",
+  borderRadius: "999px",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "11px",
+  fontWeight: 800,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  padding: "0 14px",
+  cursor: "pointer",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+  boxShadow: "0 12px 28px rgba(0, 4, 14, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.10)",
+};
+
+const RECORD_BUBBLE_IDLE_STYLE: CSSProperties = {
+  ...RECORD_BUBBLE_BASE,
+  border: "1px solid rgba(255, 80, 80, 0.35)",
+  background: "rgba(28, 6, 6, 0.80)",
+  color: "rgba(255, 180, 180, 0.95)",
+};
+
+const RECORD_BUBBLE_ACTIVE_STYLE: CSSProperties = {
+  ...RECORD_BUBBLE_BASE,
+  border: "1px solid rgba(255, 60, 60, 0.70)",
+  background: "rgba(120, 10, 10, 0.90)",
+  color: "#fff",
+};
+
+const RECORD_PANEL_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "50%",
+  transform: "translateX(-50%)",
+  bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
+  zIndex: 21,
+  display: "grid",
+  gap: "4px",
+};
+
+const RECORD_COUNTDOWN_STYLE: CSSProperties = {
+  position: "fixed",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  zIndex: 30,
+  fontSize: "100px",
+  fontWeight: 900,
+  color: "rgba(255, 255, 255, 0.94)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  textShadow: "0 4px 32px rgba(0, 0, 0, 0.90)",
+  pointerEvents: "none",
+  userSelect: "none",
+  lineHeight: 1,
+};
+
+const RECORD_DOT_STYLE: CSSProperties = {
+  position: "fixed",
+  top: "max(14px, calc(env(safe-area-inset-top, 0px) + 12px))",
+  right: "max(14px, calc(env(safe-area-inset-right, 0px) + 12px))",
+  zIndex: 25,
+  width: "10px",
+  height: "10px",
+  borderRadius: "50%",
+  background: "#ff3030",
+  boxShadow: "0 0 8px 2px rgba(255, 48, 48, 0.70)",
+  pointerEvents: "none",
+  animation: "tp-rec-pulse 1.1s ease-in-out infinite",
+};
+
 const MOVEMENT_PANEL_STYLE: CSSProperties = {
   position: "fixed",
   left: "50%",
@@ -753,6 +828,16 @@ export default function TacticalPlaySurface() {
   const [scenarioRenameDraft, setScenarioRenameDraft] = useState("");
   const [playsOpen, setPlaysOpen] = useState(false);
   const [playsNameDraft, setPlaysNameDraft] = useState("");
+  type RecordPhase = "idle" | "panel" | "countdown" | "recording" | "done";
+  const [recordPhase, setRecordPhase] = useState<RecordPhase>("idle");
+  const [recordDuration, setRecordDuration] = useState<10 | 20 | 30>(30);
+  const [recordCountdown, setRecordCountdown] = useState(3);
+  const [recordBlob, setRecordBlob] = useState<Blob | null>(null);
+  const [recordMimeType, setRecordMimeType] = useState("video/webm");
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordChunksRef = useRef<Blob[]>([]);
+  const recordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recordCountdownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -786,6 +871,14 @@ export default function TacticalPlaySurface() {
       window.removeEventListener("orientationchange", onOrient);
       vp?.removeEventListener("resize", onResize);
       vp?.removeEventListener("scroll", onResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (recordCountdownRef.current) clearTimeout(recordCountdownRef.current);
+      if (recordTimerRef.current) clearTimeout(recordTimerRef.current);
+      if (recorderRef.current?.state !== "inactive") recorderRef.current?.stop();
     };
   }, []);
 
@@ -1260,6 +1353,110 @@ export default function TacticalPlaySurface() {
     setPlaysNameDraft("");
   };
 
+  function getBestMimeType(): string {
+    if (typeof MediaRecorder === "undefined") return "video/webm";
+    for (const t of ["video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]) {
+      if (MediaRecorder.isTypeSupported(t)) return t;
+    }
+    return "video/webm";
+  }
+
+  function canRecord(): boolean {
+    if (typeof window === "undefined" || typeof MediaRecorder === "undefined") return false;
+    const c = document.createElement("canvas");
+    return typeof (c as HTMLCanvasElement & { captureStream?: unknown }).captureStream === "function";
+  }
+
+  const stopRecording = () => {
+    if (recordTimerRef.current) { clearTimeout(recordTimerRef.current); recordTimerRef.current = null; }
+    const rec = recorderRef.current;
+    if (rec && rec.state !== "inactive") rec.stop();
+  };
+
+  const startRecording = () => {
+    const canvas = shellRef.current?.getCanvas();
+    if (!canvas) return;
+    const mimeType = getBestMimeType();
+    setRecordMimeType(mimeType);
+    recordChunksRef.current = [];
+    const stream = (canvas as HTMLCanvasElement & { captureStream(fps: number): MediaStream }).captureStream(30);
+    const recorder = new MediaRecorder(stream, { mimeType });
+    recorderRef.current = recorder;
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(recordChunksRef.current, { type: mimeType });
+      setRecordBlob(blob);
+      setRecordPhase("done");
+    };
+    recorder.start(200);
+    recordTimerRef.current = setTimeout(stopRecording, recordDuration * 1000);
+  };
+
+  const startCountdown = () => {
+    setRecordPhase("countdown");
+    setRecordCountdown(3);
+    let count = 3;
+    const tick = () => {
+      count -= 1;
+      if (count <= 0) {
+        setRecordPhase("recording");
+        startRecording();
+        return;
+      }
+      setRecordCountdown(count);
+      recordCountdownRef.current = setTimeout(tick, 1000);
+    };
+    recordCountdownRef.current = setTimeout(tick, 1000);
+  };
+
+  const dismissRecord = () => {
+    if (recordCountdownRef.current) { clearTimeout(recordCountdownRef.current); recordCountdownRef.current = null; }
+    stopRecording();
+    setRecordPhase("idle");
+    setRecordBlob(null);
+  };
+
+  const saveClip = () => {
+    if (!recordBlob) return;
+    const ext = recordMimeType.startsWith("video/mp4") ? "mp4" : "webm";
+    const url = URL.createObjectURL(recordBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `paircvision-play-${Date.now()}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1200);
+  };
+
+  const shareClip = async () => {
+    if (!recordBlob) return;
+    const ext = recordMimeType.startsWith("video/mp4") ? "mp4" : "webm";
+    const filename = `paircvision-play-${Date.now()}.${ext}`;
+    const file = new File([recordBlob], filename, { type: recordMimeType });
+    try {
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: "PáircVision Play" });
+      } else {
+        saveClip();
+      }
+    } catch {
+      saveClip();
+    }
+  };
+
+  const onRecordPress = () => {
+    if (recordPhase === "recording") { stopRecording(); return; }
+    if (recordPhase !== "idle") { dismissRecord(); return; }
+    if (!canRecord()) {
+      alert("Recording is not supported in this browser.\n\niPhone: use Screen Recording from Control Centre.\nAndroid: use Chrome for full recording support.");
+      return;
+    }
+    setRecordPhase("panel");
+    setRecordBlob(null);
+  };
+
   const modeIsPlaybackLocked = isPlaying || isPaused;
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
   const removePointDisabled = menuMode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying;
@@ -1283,6 +1480,7 @@ export default function TacticalPlaySurface() {
 
   return (
     <OrientationGate modeLabel="Tactical Play">
+      <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}`}</style>
       <div style={rootStyle}>
         <VisionStadiumBackground variant="board" />
         <div style={CONTENT_STYLE}>
@@ -1314,6 +1512,80 @@ export default function TacticalPlaySurface() {
         >
           Setup
         </button>
+
+        {/* RECORD bubble — bottom-center */}
+        {recordPhase !== "recording" ? (
+          <button
+            type="button"
+            style={recordPhase === "idle" ? RECORD_BUBBLE_IDLE_STYLE : RECORD_BUBBLE_ACTIVE_STYLE}
+            onClick={onRecordPress}
+          >
+            {recordPhase === "idle" ? "Record" : recordPhase === "panel" ? "✕ Cancel" : recordPhase === "countdown" ? "✕ Cancel" : "✕ Dismiss"}
+          </button>
+        ) : (
+          <button type="button" style={RECORD_BUBBLE_ACTIVE_STYLE} onClick={onRecordPress}>
+            ■ Stop
+          </button>
+        )}
+
+        {/* Record panel — duration picker */}
+        {recordPhase === "panel" ? (
+          <div style={RECORD_PANEL_STYLE}>
+            <div style={PANEL_ROW_STYLE}>
+              <span style={SETUP_SECTION_LABEL_STYLE}>Record Clip</span>
+              {([10, 20, 30] as const).map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  style={recordDuration === d ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                  onClick={() => setRecordDuration(d)}
+                >
+                  {d}s
+                </button>
+              ))}
+              <button
+                type="button"
+                style={{ ...TOOL_BUTTON_STYLE, border: "1px solid rgba(255, 80, 80, 0.50)", color: "rgba(255, 190, 190, 0.95)", minWidth: "100px" }}
+                onClick={startCountdown}
+              >
+                Start Recording
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Countdown overlay */}
+        {recordPhase === "countdown" ? (
+          <div style={RECORD_COUNTDOWN_STYLE}>{recordCountdown}</div>
+        ) : null}
+
+        {/* Red recording dot */}
+        {recordPhase === "recording" ? (
+          <div style={RECORD_DOT_STYLE} />
+        ) : null}
+
+        {/* Done panel — save / share */}
+        {recordPhase === "done" && recordBlob ? (
+          <div style={RECORD_PANEL_STYLE}>
+            <div style={PANEL_ROW_STYLE}>
+              <span style={SETUP_SECTION_LABEL_STYLE}>Clip Ready</span>
+              <button
+                type="button"
+                style={{ ...TOOL_BUTTON_STYLE, border: "1px solid rgba(124, 255, 114, 0.40)", color: "rgba(200, 255, 190, 0.95)" }}
+                onClick={saveClip}
+              >
+                Save Clip
+              </button>
+              <button
+                type="button"
+                style={{ ...TOOL_BUTTON_STYLE, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)" }}
+                onClick={() => { void shareClip(); }}
+              >
+                Share
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {!isControlsOpen && !setupOpen && !isPlaying && !isPaused ? (
           <div style={HINT_PILL_STYLE}>Move players → Set Start → Draw Movements → Play</div>
