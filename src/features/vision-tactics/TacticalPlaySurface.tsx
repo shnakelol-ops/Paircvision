@@ -1268,6 +1268,14 @@ export default function TacticalPlaySurface() {
   const pauseResumeDisabled = !isPlaying && !isPaused;
   const playbackFloatingVisible = isPlaying || isPaused;
 
+  // Portrait: anchor PLAYS to bottom-right stack (above Setup), not pitch-center right.
+  const playsButtonStyle: CSSProperties = isPortrait
+    ? { ...PLAYS_BUBBLE_STYLE, top: "auto", bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))", transform: "none" }
+    : PLAYS_BUBBLE_STYLE;
+  const playsPanelStyle: CSSProperties = isPortrait
+    ? { ...PLAYS_PANEL_STYLE, top: "auto", bottom: "max(102px, calc(env(safe-area-inset-bottom, 0px) + 100px))", transform: "none", right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))", maxHeight: "55vh" }
+    : PLAYS_PANEL_STYLE;
+
   const rootStyle: CSSProperties = {
     ...ROOT_STYLE,
     [TP_HEIGHT_VAR]: `${Math.max(0, Math.floor(appViewportHeight))}px`,
@@ -2264,8 +2272,8 @@ export default function TacticalPlaySurface() {
           <button
             type="button"
             style={playsOpen
-              ? { ...PLAYS_BUBBLE_STYLE, border: "1px solid rgba(124, 255, 114, 0.40)", background: "rgba(14, 32, 22, 0.86)" }
-              : PLAYS_BUBBLE_STYLE}
+              ? { ...playsButtonStyle, border: "1px solid rgba(124, 255, 114, 0.40)", background: "rgba(14, 32, 22, 0.86)" }
+              : playsButtonStyle}
             onClick={() => {
               setScenarios(listScenarios());
               setPlaysOpen((prev) => !prev);
@@ -2280,7 +2288,7 @@ export default function TacticalPlaySurface() {
         ) : null}
 
         {playsOpen && !playbackFloatingVisible ? (
-          <div style={PLAYS_PANEL_STYLE}>
+          <div style={playsPanelStyle}>
             <div style={MP_HEADER_STYLE}>
               <span style={MP_TITLE_STYLE}>Saved Plays</span>
               <button type="button" style={MP_CLOSE_STYLE} onClick={() => { setPlaysOpen(false); setScenarioRenameId(null); }}>
