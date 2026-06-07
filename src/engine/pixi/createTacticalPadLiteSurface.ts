@@ -152,6 +152,7 @@ export type TacticalPadLiteSurface = {
   exportBoardState: () => TacticalBoardState;
   importBoardState: (state: TacticalBoardState) => boolean;
   exportImageCanvas: () => HTMLCanvasElement | null;
+  getCanvas: () => HTMLCanvasElement | null;
   destroy: () => void;
 };
 
@@ -3849,6 +3850,7 @@ export async function createTacticalPadLiteSurface(
         generatedTexture.destroy(true);
       }
     },
+    getCanvas: () => canvas as HTMLCanvasElement,
     destroy: () => {
       cancelBasicRouteFollow();
       clearRouteAssignments();
