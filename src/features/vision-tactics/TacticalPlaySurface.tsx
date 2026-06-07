@@ -427,6 +427,103 @@ const SCENARIO_INPUT_STYLE: CSSProperties = {
   outline: "none",
 };
 
+const PLAYS_BUBBLE_STYLE: CSSProperties = {
+  position: "fixed",
+  right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
+  top: "50%",
+  transform: "translateY(-50%)",
+  zIndex: 22,
+  height: "38px",
+  minWidth: "64px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.20)",
+  background: "rgba(6, 14, 30, 0.72)",
+  color: "#eef4ff",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "11px",
+  fontWeight: 800,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  padding: "0 14px",
+  cursor: "pointer",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+  boxShadow: "0 12px 28px rgba(0, 4, 14, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.18)",
+};
+
+const PLAYS_PANEL_STYLE: CSSProperties = {
+  position: "fixed",
+  right: "max(68px, calc(env(safe-area-inset-right, 0px) + 66px))",
+  top: "50%",
+  transform: "translateY(-50%)",
+  zIndex: 21,
+  width: "min(292px, calc(100vw - 94px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
+  maxHeight: "72vh",
+  overflowY: "auto",
+  background: "rgba(4, 10, 22, 0.96)",
+  backdropFilter: "blur(20px)",
+  WebkitBackdropFilter: "blur(20px)",
+  border: "1px solid rgba(180, 210, 255, 0.13)",
+  borderRadius: "12px",
+  boxShadow: "0 14px 36px rgba(0, 0, 0, 0.62), 0 4px 12px rgba(0, 0, 0, 0.38)",
+  padding: "10px",
+  display: "grid",
+  gap: "6px",
+};
+
+const PLAYS_SCENARIO_NAME_STYLE: CSSProperties = {
+  flex: 1,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  fontSize: "10px",
+  fontWeight: 600,
+  color: "rgba(200, 230, 255, 0.80)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  letterSpacing: "0.01em",
+  minWidth: 0,
+};
+
+const PLAYS_ROW_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "4px",
+  minWidth: 0,
+};
+
+const PLAYS_ACTION_BTN: CSSProperties = {
+  flexShrink: 0,
+  height: "26px",
+  minWidth: "0",
+  borderRadius: "7px",
+  border: "1px solid rgba(180, 210, 255, 0.16)",
+  background: "rgba(10, 22, 48, 0.72)",
+  color: "rgba(200, 225, 255, 0.82)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 700,
+  letterSpacing: "0.06em",
+  padding: "0 8px",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+  textTransform: "uppercase",
+};
+
+const PLAYS_INPUT_STYLE: CSSProperties = {
+  flex: 1,
+  height: "30px",
+  minWidth: 0,
+  borderRadius: "8px",
+  border: "1px solid rgba(180, 210, 255, 0.22)",
+  background: "rgba(8, 18, 38, 0.80)",
+  color: "rgba(220, 235, 255, 0.95)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 500,
+  padding: "0 10px",
+  outline: "none",
+};
+
 const MOVEMENT_PANEL_STYLE: CSSProperties = {
   position: "fixed",
   left: "50%",
@@ -654,6 +751,8 @@ export default function TacticalPlaySurface() {
   const [shotEvents, setShotEvents] = useState<TacticalShotEvent[]>([]);
   const [scenarioRenameId, setScenarioRenameId] = useState<string | null>(null);
   const [scenarioRenameDraft, setScenarioRenameDraft] = useState("");
+  const [playsOpen, setPlaysOpen] = useState(false);
+  const [playsNameDraft, setPlaysNameDraft] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -812,6 +911,7 @@ export default function TacticalPlaySurface() {
       setBallMenuStep(null);
       setMovementsOpen(false);
       setPassesOpen(false);
+      setPlaysOpen(false);
     }
   }, [isPlaying]);
 
@@ -964,6 +1064,7 @@ export default function TacticalPlaySurface() {
   const onSetupPress = () => {
     setIsControlsOpen(false);
     setSetupOpen((prev) => !prev);
+    setPlaysOpen(false);
   };
 
   const onSetTokenSize = (size: TokenSize) => {
@@ -1143,6 +1244,22 @@ export default function TacticalPlaySurface() {
     setScenarios(listScenarios());
   };
 
+  const onSavePlays = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    saveScenario(
+      playsNameDraft.trim() || "My Play",
+      shell.getTokens(),
+      shell.getRoutes(),
+      shell.getBallState(),
+      shell.getPassEvents(),
+      shell.getShotEvents(),
+      shell.getPlaybackSpeed(),
+    );
+    setScenarios(listScenarios());
+    setPlaysNameDraft("");
+  };
+
   const modeIsPlaybackLocked = isPlaying || isPaused;
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
   const removePointDisabled = menuMode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying;
@@ -1175,7 +1292,7 @@ export default function TacticalPlaySurface() {
         <button
           type="button"
           style={CTRL_BUBBLE_STYLE}
-          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setScenariosOpen(false); setMovementsOpen(false); setPassesOpen(false); }}
+          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setScenariosOpen(false); setMovementsOpen(false); setPassesOpen(false); setPlaysOpen(false); }}
         >
           CTRL
         </button>
@@ -2139,6 +2256,136 @@ export default function TacticalPlaySurface() {
             <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetBoard}>
               Reset
             </button>
+          </div>
+        ) : null}
+
+        {/* PLAYS floating button — right-side, vertically centered */}
+        {!playbackFloatingVisible ? (
+          <button
+            type="button"
+            style={playsOpen
+              ? { ...PLAYS_BUBBLE_STYLE, border: "1px solid rgba(124, 255, 114, 0.40)", background: "rgba(14, 32, 22, 0.86)" }
+              : PLAYS_BUBBLE_STYLE}
+            onClick={() => {
+              setScenarios(listScenarios());
+              setPlaysOpen((prev) => !prev);
+              setIsControlsOpen(false);
+              setSetupOpen(false);
+              setMovementsOpen(false);
+              setPassesOpen(false);
+            }}
+          >
+            Plays
+          </button>
+        ) : null}
+
+        {playsOpen && !playbackFloatingVisible ? (
+          <div style={PLAYS_PANEL_STYLE}>
+            <div style={MP_HEADER_STYLE}>
+              <span style={MP_TITLE_STYLE}>Saved Plays</span>
+              <button type="button" style={MP_CLOSE_STYLE} onClick={() => { setPlaysOpen(false); setScenarioRenameId(null); }}>
+                ×
+              </button>
+            </div>
+
+            {/* Save current play */}
+            <div style={PLAYS_ROW_STYLE}>
+              <input
+                style={PLAYS_INPUT_STYLE}
+                type="text"
+                placeholder="Name this play…"
+                value={playsNameDraft}
+                maxLength={40}
+                onChange={(e) => setPlaysNameDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") onSavePlays(); }}
+              />
+              <button type="button" style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.34)", color: "#c4ffbf" }} onClick={onSavePlays}>
+                Save
+              </button>
+            </div>
+
+            {scenarios.length > 0 ? (
+              <>
+                <div style={{ height: "1px", background: "rgba(180, 210, 255, 0.08)", margin: "2px 0" }} />
+                <span style={{ ...MP_TITLE_STYLE, paddingLeft: "2px" }}>Load a play</span>
+                {scenarios.map((s) => (
+                  <div key={s.id} style={{ display: "grid", gap: "3px" }}>
+                    <div style={PLAYS_ROW_STYLE}>
+                      <span style={PLAYS_SCENARIO_NAME_STYLE} title={s.name}>{s.name}</span>
+                      <button
+                        type="button"
+                        style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(100, 200, 255, 0.30)", color: "rgba(160, 220, 255, 0.90)" }}
+                        onClick={() => onLoadScenario(s)}
+                      >
+                        Load
+                      </button>
+                      <button
+                        type="button"
+                        style={scenarioRenameId === s.id ? { ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.40)", color: "#c4ffbf" } : PLAYS_ACTION_BTN}
+                        onClick={() => {
+                          if (scenarioRenameId === s.id) {
+                            setScenarioRenameId(null);
+                          } else {
+                            setScenarioRenameId(s.id);
+                            setScenarioRenameDraft(s.name);
+                          }
+                        }}
+                      >
+                        Ren
+                      </button>
+                      <button
+                        type="button"
+                        style={PLAYS_ACTION_BTN}
+                        onClick={() => onDuplicateScenario(s.id)}
+                      >
+                        Copy
+                      </button>
+                      <button
+                        type="button"
+                        style={{ ...PLAYS_ACTION_BTN, color: "rgba(255, 160, 160, 0.88)" }}
+                        onClick={() => onDeleteScenario(s.id)}
+                      >
+                        Del
+                      </button>
+                    </div>
+                    {scenarioRenameId === s.id ? (
+                      <div style={PLAYS_ROW_STYLE}>
+                        <input
+                          style={PLAYS_INPUT_STYLE}
+                          type="text"
+                          value={scenarioRenameDraft}
+                          maxLength={40}
+                          autoFocus
+                          onChange={(e) => setScenarioRenameDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { onRenameScenario(s.id, scenarioRenameDraft); setScenarioRenameId(null); }
+                            else if (e.key === "Escape") { setScenarioRenameId(null); }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.34)", color: "#c4ffbf" }}
+                          onClick={() => { onRenameScenario(s.id, scenarioRenameDraft); setScenarioRenameId(null); }}
+                        >
+                          OK
+                        </button>
+                        <button
+                          type="button"
+                          style={PLAYS_ACTION_BTN}
+                          onClick={() => setScenarioRenameId(null)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </>
+            ) : (
+              <span style={{ fontSize: "10px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif", padding: "4px 2px" }}>
+                No saved plays yet. Build a play and tap Save.
+              </span>
+            )}
           </div>
         ) : null}
       </div>
