@@ -135,6 +135,7 @@ export type MovementCanvasShellHandle = {
   addShotEvent: (event: TacticalShotEvent) => void;
   getShotEvents: () => TacticalShotEvent[];
   removeShotEvent: (id: string) => void;
+  getCanvas: () => HTMLCanvasElement | null;
   reflow: () => void;
   destroy: () => void;
 };

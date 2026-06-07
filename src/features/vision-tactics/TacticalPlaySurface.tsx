@@ -524,6 +524,36 @@ const PLAYS_INPUT_STYLE: CSSProperties = {
   outline: "none",
 };
 
+const RECORD_COUNTDOWN_STYLE: CSSProperties = {
+  position: "fixed",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  zIndex: 30,
+  fontSize: "100px",
+  fontWeight: 900,
+  color: "rgba(255, 255, 255, 0.94)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  textShadow: "0 4px 32px rgba(0, 0, 0, 0.90)",
+  pointerEvents: "none",
+  userSelect: "none",
+  lineHeight: 1,
+};
+
+const RECORD_DOT_STYLE: CSSProperties = {
+  position: "fixed",
+  top: "max(14px, calc(env(safe-area-inset-top, 0px) + 12px))",
+  right: "max(14px, calc(env(safe-area-inset-right, 0px) + 12px))",
+  zIndex: 25,
+  width: "10px",
+  height: "10px",
+  borderRadius: "50%",
+  background: "#ff3030",
+  boxShadow: "0 0 8px 2px rgba(255, 48, 48, 0.70)",
+  pointerEvents: "none",
+  animation: "tp-rec-pulse 1.1s ease-in-out infinite",
+};
+
 const MOVEMENT_PANEL_STYLE: CSSProperties = {
   position: "fixed",
   left: "50%",
@@ -753,6 +783,16 @@ export default function TacticalPlaySurface() {
   const [scenarioRenameDraft, setScenarioRenameDraft] = useState("");
   const [playsOpen, setPlaysOpen] = useState(false);
   const [playsNameDraft, setPlaysNameDraft] = useState("");
+  type RecordPhase = "idle" | "panel" | "countdown" | "recording" | "done";
+  const [recordPhase, setRecordPhase] = useState<RecordPhase>("idle");
+  const [recordDuration, setRecordDuration] = useState<10 | 20 | 30>(30);
+  const [recordCountdown, setRecordCountdown] = useState(3);
+  const [recordBlob, setRecordBlob] = useState<Blob | null>(null);
+  const [recordMimeType, setRecordMimeType] = useState("video/webm");
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordChunksRef = useRef<Blob[]>([]);
+  const recordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recordCountdownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -786,6 +826,14 @@ export default function TacticalPlaySurface() {
       window.removeEventListener("orientationchange", onOrient);
       vp?.removeEventListener("resize", onResize);
       vp?.removeEventListener("scroll", onResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (recordCountdownRef.current) clearTimeout(recordCountdownRef.current);
+      if (recordTimerRef.current) clearTimeout(recordTimerRef.current);
+      if (recorderRef.current?.state !== "inactive") recorderRef.current?.stop();
     };
   }, []);
 
@@ -1260,6 +1308,101 @@ export default function TacticalPlaySurface() {
     setPlaysNameDraft("");
   };
 
+  function getBestMimeType(): string {
+    if (typeof MediaRecorder === "undefined") return "video/webm";
+    for (const t of ["video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]) {
+      if (MediaRecorder.isTypeSupported(t)) return t;
+    }
+    return "video/webm";
+  }
+
+  function canRecord(): boolean {
+    if (typeof window === "undefined" || typeof MediaRecorder === "undefined") return false;
+    const c = document.createElement("canvas");
+    return typeof (c as HTMLCanvasElement & { captureStream?: unknown }).captureStream === "function";
+  }
+
+  const stopRecording = () => {
+    if (recordTimerRef.current) { clearTimeout(recordTimerRef.current); recordTimerRef.current = null; }
+    const rec = recorderRef.current;
+    if (rec && rec.state !== "inactive") rec.stop();
+  };
+
+  const startRecording = () => {
+    const canvas = shellRef.current?.getCanvas();
+    if (!canvas) return;
+    const mimeType = getBestMimeType();
+    setRecordMimeType(mimeType);
+    recordChunksRef.current = [];
+    const stream = (canvas as HTMLCanvasElement & { captureStream(fps: number): MediaStream }).captureStream(30);
+    const recorder = new MediaRecorder(stream, { mimeType });
+    recorderRef.current = recorder;
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data);
+    };
+    recorder.onstop = () => {
+      const blob = new Blob(recordChunksRef.current, { type: mimeType });
+      setRecordBlob(blob);
+      setRecordPhase("done");
+      setPlaysOpen(true);
+    };
+    recorder.start(200);
+    recordTimerRef.current = setTimeout(stopRecording, recordDuration * 1000);
+  };
+
+  const startCountdown = () => {
+    setPlaysOpen(false);
+    setRecordPhase("countdown");
+    setRecordCountdown(3);
+    let count = 3;
+    const tick = () => {
+      count -= 1;
+      if (count <= 0) {
+        setRecordPhase("recording");
+        startRecording();
+        return;
+      }
+      setRecordCountdown(count);
+      recordCountdownRef.current = setTimeout(tick, 1000);
+    };
+    recordCountdownRef.current = setTimeout(tick, 1000);
+  };
+
+  const dismissRecord = () => {
+    if (recordCountdownRef.current) { clearTimeout(recordCountdownRef.current); recordCountdownRef.current = null; }
+    stopRecording();
+    setRecordPhase("idle");
+    setRecordBlob(null);
+  };
+
+  const saveClip = () => {
+    if (!recordBlob) return;
+    const ext = recordMimeType.startsWith("video/mp4") ? "mp4" : "webm";
+    const url = URL.createObjectURL(recordBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `paircvision-play-${Date.now()}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1200);
+  };
+
+  const shareClip = async () => {
+    if (!recordBlob) return;
+    const ext = recordMimeType.startsWith("video/mp4") ? "mp4" : "webm";
+    const filename = `paircvision-play-${Date.now()}.${ext}`;
+    const file = new File([recordBlob], filename, { type: recordMimeType });
+    try {
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: "PáircVision Play" });
+      } else {
+        saveClip();
+      }
+    } catch {
+      saveClip();
+    }
+  };
+
   const modeIsPlaybackLocked = isPlaying || isPaused;
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
   const removePointDisabled = menuMode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying;
@@ -1283,6 +1426,7 @@ export default function TacticalPlaySurface() {
 
   return (
     <OrientationGate modeLabel="Tactical Play">
+      <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}`}</style>
       <div style={rootStyle}>
         <VisionStadiumBackground variant="board" />
         <div style={CONTENT_STYLE}>
@@ -1314,6 +1458,16 @@ export default function TacticalPlaySurface() {
         >
           Setup
         </button>
+
+        {/* Countdown overlay */}
+        {recordPhase === "countdown" ? (
+          <div style={RECORD_COUNTDOWN_STYLE}>{recordCountdown}</div>
+        ) : null}
+
+        {/* Red recording dot */}
+        {recordPhase === "recording" ? (
+          <div style={RECORD_DOT_STYLE} />
+        ) : null}
 
         {!isControlsOpen && !setupOpen && !isPlaying && !isPaused ? (
           <div style={HINT_PILL_STYLE}>Move players → Set Start → Draw Movements → Play</div>
@@ -2394,6 +2548,75 @@ export default function TacticalPlaySurface() {
                 No saved plays yet. Build a play and tap Save.
               </span>
             )}
+
+            {/* ── Record & Share ── */}
+            <div style={{ height: "1px", background: "rgba(180, 210, 255, 0.08)", margin: "4px 0 2px" }} />
+
+            {(recordPhase === "idle" || recordPhase === "done") ? (
+              <button
+                type="button"
+                style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(255, 80, 80, 0.38)", color: "rgba(255, 190, 190, 0.95)", width: "100%", justifyContent: "center", height: "30px" }}
+                onClick={() => {
+                  if (!canRecord()) {
+                    alert("Recording is not supported in this browser.\n\niPhone: use Screen Recording from Control Centre.\nAndroid: use Chrome for full recording support.");
+                    return;
+                  }
+                  setRecordPhase("panel");
+                }}
+              >
+                Record Clip
+              </button>
+            ) : null}
+
+            {recordPhase === "panel" ? (
+              <div style={{ display: "grid", gap: "4px" }}>
+                <span style={SETUP_SECTION_LABEL_STYLE}>Duration</span>
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                  {([10, 20, 30] as const).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      style={recordDuration === d
+                        ? { ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.56)", color: "#f4fff6", background: "rgba(34, 112, 66, 0.82)" }
+                        : PLAYS_ACTION_BTN}
+                      onClick={() => setRecordDuration(d)}
+                    >
+                      {d}s
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(255, 80, 80, 0.50)", color: "rgba(255, 190, 190, 0.95)", flex: 1 }}
+                    onClick={startCountdown}
+                  >
+                    Start Recording
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...PLAYS_ACTION_BTN, color: "rgba(180, 210, 255, 0.55)" }}
+                    onClick={dismissRecord}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {recordBlob ? (
+              <button
+                type="button"
+                style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)", width: "100%", justifyContent: "center", height: "30px" }}
+                onClick={() => { void shareClip(); }}
+              >
+                Share Last Clip
+              </button>
+            ) : null}
+
+            {/* ── Templates placeholder ── */}
+            <div style={{ height: "1px", background: "rgba(180, 210, 255, 0.08)", margin: "2px 0 4px" }} />
+            <span style={{ fontSize: "9px", color: "rgba(180, 210, 255, 0.28)", fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.06em", textTransform: "uppercase", padding: "0 2px" }}>
+              Templates — Coming Soon
+            </span>
           </div>
         ) : null}
       </div>
