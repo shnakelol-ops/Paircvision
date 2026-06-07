@@ -17,6 +17,7 @@ import {
 } from "../engine/pixi/createTacticalPadLiteSurface";
 import StatsModeSurface from "../StatsModeSurface";
 import OrientationGate, { usePortraitOrientation } from "../components/OrientationGate";
+import { useCanvasRecorder } from "../features/shared/useCanvasRecorder";
 import { captureQuickBoardSnapshot, restoreQuickBoardSnapshot } from "../features/quickboard/storage/quickboard-snapshot";
 import { generateQuickBoardThumbnail } from "../features/quickboard/storage/quickboard-thumbnail";
 import {
@@ -1935,6 +1936,22 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [playbackSpeedMultiplier, setPlaybackSpeedMultiplier] = useState<number>(DEFAULT_PLAYBACK_SPEED_MULTIPLIER);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [quickShareOpen, setQuickShareOpen] = useState(false);
+  const {
+    recordPhase: slateRecordPhase,
+    setRecordPhase: setSlateRecordPhase,
+    recordDuration: slateRecordDuration,
+    setRecordDuration: setSlateRecordDuration,
+    recordCountdown: slateRecordCountdown,
+    recordBlob: slateRecordBlob,
+    canRecord: slateCanRecord,
+    startCountdown: slateStartCountdown,
+    dismissRecord: slateDismissRecord,
+    shareClip: slateShareClip,
+  } = useCanvasRecorder({
+    getCanvas: () => surfaceRef.current?.getCanvas() ?? null,
+    onBeforeCountdown: () => setQuickShareOpen(false),
+    onComplete: () => setQuickShareOpen(true),
+  });
   const [myBoardsOpen, setMyBoardsOpen] = useState(false);
   const [savedBoards, setSavedBoards] = useState<SavedQuickBoard[]>([]);
   const [pendingRecoveredBoardDraft, setPendingRecoveredBoardDraft] = useState<QuickBoardBoardState | null>(null);
@@ -2839,8 +2856,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     }, 4000);
   };
   const handleQuickShareRecordClip = () => {
-    closeQuickShareMenu();
-    showShareTip("Use your phone’s screen recorder.\nShare the saved video directly to WhatsApp.");
+    if (!slateCanRecord()) {
+      showShareTip("Recording not supported in this browser.\niPhone: use Screen Recording from Control Centre.");
+      return;
+    }
+    setSlateRecordPhase("panel");
   };
   const handleQuickShareSnapshot = async () => {
     if (isExportingSnapshotRef.current) return;
@@ -3679,6 +3699,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   return (
     <OrientationGate modeLabel="PáircVision Board">
       <div style={rootShellStyle}>
+        <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}`}</style>
         {!isWhiteboardMode ? <style>{STADIUM_FLOODLIGHT_CSS}</style> : null}
         {!isWhiteboardMode ? <VisionStadiumBackground variant="board" /> : null}
         <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : CONTENT_STYLE}>
@@ -5068,19 +5089,72 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         {!isWhiteboardMode && quickShareOpen ? (
           <div ref={quickSharePopoverRef} style={quickSharePopoverStyle} role="dialog" aria-modal="false" aria-label="Quick Share">
             <p style={QUICK_SHARE_TITLE_STYLE}>PáircVision Board Share</p>
-            <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareRecordClip}>
-              <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>🎥 Record Coaching Clip</span>
-              <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>
-                Use your phone&apos;s screen recorder.
-                <br />
-                Share the saved video directly to WhatsApp.
-              </span>
-            </button>
             <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareSnapshot}>
               <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>📸 Share Snapshot</span>
               <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Export current setup as PNG and share to WhatsApp or Photos.</span>
             </button>
+            <div style={{ height: "1px", background: "rgba(212, 228, 244, 0.12)", margin: "1px 0" }} />
+            {(slateRecordPhase === "idle" || slateRecordPhase === "done") ? (
+              <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareRecordClip}>
+                <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>🎥 Record Clip</span>
+                <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Record the canvas and share directly to WhatsApp.</span>
+              </button>
+            ) : null}
+            {slateRecordPhase === "panel" ? (
+              <div style={{ display: "grid", gap: "5px" }}>
+                <span style={{ ...QUICK_SHARE_OPTION_TITLE_STYLE, padding: "2px 0" }}>Record Clip</span>
+                <div style={{ display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" }}>
+                  {([10, 20, 30] as const).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      className="control-button"
+                      style={slateRecordDuration === d
+                        ? { ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", border: "1px solid rgba(124, 255, 114, 0.56)", background: "rgba(34, 112, 66, 0.70)", color: "#f4fff6" }
+                        : { ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px" }}
+                      onClick={() => setSlateRecordDuration(d)}
+                    >
+                      {d}s
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="control-button"
+                    style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", flex: 1, border: "1px solid rgba(255, 80, 80, 0.50)", color: "rgba(255, 190, 190, 0.95)" }}
+                    onClick={slateStartCountdown}
+                  >
+                    Start Recording
+                  </button>
+                  <button
+                    type="button"
+                    className="control-button"
+                    style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px" }}
+                    onClick={slateDismissRecord}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            {slateRecordBlob ? (
+              <button
+                type="button"
+                className="control-button"
+                style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)" }}
+                onClick={() => { void slateShareClip(); }}
+              >
+                <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>Share Last Clip</span>
+              </button>
+            ) : null}
           </div>
+        ) : null}
+        {!isWhiteboardMode && slateRecordPhase === "countdown" ? (
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 30, fontSize: "100px", fontWeight: 900, color: "rgba(255, 255, 255, 0.94)", fontFamily: "Inter, system-ui, sans-serif", textShadow: "0 4px 32px rgba(0, 0, 0, 0.90)", pointerEvents: "none", userSelect: "none", lineHeight: 1 }}>
+            {slateRecordCountdown}
+          </div>
+        ) : null}
+        {!isWhiteboardMode && slateRecordPhase === "recording" ? (
+          <div style={{ position: "fixed", top: "max(14px, calc(env(safe-area-inset-top, 0px) + 12px))", right: "max(14px, calc(env(safe-area-inset-right, 0px) + 12px))", zIndex: 25, width: "10px", height: "10px", borderRadius: "50%", background: "#ff3030", boxShadow: "0 0 8px 2px rgba(255, 48, 48, 0.70)", pointerEvents: "none", animation: "tp-rec-pulse 1.1s ease-in-out infinite" }} />
         ) : null}
         {!isWhiteboardMode && shareTipMessage ? (
           <div style={SHARE_TIP_TOAST_STYLE} role="status" aria-live="polite">
