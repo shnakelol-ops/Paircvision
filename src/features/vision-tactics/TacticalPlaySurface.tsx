@@ -524,51 +524,6 @@ const PLAYS_INPUT_STYLE: CSSProperties = {
   outline: "none",
 };
 
-const RECORD_BUBBLE_BASE: CSSProperties = {
-  position: "fixed",
-  left: "50%",
-  transform: "translateX(-50%)",
-  bottom: "max(10px, calc(env(safe-area-inset-bottom, 0px) + 8px))",
-  zIndex: 22,
-  height: "38px",
-  minWidth: "80px",
-  borderRadius: "999px",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "11px",
-  fontWeight: 800,
-  letterSpacing: "0.04em",
-  textTransform: "uppercase",
-  padding: "0 14px",
-  cursor: "pointer",
-  backdropFilter: "blur(14px)",
-  WebkitBackdropFilter: "blur(14px)",
-  boxShadow: "0 12px 28px rgba(0, 4, 14, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.10)",
-};
-
-const RECORD_BUBBLE_IDLE_STYLE: CSSProperties = {
-  ...RECORD_BUBBLE_BASE,
-  border: "1px solid rgba(255, 80, 80, 0.35)",
-  background: "rgba(28, 6, 6, 0.80)",
-  color: "rgba(255, 180, 180, 0.95)",
-};
-
-const RECORD_BUBBLE_ACTIVE_STYLE: CSSProperties = {
-  ...RECORD_BUBBLE_BASE,
-  border: "1px solid rgba(255, 60, 60, 0.70)",
-  background: "rgba(120, 10, 10, 0.90)",
-  color: "#fff",
-};
-
-const RECORD_PANEL_STYLE: CSSProperties = {
-  position: "fixed",
-  left: "50%",
-  transform: "translateX(-50%)",
-  bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
-  zIndex: 21,
-  display: "grid",
-  gap: "4px",
-};
-
 const RECORD_COUNTDOWN_STYLE: CSSProperties = {
   position: "fixed",
   top: "50%",
@@ -1389,12 +1344,14 @@ export default function TacticalPlaySurface() {
       const blob = new Blob(recordChunksRef.current, { type: mimeType });
       setRecordBlob(blob);
       setRecordPhase("done");
+      setPlaysOpen(true);
     };
     recorder.start(200);
     recordTimerRef.current = setTimeout(stopRecording, recordDuration * 1000);
   };
 
   const startCountdown = () => {
+    setPlaysOpen(false);
     setRecordPhase("countdown");
     setRecordCountdown(3);
     let count = 3;
@@ -1444,17 +1401,6 @@ export default function TacticalPlaySurface() {
     } catch {
       saveClip();
     }
-  };
-
-  const onRecordPress = () => {
-    if (recordPhase === "recording") { stopRecording(); return; }
-    if (recordPhase !== "idle") { dismissRecord(); return; }
-    if (!canRecord()) {
-      alert("Recording is not supported in this browser.\n\niPhone: use Screen Recording from Control Centre.\nAndroid: use Chrome for full recording support.");
-      return;
-    }
-    setRecordPhase("panel");
-    setRecordBlob(null);
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
@@ -1513,47 +1459,6 @@ export default function TacticalPlaySurface() {
           Setup
         </button>
 
-        {/* RECORD bubble — bottom-center */}
-        {recordPhase !== "recording" ? (
-          <button
-            type="button"
-            style={recordPhase === "idle" ? RECORD_BUBBLE_IDLE_STYLE : RECORD_BUBBLE_ACTIVE_STYLE}
-            onClick={onRecordPress}
-          >
-            {recordPhase === "idle" ? "Record" : recordPhase === "panel" ? "✕ Cancel" : recordPhase === "countdown" ? "✕ Cancel" : "✕ Dismiss"}
-          </button>
-        ) : (
-          <button type="button" style={RECORD_BUBBLE_ACTIVE_STYLE} onClick={onRecordPress}>
-            ■ Stop
-          </button>
-        )}
-
-        {/* Record panel — duration picker */}
-        {recordPhase === "panel" ? (
-          <div style={RECORD_PANEL_STYLE}>
-            <div style={PANEL_ROW_STYLE}>
-              <span style={SETUP_SECTION_LABEL_STYLE}>Record Clip</span>
-              {([10, 20, 30] as const).map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  style={recordDuration === d ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
-                  onClick={() => setRecordDuration(d)}
-                >
-                  {d}s
-                </button>
-              ))}
-              <button
-                type="button"
-                style={{ ...TOOL_BUTTON_STYLE, border: "1px solid rgba(255, 80, 80, 0.50)", color: "rgba(255, 190, 190, 0.95)", minWidth: "100px" }}
-                onClick={startCountdown}
-              >
-                Start Recording
-              </button>
-            </div>
-          </div>
-        ) : null}
-
         {/* Countdown overlay */}
         {recordPhase === "countdown" ? (
           <div style={RECORD_COUNTDOWN_STYLE}>{recordCountdown}</div>
@@ -1562,29 +1467,6 @@ export default function TacticalPlaySurface() {
         {/* Red recording dot */}
         {recordPhase === "recording" ? (
           <div style={RECORD_DOT_STYLE} />
-        ) : null}
-
-        {/* Done panel — save / share */}
-        {recordPhase === "done" && recordBlob ? (
-          <div style={RECORD_PANEL_STYLE}>
-            <div style={PANEL_ROW_STYLE}>
-              <span style={SETUP_SECTION_LABEL_STYLE}>Clip Ready</span>
-              <button
-                type="button"
-                style={{ ...TOOL_BUTTON_STYLE, border: "1px solid rgba(124, 255, 114, 0.40)", color: "rgba(200, 255, 190, 0.95)" }}
-                onClick={saveClip}
-              >
-                Save Clip
-              </button>
-              <button
-                type="button"
-                style={{ ...TOOL_BUTTON_STYLE, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)" }}
-                onClick={() => { void shareClip(); }}
-              >
-                Share
-              </button>
-            </div>
-          </div>
         ) : null}
 
         {!isControlsOpen && !setupOpen && !isPlaying && !isPaused ? (
@@ -2666,6 +2548,75 @@ export default function TacticalPlaySurface() {
                 No saved plays yet. Build a play and tap Save.
               </span>
             )}
+
+            {/* ── Record & Share ── */}
+            <div style={{ height: "1px", background: "rgba(180, 210, 255, 0.08)", margin: "4px 0 2px" }} />
+
+            {(recordPhase === "idle" || recordPhase === "done") ? (
+              <button
+                type="button"
+                style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(255, 80, 80, 0.38)", color: "rgba(255, 190, 190, 0.95)", width: "100%", justifyContent: "center", height: "30px" }}
+                onClick={() => {
+                  if (!canRecord()) {
+                    alert("Recording is not supported in this browser.\n\niPhone: use Screen Recording from Control Centre.\nAndroid: use Chrome for full recording support.");
+                    return;
+                  }
+                  setRecordPhase("panel");
+                }}
+              >
+                Record Clip
+              </button>
+            ) : null}
+
+            {recordPhase === "panel" ? (
+              <div style={{ display: "grid", gap: "4px" }}>
+                <span style={SETUP_SECTION_LABEL_STYLE}>Duration</span>
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                  {([10, 20, 30] as const).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      style={recordDuration === d
+                        ? { ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.56)", color: "#f4fff6", background: "rgba(34, 112, 66, 0.82)" }
+                        : PLAYS_ACTION_BTN}
+                      onClick={() => setRecordDuration(d)}
+                    >
+                      {d}s
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(255, 80, 80, 0.50)", color: "rgba(255, 190, 190, 0.95)", flex: 1 }}
+                    onClick={startCountdown}
+                  >
+                    Start Recording
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...PLAYS_ACTION_BTN, color: "rgba(180, 210, 255, 0.55)" }}
+                    onClick={dismissRecord}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {recordBlob ? (
+              <button
+                type="button"
+                style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)", width: "100%", justifyContent: "center", height: "30px" }}
+                onClick={() => { void shareClip(); }}
+              >
+                Share Last Clip
+              </button>
+            ) : null}
+
+            {/* ── Templates placeholder ── */}
+            <div style={{ height: "1px", background: "rgba(180, 210, 255, 0.08)", margin: "2px 0 4px" }} />
+            <span style={{ fontSize: "9px", color: "rgba(180, 210, 255, 0.28)", fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.06em", textTransform: "uppercase", padding: "0 2px" }}>
+              Templates — Coming Soon
+            </span>
           </div>
         ) : null}
       </div>
