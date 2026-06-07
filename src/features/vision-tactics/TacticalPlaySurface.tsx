@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import OrientationGate, { usePortraitOrientation } from "../../components/OrientationGate";
 import VisionStadiumBackground from "../../components/VisionStadiumBackground";
+import { useCanvasRecorder } from "../shared/useCanvasRecorder";
 import { createMovementCanvasShell } from "../../movement-board/shell/createMovementCanvasShell";
 import type {
   BallType,
@@ -783,16 +784,20 @@ export default function TacticalPlaySurface() {
   const [scenarioRenameDraft, setScenarioRenameDraft] = useState("");
   const [playsOpen, setPlaysOpen] = useState(false);
   const [playsNameDraft, setPlaysNameDraft] = useState("");
-  type RecordPhase = "idle" | "panel" | "countdown" | "recording" | "done";
-  const [recordPhase, setRecordPhase] = useState<RecordPhase>("idle");
-  const [recordDuration, setRecordDuration] = useState<10 | 20 | 30>(30);
-  const [recordCountdown, setRecordCountdown] = useState(3);
-  const [recordBlob, setRecordBlob] = useState<Blob | null>(null);
-  const [recordMimeType, setRecordMimeType] = useState("video/webm");
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const recordChunksRef = useRef<Blob[]>([]);
-  const recordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const recordCountdownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    recordPhase, setRecordPhase,
+    recordDuration, setRecordDuration,
+    recordCountdown,
+    recordBlob,
+    canRecord,
+    startCountdown,
+    dismissRecord,
+    shareClip,
+  } = useCanvasRecorder({
+    getCanvas: () => shellRef.current?.getCanvas() ?? null,
+    onBeforeCountdown: () => setPlaysOpen(false),
+    onComplete: () => setPlaysOpen(true),
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -826,14 +831,6 @@ export default function TacticalPlaySurface() {
       window.removeEventListener("orientationchange", onOrient);
       vp?.removeEventListener("resize", onResize);
       vp?.removeEventListener("scroll", onResize);
-    };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (recordCountdownRef.current) clearTimeout(recordCountdownRef.current);
-      if (recordTimerRef.current) clearTimeout(recordTimerRef.current);
-      if (recorderRef.current?.state !== "inactive") recorderRef.current?.stop();
     };
   }, []);
 
@@ -1306,101 +1303,6 @@ export default function TacticalPlaySurface() {
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
-  };
-
-  function getBestMimeType(): string {
-    if (typeof MediaRecorder === "undefined") return "video/webm";
-    for (const t of ["video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]) {
-      if (MediaRecorder.isTypeSupported(t)) return t;
-    }
-    return "video/webm";
-  }
-
-  function canRecord(): boolean {
-    if (typeof window === "undefined" || typeof MediaRecorder === "undefined") return false;
-    const c = document.createElement("canvas");
-    return typeof (c as HTMLCanvasElement & { captureStream?: unknown }).captureStream === "function";
-  }
-
-  const stopRecording = () => {
-    if (recordTimerRef.current) { clearTimeout(recordTimerRef.current); recordTimerRef.current = null; }
-    const rec = recorderRef.current;
-    if (rec && rec.state !== "inactive") rec.stop();
-  };
-
-  const startRecording = () => {
-    const canvas = shellRef.current?.getCanvas();
-    if (!canvas) return;
-    const mimeType = getBestMimeType();
-    setRecordMimeType(mimeType);
-    recordChunksRef.current = [];
-    const stream = (canvas as HTMLCanvasElement & { captureStream(fps: number): MediaStream }).captureStream(30);
-    const recorder = new MediaRecorder(stream, { mimeType });
-    recorderRef.current = recorder;
-    recorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data);
-    };
-    recorder.onstop = () => {
-      const blob = new Blob(recordChunksRef.current, { type: mimeType });
-      setRecordBlob(blob);
-      setRecordPhase("done");
-      setPlaysOpen(true);
-    };
-    recorder.start(200);
-    recordTimerRef.current = setTimeout(stopRecording, recordDuration * 1000);
-  };
-
-  const startCountdown = () => {
-    setPlaysOpen(false);
-    setRecordPhase("countdown");
-    setRecordCountdown(3);
-    let count = 3;
-    const tick = () => {
-      count -= 1;
-      if (count <= 0) {
-        setRecordPhase("recording");
-        startRecording();
-        return;
-      }
-      setRecordCountdown(count);
-      recordCountdownRef.current = setTimeout(tick, 1000);
-    };
-    recordCountdownRef.current = setTimeout(tick, 1000);
-  };
-
-  const dismissRecord = () => {
-    if (recordCountdownRef.current) { clearTimeout(recordCountdownRef.current); recordCountdownRef.current = null; }
-    stopRecording();
-    setRecordPhase("idle");
-    setRecordBlob(null);
-  };
-
-  const saveClip = () => {
-    if (!recordBlob) return;
-    const ext = recordMimeType.startsWith("video/mp4") ? "mp4" : "webm";
-    const url = URL.createObjectURL(recordBlob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `paircvision-play-${Date.now()}.${ext}`;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1200);
-  };
-
-  const shareClip = async () => {
-    if (!recordBlob) return;
-    const ext = recordMimeType.startsWith("video/mp4") ? "mp4" : "webm";
-    const filename = `paircvision-play-${Date.now()}.${ext}`;
-    const file = new File([recordBlob], filename, { type: recordMimeType });
-    try {
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: "PáircVision Play" });
-      } else {
-        saveClip();
-      }
-    } catch {
-      saveClip();
-    }
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
