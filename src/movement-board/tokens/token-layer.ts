@@ -3,6 +3,7 @@ import { Container, Graphics } from "pixi.js";
 import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
 import type { WorldViewportMapper } from "../coordinates/viewport";
 import {
+  createPremiumPlayerToken,
   PREMIUM_TOKEN_DRAG_SCALE,
   PREMIUM_TOKEN_DRAG_SHADOW_ALPHA,
   PREMIUM_TOKEN_IDLE_SCALE,
@@ -13,14 +14,15 @@ import { createJerseyTokenV2 } from "./createJerseyTokenV2";
 import { createPixiToken, createPhosphorToken } from "./createCleanTokenAdapters";
 import type { MovementBoardToken } from "../shell/types";
 
-export type TokenRendererName = "pixi" | "phosphor" | "jersey";
+export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor";
 
 type AnyRendererFn = typeof createJerseyTokenV2;
 
 const RENDERER_MAP: Record<TokenRendererName, AnyRendererFn> = {
   pixi: createPixiToken as AnyRendererFn,
-  phosphor: createPhosphorToken as AnyRendererFn,
+  vision: createPremiumPlayerToken as AnyRendererFn,
   jersey: createJerseyTokenV2,
+  phosphor: createPhosphorToken as AnyRendererFn,
 };
 
 let _renderer: AnyRendererFn = createJerseyTokenV2;

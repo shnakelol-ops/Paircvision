@@ -975,6 +975,7 @@ export default function TacticalPlaySurface() {
         setMenuMode(toMenuMode(shell.getMode()));
         shell.setSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
         shell.setTokenRenderer("pixi");
+        shell.setTokenSize("medium");
         setTokenSizeState(shell.getTokenSize());
         const initialRoutes = shell.getRoutes();
         setRouteCount(initialRoutes.length);
@@ -2564,6 +2565,7 @@ export default function TacticalPlaySurface() {
                 <div style={PANEL_ROW_STYLE}>
                   {([
                     { id: "pixi", label: "Pixi" },
+                    { id: "vision", label: "Vision" },
                     { id: "jersey", label: "Jersey" },
                   ] as const).map((r) => (
                     <button
@@ -2573,20 +2575,6 @@ export default function TacticalPlaySurface() {
                       onClick={() => onSetTokenRenderer(r.id)}
                     >
                       {r.label}
-                    </button>
-                  ))}
-                  {([
-                    { id: "small", label: "S" },
-                    { id: "medium", label: "M" },
-                    { id: "large", label: "L" },
-                  ] as const).map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      style={tokenSize === s.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                      onClick={() => onSetTokenSize(s.id)}
-                    >
-                      {s.label}
                     </button>
                   ))}
                 </div>
