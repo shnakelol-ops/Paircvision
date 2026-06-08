@@ -11,6 +11,7 @@ import { createPitchRoot } from "../pitch/create-pitch-root";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
 import { createBallLayer } from "../ball/ball-layer";
 import { createPlaybackOrchestrator } from "../playback/playback-orchestrator";
+import { createZoneLayer } from "../zones/zone-layer";
 import { routeStyleForToken } from "../routes/route-colors";
 import { createRouteLayer } from "../routes/route-layer";
 import { normalizeRoutePoints } from "../routes/route-sampling";
@@ -160,6 +161,10 @@ export async function createMovementCanvasShell(
   ballLayerContainer.zIndex = 15;
   world.addChild(ballLayerContainer);
 
+  const zoneLayerContainer = new Container();
+  zoneLayerContainer.zIndex = 13;
+  world.addChild(zoneLayerContainer);
+
   const tokenLayerContainer = new Container();
   tokenLayerContainer.zIndex = 20;
   world.addChild(tokenLayerContainer);
@@ -189,6 +194,14 @@ export async function createMovementCanvasShell(
     layer: routeLayerContainer,
     mapperProvider: () => mapper,
     styleProvider: (playerId) => routeStyleForToken(tokenLayer.getTokenById(playerId)),
+  });
+
+  const zoneLayer = createZoneLayer({
+    layer: zoneLayerContainer,
+    mapperProvider: () => mapper,
+    stage: app.stage,
+    onZonesChange: (zs) => options.onZonesChange?.(zs),
+    onSelectionChange: (id) => options.onZoneSelectionChange?.(id),
   });
 
   tokenLayer.setTokens(options.initialTokens ?? buildDefaultTokens());
@@ -245,6 +258,7 @@ export async function createMovementCanvasShell(
       } else {
         routeLayer.setPlaybackAlpha(1.0);
       }
+      zoneLayer.setInteractive(!state.isPlaying && !state.isPaused);
       options.onPlaybackStateChange?.(state);
     },
     onPassStart: (fromPlayerId, toPlayerId) => {
@@ -431,6 +445,7 @@ export async function createMovementCanvasShell(
     world.position.set(mapper.transform.offsetX, mapper.transform.offsetY);
     tokenLayer.syncToMapper();
     routeLayer.syncToMapper();
+    zoneLayer.syncToMapper();
     syncBallPosition();
   };
 
@@ -1091,6 +1106,9 @@ export async function createMovementCanvasShell(
       tokenLayer.setBallCarrier(tokenId);
     },
     getCanvas: () => app.canvas as HTMLCanvasElement,
+    setZones: (zones) => zoneLayer.setZones(zones),
+    getZones: () => zoneLayer.getZones(),
+    setSelectedZoneId: (id) => zoneLayer.setSelectedZoneId(id),
     reflow: () => {
       syncToHost();
     },
@@ -1100,6 +1118,7 @@ export async function createMovementCanvasShell(
       tokenLayer.destroy();
       routeLayer.destroy();
       ballLayer.destroy();
+      zoneLayer.destroy();
       app.ticker.remove(tick);
       app.stage.removeAllListeners();
       pitchMount.dispose();
