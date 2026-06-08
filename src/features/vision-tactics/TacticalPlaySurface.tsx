@@ -28,6 +28,9 @@ import {
   saveScenario,
   type TacticalScenario,
 } from "./tacticalPlayStorage";
+import type { TacticalUnit } from "./tacticalUnitTypes";
+import { buildMemberRoutes } from "./tacticalUnitHelpers";
+import type { NormalizedPoint } from "../../movement-board/coordinates/normalization";
 
 const SETUP_CATEGORIES: Array<{ id: TacticalTemplateCategory; label: string }> = [
   { id: "KICKOUT", label: "Kickout" },
@@ -784,6 +787,11 @@ export default function TacticalPlaySurface() {
   const [scenarioRenameDraft, setScenarioRenameDraft] = useState("");
   const [playsOpen, setPlaysOpen] = useState(false);
   const [playsNameDraft, setPlaysNameDraft] = useState("");
+  const [units, setUnits] = useState<TacticalUnit[]>([]);
+  const [unitsOpen, setUnitsOpen] = useState(false);
+  const [unitNameDraft, setUnitNameDraft] = useState("");
+  const [unitEditingId, setUnitEditingId] = useState<string | null>(null);
+  const [unitDrawingId, setUnitDrawingId] = useState<string | null>(null);
   const {
     recordPhase, setRecordPhase,
     recordDuration, setRecordDuration,
@@ -957,6 +965,7 @@ export default function TacticalPlaySurface() {
       setMovementsOpen(false);
       setPassesOpen(false);
       setPlaysOpen(false);
+      setUnitsOpen(false);
     }
   }, [isPlaying]);
 
@@ -1239,6 +1248,7 @@ export default function TacticalPlaySurface() {
       shell.getPassEvents(),
       shell.getShotEvents(),
       shell.getPlaybackSpeed(),
+      units,
     );
     setScenarios(listScenarios());
     setScenarioNameDraft("");
@@ -1270,6 +1280,7 @@ export default function TacticalPlaySurface() {
     setPlaybackSpeed(speed);
     shell.setPlaybackSpeed(speed);
     shell.setStartPositions();
+    setUnits(scenario.units ?? []);
     setScenariosOpen(false);
     setScenarioRenameId(null);
   };
@@ -1300,9 +1311,60 @@ export default function TacticalPlaySurface() {
       shell.getPassEvents(),
       shell.getShotEvents(),
       shell.getPlaybackSpeed(),
+      units,
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
+  };
+
+  const onCreateUnit = () => {
+    const name = unitNameDraft.trim();
+    if (!name) return;
+    const newUnit: TacticalUnit = {
+      id: `unit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      memberIds: [],
+    };
+    setUnits((prev) => [...prev, newUnit]);
+    setUnitNameDraft("");
+    setUnitEditingId(newUnit.id);
+  };
+
+  const onDeleteUnit = (id: string) => {
+    setUnits((prev) => prev.filter((u) => u.id !== id));
+    if (unitEditingId === id) setUnitEditingId(null);
+    if (unitDrawingId === id) setUnitDrawingId(null);
+  };
+
+  const onToggleUnitMember = (unitId: string, playerId: string) => {
+    setUnits((prev) =>
+      prev.map((u) => {
+        if (u.id !== unitId) return u;
+        const isMember = u.memberIds.includes(playerId);
+        return {
+          ...u,
+          memberIds: isMember
+            ? u.memberIds.filter((mid) => mid !== playerId)
+            : [...u.memberIds, playerId],
+        };
+      }),
+    );
+  };
+
+  const onApplyUnitRoute = () => {
+    const shell = shellRef.current;
+    const unit = units.find((u) => u.id === unitDrawingId);
+    if (!shell || !unit || !selectedToken) return;
+    const leaderRoute = shell.getRoutes().find((r) => r.playerId === selectedToken.id);
+    if (!leaderRoute || leaderRoute.points.length < 2) return;
+    const tokenPositions = new Map<string, NormalizedPoint>(
+      shell.getTokens().map((t) => [t.id, t.position]),
+    );
+    const memberRoutes = buildMemberRoutes(leaderRoute.points, unit, selectedToken.id, tokenPositions);
+    const unitMemberIds = new Set(unit.memberIds);
+    const existingRoutes = shell.getRoutes().filter((r) => !unitMemberIds.has(r.playerId));
+    shell.setRoutes([...existingRoutes, ...memberRoutes]);
+    setUnitDrawingId(null);
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
@@ -1468,11 +1530,19 @@ export default function TacticalPlaySurface() {
                 <button
                   type="button"
                   style={movementsOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
-                  onClick={() => { setMovementsOpen((prev) => !prev); setPassesOpen(false); setIsControlsOpen(false); }}
+                  onClick={() => { setMovementsOpen((prev) => !prev); setPassesOpen(false); setUnitsOpen(false); setIsControlsOpen(false); }}
                 >
                   Movements
                 </button>
               ) : null}
+              <button
+                type="button"
+                style={unitsOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                disabled={modeIsPlaybackLocked}
+                onClick={() => { setUnitsOpen((prev) => !prev); setMovementsOpen(false); setPassesOpen(false); setIsControlsOpen(false); }}
+              >
+                Units
+              </button>
               {ballOnPitch || passEvents.length > 0 ? (
                 <button
                   type="button"
@@ -1659,6 +1729,15 @@ export default function TacticalPlaySurface() {
                   >
                     Play Routes
                   </button>
+                  {unitDrawingId !== null && selectedToken && routes.some((r) => r.playerId === selectedToken.id) ? (
+                    <button
+                      type="button"
+                      style={{ ...TOOL_ACTIVE_STYLE, border: "1px solid rgba(255, 200, 80, 0.60)", background: "rgba(60, 50, 10, 0.90)", color: "#ffe87a" }}
+                      onClick={onApplyUnitRoute}
+                    >
+                      Apply to Unit
+                    </button>
+                  ) : null}
                   {selectedToken && !isPlaying ? (
                     <button
                       type="button"
@@ -1825,6 +1904,104 @@ export default function TacticalPlaySurface() {
 
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button type="button" style={MP_DONE} onClick={() => setMovementsOpen(false)}>
+                Done
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {unitsOpen && !modeIsPlaybackLocked ? (
+          <div style={MOVEMENT_PANEL_STYLE}>
+            <div style={MP_HEADER_STYLE}>
+              <span style={MP_TITLE_STYLE}>Units</span>
+              <button type="button" style={MP_CLOSE_STYLE} onClick={() => setUnitsOpen(false)}>×</button>
+            </div>
+
+            <div style={MP_ROW}>
+              <input
+                style={{ ...PLAYS_INPUT_STYLE, flex: 1, height: "28px", fontSize: "9px" }}
+                type="text"
+                placeholder="Unit name…"
+                value={unitNameDraft}
+                maxLength={30}
+                onChange={(e) => setUnitNameDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") onCreateUnit(); }}
+              />
+              <button
+                type="button"
+                style={MP_CHIP}
+                onClick={onCreateUnit}
+              >
+                + Unit
+              </button>
+            </div>
+
+            {units.map((unit) => (
+              <div key={unit.id} style={{ display: "grid", gap: "4px" }}>
+                <div style={MP_ROW}>
+                  <span style={{ flex: 1, fontFamily: "Inter, system-ui, sans-serif", fontSize: "9px", fontWeight: 600, color: "rgba(200, 230, 255, 0.75)", letterSpacing: "0.02em", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {unit.name}
+                    <span style={{ marginLeft: "4px", opacity: 0.45, fontSize: "8px" }}>({unit.memberIds.length})</span>
+                  </span>
+                  <button
+                    type="button"
+                    style={unitEditingId === unit.id ? MP_CHIP_ACTIVE : MP_CHIP}
+                    onClick={() => setUnitEditingId(unitEditingId === unit.id ? null : unit.id)}
+                  >
+                    Members
+                  </button>
+                  <button
+                    type="button"
+                    style={unitDrawingId === unit.id ? { ...MP_CHIP_ACTIVE, border: "1px solid rgba(255, 200, 80, 0.60)", background: "rgba(60, 50, 10, 0.90)", color: "#ffe87a" } : MP_CHIP}
+                    onClick={() => {
+                      if (unitDrawingId === unit.id) {
+                        setUnitDrawingId(null);
+                      } else {
+                        setUnitDrawingId(unit.id);
+                        setMenuMode("route");
+                        setUnitsOpen(false);
+                      }
+                    }}
+                  >
+                    Draw
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...MP_CHIP, color: "rgba(255, 140, 140, 0.75)" }}
+                    onClick={() => onDeleteUnit(unit.id)}
+                  >
+                    ×
+                  </button>
+                </div>
+                {unitEditingId === unit.id ? (
+                  <div style={MP_ROW}>
+                    <span style={MP_ROW_LABEL}>Members</span>
+                    {Object.entries(tokenNumberById).sort((a, b) => a[1] - b[1]).map(([id, num]) => {
+                      const isMember = unit.memberIds.includes(id);
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          style={isMember ? MP_PLAYER_CHIP_ACTIVE : MP_PLAYER_CHIP}
+                          onClick={() => onToggleUnitMember(unit.id, id)}
+                        >
+                          P{num}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+
+            {units.length === 0 ? (
+              <span style={{ fontSize: "9px", color: "rgba(180, 210, 255, 0.35)", fontFamily: "Inter, system-ui, sans-serif", padding: "2px" }}>
+                Name a unit and press + Unit to create.
+              </span>
+            ) : null}
+
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" style={MP_DONE} onClick={() => setUnitsOpen(false)}>
                 Done
               </button>
             </div>
