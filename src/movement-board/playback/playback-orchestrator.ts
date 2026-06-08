@@ -96,6 +96,7 @@ export type PlaybackOrchestrator = {
   hasActiveRuns: () => boolean;
   getState: () => MovementPlaybackState;
   setSpeed: (speed: MovementPlaybackSpeed) => void;
+  setSpeedMultiplier: (n: number) => void;
   getSpeed: () => MovementPlaybackSpeed;
 };
 
@@ -110,6 +111,7 @@ export function createPlaybackOrchestrator(
   let isPlaying = false;
   let isPaused = false;
   let playbackSpeed = initialSpeed;
+  let speedMultiplierOverride: number = PLAYBACK_SPEED_MULTIPLIER[initialSpeed];
   let activePlaybackRuns = new Map<string, ActivePlaybackRun>();
   let pendingTriggerRuns = new Map<string, PendingTriggerRun>();
   let activePassRuns = new Map<string, ActivePassRun>();
@@ -247,12 +249,12 @@ export function createPlaybackOrchestrator(
       pendingShotRuns.size > 0;
     if (!isPlaying || !hasWork) return;
 
-    const multiplier = PLAYBACK_SPEED_MULTIPLIER[playbackSpeed];
+    const multiplier = speedMultiplierOverride;
     const completedIds: string[] = [];
 
     for (const run of activePlaybackRuns.values()) {
       if (run.delayMs > 0) {
-        run.delayMs = Math.max(0, run.delayMs - deltaMs);
+        run.delayMs = Math.max(0, run.delayMs - deltaMs * multiplier);
         continue;
       }
       run.session.step(deltaMs * multiplier);
@@ -266,7 +268,7 @@ export function createPlaybackOrchestrator(
     const firedPassIds: string[] = [];
     for (const run of activePassRuns.values()) {
       if (run.delayMs > 0) {
-        run.delayMs = Math.max(0, run.delayMs - deltaMs);
+        run.delayMs = Math.max(0, run.delayMs - deltaMs * multiplier);
         if (run.delayMs > 0) continue;
       }
       callbacks.onPassStart(run.fromPlayerId, run.toPlayerId);
@@ -280,7 +282,7 @@ export function createPlaybackOrchestrator(
     const firedShotIds: string[] = [];
     for (const run of activeShotRuns.values()) {
       if (run.delayMs > 0) {
-        run.delayMs = Math.max(0, run.delayMs - deltaMs);
+        run.delayMs = Math.max(0, run.delayMs - deltaMs * multiplier);
         if (run.delayMs > 0) continue;
       }
       callbacks.onShotStart(run.shooterId);
@@ -420,7 +422,8 @@ export function createPlaybackOrchestrator(
       activeShotRuns.size > 0 ||
       pendingShotRuns.size > 0,
     getState: () => ({ isPlaying, isPaused }),
-    setSpeed: (speed) => { playbackSpeed = speed; },
+    setSpeed: (speed) => { playbackSpeed = speed; speedMultiplierOverride = PLAYBACK_SPEED_MULTIPLIER[speed]; },
+    setSpeedMultiplier: (n) => { speedMultiplierOverride = n; },
     getSpeed: () => playbackSpeed,
   };
 }

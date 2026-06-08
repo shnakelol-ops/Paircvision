@@ -938,6 +938,9 @@ export async function createMovementCanvasShell(
     setPlaybackSpeed: (speed) => {
       orchestrator.setSpeed(speed);
     },
+    setSpeedMultiplier: (multiplier) => {
+      orchestrator.setSpeedMultiplier(multiplier);
+    },
     removeSelectedWaypoint: () => {
       if (!selectedTokenId) return false;
       const route = routeByTokenId.get(selectedTokenId);
