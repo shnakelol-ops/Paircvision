@@ -1541,7 +1541,7 @@ export default function TacticalPlaySurface() {
                 disabled={modeIsPlaybackLocked}
                 onClick={() => { setUnitsOpen((prev) => !prev); setMovementsOpen(false); setPassesOpen(false); setIsControlsOpen(false); }}
               >
-                Units
+                Group Move
               </button>
               {ballOnPitch || passEvents.length > 0 ? (
                 <button
@@ -1913,7 +1913,7 @@ export default function TacticalPlaySurface() {
         {unitsOpen && !modeIsPlaybackLocked ? (
           <div style={MOVEMENT_PANEL_STYLE}>
             <div style={MP_HEADER_STYLE}>
-              <span style={MP_TITLE_STYLE}>Units</span>
+              <span style={MP_TITLE_STYLE}>Group Move</span>
               <button type="button" style={MP_CLOSE_STYLE} onClick={() => setUnitsOpen(false)}>×</button>
             </div>
 
@@ -1996,7 +1996,7 @@ export default function TacticalPlaySurface() {
 
             {units.length === 0 ? (
               <span style={{ fontSize: "9px", color: "rgba(180, 210, 255, 0.35)", fontFamily: "Inter, system-ui, sans-serif", padding: "2px" }}>
-                Name a unit and press + Unit to create.
+                Name a group and press + Unit to create.
               </span>
             ) : null}
 
@@ -2497,6 +2497,20 @@ export default function TacticalPlaySurface() {
             <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetBoard}>
               Reset
             </button>
+            <div style={{ display: "flex", gap: "2px", padding: "1px 0" }}>
+              {(["slow", "normal", "fast"] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  style={playbackSpeed === s
+                    ? { ...PLAYBACK_SIDE_BUTTON_STYLE, minWidth: "0", flex: 1, border: "1px solid rgba(124, 255, 114, 0.56)", background: "rgba(22, 67, 44, 0.90)", color: "#d2ffce" }
+                    : { ...PLAYBACK_SIDE_BUTTON_STYLE, minWidth: "0", flex: 1 }}
+                  onClick={() => setPlaybackSpeed(s)}
+                >
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
         ) : null}
 
