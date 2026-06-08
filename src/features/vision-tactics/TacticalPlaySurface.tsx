@@ -739,7 +739,7 @@ const MP_DONE: CSSProperties = {
 const CONCEPT_LABELS: Record<MovementConcept, string> = {
   "support-run": "Support Run",
   "overlap": "Overlap",
-  "shadow-run": "Shadow Run",
+  "shadow-run": "Decoy Run",
   "rotation": "Rotation",
   "custom": "Custom Run",
 };
@@ -748,7 +748,7 @@ const CONCEPT_OPTIONS: Array<{ id: MovementConcept | null; label: string }> = [
   { id: null, label: "—" },
   { id: "support-run", label: "Support" },
   { id: "overlap", label: "Overlap" },
-  { id: "shadow-run", label: "Shadow" },
+  { id: "shadow-run", label: "Decoy" },
   { id: "rotation", label: "Rotation" },
   { id: "custom", label: "Custom" },
 ];
@@ -1380,7 +1380,7 @@ export default function TacticalPlaySurface() {
     const next = [...zones, newZone];
     shell.setZones(next);
     setZones(next);
-    shell.setSelectedZoneId(id);
+    // Zone placed clean — no handles on creation. Tap the zone to select and edit.
   };
 
   const onDeleteZone = () => {
@@ -2133,7 +2133,7 @@ export default function TacticalPlaySurface() {
                   {([
                     { id: "support-run" as MovementConcept, label: "Support" },
                     { id: "overlap" as MovementConcept, label: "Overlap" },
-                    { id: "shadow-run" as MovementConcept, label: "Shadow" },
+                    { id: "shadow-run" as MovementConcept, label: "Decoy" },
                     { id: "rotation" as MovementConcept, label: "Rotation" },
                     { id: "custom" as MovementConcept, label: "Custom" },
                   ] as const).map((opt) => (
