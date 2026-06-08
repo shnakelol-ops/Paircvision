@@ -819,7 +819,7 @@ export default function TacticalPlaySurface() {
   const [playersOpen, setPlayersOpen] = useState(false);
   const [activeSetupCategory, setActiveSetupCategory] = useState<TacticalTemplateCategory | null>(null);
   const [tokenSize, setTokenSizeState] = useState<TokenSize>("medium");
-  const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("jersey");
+  const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("pixi");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
   const [secondaryColor, setSecondaryColorState] = useState<PremiumPlayerTokenColor>("red");
   const [routes, setRoutes] = useState<MovementBoardRoute[]>([]);
@@ -945,6 +945,7 @@ export default function TacticalPlaySurface() {
         shellRef.current = shell;
         setMenuMode(toMenuMode(shell.getMode()));
         shell.setSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
+        shell.setTokenRenderer("pixi");
         setTokenSizeState(shell.getTokenSize());
         const initialRoutes = shell.getRoutes();
         setRouteCount(initialRoutes.length);
@@ -1153,6 +1154,13 @@ export default function TacticalPlaySurface() {
 
   const clearRoute = () => {
     shellRef.current?.clearSelectedRoute();
+  };
+
+  const clearAllRoutes = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    shell.setRoutes([]);
+    setUnitDrawingId(null);
   };
 
   const giveSelectedPlayerBall = () => {
@@ -1420,6 +1428,49 @@ export default function TacticalPlaySurface() {
     const existingRoutes = shell.getRoutes().filter((r) => !unitMemberIds.has(r.playerId));
     shell.setRoutes([...existingRoutes, ...memberRoutes]);
     setUnitDrawingId(null);
+  };
+
+  const onAddPlayer = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const tokens = shell.getTokens();
+    const maxNumber = tokens.reduce((m, t) => Math.max(m, t.number), 0);
+    const nextNumber = maxNumber + 1;
+    const newToken: MovementBoardToken = {
+      id: `token-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      number: nextNumber,
+      color: "red",
+      position: { x: 50, y: 50 },
+    };
+    shell.setTokens([...tokens, newToken]);
+    setTokenNumberById((prev) => ({ ...prev, [newToken.id]: nextNumber }));
+  };
+
+  const onRemoveSelectedPlayer = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedToken) return;
+    const removedId = selectedToken.id;
+    const remaining = shell.getTokens().filter((t) => t.id !== removedId);
+    shell.setTokens(remaining);
+    // Clean pass events referencing removed player
+    const nextPassEvents = shell.getPassEvents().filter(
+      (p) => p.fromPlayerId !== removedId && p.toPlayerId !== removedId,
+    );
+    shell.setPassEvents(nextPassEvents);
+    setPassEvents([...nextPassEvents]);
+    // Clean shot events referencing removed player
+    for (const shot of shell.getShotEvents()) {
+      if (shot.shooterId === removedId) shell.removeShotEvent(shot.id);
+    }
+    setShotEvents((prev) => prev.filter((s) => s.shooterId !== removedId));
+    // Clean unit memberships
+    setUnits((prev) => prev.map((u) => ({ ...u, memberIds: u.memberIds.filter((mid) => mid !== removedId) })));
+    // Clean pass/trigger UI state
+    if (passFromId === removedId) setPassFromId(null);
+    if (passToId === removedId) setPassToId(null);
+    if (passTriggerId === removedId) setPassTriggerId(null);
+    if (movementsSelectedPlayerId === removedId) setMovementsSelectedPlayerId(null);
+    setTokenNumberById((prev) => { const next = { ...prev }; delete next[removedId]; return next; });
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
@@ -1749,9 +1800,6 @@ export default function TacticalPlaySurface() {
                   >
                     Set Start
                   </button>
-                  <button type="button" style={TOOL_DISABLED_STYLE} disabled>
-                    Phases Soon
-                  </button>
                   <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetBoard}>
                     Reset
                   </button>
@@ -1762,6 +1810,24 @@ export default function TacticalPlaySurface() {
                       onClick={giveSelectedPlayerBall}
                     >
                       {selectedHasBall ? "Has Ball" : "Give Ball"}
+                    </button>
+                  ) : null}
+                  {!modeIsPlaybackLocked ? (
+                    <button
+                      type="button"
+                      style={TOOL_BUTTON_STYLE}
+                      onClick={onAddPlayer}
+                    >
+                      + Player
+                    </button>
+                  ) : null}
+                  {selectedToken && !modeIsPlaybackLocked ? (
+                    <button
+                      type="button"
+                      style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 140, 140, 0.80)" }}
+                      onClick={onRemoveSelectedPlayer}
+                    >
+                      − Player
                     </button>
                   ) : null}
                 </>
@@ -1800,6 +1866,14 @@ export default function TacticalPlaySurface() {
                     disabled={clearRouteDisabled}
                   >
                     Clear Route
+                  </button>
+                  <button
+                    type="button"
+                    style={isPlaying || routes.length === 0 ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
+                    onClick={clearAllRoutes}
+                    disabled={isPlaying || routes.length === 0}
+                  >
+                    Clear All Routes
                   </button>
                   <button
                     type="button"
