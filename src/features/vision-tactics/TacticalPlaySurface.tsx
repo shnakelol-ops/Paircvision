@@ -94,9 +94,8 @@ const PITCH_STYLE: CSSProperties = {
 
 const INFO_PILL_STYLE: CSSProperties = {
   position: "fixed",
-  top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))",
-  left: "50%",
-  transform: "translateX(-50%)",
+  left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
+  top: "max(52px, calc(env(safe-area-inset-top, 0px) + 50px))",
   zIndex: 12,
   color: "#e8f0ff",
   fontFamily: "Inter, system-ui, sans-serif",
@@ -236,6 +235,20 @@ const PV_WATERMARK_STYLE: CSSProperties = {
   fontWeight: 600,
   letterSpacing: "0.06em",
   fontFamily: "Inter, system-ui, sans-serif",
+  pointerEvents: "none",
+  userSelect: "none",
+};
+
+const PITCH_WATERMARK_STYLE: CSSProperties = {
+  position: "absolute",
+  bottom: "14px",
+  right: "18px",
+  zIndex: 2,
+  color: "rgba(200, 220, 255, 0.07)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 600,
+  letterSpacing: "0.10em",
   pointerEvents: "none",
   userSelect: "none",
 };
@@ -1571,6 +1584,7 @@ export default function TacticalPlaySurface() {
         <VisionStadiumBackground variant="board" />
         <div style={CONTENT_STYLE}>
           <div ref={hostRef} style={PITCH_STYLE} />
+          <div style={PITCH_WATERMARK_STYLE}>PáircVision</div>
         </div>
 
         <button type="button" style={BACK_BUTTON_STYLE} onClick={goBack}>
@@ -1579,8 +1593,6 @@ export default function TacticalPlaySurface() {
 
         <div style={INFO_PILL_STYLE}>{coachInfoLabel}</div>
 
-        <div style={PV_BADGE_STYLE}>PV</div>
-        <div style={PV_WATERMARK_STYLE}>PáircVision</div>
         <button
           type="button"
           style={CTRL_BUBBLE_STYLE}
@@ -2634,19 +2646,17 @@ export default function TacticalPlaySurface() {
 
         {playbackFloatingVisible ? (
           <div style={PLAYBACK_SIDE_STYLE}>
-            <div style={PANEL_ROW_STYLE}>
-              <button
-                type="button"
-                style={pauseResumeDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
-                disabled={pauseResumeDisabled}
-                onClick={onPauseResumePress}
-              >
-                {isPlaying ? "Pause" : isPaused ? "Resume" : "Play"}
-              </button>
-              <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetBoard}>
-                Reset
-              </button>
-            </div>
+            <button
+              type="button"
+              style={pauseResumeDisabled ? TOOL_DISABLED_STYLE : PLAYBACK_SIDE_BUTTON_STYLE}
+              disabled={pauseResumeDisabled}
+              onClick={onPauseResumePress}
+            >
+              {isPlaying ? "Pause" : isPaused ? "Resume" : "Play"}
+            </button>
+            <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetBoard}>
+              Reset
+            </button>
           </div>
         ) : null}
 
