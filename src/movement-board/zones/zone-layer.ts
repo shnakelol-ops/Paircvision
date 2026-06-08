@@ -190,7 +190,7 @@ export function createZoneLayer(options: CreateZoneLayerOptions): ZoneLayerHandl
         .fill({ color: spec.fill, alpha: spec.fillAlpha })
         .stroke({ color: spec.stroke, alpha: strokeA, width: strokeW });
 
-      if (isSelected && interactive) {
+      if (isSelected && interactive && !zone.locked) {
         const handles = getHandleWorldPositions(zone);
         for (const hp of handles) {
           g.circle(hp.x, hp.y, HANDLE_VIS_R_WU)
@@ -211,7 +211,7 @@ export function createZoneLayer(options: CreateZoneLayerOptions): ZoneLayerHandl
         .fill({ color: spec.fill, alpha: spec.fillAlpha })
         .stroke({ color: spec.stroke, alpha: strokeA, width: strokeW });
 
-      if (isSelected && interactive) {
+      if (isSelected && interactive && !zone.locked) {
         const handles = getHandleWorldPositions(zone);
         for (const hp of handles) {
           g.circle(hp.x, hp.y, HANDLE_VIS_R_WU)
