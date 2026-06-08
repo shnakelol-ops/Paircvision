@@ -1089,13 +1089,6 @@ export default function TacticalPlaySurface() {
     setMenuMode("play");
   };
 
-  const onPlayAllPress = () => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    setIsControlsOpen(false);
-    shell.playAll();
-  };
-
   const onPauseResumePress = () => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -1156,11 +1149,19 @@ export default function TacticalPlaySurface() {
     shellRef.current?.clearSelectedRoute();
   };
 
-  const clearAllRoutes = () => {
+  const clearAll = () => {
     const shell = shellRef.current;
     if (!shell) return;
     shell.setRoutes([]);
+    shell.setPassEvents([]);
+    setPassEvents([]);
+    for (const shot of shell.getShotEvents()) shell.removeShotEvent(shot.id);
+    setShotEvents([]);
     setUnitDrawingId(null);
+    setMovementsSelectedPlayerId(null);
+    setPassFromId(null);
+    setPassToId(null);
+    setPassTriggerId(null);
   };
 
   const giveSelectedPlayerBall = () => {
@@ -1477,8 +1478,7 @@ export default function TacticalPlaySurface() {
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
   const removePointDisabled = menuMode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying;
   const playRoutesDisabled = isPortrait || isPlaying || isPaused;
-  const playAllDisabled = isPortrait || isPlaying || isPaused;
-  const pauseResumeDisabled = !isPlaying && !isPaused;
+  const pauseResumeDisabled = isPortrait;
   const playbackFloatingVisible = isPlaying || isPaused;
 
   const speedIndex = Math.max(0, TP_SPEED_OPTIONS.findIndex((o) => o.multiplier === playbackSpeedMultiplier));
@@ -1869,11 +1869,11 @@ export default function TacticalPlaySurface() {
                   </button>
                   <button
                     type="button"
-                    style={isPlaying || routes.length === 0 ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
-                    onClick={clearAllRoutes}
-                    disabled={isPlaying || routes.length === 0}
+                    style={isPlaying || (routes.length === 0 && passEvents.length === 0 && shotEvents.length === 0) ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
+                    onClick={clearAll}
+                    disabled={isPlaying || (routes.length === 0 && passEvents.length === 0 && shotEvents.length === 0)}
                   >
-                    Clear All Routes
+                    Clear All
                   </button>
                   <button
                     type="button"
@@ -1907,19 +1907,11 @@ export default function TacticalPlaySurface() {
                 <>
                   <button
                     type="button"
-                    style={playAllDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
-                    onClick={onPlayAllPress}
-                    disabled={playAllDisabled}
-                  >
-                    Play All
-                  </button>
-                  <button
-                    type="button"
                     style={pauseResumeDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
                     onClick={onPauseResumePress}
                     disabled={pauseResumeDisabled}
                   >
-                    {isPlaying ? "Pause" : "Resume"}
+                    {isPlaying ? "Pause" : isPaused ? "Resume" : "Play"}
                   </button>
                   <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetBoard}>
                     Reset
