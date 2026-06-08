@@ -893,7 +893,7 @@ export default function TacticalPlaySurface() {
   const [zones, setZones] = useState<ZoneRecord[]>([]);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [zoneShape, setZoneShape] = useState<"rect" | "circle">("rect");
-  const [zoneLibraryOpen, setZoneLibraryOpen] = useState(false);
+  const [zoneLibraryOpen, setZoneLibraryOpen] = useState<"none" | "football" | "hurling">("none");
   const [zoneLabelDraft, setZoneLabelDraft] = useState("");
   const {
     recordPhase, setRecordPhase,
@@ -1079,7 +1079,7 @@ export default function TacticalPlaySurface() {
       setUnitsOpen(false);
       setAdvancedOpen(false);
       setZonesOpen(false);
-      setZoneLibraryOpen(false);
+      setZoneLibraryOpen("none");
     }
   }, [isPlaying]);
 
@@ -1439,7 +1439,7 @@ export default function TacticalPlaySurface() {
       .slice(0, MAX_ZONES);
     shell.setZones(next);
     setZones(next);
-    setZoneLibraryOpen(false);
+    setZoneLibraryOpen("none");
   };
 
   const onClearAllZones = () => {
@@ -2359,10 +2359,17 @@ export default function TacticalPlaySurface() {
             <div style={MP_ROW}>
               <button
                 type="button"
-                style={zoneLibraryOpen ? MP_CHIP_ACTIVE : MP_CHIP}
-                onClick={() => setZoneLibraryOpen((prev) => !prev)}
+                style={zoneLibraryOpen === "football" ? MP_CHIP_ACTIVE : MP_CHIP}
+                onClick={() => setZoneLibraryOpen((prev) => prev === "football" ? "none" : "football")}
               >
-                Zone Library {zoneLibraryOpen ? "▲" : "▾"}
+                Football Library {zoneLibraryOpen === "football" ? "▲" : "▾"}
+              </button>
+              <button
+                type="button"
+                style={zoneLibraryOpen === "hurling" ? MP_CHIP_ACTIVE : MP_CHIP}
+                onClick={() => setZoneLibraryOpen((prev) => prev === "hurling" ? "none" : "hurling")}
+              >
+                Hurling/Camogie {zoneLibraryOpen === "hurling" ? "▲" : "▾"}
               </button>
               {zones.length > 0 ? (
                 <button
@@ -2375,35 +2382,34 @@ export default function TacticalPlaySurface() {
               ) : null}
             </div>
 
-            {zoneLibraryOpen ? (
-              <>
-                <div style={MP_ROW}>
-                  <span style={MP_ROW_LABEL}>Football</span>
-                  {FOOTBALL_ZONE_TEMPLATES.map((tmpl) => (
-                    <button
-                      key={tmpl.id}
-                      type="button"
-                      style={MP_CHIP}
-                      onClick={() => onDropZoneTemplate(tmpl)}
-                    >
-                      {tmpl.label}
-                    </button>
-                  ))}
-                </div>
-                <div style={MP_ROW}>
-                  <span style={MP_ROW_LABEL}>Hurling</span>
-                  {HURLING_ZONE_TEMPLATES.map((tmpl) => (
-                    <button
-                      key={tmpl.id}
-                      type="button"
-                      style={MP_CHIP}
-                      onClick={() => onDropZoneTemplate(tmpl)}
-                    >
-                      {tmpl.label}
-                    </button>
-                  ))}
-                </div>
-              </>
+            {zoneLibraryOpen === "football" ? (
+              <div style={MP_ROW}>
+                {FOOTBALL_ZONE_TEMPLATES.map((tmpl) => (
+                  <button
+                    key={tmpl.id}
+                    type="button"
+                    style={MP_CHIP}
+                    onClick={() => onDropZoneTemplate(tmpl)}
+                  >
+                    {tmpl.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {zoneLibraryOpen === "hurling" ? (
+              <div style={MP_ROW}>
+                {HURLING_ZONE_TEMPLATES.map((tmpl) => (
+                  <button
+                    key={tmpl.id}
+                    type="button"
+                    style={MP_CHIP}
+                    onClick={() => onDropZoneTemplate(tmpl)}
+                  >
+                    {tmpl.label}
+                  </button>
+                ))}
+              </div>
             ) : null}
 
             {/* Selected zone controls */}
