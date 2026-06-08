@@ -1,4 +1,5 @@
 import type { BallState, MovementBoardRoute, MovementBoardToken, MovementPlaybackSpeed, TacticalPassEvent, TacticalShotEvent } from "../../movement-board/shell/types";
+import type { TacticalUnit } from "./tacticalUnitTypes";
 
 const STORAGE_KEY = "paircvision-tp-scenarios";
 const MAX_SCENARIOS = 20;
@@ -13,6 +14,7 @@ export type TacticalScenario = {
   passEvents: TacticalPassEvent[];
   shotEvents: TacticalShotEvent[];
   playbackSpeed?: MovementPlaybackSpeed;
+  units?: TacticalUnit[];
 };
 
 export function listScenarios(): TacticalScenario[] {
@@ -42,6 +44,7 @@ export function saveScenario(
   passEvents: TacticalPassEvent[],
   shotEvents: TacticalShotEvent[],
   playbackSpeed?: MovementPlaybackSpeed,
+  units?: TacticalUnit[],
 ): TacticalScenario {
   const scenario: TacticalScenario = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -53,6 +56,7 @@ export function saveScenario(
     passEvents,
     shotEvents,
     playbackSpeed,
+    units,
   };
   persistList([scenario, ...listScenarios()].slice(0, MAX_SCENARIOS));
   return scenario;
