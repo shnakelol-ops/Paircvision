@@ -355,8 +355,8 @@ const COLLAPSE_BUTTON_STYLE: CSSProperties = {
 
 const PLAYBACK_SIDE_STYLE: CSSProperties = {
   position: "fixed",
-  right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
-  bottom: "max(84px, calc(env(safe-area-inset-bottom, 0px) + 82px))",
+  left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
+  bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
   zIndex: 21,
   display: "grid",
   gap: "3px",
@@ -801,14 +801,10 @@ const TP_SPEED_VALUE_STYLE: CSSProperties = {
 };
 
 export default function TacticalPlaySurface() {
-  type MovementMenuMode = "move" | "route" | "play";
+  type MovementMenuMode = "move" | "route" | "ball" | "play";
 
   const toShellMode = (menuMode: MovementMenuMode): MovementBoardMode =>
-    menuMode === "route"
-      ? "route"
-      : menuMode === "play"
-        ? "play"
-        : "setup";
+    menuMode === "route" ? "route" : menuMode === "play" ? "play" : "setup";
 
   const toMenuMode = (shellMode: MovementBoardMode): MovementMenuMode =>
     shellMode === "route" ? "route" : shellMode === "play" ? "play" : "move";
@@ -867,6 +863,7 @@ export default function TacticalPlaySurface() {
   const [unitNameDraft, setUnitNameDraft] = useState("");
   const [unitEditingId, setUnitEditingId] = useState<string | null>(null);
   const [unitDrawingId, setUnitDrawingId] = useState<string | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const {
     recordPhase, setRecordPhase,
     recordDuration, setRecordDuration,
@@ -1041,6 +1038,7 @@ export default function TacticalPlaySurface() {
       setPassesOpen(false);
       setPlaysOpen(false);
       setUnitsOpen(false);
+      setAdvancedOpen(false);
     }
   }, [isPlaying]);
 
@@ -1049,6 +1047,10 @@ export default function TacticalPlaySurface() {
       setBallMenuStep(null);
     }
   }, [isControlsOpen]);
+
+  useEffect(() => {
+    if (menuMode !== "ball") setBallMenuStep(null);
+  }, [menuMode]);
 
   const selectedRoute = routes.find((r) => r.playerId === selectedToken?.id) ?? null;
   const selectedRouteConcept = selectedRoute?.concept ?? null;
@@ -1087,6 +1089,7 @@ export default function TacticalPlaySurface() {
   const modeLabelByMenu: Record<MovementMenuMode, string> = {
     move: "Move",
     route: "Route",
+    ball: "Ball",
     play: "Play",
   };
 
@@ -1496,6 +1499,7 @@ export default function TacticalPlaySurface() {
   const modeIsPlaybackLocked = isPlaying || isPaused;
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
   const removePointDisabled = menuMode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying;
+  const clearAllDisabled = isPlaying || (routes.length === 0 && passEvents.length === 0 && shotEvents.length === 0);
   const playRoutesDisabled = isPortrait || isPlaying || isPaused;
   const pauseResumeDisabled = isPortrait;
   const playbackFloatingVisible = isPlaying || isPaused;
@@ -1641,14 +1645,13 @@ export default function TacticalPlaySurface() {
           </div>
         ) : null}
 
-        {isControlsOpen ? (
+        {isControlsOpen && !modeIsPlaybackLocked ? (
           <div style={CONTROL_PANEL_STYLE}>
-            {/* Segmented mode pill — Move | Route | Ball */}
+            {/* Row 1: Primary workflow pill — Move | Route | Ball | ▶ Play */}
             <div style={PANEL_ROW_STYLE}>
               <button
                 type="button"
                 style={menuMode === "move" ? SEG_ITEM_ACTIVE_STYLE : SEG_ITEM_STYLE}
-                disabled={modeIsPlaybackLocked}
                 onClick={() => setMenuMode("move")}
               >
                 Move
@@ -1656,60 +1659,194 @@ export default function TacticalPlaySurface() {
               <button
                 type="button"
                 style={menuMode === "route" ? SEG_ITEM_ACTIVE_STYLE : SEG_ITEM_STYLE}
-                disabled={modeIsPlaybackLocked}
                 onClick={() => setMenuMode("route")}
               >
                 Route
               </button>
               <button
                 type="button"
-                style={ballOnPitch ? SEG_ITEM_ACTIVE_STYLE : SEG_ITEM_STYLE}
-                disabled={modeIsPlaybackLocked}
-                onClick={onBallButtonPress}
+                style={menuMode === "ball" ? SEG_ITEM_ACTIVE_STYLE : (ballOnPitch ? SEG_ITEM_ACTIVE_STYLE : SEG_ITEM_STYLE)}
+                onClick={() => { setMenuMode("ball"); setBallMenuStep(ballOnPitch ? "existing" : "root"); }}
               >
                 Ball
               </button>
-            </div>
-
-            {/* Primary actions row */}
-            <div style={PANEL_ROW_STYLE}>
               <button
                 type="button"
-                style={menuMode === "move" && !modeIsPlaybackLocked ? (startFlash ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE) : TOOL_DISABLED_STYLE}
-                disabled={menuMode !== "move" || modeIsPlaybackLocked}
-                onClick={onSetStart}
+                style={pauseResumeDisabled ? { ...SEG_ITEM_STYLE, opacity: 0.45 } : SEG_ITEM_STYLE}
+                disabled={pauseResumeDisabled}
+                onClick={onPlayRoutesPress}
               >
-                Set Start
+                ▶ Play
               </button>
-              <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetBoard}>
-                Reset
-              </button>
-              {!modeIsPlaybackLocked ? (
+            </div>
+
+            {/* Row 2: Contextual — Move mode */}
+            {menuMode === "move" ? (
+              <div style={PANEL_ROW_STYLE}>
+                <button
+                  type="button"
+                  style={startFlash ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={onSetStart}
+                >
+                  Set Start
+                </button>
+                <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetBoard}>
+                  Reset
+                </button>
                 <button type="button" style={TOOL_BUTTON_STYLE} onClick={onAddPlayer}>
                   + Player
                 </button>
-              ) : null}
-              <button
-                type="button"
-                style={unitsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                disabled={modeIsPlaybackLocked}
-                onClick={() => { setUnitsOpen((prev) => !prev); setMovementsOpen(false); setPassesOpen(false); setIsControlsOpen(false); }}
-              >
-                Move As One
-              </button>
+                {selectedToken ? (
+                  <>
+                    <button
+                      type="button"
+                      style={selectedHasBall ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                      onClick={giveSelectedPlayerBall}
+                    >
+                      {selectedHasBall ? "Has Ball" : "Give Ball"}
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 140, 140, 0.80)" }}
+                      onClick={onRemoveSelectedPlayer}
+                    >
+                      − Player
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Row 2: Contextual — Route mode */}
+            {menuMode === "route" ? (
+              <div style={PANEL_ROW_STYLE}>
+                <button
+                  type="button"
+                  style={TOOL_BUTTON_STYLE}
+                  onClick={() => cycleSelectedEntity("prev")}
+                >
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  style={TOOL_BUTTON_STYLE}
+                  onClick={() => cycleSelectedEntity("next")}
+                >
+                  Next
+                </button>
+                <button
+                  type="button"
+                  style={removePointDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
+                  disabled={removePointDisabled}
+                  onClick={() => shellRef.current?.removeSelectedWaypoint()}
+                >
+                  Remove
+                </button>
+                <button
+                  type="button"
+                  style={clearRouteDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
+                  disabled={clearRouteDisabled}
+                  onClick={clearRoute}
+                >
+                  Clear Route
+                </button>
+                <button
+                  type="button"
+                  style={clearAllDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
+                  disabled={clearAllDisabled}
+                  onClick={clearAll}
+                >
+                  Clear All
+                </button>
+                {unitDrawingId !== null && selectedToken && routes.some((r) => r.playerId === selectedToken.id) ? (
+                  <button
+                    type="button"
+                    style={{ ...TOOL_ACTIVE_STYLE, border: "1px solid rgba(255, 200, 80, 0.60)", background: "rgba(60, 50, 10, 0.90)", color: "#ffe87a" }}
+                    onClick={onApplyUnitRoute}
+                  >
+                    Apply to Unit
+                  </button>
+                ) : null}
+                {selectedToken ? (
+                  <button
+                    type="button"
+                    style={selectedHasBall ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                    onClick={giveSelectedPlayerBall}
+                  >
+                    {selectedHasBall ? "Has Ball" : "Give Ball"}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Row 2: Contextual — Ball mode */}
+            {menuMode === "ball" ? (
+              <div style={PANEL_ROW_STYLE}>
+                {ballMenuStep === "root" ? (
+                  <>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setBallMenuStep("football-size")}>
+                      ⚽ Football
+                    </button>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setBallMenuStep("sliotar-size")}>
+                      🥎 Sliotar
+                    </button>
+                  </>
+                ) : ballMenuStep === "football-size" ? (
+                  <>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setBallMenuStep("root")}>
+                      ← Back
+                    </button>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onSelectBallType("footballSmall")}>
+                      ⚽ Small
+                    </button>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onSelectBallType("footballMedium")}>
+                      ⚽ Medium
+                    </button>
+                  </>
+                ) : ballMenuStep === "sliotar-size" ? (
+                  <>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setBallMenuStep("root")}>
+                      ← Back
+                    </button>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onSelectBallType("sliotarSmall")}>
+                      🥎 Small
+                    </button>
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onSelectBallType("sliotarMedium")}>
+                      🥎 Medium
+                    </button>
+                  </>
+                ) : ballMenuStep === "existing" ? (
+                  <>
+                    {ballCarrierId ? (
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={onFreeBall}>
+                        Free Ball
+                      </button>
+                    ) : null}
+                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={onRemoveBall}>
+                      Remove Ball
+                    </button>
+                    {selectedToken ? (
+                      <button
+                        type="button"
+                        style={selectedHasBall ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                        onClick={giveSelectedPlayerBall}
+                      >
+                        {selectedHasBall ? "Has Ball" : "Give Ball"}
+                      </button>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Row 3: Always-visible first-class authoring */}
+            <div style={PANEL_ROW_STYLE}>
               <button
                 type="button"
                 style={movementsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                 onClick={() => { setMovementsOpen((prev) => !prev); setPassesOpen(false); setUnitsOpen(false); setIsControlsOpen(false); }}
               >
                 Movements
-              </button>
-              <button
-                type="button"
-                style={sequenceOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => setSequenceOpen((prev) => !prev)}
-              >
-                Sequence
               </button>
               <button
                 type="button"
@@ -1720,17 +1857,37 @@ export default function TacticalPlaySurface() {
               </button>
               <button
                 type="button"
-                style={isPlaying || (routes.length === 0 && passEvents.length === 0 && shotEvents.length === 0) ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
-                onClick={clearAll}
-                disabled={isPlaying || (routes.length === 0 && passEvents.length === 0 && shotEvents.length === 0)}
+                style={advancedOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                onClick={() => setAdvancedOpen((prev) => !prev)}
               >
-                Clear All
+                Advanced {advancedOpen ? "▲" : "▾"}
               </button>
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
               </button>
             </div>
 
+            {/* Row 4: Advanced drawer */}
+            {advancedOpen ? (
+              <div style={PANEL_ROW_STYLE}>
+                <button
+                  type="button"
+                  style={unitsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => { setUnitsOpen((prev) => !prev); setMovementsOpen(false); setPassesOpen(false); setIsControlsOpen(false); }}
+                >
+                  Group Move
+                </button>
+                <button
+                  type="button"
+                  style={sequenceOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => setSequenceOpen((prev) => !prev)}
+                >
+                  Sequence
+                </button>
+              </div>
+            ) : null}
+
+            {/* Sequence chips (when open inside CTRL) */}
             {sequenceOpen && sortedItems.length > 0 ? (
               <div style={PANEL_ROW_STYLE}>
                 <span style={SETUP_SECTION_LABEL_STYLE}>Sequence</span>
@@ -1776,158 +1933,6 @@ export default function TacticalPlaySurface() {
                     </span>
                   );
                 })}
-              </div>
-            ) : null}
-
-            {ballMenuStep !== null ? (
-              <div style={PANEL_ROW_STYLE}>
-                {ballMenuStep === "root" ? (
-                  <>
-                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setBallMenuStep("football-size")}>
-                      ⚽ Football
-                    </button>
-                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setBallMenuStep("sliotar-size")}>
-                      🥎 Sliotar
-                    </button>
-                  </>
-                ) : null}
-                {ballMenuStep === "football-size" ? (
-                  <>
-                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setBallMenuStep("root")}>
-                      ← Back
-                    </button>
-                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onSelectBallType("footballSmall")}>
-                      ⚽ Small
-                    </button>
-                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onSelectBallType("footballMedium")}>
-                      ⚽ Medium
-                    </button>
-                  </>
-                ) : null}
-                {ballMenuStep === "sliotar-size" ? (
-                  <>
-                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => setBallMenuStep("root")}>
-                      ← Back
-                    </button>
-                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onSelectBallType("sliotarSmall")}>
-                      🥎 Small
-                    </button>
-                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onSelectBallType("sliotarMedium")}>
-                      🥎 Medium
-                    </button>
-                  </>
-                ) : null}
-                {ballMenuStep === "existing" ? (
-                  <>
-                    {ballCarrierId ? (
-                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={onFreeBall}>
-                        Free Ball
-                      </button>
-                    ) : null}
-                    <button type="button" style={TOOL_BUTTON_STYLE} onClick={onRemoveBall}>
-                      Remove Ball
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            ) : null}
-
-            {/* Route mode: editing tools */}
-            {menuMode === "route" ? (
-              <div style={PANEL_ROW_STYLE}>
-                <button
-                  type="button"
-                  style={isPlaying ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => cycleSelectedEntity("prev")}
-                  disabled={isPlaying}
-                >
-                  Prev
-                </button>
-                <button
-                  type="button"
-                  style={isPlaying ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => cycleSelectedEntity("next")}
-                  disabled={isPlaying}
-                >
-                  Next
-                </button>
-                <button
-                  type="button"
-                  style={removePointDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => shellRef.current?.removeSelectedWaypoint()}
-                  disabled={removePointDisabled}
-                >
-                  Remove
-                </button>
-                <button
-                  type="button"
-                  style={clearRouteDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={clearRoute}
-                  disabled={clearRouteDisabled}
-                >
-                  Clear Route
-                </button>
-                <button
-                  type="button"
-                  style={playRoutesDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={onPlayRoutesPress}
-                  disabled={playRoutesDisabled}
-                >
-                  Play Routes
-                </button>
-                {unitDrawingId !== null && selectedToken && routes.some((r) => r.playerId === selectedToken.id) ? (
-                  <button
-                    type="button"
-                    style={{ ...TOOL_ACTIVE_STYLE, border: "1px solid rgba(255, 200, 80, 0.60)", background: "rgba(60, 50, 10, 0.90)", color: "#ffe87a" }}
-                    onClick={onApplyUnitRoute}
-                  >
-                    Apply to Unit
-                  </button>
-                ) : null}
-                {selectedToken && !isPlaying ? (
-                  <button
-                    type="button"
-                    style={selectedHasBall ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                    onClick={giveSelectedPlayerBall}
-                  >
-                    {selectedHasBall ? "Has Ball" : "Give Ball"}
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-
-            {/* Move mode: selected token actions */}
-            {menuMode === "move" && selectedToken && !modeIsPlaybackLocked ? (
-              <div style={PANEL_ROW_STYLE}>
-                <button
-                  type="button"
-                  style={selectedHasBall ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={giveSelectedPlayerBall}
-                >
-                  {selectedHasBall ? "Has Ball" : "Give Ball"}
-                </button>
-                <button
-                  type="button"
-                  style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 140, 140, 0.80)" }}
-                  onClick={onRemoveSelectedPlayer}
-                >
-                  − Player
-                </button>
-              </div>
-            ) : null}
-
-            {/* Play mode: playback controls + speed */}
-            {menuMode === "play" ? (
-              <div style={PANEL_ROW_STYLE}>
-                <button
-                  type="button"
-                  style={pauseResumeDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={onPauseResumePress}
-                  disabled={pauseResumeDisabled}
-                >
-                  {isPlaying ? "Pause" : isPaused ? "Resume" : "Play"}
-                </button>
-                {SpeedBar}
               </div>
             ) : null}
           </div>
@@ -2614,25 +2619,20 @@ export default function TacticalPlaySurface() {
 
         {playbackFloatingVisible ? (
           <div style={PLAYBACK_SIDE_STYLE}>
-            <button
-              type="button"
-              style={isPlaying ? TOOL_DISABLED_STYLE : PLAYBACK_SIDE_BUTTON_STYLE}
-              onClick={onPlayResumePress}
-              disabled={isPlaying}
-            >
-              {isPaused ? "Resume" : "Play/Resume"}
-            </button>
-            <button
-              type="button"
-              style={!isPlaying ? TOOL_DISABLED_STYLE : PLAYBACK_SIDE_BUTTON_STYLE}
-              onClick={onPausePress}
-              disabled={!isPlaying}
-            >
-              Pause
-            </button>
-            <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetBoard}>
-              Reset
-            </button>
+            <div style={PANEL_ROW_STYLE}>
+              <button
+                type="button"
+                style={pauseResumeDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
+                disabled={pauseResumeDisabled}
+                onClick={onPauseResumePress}
+              >
+                {isPlaying ? "Pause" : isPaused ? "Resume" : "Play"}
+              </button>
+              <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetBoard}>
+                Reset
+              </button>
+              {SpeedBar}
+            </div>
           </div>
         ) : null}
 
