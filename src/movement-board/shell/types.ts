@@ -110,6 +110,7 @@ export type MovementCanvasShellHandle = {
   setTokenRenderer: (name: TokenRendererName) => void;
   setMode: (mode: MovementBoardMode) => void;
   setPlaybackSpeed: (speed: MovementPlaybackSpeed) => void;
+  setSpeedMultiplier: (multiplier: number) => void;
   removeSelectedWaypoint: () => boolean;
   clearSelectedRoute: () => boolean;
   playAll: () => void;

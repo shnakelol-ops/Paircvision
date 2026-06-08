@@ -725,6 +725,62 @@ const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
   "blue", "red", "green", "yellow", "orange", "purple", "black", "white",
 ];
 
+const TP_SPEED_OPTIONS: ReadonlyArray<{ multiplier: number; label: string }> = [
+  { multiplier: 0.15, label: "0.15×" },
+  { multiplier: 0.25, label: "0.25×" },
+  { multiplier: 0.5,  label: "0.5×"  },
+  { multiplier: 0.75, label: "0.75×" },
+  { multiplier: 1.0,  label: "1×"    },
+  { multiplier: 1.25, label: "1.25×" },
+  { multiplier: 1.5,  label: "1.5×"  },
+];
+const TP_DEFAULT_SPEED_MULTIPLIER = 1.0;
+const TP_ENUM_TO_MULTIPLIER: Record<string, number> = {
+  slow: 0.5,
+  normal: 1.0,
+  fast: 1.25,
+};
+
+function multiplierToPlaybackSpeed(n: number): "slow" | "normal" | "fast" {
+  if (n < 0.85) return "slow";
+  if (n > 1.15) return "fast";
+  return "normal";
+}
+
+const TP_SPEED_BAR_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "auto 1fr auto",
+  alignItems: "center",
+  gap: "5px",
+  height: "30px",
+  padding: "0 8px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.22)",
+  background: "rgba(6, 14, 30, 0.72)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 6px 18px rgba(0, 0, 0, 0.36)",
+  flex: "0 0 auto",
+};
+const TP_SPEED_LABEL_STYLE: CSSProperties = {
+  color: "rgba(200, 230, 255, 0.50)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "8px",
+  fontWeight: 700,
+  letterSpacing: "0.18px",
+  userSelect: "none",
+};
+const TP_SPEED_VALUE_STYLE: CSSProperties = {
+  color: "rgba(220, 240, 255, 0.92)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "9px",
+  fontWeight: 700,
+  letterSpacing: "0.12px",
+  textAlign: "right",
+  userSelect: "none",
+  minWidth: "32px",
+};
+
 export default function TacticalPlaySurface() {
   type MovementMenuMode = "move" | "route" | "play";
 
@@ -742,7 +798,7 @@ export default function TacticalPlaySurface() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const shellRef = useRef<MovementCanvasShellHandle | null>(null);
   const [menuMode, setMenuMode] = useState<MovementMenuMode>("move");
-  const [playbackSpeed, setPlaybackSpeed] = useState<MovementPlaybackSpeed>("normal");
+  const [playbackSpeedMultiplier, setPlaybackSpeedMultiplier] = useState<number>(TP_DEFAULT_SPEED_MULTIPLIER);
   const [selectedToken, setSelectedToken] = useState<MovementBoardToken | null>(null);
   const [routeCount, setRouteCount] = useState(0);
   const [routeEditState, setRouteEditState] = useState<MovementRouteEditState>({
@@ -856,7 +912,6 @@ export default function TacticalPlaySurface() {
     const mountShell = () => {
       void createMovementCanvasShell(host, {
         mode: toShellMode(menuMode),
-        playbackSpeed,
         dragEnabled: !isPortrait,
         onTokenMove: (token) => {
           setSelectedToken((previous) => (previous?.id === token.id ? token : previous));
@@ -889,7 +944,7 @@ export default function TacticalPlaySurface() {
         }
         shellRef.current = shell;
         setMenuMode(toMenuMode(shell.getMode()));
-        setPlaybackSpeed(shell.getPlaybackSpeed());
+        shell.setSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
         setTokenSizeState(shell.getTokenSize());
         const initialRoutes = shell.getRoutes();
         setRouteCount(initialRoutes.length);
@@ -954,8 +1009,8 @@ export default function TacticalPlaySurface() {
   }, [menuMode]);
 
   useEffect(() => {
-    shellRef.current?.setPlaybackSpeed(playbackSpeed);
-  }, [playbackSpeed]);
+    shellRef.current?.setSpeedMultiplier(playbackSpeedMultiplier);
+  }, [playbackSpeedMultiplier]);
 
   useEffect(() => {
     if (isPlaying) {
@@ -1247,7 +1302,7 @@ export default function TacticalPlaySurface() {
       shell.getBallState(),
       shell.getPassEvents(),
       shell.getShotEvents(),
-      shell.getPlaybackSpeed(),
+      multiplierToPlaybackSpeed(playbackSpeedMultiplier),
       units,
     );
     setScenarios(listScenarios());
@@ -1276,9 +1331,9 @@ export default function TacticalPlaySurface() {
       shell.addShotEvent(shot);
     }
     setShotEvents(loadedShots);
-    const speed = scenario.playbackSpeed ?? "normal";
-    setPlaybackSpeed(speed);
-    shell.setPlaybackSpeed(speed);
+    const speedMultiplier = TP_ENUM_TO_MULTIPLIER[scenario.playbackSpeed ?? "normal"] ?? TP_DEFAULT_SPEED_MULTIPLIER;
+    setPlaybackSpeedMultiplier(speedMultiplier);
+    shell.setSpeedMultiplier(speedMultiplier);
     shell.setStartPositions();
     setUnits(scenario.units ?? []);
     setScenariosOpen(false);
@@ -1310,7 +1365,7 @@ export default function TacticalPlaySurface() {
       shell.getBallState(),
       shell.getPassEvents(),
       shell.getShotEvents(),
-      shell.getPlaybackSpeed(),
+      multiplierToPlaybackSpeed(playbackSpeedMultiplier),
       units,
     );
     setScenarios(listScenarios());
@@ -1375,6 +1430,31 @@ export default function TacticalPlaySurface() {
   const pauseResumeDisabled = !isPlaying && !isPaused;
   const playbackFloatingVisible = isPlaying || isPaused;
 
+  const speedIndex = Math.max(0, TP_SPEED_OPTIONS.findIndex((o) => o.multiplier === playbackSpeedMultiplier));
+  const speedLabel = TP_SPEED_OPTIONS[speedIndex]?.label ?? "1×";
+  const speedFillPct = (speedIndex / Math.max(1, TP_SPEED_OPTIONS.length - 1)) * 100;
+  const SpeedBar = (
+    <div style={TP_SPEED_BAR_STYLE}>
+      <span style={TP_SPEED_LABEL_STYLE}>SPD</span>
+      <input
+        type="range"
+        className="tp-speed-range"
+        min={0}
+        max={TP_SPEED_OPTIONS.length - 1}
+        step={1}
+        value={speedIndex}
+        aria-label="Playback speed"
+        style={{ width: "100%", minWidth: 0, "--tp-speed-track": `linear-gradient(90deg, rgba(34,197,94,0.95) 0%, rgba(34,197,94,0.95) ${speedFillPct}%, rgba(200,230,255,0.35) ${speedFillPct}%, rgba(200,230,255,0.35) 100%)` } as CSSProperties}
+        onChange={(e) => {
+          const idx = Math.max(0, Math.min(TP_SPEED_OPTIONS.length - 1, Number.parseInt(e.target.value, 10)));
+          const next = TP_SPEED_OPTIONS[idx]?.multiplier;
+          if (next != null) setPlaybackSpeedMultiplier(next);
+        }}
+      />
+      <span style={TP_SPEED_VALUE_STYLE}>{speedLabel}</span>
+    </div>
+  );
+
   // Portrait: anchor PLAYS to bottom-right stack (above Setup), not pitch-center right.
   const playsButtonStyle: CSSProperties = isPortrait
     ? { ...PLAYS_BUBBLE_STYLE, top: "auto", bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))", transform: "none" }
@@ -1390,7 +1470,7 @@ export default function TacticalPlaySurface() {
 
   return (
     <OrientationGate modeLabel="Tactical Play">
-      <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}`}</style>
+      <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}input.tp-speed-range{-webkit-appearance:none;appearance:none;background:var(--tp-speed-track);height:3px;border-radius:3px;outline:none;cursor:pointer}input.tp-speed-range::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.50)}input.tp-speed-range::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:#fff;cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,.50)}`}</style>
       <div style={rootStyle}>
         <VisionStadiumBackground variant="board" />
         <div style={CONTENT_STYLE}>
@@ -1770,27 +1850,7 @@ export default function TacticalPlaySurface() {
                   <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetBoard}>
                     Reset
                   </button>
-                  <button
-                    type="button"
-                    style={playbackSpeed === "slow" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                    onClick={() => setPlaybackSpeed("slow")}
-                  >
-                    Slow
-                  </button>
-                  <button
-                    type="button"
-                    style={playbackSpeed === "normal" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                    onClick={() => setPlaybackSpeed("normal")}
-                  >
-                    Normal
-                  </button>
-                  <button
-                    type="button"
-                    style={playbackSpeed === "fast" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                    onClick={() => setPlaybackSpeed("fast")}
-                  >
-                    Fast
-                  </button>
+                  {SpeedBar}
                 </>
               ) : null}
             </div>
@@ -2497,20 +2557,7 @@ export default function TacticalPlaySurface() {
             <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetBoard}>
               Reset
             </button>
-            <div style={{ display: "flex", gap: "2px", padding: "1px 0" }}>
-              {(["slow", "normal", "fast"] as const).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  style={playbackSpeed === s
-                    ? { ...PLAYBACK_SIDE_BUTTON_STYLE, minWidth: "0", flex: 1, border: "1px solid rgba(124, 255, 114, 0.56)", background: "rgba(22, 67, 44, 0.90)", color: "#d2ffce" }
-                    : { ...PLAYBACK_SIDE_BUTTON_STYLE, minWidth: "0", flex: 1 }}
-                  onClick={() => setPlaybackSpeed(s)}
-                >
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </button>
-              ))}
-            </div>
+            {SpeedBar}
           </div>
         ) : null}
 
