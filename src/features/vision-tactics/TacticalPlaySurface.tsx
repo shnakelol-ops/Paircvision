@@ -2557,7 +2557,6 @@ export default function TacticalPlaySurface() {
             <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetBoard}>
               Reset
             </button>
-            {SpeedBar}
           </div>
         ) : null}
 

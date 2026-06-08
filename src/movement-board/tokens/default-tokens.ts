@@ -12,7 +12,7 @@ export function buildDefaultTokens(): MovementBoardToken[] {
       tokens.push({
         id: `setup-token-${jersey}`,
         number: jersey,
-        color: jersey === 1 ? "yellow" : "blue",
+        color: jersey === 1 ? "yellow" : "red",
         position: { x, y },
       });
       jersey += 1;
