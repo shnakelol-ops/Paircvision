@@ -1529,6 +1529,28 @@ export default function TacticalPlaySurface() {
     </div>
   );
 
+  const SpeedBarCompact = (
+    <div style={{ ...TP_SPEED_BAR_STYLE, width: "84px", padding: "0 6px" }}>
+      <span style={TP_SPEED_LABEL_STYLE}>SPD</span>
+      <input
+        type="range"
+        className="tp-speed-range"
+        min={0}
+        max={TP_SPEED_OPTIONS.length - 1}
+        step={1}
+        value={speedIndex}
+        aria-label="Playback speed"
+        style={{ width: "100%", minWidth: 0, "--tp-speed-track": `linear-gradient(90deg, rgba(34,197,94,0.95) 0%, rgba(34,197,94,0.95) ${speedFillPct}%, rgba(200,230,255,0.35) ${speedFillPct}%, rgba(200,230,255,0.35) 100%)` } as CSSProperties}
+        onChange={(e) => {
+          const idx = Math.max(0, Math.min(TP_SPEED_OPTIONS.length - 1, Number.parseInt(e.target.value, 10)));
+          const next = TP_SPEED_OPTIONS[idx]?.multiplier;
+          if (next != null) setPlaybackSpeedMultiplier(next);
+        }}
+      />
+      <span style={{ ...TP_SPEED_VALUE_STYLE, minWidth: "24px" }}>{speedLabel}</span>
+    </div>
+  );
+
   // Portrait: anchor PLAYS to bottom-right stack (above Setup), not pitch-center right.
   const playsButtonStyle: CSSProperties = isPortrait
     ? { ...PLAYS_BUBBLE_STYLE, top: "auto", bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))", transform: "none" }
@@ -1736,14 +1758,6 @@ export default function TacticalPlaySurface() {
                 </button>
                 <button
                   type="button"
-                  style={removePointDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
-                  disabled={removePointDisabled}
-                  onClick={() => shellRef.current?.removeSelectedWaypoint()}
-                >
-                  Remove
-                </button>
-                <button
-                  type="button"
                   style={clearRouteDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
                   disabled={clearRouteDisabled}
                   onClick={clearRoute}
@@ -1862,6 +1876,7 @@ export default function TacticalPlaySurface() {
               >
                 Advanced {advancedOpen ? "▲" : "▾"}
               </button>
+              {SpeedBarCompact}
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
               </button>
@@ -2631,7 +2646,6 @@ export default function TacticalPlaySurface() {
               <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetBoard}>
                 Reset
               </button>
-              {SpeedBar}
             </div>
           </div>
         ) : null}
