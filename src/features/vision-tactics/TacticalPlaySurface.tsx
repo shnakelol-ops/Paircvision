@@ -18,7 +18,11 @@ import type {
   TacticalShotEvent,
   TokenRendererName,
   TokenSize,
+  ZoneColor,
+  ZoneRecord,
 } from "../../movement-board/shell/types";
+import { FOOTBALL_ZONE_TEMPLATES, HURLING_ZONE_TEMPLATES, type TacticalZoneTemplate } from "./tacticalZoneTemplates";
+import { ZONE_COLOR_CSS, ZONE_COLOR_OPTIONS } from "./tacticalZoneTypes";
 import { TACTICAL_TEMPLATES, applyTemplatePositions, type TacticalTemplate, type TacticalTemplateCategory } from "./tacticalTemplates";
 import {
   deleteScenario,
@@ -735,7 +739,7 @@ const MP_DONE: CSSProperties = {
 const CONCEPT_LABELS: Record<MovementConcept, string> = {
   "support-run": "Support Run",
   "overlap": "Overlap",
-  "shadow-run": "Shadow Run",
+  "shadow-run": "Decoy Run",
   "rotation": "Rotation",
   "custom": "Custom Run",
 };
@@ -744,7 +748,7 @@ const CONCEPT_OPTIONS: Array<{ id: MovementConcept | null; label: string }> = [
   { id: null, label: "—" },
   { id: "support-run", label: "Support" },
   { id: "overlap", label: "Overlap" },
-  { id: "shadow-run", label: "Shadow" },
+  { id: "shadow-run", label: "Decoy" },
   { id: "rotation", label: "Rotation" },
   { id: "custom", label: "Custom" },
 ];
@@ -767,6 +771,14 @@ const TP_SPEED_OPTIONS: ReadonlyArray<{ multiplier: number; label: string }> = [
   { multiplier: 1.5,  label: "1.5×"  },
 ];
 const TP_DEFAULT_SPEED_MULTIPLIER = 1.0;
+const MAX_ZONES = 12;
+
+const ZONE_COLOR_COACHING_LABEL: Record<string, string> = {
+  yellow: "Opportunity",
+  red:    "Danger",
+  blue:   "Structure",
+  green:  "Trigger",
+};
 const TP_ENUM_TO_MULTIPLIER: Record<string, number> = {
   slow: 0.5,
   normal: 1.0,
@@ -877,6 +889,12 @@ export default function TacticalPlaySurface() {
   const [unitEditingId, setUnitEditingId] = useState<string | null>(null);
   const [unitDrawingId, setUnitDrawingId] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [zonesOpen, setZonesOpen] = useState(false);
+  const [zones, setZones] = useState<ZoneRecord[]>([]);
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [zoneShape, setZoneShape] = useState<"rect" | "circle">("rect");
+  const [zoneLibraryOpen, setZoneLibraryOpen] = useState<"none" | "football" | "hurling">("none");
+  const [zoneLabelDraft, setZoneLabelDraft] = useState("");
   const {
     recordPhase, setRecordPhase,
     recordDuration, setRecordDuration,
@@ -966,6 +984,12 @@ export default function TacticalPlaySurface() {
         onPassEventsChange: (events) => {
           setPassEvents([...events]);
         },
+        onZonesChange: (nextZones) => {
+          setZones([...nextZones]);
+        },
+        onZoneSelectionChange: (id) => {
+          setSelectedZoneId(id);
+        },
       }).then((shell) => {
         if (disposed) {
           shell.destroy();
@@ -995,6 +1019,7 @@ export default function TacticalPlaySurface() {
         shell.setDragEnabled(!isPortrait);
         setScenarios(listScenarios());
         setPassEvents(shell.getPassEvents());
+        setZones(shell.getZones());
         destroyShell = shell.destroy;
       });
     };
@@ -1053,6 +1078,8 @@ export default function TacticalPlaySurface() {
       setPlaysOpen(false);
       setUnitsOpen(false);
       setAdvancedOpen(false);
+      setZonesOpen(false);
+      setZoneLibraryOpen("none");
     }
   }, [isPlaying]);
 
@@ -1068,6 +1095,11 @@ export default function TacticalPlaySurface() {
 
   const selectedRoute = routes.find((r) => r.playerId === selectedToken?.id) ?? null;
   const selectedRouteConcept = selectedRoute?.concept ?? null;
+  const selectedZone = zones.find((z) => z.id === selectedZoneId) ?? null;
+
+  // Sync label draft on selection change only (not on every zone data update)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setZoneLabelDraft(zones.find((z) => z.id === selectedZoneId)?.label ?? ""); }, [selectedZoneId]);
 
   type SeqItem =
     | { kind: "route"; route: MovementBoardRoute }
@@ -1337,6 +1369,86 @@ export default function TacticalPlaySurface() {
     shellRef.current?.removePassEvent(id);
   };
 
+  const onAddZone = (color: ZoneColor) => {
+    const shell = shellRef.current;
+    if (!shell || zones.length >= MAX_ZONES) return;
+    const id = `zone-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newZone: ZoneRecord =
+      zoneShape === "circle"
+        ? { id, shape: "circle", color, label: "", x: 50, y: 50, radius: 12 }
+        : { id, shape: "rect",   color, label: "", x: 30, y: 30, width: 25, height: 30 };
+    const next = [...zones, newZone];
+    shell.setZones(next);
+    setZones(next);
+    // Zone placed clean — no handles on creation. Tap the zone to select and edit.
+  };
+
+  const onDeleteZone = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedZoneId) return;
+    const next = zones.filter((z) => z.id !== selectedZoneId);
+    shell.setZones(next);
+    setZones(next);
+  };
+
+  const onDuplicateZone = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedZoneId || zones.length >= MAX_ZONES) return;
+    const source = zones.find((z) => z.id === selectedZoneId);
+    if (!source) return;
+    const id = `zone-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const copy: ZoneRecord = { ...source, id, x: Math.min(95, source.x + 5), y: Math.min(95, source.y + 5) };
+    const next = [...zones, copy];
+    shell.setZones(next);
+    setZones(next);
+    shell.setSelectedZoneId(id);
+  };
+
+  const onChangeZoneColor = (color: ZoneColor) => {
+    const shell = shellRef.current;
+    if (!shell || !selectedZoneId) return;
+    const next = zones.map((z) => (z.id === selectedZoneId ? { ...z, color } : z));
+    shell.setZones(next);
+    setZones(next);
+    shell.setSelectedZoneId(selectedZoneId);
+  };
+
+  const onCommitZoneLabel = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedZoneId) return;
+    const next = zones.map((z) => (z.id === selectedZoneId ? { ...z, label: zoneLabelDraft.trim() } : z));
+    shell.setZones(next);
+    setZones(next);
+    shell.setSelectedZoneId(selectedZoneId);
+  };
+
+  const onToggleZoneLock = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedZoneId) return;
+    const next = zones.map((z) => (z.id === selectedZoneId ? { ...z, locked: !z.locked } : z));
+    shell.setZones(next);
+    setZones(next);
+    shell.setSelectedZoneId(selectedZoneId);
+  };
+
+  const onDropZoneTemplate = (template: TacticalZoneTemplate) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const next = template.zones
+      .map((z) => ({ ...z, id: `zone-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${z.id}` }))
+      .slice(0, MAX_ZONES);
+    shell.setZones(next);
+    setZones(next);
+    setZoneLibraryOpen("none");
+  };
+
+  const onClearAllZones = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    shell.setZones([]);
+    setZones([]);
+  };
+
   const onSaveScenario = () => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -1349,6 +1461,7 @@ export default function TacticalPlaySurface() {
       shell.getShotEvents(),
       multiplierToPlaybackSpeed(playbackSpeedMultiplier),
       units,
+      shell.getZones(),
     );
     setScenarios(listScenarios());
     setScenarioNameDraft("");
@@ -1381,6 +1494,9 @@ export default function TacticalPlaySurface() {
     shell.setSpeedMultiplier(speedMultiplier);
     shell.setStartPositions();
     setUnits(scenario.units ?? []);
+    const loadedZones = scenario.zones ?? [];
+    shell.setZones(loadedZones);
+    setZones(loadedZones);
     setScenariosOpen(false);
     setScenarioRenameId(null);
   };
@@ -1412,6 +1528,7 @@ export default function TacticalPlaySurface() {
       shell.getShotEvents(),
       multiplierToPlaybackSpeed(playbackSpeedMultiplier),
       units,
+      shell.getZones(),
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
@@ -1912,6 +2029,13 @@ export default function TacticalPlaySurface() {
                 >
                   Sequence
                 </button>
+                <button
+                  type="button"
+                  style={zonesOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => { setZonesOpen((prev) => !prev); setIsControlsOpen(false); }}
+                >
+                  Zones{zones.length > 0 ? ` (${zones.length})` : ""}
+                </button>
               </div>
             ) : null}
 
@@ -2009,7 +2133,7 @@ export default function TacticalPlaySurface() {
                   {([
                     { id: "support-run" as MovementConcept, label: "Support" },
                     { id: "overlap" as MovementConcept, label: "Overlap" },
-                    { id: "shadow-run" as MovementConcept, label: "Shadow" },
+                    { id: "shadow-run" as MovementConcept, label: "Decoy" },
                     { id: "rotation" as MovementConcept, label: "Rotation" },
                     { id: "custom" as MovementConcept, label: "Custom" },
                   ] as const).map((opt) => (
@@ -2171,6 +2295,197 @@ export default function TacticalPlaySurface() {
 
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button type="button" style={MP_DONE} onClick={() => setUnitsOpen(false)}>
+                Done
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {zonesOpen && !modeIsPlaybackLocked ? (
+          <div style={MOVEMENT_PANEL_STYLE}>
+            <div style={MP_HEADER_STYLE}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={MP_TITLE_STYLE}>Zones</span>
+                {zones.length > 0 ? (
+                  <span style={{ ...MP_TITLE_STYLE, color: "rgba(180, 210, 255, 0.55)" }}>{zones.length}/{MAX_ZONES}</span>
+                ) : null}
+              </div>
+              <button type="button" style={MP_CLOSE_STYLE} onClick={() => setZonesOpen(false)}>×</button>
+            </div>
+
+            {/* Shape selector */}
+            <div style={MP_ROW}>
+              <span style={MP_ROW_LABEL}>Shape</span>
+              <button
+                type="button"
+                style={zoneShape === "rect" ? MP_CHIP_ACTIVE : MP_CHIP}
+                onClick={() => setZoneShape("rect")}
+              >
+                Rectangle
+              </button>
+              <button
+                type="button"
+                style={zoneShape === "circle" ? MP_CHIP_ACTIVE : MP_CHIP}
+                onClick={() => setZoneShape("circle")}
+              >
+                Circle
+              </button>
+            </div>
+
+            {/* Add zone by coaching label */}
+            <div style={MP_ROW}>
+              <span style={MP_ROW_LABEL}>Add</span>
+              {(ZONE_COLOR_OPTIONS as readonly ZoneColor[]).map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  style={{
+                    ...MP_CHIP,
+                    borderColor: `${ZONE_COLOR_CSS[color].replace(/,[^,]+\)$/, ", 0.60)")}`,
+                    color: zones.length >= MAX_ZONES ? "rgba(180, 210, 255, 0.30)" : "rgba(220, 235, 255, 0.88)",
+                    cursor: zones.length >= MAX_ZONES ? "not-allowed" : "pointer",
+                    opacity: zones.length >= MAX_ZONES ? 0.45 : 1,
+                  }}
+                  disabled={zones.length >= MAX_ZONES}
+                  onClick={() => onAddZone(color)}
+                >
+                  <span style={{ display: "inline-block", width: "7px", height: "7px", borderRadius: "50%", background: ZONE_COLOR_CSS[color], marginRight: "4px", flexShrink: 0 }} />
+                  {ZONE_COLOR_COACHING_LABEL[color]}
+                </button>
+              ))}
+            </div>
+
+            {/* Zone Library */}
+            <div style={MP_ROW}>
+              <button
+                type="button"
+                style={zoneLibraryOpen === "football" ? MP_CHIP_ACTIVE : MP_CHIP}
+                onClick={() => setZoneLibraryOpen((prev) => prev === "football" ? "none" : "football")}
+              >
+                Football Library {zoneLibraryOpen === "football" ? "▲" : "▾"}
+              </button>
+              <button
+                type="button"
+                style={zoneLibraryOpen === "hurling" ? MP_CHIP_ACTIVE : MP_CHIP}
+                onClick={() => setZoneLibraryOpen((prev) => prev === "hurling" ? "none" : "hurling")}
+              >
+                Hurling/Camogie {zoneLibraryOpen === "hurling" ? "▲" : "▾"}
+              </button>
+              {zones.length > 0 ? (
+                <button
+                  type="button"
+                  style={{ ...MP_CHIP, color: "rgba(255, 140, 140, 0.70)" }}
+                  onClick={onClearAllZones}
+                >
+                  Clear All
+                </button>
+              ) : null}
+            </div>
+
+            {zoneLibraryOpen === "football" ? (
+              <div style={MP_ROW}>
+                {FOOTBALL_ZONE_TEMPLATES.map((tmpl) => (
+                  <button
+                    key={tmpl.id}
+                    type="button"
+                    style={MP_CHIP}
+                    onClick={() => onDropZoneTemplate(tmpl)}
+                  >
+                    {tmpl.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {zoneLibraryOpen === "hurling" ? (
+              <div style={MP_ROW}>
+                {HURLING_ZONE_TEMPLATES.map((tmpl) => (
+                  <button
+                    key={tmpl.id}
+                    type="button"
+                    style={MP_CHIP}
+                    onClick={() => onDropZoneTemplate(tmpl)}
+                  >
+                    {tmpl.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {/* Selected zone controls */}
+            {selectedZone ? (
+              <>
+                <div style={{ height: "1px", background: "rgba(180, 210, 255, 0.08)", margin: "2px 0" }} />
+                <div style={MP_ROW}>
+                  <span style={MP_ROW_LABEL}>Colour</span>
+                  {(ZONE_COLOR_OPTIONS as readonly ZoneColor[]).map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      aria-label={ZONE_COLOR_COACHING_LABEL[color]}
+                      style={{
+                        width: "22px",
+                        height: "22px",
+                        minWidth: "22px",
+                        borderRadius: "50%",
+                        background: ZONE_COLOR_CSS[color],
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                        flexShrink: 0,
+                        outline: selectedZone.color === color ? "2px solid #ffffff" : "1px solid rgba(255,255,255,0.22)",
+                        outlineOffset: selectedZone.color === color ? "2px" : "1px",
+                      }}
+                      onClick={() => onChangeZoneColor(color)}
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    style={MP_CHIP}
+                    onClick={onDuplicateZone}
+                    disabled={zones.length >= MAX_ZONES}
+                  >
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    style={selectedZone.locked ? { ...MP_CHIP_ACTIVE, border: "1px solid rgba(255, 200, 80, 0.60)", background: "rgba(60, 50, 10, 0.90)", color: "#ffe87a" } : MP_CHIP}
+                    onClick={onToggleZoneLock}
+                  >
+                    {selectedZone.locked ? "Locked" : "Lock"}
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...MP_CHIP, color: "rgba(255, 140, 140, 0.75)" }}
+                    onClick={onDeleteZone}
+                  >
+                    Delete
+                  </button>
+                </div>
+                <div style={MP_ROW}>
+                  <span style={MP_ROW_LABEL}>Label</span>
+                  <input
+                    style={{ ...PLAYS_INPUT_STYLE, flex: 1, height: "26px", fontSize: "9px" }}
+                    type="text"
+                    placeholder="Zone label…"
+                    value={zoneLabelDraft}
+                    maxLength={24}
+                    onChange={(e) => setZoneLabelDraft(e.target.value)}
+                    onBlur={onCommitZoneLabel}
+                    onKeyDown={(e) => { if (e.key === "Enter") { onCommitZoneLabel(); (e.target as HTMLInputElement).blur(); } }}
+                  />
+                </div>
+              </>
+            ) : (
+              zones.length === 0 ? (
+                <span style={{ fontSize: "9px", color: "rgba(180, 210, 255, 0.35)", fontFamily: "Inter, system-ui, sans-serif", padding: "2px" }}>
+                  Choose a shape and tap a zone type to add it.
+                </span>
+              ) : null
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" style={MP_DONE} onClick={() => setZonesOpen(false)}>
                 Done
               </button>
             </div>
