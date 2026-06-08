@@ -1648,24 +1648,6 @@ export default function TacticalPlaySurface() {
               >
                 Ball
               </button>
-              {routes.length > 0 || passEvents.length > 0 ? (
-                <button
-                  type="button"
-                  style={sequenceOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
-                  onClick={() => setSequenceOpen((prev) => !prev)}
-                >
-                  Seq
-                </button>
-              ) : null}
-              {routes.length > 0 ? (
-                <button
-                  type="button"
-                  style={movementsOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
-                  onClick={() => { setMovementsOpen((prev) => !prev); setPassesOpen(false); setUnitsOpen(false); setIsControlsOpen(false); }}
-                >
-                  Movements
-                </button>
-              ) : null}
               <button
                 type="button"
                 style={unitsOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
@@ -1674,15 +1656,27 @@ export default function TacticalPlaySurface() {
               >
                 Group Move
               </button>
-              {ballOnPitch || passEvents.length > 0 ? (
-                <button
-                  type="button"
-                  style={passesOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
-                  onClick={() => { setPassesOpen((prev) => !prev); setMovementsOpen(false); setIsControlsOpen(false); }}
-                >
-                  Passes
-                </button>
-              ) : null}
+              <button
+                type="button"
+                style={movementsOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                onClick={() => { setMovementsOpen((prev) => !prev); setPassesOpen(false); setUnitsOpen(false); setIsControlsOpen(false); }}
+              >
+                Movements
+              </button>
+              <button
+                type="button"
+                style={sequenceOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                onClick={() => setSequenceOpen((prev) => !prev)}
+              >
+                Sequence
+              </button>
+              <button
+                type="button"
+                style={passesOpen ? MODE_BUTTON_ACTIVE_STYLE : MODE_BUTTON_STYLE}
+                onClick={() => { setPassesOpen((prev) => !prev); setMovementsOpen(false); setIsControlsOpen(false); }}
+              >
+                Passes
+              </button>
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
               </button>
