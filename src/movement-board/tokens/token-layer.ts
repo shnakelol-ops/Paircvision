@@ -10,17 +10,18 @@ import {
   type PremiumPlayerTokenColor,
 } from "./createPremiumPlayerToken";
 import { createJerseyTokenV2 } from "./createJerseyTokenV2";
-import { createPixiToken, createPhosphorToken } from "./createCleanTokenAdapters";
+import { createPixiToken, createPhosphorToken, createVisionV3Token } from "./createCleanTokenAdapters";
 import type { MovementBoardToken } from "../shell/types";
 
-export type TokenRendererName = "pixi" | "phosphor" | "jersey";
+export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor";
 
 type AnyRendererFn = typeof createJerseyTokenV2;
 
 const RENDERER_MAP: Record<TokenRendererName, AnyRendererFn> = {
-  pixi: createPixiToken as AnyRendererFn,
+  pixi:     createPixiToken as AnyRendererFn,
+  vision:   createVisionV3Token as AnyRendererFn,
+  jersey:   createJerseyTokenV2,
   phosphor: createPhosphorToken as AnyRendererFn,
-  jersey: createJerseyTokenV2,
 };
 
 let _renderer: AnyRendererFn = createJerseyTokenV2;

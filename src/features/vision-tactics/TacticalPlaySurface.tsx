@@ -975,6 +975,7 @@ export default function TacticalPlaySurface() {
         setMenuMode(toMenuMode(shell.getMode()));
         shell.setSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
         shell.setTokenRenderer("pixi");
+        shell.setTokenSize("medium");
         setTokenSizeState(shell.getTokenSize());
         const initialRoutes = shell.getRoutes();
         setRouteCount(initialRoutes.length);
@@ -2564,7 +2565,7 @@ export default function TacticalPlaySurface() {
                 <div style={PANEL_ROW_STYLE}>
                   {([
                     { id: "pixi", label: "Pixi" },
-                    { id: "phosphor", label: "Phosphor" },
+                    { id: "vision", label: "Vision" },
                     { id: "jersey", label: "Jersey" },
                   ] as const).map((r) => (
                     <button
@@ -2576,67 +2577,57 @@ export default function TacticalPlaySurface() {
                       {r.label}
                     </button>
                   ))}
-                  {([
-                    { id: "small", label: "Small" },
-                    { id: "medium", label: "Medium" },
-                    { id: "large", label: "Large" },
-                  ] as const).map((s) => (
-                    <button
-                      key={s.id}
-                      type="button"
-                      style={tokenSize === s.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                      onClick={() => onSetTokenSize(s.id)}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
                 </div>
-                <div style={PANEL_ROW_STYLE}>
+                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px" }}>
                   <span style={SETUP_SECTION_LABEL_STYLE}>Primary</span>
                   {ALL_TOKEN_COLORS.map((c) => (
                     <button
                       key={c}
                       type="button"
-                      style={
-                        primaryColor === c
-                          ? {
-                              ...TOOL_BUTTON_STYLE,
-                              minWidth: "44px",
-                              padding: "0 8px",
-                              background: TOKEN_COLOR_BG[c],
-                              border: `1px solid ${TOKEN_COLOR_BORDER[c]}`,
-                              color: TOKEN_COLOR_IS_LIGHT.has(c) ? "#0f172a" : "#f8fafc",
-                            }
-                          : { ...TOOL_BUTTON_STYLE, minWidth: "44px", padding: "0 8px" }
-                      }
+                      aria-label={c}
+                      style={{
+                        width: "26px",
+                        height: "26px",
+                        minWidth: "26px",
+                        borderRadius: "50%",
+                        background: TOKEN_COLOR_BG[c],
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                        flexShrink: 0,
+                        outline: primaryColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
+                        outlineOffset: primaryColor === c ? "2px" : "1px",
+                        boxShadow: primaryColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
+                        transition: "outline-width 0.1s, outline-offset 0.1s",
+                      }}
                       onClick={() => onSetPrimaryColor(c)}
-                    >
-                      {c.charAt(0).toUpperCase() + c.slice(1)}
-                    </button>
+                    />
                   ))}
                 </div>
-                <div style={PANEL_ROW_STYLE}>
+                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px" }}>
                   <span style={SETUP_SECTION_LABEL_STYLE}>2nd</span>
                   {ALL_TOKEN_COLORS.map((c) => (
                     <button
                       key={c}
                       type="button"
-                      style={
-                        secondaryColor === c
-                          ? {
-                              ...TOOL_BUTTON_STYLE,
-                              minWidth: "44px",
-                              padding: "0 8px",
-                              background: TOKEN_COLOR_BG[c],
-                              border: `1px solid ${TOKEN_COLOR_BORDER[c]}`,
-                              color: TOKEN_COLOR_IS_LIGHT.has(c) ? "#0f172a" : "#f8fafc",
-                            }
-                          : { ...TOOL_BUTTON_STYLE, minWidth: "44px", padding: "0 8px" }
-                      }
+                      aria-label={c}
+                      style={{
+                        width: "26px",
+                        height: "26px",
+                        minWidth: "26px",
+                        borderRadius: "50%",
+                        background: TOKEN_COLOR_BG[c],
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                        flexShrink: 0,
+                        outline: secondaryColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
+                        outlineOffset: secondaryColor === c ? "2px" : "1px",
+                        boxShadow: secondaryColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
+                        transition: "outline-width 0.1s, outline-offset 0.1s",
+                      }}
                       onClick={() => onSetSecondaryColor(c)}
-                    >
-                      {c.charAt(0).toUpperCase() + c.slice(1)}
-                    </button>
+                    />
                   ))}
                 </div>
               </>
