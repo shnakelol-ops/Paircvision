@@ -763,6 +763,30 @@ const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
   "blue", "red", "green", "yellow", "orange", "purple", "black", "white",
 ];
 
+const GAELIC_FORMATION_BASE: ReadonlyArray<{ number: number; x: number; y: number }> = [
+  { number: 1,  x: 8,  y: 50 },
+  { number: 2,  x: 20, y: 22 },
+  { number: 3,  x: 20, y: 50 },
+  { number: 4,  x: 20, y: 78 },
+  { number: 5,  x: 34, y: 18 },
+  { number: 6,  x: 34, y: 50 },
+  { number: 7,  x: 34, y: 82 },
+  { number: 8,  x: 48, y: 38 },
+  { number: 9,  x: 48, y: 62 },
+  { number: 10, x: 62, y: 18 },
+  { number: 11, x: 62, y: 50 },
+  { number: 12, x: 62, y: 82 },
+  { number: 13, x: 78, y: 25 },
+  { number: 14, x: 78, y: 50 },
+  { number: 15, x: 78, y: 75 },
+];
+
+function getFormationPos(team: "home" | "away", number: number): { x: number; y: number } {
+  const base = GAELIC_FORMATION_BASE.find((p) => p.number === number);
+  if (!base) return { x: team === "home" ? 25 : 75, y: 50 };
+  return team === "away" ? { x: 100 - base.x, y: base.y } : { x: base.x, y: base.y };
+}
+
 const TP_SPEED_OPTIONS: ReadonlyArray<{ multiplier: number; label: string }> = [
   { multiplier: 0.15, label: "0.15×" },
   { multiplier: 0.25, label: "0.25×" },
@@ -1511,21 +1535,108 @@ export default function TacticalPlaySurface() {
     setUnitDrawingId(null);
   };
 
+  const fillHomeTeam = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const tokens = shell.getTokens();
+    const usedNums = new Set(tokens.filter((t) => t.team !== "away").map((t) => t.number));
+    const newTokens: MovementBoardToken[] = [];
+    const newNums: Record<string, number> = {};
+    for (let n = 1; n <= 15; n++) {
+      if (usedNums.has(n)) continue;
+      const id = `token-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-h${n}`;
+      newTokens.push({ id, number: n, color: primaryColor, position: getFormationPos("home", n), team: "home" });
+      newNums[id] = n;
+    }
+    if (newTokens.length === 0) return;
+    shell.setTokens([...tokens, ...newTokens]);
+    setTokenNumberById((prev) => ({ ...prev, ...newNums }));
+  };
+
+  const clearHomeTeam = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const homeIds = new Set(shell.getTokens().filter((t) => t.team !== "away").map((t) => t.id));
+    if (homeIds.size === 0) return;
+    shell.setTokens(shell.getTokens().filter((t) => t.team === "away"));
+    shell.setRoutes(shell.getRoutes().filter((r) => !homeIds.has(r.playerId)));
+    const nextPasses = shell.getPassEvents().filter((p) => !homeIds.has(p.fromPlayerId) && !homeIds.has(p.toPlayerId));
+    shell.setPassEvents(nextPasses);
+    setPassEvents([...nextPasses]);
+    for (const s of shell.getShotEvents()) { if (homeIds.has(s.shooterId)) shell.removeShotEvent(s.id); }
+    setShotEvents((prev) => prev.filter((s) => !homeIds.has(s.shooterId)));
+    setUnits((prev) => prev.map((u) => ({ ...u, memberIds: u.memberIds.filter((id) => !homeIds.has(id)) })));
+    if (ballCarrierId && homeIds.has(ballCarrierId)) shell.removeBall();
+    if (passFromId && homeIds.has(passFromId)) setPassFromId(null);
+    if (passToId && homeIds.has(passToId)) setPassToId(null);
+    if (passTriggerId && homeIds.has(passTriggerId)) setPassTriggerId(null);
+    if (movementsSelectedPlayerId && homeIds.has(movementsSelectedPlayerId)) setMovementsSelectedPlayerId(null);
+    setTokenNumberById((prev) => { const n = { ...prev }; for (const id of homeIds) delete n[id]; return n; });
+  };
+
+  const fillAwayTeam = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const tokens = shell.getTokens();
+    const usedNums = new Set(tokens.filter((t) => t.team === "away").map((t) => t.number));
+    const newTokens: MovementBoardToken[] = [];
+    const newNums: Record<string, number> = {};
+    const newIds: string[] = [];
+    for (let n = 1; n <= 15; n++) {
+      if (usedNums.has(n)) continue;
+      const id = `token-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-a${n}`;
+      newTokens.push({ id, number: n, color: awayColor, position: getFormationPos("away", n), team: "away" });
+      newNums[id] = n;
+      newIds.push(id);
+    }
+    if (newTokens.length === 0) return;
+    shell.setTokens([...tokens, ...newTokens]);
+    setAwayTokenIds((prev) => new Set([...prev, ...newIds]));
+    setTokenNumberById((prev) => ({ ...prev, ...newNums }));
+  };
+
+  const clearAwayTeam = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const awayIds = new Set(shell.getTokens().filter((t) => t.team === "away").map((t) => t.id));
+    if (awayIds.size === 0) return;
+    shell.setTokens(shell.getTokens().filter((t) => t.team !== "away"));
+    shell.setRoutes(shell.getRoutes().filter((r) => !awayIds.has(r.playerId)));
+    const nextPasses = shell.getPassEvents().filter((p) => !awayIds.has(p.fromPlayerId) && !awayIds.has(p.toPlayerId));
+    shell.setPassEvents(nextPasses);
+    setPassEvents([...nextPasses]);
+    for (const s of shell.getShotEvents()) { if (awayIds.has(s.shooterId)) shell.removeShotEvent(s.id); }
+    setShotEvents((prev) => prev.filter((s) => !awayIds.has(s.shooterId)));
+    setUnits((prev) => prev.map((u) => ({ ...u, memberIds: u.memberIds.filter((id) => !awayIds.has(id)) })));
+    setAwayTokenIds(new Set());
+    setTokenNumberById((prev) => { const n = { ...prev }; for (const id of awayIds) delete n[id]; return n; });
+  };
+
   const onAddPlayer = () => {
     const shell = shellRef.current;
     if (!shell) return;
     const tokens = shell.getTokens();
-    const maxNumber = tokens.reduce((m, t) => Math.max(m, t.number), 0);
-    const nextNumber = maxNumber + 1;
-    const newToken: MovementBoardToken = {
-      id: `token-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      number: nextNumber,
-      color: primaryColor,
-      position: { x: 25, y: 50 },
-      team: "home",
-    };
+    const usedNums = new Set(tokens.filter((t) => t.team !== "away").map((t) => t.number));
+    let n = 1;
+    while (usedNums.has(n) && n <= 30) n++;
+    const id = `token-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newToken: MovementBoardToken = { id, number: n, color: primaryColor, position: { x: 25, y: 50 }, team: "home" };
     shell.setTokens([...tokens, newToken]);
-    setTokenNumberById((prev) => ({ ...prev, [newToken.id]: nextNumber }));
+    setTokenNumberById((prev) => ({ ...prev, [id]: n }));
+  };
+
+  const onAddOpposition = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const tokens = shell.getTokens();
+    const usedNums = new Set(tokens.filter((t) => t.team === "away").map((t) => t.number));
+    let n = 1;
+    while (usedNums.has(n) && n <= 30) n++;
+    const id = `token-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newToken: MovementBoardToken = { id, number: n, color: awayColor, position: { x: 75, y: 50 }, team: "away" };
+    shell.setTokens([...tokens, newToken]);
+    setAwayTokenIds((prev) => new Set([...prev, id]));
+    setTokenNumberById((prev) => ({ ...prev, [id]: n }));
   };
 
   const onAddOpposition = () => {
@@ -2858,17 +2969,20 @@ export default function TacticalPlaySurface() {
                     </button>
                   ))}
                 </div>
-                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Team A</span>
+                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Home</span>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill 15</button>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>Clear</button>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={onAddPlayer}>+1</button>
                   {ALL_TOKEN_COLORS.map((c) => (
                     <button
                       key={c}
                       type="button"
                       aria-label={c}
                       style={{
-                        width: "26px",
-                        height: "26px",
-                        minWidth: "26px",
+                        width: "22px",
+                        height: "22px",
+                        minWidth: "22px",
                         borderRadius: "50%",
                         background: TOKEN_COLOR_BG[c],
                         border: "none",
@@ -2884,7 +2998,7 @@ export default function TacticalPlaySurface() {
                     />
                   ))}
                 </div>
-                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px" }}>
+                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
                   <span style={SETUP_SECTION_LABEL_STYLE}>2nd</span>
                   {ALL_TOKEN_COLORS.map((c) => (
                     <button
@@ -2892,9 +3006,9 @@ export default function TacticalPlaySurface() {
                       type="button"
                       aria-label={c}
                       style={{
-                        width: "26px",
-                        height: "26px",
-                        minWidth: "26px",
+                        width: "22px",
+                        height: "22px",
+                        minWidth: "22px",
                         borderRadius: "50%",
                         background: TOKEN_COLOR_BG[c],
                         border: "none",
@@ -2910,24 +3024,27 @@ export default function TacticalPlaySurface() {
                     />
                   ))}
                 </div>
-                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px" }}>
-                  <span style={{ ...SETUP_SECTION_LABEL_STYLE, color: "rgba(255, 180, 180, 0.75)" }}>Opp.</span>
+                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
+                  <span style={{ ...SETUP_SECTION_LABEL_STYLE, color: "rgba(255, 160, 140, 0.85)" }}>Away</span>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillAwayTeam}>Fill 15</button>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearAwayTeam}>Clear</button>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={onAddOpposition}>+1</button>
                   {ALL_TOKEN_COLORS.map((c) => (
                     <button
                       key={c}
                       type="button"
                       aria-label={c}
                       style={{
-                        width: "26px",
-                        height: "26px",
-                        minWidth: "26px",
+                        width: "22px",
+                        height: "22px",
+                        minWidth: "22px",
                         borderRadius: "50%",
                         background: TOKEN_COLOR_BG[c],
                         border: "none",
                         cursor: "pointer",
                         padding: 0,
                         flexShrink: 0,
-                        outline: awayColor === c ? "2.5px solid #ffaaaa" : "2px solid rgba(255,255,255,0.18)",
+                        outline: awayColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
                         outlineOffset: awayColor === c ? "2px" : "1px",
                         boxShadow: awayColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
                         transition: "outline-width 0.1s, outline-offset 0.1s",
