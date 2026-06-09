@@ -55,6 +55,40 @@ function parseCssColorForPixi(css: string): ParsedCssColor {
 
 const SCORING_KINDS = new Set<MatchEventKind>(["GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT"]);
 
+type ScoreMarkerGlow = {
+  outerRadiusScale: number;
+  midRadiusScale: number;
+  outerAlpha: number;
+  midAlpha: number;
+};
+
+const SCORE_MARKER_GLOW: Record<"GOAL" | "POINT" | "TWO_POINTER" | "FORTY_FIVE_TWO_POINT", ScoreMarkerGlow> = {
+  GOAL: {
+    outerRadiusScale: 1.85,
+    midRadiusScale: 1.38,
+    outerAlpha: 0.1,
+    midAlpha: 0.16,
+  },
+  POINT: {
+    outerRadiusScale: 1.55,
+    midRadiusScale: 1.18,
+    outerAlpha: 0.04,
+    midAlpha: 0.06,
+  },
+  TWO_POINTER: {
+    outerRadiusScale: 1.78,
+    midRadiusScale: 1.32,
+    outerAlpha: 0.09,
+    midAlpha: 0.14,
+  },
+  FORTY_FIVE_TWO_POINT: {
+    outerRadiusScale: 1.78,
+    midRadiusScale: 1.32,
+    outerAlpha: 0.09,
+    midAlpha: 0.14,
+  },
+};
+
 export function drawStatsMarkers(
   g: Graphics,
   events: readonly RenderableMatchEvent[],
@@ -129,11 +163,15 @@ export function drawStatsMarkers(
     markerContainer.addChild(markerGraphic);
 
     if (isScoring) {
-      // TWO_POINTER gets slightly wider, denser glow to stay visually distinct from POINT/GOAL.
-      const glowOuter = isTwoPointer ? radius * 1.95 : radius * 1.85;
-      const glowMid   = isTwoPointer ? radius * 1.42 : radius * 1.38;
-      markerGraphic.circle(0, 0, glowOuter).fill({ color: fill.color, alpha: isTwoPointer ? 0.16 : 0.11 });
-      markerGraphic.circle(0, 0, glowMid).fill({ color: fill.color, alpha: isTwoPointer ? 0.24 : 0.17 });
+      const glow = SCORE_MARKER_GLOW[event.kind as keyof typeof SCORE_MARKER_GLOW];
+      markerGraphic.circle(0, 0, radius * glow.outerRadiusScale).fill({
+        color: fill.color,
+        alpha: glow.outerAlpha,
+      });
+      markerGraphic.circle(0, 0, radius * glow.midRadiusScale).fill({
+        color: fill.color,
+        alpha: glow.midAlpha,
+      });
     }
 
     markerGraphic.circle(0, 0, radius).fill({ color: fill.color, alpha: fill.alpha });
