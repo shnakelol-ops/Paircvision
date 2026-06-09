@@ -1635,20 +1635,6 @@ export default function TacticalPlaySurface() {
     setTokenNumberById((prev) => ({ ...prev, [id]: n }));
   };
 
-  const onAddOpposition = () => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    const tokens = shell.getTokens();
-    const usedNums = new Set(tokens.filter((t) => t.team === "away").map((t) => t.number));
-    let n = 1;
-    while (usedNums.has(n) && n <= 30) n++;
-    const id = `token-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    const newToken: MovementBoardToken = { id, number: n, color: awayColor, position: { x: 75, y: 50 }, team: "away" };
-    shell.setTokens([...tokens, newToken]);
-    setAwayTokenIds((prev) => new Set([...prev, id]));
-    setTokenNumberById((prev) => ({ ...prev, [id]: n }));
-  };
-
   const fillHomeTeam = () => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -1761,6 +1747,9 @@ export default function TacticalPlaySurface() {
   const playRoutesDisabled = isPortrait || isPlaying || isPaused;
   const pauseResumeDisabled = isPortrait;
   const playbackFloatingVisible = isPlaying || isPaused;
+  const tokenIds = Object.keys(tokenNumberById);
+  const homePlayerCount = tokenIds.filter((id) => !awayTokenIds.has(id)).length;
+  const awayPlayerCount = tokenIds.filter((id) => awayTokenIds.has(id)).length;
 
   const speedIndex = Math.max(0, TP_SPEED_OPTIONS.findIndex((o) => o.multiplier === playbackSpeedMultiplier));
   const speedLabel = TP_SPEED_OPTIONS[speedIndex]?.label ?? "1×";
@@ -3021,10 +3010,9 @@ export default function TacticalPlaySurface() {
                   ))}
                 </div>
                 <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Home</span>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Home ({homePlayerCount})</span>
                   <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill 15</button>
                   <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>Clear</button>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={onAddPlayer}>+1</button>
                   {ALL_TOKEN_COLORS.map((c) => (
                     <button
                       key={c}
@@ -3050,36 +3038,9 @@ export default function TacticalPlaySurface() {
                   ))}
                 </div>
                 <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>2nd</span>
-                  {ALL_TOKEN_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      aria-label={c}
-                      style={{
-                        width: "22px",
-                        height: "22px",
-                        minWidth: "22px",
-                        borderRadius: "50%",
-                        background: TOKEN_COLOR_BG[c],
-                        border: "none",
-                        cursor: "pointer",
-                        padding: 0,
-                        flexShrink: 0,
-                        outline: secondaryColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
-                        outlineOffset: secondaryColor === c ? "2px" : "1px",
-                        boxShadow: secondaryColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
-                        transition: "outline-width 0.1s, outline-offset 0.1s",
-                      }}
-                      onClick={() => onSetSecondaryColor(c)}
-                    />
-                  ))}
-                </div>
-                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={{ ...SETUP_SECTION_LABEL_STYLE, color: "rgba(255, 160, 140, 0.85)" }}>Away</span>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Away ({awayPlayerCount})</span>
                   <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillAwayTeam}>Fill 15</button>
                   <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearAwayTeam}>Clear</button>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={onAddOpposition}>+1</button>
                   {ALL_TOKEN_COLORS.map((c) => (
                     <button
                       key={c}
@@ -3104,6 +3065,46 @@ export default function TacticalPlaySurface() {
                     />
                   ))}
                 </div>
+                {tokenRenderer === "jersey" ? (
+                  <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
+                    <span style={SETUP_SECTION_LABEL_STYLE}>Trim</span>
+                    {ALL_TOKEN_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-label={c}
+                        style={{
+                          width: "22px",
+                          height: "22px",
+                          minWidth: "22px",
+                          borderRadius: "50%",
+                          background: TOKEN_COLOR_BG[c],
+                          border: "none",
+                          cursor: "pointer",
+                          padding: 0,
+                          flexShrink: 0,
+                          outline: secondaryColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
+                          outlineOffset: secondaryColor === c ? "2px" : "1px",
+                          boxShadow: secondaryColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
+                          transition: "outline-width 0.1s, outline-offset 0.1s",
+                        }}
+                        onClick={() => onSetSecondaryColor(c)}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+                {selectedToken ? (
+                  <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
+                    <span style={SETUP_SECTION_LABEL_STYLE}>P{selectedToken.number}</span>
+                    <button
+                      type="button"
+                      style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 140, 140, 0.80)" }}
+                      onClick={onRemoveSelectedPlayer}
+                    >
+                      Remove Player
+                    </button>
+                  </div>
+                ) : null}
               </>
             ) : null}
           </div>
