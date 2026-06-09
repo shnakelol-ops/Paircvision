@@ -18,7 +18,11 @@ import type {
   TacticalShotEvent,
   TokenRendererName,
   TokenSize,
+  ZoneColor,
+  ZoneRecord,
 } from "../../movement-board/shell/types";
+import { FOOTBALL_ZONE_TEMPLATES, HURLING_ZONE_TEMPLATES, type TacticalZoneTemplate } from "./tacticalZoneTemplates";
+import { ZONE_COLOR_CSS, ZONE_COLOR_OPTIONS } from "./tacticalZoneTypes";
 import { TACTICAL_TEMPLATES, applyTemplatePositions, type TacticalTemplate, type TacticalTemplateCategory } from "./tacticalTemplates";
 import {
   deleteScenario,
@@ -751,6 +755,8 @@ const CONCEPT_OPTIONS: Array<{ id: MovementConcept | null; label: string }> = [
 
 const DELAY_PRESETS_MS = [0, 1000, 2000, 3000, 4000];
 
+const MAX_ZONES = 12;
+
 const TOKEN_COLOR_IS_LIGHT = new Set<PremiumPlayerTokenColor>(["yellow", "white"]);
 
 const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
@@ -879,6 +885,11 @@ export default function TacticalPlaySurface() {
   const [unitEditingId, setUnitEditingId] = useState<string | null>(null);
   const [unitDrawingId, setUnitDrawingId] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [zones, setZones] = useState<ZoneRecord[]>([]);
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [zonesOpen, setZonesOpen] = useState(false);
+  const [zoneLibraryOpen, setZoneLibraryOpen] = useState(false);
+  const [zoneLabelDraft, setZoneLabelDraft] = useState("");
   const {
     recordPhase, setRecordPhase,
     recordDuration, setRecordDuration,
@@ -968,6 +979,12 @@ export default function TacticalPlaySurface() {
         onPassEventsChange: (events) => {
           setPassEvents([...events]);
         },
+        onZonesChange: (nextZones) => {
+          setZones([...nextZones]);
+        },
+        onZoneSelectionChange: (id) => {
+          setSelectedZoneId(id);
+        },
       }).then((shell) => {
         if (disposed) {
           shell.destroy();
@@ -997,6 +1014,7 @@ export default function TacticalPlaySurface() {
         shell.setDragEnabled(!isPortrait);
         setScenarios(listScenarios());
         setPassEvents(shell.getPassEvents());
+        setZones(shell.getZones());
         destroyShell = shell.destroy;
       });
     };
@@ -1055,6 +1073,8 @@ export default function TacticalPlaySurface() {
       setPlaysOpen(false);
       setUnitsOpen(false);
       setAdvancedOpen(false);
+      setZonesOpen(false);
+      setZoneLibraryOpen(false);
     }
   }, [isPlaying]);
 
@@ -1069,6 +1089,11 @@ export default function TacticalPlaySurface() {
   }, [menuMode]);
 
   const selectedRoute = routes.find((r) => r.playerId === selectedToken?.id) ?? null;
+  const selectedZone = zones.find((z) => z.id === selectedZoneId) ?? null;
+
+  // Sync label draft when selection changes (not on every zone data update to avoid resetting mid-type)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setZoneLabelDraft(zones.find((z) => z.id === selectedZoneId)?.label ?? ""); }, [selectedZoneId]);
   const selectedRouteConcept = selectedRoute?.concept ?? null;
 
   type SeqItem =
@@ -1359,6 +1384,7 @@ export default function TacticalPlaySurface() {
       shell.getShotEvents(),
       multiplierToPlaybackSpeed(playbackSpeedMultiplier),
       units,
+      shell.getZones(),
     );
     setScenarios(listScenarios());
     setScenarioNameDraft("");
@@ -1389,6 +1415,9 @@ export default function TacticalPlaySurface() {
     const speedMultiplier = TP_ENUM_TO_MULTIPLIER[scenario.playbackSpeed ?? "normal"] ?? TP_DEFAULT_SPEED_MULTIPLIER;
     setPlaybackSpeedMultiplier(speedMultiplier);
     shell.setSpeedMultiplier(speedMultiplier);
+    const loadedZones = scenario.zones ?? [];
+    shell.setZones(loadedZones);
+    setZones(loadedZones);
     shell.setStartPositions();
     setUnits(scenario.units ?? []);
     const loadedAwayIds = new Set(scenario.tokens.filter((t) => t.team === "away").map((t) => t.id));
@@ -1426,6 +1455,7 @@ export default function TacticalPlaySurface() {
       shell.getShotEvents(),
       multiplierToPlaybackSpeed(playbackSpeedMultiplier),
       units,
+      shell.getZones(),
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
@@ -1542,6 +1572,94 @@ export default function TacticalPlaySurface() {
     if (passTriggerId === removedId) setPassTriggerId(null);
     if (movementsSelectedPlayerId === removedId) setMovementsSelectedPlayerId(null);
     setTokenNumberById((prev) => { const next = { ...prev }; delete next[removedId]; return next; });
+  };
+
+  const onAddRectZone = () => {
+    const shell = shellRef.current;
+    if (!shell || zones.length >= MAX_ZONES) return;
+    const id = `zone-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newZone: ZoneRecord = { id, shape: "rect", color: "blue", label: "", x: 30, y: 30, width: 25, height: 30 };
+    const next = [...zones, newZone];
+    shell.setZones(next);
+    setZones(next);
+    shell.setSelectedZoneId(id);
+  };
+
+  const onAddCircleZone = () => {
+    const shell = shellRef.current;
+    if (!shell || zones.length >= MAX_ZONES) return;
+    const id = `zone-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const newZone: ZoneRecord = { id, shape: "circle", color: "blue", label: "", x: 50, y: 50, radius: 12 };
+    const next = [...zones, newZone];
+    shell.setZones(next);
+    setZones(next);
+    shell.setSelectedZoneId(id);
+  };
+
+  const onDeleteZone = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedZoneId) return;
+    const next = zones.filter((z) => z.id !== selectedZoneId);
+    shell.setZones(next);
+    setZones(next);
+  };
+
+  const onDuplicateZone = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedZoneId || zones.length >= MAX_ZONES) return;
+    const source = zones.find((z) => z.id === selectedZoneId);
+    if (!source) return;
+    const id = `zone-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const copy: ZoneRecord = { ...source, id, x: Math.min(95, source.x + 5), y: Math.min(95, source.y + 5) };
+    const next = [...zones, copy];
+    shell.setZones(next);
+    setZones(next);
+    shell.setSelectedZoneId(id);
+  };
+
+  const onChangeZoneColor = (color: ZoneColor) => {
+    const shell = shellRef.current;
+    if (!shell || !selectedZoneId) return;
+    const next = zones.map((z) => (z.id === selectedZoneId ? { ...z, color } : z));
+    shell.setZones(next);
+    setZones(next);
+    shell.setSelectedZoneId(selectedZoneId);
+  };
+
+  const onCommitZoneLabel = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedZoneId) return;
+    const next = zones.map((z) => (z.id === selectedZoneId ? { ...z, label: zoneLabelDraft.trim() } : z));
+    shell.setZones(next);
+    setZones(next);
+    shell.setSelectedZoneId(selectedZoneId);
+  };
+
+  const onToggleZoneLock = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedZoneId) return;
+    const next = zones.map((z) => (z.id === selectedZoneId ? { ...z, locked: !z.locked } : z));
+    shell.setZones(next);
+    setZones(next);
+    shell.setSelectedZoneId(selectedZoneId);
+  };
+
+  const onDropTemplate = (template: TacticalZoneTemplate) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const next = template.zones
+      .map((z) => ({ ...z, id: `zone-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${z.id}` }))
+      .slice(0, MAX_ZONES);
+    shell.setZones(next);
+    setZones(next);
+    setZoneLibraryOpen(false);
+  };
+
+  const onClearAllZones = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    shell.setZones([]);
+    setZones([]);
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
@@ -1921,6 +2039,13 @@ export default function TacticalPlaySurface() {
               </button>
               <button
                 type="button"
+                style={zonesOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                onClick={() => setZonesOpen((prev) => !prev)}
+              >
+                {zones.length > 0 ? `Zones (${zones.length})` : "Zones"}
+              </button>
+              <button
+                type="button"
                 style={advancedOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                 onClick={() => setAdvancedOpen((prev) => !prev)}
               >
@@ -1999,6 +2124,124 @@ export default function TacticalPlaySurface() {
                   );
                 })}
               </div>
+            ) : null}
+
+            {zonesOpen ? (
+              <>
+                <div style={PANEL_ROW_STYLE}>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Zones</span>
+                  <button
+                    type="button"
+                    style={zones.length >= MAX_ZONES ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
+                    disabled={zones.length >= MAX_ZONES}
+                    onClick={onAddRectZone}
+                  >
+                    + Rect
+                  </button>
+                  <button
+                    type="button"
+                    style={zones.length >= MAX_ZONES ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
+                    disabled={zones.length >= MAX_ZONES}
+                    onClick={onAddCircleZone}
+                  >
+                    + Circle
+                  </button>
+                  <button
+                    type="button"
+                    style={zoneLibraryOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                    onClick={() => setZoneLibraryOpen((prev) => !prev)}
+                  >
+                    Library
+                  </button>
+                  {zones.length > 0 ? (
+                    <button
+                      type="button"
+                      style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 160, 160, 0.70)" }}
+                      onClick={onClearAllZones}
+                    >
+                      Clear All
+                    </button>
+                  ) : null}
+                </div>
+
+                {zoneLibraryOpen ? (
+                  <>
+                    <div style={PANEL_ROW_STYLE}>
+                      <span style={SETUP_SECTION_LABEL_STYLE}>Football</span>
+                      {FOOTBALL_ZONE_TEMPLATES.map((t) => (
+                        <button key={t.id} type="button" style={TOOL_BUTTON_STYLE} onClick={() => onDropTemplate(t)}>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={PANEL_ROW_STYLE}>
+                      <span style={SETUP_SECTION_LABEL_STYLE}>Hurling</span>
+                      {HURLING_ZONE_TEMPLATES.map((t) => (
+                        <button key={t.id} type="button" style={TOOL_BUTTON_STYLE} onClick={() => onDropTemplate(t)}>
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+
+                {selectedZone ? (
+                  <div style={PANEL_ROW_STYLE}>
+                    {ZONE_COLOR_OPTIONS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        style={{
+                          width: "26px",
+                          height: "26px",
+                          borderRadius: "50%",
+                          padding: 0,
+                          cursor: "pointer",
+                          flexShrink: 0,
+                          background: ZONE_COLOR_CSS[c],
+                          border: selectedZone.color === c
+                            ? "2px solid rgba(255, 255, 255, 0.90)"
+                            : "1px solid rgba(255, 255, 255, 0.28)",
+                          boxShadow: selectedZone.color === c ? "0 0 0 1px rgba(124, 237, 184, 0.60)" : "none",
+                        }}
+                        onClick={() => onChangeZoneColor(c as ZoneColor)}
+                      />
+                    ))}
+                    <button
+                      type="button"
+                      style={zones.length >= MAX_ZONES ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
+                      disabled={zones.length >= MAX_ZONES}
+                      onClick={onDuplicateZone}
+                    >
+                      Copy
+                    </button>
+                    <button
+                      type="button"
+                      style={selectedZone.locked ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                      onClick={onToggleZoneLock}
+                    >
+                      {selectedZone.locked ? "Locked" : "Lock"}
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 160, 160, 0.88)" }}
+                      onClick={onDeleteZone}
+                    >
+                      Del
+                    </button>
+                    <input
+                      style={{ ...SCENARIO_INPUT_STYLE, minWidth: "90px", maxWidth: "130px" }}
+                      type="text"
+                      placeholder="Zone label…"
+                      value={zoneLabelDraft}
+                      maxLength={20}
+                      onChange={(e) => setZoneLabelDraft(e.target.value)}
+                      onBlur={onCommitZoneLabel}
+                      onKeyDown={(e) => { if (e.key === "Enter") onCommitZoneLabel(); }}
+                    />
+                  </div>
+                ) : null}
+              </>
             ) : null}
           </div>
         ) : null}

@@ -68,6 +68,21 @@ export type TacticalShotEvent = {
   delayMs: number;
 };
 
+export type ZoneShape = "rect" | "circle";
+export type ZoneColor = "yellow" | "red" | "blue" | "green";
+export type ZoneRecord = {
+  id: string;
+  shape: ZoneShape;
+  color: ZoneColor;
+  label: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  radius?: number;
+  locked?: boolean;
+};
+
 export type MovementPlaybackState = {
   isPlaying: boolean;
   isPaused: boolean;
@@ -93,6 +108,8 @@ export type MovementCanvasShellOptions = {
   onRouteEditStateChange?: (state: MovementRouteEditState) => void;
   onBallStateChange?: (state: BallState) => void;
   onPassEventsChange?: (events: TacticalPassEvent[]) => void;
+  onZonesChange?: (zones: ZoneRecord[]) => void;
+  onZoneSelectionChange?: (id: string | null) => void;
 };
 
 export type MovementCanvasShellHandle = {
@@ -138,6 +155,9 @@ export type MovementCanvasShellHandle = {
   getShotEvents: () => TacticalShotEvent[];
   removeShotEvent: (id: string) => void;
   getCanvas: () => HTMLCanvasElement | null;
+  setZones: (zones: readonly ZoneRecord[]) => void;
+  getZones: () => ZoneRecord[];
+  setSelectedZoneId: (id: string | null) => void;
   reflow: () => void;
   destroy: () => void;
 };
