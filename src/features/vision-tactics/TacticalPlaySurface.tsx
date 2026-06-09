@@ -16,6 +16,8 @@ import type {
   PremiumPlayerTokenColor,
   TacticalPassEvent,
   TacticalShotEvent,
+  TacticalTrainingItem,
+  TacticalTrainingItemType,
   TokenRendererName,
   TokenSize,
   ZoneColor,
@@ -56,6 +58,24 @@ const SETUP_SITUATIONS: Array<{ id: TacticalTemplateSituation; label: string }> 
   { id: "press", label: "Press" },
   { id: "demo", label: "Demo" },
 ];
+
+const TRAINING_ITEM_CHOICES: ReadonlyArray<{ type: TacticalTrainingItemType; label: string }> = [
+  { type: "cone", label: "Cone" },
+  { type: "flatMarker", label: "Flat Marker" },
+  { type: "pole", label: "Pole" },
+  { type: "mannequin", label: "Mannequin" },
+  { type: "miniGoal", label: "Mini Goal" },
+  { type: "hoop", label: "Hoop" },
+];
+
+const TRAINING_ITEM_LABEL: Record<TacticalTrainingItemType, string> = {
+  cone: "Cone",
+  flatMarker: "Flat Marker",
+  pole: "Pole",
+  mannequin: "Mannequin",
+  miniGoal: "Mini Goal",
+  hoop: "Hoop",
+};
 
 const SETUP_BALL_BY_SPORT: Record<SetupSport, BallType> = {
   football: "footballSmall",
@@ -909,6 +929,9 @@ export default function TacticalPlaySurface() {
   const [unitEditingId, setUnitEditingId] = useState<string | null>(null);
   const [unitDrawingId, setUnitDrawingId] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [itemsOpen, setItemsOpen] = useState(false);
+  const [trainingItems, setTrainingItems] = useState<TacticalTrainingItem[]>([]);
+  const [selectedTrainingItemId, setSelectedTrainingItemId] = useState<string | null>(null);
   const [zonesOpen, setZonesOpen] = useState(false);
   const [zones, setZones] = useState<ZoneRecord[]>([]);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
@@ -1010,6 +1033,12 @@ export default function TacticalPlaySurface() {
         onZoneSelectionChange: (id) => {
           setSelectedZoneId(id);
         },
+        onTrainingItemsChange: (items) => {
+          setTrainingItems([...items]);
+        },
+        onTrainingItemSelectionChange: (id) => {
+          setSelectedTrainingItemId(id);
+        },
       }).then((shell) => {
         if (disposed) {
           shell.destroy();
@@ -1040,6 +1069,7 @@ export default function TacticalPlaySurface() {
         setScenarios(listScenarios());
         setPassEvents(shell.getPassEvents());
         setZones(shell.getZones());
+        setTrainingItems(shell.getTrainingItems());
         destroyShell = shell.destroy;
       });
     };
@@ -1098,6 +1128,7 @@ export default function TacticalPlaySurface() {
       setPlaysOpen(false);
       setUnitsOpen(false);
       setAdvancedOpen(false);
+      setItemsOpen(false);
       setZonesOpen(false);
       setZoneLibraryOpen("none");
     }
@@ -1115,6 +1146,7 @@ export default function TacticalPlaySurface() {
 
   const selectedRoute = routes.find((r) => r.playerId === selectedToken?.id) ?? null;
   const selectedRouteConcept = selectedRoute?.concept ?? null;
+  const selectedTrainingItem = trainingItems.find((item) => item.id === selectedTrainingItemId) ?? null;
   const selectedZone = zones.find((z) => z.id === selectedZoneId) ?? null;
 
   // Sync label draft on selection change only (not on every zone data update)
@@ -1402,6 +1434,55 @@ export default function TacticalPlaySurface() {
     shellRef.current?.removePassEvent(id);
   };
 
+  const onAddTrainingItem = (type: TacticalTrainingItemType) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const id = `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const index = trainingItems.length;
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    const newItem: TacticalTrainingItem = {
+      id,
+      type,
+      x: Math.min(80, 32 + column * 12),
+      y: Math.min(82, 28 + row * 9),
+    };
+    const next = [...trainingItems, newItem];
+    shell.setTrainingItems(next);
+    setTrainingItems(next);
+    shell.setSelectedTrainingItemId(id);
+    setSelectedTrainingItemId(id);
+  };
+
+  const onDuplicateTrainingItem = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedTrainingItemId) return;
+    const source = trainingItems.find((item) => item.id === selectedTrainingItemId);
+    if (!source) return;
+    const id = `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const copy: TacticalTrainingItem = {
+      ...source,
+      id,
+      x: Math.min(95, source.x + 5),
+      y: Math.min(95, source.y + 5),
+    };
+    const next = [...trainingItems, copy];
+    shell.setTrainingItems(next);
+    setTrainingItems(next);
+    shell.setSelectedTrainingItemId(id);
+    setSelectedTrainingItemId(id);
+  };
+
+  const onDeleteTrainingItem = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedTrainingItemId) return;
+    const next = trainingItems.filter((item) => item.id !== selectedTrainingItemId);
+    shell.setTrainingItems(next);
+    setTrainingItems(next);
+    shell.setSelectedTrainingItemId(null);
+    setSelectedTrainingItemId(null);
+  };
+
   const onAddZone = (color: ZoneColor) => {
     const shell = shellRef.current;
     if (!shell || zones.length >= MAX_ZONES) return;
@@ -1495,6 +1576,7 @@ export default function TacticalPlaySurface() {
       multiplierToPlaybackSpeed(playbackSpeedMultiplier),
       units,
       shell.getZones(),
+      shell.getTrainingItems(),
     );
     setScenarios(listScenarios());
     setScenarioNameDraft("");
@@ -1530,6 +1612,11 @@ export default function TacticalPlaySurface() {
     const loadedZones = scenario.zones ?? [];
     shell.setZones(loadedZones);
     setZones(loadedZones);
+    const loadedItems = scenario.items ?? [];
+    shell.setTrainingItems(loadedItems);
+    setTrainingItems(loadedItems);
+    shell.setSelectedTrainingItemId(null);
+    setSelectedTrainingItemId(null);
     setScenariosOpen(false);
     setScenarioRenameId(null);
   };
@@ -1562,6 +1649,7 @@ export default function TacticalPlaySurface() {
       multiplierToPlaybackSpeed(playbackSpeedMultiplier),
       units,
       shell.getZones(),
+      shell.getTrainingItems(),
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
@@ -2065,9 +2153,16 @@ export default function TacticalPlaySurface() {
                 <button
                   type="button"
                   style={zonesOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => { setZonesOpen((prev) => !prev); setIsControlsOpen(false); }}
+                  onClick={() => { setZonesOpen((prev) => !prev); setItemsOpen(false); setIsControlsOpen(false); }}
                 >
                   Zones{zones.length > 0 ? ` (${zones.length})` : ""}
+                </button>
+                <button
+                  type="button"
+                  style={itemsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => { setItemsOpen((prev) => !prev); setZonesOpen(false); setIsControlsOpen(false); }}
+                >
+                  Items{trainingItems.length > 0 ? ` (${trainingItems.length})` : ""}
                 </button>
               </div>
             ) : null}
@@ -2328,6 +2423,68 @@ export default function TacticalPlaySurface() {
 
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button type="button" style={MP_DONE} onClick={() => setUnitsOpen(false)}>
+                Done
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {itemsOpen && !modeIsPlaybackLocked ? (
+          <div style={MOVEMENT_PANEL_STYLE}>
+            <div style={MP_HEADER_STYLE}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={MP_TITLE_STYLE}>Items</span>
+                {trainingItems.length > 0 ? (
+                  <span style={{ ...MP_TITLE_STYLE, color: "rgba(180, 210, 255, 0.55)" }}>{trainingItems.length}</span>
+                ) : null}
+              </div>
+              <button type="button" style={MP_CLOSE_STYLE} onClick={() => setItemsOpen(false)}>×</button>
+            </div>
+
+            <div style={MP_ROW}>
+              <span style={MP_ROW_LABEL}>Add</span>
+              {TRAINING_ITEM_CHOICES.map((item) => (
+                <button
+                  key={item.type}
+                  type="button"
+                  style={MP_CHIP}
+                  onClick={() => onAddTrainingItem(item.type)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            {selectedTrainingItem ? (
+              <>
+                <div style={{ height: "1px", background: "rgba(180, 210, 255, 0.08)", margin: "2px 0" }} />
+                <div style={MP_ROW}>
+                  <span style={MP_ROW_LABEL}>Selected</span>
+                  <span style={{ ...MP_CHIP_SECONDARY, color: "rgba(220, 235, 255, 0.80)" }}>
+                    {TRAINING_ITEM_LABEL[selectedTrainingItem.type]}
+                  </span>
+                  <button type="button" style={MP_CHIP} onClick={onDuplicateTrainingItem}>
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...MP_CHIP, color: "rgba(255, 140, 140, 0.75)" }}
+                    onClick={onDeleteTrainingItem}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </>
+            ) : (
+              trainingItems.length === 0 ? (
+                <span style={{ fontSize: "9px", color: "rgba(180, 210, 255, 0.35)", fontFamily: "Inter, system-ui, sans-serif", padding: "2px" }}>
+                  Add a coaching item, then drag it into position.
+                </span>
+              ) : null
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button type="button" style={MP_DONE} onClick={() => setItemsOpen(false)}>
                 Done
               </button>
             </div>

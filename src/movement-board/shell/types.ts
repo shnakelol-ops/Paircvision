@@ -82,6 +82,21 @@ export type ZoneRecord = {
   locked?: boolean;
 };
 
+export type TacticalTrainingItemType =
+  | "cone"
+  | "flatMarker"
+  | "pole"
+  | "mannequin"
+  | "miniGoal"
+  | "hoop";
+
+export type TacticalTrainingItem = {
+  id: string;
+  type: TacticalTrainingItemType;
+  x: number;
+  y: number;
+};
+
 export type MovementPlaybackState = {
   isPlaying: boolean;
   isPaused: boolean;
@@ -109,6 +124,8 @@ export type MovementCanvasShellOptions = {
   onPassEventsChange?: (events: TacticalPassEvent[]) => void;
   onZonesChange?: (zones: ZoneRecord[]) => void;
   onZoneSelectionChange?: (id: string | null) => void;
+  onTrainingItemsChange?: (items: TacticalTrainingItem[]) => void;
+  onTrainingItemSelectionChange?: (id: string | null) => void;
 };
 
 export type MovementCanvasShellHandle = {
@@ -157,6 +174,9 @@ export type MovementCanvasShellHandle = {
   setZones: (zones: readonly ZoneRecord[]) => void;
   getZones: () => ZoneRecord[];
   setSelectedZoneId: (id: string | null) => void;
+  setTrainingItems: (items: readonly TacticalTrainingItem[]) => void;
+  getTrainingItems: () => TacticalTrainingItem[];
+  setSelectedTrainingItemId: (id: string | null) => void;
   reflow: () => void;
   destroy: () => void;
 };

@@ -7,6 +7,7 @@ import {
   getPointerIdFromEvent,
   getWorldPointFromEvent,
 } from "../input/pointer-controller";
+import { createTrainingItemLayer } from "../items/item-layer";
 import { createPitchRoot } from "../pitch/create-pitch-root";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
 import { createBallLayer } from "../ball/ball-layer";
@@ -153,6 +154,10 @@ export async function createMovementCanvasShell(
   pitchMount.root.zIndex = 0;
   world.addChild(pitchMount.root);
 
+  const itemLayerContainer = new Container();
+  itemLayerContainer.zIndex = 11;
+  world.addChild(itemLayerContainer);
+
   const routeLayerContainer = new Container();
   routeLayerContainer.zIndex = 12;
   world.addChild(routeLayerContainer);
@@ -202,6 +207,13 @@ export async function createMovementCanvasShell(
     stage: app.stage,
     onZonesChange: (zs) => options.onZonesChange?.(zs),
     onSelectionChange: (id) => options.onZoneSelectionChange?.(id),
+  });
+  const trainingItemLayer = createTrainingItemLayer({
+    layer: itemLayerContainer,
+    mapperProvider: () => mapper,
+    stage: app.stage,
+    onItemsChange: (items) => options.onTrainingItemsChange?.(items),
+    onSelectionChange: (id) => options.onTrainingItemSelectionChange?.(id),
   });
 
   tokenLayer.setTokens(options.initialTokens ?? buildDefaultTokens());
@@ -259,6 +271,7 @@ export async function createMovementCanvasShell(
         routeLayer.setPlaybackAlpha(1.0);
       }
       zoneLayer.setInteractive(!state.isPlaying && !state.isPaused);
+      trainingItemLayer.setInteractive(mode === "setup" && dragEnabled && !state.isPlaying && !state.isPaused);
       options.onPlaybackStateChange?.(state);
     },
     onPassStart: (fromPlayerId, toPlayerId) => {
@@ -357,6 +370,8 @@ export async function createMovementCanvasShell(
   };
 
   const isPlaybackLocked = () => orchestrator.isLocked();
+  const canInteractWithTrainingItems = () => dragEnabled && mode === "setup" && !isPlaybackLocked();
+  trainingItemLayer.setInteractive(canInteractWithTrainingItems());
 
   const buildRoutesSnapshot = (): MovementBoardRoute[] =>
     Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
@@ -444,6 +459,7 @@ export async function createMovementCanvasShell(
     world.scale.set(mapper.transform.scale, mapper.transform.scale);
     world.position.set(mapper.transform.offsetX, mapper.transform.offsetY);
     tokenLayer.syncToMapper();
+    trainingItemLayer.syncToMapper();
     routeLayer.syncToMapper();
     zoneLayer.syncToMapper();
     syncBallPosition();
@@ -462,6 +478,7 @@ export async function createMovementCanvasShell(
 
   const setModeState = (nextMode: MovementBoardMode) => {
     mode = nextMode;
+    trainingItemLayer.setInteractive(canInteractWithTrainingItems());
     releaseDrag();
     releaseRouteHandleDrag();
     clearRouteDraft();
@@ -1101,6 +1118,7 @@ export async function createMovementCanvasShell(
       if (!enabled) {
         releaseDrag();
       }
+      trainingItemLayer.setInteractive(canInteractWithTrainingItems());
     },
     setBallCarrier: (tokenId) => {
       tokenLayer.setBallCarrier(tokenId);
@@ -1109,6 +1127,9 @@ export async function createMovementCanvasShell(
     setZones: (zones) => zoneLayer.setZones(zones),
     getZones: () => zoneLayer.getZones(),
     setSelectedZoneId: (id) => zoneLayer.setSelectedZoneId(id),
+    setTrainingItems: (items) => trainingItemLayer.setItems(items),
+    getTrainingItems: () => trainingItemLayer.getItems(),
+    setSelectedTrainingItemId: (id) => trainingItemLayer.setSelectedItemId(id),
     reflow: () => {
       syncToHost();
     },
@@ -1118,6 +1139,7 @@ export async function createMovementCanvasShell(
       tokenLayer.destroy();
       routeLayer.destroy();
       ballLayer.destroy();
+      trainingItemLayer.destroy();
       zoneLayer.destroy();
       app.ticker.remove(tick);
       app.stage.removeAllListeners();
