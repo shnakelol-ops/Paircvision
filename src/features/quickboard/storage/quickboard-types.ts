@@ -1,3 +1,5 @@
+import { type SlateTextAnnotation, sanitizeTextAnnotations } from "../annotations/slateTextAnnotation";
+
 export const QUICKBOARD_STORAGE_KEY = "pitchflow_quickboard_boards_v1";
 const MAX_BOARD_NAME_LENGTH = 48;
 export const MAX_QUICKBOARD_SAVES = 100;
@@ -17,6 +19,7 @@ export type QuickBoardBoardState = {
   drawTool?: unknown;
   drawColor?: unknown;
   itemMode?: unknown;
+  textAnnotations?: SlateTextAnnotation[];
 };
 
 export type SavedQuickBoard = {
@@ -61,6 +64,7 @@ export function sanitizeQuickBoardState(value: unknown): QuickBoardBoardState | 
     ...(value.drawTool !== undefined ? { drawTool: value.drawTool } : {}),
     ...(value.drawColor !== undefined ? { drawColor: value.drawColor } : {}),
     ...(value.itemMode !== undefined ? { itemMode: value.itemMode } : {}),
+    textAnnotations: sanitizeTextAnnotations(value.textAnnotations),
   };
 }
 

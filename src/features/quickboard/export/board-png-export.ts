@@ -1,8 +1,11 @@
 import type { TacticalPadLiteSurface } from "../../../engine/pixi/createTacticalPadLiteSurface";
+import { type SlateTextAnnotation, FONT_SIZE_PX } from "../annotations/slateTextAnnotation";
 
 type BoardPngExportOptions = {
   /** CSS colour string for the canvas background behind the pitch. Defaults to the tactical board dark colour. */
   boardBackground?: string;
+  /** Text annotations to composite onto the exported image. */
+  textAnnotations?: SlateTextAnnotation[];
 };
 
 function nextFrame(): Promise<void> {
@@ -64,6 +67,32 @@ export async function exportBoardSetupAsPng(
   ctx.fillRect(0, 0, width, height);
 
   ctx.drawImage(source, 0, 0);
+
+  // Composite text annotations before the watermark so watermark sits on top.
+  const anns = options.textAnnotations;
+  if (anns && anns.length > 0) {
+    for (const ann of anns) {
+      if (!ann.text.trim()) continue;
+      const px = (ann.x / 100) * width;
+      const py = (ann.y / 100) * height;
+      const pxSize = Math.round(FONT_SIZE_PX[ann.fontSize ?? "md"] * (height / 500));
+      ctx.save();
+      ctx.font = `bold ${pxSize}px Inter, system-ui, Arial, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(0,0,0,0.85)";
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = ann.color ?? "#ffffff";
+      // Render each line of multi-line text
+      const lines = ann.text.split("\n");
+      const lineH = pxSize * 1.3;
+      const totalH = lines.length * lineH;
+      lines.forEach((line, i) => {
+        ctx.fillText(line, px, py - totalH / 2 + lineH * i + lineH / 2);
+      });
+      ctx.restore();
+    }
+  }
 
   // PáircVision watermark — small, corner-anchored, low opacity.
   const fontSize = Math.max(10, Math.round(height * 0.022));
