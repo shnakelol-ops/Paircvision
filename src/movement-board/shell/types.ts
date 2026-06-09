@@ -23,6 +23,7 @@ export type MovementBoardToken = {
   position: NormalizedPoint;
   draggable?: boolean;
   isGhost?: boolean;
+  team?: "home" | "away";
 };
 
 export type MovementCanvasTapPayload = {
