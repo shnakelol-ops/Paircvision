@@ -80,8 +80,8 @@ const kickoutTemplate: TacticalTemplate = {
 
 const attackingTemplate: TacticalTemplate = {
   id: "attacking",
-  name: "Attacking",
-  sport: "both",
+  name: "Attacking Shape",
+  sport: "football",
   situation: "attack",
   category: "ATTACK",
   description: "Forward unit pushed high and wide with support runners in behind.",
@@ -279,7 +279,7 @@ const kickoutMidfieldContestTemplate: TacticalTemplate = {
 const attackUmbrellaTemplate: TacticalTemplate = {
   id: "attack-umbrella",
   name: "Umbrella",
-  sport: "both",
+  sport: "football",
   situation: "attack",
   category: "ATTACK",
   description: "Wide arc from right wing to left wing — overloads wide channels and creates the apex scoring run.",
@@ -309,7 +309,7 @@ const attackUmbrellaTemplate: TacticalTemplate = {
 const attackChannelOverloadTemplate: TacticalTemplate = {
   id: "attack-channel-overload",
   name: "Channel Overload",
-  sport: "both",
+  sport: "football",
   situation: "attack",
   category: "ATTACK",
   description: "Right channel flooded with runners — draw defenders across then switch to isolated left side.",
@@ -330,6 +330,40 @@ const attackChannelOverloadTemplate: TacticalTemplate = {
     14: { x: 84, y: 44 }, // FF  — right center forward
     15: { x: 84, y: 78 }, // LCF — isolated left corner
   },
+};
+
+// ── Hurling/Camogie Attack: language-only V1 templates ───────────────────────
+// These deliberately reuse the current placeholder layouts. A later tactical
+// content PR can tune positions, ball starts, routes, and opposition shape.
+
+const hurlingHalfBackOutletTemplate: TacticalTemplate = {
+  id: "hurling-half-back-outlet",
+  name: "Half-Back Outlet",
+  sport: "hurling",
+  situation: "attack",
+  category: "ATTACK",
+  description: "Half-back line available as the first outlet, with midfield and forwards held as link options.",
+  positions: attackingTemplate.positions,
+};
+
+const hurlingWingChannelAttackTemplate: TacticalTemplate = {
+  id: "hurling-wing-channel-attack",
+  name: "Wing Channel Attack",
+  sport: "hurling",
+  situation: "attack",
+  category: "ATTACK",
+  description: "Attack shape set to work the wing channel, with inside support ready for the next ball.",
+  positions: attackChannelOverloadTemplate.positions,
+};
+
+const hurlingDiagonalBallTemplate: TacticalTemplate = {
+  id: "hurling-diagonal-ball",
+  name: "Diagonal Ball",
+  sport: "hurling",
+  situation: "attack",
+  category: "ATTACK",
+  description: "Forward line set to receive a diagonal ball, with support held underneath for the break.",
+  positions: attackUmbrellaTemplate.positions,
 };
 
 // ── Defence: Sweeper ──────────────────────────────────────────────────────────
@@ -586,6 +620,9 @@ export const TACTICAL_TEMPLATES: TacticalTemplate[] = [
   attackingTemplate,
   attackUmbrellaTemplate,
   attackChannelOverloadTemplate,
+  hurlingHalfBackOutletTemplate,
+  hurlingWingChannelAttackTemplate,
+  hurlingDiagonalBallTemplate,
   defensiveTemplate,
   defenceSweepTemplate,
   defenceArcTemplate,
