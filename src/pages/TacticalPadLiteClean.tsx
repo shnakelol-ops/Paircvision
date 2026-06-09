@@ -44,6 +44,8 @@ import { useOverlayPortalRoot } from "../overlay/OverlayPortalContext";
 import { useScreenWakeLock } from "../hooks/useScreenWakeLock";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { exportBoardSetupAsPng } from "../features/quickboard/export/board-png-export";
+import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
+import { type SlateTextAnnotation } from "../features/quickboard/annotations/slateTextAnnotation";
 
 type PadMode = "tactical" | "stats" | "whiteboard";
 type TacticalPadLiteCleanProps = {
@@ -1981,6 +1983,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [phasesOpen, setPhasesOpen] = useState(false);
   const [kitEditorState, setKitEditorState] = useState<KitEditorState | null>(null);
   const [kitEditorTab, setKitEditorTab] = useState<KitEditorTab>("base");
+  const [textAnnotations, setTextAnnotations] = useState<SlateTextAnnotation[]>([]);
+  const [textToolActive, setTextToolActive] = useState(false);
+  const textAnnotationsRef = useRef<SlateTextAnnotation[]>([]);
+  const textAnnotationsBaselineRef = useRef<string>("[]");
 
   const isStatsMode = mode === "stats";
   const isWhiteboardMode = mode === "whiteboard";
@@ -1996,6 +2002,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   useEffect(() => {
     isPortraitViewingModeRef.current = isPortraitViewingMode;
   }, [isPortraitViewingMode]);
+
+  useEffect(() => {
+    textAnnotationsRef.current = textAnnotations;
+  }, [textAnnotations]);
 
   useEffect(() => {
     playbackSpeedMultiplierRef.current = playbackSpeedMultiplier;
@@ -2428,12 +2438,19 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       if (!boardBaselineSignatureRef.current) {
         boardBaselineSignatureRef.current = signature;
       }
-      const isDirty = boardBaselineSignatureRef.current !== signature;
+      const currentAnnotations = textAnnotationsRef.current;
+      const annotationsSig = JSON.stringify(currentAnnotations);
+      const isDirty = boardBaselineSignatureRef.current !== signature
+        || annotationsSig !== textAnnotationsBaselineRef.current;
       if (!isDirty) return;
-      if (lastBoardDraftSignatureRef.current === signature) return;
-      const persisted = saveQuickBoardDraft(snapshot);
+      const draftKey = signature + ":ta:" + annotationsSig;
+      if (lastBoardDraftSignatureRef.current === draftKey) return;
+      const snapshotFull = currentAnnotations.length > 0
+        ? { ...snapshot, textAnnotations: currentAnnotations }
+        : snapshot;
+      const persisted = saveQuickBoardDraft(snapshotFull);
       if (!persisted) return;
-      lastBoardDraftSignatureRef.current = signature;
+      lastBoardDraftSignatureRef.current = draftKey;
     };
     const intervalId = window.setInterval(persistDraft, 1200);
     const onBeforeUnload = () => {
@@ -2777,7 +2794,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (!currentSignature) return false;
     const baselineSignature = boardBaselineSignatureRef.current;
     if (!baselineSignature) return true;
-    return currentSignature !== baselineSignature;
+    if (currentSignature !== baselineSignature) return true;
+    return JSON.stringify(textAnnotations) !== textAnnotationsBaselineRef.current;
   };
   const clearActiveBoardDraft = () => {
     clearQuickBoardDraft();
@@ -2874,7 +2892,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     closeQuickShareMenu();
     surface.pausePlayback();
     try {
-      const file = await exportBoardSetupAsPng(surface);
+      const file = await exportBoardSetupAsPng(surface, { textAnnotations });
       if (!file) {
         console.debug("[PV share] exportBoardSetupAsPng returned null");
         showShareTip("Could not generate image — please try again.");
@@ -2931,13 +2949,17 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       setPendingRecoveredBoardDraft(null);
       return;
     }
+    const recoveredAnnotations = draft.textAnnotations ?? [];
     setItems(extractItemsFromBoardState(draft));
     setPhaseCount(Array.isArray(draft.phases) ? draft.phases.length : 0);
+    setTextAnnotations(recoveredAnnotations);
+    setTextToolActive(false);
     setIsPlaying(false);
     setIsPaused(false);
     setLoadedBoardName("Recovered draft");
     const draftSignature = serializeBoardState(draft);
     boardBaselineSignatureRef.current = draftSignature;
+    textAnnotationsBaselineRef.current = JSON.stringify(recoveredAnnotations);
     lastBoardDraftSignatureRef.current = draftSignature;
     clearActiveBoardDraft();
     setPendingRecoveredBoardDraft(null);
@@ -2976,12 +2998,16 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       minute: "2-digit",
       hour12: false,
     })}`;
-    const saved = saveBoard({ name: fallbackName, boardState: snapshot });
+    const boardStateToSave = textAnnotations.length > 0
+      ? { ...snapshot, textAnnotations }
+      : snapshot;
+    const saved = saveBoard({ name: fallbackName, boardState: boardStateToSave });
     if (!saved) {
       showQuickBoardNotice("Save failed");
       return;
     }
     boardBaselineSignatureRef.current = serializeBoardState(snapshot);
+    textAnnotationsBaselineRef.current = JSON.stringify(textAnnotations);
     clearActiveBoardDraft();
     setPendingRecoveredBoardDraft(null);
     latestThumbnailSaveTokenRef.current += 1;
@@ -3015,14 +3041,18 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       showQuickBoardNotice("Load failed");
       return;
     }
+    const loadedAnnotations = saved.boardState.textAnnotations ?? [];
     setItems(extractItemsFromBoardState(saved.boardState));
     setPhaseCount(Array.isArray(saved.boardState.phases) ? saved.boardState.phases.length : 0);
+    setTextAnnotations(loadedAnnotations);
+    setTextToolActive(false);
     setIsPlaying(false);
     setIsPaused(false);
     setMyBoardsOpen(false);
     setActionsOpen(false);
     setQuickShareOpen(false);
     boardBaselineSignatureRef.current = serializeBoardState(saved.boardState);
+    textAnnotationsBaselineRef.current = JSON.stringify(loadedAnnotations);
     clearActiveBoardDraft();
     setPendingRecoveredBoardDraft(null);
     showQuickBoardNotice("Board loaded");
@@ -3201,6 +3231,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   const applyTacticalTool = (tool: WhiteboardToolAction) => {
     if (isPortraitViewingMode && tool !== "move") return;
+    setTextToolActive(false);
     const surface = surfaceRef.current;
     if (!surface) return;
     if (tool !== "move") {
@@ -3215,6 +3246,16 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (isCompactLandscapeToolsMenu) {
       setToolsOpen(false);
     }
+  };
+  const activateTextTool = () => {
+    if (isPortraitViewingMode || isPlaybackLocked) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    setTextToolActive(true);
+    setTacticalTool("move");
+    surface.setWhiteboardDrawTool("move");
+    setRouteCaptureMode(false);
+    if (isCompactLandscapeToolsMenu) setToolsOpen(false);
   };
 
   const syncTeamCounts = () => {
@@ -3241,8 +3282,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     surface?.reset();
     setIsPlaying(false);
     setIsPaused(false);
+    setTextAnnotations([]);
+    setTextToolActive(false);
     const resetSnapshot = captureCurrentBoardSnapshot();
     boardBaselineSignatureRef.current = serializeBoardState(resetSnapshot);
+    textAnnotationsBaselineRef.current = "[]";
     clearActiveBoardDraft();
     setPendingRecoveredBoardDraft(null);
     syncTeamCounts();
@@ -3260,10 +3304,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     surface.newBoard();
     const pristineSnapshot = captureCurrentBoardSnapshot();
     boardBaselineSignatureRef.current = serializeBoardState(pristineSnapshot);
+    textAnnotationsBaselineRef.current = "[]";
     clearActiveBoardDraft();
     setPendingRecoveredBoardDraft(null);
     tacticalItemCounterRef.current = 0;
     setItems([]);
+    setTextAnnotations([]);
+    setTextToolActive(false);
     setMovementModePillSelection("move");
     setRouteState((previous) => ({ ...previous, isRouteCaptureMode: false, routeCount: 0 }));
     setItemMode("locked");
@@ -3705,6 +3752,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : CONTENT_STYLE}>
           <div ref={hostRef} style={pitchSurfaceStyle} />
           {!isWhiteboardMode && isPortraitViewingMode ? <div style={PORTRAIT_INTERACTION_SHIELD_STYLE} aria-hidden="true" /> : null}
+          {!isWhiteboardMode && !isPortraitViewingMode ? (
+            <SlateTextOverlay
+              annotations={textAnnotations}
+              active={textToolActive && !toolsOpen && !isPlaybackLocked}
+              onAnnotationsChange={setTextAnnotations}
+            />
+          ) : null}
         </div>
         {!isWhiteboardMode && !isPortraitViewingMode && kitEditorState && activeKitPlayer && kitEditorPosition ? (
           <div
@@ -4385,10 +4439,17 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                       <div className="coach-hub-tool-grid" style={COACH_HUB_TOOL_GRID_STYLE}>
                         <button
                           type="button"
-                          style={tacticalTool === "move" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                          style={tacticalTool === "move" && !textToolActive ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
                           onClick={() => applyTacticalToolFromMenu("move")}
                         >
                           Move
+                        </button>
+                        <button
+                          type="button"
+                          style={textToolActive ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                          onClick={activateTextTool}
+                        >
+                          Label
                         </button>
                         <button
                           type="button"
@@ -4656,10 +4717,17 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 <div className="coach-hub-tool-grid" style={COACH_HUB_TOOL_GRID_STYLE}>
                   <button
                     type="button"
-                    style={tacticalTool === "move" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                    style={tacticalTool === "move" && !textToolActive ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
                     onClick={() => applyTacticalToolFromMenu("move")}
                   >
                     Move
+                  </button>
+                  <button
+                    type="button"
+                    style={textToolActive ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
+                    onClick={activateTextTool}
+                  >
+                    Label
                   </button>
                   <button
                     type="button"
