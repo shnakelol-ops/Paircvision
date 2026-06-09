@@ -23,7 +23,13 @@ import type {
 } from "../../movement-board/shell/types";
 import { FOOTBALL_ZONE_TEMPLATES, HURLING_ZONE_TEMPLATES, type TacticalZoneTemplate } from "./tacticalZoneTemplates";
 import { ZONE_COLOR_CSS, ZONE_COLOR_OPTIONS } from "./tacticalZoneTypes";
-import { TACTICAL_TEMPLATES, applyTemplatePositions, type TacticalTemplate, type TacticalTemplateCategory } from "./tacticalTemplates";
+import {
+  TACTICAL_TEMPLATES,
+  applyTemplatePositions,
+  type TacticalTemplate,
+  type TacticalTemplateSituation,
+  type TacticalTemplateSport,
+} from "./tacticalTemplates";
 import {
   deleteScenario,
   duplicateScenario,
@@ -36,12 +42,25 @@ import type { TacticalUnit } from "./tacticalUnitTypes";
 import { buildMemberRoutes } from "./tacticalUnitHelpers";
 import type { NormalizedPoint } from "../../movement-board/coordinates/normalization";
 
-const SETUP_CATEGORIES: Array<{ id: TacticalTemplateCategory; label: string }> = [
-  { id: "KICKOUT", label: "Kickout" },
-  { id: "ATTACK", label: "Attack" },
-  { id: "DEFENCE", label: "Defence" },
-  { id: "PRESS", label: "Press" },
+type SetupSport = Extract<TacticalTemplateSport, "football" | "hurling">;
+
+const SETUP_SPORT_OPTIONS: Array<{ id: SetupSport; label: string }> = [
+  { id: "football", label: "Football/LGFA" },
+  { id: "hurling", label: "Hurling/Camogie" },
 ];
+
+const SETUP_SITUATIONS: Array<{ id: TacticalTemplateSituation; label: string }> = [
+  { id: "restart", label: "Restart" },
+  { id: "attack", label: "Attack" },
+  { id: "defence", label: "Defence" },
+  { id: "press", label: "Press" },
+  { id: "demo", label: "Demo" },
+];
+
+const SETUP_BALL_BY_SPORT: Record<SetupSport, BallType> = {
+  football: "footballSmall",
+  hurling: "sliotarSmall",
+};
 
 const _CAN_DVW = typeof window !== "undefined" && typeof window.CSS !== "undefined" && window.CSS.supports("width: 100dvw");
 const _VW = _CAN_DVW ? "100dvw" : "100vw";
@@ -857,7 +876,8 @@ export default function TacticalPlaySurface() {
   const [startFlash, setStartFlash] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [playersOpen, setPlayersOpen] = useState(false);
-  const [activeSetupCategory, setActiveSetupCategory] = useState<TacticalTemplateCategory | null>(null);
+  const [activeSetupSport, setActiveSetupSport] = useState<SetupSport>("football");
+  const [activeSetupSituation, setActiveSetupSituation] = useState<TacticalTemplateSituation | null>(null);
   const [tokenSize, setTokenSizeState] = useState<TokenSize>("medium");
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("pixi");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
@@ -1251,6 +1271,19 @@ export default function TacticalPlaySurface() {
     setIsControlsOpen(false);
     setSetupOpen((prev) => !prev);
     setPlaysOpen(false);
+  };
+
+  const onSelectSetupSport = (sport: SetupSport) => {
+    if (sport === activeSetupSport) return;
+    setActiveSetupSport(sport);
+    setPlayersOpen(false);
+    setScenariosOpen(false);
+
+    const shell = shellRef.current;
+    if (!shell) return;
+    const currentBall = shell.getBallState();
+    if (currentBall.carrierId || currentBall.position) return;
+    shell.placeBall(SETUP_BALL_BY_SPORT[sport]);
   };
 
   const onSetTokenSize = (size: TokenSize) => {
@@ -2707,45 +2740,64 @@ export default function TacticalPlaySurface() {
         {setupOpen ? (
           <div style={SETUP_PANEL_STYLE}>
             <div style={PANEL_ROW_STYLE}>
-              {SETUP_CATEGORIES.map((cat) => (
+              <span style={SETUP_SECTION_LABEL_STYLE}>Setup</span>
+              {SETUP_SPORT_OPTIONS.map((sport) => (
                 <button
-                  key={cat.id}
+                  key={sport.id}
                   type="button"
-                  style={activeSetupCategory === cat.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => setActiveSetupCategory((prev) => prev === cat.id ? null : cat.id)}
+                  style={activeSetupSport === sport.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => onSelectSetupSport(sport.id)}
                 >
-                  {cat.label}
+                  {sport.label}
+                </button>
+              ))}
+            </div>
+
+            <div style={PANEL_ROW_STYLE}>
+              {SETUP_SITUATIONS.map((situation) => (
+                <button
+                  key={situation.id}
+                  type="button"
+                  style={activeSetupSituation === situation.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => {
+                    setPlayersOpen(false);
+                    setScenariosOpen(false);
+                    setActiveSetupSituation((prev) => prev === situation.id ? null : situation.id);
+                  }}
+                >
+                  {situation.label}
                 </button>
               ))}
               <button
                 type="button"
-                style={TOOL_BUTTON_STYLE}
-                onClick={() => {
-                  const demo = TACTICAL_TEMPLATES.find((t) => t.id === "demo");
-                  if (demo) onLoadTemplate(demo);
-                }}
-              >
-                Demo
-              </button>
-              <button
-                type="button"
                 style={playersOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => setPlayersOpen((prev) => !prev)}
+                onClick={() => {
+                  setActiveSetupSituation(null);
+                  setScenariosOpen(false);
+                  setPlayersOpen((prev) => !prev);
+                }}
               >
                 Players
               </button>
               <button
                 type="button"
                 style={scenariosOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => setScenariosOpen((prev) => !prev)}
+                onClick={() => {
+                  setActiveSetupSituation(null);
+                  setPlayersOpen(false);
+                  setScenariosOpen((prev) => !prev);
+                }}
               >
                 Scenarios
               </button>
             </div>
 
-            {activeSetupCategory !== null ? (
+            {activeSetupSituation !== null ? (
               <div style={PANEL_ROW_STYLE}>
-                {TACTICAL_TEMPLATES.filter((t) => t.category === activeSetupCategory).map((tmpl) => (
+                {TACTICAL_TEMPLATES.filter((t) => (
+                  t.situation === activeSetupSituation &&
+                  (t.sport === activeSetupSport || t.sport === "both")
+                )).map((tmpl) => (
                   <button
                     key={tmpl.id}
                     type="button"

@@ -11,6 +11,15 @@ export type TacticalTemplateCategory =
   | "COUNTER"
   | "DEMO";
 
+export type TacticalTemplateSport = "football" | "hurling" | "both";
+
+export type TacticalTemplateSituation =
+  | "restart"
+  | "attack"
+  | "defence"
+  | "press"
+  | "demo";
+
 // ── Route ─────────────────────────────────────────────────────────────────────
 
 export type TacticalTemplateRoute = {
@@ -23,6 +32,9 @@ export type TacticalTemplateRoute = {
 export type TacticalTemplate = {
   id: string;
   name: string;
+  sport: TacticalTemplateSport;
+  situation: TacticalTemplateSituation;
+  // Legacy grouping retained while older internal references are phased out.
   category: TacticalTemplateCategory;
   description: string;
   // jersey number (1-15) → normalized position (0-100 each axis)
@@ -39,7 +51,9 @@ export type TacticalTemplate = {
 
 const kickoutTemplate: TacticalTemplate = {
   id: "kickout",
-  name: "Kickout",
+  name: "Short Kickout",
+  sport: "football",
+  situation: "restart",
   category: "KICKOUT",
   description: "Short kickout shape with a spread receiving structure across three lines.",
   positions: {
@@ -66,7 +80,9 @@ const kickoutTemplate: TacticalTemplate = {
 
 const attackingTemplate: TacticalTemplate = {
   id: "attacking",
-  name: "Attacking",
+  name: "Attacking Shape",
+  sport: "football",
+  situation: "attack",
   category: "ATTACK",
   description: "Forward unit pushed high and wide with support runners in behind.",
   positions: {
@@ -94,6 +110,8 @@ const attackingTemplate: TacticalTemplate = {
 const defensiveTemplate: TacticalTemplate = {
   id: "defensive",
   name: "Defensive",
+  sport: "both",
+  situation: "defence",
   category: "DEFENCE",
   description: "Compact low block — bodies behind the ball, forward unit in first-press positions.",
   positions: {
@@ -122,6 +140,8 @@ const defensiveTemplate: TacticalTemplate = {
 const demoTemplate: TacticalTemplate = {
   id: "demo",
   name: "Demo",
+  sport: "both",
+  situation: "demo",
   category: "DEMO",
   description: "Forward support movement — four converging runs from the attacking shape.",
   positions: attackingTemplate.positions,
@@ -169,6 +189,8 @@ const demoTemplate: TacticalTemplate = {
 const kickoutFlat4Template: TacticalTemplate = {
   id: "kickout-flat-4",
   name: "Flat 4",
+  sport: "football",
+  situation: "restart",
   category: "KICKOUT",
   description: "Four players spread in a flat line across midfield — creates a width option from every angle.",
   positions: {
@@ -196,7 +218,9 @@ const kickoutFlat4Template: TacticalTemplate = {
 
 const kickoutClusterBreakTemplate: TacticalTemplate = {
   id: "kickout-cluster-break",
-  name: "Cluster & Break",
+  name: "Long Kickout",
+  sport: "football",
+  situation: "restart",
   category: "KICKOUT",
   description: "Tight cluster in the 45 draws opposition — forwards break wide the moment the kick is struck.",
   positions: {
@@ -225,6 +249,8 @@ const kickoutClusterBreakTemplate: TacticalTemplate = {
 const kickoutMidfieldContestTemplate: TacticalTemplate = {
   id: "kickout-midfield-contest",
   name: "Midfield Contest",
+  sport: "football",
+  situation: "restart",
   category: "KICKOUT",
   description: "Clean midfield battle — 8 and 9 contest directly, 6 provides close support.",
   positions: {
@@ -253,6 +279,8 @@ const kickoutMidfieldContestTemplate: TacticalTemplate = {
 const attackUmbrellaTemplate: TacticalTemplate = {
   id: "attack-umbrella",
   name: "Umbrella",
+  sport: "football",
+  situation: "attack",
   category: "ATTACK",
   description: "Wide arc from right wing to left wing — overloads wide channels and creates the apex scoring run.",
   positions: {
@@ -281,6 +309,8 @@ const attackUmbrellaTemplate: TacticalTemplate = {
 const attackChannelOverloadTemplate: TacticalTemplate = {
   id: "attack-channel-overload",
   name: "Channel Overload",
+  sport: "football",
+  situation: "attack",
   category: "ATTACK",
   description: "Right channel flooded with runners — draw defenders across then switch to isolated left side.",
   positions: {
@@ -302,6 +332,40 @@ const attackChannelOverloadTemplate: TacticalTemplate = {
   },
 };
 
+// ── Hurling/Camogie Attack: language-only V1 templates ───────────────────────
+// These deliberately reuse the current placeholder layouts. A later tactical
+// content PR can tune positions, ball starts, routes, and opposition shape.
+
+const hurlingHalfBackOutletTemplate: TacticalTemplate = {
+  id: "hurling-half-back-outlet",
+  name: "Half-Back Outlet",
+  sport: "hurling",
+  situation: "attack",
+  category: "ATTACK",
+  description: "Half-back line available as the first outlet, with midfield and forwards held as link options.",
+  positions: attackingTemplate.positions,
+};
+
+const hurlingWingChannelAttackTemplate: TacticalTemplate = {
+  id: "hurling-wing-channel-attack",
+  name: "Wing Channel Attack",
+  sport: "hurling",
+  situation: "attack",
+  category: "ATTACK",
+  description: "Attack shape set to work the wing channel, with inside support ready for the next ball.",
+  positions: attackChannelOverloadTemplate.positions,
+};
+
+const hurlingDiagonalBallTemplate: TacticalTemplate = {
+  id: "hurling-diagonal-ball",
+  name: "Diagonal Ball",
+  sport: "hurling",
+  situation: "attack",
+  category: "ATTACK",
+  description: "Forward line set to receive a diagonal ball, with support held underneath for the break.",
+  positions: attackUmbrellaTemplate.positions,
+};
+
 // ── Defence: Sweeper ──────────────────────────────────────────────────────────
 // 6 (CB) drops behind the full-back line as a free sweeper.
 // The remaining 14 condense into a compact two-block shape in front.
@@ -309,6 +373,8 @@ const attackChannelOverloadTemplate: TacticalTemplate = {
 const defenceSweepTemplate: TacticalTemplate = {
   id: "defence-sweeper",
   name: "Sweeper",
+  sport: "both",
+  situation: "defence",
   category: "DEFENCE",
   description: "CB drops as a free sweeper behind the full-back line — covers space and cleans up loose ball.",
   positions: {
@@ -337,6 +403,8 @@ const defenceSweepTemplate: TacticalTemplate = {
 const defenceArcTemplate: TacticalTemplate = {
   id: "defence-arc",
   name: "Arc Defence",
+  sport: "both",
+  situation: "defence",
   category: "DEFENCE",
   description: "D-shaped arc floods the central scoring zone — forces play wide and eliminates through-balls.",
   positions: {
@@ -365,6 +433,8 @@ const defenceArcTemplate: TacticalTemplate = {
 const pressFullPressTemplate: TacticalTemplate = {
   id: "press-full-press",
   name: "Full Press",
+  sport: "both",
+  situation: "press",
   category: "PRESS",
   description: "All 14 outfield players push into opposition half — GK sweeps behind to cover the vacated space.",
   positions: {
@@ -393,6 +463,8 @@ const pressFullPressTemplate: TacticalTemplate = {
 const pressFunnelPressTemplate: TacticalTemplate = {
   id: "press-funnel-press",
   name: "Funnel Press",
+  sport: "both",
+  situation: "press",
   category: "PRESS",
   description: "Diagonal press funnels play to the right sideline — trap, turn over, counter from a packed right side.",
   positions: {
@@ -414,6 +486,124 @@ const pressFunnelPressTemplate: TacticalTemplate = {
   },
 };
 
+// ── Hurling/Camogie Restart: Short Puckout ───────────────────────────────────
+// Goalkeeper has close puckout options, half-backs show wide, and midfield
+// staggers for the second ball. Shared by Hurling and Camogie.
+
+const hurlingShortPuckoutTemplate: TacticalTemplate = {
+  id: "hurling-short-puckout",
+  name: "Short Puckout",
+  sport: "hurling",
+  situation: "restart",
+  category: "KICKOUT",
+  description: "Short puckout shape with split backs, wide half-backs, and midfield staggered for the next ball.",
+  positions: {
+    1:  { x: 8,  y: 50 }, // GK
+    2:  { x: 17, y: 24 }, // RCB - close right option
+    3:  { x: 18, y: 50 }, // FB  - central short option
+    4:  { x: 17, y: 76 }, // LCB - close left option
+    5:  { x: 32, y: 18 }, // RHB - wide outlet
+    6:  { x: 34, y: 50 }, // CB  - central outlet
+    7:  { x: 32, y: 82 }, // LHB - wide outlet
+    8:  { x: 48, y: 38 }, // RMid - second-ball support
+    9:  { x: 50, y: 62 }, // LMid - staggered support
+    10: { x: 62, y: 24 }, // RHF - holds channel
+    11: { x: 62, y: 50 }, // CF  - centre link
+    12: { x: 62, y: 76 }, // LHF - holds channel
+    13: { x: 80, y: 24 }, // RCF - high right
+    14: { x: 80, y: 50 }, // FF
+    15: { x: 80, y: 76 }, // LCF - high left
+  },
+};
+
+// ── Hurling/Camogie Restart: Puckout Contest ─────────────────────────────────
+// Direct puckout contest through midfield with half-forward support underneath.
+
+const hurlingPuckoutContestTemplate: TacticalTemplate = {
+  id: "hurling-puckout-contest",
+  name: "Puckout Contest",
+  sport: "hurling",
+  situation: "restart",
+  category: "KICKOUT",
+  description: "Direct puckout contest with midfield up, half-forwards underneath, and backs held for cover.",
+  positions: {
+    1:  { x: 8,  y: 50 }, // GK
+    2:  { x: 18, y: 24 }, // RCB
+    3:  { x: 19, y: 50 }, // FB
+    4:  { x: 18, y: 76 }, // LCB
+    5:  { x: 30, y: 18 }, // RHB
+    6:  { x: 35, y: 50 }, // CB  - cover
+    7:  { x: 30, y: 82 }, // LHB
+    8:  { x: 54, y: 40 }, // RMid - contest
+    9:  { x: 54, y: 60 }, // LMid - contest
+    10: { x: 58, y: 28 }, // RHF - break support
+    11: { x: 60, y: 50 }, // CF  - underneath
+    12: { x: 58, y: 72 }, // LHF - break support
+    13: { x: 78, y: 24 }, // RCF
+    14: { x: 78, y: 50 }, // FF
+    15: { x: 78, y: 76 }, // LCF
+  },
+};
+
+// ── Hurling/Camogie Restart: Break Ball ──────────────────────────────────────
+// Compress around the landing zone with inside and outside players ready for
+// the broken ball.
+
+const hurlingBreakBallTemplate: TacticalTemplate = {
+  id: "hurling-break-ball",
+  name: "Break Ball",
+  sport: "hurling",
+  situation: "restart",
+  category: "KICKOUT",
+  description: "Compact puckout contest shape with players set inside and outside the landing zone for the break.",
+  positions: {
+    1:  { x: 8,  y: 50 }, // GK
+    2:  { x: 18, y: 26 }, // RCB
+    3:  { x: 18, y: 50 }, // FB
+    4:  { x: 18, y: 74 }, // LCB
+    5:  { x: 34, y: 24 }, // RHB
+    6:  { x: 40, y: 50 }, // CB  - base support
+    7:  { x: 34, y: 76 }, // LHB
+    8:  { x: 51, y: 43 }, // RMid - contest edge
+    9:  { x: 51, y: 57 }, // LMid - contest edge
+    10: { x: 55, y: 34 }, // RHF - outside break
+    11: { x: 57, y: 50 }, // CF  - under break
+    12: { x: 55, y: 66 }, // LHF - outside break
+    13: { x: 72, y: 28 }, // RCF
+    14: { x: 74, y: 50 }, // FF
+    15: { x: 72, y: 72 }, // LCF
+  },
+};
+
+// ── Hurling/Camogie Restart: Wing Channel ────────────────────────────────────
+// Opens one wing channel while the middle line protects the break.
+
+const hurlingWingChannelTemplate: TacticalTemplate = {
+  id: "hurling-wing-channel",
+  name: "Wing Channel",
+  sport: "hurling",
+  situation: "restart",
+  category: "KICKOUT",
+  description: "Wing-channel puckout with the half-back and wing-forward showing wide while midfield protects inside.",
+  positions: {
+    1:  { x: 8,  y: 50 }, // GK
+    2:  { x: 17, y: 24 }, // RCB
+    3:  { x: 19, y: 50 }, // FB
+    4:  { x: 17, y: 76 }, // LCB
+    5:  { x: 38, y: 13 }, // RHB - channel receiver
+    6:  { x: 35, y: 48 }, // CB  - inside cover
+    7:  { x: 30, y: 80 }, // LHB - balance
+    8:  { x: 50, y: 30 }, // RMid - inside support
+    9:  { x: 48, y: 60 }, // LMid - cover
+    10: { x: 63, y: 12 }, // RHF - wide channel
+    11: { x: 62, y: 48 }, // CF  - link
+    12: { x: 61, y: 74 }, // LHF - far-side hold
+    13: { x: 80, y: 20 }, // RCF
+    14: { x: 80, y: 50 }, // FF
+    15: { x: 80, y: 76 }, // LCF
+  },
+};
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 // Display order matches the Setup panel button order.
 // To add a new template: insert one object here — no other files need changing.
@@ -423,9 +613,16 @@ export const TACTICAL_TEMPLATES: TacticalTemplate[] = [
   kickoutFlat4Template,
   kickoutClusterBreakTemplate,
   kickoutMidfieldContestTemplate,
+  hurlingShortPuckoutTemplate,
+  hurlingPuckoutContestTemplate,
+  hurlingBreakBallTemplate,
+  hurlingWingChannelTemplate,
   attackingTemplate,
   attackUmbrellaTemplate,
   attackChannelOverloadTemplate,
+  hurlingHalfBackOutletTemplate,
+  hurlingWingChannelAttackTemplate,
+  hurlingDiagonalBallTemplate,
   defensiveTemplate,
   defenceSweepTemplate,
   defenceArcTemplate,
