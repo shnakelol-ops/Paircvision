@@ -1553,7 +1553,7 @@ export default function TacticalPlaySurface() {
     const shell = shellRef.current;
     if (!shell) return;
     saveScenario(
-      playsNameDraft.trim() || "My Play",
+      playsNameDraft.trim() || "Scenario",
       shell.getTokens(),
       shell.getRoutes(),
       shell.getBallState(),
@@ -3034,14 +3034,14 @@ export default function TacticalPlaySurface() {
               setPassesOpen(false);
             }}
           >
-            Plays
+            Scenarios
           </button>
         ) : null}
 
         {playsOpen && !playbackFloatingVisible ? (
           <div style={playsPanelStyle}>
             <div style={MP_HEADER_STYLE}>
-              <span style={MP_TITLE_STYLE}>Saved Plays</span>
+              <span style={MP_TITLE_STYLE}>Saved Scenarios</span>
               <button type="button" style={MP_CLOSE_STYLE} onClick={() => { setPlaysOpen(false); setScenarioRenameId(null); }}>
                 ×
               </button>
@@ -3052,7 +3052,7 @@ export default function TacticalPlaySurface() {
               <input
                 style={PLAYS_INPUT_STYLE}
                 type="text"
-                placeholder="Name this play…"
+                placeholder="Scenario name…"
                 value={playsNameDraft}
                 maxLength={40}
                 onChange={(e) => setPlaysNameDraft(e.target.value)}
@@ -3066,7 +3066,7 @@ export default function TacticalPlaySurface() {
             {scenarios.length > 0 ? (
               <>
                 <div style={{ height: "1px", background: "rgba(180, 210, 255, 0.08)", margin: "2px 0" }} />
-                <span style={{ ...MP_TITLE_STYLE, paddingLeft: "2px" }}>Load a play</span>
+                <span style={{ ...MP_TITLE_STYLE, paddingLeft: "2px" }}>Load a scenario</span>
                 {scenarios.map((s) => (
                   <div key={s.id} style={{ display: "grid", gap: "3px" }}>
                     <div style={PLAYS_ROW_STYLE}>
@@ -3142,7 +3142,7 @@ export default function TacticalPlaySurface() {
               </>
             ) : (
               <span style={{ fontSize: "10px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif", padding: "4px 2px" }}>
-                No saved plays yet. Build a play and tap Save.
+                No saved scenarios yet. Build a scenario and tap Save.
               </span>
             )}
 
