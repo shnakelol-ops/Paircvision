@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   type SlateCoachingCard,
   type CoachingCardType,
@@ -36,6 +37,11 @@ type DragState = {
 const DRAG_THRESHOLD_PX = 5;
 const COMPACT_CARD_H = 32;
 
+function getIsMobileOrTablet(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+}
+
 export default function SlateCoachingCardOverlay({
   cards,
   active,
@@ -43,8 +49,39 @@ export default function SlateCoachingCardOverlay({
 }: SlateCoachingCardOverlayProps) {
   const [editing, setEditing] = useState<EditState | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(getIsMobileOrTablet);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
+
+  // Respond to external keyboard / device changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(hover: none) and (pointer: coarse)");
+    const handler = (e: MediaQueryListEvent) => setIsMobileOrTablet(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // Track software keyboard height via visualViewport so the sheet stays above it
+  useEffect(() => {
+    if (!editing || !isMobileOrTablet) {
+      setKeyboardOffset(0);
+      return;
+    }
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      setKeyboardOffset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [editing, isMobileOrTablet]);
 
   const commitEdit = (state: EditState) => {
     const trimTitle = state.title.trim();
@@ -137,13 +174,7 @@ export default function SlateCoachingCardOverlay({
     if (!wasDrag) {
       const card = cards.find((c) => c.id === cardId);
       if (card) {
-        setEditing({
-          cardId: card.id,
-          title: card.title,
-          body: card.body,
-          cardType: card.cardType,
-          isNew: false,
-        });
+        setEditing({ cardId: card.id, title: card.title, body: card.body, cardType: card.cardType, isNew: false });
       }
     }
   };
@@ -152,6 +183,22 @@ export default function SlateCoachingCardOverlay({
     dragRef.current = null;
     setDraggingId(null);
   };
+
+  // Bottom sheet rendered into document.body so position:fixed is always viewport-relative,
+  // regardless of any transform on ancestor board elements.
+  const bottomSheet =
+    editing !== null && isMobileOrTablet && typeof document !== "undefined"
+      ? createPortal(<MobileBottomSheet
+          editState={editing}
+          keyboardOffset={keyboardOffset}
+          onTypeChange={(type) => setEditing((prev) => prev ? { ...prev, cardType: type } : prev)}
+          onTitleChange={(title) => setEditing((prev) => prev ? { ...prev, title } : prev)}
+          onBodyChange={(body) => setEditing((prev) => prev ? { ...prev, body } : prev)}
+          onCommit={() => commitEdit(editing)}
+          onDiscard={() => discardEdit(editing)}
+          onDelete={() => deleteCard(editing.cardId)}
+        />, document.body)
+      : null;
 
   return (
     <div
@@ -186,8 +233,9 @@ export default function SlateCoachingCardOverlay({
         const isEditing = editing?.cardId === card.id;
         const isDragging = draggingId === card.id;
         const editState = isEditing ? editing! : null;
+        const useBottomSheet = isEditing && isMobileOrTablet;
 
-        // Editor opens above or below depending on card's vertical position
+        // Desktop editor: above or below the card depending on vertical position
         const openUpward = card.y > 58;
 
         return (
@@ -204,7 +252,10 @@ export default function SlateCoachingCardOverlay({
               touchAction: "none",
             }}
           >
-            {/* ── Compact card ── always rendered for drag handle */}
+            {/* ── Compact card ──
+                Mobile while editing: stays visible with a type-coloured glow ring.
+                Pointer events off so a tap falls through to the capture layer (commits edit).
+                Desktop while editing: hidden — the floating editor panel takes its place. */}
             <div
               style={{
                 display: "flex",
@@ -212,22 +263,37 @@ export default function SlateCoachingCardOverlay({
                 gap: "5px",
                 maxWidth: "180px",
                 height: `${COMPACT_CARD_H}px`,
-                background: isEditing
+                background: isEditing && !useBottomSheet
                   ? "rgba(8, 18, 24, 0.0)"
                   : "rgba(8, 18, 24, 0.78)",
-                backdropFilter: isEditing ? "none" : "blur(10px)",
-                WebkitBackdropFilter: isEditing ? "none" : "blur(10px)",
-                border: isEditing
-                  ? "none"
-                  : "1px solid rgba(215,228,224,0.15)",
-                borderLeft: isEditing ? "none" : `2.5px solid ${cfg.color}`,
+                backdropFilter: isEditing && !useBottomSheet ? "none" : "blur(10px)",
+                WebkitBackdropFilter: isEditing && !useBottomSheet ? "none" : "blur(10px)",
+                border: useBottomSheet
+                  ? `1px solid ${cfg.color}55`
+                  : isEditing
+                    ? "none"
+                    : "1px solid rgba(215,228,224,0.15)",
+                borderLeft: useBottomSheet
+                  ? `2.5px solid ${cfg.color}`
+                  : isEditing
+                    ? "none"
+                    : `2.5px solid ${cfg.color}`,
                 borderRadius: "7px",
-                padding: isEditing ? 0 : "4px 8px 4px 6px",
-                boxShadow: isEditing ? "none" : "0 2px 10px rgba(0,0,0,0.45)",
+                padding: isEditing && !useBottomSheet ? 0 : "4px 8px 4px 6px",
+                boxShadow: useBottomSheet
+                  ? `0 0 0 2px ${cfg.color}99, 0 0 14px ${cfg.color}44, 0 2px 10px rgba(0,0,0,0.45)`
+                  : isEditing
+                    ? "none"
+                    : "0 2px 10px rgba(0,0,0,0.45)",
                 cursor: active ? (isDragging ? "grabbing" : "grab") : "default",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
-                visibility: isEditing ? "hidden" : "visible",
+                // Desktop: hide compact card when floating editor is open (editor is its visual replacement).
+                // Mobile: always visible — bottom sheet is separate from pitch.
+                visibility: isEditing && !useBottomSheet ? "hidden" : "visible",
+                // Mobile while editing: pass pointer events through to the capture layer so a
+                // tap on the card commits the edit (same behaviour as tapping the empty pitch).
+                pointerEvents: useBottomSheet ? "none" : undefined,
               }}
               onPointerDown={(e) => handleCardPointerDown(e, card.id)}
               onPointerMove={handleCardPointerMove}
@@ -253,8 +319,8 @@ export default function SlateCoachingCardOverlay({
               </span>
             </div>
 
-            {/* ── Editor panel ── absolutely positioned above/below the compact card */}
-            {isEditing && editState && (
+            {/* ── Desktop floating editor ── only on non-touch devices */}
+            {isEditing && !isMobileOrTablet && editState && (
               <div
                 style={{
                   position: "absolute",
@@ -291,12 +357,8 @@ export default function SlateCoachingCardOverlay({
                           flex: 1,
                           height: "30px",
                           borderRadius: "6px",
-                          border: isActive
-                            ? `1.5px solid ${c.color}`
-                            : "1px solid rgba(255,255,255,0.12)",
-                          background: isActive
-                            ? `${c.color}22`
-                            : "rgba(255,255,255,0.04)",
+                          border: isActive ? `1.5px solid ${c.color}` : "1px solid rgba(255,255,255,0.12)",
+                          background: isActive ? `${c.color}22` : "rgba(255,255,255,0.04)",
                           fontSize: "13px",
                           lineHeight: 1,
                           cursor: "pointer",
@@ -321,9 +383,7 @@ export default function SlateCoachingCardOverlay({
                   placeholder="Title…"
                   maxLength={60}
                   value={editState.title}
-                  onChange={(e) =>
-                    setEditing((prev) => prev ? { ...prev, title: e.target.value } : prev)
-                  }
+                  onChange={(e) => setEditing((prev) => prev ? { ...prev, title: e.target.value } : prev)}
                   onKeyDown={(e) => {
                     if (e.key === "Escape") discardEdit(editing!);
                     else if (e.key === "Enter") commitEdit(editing!);
@@ -352,12 +412,8 @@ export default function SlateCoachingCardOverlay({
                   maxLength={300}
                   rows={3}
                   value={editState.body}
-                  onChange={(e) =>
-                    setEditing((prev) => prev ? { ...prev, body: e.target.value } : prev)
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape") discardEdit(editing!);
-                  }}
+                  onChange={(e) => setEditing((prev) => prev ? { ...prev, body: e.target.value } : prev)}
+                  onKeyDown={(e) => { if (e.key === "Escape") discardEdit(editing!); }}
                   style={{
                     display: "block",
                     width: "100%",
@@ -394,10 +450,7 @@ export default function SlateCoachingCardOverlay({
                       fontFamily: "Inter, system-ui, sans-serif",
                       flexShrink: 0,
                     }}
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      deleteCard(editState.cardId);
-                    }}
+                    onPointerDown={(e) => { e.preventDefault(); deleteCard(editState.cardId); }}
                   >
                     Delete
                   </button>
@@ -417,10 +470,7 @@ export default function SlateCoachingCardOverlay({
                       fontFamily: "Inter, system-ui, sans-serif",
                       flexShrink: 0,
                     }}
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      discardEdit(editing!);
-                    }}
+                    onPointerDown={(e) => { e.preventDefault(); discardEdit(editing!); }}
                   >
                     Cancel
                   </button>
@@ -440,10 +490,7 @@ export default function SlateCoachingCardOverlay({
                       fontFamily: "Inter, system-ui, sans-serif",
                       flexShrink: 0,
                     }}
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      commitEdit(editing!);
-                    }}
+                    onPointerDown={(e) => { e.preventDefault(); commitEdit(editing!); }}
                   >
                     Save
                   </button>
@@ -453,6 +500,228 @@ export default function SlateCoachingCardOverlay({
           </div>
         );
       })}
+
+      {/* Mobile/tablet bottom sheet — portalled to document.body */}
+      {bottomSheet}
+    </div>
+  );
+}
+
+// ── Mobile / tablet bottom sheet ──────────────────────────────────────────────
+
+interface MobileBottomSheetProps {
+  editState: EditState;
+  keyboardOffset: number;
+  onTypeChange: (type: CoachingCardType) => void;
+  onTitleChange: (title: string) => void;
+  onBodyChange: (body: string) => void;
+  onCommit: () => void;
+  onDiscard: () => void;
+  onDelete: () => void;
+}
+
+function MobileBottomSheet({
+  editState,
+  keyboardOffset,
+  onTypeChange,
+  onTitleChange,
+  onBodyChange,
+  onCommit,
+  onDiscard,
+  onDelete,
+}: MobileBottomSheetProps) {
+  const activeCfg = CARD_TYPE_CONFIG[editState.cardType];
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: `${keyboardOffset}px`,
+        zIndex: 9999,
+        background: "rgba(8, 18, 24, 0.97)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderRadius: "16px 16px 0 0",
+        boxShadow: "0 -4px 40px rgba(0,0,0,0.65), 0 -1px 0 rgba(255,255,255,0.07)",
+        // Padding under content accounts for the iOS home indicator
+        paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {/* Drag handle */}
+      <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 6px" }}>
+        <div
+          style={{
+            width: "36px",
+            height: "4px",
+            borderRadius: "2px",
+            background: "rgba(255,255,255,0.18)",
+          }}
+        />
+      </div>
+
+      <div style={{ padding: "4px 16px 4px" }}>
+        {/* Type selector */}
+        <div style={{ display: "flex", gap: "6px", marginBottom: "12px" }}>
+          {COACHING_CARD_TYPES.map((type) => {
+            const c = CARD_TYPE_CONFIG[type];
+            const isActive = editState.cardType === type;
+            return (
+              <button
+                key={type}
+                type="button"
+                aria-label={c.label}
+                title={c.label}
+                style={{
+                  flex: 1,
+                  height: "40px",
+                  borderRadius: "8px",
+                  border: isActive ? `1.5px solid ${c.color}` : "1px solid rgba(255,255,255,0.11)",
+                  background: isActive ? `${c.color}22` : "rgba(255,255,255,0.04)",
+                  fontSize: "17px",
+                  lineHeight: 1,
+                  cursor: "pointer",
+                  padding: 0,
+                  touchAction: "manipulation",
+                }}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  onTypeChange(type);
+                }}
+              >
+                {c.icon}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Title */}
+        <input
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus={editState.isNew}
+          type="text"
+          placeholder="Title…"
+          maxLength={60}
+          value={editState.title}
+          onChange={(e) => onTitleChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") onDiscard();
+            else if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+          }}
+          style={{
+            display: "block",
+            width: "100%",
+            boxSizing: "border-box",
+            background: "rgba(255,255,255,0.07)",
+            border: "1px solid rgba(215,228,224,0.2)",
+            borderRadius: "8px",
+            color: "#e8f2fd",
+            fontSize: "16px",
+            fontWeight: 600,
+            fontFamily: "Inter, system-ui, sans-serif",
+            padding: "10px 12px",
+            outline: "none",
+            marginBottom: "8px",
+            caretColor: "#7dd3fc",
+            // Prevents iOS Safari from zooming on focus (font-size >= 16px avoids it)
+          }}
+        />
+
+        {/* Body */}
+        <textarea
+          placeholder="Notes…"
+          maxLength={300}
+          rows={3}
+          value={editState.body}
+          onChange={(e) => onBodyChange(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Escape") onDiscard(); }}
+          style={{
+            display: "block",
+            width: "100%",
+            boxSizing: "border-box",
+            background: "rgba(255,255,255,0.07)",
+            border: "1px solid rgba(215,228,224,0.2)",
+            borderRadius: "8px",
+            color: "#c8dae8",
+            fontSize: "15px",
+            fontFamily: "Inter, system-ui, sans-serif",
+            padding: "10px 12px",
+            outline: "none",
+            resize: "none",
+            lineHeight: 1.5,
+            marginBottom: "12px",
+            caretColor: "#7dd3fc",
+          }}
+        />
+
+        {/* Footer actions */}
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <button
+            type="button"
+            aria-label="Delete card"
+            style={{
+              height: "44px",
+              padding: "0 16px",
+              borderRadius: "10px",
+              border: "1px solid rgba(220,38,38,0.4)",
+              background: "rgba(90,10,10,0.65)",
+              color: "#fca5a5",
+              fontSize: "14px",
+              cursor: "pointer",
+              fontFamily: "Inter, system-ui, sans-serif",
+              flexShrink: 0,
+              touchAction: "manipulation",
+            }}
+            onPointerDown={(e) => { e.preventDefault(); onDelete(); }}
+          >
+            Delete
+          </button>
+          <div style={{ flex: 1 }} />
+          <button
+            type="button"
+            aria-label="Cancel"
+            style={{
+              height: "44px",
+              padding: "0 16px",
+              borderRadius: "10px",
+              border: "1px solid rgba(200,220,230,0.18)",
+              background: "rgba(255,255,255,0.07)",
+              color: "#94a3b8",
+              fontSize: "14px",
+              cursor: "pointer",
+              fontFamily: "Inter, system-ui, sans-serif",
+              flexShrink: 0,
+              touchAction: "manipulation",
+            }}
+            onPointerDown={(e) => { e.preventDefault(); onDiscard(); }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            aria-label="Save card"
+            style={{
+              height: "44px",
+              padding: "0 20px",
+              borderRadius: "10px",
+              border: `1px solid ${activeCfg.color}66`,
+              background: `${activeCfg.color}22`,
+              color: activeCfg.color,
+              fontSize: "14px",
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "Inter, system-ui, sans-serif",
+              flexShrink: 0,
+              touchAction: "manipulation",
+            }}
+            onPointerDown={(e) => { e.preventDefault(); onCommit(); }}
+          >
+            Save
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
