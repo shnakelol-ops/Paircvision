@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import OrientationGate, { usePortraitOrientation } from "../../components/OrientationGate";
 import VisionStadiumBackground from "../../components/VisionStadiumBackground";
 import { useCanvasRecorder } from "../shared/useCanvasRecorder";
+import { buildDefaultTokens } from "../../movement-board/tokens/default-tokens";
 import { createMovementCanvasShell } from "../../movement-board/shell/createMovementCanvasShell";
 import type {
   BallType,
@@ -16,6 +17,8 @@ import type {
   PremiumPlayerTokenColor,
   TacticalPassEvent,
   TacticalShotEvent,
+  TacticalTrainingItem,
+  TacticalTrainingItemType,
   TokenRendererName,
   TokenSize,
   ZoneColor,
@@ -56,6 +59,24 @@ const SETUP_SITUATIONS: Array<{ id: TacticalTemplateSituation; label: string }> 
   { id: "press", label: "Press" },
   { id: "demo", label: "Demo" },
 ];
+
+const TRAINING_ITEM_CHOICES: ReadonlyArray<{ type: TacticalTrainingItemType; label: string }> = [
+  { type: "cone", label: "Cone" },
+  { type: "flatMarker", label: "Flat Marker" },
+  { type: "pole", label: "Pole" },
+  { type: "mannequin", label: "Mannequin" },
+  { type: "miniGoal", label: "Mini Goal" },
+  { type: "hoop", label: "Hoop" },
+];
+
+const TRAINING_ITEM_LABEL: Record<TacticalTrainingItemType, string> = {
+  cone: "Cone",
+  flatMarker: "Flat Marker",
+  pole: "Pole",
+  mannequin: "Mannequin",
+  miniGoal: "Mini Goal",
+  hoop: "Hoop",
+};
 
 const SETUP_BALL_BY_SPORT: Record<SetupSport, BallType> = {
   football: "footballSmall",
@@ -766,6 +787,30 @@ const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
   "blue", "red", "green", "yellow", "orange", "purple", "black", "white",
 ];
 
+const GAELIC_FORMATION_BASE: ReadonlyArray<{ number: number; x: number; y: number }> = [
+  { number: 1, x: 8, y: 50 },
+  { number: 2, x: 20, y: 22 },
+  { number: 3, x: 20, y: 50 },
+  { number: 4, x: 20, y: 78 },
+  { number: 5, x: 34, y: 18 },
+  { number: 6, x: 34, y: 50 },
+  { number: 7, x: 34, y: 82 },
+  { number: 8, x: 48, y: 38 },
+  { number: 9, x: 48, y: 62 },
+  { number: 10, x: 62, y: 18 },
+  { number: 11, x: 62, y: 50 },
+  { number: 12, x: 62, y: 82 },
+  { number: 13, x: 78, y: 25 },
+  { number: 14, x: 78, y: 50 },
+  { number: 15, x: 78, y: 75 },
+];
+
+function getFormationPos(team: "home" | "away", number: number): { x: number; y: number } {
+  const base = GAELIC_FORMATION_BASE.find((p) => p.number === number);
+  if (!base) return { x: team === "home" ? 25 : 75, y: 50 };
+  return team === "away" ? { x: 100 - base.x, y: base.y } : { x: base.x, y: base.y };
+}
+
 const TP_SPEED_OPTIONS: ReadonlyArray<{ multiplier: number; label: string }> = [
   { multiplier: 0.15, label: "0.15×" },
   { multiplier: 0.25, label: "0.25×" },
@@ -867,7 +912,8 @@ export default function TacticalPlaySurface() {
   const [tokenSize, setTokenSizeState] = useState<TokenSize>("medium");
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("pixi");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
-  const [secondaryColor, setSecondaryColorState] = useState<PremiumPlayerTokenColor>("red");
+  const [awayColor, setAwayColorState] = useState<PremiumPlayerTokenColor>("red");
+  const [awayTokenIds, setAwayTokenIds] = useState<Set<string>>(() => new Set());
   const [routes, setRoutes] = useState<MovementBoardRoute[]>([]);
   const [tokenNumberById, setTokenNumberById] = useState<Record<string, number>>({});
   const [sequenceOpen, setSequenceOpen] = useState(false);
@@ -893,6 +939,9 @@ export default function TacticalPlaySurface() {
   const [unitEditingId, setUnitEditingId] = useState<string | null>(null);
   const [unitDrawingId, setUnitDrawingId] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [itemsOpen, setItemsOpen] = useState(false);
+  const [trainingItems, setTrainingItems] = useState<TacticalTrainingItem[]>([]);
+  const [selectedTrainingItemId, setSelectedTrainingItemId] = useState<string | null>(null);
   const [zonesOpen, setZonesOpen] = useState(false);
   const [zones, setZones] = useState<ZoneRecord[]>([]);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
@@ -994,6 +1043,12 @@ export default function TacticalPlaySurface() {
         onZoneSelectionChange: (id) => {
           setSelectedZoneId(id);
         },
+        onTrainingItemsChange: (items) => {
+          setTrainingItems([...items]);
+        },
+        onTrainingItemSelectionChange: (id) => {
+          setSelectedTrainingItemId(id);
+        },
       }).then((shell) => {
         if (disposed) {
           shell.destroy();
@@ -1024,6 +1079,7 @@ export default function TacticalPlaySurface() {
         setScenarios(listScenarios());
         setPassEvents(shell.getPassEvents());
         setZones(shell.getZones());
+        setTrainingItems(shell.getTrainingItems());
         destroyShell = shell.destroy;
       });
     };
@@ -1082,6 +1138,7 @@ export default function TacticalPlaySurface() {
       setPlaysOpen(false);
       setUnitsOpen(false);
       setAdvancedOpen(false);
+      setItemsOpen(false);
       setZonesOpen(false);
       setZoneLibraryOpen("none");
     }
@@ -1099,6 +1156,7 @@ export default function TacticalPlaySurface() {
 
   const selectedRoute = routes.find((r) => r.playerId === selectedToken?.id) ?? null;
   const selectedRouteConcept = selectedRoute?.concept ?? null;
+  const selectedTrainingItem = trainingItems.find((item) => item.id === selectedTrainingItemId) ?? null;
   const selectedZone = zones.find((z) => z.id === selectedZoneId) ?? null;
 
   // Sync label draft on selection change only (not on every zone data update)
@@ -1129,10 +1187,11 @@ export default function TacticalPlaySurface() {
   const movementsRouteDelay = movementsRoute?.delayMs ?? null;
   const movementsRouteTrigger = movementsRoute?.triggeredBy ?? null;
   const movementsRoutedPlayers = routes
+    .filter((r) => !awayTokenIds.has(r.playerId))
     .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
     .sort((a, b) => a.number - b.number);
   const movementsOtherPlayers = routes
-    .filter((r) => r.playerId !== movementsSelectedPlayerId)
+    .filter((r) => r.playerId !== movementsSelectedPlayerId && !awayTokenIds.has(r.playerId))
     .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
     .sort((a, b) => a.number - b.number);
 
@@ -1207,7 +1266,7 @@ export default function TacticalPlaySurface() {
     shell.setSelectedToken(nextToken.id);
   };
 
-  const resetBoard = () => {
+  const resetPlaybackState = () => {
     shellRef.current?.reset();
   };
 
@@ -1303,15 +1362,15 @@ export default function TacticalPlaySurface() {
   const onSetPrimaryColor = (color: PremiumPlayerTokenColor) => {
     const shell = shellRef.current;
     if (!shell) return;
-    shell.setTokens(shell.getTokens().map((t) => ({ ...t, color })));
+    shell.setTokens(shell.getTokens().map((t) => (t.team === "away" ? t : { ...t, color })));
     setPrimaryColorState(color);
   };
 
-  const onSetSecondaryColor = (color: PremiumPlayerTokenColor) => {
+  const onSetAwayColor = (color: PremiumPlayerTokenColor) => {
     const shell = shellRef.current;
     if (!shell) return;
-    shell.setTokens(shell.getTokens().map((t) => ({ ...t, secondaryColor: color })));
-    setSecondaryColorState(color);
+    shell.setTokens(shell.getTokens().map((t) => (t.team === "away" ? { ...t, color } : t)));
+    setAwayColorState(color);
   };
 
   const onSelectBallType = (ballType: BallType) => {
@@ -1383,6 +1442,50 @@ export default function TacticalPlaySurface() {
 
   const onRemovePass = (id: string) => {
     shellRef.current?.removePassEvent(id);
+  };
+
+  const onAddTrainingItem = (type: TacticalTrainingItemType) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const id = `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const index = trainingItems.length;
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    const newItem: TacticalTrainingItem = {
+      id,
+      type,
+      x: Math.min(80, 32 + column * 12),
+      y: Math.min(82, 28 + row * 9),
+    };
+    const next = [...trainingItems, newItem];
+    shell.setTrainingItems(next);
+    setTrainingItems(next);
+    shell.setSelectedTrainingItemId(id);
+    setSelectedTrainingItemId(id);
+  };
+
+  const onDuplicateTrainingItem = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedTrainingItemId) return;
+    const source = trainingItems.find((item) => item.id === selectedTrainingItemId);
+    if (!source) return;
+    const id = `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const copy: TacticalTrainingItem = { ...source, id, x: Math.min(95, source.x + 5), y: Math.min(95, source.y + 5) };
+    const next = [...trainingItems, copy];
+    shell.setTrainingItems(next);
+    setTrainingItems(next);
+    shell.setSelectedTrainingItemId(id);
+    setSelectedTrainingItemId(id);
+  };
+
+  const onDeleteTrainingItem = () => {
+    const shell = shellRef.current;
+    if (!shell || !selectedTrainingItemId) return;
+    const next = trainingItems.filter((item) => item.id !== selectedTrainingItemId);
+    shell.setTrainingItems(next);
+    setTrainingItems(next);
+    shell.setSelectedTrainingItemId(null);
+    setSelectedTrainingItemId(null);
   };
 
   const onAddZone = (color: ZoneColor) => {
@@ -1495,6 +1598,15 @@ export default function TacticalPlaySurface() {
     const loadedZones = scenario.zones ?? [];
     shell.setZones(loadedZones);
     setZones(loadedZones);
+    const loadedItems = scenario.items ?? [];
+    shell.setTrainingItems(loadedItems);
+    setTrainingItems(loadedItems);
+    shell.setSelectedTrainingItemId(null);
+    setSelectedTrainingItemId(null);
+    const loadedAwayIds = new Set(scenario.tokens.filter((t) => t.team === "away").map((t) => t.id));
+    setAwayTokenIds(loadedAwayIds);
+    const firstAway = scenario.tokens.find((t) => t.team === "away");
+    if (firstAway) setAwayColorState(firstAway.color);
     setScenarioRenameId(null);
   };
 
@@ -1526,6 +1638,7 @@ export default function TacticalPlaySurface() {
       multiplierToPlaybackSpeed(playbackSpeedMultiplier),
       units,
       shell.getZones(),
+      shell.getTrainingItems(),
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
@@ -1581,17 +1694,105 @@ export default function TacticalPlaySurface() {
     setUnitDrawingId(null);
   };
 
+  const removePlayersById = (removedIds: Set<string>) => {
+    const shell = shellRef.current;
+    if (!shell || removedIds.size === 0) return;
+    shell.setTokens(shell.getTokens().filter((t) => !removedIds.has(t.id)));
+    shell.setRoutes(shell.getRoutes().filter((r) => !removedIds.has(r.playerId)));
+    const nextPassEvents = shell.getPassEvents().filter(
+      (p) => !removedIds.has(p.fromPlayerId) && !removedIds.has(p.toPlayerId),
+    );
+    shell.setPassEvents(nextPassEvents);
+    setPassEvents([...nextPassEvents]);
+    for (const shot of shell.getShotEvents()) {
+      if (removedIds.has(shot.shooterId)) shell.removeShotEvent(shot.id);
+    }
+    setShotEvents((prev) => prev.filter((shot) => !removedIds.has(shot.shooterId)));
+    setUnits((prev) => prev.map((u) => ({ ...u, memberIds: u.memberIds.filter((id) => !removedIds.has(id)) })));
+    setAwayTokenIds((prev) => {
+      const next = new Set(prev);
+      for (const id of removedIds) next.delete(id);
+      return next;
+    });
+    if (ballCarrierId && removedIds.has(ballCarrierId)) shell.removeBall();
+    if (selectedToken && removedIds.has(selectedToken.id)) shell.setSelectedToken(null);
+    if (passFromId && removedIds.has(passFromId)) setPassFromId(null);
+    if (passToId && removedIds.has(passToId)) setPassToId(null);
+    if (passTriggerId && removedIds.has(passTriggerId)) setPassTriggerId(null);
+    if (movementsSelectedPlayerId && removedIds.has(movementsSelectedPlayerId)) setMovementsSelectedPlayerId(null);
+    setTokenNumberById((prev) => {
+      const next = { ...prev };
+      for (const id of removedIds) delete next[id];
+      return next;
+    });
+  };
+
+  const fillHomeTeam = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const tokens = shell.getTokens();
+    const usedNums = new Set(tokens.filter((t) => t.team !== "away").map((t) => t.number));
+    const newTokens: MovementBoardToken[] = [];
+    const newNums: Record<string, number> = {};
+    for (let n = 1; n <= 15; n += 1) {
+      if (usedNums.has(n)) continue;
+      const id = `token-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-h${n}`;
+      newTokens.push({ id, number: n, color: primaryColor, position: getFormationPos("home", n), team: "home" });
+      newNums[id] = n;
+    }
+    if (newTokens.length === 0) return;
+    shell.setTokens([...tokens, ...newTokens]);
+    setTokenNumberById((prev) => ({ ...prev, ...newNums }));
+  };
+
+  const clearHomeTeam = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const homeIds = new Set(shell.getTokens().filter((t) => t.team !== "away").map((t) => t.id));
+    removePlayersById(homeIds);
+  };
+
+  const fillAwayTeam = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const tokens = shell.getTokens();
+    const usedNums = new Set(tokens.filter((t) => t.team === "away").map((t) => t.number));
+    const newTokens: MovementBoardToken[] = [];
+    const newNums: Record<string, number> = {};
+    const newIds: string[] = [];
+    for (let n = 1; n <= 15; n += 1) {
+      if (usedNums.has(n)) continue;
+      const id = `token-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-a${n}`;
+      newTokens.push({ id, number: n, color: awayColor, position: getFormationPos("away", n), team: "away" });
+      newNums[id] = n;
+      newIds.push(id);
+    }
+    if (newTokens.length === 0) return;
+    shell.setTokens([...tokens, ...newTokens]);
+    setAwayTokenIds((prev) => new Set([...prev, ...newIds]));
+    setTokenNumberById((prev) => ({ ...prev, ...newNums }));
+  };
+
+  const clearAwayTeam = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const awayIds = new Set(shell.getTokens().filter((t) => t.team === "away").map((t) => t.id));
+    removePlayersById(awayIds);
+  };
+
   const onAddPlayer = () => {
     const shell = shellRef.current;
     if (!shell) return;
     const tokens = shell.getTokens();
-    const maxNumber = tokens.reduce((m, t) => Math.max(m, t.number), 0);
-    const nextNumber = maxNumber + 1;
+    const usedNums = new Set(tokens.filter((t) => t.team !== "away").map((t) => t.number));
+    let nextNumber = 1;
+    while (usedNums.has(nextNumber) && nextNumber <= 30) nextNumber += 1;
     const newToken: MovementBoardToken = {
       id: `token-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       number: nextNumber,
-      color: "red",
-      position: { x: 50, y: 50 },
+      color: primaryColor,
+      position: { x: 25, y: 50 },
+      team: "home",
     };
     shell.setTokens([...tokens, newToken]);
     setTokenNumberById((prev) => ({ ...prev, [newToken.id]: nextNumber }));
@@ -1616,12 +1817,81 @@ export default function TacticalPlaySurface() {
     setShotEvents((prev) => prev.filter((s) => s.shooterId !== removedId));
     // Clean unit memberships
     setUnits((prev) => prev.map((u) => ({ ...u, memberIds: u.memberIds.filter((mid) => mid !== removedId) })));
+    setAwayTokenIds((prev) => { const next = new Set(prev); next.delete(removedId); return next; });
     // Clean pass/trigger UI state
     if (passFromId === removedId) setPassFromId(null);
     if (passToId === removedId) setPassToId(null);
     if (passTriggerId === removedId) setPassTriggerId(null);
     if (movementsSelectedPlayerId === removedId) setMovementsSelectedPlayerId(null);
     setTokenNumberById((prev) => { const next = { ...prev }; delete next[removedId]; return next; });
+  };
+
+  const onClearAllTrainingItems = () => {
+    const shell = shellRef.current;
+    if (!shell || trainingItems.length === 0) return;
+    shell.setTrainingItems([]);
+    setTrainingItems([]);
+    shell.setSelectedTrainingItemId(null);
+    setSelectedTrainingItemId(null);
+  };
+
+  const onResetBoard = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const confirmed = window.confirm("Reset the Tactical Play board? This clears the current board only.\nSaved scenarios are not deleted.");
+    if (!confirmed) return;
+
+    shell.reset();
+    const defaultTokens = buildDefaultTokens();
+    shell.setTokens(defaultTokens);
+    shell.setRoutes([]);
+    shell.setPassEvents([]);
+    for (const shot of shell.getShotEvents()) shell.removeShotEvent(shot.id);
+    shell.removeBall();
+    shell.setZones([]);
+    shell.setTrainingItems([]);
+    shell.setSelectedToken(null);
+    shell.setSelectedZoneId(null);
+    shell.setSelectedTrainingItemId(null);
+    shell.setMode("setup");
+    shell.setTokenRenderer("pixi");
+    shell.setTokenSize("medium");
+    shell.setSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
+    shell.setStartPositions();
+
+    setMenuMode("move");
+    setPlaybackSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
+    setTokenRendererState("pixi");
+    setTokenSizeState("medium");
+    setPrimaryColorState("blue");
+    setAwayColorState("red");
+    setSelectedToken(null);
+    setRouteCount(0);
+    setRoutes([]);
+    setRouteEditState(shell.getRouteEditState());
+    setBallCarrierId(null);
+    setBallOnPitch(false);
+    setPassEvents([]);
+    setShotEvents([]);
+    setUnits([]);
+    setUnitEditingId(null);
+    setUnitDrawingId(null);
+    setZones([]);
+    setSelectedZoneId(null);
+    setZoneLabelDraft("");
+    setZoneLibraryOpen("none");
+    setTrainingItems([]);
+    setSelectedTrainingItemId(null);
+    setAwayTokenIds(new Set());
+    setMovementsSelectedPlayerId(null);
+    setPassFromId(null);
+    setPassToId(null);
+    setPassTriggerId(null);
+    setPassTimingMs(0);
+    setShootDelayMs(0);
+    setIsPlaying(false);
+    setIsPaused(false);
+    setTokenNumberById(Object.fromEntries(defaultTokens.map((token) => [token.id, token.number])));
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
@@ -1631,6 +1901,9 @@ export default function TacticalPlaySurface() {
   const playRoutesDisabled = isPortrait || isPlaying || isPaused;
   const pauseResumeDisabled = isPortrait;
   const playbackFloatingVisible = isPlaying || isPaused;
+  const tokenIds = Object.keys(tokenNumberById);
+  const homePlayerCount = tokenIds.filter((id) => !awayTokenIds.has(id)).length;
+  const awayPlayerCount = tokenIds.filter((id) => awayTokenIds.has(id)).length;
 
   const speedIndex = Math.max(0, TP_SPEED_OPTIONS.findIndex((o) => o.multiplier === playbackSpeedMultiplier));
   const speedLabel = TP_SPEED_OPTIONS[speedIndex]?.label ?? "1×";
@@ -1850,7 +2123,7 @@ export default function TacticalPlaySurface() {
                 >
                   Set Start
                 </button>
-                <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetBoard}>
+                <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetPlaybackState}>
                   Reset
                 </button>
                 <button type="button" style={TOOL_BUTTON_STYLE} onClick={onAddPlayer}>
@@ -2040,9 +2313,19 @@ export default function TacticalPlaySurface() {
                 <button
                   type="button"
                   style={zonesOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => { setZonesOpen((prev) => !prev); setIsControlsOpen(false); }}
+                  onClick={() => { setZonesOpen((prev) => !prev); setItemsOpen(false); setIsControlsOpen(false); }}
                 >
                   Zones{zones.length > 0 ? ` (${zones.length})` : ""}
+                </button>
+                <button
+                  type="button"
+                  style={itemsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => { setItemsOpen((prev) => !prev); setZonesOpen(false); setIsControlsOpen(false); }}
+                >
+                  Items{trainingItems.length > 0 ? ` (${trainingItems.length})` : ""}
+                </button>
+                <button type="button" style={TOOL_BUTTON_STYLE} onClick={onResetBoard}>
+                  Reset Board
                 </button>
               </div>
             ) : null}
@@ -2277,7 +2560,7 @@ export default function TacticalPlaySurface() {
                 {unitEditingId === unit.id ? (
                   <div style={MP_ROW}>
                     <span style={MP_ROW_LABEL}>Members</span>
-                    {Object.entries(tokenNumberById).sort((a, b) => a[1] - b[1]).map(([id, num]) => {
+                    {Object.entries(tokenNumberById).filter(([id]) => !awayTokenIds.has(id)).sort((a, b) => a[1] - b[1]).map(([id, num]) => {
                       const isMember = unit.memberIds.includes(id);
                       return (
                         <button
@@ -2306,6 +2589,63 @@ export default function TacticalPlaySurface() {
                 Done
               </button>
             </div>
+          </div>
+        ) : null}
+
+        {itemsOpen && !modeIsPlaybackLocked ? (
+          <div style={MOVEMENT_PANEL_STYLE}>
+            <div style={MP_HEADER_STYLE}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={MP_TITLE_STYLE}>Items</span>
+                {trainingItems.length > 0 ? (
+                  <span style={{ ...MP_TITLE_STYLE, color: "rgba(180, 210, 255, 0.55)" }}>{trainingItems.length}</span>
+                ) : null}
+              </div>
+              <button type="button" style={MP_CLOSE_STYLE} onClick={() => setItemsOpen(false)}>×</button>
+            </div>
+
+            <div style={MP_ROW}>
+              <span style={MP_ROW_LABEL}>Add</span>
+              {TRAINING_ITEM_CHOICES.map((item) => (
+                <button
+                  key={item.type}
+                  type="button"
+                  style={MP_CHIP}
+                  onClick={() => onAddTrainingItem(item.type)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            {selectedTrainingItem ? (
+              <div style={MP_ROW}>
+                <span style={MP_ROW_LABEL}>Selected</span>
+                <span style={MP_CHIP_SECONDARY}>{TRAINING_ITEM_LABEL[selectedTrainingItem.type]}</span>
+                <button type="button" style={MP_CHIP} onClick={onDuplicateTrainingItem}>
+                  Copy
+                </button>
+                <button type="button" style={{ ...MP_CHIP, color: "rgba(255, 140, 140, 0.80)" }} onClick={onDeleteTrainingItem}>
+                  Delete
+                </button>
+              </div>
+            ) : trainingItems.length === 0 ? (
+              <div style={MP_ROW}>
+                <span style={MP_ROW_LABEL}>Add a coaching item, then drag it into position.</span>
+              </div>
+            ) : null}
+
+            {trainingItems.length > 0 ? (
+              <div style={MP_ROW}>
+                <button type="button" style={{ ...MP_CHIP, color: "rgba(255, 140, 140, 0.80)" }} onClick={onClearAllTrainingItems}>
+                  Clear All
+                </button>
+              </div>
+            ) : null}
+
+            <button type="button" style={MP_DONE} onClick={() => setItemsOpen(false)}>
+              Done
+            </button>
           </div>
         ) : null}
 
@@ -2548,7 +2888,7 @@ export default function TacticalPlaySurface() {
 
             <div style={MP_ROW}>
               <span style={MP_ROW_LABEL}>From</span>
-              {Object.entries(tokenNumberById).sort((a, b) => a[1] - b[1]).map(([id, num]) => (
+              {Object.entries(tokenNumberById).filter(([id]) => !awayTokenIds.has(id)).sort((a, b) => a[1] - b[1]).map(([id, num]) => (
                 <button
                   key={id}
                   type="button"
@@ -2563,7 +2903,7 @@ export default function TacticalPlaySurface() {
             {passFromId ? (
               <div style={MP_ROW}>
                 <span style={MP_ROW_LABEL}>To</span>
-                {Object.entries(tokenNumberById).filter(([id]) => id !== passFromId).sort((a, b) => a[1] - b[1]).map(([id, num]) => (
+                {Object.entries(tokenNumberById).filter(([id]) => id !== passFromId && !awayTokenIds.has(id)).sort((a, b) => a[1] - b[1]).map(([id, num]) => (
                   <button
                     key={id}
                     type="button"
@@ -2603,7 +2943,7 @@ export default function TacticalPlaySurface() {
                         ×
                       </button>
                     ) : null}
-                    {routes.map((r) => {
+                    {routes.filter((r) => !awayTokenIds.has(r.playerId)).map((r) => {
                       const num = tokenNumberById[r.playerId] ?? "?";
                       return (
                         <button
@@ -2792,7 +3132,13 @@ export default function TacticalPlaySurface() {
                   ))}
                 </div>
                 <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Primary</span>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Home ({homePlayerCount})</span>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>
+                    Fill 15 Home
+                  </button>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>
+                    Clear Home
+                  </button>
                   {ALL_TOKEN_COLORS.map((c) => (
                     <button
                       key={c}
@@ -2818,7 +3164,13 @@ export default function TacticalPlaySurface() {
                   ))}
                 </div>
                 <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>2nd</span>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Away ({awayPlayerCount})</span>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillAwayTeam}>
+                    Fill 15 Away
+                  </button>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearAwayTeam}>
+                    Clear Away
+                  </button>
                   {ALL_TOKEN_COLORS.map((c) => (
                     <button
                       key={c}
@@ -2834,12 +3186,12 @@ export default function TacticalPlaySurface() {
                         cursor: "pointer",
                         padding: 0,
                         flexShrink: 0,
-                        outline: secondaryColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
-                        outlineOffset: secondaryColor === c ? "2px" : "1px",
-                        boxShadow: secondaryColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
+                        outline: awayColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
+                        outlineOffset: awayColor === c ? "2px" : "1px",
+                        boxShadow: awayColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
                         transition: "outline-width 0.1s, outline-offset 0.1s",
                       }}
-                      onClick={() => onSetSecondaryColor(c)}
+                      onClick={() => onSetAwayColor(c)}
                     />
                   ))}
                 </div>
@@ -2858,7 +3210,7 @@ export default function TacticalPlaySurface() {
             >
               {isPlaying ? "Pause" : isPaused ? "Resume" : "Play"}
             </button>
-            <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetBoard}>
+            <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetPlaybackState}>
               Reset
             </button>
           </div>
