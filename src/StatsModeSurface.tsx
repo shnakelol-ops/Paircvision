@@ -39,6 +39,9 @@ import { createReviewSession, parseReviewSession, restoreReviewSession, serializ
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
 import { exportReviewPdf, exportSnapshotPdf } from "./stats/reviewPdfExport";
+import { buildIntelligencePack } from "./stats/intelligencePack";
+import type { IntelligencePack } from "./stats/intelligencePack";
+import { IntelligencePackPreview } from "./stats/IntelligencePackPreview";
 import { generateDemoMatchEvents } from "./demo/demoMatchData";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
@@ -3388,6 +3391,9 @@ export default function StatsModeSurface() {
   const [isPdfExporting, setIsPdfExporting] = useState(false);
   /** "HT" | "FT" while a snapshot export is in progress; null when idle. */
   const [snapshotExporting, setSnapshotExporting] = useState<"HT" | "FT" | null>(null);
+  const [packGenerating, setPackGenerating] = useState(false);
+  const [pack, setPack] = useState<IntelligencePack | null>(null);
+  const [packPreviewOpen, setPackPreviewOpen] = useState(false);
   const [saveLoadBlockedReason, setSaveLoadBlockedReason] = useState<string | null>(null);
   const [lastSavedAtMillis, setLastSavedAtMillis] = useState<number | null>(null);
   const [loadedMatchLabel, setLoadedMatchLabel] = useState<string | null>(null);
@@ -4866,6 +4872,36 @@ export default function StatsModeSurface() {
         setSnapshotExporting(null);
       });
   };
+
+  const handleGenerateIntelligencePack = useCallback(
+    (stageLabel: "Half Time" | "Full Time") => {
+      if (packGenerating || loggedEvents.length === 0) return;
+      setPackGenerating(true);
+      const packEvents =
+        stageLabel === "Half Time"
+          ? loggedEvents.filter((e) => e.period === "1H")
+          : loggedEvents;
+      const packHomeScore = computeTeamScore(packEvents, "HOME");
+      const packAwayScore = computeTeamScore(packEvents, "AWAY");
+      void buildIntelligencePack({
+        stageLabel,
+        homeTeamName: teamNames.HOME.trim() || "Team A",
+        awayTeamName: teamNames.AWAY.trim() || "Team B",
+        venueLabel:   venueName.trim() || "",
+        clockLabel:   stageLabel,
+        homeScore:    packHomeScore,
+        awayScore:    packAwayScore,
+        events:       packEvents,
+      })
+        .then((result) => {
+          setPack(result);
+          setPackPreviewOpen(true);
+        })
+        .catch(() => { /* canvas unavailable */ })
+        .finally(() => setPackGenerating(false));
+    },
+    [packGenerating, loggedEvents, teamNames, venueName],
+  );
 
   const openNotesPanel = () => {
     setShowReviewStrip(false);
@@ -6506,6 +6542,14 @@ export default function StatsModeSurface() {
             <button
               type="button"
               className="utility-review-btn"
+              onClick={() => { handleGenerateIntelligencePack("Full Time"); }}
+              disabled={packGenerating}
+            >
+              {packGenerating ? "Generating…" : "Generate Intelligence Pack"}
+            </button>
+            <button
+              type="button"
+              className="utility-review-btn"
               onClick={() => {
                 void shareOrExportMatch();
               }}
@@ -7156,6 +7200,15 @@ export default function StatsModeSurface() {
           <button
             type="button"
             className="review-strip-chip"
+            onClick={() => { handleGenerateIntelligencePack(reviewHalf === "H1" ? "Half Time" : "Full Time"); }}
+            disabled={packGenerating}
+            aria-label="Generate Intelligence Pack coaching cards"
+          >
+            {packGenerating ? "Generating…" : "Intelligence Pack"}
+          </button>
+          <button
+            type="button"
+            className="review-strip-chip"
             onClick={handleExportPdf}
             disabled={isPdfExporting || snapshotExporting !== null}
             aria-label="Export Full Tactical Report PDF — 40+ pages"
@@ -7709,6 +7762,15 @@ export default function StatsModeSurface() {
           </div>
         </div>
       ) : null}
+      {packPreviewOpen && pack && (
+        <IntelligencePackPreview
+          pack={pack}
+          homeTeamName={teamNames.HOME.trim() || "Team A"}
+          awayTeamName={teamNames.AWAY.trim() || "Team B"}
+          stageLabel={pack.stageLabel}
+          onClose={() => setPackPreviewOpen(false)}
+        />
+      )}
     </>
   );
 }
