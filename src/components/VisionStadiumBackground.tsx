@@ -1,6 +1,6 @@
 import "./visionStadiumBackground.css";
 
-type VisionStadiumBackgroundVariant = "board" | "stats" | "training";
+type VisionStadiumBackgroundVariant = "board" | "play" | "stats" | "training";
 
 type VisionStadiumBackgroundProps = {
   variant?: VisionStadiumBackgroundVariant;

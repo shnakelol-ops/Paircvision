@@ -1991,7 +1991,7 @@ export default function TacticalPlaySurface() {
     <OrientationGate modeLabel="Tactical Play">
       <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}input.tp-speed-range{-webkit-appearance:none;appearance:none;background:var(--tp-speed-track);height:3px;border-radius:3px;outline:none;cursor:pointer}input.tp-speed-range::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.50)}input.tp-speed-range::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:#fff;cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,.50)}`}</style>
       <div style={rootStyle}>
-        <VisionStadiumBackground variant="board" />
+        <VisionStadiumBackground variant="play" />
         <div style={CONTENT_STYLE}>
           <div ref={hostRef} style={PITCH_STYLE} />
           <div style={PITCH_WATERMARK_STYLE}>PáircVision</div>
