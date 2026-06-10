@@ -31,9 +31,12 @@ const CLR = {
   amber:       "#f59e0b",
   red:         "#ef4444",
   cyan:        "#22d3ee",
-  bg:          "#050d09",
-  panel:       "rgba(10, 22, 14, 0.88)",
-  panelBorder: "rgba(6, 182, 212, 0.16)",
+  bg:          "#0b1020",
+  bgGradEnd:   "#101a37",
+  panel:       "rgba(11, 17, 33, 0.88)",
+  panelBorder: "rgba(255, 255, 255, 0.08)",
+  score:       "#111827",
+  scoreBorder: "#374151",
   white:       "#f9fafb",
   offwhite:    "#e5e7eb",
   muted:       "#9ca3af",
@@ -106,21 +109,19 @@ function drawWrapped(
 // ─── Background ───────────────────────────────────────────────────────────────
 
 function drawBackground(ctx: CanvasRenderingContext2D): void {
-  ctx.fillStyle = CLR.bg;
+  // Navy gradient matching Match Summary
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, CLR.bg);
+  g.addColorStop(1, CLR.bgGradEnd);
+  ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 
-  // Cyan-dominant upper glow (distinguishes this card from the green Outcomes card)
+  // Cyan upper glow (distinguishes this card from the Outcomes card)
   const g1 = ctx.createRadialGradient(W / 2, H * 0.3, 0, W / 2, H * 0.3, W * 0.88);
-  g1.addColorStop(0,    "rgba(6, 182, 212, 0.10)");
-  g1.addColorStop(0.4,  "rgba(34, 197, 94, 0.04)");
-  g1.addColorStop(1,    "rgba(0, 0, 0, 0)");
+  g1.addColorStop(0,   "rgba(6, 182, 212, 0.08)");
+  g1.addColorStop(0.5, "rgba(6, 182, 212, 0.02)");
+  g1.addColorStop(1,   "rgba(0, 0, 0, 0)");
   ctx.fillStyle = g1;
-  ctx.fillRect(0, 0, W, H);
-
-  const g2 = ctx.createRadialGradient(W / 2, H * 0.78, 0, W / 2, H * 0.78, W * 0.6);
-  g2.addColorStop(0, "rgba(34, 197, 94, 0.05)");
-  g2.addColorStop(1, "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = g2;
   ctx.fillRect(0, 0, W, H);
 
   ctx.strokeStyle = "rgba(255, 255, 255, 0.012)";
@@ -131,13 +132,13 @@ function drawBackground(ctx: CanvasRenderingContext2D): void {
 
   const gFade = ctx.createLinearGradient(0, H - 280, 0, H);
   gFade.addColorStop(0, "rgba(0,0,0,0)");
-  gFade.addColorStop(1, "rgba(0,0,0,0.55)");
+  gFade.addColorStop(1, "rgba(0,0,0,0.65)");
   ctx.fillStyle = gFade;
   ctx.fillRect(0, H - 280, W, 280);
 
-  // Cyan accent bar (distinguishes from green Outcomes card)
+  // 16px cyan accent bar
   ctx.fillStyle = CLR.cyan;
-  ctx.fillRect(0, 0, W, 10);
+  ctx.fillRect(0, 0, W, 16);
 }
 
 // ─── Header ───────────────────────────────────────────────────────────────────
@@ -227,6 +228,46 @@ function panelDivider(ctx: CanvasRenderingContext2D, x: number, y: number, w: nu
   ctx.strokeStyle = CLR.divider;
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.stroke();
+}
+
+// ─── Score panel ─────────────────────────────────────────────────────────────
+
+function drawScorePanel(
+  ctx: CanvasRenderingContext2D,
+  homeTeam: string,
+  awayTeam: string,
+  homeScore: { goals: number; points: number; total: number },
+  awayScore: { goals: number; points: number; total: number },
+  startY: number,
+): number {
+  const panelY = startY + 12;
+  const panelH = 150;
+  const panelX = 56;
+  const panelW = W - 112;
+  const formatGaelic = (g: number, p: number) => `${g}-${p.toString().padStart(2, "0")}`;
+
+  ctx.fillStyle = CLR.score;
+  ctx.fillRect(panelX, panelY, panelW, panelH);
+  ctx.strokeStyle = CLR.scoreBorder;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(panelX, panelY, panelW, panelH);
+
+  ctx.fillStyle = CLR.white;
+  ctx.font = "700 58px Inter,system-ui,sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(formatGaelic(homeScore.goals, homeScore.points), panelX + 24, panelY + 82);
+  ctx.textAlign = "right";
+  ctx.fillText(formatGaelic(awayScore.goals, awayScore.points), panelX + panelW - 24, panelY + 82);
+  ctx.textAlign = "left";
+
+  ctx.fillStyle = CLR.muted;
+  ctx.font = "600 26px Inter,system-ui,sans-serif";
+  ctx.fillText(`${homeTeam} (${homeScore.total})`, panelX + 24, panelY + 124);
+  ctx.textAlign = "right";
+  ctx.fillText(`${awayTeam} (${awayScore.total})`, panelX + panelW - 24, panelY + 124);
+  ctx.textAlign = "left";
+
+  return panelY + panelH + 10;
 }
 
 // ─── Key Intelligence panel ───────────────────────────────────────────────────
@@ -391,6 +432,8 @@ export type MatchIntelligenceCardInput = {
   homeTeamName: string;
   awayTeamName: string;
   stageLabel: "Half Time" | "Full Time";
+  homeScore: { goals: number; points: number; total: number };
+  awayScore: { goals: number; points: number; total: number };
   summary: PossessionOutcomeSummary;
   intelligence: MatchIntelligence;
 };
@@ -404,10 +447,11 @@ export async function buildMatchIntelligenceCardPng(
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  const { intelligence, homeTeamName, awayTeamName, stageLabel } = input;
+  const { intelligence, homeTeamName, awayTeamName, stageLabel, homeScore, awayScore } = input;
 
   drawBackground(ctx);
   let y = drawHeader(ctx, homeTeamName, awayTeamName, stageLabel);
+  y = drawScorePanel(ctx, homeTeamName, awayTeamName, homeScore, awayScore, y);
   y = drawIntelligencePanel(ctx, intelligence, y);
   y = drawLargeNetBadge(ctx, intelligence.overallNetOutcome, W / 2, y);
   drawPrioritiesPanel(ctx, intelligence.coachingPriorities, y);
