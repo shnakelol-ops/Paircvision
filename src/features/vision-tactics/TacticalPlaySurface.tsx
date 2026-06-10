@@ -471,20 +471,6 @@ const SEQ_CHIP_STYLE: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-const SCENARIO_INPUT_STYLE: CSSProperties = {
-  height: "31px",
-  minWidth: "120px",
-  maxWidth: "160px",
-  borderRadius: "999px",
-  border: "1px solid rgba(180, 210, 255, 0.22)",
-  background: "rgba(8, 18, 38, 0.72)",
-  color: "rgba(220, 235, 255, 0.95)",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "9px",
-  fontWeight: 500,
-  padding: "0 10px",
-  outline: "none",
-};
 
 const PLAYS_BUBBLE_STYLE: CSSProperties = {
   position: "fixed",
@@ -885,9 +871,7 @@ export default function TacticalPlaySurface() {
   const [routes, setRoutes] = useState<MovementBoardRoute[]>([]);
   const [tokenNumberById, setTokenNumberById] = useState<Record<string, number>>({});
   const [sequenceOpen, setSequenceOpen] = useState(false);
-  const [scenariosOpen, setScenariosOpen] = useState(false);
   const [scenarios, setScenarios] = useState<TacticalScenario[]>([]);
-  const [scenarioNameDraft, setScenarioNameDraft] = useState("");
   const [movementsOpen, setMovementsOpen] = useState(false);
   const [movementsSelectedPlayerId, setMovementsSelectedPlayerId] = useState<string | null>(null);
   const [passEvents, setPassEvents] = useState<TacticalPassEvent[]>([]);
@@ -1277,7 +1261,6 @@ export default function TacticalPlaySurface() {
     if (sport === activeSetupSport) return;
     setActiveSetupSport(sport);
     setPlayersOpen(false);
-    setScenariosOpen(false);
 
     const shell = shellRef.current;
     if (!shell) return;
@@ -1482,24 +1465,6 @@ export default function TacticalPlaySurface() {
     setZones([]);
   };
 
-  const onSaveScenario = () => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    saveScenario(
-      scenarioNameDraft.trim() || "Scenario",
-      shell.getTokens(),
-      shell.getRoutes(),
-      shell.getBallState(),
-      shell.getPassEvents(),
-      shell.getShotEvents(),
-      multiplierToPlaybackSpeed(playbackSpeedMultiplier),
-      units,
-      shell.getZones(),
-    );
-    setScenarios(listScenarios());
-    setScenarioNameDraft("");
-  };
-
   const onLoadScenario = (scenario: TacticalScenario) => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -1530,7 +1495,6 @@ export default function TacticalPlaySurface() {
     const loadedZones = scenario.zones ?? [];
     shell.setZones(loadedZones);
     setZones(loadedZones);
-    setScenariosOpen(false);
     setScenarioRenameId(null);
   };
 
@@ -1722,6 +1686,17 @@ export default function TacticalPlaySurface() {
   const playsPanelStyle: CSSProperties = isPortrait
     ? { ...PLAYS_PANEL_STYLE, top: "auto", bottom: "max(102px, calc(env(safe-area-inset-bottom, 0px) + 100px))", transform: "none", right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))", maxHeight: "55vh" }
     : PLAYS_PANEL_STYLE;
+  const compactLandscapeControls = !isPortrait && appViewportHeight > 0 && appViewportHeight <= 520;
+  const setupPanelStyle: CSSProperties = compactLandscapeControls
+    ? {
+        ...SETUP_PANEL_STYLE,
+        right: "max(96px, calc(env(safe-area-inset-right, 0px) + 94px))",
+        bottom: "max(10px, calc(env(safe-area-inset-bottom, 0px) + 8px))",
+        maxWidth: "min(520px, calc(100vw - 116px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
+        maxHeight: `calc(${TP_H} - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))`,
+        overflowY: "auto",
+      }
+    : SETUP_PANEL_STYLE;
 
   const rootStyle: CSSProperties = {
     ...ROOT_STYLE,
@@ -1747,7 +1722,7 @@ export default function TacticalPlaySurface() {
         <button
           type="button"
           style={CTRL_BUBBLE_STYLE}
-          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setScenariosOpen(false); setMovementsOpen(false); setPassesOpen(false); setPlaysOpen(false); }}
+          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setMovementsOpen(false); setPassesOpen(false); setPlaysOpen(false); }}
         >
           CTRL
         </button>
@@ -2738,7 +2713,7 @@ export default function TacticalPlaySurface() {
         ) : null}
 
         {setupOpen ? (
-          <div style={SETUP_PANEL_STYLE}>
+          <div style={setupPanelStyle}>
             <div style={PANEL_ROW_STYLE}>
               <span style={SETUP_SECTION_LABEL_STYLE}>Setup</span>
               {SETUP_SPORT_OPTIONS.map((sport) => (
@@ -2761,7 +2736,6 @@ export default function TacticalPlaySurface() {
                   style={activeSetupSituation === situation.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                   onClick={() => {
                     setPlayersOpen(false);
-                    setScenariosOpen(false);
                     setActiveSetupSituation((prev) => prev === situation.id ? null : situation.id);
                   }}
                 >
@@ -2773,22 +2747,10 @@ export default function TacticalPlaySurface() {
                 style={playersOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                 onClick={() => {
                   setActiveSetupSituation(null);
-                  setScenariosOpen(false);
                   setPlayersOpen((prev) => !prev);
                 }}
               >
                 Players
-              </button>
-              <button
-                type="button"
-                style={scenariosOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => {
-                  setActiveSetupSituation(null);
-                  setPlayersOpen(false);
-                  setScenariosOpen((prev) => !prev);
-                }}
-              >
-                Scenarios
               </button>
             </div>
 
@@ -2810,122 +2772,6 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
-
-            {scenariosOpen ? (
-              <>
-                <div style={PANEL_ROW_STYLE}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Save</span>
-                  <input
-                    style={SCENARIO_INPUT_STYLE}
-                    type="text"
-                    placeholder="Scenario name…"
-                    value={scenarioNameDraft}
-                    maxLength={40}
-                    onChange={(e) => setScenarioNameDraft(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") onSaveScenario(); }}
-                  />
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={onSaveScenario}>
-                    Save
-                  </button>
-                </div>
-                {scenarios.length > 0 ? (
-                  scenarios.map((s) => (
-                    <div key={s.id} style={{ display: "grid", gap: "2px" }}>
-                      <div style={PANEL_ROW_STYLE}>
-                        <span
-                          style={{
-                            ...SETUP_SECTION_LABEL_STYLE,
-                            maxWidth: "130px",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            fontSize: "9px",
-                            color: "rgba(200, 230, 255, 0.72)",
-                            letterSpacing: "0.02em",
-                            textTransform: "none",
-                          }}
-                          title={s.name}
-                        >
-                          {s.name}
-                        </span>
-                        <button type="button" style={TOOL_BUTTON_STYLE} onClick={() => onLoadScenario(s)}>
-                          Load
-                        </button>
-                        <button
-                          type="button"
-                          style={scenarioRenameId === s.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                          onClick={() => {
-                            if (scenarioRenameId === s.id) {
-                              setScenarioRenameId(null);
-                            } else {
-                              setScenarioRenameId(s.id);
-                              setScenarioRenameDraft(s.name);
-                            }
-                          }}
-                        >
-                          Ren
-                        </button>
-                        <button
-                          type="button"
-                          style={TOOL_BUTTON_STYLE}
-                          onClick={() => onDuplicateScenario(s.id)}
-                        >
-                          Copy
-                        </button>
-                        <button
-                          type="button"
-                          style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 160, 160, 0.88)" }}
-                          onClick={() => onDeleteScenario(s.id)}
-                        >
-                          Del
-                        </button>
-                      </div>
-                      {scenarioRenameId === s.id ? (
-                        <div style={{ ...PANEL_ROW_STYLE, paddingLeft: "4px" }}>
-                          <input
-                            style={SCENARIO_INPUT_STYLE}
-                            type="text"
-                            value={scenarioRenameDraft}
-                            maxLength={40}
-                            autoFocus
-                            onChange={(e) => setScenarioRenameDraft(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                onRenameScenario(s.id, scenarioRenameDraft);
-                                setScenarioRenameId(null);
-                              } else if (e.key === "Escape") {
-                                setScenarioRenameId(null);
-                              }
-                            }}
-                          />
-                          <button
-                            type="button"
-                            style={TOOL_BUTTON_STYLE}
-                            onClick={() => {
-                              onRenameScenario(s.id, scenarioRenameDraft);
-                              setScenarioRenameId(null);
-                            }}
-                          >
-                            OK
-                          </button>
-                          <button
-                            type="button"
-                            style={TOOL_BUTTON_STYLE}
-                            onClick={() => setScenarioRenameId(null)}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  ))
-                ) : (
-                  <div style={PANEL_ROW_STYLE}>
-                    <span style={SETUP_SECTION_LABEL_STYLE}>No saved scenarios yet</span>
-                  </div>
-                )}
-              </>
-            ) : null}
 
             {playersOpen ? (
               <>
