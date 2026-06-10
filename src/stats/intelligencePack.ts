@@ -145,7 +145,6 @@ export async function buildIntelligencePack(
         homeScore,
         awayScore,
         summary,
-        intelligence,
       }),
       buildMatchIntelligenceCardPng({
         homeTeamName,

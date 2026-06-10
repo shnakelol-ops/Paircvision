@@ -10,17 +10,15 @@
  *   0–16    : 16px emerald accent bar
  *   16–190  : header (brand, title, team names, divider)
  *   196–346 : score panel
- *   356–736 : kickouts section (380px panel)
- *   746–1126: turnovers section (380px panel)
- *   1136–1516: frees section (380px panel)
- *   1526–   : match story (dynamic, max 268px)
+ *   356–826 : kickouts section (470px panel)
+ *   836–1306: turnovers section (470px panel)
+ *   1316–1786: frees section (470px panel)
  *   1896    : footer
  */
 
 import type {
   PossessionOutcomeFamily,
   PossessionOutcomeSummary,
-  MatchIntelligence,
 } from "./chains/chain-types";
 
 // ─── Canvas constants ─────────────────────────────────────────────────────────
@@ -89,31 +87,6 @@ function netClr(net: number): string {
 
 function formatGaelic(goals: number, points: number): string {
   return `${goals}-${points.toString().padStart(2, "0")}`;
-}
-
-function drawWrapped(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number,
-): number {
-  const words = text.split(" ");
-  let line = "";
-  let cy = y;
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x, cy);
-      line = word;
-      cy += lineHeight;
-    } else {
-      line = test;
-    }
-  }
-  if (line) ctx.fillText(line, x, cy);
-  return cy;
 }
 
 function panelDivider(ctx: CanvasRenderingContext2D, x: number, y: number, w: number): void {
@@ -313,7 +286,7 @@ function drawFamilySection(
   config: FamilySectionConfig,
   startY: number,
 ): number {
-  const PANEL_H = 380;
+  const PANEL_H = 470;
   const GAP = 10;
   const panelX = PAD;
   const panelW = W - PAD * 2;
@@ -341,29 +314,29 @@ function drawFamilySection(
   ctx.strokeStyle = CLR.divider;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(cx, startY + 54);
-  ctx.lineTo(cx, startY + 356);
+  ctx.moveTo(cx, startY + 58);
+  ctx.lineTo(cx, startY + 452);
   ctx.stroke();
 
   // Branch headers
   ctx.fillStyle = CLR.muted;
   ctx.font = "600 17px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(config.leftLabel, ix, startY + 72);
+  ctx.fillText(config.leftLabel, ix, startY + 76);
   ctx.textAlign = "right";
-  ctx.fillText(config.rightLabel, ix + iw, startY + 72);
+  ctx.fillText(config.rightLabel, ix + iw, startY + 76);
 
   // Possession counts
   ctx.fillStyle = CLR.offwhite;
   ctx.font = "600 21px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(`${family.retainedCount}/${family.total}`, ix, startY + 98);
+  ctx.fillText(`${family.retainedCount}/${family.total}`, ix, startY + 104);
   ctx.textAlign = "right";
-  ctx.fillText(`${family.concededCount}/${family.total}`, ix + iw, startY + 98);
+  ctx.fillText(`${family.concededCount}/${family.total}`, ix + iw, startY + 104);
   ctx.textAlign = "left";
 
   // Horizontal separator
-  panelDivider(ctx, ix, startY + 113, iw);
+  panelDivider(ctx, ix, startY + 122, iw);
 
   // Hero scoring percentages
   const leftClr  = goodPctClr(family.retained.scoringPct);
@@ -372,29 +345,29 @@ function drawFamilySection(
   ctx.fillStyle = leftClr;
   ctx.font = "800 76px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(`${family.retained.scoringPct}%`, ix, startY + 198);
+  ctx.fillText(`${family.retained.scoringPct}%`, ix, startY + 228);
 
   ctx.fillStyle = rightClr;
   ctx.textAlign = "right";
-  ctx.fillText(`${family.conceded.scoringPct}%`, ix + iw, startY + 198);
+  ctx.fillText(`${family.conceded.scoringPct}%`, ix + iw, startY + 228);
 
   // "scoring %" sublabel
   ctx.fillStyle = CLR.muted;
   ctx.font = "500 18px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText("scoring %", ix, startY + 224);
+  ctx.fillText("scoring %", ix, startY + 256);
   ctx.textAlign = "right";
-  ctx.fillText("scoring %", ix + iw, startY + 224);
+  ctx.fillText("scoring %", ix + iw, startY + 256);
 
   // Gaelic scores
   ctx.fillStyle = leftClr;
   ctx.font = "700 30px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(formatGaelic(family.retained.goals, family.retained.points), ix, startY + 262);
+  ctx.fillText(formatGaelic(family.retained.goals, family.retained.points), ix, startY + 302);
 
   ctx.fillStyle = rightClr;
   ctx.textAlign = "right";
-  ctx.fillText(formatGaelic(family.conceded.goals, family.conceded.points), ix + iw, startY + 262);
+  ctx.fillText(formatGaelic(family.conceded.goals, family.conceded.points), ix + iw, startY + 302);
 
   // Detail lines: wides · turnovers · recycled
   ctx.fillStyle = CLR.dim;
@@ -402,61 +375,19 @@ function drawFamilySection(
   ctx.textAlign = "left";
   ctx.fillText(
     `${family.retained.wides}wd · ${family.retained.turnovers}t · ${family.retained.recycled}rec`,
-    ix, startY + 290,
+    ix, startY + 338,
   );
   ctx.textAlign = "right";
   ctx.fillText(
     `${family.conceded.wides}wd · ${family.conceded.turnovers}t · ${family.conceded.recycled}rec`,
-    ix + iw, startY + 290,
+    ix + iw, startY + 338,
   );
   ctx.textAlign = "left";
 
   // Net outcome badge (centred)
-  drawNetBadge(ctx, config.netLabel, family.netOutcome, cx, startY + 312);
+  drawNetBadge(ctx, config.netLabel, family.netOutcome, cx, startY + 372);
 
   return startY + PANEL_H + GAP;
-}
-
-// ─── Match Story ──────────────────────────────────────────────────────────────
-
-function drawMatchStory(
-  ctx: CanvasRenderingContext2D,
-  priorities: readonly string[],
-  startY: number,
-): void {
-  const panelH = Math.min(H - startY - 60, 268);
-  if (panelH < 80) return;
-
-  const panelX = PAD;
-  const panelW = W - PAD * 2;
-  drawPanel(ctx, panelX, startY, panelW, panelH, CLR.dim);
-
-  const ix = panelX + INNER_PAD;
-  const iw = panelW - INNER_PAD * 2;
-  let y = startY + 34;
-
-  ctx.fillStyle = CLR.muted;
-  ctx.font = "700 20px Inter,system-ui,sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("MATCH STORY", ix, y);
-  y += 34;
-
-  const pillColours = [CLR.green, CLR.amber, CLR.red];
-
-  for (let i = 0; i < Math.min(3, priorities.length); i++) {
-    if (y > startY + panelH - 30) break;
-
-    const pc = pillColours[i] ?? CLR.muted;
-
-    rrPath(ctx, ix, y - 14, 5, 22, 2.5);
-    ctx.fillStyle = pc;
-    ctx.fill();
-
-    ctx.fillStyle = CLR.white;
-    ctx.font = "500 23px Inter,system-ui,sans-serif";
-    const lastY = drawWrapped(ctx, priorities[i] ?? "—", ix + 18, y, iw - 20, 30);
-    y = lastY + 38;
-  }
 }
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
@@ -478,7 +409,6 @@ export type PossessionOutcomesCardInput = {
   homeScore: { goals: number; points: number; total: number };
   awayScore: { goals: number; points: number; total: number };
   summary: PossessionOutcomeSummary;
-  intelligence: MatchIntelligence;
 };
 
 export async function buildPossessionOutcomesCardPng(
@@ -491,7 +421,7 @@ export async function buildPossessionOutcomesCardPng(
   if (!ctx) return null;
 
   const {
-    summary, intelligence,
+    summary,
     homeTeamName, awayTeamName, stageLabel,
     homeScore, awayScore,
   } = input;
@@ -524,7 +454,7 @@ export async function buildPossessionOutcomesCardPng(
     netLabel:    "Frees",
   }, y);
 
-  drawMatchStory(ctx, intelligence.coachingPriorities, y);
+  void y;
   drawFooter(ctx);
 
   const blob = await new Promise<Blob | null>((resolve) =>

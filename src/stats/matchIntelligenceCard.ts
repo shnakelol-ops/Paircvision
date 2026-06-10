@@ -295,7 +295,7 @@ function drawIntelligencePanel(
   if (intel.highestDamageFamily) {
     y = drawIntelRow(
       ctx,
-      "Highest Damage Source",
+      "Biggest Opposition Threat",
       `${intel.highestDamageFamily.label}  ${intel.highestDamageFamily.damagePct}%`,
       badPctClr(intel.highestDamageFamily.damagePct),
       ix, y, iw,
@@ -306,7 +306,7 @@ function drawIntelligencePanel(
   if (intel.bestScoringFamily) {
     y = drawIntelRow(
       ctx,
-      "Best Possession Family",
+      "Strongest Attacking Platform",
       `${intel.bestScoringFamily.label}  ${intel.bestScoringFamily.scoringPct}%`,
       goodPctClr(intel.bestScoringFamily.scoringPct),
       ix, y, iw,
@@ -317,7 +317,7 @@ function drawIntelligencePanel(
   if (intel.worstScoringFamily) {
     y = drawIntelRow(
       ctx,
-      "Lowest Converting Family",
+      "Platform to Improve",
       `${intel.worstScoringFamily.label}  ${intel.worstScoringFamily.scoringPct}%`,
       goodPctClr(intel.worstScoringFamily.scoringPct),
       ix, y, iw,
