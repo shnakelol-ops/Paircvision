@@ -3383,7 +3383,7 @@ export default function StatsModeSurface() {
   const [selectedSubOutId, setSelectedSubOutId] = useState<string | null>(null);
   const [selectedSubInId, setSelectedSubInId] = useState<string | null>(null);
   const [subsMode, setSubsMode] = useState(false);
-  const [showLandscapeSetup, setShowLandscapeSetup] = useState(false);
+  const [showSetupControls, setShowSetupControls] = useState(false);
   const [showPlayerInitials] = useState(true);
   const [reviewHalf, setReviewHalf] = useState<ReviewHalf>("FULL");
   const [reviewSegment, setReviewSegment] = useState<ReviewSegment>("ALL");
@@ -5173,7 +5173,7 @@ export default function StatsModeSurface() {
     setUtilityPanel(null);
     setSaveLoadBlockedReason(null);
     setSubsMode(false);
-    setShowLandscapeSetup(false);
+    setShowSetupControls(false);
     setSelectedSubOutId(null);
     setSelectedSubInId(null);
   };
@@ -6380,7 +6380,6 @@ export default function StatsModeSurface() {
       return a.number - b.number;
     })
     .slice(0, 15);
-  const benchPlayers = inactivePlayers;
   const contextActivePillBorder =
     playerSquadTeam === "HOME" ? "1px solid rgba(74, 222, 128, 0.65)" : "1px solid rgba(248, 113, 113, 0.62)";
   const contextActivePillGlow =
@@ -6589,17 +6588,17 @@ export default function StatsModeSurface() {
         >
           <div className="utility-review-scroll">
           <div className="utility-panel-title">{playerSquadTeam === "HOME" ? "HOME Players" : "AWAY Players"}</div>
-          {isPreMatchSetup && isLandscape ? (
+          {isPreMatchSetup ? (
             <button
               type="button"
               className="utility-review-btn"
-              onClick={() => setShowLandscapeSetup((prev) => !prev)}
+              onClick={() => setShowSetupControls((prev) => !prev)}
               style={{ alignSelf: "flex-start", marginBottom: "2px" }}
             >
-              {showLandscapeSetup ? "✕ Setup" : "⚙ Setup"}
+              {showSetupControls ? "✕ Setup" : "⚙ Setup"}
             </button>
           ) : null}
-          {isPreMatchSetup && (!isLandscape || showLandscapeSetup) ? (
+          {isPreMatchSetup && showSetupControls ? (
             <>
               <div className="utility-squad-row">
                 <select
@@ -6681,7 +6680,7 @@ export default function StatsModeSurface() {
               </button>
             </div>
           ) : null}
-          {isPreMatchSetup && (!isLandscape || showLandscapeSetup) ? (
+          {isPreMatchSetup && showSetupControls ? (
             <div className="utility-player-add-row">
               <input
                 type="text"
@@ -6866,27 +6865,6 @@ export default function StatsModeSurface() {
                 >
                   ⇄ Subs
                 </button>
-              ) : null}
-              {isPreMatchSetup && benchPlayers.length > 0 ? (
-                <div className="utility-subs-wrap">
-                  <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.84 }}>
-                    Bench
-                  </div>
-                  <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.72 }}>
-                    Bench players are listed for substitution (Sub In), not direct event tagging.
-                  </div>
-                  <div className="utility-subs-row" aria-label="Bench substitutes">
-                    {benchPlayers.map((player, idx) => (
-                      <div
-                        key={`bench-${idx}-${player.id}`}
-                        className="utility-player-pill"
-                        style={{ opacity: 0.78 }}
-                      >
-                        {formatPlayerLabel(player)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
               ) : null}
             </>
           )}
