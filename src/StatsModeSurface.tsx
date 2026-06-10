@@ -131,6 +131,8 @@ type StatsActiveMatchDraft = {
   venue: string;
   events: readonly LoggedMatchEvent[];
   restoreContext: SavedMatchRestoreContext;
+  liveSquads?: Squad[];
+  activeSquadIdsByTeam?: { HOME: string; AWAY: string };
 };
 type ModeScoringEventKind =
   | "GOAL"
@@ -846,6 +848,20 @@ function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActive
           .filter((entry): entry is LoggedMatchEvent => entry != null)
       : [];
     if (matchId.length <= 0) return { draft: null, isCorrupt: true };
+    const parsedLiveSquads =
+      Array.isArray(source.liveSquads) && source.liveSquads.length > 0
+        ? parseStoredSquads(JSON.stringify(source.liveSquads))
+        : undefined;
+    const parsedActiveSquadIdsByTeam =
+      source.activeSquadIdsByTeam &&
+      typeof source.activeSquadIdsByTeam === "object" &&
+      typeof (source.activeSquadIdsByTeam as Record<string, unknown>).HOME === "string" &&
+      typeof (source.activeSquadIdsByTeam as Record<string, unknown>).AWAY === "string"
+        ? {
+            HOME: (source.activeSquadIdsByTeam as Record<string, string>).HOME,
+            AWAY: (source.activeSquadIdsByTeam as Record<string, string>).AWAY,
+          }
+        : undefined;
     return {
       draft: {
         version: 1,
@@ -858,6 +874,8 @@ function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActive
         venue: typeof source.venue === "string" ? source.venue.trim().slice(0, 24) : "",
         events,
         restoreContext: parseSavedMatchRestoreContext(source.restoreContext),
+        ...(parsedLiveSquads && parsedLiveSquads.length > 0 ? { liveSquads: parsedLiveSquads } : {}),
+        ...(parsedActiveSquadIdsByTeam ? { activeSquadIdsByTeam: parsedActiveSquadIdsByTeam } : {}),
       },
       isCorrupt: false,
     };
@@ -2267,7 +2285,8 @@ const PANEL_CSS = `
 .utility-overlay-panel--landscape {
   right: 16px;
   bottom: 142px;
-  max-height: calc(100dvh - 150px);
+  max-height: min(calc(100dvh - 150px), 340px);
+  max-width: min(268px, calc(100vw - 96px));
   overflow: hidden;
 }
 
@@ -3364,6 +3383,7 @@ export default function StatsModeSurface() {
   const [selectedSubOutId, setSelectedSubOutId] = useState<string | null>(null);
   const [selectedSubInId, setSelectedSubInId] = useState<string | null>(null);
   const [subsMode, setSubsMode] = useState(false);
+  const [showLandscapeSetup, setShowLandscapeSetup] = useState(false);
   const [showPlayerInitials] = useState(true);
   const [reviewHalf, setReviewHalf] = useState<ReviewHalf>("FULL");
   const [reviewSegment, setReviewSegment] = useState<ReviewSegment>("ALL");
@@ -3888,6 +3908,8 @@ export default function StatsModeSurface() {
       },
       venue: venueName.trim().slice(0, 24),
       events: [...loggedEvents],
+      liveSquads: [...squads],
+      activeSquadIdsByTeam: { ...activeSquadIdsByTeam },
       restoreContext: {
         matchState,
         currentHalf,
@@ -3906,6 +3928,7 @@ export default function StatsModeSurface() {
       },
     };
   }, [
+    activeSquadIdsByTeam,
     activeTeamSide,
     currentHalf,
     currentMode,
@@ -3914,6 +3937,7 @@ export default function StatsModeSurface() {
     loggedEvents,
     matchState,
     matchTimeSeconds,
+    squads,
     teamNames,
     venueName,
   ]);
@@ -5125,6 +5149,12 @@ export default function StatsModeSurface() {
       timestamp: restoredContext.engineState.matchTimeSeconds,
       canLog: isLoggingActive(restoredContext.engineState.matchState),
     });
+    if (draft.liveSquads && draft.liveSquads.length > 0) {
+      setSquads(draft.liveSquads);
+    }
+    if (draft.activeSquadIdsByTeam) {
+      setActiveSquadIdsByTeam(draft.activeSquadIdsByTeam);
+    }
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel("Recovered draft");
     setPendingRecoveredDraft(null);
@@ -5143,6 +5173,7 @@ export default function StatsModeSurface() {
     setUtilityPanel(null);
     setSaveLoadBlockedReason(null);
     setSubsMode(false);
+    setShowLandscapeSetup(false);
     setSelectedSubOutId(null);
     setSelectedSubInId(null);
   };
@@ -6558,7 +6589,17 @@ export default function StatsModeSurface() {
         >
           <div className="utility-review-scroll">
           <div className="utility-panel-title">{playerSquadTeam === "HOME" ? "HOME Players" : "AWAY Players"}</div>
-          {isPreMatchSetup ? (
+          {isPreMatchSetup && isLandscape ? (
+            <button
+              type="button"
+              className="utility-review-btn"
+              onClick={() => setShowLandscapeSetup((prev) => !prev)}
+              style={{ alignSelf: "flex-start", marginBottom: "2px" }}
+            >
+              {showLandscapeSetup ? "✕ Setup" : "⚙ Setup"}
+            </button>
+          ) : null}
+          {isPreMatchSetup && (!isLandscape || showLandscapeSetup) ? (
             <>
               <div className="utility-squad-row">
                 <select
@@ -6640,7 +6681,7 @@ export default function StatsModeSurface() {
               </button>
             </div>
           ) : null}
-          {isPreMatchSetup ? (
+          {isPreMatchSetup && (!isLandscape || showLandscapeSetup) ? (
             <div className="utility-player-add-row">
               <input
                 type="text"
@@ -6683,7 +6724,11 @@ export default function StatsModeSurface() {
               <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.85 }}>
                 Sub Out
               </div>
-              <div className="utility-subs-row" aria-label="Active players — select player going off">
+              <div
+                className="utility-subs-row"
+                aria-label="Active players — select player going off"
+                style={isLandscape ? { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "4px", overflow: "visible" } : undefined}
+              >
                 {activePlayers.map((player) => (
                   <button
                     key={`sub-out-${player.id}`}
@@ -6692,7 +6737,7 @@ export default function StatsModeSurface() {
                     onClick={() => setSelectedSubOutId((prev) => (prev === player.id ? null : player.id))}
                     style={{
                       fontSize: "11px",
-                      padding: "10px 12px",
+                      padding: isLandscape ? "6px 8px" : "10px 12px",
                       minHeight: "44px",
                       ...(selectedSubOutId === player.id
                         ? { border: "1px solid rgba(248,113,113,0.92)", background: "rgba(127,29,29,0.35)" }
@@ -6706,7 +6751,11 @@ export default function StatsModeSurface() {
               <div className="utility-panel-title" style={{ fontSize: "8px", textTransform: "none", opacity: 0.85 }}>
                 Sub In
               </div>
-              <div className="utility-subs-row" aria-label="Bench players — select player coming on">
+              <div
+                className="utility-subs-row"
+                aria-label="Bench players — select player coming on"
+                style={isLandscape ? { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "4px", overflow: "visible" } : undefined}
+              >
                 {inactivePlayers.map((player) => (
                   <button
                     key={`sub-in-${player.id}`}
@@ -6715,7 +6764,7 @@ export default function StatsModeSurface() {
                     onClick={() => setSelectedSubInId((prev) => (prev === player.id ? null : player.id))}
                     style={{
                       fontSize: "11px",
-                      padding: "10px 12px",
+                      padding: isLandscape ? "6px 8px" : "10px 12px",
                       minHeight: "44px",
                       ...(selectedSubInId === player.id
                         ? { border: "1px solid rgba(74,222,128,0.9)", background: "rgba(20,83,45,0.35)" }
