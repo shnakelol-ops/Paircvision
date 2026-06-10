@@ -127,6 +127,8 @@ type StatsActiveMatchDraft = {
   currentMode: GaaModeKey;
   activeTeam: TeamSide;
   activeTeamSide?: "own" | "opposition";
+  liveSquads?: Squad[];
+  activeSquadIdsByTeam?: { HOME: string; AWAY: string };
   teamNames: { HOME: string; AWAY: string };
   venue: string;
   events: readonly LoggedMatchEvent[];
@@ -845,6 +847,11 @@ function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActive
           .map((entry) => parseStoredLoggedMatchEvent(entry))
           .filter((entry): entry is LoggedMatchEvent => entry != null)
       : [];
+    const parsedLiveSquads = parseSquadsArray(source.liveSquads);
+    const restoredSquads = parsedLiveSquads.length > 0 ? ensureHomeAwaySquads(parsedLiveSquads) : null;
+    const restoredActiveSquadIds = restoredSquads
+      ? parseActiveSquadIdsByTeam(source.activeSquadIdsByTeam, restoredSquads.squads) ?? restoredSquads.byTeam
+      : null;
     if (matchId.length <= 0) return { draft: null, isCorrupt: true };
     return {
       draft: {
@@ -854,6 +861,8 @@ function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActive
         currentMode: mode,
         activeTeam,
         activeTeamSide,
+        ...(restoredSquads ? { liveSquads: restoredSquads.squads } : {}),
+        ...(restoredActiveSquadIds ? { activeSquadIdsByTeam: restoredActiveSquadIds } : {}),
         teamNames: { HOME: homeName, AWAY: awayName },
         venue: typeof source.venue === "string" ? source.venue.trim().slice(0, 24) : "",
         events,
@@ -1140,7 +1149,6 @@ function parseStoredPlayer(input: unknown, idx: number): SquadPlayer | null {
   const rawName = "name" in input ? input.name : null;
   if (typeof rawName !== "string") return null;
   const nextName = rawName.trim().slice(0, 24);
-  if (nextName.length === 0) return null;
   const rawNumber = "number" in input ? input.number : null;
   const parsedNumber =
     typeof rawNumber === "number" && Number.isFinite(rawNumber)
@@ -1173,36 +1181,60 @@ function parseStoredPlayer(input: unknown, idx: number): SquadPlayer | null {
   };
 }
 
+function parseSquadsArray(input: unknown): Squad[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((item): Squad | null => {
+      if (!item || typeof item !== "object") return null;
+      const maybeId = "id" in item ? item.id : null;
+      const maybeName = "name" in item ? item.name : null;
+      const maybeTeam = "team" in item ? item.team : null;
+      const maybePlayers = "players" in item ? item.players : null;
+      if (typeof maybeId !== "string" || maybeId.trim().length === 0 || typeof maybeName !== "string") return null;
+      if (!Array.isArray(maybePlayers)) return null;
+      const players = ensureStableSquadSlots(
+        maybePlayers
+          .map((player, idx) => parseStoredPlayer(player, idx))
+          .filter((player): player is SquadPlayer => player !== null),
+      );
+      return {
+        id: maybeId.trim(),
+        name: maybeName.slice(0, 24),
+        team: maybeTeam === "HOME" || maybeTeam === "AWAY" ? maybeTeam : undefined,
+        players,
+      };
+    })
+    .filter((squad): squad is Squad => squad !== null);
+}
+
 function parseStoredSquads(input: string | null): Squad[] {
   if (!input) return [];
   try {
-    const parsed = JSON.parse(input);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((item): Squad | null => {
-        if (!item || typeof item !== "object") return null;
-        const maybeId = "id" in item ? item.id : null;
-        const maybeName = "name" in item ? item.name : null;
-        const maybeTeam = "team" in item ? item.team : null;
-        const maybePlayers = "players" in item ? item.players : null;
-        if (typeof maybeId !== "string" || typeof maybeName !== "string") return null;
-        if (!Array.isArray(maybePlayers)) return null;
-        const players = ensureStableSquadSlots(
-          maybePlayers
-          .map((player, idx) => parseStoredPlayer(player, idx))
-          .filter((player): player is SquadPlayer => player !== null),
-        );
-        return {
-          id: maybeId,
-          name: maybeName.slice(0, 24),
-          team: maybeTeam === "HOME" || maybeTeam === "AWAY" ? maybeTeam : undefined,
-          players,
-        };
-      })
-      .filter((squad): squad is Squad => squad !== null);
+    return parseSquadsArray(JSON.parse(input));
   } catch {
     return [];
   }
+}
+
+function sanitizeLiveSquadsForDraft(input: readonly Squad[]): Squad[] {
+  return ensureHomeAwaySquads(
+    input.map((squad) => ({
+      id: squad.id,
+      name: squad.name.slice(0, 24),
+      team: squad.team === "HOME" || squad.team === "AWAY" ? squad.team : undefined,
+      players: ensureStableSquadSlots(squad.players),
+    })),
+  ).squads;
+}
+
+function parseActiveSquadIdsByTeam(input: unknown, squads: readonly Squad[]): { HOME: string; AWAY: string } | null {
+  if (!input || typeof input !== "object") return null;
+  const source = input as Record<string, unknown>;
+  const home = typeof source.HOME === "string" ? source.HOME.trim() : "";
+  const away = typeof source.AWAY === "string" ? source.AWAY.trim() : "";
+  const squadIds = new Set(squads.map((squad) => squad.id));
+  if (!squadIds.has(home) || !squadIds.has(away)) return null;
+  return { HOME: home, AWAY: away };
 }
 
 function parseStoredSavedSquadPlayer(input: unknown): SavedSquadPlayer | null {
@@ -1571,6 +1603,8 @@ function getRenderablePitchEvents(
 type LiveSessionSignatureInput = {
   currentMode: GaaModeKey;
   activeTeamSide: "own" | "opposition";
+  liveSquads: readonly Squad[];
+  activeSquadIdsByTeam: { HOME: string; AWAY: string };
   teamNames: { HOME: string; AWAY: string };
   venueName: string;
   events: readonly LoggedMatchEvent[];
@@ -1585,6 +1619,8 @@ function buildLiveSessionSignature(input: LiveSessionSignatureInput): string {
   return JSON.stringify({
     currentMode: input.currentMode,
     activeTeamSide: input.activeTeamSide,
+    liveSquads: sanitizeLiveSquadsForDraft(input.liveSquads),
+    activeSquadIdsByTeam: input.activeSquadIdsByTeam,
     teamNames: {
       HOME: input.teamNames.HOME,
       AWAY: input.teamNames.AWAY,
@@ -2269,6 +2305,37 @@ const PANEL_CSS = `
   bottom: 142px;
   max-height: calc(100dvh - 150px);
   overflow: hidden;
+}
+
+.utility-overlay-panel--landscape .utility-review-scroll {
+  gap: 3px;
+}
+
+.utility-overlay-panel--landscape .utility-formation {
+  gap: 2px;
+}
+
+.utility-overlay-panel--landscape .utility-formation-row {
+  gap: 3px;
+}
+
+.utility-overlay-panel--landscape .utility-player-pill {
+  min-height: 21px;
+  max-width: 84px;
+  font-size: 8.6px;
+  padding: 0 6px;
+}
+
+.utility-overlay-panel--landscape .utility-review-btn {
+  height: 26px;
+  min-height: 26px;
+  font-size: 9px;
+  padding: 0 8px;
+}
+
+.utility-overlay-panel--landscape .utility-panel-close {
+  min-height: 24px;
+  font-size: 8.6px;
 }
 
 .utility-overlay-panel--review-landscape {
@@ -3397,6 +3464,7 @@ export default function StatsModeSurface() {
   const [matchState, setMatchState] = useState<MatchState>("PRE_MATCH");
   const [currentHalf, setCurrentHalf] = useState<1 | 2>(1);
   const [matchTimeSeconds, setMatchTimeSeconds] = useState(0);
+  const [isMatchClockRunning, setIsMatchClockRunning] = useState(false);
   const [isPitchReady, setIsPitchReady] = useState(false);
   const [pixiSurfaceKey, setPixiSurfaceKey] = useState(0);
   const [isCountsOverlayOpen, setIsCountsOverlayOpen] = useState(false);
@@ -3840,6 +3908,8 @@ export default function StatsModeSurface() {
       buildLiveSessionSignature({
         currentMode,
         activeTeamSide,
+        liveSquads: squads,
+        activeSquadIdsByTeam,
         teamNames,
         venueName,
         events: loggedEvents,
@@ -3852,6 +3922,8 @@ export default function StatsModeSurface() {
     [
       currentMode,
       activeTeamSide,
+      squads,
+      activeSquadIdsByTeam,
       teamNames,
       venueName,
       loggedEvents,
@@ -3882,6 +3954,8 @@ export default function StatsModeSurface() {
       currentMode,
       activeTeam: deriveTeamFromTeamSide(activeTeamSide),
       activeTeamSide,
+      liveSquads: sanitizeLiveSquadsForDraft(squads),
+      activeSquadIdsByTeam,
       teamNames: {
         HOME: teamNames.HOME.trim() || "Team A",
         AWAY: teamNames.AWAY.trim() || "Team B",
@@ -3907,6 +3981,7 @@ export default function StatsModeSurface() {
     };
   }, [
     activeTeamSide,
+    activeSquadIdsByTeam,
     currentHalf,
     currentMode,
     firstHalfAttackingDirection,
@@ -3914,6 +3989,7 @@ export default function StatsModeSurface() {
     loggedEvents,
     matchState,
     matchTimeSeconds,
+    squads,
     teamNames,
     venueName,
   ]);
@@ -4480,6 +4556,7 @@ export default function StatsModeSurface() {
     setMatchState(next.matchState);
     setCurrentHalf(next.currentHalf);
     setMatchTimeSeconds(next.matchTimeSeconds);
+    setIsMatchClockRunning(next.isRunning);
   };
 
   const goToHalfTimeAction = () => {
@@ -4488,6 +4565,7 @@ export default function StatsModeSurface() {
     setMatchState(next.matchState);
     setCurrentHalf(next.currentHalf);
     setMatchTimeSeconds(next.matchTimeSeconds);
+    setIsMatchClockRunning(next.isRunning);
   };
 
   const startSecondHalfAction = () => {
@@ -4511,6 +4589,7 @@ export default function StatsModeSurface() {
     setMatchState(next.matchState);
     setCurrentHalf(next.currentHalf);
     setMatchTimeSeconds(next.matchTimeSeconds);
+    setIsMatchClockRunning(next.isRunning);
     // Eagerly sync the pitch surface so 2H taps register immediately,
     // independent of when the React effect for setEventContext runs.
     handleRef.current?.setEventContext({
@@ -4528,6 +4607,7 @@ export default function StatsModeSurface() {
     setMatchState(next.matchState);
     setCurrentHalf(next.currentHalf);
     setMatchTimeSeconds(next.matchTimeSeconds);
+    setIsMatchClockRunning(next.isRunning);
     setIsCountsOverlayOpen(false);
     setIsFullTimeActionsOpen(true);
     setIsResetConfirmOpen(false);
@@ -4581,8 +4661,32 @@ export default function StatsModeSurface() {
     setMatchState(resumed.matchState);
     setCurrentHalf(resumed.currentHalf);
     setMatchTimeSeconds(resumed.matchTimeSeconds);
+    setIsMatchClockRunning(resumed.isRunning);
     setIsFullTimeActionsOpen(false);
     setIsResetConfirmOpen(false);
+    handleRef.current?.setEventContext({
+      half: resumed.currentHalf,
+      timestamp: resumed.matchTimeSeconds,
+      canLog: isLoggingActive(resumed.matchState) && activeTeamRef.current === "HOME",
+    });
+  };
+
+  const continueActiveHalfAction = () => {
+    const current = matchEngineStateRef.current;
+    if (current.matchState !== "FIRST_HALF" && current.matchState !== "SECOND_HALF") return;
+    const restoredSeconds = Math.max(0, Math.floor(current.matchTimeSeconds));
+    const resumed: MatchEngineState = {
+      ...current,
+      matchTimeSeconds: restoredSeconds,
+      isRunning: true,
+      phaseStartTimeMs: Date.now(),
+      accumulatedElapsedSeconds: restoredSeconds,
+    };
+    matchEngineStateRef.current = resumed;
+    setMatchState(resumed.matchState);
+    setCurrentHalf(resumed.currentHalf);
+    setMatchTimeSeconds(resumed.matchTimeSeconds);
+    setIsMatchClockRunning(resumed.isRunning);
     handleRef.current?.setEventContext({
       half: resumed.currentHalf,
       timestamp: resumed.matchTimeSeconds,
@@ -4764,6 +4868,7 @@ export default function StatsModeSurface() {
     setMatchState("FULL_TIME");
     setCurrentHalf(2);
     setMatchTimeSeconds(1800);
+    setIsMatchClockRunning(false);
     matchEngineStateRef.current = {
       matchState: "FULL_TIME",
       currentHalf: 2,
@@ -5020,6 +5125,7 @@ export default function StatsModeSurface() {
     setMatchState(restoredContext.engineState.matchState);
     setCurrentHalf(restoredContext.engineState.currentHalf);
     setMatchTimeSeconds(restoredContext.engineState.matchTimeSeconds);
+    setIsMatchClockRunning(restoredContext.engineState.isRunning);
     setIsCountsOverlayOpen(false);
     setIsResetConfirmOpen(false);
     setIsPickerOpen(false);
@@ -5036,6 +5142,8 @@ export default function StatsModeSurface() {
     savedSessionSignatureRef.current = buildLiveSessionSignature({
       currentMode,
       activeTeamSide: activeTeamSideRef.current,
+      liveSquads: squads,
+      activeSquadIdsByTeam,
       teamNames: {
         HOME: parsedRecord.homeTeamName,
         AWAY: parsedRecord.awayTeamName,
@@ -5060,10 +5168,35 @@ export default function StatsModeSurface() {
     activeTeamRef.current = "HOME";
     setActiveTeamSide(recoveredTeamSide);
     activeTeamSideRef.current = recoveredTeamSide;
+    const recoveredSquads = draft.liveSquads ? ensureHomeAwaySquads(sanitizeLiveSquadsForDraft(draft.liveSquads)) : null;
+    const recoveredActiveSquadIds = recoveredSquads
+      ? draft.activeSquadIdsByTeam &&
+        recoveredSquads.squads.some((squad) => squad.id === draft.activeSquadIdsByTeam?.HOME) &&
+        recoveredSquads.squads.some((squad) => squad.id === draft.activeSquadIdsByTeam?.AWAY)
+        ? draft.activeSquadIdsByTeam
+        : recoveredSquads.byTeam
+      : null;
+    if (recoveredSquads) {
+      setSquads(recoveredSquads.squads);
+    }
+    if (recoveredActiveSquadIds) {
+      setActiveSquadIdsByTeam(recoveredActiveSquadIds);
+      activeSquadIdRef.current = recoveredActiveSquadIds[recoveredTeamSide === "opposition" ? "AWAY" : "HOME"];
+    }
     setCurrentMatchId(draftMatchId);
     currentMatchIdRef.current = draftMatchId;
     setLoggedEvents(draft.events);
     setPendingFollowup(null);
+    setActivePlayer(null);
+    setActivePlayerNumber(null);
+    setActivePlayerId(null);
+    activePlayerRef.current = null;
+    activePlayerNumberRef.current = null;
+    activePlayerIdRef.current = null;
+    activePlayerEntryRef.current = null;
+    setSelectedSubOutId(null);
+    setSelectedSubInId(null);
+    setSubsMode(false);
     setTeamNames({
       HOME: draft.teamNames.HOME,
       AWAY: draft.teamNames.AWAY,
@@ -5102,6 +5235,7 @@ export default function StatsModeSurface() {
     setMatchState(restoredContext.engineState.matchState);
     setCurrentHalf(restoredContext.engineState.currentHalf);
     setMatchTimeSeconds(restoredContext.engineState.matchTimeSeconds);
+    setIsMatchClockRunning(restoredContext.engineState.isRunning);
     if (restoredContext.engineState.matchState === "SECOND_HALF") {
       reviewHalfRef.current = "H2";
       setReviewHalf("H2");
@@ -5300,6 +5434,7 @@ export default function StatsModeSurface() {
     setMatchState("PRE_MATCH");
     setCurrentHalf(1);
     setMatchTimeSeconds(0);
+    setIsMatchClockRunning(false);
     matchEngineStateRef.current = createInitialMatchEngineState();
     fullTimeResumeStateRef.current = null;
     handleRef.current?.setEvents([]);
@@ -5697,11 +5832,15 @@ export default function StatsModeSurface() {
     matchState === "PRE_MATCH"
       ? { label: "START", onClick: startFirstHalfAction }
       : matchState === "FIRST_HALF"
-        ? { label: "HT", onClick: goToHalfTimeAction }
+        ? isMatchClockRunning
+          ? { label: "HT", onClick: goToHalfTimeAction }
+          : { label: "CONTINUE", onClick: continueActiveHalfAction }
         : matchState === "HALF_TIME"
           ? { label: "2H", onClick: startSecondHalfAction }
           : matchState === "SECOND_HALF"
-            ? { label: "FT", onClick: endMatchAction }
+            ? isMatchClockRunning
+              ? { label: "FT", onClick: endMatchAction }
+              : { label: "CONTINUE", onClick: continueActiveHalfAction }
             : matchState === "FULL_TIME"
               ? { label: isFullTimeActionsOpen ? "CLOSE" : "ACTIONS", onClick: toggleFullTimeActionsPanel }
               : null;
@@ -6369,7 +6508,18 @@ export default function StatsModeSurface() {
       ? { bottom: `${keyboardInset + 18}px` }
       : { bottom: "max(88px, calc(env(safe-area-inset-bottom) + 84px))" };
   const playersPanelStyle = isLandscape
-    ? { zIndex: 10001 }
+    ? {
+        zIndex: 10001,
+        right: "max(54px, calc(env(safe-area-inset-right, 0px) + 48px))",
+        bottom: "max(34px, calc(env(safe-area-inset-bottom, 0px) + 28px))",
+        top: "auto",
+        width: "min(340px, 58vw)",
+        minWidth: "min(260px, 54vw)",
+        maxWidth: "min(340px, calc(100vw - 112px))",
+        maxHeight: "calc(100dvh - 88px)",
+        padding: "6px",
+        gap: "4px",
+      }
     : keyboardInset > 0
       ? {
           zIndex: 10001,
@@ -6691,9 +6841,9 @@ export default function StatsModeSurface() {
                     className="utility-player-pill"
                     onClick={() => setSelectedSubOutId((prev) => (prev === player.id ? null : player.id))}
                     style={{
-                      fontSize: "11px",
-                      padding: "10px 12px",
-                      minHeight: "44px",
+                      fontSize: isLandscape ? "9px" : "11px",
+                      padding: isLandscape ? "6px 8px" : "10px 12px",
+                      minHeight: isLandscape ? "32px" : "44px",
                       ...(selectedSubOutId === player.id
                         ? { border: "1px solid rgba(248,113,113,0.92)", background: "rgba(127,29,29,0.35)" }
                         : undefined),
@@ -6714,9 +6864,9 @@ export default function StatsModeSurface() {
                     className="utility-player-pill"
                     onClick={() => setSelectedSubInId((prev) => (prev === player.id ? null : player.id))}
                     style={{
-                      fontSize: "11px",
-                      padding: "10px 12px",
-                      minHeight: "44px",
+                      fontSize: isLandscape ? "9px" : "11px",
+                      padding: isLandscape ? "6px 8px" : "10px 12px",
+                      minHeight: isLandscape ? "32px" : "44px",
                       ...(selectedSubInId === player.id
                         ? { border: "1px solid rgba(74,222,128,0.9)", background: "rgba(20,83,45,0.35)" }
                         : undefined),
@@ -6796,7 +6946,13 @@ export default function StatsModeSurface() {
                                     background: "rgba(14,116,144,0.38)",
                                   }
                                 : { border: contextActivePillBorder, boxShadow: contextActivePillGlow }),
-                              ...(isPreMatchSetup ? {} : { fontSize: "11px", padding: "8px 10px" }),
+                              ...(isPreMatchSetup
+                                ? {}
+                                : {
+                                    fontSize: isLandscape ? "9px" : "11px",
+                                    padding: isLandscape ? "4px 7px" : "8px 10px",
+                                    minHeight: isLandscape ? "23px" : undefined,
+                                  }),
                             }}
                           >
                             {isActive ? "● " : ""}
