@@ -197,6 +197,114 @@ export type ScoringRunDataset<TEvent extends ChainableEvent = ChainableEvent> = 
   maxConsecutiveOpp: number;
 };
 
+// ─── Possession Outcomes Engine ───────────────────────────────────────────────
+// Powers the Possession Outcomes card and PDF page (V1.1).
+// Computed by buildPossessionOutcomeSummary() in possession-outcomes-engine.ts.
+// These types are additive — the existing chain datasets above are untouched.
+
+/** The definitive end-state of a single possession. */
+export type PossessionOutcomeKind =
+  | "GOAL"      // Acting side scored a goal
+  | "POINT"     // Acting side scored (point / 2-pointer / 45 / free scored)
+  | "WIDE"      // Acting side shot wide or missed a free
+  | "SHOT"      // Acting side took a shot; outcome ambiguous (blocked etc.)
+  | "TURNOVER"  // Acting side lost possession before scoring
+  | "RECYCLED"; // Window expired; acting side retained without a decisive event
+
+/** Which group of origin events a PossessionOutcomeFamily covers. */
+export type PossessionOriginKind = "KICKOUT" | "TURNOVER" | "FREE";
+
+/** One possession: from origin event to definitive outcome. */
+export type PossessionResult<TEvent extends ChainableEvent = ChainableEvent> = {
+  originEvent: TEvent;
+  /** Team that started with the ball after this origin event. */
+  actingSide: "FOR" | "OPP";
+  outcome: PossessionOutcomeKind;
+  /** The event that closed this possession, or null (recycled / timeout). */
+  outcomingEvent: TEvent | null;
+  /** Clock seconds from origin to outcome; null when clock data absent. */
+  secondsToOutcome: number | null;
+  /** Goals scored by the acting side in this possession (0 or 1). */
+  goals: number;
+  /** Points scored by the acting side (POINT / 2-PT / 45 / FREE_SCORED). */
+  points: number;
+};
+
+/** Aggregate outcome counts for one side within a possession family. */
+export type PossessionFamilySummary = {
+  count: number;
+  goals: number;
+  points: number;
+  wides: number;
+  turnovers: number;
+  recycled: number;
+  /** Equivalent point value: goals × 3 + points × 1. */
+  scoreValue: number;
+  /** (goals + points) / count × 100; 0 when count = 0. */
+  scoringPct: number;
+};
+
+/**
+ * Full analysis for one possession origin group
+ * (e.g. all kickout events, or all free events).
+ *
+ * `retained`  = possessions where FOR team had the ball.
+ * `conceded`  = possessions where OPP team had the ball.
+ *
+ * For kickouts:  retained=KICKOUT_WON, conceded=KICKOUT_CONCEDED.
+ * For turnovers: retained=TURNOVER_WON, conceded=TURNOVER_LOST.
+ * For frees:     retained=FREE_WON,     conceded=FREE_CONCEDED.
+ */
+export type PossessionOutcomeFamily<TEvent extends ChainableEvent = ChainableEvent> = {
+  originKind: PossessionOriginKind;
+  /** Total origin events (retained + conceded). */
+  total: number;
+  /** Possessions started by FOR (KICKOUT_WON / TURNOVER_WON / FREE_WON). */
+  retainedCount: number;
+  /** Possessions started by OPP (KICKOUT_CONCEDED / TURNOVER_LOST / FREE_CONCEDED). */
+  concededCount: number;
+  /** retainedCount / total × 100 (0–100 integer). */
+  retentionPct: number;
+  /** concededCount / total × 100 (0–100 integer). */
+  stealPct: number;
+  /** Outcome summary when FOR team had the ball. */
+  retained: PossessionFamilySummary;
+  /** Outcome summary when OPP team had the ball. */
+  conceded: PossessionFamilySummary;
+  /** When OPP got possession, how often did they score? (0–100 integer). */
+  damagePct: number;
+  /** When OPP got possession, how often did we avoid conceding? (0–100 integer). */
+  escapePct: number;
+  /** FOR score value minus OPP score value for this family. */
+  netOutcome: number;
+  /** Human-readable net, e.g. "+5", "-3", "0". */
+  netLabel: string;
+  results: readonly PossessionResult<TEvent>[];
+};
+
+/** Full possession outcome summary across all origin groups. */
+export type PossessionOutcomeSummary<TEvent extends ChainableEvent = ChainableEvent> = {
+  kickouts: PossessionOutcomeFamily<TEvent>;
+  turnovers: PossessionOutcomeFamily<TEvent>;
+  frees: PossessionOutcomeFamily<TEvent>;
+  /** Sum of netOutcome across all three families. */
+  overallNetOutcome: number;
+};
+
+/** Derived coaching intelligence from a PossessionOutcomeSummary. */
+export type MatchIntelligence = {
+  /** Family with the highest OPP scoring rate from conceded possessions. */
+  highestDamageFamily: { label: string; damagePct: number } | null;
+  /** Family where FOR's retained scoringPct was highest (retainedCount ≥ 3). */
+  bestScoringFamily: { label: string; scoringPct: number } | null;
+  /** Family where FOR's retained scoringPct was lowest (retainedCount ≥ 3). */
+  worstScoringFamily: { label: string; scoringPct: number } | null;
+  /** Combined net outcome across all families. */
+  overallNetOutcome: number;
+  /** Exactly 3 deterministic coaching priority strings. */
+  coachingPriorities: readonly string[];
+};
+
 // ─── Main Analysis Output ─────────────────────────────────────────────────────
 
 export type ChainSummary = {
