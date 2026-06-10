@@ -244,6 +244,13 @@ function panelDivider(ctx: CanvasRenderingContext2D, x: number, y: number, w: nu
   ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.stroke();
 }
 
+// ─── Gaelic score formatter ───────────────────────────────────────────────────
+
+/** Formats a goals + points pair as Gaelic score notation, e.g. "1-05". */
+function formatGaelic(goals: number, points: number): string {
+  return `${goals}-${points.toString().padStart(2, "0")}`;
+}
+
 // ─── Net outcome badge ────────────────────────────────────────────────────────
 
 function drawNetBadge(
@@ -285,7 +292,7 @@ function drawKickoutsSection(
   family: PossessionOutcomeFamily,
   startY: number,
 ): number {
-  const panelH = 300;
+  const panelH = 334;
   const panelX = PAD;
   const panelW = W - PAD * 2;
   drawPanel(ctx, panelX, startY, panelW, panelH, CLR.green);
@@ -351,7 +358,16 @@ function drawKickoutsSection(
   ctx.fillText(`${family.damagePct}%`, ix + iw - 180, y);
   ctx.textAlign = "left";
 
-  y += 36;
+  // Score breakdown: "Scored: 1-05    Conceded: 2-04"
+  ctx.fillStyle = CLR.muted;
+  ctx.font = "500 21px Inter,system-ui,sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(`Scored: ${formatGaelic(family.retained.goals, family.retained.points)}`, ix, y);
+  ctx.textAlign = "right";
+  ctx.fillText(`Conceded: ${formatGaelic(family.conceded.goals, family.conceded.points)}`, ix + iw, y);
+  ctx.textAlign = "left";
+
+  y += 34;
   drawNetBadge(ctx, "Kickouts", family.netOutcome, W / 2, y);
 
   return startY + panelH + 18;
@@ -364,7 +380,7 @@ function drawTurnoversSection(
   family: PossessionOutcomeFamily,
   startY: number,
 ): number {
-  const panelH = 306;
+  const panelH = 340;
   const panelX = PAD;
   const panelW = W - PAD * 2;
   drawPanel(ctx, panelX, startY, panelW, panelH, CLR.cyan);
@@ -425,7 +441,16 @@ function drawTurnoversSection(
   ctx.font = "700 28px Inter,system-ui,sans-serif";
   ctx.fillText(`${family.escapePct}%`, ix + 200, y);
 
-  y += 36;
+  // Score breakdown
+  ctx.fillStyle = CLR.muted;
+  ctx.font = "500 21px Inter,system-ui,sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(`Scored: ${formatGaelic(family.retained.goals, family.retained.points)}`, ix, y);
+  ctx.textAlign = "right";
+  ctx.fillText(`Conceded: ${formatGaelic(family.conceded.goals, family.conceded.points)}`, ix + iw, y);
+  ctx.textAlign = "left";
+
+  y += 34;
   drawNetBadge(ctx, "Turnovers", family.netOutcome, W / 2, y);
 
   return startY + panelH + 18;
@@ -438,7 +463,7 @@ function drawFreesSection(
   family: PossessionOutcomeFamily,
   startY: number,
 ): number {
-  const panelH = 248;
+  const panelH = 280;
   const panelX = PAD;
   const panelW = W - PAD * 2;
   drawPanel(ctx, panelX, startY, panelW, panelH, CLR.amber);
@@ -480,7 +505,17 @@ function drawFreesSection(
   ctx.fillText(`Their frees  ${theirScores}/${family.concededCount}`, ix + iw, y + 94);
   ctx.textAlign = "left";
 
+  // Score breakdown
   y += 110;
+  ctx.fillStyle = CLR.muted;
+  ctx.font = "500 21px Inter,system-ui,sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(`Scored: ${formatGaelic(family.retained.goals, family.retained.points)}`, ix, y);
+  ctx.textAlign = "right";
+  ctx.fillText(`Conceded: ${formatGaelic(family.conceded.goals, family.conceded.points)}`, ix + iw, y);
+  ctx.textAlign = "left";
+
+  y += 34;
   drawNetBadge(ctx, "Frees", family.netOutcome, W / 2, y);
 
   return startY + panelH + 18;
