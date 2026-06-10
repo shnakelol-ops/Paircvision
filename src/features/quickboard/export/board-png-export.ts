@@ -1,11 +1,14 @@
 import type { TacticalPadLiteSurface } from "../../../engine/pixi/createTacticalPadLiteSurface";
 import { type SlateTextAnnotation, FONT_SIZE_PX } from "../annotations/slateTextAnnotation";
+import { type SlateCoachingCard, CARD_TYPE_CONFIG } from "../coaching-cards/slateCoachingCard";
 
 type BoardPngExportOptions = {
   /** CSS colour string for the canvas background behind the pitch. Defaults to the tactical board dark colour. */
   boardBackground?: string;
   /** Text annotations to composite onto the exported image. */
   textAnnotations?: SlateTextAnnotation[];
+  /** Review cards to composite onto the exported image (compact form: icon + title only). */
+  coachingCards?: SlateCoachingCard[];
 };
 
 function nextFrame(): Promise<void> {
@@ -90,6 +93,59 @@ export async function exportBoardSetupAsPng(
       lines.forEach((line, i) => {
         ctx.fillText(line, px, py - totalH / 2 + lineH * i + lineH / 2);
       });
+      ctx.restore();
+    }
+  }
+
+  // Composite review cards in compact form (icon + title) before watermark.
+  const cards = options.coachingCards;
+  if (cards && cards.length > 0) {
+    const cardFontSize = Math.max(9, Math.round(height * 0.024));
+    const cardH = Math.round(cardFontSize * 2.2);
+    const cardPadX = Math.round(cardFontSize * 0.55);
+    const cardPadY = Math.round(cardFontSize * 0.45);
+    const accentW = Math.round(cardFontSize * 0.18);
+    const radius = Math.round(cardFontSize * 0.5);
+
+    for (const card of cards) {
+      if (!card.title.trim()) continue;
+      const cfg = CARD_TYPE_CONFIG[card.cardType];
+      const cx = (card.x / 100) * width;
+      const cy = (card.y / 100) * height;
+
+      ctx.save();
+      ctx.font = `600 ${cardFontSize}px Inter, system-ui, Arial, sans-serif`;
+      const labelText = `${cfg.icon} ${card.title}`;
+      const textW = ctx.measureText(labelText).width;
+      const cardW = textW + cardPadX * 2 + accentW;
+      const left = cx - cardW / 2;
+      const top = cy - cardH / 2;
+
+      // Background pill
+      ctx.globalAlpha = 0.88;
+      ctx.fillStyle = "rgba(8,18,24,0.85)";
+      if (typeof (ctx as CanvasRenderingContext2D & { roundRect?: (...args: unknown[]) => void }).roundRect === "function") {
+        (ctx as CanvasRenderingContext2D & { roundRect: (x: number, y: number, w: number, h: number, r: number) => void }).roundRect(left, top, cardW, cardH, radius);
+        ctx.fill();
+      } else {
+        ctx.fillRect(left, top, cardW, cardH);
+      }
+
+      // Type accent bar (left edge)
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = cfg.color;
+      ctx.fillRect(left, top + radius, accentW, cardH - radius * 2);
+      ctx.fillRect(left, top, accentW, radius);
+      ctx.fillRect(left, top + cardH - radius, accentW, radius);
+
+      // Label
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#d8eaf6";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(0,0,0,0.7)";
+      ctx.shadowBlur = 3;
+      ctx.fillText(labelText, left + accentW + cardPadX, cy);
       ctx.restore();
     }
   }

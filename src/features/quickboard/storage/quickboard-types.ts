@@ -1,4 +1,5 @@
 import { type SlateTextAnnotation, sanitizeTextAnnotations } from "../annotations/slateTextAnnotation";
+import { type SlateCoachingCard, sanitizeCoachingCards } from "../coaching-cards/slateCoachingCard";
 
 export const QUICKBOARD_STORAGE_KEY = "pitchflow_quickboard_boards_v1";
 const MAX_BOARD_NAME_LENGTH = 48;
@@ -20,6 +21,7 @@ export type QuickBoardBoardState = {
   drawColor?: unknown;
   itemMode?: unknown;
   textAnnotations?: SlateTextAnnotation[];
+  coachingCards?: SlateCoachingCard[];
 };
 
 export type SavedQuickBoard = {
@@ -65,6 +67,7 @@ export function sanitizeQuickBoardState(value: unknown): QuickBoardBoardState | 
     ...(value.drawColor !== undefined ? { drawColor: value.drawColor } : {}),
     ...(value.itemMode !== undefined ? { itemMode: value.itemMode } : {}),
     textAnnotations: sanitizeTextAnnotations(value.textAnnotations),
+    coachingCards: sanitizeCoachingCards(value.coachingCards),
   };
 }
 
