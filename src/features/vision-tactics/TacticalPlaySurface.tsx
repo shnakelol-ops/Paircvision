@@ -1095,7 +1095,12 @@ export default function TacticalPlaySurface() {
       });
     };
 
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") scheduleReflow();
+    };
+
     window.addEventListener("resize", scheduleReflow);
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     mountFrameA = window.requestAnimationFrame(() => {
       mountFrameB = window.requestAnimationFrame(() => {
@@ -1107,6 +1112,7 @@ export default function TacticalPlaySurface() {
     return () => {
       disposed = true;
       window.removeEventListener("resize", scheduleReflow);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.cancelAnimationFrame(mountFrameA);
       window.cancelAnimationFrame(mountFrameB);
       window.cancelAnimationFrame(resizeFrameA);

@@ -63,18 +63,19 @@ type CleanAdapterOutput = {
 function makeCleanTokenFn(variant: "pixi" | "phosphor"): (input: CleanAdapterInput) => CleanAdapterOutput {
   return ({ color, number, label, radius }) => {
     const safeLabel = (label?.trim().slice(0, 3) ?? "") || String(number);
+    const visualRadius = variant === "pixi" ? radius * 0.88 : radius;
     const { token, shadow } = createCleanTacticalPlayerToken({
       label: safeLabel,
       style: PALETTE[color],
-      radius,
+      radius: visualRadius,
       kitPattern: "plain",
       variant,
     });
     const ballMarker = new Graphics();
     ballMarker
-      .circle(0, radius * 1.04, radius * 0.105)
+      .circle(0, visualRadius * 1.04, visualRadius * 0.105)
       .fill({ color: 0xffffff })
-      .circle(0, radius * 1.04, radius * 0.105)
+      .circle(0, visualRadius * 1.04, visualRadius * 0.105)
       .stroke({ color: 0xfbbf24, width: 1.2, alpha: 1 });
     ballMarker.visible = false;
     token.addChild(ballMarker);

@@ -893,6 +893,20 @@ export async function createMovementCanvasShell(
   };
   app.ticker.add(tick);
 
+  const canvas = app.canvas as HTMLCanvasElement;
+  const onContextLost = (e: Event) => { e.preventDefault(); };
+  const onContextRestored = () => { syncToHost(); };
+  canvas.addEventListener("webglcontextlost", onContextLost);
+  canvas.addEventListener("webglcontextrestored", onContextRestored);
+
+  const onVisibilityChange = () => {
+    if (document.visibilityState === "visible") syncToHost();
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange);
+
+  const onVisualViewportResize = () => { syncToHost(); };
+  window.visualViewport?.addEventListener("resize", onVisualViewportResize);
+
   const resizeObserver = new ResizeObserver(() => {
     syncToHost();
   });
@@ -1136,6 +1150,10 @@ export async function createMovementCanvasShell(
     destroy: () => {
       orchestrator.stop();
       resizeObserver.disconnect();
+      canvas.removeEventListener("webglcontextlost", onContextLost);
+      canvas.removeEventListener("webglcontextrestored", onContextRestored);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.visualViewport?.removeEventListener("resize", onVisualViewportResize);
       tokenLayer.destroy();
       routeLayer.destroy();
       ballLayer.destroy();
@@ -1145,7 +1163,7 @@ export async function createMovementCanvasShell(
       app.stage.removeAllListeners();
       pitchMount.dispose();
       try {
-        host.removeChild(app.canvas as HTMLCanvasElement);
+        host.removeChild(canvas);
       } catch {
         // Canvas may already be detached.
       }
