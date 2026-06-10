@@ -87,7 +87,7 @@ const _CAN_DVW = typeof window !== "undefined" && typeof window.CSS !== "undefin
 const _VW = _CAN_DVW ? "100dvw" : "100vw";
 const TP_HEIGHT_VAR = "--tp-app-height";
 const TP_H = `var(${TP_HEIGHT_VAR}, 100dvh)`;
-const TP_CONTENT_WIDTH = `min(calc(${_VW} - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc((${TP_H} - 10px) * 1.6), 1360px)`;
+const TP_CONTENT_WIDTH = `min(calc(${_VW} - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc(${TP_H} * 1.344), 1360px)`;
 
 function getTPViewportHeight(): number {
   if (typeof window === "undefined") return 0;
@@ -119,7 +119,7 @@ const CONTENT_STYLE: CSSProperties = {
   width: TP_CONTENT_WIDTH,
   maxWidth: "calc(100vw - 24px)",
   aspectRatio: "16 / 10",
-  maxHeight: `calc(${TP_H} - 10px)`,
+  maxHeight: `calc(${TP_H} * 0.84)`,
   boxSizing: "border-box",
   position: "relative",
   zIndex: 1,
