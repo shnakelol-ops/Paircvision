@@ -3484,6 +3484,8 @@ export default function StatsModeSurface() {
         "FORTY_FIVE_TWO_POINT",
         "SHOT",
         "WIDE",
+        "KICKOUT_WON",
+        "KICKOUT_CONCEDED",
       ]),
     [],
   );
