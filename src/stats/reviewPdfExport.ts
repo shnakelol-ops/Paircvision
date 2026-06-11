@@ -26,6 +26,8 @@ import { deriveReviewPrompts } from "./chains/review-prompts";
 import type { ReviewPrompt, ReviewPromptCategory } from "./chains/review-prompts";
 import { getZoneCounts, getZoneHotspots } from "./zones/zone-engine";
 import type { ZoneCount } from "./zones/zone-types";
+import { eventSource, isFreeScore, isFreeMiss } from "./eventSource";
+import type { ScoreSource } from "./eventSource";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -750,8 +752,8 @@ function drawSummaryStatsTable(
       // Frees — mirrored
       freesWon,
       freesCon,
-      freeScored:     countKinds(ownEvts, "FREE_SCORED"),
-      freeMissed:     countKinds(ownEvts, "FREE_MISSED"),
+      freeScored:     ownEvts.filter((e) => isFreeScore(e)).length,
+      freeMissed:     ownEvts.filter((e) => isFreeMiss(e)).length,
     };
   }
 
@@ -5292,21 +5294,8 @@ function makeShotEfficiencyPage(
   const NEUTRAL   = "#f8fafc";
   const MUTED     = "#94a3b8";
 
-  // ── Source classifier ─────────────────────────────────────────────────────────
-  function eventSource(e: PdfExportEvent): "PLAY" | "FREE" | "MARK" | "45" | "PENALTY" | "UNKNOWN" {
-    if (e.kind === "FREE_SCORED" || e.kind === "FREE_MISSED") return "FREE";
-    if (e.kind === "FORTY_FIVE_TWO_POINT")                    return "45";
-    if (e.kind === "SHOT")                                    return "UNKNOWN";
-    if (e.tags?.includes("SOURCE_FREE"))                      return "FREE";
-    if (e.tags?.includes("SOURCE_PLAY"))                      return "PLAY";
-    if (e.tags?.includes("SOURCE_MARK"))                      return "MARK";
-    if (e.tags?.includes("SOURCE_45"))                        return "45";
-    if (e.tags?.includes("SOURCE_PENALTY"))                   return "PENALTY";
-    return "UNKNOWN";
-  }
-
   // ── Data derivation ───────────────────────────────────────────────────────────
-  type SrcKey = "PLAY" | "FREE" | "MARK" | "45" | "PENALTY" | "UNKNOWN";
+  type SrcKey = ScoreSource;
   type SrcRow = { label: string; att: number; sc: number; miss: number; conv: string };
   type ShootingStats = {
     totalAtt:     number;
@@ -5351,8 +5340,8 @@ function makeShotEfficiencyPage(
 
     const twoPointerSc   = evts.filter((e) => e.kind === "TWO_POINTER").length;
     const fortyFiveTwoSc = evts.filter((e) => e.kind === "FORTY_FIVE_TWO_POINT").length;
-    const freeScored     = evts.filter((e) => e.kind === "FREE_SCORED").length;
-    const freeMissed     = evts.filter((e) => e.kind === "FREE_MISSED").length;
+    const freeScored     = evts.filter((e) => isFreeScore(e)).length;
+    const freeMissed     = evts.filter((e) => isFreeMiss(e)).length;
     const freeTotal      = freeScored + freeMissed;
     const freeConvPct    = freeTotal  > 0 ? Math.round((freeScored / freeTotal) * 100) : 0;
 
