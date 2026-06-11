@@ -10,7 +10,6 @@ import { buildIntelligencePack } from "../stats/intelligencePack";
 import type { IntelligencePack } from "../stats/intelligencePack";
 import { IntelligencePackPreview } from "../stats/IntelligencePackPreview";
 import type { LoggedMatchEvent } from "../core/stats/saved-match";
-import type { MatchEventKind } from "../core/stats/stats-event-model";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -20,9 +19,7 @@ function computeScoreSide(
 ): { goals: number; points: number; total: number } {
   const scored     = events.filter((e) => e.teamSide === side);
   const goals      = scored.filter((e) => e.kind === "GOAL").length;
-  const onePointers = scored.filter((e) =>
-    (["POINT", "FREE_SCORED"] as MatchEventKind[]).includes(e.kind),
-  ).length;
+  const onePointers = scored.filter((e) => e.kind === "POINT").length;
   const twoPointers = scored.filter((e) => e.kind === "TWO_POINTER").length;
   const pts = onePointers + twoPointers * 2;
   return { goals, points: pts, total: goals * 3 + pts };

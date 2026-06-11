@@ -153,9 +153,6 @@ function computeTeamScore(events: readonly MatchEvent[], team: TeamSide): TeamSc
       points += 2;
       continue;
     }
-    if (event.kind === "FREE_SCORED") {
-      points += 1;
-    }
   }
 
   return {
@@ -2348,8 +2345,8 @@ export default function App() {
     for (const event of loggedEvents) {
       if (event.team !== "HOME") continue;
       if (event.kind === "WIDE") wides += 1;
-      if (event.kind === "SHOT" || event.kind === "GOAL" || event.kind === "POINT" || event.kind === "TWO_POINTER" || event.kind === "FORTY_FIVE_TWO_POINT" || event.kind === "FREE_SCORED" || event.kind === "WIDE") shots += 1;
-      if (event.kind === "GOAL" || event.kind === "POINT" || event.kind === "TWO_POINTER" || event.kind === "FORTY_FIVE_TWO_POINT" || event.kind === "FREE_SCORED") scores += 1;
+      if (event.kind === "SHOT" || event.kind === "GOAL" || event.kind === "POINT" || event.kind === "TWO_POINTER" || event.kind === "FORTY_FIVE_TWO_POINT" || event.kind === "WIDE") shots += 1;
+      if (event.kind === "GOAL" || event.kind === "POINT" || event.kind === "TWO_POINTER" || event.kind === "FORTY_FIVE_TWO_POINT") scores += 1;
       const playerId = event.playerId;
       if (!playerId || !playerById.has(playerId)) continue;
       const stat = playerStats.get(playerId) ?? { goals: 0, points: 0, twoPointers: 0, turnoversWon: 0, kickoutsWon: 0, freesWon: 0 };
@@ -2357,7 +2354,6 @@ export default function App() {
       else if (event.kind === "POINT") stat.points += 1;
       else if (event.kind === "TWO_POINTER") stat.twoPointers += 1;
       else if (event.kind === "FORTY_FIVE_TWO_POINT") stat.twoPointers += 1;
-      else if (event.kind === "FREE_SCORED") stat.points += 1;
       else if (event.kind === "TURNOVER_WON") stat.turnoversWon += 1;
       else if (event.kind === "KICKOUT_WON") stat.kickoutsWon += 1;
       else if (event.kind === "FREE_WON") stat.freesWon += 1;

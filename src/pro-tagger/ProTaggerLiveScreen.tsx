@@ -89,9 +89,7 @@ function computeScoreSide(
 ): { goals: number; points: number; total: number } {
   const scored      = events.filter((e) => e.teamSide === side);
   const goals       = scored.filter((e) => e.kind === "GOAL").length;
-  const onePointers = scored.filter((e) =>
-    (["POINT", "FREE_SCORED"] as MatchEventKind[]).includes(e.kind),
-  ).length;
+  const onePointers = scored.filter((e) => e.kind === "POINT").length;
   const twoPointers = scored.filter((e) =>
     (["TWO_POINTER", "FORTY_FIVE_TWO_POINT"] as MatchEventKind[]).includes(e.kind),
   ).length;
@@ -138,7 +136,7 @@ function computeProTaggerCounts(events: readonly LoggedMatchEvent[], side: "FOR"
   const s = events.filter((e) => e.teamSide === side);
   return {
     goals:        s.filter((e) => e.kind === "GOAL").length,
-    points:       s.filter((e) => (["POINT", "FREE_SCORED"] as MatchEventKind[]).includes(e.kind)).length,
+    points:       s.filter((e) => e.kind === "POINT").length,
     twoPointers:  s.filter((e) => (["TWO_POINTER", "FORTY_FIVE_TWO_POINT"] as MatchEventKind[]).includes(e.kind)).length,
     shots:        s.filter((e) => e.kind === "SHOT").length,
     wides:        s.filter((e) => e.kind === "WIDE").length,

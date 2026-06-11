@@ -1454,7 +1454,7 @@ function collectPlayerStats(events: readonly PdfExportEvent[]): PlayerStatsFull[
     ps.actions++;
     if (e.kind === "GOAL")                                                    { ps.goals++;         ps.scoreTotal += 3; }
     else if (e.kind === "TWO_POINTER" || e.kind === "FORTY_FIVE_TWO_POINT")  { ps.scorePoints += 2; ps.scoreTotal += 2; }
-    else if (e.kind === "POINT" || e.kind === "FREE_SCORED")                 { ps.scorePoints += 1; ps.scoreTotal += 1; }
+    else if (e.kind === "POINT")                                               { ps.scorePoints += 1; ps.scoreTotal += 1; }
     if (PDF_KIND_SETS.SHOTS.has(e.kind)) ps.shots++;
     if (e.kind === "WIDE")               ps.wides++;
     if (e.kind === "TURNOVER_WON")       ps.toWon++;
@@ -7041,7 +7041,7 @@ function makeHtAttackShotVisionPage(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
   );
   const forWideEvts = events.filter(
-    (e) => e.teamSide === "FOR" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"),
+    (e) => e.teamSide === "FOR" && (e.kind === "WIDE" || isFreeMiss(e)),
   );
   const forShotEvts = events.filter(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind),
@@ -7052,7 +7052,7 @@ function makeHtAttackShotVisionPage(
     (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
   );
   const oppWideEvts = events.filter(
-    (e) => e.teamSide === "OPP" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"),
+    (e) => e.teamSide === "OPP" && (e.kind === "WIDE" || isFreeMiss(e)),
   );
   const oppShotEvts = events.filter(
     (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
@@ -7540,7 +7540,7 @@ function makeHtGameFlowFactorsPage(
   // ── Derive raw data ────────────────────────────────────────────────────────
   const forShotEvts  = events.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind));
   const forScoreEvts = events.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind));
-  const forWideEvts  = events.filter((e) => e.teamSide === "FOR" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"));
+  const forWideEvts  = events.filter((e) => e.teamSide === "FOR" && (e.kind === "WIDE" || isFreeMiss(e)));
   const oppScoreEvts = events.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind));
 
   const forScoreTotal = scoreFromEvents(forScoreEvts).total;
@@ -7780,7 +7780,7 @@ function makeFtAttackCorridorsPage(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
   );
   const forWideEvts = events.filter(
-    (e) => e.teamSide === "FOR" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"),
+    (e) => e.teamSide === "FOR" && (e.kind === "WIDE" || isFreeMiss(e)),
   );
   const forLossEvts = events.filter(
     (e) => e.teamSide === "FOR" && e.kind === "TURNOVER_LOST",
@@ -8631,7 +8631,7 @@ function makeFtTacticalMatchStoryPage(
   const ko           = analysis.kickouts;
   const forShots     = events.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind));
   const forScoreEvts = events.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind));
-  const forWides     = events.filter((e) => e.teamSide === "FOR" && (e.kind === "WIDE" || e.kind === "FREE_MISSED")).length;
+  const forWides     = events.filter((e) => e.teamSide === "FOR" && (e.kind === "WIDE" || isFreeMiss(e))).length;
   const shotEff      = forShots.length > 0 ? Math.round((forScoreEvts.length / forShots.length) * 100) : 0;
 
   const sentences: string[] = [];
@@ -9637,7 +9637,7 @@ function makeOurShotProfilePage(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
   );
   const forWideEvts = events.filter(
-    (e) => e.teamSide === "FOR" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"),
+    (e) => e.teamSide === "FOR" && (e.kind === "WIDE" || isFreeMiss(e)),
   );
   const forShotEvts = events.filter(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind),
@@ -9646,12 +9646,12 @@ function makeOurShotProfilePage(
   const freeWonEvts = events.filter(
     (e) => e.teamSide === "FOR" && e.kind === "FREE_WON",
   );
-  // Placed-ball counts — directly from event.kind; safe inference, no schema change
+  // Placed-ball counts — source-tag aware
   const forFreeScored = events.filter(
-    (e) => e.teamSide === "FOR" && e.kind === "FREE_SCORED",
+    (e) => e.teamSide === "FOR" && isFreeScore(e),
   ).length;
   const forFreeMissed = events.filter(
-    (e) => e.teamSide === "FOR" && e.kind === "FREE_MISSED",
+    (e) => e.teamSide === "FOR" && isFreeMiss(e),
   ).length;
 
   // ── Pitch + zone colour overlays ──────────────────────────────────────────
@@ -9861,7 +9861,7 @@ function makeOppShotProfilePage(
     (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
   );
   const oppWideEvts = events.filter(
-    (e) => e.teamSide === "OPP" && (e.kind === "WIDE" || e.kind === "FREE_MISSED"),
+    (e) => e.teamSide === "OPP" && (e.kind === "WIDE" || isFreeMiss(e)),
   );
   const oppShotEvts = events.filter(
     (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
@@ -9870,12 +9870,12 @@ function makeOppShotProfilePage(
   const freeConcededEvts = events.filter(
     (e) => e.teamSide === "FOR" && e.kind === "FREE_CONCEDED",
   );
-  // OPP placed-ball counts — directly from event.kind; safe inference
+  // OPP placed-ball counts — source-tag aware
   const oppFreeScored = events.filter(
-    (e) => e.teamSide === "OPP" && e.kind === "FREE_SCORED",
+    (e) => e.teamSide === "OPP" && isFreeScore(e),
   ).length;
   const oppFreeMissed = events.filter(
-    (e) => e.teamSide === "OPP" && e.kind === "FREE_MISSED",
+    (e) => e.teamSide === "OPP" && isFreeMiss(e),
   ).length;
 
   // ── Pitch + zone colour overlays ──────────────────────────────────────────

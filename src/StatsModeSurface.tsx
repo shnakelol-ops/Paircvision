@@ -1283,9 +1283,6 @@ function computeTeamScore(events: readonly MatchEvent[], team: TeamSide): TeamSc
       points += 2;
       continue;
     }
-    if (event.kind === "FREE_SCORED") {
-      points += 1;
-    }
   }
 
   return {
@@ -1403,22 +1400,6 @@ function deriveMyTeamReport(
       continue;
     }
     if (event.kind === "POINT") {
-      points += 1;
-      scores += 1;
-      attempts += 1;
-      if (playerNote) {
-        playerNote.points += 1;
-        playerNote.scorePoints += 1;
-      }
-      continue;
-    }
-    const eventKind = String(event.kind);
-    const isFreeScoredKind =
-      eventKind === "FREE_SCORED" ||
-      eventKind === "FS" ||
-      eventKind === "FREE_SCORE" ||
-      eventKind === "free_scored";
-    if (isFreeScoredKind) {
       points += 1;
       scores += 1;
       attempts += 1;
@@ -5934,11 +5915,6 @@ export default function StatsModeSurface() {
       }
       if (event.kind === "TWO_POINTER" || event.kind === "FORTY_FIVE_TWO_POINT") {
         counts.twoPointers += 1;
-        counts.shots += 1;
-        continue;
-      }
-      if (event.kind === "FREE_SCORED") {
-        counts.points += 1;
         counts.shots += 1;
         continue;
       }
