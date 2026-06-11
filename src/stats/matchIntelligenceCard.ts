@@ -289,13 +289,13 @@ function drawIntelligencePanel(
   ctx.fillStyle = CLR.cyan;
   ctx.font = "700 21px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText("KEY INTELLIGENCE", ix, y);
+  ctx.fillText("MATCH STORY", ix, y);
   y += 40;
 
   if (intel.highestDamageFamily) {
     y = drawIntelRow(
       ctx,
-      "Biggest Opposition Threat",
+      "Where they hurt us",
       `${intel.highestDamageFamily.label}  ${intel.highestDamageFamily.damagePct}%`,
       badPctClr(intel.highestDamageFamily.damagePct),
       ix, y, iw,
@@ -306,7 +306,7 @@ function drawIntelligencePanel(
   if (intel.bestScoringFamily) {
     y = drawIntelRow(
       ctx,
-      "Strongest Attacking Platform",
+      "Where we scored best",
       `${intel.bestScoringFamily.label}  ${intel.bestScoringFamily.scoringPct}%`,
       goodPctClr(intel.bestScoringFamily.scoringPct),
       ix, y, iw,
@@ -317,7 +317,7 @@ function drawIntelligencePanel(
   if (intel.worstScoringFamily) {
     y = drawIntelRow(
       ctx,
-      "Platform to Improve",
+      "Where to improve",
       `${intel.worstScoringFamily.label}  ${intel.worstScoringFamily.scoringPct}%`,
       goodPctClr(intel.worstScoringFamily.scoringPct),
       ix, y, iw,
@@ -359,7 +359,7 @@ function drawLargeNetBadge(
   ctx.textAlign = "center";
   ctx.fillStyle = CLR.muted;
   ctx.font = "500 20px Inter,system-ui,sans-serif";
-  ctx.fillText("OVERALL NET OUTCOME", cx, y + 26);
+  ctx.fillText("NET MATCH EFFECT", cx, y + 26);
 
   ctx.fillStyle = colour;
   ctx.font = "800 42px Inter,system-ui,sans-serif";

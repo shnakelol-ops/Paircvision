@@ -517,11 +517,11 @@ export function buildMatchIntelligence(
   while (topThree.length < 3) {
     const net2 = summary.overallNetOutcome;
     if (topThree.length === 0) {
-      topThree.push(`Overall possession net outcome: ${netLabel(net2)} points`);
+      topThree.push(`Net match effect across all sources: ${netLabel(net2)} points`);
     } else if (topThree.length === 1) {
-      topThree.push(`Kickout balance: won ${kickouts.retainedCount}, lost ${kickouts.concededCount}`);
+      topThree.push(`Kickouts — won ${kickouts.retainedCount}, lost ${kickouts.concededCount}`);
     } else {
-      topThree.push(`Turnover balance: won ${turnovers.retainedCount}, lost ${turnovers.concededCount}`);
+      topThree.push(`Turnovers — won ${turnovers.retainedCount}, lost ${turnovers.concededCount}`);
     }
   }
 
