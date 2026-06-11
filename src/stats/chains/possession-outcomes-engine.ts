@@ -317,10 +317,20 @@ export function buildPossessionOutcomeSummary<TEvent extends ChainableEvent>(
   const turnovers = buildFamily<TEvent>("TURNOVER", turnoverResults);
   const frees     = buildFamily<TEvent>("FREE",     freeResults);
 
+  // 5. Ownership split: partition kickouts by restartOwner when data is present.
+  //    Old matches (restartOwner absent) fall back to the combined kickouts view.
+  const hasOwnershipData = kickoutResults.some((r) => r.originEvent.restartOwner != null);
+  const ourKickoutResults   = kickoutResults.filter((r) => r.originEvent.restartOwner === "FOR");
+  const theirKickoutResults = kickoutResults.filter((r) => r.originEvent.restartOwner === "OPP");
+  const ourKickouts   = hasOwnershipData && ourKickoutResults.length   > 0
+    ? buildFamily<TEvent>("KICKOUT", ourKickoutResults)   : null;
+  const theirKickouts = hasOwnershipData && theirKickoutResults.length > 0
+    ? buildFamily<TEvent>("KICKOUT", theirKickoutResults) : null;
+
   const overallNetOutcome =
     kickouts.netOutcome + turnovers.netOutcome + frees.netOutcome;
 
-  return { kickouts, turnovers, frees, overallNetOutcome };
+  return { kickouts, ourKickouts, theirKickouts, turnovers, frees, overallNetOutcome };
 }
 
 // ─── Match Intelligence ───────────────────────────────────────────────────────

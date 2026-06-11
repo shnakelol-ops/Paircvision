@@ -278,6 +278,7 @@ type FamilySectionConfig = {
 /**
  * Renders one possession family as a dual-branch panel.
  * Both branches show: scoring %, Gaelic score, detail line (wides · turnovers · recycled).
+ * panelH defaults to 470 (3-section layout); pass a smaller value for 4-section split layouts.
  * Returns the Y position after the panel + gap.
  */
 function drawFamilySection(
@@ -285,13 +286,27 @@ function drawFamilySection(
   family: PossessionOutcomeFamily,
   config: FamilySectionConfig,
   startY: number,
+  panelH = 470,
 ): number {
-  const PANEL_H = 470;
   const GAP = 10;
   const panelX = PAD;
   const panelW = W - PAD * 2;
+  const scale = panelH / 470;
 
-  drawPanel(ctx, panelX, startY, panelW, PANEL_H, config.accentColor);
+  // Scaled Y offsets (relative to startY)
+  const yTitle    = Math.round(38  * scale);
+  const yDivTop   = Math.round(58  * scale);
+  const yHeaders  = Math.round(76  * scale);
+  const yCounts   = Math.round(104 * scale);
+  const ySep      = Math.round(122 * scale);
+  const yHero     = Math.round(228 * scale);
+  const ySublabel = Math.round(256 * scale);
+  const yGaelic   = Math.round(302 * scale);
+  const yDetail   = Math.round(338 * scale);
+  const yBadge    = Math.round(372 * scale);
+  const heroFont  = Math.round(76  * scale);
+
+  drawPanel(ctx, panelX, startY, panelW, panelH, config.accentColor);
 
   const ix = panelX + INNER_PAD;
   const iw = panelW - INNER_PAD * 2;
@@ -301,73 +316,73 @@ function drawFamilySection(
   ctx.fillStyle = config.accentColor;
   ctx.font = "700 22px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(config.title, ix, startY + 38);
+  ctx.fillText(config.title, ix, startY + yTitle);
 
   if (family.total === 0) {
     ctx.fillStyle = CLR.dim;
     ctx.font = "500 24px Inter,system-ui,sans-serif";
-    ctx.fillText("No events recorded", ix, startY + 100);
-    return startY + PANEL_H + GAP;
+    ctx.fillText("No events recorded", ix, startY + yTitle + 60);
+    return startY + panelH + GAP;
   }
 
   // Vertical center divider between branches
   ctx.strokeStyle = CLR.divider;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(cx, startY + 58);
-  ctx.lineTo(cx, startY + 452);
+  ctx.moveTo(cx, startY + yDivTop);
+  ctx.lineTo(cx, startY + panelH - 18);
   ctx.stroke();
 
   // Branch headers
   ctx.fillStyle = CLR.muted;
   ctx.font = "600 17px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(config.leftLabel, ix, startY + 76);
+  ctx.fillText(config.leftLabel, ix, startY + yHeaders);
   ctx.textAlign = "right";
-  ctx.fillText(config.rightLabel, ix + iw, startY + 76);
+  ctx.fillText(config.rightLabel, ix + iw, startY + yHeaders);
 
   // Possession counts
   ctx.fillStyle = CLR.offwhite;
   ctx.font = "600 21px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(`${family.retainedCount}/${family.total}`, ix, startY + 104);
+  ctx.fillText(`${family.retainedCount}/${family.total}`, ix, startY + yCounts);
   ctx.textAlign = "right";
-  ctx.fillText(`${family.concededCount}/${family.total}`, ix + iw, startY + 104);
+  ctx.fillText(`${family.concededCount}/${family.total}`, ix + iw, startY + yCounts);
   ctx.textAlign = "left";
 
   // Horizontal separator
-  panelDivider(ctx, ix, startY + 122, iw);
+  panelDivider(ctx, ix, startY + ySep, iw);
 
   // Hero scoring percentages
   const leftClr  = goodPctClr(family.retained.scoringPct);
   const rightClr = badPctClr(family.conceded.scoringPct);
 
   ctx.fillStyle = leftClr;
-  ctx.font = "800 76px Inter,system-ui,sans-serif";
+  ctx.font = `800 ${heroFont}px Inter,system-ui,sans-serif`;
   ctx.textAlign = "left";
-  ctx.fillText(`${family.retained.scoringPct}%`, ix, startY + 228);
+  ctx.fillText(`${family.retained.scoringPct}%`, ix, startY + yHero);
 
   ctx.fillStyle = rightClr;
   ctx.textAlign = "right";
-  ctx.fillText(`${family.conceded.scoringPct}%`, ix + iw, startY + 228);
+  ctx.fillText(`${family.conceded.scoringPct}%`, ix + iw, startY + yHero);
 
   // "scoring %" sublabel
   ctx.fillStyle = CLR.muted;
   ctx.font = "500 18px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText("scoring %", ix, startY + 256);
+  ctx.fillText("scoring %", ix, startY + ySublabel);
   ctx.textAlign = "right";
-  ctx.fillText("scoring %", ix + iw, startY + 256);
+  ctx.fillText("scoring %", ix + iw, startY + ySublabel);
 
   // Gaelic scores
   ctx.fillStyle = leftClr;
   ctx.font = "700 30px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(formatGaelic(family.retained.goals, family.retained.points), ix, startY + 302);
+  ctx.fillText(formatGaelic(family.retained.goals, family.retained.points), ix, startY + yGaelic);
 
   ctx.fillStyle = rightClr;
   ctx.textAlign = "right";
-  ctx.fillText(formatGaelic(family.conceded.goals, family.conceded.points), ix + iw, startY + 302);
+  ctx.fillText(formatGaelic(family.conceded.goals, family.conceded.points), ix + iw, startY + yGaelic);
 
   // Detail lines: wides · turnovers · recycled
   ctx.fillStyle = CLR.dim;
@@ -375,19 +390,19 @@ function drawFamilySection(
   ctx.textAlign = "left";
   ctx.fillText(
     `${family.retained.wides}wd · ${family.retained.turnovers}t · ${family.retained.recycled}rec`,
-    ix, startY + 338,
+    ix, startY + yDetail,
   );
   ctx.textAlign = "right";
   ctx.fillText(
     `${family.conceded.wides}wd · ${family.conceded.turnovers}t · ${family.conceded.recycled}rec`,
-    ix + iw, startY + 338,
+    ix + iw, startY + yDetail,
   );
   ctx.textAlign = "left";
 
   // Net outcome badge (centred)
-  drawNetBadge(ctx, config.netLabel, family.netOutcome, cx, startY + 372);
+  drawNetBadge(ctx, config.netLabel, family.netOutcome, cx, startY + yBadge);
 
-  return startY + PANEL_H + GAP;
+  return startY + panelH + GAP;
 }
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
@@ -430,29 +445,63 @@ export async function buildPossessionOutcomesCardPng(
   let y = drawHeader(ctx, homeTeamName, awayTeamName, stageLabel);
   y = drawScorePanel(ctx, homeTeamName, awayTeamName, homeScore, awayScore, y);
 
-  y = drawFamilySection(ctx, summary.kickouts, {
-    title:       "KICKOUTS",
-    accentColor: CLR.green,
-    leftLabel:   "WE WON IT",
-    rightLabel:  "THEY WON IT",
-    netLabel:    "Kickouts",
-  }, y);
+  // Build the ordered section list. Split kickouts (OUR / THEIR) when
+  // restartOwner data is present; fall back to the combined view for old matches.
+  type Section = { family: PossessionOutcomeFamily; config: FamilySectionConfig };
+  const sections: Section[] = [];
 
-  y = drawFamilySection(ctx, summary.turnovers, {
+  if (summary.ourKickouts !== null || summary.theirKickouts !== null) {
+    if (summary.ourKickouts) {
+      sections.push({ family: summary.ourKickouts, config: {
+        title:       "OUR KICKOUTS",
+        accentColor: CLR.green,
+        leftLabel:   "WE KEPT IT",
+        rightLabel:  "THEY WON IT",
+        netLabel:    "Our K/Os",
+      }});
+    }
+    if (summary.theirKickouts) {
+      sections.push({ family: summary.theirKickouts, config: {
+        title:       "THEIR KICKOUTS",
+        accentColor: "#15803d",
+        leftLabel:   "WE WON IT",
+        rightLabel:  "THEY KEPT IT",
+        netLabel:    "Their K/Os",
+      }});
+    }
+  } else {
+    sections.push({ family: summary.kickouts, config: {
+      title:       "KICKOUTS",
+      accentColor: CLR.green,
+      leftLabel:   "WE WON IT",
+      rightLabel:  "THEY WON IT",
+      netLabel:    "Kickouts",
+    }});
+  }
+
+  sections.push({ family: summary.turnovers, config: {
     title:       "TURNOVERS",
     accentColor: CLR.cyan,
     leftLabel:   "BALL WON",
     rightLabel:  "BALL LOST",
     netLabel:    "Turnovers",
-  }, y);
-
-  y = drawFamilySection(ctx, summary.frees, {
+  }});
+  sections.push({ family: summary.frees, config: {
     title:       "FREES",
     accentColor: CLR.amber,
     leftLabel:   "FREES WON",
     rightLabel:  "CONCEDED",
     netLabel:    "Frees",
-  }, y);
+  }});
+
+  // Compute panel height so all sections fill the space between score panel and footer.
+  const GAP = 10;
+  const availableH = (H - 24) - y - GAP;
+  const panelH = Math.min(470, Math.floor((availableH - (sections.length - 1) * GAP) / sections.length));
+
+  for (const { family, config } of sections) {
+    y = drawFamilySection(ctx, family, config, y, panelH);
+  }
 
   void y;
   drawFooter(ctx);

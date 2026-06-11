@@ -21,6 +21,7 @@ export type LoggedMatchEvent = MatchEvent & {
   playerNumber?: number;
   squadId?: string;
   team?: "HOME" | "AWAY";
+  restartOwner?: "FOR" | "OPP";
 };
 
 export type SavedMatchRestoreContext = {

@@ -39,6 +39,9 @@ export type ChainableEvent = {
   /** Normalised pitch y (0–1). */
   ny: number;
   tags?: string[] | null;
+  /** Who took this restart (kickout/puckout/45/sideline). "FOR" = we took it; "OPP" = they took it.
+   *  Absent on non-restart events and on matches recorded before V1.2. */
+  restartOwner?: "FOR" | "OPP" | null;
 };
 
 // ─── Rule Identification ──────────────────────────────────────────────────────
@@ -285,6 +288,10 @@ export type PossessionOutcomeFamily<TEvent extends ChainableEvent = ChainableEve
 /** Full possession outcome summary across all origin groups. */
 export type PossessionOutcomeSummary<TEvent extends ChainableEvent = ChainableEvent> = {
   kickouts: PossessionOutcomeFamily<TEvent>;
+  /** Kickouts taken by our team. Non-null only when restartOwner data is present (V1.2+). */
+  ourKickouts: PossessionOutcomeFamily<TEvent> | null;
+  /** Kickouts taken by the opposition. Non-null only when restartOwner data is present (V1.2+). */
+  theirKickouts: PossessionOutcomeFamily<TEvent> | null;
   turnovers: PossessionOutcomeFamily<TEvent>;
   frees: PossessionOutcomeFamily<TEvent>;
   /** Sum of netOutcome across all three families. */

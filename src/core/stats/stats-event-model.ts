@@ -39,6 +39,9 @@ export type MatchEvent = {
   createdAt?: number;
   segment?: MatchEventSegment;
   teamSide?: MatchEventTeamSide;
+  /** Who took this restart (kickout, puckout, etc.). "FOR" = we took it; "OPP" = they took it.
+   *  Absent on non-restart events and on events recorded before V1.2. */
+  restartOwner?: "FOR" | "OPP";
   matchTimeSeconds?: number;
   halfSegment?: 1 | 2 | 3;
 };
@@ -58,6 +61,7 @@ export type CreateMatchEventInput = {
   createdAt?: number;
   segment?: MatchEventSegment;
   teamSide?: MatchEventTeamSide;
+  restartOwner?: "FOR" | "OPP";
   matchTimeSeconds?: number;
   halfSegment?: 1 | 2 | 3;
   id?: string;
@@ -127,6 +131,7 @@ export function createMatchEvent(input: CreateMatchEventInput): MatchEvent {
     createdAt: normalizedCreatedAt,
     ...(input.segment != null ? { segment: input.segment } : {}),
     ...(input.teamSide ? { teamSide: input.teamSide } : {}),
+    ...(input.restartOwner ? { restartOwner: input.restartOwner } : {}),
     matchTimeSeconds: normalizedClockSeconds,
     ...(normalizedHalfSegment ? { halfSegment: normalizedHalfSegment } : {}),
   };
