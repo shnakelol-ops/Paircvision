@@ -8,7 +8,7 @@ const H = 1920;
 const PAD = 48;
 const INNER_PAD = 28;
 const GAP = 10;
-const DESIGN_H = 750;
+const DESIGN_H = 380;
 
 const CLR = {
   green:       "#22c55e",
@@ -107,6 +107,132 @@ function drawPanel(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.beginPath(); ctx.moveTo(x + 14, y + 1.5); ctx.lineTo(x + w - 14, y + 1.5); ctx.stroke();
 }
 
+// ─── Four-branch single-panel renderer ───────────────────────────────────────
+
+type SingleBranchCfg = {
+  /** e.g. "BALLYLANDERS KICKOUTS" */
+  groupLabel: string;
+  /** e.g. "Ballylanders kept it" or "Clonmel won it" */
+  branchLabel: string;
+  accentColor: string;
+  count: number;
+  total: number;
+  pct: number;
+  /** "Produced" or "[awayTeam] produced" */
+  producedLabel: string;
+  summary: PossessionFamilySummary;
+  /** true = FOR/home team had the ball */
+  isOurs: boolean;
+  net: number;
+};
+
+function drawKickoutBranch(
+  ctx: CanvasRenderingContext2D,
+  cfg: SingleBranchCfg,
+  startY: number,
+  panelH: number,
+): number {
+  const panelX = PAD;
+  const panelW = W - PAD * 2;
+  const sc = panelH / DESIGN_H;
+
+  // Y offsets designed at DESIGN_H = 380
+  const yGroup      = Math.round(28  * sc);
+  const yBranch     = Math.round(58  * sc);
+  const yDiv1       = Math.round(80  * sc);
+  const yProdLbl    = Math.round(104 * sc);
+  const yScore      = Math.round(142 * sc);
+  const yWides      = Math.round(174 * sc);
+  const yTurnovers  = Math.round(202 * sc);
+  const yNoOut      = Math.round(230 * sc);
+  const yDiv2       = Math.round(252 * sc);
+  const yNet        = Math.round(282 * sc);
+
+  drawPanel(ctx, panelX, startY, panelW, panelH, cfg.accentColor);
+
+  const ix = panelX + INNER_PAD;
+  const iw = panelW - INNER_PAD * 2;
+  const cx = W / 2;
+  const sm = cfg.summary;
+
+  // Group source label (muted)
+  ctx.fillStyle = CLR.muted;
+  ctx.font = "600 18px Inter,system-ui,sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(cfg.groupLabel, ix, startY + yGroup);
+
+  // Branch label (accent, left) + count (offwhite, right) — same baseline
+  ctx.fillStyle = cfg.accentColor;
+  ctx.font = "700 24px Inter,system-ui,sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(cfg.branchLabel, ix, startY + yBranch);
+
+  ctx.fillStyle = CLR.offwhite;
+  ctx.font = "600 22px Inter,system-ui,sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(
+    cfg.total > 0 ? `${cfg.count} of ${cfg.total}  (${cfg.pct}%)` : "—",
+    ix + iw, startY + yBranch,
+  );
+
+  hDivider(ctx, ix, startY + yDiv1, iw);
+
+  // "Produced" / "[team] produced"
+  ctx.fillStyle = CLR.muted;
+  ctx.font = "500 17px Inter,system-ui,sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(cfg.producedLabel, ix, startY + yProdLbl);
+
+  // Score
+  const hasScore = sm.goals > 0 || sm.points > 0;
+  ctx.fillStyle = hasScore ? (cfg.isOurs ? CLR.green : CLR.red) : CLR.dim;
+  ctx.font = "700 26px Inter,system-ui,sans-serif";
+  ctx.fillText(`${fmtGaelic(sm.goals, sm.points)} scored`, ix, startY + yScore);
+
+  // Wides
+  ctx.fillStyle = sm.wides > 0 ? CLR.amber : CLR.dim;
+  ctx.font = "500 19px Inter,system-ui,sans-serif";
+  ctx.fillText(`${sm.wides} wides`, ix, startY + yWides);
+
+  // Turnovers (bad for the team that held the ball, good if opposition won it)
+  ctx.fillStyle = sm.turnovers > 0 ? (cfg.isOurs ? CLR.red : CLR.green) : CLR.dim;
+  ctx.font = "500 19px Inter,system-ui,sans-serif";
+  ctx.fillText(`${sm.turnovers} turnovers`, ix, startY + yTurnovers);
+
+  // No outcome
+  ctx.fillStyle = CLR.dim;
+  ctx.font = "500 19px Inter,system-ui,sans-serif";
+  ctx.fillText(`${sm.recycled} no outcome`, ix, startY + yNoOut);
+
+  hDivider(ctx, ix, startY + yDiv2, iw);
+
+  // Net (centered)
+  const colour = netClr(cfg.net);
+  const valTxt = cfg.net === 0 ? "Even" : `${cfg.net > 0 ? "+" : ""}${cfg.net} pts`;
+  ctx.fillStyle = colour;
+  ctx.font = "700 22px Inter,system-ui,sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(`Net  ${valTxt}`, cx, startY + yNet);
+  ctx.textAlign = "left";
+
+  return startY + panelH + GAP;
+}
+
+// ─── Legacy two-sided renderer (combined kickouts, no restartOwner data) ──────
+
+const LEGACY_DESIGN_H = 750;
+
+type LegacyBranchData = {
+  header: string;
+  count: number;
+  total: number;
+  pct: number;
+  producedLabel: string;
+  summary: PossessionFamilySummary;
+  lostLabel: string;
+  isOurs: boolean;
+};
+
 function drawNetBadge(ctx: CanvasRenderingContext2D, label: string, net: number, cx: number, y: number): void {
   const colour = netClr(net);
   const valTxt = net === 0 ? "Even" : `${net > 0 ? "+" : ""}${net} pts`;
@@ -121,39 +247,21 @@ function drawNetBadge(ctx: CanvasRenderingContext2D, label: string, net: number,
   ctx.textAlign = "left";
 }
 
-// ─── Two-sided kickout section ────────────────────────────────────────────────
-
-type BranchData = {
-  header: string;
-  count: number;
-  total: number;
-  pct: number;
-  producedLabel: string;
-  summary: PossessionFamilySummary;
-  lostLabel: string;
-  isOurs: boolean;
-};
-
-type KickoutSectionCfg = {
-  title: string;
-  accentColor: string;
-  netLabel: string;
-  left: BranchData;
-  right: BranchData;
-  net: number;
-};
-
-function drawKickoutSection(
+function drawLegacyKickoutSection(
   ctx: CanvasRenderingContext2D,
-  cfg: KickoutSectionCfg,
+  title: string,
+  accentColor: string,
+  netLabel: string,
+  net: number,
+  left: LegacyBranchData,
+  right: LegacyBranchData,
   startY: number,
   panelH: number,
 ): number {
   const panelX = PAD;
   const panelW = W - PAD * 2;
-  const sc = panelH / DESIGN_H;
+  const sc = panelH / LEGACY_DESIGN_H;
 
-  // Scaled Y offsets relative to startY (designed at DESIGN_H = 750)
   const yTitle     = Math.round(38  * sc);
   const yDivVStart = Math.round(58  * sc);
   const yHeaders   = Math.round(82  * sc);
@@ -167,18 +275,18 @@ function drawKickoutSection(
   const yDivH2     = Math.round(332 * sc);
   const yBadge     = Math.round(372 * sc);
 
-  drawPanel(ctx, panelX, startY, panelW, panelH, cfg.accentColor);
+  drawPanel(ctx, panelX, startY, panelW, panelH, accentColor);
 
   const ix = panelX + INNER_PAD;
   const iw = panelW - INNER_PAD * 2;
   const cx = W / 2;
 
-  ctx.fillStyle = cfg.accentColor;
+  ctx.fillStyle = accentColor;
   ctx.font = "700 22px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(cfg.title, ix, startY + yTitle);
+  ctx.fillText(title, ix, startY + yTitle);
 
-  if (cfg.left.total === 0) {
+  if (left.total === 0) {
     ctx.fillStyle = CLR.dim; ctx.font = "500 24px Inter,system-ui,sans-serif";
     ctx.fillText("No events recorded", ix, startY + yTitle + 50);
     return startY + panelH + GAP;
@@ -188,13 +296,12 @@ function drawKickoutSection(
   ctx.strokeStyle = CLR.divider; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(cx, startY + yDivVStart); ctx.lineTo(cx, startY + panelH - 18); ctx.stroke();
 
-  // Full-width horizontal dividers
   hDivider(ctx, ix, startY + yDivH1, iw);
   hDivider(ctx, ix, startY + yDivH2, iw);
 
-  const branches: Array<[BranchData, CanvasTextAlign, number]> = [
-    [cfg.left,  "left",  ix],
-    [cfg.right, "right", ix + iw],
+  const branches: Array<[LegacyBranchData, CanvasTextAlign, number]> = [
+    [left,  "left",  ix],
+    [right, "right", ix + iw],
   ];
 
   for (const [b, ta, ex] of branches) {
@@ -231,7 +338,7 @@ function drawKickoutSection(
   }
 
   ctx.textAlign = "left";
-  drawNetBadge(ctx, cfg.netLabel, cfg.net, cx, startY + yBadge);
+  drawNetBadge(ctx, netLabel, net, cx, startY + yBadge);
 
   return startY + panelH + GAP;
 }
@@ -263,109 +370,121 @@ export async function buildRestartOutcomesCardPng(
 
   const { summary, homeTeamName, awayTeamName, stageLabel, homeScore, awayScore } = input;
 
-  drawBackground(ctx);
-  let y = drawHeader(ctx, homeTeamName, awayTeamName, stageLabel);
-  y = drawScorePanel(ctx, homeTeamName, awayTeamName, homeScore, awayScore, y);
+  // Team name fallback
+  const home = homeTeamName || "Team A";
+  const away = awayTeamName || "Team B";
 
-  const sections: KickoutSectionCfg[] = [];
+  drawBackground(ctx);
+  let y = drawHeader(ctx, home, away, stageLabel);
+  y = drawScorePanel(ctx, home, away, homeScore, awayScore, y);
 
   if (summary.ourKickouts !== null || summary.theirKickouts !== null) {
+    // ── Four-branch kickout story ─────────────────────────────────────────────
+    const branches: SingleBranchCfg[] = [];
+
     if (summary.ourKickouts) {
       const ok = summary.ourKickouts;
-      sections.push({
-        title:       "OUR KICKOUTS",
-        accentColor: CLR.green,
-        netLabel:    "Our K/Os",
-        net:         ok.netOutcome,
-        left: {
-          header:        "We kept",
-          count:         ok.retainedCount,
-          total:         ok.total,
-          pct:           ok.retentionPct,
-          producedLabel: "Produced",
-          summary:       ok.retained,
-          lostLabel:     "lost",
-          isOurs:        true,
-        },
-        right: {
-          header:        "They won",
-          count:         ok.concededCount,
-          total:         ok.total,
-          pct:           ok.stealPct,
-          producedLabel: "They produced",
-          summary:       ok.conceded,
-          lostLabel:     "we won back",
-          isOurs:        false,
-        },
+      // Branch 1: home took kickout → home kept it
+      branches.push({
+        groupLabel:    `${home.toUpperCase()} KICKOUTS`,
+        branchLabel:   `${home} kept it`,
+        accentColor:   CLR.green,
+        count:         ok.retainedCount,
+        total:         ok.total,
+        pct:           ok.retentionPct,
+        producedLabel: "Produced",
+        summary:       ok.retained,
+        isOurs:        true,
+        net:           ok.retained.scoreValue,
+      });
+      // Branch 2: home took kickout → away won it
+      branches.push({
+        groupLabel:    `${home.toUpperCase()} KICKOUTS`,
+        branchLabel:   `${away} won it`,
+        accentColor:   CLR.red,
+        count:         ok.concededCount,
+        total:         ok.total,
+        pct:           ok.stealPct,
+        producedLabel: `${away} produced`,
+        summary:       ok.conceded,
+        isOurs:        false,
+        net:           -ok.conceded.scoreValue,
       });
     }
+
     if (summary.theirKickouts) {
       const tk = summary.theirKickouts;
-      sections.push({
-        title:       "THEIR KICKOUTS",
-        accentColor: "#15803d",
-        netLabel:    "Their K/Os",
-        net:         tk.netOutcome,
-        left: {
-          header:        "They kept",
-          count:         tk.concededCount,
-          total:         tk.total,
-          pct:           tk.stealPct,
-          producedLabel: "They produced",
-          summary:       tk.conceded,
-          lostLabel:     "we won back",
-          isOurs:        false,
-        },
-        right: {
-          header:        "We won",
-          count:         tk.retainedCount,
-          total:         tk.total,
-          pct:           tk.retentionPct,
-          producedLabel: "Produced",
-          summary:       tk.retained,
-          lostLabel:     "lost",
-          isOurs:        true,
-        },
+      // Branch 3: away took kickout → home won it
+      branches.push({
+        groupLabel:    `${away.toUpperCase()} KICKOUTS`,
+        branchLabel:   `${home} won it`,
+        accentColor:   CLR.green,
+        count:         tk.retainedCount,
+        total:         tk.total,
+        pct:           tk.retentionPct,
+        producedLabel: "Produced",
+        summary:       tk.retained,
+        isOurs:        true,
+        net:           tk.retained.scoreValue,
+      });
+      // Branch 4: away took kickout → away kept it
+      branches.push({
+        groupLabel:    `${away.toUpperCase()} KICKOUTS`,
+        branchLabel:   `${away} kept it`,
+        accentColor:   CLR.red,
+        count:         tk.concededCount,
+        total:         tk.total,
+        pct:           tk.stealPct,
+        producedLabel: `${away} produced`,
+        summary:       tk.conceded,
+        isOurs:        false,
+        net:           -tk.conceded.scoreValue,
       });
     }
+
+    const availableH = (H - 24) - y - GAP;
+    const panelH = Math.floor(
+      (availableH - (branches.length - 1) * GAP) / branches.length,
+    );
+
+    for (const cfg of branches) {
+      y = drawKickoutBranch(ctx, cfg, y, panelH);
+    }
   } else {
+    // ── Legacy fallback: combined kickouts, no restartOwner data ─────────────
     const ko = summary.kickouts;
-    sections.push({
-      title:       "KICKOUTS",
-      accentColor: CLR.green,
-      netLabel:    "Kickouts",
-      net:         ko.netOutcome,
-      left: {
-        header:        "We won",
+    const availableH = (H - 24) - y - GAP;
+    const panelH = Math.min(LEGACY_DESIGN_H, availableH - GAP);
+
+    y = drawLegacyKickoutSection(
+      ctx,
+      "KICKOUTS — ALL RESTARTS COMBINED",
+      CLR.green,
+      "Kickouts",
+      ko.netOutcome,
+      {
+        header:        `${home} won`,
         count:         ko.retainedCount,
         total:         ko.total,
         pct:           ko.retentionPct,
         producedLabel: "Produced",
         summary:       ko.retained,
-        lostLabel:     "lost",
+        lostLabel:     "turnovers",
         isOurs:        true,
       },
-      right: {
-        header:        "They won",
+      {
+        header:        `${away} won`,
         count:         ko.concededCount,
         total:         ko.total,
         pct:           ko.stealPct,
-        producedLabel: "They produced",
+        producedLabel: `${away} produced`,
         summary:       ko.conceded,
-        lostLabel:     "we won back",
+        lostLabel:     "turnovers",
         isOurs:        false,
       },
-    });
-  }
-
-  const availableH = (H - 24) - y - GAP;
-  const panelH = Math.min(
-    DESIGN_H,
-    Math.floor((availableH - (sections.length - 1) * GAP) / sections.length),
-  );
-
-  for (const cfg of sections) {
-    y = drawKickoutSection(ctx, cfg, y, panelH);
+      y,
+      panelH,
+    );
   }
 
   void y;
