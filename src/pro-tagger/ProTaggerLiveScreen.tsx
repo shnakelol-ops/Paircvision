@@ -70,6 +70,7 @@ type PendingAction = {
   familyId:       ProTaggerFamilyId;
   tileLabel:      string;
   teamSide:       "FOR" | "OPP";
+  restartOwner?:  "FOR" | "OPP";
   player:         SelectedPlayer | null;
   playerResolved: boolean;
 };
@@ -344,10 +345,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
 
   // Tagging is only allowed during active halves.
   const handleTileTap = useCallback(
-    (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP") => {
+    (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP", restartOwner?: "FOR" | "OPP") => {
       const ms = matchStateRef.current;
       if (ms !== "FIRST_HALF" && ms !== "SECOND_HALF") return;
-      setPending({ familyId, tileLabel, teamSide, player: null, playerResolved: false });
+      setPending({ familyId, tileLabel, teamSide, restartOwner, player: null, playerResolved: false });
       setPhase("PLAYER_PICK");
     },
     [],
@@ -403,6 +404,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         familyId:          p.familyId,
         tileLabel:         p.tileLabel,
         teamSide:          p.teamSide,
+        restartOwner:      p.restartOwner,
         nx,
         ny,
         half:              halfRef.current,

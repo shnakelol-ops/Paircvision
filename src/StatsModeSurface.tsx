@@ -4247,6 +4247,9 @@ export default function StatsModeSurface() {
               ? Math.floor(event.createdAt)
               : Date.now(),
           ...(eventTags ? { tags: eventTags } : {}),
+          ...(KICKOUT_EVENT_KIND_SET.has(eventKind)
+            ? { restartOwner: activeTeamSideRef.current === "opposition" ? "OPP" as const : "FOR" as const }
+            : {}),
         };
         const activePlayerEntry = activePlayerEntryRef.current;
         const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? null;
@@ -4298,6 +4301,12 @@ export default function StatsModeSurface() {
             eventId: nextEvent.id,
             kind: pendingKind,
           });
+        }
+        // After committing a kickout, reset toggle to "own" so the next event
+        // defaults to our team's perspective (restartOwner is already stored).
+        if (KICKOUT_EVENT_KIND_SET.has(nextEvent.kind) && activeTeamSideRef.current === "opposition") {
+          activeTeamSideRef.current = "own";
+          setActiveTeamSide("own");
         }
       },
     }).then((nextHandle) => {
