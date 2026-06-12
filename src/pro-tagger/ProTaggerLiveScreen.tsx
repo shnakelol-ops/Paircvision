@@ -70,6 +70,7 @@ type PendingAction = {
   familyId:       ProTaggerFamilyId;
   tileLabel:      string;
   teamSide:       "FOR" | "OPP";
+  restartOwner?:  "FOR" | "OPP";
   player:         SelectedPlayer | null;
   playerResolved: boolean;
 };
@@ -88,9 +89,7 @@ function computeScoreSide(
 ): { goals: number; points: number; total: number } {
   const scored      = events.filter((e) => e.teamSide === side);
   const goals       = scored.filter((e) => e.kind === "GOAL").length;
-  const onePointers = scored.filter((e) =>
-    (["POINT", "FREE_SCORED"] as MatchEventKind[]).includes(e.kind),
-  ).length;
+  const onePointers = scored.filter((e) => e.kind === "POINT").length;
   const twoPointers = scored.filter((e) =>
     (["TWO_POINTER", "FORTY_FIVE_TWO_POINT"] as MatchEventKind[]).includes(e.kind),
   ).length;
@@ -137,7 +136,7 @@ function computeProTaggerCounts(events: readonly LoggedMatchEvent[], side: "FOR"
   const s = events.filter((e) => e.teamSide === side);
   return {
     goals:        s.filter((e) => e.kind === "GOAL").length,
-    points:       s.filter((e) => (["POINT", "FREE_SCORED"] as MatchEventKind[]).includes(e.kind)).length,
+    points:       s.filter((e) => e.kind === "POINT").length,
     twoPointers:  s.filter((e) => (["TWO_POINTER", "FORTY_FIVE_TWO_POINT"] as MatchEventKind[]).includes(e.kind)).length,
     shots:        s.filter((e) => e.kind === "SHOT").length,
     wides:        s.filter((e) => e.kind === "WIDE").length,
@@ -344,10 +343,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
 
   // Tagging is only allowed during active halves.
   const handleTileTap = useCallback(
-    (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP") => {
+    (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP", restartOwner?: "FOR" | "OPP") => {
       const ms = matchStateRef.current;
       if (ms !== "FIRST_HALF" && ms !== "SECOND_HALF") return;
-      setPending({ familyId, tileLabel, teamSide, player: null, playerResolved: false });
+      setPending({ familyId, tileLabel, teamSide, restartOwner, player: null, playerResolved: false });
       setPhase("PLAYER_PICK");
     },
     [],
@@ -403,6 +402,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         familyId:          p.familyId,
         tileLabel:         p.tileLabel,
         teamSide:          p.teamSide,
+        restartOwner:      p.restartOwner,
         nx,
         ny,
         half:              halfRef.current,

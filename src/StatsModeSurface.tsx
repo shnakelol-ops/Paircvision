@@ -39,6 +39,9 @@ import { createReviewSession, parseReviewSession, restoreReviewSession, serializ
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
 import { exportReviewPdf, exportSnapshotPdf } from "./stats/reviewPdfExport";
+import { buildIntelligencePack } from "./stats/intelligencePack";
+import type { IntelligencePack } from "./stats/intelligencePack";
+import { IntelligencePackPreview } from "./stats/IntelligencePackPreview";
 import { generateDemoMatchEvents } from "./demo/demoMatchData";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
@@ -1312,9 +1315,6 @@ function computeTeamScore(events: readonly MatchEvent[], team: TeamSide): TeamSc
       points += 2;
       continue;
     }
-    if (event.kind === "FREE_SCORED") {
-      points += 1;
-    }
   }
 
   return {
@@ -1432,22 +1432,6 @@ function deriveMyTeamReport(
       continue;
     }
     if (event.kind === "POINT") {
-      points += 1;
-      scores += 1;
-      attempts += 1;
-      if (playerNote) {
-        playerNote.points += 1;
-        playerNote.scorePoints += 1;
-      }
-      continue;
-    }
-    const eventKind = String(event.kind);
-    const isFreeScoredKind =
-      eventKind === "FREE_SCORED" ||
-      eventKind === "FS" ||
-      eventKind === "FREE_SCORE" ||
-      eventKind === "free_scored";
-    if (isFreeScoredKind) {
       points += 1;
       scores += 1;
       attempts += 1;
@@ -3455,6 +3439,9 @@ export default function StatsModeSurface() {
   const [isPdfExporting, setIsPdfExporting] = useState(false);
   /** "HT" | "FT" while a snapshot export is in progress; null when idle. */
   const [snapshotExporting, setSnapshotExporting] = useState<"HT" | "FT" | null>(null);
+  const [packGenerating, setPackGenerating] = useState(false);
+  const [pack, setPack] = useState<IntelligencePack | null>(null);
+  const [packPreviewOpen, setPackPreviewOpen] = useState(false);
   const [saveLoadBlockedReason, setSaveLoadBlockedReason] = useState<string | null>(null);
   const [lastSavedAtMillis, setLastSavedAtMillis] = useState<number | null>(null);
   const [loadedMatchLabel, setLoadedMatchLabel] = useState<string | null>(null);
@@ -3546,6 +3533,8 @@ export default function StatsModeSurface() {
         "FORTY_FIVE_TWO_POINT",
         "SHOT",
         "WIDE",
+        "KICKOUT_WON",
+        "KICKOUT_CONCEDED",
       ]),
     [],
   );
@@ -4317,6 +4306,9 @@ export default function StatsModeSurface() {
               ? Math.floor(event.createdAt)
               : Date.now(),
           ...(eventTags ? { tags: eventTags } : {}),
+          ...(KICKOUT_EVENT_KIND_SET.has(eventKind)
+            ? { restartOwner: activeTeamSideRef.current === "opposition" ? "OPP" as const : "FOR" as const }
+            : {}),
         };
         const activePlayerEntry = activePlayerEntryRef.current;
         const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? null;
@@ -4368,6 +4360,12 @@ export default function StatsModeSurface() {
             eventId: nextEvent.id,
             kind: pendingKind,
           });
+        }
+        // After committing a kickout, reset toggle to "own" so the next event
+        // defaults to our team's perspective (restartOwner is already stored).
+        if (KICKOUT_EVENT_KIND_SET.has(nextEvent.kind) && activeTeamSideRef.current === "opposition") {
+          activeTeamSideRef.current = "own";
+          setActiveTeamSide("own");
         }
       },
     }).then((nextHandle) => {
@@ -4971,6 +4969,36 @@ export default function StatsModeSurface() {
         setSnapshotExporting(null);
       });
   };
+
+  const handleGenerateIntelligencePack = useCallback(
+    (stageLabel: "Half Time" | "Full Time") => {
+      if (packGenerating || loggedEvents.length === 0) return;
+      setPackGenerating(true);
+      const packEvents =
+        stageLabel === "Half Time"
+          ? loggedEvents.filter((e) => e.period === "1H")
+          : loggedEvents;
+      const packHomeScore = computeTeamScore(packEvents, "HOME");
+      const packAwayScore = computeTeamScore(packEvents, "AWAY");
+      void buildIntelligencePack({
+        stageLabel,
+        homeTeamName: teamNames.HOME.trim() || "Team A",
+        awayTeamName: teamNames.AWAY.trim() || "Team B",
+        venueLabel:   venueName.trim() || "",
+        clockLabel:   stageLabel,
+        homeScore:    packHomeScore,
+        awayScore:    packAwayScore,
+        events:       packEvents,
+      })
+        .then((result) => {
+          setPack(result);
+          setPackPreviewOpen(true);
+        })
+        .catch(() => { /* canvas unavailable */ })
+        .finally(() => setPackGenerating(false));
+    },
+    [packGenerating, loggedEvents, teamNames, venueName],
+  );
 
   const openNotesPanel = () => {
     setShowReviewStrip(false);
@@ -6029,11 +6057,6 @@ export default function StatsModeSurface() {
         counts.shots += 1;
         continue;
       }
-      if (event.kind === "FREE_SCORED") {
-        counts.points += 1;
-        counts.shots += 1;
-        continue;
-      }
       if (event.kind === "SHOT") {
         counts.shots += 1;
         continue;
@@ -6652,6 +6675,14 @@ export default function StatsModeSurface() {
               }}
             >
               Save Match
+            </button>
+            <button
+              type="button"
+              className="utility-review-btn"
+              onClick={() => { handleGenerateIntelligencePack("Full Time"); }}
+              disabled={packGenerating}
+            >
+              {packGenerating ? "Generating…" : "Generate Intelligence Pack"}
             </button>
             <button
               type="button"
@@ -7312,6 +7343,15 @@ export default function StatsModeSurface() {
           <button
             type="button"
             className="review-strip-chip"
+            onClick={() => { handleGenerateIntelligencePack(reviewHalf === "H1" ? "Half Time" : "Full Time"); }}
+            disabled={packGenerating}
+            aria-label="Generate Intelligence Pack coaching cards"
+          >
+            {packGenerating ? "Generating…" : "Intelligence Pack"}
+          </button>
+          <button
+            type="button"
+            className="review-strip-chip"
             onClick={handleExportPdf}
             disabled={isPdfExporting || snapshotExporting !== null}
             aria-label="Export Full Tactical Report PDF — 40+ pages"
@@ -7865,6 +7905,15 @@ export default function StatsModeSurface() {
           </div>
         </div>
       ) : null}
+      {packPreviewOpen && pack && (
+        <IntelligencePackPreview
+          pack={pack}
+          homeTeamName={teamNames.HOME.trim() || "Team A"}
+          awayTeamName={teamNames.AWAY.trim() || "Team B"}
+          stageLabel={pack.stageLabel}
+          onClose={() => setPackPreviewOpen(false)}
+        />
+      )}
     </>
   );
 }

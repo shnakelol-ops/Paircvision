@@ -1,3 +1,5 @@
+import { isFreeScore, isFreeMiss } from "./eventSource";
+
 type TeamScore = { goals: number; points: number; total: number };
 type TeamSide = "HOME" | "AWAY";
 type LoggedEventLike = {
@@ -77,8 +79,8 @@ function buildBreakdown(events: readonly LoggedEventLike[]): Record<TeamSide, Te
     if (k==="GOAL") { b.goals++; b.scores++; b.shots++; }
     if (k==="POINT") { b.points++; b.scores++; b.shots++; }
     if (k==="TWO_POINTER"||k==="FORTY_FIVE_TWO_POINT") { b.twoPt++; b.scores++; b.shots++; }
-    if (k==="FREE_SCORED") { b.freeScored++; b.points++; b.scores++; b.shots++; }
-    if (k==="FREE_MISSED") { b.freeMissed++; b.wides++; b.shots++; }
+    if (isFreeScore(e)) b.freeScored++;
+    if (isFreeMiss(e))  b.freeMissed++;
     if (k==="FREE_WON" || k==="FREE_FOR") b.freesFor++;
     if (k==="FREE_CONCEDED" || k==="FREE_AGAINST") b.freesAgainst++;
     if (k==="KICKOUT_WON") { b.kickWon++; if(has(tags,"CLEAN")) b.kickClean++; if(has(tags,"BREAK")) b.kickBreak++; if(has(tags,"FOUL_WON")) b.kickFoulWon++; }

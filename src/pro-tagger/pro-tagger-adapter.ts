@@ -8,6 +8,8 @@ export type ProTaggerAction = {
   familyId:          ProTaggerFamilyId;
   tileLabel:         string;           // resolved display label (e.g. "65" for hurling wide)
   teamSide:          "FOR" | "OPP";   // ignored for FREE family (derived from tile)
+  /** Who took this restart. Only set for RESTART family tiles. */
+  restartOwner?:     "FOR" | "OPP";
   nx:                number;
   ny:                number;
   half:              1 | 2;
@@ -100,10 +102,11 @@ export function adaptProTaggerAction(action: ProTaggerAction): LoggedMatchEvent 
     team: teamSide === "FOR" ? "HOME" : "AWAY",
   };
 
-  if (action.playerId)     event.playerId     = action.playerId;
-  if (action.playerName)   event.playerName   = action.playerName;
-  if (action.playerNumber) event.playerNumber = action.playerNumber;
-  if (action.squadId)      event.squadId      = action.squadId;
+  if (action.playerId)      event.playerId      = action.playerId;
+  if (action.playerName)    event.playerName    = action.playerName;
+  if (action.playerNumber)  event.playerNumber  = action.playerNumber;
+  if (action.squadId)       event.squadId       = action.squadId;
+  if (action.restartOwner)  event.restartOwner  = action.restartOwner;
 
   return event;
 }

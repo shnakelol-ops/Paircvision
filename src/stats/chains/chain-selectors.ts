@@ -20,6 +20,7 @@
 
 import { analyseChains } from "./chain-engine";
 import { CHAIN_RULES } from "./chain-rules";
+import { buildPossessionOutcomeSummary, buildMatchIntelligence } from "./possession-outcomes-engine";
 import type {
   ChainableEvent,
   ChainAnalysis,
@@ -30,6 +31,8 @@ import type {
   TurnoverChainDataset,
   ScoringRunDataset,
   ScoringRun,
+  PossessionOutcomeSummary,
+  MatchIntelligence,
 } from "./chain-types";
 import type { MatchEventPeriod, MatchEventSegment } from "../../core/stats/stats-event-model";
 
@@ -135,4 +138,34 @@ export function selectChainsForSide<TEvent extends ChainableEvent>(
   side: "FOR" | "OPP",
 ): readonly ChainMatch<TEvent>[] {
   return side === "FOR" ? analysis.byTeamSide.for : analysis.byTeamSide.opp;
+}
+
+// ─── Possession Outcomes selectors (V1.1) ─────────────────────────────────────
+
+/**
+ * Computes the full Possession Outcomes summary from raw events.
+ *
+ * Call once per export alongside selectChainAnalysis() — they share the same
+ * raw event array and are independently pure, so both can run in sequence with
+ * no redundant computation beyond the two separate clock-sort passes.
+ *
+ * Covers: kickouts, turnovers, frees (all six origin event kinds).
+ */
+export function selectPossessionOutcomeSummary<TEvent extends ChainableEvent>(
+  events: readonly TEvent[],
+): PossessionOutcomeSummary<TEvent> {
+  return buildPossessionOutcomeSummary(events);
+}
+
+/**
+ * Derives MatchIntelligence from a pre-computed PossessionOutcomeSummary.
+ *
+ * Intended usage:
+ *   const summary = selectPossessionOutcomeSummary(events);
+ *   const intel   = selectMatchIntelligence(summary);
+ */
+export function selectMatchIntelligence(
+  summary: PossessionOutcomeSummary,
+): MatchIntelligence {
+  return buildMatchIntelligence(summary);
 }

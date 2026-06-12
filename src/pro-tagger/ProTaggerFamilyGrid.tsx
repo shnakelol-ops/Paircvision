@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import {
   getFamiliesForSport,
@@ -9,22 +10,42 @@ import type { ProTaggerSport } from "./pro-tagger-session";
 
 interface Props {
   sport: ProTaggerSport;
-  onTileTap: (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP") => void;
+  onTileTap: (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP", restartOwner?: "FOR" | "OPP") => void;
 }
 
 export function ProTaggerFamilyGrid({ sport, onTileTap }: Props) {
   const families = getFamiliesForSport(sport);
+  const [restartOwner, setRestartOwner] = useState<"FOR" | "OPP">("FOR");
 
   return (
     <div style={S.scroll}>
       {families.map((family) => {
         const familyLabel = getFamilyLabel(family, sport);
+        const isRestart = family.id === "RESTART";
         return (
           <div key={family.id} style={S.card}>
             {/* Family header */}
             <div style={S.cardHeader}>
               <span style={{ ...S.dot, background: family.colour }} />
               <span style={S.familyLabel}>{familyLabel}</span>
+
+              {/* Restart ownership toggle — RESTART family only */}
+              {isRestart && (
+                <div style={S.ownerToggle}>
+                  <button
+                    style={{ ...S.ownerBtn, ...(restartOwner === "FOR" ? S.ownerBtnActive : {}) }}
+                    onClick={() => setRestartOwner("FOR")}
+                  >
+                    OUR K/O
+                  </button>
+                  <button
+                    style={{ ...S.ownerBtn, ...(restartOwner === "OPP" ? S.ownerBtnActive : {}) }}
+                    onClick={() => setRestartOwner("OPP")}
+                  >
+                    THEIR K/O
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* FOR tile row */}
@@ -35,7 +56,7 @@ export function ProTaggerFamilyGrid({ sport, onTileTap }: Props) {
                   <button
                     key={label}
                     style={{ ...S.tile, background: family.colour, color: family.textColour }}
-                    onClick={() => onTileTap(family.id, label, "FOR")}
+                    onClick={() => onTileTap(family.id, label, "FOR", isRestart ? restartOwner : undefined)}
                   >
                     {label}
                   </button>
@@ -52,7 +73,7 @@ export function ProTaggerFamilyGrid({ sport, onTileTap }: Props) {
                     <button
                       key={label}
                       style={S.minusTile}
-                      onClick={() => onTileTap(family.id, label, "OPP")}
+                      onClick={() => onTileTap(family.id, label, "OPP", isRestart ? restartOwner : undefined)}
                       aria-label={`Opposition ${familyLabel} ${label}`}
                     >
                       <span style={S.minusSign}>−</span>
@@ -106,6 +127,30 @@ const S: Record<string, CSSProperties> = {
     color: "#8b949e",
     letterSpacing: "0.06em",
     textTransform: "uppercase" as const,
+  },
+  ownerToggle: {
+    display: "flex",
+    gap: 3,
+    marginLeft: "auto",
+  },
+  ownerBtn: {
+    background: "transparent",
+    border: "1px solid #30363d",
+    borderRadius: 4,
+    color: "#6e7681",
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+    padding: "2px 6px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+    whiteSpace: "nowrap" as const,
+  },
+  ownerBtnActive: {
+    borderColor: "#9333ea",
+    color: "#c084fc",
+    background: "rgba(147,51,234,0.12)",
   },
   tileRow: {
     display: "flex",
