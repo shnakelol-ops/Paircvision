@@ -387,7 +387,7 @@ export async function buildRestartOutcomesCardPng(
       // Branch 1: home took kickout → home kept it
       branches.push({
         groupLabel:    `${home.toUpperCase()} KICKOUTS`,
-        branchLabel:   `${home} kept it`,
+        branchLabel:   `${home} retained`,
         accentColor:   CLR.green,
         count:         ok.retainedCount,
         total:         ok.total,
@@ -430,7 +430,7 @@ export async function buildRestartOutcomesCardPng(
       // Branch 4: away took kickout → away kept it
       branches.push({
         groupLabel:    `${away.toUpperCase()} KICKOUTS`,
-        branchLabel:   `${away} kept it`,
+        branchLabel:   `${away} retained`,
         accentColor:   CLR.red,
         count:         tk.concededCount,
         total:         tk.total,
