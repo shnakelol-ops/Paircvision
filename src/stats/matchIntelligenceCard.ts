@@ -1,30 +1,9 @@
-/**
- * matchIntelligenceCard.ts
- *
- * PNG card renderer — Match Intelligence (PáircVision V1.1).
- * Outputs a 1080×1920 portrait card for the "coach's brief" view.
- *
- * Entry point: buildMatchIntelligenceCardPng(input)
- *
- * This card shows the WHY: highest damage source, best/worst family,
- * overall net outcome, and three coaching priorities.
- *
- * Regression note: entirely additive — no imports from existing modules.
- */
-
-import type {
-  PossessionOutcomeSummary,
-  MatchIntelligence,
-} from "./chains/chain-types";
-
-// ─── Canvas constants ─────────────────────────────────────────────────────────
+import type { PossessionOutcomeSummary } from "./chains/chain-types";
 
 const W = 1080;
 const H = 1920;
 const PAD = 48;
 const INNER_PAD = 28;
-
-// ─── Brand palette ────────────────────────────────────────────────────────────
 
 const CLR = {
   green:       "#22c55e",
@@ -44,8 +23,6 @@ const CLR = {
   divider:     "rgba(255,255,255,0.06)",
 } as const;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function rrPath(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, w: number, h: number, r: number,
@@ -63,85 +40,38 @@ function rrPath(
   ctx.closePath();
 }
 
-function goodPctClr(pct: number): string {
-  if (pct >= 50) return CLR.green;
-  if (pct >= 28) return CLR.amber;
-  return CLR.red;
-}
-
-function badPctClr(pct: number): string {
-  if (pct < 30) return CLR.green;
-  if (pct < 55) return CLR.amber;
-  return CLR.red;
-}
-
 function netClr(net: number): string {
   if (net > 0) return CLR.green;
   if (net < 0) return CLR.red;
   return CLR.dim;
 }
 
-function drawWrapped(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number,
-): number {
-  const words = text.split(" ");
-  let line = "";
-  let cy = y;
-  for (const word of words) {
-    const test = line ? `${line} ${word}` : word;
-    if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x, cy);
-      line = word;
-      cy += lineHeight;
-    } else {
-      line = test;
-    }
-  }
-  if (line) ctx.fillText(line, x, cy);
-  return cy;
+function fmtGaelic(goals: number, points: number): string {
+  return `${goals}-${points.toString().padStart(2, "0")}`;
 }
 
-// ─── Background ───────────────────────────────────────────────────────────────
+function hDivider(ctx: CanvasRenderingContext2D, x: number, y: number, w: number): void {
+  ctx.strokeStyle = CLR.divider;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.stroke();
+}
 
 function drawBackground(ctx: CanvasRenderingContext2D): void {
-  // Navy gradient matching Match Summary
   const g = ctx.createLinearGradient(0, 0, W, H);
-  g.addColorStop(0, CLR.bg);
-  g.addColorStop(1, CLR.bgGradEnd);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
-
-  // Cyan upper glow (distinguishes this card from the Outcomes card)
+  g.addColorStop(0, CLR.bg); g.addColorStop(1, CLR.bgGradEnd);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   const g1 = ctx.createRadialGradient(W / 2, H * 0.3, 0, W / 2, H * 0.3, W * 0.88);
   g1.addColorStop(0,   "rgba(6, 182, 212, 0.08)");
   g1.addColorStop(0.5, "rgba(6, 182, 212, 0.02)");
   g1.addColorStop(1,   "rgba(0, 0, 0, 0)");
-  ctx.fillStyle = g1;
-  ctx.fillRect(0, 0, W, H);
-
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.012)";
-  ctx.lineWidth = 1;
-  for (let ly = 180; ly < H; ly += 88) {
-    ctx.beginPath(); ctx.moveTo(0, ly); ctx.lineTo(W, ly); ctx.stroke();
-  }
-
+  ctx.fillStyle = g1; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.012)"; ctx.lineWidth = 1;
+  for (let ly = 180; ly < H; ly += 88) { ctx.beginPath(); ctx.moveTo(0, ly); ctx.lineTo(W, ly); ctx.stroke(); }
   const gFade = ctx.createLinearGradient(0, H - 280, 0, H);
-  gFade.addColorStop(0, "rgba(0,0,0,0)");
-  gFade.addColorStop(1, "rgba(0,0,0,0.65)");
-  ctx.fillStyle = gFade;
-  ctx.fillRect(0, H - 280, W, 280);
-
-  // 16px cyan accent bar
-  ctx.fillStyle = CLR.cyan;
-  ctx.fillRect(0, 0, W, 16);
+  gFade.addColorStop(0, "rgba(0,0,0,0)"); gFade.addColorStop(1, "rgba(0,0,0,0.65)");
+  ctx.fillStyle = gFade; ctx.fillRect(0, H - 280, W, 280);
+  ctx.fillStyle = CLR.cyan; ctx.fillRect(0, 0, W, 16);
 }
-
-// ─── Header ───────────────────────────────────────────────────────────────────
 
 function drawHeader(
   ctx: CanvasRenderingContext2D,
@@ -149,88 +79,29 @@ function drawHeader(
   awayTeam: string,
   stageLabel: string,
 ): number {
-  ctx.fillStyle = CLR.cyan;
-  ctx.font = "700 26px Inter,system-ui,sans-serif";
-  ctx.textAlign = "left";
+  ctx.fillStyle = CLR.cyan; ctx.font = "700 26px Inter,system-ui,sans-serif"; ctx.textAlign = "left";
   ctx.fillText("PÁIRCVISION", PAD, 56);
-
-  ctx.fillStyle = CLR.muted;
-  ctx.font = "600 26px Inter,system-ui,sans-serif";
-  ctx.textAlign = "right";
-  ctx.fillText(stageLabel.toUpperCase(), W - PAD, 56);
-  ctx.textAlign = "left";
-
-  ctx.fillStyle = CLR.white;
-  ctx.font = "700 52px Inter,system-ui,sans-serif";
-  ctx.fillText("Match Intelligence", PAD, 118);
-
-  ctx.fillStyle = CLR.muted;
-  ctx.font = "500 28px Inter,system-ui,sans-serif";
+  ctx.fillStyle = CLR.muted; ctx.font = "600 26px Inter,system-ui,sans-serif"; ctx.textAlign = "right";
+  ctx.fillText(stageLabel.toUpperCase(), W - PAD, 56); ctx.textAlign = "left";
+  ctx.fillStyle = CLR.white; ctx.font = "700 52px Inter,system-ui,sans-serif";
+  ctx.fillText("Match Impact", PAD, 118);
+  ctx.fillStyle = CLR.muted; ctx.font = "500 28px Inter,system-ui,sans-serif";
   ctx.fillText(`${homeTeam}  ·  ${awayTeam}`, PAD, 158);
-
-  ctx.strokeStyle = "rgba(6, 182, 212, 0.24)";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(6, 182, 212, 0.24)"; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(PAD, 174); ctx.lineTo(W - PAD, 174); ctx.stroke();
-
   return 188;
 }
-
-// ─── Panel ───────────────────────────────────────────────────────────────────
 
 function drawPanel(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, w: number, h: number,
-  accent: string = CLR.cyan,
+  accent: string,
 ): void {
-  rrPath(ctx, x, y, w, h, 14);
-  ctx.fillStyle = CLR.panel;
-  ctx.fill();
-  ctx.strokeStyle = CLR.panelBorder;
-  ctx.lineWidth = 1;
-  rrPath(ctx, x, y, w, h, 14);
-  ctx.stroke();
-  ctx.strokeStyle = accent;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(x + 14, y + 1.5);
-  ctx.lineTo(x + w - 14, y + 1.5);
-  ctx.stroke();
+  rrPath(ctx, x, y, w, h, 14); ctx.fillStyle = CLR.panel; ctx.fill();
+  ctx.strokeStyle = CLR.panelBorder; ctx.lineWidth = 1; rrPath(ctx, x, y, w, h, 14); ctx.stroke();
+  ctx.strokeStyle = accent; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x + 14, y + 1.5); ctx.lineTo(x + w - 14, y + 1.5); ctx.stroke();
 }
-
-// ─── Intelligence row (label + value right-aligned) ───────────────────────────
-
-function drawIntelRow(
-  ctx: CanvasRenderingContext2D,
-  label: string,
-  value: string,
-  valueColour: string,
-  x: number,
-  y: number,
-  w: number,
-): number {
-  ctx.fillStyle = CLR.dim;
-  ctx.font = "500 22px Inter,system-ui,sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText(label, x, y);
-
-  ctx.fillStyle = valueColour;
-  ctx.font = "700 30px Inter,system-ui,sans-serif";
-  ctx.textAlign = "right";
-  ctx.fillText(value, x + w, y);
-  ctx.textAlign = "left";
-
-  return y + 50;
-}
-
-// ─── Divider ─────────────────────────────────────────────────────────────────
-
-function panelDivider(ctx: CanvasRenderingContext2D, x: number, y: number, w: number): void {
-  ctx.strokeStyle = CLR.divider;
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.stroke();
-}
-
-// ─── Score panel ─────────────────────────────────────────────────────────────
 
 function drawScorePanel(
   ctx: CanvasRenderingContext2D,
@@ -240,102 +111,20 @@ function drawScorePanel(
   awayScore: { goals: number; points: number; total: number },
   startY: number,
 ): number {
-  const panelY = startY + 12;
-  const panelH = 150;
-  const panelX = 56;
-  const panelW = W - 112;
-  const formatGaelic = (g: number, p: number) => `${g}-${p.toString().padStart(2, "0")}`;
-
-  ctx.fillStyle = CLR.score;
-  ctx.fillRect(panelX, panelY, panelW, panelH);
-  ctx.strokeStyle = CLR.scoreBorder;
-  ctx.lineWidth = 2;
-  ctx.strokeRect(panelX, panelY, panelW, panelH);
-
-  ctx.fillStyle = CLR.white;
-  ctx.font = "700 58px Inter,system-ui,sans-serif";
+  const pY = startY + 12; const pH = 150; const pX = 56; const pW = W - 112;
+  ctx.fillStyle = CLR.score; ctx.fillRect(pX, pY, pW, pH);
+  ctx.strokeStyle = CLR.scoreBorder; ctx.lineWidth = 2; ctx.strokeRect(pX, pY, pW, pH);
+  ctx.fillStyle = CLR.white; ctx.font = "700 58px Inter,system-ui,sans-serif";
+  ctx.textAlign = "left"; ctx.fillText(fmtGaelic(homeScore.goals, homeScore.points), pX + 24, pY + 82);
+  ctx.textAlign = "right"; ctx.fillText(fmtGaelic(awayScore.goals, awayScore.points), pX + pW - 24, pY + 82);
+  ctx.fillStyle = CLR.muted; ctx.font = "600 26px Inter,system-ui,sans-serif";
+  ctx.textAlign = "left"; ctx.fillText(`${homeTeam} (${homeScore.total})`, pX + 24, pY + 124);
+  ctx.textAlign = "right"; ctx.fillText(`${awayTeam} (${awayScore.total})`, pX + pW - 24, pY + 124);
   ctx.textAlign = "left";
-  ctx.fillText(formatGaelic(homeScore.goals, homeScore.points), panelX + 24, panelY + 82);
-  ctx.textAlign = "right";
-  ctx.fillText(formatGaelic(awayScore.goals, awayScore.points), panelX + panelW - 24, panelY + 82);
-  ctx.textAlign = "left";
-
-  ctx.fillStyle = CLR.muted;
-  ctx.font = "600 26px Inter,system-ui,sans-serif";
-  ctx.fillText(`${homeTeam} (${homeScore.total})`, panelX + 24, panelY + 124);
-  ctx.textAlign = "right";
-  ctx.fillText(`${awayTeam} (${awayScore.total})`, panelX + panelW - 24, panelY + 124);
-  ctx.textAlign = "left";
-
-  return panelY + panelH + 10;
+  return pY + pH + 10;
 }
 
-// ─── Key Intelligence panel ───────────────────────────────────────────────────
-
-function drawIntelligencePanel(
-  ctx: CanvasRenderingContext2D,
-  intel: MatchIntelligence,
-  startY: number,
-): number {
-  const panelH = 310;
-  const panelX = PAD;
-  const panelW = W - PAD * 2;
-  drawPanel(ctx, panelX, startY, panelW, panelH, CLR.cyan);
-
-  const ix = panelX + INNER_PAD;
-  const iw = panelW - INNER_PAD * 2;
-  let y = startY + 36;
-
-  ctx.fillStyle = CLR.cyan;
-  ctx.font = "700 21px Inter,system-ui,sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("MATCH STORY", ix, y);
-  y += 40;
-
-  if (intel.highestDamageFamily) {
-    y = drawIntelRow(
-      ctx,
-      "Where they hurt us",
-      `${intel.highestDamageFamily.label}  ${intel.highestDamageFamily.damagePct}%`,
-      badPctClr(intel.highestDamageFamily.damagePct),
-      ix, y, iw,
-    );
-    panelDivider(ctx, ix, y - 10, iw);
-  }
-
-  if (intel.bestScoringFamily) {
-    y = drawIntelRow(
-      ctx,
-      "Where we scored best",
-      `${intel.bestScoringFamily.label}  ${intel.bestScoringFamily.scoringPct}%`,
-      goodPctClr(intel.bestScoringFamily.scoringPct),
-      ix, y, iw,
-    );
-    panelDivider(ctx, ix, y - 10, iw);
-  }
-
-  if (intel.worstScoringFamily) {
-    y = drawIntelRow(
-      ctx,
-      "Where to improve",
-      `${intel.worstScoringFamily.label}  ${intel.worstScoringFamily.scoringPct}%`,
-      goodPctClr(intel.worstScoringFamily.scoringPct),
-      ix, y, iw,
-    );
-  }
-
-  if (!intel.highestDamageFamily && !intel.bestScoringFamily && !intel.worstScoringFamily) {
-    ctx.fillStyle = CLR.dim;
-    ctx.font = "500 26px Inter,system-ui,sans-serif";
-    ctx.fillText("Insufficient data for intelligence analysis", ix, y + 40);
-  }
-
-  return startY + panelH + 20;
-}
-
-// ─── Net Outcome badge (large centred) ───────────────────────────────────────
-
-function drawLargeNetBadge(
+function drawNetBadge(
   ctx: CanvasRenderingContext2D,
   net: number,
   cx: number,
@@ -343,86 +132,156 @@ function drawLargeNetBadge(
 ): number {
   const colour = netClr(net);
   const valueLabel = net === 0 ? "Even" : `${net > 0 ? "+" : ""}${net} pts`;
-
-  const bw = 420;
-  const bh = 90;
-  const bx = cx - bw / 2;
-
-  rrPath(ctx, bx, y, bw, bh, 45);
-  ctx.fillStyle = colour + "1a";
-  ctx.fill();
-  ctx.strokeStyle = colour + "60";
-  ctx.lineWidth = 2;
-  rrPath(ctx, bx, y, bw, bh, 45);
-  ctx.stroke();
-
+  const bw = 420; const bh = 90; const bx = cx - bw / 2;
+  rrPath(ctx, bx, y, bw, bh, 45); ctx.fillStyle = colour + "1a"; ctx.fill();
+  ctx.strokeStyle = colour + "60"; ctx.lineWidth = 2; rrPath(ctx, bx, y, bw, bh, 45); ctx.stroke();
   ctx.textAlign = "center";
-  ctx.fillStyle = CLR.muted;
-  ctx.font = "500 20px Inter,system-ui,sans-serif";
+  ctx.fillStyle = CLR.muted; ctx.font = "500 20px Inter,system-ui,sans-serif";
   ctx.fillText("NET MATCH EFFECT", cx, y + 26);
-
-  ctx.fillStyle = colour;
-  ctx.font = "800 42px Inter,system-ui,sans-serif";
+  ctx.fillStyle = colour; ctx.font = "800 42px Inter,system-ui,sans-serif";
   ctx.fillText(valueLabel, cx, y + 68);
   ctx.textAlign = "left";
-
-  return y + bh + 24;
+  return y + bh + 20;
 }
 
-// ─── Coaching Priorities panel ────────────────────────────────────────────────
+// ─── How the Points Were Scored ───────────────────────────────────────────────
 
-function drawPrioritiesPanel(
+type ContributionRow = {
+  sourceLabel: string;
+  accentColor: string;
+  homeWon: number;
+  awayWon: number;
+  homeScore: { goals: number; points: number };
+  awayScore: { goals: number; points: number };
+  net: number;
+};
+
+function drawContributionsPanel(
   ctx: CanvasRenderingContext2D,
-  priorities: readonly string[],
+  home: string,
+  away: string,
+  rows: ContributionRow[],
   startY: number,
 ): number {
-  const panelH = 564;
+  const panelH = 540;
+  const panelX = PAD;
+  const panelW = W - PAD * 2;
+  drawPanel(ctx, panelX, startY, panelW, panelH, CLR.cyan);
+
+  const ix = panelX + INNER_PAD;
+  const iw = panelW - INNER_PAD * 2;
+  let y = startY + 38;
+
+  ctx.fillStyle = CLR.cyan;
+  ctx.font = "700 21px Inter,system-ui,sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("HOW THE POINTS WERE SCORED", ix, y);
+  y += 46;
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const rowStart = y;
+
+    // Source label left, net right
+    ctx.fillStyle = r.accentColor;
+    ctx.font = "700 22px Inter,system-ui,sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(r.sourceLabel, ix, rowStart);
+
+    const colour = netClr(r.net);
+    const netTxt = r.net === 0 ? "Even" : `Net  ${r.net > 0 ? "+" : ""}${r.net} pts`;
+    ctx.fillStyle = colour;
+    ctx.font = "700 22px Inter,system-ui,sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(netTxt, ix + iw, rowStart);
+
+    // Contest count
+    ctx.fillStyle = CLR.muted;
+    ctx.font = "500 18px Inter,system-ui,sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(`${home} won ${r.homeWon}  ·  ${away} won ${r.awayWon}`, ix, rowStart + 30);
+
+    // Scores
+    const hHasScore = r.homeScore.goals > 0 || r.homeScore.points > 0;
+    const aHasScore = r.awayScore.goals > 0 || r.awayScore.points > 0;
+
+    ctx.fillStyle = hHasScore ? CLR.green : CLR.dim;
+    ctx.font = "600 20px Inter,system-ui,sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(`${home}  ${fmtGaelic(r.homeScore.goals, r.homeScore.points)} scored`, ix, rowStart + 62);
+
+    ctx.fillStyle = aHasScore ? CLR.red : CLR.dim;
+    ctx.font = "600 20px Inter,system-ui,sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(`${fmtGaelic(r.awayScore.goals, r.awayScore.points)} scored  ${away}`, ix + iw, rowStart + 62);
+
+    y = rowStart + 100;
+
+    if (i < rows.length - 1) {
+      hDivider(ctx, ix, y + 5, iw);
+      y += 24;
+    }
+  }
+
+  ctx.textAlign = "left";
+  return startY + panelH + 16;
+}
+
+// ─── Possession Contest ───────────────────────────────────────────────────────
+
+type ContestRow = {
+  label: string;
+  value: string;
+};
+
+function drawContestPanel(
+  ctx: CanvasRenderingContext2D,
+  rows: ContestRow[],
+  startY: number,
+): number {
+  const ROW_H = 80;
+  const panelH = 46 + rows.length * ROW_H + 30;
   const panelX = PAD;
   const panelW = W - PAD * 2;
   drawPanel(ctx, panelX, startY, panelW, panelH, CLR.green);
 
   const ix = panelX + INNER_PAD;
   const iw = panelW - INNER_PAD * 2;
-  let y = startY + 36;
+  let y = startY + 38;
 
   ctx.fillStyle = CLR.green;
   ctx.font = "700 21px Inter,system-ui,sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText("COACHING PRIORITIES", ix, y);
-  y += 44;
+  ctx.fillText("POSSESSION CONTEST", ix, y);
+  y += 42;
 
-  const ordinalColours = [CLR.green, CLR.amber, CLR.red];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
 
-  for (let i = 0; i < 3; i++) {
-    const text = priorities[i] ?? "—";
-    const oc = ordinalColours[i] ?? CLR.muted;
+    ctx.fillStyle = CLR.dim;
+    ctx.font = "500 19px Inter,system-ui,sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(r.label, ix, y + 24);
 
-    // Large ordinal number
-    ctx.fillStyle = oc;
-    ctx.font = "800 44px Inter,system-ui,sans-serif";
-    ctx.fillText(`0${i + 1}`, ix, y + 36);
+    ctx.fillStyle = CLR.offwhite;
+    ctx.font = "600 21px Inter,system-ui,sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(r.value, ix + iw, y + 24);
 
-    // Priority text, wrapped
-    ctx.fillStyle = CLR.white;
-    ctx.font = "500 25px Inter,system-ui,sans-serif";
-    const lastLineY = drawWrapped(ctx, text, ix + 72, y + 8, iw - 72, 32);
-    y = lastLineY + 48;
-
-    if (i < 2) {
-      panelDivider(ctx, ix, y - 14, iw);
+    if (i < rows.length - 1) {
+      hDivider(ctx, ix, y + ROW_H - 10, iw);
     }
+
+    y += ROW_H;
   }
 
-  return startY + panelH + 18;
+  ctx.textAlign = "left";
+  return startY + panelH + 16;
 }
 
-// ─── Footer ───────────────────────────────────────────────────────────────────
-
 function drawFooter(ctx: CanvasRenderingContext2D): void {
-  ctx.fillStyle = CLR.dim;
-  ctx.font = "500 22px Inter,system-ui,sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("PÁIRCVISION  ·  Match Intelligence", W / 2, H - 24);
+  ctx.fillStyle = CLR.dim; ctx.font = "500 22px Inter,system-ui,sans-serif";
+  ctx.textAlign = "center"; ctx.fillText("PÁIRCVISION  ·  Match Impact", W / 2, H - 24);
   ctx.textAlign = "left";
 }
 
@@ -435,26 +294,85 @@ export type MatchIntelligenceCardInput = {
   homeScore: { goals: number; points: number; total: number };
   awayScore: { goals: number; points: number; total: number };
   summary: PossessionOutcomeSummary;
-  intelligence: MatchIntelligence;
 };
 
 export async function buildMatchIntelligenceCardPng(
   input: MatchIntelligenceCardInput,
 ): Promise<File | null> {
   const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
+  canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  const { intelligence, homeTeamName, awayTeamName, stageLabel, homeScore, awayScore } = input;
+  const { summary, homeTeamName, awayTeamName, stageLabel, homeScore, awayScore } = input;
+
+  const home = homeTeamName || "Team A";
+  const away = awayTeamName || "Team B";
+
+  const { kickouts, turnovers, frees } = summary;
 
   drawBackground(ctx);
-  let y = drawHeader(ctx, homeTeamName, awayTeamName, stageLabel);
-  y = drawScorePanel(ctx, homeTeamName, awayTeamName, homeScore, awayScore, y);
-  y = drawIntelligencePanel(ctx, intelligence, y);
-  y = drawLargeNetBadge(ctx, intelligence.overallNetOutcome, W / 2, y);
-  drawPrioritiesPanel(ctx, intelligence.coachingPriorities, y);
+  let y = drawHeader(ctx, home, away, stageLabel);
+  y = drawScorePanel(ctx, home, away, homeScore, awayScore, y);
+  y = drawNetBadge(ctx, summary.overallNetOutcome, W / 2, y + 10);
+
+  // ── How the Points Were Scored ─────────────────────────────────────────────
+  const contributionRows: ContributionRow[] = [
+    {
+      sourceLabel: "KICKOUTS",
+      accentColor: CLR.cyan,
+      homeWon:     kickouts.retainedCount,
+      awayWon:     kickouts.concededCount,
+      homeScore:   { goals: kickouts.retained.goals, points: kickouts.retained.points },
+      awayScore:   { goals: kickouts.conceded.goals, points: kickouts.conceded.points },
+      net:         kickouts.netOutcome,
+    },
+    {
+      sourceLabel: "TURNOVERS",
+      accentColor: CLR.amber,
+      homeWon:     turnovers.retainedCount,
+      awayWon:     turnovers.concededCount,
+      homeScore:   { goals: turnovers.retained.goals, points: turnovers.retained.points },
+      awayScore:   { goals: turnovers.conceded.goals, points: turnovers.conceded.points },
+      net:         turnovers.netOutcome,
+    },
+    {
+      sourceLabel: "FREES WON",
+      accentColor: CLR.green,
+      homeWon:     frees.retainedCount,
+      awayWon:     frees.concededCount,
+      homeScore:   { goals: frees.retained.goals, points: frees.retained.points },
+      awayScore:   { goals: frees.conceded.goals, points: frees.conceded.points },
+      net:         frees.netOutcome,
+    },
+  ];
+  y = drawContributionsPanel(ctx, home, away, contributionRows, y + 10);
+
+  // ── Possession Contest ─────────────────────────────────────────────────────
+  const homeStarts = kickouts.retainedCount + turnovers.retainedCount + frees.retainedCount;
+  const awayStarts = kickouts.concededCount + turnovers.concededCount + frees.concededCount;
+
+  const contestRows: ContestRow[] = [
+    {
+      label: "Possession starts",
+      value: `${home}: ${homeStarts}  ·  ${away}: ${awayStarts}`,
+    },
+    {
+      label: "Kickout wins",
+      value: `${home}: ${kickouts.retainedCount}/${kickouts.total}  ·  ${away}: ${kickouts.concededCount}/${kickouts.total}`,
+    },
+    {
+      label: "Turnovers",
+      value: `${home} won ${turnovers.retainedCount}  ·  ${away} won ${turnovers.concededCount}`,
+    },
+    {
+      label: "Frees",
+      value: `${home} won ${frees.retainedCount}  ·  ${away} won ${frees.concededCount}`,
+    },
+  ];
+  y = drawContestPanel(ctx, contestRows, y);
+
+  void y;
   drawFooter(ctx);
 
   const blob = await new Promise<Blob | null>((resolve) =>
@@ -462,9 +380,9 @@ export async function buildMatchIntelligenceCardPng(
   );
   if (!blob) return null;
 
-  const stem = `${homeTeamName}-${awayTeamName}-match-intelligence-${stageLabel}`
+  const stem = `${homeTeamName}-${awayTeamName}-match-impact-${stageLabel}`
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return new File([blob], `${stem || "match-intelligence"}.png`, { type: "image/png" });
+  return new File([blob], `${stem || "match-impact"}.png`, { type: "image/png" });
 }

@@ -6,7 +6,7 @@
  *
  *   Card 1  Restart Outcomes       "What happened at restarts?"
  *   Card 2  Turnover & Free Outcomes "What did turnovers and frees produce?"
- *   Card 3  Match Intelligence      "Why did the match unfold that way?"
+ *   Card 3  Match Impact            "How did the match play out?"
  *
  * Entry points:
  *   buildIntelligencePack(input)  → Promise<IntelligencePack>
@@ -18,10 +18,7 @@
  */
 
 import type { ChainableEvent } from "./chains/chain-types";
-import {
-  buildPossessionOutcomeSummary,
-  buildMatchIntelligence,
-} from "./chains/possession-outcomes-engine";
+import { buildPossessionOutcomeSummary } from "./chains/possession-outcomes-engine";
 import { buildRestartOutcomesCardPng } from "./restartOutcomesCard";
 import { buildTurnoverFreeOutcomesCardPng } from "./turnoverFreeOutcomesCard";
 import { buildMatchIntelligenceCardPng } from "./matchIntelligenceCard";
@@ -75,8 +72,7 @@ export async function buildIntelligencePack(
     homeScore, awayScore, events,
   } = input;
 
-  const summary    = buildPossessionOutcomeSummary(events);
-  const intelligence = buildMatchIntelligence(summary);
+  const summary = buildPossessionOutcomeSummary(events);
 
   const [restartOutcomesCard, turnoverFreeOutcomesCard, matchIntelligenceCard] =
     await Promise.all([
@@ -87,8 +83,7 @@ export async function buildIntelligencePack(
         homeTeamName, awayTeamName, stageLabel, summary,
       }),
       buildMatchIntelligenceCardPng({
-        homeTeamName, awayTeamName, stageLabel, homeScore, awayScore,
-        summary, intelligence,
+        homeTeamName, awayTeamName, stageLabel, homeScore, awayScore, summary,
       }),
     ]);
 

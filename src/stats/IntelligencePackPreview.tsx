@@ -34,7 +34,7 @@ export type IntelligencePackPreviewProps = {
 const CARD_NAMES = [
   "Restart Outcomes",
   "Turnover & Free Outcomes",
-  "Match Intelligence",
+  "Match Impact",
 ] as const;
 
 // ─── Component ────────────────────────────────────────────────────────────────
