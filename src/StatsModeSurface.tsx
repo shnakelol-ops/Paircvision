@@ -30,7 +30,7 @@ import {
 } from "./core/stats/saved-match";
 import { gaaModeConfig, type GaaModeKey } from "./config/gaaModeConfig";
 import { useScreenWakeLock } from "./hooks/useScreenWakeLock";
-import { NotesQuickPanel } from "./features/notes";
+import { NotesQuickPanel, getMatchNotes } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 import { buildStatsShareCardPng } from "./stats/statsShareCard";
@@ -3448,6 +3448,8 @@ export default function StatsModeSurface() {
   const [pendingRecoveredDraft, setPendingRecoveredDraft] = useState<StatsActiveMatchDraft | null>(null);
   const [isDraftRecoveryCheckComplete, setIsDraftRecoveryCheckComplete] = useState(false);
   const [visibilityMode, setVisibilityMode] = useState<VisibilityMode>("ALL");
+  const [voiceNoteCount, setVoiceNoteCount] = useState(0);
+  const [notesReviewMatchId, setNotesReviewMatchId] = useState<string | null>(null);
   const [matchState, setMatchState] = useState<MatchState>("PRE_MATCH");
   const [currentHalf, setCurrentHalf] = useState<1 | 2>(1);
   const [matchTimeSeconds, setMatchTimeSeconds] = useState(0);
@@ -4135,6 +4137,11 @@ export default function StatsModeSurface() {
 
   useEffect(() => {
     currentMatchIdRef.current = currentMatchId;
+  }, [currentMatchId]);
+
+  useEffect(() => {
+    setVoiceNoteCount(getMatchNotes(currentMatchId).length);
+    setNotesReviewMatchId(null);
   }, [currentMatchId]);
 
   useEffect(() => {
@@ -7060,15 +7067,38 @@ export default function StatsModeSurface() {
         </div>
       ) : null}
       {utilityPanel === "NOTES" ? (
-        <div className={utilityPanelClass} role="dialog" aria-label="Notes">
+        <div className={utilityPanelClass} role="dialog" aria-label="Voice notes">
+          {notesReviewMatchId !== null ? (
+            <button
+              type="button"
+              className="utility-review-btn"
+              style={{ marginBottom: "6px" }}
+              onClick={() => {
+                setNotesReviewMatchId(null);
+                setUtilityPanel("SAVED_MATCHES");
+              }}
+            >
+              ← Back to Saved Matches
+            </button>
+          ) : null}
           <NotesQuickPanel
             matchContext={{
               matchId: currentMatchId,
               half: currentHalf,
               matchClockMs: Math.max(0, Math.floor(matchTimeSeconds * 1000)),
             }}
+            readonly={notesReviewMatchId !== null}
+            notesMatchId={notesReviewMatchId ?? undefined}
+            onNoteAdded={() => setVoiceNoteCount((c) => c + 1)}
           />
-          <button type="button" className="utility-panel-close" onClick={closeUtilityPanel}>
+          <button
+            type="button"
+            className="utility-panel-close"
+            onClick={() => {
+              setNotesReviewMatchId(null);
+              closeUtilityPanel();
+            }}
+          >
             Close
           </button>
         </div>
@@ -7085,6 +7115,7 @@ export default function StatsModeSurface() {
             {savedMatches.length > 0 ? (
               savedMatches.map((savedMatch, index) => {
                 const isLatest = index === 0;
+                const savedMatchNoteCount = getMatchNotes(savedMatch.id).length;
                 return (
                   <div
                     key={savedMatch.id}
@@ -7131,17 +7162,34 @@ export default function StatsModeSurface() {
                     </div>
                     <div className="utility-panel-title" style={{ fontSize: "8px", opacity: 0.8, textTransform: "none" }}>
                       {savedMatch.venue} · {formatSavedMatchCreatedAt(savedMatch.createdAt)} · {savedMatch.eventCount} events
+                      {savedMatchNoteCount > 0 ? ` · 🎤 ${savedMatchNoteCount} voice note${savedMatchNoteCount !== 1 ? "s" : ""}` : ""}
                     </div>
-                    <button
-                      type="button"
-                      className="utility-review-btn"
-                      onClick={() => {
-                        loadSavedMatchRecord(savedMatch);
-                      }}
-                      style={{ marginTop: "4px" }}
-                    >
-                      Load Match
-                    </button>
+                    <div style={{ marginTop: "4px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="utility-review-btn"
+                        onClick={() => {
+                          loadSavedMatchRecord(savedMatch);
+                        }}
+                      >
+                        Load Match
+                      </button>
+                      {savedMatchNoteCount > 0 ? (
+                        <button
+                          type="button"
+                          className="utility-review-btn"
+                          onClick={() => {
+                            setNotesReviewMatchId(savedMatch.id);
+                            setShowReviewStrip(false);
+                            setUtilityPanel("NOTES");
+                            setIsUtilityOpen(false);
+                            setIsPickerOpen(false);
+                          }}
+                        >
+                          🎤 Play Voice Notes
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 );
               })
@@ -7608,8 +7656,6 @@ export default function StatsModeSurface() {
               <div className="visibility-row">
                 {([
                   { id: "ALL", label: "Show All" },
-                  { id: "LAST_5", label: "Last 5 mins" },
-                  { id: "LAST_10", label: "Last 10 mins" },
                 ] as const).map((mode) => (
                   <button
                     key={mode.id}
@@ -7635,16 +7681,21 @@ export default function StatsModeSurface() {
                 <button
                   type="button"
                   className="visibility-btn"
-                  aria-label="Open notes"
-                  title="Open Notes"
-                  onClick={openNotesPanel}
+                  aria-label="Open voice notes"
+                  title="Event Voice Notes"
+                  onClick={() => {
+                    setNotesReviewMatchId(null);
+                    openNotesPanel();
+                  }}
                   style={{
-                    border: "1px solid rgba(125,211,252,0.62)",
+                    border: "1px solid rgba(125,211,252,0.72)",
                     background: "rgba(15,23,42,0.9)",
                     boxShadow: "0 0 0 1px rgba(125,211,252,0.18), 0 0 8px rgba(125,211,252,0.16)",
+                    fontWeight: 600,
+                    letterSpacing: "-0.2px",
                   }}
                 >
-                  🎤
+                  🎤 Event Voice Notes{voiceNoteCount > 0 ? ` (${voiceNoteCount})` : ""}
                 </button>
               </div>
               <div className="undo-wrap">

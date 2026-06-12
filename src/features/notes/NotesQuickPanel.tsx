@@ -12,6 +12,12 @@ type MatchContext = {
 
 type NotesQuickPanelProps = {
   matchContext: MatchContext;
+  /** When true, hides all recording controls — display and playback only. */
+  readonly?: boolean;
+  /** Override which matchId to show notes for (e.g. a saved match being reviewed). */
+  notesMatchId?: string;
+  /** Called after a voice note is successfully saved. */
+  onNoteAdded?: () => void;
 };
 
 function formatClockMs(ms: number | undefined): string {
@@ -38,7 +44,12 @@ function toErrorMessage(error: unknown): string {
   return "Operation failed";
 }
 
-export default function NotesQuickPanel({ matchContext }: NotesQuickPanelProps) {
+export default function NotesQuickPanel({
+  matchContext,
+  readonly = false,
+  notesMatchId,
+  onNoteAdded,
+}: NotesQuickPanelProps) {
   const [notes, setNotes] = useState<CoachNote[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -51,9 +62,11 @@ export default function NotesQuickPanel({ matchContext }: NotesQuickPanelProps) 
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const activeAudioUrlRef = useRef<string | null>(null);
 
+  const resolvedMatchId = notesMatchId ?? matchContext.matchId;
+
   const matchNotes = useMemo(
-    () => notes.filter((note) => note.scope === "match" && note.matchId === matchContext.matchId),
-    [matchContext.matchId, notes],
+    () => notes.filter((note) => note.scope === "match" && note.matchId === resolvedMatchId),
+    [resolvedMatchId, notes],
   );
 
   const stopLiveStreamTracks = () => {
@@ -139,6 +152,7 @@ export default function NotesQuickPanel({ matchContext }: NotesQuickPanelProps) 
           const nextNotes = appendCoachNote(note);
           setNotes(nextNotes);
           setFeedback("Voice note saved.");
+          onNoteAdded?.();
         } catch (error: unknown) {
           setFeedback(`Could not save voice note: ${toErrorMessage(error)}`);
         } finally {
@@ -196,37 +210,45 @@ export default function NotesQuickPanel({ matchContext }: NotesQuickPanelProps) 
 
   return (
     <div className="utility-review-scroll">
-      <div className="utility-panel-title">Notes</div>
-      <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.84, textTransform: "none" }}>
-        Match notes only · H{matchContext.half} · {formatClockMs(matchContext.matchClockMs)}
-      </div>
-      <button
-        type="button"
-        className="utility-review-btn"
-        disabled={isSaving}
-        onClick={() => {
-          if (isRecording) {
-            stopRecording();
-          } else {
-            void startRecording();
+      <div className="utility-panel-title">Voice Notes</div>
+
+      {!readonly ? (
+        <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.84, textTransform: "none" }}>
+          H{matchContext.half} · {formatClockMs(matchContext.matchClockMs)}
+        </div>
+      ) : null}
+
+      {!readonly ? (
+        <button
+          type="button"
+          className="utility-review-btn"
+          disabled={isSaving}
+          onClick={() => {
+            if (isRecording) {
+              stopRecording();
+            } else {
+              void startRecording();
+            }
+          }}
+          style={
+            isRecording
+              ? {
+                  border: "1px solid rgba(248,113,113,0.9)",
+                  background: "rgba(127,29,29,0.5)",
+                }
+              : undefined
           }
-        }}
-        style={
-          isRecording
-            ? {
-                border: "1px solid rgba(248,113,113,0.9)",
-                background: "rgba(127,29,29,0.5)",
-              }
-            : undefined
-        }
-      >
-        {isRecording ? "Stop" : "Start Voice"}
-      </button>
-      {isRecording ? (
+        >
+          {isRecording ? "Stop Recording" : "Record Note"}
+        </button>
+      ) : null}
+
+      {!readonly && isRecording ? (
         <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
           Recording...
         </div>
       ) : null}
+
       {feedback ? (
         <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
           {feedback}
@@ -234,10 +256,10 @@ export default function NotesQuickPanel({ matchContext }: NotesQuickPanelProps) 
       ) : null}
 
       <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86 }}>
-        Recent Notes
+        Recent Voice Notes
       </div>
       {matchNotes.length > 0 ? (
-        matchNotes.slice(0, 8).map((note) => (
+        matchNotes.map((note) => (
           <div
             key={note.id}
             style={{
@@ -249,7 +271,7 @@ export default function NotesQuickPanel({ matchContext }: NotesQuickPanelProps) 
             }}
           >
             <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.95, textTransform: "none" }}>
-              Voice · H{note.half ?? "-"} · {formatClockMs(note.matchClockMs)} · {formatCreatedAt(note.createdAt)}
+              🎤 H{note.half ?? "-"} · {formatClockMs(note.matchClockMs)} · {formatCreatedAt(note.createdAt)}
             </div>
             <div style={{ marginTop: "4px", display: "flex", gap: "6px" }}>
               <button
@@ -266,7 +288,7 @@ export default function NotesQuickPanel({ matchContext }: NotesQuickPanelProps) 
         ))
       ) : (
         <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
-          No notes for this match yet.
+          No voice notes for this match yet.
         </div>
       )}
     </div>
