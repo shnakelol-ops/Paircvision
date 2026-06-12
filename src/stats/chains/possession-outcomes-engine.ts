@@ -317,14 +317,23 @@ export function buildPossessionOutcomeSummary<TEvent extends ChainableEvent>(
   const turnovers = buildFamily<TEvent>("TURNOVER", turnoverResults);
   const frees     = buildFamily<TEvent>("FREE",     freeResults);
 
-  // 5. Ownership split: partition kickouts by restartOwner when data is present.
-  //    Old matches (restartOwner absent) fall back to the combined kickouts view.
-  const hasOwnershipData = kickoutResults.some((r) => r.originEvent.restartOwner != null);
-  const ourKickoutResults   = kickoutResults.filter((r) => r.originEvent.restartOwner === "FOR");
-  const theirKickoutResults = kickoutResults.filter((r) => r.originEvent.restartOwner === "OPP");
-  const ourKickouts   = hasOwnershipData && ourKickoutResults.length   > 0
+  // 5. Ownership split: partition kickouts by restartOwner.
+  //    Legacy compatibility shim: when restartOwner is absent (pre-V1.2 match data),
+  //    derive the kicking team from kind + teamSide:
+  //      KICKOUT_CONCEDED → the conceding side took the kickout → restartOwner === teamSide
+  //      KICKOUT_WON      → the winning side did NOT take it   → restartOwner === opposite(teamSide)
+  //    When restartOwner is explicitly set (V1.2+ data) it is always used as-is.
+  const getRestartOwner = (r: PossessionResult<TEvent>): "FOR" | "OPP" =>
+    r.originEvent.restartOwner != null
+      ? r.originEvent.restartOwner
+      : r.originEvent.kind === "KICKOUT_CONCEDED"
+        ? r.originEvent.teamSide
+        : r.originEvent.teamSide === "FOR" ? "OPP" : "FOR";
+  const ourKickoutResults   = kickoutResults.filter((r) => getRestartOwner(r) === "FOR");
+  const theirKickoutResults = kickoutResults.filter((r) => getRestartOwner(r) === "OPP");
+  const ourKickouts   = ourKickoutResults.length   > 0
     ? buildFamily<TEvent>("KICKOUT", ourKickoutResults)   : null;
-  const theirKickouts = hasOwnershipData && theirKickoutResults.length > 0
+  const theirKickouts = theirKickoutResults.length > 0
     ? buildFamily<TEvent>("KICKOUT", theirKickoutResults) : null;
 
   const overallNetOutcome =
