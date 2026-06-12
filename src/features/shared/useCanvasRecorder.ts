@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 
 export type RecordPhase = "idle" | "panel" | "countdown" | "recording" | "done";
+export type RecordDuration = 30 | 60 | 90;
+export type MicStatus = "off" | "requesting" | "active" | "denied" | "unavailable";
 
 export type CanvasRecorderHandle = {
   recordPhase: RecordPhase;
-  recordDuration: 10 | 20 | 30;
+  recordDuration: RecordDuration;
   recordCountdown: number;
   recordBlob: Blob | null;
-  setRecordDuration: (d: 10 | 20 | 30) => void;
+  recordBlobUrl: string | null;
+  micStatus: MicStatus;
+  setRecordDuration: (d: RecordDuration) => void;
   setRecordPhase: (p: RecordPhase) => void;
   canRecord: () => boolean;
   startCountdown: () => void;
+  startCountdownWithVoice: () => Promise<void>;
   stopRecording: () => void;
   dismissRecord: () => void;
   saveClip: () => void;
@@ -26,16 +31,37 @@ export function useCanvasRecorder(params: {
   paramsRef.current = params;
 
   const [recordPhase, setRecordPhase] = useState<RecordPhase>("idle");
-  const [recordDuration, setRecordDuration] = useState<10 | 20 | 30>(30);
+  const [recordDuration, setRecordDuration] = useState<RecordDuration>(30);
   const [recordCountdown, setRecordCountdown] = useState(3);
   const [recordBlob, setRecordBlob] = useState<Blob | null>(null);
+  const [recordBlobUrl, setRecordBlobUrl] = useState<string | null>(null);
   const [recordMimeType, setRecordMimeType] = useState("video/webm");
+  const [micStatus, setMicStatus] = useState<MicStatus>("off");
+
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordChunksRef = useRef<Blob[]>([]);
   const recordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recordCountdownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recordDurationRef = useRef(recordDuration);
   recordDurationRef.current = recordDuration;
+  const activeAudioStreamRef = useRef<MediaStream | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
+
+  function stopAudioTracks() {
+    const s = activeAudioStreamRef.current;
+    if (s) {
+      s.getTracks().forEach((t) => t.stop());
+      activeAudioStreamRef.current = null;
+    }
+    setMicStatus("off");
+  }
+
+  function revokeBlobUrl() {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -43,6 +69,8 @@ export function useCanvasRecorder(params: {
       if (recordTimerRef.current) clearTimeout(recordTimerRef.current);
       const rec = recorderRef.current;
       if (rec && rec.state !== "inactive") rec.stop();
+      stopAudioTracks();
+      revokeBlobUrl();
     };
   }, []);
 
@@ -69,17 +97,36 @@ export function useCanvasRecorder(params: {
   const startRecordingInner = (mimeType: string) => {
     const canvas = paramsRef.current.getCanvas();
     if (!canvas) return;
+
+    // Clear any previous clip before starting a new one.
+    revokeBlobUrl();
+    setRecordBlob(null);
+    setRecordBlobUrl(null);
+
     setRecordMimeType(mimeType);
     recordChunksRef.current = [];
-    const stream = (canvas as HTMLCanvasElement & { captureStream(fps: number): MediaStream }).captureStream(30);
+
+    const canvasStream = (canvas as HTMLCanvasElement & { captureStream(fps: number): MediaStream }).captureStream(30);
+
+    // Merge audio track when mic is active; silent fallback if not.
+    const audioStream = activeAudioStreamRef.current;
+    const stream =
+      audioStream && audioStream.getAudioTracks().length > 0
+        ? new MediaStream([...canvasStream.getVideoTracks(), ...audioStream.getAudioTracks()])
+        : canvasStream;
+
     const recorder = new MediaRecorder(stream, { mimeType });
     recorderRef.current = recorder;
     recorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data);
     };
     recorder.onstop = () => {
+      stopAudioTracks();
       const blob = new Blob(recordChunksRef.current, { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      blobUrlRef.current = url;
       setRecordBlob(blob);
+      setRecordBlobUrl(url);
       setRecordPhase("done");
       paramsRef.current.onComplete?.();
     };
@@ -106,11 +153,33 @@ export function useCanvasRecorder(params: {
     recordCountdownRef.current = setTimeout(tick, 1000);
   };
 
+  // Request microphone access before starting the countdown so the permission
+  // dialog resolves before recording begins. Falls back to silent if denied.
+  const startCountdownWithVoice = async () => {
+    setMicStatus("requesting");
+    try {
+      if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+        setMicStatus("unavailable");
+      } else {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        activeAudioStreamRef.current = stream;
+        setMicStatus("active");
+      }
+    } catch {
+      setMicStatus("denied");
+      activeAudioStreamRef.current = null;
+    }
+    startCountdown();
+  };
+
   const dismissRecord = () => {
     if (recordCountdownRef.current) { clearTimeout(recordCountdownRef.current); recordCountdownRef.current = null; }
     stopRecording();
+    stopAudioTracks();
+    revokeBlobUrl();
     setRecordPhase("idle");
     setRecordBlob(null);
+    setRecordBlobUrl(null);
   };
 
   const saveClip = () => {
@@ -146,10 +215,13 @@ export function useCanvasRecorder(params: {
     recordDuration,
     recordCountdown,
     recordBlob,
+    recordBlobUrl,
+    micStatus,
     setRecordDuration,
     setRecordPhase,
     canRecord,
     startCountdown,
+    startCountdownWithVoice,
     stopRecording,
     dismissRecord,
     saveClip,

@@ -953,9 +953,13 @@ export default function TacticalPlaySurface() {
     recordDuration, setRecordDuration,
     recordCountdown,
     recordBlob,
+    recordBlobUrl,
+    micStatus,
     canRecord,
     startCountdown,
+    startCountdownWithVoice,
     dismissRecord,
+    saveClip,
     shareClip,
   } = useCanvasRecorder({
     getCanvas: () => shellRef.current?.getCanvas() ?? null,
@@ -2029,6 +2033,10 @@ export default function TacticalPlaySurface() {
         {/* Red recording dot */}
         {recordPhase === "recording" ? (
           <div style={RECORD_DOT_STYLE} />
+        ) : null}
+        {/* Mic active indicator — shown when voiceover is live */}
+        {recordPhase === "recording" && micStatus === "active" ? (
+          <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(28px, calc(env(safe-area-inset-right, 0px) + 26px))", zIndex: 25, fontSize: "14px", pointerEvents: "none", lineHeight: 1 }}>🎙</div>
         ) : null}
 
         {!isControlsOpen && !setupOpen && !isPlaying && !isPaused ? (
@@ -3374,7 +3382,7 @@ export default function TacticalPlaySurface() {
               <div style={{ display: "grid", gap: "4px" }}>
                 <span style={SETUP_SECTION_LABEL_STYLE}>Duration</span>
                 <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                  {([10, 20, 30] as const).map((d) => (
+                  {([30, 60, 90] as const).map((d) => (
                     <button
                       key={d}
                       type="button"
@@ -3386,12 +3394,21 @@ export default function TacticalPlaySurface() {
                       {d}s
                     </button>
                   ))}
+                </div>
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                   <button
                     type="button"
                     style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(255, 80, 80, 0.50)", color: "rgba(255, 190, 190, 0.95)", flex: 1 }}
                     onClick={startCountdown}
                   >
-                    Start Recording
+                    Record Clip
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(180, 120, 255, 0.55)", color: "rgba(220, 190, 255, 0.95)", flex: 1 }}
+                    onClick={() => { void startCountdownWithVoice(); }}
+                  >
+                    🎙 + Voice
                   </button>
                   <button
                     type="button"
@@ -3401,17 +3418,53 @@ export default function TacticalPlaySurface() {
                     ✕
                   </button>
                 </div>
+                {micStatus === "denied" ? (
+                  <span style={{ fontSize: "8px", color: "rgba(255, 180, 100, 0.85)", fontFamily: "Inter, system-ui, sans-serif", padding: "1px 0" }}>
+                    Mic access denied — recording silently
+                  </span>
+                ) : null}
+                {micStatus === "unavailable" ? (
+                  <span style={{ fontSize: "8px", color: "rgba(255, 180, 100, 0.85)", fontFamily: "Inter, system-ui, sans-serif", padding: "1px 0" }}>
+                    Microphone not available — recording silently
+                  </span>
+                ) : null}
               </div>
             ) : null}
 
             {recordBlob ? (
-              <button
-                type="button"
-                style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)", width: "100%", justifyContent: "center", height: "30px" }}
-                onClick={() => { void shareClip(); }}
-              >
-                Share Last Clip
-              </button>
+              <div style={{ display: "grid", gap: "4px" }}>
+                {recordBlobUrl ? (
+                  <video
+                    src={recordBlobUrl}
+                    controls
+                    playsInline
+                    style={{ width: "100%", maxHeight: "120px", borderRadius: "6px", background: "#000", display: "block" }}
+                  />
+                ) : null}
+                <div style={{ display: "flex", gap: "4px" }}>
+                  <button
+                    type="button"
+                    style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)", flex: 1, justifyContent: "center" }}
+                    onClick={() => { void shareClip(); }}
+                  >
+                    Share
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.25)", color: "rgba(150, 195, 255, 0.80)", flex: 1, justifyContent: "center" }}
+                    onClick={saveClip}
+                  >
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...PLAYS_ACTION_BTN, color: "rgba(180, 210, 255, 0.50)" }}
+                    onClick={dismissRecord}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
             ) : null}
 
             {/* ── Templates placeholder ── */}

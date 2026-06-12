@@ -1945,9 +1945,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setRecordDuration: setSlateRecordDuration,
     recordCountdown: slateRecordCountdown,
     recordBlob: slateRecordBlob,
+    recordBlobUrl: slateRecordBlobUrl,
+    micStatus: slateMicStatus,
     canRecord: slateCanRecord,
     startCountdown: slateStartCountdown,
+    startCountdownWithVoice: slateStartCountdownWithVoice,
     dismissRecord: slateDismissRecord,
+    saveClip: slateSaveClip,
     shareClip: slateShareClip,
   } = useCanvasRecorder({
     getCanvas: () => surfaceRef.current?.getCanvas() ?? null,
@@ -5172,7 +5176,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               <div style={{ display: "grid", gap: "5px" }}>
                 <span style={{ ...QUICK_SHARE_OPTION_TITLE_STYLE, padding: "2px 0" }}>Record Clip</span>
                 <div style={{ display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" }}>
-                  {([10, 20, 30] as const).map((d) => (
+                  {([30, 60, 90] as const).map((d) => (
                     <button
                       key={d}
                       type="button"
@@ -5185,13 +5189,23 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                       {d}s
                     </button>
                   ))}
+                </div>
+                <div style={{ display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" }}>
                   <button
                     type="button"
                     className="control-button"
                     style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", flex: 1, border: "1px solid rgba(255, 80, 80, 0.50)", color: "rgba(255, 190, 190, 0.95)" }}
                     onClick={slateStartCountdown}
                   >
-                    Start Recording
+                    Record Clip
+                  </button>
+                  <button
+                    type="button"
+                    className="control-button"
+                    style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", flex: 1, border: "1px solid rgba(180, 120, 255, 0.55)", color: "rgba(220, 190, 255, 0.95)" }}
+                    onClick={() => { void slateStartCountdownWithVoice(); }}
+                  >
+                    🎙 + Voice
                   </button>
                   <button
                     type="button"
@@ -5202,17 +5216,55 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     ✕
                   </button>
                 </div>
+                {slateMicStatus === "denied" ? (
+                  <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: "rgba(255, 180, 100, 0.85)" }}>
+                    Mic access denied — recording silently
+                  </span>
+                ) : null}
+                {slateMicStatus === "unavailable" ? (
+                  <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: "rgba(255, 180, 100, 0.85)" }}>
+                    Microphone not available — recording silently
+                  </span>
+                ) : null}
               </div>
             ) : null}
             {slateRecordBlob ? (
-              <button
-                type="button"
-                className="control-button"
-                style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)" }}
-                onClick={() => { void slateShareClip(); }}
-              >
-                <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>Share Last Clip</span>
-              </button>
+              <div style={{ display: "grid", gap: "5px" }}>
+                {slateRecordBlobUrl ? (
+                  <video
+                    src={slateRecordBlobUrl}
+                    controls
+                    playsInline
+                    style={{ width: "100%", maxHeight: "100px", borderRadius: "5px", background: "#000", display: "block" }}
+                  />
+                ) : null}
+                <div style={{ display: "flex", gap: "4px" }}>
+                  <button
+                    type="button"
+                    className="control-button"
+                    style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", flex: 1, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)" }}
+                    onClick={() => { void slateShareClip(); }}
+                  >
+                    <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>Share</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="control-button"
+                    style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", flex: 1, border: "1px solid rgba(80, 160, 255, 0.25)", color: "rgba(150, 195, 255, 0.80)" }}
+                    onClick={slateSaveClip}
+                  >
+                    <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>Download</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="control-button"
+                    style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px" }}
+                    onClick={slateDismissRecord}
+                  >
+                    <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>✕</span>
+                  </button>
+                </div>
+              </div>
             ) : null}
           </div>
         ) : null}
@@ -5223,6 +5275,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         ) : null}
         {!isWhiteboardMode && slateRecordPhase === "recording" ? (
           <div style={{ position: "fixed", top: "max(14px, calc(env(safe-area-inset-top, 0px) + 12px))", right: "max(14px, calc(env(safe-area-inset-right, 0px) + 12px))", zIndex: 25, width: "10px", height: "10px", borderRadius: "50%", background: "#ff3030", boxShadow: "0 0 8px 2px rgba(255, 48, 48, 0.70)", pointerEvents: "none", animation: "tp-rec-pulse 1.1s ease-in-out infinite" }} />
+        ) : null}
+        {!isWhiteboardMode && slateRecordPhase === "recording" && slateMicStatus === "active" ? (
+          <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(28px, calc(env(safe-area-inset-right, 0px) + 26px))", zIndex: 25, fontSize: "14px", pointerEvents: "none", lineHeight: 1 }}>🎙</div>
         ) : null}
         {!isWhiteboardMode && shareTipMessage ? (
           <div style={SHARE_TIP_TOAST_STYLE} role="status" aria-live="polite">
