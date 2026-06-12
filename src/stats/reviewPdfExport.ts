@@ -208,22 +208,6 @@ const EVENT_COLORS: Record<MatchEventKind, string> = {
   FREE_CONCEDED:        "#f472b6",
 };
 
-const KIND_LABELS: Record<MatchEventKind, string> = {
-  GOAL:                 "Goal",
-  POINT:                "Point",
-  TWO_POINTER:          "2-Pointer",
-  FORTY_FIVE_TWO_POINT: "45/2pt",
-  WIDE:                 "Wide",
-  SHOT:                 "Shot",
-  FREE_MISSED:          "Free Missed",
-  FREE_SCORED:          "Free Scored",
-  TURNOVER_WON:         "Turnover Won",
-  TURNOVER_LOST:        "Turnover Lost",
-  KICKOUT_WON:          "Kickout Won",
-  KICKOUT_CONCEDED:     "Kickout Conceded",
-  FREE_WON:             "Free Won",
-  FREE_CONCEDED:        "Free Conceded",
-};
 
 // ─── Score helpers ────────────────────────────────────────────────────────────
 
@@ -548,93 +532,9 @@ function renderEventMarkers(
   }
 }
 
-/** Right-side colour legend — only shows kinds present in the event list. */
-function renderLegend(
-  ctx: CanvasRenderingContext2D,
-  events: readonly PdfExportEvent[],
-): void {
-  const presentKinds = [...new Set(events.map((e) => e.kind))];
-  if (presentKinds.length === 0) return;
-
-  const lx = CANVAS_W - 158;
-  let ly = 90;
-
-  ctx.save();
-  ctx.textBaseline = "middle";
-
-  ctx.fillStyle = "#475569";
-  ctx.font = "13px sans-serif";
-  ctx.textAlign = "left";
-  ctx.fillText("LEGEND", lx, ly);
-  ly += 22;
-
-  for (const kind of presentKinds) {
-    if (ly > CANVAS_H - 60) break;
-    const color = EVENT_COLORS[kind] ?? "#ffffff";
-    ctx.beginPath();
-    ctx.arc(lx + 7, ly, 7, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.55)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.fillStyle = "#cbd5e1";
-    ctx.font = "14px sans-serif";
-    ctx.fillText(KIND_LABELS[kind] ?? kind, lx + 18, ly + 1);
-    ly += 22;
-  }
-  ctx.restore();
-}
 
 // ─── Page builders ────────────────────────────────────────────────────────────
 
-/** Builds a single tactical pitch page canvas (pages 3–22). */
-function makeTacticalPage(
-  sport: PitchSport,
-  events: readonly PdfExportEvent[],
-  title: string,
-  homeTeam: string,
-  awayTeam: string,
-  pageNum: number,
-  totalPages: number,
-): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = CANVAS_W;
-  canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) {
-    const ctx2 = canvas.getContext("2d");
-    if (ctx2) {
-      ctx2.fillStyle = "#0d1117";
-      ctx2.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx2.fillStyle = "#94a3b8";
-      ctx2.font = "24px sans-serif";
-      ctx2.textAlign = "center";
-      ctx2.textBaseline = "middle";
-      ctx2.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
-    }
-    return canvas;
-  }
-
-  fillDarkBg(ctx);
-  drawTopAccentBar(ctx);
-  drawPageHeader(ctx, title, `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
-  drawEventCountFooter(ctx, events.length);
-
-  // Pitch occupies most of the canvas; right 168px reserved for legend
-  const pitchArea: PitchArea = {
-    x: 24,
-    y: 80,
-    w: CANVAS_W - 24 - 168,
-    h: CANVAS_H - 80 - 38,
-  };
-
-  const inner = renderPitch(ctx, sport, pitchArea);
-  renderEventMarkers(ctx, events, inner);
-  renderLegend(ctx, events);
-
-  return canvas;
-}
 
 /**
  * Draws two mirrored full-breakdown team stat blocks.
@@ -1024,6 +924,7 @@ function makeSegmentsPage(
   events: readonly PdfExportEvent[],
   homeTeam: string,
   awayTeam: string,
+  pageNum: number,
   totalPages: number,
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
@@ -1049,7 +950,7 @@ function makeSegmentsPage(
   ctx.fillStyle = "#64748b";
   ctx.font = "17px sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText(`2 / ${totalPages}`, CANVAS_W - 24, 38);
+  ctx.fillText(`${pageNum} / ${totalPages}`, CANVAS_W - 24, 38);
   ctx.textAlign = "left";
 
   ctx.strokeStyle = "rgba(255,255,255,0.07)";
@@ -1322,90 +1223,6 @@ function makeSegmentsPage(
 
 // ─── Segment detail page ─────────────────────────────────────────────────────
 
-/**
- * Builds a full-breakdown canvas for one game segment (pages 3–8).
- * Uses the same 5-section stats table as the match summary, filtered to a
- * single (period, segment) pair. Mini scoreline for that segment at the top.
- */
-function makeSegmentDetailPage(
-  events: readonly PdfExportEvent[],
-  period: MatchEventPeriod,
-  segment: MatchEventSegment,
-  segLabel: string,
-  homeTeam: string,
-  awayTeam: string,
-  pageNum: number,
-  totalPages: number,
-): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = CANVAS_W;
-  canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
-
-  fillDarkBg(ctx);
-  drawTopAccentBar(ctx);
-  drawPageHeader(ctx, segLabel, `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
-
-  // Filter to this segment only
-  const segEvts = events.filter(
-    (e) => !e.id.includes("-instant-score-") && e.period === period && e.segment === segment,
-  );
-  const forEvts  = segEvts.filter((e) => e.teamSide === "FOR");
-  const oppEvts  = segEvts.filter((e) => e.teamSide === "OPP");
-  const forScore = scoreFromEvents(forEvts);
-  const oppScore = scoreFromEvents(oppEvts);
-
-  // Mini scoreline — y=80 to y=158
-  const forCX = 72 + 424;   // 496 — centres align with stat blocks below
-  const oppCX = 1000 + 424; // 1424
-
-  ctx.save();
-  ctx.textBaseline = "middle";
-
-  ctx.font = "bold 26px sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#7dd3fc";
-  ctx.fillText(homeTeam.toUpperCase(), forCX, 102);
-  ctx.fillStyle = "#fb7185";
-  ctx.fillText(awayTeam.toUpperCase(), oppCX, 102);
-
-  ctx.font = "bold 40px sans-serif";
-  ctx.fillStyle = "#4ade80";
-  ctx.fillText(fmtScore(forScore), forCX, 142);
-  ctx.fillStyle = "#fb7185";
-  ctx.fillText(fmtScore(oppScore), oppCX, 142);
-
-  ctx.font = "bold 28px sans-serif";
-  ctx.fillStyle = "#334155";
-  ctx.fillText("v", Math.round(CANVAS_W / 2), 122);
-
-  const dg = ctx.createLinearGradient(72, 0, CANVAS_W - 72, 0);
-  dg.addColorStop(0,   "rgba(125,211,252,0.35)");
-  dg.addColorStop(0.5, "rgba(255,255,255,0.06)");
-  dg.addColorStop(1,   "rgba(251,113,133,0.35)");
-  ctx.strokeStyle = dg;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(72, 158);
-  ctx.lineTo(CANVAS_W - 72, 158);
-  ctx.stroke();
-  ctx.restore();
-
-  // Full stats table, starting at y=162 (BLOCK_H≈793, bottom≈955 — very comfortable)
-  drawSummaryStatsTable(ctx, segEvts, homeTeam, awayTeam, 162);
-
-  // Footer
-  ctx.save();
-  ctx.fillStyle = "#475569";
-  ctx.font = "15px sans-serif";
-  ctx.textBaseline = "middle";
-  ctx.textAlign = "right";
-  ctx.fillText(`${segEvts.length} event${segEvts.length !== 1 ? "s" : ""} in segment`, CANVAS_W - 24, CANVAS_H - 20);
-  ctx.restore();
-
-  return canvas;
-}
 
 // ─── Player Breakdown pages ───────────────────────────────────────────────────
 
@@ -5533,55 +5350,131 @@ function makeShotEfficiencyPage(
   return canvas;
 }
 
-// ─── Tactical page spec table (20 pages) ────────────────────────────────────
+// ─── Chapter label stamper ───────────────────────────────────────────────────
 
-type PageSpec = {
+/**
+ * Post-renders a small chapter label chip onto an already-built canvas.
+ * Called from exportReviewPdf on the first page of each chapter so that
+ * the label appears in the top-right area without modifying any page builder.
+ */
+function stampChapterLabel(
+  canvas: HTMLCanvasElement,
+  label: string,
+  accentColor: string,
+): void {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.save();
+  ctx.font = "bold 13px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  const text = label.toUpperCase();
+  const tw = ctx.measureText(text).width;
+  const chipW = tw + 20;
+  const chipH = 20;
+  const chipX = CANVAS_W - 24 - chipW;
+  const chipY = 14;
+  ctx.fillStyle = accentColor + "33";
+  ctx.fillRect(chipX, chipY, chipW, chipH);
+  ctx.fillStyle = accentColor;
+  ctx.fillText(text, chipX + 10, chipY + chipH / 2);
+  ctx.restore();
+}
+
+// ─── Quad pitch map page ─────────────────────────────────────────────────────
+
+type QuadPanel = {
   title: string;
-  half: "H1" | "H2";
-  teamSide: "FOR" | "OPP" | "ALL";
-  category: PdfCategory;
+  events: readonly PdfExportEvent[];
+  accentColor?: string;
 };
 
-const TACTICAL_PAGE_SPECS: readonly PageSpec[] = [
-  // FIRST HALF tactical pitch maps
-  { title: "1H — All Events",        half: "H1", teamSide: "ALL", category: "ALL"       },
-  { title: "1H — Scores",            half: "H1", teamSide: "ALL", category: "SCORES"    },
-  { title: "1H — Shots For",         half: "H1", teamSide: "FOR", category: "SHOTS"     },
-  { title: "1H — Shots Against",     half: "H1", teamSide: "OPP", category: "SHOTS"     },
-  { title: "1H — Kickouts For",      half: "H1", teamSide: "FOR", category: "KICKOUTS"  },
-  { title: "1H — Kickouts Against",  half: "H1", teamSide: "OPP", category: "KICKOUTS"  },
-  { title: "1H — Turnovers For",     half: "H1", teamSide: "FOR", category: "TURNOVERS" },
-  { title: "1H — Turnovers Against", half: "H1", teamSide: "OPP", category: "TURNOVERS" },
-  { title: "1H — Frees For",         half: "H1", teamSide: "FOR", category: "FREES"     },
-  { title: "1H — Frees Against",     half: "H1", teamSide: "OPP", category: "FREES"     },
-  // SECOND HALF tactical pitch maps
-  { title: "2H — All Events",        half: "H2", teamSide: "ALL", category: "ALL"       },
-  { title: "2H — Scores",            half: "H2", teamSide: "ALL", category: "SCORES"    },
-  { title: "2H — Shots For",         half: "H2", teamSide: "FOR", category: "SHOTS"     },
-  { title: "2H — Shots Against",     half: "H2", teamSide: "OPP", category: "SHOTS"     },
-  { title: "2H — Kickouts For",      half: "H2", teamSide: "FOR", category: "KICKOUTS"  },
-  { title: "2H — Kickouts Against",  half: "H2", teamSide: "OPP", category: "KICKOUTS"  },
-  { title: "2H — Turnovers For",     half: "H2", teamSide: "FOR", category: "TURNOVERS" },
-  { title: "2H — Turnovers Against", half: "H2", teamSide: "OPP", category: "TURNOVERS" },
-  { title: "2H — Frees For",         half: "H2", teamSide: "FOR", category: "FREES"     },
-  { title: "2H — Frees Against",     half: "H2", teamSide: "OPP", category: "FREES"     },
-] as const;
+/**
+ * Renders four mini pitch maps in a 2×2 grid on a single canvas.
+ * Each panel shows its own pitch rendering and event markers.
+ * Used in the Analyst Review to consolidate 20 single-page raw maps into
+ * 5 chapter-level comparison pages.
+ */
+function makeQuadPitchMapPage(
+  sport: PitchSport,
+  quads: readonly [QuadPanel, QuadPanel, QuadPanel, QuadPanel],
+  pageTitle: string,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
 
-/** Segment detail pages (3–8): one full breakdown per segment. */
-type SegmentDetailSpec = {
-  period: MatchEventPeriod;
-  segment: MatchEventSegment;
-  label: string;
-};
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, pageTitle, `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
-const SEGMENT_DETAIL_SPECS: readonly SegmentDetailSpec[] = [
-  { period: "1H", segment: 1, label: "1H Early  (0 – 10 min)"  },
-  { period: "1H", segment: 2, label: "1H Mid    (11 – 20 min)" },
-  { period: "1H", segment: 3, label: "1H Late   (21 – 30+ min)"},
-  { period: "2H", segment: 4, label: "2H Early  (0 – 10 min)"  },
-  { period: "2H", segment: 5, label: "2H Mid    (11 – 20 min)" },
-  { period: "2H", segment: 6, label: "2H Late   (21 – 30+ min)"},
-] as const;
+  const HEADER_H = 80;
+  const FOOTER_H = 38;
+  const GUTTER   = 14;
+  const TITLE_H  = 28;
+
+  const gridTop = HEADER_H + 2;
+  const gridH   = CANVAS_H - gridTop - FOOTER_H;
+  const panelW  = Math.floor((CANVAS_W - GUTTER * 3) / 2);
+  const panelH  = Math.floor((gridH - GUTTER * 3) / 2);
+
+  const positions: ReadonlyArray<{ col: 0 | 1; row: 0 | 1 }> = [
+    { col: 0, row: 0 }, { col: 1, row: 0 },
+    { col: 0, row: 1 }, { col: 1, row: 1 },
+  ];
+
+  let totalEvents = 0;
+
+  quads.forEach((quad, i) => {
+    const { col, row } = positions[i];
+    const px = GUTTER + col * (panelW + GUTTER);
+    const py = gridTop + GUTTER + row * (panelH + GUTTER);
+    const accent = quad.accentColor ?? "#94a3b8";
+
+    totalEvents += quad.events.length;
+
+    // Panel background
+    ctx.fillStyle = "rgba(255,255,255,0.025)";
+    ctx.fillRect(px, py, panelW, panelH);
+
+    // Title strip
+    ctx.fillStyle = accent + "22";
+    ctx.fillRect(px, py, panelW, TITLE_H);
+
+    ctx.save();
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 14px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillStyle = accent;
+    ctx.fillText(quad.title.toUpperCase(), px + 10, py + TITLE_H / 2);
+    ctx.fillStyle = "#64748b";
+    ctx.font = "13px sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(`${quad.events.length}`, px + panelW - 8, py + TITLE_H / 2);
+    ctx.restore();
+
+    // Pitch area below the title strip
+    const pitchArea: PitchArea = {
+      x: px,
+      y: py + TITLE_H,
+      w: panelW,
+      h: panelH - TITLE_H,
+    };
+
+    const inner = renderPitch(ctx, sport, pitchArea);
+    renderEventMarkers(ctx, quad.events, inner);
+  });
+
+  drawEventCountFooter(ctx, totalEvents);
+  return canvas;
+}
+
 
 // ─── Main export entry point ──────────────────────────────────────────────────
 
@@ -5617,16 +5510,20 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
   } = input;
 
-  // Dynamic page count: 8 fixed analysis pages + player pages + 20 tactical maps + 6 chain pages + 1 review guide + 1 opposition snapshot + 1 zone analysis + 1 match swing timeline + 1 shot & scoring efficiency
+  // 19 fixed pages + player pages.
+  // Fixed: p.1 Match Summary, p.2 Match Swing, p.3 Tactical Intelligence,
+  //        p.4 Segment Control, p.5–6 Kickout chapter, p.7–8 Turnover chapter,
+  //        p.9–10 Shot chapter, p.11–13 Chain/Momentum chapter,
+  //        p.14+N Player (variable N), then Zone, 1H quad, 2H quad, Frees quad,
+  //        Opposition Snapshot = 5 post-player = 18 + N total.
   const playerPageCount = calcPlayerPageCount(events);
-  const TOTAL_PAGES = 8 + playerPageCount + TACTICAL_PAGE_SPECS.length + 10;
+  const TOTAL_PAGES = 18 + playerPageCount;
 
-  // Chain analysis — computed once here and shared with all chain page builders.
-  // PdfExportEvent structurally satisfies ChainableEvent; no cast needed.
+  // Chain analysis — computed once; shared by all chain page builders.
   const chainAnalysis = selectChainAnalysis(events);
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-  const PW = 297; // A4 landscape mm
+  const PW = 297;
   const PH = 210;
 
   function addCanvasPage(canvas: HTMLCanvasElement, addPageFirst: boolean, pageName?: string): void {
@@ -5644,371 +5541,280 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     }
   }
 
-  // Page 1: Match Summary
-  addCanvasPage(
-    makeSummaryPage(events, homeTeamName, awayTeamName, venueName, TOTAL_PAGES),
-    false,
-  );
-
-  // Page 2: Segment Overview (compact table)
-  addCanvasPage(
-    makeSegmentsPage(events, homeTeamName, awayTeamName, TOTAL_PAGES),
-    true,
-  );
-
-  // Pages 3–8: Per-segment full breakdowns
-  SEGMENT_DETAIL_SPECS.forEach(({ period, segment, label }, i) => {
-    addCanvasPage(
-      makeSegmentDetailPage(
-        events, period, segment, label,
-        homeTeamName, awayTeamName, 3 + i, TOTAL_PAGES,
-      ),
-      true,
-    );
-  });
-
-  // Pages 9+: Player Breakdown (1 or more pages — no truncation)
-  const playerCanvases = makePlayerPages(events, homeTeamName, awayTeamName, 9, TOTAL_PAGES);
-  playerCanvases.forEach((c) => addCanvasPage(c, true));
-
-  // Pages (9+N)+: 20 tactical pitch map pages
-  TACTICAL_PAGE_SPECS.forEach((spec, i) => {
-    const filtered = selectPdfEvents(events, spec.half, spec.teamSide, spec.category);
-    const pageNum  = 9 + playerPageCount + i;
-    let canvas: HTMLCanvasElement;
-    try {
-      canvas = makeTacticalPage(
-        sport, filtered, spec.title, homeTeamName, awayTeamName, pageNum, TOTAL_PAGES,
-      );
-    } catch {
-      canvas = document.createElement("canvas");
-      canvas.width  = CANVAS_W;
-      canvas.height = CANVAS_H;
-      const ctx2 = canvas.getContext("2d");
-      if (ctx2) {
-        ctx2.fillStyle    = "#0d1117";
-        ctx2.fillRect(0, 0, CANVAS_W, CANVAS_H);
-        ctx2.fillStyle    = "#64748b";
-        ctx2.font         = "24px sans-serif";
-        ctx2.textAlign    = "center";
-        ctx2.textBaseline = "middle";
-        ctx2.fillText(`${spec.title} — render failed`, CANVAS_W / 2, CANVAS_H / 2);
-      }
-    }
-    addCanvasPage(canvas!, true);
-  });
-
-  // Tenth-to-last page: Kickout Chain Analysis
-  // chainAnalysis was computed once above; all chain builders consume slices of it.
-  try {
-    addCanvasPage(
-      makeKickoutChainPage(
-        chainAnalysis,
-        homeTeamName,
-        awayTeamName,
-        TOTAL_PAGES - 9,   // tenth-to-last page
-        TOTAL_PAGES,
-      ),
-      true,
-      "Kickout Chain Analysis",
-    );
-  } catch (err) {
-    console.error("Kickout Chain Analysis page generation failed", err);
-    const fallback = document.createElement("canvas");
-    fallback.width = CANVAS_W;
-    fallback.height = CANVAS_H;
-    const ctx = fallback.getContext("2d");
+  function fallbackCanvas(label: string): HTMLCanvasElement {
+    const c = document.createElement("canvas");
+    c.width = CANVAS_W; c.height = CANVAS_H;
+    const ctx = c.getContext("2d");
     if (ctx) {
-      ctx.fillStyle = "#0d1117";
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "24px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
+      ctx.fillStyle = "#0d1117"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      ctx.fillStyle = "#94a3b8"; ctx.font = "24px sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(`${label} — could not be rendered`, CANVAS_W / 2, CANVAS_H / 2);
     }
-    addCanvasPage(fallback, true, "Kickout Chain Analysis");
+    return c;
   }
 
-  // Ninth-to-last page: Turnover Punishment Analysis
-  try {
-    addCanvasPage(
-      makeTurnoverPunishmentPage(
-        chainAnalysis,
-        homeTeamName,
-        awayTeamName,
-        TOTAL_PAGES - 8,   // ninth-to-last page
-        TOTAL_PAGES,
-      ),
-      true,
-      "Turnover Punishment Analysis",
-    );
-  } catch (err) {
-    console.error("Turnover Punishment Analysis page generation failed", err);
-    const fallback = document.createElement("canvas");
-    fallback.width = CANVAS_W;
-    fallback.height = CANVAS_H;
-    const ctx = fallback.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#0d1117";
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "24px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
-    }
-    addCanvasPage(fallback, true, "Turnover Punishment Analysis");
-  }
+  // ── CHAPTER 1 — MATCH OVERVIEW ───────────────────────────────────────────────
+  //   p.1 Match Summary · p.2 Match Swing Timeline · p.3 Tactical Intelligence
 
-  // Eighth-to-last page: Momentum & Scoring Runs Analysis
-  try {
-    addCanvasPage(
-      makeMomentumRunsPage(
-        chainAnalysis,
-        homeTeamName,
-        awayTeamName,
-        TOTAL_PAGES - 7,   // eighth-to-last page
-        TOTAL_PAGES,
-      ),
-      true,
-      "Momentum & Scoring Runs Analysis",
-    );
-  } catch (err) {
-    console.error("Momentum & Scoring Runs Analysis page generation failed", err);
-    const fallback = document.createElement("canvas");
-    fallback.width = CANVAS_W;
-    fallback.height = CANVAS_H;
-    const ctx = fallback.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#0d1117";
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "24px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
-    }
-    addCanvasPage(fallback, true, "Momentum & Scoring Runs Analysis");
-  }
+  const p1 = makeSummaryPage(events, homeTeamName, awayTeamName, venueName, TOTAL_PAGES);
+  stampChapterLabel(p1, "Chapter 1 — Match Overview", "#7dd3fc");
+  addCanvasPage(p1, false, "Match Summary");
 
-  // Seventh-to-last page: Tactical Chain Analysis summary
   try {
     addCanvasPage(
-      makeChainSummaryPage(
-        chainAnalysis,
-        homeTeamName,
-        awayTeamName,
-        TOTAL_PAGES - 6,   // seventh-to-last page
-        TOTAL_PAGES,
-      ),
-      true,
-      "Tactical Chain Analysis Summary",
-    );
-  } catch (err) {
-    console.error("Tactical Chain Analysis Summary page generation failed", err);
-    const fallback = document.createElement("canvas");
-    fallback.width = CANVAS_W;
-    fallback.height = CANVAS_H;
-    const ctx = fallback.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#0d1117";
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "24px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
-    }
-    addCanvasPage(fallback, true, "Tactical Chain Analysis Summary");
-  }
-
-  // Sixth-to-last page: Tactical Intelligence Summary
-  try {
-    addCanvasPage(
-      makeTacticalIntelligencePage(
-        chainAnalysis,
-        homeTeamName,
-        awayTeamName,
-        TOTAL_PAGES - 5,   // sixth-to-last page
-        TOTAL_PAGES,
-      ),
-      true,
-      "Tactical Intelligence Summary",
-    );
-  } catch (err) {
-    console.error("Tactical Intelligence Summary page generation failed", err);
-    const fallback = document.createElement("canvas");
-    fallback.width = CANVAS_W;
-    fallback.height = CANVAS_H;
-    const ctx = fallback.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#0d1117";
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "24px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
-    }
-    addCanvasPage(fallback, true, "Tactical Intelligence Summary");
-  }
-
-  // Fifth-to-last page: Tactical Review Guide
-  try {
-    addCanvasPage(
-      makeTacticalReviewGuidePage(
-        chainAnalysis,
-        homeTeamName,
-        awayTeamName,
-        TOTAL_PAGES - 4,   // fifth-to-last page
-        TOTAL_PAGES,
-      ),
-      true,
-      "Tactical Review Guide",
-    );
-  } catch (err) {
-    console.error("Tactical Review Guide page generation failed", err);
-    const fallback = document.createElement("canvas");
-    fallback.width = CANVAS_W;
-    fallback.height = CANVAS_H;
-    const ctx = fallback.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#0d1117";
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "24px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
-    }
-    addCanvasPage(fallback, true, "Tactical Review Guide");
-  }
-
-  // Fourth-to-last page: Opposition Snapshot
-  try {
-    addCanvasPage(
-      makeOppositionSnapshotPage(
-        events,
-        chainAnalysis,
-        homeTeamName,
-        awayTeamName,
-        TOTAL_PAGES - 3,   // fourth-to-last page
-        TOTAL_PAGES,
-      ),
-      true,
-      "Opposition Snapshot",
-    );
-  } catch (err) {
-    console.error("Opposition Snapshot page generation failed", err);
-    const fallback = document.createElement("canvas");
-    fallback.width = CANVAS_W;
-    fallback.height = CANVAS_H;
-    const ctx = fallback.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#0d1117";
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "24px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
-    }
-    addCanvasPage(fallback, true, "Opposition Snapshot");
-  }
-
-  // Third-to-last page: Zone Analysis
-  try {
-    addCanvasPage(
-      makeZoneAnalysisPage(
-        events,
-        homeTeamName,
-        awayTeamName,
-        TOTAL_PAGES - 2,   // third-to-last page
-        TOTAL_PAGES,
-      ),
-      true,
-      "Zone Analysis",
-    );
-  } catch (err) {
-    console.error("Zone Analysis page generation failed", err);
-    const fallback = document.createElement("canvas");
-    fallback.width = CANVAS_W;
-    fallback.height = CANVAS_H;
-    const ctx = fallback.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#0d1117";
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "24px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
-    }
-    addCanvasPage(fallback, true, "Zone Analysis");
-  }
-
-  // Second-to-last page: Match Swing Timeline
-  try {
-    addCanvasPage(
-      makeMatchSwingTimelinePage(
-        events,
-        chainAnalysis,
-        homeTeamName,
-        awayTeamName,
-        TOTAL_PAGES - 1,   // second-to-last page
-        TOTAL_PAGES,
-      ),
-      true,
-      "Match Swing Timeline",
+      makeMatchSwingTimelinePage(events, chainAnalysis, homeTeamName, awayTeamName, 2, TOTAL_PAGES),
+      true, "Match Swing Timeline",
     );
   } catch (err) {
     console.error("Match Swing Timeline page generation failed", err);
-    const fallback = document.createElement("canvas");
-    fallback.width = CANVAS_W;
-    fallback.height = CANVAS_H;
-    const ctx = fallback.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#0d1117";
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "24px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
-    }
-    addCanvasPage(fallback, true, "Match Swing Timeline");
+    addCanvasPage(fallbackCanvas("Match Swing Timeline"), true, "Match Swing Timeline");
   }
 
-  // Last page: Shot & Scoring Efficiency
   try {
     addCanvasPage(
-      makeShotEfficiencyPage(
-        events,
-        homeTeamName,
-        awayTeamName,
-        TOTAL_PAGES,   // this IS the last page
-        TOTAL_PAGES,
-      ),
-      true,
-      "Shot & Scoring Efficiency",
+      makeTacticalIntelligencePage(chainAnalysis, homeTeamName, awayTeamName, 3, TOTAL_PAGES),
+      true, "Tactical Intelligence Summary",
+    );
+  } catch (err) {
+    console.error("Tactical Intelligence Summary page generation failed", err);
+    addCanvasPage(fallbackCanvas("Tactical Intelligence Summary"), true, "Tactical Intelligence Summary");
+  }
+
+  // ── CHAPTER 2 — SEGMENT CONTROL ─────────────────────────────────────────────
+  //   p.4 Game Segments Breakdown (all six segments in one compact table)
+
+  const p4 = makeSegmentsPage(events, homeTeamName, awayTeamName, 4, TOTAL_PAGES);
+  stampChapterLabel(p4, "Chapter 2 — Segment Control", "#a78bfa");
+  addCanvasPage(p4, true, "Segment Control");
+
+  // ── CHAPTER 3 — KICKOUT & RESTART ANALYSIS ──────────────────────────────────
+  //   p.5 Kickout Pitch Maps (2×2: 1H For / 1H Against / 2H For / 2H Against)
+  //   p.6 Kickout Chain Analysis
+
+  try {
+    const p5 = makeQuadPitchMapPage(
+      sport,
+      [
+        { title: `1H — ${homeTeamName} Kickouts`, events: selectPdfEvents(events, "H1", "FOR", "KICKOUTS"), accentColor: "#14b8a6" },
+        { title: `1H — ${awayTeamName} Kickouts`, events: selectPdfEvents(events, "H1", "OPP", "KICKOUTS"), accentColor: "#ef4444" },
+        { title: `2H — ${homeTeamName} Kickouts`, events: selectPdfEvents(events, "H2", "FOR", "KICKOUTS"), accentColor: "#14b8a6" },
+        { title: `2H — ${awayTeamName} Kickouts`, events: selectPdfEvents(events, "H2", "OPP", "KICKOUTS"), accentColor: "#ef4444" },
+      ],
+      "Kickout Pitch Maps",
+      homeTeamName, awayTeamName, 5, TOTAL_PAGES,
+    );
+    stampChapterLabel(p5, "Chapter 3 — Kickout & Restart Analysis", "#14b8a6");
+    addCanvasPage(p5, true, "Kickout Pitch Maps");
+  } catch (err) {
+    console.error("Kickout Pitch Maps page generation failed", err);
+    addCanvasPage(fallbackCanvas("Kickout Pitch Maps"), true, "Kickout Pitch Maps");
+  }
+
+  try {
+    addCanvasPage(
+      makeKickoutChainPage(chainAnalysis, homeTeamName, awayTeamName, 6, TOTAL_PAGES),
+      true, "Kickout Chain Analysis",
+    );
+  } catch (err) {
+    console.error("Kickout Chain Analysis page generation failed", err);
+    addCanvasPage(fallbackCanvas("Kickout Chain Analysis"), true, "Kickout Chain Analysis");
+  }
+
+  // ── CHAPTER 4 — TURNOVER ANALYSIS ───────────────────────────────────────────
+  //   p.7 Turnover Pitch Maps (2×2: 1H For / 1H Against / 2H For / 2H Against)
+  //   p.8 Turnover Punishment Analysis
+
+  try {
+    const p7 = makeQuadPitchMapPage(
+      sport,
+      [
+        { title: `1H — ${homeTeamName} Turnovers Won`,  events: selectPdfEvents(events, "H1", "FOR", "TURNOVERS"), accentColor: "#a78bfa" },
+        { title: `1H — ${awayTeamName} Turnovers Won`,  events: selectPdfEvents(events, "H1", "OPP", "TURNOVERS"), accentColor: "#f472b6" },
+        { title: `2H — ${homeTeamName} Turnovers Won`,  events: selectPdfEvents(events, "H2", "FOR", "TURNOVERS"), accentColor: "#a78bfa" },
+        { title: `2H — ${awayTeamName} Turnovers Won`,  events: selectPdfEvents(events, "H2", "OPP", "TURNOVERS"), accentColor: "#f472b6" },
+      ],
+      "Turnover Pitch Maps",
+      homeTeamName, awayTeamName, 7, TOTAL_PAGES,
+    );
+    stampChapterLabel(p7, "Chapter 4 — Turnover Analysis", "#a78bfa");
+    addCanvasPage(p7, true, "Turnover Pitch Maps");
+  } catch (err) {
+    console.error("Turnover Pitch Maps page generation failed", err);
+    addCanvasPage(fallbackCanvas("Turnover Pitch Maps"), true, "Turnover Pitch Maps");
+  }
+
+  try {
+    addCanvasPage(
+      makeTurnoverPunishmentPage(chainAnalysis, homeTeamName, awayTeamName, 8, TOTAL_PAGES),
+      true, "Turnover Punishment Analysis",
+    );
+  } catch (err) {
+    console.error("Turnover Punishment Analysis page generation failed", err);
+    addCanvasPage(fallbackCanvas("Turnover Punishment Analysis"), true, "Turnover Punishment Analysis");
+  }
+
+  // ── CHAPTER 5 — SHOT & SCORING ANALYSIS ─────────────────────────────────────
+  //   p.9  Shot Pitch Maps (2×2: 1H For / 1H Against / 2H For / 2H Against)
+  //   p.10 Shot & Scoring Efficiency
+
+  try {
+    const p9 = makeQuadPitchMapPage(
+      sport,
+      [
+        { title: `1H — ${homeTeamName} Shots`,  events: selectPdfEvents(events, "H1", "FOR", "SHOTS"), accentColor: "#34d399" },
+        { title: `1H — ${awayTeamName} Shots`,  events: selectPdfEvents(events, "H1", "OPP", "SHOTS"), accentColor: "#fb923c" },
+        { title: `2H — ${homeTeamName} Shots`,  events: selectPdfEvents(events, "H2", "FOR", "SHOTS"), accentColor: "#34d399" },
+        { title: `2H — ${awayTeamName} Shots`,  events: selectPdfEvents(events, "H2", "OPP", "SHOTS"), accentColor: "#fb923c" },
+      ],
+      "Shot Pitch Maps",
+      homeTeamName, awayTeamName, 9, TOTAL_PAGES,
+    );
+    stampChapterLabel(p9, "Chapter 5 — Shot & Scoring Analysis", "#34d399");
+    addCanvasPage(p9, true, "Shot Pitch Maps");
+  } catch (err) {
+    console.error("Shot Pitch Maps page generation failed", err);
+    addCanvasPage(fallbackCanvas("Shot Pitch Maps"), true, "Shot Pitch Maps");
+  }
+
+  try {
+    addCanvasPage(
+      makeShotEfficiencyPage(events, homeTeamName, awayTeamName, 10, TOTAL_PAGES),
+      true, "Shot & Scoring Efficiency",
     );
   } catch (err) {
     console.error("Shot & Scoring Efficiency page generation failed", err);
-    const fallback = document.createElement("canvas");
-    fallback.width = CANVAS_W;
-    fallback.height = CANVAS_H;
-    const ctx = fallback.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#0d1117";
-      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.fillStyle = "#94a3b8";
-      ctx.font = "24px sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("This review page could not be rendered.", CANVAS_W / 2, CANVAS_H / 2);
-    }
-    addCanvasPage(fallback, true, "Shot & Scoring Efficiency");
+    addCanvasPage(fallbackCanvas("Shot & Scoring Efficiency"), true, "Shot & Scoring Efficiency");
+  }
+
+  // ── CHAPTER 6 — CHAIN & MOMENTUM ANALYSIS ───────────────────────────────────
+  //   p.11 Tactical Chain Analysis Summary
+  //   p.12 Momentum & Scoring Runs
+  //   p.13 Tactical Review Guide
+
+  try {
+    const p11 = makeChainSummaryPage(chainAnalysis, homeTeamName, awayTeamName, 11, TOTAL_PAGES);
+    stampChapterLabel(p11, "Chapter 6 — Chain & Momentum Analysis", "#fbbf24");
+    addCanvasPage(p11, true, "Tactical Chain Analysis Summary");
+  } catch (err) {
+    console.error("Tactical Chain Analysis Summary page generation failed", err);
+    addCanvasPage(fallbackCanvas("Tactical Chain Analysis Summary"), true, "Tactical Chain Analysis Summary");
+  }
+
+  try {
+    addCanvasPage(
+      makeMomentumRunsPage(chainAnalysis, homeTeamName, awayTeamName, 12, TOTAL_PAGES),
+      true, "Momentum & Scoring Runs",
+    );
+  } catch (err) {
+    console.error("Momentum & Scoring Runs page generation failed", err);
+    addCanvasPage(fallbackCanvas("Momentum & Scoring Runs"), true, "Momentum & Scoring Runs");
+  }
+
+  try {
+    addCanvasPage(
+      makeTacticalReviewGuidePage(chainAnalysis, homeTeamName, awayTeamName, 13, TOTAL_PAGES),
+      true, "Tactical Review Guide",
+    );
+  } catch (err) {
+    console.error("Tactical Review Guide page generation failed", err);
+    addCanvasPage(fallbackCanvas("Tactical Review Guide"), true, "Tactical Review Guide");
+  }
+
+  // ── CHAPTER 7 — PLAYER ANALYSIS ─────────────────────────────────────────────
+  //   p.14+ Player Breakdown (variable — 1 or more pages, no truncation)
+
+  const playerCanvases = makePlayerPages(events, homeTeamName, awayTeamName, 14, TOTAL_PAGES);
+  if (playerCanvases.length > 0) {
+    stampChapterLabel(playerCanvases[0], "Chapter 7 — Player Analysis", "#38bdf8");
+  }
+  playerCanvases.forEach((c) => addCanvasPage(c, true));
+
+  // ── CHAPTER 8 — SPATIAL ANALYSIS ────────────────────────────────────────────
+  //   Zone Analysis (p.14+N)
+
+  const p_zone = 14 + playerPageCount;
+  try {
+    const zoneCanvas = makeZoneAnalysisPage(events, homeTeamName, awayTeamName, p_zone, TOTAL_PAGES);
+    stampChapterLabel(zoneCanvas, "Chapter 8 — Spatial Analysis", "#22d3ee");
+    addCanvasPage(zoneCanvas, true, "Zone Analysis");
+  } catch (err) {
+    console.error("Zone Analysis page generation failed", err);
+    addCanvasPage(fallbackCanvas("Zone Analysis"), true, "Zone Analysis");
+  }
+
+  // ── CHAPTER 9 — EVENT ARCHIVE ────────────────────────────────────────────────
+  //   1H Pitch Overview · 2H Pitch Overview · Frees Pitch Maps · Opposition Snapshot
+
+  const p_arch = 15 + playerPageCount;
+
+  try {
+    const p_1h = makeQuadPitchMapPage(
+      sport,
+      [
+        { title: "1H — All Events",    events: selectPdfEvents(events, "H1", "ALL", "ALL"),    accentColor: "#94a3b8" },
+        { title: "1H — Scores",        events: selectPdfEvents(events, "H1", "ALL", "SCORES"), accentColor: "#4ade80" },
+        { title: `1H — ${homeTeamName} Shots`, events: selectPdfEvents(events, "H1", "FOR", "SHOTS"), accentColor: "#7dd3fc" },
+        { title: `1H — ${awayTeamName} Shots`, events: selectPdfEvents(events, "H1", "OPP", "SHOTS"), accentColor: "#fb7185" },
+      ],
+      "1H Pitch Overview",
+      homeTeamName, awayTeamName, p_arch, TOTAL_PAGES,
+    );
+    stampChapterLabel(p_1h, "Chapter 9 — Event Archive", "#64748b");
+    addCanvasPage(p_1h, true, "1H Pitch Overview");
+  } catch (err) {
+    console.error("1H Pitch Overview page generation failed", err);
+    addCanvasPage(fallbackCanvas("1H Pitch Overview"), true, "1H Pitch Overview");
+  }
+
+  try {
+    addCanvasPage(
+      makeQuadPitchMapPage(
+        sport,
+        [
+          { title: "2H — All Events",    events: selectPdfEvents(events, "H2", "ALL", "ALL"),    accentColor: "#94a3b8" },
+          { title: "2H — Scores",        events: selectPdfEvents(events, "H2", "ALL", "SCORES"), accentColor: "#4ade80" },
+          { title: `2H — ${homeTeamName} Shots`, events: selectPdfEvents(events, "H2", "FOR", "SHOTS"), accentColor: "#7dd3fc" },
+          { title: `2H — ${awayTeamName} Shots`, events: selectPdfEvents(events, "H2", "OPP", "SHOTS"), accentColor: "#fb7185" },
+        ],
+        "2H Pitch Overview",
+        homeTeamName, awayTeamName, p_arch + 1, TOTAL_PAGES,
+      ),
+      true, "2H Pitch Overview",
+    );
+  } catch (err) {
+    console.error("2H Pitch Overview page generation failed", err);
+    addCanvasPage(fallbackCanvas("2H Pitch Overview"), true, "2H Pitch Overview");
+  }
+
+  try {
+    addCanvasPage(
+      makeQuadPitchMapPage(
+        sport,
+        [
+          { title: `1H — ${homeTeamName} Frees`, events: selectPdfEvents(events, "H1", "FOR", "FREES"), accentColor: "#fbbf24" },
+          { title: `1H — ${awayTeamName} Frees`, events: selectPdfEvents(events, "H1", "OPP", "FREES"), accentColor: "#fb923c" },
+          { title: `2H — ${homeTeamName} Frees`, events: selectPdfEvents(events, "H2", "FOR", "FREES"), accentColor: "#fbbf24" },
+          { title: `2H — ${awayTeamName} Frees`, events: selectPdfEvents(events, "H2", "OPP", "FREES"), accentColor: "#fb923c" },
+        ],
+        "Free Kick Pitch Maps",
+        homeTeamName, awayTeamName, p_arch + 2, TOTAL_PAGES,
+      ),
+      true, "Free Kick Pitch Maps",
+    );
+  } catch (err) {
+    console.error("Free Kick Pitch Maps page generation failed", err);
+    addCanvasPage(fallbackCanvas("Free Kick Pitch Maps"), true, "Free Kick Pitch Maps");
+  }
+
+  try {
+    addCanvasPage(
+      makeOppositionSnapshotPage(events, chainAnalysis, homeTeamName, awayTeamName, p_arch + 3, TOTAL_PAGES),
+      true, "Opposition Snapshot",
+    );
+  } catch (err) {
+    console.error("Opposition Snapshot page generation failed", err);
+    addCanvasPage(fallbackCanvas("Opposition Snapshot"), true, "Opposition Snapshot");
   }
 
   // Download
