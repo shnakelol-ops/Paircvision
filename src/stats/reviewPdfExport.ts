@@ -194,14 +194,14 @@ function selectPdfEvents(
 // ─── Event colours (matches PáircVision CSS palette) ─────────────────────────
 
 const EVENT_COLORS: Record<MatchEventKind, string> = {
-  GOAL:                 "#4ade80",  // Green
-  POINT:                "#7dd3fc",  // Blue
-  TWO_POINTER:          "#fbbf24",  // Gold
-  FORTY_FIVE_TWO_POINT: "#fbbf24",  // Gold (same as 2pt)
+  GOAL:                 "#16a34a",  // Dark green circle
+  POINT:                "#4ade80",  // Light green circle
+  TWO_POINTER:          "#fbbf24",  // Gold circle
+  FORTY_FIVE_TWO_POINT: "#fbbf24",  // Gold circle (same as 2pt)
   WIDE:                 "#ef4444",  // Red
   SHOT:                 "#94a3b8",  // Grey (saved/blocked = neutral)
-  FREE_MISSED:          "#ef4444",  // Red (missed = wasted)
-  FREE_SCORED:          "#7dd3fc",  // Blue (scored free = like a point)
+  FREE_MISSED:          "#ef4444",  // Red (miss = wide)
+  FREE_SCORED:          "#4ade80",  // Light green (score = point)
   TURNOVER_WON:         "#a78bfa",  // Purple
   TURNOVER_LOST:        "#f97316",  // Orange
   KICKOUT_WON:          "#22d3ee",  // Cyan
@@ -6699,13 +6699,13 @@ function zonePixelRect(
 
 /** High-contrast event marker colours for HT Vision pages. Sideline-optimised palette. */
 const HT_MARKER_COLORS: Partial<Record<MatchEventKind, string>> = {
-  GOAL:                 "#ef4444",   // vivid red — largest marker (×1.38)
-  POINT:                "#4ade80",   // bright green
-  TWO_POINTER:          "#60a5fa",   // sky blue
-  FORTY_FIVE_TWO_POINT: "#7dd3fc",   // light blue
-  FREE_SCORED:          "#34d399",   // emerald
+  GOAL:                 "#16a34a",   // dark green circle — largest marker (×1.38)
+  POINT:                "#4ade80",   // light green circle
+  TWO_POINTER:          "#fbbf24",   // gold circle
+  FORTY_FIVE_TWO_POINT: "#fbbf24",   // gold circle (same as 2pt)
+  FREE_SCORED:          "#4ade80",   // light green (score = point)
   // WIDE / FREE_MISSED / KICKOUT_CONCEDED → drawn as ✕, handled separately
-  KICKOUT_WON:          "#22d3ee",   // teal
+  KICKOUT_WON:          "#22d3ee",   // cyan
   TURNOVER_WON:         "#a78bfa",   // purple
   TURNOVER_LOST:        "#f97316",   // orange
   FREE_WON:             "#818cf8",   // indigo
@@ -6718,11 +6718,11 @@ const HT_MARKER_COLORS: Partial<Record<MatchEventKind, string>> = {
  *
  * Visual language (coach reads at arm's length in 3 seconds, outdoors):
  *   SCORE (GOAL, POINT, FREE_SCORED…) — filled coloured circle; GOAL is 38% larger
- *   WIDE / FREE_MISSED                — aggressive red ✕   (possession wasted)
+ *   WIDE / FREE_MISSED                — red ✕              (possession wasted)
  *   KICKOUT_CONCEDED                  — pink ✕             (restart territory lost)
- *   SHOT + BLOCK_SAVE tag             — cyan hollow ring    (keeper stopped it)
- *   SHOT + SHORT tag                  — amber ↓            (possession ceded short)
- *   SHOT (other)                      — amber filled circle (neutral attempt)
+ *   SHOT + BLOCK_SAVE tag             — grey hollow ring    (keeper stopped it)
+ *   SHOT + SHORT tag                  — grey ↓             (possession ceded short)
+ *   SHOT (other)                      — grey filled circle  (neutral / blocked attempt)
  *   KICKOUT_WON / TURNOVER… / etc.   — filled coloured circle
  *
  * Every marker has a dark halo drawn first for pitch-line separation.
@@ -6748,10 +6748,8 @@ function renderHtMarkers(
     ctx.save();
 
     if (kind === "WIDE" || kind === "FREE_MISSED" || kind === "KICKOUT_CONCEDED") {
-      // ✕ marker: red for WIDE, orange-red for FREE_MISSED, pink for KICKOUT_CONCEDED
-      const color = kind === "KICKOUT_CONCEDED" ? "#fb7185"
-                  : kind === "FREE_MISSED"       ? "#f97316"
-                  :                                "#ef4444";
+      // ✕ marker: red for WIDE/FREE_MISSED (miss = waste), pink for KICKOUT_CONCEDED (restart lost)
+      const color = kind === "KICKOUT_CONCEDED" ? "#fb7185" : "#ef4444";
       const sz = r * 0.90;
 
       // Dark halo first (separates X from pitch lines)
@@ -6772,21 +6770,21 @@ function renderHtMarkers(
       ctx.beginPath(); ctx.moveTo(cx + sz, cy - sz); ctx.lineTo(cx - sz, cy + sz); ctx.stroke();
 
     } else if (kind === "SHOT" && tags.includes("BLOCK_SAVE")) {
-      // Cyan hollow ring — keeper save
+      // Grey hollow ring — keeper save
       ctx.save();
       ctx.globalAlpha = 0.22;
       ctx.beginPath(); ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
-      ctx.fillStyle = "#06b6d4"; ctx.fill();
+      ctx.fillStyle = "#94a3b8"; ctx.fill();
       ctx.restore();
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.strokeStyle = "#22d3ee";
+      ctx.strokeStyle = "#64748b";
       ctx.lineWidth   = Math.max(2.5, r * 0.28);
       ctx.stroke();
       ctx.beginPath(); ctx.arc(cx, cy, r * 0.33, 0, Math.PI * 2);
-      ctx.fillStyle = "#22d3ee"; ctx.fill();
+      ctx.fillStyle = "#e2e8f0"; ctx.fill();
 
     } else if (kind === "SHOT" && tags.includes("SHORT")) {
-      // ↓ amber symbol — possession ceded short of target
+      // ↓ grey symbol — possession ceded short of target
       const fontSize = Math.round(r * 2.4);
       ctx.font         = `bold ${fontSize}px sans-serif`;
       ctx.textAlign    = "center";
@@ -6796,12 +6794,12 @@ function renderHtMarkers(
       ctx.fillStyle   = "#000000";
       ctx.fillText("↓", cx + 1.5, cy + 1.5);
       ctx.restore();
-      ctx.fillStyle = "#fbbf24";
+      ctx.fillStyle = "#94a3b8";
       ctx.fillText("↓", cx, cy);
 
     } else {
       // Filled coloured circle: GOAL (larger), POINT, SHOT/other, KICKOUT_WON, TURNOVER, etc.
-      const fill    = HT_MARKER_COLORS[kind] ?? (kind === "SHOT" ? "#fbbf24" : "#ffffff");
+      const fill    = HT_MARKER_COLORS[kind] ?? (kind === "SHOT" ? "#94a3b8" : "#ffffff");
       const markerR = kind === "GOAL" ? r * 1.38 : r;
       ctx.beginPath(); ctx.arc(cx, cy, markerR, 0, Math.PI * 2);
       ctx.fillStyle = fill; ctx.fill();
