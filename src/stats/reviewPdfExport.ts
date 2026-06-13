@@ -194,20 +194,20 @@ function selectPdfEvents(
 // ─── Event colours (matches PáircVision CSS palette) ─────────────────────────
 
 const EVENT_COLORS: Record<MatchEventKind, string> = {
-  GOAL:                 "#ef4444",
-  POINT:                "#4ade80",
-  TWO_POINTER:          "#60a5fa",
-  FORTY_FIVE_TWO_POINT: "#7dd3fc",
-  WIDE:                 "#6b7280",
-  SHOT:                 "#fbbf24",
-  FREE_MISSED:          "#94a3b8",
-  FREE_SCORED:          "#34d399",
-  TURNOVER_WON:         "#a78bfa",
-  TURNOVER_LOST:        "#f97316",
-  KICKOUT_WON:          "#22d3ee",
-  KICKOUT_CONCEDED:     "#fb7185",
-  FREE_WON:             "#818cf8",
-  FREE_CONCEDED:        "#f472b6",
+  GOAL:                 "#4ade80",  // Green
+  POINT:                "#7dd3fc",  // Blue
+  TWO_POINTER:          "#fbbf24",  // Gold
+  FORTY_FIVE_TWO_POINT: "#fbbf24",  // Gold (same as 2pt)
+  WIDE:                 "#ef4444",  // Red
+  SHOT:                 "#94a3b8",  // Grey (saved/blocked = neutral)
+  FREE_MISSED:          "#ef4444",  // Red (missed = wasted)
+  FREE_SCORED:          "#7dd3fc",  // Blue (scored free = like a point)
+  TURNOVER_WON:         "#a78bfa",  // Purple
+  TURNOVER_LOST:        "#f97316",  // Orange
+  KICKOUT_WON:          "#22d3ee",  // Cyan
+  KICKOUT_CONCEDED:     "#fb7185",  // Pink
+  FREE_WON:             "#818cf8",  // Indigo
+  FREE_CONCEDED:        "#f472b6",  // Pink
 };
 
 
@@ -4439,7 +4439,7 @@ function makeZoneAnalysisPage(
       const isHot = zone.count > 0 && zone.count === maxCount;
 
       // Zone fill — opacity reflects activity density
-      const alpha = zone.count > 0 ? 0.10 + (zone.count / maxCount) * 0.38 : 0.03;
+      const alpha = zone.count > 0 ? 0.14 + (zone.count / maxCount) * 0.40 : 0.04;
       ctx.globalAlpha = alpha;
       ctx.fillStyle   = baseColor;
       ctx.fillRect(zx + 1, zy + 1, zw - 2, zh - 2);
@@ -4447,14 +4447,14 @@ function makeZoneAnalysisPage(
 
       // Hottest zone: accent border + count + label
       if (isHot) {
-        ctx.globalAlpha  = 0.45;
+        ctx.globalAlpha  = 0.55;
         ctx.strokeStyle  = baseColor;
         ctx.lineWidth    = 2;
         ctx.strokeRect(zx + 1, zy + 1, zw - 2, zh - 2);
         ctx.globalAlpha  = 1;
 
         ctx.fillStyle    = baseColor;
-        ctx.globalAlpha  = 0.92;
+        ctx.globalAlpha  = 0.95;
         ctx.font         = "bold 22px sans-serif";
         ctx.textAlign    = "center";
         ctx.textBaseline = "middle";
@@ -4462,7 +4462,7 @@ function makeZoneAnalysisPage(
         ctx.globalAlpha  = 1;
 
         ctx.fillStyle    = "#ffffff";
-        ctx.globalAlpha  = 0.55;
+        ctx.globalAlpha  = 0.72;
         ctx.font         = "10px sans-serif";
         ctx.fillText(zone.label, zx + zw / 2, zy + zh / 2 + 10);
         ctx.globalAlpha  = 1;
@@ -4623,7 +4623,7 @@ function makeZoneAnalysisPage(
       ctx.textAlign    = "left";
       ctx.fillText(line1, DP_P3_X + 15, cy + 4);
       if (line2) {
-        ctx.fillStyle = "#94a3b8";
+        ctx.fillStyle = "#cbd5e1";
         ctx.font = "11px sans-serif";
         ctx.fillText(line2, DP_P3_X + 15, cy + 4 + LINE_H);
       }
@@ -5519,7 +5519,7 @@ function dpStatRow(
     ctx.fillRect(x + 3, cy, w - 3, ROW_H);
   }
   const mid = cy + ROW_H / 2;
-  ctx.fillStyle = "#64748b";
+  ctx.fillStyle = "#94a3b8";
   ctx.font = "11px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
@@ -5562,7 +5562,7 @@ function dpMiniBarRow(
   ctx.save();
 
   // Label
-  ctx.fillStyle = "#64748b";
+  ctx.fillStyle = "#94a3b8";
   ctx.font = "11px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
@@ -5686,7 +5686,7 @@ function dpIntelligencePanel(
 
   if (filtered.length === 0) {
     ctx.save();
-    ctx.fillStyle = "#334155";
+    ctx.fillStyle = "#64748b";
     ctx.font = "11px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -5744,7 +5744,7 @@ function dpIntelligencePanel(
     }
 
     ctx.font = "9px sans-serif";
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.textAlign = "right";
     ctx.textBaseline = "alphabetic";
     ctx.fillText(prompt.evidenceTag, x + w - 10, cy + ITEM_H - 6);
@@ -6133,8 +6133,8 @@ function makeFreeAnalysisPage(
     cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Advantage", netStr, netColor, false);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} ATTEMPTS`, "#818cf8");
-    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Free Scored", String(forFreeScored), forFreeAttempts > 0 ? forFreeScored / forFreeAttempts : 0, "#4ade80", "#4ade80", false);
-    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Free Missed", String(forFreeMissed), forFreeAttempts > 0 ? forFreeMissed / forFreeAttempts : 0, "#94a3b8", "#94a3b8", true);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Free Scored", String(forFreeScored), forFreeAttempts > 0 ? forFreeScored / forFreeAttempts : 0, "#7dd3fc", "#7dd3fc", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Free Missed", String(forFreeMissed), forFreeAttempts > 0 ? forFreeMissed / forFreeAttempts : 0, "#ef4444", "#ef4444", true);
         dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Conversion",   forConv, "#818cf8", false);
   }
 
@@ -6148,7 +6148,7 @@ function makeFreeAnalysisPage(
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} ATTEMPTS`, "#f472b6");
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Free Scored", String(oppFreeScored), oppFreeAttempts > 0 ? oppFreeScored / oppFreeAttempts : 0, "#f472b6", "#f472b6", false);
-    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Free Missed", String(oppFreeMissed), oppFreeAttempts > 0 ? oppFreeMissed / oppFreeAttempts : 0, "#94a3b8", "#94a3b8", true);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Free Missed", String(oppFreeMissed), oppFreeAttempts > 0 ? oppFreeMissed / oppFreeAttempts : 0, "#ef4444", "#ef4444", true);
     cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Conversion",  oppConv, "#f472b6", false);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "ALL FREES COMBINED", "#94a3b8");
