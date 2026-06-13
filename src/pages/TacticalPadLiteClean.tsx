@@ -1947,6 +1947,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     recordBlob: slateRecordBlob,
     recordBlobUrl: slateRecordBlobUrl,
     recordHasAudio: slateRecordHasAudio,
+    recordMimeType: slateRecordMimeType,
     micStatus: slateMicStatus,
     canRecord: slateCanRecord,
     startCountdown: slateStartCountdown,
@@ -5252,24 +5253,32 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                   />
                 ) : null}
                 {/* Debug info strip — helps diagnose MIME/audio issues on device */}
-                <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
-                  <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: "rgba(180, 210, 255, 0.50)" }}>
-                    {slateRecordBlob.type.split(";")[0] || "unknown"}
-                  </span>
-                  <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE }}>
-                    {slateRecordBlob.size >= 1_048_576
-                      ? `${(slateRecordBlob.size / 1_048_576).toFixed(1)} MB`
-                      : `${Math.round(slateRecordBlob.size / 1024)} KB`}
-                  </span>
-                  {slateClipPreviewDuration != null ? (
-                    <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE }}>
-                      {Math.round(slateClipPreviewDuration)}s
-                    </span>
-                  ) : null}
-                  <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: slateRecordHasAudio ? "rgba(160, 255, 160, 0.70)" : "rgba(180, 210, 255, 0.28)" }}>
-                    {slateRecordHasAudio ? "🎙 Audio" : "Silent"}
-                  </span>
-                </div>
+                {(() => {
+                  const mimeBase = slateRecordMimeType.split(";")[0].trim().toLowerCase();
+                  const codecPart = slateRecordMimeType.includes(";")
+                    ? slateRecordMimeType.split(";")[1].replace("codecs=", "").trim()
+                    : "";
+                  const hasH264 = slateRecordMimeType.includes("avc1") || slateRecordMimeType.toLowerCase().includes("h264");
+                  const mismatch = mimeBase === "video/mp4" && !hasH264;
+                  const mimeLabel = `${mimeBase.replace("video/", "")}${codecPart ? ` · ${codecPart}` : ""}`;
+                  const size = slateRecordBlob.size >= 1_048_576
+                    ? `${(slateRecordBlob.size / 1_048_576).toFixed(1)} MB`
+                    : `${Math.round(slateRecordBlob.size / 1024)} KB`;
+                  return (
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", padding: "2px 1px" }}>
+                      <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: mismatch ? "rgba(255, 200, 100, 0.88)" : "rgba(180, 210, 255, 0.50)" }}>
+                        {mimeLabel}{mismatch ? " ⚠ → .webm" : ""}
+                      </span>
+                      <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE }}>{size}</span>
+                      {slateClipPreviewDuration != null ? (
+                        <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE }}>{Math.round(slateClipPreviewDuration)}s</span>
+                      ) : null}
+                      <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: slateRecordHasAudio ? "rgba(160, 255, 160, 0.70)" : "rgba(180, 210, 255, 0.28)" }}>
+                        {slateRecordHasAudio ? "🎙 Audio" : "Silent"}
+                      </span>
+                    </div>
+                  );
+                })()}
                 <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
                   <button
                     type="button"

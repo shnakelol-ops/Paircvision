@@ -955,6 +955,7 @@ export default function TacticalPlaySurface() {
     recordBlob,
     recordBlobUrl,
     recordHasAudio,
+    recordMimeType,
     micStatus,
     canRecord,
     startCountdown,
@@ -3457,25 +3458,37 @@ export default function TacticalPlaySurface() {
                     style={{ width: "100%", maxHeight: "100px", borderRadius: "6px", background: "#000", display: "block" }}
                   />
                 ) : null}
-                {/* Debug info strip — helps diagnose MIME/audio issues on device */}
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", padding: "2px 1px" }}>
-                  <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.50)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                    {recordBlob.type.split(";")[0] || "unknown"}
-                  </span>
-                  <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                    {recordBlob.size >= 1_048_576
-                      ? `${(recordBlob.size / 1_048_576).toFixed(1)} MB`
-                      : `${Math.round(recordBlob.size / 1024)} KB`}
-                  </span>
-                  {clipPreviewDuration != null ? (
-                    <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                      {Math.round(clipPreviewDuration)}s
-                    </span>
-                  ) : null}
-                  <span style={{ fontSize: "8px", color: recordHasAudio ? "rgba(160, 255, 160, 0.70)" : "rgba(180, 210, 255, 0.28)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                    {recordHasAudio ? "🎙 Audio" : "Silent"}
-                  </span>
-                </div>
+                {/* Debug info strip — codec, size, duration, audio, mismatch warning */}
+                {(() => {
+                  const mimeBase = recordMimeType.split(";")[0].trim().toLowerCase();
+                  const codecPart = recordMimeType.includes(";")
+                    ? recordMimeType.split(";")[1].replace("codecs=", "").trim()
+                    : "";
+                  const hasH264 = recordMimeType.includes("avc1") || recordMimeType.toLowerCase().includes("h264");
+                  // VP9+Opus-in-MP4: generic "video/mp4" without explicit H.264 codec.
+                  const mismatch = mimeBase === "video/mp4" && !hasH264;
+                  const mimeLabel = `${mimeBase.replace("video/", "")}${codecPart ? ` · ${codecPart}` : ""}`;
+                  return (
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", padding: "2px 1px" }}>
+                      <span style={{ fontSize: "8px", color: mismatch ? "rgba(255, 200, 100, 0.88)" : "rgba(180, 210, 255, 0.50)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                        {mimeLabel}{mismatch ? " ⚠ → .webm" : ""}
+                      </span>
+                      <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                        {recordBlob.size >= 1_048_576
+                          ? `${(recordBlob.size / 1_048_576).toFixed(1)} MB`
+                          : `${Math.round(recordBlob.size / 1024)} KB`}
+                      </span>
+                      {clipPreviewDuration != null ? (
+                        <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                          {Math.round(clipPreviewDuration)}s
+                        </span>
+                      ) : null}
+                      <span style={{ fontSize: "8px", color: recordHasAudio ? "rgba(160, 255, 160, 0.70)" : "rgba(180, 210, 255, 0.28)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                        {recordHasAudio ? "🎙 Audio" : "Silent"}
+                      </span>
+                    </div>
+                  );
+                })()}
                 <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
                   <button
                     type="button"
