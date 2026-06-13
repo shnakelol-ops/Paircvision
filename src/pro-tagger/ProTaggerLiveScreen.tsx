@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { CSSProperties } from "react";
+import { NotesQuickPanel } from "../features/notes";
 import type { ProTaggerSession, ProTaggerSquadPlayer } from "./pro-tagger-session";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
 import { PRO_TAGGER_FAMILIES, getFamilyLabel } from "./pro-tagger-families";
@@ -248,9 +249,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const [subOutId, setSubOutId]         = useState<string | null>(null);
   const [subInId, setSubInId]           = useState<string | null>(null);
 
-  // ── CTS / Actions / Reset state ───────────────────────────────────────────
+  // ── CTS / Actions / Reset / Notes state ─────────────────────────────────────
   const [ctsOpen, setCtsOpen]                   = useState(false);
   const [actionsOpen, setActionsOpen]           = useState(false);
+  const [notesOpen, setNotesOpen]               = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [actionsFeedback, setActionsFeedback]   = useState<string | null>(null);
   const [pdfExporting, setPdfExporting]         = useState<"ht" | "ft" | "full" | null>(null);
@@ -912,6 +914,13 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                       : "Tap a tile to log an event"}
                   </span>
                 )}
+                <span style={{ flex: 1 }} />
+                <button
+                  style={S.voiceNotesBtn}
+                  onClick={() => setNotesOpen(true)}
+                >
+                  🎤 Voice Notes
+                </button>
               </div>
             </>
           )}
@@ -1121,6 +1130,27 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               ))}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ── Voice Notes sheet ────────────────────────────────────── */}
+      {notesOpen && (
+        <div style={NS.overlay} onClick={() => setNotesOpen(false)}>
+          <div style={NS.sheet} onClick={(e) => e.stopPropagation()}>
+            <div style={NS.header}>
+              <span style={NS.title}>🎤 Event Voice Notes</span>
+              <button style={NS.closeBtn} onClick={() => setNotesOpen(false)}>✕</button>
+            </div>
+            <div style={NS.body}>
+              <NotesQuickPanel
+                matchContext={{
+                  matchId: session.id,
+                  half,
+                  matchClockMs: clockSeconds * 1000,
+                }}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -1515,6 +1545,19 @@ const S: Record<string, CSSProperties> = {
     alignItems: "center",
   },
   eventCount:       { fontSize: 12, color: "#8b949e", fontVariantNumeric: "tabular-nums" },
+  voiceNotesBtn: {
+    background: "transparent",
+    border: "1px solid rgba(125,211,252,0.55)",
+    borderRadius: 999,
+    color: "#7dd3fc",
+    fontSize: 11,
+    fontWeight: 600,
+    padding: "4px 10px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
+  },
   saveFeedbackText: { fontSize: 12, color: "#f85149", fontWeight: 600 },
 
   // ── PLAYER_PICK ─────────────────────────────────────────────────────────────
@@ -1867,6 +1910,58 @@ const AS: Record<string, CSSProperties> = {
     outline: "none",
     boxSizing: "border-box" as const,
     WebkitTapHighlightColor: "transparent",
+  },
+};
+
+// ── Voice Notes sheet styles ─────────────────────────────────────────────────
+
+const NS: Record<string, CSSProperties> = {
+  overlay: {
+    position: "absolute",
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: "rgba(0,0,0,0.65)",
+    zIndex: 100,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    background: "#161b22",
+    borderRadius: "14px 14px 0 0",
+    maxHeight: "72vh",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    padding: "12px 14px 10px",
+    borderBottom: "1px solid #21262d",
+    flexShrink: 0,
+  },
+  title: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#e6edf3",
+    letterSpacing: "-0.2px",
+  },
+  closeBtn: {
+    background: "transparent",
+    border: "none",
+    color: "#6e7681",
+    fontSize: 18,
+    cursor: "pointer",
+    padding: "0 2px",
+    lineHeight: 1,
+    outline: "none",
+  },
+  body: {
+    flex: 1,
+    overflowY: "auto",
+    display: "flex",
+    flexDirection: "column",
   },
 };
 

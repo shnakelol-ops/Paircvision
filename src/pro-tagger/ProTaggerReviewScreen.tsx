@@ -10,6 +10,7 @@ import { buildIntelligencePack } from "../stats/intelligencePack";
 import type { IntelligencePack } from "../stats/intelligencePack";
 import { IntelligencePackPreview } from "../stats/IntelligencePackPreview";
 import type { LoggedMatchEvent } from "../core/stats/saved-match";
+import { NotesQuickPanel, getMatchNotes } from "../features/notes";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -161,6 +162,25 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
           </div>
           <div style={S.eventCount}>{match.eventCount} events</div>
         </div>
+
+        {/* ── Voice Notes ─────────────────────────────────────────────── */}
+        {(() => {
+          const noteCount = getMatchNotes(match.id).length;
+          return (
+            <>
+              <div style={S.sectionLabel}>
+                Voice Notes{noteCount > 0 ? ` (${noteCount})` : ""}
+              </div>
+              <div style={S.voiceNotesCard}>
+                <NotesQuickPanel
+                  matchContext={{ matchId: match.id, half: 1, matchClockMs: 0 }}
+                  readonly={true}
+                  notesMatchId={match.id}
+                />
+              </div>
+            </>
+          );
+        })()}
 
         {/* ── Intelligence Pack (primary action) ──────────────────────── */}
         <div style={S.sectionLabel}>Intelligence Pack</div>
@@ -405,6 +425,12 @@ const S: Record<string, CSSProperties> = {
     textTransform: "uppercase" as const,
     color: "#484f58",
     marginTop: 4,
+  },
+  voiceNotesCard: {
+    background: "#0d1117",
+    border: "1px solid #21262d",
+    borderRadius: 12,
+    overflow: "hidden",
   },
   exportRow: {
     display: "flex",
