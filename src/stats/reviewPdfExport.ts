@@ -1334,9 +1334,6 @@ function calcPlayerPageCount(events: readonly PdfExportEvent[]): number {
  * Builds the Player Breakdown canvas(es).
  * Returns an array — one canvas per page. No players are ever silently dropped.
  * Grouped by team (FOR first, then OPP), sorted by playerNumber within group.
- *
- * Key stat columns (Score, T/O Won, Kickout Won) show a 4px comparison bar
- * beneath the value, sized relative to the top performer across all players.
  */
 function makePlayerPages(
   events: readonly PdfExportEvent[],
@@ -4477,13 +4474,14 @@ function makeZoneAnalysisPage(
   // ── Pitches ───────────────────────────────────────────────────────────────
   const forTotal  = forActivityCounts.reduce((s, z) => s + z.count, 0);
   const oppTotal  = oppActivityCounts.reduce((s, z) => s + z.count, 0);
-  const CALLOUT_H = 90;
+  const CALLOUT_H = 120;
   const INNER_H   = DP_PITCH_H - CALLOUT_H;
 
   dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `${homeTeam} Zone Activity`,        forTotal, "#34d399");
   dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Most scoring: ${forScoreHots[0]?.label ?? "No data"}`,
     `Turnovers won: ${forTvWonHots[0]?.label ?? "No data"}`,
+    `${forScoreEvts.length} scoring event${forScoreEvts.length !== 1 ? "s" : ""} recorded`,
     "#34d399",
   );
   const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
@@ -4493,6 +4491,7 @@ function makeZoneAnalysisPage(
   dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Opposition scoring: ${oppScoreHots[0]?.label ?? "No data"}`,
     `Opposition gains: ${oppGainHots[0]?.label ?? "No data"}`,
+    `${oppScoreEvts.length} opposition scoring event${oppScoreEvts.length !== 1 ? "s" : ""}`,
     "#f87171",
   );
   const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
@@ -5441,12 +5440,15 @@ function dpPitchTitle(
 }
 
 /**
- * Draws a 2-bullet callout band between the pitch title bar and the inner pitch.
+ * Draws a headline + 2-bullet callout band between the pitch title bar and inner pitch.
+ * headline — large bold summary (21px), displayed first.
+ * bullet1/bullet2 — supporting detail (14px), displayed below with accent dot.
  * y/h describe the callout area (DP_PITCH_Y + DP_TITLE_H → DP_PITCH_Y + CALLOUT_H).
  */
 function dpPitchCallout(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, w: number, h: number,
+  headline: string,
   bullet1: string, bullet2: string,
   accentColor: string,
 ): void {
@@ -5456,15 +5458,20 @@ function dpPitchCallout(
   ctx.fillStyle = accentColor;
   ctx.fillRect(x, y, 3, h);
 
-  const lineH = Math.floor(h / 2);
+  ctx.fillStyle = "#f1f5f9";
+  ctx.font = "bold 21px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(headline, x + 26, y + 20, w - 34);
+
   [bullet1, bullet2].forEach((text, i) => {
-    const cy = y + lineH * i + lineH / 2;
+    const cy = y + 48 + i * 22;
     ctx.fillStyle = accentColor + "cc";
     ctx.beginPath();
     ctx.arc(x + 14, cy, 3, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#f1f5f9";
-    ctx.font = "bold 17px sans-serif";
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(text, x + 26, cy, w - 34);
@@ -5836,13 +5843,14 @@ function makeRestartVisualPage(
   const prompts = deriveReviewPrompts(analysis, homeTeam, awayTeam);
 
   // ── Pitches ───────────────────────────────────────────────────────────────
-  const CALLOUT_H = 90;
+  const CALLOUT_H = 120;
   const INNER_H   = DP_PITCH_H - CALLOUT_H;
 
   dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Our Restarts — ${homeTeam}`,        forWonEvts.length, "#22d3ee");
   dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Won ${ko.won} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
     `${forScoredFromKo} led to score${forScoredFromKo !== 1 ? "s" : ""}`,
+    `H1: ${h1For}–${h1Opp} / H2: ${h2For}–${h2Opp}`,
     "#22d3ee",
   );
   const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
@@ -5851,7 +5859,8 @@ function makeRestartVisualPage(
   dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Opposition Restarts — ${awayTeam}`, oppWonEvts.length, "#fb7185");
   dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Opposition won ${ko.lost} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
-    `${oppScoredFromKo} score${oppScoredFromKo !== 1 ? "s" : ""} conceded from restarts`,
+    `${oppScoredFromKo} score${oppScoredFromKo !== 1 ? "s" : ""} conceded`,
+    `H1: ${h1Opp}–${h1For} / H2: ${h2Opp}–${h2For}`,
     "#fb7185",
   );
   const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
@@ -5992,13 +6001,14 @@ function makeTurnoverVisualPage(
   const prompts = deriveReviewPrompts(analysis, homeTeam, awayTeam);
 
   // ── Pitches ───────────────────────────────────────────────────────────────
-  const CALLOUT_H = 90;
+  const CALLOUT_H = 120;
   const INNER_H   = DP_PITCH_H - CALLOUT_H;
 
   dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Turnovers Won — ${homeTeam}`, wonEvts.length,  "#a78bfa");
   dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Won ${forWonTotal} turnover${forWonTotal !== 1 ? "s" : ""}`,
     `${forWonToScore} led to score${forWonToScore !== 1 ? "s" : ""}`,
+    `${forWonToShot} led to shots`,
     "#a78bfa",
   );
   const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
@@ -6008,6 +6018,7 @@ function makeTurnoverVisualPage(
   dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Opposition won ${oppWonTotal} turnover${oppWonTotal !== 1 ? "s" : ""}`,
     `${oppWonToScore} score${oppWonToScore !== 1 ? "s" : ""} conceded`,
+    `${oppWonToShot} shot${oppWonToShot !== 1 ? "s" : ""} against`,
     "#f97316",
   );
   const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
@@ -6137,13 +6148,14 @@ function makeFreeAnalysisPage(
   const oppFreeScoringChains = (analysis.byRule["FREE_WON_TO_GOAL"] ?? []).filter((c) => c.teamSide === "OPP").length;
 
   // ── Pitches ───────────────────────────────────────────────────────────────
-  const CALLOUT_H = 90;
+  const CALLOUT_H = 120;
   const INNER_H   = DP_PITCH_H - CALLOUT_H;
 
   dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Our Frees — ${homeTeam}`,        forFreeEvts.length, "#818cf8");
   dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Won ${forFreesWon} possession free${forFreesWon !== 1 ? "s" : ""}`,
     `${forFreeScoringChains} scoring chain${forFreeScoringChains !== 1 ? "s" : ""} from those frees`,
+    forFreeAttempts > 0 ? `Placed balls: ${forFreeScored}/${forFreeAttempts} scored` : "No placed balls attempted",
     "#818cf8",
   );
   const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
@@ -6153,6 +6165,7 @@ function makeFreeAnalysisPage(
   dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Opposition won ${oppFreesWon} possession free${oppFreesWon !== 1 ? "s" : ""}`,
     `${oppFreeScoringChains} scoring chain${oppFreeScoringChains !== 1 ? "s" : ""} from those frees`,
+    oppFreeAttempts > 0 ? `Placed balls: ${oppFreeScored}/${oppFreeAttempts} scored` : "No placed balls attempted",
     "#f472b6",
   );
   const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
@@ -6172,9 +6185,9 @@ function makeFreeAnalysisPage(
     cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Frees Won`, String(oppFreesWon), totalFreesWon > 0 ? oppFreesWon / totalFreesWon : 0, "#f472b6", "#f472b6", true);
     cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Advantage", netStr, netColor, false);
     cy += 2;
-    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} ATTEMPTS`, "#818cf8");
-    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Free Scored", String(forFreeScored), forFreeAttempts > 0 ? forFreeScored / forFreeAttempts : 0, "#7dd3fc", "#7dd3fc", false);
-    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Free Missed", String(forFreeMissed), forFreeAttempts > 0 ? forFreeMissed / forFreeAttempts : 0, "#ef4444", "#ef4444", true);
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} PLACED BALLS`, "#818cf8");
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Placed Scored", String(forFreeScored), forFreeAttempts > 0 ? forFreeScored / forFreeAttempts : 0, "#7dd3fc", "#7dd3fc", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Placed Missed", String(forFreeMissed), forFreeAttempts > 0 ? forFreeMissed / forFreeAttempts : 0, "#ef4444", "#ef4444", true);
         dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Conversion",   forConv, "#818cf8", false);
   }
 
@@ -6186,9 +6199,9 @@ function makeFreeAnalysisPage(
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Conversion`, forConv, forFreeAttempts > 0 ? forFreeScored / forFreeAttempts : 0, "#818cf8", "#818cf8", false);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Conversion`, oppConv, oppFreeAttempts > 0 ? oppFreeScored / oppFreeAttempts : 0, "#f472b6", "#f472b6", true);
     cy += 2;
-    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} ATTEMPTS`, "#f472b6");
-    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Free Scored", String(oppFreeScored), oppFreeAttempts > 0 ? oppFreeScored / oppFreeAttempts : 0, "#f472b6", "#f472b6", false);
-    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Free Missed", String(oppFreeMissed), oppFreeAttempts > 0 ? oppFreeMissed / oppFreeAttempts : 0, "#ef4444", "#ef4444", true);
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} PLACED BALLS`, "#f472b6");
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Placed Scored", String(oppFreeScored), oppFreeAttempts > 0 ? oppFreeScored / oppFreeAttempts : 0, "#f472b6", "#f472b6", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Placed Missed", String(oppFreeMissed), oppFreeAttempts > 0 ? oppFreeMissed / oppFreeAttempts : 0, "#ef4444", "#ef4444", true);
     cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Conversion",  oppConv, "#f472b6", false);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "ALL FREES COMBINED", "#94a3b8");
@@ -10276,13 +10289,39 @@ function makeOurShotProfilePage(
     (e) => e.teamSide === "FOR" && isFreeMiss(e),
   ).length;
 
-  // ── Pitch + zone colour overlays ──────────────────────────────────────────
-  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
-
+  // ── Zone counts (hoisted before pitch for headline derivation) ───────────
   const scoreCounts = pdfZoneCounts(forScoreEvts);
   const wideCounts  = pdfZoneCounts(forWideEvts);
   const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
   const maxWide     = wideCounts.reduce((m, z) => Math.max(m, z.count), 0);
+
+  // ── Headline band ─────────────────────────────────────────────────────────
+  const SHOT_HEADLINE_H = 90;
+  const topScoreZone = scoreCounts.reduce(
+    (top, z) => z.count > (top?.count ?? 0) ? z : top,
+    null as typeof scoreCounts[0] | null,
+  );
+  const totalShots  = forShotEvts.length;
+  const totalScores = forScoreEvts.length;
+  const shotEff     = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
+  const headlineText = totalShots > 0
+    ? `${totalScores} score${totalScores !== 1 ? "s" : ""} from ${totalShots} shot${totalShots !== 1 ? "s" : ""} · ${shotEff}% efficiency${topScoreZone && topScoreZone.count > 0 ? ` · Best zone: ${topScoreZone.label}` : ""}`
+    : "No shot data recorded for this match";
+  ctx.save();
+  ctx.fillStyle = "rgba(52,211,153,0.12)";
+  ctx.fillRect(24, HT_PITCH_AREA.y, HT_PITCH_AREA.w, SHOT_HEADLINE_H);
+  ctx.fillStyle = "#34d399";
+  ctx.fillRect(24, HT_PITCH_AREA.y, 3, SHOT_HEADLINE_H);
+  ctx.fillStyle = "#f1f5f9";
+  ctx.font = "bold 22px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(headlineText, 54, HT_PITCH_AREA.y + SHOT_HEADLINE_H / 2, HT_PITCH_AREA.w - 60);
+  ctx.restore();
+
+  // ── Pitch + zone colour overlays ──────────────────────────────────────────
+  const pitchArea = { x: HT_PITCH_AREA.x, y: HT_PITCH_AREA.y + SHOT_HEADLINE_H, w: HT_PITCH_AREA.w, h: HT_PITCH_AREA.h - SHOT_HEADLINE_H };
+  const inner = renderPitch(ctx, sport, pitchArea);
 
   // Red wide zone fills (drawn first, behind score fills)
   for (const zone of wideCounts) {
@@ -10395,7 +10434,7 @@ function makeOurShotProfilePage(
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
-  let ly = 90;
+  let ly = 180;
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
@@ -10419,10 +10458,7 @@ function makeOurShotProfilePage(
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  const totalShots  = forShotEvts.length;
-  const totalScores = forScoreEvts.length;
   const totalMisses = totalShots - totalScores;
-  const shotEff     = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
   const scoreHot    = pdfZoneHotspots(forScoreEvts)[0];
 
   const facts: string[]  = [];
@@ -10500,29 +10536,55 @@ function makeOppShotProfilePage(
     (e) => e.teamSide === "OPP" && isFreeMiss(e),
   ).length;
 
-  // ── Pitch + zone colour overlays ──────────────────────────────────────────
-  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
-
+  // ── Zone counts (hoisted before pitch for headline derivation) ───────────
   const scoreCounts = pdfZoneCounts(oppScoreEvts);
   const wideCounts  = pdfZoneCounts(oppWideEvts);
   const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
   const maxWide     = wideCounts.reduce((m, z) => Math.max(m, z.count), 0);
 
-  // Amber wide zone fills (territorial pressure, they threatened but missed)
+  // ── Headline band ─────────────────────────────────────────────────────────
+  const SHOT_HEADLINE_H = 90;
+  const topScoreZone = scoreCounts.reduce(
+    (top, z) => z.count > (top?.count ?? 0) ? z : top,
+    null as typeof scoreCounts[0] | null,
+  );
+  const totalOppShots  = oppShotEvts.length;
+  const totalOppScores = oppScoreEvts.length;
+  const oppShotEff     = totalOppShots > 0 ? Math.round((totalOppScores / totalOppShots) * 100) : 0;
+  const headlineText = totalOppShots > 0
+    ? `${totalOppScores} score${totalOppScores !== 1 ? "s" : ""} from ${totalOppShots} shot${totalOppShots !== 1 ? "s" : ""} · ${oppShotEff}% efficiency${topScoreZone && topScoreZone.count > 0 ? ` · Most dangerous zone: ${topScoreZone.label}` : ""}`
+    : "No opposition shot data recorded for this match";
+  ctx.save();
+  ctx.fillStyle = "rgba(239,68,68,0.12)";
+  ctx.fillRect(24, HT_PITCH_AREA.y, HT_PITCH_AREA.w, SHOT_HEADLINE_H);
+  ctx.fillStyle = "#ef4444";
+  ctx.fillRect(24, HT_PITCH_AREA.y, 3, SHOT_HEADLINE_H);
+  ctx.fillStyle = "#f1f5f9";
+  ctx.font = "bold 22px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(headlineText, 54, HT_PITCH_AREA.y + SHOT_HEADLINE_H / 2, HT_PITCH_AREA.w - 60);
+  ctx.restore();
+
+  // ── Pitch + zone colour overlays ──────────────────────────────────────────
+  const pitchArea = { x: HT_PITCH_AREA.x, y: HT_PITCH_AREA.y + SHOT_HEADLINE_H, w: HT_PITCH_AREA.w, h: HT_PITCH_AREA.h - SHOT_HEADLINE_H };
+  const inner = renderPitch(ctx, sport, pitchArea);
+
+  // Red wide zone fills (they threatened but missed)
   for (const zone of wideCounts) {
     if (zone.count === 0) continue;
-    const alpha = 0.15 + (maxWide > 0 ? (zone.count / maxWide) * 0.28 : 0);
+    const alpha = 0.18 + (maxWide > 0 ? (zone.count / maxWide) * 0.32 : 0);
     const rect  = zonePixelRect(zone.bounds, inner);
-    ctx.fillStyle = `rgba(245,158,11,${alpha.toFixed(2)})`;
+    ctx.fillStyle = `rgba(239,68,68,${alpha.toFixed(2)})`;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   }
 
-  // Red score zone fills (drawn on top — their success is our danger)
+  // Green score zone fills (drawn on top — same colour language as Our page)
   for (const zone of scoreCounts) {
     if (zone.count === 0) continue;
     const alpha = 0.20 + (maxScore > 0 ? (zone.count / maxScore) * 0.45 : 0);
     const rect  = zonePixelRect(zone.bounds, inner);
-    ctx.fillStyle = `rgba(248,113,113,${alpha.toFixed(2)})`;
+    ctx.fillStyle = `rgba(52,211,153,${alpha.toFixed(2)})`;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   }
 
@@ -10536,7 +10598,7 @@ function makeOppShotProfilePage(
   ctx.textAlign    = "center";
   ctx.font         = "bold 13px sans-serif";
 
-  // Score badges (red pill, top-third — their scoring zones)
+  // Score badges (green pill, top-third — their scoring zones)
   for (const zone of scoreCounts) {
     if (zone.count === 0) continue;
     const rect  = zonePixelRect(zone.bounds, inner);
@@ -10544,13 +10606,13 @@ function makeOppShotProfilePage(
     const midY  = rect.y + rect.h * 0.30;
     const label = `⚡${zone.count}`;
     const tw    = ctx.measureText(label).width + 14;
-    ctx.fillStyle = "rgba(248,113,113,0.88)";
+    ctx.fillStyle = "rgba(52,211,153,0.88)";
     ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#0d1117";
     ctx.fillText(label, midX, midY);
   }
 
-  // Wide badges (amber pill, bottom-third — their threat zones)
+  // Wide badges (red pill, bottom-third — their threat zones)
   for (const zone of wideCounts) {
     if (zone.count === 0) continue;
     const rect  = zonePixelRect(zone.bounds, inner);
@@ -10558,9 +10620,9 @@ function makeOppShotProfilePage(
     const midY  = rect.y + rect.h * 0.72;
     const label = `✕${zone.count}`;
     const tw    = ctx.measureText(label).width + 14;
-    ctx.fillStyle = "rgba(245,158,11,0.88)";
+    ctx.fillStyle = "rgba(239,68,68,0.88)";
     ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = "#0d1117";
+    ctx.fillStyle = "#ffffff";
     ctx.fillText(label, midX, midY);
   }
   ctx.restore();
@@ -10600,18 +10662,18 @@ function makeOppShotProfilePage(
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
-  let ly = 90;
+  let ly = 180;
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
   ctx.fillStyle = "#475569";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
-  ctx.fillStyle = "rgba(248,113,113,0.88)";
+  ctx.fillStyle = "rgba(52,211,153,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
   ctx.fillText("Their scores", lx + 22, ly); ly += 26;
-  ctx.fillStyle = "rgba(245,158,11,0.88)";
+  ctx.fillStyle = "rgba(239,68,68,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
   ctx.fillText("Their wides", lx + 22, ly); ly += 26;
@@ -10624,10 +10686,7 @@ function makeOppShotProfilePage(
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  const totalOppShots  = oppShotEvts.length;
-  const totalOppScores = oppScoreEvts.length;
   const totalOppMisses = totalOppShots - totalOppScores;
-  const oppShotEff     = totalOppShots > 0 ? Math.round((totalOppScores / totalOppShots) * 100) : 0;
   const oppScoreHot    = pdfZoneHotspots(oppScoreEvts)[0];
 
   const facts: string[]  = [];
