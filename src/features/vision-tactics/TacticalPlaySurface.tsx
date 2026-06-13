@@ -954,6 +954,7 @@ export default function TacticalPlaySurface() {
     recordCountdown,
     recordBlob,
     recordBlobUrl,
+    recordHasAudio,
     micStatus,
     canRecord,
     startCountdown,
@@ -966,6 +967,16 @@ export default function TacticalPlaySurface() {
     onBeforeCountdown: () => setPlaysOpen(false),
     onComplete: () => setPlaysOpen(true),
   });
+
+  // Ref used to scroll the done-state preview into view inside the plays panel.
+  const clipPreviewRef = useRef<HTMLDivElement>(null);
+  // Duration populated by the preview video's onLoadedMetadata event.
+  const [clipPreviewDuration, setClipPreviewDuration] = useState<number | null>(null);
+  useEffect(() => { setClipPreviewDuration(null); }, [recordBlob]);
+  useEffect(() => {
+    if (!recordBlob || !clipPreviewRef.current) return;
+    clipPreviewRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [recordBlob]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -3432,16 +3443,40 @@ export default function TacticalPlaySurface() {
             ) : null}
 
             {recordBlob ? (
-              <div style={{ display: "grid", gap: "4px" }}>
+              <div ref={clipPreviewRef} style={{ display: "grid", gap: "4px" }}>
                 {recordBlobUrl ? (
                   <video
+                    key={recordBlobUrl}
                     src={recordBlobUrl}
                     controls
                     playsInline
-                    style={{ width: "100%", maxHeight: "120px", borderRadius: "6px", background: "#000", display: "block" }}
+                    onLoadedMetadata={(e) => {
+                      const d = (e.currentTarget as HTMLVideoElement).duration;
+                      if (Number.isFinite(d) && d > 0) setClipPreviewDuration(d);
+                    }}
+                    style={{ width: "100%", maxHeight: "100px", borderRadius: "6px", background: "#000", display: "block" }}
                   />
                 ) : null}
-                <div style={{ display: "flex", gap: "4px" }}>
+                {/* Debug info strip — helps diagnose MIME/audio issues on device */}
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", padding: "2px 1px" }}>
+                  <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.50)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                    {recordBlob.type.split(";")[0] || "unknown"}
+                  </span>
+                  <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                    {recordBlob.size >= 1_048_576
+                      ? `${(recordBlob.size / 1_048_576).toFixed(1)} MB`
+                      : `${Math.round(recordBlob.size / 1024)} KB`}
+                  </span>
+                  {clipPreviewDuration != null ? (
+                    <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                      {Math.round(clipPreviewDuration)}s
+                    </span>
+                  ) : null}
+                  <span style={{ fontSize: "8px", color: recordHasAudio ? "rgba(160, 255, 160, 0.70)" : "rgba(180, 210, 255, 0.28)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                    {recordHasAudio ? "🎙 Audio" : "Silent"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
                   <button
                     type="button"
                     style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)", flex: 1, justifyContent: "center" }}
@@ -3454,11 +3489,11 @@ export default function TacticalPlaySurface() {
                     style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.25)", color: "rgba(150, 195, 255, 0.80)", flex: 1, justifyContent: "center" }}
                     onClick={saveClip}
                   >
-                    Download
+                    Save
                   </button>
                   <button
                     type="button"
-                    style={{ ...PLAYS_ACTION_BTN, color: "rgba(180, 210, 255, 0.50)" }}
+                    style={{ ...PLAYS_ACTION_BTN, color: "rgba(180, 210, 255, 0.50)", flexShrink: 0 }}
                     onClick={dismissRecord}
                   >
                     ✕

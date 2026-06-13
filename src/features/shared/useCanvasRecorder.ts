@@ -10,6 +10,7 @@ export type CanvasRecorderHandle = {
   recordCountdown: number;
   recordBlob: Blob | null;
   recordBlobUrl: string | null;
+  recordHasAudio: boolean;
   micStatus: MicStatus;
   setRecordDuration: (d: RecordDuration) => void;
   setRecordPhase: (p: RecordPhase) => void;
@@ -35,6 +36,7 @@ export function useCanvasRecorder(params: {
   const [recordCountdown, setRecordCountdown] = useState(3);
   const [recordBlob, setRecordBlob] = useState<Blob | null>(null);
   const [recordBlobUrl, setRecordBlobUrl] = useState<string | null>(null);
+  const [recordHasAudio, setRecordHasAudio] = useState(false);
   const [recordMimeType, setRecordMimeType] = useState("video/webm");
   const [micStatus, setMicStatus] = useState<MicStatus>("off");
 
@@ -46,6 +48,8 @@ export function useCanvasRecorder(params: {
   recordDurationRef.current = recordDuration;
   const activeAudioStreamRef = useRef<MediaStream | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+  // Tracks whether an audio track was actually merged into the active recording.
+  const hasAudioRef = useRef(false);
 
   function stopAudioTracks() {
     const s = activeAudioStreamRef.current;
@@ -102,6 +106,7 @@ export function useCanvasRecorder(params: {
     revokeBlobUrl();
     setRecordBlob(null);
     setRecordBlobUrl(null);
+    setRecordHasAudio(false);
 
     setRecordMimeType(mimeType);
     recordChunksRef.current = [];
@@ -110,10 +115,13 @@ export function useCanvasRecorder(params: {
 
     // Merge audio track when mic is active; silent fallback if not.
     const audioStream = activeAudioStreamRef.current;
-    const stream =
-      audioStream && audioStream.getAudioTracks().length > 0
-        ? new MediaStream([...canvasStream.getVideoTracks(), ...audioStream.getAudioTracks()])
-        : canvasStream;
+    const audioTracks = audioStream?.getAudioTracks() ?? [];
+    const hasAudio = audioTracks.length > 0;
+    hasAudioRef.current = hasAudio;
+
+    const stream = hasAudio
+      ? new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks])
+      : canvasStream;
 
     const recorder = new MediaRecorder(stream, { mimeType });
     recorderRef.current = recorder;
@@ -127,6 +135,7 @@ export function useCanvasRecorder(params: {
       blobUrlRef.current = url;
       setRecordBlob(blob);
       setRecordBlobUrl(url);
+      setRecordHasAudio(hasAudioRef.current);
       setRecordPhase("done");
       paramsRef.current.onComplete?.();
     };
@@ -180,15 +189,28 @@ export function useCanvasRecorder(params: {
     setRecordPhase("idle");
     setRecordBlob(null);
     setRecordBlobUrl(null);
+    setRecordHasAudio(false);
   };
+
+  // Returns the base MIME type (codec suffix stripped) and matching extension.
+  // Stripping the codec suffix (e.g. ";codecs=vp9") improves compatibility with
+  // share targets like WhatsApp that may not recognise the parametrised form.
+  function resolveShareMeta(blob: Blob): { mimeType: string; ext: string } {
+    const raw = blob.type || recordMimeType;
+    const base = raw.split(";")[0].trim().toLowerCase();
+    const isMP4 = base === "video/mp4";
+    return { mimeType: isMP4 ? "video/mp4" : "video/webm", ext: isMP4 ? "mp4" : "webm" };
+  }
 
   const saveClip = () => {
     if (!recordBlob) return;
-    const ext = recordMimeType.startsWith("video/mp4") ? "mp4" : "webm";
-    const url = URL.createObjectURL(recordBlob);
+    const { mimeType, ext } = resolveShareMeta(recordBlob);
+    const filename = `paircvision-clip-${Date.now()}.${ext}`;
+    const file = new File([recordBlob], filename, { type: mimeType });
+    const url = URL.createObjectURL(file);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `paircvision-clip-${Date.now()}.${ext}`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1200);
@@ -196,9 +218,11 @@ export function useCanvasRecorder(params: {
 
   const shareClip = async () => {
     if (!recordBlob) return;
-    const ext = recordMimeType.startsWith("video/mp4") ? "mp4" : "webm";
+    const { mimeType, ext } = resolveShareMeta(recordBlob);
     const filename = `paircvision-clip-${Date.now()}.${ext}`;
-    const file = new File([recordBlob], filename, { type: recordMimeType });
+    // File MIME uses the clean base type — codec suffix removed for broadest
+    // app compatibility (WhatsApp and other share targets may reject parametrised types).
+    const file = new File([recordBlob], filename, { type: mimeType });
     try {
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: "PáircVision Clip" });
@@ -216,6 +240,7 @@ export function useCanvasRecorder(params: {
     recordCountdown,
     recordBlob,
     recordBlobUrl,
+    recordHasAudio,
     micStatus,
     setRecordDuration,
     setRecordPhase,

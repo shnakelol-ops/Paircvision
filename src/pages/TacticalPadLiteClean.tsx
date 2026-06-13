@@ -1946,6 +1946,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     recordCountdown: slateRecordCountdown,
     recordBlob: slateRecordBlob,
     recordBlobUrl: slateRecordBlobUrl,
+    recordHasAudio: slateRecordHasAudio,
     micStatus: slateMicStatus,
     canRecord: slateCanRecord,
     startCountdown: slateStartCountdown,
@@ -1958,6 +1959,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     onBeforeCountdown: () => setQuickShareOpen(false),
     onComplete: () => setQuickShareOpen(true),
   });
+  // Duration populated by the preview video's onLoadedMetadata event.
+  const [slateClipPreviewDuration, setSlateClipPreviewDuration] = useState<number | null>(null);
+  useEffect(() => { setSlateClipPreviewDuration(null); }, [slateRecordBlob]);
   const [myBoardsOpen, setMyBoardsOpen] = useState(false);
   const [savedBoards, setSavedBoards] = useState<SavedQuickBoard[]>([]);
   const [pendingRecoveredBoardDraft, setPendingRecoveredBoardDraft] = useState<QuickBoardBoardState | null>(null);
@@ -3585,7 +3589,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   })();
   const actionsBubbleStyle = isPortraitViewingMode ? PORTRAIT_ACTIONS_BUBBLE_STYLE : ACTIONS_BUBBLE_STYLE;
   const actionsPopoutStyle = isPortraitViewingMode ? PORTRAIT_ACTIONS_POPOUT_STYLE : ACTIONS_POPOUT_STYLE;
-  const quickSharePopoverStyle = isPortraitViewingMode ? PORTRAIT_QUICK_SHARE_POPOUT_STYLE : QUICK_SHARE_POPOUT_STYLE;
+  // In landscape the base style uses overflow:hidden which clips the recording
+  // preview when it's taller than the default popover. Override to scroll.
+  const quickSharePopoverStyle: CSSProperties = isPortraitViewingMode
+    ? PORTRAIT_QUICK_SHARE_POPOUT_STYLE
+    : { ...QUICK_SHARE_POPOUT_STYLE, overflowY: "auto", maxHeight: "min(72vh, 320px)" };
   const myBoardsPopoverStyle = isPortraitViewingMode ? PORTRAIT_MY_BOARDS_POPOUT_STYLE : MY_BOARDS_POPOUT_STYLE;
   const isToolsOverlayOpen = !isWhiteboardMode && !isPortraitViewingMode && toolsOpen;
   const isCompactLandscapeTools = !isWhiteboardMode && !isPortraitViewingMode && isCompactLandscapeToolsMenu;
@@ -5232,13 +5240,37 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               <div style={{ display: "grid", gap: "5px" }}>
                 {slateRecordBlobUrl ? (
                   <video
+                    key={slateRecordBlobUrl}
                     src={slateRecordBlobUrl}
                     controls
                     playsInline
-                    style={{ width: "100%", maxHeight: "100px", borderRadius: "5px", background: "#000", display: "block" }}
+                    onLoadedMetadata={(e) => {
+                      const d = (e.currentTarget as HTMLVideoElement).duration;
+                      if (Number.isFinite(d) && d > 0) setSlateClipPreviewDuration(d);
+                    }}
+                    style={{ width: "100%", maxHeight: "90px", borderRadius: "5px", background: "#000", display: "block" }}
                   />
                 ) : null}
-                <div style={{ display: "flex", gap: "4px" }}>
+                {/* Debug info strip — helps diagnose MIME/audio issues on device */}
+                <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+                  <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: "rgba(180, 210, 255, 0.50)" }}>
+                    {slateRecordBlob.type.split(";")[0] || "unknown"}
+                  </span>
+                  <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE }}>
+                    {slateRecordBlob.size >= 1_048_576
+                      ? `${(slateRecordBlob.size / 1_048_576).toFixed(1)} MB`
+                      : `${Math.round(slateRecordBlob.size / 1024)} KB`}
+                  </span>
+                  {slateClipPreviewDuration != null ? (
+                    <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE }}>
+                      {Math.round(slateClipPreviewDuration)}s
+                    </span>
+                  ) : null}
+                  <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: slateRecordHasAudio ? "rgba(160, 255, 160, 0.70)" : "rgba(180, 210, 255, 0.28)" }}>
+                    {slateRecordHasAudio ? "🎙 Audio" : "Silent"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
                   <button
                     type="button"
                     className="control-button"
@@ -5253,12 +5285,12 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", flex: 1, border: "1px solid rgba(80, 160, 255, 0.25)", color: "rgba(150, 195, 255, 0.80)" }}
                     onClick={slateSaveClip}
                   >
-                    <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>Download</span>
+                    <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>Save</span>
                   </button>
                   <button
                     type="button"
                     className="control-button"
-                    style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px" }}
+                    style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", flexShrink: 0 }}
                     onClick={slateDismissRecord}
                   >
                     <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>✕</span>
