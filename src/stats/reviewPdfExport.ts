@@ -5370,6 +5370,646 @@ function stampChapterLabel(
   ctx.restore();
 }
 
+// ─── Dual-pitch visual analysis pages ────────────────────────────────────────
+//
+// Three page builders — Restart, Turnover, Free — each showing two pitches
+// side-by-side (FOR left / OPP right) plus a 3-panel stats strip at the bottom.
+// These replace the 2×2 quad map pages for their chapters; the companion
+// chain/punishment detail pages remain unchanged.
+
+// Shared geometry (all three builders use the same canvas layout).
+const DP_LEFT_X  = 16;
+const DP_PITCH_W = 938;
+const DP_RIGHT_X = DP_LEFT_X + DP_PITCH_W + 12;   // 966
+const DP_PITCH_Y = 82;
+const DP_TITLE_H = 26;
+const DP_PITCH_H = 660;
+const DP_STRIP_Y = DP_PITCH_Y + DP_PITCH_H + 10;  // 752
+const DP_PANEL_W = Math.floor((CANVAS_W - 32 - 24) / 3); // 621
+const DP_P1_X    = 16;
+const DP_P2_X    = DP_P1_X + DP_PANEL_W + 12;     // 649
+const DP_P3_X    = DP_P2_X + DP_PANEL_W + 12;     // 1282
+const DP_P3_W    = CANVAS_W - DP_P3_X - 16;       // 622
+const DP_STRIP_H = CANVAS_H - DP_STRIP_Y - 14;    // 314
+
+function dpPitchTitle(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number,
+  label: string, count: number, accent: string,
+): void {
+  ctx.save();
+  ctx.fillStyle = accent + "22";
+  ctx.fillRect(x, y, w, DP_TITLE_H);
+  ctx.fillStyle = accent;
+  ctx.fillRect(x, y, 3, DP_TITLE_H);
+  ctx.font = "bold 13px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(label.toUpperCase(), x + 10, y + DP_TITLE_H / 2);
+  ctx.fillStyle = "#64748b";
+  ctx.font = "12px sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(String(count), x + w - 8, y + DP_TITLE_H / 2);
+  ctx.restore();
+}
+
+function dpPanelStart(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number,
+  title: string, accent: string,
+): number {
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,0.022)";
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = accent;
+  ctx.fillRect(x, y, 3, h);
+  ctx.fillStyle = accent;
+  ctx.font = "bold 12px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(title.toUpperCase(), x + 12, y + 14);
+  ctx.strokeStyle = "rgba(255,255,255,0.06)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + 3, y + 26);
+  ctx.lineTo(x + w, y + 26);
+  ctx.stroke();
+  ctx.restore();
+  return y + 28;
+}
+
+function dpStatRow(
+  ctx: CanvasRenderingContext2D,
+  x: number, cy: number, w: number,
+  label: string, value: string, valueColor: string, isAlt: boolean,
+): number {
+  const ROW_H = 23;
+  if (isAlt) {
+    ctx.fillStyle = "rgba(255,255,255,0.025)";
+    ctx.fillRect(x + 3, cy, w - 3, ROW_H);
+  }
+  const mid = cy + ROW_H / 2;
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "12px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(label, x + 10, mid);
+  ctx.fillStyle = valueColor;
+  ctx.font = "bold 12px sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(value, x + w - 8, mid);
+  return cy + ROW_H;
+}
+
+function dpSubHeader(
+  ctx: CanvasRenderingContext2D,
+  x: number, cy: number, w: number,
+  label: string, accent: string,
+): number {
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,0.04)";
+  ctx.fillRect(x + 3, cy, w - 3, 18);
+  ctx.fillStyle = accent;
+  ctx.font = "bold 9px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(label, x + 10, cy + 9);
+  ctx.restore();
+  return cy + 18;
+}
+
+function dpPossessionBar(
+  ctx: CanvasRenderingContext2D,
+  x: number, cy: number, w: number,
+  forCount: number, oppCount: number,
+  forLabel: string, oppLabel: string,
+  forAccent: string, oppAccent: string,
+): number {
+  const barH    = 12;
+  const barX    = x + 10;
+  const barW    = w - 20;
+  const total   = forCount + oppCount;
+  const forFrac = total > 0 ? forCount / total : 0.5;
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  ctx.fillRect(barX, cy, barW, barH);
+  if (total > 0) {
+    ctx.fillStyle = forAccent;
+    ctx.fillRect(barX, cy, Math.max(4, Math.floor(barW * forFrac)), barH);
+    if (forFrac < 1) {
+      const oppW = Math.max(4, barW - Math.floor(barW * forFrac));
+      ctx.fillStyle = oppAccent;
+      ctx.fillRect(barX + barW - oppW, cy, oppW, barH);
+    }
+    const labelY = cy + barH + 11;
+    ctx.font = "10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = forAccent;
+    ctx.textAlign = "left";
+    ctx.fillText(`${forLabel} ${Math.round(forFrac * 100)}%`, barX, labelY);
+    ctx.fillStyle = oppAccent;
+    ctx.textAlign = "right";
+    ctx.fillText(`${Math.round((1 - forFrac) * 100)}% ${oppLabel}`, barX + barW, labelY);
+  } else {
+    ctx.fillStyle = "#475569";
+    ctx.font = "10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No data", barX + barW / 2, cy + barH / 2);
+  }
+  ctx.restore();
+  return cy + barH + 22;
+}
+
+function dpIntelligencePanel(
+  ctx: CanvasRenderingContext2D,
+  prompts: readonly ReviewPrompt[],
+  category: ReviewPromptCategory,
+  x: number, startY: number, w: number, maxY: number,
+  accent: string,
+): void {
+  const filtered = prompts.filter((p) => p.category === category);
+
+  if (filtered.length === 0) {
+    ctx.save();
+    ctx.fillStyle = "#475569";
+    ctx.font = "11px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("Insufficient data for coaching prompts.", x + w / 2, startY + (maxY - startY) / 2);
+    ctx.restore();
+    return;
+  }
+
+  let cy      = startY + 4;
+  const MAX_W = w - 20;
+  const LINE_H = 15;
+  const ITEM_H = 46;
+
+  ctx.save();
+
+  for (const prompt of filtered) {
+    if (cy + ITEM_H > maxY - 4) break;
+
+    ctx.fillStyle = accent + "bb";
+    ctx.fillRect(x + 6, cy + 2, 2, ITEM_H - 8);
+
+    ctx.font = "11px sans-serif";
+
+    // Word-wrap across up to 2 lines.
+    let line1 = "";
+    let line2 = "";
+    for (const word of prompt.text.split(" ")) {
+      const test1 = line1 ? `${line1} ${word}` : word;
+      if (!line2 && ctx.measureText(test1).width <= MAX_W) {
+        line1 = test1;
+      } else {
+        const test2 = line2 ? `${line2} ${word}` : word;
+        if (ctx.measureText(test2).width <= MAX_W) {
+          line2 = test2;
+        } else {
+          let t = test2;
+          while (t.length > 0 && ctx.measureText(`${t}…`).width > MAX_W) {
+            t = t.slice(0, -1);
+          }
+          line2 = `${t}…`;
+          break;
+        }
+      }
+    }
+
+    ctx.fillStyle = "#cbd5e1";
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    ctx.fillText(line1, x + 13, cy + 2);
+
+    if (line2) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText(line2, x + 13, cy + 2 + LINE_H);
+    }
+
+    ctx.font = "9px sans-serif";
+    ctx.fillStyle = "#334155";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(prompt.evidenceTag, x + w - 8, cy + ITEM_H - 6);
+
+    cy += ITEM_H + 2;
+  }
+
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Restart Visual Analysis — replaces the 2×2 kickout quad map page (p.5).
+ *
+ * LEFT pitch:   Kickouts won by FOR (our retained + their conceded to us).
+ * RIGHT pitch:  Kickouts won by OPP (their retained + ours conceded to them).
+ * Bottom strip: Summary | Chain Outcomes | Restart Intelligence.
+ *
+ * The Kickout Chain Analysis detail page (p.6) is retained as a companion.
+ */
+function makeRestartVisualPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Restart Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets (tactical beneficiary, same logic as selectPdfEvents) ────
+  const forWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
+  );
+  const oppWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR"),
+  );
+
+  // ── Pitches ──────────────────────────────────────────────────────────────
+  const INNER_H = DP_PITCH_H - DP_TITLE_H;
+
+  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Our Restarts — ${homeTeam}`,        forWonEvts.length, "#22d3ee");
+  const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + DP_TITLE_H, w: DP_PITCH_W, h: INNER_H });
+  renderEventMarkers(ctx, forWonEvts, leftInner);
+
+  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Opposition Restarts — ${awayTeam}`, oppWonEvts.length, "#fb7185");
+  const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + DP_TITLE_H, w: DP_PITCH_W, h: INNER_H });
+  renderEventMarkers(ctx, oppWonEvts, rightInner);
+
+  // ── Chain data ────────────────────────────────────────────────────────────
+  const ko       = analysis.kickouts;
+  const outcomes = ko.outcomes;
+
+  const totalKO = ko.won + ko.lost;
+  function pct(num: number, den: number): string {
+    return den > 0 ? `${Math.round((num / den) * 100)}%` : "—";
+  }
+  function withPct(num: number, den: number): string {
+    return den > 0 ? `${num} (${pct(num, den)})` : String(num);
+  }
+
+  const h1Out = outcomes.filter((o) => o.kickoutEvent.period === "1H");
+  const h2Out = outcomes.filter((o) => o.kickoutEvent.period === "2H");
+  const h1For = h1Out.filter((o) => o.winningSide === "FOR").length;
+  const h1Opp = h1Out.length - h1For;
+  const h2For = h2Out.filter((o) => o.winningSide === "FOR").length;
+  const h2Opp = h2Out.length - h2For;
+
+  const forKoEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && e.teamSide === "FOR");
+  function countKoTag(tag: string): number {
+    return forKoEvts.filter((e) => e.tags?.includes(tag)).length;
+  }
+
+  const forWonTotal     = outcomes.filter((o) => o.winningSide === "FOR").length;
+  const oppWonTotal     = outcomes.filter((o) => o.winningSide === "OPP").length;
+  const forScoredFromKo = outcomes.filter((o) => o.winningSide === "FOR" && o.nextScore      !== null).length;
+  const forShotFromKo   = outcomes.filter((o) => o.winningSide === "FOR" && o.nextShotOrScore !== null).length;
+  const oppScoredFromKo = outcomes.filter((o) => o.winningSide === "OPP" && o.nextScore      !== null).length;
+
+  const scoringOuts = outcomes.filter((o) => o.secondsToScore !== null);
+  const avgSecsToScore = scoringOuts.length > 0
+    ? Math.round(scoringOuts.reduce((s, o) => s + (o.secondsToScore ?? 0), 0) / scoringOuts.length)
+    : null;
+
+  const prompts = deriveReviewPrompts(analysis, homeTeam, awayTeam);
+
+  // ── Panel 1: Restart Summary ──────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P1_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Restart Summary", "#22d3ee");
+    cy += 2;
+    cy = dpPossessionBar(ctx, DP_P1_X, cy, DP_PANEL_W,
+      ko.won, ko.lost,
+      homeTeam.slice(0, 10), awayTeam.slice(0, 10),
+      "#22d3ee", "#fb7185",
+    );
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Won`, `${ko.won} (${pct(ko.won, totalKO)})`,  "#22d3ee", false);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Won`, `${ko.lost} (${pct(ko.lost, totalKO)})`, "#fb7185", true);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "BY HALF", "#22d3ee");
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "H1 — Won / Lost", `${h1For} / ${h1Opp}`, "#e2e8f0", false);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "H2 — Won / Lost", `${h2For} / ${h2Opp}`, "#e2e8f0", true);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "HOW WON", "#22d3ee");
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Clean Won", String(countKoTag("CLEAN")),    "#4ade80", false);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Break Won", String(countKoTag("BREAK")),    "#e2e8f0", true);
+        dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Foul Won",  String(countKoTag("FOUL_WON")), "#fbbf24", false);
+  }
+
+  // ── Panel 2: Chain Outcomes ───────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Chain Outcomes", "#fbbf24");
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} WON POSSESSION`, "#22d3ee");
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(forScoredFromKo, forWonTotal), "#4ade80", false);
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(forShotFromKo,   forWonTotal), "#7dd3fc", true);
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → No shot",      String(Math.max(0, forWonTotal - forShotFromKo)), "#f97316", false);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} WON POSSESSION`, "#fb7185");
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against", withPct(oppScoredFromKo, oppWonTotal), "#f97316", false);
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → No score",      String(Math.max(0, oppWonTotal - oppScoredFromKo)), "#94a3b8", true);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "OVERALL", "#fbbf24");
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Retention %", pct(ko.won, totalKO), "#22d3ee", false);
+    if (avgSecsToScore !== null) {
+      dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Avg secs to score (won)", `${avgSecsToScore}s`, "#fbbf24", true);
+    }
+  }
+
+  // ── Panel 3: Restart Intelligence ─────────────────────────────────────────
+  {
+    const panelY = dpPanelStart(ctx, DP_P3_X, DP_STRIP_Y, DP_P3_W, DP_STRIP_H, "Restart Intelligence", "#14b8a6");
+    dpIntelligencePanel(ctx, prompts, "KICKOUT", DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 8, "#22d3ee");
+  }
+
+  drawEventCountFooter(ctx, forWonEvts.length + oppWonEvts.length);
+  return canvas;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Turnover Visual Analysis — replaces the 2×2 turnover quad map page (p.7).
+ *
+ * LEFT pitch:   Turnovers gained by FOR (we won or they lost).
+ * RIGHT pitch:  Turnovers lost by FOR (we lost or they won).
+ * Bottom strip: Summary | Consequences | Turnover Intelligence.
+ *
+ * The Turnover Punishment Analysis detail page (p.8) is retained as a companion.
+ */
+function makeTurnoverVisualPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Turnover Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  const wonEvts  = events.filter(
+    (e) => (e.kind === "TURNOVER_WON"  && e.teamSide === "FOR") ||
+           (e.kind === "TURNOVER_LOST" && e.teamSide === "OPP"),
+  );
+  const lostEvts = events.filter(
+    (e) => (e.kind === "TURNOVER_LOST" && e.teamSide === "FOR") ||
+           (e.kind === "TURNOVER_WON"  && e.teamSide === "OPP"),
+  );
+
+  // ── Pitches ──────────────────────────────────────────────────────────────
+  const INNER_H = DP_PITCH_H - DP_TITLE_H;
+
+  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Turnovers Won — ${homeTeam}`, wonEvts.length,  "#a78bfa");
+  const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + DP_TITLE_H, w: DP_PITCH_W, h: INNER_H });
+  renderEventMarkers(ctx, wonEvts, leftInner);
+
+  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Turnovers Lost — ${homeTeam}`, lostEvts.length, "#f97316");
+  const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + DP_TITLE_H, w: DP_PITCH_W, h: INNER_H });
+  renderEventMarkers(ctx, lostEvts, rightInner);
+
+  // ── Chain data ────────────────────────────────────────────────────────────
+  const outcomes = analysis.turnovers.outcomes;
+
+  function actingSideTo(o: typeof outcomes[number]): "FOR" | "OPP" {
+    if (o.direction === "WON") return o.turnoverEvent.teamSide;
+    return o.turnoverEvent.teamSide === "FOR" ? "OPP" : "FOR";
+  }
+
+  const forAttacking  = outcomes.filter((o) => actingSideTo(o) === "FOR");
+  const oppAttacking  = outcomes.filter((o) => actingSideTo(o) === "OPP");
+  const forWonTotal   = forAttacking.length;
+  const oppWonTotal   = oppAttacking.length;
+  const forWonToScore = forAttacking.filter((o) => o.resultedInScore).length;
+  const forWonToShot  = forAttacking.filter((o) => o.resultedInShot).length;
+  const oppWonToScore = oppAttacking.filter((o) => o.resultedInScore).length;
+  const oppWonToShot  = oppAttacking.filter((o) => o.resultedInShot).length;
+
+  const netTO    = forWonTotal - oppWonTotal;
+  const netColor = netTO > 0 ? "#4ade80" : netTO < 0 ? "#fb7185" : "#94a3b8";
+  const netStr   = netTO > 0 ? `+${netTO}` : String(netTO);
+
+  function pct(num: number, den: number): string {
+    return den > 0 ? `${Math.round((num / den) * 100)}%` : "—";
+  }
+  function withPct(num: number, den: number): string {
+    return den > 0 ? `${num} (${pct(num, den)})` : String(num);
+  }
+
+  function countToTag(slice: typeof outcomes, ...tags: string[]): number {
+    return slice.filter((o) => tags.some((t) => o.turnoverEvent.tags?.includes(t))).length;
+  }
+  const tagTackle  = countToTag(forAttacking, "TACKLE", "PRESS");
+  const tagSwarm   = countToTag(forAttacking, "SWARM", "INTERCEPT");
+  const tagUnforce = countToTag(forAttacking, "UNFORCED");
+  const tagSlack   = countToTag(forAttacking, "SLACK_KICK_PASS", "SLACK_HAND_PASS");
+
+  const forLostTotal      = outcomes.filter((o) => o.turnoverEvent.kind === "TURNOVER_LOST" && o.turnoverEvent.teamSide === "FOR").length;
+  const forLostToOppScore = oppAttacking.filter((o) => o.turnoverEvent.teamSide === "FOR" && o.resultedInScore).length;
+  const forLostToOppShot  = oppAttacking.filter((o) => o.turnoverEvent.teamSide === "FOR" && o.resultedInShot).length;
+
+  const prompts = deriveReviewPrompts(analysis, homeTeam, awayTeam);
+
+  // ── Panel 1: Turnover Summary ─────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P1_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Turnover Summary", "#a78bfa");
+    cy += 2;
+    cy = dpPossessionBar(ctx, DP_P1_X, cy, DP_PANEL_W,
+      forWonTotal, oppWonTotal,
+      homeTeam.slice(0, 10), awayTeam.slice(0, 10),
+      "#a78bfa", "#fb7185",
+    );
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Won`, String(forWonTotal), "#a78bfa", false);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Won`, String(oppWonTotal), "#fb7185", true);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Net Turnover", netStr, netColor, false);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "HOW WON", "#a78bfa");
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Tackle / Press",    String(tagTackle),  "#22d3ee", false);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Swarm / Intercept", String(tagSwarm),   "#22d3ee", true);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Unforced error",    String(tagUnforce), "#fbbf24", false);
+        dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Slack pass",        String(tagSlack),   "#fbbf24", true);
+  }
+
+  // ── Panel 2: Consequences ─────────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Consequences", "#fbbf24");
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} ATTACKED`, "#a78bfa");
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(forWonToScore, forWonTotal), "#4ade80", false);
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(forWonToShot,  forWonTotal), "#7dd3fc", true);
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → No shot",      String(Math.max(0, forWonTotal - forWonToShot)), "#f97316", false);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "DAMAGE CONCEDED", "#f97316");
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against", withPct(forLostToOppScore, forLostTotal), "#f97316", false);
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Shot against",  withPct(forLostToOppShot,  forLostTotal), "#fbbf24", true);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} ATTACKED`, "#fb7185");
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(oppWonToScore, oppWonTotal), "#fb7185", false);
+        dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(oppWonToShot,  oppWonTotal), "#fbbf24", true);
+  }
+
+  // ── Panel 3: Turnover Intelligence ───────────────────────────────────────
+  {
+    const panelY = dpPanelStart(ctx, DP_P3_X, DP_STRIP_Y, DP_P3_W, DP_STRIP_H, "Turnover Intelligence", "#a78bfa");
+    dpIntelligencePanel(ctx, prompts, "TURNOVER", DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 8, "#a78bfa");
+  }
+
+  drawEventCountFooter(ctx, wonEvts.length + lostEvts.length);
+  return canvas;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Free Kick Analysis — replaces the 2×2 free kick quad map page (p.17+N).
+ *
+ * LEFT pitch:   Free kick events benefiting FOR (all periods).
+ * RIGHT pitch:  Free kick events benefiting OPP (all periods).
+ * Bottom strip: Free Summary | Free Outcomes | Free Intelligence.
+ *
+ * No new data is calculated — all values use existing event filters.
+ */
+function makeFreeAnalysisPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Free Kick Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  const forFreeEvts = events.filter(
+    (e) => PDF_KIND_SETS.FREES.has(e.kind) && tacticalSide(e) === "FOR",
+  );
+  const oppFreeEvts = events.filter(
+    (e) => PDF_KIND_SETS.FREES.has(e.kind) && tacticalSide(e) === "OPP",
+  );
+
+  // ── Pitches ──────────────────────────────────────────────────────────────
+  const INNER_H = DP_PITCH_H - DP_TITLE_H;
+
+  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Our Frees — ${homeTeam}`,        forFreeEvts.length, "#818cf8");
+  const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + DP_TITLE_H, w: DP_PITCH_W, h: INNER_H });
+  renderEventMarkers(ctx, forFreeEvts, leftInner);
+
+  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Opposition Frees — ${awayTeam}`, oppFreeEvts.length, "#f472b6");
+  const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + DP_TITLE_H, w: DP_PITCH_W, h: INNER_H });
+  renderEventMarkers(ctx, oppFreeEvts, rightInner);
+
+  // ── Derived stats (mirrored, matching drawSummaryStatsTable logic) ────────
+  const forEvts = events.filter((e) => e.teamSide === "FOR" && !e.id.includes("-instant-score-"));
+  const oppEvts = events.filter((e) => e.teamSide === "OPP" && !e.id.includes("-instant-score-"));
+
+  const forFreesWon     = countKinds(forEvts, "FREE_WON")      + countKinds(oppEvts, "FREE_CONCEDED");
+  const oppFreesWon     = countKinds(oppEvts, "FREE_WON")      + countKinds(forEvts, "FREE_CONCEDED");
+  const forFreeScored   = countKinds(forEvts, "FREE_SCORED");
+  const forFreeMissed   = countKinds(forEvts, "FREE_MISSED");
+  const oppFreeScored   = countKinds(oppEvts, "FREE_SCORED");
+  const oppFreeMissed   = countKinds(oppEvts, "FREE_MISSED");
+
+  const forFreeAttempts = forFreeScored + forFreeMissed;
+  const oppFreeAttempts = oppFreeScored + oppFreeMissed;
+  const totalScored     = forFreeScored + oppFreeScored;
+  const totalAttempts   = forFreeAttempts + oppFreeAttempts;
+
+  const netFrees = forFreesWon - oppFreesWon;
+  const netColor = netFrees > 0 ? "#4ade80" : netFrees < 0 ? "#fb7185" : "#94a3b8";
+  const netStr   = netFrees > 0 ? `+${netFrees}` : String(netFrees);
+
+  function pct(num: number, den: number): string {
+    return den > 0 ? `${Math.round((num / den) * 100)}%` : "—";
+  }
+
+  const forConv = pct(forFreeScored, forFreeAttempts);
+  const oppConv = pct(oppFreeScored, oppFreeAttempts);
+
+  // Prompts: CHAIN category covers FREE_WON_TO_GOAL rule; fall back to GENERAL.
+  const allPrompts  = deriveReviewPrompts(analysis, homeTeam, awayTeam);
+  const chainPrompts = allPrompts.filter((p) => p.category === "CHAIN");
+  const freePomptCat: ReviewPromptCategory = chainPrompts.length > 0 ? "CHAIN" : "GENERAL";
+
+  // ── Panel 1: Free Summary ─────────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P1_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Free Summary", "#818cf8");
+    cy += 2;
+    cy = dpPossessionBar(ctx, DP_P1_X, cy, DP_PANEL_W,
+      forFreesWon, oppFreesWon,
+      homeTeam.slice(0, 10), awayTeam.slice(0, 10),
+      "#818cf8", "#f472b6",
+    );
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Frees Won`,  String(forFreesWon), "#818cf8", false);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Frees Won`,  String(oppFreesWon), "#f472b6", true);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Advantage", netStr, netColor, false);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} ATTEMPTS`, "#818cf8");
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Free Scored",  String(forFreeScored),  "#4ade80", false);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Free Missed",  String(forFreeMissed),  "#94a3b8", true);
+        dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Conversion",   forConv, "#818cf8", false);
+  }
+
+  // ── Panel 2: Free Outcomes ────────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Free Outcomes", "#fbbf24");
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "CONVERSION COMPARISON", "#fbbf24");
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Conversion`, forConv, "#818cf8", false);
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Conversion`, oppConv, "#f472b6", true);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} ATTEMPTS`, "#f472b6");
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Free Scored", String(oppFreeScored), "#f472b6", false);
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Free Missed", String(oppFreeMissed), "#94a3b8", true);
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Conversion",  oppConv, "#f472b6", false);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "ALL FREES COMBINED", "#94a3b8");
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Total scored",   String(totalScored),              "#4ade80", false);
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Total missed",   String(totalAttempts - totalScored), "#94a3b8", true);
+        dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Overall conv.",  pct(totalScored, totalAttempts),  "#e2e8f0", false);
+  }
+
+  // ── Panel 3: Free Intelligence ────────────────────────────────────────────
+  {
+    const panelY = dpPanelStart(ctx, DP_P3_X, DP_STRIP_Y, DP_P3_W, DP_STRIP_H, "Free Intelligence", "#818cf8");
+    dpIntelligencePanel(ctx, allPrompts, freePomptCat, DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 8, "#818cf8");
+  }
+
+  drawEventCountFooter(ctx, forFreeEvts.length + oppFreeEvts.length);
+  return canvas;
+}
+
 // ─── Quad pitch map page ─────────────────────────────────────────────────────
 
 type QuadPanel = {
@@ -5582,22 +6222,15 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   //   p.6 Kickout Chain Analysis
 
   try {
-    const p5 = makeQuadPitchMapPage(
-      sport,
-      [
-        { title: `1H — ${homeTeamName} Kickouts`, events: selectPdfEvents(events, "H1", "FOR", "KICKOUTS"), accentColor: "#14b8a6" },
-        { title: `1H — ${awayTeamName} Kickouts`, events: selectPdfEvents(events, "H1", "OPP", "KICKOUTS"), accentColor: "#ef4444" },
-        { title: `2H — ${homeTeamName} Kickouts`, events: selectPdfEvents(events, "H2", "FOR", "KICKOUTS"), accentColor: "#14b8a6" },
-        { title: `2H — ${awayTeamName} Kickouts`, events: selectPdfEvents(events, "H2", "OPP", "KICKOUTS"), accentColor: "#ef4444" },
-      ],
-      "Kickout Pitch Maps",
+    const p5 = makeRestartVisualPage(
+      events, sport, chainAnalysis,
       homeTeamName, awayTeamName, 5, TOTAL_PAGES,
     );
     stampChapterLabel(p5, "Chapter 3 — Kickout & Restart Analysis", "#14b8a6");
-    addCanvasPage(p5, true, "Kickout Pitch Maps");
+    addCanvasPage(p5, true, "Restart Analysis");
   } catch (err) {
-    console.error("Kickout Pitch Maps page generation failed", err);
-    addCanvasPage(fallbackCanvas("Kickout Pitch Maps"), true, "Kickout Pitch Maps");
+    console.error("Restart Analysis page generation failed", err);
+    addCanvasPage(fallbackCanvas("Restart Analysis"), true, "Restart Analysis");
   }
 
   try {
@@ -5615,22 +6248,15 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   //   p.8 Turnover Punishment Analysis
 
   try {
-    const p7 = makeQuadPitchMapPage(
-      sport,
-      [
-        { title: `1H — ${homeTeamName} Turnovers Won`,  events: selectPdfEvents(events, "H1", "FOR", "TURNOVERS"), accentColor: "#a78bfa" },
-        { title: `1H — ${awayTeamName} Turnovers Won`,  events: selectPdfEvents(events, "H1", "OPP", "TURNOVERS"), accentColor: "#f472b6" },
-        { title: `2H — ${homeTeamName} Turnovers Won`,  events: selectPdfEvents(events, "H2", "FOR", "TURNOVERS"), accentColor: "#a78bfa" },
-        { title: `2H — ${awayTeamName} Turnovers Won`,  events: selectPdfEvents(events, "H2", "OPP", "TURNOVERS"), accentColor: "#f472b6" },
-      ],
-      "Turnover Pitch Maps",
+    const p7 = makeTurnoverVisualPage(
+      events, sport, chainAnalysis,
       homeTeamName, awayTeamName, 7, TOTAL_PAGES,
     );
     stampChapterLabel(p7, "Chapter 4 — Turnover Analysis", "#a78bfa");
-    addCanvasPage(p7, true, "Turnover Pitch Maps");
+    addCanvasPage(p7, true, "Turnover Analysis");
   } catch (err) {
-    console.error("Turnover Pitch Maps page generation failed", err);
-    addCanvasPage(fallbackCanvas("Turnover Pitch Maps"), true, "Turnover Pitch Maps");
+    console.error("Turnover Analysis page generation failed", err);
+    addCanvasPage(fallbackCanvas("Turnover Analysis"), true, "Turnover Analysis");
   }
 
   try {
@@ -5778,22 +6404,15 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   try {
     addCanvasPage(
-      makeQuadPitchMapPage(
-        sport,
-        [
-          { title: `1H — ${homeTeamName} Frees`, events: selectPdfEvents(events, "H1", "FOR", "FREES"), accentColor: "#fbbf24" },
-          { title: `1H — ${awayTeamName} Frees`, events: selectPdfEvents(events, "H1", "OPP", "FREES"), accentColor: "#fb923c" },
-          { title: `2H — ${homeTeamName} Frees`, events: selectPdfEvents(events, "H2", "FOR", "FREES"), accentColor: "#fbbf24" },
-          { title: `2H — ${awayTeamName} Frees`, events: selectPdfEvents(events, "H2", "OPP", "FREES"), accentColor: "#fb923c" },
-        ],
-        "Free Kick Pitch Maps",
+      makeFreeAnalysisPage(
+        events, sport, chainAnalysis,
         homeTeamName, awayTeamName, p_arch + 2, TOTAL_PAGES,
       ),
-      true, "Free Kick Pitch Maps",
+      true, "Free Kick Analysis",
     );
   } catch (err) {
-    console.error("Free Kick Pitch Maps page generation failed", err);
-    addCanvasPage(fallbackCanvas("Free Kick Pitch Maps"), true, "Free Kick Pitch Maps");
+    console.error("Free Kick Analysis page generation failed", err);
+    addCanvasPage(fallbackCanvas("Free Kick Analysis"), true, "Free Kick Analysis");
   }
 
   try {
