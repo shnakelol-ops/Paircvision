@@ -606,6 +606,12 @@ const RECORD_COUNTDOWN_STYLE: CSSProperties = {
   lineHeight: 1,
 };
 
+function formatRecordTime(secs: number): string {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 const RECORD_DOT_STYLE: CSSProperties = {
   position: "fixed",
   top: "max(14px, calc(env(safe-area-inset-top, 0px) + 12px))",
@@ -952,11 +958,13 @@ export default function TacticalPlaySurface() {
     recordPhase, setRecordPhase,
     recordDuration, setRecordDuration,
     recordCountdown,
+    recordElapsed,
     recordBlob,
     recordBlobUrl,
     recordHasAudio,
     recordMimeType,
     micStatus,
+    isSharing,
     canRecord,
     startCountdown,
     startCountdownWithVoice,
@@ -976,7 +984,7 @@ export default function TacticalPlaySurface() {
   useEffect(() => { setClipPreviewDuration(null); }, [recordBlob]);
   useEffect(() => {
     if (!recordBlob || !clipPreviewRef.current) return;
-    clipPreviewRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    clipPreviewRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [recordBlob]);
 
   useEffect(() => {
@@ -2042,14 +2050,20 @@ export default function TacticalPlaySurface() {
           <div style={RECORD_COUNTDOWN_STYLE}>{recordCountdown}</div>
         ) : null}
 
-        {/* Red recording dot */}
-        {recordPhase === "recording" ? (
-          <div style={RECORD_DOT_STYLE} />
-        ) : null}
-        {/* Mic active indicator — shown when voiceover is live */}
-        {recordPhase === "recording" && micStatus === "active" ? (
-          <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(28px, calc(env(safe-area-inset-right, 0px) + 26px))", zIndex: 25, fontSize: "14px", pointerEvents: "none", lineHeight: 1 }}>🎙</div>
-        ) : null}
+        {/* Recording status pill — shows REC / mic / elapsed timer */}
+        {recordPhase === "recording" ? (() => {
+          const urgent = recordElapsed >= recordDuration - 10;
+          return (
+            <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))", zIndex: 25, display: "flex", alignItems: "center", gap: "5px", background: "rgba(8, 14, 10, 0.88)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderRadius: "20px", padding: "5px 10px 5px 7px", border: `1px solid ${urgent ? "rgba(255, 180, 60, 0.40)" : "rgba(255, 48, 48, 0.32)"}`, pointerEvents: "none" }}>
+              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: urgent ? "#ffb83c" : "#ff3030", boxShadow: urgent ? "0 0 6px 1px rgba(255, 184, 60, 0.70)" : "0 0 6px 1px rgba(255, 48, 48, 0.70)", animation: "tp-rec-pulse 1.1s ease-in-out infinite", flexShrink: 0 }} />
+              <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(255, 190, 190, 0.95)", fontFamily: "Inter, system-ui, sans-serif" }}>REC</span>
+              {micStatus === "active" ? <span style={{ fontSize: "11px", lineHeight: 1 }}>🎙</span> : null}
+              <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(240, 220, 220, 0.80)", letterSpacing: "0.02em" }}>
+                {formatRecordTime(recordElapsed)} / {formatRecordTime(recordDuration)}
+              </span>
+            </div>
+          );
+        })() : null}
 
         {!isControlsOpen && !setupOpen && !isPlaying && !isPaused ? (
           <div style={HINT_PILL_STYLE}>Move players → Set Start → Draw Movements → Play</div>
@@ -3392,6 +3406,7 @@ export default function TacticalPlaySurface() {
 
             {recordPhase === "panel" ? (
               <div style={{ display: "grid", gap: "4px" }}>
+                <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.45)", fontFamily: "Inter, system-ui, sans-serif" }}>Record your tactics and explain them with your voice.</span>
                 <span style={SETUP_SECTION_LABEL_STYLE}>Duration</span>
                 <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                   {([30, 60, 90] as const).map((d) => (
@@ -3407,6 +3422,11 @@ export default function TacticalPlaySurface() {
                     </button>
                   ))}
                 </div>
+                {recordDuration >= 60 ? (
+                  <span style={{ fontSize: "7.5px", color: "rgba(180, 210, 255, 0.40)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                    Longer clips may take a few seconds to prepare before sharing.
+                  </span>
+                ) : null}
                 <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                   <button
                     type="button"
@@ -3420,7 +3440,7 @@ export default function TacticalPlaySurface() {
                     style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(180, 120, 255, 0.55)", color: "rgba(220, 190, 255, 0.95)", flex: 1 }}
                     onClick={() => { void startCountdownWithVoice(); }}
                   >
-                    🎙 + Voice
+                    🎙 Voiceover
                   </button>
                   <button
                     type="button"
@@ -3455,47 +3475,40 @@ export default function TacticalPlaySurface() {
                       const d = (e.currentTarget as HTMLVideoElement).duration;
                       if (Number.isFinite(d) && d > 0) setClipPreviewDuration(d);
                     }}
-                    style={{ width: "100%", maxHeight: "100px", borderRadius: "6px", background: "#000", display: "block" }}
+                    style={{ width: "100%", maxHeight: "80px", borderRadius: "6px", background: "#000", display: "block" }}
                   />
                 ) : null}
-                {/* Debug info strip — codec, size, duration, audio, mismatch warning */}
+                {/* Clip info strip — coach-friendly */}
                 {(() => {
-                  const mimeBase = recordMimeType.split(";")[0].trim().toLowerCase();
-                  const codecPart = recordMimeType.includes(";")
-                    ? recordMimeType.split(";")[1].replace("codecs=", "").trim()
-                    : "";
                   const hasH264 = recordMimeType.includes("avc1") || recordMimeType.toLowerCase().includes("h264");
-                  // VP9+Opus-in-MP4: generic "video/mp4" without explicit H.264 codec.
+                  const mimeBase = recordMimeType.split(";")[0].trim().toLowerCase();
                   const mismatch = mimeBase === "video/mp4" && !hasH264;
-                  const mimeLabel = `${mimeBase.replace("video/", "")}${codecPart ? ` · ${codecPart}` : ""}`;
+                  const size = recordBlob.size >= 1_048_576
+                    ? `${(recordBlob.size / 1_048_576).toFixed(1)} MB`
+                    : `${Math.round(recordBlob.size / 1024)} KB`;
+                  const durStr = clipPreviewDuration != null
+                    ? formatRecordTime(Math.round(clipPreviewDuration))
+                    : null;
                   return (
-                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", padding: "2px 1px" }}>
-                      <span style={{ fontSize: "8px", color: mismatch ? "rgba(255, 200, 100, 0.88)" : "rgba(180, 210, 255, 0.50)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                        {mimeLabel}{mismatch ? " ⚠ → .webm" : ""}
-                      </span>
-                      <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                        {recordBlob.size >= 1_048_576
-                          ? `${(recordBlob.size / 1_048_576).toFixed(1)} MB`
-                          : `${Math.round(recordBlob.size / 1024)} KB`}
-                      </span>
-                      {clipPreviewDuration != null ? (
-                        <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                          {Math.round(clipPreviewDuration)}s
-                        </span>
-                      ) : null}
-                      <span style={{ fontSize: "8px", color: recordHasAudio ? "rgba(160, 255, 160, 0.70)" : "rgba(180, 210, 255, 0.28)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                        {recordHasAudio ? "🎙 Audio" : "Silent"}
-                      </span>
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", padding: "1px 0" }}>
+                      {recordHasAudio
+                        ? <span style={{ fontSize: "9px", color: "rgba(160, 255, 160, 0.80)", fontFamily: "Inter, system-ui, sans-serif", fontWeight: 600 }}>🎙 Voice</span>
+                        : <span style={{ fontSize: "9px", color: "rgba(180, 210, 255, 0.40)", fontFamily: "Inter, system-ui, sans-serif" }}>Silent</span>}
+                      {durStr ? <span style={{ fontSize: "9px", color: "rgba(200, 225, 255, 0.65)", fontFamily: "Inter, system-ui, sans-serif" }}>Duration: {durStr}</span> : null}
+                      <span style={{ fontSize: "9px", color: "rgba(200, 225, 255, 0.65)", fontFamily: "Inter, system-ui, sans-serif" }}>Size: {size}</span>
+                      {mismatch ? <span style={{ fontSize: "7.5px", color: "rgba(255, 200, 100, 0.65)", fontFamily: "Inter, system-ui, sans-serif" }}>⚠ sharing as .webm</span> : null}
                     </div>
                   );
                 })()}
-                <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                {/* Action row — sticky so buttons stay visible when panel is tall */}
+                <div style={{ display: "flex", gap: "4px", position: "sticky", bottom: 0, background: "rgba(4, 10, 22, 0.96)", paddingTop: "4px" }}>
                   <button
                     type="button"
-                    style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)", flex: 1, justifyContent: "center" }}
+                    disabled={isSharing}
+                    style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.40)", color: isSharing ? "rgba(170, 210, 255, 0.45)" : "rgba(170, 210, 255, 0.95)", flex: 1, justifyContent: "center" }}
                     onClick={() => { void shareClip(); }}
                   >
-                    Share
+                    {isSharing ? "Preparing…" : "Share"}
                   </button>
                   <button
                     type="button"
@@ -3509,7 +3522,7 @@ export default function TacticalPlaySurface() {
                     style={{ ...PLAYS_ACTION_BTN, color: "rgba(180, 210, 255, 0.50)", flexShrink: 0 }}
                     onClick={dismissRecord}
                   >
-                    ✕
+                    Discard
                   </button>
                 </div>
               </div>

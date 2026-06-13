@@ -8,6 +8,8 @@ export type CanvasRecorderHandle = {
   recordPhase: RecordPhase;
   recordDuration: RecordDuration;
   recordCountdown: number;
+  /** Seconds elapsed since recording started. Resets to 0 when recording begins or is dismissed. */
+  recordElapsed: number;
   recordBlob: Blob | null;
   recordBlobUrl: string | null;
   recordHasAudio: boolean;
@@ -17,6 +19,8 @@ export type CanvasRecorderHandle = {
   // browser may have produced VP9+Opus in an MP4 wrapper.
   recordMimeType: string;
   micStatus: MicStatus;
+  /** True while the Web Share API call is in-flight. */
+  isSharing: boolean;
   setRecordDuration: (d: RecordDuration) => void;
   setRecordPhase: (p: RecordPhase) => void;
   canRecord: () => boolean;
@@ -44,11 +48,14 @@ export function useCanvasRecorder(params: {
   const [recordHasAudio, setRecordHasAudio] = useState(false);
   const [recordMimeType, setRecordMimeType] = useState("video/webm");
   const [micStatus, setMicStatus] = useState<MicStatus>("off");
+  const [recordElapsed, setRecordElapsed] = useState(0);
+  const [isSharing, setIsSharing] = useState(false);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordChunksRef = useRef<Blob[]>([]);
   const recordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recordCountdownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recordElapsedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordDurationRef = useRef(recordDuration);
   recordDurationRef.current = recordDuration;
   const activeAudioStreamRef = useRef<MediaStream | null>(null);
@@ -64,6 +71,13 @@ export function useCanvasRecorder(params: {
     setMicStatus("off");
   }
 
+  function clearElapsedInterval() {
+    if (recordElapsedIntervalRef.current) {
+      clearInterval(recordElapsedIntervalRef.current);
+      recordElapsedIntervalRef.current = null;
+    }
+  }
+
   function revokeBlobUrl() {
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current);
@@ -75,6 +89,7 @@ export function useCanvasRecorder(params: {
     return () => {
       if (recordCountdownRef.current) clearTimeout(recordCountdownRef.current);
       if (recordTimerRef.current) clearTimeout(recordTimerRef.current);
+      clearElapsedInterval();
       const rec = recorderRef.current;
       if (rec && rec.state !== "inactive") rec.stop();
       stopAudioTracks();
@@ -117,6 +132,7 @@ export function useCanvasRecorder(params: {
 
   const stopRecording = () => {
     if (recordTimerRef.current) { clearTimeout(recordTimerRef.current); recordTimerRef.current = null; }
+    clearElapsedInterval();
     const rec = recorderRef.current;
     if (rec && rec.state !== "inactive") rec.stop();
   };
@@ -150,6 +166,7 @@ export function useCanvasRecorder(params: {
       if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data);
     };
     recorder.onstop = () => {
+      clearElapsedInterval();
       stopAudioTracks();
       const blob = new Blob(recordChunksRef.current, { type: mimeType });
       const url = URL.createObjectURL(blob);
@@ -160,7 +177,9 @@ export function useCanvasRecorder(params: {
       setRecordPhase("done");
       paramsRef.current.onComplete?.();
     };
+    setRecordElapsed(0);
     recorder.start(200);
+    recordElapsedIntervalRef.current = setInterval(() => setRecordElapsed((e) => e + 1), 1000);
     recordTimerRef.current = setTimeout(stopRecording, recordDurationRef.current * 1000);
   };
 
@@ -202,6 +221,8 @@ export function useCanvasRecorder(params: {
 
   const dismissRecord = () => {
     if (recordCountdownRef.current) { clearTimeout(recordCountdownRef.current); recordCountdownRef.current = null; }
+    clearElapsedInterval();
+    setRecordElapsed(0);
     stopRecording();
     stopAudioTracks();
     revokeBlobUrl();
@@ -261,17 +282,20 @@ export function useCanvasRecorder(params: {
 
   const shareClip = async () => {
     if (!recordBlob) return;
+    setIsSharing(true);
     const { mimeType, ext } = resolveShareMeta(recordBlob);
     const filename = `paircvision-clip-${Date.now()}.${ext}`;
     const file = new File([recordBlob], filename, { type: mimeType });
     try {
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: "PáircVision Clip" });
+        await navigator.share({ files: [file], title: "PáircVision Coaching Clip" });
       } else {
         saveClip();
       }
     } catch {
       saveClip();
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -279,11 +303,13 @@ export function useCanvasRecorder(params: {
     recordPhase,
     recordDuration,
     recordCountdown,
+    recordElapsed,
     recordBlob,
     recordBlobUrl,
     recordHasAudio,
     recordMimeType,
     micStatus,
+    isSharing,
     setRecordDuration,
     setRecordPhase,
     canRecord,
