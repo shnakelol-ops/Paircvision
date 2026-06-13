@@ -5392,75 +5392,171 @@ const DP_P3_X    = DP_P2_X + DP_PANEL_W + 12;     // 1282
 const DP_P3_W    = CANVAS_W - DP_P3_X - 16;       // 622
 const DP_STRIP_H = CANVAS_H - DP_STRIP_Y - 14;    // 314
 
+// Mini-bar layout constants.
+const DP_BAR_OFFSET = 230;  // px from panel left edge where bar column starts
+const DP_BAR_MAX_W  = 110;  // max bar fill width in px
+const DP_BAR_H      =   8;  // bar height in px
+
+/** Builds a pill-shaped path without filling. Safari < 15.4 — no ctx.roundRect. */
+function dpRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+  const r = Math.min(h / 2, w / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arc(x + w - r, y + r, r, -Math.PI / 2, Math.PI / 2);
+  ctx.lineTo(x + r, y + h);
+  ctx.arc(x + r, y + r, r, Math.PI / 2, -Math.PI / 2);
+  ctx.closePath();
+}
+
 function dpPitchTitle(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, w: number,
   label: string, count: number, accent: string,
 ): void {
   ctx.save();
-  ctx.fillStyle = accent + "22";
+  ctx.fillStyle = accent + "1e";  // ~12% tint
   ctx.fillRect(x, y, w, DP_TITLE_H);
   ctx.fillStyle = accent;
   ctx.fillRect(x, y, 3, DP_TITLE_H);
   ctx.font = "bold 13px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.fillText(label.toUpperCase(), x + 10, y + DP_TITLE_H / 2);
-  ctx.fillStyle = "#64748b";
+  ctx.fillText(label.toUpperCase(), x + 12, y + DP_TITLE_H / 2);
+  ctx.fillStyle = "#475569";
   ctx.font = "12px sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText(String(count), x + w - 8, y + DP_TITLE_H / 2);
+  ctx.fillText(`${count} events`, x + w - 10, y + DP_TITLE_H / 2);
   ctx.restore();
 }
 
+/**
+ * Draws a panel card background with subtle border, left accent bar, and title.
+ * Returns the y coordinate where content should start.
+ */
 function dpPanelStart(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, w: number, h: number,
   title: string, accent: string,
 ): number {
   ctx.save();
+
+  // Card background
   ctx.fillStyle = "rgba(255,255,255,0.022)";
   ctx.fillRect(x, y, w, h);
+
+  // Subtle perimeter border
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+
+  // Left accent bar
   ctx.fillStyle = accent;
   ctx.fillRect(x, y, 3, h);
-  ctx.fillStyle = accent;
-  ctx.font = "bold 12px sans-serif";
+
+  // Panel title — brighter than stat labels to anchor the eye
+  ctx.fillStyle = "#f1f5f9";
+  ctx.font = "bold 13px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.fillText(title.toUpperCase(), x + 12, y + 14);
-  ctx.strokeStyle = "rgba(255,255,255,0.06)";
+  ctx.fillText(title.toUpperCase(), x + 14, y + 16);
+
+  // Title separator
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(x + 3, y + 26);
-  ctx.lineTo(x + w, y + 26);
+  ctx.moveTo(x + 3, y + 30);
+  ctx.lineTo(x + w, y + 30);
   ctx.stroke();
+
   ctx.restore();
-  return y + 28;
+  return y + 34;
 }
 
+/** Standard key-value stat row (ROW_H = 26). */
 function dpStatRow(
   ctx: CanvasRenderingContext2D,
   x: number, cy: number, w: number,
   label: string, value: string, valueColor: string, isAlt: boolean,
 ): number {
-  const ROW_H = 23;
+  const ROW_H = 26;
   if (isAlt) {
     ctx.fillStyle = "rgba(255,255,255,0.025)";
     ctx.fillRect(x + 3, cy, w - 3, ROW_H);
   }
   const mid = cy + ROW_H / 2;
-  ctx.fillStyle = "#94a3b8";
-  ctx.font = "12px sans-serif";
+  ctx.fillStyle = "#64748b";
+  ctx.font = "11px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(label, x + 10, mid);
   ctx.fillStyle = valueColor;
-  ctx.font = "bold 12px sans-serif";
+  ctx.font = "bold 13px sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(value, x + w - 8, mid);
   return cy + ROW_H;
 }
 
+/**
+ * Mini-bar row: label | rounded bar indicator | bold value.
+ *
+ * fraction ∈ [0,1] — controls how much of DP_BAR_MAX_W is filled.
+ * Numbers remain visible right-aligned; the bar is a visual indicator only.
+ * Minimum fill = one rounded cap (DP_BAR_H px) when fraction > 0.
+ */
+function dpMiniBarRow(
+  ctx: CanvasRenderingContext2D,
+  x: number, cy: number, w: number,
+  label: string, value: string,
+  fraction: number,
+  barColor: string, valueColor: string,
+  isAlt: boolean,
+): number {
+  const ROW_H = 26;
+  if (isAlt) {
+    ctx.fillStyle = "rgba(255,255,255,0.025)";
+    ctx.fillRect(x + 3, cy, w - 3, ROW_H);
+  }
+  const mid  = cy + ROW_H / 2;
+  const barX = x + DP_BAR_OFFSET;
+  const barY = mid - DP_BAR_H / 2;
+  const clampedFrac = Math.min(Math.max(fraction, 0), 1);
+  const fillW = clampedFrac > 0
+    ? Math.max(DP_BAR_H, Math.floor(clampedFrac * DP_BAR_MAX_W))
+    : 0;
+
+  ctx.save();
+
+  // Label
+  ctx.fillStyle = "#64748b";
+  ctx.font = "11px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(label, x + 10, mid);
+
+  // Bar track
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  dpRoundedRect(ctx, barX, barY, DP_BAR_MAX_W, DP_BAR_H);
+  ctx.fill();
+
+  // Bar fill
+  if (fillW >= DP_BAR_H) {
+    ctx.fillStyle = barColor + "99";  // ~60% opacity
+    dpRoundedRect(ctx, barX, barY, fillW, DP_BAR_H);
+    ctx.fill();
+  }
+
+  // Value — right-aligned, bold
+  ctx.fillStyle = valueColor;
+  ctx.font = "bold 13px sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(value, x + w - 8, mid);
+
+  ctx.restore();
+  return cy + ROW_H;
+}
+
+/** Sub-section header row (height = 20). */
 function dpSubHeader(
   ctx: CanvasRenderingContext2D,
   x: number, cy: number, w: number,
@@ -5468,16 +5564,22 @@ function dpSubHeader(
 ): number {
   ctx.save();
   ctx.fillStyle = "rgba(255,255,255,0.04)";
-  ctx.fillRect(x + 3, cy, w - 3, 18);
+  ctx.fillRect(x + 3, cy, w - 3, 20);
   ctx.fillStyle = accent;
-  ctx.font = "bold 9px sans-serif";
+  ctx.fillRect(x + 3, cy, 2, 20);
+  ctx.fillStyle = accent + "cc";
+  ctx.font = "bold 10px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
-  ctx.fillText(label, x + 10, cy + 9);
+  ctx.fillText(label, x + 12, cy + 10);
   ctx.restore();
-  return cy + 18;
+  return cy + 20;
 }
 
+/**
+ * Full-width two-team possession bar with rounded caps and percentage labels.
+ * Returns the next y coordinate.
+ */
 function dpPossessionBar(
   ctx: CanvasRenderingContext2D,
   x: number, cy: number, w: number,
@@ -5485,42 +5587,60 @@ function dpPossessionBar(
   forLabel: string, oppLabel: string,
   forAccent: string, oppAccent: string,
 ): number {
-  const barH    = 12;
-  const barX    = x + 10;
-  const barW    = w - 20;
+  const BAR_H   = 14;
+  const barX    = x + 12;
+  const barW    = w - 24;
   const total   = forCount + oppCount;
   const forFrac = total > 0 ? forCount / total : 0.5;
+
   ctx.save();
+
+  // Track — full bar width, rounded
   ctx.fillStyle = "rgba(255,255,255,0.06)";
-  ctx.fillRect(barX, cy, barW, barH);
+  dpRoundedRect(ctx, barX, cy, barW, BAR_H);
+  ctx.fill();
+
   if (total > 0) {
+    const forW = Math.max(BAR_H, Math.floor(barW * forFrac));
+    const oppW = Math.max(BAR_H, barW - forW);
+
+    // FOR segment (left, rounded pill)
     ctx.fillStyle = forAccent;
-    ctx.fillRect(barX, cy, Math.max(4, Math.floor(barW * forFrac)), barH);
+    dpRoundedRect(ctx, barX, cy, forW, BAR_H);
+    ctx.fill();
+
+    // OPP segment (right, rounded pill)
     if (forFrac < 1) {
-      const oppW = Math.max(4, barW - Math.floor(barW * forFrac));
       ctx.fillStyle = oppAccent;
-      ctx.fillRect(barX + barW - oppW, cy, oppW, barH);
+      dpRoundedRect(ctx, barX + barW - oppW, cy, oppW, BAR_H);
+      ctx.fill();
     }
-    const labelY = cy + barH + 11;
+
+    const labelY = cy + BAR_H + 12;
     ctx.font = "10px sans-serif";
     ctx.textBaseline = "middle";
     ctx.fillStyle = forAccent;
     ctx.textAlign = "left";
-    ctx.fillText(`${forLabel} ${Math.round(forFrac * 100)}%`, barX, labelY);
+    ctx.fillText(`${forLabel}  ${Math.round(forFrac * 100)}%`, barX, labelY);
     ctx.fillStyle = oppAccent;
     ctx.textAlign = "right";
-    ctx.fillText(`${Math.round((1 - forFrac) * 100)}% ${oppLabel}`, barX + barW, labelY);
+    ctx.fillText(`${Math.round((1 - forFrac) * 100)}%  ${oppLabel}`, barX + barW, labelY);
   } else {
     ctx.fillStyle = "#475569";
     ctx.font = "10px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
-    ctx.fillText("No data", barX + barW / 2, cy + barH / 2);
+    ctx.fillText("No data", barX + barW / 2, cy + BAR_H / 2);
   }
+
   ctx.restore();
-  return cy + barH + 22;
+  return cy + BAR_H + 24;
 }
 
+/**
+ * Renders coaching prompts (filtered by category) as a compact intelligence list.
+ * Each item: 3px accent bar | wrapped text (2 lines max) | evidence tag.
+ */
 function dpIntelligencePanel(
   ctx: CanvasRenderingContext2D,
   prompts: readonly ReviewPrompt[],
@@ -5532,7 +5652,7 @@ function dpIntelligencePanel(
 
   if (filtered.length === 0) {
     ctx.save();
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#334155";
     ctx.font = "11px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -5541,22 +5661,22 @@ function dpIntelligencePanel(
     return;
   }
 
-  let cy      = startY + 4;
-  const MAX_W = w - 20;
-  const LINE_H = 15;
-  const ITEM_H = 46;
+  let cy      = startY + 6;
+  const MAX_W = w - 22;
+  const LINE_H = 16;
+  const ITEM_H = 52;
 
   ctx.save();
 
   for (const prompt of filtered) {
     if (cy + ITEM_H > maxY - 4) break;
 
-    ctx.fillStyle = accent + "bb";
-    ctx.fillRect(x + 6, cy + 2, 2, ITEM_H - 8);
+    // Left accent bar
+    ctx.fillStyle = accent + "cc";
+    ctx.fillRect(x + 7, cy + 4, 3, ITEM_H - 12);
 
-    ctx.font = "11px sans-serif";
-
-    // Word-wrap across up to 2 lines.
+    // Word-wrap up to 2 lines
+    ctx.font = "12px sans-serif";
     let line1 = "";
     let line2 = "";
     for (const word of prompt.text.split(" ")) {
@@ -5578,23 +5698,24 @@ function dpIntelligencePanel(
       }
     }
 
-    ctx.fillStyle = "#cbd5e1";
+    ctx.fillStyle = "#e2e8f0";
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
-    ctx.fillText(line1, x + 13, cy + 2);
+    ctx.fillText(line1, x + 15, cy + 4);
 
     if (line2) {
       ctx.fillStyle = "#94a3b8";
-      ctx.fillText(line2, x + 13, cy + 2 + LINE_H);
+      ctx.font = "11px sans-serif";
+      ctx.fillText(line2, x + 15, cy + 4 + LINE_H);
     }
 
     ctx.font = "9px sans-serif";
-    ctx.fillStyle = "#334155";
+    ctx.fillStyle = "#475569";
     ctx.textAlign = "right";
     ctx.textBaseline = "alphabetic";
-    ctx.fillText(prompt.evidenceTag, x + w - 8, cy + ITEM_H - 6);
+    ctx.fillText(prompt.evidenceTag, x + w - 10, cy + ITEM_H - 6);
 
-    cy += ITEM_H + 2;
+    cy += ITEM_H + 4;
   }
 
   ctx.restore();
@@ -5697,17 +5818,17 @@ function makeRestartVisualPage(
       homeTeam.slice(0, 10), awayTeam.slice(0, 10),
       "#22d3ee", "#fb7185",
     );
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Won`, `${ko.won} (${pct(ko.won, totalKO)})`,  "#22d3ee", false);
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Won`, `${ko.lost} (${pct(ko.lost, totalKO)})`, "#fb7185", true);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Won`, `${ko.won} (${pct(ko.won, totalKO)})`,  totalKO > 0 ? ko.won  / totalKO : 0, "#22d3ee", "#22d3ee", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Won`, `${ko.lost} (${pct(ko.lost, totalKO)})`, totalKO > 0 ? ko.lost / totalKO : 0, "#fb7185", "#fb7185", true);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "BY HALF", "#22d3ee");
     cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "H1 — Won / Lost", `${h1For} / ${h1Opp}`, "#e2e8f0", false);
     cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "H2 — Won / Lost", `${h2For} / ${h2Opp}`, "#e2e8f0", true);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "HOW WON", "#22d3ee");
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Clean Won", String(countKoTag("CLEAN")),    "#4ade80", false);
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Break Won", String(countKoTag("BREAK")),    "#e2e8f0", true);
-        dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Foul Won",  String(countKoTag("FOUL_WON")), "#fbbf24", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Clean Won", String(countKoTag("CLEAN")),    ko.won > 0 ? countKoTag("CLEAN")    / ko.won : 0, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Break Won", String(countKoTag("BREAK")),    ko.won > 0 ? countKoTag("BREAK")    / ko.won : 0, "#e2e8f0", "#e2e8f0", true);
+        dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Foul Won",  String(countKoTag("FOUL_WON")), ko.won > 0 ? countKoTag("FOUL_WON") / ko.won : 0, "#fbbf24", "#fbbf24", false);
   }
 
   // ── Panel 2: Chain Outcomes ───────────────────────────────────────────────
@@ -5715,13 +5836,13 @@ function makeRestartVisualPage(
     let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Chain Outcomes", "#fbbf24");
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} WON POSSESSION`, "#22d3ee");
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(forScoredFromKo, forWonTotal), "#4ade80", false);
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(forShotFromKo,   forWonTotal), "#7dd3fc", true);
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → No shot",      String(Math.max(0, forWonTotal - forShotFromKo)), "#f97316", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(forScoredFromKo, forWonTotal), forWonTotal > 0 ? forScoredFromKo / forWonTotal : 0, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(forShotFromKo,   forWonTotal), forWonTotal > 0 ? forShotFromKo   / forWonTotal : 0, "#7dd3fc", "#7dd3fc", true);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → No shot",      String(Math.max(0, forWonTotal - forShotFromKo)), forWonTotal > 0 ? Math.max(0, forWonTotal - forShotFromKo) / forWonTotal : 0, "#f97316", "#f97316", false);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} WON POSSESSION`, "#fb7185");
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against", withPct(oppScoredFromKo, oppWonTotal), "#f97316", false);
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → No score",      String(Math.max(0, oppWonTotal - oppScoredFromKo)), "#94a3b8", true);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against", withPct(oppScoredFromKo, oppWonTotal), oppWonTotal > 0 ? oppScoredFromKo / oppWonTotal : 0, "#f97316", "#f97316", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → No score",      String(Math.max(0, oppWonTotal - oppScoredFromKo)), oppWonTotal > 0 ? Math.max(0, oppWonTotal - oppScoredFromKo) / oppWonTotal : 0, "#94a3b8", "#94a3b8", true);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "OVERALL", "#fbbf24");
     cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Retention %", pct(ko.won, totalKO), "#22d3ee", false);
@@ -5842,15 +5963,16 @@ function makeTurnoverVisualPage(
       homeTeam.slice(0, 10), awayTeam.slice(0, 10),
       "#a78bfa", "#fb7185",
     );
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Won`, String(forWonTotal), "#a78bfa", false);
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Won`, String(oppWonTotal), "#fb7185", true);
+    const totalTO = forWonTotal + oppWonTotal;
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Won`, String(forWonTotal), totalTO > 0 ? forWonTotal / totalTO : 0, "#a78bfa", "#a78bfa", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Won`, String(oppWonTotal), totalTO > 0 ? oppWonTotal / totalTO : 0, "#fb7185", "#fb7185", true);
     cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Net Turnover", netStr, netColor, false);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "HOW WON", "#a78bfa");
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Tackle / Press",    String(tagTackle),  "#22d3ee", false);
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Swarm / Intercept", String(tagSwarm),   "#22d3ee", true);
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Unforced error",    String(tagUnforce), "#fbbf24", false);
-        dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Slack pass",        String(tagSlack),   "#fbbf24", true);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Tackle / Press",    String(tagTackle),  forWonTotal > 0 ? tagTackle  / forWonTotal : 0, "#22d3ee", "#22d3ee", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Swarm / Intercept", String(tagSwarm),   forWonTotal > 0 ? tagSwarm   / forWonTotal : 0, "#22d3ee", "#22d3ee", true);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Unforced error",    String(tagUnforce), forWonTotal > 0 ? tagUnforce / forWonTotal : 0, "#fbbf24", "#fbbf24", false);
+        dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Slack pass",        String(tagSlack),   forWonTotal > 0 ? tagSlack   / forWonTotal : 0, "#fbbf24", "#fbbf24", true);
   }
 
   // ── Panel 2: Consequences ─────────────────────────────────────────────────
@@ -5858,17 +5980,17 @@ function makeTurnoverVisualPage(
     let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Consequences", "#fbbf24");
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} ATTACKED`, "#a78bfa");
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(forWonToScore, forWonTotal), "#4ade80", false);
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(forWonToShot,  forWonTotal), "#7dd3fc", true);
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → No shot",      String(Math.max(0, forWonTotal - forWonToShot)), "#f97316", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(forWonToScore, forWonTotal), forWonTotal > 0 ? forWonToScore / forWonTotal : 0, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(forWonToShot,  forWonTotal), forWonTotal > 0 ? forWonToShot  / forWonTotal : 0, "#7dd3fc", "#7dd3fc", true);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → No shot",      String(Math.max(0, forWonTotal - forWonToShot)), forWonTotal > 0 ? Math.max(0, forWonTotal - forWonToShot) / forWonTotal : 0, "#f97316", "#f97316", false);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "DAMAGE CONCEDED", "#f97316");
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against", withPct(forLostToOppScore, forLostTotal), "#f97316", false);
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Shot against",  withPct(forLostToOppShot,  forLostTotal), "#fbbf24", true);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against", withPct(forLostToOppScore, forLostTotal), forLostTotal > 0 ? forLostToOppScore / forLostTotal : 0, "#f97316", "#f97316", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Shot against",  withPct(forLostToOppShot,  forLostTotal), forLostTotal > 0 ? forLostToOppShot  / forLostTotal : 0, "#fbbf24", "#fbbf24", true);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} ATTACKED`, "#fb7185");
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(oppWonToScore, oppWonTotal), "#fb7185", false);
-        dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(oppWonToShot,  oppWonTotal), "#fbbf24", true);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(oppWonToScore, oppWonTotal), oppWonTotal > 0 ? oppWonToScore / oppWonTotal : 0, "#fb7185", "#fb7185", false);
+        dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(oppWonToShot,  oppWonTotal), oppWonTotal > 0 ? oppWonToShot  / oppWonTotal : 0, "#fbbf24", "#fbbf24", true);
   }
 
   // ── Panel 3: Turnover Intelligence ───────────────────────────────────────
@@ -5971,13 +6093,14 @@ function makeFreeAnalysisPage(
       homeTeam.slice(0, 10), awayTeam.slice(0, 10),
       "#818cf8", "#f472b6",
     );
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Frees Won`,  String(forFreesWon), "#818cf8", false);
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Frees Won`,  String(oppFreesWon), "#f472b6", true);
+    const totalFreesWon = forFreesWon + oppFreesWon;
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Frees Won`, String(forFreesWon), totalFreesWon > 0 ? forFreesWon / totalFreesWon : 0, "#818cf8", "#818cf8", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Frees Won`, String(oppFreesWon), totalFreesWon > 0 ? oppFreesWon / totalFreesWon : 0, "#f472b6", "#f472b6", true);
     cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Advantage", netStr, netColor, false);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} ATTEMPTS`, "#818cf8");
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Free Scored",  String(forFreeScored),  "#4ade80", false);
-    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Free Missed",  String(forFreeMissed),  "#94a3b8", true);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Free Scored", String(forFreeScored), forFreeAttempts > 0 ? forFreeScored / forFreeAttempts : 0, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Free Missed", String(forFreeMissed), forFreeAttempts > 0 ? forFreeMissed / forFreeAttempts : 0, "#94a3b8", "#94a3b8", true);
         dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Conversion",   forConv, "#818cf8", false);
   }
 
@@ -5986,18 +6109,18 @@ function makeFreeAnalysisPage(
     let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Free Outcomes", "#fbbf24");
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "CONVERSION COMPARISON", "#fbbf24");
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Conversion`, forConv, "#818cf8", false);
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Conversion`, oppConv, "#f472b6", true);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Conversion`, forConv, forFreeAttempts > 0 ? forFreeScored / forFreeAttempts : 0, "#818cf8", "#818cf8", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Conversion`, oppConv, oppFreeAttempts > 0 ? oppFreeScored / oppFreeAttempts : 0, "#f472b6", "#f472b6", true);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} ATTEMPTS`, "#f472b6");
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Free Scored", String(oppFreeScored), "#f472b6", false);
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Free Missed", String(oppFreeMissed), "#94a3b8", true);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Free Scored", String(oppFreeScored), oppFreeAttempts > 0 ? oppFreeScored / oppFreeAttempts : 0, "#f472b6", "#f472b6", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Free Missed", String(oppFreeMissed), oppFreeAttempts > 0 ? oppFreeMissed / oppFreeAttempts : 0, "#94a3b8", "#94a3b8", true);
     cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Conversion",  oppConv, "#f472b6", false);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "ALL FREES COMBINED", "#94a3b8");
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Total scored",   String(totalScored),              "#4ade80", false);
-    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Total missed",   String(totalAttempts - totalScored), "#94a3b8", true);
-        dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Overall conv.",  pct(totalScored, totalAttempts),  "#e2e8f0", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Total scored", String(totalScored),                 totalAttempts > 0 ? totalScored                 / totalAttempts : 0, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Total missed", String(totalAttempts - totalScored), totalAttempts > 0 ? (totalAttempts - totalScored) / totalAttempts : 0, "#94a3b8", "#94a3b8", true);
+        dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Overall conv.", pct(totalScored, totalAttempts), "#e2e8f0", false);
   }
 
   // ── Panel 3: Free Intelligence ────────────────────────────────────────────
