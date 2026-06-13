@@ -953,15 +953,31 @@ export default function TacticalPlaySurface() {
     recordDuration, setRecordDuration,
     recordCountdown,
     recordBlob,
+    recordBlobUrl,
+    recordHasAudio,
+    recordMimeType,
+    micStatus,
     canRecord,
     startCountdown,
+    startCountdownWithVoice,
     dismissRecord,
+    saveClip,
     shareClip,
   } = useCanvasRecorder({
     getCanvas: () => shellRef.current?.getCanvas() ?? null,
     onBeforeCountdown: () => setPlaysOpen(false),
     onComplete: () => setPlaysOpen(true),
   });
+
+  // Ref used to scroll the done-state preview into view inside the plays panel.
+  const clipPreviewRef = useRef<HTMLDivElement>(null);
+  // Duration populated by the preview video's onLoadedMetadata event.
+  const [clipPreviewDuration, setClipPreviewDuration] = useState<number | null>(null);
+  useEffect(() => { setClipPreviewDuration(null); }, [recordBlob]);
+  useEffect(() => {
+    if (!recordBlob || !clipPreviewRef.current) return;
+    clipPreviewRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [recordBlob]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2029,6 +2045,10 @@ export default function TacticalPlaySurface() {
         {/* Red recording dot */}
         {recordPhase === "recording" ? (
           <div style={RECORD_DOT_STYLE} />
+        ) : null}
+        {/* Mic active indicator — shown when voiceover is live */}
+        {recordPhase === "recording" && micStatus === "active" ? (
+          <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(28px, calc(env(safe-area-inset-right, 0px) + 26px))", zIndex: 25, fontSize: "14px", pointerEvents: "none", lineHeight: 1 }}>🎙</div>
         ) : null}
 
         {!isControlsOpen && !setupOpen && !isPlaying && !isPaused ? (
@@ -3374,7 +3394,7 @@ export default function TacticalPlaySurface() {
               <div style={{ display: "grid", gap: "4px" }}>
                 <span style={SETUP_SECTION_LABEL_STYLE}>Duration</span>
                 <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                  {([10, 20, 30] as const).map((d) => (
+                  {([30, 60, 90] as const).map((d) => (
                     <button
                       key={d}
                       type="button"
@@ -3386,12 +3406,21 @@ export default function TacticalPlaySurface() {
                       {d}s
                     </button>
                   ))}
+                </div>
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                   <button
                     type="button"
                     style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(255, 80, 80, 0.50)", color: "rgba(255, 190, 190, 0.95)", flex: 1 }}
                     onClick={startCountdown}
                   >
-                    Start Recording
+                    Record Clip
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(180, 120, 255, 0.55)", color: "rgba(220, 190, 255, 0.95)", flex: 1 }}
+                    onClick={() => { void startCountdownWithVoice(); }}
+                  >
+                    🎙 + Voice
                   </button>
                   <button
                     type="button"
@@ -3401,17 +3430,89 @@ export default function TacticalPlaySurface() {
                     ✕
                   </button>
                 </div>
+                {micStatus === "denied" ? (
+                  <span style={{ fontSize: "8px", color: "rgba(255, 180, 100, 0.85)", fontFamily: "Inter, system-ui, sans-serif", padding: "1px 0" }}>
+                    Mic access denied — recording silently
+                  </span>
+                ) : null}
+                {micStatus === "unavailable" ? (
+                  <span style={{ fontSize: "8px", color: "rgba(255, 180, 100, 0.85)", fontFamily: "Inter, system-ui, sans-serif", padding: "1px 0" }}>
+                    Microphone not available — recording silently
+                  </span>
+                ) : null}
               </div>
             ) : null}
 
             {recordBlob ? (
-              <button
-                type="button"
-                style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)", width: "100%", justifyContent: "center", height: "30px" }}
-                onClick={() => { void shareClip(); }}
-              >
-                Share Last Clip
-              </button>
+              <div ref={clipPreviewRef} style={{ display: "grid", gap: "4px" }}>
+                {recordBlobUrl ? (
+                  <video
+                    key={recordBlobUrl}
+                    src={recordBlobUrl}
+                    controls
+                    playsInline
+                    onLoadedMetadata={(e) => {
+                      const d = (e.currentTarget as HTMLVideoElement).duration;
+                      if (Number.isFinite(d) && d > 0) setClipPreviewDuration(d);
+                    }}
+                    style={{ width: "100%", maxHeight: "100px", borderRadius: "6px", background: "#000", display: "block" }}
+                  />
+                ) : null}
+                {/* Debug info strip — codec, size, duration, audio, mismatch warning */}
+                {(() => {
+                  const mimeBase = recordMimeType.split(";")[0].trim().toLowerCase();
+                  const codecPart = recordMimeType.includes(";")
+                    ? recordMimeType.split(";")[1].replace("codecs=", "").trim()
+                    : "";
+                  const hasH264 = recordMimeType.includes("avc1") || recordMimeType.toLowerCase().includes("h264");
+                  // VP9+Opus-in-MP4: generic "video/mp4" without explicit H.264 codec.
+                  const mismatch = mimeBase === "video/mp4" && !hasH264;
+                  const mimeLabel = `${mimeBase.replace("video/", "")}${codecPart ? ` · ${codecPart}` : ""}`;
+                  return (
+                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", padding: "2px 1px" }}>
+                      <span style={{ fontSize: "8px", color: mismatch ? "rgba(255, 200, 100, 0.88)" : "rgba(180, 210, 255, 0.50)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                        {mimeLabel}{mismatch ? " ⚠ → .webm" : ""}
+                      </span>
+                      <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                        {recordBlob.size >= 1_048_576
+                          ? `${(recordBlob.size / 1_048_576).toFixed(1)} MB`
+                          : `${Math.round(recordBlob.size / 1024)} KB`}
+                      </span>
+                      {clipPreviewDuration != null ? (
+                        <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                          {Math.round(clipPreviewDuration)}s
+                        </span>
+                      ) : null}
+                      <span style={{ fontSize: "8px", color: recordHasAudio ? "rgba(160, 255, 160, 0.70)" : "rgba(180, 210, 255, 0.28)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                        {recordHasAudio ? "🎙 Audio" : "Silent"}
+                      </span>
+                    </div>
+                  );
+                })()}
+                <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.40)", color: "rgba(170, 210, 255, 0.95)", flex: 1, justifyContent: "center" }}
+                    onClick={() => { void shareClip(); }}
+                  >
+                    Share
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.25)", color: "rgba(150, 195, 255, 0.80)", flex: 1, justifyContent: "center" }}
+                    onClick={saveClip}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    style={{ ...PLAYS_ACTION_BTN, color: "rgba(180, 210, 255, 0.50)", flexShrink: 0 }}
+                    onClick={dismissRecord}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
             ) : null}
 
             {/* ── Templates placeholder ── */}
