@@ -194,20 +194,20 @@ function selectPdfEvents(
 // ─── Event colours (matches PáircVision CSS palette) ─────────────────────────
 
 const EVENT_COLORS: Record<MatchEventKind, string> = {
-  GOAL:                 "#ef4444",
-  POINT:                "#4ade80",
-  TWO_POINTER:          "#60a5fa",
-  FORTY_FIVE_TWO_POINT: "#7dd3fc",
-  WIDE:                 "#6b7280",
-  SHOT:                 "#fbbf24",
-  FREE_MISSED:          "#94a3b8",
-  FREE_SCORED:          "#34d399",
-  TURNOVER_WON:         "#a78bfa",
-  TURNOVER_LOST:        "#f97316",
-  KICKOUT_WON:          "#22d3ee",
-  KICKOUT_CONCEDED:     "#fb7185",
-  FREE_WON:             "#818cf8",
-  FREE_CONCEDED:        "#f472b6",
+  GOAL:                 "#16a34a",  // Dark green circle
+  POINT:                "#4ade80",  // Light green circle
+  TWO_POINTER:          "#fbbf24",  // Gold circle
+  FORTY_FIVE_TWO_POINT: "#fbbf24",  // Gold circle (same as 2pt)
+  WIDE:                 "#ef4444",  // Red
+  SHOT:                 "#94a3b8",  // Grey (saved/blocked = neutral)
+  FREE_MISSED:          "#ef4444",  // Red (miss = wide)
+  FREE_SCORED:          "#4ade80",  // Light green (score = point)
+  TURNOVER_WON:         "#a78bfa",  // Purple
+  TURNOVER_LOST:        "#f97316",  // Orange
+  KICKOUT_WON:          "#22d3ee",  // Cyan
+  KICKOUT_CONCEDED:     "#fb7185",  // Pink
+  FREE_WON:             "#818cf8",  // Indigo
+  FREE_CONCEDED:        "#f472b6",  // Pink
 };
 
 
@@ -733,8 +733,8 @@ function drawSummaryStatsTable(
         rows: [
           { label: "Frees Won",      value: String(st.freesWon) },
           { label: "Frees Conceded", value: String(st.freesCon) },
-          { label: "Free Scored",    value: String(st.freeScored) },
-          { label: "Free Missed",    value: String(st.freeMissed) },
+          { label: "Placed Scored",  value: String(st.freeScored) },
+          { label: "Placed Missed",  value: String(st.freeMissed) },
         ],
       },
     ];
@@ -807,7 +807,7 @@ function drawSummaryStatsTable(
 
   // "v" label centred in the gap between the two blocks
   ctx.save();
-  ctx.fillStyle = "#334155";
+  ctx.fillStyle = "#64748b";
   ctx.font = "bold 20px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
@@ -889,7 +889,7 @@ function makeSummaryPage(
 
   // "v" centred between the two team columns
   ctx.font = "bold 38px sans-serif";
-  ctx.fillStyle = "#334155";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("v", Math.round(CANVAS_W / 2), 158);
 
   // Gradient accent divider that separates the scoreline from the stat blocks
@@ -911,7 +911,7 @@ function makeSummaryPage(
 
   // ── Footer ────────────────────────────────────────────────────────────────────
   ctx.save();
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.font = "15px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "right";
@@ -1066,7 +1066,7 @@ function makeSegmentsPage(
     ctx.fillText(awayTeam.toUpperCase(), oppX + teamW / 2, hdr1Y + hdr1H / 2);
 
     // Segment column label
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "bold 12px sans-serif";
     ctx.textAlign = "left";
     ctx.fillText("SEGMENT", tL + 10, hdr1Y + hdr1H / 2);
@@ -1299,9 +1299,9 @@ function calcPlayerPageCount(events: readonly PdfExportEvent[]): number {
   const players = collectPlayerStats(events);
   if (players.length === 0) return 1; // "no data" page
 
-  const HDR_H = 44;   // table column header
-  const SEC_H = 30;   // team section banner
-  const ROW_H = 40;   // player data row
+  const HDR_H = 54;   // table column header
+  const SEC_H = 36;   // team section banner
+  const ROW_H = 58;   // player data row
   const BREAK_LIMIT = CANVAS_H - 28; // 1052
 
   let pages = 1;
@@ -1346,17 +1346,17 @@ function makePlayerPages(
 
   // ── Table geometry — 13 columns; Net T/O added; centered on 1920px canvas ────
   // #(65) Name(230) Score(150) Shots(100) Wides(75) T/O Won(100) T/O Lost(100)
-  // Net T/O(80) K/O Won(100) K/O Lost(100) F Won(90) F Con(90) Actions(100)
+  // Net T/O(80) K/O Won(100) K/O Lost(100) Frees Won(90) Frees Con(90) Actions(100)
   const colWs   = [65, 230, 150, 100, 75, 100, 100, 80, 100, 100, 90, 90, 100];
   const colHdrs = ["#", "Name", "Score", "Shots", "Wides",
                    "T/O Won", "T/O Lost", "Net T/O",
-                   "Kickout Won", "Kickout Lost", "F Won", "F Con", "Actions"];
+                   "Kickout Won", "Kickout Lost", "Frees Won", "Frees Con", "Actions"];
   const tableW  = colWs.reduce((a, b) => a + b, 0); // 1380
   const tL      = Math.round((CANVAS_W - tableW) / 2); // centered
 
-  const HDR_H      = 44;
-  const SEC_H      = 30;
-  const ROW_H      = 40;
+  const HDR_H       = 54;
+  const SEC_H       = 36;
+  const ROW_H       = 58;
   const BREAK_LIMIT = CANVAS_H - 28; // 1052
 
   const colX: number[] = [];
@@ -1365,16 +1365,15 @@ function makePlayerPages(
 
   const results: HTMLCanvasElement[] = [];
   let pageIdx = 0;
-  // These are reassigned on each new page — declared here for closure access.
   let activeCanvas = document.createElement("canvas");
   let activeCtx    = activeCanvas.getContext("2d")!;
   let ry           = 0;
 
   function startNewCanvas(): void {
-    activeCanvas         = document.createElement("canvas");
-    activeCanvas.width   = CANVAS_W;
-    activeCanvas.height  = CANVAS_H;
-    activeCtx            = activeCanvas.getContext("2d")!;
+    activeCanvas        = document.createElement("canvas");
+    activeCanvas.width  = CANVAS_W;
+    activeCanvas.height = CANVAS_H;
+    activeCtx           = activeCanvas.getContext("2d")!;
     fillDarkBg(activeCtx);
     drawTopAccentBar(activeCtx);
     drawPageHeader(activeCtx, "Player Breakdown",
@@ -1382,40 +1381,55 @@ function makePlayerPages(
 
     // Table column header row
     ry = 82;
-    activeCtx.fillStyle = "rgba(255,255,255,0.06)";
+    activeCtx.fillStyle = "rgba(255,255,255,0.07)";
     activeCtx.fillRect(tL, ry, tableW, HDR_H);
     activeCtx.fillStyle = "#7dd3fc";
     activeCtx.fillRect(tL, ry, 4, HDR_H);
     const midHdr = ry + HDR_H / 2;
     colHdrs.forEach((hdr, i) => {
-      activeCtx.fillStyle    = "#64748b";
-      activeCtx.font         = "bold 12px sans-serif";
+      activeCtx.fillStyle    = "#94a3b8";
+      activeCtx.font         = "bold 13px sans-serif";
       activeCtx.textBaseline = "middle";
       activeCtx.textAlign    = i <= 1 ? "left" : "center";
       activeCtx.fillText(hdr, i <= 1 ? colX[i] + 8 : colX[i] + colWs[i] / 2, midHdr);
     });
+    // Bottom separator
+    activeCtx.strokeStyle = "rgba(255,255,255,0.08)";
+    activeCtx.lineWidth   = 1;
+    activeCtx.beginPath();
+    activeCtx.moveTo(tL + 4, ry + HDR_H);
+    activeCtx.lineTo(tL + tableW, ry + HDR_H);
+    activeCtx.stroke();
     ry += HDR_H;
   }
 
   function drawSecBanner(teamSide: "FOR" | "OPP"): void {
     const sAccent = teamSide === "FOR" ? "#7dd3fc" : "#fb7185";
-    const sBg     = teamSide === "FOR" ? "rgba(125,211,252,0.08)" : "rgba(251,113,133,0.08)";
+    const sBg     = teamSide === "FOR" ? "rgba(125,211,252,0.10)" : "rgba(251,113,133,0.10)";
     const sLabel  = teamSide === "FOR" ? homeTeam.toUpperCase() : awayTeam.toUpperCase();
     activeCtx.fillStyle = sBg;
     activeCtx.fillRect(tL, ry, tableW, SEC_H);
     activeCtx.fillStyle = sAccent;
     activeCtx.fillRect(tL, ry, 4, SEC_H);
-    activeCtx.font         = "bold 13px sans-serif";
+    activeCtx.font         = "bold 14px sans-serif";
+    activeCtx.fillStyle    = "#f1f5f9";
     activeCtx.textBaseline = "middle";
     activeCtx.textAlign    = "left";
     activeCtx.fillText(sLabel, tL + 12, ry + SEC_H / 2);
+    // Bottom separator
+    activeCtx.strokeStyle = "rgba(255,255,255,0.06)";
+    activeCtx.lineWidth   = 1;
+    activeCtx.beginPath();
+    activeCtx.moveTo(tL + 4, ry + SEC_H);
+    activeCtx.lineTo(tL + tableW, ry + SEC_H);
+    activeCtx.stroke();
     ry += SEC_H;
   }
 
   // ── Handle empty state ────────────────────────────────────────────────────────
   if (players.length === 0) {
     startNewCanvas();
-    activeCtx.fillStyle    = "#475569";
+    activeCtx.fillStyle    = "#64748b";
     activeCtx.font         = "22px sans-serif";
     activeCtx.textBaseline = "middle";
     activeCtx.textAlign    = "center";
@@ -1436,7 +1450,7 @@ function makePlayerPages(
         results.push(activeCanvas);
         pageIdx++;
         startNewCanvas();
-        currentSide = null; // re-draw banner on new page
+        currentSide = null;
         rowIdx = 0;
       }
       currentSide = ps.teamSide;
@@ -1449,17 +1463,16 @@ function makePlayerPages(
       pageIdx++;
       startNewCanvas();
       rowIdx = 0;
-      // Redraw section banner for context on continuation page
       drawSecBanner(ps.teamSide);
     }
 
     // Row tint
     if (rowIdx % 2 === 0) {
-      activeCtx.fillStyle = "rgba(255,255,255,0.02)";
+      activeCtx.fillStyle = "rgba(255,255,255,0.025)";
       activeCtx.fillRect(tL, ry, tableW, ROW_H);
     }
     // Row separator
-    activeCtx.strokeStyle = "rgba(255,255,255,0.04)";
+    activeCtx.strokeStyle = "rgba(255,255,255,0.05)";
     activeCtx.lineWidth   = 1;
     activeCtx.beginPath();
     activeCtx.moveTo(tL, ry + ROW_H);
@@ -1475,7 +1488,6 @@ function makePlayerPages(
     const netToStr = netTo >= 0 ? `+${netTo}` : String(netTo);
     const netColor = netTo > 0 ? "#4ade80" : netTo < 0 ? "#fb7185" : "#94a3b8";
 
-    // Columns: #, Name, Score, Shots, Wides, T/OWon, T/OLost, NetTO, K/OWon, K/OLost, FWon, FCon, Actions
     const vals      = [numStr, nameStr, scoreStr,
                        String(ps.shots), String(ps.wides),
                        String(ps.toWon), String(ps.toLost), netToStr,
@@ -1486,11 +1498,13 @@ function makePlayerPages(
     );
 
     vals.forEach((val, i) => {
+      const cx = i <= 1 ? colX[i] + 8 : colX[i] + colWs[i] / 2;
+
       activeCtx.fillStyle    = valColors[i];
-      activeCtx.font         = i === 1 ? "14px sans-serif" : "bold 14px sans-serif";
+      activeCtx.font         = i === 1 ? "16px sans-serif" : "bold 16px sans-serif";
       activeCtx.textBaseline = "middle";
       activeCtx.textAlign    = i <= 1 ? "left" : "center";
-      activeCtx.fillText(val, i <= 1 ? colX[i] + 8 : colX[i] + colWs[i] / 2, midRow, colWs[i] - 6);
+      activeCtx.fillText(val, cx, midRow, colWs[i] - 6);
     });
 
     ry += ROW_H;
@@ -1818,7 +1832,7 @@ function makeChainSummaryPage(
       cy = drawStatRow(COL3_X, cy, COL_W, "Consecutive scores",  val(lrf.count), "#4ade80", false);
       cy = drawStatRow(COL3_X, cy, COL_W, "Period / Segment",    seg,            "#e2e8f0", true);
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            "#475569", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            "#64748b", false);
       cy++;
     }
 
@@ -1841,7 +1855,7 @@ function makeChainSummaryPage(
       cy = drawStatRow(COL3_X, cy, COL_W, "Consecutive scores",  val(lro.count), "#4ade80", false);
       cy = drawStatRow(COL3_X, cy, COL_W, "Period / Segment",    seg,            "#e2e8f0", true);
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            "#475569", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            "#64748b", false);
       cy++;
     }
 
@@ -1863,7 +1877,7 @@ function makeChainSummaryPage(
       .slice(0, 12);
 
     if (runsToShow.length === 0) {
-      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs detected", "—", "#475569", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs detected", "—", "#64748b", false);
     } else {
       runsToShow.forEach((run, i) => {
         const sideLabel = run.teamSide === "FOR" ? homeTeam.slice(0, 10) : awayTeam.slice(0, 10);
@@ -2009,7 +2023,7 @@ function makeKickoutChainPage(
       ctx.textAlign = "right";
       ctx.fillText(`${Math.round((1 - forFrac) * 100)}% ${oppLabel}`, barX + barW, labelY);
     } else {
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "11px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -2090,7 +2104,7 @@ function makeKickoutChainPage(
 
     if (ko.total === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -2156,7 +2170,7 @@ function makeKickoutChainPage(
 
     if (forKoWonOut.length + forKoConOut.length === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -2200,7 +2214,7 @@ function makeKickoutChainPage(
 
     if (oppKoWonOut.length + oppKoConOut.length === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -2473,7 +2487,7 @@ function makeTurnoverPunishmentPage(
       const labelY = cy + barH + 12;
       ctx.font = "11px sans-serif";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.textAlign = "center";
       ctx.fillText("No turnover data", barX + barW / 2, labelY);
     }
@@ -2574,7 +2588,7 @@ function makeTurnoverPunishmentPage(
 
     if (forWonTotal === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -2603,8 +2617,8 @@ function makeTurnoverPunishmentPage(
       cy = drawSubHeader(COL1_X, cy, COL_W, "HOW TURNOVERS WERE WON / GAINED", "#a78bfa");
       cy = drawStatRow(COL1_X, cy, COL_W, "Tackle / Press",     String(forTagTacklePress), "#22d3ee", false);
       cy = drawStatRow(COL1_X, cy, COL_W, "Swarm / Intercept",  String(forTagSwarmInt),    "#22d3ee", true);
-      cy = drawStatRow(COL1_X, cy, COL_W, "Opp unforced error", String(forTagUnforced),    "#fbbf24", false);
-      drawStatRow(COL1_X, cy, COL_W,      "Opp slack pass",     String(forTagSlack),       "#fbbf24", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, "Opposition unforced error", String(forTagUnforced),    "#fbbf24", false);
+      drawStatRow(COL1_X, cy, COL_W,      "Opposition slack pass",     String(forTagSlack),       "#fbbf24", true);
     }
   }
 
@@ -2615,7 +2629,7 @@ function makeTurnoverPunishmentPage(
 
     if (oppWonTotal === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -2641,8 +2655,8 @@ function makeTurnoverPunishmentPage(
       cy = drawSubHeader(COL2_X, cy, COL_W, "HOW TURNOVERS WERE WON / GAINED", "#fb7185");
       cy = drawStatRow(COL2_X, cy, COL_W, "Tackle / Press",     String(oppTagTacklePress), "#22d3ee", false);
       cy = drawStatRow(COL2_X, cy, COL_W, "Swarm / Intercept",  String(oppTagSwarmInt),    "#22d3ee", true);
-      cy = drawStatRow(COL2_X, cy, COL_W, "Opp unforced error", String(oppTagUnforced),    "#fbbf24", false);
-      drawStatRow(COL2_X, cy, COL_W,      "Opp slack pass",     String(oppTagSlack),       "#fbbf24", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, "Opposition unforced error", String(oppTagUnforced),    "#fbbf24", false);
+      drawStatRow(COL2_X, cy, COL_W,      "Opposition slack pass",     String(oppTagSlack),       "#fbbf24", true);
     }
   }
 
@@ -2988,7 +3002,7 @@ function makeMomentumRunsPage(
 
     if (runs.length === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -3050,7 +3064,7 @@ function makeMomentumRunsPage(
       if (runs.length > MAX_VISIBLE) {
         cy += 4;
         ctx.save();
-        ctx.fillStyle = "#475569";
+        ctx.fillStyle = "#64748b";
         ctx.font = "12px sans-serif";
         ctx.textBaseline = "middle";
         ctx.textAlign = "left";
@@ -3076,7 +3090,7 @@ function makeMomentumRunsPage(
 
     if (h1Runs.length === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -3105,7 +3119,7 @@ function makeMomentumRunsPage(
       const h1LateStr = h1LateRuns.length === 0
         ? "No burst in 1H closing phase"
         : `${homeTeam.slice(0, 10)}: ${h1LateFor} pts  ${awayTeam.slice(0, 10)}: ${h1LateOpp} pts`;
-      const h1LateCol = h1LateRuns.length === 0 ? "#475569" : "#fbbf24";
+      const h1LateCol = h1LateRuns.length === 0 ? "#64748b" : "#fbbf24";
       drawStatRow(COL2_X, cy, COL_W, "1H late burst (seg 3)", h1LateStr, h1LateCol, false);
     }
 
@@ -3115,7 +3129,7 @@ function makeMomentumRunsPage(
 
     if (h2Runs.length === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -3144,7 +3158,7 @@ function makeMomentumRunsPage(
       const h2LateStr = h2LateRuns.length === 0
         ? "No burst in 2H closing phase"
         : `${homeTeam.slice(0, 10)}: ${h2LateFor} pts  ${awayTeam.slice(0, 10)}: ${h2LateOpp} pts`;
-      const h2LateCol = h2LateRuns.length === 0 ? "#475569" : "#fbbf24";
+      const h2LateCol = h2LateRuns.length === 0 ? "#64748b" : "#fbbf24";
       drawStatRow(COL2_X, cy, COL_W, "2H late burst (seg 6)", h2LateStr, h2LateCol, false);
     }
   }
@@ -3164,7 +3178,7 @@ function makeMomentumRunsPage(
         "#22d3ee", false,
       );
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} longest`, "No run ≥2", "#475569", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} longest`, "No run ≥2", "#64748b", false);
     }
     if (lro) {
       cy = drawStatRow(COL3_X, cy, COL_W,
@@ -3173,7 +3187,7 @@ function makeMomentumRunsPage(
         "#fb7185", true,
       );
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 16)} longest`, "No run ≥2", "#475569", true);
+      cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 16)} longest`, "No run ≥2", "#64748b", true);
     }
 
     cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} total runs`,        String(forRunTotal),  "#22d3ee", false);
@@ -3192,7 +3206,7 @@ function makeMomentumRunsPage(
     cy = drawSubHeader(COL3_X, cy, COL_W, "RESPONSE AFTER OPPOSITION RUN", "#f97316");
 
     if (responsePairs.length < 2) {
-      cy = drawStatRow(COL3_X, cy, COL_W, "Insufficient alternating runs", "—", "#475569", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "Insufficient alternating runs", "—", "#64748b", false);
       cy++;
     } else {
       cy = drawStatRow(COL3_X, cy, COL_W,
@@ -3224,7 +3238,7 @@ function makeMomentumRunsPage(
       let controlColor: string;
       if (total === 0) {
         controlStr  = "No runs";
-        controlColor = "#475569";
+        controlColor = "#64748b";
       } else if (forScore > oppScore) {
         controlStr  = `${homeTeam.slice(0, 10)} +${forScore - oppScore}`;
         controlColor = "#22d3ee";
@@ -3452,7 +3466,7 @@ function makeTacticalIntelligencePage(
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (analysis.totalEventsAnalysed === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -3512,21 +3526,21 @@ function makeTacticalIntelligencePage(
 
   if (koTotal > 0) {
     if (koWinPct >= 55) {
-      insights.push({ text: `Strong kickout platform — ${koWinPct}% win rate, ${koConvPct}% converted to score.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} built a strong kickout platform — ${koWinPct}% win rate, ${koConvPct}% converted to score.` });
     } else if (koWinPct < 45) {
-      insights.push({ text: `Kickout vulnerability — won only ${koWinPct}% (${koWon}/${koTotal}), conceding ${koExpPct}% of losses.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} won only ${koWinPct}% of kickouts (${koWon}/${koTotal}); ${awayTeam.slice(0, 16)} scored from ${koExpPct}% of their wins.` });
     } else {
-      insights.push({ text: `Balanced kickout contest — ${koWinPct}% win rate; ${koConvPct}% of wins converted.` });
+      insights.push({ text: `Balanced kickout contest — ${homeTeam.slice(0, 16)} won ${koWinPct}%, converting ${koConvPct}% to scores.` });
     }
   }
 
   if (tvTotal > 0) {
     if (tvConvPct >= 35) {
-      insights.push({ text: `Clinical turnover conversion — ${tvConvPct}% of won turnovers became scores.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} were clinical in transition — ${tvConvPct}% of won turnovers became scores.` });
     } else if (tvConvPct < 20 && tvWon > 0) {
-      insights.push({ text: `Won ${tvWon}/${tvTotal} turnovers but converted only ${tvConvPct}% to scores.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} won ${tvWon}/${tvTotal} turnovers but converted only ${tvConvPct}% to scores.` });
     } else {
-      insights.push({ text: `Turnover win rate ${tvWinPct}% — ${tvConvPct}% converted; opp punished ${tvDefExp}% of losses.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} won ${tvWinPct}% of turnovers, converting ${tvConvPct}%; ${awayTeam.slice(0, 16)} punished ${tvDefExp}% of their wins.` });
     }
   }
 
@@ -3542,11 +3556,11 @@ function makeTacticalIntelligencePage(
 
   if (chainTotal > 0) {
     if (chainForPct >= 60) {
-      insights.push({ text: `Tactical chain dominance — ${chainForPct}% of all sequences resolved FOR.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} dominated tactical sequences — ${chainForPct}% of all chains resolved in their favour.` });
     } else if (chainForPct <= 40) {
-      insights.push({ text: `Opposition chain advantage — only ${chainForPct}% of tactical sequences resolved FOR.` });
+      insights.push({ text: `${awayTeam.slice(0, 16)} held the chain advantage — only ${chainForPct}% of tactical sequences resolved for ${homeTeam.slice(0, 16)}.` });
     } else {
-      insights.push({ text: `Competitive tactical contest — ${chainForPct}% of ${chainTotal} chains resolved FOR.` });
+      insights.push({ text: `Competitive tactical contest — ${homeTeam.slice(0, 16)} won ${chainForPct}% of ${chainTotal} chains.` });
     }
   }
 
@@ -3564,7 +3578,7 @@ function makeTacticalIntelligencePage(
   if (tvConvPct >= 35)   fx = drawFlagChip(fx, flagsY, "Clinical",       "rgba(52,211,153,0.15)",  "#34d399");
   if (tvDefExp > 40)     fx = drawFlagChip(fx, flagsY, "TV Exposure",    "rgba(251,113,133,0.15)", "#fb7185");
   if (maxConsFor >= 4)   fx = drawFlagChip(fx, flagsY, "Momentum Burst", "rgba(34,211,238,0.15)",  "#22d3ee");
-  if (maxConsOpp >= 4)   fx = drawFlagChip(fx, flagsY, "Opp Pressure",   "rgba(251,113,133,0.15)", "#fb7185");
+  if (maxConsOpp >= 4)   fx = drawFlagChip(fx, flagsY, "Opposition Run", "rgba(251,113,133,0.15)", "#fb7185");
   if (chainForPct >= 60) drawFlagChip(fx, flagsY, "Chain Control",  "rgba(167,139,250,0.15)", "#a78bfa");
 
   // ── RIGHT — CARD 1: MOMENTUM CONTROL ──────────────────────────────────────
@@ -3739,7 +3753,7 @@ function makeTacticalReviewGuidePage(
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (prompts.length === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -3862,7 +3876,7 @@ function makeTacticalReviewGuidePage(
     ctx.fillText(display, TEXT_X, ROW1_Y);
 
     // Evidence tag (row 2, right-aligned — small, dimmed)
-    ctx.fillStyle = "#334155";
+    ctx.fillStyle = "#64748b";
     ctx.font = "10px sans-serif";
     ctx.textBaseline = "alphabetic";
     ctx.textAlign = "right";
@@ -4088,7 +4102,7 @@ function makeOppositionSnapshotPage(
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (analysis.totalEventsAnalysed === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -4124,7 +4138,7 @@ function makeOppositionSnapshotPage(
     `${awayTeam.slice(0, 20)} — Scoring Profile`, OPP_ACCENT,
   );
   if (oppScore.total === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -4147,7 +4161,7 @@ function makeOppositionSnapshotPage(
   drawCardBg(L_COL_X, lCard2Y, L_COL_W, L_CARD_H_2, "#fbbf24");
   cy = drawCardTitle(L_COL_X, lCard2Y, L_COL_W, "Restart Threat (Kickouts)", "#fbbf24");
   if (ko.total === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -4179,7 +4193,7 @@ function makeOppositionSnapshotPage(
   drawCardBg(L_COL_X, lCard3Y, L_COL_W, L_CARD_H_3, "#a78bfa");
   cy = drawCardTitle(L_COL_X, lCard3Y, L_COL_W, "Turnover Threat", "#a78bfa");
   if (tvLost === 0 && tvOppToScore === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -4241,7 +4255,7 @@ function makeOppositionSnapshotPage(
   drawCardBg(R_COL_X, rCard2Y, R_COL_W, R_CARD_H_2, "#22d3ee");
   cy = drawCardTitle(R_COL_X, rCard2Y, R_COL_W, "Chain Rate", "#22d3ee");
   if (chainTotal === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -4302,23 +4316,21 @@ function makeOppositionSnapshotPage(
 // ─── Zone Analysis page ───────────────────────────────────────────────────────
 
 /**
- * Renders the Zone Analysis page — the final PDF page.
+ * Zone Analysis — dual-pitch spatial overview page.
  *
- * Data source: raw PdfExportEvent[] filtered by teamSide + kind.
- * Zone classification: src/stats/zones/ — getZoneCounts / getZoneHotspots.
- * Zone map: ZONE_MAP_V1_NINE_GRID (3×3 tactical grid, 0–100 coordinate domain).
- * PdfExportEvent.nx/ny (0–1) is auto-scaled to 0–100 by the zone engine.
+ * LEFT pitch:   FOR team combined zone activity (scores + turnovers won).
+ *               Semi-transparent green overlays; opacity ∝ event count.
+ * RIGHT pitch:  OPP team combined zone activity (scores against + opposition gains).
+ *               Semi-transparent red overlays; opacity ∝ event count.
+ * Bottom strip: Zone Summary | Key Zones | Zone Intelligence.
  *
- * Layout: two-column (L 928 px / R 928 px), dark background, #34d399 green accent.
- *   Left  — FOR Zone Activity: Scores grid · Turnovers Won grid
- *   Right — OPP Zone Activity: Scores Against grid · Opposition Gains grid
- *   Bottom — Zone Notes strip: up to 5 deterministic factual bullets
- *
- * All rendering uses ctx.fillRect() — no ctx.roundRect() (Safari < 15.4 safe).
- * No heatmaps, no gradients, no AI language, no tactical prescriptions.
+ * Data calculations: unchanged — getZoneCounts / getZoneHotspots / event subsets.
+ * Intelligence bullets: unchanged deterministic text from original Zone Notes strip.
+ * Safari < 15.4 safe — no ctx.roundRect.
  */
 function makeZoneAnalysisPage(
   events: readonly PdfExportEvent[],
+  sport: PitchSport,
   homeTeam: string,
   awayTeam: string,
   pageNum: number,
@@ -4333,41 +4345,8 @@ function makeZoneAnalysisPage(
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, "Zone Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
-  drawEventCountFooter(ctx, events.length);
 
-  // ── Layout constants ───────────────────────────────────────────────────────
-  const CONTENT_TOP = 86;
-  const CONTENT_BOT = CANVAS_H - 36;       // 1044
-  const L_COL_X     = 24;
-  const L_COL_W     = 928;
-  const R_COL_X     = 968;
-  const R_COL_W     = 928;
-  const GRID_W      = 456;                  // (L_COL_W − GRID_GAP) / 2 = (928 − 16) / 2 = 456
-  const GRID_GAP    = 16;                   // gap between the two grids in each column
-  const ZONE_ACCENT = "#34d399";            // green — FOR side and notes accent
-  const OPP_RED     = "#f87171";            // red   — OPP side
-
-  // Vertical geometry
-  const COL_HEADER_H = 36;                              // column team-name header height
-  const GRID_TITLE_H = 28;                              // per-grid label above cell rows
-  const CELL_W       = Math.floor(GRID_W / 3);          // 152  (3 × 152 = 456)
-  const CELL_H       = 226;                             // 3 × 226 = 678
-  const CELLS_H      = CELL_H * 3;                      // 678
-  const CELLS_TOP    = CONTENT_TOP + COL_HEADER_H + GRID_TITLE_H;  // 150
-  const GRID_SEC_H   = COL_HEADER_H + GRID_TITLE_H + CELLS_H;     // 742
-  const NOTES_GAP    = 16;
-  const NOTES_Y      = CONTENT_TOP + GRID_SEC_H + NOTES_GAP;       // 844
-  const NOTES_H      = CONTENT_BOT - NOTES_Y;                       // 200
-  const NOTES_X      = 24;
-  const NOTES_W      = CANVAS_W - 48;                               // 1872
-
-  // Grid x-positions (left col: two grids at 24 and 496; right col: two at 968 and 1440)
-  const L_GRID1_X = L_COL_X;                        //   24  FOR Scores
-  const L_GRID2_X = L_COL_X + GRID_W + GRID_GAP;   //  496  FOR Turnovers Won
-  const R_GRID3_X = R_COL_X;                        //  968  OPP Scores
-  const R_GRID4_X = R_COL_X + GRID_W + GRID_GAP;   // 1440  OPP Gains
-
-  // ── Event subsets ──────────────────────────────────────────────────────────
+  // ── Event subsets (unchanged logic) ────────────────────────────────────────
   const forScoreEvts = events.filter(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
   );
@@ -4382,163 +4361,79 @@ function makeZoneAnalysisPage(
     (e) => e.teamSide === "FOR" && e.kind === "TURNOVER_LOST",
   );
 
-  // ── Zone counts (9 entries each, stable order, zero-filled for empty zones) ──
+  // ── Zone counts (9 entries each, stable order, zero-filled) ──────────────
   const forScoreCounts = getZoneCounts(forScoreEvts);
   const forTvWonCounts = getZoneCounts(forTvWonEvts);
   const oppScoreCounts = getZoneCounts(oppScoreEvts);
   const oppGainCounts  = getZoneCounts(oppGainEvts);
 
-  // ── Hotspots (sorted by count; empty array when no events — always safe to index) ──
+  // ── Hotspots ──────────────────────────────────────────────────────────────
   const forScoreHots = getZoneHotspots(forScoreEvts);
   const forTvWonHots = getZoneHotspots(forTvWonEvts);
   const oppScoreHots = getZoneHotspots(oppScoreEvts);
   const oppGainHots  = getZoneHotspots(oppGainEvts);
 
-  // ── Local helpers ──────────────────────────────────────────────────────────
-
-  /** Column heading: accent left-bar + team label + full-width separator line. */
-  function drawColHeader(
-    x: number, y: number, w: number, label: string, accentColor: string,
-  ): void {
-    ctx.save();
-    ctx.fillStyle = accentColor;
-    ctx.fillRect(x, y, 3, COL_HEADER_H);
-    ctx.font = "bold 14px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label, x + 12, y + COL_HEADER_H / 2);
-    ctx.strokeStyle = "rgba(255,255,255,0.07)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x, y + COL_HEADER_H);
-    ctx.lineTo(x + w, y + COL_HEADER_H);
-    ctx.stroke();
-    ctx.restore();
+  // ── Merged activity counts for unified pitch overlays ─────────────────────
+  function mergeZoneCounts(a: readonly ZoneCount[], b: readonly ZoneCount[]): ZoneCount[] {
+    const map = new Map<string, ZoneCount>();
+    for (const z of [...a, ...b]) {
+      const ex = map.get(z.id);
+      if (ex) { ex.count += z.count; } else { map.set(z.id, { ...z }); }
+    }
+    return Array.from(map.values());
   }
+  const forActivityCounts = mergeZoneCounts(forScoreCounts, forTvWonCounts);
+  const oppActivityCounts = mergeZoneCounts(oppScoreCounts, oppGainCounts);
 
-  /** Small uppercase label rendered above a grid's cell rows. */
-  function drawGridTitle(x: number, label: string, accentColor: string): void {
-    ctx.save();
-    const titleY = CONTENT_TOP + COL_HEADER_H;
-    ctx.fillStyle = accentColor;
-    ctx.font = "bold 11px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label.toUpperCase(), x + 4, titleY + GRID_TITLE_H / 2);
-    ctx.restore();
-  }
-
-  /**
-   * Renders a 3×3 zone grid.
-   * Cell position derived from ZoneCount.bounds (0–100 → col/row 0–2).
-   * Zone-engine xMin values are exact multiples of 100/3, so the mapping is lossless.
-   * Highest-count cell is highlighted; zero-count cells show "—".
-   */
-  function drawZoneGrid(
+  // ── Zone overlay renderer ──────────────────────────────────────────────────
+  function renderZoneOverlay(
     counts: readonly ZoneCount[],
-    gridX: number,
-    accentColor: string,
+    inner: InnerPitch,
+    baseColor: string,
   ): void {
-    const isGreen  = accentColor === ZONE_ACCENT;
-    const hlFill   = isGreen ? "rgba(52,211,153,0.13)"  : "rgba(248,113,113,0.13)";
-    const hlStroke = isGreen ? "rgba(52,211,153,0.40)"  : "rgba(248,113,113,0.40)";
     const maxCount = counts.reduce((m, c) => Math.max(m, c.count), 0);
-
+    ctx.save();
     for (const zone of counts) {
-      // xMin/yMin are exact multiples of 100/3 → result is exactly 0, 1, or 2
-      const col   = Math.round((zone.bounds.xMin / 100) * 3);
-      const row   = Math.round((zone.bounds.yMin / 100) * 3);
-      const cellX = gridX + col * CELL_W;
-      const cellY = CELLS_TOP + row * CELL_H;
-      const CW    = CELL_W - 1;  // 1 px inter-cell gap
-      const CH    = CELL_H - 1;
+      const zx = inner.x + (zone.bounds.xMin / 100) * inner.w;
+      const zy = inner.y + (zone.bounds.yMin / 100) * inner.h;
+      const zw = (zone.bounds.xMax - zone.bounds.xMin) / 100 * inner.w;
+      const zh = (zone.bounds.yMax - zone.bounds.yMin) / 100 * inner.h;
       const isHot = zone.count > 0 && zone.count === maxCount;
 
-      // Background
-      ctx.fillStyle = isHot ? hlFill : "rgba(255,255,255,0.025)";
-      ctx.fillRect(cellX, cellY, CW, CH);
+      // Zone fill — opacity reflects activity density
+      const alpha = zone.count > 0 ? 0.14 + (zone.count / maxCount) * 0.40 : 0.04;
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle   = baseColor;
+      ctx.fillRect(zx + 1, zy + 1, zw - 2, zh - 2);
+      ctx.globalAlpha = 1;
 
-      // Border
-      ctx.strokeStyle = isHot ? hlStroke : "rgba(255,255,255,0.07)";
-      ctx.lineWidth   = isHot ? 1.5 : 1;
-      ctx.strokeRect(cellX, cellY, CW, CH);
+      // Hottest zone: accent border + count + label
+      if (isHot) {
+        ctx.globalAlpha  = 0.55;
+        ctx.strokeStyle  = baseColor;
+        ctx.lineWidth    = 2;
+        ctx.strokeRect(zx + 1, zy + 1, zw - 2, zh - 2);
+        ctx.globalAlpha  = 1;
 
-      // Count (bold large) or dash
-      const midX = cellX + CELL_W / 2;
-      const midY = cellY + CELL_H / 2;
-      ctx.textAlign    = "center";
-      ctx.textBaseline = "middle";
+        ctx.fillStyle    = baseColor;
+        ctx.globalAlpha  = 0.95;
+        ctx.font         = "bold 22px sans-serif";
+        ctx.textAlign    = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(String(zone.count), zx + zw / 2, zy + zh / 2 - 10);
+        ctx.globalAlpha  = 1;
 
-      if (zone.count > 0) {
-        ctx.fillStyle = isHot ? accentColor : "#f8fafc";
-        ctx.font = "bold 24px sans-serif";
-        ctx.fillText(String(zone.count), midX, midY - 10);
-      } else {
-        ctx.fillStyle = "#334155";
-        ctx.font = "18px sans-serif";
-        ctx.fillText("—", midX, midY - 10);
+        ctx.fillStyle    = "#ffffff";
+        ctx.globalAlpha  = 0.72;
+        ctx.font         = "10px sans-serif";
+        ctx.fillText(zone.label, zx + zw / 2, zy + zh / 2 + 10);
+        ctx.globalAlpha  = 1;
       }
-
-      // Zone label (small, below count)
-      ctx.fillStyle = "#475569";
-      ctx.font = "9px sans-serif";
-      ctx.fillText(zone.label, midX, midY + 10);
     }
+    ctx.restore();
   }
 
-  // ── Empty state ────────────────────────────────────────────────────────────
-  if (events.length === 0) {
-    ctx.fillStyle = "#475569";
-    ctx.font = "16px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "center";
-    ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
-    return canvas;
-  }
-
-  // ── Column headers ─────────────────────────────────────────────────────────
-  drawColHeader(
-    L_COL_X, CONTENT_TOP, L_COL_W,
-    `${homeTeam.slice(0, 22)} — Zone Activity`, ZONE_ACCENT,
-  );
-  drawColHeader(
-    R_COL_X, CONTENT_TOP, R_COL_W,
-    `${awayTeam.slice(0, 22)} — Zone Activity`, OPP_RED,
-  );
-
-  // ── Grid titles ────────────────────────────────────────────────────────────
-  drawGridTitle(L_GRID1_X, "Scores (For)",       ZONE_ACCENT);
-  drawGridTitle(L_GRID2_X, "Turnovers Won",       ZONE_ACCENT);
-  drawGridTitle(R_GRID3_X, "Scores Against",      OPP_RED);
-  drawGridTitle(R_GRID4_X, "Opposition Gains",    OPP_RED);
-
-  // ── Zone grids ─────────────────────────────────────────────────────────────
-  drawZoneGrid(forScoreCounts, L_GRID1_X, ZONE_ACCENT);
-  drawZoneGrid(forTvWonCounts, L_GRID2_X, ZONE_ACCENT);
-  drawZoneGrid(oppScoreCounts, R_GRID3_X, OPP_RED);
-  drawZoneGrid(oppGainCounts,  R_GRID4_X, OPP_RED);
-
-  // ── Zone Notes strip ───────────────────────────────────────────────────────
-  // Background + green accent left-bar
-  ctx.fillStyle = "rgba(255,255,255,0.015)";
-  ctx.fillRect(NOTES_X, NOTES_Y, NOTES_W, NOTES_H);
-  ctx.fillStyle = ZONE_ACCENT;
-  ctx.fillRect(NOTES_X, NOTES_Y, 3, NOTES_H);
-
-  // Notes heading + separator
-  ctx.fillStyle = ZONE_ACCENT;
-  ctx.font = "bold 11px sans-serif";
-  ctx.textBaseline = "middle";
-  ctx.textAlign = "left";
-  ctx.fillText("ZONE NOTES", NOTES_X + 14, NOTES_Y + 16);
-  ctx.strokeStyle = "rgba(255,255,255,0.07)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(NOTES_X + 4, NOTES_Y + 28);
-  ctx.lineTo(NOTES_X + NOTES_W, NOTES_Y + 28);
-  ctx.stroke();
-
-  // Build bullets (deterministic, max 5, guarded against empty hotspot arrays)
+  // ── Intelligence bullets (unchanged text from original Zone Notes) ─────────
   const bullets: string[] = [];
   if (forScoreHots.length > 0) {
     const t = forScoreHots[0];
@@ -4556,7 +4451,6 @@ function makeZoneAnalysisPage(
     const t = oppGainHots[0];
     bullets.push(`Highest concentration of opposition gains: ${t.label} (${t.count})`);
   }
-  // Shared-zone note: same zone tops both FOR scores and OPP scores
   if (
     bullets.length < 5 &&
     forScoreHots.length > 0 &&
@@ -4565,41 +4459,156 @@ function makeZoneAnalysisPage(
   ) {
     bullets.push(`${forScoreHots[0].label} zone: highest-activity scoring zone for both teams`);
   }
-  if (bullets.length === 0) {
-    bullets.push("No zone data recorded for this match");
-  }
-  const displayBullets = bullets.slice(0, 5);
+  if (bullets.length === 0) bullets.push("No zone data recorded for this match");
 
-  // Render bullets — alternating faint row tint, red dash prefix, text with overflow ellipsis
-  const BULLET_LINE_H = 32;
-  const bulletStartY  = NOTES_Y + 36;
-  displayBullets.forEach((bullet, idx) => {
-    const bulletY = bulletStartY + idx * BULLET_LINE_H;
-    if (idx % 2 === 1) {
-      ctx.fillStyle = "rgba(255,255,255,0.018)";
-      ctx.fillRect(NOTES_X + 4, bulletY - BULLET_LINE_H / 2, NOTES_W - 4, BULLET_LINE_H);
-    }
-    ctx.fillStyle    = ZONE_ACCENT;
-    ctx.font         = "bold 12px sans-serif";
+  // ── Empty state ────────────────────────────────────────────────────────────
+  if (events.length === 0) {
+    ctx.fillStyle    = "#64748b";
+    ctx.font         = "16px sans-serif";
     ctx.textBaseline = "middle";
-    ctx.textAlign    = "left";
-    ctx.fillText("—", NOTES_X + 14, bulletY);
-    ctx.fillStyle = "#cbd5e1";
-    ctx.font = "12px sans-serif";
-    const maxW = NOTES_W - 50;
-    let display = bullet;
-    if (ctx.measureText(display).width > maxW) {
-      let iterations = 0;
-      const maxIterations = 1000;
-      while (display.length > 0 && ctx.measureText(display + "…").width > maxW && iterations < maxIterations) {
-        display = display.slice(0, -1);
-        iterations++;
-      }
-      display += "…";
-    }
-    ctx.fillText(display, NOTES_X + 32, bulletY);
-  });
+    ctx.textAlign    = "center";
+    ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
+    return canvas;
+  }
 
+  // ── Pitches ───────────────────────────────────────────────────────────────
+  const forTotal  = forActivityCounts.reduce((s, z) => s + z.count, 0);
+  const oppTotal  = oppActivityCounts.reduce((s, z) => s + z.count, 0);
+  const CALLOUT_H = 120;
+  const INNER_H   = DP_PITCH_H - CALLOUT_H;
+
+  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `${homeTeam} Zone Activity`,        forTotal, "#34d399");
+  dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
+    `Most scoring: ${forScoreHots[0]?.label ?? "No data"}`,
+    `Turnovers won: ${forTvWonHots[0]?.label ?? "No data"}`,
+    `${forScoreEvts.length} scoring event${forScoreEvts.length !== 1 ? "s" : ""} recorded`,
+    "#34d399",
+  );
+  const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
+  renderZoneOverlay(forActivityCounts, leftInner, "#34d399");
+
+  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `${awayTeam} Zone Activity`, oppTotal, "#f87171");
+  dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
+    `Opposition scoring: ${oppScoreHots[0]?.label ?? "No data"}`,
+    `Opposition gains: ${oppGainHots[0]?.label ?? "No data"}`,
+    `${oppScoreEvts.length} opposition scoring event${oppScoreEvts.length !== 1 ? "s" : ""}`,
+    "#f87171",
+  );
+  const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
+  renderZoneOverlay(oppActivityCounts, rightInner, "#f87171");
+
+  // ── Panel 1: Zone Summary ─────────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P1_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Zone Summary", "#34d399");
+    cy += 2;
+    cy = dpPossessionBar(ctx, DP_P1_X, cy, DP_PANEL_W,
+      forTotal, oppTotal,
+      homeTeam.slice(0, 10), awayTeam.slice(0, 10),
+      "#34d399", "#f87171",
+    );
+    cy += 2;
+    const allMax = Math.max(forScoreEvts.length, forTvWonEvts.length, oppScoreEvts.length, oppGainEvts.length) || 1;
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} ACTIVITY`, "#34d399");
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Scores",        String(forScoreEvts.length), forScoreEvts.length / allMax, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Turnovers Won", String(forTvWonEvts.length), forTvWonEvts.length / allMax, "#34d399", "#34d399", true);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} ACTIVITY`, "#f87171");
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Scores Against",    String(oppScoreEvts.length), oppScoreEvts.length / allMax, "#f87171", "#f87171", false);
+        dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Opposition Gains",   String(oppGainEvts.length),  oppGainEvts.length  / allMax, "#f97316", "#f97316", true);
+  }
+
+  // ── Panel 2: Key Zones ────────────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Key Zones", "#fbbf24");
+    cy += 2;
+    const maxScoringHot = Math.max(forScoreHots[0]?.count ?? 0, oppScoreHots[0]?.count ?? 0) || 1;
+    const maxTvHot      = Math.max(forTvWonHots[0]?.count ?? 0, oppGainHots[0]?.count ?? 0)  || 1;
+
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "SCORING ZONES", "#4ade80");
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W,
+      `${homeTeam.slice(0, 14)} hotspot`,
+      forScoreHots[0] ? `${forScoreHots[0].label} (${forScoreHots[0].count})` : "—",
+      forScoreHots[0] ? forScoreHots[0].count / maxScoringHot : 0,
+      "#4ade80", "#4ade80", false,
+    );
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W,
+      `${awayTeam.slice(0, 14)} hotspot`,
+      oppScoreHots[0] ? `${oppScoreHots[0].label} (${oppScoreHots[0].count})` : "—",
+      oppScoreHots[0] ? oppScoreHots[0].count / maxScoringHot : 0,
+      "#f87171", "#f87171", true,
+    );
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "TURNOVER ZONES", "#fbbf24");
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W,
+      `${homeTeam.slice(0, 14)} won in`,
+      forTvWonHots[0] ? `${forTvWonHots[0].label} (${forTvWonHots[0].count})` : "—",
+      forTvWonHots[0] ? forTvWonHots[0].count / maxTvHot : 0,
+      "#a78bfa", "#a78bfa", false,
+    );
+    dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W,
+      "Opposition gained in",
+      oppGainHots[0] ? `${oppGainHots[0].label} (${oppGainHots[0].count})` : "—",
+      oppGainHots[0] ? oppGainHots[0].count / maxTvHot : 0,
+      "#f97316", "#f97316", true,
+    );
+  }
+
+  // ── Panel 3: Zone Intelligence ────────────────────────────────────────────
+  {
+    const panelY  = dpPanelStart(ctx, DP_P3_X, DP_STRIP_Y, DP_P3_W, DP_STRIP_H, "Zone Intelligence", "#34d399");
+    const maxY    = DP_STRIP_Y + DP_STRIP_H - 8;
+    const ITEM_H  = 52;
+    const LINE_H  = 16;
+    const MAX_TW  = DP_P3_W - 22;
+    let   cy      = panelY + 6;
+
+    ctx.save();
+    for (const bullet of bullets.slice(0, 5)) {
+      if (cy + ITEM_H > maxY - 4) break;
+
+      ctx.fillStyle = "#34d399cc";
+      ctx.fillRect(DP_P3_X + 7, cy + 4, 3, ITEM_H - 12);
+
+      ctx.font = "12px sans-serif";
+      let line1 = "";
+      let line2 = "";
+      for (const word of bullet.split(" ")) {
+        const test1 = line1 ? `${line1} ${word}` : word;
+        if (!line2 && ctx.measureText(test1).width <= MAX_TW) {
+          line1 = test1;
+        } else {
+          const test2 = line2 ? `${line2} ${word}` : word;
+          if (ctx.measureText(test2).width <= MAX_TW) {
+            line2 = test2;
+          } else {
+            let t = test2;
+            let i = 0;
+            while (t.length > 0 && ctx.measureText(`${t}…`).width > MAX_TW && i < 500) {
+              t = t.slice(0, -1);
+              i++;
+            }
+            line2 = `${t}…`;
+            break;
+          }
+        }
+      }
+
+      ctx.fillStyle    = "#e2e8f0";
+      ctx.textBaseline = "top";
+      ctx.textAlign    = "left";
+      ctx.fillText(line1, DP_P3_X + 15, cy + 4);
+      if (line2) {
+        ctx.fillStyle = "#cbd5e1";
+        ctx.font = "11px sans-serif";
+        ctx.fillText(line2, DP_P3_X + 15, cy + 4 + LINE_H);
+      }
+
+      cy += ITEM_H + 4;
+    }
+    ctx.restore();
+  }
+
+  drawEventCountFooter(ctx, events.length);
   return canvas;
 }
 
@@ -4947,7 +4956,7 @@ function makeMatchSwingTimelinePage(
     const descX = colX + DESC_OFFSET;
 
     if (items.length === 0) {
-      ctx.fillStyle    = "#334155";
+      ctx.fillStyle    = "#64748b";
       ctx.font         = "12px sans-serif";
       ctx.textAlign    = "left";
       ctx.textBaseline = "middle";
@@ -5021,7 +5030,7 @@ function makeMatchSwingTimelinePage(
 
   // Full-page empty-state guard.
   if (col1Items.length === 0 && col2Items.length === 0) {
-    ctx.fillStyle    = "#475569";
+    ctx.fillStyle    = "#64748b";
     ctx.font         = "16px sans-serif";
     ctx.textAlign    = "center";
     ctx.textBaseline = "middle";
@@ -5316,9 +5325,9 @@ function makeShotEfficiencyPage(
     // ── Section 4: Free Conversion ────────────────────────────────────────────
     cy = drawSecHeader(colX, cy, "Free Conversion", accentColor);
     const freeTotal = stats.freeScored + stats.freeMissed;
-    cy = drawRow(colX, cy, "Free Scored", String(stats.freeScored),
+    cy = drawRow(colX, cy, "Placed Scored", String(stats.freeScored),
       stats.freeScored > 0 ? accentColor : MUTED, false);
-    cy = drawRow(colX, cy, "Free Missed", String(stats.freeMissed),
+    cy = drawRow(colX, cy, "Placed Missed", String(stats.freeMissed),
       stats.freeMissed > 0 ? NEUTRAL    : MUTED, true);
     cy = drawRow(colX, cy, "Free Conv %", freeTotal > 0 ? `${stats.freeConvPct}%` : "—",
       freeTotal        > 0 ? accentColor : MUTED, false);
@@ -5368,6 +5377,847 @@ function stampChapterLabel(
   ctx.fillStyle = accentColor;
   ctx.fillText(text, chipX + 10, chipY + chipH / 2);
   ctx.restore();
+}
+
+// ─── Dual-pitch visual analysis pages ────────────────────────────────────────
+//
+// Three page builders — Restart, Turnover, Free — each showing two pitches
+// side-by-side (FOR left / OPP right) plus a 3-panel stats strip at the bottom.
+// These replace the 2×2 quad map pages for their chapters; the companion
+// chain/punishment detail pages remain unchanged.
+
+// Shared geometry (all three builders use the same canvas layout).
+const DP_LEFT_X  = 16;
+const DP_PITCH_W = 938;
+const DP_RIGHT_X = DP_LEFT_X + DP_PITCH_W + 12;   // 966
+const DP_PITCH_Y = 82;
+const DP_TITLE_H = 26;
+const DP_PITCH_H = 660;
+const DP_STRIP_Y = DP_PITCH_Y + DP_PITCH_H + 10;  // 752
+const DP_PANEL_W = Math.floor((CANVAS_W - 32 - 24) / 3); // 621
+const DP_P1_X    = 16;
+const DP_P2_X    = DP_P1_X + DP_PANEL_W + 12;     // 649
+const DP_P3_X    = DP_P2_X + DP_PANEL_W + 12;     // 1282
+const DP_P3_W    = CANVAS_W - DP_P3_X - 16;       // 622
+const DP_STRIP_H = CANVAS_H - DP_STRIP_Y - 14;    // 314
+
+// Mini-bar layout constants.
+const DP_BAR_OFFSET = 230;  // px from panel left edge where bar column starts
+const DP_BAR_MAX_W  = 110;  // max bar fill width in px
+const DP_BAR_H      =   8;  // bar height in px
+
+/** Builds a pill-shaped path without filling. Safari < 15.4 — no ctx.roundRect. */
+function dpRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+  const r = Math.min(h / 2, w / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arc(x + w - r, y + r, r, -Math.PI / 2, Math.PI / 2);
+  ctx.lineTo(x + r, y + h);
+  ctx.arc(x + r, y + r, r, Math.PI / 2, -Math.PI / 2);
+  ctx.closePath();
+}
+
+function dpPitchTitle(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number,
+  label: string, count: number, accent: string,
+): void {
+  ctx.save();
+  ctx.fillStyle = accent + "1e";  // ~12% tint
+  ctx.fillRect(x, y, w, DP_TITLE_H);
+  ctx.fillStyle = accent;
+  ctx.fillRect(x, y, 3, DP_TITLE_H);
+  ctx.font = "bold 13px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(label.toUpperCase(), x + 12, y + DP_TITLE_H / 2);
+  ctx.fillStyle = "#64748b";
+  ctx.font = "12px sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(`${count} events`, x + w - 10, y + DP_TITLE_H / 2);
+  ctx.restore();
+}
+
+/**
+ * Draws a headline + 2-bullet callout band between the pitch title bar and inner pitch.
+ * headline — large bold summary (21px), displayed first.
+ * bullet1/bullet2 — supporting detail (14px), displayed below with accent dot.
+ * y/h describe the callout area (DP_PITCH_Y + DP_TITLE_H → DP_PITCH_Y + CALLOUT_H).
+ */
+function dpPitchCallout(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number,
+  headline: string,
+  bullet1: string, bullet2: string,
+  accentColor: string,
+): void {
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.30)";
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = accentColor;
+  ctx.fillRect(x, y, 3, h);
+
+  ctx.fillStyle = "#f1f5f9";
+  ctx.font = "bold 21px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(headline, x + 26, y + 20, w - 34);
+
+  [bullet1, bullet2].forEach((text, i) => {
+    const cy = y + 48 + i * 22;
+    ctx.fillStyle = accentColor + "cc";
+    ctx.beginPath();
+    ctx.arc(x + 14, cy, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "14px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(text, x + 26, cy, w - 34);
+  });
+
+  ctx.restore();
+}
+
+/**
+ * Draws a panel card background with subtle border, left accent bar, and title.
+ * Returns the y coordinate where content should start.
+ */
+function dpPanelStart(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number,
+  title: string, accent: string,
+): number {
+  ctx.save();
+
+  // Card background
+  ctx.fillStyle = "rgba(255,255,255,0.022)";
+  ctx.fillRect(x, y, w, h);
+
+  // Subtle perimeter border
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+
+  // Left accent bar
+  ctx.fillStyle = accent;
+  ctx.fillRect(x, y, 3, h);
+
+  // Panel title — brighter than stat labels to anchor the eye
+  ctx.fillStyle = "#f1f5f9";
+  ctx.font = "bold 13px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(title.toUpperCase(), x + 14, y + 16);
+
+  // Title separator
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + 3, y + 30);
+  ctx.lineTo(x + w, y + 30);
+  ctx.stroke();
+
+  ctx.restore();
+  return y + 34;
+}
+
+/** Standard key-value stat row (ROW_H = 26). */
+function dpStatRow(
+  ctx: CanvasRenderingContext2D,
+  x: number, cy: number, w: number,
+  label: string, value: string, valueColor: string, isAlt: boolean,
+): number {
+  const ROW_H = 26;
+  if (isAlt) {
+    ctx.fillStyle = "rgba(255,255,255,0.025)";
+    ctx.fillRect(x + 3, cy, w - 3, ROW_H);
+  }
+  const mid = cy + ROW_H / 2;
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "11px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(label, x + 10, mid);
+  ctx.fillStyle = valueColor;
+  ctx.font = "bold 13px sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(value, x + w - 8, mid);
+  return cy + ROW_H;
+}
+
+/**
+ * Mini-bar row: label | rounded bar indicator | bold value.
+ *
+ * fraction ∈ [0,1] — controls how much of DP_BAR_MAX_W is filled.
+ * Numbers remain visible right-aligned; the bar is a visual indicator only.
+ * Minimum fill = one rounded cap (DP_BAR_H px) when fraction > 0.
+ */
+function dpMiniBarRow(
+  ctx: CanvasRenderingContext2D,
+  x: number, cy: number, w: number,
+  label: string, value: string,
+  fraction: number,
+  barColor: string, valueColor: string,
+  isAlt: boolean,
+): number {
+  const ROW_H = 26;
+  if (isAlt) {
+    ctx.fillStyle = "rgba(255,255,255,0.025)";
+    ctx.fillRect(x + 3, cy, w - 3, ROW_H);
+  }
+  const mid  = cy + ROW_H / 2;
+  const barX = x + DP_BAR_OFFSET;
+  const barY = mid - DP_BAR_H / 2;
+  const clampedFrac = Math.min(Math.max(fraction, 0), 1);
+  const fillW = clampedFrac > 0
+    ? Math.max(DP_BAR_H, Math.floor(clampedFrac * DP_BAR_MAX_W))
+    : 0;
+
+  ctx.save();
+
+  // Label
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "11px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(label, x + 10, mid);
+
+  // Bar track
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  dpRoundedRect(ctx, barX, barY, DP_BAR_MAX_W, DP_BAR_H);
+  ctx.fill();
+
+  // Bar fill
+  if (fillW >= DP_BAR_H) {
+    ctx.fillStyle = barColor + "99";  // ~60% opacity
+    dpRoundedRect(ctx, barX, barY, fillW, DP_BAR_H);
+    ctx.fill();
+  }
+
+  // Value — right-aligned, bold
+  ctx.fillStyle = valueColor;
+  ctx.font = "bold 13px sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(value, x + w - 8, mid);
+
+  ctx.restore();
+  return cy + ROW_H;
+}
+
+/** Sub-section header row (height = 20). */
+function dpSubHeader(
+  ctx: CanvasRenderingContext2D,
+  x: number, cy: number, w: number,
+  label: string, accent: string,
+): number {
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,0.04)";
+  ctx.fillRect(x + 3, cy, w - 3, 20);
+  ctx.fillStyle = accent;
+  ctx.fillRect(x + 3, cy, 2, 20);
+  ctx.fillStyle = accent + "cc";
+  ctx.font = "bold 10px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(label, x + 12, cy + 10);
+  ctx.restore();
+  return cy + 20;
+}
+
+/**
+ * Full-width two-team possession bar with rounded caps and percentage labels.
+ * Returns the next y coordinate.
+ */
+function dpPossessionBar(
+  ctx: CanvasRenderingContext2D,
+  x: number, cy: number, w: number,
+  forCount: number, oppCount: number,
+  forLabel: string, oppLabel: string,
+  forAccent: string, oppAccent: string,
+): number {
+  const BAR_H   = 14;
+  const barX    = x + 12;
+  const barW    = w - 24;
+  const total   = forCount + oppCount;
+  const forFrac = total > 0 ? forCount / total : 0.5;
+
+  ctx.save();
+
+  // Track — full bar width, rounded
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  dpRoundedRect(ctx, barX, cy, barW, BAR_H);
+  ctx.fill();
+
+  if (total > 0) {
+    const forW = Math.max(BAR_H, Math.floor(barW * forFrac));
+    const oppW = Math.max(BAR_H, barW - forW);
+
+    // FOR segment (left, rounded pill)
+    ctx.fillStyle = forAccent;
+    dpRoundedRect(ctx, barX, cy, forW, BAR_H);
+    ctx.fill();
+
+    // OPP segment (right, rounded pill)
+    if (forFrac < 1) {
+      ctx.fillStyle = oppAccent;
+      dpRoundedRect(ctx, barX + barW - oppW, cy, oppW, BAR_H);
+      ctx.fill();
+    }
+
+    const labelY = cy + BAR_H + 12;
+    ctx.font = "10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = forAccent;
+    ctx.textAlign = "left";
+    ctx.fillText(`${forLabel}  ${Math.round(forFrac * 100)}%`, barX, labelY);
+    ctx.fillStyle = oppAccent;
+    ctx.textAlign = "right";
+    ctx.fillText(`${Math.round((1 - forFrac) * 100)}%  ${oppLabel}`, barX + barW, labelY);
+  } else {
+    ctx.fillStyle = "#64748b";
+    ctx.font = "10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No data", barX + barW / 2, cy + BAR_H / 2);
+  }
+
+  ctx.restore();
+  return cy + BAR_H + 24;
+}
+
+/**
+ * Renders coaching prompts (filtered by category) as a compact intelligence list.
+ * Each item: 3px accent bar | wrapped text (2 lines max) | evidence tag.
+ */
+function dpIntelligencePanel(
+  ctx: CanvasRenderingContext2D,
+  prompts: readonly ReviewPrompt[],
+  category: ReviewPromptCategory,
+  x: number, startY: number, w: number, maxY: number,
+  accent: string,
+): void {
+  const filtered = prompts.filter((p) => p.category === category);
+
+  if (filtered.length === 0) {
+    ctx.save();
+    ctx.fillStyle = "#64748b";
+    ctx.font = "11px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("Insufficient data for coaching prompts.", x + w / 2, startY + (maxY - startY) / 2);
+    ctx.restore();
+    return;
+  }
+
+  let cy      = startY + 6;
+  const MAX_W = w - 22;
+  const LINE_H = 16;
+  const ITEM_H = 52;
+
+  ctx.save();
+
+  for (const prompt of filtered) {
+    if (cy + ITEM_H > maxY - 4) break;
+
+    // Left accent bar
+    ctx.fillStyle = accent + "cc";
+    ctx.fillRect(x + 7, cy + 4, 3, ITEM_H - 12);
+
+    // Word-wrap up to 2 lines
+    ctx.font = "12px sans-serif";
+    let line1 = "";
+    let line2 = "";
+    for (const word of prompt.text.split(" ")) {
+      const test1 = line1 ? `${line1} ${word}` : word;
+      if (!line2 && ctx.measureText(test1).width <= MAX_W) {
+        line1 = test1;
+      } else {
+        const test2 = line2 ? `${line2} ${word}` : word;
+        if (ctx.measureText(test2).width <= MAX_W) {
+          line2 = test2;
+        } else {
+          let t = test2;
+          while (t.length > 0 && ctx.measureText(`${t}…`).width > MAX_W) {
+            t = t.slice(0, -1);
+          }
+          line2 = `${t}…`;
+          break;
+        }
+      }
+    }
+
+    ctx.fillStyle = "#e2e8f0";
+    ctx.textBaseline = "top";
+    ctx.textAlign = "left";
+    ctx.fillText(line1, x + 15, cy + 4);
+
+    if (line2) {
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "11px sans-serif";
+      ctx.fillText(line2, x + 15, cy + 4 + LINE_H);
+    }
+
+    ctx.font = "9px sans-serif";
+    ctx.fillStyle = "#64748b";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(prompt.evidenceTag, x + w - 10, cy + ITEM_H - 6);
+
+    cy += ITEM_H + 4;
+  }
+
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Restart Visual Analysis — replaces the 2×2 kickout quad map page (p.5).
+ *
+ * LEFT pitch:   Kickouts won by FOR (our retained + their conceded to us).
+ * RIGHT pitch:  Kickouts won by OPP (their retained + ours conceded to them).
+ * Bottom strip: Summary | Chain Outcomes | Restart Intelligence.
+ *
+ * The Kickout Chain Analysis detail page (p.6) is retained as a companion.
+ */
+function makeRestartVisualPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Restart Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets (tactical beneficiary, same logic as selectPdfEvents) ────
+  const forWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
+  );
+  const oppWonEvts = events.filter(
+    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP") ||
+           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR"),
+  );
+
+  // ── Chain data (hoisted before pitches for callout bullets) ─────────────
+  const ko            = analysis.kickouts;
+  const outcomes      = ko.outcomes;
+  const totalKO       = ko.won + ko.lost;
+  const forWonTotal     = outcomes.filter((o) => o.winningSide === "FOR").length;
+  const oppWonTotal     = outcomes.filter((o) => o.winningSide === "OPP").length;
+  const forScoredFromKo = outcomes.filter((o) => o.winningSide === "FOR" && o.nextScore      !== null).length;
+  const forShotFromKo   = outcomes.filter((o) => o.winningSide === "FOR" && o.nextShotOrScore !== null).length;
+  const oppScoredFromKo = outcomes.filter((o) => o.winningSide === "OPP" && o.nextScore      !== null).length;
+  const scoringOuts    = outcomes.filter((o) => o.secondsToScore !== null);
+  const avgSecsToScore = scoringOuts.length > 0
+    ? Math.round(scoringOuts.reduce((s, o) => s + (o.secondsToScore ?? 0), 0) / scoringOuts.length)
+    : null;
+  const h1Out = outcomes.filter((o) => o.kickoutEvent.period === "1H");
+  const h2Out = outcomes.filter((o) => o.kickoutEvent.period === "2H");
+  const h1For = h1Out.filter((o) => o.winningSide === "FOR").length;
+  const h1Opp = h1Out.length - h1For;
+  const h2For = h2Out.filter((o) => o.winningSide === "FOR").length;
+  const h2Opp = h2Out.length - h2For;
+  const forKoEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && e.teamSide === "FOR");
+  function countKoTag(tag: string): number {
+    return forKoEvts.filter((e) => e.tags?.includes(tag)).length;
+  }
+  function pct(num: number, den: number): string {
+    return den > 0 ? `${Math.round((num / den) * 100)}%` : "—";
+  }
+  function withPct(num: number, den: number): string {
+    return den > 0 ? `${num} (${pct(num, den)})` : String(num);
+  }
+  const prompts = deriveReviewPrompts(analysis, homeTeam, awayTeam);
+
+  // ── Pitches ───────────────────────────────────────────────────────────────
+  const CALLOUT_H = 120;
+  const INNER_H   = DP_PITCH_H - CALLOUT_H;
+
+  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Our Restarts — ${homeTeam}`,        forWonEvts.length, "#22d3ee");
+  dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
+    `Won ${ko.won} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
+    `${forScoredFromKo} led to score${forScoredFromKo !== 1 ? "s" : ""}`,
+    `H1: ${h1For}–${h1Opp} / H2: ${h2For}–${h2Opp}`,
+    "#22d3ee",
+  );
+  const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
+  renderEventMarkers(ctx, forWonEvts, leftInner);
+
+  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Opposition Restarts — ${awayTeam}`, oppWonEvts.length, "#fb7185");
+  dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
+    `Opposition won ${ko.lost} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
+    `${oppScoredFromKo} score${oppScoredFromKo !== 1 ? "s" : ""} conceded`,
+    `H1: ${h1Opp}–${h1For} / H2: ${h2Opp}–${h2For}`,
+    "#fb7185",
+  );
+  const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
+  renderEventMarkers(ctx, oppWonEvts, rightInner);
+
+  // ── Panel 1: Restart Summary ──────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P1_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Restart Summary", "#22d3ee");
+    cy += 2;
+    cy = dpPossessionBar(ctx, DP_P1_X, cy, DP_PANEL_W,
+      ko.won, ko.lost,
+      homeTeam.slice(0, 10), awayTeam.slice(0, 10),
+      "#22d3ee", "#fb7185",
+    );
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Won`, `${ko.won} (${pct(ko.won, totalKO)})`,  totalKO > 0 ? ko.won  / totalKO : 0, "#22d3ee", "#22d3ee", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Won`, `${ko.lost} (${pct(ko.lost, totalKO)})`, totalKO > 0 ? ko.lost / totalKO : 0, "#fb7185", "#fb7185", true);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "BY HALF", "#22d3ee");
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "H1 — Won / Lost", `${h1For} / ${h1Opp}`, "#e2e8f0", false);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "H2 — Won / Lost", `${h2For} / ${h2Opp}`, "#e2e8f0", true);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "HOW WON", "#22d3ee");
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Clean Won", String(countKoTag("CLEAN")),    ko.won > 0 ? countKoTag("CLEAN")    / ko.won : 0, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Break Won", String(countKoTag("BREAK")),    ko.won > 0 ? countKoTag("BREAK")    / ko.won : 0, "#e2e8f0", "#e2e8f0", true);
+        dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Foul Won",  String(countKoTag("FOUL_WON")), ko.won > 0 ? countKoTag("FOUL_WON") / ko.won : 0, "#fbbf24", "#fbbf24", false);
+  }
+
+  // ── Panel 2: Chain Outcomes ───────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Chain Outcomes", "#fbbf24");
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} WON POSSESSION`, "#22d3ee");
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(forScoredFromKo, forWonTotal), forWonTotal > 0 ? forScoredFromKo / forWonTotal : 0, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(forShotFromKo,   forWonTotal), forWonTotal > 0 ? forShotFromKo   / forWonTotal : 0, "#7dd3fc", "#7dd3fc", true);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → No shot",      String(Math.max(0, forWonTotal - forShotFromKo)), forWonTotal > 0 ? Math.max(0, forWonTotal - forShotFromKo) / forWonTotal : 0, "#f97316", "#f97316", false);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} WON POSSESSION`, "#fb7185");
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against", withPct(oppScoredFromKo, oppWonTotal), oppWonTotal > 0 ? oppScoredFromKo / oppWonTotal : 0, "#f97316", "#f97316", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → No score",      String(Math.max(0, oppWonTotal - oppScoredFromKo)), oppWonTotal > 0 ? Math.max(0, oppWonTotal - oppScoredFromKo) / oppWonTotal : 0, "#94a3b8", "#94a3b8", true);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "OVERALL", "#fbbf24");
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Retention %", pct(ko.won, totalKO), "#22d3ee", false);
+    if (avgSecsToScore !== null) {
+      dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Avg secs to score (won)", `${avgSecsToScore}s`, "#fbbf24", true);
+    }
+  }
+
+  // ── Panel 3: Restart Intelligence ─────────────────────────────────────────
+  {
+    const panelY = dpPanelStart(ctx, DP_P3_X, DP_STRIP_Y, DP_P3_W, DP_STRIP_H, "Restart Intelligence", "#14b8a6");
+    dpIntelligencePanel(ctx, prompts, "KICKOUT", DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 8, "#22d3ee");
+  }
+
+  drawEventCountFooter(ctx, forWonEvts.length + oppWonEvts.length);
+  return canvas;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Turnover Visual Analysis — replaces the 2×2 turnover quad map page (p.7).
+ *
+ * LEFT pitch:   Turnovers gained by FOR (we won or they lost).
+ * RIGHT pitch:  Turnovers lost by FOR (we lost or they won).
+ * Bottom strip: Summary | Consequences | Turnover Intelligence.
+ *
+ * The Turnover Punishment Analysis detail page (p.8) is retained as a companion.
+ */
+function makeTurnoverVisualPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Turnover Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  const wonEvts  = events.filter(
+    (e) => (e.kind === "TURNOVER_WON"  && e.teamSide === "FOR") ||
+           (e.kind === "TURNOVER_LOST" && e.teamSide === "OPP"),
+  );
+  const lostEvts = events.filter(
+    (e) => (e.kind === "TURNOVER_LOST" && e.teamSide === "FOR") ||
+           (e.kind === "TURNOVER_WON"  && e.teamSide === "OPP"),
+  );
+
+  // ── Chain data (hoisted before pitches for callout bullets) ─────────────
+  const outcomes = analysis.turnovers.outcomes;
+
+  function actingSideTo(o: typeof outcomes[number]): "FOR" | "OPP" {
+    if (o.direction === "WON") return o.turnoverEvent.teamSide;
+    return o.turnoverEvent.teamSide === "FOR" ? "OPP" : "FOR";
+  }
+
+  const forAttacking  = outcomes.filter((o) => actingSideTo(o) === "FOR");
+  const oppAttacking  = outcomes.filter((o) => actingSideTo(o) === "OPP");
+  const forWonTotal   = forAttacking.length;
+  const oppWonTotal   = oppAttacking.length;
+  const forWonToScore = forAttacking.filter((o) => o.resultedInScore).length;
+  const forWonToShot  = forAttacking.filter((o) => o.resultedInShot).length;
+  const oppWonToScore = oppAttacking.filter((o) => o.resultedInScore).length;
+  const oppWonToShot  = oppAttacking.filter((o) => o.resultedInShot).length;
+
+  const netTO    = forWonTotal - oppWonTotal;
+  const netColor = netTO > 0 ? "#4ade80" : netTO < 0 ? "#fb7185" : "#94a3b8";
+  const netStr   = netTO > 0 ? `+${netTO}` : String(netTO);
+
+  function pct(num: number, den: number): string {
+    return den > 0 ? `${Math.round((num / den) * 100)}%` : "—";
+  }
+  function withPct(num: number, den: number): string {
+    return den > 0 ? `${num} (${pct(num, den)})` : String(num);
+  }
+
+  function countToTag(slice: typeof outcomes, ...tags: string[]): number {
+    return slice.filter((o) => tags.some((t) => o.turnoverEvent.tags?.includes(t))).length;
+  }
+  const tagTackle  = countToTag(forAttacking, "TACKLE", "PRESS");
+  const tagSwarm   = countToTag(forAttacking, "SWARM", "INTERCEPT");
+  const tagUnforce = countToTag(forAttacking, "UNFORCED");
+  const tagSlack   = countToTag(forAttacking, "SLACK_KICK_PASS", "SLACK_HAND_PASS");
+
+  const forLostTotal      = outcomes.filter((o) => o.turnoverEvent.kind === "TURNOVER_LOST" && o.turnoverEvent.teamSide === "FOR").length;
+  const forLostToOppScore = oppAttacking.filter((o) => o.turnoverEvent.teamSide === "FOR" && o.resultedInScore).length;
+  const forLostToOppShot  = oppAttacking.filter((o) => o.turnoverEvent.teamSide === "FOR" && o.resultedInShot).length;
+
+  const prompts = deriveReviewPrompts(analysis, homeTeam, awayTeam);
+
+  // ── Pitches ───────────────────────────────────────────────────────────────
+  const CALLOUT_H = 120;
+  const INNER_H   = DP_PITCH_H - CALLOUT_H;
+
+  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Turnovers Won — ${homeTeam}`, wonEvts.length,  "#a78bfa");
+  dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
+    `Won ${forWonTotal} turnover${forWonTotal !== 1 ? "s" : ""}`,
+    `${forWonToScore} led to score${forWonToScore !== 1 ? "s" : ""}`,
+    `${forWonToShot} led to shots`,
+    "#a78bfa",
+  );
+  const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
+  renderEventMarkers(ctx, wonEvts, leftInner);
+
+  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Turnovers Lost — ${homeTeam}`, lostEvts.length, "#f97316");
+  dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
+    `Opposition won ${oppWonTotal} turnover${oppWonTotal !== 1 ? "s" : ""}`,
+    `${oppWonToScore} score${oppWonToScore !== 1 ? "s" : ""} conceded`,
+    `${oppWonToShot} shot${oppWonToShot !== 1 ? "s" : ""} against`,
+    "#f97316",
+  );
+  const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
+  renderEventMarkers(ctx, lostEvts, rightInner);
+
+  // ── Panel 1: Turnover Summary ─────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P1_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Turnover Summary", "#a78bfa");
+    cy += 2;
+    cy = dpPossessionBar(ctx, DP_P1_X, cy, DP_PANEL_W,
+      forWonTotal, oppWonTotal,
+      homeTeam.slice(0, 10), awayTeam.slice(0, 10),
+      "#a78bfa", "#fb7185",
+    );
+    const totalTO = forWonTotal + oppWonTotal;
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Won`, String(forWonTotal), totalTO > 0 ? forWonTotal / totalTO : 0, "#a78bfa", "#a78bfa", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Won`, String(oppWonTotal), totalTO > 0 ? oppWonTotal / totalTO : 0, "#fb7185", "#fb7185", true);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Net Turnover", netStr, netColor, false);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "HOW WON", "#a78bfa");
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Tackle / Press",    String(tagTackle),  forWonTotal > 0 ? tagTackle  / forWonTotal : 0, "#22d3ee", "#22d3ee", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Swarm / Intercept", String(tagSwarm),   forWonTotal > 0 ? tagSwarm   / forWonTotal : 0, "#22d3ee", "#22d3ee", true);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Unforced error",    String(tagUnforce), forWonTotal > 0 ? tagUnforce / forWonTotal : 0, "#fbbf24", "#fbbf24", false);
+        dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Slack pass",        String(tagSlack),   forWonTotal > 0 ? tagSlack   / forWonTotal : 0, "#fbbf24", "#fbbf24", true);
+  }
+
+  // ── Panel 2: Consequences ─────────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Consequences", "#fbbf24");
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} ATTACKED`, "#a78bfa");
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(forWonToScore, forWonTotal), forWonTotal > 0 ? forWonToScore / forWonTotal : 0, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(forWonToShot,  forWonTotal), forWonTotal > 0 ? forWonToShot  / forWonTotal : 0, "#7dd3fc", "#7dd3fc", true);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → No shot",      String(Math.max(0, forWonTotal - forWonToShot)), forWonTotal > 0 ? Math.max(0, forWonTotal - forWonToShot) / forWonTotal : 0, "#f97316", "#f97316", false);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "DAMAGE CONCEDED", "#f97316");
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against", withPct(forLostToOppScore, forLostTotal), forLostTotal > 0 ? forLostToOppScore / forLostTotal : 0, "#f97316", "#f97316", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Shot against",  withPct(forLostToOppShot,  forLostTotal), forLostTotal > 0 ? forLostToOppShot  / forLostTotal : 0, "#fbbf24", "#fbbf24", true);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} ATTACKED`, "#fb7185");
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(oppWonToScore, oppWonTotal), oppWonTotal > 0 ? oppWonToScore / oppWonTotal : 0, "#fb7185", "#fb7185", false);
+        dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(oppWonToShot,  oppWonTotal), oppWonTotal > 0 ? oppWonToShot  / oppWonTotal : 0, "#fbbf24", "#fbbf24", true);
+  }
+
+  // ── Panel 3: Turnover Intelligence ───────────────────────────────────────
+  {
+    const panelY = dpPanelStart(ctx, DP_P3_X, DP_STRIP_Y, DP_P3_W, DP_STRIP_H, "Turnover Intelligence", "#a78bfa");
+    dpIntelligencePanel(ctx, prompts, "TURNOVER", DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 8, "#a78bfa");
+  }
+
+  drawEventCountFooter(ctx, wonEvts.length + lostEvts.length);
+  return canvas;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Free Kick Analysis — replaces the 2×2 free kick quad map page (p.17+N).
+ *
+ * LEFT pitch:   Free kick events benefiting FOR (all periods).
+ * RIGHT pitch:  Free kick events benefiting OPP (all periods).
+ * Bottom strip: Free Summary | Free Outcomes | Free Intelligence.
+ *
+ * No new data is calculated — all values use existing event filters.
+ */
+function makeFreeAnalysisPage(
+  events: readonly PdfExportEvent[],
+  sport: PitchSport,
+  analysis: ChainAnalysis<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Free Kick Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Event subsets ─────────────────────────────────────────────────────────
+  const forFreeEvts = events.filter(
+    (e) => PDF_KIND_SETS.FREES.has(e.kind) && tacticalSide(e) === "FOR",
+  );
+  const oppFreeEvts = events.filter(
+    (e) => PDF_KIND_SETS.FREES.has(e.kind) && tacticalSide(e) === "OPP",
+  );
+
+  // ── Derived stats (hoisted before pitches for callout bullets) ───────────
+  const forEvts = events.filter((e) => e.teamSide === "FOR" && !e.id.includes("-instant-score-"));
+  const oppEvts = events.filter((e) => e.teamSide === "OPP" && !e.id.includes("-instant-score-"));
+
+  const forFreesWon     = countKinds(forEvts, "FREE_WON")      + countKinds(oppEvts, "FREE_CONCEDED");
+  const oppFreesWon     = countKinds(oppEvts, "FREE_WON")      + countKinds(forEvts, "FREE_CONCEDED");
+  const forFreeScored   = countKinds(forEvts, "FREE_SCORED");
+  const forFreeMissed   = countKinds(forEvts, "FREE_MISSED");
+  const oppFreeScored   = countKinds(oppEvts, "FREE_SCORED");
+  const oppFreeMissed   = countKinds(oppEvts, "FREE_MISSED");
+
+  const forFreeAttempts = forFreeScored + forFreeMissed;
+  const oppFreeAttempts = oppFreeScored + oppFreeMissed;
+  const totalScored     = forFreeScored + oppFreeScored;
+  const totalAttempts   = forFreeAttempts + oppFreeAttempts;
+
+  const netFrees = forFreesWon - oppFreesWon;
+  const netColor = netFrees > 0 ? "#4ade80" : netFrees < 0 ? "#fb7185" : "#94a3b8";
+  const netStr   = netFrees > 0 ? `+${netFrees}` : String(netFrees);
+
+  function pct(num: number, den: number): string {
+    return den > 0 ? `${Math.round((num / den) * 100)}%` : "—";
+  }
+
+  const forConv = pct(forFreeScored, forFreeAttempts);
+  const oppConv = pct(oppFreeScored, oppFreeAttempts);
+
+  // Prompts: CHAIN category covers FREE_WON_TO_GOAL rule; fall back to GENERAL.
+  const allPrompts   = deriveReviewPrompts(analysis, homeTeam, awayTeam);
+  const chainPrompts = allPrompts.filter((p) => p.category === "CHAIN");
+  const freePomptCat: ReviewPromptCategory = chainPrompts.length > 0 ? "CHAIN" : "GENERAL";
+
+  // Scoring chains from free wins — FREE_WON_TO_GOAL chains already in ChainAnalysis
+  const forFreeScoringChains = (analysis.byRule["FREE_WON_TO_GOAL"] ?? []).filter((c) => c.teamSide === "FOR").length;
+  const oppFreeScoringChains = (analysis.byRule["FREE_WON_TO_GOAL"] ?? []).filter((c) => c.teamSide === "OPP").length;
+
+  // ── Pitches ───────────────────────────────────────────────────────────────
+  const CALLOUT_H = 120;
+  const INNER_H   = DP_PITCH_H - CALLOUT_H;
+
+  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Our Frees — ${homeTeam}`,        forFreeEvts.length, "#818cf8");
+  dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
+    `Won ${forFreesWon} possession free${forFreesWon !== 1 ? "s" : ""}`,
+    `${forFreeScoringChains} scoring chain${forFreeScoringChains !== 1 ? "s" : ""} from those frees`,
+    forFreeAttempts > 0 ? `Placed balls: ${forFreeScored}/${forFreeAttempts} scored` : "No placed balls attempted",
+    "#818cf8",
+  );
+  const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
+  renderEventMarkers(ctx, forFreeEvts, leftInner);
+
+  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Opposition Frees — ${awayTeam}`, oppFreeEvts.length, "#f472b6");
+  dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
+    `Opposition won ${oppFreesWon} possession free${oppFreesWon !== 1 ? "s" : ""}`,
+    `${oppFreeScoringChains} scoring chain${oppFreeScoringChains !== 1 ? "s" : ""} from those frees`,
+    oppFreeAttempts > 0 ? `Placed balls: ${oppFreeScored}/${oppFreeAttempts} scored` : "No placed balls attempted",
+    "#f472b6",
+  );
+  const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
+  renderEventMarkers(ctx, oppFreeEvts, rightInner);
+
+  // ── Panel 1: Free Summary ─────────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P1_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Free Summary", "#818cf8");
+    cy += 2;
+    cy = dpPossessionBar(ctx, DP_P1_X, cy, DP_PANEL_W,
+      forFreesWon, oppFreesWon,
+      homeTeam.slice(0, 10), awayTeam.slice(0, 10),
+      "#818cf8", "#f472b6",
+    );
+    const totalFreesWon = forFreesWon + oppFreesWon;
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Frees Won`, String(forFreesWon), totalFreesWon > 0 ? forFreesWon / totalFreesWon : 0, "#818cf8", "#818cf8", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Frees Won`, String(oppFreesWon), totalFreesWon > 0 ? oppFreesWon / totalFreesWon : 0, "#f472b6", "#f472b6", true);
+    cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Advantage", netStr, netColor, false);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14).toUpperCase()} PLACED BALLS`, "#818cf8");
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Placed Scored", String(forFreeScored), forFreeAttempts > 0 ? forFreeScored / forFreeAttempts : 0, "#7dd3fc", "#7dd3fc", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Placed Missed", String(forFreeMissed), forFreeAttempts > 0 ? forFreeMissed / forFreeAttempts : 0, "#ef4444", "#ef4444", true);
+        dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Conversion",   forConv, "#818cf8", false);
+  }
+
+  // ── Panel 2: Free Outcomes ────────────────────────────────────────────────
+  {
+    let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Free Outcomes", "#fbbf24");
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "CONVERSION COMPARISON", "#fbbf24");
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, `${homeTeam.slice(0, 14)} Conversion`, forConv, forFreeAttempts > 0 ? forFreeScored / forFreeAttempts : 0, "#818cf8", "#818cf8", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14)} Conversion`, oppConv, oppFreeAttempts > 0 ? oppFreeScored / oppFreeAttempts : 0, "#f472b6", "#f472b6", true);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${awayTeam.slice(0, 14).toUpperCase()} PLACED BALLS`, "#f472b6");
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Placed Scored", String(oppFreeScored), oppFreeAttempts > 0 ? oppFreeScored / oppFreeAttempts : 0, "#f472b6", "#f472b6", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Placed Missed", String(oppFreeMissed), oppFreeAttempts > 0 ? oppFreeMissed / oppFreeAttempts : 0, "#ef4444", "#ef4444", true);
+    cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Conversion",  oppConv, "#f472b6", false);
+    cy += 2;
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "ALL FREES COMBINED", "#94a3b8");
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Total scored", String(totalScored),                 totalAttempts > 0 ? totalScored                 / totalAttempts : 0, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Total missed", String(totalAttempts - totalScored), totalAttempts > 0 ? (totalAttempts - totalScored) / totalAttempts : 0, "#94a3b8", "#94a3b8", true);
+        dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Overall conv.", pct(totalScored, totalAttempts), "#e2e8f0", false);
+  }
+
+  // ── Panel 3: Free Intelligence ────────────────────────────────────────────
+  {
+    const panelY = dpPanelStart(ctx, DP_P3_X, DP_STRIP_Y, DP_P3_W, DP_STRIP_H, "Free Intelligence", "#818cf8");
+    dpIntelligencePanel(ctx, allPrompts, freePomptCat, DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 8, "#818cf8");
+  }
+
+  drawEventCountFooter(ctx, forFreeEvts.length + oppFreeEvts.length);
+  return canvas;
 }
 
 // ─── Quad pitch map page ─────────────────────────────────────────────────────
@@ -5582,22 +6432,15 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   //   p.6 Kickout Chain Analysis
 
   try {
-    const p5 = makeQuadPitchMapPage(
-      sport,
-      [
-        { title: `1H — ${homeTeamName} Kickouts`, events: selectPdfEvents(events, "H1", "FOR", "KICKOUTS"), accentColor: "#14b8a6" },
-        { title: `1H — ${awayTeamName} Kickouts`, events: selectPdfEvents(events, "H1", "OPP", "KICKOUTS"), accentColor: "#ef4444" },
-        { title: `2H — ${homeTeamName} Kickouts`, events: selectPdfEvents(events, "H2", "FOR", "KICKOUTS"), accentColor: "#14b8a6" },
-        { title: `2H — ${awayTeamName} Kickouts`, events: selectPdfEvents(events, "H2", "OPP", "KICKOUTS"), accentColor: "#ef4444" },
-      ],
-      "Kickout Pitch Maps",
+    const p5 = makeRestartVisualPage(
+      events, sport, chainAnalysis,
       homeTeamName, awayTeamName, 5, TOTAL_PAGES,
     );
     stampChapterLabel(p5, "Chapter 3 — Kickout & Restart Analysis", "#14b8a6");
-    addCanvasPage(p5, true, "Kickout Pitch Maps");
+    addCanvasPage(p5, true, "Restart Analysis");
   } catch (err) {
-    console.error("Kickout Pitch Maps page generation failed", err);
-    addCanvasPage(fallbackCanvas("Kickout Pitch Maps"), true, "Kickout Pitch Maps");
+    console.error("Restart Analysis page generation failed", err);
+    addCanvasPage(fallbackCanvas("Restart Analysis"), true, "Restart Analysis");
   }
 
   try {
@@ -5615,22 +6458,15 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   //   p.8 Turnover Punishment Analysis
 
   try {
-    const p7 = makeQuadPitchMapPage(
-      sport,
-      [
-        { title: `1H — ${homeTeamName} Turnovers Won`,  events: selectPdfEvents(events, "H1", "FOR", "TURNOVERS"), accentColor: "#a78bfa" },
-        { title: `1H — ${awayTeamName} Turnovers Won`,  events: selectPdfEvents(events, "H1", "OPP", "TURNOVERS"), accentColor: "#f472b6" },
-        { title: `2H — ${homeTeamName} Turnovers Won`,  events: selectPdfEvents(events, "H2", "FOR", "TURNOVERS"), accentColor: "#a78bfa" },
-        { title: `2H — ${awayTeamName} Turnovers Won`,  events: selectPdfEvents(events, "H2", "OPP", "TURNOVERS"), accentColor: "#f472b6" },
-      ],
-      "Turnover Pitch Maps",
+    const p7 = makeTurnoverVisualPage(
+      events, sport, chainAnalysis,
       homeTeamName, awayTeamName, 7, TOTAL_PAGES,
     );
     stampChapterLabel(p7, "Chapter 4 — Turnover Analysis", "#a78bfa");
-    addCanvasPage(p7, true, "Turnover Pitch Maps");
+    addCanvasPage(p7, true, "Turnover Analysis");
   } catch (err) {
-    console.error("Turnover Pitch Maps page generation failed", err);
-    addCanvasPage(fallbackCanvas("Turnover Pitch Maps"), true, "Turnover Pitch Maps");
+    console.error("Turnover Analysis page generation failed", err);
+    addCanvasPage(fallbackCanvas("Turnover Analysis"), true, "Turnover Analysis");
   }
 
   try {
@@ -5724,7 +6560,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   const p_zone = 14 + playerPageCount;
   try {
-    const zoneCanvas = makeZoneAnalysisPage(events, homeTeamName, awayTeamName, p_zone, TOTAL_PAGES);
+    const zoneCanvas = makeZoneAnalysisPage(events, sport, homeTeamName, awayTeamName, p_zone, TOTAL_PAGES);
     stampChapterLabel(zoneCanvas, "Chapter 8 — Spatial Analysis", "#22d3ee");
     addCanvasPage(zoneCanvas, true, "Zone Analysis");
   } catch (err) {
@@ -5778,22 +6614,15 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   try {
     addCanvasPage(
-      makeQuadPitchMapPage(
-        sport,
-        [
-          { title: `1H — ${homeTeamName} Frees`, events: selectPdfEvents(events, "H1", "FOR", "FREES"), accentColor: "#fbbf24" },
-          { title: `1H — ${awayTeamName} Frees`, events: selectPdfEvents(events, "H1", "OPP", "FREES"), accentColor: "#fb923c" },
-          { title: `2H — ${homeTeamName} Frees`, events: selectPdfEvents(events, "H2", "FOR", "FREES"), accentColor: "#fbbf24" },
-          { title: `2H — ${awayTeamName} Frees`, events: selectPdfEvents(events, "H2", "OPP", "FREES"), accentColor: "#fb923c" },
-        ],
-        "Free Kick Pitch Maps",
+      makeFreeAnalysisPage(
+        events, sport, chainAnalysis,
         homeTeamName, awayTeamName, p_arch + 2, TOTAL_PAGES,
       ),
-      true, "Free Kick Pitch Maps",
+      true, "Free Kick Analysis",
     );
   } catch (err) {
-    console.error("Free Kick Pitch Maps page generation failed", err);
-    addCanvasPage(fallbackCanvas("Free Kick Pitch Maps"), true, "Free Kick Pitch Maps");
+    console.error("Free Kick Analysis page generation failed", err);
+    addCanvasPage(fallbackCanvas("Free Kick Analysis"), true, "Free Kick Analysis");
   }
 
   try {
@@ -5870,13 +6699,13 @@ function zonePixelRect(
 
 /** High-contrast event marker colours for HT Vision pages. Sideline-optimised palette. */
 const HT_MARKER_COLORS: Partial<Record<MatchEventKind, string>> = {
-  GOAL:                 "#ef4444",   // vivid red — largest marker (×1.38)
-  POINT:                "#4ade80",   // bright green
-  TWO_POINTER:          "#60a5fa",   // sky blue
-  FORTY_FIVE_TWO_POINT: "#7dd3fc",   // light blue
-  FREE_SCORED:          "#34d399",   // emerald
+  GOAL:                 "#16a34a",   // dark green circle — largest marker (×1.38)
+  POINT:                "#4ade80",   // light green circle
+  TWO_POINTER:          "#fbbf24",   // gold circle
+  FORTY_FIVE_TWO_POINT: "#fbbf24",   // gold circle (same as 2pt)
+  FREE_SCORED:          "#4ade80",   // light green (score = point)
   // WIDE / FREE_MISSED / KICKOUT_CONCEDED → drawn as ✕, handled separately
-  KICKOUT_WON:          "#22d3ee",   // teal
+  KICKOUT_WON:          "#22d3ee",   // cyan
   TURNOVER_WON:         "#a78bfa",   // purple
   TURNOVER_LOST:        "#f97316",   // orange
   FREE_WON:             "#818cf8",   // indigo
@@ -5889,11 +6718,11 @@ const HT_MARKER_COLORS: Partial<Record<MatchEventKind, string>> = {
  *
  * Visual language (coach reads at arm's length in 3 seconds, outdoors):
  *   SCORE (GOAL, POINT, FREE_SCORED…) — filled coloured circle; GOAL is 38% larger
- *   WIDE / FREE_MISSED                — aggressive red ✕   (possession wasted)
+ *   WIDE / FREE_MISSED                — red ✕              (possession wasted)
  *   KICKOUT_CONCEDED                  — pink ✕             (restart territory lost)
- *   SHOT + BLOCK_SAVE tag             — cyan hollow ring    (keeper stopped it)
- *   SHOT + SHORT tag                  — amber ↓            (possession ceded short)
- *   SHOT (other)                      — amber filled circle (neutral attempt)
+ *   SHOT + BLOCK_SAVE tag             — grey hollow ring    (keeper stopped it)
+ *   SHOT + SHORT tag                  — grey ↓             (possession ceded short)
+ *   SHOT (other)                      — grey filled circle  (neutral / blocked attempt)
  *   KICKOUT_WON / TURNOVER… / etc.   — filled coloured circle
  *
  * Every marker has a dark halo drawn first for pitch-line separation.
@@ -5919,10 +6748,8 @@ function renderHtMarkers(
     ctx.save();
 
     if (kind === "WIDE" || kind === "FREE_MISSED" || kind === "KICKOUT_CONCEDED") {
-      // ✕ marker: red for WIDE, orange-red for FREE_MISSED, pink for KICKOUT_CONCEDED
-      const color = kind === "KICKOUT_CONCEDED" ? "#fb7185"
-                  : kind === "FREE_MISSED"       ? "#f97316"
-                  :                                "#ef4444";
+      // ✕ marker: red for WIDE/FREE_MISSED (miss = waste), pink for KICKOUT_CONCEDED (restart lost)
+      const color = kind === "KICKOUT_CONCEDED" ? "#fb7185" : "#ef4444";
       const sz = r * 0.90;
 
       // Dark halo first (separates X from pitch lines)
@@ -5943,21 +6770,21 @@ function renderHtMarkers(
       ctx.beginPath(); ctx.moveTo(cx + sz, cy - sz); ctx.lineTo(cx - sz, cy + sz); ctx.stroke();
 
     } else if (kind === "SHOT" && tags.includes("BLOCK_SAVE")) {
-      // Cyan hollow ring — keeper save
+      // Grey hollow ring — keeper save
       ctx.save();
       ctx.globalAlpha = 0.22;
       ctx.beginPath(); ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
-      ctx.fillStyle = "#06b6d4"; ctx.fill();
+      ctx.fillStyle = "#94a3b8"; ctx.fill();
       ctx.restore();
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.strokeStyle = "#22d3ee";
+      ctx.strokeStyle = "#64748b";
       ctx.lineWidth   = Math.max(2.5, r * 0.28);
       ctx.stroke();
       ctx.beginPath(); ctx.arc(cx, cy, r * 0.33, 0, Math.PI * 2);
-      ctx.fillStyle = "#22d3ee"; ctx.fill();
+      ctx.fillStyle = "#e2e8f0"; ctx.fill();
 
     } else if (kind === "SHOT" && tags.includes("SHORT")) {
-      // ↓ amber symbol — possession ceded short of target
+      // ↓ grey symbol — possession ceded short of target
       const fontSize = Math.round(r * 2.4);
       ctx.font         = `bold ${fontSize}px sans-serif`;
       ctx.textAlign    = "center";
@@ -5967,12 +6794,12 @@ function renderHtMarkers(
       ctx.fillStyle   = "#000000";
       ctx.fillText("↓", cx + 1.5, cy + 1.5);
       ctx.restore();
-      ctx.fillStyle = "#fbbf24";
+      ctx.fillStyle = "#94a3b8";
       ctx.fillText("↓", cx, cy);
 
     } else {
       // Filled coloured circle: GOAL (larger), POINT, SHOT/other, KICKOUT_WON, TURNOVER, etc.
-      const fill    = HT_MARKER_COLORS[kind] ?? (kind === "SHOT" ? "#fbbf24" : "#ffffff");
+      const fill    = HT_MARKER_COLORS[kind] ?? (kind === "SHOT" ? "#94a3b8" : "#ffffff");
       const markerR = kind === "GOAL" ? r * 1.38 : r;
       ctx.beginPath(); ctx.arc(cx, cy, markerR, 0, Math.PI * 2);
       ctx.fillStyle = fill; ctx.fill();
@@ -6384,7 +7211,7 @@ function drawPossessionChainBlock(
   ctx.save();
 
   // Section label
-  ctx.fillStyle    = "#475569";
+  ctx.fillStyle    = "#64748b";
   ctx.font         = "bold 13px sans-serif";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign    = "left";
@@ -6588,7 +7415,7 @@ function makeHtPressureDamageMapPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(248,113,113,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -6607,9 +7434,9 @@ function makeHtPressureDamageMapPage(
   const forLossHot     = pdfZoneHotspots(forLossEvts)[0];
 
   const facts: string[] = [];
-  if (totalOppScores > 0) facts.push(`${totalOppScores} opposition score${totalOppScores !== 1 ? "s" : ""} conceded`);
+  if (totalOppScores > 0) facts.push(`${awayTeam.slice(0, 14)} scored ${totalOppScores} time${totalOppScores !== 1 ? "s" : ""}`);
   if (oppScoreHot)        facts.push(`Scoring danger: ${oppScoreHot.label} (${oppScoreHot.count})`);
-  if (totalForLosses > 0) facts.push(`${totalForLosses} possession loss${totalForLosses !== 1 ? "es" : ""} recorded`);
+  if (totalForLosses > 0) facts.push(`${homeTeam.slice(0, 14)} lost possession ${totalForLosses} time${totalForLosses !== 1 ? "s" : ""}`);
   if (forLossHot && facts.length < 3) facts.push(`Loss zone: ${forLossHot.label} (${forLossHot.count})`);
   if (facts.length === 0) facts.push("No scoring threats or possession losses recorded.");
 
@@ -6772,7 +7599,7 @@ function makeHtKickoutVisionPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(20,184,166,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -6799,7 +7626,7 @@ function makeHtKickoutVisionPage(
   const restartTerm = sport === "hurling" ? "puckouts" : "kickouts";
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`Our ${restartTerm}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
+  if (totalKO > 0) facts.push(`${homeTeam.slice(0, 14)} ${restartTerm}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
   if (forHot)      facts.push(`Best zone: ${forHot.label}`);
   if (oppHot)      facts.push(`Conceded most: ${oppHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTerm} data recorded.`);
@@ -7005,7 +7832,7 @@ function makeHtAttackShotVisionPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(52,211,153,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -7042,15 +7869,15 @@ function makeHtAttackShotVisionPage(
   const facts: string[]  = [];
   const colors: string[] = [];
   if (totalShots > 0) {
-    facts.push(`Our shots: ${totalScores} scored · ${totalWides} wide (${shotEff}%)`);
+    facts.push(`${homeTeam.slice(0, 12)} shots: ${totalScores} scored · ${totalWides} wide (${shotEff}%)`);
     colors.push("#34d399");
   }
   if (totalOppShots > 0) {
-    facts.push(`Their shots: ${totalOppScores} scored · ${totalOppWides} wide (${oppShotEff}%)`);
+    facts.push(`${awayTeam.slice(0, 12)} shots: ${totalOppScores} scored · ${totalOppWides} wide (${oppShotEff}%)`);
     colors.push("#ef4444");
   }
   if (scoreHot && facts.length < 3) {
-    facts.push(`Our top zone: ${scoreHot.label} (${scoreHot.count})`);
+    facts.push(`${homeTeam.slice(0, 12)} top zone: ${scoreHot.label} (${scoreHot.count})`);
     colors.push("#34d399");
   }
   if (facts.length === 0) facts.push("No shot data recorded.");
@@ -7106,7 +7933,7 @@ function makeHtGameFlowPage(
 
   // Fallback: no segment data
   if (segNums.length === 0) {
-    ctx.fillStyle    = "#475569";
+    ctx.fillStyle    = "#64748b";
     ctx.font         = "20px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
@@ -7296,8 +8123,8 @@ function makeHtGameFlowPage(
   const oppCtrl      = segDataList.filter((s) => s.status === "OPP").length;
   const contestedCt  = segDataList.filter((s) => s.status === "CONTESTED").length;
   const facts: string[] = [];
-  if (forCtrl > 0)     facts.push(`${forCtrl} segment${forCtrl !== 1 ? "s" : ""} in control`);
-  if (oppCtrl > 0)     facts.push(`${oppCtrl} segment${oppCtrl !== 1 ? "s" : ""} conceded`);
+  if (forCtrl > 0)     facts.push(`${homeTeam.slice(0, 14)} controlled ${forCtrl} segment${forCtrl !== 1 ? "s" : ""}`);
+  if (oppCtrl > 0)     facts.push(`${awayTeam.slice(0, 14)} controlled ${oppCtrl} segment${oppCtrl !== 1 ? "s" : ""}`);
   if (contestedCt > 0) facts.push(`${contestedCt} contested segment${contestedCt !== 1 ? "s" : ""}`);
   if (facts.length === 0) facts.push("No segment data available.");
 
@@ -7469,7 +8296,7 @@ function makeHtGameFlowFactorsPage(
   ): void {
     const toRender = facts.slice(0, 3);
     if (toRender.length === 0) {
-      c.fillStyle    = "#334155";
+      c.fillStyle    = "#64748b";
       c.font         = "18px sans-serif";
       c.textBaseline = "middle";
       c.textAlign    = "left";
@@ -7528,14 +8355,14 @@ function makeHtGameFlowFactorsPage(
 
   // ── Bottom callout strip ───────────────────────────────────────────────────
   const facts: string[] = [];
-  if (forFacts.length > 0)     facts.push(`${forFacts.length} positive factor${forFacts.length !== 1 ? "s" : ""} identified`);
-  if (againstFacts.length > 0) facts.push(`${againstFacts.length} challenge${againstFacts.length !== 1 ? "s" : ""} to address`);
+  if (forFacts.length > 0)     facts.push(`${homeTeam.slice(0, 14)}: ${forFacts.length} positive factor${forFacts.length !== 1 ? "s" : ""} identified`);
+  if (againstFacts.length > 0) facts.push(`${homeTeam.slice(0, 14)}: ${againstFacts.length} challenge${againstFacts.length !== 1 ? "s" : ""} flagged`);
   if (facts.length === 0)      facts.push("Not enough data to identify clear patterns.");
 
   // ── Possession Chain V1: kickout win-to-score efficiency (threshold ≥ 3) ──
   if (ko.total >= 3 && ko.wonToScore > 0 && facts.length < 3) {
     const pct = Math.round(ko.wonToScorePercent);
-    facts.push(`Kickout win→score: ${ko.wonToScore} of ${ko.won} won converted (${pct}%)`);
+    facts.push(`${homeTeam.slice(0, 14)} kickout→score: ${ko.wonToScore} of ${ko.won} won converted (${pct}%)`);
   }
 
   drawHtCalloutStrip(ctx, facts, ["#22c55e", "#ef4444", "#94a3b8"]);
@@ -7754,7 +8581,7 @@ function makeFtAttackCorridorsPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(52,211,153,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -7764,7 +8591,7 @@ function makeFtAttackCorridorsPage(
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
   ctx.fillText("Wides / Losses", lx + 22, ly); ly += 36;
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("CHANNELS", lx, ly); ly += 20;
   ctx.save();
   ctx.setLineDash([6, 6]);
@@ -8063,7 +8890,7 @@ function makeFtRestartEscapeRoutesPage(
   ctx.font         = "13px sans-serif";
 
   // Legend
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(20,184,166,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -8130,15 +8957,15 @@ function makeFtRestartEscapeRoutesPage(
   const ftRestartTerm = sport === "hurling" ? "puckouts" : "kickouts";
   const facts: string[] = [];
   if (ko.total > 0)
-    facts.push(`Our ${ftRestartTerm}: ${ko.won}W · ${ko.total - ko.won}L (${koRate}% won)`);
+    facts.push(`${homeTeam.slice(0, 14)} ${ftRestartTerm}: ${ko.won}W · ${ko.total - ko.won}L (${koRate}% won)`);
   // Possession Chain V1: richer conversion language (rate, not just count)
   if (ko.wonToScore > 0) {
     const wsPct = Math.round(ko.wonToScorePercent);
-    facts.push(`${ko.wonToScore} of ${ko.won} wins converted to score (${wsPct}%)`);
+    facts.push(`${homeTeam.slice(0, 14)}: ${ko.wonToScore} of ${ko.won} wins converted to score (${wsPct}%)`);
   }
   if (ko.lostAllowedScore > 0) {
     const lsPct = Math.round(ko.lostAllowedScorePercent);
-    facts.push(`${ko.lostAllowedScore} conceded restarts led to opposition score (${lsPct}%)`);
+    facts.push(`${awayTeam.slice(0, 14)} scored from ${ko.lostAllowedScore} of those restarts won (${lsPct}%)`);
   }
   if (bestEscCol >= 0 && facts.length < 3) {
     const esc = grid[bestEscCol][bestEscRow];
@@ -8278,7 +9105,7 @@ function makeFtTacticalMatchStoryPage(
     });
   } else {
     // No segment data fallback
-    ctx.fillStyle    = "#334155";
+    ctx.fillStyle    = "#64748b";
     ctx.font         = "20px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
@@ -8416,7 +9243,7 @@ function makeFtTacticalMatchStoryPage(
   const STORY_Y = PIN_STEM_TOP + PIN_STEM_H + PIN_CARD_H + 44;
 
   // Section label
-  ctx.fillStyle    = "#475569";
+  ctx.fillStyle    = "#64748b";
   ctx.font         = "bold 13px sans-serif";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign    = "left";
@@ -8529,9 +9356,9 @@ function makeFtTacticalMatchStoryPage(
   const oppFinal  = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind)));
   const scoreDiff = forFinal.total - oppFinal.total;
   const facts: string[] = [];
-  facts.push(`${fmtScore(forFinal)} vs ${fmtScore(oppFinal)} — ${scoreDiff > 0 ? `${homeTeam} won by ${scoreDiff}` : scoreDiff < 0 ? `lost by ${Math.abs(scoreDiff)}` : "draw"}`);
-  if (forCtrlCount > 0) facts.push(`${forCtrlCount} segment${forCtrlCount !== 1 ? "s" : ""} controlled`);
-  if (ko.total > 0)     facts.push(`${ko.won} of ${ko.total} kickouts won`);
+  facts.push(`${fmtScore(forFinal)} vs ${fmtScore(oppFinal)} — ${scoreDiff > 0 ? `${homeTeam} won by ${scoreDiff}` : scoreDiff < 0 ? `${awayTeam.slice(0, 12)} won by ${Math.abs(scoreDiff)}` : "draw"}`);
+  if (forCtrlCount > 0) facts.push(`${homeTeam.slice(0, 14)} controlled ${forCtrlCount} segment${forCtrlCount !== 1 ? "s" : ""}`);
+  if (ko.total > 0)     facts.push(`${homeTeam.slice(0, 14)} won ${ko.won} of ${ko.total} kickouts`);
 
   drawHtCalloutStrip(ctx, facts, ["#f8fafc", "#22c55e", "#14b8a6"]);
   drawEventCountFooter(ctx, events.length);
@@ -9177,7 +10004,7 @@ function makeChainPressurePage(
   if (patterns.length === 0) {
     // Empty state — degrade cleanly
     ctx.save();
-    ctx.fillStyle    = "#334155";
+    ctx.fillStyle    = "#64748b";
     ctx.font         = "18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
@@ -9322,7 +10149,7 @@ function makeChainPressurePage(
       ctx.globalAlpha  = 1.0;
       // Metric label — right of the number
       const numW = ctx.measureText(String(p.primaryMetric)).width;
-      ctx.font      = "14px sans-serif";   // was 14/13px — unify at 14px; #475569→#94a3b8
+      ctx.font      = "14px sans-serif";
       ctx.fillStyle = "#94a3b8";
       ctx.textBaseline = "alphabetic";
       ctx.fillText(p.metricLabel, IX + numW + 12, MET_Y - 10);
@@ -9342,13 +10169,13 @@ function makeChainPressurePage(
         severity === "CRITICAL" ? "#ef4444" :
         severity === "HIGH"     ? "#f97316" :
         severity === "ELEVATED" ? hex        :
-                                  "#475569";
+                                  "#64748b";
       // Contrast: amber (#f59e0b) and green (#22c55e) are light-valued —
       // use dark text. All other chip backgrounds use white.
       const sevTextDark =
         severity === "ELEVATED" && (hex === "#f59e0b" || hex === "#22c55e");
       ctx.save();
-      ctx.font         = "14px sans-serif";   // was 14/13px — unify; #475569→#94a3b8
+      ctx.font         = "14px sans-serif";
       ctx.fillStyle    = "#94a3b8";
       ctx.textBaseline = "middle";
       ctx.textAlign    = "left";
@@ -9381,12 +10208,12 @@ function makeChainPressurePage(
   if (patterns.length === 0) {
     cpFacts.push("No chain patterns ranked — insufficient first-half data");
     cpFacts.push(eventsLabel);
-    cpColors.push("#475569", "#475569");
+    cpColors.push("#64748b", "#64748b");
   } else {
     cpFacts.push(`${patterns.length} chain pattern${patterns.length !== 1 ? "s" : ""} ranked by match impact`);
     cpFacts.push(eventsLabel);
     cpFacts.push("Ranked: scores ×5  ·  occurrences ×2  ·  shots ×1");
-    cpColors.push(cpHex(patterns[0].kind, patterns[0].headline), "#94a3b8", "#475569");
+    cpColors.push(cpHex(patterns[0].kind, patterns[0].headline), "#94a3b8", "#64748b");
   }
 
   drawHtCalloutStrip(ctx, cpFacts, cpColors);
@@ -9460,131 +10287,59 @@ function makeOurShotProfilePage(
     (e) => e.teamSide === "FOR" && isFreeMiss(e),
   ).length;
 
-  // ── Pitch + zone colour overlays ──────────────────────────────────────────
-  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
-
+  // ── Zone counts (for headline + hotspot highlight) ────────────────────────
   const scoreCounts = pdfZoneCounts(forScoreEvts);
-  const wideCounts  = pdfZoneCounts(forWideEvts);
-  const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
-  const maxWide     = wideCounts.reduce((m, z) => Math.max(m, z.count), 0);
-
-  // Red wide zone fills (drawn first, behind score fills)
-  for (const zone of wideCounts) {
-    if (zone.count === 0) continue;
-    const alpha = 0.18 + (maxWide > 0 ? (zone.count / maxWide) * 0.32 : 0);
-    const rect  = zonePixelRect(zone.bounds, inner);
-    ctx.fillStyle = `rgba(239,68,68,${alpha.toFixed(2)})`;
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  }
-
-  // Green score zone fills (drawn on top — success overrides waste)
-  for (const zone of scoreCounts) {
-    if (zone.count === 0) continue;
-    const alpha = 0.20 + (maxScore > 0 ? (zone.count / maxScore) * 0.45 : 0);
-    const rect  = zonePixelRect(zone.bounds, inner);
-    ctx.fillStyle = `rgba(52,211,153,${alpha.toFixed(2)})`;
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  }
-
-  // ── Event markers ─────────────────────────────────────────────────────────
-  // FOR shots + FREE_WON spatial markers (indigo) when logged
-  renderHtMarkers(ctx, [...forShotEvts, ...freeWonEvts], inner);
-
-  // ── Zone badge pills ──────────────────────────────────────────────────────
+  // ── Headline band ─────────────────────────────────────────────────────────
+  const SHOT_HEADLINE_H = 90;
+  const topScoreZone = scoreCounts.reduce(
+    (top, z) => z.count > (top?.count ?? 0) ? z : top,
+    null as typeof scoreCounts[0] | null,
+  );
+  const totalShots  = forShotEvts.length;
+  const totalScores = forScoreEvts.length;
+  const shotEff     = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
+  const headlineText = totalShots > 0
+    ? `${totalScores} score${totalScores !== 1 ? "s" : ""} from ${totalShots} shot${totalShots !== 1 ? "s" : ""} · ${shotEff}% efficiency${topScoreZone && topScoreZone.count > 0 ? ` · Best zone: ${topScoreZone.label}` : ""}`
+    : "No shot data recorded for this match";
   ctx.save();
+  ctx.fillStyle = "rgba(52,211,153,0.12)";
+  ctx.fillRect(24, HT_PITCH_AREA.y, HT_PITCH_AREA.w, SHOT_HEADLINE_H);
+  ctx.fillStyle = "#34d399";
+  ctx.fillRect(24, HT_PITCH_AREA.y, 3, SHOT_HEADLINE_H);
+  ctx.fillStyle = "#f1f5f9";
+  ctx.font = "bold 22px sans-serif";
   ctx.textBaseline = "middle";
-  ctx.textAlign    = "center";
-  ctx.font         = "bold 13px sans-serif";
-
-  // Score badges (green, top-third of zone)
-  for (const zone of scoreCounts) {
-    if (zone.count === 0) continue;
-    const rect  = zonePixelRect(zone.bounds, inner);
-    const midX  = rect.x + rect.w / 2;
-    const midY  = rect.y + rect.h * 0.30;
-    const label = `⚡${zone.count}`;
-    const tw    = ctx.measureText(label).width + 14;
-    ctx.fillStyle = "rgba(52,211,153,0.88)";
-    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = "#0d1117";
-    ctx.fillText(label, midX, midY);
-  }
-
-  // Wide badges (red, bottom-third of zone)
-  for (const zone of wideCounts) {
-    if (zone.count === 0) continue;
-    const rect  = zonePixelRect(zone.bounds, inner);
-    const midX  = rect.x + rect.w / 2;
-    const midY  = rect.y + rect.h * 0.72;
-    const label = `✕${zone.count}`;
-    const tw    = ctx.measureText(label).width + 14;
-    ctx.fillStyle = "rgba(239,68,68,0.88)";
-    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(label, midX, midY);
-  }
+  ctx.textAlign = "left";
+  ctx.fillText(headlineText, 54, HT_PITCH_AREA.y + SHOT_HEADLINE_H / 2, HT_PITCH_AREA.w - 60);
   ctx.restore();
 
-  // ── Tactical Threat Overlays (wasted attack zones) ────────────────────────
-  for (let i = 0; i < wideCounts.length; i++) {
-    const wZone = wideCounts[i];
-    const sZone = scoreCounts[i];
-    const score = computeZoneThreatScore(wZone.count, 0, sZone.count);
-    const level = getThreatLevel(score);
-    if (level === "NONE") continue;
-    const rect = zonePixelRect(wZone.bounds, inner);
-    const cx   = rect.x + rect.w / 2;
-    const cy   = rect.y + rect.h / 2;
-    drawThreatRings(ctx, cx, cy, level);
-    const lbl =
-      level === "CRITICAL" ? "WIDES ALERT" :
-      level === "HIGH"     ? "WASTAGE ZONE" :
-                             "WATCH";
-    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  // ── Pitch ─────────────────────────────────────────────────────────────────
+  const pitchArea = { x: HT_PITCH_AREA.x, y: HT_PITCH_AREA.y + SHOT_HEADLINE_H, w: HT_PITCH_AREA.w, h: HT_PITCH_AREA.h - SHOT_HEADLINE_H };
+  const inner = renderPitch(ctx, sport, pitchArea);
+
+  // Subtle border on the hottest scoring zone — no fills elsewhere
+  if (topScoreZone && topScoreZone.count >= 2) {
+    const rect = zonePixelRect(topScoreZone.bounds, inner);
+    ctx.fillStyle = "rgba(52,211,153,0.10)";
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.strokeStyle = "rgba(52,211,153,0.42)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2);
   }
 
-  // ── Directional Pressure Sweeps ───────────────────────────────────────────
-  {
-    let bestWideIdx = -1, bestWideScore = 0;
-    for (let i = 0; i < wideCounts.length; i++) {
-      const s = computeZoneThreatScore(wideCounts[i].count, 0, scoreCounts[i].count);
-      if (s > bestWideScore) { bestWideScore = s; bestWideIdx = i; }
-    }
-    let bestScoreIdx = -1, bestScoreCount = 0;
-    for (let i = 0; i < scoreCounts.length; i++) {
-      if (i === bestWideIdx) continue;
-      if (scoreCounts[i].count > bestScoreCount) { bestScoreCount = scoreCounts[i].count; bestScoreIdx = i; }
-    }
-    let sweepsDrawn = 0;
-    if (bestWideIdx >= 0 && getThreatLevel(bestWideScore) !== "NONE") {
-      const rect      = zonePixelRect(wideCounts[bestWideIdx].bounds, inner);
-      const cx        = rect.x + rect.w / 2;
-      const cy        = rect.y + rect.h / 2;
-      const intensity = Math.min(bestWideScore / 8, 1.0);
-      drawDirectionalPressureSweep(ctx, cx - rect.w * 0.40, cy - rect.h * 0.22, cx, cy, intensity, "PRESSURE_COLLAPSE");
-      sweepsDrawn++;
-      if (getThreatLevel(bestWideScore) === "CRITICAL" && sweepsDrawn < 3) {
-        drawDirectionalPressureSweep(ctx, cx + rect.w * 0.38, cy + rect.h * 0.22, cx, cy, intensity * 0.65, "PRESSURE_COLLAPSE");
-        sweepsDrawn++;
-      }
-    }
-    if (bestScoreIdx >= 0 && bestScoreCount >= 2 && sweepsDrawn < 3) {
-      const rect      = zonePixelRect(scoreCounts[bestScoreIdx].bounds, inner);
-      const cx        = rect.x + rect.w / 2;
-      const cy        = rect.y + rect.h / 2;
-      const intensity = Math.min(bestScoreCount / 5, 1.0);
-      drawDirectionalPressureSweep(ctx, cx - rect.w * 0.20, cy + rect.h * 0.10, cx + rect.w * 0.40, cy - rect.h * 0.22, intensity, "PRESSURE_EXIT");
-    }
-  }
+  // ── Event markers — dots tell the story ──────────────────────────────────
+  // Goal = dark green  ·  Point = light green  ·  Wide = red X
+  // Free won = indigo dot (spatial marker, shown when logged)
+  renderHtMarkers(ctx, [...forShotEvts, ...freeWonEvts], inner);
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
-  let ly = 90;
+  let ly = 180;
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(52,211,153,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -9603,27 +10358,24 @@ function makeOurShotProfilePage(
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  const totalShots  = forShotEvts.length;
-  const totalScores = forScoreEvts.length;
   const totalMisses = totalShots - totalScores;
-  const shotEff     = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
   const scoreHot    = pdfZoneHotspots(forScoreEvts)[0];
 
   const facts: string[]  = [];
   const colors: string[] = [];
 
   if (totalShots > 0) {
-    facts.push(`Our shots: ${totalScores} scored from ${totalShots} attempts · ${totalMisses} missed (${shotEff}%)`);
+    facts.push(`${homeTeam.slice(0, 12)} shots: ${totalScores} scored from ${totalShots} attempts · ${totalMisses} missed (${shotEff}%)`);
     colors.push("#34d399");
   }
   if (forFreeScored > 0 || forFreeMissed > 0) {
     const parts: string[] = [];
     if (forFreeScored > 0) parts.push(`${forFreeScored} placed-ball score${forFreeScored !== 1 ? "s" : ""}`);
     if (forFreeMissed > 0) parts.push(`${forFreeMissed} placed-ball wide${forFreeMissed !== 1 ? "s" : ""}`);
-    facts.push(parts.join(" · "));
+    facts.push(`${homeTeam.slice(0, 12)}: ${parts.join(" · ")}`);
     colors.push("#818cf8");
   } else if (freeWonEvts.length > 0 && facts.length < 2) {
-    facts.push(`${freeWonEvts.length} free${freeWonEvts.length !== 1 ? "s" : ""} won`);
+    facts.push(`${homeTeam.slice(0, 12)} won ${freeWonEvts.length} free${freeWonEvts.length !== 1 ? "s" : ""}`);
     colors.push("#818cf8");
   }
   if (scoreHot && facts.length < 3) {
@@ -9684,118 +10436,66 @@ function makeOppShotProfilePage(
     (e) => e.teamSide === "OPP" && isFreeMiss(e),
   ).length;
 
-  // ── Pitch + zone colour overlays ──────────────────────────────────────────
-  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
-
+  // ── Zone counts (for headline + hotspot highlight) ────────────────────────
   const scoreCounts = pdfZoneCounts(oppScoreEvts);
-  const wideCounts  = pdfZoneCounts(oppWideEvts);
-  const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
-  const maxWide     = wideCounts.reduce((m, z) => Math.max(m, z.count), 0);
 
-  // Amber wide zone fills (territorial pressure, they threatened but missed)
-  for (const zone of wideCounts) {
-    if (zone.count === 0) continue;
-    const alpha = 0.15 + (maxWide > 0 ? (zone.count / maxWide) * 0.28 : 0);
-    const rect  = zonePixelRect(zone.bounds, inner);
-    ctx.fillStyle = `rgba(245,158,11,${alpha.toFixed(2)})`;
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  }
-
-  // Red score zone fills (drawn on top — their success is our danger)
-  for (const zone of scoreCounts) {
-    if (zone.count === 0) continue;
-    const alpha = 0.20 + (maxScore > 0 ? (zone.count / maxScore) * 0.45 : 0);
-    const rect  = zonePixelRect(zone.bounds, inner);
-    ctx.fillStyle = `rgba(248,113,113,${alpha.toFixed(2)})`;
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  }
-
-  // ── Event markers ─────────────────────────────────────────────────────────
-  // OPP shots + FREE_CONCEDED spatial markers (pink) when logged
-  renderHtMarkers(ctx, [...oppShotEvts, ...freeConcededEvts], inner);
-
-  // ── Zone badge pills ──────────────────────────────────────────────────────
+  // ── Headline band ─────────────────────────────────────────────────────────
+  const SHOT_HEADLINE_H = 90;
+  const topScoreZone = scoreCounts.reduce(
+    (top, z) => z.count > (top?.count ?? 0) ? z : top,
+    null as typeof scoreCounts[0] | null,
+  );
+  const totalOppShots  = oppShotEvts.length;
+  const totalOppScores = oppScoreEvts.length;
+  const oppShotEff     = totalOppShots > 0 ? Math.round((totalOppScores / totalOppShots) * 100) : 0;
+  const headlineText = totalOppShots > 0
+    ? `${totalOppScores} score${totalOppScores !== 1 ? "s" : ""} from ${totalOppShots} shot${totalOppShots !== 1 ? "s" : ""} · ${oppShotEff}% efficiency${topScoreZone && topScoreZone.count > 0 ? ` · Most dangerous zone: ${topScoreZone.label}` : ""}`
+    : "No opposition shot data recorded for this match";
   ctx.save();
+  ctx.fillStyle = "rgba(239,68,68,0.12)";
+  ctx.fillRect(24, HT_PITCH_AREA.y, HT_PITCH_AREA.w, SHOT_HEADLINE_H);
+  ctx.fillStyle = "#ef4444";
+  ctx.fillRect(24, HT_PITCH_AREA.y, 3, SHOT_HEADLINE_H);
+  ctx.fillStyle = "#f1f5f9";
+  ctx.font = "bold 22px sans-serif";
   ctx.textBaseline = "middle";
-  ctx.textAlign    = "center";
-  ctx.font         = "bold 13px sans-serif";
-
-  // Score badges (red pill, top-third — their scoring zones)
-  for (const zone of scoreCounts) {
-    if (zone.count === 0) continue;
-    const rect  = zonePixelRect(zone.bounds, inner);
-    const midX  = rect.x + rect.w / 2;
-    const midY  = rect.y + rect.h * 0.30;
-    const label = `⚡${zone.count}`;
-    const tw    = ctx.measureText(label).width + 14;
-    ctx.fillStyle = "rgba(248,113,113,0.88)";
-    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(label, midX, midY);
-  }
-
-  // Wide badges (amber pill, bottom-third — their threat zones)
-  for (const zone of wideCounts) {
-    if (zone.count === 0) continue;
-    const rect  = zonePixelRect(zone.bounds, inner);
-    const midX  = rect.x + rect.w / 2;
-    const midY  = rect.y + rect.h * 0.72;
-    const label = `✕${zone.count}`;
-    const tw    = ctx.measureText(label).width + 14;
-    ctx.fillStyle = "rgba(245,158,11,0.88)";
-    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = "#0d1117";
-    ctx.fillText(label, midX, midY);
-  }
+  ctx.textAlign = "left";
+  ctx.fillText(headlineText, 54, HT_PITCH_AREA.y + SHOT_HEADLINE_H / 2, HT_PITCH_AREA.w - 60);
   ctx.restore();
 
-  // ── Tactical Threat Overlays (OPP scoring danger zones) ──────────────────
-  for (let i = 0; i < scoreCounts.length; i++) {
-    const sZone = scoreCounts[i];
-    const score = computeZoneThreatScore(sZone.count, 0, 0);
-    const level = getThreatLevel(score);
-    if (level === "NONE") continue;
-    const rect = zonePixelRect(sZone.bounds, inner);
-    const cx   = rect.x + rect.w / 2;
-    const cy   = rect.y + rect.h / 2;
-    drawThreatRings(ctx, cx, cy, level);
-    const lbl =
-      level === "CRITICAL" ? "DANGER ZONE" :
-      level === "HIGH"     ? "SCORING ZONE" :
-                             "WATCH";
-    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
+  // ── Pitch ─────────────────────────────────────────────────────────────────
+  const pitchArea = { x: HT_PITCH_AREA.x, y: HT_PITCH_AREA.y + SHOT_HEADLINE_H, w: HT_PITCH_AREA.w, h: HT_PITCH_AREA.h - SHOT_HEADLINE_H };
+  const inner = renderPitch(ctx, sport, pitchArea);
+
+  // Subtle border on the hottest OPP scoring zone — pitch stays clean
+  if (topScoreZone && topScoreZone.count >= 2) {
+    const rect = zonePixelRect(topScoreZone.bounds, inner);
+    ctx.fillStyle = "rgba(239,68,68,0.10)";
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.strokeStyle = "rgba(239,68,68,0.42)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2);
   }
 
-  // ── Directional Pressure Sweeps ───────────────────────────────────────────
-  {
-    let bestScoreIdx = -1, bestScoreCount = 0;
-    for (let i = 0; i < scoreCounts.length; i++) {
-      if (scoreCounts[i].count > bestScoreCount) { bestScoreCount = scoreCounts[i].count; bestScoreIdx = i; }
-    }
-    if (bestScoreIdx >= 0 && bestScoreCount >= 2) {
-      const rect      = zonePixelRect(scoreCounts[bestScoreIdx].bounds, inner);
-      const cx        = rect.x + rect.w / 2;
-      const cy        = rect.y + rect.h / 2;
-      const intensity = Math.min(bestScoreCount / 5, 1.0);
-      // OPP penetrating our defence — INWARD sweep
-      drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy - rect.h * 0.22, cx - rect.w * 0.08, cy, intensity, "PRESSURE_INWARD");
-    }
-  }
+  // ── Event markers — dots tell the story ──────────────────────────────────
+  // Goal = dark green  ·  Point = light green  ·  Wide = red X
+  // Free conceded = pink dot (spatial marker, shown when logged)
+  renderHtMarkers(ctx, [...oppShotEvts, ...freeConcededEvts], inner);
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
-  let ly = 90;
+  let ly = 180;
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
-  ctx.fillStyle = "rgba(248,113,113,0.88)";
+  ctx.fillStyle = "rgba(52,211,153,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
   ctx.fillText("Their scores", lx + 22, ly); ly += 26;
-  ctx.fillStyle = "rgba(245,158,11,0.88)";
+  ctx.fillStyle = "rgba(239,68,68,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
   ctx.fillText("Their wides", lx + 22, ly); ly += 26;
@@ -9808,27 +10508,24 @@ function makeOppShotProfilePage(
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  const totalOppShots  = oppShotEvts.length;
-  const totalOppScores = oppScoreEvts.length;
   const totalOppMisses = totalOppShots - totalOppScores;
-  const oppShotEff     = totalOppShots > 0 ? Math.round((totalOppScores / totalOppShots) * 100) : 0;
   const oppScoreHot    = pdfZoneHotspots(oppScoreEvts)[0];
 
   const facts: string[]  = [];
   const colors: string[] = [];
 
   if (totalOppShots > 0) {
-    facts.push(`Their shots: ${totalOppScores} scored from ${totalOppShots} attempts · ${totalOppMisses} missed (${oppShotEff}%)`);
+    facts.push(`${awayTeam.slice(0, 12)} shots: ${totalOppScores} scored from ${totalOppShots} attempts · ${totalOppMisses} missed (${oppShotEff}%)`);
     colors.push("#ef4444");
   }
   if (oppFreeScored > 0 || oppFreeMissed > 0) {
     const parts: string[] = [];
     if (oppFreeScored > 0) parts.push(`${oppFreeScored} placed-ball score${oppFreeScored !== 1 ? "s" : ""}`);
     if (oppFreeMissed > 0) parts.push(`${oppFreeMissed} placed-ball wide${oppFreeMissed !== 1 ? "s" : ""}`);
-    facts.push(parts.join(" · "));
+    facts.push(`${awayTeam.slice(0, 12)}: ${parts.join(" · ")}`);
     colors.push("#f472b6");
   } else if (freeConcededEvts.length > 0 && facts.length < 2) {
-    facts.push(`${freeConcededEvts.length} free${freeConcededEvts.length !== 1 ? "s" : ""} conceded`);
+    facts.push(`${homeTeam.slice(0, 12)} conceded ${freeConcededEvts.length} free${freeConcededEvts.length !== 1 ? "s" : ""}`);
     colors.push("#f472b6");
   }
   if (oppScoreHot && facts.length < 3) {
@@ -9980,7 +10677,7 @@ function makeOurRestartPlatformPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(20,184,166,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -10005,7 +10702,7 @@ function makeOurRestartPlatformPage(
   const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`Our ${restartTermLC}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
+  if (totalKO > 0) facts.push(`${homeTeam.slice(0, 14)} ${restartTermLC}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
   if (forHot)      facts.push(`Best zone: ${forHot.label}`);
   if (oppHot)      facts.push(`Conceded most: ${oppHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTermLC} data recorded.`);
@@ -10158,7 +10855,7 @@ function makeOppRestartPlatformPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(245,158,11,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -10183,9 +10880,9 @@ function makeOppRestartPlatformPage(
   const forHot   = pdfZoneHotspots(forWonEvts)[0];
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`Their ${restartTermLC}: ${totalOpp}W · ${totalFor}L (${oppPct}% won)`);
-  if (oppHot)      facts.push(`Their best zone: ${oppHot.label}`);
-  if (forHot)      facts.push(`Best pressure point: ${forHot.label}`);
+  if (totalKO > 0) facts.push(`${awayTeam.slice(0, 14)} ${restartTermLC}: ${totalOpp}W · ${totalFor}L (${oppPct}% won)`);
+  if (oppHot)      facts.push(`${awayTeam.slice(0, 14)} best zone: ${oppHot.label}`);
+  if (forHot)      facts.push(`${homeTeam.slice(0, 14)} pressure zone: ${forHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTermLC} data recorded.`);
 
   drawHtCalloutStrip(ctx, facts, ["#ef4444", "#ef4444", "#14b8a6"]);
@@ -10299,129 +10996,106 @@ function makeRestartBattlePage(
   drawPageHeader(ctx, "Restart Battle", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Event subsets ─────────────────────────────────────────────────────────
-  // FOR won = our kickout retained + their kickout we won
+  // FOR won = homeTeam kickout retained + awayTeam kickout homeTeam won
   const forWonEvts = events.filter(
     (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
            (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
   );
-  // OPP won = their kickout retained + our kickout they won
+  // OPP won = awayTeam kickout retained + homeTeam kickout awayTeam won
   const oppWonEvts = events.filter(
     (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP") ||
            (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR"),
   );
   const allKickoutEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind));
 
-  // ── Pitch + zone overlays ─────────────────────────────────────────────────
-  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+  // ── Layout: two equal mini-pitches — one owner, one story ─────────────────
+  const BAND_H    = 44;
+  const BAND_Y    = 80;
+  const PITCH_TOP = BAND_Y + BAND_H + 4;           // 128
+  const PITCH_H   = HT_STRIP_TOP - PITCH_TOP - 8;  // 764
+  const GAP       = 24;
+  const HALF_W    = (CANVAS_W - 3 * GAP) / 2;      // 924
+  const leftArea  = { x: GAP,              y: PITCH_TOP, w: HALF_W, h: PITCH_H };
+  const rightArea = { x: GAP + HALF_W + GAP, y: PITCH_TOP, w: HALF_W, h: PITCH_H };
 
-  const forWonCounts = pdfZoneCounts(forWonEvts);
-  const oppWonCounts = pdfZoneCounts(oppWonEvts);
-
-  for (let i = 0; i < forWonCounts.length; i++) {
-    const forZone = forWonCounts[i];
-    const oppZone = oppWonCounts[i];
-    const total   = forZone.count + oppZone.count;
-    if (total === 0) continue;
-    const rect      = zonePixelRect(forZone.bounds, inner);
-    const diff      = forZone.count - oppZone.count;
-    const intensity = Math.min(total / 4, 1);
-    if (diff > 1) {
-      ctx.fillStyle = `rgba(20,184,166,${(0.20 + intensity * 0.38).toFixed(2)})`;
-    } else if (diff < -1) {
-      ctx.fillStyle = `rgba(248,113,113,${(0.20 + intensity * 0.38).toFixed(2)})`;
-    } else {
-      ctx.fillStyle = "rgba(251,191,36,0.28)";
-    }
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  }
-
-  // ── Event markers ─────────────────────────────────────────────────────────
-  renderHtMarkers(ctx, allKickoutEvts, inner);
-
-  // ── Zone badge pills (W / L counts per zone) ──────────────────────────────
+  // ── Team header bands ─────────────────────────────────────────────────────
   ctx.save();
-  ctx.textBaseline = "middle";
+  ctx.font         = "bold 19px sans-serif";
   ctx.textAlign    = "center";
-  ctx.font         = "bold 12px sans-serif";
-  for (let i = 0; i < forWonCounts.length; i++) {
-    const forZone = forWonCounts[i];
-    const oppZone = oppWonCounts[i];
-    const total   = forZone.count + oppZone.count;
-    if (total === 0) continue;
-    const rect  = zonePixelRect(forZone.bounds, inner);
-    const midX  = rect.x + rect.w / 2;
-    const midY  = rect.y + rect.h / 2;
-    const label = `${forZone.count}W / ${oppZone.count}L`;
-    const tw    = ctx.measureText(label).width + 16;
-    const isTeal = forZone.count > oppZone.count;
-    const isRed  = oppZone.count > forZone.count;
-    ctx.fillStyle = isTeal ? "rgba(20,184,166,0.88)"
-                 : isRed  ? "rgba(248,113,113,0.88)"
-                 :           "rgba(251,191,36,0.88)";
-    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = (isTeal || isRed) ? "#ffffff" : "#0d1117";
-    ctx.fillText(label, midX, midY);
-  }
-  ctx.restore();
-
-  // ── Threat overlays on OPP-dominant zones ─────────────────────────────────
-  for (let i = 0; i < oppWonCounts.length; i++) {
-    const oZone = oppWonCounts[i];
-    const fZone = forWonCounts[i];
-    const score = computeZoneThreatScore(oZone.count, 0, fZone.count);
-    const level = getThreatLevel(score);
-    if (level === "NONE") continue;
-    const rect = zonePixelRect(oZone.bounds, inner);
-    const cx   = rect.x + rect.w / 2;
-    const cy   = rect.y + rect.h / 2;
-    drawThreatRings(ctx, cx, cy, level);
-    const lbl = level === "CRITICAL" ? "THEIR ZONE"
-              : level === "HIGH"     ? "DANGER RESTART"
-              :                        "WATCH";
-    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
-  }
-
-  // ── Directional sweep on highest OPP-threat zone ──────────────────────────
-  {
-    let bestIdx = -1, bestScore = 0;
-    for (let i = 0; i < oppWonCounts.length; i++) {
-      const s = computeZoneThreatScore(oppWonCounts[i].count, 0, forWonCounts[i].count);
-      if (s > bestScore) { bestScore = s; bestIdx = i; }
-    }
-    if (bestIdx >= 0 && getThreatLevel(bestScore) !== "NONE") {
-      const rect      = zonePixelRect(oppWonCounts[bestIdx].bounds, inner);
-      const cx        = rect.x + rect.w / 2;
-      const cy        = rect.y + rect.h / 2;
-      const intensity = Math.min(bestScore / 10, 1.0);
-      drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy - rect.h * 0.24, cx - rect.w * 0.08, cy, intensity, "PRESSURE_INWARD");
-      if (getThreatLevel(bestScore) === "CRITICAL") {
-        drawDirectionalPressureSweep(ctx, cx - rect.w * 0.36, cy + rect.h * 0.24, cx, cy, intensity * 0.65, "PRESSURE_COLLAPSE");
-      }
-    }
-  }
-
-  // ── Right-side legend ─────────────────────────────────────────────────────
-  const lx = CANVAS_W - 158;
-  let ly = 90;
-  ctx.save();
   ctx.textBaseline = "middle";
-  ctx.textAlign    = "left";
-  ctx.font         = "13px sans-serif";
-  ctx.fillStyle    = "#475569";
-  ctx.fillText("LEGEND", lx, ly); ly += 26;
-  ctx.fillStyle = "rgba(20,184,166,0.88)";
-  ctx.fillRect(lx, ly - 8, 16, 16);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("We won", lx + 22, ly); ly += 26;
-  ctx.fillStyle = "rgba(248,113,113,0.88)";
-  ctx.fillRect(lx, ly - 8, 16, 16);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("They won", lx + 22, ly); ly += 26;
-  ctx.fillStyle = "rgba(251,191,36,0.88)";
-  ctx.fillRect(lx, ly - 8, 16, 16);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Contested", lx + 22, ly);
+  // Left band: homeTeam
+  ctx.fillStyle    = "rgba(34,197,94,0.12)";
+  ctx.fillRect(leftArea.x, BAND_Y, leftArea.w, BAND_H);
+  ctx.strokeStyle  = "rgba(34,197,94,0.45)";
+  ctx.lineWidth    = 1.5;
+  ctx.strokeRect(leftArea.x + 0.75, BAND_Y + 0.75, leftArea.w - 1.5, BAND_H - 1.5);
+  ctx.fillStyle    = "#4ade80";
+  ctx.fillText(`${homeTeam.slice(0, 20)} ${restartTerm}s`, leftArea.x + leftArea.w / 2, BAND_Y + BAND_H / 2);
+  // Right band: awayTeam
+  ctx.fillStyle    = "rgba(239,68,68,0.12)";
+  ctx.fillRect(rightArea.x, BAND_Y, rightArea.w, BAND_H);
+  ctx.strokeStyle  = "rgba(239,68,68,0.45)";
+  ctx.strokeRect(rightArea.x + 0.75, BAND_Y + 0.75, rightArea.w - 1.5, BAND_H - 1.5);
+  ctx.fillStyle    = "#f87171";
+  ctx.fillText(`${awayTeam.slice(0, 20)} ${restartTerm}s`, rightArea.x + rightArea.w / 2, BAND_Y + BAND_H / 2);
   ctx.restore();
+
+  // ── Render both pitches ───────────────────────────────────────────────────
+  const leftInner  = renderPitch(ctx, sport, leftArea);
+  const rightInner = renderPitch(ctx, sport, rightArea);
+
+  // ── Marker: green circle = retained ──────────────────────────────────────
+  const drawRetained = (inner: InnerPitch, evts: readonly PdfExportEvent[]) => {
+    const r = Math.max(9, inner.w * 0.012);
+    ctx.save();
+    for (const e of evts) {
+      const ex = typeof e.x === "number" ? e.x : e.nx;
+      const ey = typeof e.y === "number" ? e.y : e.ny;
+      const cx = inner.x + ex * inner.w;
+      const cy = inner.y + ey * inner.h;
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = "#000";
+      ctx.beginPath(); ctx.arc(cx + 1, cy + 1, r + 1, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#22c55e"; ctx.fill();
+      ctx.strokeStyle = "#15803d"; ctx.lineWidth = Math.max(1.5, r * 0.18); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, r * 0.28, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(240,253,244,0.85)"; ctx.fill();
+    }
+    ctx.restore();
+  };
+
+  // ── Marker: red X = lost ──────────────────────────────────────────────────
+  const drawLost = (inner: InnerPitch, evts: readonly PdfExportEvent[]) => {
+    const r = Math.max(9, inner.w * 0.012);
+    ctx.save();
+    ctx.lineCap = "round";
+    for (const e of evts) {
+      const ex = typeof e.x === "number" ? e.x : e.nx;
+      const ey = typeof e.y === "number" ? e.y : e.ny;
+      const cx = inner.x + ex * inner.w;
+      const cy = inner.y + ey * inner.h;
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = "#ef4444";
+      ctx.beginPath(); ctx.arc(cx, cy, r + 3, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = "#ef4444";
+      ctx.lineWidth = Math.max(2.5, r * 0.35);
+      const arm = r * 0.82;
+      ctx.beginPath(); ctx.moveTo(cx - arm, cy - arm); ctx.lineTo(cx + arm, cy + arm); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + arm, cy - arm); ctx.lineTo(cx - arm, cy + arm); ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  // Left pitch: homeTeam's story — green = they retained, red X = they lost
+  drawRetained(leftInner, forWonEvts);
+  drawLost(leftInner, oppWonEvts);
+
+  // Right pitch: awayTeam's story — green = they retained, red X = they lost
+  drawRetained(rightInner, oppWonEvts);
+  drawLost(rightInner, forWonEvts);
 
   // ── Two-column bottom strip ───────────────────────────────────────────────
   const totalFor = forWonEvts.length;
@@ -10429,31 +11103,33 @@ function makeRestartBattlePage(
   const totalKO  = totalFor + totalOpp;
   const forPct   = totalKO > 0 ? Math.round((totalFor / totalKO) * 100) : 0;
   const oppPct   = totalKO > 0 ? Math.round((totalOpp / totalKO) * 100) : 0;
+  // forHot = zone where homeTeam wins most = zone where awayTeam loses most
   const forHot   = pdfZoneHotspots(forWonEvts)[0];
+  // oppHot = zone where awayTeam wins most = zone where homeTeam loses most
   const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
 
   drawTwoColumnHtStrip(ctx,
     {
-      heading: `Our ${restartTerm}s`,
+      heading: `${homeTeam.slice(0, 16)} ${restartTerm}s`,
       lines: [
         totalKO > 0
-          ? `Won ${totalFor} · Lost ${totalOpp} (${forPct}% won)`
+          ? `${homeTeam.slice(0, 14)} retained ${totalFor}/${totalKO} (${forPct}%)`
           : `No ${restartTermLC} logged`,
-        forHot ? `Best zone: ${forHot.label}` : "Best zone: —",
-        oppHot ? `Danger: ${oppHot.label}`     : "Danger zone: —",
+        forHot ? `Best zone: ${forHot.label}`   : "Best zone: —",
+        oppHot ? `Most losses: ${oppHot.label}` : "Loss zone: —",
       ],
-      color: "#14b8a6",
+      color: "#22c55e",
     },
     {
-      heading: `Their ${restartTerm}s`,
+      heading: `${awayTeam.slice(0, 16)} ${restartTerm}s`,
       lines: [
         totalKO > 0
-          ? `Won ${totalOpp} · Lost ${totalFor} (${oppPct}% won)`
+          ? `${awayTeam.slice(0, 14)} retained ${totalOpp}/${totalKO} (${oppPct}%)`
           : `No ${restartTermLC} logged`,
-        oppHot ? `Best zone: ${oppHot.label}`    : "Best zone: —",
-        forHot ? `Our pressure: ${forHot.label}` : "Our pressure: —",
+        oppHot ? `Best zone: ${oppHot.label}`   : "Best zone: —",
+        forHot ? `Most losses: ${forHot.label}` : "Loss zone: —",
       ],
-      color: "#f87171",
+      color: "#ef4444",
     },
   );
 
@@ -10509,85 +11185,9 @@ function makeTurnoverTerritoryPage(
   // ── Pitch ─────────────────────────────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  const wonCounts  = pdfZoneCounts(wonEvts);
-  const lostCounts = pdfZoneCounts(lostEvts);
-
-  // ── Zone overlays ─────────────────────────────────────────────────────────
-  for (let i = 0; i < wonCounts.length; i++) {
-    const wZone = wonCounts[i];
-    const lZone = lostCounts[i];
-    const total = wZone.count + lZone.count;
-    if (total === 0) continue;
-    const rect      = zonePixelRect(wZone.bounds, inner);
-    const intensity = Math.min(total / 4, 1);
-    const contested = wZone.count >= 2 && lZone.count >= 2;
-    if (contested) {
-      ctx.fillStyle = `rgba(251,191,36,${(0.22 + intensity * 0.28).toFixed(2)})`;
-    } else if (wZone.count > lZone.count + 1) {
-      ctx.fillStyle = `rgba(20,184,166,${(0.20 + intensity * 0.38).toFixed(2)})`;
-    } else if (lZone.count > wZone.count + 1) {
-      ctx.fillStyle = `rgba(248,113,113,${(0.20 + intensity * 0.38).toFixed(2)})`;
-    }
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  }
-
-  // ── Event markers (purple = won, orange = lost) ───────────────────────────
+  // ── Event markers — dots tell the story ──────────────────────────────────
+  // Purple = turnover won  ·  Orange = turnover lost
   renderHtMarkers(ctx, allTurnoverEvts, inner);
-
-  // ── Danger zone callouts (threat rings on high-loss zones) ────────────────
-  for (let i = 0; i < lostCounts.length; i++) {
-    const lZone = lostCounts[i];
-    const wZone = wonCounts[i];
-    const score = computeZoneThreatScore(lZone.count, 0, wZone.count);
-    const level = getThreatLevel(score);
-    if (level === "NONE") continue;
-    const rect = zonePixelRect(lZone.bounds, inner);
-    const cx   = rect.x + rect.w / 2;
-    const cy   = rect.y + rect.h / 2;
-    drawThreatRings(ctx, cx, cy, level);
-    const lbl = level === "CRITICAL" || level === "HIGH" ? "DANGER ZONE" : "WATCH";
-    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
-  }
-
-  // ── Pressure zone badge (teal pill on highest-win zone) ───────────────────
-  {
-    let bestIdx = -1, bestCount = 0;
-    for (let i = 0; i < wonCounts.length; i++) {
-      if (wonCounts[i].count > bestCount) { bestCount = wonCounts[i].count; bestIdx = i; }
-    }
-    if (bestIdx >= 0 && bestCount >= 2) {
-      const rect = zonePixelRect(wonCounts[bestIdx].bounds, inner);
-      const cx   = rect.x + rect.w / 2;
-      const cy   = rect.y + rect.h / 2 + 50;
-      ctx.save();
-      ctx.font         = "bold 18px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign    = "center";
-      const lbl = "PRESSURE ZONE";
-      const tw  = ctx.measureText(lbl).width;
-      const pw  = tw + 24;
-      const ph  = 30;
-      const bx  = cx - pw / 2;
-      const by  = cy - ph / 2;
-      const br  = 8;
-      ctx.fillStyle = "rgba(20,184,166,0.88)";
-      ctx.beginPath();
-      ctx.moveTo(bx + br, by);
-      ctx.lineTo(bx + pw - br, by);
-      ctx.quadraticCurveTo(bx + pw, by, bx + pw, by + br);
-      ctx.lineTo(bx + pw, by + ph - br);
-      ctx.quadraticCurveTo(bx + pw, by + ph, bx + pw - br, by + ph);
-      ctx.lineTo(bx + br, by + ph);
-      ctx.quadraticCurveTo(bx, by + ph, bx, by + ph - br);
-      ctx.lineTo(bx, by + br);
-      ctx.quadraticCurveTo(bx, by, bx + br, by);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = "#0d1117";
-      ctx.fillText(lbl, cx, cy);
-      ctx.restore();
-    }
-  }
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
@@ -10596,7 +11196,7 @@ function makeTurnoverTerritoryPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle    = "#475569";
+  ctx.fillStyle    = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "#a78bfa";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -10605,11 +11205,7 @@ function makeTurnoverTerritoryPage(
   ctx.fillStyle = "#f97316";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Turnover Lost", lx + 22, ly); ly += 26;
-  ctx.fillStyle = "rgba(251,191,36,0.88)";
-  ctx.fillRect(lx, ly - 8, 16, 16);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Contested", lx + 22, ly);
+  ctx.fillText("Turnover Lost", lx + 22, ly);
   ctx.restore();
 
   // ── Bottom callout strip — 4 coaching panels ─────────────────────────────
