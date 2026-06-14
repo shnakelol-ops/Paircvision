@@ -977,15 +977,9 @@ export default function TacticalPlaySurface() {
     onComplete: () => setPlaysOpen(true),
   });
 
-  // Ref used to scroll the done-state preview into view inside the plays panel.
-  const clipPreviewRef = useRef<HTMLDivElement>(null);
   // Duration populated by the preview video's onLoadedMetadata event.
   const [clipPreviewDuration, setClipPreviewDuration] = useState<number | null>(null);
   useEffect(() => { setClipPreviewDuration(null); }, [recordBlob]);
-  useEffect(() => {
-    if (!recordBlob || !clipPreviewRef.current) return;
-    clipPreviewRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [recordBlob]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2044,6 +2038,71 @@ export default function TacticalPlaySurface() {
         >
           Setup
         </button>
+
+        {/* Post-recording preview overlay — fixed centre-bottom, always fully visible */}
+        {recordBlob ? (
+          <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "max(72px, calc(env(safe-area-inset-bottom, 0px) + 68px))", zIndex: 30, width: "min(360px, calc(100vw - 20px))", background: "rgba(5, 10, 18, 0.97)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(180, 210, 255, 0.18)", borderRadius: "14px", boxShadow: "0 12px 36px rgba(0, 0, 0, 0.70), 0 2px 8px rgba(0, 0, 0, 0.40)", padding: "10px", display: "grid", gap: "8px" }}>
+            {recordBlobUrl ? (
+              <video
+                key={recordBlobUrl}
+                src={recordBlobUrl}
+                controls
+                playsInline
+                onLoadedMetadata={(e) => {
+                  const d = (e.currentTarget as HTMLVideoElement).duration;
+                  if (Number.isFinite(d) && d > 0) setClipPreviewDuration(d);
+                }}
+                style={{ width: "100%", maxHeight: "140px", borderRadius: "8px", background: "#000", display: "block" }}
+              />
+            ) : null}
+            {/* Clip info */}
+            {(() => {
+              const hasH264 = recordMimeType.includes("avc1") || recordMimeType.toLowerCase().includes("h264");
+              const mimeBase = recordMimeType.split(";")[0].trim().toLowerCase();
+              const mismatch = mimeBase === "video/mp4" && !hasH264;
+              const size = recordBlob.size >= 1_048_576
+                ? `${(recordBlob.size / 1_048_576).toFixed(1)} MB`
+                : `${Math.round(recordBlob.size / 1024)} KB`;
+              const durStr = clipPreviewDuration != null ? formatRecordTime(Math.round(clipPreviewDuration)) : null;
+              return (
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                  {recordHasAudio
+                    ? <span style={{ fontSize: "10px", color: "rgba(160, 255, 160, 0.85)", fontFamily: "Inter, system-ui, sans-serif", fontWeight: 600 }}>🎙 Voice</span>
+                    : <span style={{ fontSize: "10px", color: "rgba(180, 210, 255, 0.45)", fontFamily: "Inter, system-ui, sans-serif" }}>Silent</span>}
+                  {durStr ? <span style={{ fontSize: "10px", color: "rgba(200, 225, 255, 0.70)", fontFamily: "Inter, system-ui, sans-serif" }}>Duration: {durStr}</span> : null}
+                  <span style={{ fontSize: "10px", color: "rgba(200, 225, 255, 0.70)", fontFamily: "Inter, system-ui, sans-serif" }}>Size: {size}</span>
+                  {mismatch ? <span style={{ fontSize: "8px", color: "rgba(255, 200, 100, 0.70)", fontFamily: "Inter, system-ui, sans-serif" }}>⚠ sharing as .webm</span> : null}
+                </div>
+              );
+            })()}
+            {/* Primary action — Share spans full width */}
+            <button
+              type="button"
+              disabled={isSharing}
+              style={{ width: "100%", height: "42px", borderRadius: "10px", border: "1px solid rgba(80, 160, 255, 0.55)", background: isSharing ? "rgba(8, 28, 58, 0.60)" : "rgba(16, 48, 96, 0.82)", color: isSharing ? "rgba(170, 210, 255, 0.45)" : "rgba(180, 222, 255, 0.96)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "12px", fontWeight: 700, letterSpacing: "0.04em", cursor: isSharing ? "default" : "pointer" }}
+              onClick={() => { void shareClip(); }}
+            >
+              {isSharing ? "Preparing coaching clip…" : "Share"}
+            </button>
+            {/* Secondary actions */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+              <button
+                type="button"
+                style={{ height: "36px", borderRadius: "9px", border: "1px solid rgba(100, 160, 255, 0.28)", background: "rgba(8, 24, 52, 0.64)", color: "rgba(160, 202, 255, 0.84)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "11px", fontWeight: 650, letterSpacing: "0.04em", cursor: "pointer" }}
+                onClick={saveClip}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                style={{ height: "36px", borderRadius: "9px", border: "1px solid rgba(160, 60, 60, 0.28)", background: "transparent", color: "rgba(255, 130, 130, 0.68)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "0.04em", cursor: "pointer" }}
+                onClick={dismissRecord}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {/* Countdown overlay */}
         {recordPhase === "countdown" ? (
@@ -3463,68 +3522,10 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
+            {/* Clip ready indicator — full preview shown in overlay below */}
             {recordBlob ? (
-              <div ref={clipPreviewRef} style={{ display: "grid", gap: "4px" }}>
-                {recordBlobUrl ? (
-                  <video
-                    key={recordBlobUrl}
-                    src={recordBlobUrl}
-                    controls
-                    playsInline
-                    onLoadedMetadata={(e) => {
-                      const d = (e.currentTarget as HTMLVideoElement).duration;
-                      if (Number.isFinite(d) && d > 0) setClipPreviewDuration(d);
-                    }}
-                    style={{ width: "100%", maxHeight: "80px", borderRadius: "6px", background: "#000", display: "block" }}
-                  />
-                ) : null}
-                {/* Clip info strip — coach-friendly */}
-                {(() => {
-                  const hasH264 = recordMimeType.includes("avc1") || recordMimeType.toLowerCase().includes("h264");
-                  const mimeBase = recordMimeType.split(";")[0].trim().toLowerCase();
-                  const mismatch = mimeBase === "video/mp4" && !hasH264;
-                  const size = recordBlob.size >= 1_048_576
-                    ? `${(recordBlob.size / 1_048_576).toFixed(1)} MB`
-                    : `${Math.round(recordBlob.size / 1024)} KB`;
-                  const durStr = clipPreviewDuration != null
-                    ? formatRecordTime(Math.round(clipPreviewDuration))
-                    : null;
-                  return (
-                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", padding: "1px 0" }}>
-                      {recordHasAudio
-                        ? <span style={{ fontSize: "9px", color: "rgba(160, 255, 160, 0.80)", fontFamily: "Inter, system-ui, sans-serif", fontWeight: 600 }}>🎙 Voice</span>
-                        : <span style={{ fontSize: "9px", color: "rgba(180, 210, 255, 0.40)", fontFamily: "Inter, system-ui, sans-serif" }}>Silent</span>}
-                      {durStr ? <span style={{ fontSize: "9px", color: "rgba(200, 225, 255, 0.65)", fontFamily: "Inter, system-ui, sans-serif" }}>Duration: {durStr}</span> : null}
-                      <span style={{ fontSize: "9px", color: "rgba(200, 225, 255, 0.65)", fontFamily: "Inter, system-ui, sans-serif" }}>Size: {size}</span>
-                      {mismatch ? <span style={{ fontSize: "7.5px", color: "rgba(255, 200, 100, 0.65)", fontFamily: "Inter, system-ui, sans-serif" }}>⚠ sharing as .webm</span> : null}
-                    </div>
-                  );
-                })()}
-                {/* Action row — sticky so buttons stay visible when panel is tall */}
-                <div style={{ display: "flex", gap: "4px", position: "sticky", bottom: 0, background: "rgba(4, 10, 22, 0.96)", paddingTop: "4px" }}>
-                  <button
-                    type="button"
-                    disabled={isSharing}
-                    style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.40)", color: isSharing ? "rgba(170, 210, 255, 0.45)" : "rgba(170, 210, 255, 0.95)", flex: 1, justifyContent: "center" }}
-                    onClick={() => { void shareClip(); }}
-                  >
-                    {isSharing ? "Preparing…" : "Share"}
-                  </button>
-                  <button
-                    type="button"
-                    style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(80, 160, 255, 0.25)", color: "rgba(150, 195, 255, 0.80)", flex: 1, justifyContent: "center" }}
-                    onClick={saveClip}
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    style={{ ...PLAYS_ACTION_BTN, color: "rgba(180, 210, 255, 0.50)", flexShrink: 0 }}
-                    onClick={dismissRecord}
-                  >
-                    Discard
-                  </button>
-                </div>
+              <div style={{ display: "flex", gap: "6px", alignItems: "center", padding: "2px 0" }}>
+                <span style={{ fontSize: "9px", color: "rgba(160, 255, 160, 0.72)", fontFamily: "Inter, system-ui, sans-serif" }}>✓ Clip ready — see preview below</span>
               </div>
             ) : null}
 
