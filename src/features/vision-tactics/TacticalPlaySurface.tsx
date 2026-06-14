@@ -612,6 +612,17 @@ function formatRecordTime(secs: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+const IS_DIAG_PREVIEW =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).has("diag");
+const DIAG_RS: Record<number, string> = {
+  0: "HAVE_NOTHING", 1: "HAVE_METADATA", 2: "HAVE_CURRENT_DATA",
+  3: "HAVE_FUTURE_DATA", 4: "HAVE_ENOUGH_DATA",
+};
+const DIAG_NS: Record<number, string> = {
+  0: "EMPTY", 1: "IDLE", 2: "LOADING", 3: "LOADED_META", 4: "LOADED_DATA",
+};
+
 const RECORD_DOT_STYLE: CSSProperties = {
   position: "fixed",
   top: "max(14px, calc(env(safe-area-inset-top, 0px) + 12px))",
@@ -980,6 +991,12 @@ export default function TacticalPlaySurface() {
   // Duration populated by the preview video's onLoadedMetadata event.
   const [clipPreviewDuration, setClipPreviewDuration] = useState<number | null>(null);
   useEffect(() => { setClipPreviewDuration(null); }, [recordBlob]);
+
+  type ClipDiag = { events: string[]; rs: number; ns: number; src: string; dur: number; vw: number; vh: number; err: string | null; seeked: boolean };
+  const [clipDiag, setClipDiag] = useState<ClipDiag>({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
+  useEffect(() => {
+    if (IS_DIAG_PREVIEW) setClipDiag({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
+  }, [recordBlobUrl]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2050,15 +2067,51 @@ export default function TacticalPlaySurface() {
                 preload="metadata"
                 controls
                 playsInline
+                onLoadStart={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video loadstart rs:", vid.readyState, "ns:", vid.networkState);
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "loadstart"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc }));
+                }}
                 onLoadedMetadata={(e) => {
                   const vid = e.currentTarget as HTMLVideoElement;
                   const d = vid.duration;
-                  console.debug("[PV REC] video loadedmetadata dur:", d, "readyState:", vid.readyState);
+                  console.debug("[PV REC] video loadedmetadata dur:", d, "readyState:", vid.readyState, "vw:", vid.videoWidth, "vh:", vid.videoHeight);
                   if (Number.isFinite(d) && d > 0) setClipPreviewDuration(d);
+                  if (IS_DIAG_PREVIEW) {
+                    try { vid.currentTime = 0.001; } catch { /* seek may throw */ }
+                    setClipDiag((p) => ({ ...p, events: [...p.events, "loadedmetadata"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc, dur: d, vw: vid.videoWidth, vh: vid.videoHeight, seeked: true }));
+                  }
+                }}
+                onLoadedData={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video loadeddata rs:", vid.readyState);
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "loadeddata"], rs: vid.readyState, ns: vid.networkState }));
+                }}
+                onCanPlay={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video canplay rs:", vid.readyState);
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "canplay"], rs: vid.readyState, ns: vid.networkState }));
+                }}
+                onSeeked={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video seeked rs:", vid.readyState);
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "seeked"], rs: vid.readyState }));
+                }}
+                onStalled={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video stalled rs:", vid.readyState, "ns:", vid.networkState);
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "stalled"], rs: vid.readyState, ns: vid.networkState }));
+                }}
+                onAbort={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video abort rs:", vid.readyState);
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "abort"], rs: vid.readyState }));
                 }}
                 onError={(e) => {
                   const vid = e.currentTarget as HTMLVideoElement;
+                  const errMsg = vid.error ? `${vid.error.code}: ${vid.error.message}` : "unknown";
                   console.debug("[PV REC] video error code:", vid.error?.code, "msg:", vid.error?.message, "src:", vid.src.slice(0, 40));
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "error"], rs: vid.readyState, ns: vid.networkState, err: errMsg }));
                 }}
                 style={{ width: "100%", maxHeight: "140px", borderRadius: "8px", background: "#000", display: "block" }}
               />
@@ -2083,6 +2136,32 @@ export default function TacticalPlaySurface() {
                 </div>
               );
             })()}
+            {/* Diagnostics panel — visible only when ?diag is in the URL */}
+            {IS_DIAG_PREVIEW ? (
+              <div style={{ fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", fontSize: "9px", color: "rgba(180, 255, 180, 0.85)", background: "rgba(0, 20, 0, 0.70)", borderRadius: "6px", padding: "6px 7px", display: "grid", gap: "2px", lineHeight: 1.5, border: "1px solid rgba(100, 200, 100, 0.20)" }}>
+                <div style={{ fontWeight: 700, color: "rgba(140, 255, 140, 0.95)", marginBottom: "2px" }}>◉ Recorder Diagnostics</div>
+                <div>requestedMime: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{recordMimeType || "—"}</span></div>
+                <div>blob.type: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{recordBlob?.type || "—"}</span></div>
+                <div>blob.size: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{recordBlob ? `${recordBlob.size.toLocaleString()} bytes` : "—"}</span></div>
+                <div>objectUrl: <span style={{ color: recordBlobUrl ? "rgba(100, 255, 120, 0.95)" : "rgba(255, 100, 100, 0.90)" }}>{recordBlobUrl ? "yes" : "no"}</span></div>
+                <div>video.currentSrc: <span style={{ color: clipDiag.src ? "rgba(100, 255, 120, 0.95)" : "rgba(255, 100, 100, 0.90)" }}>{clipDiag.src ? "yes" : "no"}</span></div>
+                <div>readyState: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{clipDiag.rs >= 0 ? `${clipDiag.rs} (${DIAG_RS[clipDiag.rs] ?? "?"})` : "—"}</span></div>
+                <div>networkState: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{clipDiag.ns >= 0 ? `${clipDiag.ns} (${DIAG_NS[clipDiag.ns] ?? "?"})` : "—"}</span></div>
+                <div>error: <span style={{ color: clipDiag.err ? "rgba(255, 100, 100, 0.95)" : "rgba(100, 255, 120, 0.95)" }}>{clipDiag.err ?? "none"}</span></div>
+                <div>duration: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{Number.isFinite(clipDiag.dur) ? `${clipDiag.dur.toFixed(2)}s` : "—"}</span></div>
+                <div>videoWidth×Height: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{clipDiag.vw > 0 ? `${clipDiag.vw}×${clipDiag.vh}` : "—"}</span></div>
+                <div>seeked (first frame): <span style={{ color: clipDiag.seeked ? "rgba(100, 255, 120, 0.95)" : "rgba(255, 200, 100, 0.80)" }}>{clipDiag.seeked ? "yes" : "no"}</span></div>
+                <div>hasAudio: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{recordHasAudio ? "yes" : "no"}</span></div>
+                <div>events: <span style={{ color: "rgba(180, 230, 255, 0.90)" }}>{clipDiag.events.length > 0 ? clipDiag.events.join(" → ") : "—"}</span></div>
+                <button
+                  type="button"
+                  style={{ marginTop: "3px", height: "22px", borderRadius: "4px", border: "1px solid rgba(100, 200, 100, 0.35)", background: "rgba(0, 60, 20, 0.60)", color: "rgba(140, 255, 140, 0.90)", fontFamily: "'SF Mono', 'Roboto Mono', monospace", fontSize: "9px", fontWeight: 600, cursor: "pointer", letterSpacing: "0.03em" }}
+                  onClick={() => { if (recordBlobUrl) window.open(recordBlobUrl, "_blank"); }}
+                >
+                  Open Clip ↗
+                </button>
+              </div>
+            ) : null}
             {/* Primary action — Share spans full width */}
             <button
               type="button"

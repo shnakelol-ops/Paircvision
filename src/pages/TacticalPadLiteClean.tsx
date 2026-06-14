@@ -845,6 +845,17 @@ function formatRecordTime(secs: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+const IS_DIAG_PREVIEW =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).has("diag");
+const DIAG_RS: Record<number, string> = {
+  0: "HAVE_NOTHING", 1: "HAVE_METADATA", 2: "HAVE_CURRENT_DATA",
+  3: "HAVE_FUTURE_DATA", 4: "HAVE_ENOUGH_DATA",
+};
+const DIAG_NS: Record<number, string> = {
+  0: "EMPTY", 1: "IDLE", 2: "LOADING", 3: "LOADED_META", 4: "LOADED_DATA",
+};
+
 const QUICK_SHARE_POPOUT_STYLE: CSSProperties = {
   ...POPOUT_BASE_STYLE,
   left: "max(194px, calc(env(safe-area-inset-left, 0px) + 192px))",
@@ -1971,6 +1982,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   // Duration populated by the preview video's onLoadedMetadata event.
   const [slateClipPreviewDuration, setSlateClipPreviewDuration] = useState<number | null>(null);
   useEffect(() => { setSlateClipPreviewDuration(null); }, [slateRecordBlob]);
+
+  type SlateClipDiag = { events: string[]; rs: number; ns: number; src: string; dur: number; vw: number; vh: number; err: string | null; seeked: boolean };
+  const [slateClipDiag, setSlateClipDiag] = useState<SlateClipDiag>({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
+  useEffect(() => {
+    if (IS_DIAG_PREVIEW) setSlateClipDiag({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
+  }, [slateRecordBlobUrl]);
+
   const [myBoardsOpen, setMyBoardsOpen] = useState(false);
   const [savedBoards, setSavedBoards] = useState<SavedQuickBoard[]>([]);
   const [pendingRecoveredBoardDraft, setPendingRecoveredBoardDraft] = useState<QuickBoardBoardState | null>(null);
@@ -5261,15 +5279,51 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     preload="metadata"
                     controls
                     playsInline
+                    onLoadStart={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video loadstart rs:", vid.readyState, "ns:", vid.networkState);
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadstart"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc }));
+                    }}
                     onLoadedMetadata={(e) => {
                       const vid = e.currentTarget as HTMLVideoElement;
                       const d = vid.duration;
-                      console.debug("[PV REC] slate video loadedmetadata dur:", d, "readyState:", vid.readyState);
+                      console.debug("[PV REC] slate video loadedmetadata dur:", d, "readyState:", vid.readyState, "vw:", vid.videoWidth, "vh:", vid.videoHeight);
                       if (Number.isFinite(d) && d > 0) setSlateClipPreviewDuration(d);
+                      if (IS_DIAG_PREVIEW) {
+                        try { vid.currentTime = 0.001; } catch { /* seek may throw */ }
+                        setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadedmetadata"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc, dur: d, vw: vid.videoWidth, vh: vid.videoHeight, seeked: true }));
+                      }
+                    }}
+                    onLoadedData={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video loadeddata rs:", vid.readyState);
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadeddata"], rs: vid.readyState, ns: vid.networkState }));
+                    }}
+                    onCanPlay={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video canplay rs:", vid.readyState);
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "canplay"], rs: vid.readyState, ns: vid.networkState }));
+                    }}
+                    onSeeked={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video seeked rs:", vid.readyState);
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "seeked"], rs: vid.readyState }));
+                    }}
+                    onStalled={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video stalled rs:", vid.readyState, "ns:", vid.networkState);
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "stalled"], rs: vid.readyState, ns: vid.networkState }));
+                    }}
+                    onAbort={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video abort rs:", vid.readyState);
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "abort"], rs: vid.readyState }));
                     }}
                     onError={(e) => {
                       const vid = e.currentTarget as HTMLVideoElement;
+                      const errMsg = vid.error ? `${vid.error.code}: ${vid.error.message}` : "unknown";
                       console.debug("[PV REC] slate video error code:", vid.error?.code, "msg:", vid.error?.message, "src:", vid.src.slice(0, 40));
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "error"], rs: vid.readyState, ns: vid.networkState, err: errMsg }));
                     }}
                     style={{ width: "100%", maxHeight: "110px", borderRadius: "6px", background: "#000", display: "block" }}
                   />
@@ -5296,6 +5350,32 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     </div>
                   );
                 })()}
+                {/* Diagnostics panel — visible only when ?diag is in the URL */}
+                {IS_DIAG_PREVIEW ? (
+                  <div style={{ fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", fontSize: "8.5px", color: "rgba(180, 255, 180, 0.85)", background: "rgba(0, 20, 0, 0.70)", borderRadius: "5px", padding: "5px 6px", display: "grid", gap: "2px", lineHeight: 1.5, border: "1px solid rgba(100, 200, 100, 0.20)" }}>
+                    <div style={{ fontWeight: 700, color: "rgba(140, 255, 140, 0.95)", marginBottom: "2px" }}>◉ Recorder Diagnostics</div>
+                    <div>requestedMime: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateRecordMimeType || "—"}</span></div>
+                    <div>blob.type: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateRecordBlob?.type || "—"}</span></div>
+                    <div>blob.size: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateRecordBlob ? `${slateRecordBlob.size.toLocaleString()} bytes` : "—"}</span></div>
+                    <div>objectUrl: <span style={{ color: slateRecordBlobUrl ? "rgba(100, 255, 120, 0.95)" : "rgba(255, 100, 100, 0.90)" }}>{slateRecordBlobUrl ? "yes" : "no"}</span></div>
+                    <div>video.currentSrc: <span style={{ color: slateClipDiag.src ? "rgba(100, 255, 120, 0.95)" : "rgba(255, 100, 100, 0.90)" }}>{slateClipDiag.src ? "yes" : "no"}</span></div>
+                    <div>readyState: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateClipDiag.rs >= 0 ? `${slateClipDiag.rs} (${DIAG_RS[slateClipDiag.rs] ?? "?"})` : "—"}</span></div>
+                    <div>networkState: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateClipDiag.ns >= 0 ? `${slateClipDiag.ns} (${DIAG_NS[slateClipDiag.ns] ?? "?"})` : "—"}</span></div>
+                    <div>error: <span style={{ color: slateClipDiag.err ? "rgba(255, 100, 100, 0.95)" : "rgba(100, 255, 120, 0.95)" }}>{slateClipDiag.err ?? "none"}</span></div>
+                    <div>duration: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{Number.isFinite(slateClipDiag.dur) ? `${slateClipDiag.dur.toFixed(2)}s` : "—"}</span></div>
+                    <div>videoWidth×Height: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateClipDiag.vw > 0 ? `${slateClipDiag.vw}×${slateClipDiag.vh}` : "—"}</span></div>
+                    <div>seeked (first frame): <span style={{ color: slateClipDiag.seeked ? "rgba(100, 255, 120, 0.95)" : "rgba(255, 200, 100, 0.80)" }}>{slateClipDiag.seeked ? "yes" : "no"}</span></div>
+                    <div>hasAudio: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateRecordHasAudio ? "yes" : "no"}</span></div>
+                    <div>events: <span style={{ color: "rgba(180, 230, 255, 0.90)" }}>{slateClipDiag.events.length > 0 ? slateClipDiag.events.join(" → ") : "—"}</span></div>
+                    <button
+                      type="button"
+                      style={{ marginTop: "3px", height: "20px", borderRadius: "4px", border: "1px solid rgba(100, 200, 100, 0.35)", background: "rgba(0, 60, 20, 0.60)", color: "rgba(140, 255, 140, 0.90)", fontFamily: "'SF Mono', 'Roboto Mono', monospace", fontSize: "8.5px", fontWeight: 600, cursor: "pointer", letterSpacing: "0.03em" }}
+                      onClick={() => { if (slateRecordBlobUrl) window.open(slateRecordBlobUrl, "_blank"); }}
+                    >
+                      Open Clip ↗
+                    </button>
+                  </div>
+                ) : null}
                 {/* Primary action — Share full-width */}
                 <button
                   type="button"
