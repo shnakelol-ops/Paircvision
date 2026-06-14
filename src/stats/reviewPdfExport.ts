@@ -733,8 +733,8 @@ function drawSummaryStatsTable(
         rows: [
           { label: "Frees Won",      value: String(st.freesWon) },
           { label: "Frees Conceded", value: String(st.freesCon) },
-          { label: "Free Scored",    value: String(st.freeScored) },
-          { label: "Free Missed",    value: String(st.freeMissed) },
+          { label: "Placed Scored",  value: String(st.freeScored) },
+          { label: "Placed Missed",  value: String(st.freeMissed) },
         ],
       },
     ];
@@ -807,7 +807,7 @@ function drawSummaryStatsTable(
 
   // "v" label centred in the gap between the two blocks
   ctx.save();
-  ctx.fillStyle = "#334155";
+  ctx.fillStyle = "#64748b";
   ctx.font = "bold 20px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
@@ -889,7 +889,7 @@ function makeSummaryPage(
 
   // "v" centred between the two team columns
   ctx.font = "bold 38px sans-serif";
-  ctx.fillStyle = "#334155";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("v", Math.round(CANVAS_W / 2), 158);
 
   // Gradient accent divider that separates the scoreline from the stat blocks
@@ -911,7 +911,7 @@ function makeSummaryPage(
 
   // ── Footer ────────────────────────────────────────────────────────────────────
   ctx.save();
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.font = "15px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "right";
@@ -1066,7 +1066,7 @@ function makeSegmentsPage(
     ctx.fillText(awayTeam.toUpperCase(), oppX + teamW / 2, hdr1Y + hdr1H / 2);
 
     // Segment column label
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "bold 12px sans-serif";
     ctx.textAlign = "left";
     ctx.fillText("SEGMENT", tL + 10, hdr1Y + hdr1H / 2);
@@ -1429,7 +1429,7 @@ function makePlayerPages(
   // ── Handle empty state ────────────────────────────────────────────────────────
   if (players.length === 0) {
     startNewCanvas();
-    activeCtx.fillStyle    = "#475569";
+    activeCtx.fillStyle    = "#64748b";
     activeCtx.font         = "22px sans-serif";
     activeCtx.textBaseline = "middle";
     activeCtx.textAlign    = "center";
@@ -1832,7 +1832,7 @@ function makeChainSummaryPage(
       cy = drawStatRow(COL3_X, cy, COL_W, "Consecutive scores",  val(lrf.count), "#4ade80", false);
       cy = drawStatRow(COL3_X, cy, COL_W, "Period / Segment",    seg,            "#e2e8f0", true);
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            "#475569", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            "#64748b", false);
       cy++;
     }
 
@@ -1855,7 +1855,7 @@ function makeChainSummaryPage(
       cy = drawStatRow(COL3_X, cy, COL_W, "Consecutive scores",  val(lro.count), "#4ade80", false);
       cy = drawStatRow(COL3_X, cy, COL_W, "Period / Segment",    seg,            "#e2e8f0", true);
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            "#475569", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs (2+ scores)",   "—",            "#64748b", false);
       cy++;
     }
 
@@ -1877,7 +1877,7 @@ function makeChainSummaryPage(
       .slice(0, 12);
 
     if (runsToShow.length === 0) {
-      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs detected", "—", "#475569", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "No scoring runs detected", "—", "#64748b", false);
     } else {
       runsToShow.forEach((run, i) => {
         const sideLabel = run.teamSide === "FOR" ? homeTeam.slice(0, 10) : awayTeam.slice(0, 10);
@@ -2023,7 +2023,7 @@ function makeKickoutChainPage(
       ctx.textAlign = "right";
       ctx.fillText(`${Math.round((1 - forFrac) * 100)}% ${oppLabel}`, barX + barW, labelY);
     } else {
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "11px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -2104,7 +2104,7 @@ function makeKickoutChainPage(
 
     if (ko.total === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -2170,7 +2170,7 @@ function makeKickoutChainPage(
 
     if (forKoWonOut.length + forKoConOut.length === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -2214,7 +2214,7 @@ function makeKickoutChainPage(
 
     if (oppKoWonOut.length + oppKoConOut.length === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -2487,7 +2487,7 @@ function makeTurnoverPunishmentPage(
       const labelY = cy + barH + 12;
       ctx.font = "11px sans-serif";
       ctx.textBaseline = "middle";
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.textAlign = "center";
       ctx.fillText("No turnover data", barX + barW / 2, labelY);
     }
@@ -2588,7 +2588,7 @@ function makeTurnoverPunishmentPage(
 
     if (forWonTotal === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -2629,7 +2629,7 @@ function makeTurnoverPunishmentPage(
 
     if (oppWonTotal === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -3002,7 +3002,7 @@ function makeMomentumRunsPage(
 
     if (runs.length === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -3064,7 +3064,7 @@ function makeMomentumRunsPage(
       if (runs.length > MAX_VISIBLE) {
         cy += 4;
         ctx.save();
-        ctx.fillStyle = "#475569";
+        ctx.fillStyle = "#64748b";
         ctx.font = "12px sans-serif";
         ctx.textBaseline = "middle";
         ctx.textAlign = "left";
@@ -3090,7 +3090,7 @@ function makeMomentumRunsPage(
 
     if (h1Runs.length === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -3119,7 +3119,7 @@ function makeMomentumRunsPage(
       const h1LateStr = h1LateRuns.length === 0
         ? "No burst in 1H closing phase"
         : `${homeTeam.slice(0, 10)}: ${h1LateFor} pts  ${awayTeam.slice(0, 10)}: ${h1LateOpp} pts`;
-      const h1LateCol = h1LateRuns.length === 0 ? "#475569" : "#fbbf24";
+      const h1LateCol = h1LateRuns.length === 0 ? "#64748b" : "#fbbf24";
       drawStatRow(COL2_X, cy, COL_W, "1H late burst (seg 3)", h1LateStr, h1LateCol, false);
     }
 
@@ -3129,7 +3129,7 @@ function makeMomentumRunsPage(
 
     if (h2Runs.length === 0) {
       ctx.save();
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#64748b";
       ctx.font = "14px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
@@ -3158,7 +3158,7 @@ function makeMomentumRunsPage(
       const h2LateStr = h2LateRuns.length === 0
         ? "No burst in 2H closing phase"
         : `${homeTeam.slice(0, 10)}: ${h2LateFor} pts  ${awayTeam.slice(0, 10)}: ${h2LateOpp} pts`;
-      const h2LateCol = h2LateRuns.length === 0 ? "#475569" : "#fbbf24";
+      const h2LateCol = h2LateRuns.length === 0 ? "#64748b" : "#fbbf24";
       drawStatRow(COL2_X, cy, COL_W, "2H late burst (seg 6)", h2LateStr, h2LateCol, false);
     }
   }
@@ -3178,7 +3178,7 @@ function makeMomentumRunsPage(
         "#22d3ee", false,
       );
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} longest`, "No run ≥2", "#475569", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} longest`, "No run ≥2", "#64748b", false);
     }
     if (lro) {
       cy = drawStatRow(COL3_X, cy, COL_W,
@@ -3187,7 +3187,7 @@ function makeMomentumRunsPage(
         "#fb7185", true,
       );
     } else {
-      cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 16)} longest`, "No run ≥2", "#475569", true);
+      cy = drawStatRow(COL3_X, cy, COL_W, `${awayTeam.slice(0, 16)} longest`, "No run ≥2", "#64748b", true);
     }
 
     cy = drawStatRow(COL3_X, cy, COL_W, `${homeTeam.slice(0, 16)} total runs`,        String(forRunTotal),  "#22d3ee", false);
@@ -3206,7 +3206,7 @@ function makeMomentumRunsPage(
     cy = drawSubHeader(COL3_X, cy, COL_W, "RESPONSE AFTER OPPOSITION RUN", "#f97316");
 
     if (responsePairs.length < 2) {
-      cy = drawStatRow(COL3_X, cy, COL_W, "Insufficient alternating runs", "—", "#475569", false);
+      cy = drawStatRow(COL3_X, cy, COL_W, "Insufficient alternating runs", "—", "#64748b", false);
       cy++;
     } else {
       cy = drawStatRow(COL3_X, cy, COL_W,
@@ -3238,7 +3238,7 @@ function makeMomentumRunsPage(
       let controlColor: string;
       if (total === 0) {
         controlStr  = "No runs";
-        controlColor = "#475569";
+        controlColor = "#64748b";
       } else if (forScore > oppScore) {
         controlStr  = `${homeTeam.slice(0, 10)} +${forScore - oppScore}`;
         controlColor = "#22d3ee";
@@ -3466,7 +3466,7 @@ function makeTacticalIntelligencePage(
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (analysis.totalEventsAnalysed === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -3753,7 +3753,7 @@ function makeTacticalReviewGuidePage(
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (prompts.length === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -3876,7 +3876,7 @@ function makeTacticalReviewGuidePage(
     ctx.fillText(display, TEXT_X, ROW1_Y);
 
     // Evidence tag (row 2, right-aligned — small, dimmed)
-    ctx.fillStyle = "#334155";
+    ctx.fillStyle = "#64748b";
     ctx.font = "10px sans-serif";
     ctx.textBaseline = "alphabetic";
     ctx.textAlign = "right";
@@ -4102,7 +4102,7 @@ function makeOppositionSnapshotPage(
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (analysis.totalEventsAnalysed === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -4138,7 +4138,7 @@ function makeOppositionSnapshotPage(
     `${awayTeam.slice(0, 20)} — Scoring Profile`, OPP_ACCENT,
   );
   if (oppScore.total === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -4161,7 +4161,7 @@ function makeOppositionSnapshotPage(
   drawCardBg(L_COL_X, lCard2Y, L_COL_W, L_CARD_H_2, "#fbbf24");
   cy = drawCardTitle(L_COL_X, lCard2Y, L_COL_W, "Restart Threat (Kickouts)", "#fbbf24");
   if (ko.total === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -4193,7 +4193,7 @@ function makeOppositionSnapshotPage(
   drawCardBg(L_COL_X, lCard3Y, L_COL_W, L_CARD_H_3, "#a78bfa");
   cy = drawCardTitle(L_COL_X, lCard3Y, L_COL_W, "Turnover Threat", "#a78bfa");
   if (tvLost === 0 && tvOppToScore === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -4255,7 +4255,7 @@ function makeOppositionSnapshotPage(
   drawCardBg(R_COL_X, rCard2Y, R_COL_W, R_CARD_H_2, "#22d3ee");
   cy = drawCardTitle(R_COL_X, rCard2Y, R_COL_W, "Chain Rate", "#22d3ee");
   if (chainTotal === 0) {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -4463,7 +4463,7 @@ function makeZoneAnalysisPage(
 
   // ── Empty state ────────────────────────────────────────────────────────────
   if (events.length === 0) {
-    ctx.fillStyle    = "#475569";
+    ctx.fillStyle    = "#64748b";
     ctx.font         = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
@@ -4956,7 +4956,7 @@ function makeMatchSwingTimelinePage(
     const descX = colX + DESC_OFFSET;
 
     if (items.length === 0) {
-      ctx.fillStyle    = "#334155";
+      ctx.fillStyle    = "#64748b";
       ctx.font         = "12px sans-serif";
       ctx.textAlign    = "left";
       ctx.textBaseline = "middle";
@@ -5030,7 +5030,7 @@ function makeMatchSwingTimelinePage(
 
   // Full-page empty-state guard.
   if (col1Items.length === 0 && col2Items.length === 0) {
-    ctx.fillStyle    = "#475569";
+    ctx.fillStyle    = "#64748b";
     ctx.font         = "16px sans-serif";
     ctx.textAlign    = "center";
     ctx.textBaseline = "middle";
@@ -5325,9 +5325,9 @@ function makeShotEfficiencyPage(
     // ── Section 4: Free Conversion ────────────────────────────────────────────
     cy = drawSecHeader(colX, cy, "Free Conversion", accentColor);
     const freeTotal = stats.freeScored + stats.freeMissed;
-    cy = drawRow(colX, cy, "Free Scored", String(stats.freeScored),
+    cy = drawRow(colX, cy, "Placed Scored", String(stats.freeScored),
       stats.freeScored > 0 ? accentColor : MUTED, false);
-    cy = drawRow(colX, cy, "Free Missed", String(stats.freeMissed),
+    cy = drawRow(colX, cy, "Placed Missed", String(stats.freeMissed),
       stats.freeMissed > 0 ? NEUTRAL    : MUTED, true);
     cy = drawRow(colX, cy, "Free Conv %", freeTotal > 0 ? `${stats.freeConvPct}%` : "—",
       freeTotal        > 0 ? accentColor : MUTED, false);
@@ -5432,7 +5432,7 @@ function dpPitchTitle(
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(label.toUpperCase(), x + 12, y + DP_TITLE_H / 2);
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.font = "12px sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(`${count} events`, x + w - 10, y + DP_TITLE_H / 2);
@@ -5676,7 +5676,7 @@ function dpPossessionBar(
     ctx.textAlign = "right";
     ctx.fillText(`${Math.round((1 - forFrac) * 100)}%  ${oppLabel}`, barX + barW, labelY);
   } else {
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#64748b";
     ctx.font = "10px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -7211,7 +7211,7 @@ function drawPossessionChainBlock(
   ctx.save();
 
   // Section label
-  ctx.fillStyle    = "#475569";
+  ctx.fillStyle    = "#64748b";
   ctx.font         = "bold 13px sans-serif";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign    = "left";
@@ -7415,7 +7415,7 @@ function makeHtPressureDamageMapPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(248,113,113,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -7599,7 +7599,7 @@ function makeHtKickoutVisionPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(20,184,166,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -7832,7 +7832,7 @@ function makeHtAttackShotVisionPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(52,211,153,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -7933,7 +7933,7 @@ function makeHtGameFlowPage(
 
   // Fallback: no segment data
   if (segNums.length === 0) {
-    ctx.fillStyle    = "#475569";
+    ctx.fillStyle    = "#64748b";
     ctx.font         = "20px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
@@ -8296,7 +8296,7 @@ function makeHtGameFlowFactorsPage(
   ): void {
     const toRender = facts.slice(0, 3);
     if (toRender.length === 0) {
-      c.fillStyle    = "#334155";
+      c.fillStyle    = "#64748b";
       c.font         = "18px sans-serif";
       c.textBaseline = "middle";
       c.textAlign    = "left";
@@ -8581,7 +8581,7 @@ function makeFtAttackCorridorsPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(52,211,153,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -8591,7 +8591,7 @@ function makeFtAttackCorridorsPage(
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
   ctx.fillText("Wides / Losses", lx + 22, ly); ly += 36;
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("CHANNELS", lx, ly); ly += 20;
   ctx.save();
   ctx.setLineDash([6, 6]);
@@ -8890,7 +8890,7 @@ function makeFtRestartEscapeRoutesPage(
   ctx.font         = "13px sans-serif";
 
   // Legend
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(20,184,166,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -9105,7 +9105,7 @@ function makeFtTacticalMatchStoryPage(
     });
   } else {
     // No segment data fallback
-    ctx.fillStyle    = "#334155";
+    ctx.fillStyle    = "#64748b";
     ctx.font         = "20px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
@@ -9243,7 +9243,7 @@ function makeFtTacticalMatchStoryPage(
   const STORY_Y = PIN_STEM_TOP + PIN_STEM_H + PIN_CARD_H + 44;
 
   // Section label
-  ctx.fillStyle    = "#475569";
+  ctx.fillStyle    = "#64748b";
   ctx.font         = "bold 13px sans-serif";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign    = "left";
@@ -10004,7 +10004,7 @@ function makeChainPressurePage(
   if (patterns.length === 0) {
     // Empty state — degrade cleanly
     ctx.save();
-    ctx.fillStyle    = "#334155";
+    ctx.fillStyle    = "#64748b";
     ctx.font         = "18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
@@ -10149,7 +10149,7 @@ function makeChainPressurePage(
       ctx.globalAlpha  = 1.0;
       // Metric label — right of the number
       const numW = ctx.measureText(String(p.primaryMetric)).width;
-      ctx.font      = "14px sans-serif";   // was 14/13px — unify at 14px; #475569→#94a3b8
+      ctx.font      = "14px sans-serif";
       ctx.fillStyle = "#94a3b8";
       ctx.textBaseline = "alphabetic";
       ctx.fillText(p.metricLabel, IX + numW + 12, MET_Y - 10);
@@ -10169,13 +10169,13 @@ function makeChainPressurePage(
         severity === "CRITICAL" ? "#ef4444" :
         severity === "HIGH"     ? "#f97316" :
         severity === "ELEVATED" ? hex        :
-                                  "#475569";
+                                  "#64748b";
       // Contrast: amber (#f59e0b) and green (#22c55e) are light-valued —
       // use dark text. All other chip backgrounds use white.
       const sevTextDark =
         severity === "ELEVATED" && (hex === "#f59e0b" || hex === "#22c55e");
       ctx.save();
-      ctx.font         = "14px sans-serif";   // was 14/13px — unify; #475569→#94a3b8
+      ctx.font         = "14px sans-serif";
       ctx.fillStyle    = "#94a3b8";
       ctx.textBaseline = "middle";
       ctx.textAlign    = "left";
@@ -10208,12 +10208,12 @@ function makeChainPressurePage(
   if (patterns.length === 0) {
     cpFacts.push("No chain patterns ranked — insufficient first-half data");
     cpFacts.push(eventsLabel);
-    cpColors.push("#475569", "#475569");
+    cpColors.push("#64748b", "#64748b");
   } else {
     cpFacts.push(`${patterns.length} chain pattern${patterns.length !== 1 ? "s" : ""} ranked by match impact`);
     cpFacts.push(eventsLabel);
     cpFacts.push("Ranked: scores ×5  ·  occurrences ×2  ·  shots ×1");
-    cpColors.push(cpHex(patterns[0].kind, patterns[0].headline), "#94a3b8", "#475569");
+    cpColors.push(cpHex(patterns[0].kind, patterns[0].headline), "#94a3b8", "#64748b");
   }
 
   drawHtCalloutStrip(ctx, cpFacts, cpColors);
@@ -10437,7 +10437,7 @@ function makeOurShotProfilePage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(52,211,153,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -10665,7 +10665,7 @@ function makeOppShotProfilePage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(52,211,153,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -10853,7 +10853,7 @@ function makeOurRestartPlatformPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(20,184,166,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -11031,7 +11031,7 @@ function makeOppRestartPlatformPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(245,158,11,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -11280,7 +11280,7 @@ function makeRestartBattlePage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle    = "#475569";
+  ctx.fillStyle    = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(20,184,166,0.88)";
   ctx.fillRect(lx, ly - 8, 16, 16);
@@ -11469,7 +11469,7 @@ function makeTurnoverTerritoryPage(
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
   ctx.font         = "13px sans-serif";
-  ctx.fillStyle    = "#475569";
+  ctx.fillStyle    = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "#a78bfa";
   ctx.fillRect(lx, ly - 8, 16, 16);
