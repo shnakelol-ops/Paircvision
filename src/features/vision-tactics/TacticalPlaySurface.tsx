@@ -2068,9 +2068,10 @@ export default function TacticalPlaySurface() {
           Setup
         </button>
 
-        {/* Post-recording preview overlay — fixed centre-bottom, always fully visible */}
+        {/* Post-recording clip panel — fixed centre-bottom */}
         {recordBlob ? (
           <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "max(72px, calc(env(safe-area-inset-bottom, 0px) + 68px))", zIndex: 30, width: "min(360px, calc(100vw - 20px))", background: "rgba(5, 10, 18, 0.97)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(180, 210, 255, 0.18)", borderRadius: "14px", boxShadow: "0 12px 36px rgba(0, 0, 0, 0.70), 0 2px 8px rgba(0, 0, 0, 0.40)", padding: "10px", display: "grid", gap: "8px" }}>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "rgba(200, 225, 255, 0.90)", fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.02em" }}>Clip Ready</div>
             {recordBlobUrl && !recordHasAudio ? (
               <video
                 key={recordBlobUrl}
@@ -2134,11 +2135,6 @@ export default function TacticalPlaySurface() {
                 }}
                 style={{ width: "100%", maxHeight: "140px", borderRadius: "8px", background: "#000", display: "block" }}
               />
-            ) : null}
-            {!IS_DIAG_PREVIEW && clipBlankWarning && !clipVideoReady ? (
-              <div style={{ fontSize: "10px", color: "rgba(255, 210, 100, 0.80)", fontFamily: "Inter, system-ui, sans-serif", textAlign: "center", padding: "2px 0" }}>
-                Preview not loading — open with <span style={{ fontFamily: "monospace" }}>?diag</span> to inspect.
-              </div>
             ) : null}
             {/* Clip info */}
             {(() => {
@@ -2220,30 +2216,28 @@ export default function TacticalPlaySurface() {
           <div style={RECORD_COUNTDOWN_STYLE}>{recordCountdown}</div>
         ) : null}
 
-        {/* Recording status pill + manual Stop button */}
+        {/* Recording status HUD — top-right, contains REC pill, timer, hint, and Stop button */}
         {recordPhase === "recording" ? (() => {
           const urgent = recordElapsed >= 570;
           return (
-            <>
-              <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))", zIndex: 25, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px", pointerEvents: "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(8, 14, 10, 0.88)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderRadius: "20px", padding: "5px 10px 5px 7px", border: `1px solid ${urgent ? "rgba(255, 180, 60, 0.40)" : "rgba(255, 48, 48, 0.32)"}` }}>
-                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: urgent ? "#ffb83c" : "#ff3030", boxShadow: urgent ? "0 0 6px 1px rgba(255, 184, 60, 0.70)" : "0 0 6px 1px rgba(255, 48, 48, 0.70)", animation: "tp-rec-pulse 1.1s ease-in-out infinite", flexShrink: 0 }} />
-                  <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(255, 190, 190, 0.95)", fontFamily: "Inter, system-ui, sans-serif" }}>REC</span>
-                  {micStatus === "active" ? <span style={{ fontSize: "11px", lineHeight: 1 }}>🎙</span> : null}
-                  <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(240, 220, 220, 0.80)", letterSpacing: "0.02em" }}>
-                    {formatRecordTime(recordElapsed)}
-                  </span>
-                </div>
-                <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.35)", fontFamily: "Inter, system-ui, sans-serif", paddingRight: "4px" }}>Auto-stops 10:00</span>
+            <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))", zIndex: 25, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(8, 14, 10, 0.88)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderRadius: "20px", padding: "5px 10px 5px 7px", border: `1px solid ${urgent ? "rgba(255, 180, 60, 0.40)" : "rgba(255, 48, 48, 0.32)"}`, pointerEvents: "none" }}>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: urgent ? "#ffb83c" : "#ff3030", boxShadow: urgent ? "0 0 6px 1px rgba(255, 184, 60, 0.70)" : "0 0 6px 1px rgba(255, 48, 48, 0.70)", animation: "tp-rec-pulse 1.1s ease-in-out infinite", flexShrink: 0 }} />
+                <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(255, 190, 190, 0.95)", fontFamily: "Inter, system-ui, sans-serif" }}>REC</span>
+                {micStatus === "active" ? <span style={{ fontSize: "11px", lineHeight: 1 }}>🎙</span> : null}
+                <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(240, 220, 220, 0.80)", letterSpacing: "0.02em" }}>
+                  {formatRecordTime(recordElapsed)}
+                </span>
               </div>
+              <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.35)", fontFamily: "Inter, system-ui, sans-serif", paddingRight: "4px", pointerEvents: "none" }}>Auto-stops 10:00</span>
               <button
                 type="button"
                 onClick={stopRecording}
-                style={{ position: "fixed", bottom: "max(14px, calc(env(safe-area-inset-bottom, 0px) + 12px))", left: "50%", transform: "translateX(-50%)", zIndex: 25, padding: "11px 28px", borderRadius: "22px", border: "1px solid rgba(255, 70, 70, 0.55)", background: "rgba(36, 6, 6, 0.92)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", color: "rgba(255, 160, 160, 0.96)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "13px", fontWeight: 700, letterSpacing: "0.04em", cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.60)" }}
+                style={{ padding: "6px 14px", borderRadius: "14px", border: "1px solid rgba(255, 70, 70, 0.55)", background: "rgba(36, 6, 6, 0.90)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", color: "rgba(255, 160, 160, 0.96)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.04em", cursor: "pointer" }}
               >
-                ■ Stop Recording
+                ■ Stop
               </button>
-            </>
+            </div>
           );
         })() : null}
 
@@ -3629,7 +3623,7 @@ export default function TacticalPlaySurface() {
             {recordBlob ? (
               <div style={{ display: "flex", gap: "6px", alignItems: "center", padding: "2px 0" }}>
                 <span style={{ fontSize: "9px", color: "rgba(160, 255, 160, 0.72)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                  ✓ {recordHasAudio ? "Voice clip ready" : "Clip ready — see preview below"}
+                  ✓ {recordHasAudio ? "Voice clip ready" : "Clip ready"}
                 </span>
               </div>
             ) : null}
