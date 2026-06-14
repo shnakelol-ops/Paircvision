@@ -10287,12 +10287,8 @@ function makeOurShotProfilePage(
     (e) => e.teamSide === "FOR" && isFreeMiss(e),
   ).length;
 
-  // ── Zone counts (hoisted before pitch for headline derivation) ───────────
+  // ── Zone counts (for headline + hotspot highlight) ────────────────────────
   const scoreCounts = pdfZoneCounts(forScoreEvts);
-  const wideCounts  = pdfZoneCounts(forWideEvts);
-  const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
-  const maxWide     = wideCounts.reduce((m, z) => Math.max(m, z.count), 0);
-
   // ── Headline band ─────────────────────────────────────────────────────────
   const SHOT_HEADLINE_H = 90;
   const topScoreZone = scoreCounts.reduce(
@@ -10317,118 +10313,24 @@ function makeOurShotProfilePage(
   ctx.fillText(headlineText, 54, HT_PITCH_AREA.y + SHOT_HEADLINE_H / 2, HT_PITCH_AREA.w - 60);
   ctx.restore();
 
-  // ── Pitch + zone colour overlays ──────────────────────────────────────────
+  // ── Pitch ─────────────────────────────────────────────────────────────────
   const pitchArea = { x: HT_PITCH_AREA.x, y: HT_PITCH_AREA.y + SHOT_HEADLINE_H, w: HT_PITCH_AREA.w, h: HT_PITCH_AREA.h - SHOT_HEADLINE_H };
   const inner = renderPitch(ctx, sport, pitchArea);
 
-  // Red wide zone fills (drawn first, behind score fills)
-  for (const zone of wideCounts) {
-    if (zone.count === 0) continue;
-    const alpha = 0.18 + (maxWide > 0 ? (zone.count / maxWide) * 0.32 : 0);
-    const rect  = zonePixelRect(zone.bounds, inner);
-    ctx.fillStyle = `rgba(239,68,68,${alpha.toFixed(2)})`;
+  // Subtle border on the hottest scoring zone — no fills elsewhere
+  if (topScoreZone && topScoreZone.count >= 2) {
+    const rect = zonePixelRect(topScoreZone.bounds, inner);
+    ctx.fillStyle = "rgba(52,211,153,0.10)";
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.strokeStyle = "rgba(52,211,153,0.42)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2);
   }
 
-  // Green score zone fills (drawn on top — success overrides waste)
-  for (const zone of scoreCounts) {
-    if (zone.count === 0) continue;
-    const alpha = 0.20 + (maxScore > 0 ? (zone.count / maxScore) * 0.45 : 0);
-    const rect  = zonePixelRect(zone.bounds, inner);
-    ctx.fillStyle = `rgba(52,211,153,${alpha.toFixed(2)})`;
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  }
-
-  // ── Event markers ─────────────────────────────────────────────────────────
-  // FOR shots + FREE_WON spatial markers (indigo) when logged
+  // ── Event markers — dots tell the story ──────────────────────────────────
+  // Goal = dark green  ·  Point = light green  ·  Wide = red X
+  // Free won = indigo dot (spatial marker, shown when logged)
   renderHtMarkers(ctx, [...forShotEvts, ...freeWonEvts], inner);
-
-  // ── Zone badge pills ──────────────────────────────────────────────────────
-  ctx.save();
-  ctx.textBaseline = "middle";
-  ctx.textAlign    = "center";
-  ctx.font         = "bold 13px sans-serif";
-
-  // Score badges (green, top-third of zone)
-  for (const zone of scoreCounts) {
-    if (zone.count === 0) continue;
-    const rect  = zonePixelRect(zone.bounds, inner);
-    const midX  = rect.x + rect.w / 2;
-    const midY  = rect.y + rect.h * 0.30;
-    const label = `⚡${zone.count}`;
-    const tw    = ctx.measureText(label).width + 14;
-    ctx.fillStyle = "rgba(52,211,153,0.88)";
-    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = "#0d1117";
-    ctx.fillText(label, midX, midY);
-  }
-
-  // Wide badges (red, bottom-third of zone)
-  for (const zone of wideCounts) {
-    if (zone.count === 0) continue;
-    const rect  = zonePixelRect(zone.bounds, inner);
-    const midX  = rect.x + rect.w / 2;
-    const midY  = rect.y + rect.h * 0.72;
-    const label = `✕${zone.count}`;
-    const tw    = ctx.measureText(label).width + 14;
-    ctx.fillStyle = "rgba(239,68,68,0.88)";
-    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(label, midX, midY);
-  }
-  ctx.restore();
-
-  // ── Tactical Threat Overlays (wasted attack zones) ────────────────────────
-  for (let i = 0; i < wideCounts.length; i++) {
-    const wZone = wideCounts[i];
-    const sZone = scoreCounts[i];
-    const score = computeZoneThreatScore(wZone.count, 0, sZone.count);
-    const level = getThreatLevel(score);
-    if (level === "NONE") continue;
-    const rect = zonePixelRect(wZone.bounds, inner);
-    const cx   = rect.x + rect.w / 2;
-    const cy   = rect.y + rect.h / 2;
-    drawThreatRings(ctx, cx, cy, level);
-    const lbl =
-      level === "CRITICAL" ? "WIDES ALERT" :
-      level === "HIGH"     ? "WASTAGE ZONE" :
-                             "WATCH";
-    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
-  }
-
-  // ── Directional Pressure Sweeps ───────────────────────────────────────────
-  {
-    let bestWideIdx = -1, bestWideScore = 0;
-    for (let i = 0; i < wideCounts.length; i++) {
-      const s = computeZoneThreatScore(wideCounts[i].count, 0, scoreCounts[i].count);
-      if (s > bestWideScore) { bestWideScore = s; bestWideIdx = i; }
-    }
-    let bestScoreIdx = -1, bestScoreCount = 0;
-    for (let i = 0; i < scoreCounts.length; i++) {
-      if (i === bestWideIdx) continue;
-      if (scoreCounts[i].count > bestScoreCount) { bestScoreCount = scoreCounts[i].count; bestScoreIdx = i; }
-    }
-    let sweepsDrawn = 0;
-    if (bestWideIdx >= 0 && getThreatLevel(bestWideScore) !== "NONE") {
-      const rect      = zonePixelRect(wideCounts[bestWideIdx].bounds, inner);
-      const cx        = rect.x + rect.w / 2;
-      const cy        = rect.y + rect.h / 2;
-      const intensity = Math.min(bestWideScore / 8, 1.0);
-      drawDirectionalPressureSweep(ctx, cx - rect.w * 0.40, cy - rect.h * 0.22, cx, cy, intensity, "PRESSURE_COLLAPSE");
-      sweepsDrawn++;
-      if (getThreatLevel(bestWideScore) === "CRITICAL" && sweepsDrawn < 3) {
-        drawDirectionalPressureSweep(ctx, cx + rect.w * 0.38, cy + rect.h * 0.22, cx, cy, intensity * 0.65, "PRESSURE_COLLAPSE");
-        sweepsDrawn++;
-      }
-    }
-    if (bestScoreIdx >= 0 && bestScoreCount >= 2 && sweepsDrawn < 3) {
-      const rect      = zonePixelRect(scoreCounts[bestScoreIdx].bounds, inner);
-      const cx        = rect.x + rect.w / 2;
-      const cy        = rect.y + rect.h / 2;
-      const intensity = Math.min(bestScoreCount / 5, 1.0);
-      drawDirectionalPressureSweep(ctx, cx - rect.w * 0.20, cy + rect.h * 0.10, cx + rect.w * 0.40, cy - rect.h * 0.22, intensity, "PRESSURE_EXIT");
-    }
-  }
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
@@ -10534,11 +10436,8 @@ function makeOppShotProfilePage(
     (e) => e.teamSide === "OPP" && isFreeMiss(e),
   ).length;
 
-  // ── Zone counts (hoisted before pitch for headline derivation) ───────────
+  // ── Zone counts (for headline + hotspot highlight) ────────────────────────
   const scoreCounts = pdfZoneCounts(oppScoreEvts);
-  const wideCounts  = pdfZoneCounts(oppWideEvts);
-  const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
-  const maxWide     = wideCounts.reduce((m, z) => Math.max(m, z.count), 0);
 
   // ── Headline band ─────────────────────────────────────────────────────────
   const SHOT_HEADLINE_H = 90;
@@ -10564,99 +10463,24 @@ function makeOppShotProfilePage(
   ctx.fillText(headlineText, 54, HT_PITCH_AREA.y + SHOT_HEADLINE_H / 2, HT_PITCH_AREA.w - 60);
   ctx.restore();
 
-  // ── Pitch + zone colour overlays ──────────────────────────────────────────
+  // ── Pitch ─────────────────────────────────────────────────────────────────
   const pitchArea = { x: HT_PITCH_AREA.x, y: HT_PITCH_AREA.y + SHOT_HEADLINE_H, w: HT_PITCH_AREA.w, h: HT_PITCH_AREA.h - SHOT_HEADLINE_H };
   const inner = renderPitch(ctx, sport, pitchArea);
 
-  // Red wide zone fills (they threatened but missed)
-  for (const zone of wideCounts) {
-    if (zone.count === 0) continue;
-    const alpha = 0.18 + (maxWide > 0 ? (zone.count / maxWide) * 0.32 : 0);
-    const rect  = zonePixelRect(zone.bounds, inner);
-    ctx.fillStyle = `rgba(239,68,68,${alpha.toFixed(2)})`;
+  // Subtle border on the hottest OPP scoring zone — pitch stays clean
+  if (topScoreZone && topScoreZone.count >= 2) {
+    const rect = zonePixelRect(topScoreZone.bounds, inner);
+    ctx.fillStyle = "rgba(239,68,68,0.10)";
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.strokeStyle = "rgba(239,68,68,0.42)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2);
   }
 
-  // Green score zone fills (drawn on top — same colour language as Our page)
-  for (const zone of scoreCounts) {
-    if (zone.count === 0) continue;
-    const alpha = 0.20 + (maxScore > 0 ? (zone.count / maxScore) * 0.45 : 0);
-    const rect  = zonePixelRect(zone.bounds, inner);
-    ctx.fillStyle = `rgba(52,211,153,${alpha.toFixed(2)})`;
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  }
-
-  // ── Event markers ─────────────────────────────────────────────────────────
-  // OPP shots + FREE_CONCEDED spatial markers (pink) when logged
+  // ── Event markers — dots tell the story ──────────────────────────────────
+  // Goal = dark green  ·  Point = light green  ·  Wide = red X
+  // Free conceded = pink dot (spatial marker, shown when logged)
   renderHtMarkers(ctx, [...oppShotEvts, ...freeConcededEvts], inner);
-
-  // ── Zone badge pills ──────────────────────────────────────────────────────
-  ctx.save();
-  ctx.textBaseline = "middle";
-  ctx.textAlign    = "center";
-  ctx.font         = "bold 13px sans-serif";
-
-  // Score badges (green pill, top-third — their scoring zones)
-  for (const zone of scoreCounts) {
-    if (zone.count === 0) continue;
-    const rect  = zonePixelRect(zone.bounds, inner);
-    const midX  = rect.x + rect.w / 2;
-    const midY  = rect.y + rect.h * 0.30;
-    const label = `⚡${zone.count}`;
-    const tw    = ctx.measureText(label).width + 14;
-    ctx.fillStyle = "rgba(52,211,153,0.88)";
-    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = "#0d1117";
-    ctx.fillText(label, midX, midY);
-  }
-
-  // Wide badges (red pill, bottom-third — their threat zones)
-  for (const zone of wideCounts) {
-    if (zone.count === 0) continue;
-    const rect  = zonePixelRect(zone.bounds, inner);
-    const midX  = rect.x + rect.w / 2;
-    const midY  = rect.y + rect.h * 0.72;
-    const label = `✕${zone.count}`;
-    const tw    = ctx.measureText(label).width + 14;
-    ctx.fillStyle = "rgba(239,68,68,0.88)";
-    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(label, midX, midY);
-  }
-  ctx.restore();
-
-  // ── Tactical Threat Overlays (OPP scoring danger zones) ──────────────────
-  for (let i = 0; i < scoreCounts.length; i++) {
-    const sZone = scoreCounts[i];
-    const score = computeZoneThreatScore(sZone.count, 0, 0);
-    const level = getThreatLevel(score);
-    if (level === "NONE") continue;
-    const rect = zonePixelRect(sZone.bounds, inner);
-    const cx   = rect.x + rect.w / 2;
-    const cy   = rect.y + rect.h / 2;
-    drawThreatRings(ctx, cx, cy, level);
-    const lbl =
-      level === "CRITICAL" ? "DANGER ZONE" :
-      level === "HIGH"     ? "SCORING ZONE" :
-                             "WATCH";
-    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
-  }
-
-  // ── Directional Pressure Sweeps ───────────────────────────────────────────
-  {
-    let bestScoreIdx = -1, bestScoreCount = 0;
-    for (let i = 0; i < scoreCounts.length; i++) {
-      if (scoreCounts[i].count > bestScoreCount) { bestScoreCount = scoreCounts[i].count; bestScoreIdx = i; }
-    }
-    if (bestScoreIdx >= 0 && bestScoreCount >= 2) {
-      const rect      = zonePixelRect(scoreCounts[bestScoreIdx].bounds, inner);
-      const cx        = rect.x + rect.w / 2;
-      const cy        = rect.y + rect.h / 2;
-      const intensity = Math.min(bestScoreCount / 5, 1.0);
-      // OPP penetrating our defence — INWARD sweep
-      drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy - rect.h * 0.22, cx - rect.w * 0.08, cy, intensity, "PRESSURE_INWARD");
-    }
-  }
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
@@ -11184,94 +11008,11 @@ function makeRestartBattlePage(
   );
   const allKickoutEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind));
 
-  // ── Pitch + zone overlays ─────────────────────────────────────────────────
+  // ── Pitch — dots are the primary visual language ──────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  const forWonCounts = pdfZoneCounts(forWonEvts);
-  const oppWonCounts = pdfZoneCounts(oppWonEvts);
-
-  for (let i = 0; i < forWonCounts.length; i++) {
-    const forZone = forWonCounts[i];
-    const oppZone = oppWonCounts[i];
-    const total   = forZone.count + oppZone.count;
-    if (total === 0) continue;
-    const rect      = zonePixelRect(forZone.bounds, inner);
-    const diff      = forZone.count - oppZone.count;
-    const intensity = Math.min(total / 4, 1);
-    if (diff > 1) {
-      ctx.fillStyle = `rgba(20,184,166,${(0.20 + intensity * 0.38).toFixed(2)})`;
-    } else if (diff < -1) {
-      ctx.fillStyle = `rgba(248,113,113,${(0.20 + intensity * 0.38).toFixed(2)})`;
-    } else {
-      ctx.fillStyle = "rgba(251,191,36,0.28)";
-    }
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  }
-
-  // ── Event markers ─────────────────────────────────────────────────────────
+  // ── Event markers: cyan = retained · pink = conceded ─────────────────────
   renderHtMarkers(ctx, allKickoutEvts, inner);
-
-  // ── Zone badge pills (W / L counts per zone) ──────────────────────────────
-  ctx.save();
-  ctx.textBaseline = "middle";
-  ctx.textAlign    = "center";
-  ctx.font         = "bold 12px sans-serif";
-  for (let i = 0; i < forWonCounts.length; i++) {
-    const forZone = forWonCounts[i];
-    const oppZone = oppWonCounts[i];
-    const total   = forZone.count + oppZone.count;
-    if (total === 0) continue;
-    const rect  = zonePixelRect(forZone.bounds, inner);
-    const midX  = rect.x + rect.w / 2;
-    const midY  = rect.y + rect.h / 2;
-    const label = `${forZone.count}W / ${oppZone.count}L`;
-    const tw    = ctx.measureText(label).width + 16;
-    const isTeal = forZone.count > oppZone.count;
-    const isRed  = oppZone.count > forZone.count;
-    ctx.fillStyle = isTeal ? "rgba(20,184,166,0.88)"
-                 : isRed  ? "rgba(248,113,113,0.88)"
-                 :           "rgba(251,191,36,0.88)";
-    ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-    ctx.fillStyle = (isTeal || isRed) ? "#ffffff" : "#0d1117";
-    ctx.fillText(label, midX, midY);
-  }
-  ctx.restore();
-
-  // ── Threat overlays on OPP-dominant zones ─────────────────────────────────
-  for (let i = 0; i < oppWonCounts.length; i++) {
-    const oZone = oppWonCounts[i];
-    const fZone = forWonCounts[i];
-    const score = computeZoneThreatScore(oZone.count, 0, fZone.count);
-    const level = getThreatLevel(score);
-    if (level === "NONE") continue;
-    const rect = zonePixelRect(oZone.bounds, inner);
-    const cx   = rect.x + rect.w / 2;
-    const cy   = rect.y + rect.h / 2;
-    drawThreatRings(ctx, cx, cy, level);
-    const lbl = level === "CRITICAL" ? "THEIR ZONE"
-              : level === "HIGH"     ? "DANGER RESTART"
-              :                        "WATCH";
-    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
-  }
-
-  // ── Directional sweep on highest OPP-threat zone ──────────────────────────
-  {
-    let bestIdx = -1, bestScore = 0;
-    for (let i = 0; i < oppWonCounts.length; i++) {
-      const s = computeZoneThreatScore(oppWonCounts[i].count, 0, forWonCounts[i].count);
-      if (s > bestScore) { bestScore = s; bestIdx = i; }
-    }
-    if (bestIdx >= 0 && getThreatLevel(bestScore) !== "NONE") {
-      const rect      = zonePixelRect(oppWonCounts[bestIdx].bounds, inner);
-      const cx        = rect.x + rect.w / 2;
-      const cy        = rect.y + rect.h / 2;
-      const intensity = Math.min(bestScore / 10, 1.0);
-      drawDirectionalPressureSweep(ctx, cx + rect.w * 0.40, cy - rect.h * 0.24, cx - rect.w * 0.08, cy, intensity, "PRESSURE_INWARD");
-      if (getThreatLevel(bestScore) === "CRITICAL") {
-        drawDirectionalPressureSweep(ctx, cx - rect.w * 0.36, cy + rect.h * 0.24, cx, cy, intensity * 0.65, "PRESSURE_COLLAPSE");
-      }
-    }
-  }
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
@@ -11282,18 +11023,14 @@ function makeRestartBattlePage(
   ctx.font         = "13px sans-serif";
   ctx.fillStyle    = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
-  ctx.fillStyle = "rgba(20,184,166,0.88)";
+  ctx.fillStyle = "#22d3ee";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("We won", lx + 22, ly); ly += 26;
-  ctx.fillStyle = "rgba(248,113,113,0.88)";
+  ctx.fillText("Retained", lx + 22, ly); ly += 26;
+  ctx.fillStyle = "#fb7185";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("They won", lx + 22, ly); ly += 26;
-  ctx.fillStyle = "rgba(251,191,36,0.88)";
-  ctx.fillRect(lx, ly - 8, 16, 16);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Contested", lx + 22, ly);
+  ctx.fillText("Conceded", lx + 22, ly);
   ctx.restore();
 
   // ── Two-column bottom strip ───────────────────────────────────────────────
@@ -11382,85 +11119,9 @@ function makeTurnoverTerritoryPage(
   // ── Pitch ─────────────────────────────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  const wonCounts  = pdfZoneCounts(wonEvts);
-  const lostCounts = pdfZoneCounts(lostEvts);
-
-  // ── Zone overlays ─────────────────────────────────────────────────────────
-  for (let i = 0; i < wonCounts.length; i++) {
-    const wZone = wonCounts[i];
-    const lZone = lostCounts[i];
-    const total = wZone.count + lZone.count;
-    if (total === 0) continue;
-    const rect      = zonePixelRect(wZone.bounds, inner);
-    const intensity = Math.min(total / 4, 1);
-    const contested = wZone.count >= 2 && lZone.count >= 2;
-    if (contested) {
-      ctx.fillStyle = `rgba(251,191,36,${(0.22 + intensity * 0.28).toFixed(2)})`;
-    } else if (wZone.count > lZone.count + 1) {
-      ctx.fillStyle = `rgba(20,184,166,${(0.20 + intensity * 0.38).toFixed(2)})`;
-    } else if (lZone.count > wZone.count + 1) {
-      ctx.fillStyle = `rgba(248,113,113,${(0.20 + intensity * 0.38).toFixed(2)})`;
-    }
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  }
-
-  // ── Event markers (purple = won, orange = lost) ───────────────────────────
+  // ── Event markers — dots tell the story ──────────────────────────────────
+  // Purple = turnover won  ·  Orange = turnover lost
   renderHtMarkers(ctx, allTurnoverEvts, inner);
-
-  // ── Danger zone callouts (threat rings on high-loss zones) ────────────────
-  for (let i = 0; i < lostCounts.length; i++) {
-    const lZone = lostCounts[i];
-    const wZone = wonCounts[i];
-    const score = computeZoneThreatScore(lZone.count, 0, wZone.count);
-    const level = getThreatLevel(score);
-    if (level === "NONE") continue;
-    const rect = zonePixelRect(lZone.bounds, inner);
-    const cx   = rect.x + rect.w / 2;
-    const cy   = rect.y + rect.h / 2;
-    drawThreatRings(ctx, cx, cy, level);
-    const lbl = level === "CRITICAL" || level === "HIGH" ? "DANGER ZONE" : "WATCH";
-    drawThreatBadge(ctx, cx, cy - 50, lbl, level);
-  }
-
-  // ── Pressure zone badge (teal pill on highest-win zone) ───────────────────
-  {
-    let bestIdx = -1, bestCount = 0;
-    for (let i = 0; i < wonCounts.length; i++) {
-      if (wonCounts[i].count > bestCount) { bestCount = wonCounts[i].count; bestIdx = i; }
-    }
-    if (bestIdx >= 0 && bestCount >= 2) {
-      const rect = zonePixelRect(wonCounts[bestIdx].bounds, inner);
-      const cx   = rect.x + rect.w / 2;
-      const cy   = rect.y + rect.h / 2 + 50;
-      ctx.save();
-      ctx.font         = "bold 18px sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign    = "center";
-      const lbl = "PRESSURE ZONE";
-      const tw  = ctx.measureText(lbl).width;
-      const pw  = tw + 24;
-      const ph  = 30;
-      const bx  = cx - pw / 2;
-      const by  = cy - ph / 2;
-      const br  = 8;
-      ctx.fillStyle = "rgba(20,184,166,0.88)";
-      ctx.beginPath();
-      ctx.moveTo(bx + br, by);
-      ctx.lineTo(bx + pw - br, by);
-      ctx.quadraticCurveTo(bx + pw, by, bx + pw, by + br);
-      ctx.lineTo(bx + pw, by + ph - br);
-      ctx.quadraticCurveTo(bx + pw, by + ph, bx + pw - br, by + ph);
-      ctx.lineTo(bx + br, by + ph);
-      ctx.quadraticCurveTo(bx, by + ph, bx, by + ph - br);
-      ctx.lineTo(bx, by + br);
-      ctx.quadraticCurveTo(bx, by, bx + br, by);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = "#0d1117";
-      ctx.fillText(lbl, cx, cy);
-      ctx.restore();
-    }
-  }
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
@@ -11478,11 +11139,7 @@ function makeTurnoverTerritoryPage(
   ctx.fillStyle = "#f97316";
   ctx.fillRect(lx, ly - 8, 16, 16);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Turnover Lost", lx + 22, ly); ly += 26;
-  ctx.fillStyle = "rgba(251,191,36,0.88)";
-  ctx.fillRect(lx, ly - 8, 16, 16);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Contested", lx + 22, ly);
+  ctx.fillText("Turnover Lost", lx + 22, ly);
   ctx.restore();
 
   // ── Bottom callout strip — 4 coaching panels ─────────────────────────────
