@@ -612,6 +612,9 @@ function formatRecordTime(secs: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+// Activated when the page loads with ?diag in the URL.
+// Entry point for Tactical Play: /vision-tactics/play?diag
+// Must be in the URL at initial page load (hard refresh) — cannot be added dynamically.
 const IS_DIAG_PREVIEW =
   typeof window !== "undefined" &&
   new URLSearchParams(window.location.search).has("diag");
@@ -996,6 +999,18 @@ export default function TacticalPlaySurface() {
   const [clipDiag, setClipDiag] = useState<ClipDiag>({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
   useEffect(() => {
     if (IS_DIAG_PREVIEW) setClipDiag({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
+  }, [recordBlobUrl]);
+
+  const [clipVideoReady, setClipVideoReady] = useState(false);
+  const [clipBlankWarning, setClipBlankWarning] = useState(false);
+  const clipBlankTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    setClipVideoReady(false);
+    setClipBlankWarning(false);
+    if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; }
+    if (!recordBlobUrl || IS_DIAG_PREVIEW) return;
+    clipBlankTimerRef.current = setTimeout(() => setClipBlankWarning(true), 4000);
+    return () => { if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; } };
   }, [recordBlobUrl]);
 
   useEffect(() => {
@@ -2077,6 +2092,9 @@ export default function TacticalPlaySurface() {
                   const d = vid.duration;
                   console.debug("[PV REC] video loadedmetadata dur:", d, "readyState:", vid.readyState, "vw:", vid.videoWidth, "vh:", vid.videoHeight);
                   if (Number.isFinite(d) && d > 0) setClipPreviewDuration(d);
+                  setClipVideoReady(true);
+                  setClipBlankWarning(false);
+                  if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; }
                   if (IS_DIAG_PREVIEW) {
                     try { vid.currentTime = 0.001; } catch { /* seek may throw */ }
                     setClipDiag((p) => ({ ...p, events: [...p.events, "loadedmetadata"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc, dur: d, vw: vid.videoWidth, vh: vid.videoHeight, seeked: true }));
@@ -2085,11 +2103,17 @@ export default function TacticalPlaySurface() {
                 onLoadedData={(e) => {
                   const vid = e.currentTarget as HTMLVideoElement;
                   console.debug("[PV REC] video loadeddata rs:", vid.readyState);
+                  setClipVideoReady(true);
+                  setClipBlankWarning(false);
+                  if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; }
                   if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "loadeddata"], rs: vid.readyState, ns: vid.networkState }));
                 }}
                 onCanPlay={(e) => {
                   const vid = e.currentTarget as HTMLVideoElement;
                   console.debug("[PV REC] video canplay rs:", vid.readyState);
+                  setClipVideoReady(true);
+                  setClipBlankWarning(false);
+                  if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; }
                   if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "canplay"], rs: vid.readyState, ns: vid.networkState }));
                 }}
                 onSeeked={(e) => {
@@ -2115,6 +2139,11 @@ export default function TacticalPlaySurface() {
                 }}
                 style={{ width: "100%", maxHeight: "140px", borderRadius: "8px", background: "#000", display: "block" }}
               />
+            ) : null}
+            {!IS_DIAG_PREVIEW && clipBlankWarning && !clipVideoReady ? (
+              <div style={{ fontSize: "10px", color: "rgba(255, 210, 100, 0.80)", fontFamily: "Inter, system-ui, sans-serif", textAlign: "center", padding: "2px 0" }}>
+                Preview not loading — open with <span style={{ fontFamily: "monospace" }}>?diag</span> to inspect.
+              </div>
             ) : null}
             {/* Clip info */}
             {(() => {

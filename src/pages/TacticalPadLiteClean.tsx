@@ -845,6 +845,9 @@ function formatRecordTime(secs: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+// Activated when the page loads with ?diag in the URL.
+// Entry points: /vision-board?diag  or  /vision-tactics/slate?diag
+// Must be in the URL at initial page load (hard refresh) — cannot be added dynamically.
 const IS_DIAG_PREVIEW =
   typeof window !== "undefined" &&
   new URLSearchParams(window.location.search).has("diag");
@@ -1987,6 +1990,18 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [slateClipDiag, setSlateClipDiag] = useState<SlateClipDiag>({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
   useEffect(() => {
     if (IS_DIAG_PREVIEW) setSlateClipDiag({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
+  }, [slateRecordBlobUrl]);
+
+  const [slateClipVideoReady, setSlateClipVideoReady] = useState(false);
+  const [slateClipBlankWarning, setSlateClipBlankWarning] = useState(false);
+  const slateClipBlankTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    setSlateClipVideoReady(false);
+    setSlateClipBlankWarning(false);
+    if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; }
+    if (!slateRecordBlobUrl || IS_DIAG_PREVIEW) return;
+    slateClipBlankTimerRef.current = setTimeout(() => setSlateClipBlankWarning(true), 4000);
+    return () => { if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; } };
   }, [slateRecordBlobUrl]);
 
   const [myBoardsOpen, setMyBoardsOpen] = useState(false);
@@ -5289,6 +5304,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                       const d = vid.duration;
                       console.debug("[PV REC] slate video loadedmetadata dur:", d, "readyState:", vid.readyState, "vw:", vid.videoWidth, "vh:", vid.videoHeight);
                       if (Number.isFinite(d) && d > 0) setSlateClipPreviewDuration(d);
+                      setSlateClipVideoReady(true);
+                      setSlateClipBlankWarning(false);
+                      if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; }
                       if (IS_DIAG_PREVIEW) {
                         try { vid.currentTime = 0.001; } catch { /* seek may throw */ }
                         setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadedmetadata"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc, dur: d, vw: vid.videoWidth, vh: vid.videoHeight, seeked: true }));
@@ -5297,11 +5315,17 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     onLoadedData={(e) => {
                       const vid = e.currentTarget as HTMLVideoElement;
                       console.debug("[PV REC] slate video loadeddata rs:", vid.readyState);
+                      setSlateClipVideoReady(true);
+                      setSlateClipBlankWarning(false);
+                      if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; }
                       if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadeddata"], rs: vid.readyState, ns: vid.networkState }));
                     }}
                     onCanPlay={(e) => {
                       const vid = e.currentTarget as HTMLVideoElement;
                       console.debug("[PV REC] slate video canplay rs:", vid.readyState);
+                      setSlateClipVideoReady(true);
+                      setSlateClipBlankWarning(false);
+                      if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; }
                       if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "canplay"], rs: vid.readyState, ns: vid.networkState }));
                     }}
                     onSeeked={(e) => {
@@ -5327,6 +5351,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     }}
                     style={{ width: "100%", maxHeight: "110px", borderRadius: "6px", background: "#000", display: "block" }}
                   />
+                ) : null}
+                {!IS_DIAG_PREVIEW && slateClipBlankWarning && !slateClipVideoReady ? (
+                  <div style={{ fontSize: "9.5px", color: "rgba(255, 210, 100, 0.80)", fontFamily: "Inter, system-ui, sans-serif", textAlign: "center", padding: "2px 0" }}>
+                    Preview not loading — open with <span style={{ fontFamily: "monospace" }}>?diag</span> to inspect.
+                  </div>
                 ) : null}
                 {/* Clip info — coach-friendly, no codec strings */}
                 {(() => {
