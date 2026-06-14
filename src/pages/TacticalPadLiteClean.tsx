@@ -1961,8 +1961,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const {
     recordPhase: slateRecordPhase,
     setRecordPhase: setSlateRecordPhase,
-    recordDuration: slateRecordDuration,
-    setRecordDuration: setSlateRecordDuration,
     recordCountdown: slateRecordCountdown,
     recordElapsed: slateRecordElapsed,
     recordBlob: slateRecordBlob,
@@ -1974,6 +1972,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     canRecord: slateCanRecord,
     startCountdown: slateStartCountdown,
     startCountdownWithVoice: slateStartCountdownWithVoice,
+    stopRecording: slateStopRecording,
     dismissRecord: slateDismissRecord,
     saveClip: slateSaveClip,
     shareClip: slateShareClip,
@@ -1982,9 +1981,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     onBeforeCountdown: () => setQuickShareOpen(false),
     onComplete: () => setQuickShareOpen(true),
   });
-  // Duration populated by the preview video's onLoadedMetadata event.
-  const [slateClipPreviewDuration, setSlateClipPreviewDuration] = useState<number | null>(null);
-  useEffect(() => { setSlateClipPreviewDuration(null); }, [slateRecordBlob]);
+  // slateRecordElapsed holds the final elapsed value after stop — used as the clip duration display.
 
   type SlateClipDiag = { events: string[]; rs: number; ns: number; src: string; dur: number; vw: number; vh: number; err: string | null; seeked: boolean };
   const [slateClipDiag, setSlateClipDiag] = useState<SlateClipDiag>({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
@@ -5225,27 +5222,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             {slateRecordPhase === "panel" ? (
               <div style={{ display: "grid", gap: "5px" }}>
                 <span style={{ ...QUICK_SHARE_OPTION_TITLE_STYLE, padding: "2px 0" }}>Record Clip</span>
-                <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: "rgba(180, 210, 255, 0.55)" }}>Record your tactics and explain them with your voice.</span>
-                <div style={{ display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" }}>
-                  {([30, 60, 90] as const).map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      className="control-button"
-                      style={slateRecordDuration === d
-                        ? { ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", border: "1px solid rgba(124, 255, 114, 0.56)", background: "rgba(34, 112, 66, 0.70)", color: "#f4fff6" }
-                        : { ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px" }}
-                      onClick={() => setSlateRecordDuration(d)}
-                    >
-                      {d}s
-                    </button>
-                  ))}
-                </div>
-                {slateRecordDuration >= 60 ? (
-                  <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: "rgba(180, 210, 255, 0.45)" }}>
-                    Longer clips may take a few seconds to prepare before sharing.
-                  </span>
-                ) : null}
+                <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: "rgba(180, 210, 255, 0.55)" }}>Record your tactics and explain them with your voice. Stop when finished — auto-stops at 10 min.</span>
                 <div style={{ display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" }}>
                   <button
                     type="button"
@@ -5286,9 +5263,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             ) : null}
             {slateRecordBlob ? (
               <div style={{ display: "grid", gap: "6px" }}>
-                {slateRecordBlobUrl ? (
+                {slateRecordBlobUrl && !slateRecordHasAudio ? (
                   <video
-                    ref={(el) => { if (el) el.load(); }}
                     key={slateRecordBlobUrl}
                     src={slateRecordBlobUrl}
                     preload="metadata"
@@ -5303,7 +5279,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                       const vid = e.currentTarget as HTMLVideoElement;
                       const d = vid.duration;
                       console.debug("[PV REC] slate video loadedmetadata dur:", d, "readyState:", vid.readyState, "vw:", vid.videoWidth, "vh:", vid.videoHeight);
-                      if (Number.isFinite(d) && d > 0) setSlateClipPreviewDuration(d);
                       setSlateClipVideoReady(true);
                       setSlateClipBlankWarning(false);
                       if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; }
@@ -5365,9 +5340,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                   const size = slateRecordBlob.size >= 1_048_576
                     ? `${(slateRecordBlob.size / 1_048_576).toFixed(1)} MB`
                     : `${Math.round(slateRecordBlob.size / 1024)} KB`;
-                  const durStr = slateClipPreviewDuration != null
-                    ? formatRecordTime(Math.round(slateClipPreviewDuration))
-                    : null;
+                  const durStr = slateRecordElapsed > 0 ? formatRecordTime(slateRecordElapsed) : null;
                   return (
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                       {slateRecordHasAudio
@@ -5444,16 +5417,28 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           </div>
         ) : null}
         {!isWhiteboardMode && slateRecordPhase === "recording" ? (() => {
-          const urgent = slateRecordElapsed >= slateRecordDuration - 10;
+          const urgent = slateRecordElapsed >= 570;
           return (
-            <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))", zIndex: 25, display: "flex", alignItems: "center", gap: "5px", background: "rgba(8, 14, 10, 0.88)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderRadius: "20px", padding: "5px 10px 5px 7px", border: `1px solid ${urgent ? "rgba(255, 180, 60, 0.40)" : "rgba(255, 48, 48, 0.32)"}`, pointerEvents: "none" }}>
-              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: urgent ? "#ffb83c" : "#ff3030", boxShadow: urgent ? "0 0 6px 1px rgba(255, 184, 60, 0.70)" : "0 0 6px 1px rgba(255, 48, 48, 0.70)", animation: "tp-rec-pulse 1.1s ease-in-out infinite", flexShrink: 0 }} />
-              <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(255, 190, 190, 0.95)", fontFamily: "Inter, system-ui, sans-serif" }}>REC</span>
-              {slateMicStatus === "active" ? <span style={{ fontSize: "11px", lineHeight: 1 }}>🎙</span> : null}
-              <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(240, 220, 220, 0.80)", letterSpacing: "0.02em" }}>
-                {formatRecordTime(slateRecordElapsed)} / {formatRecordTime(slateRecordDuration)}
-              </span>
-            </div>
+            <>
+              <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))", zIndex: 25, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px", pointerEvents: "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(8, 14, 10, 0.88)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderRadius: "20px", padding: "5px 10px 5px 7px", border: `1px solid ${urgent ? "rgba(255, 180, 60, 0.40)" : "rgba(255, 48, 48, 0.32)"}` }}>
+                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: urgent ? "#ffb83c" : "#ff3030", boxShadow: urgent ? "0 0 6px 1px rgba(255, 184, 60, 0.70)" : "0 0 6px 1px rgba(255, 48, 48, 0.70)", animation: "tp-rec-pulse 1.1s ease-in-out infinite", flexShrink: 0 }} />
+                  <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(255, 190, 190, 0.95)", fontFamily: "Inter, system-ui, sans-serif" }}>REC</span>
+                  {slateMicStatus === "active" ? <span style={{ fontSize: "11px", lineHeight: 1 }}>🎙</span> : null}
+                  <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(240, 220, 220, 0.80)", letterSpacing: "0.02em" }}>
+                    {formatRecordTime(slateRecordElapsed)}
+                  </span>
+                </div>
+                <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.35)", fontFamily: "Inter, system-ui, sans-serif", paddingRight: "4px" }}>Auto-stops 10:00</span>
+              </div>
+              <button
+                type="button"
+                onClick={slateStopRecording}
+                style={{ position: "fixed", bottom: "max(14px, calc(env(safe-area-inset-bottom, 0px) + 12px))", left: "50%", transform: "translateX(-50%)", zIndex: 25, padding: "11px 28px", borderRadius: "22px", border: "1px solid rgba(255, 70, 70, 0.55)", background: "rgba(36, 6, 6, 0.92)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", color: "rgba(255, 160, 160, 0.96)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "13px", fontWeight: 700, letterSpacing: "0.04em", cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.60)" }}
+              >
+                ■ Stop Recording
+              </button>
+            </>
           );
         })() : null}
         {!isWhiteboardMode && shareTipMessage ? (

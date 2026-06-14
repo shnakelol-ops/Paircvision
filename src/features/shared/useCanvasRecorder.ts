@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 
 export type RecordPhase = "idle" | "panel" | "countdown" | "recording" | "done";
-export type RecordDuration = 30 | 60 | 90;
 export type MicStatus = "off" | "requesting" | "active" | "denied" | "unavailable";
+
+/** Auto-stop fires after this many seconds (10 minutes). */
+export const MAX_RECORD_SECONDS = 600;
 
 export type CanvasRecorderHandle = {
   recordPhase: RecordPhase;
-  recordDuration: RecordDuration;
   recordCountdown: number;
-  /** Seconds elapsed since recording started. Resets to 0 when recording begins or is dismissed. */
+  /** Seconds elapsed since recording started. Holds the final elapsed value in the "done" phase until dismissed. */
   recordElapsed: number;
   recordBlob: Blob | null;
   recordBlobUrl: string | null;
@@ -21,7 +22,6 @@ export type CanvasRecorderHandle = {
   micStatus: MicStatus;
   /** True while the Web Share API call is in-flight. */
   isSharing: boolean;
-  setRecordDuration: (d: RecordDuration) => void;
   setRecordPhase: (p: RecordPhase) => void;
   canRecord: () => boolean;
   startCountdown: () => void;
@@ -41,7 +41,6 @@ export function useCanvasRecorder(params: {
   paramsRef.current = params;
 
   const [recordPhase, setRecordPhase] = useState<RecordPhase>("idle");
-  const [recordDuration, setRecordDuration] = useState<RecordDuration>(30);
   const [recordCountdown, setRecordCountdown] = useState(3);
   const [recordBlob, setRecordBlob] = useState<Blob | null>(null);
   const [recordBlobUrl, setRecordBlobUrl] = useState<string | null>(null);
@@ -56,8 +55,6 @@ export function useCanvasRecorder(params: {
   const recordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recordCountdownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recordElapsedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const recordDurationRef = useRef(recordDuration);
-  recordDurationRef.current = recordDuration;
   const activeAudioStreamRef = useRef<MediaStream | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const hasAudioRef = useRef(false);
@@ -227,7 +224,7 @@ export function useCanvasRecorder(params: {
     setRecordElapsed(0);
     recorder.start(200);
     recordElapsedIntervalRef.current = setInterval(() => setRecordElapsed((e) => e + 1), 1000);
-    recordTimerRef.current = setTimeout(stopRecording, recordDurationRef.current * 1000);
+    recordTimerRef.current = setTimeout(stopRecording, MAX_RECORD_SECONDS * 1000);
   };
 
   const startCountdown = () => {
@@ -348,7 +345,6 @@ export function useCanvasRecorder(params: {
 
   return {
     recordPhase,
-    recordDuration,
     recordCountdown,
     recordElapsed,
     recordBlob,
@@ -357,7 +353,6 @@ export function useCanvasRecorder(params: {
     recordMimeType,
     micStatus,
     isSharing,
-    setRecordDuration,
     setRecordPhase,
     canRecord,
     startCountdown,
