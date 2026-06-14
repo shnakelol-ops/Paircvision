@@ -3526,21 +3526,21 @@ function makeTacticalIntelligencePage(
 
   if (koTotal > 0) {
     if (koWinPct >= 55) {
-      insights.push({ text: `Strong kickout platform — ${koWinPct}% win rate, ${koConvPct}% converted to score.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} built a strong kickout platform — ${koWinPct}% win rate, ${koConvPct}% converted to score.` });
     } else if (koWinPct < 45) {
-      insights.push({ text: `Kickout vulnerability — won only ${koWinPct}% (${koWon}/${koTotal}), conceding ${koExpPct}% of losses.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} won only ${koWinPct}% of kickouts (${koWon}/${koTotal}); ${awayTeam.slice(0, 16)} scored from ${koExpPct}% of their wins.` });
     } else {
-      insights.push({ text: `Balanced kickout contest — ${koWinPct}% win rate; ${koConvPct}% of wins converted.` });
+      insights.push({ text: `Balanced kickout contest — ${homeTeam.slice(0, 16)} won ${koWinPct}%, converting ${koConvPct}% to scores.` });
     }
   }
 
   if (tvTotal > 0) {
     if (tvConvPct >= 35) {
-      insights.push({ text: `Clinical turnover conversion — ${tvConvPct}% of won turnovers became scores.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} were clinical in transition — ${tvConvPct}% of won turnovers became scores.` });
     } else if (tvConvPct < 20 && tvWon > 0) {
-      insights.push({ text: `Won ${tvWon}/${tvTotal} turnovers but converted only ${tvConvPct}% to scores.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} won ${tvWon}/${tvTotal} turnovers but converted only ${tvConvPct}% to scores.` });
     } else {
-      insights.push({ text: `Turnover win rate ${tvWinPct}% — ${tvConvPct}% converted; opp punished ${tvDefExp}% of losses.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} won ${tvWinPct}% of turnovers, converting ${tvConvPct}%; ${awayTeam.slice(0, 16)} punished ${tvDefExp}% of their wins.` });
     }
   }
 
@@ -3556,11 +3556,11 @@ function makeTacticalIntelligencePage(
 
   if (chainTotal > 0) {
     if (chainForPct >= 60) {
-      insights.push({ text: `Tactical chain dominance — ${chainForPct}% of all sequences resolved FOR.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} dominated tactical sequences — ${chainForPct}% of all chains resolved in their favour.` });
     } else if (chainForPct <= 40) {
-      insights.push({ text: `Opposition chain advantage — only ${chainForPct}% of tactical sequences resolved FOR.` });
+      insights.push({ text: `${awayTeam.slice(0, 16)} held the chain advantage — only ${chainForPct}% of tactical sequences resolved for ${homeTeam.slice(0, 16)}.` });
     } else {
-      insights.push({ text: `Competitive tactical contest — ${chainForPct}% of ${chainTotal} chains resolved FOR.` });
+      insights.push({ text: `Competitive tactical contest — ${homeTeam.slice(0, 16)} won ${chainForPct}% of ${chainTotal} chains.` });
     }
   }
 
@@ -7434,9 +7434,9 @@ function makeHtPressureDamageMapPage(
   const forLossHot     = pdfZoneHotspots(forLossEvts)[0];
 
   const facts: string[] = [];
-  if (totalOppScores > 0) facts.push(`${totalOppScores} opposition score${totalOppScores !== 1 ? "s" : ""} conceded`);
+  if (totalOppScores > 0) facts.push(`${awayTeam.slice(0, 14)} scored ${totalOppScores} time${totalOppScores !== 1 ? "s" : ""}`);
   if (oppScoreHot)        facts.push(`Scoring danger: ${oppScoreHot.label} (${oppScoreHot.count})`);
-  if (totalForLosses > 0) facts.push(`${totalForLosses} possession loss${totalForLosses !== 1 ? "es" : ""} recorded`);
+  if (totalForLosses > 0) facts.push(`${homeTeam.slice(0, 14)} lost possession ${totalForLosses} time${totalForLosses !== 1 ? "s" : ""}`);
   if (forLossHot && facts.length < 3) facts.push(`Loss zone: ${forLossHot.label} (${forLossHot.count})`);
   if (facts.length === 0) facts.push("No scoring threats or possession losses recorded.");
 
@@ -7626,7 +7626,7 @@ function makeHtKickoutVisionPage(
   const restartTerm = sport === "hurling" ? "puckouts" : "kickouts";
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`Our ${restartTerm}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
+  if (totalKO > 0) facts.push(`${homeTeam.slice(0, 14)} ${restartTerm}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
   if (forHot)      facts.push(`Best zone: ${forHot.label}`);
   if (oppHot)      facts.push(`Conceded most: ${oppHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTerm} data recorded.`);
@@ -7869,15 +7869,15 @@ function makeHtAttackShotVisionPage(
   const facts: string[]  = [];
   const colors: string[] = [];
   if (totalShots > 0) {
-    facts.push(`Our shots: ${totalScores} scored · ${totalWides} wide (${shotEff}%)`);
+    facts.push(`${homeTeam.slice(0, 12)} shots: ${totalScores} scored · ${totalWides} wide (${shotEff}%)`);
     colors.push("#34d399");
   }
   if (totalOppShots > 0) {
-    facts.push(`Their shots: ${totalOppScores} scored · ${totalOppWides} wide (${oppShotEff}%)`);
+    facts.push(`${awayTeam.slice(0, 12)} shots: ${totalOppScores} scored · ${totalOppWides} wide (${oppShotEff}%)`);
     colors.push("#ef4444");
   }
   if (scoreHot && facts.length < 3) {
-    facts.push(`Our top zone: ${scoreHot.label} (${scoreHot.count})`);
+    facts.push(`${homeTeam.slice(0, 12)} top zone: ${scoreHot.label} (${scoreHot.count})`);
     colors.push("#34d399");
   }
   if (facts.length === 0) facts.push("No shot data recorded.");
@@ -8123,8 +8123,8 @@ function makeHtGameFlowPage(
   const oppCtrl      = segDataList.filter((s) => s.status === "OPP").length;
   const contestedCt  = segDataList.filter((s) => s.status === "CONTESTED").length;
   const facts: string[] = [];
-  if (forCtrl > 0)     facts.push(`${forCtrl} segment${forCtrl !== 1 ? "s" : ""} in control`);
-  if (oppCtrl > 0)     facts.push(`${oppCtrl} segment${oppCtrl !== 1 ? "s" : ""} conceded`);
+  if (forCtrl > 0)     facts.push(`${homeTeam.slice(0, 14)} controlled ${forCtrl} segment${forCtrl !== 1 ? "s" : ""}`);
+  if (oppCtrl > 0)     facts.push(`${awayTeam.slice(0, 14)} controlled ${oppCtrl} segment${oppCtrl !== 1 ? "s" : ""}`);
   if (contestedCt > 0) facts.push(`${contestedCt} contested segment${contestedCt !== 1 ? "s" : ""}`);
   if (facts.length === 0) facts.push("No segment data available.");
 
@@ -8355,14 +8355,14 @@ function makeHtGameFlowFactorsPage(
 
   // ── Bottom callout strip ───────────────────────────────────────────────────
   const facts: string[] = [];
-  if (forFacts.length > 0)     facts.push(`${forFacts.length} positive factor${forFacts.length !== 1 ? "s" : ""} identified`);
-  if (againstFacts.length > 0) facts.push(`${againstFacts.length} challenge${againstFacts.length !== 1 ? "s" : ""} to address`);
+  if (forFacts.length > 0)     facts.push(`${homeTeam.slice(0, 14)}: ${forFacts.length} positive factor${forFacts.length !== 1 ? "s" : ""} identified`);
+  if (againstFacts.length > 0) facts.push(`${homeTeam.slice(0, 14)}: ${againstFacts.length} challenge${againstFacts.length !== 1 ? "s" : ""} flagged`);
   if (facts.length === 0)      facts.push("Not enough data to identify clear patterns.");
 
   // ── Possession Chain V1: kickout win-to-score efficiency (threshold ≥ 3) ──
   if (ko.total >= 3 && ko.wonToScore > 0 && facts.length < 3) {
     const pct = Math.round(ko.wonToScorePercent);
-    facts.push(`Kickout win→score: ${ko.wonToScore} of ${ko.won} won converted (${pct}%)`);
+    facts.push(`${homeTeam.slice(0, 14)} kickout→score: ${ko.wonToScore} of ${ko.won} won converted (${pct}%)`);
   }
 
   drawHtCalloutStrip(ctx, facts, ["#22c55e", "#ef4444", "#94a3b8"]);
@@ -8957,15 +8957,15 @@ function makeFtRestartEscapeRoutesPage(
   const ftRestartTerm = sport === "hurling" ? "puckouts" : "kickouts";
   const facts: string[] = [];
   if (ko.total > 0)
-    facts.push(`Our ${ftRestartTerm}: ${ko.won}W · ${ko.total - ko.won}L (${koRate}% won)`);
+    facts.push(`${homeTeam.slice(0, 14)} ${ftRestartTerm}: ${ko.won}W · ${ko.total - ko.won}L (${koRate}% won)`);
   // Possession Chain V1: richer conversion language (rate, not just count)
   if (ko.wonToScore > 0) {
     const wsPct = Math.round(ko.wonToScorePercent);
-    facts.push(`${ko.wonToScore} of ${ko.won} wins converted to score (${wsPct}%)`);
+    facts.push(`${homeTeam.slice(0, 14)}: ${ko.wonToScore} of ${ko.won} wins converted to score (${wsPct}%)`);
   }
   if (ko.lostAllowedScore > 0) {
     const lsPct = Math.round(ko.lostAllowedScorePercent);
-    facts.push(`${ko.lostAllowedScore} conceded restarts led to opposition score (${lsPct}%)`);
+    facts.push(`${awayTeam.slice(0, 14)} scored from ${ko.lostAllowedScore} of those restarts won (${lsPct}%)`);
   }
   if (bestEscCol >= 0 && facts.length < 3) {
     const esc = grid[bestEscCol][bestEscRow];
@@ -9356,9 +9356,9 @@ function makeFtTacticalMatchStoryPage(
   const oppFinal  = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind)));
   const scoreDiff = forFinal.total - oppFinal.total;
   const facts: string[] = [];
-  facts.push(`${fmtScore(forFinal)} vs ${fmtScore(oppFinal)} — ${scoreDiff > 0 ? `${homeTeam} won by ${scoreDiff}` : scoreDiff < 0 ? `lost by ${Math.abs(scoreDiff)}` : "draw"}`);
-  if (forCtrlCount > 0) facts.push(`${forCtrlCount} segment${forCtrlCount !== 1 ? "s" : ""} controlled`);
-  if (ko.total > 0)     facts.push(`${ko.won} of ${ko.total} kickouts won`);
+  facts.push(`${fmtScore(forFinal)} vs ${fmtScore(oppFinal)} — ${scoreDiff > 0 ? `${homeTeam} won by ${scoreDiff}` : scoreDiff < 0 ? `${awayTeam.slice(0, 12)} won by ${Math.abs(scoreDiff)}` : "draw"}`);
+  if (forCtrlCount > 0) facts.push(`${homeTeam.slice(0, 14)} controlled ${forCtrlCount} segment${forCtrlCount !== 1 ? "s" : ""}`);
+  if (ko.total > 0)     facts.push(`${homeTeam.slice(0, 14)} won ${ko.won} of ${ko.total} kickouts`);
 
   drawHtCalloutStrip(ctx, facts, ["#f8fafc", "#22c55e", "#14b8a6"]);
   drawEventCountFooter(ctx, events.length);
@@ -10463,17 +10463,17 @@ function makeOurShotProfilePage(
   const colors: string[] = [];
 
   if (totalShots > 0) {
-    facts.push(`Our shots: ${totalScores} scored from ${totalShots} attempts · ${totalMisses} missed (${shotEff}%)`);
+    facts.push(`${homeTeam.slice(0, 12)} shots: ${totalScores} scored from ${totalShots} attempts · ${totalMisses} missed (${shotEff}%)`);
     colors.push("#34d399");
   }
   if (forFreeScored > 0 || forFreeMissed > 0) {
     const parts: string[] = [];
     if (forFreeScored > 0) parts.push(`${forFreeScored} placed-ball score${forFreeScored !== 1 ? "s" : ""}`);
     if (forFreeMissed > 0) parts.push(`${forFreeMissed} placed-ball wide${forFreeMissed !== 1 ? "s" : ""}`);
-    facts.push(parts.join(" · "));
+    facts.push(`${homeTeam.slice(0, 12)}: ${parts.join(" · ")}`);
     colors.push("#818cf8");
   } else if (freeWonEvts.length > 0 && facts.length < 2) {
-    facts.push(`${freeWonEvts.length} free${freeWonEvts.length !== 1 ? "s" : ""} won`);
+    facts.push(`${homeTeam.slice(0, 12)} won ${freeWonEvts.length} free${freeWonEvts.length !== 1 ? "s" : ""}`);
     colors.push("#818cf8");
   }
   if (scoreHot && facts.length < 3) {
@@ -10691,17 +10691,17 @@ function makeOppShotProfilePage(
   const colors: string[] = [];
 
   if (totalOppShots > 0) {
-    facts.push(`Their shots: ${totalOppScores} scored from ${totalOppShots} attempts · ${totalOppMisses} missed (${oppShotEff}%)`);
+    facts.push(`${awayTeam.slice(0, 12)} shots: ${totalOppScores} scored from ${totalOppShots} attempts · ${totalOppMisses} missed (${oppShotEff}%)`);
     colors.push("#ef4444");
   }
   if (oppFreeScored > 0 || oppFreeMissed > 0) {
     const parts: string[] = [];
     if (oppFreeScored > 0) parts.push(`${oppFreeScored} placed-ball score${oppFreeScored !== 1 ? "s" : ""}`);
     if (oppFreeMissed > 0) parts.push(`${oppFreeMissed} placed-ball wide${oppFreeMissed !== 1 ? "s" : ""}`);
-    facts.push(parts.join(" · "));
+    facts.push(`${awayTeam.slice(0, 12)}: ${parts.join(" · ")}`);
     colors.push("#f472b6");
   } else if (freeConcededEvts.length > 0 && facts.length < 2) {
-    facts.push(`${freeConcededEvts.length} free${freeConcededEvts.length !== 1 ? "s" : ""} conceded`);
+    facts.push(`${homeTeam.slice(0, 12)} conceded ${freeConcededEvts.length} free${freeConcededEvts.length !== 1 ? "s" : ""}`);
     colors.push("#f472b6");
   }
   if (oppScoreHot && facts.length < 3) {
@@ -10878,7 +10878,7 @@ function makeOurRestartPlatformPage(
   const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`Our ${restartTermLC}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
+  if (totalKO > 0) facts.push(`${homeTeam.slice(0, 14)} ${restartTermLC}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
   if (forHot)      facts.push(`Best zone: ${forHot.label}`);
   if (oppHot)      facts.push(`Conceded most: ${oppHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTermLC} data recorded.`);
@@ -11056,9 +11056,9 @@ function makeOppRestartPlatformPage(
   const forHot   = pdfZoneHotspots(forWonEvts)[0];
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`Their ${restartTermLC}: ${totalOpp}W · ${totalFor}L (${oppPct}% won)`);
-  if (oppHot)      facts.push(`Their best zone: ${oppHot.label}`);
-  if (forHot)      facts.push(`Best pressure point: ${forHot.label}`);
+  if (totalKO > 0) facts.push(`${awayTeam.slice(0, 14)} ${restartTermLC}: ${totalOpp}W · ${totalFor}L (${oppPct}% won)`);
+  if (oppHot)      facts.push(`${awayTeam.slice(0, 14)} best zone: ${oppHot.label}`);
+  if (forHot)      facts.push(`${homeTeam.slice(0, 14)} pressure zone: ${forHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTermLC} data recorded.`);
 
   drawHtCalloutStrip(ctx, facts, ["#ef4444", "#ef4444", "#14b8a6"]);

@@ -119,13 +119,13 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     } else if (koWinPct < 45) {
       push(
         "KICKOUT",
-        `Kickout win rate was ${koWinPct}% (${koWon} of ${koTotal}). Worth reviewing where possession was being contested during those phases.`,
+        `${home} won ${koWinPct}% of kickouts (${koWon} of ${koTotal}). Worth reviewing where possession was being contested during those phases.`,
         `kickout:winPct=${koWinPct}`,
       );
     } else {
       push(
         "KICKOUT",
-        `Kickout win rate was ${koWinPct}% (${koWon} of ${koTotal}). Won kickouts converted to scores at ${koConvPct}%.`,
+        `${home} won ${koWinPct}% of kickouts (${koWon} of ${koTotal}) and converted ${koConvPct}% of those to scores.`,
         `kickout:winPct=${koWinPct}`,
       );
     }
@@ -135,14 +135,14 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (koTotal >= 3 && koNetAdv < -10) {
     push(
       "KICKOUT",
-      `Net kickout impact: scoring on ${koConvPct}% of wins but conceding ${koExpPct}% of losses. Worth reviewing whether kickout direction patterns changed during the match.`,
+      `${home} scored from ${koConvPct}% of won kickouts, but ${away} scored from ${koExpPct}% of theirs. Worth reviewing whether kickout direction patterns changed during the match.`,
       `kickout:netAdv=${koNetAdv}`,
     );
   } else if (koWon >= 3 && koConvPct >= 40) {
     // Positive conversion rate — worth flagging as a repeatable pattern
     push(
       "KICKOUT",
-      `Won kickouts converted at ${koConvPct}% (${ko.wonToScore} scores from ${koWon} wins). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
+      `${home} converted ${koConvPct}% of won kickouts to scores (${ko.wonToScore} from ${koWon} wins). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
       `kickout:convPct=${koConvPct}`,
     );
   }
@@ -158,7 +158,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (h2Pct < h1Pct - 12) {
       push(
         "KICKOUT",
-        `Kickout win rate was lower in the second half (${h2Pct}% vs ${h1Pct}% in the first). Worth reviewing what changed after the interval.`,
+        `${home}'s kickout win rate dropped in the second half (${h2Pct}% vs ${h1Pct}% in the first half). Worth reviewing what changed after the interval.`,
         `kickout:h2WinPct=${h2Pct},h1WinPct=${h1Pct}`,
       );
     }
@@ -181,19 +181,19 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (tvConvPct >= 35) {
       push(
         "TURNOVER",
-        `${tvConvPct}% of won turnovers led directly to scores (${tv.wonToScore} of ${tvWon}). Worth reviewing whether a specific zone or type of turnover was most productive.`,
+        `${home} converted ${tvConvPct}% of won turnovers directly to scores (${tv.wonToScore} of ${tvWon}). Worth reviewing whether a specific zone or type was most productive.`,
         `turnover:convPct=${tvConvPct}`,
       );
     } else if (tvConvPct < 20 && tvWon >= 3) {
       push(
         "TURNOVER",
-        `${tvWon} turnovers won — ${tvConvPct}% converted to scores. Worth reviewing what happened to possession after it was recovered.`,
+        `${home} won ${tvWon} turnovers and converted ${tvConvPct}% to scores. Worth reviewing what happened to possession after recovery.`,
         `turnover:convPct=${tvConvPct}`,
       );
     } else {
       push(
         "TURNOVER",
-        `Turnover win rate ${tvWinPct}% (${tvWon} of ${tvTotal}). ${tvConvPct}% of wins became scores; opposition converted ${tvLostAllowPct}% of losses.`,
+        `${home} won ${tvWinPct}% of turnovers (${tvWon} of ${tvTotal}). ${home} converted ${tvConvPct}% of wins to scores; ${away} scored from ${tvLostAllowPct}% of their turnover wins.`,
         `turnover:winPct=${tvWinPct},convPct=${tvConvPct}`,
       );
     }
@@ -203,7 +203,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (tvLost >= 3 && tvLostAllowPct > 45) {
     push(
       "TURNOVER",
-      `Opposition converted ${tvLostAllowPct}% of turnover losses to scores (${tv.lostAllowedScore} of ${tvLost}). Worth reviewing whether these concessions clustered in a particular zone or period.`,
+      `${away} scored from ${tvLostAllowPct}% of turnovers they won against ${home} (${tv.lostAllowedScore} of ${tvLost}). Worth reviewing whether these concessions clustered in a particular zone or period.`,
       `turnover:lostAllowedPct=${tvLostAllowPct}`,
     );
   }
@@ -219,7 +219,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (unconvertedWins >= 3) {
     push(
       "TURNOVER",
-      `${unconvertedWins} won turnovers found a follow-up action but did not reach a shot. Worth reviewing whether possession was being retained or broken up again in transition.`,
+      `${home} won ${unconvertedWins} turnovers that had a follow-up action but did not reach a shot. Worth reviewing whether possession was being retained or broken up again in transition.`,
       `turnover:unconvertedWithFollowup=${unconvertedWins}`,
     );
   }
@@ -239,7 +239,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
         : `lower in the second half (${h2Conv}% vs ${h1Conv}% in the first)`;
       push(
         "TURNOVER",
-        `Turnover conversion was ${halfLabel}. Worth reviewing whether possession quality changed after the interval.`,
+        `${home}'s turnover conversion was ${halfLabel}. Worth reviewing whether possession quality changed after the interval.`,
         `turnover:h2ConvPct=${h2Conv},h1ConvPct=${h1Conv}`,
       );
     }
@@ -265,7 +265,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   } else if (maxConsOpp >= 3) {
     push(
       "MOMENTUM",
-      `Opposition had a ${maxConsOpp}-score unanswered spell. Worth reviewing whether possession patterns shifted during this period.`,
+      `${away} had a ${maxConsOpp}-score unanswered spell. Worth reviewing whether possession patterns shifted during this period.`,
       `momentum:maxConsOpp=${maxConsOpp}`,
     );
   }
@@ -289,7 +289,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (allRuns.length >= 4 && runsOpp > runsFor) {
     push(
       "MOMENTUM",
-      `Opposition recorded more scoring runs than ${home} (${runsOpp} vs ${runsFor}). Worth reviewing whether possession patterns changed during those spells.`,
+      `${away} recorded more scoring runs than ${home} (${runsOpp} vs ${runsFor}). Worth reviewing whether possession patterns changed during those spells.`,
       `momentum:runsOpp=${runsOpp},runsFor=${runsFor}`,
     );
   }
@@ -317,7 +317,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (chainForPct <= 40) {
       push(
         "CHAIN",
-        `Opposition converted more tactical sequences (${100 - chainForPct}% vs ${chainForPct}% FOR — ${chainTotal} total). Worth reviewing whether chain efficiency changed across the match.`,
+        `${away} converted more tactical sequences (${100 - chainForPct}% vs ${chainForPct}% for ${home} — ${chainTotal} total). Worth reviewing whether chain efficiency changed across the match.`,
         `chain:forPct=${chainForPct}`,
       );
     } else if (chainForPct >= 60) {
@@ -334,13 +334,13 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (koToScore > tvToScore) {
       push(
         "CHAIN",
-        `Kickout chains generated more direct scores (${koToScore}) than turnover chains (${tvToScore}). Worth reviewing whether this reflects a kickout-first possession pattern.`,
+        `${home} generated more scores from kickout chains (${koToScore}) than turnover chains (${tvToScore}). Worth reviewing whether this reflects a kickout-first possession pattern.`,
         `chain:koToScore=${koToScore},tvToScore=${tvToScore}`,
       );
     } else if (tvToScore > koToScore) {
       push(
         "CHAIN",
-        `Turnover chains generated more direct scores (${tvToScore}) than kickout chains (${koToScore}). Worth reviewing whether transition speed was a key factor.`,
+        `${home} generated more scores from turnover chains (${tvToScore}) than kickout chains (${koToScore}). Worth reviewing whether transition speed was a key factor.`,
         `chain:tvToScore=${tvToScore},koToScore=${koToScore}`,
       );
     }
@@ -350,7 +350,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (freeToGoal >= 2) {
     push(
       "CHAIN",
-      `${freeToGoal} free kicks resulted directly in goals. Worth reviewing the positions and defensive setups when these occurred.`,
+      `${home} converted ${freeToGoal} free kicks directly to goals. Worth reviewing the positions and defensive setups when these occurred.`,
       `chain:freeToGoal=${freeToGoal}`,
     );
   }
@@ -367,7 +367,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
         : `lower in the second half (${h2ForPct}% vs ${h1ForPct}% in the first)`;
       push(
         "CHAIN",
-        `Chain win rate was ${halfLabel}. Worth reviewing whether tactical patterns shifted after the interval.`,
+        `${home}'s chain win rate was ${halfLabel}. Worth reviewing whether tactical patterns shifted after the interval.`,
         `chain:h1ForPct=${h1ForPct},h2ForPct=${h2ForPct}`,
       );
     }
@@ -379,7 +379,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (chainTotal >= 12 && chainForPct >= 47 && chainForPct <= 53) {
     push(
       "GENERAL",
-      `Tactical sequences were closely contested — ${sm.forChains} FOR and ${sm.oppChains} OPP from ${chainTotal} total. Worth reviewing what decided the marginal possession battles.`,
+      `Tactical sequences were closely contested — ${home} won ${sm.forChains} and ${away} won ${sm.oppChains} from ${chainTotal} total. Worth reviewing what decided the marginal possession battles.`,
       `general:totalChains=${chainTotal},forPct=${chainForPct}`,
     );
   } else if (chainTotal < 6 && analysis.totalEventsAnalysed >= 20) {
