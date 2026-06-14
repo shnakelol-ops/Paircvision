@@ -5255,13 +5255,21 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               <div style={{ display: "grid", gap: "6px" }}>
                 {slateRecordBlobUrl ? (
                   <video
+                    ref={(el) => { if (el) el.load(); }}
                     key={slateRecordBlobUrl}
                     src={slateRecordBlobUrl}
+                    preload="metadata"
                     controls
                     playsInline
                     onLoadedMetadata={(e) => {
-                      const d = (e.currentTarget as HTMLVideoElement).duration;
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      const d = vid.duration;
+                      console.debug("[PV REC] slate video loadedmetadata dur:", d, "readyState:", vid.readyState);
                       if (Number.isFinite(d) && d > 0) setSlateClipPreviewDuration(d);
+                    }}
+                    onError={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video error code:", vid.error?.code, "msg:", vid.error?.message, "src:", vid.src.slice(0, 40));
                     }}
                     style={{ width: "100%", maxHeight: "110px", borderRadius: "6px", background: "#000", display: "block" }}
                   />

@@ -2044,13 +2044,21 @@ export default function TacticalPlaySurface() {
           <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "max(72px, calc(env(safe-area-inset-bottom, 0px) + 68px))", zIndex: 30, width: "min(360px, calc(100vw - 20px))", background: "rgba(5, 10, 18, 0.97)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(180, 210, 255, 0.18)", borderRadius: "14px", boxShadow: "0 12px 36px rgba(0, 0, 0, 0.70), 0 2px 8px rgba(0, 0, 0, 0.40)", padding: "10px", display: "grid", gap: "8px" }}>
             {recordBlobUrl ? (
               <video
+                ref={(el) => { if (el) el.load(); }}
                 key={recordBlobUrl}
                 src={recordBlobUrl}
+                preload="metadata"
                 controls
                 playsInline
                 onLoadedMetadata={(e) => {
-                  const d = (e.currentTarget as HTMLVideoElement).duration;
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  const d = vid.duration;
+                  console.debug("[PV REC] video loadedmetadata dur:", d, "readyState:", vid.readyState);
                   if (Number.isFinite(d) && d > 0) setClipPreviewDuration(d);
+                }}
+                onError={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video error code:", vid.error?.code, "msg:", vid.error?.message, "src:", vid.src.slice(0, 40));
                 }}
                 style={{ width: "100%", maxHeight: "140px", borderRadius: "8px", background: "#000", display: "block" }}
               />

@@ -168,8 +168,16 @@ export function useCanvasRecorder(params: {
     recorder.onstop = () => {
       clearElapsedInterval();
       stopAudioTracks();
-      const blob = new Blob(recordChunksRef.current, { type: mimeType });
+      // Use only the container MIME type (no codec params) for the Blob.
+      // Some Android Chrome builds report H.264 support via isTypeSupported but
+      // actually encode VP9. If we label the Blob "video/mp4;codecs=avc1…" and
+      // the bytes are VP9, the browser's H.264 decoder fails and shows a blank
+      // preview. Without codec params the container parser auto-detects the
+      // actual codec from the bitstream, so playback works regardless.
+      const blobType = mimeType.split(";")[0].trim();
+      const blob = new Blob(recordChunksRef.current, { type: blobType });
       const url = URL.createObjectURL(blob);
+      console.debug("[PV REC] onstop — chunks:", recordChunksRef.current.length, "size:", blob.size, "blobType:", blobType, "requestedMime:", mimeType, "url:", url);
       blobUrlRef.current = url;
       setRecordBlob(blob);
       setRecordBlobUrl(url);
