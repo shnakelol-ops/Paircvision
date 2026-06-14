@@ -10996,42 +10996,106 @@ function makeRestartBattlePage(
   drawPageHeader(ctx, "Restart Battle", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Event subsets ─────────────────────────────────────────────────────────
-  // FOR won = our kickout retained + their kickout we won
+  // FOR won = homeTeam kickout retained + awayTeam kickout homeTeam won
   const forWonEvts = events.filter(
     (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
            (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
   );
-  // OPP won = their kickout retained + our kickout they won
+  // OPP won = awayTeam kickout retained + homeTeam kickout awayTeam won
   const oppWonEvts = events.filter(
     (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP") ||
            (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR"),
   );
   const allKickoutEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind));
 
-  // ── Pitch — dots are the primary visual language ──────────────────────────
-  const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+  // ── Layout: two equal mini-pitches — one owner, one story ─────────────────
+  const BAND_H    = 44;
+  const BAND_Y    = 80;
+  const PITCH_TOP = BAND_Y + BAND_H + 4;           // 128
+  const PITCH_H   = HT_STRIP_TOP - PITCH_TOP - 8;  // 764
+  const GAP       = 24;
+  const HALF_W    = (CANVAS_W - 3 * GAP) / 2;      // 924
+  const leftArea  = { x: GAP,              y: PITCH_TOP, w: HALF_W, h: PITCH_H };
+  const rightArea = { x: GAP + HALF_W + GAP, y: PITCH_TOP, w: HALF_W, h: PITCH_H };
 
-  // ── Event markers: cyan = retained · pink = conceded ─────────────────────
-  renderHtMarkers(ctx, allKickoutEvts, inner);
-
-  // ── Right-side legend ─────────────────────────────────────────────────────
-  const lx = CANVAS_W - 158;
-  let ly = 90;
+  // ── Team header bands ─────────────────────────────────────────────────────
   ctx.save();
+  ctx.font         = "bold 19px sans-serif";
+  ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
-  ctx.textAlign    = "left";
-  ctx.font         = "13px sans-serif";
-  ctx.fillStyle    = "#64748b";
-  ctx.fillText("LEGEND", lx, ly); ly += 26;
-  ctx.fillStyle = "#22d3ee";
-  ctx.fillRect(lx, ly - 8, 16, 16);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Retained", lx + 22, ly); ly += 26;
-  ctx.fillStyle = "#fb7185";
-  ctx.fillRect(lx, ly - 8, 16, 16);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Conceded", lx + 22, ly);
+  // Left band: homeTeam
+  ctx.fillStyle    = "rgba(34,197,94,0.12)";
+  ctx.fillRect(leftArea.x, BAND_Y, leftArea.w, BAND_H);
+  ctx.strokeStyle  = "rgba(34,197,94,0.45)";
+  ctx.lineWidth    = 1.5;
+  ctx.strokeRect(leftArea.x + 0.75, BAND_Y + 0.75, leftArea.w - 1.5, BAND_H - 1.5);
+  ctx.fillStyle    = "#4ade80";
+  ctx.fillText(`${homeTeam.slice(0, 20)} ${restartTerm}s`, leftArea.x + leftArea.w / 2, BAND_Y + BAND_H / 2);
+  // Right band: awayTeam
+  ctx.fillStyle    = "rgba(239,68,68,0.12)";
+  ctx.fillRect(rightArea.x, BAND_Y, rightArea.w, BAND_H);
+  ctx.strokeStyle  = "rgba(239,68,68,0.45)";
+  ctx.strokeRect(rightArea.x + 0.75, BAND_Y + 0.75, rightArea.w - 1.5, BAND_H - 1.5);
+  ctx.fillStyle    = "#f87171";
+  ctx.fillText(`${awayTeam.slice(0, 20)} ${restartTerm}s`, rightArea.x + rightArea.w / 2, BAND_Y + BAND_H / 2);
   ctx.restore();
+
+  // ── Render both pitches ───────────────────────────────────────────────────
+  const leftInner  = renderPitch(ctx, sport, leftArea);
+  const rightInner = renderPitch(ctx, sport, rightArea);
+
+  // ── Marker: green circle = retained ──────────────────────────────────────
+  const drawRetained = (inner: InnerPitch, evts: readonly PdfExportEvent[]) => {
+    const r = Math.max(9, inner.w * 0.012);
+    ctx.save();
+    for (const e of evts) {
+      const ex = typeof e.x === "number" ? e.x : e.nx;
+      const ey = typeof e.y === "number" ? e.y : e.ny;
+      const cx = inner.x + ex * inner.w;
+      const cy = inner.y + ey * inner.h;
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = "#000";
+      ctx.beginPath(); ctx.arc(cx + 1, cy + 1, r + 1, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#22c55e"; ctx.fill();
+      ctx.strokeStyle = "#15803d"; ctx.lineWidth = Math.max(1.5, r * 0.18); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, r * 0.28, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(240,253,244,0.85)"; ctx.fill();
+    }
+    ctx.restore();
+  };
+
+  // ── Marker: red X = lost ──────────────────────────────────────────────────
+  const drawLost = (inner: InnerPitch, evts: readonly PdfExportEvent[]) => {
+    const r = Math.max(9, inner.w * 0.012);
+    ctx.save();
+    ctx.lineCap = "round";
+    for (const e of evts) {
+      const ex = typeof e.x === "number" ? e.x : e.nx;
+      const ey = typeof e.y === "number" ? e.y : e.ny;
+      const cx = inner.x + ex * inner.w;
+      const cy = inner.y + ey * inner.h;
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = "#ef4444";
+      ctx.beginPath(); ctx.arc(cx, cy, r + 3, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = "#ef4444";
+      ctx.lineWidth = Math.max(2.5, r * 0.35);
+      const arm = r * 0.82;
+      ctx.beginPath(); ctx.moveTo(cx - arm, cy - arm); ctx.lineTo(cx + arm, cy + arm); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + arm, cy - arm); ctx.lineTo(cx - arm, cy + arm); ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  // Left pitch: homeTeam's story — green = they retained, red X = they lost
+  drawRetained(leftInner, forWonEvts);
+  drawLost(leftInner, oppWonEvts);
+
+  // Right pitch: awayTeam's story — green = they retained, red X = they lost
+  drawRetained(rightInner, oppWonEvts);
+  drawLost(rightInner, forWonEvts);
 
   // ── Two-column bottom strip ───────────────────────────────────────────────
   const totalFor = forWonEvts.length;
@@ -11039,31 +11103,33 @@ function makeRestartBattlePage(
   const totalKO  = totalFor + totalOpp;
   const forPct   = totalKO > 0 ? Math.round((totalFor / totalKO) * 100) : 0;
   const oppPct   = totalKO > 0 ? Math.round((totalOpp / totalKO) * 100) : 0;
+  // forHot = zone where homeTeam wins most = zone where awayTeam loses most
   const forHot   = pdfZoneHotspots(forWonEvts)[0];
+  // oppHot = zone where awayTeam wins most = zone where homeTeam loses most
   const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
 
   drawTwoColumnHtStrip(ctx,
     {
-      heading: `Our ${restartTerm}s`,
+      heading: `${homeTeam.slice(0, 16)} ${restartTerm}s`,
       lines: [
         totalKO > 0
-          ? `Won ${totalFor} · Lost ${totalOpp} (${forPct}% won)`
+          ? `${homeTeam.slice(0, 14)} retained ${totalFor}/${totalKO} (${forPct}%)`
           : `No ${restartTermLC} logged`,
-        forHot ? `Best zone: ${forHot.label}` : "Best zone: —",
-        oppHot ? `Danger: ${oppHot.label}`     : "Danger zone: —",
+        forHot ? `Best zone: ${forHot.label}`   : "Best zone: —",
+        oppHot ? `Most losses: ${oppHot.label}` : "Loss zone: —",
       ],
-      color: "#14b8a6",
+      color: "#22c55e",
     },
     {
-      heading: `Their ${restartTerm}s`,
+      heading: `${awayTeam.slice(0, 16)} ${restartTerm}s`,
       lines: [
         totalKO > 0
-          ? `Won ${totalOpp} · Lost ${totalFor} (${oppPct}% won)`
+          ? `${awayTeam.slice(0, 14)} retained ${totalOpp}/${totalKO} (${oppPct}%)`
           : `No ${restartTermLC} logged`,
-        oppHot ? `Best zone: ${oppHot.label}`    : "Best zone: —",
-        forHot ? `Our pressure: ${forHot.label}` : "Our pressure: —",
+        oppHot ? `Best zone: ${oppHot.label}`   : "Best zone: —",
+        forHot ? `Most losses: ${forHot.label}` : "Loss zone: —",
       ],
-      color: "#f87171",
+      color: "#ef4444",
     },
   );
 
