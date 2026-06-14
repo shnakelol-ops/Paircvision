@@ -13,6 +13,7 @@ import {
 } from "./core/match/match-state-store";
 import { createPixiPitchSurface } from "./core/pitch/create-pixi-pitch-surface";
 import { type MatchEvent, type MatchEventKind } from "./core/stats/stats-event-model";
+import { deriveCoachingBrief, type CoachingBriefLine } from "./stats/coachingBrief";
 import { gaaModeConfig, type GaaModeKey } from "./config/gaaModeConfig";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
@@ -2334,63 +2335,17 @@ export default function App() {
       const player = playerById.get(activePlayerId);
       return player ? `#${player.number} ${player.name}` : null;
     })();
-  const reviewMatchSummaryLines = useMemo(() => {
-    const playerStats = new Map<
-      string,
-      { goals: number; points: number; twoPointers: number; turnoversWon: number; kickoutsWon: number; freesWon: number }
-    >();
-    let wides = 0;
-    let shots = 0;
-    let scores = 0;
-    for (const event of loggedEvents) {
-      if (event.team !== "HOME") continue;
-      if (event.kind === "WIDE") wides += 1;
-      if (event.kind === "SHOT" || event.kind === "GOAL" || event.kind === "POINT" || event.kind === "TWO_POINTER" || event.kind === "FORTY_FIVE_TWO_POINT" || event.kind === "WIDE") shots += 1;
-      if (event.kind === "GOAL" || event.kind === "POINT" || event.kind === "TWO_POINTER" || event.kind === "FORTY_FIVE_TWO_POINT") scores += 1;
-      const playerId = event.playerId;
-      if (!playerId || !playerById.has(playerId)) continue;
-      const stat = playerStats.get(playerId) ?? { goals: 0, points: 0, twoPointers: 0, turnoversWon: 0, kickoutsWon: 0, freesWon: 0 };
-      if (event.kind === "GOAL") stat.goals += 1;
-      else if (event.kind === "POINT") stat.points += 1;
-      else if (event.kind === "TWO_POINTER") stat.twoPointers += 1;
-      else if (event.kind === "FORTY_FIVE_TWO_POINT") stat.twoPointers += 1;
-      else if (event.kind === "TURNOVER_WON") stat.turnoversWon += 1;
-      else if (event.kind === "KICKOUT_WON") stat.kickoutsWon += 1;
-      else if (event.kind === "FREE_WON") stat.freesWon += 1;
-      playerStats.set(playerId, stat);
-    }
-    const formatPlayer = (playerId: string) => {
-      const player = playerById.get(playerId);
-      return player ? `#${player.number} ${player.name}` : null;
-    };
-    const topBy = (key: "turnoversWon" | "kickoutsWon" | "freesWon", label: string) => {
-      let best: { playerId: string; value: number } | null = null;
-      for (const [playerId, stat] of playerStats) {
-        if (stat[key] <= 0) continue;
-        if (!best || stat[key] > best.value) best = { playerId, value: stat[key] };
-      }
-      if (!best) return null;
-      const playerLabel = formatPlayer(best.playerId);
-      return playerLabel ? `${playerLabel} — ${label} (${best.value})` : null;
-    };
-    let topScorerLine: string | null = null;
-    let bestScore = 0;
-    for (const [playerId, stat] of playerStats) {
-      const total = stat.goals * 3 + stat.points + stat.twoPointers * 2;
-      if (total <= 0 || total < bestScore) continue;
-      const playerLabel = formatPlayer(playerId);
-      if (!playerLabel) continue;
-      bestScore = total;
-      topScorerLine = `${playerLabel} — Top Scorer (${stat.goals}-${String(stat.points + stat.twoPointers * 2).padStart(2, "0")})`;
-    }
-    const restartSummaryLabel = mode.restartLabel === "Puckout" ? "Most Puckouts Won" : "Most Kickouts Won";
-    const lines = [topScorerLine, topBy("turnoversWon", "Most Turnovers Won"), topBy("kickoutsWon", restartSummaryLabel), topBy("freesWon", "Most Frees Won")].filter(
-      (line): line is string => line != null,
-    );
-    if (wides > 0) lines.push(`Wides: ${wides}`);
-    if (shots > 0) lines.push(`Conversion: ${Math.round((scores / shots) * 100)}%`);
-    return lines;
-  }, [loggedEvents, playerById, mode.restartLabel]);
+  const reviewMatchSummaryLines = useMemo<CoachingBriefLine[]>(
+    () =>
+      deriveCoachingBrief({
+        loggedEvents,
+        matchState,
+        homeTeamName: teamNames.HOME,
+        awayTeamName: teamNames.AWAY,
+        isHurlingMode: currentMode === "hurling" || currentMode === "camogie",
+      }),
+    [loggedEvents, matchState, teamNames, currentMode],
+  );
 
   const homeScore = useMemo(() => computeTeamScore(loggedEvents, "HOME"), [loggedEvents]);
   const awayScore = useMemo(() => computeTeamScore(loggedEvents, "AWAY"), [loggedEvents]);
@@ -3043,18 +2998,69 @@ export default function App() {
         </div>
       ) : null}
       {utilityPanel === "SUMMARY" ? (
-        <div className={utilityPanelClass} role="dialog" aria-label="Match summary">
+        <div
+          className={utilityPanelClass}
+          role="dialog"
+          aria-label={matchState === "FULL_TIME" ? "Full-time summary" : "Halftime notes"}
+        >
           <div className="utility-review-scroll">
-            <div className="utility-panel-title">MATCH SUMMARY</div>
+            <div className="utility-panel-title">
+              {matchState === "FULL_TIME" ? "FULL-TIME SUMMARY" : "HALFTIME NOTES"}
+            </div>
             {reviewMatchSummaryLines.length > 0 ? (
-              reviewMatchSummaryLines.map((line) => (
-                <div key={`summary-panel-${line}`} className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
-                  {line}
-                </div>
-              ))
+              reviewMatchSummaryLines.map((line, index) => {
+                if (line.type === "spacer") {
+                  return <div key={index} style={{ height: "6px" }} />;
+                }
+                if (line.type === "section") {
+                  return (
+                    <div
+                      key={index}
+                      className="utility-panel-title"
+                      style={{ fontSize: "8px", opacity: 0.62, letterSpacing: "0.07em", marginTop: "2px" }}
+                    >
+                      {line.text}
+                    </div>
+                  );
+                }
+                if (line.type === "body") {
+                  return (
+                    <div
+                      key={index}
+                      className="utility-panel-title"
+                      style={{ fontSize: "10px", opacity: 0.92, textTransform: "none", fontWeight: 500, lineHeight: 1.4 }}
+                    >
+                      {line.text}
+                    </div>
+                  );
+                }
+                if (line.type === "bullet") {
+                  return (
+                    <div
+                      key={index}
+                      className="utility-panel-title"
+                      style={{ fontSize: "10px", opacity: 0.88, textTransform: "none", fontWeight: 400, lineHeight: 1.35 }}
+                    >
+                      {"• "}{line.text}
+                    </div>
+                  );
+                }
+                if (line.type === "arrow") {
+                  return (
+                    <div
+                      key={index}
+                      className="utility-panel-title"
+                      style={{ fontSize: "10px", opacity: 0.88, textTransform: "none", fontWeight: 400, lineHeight: 1.35 }}
+                    >
+                      {"→ "}{line.text}
+                    </div>
+                  );
+                }
+                return null;
+              })
             ) : (
               <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
-                No tagged match data yet.
+                No match data yet — keep logging.
               </div>
             )}
           </div>
@@ -3286,14 +3292,16 @@ export default function App() {
                   >
                     Review
                   </button>
-                  <button
-                    type="button"
-                    className="undo-btn"
-                    onClick={openMatchSummaryPanel}
-                    style={{ border: "1px solid rgba(125,211,252,0.52)" }}
-                  >
-                    Match Summary
-                  </button>
+                  {matchState !== "PRE_MATCH" ? (
+                    <button
+                      type="button"
+                      className="undo-btn"
+                      onClick={openMatchSummaryPanel}
+                      style={{ border: "1px solid rgba(125,211,252,0.52)" }}
+                    >
+                      {matchState === "FULL_TIME" ? "FT Summary" : "HT Notes"}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="undo-btn"
@@ -3412,14 +3420,16 @@ export default function App() {
                 >
                   Review
                 </button>
-                <button
-                  type="button"
-                  className="landscape-toolbar-secondary-btn"
-                  onClick={openMatchSummaryPanel}
-                  style={{ border: "1px solid rgba(125,211,252,0.52)" }}
-                >
-                  Match Summary
-                </button>
+                {matchState !== "PRE_MATCH" ? (
+                  <button
+                    type="button"
+                    className="landscape-toolbar-secondary-btn"
+                    onClick={openMatchSummaryPanel}
+                    style={{ border: "1px solid rgba(125,211,252,0.52)" }}
+                  >
+                    {matchState === "FULL_TIME" ? "FT Summary" : "HT Notes"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="landscape-toolbar-secondary-btn"
