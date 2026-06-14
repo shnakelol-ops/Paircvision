@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>PáircVision — Recorder Test</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0e14; color: #d0e8ff; font-family: system-ui, sans-serif; font-size: 13px; padding: 12px; }
+  h1 { font-size: 15px; font-weight: 700; color: #7ec8ff; margin-bottom: 10px; }
+  canvas { border: 1px solid #2a3a50; border-radius: 6px; display: block; width: 100%; max-width: 360px; }
+  video { display: block; width: 100%; max-width: 360px; max-height: 200px; border-radius: 6px; background: #000; margin-top: 8px; border: 1px solid #2a3a50; }
+  button { display: block; width: 100%; max-width: 360px; margin-top: 8px; padding: 10px; border-radius: 8px; border: 1px solid #3a5a80; background: #0e2040; color: #a0ccff; font-size: 13px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  #log { margin-top: 10px; max-width: 360px; background: #040c10; border: 1px solid #1a3a20; border-radius: 6px; padding: 7px; font-family: 'Courier New', monospace; font-size: 9.5px; line-height: 1.55; color: #80d080; white-space: pre-wrap; word-break: break-all; max-height: 55vh; overflow-y: auto; }
+  .row { display: flex; gap: 6px; max-width: 360px; }
+  .row button { flex: 1; margin-top: 0; }
+  #status { margin-top: 8px; font-size: 11px; font-weight: 700; color: #ffd060; }
+  .sep { margin-top: 6px; border-top: 1px solid #1a2a40; padding-top: 6px; color: #6090a0; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; }
+</style>
+</head>
+<body>
+
+<h1>Recorder Minimal Reproduction</h1>
+<p style="font-size:10px;color:#6090a0;margin-bottom:8px;">No Pixi. No React. No PáircVision. Canvas + MediaRecorder only.</p>
+
+<canvas id="c" width="320" height="180"></canvas>
+
+<div id="status">Idle — tap Record to begin</div>
+
+<button id="btnRecord">Record 5s (silent)</button>
+<div class="row" style="margin-top:8px;">
+  <button id="btnVoice" style="margin-top:0;">Record 5s + Mic</button>
+  <button id="btnStop" disabled style="margin-top:0;">Stop Early</button>
+</div>
+
+<video id="preview" controls playsinline></video>
+
+<div class="row" style="margin-top:8px;">
+  <button id="btnDownload" disabled>Download Clip</button>
+  <button id="btnOpenTab" disabled>Open in Tab</button>
+</div>
+
+<div id="log">Waiting for recording…</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const statusEl = document.getElementById('status');
+const logEl = document.getElementById('log');
+const preview = document.getElementById('preview');
+const btnRecord = document.getElementById('btnRecord');
+const btnVoice = document.getElementById('btnVoice');
+const btnStop = document.getElementById('btnStop');
+const btnDownload = document.getElementById('btnDownload');
+const btnOpenTab = document.getElementById('btnOpenTab');
+
+let currentBlob = null;
+let currentBlobUrl = null;
+let recorder = null;
+let animFrameId = null;
+let recordingTimerId = null;
+let hue = 0;
+let x = 20, vx = 2;
+
+// Canvas animation — moving coloured box
+function drawFrame() {
+  hue = (hue + 1.5) % 360;
+  x += vx;
+  if (x > 260 || x < 10) vx = -vx;
+  ctx.fillStyle = '#0a0e14';
+  ctx.fillRect(0, 0, 320, 180);
+  ctx.fillStyle = `hsl(${hue},80%,55%)`;
+  ctx.fillRect(x, 70, 60, 40);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '11px monospace';
+  ctx.fillText(`t=${Date.now() % 100000}`, 8, 170);
+  animFrameId = requestAnimationFrame(drawFrame);
+}
+drawFrame();
+
+function log(msg) {
+  console.log('[RT]', msg);
+  logEl.textContent += msg + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function logSep(label) {
+  logEl.textContent += '\n── ' + label + ' ──\n';
+}
+
+// Probe MIME support
+function getMimeInfo() {
+  const candidates = [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4;codecs=avc1,mp4a.40.2',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+    'video/mp4',
+  ];
+  logSep('isTypeSupported');
+  let chosen = null;
+  for (const t of candidates) {
+    const supported = MediaRecorder.isTypeSupported(t);
+    log((supported ? '✓' : '✗') + ' ' + t);
+    if (supported && !chosen) chosen = t;
+  }
+  return chosen || 'video/webm';
+}
+
+async function startRecording(withMic) {
+  currentBlob = null;
+  if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
+  preview.removeAttribute('src');
+  btnDownload.disabled = true;
+  btnOpenTab.disabled = true;
+  logEl.textContent = '';
+
+  logSep('Browser');
+  log('UA: ' + navigator.userAgent);
+
+  const mimeType = getMimeInfo();
+  log('\nChosen: ' + mimeType);
+
+  let audioStream = null;
+  if (withMic) {
+    logSep('Mic');
+    try {
+      audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const aTrack = audioStream.getAudioTracks()[0];
+      if (aTrack) {
+        const s = aTrack.getSettings();
+        log('audioTrack state:' + aTrack.readyState + ' label:"' + aTrack.label + '" sampleRate:' + s.sampleRate + ' ch:' + s.channelCount);
+      }
+    } catch(e) {
+      log('Mic denied/unavailable: ' + e.message);
+    }
+  }
+
+  logSep('Canvas stream');
+  const canvasStream = canvas.captureStream(30);
+  const vTrack = canvasStream.getVideoTracks()[0];
+  if (vTrack) {
+    const s = vTrack.getSettings();
+    log('videoTrack state:' + vTrack.readyState + ' label:"' + vTrack.label + '" ' + s.width + 'x' + s.height + ' @' + s.frameRate + 'fps');
+  }
+
+  const stream = (audioStream && audioStream.getAudioTracks().length > 0)
+    ? new MediaStream([...canvasStream.getVideoTracks(), ...audioStream.getAudioTracks()])
+    : canvasStream;
+
+  logSep('MediaRecorder');
+  let rec;
+  try {
+    rec = new MediaRecorder(stream, { mimeType });
+  } catch(e) {
+    log('new MediaRecorder failed: ' + e.message + ' — trying no mimeType');
+    rec = new MediaRecorder(stream);
+  }
+  recorder = rec;
+  log('requested: ' + mimeType);
+  log('actual recorder.mimeType: ' + rec.mimeType);
+
+  const chunks = [];
+  rec.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) chunks.push(e.data);
+  };
+
+  rec.onstop = () => {
+    if (audioStream) audioStream.getTracks().forEach(t => t.stop());
+    logSep('onstop');
+    log('chunks: ' + chunks.length + ' sizes: ' + chunks.map(c => c.size).join(','));
+
+    // Use container type only (strip codec params), same as PáircVision
+    const blobType = rec.mimeType.split(';')[0].trim();
+    const blob = new Blob(chunks, { type: blobType });
+    log('blob.size: ' + blob.size + ' blob.type: ' + blob.type);
+
+    // Magic bytes
+    chunks[0]?.arrayBuffer().then((buf) => {
+      const arr = new Uint8Array(buf, 0, Math.min(32, buf.byteLength));
+      const hex = Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join(' ');
+      const isWebM = arr[0]===0x1a && arr[1]===0x45 && arr[2]===0xdf && arr[3]===0xa3;
+      const hasMP4Ftyp = arr.length>=8 && arr[4]===0x66 && arr[5]===0x74 && arr[6]===0x79 && arr[7]===0x70;
+      const container = isWebM ? 'WebM/EBML' : hasMP4Ftyp ? 'MP4 (ftyp)' : 'UNKNOWN';
+      log('magic bytes: ' + hex);
+      log('container: ' + container);
+      const mismatch = (isWebM && blobType==='video/mp4') || (hasMP4Ftyp && blobType==='video/webm');
+      log('type MISMATCH: ' + mismatch);
+    });
+
+    currentBlob = blob;
+    const url = URL.createObjectURL(blob);
+    currentBlobUrl = url;
+
+    logSep('Video element');
+    // CRITICAL: plain src= assignment, NO el.load(), NO preload attribute
+    preview.src = url;
+
+    preview.onloadstart    = () => log('event: loadstart  rs:' + preview.readyState + ' ns:' + preview.networkState);
+    preview.onloadedmetadata = () => {
+      log('event: loadedmetadata  rs:' + preview.readyState + ' dur:' + preview.duration.toFixed(2) + ' ' + preview.videoWidth + 'x' + preview.videoHeight);
+    };
+    preview.onloadeddata   = () => log('event: loadeddata  rs:' + preview.readyState);
+    preview.oncanplay      = () => log('event: canplay  rs:' + preview.readyState);
+    preview.onstalled      = () => log('event: stalled  rs:' + preview.readyState + ' ns:' + preview.networkState);
+    preview.onabort        = () => log('event: ABORT  rs:' + preview.readyState);
+    preview.onerror        = () => log('event: ERROR code:' + (preview.error?.code) + ' msg:' + (preview.error?.message));
+
+    btnDownload.disabled = false;
+    btnOpenTab.disabled = false;
+    btnRecord.disabled = false;
+    btnVoice.disabled = false;
+    btnStop.disabled = true;
+    statusEl.textContent = 'Done — review log below';
+  };
+
+  rec.start(200);
+  statusEl.textContent = 'Recording…';
+  btnRecord.disabled = true;
+  btnVoice.disabled = true;
+  btnStop.disabled = false;
+
+  recordingTimerId = setTimeout(() => {
+    if (rec.state !== 'inactive') rec.stop();
+    recordingTimerId = null;
+  }, 5000);
+};
+
+btnRecord.onclick = () => { void startRecording(false); };
+btnVoice.onclick  = () => { void startRecording(true); };
+btnStop.onclick   = () => {
+  if (recordingTimerId) { clearTimeout(recordingTimerId); recordingTimerId = null; }
+  if (recorder && recorder.state !== 'inactive') recorder.stop();
+};
+
+btnDownload.onclick = () => {
+  if (!currentBlob) return;
+  const ext = currentBlob.type === 'video/mp4' ? 'mp4' : 'webm';
+  const a = document.createElement('a');
+  a.href = currentBlobUrl;
+  a.download = 'pvtest-' + Date.now() + '.' + ext;
+  a.click();
+};
+
+btnOpenTab.onclick = () => {
+  if (currentBlobUrl) window.open(currentBlobUrl, '_blank');
+};
+</script>
+</body>
+</html>

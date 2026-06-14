@@ -111,14 +111,17 @@ export function useCanvasRecorder(params: {
     // VP9+Opus mislabelled as MP4.
     //
     // Generic "video/mp4" is kept as a last resort only.
-    for (const t of [
+    const candidates = [
       "video/mp4;codecs=avc1.42E01E,mp4a.40.2",  // H.264 Baseline + AAC-LC
       "video/mp4;codecs=avc1,mp4a.40.2",          // H.264 + AAC shorthand
       "video/webm;codecs=vp9,opus",               // VP9+Opus in WebM (correct label)
       "video/webm;codecs=vp8,opus",
       "video/webm",
       "video/mp4",                                // last resort — may produce VP9/Opus-in-MP4
-    ]) {
+    ] as const;
+    const support = candidates.map((t) => `${t}:${MediaRecorder.isTypeSupported(t)}`);
+    console.debug("[PV REC] isTypeSupported audit:", support.join(" | "));
+    for (const t of candidates) {
       if (MediaRecorder.isTypeSupported(t)) return t;
     }
     return "video/webm";
@@ -151,10 +154,22 @@ export function useCanvasRecorder(params: {
 
     const canvasStream = (canvas as HTMLCanvasElement & { captureStream(fps: number): MediaStream }).captureStream(30);
 
+    // Log canvas video track info.
+    canvasStream.getVideoTracks().forEach((t, i) => {
+      const s = t.getSettings();
+      console.debug(`[PV REC] videoTrack[${i}] readyState:${t.readyState} label:"${t.label}" enabled:${t.enabled} muted:${t.muted} w:${s.width} h:${s.height} fps:${s.frameRate}`);
+    });
+
     const audioStream = activeAudioStreamRef.current;
     const audioTracks = audioStream?.getAudioTracks() ?? [];
     const hasAudio = audioTracks.length > 0;
     hasAudioRef.current = hasAudio;
+
+    // Log audio track info.
+    audioTracks.forEach((t, i) => {
+      const s = t.getSettings();
+      console.debug(`[PV REC] audioTrack[${i}] readyState:${t.readyState} label:"${t.label}" enabled:${t.enabled} muted:${t.muted} sampleRate:${s.sampleRate} channelCount:${s.channelCount}`);
+    });
 
     const stream = hasAudio
       ? new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks])
@@ -162,6 +177,8 @@ export function useCanvasRecorder(params: {
 
     const recorder = new MediaRecorder(stream, { mimeType });
     recorderRef.current = recorder;
+    // Log actual mimeType chosen by the browser — may differ from what we requested.
+    console.debug("[PV REC] MediaRecorder created — requested:", mimeType, "| actual recorder.mimeType:", recorder.mimeType);
     recorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data);
     };
@@ -175,9 +192,22 @@ export function useCanvasRecorder(params: {
       // preview. Without codec params the container parser auto-detects the
       // actual codec from the bitstream, so playback works regardless.
       const blobType = mimeType.split(";")[0].trim();
-      const blob = new Blob(recordChunksRef.current, { type: blobType });
+      const chunks = recordChunksRef.current;
+      console.debug("[PV REC] onstop — chunks:", chunks.length, "sizes:", chunks.map((c) => c.size).join(","));
+      const blob = new Blob(chunks, { type: blobType });
       const url = URL.createObjectURL(blob);
-      console.debug("[PV REC] onstop — chunks:", recordChunksRef.current.length, "size:", blob.size, "blobType:", blobType, "requestedMime:", mimeType, "url:", url);
+      console.debug("[PV REC] blob — size:", blob.size, "type:", blob.type, "requestedMime:", mimeType, "url:", url.slice(0, 60));
+      // Read first 32 bytes to detect actual container format.
+      void chunks[0]?.arrayBuffer().then((buf) => {
+        const arr = new Uint8Array(buf, 0, Math.min(32, buf.byteLength));
+        const hex = Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join(" ");
+        const isWebM = arr[0] === 0x1a && arr[1] === 0x45 && arr[2] === 0xdf && arr[3] === 0xa3;
+        // MP4 "ftyp" box appears at byte offset 4; bytes 4-7 = 0x66 0x74 0x79 0x70
+        const hasMP4Ftyp = arr.length >= 8 && arr[4] === 0x66 && arr[5] === 0x74 && arr[6] === 0x79 && arr[7] === 0x70;
+        const container = isWebM ? "WebM/EBML" : hasMP4Ftyp ? "MP4 (ftyp)" : "UNKNOWN";
+        console.debug("[PV REC] magic bytes (first 32):", hex);
+        console.debug("[PV REC] detected container:", container, "| blobType claimed:", blobType, "| MISMATCH:", (isWebM && blobType === "video/mp4") || (hasMP4Ftyp && blobType === "video/webm"));
+      });
       blobUrlRef.current = url;
       setRecordBlob(blob);
       setRecordBlobUrl(url);
