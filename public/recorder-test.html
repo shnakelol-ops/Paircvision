@@ -3,249 +3,419 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>PáircVision — Recorder Test</title>
+<title>PV — Audio Recording Investigation</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0a0e14; color: #d0e8ff; font-family: system-ui, sans-serif; font-size: 13px; padding: 12px; }
-  h1 { font-size: 15px; font-weight: 700; color: #7ec8ff; margin-bottom: 10px; }
-  canvas { border: 1px solid #2a3a50; border-radius: 6px; display: block; width: 100%; max-width: 360px; }
-  video { display: block; width: 100%; max-width: 360px; max-height: 200px; border-radius: 6px; background: #000; margin-top: 8px; border: 1px solid #2a3a50; }
-  button { display: block; width: 100%; max-width: 360px; margin-top: 8px; padding: 10px; border-radius: 8px; border: 1px solid #3a5a80; background: #0e2040; color: #a0ccff; font-size: 13px; font-weight: 600; cursor: pointer; }
-  button:disabled { opacity: 0.45; cursor: default; }
-  #log { margin-top: 10px; max-width: 360px; background: #040c10; border: 1px solid #1a3a20; border-radius: 6px; padding: 7px; font-family: 'Courier New', monospace; font-size: 9.5px; line-height: 1.55; color: #80d080; white-space: pre-wrap; word-break: break-all; max-height: 55vh; overflow-y: auto; }
-  .row { display: flex; gap: 6px; max-width: 360px; }
-  .row button { flex: 1; margin-top: 0; }
-  #status { margin-top: 8px; font-size: 11px; font-weight: 700; color: #ffd060; }
-  .sep { margin-top: 6px; border-top: 1px solid #1a2a40; padding-top: 6px; color: #6090a0; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #060c14; color: #c8dff4; font-family: system-ui, sans-serif; font-size: 12px; padding: 10px; }
+h1 { font-size: 14px; font-weight: 700; color: #6ab4ff; margin-bottom: 4px; }
+p.sub { font-size: 10px; color: #4a6880; margin-bottom: 10px; }
+canvas { border: 1px solid #1a3050; border-radius: 5px; display: block; width: 100%; max-width: 360px; }
+video { display: block; width: 100%; max-width: 360px; max-height: 180px; border-radius: 5px; background: #000; margin: 6px 0; border: 1px solid #1a3050; }
+.btn-row { display: flex; gap: 5px; max-width: 360px; margin-top: 6px; flex-wrap: wrap; }
+.btn-row button { flex: 1; min-width: 80px; padding: 8px 4px; border-radius: 6px; border: 1px solid #2a4870; background: #0a1e38; color: #88bbee; font-size: 11px; font-weight: 600; cursor: pointer; line-height: 1.3; }
+.btn-row button:disabled { opacity: 0.38; cursor: default; }
+#btnStop { border-color: #602020; color: #ff8888; background: #1a0808; }
+.action-row { display: flex; gap: 5px; max-width: 360px; margin-top: 5px; }
+.action-row button { flex: 1; padding: 8px 4px; border-radius: 6px; border: 1px solid #2a4060; background: #081828; color: #70a0cc; font-size: 11px; font-weight: 600; cursor: pointer; }
+.action-row button:disabled { opacity: 0.35; cursor: default; }
+#statusLine { margin: 7px 0; font-size: 11px; font-weight: 700; color: #ffc840; min-height: 16px; }
+#log { max-width: 360px; background: #030a0a; border: 1px solid #0a2818; border-radius: 5px; padding: 6px; font-family: 'Courier New', monospace; font-size: 8.5px; line-height: 1.6; color: #60c880; white-space: pre-wrap; word-break: break-all; max-height: 52vh; overflow-y: auto; margin-top: 6px; }
+.log-sep { color: #2a6a40; font-weight: 700; }
+.log-warn { color: #ffa040; }
+.log-err  { color: #ff5050; }
+.log-ok   { color: #40ff80; }
 </style>
 </head>
 <body>
 
-<h1>Recorder Minimal Reproduction</h1>
-<p style="font-size:10px;color:#6090a0;margin-bottom:8px;">No Pixi. No React. No PáircVision. Canvas + MediaRecorder only.</p>
+<h1>Audio Recording Investigation</h1>
+<p class="sub">Minimal reproduction — no React, no Pixi, no PáircVision.</p>
 
 <canvas id="c" width="320" height="180"></canvas>
 
-<div id="status">Idle — tap Record to begin</div>
+<div id="statusLine">Idle</div>
 
-<button id="btnRecord">Record 5s (silent)</button>
-<div class="row" style="margin-top:8px;">
-  <button id="btnVoice" style="margin-top:0;">Record 5s + Mic</button>
-  <button id="btnStop" disabled style="margin-top:0;">Stop Early</button>
+<div class="btn-row">
+  <button id="btnA">A: Silent<br>auto MIME</button>
+  <button id="btnB">B: Mic<br>auto MIME</button>
+  <button id="btnC">C: Mic<br>MP4 explicit</button>
+  <button id="btnD">D: Mic<br>WebM explicit</button>
+  <button id="btnStop" disabled>Stop</button>
 </div>
 
 <video id="preview" controls playsinline></video>
 
-<div class="row" style="margin-top:8px;">
-  <button id="btnDownload" disabled>Download Clip</button>
-  <button id="btnOpenTab" disabled>Open in Tab</button>
+<div class="action-row">
+  <button id="btnDownload" disabled>Download</button>
+  <button id="btnOpenTab" disabled>Open Tab</button>
 </div>
 
-<div id="log">Waiting for recording…</div>
+<div id="log">Tap A, B, C or D to begin a 5-second test recording.</div>
 
 <script>
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-const statusEl = document.getElementById('status');
-const logEl = document.getElementById('log');
-const preview = document.getElementById('preview');
-const btnRecord = document.getElementById('btnRecord');
-const btnVoice = document.getElementById('btnVoice');
-const btnStop = document.getElementById('btnStop');
-const btnDownload = document.getElementById('btnDownload');
-const btnOpenTab = document.getElementById('btnOpenTab');
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const canvas   = document.getElementById('c');
+const ctx      = canvas.getContext('2d');
+const statusEl = document.getElementById('statusLine');
+const logEl    = document.getElementById('log');
+const preview  = document.getElementById('preview');
+const btnA     = document.getElementById('btnA');
+const btnB     = document.getElementById('btnB');
+const btnC     = document.getElementById('btnC');
+const btnD     = document.getElementById('btnD');
+const btnStop  = document.getElementById('btnStop');
+const btnDl    = document.getElementById('btnDownload');
+const btnTab   = document.getElementById('btnOpenTab');
+const ALL_TEST_BTNS = [btnA, btnB, btnC, btnD];
 
-let currentBlob = null;
-let currentBlobUrl = null;
-let recorder = null;
-let animFrameId = null;
-let recordingTimerId = null;
-let hue = 0;
-let x = 20, vx = 2;
-
-// Canvas animation — moving coloured box
+// ── Canvas animation ──────────────────────────────────────────────────────────
+let hue = 0, bx = 20, bvx = 2;
 function drawFrame() {
   hue = (hue + 1.5) % 360;
-  x += vx;
-  if (x > 260 || x < 10) vx = -vx;
-  ctx.fillStyle = '#0a0e14';
-  ctx.fillRect(0, 0, 320, 180);
-  ctx.fillStyle = `hsl(${hue},80%,55%)`;
-  ctx.fillRect(x, 70, 60, 40);
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '11px monospace';
-  ctx.fillText(`t=${Date.now() % 100000}`, 8, 170);
-  animFrameId = requestAnimationFrame(drawFrame);
+  bx += bvx;
+  if (bx > 250 || bx < 10) bvx = -bvx;
+  ctx.fillStyle = '#060c14'; ctx.fillRect(0, 0, 320, 180);
+  ctx.fillStyle = `hsl(${hue},78%,55%)`; ctx.fillRect(bx, 65, 70, 50);
+  ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '9px monospace';
+  ctx.fillText(new Date().toISOString().slice(14, 23), 4, 175);
+  requestAnimationFrame(drawFrame);
 }
 drawFrame();
 
-function log(msg) {
-  console.log('[RT]', msg);
-  logEl.textContent += msg + '\n';
+// ── Logging ───────────────────────────────────────────────────────────────────
+let currentBlob = null, currentBlobUrl = null, recorder = null, timer = null;
+
+function cls() { logEl.textContent = ''; }
+function log(msg, cls2) {
+  const line = document.createTextNode(msg + '\n');
+  if (cls2) {
+    const sp = document.createElement('span');
+    sp.className = cls2;
+    sp.appendChild(line);
+    logEl.appendChild(sp);
+  } else { logEl.appendChild(line); }
   logEl.scrollTop = logEl.scrollHeight;
 }
-function logSep(label) {
-  logEl.textContent += '\n── ' + label + ' ──\n';
-}
+function sep(t) { log('\n── ' + t + ' ──', 'log-sep'); }
+function warn(m) { log('⚠ ' + m, 'log-warn'); }
+function ok(m)   { log('✓ ' + m, 'log-ok'); }
+function err(m)  { log('✗ ' + m, 'log-err'); }
 
-// Probe MIME support
-function getMimeInfo() {
-  const candidates = [
-    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
-    'video/mp4;codecs=avc1,mp4a.40.2',
-    'video/webm;codecs=vp9,opus',
-    'video/webm;codecs=vp8,opus',
-    'video/webm',
-    'video/mp4',
-  ];
-  logSep('isTypeSupported');
-  let chosen = null;
-  for (const t of candidates) {
-    const supported = MediaRecorder.isTypeSupported(t);
-    log((supported ? '✓' : '✗') + ' ' + t);
-    if (supported && !chosen) chosen = t;
+// ── MIME support audit ────────────────────────────────────────────────────────
+const MIME_CANDIDATES = [
+  'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+  'video/mp4;codecs=avc1,mp4a.40.2',
+  'video/mp4;codecs=avc1',
+  'video/webm;codecs=vp9,opus',
+  'video/webm;codecs=vp8,opus',
+  'video/webm',
+  'video/mp4',
+];
+
+function auditMimeSupport() {
+  sep('isTypeSupported');
+  log('UA: ' + navigator.userAgent.slice(0, 100));
+  let first = null;
+  for (const m of MIME_CANDIDATES) {
+    const s = (typeof MediaRecorder !== 'undefined') && MediaRecorder.isTypeSupported(m);
+    log((s ? '✓ ' : '✗ ') + m);
+    if (s && !first) first = m;
   }
-  return chosen || 'video/webm';
+  return first || 'video/webm';
 }
 
-async function startRecording(withMic) {
+// ── Stream composition audit ──────────────────────────────────────────────────
+function auditStream(stream, label) {
+  sep('Stream: ' + label);
+  const tracks = stream.getTracks();
+  log('total tracks: ' + tracks.length);
+  tracks.forEach((t, i) => {
+    const s = t.getSettings();
+    const c = t.getConstraints();
+    const issues = [];
+    if (t.readyState === 'ended')  issues.push('ENDED');
+    if (t.muted)                   issues.push('MUTED');
+    if (!t.enabled)                issues.push('DISABLED');
+    const badgeStr = issues.length ? ' !! ' + issues.join(' ') : '';
+    log(`[${i}] kind:${t.kind} state:${t.readyState} enabled:${t.enabled} muted:${t.muted}${badgeStr}`);
+    log(`    label:"${t.label}"`);
+    log(`    settings:${JSON.stringify(s)}`);
+    log(`    constraints:${JSON.stringify(c)}`);
+    if (issues.length) warn('Track ' + i + ' has issues: ' + issues.join(', '));
+  });
+  // Duplicate track check
+  const ids = tracks.map(t => t.id);
+  const dups = ids.filter((id, idx) => ids.indexOf(id) !== idx);
+  if (dups.length) warn('DUPLICATE track IDs: ' + dups.join(', '));
+  else ok('No duplicate tracks');
+}
+
+// ── Box type scanner (pattern scan over the full init chunk) ─────────────────
+// Scans for known 4-byte ISOBMFF box type signatures in chunk[0].
+// This is not a full parser — it finds codec/handler markers by byte pattern.
+const BOX_TARGETS = [
+  'ftyp','styp','moov','mvhd','mvex','trex',
+  'trak','tkhd','mdia','mdhd','hdlr','minf','stbl','stsd','stts','stsz','stco',
+  'mp4a','esds',    // AAC audio codec + ES_Descriptor (AudioSpecificConfig)
+  'Opus',           // Opus audio in MP4 (non-standard — Chrome bug)
+  'avc1','avc3',    // H.264 video
+  'hvc1','hev1',    // HEVC video
+  'vp09',           // VP9 video
+  'soun','vide',    // handler types (audio/video track existence)
+  'moof','mfhd','traf','tfhd','trun',  // fragmented MP4 segment boxes
+  'mdat',
+];
+
+function scanBoxTypes(buf) {
+  const ua8 = new Uint8Array(buf);
+  const found = new Set();
+  for (let i = 0; i + 4 <= ua8.length; i++) {
+    const t = String.fromCharCode(ua8[i], ua8[i+1], ua8[i+2], ua8[i+3]);
+    if (BOX_TARGETS.includes(t)) found.add(t);
+  }
+  return [...found].sort();
+}
+
+function auditBoxes(buf, chunkLabel) {
+  sep('Box scan: ' + chunkLabel);
+  const found = scanBoxTypes(buf);
+  log('found: ' + (found.length ? found.join(' ') : '(none)'));
+
+  // Container type
+  const ua8 = new Uint8Array(buf, 0, Math.min(32, buf.byteLength));
+  const hex32 = Array.from(ua8).map(b => b.toString(16).padStart(2,'0')).join(' ');
+  log('bytes[0..31]: ' + hex32);
+  const isWebM = ua8[0]===0x1a && ua8[1]===0x45 && ua8[2]===0xdf && ua8[3]===0xa3;
+  const isMp4  = ua8.length>=8 && ua8[4]===0x66 && ua8[5]===0x74 && ua8[6]===0x79 && ua8[7]===0x70;
+  log('container: ' + (isWebM ? 'WebM/EBML' : isMp4 ? 'MP4 (ftyp)' : 'UNKNOWN'));
+
+  // Audio codec inference
+  if (found.includes('mp4a') && found.includes('esds')) {
+    ok('AAC: mp4a+esds both present (normal AAC-LC)');
+  } else if (found.includes('mp4a') && !found.includes('esds')) {
+    err('AAC BROKEN: mp4a present but esds MISSING — no AudioSpecificConfig');
+    warn('This would cause audio decode failure');
+  } else if (found.includes('Opus')) {
+    warn('Opus audio found in MP4 container (Chrome fallback — may not play on all devices)');
+  } else if (found.includes('soun') && !found.includes('mp4a') && !found.includes('Opus')) {
+    err('Audio track (soun) exists but NO recognised audio codec box found');
+  }
+
+  // Video codec
+  if (found.includes('avc1') || found.includes('avc3')) ok('H.264 video codec confirmed (avc1/avc3)');
+  else if (found.includes('vp09')) ok('VP9 video codec confirmed (vp09)');
+  else if (found.includes('hvc1') || found.includes('hev1')) ok('HEVC video codec confirmed');
+  else if (found.includes('vide')) warn('Video track (vide) found but no recognised video codec box');
+
+  return { isWebM, isMp4, found };
+}
+
+// ── Recorder setup ────────────────────────────────────────────────────────────
+function setTestBtnsDisabled(disabled) {
+  ALL_TEST_BTNS.forEach(b => { b.disabled = disabled; });
+  btnStop.disabled = !disabled;
+}
+
+function attachVideoEvents(vid) {
+  sep('Video element events');
+  vid.onloadstart     = () => log('loadstart   rs:' + vid.readyState + ' ns:' + vid.networkState);
+  vid.onloadedmetadata= () => ok('loadedmetadata rs:' + vid.readyState + ' dur:' + (vid.duration||0).toFixed(2) + 's ' + vid.videoWidth + 'x' + vid.videoHeight);
+  vid.onloadeddata    = () => ok('loadeddata  rs:' + vid.readyState);
+  vid.oncanplay       = () => ok('canplay     rs:' + vid.readyState);
+  vid.onstalled       = () => warn('stalled     rs:' + vid.readyState + ' ns:' + vid.networkState);
+  vid.onabort         = () => err('ABORT       rs:' + vid.readyState);
+  vid.onerror         = () => err('ERROR code:' + (vid.error ? vid.error.code : '?') + ' "' + (vid.error ? vid.error.message : '') + '"');
+  // NO el.load() — plain src= assignment only
+}
+
+async function runTest(label, withMic, mimeOverride) {
+  cls();
   currentBlob = null;
   if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
   preview.removeAttribute('src');
-  btnDownload.disabled = true;
-  btnOpenTab.disabled = true;
-  logEl.textContent = '';
+  preview.onloadstart = preview.onloadedmetadata = preview.onloadeddata =
+    preview.oncanplay = preview.onstalled = preview.onabort = preview.onerror = null;
+  btnDl.disabled = true;
+  btnTab.disabled = true;
+  statusEl.textContent = 'Recording — ' + label + '…';
 
-  logSep('Browser');
-  log('UA: ' + navigator.userAgent);
+  log('Test: ' + label);
+  const autoMime = auditMimeSupport();
 
-  const mimeType = getMimeInfo();
-  log('\nChosen: ' + mimeType);
-
+  // ── Acquire mic ────────────────────────────────────────────────────────────
   let audioStream = null;
   if (withMic) {
-    logSep('Mic');
+    sep('Microphone');
     try {
       audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      const aTrack = audioStream.getAudioTracks()[0];
-      if (aTrack) {
-        const s = aTrack.getSettings();
-        log('audioTrack state:' + aTrack.readyState + ' label:"' + aTrack.label + '" sampleRate:' + s.sampleRate + ' ch:' + s.channelCount);
+      ok('getUserMedia succeeded');
+      const at = audioStream.getAudioTracks()[0];
+      if (at) {
+        const s = at.getSettings();
+        const c = at.getConstraints();
+        log('kind:' + at.kind + ' readyState:' + at.readyState + ' enabled:' + at.enabled + ' muted:' + at.muted);
+        log('label:"' + at.label + '"');
+        log('settings:' + JSON.stringify(s));
+        log('constraints:' + JSON.stringify(c));
+        if (at.readyState === 'ended') err('Audio track already ENDED before recording starts');
+        if (at.muted) warn('Audio track is MUTED');
+      } else {
+        err('getUserMedia returned 0 audio tracks');
       }
     } catch(e) {
-      log('Mic denied/unavailable: ' + e.message);
+      err('getUserMedia failed: ' + e.name + ': ' + e.message);
+      audioStream = null;
     }
   }
 
-  logSep('Canvas stream');
+  // ── Canvas stream ─────────────────────────────────────────────────────────
+  sep('Canvas stream');
   const canvasStream = canvas.captureStream(30);
-  const vTrack = canvasStream.getVideoTracks()[0];
-  if (vTrack) {
-    const s = vTrack.getSettings();
-    log('videoTrack state:' + vTrack.readyState + ' label:"' + vTrack.label + '" ' + s.width + 'x' + s.height + ' @' + s.frameRate + 'fps');
-  }
+  const vt = canvasStream.getVideoTracks()[0];
+  if (vt) {
+    const s = vt.getSettings();
+    log('kind:' + vt.kind + ' readyState:' + vt.readyState + ' enabled:' + vt.enabled + ' muted:' + vt.muted);
+    log('label:"' + vt.label + '"');
+    log('settings:' + JSON.stringify(s));
+    if (vt.readyState === 'ended') err('Canvas video track ENDED before recording');
+  } else { err('captureStream returned 0 video tracks'); }
 
-  const stream = (audioStream && audioStream.getAudioTracks().length > 0)
-    ? new MediaStream([...canvasStream.getVideoTracks(), ...audioStream.getAudioTracks()])
+  // ── Merge streams ─────────────────────────────────────────────────────────
+  const audioTracks = audioStream ? audioStream.getAudioTracks() : [];
+  const hasAudio = audioTracks.length > 0;
+  const stream = hasAudio
+    ? new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks])
     : canvasStream;
 
-  logSep('MediaRecorder');
+  auditStream(stream, hasAudio ? 'video+audio merged' : 'video only');
+
+  // ── Chosen MIME ───────────────────────────────────────────────────────────
+  const chosenMime = mimeOverride || autoMime;
+  sep('MediaRecorder');
+  log('chosen MIME: ' + chosenMime);
+  log('(auto would be: ' + autoMime + ')');
+
   let rec;
   try {
-    rec = new MediaRecorder(stream, { mimeType });
+    rec = new MediaRecorder(stream, { mimeType: chosenMime });
   } catch(e) {
-    log('new MediaRecorder failed: ' + e.message + ' — trying no mimeType');
-    rec = new MediaRecorder(stream);
+    warn('MediaRecorder({ mimeType }) threw — falling back to no mimeType: ' + e.message);
+    try {
+      rec = new MediaRecorder(stream);
+    } catch(e2) {
+      err('MediaRecorder() failed entirely: ' + e2.message);
+      setTestBtnsDisabled(false);
+      statusEl.textContent = 'Error — see log';
+      return;
+    }
   }
   recorder = rec;
-  log('requested: ' + mimeType);
-  log('actual recorder.mimeType: ' + rec.mimeType);
 
+  log('requested:          "' + chosenMime + '"');
+  log('recorder.mimeType:  "' + rec.mimeType + '"');
+  log('videoBitsPerSecond: ' + rec.videoBitsPerSecond);
+  log('audioBitsPerSecond: ' + rec.audioBitsPerSecond);
+
+  if (rec.mimeType !== chosenMime && rec.mimeType.split(';')[0] !== chosenMime.split(';')[0]) {
+    warn('recorder.mimeType container differs from requested — browser substituted');
+  }
+  if (hasAudio && rec.audioBitsPerSecond === 0) {
+    warn('audioBitsPerSecond is 0 despite audio track present');
+  }
+
+  // ── Record 5 seconds ─────────────────────────────────────────────────────
   const chunks = [];
-  rec.ondataavailable = (e) => {
-    if (e.data && e.data.size > 0) chunks.push(e.data);
-  };
+  rec.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
 
   rec.onstop = () => {
     if (audioStream) audioStream.getTracks().forEach(t => t.stop());
-    logSep('onstop');
-    log('chunks: ' + chunks.length + ' sizes: ' + chunks.map(c => c.size).join(','));
 
-    // Use container type only (strip codec params), same as PáircVision
-    const blobType = rec.mimeType.split(';')[0].trim();
-    const blob = new Blob(chunks, { type: blobType });
-    log('blob.size: ' + blob.size + ' blob.type: ' + blob.type);
+    sep('Recording complete');
+    log('chunk count: ' + chunks.length);
+    log('chunk sizes: ' + chunks.map(c => c.size).join(', '));
 
-    // Magic bytes
-    chunks[0]?.arrayBuffer().then((buf) => {
-      const arr = new Uint8Array(buf, 0, Math.min(32, buf.byteLength));
-      const hex = Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join(' ');
-      const isWebM = arr[0]===0x1a && arr[1]===0x45 && arr[2]===0xdf && arr[3]===0xa3;
-      const hasMP4Ftyp = arr.length>=8 && arr[4]===0x66 && arr[5]===0x74 && arr[6]===0x79 && arr[7]===0x70;
-      const container = isWebM ? 'WebM/EBML' : hasMP4Ftyp ? 'MP4 (ftyp)' : 'UNKNOWN';
-      log('magic bytes: ' + hex);
-      log('container: ' + container);
-      const mismatch = (isWebM && blobType==='video/mp4') || (hasMP4Ftyp && blobType==='video/webm');
-      log('type MISMATCH: ' + mismatch);
-    });
+    const blobMime = rec.mimeType.split(';')[0].trim();
+    const blob = new Blob(chunks, { type: blobMime });
+    log('blob.size: ' + blob.size + ' blob.type: "' + blob.type + '"');
 
     currentBlob = blob;
     const url = URL.createObjectURL(blob);
     currentBlobUrl = url;
 
-    logSep('Video element');
-    // CRITICAL: plain src= assignment, NO el.load(), NO preload attribute
-    preview.src = url;
+    // Box scan on first chunk (init segment) and whole blob
+    const firstChunk = chunks[0];
+    const allBuf = blob;
+    if (firstChunk) {
+      firstChunk.arrayBuffer().then(buf => {
+        const r1 = auditBoxes(buf, 'chunk[0]');
+        // Also scan whole blob to catch audio boxes that may appear later
+        return allBuf.arrayBuffer().then(wholeBuf => {
+          sep('Box scan: full blob');
+          const allFound = scanBoxTypes(wholeBuf);
+          log('all boxes: ' + (allFound.length ? allFound.join(' ') : '(none)'));
 
-    preview.onloadstart    = () => log('event: loadstart  rs:' + preview.readyState + ' ns:' + preview.networkState);
-    preview.onloadedmetadata = () => {
-      log('event: loadedmetadata  rs:' + preview.readyState + ' dur:' + preview.duration.toFixed(2) + ' ' + preview.videoWidth + 'x' + preview.videoHeight);
-    };
-    preview.onloadeddata   = () => log('event: loadeddata  rs:' + preview.readyState);
-    preview.oncanplay      = () => log('event: canplay  rs:' + preview.readyState);
-    preview.onstalled      = () => log('event: stalled  rs:' + preview.readyState + ' ns:' + preview.networkState);
-    preview.onabort        = () => log('event: ABORT  rs:' + preview.readyState);
-    preview.onerror        = () => log('event: ERROR code:' + (preview.error?.code) + ' msg:' + (preview.error?.message));
+          // Final verdict
+          sep('Audio verdict');
+          const hasSoun = allFound.includes('soun');
+          const hasMp4a = allFound.includes('mp4a');
+          const hasEsds = allFound.includes('esds');
+          const hasOpus = allFound.includes('Opus');
+          if (!hasAudio) {
+            ok('Silent recording — no audio expected');
+          } else if (!hasSoun && !hasMp4a && !hasOpus) {
+            err('AUDIO TRACK MISSING from output despite mic being active');
+          } else if (hasMp4a && hasEsds) {
+            ok('AAC looks complete: mp4a + esds both found');
+          } else if (hasMp4a && !hasEsds) {
+            err('AAC BROKEN: mp4a present, esds MISSING → AudioSpecificConfig absent → decoder will fail');
+          } else if (hasOpus) {
+            warn('Opus audio written into MP4 container — may not play on all decoders');
+          }
 
-    btnDownload.disabled = false;
-    btnOpenTab.disabled = false;
-    btnRecord.disabled = false;
-    btnVoice.disabled = false;
-    btnStop.disabled = true;
-    statusEl.textContent = 'Done — review log below';
+          // Attach preview (no el.load())
+          attachVideoEvents(preview);
+          preview.src = url;
+          btnDl.disabled = false;
+          btnTab.disabled = false;
+          setTestBtnsDisabled(false);
+          statusEl.textContent = 'Done — ' + label;
+        });
+      });
+    } else {
+      err('No chunks recorded');
+      setTestBtnsDisabled(false);
+      statusEl.textContent = 'Done (no data) — ' + label;
+    }
   };
 
+  setTestBtnsDisabled(true);
   rec.start(200);
-  statusEl.textContent = 'Recording…';
-  btnRecord.disabled = true;
-  btnVoice.disabled = true;
-  btnStop.disabled = false;
-
-  recordingTimerId = setTimeout(() => {
+  timer = setTimeout(() => {
     if (rec.state !== 'inactive') rec.stop();
-    recordingTimerId = null;
+    timer = null;
   }, 5000);
-};
+}
 
-btnRecord.onclick = () => { void startRecording(false); };
-btnVoice.onclick  = () => { void startRecording(true); };
-btnStop.onclick   = () => {
-  if (recordingTimerId) { clearTimeout(recordingTimerId); recordingTimerId = null; }
+// ── Button wiring ─────────────────────────────────────────────────────────────
+btnA.onclick = () => void runTest('A: Silent / auto MIME', false, null);
+btnB.onclick = () => void runTest('B: Mic / auto MIME', true, null);
+btnC.onclick = () => void runTest('C: Mic / MP4 explicit avc1+mp4a', true, 'video/mp4;codecs=avc1.42E01E,mp4a.40.2');
+btnD.onclick = () => void runTest('D: Mic / WebM vp9+opus', true, 'video/webm;codecs=vp9,opus');
+
+btnStop.onclick = () => {
+  if (timer) { clearTimeout(timer); timer = null; }
   if (recorder && recorder.state !== 'inactive') recorder.stop();
 };
 
-btnDownload.onclick = () => {
-  if (!currentBlob) return;
-  const ext = currentBlob.type === 'video/mp4' ? 'mp4' : 'webm';
+btnDl.onclick = () => {
+  if (!currentBlob || !currentBlobUrl) return;
+  const ext = (currentBlob.type === 'video/mp4') ? 'mp4' : 'webm';
   const a = document.createElement('a');
   a.href = currentBlobUrl;
   a.download = 'pvtest-' + Date.now() + '.' + ext;
   a.click();
 };
-
-btnOpenTab.onclick = () => {
-  if (currentBlobUrl) window.open(currentBlobUrl, '_blank');
-};
+btnTab.onclick = () => { if (currentBlobUrl) window.open(currentBlobUrl, '_blank'); };
 </script>
 </body>
 </html>

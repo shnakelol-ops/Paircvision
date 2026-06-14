@@ -175,10 +175,19 @@ export function useCanvasRecorder(params: {
       ? new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks])
       : canvasStream;
 
+    // Audit the final merged stream — catch duplicate/stopped tracks before recorder starts.
+    const allTracks = stream.getTracks();
+    console.debug(`[PV REC] stream composition — ${allTracks.length} track(s): ${allTracks.map((t) => `${t.kind}/${t.readyState}/${t.enabled ? "on" : "off"}`).join(", ")}`);
+    allTracks.forEach((t, i) => {
+      const s = t.getSettings();
+      const c = t.getConstraints();
+      console.debug(`[PV REC] stream.track[${i}] kind:${t.kind} readyState:${t.readyState} enabled:${t.enabled} muted:${t.muted} label:"${t.label}" settings:${JSON.stringify(s)} constraints:${JSON.stringify(c)}`);
+    });
+
     const recorder = new MediaRecorder(stream, { mimeType });
     recorderRef.current = recorder;
-    // Log actual mimeType chosen by the browser — may differ from what we requested.
-    console.debug("[PV REC] MediaRecorder created — requested:", mimeType, "| actual recorder.mimeType:", recorder.mimeType);
+    // Log actual mimeType chosen by the browser and bitrate properties — may differ from requested.
+    console.debug(`[PV REC] MediaRecorder — requested:"${mimeType}" actual:"${recorder.mimeType}" videoBPS:${recorder.videoBitsPerSecond} audioBPS:${recorder.audioBitsPerSecond}`);
     recorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data);
     };
