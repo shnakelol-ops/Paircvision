@@ -981,6 +981,7 @@ export default function TacticalPlaySurface() {
     canRecord,
     startCountdown,
     startCountdownWithVoice,
+    stopRecording,
     dismissRecord,
     saveClip,
     shareClip,
