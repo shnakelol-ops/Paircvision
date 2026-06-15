@@ -612,6 +612,20 @@ function formatRecordTime(secs: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+// Activated when the page loads with ?diag in the URL.
+// Entry point for Tactical Play: /vision-tactics/play?diag
+// Must be in the URL at initial page load (hard refresh) — cannot be added dynamically.
+const IS_DIAG_PREVIEW =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).has("diag");
+const DIAG_RS: Record<number, string> = {
+  0: "HAVE_NOTHING", 1: "HAVE_METADATA", 2: "HAVE_CURRENT_DATA",
+  3: "HAVE_FUTURE_DATA", 4: "HAVE_ENOUGH_DATA",
+};
+const DIAG_NS: Record<number, string> = {
+  0: "EMPTY", 1: "IDLE", 2: "LOADING", 3: "LOADED_META", 4: "LOADED_DATA",
+};
+
 const RECORD_DOT_STYLE: CSSProperties = {
   position: "fixed",
   top: "max(14px, calc(env(safe-area-inset-top, 0px) + 12px))",
@@ -956,7 +970,6 @@ export default function TacticalPlaySurface() {
   const [zoneLabelDraft, setZoneLabelDraft] = useState("");
   const {
     recordPhase, setRecordPhase,
-    recordDuration, setRecordDuration,
     recordCountdown,
     recordElapsed,
     recordBlob,
@@ -968,6 +981,7 @@ export default function TacticalPlaySurface() {
     canRecord,
     startCountdown,
     startCountdownWithVoice,
+    stopRecording,
     dismissRecord,
     saveClip,
     shareClip,
@@ -977,9 +991,25 @@ export default function TacticalPlaySurface() {
     onComplete: () => setPlaysOpen(true),
   });
 
-  // Duration populated by the preview video's onLoadedMetadata event.
-  const [clipPreviewDuration, setClipPreviewDuration] = useState<number | null>(null);
-  useEffect(() => { setClipPreviewDuration(null); }, [recordBlob]);
+  // recordElapsed holds the final elapsed value after stop — used as the clip duration display.
+
+  type ClipDiag = { events: string[]; rs: number; ns: number; src: string; dur: number; vw: number; vh: number; err: string | null; seeked: boolean };
+  const [clipDiag, setClipDiag] = useState<ClipDiag>({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
+  useEffect(() => {
+    if (IS_DIAG_PREVIEW) setClipDiag({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
+  }, [recordBlobUrl]);
+
+  const [clipVideoReady, setClipVideoReady] = useState(false);
+  const [clipBlankWarning, setClipBlankWarning] = useState(false);
+  const clipBlankTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    setClipVideoReady(false);
+    setClipBlankWarning(false);
+    if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; }
+    if (!recordBlobUrl || IS_DIAG_PREVIEW) return;
+    clipBlankTimerRef.current = setTimeout(() => setClipBlankWarning(true), 4000);
+    return () => { if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; } };
+  }, [recordBlobUrl]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2039,18 +2069,70 @@ export default function TacticalPlaySurface() {
           Setup
         </button>
 
-        {/* Post-recording preview overlay — fixed centre-bottom, always fully visible */}
+        {/* Post-recording clip panel — fixed centre-bottom */}
         {recordBlob ? (
           <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "max(72px, calc(env(safe-area-inset-bottom, 0px) + 68px))", zIndex: 30, width: "min(360px, calc(100vw - 20px))", background: "rgba(5, 10, 18, 0.97)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", border: "1px solid rgba(180, 210, 255, 0.18)", borderRadius: "14px", boxShadow: "0 12px 36px rgba(0, 0, 0, 0.70), 0 2px 8px rgba(0, 0, 0, 0.40)", padding: "10px", display: "grid", gap: "8px" }}>
-            {recordBlobUrl ? (
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "rgba(200, 225, 255, 0.90)", fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.02em" }}>Clip Ready</div>
+            {recordBlobUrl && !recordHasAudio ? (
               <video
                 key={recordBlobUrl}
                 src={recordBlobUrl}
+                preload="metadata"
                 controls
                 playsInline
+                onLoadStart={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video loadstart rs:", vid.readyState, "ns:", vid.networkState);
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "loadstart"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc }));
+                }}
                 onLoadedMetadata={(e) => {
-                  const d = (e.currentTarget as HTMLVideoElement).duration;
-                  if (Number.isFinite(d) && d > 0) setClipPreviewDuration(d);
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  const d = vid.duration;
+                  console.debug("[PV REC] video loadedmetadata dur:", d, "readyState:", vid.readyState, "vw:", vid.videoWidth, "vh:", vid.videoHeight);
+                  setClipVideoReady(true);
+                  setClipBlankWarning(false);
+                  if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; }
+                  if (IS_DIAG_PREVIEW) {
+                    try { vid.currentTime = 0.001; } catch { /* seek may throw */ }
+                    setClipDiag((p) => ({ ...p, events: [...p.events, "loadedmetadata"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc, dur: d, vw: vid.videoWidth, vh: vid.videoHeight, seeked: true }));
+                  }
+                }}
+                onLoadedData={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video loadeddata rs:", vid.readyState);
+                  setClipVideoReady(true);
+                  setClipBlankWarning(false);
+                  if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; }
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "loadeddata"], rs: vid.readyState, ns: vid.networkState }));
+                }}
+                onCanPlay={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video canplay rs:", vid.readyState);
+                  setClipVideoReady(true);
+                  setClipBlankWarning(false);
+                  if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; }
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "canplay"], rs: vid.readyState, ns: vid.networkState }));
+                }}
+                onSeeked={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video seeked rs:", vid.readyState);
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "seeked"], rs: vid.readyState }));
+                }}
+                onStalled={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video stalled rs:", vid.readyState, "ns:", vid.networkState);
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "stalled"], rs: vid.readyState, ns: vid.networkState }));
+                }}
+                onAbort={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  console.debug("[PV REC] video abort rs:", vid.readyState);
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "abort"], rs: vid.readyState }));
+                }}
+                onError={(e) => {
+                  const vid = e.currentTarget as HTMLVideoElement;
+                  const errMsg = vid.error ? `${vid.error.code}: ${vid.error.message}` : "unknown";
+                  console.debug("[PV REC] video error code:", vid.error?.code, "msg:", vid.error?.message, "src:", vid.src.slice(0, 40));
+                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "error"], rs: vid.readyState, ns: vid.networkState, err: errMsg }));
                 }}
                 style={{ width: "100%", maxHeight: "140px", borderRadius: "8px", background: "#000", display: "block" }}
               />
@@ -2063,7 +2145,7 @@ export default function TacticalPlaySurface() {
               const size = recordBlob.size >= 1_048_576
                 ? `${(recordBlob.size / 1_048_576).toFixed(1)} MB`
                 : `${Math.round(recordBlob.size / 1024)} KB`;
-              const durStr = clipPreviewDuration != null ? formatRecordTime(Math.round(clipPreviewDuration)) : null;
+              const durStr = recordElapsed > 0 ? formatRecordTime(recordElapsed) : null;
               return (
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                   {recordHasAudio
@@ -2075,6 +2157,32 @@ export default function TacticalPlaySurface() {
                 </div>
               );
             })()}
+            {/* Diagnostics panel — visible only when ?diag is in the URL */}
+            {IS_DIAG_PREVIEW ? (
+              <div style={{ fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", fontSize: "9px", color: "rgba(180, 255, 180, 0.85)", background: "rgba(0, 20, 0, 0.70)", borderRadius: "6px", padding: "6px 7px", display: "grid", gap: "2px", lineHeight: 1.5, border: "1px solid rgba(100, 200, 100, 0.20)" }}>
+                <div style={{ fontWeight: 700, color: "rgba(140, 255, 140, 0.95)", marginBottom: "2px" }}>◉ Recorder Diagnostics</div>
+                <div>requestedMime: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{recordMimeType || "—"}</span></div>
+                <div>blob.type: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{recordBlob?.type || "—"}</span></div>
+                <div>blob.size: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{recordBlob ? `${recordBlob.size.toLocaleString()} bytes` : "—"}</span></div>
+                <div>objectUrl: <span style={{ color: recordBlobUrl ? "rgba(100, 255, 120, 0.95)" : "rgba(255, 100, 100, 0.90)" }}>{recordBlobUrl ? "yes" : "no"}</span></div>
+                <div>video.currentSrc: <span style={{ color: clipDiag.src ? "rgba(100, 255, 120, 0.95)" : "rgba(255, 100, 100, 0.90)" }}>{clipDiag.src ? "yes" : "no"}</span></div>
+                <div>readyState: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{clipDiag.rs >= 0 ? `${clipDiag.rs} (${DIAG_RS[clipDiag.rs] ?? "?"})` : "—"}</span></div>
+                <div>networkState: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{clipDiag.ns >= 0 ? `${clipDiag.ns} (${DIAG_NS[clipDiag.ns] ?? "?"})` : "—"}</span></div>
+                <div>error: <span style={{ color: clipDiag.err ? "rgba(255, 100, 100, 0.95)" : "rgba(100, 255, 120, 0.95)" }}>{clipDiag.err ?? "none"}</span></div>
+                <div>duration: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{Number.isFinite(clipDiag.dur) ? `${clipDiag.dur.toFixed(2)}s` : "—"}</span></div>
+                <div>videoWidth×Height: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{clipDiag.vw > 0 ? `${clipDiag.vw}×${clipDiag.vh}` : "—"}</span></div>
+                <div>seeked (first frame): <span style={{ color: clipDiag.seeked ? "rgba(100, 255, 120, 0.95)" : "rgba(255, 200, 100, 0.80)" }}>{clipDiag.seeked ? "yes" : "no"}</span></div>
+                <div>hasAudio: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{recordHasAudio ? "yes" : "no"}</span></div>
+                <div>events: <span style={{ color: "rgba(180, 230, 255, 0.90)" }}>{clipDiag.events.length > 0 ? clipDiag.events.join(" → ") : "—"}</span></div>
+                <button
+                  type="button"
+                  style={{ marginTop: "3px", height: "22px", borderRadius: "4px", border: "1px solid rgba(100, 200, 100, 0.35)", background: "rgba(0, 60, 20, 0.60)", color: "rgba(140, 255, 140, 0.90)", fontFamily: "'SF Mono', 'Roboto Mono', monospace", fontSize: "9px", fontWeight: 600, cursor: "pointer", letterSpacing: "0.03em" }}
+                  onClick={() => { if (recordBlobUrl) window.open(recordBlobUrl, "_blank"); }}
+                >
+                  Open Clip ↗
+                </button>
+              </div>
+            ) : null}
             {/* Primary action — Share spans full width */}
             <button
               type="button"
@@ -2109,17 +2217,27 @@ export default function TacticalPlaySurface() {
           <div style={RECORD_COUNTDOWN_STYLE}>{recordCountdown}</div>
         ) : null}
 
-        {/* Recording status pill — shows REC / mic / elapsed timer */}
+        {/* Recording status HUD — top-right, contains REC pill, timer, hint, and Stop button */}
         {recordPhase === "recording" ? (() => {
-          const urgent = recordElapsed >= recordDuration - 10;
+          const urgent = recordElapsed >= 570;
           return (
-            <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))", zIndex: 25, display: "flex", alignItems: "center", gap: "5px", background: "rgba(8, 14, 10, 0.88)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderRadius: "20px", padding: "5px 10px 5px 7px", border: `1px solid ${urgent ? "rgba(255, 180, 60, 0.40)" : "rgba(255, 48, 48, 0.32)"}`, pointerEvents: "none" }}>
-              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: urgent ? "#ffb83c" : "#ff3030", boxShadow: urgent ? "0 0 6px 1px rgba(255, 184, 60, 0.70)" : "0 0 6px 1px rgba(255, 48, 48, 0.70)", animation: "tp-rec-pulse 1.1s ease-in-out infinite", flexShrink: 0 }} />
-              <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(255, 190, 190, 0.95)", fontFamily: "Inter, system-ui, sans-serif" }}>REC</span>
-              {micStatus === "active" ? <span style={{ fontSize: "11px", lineHeight: 1 }}>🎙</span> : null}
-              <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(240, 220, 220, 0.80)", letterSpacing: "0.02em" }}>
-                {formatRecordTime(recordElapsed)} / {formatRecordTime(recordDuration)}
-              </span>
+            <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))", zIndex: 25, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(8, 14, 10, 0.88)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderRadius: "20px", padding: "5px 10px 5px 7px", border: `1px solid ${urgent ? "rgba(255, 180, 60, 0.40)" : "rgba(255, 48, 48, 0.32)"}`, pointerEvents: "none" }}>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: urgent ? "#ffb83c" : "#ff3030", boxShadow: urgent ? "0 0 6px 1px rgba(255, 184, 60, 0.70)" : "0 0 6px 1px rgba(255, 48, 48, 0.70)", animation: "tp-rec-pulse 1.1s ease-in-out infinite", flexShrink: 0 }} />
+                <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(255, 190, 190, 0.95)", fontFamily: "Inter, system-ui, sans-serif" }}>REC</span>
+                {micStatus === "active" ? <span style={{ fontSize: "11px", lineHeight: 1 }}>🎙</span> : null}
+                <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(240, 220, 220, 0.80)", letterSpacing: "0.02em" }}>
+                  {formatRecordTime(recordElapsed)}
+                </span>
+              </div>
+              <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.35)", fontFamily: "Inter, system-ui, sans-serif", paddingRight: "4px", pointerEvents: "none" }}>Auto-stops 10:00</span>
+              <button
+                type="button"
+                onClick={stopRecording}
+                style={{ padding: "6px 14px", borderRadius: "14px", border: "1px solid rgba(255, 70, 70, 0.55)", background: "rgba(36, 6, 6, 0.90)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", color: "rgba(255, 160, 160, 0.96)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.04em", cursor: "pointer" }}
+              >
+                ■ Stop
+              </button>
             </div>
           );
         })() : null}
@@ -3459,47 +3577,27 @@ export default function TacticalPlaySurface() {
                   setRecordPhase("panel");
                 }}
               >
-                Record Clip
+                🎥 Record
               </button>
             ) : null}
 
             {recordPhase === "panel" ? (
               <div style={{ display: "grid", gap: "4px" }}>
-                <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.45)", fontFamily: "Inter, system-ui, sans-serif" }}>Record your tactics and explain them with your voice.</span>
-                <span style={SETUP_SECTION_LABEL_STYLE}>Duration</span>
-                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                  {([30, 60, 90] as const).map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      style={recordDuration === d
-                        ? { ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.56)", color: "#f4fff6", background: "rgba(34, 112, 66, 0.82)" }
-                        : PLAYS_ACTION_BTN}
-                      onClick={() => setRecordDuration(d)}
-                    >
-                      {d}s
-                    </button>
-                  ))}
-                </div>
-                {recordDuration >= 60 ? (
-                  <span style={{ fontSize: "7.5px", color: "rgba(180, 210, 255, 0.40)", fontFamily: "Inter, system-ui, sans-serif" }}>
-                    Longer clips may take a few seconds to prepare before sharing.
-                  </span>
-                ) : null}
+                <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.45)", fontFamily: "Inter, system-ui, sans-serif" }}>Record the board. Stop when finished — auto-stops at 10 min.</span>
                 <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                   <button
                     type="button"
                     style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(255, 80, 80, 0.50)", color: "rgba(255, 190, 190, 0.95)", flex: 1 }}
                     onClick={startCountdown}
                   >
-                    Record Clip
+                    🎥 Record
                   </button>
                   <button
                     type="button"
                     style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(180, 120, 255, 0.55)", color: "rgba(220, 190, 255, 0.95)", flex: 1 }}
                     onClick={() => { void startCountdownWithVoice(); }}
                   >
-                    🎙 Voiceover
+                    🎙 Voice Record
                   </button>
                   <button
                     type="button"
@@ -3522,10 +3620,12 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
-            {/* Clip ready indicator — full preview shown in overlay below */}
+            {/* Clip ready indicator */}
             {recordBlob ? (
               <div style={{ display: "flex", gap: "6px", alignItems: "center", padding: "2px 0" }}>
-                <span style={{ fontSize: "9px", color: "rgba(160, 255, 160, 0.72)", fontFamily: "Inter, system-ui, sans-serif" }}>✓ Clip ready — see preview below</span>
+                <span style={{ fontSize: "9px", color: "rgba(160, 255, 160, 0.72)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                  ✓ {recordHasAudio ? "Voice clip ready" : "Clip ready"}
+                </span>
               </div>
             ) : null}
 

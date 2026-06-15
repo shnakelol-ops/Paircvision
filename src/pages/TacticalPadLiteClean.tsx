@@ -845,6 +845,20 @@ function formatRecordTime(secs: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+// Activated when the page loads with ?diag in the URL.
+// Entry points: /vision-board?diag  or  /vision-tactics/slate?diag
+// Must be in the URL at initial page load (hard refresh) — cannot be added dynamically.
+const IS_DIAG_PREVIEW =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).has("diag");
+const DIAG_RS: Record<number, string> = {
+  0: "HAVE_NOTHING", 1: "HAVE_METADATA", 2: "HAVE_CURRENT_DATA",
+  3: "HAVE_FUTURE_DATA", 4: "HAVE_ENOUGH_DATA",
+};
+const DIAG_NS: Record<number, string> = {
+  0: "EMPTY", 1: "IDLE", 2: "LOADING", 3: "LOADED_META", 4: "LOADED_DATA",
+};
+
 const QUICK_SHARE_POPOUT_STYLE: CSSProperties = {
   ...POPOUT_BASE_STYLE,
   left: "max(194px, calc(env(safe-area-inset-left, 0px) + 192px))",
@@ -1947,8 +1961,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const {
     recordPhase: slateRecordPhase,
     setRecordPhase: setSlateRecordPhase,
-    recordDuration: slateRecordDuration,
-    setRecordDuration: setSlateRecordDuration,
     recordCountdown: slateRecordCountdown,
     recordElapsed: slateRecordElapsed,
     recordBlob: slateRecordBlob,
@@ -1960,6 +1972,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     canRecord: slateCanRecord,
     startCountdown: slateStartCountdown,
     startCountdownWithVoice: slateStartCountdownWithVoice,
+    stopRecording: slateStopRecording,
     dismissRecord: slateDismissRecord,
     saveClip: slateSaveClip,
     shareClip: slateShareClip,
@@ -1968,9 +1981,26 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     onBeforeCountdown: () => setQuickShareOpen(false),
     onComplete: () => setQuickShareOpen(true),
   });
-  // Duration populated by the preview video's onLoadedMetadata event.
-  const [slateClipPreviewDuration, setSlateClipPreviewDuration] = useState<number | null>(null);
-  useEffect(() => { setSlateClipPreviewDuration(null); }, [slateRecordBlob]);
+  // slateRecordElapsed holds the final elapsed value after stop — used as the clip duration display.
+
+  type SlateClipDiag = { events: string[]; rs: number; ns: number; src: string; dur: number; vw: number; vh: number; err: string | null; seeked: boolean };
+  const [slateClipDiag, setSlateClipDiag] = useState<SlateClipDiag>({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
+  useEffect(() => {
+    if (IS_DIAG_PREVIEW) setSlateClipDiag({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
+  }, [slateRecordBlobUrl]);
+
+  const [slateClipVideoReady, setSlateClipVideoReady] = useState(false);
+  const [slateClipBlankWarning, setSlateClipBlankWarning] = useState(false);
+  const slateClipBlankTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    setSlateClipVideoReady(false);
+    setSlateClipBlankWarning(false);
+    if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; }
+    if (!slateRecordBlobUrl || IS_DIAG_PREVIEW) return;
+    slateClipBlankTimerRef.current = setTimeout(() => setSlateClipBlankWarning(true), 4000);
+    return () => { if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; } };
+  }, [slateRecordBlobUrl]);
+
   const [myBoardsOpen, setMyBoardsOpen] = useState(false);
   const [savedBoards, setSavedBoards] = useState<SavedQuickBoard[]>([]);
   const [pendingRecoveredBoardDraft, setPendingRecoveredBoardDraft] = useState<QuickBoardBoardState | null>(null);
@@ -4990,7 +5020,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               </div>
             </div>
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openQuickShareEntry}>
-              Quick Share (Beta)
+              Share Board
             </button>
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openMyBoardsEntry}>
               My Boards
@@ -5156,9 +5186,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               }}
               role="dialog"
               aria-modal="false"
-              aria-label="Quick Share onboarding"
+              aria-label="Share Board onboarding"
             >
-              <p style={QUICK_SHARE_ONBOARDING_TITLE_STYLE}>PáircVision Board Share</p>
+              <p style={QUICK_SHARE_ONBOARDING_TITLE_STYLE}>Share Board</p>
               <p style={QUICK_SHARE_ONBOARDING_BODY_STYLE}>
                 Use your phone&apos;s screen recorder.
                 <br />
@@ -5170,49 +5200,29 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 style={QUICK_SHARE_ONBOARDING_BUTTON_STYLE}
                 onClick={() => dismissQuickShareOnboarding(true)}
               >
-                Continue to Quick Share
+                Continue to Share Board
               </button>
             </div>
           </div>
         ) : null}
         {!isWhiteboardMode && quickShareOpen ? (
-          <div ref={quickSharePopoverRef} style={quickSharePopoverStyle} role="dialog" aria-modal="false" aria-label="Quick Share">
-            <p style={QUICK_SHARE_TITLE_STYLE}>PáircVision Board Share</p>
+          <div ref={quickSharePopoverRef} style={quickSharePopoverStyle} role="dialog" aria-modal="false" aria-label="Share Board">
+            <p style={QUICK_SHARE_TITLE_STYLE}>Share Board</p>
             <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareSnapshot}>
-              <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>📸 Share Snapshot</span>
-              <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Export current setup as PNG and share to WhatsApp or Photos.</span>
+              <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>📸 Snapshot</span>
+              <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Save or share the current board.</span>
             </button>
             <div style={{ height: "1px", background: "rgba(212, 228, 244, 0.12)", margin: "1px 0" }} />
             {slateRecordPhase === "idle" ? (
               <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareRecordClip}>
-                <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>🎥 Record Clip</span>
-                <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Record your tactics and explain them with your voice.</span>
+                <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>🎥 Record</span>
+                <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Record the board.</span>
               </button>
             ) : null}
             {slateRecordPhase === "panel" ? (
               <div style={{ display: "grid", gap: "5px" }}>
-                <span style={{ ...QUICK_SHARE_OPTION_TITLE_STYLE, padding: "2px 0" }}>Record Clip</span>
-                <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: "rgba(180, 210, 255, 0.55)" }}>Record your tactics and explain them with your voice.</span>
-                <div style={{ display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" }}>
-                  {([30, 60, 90] as const).map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      className="control-button"
-                      style={slateRecordDuration === d
-                        ? { ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", border: "1px solid rgba(124, 255, 114, 0.56)", background: "rgba(34, 112, 66, 0.70)", color: "#f4fff6" }
-                        : { ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px" }}
-                      onClick={() => setSlateRecordDuration(d)}
-                    >
-                      {d}s
-                    </button>
-                  ))}
-                </div>
-                {slateRecordDuration >= 60 ? (
-                  <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: "rgba(180, 210, 255, 0.45)" }}>
-                    Longer clips may take a few seconds to prepare before sharing.
-                  </span>
-                ) : null}
+                <span style={{ ...QUICK_SHARE_OPTION_TITLE_STYLE, padding: "2px 0" }}>🎥 Record</span>
+                <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: "rgba(180, 210, 255, 0.55)" }}>Record the board. Stop when finished — auto-stops at 10 min.</span>
                 <div style={{ display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" }}>
                   <button
                     type="button"
@@ -5220,7 +5230,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", flex: 1, border: "1px solid rgba(255, 80, 80, 0.50)", color: "rgba(255, 190, 190, 0.95)" }}
                     onClick={slateStartCountdown}
                   >
-                    Record Clip
+                    🎥 Record
                   </button>
                   <button
                     type="button"
@@ -5228,7 +5238,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", flex: 1, border: "1px solid rgba(180, 120, 255, 0.55)", color: "rgba(220, 190, 255, 0.95)" }}
                     onClick={() => { void slateStartCountdownWithVoice(); }}
                   >
-                    🎙 Voiceover
+                    🎙 Voice Record
                   </button>
                   <button
                     type="button"
@@ -5253,15 +5263,67 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             ) : null}
             {slateRecordBlob ? (
               <div style={{ display: "grid", gap: "6px" }}>
-                {slateRecordBlobUrl ? (
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "rgba(200, 225, 255, 0.90)", fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.02em" }}>Clip Ready</div>
+                {slateRecordBlobUrl && !slateRecordHasAudio ? (
                   <video
                     key={slateRecordBlobUrl}
                     src={slateRecordBlobUrl}
+                    preload="metadata"
                     controls
                     playsInline
+                    onLoadStart={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video loadstart rs:", vid.readyState, "ns:", vid.networkState);
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadstart"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc }));
+                    }}
                     onLoadedMetadata={(e) => {
-                      const d = (e.currentTarget as HTMLVideoElement).duration;
-                      if (Number.isFinite(d) && d > 0) setSlateClipPreviewDuration(d);
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      const d = vid.duration;
+                      console.debug("[PV REC] slate video loadedmetadata dur:", d, "readyState:", vid.readyState, "vw:", vid.videoWidth, "vh:", vid.videoHeight);
+                      setSlateClipVideoReady(true);
+                      setSlateClipBlankWarning(false);
+                      if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; }
+                      if (IS_DIAG_PREVIEW) {
+                        try { vid.currentTime = 0.001; } catch { /* seek may throw */ }
+                        setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadedmetadata"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc, dur: d, vw: vid.videoWidth, vh: vid.videoHeight, seeked: true }));
+                      }
+                    }}
+                    onLoadedData={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video loadeddata rs:", vid.readyState);
+                      setSlateClipVideoReady(true);
+                      setSlateClipBlankWarning(false);
+                      if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; }
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadeddata"], rs: vid.readyState, ns: vid.networkState }));
+                    }}
+                    onCanPlay={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video canplay rs:", vid.readyState);
+                      setSlateClipVideoReady(true);
+                      setSlateClipBlankWarning(false);
+                      if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; }
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "canplay"], rs: vid.readyState, ns: vid.networkState }));
+                    }}
+                    onSeeked={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video seeked rs:", vid.readyState);
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "seeked"], rs: vid.readyState }));
+                    }}
+                    onStalled={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video stalled rs:", vid.readyState, "ns:", vid.networkState);
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "stalled"], rs: vid.readyState, ns: vid.networkState }));
+                    }}
+                    onAbort={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      console.debug("[PV REC] slate video abort rs:", vid.readyState);
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "abort"], rs: vid.readyState }));
+                    }}
+                    onError={(e) => {
+                      const vid = e.currentTarget as HTMLVideoElement;
+                      const errMsg = vid.error ? `${vid.error.code}: ${vid.error.message}` : "unknown";
+                      console.debug("[PV REC] slate video error code:", vid.error?.code, "msg:", vid.error?.message, "src:", vid.src.slice(0, 40));
+                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "error"], rs: vid.readyState, ns: vid.networkState, err: errMsg }));
                     }}
                     style={{ width: "100%", maxHeight: "110px", borderRadius: "6px", background: "#000", display: "block" }}
                   />
@@ -5274,9 +5336,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                   const size = slateRecordBlob.size >= 1_048_576
                     ? `${(slateRecordBlob.size / 1_048_576).toFixed(1)} MB`
                     : `${Math.round(slateRecordBlob.size / 1024)} KB`;
-                  const durStr = slateClipPreviewDuration != null
-                    ? formatRecordTime(Math.round(slateClipPreviewDuration))
-                    : null;
+                  const durStr = slateRecordElapsed > 0 ? formatRecordTime(slateRecordElapsed) : null;
                   return (
                     <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                       {slateRecordHasAudio
@@ -5288,6 +5348,32 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     </div>
                   );
                 })()}
+                {/* Diagnostics panel — visible only when ?diag is in the URL */}
+                {IS_DIAG_PREVIEW ? (
+                  <div style={{ fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", fontSize: "8.5px", color: "rgba(180, 255, 180, 0.85)", background: "rgba(0, 20, 0, 0.70)", borderRadius: "5px", padding: "5px 6px", display: "grid", gap: "2px", lineHeight: 1.5, border: "1px solid rgba(100, 200, 100, 0.20)" }}>
+                    <div style={{ fontWeight: 700, color: "rgba(140, 255, 140, 0.95)", marginBottom: "2px" }}>◉ Recorder Diagnostics</div>
+                    <div>requestedMime: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateRecordMimeType || "—"}</span></div>
+                    <div>blob.type: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateRecordBlob?.type || "—"}</span></div>
+                    <div>blob.size: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateRecordBlob ? `${slateRecordBlob.size.toLocaleString()} bytes` : "—"}</span></div>
+                    <div>objectUrl: <span style={{ color: slateRecordBlobUrl ? "rgba(100, 255, 120, 0.95)" : "rgba(255, 100, 100, 0.90)" }}>{slateRecordBlobUrl ? "yes" : "no"}</span></div>
+                    <div>video.currentSrc: <span style={{ color: slateClipDiag.src ? "rgba(100, 255, 120, 0.95)" : "rgba(255, 100, 100, 0.90)" }}>{slateClipDiag.src ? "yes" : "no"}</span></div>
+                    <div>readyState: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateClipDiag.rs >= 0 ? `${slateClipDiag.rs} (${DIAG_RS[slateClipDiag.rs] ?? "?"})` : "—"}</span></div>
+                    <div>networkState: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateClipDiag.ns >= 0 ? `${slateClipDiag.ns} (${DIAG_NS[slateClipDiag.ns] ?? "?"})` : "—"}</span></div>
+                    <div>error: <span style={{ color: slateClipDiag.err ? "rgba(255, 100, 100, 0.95)" : "rgba(100, 255, 120, 0.95)" }}>{slateClipDiag.err ?? "none"}</span></div>
+                    <div>duration: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{Number.isFinite(slateClipDiag.dur) ? `${slateClipDiag.dur.toFixed(2)}s` : "—"}</span></div>
+                    <div>videoWidth×Height: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateClipDiag.vw > 0 ? `${slateClipDiag.vw}×${slateClipDiag.vh}` : "—"}</span></div>
+                    <div>seeked (first frame): <span style={{ color: slateClipDiag.seeked ? "rgba(100, 255, 120, 0.95)" : "rgba(255, 200, 100, 0.80)" }}>{slateClipDiag.seeked ? "yes" : "no"}</span></div>
+                    <div>hasAudio: <span style={{ color: "rgba(255, 220, 120, 0.95)" }}>{slateRecordHasAudio ? "yes" : "no"}</span></div>
+                    <div>events: <span style={{ color: "rgba(180, 230, 255, 0.90)" }}>{slateClipDiag.events.length > 0 ? slateClipDiag.events.join(" → ") : "—"}</span></div>
+                    <button
+                      type="button"
+                      style={{ marginTop: "3px", height: "20px", borderRadius: "4px", border: "1px solid rgba(100, 200, 100, 0.35)", background: "rgba(0, 60, 20, 0.60)", color: "rgba(140, 255, 140, 0.90)", fontFamily: "'SF Mono', 'Roboto Mono', monospace", fontSize: "8.5px", fontWeight: 600, cursor: "pointer", letterSpacing: "0.03em" }}
+                      onClick={() => { if (slateRecordBlobUrl) window.open(slateRecordBlobUrl, "_blank"); }}
+                    >
+                      Open Clip ↗
+                    </button>
+                  </div>
+                ) : null}
                 {/* Primary action — Share full-width */}
                 <button
                   type="button"
@@ -5327,15 +5413,25 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           </div>
         ) : null}
         {!isWhiteboardMode && slateRecordPhase === "recording" ? (() => {
-          const urgent = slateRecordElapsed >= slateRecordDuration - 10;
+          const urgent = slateRecordElapsed >= 570;
           return (
-            <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))", zIndex: 25, display: "flex", alignItems: "center", gap: "5px", background: "rgba(8, 14, 10, 0.88)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderRadius: "20px", padding: "5px 10px 5px 7px", border: `1px solid ${urgent ? "rgba(255, 180, 60, 0.40)" : "rgba(255, 48, 48, 0.32)"}`, pointerEvents: "none" }}>
-              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: urgent ? "#ffb83c" : "#ff3030", boxShadow: urgent ? "0 0 6px 1px rgba(255, 184, 60, 0.70)" : "0 0 6px 1px rgba(255, 48, 48, 0.70)", animation: "tp-rec-pulse 1.1s ease-in-out infinite", flexShrink: 0 }} />
-              <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(255, 190, 190, 0.95)", fontFamily: "Inter, system-ui, sans-serif" }}>REC</span>
-              {slateMicStatus === "active" ? <span style={{ fontSize: "11px", lineHeight: 1 }}>🎙</span> : null}
-              <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(240, 220, 220, 0.80)", letterSpacing: "0.02em" }}>
-                {formatRecordTime(slateRecordElapsed)} / {formatRecordTime(slateRecordDuration)}
-              </span>
+            <div style={{ position: "fixed", top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))", right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))", zIndex: 25, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "5px", background: "rgba(8, 14, 10, 0.88)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderRadius: "20px", padding: "5px 10px 5px 7px", border: `1px solid ${urgent ? "rgba(255, 180, 60, 0.40)" : "rgba(255, 48, 48, 0.32)"}`, pointerEvents: "none" }}>
+                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: urgent ? "#ffb83c" : "#ff3030", boxShadow: urgent ? "0 0 6px 1px rgba(255, 184, 60, 0.70)" : "0 0 6px 1px rgba(255, 48, 48, 0.70)", animation: "tp-rec-pulse 1.1s ease-in-out infinite", flexShrink: 0 }} />
+                <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.05em", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(255, 190, 190, 0.95)", fontFamily: "Inter, system-ui, sans-serif" }}>REC</span>
+                {slateMicStatus === "active" ? <span style={{ fontSize: "11px", lineHeight: 1 }}>🎙</span> : null}
+                <span style={{ fontSize: "10px", fontWeight: 600, fontFamily: "'SF Mono', 'Roboto Mono', 'Courier New', monospace", color: urgent ? "rgba(255, 200, 100, 0.95)" : "rgba(240, 220, 220, 0.80)", letterSpacing: "0.02em" }}>
+                  {formatRecordTime(slateRecordElapsed)}
+                </span>
+              </div>
+              <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.35)", fontFamily: "Inter, system-ui, sans-serif", paddingRight: "4px", pointerEvents: "none" }}>Auto-stops 10:00</span>
+              <button
+                type="button"
+                onClick={slateStopRecording}
+                style={{ padding: "6px 14px", borderRadius: "14px", border: "1px solid rgba(255, 70, 70, 0.55)", background: "rgba(36, 6, 6, 0.90)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", color: "rgba(255, 160, 160, 0.96)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.04em", cursor: "pointer" }}
+              >
+                ■ Stop
+              </button>
             </div>
           );
         })() : null}
