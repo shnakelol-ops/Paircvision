@@ -20,17 +20,17 @@ export type MatchIntelligenceSummary = {
   dangerInsights: string[];
   /** Team-named strings about what we're doing to the opposition. */
   weaponInsights: string[];
-  /** Pre-formatted restart insight for our team (non-null only when winning ≥60%). */
+  /** Pre-formatted restart insight for our team (non-null only when winning ≥65% from ≥5 kickouts). */
   ourRestartInsight: string | null;
-  /** Pre-formatted restart insight for opposition (non-null only when they're winning ≥55%). */
+  /** Pre-formatted restart insight for opposition (non-null only when they're winning ≥65% from ≥5 kickouts). */
   theirRestartInsight: string | null;
-  /** Turnover danger insight (non-null only when opposition scored from ≥1 of our turnovers). */
+  /** Turnover danger insight (non-null only when opposition scored from ≥2 of our turnovers). */
   turnoverDangerInsight: string | null;
   /** Danger level based on how many times the opposition scored from our turnovers. */
   turnoverDangerLevel: "HIGH" | "MEDIUM" | "LOW" | null;
-  /** Best attack source for our team (non-null when ≥50% conversion from ≥3 possessions). */
+  /** Best attack source for our team (non-null when ≥60% conversion from ≥4 possessions). */
   bestAttackInsight: string | null;
-  /** Worst defensive exposure (non-null when opposition scores ≥40% from ≥2 conceded possessions). */
+  /** Worst defensive exposure (non-null when opposition scores ≥50% from ≥3 conceded possessions). */
   worstExposureInsight: string | null;
   /** Overall possession net outcome direction. */
   overallNetOutcome: "FOR" | "OPP" | "NEUTRAL";
@@ -88,9 +88,10 @@ export function buildMatchIntelligenceSummary(
   const dangers = patterns.filter((p) => p.kind === "DANGER_CHAIN");
   const weapons = patterns.filter((p) => p.kind === "CHAIN_WEAPON");
 
-  // ── Danger insights (team-named) ─────────────────────────────────────────
+  // ── Danger insights (team-named) — minimum 2 direct scores required ──────
   const dangerInsights: string[] = [];
   for (const d of dangers) {
+    if (d.primaryMetric < 2) continue;
     if (d.headline === "Kickout Trap") {
       dangerInsights.push(
         `${awayTeam} scored from ${d.primaryMetric} of ${d.occurrences} ${restartWord}s they won`,
@@ -102,9 +103,10 @@ export function buildMatchIntelligenceSummary(
     }
   }
 
-  // ── Weapon insights (team-named) ─────────────────────────────────────────
+  // ── Weapon insights (team-named) — minimum 2 direct scores required ──────
   const weaponInsights: string[] = [];
   for (const w of weapons) {
+    if (w.primaryMetric < 2) continue;
     if (w.headline === "Kickout Platform") {
       weaponInsights.push(
         `${homeTeam} scored from ${w.primaryMetric} of ${w.occurrences} ${restartWord} wins`,
@@ -124,22 +126,22 @@ export function buildMatchIntelligenceSummary(
     // V1.2+ data with restartOwner split
     const ok = poss.ourKickouts;
     const tk = poss.theirKickouts;
-    if (ok.total >= 3) {
+    if (ok.total >= 5) {
       const rate = ok.retainedCount / ok.total;
-      if (rate >= 0.60) {
+      if (rate >= 0.65) {
         ourRestartInsight = `${homeTeam} won ${ok.retainedCount} of ${ok.total} their own ${restartWord}s (${Math.round(rate * 100)}%)`;
       }
     }
-    if (tk.total >= 3) {
+    if (tk.total >= 5) {
       const rate = tk.retainedCount / tk.total;
-      if (rate >= 0.55) {
+      if (rate >= 0.65) {
         theirRestartInsight = `${awayTeam} won ${tk.retainedCount} of ${tk.total} their own ${restartWord}s (${Math.round(rate * 100)}%)`;
       }
     }
-  } else if (ko.total >= 3) {
+  } else if (ko.total >= 5) {
     // Older data without restartOwner — use combined kickout dataset for our team
     const rate = ko.won / ko.total;
-    if (rate >= 0.60) {
+    if (rate >= 0.65) {
       ourRestartInsight = `${homeTeam} won ${ko.won} of ${ko.total} ${restartWord}s (${Math.round(rate * 100)}%)`;
     }
   }
@@ -151,7 +153,7 @@ export function buildMatchIntelligenceSummary(
     theirTurnoverScores >= 2 ? "HIGH" :
     theirTurnoverScores >= 1 ? "MEDIUM" : "LOW";
   const turnoverDangerInsight =
-    theirTurnoverScores >= 1
+    theirTurnoverScores >= 2
       ? `${awayTeam} scored from ${theirTurnoverScores} ${homeTeam} turnover${theirTurnoverScores !== 1 ? "s" : ""}`
       : null;
 
@@ -161,10 +163,10 @@ export function buildMatchIntelligenceSummary(
     { label: `${restartWord} wins`, pct: poss.kickouts.retained.scoringPct, count: poss.kickouts.retainedCount },
     { label: "turnover wins",       pct: poss.turnovers.retained.scoringPct, count: poss.turnovers.retainedCount },
     { label: "placed balls",        pct: poss.frees.retained.scoringPct, count: poss.frees.retainedCount },
-  ].filter((f) => f.count >= 3);
+  ].filter((f) => f.count >= 4);
   if (attackFamilies.length > 0) {
     const best = attackFamilies.reduce((a, b) => (b.pct > a.pct ? b : a));
-    if (best.pct >= 50) {
+    if (best.pct >= 60) {
       bestAttackInsight = `${homeTeam} most dangerous from ${best.label} — ${Math.round(best.pct)}% converted to scores`;
     }
   }
@@ -175,7 +177,7 @@ export function buildMatchIntelligenceSummary(
     { label: `${restartWord}s they won`, pct: poss.kickouts.damagePct, count: poss.kickouts.concededCount },
     { label: "turnover wins",            pct: poss.turnovers.damagePct, count: poss.turnovers.concededCount },
     { label: "placed balls won",         pct: poss.frees.damagePct, count: poss.frees.concededCount },
-  ].filter((f) => f.count >= 2 && f.pct >= 40);
+  ].filter((f) => f.count >= 3 && f.pct >= 50);
   if (exposureFamilies.length > 0) {
     const worst = exposureFamilies.reduce((a, b) => (b.pct > a.pct ? b : a));
     worstExposureInsight = `${awayTeam} scoring from ${Math.round(worst.pct)}% of ${worst.label}`;
@@ -202,29 +204,23 @@ export function buildMatchIntelligenceSummary(
     );
   }
   const kickoutTrap = dangers.find((d) => d.headline === "Kickout Trap");
-  if (kickoutTrap && coachingPriorities.length < 3) {
+  if (kickoutTrap && kickoutTrap.primaryMetric >= 2 && coachingPriorities.length < 3) {
     coachingPriorities.push(
       `Win the ${restartWord} — ${awayTeam} scored from ${kickoutTrap.primaryMetric} conceded`,
     );
   }
   const koWeapon = weapons.find((w) => w.headline === "Kickout Platform");
-  if (koWeapon && coachingPriorities.length < 3) {
+  if (koWeapon && koWeapon.primaryMetric >= 2 && coachingPriorities.length < 3) {
     coachingPriorities.push(
       `Keep winning ${restartWord}s — converting ${koWeapon.primaryMetric} of ${koWeapon.occurrences} to scores`,
     );
   }
   const toWeapon = weapons.find((w) => w.headline === "Turnover Weapon");
-  if (toWeapon && coachingPriorities.length < 3) {
+  if (toWeapon && toWeapon.primaryMetric >= 2 && coachingPriorities.length < 3) {
     coachingPriorities.push(
       `Press for turnovers — ${homeTeam} converting ${toWeapon.primaryMetric} of ${toWeapon.occurrences} to scores`,
     );
   }
-  if (turnoverDangerLevel === "MEDIUM" && coachingPriorities.length < 3) {
-    coachingPriorities.push(
-      `Protect the ball — ${awayTeam} punishing ${homeTeam} turnovers`,
-    );
-  }
-
   return {
     dangerInsights,
     weaponInsights,

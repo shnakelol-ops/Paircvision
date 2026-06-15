@@ -406,11 +406,16 @@ function deriveHalftimeNotes(
       positives.push(intel.ourRestartInsight);
     }
     if (positives.length < 3 && intel.bestAttackInsight) {
-      positives.push(intel.bestAttackInsight);
+      const alreadyCovered = positives.some((p) =>
+        (intel.bestAttackInsight!.includes(restartWord) && p.includes(restartWord)) ||
+        (intel.bestAttackInsight!.includes("turnover") && p.includes("turnover")) ||
+        (intel.bestAttackInsight!.includes("placed") && p.includes("placed"))
+      );
+      if (!alreadyCovered) positives.push(intel.bestAttackInsight);
     }
   }
 
-  if (positives.length < 3 && s.kickoutTotal >= 5 && s.kickoutPct >= 60) {
+  if (positives.length < 3 && s.kickoutTotal >= 5 && s.kickoutPct >= 65) {
     positives.push(`${homeTeam} won ${s.kickoutsWon} of ${s.kickoutTotal} ${restartWord}s (${s.kickoutPct}%)`);
   }
   if (positives.length < 3 && s.attempts >= 5 && s.conversionPct >= 65) {
@@ -425,11 +430,14 @@ function deriveHalftimeNotes(
   if (positives.length < 3 && s.goals >= 1) {
     positives.push(`${homeTeam} found the net ${s.goals === 1 ? "once" : `${s.goals} times`} — taking the big chances`);
   }
-  if (positives.length < 3 && diff > 0) {
-    positives.push(`${homeTeam} ahead at the break — momentum is with us`);
-  }
   if (positives.length === 0) {
-    positives.push(`${homeTeam} stayed in the contest throughout — keep the work rate up`);
+    if (diff > 0) {
+      positives.push(`${homeTeam} ahead at halftime — protect the lead in the second half.`);
+    } else if (diff === 0) {
+      positives.push(`${homeTeam} level at halftime — everything to play for in the second half.`);
+    } else {
+      positives.push(`${homeTeam} still in the contest — a strong second half start can change this.`);
+    }
   }
 
   lines.push({ type: "spacer" });
@@ -445,7 +453,7 @@ function deriveHalftimeNotes(
       if (hurtingUs.length >= 3) break;
       hurtingUs.push(d);
     }
-    if (hurtingUs.length < 3 && intel.theirRestartInsight) {
+    if (hurtingUs.length < 3 && intel.theirRestartInsight && !hurtingUs.some((h) => h.includes(restartWord))) {
       hurtingUs.push(intel.theirRestartInsight);
     }
     if (
@@ -516,9 +524,8 @@ function deriveHalftimeNotes(
   if (focusItems.length < 3 && s.attempts >= 5 && s.conversionPct <= 45) focusItems.push("Build more attacks from inside the 45 — cut the wide count");
 
   const focusDefaults = [
-    "Maintain the intensity — keep the pressure on",
-    "Win every second ball — dominate the breakdown",
-    `Back our ${restartWord} structure — keep the platform`,
+    "Protect possession — limit the giveaways.",
+    "Stay disciplined — win the ball, not the man.",
   ];
   for (const d of focusDefaults) {
     if (focusItems.length >= 3) break;
@@ -627,7 +634,7 @@ function deriveFullTimeSummary(
       if (hurtingUs.length >= 3) break;
       hurtingUs.push(d);
     }
-    if (hurtingUs.length < 3 && intel.theirRestartInsight) {
+    if (hurtingUs.length < 3 && intel.theirRestartInsight && !hurtingUs.some((h) => h.includes(restartWord))) {
       hurtingUs.push(intel.theirRestartInsight);
     }
     if (
