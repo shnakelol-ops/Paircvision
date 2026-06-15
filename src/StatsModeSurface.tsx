@@ -2058,6 +2058,8 @@ const PANEL_CSS = `
 .utility-overlay-panel--portrait {
   left: 14px;
   bottom: 66px;
+  max-height: calc(100dvh - 90px);
+  overflow: hidden;
 }
 
 .utility-overlay-panel--landscape {

@@ -1,7 +1,7 @@
 import React from "react";
 import type { ShotMapDot, MiniShotMapData } from "./coachingBrief";
 
-// Canonical shot colours per CLAUDE.md visual language
+// Canonical shot colours per CLAUDE.md visual language (locked — do not change)
 const DOT_COLOUR: Record<ShotMapDot["outcome"], string> = {
   GOAL: "#16a34a",
   POINT: "#4ade80",
@@ -10,21 +10,23 @@ const DOT_COLOUR: Record<ShotMapDot["outcome"], string> = {
   BLOCKED: "#94a3b8",
 };
 
-// Matches pitch-config.ts canonical dimensions
-const VW = 160;
-const VH = 100;
+// Portrait viewBox: touchline-to-touchline (horizontal) × goal-to-goal (vertical)
+// Matches the 1:1.6 GAA pitch ratio, rotated to goal-to-goal orientation.
+const VW = 100;   // touchline-to-touchline
+const VH = 160;   // goal-to-goal
 
 function PitchLines(): React.ReactElement {
   return (
     <g stroke="#374151" fill="none">
       <rect x={0.5} y={0.5} width={VW - 1} height={VH - 1} strokeWidth={1.5} />
-      <line x1={VW / 2} y1={0} x2={VW / 2} y2={VH} strokeWidth={0.8} />
-      {/* 45m lines */}
-      <line x1={VW * 0.31} y1={0} x2={VW * 0.31} y2={VH} strokeWidth={0.5} strokeDasharray="3 3" />
-      <line x1={VW * 0.69} y1={0} x2={VW * 0.69} y2={VH} strokeWidth={0.5} strokeDasharray="3 3" />
-      {/* 20m lines */}
-      <line x1={VW * 0.138} y1={0} x2={VW * 0.138} y2={VH} strokeWidth={0.4} strokeDasharray="2 4" />
-      <line x1={VW * 0.862} y1={0} x2={VW * 0.862} y2={VH} strokeWidth={0.4} strokeDasharray="2 4" />
+      {/* Halfway line — horizontal */}
+      <line x1={0} y1={VH / 2} x2={VW} y2={VH / 2} strokeWidth={0.8} />
+      {/* 45m lines — horizontal */}
+      <line x1={0} y1={VH * 0.31} x2={VW} y2={VH * 0.31} strokeWidth={0.5} strokeDasharray="3 3" />
+      <line x1={0} y1={VH * 0.69} x2={VW} y2={VH * 0.69} strokeWidth={0.5} strokeDasharray="3 3" />
+      {/* 20m lines — horizontal */}
+      <line x1={0} y1={VH * 0.138} x2={VW} y2={VH * 0.138} strokeWidth={0.4} strokeDasharray="2 4" />
+      <line x1={0} y1={VH * 0.862} x2={VW} y2={VH * 0.862} strokeWidth={0.4} strokeDasharray="2 4" />
     </g>
   );
 }
@@ -40,8 +42,8 @@ function MiniPitchMap({ dots }: { dots: ShotMapDot[] }): React.ReactElement {
       {dots.map((d, i) => (
         <circle
           key={i}
-          cx={d.nx * VW}
-          cy={d.ny * VH}
+          cx={d.ny * VW}
+          cy={d.nx * VH}
           r={3.5}
           fill={DOT_COLOUR[d.outcome]}
           opacity={0.85}
@@ -87,11 +89,11 @@ export function MiniShotMapGrid({
         <MiniPitchMap dots={data.theirScores} />
       </div>
       <div>
-        <div style={{ ...LABEL_STYLE, color: "#94a3b8" }}>{home} Wides</div>
+        <div style={{ ...LABEL_STYLE, color: "#4ade80" }}>{home} Wides</div>
         <MiniPitchMap dots={data.ourWides} />
       </div>
       <div>
-        <div style={{ ...LABEL_STYLE, color: "#94a3b8" }}>{away} Wides</div>
+        <div style={{ ...LABEL_STYLE, color: "#fb7185" }}>{away} Wides</div>
         <MiniPitchMap dots={data.theirWides} />
       </div>
     </div>
