@@ -286,10 +286,10 @@ export default function VisionTacticsHub() {
           aria-label="Open Tactical Play"
         >
           <p className="vt-card-mode">Tactical Play</p>
-          <h2 className="vt-card-title">Rehearse &amp;<br />Teach</h2>
-          <p className="vt-card-sub">Movement, behaviour &amp; scenarios</p>
+          <h2 className="vt-card-title">Bring Your Vision<br />to Life</h2>
+          <p className="vt-card-sub">Movement, possession, behaviours &amp; scenarios</p>
           <p className="vt-card-desc">
-            Bring football ideas to life with smooth movement, possession, passing and coordinated team behaviours.
+            Visualise your ideas with coordinated movement, possession, passing and realistic game scenarios.
           </p>
           <span className="vt-card-cta" aria-hidden="true">Open Tactical Play →</span>
         </button>
