@@ -134,6 +134,7 @@ export async function createMovementCanvasShell(
     antialias: true,
     autoDensity: true,
     resolution: Math.min(2, window.devicePixelRatio || 1),
+    preserveDrawingBuffer: true,
   });
 
   host.appendChild(app.canvas as HTMLCanvasElement);
