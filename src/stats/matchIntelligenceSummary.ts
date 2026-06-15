@@ -11,7 +11,6 @@
 import type { MatchEvent } from "../core/stats/stats-event-model";
 import type { ChainableEvent } from "./chains/chain-types";
 import { selectChainAnalysis, selectPossessionOutcomeSummary } from "./chains/chain-selectors";
-import { rankChainPatterns } from "./chains/chain-patterns";
 
 // ─── Public type ──────────────────────────────────────────────────────────────
 
@@ -78,15 +77,11 @@ export function buildMatchIntelligenceSummary(
 
   const analysis = selectChainAnalysis(chainEvents);
   const poss = selectPossessionOutcomeSummary(chainEvents);
-  const patterns = rankChainPatterns(analysis, mode);
 
   const ko = analysis.kickouts;
   const to = analysis.turnovers;
 
   const lowSampleWarning = ko.total + to.total < 5;
-
-  const dangers = patterns.filter((p) => p.kind === "DANGER_CHAIN");
-  const weapons = patterns.filter((p) => p.kind === "CHAIN_WEAPON");
 
   // ── Kickout consequence numbers — possession-outcomes-engine is the source of truth ──
   // V1.2+ (restartOwner split): aligns with Restart Outcomes card exactly.
@@ -102,40 +97,40 @@ export function buildMatchIntelligenceSummary(
   const koRetainedScoringPct = poss.ourKickouts?.retained.scoringPct ?? poss.kickouts.retained.scoringPct;
   const koConcededDamagePct  = poss.ourKickouts?.damagePct ?? poss.kickouts.damagePct;
 
+  // ── Turnover consequence numbers — possession-outcomes-engine is the source of truth ──
+  // Aligns with Turnover & Free Outcomes card exactly.
+  // No restartOwner split for turnovers — use the unified family directly.
+  const toRetainedScores = poss.turnovers.retained.goals + poss.turnovers.retained.points;
+  const toConcededScores = poss.turnovers.conceded.goals + poss.turnovers.conceded.points;
+
   // ── Danger insights (team-named) ─────────────────────────────────────────
-  // Kickout danger: sourced from possession-outcomes-engine (matches Restart Outcomes card).
-  // Turnover danger: sourced from chain patterns (no restartOwner concept for turnovers).
+  // Both sourced from possession-outcomes-engine — matches Restart Outcomes and
+  // Turnover & Free Outcomes cards exactly.
   const dangerInsights: string[] = [];
   if (koConcededScores >= 2 && koConcededCount >= 2) {
     dangerInsights.push(
       `${awayTeam} scored from ${koConcededScores} of ${koConcededCount} ${restartWord}s they won`,
     );
   }
-  for (const d of dangers) {
-    if (d.primaryMetric < 2) continue;
-    if (d.headline === "Turnover Conceded") {
-      dangerInsights.push(
-        `${awayTeam} scored from ${d.primaryMetric} ${homeTeam} turnover${d.primaryMetric !== 1 ? "s" : ""}`,
-      );
-    }
+  if (toConcededScores >= 2 && poss.turnovers.concededCount >= 2) {
+    dangerInsights.push(
+      `${awayTeam} scored from ${toConcededScores} ${homeTeam} turnover${toConcededScores !== 1 ? "s" : ""}`,
+    );
   }
 
   // ── Weapon insights (team-named) ─────────────────────────────────────────
-  // Kickout weapon: sourced from possession-outcomes-engine (matches Restart Outcomes card).
-  // Turnover weapon: sourced from chain patterns (no restartOwner concept for turnovers).
+  // Both sourced from possession-outcomes-engine — matches Restart Outcomes and
+  // Turnover & Free Outcomes cards exactly.
   const weaponInsights: string[] = [];
   if (koRetainedScores >= 2 && koRetainedCount >= 2) {
     weaponInsights.push(
       `${homeTeam} scored from ${koRetainedScores} of ${koRetainedCount} ${restartWord} wins`,
     );
   }
-  for (const w of weapons) {
-    if (w.primaryMetric < 2) continue;
-    if (w.headline === "Turnover Weapon") {
-      weaponInsights.push(
-        `${homeTeam} converted ${w.primaryMetric} of ${w.occurrences} turnover wins to scores`,
-      );
-    }
+  if (toRetainedScores >= 2 && poss.turnovers.retainedCount >= 2) {
+    weaponInsights.push(
+      `${homeTeam} scored from ${toRetainedScores} of ${poss.turnovers.retainedCount} turnover wins`,
+    );
   }
 
   // ── Restart battle ────────────────────────────────────────────────────────
@@ -167,14 +162,14 @@ export function buildMatchIntelligenceSummary(
   }
 
   // ── Turnover danger ───────────────────────────────────────────────────────
-  const theirTurnoverScores = to.lostAllowedScore;
+  // Sourced from possession-outcomes-engine — matches Turnover & Free Outcomes card exactly.
   const turnoverDangerLevel: "HIGH" | "MEDIUM" | "LOW" | null =
-    to.lost === 0 ? null :
-    theirTurnoverScores >= 2 ? "HIGH" :
-    theirTurnoverScores >= 1 ? "MEDIUM" : "LOW";
+    poss.turnovers.concededCount === 0 ? null :
+    toConcededScores >= 2 ? "HIGH" :
+    toConcededScores >= 1 ? "MEDIUM" : "LOW";
   const turnoverDangerInsight =
-    theirTurnoverScores >= 2
-      ? `${awayTeam} scored from ${theirTurnoverScores} ${homeTeam} turnover${theirTurnoverScores !== 1 ? "s" : ""}`
+    toConcededScores >= 2
+      ? `${awayTeam} scored from ${toConcededScores} ${homeTeam} turnover${toConcededScores !== 1 ? "s" : ""}`
       : null;
 
   // ── Best attack source ────────────────────────────────────────────────────
@@ -233,10 +228,9 @@ export function buildMatchIntelligenceSummary(
       `Keep winning ${restartWord}s — converting ${koRetainedScores} of ${koRetainedCount} to scores`,
     );
   }
-  const toWeapon = weapons.find((w) => w.headline === "Turnover Weapon");
-  if (toWeapon && toWeapon.primaryMetric >= 2 && coachingPriorities.length < 3) {
+  if (toRetainedScores >= 2 && poss.turnovers.retainedCount >= 2 && coachingPriorities.length < 3) {
     coachingPriorities.push(
-      `Press for turnovers — ${homeTeam} converting ${toWeapon.primaryMetric} of ${toWeapon.occurrences} to scores`,
+      `Press for turnovers — ${homeTeam} scored from ${toRetainedScores} of ${poss.turnovers.retainedCount} turnover wins`,
     );
   }
   return {
