@@ -29,6 +29,9 @@ import {
   MAX_SAVED_MATCHES,
 } from "./core/stats/saved-match";
 import { gaaModeConfig, type GaaModeKey } from "./config/gaaModeConfig";
+import { deriveCoachingBrief, type CoachingBriefLine } from "./stats/coachingBrief";
+import { MiniShotMapGrid } from "./stats/MiniPitchMap";
+import { buildMatchIntelligenceSummary } from "./stats/matchIntelligenceSummary";
 import { useScreenWakeLock } from "./hooks/useScreenWakeLock";
 import { NotesQuickPanel, getMatchNotes } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
@@ -1328,233 +1331,6 @@ function formatGaelicScore(score: TeamScore): string {
   return `${score.goals}-${String(score.points).padStart(2, "0")}`;
 }
 
-type MyTeamPlayerNote = {
-  label: string;
-  goals: number;
-  points: number;
-  scorePoints: number;
-  turnoversWon: number;
-  kickoutsWon: number;
-  freesWon: number;
-  involved: number;
-};
-
-function deriveMyTeamReport(
-  loggedEvents: readonly LoggedMatchEvent[],
-  matchState: MatchState,
-  teamNames: { HOME: string; AWAY: string },
-  currentMode: GaaModeKey,
-): string[] {
-  const reportEvents =
-    matchState === "HALF_TIME"
-      ? loggedEvents.filter((event) => event.half === 1)
-      : loggedEvents;
-  const homeScore = computeTeamScore(reportEvents, "HOME");
-  const awayScore = computeTeamScore(reportEvents, "AWAY");
-  const homeTeamName = teamNames.HOME.trim() || "Team A";
-  const awayTeamName = teamNames.AWAY.trim() || "Team B";
-  const isHurlingMode = currentMode === "hurling" || currentMode === "camogie";
-  const restartLabel = isHurlingMode ? "PUCKOUTS" : "KICKOUTS";
-  const restartWonLabel = isHurlingMode ? "puckouts won" : "kickouts won";
-
-  let goals = 0;
-  let points = 0;
-  let twoPointers = 0;
-  let shots = 0;
-  let wides = 0;
-  let scores = 0;
-  let attempts = 0;
-  let turnoversWon = 0;
-  let turnoversLost = 0;
-  let kickoutsWon = 0;
-  let kickoutsLost = 0;
-  let freesWon = 0;
-  let freesConceded = 0;
-
-  const playerNotes = new Map<string, MyTeamPlayerNote>();
-
-  const resolvePlayerLabel = (event: LoggedMatchEvent) => {
-    const numberLabel =
-      typeof event.playerNumber === "number" && Number.isFinite(event.playerNumber)
-        ? `#${event.playerNumber}`
-        : null;
-    const nameLabel =
-      typeof event.playerName === "string" && event.playerName.trim().length > 0
-        ? event.playerName.trim()
-        : null;
-    if (numberLabel && nameLabel) return `${numberLabel} ${nameLabel}`;
-    if (nameLabel) return nameLabel;
-    if (numberLabel) return numberLabel;
-    return "Tagged player";
-  };
-
-  const getPlayerNote = (event: LoggedMatchEvent) => {
-    const hasPlayerId = typeof event.playerId === "string" && event.playerId.trim().length > 0;
-    const hasPlayerNumber = typeof event.playerNumber === "number" && Number.isFinite(event.playerNumber);
-    const hasPlayerName = typeof event.playerName === "string" && event.playerName.trim().length > 0;
-    if (!hasPlayerId && !hasPlayerNumber && !hasPlayerName) return null;
-    const playerKey = hasPlayerId
-      ? `id:${event.playerId}`
-      : hasPlayerNumber
-        ? `num:${event.playerNumber}`
-        : `name:${event.playerName!.trim().toLowerCase()}`;
-    const existing = playerNotes.get(playerKey);
-    if (existing) return existing;
-    const created: MyTeamPlayerNote = {
-      label: resolvePlayerLabel(event),
-      goals: 0,
-      points: 0,
-      scorePoints: 0,
-      turnoversWon: 0,
-      kickoutsWon: 0,
-      freesWon: 0,
-      involved: 0,
-    };
-    playerNotes.set(playerKey, created);
-    return created;
-  };
-
-  for (const event of reportEvents) {
-    if (!(event.team === "HOME" || event.id.startsWith("team-home-"))) continue;
-    const playerNote = getPlayerNote(event);
-    if (playerNote) {
-      playerNote.involved += 1;
-    }
-
-    if (event.kind === "GOAL") {
-      goals += 1;
-      scores += 1;
-      attempts += 1;
-      if (playerNote) {
-        playerNote.goals += 1;
-        playerNote.scorePoints += 3;
-      }
-      continue;
-    }
-    if (event.kind === "POINT") {
-      points += 1;
-      scores += 1;
-      attempts += 1;
-      if (playerNote) {
-        playerNote.points += 1;
-        playerNote.scorePoints += 1;
-      }
-      continue;
-    }
-    if (event.kind === "TWO_POINTER" || event.kind === "FORTY_FIVE_TWO_POINT") {
-      twoPointers += 1;
-      scores += 1;
-      attempts += 1;
-      if (playerNote) {
-        playerNote.points += 2;
-        playerNote.scorePoints += 2;
-      }
-      continue;
-    }
-    if (event.kind === "SHOT") {
-      shots += 1;
-      attempts += 1;
-      continue;
-    }
-    if (event.kind === "WIDE") {
-      wides += 1;
-      attempts += 1;
-      continue;
-    }
-    if (event.kind === "TURNOVER_WON") {
-      turnoversWon += 1;
-      if (playerNote) playerNote.turnoversWon += 1;
-      continue;
-    }
-    if (event.kind === "TURNOVER_LOST") {
-      turnoversLost += 1;
-      continue;
-    }
-    if (event.kind === "KICKOUT_WON") {
-      kickoutsWon += 1;
-      if (playerNote) playerNote.kickoutsWon += 1;
-      continue;
-    }
-    if (event.kind === "KICKOUT_CONCEDED") {
-      kickoutsLost += 1;
-      continue;
-    }
-    if (event.kind === "FREE_WON") {
-      freesWon += 1;
-      if (playerNote) playerNote.freesWon += 1;
-      continue;
-    }
-    if (event.kind === "FREE_CONCEDED") {
-      freesConceded += 1;
-    }
-  }
-
-  const conversionPct = attempts > 0 ? Math.round((scores / attempts) * 100) : 0;
-  const kickoutAttempts = kickoutsWon + kickoutsLost;
-  const kickoutSuccessPct = kickoutAttempts > 0 ? Math.round((kickoutsWon / kickoutAttempts) * 100) : 0;
-
-  const pickBest = (
-    valueOf: (note: MyTeamPlayerNote) => number,
-  ): MyTeamPlayerNote | null => {
-    let best: MyTeamPlayerNote | null = null;
-    for (const note of playerNotes.values()) {
-      if (valueOf(note) <= 0) continue;
-      if (!best || valueOf(note) > valueOf(best)) best = note;
-    }
-    return best;
-  };
-
-  const topScorer = pickBest((note) => note.scorePoints);
-  const topTurnoversWon = pickBest((note) => note.turnoversWon);
-  const topKickoutsWon = pickBest((note) => note.kickoutsWon);
-  const topFreesWon = pickBest((note) => note.freesWon);
-  const mostInvolved = pickBest((note) => note.involved);
-  const reportPhaseLabel =
-    matchState === "HALF_TIME"
-      ? "First Half"
-      : matchState === "FULL_TIME"
-        ? "Full Match"
-        : "Live";
-
-  const lines = [
-    reportPhaseLabel,
-    "",
-    `${homeTeamName} ${formatGaelicScore(homeScore)} (${homeScore.total}) v ${awayTeamName} ${formatGaelicScore(awayScore)} (${awayScore.total})`,
-    "",
-    "SHOOTING",
-    isHurlingMode ? `Goals ${goals} · Points ${points}` : `${goals}G · ${points}P · ${twoPointers}x2P`,
-    `Shots ${shots} · Wides ${wides}`,
-    `Conversion ${conversionPct}%`,
-    "",
-    "TURNOVERS",
-    `Won ${turnoversWon} · Lost ${turnoversLost} · Net ${turnoversWon - turnoversLost}`,
-    "",
-    restartLabel,
-    `Won ${kickoutsWon} · Lost ${kickoutsLost} · Success ${kickoutSuccessPct}%`,
-    "",
-    "FREES",
-    `Won ${freesWon} · Conceded ${freesConceded} · Net ${freesWon - freesConceded}`,
-    "",
-    "PLAYER NOTES",
-  ];
-
-  if (playerNotes.size === 0) {
-    lines.push("No player tags yet");
-    return lines;
-  }
-
-  if (topScorer) {
-    lines.push(
-      `Top scorer · ${topScorer.label} ${topScorer.goals}-${String(topScorer.points).padStart(2, "0")} (${topScorer.scorePoints})`,
-    );
-  }
-  if (topTurnoversWon) lines.push(`Most turnovers won · ${topTurnoversWon.label} (${topTurnoversWon.turnoversWon})`);
-  if (topKickoutsWon) lines.push(`Most ${restartWonLabel} · ${topKickoutsWon.label} (${topKickoutsWon.kickoutsWon})`);
-  if (topFreesWon) lines.push(`Most frees won · ${topFreesWon.label} (${topFreesWon.freesWon})`);
-  if (mostInvolved) lines.push(`Most involved player · ${mostInvolved.label} (${mostInvolved.involved})`);
-
-  return lines;
-}
 
 function getRenderablePitchEvents(
   events: readonly LoggedMatchEvent[],
@@ -2282,6 +2058,8 @@ const PANEL_CSS = `
 .utility-overlay-panel--portrait {
   left: 14px;
   bottom: 66px;
+  max-height: calc(100dvh - 90px);
+  overflow: hidden;
 }
 
 .utility-overlay-panel--landscape {
@@ -6027,10 +5805,26 @@ export default function StatsModeSurface() {
               : openEventKeyboardMenuId != null
                 ? `${openEventKeyboardMenuId} outcomes`
                 : null;
-  const myTeamReport = useMemo(
-    () => deriveMyTeamReport(loggedEvents, matchState, teamNames, currentMode),
-    [loggedEvents, matchState, teamNames, currentMode],
-  );
+  const myTeamReport = useMemo<CoachingBriefLine[]>(() => {
+    const isHurlingMode = currentMode === "hurling" || currentMode === "camogie";
+    const restartWord = isHurlingMode ? "puckout" : "kickout";
+    const mode = matchState === "FULL_TIME" ? "FT" : "HT";
+    // HALF_TIME uses H1-only events for chain analysis; all other active states use full event set
+    const eventsForIntel =
+      matchState === "HALF_TIME" ? loggedEvents.filter((e) => e.half === 1) : loggedEvents;
+    const intelligence =
+      matchState !== "PRE_MATCH"
+        ? buildMatchIntelligenceSummary(eventsForIntel, teamNames.HOME, teamNames.AWAY, mode, restartWord)
+        : undefined;
+    return deriveCoachingBrief({
+      loggedEvents,
+      matchState,
+      homeTeamName: teamNames.HOME,
+      awayTeamName: teamNames.AWAY,
+      isHurlingMode,
+      intelligence,
+    });
+  }, [loggedEvents, matchState, teamNames, currentMode]);
 
   const liveCounts = useMemo<LiveMatchCounts>(() => {
     const counts: LiveMatchCounts = {
@@ -7046,18 +6840,72 @@ export default function StatsModeSurface() {
         </div>
       ) : null}
       {utilityPanel === "SUMMARY" ? (
-        <div className={utilityPanelClass} role="dialog" aria-label="Match summary">
+        <div
+          className={utilityPanelClass}
+          role="dialog"
+          aria-label={matchState === "FULL_TIME" ? "Full-time summary" : "Halftime notes"}
+        >
           <div className="utility-review-scroll">
-            <div className="utility-panel-title">MATCH REPORT</div>
+            <div className="utility-panel-title">
+              {matchState === "FULL_TIME" ? "FULL-TIME SUMMARY" : "HALFTIME NOTES"}
+            </div>
             {myTeamReport.length > 0 ? (
-              myTeamReport.map((line, index) => (
-                <div key={`summary-panel-${index}-${line}`} className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
-                  {line}
-                </div>
-              ))
+              myTeamReport.map((line, index) => {
+                if (line.type === "spacer") {
+                  return <div key={index} style={{ height: "6px" }} />;
+                }
+                if (line.type === "section") {
+                  return (
+                    <div
+                      key={index}
+                      className="utility-panel-title"
+                      style={{ fontSize: "8px", opacity: 0.62, letterSpacing: "0.07em", marginTop: "2px" }}
+                    >
+                      {line.text}
+                    </div>
+                  );
+                }
+                if (line.type === "body") {
+                  return (
+                    <div
+                      key={index}
+                      className="utility-panel-title"
+                      style={{ fontSize: "10px", opacity: 0.92, textTransform: "none", fontWeight: 500, lineHeight: 1.4 }}
+                    >
+                      {line.text}
+                    </div>
+                  );
+                }
+                if (line.type === "bullet") {
+                  return (
+                    <div
+                      key={index}
+                      className="utility-panel-title"
+                      style={{ fontSize: "10px", opacity: 0.88, textTransform: "none", fontWeight: 400, lineHeight: 1.35 }}
+                    >
+                      {"• "}{line.text}
+                    </div>
+                  );
+                }
+                if (line.type === "arrow") {
+                  return (
+                    <div
+                      key={index}
+                      className="utility-panel-title"
+                      style={{ fontSize: "10px", opacity: 0.88, textTransform: "none", fontWeight: 400, lineHeight: 1.35 }}
+                    >
+                      {"→ "}{line.text}
+                    </div>
+                  );
+                }
+                if (line.type === "miniShotMaps") {
+                  return <MiniShotMapGrid key={index} data={line.data} homeTeam={line.homeTeam} awayTeam={line.awayTeam} />;
+                }
+                return null;
+              })
             ) : (
               <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
-                No tagged match data yet.
+                No match data yet — keep logging.
               </div>
             )}
           </div>
@@ -7708,14 +7556,16 @@ export default function StatsModeSurface() {
                   >
                     Review
                   </button>
-                  <button
-                    type="button"
-                    className={`undo-btn ${isOutcomeFocusActive ? "utility-quiet" : ""}`}
-                    onClick={openMatchSummaryPanel}
-                    style={{ border: "1px solid rgba(125,211,252,0.52)" }}
-                  >
-                    Match Summary
-                  </button>
+                  {matchState !== "PRE_MATCH" ? (
+                    <button
+                      type="button"
+                      className={`undo-btn ${isOutcomeFocusActive ? "utility-quiet" : ""}`}
+                      onClick={openMatchSummaryPanel}
+                      style={{ border: "1px solid rgba(125,211,252,0.52)" }}
+                    >
+                      {matchState === "FULL_TIME" ? "FT Summary" : "HT Notes"}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="undo-btn"
