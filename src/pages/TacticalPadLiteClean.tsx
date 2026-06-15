@@ -5020,7 +5020,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               </div>
             </div>
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openQuickShareEntry}>
-              Quick Share (Beta)
+              Share Board
             </button>
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openMyBoardsEntry}>
               My Boards
@@ -5186,9 +5186,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               }}
               role="dialog"
               aria-modal="false"
-              aria-label="Quick Share onboarding"
+              aria-label="Share Board onboarding"
             >
-              <p style={QUICK_SHARE_ONBOARDING_TITLE_STYLE}>PáircVision Board Share</p>
+              <p style={QUICK_SHARE_ONBOARDING_TITLE_STYLE}>Share Board</p>
               <p style={QUICK_SHARE_ONBOARDING_BODY_STYLE}>
                 Use your phone&apos;s screen recorder.
                 <br />
@@ -5200,29 +5200,29 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 style={QUICK_SHARE_ONBOARDING_BUTTON_STYLE}
                 onClick={() => dismissQuickShareOnboarding(true)}
               >
-                Continue to Quick Share
+                Continue to Share Board
               </button>
             </div>
           </div>
         ) : null}
         {!isWhiteboardMode && quickShareOpen ? (
-          <div ref={quickSharePopoverRef} style={quickSharePopoverStyle} role="dialog" aria-modal="false" aria-label="Quick Share">
-            <p style={QUICK_SHARE_TITLE_STYLE}>PáircVision Board Share</p>
+          <div ref={quickSharePopoverRef} style={quickSharePopoverStyle} role="dialog" aria-modal="false" aria-label="Share Board">
+            <p style={QUICK_SHARE_TITLE_STYLE}>Share Board</p>
             <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareSnapshot}>
-              <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>📸 Share Snapshot</span>
-              <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Export current setup as PNG and share to WhatsApp or Photos.</span>
+              <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>📸 Snapshot</span>
+              <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Save or share the current board.</span>
             </button>
             <div style={{ height: "1px", background: "rgba(212, 228, 244, 0.12)", margin: "1px 0" }} />
             {slateRecordPhase === "idle" ? (
               <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareRecordClip}>
-                <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>🎥 Record Clip</span>
-                <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Record your tactics and explain them with your voice.</span>
+                <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>🎥 Record</span>
+                <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Record the board.</span>
               </button>
             ) : null}
             {slateRecordPhase === "panel" ? (
               <div style={{ display: "grid", gap: "5px" }}>
-                <span style={{ ...QUICK_SHARE_OPTION_TITLE_STYLE, padding: "2px 0" }}>Record Clip</span>
-                <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: "rgba(180, 210, 255, 0.55)" }}>Record your tactics and explain them with your voice. Stop when finished — auto-stops at 10 min.</span>
+                <span style={{ ...QUICK_SHARE_OPTION_TITLE_STYLE, padding: "2px 0" }}>🎥 Record</span>
+                <span style={{ ...QUICK_SHARE_OPTION_SUBTITLE_STYLE, color: "rgba(180, 210, 255, 0.55)" }}>Record the board. Stop when finished — auto-stops at 10 min.</span>
                 <div style={{ display: "flex", gap: "4px", alignItems: "center", flexWrap: "wrap" }}>
                   <button
                     type="button"
@@ -5230,7 +5230,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", flex: 1, border: "1px solid rgba(255, 80, 80, 0.50)", color: "rgba(255, 190, 190, 0.95)" }}
                     onClick={slateStartCountdown}
                   >
-                    Record Clip
+                    🎥 Record
                   </button>
                   <button
                     type="button"
@@ -5238,7 +5238,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px", flex: 1, border: "1px solid rgba(180, 120, 255, 0.55)", color: "rgba(220, 190, 255, 0.95)" }}
                     onClick={() => { void slateStartCountdownWithVoice(); }}
                   >
-                    🎙 Voiceover
+                    🎙 Voice Record
                   </button>
                   <button
                     type="button"

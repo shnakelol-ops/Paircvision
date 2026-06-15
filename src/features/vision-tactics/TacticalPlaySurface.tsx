@@ -3576,27 +3576,27 @@ export default function TacticalPlaySurface() {
                   setRecordPhase("panel");
                 }}
               >
-                Record Clip
+                🎥 Record
               </button>
             ) : null}
 
             {recordPhase === "panel" ? (
               <div style={{ display: "grid", gap: "4px" }}>
-                <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.45)", fontFamily: "Inter, system-ui, sans-serif" }}>Record your tactics and explain them with your voice. Stop when finished — auto-stops at 10 min.</span>
+                <span style={{ fontSize: "8px", color: "rgba(180, 210, 255, 0.45)", fontFamily: "Inter, system-ui, sans-serif" }}>Record the board. Stop when finished — auto-stops at 10 min.</span>
                 <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                   <button
                     type="button"
                     style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(255, 80, 80, 0.50)", color: "rgba(255, 190, 190, 0.95)", flex: 1 }}
                     onClick={startCountdown}
                   >
-                    Record Clip
+                    🎥 Record
                   </button>
                   <button
                     type="button"
                     style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(180, 120, 255, 0.55)", color: "rgba(220, 190, 255, 0.95)", flex: 1 }}
                     onClick={() => { void startCountdownWithVoice(); }}
                   >
-                    🎙 Voiceover
+                    🎙 Voice Record
                   </button>
                   <button
                     type="button"
