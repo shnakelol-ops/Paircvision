@@ -30,6 +30,7 @@ import {
 } from "./core/stats/saved-match";
 import { gaaModeConfig, type GaaModeKey } from "./config/gaaModeConfig";
 import { deriveCoachingBrief, type CoachingBriefLine } from "./stats/coachingBrief";
+import { buildMatchIntelligenceSummary } from "./stats/matchIntelligenceSummary";
 import { useScreenWakeLock } from "./hooks/useScreenWakeLock";
 import { NotesQuickPanel, getMatchNotes } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
@@ -5801,17 +5802,26 @@ export default function StatsModeSurface() {
               : openEventKeyboardMenuId != null
                 ? `${openEventKeyboardMenuId} outcomes`
                 : null;
-  const myTeamReport = useMemo<CoachingBriefLine[]>(
-    () =>
-      deriveCoachingBrief({
-        loggedEvents,
-        matchState,
-        homeTeamName: teamNames.HOME,
-        awayTeamName: teamNames.AWAY,
-        isHurlingMode: currentMode === "hurling" || currentMode === "camogie",
-      }),
-    [loggedEvents, matchState, teamNames, currentMode],
-  );
+  const myTeamReport = useMemo<CoachingBriefLine[]>(() => {
+    const isHurlingMode = currentMode === "hurling" || currentMode === "camogie";
+    const restartWord = isHurlingMode ? "puckout" : "kickout";
+    const mode = matchState === "FULL_TIME" ? "FT" : "HT";
+    // HALF_TIME uses H1-only events for chain analysis; all other active states use full event set
+    const eventsForIntel =
+      matchState === "HALF_TIME" ? loggedEvents.filter((e) => e.half === 1) : loggedEvents;
+    const intelligence =
+      matchState !== "PRE_MATCH"
+        ? buildMatchIntelligenceSummary(eventsForIntel, teamNames.HOME, teamNames.AWAY, mode, restartWord)
+        : undefined;
+    return deriveCoachingBrief({
+      loggedEvents,
+      matchState,
+      homeTeamName: teamNames.HOME,
+      awayTeamName: teamNames.AWAY,
+      isHurlingMode,
+      intelligence,
+    });
+  }, [loggedEvents, matchState, teamNames, currentMode]);
 
   const liveCounts = useMemo<LiveMatchCounts>(() => {
     const counts: LiveMatchCounts = {

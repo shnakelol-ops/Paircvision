@@ -14,6 +14,7 @@ import {
 import { createPixiPitchSurface } from "./core/pitch/create-pixi-pitch-surface";
 import { type MatchEvent, type MatchEventKind } from "./core/stats/stats-event-model";
 import { deriveCoachingBrief, type CoachingBriefLine } from "./stats/coachingBrief";
+import { buildMatchIntelligenceSummary } from "./stats/matchIntelligenceSummary";
 import { gaaModeConfig, type GaaModeKey } from "./config/gaaModeConfig";
 
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
@@ -2335,17 +2336,25 @@ export default function App() {
       const player = playerById.get(activePlayerId);
       return player ? `#${player.number} ${player.name}` : null;
     })();
-  const reviewMatchSummaryLines = useMemo<CoachingBriefLine[]>(
-    () =>
-      deriveCoachingBrief({
-        loggedEvents,
-        matchState,
-        homeTeamName: teamNames.HOME,
-        awayTeamName: teamNames.AWAY,
-        isHurlingMode: currentMode === "hurling" || currentMode === "camogie",
-      }),
-    [loggedEvents, matchState, teamNames, currentMode],
-  );
+  const reviewMatchSummaryLines = useMemo<CoachingBriefLine[]>(() => {
+    const isHurlingMode = currentMode === "hurling" || currentMode === "camogie";
+    const restartWord = isHurlingMode ? "puckout" : "kickout";
+    const mode = matchState === "FULL_TIME" ? "FT" : "HT";
+    const eventsForIntel =
+      matchState === "HALF_TIME" ? loggedEvents.filter((e) => e.half === 1) : loggedEvents;
+    const intelligence =
+      matchState !== "PRE_MATCH"
+        ? buildMatchIntelligenceSummary(eventsForIntel, teamNames.HOME, teamNames.AWAY, mode, restartWord)
+        : undefined;
+    return deriveCoachingBrief({
+      loggedEvents,
+      matchState,
+      homeTeamName: teamNames.HOME,
+      awayTeamName: teamNames.AWAY,
+      isHurlingMode,
+      intelligence,
+    });
+  }, [loggedEvents, matchState, teamNames, currentMode]);
 
   const homeScore = useMemo(() => computeTeamScore(loggedEvents, "HOME"), [loggedEvents]);
   const awayScore = useMemo(() => computeTeamScore(loggedEvents, "AWAY"), [loggedEvents]);

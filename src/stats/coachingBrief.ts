@@ -1,5 +1,6 @@
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import type { MatchState } from "../core/match/match-state-store";
+import type { MatchIntelligenceSummary } from "./matchIntelligenceSummary";
 
 // Minimal structural interface — satisfied by both App.tsx's local LoggedMatchEvent
 // and saved-match.ts's LoggedMatchEvent without any explicit cast.
@@ -28,6 +29,8 @@ export type CoachingBriefInput = {
   homeTeamName: string;
   awayTeamName: string;
   isHurlingMode: boolean;
+  /** Pre-computed match intelligence. When absent the brief falls back to basic stat rules. */
+  intelligence?: MatchIntelligenceSummary;
 };
 
 // ─── Internal types ───────────────────────────────────────────────────────────
@@ -330,6 +333,7 @@ function deriveHalftimeNotes(
   homeTeam: string,
   awayTeam: string,
   isHurlingMode: boolean,
+  intel?: MatchIntelligenceSummary,
 ): CoachingBriefLine[] {
   const restartWord = isHurlingMode ? "puckout" : "kickout";
   const s = computeMatchStats(events);
@@ -342,25 +346,38 @@ function deriveHalftimeNotes(
   lines.push({ type: "body", text: `${awayTeam}  ${formatScore(s.awayScore)}` });
   lines.push({ type: "body", text: formatMargin(s.homeScore, s.awayScore, homeTeam, awayTeam) });
 
-  // WHAT'S WORKING
+  // WHAT'S WORKING — intelligence tier first, basic stats as fallback
   const positives: string[] = [];
 
-  if (s.kickoutTotal >= 5 && s.kickoutPct >= 60) {
+  if (intel && !intel.lowSampleWarning) {
+    for (const w of intel.weaponInsights) {
+      if (positives.length >= 3) break;
+      positives.push(w);
+    }
+    if (positives.length < 3 && intel.ourRestartInsight) {
+      positives.push(intel.ourRestartInsight);
+    }
+    if (positives.length < 3 && intel.bestAttackInsight) {
+      positives.push(intel.bestAttackInsight);
+    }
+  }
+
+  if (positives.length < 3 && s.kickoutTotal >= 5 && s.kickoutPct >= 60) {
     positives.push(`${homeTeam} won ${s.kickoutsWon} of ${s.kickoutTotal} ${restartWord}s (${s.kickoutPct}%)`);
   }
-  if (s.attempts >= 5 && s.conversionPct >= 65) {
+  if (positives.length < 3 && s.attempts >= 5 && s.conversionPct >= 65) {
     positives.push(`${homeTeam} converted ${s.conversionPct}% of shots — efficient in front of goal`);
   }
-  if (s.turnoversWon - s.turnoversLost >= 3) {
+  if (positives.length < 3 && s.turnoversWon - s.turnoversLost >= 3) {
     positives.push(`${homeTeam} won the turnover battle ${s.turnoversWon}–${s.turnoversLost}`);
   }
-  if (s.freesWon - s.freesConceded >= 4) {
+  if (positives.length < 3 && s.freesWon - s.freesConceded >= 4) {
     positives.push(`${homeTeam} earned ${s.freesWon} placed balls — getting into the right positions`);
   }
-  if (s.goals >= 1 && positives.length < 3) {
+  if (positives.length < 3 && s.goals >= 1) {
     positives.push(`${homeTeam} found the net ${s.goals === 1 ? "once" : `${s.goals} times`} — taking the big chances`);
   }
-  if (diff > 0 && positives.length < 3) {
+  if (positives.length < 3 && diff > 0) {
     positives.push(`${homeTeam} ahead at the break — momentum is with us`);
   }
   if (positives.length === 0) {
@@ -371,6 +388,36 @@ function deriveHalftimeNotes(
   lines.push({ type: "section", text: "WHAT'S WORKING" });
   for (const p of positives.slice(0, 3)) {
     lines.push({ type: "bullet", text: p });
+  }
+
+  // HOW THEY'RE HURTING US — intelligence only, skipped when low sample
+  if (intel && !intel.lowSampleWarning) {
+    const hurtingUs: string[] = [];
+    for (const d of intel.dangerInsights) {
+      if (hurtingUs.length >= 3) break;
+      hurtingUs.push(d);
+    }
+    if (hurtingUs.length < 3 && intel.theirRestartInsight) {
+      hurtingUs.push(intel.theirRestartInsight);
+    }
+    if (
+      hurtingUs.length < 3 &&
+      intel.turnoverDangerInsight &&
+      (intel.turnoverDangerLevel === "HIGH" || intel.turnoverDangerLevel === "MEDIUM") &&
+      !hurtingUs.some((h) => h.includes("turnover"))
+    ) {
+      hurtingUs.push(intel.turnoverDangerInsight);
+    }
+    if (hurtingUs.length < 3 && intel.worstExposureInsight) {
+      hurtingUs.push(intel.worstExposureInsight);
+    }
+    if (hurtingUs.length > 0) {
+      lines.push({ type: "spacer" });
+      lines.push({ type: "section", text: "HOW THEY'RE HURTING US" });
+      for (const h of hurtingUs) {
+        lines.push({ type: "bullet", text: h });
+      }
+    }
   }
 
   // WATCH
@@ -404,14 +451,21 @@ function deriveHalftimeNotes(
     }
   }
 
-  // SECOND HALF FOCUS
+  // SECOND HALF FOCUS — intelligence priorities first, basic stats fill remainder
   const focusItems: string[] = [];
-  if (s.wides >= 4) focusItems.push("Take cleaner shots — build attacks from better positions");
-  if (s.kickoutTotal >= 5 && s.kickoutPct <= 45) focusItems.push(`Win the ${restartWord} — press their restart high and early`);
-  if (s.turnoversLost - s.turnoversWon >= 3) focusItems.push("Protect possession — fewer giveaways in the middle third");
-  if (s.freesConceded >= 8) focusItems.push("Stay on your feet — win the ball, not the man");
-  if (longestOpp && longestOpp.count >= 3) focusItems.push("Respond fast to their scores — do not let them settle");
-  if (s.attempts >= 5 && s.conversionPct <= 45) focusItems.push("Build more attacks from inside the 45 — cut the wide count");
+
+  if (intel && !intel.lowSampleWarning) {
+    for (const p of intel.coachingPriorities.slice(0, 2)) {
+      focusItems.push(p);
+    }
+  }
+
+  if (focusItems.length < 3 && s.wides >= 4) focusItems.push("Take cleaner shots — build attacks from better positions");
+  if (focusItems.length < 3 && s.kickoutTotal >= 5 && s.kickoutPct <= 45) focusItems.push(`Win the ${restartWord} — press their restart high and early`);
+  if (focusItems.length < 3 && s.turnoversLost - s.turnoversWon >= 3) focusItems.push("Protect possession — fewer giveaways in the middle third");
+  if (focusItems.length < 3 && s.freesConceded >= 8) focusItems.push("Stay on your feet — win the ball, not the man");
+  if (focusItems.length < 3 && longestOpp && longestOpp.count >= 3) focusItems.push("Respond fast to their scores — do not let them settle");
+  if (focusItems.length < 3 && s.attempts >= 5 && s.conversionPct <= 45) focusItems.push("Build more attacks from inside the 45 — cut the wide count");
 
   const focusDefaults = [
     "Maintain the intensity — keep the pressure on",
@@ -450,6 +504,7 @@ function deriveFullTimeSummary(
   homeTeam: string,
   awayTeam: string,
   isHurlingMode: boolean,
+  intel?: MatchIntelligenceSummary,
 ): CoachingBriefLine[] {
   const restartWord = isHurlingMode ? "puckout" : "kickout";
   const s = computeMatchStats(events);
@@ -466,9 +521,13 @@ function deriveFullTimeSummary(
     : "Draw";
   lines.push({ type: "body", text: resultLine });
 
-  // BIGGEST POSITIVE
+  // BIGGEST POSITIVE — intelligence tier first
   let biggestPositive: string | null = null;
-  if (s.kickoutTotal >= 5 && s.kickoutPct >= 60) {
+  if (intel && !intel.lowSampleWarning && intel.weaponInsights.length > 0) {
+    biggestPositive = intel.weaponInsights[0] + ".";
+  } else if (intel && !intel.lowSampleWarning && intel.overallInsight) {
+    biggestPositive = intel.overallInsight + ".";
+  } else if (s.kickoutTotal >= 5 && s.kickoutPct >= 60) {
     biggestPositive = `${homeTeam} won ${s.kickoutsWon} of ${s.kickoutTotal} ${restartWord}s (${s.kickoutPct}%) — controlled the restarts throughout.`;
   } else if (s.attempts >= 5 && s.conversionPct >= 65) {
     biggestPositive = `${homeTeam} converted ${s.conversionPct}% of shots — clinical in front of goal.`;
@@ -508,6 +567,36 @@ function deriveFullTimeSummary(
     lines.push({ type: "body", text: biggestConcern });
   }
 
+  // HOW THEY HURT US — intelligence only
+  if (intel && !intel.lowSampleWarning) {
+    const hurtingUs: string[] = [];
+    for (const d of intel.dangerInsights) {
+      if (hurtingUs.length >= 3) break;
+      hurtingUs.push(d);
+    }
+    if (hurtingUs.length < 3 && intel.theirRestartInsight) {
+      hurtingUs.push(intel.theirRestartInsight);
+    }
+    if (
+      hurtingUs.length < 3 &&
+      intel.turnoverDangerInsight &&
+      intel.turnoverDangerLevel !== "LOW" &&
+      !hurtingUs.some((h) => h.includes("turnover"))
+    ) {
+      hurtingUs.push(intel.turnoverDangerInsight);
+    }
+    if (hurtingUs.length < 3 && intel.worstExposureInsight) {
+      hurtingUs.push(intel.worstExposureInsight);
+    }
+    if (hurtingUs.length > 0) {
+      lines.push({ type: "spacer" });
+      lines.push({ type: "section", text: "HOW THEY HURT US" });
+      for (const h of hurtingUs) {
+        lines.push({ type: "bullet", text: h });
+      }
+    }
+  }
+
   // TURNING POINT — only shown when ≥3 consecutive scores found
   const { longestFor, longestOpp } = deriveScoringRuns(events);
   const topRun =
@@ -534,23 +623,31 @@ function deriveFullTimeSummary(
     lines.push({ type: "body", text: story });
   }
 
-  // COACHING PRIORITIES
+  // COACHING PRIORITIES — intelligence first, basic stats fill remainder
   const priorities: string[] = [];
-  if (s.wides >= 4) priorities.push("Shot selection and accuracy — work from closer positions");
-  if (s.freesConceded >= 8) priorities.push("Tackle and footwork discipline — reduce the foul count");
-  if (s.kickoutTotal >= 5 && s.kickoutPct <= 45) {
+
+  if (intel && !intel.lowSampleWarning) {
+    for (const p of intel.coachingPriorities) {
+      if (priorities.length >= 3) break;
+      priorities.push(p);
+    }
+  }
+
+  if (priorities.length < 3 && s.wides >= 4) priorities.push("Shot selection and accuracy — work from closer positions");
+  if (priorities.length < 3 && s.freesConceded >= 8) priorities.push("Tackle and footwork discipline — reduce the foul count");
+  if (priorities.length < 3 && s.kickoutTotal >= 5 && s.kickoutPct <= 45) {
     priorities.push(`${restartWord.charAt(0).toUpperCase()}${restartWord.slice(1)} structure — and press their restart`);
   }
-  if (s.turnoversLost - s.turnoversWon >= 3) priorities.push("Possession retention under pressure — reduce giveaways");
-  if (s.attempts >= 5 && s.conversionPct <= 45) priorities.push("Shot quality and decision-making in front of goal");
+  if (priorities.length < 3 && s.turnoversLost - s.turnoversWon >= 3) priorities.push("Possession retention under pressure — reduce giveaways");
+  if (priorities.length < 3 && s.attempts >= 5 && s.conversionPct <= 45) priorities.push("Shot quality and decision-making in front of goal");
   // Reinforce what's working
-  if (s.kickoutTotal >= 5 && s.kickoutPct >= 60 && priorities.length < 3) {
+  if (priorities.length < 3 && s.kickoutTotal >= 5 && s.kickoutPct >= 60) {
     priorities.push(`Keep the ${restartWord} structure — it is a platform to build from`);
   }
-  if (s.turnoversWon - s.turnoversLost >= 3 && priorities.length < 3) {
+  if (priorities.length < 3 && s.turnoversWon - s.turnoversLost >= 3) {
     priorities.push("Maintain the turnover intensity — this is a competitive edge");
   }
-  if (s.conversionPct >= 65 && s.attempts >= 5 && priorities.length < 3) {
+  if (priorities.length < 3 && s.conversionPct >= 65 && s.attempts >= 5) {
     priorities.push("Keep the shot quality high — the conversion rate is winning games");
   }
   // Fallbacks
@@ -595,8 +692,8 @@ export function deriveCoachingBrief(input: CoachingBriefInput): CoachingBriefLin
   }
 
   if (matchState === "FULL_TIME") {
-    return deriveFullTimeSummary(reportEvents, home, away, isHurlingMode);
+    return deriveFullTimeSummary(reportEvents, home, away, isHurlingMode, input.intelligence);
   }
 
-  return deriveHalftimeNotes(reportEvents, home, away, isHurlingMode);
+  return deriveHalftimeNotes(reportEvents, home, away, isHurlingMode, input.intelligence);
 }
