@@ -42,7 +42,7 @@ function MiniPitchMap({ dots }: { dots: ShotMapDot[] }): React.ReactElement {
       {dots.map((d, i) => (
         <circle
           key={i}
-          cx={d.ny * VW}
+          cx={(1 - d.ny) * VW}
           cy={d.nx * VH}
           r={4}
           fill={DOT_COLOUR[d.outcome]}
