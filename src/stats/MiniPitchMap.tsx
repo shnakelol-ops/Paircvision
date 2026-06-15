@@ -17,16 +17,16 @@ const VH = 160;   // goal-to-goal
 
 function PitchLines(): React.ReactElement {
   return (
-    <g stroke="#374151" fill="none">
+    <g stroke="#4b5563" fill="none">
       <rect x={0.5} y={0.5} width={VW - 1} height={VH - 1} strokeWidth={1.5} />
       {/* Halfway line — horizontal */}
-      <line x1={0} y1={VH / 2} x2={VW} y2={VH / 2} strokeWidth={0.8} />
+      <line x1={0} y1={VH / 2} x2={VW} y2={VH / 2} strokeWidth={0.9} />
       {/* 45m lines — horizontal */}
-      <line x1={0} y1={VH * 0.31} x2={VW} y2={VH * 0.31} strokeWidth={0.5} strokeDasharray="3 3" />
-      <line x1={0} y1={VH * 0.69} x2={VW} y2={VH * 0.69} strokeWidth={0.5} strokeDasharray="3 3" />
+      <line x1={0} y1={VH * 0.31} x2={VW} y2={VH * 0.31} strokeWidth={0.6} strokeDasharray="3 3" />
+      <line x1={0} y1={VH * 0.69} x2={VW} y2={VH * 0.69} strokeWidth={0.6} strokeDasharray="3 3" />
       {/* 20m lines — horizontal */}
-      <line x1={0} y1={VH * 0.138} x2={VW} y2={VH * 0.138} strokeWidth={0.4} strokeDasharray="2 4" />
-      <line x1={0} y1={VH * 0.862} x2={VW} y2={VH * 0.862} strokeWidth={0.4} strokeDasharray="2 4" />
+      <line x1={0} y1={VH * 0.138} x2={VW} y2={VH * 0.138} strokeWidth={0.5} strokeDasharray="2 4" />
+      <line x1={0} y1={VH * 0.862} x2={VW} y2={VH * 0.862} strokeWidth={0.5} strokeDasharray="2 4" />
     </g>
   );
 }
@@ -44,9 +44,9 @@ function MiniPitchMap({ dots }: { dots: ShotMapDot[] }): React.ReactElement {
           key={i}
           cx={d.ny * VW}
           cy={d.nx * VH}
-          r={3.5}
+          r={4}
           fill={DOT_COLOUR[d.outcome]}
-          opacity={0.85}
+          opacity={0.9}
         />
       ))}
       {dots.length === 0 && (

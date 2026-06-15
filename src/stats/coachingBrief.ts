@@ -361,15 +361,14 @@ function buildMiniShotMapData(events: readonly CBEvent[]): MiniShotMapData {
 
     if (e.kind === "GOAL") {
       scores.push({ nx, ny, outcome: "GOAL" });
-    } else if (e.kind === "POINT") {
+    } else if (e.kind === "POINT" || e.kind === "FREE_SCORED") {
       scores.push({ nx, ny, outcome: "POINT" });
     } else if (e.kind === "TWO_POINTER" || e.kind === "FORTY_FIVE_TWO_POINT") {
       scores.push({ nx, ny, outcome: "TWO_POINTER" });
-    } else if (e.kind === "WIDE") {
+    } else if (e.kind === "WIDE" || e.kind === "FREE_MISSED") {
       wides.push({ nx, ny, outcome: "WIDE" });
-    } else if (e.kind === "SHOT") {
-      wides.push({ nx, ny, outcome: "BLOCKED" });
     }
+    // SHOT (blocked/saved) intentionally excluded — not a wide, not a score
   }
 
   return { ourScores, theirScores, ourWides, theirWides };
