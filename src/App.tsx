@@ -14,6 +14,7 @@ import {
 import { createPixiPitchSurface } from "./core/pitch/create-pixi-pitch-surface";
 import { type MatchEvent, type MatchEventKind } from "./core/stats/stats-event-model";
 import { deriveCoachingBrief, type CoachingBriefLine } from "./stats/coachingBrief";
+import { MiniShotMapGrid } from "./stats/MiniPitchMap";
 import { buildMatchIntelligenceSummary } from "./stats/matchIntelligenceSummary";
 import { gaaModeConfig, type GaaModeKey } from "./config/gaaModeConfig";
 
@@ -3064,6 +3065,9 @@ export default function App() {
                       {"→ "}{line.text}
                     </div>
                   );
+                }
+                if (line.type === "miniShotMaps") {
+                  return <MiniShotMapGrid key={index} data={line.data} homeTeam={line.homeTeam} awayTeam={line.awayTeam} />;
                 }
                 return null;
               })

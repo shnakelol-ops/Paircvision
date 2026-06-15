@@ -30,6 +30,7 @@ import {
 } from "./core/stats/saved-match";
 import { gaaModeConfig, type GaaModeKey } from "./config/gaaModeConfig";
 import { deriveCoachingBrief, type CoachingBriefLine } from "./stats/coachingBrief";
+import { MiniShotMapGrid } from "./stats/MiniPitchMap";
 import { buildMatchIntelligenceSummary } from "./stats/matchIntelligenceSummary";
 import { useScreenWakeLock } from "./hooks/useScreenWakeLock";
 import { NotesQuickPanel, getMatchNotes } from "./features/notes";
@@ -6894,6 +6895,9 @@ export default function StatsModeSurface() {
                       {"→ "}{line.text}
                     </div>
                   );
+                }
+                if (line.type === "miniShotMaps") {
+                  return <MiniShotMapGrid key={index} data={line.data} homeTeam={line.homeTeam} awayTeam={line.awayTeam} />;
                 }
                 return null;
               })

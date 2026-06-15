@@ -14,6 +14,21 @@ type CBEvent = {
   playerId?: string;
   playerName?: string;
   playerNumber?: number;
+  nx?: number;
+  ny?: number;
+};
+
+export type ShotMapDot = {
+  nx: number;
+  ny: number;
+  outcome: "GOAL" | "POINT" | "TWO_POINTER" | "WIDE" | "BLOCKED";
+};
+
+export type MiniShotMapData = {
+  ourScores: ShotMapDot[];
+  theirScores: ShotMapDot[];
+  ourWides: ShotMapDot[];
+  theirWides: ShotMapDot[];
 };
 
 export type CoachingBriefLine =
@@ -21,7 +36,8 @@ export type CoachingBriefLine =
   | { type: "body"; text: string }
   | { type: "bullet"; text: string }
   | { type: "arrow"; text: string }
-  | { type: "spacer" };
+  | { type: "spacer" }
+  | { type: "miniShotMaps"; homeTeam: string; awayTeam: string; data: MiniShotMapData };
 
 export type CoachingBriefInput = {
   loggedEvents: readonly CBEvent[];
@@ -326,6 +342,39 @@ function deriveMatchStory(
   return `${awayTeam} controlled the contest and ran out clear winners.`;
 }
 
+// ─── Shot map builder ─────────────────────────────────────────────────────────
+
+function buildMiniShotMapData(events: readonly CBEvent[]): MiniShotMapData {
+  const ourScores: ShotMapDot[] = [];
+  const theirScores: ShotMapDot[] = [];
+  const ourWides: ShotMapDot[] = [];
+  const theirWides: ShotMapDot[] = [];
+
+  for (const e of events) {
+    if (typeof e.nx !== "number" || typeof e.ny !== "number") continue;
+    const forHome = isHomeEvent(e);
+    const forAway = isAwayEvent(e);
+    if (!forHome && !forAway) continue;
+    const { nx, ny } = e;
+    const scores = forHome ? ourScores : theirScores;
+    const wides = forHome ? ourWides : theirWides;
+
+    if (e.kind === "GOAL") {
+      scores.push({ nx, ny, outcome: "GOAL" });
+    } else if (e.kind === "POINT") {
+      scores.push({ nx, ny, outcome: "POINT" });
+    } else if (e.kind === "TWO_POINTER" || e.kind === "FORTY_FIVE_TWO_POINT") {
+      scores.push({ nx, ny, outcome: "TWO_POINTER" });
+    } else if (e.kind === "WIDE") {
+      wides.push({ nx, ny, outcome: "WIDE" });
+    } else if (e.kind === "SHOT") {
+      wides.push({ nx, ny, outcome: "BLOCKED" });
+    }
+  }
+
+  return { ourScores, theirScores, ourWides, theirWides };
+}
+
 // ─── Halftime Notes ───────────────────────────────────────────────────────────
 
 function deriveHalftimeNotes(
@@ -482,6 +531,11 @@ function deriveHalftimeNotes(
   for (const f of focusItems.slice(0, 3)) {
     lines.push({ type: "arrow", text: f });
   }
+
+  // SHOT MAPS
+  lines.push({ type: "spacer" });
+  lines.push({ type: "section", text: "SHOT MAPS" });
+  lines.push({ type: "miniShotMaps", homeTeam, awayTeam, data: buildMiniShotMapData(events) });
 
   // MATCH PATTERN
   const pattern = deriveMatchPattern(s.homeScore, s.awayScore, homeTeam, awayTeam);
@@ -666,6 +720,11 @@ function deriveFullTimeSummary(
   for (const p of priorities.slice(0, 3)) {
     lines.push({ type: "arrow", text: p });
   }
+
+  // SHOT MAPS
+  lines.push({ type: "spacer" });
+  lines.push({ type: "section", text: "SHOT MAPS" });
+  lines.push({ type: "miniShotMaps", homeTeam, awayTeam, data: buildMiniShotMapData(events) });
 
   // PLAYER NOTES
   appendPlayerNotes(buildPlayerNotes(events), lines, restartWord);
