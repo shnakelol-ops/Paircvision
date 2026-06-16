@@ -7,11 +7,11 @@
 
 ## 1. Who We Are
 
-PáircVision is a coaching analytics application for Gaelic games, developed by **[COMPANY LEGAL NAME]**, a company registered in Ireland (Company No. **[XXXXXXXX]**) with a registered address at **[REGISTERED ADDRESS]**.
+PáircVision is a coaching analytics application for Gaelic games, created and operated by **Seán Kelly**, an independent developer based in Ireland.
 
-In this policy, "PáircVision", "we", "us" and "our" refer to **[COMPANY LEGAL NAME]**.
+In this Privacy Policy, "PáircVision", "we", "us" and "our" refer to Seán Kelly, the developer and operator of the application.
 
-For privacy matters, you can contact us at: **paircvision@gmail.com**
+If you have any questions about this Privacy Policy or how PáircVision handles information, you can contact us at: **privacy@paircvision.com**
 
 ---
 
@@ -279,23 +279,10 @@ We will not reduce your privacy rights under an existing version of this policy 
 
 For any question about this policy or about how PáircVision handles data:
 
-**Email:** paircvision@gmail.com
-**Post:** [COMPANY LEGAL NAME], [REGISTERED ADDRESS]
+**Email:** privacy@paircvision.com
+
+PáircVision is created and operated by Seán Kelly, an independent developer based in Ireland.
 
 ---
 
-*PáircVision is developed and operated by [COMPANY LEGAL NAME], registered in Ireland.*
-
----
-
-## Before Publication — Required Actions
-
-The following placeholders must be replaced before this document is published:
-
-| Placeholder | Required Information |
-|---|---|
-| `[COMPANY LEGAL NAME]` | Legal company name as registered with the CRO |
-| `[XXXXXXXX]` | CRO company registration number |
-| `[REGISTERED ADDRESS]` | Company registered office address |
-
-Replace all instances throughout the document. Once complete, remove this section before publishing.
+*PáircVision is created and operated by Seán Kelly, an independent developer based in Ireland.*
