@@ -17,6 +17,7 @@ import {
 } from "../data/libraryContent";
 import { loadAllBoards } from "../features/quickboard/storage/quickboard-storage";
 import type { SavedQuickBoard } from "../features/quickboard/storage/quickboard-types";
+import GuidedTour from "../components/GuidedTour";
 
 export type PitchFlowTab = "home" | "notes" | "library" | "sessions" | "plans";
 
@@ -946,7 +947,7 @@ function navigateToVisionBoard(boardId?: string) {
   window.location.assign(nextPath);
 }
 
-function BoardPage() {
+function BoardPage({ onReplayTour }: { onReplayTour: () => void }) {
   const [recentBoards, setRecentBoards] = useState<SavedQuickBoard[]>(() => {
     if (typeof window === "undefined") return [];
     return loadAllBoards().slice(0, HOME_RECENT_BOARDS_LIMIT);
@@ -1017,6 +1018,24 @@ function BoardPage() {
             ))}
           </div>
         )}
+      </div>
+      <div style={{ textAlign: "center", paddingTop: "4px", paddingBottom: "8px" }}>
+        <button
+          type="button"
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--pf-text-dim)",
+            fontSize: "12px",
+            cursor: "pointer",
+            padding: "8px 14px",
+            fontFamily: "inherit",
+            lineHeight: "1",
+          }}
+          onClick={onReplayTour}
+        >
+          Take the Tour
+        </button>
       </div>
     </>
   );
@@ -1598,12 +1617,12 @@ function PlansPage() {
   );
 }
 
-function renderPage(activeTab: PitchFlowTab) {
+function renderPage(activeTab: PitchFlowTab, onReplayTour: () => void) {
   if (activeTab === "notes") return <NotesPage />;
   if (activeTab === "library") return <LibraryPage />;
   if (activeTab === "sessions") return <SessionsPage />;
   if (activeTab === "plans") return <PlansPage />;
-  return <BoardPage />;
+  return <BoardPage onReplayTour={onReplayTour} />;
 }
 
 export default function PitchFlowCoachShell({ initialTab }: PitchFlowCoachShellProps) {
@@ -1635,11 +1654,19 @@ export default function PitchFlowCoachShell({ initialTab }: PitchFlowCoachShellP
           : "home";
 
   const isHome = initialTab === "home";
+  const [tourKey, setTourKey] = useState(0);
+
+  function handleReplayTour() {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("paircvision_guided_tour_v1");
+    }
+    setTourKey((k) => k + 1);
+  }
 
   return (
     <main className="pf-shell">
       <style>{SHELL_CSS}</style>
-      <div className="pf-content" style={isHome ? { paddingBottom: 24 } : undefined}>{renderPage(initialTab)}</div>
+      <div className="pf-content" style={isHome ? { paddingBottom: 24 } : undefined}>{renderPage(initialTab, handleReplayTour)}</div>
       {!isHome && (
         <nav className="pf-bottom-nav" aria-label="Bottom navigation">
           {BOTTOM_NAV_ITEMS.map((item) => {
@@ -1660,6 +1687,7 @@ export default function PitchFlowCoachShell({ initialTab }: PitchFlowCoachShellP
           })}
         </nav>
       )}
+      {isHome && <GuidedTour key={tourKey} />}
     </main>
   );
 }
