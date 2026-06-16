@@ -970,6 +970,7 @@ export default function TacticalPlaySurface() {
   const [zoneLibraryOpen, setZoneLibraryOpen] = useState<"none" | "football" | "hurling">("none");
   const [zoneLabelDraft, setZoneLabelDraft] = useState("");
   const [playerSheetId, setPlayerSheetId] = useState<string | null>(null);
+  const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
   const {
     recordPhase, setRecordPhase,
     recordCountdown,
@@ -1072,6 +1073,11 @@ export default function TacticalPlaySurface() {
         onRoutesChange: (nextRoutes) => {
           setRouteCount(nextRoutes.length);
           setRoutes(nextRoutes);
+          const drawRunId = sheetDrawRunPlayerIdRef.current;
+          if (drawRunId && nextRoutes.some((r) => r.playerId === drawRunId)) {
+            sheetDrawRunPlayerIdRef.current = null;
+            setMenuMode("move");
+          }
         },
         onPlaybackStateChange: (state) => {
           setIsPlaying(state.isPlaying);
@@ -1101,6 +1107,9 @@ export default function TacticalPlaySurface() {
         },
         onTokenTap: (tokenId) => {
           setPlayerSheetId(tokenId);
+        },
+        onPitchTap: (_payload) => {
+          setPlayerSheetId(null);
         },
       }).then((shell) => {
         if (disposed) {
@@ -2060,7 +2069,7 @@ export default function TacticalPlaySurface() {
         <button
           type="button"
           style={CTRL_BUBBLE_STYLE}
-          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setMovementsOpen(false); setPassesOpen(false); setPlaysOpen(false); }}
+          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setMovementsOpen(false); setPassesOpen(false); setPlaysOpen(false); setPlayerSheetId(null); }}
         >
           CTRL
         </button>
@@ -3668,6 +3677,7 @@ export default function TacticalPlaySurface() {
               }}
               onDrawRun={() => {
                 shellRef.current?.setSelectedToken(playerSheetId);
+                sheetDrawRunPlayerIdRef.current = playerSheetId;
                 setMenuMode("route");
                 setPlayerSheetId(null);
               }}

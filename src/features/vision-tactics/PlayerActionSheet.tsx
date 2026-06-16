@@ -48,6 +48,7 @@ const BACKDROP: CSSProperties = {
   inset: 0,
   zIndex: 39,
   background: "rgba(0, 0, 0, 0.48)",
+  pointerEvents: "none",
 };
 
 const SHEET: CSSProperties = {
