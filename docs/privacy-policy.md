@@ -11,7 +11,7 @@ PáircVision is a coaching analytics application for Gaelic games, developed by 
 
 In this policy, "PáircVision", "we", "us" and "our" refer to **[COMPANY LEGAL NAME]**.
 
-For privacy matters, you can contact us at: **privacy@paircvision.com**
+For privacy matters, you can contact us at: **paircvision@gmail.com**
 
 ---
 
@@ -241,7 +241,7 @@ Under GDPR, you have the following rights in relation to personal data held abou
 
 ### How These Rights Apply in Practice
 
-The only personal data that PáircVision processes as part of delivering the service is the server log data described in Section 5.1. To exercise any of the above rights in relation to that data, please contact us at **privacy@paircvision.com**.
+The only personal data that PáircVision processes as part of delivering the service is the server log data described in Section 5.1. To exercise any of the above rights in relation to that data, please contact us at **paircvision@gmail.com**.
 
 For the coaching data you create within the app — player names, match records, voice notes, training information — that data exists only on your device. You can exercise control over this data directly:
 
@@ -279,7 +279,7 @@ We will not reduce your privacy rights under an existing version of this policy 
 
 For any question about this policy or about how PáircVision handles data:
 
-**Email:** privacy@paircvision.com
+**Email:** paircvision@gmail.com
 **Post:** [COMPANY LEGAL NAME], [REGISTERED ADDRESS]
 
 ---
