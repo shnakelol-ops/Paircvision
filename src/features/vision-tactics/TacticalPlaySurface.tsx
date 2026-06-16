@@ -44,6 +44,7 @@ import {
 import type { TacticalUnit } from "./tacticalUnitTypes";
 import { buildMemberRoutes } from "./tacticalUnitHelpers";
 import type { NormalizedPoint } from "../../movement-board/coordinates/normalization";
+import PlayerActionSheet from "./PlayerActionSheet";
 
 type SetupSport = Extract<TacticalTemplateSport, "football" | "hurling">;
 
@@ -968,6 +969,7 @@ export default function TacticalPlaySurface() {
   const [zoneShape, setZoneShape] = useState<"rect" | "circle">("rect");
   const [zoneLibraryOpen, setZoneLibraryOpen] = useState<"none" | "football" | "hurling">("none");
   const [zoneLabelDraft, setZoneLabelDraft] = useState("");
+  const [playerSheetId, setPlayerSheetId] = useState<string | null>(null);
   const {
     recordPhase, setRecordPhase,
     recordCountdown,
@@ -1097,6 +1099,9 @@ export default function TacticalPlaySurface() {
         onTrainingItemSelectionChange: (id) => {
           setSelectedTrainingItemId(id);
         },
+        onTokenTap: (tokenId) => {
+          setPlayerSheetId(tokenId);
+        },
       }).then((shell) => {
         if (disposed) {
           shell.destroy();
@@ -1195,6 +1200,7 @@ export default function TacticalPlaySurface() {
       setItemsOpen(false);
       setZonesOpen(false);
       setZoneLibraryOpen("none");
+      setPlayerSheetId(null);
     }
   }, [isPlaying]);
 
@@ -3636,6 +3642,67 @@ export default function TacticalPlaySurface() {
             </span>
           </div>
         ) : null}
+
+        {/* Player Action Sheet — tap-player bottom sheet (additive, CTRL remains fallback) */}
+        {playerSheetId != null && !modeIsPlaybackLocked && menuMode !== "route" ? (() => {
+          const sheetNum = tokenNumberById[playerSheetId] ?? 0;
+          const sheetHasBall = ballCarrierId === playerSheetId;
+          const sheetRoute = routes.find((r) => r.playerId === playerSheetId) ?? null;
+          const sheetMeta = shellRef.current?.getRouteMeta(playerSheetId) ?? null;
+          const sheetPassEvents = passEvents.filter((p) => p.fromPlayerId === playerSheetId);
+          return (
+            <PlayerActionSheet
+              playerId={playerSheetId}
+              playerNumber={sheetNum}
+              hasBall={sheetHasBall}
+              hasRoute={sheetRoute != null}
+              routeMeta={sheetMeta}
+              routes={routes}
+              passEventsFromPlayer={sheetPassEvents}
+              tokenNumberById={tokenNumberById}
+              awayTokenIds={awayTokenIds}
+              onClose={() => setPlayerSheetId(null)}
+              onGiveBall={() => {
+                shellRef.current?.giveBall(playerSheetId);
+                setPlayerSheetId(null);
+              }}
+              onDrawRun={() => {
+                shellRef.current?.setSelectedToken(playerSheetId);
+                setMenuMode("route");
+                setPlayerSheetId(null);
+              }}
+              onSetRunDelay={(delayMs) => {
+                shellRef.current?.setRouteMeta(playerSheetId, { delayMs, triggeredBy: undefined });
+              }}
+              onSetRunTrigger={(triggeredById) => {
+                shellRef.current?.setRouteMeta(playerSheetId, {
+                  triggeredBy: triggeredById ?? undefined,
+                  delayMs: undefined,
+                });
+              }}
+              onAddPass={(toId, delayMs) => {
+                const shell = shellRef.current;
+                if (!shell) return;
+                shell.addPassEvent({
+                  id: `pass-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  fromPlayerId: playerSheetId,
+                  toPlayerId: toId,
+                  delayMs,
+                });
+              }}
+              onPlay={() => {
+                shellRef.current?.playAll();
+                setPlayerSheetId(null);
+              }}
+              onBehaviour={() => {
+                setMovementsSelectedPlayerId(playerSheetId);
+                setMovementsOpen(true);
+                setIsControlsOpen(true);
+                setPlayerSheetId(null);
+              }}
+            />
+          );
+        })() : null}
       </div>
     </OrientationGate>
   );

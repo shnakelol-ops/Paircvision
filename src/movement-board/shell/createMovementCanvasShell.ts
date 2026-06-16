@@ -5,6 +5,7 @@ import { createWorldViewport, type WorldViewportMapper } from "../coordinates/vi
 import {
   getNormalizedPointFromEvent,
   getPointerIdFromEvent,
+  getStagePointFromEvent,
   getWorldPointFromEvent,
 } from "../input/pointer-controller";
 import { createTrainingItemLayer } from "../items/item-layer";
@@ -41,6 +42,7 @@ const ROUTE_MIN_POINT_DISTANCE = 0.9;
 const POSITION_EPSILON = 0.0001;
 const ROUTE_HANDLE_TOUCH_RADIUS_PX = 30;
 const ROUTE_INSERT_TOUCH_DISTANCE_PX = 24;
+const TAP_MOVE_THRESHOLD_PX = 6;
 
 type DragState = {
   tokenId: string;
@@ -187,6 +189,7 @@ export async function createMovementCanvasShell(
   let activeDrag: DragState = null;
   let activeRouteHandleDrag: RouteHandleDragState = null;
   let routeDraft: RouteDraftState = null;
+  let tokenTapStart: { tokenId: string; x: number; y: number } | null = null;
   let routeByTokenId = new Map<string, NormalizedPoint[]>();
   let routeMetaByTokenId = new Map<string, RouteMetadata>();
   let startPositionByTokenId = new Map<string, NormalizedPoint>();
@@ -467,6 +470,7 @@ export async function createMovementCanvasShell(
 
   const releaseDrag = () => {
     activeDrag = null;
+    tokenTapStart = null;
     tokenLayer.setDraggingToken(null);
   };
 
@@ -661,6 +665,8 @@ export async function createMovementCanvasShell(
   tokenLayer.setOnTokenPointerDown((tokenId, event) => {
     (event as { stopPropagation?: () => void }).stopPropagation?.();
     setSelectedToken(tokenId);
+    const tapStagePoint = getStagePointFromEvent(event, app.stage);
+    tokenTapStart = tapStagePoint ? { tokenId, x: tapStagePoint.x, y: tapStagePoint.y } : null;
     if (!canDragTokens()) return;
     const token = tokenLayer.getTokenById(tokenId);
     if (!token || token.draggable === false) return;
@@ -773,6 +779,19 @@ export async function createMovementCanvasShell(
   };
 
   const handlePointerRelease = (event: unknown) => {
+    if (tokenTapStart && mode === "setup" && !isPlaybackLocked()) {
+      const endPoint = getStagePointFromEvent(event, app.stage);
+      const moved = endPoint
+        ? Math.hypot(endPoint.x - tokenTapStart.x, endPoint.y - tokenTapStart.y)
+        : 0;
+      if (moved < TAP_MOVE_THRESHOLD_PX && (!activeDrag || activeDrag.tokenId === tokenTapStart.tokenId)) {
+        const tapId = tokenTapStart.tokenId;
+        if (activeDrag) releaseDrag(); else tokenTapStart = null;
+        options.onTokenTap?.(tapId);
+        return;
+      }
+    }
+    tokenTapStart = null;
     if (activeDrag) {
       releaseDrag();
       return;
