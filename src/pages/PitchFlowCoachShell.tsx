@@ -968,6 +968,15 @@ function BoardPage({ onReplayTour }: { onReplayTour: () => void }) {
             </div>
             <span className="pf-title-accent" aria-hidden="true" />
           </div>
+          <button
+            type="button"
+            className="pf-home-icon-btn"
+            style={{ marginLeft: "auto", flexShrink: 0 }}
+            onClick={() => navigateTo("/settings")}
+            aria-label="Settings"
+          >
+            ⚙
+          </button>
         </div>
         <p className="pf-subtitle">Gaelic Games Coaching Hub</p>
       </div>

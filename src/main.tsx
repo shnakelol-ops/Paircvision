@@ -10,9 +10,11 @@ import RapidCaptureLitePage from "./rapid-capture/RapidCaptureLitePage";
 import ProTaggerPage from "./pro-tagger/ProTaggerPage";
 import VisionTacticsShell from "./features/vision-tactics/VisionTacticsShell";
 import VisionTrainingShell from "./vision-training/VisionTrainingShell";
+import PitchFlowSettingsShell from "./pages/PitchFlowSettingsShell";
 
 const boardShell = () => <PitchFlowCoachShell initialTab="home" />;
 const VISION_BOARD_PATH = "/vision-board";
+const SETTINGS_PATH = "/settings";
 const VISION_TACTICS_PATH = "/vision-tactics";
 const VISION_TRAINING_PATH = "/vision-training";
 const QUICK_BOARD_PATH = "/quickboard";
@@ -115,6 +117,9 @@ function pickRootComponent() {
   }
   if (normalizedPath.startsWith(VISION_TACTICS_PATH)) {
     return VisionTacticsShell;
+  }
+  if (normalizedPath === SETTINGS_PATH) {
+    return PitchFlowSettingsShell;
   }
   return redirectToBoard();
 }
