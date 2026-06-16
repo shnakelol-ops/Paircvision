@@ -7,7 +7,7 @@
 
 ## 1. Who We Are
 
-PáircVision is a coaching analytics application for Gaelic games, created and operated by **Seán Kelly**, an independent developer based in Ireland.
+PáircVision is a coaching platform for Gaelic games, created and operated by **Seán Kelly**, an independent developer based in Ireland.
 
 In this Privacy Policy, "PáircVision", "we", "us" and "our" refer to Seán Kelly, the developer and operator of the application.
 
@@ -241,7 +241,7 @@ Under GDPR, you have the following rights in relation to personal data held abou
 
 ### How These Rights Apply in Practice
 
-The only personal data that PáircVision processes as part of delivering the service is the server log data described in Section 5.1. To exercise any of the above rights in relation to that data, please contact us at **paircvision@gmail.com**.
+The only personal data that PáircVision processes as part of delivering the service is the server log data described in Section 5.1. To exercise any of the above rights in relation to that data, please contact us at **privacy@paircvision.com**.
 
 For the coaching data you create within the app — player names, match records, voice notes, training information — that data exists only on your device. You can exercise control over this data directly:
 
