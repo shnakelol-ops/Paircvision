@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
 import OrientationGate, { usePortraitOrientation } from "../../components/OrientationGate";
+import TacticalPlayTour from "./TacticalPlayTour";
 import VisionStadiumBackground from "../../components/VisionStadiumBackground";
 import { useCanvasRecorder } from "../shared/useCanvasRecorder";
 import { buildDefaultTokens } from "../../movement-board/tokens/default-tokens";
@@ -905,6 +906,7 @@ export default function TacticalPlaySurface() {
     shellMode === "route" ? "route" : shellMode === "play" ? "play" : "move";
 
   const isPortrait = usePortraitOrientation();
+  const handleTourOpenControls = useCallback(() => setIsControlsOpen(true), []);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const shellRef = useRef<MovementCanvasShellHandle | null>(null);
   const [menuMode, setMenuMode] = useState<MovementMenuMode>("move");
@@ -2060,6 +2062,7 @@ export default function TacticalPlaySurface() {
         </button>
         <button
           type="button"
+          data-tour-id="tp-setup"
           style={setupOpen
             ? { ...SETUP_BUBBLE_STYLE, border: "1px solid rgba(124, 255, 114, 0.40)", background: "rgba(14, 32, 22, 0.82)" }
             : SETUP_BUBBLE_STYLE}
@@ -2313,6 +2316,7 @@ export default function TacticalPlaySurface() {
               </button>
               <button
                 type="button"
+                data-tour-id="tp-route"
                 style={menuMode === "route" ? SEG_ITEM_ACTIVE_STYLE : SEG_ITEM_STYLE}
                 onClick={() => setMenuMode("route")}
               >
@@ -2320,6 +2324,7 @@ export default function TacticalPlaySurface() {
               </button>
               <button
                 type="button"
+                data-tour-id="tp-ball"
                 style={menuMode === "ball" ? SEG_ITEM_ACTIVE_STYLE : (ballOnPitch ? SEG_ITEM_ACTIVE_STYLE : SEG_ITEM_STYLE)}
                 onClick={() => { setMenuMode("ball"); setBallMenuStep(ballOnPitch ? "existing" : "root"); }}
               >
@@ -2327,6 +2332,7 @@ export default function TacticalPlaySurface() {
               </button>
               <button
                 type="button"
+                data-tour-id="tp-play"
                 style={pauseResumeDisabled ? { ...SEG_ITEM_STYLE, opacity: 0.45 } : SEG_ITEM_STYLE}
                 disabled={pauseResumeDisabled}
                 onClick={onPlayRoutesPress}
@@ -3636,6 +3642,13 @@ export default function TacticalPlaySurface() {
             </span>
           </div>
         ) : null}
+
+        {!isPortrait && (
+          <TacticalPlayTour
+            isPortrait={isPortrait}
+            onOpenControls={handleTourOpenControls}
+          />
+        )}
       </div>
     </OrientationGate>
   );
