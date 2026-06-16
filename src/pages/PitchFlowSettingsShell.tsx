@@ -578,12 +578,16 @@ function PrivacyPolicyView({ onBack }: { onBack: () => void }) {
         <div className="ps-legal-section">
           <h2 className="ps-legal-h2">1. Who We Are</h2>
           <p className="ps-legal-p">
-            PáircVision is a coaching analytics application for Gaelic games, developed and operated
-            by a company registered in Ireland.{" "}
-            <em>Company legal details will be completed before public launch.</em>
+            PáircVision is a coaching platform for Gaelic games, created and operated by{" "}
+            <strong>Seán Kelly</strong>, an independent developer based in Ireland.
           </p>
           <p className="ps-legal-p">
-            For privacy matters, contact us at: <strong>{CONTACT_EMAIL}</strong>
+            In this Privacy Policy, "PáircVision", "we", "us" and "our" refer to Seán Kelly, the
+            developer and operator of the application.
+          </p>
+          <p className="ps-legal-p">
+            If you have any questions about this Privacy Policy or how PáircVision handles
+            information, you can contact us at: <strong>{CONTACT_EMAIL}</strong>
           </p>
         </div>
 
@@ -1062,7 +1066,8 @@ function PrivacyPolicyView({ onBack }: { onBack: () => void }) {
             For any question about this policy: <strong>{CONTACT_EMAIL}</strong>
           </p>
           <p className="ps-legal-p">
-            <em>Company legal details will be completed before public launch.</em>
+            PáircVision is created and operated by Seán Kelly, an independent developer based in
+            Ireland.
           </p>
         </div>
       </div>
@@ -1101,9 +1106,8 @@ function TermsView({ onBack }: { onBack: () => void }) {
         <div className="ps-legal-section">
           <h2 className="ps-legal-h2">2. About PáircVision</h2>
           <p className="ps-legal-p">
-            PáircVision is a coaching analytics application for Gaelic games, developed and
-            operated by a company registered in Ireland.{" "}
-            <em>Company legal details will be completed before public launch.</em>
+            PáircVision is a coaching platform for Gaelic games, created and operated by{" "}
+            <strong>Seán Kelly</strong>, an independent developer based in Ireland.
           </p>
           <p className="ps-legal-p">
             PáircVision is a Progressive Web Application (PWA) that runs entirely within your
@@ -1531,7 +1535,8 @@ function TermsView({ onBack }: { onBack: () => void }) {
             <strong>{CONTACT_EMAIL}</strong>
           </p>
           <p className="ps-legal-p">
-            <em>Company legal details will be completed before public launch.</em>
+            PáircVision is created and operated by Seán Kelly, an independent developer based in
+            Ireland.
           </p>
         </div>
       </div>
