@@ -301,7 +301,7 @@ const PITCH_WATERMARK_STYLE: CSSProperties = {
 const CONTROL_PANEL_STYLE: CSSProperties = {
   position: "fixed",
   left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
-  bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
+  bottom: "max(125px, calc(env(safe-area-inset-bottom, 0px) + 123px))",
   zIndex: 21,
   width: "max-content",
   maxWidth: "min(520px, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
@@ -2427,36 +2427,22 @@ export default function TacticalPlaySurface() {
 
         {isControlsOpen && !modeIsPlaybackLocked ? (
           <div style={CONTROL_PANEL_STYLE}>
-            {/* Row 1: Primary workflow pill — Move | Route | Ball | ▶ Play */}
+            {/* Row 1: Board tools — Draw Route and Ball as fallback utilities (Move hidden; Play lives in strip) */}
             <div style={PANEL_ROW_STYLE}>
+              <span style={SETUP_SECTION_LABEL_STYLE}>Board</span>
               <button
                 type="button"
-                style={menuMode === "move" ? SEG_ITEM_ACTIVE_STYLE : SEG_ITEM_STYLE}
-                onClick={() => setMenuMode("move")}
-              >
-                Move
-              </button>
-              <button
-                type="button"
-                style={menuMode === "route" ? SEG_ITEM_ACTIVE_STYLE : SEG_ITEM_STYLE}
+                style={menuMode === "route" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                 onClick={() => setMenuMode("route")}
               >
-                Route
+                Draw Route
               </button>
               <button
                 type="button"
-                style={menuMode === "ball" ? SEG_ITEM_ACTIVE_STYLE : (ballOnPitch ? SEG_ITEM_ACTIVE_STYLE : SEG_ITEM_STYLE)}
+                style={menuMode === "ball" || ballOnPitch ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                 onClick={() => { setMenuMode("ball"); setBallMenuStep(ballOnPitch ? "existing" : "root"); }}
               >
                 Ball
-              </button>
-              <button
-                type="button"
-                style={pauseResumeDisabled ? { ...SEG_ITEM_STYLE, opacity: 0.45 } : SEG_ITEM_STYLE}
-                disabled={pauseResumeDisabled}
-                onClick={onPlayRoutesPress}
-              >
-                ▶ Play
               </button>
             </div>
 
@@ -2611,7 +2597,7 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
-            {/* Row 3: Always-visible first-class authoring */}
+            {/* Row 3: Always-visible board operations */}
             <div style={PANEL_ROW_STYLE}>
               <button
                 type="button"
@@ -2629,6 +2615,13 @@ export default function TacticalPlaySurface() {
               </button>
               <button
                 type="button"
+                style={unitsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                onClick={() => { setUnitsOpen((prev) => !prev); setMovementsOpen(false); setPassesOpen(false); setIsControlsOpen(false); }}
+              >
+                Group Move
+              </button>
+              <button
+                type="button"
                 style={advancedOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                 onClick={() => setAdvancedOpen((prev) => !prev)}
               >
@@ -2640,16 +2633,9 @@ export default function TacticalPlaySurface() {
               </button>
             </div>
 
-            {/* Row 4: Advanced drawer */}
+            {/* Row 4: Advanced drawer (Group Move promoted to Row 3) */}
             {advancedOpen ? (
               <div style={PANEL_ROW_STYLE}>
-                <button
-                  type="button"
-                  style={unitsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => { setUnitsOpen((prev) => !prev); setMovementsOpen(false); setPassesOpen(false); setIsControlsOpen(false); }}
-                >
-                  Group Move
-                </button>
                 <button
                   type="button"
                   style={sequenceOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
