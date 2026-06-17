@@ -68,6 +68,14 @@ export type TacticalShotEvent = {
   delayMs: number;
 };
 
+export type TacticalPhase = {
+  tokens: MovementBoardToken[];
+  routes: MovementBoardRoute[];
+  ballState: BallState;
+  passEvents: TacticalPassEvent[];
+  shotEvents: TacticalShotEvent[];
+};
+
 export type ZoneShape = "rect" | "circle";
 export type ZoneColor = "yellow" | "red" | "blue" | "green";
 export type ZoneRecord = {

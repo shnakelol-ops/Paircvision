@@ -15,6 +15,7 @@ import type {
   MovementRouteEditState,
   PremiumPlayerTokenColor,
   TacticalPassEvent,
+  TacticalPhase,
   TacticalShotEvent,
   TacticalTrainingItem,
   TacticalTrainingItemType,
@@ -441,6 +442,70 @@ const SEQ_CHIP_STYLE: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
+const PHASE_BAR_STYLE: CSSProperties = {
+  position: "fixed",
+  top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))",
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 22,
+  display: "flex",
+  gap: "3px",
+  alignItems: "center",
+  background: "rgba(6, 12, 26, 0.82)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  border: "1px solid rgba(180, 210, 255, 0.15)",
+  borderRadius: "999px",
+  padding: "0 6px",
+  height: "34px",
+  boxShadow: "0 6px 18px rgba(0, 0, 0, 0.40)",
+};
+
+const PHASE_TAB_STYLE: CSSProperties = {
+  height: "26px",
+  minWidth: "64px",
+  borderRadius: "999px",
+  border: "1px solid transparent",
+  background: "transparent",
+  color: "rgba(180, 210, 255, 0.55)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  padding: "0 12px",
+  cursor: "pointer",
+};
+
+const PHASE_TAB_ACTIVE_STYLE: CSSProperties = {
+  height: "26px",
+  minWidth: "64px",
+  borderRadius: "999px",
+  border: "1px solid rgba(100, 180, 255, 0.40)",
+  background: "rgba(20, 50, 110, 0.80)",
+  color: "rgba(200, 230, 255, 0.95)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  padding: "0 12px",
+  cursor: "default",
+};
+
+const PHASE_ADD_STYLE: CSSProperties = {
+  height: "26px",
+  minWidth: "36px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.18)",
+  background: "rgba(10, 20, 44, 0.70)",
+  color: "rgba(180, 210, 255, 0.60)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 700,
+  letterSpacing: "0.03em",
+  padding: "0 10px",
+  cursor: "pointer",
+  marginLeft: "2px",
+};
 
 const PLAYS_BUBBLE_STYLE: CSSProperties = {
   position: "fixed",
@@ -890,6 +955,8 @@ export default function TacticalPlaySurface() {
   const [zoneShape, setZoneShape] = useState<"rect" | "circle">("rect");
   const [zoneLibraryOpen, setZoneLibraryOpen] = useState<"none" | "football" | "hurling">("none");
   const [zoneLabelDraft, setZoneLabelDraft] = useState("");
+  const [phases, setPhases] = useState<TacticalPhase[]>([]);
+  const [activePhaseIndex, setActivePhaseIndex] = useState(0);
   const [playerSheetId, setPlayerSheetId] = useState<string | null>(null);
   const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
   const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
@@ -1571,28 +1638,110 @@ export default function TacticalPlaySurface() {
     setZones([]);
   };
 
-  const onLoadScenario = (scenario: TacticalScenario) => {
+  const snapshotCurrentPhase = (): TacticalPhase => {
+    const shell = shellRef.current;
+    if (!shell) return { tokens: [], routes: [], ballState: {}, passEvents: [], shotEvents: [] };
+    return {
+      tokens: shell.getTokens(),
+      routes: shell.getRoutes(),
+      ballState: shell.getBallState(),
+      passEvents: shell.getPassEvents(),
+      shotEvents: shell.getShotEvents(),
+    };
+  };
+
+  const applyPhaseToShell = (phase: TacticalPhase) => {
     const shell = shellRef.current;
     if (!shell) return;
-    shell.setTokens(scenario.tokens);
-    shell.setRoutes(scenario.routes);
-    if (scenario.ballState.carrierId) {
-      shell.giveBall(scenario.ballState.carrierId);
-    } else if (scenario.ballState.position) {
-      shell.placeBall(scenario.ballState.ballType ?? "footballSmall", scenario.ballState.position);
+    shell.setTokens(phase.tokens);
+    shell.setRoutes(phase.routes);
+    if (phase.ballState.carrierId) {
+      shell.giveBall(phase.ballState.carrierId);
+    } else if (phase.ballState.position) {
+      shell.placeBall(phase.ballState.ballType ?? "footballSmall", phase.ballState.position);
     } else {
       shell.removeBall();
     }
-    shell.setPassEvents(scenario.passEvents ?? []);
-    setPassEvents(scenario.passEvents ?? []);
+    shell.setPassEvents(phase.passEvents);
+    setPassEvents(phase.passEvents);
     for (const existing of shell.getShotEvents()) {
       shell.removeShotEvent(existing.id);
     }
-    const loadedShots = scenario.shotEvents ?? [];
-    for (const shot of loadedShots) {
+    for (const shot of phase.shotEvents) {
       shell.addShotEvent(shot);
     }
-    setShotEvents(loadedShots);
+    setShotEvents(phase.shotEvents);
+    shell.setStartPositions();
+  };
+
+  const onSwitchPhase = (index: number) => {
+    const shell = shellRef.current;
+    if (!shell || index === activePhaseIndex || phases.length === 0) return;
+    const snapshot = snapshotCurrentPhase();
+    const updatedPhases = phases.map((p, i) => (i === activePhaseIndex ? snapshot : p));
+    setPhases(updatedPhases);
+    setActivePhaseIndex(index);
+    const target = updatedPhases[index];
+    if (target) {
+      setMenuMode("move");
+      setPlayerSheetId(null);
+      applyPhaseToShell(target);
+    }
+  };
+
+  const onAddPhase = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const snapshot = snapshotCurrentPhase();
+    const nextPhase: TacticalPhase = {
+      tokens: snapshot.tokens.map((t) => ({ ...t })),
+      routes: [],
+      ballState: { ...snapshot.ballState },
+      passEvents: [],
+      shotEvents: [],
+    };
+    let updatedPhases: TacticalPhase[];
+    if (phases.length === 0) {
+      updatedPhases = [snapshot, nextPhase];
+    } else {
+      updatedPhases = [...phases.map((p, i) => (i === activePhaseIndex ? snapshot : p)), nextPhase];
+    }
+    const nextIndex = updatedPhases.length - 1;
+    setPhases(updatedPhases);
+    setActivePhaseIndex(nextIndex);
+    setMenuMode("move");
+    setPlayerSheetId(null);
+    applyPhaseToShell(nextPhase);
+  };
+
+  const onLoadScenario = (scenario: TacticalScenario) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const loadedPhases = scenario.phases ?? [];
+    const phase0 = loadedPhases.length > 0 ? loadedPhases[0] : null;
+    const initialTokens = phase0 ? phase0.tokens : scenario.tokens;
+    const initialRoutes = phase0 ? phase0.routes : scenario.routes;
+    const initialBallState = phase0 ? phase0.ballState : scenario.ballState;
+    const initialPassEvents = phase0 ? phase0.passEvents : (scenario.passEvents ?? []);
+    const initialShotEvents = phase0 ? phase0.shotEvents : (scenario.shotEvents ?? []);
+    shell.setTokens(initialTokens);
+    shell.setRoutes(initialRoutes);
+    if (initialBallState.carrierId) {
+      shell.giveBall(initialBallState.carrierId);
+    } else if (initialBallState.position) {
+      shell.placeBall(initialBallState.ballType ?? "footballSmall", initialBallState.position);
+    } else {
+      shell.removeBall();
+    }
+    shell.setPassEvents(initialPassEvents);
+    setPassEvents(initialPassEvents);
+    for (const existing of shell.getShotEvents()) {
+      shell.removeShotEvent(existing.id);
+    }
+    for (const shot of initialShotEvents) {
+      shell.addShotEvent(shot);
+    }
+    setShotEvents(initialShotEvents);
     const speedMultiplier = TP_ENUM_TO_MULTIPLIER[scenario.playbackSpeed ?? "normal"] ?? TP_DEFAULT_SPEED_MULTIPLIER;
     setPlaybackSpeedMultiplier(speedMultiplier);
     shell.setSpeedMultiplier(speedMultiplier);
@@ -1606,11 +1755,13 @@ export default function TacticalPlaySurface() {
     setTrainingItems(loadedItems);
     shell.setSelectedTrainingItemId(null);
     setSelectedTrainingItemId(null);
-    const loadedAwayIds = new Set(scenario.tokens.filter((t) => t.team === "away").map((t) => t.id));
+    const loadedAwayIds = new Set(initialTokens.filter((t) => t.team === "away").map((t) => t.id));
     setAwayTokenIds(loadedAwayIds);
-    const firstAway = scenario.tokens.find((t) => t.team === "away");
+    const firstAway = initialTokens.find((t) => t.team === "away");
     if (firstAway) setAwayColorState(firstAway.color);
     setScenarioRenameId(null);
+    setPhases(loadedPhases);
+    setActivePhaseIndex(0);
   };
 
   const onDeleteScenario = (id: string) => {
@@ -1631,6 +1782,11 @@ export default function TacticalPlaySurface() {
   const onSavePlays = () => {
     const shell = shellRef.current;
     if (!shell) return;
+    let phasesToSave: TacticalPhase[] | undefined;
+    if (phases.length > 0) {
+      const snapshot = snapshotCurrentPhase();
+      phasesToSave = phases.map((p, i) => (i === activePhaseIndex ? snapshot : p));
+    }
     saveScenario(
       playsNameDraft.trim() || "Scenario",
       shell.getTokens(),
@@ -1642,6 +1798,7 @@ export default function TacticalPlaySurface() {
       units,
       shell.getZones(),
       shell.getTrainingItems(),
+      phasesToSave,
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
@@ -1970,6 +2127,28 @@ export default function TacticalPlaySurface() {
 
         <div style={INFO_PILL_STYLE}>{coachInfoLabel}</div>
 
+        {/* Phase indicator bar — top-centre, only visible in multi-phase mode */}
+        {phases.length > 0 ? (
+          <div style={PHASE_BAR_STYLE}>
+            {phases.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                style={i === activePhaseIndex ? PHASE_TAB_ACTIVE_STYLE : PHASE_TAB_STYLE}
+                disabled={modeIsPlaybackLocked}
+                onClick={() => onSwitchPhase(i)}
+              >
+                Phase {i + 1}
+              </button>
+            ))}
+            {!modeIsPlaybackLocked ? (
+              <button type="button" style={PHASE_ADD_STYLE} onClick={onAddPhase}>
+                +
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
         <button
           type="button"
           style={CTRL_BUBBLE_STYLE}
@@ -2274,6 +2453,9 @@ export default function TacticalPlaySurface() {
                 </button>
                 <button type="button" style={TOOL_BUTTON_STYLE} onClick={onAddPlayer}>
                   + Player
+                </button>
+                <button type="button" style={TOOL_BUTTON_STYLE} onClick={onAddPhase}>
+                  + Phase
                 </button>
                 {selectedToken ? (
                   <>
