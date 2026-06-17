@@ -134,7 +134,7 @@ const PITCH_STYLE: CSSProperties = {
   borderRadius: "12px",
   overflow: "hidden",
   boxShadow: "0 50px 110px rgba(0, 0, 0, 0.55), 0 18px 45px rgba(0, 0, 0, 0.35)",
-  background: "#0c1829",
+  background: "#103629",
 };
 
 const INFO_PILL_STYLE: CSSProperties = {
