@@ -427,6 +427,49 @@ const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
   padding: "0 8px",
 };
 
+const EDIT_RUN_PILL_STYLE: CSSProperties = {
+  position: "fixed",
+  bottom: "max(66px, calc(env(safe-area-inset-bottom, 0px) + 64px))",
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 30,
+  display: "flex",
+  gap: "8px",
+  alignItems: "center",
+  background: "rgba(4, 10, 24, 0.92)",
+  border: "1px solid rgba(74, 222, 128, 0.40)",
+  borderRadius: "20px",
+  padding: "0 4px 0 12px",
+  height: "34px",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.60)",
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const EDIT_RUN_LABEL_STYLE: CSSProperties = {
+  fontSize: "10px",
+  fontWeight: 600,
+  letterSpacing: "0.05em",
+  color: "rgba(180, 255, 160, 0.85)",
+  userSelect: "none",
+  whiteSpace: "nowrap",
+};
+
+const EDIT_RUN_DONE_STYLE: CSSProperties = {
+  height: "26px",
+  borderRadius: "16px",
+  border: "1px solid rgba(74, 222, 128, 0.50)",
+  background: "rgba(16, 48, 30, 0.90)",
+  color: "rgba(160, 255, 140, 0.95)",
+  fontSize: "9px",
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  padding: "0 12px",
+  cursor: "pointer",
+};
+
 const HINT_PILL_STYLE: CSSProperties = {
   position: "fixed",
   bottom: "max(54px, calc(env(safe-area-inset-bottom, 0px) + 52px))",
@@ -971,6 +1014,9 @@ export default function TacticalPlaySurface() {
   const [zoneLabelDraft, setZoneLabelDraft] = useState("");
   const [playerSheetId, setPlayerSheetId] = useState<string | null>(null);
   const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
+  const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
+  const editRunPlayerIdRef = useRef<string | null>(null);
+  const pendingTokenUnlockRef = useRef(false);
   const {
     recordPhase, setRecordPhase,
     recordCountdown,
@@ -1106,10 +1152,22 @@ export default function TacticalPlaySurface() {
           setSelectedTrainingItemId(id);
         },
         onTokenTap: (tokenId) => {
+          if (editRunPlayerIdRef.current !== null) {
+            editRunPlayerIdRef.current = null;
+            setEditRunPlayerId(null);
+            const sh = shellRef.current;
+            if (sh) sh.setTokens(sh.getTokens().map((t) => ({ ...t, draggable: undefined })));
+          }
           setMenuMode("move");
           setPlayerSheetId(tokenId);
         },
         onPitchTap: (_payload) => {
+          if (editRunPlayerIdRef.current !== null) {
+            editRunPlayerIdRef.current = null;
+            setEditRunPlayerId(null);
+            const sh = shellRef.current;
+            if (sh) sh.setTokens(sh.getTokens().map((t) => ({ ...t, draggable: undefined })));
+          }
           setMenuMode("move");
           setPlayerSheetId(null);
         },
@@ -1212,8 +1270,25 @@ export default function TacticalPlaySurface() {
       setZonesOpen(false);
       setZoneLibraryOpen("none");
       setPlayerSheetId(null);
+      // Guard: if playback starts while edit run is still active (shouldn't happen via normal
+      // paths since onPauseResumePress/onPlayRoutesPress call exitEditRun first), clear pill
+      // and defer token unlock until after playback ends (setTokens would stop the orchestrator).
+      if (editRunPlayerIdRef.current !== null) {
+        editRunPlayerIdRef.current = null;
+        setEditRunPlayerId(null);
+        pendingTokenUnlockRef.current = true;
+      }
     }
   }, [isPlaying]);
+
+  // Restore token draggable flags deferred from the isPlaying guard above.
+  useEffect(() => {
+    if (!isPlaying && !isPaused && pendingTokenUnlockRef.current) {
+      pendingTokenUnlockRef.current = false;
+      const shell = shellRef.current;
+      if (shell) shell.setTokens(shell.getTokens().map((t) => ({ ...t, draggable: undefined })));
+    }
+  }, [isPlaying, isPaused]);
 
   useEffect(() => {
     if (!isControlsOpen) {
@@ -1283,9 +1358,31 @@ export default function TacticalPlaySurface() {
         ? `Ball on Pitch · Moves ${routeCount}`
         : `${modeLabelByMenu[menuMode]} · Moves ${routeCount}`;
 
+  const enterEditRun = (playerId: string) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    editRunPlayerIdRef.current = playerId;
+    setEditRunPlayerId(playerId);
+    shell.setTokens(
+      shell.getTokens().map((t) => ({ ...t, draggable: t.id === playerId ? undefined : false })),
+    );
+    shell.setSelectedToken(playerId);
+    setMenuMode("route");
+  };
+
+  const exitEditRun = () => {
+    if (editRunPlayerIdRef.current === null) return;
+    editRunPlayerIdRef.current = null;
+    setEditRunPlayerId(null);
+    const shell = shellRef.current;
+    if (!shell) return;
+    shell.setTokens(shell.getTokens().map((t) => ({ ...t, draggable: undefined })));
+  };
+
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
     if (!shell) return;
+    exitEditRun();
     setIsControlsOpen(false);
     shell.playAll();
     setMenuMode("play");
@@ -1302,6 +1399,7 @@ export default function TacticalPlaySurface() {
       shell.resumePlayback();
       return;
     }
+    exitEditRun();
     shell.playAll();
   };
 
@@ -1318,6 +1416,7 @@ export default function TacticalPlaySurface() {
       return;
     }
     if (!isPlaying) {
+      exitEditRun();
       shell.playAll();
     }
   };
@@ -1338,6 +1437,8 @@ export default function TacticalPlaySurface() {
   };
 
   const resetPlaybackState = () => {
+    exitEditRun();
+    setMenuMode("move");
     shellRef.current?.reset();
   };
 
@@ -2259,8 +2360,27 @@ export default function TacticalPlaySurface() {
           );
         })() : null}
 
-        {!isControlsOpen && !setupOpen && !isPlaying && !isPaused ? (
+        {!isControlsOpen && !setupOpen && !isPlaying && !isPaused && editRunPlayerId === null ? (
           <div style={HINT_PILL_STYLE}>Move players → Set Start → Draw Movements → Play</div>
+        ) : null}
+
+        {/* Done Editing pill — shown while Edit Run isolated mode is active */}
+        {editRunPlayerId !== null && !isPlaying && !isPaused ? (
+          <div style={EDIT_RUN_PILL_STYLE}>
+            <span style={EDIT_RUN_LABEL_STYLE}>
+              Editing P{tokenNumberById[editRunPlayerId] ?? ""}
+            </span>
+            <button
+              type="button"
+              style={EDIT_RUN_DONE_STYLE}
+              onClick={() => {
+                exitEditRun();
+                setMenuMode("move");
+              }}
+            >
+              Done
+            </button>
+          </div>
         ) : null}
 
         {sequenceOpen && !isControlsOpen && sortedItems.length > 0 ? (
@@ -3717,8 +3837,7 @@ export default function TacticalPlaySurface() {
                 setPlayerSheetId(null);
               }}
               onEditRun={() => {
-                shellRef.current?.setSelectedToken(playerSheetId);
-                setMenuMode("route");
+                enterEditRun(playerSheetId);
                 setPlayerSheetId(null);
               }}
               onResetRun={() => {
