@@ -3373,14 +3373,14 @@ export default function TacticalPlaySurface() {
               setPassesOpen(false);
             }}
           >
-            Scenarios
+            Share
           </button>
         ) : null}
 
         {playsOpen && !playbackFloatingVisible ? (
           <div style={playsPanelStyle}>
             <div style={MP_HEADER_STYLE}>
-              <span style={MP_TITLE_STYLE}>Saved Scenarios</span>
+              <span style={MP_TITLE_STYLE}>Share &amp; Save</span>
               <button type="button" style={MP_CLOSE_STYLE} onClick={() => { setPlaysOpen(false); setScenarioRenameId(null); }}>
                 ×
               </button>
@@ -3391,7 +3391,7 @@ export default function TacticalPlaySurface() {
               <input
                 style={PLAYS_INPUT_STYLE}
                 type="text"
-                placeholder="Scenario name…"
+                placeholder="Play name…"
                 value={playsNameDraft}
                 maxLength={40}
                 onChange={(e) => setPlaysNameDraft(e.target.value)}
@@ -3405,7 +3405,7 @@ export default function TacticalPlaySurface() {
             {scenarios.length > 0 ? (
               <>
                 <div style={{ height: "1px", background: "rgba(180, 210, 255, 0.08)", margin: "2px 0" }} />
-                <span style={{ ...MP_TITLE_STYLE, paddingLeft: "2px" }}>Load a scenario</span>
+                <span style={{ ...MP_TITLE_STYLE, paddingLeft: "2px" }}>Load Play</span>
                 {scenarios.map((s) => (
                   <div key={s.id} style={{ display: "grid", gap: "3px" }}>
                     <div style={PLAYS_ROW_STYLE}>
@@ -3481,7 +3481,7 @@ export default function TacticalPlaySurface() {
               </>
             ) : (
               <span style={{ fontSize: "10px", color: "rgba(180, 210, 255, 0.38)", fontFamily: "Inter, system-ui, sans-serif", padding: "4px 2px" }}>
-                No saved scenarios yet. Build a scenario and tap Save.
+                No saved plays yet. Build a play and tap Save.
               </span>
             )}
 
