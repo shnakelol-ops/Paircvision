@@ -319,7 +319,17 @@ const REVIEW_FILTER_KINDS: Record<
   WIDES: ["WIDE"],
   TURNOVERS: ["TURNOVER_WON", "TURNOVER_LOST"],
   KICKOUTS: ["KICKOUT_WON", "KICKOUT_CONCEDED"],
-  FREES: ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"],
+  FREES: [
+    "FREE_WON",
+    "FREE_CONCEDED",
+    "FREE_SCORED",
+    "FREE_MISSED",
+    "GOAL",
+    "POINT",
+    "TWO_POINTER",
+    "FORTY_FIVE_TWO_POINT",
+    "WIDE",
+  ],
 };
 const MATCH_EVENT_KIND_SET = new Set<MatchEventKind>(MATCH_EVENT_KINDS);
 const KICKOUT_EVENT_KIND_SET = new Set<MatchEventKind>(["KICKOUT_WON", "KICKOUT_CONCEDED"]);
@@ -1306,7 +1316,7 @@ function computeTeamScore(events: readonly MatchEvent[], team: TeamSide): TeamSc
       goals += 1;
       continue;
     }
-    if (event.kind === "POINT") {
+    if (event.kind === "POINT" || event.kind === "FREE_SCORED") {
       points += 1;
       continue;
     }

@@ -119,8 +119,27 @@ const PDF_KIND_SETS: Record<Exclude<PdfCategory, "ALL">, ReadonlySet<MatchEventK
   ]),
   TURNOVERS: new Set<MatchEventKind>(["TURNOVER_WON", "TURNOVER_LOST"]),
   KICKOUTS:  new Set<MatchEventKind>(["KICKOUT_WON", "KICKOUT_CONCEDED"]),
-  FREES:     new Set<MatchEventKind>(["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"]),
+  FREES:     new Set<MatchEventKind>([
+    "FREE_WON",
+    "FREE_CONCEDED",
+    "FREE_SCORED",
+    "FREE_MISSED",
+    "GOAL",
+    "POINT",
+    "TWO_POINTER",
+    "FORTY_FIVE_TWO_POINT",
+    "WIDE",
+  ]),
 };
+
+function isFreeRelatedPdfEvent(event: PdfExportEvent): boolean {
+  return (
+    event.kind === "FREE_WON" ||
+    event.kind === "FREE_CONCEDED" ||
+    isFreeScore(event) ||
+    isFreeMiss(event)
+  );
+}
 
 // ─── Tactical side helper ─────────────────────────────────────────────────────
 
@@ -193,6 +212,7 @@ function selectPdfEvents(
     if (event.period !== periodTarget) return false;
     // Kind filter
     if (kindSet !== null && !kindSet.has(event.kind)) return false;
+    if (category === "FREES" && !isFreeRelatedPdfEvent(event)) return false;
     // Tactical side filter — groups by who BENEFITED, not raw event ownership
     if (teamSide !== "ALL" && tacticalSide(event) !== teamSide) return false;
     return true;
@@ -6435,10 +6455,10 @@ function makeFreeAnalysisPage(
 
   // ── Event subsets ─────────────────────────────────────────────────────────
   const forFreeEvts = events.filter(
-    (e) => PDF_KIND_SETS.FREES.has(e.kind) && tacticalSide(e) === "FOR",
+    (e) => isFreeRelatedPdfEvent(e) && tacticalSide(e) === "FOR",
   );
   const oppFreeEvts = events.filter(
-    (e) => PDF_KIND_SETS.FREES.has(e.kind) && tacticalSide(e) === "OPP",
+    (e) => isFreeRelatedPdfEvent(e) && tacticalSide(e) === "OPP",
   );
 
   // ── Derived stats (hoisted before pitches for callout bullets) ───────────
@@ -6447,10 +6467,10 @@ function makeFreeAnalysisPage(
 
   const forFreesWon     = countKinds(forEvts, "FREE_WON")      + countKinds(oppEvts, "FREE_CONCEDED");
   const oppFreesWon     = countKinds(oppEvts, "FREE_WON")      + countKinds(forEvts, "FREE_CONCEDED");
-  const forFreeScored   = countKinds(forEvts, "FREE_SCORED");
-  const forFreeMissed   = countKinds(forEvts, "FREE_MISSED");
-  const oppFreeScored   = countKinds(oppEvts, "FREE_SCORED");
-  const oppFreeMissed   = countKinds(oppEvts, "FREE_MISSED");
+  const forFreeScored   = forEvts.filter((e) => isFreeScore(e)).length;
+  const forFreeMissed   = forEvts.filter((e) => isFreeMiss(e)).length;
+  const oppFreeScored   = oppEvts.filter((e) => isFreeScore(e)).length;
+  const oppFreeMissed   = oppEvts.filter((e) => isFreeMiss(e)).length;
 
   const forFreeAttempts = forFreeScored + forFreeMissed;
   const oppFreeAttempts = oppFreeScored + oppFreeMissed;

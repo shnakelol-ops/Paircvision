@@ -80,7 +80,7 @@ function buildReviewGroups(includeTwoPointer: boolean) {
     SHOTS: { label: "SHOTS", kinds: ["SHOT"] },
     TURNOVERS: { label: "TURNOVERS", kinds: ["TURNOVER_WON", "TURNOVER_LOST"] },
     KICKOUTS: { label: "KICKOUTS", kinds: ["KICKOUT_WON", "KICKOUT_CONCEDED"] },
-    FREES: { label: "FREES", kinds: ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"] },
+    FREES: { label: "FREES", kinds: ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED", "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "WIDE"] },
   } as const satisfies Record<string, { label: string; kinds: ReadonlyArray<MatchEventKind> }>;
 }
 
@@ -157,4 +157,3 @@ export const gaaModeConfig = {
 } as const satisfies Record<string, GaaModeDefinition>;
 
 export type GaaModeKey = keyof typeof gaaModeConfig;
-
