@@ -54,6 +54,10 @@ export function routeStyleForToken(token: MovementBoardToken | null): RouteColor
     red: 8,
     yellow: 42,
     black: 240,
+    green: 132,
+    orange: 24,
+    purple: 268,
+    white: 200,
   };
   const hueOffset = (token.number * 23) % 38;
   const coreHue = hueBaseByColor[token.color] + hueOffset;

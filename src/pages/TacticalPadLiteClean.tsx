@@ -1989,8 +1989,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (IS_DIAG_PREVIEW) setSlateClipDiag({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
   }, [slateRecordBlobUrl]);
 
-  const [slateClipVideoReady, setSlateClipVideoReady] = useState(false);
-  const [slateClipBlankWarning, setSlateClipBlankWarning] = useState(false);
+  const [, setSlateClipVideoReady] = useState(false);
+  const [, setSlateClipBlankWarning] = useState(false);
   const slateClipBlankTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     setSlateClipVideoReady(false);
@@ -3385,20 +3385,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       }
       return next;
     });
-  };
-
-  const addTacticalPlayer = (team: "BLUE" | "RED") => {
-    if (isPortraitViewingMode) return;
-    surfaceRef.current?.addTacticalPlayer(team);
-    setKitEditorState(null);
-    syncTeamCounts();
-  };
-
-  const removeTacticalPlayer = (team: "BLUE" | "RED") => {
-    if (isPortraitViewingMode) return;
-    surfaceRef.current?.removeTacticalPlayer(team);
-    setKitEditorState(null);
-    syncTeamCounts();
   };
 
   const applyTeamNumbers = (team: "BLUE" | "RED", numbers: Set<number>) => {

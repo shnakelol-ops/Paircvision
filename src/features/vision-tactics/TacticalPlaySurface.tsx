@@ -12,7 +12,6 @@ import type {
   MovementBoardToken,
   MovementCanvasShellHandle,
   MovementConcept,
-  MovementPlaybackSpeed,
   MovementRouteEditState,
   PremiumPlayerTokenColor,
   TacticalPassEvent,
@@ -246,44 +245,6 @@ const SETUP_SECTION_LABEL_STYLE: CSSProperties = {
   userSelect: "none",
 };
 
-const PV_BADGE_STYLE: CSSProperties = {
-  position: "fixed",
-  left: "max(12px, calc(env(safe-area-inset-left, 0px) + 10px))",
-  bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
-  zIndex: 21,
-  height: "22px",
-  minWidth: "32px",
-  borderRadius: "999px",
-  border: "1px solid rgba(180, 210, 255, 0.16)",
-  background: "rgba(6, 14, 30, 0.58)",
-  color: "rgba(220, 235, 255, 0.88)",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "9px",
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: "0 8px",
-  backdropFilter: "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-};
-
-const PV_WATERMARK_STYLE: CSSProperties = {
-  position: "fixed",
-  right: "max(14px, calc(env(safe-area-inset-right, 0px) + 12px))",
-  bottom: "max(14px, calc(env(safe-area-inset-bottom, 0px) + 12px))",
-  zIndex: 20,
-  color: "rgba(180, 210, 255, 0.28)",
-  fontSize: "9px",
-  fontWeight: 600,
-  letterSpacing: "0.06em",
-  fontFamily: "Inter, system-ui, sans-serif",
-  pointerEvents: "none",
-  userSelect: "none",
-};
-
 const PITCH_WATERMARK_STYLE: CSSProperties = {
   position: "absolute",
   bottom: "14px",
@@ -325,51 +286,6 @@ const PANEL_ROW_STYLE: CSSProperties = {
   overflowX: "auto",
   scrollbarWidth: "none",
   msOverflowStyle: "none",
-};
-
-const MODE_BUTTON_STYLE: CSSProperties = {
-  minWidth: "52px",
-  height: "28px",
-  borderRadius: "999px",
-  border: "1px solid rgba(180, 210, 255, 0.18)",
-  background: "rgba(8, 18, 38, 0.72)",
-  color: "rgba(220, 235, 255, 0.88)",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "9px",
-  fontWeight: 640,
-  letterSpacing: "0.12px",
-  textTransform: "uppercase",
-  padding: "0 9px",
-  cursor: "pointer",
-  whiteSpace: "nowrap",
-  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.10)",
-};
-
-const MODE_BUTTON_ACTIVE_STYLE: CSSProperties = {
-  ...MODE_BUTTON_STYLE,
-  border: "1px solid rgba(124, 255, 114, 0.56)",
-  background: "linear-gradient(180deg, rgba(34, 112, 66, 0.82) 0%, rgba(14, 42, 27, 0.94) 100%)",
-  color: "#f4fff6",
-  boxShadow: "0 0 0 1px rgba(124, 255, 114, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
-};
-
-const SEG_ITEM_STYLE: CSSProperties = {
-  ...MODE_BUTTON_STYLE,
-  flex: "1",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-const SEG_ITEM_ACTIVE_STYLE: CSSProperties = {
-  ...MODE_BUTTON_STYLE,
-  flex: "1",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  border: "1px solid rgba(124, 255, 114, 0.56)",
-  background: "linear-gradient(180deg, rgba(34, 112, 66, 0.82) 0%, rgba(14, 42, 27, 0.94) 100%)",
-  color: "#f4fff6",
-  boxShadow: "0 0 0 1px rgba(124, 255, 114, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
 };
 
 const TOOL_BUTTON_STYLE: CSSProperties = {
@@ -495,17 +411,6 @@ const TOKEN_COLOR_BG: Record<PremiumPlayerTokenColor, string> = {
   orange: "rgba(234, 88, 12, 0.78)",
   purple: "rgba(124, 58, 237, 0.78)",
   white:  "rgba(241, 245, 249, 0.88)",
-};
-
-const TOKEN_COLOR_BORDER: Record<PremiumPlayerTokenColor, string> = {
-  blue:   "rgba(147, 197, 253, 0.60)",
-  red:    "rgba(252, 165, 165, 0.60)",
-  yellow: "rgba(253, 224, 71, 0.60)",
-  black:  "rgba(107, 114, 128, 0.40)",
-  green:  "rgba(74, 222, 128, 0.60)",
-  orange: "rgba(251, 146, 60, 0.60)",
-  purple: "rgba(167, 139, 250, 0.60)",
-  white:  "rgba(203, 213, 225, 0.60)",
 };
 
 const SEQ_PANEL_STYLE: CSSProperties = {
@@ -670,20 +575,6 @@ const DIAG_NS: Record<number, string> = {
   0: "EMPTY", 1: "IDLE", 2: "LOADING", 3: "LOADED_META", 4: "LOADED_DATA",
 };
 
-const RECORD_DOT_STYLE: CSSProperties = {
-  position: "fixed",
-  top: "max(14px, calc(env(safe-area-inset-top, 0px) + 12px))",
-  right: "max(14px, calc(env(safe-area-inset-right, 0px) + 12px))",
-  zIndex: 25,
-  width: "10px",
-  height: "10px",
-  borderRadius: "50%",
-  background: "#ff3030",
-  boxShadow: "0 0 8px 2px rgba(255, 48, 48, 0.70)",
-  pointerEvents: "none",
-  animation: "tp-rec-pulse 1.1s ease-in-out infinite",
-};
-
 const MOVEMENT_PANEL_STYLE: CSSProperties = {
   position: "fixed",
   left: "50%",
@@ -834,19 +725,6 @@ const CONCEPT_LABELS: Record<MovementConcept, string> = {
   "custom": "Custom Run",
 };
 
-const CONCEPT_OPTIONS: Array<{ id: MovementConcept | null; label: string }> = [
-  { id: null, label: "—" },
-  { id: "support-run", label: "Support" },
-  { id: "overlap", label: "Overlap" },
-  { id: "shadow-run", label: "Decoy" },
-  { id: "rotation", label: "Rotation" },
-  { id: "custom", label: "Custom" },
-];
-
-const DELAY_PRESETS_MS = [0, 1000, 2000, 3000, 4000];
-
-const TOKEN_COLOR_IS_LIGHT = new Set<PremiumPlayerTokenColor>(["yellow", "white"]);
-
 const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
   "blue", "red", "green", "yellow", "orange", "purple", "black", "white",
 ];
@@ -973,7 +851,7 @@ export default function TacticalPlaySurface() {
   const [playersOpen, setPlayersOpen] = useState(false);
   const [activeSetupSport, setActiveSetupSport] = useState<SetupSport>("football");
   const [activeSetupSituation, setActiveSetupSituation] = useState<TacticalTemplateSituation | null>(null);
-  const [tokenSize, setTokenSizeState] = useState<TokenSize>("medium");
+  const [, setTokenSizeState] = useState<TokenSize>("medium");
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("pixi");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
   const [awayColor, setAwayColorState] = useState<PremiumPlayerTokenColor>("red");
@@ -1047,8 +925,8 @@ export default function TacticalPlaySurface() {
     if (IS_DIAG_PREVIEW) setClipDiag({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
   }, [recordBlobUrl]);
 
-  const [clipVideoReady, setClipVideoReady] = useState(false);
-  const [clipBlankWarning, setClipBlankWarning] = useState(false);
+  const [, setClipVideoReady] = useState(false);
+  const [, setClipBlankWarning] = useState(false);
   const clipBlankTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     setClipVideoReady(false);
@@ -1366,15 +1244,6 @@ export default function TacticalPlaySurface() {
     setEditRunPlayerId(null);
   };
 
-  const onPlayRoutesPress = () => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    exitEditRun();
-    setIsControlsOpen(false);
-    shell.playAll();
-    setMenuMode("play");
-  };
-
   const onPauseResumePress = () => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -1388,24 +1257,6 @@ export default function TacticalPlaySurface() {
     }
     exitEditRun();
     shell.playAll();
-  };
-
-  const onPausePress = () => {
-    if (!isPlaying) return;
-    shellRef.current?.pausePlayback();
-  };
-
-  const onPlayResumePress = () => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    if (isPaused) {
-      shell.resumePlayback();
-      return;
-    }
-    if (!isPlaying) {
-      exitEditRun();
-      shell.playAll();
-    }
   };
 
   const cycleSelectedEntity = (direction: "prev" | "next") => {
@@ -1462,14 +1313,6 @@ export default function TacticalPlaySurface() {
     shell.giveBall(token.id);
   };
 
-  const onBallButtonPress = () => {
-    if (ballOnPitch) {
-      setBallMenuStep((prev) => (prev === "existing" ? null : "existing"));
-    } else {
-      setBallMenuStep((prev) => (prev === null ? "root" : null));
-    }
-  };
-
   const onSetupPress = () => {
     setIsControlsOpen(false);
     setSetupOpen((prev) => !prev);
@@ -1486,11 +1329,6 @@ export default function TacticalPlaySurface() {
     const currentBall = shell.getBallState();
     if (currentBall.carrierId || currentBall.position) return;
     shell.placeBall(SETUP_BALL_BY_SPORT[sport]);
-  };
-
-  const onSetTokenSize = (size: TokenSize) => {
-    shellRef.current?.setTokenSize(size);
-    setTokenSizeState(size);
   };
 
   const onSetTokenRenderer = (name: TokenRendererName) => {
@@ -2061,10 +1899,7 @@ export default function TacticalPlaySurface() {
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
-  const removePointDisabled = menuMode !== "route" || !routeEditState.canRemoveSelectedWaypoint || isPlaying;
   const clearAllDisabled = isPlaying || (routes.length === 0 && passEvents.length === 0 && shotEvents.length === 0);
-  const playRoutesDisabled = isPortrait || isPlaying || isPaused;
-  const pauseResumeDisabled = isPortrait;
   const playbackFloatingVisible = isPlaying || isPaused;
   const tokenIds = Object.keys(tokenNumberById);
   const homePlayerCount = tokenIds.filter((id) => !awayTokenIds.has(id)).length;
@@ -2073,28 +1908,6 @@ export default function TacticalPlaySurface() {
   const speedIndex = Math.max(0, TP_SPEED_OPTIONS.findIndex((o) => o.multiplier === playbackSpeedMultiplier));
   const speedLabel = TP_SPEED_OPTIONS[speedIndex]?.label ?? "1×";
   const speedFillPct = (speedIndex / Math.max(1, TP_SPEED_OPTIONS.length - 1)) * 100;
-  const SpeedBar = (
-    <div style={TP_SPEED_BAR_STYLE}>
-      <span style={TP_SPEED_LABEL_STYLE}>SPD</span>
-      <input
-        type="range"
-        className="tp-speed-range"
-        min={0}
-        max={TP_SPEED_OPTIONS.length - 1}
-        step={1}
-        value={speedIndex}
-        aria-label="Playback speed"
-        style={{ width: "100%", minWidth: 0, "--tp-speed-track": `linear-gradient(90deg, rgba(34,197,94,0.95) 0%, rgba(34,197,94,0.95) ${speedFillPct}%, rgba(200,230,255,0.35) ${speedFillPct}%, rgba(200,230,255,0.35) 100%)` } as CSSProperties}
-        onChange={(e) => {
-          const idx = Math.max(0, Math.min(TP_SPEED_OPTIONS.length - 1, Number.parseInt(e.target.value, 10)));
-          const next = TP_SPEED_OPTIONS[idx]?.multiplier;
-          if (next != null) setPlaybackSpeedMultiplier(next);
-        }}
-      />
-      <span style={TP_SPEED_VALUE_STYLE}>{speedLabel}</span>
-    </div>
-  );
-
   const SpeedBarCompact = (
     <div style={{ ...TP_SPEED_BAR_STYLE, width: "84px", padding: "0 6px" }}>
       <span style={TP_SPEED_LABEL_STYLE}>SPD</span>
