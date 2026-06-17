@@ -43,6 +43,7 @@ const POSITION_EPSILON = 0.0001;
 const ROUTE_HANDLE_TOUCH_RADIUS_PX = 30;
 const ROUTE_INSERT_TOUCH_DISTANCE_PX = 24;
 const TAP_MOVE_THRESHOLD_PX = 6;
+const LONG_PRESS_MS = 420;
 
 type DragState = {
   tokenId: string;
@@ -190,6 +191,8 @@ export async function createMovementCanvasShell(
   let activeRouteHandleDrag: RouteHandleDragState = null;
   let routeDraft: RouteDraftState = null;
   let tokenTapStart: { tokenId: string; x: number; y: number } | null = null;
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let longPressTriggered = false;
   let routeByTokenId = new Map<string, NormalizedPoint[]>();
   let routeMetaByTokenId = new Map<string, RouteMetadata>();
   let startPositionByTokenId = new Map<string, NormalizedPoint>();
@@ -480,6 +483,7 @@ export async function createMovementCanvasShell(
   };
 
   const releaseDrag = () => {
+    if (longPressTimer !== null) { clearTimeout(longPressTimer); longPressTimer = null; }
     activeDrag = null;
     tokenTapStart = null;
     tokenLayer.setDraggingToken(null);
@@ -657,6 +661,8 @@ export async function createMovementCanvasShell(
     orchestrator.stop();
     activeBallPass = null;
     deferredPasses = [];
+    if (longPressTimer !== null) { clearTimeout(longPressTimer); longPressTimer = null; }
+    longPressTriggered = false;
     clearRouteDraft();
     releaseDrag();
     releaseRouteHandleDrag();
@@ -680,6 +686,16 @@ export async function createMovementCanvasShell(
     setSelectedToken(tokenId);
     const tapStagePoint = getStagePointFromEvent(event, app.stage);
     tokenTapStart = tapStagePoint ? { tokenId, x: tapStagePoint.x, y: tapStagePoint.y } : null;
+    longPressTriggered = false;
+    if (longPressTimer !== null) { clearTimeout(longPressTimer); longPressTimer = null; }
+    if (options.onTokenLongPress && !isPlaybackLocked()) {
+      longPressTimer = setTimeout(() => {
+        longPressTimer = null;
+        longPressTriggered = true;
+        tokenTapStart = null;
+        options.onTokenLongPress!(tokenId);
+      }, LONG_PRESS_MS);
+    }
     if (!canDragTokens()) return;
     const token = tokenLayer.getTokenById(tokenId);
     if (!token || token.draggable === false) return;
@@ -778,6 +794,17 @@ export async function createMovementCanvasShell(
   };
 
   const handleStagePointerMove = (event: unknown) => {
+    // Cancel long-press if the finger has moved beyond the tap threshold.
+    if (longPressTimer !== null && tokenTapStart) {
+      const movePoint = getStagePointFromEvent(event, app.stage);
+      if (movePoint) {
+        const moved = Math.hypot(movePoint.x - tokenTapStart.x, movePoint.y - tokenTapStart.y);
+        if (moved >= TAP_MOVE_THRESHOLD_PX) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }
+    }
     if (activeDrag) {
       handleDragMove(event);
       return;
@@ -792,6 +819,8 @@ export async function createMovementCanvasShell(
   };
 
   const handlePointerRelease = (event: unknown) => {
+    if (longPressTimer !== null) { clearTimeout(longPressTimer); longPressTimer = null; }
+    if (longPressTriggered) { longPressTriggered = false; tokenTapStart = null; return; }
     if (tokenTapStart && (mode === "setup" || mode === "route") && !isPlaybackLocked()) {
       const endPoint = getStagePointFromEvent(event, app.stage);
       const moved = endPoint

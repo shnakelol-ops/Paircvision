@@ -128,6 +128,7 @@ export type MovementCanvasShellOptions = {
   onTrainingItemsChange?: (items: TacticalTrainingItem[]) => void;
   onTrainingItemSelectionChange?: (id: string | null) => void;
   onTokenTap?: (tokenId: string) => void;
+  onTokenLongPress?: (tokenId: string) => void;
 };
 
 export type MovementCanvasShellHandle = {

@@ -23,6 +23,7 @@ type PlayerActionSheetProps = {
   onSetRunDelay: (delayMs: number) => void;
   onSetRunTrigger: (triggeredById: string | null) => void;
   onAddPass: (toId: string, delayMs: number) => void;
+  onAddShot: (delayMs: number) => void;
   sport: "football" | "hurling";
   onEditRun: () => void;
   onResetRun: () => void;
@@ -33,6 +34,8 @@ type PlayerActionSheetProps = {
 };
 
 type ExpandedSection = "run-timing" | "pass" | "ball" | null;
+
+const SHOOT_SENTINEL = "__shoot__";
 
 const DELAY_OPTIONS = [
   { ms: 0,    label: "Now"  },
@@ -224,6 +227,7 @@ export default function PlayerActionSheet({
   onSetRunDelay,
   onSetRunTrigger,
   onAddPass,
+  onAddShot,
   sport,
   onEditRun,
   onResetRun,
@@ -441,6 +445,13 @@ export default function PlayerActionSheet({
                     P{num}
                   </button>
                 ))}
+              <button
+                type="button"
+                style={passToId === SHOOT_SENTINEL ? CHIP_ACTIVE : CHIP}
+                onClick={() => setPassToId((prev) => (prev === SHOOT_SENTINEL ? null : SHOOT_SENTINEL))}
+              >
+                Shoot
+              </button>
             </div>
             {passToId && (
               <div style={CHIP_ROW}>
@@ -459,13 +470,17 @@ export default function PlayerActionSheet({
                   type="button"
                   style={CONFIRM_BTN}
                   onClick={() => {
-                    onAddPass(passToId, passDelayMs);
+                    if (passToId === SHOOT_SENTINEL) {
+                      onAddShot(passDelayMs);
+                    } else {
+                      onAddPass(passToId, passDelayMs);
+                    }
                     setPassToId(null);
                     setPassDelayMs(0);
                     setExpanded(null);
                   }}
                 >
-                  Add Pass
+                  {passToId === SHOOT_SENTINEL ? "Add Shoot" : "Add Pass"}
                 </button>
               </div>
             )}

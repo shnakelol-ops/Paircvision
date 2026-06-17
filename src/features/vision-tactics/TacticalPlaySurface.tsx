@@ -1016,7 +1016,6 @@ export default function TacticalPlaySurface() {
   const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
   const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
   const editRunPlayerIdRef = useRef<string | null>(null);
-  const pendingTokenUnlockRef = useRef(false);
   const {
     recordPhase, setRecordPhase,
     recordCountdown,
@@ -1151,22 +1150,26 @@ export default function TacticalPlaySurface() {
         onTrainingItemSelectionChange: (id) => {
           setSelectedTrainingItemId(id);
         },
-        onTokenTap: (tokenId) => {
+        onTokenTap: (_tokenId) => {
+          // Short tap = normal board interaction. Close sheet if open; do not open a new one.
+          setPlayerSheetId(null);
+          sheetDrawRunPlayerIdRef.current = null;
+        },
+        onTokenLongPress: (tokenId) => {
+          // Long press = open/switch PlayerActionSheet.
+          sheetDrawRunPlayerIdRef.current = null;
           if (editRunPlayerIdRef.current !== null) {
             editRunPlayerIdRef.current = null;
             setEditRunPlayerId(null);
-            const sh = shellRef.current;
-            if (sh) sh.setTokens(sh.getTokens().map((t) => ({ ...t, draggable: undefined })));
           }
           setMenuMode("move");
           setPlayerSheetId(tokenId);
         },
         onPitchTap: (_payload) => {
+          sheetDrawRunPlayerIdRef.current = null;
           if (editRunPlayerIdRef.current !== null) {
             editRunPlayerIdRef.current = null;
             setEditRunPlayerId(null);
-            const sh = shellRef.current;
-            if (sh) sh.setTokens(sh.getTokens().map((t) => ({ ...t, draggable: undefined })));
           }
           setMenuMode("move");
           setPlayerSheetId(null);
@@ -1270,25 +1273,13 @@ export default function TacticalPlaySurface() {
       setZonesOpen(false);
       setZoneLibraryOpen("none");
       setPlayerSheetId(null);
-      // Guard: if playback starts while edit run is still active (shouldn't happen via normal
-      // paths since onPauseResumePress/onPlayRoutesPress call exitEditRun first), clear pill
-      // and defer token unlock until after playback ends (setTokens would stop the orchestrator).
       if (editRunPlayerIdRef.current !== null) {
         editRunPlayerIdRef.current = null;
         setEditRunPlayerId(null);
-        pendingTokenUnlockRef.current = true;
       }
+      sheetDrawRunPlayerIdRef.current = null;
     }
   }, [isPlaying]);
-
-  // Restore token draggable flags deferred from the isPlaying guard above.
-  useEffect(() => {
-    if (!isPlaying && !isPaused && pendingTokenUnlockRef.current) {
-      pendingTokenUnlockRef.current = false;
-      const shell = shellRef.current;
-      if (shell) shell.setTokens(shell.getTokens().map((t) => ({ ...t, draggable: undefined })));
-    }
-  }, [isPlaying, isPaused]);
 
   useEffect(() => {
     if (!isControlsOpen) {
@@ -1361,22 +1352,18 @@ export default function TacticalPlaySurface() {
   const enterEditRun = (playerId: string) => {
     const shell = shellRef.current;
     if (!shell) return;
+    sheetDrawRunPlayerIdRef.current = null;
     editRunPlayerIdRef.current = playerId;
     setEditRunPlayerId(playerId);
-    shell.setTokens(
-      shell.getTokens().map((t) => ({ ...t, draggable: t.id === playerId ? undefined : false })),
-    );
     shell.setSelectedToken(playerId);
     setMenuMode("route");
   };
 
   const exitEditRun = () => {
     if (editRunPlayerIdRef.current === null) return;
+    sheetDrawRunPlayerIdRef.current = null;
     editRunPlayerIdRef.current = null;
     setEditRunPlayerId(null);
-    const shell = shellRef.current;
-    if (!shell) return;
-    shell.setTokens(shell.getTokens().map((t) => ({ ...t, draggable: undefined })));
   };
 
   const onPlayRoutesPress = () => {
@@ -1437,6 +1424,7 @@ export default function TacticalPlaySurface() {
   };
 
   const resetPlaybackState = () => {
+    sheetDrawRunPlayerIdRef.current = null;
     exitEditRun();
     setMenuMode("move");
     shellRef.current?.reset();
@@ -3845,6 +3833,15 @@ export default function TacticalPlaySurface() {
                 if (!shell) return;
                 shell.setRoutes(shell.getRoutes().filter((r) => r.playerId !== playerSheetId));
                 setPlayerSheetId(null);
+              }}
+              onAddShot={(delayMs) => {
+                const shell = shellRef.current;
+                if (!shell) return;
+                shell.addShotEvent({
+                  id: `shot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  shooterId: playerSheetId,
+                  delayMs,
+                });
               }}
               onBehaviour={() => {
                 setMovementsSelectedPlayerId(playerSheetId);
