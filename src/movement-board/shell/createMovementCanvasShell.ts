@@ -278,26 +278,13 @@ export async function createMovementCanvasShell(
       options.onPlaybackStateChange?.(state);
     },
     onPassStart: (fromPlayerId, toPlayerId) => {
-      const fromWorldPos = tokenLayer.getTokenWorldPosition(fromPlayerId);
-      const toWorldPos = tokenLayer.getTokenWorldPosition(toPlayerId);
-      let durationMs = 350;
-      if (fromWorldPos && toWorldPos) {
-        const dx = toWorldPos.x - fromWorldPos.x;
-        const dy = toWorldPos.y - fromWorldPos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        durationMs = Math.max(PASS_MIN_DURATION_MS, Math.min(PASS_MAX_DURATION_MS, dist / PASS_SPEED_PX_PER_MS));
+      // If the ball isn't with this player yet (e.g. two zero-delay chained passes
+      // fire in the same tick), defer until the previous pass lands.
+      if (ballState.carrierId !== fromPlayerId) {
+        deferredPasses.push({ fromPlayerId, toPlayerId });
+        return;
       }
-      activeBallPass = {
-        fromWorld: fromWorldPos ?? { x: WORLD_SIZE.width / 2, y: WORLD_SIZE.height / 2 },
-        toPlayerId,
-        elapsedMs: 0,
-        durationMs,
-        ballType: ballState.ballType ?? "footballSmall",
-      };
-      // Detach ball from carrier while in flight
-      ballState = { ballType: ballState.ballType };
-      tokenLayer.setBallCarrier(null);
-      emitBallState();
+      startPassAnimation(fromPlayerId, toPlayerId);
     },
     onShotStart: (shooterId) => {
       if (ballState.carrierId !== shooterId) return;
@@ -311,6 +298,7 @@ export async function createMovementCanvasShell(
   let passEvents: TacticalPassEvent[] = [];
   let shotEvents: TacticalShotEvent[] = [];
   let activeBallPass: ActiveBallPass | null = null;
+  let deferredPasses: Array<{ fromPlayerId: string; toPlayerId: string }> = [];
 
   const BALL_CARRIER_OFFSET_X = 3.5;
   const BALL_CARRIER_OFFSET_Y = -2.5;
@@ -318,6 +306,29 @@ export async function createMovementCanvasShell(
   const PASS_MIN_DURATION_MS = 850;
   const PASS_MAX_DURATION_MS = 1800;
   const PASS_SPEED_PX_PER_MS = 0.067;
+
+  // Start pass flight animation. Safe to call only when ballState.carrierId === fromPlayerId.
+  const startPassAnimation = (fromPlayerId: string, toPlayerId: string) => {
+    const fromWorldPos = tokenLayer.getTokenWorldPosition(fromPlayerId);
+    const toWorldPos = tokenLayer.getTokenWorldPosition(toPlayerId);
+    let durationMs = 350;
+    if (fromWorldPos && toWorldPos) {
+      const dx = toWorldPos.x - fromWorldPos.x;
+      const dy = toWorldPos.y - fromWorldPos.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      durationMs = Math.max(PASS_MIN_DURATION_MS, Math.min(PASS_MAX_DURATION_MS, dist / PASS_SPEED_PX_PER_MS));
+    }
+    activeBallPass = {
+      fromWorld: fromWorldPos ?? { x: WORLD_SIZE.width / 2, y: WORLD_SIZE.height / 2 },
+      toPlayerId,
+      elapsedMs: 0,
+      durationMs,
+      ballType: ballState.ballType ?? "footballSmall",
+    };
+    ballState = { ballType: ballState.ballType };
+    tokenLayer.setBallCarrier(null);
+    emitBallState();
+  };
 
   const syncBallPosition = () => {
     if (activeBallPass) {
@@ -634,6 +645,7 @@ export async function createMovementCanvasShell(
       // Restore ball to coach-configured start state rather than capturing current
       // (post-play) state — prevents ball looping back to previous pass destination.
       activeBallPass = null;
+      deferredPasses = [];
       ballState = { ...ballStateAtPlayStart };
       tokenLayer.setBallCarrier(ballStateAtPlayStart.carrierId ?? null);
       emitBallState();
@@ -644,6 +656,7 @@ export async function createMovementCanvasShell(
   const reset = () => {
     orchestrator.stop();
     activeBallPass = null;
+    deferredPasses = [];
     clearRouteDraft();
     releaseDrag();
     releaseRouteHandleDrag();
@@ -905,6 +918,15 @@ export async function createMovementCanvasShell(
           tokenLayer.setBallCarrier(toPlayerId);
           emitBallState();
           orchestrator.notifyPassLanded(toPlayerId);
+          // Fire the first deferred pass whose sender is now the carrier,
+          // but only if notifyPassLanded didn't already start a shot animation.
+          if (activeBallPass === null) {
+            const nextIdx = deferredPasses.findIndex(p => p.fromPlayerId === toPlayerId);
+            if (nextIdx !== -1) {
+              const next = deferredPasses.splice(nextIdx, 1)[0];
+              startPassAnimation(next.fromPlayerId, next.toPlayerId);
+            }
+          }
         }
       }
     }
@@ -1093,6 +1115,7 @@ export async function createMovementCanvasShell(
     getBallState: () => ({ ...ballState }),
     setPassEvents: (events) => {
       passEvents = events.map((e) => ({ ...e }));
+      deferredPasses = [];
       emitPassEvents();
     },
     getPassEvents: () => [...passEvents],

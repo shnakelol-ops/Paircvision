@@ -3435,15 +3435,14 @@ export default function TacticalPlaySurface() {
           </div>
         ) : null}
 
-        {playbackFloatingVisible ? (
+        {!isPortrait ? (
           <div style={PLAYBACK_SIDE_STYLE}>
             <button
               type="button"
-              style={pauseResumeDisabled ? TOOL_DISABLED_STYLE : PLAYBACK_SIDE_BUTTON_STYLE}
-              disabled={pauseResumeDisabled}
+              style={PLAYBACK_SIDE_BUTTON_STYLE}
               onClick={onPauseResumePress}
             >
-              {isPlaying ? "Pause" : isPaused ? "Resume" : "Play"}
+              {isPlaying ? "Pause" : isPaused ? "Resume" : "▶ Play"}
             </button>
             <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetPlaybackState}>
               Reset
@@ -3672,6 +3671,7 @@ export default function TacticalPlaySurface() {
               passEventsFromPlayer={sheetPassEvents}
               tokenNumberById={tokenNumberById}
               awayTokenIds={awayTokenIds}
+              sport={activeSetupSport}
               onClose={() => setPlayerSheetId(null)}
               onGiveBall={() => {
                 shellRef.current?.giveBall(playerSheetId);
@@ -3701,6 +3701,16 @@ export default function TacticalPlaySurface() {
                   toPlayerId: toId,
                   delayMs,
                 });
+              }}
+              onBallChoice={(ballType) => {
+                const shell = shellRef.current;
+                if (!shell) return;
+                shell.placeBall(ballType);
+                shell.giveBall(playerSheetId);
+              }}
+              onFreeBall={() => {
+                shellRef.current?.freeBall();
+                setPlayerSheetId(null);
               }}
               onPlay={() => {
                 shellRef.current?.playAll();

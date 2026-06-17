@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 
 import type {
+  BallType,
   MovementBoardRoute,
   RouteMetadata,
   TacticalPassEvent,
@@ -22,13 +23,16 @@ type PlayerActionSheetProps = {
   onSetRunDelay: (delayMs: number) => void;
   onSetRunTrigger: (triggeredById: string | null) => void;
   onAddPass: (toId: string, delayMs: number) => void;
+  sport: "football" | "hurling";
   onEditRun: () => void;
   onResetRun: () => void;
+  onBallChoice: (ballType: BallType) => void;
+  onFreeBall?: () => void;
   onPlay: () => void;
   onBehaviour: () => void;
 };
 
-type ExpandedSection = "run-timing" | "pass" | null;
+type ExpandedSection = "run-timing" | "pass" | "ball" | null;
 
 const DELAY_OPTIONS = [
   { ms: 0,    label: "Now"  },
@@ -220,8 +224,11 @@ export default function PlayerActionSheet({
   onSetRunDelay,
   onSetRunTrigger,
   onAddPass,
+  sport,
   onEditRun,
   onResetRun,
+  onBallChoice,
+  onFreeBall,
   onPlay,
   onBehaviour,
 }: PlayerActionSheetProps) {
@@ -239,6 +246,17 @@ export default function PlayerActionSheet({
   const triggerCandidates = routes.filter(
     (r) => !awayTokenIds.has(r.playerId) && r.playerId !== playerId,
   );
+
+  const ballTypeOptions: Array<{ type: BallType; label: string }> =
+    sport === "hurling"
+      ? [
+          { type: "sliotarSmall",  label: "Sliotar S" },
+          { type: "sliotarMedium", label: "Sliotar M" },
+        ]
+      : [
+          { type: "footballSmall",  label: "Ball S" },
+          { type: "footballMedium", label: "Ball M" },
+        ];
 
   const currentRunDelayMs = routeMeta?.delayMs ?? 0;
   const currentRunTriggerId = routeMeta?.triggeredBy ?? null;
@@ -313,6 +331,13 @@ export default function PlayerActionSheet({
           </button>
           <button
             type="button"
+            style={expanded === "ball" ? ACTION_BTN_ACTIVE : ACTION_BTN}
+            onClick={() => toggle("ball")}
+          >
+            Ball
+          </button>
+          <button
+            type="button"
             style={expanded === "pass" ? ACTION_BTN_ACTIVE : ACTION_BTN}
             onClick={() => toggle("pass")}
           >
@@ -364,6 +389,36 @@ export default function PlayerActionSheet({
                     </button>
                   );
                 })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Ball sub-section */}
+        {expanded === "ball" && (
+          <div style={SUB_SECTION}>
+            <div style={CHIP_ROW}>
+              <span style={SUB_LABEL}>Type</span>
+              {ballTypeOptions.map((opt) => (
+                <button
+                  key={opt.type}
+                  type="button"
+                  style={CHIP}
+                  onClick={() => { onBallChoice(opt.type); setExpanded(null); }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {hasBall && onFreeBall && (
+              <div style={CHIP_ROW}>
+                <button
+                  type="button"
+                  style={CHIP}
+                  onClick={() => { onFreeBall(); setExpanded(null); }}
+                >
+                  Free Ball
+                </button>
               </div>
             )}
           </div>
