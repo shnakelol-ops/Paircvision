@@ -820,7 +820,13 @@ export async function createMovementCanvasShell(
 
   const handlePointerRelease = (event: unknown) => {
     if (longPressTimer !== null) { clearTimeout(longPressTimer); longPressTimer = null; }
-    if (longPressTriggered) { longPressTriggered = false; tokenTapStart = null; return; }
+    if (longPressTriggered) {
+      longPressTriggered = false;
+      tokenTapStart = null;
+      const nativeEvt = (event as { nativeEvent?: Event }).nativeEvent;
+      nativeEvt?.preventDefault?.();
+      return;
+    }
     if (tokenTapStart && (mode === "setup" || mode === "route") && !isPlaybackLocked()) {
       const endPoint = getStagePointFromEvent(event, app.stage);
       const moved = endPoint

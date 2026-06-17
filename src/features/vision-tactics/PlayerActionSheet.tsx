@@ -22,6 +22,8 @@ type PlayerActionSheetProps = {
   onDrawRun: () => void;
   onSetRunDelay: (delayMs: number) => void;
   onSetRunTrigger: (triggeredById: string | null) => void;
+  passDelayMs: number;
+  onPassDelayChange: (ms: number) => void;
   onAddPass: (toId: string, delayMs: number) => void;
   onAddShot: (delayMs: number) => void;
   sport: "football" | "hurling";
@@ -220,6 +222,8 @@ export default function PlayerActionSheet({
   routes,
   tokenNumberById,
   awayTokenIds,
+  passDelayMs,
+  onPassDelayChange,
   onClose,
   onGiveBall,
   onDrawRun,
@@ -237,7 +241,6 @@ export default function PlayerActionSheet({
 }: PlayerActionSheetProps) {
   const [expanded, setExpanded] = useState<ExpandedSection>(null);
   const [passToId, setPassToId] = useState<string | null>(null);
-  const [passDelayMs, setPassDelayMs] = useState(0);
 
   const toggle = (section: ExpandedSection) =>
     setExpanded((prev) => (prev === section ? null : section));
@@ -460,7 +463,7 @@ export default function PlayerActionSheet({
                     key={opt.ms}
                     type="button"
                     style={passDelayMs === opt.ms ? CHIP_ACTIVE : CHIP}
-                    onClick={() => setPassDelayMs(opt.ms)}
+                    onClick={() => onPassDelayChange(opt.ms)}
                   >
                     {opt.label}
                   </button>
@@ -475,7 +478,7 @@ export default function PlayerActionSheet({
                       onAddPass(passToId, passDelayMs);
                     }
                     setPassToId(null);
-                    setPassDelayMs(0);
+                    onPassDelayChange(0);
                     setExpanded(null);
                   }}
                 >

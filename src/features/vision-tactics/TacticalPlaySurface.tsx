@@ -958,6 +958,7 @@ export default function TacticalPlaySurface() {
   const [phases, setPhases] = useState<TacticalPhase[]>([]);
   const [activePhaseIndex, setActivePhaseIndex] = useState(0);
   const [playerSheetId, setPlayerSheetId] = useState<string | null>(null);
+  const [sheetPassDelayMs, setSheetPassDelayMs] = useState(0);
   const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
   const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
   const editRunPlayerIdRef = useRef<string | null>(null);
@@ -1245,6 +1246,8 @@ export default function TacticalPlaySurface() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setZoneLabelDraft(zones.find((z) => z.id === selectedZoneId)?.label ?? ""); }, [selectedZoneId]);
 
+  useEffect(() => { setSheetPassDelayMs(0); }, [playerSheetId]);
+
   type SeqItem =
     | { kind: "route"; route: MovementBoardRoute }
     | { kind: "pass"; pass: TacticalPassEvent };
@@ -1503,6 +1506,8 @@ export default function TacticalPlaySurface() {
     shell.addPassEvent(event);
     setPassFromId(passToId);
     setPassToId(null);
+    setPassTimingMs(0);
+    setPassTriggerId(null);
   };
 
   const onRemovePass = (id: string) => {
@@ -3781,6 +3786,8 @@ export default function TacticalPlaySurface() {
                   delayMs: undefined,
                 });
               }}
+              passDelayMs={sheetPassDelayMs}
+              onPassDelayChange={setSheetPassDelayMs}
               onAddPass={(toId, delayMs) => {
                 const shell = shellRef.current;
                 if (!shell) return;
