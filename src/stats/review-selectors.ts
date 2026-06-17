@@ -1,4 +1,5 @@
 import type { MatchEventKind, MatchEventPeriod, MatchEventSegment } from "../core/stats/stats-event-model";
+import { isFreeMiss, isFreeScore } from "./eventSource";
 import { deriveSegmentFromPeriodClock, periodFromHalf } from "./statsSegments";
 import type { ReviewEventFilters, ReviewSelectableEvent } from "./review-types";
 
@@ -26,6 +27,15 @@ function getCategoryKinds<TCategory extends string>(
 ): readonly MatchEventKind[] | null {
   if (category === "ALL" || category === "PLAYERS") return null;
   return categoryKinds[category as Exclude<TCategory, "ALL" | "PLAYERS">] ?? null;
+}
+
+function isFreeRelatedEvent(event: ReviewSelectableEvent): boolean {
+  return (
+    event.kind === "FREE_WON" ||
+    event.kind === "FREE_CONCEDED" ||
+    isFreeScore(event) ||
+    isFreeMiss(event)
+  );
 }
 
 export function selectReviewEvents<TEvent extends ReviewSelectableEvent, TCategory extends string>(
@@ -59,6 +69,7 @@ export function selectReviewEvents<TEvent extends ReviewSelectableEvent, TCatego
     if (segmentFilter != null && eventSegment !== segmentFilter) return false;
 
     if (filterKinds && !filterKinds.has(event.kind)) return false;
+    if (category === "FREES" && !isFreeRelatedEvent(event)) return false;
     if (category === "PLAYERS" && event.playerId == null && event.playerName == null) return false;
 
     const eventTeamSide = normalizeReviewEventTeamSide(event);

@@ -74,7 +74,7 @@ const CATEGORY_EVENT_KINDS: Record<Exclude<ReviewSnapshotCategory, "ALL" | "PLAY
   WIDES: ["WIDE", "FREE_MISSED"],
   TURNOVERS: ["TURNOVER_WON", "TURNOVER_LOST"],
   KICKOUTS: ["KICKOUT_WON", "KICKOUT_CONCEDED"],
-  FREES: ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"],
+  FREES: ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED", "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "WIDE"],
 };
 
 function normalizeEventTeamSide(teamSide: MatchEventTeamSide | undefined, team: "HOME" | "AWAY" | undefined, eventId: string): "FOR" | "OPP" {

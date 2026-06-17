@@ -144,7 +144,7 @@ function computeTeamScore(events: readonly MatchEvent[], team: TeamSide): TeamSc
       goals += 1;
       continue;
     }
-    if (event.kind === "POINT") {
+    if (event.kind === "POINT" || event.kind === "FREE_SCORED") {
       points += 1;
       continue;
     }
