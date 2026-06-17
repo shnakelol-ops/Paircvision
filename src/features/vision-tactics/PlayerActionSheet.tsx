@@ -22,6 +22,8 @@ type PlayerActionSheetProps = {
   onSetRunDelay: (delayMs: number) => void;
   onSetRunTrigger: (triggeredById: string | null) => void;
   onAddPass: (toId: string, delayMs: number) => void;
+  onEditRun: () => void;
+  onResetRun: () => void;
   onPlay: () => void;
   onBehaviour: () => void;
 };
@@ -218,6 +220,8 @@ export default function PlayerActionSheet({
   onSetRunDelay,
   onSetRunTrigger,
   onAddPass,
+  onEditRun,
+  onResetRun,
   onPlay,
   onBehaviour,
 }: PlayerActionSheetProps) {
@@ -276,6 +280,26 @@ export default function PlayerActionSheet({
             Behaviour
           </button>
         </div>
+
+        {/* Route actions row — only when player has a route */}
+        {hasRoute && (
+          <div style={BTN_ROW}>
+            <button
+              type="button"
+              style={ACTION_BTN}
+              onClick={() => { onEditRun(); }}
+            >
+              Edit Run
+            </button>
+            <button
+              type="button"
+              style={{ ...ACTION_BTN, border: "1px solid rgba(255, 100, 100, 0.30)", color: "rgba(255, 180, 180, 0.80)" }}
+              onClick={() => { onResetRun(); }}
+            >
+              Reset Run
+            </button>
+          </div>
+        )}
 
         {/* Second action row */}
         <div style={BTN_ROW}>

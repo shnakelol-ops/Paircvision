@@ -779,7 +779,7 @@ export async function createMovementCanvasShell(
   };
 
   const handlePointerRelease = (event: unknown) => {
-    if (tokenTapStart && mode === "setup" && !isPlaybackLocked()) {
+    if (tokenTapStart && (mode === "setup" || mode === "route") && !isPlaybackLocked()) {
       const endPoint = getStagePointFromEvent(event, app.stage);
       const moved = endPoint
         ? Math.hypot(endPoint.x - tokenTapStart.x, endPoint.y - tokenTapStart.y)

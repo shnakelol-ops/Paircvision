@@ -1106,9 +1106,11 @@ export default function TacticalPlaySurface() {
           setSelectedTrainingItemId(id);
         },
         onTokenTap: (tokenId) => {
+          setMenuMode("move");
           setPlayerSheetId(tokenId);
         },
         onPitchTap: (_payload) => {
+          setMenuMode("move");
           setPlayerSheetId(null);
         },
       }).then((shell) => {
@@ -3702,6 +3704,17 @@ export default function TacticalPlaySurface() {
               }}
               onPlay={() => {
                 shellRef.current?.playAll();
+                setPlayerSheetId(null);
+              }}
+              onEditRun={() => {
+                shellRef.current?.setSelectedToken(playerSheetId);
+                setMenuMode("route");
+                setPlayerSheetId(null);
+              }}
+              onResetRun={() => {
+                const shell = shellRef.current;
+                if (!shell) return;
+                shell.setRoutes(shell.getRoutes().filter((r) => r.playerId !== playerSheetId));
                 setPlayerSheetId(null);
               }}
               onBehaviour={() => {
