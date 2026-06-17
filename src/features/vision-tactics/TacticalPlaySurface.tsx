@@ -301,7 +301,7 @@ const PITCH_WATERMARK_STYLE: CSSProperties = {
 const CONTROL_PANEL_STYLE: CSSProperties = {
   position: "fixed",
   left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
-  bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
+  bottom: "max(125px, calc(env(safe-area-inset-bottom, 0px) + 123px))",
   zIndex: 21,
   width: "max-content",
   maxWidth: "min(520px, calc(100vw - 20px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)))",
