@@ -127,6 +127,8 @@ export type MovementCanvasShellOptions = {
   onZoneSelectionChange?: (id: string | null) => void;
   onTrainingItemsChange?: (items: TacticalTrainingItem[]) => void;
   onTrainingItemSelectionChange?: (id: string | null) => void;
+  onTokenTap?: (tokenId: string) => void;
+  onTokenLongPress?: (tokenId: string) => void;
 };
 
 export type MovementCanvasShellHandle = {

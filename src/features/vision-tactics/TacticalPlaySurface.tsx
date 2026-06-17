@@ -44,6 +44,7 @@ import {
 import type { TacticalUnit } from "./tacticalUnitTypes";
 import { buildMemberRoutes } from "./tacticalUnitHelpers";
 import type { NormalizedPoint } from "../../movement-board/coordinates/normalization";
+import PlayerActionSheet from "./PlayerActionSheet";
 
 type SetupSport = Extract<TacticalTemplateSport, "football" | "hurling">;
 
@@ -424,6 +425,49 @@ const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
   minWidth: "76px",
   height: "29px",
   padding: "0 8px",
+};
+
+const EDIT_RUN_PILL_STYLE: CSSProperties = {
+  position: "fixed",
+  bottom: "max(66px, calc(env(safe-area-inset-bottom, 0px) + 64px))",
+  left: "50%",
+  transform: "translateX(-50%)",
+  zIndex: 30,
+  display: "flex",
+  gap: "8px",
+  alignItems: "center",
+  background: "rgba(4, 10, 24, 0.92)",
+  border: "1px solid rgba(74, 222, 128, 0.40)",
+  borderRadius: "20px",
+  padding: "0 4px 0 12px",
+  height: "34px",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.60)",
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const EDIT_RUN_LABEL_STYLE: CSSProperties = {
+  fontSize: "10px",
+  fontWeight: 600,
+  letterSpacing: "0.05em",
+  color: "rgba(180, 255, 160, 0.85)",
+  userSelect: "none",
+  whiteSpace: "nowrap",
+};
+
+const EDIT_RUN_DONE_STYLE: CSSProperties = {
+  height: "26px",
+  borderRadius: "16px",
+  border: "1px solid rgba(74, 222, 128, 0.50)",
+  background: "rgba(16, 48, 30, 0.90)",
+  color: "rgba(160, 255, 140, 0.95)",
+  fontSize: "9px",
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  padding: "0 12px",
+  cursor: "pointer",
 };
 
 const HINT_PILL_STYLE: CSSProperties = {
@@ -968,6 +1012,10 @@ export default function TacticalPlaySurface() {
   const [zoneShape, setZoneShape] = useState<"rect" | "circle">("rect");
   const [zoneLibraryOpen, setZoneLibraryOpen] = useState<"none" | "football" | "hurling">("none");
   const [zoneLabelDraft, setZoneLabelDraft] = useState("");
+  const [playerSheetId, setPlayerSheetId] = useState<string | null>(null);
+  const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
+  const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
+  const editRunPlayerIdRef = useRef<string | null>(null);
   const {
     recordPhase, setRecordPhase,
     recordCountdown,
@@ -1070,6 +1118,11 @@ export default function TacticalPlaySurface() {
         onRoutesChange: (nextRoutes) => {
           setRouteCount(nextRoutes.length);
           setRoutes(nextRoutes);
+          const drawRunId = sheetDrawRunPlayerIdRef.current;
+          if (drawRunId && nextRoutes.some((r) => r.playerId === drawRunId)) {
+            sheetDrawRunPlayerIdRef.current = null;
+            setMenuMode("move");
+          }
         },
         onPlaybackStateChange: (state) => {
           setIsPlaying(state.isPlaying);
@@ -1096,6 +1149,30 @@ export default function TacticalPlaySurface() {
         },
         onTrainingItemSelectionChange: (id) => {
           setSelectedTrainingItemId(id);
+        },
+        onTokenTap: (_tokenId) => {
+          // Short tap = normal board interaction. Close sheet if open; do not open a new one.
+          setPlayerSheetId(null);
+          sheetDrawRunPlayerIdRef.current = null;
+        },
+        onTokenLongPress: (tokenId) => {
+          // Long press = open/switch PlayerActionSheet.
+          sheetDrawRunPlayerIdRef.current = null;
+          if (editRunPlayerIdRef.current !== null) {
+            editRunPlayerIdRef.current = null;
+            setEditRunPlayerId(null);
+          }
+          setMenuMode("move");
+          setPlayerSheetId(tokenId);
+        },
+        onPitchTap: (_payload) => {
+          sheetDrawRunPlayerIdRef.current = null;
+          if (editRunPlayerIdRef.current !== null) {
+            editRunPlayerIdRef.current = null;
+            setEditRunPlayerId(null);
+          }
+          setMenuMode("move");
+          setPlayerSheetId(null);
         },
       }).then((shell) => {
         if (disposed) {
@@ -1195,6 +1272,12 @@ export default function TacticalPlaySurface() {
       setItemsOpen(false);
       setZonesOpen(false);
       setZoneLibraryOpen("none");
+      setPlayerSheetId(null);
+      if (editRunPlayerIdRef.current !== null) {
+        editRunPlayerIdRef.current = null;
+        setEditRunPlayerId(null);
+      }
+      sheetDrawRunPlayerIdRef.current = null;
     }
   }, [isPlaying]);
 
@@ -1266,9 +1349,27 @@ export default function TacticalPlaySurface() {
         ? `Ball on Pitch · Moves ${routeCount}`
         : `${modeLabelByMenu[menuMode]} · Moves ${routeCount}`;
 
+  const enterEditRun = (playerId: string) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    sheetDrawRunPlayerIdRef.current = null;
+    editRunPlayerIdRef.current = playerId;
+    setEditRunPlayerId(playerId);
+    shell.setSelectedToken(playerId);
+    setMenuMode("route");
+  };
+
+  const exitEditRun = () => {
+    if (editRunPlayerIdRef.current === null) return;
+    sheetDrawRunPlayerIdRef.current = null;
+    editRunPlayerIdRef.current = null;
+    setEditRunPlayerId(null);
+  };
+
   const onPlayRoutesPress = () => {
     const shell = shellRef.current;
     if (!shell) return;
+    exitEditRun();
     setIsControlsOpen(false);
     shell.playAll();
     setMenuMode("play");
@@ -1285,6 +1386,7 @@ export default function TacticalPlaySurface() {
       shell.resumePlayback();
       return;
     }
+    exitEditRun();
     shell.playAll();
   };
 
@@ -1301,6 +1403,7 @@ export default function TacticalPlaySurface() {
       return;
     }
     if (!isPlaying) {
+      exitEditRun();
       shell.playAll();
     }
   };
@@ -1321,6 +1424,9 @@ export default function TacticalPlaySurface() {
   };
 
   const resetPlaybackState = () => {
+    sheetDrawRunPlayerIdRef.current = null;
+    exitEditRun();
+    setMenuMode("move");
     shellRef.current?.reset();
   };
 
@@ -2054,7 +2160,7 @@ export default function TacticalPlaySurface() {
         <button
           type="button"
           style={CTRL_BUBBLE_STYLE}
-          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setMovementsOpen(false); setPassesOpen(false); setPlaysOpen(false); }}
+          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setMovementsOpen(false); setPassesOpen(false); setPlaysOpen(false); setPlayerSheetId(null); }}
         >
           CTRL
         </button>
@@ -2242,8 +2348,27 @@ export default function TacticalPlaySurface() {
           );
         })() : null}
 
-        {!isControlsOpen && !setupOpen && !isPlaying && !isPaused ? (
+        {!isControlsOpen && !setupOpen && !isPlaying && !isPaused && editRunPlayerId === null ? (
           <div style={HINT_PILL_STYLE}>Move players → Set Start → Draw Movements → Play</div>
+        ) : null}
+
+        {/* Done Editing pill — shown while Edit Run isolated mode is active */}
+        {editRunPlayerId !== null && !isPlaying && !isPaused ? (
+          <div style={EDIT_RUN_PILL_STYLE}>
+            <span style={EDIT_RUN_LABEL_STYLE}>
+              Editing P{tokenNumberById[editRunPlayerId] ?? ""}
+            </span>
+            <button
+              type="button"
+              style={EDIT_RUN_DONE_STYLE}
+              onClick={() => {
+                exitEditRun();
+                setMenuMode("move");
+              }}
+            >
+              Done
+            </button>
+          </div>
         ) : null}
 
         {sequenceOpen && !isControlsOpen && sortedItems.length > 0 ? (
@@ -3418,15 +3543,14 @@ export default function TacticalPlaySurface() {
           </div>
         ) : null}
 
-        {playbackFloatingVisible ? (
+        {!isPortrait ? (
           <div style={PLAYBACK_SIDE_STYLE}>
             <button
               type="button"
-              style={pauseResumeDisabled ? TOOL_DISABLED_STYLE : PLAYBACK_SIDE_BUTTON_STYLE}
-              disabled={pauseResumeDisabled}
+              style={PLAYBACK_SIDE_BUTTON_STYLE}
               onClick={onPauseResumePress}
             >
-              {isPlaying ? "Pause" : isPaused ? "Resume" : "Play"}
+              {isPlaying ? "Pause" : isPaused ? "Resume" : "▶ Play"}
             </button>
             <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetPlaybackState}>
               Reset
@@ -3636,6 +3760,98 @@ export default function TacticalPlaySurface() {
             </span>
           </div>
         ) : null}
+
+        {/* Player Action Sheet — tap-player bottom sheet (additive, CTRL remains fallback) */}
+        {playerSheetId != null && !modeIsPlaybackLocked && menuMode !== "route" ? (() => {
+          const sheetNum = tokenNumberById[playerSheetId] ?? 0;
+          const sheetHasBall = ballCarrierId === playerSheetId;
+          const sheetRoute = routes.find((r) => r.playerId === playerSheetId) ?? null;
+          const sheetMeta = shellRef.current?.getRouteMeta(playerSheetId) ?? null;
+          const sheetPassEvents = passEvents.filter((p) => p.fromPlayerId === playerSheetId);
+          return (
+            <PlayerActionSheet
+              playerId={playerSheetId}
+              playerNumber={sheetNum}
+              hasBall={sheetHasBall}
+              hasRoute={sheetRoute != null}
+              routeMeta={sheetMeta}
+              routes={routes}
+              passEventsFromPlayer={sheetPassEvents}
+              tokenNumberById={tokenNumberById}
+              awayTokenIds={awayTokenIds}
+              sport={activeSetupSport}
+              onClose={() => setPlayerSheetId(null)}
+              onGiveBall={() => {
+                shellRef.current?.giveBall(playerSheetId);
+                setPlayerSheetId(null);
+              }}
+              onDrawRun={() => {
+                shellRef.current?.setSelectedToken(playerSheetId);
+                sheetDrawRunPlayerIdRef.current = playerSheetId;
+                setMenuMode("route");
+                setPlayerSheetId(null);
+              }}
+              onSetRunDelay={(delayMs) => {
+                shellRef.current?.setRouteMeta(playerSheetId, { delayMs, triggeredBy: undefined });
+              }}
+              onSetRunTrigger={(triggeredById) => {
+                shellRef.current?.setRouteMeta(playerSheetId, {
+                  triggeredBy: triggeredById ?? undefined,
+                  delayMs: undefined,
+                });
+              }}
+              onAddPass={(toId, delayMs) => {
+                const shell = shellRef.current;
+                if (!shell) return;
+                shell.addPassEvent({
+                  id: `pass-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  fromPlayerId: playerSheetId,
+                  toPlayerId: toId,
+                  delayMs,
+                });
+              }}
+              onBallChoice={(ballType) => {
+                const shell = shellRef.current;
+                if (!shell) return;
+                shell.placeBall(ballType);
+                shell.giveBall(playerSheetId);
+              }}
+              onFreeBall={() => {
+                shellRef.current?.freeBall();
+                setPlayerSheetId(null);
+              }}
+              onPlay={() => {
+                shellRef.current?.playAll();
+                setPlayerSheetId(null);
+              }}
+              onEditRun={() => {
+                enterEditRun(playerSheetId);
+                setPlayerSheetId(null);
+              }}
+              onResetRun={() => {
+                const shell = shellRef.current;
+                if (!shell) return;
+                shell.setRoutes(shell.getRoutes().filter((r) => r.playerId !== playerSheetId));
+                setPlayerSheetId(null);
+              }}
+              onAddShot={(delayMs) => {
+                const shell = shellRef.current;
+                if (!shell) return;
+                shell.addShotEvent({
+                  id: `shot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  shooterId: playerSheetId,
+                  delayMs,
+                });
+              }}
+              onBehaviour={() => {
+                setMovementsSelectedPlayerId(playerSheetId);
+                setMovementsOpen(true);
+                setIsControlsOpen(true);
+                setPlayerSheetId(null);
+              }}
+            />
+          );
+        })() : null}
       </div>
     </OrientationGate>
   );
