@@ -25,10 +25,8 @@ import type { ChainAnalysis } from "./chains/chain-types";
 import {
   cpCol,
   cpRow,
-  cpQualifies,
   rankChainPatterns,
   type ChainPressureKind,
-  type ChainPressurePattern,
 } from "./chains/chain-patterns";
 import { deriveReviewPrompts } from "./chains/review-prompts";
 import type { ReviewPrompt, ReviewPromptCategory } from "./chains/review-prompts";
@@ -6665,6 +6663,17 @@ function makeQuadPitchMapPage(
 }
 
 
+// Retained PDF page builders/helpers referenced here so TypeScript does not prune
+// dormant report sections while preserving current export page order and behaviour.
+void stampChapterLabel;
+void makeHtPressureDamageMapPage;
+void makeHtKickoutVisionPage;
+void makeHtAttackShotVisionPage;
+void makeHtGameFlowPage;
+void makeHtGameFlowFactorsPage;
+void makeOurRestartPlatformPage;
+void makeOppRestartPlatformPage;
+
 // ─── Main export entry point ──────────────────────────────────────────────────
 
 /**
@@ -8073,6 +8082,7 @@ function makeHtAttackShotVisionPage(
   const forWideEvts = events.filter(
     (e) => e.teamSide === "FOR" && (e.kind === "WIDE" || isFreeMiss(e)),
   );
+
   const forShotEvts = events.filter(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind),
   );
@@ -8084,6 +8094,7 @@ function makeHtAttackShotVisionPage(
   const oppWideEvts = events.filter(
     (e) => e.teamSide === "OPP" && (e.kind === "WIDE" || isFreeMiss(e)),
   );
+
   const oppShotEvts = events.filter(
     (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
   );
@@ -8809,6 +8820,7 @@ function makeFtAttackCorridorsPage(
   const forScoreEvts = events.filter(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
   );
+
   const forWideEvts = events.filter(
     (e) => e.teamSide === "FOR" && (e.kind === "WIDE" || isFreeMiss(e)),
   );
@@ -10336,9 +10348,7 @@ function makeOurShotProfilePage(
   const forScoreEvts = events.filter(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
   );
-  const forWideEvts = events.filter(
-    (e) => e.teamSide === "FOR" && (e.kind === "WIDE" || isFreeMiss(e)),
-  );
+
   const forShotEvts = events.filter(
     (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind),
   );
@@ -10485,9 +10495,7 @@ function makeOppShotProfilePage(
   const oppScoreEvts = events.filter(
     (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
   );
-  const oppWideEvts = events.filter(
-    (e) => e.teamSide === "OPP" && (e.kind === "WIDE" || isFreeMiss(e)),
-  );
+
   const oppShotEvts = events.filter(
     (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
   );

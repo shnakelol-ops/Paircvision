@@ -218,7 +218,6 @@ export default function PlayerActionSheet({
   hasRoute,
   routeMeta,
   routes,
-  passEventsFromPlayer,
   tokenNumberById,
   awayTokenIds,
   onClose,
