@@ -3525,8 +3525,8 @@ function makeTacticalIntelligencePage(
   cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Lost kickouts → opp scored", `${koExpPct}%`, "#fb7185", true);
   {
     const netColor = koNetAdv > 0 ? "#34d399" : koNetAdv < 0 ? "#fb7185" : "#94a3b8";
-    const netStr   = koNetAdv === 0 ? "0" : (koNetAdv > 0 ? `+${koNetAdv}` : `${koNetAdv}`);
-    drawMetricRow(L_COL_X, cy, L_COL_W, "Net kickout advantage", netStr, netColor, false);
+    const netStr   = koNetAdv === 0 ? "0 %pt" : (koNetAdv > 0 ? `+${koNetAdv} %pt` : `${koNetAdv} %pt`);
+    drawMetricRow(L_COL_X, cy, L_COL_W, "Net kickout advantage (%pt)", netStr, netColor, false);
   }
 
   // ── LEFT — CARD 2: TURNOVER EFFICIENCY ────────────────────────────────────
@@ -8346,7 +8346,7 @@ function makeHtGameFlowPage(
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
     ctx.fillText("No segment data available for this half.", CANVAS_W / 2, CANVAS_H / 2);
-    drawEventCountFooter(ctx, events.length);
+    drawEventCountFooter(ctx, _analysis.totalEventsAnalysed);
     return canvas;
   }
 
@@ -8537,7 +8537,7 @@ function makeHtGameFlowPage(
   if (facts.length === 0) facts.push("No segment data available.");
 
   drawHtCalloutStrip(ctx, facts, ["#22c55e", "#ef4444", "#f59e0b"]);
-  drawEventCountFooter(ctx, events.length);
+  drawEventCountFooter(ctx, _analysis.totalEventsAnalysed);
   return canvas;
 }
 
@@ -9770,7 +9770,7 @@ function makeFtTacticalMatchStoryPage(
   if (ko.total > 0)     facts.push(`${homeTeam.slice(0, 14)} won ${ko.won} of ${ko.total} kickouts`);
 
   drawHtCalloutStrip(ctx, facts, ["#f8fafc", "#22c55e", "#14b8a6"]);
-  drawEventCountFooter(ctx, events.length);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
   return canvas;
 }
 
