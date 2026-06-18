@@ -10360,7 +10360,7 @@ function makeChainPressurePage(
   } else {
     cpFacts.push(`${patterns.length} possession pattern${patterns.length !== 1 ? "s" : ""} ranked by match impact`);
     cpFacts.push(eventsLabel);
-    cpFacts.push("Ranked: scores ×5  ·  occurrences ×2  ·  shots ×1");
+    cpFacts.push("Patterns ranked by match impact");
     cpColors.push(cpHex(patterns[0].kind, patterns[0].headline), "#94a3b8", "#64748b");
   }
 
