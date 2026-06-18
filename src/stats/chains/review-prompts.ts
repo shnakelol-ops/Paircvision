@@ -113,7 +113,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (koWinPct >= 60) {
       push(
         "KICKOUT",
-        `${home} retained ${koWinPct}% of kickouts (${koWon} of ${koTotal}). Worth reviewing whether retention was consistent across both halves.`,
+        `${home} won ${koWinPct}% of kickouts (${koWon} of ${koTotal}). Worth reviewing whether this was consistent across both halves.`,
         `kickout:winPct=${koWinPct}`,
       );
     } else if (koWinPct < 45) {
@@ -219,7 +219,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (unconvertedWins >= 3) {
     push(
       "TURNOVER",
-      `${home} won ${unconvertedWins} turnovers that had a follow-up action but did not reach a shot. Worth reviewing whether possession was being retained or broken up again in transition.`,
+      `${home} won ${unconvertedWins} turnovers that didn't lead to a shot. Worth reviewing whether possession broke down again in transition.`,
       `turnover:unconvertedWithFollowup=${unconvertedWins}`,
     );
   }
@@ -317,13 +317,13 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (chainForPct <= 40) {
       push(
         "CHAIN",
-        `${away} converted more tactical sequences (${100 - chainForPct}% vs ${chainForPct}% for ${home} — ${chainTotal} total). Worth reviewing whether chain efficiency changed across the match.`,
+        `${away} won more possession sequences (${100 - chainForPct}% vs ${chainForPct}% for ${home} — ${chainTotal} total). Worth reviewing whether this pattern shifted across the match.`,
         `chain:forPct=${chainForPct}`,
       );
     } else if (chainForPct >= 60) {
       push(
         "CHAIN",
-        `${home} won ${chainForPct}% of all tactical sequences (${sm.forChains} of ${chainTotal}). Worth reviewing which sequence types drove this pattern.`,
+        `${home} won ${chainForPct}% of all possession sequences (${sm.forChains} of ${chainTotal}). Worth reviewing what drove this advantage.`,
         `chain:forPct=${chainForPct}`,
       );
     }
@@ -334,13 +334,13 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (koToScore > tvToScore) {
       push(
         "CHAIN",
-        `${home} generated more scores from kickout chains (${koToScore}) than turnover chains (${tvToScore}). Worth reviewing whether this reflects a kickout-first possession pattern.`,
+        `${home} scored more from kickouts (${koToScore}) than from turnovers (${tvToScore}). Worth reviewing whether the kickout was the primary scoring platform.`,
         `chain:koToScore=${koToScore},tvToScore=${tvToScore}`,
       );
     } else if (tvToScore > koToScore) {
       push(
         "CHAIN",
-        `${home} generated more scores from turnover chains (${tvToScore}) than kickout chains (${koToScore}). Worth reviewing whether transition speed was a key factor.`,
+        `${home} scored more from turnovers (${tvToScore}) than from kickouts (${koToScore}). Worth reviewing whether quick transition was the main scoring route.`,
         `chain:tvToScore=${tvToScore},koToScore=${koToScore}`,
       );
     }
@@ -350,7 +350,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (freeToGoal >= 2) {
     push(
       "CHAIN",
-      `${home} converted ${freeToGoal} free kicks directly to goals. Worth reviewing the positions and defensive setups when these occurred.`,
+      `${home} converted ${freeToGoal} placed balls directly to goals. Worth reviewing the positions and defensive setups when these occurred.`,
       `chain:freeToGoal=${freeToGoal}`,
     );
   }
@@ -367,7 +367,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
         : `lower in the second half (${h2ForPct}% vs ${h1ForPct}% in the first)`;
       push(
         "CHAIN",
-        `${home}'s chain win rate was ${halfLabel}. Worth reviewing whether tactical patterns shifted after the interval.`,
+        `${home}'s possession sequence win rate was ${halfLabel}. Worth reviewing what changed after the interval.`,
         `chain:h1ForPct=${h1ForPct},h2ForPct=${h2ForPct}`,
       );
     }
@@ -379,14 +379,14 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (chainTotal >= 12 && chainForPct >= 47 && chainForPct <= 53) {
     push(
       "GENERAL",
-      `Tactical sequences were closely contested — ${home} won ${sm.forChains} and ${away} won ${sm.oppChains} from ${chainTotal} total. Worth reviewing what decided the marginal possession battles.`,
+      `Possession sequences were closely contested — ${home} won ${sm.forChains} and ${away} won ${sm.oppChains} from ${chainTotal} total. Worth reviewing what decided the close possessions.`,
       `general:totalChains=${chainTotal},forPct=${chainForPct}`,
     );
   } else if (chainTotal < 6 && analysis.totalEventsAnalysed >= 20) {
     // Few sequences detected despite reasonable event volume — worth flagging
     push(
       "GENERAL",
-      `Total detected tactical sequences was ${chainTotal}. Worth reviewing whether the match involved a high proportion of set-piece play.`,
+      `Only ${chainTotal} possession sequences were detected. Worth reviewing whether the match involved a high proportion of set-piece play.`,
       `general:totalChains=${chainTotal}`,
     );
   }

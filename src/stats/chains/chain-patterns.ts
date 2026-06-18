@@ -87,27 +87,35 @@ export function cpQualifies(
 // ─── Ranking function ───────────────────────────────────────────────────────
 
 /**
- * Ranks possession chain patterns from a pre-computed ChainAnalysis.
+ * Ranks possession patterns from a pre-computed ChainAnalysis.
  * Returns 0–3 ChainPressurePattern objects ordered by priority score.
  *
  * Pure function — no canvas, no side effects, no new chain computation.
  * Generic over TEvent so it works with any ChainableEvent subtype
  * (PdfExportEvent, LoggedMatchEvent, etc.).
  *
- * mode — "FT": standard thresholds for full-match datasets.
- *        "HT": relaxed qualification for smaller halftime event volumes.
+ * mode     — "FT": standard thresholds for full-match datasets.
+ *            "HT": relaxed qualification for smaller halftime event volumes.
+ *
+ * homeTeam / awayTeam — optional display names threaded into observation
+ * strings so cards are self-contained on cropped screenshots or shared PDFs.
  */
 export function rankChainPatterns<TEvent extends ChainableEvent>(
   analysis: ChainAnalysis<TEvent>,
   mode: "FT" | "HT" = "FT",
+  homeTeam?: string,
+  awayTeam?: string,
 ): ChainPressurePattern[] {
   const ko = analysis.kickouts;
   const to = analysis.turnovers;
 
+  const team = (homeTeam ?? "").slice(0, 18) || "Home";
+  const opp  = (awayTeam ?? "").slice(0, 18) || "Away";
+
   type Candidate = Omit<ChainPressurePattern, "rank">;
   const candidates: Candidate[] = [];
 
-  // ── 1. KICKOUT TRAP (DANGER_CHAIN) ─────────────────────────────────────────
+  // ── 1. KICKOUT RISK (DANGER_CHAIN) ─────────────────────────────────────────
   // OPP scored directly from kickouts we conceded.
   if (cpQualifies(ko.lostAllowedScore, ko.lost, 0, mode)) {
     const trapOutcomes = ko.outcomes.filter(
@@ -118,11 +126,11 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     );
     candidates.push({
       kind:          "DANGER_CHAIN",
-      badge:         "DANGER CHAIN",
-      headline:      "Kickout Trap",
-      observation:   `${ko.lostAllowedScore} of ${ko.lost} conceded kickouts led to opposition score`,
+      badge:         "KICKOUT RISK",
+      headline:      "Kickout Loss → Score",
+      observation:   `${team} lost ${ko.lost} kickouts — ${ko.lostAllowedScore} led to a score for ${opp}`,
       primaryMetric: ko.lostAllowedScore,
-      metricLabel:   "scores conceded",
+      metricLabel:   "opposition scores",
       occurrences:   ko.lost,
       priorityScore: ko.lostAllowedScore * 5 + ko.lost * 2,
       side:          "OPP",
@@ -143,11 +151,11 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     );
     candidates.push({
       kind:          "CHAIN_WEAPON",
-      badge:         "CHAIN WEAPON",
+      badge:         "KICKOUT STRENGTH",
       headline:      "Kickout Platform",
-      observation:   `${ko.wonToScore} of ${ko.won} kickout win${ko.won !== 1 ? "s" : ""} converted to score`,
+      observation:   `${team} won ${ko.won} kickouts — ${ko.wonToScore} converted to scores`,
       primaryMetric: ko.wonToScore,
-      metricLabel:   "scores created",
+      metricLabel:   "scores from kickouts",
       occurrences:   ko.won,
       priorityScore: ko.wonToScore * 5 + ko.won * 2,
       side:          "FOR",
@@ -157,7 +165,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     });
   }
 
-  // ── 3. TURNOVER DANGER (DANGER_CHAIN) ──────────────────────────────────────
+  // ── 3. POSSESSION RISK (DANGER_CHAIN) ──────────────────────────────────────
   // OPP scored after winning possession from a FOR turnover.
   if (cpQualifies(to.lostAllowedScore, to.lost, 0, mode)) {
     const dangerOutcomes = to.outcomes.filter(
@@ -171,11 +179,11 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     );
     candidates.push({
       kind:          "DANGER_CHAIN",
-      badge:         "DANGER CHAIN",
-      headline:      "Turnover Conceded",
-      observation:   `${to.lostAllowedScore} possession loss${to.lostAllowedScore !== 1 ? "es" : ""} led directly to opposition score`,
+      badge:         "POSSESSION RISK",
+      headline:      "Possession Lost → Score",
+      observation:   `${team} lost possession ${to.lost} times — ${to.lostAllowedScore} led to a score for ${opp}`,
       primaryMetric: to.lostAllowedScore,
-      metricLabel:   "scores conceded",
+      metricLabel:   "opposition scores",
       occurrences:   to.lost,
       priorityScore: to.lostAllowedScore * 5 + to.lost * 2,
       side:          "OPP",
@@ -185,7 +193,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     });
   }
 
-  // ── 4. TURNOVER WEAPON (CHAIN_WEAPON) ──────────────────────────────────────
+  // ── 4. TURNOVERS WON (CHAIN_WEAPON) ────────────────────────────────────────
   // FOR won possession from a turnover and scored.
   if (cpQualifies(to.wonToScore, to.won, to.wonToShot, mode)) {
     const weaponOutcomes = to.outcomes.filter(
@@ -199,11 +207,11 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     );
     candidates.push({
       kind:          "CHAIN_WEAPON",
-      badge:         "CHAIN WEAPON",
-      headline:      "Turnover Weapon",
-      observation:   `${to.wonToScore} of ${to.won} possession win${to.won !== 1 ? "s" : ""} converted to score`,
+      badge:         "TURNOVERS WON",
+      headline:      "Turnovers Won",
+      observation:   `${team} won ${to.won} turnovers — only ${to.wonToScore} converted to scores`,
       primaryMetric: to.wonToScore,
-      metricLabel:   "scores created",
+      metricLabel:   "scores from turnovers",
       occurrences:   to.won,
       priorityScore: to.wonToScore * 5 + to.won * 2 + to.wonToShot,
       side:          "FOR",
@@ -215,24 +223,24 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
 
   // ── 5. PRESSURE PATTERNS ────────────────────────────────────────────────────
   // High-frequency patterns without decisive conversion — only when no specific
-  // chain for the same ball-source already qualifies above.
+  // pattern for the same ball-source already qualifies above.
   {
     const hasKoPattern = candidates.some(
-      (c) => c.headline === "Kickout Trap" || c.headline === "Kickout Platform",
+      (c) => c.headline === "Kickout Loss → Score" || c.headline === "Kickout Platform",
     );
     const hasTvPattern = candidates.some(
-      (c) => c.headline === "Turnover Conceded" || c.headline === "Turnover Weapon",
+      (c) => c.headline === "Possession Lost → Score" || c.headline === "Turnovers Won",
     );
 
     // HT: threshold lowered to 3 — smaller first-half dataset
     if (!hasKoPattern && ko.total >= (mode === "HT" ? 3 : 4)) {
       candidates.push({
         kind:          "PRESSURE_PATTERN",
-        badge:         "PRESSURE PATTERN",
-        headline:      "Kickout Battle",
-        observation:   `${ko.total} contested restarts — ${ko.wonToScore} converted, ${ko.lostAllowedScore} conceded to score`,
+        badge:         "KICKOUT CONTEST",
+        headline:      "Kickout Contest",
+        observation:   `${ko.total} kickouts contested — ${team} scored from ${ko.wonToScore}, conceded ${ko.lostAllowedScore}`,
         primaryMetric: ko.total,
-        metricLabel:   "contested kickouts",
+        metricLabel:   "kickouts in match",
         occurrences:   ko.total,
         priorityScore: ko.total * 2,
         side:          ko.won >= ko.lost ? "FOR" : "OPP",
@@ -246,11 +254,11 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     if (!hasTvPattern && to.won >= (mode === "HT" ? 2 : 3) && to.wonToShot >= 2) {
       candidates.push({
         kind:          "PRESSURE_PATTERN",
-        badge:         "PRESSURE PATTERN",
-        headline:      "Turnover Pressure",
-        observation:   `${to.won} possession win${to.won !== 1 ? "s" : ""} produced ${to.wonToShot} shot${to.wonToShot !== 1 ? "s" : ""} — ${to.wonToScore} score${to.wonToScore !== 1 ? "s" : ""}`,
+        badge:         "POSSESSION WINS",
+        headline:      "Turnovers Won, Low Conversion",
+        observation:   `${team} won ${to.won} turnovers — took ${to.wonToShot} shots, scored ${to.wonToScore}`,
         primaryMetric: to.won,
-        metricLabel:   "possession wins",
+        metricLabel:   "turnovers won",
         occurrences:   to.won,
         priorityScore: to.won * 2 + to.wonToShot,
         side:          "FOR",
@@ -261,7 +269,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     }
   }
 
-  // ── 6. WASTED CHAIN (WASTED_CHAIN) ─────────────────────────────────────────
+  // ── 6. MISSED CHANCES (WASTED_CHAIN) ───────────────────────────────────────
   // FOR creating shots from turnovers but failing to convert.
   // HT: 1 unconverted shot qualifies — a missed chance at halftime is urgent.
   {
@@ -279,11 +287,11 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
       );
       candidates.push({
         kind:          "WASTED_CHAIN",
-        badge:         "WASTED CHAIN",
-        headline:      "Wasted Chain",
-        observation:   `${to.wonToShot} shot${to.wonToShot !== 1 ? "s" : ""} from ${to.won} turnover win${to.won !== 1 ? "s" : ""} — only ${to.wonToScore} converted`,
+        badge:         "MISSED CHANCES",
+        headline:      "Shots Missed After Turnovers",
+        observation:   `${team} won ${to.won} turnovers, took ${to.wonToShot} shots — only ${to.wonToScore} scored`,
         primaryMetric: unconverted,
-        metricLabel:   "unconverted shots",
+        metricLabel:   "shots not converted",
         occurrences:   to.won,
         priorityScore: to.wonToScore * 5 + to.won * 2 + unconverted,
         side:          "FOR",
