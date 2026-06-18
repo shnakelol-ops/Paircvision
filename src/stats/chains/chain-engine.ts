@@ -244,7 +244,7 @@ function buildKickoutDataset<TEvent extends ChainableEvent>(
     const isWon = kickoutEvent.kind === "KICKOUT_WON";
     const winningSide: "FOR" | "OPP" = isWon ? kickoutEvent.teamSide : (kickoutEvent.teamSide === "FOR" ? "OPP" : "FOR");
 
-    if (isWon) won++; else lost++;
+    if (winningSide === "FOR") won++; else lost++;
 
     // Look forward for first score by the winning side
     let nextScore: TEvent | null = null;
@@ -279,8 +279,8 @@ function buildKickoutDataset<TEvent extends ChainableEvent>(
       }
     }
 
-    if (isWon && nextScore != null) wonToScore++;
-    if (!isWon && nextScore != null) lostAllowedScore++;
+    if (winningSide === "FOR" && nextScore != null) wonToScore++;
+    if (winningSide === "OPP" && nextScore != null) lostAllowedScore++;
 
     outcomes.push({
       kickoutEvent,
