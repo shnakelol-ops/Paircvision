@@ -322,16 +322,16 @@ function drawPageHeader(
   ctx.textBaseline = "middle";
 
   ctx.fillStyle = "#f8fafc";
-  ctx.font = "bold 30px sans-serif";
+  ctx.font = "bold 33px sans-serif";
   ctx.textAlign = "left";
   ctx.fillText(title, 24, 38);
 
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "20px sans-serif";
+  ctx.font = "22px sans-serif";
   ctx.fillText(subtitle, 24, 62);
 
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "17px sans-serif";
+  ctx.font = "19px sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(`${pageNum} / ${totalPages}`, CANVAS_W - 24, 38);
   ctx.textAlign = "left";
@@ -348,7 +348,7 @@ function drawPageHeader(
 function drawEventCountFooter(ctx: CanvasRenderingContext2D, count: number): void {
   ctx.save();
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "16px sans-serif";
+  ctx.font = "18px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "right";
   ctx.fillText(`${count} event${count !== 1 ? "s" : ""}`, CANVAS_W - 24, CANVAS_H - 20);
@@ -358,7 +358,7 @@ function drawEventCountFooter(ctx: CanvasRenderingContext2D, count: number): voi
 function drawShotAttemptFooter(ctx: CanvasRenderingContext2D, count: number): void {
   ctx.save();
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "16px sans-serif";
+  ctx.font = "18px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "right";
   ctx.fillText(`${count} shot attempt${count !== 1 ? "s" : ""}`, CANVAS_W - 24, CANVAS_H - 20);
@@ -795,7 +795,7 @@ function drawSummaryStatsTable(
 
     // Team-name header
     ctx.fillStyle = accent;
-    ctx.font = "bold 16px sans-serif";
+    ctx.font = "bold 18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(teamName.toUpperCase(), bx + 16, cy + hdrH / 2);
@@ -813,7 +813,7 @@ function drawSummaryStatsTable(
       ctx.fillRect(bx + 4, cy, blockW - 4, secH);
       ctx.fillStyle = sec.accent;
       ctx.fillRect(bx + 4, cy, 3, secH);
-      ctx.font = "bold 10px sans-serif";
+      ctx.font = "bold 12px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText(sec.label, bx + 16, cy + secH / 2);
@@ -826,12 +826,12 @@ function drawSummaryStatsTable(
         }
         const midY = cy + rowH / 2;
         ctx.fillStyle = "#94a3b8";
-        ctx.font = "12px sans-serif";
+        ctx.font = "14px sans-serif";
         ctx.textBaseline = "middle";
         ctx.textAlign = "left";
         ctx.fillText(label, bx + 12, midY);
         ctx.fillStyle = vColor ?? "#f1f5f9";
-        ctx.font = "bold 12px sans-serif";
+        ctx.font = "bold 14px sans-serif";
         ctx.textAlign = "right";
         ctx.fillText(value, bx + blockW - 10, midY);
         cy += rowH;
@@ -849,7 +849,7 @@ function drawSummaryStatsTable(
   // "v" label centred in the gap between the two blocks
   ctx.save();
   ctx.fillStyle = "#64748b";
-  ctx.font = "bold 20px sans-serif";
+  ctx.font = "bold 22px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
   ctx.fillText("v", 960, blockY + hdrH / 2);
@@ -884,17 +884,17 @@ function makeSummaryPage(
 
   // ── Page header ───────────────────────────────────────────────────────────────
   ctx.fillStyle = "#f8fafc";
-  ctx.font = "bold 30px sans-serif";
+  ctx.font = "bold 33px sans-serif";
   ctx.textAlign = "left";
   ctx.fillText("Match Summary", 24, 38);
 
   const venueStr = venueName ? `  ·  ${venueName}` : "";
   ctx.fillStyle = "#64748b";
-  ctx.font = "18px sans-serif";
+  ctx.font = "20px sans-serif";
   ctx.fillText(`PáircVision Report${venueStr}`, 24, 62);
 
   ctx.fillStyle = "#64748b";
-  ctx.font = "17px sans-serif";
+  ctx.font = "19px sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(`1 / ${totalPages}`, CANVAS_W - 24, 38);
   ctx.textAlign = "left";
@@ -953,7 +953,7 @@ function makeSummaryPage(
   // ── Footer ────────────────────────────────────────────────────────────────────
   ctx.save();
   ctx.fillStyle = "#64748b";
-  ctx.font = "15px sans-serif";
+  ctx.font = "17px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "right";
   ctx.fillText(`${validEvts.length} total events`, CANVAS_W - 24, CANVAS_H - 20);
@@ -985,13 +985,13 @@ function makeSegmentsPage(
 
   // ── Page header ───────────────────────────────────────────────────────────────
   ctx.fillStyle = "#f8fafc";
-  ctx.font = "bold 30px sans-serif";
+  ctx.font = "bold 33px sans-serif";
   ctx.fillText("Game Segments Breakdown", 24, 38);
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "20px sans-serif";
+  ctx.font = "22px sans-serif";
   ctx.fillText(`${homeTeam} v ${awayTeam}`, 24, 62);
   ctx.fillStyle = "#64748b";
-  ctx.font = "17px sans-serif";
+  ctx.font = "19px sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(`${pageNum} / ${totalPages}`, CANVAS_W - 24, 38);
   ctx.textAlign = "left";
@@ -1086,7 +1086,7 @@ function makeSegmentsPage(
     ctx.fillRect(tL, top, tableW, titleH);
     ctx.fillStyle = accent;
     ctx.fillRect(tL, top, 4, titleH);
-    ctx.font = "bold 18px sans-serif";
+    ctx.font = "bold 20px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(title, tL + 18, top + titleH / 2);
@@ -1098,7 +1098,7 @@ function makeSegmentsPage(
     ctx.fillStyle = "rgba(251,113,133,0.07)";
     ctx.fillRect(oppX, hdr1Y, teamW, hdr1H);
 
-    ctx.font = "bold 16px sans-serif";
+    ctx.font = "bold 18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillStyle = "#7dd3fc";
@@ -1108,7 +1108,7 @@ function makeSegmentsPage(
 
     // Segment column label
     ctx.fillStyle = "#64748b";
-    ctx.font = "bold 12px sans-serif";
+    ctx.font = "bold 14px sans-serif";
     ctx.textAlign = "left";
     ctx.fillText("SEGMENT", tL + 10, hdr1Y + hdr1H / 2);
 
@@ -1123,7 +1123,7 @@ function makeSegmentsPage(
     const subOffsets = [cScore + wScore / 2, cShots + wShots / 2, cKO + wKO / 2, cTO + wTO / 2, cFree + wFree / 2];
 
     ctx.fillStyle = "#64748b";
-    ctx.font = "bold 11px sans-serif";
+    ctx.font = "bold 13px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     [forX, oppX].forEach((teamStart) => {
@@ -1162,7 +1162,7 @@ function makeSegmentsPage(
 
       // Segment label
       ctx.fillStyle = "#94a3b8";
-      ctx.font = "17px sans-serif";
+      ctx.font = "19px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText(label, tL + 10, midY);
@@ -1177,18 +1177,18 @@ function makeSegmentsPage(
         const netStr = st.netTo >= 0 ? `+${st.netTo}` : String(st.netTo);
 
         ctx.fillStyle = isFor ? "#4ade80" : "#fb7185";
-        ctx.font = "bold 17px sans-serif";
+        ctx.font = "bold 19px sans-serif";
         ctx.fillText(fmtScore(st.score), teamStart + cScore + wScore / 2, midY);
 
         ctx.fillStyle = "#e2e8f0";
-        ctx.font = "16px sans-serif";
+        ctx.font = "18px sans-serif";
         ctx.fillText(shoStr, teamStart + cShots + wShots / 2, midY);
         ctx.fillText(koStr,  teamStart + cKO    + wKO    / 2, midY);
         ctx.fillStyle = netCol;
-        ctx.font = "bold 17px sans-serif";
+        ctx.font = "bold 19px sans-serif";
         ctx.fillText(netStr, teamStart + cTO    + wTO    / 2, midY);
         ctx.fillStyle = "#e2e8f0";
-        ctx.font = "16px sans-serif";
+        ctx.font = "18px sans-serif";
         ctx.fillText(fStr,   teamStart + cFree  + wFree  / 2, midY);
       }
 
@@ -1213,7 +1213,7 @@ function makeSegmentsPage(
     ctx.fillRect(tL, totalY, 4, totH);
 
     ctx.fillStyle = accent;
-    ctx.font = "bold 16px sans-serif";
+    ctx.font = "bold 18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText("TOTAL", tL + 10, totMidY);
@@ -1224,18 +1224,18 @@ function makeSegmentsPage(
       const netStr = tot.netTo >= 0 ? `+${tot.netTo}` : String(tot.netTo);
 
       ctx.fillStyle = isFor ? "#4ade80" : "#fb7185";
-      ctx.font = "bold 18px sans-serif";
+      ctx.font = "bold 20px sans-serif";
       ctx.fillText(fmtScore(tot.score), teamStart + cScore + wScore / 2, totMidY);
 
       ctx.fillStyle = "#e2e8f0";
-      ctx.font = "bold 16px sans-serif";
+      ctx.font = "bold 18px sans-serif";
       ctx.fillText(`${tot.shots} / ${tot.wides}`, teamStart + cShots + wShots / 2, totMidY);
       ctx.fillText(`${tot.koWon}-${tot.koCon}`,   teamStart + cKO    + wKO    / 2, totMidY);
       ctx.fillStyle = netCol;
-      ctx.font = "bold 18px sans-serif";
+      ctx.font = "bold 20px sans-serif";
       ctx.fillText(netStr, teamStart + cTO + wTO / 2, totMidY);
       ctx.fillStyle = "#e2e8f0";
-      ctx.font = "bold 16px sans-serif";
+      ctx.font = "bold 18px sans-serif";
       ctx.fillText(`${tot.fWon} / ${tot.fCon}`, teamStart + cFree + wFree / 2, totMidY);
     }
 
@@ -1671,7 +1671,7 @@ function makeChainSummaryPage(
   ): number {
     ctx.save();
     ctx.fillStyle = accentColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label.toUpperCase(), x + 16, y + 13);
@@ -1699,14 +1699,14 @@ function makeChainSummaryPage(
     }
     const mid = cy + ROW_H / 2;
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "12px sans-serif";
+    ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label, x + 14, mid);
     // FOR value — right-aligned in left two-thirds
     const valCol = x + w * 0.58;
     ctx.fillStyle = forColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(valFor, valCol, mid);
     // OPP value
@@ -1724,7 +1724,7 @@ function makeChainSummaryPage(
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(x + 4, cy, w - 4, H);
     const mid = cy + H / 2;
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     const valCol = x + w * 0.58;
     ctx.fillStyle = "#7dd3fc";
@@ -1751,12 +1751,12 @@ function makeChainSummaryPage(
     }
     const mid = cy + ROW_H / 2;
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "12px sans-serif";
+    ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label, x + 14, mid);
     ctx.fillStyle = valueColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(value, x + w - 10, mid);
     return cy + ROW_H;
@@ -1812,12 +1812,12 @@ function makeChainSummaryPage(
     const totalOpp = summary.oppChains;
     ctx.save();
     ctx.fillStyle = "#64748b";
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText("TOTAL CHAINS DETECTED", COL1_X + 14, cy + 10);
     ctx.fillStyle = "#7dd3fc";
-    ctx.font = "bold 20px sans-serif";
+    ctx.font = "bold 22px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(val(totalFor), COL1_X + COL_W * 0.58, cy + 10);
     ctx.fillStyle = "#fb7185";
@@ -1831,7 +1831,7 @@ function makeChainSummaryPage(
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(COL1_X + 4, cy, COL_W - 4, 20);
     ctx.fillStyle = "#fbbf24";
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText("SCORING RUNS (≥2 consecutive)", COL1_X + 14, cy + 10);
@@ -1876,7 +1876,7 @@ function makeChainSummaryPage(
       ctx.fillStyle = "#22d3ee";
       ctx.fillRect(barX, barY, Math.max(4, barW * wonFrac), barH);
       ctx.fillStyle = "#64748b";
-      ctx.font = "10px sans-serif";
+      ctx.font = "12px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
       ctx.fillText(`Possession rate: ${Math.round(wonFrac * 100)}%`, barX + barW / 2, barY + barH + 10);
@@ -1911,7 +1911,7 @@ function makeChainSummaryPage(
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
     ctx.fillStyle = "#7dd3fc";
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(`${homeTeam.slice(0, 16)} — Best Run`, COL3_X + 14, cy + 10);
@@ -1934,7 +1934,7 @@ function makeChainSummaryPage(
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
     ctx.fillStyle = "#fb7185";
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(`${awayTeam.slice(0, 16)} — Best Run`, COL3_X + 14, cy + 10);
@@ -1958,7 +1958,7 @@ function makeChainSummaryPage(
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
     ctx.fillStyle = "#fbbf24";
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(`ALL SCORING RUNS (${scoringRuns.runs.length} total)`, COL3_X + 14, cy + 10);
@@ -2047,7 +2047,7 @@ function makeKickoutChainPage(
   function drawPanelTitle(x: number, y: number, label: string, accentColor: string): number {
     ctx.save();
     ctx.fillStyle = accentColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label.toUpperCase(), x + 16, y + 13);
@@ -2073,12 +2073,12 @@ function makeKickoutChainPage(
     }
     const mid = cy + ROW_H / 2;
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "12px sans-serif";
+    ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label, x + 14, mid);
     ctx.fillStyle = valueColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(value, x + w - 10, mid);
     return cy + ROW_H;
@@ -2106,7 +2106,7 @@ function makeKickoutChainPage(
         ctx.fillStyle = "#fb7185";
         ctx.fillRect(barX + barW - oppW, cy, oppW, barH);
       }
-      ctx.font = "11px sans-serif";
+      ctx.font = "13px sans-serif";
       ctx.textBaseline = "middle";
       const labelY = cy + barH + 12;
       ctx.fillStyle = "#22d3ee";
@@ -2117,7 +2117,7 @@ function makeKickoutChainPage(
       ctx.fillText(`${Math.round((1 - forFrac) * 100)}% ${oppLabel}`, barX + barW, labelY);
     } else {
       ctx.fillStyle = "#64748b";
-      ctx.font = "11px sans-serif";
+      ctx.font = "13px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
       ctx.fillText("No kickout data", barX + barW / 2, cy + barH + 12);
@@ -2198,7 +2198,7 @@ function makeKickoutChainPage(
     if (ko.total === 0) {
       ctx.save();
       ctx.fillStyle = "#64748b";
-      ctx.font = "16px sans-serif";
+      ctx.font = "18px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
       ctx.fillText("No kickout events recorded", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
@@ -2226,7 +2226,7 @@ function makeKickoutChainPage(
       ctx.fillStyle = "rgba(255,255,255,0.04)";
       ctx.fillRect(COL1_X + 4, cy, COL_W - 4, 20);
       ctx.fillStyle = "#22d3ee";
-      ctx.font = "bold 10px sans-serif";
+      ctx.font = "bold 12px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText("BY HALF", COL1_X + 14, cy + 10);
@@ -2264,7 +2264,7 @@ function makeKickoutChainPage(
     if (forKoWonOut.length + forKoConOut.length === 0) {
       ctx.save();
       ctx.fillStyle = "#64748b";
-      ctx.font = "14px sans-serif";
+      ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
       ctx.fillText("No kickouts recorded", COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
@@ -2274,7 +2274,7 @@ function makeKickoutChainPage(
       ctx.fillStyle = "rgba(255,255,255,0.04)";
       ctx.fillRect(COL2_X + 4, cy, COL_W - 4, 20);
       ctx.fillStyle = "#7dd3fc";
-      ctx.font = "bold 10px sans-serif";
+      ctx.font = "bold 12px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText("OWN KICKOUTS RETAINED", COL2_X + 14, cy + 10);
@@ -2289,7 +2289,7 @@ function makeKickoutChainPage(
       ctx.fillStyle = "rgba(255,255,255,0.04)";
       ctx.fillRect(COL2_X + 4, cy, COL_W - 4, 20);
       ctx.fillStyle = "#fb7185";
-      ctx.font = "bold 10px sans-serif";
+      ctx.font = "bold 12px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText("OWN KICKOUTS CONCEDED", COL2_X + 14, cy + 10);
@@ -2308,7 +2308,7 @@ function makeKickoutChainPage(
     if (oppKoWonOut.length + oppKoConOut.length === 0) {
       ctx.save();
       ctx.fillStyle = "#64748b";
-      ctx.font = "14px sans-serif";
+      ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
       ctx.fillText("No kickouts recorded", COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
@@ -2318,7 +2318,7 @@ function makeKickoutChainPage(
       ctx.fillStyle = "rgba(255,255,255,0.04)";
       ctx.fillRect(COL2_X + 4, cy, COL_W - 4, 20);
       ctx.fillStyle = "#fb7185";
-      ctx.font = "bold 10px sans-serif";
+      ctx.font = "bold 12px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText("OWN KICKOUTS RETAINED", COL2_X + 14, cy + 10);
@@ -2333,7 +2333,7 @@ function makeKickoutChainPage(
       ctx.fillStyle = "rgba(255,255,255,0.04)";
       ctx.fillRect(COL2_X + 4, cy, COL_W - 4, 20);
       ctx.fillStyle = "#22d3ee";
-      ctx.font = "bold 10px sans-serif";
+      ctx.font = "bold 12px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText("OWN KICKOUTS CONCEDED", COL2_X + 14, cy + 10);
@@ -2356,7 +2356,7 @@ function makeKickoutChainPage(
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
     ctx.fillStyle = "#fbbf24";
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText("CHAIN RULE MATCHES", COL3_X + 14, cy + 10);
@@ -2379,7 +2379,7 @@ function makeKickoutChainPage(
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
     ctx.fillStyle = "#4ade80";
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText("SCORING FROM POSSESSION", COL3_X + 14, cy + 10);
@@ -2396,7 +2396,7 @@ function makeKickoutChainPage(
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
     ctx.fillStyle = "#22d3ee";
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(`${homeTeam.slice(0, 16).toUpperCase()} POSSESSION OUTCOMES`, COL3_X + 14, cy + 10);
@@ -2421,7 +2421,7 @@ function makeKickoutChainPage(
       cy += 16;
       ctx.save();
       ctx.fillStyle = "#64748b";
-      ctx.font = "bold 10px sans-serif";
+      ctx.font = "bold 12px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       ctx.fillText("OVERALL POSSESSION RATE", COL3_X + 14, cy);
@@ -2494,7 +2494,7 @@ function makeTurnoverPunishmentPage(
   function drawPanelTitle(x: number, y: number, label: string, accentColor: string): number {
     ctx.save();
     ctx.fillStyle = accentColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label.toUpperCase(), x + 16, y + 13);
@@ -2520,12 +2520,12 @@ function makeTurnoverPunishmentPage(
     }
     const mid = cy + ROW_H / 2;
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "12px sans-serif";
+    ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label, x + 14, mid);
     ctx.fillStyle = valueColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(value, x + w - 10, mid);
     return cy + ROW_H;
@@ -2536,7 +2536,7 @@ function makeTurnoverPunishmentPage(
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(x + 4, cy, w - 4, 20);
     ctx.fillStyle = accentColor;
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label, x + 14, cy + 10);
@@ -2568,7 +2568,7 @@ function makeTurnoverPunishmentPage(
         ctx.fillRect(barX + barW - oppW, cy, oppW, barH);
       }
       const labelY = cy + barH + 12;
-      ctx.font = "11px sans-serif";
+      ctx.font = "13px sans-serif";
       ctx.textBaseline = "middle";
       ctx.fillStyle = accentFor;
       ctx.textAlign = "left";
@@ -2578,7 +2578,7 @@ function makeTurnoverPunishmentPage(
       ctx.fillText(`${Math.round((1 - forFrac) * 100)}% ${oppLabel}`, barX + barW, labelY);
     } else {
       const labelY = cy + barH + 12;
-      ctx.font = "11px sans-serif";
+      ctx.font = "13px sans-serif";
       ctx.textBaseline = "middle";
       ctx.fillStyle = "#64748b";
       ctx.textAlign = "center";
@@ -2682,7 +2682,7 @@ function makeTurnoverPunishmentPage(
     if (forWonTotal === 0) {
       ctx.save();
       ctx.fillStyle = "#64748b";
-      ctx.font = "16px sans-serif";
+      ctx.font = "18px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
       ctx.fillText("No attacking turnovers recorded", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
@@ -2723,7 +2723,7 @@ function makeTurnoverPunishmentPage(
     if (oppWonTotal === 0) {
       ctx.save();
       ctx.fillStyle = "#64748b";
-      ctx.font = "16px sans-serif";
+      ctx.font = "18px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
       ctx.fillText("No attacking turnovers recorded", COL2_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
@@ -2834,7 +2834,7 @@ function makeTurnoverPunishmentPage(
         let chainCy = cy + 26 + 16;  // advance past last row + spacing
         chainCy = drawSubHeader(COL3_X, chainCy, COL_W, "POSSESSION CHAIN INSIGHTS", "#60a5fa");
         ctx.save();
-        ctx.font         = "12px sans-serif";
+        ctx.font         = "14px sans-serif";
         ctx.fillStyle    = "#64748b";
         ctx.textBaseline = "middle";
         ctx.textAlign    = "left";
@@ -2914,7 +2914,7 @@ function makeMomentumRunsPage(
   function drawPanelTitle(x: number, y: number, label: string, accentColor: string): number {
     ctx.save();
     ctx.fillStyle = accentColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label.toUpperCase(), x + 16, y + 13);
@@ -2940,12 +2940,12 @@ function makeMomentumRunsPage(
     }
     const mid = cy + ROW_H / 2;
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "12px sans-serif";
+    ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label, x + 14, mid);
     ctx.fillStyle = valueColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(value, x + w - 10, mid);
     return cy + ROW_H;
@@ -2956,7 +2956,7 @@ function makeMomentumRunsPage(
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(x + 4, cy, w - 4, 20);
     ctx.fillStyle = accentColor;
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label, x + 14, cy + 10);
@@ -3096,7 +3096,7 @@ function makeMomentumRunsPage(
     if (runs.length === 0) {
       ctx.save();
       ctx.fillStyle = "#64748b";
-      ctx.font = "16px sans-serif";
+      ctx.font = "18px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
       ctx.fillText("No unanswered scoring runs detected", COL1_X + COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
@@ -3128,25 +3128,25 @@ function makeMomentumRunsPage(
 
         // Team name
         ctx.fillStyle = color;
-        ctx.font = "bold 12px sans-serif";
+        ctx.font = "bold 14px sans-serif";
         ctx.textAlign = "left";
         ctx.fillText(team, COL1_X + 14, mid);
 
         // Run count — centre-ish
         ctx.fillStyle = "#f8fafc";
-        ctx.font = "bold 13px sans-serif";
+        ctx.font = "bold 15px sans-serif";
         ctx.textAlign = "left";
         ctx.fillText(runStr, COL1_X + 190, mid);
 
         // Time
         ctx.fillStyle = "#64748b";
-        ctx.font = "12px sans-serif";
+        ctx.font = "14px sans-serif";
         ctx.textAlign = "left";
         ctx.fillText(time, COL1_X + 260, mid);
 
         // Score value
         ctx.fillStyle = color;
-        ctx.font = "bold 12px sans-serif";
+        ctx.font = "bold 14px sans-serif";
         ctx.textAlign = "right";
         ctx.fillText(score, COL1_X + COL_W - 10, mid);
 
@@ -3158,7 +3158,7 @@ function makeMomentumRunsPage(
         cy += 4;
         ctx.save();
         ctx.fillStyle = "#64748b";
-        ctx.font = "12px sans-serif";
+        ctx.font = "14px sans-serif";
         ctx.textBaseline = "middle";
         ctx.textAlign = "left";
         ctx.fillText(
@@ -3184,7 +3184,7 @@ function makeMomentumRunsPage(
     if (h1Runs.length === 0) {
       ctx.save();
       ctx.fillStyle = "#64748b";
-      ctx.font = "14px sans-serif";
+      ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
       ctx.fillText("No unanswered runs in 1H", COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
@@ -3223,7 +3223,7 @@ function makeMomentumRunsPage(
     if (h2Runs.length === 0) {
       ctx.save();
       ctx.fillStyle = "#64748b";
-      ctx.font = "14px sans-serif";
+      ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
       ctx.fillText("No unanswered runs in 2H", COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
@@ -3456,7 +3456,7 @@ function makeTacticalIntelligencePage(
   function drawCardTitle(x: number, y: number, w: number, label: string, accentColor: string): number {
     ctx.save();
     ctx.fillStyle = accentColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label.toUpperCase(), x + 16, y + 14);
@@ -3482,7 +3482,7 @@ function makeTacticalIntelligencePage(
     ctx.font = "bold 42px sans-serif";
     ctx.fillText(value, x + 20, cy + 46);
     ctx.fillStyle = "#64748b";
-    ctx.font = "11px sans-serif";
+    ctx.font = "13px sans-serif";
     ctx.fillText(label.toUpperCase(), x + 20, cy + 63);
     ctx.restore();
     return cy + 76;
@@ -3500,12 +3500,12 @@ function makeTacticalIntelligencePage(
     }
     const mid = cy + ROW_H / 2;
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "12px sans-serif";
+    ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label, x + 16, mid);
     ctx.fillStyle = valueColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(value, x + w - 14, mid);
     return cy + ROW_H;
@@ -3518,7 +3518,7 @@ function makeTacticalIntelligencePage(
   ): number {
     ctx.save();
     ctx.fillStyle = textColor;
-    ctx.font = "italic 14px sans-serif";
+    ctx.font = "italic 16px sans-serif";
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
     const maxW = w - 32;  // 16 px margin each side
@@ -3543,7 +3543,7 @@ function makeTacticalIntelligencePage(
     label: string, bgColor: string, textColor: string,
   ): number {
     ctx.save();
-    ctx.font = "bold 11px sans-serif";
+    ctx.font = "bold 13px sans-serif";
     const tw    = ctx.measureText(label).width;
     const chipW = tw + 20;
     const chipH = 24;
@@ -3560,7 +3560,7 @@ function makeTacticalIntelligencePage(
   // ── Empty state ────────────────────────────────────────────────────────────
   if (analysis.totalEventsAnalysed === 0) {
     ctx.fillStyle = "#64748b";
-    ctx.font = "16px sans-serif";
+    ctx.font = "18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
@@ -3730,7 +3730,7 @@ function makeTacticalIntelligencePage(
   ctx.fillStyle = "rgba(255,255,255,0.06)";
   ctx.fillRect(R_COL_X + 4, rcy, R_COL_W - 4, 24);
   ctx.fillStyle = "#64748b";
-  ctx.font = "bold 10px sans-serif";
+  ctx.font = "bold 12px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText("METRIC", R_COL_X + 16, rcy + 12);
@@ -3784,11 +3784,11 @@ function makeTacticalIntelligencePage(
     }
     const mid = rcy + ROW_H / 2;
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "12px sans-serif";
+    ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(row.label, R_COL_X + 16, mid);
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textAlign = "center";
     ctx.fillStyle = row.forColor;
     ctx.fillText(row.forVal, FOR_X, mid);
@@ -3847,7 +3847,7 @@ function makeTacticalReviewGuidePage(
   // ── Empty state ────────────────────────────────────────────────────────────
   if (prompts.length === 0) {
     ctx.fillStyle = "#64748b";
-    ctx.font = "16px sans-serif";
+    ctx.font = "18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText(
@@ -3901,7 +3901,7 @@ function makeTacticalReviewGuidePage(
 
   let cx = STRIP_X;
   const summaryY = CONTENT_TOP;
-  ctx.font = "bold 11px sans-serif";
+  ctx.font = "bold 13px sans-serif";
   for (const cat of ORDERED_CATS) {
     const count = countByCategory.get(cat) ?? 0;
     if (count === 0) continue;
@@ -3936,7 +3936,7 @@ function makeTacticalReviewGuidePage(
     const ROW2_Y = stripY + 50;
 
     // Category chip (row 1, left)
-    ctx.font = "bold 10px sans-serif";
+    ctx.font = "bold 12px sans-serif";
     const chipLabel = p.category;
     const chipTW    = ctx.measureText(chipLabel).width;
     const chipW     = chipTW + 18;
@@ -3953,7 +3953,7 @@ function makeTacticalReviewGuidePage(
     const TEXT_X    = CHIP_X + chipW + 14;
     const MAX_TW    = STRIP_X + STRIP_W - TEXT_X - 14;  // right margin
     ctx.fillStyle = "#e2e8f0";
-    ctx.font = "13px sans-serif";
+    ctx.font = "15px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     let display = p.text;
@@ -3970,7 +3970,7 @@ function makeTacticalReviewGuidePage(
 
     // Evidence tag (row 2, right-aligned — small, dimmed)
     ctx.fillStyle = "#64748b";
-    ctx.font = "10px sans-serif";
+    ctx.font = "12px sans-serif";
     ctx.textBaseline = "alphabetic";
     ctx.textAlign = "right";
     ctx.fillText(p.evidenceTag, STRIP_X + STRIP_W - 10, ROW2_Y);
@@ -4139,7 +4139,7 @@ function makeOppositionSnapshotPage(
   function drawCardTitle(x: number, y: number, w: number, label: string, accentColor: string): number {
     ctx.save();
     ctx.fillStyle = accentColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label.toUpperCase(), x + 16, y + 14);
@@ -4164,7 +4164,7 @@ function makeOppositionSnapshotPage(
     ctx.font = "bold 42px sans-serif";
     ctx.fillText(value, x + 20, cy + 46);
     ctx.fillStyle = "#64748b";
-    ctx.font = "11px sans-serif";
+    ctx.font = "13px sans-serif";
     ctx.fillText(label.toUpperCase(), x + 20, cy + 63);
     ctx.restore();
     return cy + 76;
@@ -4182,12 +4182,12 @@ function makeOppositionSnapshotPage(
     }
     const mid = cy + ROW_H / 2;
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "12px sans-serif";
+    ctx.font = "14px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(label, x + 16, mid);
     ctx.fillStyle = valueColor;
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(value, x + w - 14, mid);
     return cy + ROW_H;
@@ -4196,7 +4196,7 @@ function makeOppositionSnapshotPage(
   // ── Empty state ────────────────────────────────────────────────────────────
   if (analysis.totalEventsAnalysed === 0) {
     ctx.fillStyle = "#64748b";
-    ctx.font = "16px sans-serif";
+    ctx.font = "18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
@@ -4232,7 +4232,7 @@ function makeOppositionSnapshotPage(
   );
   if (oppScore.total === 0) {
     ctx.fillStyle = "#64748b";
-    ctx.font = "14px sans-serif";
+    ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No opposition scores recorded", L_COL_X + L_COL_W / 2, lCard1Y + L_CARD_H_1 / 2);
@@ -4255,7 +4255,7 @@ function makeOppositionSnapshotPage(
   cy = drawCardTitle(L_COL_X, lCard2Y, L_COL_W, "Restart Threat (Kickouts)", "#fbbf24");
   if (ko.total === 0) {
     ctx.fillStyle = "#64748b";
-    ctx.font = "14px sans-serif";
+    ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No kickout data recorded", L_COL_X + L_COL_W / 2, lCard2Y + L_CARD_H_2 / 2);
@@ -4287,7 +4287,7 @@ function makeOppositionSnapshotPage(
   cy = drawCardTitle(L_COL_X, lCard3Y, L_COL_W, "Turnover Threat", "#a78bfa");
   if (tvLost === 0 && tvOppToScore === 0) {
     ctx.fillStyle = "#64748b";
-    ctx.font = "14px sans-serif";
+    ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No turnover data recorded", L_COL_X + L_COL_W / 2, lCard3Y + L_CARD_H_3 / 2);
@@ -4349,7 +4349,7 @@ function makeOppositionSnapshotPage(
   cy = drawCardTitle(R_COL_X, rCard2Y, R_COL_W, "Chain Rate", "#22d3ee");
   if (chainTotal === 0) {
     ctx.fillStyle = "#64748b";
-    ctx.font = "14px sans-serif";
+    ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No chain data recorded", R_COL_X + R_COL_W / 2, rCard2Y + R_CARD_H_2 / 2);
@@ -4383,12 +4383,12 @@ function makeOppositionSnapshotPage(
       ctx.fillRect(R_COL_X + 4, rowY, R_COL_W - 4, WATCH_LINE_H);
     }
     ctx.fillStyle = OPP_ACCENT;
-    ctx.font = "bold 14px sans-serif";
+    ctx.font = "bold 16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText("—", R_COL_X + 16, midY);
     ctx.fillStyle = "#cbd5e1";
-    ctx.font = "13px sans-serif";
+    ctx.font = "15px sans-serif";
     const maxW = R_COL_W - 50;
     let display = bullet;
     if (ctx.measureText(display).width > maxW) {
@@ -4510,7 +4510,7 @@ function makeZoneAnalysisPage(
 
         ctx.fillStyle    = baseColor;
         ctx.globalAlpha  = 0.95;
-        ctx.font         = "bold 22px sans-serif";
+        ctx.font         = "bold 24px sans-serif";
         ctx.textAlign    = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(String(zone.count), zx + zw / 2, zy + zh / 2 - 10);
@@ -4518,7 +4518,7 @@ function makeZoneAnalysisPage(
 
         ctx.fillStyle    = "#ffffff";
         ctx.globalAlpha  = 0.72;
-        ctx.font         = "10px sans-serif";
+        ctx.font         = "12px sans-serif";
         ctx.fillText(zone.label, zx + zw / 2, zy + zh / 2 + 10);
         ctx.globalAlpha  = 1;
       }
@@ -4557,7 +4557,7 @@ function makeZoneAnalysisPage(
   // ── Empty state ────────────────────────────────────────────────────────────
   if (events.length === 0) {
     ctx.fillStyle    = "#64748b";
-    ctx.font         = "16px sans-serif";
+    ctx.font         = "18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
     ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
@@ -4662,7 +4662,7 @@ function makeZoneAnalysisPage(
       ctx.fillStyle = "#34d399cc";
       ctx.fillRect(DP_P3_X + 7, cy + 4, 3, ITEM_H - 12);
 
-      ctx.font = "12px sans-serif";
+      ctx.font = "14px sans-serif";
       let line1 = "";
       let line2 = "";
       for (const word of bullet.split(" ")) {
@@ -4692,7 +4692,7 @@ function makeZoneAnalysisPage(
       ctx.fillText(line1, DP_P3_X + 15, cy + 4);
       if (line2) {
         ctx.fillStyle = "#cbd5e1";
-        ctx.font = "11px sans-serif";
+        ctx.font = "13px sans-serif";
         ctx.fillText(line2, DP_P3_X + 15, cy + 4 + LINE_H);
       }
 
@@ -5038,7 +5038,7 @@ function makeMatchSwingTimelinePage(
     ctx.fillStyle    = "rgba(255,255,255,0.04)";
     ctx.fillRect(colX, CONTENT_TOP, L_COL_W, COL_HDR_H);
     ctx.fillStyle    = "#94a3b8";
-    ctx.font         = "bold 11px sans-serif";
+    ctx.font         = "bold 13px sans-serif";
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(label.toUpperCase(), colX + 16, CONTENT_TOP + COL_HDR_H / 2);
@@ -5050,7 +5050,7 @@ function makeMatchSwingTimelinePage(
 
     if (items.length === 0) {
       ctx.fillStyle    = "#64748b";
-      ctx.font         = "12px sans-serif";
+      ctx.font         = "14px sans-serif";
       ctx.textAlign    = "left";
       ctx.textBaseline = "middle";
       ctx.fillText(emptyText, colX + 16, ITEMS_TOP + 32);
@@ -5084,14 +5084,14 @@ function makeMatchSwingTimelinePage(
 
       // Clock / time label — right-aligned, left of the dot.
       ctx.fillStyle    = "#64748b";
-      ctx.font         = "10px sans-serif";
+      ctx.font         = "12px sans-serif";
       ctx.textAlign    = "right";
       ctx.textBaseline = "middle";
       ctx.fillText(s.sublabel, colX + CLOCK_MAX_X, midY);
 
       // Primary description — coloured, slightly above centre.
       ctx.fillStyle    = color;
-      ctx.font         = "bold 13px sans-serif";
+      ctx.font         = "bold 15px sans-serif";
       ctx.textAlign    = "left";
       ctx.textBaseline = "middle";
       let primary = s.label;
@@ -5114,7 +5114,7 @@ function makeMatchSwingTimelinePage(
         : s.kind === "LEAD_CHANGE"      ? "lead change"
         :                                 "equalised";
       ctx.fillStyle    = "rgba(255,255,255,0.28)";
-      ctx.font         = "10px sans-serif";
+      ctx.font         = "12px sans-serif";
       ctx.textAlign    = "left";
       ctx.textBaseline = "middle";
       ctx.fillText(badge.toUpperCase(), descX, midY + 12);
@@ -5124,7 +5124,7 @@ function makeMatchSwingTimelinePage(
   // Full-page empty-state guard.
   if (col1Items.length === 0 && col2Items.length === 0) {
     ctx.fillStyle    = "#64748b";
-    ctx.font         = "16px sans-serif";
+    ctx.font         = "18px sans-serif";
     ctx.textAlign    = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(
@@ -5283,7 +5283,7 @@ function makeShotEfficiencyPage(
     ctx.fillStyle = accentColor;
     ctx.fillRect(colX, CONTENT_TOP, 3, COL_HDR_H);
     ctx.fillStyle    = accentColor;
-    ctx.font         = "bold 12px sans-serif";
+    ctx.font         = "bold 14px sans-serif";
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(label.toUpperCase(), colX + 14, CONTENT_TOP + COL_HDR_H / 2);
@@ -5295,7 +5295,7 @@ function makeShotEfficiencyPage(
     ctx.fillStyle = accentColor;
     ctx.fillRect(colX, cy, 3, SEC_HDR_H);
     ctx.fillStyle    = accentColor;
-    ctx.font         = "bold 11px sans-serif";
+    ctx.font         = "bold 13px sans-serif";
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(label.toUpperCase(), colX + 14, cy + SEC_HDR_H / 2);
@@ -5313,12 +5313,12 @@ function makeShotEfficiencyPage(
     }
     const mid = cy + ROW_H / 2;
     ctx.fillStyle    = MUTED;
-    ctx.font         = "12px sans-serif";
+    ctx.font         = "14px sans-serif";
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(label, colX + 14, mid);
     ctx.fillStyle    = valueColor;
-    ctx.font         = "bold 13px sans-serif";
+    ctx.font         = "bold 15px sans-serif";
     ctx.textAlign    = "right";
     ctx.fillText(value, colX + L_COL_W - 12, mid);
     return cy + ROW_H;
@@ -5329,7 +5329,7 @@ function makeShotEfficiencyPage(
     ctx.fillRect(colX + 3, cy, L_COL_W - 3, 22);
     const mid = cy + 11;
     ctx.fillStyle    = MUTED;
-    ctx.font         = "bold 9px sans-serif";
+    ctx.font         = "bold 11px sans-serif";
     ctx.textBaseline = "middle";
     const colDefs: Array<[number, string]> = [
       [SRC_ATT_X,  "ATT"],
@@ -5357,7 +5357,7 @@ function makeShotEfficiencyPage(
     const mid      = cy + ROW_H / 2;
     const hasData  = row.att > 0;
     ctx.fillStyle    = hasData ? NEUTRAL : MUTED;
-    ctx.font         = "12px sans-serif";
+    ctx.font         = "14px sans-serif";
     ctx.textAlign    = "left";
     ctx.textBaseline = "middle";
     ctx.fillText(row.label, colX + 14, mid);
@@ -5368,7 +5368,7 @@ function makeShotEfficiencyPage(
       [SRC_MISS_X, row.att > 0 ? String(row.miss) : "—"],
       [SRC_CONV_X, row.conv],
     ];
-    ctx.font      = "bold 12px sans-serif";
+    ctx.font      = "bold 14px sans-serif";
     ctx.textAlign = "right";
     for (const [rx, val] of vals) {
       ctx.fillStyle = vc;
@@ -5456,7 +5456,7 @@ function stampChapterLabel(
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.save();
-  ctx.font = "bold 13px sans-serif";
+  ctx.font = "bold 15px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   const text = label.toUpperCase();
@@ -5497,7 +5497,7 @@ function stampLayerBadge(canvas: HTMLCanvasElement, layer: LayerKind): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.save();
-  ctx.font = "bold 11px sans-serif";
+  ctx.font = "bold 13px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
 
@@ -5593,14 +5593,14 @@ function makeHowToReadPage(
 
     // Layer title
     ctx.fillStyle = colour;
-    ctx.font = "bold 18px sans-serif";
+    ctx.font = "bold 20px sans-serif";
     ctx.textAlign = "left";
     ctx.fillText(layer.title, cx + 22, y);
     y += 36;
 
     // Subtitle
     ctx.fillStyle = "#f8fafc";
-    ctx.font = "bold 22px sans-serif";
+    ctx.font = "bold 24px sans-serif";
     const subtitleLines = wrapText(ctx, layer.subtitle, CARD_W - 44);
     subtitleLines.forEach((line) => { ctx.fillText(line, cx + 22, y); y += 28; });
     y += 8;
@@ -5614,14 +5614,14 @@ function makeHowToReadPage(
 
     // Question
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "italic 17px sans-serif";
+    ctx.font = "italic 19px sans-serif";
     const qLines = wrapText(ctx, `"${layer.question}"`, CARD_W - 44);
     qLines.forEach((line) => { ctx.fillText(line, cx + 22, y); y += 24; });
     y += 14;
 
     // Body
     ctx.fillStyle = "#cbd5e1";
-    ctx.font = "16px sans-serif";
+    ctx.font = "18px sans-serif";
     const bodyLines = wrapText(ctx, layer.body, CARD_W - 44);
     bodyLines.forEach((line) => { ctx.fillText(line, cx + 22, y); y += 22; });
     y += 20;
@@ -5634,13 +5634,13 @@ function makeHowToReadPage(
 
     // "Found in this report:" label
     ctx.fillStyle = "#64748b";
-    ctx.font = "bold 13px sans-serif";
+    ctx.font = "bold 15px sans-serif";
     ctx.fillText("FOUND IN THIS REPORT", cx + 22, y);
     y += 24;
 
     // Surface list
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "15px sans-serif";
+    ctx.font = "17px sans-serif";
     layer.surfaces.forEach((s) => {
       ctx.fillText(`· ${s}`, cx + 22, y);
       y += 22;
@@ -5650,7 +5650,7 @@ function makeHowToReadPage(
   // ── Footer disclaimer ─────────────────────────────────────────────────────
   const footY = CANVAS_H - 36;
   ctx.fillStyle = "#475569";
-  ctx.font = "italic 14px sans-serif";
+  ctx.font = "italic 16px sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(
     "Statistics, Possession Intelligence and Chain Intelligence answer different coaching questions. The numbers may differ because they measure different stages of play. Both are correct.",
@@ -5696,7 +5696,7 @@ function makeChapterDividerPage(
   // ── Page number (top-right, consistent with all other pages) ──────────────
   ctx.save();
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "17px sans-serif";
+  ctx.font = "19px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "right";
   ctx.fillText(`${pageNum} / ${totalPages}`, CANVAS_W - 24, 38);
@@ -5710,7 +5710,7 @@ function makeChapterDividerPage(
 
   // Chapter label
   ctx.fillStyle = accentColour;
-  ctx.font = `bold 20px sans-serif`;
+  ctx.font = `bold 22px sans-serif`;
   ctx.textAlign = "left";
   ctx.fillText(`CHAPTER ${chapterNum}`, LEFT, y);
   y += 50;
@@ -5724,7 +5724,7 @@ function makeChapterDividerPage(
 
   // Layer name
   ctx.fillStyle = accentColour;
-  ctx.font = `bold 30px sans-serif`;
+  ctx.font = `bold 33px sans-serif`;
   ctx.fillText(layerName, LEFT, y);
   y += 52;
 
@@ -5737,25 +5737,25 @@ function makeChapterDividerPage(
 
   // Description
   ctx.fillStyle = "#94a3b8";
-  ctx.font = `italic 22px sans-serif`;
+  ctx.font = `italic 24px sans-serif`;
   ctx.fillText(`"${description}"`, LEFT, y);
   y += 50;
 
   // Coach question
   ctx.fillStyle = "#64748b";
-  ctx.font = `20px sans-serif`;
+  ctx.font = `22px sans-serif`;
   ctx.fillText(`Coach question answered: "${coachQuestion}"`, LEFT, y);
   y += 60;
 
   // Contents header
   ctx.fillStyle = "#64748b";
-  ctx.font = `bold 15px sans-serif`;
+  ctx.font = `bold 17px sans-serif`;
   ctx.fillText("THIS CHAPTER CONTAINS", LEFT, y);
   y += 28;
 
   // Contents list
   ctx.fillStyle = "#94a3b8";
-  ctx.font = `18px sans-serif`;
+  ctx.font = `20px sans-serif`;
   contents.forEach((item) => {
     ctx.fillText(`· ${item}`, LEFT, y);
     y += 28;
@@ -5766,7 +5766,7 @@ function makeChapterDividerPage(
   // ── Brand footer ──────────────────────────────────────────────────────────
   ctx.save();
   ctx.fillStyle = accentColour + "66";
-  ctx.font = "bold 13px sans-serif";
+  ctx.font = "bold 15px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "right";
   ctx.fillText("PÁIRCVISION", CANVAS_W - 24, CANVAS_H - 24);
@@ -5843,12 +5843,12 @@ function dpPitchTitle(
   ctx.fillRect(x, y, w, DP_TITLE_H);
   ctx.fillStyle = accent;
   ctx.fillRect(x, y, 3, DP_TITLE_H);
-  ctx.font = "bold 13px sans-serif";
+  ctx.font = "bold 15px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(label.toUpperCase(), x + 12, y + DP_TITLE_H / 2);
   ctx.fillStyle = "#64748b";
-  ctx.font = "12px sans-serif";
+  ctx.font = "14px sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(`${count} events`, x + w - 10, y + DP_TITLE_H / 2);
   ctx.restore();
@@ -5874,7 +5874,7 @@ function dpPitchCallout(
   ctx.fillRect(x, y, 3, h);
 
   ctx.fillStyle = "#f1f5f9";
-  ctx.font = "bold 21px sans-serif";
+  ctx.font = "bold 23px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(headline, x + 26, y + 20, w - 34);
@@ -5886,7 +5886,7 @@ function dpPitchCallout(
     ctx.arc(x + 14, cy, 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#94a3b8";
-    ctx.font = "14px sans-serif";
+    ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(text, x + 26, cy, w - 34);
@@ -5921,7 +5921,7 @@ function dpPanelStart(
 
   // Panel title — brighter than stat labels to anchor the eye
   ctx.fillStyle = "#f1f5f9";
-  ctx.font = "bold 13px sans-serif";
+  ctx.font = "bold 15px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(title.toUpperCase(), x + 14, y + 16);
@@ -5951,12 +5951,12 @@ function dpStatRow(
   }
   const mid = cy + ROW_H / 2;
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "11px sans-serif";
+  ctx.font = "13px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(label, x + 10, mid);
   ctx.fillStyle = valueColor;
-  ctx.font = "bold 13px sans-serif";
+  ctx.font = "bold 15px sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(value, x + w - 8, mid);
   return cy + ROW_H;
@@ -5994,7 +5994,7 @@ function dpMiniBarRow(
 
   // Label
   ctx.fillStyle = "#94a3b8";
-  ctx.font = "11px sans-serif";
+  ctx.font = "13px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(label, x + 10, mid);
@@ -6013,7 +6013,7 @@ function dpMiniBarRow(
 
   // Value — right-aligned, bold
   ctx.fillStyle = valueColor;
-  ctx.font = "bold 13px sans-serif";
+  ctx.font = "bold 15px sans-serif";
   ctx.textAlign = "right";
   ctx.fillText(value, x + w - 8, mid);
 
@@ -6033,7 +6033,7 @@ function dpSubHeader(
   ctx.fillStyle = accent;
   ctx.fillRect(x + 3, cy, 2, 20);
   ctx.fillStyle = accent + "cc";
-  ctx.font = "bold 10px sans-serif";
+  ctx.font = "bold 12px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(label, x + 12, cy + 10);
@@ -6082,7 +6082,7 @@ function dpPossessionBar(
     }
 
     const labelY = cy + BAR_H + 12;
-    ctx.font = "10px sans-serif";
+    ctx.font = "12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.fillStyle = forAccent;
     ctx.textAlign = "left";
@@ -6092,7 +6092,7 @@ function dpPossessionBar(
     ctx.fillText(`${Math.round((1 - forFrac) * 100)}%  ${oppLabel}`, barX + barW, labelY);
   } else {
     ctx.fillStyle = "#64748b";
-    ctx.font = "10px sans-serif";
+    ctx.font = "12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No data", barX + barW / 2, cy + BAR_H / 2);
@@ -6118,7 +6118,7 @@ function dpIntelligencePanel(
   if (filtered.length === 0) {
     ctx.save();
     ctx.fillStyle = "#64748b";
-    ctx.font = "11px sans-serif";
+    ctx.font = "13px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("Insufficient data for coaching prompts.", x + w / 2, startY + (maxY - startY) / 2);
@@ -6141,7 +6141,7 @@ function dpIntelligencePanel(
     ctx.fillRect(x + 7, cy + 4, 3, ITEM_H - 12);
 
     // Word-wrap up to 2 lines
-    ctx.font = "12px sans-serif";
+    ctx.font = "14px sans-serif";
     let line1 = "";
     let line2 = "";
     for (const word of prompt.text.split(" ")) {
@@ -6170,11 +6170,11 @@ function dpIntelligencePanel(
 
     if (line2) {
       ctx.fillStyle = "#94a3b8";
-      ctx.font = "11px sans-serif";
+      ctx.font = "13px sans-serif";
       ctx.fillText(line2, x + 15, cy + 4 + LINE_H);
     }
 
-    ctx.font = "9px sans-serif";
+    ctx.font = "11px sans-serif";
     ctx.fillStyle = "#64748b";
     ctx.textAlign = "right";
     ctx.textBaseline = "alphabetic";
@@ -6703,12 +6703,12 @@ function makeQuadPitchMapPage(
 
     ctx.save();
     ctx.textBaseline = "middle";
-    ctx.font = "bold 14px sans-serif";
+    ctx.font = "bold 16px sans-serif";
     ctx.textAlign = "left";
     ctx.fillStyle = accent;
     ctx.fillText(quad.title.toUpperCase(), px + 10, py + TITLE_H / 2);
     ctx.fillStyle = "#64748b";
-    ctx.font = "13px sans-serif";
+    ctx.font = "15px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(`${quad.events.length}`, px + panelW - 8, py + TITLE_H / 2);
     ctx.restore();
@@ -6837,7 +6837,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     const ctx = c.getContext("2d");
     if (ctx) {
       ctx.fillStyle = "#0d1117"; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      ctx.fillStyle = "#94a3b8"; ctx.font = "24px sans-serif";
+      ctx.fillStyle = "#94a3b8"; ctx.font = "27px sans-serif";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText(`${label} — could not be rendered`, CANVAS_W / 2, CANVAS_H / 2);
     }
@@ -7340,7 +7340,7 @@ function drawHtCalloutStrip(
     ctx.fillRect(px, panelY, ACCENT_W, panelH);
 
     // Fact text — bold 24 px, full white, vertically centred
-    ctx.font         = "bold 24px sans-serif";
+    ctx.font         = "bold 27px sans-serif";
     ctx.fillStyle    = "#ffffff";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "left";
@@ -7437,7 +7437,7 @@ function drawThreatBadge(
 ): void {
   if (level === "NONE") return;
   ctx.save();
-  ctx.font         = "bold 18px sans-serif";
+  ctx.font         = "bold 20px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign    = "center";
   const tw = ctx.measureText(label).width;
@@ -7687,7 +7687,7 @@ function drawPossessionChainBlock(
 
   // Section label
   ctx.fillStyle    = "#64748b";
-  ctx.font         = "bold 13px sans-serif";
+  ctx.font         = "bold 15px sans-serif";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign    = "left";
   ctx.fillText("POSSESSION CHAINS", x, y);
@@ -7705,7 +7705,7 @@ function drawPossessionChainBlock(
   observations.forEach((obs, i) => {
     ctx.fillStyle = "rgba(96,165,250,0.55)";
     ctx.fillRect(x, y + 16 + i * LINE_H, 3, 24);
-    ctx.font         = "20px sans-serif";
+    ctx.font         = "22px sans-serif";
     ctx.fillStyle    = "#94a3b8";
     ctx.textBaseline = "alphabetic";
     ctx.fillText(obs, x + 12, y + 34 + i * LINE_H);
@@ -7788,7 +7788,7 @@ function makeHtPressureDamageMapPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "center";
-  ctx.font         = "bold 13px sans-serif";
+  ctx.font         = "bold 15px sans-serif";
 
   // OPP score badges (red pill, top-third of zone)
   for (const zone of oppScoreCounts) {
@@ -7889,7 +7889,7 @@ function makeHtPressureDamageMapPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
-  ctx.font         = "13px sans-serif";
+  ctx.font         = "15px sans-serif";
   ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(248,113,113,0.88)";
@@ -8000,7 +8000,7 @@ function makeHtKickoutVisionPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "center";
-  ctx.font         = "bold 12px sans-serif";
+  ctx.font         = "bold 14px sans-serif";
 
   for (let i = 0; i < forWonCounts.length; i++) {
     const forZone = forWonCounts[i];
@@ -8073,7 +8073,7 @@ function makeHtKickoutVisionPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
-  ctx.font         = "13px sans-serif";
+  ctx.font         = "15px sans-serif";
   ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(20,184,166,0.88)";
@@ -8209,7 +8209,7 @@ function makeHtAttackShotVisionPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "center";
-  ctx.font         = "bold 13px sans-serif";
+  ctx.font         = "bold 15px sans-serif";
 
   // Score badges (green, top-third of zone)
   for (const zone of scoreCounts) {
@@ -8308,7 +8308,7 @@ function makeHtAttackShotVisionPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
-  ctx.font         = "13px sans-serif";
+  ctx.font         = "15px sans-serif";
   ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(52,211,153,0.88)";
@@ -8411,7 +8411,7 @@ function makeHtGameFlowPage(
   // Fallback: no segment data
   if (segNums.length === 0) {
     ctx.fillStyle    = "#64748b";
-    ctx.font         = "20px sans-serif";
+    ctx.font         = "22px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
     ctx.fillText("No segment data available for this half.", CANVAS_W / 2, CANVAS_H / 2);
@@ -8492,7 +8492,7 @@ function makeHtGameFlowPage(
 
   // Sub-title context line
   ctx.fillStyle    = "#64748b";
-  ctx.font         = "16px sans-serif";
+  ctx.font         = "18px sans-serif";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign    = "left";
   ctx.fillText("SEGMENT CONTROL FLOW  ·  Who controlled each phase and why?", FLOW_X, FLOW_Y - 12);
@@ -8518,7 +8518,7 @@ function makeHtGameFlowPage(
     ctx.strokeRect(bx, by, segW, FLOW_H);
 
     // Status label (top of bar, subtle dark overlay)
-    ctx.font         = "bold 16px sans-serif";
+    ctx.font         = "bold 18px sans-serif";
     ctx.fillStyle    = "rgba(0,0,0,0.50)";
     ctx.textBaseline = "top";
     ctx.textAlign    = "center";
@@ -8533,7 +8533,7 @@ function makeHtGameFlowPage(
     ctx.fillText(diffLabel, bx + segW / 2, by + FLOW_H / 2 + 6);
 
     // Time label bottom of bar
-    ctx.font      = "bold 15px sans-serif";
+    ctx.font      = "bold 17px sans-serif";
     ctx.fillStyle = "rgba(255,255,255,0.68)";
     ctx.fillText(sd.label, bx + segW / 2, by + FLOW_H - 14);
   });
@@ -8548,7 +8548,7 @@ function makeHtGameFlowPage(
     ctx.fillStyle    = "rgba(255,255,255,0.06)";
     ctx.fillRect(bx, BULLET_TOP - 6, segW, 36);
     ctx.fillStyle    = "#94a3b8";
-    ctx.font         = "bold 16px sans-serif";
+    ctx.font         = "bold 18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
     ctx.fillText(sd.label, bx + segW / 2, BULLET_TOP + 12);
@@ -8556,7 +8556,7 @@ function makeHtGameFlowPage(
     // Bullet items
     sd.bullets.forEach((bullet, bi) => {
       const by = BULLET_TOP + 50 + bi * 38;
-      ctx.font         = "18px sans-serif";
+      ctx.font         = "20px sans-serif";
       ctx.fillStyle    = "#e2e8f0";
       ctx.textBaseline = "middle";
       ctx.textAlign    = "left";
@@ -8589,7 +8589,7 @@ function makeHtGameFlowPage(
     ctx.fillRect(lx, LEG_Y - 9, 18, 18);
     ctx.globalAlpha = 1.0;
     ctx.fillStyle = "#64748b";
-    ctx.font      = "14px sans-serif";
+    ctx.font      = "16px sans-serif";
     ctx.fillText(label, lx + 26, LEG_Y);
     lx += 140;
   }
@@ -8738,7 +8738,7 @@ function makeHtGameFlowFactorsPage(
   ctx.fillRect(COL_L_X, HDR_Y - 10, COL_W, 52);
   ctx.fillStyle    = "#22c55e";
   ctx.fillRect(COL_L_X, HDR_Y - 10, ACCENT_W, 52);
-  ctx.font         = "bold 24px sans-serif";
+  ctx.font         = "bold 27px sans-serif";
   ctx.fillStyle    = "#22c55e";
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
@@ -8757,7 +8757,7 @@ function makeHtGameFlowFactorsPage(
   ctx.fillRect(COL_R_X, HDR_Y - 10, COL_W, 52);
   ctx.fillStyle    = "#ef4444";
   ctx.fillRect(COL_R_X, HDR_Y - 10, ACCENT_W, 52);
-  ctx.font         = "bold 24px sans-serif";
+  ctx.font         = "bold 27px sans-serif";
   ctx.fillStyle    = "#ef4444";
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
@@ -8947,7 +8947,7 @@ function makeFtAttackCorridorsPage(
     { name: "RIGHT",  yMid: inner.y + inner.h * 0.835 },
   ];
   ctx.save();
-  ctx.font         = "bold 12px sans-serif";
+  ctx.font         = "bold 14px sans-serif";
   ctx.fillStyle    = "#64748b";
   ctx.textBaseline = "middle";
   ctx.textAlign    = "right";
@@ -8961,7 +8961,7 @@ function makeFtAttackCorridorsPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "center";
-  ctx.font         = "bold 13px sans-serif";
+  ctx.font         = "bold 15px sans-serif";
 
   for (const zone of scoreCounts) {
     if (zone.count === 0) continue;
@@ -9058,7 +9058,7 @@ function makeFtAttackCorridorsPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
-  ctx.font         = "13px sans-serif";
+  ctx.font         = "15px sans-serif";
   ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(52,211,153,0.88)";
@@ -9079,7 +9079,7 @@ function makeFtAttackCorridorsPage(
   ctx.setLineDash([]);
   ctx.restore();
   ctx.fillStyle = "#64748b";
-  ctx.font = "12px sans-serif";
+  ctx.font = "14px sans-serif";
   ctx.fillText("Left / Centre / Right", lx, ly + 14);
   ctx.restore();
 
@@ -9229,7 +9229,7 @@ function makeFtRestartEscapeRoutesPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "center";
-  ctx.font         = "bold 12px sans-serif";
+  ctx.font         = "bold 14px sans-serif";
   for (let col = 0; col < 3; col++) {
     for (let row = 0; row < 3; row++) {
       const cell = grid[col][row];
@@ -9365,7 +9365,7 @@ function makeFtRestartEscapeRoutesPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
-  ctx.font         = "13px sans-serif";
+  ctx.font         = "15px sans-serif";
 
   // Legend
   ctx.fillStyle = "#64748b";
@@ -9400,10 +9400,10 @@ function makeFtRestartEscapeRoutesPage(
   if (bestEscCol >= 0) {
     const esc = grid[bestEscCol][bestEscRow];
     ctx.fillStyle = "#14b8a6";
-    ctx.font      = "bold 12px sans-serif";
+    ctx.font      = "bold 14px sans-serif";
     ctx.fillText("ESCAPE ROUTE", lx, ly); ly += 20;
     ctx.fillStyle = "#f1f5f9";
-    ctx.font      = "14px sans-serif";
+    ctx.font      = "16px sans-serif";
     ctx.fillText(`${COL_NAMES[bestEscCol]}`, lx, ly); ly += 18;
     ctx.fillText(`${ROW_NAMES[bestEscRow]} channel`, lx, ly); ly += 18;
     ctx.fillStyle = "#64748b";
@@ -9418,10 +9418,10 @@ function makeFtRestartEscapeRoutesPage(
   if (worstTrapCol >= 0 && !(worstTrapCol === bestEscCol && worstTrapRow === bestEscRow)) {
     const trap = grid[worstTrapCol][worstTrapRow];
     ctx.fillStyle = "#ef4444";
-    ctx.font      = "bold 12px sans-serif";
+    ctx.font      = "bold 14px sans-serif";
     ctx.fillText("TRAP ZONE", lx, ly); ly += 20;
     ctx.fillStyle = "#f1f5f9";
-    ctx.font      = "14px sans-serif";
+    ctx.font      = "16px sans-serif";
     ctx.fillText(`${COL_NAMES[worstTrapCol]}`, lx, ly); ly += 18;
     ctx.fillText(`${ROW_NAMES[worstTrapRow]} channel`, lx, ly); ly += 18;
     ctx.fillStyle = "#64748b";
@@ -9545,7 +9545,7 @@ function makeFtTacticalMatchStoryPage(
 
   // Sub-heading
   ctx.fillStyle    = "#64748b";
-  ctx.font         = "16px sans-serif";
+  ctx.font         = "18px sans-serif";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign    = "left";
   ctx.fillText("MATCH NARRATIVE  ·  Segment control + key moments + editorial summary", RIVER_X, RIVER_Y - 12);
@@ -9577,14 +9577,14 @@ function makeFtTacticalMatchStoryPage(
       ctx.fillText(diffLabel, bx + segW / 2, RIVER_Y + RIVER_H / 2 + 4);
 
       // Time label bottom of bar
-      ctx.font      = "bold 14px sans-serif";
+      ctx.font      = "bold 16px sans-serif";
       ctx.fillStyle = "rgba(255,255,255,0.65)";
       ctx.fillText(sd.label, bx + segW / 2, RIVER_Y + RIVER_H - 12);
     });
   } else {
     // No segment data fallback
     ctx.fillStyle    = "#64748b";
-    ctx.font         = "20px sans-serif";
+    ctx.font         = "22px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
     ctx.fillText("No segment data available.", CANVAS_W / 2, RIVER_Y + RIVER_H / 2);
@@ -9705,14 +9705,14 @@ function makeFtTacticalMatchStoryPage(
     ctx.fillRect(cardX, cardY, PIN_CARD_ACCW, PIN_CARD_H);
 
     // Card title
-    ctx.font         = "bold 16px sans-serif";
+    ctx.font         = "bold 18px sans-serif";
     ctx.fillStyle    = "#f1f5f9";
     ctx.textBaseline = "alphabetic";
     ctx.textAlign    = "left";
     ctx.fillText(pin.title, cardX + PIN_CARD_ACCW + 10, cardY + 28);
 
     // Card sub-text
-    ctx.font      = "13px sans-serif";
+    ctx.font      = "15px sans-serif";
     ctx.fillStyle = "#94a3b8";
     ctx.fillText(pin.sub, cardX + PIN_CARD_ACCW + 10, cardY + 50);
   }
@@ -9722,7 +9722,7 @@ function makeFtTacticalMatchStoryPage(
 
   // Section label
   ctx.fillStyle    = "#64748b";
-  ctx.font         = "bold 13px sans-serif";
+  ctx.font         = "bold 15px sans-serif";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign    = "left";
   ctx.fillText("MATCH STORY", RIVER_X, STORY_Y);
@@ -9811,7 +9811,7 @@ function makeFtTacticalMatchStoryPage(
   const SENTENCE_X   = RIVER_X;
   const SENTENCE_Y0  = STORY_Y + 30;
   const LINE_SPACING = 42;
-  ctx.font         = "22px sans-serif";
+  ctx.font         = "24px sans-serif";
   ctx.fillStyle    = "#e2e8f0";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign    = "left";
@@ -10134,7 +10134,7 @@ function makeChainPressurePage(
       ctx.fill();
       ctx.globalAlpha = 1.0;
       ctx.fillStyle    = "#ffffff";
-      ctx.font         = `bold 14px sans-serif`;
+      ctx.font         = `bold 16px sans-serif`;
       ctx.textBaseline = "middle";
       ctx.textAlign    = "center";
       ctx.fillText(String(pattern.rank), IX, IY);
@@ -10153,13 +10153,13 @@ function makeChainPressurePage(
     // Empty state — degrade cleanly
     ctx.save();
     ctx.fillStyle    = "#64748b";
-    ctx.font         = "18px sans-serif";
+    ctx.font         = "20px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign    = "center";
     const EX = PANEL_X + PANEL_W / 2;
     const EY = PANEL_TOP + PANEL_H / 2;
     ctx.fillText("Not enough possession data to rank patterns.", EX, EY - 14);
-    ctx.font = "15px sans-serif";
+    ctx.font = "17px sans-serif";
     ctx.fillStyle = "#94a3b8";
     ctx.fillText("Tag at least 6 events to generate possession patterns.", EX, EY + 14);
     ctx.restore();
@@ -10223,7 +10223,7 @@ function makeChainPressurePage(
         ctx.fill();
         ctx.globalAlpha  = 1.0;
         ctx.fillStyle    = "#ffffff";
-        ctx.font         = `bold ${p.rank === 1 ? 14 : 13}px sans-serif`;
+        ctx.font         = `bold ${p.rank === 1 ? 16 : 15}px sans-serif`;
         ctx.textBaseline = "middle";
         ctx.textAlign    = "center";
         ctx.fillText(String(p.rank), CX, CY);
@@ -10236,7 +10236,7 @@ function makeChainPressurePage(
         const CHIP_H = 26;   // was 24; larger chip accommodates 13px bold text
         const BY   = HDR_MID - CHIP_H / 2;
         ctx.save();
-        ctx.font = "bold 13px sans-serif";  // was 10px — 4.4pt on PDF, unreadable
+        ctx.font = "bold 15px sans-serif";  // was 10px — 4.4pt on PDF, unreadable
         const chipTW = ctx.measureText(p.badge).width;
         const CHIP_W = chipTW + 18;
         ctx.fillStyle    = `rgba(${rgb},0.20)`;
@@ -10297,7 +10297,7 @@ function makeChainPressurePage(
       ctx.globalAlpha  = 1.0;
       // Metric label — right of the number
       const numW = ctx.measureText(String(p.primaryMetric)).width;
-      ctx.font      = "14px sans-serif";
+      ctx.font      = "16px sans-serif";
       ctx.fillStyle = "#94a3b8";
       ctx.textBaseline = "alphabetic";
       ctx.fillText(p.metricLabel, IX + numW + 12, MET_Y - 10);
@@ -10323,7 +10323,7 @@ function makeChainPressurePage(
       const sevTextDark =
         severity === "ELEVATED" && (hex === "#f59e0b" || hex === "#22c55e");
       ctx.save();
-      ctx.font         = "14px sans-serif";
+      ctx.font         = "16px sans-serif";
       ctx.fillStyle    = "#94a3b8";
       ctx.textBaseline = "middle";
       ctx.textAlign    = "left";
@@ -10333,7 +10333,7 @@ function makeChainPressurePage(
       // Severity chip — SEV_H 22 (was 20) to accommodate 12px bold text
       const SEV_H   = 22;
       const SEV_W   = ctx.measureText(severity).width + 16;
-      ctx.font = "bold 12px sans-serif";   // was 10px — 4.4pt on PDF, unreadable
+      ctx.font = "bold 14px sans-serif";   // was 10px — 4.4pt on PDF, unreadable
       ctx.fillStyle = sevBg;
       ctx.fillRect(IX + occW + 12, META_ABS - SEV_H / 2, SEV_W, SEV_H);
       ctx.fillStyle    = sevTextDark ? "#0d1117" : "#ffffff";
@@ -10453,7 +10453,7 @@ function makeOurShotProfilePage(
   ctx.fillStyle = "#34d399";
   ctx.fillRect(24, HT_PITCH_AREA.y, 3, SHOT_HEADLINE_H);
   ctx.fillStyle = "#f1f5f9";
-  ctx.font = "bold 22px sans-serif";
+  ctx.font = "bold 24px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(headlineText, 54, HT_PITCH_AREA.y + SHOT_HEADLINE_H / 2, HT_PITCH_AREA.w - 60);
@@ -10484,7 +10484,7 @@ function makeOurShotProfilePage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
-  ctx.font         = "13px sans-serif";
+  ctx.font         = "15px sans-serif";
   ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(52,211,153,0.88)";
@@ -10601,7 +10601,7 @@ function makeOppShotProfilePage(
   ctx.fillStyle = "#ef4444";
   ctx.fillRect(24, HT_PITCH_AREA.y, 3, SHOT_HEADLINE_H);
   ctx.fillStyle = "#f1f5f9";
-  ctx.font = "bold 22px sans-serif";
+  ctx.font = "bold 24px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(headlineText, 54, HT_PITCH_AREA.y + SHOT_HEADLINE_H / 2, HT_PITCH_AREA.w - 60);
@@ -10632,7 +10632,7 @@ function makeOppShotProfilePage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
-  ctx.font         = "13px sans-serif";
+  ctx.font         = "15px sans-serif";
   ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(52,211,153,0.88)";
@@ -10753,7 +10753,7 @@ function makeOurRestartPlatformPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "center";
-  ctx.font         = "bold 12px sans-serif";
+  ctx.font         = "bold 14px sans-serif";
 
   for (let i = 0; i < forWonCounts.length; i++) {
     const forZone = forWonCounts[i];
@@ -10820,7 +10820,7 @@ function makeOurRestartPlatformPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
-  ctx.font         = "13px sans-serif";
+  ctx.font         = "15px sans-serif";
   ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(20,184,166,0.88)";
@@ -10929,7 +10929,7 @@ function makeOppRestartPlatformPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "center";
-  ctx.font         = "bold 12px sans-serif";
+  ctx.font         = "bold 14px sans-serif";
 
   for (let i = 0; i < oppWonCounts.length; i++) {
     const oppZone = oppWonCounts[i];
@@ -10998,7 +10998,7 @@ function makeOppRestartPlatformPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
-  ctx.font         = "13px sans-serif";
+  ctx.font         = "15px sans-serif";
   ctx.fillStyle = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "rgba(245,158,11,0.88)";
@@ -11078,7 +11078,7 @@ function drawTwoColumnHtStrip(
     let ty = panelY + 18;
 
     // Heading (accent colour)
-    ctx.font         = "bold 20px sans-serif";
+    ctx.font         = "bold 22px sans-serif";
     ctx.fillStyle    = panel.color;
     ctx.textBaseline = "top";
     ctx.textAlign    = "left";
@@ -11086,7 +11086,7 @@ function drawTwoColumnHtStrip(
     ty += 28;
 
     // Detail lines
-    ctx.font      = "22px sans-serif";
+    ctx.font      = "24px sans-serif";
     ctx.fillStyle = "#ffffff";
     const MAX_TW  = panelW - TEXT_X - 12;
     for (const line of panel.lines.slice(0, 3)) {
@@ -11339,7 +11339,7 @@ function makeTurnoverTerritoryPage(
   ctx.save();
   ctx.textBaseline = "middle";
   ctx.textAlign    = "left";
-  ctx.font         = "13px sans-serif";
+  ctx.font         = "15px sans-serif";
   ctx.fillStyle    = "#64748b";
   ctx.fillText("LEGEND", lx, ly); ly += 26;
   ctx.fillStyle = "#a78bfa";
@@ -11420,13 +11420,13 @@ function makeTurnoverTerritoryPage(
     ctx.fillStyle = pd.accent;
     ctx.fillRect(px, panelY, acW, panelH);
 
-    ctx.font         = "bold 15px sans-serif";
+    ctx.font         = "bold 17px sans-serif";
     ctx.fillStyle    = pd.accent;
     ctx.textBaseline = "top";
     ctx.textAlign    = "left";
     ctx.fillText(pd.label, px + TEXT_X, contentY);
 
-    ctx.font      = "bold 24px sans-serif";
+    ctx.font      = "bold 27px sans-serif";
     ctx.fillStyle = "#ffffff";
     let display   = pd.text;
     if (ctx.measureText(display).width > MAX_TW) {
@@ -11673,7 +11673,7 @@ function makeHtTacticalSummaryPage(
     ctx.fillRect(px, py, 8, ROW_H);
 
     // Section title
-    ctx.font         = "bold 22px sans-serif";
+    ctx.font         = "bold 24px sans-serif";
     ctx.fillStyle    = panel.color;
     ctx.textBaseline = "top";
     ctx.textAlign    = "left";
@@ -11688,7 +11688,7 @@ function makeHtTacticalSummaryPage(
     ctx.stroke();
 
     // Bullet items — up to 4, truncated if overlong
-    ctx.font         = "18px sans-serif";
+    ctx.font         = "20px sans-serif";
     ctx.fillStyle    = "#cbd5e1";
     ctx.textBaseline = "top";
     const MAX_ITEM_W  = COL_W - 50;
