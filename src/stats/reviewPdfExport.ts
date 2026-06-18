@@ -10358,7 +10358,7 @@ function makeChainPressurePage(
     cpFacts.push(eventsLabel);
     cpColors.push("#64748b", "#64748b");
   } else {
-    cpFacts.push(`${patterns.length} possession pattern${patterns.length !== 1 ? "s" : ""} ranked by match impact`);
+    cpFacts.push("Top 3 possession patterns");
     cpFacts.push(eventsLabel);
     cpFacts.push("Patterns ranked by match impact");
     cpColors.push(cpHex(patterns[0].kind, patterns[0].headline), "#94a3b8", "#64748b");
