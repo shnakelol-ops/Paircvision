@@ -70,6 +70,13 @@ export type PdfExportEvent = {
   squadId?: string | null;
 };
 
+/** Minimal squad-player shape needed by the PDF export to seed the player report. */
+export type PdfSquadPlayer = {
+  id: string;
+  number: number;
+  name: string;
+};
+
 export type ReviewPdfExportInput = {
   events: readonly PdfExportEvent[];
   homeTeamName: string;
@@ -77,6 +84,13 @@ export type ReviewPdfExportInput = {
   venueName?: string;
   /** Defaults to "gaelic" */
   sport?: PitchSport;
+  /**
+   * When provided, every squad member gets a row in the Player Report even if
+   * they had zero tagged events. Home squad maps to the FOR (home) section.
+   */
+  homeSquadPlayers?: readonly PdfSquadPlayer[];
+  /** Away squad maps to the OPP (away) section. */
+  awaySquadPlayers?: readonly PdfSquadPlayer[];
 };
 
 // ─── Snapshot export types ────────────────────────────────────────────────────
@@ -1273,13 +1287,50 @@ type PlayerStatsFull = {
 };
 
 /** Collects and sorts all player-tagged stats from events. */
-function collectPlayerStats(events: readonly PdfExportEvent[]): PlayerStatsFull[] {
+function collectPlayerStats(
+  events: readonly PdfExportEvent[],
+  homeSquad?: readonly PdfSquadPlayer[],
+  awaySquad?: readonly PdfSquadPlayer[],
+): PlayerStatsFull[] {
   const playerMap = new Map<string, PlayerStatsFull>();
+
+  // Pre-seed from squad so zero-event players still appear.
+  // Each player is stored under their UUID key AND a team-scoped number key so
+  // that events tagged by number-only (no playerId) accumulate into the same row.
+  function seedSquad(squad: readonly PdfSquadPlayer[], teamSide: "FOR" | "OPP"): void {
+    for (const p of squad) {
+      if (playerMap.has(p.id)) continue;
+      const entry: PlayerStatsFull = {
+        id:       p.id,
+        number:   p.number,
+        name:     p.name.trim() || null,
+        teamSide,
+        actions: 0,
+        goals: 0, scorePoints: 0, scoreTotal: 0,
+        shots: 0, wides: 0,
+        toWon: 0, toLost: 0,
+        koWon: 0, koCon: 0,
+        freesWon: 0, freesCon: 0,
+      };
+      playerMap.set(p.id, entry);
+      // Alias: events tagged by number only resolve to this same entry
+      playerMap.set(`__num_${teamSide}_${p.number}`, entry);
+    }
+  }
+
+  if (homeSquad) seedSquad(homeSquad, "FOR");
+  if (awaySquad) seedSquad(awaySquad, "OPP");
+
   const validEvts = events.filter((e) => !e.id.includes("-instant-score-"));
 
   for (const e of validEvts) {
     if (e.playerId == null && e.playerNumber == null) continue;
-    const key = e.playerId ?? `__num_${e.playerNumber ?? "?"}`;
+    // Prefer player-ID key; fall back to team-scoped number key
+    const numKey = `__num_${e.teamSide}_${e.playerNumber ?? "?"}`;
+    const key =
+      e.playerId && playerMap.has(e.playerId) ? e.playerId
+      : playerMap.has(numKey)                 ? numKey
+      : e.playerId                            ?? numKey;
     if (!playerMap.has(key)) {
       playerMap.set(key, {
         id:         e.playerId ?? key,
@@ -1309,7 +1360,11 @@ function collectPlayerStats(events: readonly PdfExportEvent[]): PlayerStatsFull[
     if (e.kind === "FREE_CONCEDED")      ps.freesCon++;
   }
 
-  return Array.from(playerMap.values()).sort((a, b) => {
+  // Deduplicate: each PlayerStatsFull object may be stored under two keys (UUID + number alias)
+  const seen = new Set<PlayerStatsFull>();
+  for (const ps of playerMap.values()) seen.add(ps);
+
+  return Array.from(seen).sort((a, b) => {
     if (a.teamSide !== b.teamSide) return a.teamSide === "FOR" ? -1 : 1;
     if (a.number != null && b.number != null) return a.number - b.number;
     if (a.number != null) return -1;
@@ -1322,8 +1377,12 @@ function collectPlayerStats(events: readonly PdfExportEvent[]): PlayerStatsFull[
  * Pre-computes how many player breakdown pages will be needed.
  * Mirrors the exact page-break logic in makePlayerPages — must stay in sync.
  */
-function calcPlayerPageCount(events: readonly PdfExportEvent[]): number {
-  const players = collectPlayerStats(events);
+function calcPlayerPageCount(
+  events: readonly PdfExportEvent[],
+  homeSquad?: readonly PdfSquadPlayer[],
+  awaySquad?: readonly PdfSquadPlayer[],
+): number {
+  const players = collectPlayerStats(events, homeSquad, awaySquad);
   if (players.length === 0) return 1; // "no data" page
 
   const HDR_H = 54;   // table column header
@@ -1368,8 +1427,10 @@ function makePlayerPages(
   awayTeam: string,
   startPageNum: number,
   totalPages: number,
+  homeSquad?: readonly PdfSquadPlayer[],
+  awaySquad?: readonly PdfSquadPlayer[],
 ): HTMLCanvasElement[] {
-  const players = collectPlayerStats(events);
+  const players = collectPlayerStats(events, homeSquad, awaySquad);
 
   // ── Table geometry — 13 columns; Net T/O added; centered on 1920px canvas ────
   // #(65) Name(230) Score(150) Shots(100) Wides(75) T/O Won(100) T/O Lost(100)
@@ -1506,23 +1567,27 @@ function makePlayerPages(
     activeCtx.lineTo(tL + tableW, ry + ROW_H);
     activeCtx.stroke();
 
-    const scoreStr = `${ps.goals}-${String(ps.scorePoints).padStart(2, "0")} (${ps.scoreTotal})`;
+    const noEvents = ps.actions === 0;
     const numStr   = ps.number != null ? `#${ps.number}` : "—";
     const nameStr  = resolvePlayerDisplayName(ps.name, ps.number);
+    const scoreStr = noEvents ? "—" : `${ps.goals}-${String(ps.scorePoints).padStart(2, "0")} (${ps.scoreTotal})`;
     const accent   = ps.teamSide === "FOR" ? "#7dd3fc" : "#fb7185";
+    const dimmed   = noEvents ? 0.38 : 1.0;
     const midRow   = ry + ROW_H / 2;
     const netTo    = ps.toWon - ps.toLost;
-    const netToStr = netTo >= 0 ? `+${netTo}` : String(netTo);
-    const netColor = netTo > 0 ? "#4ade80" : netTo < 0 ? "#fb7185" : "#94a3b8";
+    const netToStr = noEvents ? "—" : (netTo >= 0 ? `+${netTo}` : String(netTo));
+    const netColor = noEvents ? "#475569" : (netTo > 0 ? "#4ade80" : netTo < 0 ? "#fb7185" : "#94a3b8");
 
     const vals      = [numStr, nameStr, scoreStr,
-                       String(ps.shots), String(ps.wides),
-                       String(ps.toWon), String(ps.toLost), netToStr,
-                       String(ps.koWon), String(ps.koCon),
-                       String(ps.freesWon), String(ps.freesCon), String(ps.actions)];
+                       noEvents ? "—" : String(ps.shots), noEvents ? "—" : String(ps.wides),
+                       noEvents ? "—" : String(ps.toWon), noEvents ? "—" : String(ps.toLost), netToStr,
+                       noEvents ? "—" : String(ps.koWon), noEvents ? "—" : String(ps.koCon),
+                       noEvents ? "—" : String(ps.freesWon), noEvents ? "—" : String(ps.freesCon),
+                       noEvents ? "—" : String(ps.actions)];
     const valColors = vals.map((_, i) =>
       i === 0 ? accent : i === 1 ? "#f1f5f9" : i === 7 ? netColor : "#e2e8f0",
     );
+    activeCtx.globalAlpha = dimmed;
 
     vals.forEach((val, i) => {
       const cx = i <= 1 ? colX[i] + 8 : colX[i] + colWs[i] / 2;
@@ -1533,6 +1598,7 @@ function makePlayerPages(
       activeCtx.textAlign    = i <= 1 ? "left" : "center";
       activeCtx.fillText(val, cx, midRow, colWs[i] - 6);
     });
+    activeCtx.globalAlpha = 1.0;
 
     ry += ROW_H;
     rowIdx++;
@@ -6707,6 +6773,8 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     awayTeamName,
     venueName,
     sport = "gaelic",
+    homeSquadPlayers,
+    awaySquadPlayers,
   } = input;
 
   // 19 fixed pages + player pages.
@@ -6738,7 +6806,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   //   p.21+N  Turnover Chain Analysis
   //   p.22+N  Scoring Momentum
   //   Total fixed: 22 + N
-  const playerPageCount = calcPlayerPageCount(events);
+  const playerPageCount = calcPlayerPageCount(events, homeSquadPlayers, awaySquadPlayers);
   const TOTAL_PAGES = 22 + playerPageCount;
 
   // Chain analysis — computed once; shared by all chain page builders.
@@ -6821,7 +6889,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   addCanvasPage(p_seg, true, "Segment Control");
 
   // p.6…5+N — Player Breakdown
-  const playerCanvases = makePlayerPages(events, homeTeamName, awayTeamName, 6, TOTAL_PAGES);
+  const playerCanvases = makePlayerPages(events, homeTeamName, awayTeamName, 6, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
   playerCanvases.forEach((c) => { stampLayerBadge(c, "STATISTICS"); addCanvasPage(c, true); });
 
   // p.6+N — Shot Pitch Maps
