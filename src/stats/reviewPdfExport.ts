@@ -34,6 +34,7 @@ import { getZoneCounts, getZoneHotspots } from "./zones/zone-engine";
 import type { ZoneCount } from "./zones/zone-types";
 import { eventSource, isFreeScore, isFreeMiss } from "./eventSource";
 import type { ScoreSource } from "./eventSource";
+import { resolvePlayerDisplayName } from "./player-display";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -1507,7 +1508,7 @@ function makePlayerPages(
 
     const scoreStr = `${ps.goals}-${String(ps.scorePoints).padStart(2, "0")} (${ps.scoreTotal})`;
     const numStr   = ps.number != null ? `#${ps.number}` : "—";
-    const nameStr  = ps.name ?? numStr;
+    const nameStr  = resolvePlayerDisplayName(ps.name, ps.number);
     const accent   = ps.teamSide === "FOR" ? "#7dd3fc" : "#fb7185";
     const midRow   = ry + ROW_H / 2;
     const netTo    = ps.toWon - ps.toLost;

@@ -1,6 +1,7 @@
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import type { MatchState } from "../core/match/match-state-store";
 import type { MatchIntelligenceSummary } from "./matchIntelligenceSummary";
+import { resolvePlayerDisplayName } from "./player-display";
 
 // Minimal structural interface — satisfied by both App.tsx's local LoggedMatchEvent
 // and saved-match.ts's LoggedMatchEvent without any explicit cast.
@@ -229,9 +230,10 @@ function buildPlayerNotes(events: readonly CBEvent[]): PlayerNote[] {
 
   const resolveLabel = (e: CBEvent): string => {
     const num = typeof e.playerNumber === "number" && isFinite(e.playerNumber) ? `#${e.playerNumber}` : null;
-    const name = typeof e.playerName === "string" && e.playerName.trim() ? e.playerName.trim() : null;
-    if (num && name) return `${num} ${name}`;
-    return name ?? num ?? "Tagged player";
+    const display = resolvePlayerDisplayName(e.playerName, e.playerNumber);
+    if (display === "—") return "Tagged player";
+    if (num && display !== num) return `${num} ${display}`;
+    return display;
   };
 
   const eventKey = (e: CBEvent): string | null => {
