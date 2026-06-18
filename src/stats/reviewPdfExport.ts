@@ -1476,7 +1476,7 @@ function makePlayerPages(
     const midHdr = ry + HDR_H / 2;
     colHdrs.forEach((hdr, i) => {
       activeCtx.fillStyle    = "#94a3b8";
-      activeCtx.font         = "bold 13px sans-serif";
+      activeCtx.font         = "bold 15px sans-serif";
       activeCtx.textBaseline = "middle";
       activeCtx.textAlign    = i <= 1 ? "left" : "center";
       activeCtx.fillText(hdr, i <= 1 ? colX[i] + 8 : colX[i] + colWs[i] / 2, midHdr);
@@ -1499,7 +1499,7 @@ function makePlayerPages(
     activeCtx.fillRect(tL, ry, tableW, SEC_H);
     activeCtx.fillStyle = sAccent;
     activeCtx.fillRect(tL, ry, 4, SEC_H);
-    activeCtx.font         = "bold 14px sans-serif";
+    activeCtx.font         = "bold 16px sans-serif";
     activeCtx.fillStyle    = "#f1f5f9";
     activeCtx.textBaseline = "middle";
     activeCtx.textAlign    = "left";
@@ -1518,7 +1518,7 @@ function makePlayerPages(
   if (players.length === 0) {
     startNewCanvas();
     activeCtx.fillStyle    = "#64748b";
-    activeCtx.font         = "22px sans-serif";
+    activeCtx.font         = "24px sans-serif";
     activeCtx.textBaseline = "middle";
     activeCtx.textAlign    = "center";
     activeCtx.fillText("No player-tagged events recorded.", CANVAS_W / 2, CANVAS_H / 2);
@@ -1593,7 +1593,7 @@ function makePlayerPages(
       const cx = i <= 1 ? colX[i] + 8 : colX[i] + colWs[i] / 2;
 
       activeCtx.fillStyle    = valColors[i];
-      activeCtx.font         = i === 1 ? "16px sans-serif" : "bold 16px sans-serif";
+      activeCtx.font         = i === 1 ? "18px sans-serif" : "bold 18px sans-serif";
       activeCtx.textBaseline = "middle";
       activeCtx.textAlign    = i <= 1 ? "left" : "center";
       activeCtx.fillText(val, cx, midRow, colWs[i] - 6);
