@@ -3588,8 +3588,8 @@ function makeTacticalIntelligencePage(
     `Kickout Win Rate  (${koWon} won of ${koTotal} total)`,
     "#22d3ee",
   );
-  cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Won kickouts → score",     `${koConvPct}%`, "#34d399", false);
-  cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Lost kickouts → opp scored", `${koExpPct}%`, "#fb7185", true);
+  cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Kickouts won → score",           `${koConvPct}%`, "#34d399", false);
+  cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Kickouts lost → opposition scored", `${koExpPct}%`, "#fb7185", true);
   {
     const netColor = koNetAdv > 0 ? "#34d399" : koNetAdv < 0 ? "#fb7185" : "#94a3b8";
     const netStr   = koNetAdv === 0 ? "0 %pt" : (koNetAdv > 0 ? `+${koNetAdv} %pt` : `${koNetAdv} %pt`);
@@ -3605,9 +3605,9 @@ function makeTacticalIntelligencePage(
     `Turnover Win Rate  (${tvWon} won of ${tvTotal} total)`,
     "#a78bfa",
   );
-  cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Won turnovers → score",     `${tvConvPct}%`, "#34d399", false);
-  cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Won turnovers → shot only", `${tvShotOnly}%`, "#fbbf24", true);
-  drawMetricRow(L_COL_X, cy, L_COL_W, "Lost turnovers → opp scored", `${tvDefExp}%`, "#fb7185", false);
+  cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Turnovers won → score",             `${tvConvPct}%`, "#34d399", false);
+  cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Turnovers won → shot, no score",   `${tvShotOnly}%`, "#fbbf24", true);
+  drawMetricRow(L_COL_X, cy, L_COL_W, "Turnovers lost → opposition scored", `${tvDefExp}%`, "#fb7185", false);
 
   // ── LEFT — CARD 3: MATCH INTELLIGENCE ─────────────────────────────────────
   drawCardBg(L_COL_X, card3Y, L_COL_W, CARD_H_BOT, "#f59e0b");
@@ -3619,7 +3619,7 @@ function makeTacticalIntelligencePage(
 
   if (koTotal > 0) {
     if (koWinPct >= 55) {
-      insights.push({ text: `${homeTeam.slice(0, 16)} built a strong kickout platform — ${koWinPct}% win rate, ${koConvPct}% converted to score.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} won ${koWinPct}% of kickouts — ${koConvPct}% converted to scores.` });
     } else if (koWinPct < 45) {
       insights.push({ text: `${homeTeam.slice(0, 16)} won only ${koWinPct}% of kickouts (${koWon}/${koTotal}); ${awayTeam.slice(0, 16)} scored from ${koExpPct}% of their wins.` });
     } else {
@@ -3629,11 +3629,11 @@ function makeTacticalIntelligencePage(
 
   if (tvTotal > 0) {
     if (tvConvPct >= 35) {
-      insights.push({ text: `${homeTeam.slice(0, 16)} were clinical in transition — ${tvConvPct}% of won turnovers became scores.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} converted ${tvConvPct}% of won turnovers to scores.` });
     } else if (tvConvPct < 20 && tvWon > 0) {
       insights.push({ text: `${homeTeam.slice(0, 16)} won ${tvWon}/${tvTotal} turnovers but converted only ${tvConvPct}% to scores.` });
     } else {
-      insights.push({ text: `${homeTeam.slice(0, 16)} won ${tvWinPct}% of turnovers, converting ${tvConvPct}%; ${awayTeam.slice(0, 16)} punished ${tvDefExp}% of their wins.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} won ${tvWinPct}% of turnovers (${tvConvPct}% to scores). ${awayTeam.slice(0, 16)} scored from ${tvDefExp}% of theirs.` });
     }
   }
 
@@ -3649,11 +3649,11 @@ function makeTacticalIntelligencePage(
 
   if (chainTotal > 0) {
     if (chainForPct >= 60) {
-      insights.push({ text: `${homeTeam.slice(0, 16)} dominated tactical sequences — ${chainForPct}% of all chains resolved in their favour.` });
+      insights.push({ text: `${homeTeam.slice(0, 16)} controlled possession — winning ${chainForPct}% of all sequences.` });
     } else if (chainForPct <= 40) {
-      insights.push({ text: `${awayTeam.slice(0, 16)} held the chain advantage — only ${chainForPct}% of tactical sequences resolved for ${homeTeam.slice(0, 16)}.` });
+      insights.push({ text: `${awayTeam.slice(0, 16)} held the possession edge — ${homeTeam.slice(0, 16)} won only ${chainForPct}% of sequences.` });
     } else {
-      insights.push({ text: `Competitive tactical contest — ${homeTeam.slice(0, 16)} won ${chainForPct}% of ${chainTotal} chains.` });
+      insights.push({ text: `Closely matched — ${homeTeam.slice(0, 16)} won ${chainForPct}% of ${chainTotal} possession sequences.` });
     }
   }
 
@@ -3666,13 +3666,13 @@ function makeTacticalIntelligencePage(
   // Status flag chips — anchored near the bottom of the card
   const flagsY = Math.max(cy + 8, card3Y + CARD_H_BOT - 52);
   let fx = L_COL_X + 16;
-  if (koWinPct >= 55)    fx = drawFlagChip(fx, flagsY, "KO Strength",    "rgba(34,211,238,0.15)",  "#22d3ee");
-  if (koNetAdv < -10)    fx = drawFlagChip(fx, flagsY, "KO Risk",        "rgba(251,113,133,0.15)", "#fb7185");
-  if (tvConvPct >= 35)   fx = drawFlagChip(fx, flagsY, "Clinical",       "rgba(52,211,153,0.15)",  "#34d399");
-  if (tvDefExp > 40)     fx = drawFlagChip(fx, flagsY, "TV Exposure",    "rgba(251,113,133,0.15)", "#fb7185");
-  if (maxConsFor >= 4)   fx = drawFlagChip(fx, flagsY, "Momentum Burst", "rgba(34,211,238,0.15)",  "#22d3ee");
-  if (maxConsOpp >= 4)   fx = drawFlagChip(fx, flagsY, "Opposition Run", "rgba(251,113,133,0.15)", "#fb7185");
-  if (chainForPct >= 60) drawFlagChip(fx, flagsY, "Chain Control",  "rgba(167,139,250,0.15)", "#a78bfa");
+  if (koWinPct >= 55)    fx = drawFlagChip(fx, flagsY, "Kickout Strength",  "rgba(34,211,238,0.15)",  "#22d3ee");
+  if (koNetAdv < -10)    fx = drawFlagChip(fx, flagsY, "Kickout Risk",      "rgba(251,113,133,0.15)", "#fb7185");
+  if (tvConvPct >= 35)   fx = drawFlagChip(fx, flagsY, "Clinical",          "rgba(52,211,153,0.15)",  "#34d399");
+  if (tvDefExp > 40)     fx = drawFlagChip(fx, flagsY, "Turnover Risk",     "rgba(251,113,133,0.15)", "#fb7185");
+  if (maxConsFor >= 4)   fx = drawFlagChip(fx, flagsY, "Momentum Burst",    "rgba(34,211,238,0.15)",  "#22d3ee");
+  if (maxConsOpp >= 4)   fx = drawFlagChip(fx, flagsY, "Opposition Run",    "rgba(251,113,133,0.15)", "#fb7185");
+  if (chainForPct >= 60) drawFlagChip(fx, flagsY, "Possession Control", "rgba(167,139,250,0.15)", "#a78bfa");
 
   // ── RIGHT — CARD 1: MOMENTUM CONTROL ──────────────────────────────────────
   drawCardBg(R_COL_X, card1Y, R_COL_W, CARD_H_TOP, "#22d3ee");
@@ -3684,7 +3684,7 @@ function makeTacticalIntelligencePage(
     rcy = drawHeroMetric(
       R_COL_X, rcy,
       allRuns.length > 0 ? `${runsFor} / ${runsOpp}` : "—",
-      `Scoring Runs FOR / OPP  (runs of ≥2 consecutive scores)`,
+      `Scoring Runs  (runs of ≥2 consecutive scores)`,
       runAdvColor,
     );
   }
@@ -3701,7 +3701,7 @@ function makeTacticalIntelligencePage(
 
   // ── RIGHT — CARD 2: CHAIN EFFICIENCY ──────────────────────────────────────
   drawCardBg(R_COL_X, card2Y, R_COL_W, CARD_H_MID, "#a78bfa");
-  rcy = drawCardTitle(R_COL_X, card2Y, R_COL_W, "Chain Efficiency", "#a78bfa");
+  rcy = drawCardTitle(R_COL_X, card2Y, R_COL_W, "Possession Sequences", "#a78bfa");
   {
     const chainColor = chainForPct >= 60 ? "#34d399"
       : chainForPct <= 40 ? "#fb7185"
@@ -3709,13 +3709,13 @@ function makeTacticalIntelligencePage(
     rcy = drawHeroMetric(
       R_COL_X, rcy,
       chainTotal > 0 ? `${chainForPct}%` : "—",
-      `Chain Win Rate  (${sm.forChains} of ${chainTotal} sequences resolved FOR)`,
+      `Possession Sequence Win Rate  (${sm.forChains} of ${chainTotal} won)`,
       chainColor,
     );
   }
-  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, "Kickout → Score chains",   `${koToScore}`,  "#22d3ee", false);
-  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, "Turnover → Score chains",  `${tvToScore}`,  "#a78bfa", true);
-  drawMetricRow(R_COL_X, rcy, R_COL_W, "Free Won → Goal chains",         `${freeToGoal}`, "#fbbf24", false);
+  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, "Kickouts leading to scores",    `${koToScore}`,  "#22d3ee", false);
+  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, "Turnovers leading to scores",   `${tvToScore}`,  "#a78bfa", true);
+  drawMetricRow(R_COL_X, rcy, R_COL_W, "Placed balls leading to goals",       `${freeToGoal}`, "#fbbf24", false);
 
   // ── RIGHT — CARD 3: PERFORMANCE SUMMARY ───────────────────────────────────
   drawCardBg(R_COL_X, card3Y, R_COL_W, CARD_H_BOT, "#34d399");
@@ -3754,7 +3754,7 @@ function makeTacticalIntelligencePage(
       oppColor: koTotal > 0 && koWinPct < 50 ? "#fb7185" : "#94a3b8",
     },
     {
-      label:    "Turnover → score rate",
+      label:    "Turnover conversion rate",
       forVal:   `${tvConvPct}%`,
       oppVal:   `${tvDefExp}%`,
       forColor: tvConvPct >= 30 ? "#34d399" : "#94a3b8",
@@ -3768,7 +3768,7 @@ function makeTacticalIntelligencePage(
       oppColor: longestOpp > longestFor  ? "#fb7185" : "#94a3b8",
     },
     {
-      label:    "Chains won (of total)",
+      label:    "Possession sequences won",
       forVal:   `${sm.forChains}`,
       oppVal:   `${sm.oppChains}`,
       forColor: sm.forChains >= sm.oppChains ? "#22d3ee" : "#94a3b8",
@@ -9874,19 +9874,19 @@ function makeChainPressurePage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Chain Pressure", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Possession Patterns", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Rank patterns ──────────────────────────────────────────────────────────
-  const patterns = rankChainPatterns(analysis, mode);
+  const patterns = rankChainPatterns(analysis, mode, homeTeam, awayTeam);
 
   // ── Colour helpers (all based on kind — no new palette colours) ───────────
-  // headline is threaded through so "Turnover Conceded" (a DANGER_CHAIN whose
-  // root cause is possession loss, not a kickout error) renders amber instead
-  // of red — amber = possession-loss/turnover pressure across pitch AND cards.
+  // headline is threaded through so "Possession Lost → Score" (a DANGER_CHAIN
+  // whose root cause is a turnover, not a kickout error) renders amber instead
+  // of red — amber = possession-loss patterns across pitch AND cards.
   function cpRgb(kind: ChainPressureKind, headline?: string): string {
     if (kind === "DANGER_CHAIN") {
-      // Turnover Conceded: amber — possession loss. Kickout Trap: red — opp scoring danger.
-      return headline === "Turnover Conceded" ? "245,158,11" : "239,68,68";
+      // Possession Lost → Score: amber — possession loss. Kickout Loss → Score: red — scoring danger.
+      return headline === "Possession Lost → Score" ? "245,158,11" : "239,68,68";
     }
     if (kind === "CHAIN_WEAPON")     return "34,197,94";
     if (kind === "PRESSURE_PATTERN") return "245,158,11";
@@ -9894,7 +9894,7 @@ function makeChainPressurePage(
   }
   function cpHex(kind: ChainPressureKind, headline?: string): string {
     if (kind === "DANGER_CHAIN") {
-      return headline === "Turnover Conceded" ? "#f59e0b" : "#ef4444";
+      return headline === "Possession Lost → Score" ? "#f59e0b" : "#ef4444";
     }
     if (kind === "CHAIN_WEAPON")     return "#22c55e";
     if (kind === "PRESSURE_PATTERN") return "#f59e0b";
@@ -9946,7 +9946,7 @@ function makeChainPressurePage(
   // Green = success platform · Amber = pressure building · Red = active damage.
   // No rings, no badges, no arrows — ambient fill only.
   for (const pattern of patterns) {
-    const isTurnoverConceded = pattern.headline === "Turnover Conceded";
+    const isTurnoverConceded = pattern.headline === "Possession Lost → Score";
     if (pattern.kind !== "PRESSURE_PATTERN" && !isTurnoverConceded) continue;
     if (pattern.zoneCol === null || pattern.zoneRow === null) continue;
 
@@ -9995,7 +9995,7 @@ function makeChainPressurePage(
 
     // Threat rings
     const ringLevel = cpThreatLevel(pattern.priorityScore);
-    const isTurnoverConceded = pattern.headline === "Turnover Conceded";
+    const isTurnoverConceded = pattern.headline === "Possession Lost → Score";
     if (isTurnoverConceded && ringLevel !== "NONE") {
       // Amber dashed ring — signals possession-loss origin, not scoring danger.
       // Mirrors drawThreatRings ring count logic but locks colour to amber so
@@ -10021,14 +10021,14 @@ function makeChainPressurePage(
 
     // Threat badge — rank #1 only (keeps rank #2 visually quieter)
     if (pattern.rank === 1) {
-      // "Turnover Conceded" gets a distinct "TURNOVER" label; badge colour is still
+      // "Possession Lost → Score" gets a distinct label; badge colour is still
       // threat-level driven (communicates urgency separately from pattern type).
       const badgeLbl =
-        isTurnoverConceded                   ? "TURNOVER"     :
-        pattern.kind === "DANGER_CHAIN"      ? "DANGER ZONE"  :
-        pattern.kind === "CHAIN_WEAPON"      ? "CHAIN WEAPON" :
-        pattern.kind === "PRESSURE_PATTERN"  ? "PRESSURE"     :
-                                               "WASTED";
+        isTurnoverConceded                   ? "POSSESSION RISK"  :
+        pattern.kind === "DANGER_CHAIN"      ? "KICKOUT RISK"     :
+        pattern.kind === "CHAIN_WEAPON"      ? "POSSESSION WIN"   :
+        pattern.kind === "PRESSURE_PATTERN"  ? "KICKOUT CONTEST"  :
+                                               "MISSED CHANCES";
       drawThreatBadge(ctx, cx, cy - 52, badgeLbl, ringLevel !== "NONE" ? ringLevel : "ELEVATED");
     }
 
@@ -10038,8 +10038,8 @@ function makeChainPressurePage(
         pattern.rank === 1
           ? Math.min(pattern.priorityScore / 20, 1.0)
           : Math.min(pattern.priorityScore / 32, 0.65);
-      // Turnover Conceded uses PRESSURE_COLLAPSE (amber sweep) — possession lost
-      // in zone, not an active scoring threat entering from outside.
+      // Possession Lost → Score uses PRESSURE_COLLAPSE (amber sweep) — possession
+      // lost in zone, not an active scoring threat entering from outside.
       const sweepKind =
         pattern.kind === "CHAIN_WEAPON"                                            ? "PRESSURE_EXIT"    :
         isTurnoverConceded                                                         ? "PRESSURE_COLLAPSE" :
@@ -10056,7 +10056,7 @@ function makeChainPressurePage(
 
     // Pattern arrow — rank #1 only, requires explicit chain evidence (≥2 occurrences)
     if (pattern.rank === 1 && pattern.arrowKind !== null) {
-      if (pattern.arrowKind === "TRAP" && pattern.headline === "Kickout Trap") {
+      if (pattern.arrowKind === "TRAP" && pattern.headline === "Kickout Loss → Score") {
         // TRAP: OPP won kickout here → OPP scored there
         // Zone-pair deduplication + ≥2 threshold (identical guard as RestartEscapeRoutes)
         const trapMap = new Map<string, {
@@ -10158,10 +10158,10 @@ function makeChainPressurePage(
     ctx.textAlign    = "center";
     const EX = PANEL_X + PANEL_W / 2;
     const EY = PANEL_TOP + PANEL_H / 2;
-    ctx.fillText("Insufficient chain data to rank patterns.", EX, EY - 14);
+    ctx.fillText("Not enough possession data to rank patterns.", EX, EY - 14);
     ctx.font = "15px sans-serif";
     ctx.fillStyle = "#94a3b8";
-    ctx.fillText("Tag at least 6 events to generate chain pressure.", EX, EY + 14);
+    ctx.fillText("Tag at least 6 events to generate possession patterns.", EX, EY + 14);
     ctx.restore();
   } else {
     // ── Card height proportions: [40%, 33%, 27%] — rank-3 bumped from 24% ───
@@ -10309,8 +10309,8 @@ function makeChainPressurePage(
       const META_ABS  = cardY + cardH - META_BOT;
       const severity  = cpSeverity(p.priorityScore);
       // ELEVATED chip inherits the pattern's accent colour — amber for
-      // possession-loss patterns (Turnover Conceded, PRESSURE_PATTERN),
-      // red for scoring-danger patterns (Kickout Trap). This ends the
+      // possession-loss patterns (Possession Lost → Score, PRESSURE_PATTERN),
+      // red for scoring-danger patterns (Kickout Loss → Score). This ends the
       // yellow-chip-on-red-card confusion.
       // CRITICAL and HIGH keep universal urgency colours (red / orange).
       const sevBg =
@@ -10327,7 +10327,7 @@ function makeChainPressurePage(
       ctx.fillStyle    = "#94a3b8";
       ctx.textBaseline = "middle";
       ctx.textAlign    = "left";
-      const occStr  = `${p.occurrences} occurrence${p.occurrences !== 1 ? "s" : ""}`;
+      const occStr  = `${p.occurrences} time${p.occurrences !== 1 ? "s" : ""}`;
       ctx.fillText(occStr, IX, META_ABS);
       const occW    = ctx.measureText(occStr).width;
       // Severity chip — SEV_H 22 (was 20) to accommodate 12px bold text
@@ -10350,17 +10350,17 @@ function makeChainPressurePage(
   const cpColors: string[] = [];
 
   const eventsLabel = mode === "HT"
-    ? "1H chain sequences analysed"
+    ? "First-half possession sequences reviewed"
     : `${analysis.totalEventsAnalysed} events analysed`;
 
   if (patterns.length === 0) {
-    cpFacts.push("No chain patterns ranked — insufficient first-half data");
+    cpFacts.push("Not enough first-half data to rank possession patterns.");
     cpFacts.push(eventsLabel);
     cpColors.push("#64748b", "#64748b");
   } else {
-    cpFacts.push(`${patterns.length} chain pattern${patterns.length !== 1 ? "s" : ""} ranked by match impact`);
+    cpFacts.push(`${patterns.length} possession pattern${patterns.length !== 1 ? "s" : ""} ranked by match impact`);
     cpFacts.push(eventsLabel);
-    cpFacts.push("Ranked: scores ×5  ·  occurrences ×2  ·  shots ×1");
+    cpFacts.push("Patterns ranked by match impact");
     cpColors.push(cpHex(patterns[0].kind, patterns[0].headline), "#94a3b8", "#64748b");
   }
 
@@ -11484,7 +11484,7 @@ function makeHtTacticalSummaryPage(
   const ROW_H = Math.floor((P_BOT - P_TOP - GAP) / 2); // 393
 
   // ── Derive panel content from chain analysis ──────────────────────────────
-  const patterns = rankChainPatterns(analysis, mode);
+  const patterns = rankChainPatterns(analysis, mode, homeTeam, awayTeam);
   const ko = analysis.kickouts;
   const to = analysis.turnovers;
   const sr = analysis.scoringRuns;
@@ -11514,7 +11514,7 @@ function makeHtTacticalSummaryPage(
 
   // Inline colour helper (mirrors cpHex inside makeChainPressurePage)
   function summaryPatternHex(kind: ChainPressureKind, headline?: string): string {
-    if (kind === "DANGER_CHAIN")     return headline === "Turnover Conceded" ? "#f59e0b" : "#ef4444";
+    if (kind === "DANGER_CHAIN")     return headline === "Possession Lost → Score" ? "#f59e0b" : "#ef4444";
     if (kind === "CHAIN_WEAPON")     return "#22c55e";
     if (kind === "PRESSURE_PATTERN") return "#f59e0b";
     return "#818cf8";
@@ -11544,7 +11544,7 @@ function makeHtTacticalSummaryPage(
     workingItems.push(weaponPattern.observation);
   }
   if (workingItems.length === 0) {
-    workingItems.push("Insufficient chain data this period");
+    workingItems.push("Insufficient possession data this period");
     if (forScoreEvts.length > 0) {
       workingItems.push(`${forScoreEvts.length} score${forScoreEvts.length !== 1 ? "s" : ""} logged`);
     }
@@ -11565,7 +11565,7 @@ function makeHtTacticalSummaryPage(
     dangerItems.push(`${to.lostAllowedScore} turnover${to.lostAllowedScore !== 1 ? "s" : ""} conceded → their score`);
   }
   if (dangerItems.length === 0) {
-    dangerItems.push("No critical danger chain detected");
+    dangerItems.push("No critical possession threat detected");
     if (oppScoreEvts.length > 0) {
       dangerItems.push(`${oppScoreEvts.length} opposition score${oppScoreEvts.length !== 1 ? "s" : ""}`);
     }
@@ -11607,9 +11607,9 @@ function makeHtTacticalSummaryPage(
     watchItems.push(`Low turnover-to-shot conversion (${to.wonToShotPercent}%)`);
   }
   if (watchItems.length === 0) {
-    watchItems.push("No repeating pressure pattern ranked");
+    watchItems.push("No repeating possession pattern ranked");
     if (patterns.length > 0) {
-      watchItems.push(`${patterns.length} chain pattern${patterns.length !== 1 ? "s" : ""} in review`);
+      watchItems.push(`${patterns.length} possession pattern${patterns.length !== 1 ? "s" : ""} in review`);
     }
   }
 
@@ -11847,11 +11847,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Turnover & Territory",
     );
 
-    // 5. Chain Pressure — HT-calibrated (relaxed thresholds for smaller H1 dataset)
+    // 5. Possession Patterns — HT-calibrated (relaxed thresholds for smaller H1 dataset)
     addPage(
       makeChainPressurePage(events, sport, chainAnalysis, home, away, 5, TOTAL_PAGES, "HT"),
       true,
-      "Chain Pressure",
+      "Possession Patterns",
     );
 
     // 6. Tactical Match Summary — 2×2 panel, no pitch, coaching message board
@@ -11912,11 +11912,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Turnover & Territory",
     );
 
-    // 5. Chain Pressure — FT-calibrated (standard thresholds for full-match dataset)
+    // 5. Possession Patterns — FT-calibrated (standard thresholds for full-match dataset)
     addPage(
       makeChainPressurePage(events, sport, chainAnalysis, home, away, 5, TOTAL_PAGES),
       true,
-      "Chain Pressure",
+      "Possession Patterns",
     );
 
     // 6. Tactical Match Summary — 2×2 panel, no pitch, coaching message board
