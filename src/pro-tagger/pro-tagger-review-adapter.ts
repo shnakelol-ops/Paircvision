@@ -1,6 +1,6 @@
-import type { ReviewPdfExportInput, SnapshotPdfExportInput } from "../stats/reviewPdfExport";
+import type { ReviewPdfExportInput, SnapshotPdfExportInput, PdfSquadPlayer } from "../stats/reviewPdfExport";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
-import type { ProTaggerSession } from "./pro-tagger-session";
+import type { ProTaggerSession, ProTaggerSquad } from "./pro-tagger-session";
 import type { LoggedMatchEvent } from "../core/stats/saved-match";
 import type { PitchSport } from "../core/pitch/pitch-config";
 
@@ -9,13 +9,19 @@ function toPitchSport(sport: ProTaggerSavedMatch["sport"]): PitchSport {
   return sport === "ladies_football" ? "gaelic" : sport;
 }
 
+function toSquadPlayers(squad: ProTaggerSquad): readonly PdfSquadPlayer[] {
+  return squad.players.map((p) => ({ id: p.id, number: p.number, name: p.name }));
+}
+
 export function proTaggerMatchToPdfInput(m: ProTaggerSavedMatch): ReviewPdfExportInput {
   return {
-    events:       m.events,
-    homeTeamName: m.homeTeamName,
-    awayTeamName: m.awayTeamName,
-    venueName:    m.venue || undefined,
-    sport:        toPitchSport(m.sport),
+    events:           m.events,
+    homeTeamName:     m.homeTeamName,
+    awayTeamName:     m.awayTeamName,
+    venueName:        m.venue || undefined,
+    sport:            toPitchSport(m.sport),
+    homeSquadPlayers: toSquadPlayers(m.homeSquad),
+    awaySquadPlayers: toSquadPlayers(m.awaySquad),
   };
 }
 
@@ -35,10 +41,12 @@ export function buildLivePdfInput(
 ): ReviewPdfExportInput {
   return {
     events,
-    homeTeamName: session.homeTeamName.trim() || "Team A",
-    awayTeamName: session.awayTeamName.trim() || "Team B",
-    venueName:    session.venue.trim() || undefined,
-    sport:        toPitchSport(session.sport),
+    homeTeamName:     session.homeTeamName.trim() || "Team A",
+    awayTeamName:     session.awayTeamName.trim() || "Team B",
+    venueName:        session.venue.trim() || undefined,
+    sport:            toPitchSport(session.sport),
+    homeSquadPlayers: toSquadPlayers(session.homeSquad),
+    awaySquadPlayers: toSquadPlayers(session.awaySquad),
   };
 }
 
