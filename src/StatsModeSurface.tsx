@@ -4687,12 +4687,16 @@ export default function StatsModeSurface() {
       return;
     }
     setIsPdfExporting(true);
+    const homeSquad = squads.find((s) => s.id === activeSquadIdsByTeam.HOME);
+    const awaySquad = squads.find((s) => s.id === activeSquadIdsByTeam.AWAY);
     void exportReviewPdf({
       events: loggedEvents,
       homeTeamName: teamNames.HOME.trim() || "Team A",
       awayTeamName: teamNames.AWAY.trim() || "Team B",
       venueName: venueName.trim() || undefined,
       sport: mode.pitchSport,
+      homeSquadPlayers: homeSquad?.players.map((p) => ({ id: p.id, number: p.number, name: p.name })),
+      awaySquadPlayers: awaySquad?.players.map((p) => ({ id: p.id, number: p.number, name: p.name })),
     })
       .then(() => {
         setSaveFeedback("PDF exported");
