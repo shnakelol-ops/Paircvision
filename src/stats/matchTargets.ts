@@ -117,9 +117,9 @@ function computeActuals(events: readonly TargetableEvent[], period: "1H" | "FULL
   const shotsH2 = shotsForPeriod(events, "2H");
 
   // Shooting efficiency
-  const attempts = forScoped.filter(e => SHOTS_KINDS.has(e.kind)).length;
-  const scores   = forScoped.filter(e => SCORE_KINDS.has(e.kind)).length;
-  const shootingEfficiency = attempts > 0 ? Math.round((scores / attempts) * 100) : (hasAny ? 0 : null);
+  const attempts       = forScoped.filter(e => SHOTS_KINDS.has(e.kind)).length;
+  const scoredAttempts = forScoped.filter(e => SCORE_KINDS.has(e.kind)).length;
+  const shootingEfficiency = attempts > 0 ? Math.round((scoredAttempts / attempts) * 100) : (hasAny ? 0 : null);
 
   // Kickout win rate
   const koWon   = countFor(scoped, new Set<MatchEventKind>(["KICKOUT_WON"]));

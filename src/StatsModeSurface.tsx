@@ -6998,7 +6998,7 @@ export default function StatsModeSurface() {
         <div className={utilityPanelClass} role="dialog" aria-label="Match Targets">
           <div className="utility-panel-title" style={{ marginBottom: 10 }}>Match Targets</div>
           {(() => {
-            const isPuckout = mode.pitchSport === "hurling" || mode.pitchSport === "camogie";
+            const isPuckout = mode.pitchSport === "hurling";
             const LABELS: Record<string, string> = {
               shots:                "Shots per half",
               shootingEfficiency:   "Shooting %",
