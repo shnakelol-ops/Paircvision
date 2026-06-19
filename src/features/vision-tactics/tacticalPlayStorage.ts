@@ -19,6 +19,18 @@ export type TacticalScenario = {
   items?: TacticalTrainingItem[];
 };
 
+export type TacticalPhase = {
+  id: string;
+  tokens: MovementBoardToken[];
+  ballState: BallState;
+  routes: MovementBoardRoute[];
+  passEvents: TacticalPassEvent[];
+  shotEvents: TacticalShotEvent[];
+  zones: ZoneRecord[];
+  items: TacticalTrainingItem[];
+  units: TacticalUnit[];
+};
+
 export function listScenarios(): TacticalScenario[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);

@@ -38,6 +38,7 @@ import {
   listScenarios,
   renameScenario,
   saveScenario,
+  type TacticalPhase,
   type TacticalScenario,
 } from "./tacticalPlayStorage";
 import type { TacticalUnit } from "./tacticalUnitTypes";
@@ -817,6 +818,73 @@ const TP_SPEED_VALUE_STYLE: CSSProperties = {
   minWidth: "32px",
 };
 
+const PHASE_STRIP_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "50%",
+  transform: "translateX(-50%)",
+  bottom: "max(10px, calc(env(safe-area-inset-bottom, 0px) + 8px))",
+  zIndex: 22,
+  display: "flex",
+  alignItems: "center",
+  gap: "4px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.18)",
+  background: "rgba(6, 14, 30, 0.72)",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+  boxShadow: "0 12px 28px rgba(0, 4, 14, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.18)",
+  padding: "3px",
+  maxWidth: "calc(100vw - 184px)",
+  overflowX: "auto",
+  scrollbarWidth: "none",
+};
+const PHASE_CHIP_BASE_STYLE: CSSProperties = {
+  height: "32px",
+  minWidth: "68px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.14)",
+  background: "rgba(10, 18, 38, 0.60)",
+  color: "rgba(180, 210, 255, 0.70)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "11px",
+  fontWeight: 700,
+  letterSpacing: "0.02em",
+  padding: "0 12px",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+  flexShrink: 0,
+};
+const PHASE_CHIP_ACTIVE_STYLE: CSSProperties = {
+  ...PHASE_CHIP_BASE_STYLE,
+  border: "1px solid rgba(34, 211, 238, 0.55)",
+  background: "rgba(6, 24, 34, 0.85)",
+  color: "#22d3ee",
+  boxShadow: "0 0 10px rgba(34, 211, 238, 0.18)",
+};
+const PHASE_ICON_BUTTON_STYLE: CSSProperties = {
+  height: "32px",
+  width: "32px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.20)",
+  background: "rgba(10, 18, 38, 0.60)",
+  color: "rgba(200, 220, 255, 0.80)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "18px",
+  fontWeight: 300,
+  lineHeight: "1",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 0,
+  flexShrink: 0,
+};
+const PHASE_DELETE_BUTTON_STYLE: CSSProperties = {
+  ...PHASE_ICON_BUTTON_STYLE,
+  border: "1px solid rgba(255, 100, 100, 0.28)",
+  color: "rgba(255, 130, 130, 0.75)",
+};
+
 export default function TacticalPlaySurface() {
   type MovementMenuMode = "move" | "route" | "ball" | "play";
 
@@ -891,6 +959,8 @@ export default function TacticalPlaySurface() {
   const [zoneLibraryOpen, setZoneLibraryOpen] = useState<"none" | "football" | "hurling">("none");
   const [zoneLabelDraft, setZoneLabelDraft] = useState("");
   const [playerSheetId, setPlayerSheetId] = useState<string | null>(null);
+  const [phases, setPhases] = useState<TacticalPhase[]>([]);
+  const [activePhaseIndex, setActivePhaseIndex] = useState(0);
   const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
   const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
   const editRunPlayerIdRef = useRef<string | null>(null);
@@ -1083,6 +1153,18 @@ export default function TacticalPlaySurface() {
         setPassEvents(shell.getPassEvents());
         setZones(shell.getZones());
         setTrainingItems(shell.getTrainingItems());
+        setPhases([{
+          id: `phase-${Date.now()}`,
+          tokens: [...shell.getTokens()],
+          ballState: { ...shell.getBallState() },
+          routes: [...shell.getRoutes()],
+          passEvents: [...shell.getPassEvents()],
+          shotEvents: [...shell.getShotEvents()],
+          zones: [...shell.getZones()],
+          items: [...shell.getTrainingItems()],
+          units: [],
+        }]);
+        setActivePhaseIndex(0);
         destroyShell = shell.destroy;
       });
     };
@@ -1571,6 +1653,102 @@ export default function TacticalPlaySurface() {
     setZones([]);
   };
 
+  const applyPhaseToShell = (shell: MovementCanvasShellHandle, phase: TacticalPhase) => {
+    shell.setTokens(phase.tokens);
+    shell.setRoutes(phase.routes);
+    if (phase.ballState.carrierId) {
+      shell.giveBall(phase.ballState.carrierId);
+    } else if (phase.ballState.position) {
+      shell.placeBall(phase.ballState.ballType ?? "footballSmall", phase.ballState.position);
+    } else {
+      shell.removeBall();
+    }
+    shell.setPassEvents(phase.passEvents);
+    setPassEvents(phase.passEvents);
+    for (const existing of shell.getShotEvents()) shell.removeShotEvent(existing.id);
+    for (const shot of phase.shotEvents) shell.addShotEvent(shot);
+    setShotEvents(phase.shotEvents);
+    shell.setZones(phase.zones);
+    setZones(phase.zones);
+    shell.setTrainingItems(phase.items);
+    setTrainingItems(phase.items);
+    shell.setSelectedTrainingItemId(null);
+    setSelectedTrainingItemId(null);
+    setUnits(phase.units);
+    const loadedAwayIds = new Set(phase.tokens.filter((t) => t.team === "away").map((t) => t.id));
+    setAwayTokenIds(loadedAwayIds);
+    const firstAway = phase.tokens.find((t) => t.team === "away");
+    if (firstAway) setAwayColorState(firstAway.color);
+    const nums: Record<string, number> = {};
+    for (const t of phase.tokens) nums[t.id] = t.number;
+    setTokenNumberById(nums);
+    shell.setStartPositions();
+  };
+
+  const snapshotCurrentPhase = (phaseId: string): TacticalPhase => {
+    const shell = shellRef.current!;
+    return {
+      id: phaseId,
+      tokens: [...shell.getTokens()],
+      ballState: { ...shell.getBallState() },
+      routes: [...shell.getRoutes()],
+      passEvents: [...shell.getPassEvents()],
+      shotEvents: [...shell.getShotEvents()],
+      zones: [...shell.getZones()],
+      items: [...shell.getTrainingItems()],
+      units: [...units],
+    };
+  };
+
+  const onSwitchPhase = (targetIndex: number) => {
+    const shell = shellRef.current;
+    if (!shell || targetIndex === activePhaseIndex || targetIndex < 0 || targetIndex >= phases.length) return;
+    const savedCurrent = snapshotCurrentPhase(phases[activePhaseIndex].id);
+    const updated = phases.map((p, i) => (i === activePhaseIndex ? savedCurrent : p));
+    setPhases(updated);
+    setActivePhaseIndex(targetIndex);
+    applyPhaseToShell(shell, updated[targetIndex]);
+  };
+
+  const onAddPhase = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const currentId = phases[activePhaseIndex]?.id ?? `phase-${Date.now()}`;
+    const savedCurrent = snapshotCurrentPhase(currentId);
+    const newPhase: TacticalPhase = {
+      id: `phase-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+      tokens: savedCurrent.tokens.map((t) => ({ ...t, position: { ...t.position } })),
+      ballState: { ...savedCurrent.ballState, position: savedCurrent.ballState.position ? { ...savedCurrent.ballState.position } : undefined },
+      routes: savedCurrent.routes.map((r) => ({ ...r, points: r.points.map((pt) => ({ ...pt })) })),
+      passEvents: savedCurrent.passEvents.map((p) => ({ ...p })),
+      shotEvents: savedCurrent.shotEvents.map((s) => ({ ...s })),
+      zones: savedCurrent.zones.map((z) => ({ ...z })),
+      items: savedCurrent.items.map((item) => ({ ...item })),
+      units: savedCurrent.units.map((u) => ({ ...u, memberIds: [...u.memberIds] })),
+    };
+    const newIndex = phases.length;
+    const updated = [...phases.map((p, i) => (i === activePhaseIndex ? savedCurrent : p)), newPhase];
+    setPhases(updated);
+    setActivePhaseIndex(newIndex);
+    // Board already reflects current state — shell doesn't need updating
+  };
+
+  const onDeletePhase = (indexToDelete: number) => {
+    if (phases.length <= 1) return;
+    const shell = shellRef.current;
+    const newPhases = phases.filter((_, i) => i !== indexToDelete);
+    if (indexToDelete === activePhaseIndex) {
+      const newActiveIndex = Math.max(0, indexToDelete - 1);
+      setPhases(newPhases);
+      setActivePhaseIndex(newActiveIndex);
+      if (shell) applyPhaseToShell(shell, newPhases[newActiveIndex]);
+    } else {
+      const newActiveIndex = indexToDelete < activePhaseIndex ? activePhaseIndex - 1 : activePhaseIndex;
+      setPhases(newPhases);
+      setActivePhaseIndex(newActiveIndex);
+    }
+  };
+
   const onLoadScenario = (scenario: TacticalScenario) => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -1611,6 +1789,18 @@ export default function TacticalPlaySurface() {
     const firstAway = scenario.tokens.find((t) => t.team === "away");
     if (firstAway) setAwayColorState(firstAway.color);
     setScenarioRenameId(null);
+    setPhases([{
+      id: `phase-${Date.now()}`,
+      tokens: scenario.tokens,
+      ballState: scenario.ballState,
+      routes: scenario.routes,
+      passEvents: scenario.passEvents ?? [],
+      shotEvents: scenario.shotEvents ?? [],
+      zones: scenario.zones ?? [],
+      items: scenario.items ?? [],
+      units: scenario.units ?? [],
+    }]);
+    setActivePhaseIndex(0);
   };
 
   const onDeleteScenario = (id: string) => {
@@ -1895,6 +2085,18 @@ export default function TacticalPlaySurface() {
     setIsPlaying(false);
     setIsPaused(false);
     setTokenNumberById(Object.fromEntries(defaultTokens.map((token) => [token.id, token.number])));
+    setPhases([{
+      id: `phase-${Date.now()}`,
+      tokens: [...defaultTokens],
+      ballState: {},
+      routes: [],
+      passEvents: [],
+      shotEvents: [],
+      zones: [],
+      items: [],
+      units: [],
+    }]);
+    setActivePhaseIndex(0);
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
@@ -1987,6 +2189,43 @@ export default function TacticalPlaySurface() {
         >
           Setup
         </button>
+
+        {/* Phase strip — centred bottom between CTRL and Setup */}
+        {phases.length > 0 ? (
+          <div style={PHASE_STRIP_STYLE}>
+            {phases.map((phase, idx) => (
+              <button
+                key={phase.id}
+                type="button"
+                disabled={modeIsPlaybackLocked}
+                style={idx === activePhaseIndex ? PHASE_CHIP_ACTIVE_STYLE : PHASE_CHIP_BASE_STYLE}
+                onClick={() => onSwitchPhase(idx)}
+              >
+                Phase {idx + 1}
+              </button>
+            ))}
+            {!modeIsPlaybackLocked ? (
+              <button
+                type="button"
+                style={PHASE_ICON_BUTTON_STYLE}
+                onClick={onAddPhase}
+                aria-label="Add phase"
+              >
+                +
+              </button>
+            ) : null}
+            {!modeIsPlaybackLocked && phases.length > 1 ? (
+              <button
+                type="button"
+                style={PHASE_DELETE_BUTTON_STYLE}
+                onClick={() => onDeletePhase(activePhaseIndex)}
+                aria-label="Delete current phase"
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+        ) : null}
 
         {/* Post-recording clip panel — fixed centre-bottom */}
         {recordBlob ? (
