@@ -166,8 +166,8 @@ export function buildMatchTargetsCard(
 
     const dirSym    = result.direction === "atLeast" ? "≥" : "≤";
     const unitSufx  = result.metric === "shots" ? " per half" : "%";
-    ctx.fillStyle   = "#64748b";
-    ctx.font        = "20px sans-serif";
+    ctx.fillStyle   = "#fbbf24";
+    ctx.font        = "23px sans-serif";
     ctx.fillText(`Target: ${dirSym}${result.targetValue}${unitSufx}`, LBL_X, cy + 28);
     ctx.restore();
 
