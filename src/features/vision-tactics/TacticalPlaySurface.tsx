@@ -818,6 +818,29 @@ const TP_SPEED_VALUE_STYLE: CSSProperties = {
   minWidth: "32px",
 };
 
+// Deep-clones every mutable nested structure in board state so phase snapshots
+// never share object references with the shell or each other.
+type BoardSnapshot = Omit<TacticalPhase, "id">;
+const cloneBoardState = (state: BoardSnapshot): BoardSnapshot => ({
+  tokens: state.tokens.map((t) => ({ ...t, position: { x: t.position.x, y: t.position.y } })),
+  ballState: {
+    carrierId: state.ballState.carrierId,
+    ballType: state.ballState.ballType,
+    position: state.ballState.position != null
+      ? { x: state.ballState.position.x, y: state.ballState.position.y }
+      : undefined,
+  },
+  routes: state.routes.map((r) => ({
+    ...r,
+    points: r.points.map((pt) => ({ x: pt.x, y: pt.y })),
+  })),
+  passEvents: state.passEvents.map((p) => ({ ...p })),
+  shotEvents: state.shotEvents.map((s) => ({ ...s })),
+  zones: state.zones.map((z) => ({ ...z })),
+  items: state.items.map((item) => ({ ...item })),
+  units: state.units.map((u) => ({ ...u, memberIds: [...u.memberIds] })),
+});
+
 const PHASE_STRIP_STYLE: CSSProperties = {
   position: "fixed",
   left: "50%",
@@ -1664,17 +1687,17 @@ export default function TacticalPlaySurface() {
       shell.removeBall();
     }
     shell.setPassEvents(phase.passEvents);
-    setPassEvents(phase.passEvents);
+    setPassEvents(phase.passEvents.map((p) => ({ ...p })));
     for (const existing of shell.getShotEvents()) shell.removeShotEvent(existing.id);
     for (const shot of phase.shotEvents) shell.addShotEvent(shot);
-    setShotEvents(phase.shotEvents);
+    setShotEvents(phase.shotEvents.map((s) => ({ ...s })));
     shell.setZones(phase.zones);
-    setZones(phase.zones);
+    setZones(phase.zones.map((z) => ({ ...z })));
     shell.setTrainingItems(phase.items);
-    setTrainingItems(phase.items);
+    setTrainingItems(phase.items.map((item) => ({ ...item })));
     shell.setSelectedTrainingItemId(null);
     setSelectedTrainingItemId(null);
-    setUnits(phase.units);
+    setUnits(phase.units.map((u) => ({ ...u, memberIds: [...u.memberIds] })));
     const loadedAwayIds = new Set(phase.tokens.filter((t) => t.team === "away").map((t) => t.id));
     setAwayTokenIds(loadedAwayIds);
     const firstAway = phase.tokens.find((t) => t.team === "away");
@@ -1689,14 +1712,16 @@ export default function TacticalPlaySurface() {
     const shell = shellRef.current!;
     return {
       id: phaseId,
-      tokens: [...shell.getTokens()],
-      ballState: { ...shell.getBallState() },
-      routes: [...shell.getRoutes()],
-      passEvents: [...shell.getPassEvents()],
-      shotEvents: [...shell.getShotEvents()],
-      zones: [...shell.getZones()],
-      items: [...shell.getTrainingItems()],
-      units: [...units],
+      ...cloneBoardState({
+        tokens: shell.getTokens(),
+        ballState: shell.getBallState(),
+        routes: shell.getRoutes(),
+        passEvents: shell.getPassEvents(),
+        shotEvents: shell.getShotEvents(),
+        zones: shell.getZones(),
+        items: shell.getTrainingItems(),
+        units,
+      }),
     };
   };
 
@@ -1714,23 +1739,19 @@ export default function TacticalPlaySurface() {
     const shell = shellRef.current;
     if (!shell) return;
     const currentId = phases[activePhaseIndex]?.id ?? `phase-${Date.now()}`;
+    // Deep-clone current board so Phase 1 snapshot is fully isolated from the shell
     const savedCurrent = snapshotCurrentPhase(currentId);
+    // New phase is an independent deep clone of Phase 1's snapshot
     const newPhase: TacticalPhase = {
       id: `phase-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-      tokens: savedCurrent.tokens.map((t) => ({ ...t, position: { ...t.position } })),
-      ballState: { ...savedCurrent.ballState, position: savedCurrent.ballState.position ? { ...savedCurrent.ballState.position } : undefined },
-      routes: savedCurrent.routes.map((r) => ({ ...r, points: r.points.map((pt) => ({ ...pt })) })),
-      passEvents: savedCurrent.passEvents.map((p) => ({ ...p })),
-      shotEvents: savedCurrent.shotEvents.map((s) => ({ ...s })),
-      zones: savedCurrent.zones.map((z) => ({ ...z })),
-      items: savedCurrent.items.map((item) => ({ ...item })),
-      units: savedCurrent.units.map((u) => ({ ...u, memberIds: [...u.memberIds] })),
+      ...cloneBoardState(savedCurrent),
     };
     const newIndex = phases.length;
     const updated = [...phases.map((p, i) => (i === activePhaseIndex ? savedCurrent : p)), newPhase];
     setPhases(updated);
     setActivePhaseIndex(newIndex);
-    // Board already reflects current state — shell doesn't need updating
+    // Load Phase 2's independent clone into the shell so edits are isolated from Phase 1
+    applyPhaseToShell(shell, newPhase);
   };
 
   const onDeletePhase = (indexToDelete: number) => {
