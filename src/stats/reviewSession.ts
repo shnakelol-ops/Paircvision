@@ -1,4 +1,5 @@
 import type { MatchEvent } from "../core/stats/stats-event-model";
+import type { MatchTargets } from "./matchTargets";
 
 const REVIEW_PERIOD_VALUES = ["FULL", "H1", "H2"] as const;
 const REVIEW_SEGMENT_VALUES = ["ALL", "S1", "S2", "S3", "S4", "S5", "S6"] as const;
@@ -37,6 +38,7 @@ export type ReviewSession = {
   };
   events: MatchEvent[];
   reviewContext: ReviewSessionContext;
+  targets?: MatchTargets;
 };
 
 type CreateReviewSessionInput = {
@@ -50,9 +52,10 @@ type CreateReviewSessionInput = {
   };
   events: readonly MatchEvent[];
   reviewContext: ReviewSessionContext;
+  targets?: MatchTargets;
 };
 
-type RestoredReviewSession = Pick<ReviewSession, "matchInfo" | "events" | "reviewContext">;
+type RestoredReviewSession = Pick<ReviewSession, "matchInfo" | "events" | "reviewContext" | "targets">;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value != null && typeof value === "object";
@@ -162,6 +165,7 @@ export function createReviewSession(input: CreateReviewSessionInput): ReviewSess
     matchInfo: normalizeMatchInfo(input.matchInfo),
     events: cloneMatchEvents(input.events),
     reviewContext: normalizeReviewContext(input.reviewContext),
+    ...(input.targets != null ? { targets: input.targets } : {}),
   };
 }
 
@@ -170,6 +174,7 @@ export function restoreReviewSession(session: ReviewSession): RestoredReviewSess
     matchInfo: normalizeMatchInfo(session.matchInfo),
     events: cloneMatchEvents(session.events),
     reviewContext: normalizeReviewContext(session.reviewContext),
+    ...(session.targets != null ? { targets: session.targets } : {}),
   };
 }
 
@@ -181,6 +186,7 @@ export function serializeReviewSession(session: ReviewSession): string {
     matchInfo: session.matchInfo,
     events: session.events,
     reviewContext: session.reviewContext,
+    targets: session.targets,
   });
   return JSON.stringify(normalized);
 }
@@ -227,6 +233,13 @@ export function parseReviewSession(raw: unknown): ReviewSession | null {
   const zone = parseReviewZone(maybeReviewContext.zone);
   const venue = normalizeVenue(maybeMatchInfo.venue);
 
+  // Silently recover targets if present — no deep validation, just pass through.
+  const maybeTargets = parsedValue.targets;
+  const recoveredTargets: MatchTargets | undefined =
+    isRecord(maybeTargets) && Array.isArray(maybeTargets.targets)
+      ? (maybeTargets as MatchTargets)
+      : undefined;
+
   return {
     version: 1,
     id:
@@ -250,5 +263,6 @@ export function parseReviewSession(raw: unknown): ReviewSession | null {
       activePlayerOnly: activePlayerOnly ?? activePlayerId != null,
       zone: zone ?? "FULL",
     },
+    ...(recoveredTargets != null ? { targets: recoveredTargets } : {}),
   };
 }

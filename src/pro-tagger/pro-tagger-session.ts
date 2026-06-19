@@ -1,3 +1,5 @@
+import type { MatchTargets } from "../stats/matchTargets";
+
 export type ProTaggerSport = "gaelic" | "ladies_football" | "hurling" | "camogie";
 
 export type ProTaggerMatchType = "league" | "championship" | "friendly" | "training";
@@ -35,6 +37,7 @@ export interface ProTaggerSession {
   createdAt: number;
   homeSquad: ProTaggerSquad;
   awaySquad: ProTaggerSquad;
+  targets?: MatchTargets;
 }
 
 export function newSessionId(): string {

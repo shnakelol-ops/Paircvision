@@ -42,6 +42,8 @@ import { createReviewSession, parseReviewSession, restoreReviewSession, serializ
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
 import { exportReviewPdf, exportSnapshotPdf } from "./stats/reviewPdfExport";
+import type { MatchTargets, MatchTarget, MatchTargetDirection } from "./stats/matchTargets";
+import { enabledTargetCount, hasEnabledTargets } from "./stats/matchTargets";
 import { buildIntelligencePack } from "./stats/intelligencePack";
 import type { IntelligencePack } from "./stats/intelligencePack";
 import { IntelligencePackPreview } from "./stats/IntelligencePackPreview";
@@ -50,7 +52,7 @@ import { generateDemoMatchEvents } from "./demo/demoMatchData";
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
 type TeamSide = "HOME" | "AWAY";
-type UtilityPanel = "PLAYERS" | "REVIEW" | "SUMMARY" | "SAVED_MATCHES" | "NOTES" | null;
+type UtilityPanel = "PLAYERS" | "REVIEW" | "SUMMARY" | "SAVED_MATCHES" | "NOTES" | "TARGETS" | null;
 type ReviewHalf = "H1" | "H2" | "FULL";
 type ReviewSegment = "ALL" | "S1" | "S2" | "S3" | "S4" | "S5" | "S6";
 type ReviewTeamContext = "ALL" | "FOR" | "OPP";
@@ -139,6 +141,7 @@ type StatsActiveMatchDraft = {
   venue: string;
   events: readonly LoggedMatchEvent[];
   restoreContext: SavedMatchRestoreContext;
+  targets?: MatchTargets;
 };
 type ModeScoringEventKind =
   | "GOAL"
@@ -3148,6 +3151,15 @@ const HOME_ICON_BUTTON_STYLE: CSSProperties = {
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
 };
 
+// Stable module-level constant — keeps useMemo dep array stable across renders.
+const TARGET_METRICS: readonly MatchTarget["metric"][] = [
+  "shots", "shootingEfficiency", "kickoutWinRate",
+  "turnoversWon", "turnoversLost", "possessionRetention",
+  "wides", "freesWon", "freesConceded",
+  "scores", "goals", "points", "twoPointers",
+  "oppShootingEfficiency", "kickoutsConceded",
+];
+
 export default function StatsModeSurface() {
   const hostRef = useRef<HTMLDivElement>(null);
   const floatingControlsRef = useRef<HTMLDivElement>(null);
@@ -3177,6 +3189,12 @@ export default function StatsModeSurface() {
   const [venueDraft, setVenueDraft] = useState("");
   const [isUtilityOpen, setIsUtilityOpen] = useState(false);
   const [utilityPanel, setUtilityPanel] = useState<UtilityPanel>(null);
+
+  // Match Targets state — 15 parallel arrays (indexed to match module-level TARGET_METRICS)
+  const [targetEnabled, setTargetEnabled] = useState<boolean[]>([false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]);
+  const [targetValue,   setTargetValue]   = useState<number[]>([12, 50, 50, 10, 10, 60, 8, 8, 8, 15, 1, 10, 2, 50, 8]);
+  const [targetDir,     setTargetDir]     = useState<MatchTargetDirection[]>(["atLeast", "atLeast", "atLeast", "atLeast", "atMost", "atLeast", "atMost", "atLeast", "atMost", "atLeast", "atLeast", "atLeast", "atLeast", "atMost", "atMost"]);
+  const [moreTargetsExpanded, setMoreTargetsExpanded] = useState(false);
   const [squads, setSquads] = useState<Squad[]>(() => {
     if (typeof window === "undefined") {
       return ensureHomeAwaySquads([createDefaultSquad("HOME")]).squads;
@@ -3723,6 +3741,43 @@ export default function StatsModeSurface() {
       matchState === "HALF_TIME" ||
       matchState === "SECOND_HALF");
 
+  // Derived match targets object (undefined when no targets are enabled)
+  const activeTargets: MatchTargets | undefined = useMemo(() => {
+    const hasAny = targetEnabled.some(Boolean);
+    if (!hasAny) return undefined;
+    return {
+      targets: TARGET_METRICS.map((metric, i) => ({
+        metric,
+        targetValue: targetValue[i],
+        direction:   targetDir[i],
+        enabled:     targetEnabled[i],
+      })) as readonly MatchTarget[],
+    };
+  }, [targetEnabled, targetValue, targetDir, TARGET_METRICS]);
+
+  const activeEnabledTargetCount = enabledTargetCount(activeTargets ?? { targets: [] });
+
+  function applyTargets(targets: MatchTargets | undefined): void {
+    if (!targets || !hasEnabledTargets(targets)) {
+      setTargetEnabled([false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]);
+      return;
+    }
+    const newEnabled: boolean[] = [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false];
+    const newValue:   number[]  = [12, 50, 50, 10, 10, 60, 8, 8, 8, 15, 1, 10, 2, 50, 8];
+    const newDir:     MatchTargetDirection[] = ["atLeast", "atLeast", "atLeast", "atLeast", "atMost", "atLeast", "atMost", "atLeast", "atMost", "atLeast", "atLeast", "atLeast", "atLeast", "atMost", "atMost"];
+    targets.targets.forEach((t) => {
+      const idx = TARGET_METRICS.indexOf(t.metric);
+      if (idx >= 0) {
+        newEnabled[idx] = t.enabled;
+        newValue[idx]   = t.targetValue;
+        newDir[idx]     = t.direction;
+      }
+    });
+    setTargetEnabled(newEnabled);
+    setTargetValue(newValue);
+    setTargetDir(newDir);
+  }
+
   const createActiveMatchDraftSnapshot = useCallback((): StatsActiveMatchDraft | null => {
     if (!shouldPersistLiveRecoveryDraft) return null;
     const fullTimeResumeSource = fullTimeResumeStateRef.current;
@@ -3757,6 +3812,7 @@ export default function StatsModeSurface() {
             }
           : {}),
       },
+      targets: activeTargets,
     };
   }, [
     activeTeamSide,
@@ -3771,6 +3827,7 @@ export default function StatsModeSurface() {
     squads,
     teamNames,
     venueName,
+    activeTargets,
   ]);
 
   useEffect(() => {
@@ -4535,6 +4592,7 @@ export default function StatsModeSurface() {
           activePlayerOnly: reviewActivePlayerOnly,
           zone: reviewZone,
         },
+        targets: activeTargets,
       });
       const json = serializeReviewSession(reviewSession);
       // Also persist to localStorage for session continuity
@@ -4616,6 +4674,7 @@ export default function StatsModeSurface() {
     setIsResetConfirmOpen(false);
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel(`${restoredSession.matchInfo.homeTeam} v ${restoredSession.matchInfo.awayTeam} (Review Session)`);
+    applyTargets(restoredSession.targets);
     setSaveFeedback("Review imported");
   };
 
@@ -4697,6 +4756,7 @@ export default function StatsModeSurface() {
       sport: mode.pitchSport,
       homeSquadPlayers: homeSquad?.players.map((p) => ({ id: p.id, number: p.number, name: p.name })),
       awaySquadPlayers: awaySquad?.players.map((p) => ({ id: p.id, number: p.number, name: p.name })),
+      targets: activeTargets,
     })
       .then(() => {
         setSaveFeedback("PDF exported");
@@ -4728,6 +4788,7 @@ export default function StatsModeSurface() {
       venueName: venueName.trim() || undefined,
       sport: mode.pitchSport,
       snapshotMode: "HALF_TIME_SNAPSHOT",
+      targets: activeTargets,
     })
       .then(() => {
         setSaveFeedback("HT Snapshot exported");
@@ -4756,6 +4817,7 @@ export default function StatsModeSurface() {
       venueName: venueName.trim() || undefined,
       sport: mode.pitchSport,
       snapshotMode: "FULL_TIME_SNAPSHOT",
+      targets: activeTargets,
     })
       .then(() => {
         setSaveFeedback("FT Snapshot exported");
@@ -4849,6 +4911,7 @@ export default function StatsModeSurface() {
               }
             : {}),
         },
+        targets: activeTargets,
       };
       const savedMatchesResult = readSavedMatchesFromStorage();
       if (savedMatchesResult.isCorrupt) {
@@ -4965,6 +5028,7 @@ export default function StatsModeSurface() {
     });
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel(parsedRecord.label);
+    applyTargets(parsedRecord.targets);
     setUtilityPanel(null);
     savedSessionSignatureRef.current = buildLiveSessionSignature({
       currentMode,
@@ -5088,6 +5152,7 @@ export default function StatsModeSurface() {
     });
     setSaveLoadBlockedReason(null);
     setLoadedMatchLabel("Recovered draft");
+    applyTargets(draft.targets);
     setPendingRecoveredDraft(null);
     setSaveFeedback("Recovered unsaved match");
     savedSessionSignatureRef.current = null;
@@ -5233,6 +5298,7 @@ export default function StatsModeSurface() {
     setVenueName("");
     setLoadedMatchLabel(null);
     setSaveLoadBlockedReason(null);
+    applyTargets(undefined);
     setActiveTeam("HOME");
     activeTeamRef.current = "HOME";
     setActiveTeamSide("own");
@@ -6928,6 +6994,100 @@ export default function StatsModeSurface() {
           </button>
         </div>
       ) : null}
+      {utilityPanel === "TARGETS" ? (
+        <div className={utilityPanelClass} role="dialog" aria-label="Match Targets">
+          <div className="utility-panel-title" style={{ marginBottom: 10 }}>Match Targets</div>
+          {(() => {
+            const isPuckout = mode.pitchSport === "hurling";
+            const LABELS: Record<string, string> = {
+              shots:                "Shots per half",
+              shootingEfficiency:   "Shooting %",
+              kickoutWinRate:       isPuckout ? "Puckout Win %" : "Kickout Win %",
+              turnoversWon:         "Turnovers Won",
+              turnoversLost:        "Turnovers Lost",
+              possessionRetention:  "Possession Retention %",
+              wides:                "Wides",
+              freesWon:             "Frees Won",
+              freesConceded:        "Frees Conceded",
+              scores:               "Scores",
+              goals:                "Goals",
+              points:               "Points",
+              twoPointers:          "Two-Pointers",
+              oppShootingEfficiency: "Opp. Shooting %",
+              kickoutsConceded:     isPuckout ? "Puckouts Conceded" : "Kickouts Conceded",
+            };
+            const RATE_METRICS = new Set(["shootingEfficiency", "kickoutWinRate", "possessionRetention", "oppShootingEfficiency"]);
+            const renderRow = (metric: string, i: number) => {
+              const unit = RATE_METRICS.has(metric) ? "%" : "";
+              return (
+                <div key={metric} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <button
+                    type="button"
+                    className="utility-menu-btn"
+                    style={{
+                      fontSize: 9, padding: "3px 6px", minWidth: 32,
+                      ...(targetEnabled[i] ? { border: "1px solid rgba(34,197,94,0.9)", background: "rgba(22,101,52,0.72)", color: "#4ade80" } : { color: "#64748b" }),
+                    }}
+                    onClick={() => setTargetEnabled((prev) => prev.map((v, idx) => idx === i ? !v : v))}
+                  >
+                    {targetEnabled[i] ? "ON" : "OFF"}
+                  </button>
+                  <span style={{ flex: 1, fontSize: 11, color: targetEnabled[i] ? "#dbe7f5" : "#8b949e" }}>
+                    {LABELS[metric]}
+                  </span>
+                  <button
+                    type="button"
+                    className="utility-menu-btn"
+                    style={{ fontSize: 14, padding: "2px 8px", minWidth: 28, color: targetEnabled[i] ? "#94a3b8" : "#374151" }}
+                    onClick={() => setTargetDir((prev) => prev.map((v, idx) => idx === i ? (v === "atLeast" ? "atMost" : "atLeast") : v))}
+                  >
+                    {targetDir[i] === "atLeast" ? "≥" : "≤"}
+                  </button>
+                  <input
+                    type="number"
+                    min={0}
+                    max={unit === "%" ? 100 : 99}
+                    value={targetValue[i]}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10);
+                      if (!Number.isNaN(n) && n >= 0 && n <= 999) {
+                        setTargetValue((prev) => prev.map((v, idx) => idx === i ? n : v));
+                      }
+                    }}
+                    disabled={!targetEnabled[i]}
+                    style={{
+                      width: 46, background: "#161b22", border: "1px solid #30363d", borderRadius: 6,
+                      color: targetEnabled[i] ? "#e6edf3" : "#374151", fontSize: 13, fontWeight: 600,
+                      padding: "3px 6px", textAlign: "right", outline: "none", fontFamily: "inherit",
+                    }}
+                  />
+                  {unit ? <span style={{ fontSize: 11, color: "#64748b", minWidth: 12 }}>{unit}</span> : null}
+                </div>
+              );
+            };
+            const coreMetrics  = TARGET_METRICS.slice(0, 6);
+            const moreMetrics  = TARGET_METRICS.slice(6);
+            const moreEnabled  = targetEnabled.slice(6).filter(Boolean).length;
+            return (
+              <>
+                {coreMetrics.map((m, i) => renderRow(m, i))}
+                <button
+                  type="button"
+                  className="utility-menu-btn"
+                  style={{ width: "100%", textAlign: "left", marginBottom: moreTargetsExpanded ? 6 : 0, fontSize: 10, color: "#64748b" }}
+                  onClick={() => setMoreTargetsExpanded(v => !v)}
+                >
+                  More Targets{moreEnabled > 0 ? ` (${moreEnabled} set)` : ""} {moreTargetsExpanded ? "▲" : "▼"}
+                </button>
+                {moreTargetsExpanded && moreMetrics.map((m, j) => renderRow(m, j + 6))}
+              </>
+            );
+          })()}
+          <button type="button" className="utility-panel-close" onClick={closeUtilityPanel}>
+            Done
+          </button>
+        </div>
+      ) : null}
       {utilityPanel === "NOTES" ? (
         <div className={utilityPanelClass} role="dialog" aria-label="Voice notes">
           {notesReviewMatchId !== null ? (
@@ -7698,44 +7858,51 @@ export default function StatsModeSurface() {
               >
                 ⌂
               </button>
+
+              {/* Sport compact select */}
               <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86, marginTop: "2px" }}>
                 Sport
               </div>
-              {MODE_MENU_OPTIONS.map((option) => {
-                const isActiveMode = option.key === currentMode;
-                return (
-                  <button
-                    key={option.key}
-                    type="button"
-                    className="utility-menu-btn"
-                    onClick={() => {
-                      setCurrentMode(option.key);
-                    }}
-                    style={
-                      isActiveMode
-                        ? {
-                            border: "1px solid rgba(34,197,94,0.9)",
-                            background: "rgba(22,101,52,0.72)",
-                          }
-                        : undefined
-                    }
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
+              <select
+                value={currentMode}
+                onChange={(e) => setCurrentMode(e.target.value as GaaModeKey)}
+                className="utility-menu-btn"
+                style={{ cursor: "pointer", paddingRight: 4 }}
+              >
+                {MODE_MENU_OPTIONS.map((opt) => (
+                  <option key={opt.key} value={opt.key}>{opt.label}</option>
+                ))}
+              </select>
+
+              {/* MATCH section */}
+              <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.7, marginTop: "6px" }}>
+                Match
+              </div>
               <button
                 type="button"
                 className="utility-menu-btn"
-                onClick={() => {
-                  saveCurrentMatchSnapshot();
-                }}
+                onClick={() => { setUtilityPanel("TARGETS"); setIsUtilityOpen(false); }}
+                style={activeEnabledTargetCount > 0
+                  ? { border: "1px solid rgba(34,197,94,0.6)", background: "rgba(22,101,52,0.4)" }
+                  : undefined}
+              >
+                Match Targets{activeEnabledTargetCount > 0 ? ` (${activeEnabledTargetCount}/15)` : ""}
+              </button>
+              <button type="button" className="utility-menu-btn" onClick={openNotesPanel}>
+                Notes
+              </button>
+
+              {/* FILES section */}
+              <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.7, marginTop: "6px" }}>
+                Files
+              </div>
+              <button
+                type="button"
+                className="utility-menu-btn"
+                onClick={() => { saveCurrentMatchSnapshot(); }}
                 style={
                   saveFeedback === "Saved"
-                    ? {
-                        border: "1px solid rgba(34,197,94,0.92)",
-                        background: "rgba(22,101,52,0.76)",
-                      }
+                    ? { border: "1px solid rgba(34,197,94,0.92)", background: "rgba(22,101,52,0.76)" }
                     : undefined
                 }
               >
@@ -7744,9 +7911,7 @@ export default function StatsModeSurface() {
               <button type="button" className="utility-menu-btn" onClick={openSavedMatchesPanel}>
                 Load Match
               </button>
-              <button type="button" className="utility-menu-btn" onClick={openNotesPanel}>
-                Notes
-              </button>
+
               {saveFeedback ? (
                 <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
                   {saveFeedback}
@@ -7767,7 +7932,7 @@ export default function StatsModeSurface() {
                   Loaded: {loadedMatchLabel}
                 </div>
               ) : null}
-              <button type="button" className="utility-menu-btn" onClick={requestResetMatch}>
+              <button type="button" className="utility-menu-btn" style={{ marginTop: "8px" }} onClick={requestResetMatch}>
                 Restart Match
               </button>
             </div>
