@@ -490,7 +490,7 @@ const S: Record<string, CSSProperties> = {
     color: "#c9d1d9",
   },
   targetLabelOff: {
-    color: "#484f58",
+    color: "#8b949e",
   },
   dirBtn: {
     background: "#21262d",

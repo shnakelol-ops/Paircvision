@@ -7032,7 +7032,7 @@ export default function StatsModeSurface() {
                   >
                     {targetEnabled[i] ? "ON" : "OFF"}
                   </button>
-                  <span style={{ flex: 1, fontSize: 11, color: targetEnabled[i] ? "#dbe7f5" : "#475569" }}>
+                  <span style={{ flex: 1, fontSize: 11, color: targetEnabled[i] ? "#dbe7f5" : "#8b949e" }}>
                     {LABELS[metric]}
                   </span>
                   <button

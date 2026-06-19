@@ -1,7 +1,11 @@
-import type { MatchTargetResult, MatchTargetStatus } from "./matchTargets";
+import type { MatchTargetResult, MatchTargetStatus, MatchTargetMetric } from "./matchTargets";
 
 const W = 1920;
 const H = 1080;
+
+const RATE_METRICS = new Set<MatchTargetMetric>([
+  "shootingEfficiency", "kickoutWinRate", "possessionRetention", "oppShootingEfficiency",
+]);
 
 const STATUS_COLORS: Record<MatchTargetStatus, string> = {
   GREEN:   "#16a34a",
@@ -165,7 +169,7 @@ export function buildMatchTargetsCard(
     ctx.fillText(result.label, LBL_X, cy - 2);
 
     const dirSym    = result.direction === "atLeast" ? "≥" : "≤";
-    const unitSufx  = result.metric === "shots" ? " per half" : "%";
+    const unitSufx  = result.metric === "shots" ? " per half" : RATE_METRICS.has(result.metric) ? "%" : "";
     ctx.fillStyle   = "#fbbf24";
     ctx.font        = "23px sans-serif";
     ctx.fillText(`Target: ${dirSym}${result.targetValue}${unitSufx}`, LBL_X, cy + 28);
@@ -207,7 +211,7 @@ export function buildMatchTargetsCard(
       ctx.stroke();
     } else {
       const valStr  = result.actual !== null
-        ? `${result.actual}${result.metric !== "shots" ? "%" : ""}`
+        ? `${result.actual}${RATE_METRICS.has(result.metric) ? "%" : ""}`
         : "—";
       ctx.fillStyle = result.actual !== null ? "#f1f5f9" : "#475569";
       ctx.font      = "bold 82px sans-serif";
