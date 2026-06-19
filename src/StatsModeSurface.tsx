@@ -669,6 +669,7 @@ function parseStoredSavedMatch(input: unknown): SavedMatch | null {
   const maybeEventCount = "eventCount" in input ? input.eventCount : null;
   const maybeScorelineSnapshot = "scorelineSnapshot" in input ? input.scorelineSnapshot : null;
   const maybeRestoreContext = "restoreContext" in input ? input.restoreContext : null;
+  const maybeTargets        = "targets" in input ? input.targets : null;
 
   if (typeof maybeId !== "string" || maybeId.trim().length === 0) return null;
   const parsedCreatedAt = normalizeCreatedAt(maybeCreatedAt);
@@ -736,6 +737,13 @@ function parseStoredSavedMatch(input: unknown): SavedMatch | null {
     return Object.keys(nextContext).length > 0 ? nextContext : undefined;
   };
   const restoreContext = parseRestoreContext(maybeRestoreContext);
+  const recoveredTargets: MatchTargets | undefined =
+    maybeTargets != null &&
+    typeof maybeTargets === "object" &&
+    "targets" in maybeTargets &&
+    Array.isArray((maybeTargets as Record<string, unknown>).targets)
+      ? (maybeTargets as MatchTargets)
+      : undefined;
 
   return {
     id: maybeId,
@@ -748,6 +756,7 @@ function parseStoredSavedMatch(input: unknown): SavedMatch | null {
     eventCount: parsedEventCount === events.length ? parsedEventCount : events.length,
     scorelineSnapshot: parsedScorelineSnapshot,
     ...(restoreContext ? { restoreContext } : {}),
+    ...(recoveredTargets != null ? { targets: recoveredTargets } : {}),
   };
 }
 
