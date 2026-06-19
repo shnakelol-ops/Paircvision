@@ -39,7 +39,7 @@ type ExpandedSection = "run-timing" | "pass" | "ball" | null;
 
 const SHOOT_SENTINEL = "__shoot__";
 
-const DELAY_OPTIONS = [
+const RUN_DELAY_OPTIONS = [
   { ms: 0,    label: "Now"  },
   { ms: 500,  label: "+0.5s" },
   { ms: 1000, label: "+1s"  },
@@ -48,10 +48,13 @@ const DELAY_OPTIONS = [
 ] as const;
 
 const PASS_DELAY_OPTIONS = [
-  { ms: 0,    label: "Now"  },
-  { ms: 1000, label: "+1s"  },
-  { ms: 2000, label: "+2s"  },
-  { ms: 3000, label: "+3s"  },
+  { ms: 0,    label: "Now" },
+  { ms: 1000, label: "1s"  },
+  { ms: 2000, label: "2s"  },
+  { ms: 3000, label: "3s"  },
+  { ms: 4000, label: "4s"  },
+  { ms: 5000, label: "5s"  },
+  { ms: 6000, label: "6s"  },
 ] as const;
 
 const BACKDROP: CSSProperties = {
@@ -165,20 +168,34 @@ const SUB_LABEL: CSSProperties = {
 };
 
 const CHIP: CSSProperties = {
-  height: "24px",
+  height: "32px",
   borderRadius: "999px",
   border: "1px solid rgba(180, 210, 255, 0.18)",
   background: "rgba(8, 18, 40, 0.70)",
   color: "rgba(200, 230, 255, 0.82)",
-  fontSize: "9px",
+  fontSize: "10px",
   fontWeight: 600,
-  padding: "0 9px",
+  padding: "0 11px",
   cursor: "pointer",
   whiteSpace: "nowrap",
 };
 
 const CHIP_ACTIVE: CSSProperties = {
   ...CHIP,
+  border: "1px solid rgba(124, 255, 114, 0.52)",
+  background: "rgba(18, 56, 34, 0.82)",
+  color: "#c8ffc0",
+};
+
+const CHIP_SM: CSSProperties = {
+  ...CHIP,
+  height: "24px",
+  fontSize: "9px",
+  padding: "0 9px",
+};
+
+const CHIP_SM_ACTIVE: CSSProperties = {
+  ...CHIP_SM,
   border: "1px solid rgba(124, 255, 114, 0.52)",
   background: "rgba(18, 56, 34, 0.82)",
   color: "#c8ffc0",
@@ -199,7 +216,7 @@ const SUB_SECTION: CSSProperties = {
 };
 
 const CONFIRM_BTN: CSSProperties = {
-  height: "28px",
+  height: "32px",
   borderRadius: "8px",
   border: "1px solid rgba(74, 222, 128, 0.40)",
   background: "rgba(16, 48, 30, 0.82)",
@@ -208,7 +225,7 @@ const CONFIRM_BTN: CSSProperties = {
   fontWeight: 700,
   letterSpacing: "0.06em",
   textTransform: "uppercase",
-  padding: "0 12px",
+  padding: "0 14px",
   cursor: "pointer",
   alignSelf: "flex-start",
 };
@@ -363,11 +380,11 @@ export default function PlayerActionSheet({
           <div style={SUB_SECTION}>
             <div style={CHIP_ROW}>
               <span style={SUB_LABEL}>Delay</span>
-              {DELAY_OPTIONS.map((opt) => (
+              {RUN_DELAY_OPTIONS.map((opt) => (
                 <button
                   key={opt.ms}
                   type="button"
-                  style={currentRunTriggerId == null && currentRunDelayMs === opt.ms ? CHIP_ACTIVE : CHIP}
+                  style={currentRunTriggerId == null && currentRunDelayMs === opt.ms ? CHIP_SM_ACTIVE : CHIP_SM}
                   onClick={() => onSetRunDelay(opt.ms)}
                 >
                   {opt.label}
@@ -378,7 +395,7 @@ export default function PlayerActionSheet({
               <div style={CHIP_ROW}>
                 <span style={SUB_LABEL}>After</span>
                 {currentRunTriggerId != null && (
-                  <button type="button" style={CHIP} onClick={() => onSetRunTrigger(null)}>
+                  <button type="button" style={CHIP_SM} onClick={() => onSetRunTrigger(null)}>
                     ×
                   </button>
                 )}
@@ -388,7 +405,7 @@ export default function PlayerActionSheet({
                     <button
                       key={r.playerId}
                       type="button"
-                      style={currentRunTriggerId === r.playerId ? CHIP_ACTIVE : CHIP}
+                      style={currentRunTriggerId === r.playerId ? CHIP_SM_ACTIVE : CHIP_SM}
                       onClick={() => onSetRunTrigger(r.playerId)}
                     >
                       P{num}
@@ -409,7 +426,7 @@ export default function PlayerActionSheet({
                 <button
                   key={opt.type}
                   type="button"
-                  style={CHIP}
+                  style={CHIP_SM}
                   onClick={() => { onBallChoice(opt.type); setExpanded(null); }}
                 >
                   {opt.label}
@@ -420,7 +437,7 @@ export default function PlayerActionSheet({
               <div style={CHIP_ROW}>
                 <button
                   type="button"
-                  style={CHIP}
+                  style={CHIP_SM}
                   onClick={() => { onFreeBall(); setExpanded(null); }}
                 >
                   Free Ball
@@ -433,6 +450,21 @@ export default function PlayerActionSheet({
         {/* Pass sub-section */}
         {expanded === "pass" && (
           <div style={SUB_SECTION}>
+            {/* Pass timing — always visible, controlled by parent */}
+            <div style={CHIP_ROW}>
+              <span style={SUB_LABEL}>Pass timing</span>
+              {PASS_DELAY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.ms}
+                  type="button"
+                  style={passDelayMs === opt.ms ? CHIP_ACTIVE : CHIP}
+                  onClick={() => onPassDelayChange(opt.ms)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {/* Target selection */}
             <div style={CHIP_ROW}>
               <span style={SUB_LABEL}>To</span>
               {homePlayerEntries
@@ -441,7 +473,7 @@ export default function PlayerActionSheet({
                   <button
                     key={id}
                     type="button"
-                    style={passToId === id ? CHIP_ACTIVE : CHIP}
+                    style={passToId === id ? CHIP_SM_ACTIVE : CHIP_SM}
                     onClick={() => setPassToId((prev) => (prev === id ? null : id))}
                   >
                     P{num}
@@ -449,25 +481,15 @@ export default function PlayerActionSheet({
                 ))}
               <button
                 type="button"
-                style={passToId === SHOOT_SENTINEL ? CHIP_ACTIVE : CHIP}
+                style={passToId === SHOOT_SENTINEL ? CHIP_SM_ACTIVE : CHIP_SM}
                 onClick={() => setPassToId((prev) => (prev === SHOOT_SENTINEL ? null : SHOOT_SENTINEL))}
               >
                 Shoot
               </button>
             </div>
+            {/* Confirm — only when target chosen */}
             {passToId && (
               <div style={CHIP_ROW}>
-                <span style={SUB_LABEL}>Time</span>
-                {PASS_DELAY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.ms}
-                    type="button"
-                    style={passDelayMs === opt.ms ? CHIP_ACTIVE : CHIP}
-                    onClick={() => onPassDelayChange(opt.ms)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
                 <button
                   type="button"
                   style={CONFIRM_BTN}
