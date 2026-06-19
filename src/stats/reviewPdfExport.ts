@@ -35,6 +35,9 @@ import type { ZoneCount } from "./zones/zone-types";
 import { eventSource, isFreeScore, isFreeMiss } from "./eventSource";
 import type { ScoreSource } from "./eventSource";
 import { resolvePlayerDisplayName } from "./player-display";
+import type { MatchTargets } from "./matchTargets";
+import { computeTargetResults, hasEnabledTargets } from "./matchTargets";
+import { buildMatchTargetsCard } from "./matchTargetsCard";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -91,6 +94,8 @@ export type ReviewPdfExportInput = {
   homeSquadPlayers?: readonly PdfSquadPlayer[];
   /** Away squad maps to the OPP (away) section. */
   awaySquadPlayers?: readonly PdfSquadPlayer[];
+  /** Optional pre-match performance targets. When set, a targets card is appended to reports. */
+  targets?: MatchTargets;
 };
 
 // ─── Snapshot export types ────────────────────────────────────────────────────
@@ -6789,7 +6794,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     sport = "gaelic",
     homeSquadPlayers,
     awaySquadPlayers,
+    targets,
   } = input;
+
+  const hasTargets = hasEnabledTargets(targets);
 
   // 19 fixed pages + player pages.
   // Fixed: p.1 Match Summary, p.2 Match Swing, p.3 Tactical Intelligence,
@@ -6819,9 +6827,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   //   p.20+N  Restart Chain Analysis
   //   p.21+N  Turnover Chain Analysis
   //   p.22+N  Scoring Momentum
-  //   Total fixed: 22 + N
+  //   p.23+N  Performance Against Targets (optional — only when targets are set)
+  //   Total fixed: 22 + N (+ 1 when targets set)
   const playerPageCount = calcPlayerPageCount(events, homeSquadPlayers, awaySquadPlayers);
-  const TOTAL_PAGES = 22 + playerPageCount;
+  const TOTAL_PAGES = 22 + playerPageCount + (hasTargets ? 1 : 0);
 
   // Chain analysis — computed once; shared by all chain page builders.
   const chainAnalysis = selectChainAnalysis(events);
@@ -7122,6 +7131,16 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   } catch (err) {
     console.error("Scoring Momentum page generation failed", err);
     addCanvasPage(fallbackCanvas("Scoring Momentum"), true, "Scoring Momentum");
+  }
+
+  // p.23+N — Performance Against Targets (only when targets are set)
+  if (hasTargets && targets) {
+    const targetResults = computeTargetResults(targets, events, "FULL", sport);
+    if (targetResults.length > 0) {
+      const targetsPageNum = TOTAL_PAGES;
+      const tc = buildMatchTargetsCard(targetResults, homeTeamName, "REVIEW", targetsPageNum, TOTAL_PAGES);
+      addCanvasPage(tc, true, "Performance Against Targets");
+    }
   }
 
   // Download
@@ -11779,9 +11798,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     awayTeamName,
     sport = "gaelic",
     snapshotMode,
+    targets,
   } = input;
 
   const isHT = snapshotMode === "HALF_TIME_SNAPSHOT";
+  const hasTargets = hasEnabledTargets(targets);
 
   // HT: restrict every page to first-half data by pre-filtering events.
   // MatchEventPeriod values are "1H" and "2H".
@@ -11792,7 +11813,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   // Chain analysis scoped to the same event set — H1-only for HT, full for FT.
   const chainAnalysis = selectChainAnalysis(events);
 
-  const TOTAL_PAGES = isHT ? 6 : 12;
+  const TOTAL_PAGES = (isHT ? 6 : 12) + (hasTargets ? 1 : 0);
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -11983,6 +12004,18 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       true,
       "Tactical Match Story",
     );
+  }
+
+  // Targets card — appended after all snapshot pages when targets are set
+  if (hasTargets && targets) {
+    const targetPeriod = isHT ? "1H" : "FULL";
+    const targetResults = computeTargetResults(targets, allEvents, targetPeriod, sport);
+    if (targetResults.length > 0) {
+      const tc = buildMatchTargetsCard(
+        targetResults, homeTeamName, isHT ? "HT" : "FT", TOTAL_PAGES, TOTAL_PAGES,
+      );
+      addPage(tc, true, "Performance Against Targets");
+    }
   }
 
   const safeName = (s: string) => s.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_\-]/g, "");

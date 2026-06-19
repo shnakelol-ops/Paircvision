@@ -506,6 +506,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         matchTimeSeconds:            clockSecondsRef.current,
         firstHalfAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
       },
+      targets: session.targets,
     };
 
     const fullRecord: ProTaggerSavedMatch = {
@@ -530,6 +531,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         matchTimeSeconds:            clockSecondsRef.current,
         firstHalfAttackingDirection: session.attackDirection,
       },
+      targets: session.targets,
     };
 
     saveProTaggerMatch(record);
@@ -579,6 +581,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         matchTimeSeconds:            clockSecondsRef.current,
         firstHalfAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
       },
+      targets: session.targets,
     };
 
     const fullRecord: ProTaggerSavedMatch = {
@@ -603,6 +606,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         matchTimeSeconds:            clockSecondsRef.current,
         firstHalfAttackingDirection: session.attackDirection,
       },
+      targets: session.targets,
     };
 
     saveProTaggerMatch(record);

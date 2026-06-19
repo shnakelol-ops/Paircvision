@@ -22,6 +22,7 @@ export function proTaggerMatchToPdfInput(m: ProTaggerSavedMatch): ReviewPdfExpor
     sport:            toPitchSport(m.sport),
     homeSquadPlayers: toSquadPlayers(m.homeSquad),
     awaySquadPlayers: toSquadPlayers(m.awaySquad),
+    targets:          m.targets,
   };
 }
 
@@ -47,6 +48,7 @@ export function buildLivePdfInput(
     sport:            toPitchSport(session.sport),
     homeSquadPlayers: toSquadPlayers(session.homeSquad),
     awaySquadPlayers: toSquadPlayers(session.awaySquad),
+    targets:          session.targets,
   };
 }
 

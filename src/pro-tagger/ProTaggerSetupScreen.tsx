@@ -7,6 +7,7 @@ import type {
   ProTaggerAttackDirection,
 } from "./pro-tagger-session";
 import { newSessionId, buildDefaultSquad } from "./pro-tagger-session";
+import type { MatchTarget, MatchTargetDirection } from "../stats/matchTargets";
 
 interface Props {
   onContinue: (session: ProTaggerSession) => void;
@@ -26,6 +27,40 @@ const MATCH_TYPE_LABELS: Record<ProTaggerMatchType, string> = {
   training:     "Training",
 };
 
+type TargetRow = {
+  metric: MatchTarget["metric"];
+  label: (sport: ProTaggerSport) => string;
+  unit: string;
+  defaultValue: number;
+};
+
+const TARGET_ROWS: readonly TargetRow[] = [
+  {
+    metric:       "shots",
+    label:        () => "Shots per half",
+    unit:         "",
+    defaultValue: 12,
+  },
+  {
+    metric:       "shootingEfficiency",
+    label:        () => "Shooting %",
+    unit:         "%",
+    defaultValue: 50,
+  },
+  {
+    metric:       "kickoutWinRate",
+    label:        (s) => (s === "hurling" || s === "camogie" ? "Puckout Win %" : "Kickout Win %"),
+    unit:         "%",
+    defaultValue: 50,
+  },
+  {
+    metric:       "possessionRetention",
+    label:        () => "Possession Retention %",
+    unit:         "%",
+    defaultValue: 60,
+  },
+];
+
 export function ProTaggerSetupScreen({ onContinue }: Props) {
   const [sport, setSport]             = useState<ProTaggerSport>("gaelic");
   const [homeTeam, setHomeTeam]       = useState("");
@@ -35,20 +70,57 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
   const [attackDir, setAttackDir]     = useState<ProTaggerAttackDirection>("right");
   const [halfMins, setHalfMins]       = useState(35);
 
+  // Match Targets state
+  const [targetsExpanded, setTargetsExpanded] = useState(false);
+  const [targetEnabled,  setTargetEnabled]    = useState<boolean[]>([false, false, false, false]);
+  const [targetValue,    setTargetValue]      = useState<number[]>([12, 50, 50, 60]);
+  const [targetDir,      setTargetDir]        = useState<MatchTargetDirection[]>(
+    ["atLeast", "atLeast", "atLeast", "atLeast"],
+  );
+
+  const enabledCount = targetEnabled.filter(Boolean).length;
+
   function handleStart() {
+    const targets = enabledCount > 0
+      ? {
+          targets: TARGET_ROWS.map((row, i) => ({
+            metric:      row.metric,
+            targetValue: targetValue[i],
+            direction:   targetDir[i],
+            enabled:     targetEnabled[i],
+          })) as readonly MatchTarget[],
+        }
+      : undefined;
+
     onContinue({
-      id:                 newSessionId(),
+      id:                  newSessionId(),
       sport,
-      homeTeamName:       homeTeam.trim(),
-      awayTeamName:       awayTeam.trim(),
-      venue:              venue.trim(),
+      homeTeamName:        homeTeam.trim(),
+      awayTeamName:        awayTeam.trim(),
+      venue:               venue.trim(),
       matchType,
-      attackDirection:    attackDir,
+      attackDirection:     attackDir,
       halfDurationMinutes: halfMins,
-      createdAt:          Date.now(),
-      homeSquad:          buildDefaultSquad("HOME"),
-      awaySquad:          buildDefaultSquad("AWAY"),
+      createdAt:           Date.now(),
+      homeSquad:           buildDefaultSquad("HOME"),
+      awaySquad:           buildDefaultSquad("AWAY"),
+      targets,
     });
+  }
+
+  function toggleTarget(i: number) {
+    setTargetEnabled((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
+  }
+
+  function setDir(i: number, dir: MatchTargetDirection) {
+    setTargetDir((prev) => prev.map((v, idx) => (idx === i ? dir : v)));
+  }
+
+  function setVal(i: number, raw: string) {
+    const n = parseInt(raw, 10);
+    if (!Number.isNaN(n) && n >= 0 && n <= 999) {
+      setTargetValue((prev) => prev.map((v, idx) => (idx === i ? n : v)));
+    }
   }
 
   return (
@@ -125,13 +197,13 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
             onClick={() => setAttackDir("left")}
             style={{ ...S.chip, ...(attackDir === "left" ? S.chipOn : {}) }}
           >
-            ← Left
+            Left
           </button>
           <button
             onClick={() => setAttackDir("right")}
             style={{ ...S.chip, ...(attackDir === "right" ? S.chipOn : {}) }}
           >
-            Right →
+            Right
           </button>
         </div>
 
@@ -148,6 +220,69 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
             </button>
           ))}
         </div>
+
+        {/* Match Targets — collapsible */}
+        <button
+          onClick={() => setTargetsExpanded((v) => !v)}
+          style={S.targetsToggle}
+        >
+          <span style={S.targetsToggleLabel}>
+            MATCH TARGETS
+            <span style={S.optional}> optional</span>
+          </span>
+          <span style={S.targetsBadge}>
+            {enabledCount > 0 ? `${enabledCount}/4 set` : "Not set"}
+          </span>
+          <span style={S.targetsChevron}>{targetsExpanded ? "▲" : "▼"}</span>
+        </button>
+
+        {targetsExpanded && (
+          <div style={S.targetsPanel}>
+            {TARGET_ROWS.map((row, i) => (
+              <div key={row.metric} style={S.targetRow}>
+                {/* Enable toggle */}
+                <button
+                  onClick={() => toggleTarget(i)}
+                  style={{ ...S.toggleBtn, ...(targetEnabled[i] ? S.toggleBtnOn : {}) }}
+                >
+                  {targetEnabled[i] ? "ON" : "OFF"}
+                </button>
+
+                {/* Metric label */}
+                <span style={{ ...S.targetLabel, ...(targetEnabled[i] ? {} : S.targetLabelOff) }}>
+                  {row.label(sport)}
+                </span>
+
+                {/* Direction */}
+                <button
+                  onClick={() => setDir(i, targetDir[i] === "atLeast" ? "atMost" : "atLeast")}
+                  style={{ ...S.dirBtn, ...(targetEnabled[i] ? {} : S.dirBtnOff) }}
+                  title={targetDir[i] === "atLeast" ? "At least (click to change)" : "At most (click to change)"}
+                >
+                  {targetDir[i] === "atLeast" ? "≥" : "≤"}
+                </button>
+
+                {/* Value input */}
+                <input
+                  type="number"
+                  min={0}
+                  max={row.unit === "%" ? 100 : 99}
+                  value={targetValue[i]}
+                  onChange={(e) => setVal(i, e.target.value)}
+                  style={{ ...S.targetInput, ...(targetEnabled[i] ? {} : S.targetInputOff) }}
+                  disabled={!targetEnabled[i]}
+                />
+
+                {/* Unit suffix */}
+                {row.unit && (
+                  <span style={{ ...S.targetUnit, ...(targetEnabled[i] ? {} : S.targetLabelOff) }}>
+                    {row.unit}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <button onClick={handleStart} style={S.startBtn}>
           Continue → Squads
@@ -248,6 +383,122 @@ const S: Record<string, CSSProperties> = {
     background: "#238636",
     borderColor: "#2ea043",
     color: "#ffffff",
+  },
+  // Match Targets section
+  targetsToggle: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    background: "#161b22",
+    border: "1px solid #30363d",
+    borderRadius: 8,
+    color: "#8b949e",
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: "0.06em",
+    padding: "10px 12px",
+    cursor: "pointer",
+    outline: "none",
+    width: "100%",
+    textAlign: "left" as const,
+    marginTop: 6,
+  },
+  targetsToggleLabel: {
+    flex: 1,
+    textTransform: "uppercase" as const,
+  },
+  targetsBadge: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 5,
+    color: "#8b949e",
+    fontSize: 10,
+    fontWeight: 600,
+    padding: "2px 7px",
+  },
+  targetsChevron: {
+    fontSize: 9,
+    color: "#6e7681",
+  },
+  targetsPanel: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    background: "#0d1117",
+    border: "1px solid #21262d",
+    borderRadius: 8,
+    padding: "12px 10px",
+  },
+  targetRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  toggleBtn: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#6e7681",
+    fontSize: 10,
+    fontWeight: 700,
+    padding: "4px 8px",
+    cursor: "pointer",
+    outline: "none",
+    minWidth: 38,
+    textAlign: "center" as const,
+    letterSpacing: "0.05em",
+  },
+  toggleBtnOn: {
+    background: "#1a3a1e",
+    borderColor: "#2ea043",
+    color: "#4ade80",
+  },
+  targetLabel: {
+    flex: 1,
+    fontSize: 13,
+    color: "#c9d1d9",
+  },
+  targetLabelOff: {
+    color: "#484f58",
+  },
+  dirBtn: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 16,
+    fontWeight: 600,
+    padding: "2px 10px",
+    cursor: "pointer",
+    outline: "none",
+    minWidth: 34,
+    textAlign: "center" as const,
+  },
+  dirBtnOff: {
+    color: "#484f58",
+    borderColor: "#21262d",
+  },
+  targetInput: {
+    background: "#161b22",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#e6edf3",
+    fontSize: 14,
+    fontWeight: 600,
+    padding: "5px 8px",
+    outline: "none",
+    fontFamily: "inherit",
+    width: 58,
+    textAlign: "right" as const,
+  },
+  targetInputOff: {
+    color: "#484f58",
+    borderColor: "#21262d",
+  },
+  targetUnit: {
+    fontSize: 13,
+    color: "#8b949e",
+    minWidth: 14,
   },
   startBtn: {
     background: "#238636",

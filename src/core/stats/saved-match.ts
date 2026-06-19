@@ -5,6 +5,7 @@ import type {
   MatchEventSegment,
 } from "./stats-event-model";
 import type { MatchState } from "../match/match-state-store";
+import type { MatchTargets } from "../../stats/matchTargets";
 
 export type LoggedMatchEvent = MatchEvent & {
   type: MatchEventKind;
@@ -47,6 +48,7 @@ export type SavedMatch = {
   eventCount: number;
   scorelineSnapshot: string;
   restoreContext?: SavedMatchRestoreContext;
+  targets?: MatchTargets;
 };
 
 export const SAVED_MATCHES_STORAGE_KEY = "pitchflow_matches_v1";

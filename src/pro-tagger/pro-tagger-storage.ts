@@ -9,6 +9,7 @@ import type {
   ProTaggerSquad,
   ProTaggerSquadPlayer,
 } from "./pro-tagger-session";
+import type { MatchTargets } from "../stats/matchTargets";
 
 // ── Shared key (Stats Lite cross-visibility) ──────────────────────────────────
 
@@ -88,6 +89,7 @@ export type ProTaggerSavedMatch = {
 
   // Clock + match phase restore
   restoreContext: ProTaggerRestoreContext;
+  targets?: MatchTargets;
 };
 
 function readProTaggerMatchesRaw(): ProTaggerSavedMatch[] {
