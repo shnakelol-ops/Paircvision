@@ -8,7 +8,18 @@ export type MatchTargetMetric =
   | "shots"
   | "shootingEfficiency"
   | "kickoutWinRate"
-  | "possessionRetention";
+  | "turnoversWon"
+  | "turnoversLost"
+  | "possessionRetention"
+  | "wides"
+  | "freesWon"
+  | "freesConceded"
+  | "scores"
+  | "goals"
+  | "points"
+  | "twoPointers"
+  | "oppShootingEfficiency"
+  | "kickoutsConceded";
 
 export type MatchTargetDirection = "atLeast" | "atMost";
 
@@ -58,6 +69,11 @@ type TargetableEvent = {
 
 const AMBER_RATE_THRESHOLD  = 5;
 const AMBER_COUNT_THRESHOLD = 2;
+
+const COUNT_METRICS = new Set<MatchTargetMetric>([
+  "shots", "turnoversWon", "turnoversLost", "wides", "freesWon", "freesConceded",
+  "scores", "goals", "points", "twoPointers", "kickoutsConceded",
+]);
 
 const SHOTS_KINDS = new Set<MatchEventKind>([
   "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT",
@@ -117,12 +133,40 @@ function computeActuals(events: readonly TargetableEvent[], period: "1H" | "FULL
   const totalTracked  = summary.kickouts.total + summary.turnovers.total + summary.frees.total;
   const possessionRetention = totalTracked > 0 ? Math.round((totalRetained / totalTracked) * 100) : null;
 
-  return { shots, shotsH1, shotsH2, shootingEfficiency, kickoutWinRate, possessionRetention };
+  // Count metrics derived from FOR-side events
+  const hasFor = forScoped.length > 0;
+  const turnoversWon     = hasFor ? forScoped.filter(e => e.kind === "TURNOVER_WON").length    : null;
+  const turnoversLost    = hasFor ? forScoped.filter(e => e.kind === "TURNOVER_LOST").length   : null;
+  const wides            = hasFor ? forScoped.filter(e => e.kind === "WIDE").length            : null;
+  const freesWon         = hasFor ? forScoped.filter(e => e.kind === "FREE_WON").length        : null;
+  const freesConceded    = hasFor ? forScoped.filter(e => e.kind === "FREE_CONCEDED").length   : null;
+  const scores           = hasFor ? forScoped.filter(e => SCORE_KINDS.has(e.kind)).length      : null;
+  const goals            = hasFor ? forScoped.filter(e => e.kind === "GOAL").length            : null;
+  const points           = hasFor ? forScoped.filter(e => e.kind === "POINT").length           : null;
+  const twoPointers      = hasFor ? forScoped.filter(e => e.kind === "TWO_POINTER" || e.kind === "FORTY_FIVE_TWO_POINT").length : null;
+  const kickoutsConceded = hasFor ? forScoped.filter(e => e.kind === "KICKOUT_CONCEDED").length : null;
+
+  // Opposition shooting efficiency
+  const oppScoped   = scoped.filter(e => e.teamSide === "OPP");
+  const oppAttempts = oppScoped.filter(e => SHOTS_KINDS.has(e.kind)).length;
+  const oppScores   = oppScoped.filter(e => SCORE_KINDS.has(e.kind)).length;
+  const oppShootingEfficiency = oppAttempts > 0
+    ? Math.round((oppScores / oppAttempts) * 100)
+    : (oppScoped.length > 0 ? 0 : null);
+
+  return {
+    shots, shotsH1, shotsH2,
+    shootingEfficiency, kickoutWinRate, possessionRetention,
+    turnoversWon, turnoversLost,
+    wides, freesWon, freesConceded,
+    scores, goals, points, twoPointers,
+    oppShootingEfficiency, kickoutsConceded,
+  };
 }
 
 function resolveStatus(target: MatchTarget, actual: number | null): MatchTargetStatus {
   if (actual === null) return "NO_DATA";
-  const threshold = target.metric === "shots" ? AMBER_COUNT_THRESHOLD : AMBER_RATE_THRESHOLD;
+  const threshold = COUNT_METRICS.has(target.metric) ? AMBER_COUNT_THRESHOLD : AMBER_RATE_THRESHOLD;
   if (target.direction === "atLeast") {
     if (actual >= target.targetValue) return "GREEN";
     if (actual >= target.targetValue - threshold) return "AMBER";
@@ -136,10 +180,21 @@ function resolveStatus(target: MatchTarget, actual: number | null): MatchTargetS
 function sportLabel(metric: MatchTargetMetric, sport: PitchSport): string {
   const isPuckout = sport === "hurling" || sport === "camogie";
   switch (metric) {
-    case "shots":               return "Shots per half";
-    case "shootingEfficiency":  return "Shooting %";
-    case "kickoutWinRate":      return isPuckout ? "Puckouts" : "Kickouts";
-    case "possessionRetention": return "Possession Retention";
+    case "shots":                 return "Shots per half";
+    case "shootingEfficiency":    return "Shooting %";
+    case "kickoutWinRate":        return isPuckout ? "Puckouts" : "Kickouts";
+    case "turnoversWon":          return "Turnovers Won";
+    case "turnoversLost":         return "Turnovers Lost";
+    case "possessionRetention":   return "Possession Retention";
+    case "wides":                 return "Wides";
+    case "freesWon":              return "Frees Won";
+    case "freesConceded":         return "Frees Conceded";
+    case "scores":                return "Scores";
+    case "goals":                 return "Goals";
+    case "points":                return "Points";
+    case "twoPointers":           return "Two-Pointers";
+    case "oppShootingEfficiency": return "Opp. Shooting %";
+    case "kickoutsConceded":      return isPuckout ? "Puckouts Conceded" : "Kickouts Conceded";
   }
 }
 
@@ -192,8 +247,52 @@ export function computeTargetResults(
         actual = actuals.kickoutWinRate;
         status = resolveStatus(target, actual);
         break;
+      case "turnoversWon":
+        actual = actuals.turnoversWon;
+        status = resolveStatus(target, actual);
+        break;
+      case "turnoversLost":
+        actual = actuals.turnoversLost;
+        status = resolveStatus(target, actual);
+        break;
       case "possessionRetention":
         actual = actuals.possessionRetention;
+        status = resolveStatus(target, actual);
+        break;
+      case "wides":
+        actual = actuals.wides;
+        status = resolveStatus(target, actual);
+        break;
+      case "freesWon":
+        actual = actuals.freesWon;
+        status = resolveStatus(target, actual);
+        break;
+      case "freesConceded":
+        actual = actuals.freesConceded;
+        status = resolveStatus(target, actual);
+        break;
+      case "scores":
+        actual = actuals.scores;
+        status = resolveStatus(target, actual);
+        break;
+      case "goals":
+        actual = actuals.goals;
+        status = resolveStatus(target, actual);
+        break;
+      case "points":
+        actual = actuals.points;
+        status = resolveStatus(target, actual);
+        break;
+      case "twoPointers":
+        actual = actuals.twoPointers;
+        status = resolveStatus(target, actual);
+        break;
+      case "oppShootingEfficiency":
+        actual = actuals.oppShootingEfficiency;
+        status = resolveStatus(target, actual);
+        break;
+      case "kickoutsConceded":
+        actual = actuals.kickoutsConceded;
         status = resolveStatus(target, actual);
         break;
     }

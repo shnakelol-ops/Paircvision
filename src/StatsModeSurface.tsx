@@ -3151,6 +3151,15 @@ const HOME_ICON_BUTTON_STYLE: CSSProperties = {
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
 };
 
+// Stable module-level constant — keeps useMemo dep array stable across renders.
+const TARGET_METRICS: readonly MatchTarget["metric"][] = [
+  "shots", "shootingEfficiency", "kickoutWinRate",
+  "turnoversWon", "turnoversLost", "possessionRetention",
+  "wides", "freesWon", "freesConceded",
+  "scores", "goals", "points", "twoPointers",
+  "oppShootingEfficiency", "kickoutsConceded",
+];
+
 export default function StatsModeSurface() {
   const hostRef = useRef<HTMLDivElement>(null);
   const floatingControlsRef = useRef<HTMLDivElement>(null);
@@ -3181,11 +3190,11 @@ export default function StatsModeSurface() {
   const [isUtilityOpen, setIsUtilityOpen] = useState(false);
   const [utilityPanel, setUtilityPanel] = useState<UtilityPanel>(null);
 
-  // Match Targets state — three parallel arrays indexed 0-3 (shots, shooting%, kickout%, possession%)
-  const TARGET_METRICS: readonly MatchTarget["metric"][] = ["shots", "shootingEfficiency", "kickoutWinRate", "possessionRetention"];
-  const [targetEnabled, setTargetEnabled] = useState<boolean[]>([false, false, false, false]);
-  const [targetValue,   setTargetValue]   = useState<number[]>([12, 50, 50, 60]);
-  const [targetDir,     setTargetDir]     = useState<MatchTargetDirection[]>(["atLeast", "atLeast", "atLeast", "atLeast"]);
+  // Match Targets state — 15 parallel arrays (indexed to match module-level TARGET_METRICS)
+  const [targetEnabled, setTargetEnabled] = useState<boolean[]>([false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]);
+  const [targetValue,   setTargetValue]   = useState<number[]>([12, 50, 50, 10, 10, 60, 8, 8, 8, 15, 1, 10, 2, 50, 8]);
+  const [targetDir,     setTargetDir]     = useState<MatchTargetDirection[]>(["atLeast", "atLeast", "atLeast", "atLeast", "atMost", "atLeast", "atMost", "atLeast", "atMost", "atLeast", "atLeast", "atLeast", "atLeast", "atMost", "atMost"]);
+  const [moreTargetsExpanded, setMoreTargetsExpanded] = useState(false);
   const [squads, setSquads] = useState<Squad[]>(() => {
     if (typeof window === "undefined") {
       return ensureHomeAwaySquads([createDefaultSquad("HOME")]).squads;
@@ -3750,12 +3759,12 @@ export default function StatsModeSurface() {
 
   function applyTargets(targets: MatchTargets | undefined): void {
     if (!targets || !hasEnabledTargets(targets)) {
-      setTargetEnabled([false, false, false, false]);
+      setTargetEnabled([false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]);
       return;
     }
-    const newEnabled: boolean[] = [false, false, false, false];
-    const newValue:   number[]  = [12, 50, 50, 60];
-    const newDir:     MatchTargetDirection[] = ["atLeast", "atLeast", "atLeast", "atLeast"];
+    const newEnabled: boolean[] = [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false];
+    const newValue:   number[]  = [12, 50, 50, 10, 10, 60, 8, 8, 8, 15, 1, 10, 2, 50, 8];
+    const newDir:     MatchTargetDirection[] = ["atLeast", "atLeast", "atLeast", "atLeast", "atMost", "atLeast", "atMost", "atLeast", "atMost", "atLeast", "atLeast", "atLeast", "atLeast", "atMost", "atMost"];
     targets.targets.forEach((t) => {
       const idx = TARGET_METRICS.indexOf(t.metric);
       if (idx >= 0) {
@@ -6988,60 +6997,92 @@ export default function StatsModeSurface() {
       {utilityPanel === "TARGETS" ? (
         <div className={utilityPanelClass} role="dialog" aria-label="Match Targets">
           <div className="utility-panel-title" style={{ marginBottom: 10 }}>Match Targets</div>
-          {(["shots", "shootingEfficiency", "kickoutWinRate", "possessionRetention"] as const).map((metric, i) => {
-            const labels: Record<string, string> = {
-              shots:               "Shots per half",
-              shootingEfficiency:  "Shooting %",
-              kickoutWinRate:      mode.pitchSport === "hurling" ? "Puckout Win %" : "Kickout Win %",
-              possessionRetention: "Possession Retention %",
+          {(() => {
+            const isPuckout = mode.pitchSport === "hurling" || mode.pitchSport === "camogie";
+            const LABELS: Record<string, string> = {
+              shots:                "Shots per half",
+              shootingEfficiency:   "Shooting %",
+              kickoutWinRate:       isPuckout ? "Puckout Win %" : "Kickout Win %",
+              turnoversWon:         "Turnovers Won",
+              turnoversLost:        "Turnovers Lost",
+              possessionRetention:  "Possession Retention %",
+              wides:                "Wides",
+              freesWon:             "Frees Won",
+              freesConceded:        "Frees Conceded",
+              scores:               "Scores",
+              goals:                "Goals",
+              points:               "Points",
+              twoPointers:          "Two-Pointers",
+              oppShootingEfficiency: "Opp. Shooting %",
+              kickoutsConceded:     isPuckout ? "Puckouts Conceded" : "Kickouts Conceded",
             };
-            const unit = metric === "shots" ? "" : "%";
+            const RATE_METRICS = new Set(["shootingEfficiency", "kickoutWinRate", "possessionRetention", "oppShootingEfficiency"]);
+            const renderRow = (metric: string, i: number) => {
+              const unit = RATE_METRICS.has(metric) ? "%" : "";
+              return (
+                <div key={metric} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                  <button
+                    type="button"
+                    className="utility-menu-btn"
+                    style={{
+                      fontSize: 9, padding: "3px 6px", minWidth: 32,
+                      ...(targetEnabled[i] ? { border: "1px solid rgba(34,197,94,0.9)", background: "rgba(22,101,52,0.72)", color: "#4ade80" } : { color: "#64748b" }),
+                    }}
+                    onClick={() => setTargetEnabled((prev) => prev.map((v, idx) => idx === i ? !v : v))}
+                  >
+                    {targetEnabled[i] ? "ON" : "OFF"}
+                  </button>
+                  <span style={{ flex: 1, fontSize: 11, color: targetEnabled[i] ? "#dbe7f5" : "#475569" }}>
+                    {LABELS[metric]}
+                  </span>
+                  <button
+                    type="button"
+                    className="utility-menu-btn"
+                    style={{ fontSize: 14, padding: "2px 8px", minWidth: 28, color: targetEnabled[i] ? "#94a3b8" : "#374151" }}
+                    onClick={() => setTargetDir((prev) => prev.map((v, idx) => idx === i ? (v === "atLeast" ? "atMost" : "atLeast") : v))}
+                  >
+                    {targetDir[i] === "atLeast" ? "≥" : "≤"}
+                  </button>
+                  <input
+                    type="number"
+                    min={0}
+                    max={unit === "%" ? 100 : 99}
+                    value={targetValue[i]}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value, 10);
+                      if (!Number.isNaN(n) && n >= 0 && n <= 999) {
+                        setTargetValue((prev) => prev.map((v, idx) => idx === i ? n : v));
+                      }
+                    }}
+                    disabled={!targetEnabled[i]}
+                    style={{
+                      width: 46, background: "#161b22", border: "1px solid #30363d", borderRadius: 6,
+                      color: targetEnabled[i] ? "#e6edf3" : "#374151", fontSize: 13, fontWeight: 600,
+                      padding: "3px 6px", textAlign: "right", outline: "none", fontFamily: "inherit",
+                    }}
+                  />
+                  {unit ? <span style={{ fontSize: 11, color: "#64748b", minWidth: 12 }}>{unit}</span> : null}
+                </div>
+              );
+            };
+            const coreMetrics  = TARGET_METRICS.slice(0, 6);
+            const moreMetrics  = TARGET_METRICS.slice(6);
+            const moreEnabled  = targetEnabled.slice(6).filter(Boolean).length;
             return (
-              <div key={metric} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+              <>
+                {coreMetrics.map((m, i) => renderRow(m, i))}
                 <button
                   type="button"
                   className="utility-menu-btn"
-                  style={{
-                    fontSize: 9, padding: "3px 6px", minWidth: 32,
-                    ...(targetEnabled[i] ? { border: "1px solid rgba(34,197,94,0.9)", background: "rgba(22,101,52,0.72)", color: "#4ade80" } : { color: "#64748b" }),
-                  }}
-                  onClick={() => setTargetEnabled((prev) => prev.map((v, idx) => idx === i ? !v : v))}
+                  style={{ width: "100%", textAlign: "left", marginBottom: moreTargetsExpanded ? 6 : 0, fontSize: 10, color: "#64748b" }}
+                  onClick={() => setMoreTargetsExpanded(v => !v)}
                 >
-                  {targetEnabled[i] ? "ON" : "OFF"}
+                  More Targets{moreEnabled > 0 ? ` (${moreEnabled} set)` : ""} {moreTargetsExpanded ? "▲" : "▼"}
                 </button>
-                <span style={{ flex: 1, fontSize: 11, color: targetEnabled[i] ? "#dbe7f5" : "#475569" }}>
-                  {labels[metric]}
-                </span>
-                <button
-                  type="button"
-                  className="utility-menu-btn"
-                  style={{ fontSize: 14, padding: "2px 8px", minWidth: 28, color: targetEnabled[i] ? "#94a3b8" : "#374151" }}
-                  onClick={() => setTargetDir((prev) => prev.map((v, idx) => idx === i ? (v === "atLeast" ? "atMost" : "atLeast") : v))}
-                >
-                  {targetDir[i] === "atLeast" ? "≥" : "≤"}
-                </button>
-                <input
-                  type="number"
-                  min={0}
-                  max={unit === "%" ? 100 : 99}
-                  value={targetValue[i]}
-                  onChange={(e) => {
-                    const n = parseInt(e.target.value, 10);
-                    if (!Number.isNaN(n) && n >= 0 && n <= 999) {
-                      setTargetValue((prev) => prev.map((v, idx) => idx === i ? n : v));
-                    }
-                  }}
-                  disabled={!targetEnabled[i]}
-                  style={{
-                    width: 46, background: "#161b22", border: "1px solid #30363d", borderRadius: 6,
-                    color: targetEnabled[i] ? "#e6edf3" : "#374151", fontSize: 13, fontWeight: 600,
-                    padding: "3px 6px", textAlign: "right", outline: "none", fontFamily: "inherit",
-                  }}
-                />
-                {unit ? <span style={{ fontSize: 11, color: "#64748b", minWidth: 12 }}>{unit}</span> : null}
-              </div>
+                {moreTargetsExpanded && moreMetrics.map((m, j) => renderRow(m, j + 6))}
+              </>
             );
-          })}
+          })()}
           <button type="button" className="utility-panel-close" onClick={closeUtilityPanel}>
             Done
           </button>
@@ -7845,7 +7886,7 @@ export default function StatsModeSurface() {
                   ? { border: "1px solid rgba(34,197,94,0.6)", background: "rgba(22,101,52,0.4)" }
                   : undefined}
               >
-                Match Targets{activeEnabledTargetCount > 0 ? ` (${activeEnabledTargetCount}/4)` : ""}
+                Match Targets{activeEnabledTargetCount > 0 ? ` (${activeEnabledTargetCount}/15)` : ""}
               </button>
               <button type="button" className="utility-menu-btn" onClick={openNotesPanel}>
                 Notes

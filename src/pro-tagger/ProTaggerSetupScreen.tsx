@@ -35,30 +35,21 @@ type TargetRow = {
 };
 
 const TARGET_ROWS: readonly TargetRow[] = [
-  {
-    metric:       "shots",
-    label:        () => "Shots per half",
-    unit:         "",
-    defaultValue: 12,
-  },
-  {
-    metric:       "shootingEfficiency",
-    label:        () => "Shooting %",
-    unit:         "%",
-    defaultValue: 50,
-  },
-  {
-    metric:       "kickoutWinRate",
-    label:        (s) => (s === "hurling" || s === "camogie" ? "Puckout Win %" : "Kickout Win %"),
-    unit:         "%",
-    defaultValue: 50,
-  },
-  {
-    metric:       "possessionRetention",
-    label:        () => "Possession Retention %",
-    unit:         "%",
-    defaultValue: 60,
-  },
+  { metric: "shots",                label: () => "Shots per half",                                                unit: "",  defaultValue: 12 },
+  { metric: "shootingEfficiency",   label: () => "Shooting %",                                                   unit: "%", defaultValue: 50 },
+  { metric: "kickoutWinRate",       label: (s) => (s === "hurling" || s === "camogie" ? "Puckout Win %" : "Kickout Win %"), unit: "%", defaultValue: 50 },
+  { metric: "turnoversWon",         label: () => "Turnovers Won",                                                unit: "",  defaultValue: 10 },
+  { metric: "turnoversLost",        label: () => "Turnovers Lost",                                               unit: "",  defaultValue: 10 },
+  { metric: "possessionRetention",  label: () => "Possession Retention %",                                       unit: "%", defaultValue: 60 },
+  { metric: "wides",                label: () => "Wides",                                                        unit: "",  defaultValue: 8  },
+  { metric: "freesWon",             label: () => "Frees Won",                                                    unit: "",  defaultValue: 8  },
+  { metric: "freesConceded",        label: () => "Frees Conceded",                                               unit: "",  defaultValue: 8  },
+  { metric: "scores",               label: () => "Scores",                                                       unit: "",  defaultValue: 15 },
+  { metric: "goals",                label: () => "Goals",                                                        unit: "",  defaultValue: 1  },
+  { metric: "points",               label: () => "Points",                                                       unit: "",  defaultValue: 10 },
+  { metric: "twoPointers",          label: () => "Two-Pointers",                                                 unit: "",  defaultValue: 2  },
+  { metric: "oppShootingEfficiency", label: () => "Opp. Shooting %",                                            unit: "%", defaultValue: 50 },
+  { metric: "kickoutsConceded",     label: (s) => (s === "hurling" || s === "camogie" ? "Puckouts Conceded" : "Kickouts Conceded"), unit: "", defaultValue: 8 },
 ];
 
 export function ProTaggerSetupScreen({ onContinue }: Props) {
@@ -72,10 +63,11 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
 
   // Match Targets state
   const [targetsExpanded, setTargetsExpanded] = useState(false);
-  const [targetEnabled,  setTargetEnabled]    = useState<boolean[]>([false, false, false, false]);
-  const [targetValue,    setTargetValue]      = useState<number[]>([12, 50, 50, 60]);
+  const [moreExpanded,    setMoreExpanded]    = useState(false);
+  const [targetEnabled,  setTargetEnabled]    = useState<boolean[]>([false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]);
+  const [targetValue,    setTargetValue]      = useState<number[]>([12, 50, 50, 10, 10, 60, 8, 8, 8, 15, 1, 10, 2, 50, 8]);
   const [targetDir,      setTargetDir]        = useState<MatchTargetDirection[]>(
-    ["atLeast", "atLeast", "atLeast", "atLeast"],
+    ["atLeast", "atLeast", "atLeast", "atLeast", "atMost", "atLeast", "atMost", "atLeast", "atMost", "atLeast", "atLeast", "atLeast", "atLeast", "atMost", "atMost"],
   );
 
   const enabledCount = targetEnabled.filter(Boolean).length;
@@ -231,29 +223,24 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
             <span style={S.optional}> optional</span>
           </span>
           <span style={S.targetsBadge}>
-            {enabledCount > 0 ? `${enabledCount}/4 set` : "Not set"}
+            {enabledCount > 0 ? `${enabledCount}/15 set` : "Not set"}
           </span>
           <span style={S.targetsChevron}>{targetsExpanded ? "▲" : "▼"}</span>
         </button>
 
         {targetsExpanded && (
           <div style={S.targetsPanel}>
-            {TARGET_ROWS.map((row, i) => (
+            {TARGET_ROWS.slice(0, 6).map((row, i) => (
               <div key={row.metric} style={S.targetRow}>
-                {/* Enable toggle */}
                 <button
                   onClick={() => toggleTarget(i)}
                   style={{ ...S.toggleBtn, ...(targetEnabled[i] ? S.toggleBtnOn : {}) }}
                 >
                   {targetEnabled[i] ? "ON" : "OFF"}
                 </button>
-
-                {/* Metric label */}
                 <span style={{ ...S.targetLabel, ...(targetEnabled[i] ? {} : S.targetLabelOff) }}>
                   {row.label(sport)}
                 </span>
-
-                {/* Direction */}
                 <button
                   onClick={() => setDir(i, targetDir[i] === "atLeast" ? "atMost" : "atLeast")}
                   style={{ ...S.dirBtn, ...(targetEnabled[i] ? {} : S.dirBtnOff) }}
@@ -261,8 +248,6 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
                 >
                   {targetDir[i] === "atLeast" ? "≥" : "≤"}
                 </button>
-
-                {/* Value input */}
                 <input
                   type="number"
                   min={0}
@@ -272,8 +257,6 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
                   style={{ ...S.targetInput, ...(targetEnabled[i] ? {} : S.targetInputOff) }}
                   disabled={!targetEnabled[i]}
                 />
-
-                {/* Unit suffix */}
                 {row.unit && (
                   <span style={{ ...S.targetUnit, ...(targetEnabled[i] ? {} : S.targetLabelOff) }}>
                     {row.unit}
@@ -281,6 +264,54 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
                 )}
               </div>
             ))}
+            <button
+              onClick={() => setMoreExpanded(v => !v)}
+              style={{ ...S.toggleBtn, width: "100%", textAlign: "left", fontSize: 11, color: "#64748b", marginTop: 4 }}
+            >
+              More Targets {moreExpanded ? "▲" : "▼"}
+              {targetEnabled.slice(6).filter(Boolean).length > 0 && (
+                <span style={{ marginLeft: 6, color: "#4ade80" }}>
+                  ({targetEnabled.slice(6).filter(Boolean).length} set)
+                </span>
+              )}
+            </button>
+            {moreExpanded && TARGET_ROWS.slice(6).map((row, j) => {
+              const i = j + 6;
+              return (
+                <div key={row.metric} style={S.targetRow}>
+                  <button
+                    onClick={() => toggleTarget(i)}
+                    style={{ ...S.toggleBtn, ...(targetEnabled[i] ? S.toggleBtnOn : {}) }}
+                  >
+                    {targetEnabled[i] ? "ON" : "OFF"}
+                  </button>
+                  <span style={{ ...S.targetLabel, ...(targetEnabled[i] ? {} : S.targetLabelOff) }}>
+                    {row.label(sport)}
+                  </span>
+                  <button
+                    onClick={() => setDir(i, targetDir[i] === "atLeast" ? "atMost" : "atLeast")}
+                    style={{ ...S.dirBtn, ...(targetEnabled[i] ? {} : S.dirBtnOff) }}
+                    title={targetDir[i] === "atLeast" ? "At least (click to change)" : "At most (click to change)"}
+                  >
+                    {targetDir[i] === "atLeast" ? "≥" : "≤"}
+                  </button>
+                  <input
+                    type="number"
+                    min={0}
+                    max={row.unit === "%" ? 100 : 99}
+                    value={targetValue[i]}
+                    onChange={(e) => setVal(i, e.target.value)}
+                    style={{ ...S.targetInput, ...(targetEnabled[i] ? {} : S.targetInputOff) }}
+                    disabled={!targetEnabled[i]}
+                  />
+                  {row.unit && (
+                    <span style={{ ...S.targetUnit, ...(targetEnabled[i] ? {} : S.targetLabelOff) }}>
+                      {row.unit}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
