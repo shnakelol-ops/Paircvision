@@ -893,6 +893,7 @@ export default function TacticalPlaySurface() {
   const [zoneLibraryOpen, setZoneLibraryOpen] = useState<"none" | "football" | "hurling">("none");
   const [zoneLabelDraft, setZoneLabelDraft] = useState("");
   const [extraSegments, setExtraSegments] = useState<MovementSegment[]>([]);
+  const [addRunErrorMsg, setAddRunErrorMsg] = useState<string | null>(null);
   const [playerSheetId, setPlayerSheetId] = useState<string | null>(null);
   const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
   const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
@@ -1263,6 +1264,11 @@ export default function TacticalPlaySurface() {
   const onStartAddRun = (playerId: string) => {
     const shell = shellRef.current;
     if (!shell) return;
+    if (isPlaying || isPaused) {
+      setAddRunErrorMsg("Stop playback before adding a run.");
+      setTimeout(() => setAddRunErrorMsg(null), 2500);
+      return;
+    }
     const currentRoute = routes.find((r) => r.playerId === playerId);
     if (!currentRoute || currentRoute.points.length < 2) return;
     addRunSavedRouteRef.current = {
@@ -1274,8 +1280,10 @@ export default function TacticalPlaySurface() {
     addRunPlayerIdRef.current = playerId;
     setAddRunPlayerId(playerId);
     setMovementsOpen(false);
+    setPlayerSheetId(null);
     shell.setSelectedToken(playerId);
     shell.clearSelectedRoute();
+    shell.setMode("route"); // synchronous — shell enters route mode before next render
     setMenuMode("route");
   };
 
@@ -1284,6 +1292,7 @@ export default function TacticalPlaySurface() {
     const playerId = addRunPlayerIdRef.current;
     if (!shell || !playerId) return;
     const newRoute = shell.getRoutes().find((r) => r.playerId === playerId);
+    let nextSegs = extraSegments;
     if (newRoute && newRoute.points.length >= 2) {
       const newSeg: MovementSegment = {
         id: `seg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -1292,12 +1301,19 @@ export default function TacticalPlaySurface() {
         triggeredBy: playerId,
         points: newRoute.points,
       };
-      setExtraSegments((prev) => [...prev, newSeg]);
+      nextSegs = [...extraSegments, newSeg];
+      setExtraSegments(nextSegs);
+    } else {
+      setAddRunErrorMsg("Draw a route first, then tap Save Run.");
+      setTimeout(() => setAddRunErrorMsg(null), 2500);
     }
     const saved = addRunSavedRouteRef.current;
     if (saved) {
       const restoredRoute: MovementBoardRoute = { playerId, points: saved.points, concept: saved.concept, delayMs: saved.delayMs, triggeredBy: saved.triggeredBy };
-      shell.setRoutes([...shell.getRoutes().filter((r) => r.playerId !== playerId), restoredRoute]);
+      const newRoutes = [...shell.getRoutes().filter((r) => r.playerId !== playerId), restoredRoute];
+      shell.setRoutes(newRoutes);
+      // Push segments synchronously so shell state is consistent with routes before next render
+      shell.setExtraSegments(nextSegs);
     }
     addRunSavedRouteRef.current = null;
     addRunPlayerIdRef.current = null;
@@ -1499,6 +1515,19 @@ export default function TacticalPlaySurface() {
     shell.setRouteMeta(movementsSelectedPlayerId, { triggeredBy: triggeredBy ?? undefined, delayMs: undefined });
   };
 
+  // Chain receiver's main route to start after passer — Amendment 1 guard:
+  // only adjusts when receiver has no explicit timing and no extra segments already set.
+  const maybeChainReceiverAfterPass = (fromId: string, toId: string) => {
+    const shell = shellRef.current;
+    if (!shell || fromId === toId) return;
+    const receiverRoute = shell.getRoutes().find((r) => r.playerId === toId);
+    if (!receiverRoute) return;
+    const hasExplicitTiming = (receiverRoute.delayMs != null && receiverRoute.delayMs > 0) || receiverRoute.triggeredBy != null;
+    const hasExtraSegs = extraSegments.some((s) => s.playerId === toId);
+    if (hasExplicitTiming || hasExtraSegs) return;
+    shell.setRouteMeta(toId, { triggeredBy: fromId, delayMs: undefined });
+  };
+
   const onAddPass = () => {
     const shell = shellRef.current;
     if (!shell || !passFromId || !passToId || passFromId === passToId) return;
@@ -1511,6 +1540,7 @@ export default function TacticalPlaySurface() {
         : { delayMs: passTimingMs }),
     };
     shell.addPassEvent(event);
+    maybeChainReceiverAfterPass(passFromId, passToId);
     setPassFromId(passToId);
     setPassToId(null);
   };
@@ -2276,6 +2306,12 @@ export default function TacticalPlaySurface() {
             <button type="button" style={EDIT_RUN_DONE_STYLE} onClick={onConfirmAddRun}>
               Save Run
             </button>
+          </div>
+        ) : null}
+
+        {addRunErrorMsg !== null ? (
+          <div style={{ position: "fixed", bottom: "max(108px, calc(env(safe-area-inset-bottom, 0px) + 106px))", left: "50%", transform: "translateX(-50%)", zIndex: 31, background: "rgba(32, 4, 4, 0.92)", border: "1px solid rgba(255,80,80,0.40)", borderRadius: "999px", padding: "0 14px", height: "28px", display: "flex", alignItems: "center", fontFamily: "Inter, system-ui, sans-serif", fontSize: "10px", fontWeight: 600, color: "rgba(255,160,140,0.95)", whiteSpace: "nowrap", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", pointerEvents: "none", userSelect: "none" }}>
+            {addRunErrorMsg}
           </div>
         ) : null}
 
@@ -3736,6 +3772,7 @@ export default function TacticalPlaySurface() {
                   toPlayerId: toId,
                   delayMs,
                 });
+                maybeChainReceiverAfterPass(playerSheetId, toId);
               }}
               onBallChoice={(ballType) => {
                 const shell = shellRef.current;
@@ -3769,6 +3806,9 @@ export default function TacticalPlaySurface() {
                   shooterId: playerSheetId,
                   delayMs,
                 });
+              }}
+              onAddRun={() => {
+                onStartAddRun(playerSheetId);
               }}
               onBehaviour={() => {
                 setMovementsSelectedPlayerId(playerSheetId);

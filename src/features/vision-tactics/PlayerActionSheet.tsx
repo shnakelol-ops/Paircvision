@@ -31,6 +31,7 @@ type PlayerActionSheetProps = {
   onFreeBall?: () => void;
   onPlay: () => void;
   onBehaviour: () => void;
+  onAddRun?: () => void;
 };
 
 type ExpandedSection = "run-timing" | "pass" | "ball" | null;
@@ -234,6 +235,7 @@ export default function PlayerActionSheet({
   onFreeBall,
   onPlay,
   onBehaviour,
+  onAddRun,
 }: PlayerActionSheetProps) {
   const [expanded, setExpanded] = useState<ExpandedSection>(null);
   const [passToId, setPassToId] = useState<string | null>(null);
@@ -312,6 +314,15 @@ export default function PlayerActionSheet({
             >
               Edit Run
             </button>
+            {onAddRun && (
+              <button
+                type="button"
+                style={ACTION_BTN_GREEN}
+                onClick={() => { onAddRun(); onClose(); }}
+              >
+                + Add Run
+              </button>
+            )}
             <button
               type="button"
               style={{ ...ACTION_BTN, border: "1px solid rgba(255, 100, 100, 0.30)", color: "rgba(255, 180, 180, 0.80)" }}
