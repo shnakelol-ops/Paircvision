@@ -1677,6 +1677,7 @@ export default function TacticalPlaySurface() {
   };
 
   const applyPhaseToShell = (shell: MovementCanvasShellHandle, phase: TacticalPhase) => {
+    shell.reset();
     shell.setTokens(phase.tokens);
     shell.setRoutes(phase.routes);
     if (phase.ballState.carrierId) {
