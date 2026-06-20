@@ -293,7 +293,7 @@ export default function PlayerActionSheet({
             style={ACTION_BTN}
             onClick={() => { onDrawRun(); onClose(); }}
           >
-            Draw Run
+            {hasRoute ? "Draw Run" : "Draw First Run"}
           </button>
           <button
             type="button"
@@ -303,6 +303,12 @@ export default function PlayerActionSheet({
             Behaviour
           </button>
         </div>
+
+        {onAddRun ? (
+          <p style={{ margin: 0, fontFamily: "Inter, system-ui, sans-serif", fontSize: "8px", fontWeight: 500, color: "rgba(180, 210, 255, 0.38)", letterSpacing: "0.04em", paddingLeft: "2px", userSelect: "none" }}>
+            Build this player&rsquo;s movement step by step.
+          </p>
+        ) : null}
 
         {/* Route actions row — only when player has a route */}
         {hasRoute && (
@@ -320,7 +326,7 @@ export default function PlayerActionSheet({
                 style={ACTION_BTN_GREEN}
                 onClick={() => { onAddRun(); onClose(); }}
               >
-                + Add Run
+                Add Another Run
               </button>
             )}
             <button
