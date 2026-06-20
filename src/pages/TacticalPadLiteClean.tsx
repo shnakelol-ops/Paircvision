@@ -57,8 +57,13 @@ const VIEWPORT_WIDTH_UNIT = CAN_USE_CSS_SUPPORTS && window.CSS.supports("width: 
 const BOARD_VIEWPORT_HEIGHT_CSS_VAR = "--board-app-height";
 const VIEWPORT_HEIGHT_EXPR = `var(${BOARD_VIEWPORT_HEIGHT_CSS_VAR}, 100dvh)`;
 
+// Mirrors ROOT_STYLE's paddingTop/paddingBottom exactly so CONTENT never overflows
+// the flex container on notched landscape devices (e.g. iPhone with home indicator).
+const CONTENT_MAX_HEIGHT_EXPR =
+  `calc(${VIEWPORT_HEIGHT_EXPR} - max(4px, calc(env(safe-area-inset-top, 0px) + 2px)) - max(4px, calc(env(safe-area-inset-bottom, 0px) + 2px)))`;
+
 const CONTENT_WIDTH_EXPR =
-  `min(calc(${VIEWPORT_WIDTH_UNIT} - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc((${VIEWPORT_HEIGHT_EXPR} - 10px) * 1.6), 1360px)`;
+  `min(calc(${VIEWPORT_WIDTH_UNIT} - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc(${CONTENT_MAX_HEIGHT_EXPR} * 1.6), 1360px)`;
 const WHITEBOARD_PLAYER_COLOR_CHOICES: ReadonlyArray<{
   value: WhiteboardTokenColor;
   css: string;
@@ -444,7 +449,7 @@ const CONTENT_STYLE: CSSProperties = {
   width: CONTENT_WIDTH_EXPR,
   maxWidth: "calc(100vw - 24px)",
   aspectRatio: "16 / 10",
-  maxHeight: `calc(${VIEWPORT_HEIGHT_EXPR} - 10px)`,
+  maxHeight: CONTENT_MAX_HEIGHT_EXPR,
   boxSizing: "border-box",
   position: "relative",
   zIndex: 1,
