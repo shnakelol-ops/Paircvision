@@ -13,6 +13,7 @@ import type {
   MovementCanvasShellHandle,
   MovementConcept,
   MovementRouteEditState,
+  MovementSegment,
   PremiumPlayerTokenColor,
   TacticalPassEvent,
   TacticalShotEvent,
@@ -36,6 +37,7 @@ import {
   deleteScenario,
   duplicateScenario,
   listScenarios,
+  migrateToSegments,
   renameScenario,
   saveScenario,
   type TacticalScenario,
@@ -890,10 +892,15 @@ export default function TacticalPlaySurface() {
   const [zoneShape, setZoneShape] = useState<"rect" | "circle">("rect");
   const [zoneLibraryOpen, setZoneLibraryOpen] = useState<"none" | "football" | "hurling">("none");
   const [zoneLabelDraft, setZoneLabelDraft] = useState("");
+  const [extraSegments, setExtraSegments] = useState<MovementSegment[]>([]);
   const [playerSheetId, setPlayerSheetId] = useState<string | null>(null);
   const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
   const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
   const editRunPlayerIdRef = useRef<string | null>(null);
+  const [addRunPlayerId, setAddRunPlayerId] = useState<string | null>(null);
+  const addRunPlayerIdRef = useRef<string | null>(null);
+  type SavedRouteSnap = { points: NormalizedPoint[]; concept?: MovementConcept; delayMs?: number; triggeredBy?: string };
+  const addRunSavedRouteRef = useRef<SavedRouteSnap | null>(null);
   const {
     recordPhase, setRecordPhase,
     recordCountdown,
@@ -1130,6 +1137,10 @@ export default function TacticalPlaySurface() {
   }, [isPortrait]);
 
   useEffect(() => {
+    shellRef.current?.setExtraSegments(extraSegments);
+  }, [extraSegments]);
+
+  useEffect(() => {
     shellRef.current?.setMode(toShellMode(menuMode));
   }, [menuMode]);
 
@@ -1154,6 +1165,11 @@ export default function TacticalPlaySurface() {
       if (editRunPlayerIdRef.current !== null) {
         editRunPlayerIdRef.current = null;
         setEditRunPlayerId(null);
+      }
+      if (addRunPlayerIdRef.current !== null) {
+        addRunSavedRouteRef.current = null;
+        addRunPlayerIdRef.current = null;
+        setAddRunPlayerId(null);
       }
       sheetDrawRunPlayerIdRef.current = null;
     }
@@ -1244,6 +1260,66 @@ export default function TacticalPlaySurface() {
     setEditRunPlayerId(null);
   };
 
+  const onStartAddRun = (playerId: string) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    const currentRoute = routes.find((r) => r.playerId === playerId);
+    if (!currentRoute || currentRoute.points.length < 2) return;
+    addRunSavedRouteRef.current = {
+      points: [...currentRoute.points],
+      concept: currentRoute.concept,
+      delayMs: currentRoute.delayMs,
+      triggeredBy: currentRoute.triggeredBy,
+    };
+    addRunPlayerIdRef.current = playerId;
+    setAddRunPlayerId(playerId);
+    setMovementsOpen(false);
+    shell.setSelectedToken(playerId);
+    shell.clearSelectedRoute();
+    setMenuMode("route");
+  };
+
+  const onConfirmAddRun = () => {
+    const shell = shellRef.current;
+    const playerId = addRunPlayerIdRef.current;
+    if (!shell || !playerId) return;
+    const newRoute = shell.getRoutes().find((r) => r.playerId === playerId);
+    if (newRoute && newRoute.points.length >= 2) {
+      const newSeg: MovementSegment = {
+        id: `seg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        playerId,
+        startMs: 0,
+        triggeredBy: playerId,
+        points: newRoute.points,
+      };
+      setExtraSegments((prev) => [...prev, newSeg]);
+    }
+    const saved = addRunSavedRouteRef.current;
+    if (saved) {
+      const restoredRoute: MovementBoardRoute = { playerId, points: saved.points, concept: saved.concept, delayMs: saved.delayMs, triggeredBy: saved.triggeredBy };
+      shell.setRoutes([...shell.getRoutes().filter((r) => r.playerId !== playerId), restoredRoute]);
+    }
+    addRunSavedRouteRef.current = null;
+    addRunPlayerIdRef.current = null;
+    setAddRunPlayerId(null);
+    setMenuMode("move");
+  };
+
+  const onCancelAddRun = () => {
+    const shell = shellRef.current;
+    const playerId = addRunPlayerIdRef.current;
+    if (!shell || !playerId) return;
+    const saved = addRunSavedRouteRef.current;
+    if (saved) {
+      const restoredRoute: MovementBoardRoute = { playerId, points: saved.points, concept: saved.concept, delayMs: saved.delayMs, triggeredBy: saved.triggeredBy };
+      shell.setRoutes([...shell.getRoutes().filter((r) => r.playerId !== playerId), restoredRoute]);
+    }
+    addRunSavedRouteRef.current = null;
+    addRunPlayerIdRef.current = null;
+    setAddRunPlayerId(null);
+    setMenuMode("move");
+  };
+
   const onPauseResumePress = () => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -1304,6 +1380,7 @@ export default function TacticalPlaySurface() {
     setPassFromId(null);
     setPassToId(null);
     setPassTriggerId(null);
+    setExtraSegments([]);
   };
 
   const giveSelectedPlayerBall = () => {
@@ -1610,6 +1687,7 @@ export default function TacticalPlaySurface() {
     setAwayTokenIds(loadedAwayIds);
     const firstAway = scenario.tokens.find((t) => t.team === "away");
     if (firstAway) setAwayColorState(firstAway.color);
+    setExtraSegments(migrateToSegments(scenario));
     setScenarioRenameId(null);
   };
 
@@ -1642,6 +1720,7 @@ export default function TacticalPlaySurface() {
       units,
       shell.getZones(),
       shell.getTrainingItems(),
+      extraSegments.length > 0 ? extraSegments : undefined,
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
@@ -1712,6 +1791,7 @@ export default function TacticalPlaySurface() {
     }
     setShotEvents((prev) => prev.filter((shot) => !removedIds.has(shot.shooterId)));
     setUnits((prev) => prev.map((u) => ({ ...u, memberIds: u.memberIds.filter((id) => !removedIds.has(id)) })));
+    setExtraSegments((prev) => prev.filter((s) => !removedIds.has(s.playerId)));
     setAwayTokenIds((prev) => {
       const next = new Set(prev);
       for (const id of removedIds) next.delete(id);
@@ -1894,12 +1974,13 @@ export default function TacticalPlaySurface() {
     setShootDelayMs(0);
     setIsPlaying(false);
     setIsPaused(false);
+    setExtraSegments([]);
     setTokenNumberById(Object.fromEntries(defaultTokens.map((token) => [token.id, token.number])));
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
-  const clearAllDisabled = isPlaying || (routes.length === 0 && passEvents.length === 0 && shotEvents.length === 0);
+  const clearAllDisabled = isPlaying || (routes.length === 0 && passEvents.length === 0 && shotEvents.length === 0 && extraSegments.length === 0);
   const playbackFloatingVisible = isPlaying || isPaused;
   const tokenIds = Object.keys(tokenNumberById);
   const homePlayerCount = tokenIds.filter((id) => !awayTokenIds.has(id)).length;
@@ -2180,6 +2261,20 @@ export default function TacticalPlaySurface() {
               }}
             >
               Done
+            </button>
+          </div>
+        ) : null}
+
+        {addRunPlayerId !== null && !isPlaying && !isPaused ? (
+          <div style={{ ...EDIT_RUN_PILL_STYLE, gap: "6px" }}>
+            <span style={EDIT_RUN_LABEL_STYLE}>
+              Draw 2nd run · P{tokenNumberById[addRunPlayerId] ?? ""}
+            </span>
+            <button type="button" style={{ ...EDIT_RUN_DONE_STYLE, border: "1px solid rgba(255,120,120,0.40)", color: "rgba(255,160,140,0.90)" }} onClick={onCancelAddRun}>
+              Cancel
+            </button>
+            <button type="button" style={EDIT_RUN_DONE_STYLE} onClick={onConfirmAddRun}>
+              Save Run
             </button>
           </div>
         ) : null}
@@ -2635,6 +2730,39 @@ export default function TacticalPlaySurface() {
                 </div>
               </>
             ) : null}
+
+            {movementsSelectedPlayerId ? (() => {
+              const playerExtraSegs = extraSegments.filter((s) => s.playerId === movementsSelectedPlayerId);
+              return (
+                <div style={MP_ROW}>
+                  <span style={MP_ROW_LABEL}>Runs</span>
+                  <span style={{ ...MP_CHIP, cursor: "default", background: "rgba(8, 18, 40, 0.50)" }}>
+                    Run 1
+                  </span>
+                  {playerExtraSegs.map((seg, idx) => (
+                    <span key={seg.id} style={{ ...MP_CHIP, cursor: "default", background: "rgba(8, 18, 40, 0.50)" }}>
+                      Run {idx + 2}
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    style={{ ...MP_CHIP, border: "1px solid rgba(74,222,128,0.38)", color: "rgba(160,255,140,0.88)" }}
+                    onClick={() => onStartAddRun(movementsSelectedPlayerId)}
+                  >
+                    + Add Run
+                  </button>
+                  {playerExtraSegs.length > 0 ? (
+                    <button
+                      type="button"
+                      style={{ ...MP_CHIP_SECONDARY, color: "rgba(255,120,120,0.70)" }}
+                      onClick={() => setExtraSegments((prev) => prev.filter((s) => s.playerId !== movementsSelectedPlayerId))}
+                    >
+                      Clear Runs
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })() : null}
 
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button type="button" style={MP_DONE} onClick={() => setMovementsOpen(false)}>
