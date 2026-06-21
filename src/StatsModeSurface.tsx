@@ -4907,15 +4907,10 @@ export default function StatsModeSurface() {
     setUtilityPanel(null);
     setReviewMatchCategory(null);
     reviewMatchCategoryRef.current = null;
-    setActiveTeamSide("own");
-    activeTeamSideRef.current = "own";
     setIsReviewActionsOpen(false);
   };
 
   const selectReviewCategory = (cat: ReviewMatchCategory) => {
-    const side: "own" | "opposition" = (cat === "OPP_KICKOUTS" || cat === "OPP_SHOTS") ? "opposition" : "own";
-    setActiveTeamSide(side);
-    activeTeamSideRef.current = side;
     const firstKind = REVIEW_CATEGORY_OUTCOMES[cat][0];
     setSelectedEventKind(firstKind);
     selectedEventRef.current = firstKind;
@@ -7792,7 +7787,7 @@ export default function StatsModeSurface() {
               ))}
             </div>
           ) : null}
-          {!isLandscape && !isReviewModeActive && !isReviewMatchActive ? ownershipToggleControl : null}
+          {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
           {isPickerOpen && !isReviewModeActive && !isReviewMatchActive ? (
             <div className={isLandscape ? "landscape-toolbar" : "event-panel"}>
               <div className="event-keyboard">
