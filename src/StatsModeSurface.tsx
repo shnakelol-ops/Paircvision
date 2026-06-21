@@ -3185,10 +3185,29 @@ export default function StatsModeSurface() {
   const suppressUtilityBubbleClickRef = useRef(false);
   const [currentMode, setCurrentMode] = useState<GaaModeKey>("football");
   const mode = gaaModeConfig[currentMode];
+  const REVIEW_SHOT_KINDS = new Set<MatchEventKind>(["GOAL", "POINT", "WIDE", "SHOT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED", "FREE_MISSED"]);
+  const REVIEW_CATEGORY_OUTCOMES: Record<ReviewMatchCategory, readonly MatchEventKind[]> = {
+    OUR_KICKOUTS: ["KICKOUT_WON", "KICKOUT_CONCEDED"],
+    OPP_KICKOUTS: ["KICKOUT_WON", "KICKOUT_CONCEDED"],
+    OUR_SHOTS:    mode.eventButtons.filter(b => REVIEW_SHOT_KINDS.has(b.kind)).map(b => b.kind),
+    OPP_SHOTS:    mode.eventButtons.filter(b => REVIEW_SHOT_KINDS.has(b.kind)).map(b => b.kind),
+    TURNOVERS:    ["TURNOVER_WON", "TURNOVER_LOST"],
+    FREES:        ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"],
+  };
+  const REVIEW_CATEGORY_LABELS: Record<ReviewMatchCategory, string> = {
+    OUR_KICKOUTS: "Our Restarts",
+    OPP_KICKOUTS: "Opp. Restarts",
+    OUR_SHOTS:    "Our Shots",
+    OPP_SHOTS:    "Opp. Shots",
+    TURNOVERS:    "Turnovers",
+    FREES:        "Placed Balls",
+  };
+  const ALL_REVIEW_CATEGORIES: ReviewMatchCategory[] = ["OUR_KICKOUTS", "OPP_KICKOUTS", "OUR_SHOTS", "OPP_SHOTS", "TURNOVERS", "FREES"];
   const [selectedEventKind, setSelectedEventKind] = useState<MatchEventKind>("POINT");
   const [activeTeam, setActiveTeam] = useState<TeamSide>("HOME");
   const [activeTeamSide, setActiveTeamSide] = useState<"own" | "opposition">("own");
   const [reviewMatchCategory, setReviewMatchCategory] = useState<ReviewMatchCategory | null>(null);
+  const [isReviewActionsOpen, setIsReviewActionsOpen] = useState(false);
   const [teamNames, setTeamNames] = useState<{ HOME: string; AWAY: string }>({
     HOME: "Team A",
     AWAY: "Team B",
@@ -4882,6 +4901,30 @@ export default function StatsModeSurface() {
     [packGenerating, loggedEvents, teamNames, venueName],
   );
 
+  const isReviewMatchActive = reviewMatchCategory !== null;
+
+  const exitReviewMatch = () => {
+    setUtilityPanel(null);
+    setReviewMatchCategory(null);
+    reviewMatchCategoryRef.current = null;
+    setActiveTeamSide("own");
+    activeTeamSideRef.current = "own";
+    setIsReviewActionsOpen(false);
+  };
+
+  const selectReviewCategory = (cat: ReviewMatchCategory) => {
+    const side: "own" | "opposition" = (cat === "OPP_KICKOUTS" || cat === "OPP_SHOTS") ? "opposition" : "own";
+    setActiveTeamSide(side);
+    activeTeamSideRef.current = side;
+    const firstKind = REVIEW_CATEGORY_OUTCOMES[cat][0];
+    setSelectedEventKind(firstKind);
+    selectedEventRef.current = firstKind;
+    handleRef.current?.setActiveEventKind(firstKind);
+    setReviewMatchCategory(cat);
+    reviewMatchCategoryRef.current = cat;
+    setUtilityPanel(null);
+  };
+
   const openNotesPanel = () => {
     setShowReviewStrip(false);
     setUtilityPanel("NOTES");
@@ -5449,14 +5492,13 @@ export default function StatsModeSurface() {
   }, [isResetConfirmOpen]);
 
   useEffect(() => {
-    const isInReview = utilityPanel === "MATCH_REVIEW";
     handleRef.current?.setEventContext({
       half: currentHalf,
       timestamp: matchTimeSeconds,
-      canLog: (isInReview && reviewMatchCategory !== null)
-              || (!isInReview && isLoggingActive(matchState) && activeTeam === "HOME"),
+      canLog: reviewMatchCategory !== null
+              || (reviewMatchCategory === null && isLoggingActive(matchState) && activeTeam === "HOME"),
     });
-  }, [activeTeam, currentHalf, matchTimeSeconds, matchState, utilityPanel, reviewMatchCategory]);
+  }, [activeTeam, currentHalf, matchTimeSeconds, matchState, reviewMatchCategory]);
 
   useEffect(() => {
     if (currentHalf !== 2) return;
@@ -7112,139 +7154,123 @@ export default function StatsModeSurface() {
         </div>
       ) : null}
       {utilityPanel === "MATCH_REVIEW" ? (
-        <div className={utilityPanelClass} role="dialog" aria-label="Review Match">
-          {(() => {
-            const isPuckout = mode.pitchSport === "hurling";
-            const restartLabel = mode.restartLabel;
-            const REVIEW_SHOT_KINDS = new Set<MatchEventKind>(["GOAL", "POINT", "WIDE", "SHOT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED", "FREE_MISSED"]);
-            const shotOutcomes = mode.eventButtons.filter(b => REVIEW_SHOT_KINDS.has(b.kind)).map(b => b.kind);
-            const CATEGORY_OUTCOMES: Record<ReviewMatchCategory, MatchEventKind[]> = {
-              OUR_KICKOUTS:  ["KICKOUT_WON", "KICKOUT_CONCEDED"],
-              OPP_KICKOUTS:  ["KICKOUT_WON", "KICKOUT_CONCEDED"],
-              OUR_SHOTS:     shotOutcomes,
-              OPP_SHOTS:     shotOutcomes,
-              TURNOVERS:     ["TURNOVER_WON", "TURNOVER_LOST"],
-              FREES:         ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"],
-            };
-            const CATEGORY_LABELS: Record<ReviewMatchCategory, string> = {
-              OUR_KICKOUTS:  `Our ${restartLabel}s`,
-              OPP_KICKOUTS:  `Opp. ${restartLabel}s`,
-              OUR_SHOTS:     "Our Shots",
-              OPP_SHOTS:     "Opp. Shots",
-              TURNOVERS:     "Turnovers",
-              FREES:         "Placed Balls",
-            };
-            const ALL_CATEGORIES: ReviewMatchCategory[] = ["OUR_KICKOUTS", "OPP_KICKOUTS", "OUR_SHOTS", "OPP_SHOTS", "TURNOVERS", "FREES"];
-            const selectCategory = (cat: ReviewMatchCategory) => {
-              const side: "own" | "opposition" = (cat === "OPP_KICKOUTS" || cat === "OPP_SHOTS") ? "opposition" : "own";
-              setActiveTeamSide(side);
-              activeTeamSideRef.current = side;
-              const firstKind = CATEGORY_OUTCOMES[cat][0];
-              setSelectedEventKind(firstKind);
-              selectedEventRef.current = firstKind;
-              handleRef.current?.setActiveEventKind(firstKind);
-              setReviewMatchCategory(cat);
-              reviewMatchCategoryRef.current = cat;
-            };
-            const selectOutcome = (kind: MatchEventKind) => {
-              setSelectedEventKind(kind);
-              selectedEventRef.current = kind;
-              handleRef.current?.setActiveEventKind(kind);
-            };
-            const exitReviewMatch = () => {
-              setUtilityPanel(null);
-              setReviewMatchCategory(null);
-              reviewMatchCategoryRef.current = null;
-              setActiveTeamSide("own");
-              activeTeamSideRef.current = "own";
-            };
-            const outcomes = reviewMatchCategory ? CATEGORY_OUTCOMES[reviewMatchCategory] : null;
-            return (
-              <>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  <div className="utility-panel-title" style={{ margin: 0 }}>Review Match</div>
-                  <button
-                    type="button"
-                    className="utility-menu-btn"
-                    style={{ padding: "2px 8px", fontSize: 12 }}
-                    onClick={exitReviewMatch}
-                    aria-label="Exit Review Match"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div style={{ fontSize: 10, color: "#64748b", marginBottom: 10, lineHeight: 1.4 }}>
-                  Watching video on another device? Choose a category, select the event, then tap the pitch to log each moment.
-                </div>
+        <div className={utilityPanelClass} role="dialog" aria-label="Review Match — Choose Category">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div className="utility-panel-title" style={{ margin: 0 }}>Review Match</div>
+            <button
+              type="button"
+              className="utility-menu-btn"
+              style={{ padding: "2px 8px", fontSize: 12 }}
+              onClick={() => setUtilityPanel(null)}
+              aria-label="Close category chooser"
+            >
+              ✕
+            </button>
+          </div>
+          <div style={{ fontSize: 10, color: "#64748b", marginBottom: 12, lineHeight: 1.4 }}>
+            Watching video on another device? Choose what you are tagging, then tap the pitch to log each moment.
+          </div>
+          <div style={{ fontSize: 9, color: "#8b949e", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Category
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+            {ALL_REVIEW_CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                type="button"
+                className="utility-menu-btn"
+                style={{
+                  fontSize: 10,
+                  textAlign: "center",
+                  ...(reviewMatchCategory === cat
+                    ? { border: "1px solid rgba(99,102,241,0.9)", background: "rgba(49,46,129,0.6)", color: "#a5b4fc" }
+                    : {}),
+                }}
+                onClick={() => selectReviewCategory(cat)}
+              >
+                {REVIEW_CATEGORY_LABELS[cat]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {isReviewMatchActive && isReviewActionsOpen ? (
+        <div className={utilityPanelClass} role="dialog" aria-label="PáircVision Review Actions">
+          <div className="utility-panel-title" style={{ marginBottom: 2 }}>PáircVision Review</div>
+          {reviewMatchCategory ? (
+            <div style={{ fontSize: 10, color: "#a5b4fc", marginBottom: 14 }}>
+              {REVIEW_CATEGORY_LABELS[reviewMatchCategory]}
+            </div>
+          ) : null}
 
-                {/* Category selector */}
-                <div style={{ fontSize: 9, color: "#8b949e", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                  Category
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 12 }}>
-                  {ALL_CATEGORIES.map(cat => (
-                    <button
-                      key={cat}
-                      type="button"
-                      className="utility-menu-btn"
-                      style={{
-                        fontSize: 10,
-                        textAlign: "center",
-                        ...(reviewMatchCategory === cat
-                          ? { border: "1px solid rgba(99,102,241,0.9)", background: "rgba(49,46,129,0.6)", color: "#a5b4fc" }
-                          : {}),
-                      }}
-                      onClick={() => selectCategory(cat)}
-                    >
-                      {CATEGORY_LABELS[cat]}
-                    </button>
-                  ))}
-                </div>
+          <div style={{ fontSize: 9, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Review Tools
+          </div>
+          <button
+            type="button"
+            className="utility-menu-btn"
+            style={{ marginBottom: 4 }}
+            onClick={() => { setUtilityPanel("MATCH_REVIEW"); setIsReviewActionsOpen(false); }}
+          >
+            Change Category
+          </button>
+          <button
+            type="button"
+            className="utility-menu-btn"
+            style={{ border: "1px solid rgba(148,163,184,0.4)" }}
+            onClick={() => { undoLastEventAction(); }}
+          >
+            Undo Last
+          </button>
 
-                {/* Outcome row */}
-                {outcomes ? (
-                  <>
-                    <div style={{ fontSize: 9, color: "#8b949e", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      Event
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
-                      {outcomes.map(kind => (
-                        <button
-                          key={kind}
-                          type="button"
-                          className="utility-menu-btn"
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            padding: "4px 8px",
-                            ...(selectedEventKind === kind
-                              ? { border: "1px solid rgba(34,197,94,0.9)", background: "rgba(22,101,52,0.6)", color: "#4ade80" }
-                              : {}),
-                          }}
-                          onClick={() => selectOutcome(kind)}
-                        >
-                          {mode.eventLabels[kind]}
-                        </button>
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 10, color: "#4ade80", marginBottom: 10, textAlign: "center" }}>
-                      Tap pitch to log
-                    </div>
-                  </>
-                ) : null}
+          <div style={{ fontSize: 9, color: "#8b949e", marginBottom: 6, marginTop: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Generate Reports
+          </div>
+          <button
+            type="button"
+            className="utility-menu-btn"
+            style={{ marginBottom: 4, ...(snapshotExporting !== null || isPdfExporting ? { opacity: 0.45 } : {}) }}
+            disabled={snapshotExporting !== null || isPdfExporting}
+            onClick={() => { handleExportHtSnapshot(); }}
+          >
+            {snapshotExporting === "HT" ? "Exporting…" : "HT Snapshot"}
+          </button>
+          <button
+            type="button"
+            className="utility-menu-btn"
+            style={{ marginBottom: 4, ...(snapshotExporting !== null || isPdfExporting ? { opacity: 0.45 } : {}) }}
+            disabled={snapshotExporting !== null || isPdfExporting}
+            onClick={() => { handleExportFtSnapshot(); }}
+          >
+            {snapshotExporting === "FT" ? "Exporting…" : "FT Snapshot"}
+          </button>
+          <button
+            type="button"
+            className="utility-menu-btn"
+            style={{ marginBottom: 4, ...(snapshotExporting !== null || isPdfExporting ? { opacity: 0.45 } : {}) }}
+            disabled={snapshotExporting !== null || isPdfExporting}
+            onClick={() => { handleExportPdf(); }}
+          >
+            {isPdfExporting ? "Exporting…" : "Coach Review PDF"}
+          </button>
+          <button
+            type="button"
+            className="utility-menu-btn"
+            style={{ ...(snapshotExporting !== null || isPdfExporting ? { opacity: 0.45 } : {}) }}
+            disabled={snapshotExporting !== null || isPdfExporting}
+            onClick={() => { void shareOrExportMatch(); }}
+          >
+            Outcome Cards
+          </button>
 
-                {/* Undo */}
-                <button
-                  type="button"
-                  className="utility-menu-btn"
-                  style={{ width: "100%", marginTop: 4, border: "1px solid rgba(148,163,184,0.4)", fontSize: 11 }}
-                  onClick={() => undoLastEventAction()}
-                >
-                  Undo Last
-                </button>
-              </>
-            );
-          })()}
+          <button
+            type="button"
+            className="utility-panel-close"
+            style={{ marginTop: 14, border: "1px solid rgba(239,68,68,0.5)", color: "#ef4444" }}
+            onClick={exitReviewMatch}
+          >
+            Finish Review
+          </button>
         </div>
       ) : null}
       {utilityPanel === "NOTES" ? (
@@ -7700,10 +7726,23 @@ export default function StatsModeSurface() {
         </div>
       ) : null}
       <div className="match-stopwatch" aria-live="polite">
-        <span className="match-stopwatch-state">{matchStateToken}</span>
+        <span className="match-stopwatch-state">
+          {isReviewMatchActive && reviewMatchCategory
+            ? `PV Review · ${REVIEW_CATEGORY_LABELS[reviewMatchCategory]}`
+            : matchStateToken}
+        </span>
         <span className="match-stopwatch-clock">{formatMatchClock(matchTimeSeconds)}</span>
         <div className="match-stopwatch-controls">
-          {contextualAction ? (
+          {isReviewMatchActive ? (
+            <button
+              type="button"
+              className="match-stopwatch-btn"
+              style={{ border: "1px solid rgba(99,102,241,0.6)", background: "rgba(49,46,129,0.4)" }}
+              onClick={() => setIsReviewActionsOpen(v => !v)}
+            >
+              {isReviewActionsOpen ? "CLOSE" : "ACTIONS"}
+            </button>
+          ) : contextualAction ? (
             <button
               type="button"
               className="match-stopwatch-btn"
@@ -7729,8 +7768,32 @@ export default function StatsModeSurface() {
         ref={floatingControlsRef}
         className="floating-controls"
       >
-          {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
-          {isPickerOpen && !isReviewModeActive ? (
+          {isReviewMatchActive && reviewMatchCategory !== null ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, padding: "6px 8px", background: "rgba(49,46,129,0.25)", borderRadius: 8, border: "1px solid rgba(99,102,241,0.35)", marginBottom: 4 }}>
+              <span style={{ fontSize: 9, color: "#a5b4fc", width: "100%", marginBottom: 2, letterSpacing: "0.03em" }}>
+                {REVIEW_CATEGORY_LABELS[reviewMatchCategory]}
+              </span>
+              {REVIEW_CATEGORY_OUTCOMES[reviewMatchCategory].map(kind => (
+                <button
+                  key={kind}
+                  type="button"
+                  className="event-keyboard-btn"
+                  style={selectedEventKind === kind
+                    ? { border: "1px solid rgba(34,197,94,0.9)", background: "rgba(22,101,52,0.6)", color: "#4ade80" }
+                    : undefined}
+                  onClick={() => {
+                    setSelectedEventKind(kind);
+                    selectedEventRef.current = kind;
+                    handleRef.current?.setActiveEventKind(kind);
+                  }}
+                >
+                  {mode.eventLabels[kind]}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {!isLandscape && !isReviewModeActive && !isReviewMatchActive ? ownershipToggleControl : null}
+          {isPickerOpen && !isReviewModeActive && !isReviewMatchActive ? (
             <div className={isLandscape ? "landscape-toolbar" : "event-panel"}>
               <div className="event-keyboard">
                 <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
