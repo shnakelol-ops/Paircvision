@@ -23,6 +23,8 @@ export type LoggedMatchEvent = MatchEvent & {
   squadId?: string;
   team?: "HOME" | "AWAY";
   restartOwner?: "FOR" | "OPP";
+  source?: "live" | "review";
+  reviewCategory?: "OUR_KICKOUTS" | "OPP_KICKOUTS" | "OUR_SHOTS" | "OPP_SHOTS" | "TURNOVERS" | "FREES";
 };
 
 export type SavedMatchRestoreContext = {

@@ -52,7 +52,8 @@ import { generateDemoMatchEvents } from "./demo/demoMatchData";
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
 type TeamSide = "HOME" | "AWAY";
-type UtilityPanel = "PLAYERS" | "REVIEW" | "SUMMARY" | "SAVED_MATCHES" | "NOTES" | "TARGETS" | null;
+type UtilityPanel = "PLAYERS" | "REVIEW" | "SUMMARY" | "SAVED_MATCHES" | "NOTES" | "TARGETS" | "MATCH_REVIEW" | null;
+type ReviewMatchCategory = "OUR_KICKOUTS" | "OPP_KICKOUTS" | "OUR_SHOTS" | "OPP_SHOTS" | "TURNOVERS" | "FREES";
 type ReviewHalf = "H1" | "H2" | "FULL";
 type ReviewSegment = "ALL" | "S1" | "S2" | "S3" | "S4" | "S5" | "S6";
 type ReviewTeamContext = "ALL" | "FOR" | "OPP";
@@ -3187,6 +3188,7 @@ export default function StatsModeSurface() {
   const [selectedEventKind, setSelectedEventKind] = useState<MatchEventKind>("POINT");
   const [activeTeam, setActiveTeam] = useState<TeamSide>("HOME");
   const [activeTeamSide, setActiveTeamSide] = useState<"own" | "opposition">("own");
+  const [reviewMatchCategory, setReviewMatchCategory] = useState<ReviewMatchCategory | null>(null);
   const [teamNames, setTeamNames] = useState<{ HOME: string; AWAY: string }>({
     HOME: "Team A",
     AWAY: "Team B",
@@ -3299,6 +3301,7 @@ export default function StatsModeSurface() {
   const selectedEventRef = useRef<MatchEventKind>("POINT");
   const activeTeamRef = useRef<TeamSide>("HOME");
   const activeTeamSideRef = useRef<"own" | "opposition">("own");
+  const reviewMatchCategoryRef = useRef<ReviewMatchCategory | null>(null);
   const activePlayerRef = useRef<string | null>(null);
   const activePlayerNumberRef = useRef<number | null>(null);
   const activePlayerIdRef = useRef<string | null>(null);
@@ -3855,6 +3858,10 @@ export default function StatsModeSurface() {
   }, [activeTeamSide]);
 
   useEffect(() => {
+    reviewMatchCategoryRef.current = reviewMatchCategory;
+  }, [reviewMatchCategory]);
+
+  useEffect(() => {
     if (activeTeamSide !== "opposition") return;
     if (visibleEventButtons.some((item) => item.kind === selectedEventKind)) return;
     const fallbackKind = visibleEventButtons.find((item) => item.kind === "POINT")?.kind ?? visibleEventButtons[0]?.kind;
@@ -4171,6 +4178,11 @@ export default function StatsModeSurface() {
             ? { restartOwner: activeTeamSideRef.current === "opposition" ? "OPP" as const : "FOR" as const }
             : {}),
         };
+        const activeReviewCategory = reviewMatchCategoryRef.current;
+        if (activeReviewCategory !== null) {
+          nextEvent.source = "review";
+          nextEvent.reviewCategory = activeReviewCategory;
+        }
         const activePlayerEntry = activePlayerEntryRef.current;
         const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? null;
         nextEvent.playerId = selectedPlayerId;
@@ -5437,12 +5449,14 @@ export default function StatsModeSurface() {
   }, [isResetConfirmOpen]);
 
   useEffect(() => {
+    const isInReview = utilityPanel === "MATCH_REVIEW";
     handleRef.current?.setEventContext({
       half: currentHalf,
       timestamp: matchTimeSeconds,
-      canLog: isLoggingActive(matchState) && activeTeam === "HOME",
+      canLog: (isInReview && reviewMatchCategory !== null)
+              || (!isInReview && isLoggingActive(matchState) && activeTeam === "HOME"),
     });
-  }, [activeTeam, currentHalf, matchTimeSeconds, matchState]);
+  }, [activeTeam, currentHalf, matchTimeSeconds, matchState, utilityPanel, reviewMatchCategory]);
 
   useEffect(() => {
     if (currentHalf !== 2) return;
@@ -7097,6 +7111,142 @@ export default function StatsModeSurface() {
           </button>
         </div>
       ) : null}
+      {utilityPanel === "MATCH_REVIEW" ? (
+        <div className={utilityPanelClass} role="dialog" aria-label="Review Match">
+          {(() => {
+            const isPuckout = mode.pitchSport === "hurling";
+            const restartLabel = mode.restartLabel;
+            const REVIEW_SHOT_KINDS = new Set<MatchEventKind>(["GOAL", "POINT", "WIDE", "SHOT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED", "FREE_MISSED"]);
+            const shotOutcomes = mode.eventButtons.filter(b => REVIEW_SHOT_KINDS.has(b.kind)).map(b => b.kind);
+            const CATEGORY_OUTCOMES: Record<ReviewMatchCategory, MatchEventKind[]> = {
+              OUR_KICKOUTS:  ["KICKOUT_WON", "KICKOUT_CONCEDED"],
+              OPP_KICKOUTS:  ["KICKOUT_WON", "KICKOUT_CONCEDED"],
+              OUR_SHOTS:     shotOutcomes,
+              OPP_SHOTS:     shotOutcomes,
+              TURNOVERS:     ["TURNOVER_WON", "TURNOVER_LOST"],
+              FREES:         ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"],
+            };
+            const CATEGORY_LABELS: Record<ReviewMatchCategory, string> = {
+              OUR_KICKOUTS:  `Our ${restartLabel}s`,
+              OPP_KICKOUTS:  `Opp. ${restartLabel}s`,
+              OUR_SHOTS:     "Our Shots",
+              OPP_SHOTS:     "Opp. Shots",
+              TURNOVERS:     "Turnovers",
+              FREES:         "Placed Balls",
+            };
+            const ALL_CATEGORIES: ReviewMatchCategory[] = ["OUR_KICKOUTS", "OPP_KICKOUTS", "OUR_SHOTS", "OPP_SHOTS", "TURNOVERS", "FREES"];
+            const selectCategory = (cat: ReviewMatchCategory) => {
+              const side: "own" | "opposition" = (cat === "OPP_KICKOUTS" || cat === "OPP_SHOTS") ? "opposition" : "own";
+              setActiveTeamSide(side);
+              activeTeamSideRef.current = side;
+              const firstKind = CATEGORY_OUTCOMES[cat][0];
+              setSelectedEventKind(firstKind);
+              selectedEventRef.current = firstKind;
+              handleRef.current?.setActiveEventKind(firstKind);
+              setReviewMatchCategory(cat);
+              reviewMatchCategoryRef.current = cat;
+            };
+            const selectOutcome = (kind: MatchEventKind) => {
+              setSelectedEventKind(kind);
+              selectedEventRef.current = kind;
+              handleRef.current?.setActiveEventKind(kind);
+            };
+            const exitReviewMatch = () => {
+              setUtilityPanel(null);
+              setReviewMatchCategory(null);
+              reviewMatchCategoryRef.current = null;
+              setActiveTeamSide("own");
+              activeTeamSideRef.current = "own";
+            };
+            const outcomes = reviewMatchCategory ? CATEGORY_OUTCOMES[reviewMatchCategory] : null;
+            return (
+              <>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  <div className="utility-panel-title" style={{ margin: 0 }}>Review Match</div>
+                  <button
+                    type="button"
+                    className="utility-menu-btn"
+                    style={{ padding: "2px 8px", fontSize: 12 }}
+                    onClick={exitReviewMatch}
+                    aria-label="Exit Review Match"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div style={{ fontSize: 10, color: "#64748b", marginBottom: 10, lineHeight: 1.4 }}>
+                  Watching video on another device? Choose a category, select the event, then tap the pitch to log each moment.
+                </div>
+
+                {/* Category selector */}
+                <div style={{ fontSize: 9, color: "#8b949e", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Category
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 12 }}>
+                  {ALL_CATEGORIES.map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      className="utility-menu-btn"
+                      style={{
+                        fontSize: 10,
+                        textAlign: "center",
+                        ...(reviewMatchCategory === cat
+                          ? { border: "1px solid rgba(99,102,241,0.9)", background: "rgba(49,46,129,0.6)", color: "#a5b4fc" }
+                          : {}),
+                      }}
+                      onClick={() => selectCategory(cat)}
+                    >
+                      {CATEGORY_LABELS[cat]}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Outcome row */}
+                {outcomes ? (
+                  <>
+                    <div style={{ fontSize: 9, color: "#8b949e", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                      Event
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+                      {outcomes.map(kind => (
+                        <button
+                          key={kind}
+                          type="button"
+                          className="utility-menu-btn"
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            padding: "4px 8px",
+                            ...(selectedEventKind === kind
+                              ? { border: "1px solid rgba(34,197,94,0.9)", background: "rgba(22,101,52,0.6)", color: "#4ade80" }
+                              : {}),
+                          }}
+                          onClick={() => selectOutcome(kind)}
+                        >
+                          {mode.eventLabels[kind]}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#4ade80", marginBottom: 10, textAlign: "center" }}>
+                      Tap pitch to log
+                    </div>
+                  </>
+                ) : null}
+
+                {/* Undo */}
+                <button
+                  type="button"
+                  className="utility-menu-btn"
+                  style={{ width: "100%", marginTop: 4, border: "1px solid rgba(148,163,184,0.4)", fontSize: 11 }}
+                  onClick={() => undoLastEventAction()}
+                >
+                  Undo Last
+                </button>
+              </>
+            );
+          })()}
+        </div>
+      ) : null}
       {utilityPanel === "NOTES" ? (
         <div className={utilityPanelClass} role="dialog" aria-label="Voice notes">
           {notesReviewMatchId !== null ? (
@@ -7896,6 +8046,13 @@ export default function StatsModeSurface() {
                   : undefined}
               >
                 Match Targets{activeEnabledTargetCount > 0 ? ` (${activeEnabledTargetCount}/15)` : ""}
+              </button>
+              <button
+                type="button"
+                className="utility-menu-btn"
+                onClick={() => { setUtilityPanel("MATCH_REVIEW"); setReviewMatchCategory(null); setIsUtilityOpen(false); }}
+              >
+                Review Match
               </button>
               <button type="button" className="utility-menu-btn" onClick={openNotesPanel}>
                 Notes
