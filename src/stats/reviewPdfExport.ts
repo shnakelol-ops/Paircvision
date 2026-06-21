@@ -71,6 +71,8 @@ export type PdfExportEvent = {
   playerName?: string | null;
   playerNumber?: number | null;
   squadId?: string | null;
+  /** V1.2+: which team took this restart. Absent on pre-V1.2 events; derived by legacy fallback when missing. */
+  restartOwner?: "FOR" | "OPP" | null;
 };
 
 /** Minimal squad-player shape needed by the PDF export to seed the player report. */
@@ -11172,18 +11174,29 @@ function makeRestartBattlePage(
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, "Restart Battle", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
-  // ── Event subsets ─────────────────────────────────────────────────────────
-  // FOR won = homeTeam kickout retained + awayTeam kickout homeTeam won
-  const forWonEvts = events.filter(
-    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
-           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
-  );
-  // OPP won = awayTeam kickout retained + homeTeam kickout awayTeam won
-  const oppWonEvts = events.filter(
-    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP") ||
-           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR"),
-  );
-  const allKickoutEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind));
+  // ── Event subsets — split by restart owner (who took this restart) ──────────
+  // V1.2+ events carry restartOwner explicitly. Legacy derivation (pre-V1.2):
+  //   KICKOUT_CONCEDED → owner = teamSide (they conceded their own restart)
+  //   KICKOUT_WON      → owner = opposite side (they won the other team's restart)
+  // Identical derivation to possession-outcomes-engine.ts getRestartOwner().
+  const getOwner = (e: PdfExportEvent): "FOR" | "OPP" =>
+    e.restartOwner != null
+      ? e.restartOwner
+      : e.kind === "KICKOUT_CONCEDED"
+        ? e.teamSide
+        : e.teamSide === "FOR" ? "OPP" : "FOR";
+
+  // "FOR side won the ball" predicate
+  const forWonBall = (e: PdfExportEvent): boolean =>
+    (e.kind === "KICKOUT_WON" && e.teamSide === "FOR") ||
+    (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP");
+
+  const homeRestarts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwner(e) === "FOR");
+  const awayRestarts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwner(e) === "OPP");
+  const homeRetained = homeRestarts.filter(forWonBall);
+  const homeLost     = homeRestarts.filter((e) => !forWonBall(e));
+  const awayRetained = awayRestarts.filter((e) => !forWonBall(e));
+  const awayLost     = awayRestarts.filter(forWonBall);
 
   // ── Layout: two equal mini-pitches — one owner, one story ─────────────────
   const BAND_H    = 44;
@@ -11266,51 +11279,52 @@ function makeRestartBattlePage(
     ctx.restore();
   };
 
-  // Left pitch: homeTeam's story — green = they retained, red X = they lost
-  drawRetained(leftInner, forWonEvts);
-  drawLost(leftInner, oppWonEvts);
+  // Left pitch: homeTeam's own restarts — green = retained, red X = lost
+  drawRetained(leftInner, homeRetained);
+  drawLost(leftInner, homeLost);
 
-  // Right pitch: awayTeam's story — green = they retained, red X = they lost
-  drawRetained(rightInner, oppWonEvts);
-  drawLost(rightInner, forWonEvts);
+  // Right pitch: awayTeam's own restarts — green = retained, red X = lost
+  drawRetained(rightInner, awayRetained);
+  drawLost(rightInner, awayLost);
 
   // ── Two-column bottom strip ───────────────────────────────────────────────
-  const totalFor = forWonEvts.length;
-  const totalOpp = oppWonEvts.length;
-  const totalKO  = totalFor + totalOpp;
-  const forPct   = totalKO > 0 ? Math.round((totalFor / totalKO) * 100) : 0;
-  const oppPct   = totalKO > 0 ? Math.round((totalOpp / totalKO) * 100) : 0;
-  // forHot = zone where homeTeam wins most = zone where awayTeam loses most
-  const forHot   = pdfZoneHotspots(forWonEvts)[0];
-  // oppHot = zone where awayTeam wins most = zone where homeTeam loses most
-  const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
+  const homeTotal    = homeRestarts.length;
+  const awayTotal    = awayRestarts.length;
+  const homeRetCount = homeRetained.length;
+  const awayRetCount = awayRetained.length;
+  const homePct      = homeTotal > 0 ? Math.round((homeRetCount / homeTotal) * 100) : 0;
+  const awayPct      = awayTotal > 0 ? Math.round((awayRetCount / awayTotal) * 100) : 0;
+  const homeRetHot  = pdfZoneHotspots(homeRetained)[0];
+  const homeLostHot = pdfZoneHotspots(homeLost)[0];
+  const awayRetHot  = pdfZoneHotspots(awayRetained)[0];
+  const awayLostHot = pdfZoneHotspots(awayLost)[0];
 
   drawTwoColumnHtStrip(ctx,
     {
       heading: `${truncTeam(homeTeam, 16)} ${restartTerm}s`,
       lines: [
-        totalKO > 0
-          ? `${truncTeam(homeTeam, 14)} retained ${totalFor}/${totalKO} (${forPct}%)`
+        homeTotal > 0
+          ? `${truncTeam(homeTeam, 14)} retained ${homeRetCount}/${homeTotal} (${homePct}%)`
           : `No ${restartTermLC} logged`,
-        forHot ? `Best zone: ${forHot.label}`   : "Best zone: —",
-        oppHot ? `Most losses: ${oppHot.label}` : "Loss zone: —",
+        homeRetHot  ? `Best zone: ${homeRetHot.label}`  : "Best zone: —",
+        homeLostHot ? `Loss zone: ${homeLostHot.label}` : "Loss zone: —",
       ],
       color: "#22c55e",
     },
     {
       heading: `${truncTeam(awayTeam, 16)} ${restartTerm}s`,
       lines: [
-        totalKO > 0
-          ? `${truncTeam(awayTeam, 14)} retained ${totalOpp}/${totalKO} (${oppPct}%)`
+        awayTotal > 0
+          ? `${truncTeam(awayTeam, 14)} retained ${awayRetCount}/${awayTotal} (${awayPct}%)`
           : `No ${restartTermLC} logged`,
-        oppHot ? `Best zone: ${oppHot.label}`   : "Best zone: —",
-        forHot ? `Most losses: ${forHot.label}` : "Loss zone: —",
+        awayRetHot  ? `Best zone: ${awayRetHot.label}`  : "Best zone: —",
+        awayLostHot ? `Loss zone: ${awayLostHot.label}` : "Loss zone: —",
       ],
       color: "#ef4444",
     },
   );
 
-  drawEventCountFooter(ctx, allKickoutEvts.length);
+  drawEventCountFooter(ctx, homeTotal + awayTotal);
   return canvas;
 }
 

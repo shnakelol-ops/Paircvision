@@ -52,7 +52,8 @@ import { generateDemoMatchEvents } from "./demo/demoMatchData";
 type VisibilityMode = "ALL" | "LAST_5" | "LAST_10";
 type TeamScore = { goals: number; points: number; total: number };
 type TeamSide = "HOME" | "AWAY";
-type UtilityPanel = "PLAYERS" | "REVIEW" | "SUMMARY" | "SAVED_MATCHES" | "NOTES" | "TARGETS" | null;
+type UtilityPanel = "PLAYERS" | "REVIEW" | "SUMMARY" | "SAVED_MATCHES" | "NOTES" | "TARGETS" | "MATCH_REVIEW" | null;
+type ReviewMatchCategory = "OUR_KICKOUTS" | "OPP_KICKOUTS" | "OUR_SHOTS" | "OPP_SHOTS" | "TURNOVERS" | "FREES";
 type ReviewHalf = "H1" | "H2" | "FULL";
 type ReviewSegment = "ALL" | "S1" | "S2" | "S3" | "S4" | "S5" | "S6";
 type ReviewTeamContext = "ALL" | "FOR" | "OPP";
@@ -3184,9 +3185,29 @@ export default function StatsModeSurface() {
   const suppressUtilityBubbleClickRef = useRef(false);
   const [currentMode, setCurrentMode] = useState<GaaModeKey>("football");
   const mode = gaaModeConfig[currentMode];
+  const REVIEW_SHOT_KINDS = new Set<MatchEventKind>(["GOAL", "POINT", "WIDE", "SHOT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED", "FREE_MISSED"]);
+  const REVIEW_CATEGORY_OUTCOMES: Record<ReviewMatchCategory, readonly MatchEventKind[]> = {
+    OUR_KICKOUTS: ["KICKOUT_WON", "KICKOUT_CONCEDED"],
+    OPP_KICKOUTS: ["KICKOUT_WON", "KICKOUT_CONCEDED"],
+    OUR_SHOTS:    mode.eventButtons.filter(b => REVIEW_SHOT_KINDS.has(b.kind)).map(b => b.kind),
+    OPP_SHOTS:    mode.eventButtons.filter(b => REVIEW_SHOT_KINDS.has(b.kind)).map(b => b.kind),
+    TURNOVERS:    ["TURNOVER_WON", "TURNOVER_LOST"],
+    FREES:        ["FREE_WON", "FREE_CONCEDED", "FREE_SCORED", "FREE_MISSED"],
+  };
+  const REVIEW_CATEGORY_LABELS: Record<ReviewMatchCategory, string> = {
+    OUR_KICKOUTS: "Our Restarts",
+    OPP_KICKOUTS: "Opp. Restarts",
+    OUR_SHOTS:    "Our Shots",
+    OPP_SHOTS:    "Opp. Shots",
+    TURNOVERS:    "Turnovers",
+    FREES:        "Placed Balls",
+  };
+  const ALL_REVIEW_CATEGORIES: ReviewMatchCategory[] = ["OUR_KICKOUTS", "OPP_KICKOUTS", "OUR_SHOTS", "OPP_SHOTS", "TURNOVERS", "FREES"];
   const [selectedEventKind, setSelectedEventKind] = useState<MatchEventKind>("POINT");
   const [activeTeam, setActiveTeam] = useState<TeamSide>("HOME");
   const [activeTeamSide, setActiveTeamSide] = useState<"own" | "opposition">("own");
+  const [reviewMatchCategory, setReviewMatchCategory] = useState<ReviewMatchCategory | null>(null);
+  const [isReviewActionsOpen, setIsReviewActionsOpen] = useState(false);
   const [teamNames, setTeamNames] = useState<{ HOME: string; AWAY: string }>({
     HOME: "Team A",
     AWAY: "Team B",
@@ -3299,6 +3320,7 @@ export default function StatsModeSurface() {
   const selectedEventRef = useRef<MatchEventKind>("POINT");
   const activeTeamRef = useRef<TeamSide>("HOME");
   const activeTeamSideRef = useRef<"own" | "opposition">("own");
+  const reviewMatchCategoryRef = useRef<ReviewMatchCategory | null>(null);
   const activePlayerRef = useRef<string | null>(null);
   const activePlayerNumberRef = useRef<number | null>(null);
   const activePlayerIdRef = useRef<string | null>(null);
@@ -3855,6 +3877,10 @@ export default function StatsModeSurface() {
   }, [activeTeamSide]);
 
   useEffect(() => {
+    reviewMatchCategoryRef.current = reviewMatchCategory;
+  }, [reviewMatchCategory]);
+
+  useEffect(() => {
     if (activeTeamSide !== "opposition") return;
     if (visibleEventButtons.some((item) => item.kind === selectedEventKind)) return;
     const fallbackKind = visibleEventButtons.find((item) => item.kind === "POINT")?.kind ?? visibleEventButtons[0]?.kind;
@@ -4171,6 +4197,11 @@ export default function StatsModeSurface() {
             ? { restartOwner: activeTeamSideRef.current === "opposition" ? "OPP" as const : "FOR" as const }
             : {}),
         };
+        const activeReviewCategory = reviewMatchCategoryRef.current;
+        if (activeReviewCategory !== null) {
+          nextEvent.source = "review";
+          nextEvent.reviewCategory = activeReviewCategory;
+        }
         const activePlayerEntry = activePlayerEntryRef.current;
         const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? null;
         nextEvent.playerId = selectedPlayerId;
@@ -4870,6 +4901,25 @@ export default function StatsModeSurface() {
     [packGenerating, loggedEvents, teamNames, venueName],
   );
 
+  const isReviewMatchActive = reviewMatchCategory !== null;
+
+  const exitReviewMatch = () => {
+    setUtilityPanel(null);
+    setReviewMatchCategory(null);
+    reviewMatchCategoryRef.current = null;
+    setIsReviewActionsOpen(false);
+  };
+
+  const selectReviewCategory = (cat: ReviewMatchCategory) => {
+    const firstKind = REVIEW_CATEGORY_OUTCOMES[cat][0];
+    setSelectedEventKind(firstKind);
+    selectedEventRef.current = firstKind;
+    handleRef.current?.setActiveEventKind(firstKind);
+    setReviewMatchCategory(cat);
+    reviewMatchCategoryRef.current = cat;
+    setUtilityPanel(null);
+  };
+
   const openNotesPanel = () => {
     setShowReviewStrip(false);
     setUtilityPanel("NOTES");
@@ -5440,9 +5490,10 @@ export default function StatsModeSurface() {
     handleRef.current?.setEventContext({
       half: currentHalf,
       timestamp: matchTimeSeconds,
-      canLog: isLoggingActive(matchState) && activeTeam === "HOME",
+      canLog: reviewMatchCategory !== null
+              || (reviewMatchCategory === null && isLoggingActive(matchState) && activeTeam === "HOME"),
     });
-  }, [activeTeam, currentHalf, matchTimeSeconds, matchState]);
+  }, [activeTeam, currentHalf, matchTimeSeconds, matchState, reviewMatchCategory]);
 
   useEffect(() => {
     if (currentHalf !== 2) return;
@@ -7097,6 +7148,126 @@ export default function StatsModeSurface() {
           </button>
         </div>
       ) : null}
+      {utilityPanel === "MATCH_REVIEW" ? (
+        <div className={utilityPanelClass} role="dialog" aria-label="Review Match — Choose Category">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div className="utility-panel-title" style={{ margin: 0 }}>Review Match</div>
+            <button
+              type="button"
+              className="utility-menu-btn"
+              style={{ padding: "2px 8px", fontSize: 12 }}
+              onClick={() => setUtilityPanel(null)}
+              aria-label="Close category chooser"
+            >
+              ✕
+            </button>
+          </div>
+          <div style={{ fontSize: 10, color: "#64748b", marginBottom: 12, lineHeight: 1.4 }}>
+            Watching video on another device? Choose what you are tagging, then tap the pitch to log each moment.
+          </div>
+          <div style={{ fontSize: 9, color: "#8b949e", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Category
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+            {ALL_REVIEW_CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                type="button"
+                className="utility-menu-btn"
+                style={{
+                  fontSize: 10,
+                  textAlign: "center",
+                  ...(reviewMatchCategory === cat
+                    ? { border: "1px solid rgba(99,102,241,0.9)", background: "rgba(49,46,129,0.6)", color: "#a5b4fc" }
+                    : {}),
+                }}
+                onClick={() => selectReviewCategory(cat)}
+              >
+                {REVIEW_CATEGORY_LABELS[cat]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {isReviewMatchActive && isReviewActionsOpen ? (
+        <div className={utilityPanelClass} role="dialog" aria-label="PáircVision Review Actions">
+          <div className="utility-panel-title" style={{ marginBottom: 2 }}>PáircVision Review</div>
+          {reviewMatchCategory ? (
+            <div style={{ fontSize: 10, color: "#a5b4fc", marginBottom: 14 }}>
+              {REVIEW_CATEGORY_LABELS[reviewMatchCategory]}
+            </div>
+          ) : null}
+
+          <div style={{ fontSize: 9, color: "#8b949e", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Review Tools
+          </div>
+          <button
+            type="button"
+            className="utility-menu-btn"
+            style={{ marginBottom: 4 }}
+            onClick={() => { setUtilityPanel("MATCH_REVIEW"); setIsReviewActionsOpen(false); }}
+          >
+            Change Category
+          </button>
+          <button
+            type="button"
+            className="utility-menu-btn"
+            style={{ border: "1px solid rgba(148,163,184,0.4)" }}
+            onClick={() => { undoLastEventAction(); }}
+          >
+            Undo Last
+          </button>
+
+          <div style={{ fontSize: 9, color: "#8b949e", marginBottom: 6, marginTop: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            Generate Reports
+          </div>
+          <button
+            type="button"
+            className="utility-menu-btn"
+            style={{ marginBottom: 4, ...(snapshotExporting !== null || isPdfExporting ? { opacity: 0.45 } : {}) }}
+            disabled={snapshotExporting !== null || isPdfExporting}
+            onClick={() => { handleExportHtSnapshot(); }}
+          >
+            {snapshotExporting === "HT" ? "Exporting…" : "HT Snapshot"}
+          </button>
+          <button
+            type="button"
+            className="utility-menu-btn"
+            style={{ marginBottom: 4, ...(snapshotExporting !== null || isPdfExporting ? { opacity: 0.45 } : {}) }}
+            disabled={snapshotExporting !== null || isPdfExporting}
+            onClick={() => { handleExportFtSnapshot(); }}
+          >
+            {snapshotExporting === "FT" ? "Exporting…" : "FT Snapshot"}
+          </button>
+          <button
+            type="button"
+            className="utility-menu-btn"
+            style={{ marginBottom: 4, ...(snapshotExporting !== null || isPdfExporting ? { opacity: 0.45 } : {}) }}
+            disabled={snapshotExporting !== null || isPdfExporting}
+            onClick={() => { handleExportPdf(); }}
+          >
+            {isPdfExporting ? "Exporting…" : "Coach Review PDF"}
+          </button>
+          <button
+            type="button"
+            className="utility-menu-btn"
+            style={{ ...(snapshotExporting !== null || isPdfExporting ? { opacity: 0.45 } : {}) }}
+            disabled={snapshotExporting !== null || isPdfExporting}
+            onClick={() => { void shareOrExportMatch(); }}
+          >
+            Outcome Cards
+          </button>
+
+          <button
+            type="button"
+            className="utility-panel-close"
+            style={{ marginTop: 14, border: "1px solid rgba(239,68,68,0.5)", color: "#ef4444" }}
+            onClick={exitReviewMatch}
+          >
+            Finish Review
+          </button>
+        </div>
+      ) : null}
       {utilityPanel === "NOTES" ? (
         <div className={utilityPanelClass} role="dialog" aria-label="Voice notes">
           {notesReviewMatchId !== null ? (
@@ -7550,10 +7721,23 @@ export default function StatsModeSurface() {
         </div>
       ) : null}
       <div className="match-stopwatch" aria-live="polite">
-        <span className="match-stopwatch-state">{matchStateToken}</span>
+        <span className="match-stopwatch-state">
+          {isReviewMatchActive && reviewMatchCategory
+            ? `PV Review · ${REVIEW_CATEGORY_LABELS[reviewMatchCategory]}`
+            : matchStateToken}
+        </span>
         <span className="match-stopwatch-clock">{formatMatchClock(matchTimeSeconds)}</span>
         <div className="match-stopwatch-controls">
-          {contextualAction ? (
+          {isReviewMatchActive ? (
+            <button
+              type="button"
+              className="match-stopwatch-btn"
+              style={{ border: "1px solid rgba(99,102,241,0.6)", background: "rgba(49,46,129,0.4)" }}
+              onClick={() => setIsReviewActionsOpen(v => !v)}
+            >
+              {isReviewActionsOpen ? "CLOSE" : "ACTIONS"}
+            </button>
+          ) : contextualAction ? (
             <button
               type="button"
               className="match-stopwatch-btn"
@@ -7579,8 +7763,32 @@ export default function StatsModeSurface() {
         ref={floatingControlsRef}
         className="floating-controls"
       >
+          {isReviewMatchActive && reviewMatchCategory !== null ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, padding: "6px 8px", background: "rgba(49,46,129,0.25)", borderRadius: 8, border: "1px solid rgba(99,102,241,0.35)", marginBottom: 4 }}>
+              <span style={{ fontSize: 9, color: "#a5b4fc", width: "100%", marginBottom: 2, letterSpacing: "0.03em" }}>
+                {REVIEW_CATEGORY_LABELS[reviewMatchCategory]}
+              </span>
+              {REVIEW_CATEGORY_OUTCOMES[reviewMatchCategory].map(kind => (
+                <button
+                  key={kind}
+                  type="button"
+                  className="event-keyboard-btn"
+                  style={selectedEventKind === kind
+                    ? { border: "1px solid rgba(34,197,94,0.9)", background: "rgba(22,101,52,0.6)", color: "#4ade80" }
+                    : undefined}
+                  onClick={() => {
+                    setSelectedEventKind(kind);
+                    selectedEventRef.current = kind;
+                    handleRef.current?.setActiveEventKind(kind);
+                  }}
+                >
+                  {mode.eventLabels[kind]}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
-          {isPickerOpen && !isReviewModeActive ? (
+          {isPickerOpen && !isReviewModeActive && !isReviewMatchActive ? (
             <div className={isLandscape ? "landscape-toolbar" : "event-panel"}>
               <div className="event-keyboard">
                 <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
@@ -7896,6 +8104,13 @@ export default function StatsModeSurface() {
                   : undefined}
               >
                 Match Targets{activeEnabledTargetCount > 0 ? ` (${activeEnabledTargetCount}/15)` : ""}
+              </button>
+              <button
+                type="button"
+                className="utility-menu-btn"
+                onClick={() => { setUtilityPanel("MATCH_REVIEW"); setReviewMatchCategory(null); setIsUtilityOpen(false); }}
+              >
+                Review Match
               </button>
               <button type="button" className="utility-menu-btn" onClick={openNotesPanel}>
                 Notes
