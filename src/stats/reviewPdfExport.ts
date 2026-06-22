@@ -410,6 +410,11 @@ function drawPageHeader(
   ctx.font = "22px sans-serif";
   ctx.fillText(subtitle, 24, 62);
 
+  ctx.fillStyle = "#475569";
+  ctx.font = "italic 18px sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText("PáircVision", CANVAS_W - 24, 62);
+
   ctx.fillStyle = "#94a3b8";
   ctx.font = "19px sans-serif";
   ctx.textAlign = "right";

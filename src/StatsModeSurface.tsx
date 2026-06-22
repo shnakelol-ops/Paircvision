@@ -6047,6 +6047,7 @@ export default function StatsModeSurface() {
                 }
               }}
               maxLength={15}
+              autoCapitalize="words"
               aria-label="Edit team A name"
             />
           ) : (
@@ -6109,6 +6110,7 @@ export default function StatsModeSurface() {
                 }
               }}
               maxLength={15}
+              autoCapitalize="words"
               aria-label="Edit team B name"
             />
           ) : (
@@ -6227,6 +6229,7 @@ export default function StatsModeSurface() {
                   }
                 }}
                 maxLength={15}
+                autoCapitalize="words"
                 aria-label="Edit team A name"
               />
             ) : (
@@ -6289,6 +6292,7 @@ export default function StatsModeSurface() {
                   }
                 }}
                 maxLength={15}
+                autoCapitalize="words"
                 aria-label="Edit team B name"
               />
             ) : (

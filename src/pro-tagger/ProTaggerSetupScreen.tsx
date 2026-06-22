@@ -144,6 +144,7 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
           placeholder="e.g. Kilkenny"
           value={homeTeam}
           onChange={(e) => setHomeTeam(e.target.value)}
+          autoCapitalize="words"
           style={S.input}
         />
 
@@ -153,6 +154,7 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
           placeholder="e.g. Tipperary"
           value={awayTeam}
           onChange={(e) => setAwayTeam(e.target.value)}
+          autoCapitalize="words"
           style={S.input}
         />
 
