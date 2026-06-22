@@ -20,6 +20,7 @@ import type {
   PossessionOutcomeFamily,
   PossessionOutcomeSummary,
 } from "./chains/chain-types";
+import type { PitchSport } from "../core/pitch/pitch-config";
 
 // ─── Canvas constants ─────────────────────────────────────────────────────────
 
@@ -424,6 +425,7 @@ export type PossessionOutcomesCardInput = {
   homeScore: { goals: number; points: number; total: number };
   awayScore: { goals: number; points: number; total: number };
   summary: PossessionOutcomeSummary;
+  sport?: PitchSport;
 };
 
 export async function buildPossessionOutcomesCardPng(
@@ -439,7 +441,13 @@ export async function buildPossessionOutcomesCardPng(
     summary,
     homeTeamName, awayTeamName, stageLabel,
     homeScore, awayScore,
+    sport = "gaelic",
   } = input;
+
+  const isPuck = sport === "hurling" || sport === "camogie";
+  const koLbl  = isPuck ? "Puckout" : "Kickout";
+  const koLblU = koLbl.toUpperCase();
+  const koAbbr = isPuck ? "P/Os" : "K/Os";
 
   drawBackground(ctx);
   let y = drawHeader(ctx, homeTeamName, awayTeamName, stageLabel);
@@ -453,29 +461,29 @@ export async function buildPossessionOutcomesCardPng(
   if (summary.ourKickouts !== null || summary.theirKickouts !== null) {
     if (summary.ourKickouts) {
       sections.push({ family: summary.ourKickouts, config: {
-        title:       "OUR KICKOUTS",
+        title:       `OUR ${koLblU}S`,
         accentColor: CLR.green,
         leftLabel:   "WE KEPT IT",
         rightLabel:  "THEY WON IT",
-        netLabel:    "Our K/Os",
+        netLabel:    `Our ${koAbbr}`,
       }});
     }
     if (summary.theirKickouts) {
       sections.push({ family: summary.theirKickouts, config: {
-        title:       "THEIR KICKOUTS",
+        title:       `THEIR ${koLblU}S`,
         accentColor: "#15803d",
         leftLabel:   "WE WON IT",
         rightLabel:  "THEY KEPT IT",
-        netLabel:    "Their K/Os",
+        netLabel:    `Their ${koAbbr}`,
       }});
     }
   } else {
     sections.push({ family: summary.kickouts, config: {
-      title:       "KICKOUTS",
+      title:       `${koLblU}S`,
       accentColor: CLR.green,
       leftLabel:   "WE WON IT",
       rightLabel:  "THEY WON IT",
-      netLabel:    "Kickouts",
+      netLabel:    `${koLbl}s`,
     }});
   }
 
