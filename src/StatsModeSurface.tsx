@@ -4687,6 +4687,27 @@ export default function StatsModeSurface() {
     setSaveFeedback("Review imported");
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("review") !== "last") return;
+    const rawSession = safeReadLocalStorage(REVIEW_SESSION_STORAGE_KEY);
+    if (!rawSession) {
+      setSaveFeedback("Review session not found");
+      return;
+    }
+    applyRawReviewSession(rawSession);
+    params.delete("review");
+    const nextSearch = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash}`,
+    );
+    // Launch-safe handoff for Stats Pro: reuses existing ReviewSession import flow once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /** Opens a file picker to import a .json Review export. */
   const openLastReviewSession = () => {
     const input = document.createElement("input");
