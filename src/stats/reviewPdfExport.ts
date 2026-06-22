@@ -884,7 +884,7 @@ function drawSummaryStatsTable(
     ctx.font = "bold 18px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText(teamName.toUpperCase(), bx + 16, cy + hdrH / 2);
+    ctx.fillText(teamName, bx + 16, cy + hdrH / 2);
     ctx.strokeStyle = "rgba(255,255,255,0.1)";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -1004,9 +1004,9 @@ function makeSummaryPage(
   ctx.font = "bold 44px sans-serif";
   ctx.textAlign = "center";
   ctx.fillStyle = "#7dd3fc";
-  ctx.fillText(homeTeam.toUpperCase(), forCX, 118);
+  ctx.fillText(homeTeam, forCX, 118);
   ctx.fillStyle = "#fb7185";
-  ctx.fillText(awayTeam.toUpperCase(), oppCX, 118);
+  ctx.fillText(awayTeam, oppCX, 118);
 
   // Scores — large, boldly coloured
   ctx.font = "bold 64px sans-serif";
@@ -1190,9 +1190,9 @@ function makeSegmentsPage(
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillStyle = "#7dd3fc";
-    ctx.fillText(homeTeam.toUpperCase(), forX + teamW / 2, hdr1Y + hdr1H / 2);
+    ctx.fillText(homeTeam, forX + teamW / 2, hdr1Y + hdr1H / 2);
     ctx.fillStyle = "#fb7185";
-    ctx.fillText(awayTeam.toUpperCase(), oppX + teamW / 2, hdr1Y + hdr1H / 2);
+    ctx.fillText(awayTeam, oppX + teamW / 2, hdr1Y + hdr1H / 2);
 
     // Segment column label
     ctx.fillStyle = "#64748b";
@@ -1583,7 +1583,7 @@ function makePlayerPages(
   function drawSecBanner(teamSide: "FOR" | "OPP"): void {
     const sAccent = teamSide === "FOR" ? "#7dd3fc" : "#fb7185";
     const sBg     = teamSide === "FOR" ? "rgba(125,211,252,0.10)" : "rgba(251,113,133,0.10)";
-    const sLabel  = teamSide === "FOR" ? homeTeam.toUpperCase() : awayTeam.toUpperCase();
+    const sLabel  = teamSide === "FOR" ? homeTeam : awayTeam;
     activeCtx.fillStyle = sBg;
     activeCtx.fillRect(tL, ry, tableW, SEC_H);
     activeCtx.fillStyle = sAccent;
@@ -2490,7 +2490,7 @@ function makeKickoutChainPage(
     ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText(`${truncTeam(homeTeam, 16).toUpperCase()} POSSESSION OUTCOMES`, COL3_X + 14, cy + 10);
+    ctx.fillText(`${truncTeam(homeTeam, 16)} POSSESSION OUTCOMES`, COL3_X + 14, cy + 10);
     ctx.restore();
     cy += 20;
 
@@ -3827,8 +3827,8 @@ function makeTacticalIntelligencePage(
   ctx.textAlign = "left";
   ctx.fillText("METRIC", R_COL_X + 16, rcy + 12);
   ctx.textAlign = "center";
-  ctx.fillText(truncTeam(homeTeam, 10).toUpperCase(), FOR_X, rcy + 12);
-  ctx.fillText(truncTeam(awayTeam, 10).toUpperCase(), OPP_X, rcy + 12);
+  ctx.fillText(truncTeam(homeTeam, 10), FOR_X, rcy + 12);
+  ctx.fillText(truncTeam(awayTeam, 10), OPP_X, rcy + 12);
   rcy += 24;
 
   const summaryRows: Array<{
@@ -4695,11 +4695,11 @@ function makeZoneAnalysisPage(
     );
     cy += 2;
     const allMax = Math.max(forScoreEvts.length, forTvWonEvts.length, oppScoreEvts.length, oppGainEvts.length) || 1;
-    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14).toUpperCase()} ACTIVITY`, "#34d399");
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14)} ACTIVITY`, "#34d399");
     cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Scores",        String(forScoreEvts.length), forScoreEvts.length / allMax, "#4ade80", "#4ade80", false);
     cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Turnovers Won", String(forTvWonEvts.length), forTvWonEvts.length / allMax, "#34d399", "#34d399", true);
     cy += 2;
-    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14).toUpperCase()} ACTIVITY`, "#f87171");
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14)} ACTIVITY`, "#f87171");
     cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Scores Against",    String(oppScoreEvts.length), oppScoreEvts.length / allMax, "#f87171", "#f87171", false);
         dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Opposition Gains",   String(oppGainEvts.length),  oppGainEvts.length  / allMax, "#f97316", "#f97316", true);
   }
@@ -6403,12 +6403,12 @@ function makeRestartVisualPage(
   {
     let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Chain Outcomes", "#fbbf24");
     cy += 2;
-    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14).toUpperCase()} WON POSSESSION`, "#22d3ee");
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14)} WON POSSESSION`, "#22d3ee");
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(forScoredFromKo, forWonTotal), forWonTotal > 0 ? forScoredFromKo / forWonTotal : 0, "#4ade80", "#4ade80", false);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(forShotFromKo,   forWonTotal), forWonTotal > 0 ? forShotFromKo   / forWonTotal : 0, "#7dd3fc", "#7dd3fc", true);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → No shot",      String(Math.max(0, forWonTotal - forShotFromKo)), forWonTotal > 0 ? Math.max(0, forWonTotal - forShotFromKo) / forWonTotal : 0, "#f97316", "#f97316", false);
     cy += 2;
-    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14).toUpperCase()} WON POSSESSION`, "#fb7185");
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14)} WON POSSESSION`, "#fb7185");
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against", withPct(oppScoredFromKo, oppWonTotal), oppWonTotal > 0 ? oppScoredFromKo / oppWonTotal : 0, "#f97316", "#f97316", false);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → No score",      String(Math.max(0, oppWonTotal - oppScoredFromKo)), oppWonTotal > 0 ? Math.max(0, oppWonTotal - oppScoredFromKo) / oppWonTotal : 0, "#94a3b8", "#94a3b8", true);
     cy += 2;
@@ -6560,7 +6560,7 @@ function makeTurnoverVisualPage(
   {
     let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Consequences", "#fbbf24");
     cy += 2;
-    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14).toUpperCase()} ATTACKED`, "#a78bfa");
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14)} ATTACKED`, "#a78bfa");
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(forWonToScore, forWonTotal), forWonTotal > 0 ? forWonToScore / forWonTotal : 0, "#4ade80", "#4ade80", false);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(forWonToShot,  forWonTotal), forWonTotal > 0 ? forWonToShot  / forWonTotal : 0, "#7dd3fc", "#7dd3fc", true);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → No shot",      String(Math.max(0, forWonTotal - forWonToShot)), forWonTotal > 0 ? Math.max(0, forWonTotal - forWonToShot) / forWonTotal : 0, "#f97316", "#f97316", false);
@@ -6569,7 +6569,7 @@ function makeTurnoverVisualPage(
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against", withPct(forLostToOppScore, forLostTotal), forLostTotal > 0 ? forLostToOppScore / forLostTotal : 0, "#f97316", "#f97316", false);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Shot against",  withPct(forLostToOppShot,  forLostTotal), forLostTotal > 0 ? forLostToOppShot  / forLostTotal : 0, "#fbbf24", "#fbbf24", true);
     cy += 2;
-    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14).toUpperCase()} ATTACKED`, "#fb7185");
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14)} ATTACKED`, "#fb7185");
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(oppWonToScore, oppWonTotal), oppWonTotal > 0 ? oppWonToScore / oppWonTotal : 0, "#fb7185", "#fb7185", false);
         dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(oppWonToShot,  oppWonTotal), oppWonTotal > 0 ? oppWonToShot  / oppWonTotal : 0, "#fbbf24", "#fbbf24", true);
   }
@@ -6696,7 +6696,7 @@ function makeFreeAnalysisPage(
     cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14)} Frees Won`, String(oppFreesWon), totalFreesWon > 0 ? oppFreesWon / totalFreesWon : 0, "#f472b6", "#f472b6", true);
     cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Advantage", netStr, netColor, false);
     cy += 2;
-    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14).toUpperCase()} PLACED BALLS`, "#818cf8");
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14)} PLACED BALLS`, "#818cf8");
     cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Placed Scored", String(forFreeScored), forFreeAttempts > 0 ? forFreeScored / forFreeAttempts : 0, "#7dd3fc", "#7dd3fc", false);
     cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Placed Missed", String(forFreeMissed), forFreeAttempts > 0 ? forFreeMissed / forFreeAttempts : 0, "#ef4444", "#ef4444", true);
         dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Conversion",   forConv, "#818cf8", false);
@@ -6710,7 +6710,7 @@ function makeFreeAnalysisPage(
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14)} Conversion`, forConv, forFreeAttempts > 0 ? forFreeScored / forFreeAttempts : 0, "#818cf8", "#818cf8", false);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14)} Conversion`, oppConv, oppFreeAttempts > 0 ? oppFreeScored / oppFreeAttempts : 0, "#f472b6", "#f472b6", true);
     cy += 2;
-    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14).toUpperCase()} PLACED BALLS`, "#f472b6");
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14)} PLACED BALLS`, "#f472b6");
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Placed Scored", String(oppFreeScored), oppFreeAttempts > 0 ? oppFreeScored / oppFreeAttempts : 0, "#f472b6", "#f472b6", false);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Placed Missed", String(oppFreeMissed), oppFreeAttempts > 0 ? oppFreeMissed / oppFreeAttempts : 0, "#ef4444", "#ef4444", true);
     cy = dpStatRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Conversion",  oppConv, "#f472b6", false);
