@@ -11217,18 +11217,16 @@ function drawTwoColumnHtStrip(
   ctx.restore();
 }
 
-// ─── p.3 Restart Battle ───────────────────────────────────────────────────────
+// ─── p.3 / p.4 Restart Battle ────────────────────────────────────────────────
 /**
- * Restart Battle — single comparative pitch showing who is winning possession
- * at restarts and where. Replaces the two-page Our/Opp restart split.
+ * Restart Battle — two side-by-side mini pitches for one half of play.
+ * Caller pre-filters events to the desired half before calling.
  *
- * Zone colour:
- *   Teal  = FOR wins possession here (we retained / we won theirs)
- *   Red   = OPP wins possession here (they retained / they won ours)
- *   Amber = contested (diff ≤ 1 each way)
+ * half "1H": "Restart Battle – First Half", attacking direction as-is.
+ * half "2H": "Restart Battle – Second Half", direction reversed (teams swap ends).
  *
- * Threat rings on OPP-dominant zones; directional sweep on worst zone.
- * Bottom strip: drawTwoColumnHtStrip — Our record vs Their record side-by-side.
+ * Left pitch = homeTeam restarts · Right pitch = awayTeam restarts.
+ * Green circle = retained. Red X = lost. No zone or hotspot interpretation.
  */
 function makeRestartBattlePage(
   events: readonly PdfExportEvent[],
@@ -11237,7 +11235,7 @@ function makeRestartBattlePage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
-  mode: "HT" | "FT" = "FT",
+  half: "1H" | "2H",
   homeAttackingDirection: "LEFT" | "RIGHT" = "RIGHT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
@@ -11251,9 +11249,10 @@ function makeRestartBattlePage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Restart Battle", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  const pageTitle = half === "1H" ? "Restart Battle – First Half" : "Restart Battle – Second Half";
+  drawPageHeader(ctx, pageTitle, `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
-  // ── Event subsets — split by restart owner (who took this restart) ──────────
+  // ── Ownership & possession helpers ───────────────────────────────────────
   // V1.2+ events carry restartOwner explicitly. Legacy derivation (pre-V1.2):
   //   KICKOUT_CONCEDED → owner = teamSide (they conceded their own restart)
   // Concept 1: who KICKED OUT (took the restart).
@@ -11278,63 +11277,55 @@ function makeRestartBattlePage(
   const awayRetained = awayRestarts.filter((e) => getWinner(e) === "OPP");
   const awayLost     = awayRestarts.filter((e) => getWinner(e) !== "OPP");
 
-  // ── Layout: two equal mini-pitches — one owner, one story ─────────────────
-  const BAND_H    = 72;   // expanded for 3-line header
+  // ── Layout: two equal mini-pitches ────────────────────────────────────────
+  const BAND_H    = 72;
   const BAND_Y    = 80;
-  const PITCH_TOP = BAND_Y + BAND_H + 4;           // 156
-  const PITCH_H   = HT_STRIP_TOP - PITCH_TOP - 8;  // 736
-  const GAP       = 24;
-  const HALF_W    = (CANVAS_W - 3 * GAP) / 2;      // 924
-  const leftArea  = { x: GAP,              y: PITCH_TOP, w: HALF_W, h: PITCH_H };
-  const rightArea = { x: GAP + HALF_W + GAP, y: PITCH_TOP, w: HALF_W, h: PITCH_H };
+  const PITCH_TOP = BAND_Y + BAND_H + 4;
+  const PITCH_H   = HT_STRIP_TOP - PITCH_TOP - 8;
+  const GAP_H     = 24;
+  const HALF_W    = (CANVAS_W - 3 * GAP_H) / 2; // 924
+  const leftArea  = { x: GAP_H,               y: PITCH_TOP, w: HALF_W, h: PITCH_H };
+  const rightArea = { x: GAP_H + HALF_W + GAP_H, y: PITCH_TOP, w: HALF_W, h: PITCH_H };
 
-  // ── Team header bands (3-line: half · team+restarts · direction) ─────────
-  const halfLabel    = mode === "HT" ? "1st Half" : "2nd Half";
-  const homeEffDir   = mode === "FT"
+  // Teams swap ends at half-time — reverse direction for second half
+  const effHomeDir   = half === "2H"
     ? (homeAttackingDirection === "LEFT" ? "RIGHT" : "LEFT")
     : homeAttackingDirection;
-  const awayEffDir   = homeEffDir === "LEFT" ? "RIGHT" : "LEFT";
-  const homeDirArrow = homeEffDir === "RIGHT" ? "Attacking →" : "← Attacking";
-  const awayDirArrow = awayEffDir === "RIGHT" ? "Attacking →" : "← Attacking";
-
-  const L1_Y = BAND_Y + 15;   // half label
-  const L2_Y = BAND_Y + 38;   // team + restarts
-  const L3_Y = BAND_Y + 59;   // direction arrow
+  const homeDirArrow = effHomeDir === "RIGHT" ? "Attacking →" : "← Attacking";
+  const awayDirArrow = effHomeDir === "RIGHT" ? "← Attacking" : "Attacking →";
+  const halfLabel    = half === "1H" ? "1st Half" : "2nd Half";
 
   ctx.save();
   ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
 
-  // Left band: homeTeam
-  ctx.fillStyle    = "rgba(34,197,94,0.12)";
+  ctx.fillStyle   = "rgba(34,197,94,0.12)";
   ctx.fillRect(leftArea.x, BAND_Y, leftArea.w, BAND_H);
-  ctx.strokeStyle  = "rgba(34,197,94,0.45)";
-  ctx.lineWidth    = 1.5;
+  ctx.strokeStyle = "rgba(34,197,94,0.45)";
+  ctx.lineWidth   = 1.5;
   ctx.strokeRect(leftArea.x + 0.75, BAND_Y + 0.75, leftArea.w - 1.5, BAND_H - 1.5);
   const leftCX = leftArea.x + leftArea.w / 2;
   ctx.font = "13px sans-serif"; ctx.fillStyle = "#64748b";
-  ctx.fillText(halfLabel, leftCX, L1_Y);
+  ctx.fillText(halfLabel, leftCX, BAND_Y + 15);
   ctx.font = "bold 18px sans-serif"; ctx.fillStyle = "#4ade80";
-  ctx.fillText(`${truncTeam(homeTeam, 20)} ${restartTerm}s`, leftCX, L2_Y);
+  ctx.fillText(`${truncTeam(homeTeam, 20)} ${restartTerm}s`, leftCX, BAND_Y + 38);
   ctx.font = "13px sans-serif"; ctx.fillStyle = "#94a3b8";
-  ctx.fillText(homeDirArrow, leftCX, L3_Y);
+  ctx.fillText(homeDirArrow, leftCX, BAND_Y + 59);
 
-  // Right band: awayTeam
-  ctx.fillStyle    = "rgba(239,68,68,0.12)";
+  ctx.fillStyle   = "rgba(239,68,68,0.12)";
   ctx.fillRect(rightArea.x, BAND_Y, rightArea.w, BAND_H);
-  ctx.strokeStyle  = "rgba(239,68,68,0.45)";
+  ctx.strokeStyle = "rgba(239,68,68,0.45)";
   ctx.strokeRect(rightArea.x + 0.75, BAND_Y + 0.75, rightArea.w - 1.5, BAND_H - 1.5);
   const rightCX = rightArea.x + rightArea.w / 2;
   ctx.font = "13px sans-serif"; ctx.fillStyle = "#64748b";
-  ctx.fillText(halfLabel, rightCX, L1_Y);
+  ctx.fillText(halfLabel, rightCX, BAND_Y + 15);
   ctx.font = "bold 18px sans-serif"; ctx.fillStyle = "#f87171";
-  ctx.fillText(`${truncTeam(awayTeam, 20)} ${restartTerm}s`, rightCX, L2_Y);
+  ctx.fillText(`${truncTeam(awayTeam, 20)} ${restartTerm}s`, rightCX, BAND_Y + 38);
   ctx.font = "13px sans-serif"; ctx.fillStyle = "#94a3b8";
-  ctx.fillText(awayDirArrow, rightCX, L3_Y);
+  ctx.fillText(awayDirArrow, rightCX, BAND_Y + 59);
 
   ctx.restore();
 
-  // ── Render both pitches ───────────────────────────────────────────────────
   const leftInner  = renderPitch(ctx, sport, leftArea);
   const rightInner = renderPitch(ctx, sport, rightArea);
 
@@ -11383,33 +11374,17 @@ function makeRestartBattlePage(
     ctx.restore();
   };
 
-  // Left pitch: homeTeam's own restarts — green = retained, red X = lost
   drawRetained(leftInner, homeRetained);
   drawLost(leftInner, homeLost);
-
-  // Right pitch: awayTeam's own restarts — green = retained, red X = lost
   drawRetained(rightInner, awayRetained);
   drawLost(rightInner, awayLost);
 
-  // ── Two-column bottom strip ───────────────────────────────────────────────
   const homeTotal    = homeRestarts.length;
   const awayTotal    = awayRestarts.length;
   const homeRetCount = homeRetained.length;
   const awayRetCount = awayRetained.length;
-  const homePct      = homeTotal > 0 ? Math.round((homeRetCount / homeTotal) * 100) : 0;
-  const awayPct      = awayTotal > 0 ? Math.round((awayRetCount / awayTotal) * 100) : 0;
-  const restartBattleMirrorSideLabel = (label: string): string => {
-    if (label.endsWith(" Left")) return label.replace(/ Left$/, " Right");
-    if (label.endsWith(" Right")) return label.replace(/ Right$/, " Left");
-    return label;
-  };
-  const homeRetHotRaw = pdfZoneHotspots(homeRetained)[0];
-  const homeRetHot  = homeRetHotRaw
-    ? { ...homeRetHotRaw, label: restartBattleMirrorSideLabel(homeRetHotRaw.label) }
-    : undefined;
-  const homeLostHot = pdfZoneHotspots(homeLost)[0];
-  const awayRetHot  = pdfZoneHotspots(awayRetained)[0];
-  const awayLostHot = pdfZoneHotspots(awayLost)[0];
+  const homePct = homeTotal > 0 ? Math.round((homeRetCount / homeTotal) * 100) : 0;
+  const awayPct = awayTotal > 0 ? Math.round((awayRetCount / awayTotal) * 100) : 0;
 
   drawTwoColumnHtStrip(ctx,
     {
@@ -11418,8 +11393,6 @@ function makeRestartBattlePage(
         homeTotal > 0
           ? `${truncTeam(homeTeam, 14)} retained ${homeRetCount}/${homeTotal} (${homePct}%)`
           : `No ${restartTermLC} logged`,
-        homeRetHot  ? `Best zone: ${homeRetHot.label}`  : "Best zone: —",
-        homeLostHot ? `Loss zone: ${homeLostHot.label}` : "Loss zone: —",
       ],
       color: "#22c55e",
     },
@@ -11429,8 +11402,6 @@ function makeRestartBattlePage(
         awayTotal > 0
           ? `${truncTeam(awayTeam, 14)} retained ${awayRetCount}/${awayTotal} (${awayPct}%)`
           : `No ${restartTermLC} logged`,
-        awayRetHot  ? `Best zone: ${awayRetHot.label}`  : "Best zone: —",
-        awayLostHot ? `Loss zone: ${awayLostHot.label}` : "Loss zone: —",
       ],
       color: "#ef4444",
     },
@@ -11940,7 +11911,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   // Chain analysis scoped to the same event set — H1-only for HT, full for FT.
   const chainAnalysis = selectChainAnalysis(events);
 
-  const TOTAL_PAGES = (isHT ? 6 : 12) + (hasTargets ? 1 : 0);
+  const TOTAL_PAGES = (isHT ? 6 : 13) + (hasTargets ? 1 : 0);
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -11995,9 +11966,9 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Their Shots",
     );
 
-    // 3. Restart Battle
+    // 3. Restart Battle – First Half
     addPage(
-      makeRestartBattlePage(events, sport, home, away, 3, TOTAL_PAGES, "HT", homeAttackingDirection),
+      makeRestartBattlePage(events, sport, home, away, 3, TOTAL_PAGES, "1H", homeAttackingDirection),
       true,
       "Restart Battle",
     );
@@ -12023,26 +11994,27 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Tactical Summary",
     );
   } else {
-    // ── FT Snapshot ── 12 pages ───────────────────────────────────────────────
+    // ── FT Snapshot ── 13 pages ───────────────────────────────────────────────
     //
-    // PART 1 — COACHING LAYER (p.1–6): same 6-page coaching structure as HT.
-    //   Full-match events; chain pressure uses FT-calibrated thresholds.
+    // PART 1 — COACHING LAYER (p.1–7): coaching structure, full-match events.
+    //   Restart Battle now spans two pages (one per half) for maximum pitch size.
     //
     // 1. Our Shot Profile          — "Where are we getting joy?"
     // 2. Opposition Shot Profile   — "Where are they hurting us?"
-    // 3. Our Restart Platform      — "How are our kickouts functioning?"
-    // 4. Opposition Restart        — "What are they trying to do on restarts?"
+    // 3. Restart Battle – 1st Half — "Where did restarts go in the first half?"
+    // 4. Restart Battle – 2nd Half — "Where did restarts go in the second half?"
     // 5. Chain Pressure            — ranked chain patterns (FT-calibrated)
-    // 6. Tactical Match Summary    — 2×2 coaching panel
+    // 6. Turnover & Territory      — where possession is won and lost
+    // 7. Tactical Match Summary    — 2×2 coaching panel
     //
-    // PART 2 — ANALYTICAL DEPTH (p.7–12): unchanged analytical review pages.
+    // PART 2 — ANALYTICAL DEPTH (p.8–13): unchanged analytical review pages.
     //
-    // 7.  Turnover Punishment      — possession chain punishment
-    // 8.  Shot Efficiency          — scoring efficiency analysis
-    // 9.  Attack Corridors         — channel-based attack shape
-    // 10. Restart Escape Routes    — kickout landing zone outcome map
-    // 11. Opposition Snapshot      — opposition tactical profile
-    // 12. Tactical Match Story     — narrative arc of the match
+    // 8.  Turnover Punishment      — possession chain punishment
+    // 9.  Shot Efficiency          — scoring efficiency analysis
+    // 10. Attack Corridors         — channel-based attack shape
+    // 11. Restart Escape Routes    — kickout landing zone outcome map
+    // 12. Opposition Snapshot      — opposition tactical profile
+    // 13. Tactical Match Story     — narrative arc of the match
 
     // ── PART 1 — COACHING LAYER ───────────────────────────────────────────────
 
@@ -12060,74 +12032,87 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "Their Shots",
     );
 
-    // 3. Restart Battle
+    // 3. Restart Battle – First Half
     addPage(
-      makeRestartBattlePage(events, sport, home, away, 3, TOTAL_PAGES, "FT", homeAttackingDirection),
+      makeRestartBattlePage(
+        events.filter((e) => e.period === "1H"),
+        sport, home, away, 3, TOTAL_PAGES, "1H", homeAttackingDirection,
+      ),
       true,
-      "Restart Battle",
+      "Restart Battle – 1st Half",
     );
 
-    // 4. Turnover & Territory
+    // 4. Restart Battle – Second Half
     addPage(
-      makeTurnoverTerritoryPage(events, chainAnalysis, sport, home, away, 4, TOTAL_PAGES),
+      makeRestartBattlePage(
+        events.filter((e) => e.period === "2H"),
+        sport, home, away, 4, TOTAL_PAGES, "2H", homeAttackingDirection,
+      ),
       true,
-      "Turnover & Territory",
+      "Restart Battle – 2nd Half",
     );
 
-    // 5. Possession Patterns — FT-calibrated (standard thresholds for full-match dataset)
+    // 5. Chain Pressure — FT-calibrated (standard thresholds for full-match dataset)
     addPage(
       makeChainPressurePage(events, sport, chainAnalysis, home, away, 5, TOTAL_PAGES),
       true,
       "Possession Patterns",
     );
 
-    // 6. Tactical Match Summary — 2×2 panel, no pitch, coaching message board
+    // 6. Turnover & Territory
     addPage(
-      makeHtTacticalSummaryPage(events, sport, chainAnalysis, home, away, 6, TOTAL_PAGES, "FT"),
+      makeTurnoverTerritoryPage(events, chainAnalysis, sport, home, away, 6, TOTAL_PAGES),
+      true,
+      "Turnover & Territory",
+    );
+
+    // 7. Tactical Match Summary — 2×2 panel, no pitch, coaching message board
+    addPage(
+      makeHtTacticalSummaryPage(events, sport, chainAnalysis, home, away, 7, TOTAL_PAGES, "FT"),
       true,
       "Tactical Summary",
     );
 
     // ── PART 2 — ANALYTICAL DEPTH ─────────────────────────────────────────────
 
-    // 7. Turnover Punishment
+    // 8. Turnover Punishment
     addPage(
-      makeTurnoverPunishmentPage(chainAnalysis, home, away, 7, TOTAL_PAGES),
+      makeTurnoverPunishmentPage(chainAnalysis, home, away, 8, TOTAL_PAGES),
       true,
       "Turnover Punishment",
     );
 
-    // 8. Shot Efficiency
+    // 9. Shot Efficiency
     addPage(
-      makeShotEfficiencyPage(events, home, away, 8, TOTAL_PAGES),
+      makeShotEfficiencyPage(events, home, away, 9, TOTAL_PAGES),
       true,
       "Shot Efficiency",
     );
 
-    // 9. Attack Corridors — channel-based attack shape analysis
+    // 10. Attack Corridors — channel-based attack shape analysis
     addPage(
-      makeFtAttackCorridorsPage(events, sport, home, away, 9, TOTAL_PAGES),
+      makeFtAttackCorridorsPage(events, sport, home, away, 10, TOTAL_PAGES),
       true,
       "Attack Corridors",
     );
 
-    // 10. Restart Escape Routes — kickout destination zone outcome map
+    // 11. Restart Escape Routes — kickout destination zone outcome map
     addPage(
-      makeFtRestartEscapeRoutesPage(events, sport, chainAnalysis, home, away, 10, TOTAL_PAGES),
+      makeFtRestartEscapeRoutesPage(events, sport, chainAnalysis, home, away, 11, TOTAL_PAGES),
       true,
       "Restart Escape Routes",
     );
 
-    // 11. Opposition Snapshot
+    // 12. Opposition Snapshot
     addPage(
-      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 11, TOTAL_PAGES, sport),
+      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 12, TOTAL_PAGES, sport),
       true,
       "Opposition Snapshot",
     );
 
-    // 12. Tactical Match Story — narrative arc of the match
+    // 13. Tactical Match Story — narrative arc of the match
     addPage(
-      makeFtTacticalMatchStoryPage(events, chainAnalysis, home, away, 12, TOTAL_PAGES, sport),
+      makeFtTacticalMatchStoryPage(events, chainAnalysis, home, away, 13, TOTAL_PAGES, sport),
       true,
       "Tactical Match Story",
     );
