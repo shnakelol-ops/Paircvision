@@ -7191,6 +7191,51 @@ function pdfZoneHotspots(evts: readonly PdfExportEvent[]) {
   return getZoneHotspots(evts as unknown as Parameters<typeof getZoneHotspots>[0]);
 }
 
+type RestartBattleHotspot = {
+  label: string;
+  count: number;
+};
+
+/**
+ * Restart Battle uses the visual 3x3 mini-pitch grid, not the global zone-map
+ * channel convention. Match the dots exactly: x/nx maps across the visible panel.
+ */
+function restartBattleZoneHotspots(evts: readonly PdfExportEvent[]): RestartBattleHotspot[] {
+  const thirdLabels = ["Defensive", "Middle", "Attacking"] as const;
+  const sideLabels = ["Left", "Centre", "Right"] as const;
+  const counts = Array.from({ length: 3 }, () => [0, 0, 0]);
+
+  const bucket = (value: number): 0 | 1 | 2 =>
+    value < 1 / 3 ? 0 : value < 2 / 3 ? 1 : 2;
+
+  for (const event of evts) {
+    const ex = typeof event.x === "number" ? event.x : event.nx;
+    const ey = typeof event.y === "number" ? event.y : event.ny;
+    if (ex == null || ey == null || !isFinite(ex) || !isFinite(ey)) continue;
+
+    const thirdIndex = bucket(ey);
+    const sideIndex = bucket(ex);
+    counts[thirdIndex][sideIndex]++;
+  }
+
+  const hotspots: RestartBattleHotspot[] = [];
+  for (let thirdIndex = 0; thirdIndex < 3; thirdIndex++) {
+    for (let sideIndex = 0; sideIndex < 3; sideIndex++) {
+      const count = counts[thirdIndex][sideIndex];
+      if (count === 0) continue;
+      hotspots.push({
+        label: `${thirdLabels[thirdIndex]} ${sideLabels[sideIndex]}`,
+        count,
+      });
+    }
+  }
+
+  return hotspots.sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return a.label.localeCompare(b.label, "en");
+  });
+}
+
 /**
  * Maps a zone's normalised bounds (0–100 domain) to canvas pixel coordinates
  * within `inner` (the inner pitch rectangle returned by renderPitch).
@@ -11295,10 +11340,10 @@ function makeRestartBattlePage(
   const awayRetCount = awayRetained.length;
   const homePct      = homeTotal > 0 ? Math.round((homeRetCount / homeTotal) * 100) : 0;
   const awayPct      = awayTotal > 0 ? Math.round((awayRetCount / awayTotal) * 100) : 0;
-  const homeRetHot  = pdfZoneHotspots(homeRetained)[0];
-  const homeLostHot = pdfZoneHotspots(homeLost)[0];
-  const awayRetHot  = pdfZoneHotspots(awayRetained)[0];
-  const awayLostHot = pdfZoneHotspots(awayLost)[0];
+  const homeRetHot  = restartBattleZoneHotspots(homeRetained)[0];
+  const homeLostHot = restartBattleZoneHotspots(homeLost)[0];
+  const awayRetHot  = restartBattleZoneHotspots(awayRetained)[0];
+  const awayLostHot = restartBattleZoneHotspots(awayLost)[0];
 
   drawTwoColumnHtStrip(ctx,
     {
