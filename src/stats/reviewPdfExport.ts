@@ -11177,26 +11177,27 @@ function makeRestartBattlePage(
   // ── Event subsets — split by restart owner (who took this restart) ──────────
   // V1.2+ events carry restartOwner explicitly. Legacy derivation (pre-V1.2):
   //   KICKOUT_CONCEDED → owner = teamSide (they conceded their own restart)
-  //   KICKOUT_WON      → owner = opposite side (they won the other team's restart)
-  // Identical derivation to possession-outcomes-engine.ts getRestartOwner().
+  // Concept 1: who KICKED OUT (took the restart).
+  // Legacy single-perspective logging: both KICKOUT_WON and KICKOUT_CONCEDED are
+  // logged by the team that kicked out, so teamSide always identifies the kicker.
+  // V1.2+ events carry an explicit restartOwner field that takes priority.
   const getOwner = (e: PdfExportEvent): "FOR" | "OPP" =>
-    e.restartOwner != null
-      ? e.restartOwner
-      : e.kind === "KICKOUT_CONCEDED"
-        ? e.teamSide
-        : e.teamSide === "FOR" ? "OPP" : "FOR";
+    e.restartOwner != null ? e.restartOwner : e.teamSide;
 
-  // "FOR side won the ball" predicate
-  const forWonBall = (e: PdfExportEvent): boolean =>
-    (e.kind === "KICKOUT_WON" && e.teamSide === "FOR") ||
-    (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP");
+  // Concept 2: who WON POSSESSION from the restart.
+  // KICKOUT_WON → the logging team retained/won the ball.
+  // KICKOUT_CONCEDED → the OTHER team won the ball.
+  const getWinner = (e: PdfExportEvent): "FOR" | "OPP" =>
+    e.kind === "KICKOUT_WON"
+      ? e.teamSide
+      : e.teamSide === "FOR" ? "OPP" : "FOR";
 
   const homeRestarts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwner(e) === "FOR");
   const awayRestarts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwner(e) === "OPP");
-  const homeRetained = homeRestarts.filter(forWonBall);
-  const homeLost     = homeRestarts.filter((e) => !forWonBall(e));
-  const awayRetained = awayRestarts.filter((e) => !forWonBall(e));
-  const awayLost     = awayRestarts.filter(forWonBall);
+  const homeRetained = homeRestarts.filter((e) => getWinner(e) === "FOR");
+  const homeLost     = homeRestarts.filter((e) => getWinner(e) !== "FOR");
+  const awayRetained = awayRestarts.filter((e) => getWinner(e) === "OPP");
+  const awayLost     = awayRestarts.filter((e) => getWinner(e) !== "OPP");
 
   // ── Layout: two equal mini-pitches — one owner, one story ─────────────────
   const BAND_H    = 44;
