@@ -189,6 +189,7 @@ const SQUADS_STORAGE_KEY = "pitchsideclub.squads";
 // SAVED_SQUADS_STORAGE_KEY and SAVED_MATCHES_STORAGE_KEY imported from core/stats/saved-match.
 const ACTIVE_MATCH_DRAFT_STORAGE_KEY = "paircvision_stats_active_draft_v1";
 const REVIEW_SESSION_STORAGE_KEY = "paircvision.reviewSession.v1.last";
+const PRO_REVIEW_HANDOFF_STORAGE_KEY = "paircvision.proReviewMatch.v1";
 // MAX_SAVED_MATCHES imported from core/stats/saved-match.
 const EVENT_PICKER_LOGO_STYLE: CSSProperties = {
   width: "40px",
@@ -3243,6 +3244,7 @@ export default function StatsModeSurface() {
     useState<AttackingDirection>("RIGHT");
   const [showReviewStrip, setShowReviewStrip] = useState(false);
   const [isReviewStripCollapsed, setIsReviewStripCollapsed] = useState(false);
+  const [reviewReturnPath, setReviewReturnPath] = useState<string | null>(null);
   const [selectedReviewEventId, setSelectedReviewEventId] = useState<string | null>(null);
   const [pendingFollowup, setPendingFollowup] = useState<{
     eventId: string;
@@ -4243,10 +4245,8 @@ export default function StatsModeSurface() {
           isLoggingActive(matchEngineStateRef.current.matchState) &&
           activeTeamRef.current === "HOME",
       });
-      // On context-loss remount, push existing logged events back into the fresh surface.
-      if (pixiSurfaceKey > 0) {
-        nextHandle.setEvents([...loggedEventsRef.current]);
-      }
+      // Push current state into a fresh Pixi surface, including route-based review handoffs.
+      nextHandle.setEvents([...loggedEventsRef.current]);
       pitchReadyRafA = window.requestAnimationFrame(() => {
         pitchReadyRafB = window.requestAnimationFrame(() => {
           if (disposed) return;
@@ -4675,6 +4675,7 @@ export default function StatsModeSurface() {
     setSelectedReviewEventId(null);
     setShowReviewStrip(true);
     setIsReviewStripCollapsed(false);
+    setReviewReturnPath(null);
     setUtilityPanel(null);
     setIsUtilityOpen(false);
     setIsPickerOpen(false);
@@ -5060,6 +5061,49 @@ export default function StatsModeSurface() {
     });
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("proReview") !== "1") return;
+
+    const modeParam = params.get("mode");
+    if (modeParam === "football" || modeParam === "ladiesFootball" || modeParam === "hurling" || modeParam === "camogie") {
+      setCurrentMode(modeParam);
+    }
+
+    const rawRecord = safeReadLocalStorage(PRO_REVIEW_HANDOFF_STORAGE_KEY);
+    if (!rawRecord) {
+      setSaveFeedback("Stats Pro review not found");
+      return;
+    }
+
+    try {
+      const record = JSON.parse(rawRecord) as SavedMatch;
+      loadSavedMatchRecord(record);
+      openReviewPanel();
+      setIsFullTimeActionsOpen(false);
+      if (params.get("returnTo") === "stats-pro") {
+        setReviewReturnPath("/pro-tagger");
+      }
+      safeRemoveLocalStorage(PRO_REVIEW_HANDOFF_STORAGE_KEY);
+    } catch {
+      setSaveFeedback("Stats Pro review could not be opened");
+      return;
+    }
+
+    params.delete("proReview");
+    params.delete("returnTo");
+    params.delete("mode");
+    const nextSearch = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash}`,
+    );
+    // Launch-safe Stats Pro handoff: reuse current Saved Match load + Review mode path once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const resumeRecoveredMatchDraft = () => {
     const draft = pendingRecoveredDraft;
     if (!draft) return;
@@ -5228,6 +5272,7 @@ export default function StatsModeSurface() {
     setReviewZone("FULL");
     setShowReviewStrip(false);
     setIsReviewStripCollapsed(false);
+    setReviewReturnPath(null);
     setSelectedReviewEventId(null);
     setUtilityPanel(null);
   };
@@ -5330,6 +5375,7 @@ export default function StatsModeSurface() {
     setReviewActivePlayerOnly(false);
     setReviewZone("FULL");
     setShowReviewStrip(false);
+    setReviewReturnPath(null);
     setUtilityPanel(null);
     setActivePlayer(null);
     setActivePlayerNumber(null);
@@ -7459,6 +7505,17 @@ export default function StatsModeSurface() {
           >
             Hide
           </button>
+          {reviewReturnPath ? (
+            <button
+              type="button"
+              className="review-strip-chip"
+              onClick={() => {
+                window.location.assign(reviewReturnPath);
+              }}
+            >
+              Return to Stats Pro
+            </button>
+          ) : null}
           <button
             type="button"
             className="review-strip-chip review-strip-chip--exit"

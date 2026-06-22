@@ -11,7 +11,11 @@ import { saveProTaggerMatch, saveProTaggerMatchFull } from "./pro-tagger-storage
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildStatsShareCardPng } from "../stats/statsShareCard";
 import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
-import { buildLivePdfInput, buildLiveSnapshotInput } from "./pro-tagger-review-adapter";
+import {
+  buildLivePdfInput,
+  buildLiveSnapshotInput,
+  openLiveProTaggerMatchStatsReview,
+} from "./pro-tagger-review-adapter";
 import { ProTaggerFamilyGrid } from "./ProTaggerFamilyGrid";
 import { ProTaggerPlayerPicker } from "./ProTaggerPlayerPicker";
 import type { SelectedPlayer } from "./ProTaggerPlayerPicker";
@@ -726,6 +730,23 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
       .finally(() => setPdfExporting(null));
   }, [session, pdfExporting]);
 
+  const handleOpenMatchStatsReview = useCallback(() => {
+    const events = loggedRef.current;
+    if (events.length === 0) return;
+    handleSaveMatch();
+    const stage = matchStateRef.current === "FULL_TIME" ? "FULL_TIME" : "HALF_TIME";
+    if (!openLiveProTaggerMatchStatsReview(
+      session,
+      events,
+      stage,
+      halfRef.current,
+      clockSecondsRef.current,
+    )) {
+      setActionsFeedback("Review failed — storage unavailable.");
+      actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 3000);
+    }
+  }, [handleSaveMatch, session]);
+
   // Actions → Reset Match (called after confirm).
   const handleReset = useCallback(() => {
     if (clockIntervalRef.current) { clearInterval(clockIntervalRef.current); clockIntervalRef.current = null; }
@@ -864,6 +885,12 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
             START SECOND HALF
           </button>
           <button
+            onClick={handleOpenMatchStatsReview}
+            style={{ ...S.htActionsBtn, borderColor: "#388bfd", color: "#79c0ff" }}
+          >
+            Review
+          </button>
+          <button
             style={S.htActionsBtn}
             onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
           >
@@ -888,11 +915,29 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
             <span style={S.breakScoreTeam}>{awayLabel}</span>
           </div>
           {canSave ? (
-            <button onClick={handleSaveAndEnd} style={S.resumeBtn}>Save &amp; Finish</button>
+            <>
+              <button
+                onClick={handleOpenMatchStatsReview}
+                style={{ ...S.resumeBtn, background: "#1f6feb", borderColor: "#388bfd" }}
+              >
+                Review
+              </button>
+              <button onClick={handleSaveAndEnd} style={S.resumeBtn}>Save &amp; Finish</button>
+            </>
           ) : (
-            <button onClick={onEnd} style={{ ...S.resumeBtn, background: "#21262d", borderColor: "#30363d" }}>
-              Finish
-            </button>
+            <>
+              {loggedEvents.length > 0 ? (
+                <button
+                  onClick={handleOpenMatchStatsReview}
+                  style={{ ...S.resumeBtn, background: "#1f6feb", borderColor: "#388bfd" }}
+                >
+                  Review
+                </button>
+              ) : null}
+              <button onClick={onEnd} style={{ ...S.resumeBtn, background: "#21262d", borderColor: "#30363d" }}>
+                Finish
+              </button>
+            </>
           )}
           {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
         </div>
@@ -1192,8 +1237,18 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 const has1H       = events.some((e) => e.period === "1H");
                 const isFullTime  = matchState === "FULL_TIME";
                 const pdfBusy     = pdfExporting !== null;
+                const canReview   = hasAny && (matchState === "HALF_TIME" || matchState === "FULL_TIME");
                 return (
                   <>
+                    {canReview && (
+                      <button
+                        style={AS.actionBtn}
+                        onClick={handleOpenMatchStatsReview}
+                      >
+                        {isFullTime ? "FT Review" : "HT Review"}
+                      </button>
+                    )}
+
                     <button
                       style={{ ...AS.actionBtn, ...((!has1H || pdfBusy) ? AS.actionBtnDisabled : {}) }}
                       disabled={!has1H || pdfBusy}
