@@ -4798,6 +4798,7 @@ export default function StatsModeSurface() {
       sport: mode.pitchSport,
       snapshotMode: "HALF_TIME_SNAPSHOT",
       targets: activeTargets,
+      homeAttackingDirection: firstHalfAttackingDirection,
     })
       .then(() => {
         setSaveFeedback("HT Snapshot exported");
@@ -4827,6 +4828,7 @@ export default function StatsModeSurface() {
       sport: mode.pitchSport,
       snapshotMode: "FULL_TIME_SNAPSHOT",
       targets: activeTargets,
+      homeAttackingDirection: firstHalfAttackingDirection,
     })
       .then(() => {
         setSaveFeedback("FT Snapshot exported");

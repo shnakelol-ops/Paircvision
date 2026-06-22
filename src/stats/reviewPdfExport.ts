@@ -113,6 +113,12 @@ export type SnapshotMode = "HALF_TIME_SNAPSHOT" | "FULL_TIME_SNAPSHOT";
 export type SnapshotPdfExportInput = ReviewPdfExportInput & {
   /** Controls which events are included and which pages are rendered. */
   snapshotMode: SnapshotMode;
+  /**
+   * First-half attacking direction for the home team.
+   * Drives the "← Attacking" / "Attacking →" arrows on the Restart Battle header.
+   * Defaults to "RIGHT" when absent (no arrow shown if not provided by caller).
+   */
+  homeAttackingDirection?: "LEFT" | "RIGHT";
 };
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -11226,6 +11232,8 @@ function makeRestartBattlePage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  mode: "HT" | "FT" = "FT",
+  homeAttackingDirection: "LEFT" | "RIGHT" = "RIGHT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -11266,35 +11274,59 @@ function makeRestartBattlePage(
   const awayLost     = awayRestarts.filter((e) => getWinner(e) !== "OPP");
 
   // ── Layout: two equal mini-pitches — one owner, one story ─────────────────
-  const BAND_H    = 44;
+  const BAND_H    = 72;   // expanded for 3-line header
   const BAND_Y    = 80;
-  const PITCH_TOP = BAND_Y + BAND_H + 4;           // 128
-  const PITCH_H   = HT_STRIP_TOP - PITCH_TOP - 8;  // 764
+  const PITCH_TOP = BAND_Y + BAND_H + 4;           // 156
+  const PITCH_H   = HT_STRIP_TOP - PITCH_TOP - 8;  // 736
   const GAP       = 24;
   const HALF_W    = (CANVAS_W - 3 * GAP) / 2;      // 924
   const leftArea  = { x: GAP,              y: PITCH_TOP, w: HALF_W, h: PITCH_H };
   const rightArea = { x: GAP + HALF_W + GAP, y: PITCH_TOP, w: HALF_W, h: PITCH_H };
 
-  // ── Team header bands ─────────────────────────────────────────────────────
+  // ── Team header bands (3-line: half · team+restarts · direction) ─────────
+  const halfLabel    = mode === "HT" ? "1st Half" : "2nd Half";
+  const homeEffDir   = mode === "FT"
+    ? (homeAttackingDirection === "LEFT" ? "RIGHT" : "LEFT")
+    : homeAttackingDirection;
+  const awayEffDir   = homeEffDir === "LEFT" ? "RIGHT" : "LEFT";
+  const homeDirArrow = homeEffDir === "RIGHT" ? "Attacking →" : "← Attacking";
+  const awayDirArrow = awayEffDir === "RIGHT" ? "Attacking →" : "← Attacking";
+
+  const L1_Y = BAND_Y + 15;   // half label
+  const L2_Y = BAND_Y + 38;   // team + restarts
+  const L3_Y = BAND_Y + 59;   // direction arrow
+
   ctx.save();
-  ctx.font         = "bold 19px sans-serif";
   ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
+
   // Left band: homeTeam
   ctx.fillStyle    = "rgba(34,197,94,0.12)";
   ctx.fillRect(leftArea.x, BAND_Y, leftArea.w, BAND_H);
   ctx.strokeStyle  = "rgba(34,197,94,0.45)";
   ctx.lineWidth    = 1.5;
   ctx.strokeRect(leftArea.x + 0.75, BAND_Y + 0.75, leftArea.w - 1.5, BAND_H - 1.5);
-  ctx.fillStyle    = "#4ade80";
-  ctx.fillText(`${truncTeam(homeTeam, 20)} ${restartTerm}s`, leftArea.x + leftArea.w / 2, BAND_Y + BAND_H / 2);
+  const leftCX = leftArea.x + leftArea.w / 2;
+  ctx.font = "13px sans-serif"; ctx.fillStyle = "#64748b";
+  ctx.fillText(halfLabel, leftCX, L1_Y);
+  ctx.font = "bold 18px sans-serif"; ctx.fillStyle = "#4ade80";
+  ctx.fillText(`${truncTeam(homeTeam, 20)} ${restartTerm}s`, leftCX, L2_Y);
+  ctx.font = "13px sans-serif"; ctx.fillStyle = "#94a3b8";
+  ctx.fillText(homeDirArrow, leftCX, L3_Y);
+
   // Right band: awayTeam
   ctx.fillStyle    = "rgba(239,68,68,0.12)";
   ctx.fillRect(rightArea.x, BAND_Y, rightArea.w, BAND_H);
   ctx.strokeStyle  = "rgba(239,68,68,0.45)";
   ctx.strokeRect(rightArea.x + 0.75, BAND_Y + 0.75, rightArea.w - 1.5, BAND_H - 1.5);
-  ctx.fillStyle    = "#f87171";
-  ctx.fillText(`${truncTeam(awayTeam, 20)} ${restartTerm}s`, rightArea.x + rightArea.w / 2, BAND_Y + BAND_H / 2);
+  const rightCX = rightArea.x + rightArea.w / 2;
+  ctx.font = "13px sans-serif"; ctx.fillStyle = "#64748b";
+  ctx.fillText(halfLabel, rightCX, L1_Y);
+  ctx.font = "bold 18px sans-serif"; ctx.fillStyle = "#f87171";
+  ctx.fillText(`${truncTeam(awayTeam, 20)} ${restartTerm}s`, rightCX, L2_Y);
+  ctx.font = "13px sans-serif"; ctx.fillStyle = "#94a3b8";
+  ctx.fillText(awayDirArrow, rightCX, L3_Y);
+
   ctx.restore();
 
   // ── Render both pitches ───────────────────────────────────────────────────
@@ -11880,6 +11912,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     sport = "gaelic",
     snapshotMode,
     targets,
+    homeAttackingDirection = "RIGHT",
   } = input;
 
   const isHT = snapshotMode === "HALF_TIME_SNAPSHOT";
@@ -11951,7 +11984,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 3. Restart Battle
     addPage(
-      makeRestartBattlePage(events, sport, home, away, 3, TOTAL_PAGES),
+      makeRestartBattlePage(events, sport, home, away, 3, TOTAL_PAGES, "HT", homeAttackingDirection),
       true,
       "Restart Battle",
     );
@@ -12016,7 +12049,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 3. Restart Battle
     addPage(
-      makeRestartBattlePage(events, sport, home, away, 3, TOTAL_PAGES),
+      makeRestartBattlePage(events, sport, home, away, 3, TOTAL_PAGES, "FT", homeAttackingDirection),
       true,
       "Restart Battle",
     );
