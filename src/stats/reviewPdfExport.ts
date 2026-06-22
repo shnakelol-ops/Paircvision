@@ -11398,7 +11398,15 @@ function makeRestartBattlePage(
   const awayRetCount = awayRetained.length;
   const homePct      = homeTotal > 0 ? Math.round((homeRetCount / homeTotal) * 100) : 0;
   const awayPct      = awayTotal > 0 ? Math.round((awayRetCount / awayTotal) * 100) : 0;
-  const homeRetHot  = pdfZoneHotspots(homeRetained)[0];
+  const restartBattleMirrorSideLabel = (label: string): string => {
+    if (label.endsWith(" Left")) return label.replace(/ Left$/, " Right");
+    if (label.endsWith(" Right")) return label.replace(/ Right$/, " Left");
+    return label;
+  };
+  const homeRetHotRaw = pdfZoneHotspots(homeRetained)[0];
+  const homeRetHot  = homeRetHotRaw
+    ? { ...homeRetHotRaw, label: restartBattleMirrorSideLabel(homeRetHotRaw.label) }
+    : undefined;
   const homeLostHot = pdfZoneHotspots(homeLost)[0];
   const awayRetHot  = pdfZoneHotspots(awayRetained)[0];
   const awayLostHot = pdfZoneHotspots(awayLost)[0];
