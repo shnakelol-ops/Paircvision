@@ -28,6 +28,7 @@ import type {
   ChainableEvent,
   ChainAnalysis,
 } from "./chain-types";
+import type { PitchSport } from "../../core/pitch/pitch-config";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -80,10 +81,15 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   analysis: ChainAnalysis<TEvent>,
   homeTeam: string,
   awayTeam: string,
+  sport?: PitchSport,
 ): readonly ReviewPrompt[] {
   // Truncate team names to a safe display length
   const home = homeTeam.slice(0, 18) || "Home";
   const away = awayTeam.slice(0, 18) || "Away";
+
+  const isPuck  = sport === "hurling" || sport === "camogie";
+  const koTerm  = isPuck ? "puckout"  : "kickout";
+  const koTermS = isPuck ? "puckouts" : "kickouts";
 
   const candidates: ReviewPrompt[] = [];
 
@@ -113,19 +119,19 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (koWinPct >= 60) {
       push(
         "KICKOUT",
-        `${home} won ${koWinPct}% of kickouts (${koWon} of ${koTotal}). Worth reviewing whether this was consistent across both halves.`,
+        `${home} won ${koWinPct}% of ${koTermS} (${koWon} of ${koTotal}). Worth reviewing whether this was consistent across both halves.`,
         `kickout:winPct=${koWinPct}`,
       );
     } else if (koWinPct < 45) {
       push(
         "KICKOUT",
-        `${home} won ${koWinPct}% of kickouts (${koWon} of ${koTotal}). Worth reviewing where possession was being contested during those phases.`,
+        `${home} won ${koWinPct}% of ${koTermS} (${koWon} of ${koTotal}). Worth reviewing where possession was being contested during those phases.`,
         `kickout:winPct=${koWinPct}`,
       );
     } else {
       push(
         "KICKOUT",
-        `${home} won ${koWinPct}% of kickouts (${koWon} of ${koTotal}) and converted ${koConvPct}% of those to scores.`,
+        `${home} won ${koWinPct}% of ${koTermS} (${koWon} of ${koTotal}) and converted ${koConvPct}% of those to scores.`,
         `kickout:winPct=${koWinPct}`,
       );
     }
@@ -135,14 +141,14 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (koTotal >= 3 && koNetAdv < -10) {
     push(
       "KICKOUT",
-      `${home} scored from ${koConvPct}% of won kickouts, but ${away} scored from ${koExpPct}% of theirs. Worth reviewing whether kickout direction patterns changed during the match.`,
+      `${home} scored from ${koConvPct}% of won ${koTermS}, but ${away} scored from ${koExpPct}% of theirs. Worth reviewing whether ${koTerm} direction patterns changed during the match.`,
       `kickout:netAdv=${koNetAdv}`,
     );
   } else if (koWon >= 3 && koConvPct >= 40) {
     // Positive conversion rate — worth flagging as a repeatable pattern
     push(
       "KICKOUT",
-      `${home} converted ${koConvPct}% of won kickouts to scores (${ko.wonToScore} from ${koWon} wins). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
+      `${home} converted ${koConvPct}% of won ${koTermS} to scores (${ko.wonToScore} from ${koWon} wins). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
       `kickout:convPct=${koConvPct}`,
     );
   }
@@ -158,7 +164,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (h2Pct < h1Pct - 12) {
       push(
         "KICKOUT",
-        `${home}'s kickout win rate dropped in the second half (${h2Pct}% vs ${h1Pct}% in the first half). Worth reviewing what changed after the interval.`,
+        `${home}'s ${koTerm} win rate dropped in the second half (${h2Pct}% vs ${h1Pct}% in the first half). Worth reviewing what changed after the interval.`,
         `kickout:h2WinPct=${h2Pct},h1WinPct=${h1Pct}`,
       );
     }
@@ -334,13 +340,13 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (koToScore > tvToScore) {
       push(
         "CHAIN",
-        `${home} scored more from kickouts (${koToScore}) than from turnovers (${tvToScore}). Worth reviewing whether the kickout was the primary scoring platform.`,
+        `${home} scored more from ${koTermS} (${koToScore}) than from turnovers (${tvToScore}). Worth reviewing whether the ${koTerm} was the primary scoring platform.`,
         `chain:koToScore=${koToScore},tvToScore=${tvToScore}`,
       );
     } else if (tvToScore > koToScore) {
       push(
         "CHAIN",
-        `${home} scored more from turnovers (${tvToScore}) than from kickouts (${koToScore}). Worth reviewing whether quick transition was the main scoring route.`,
+        `${home} scored more from turnovers (${tvToScore}) than from ${koTermS} (${koToScore}). Worth reviewing whether quick transition was the main scoring route.`,
         `chain:tvToScore=${tvToScore},koToScore=${koToScore}`,
       );
     }

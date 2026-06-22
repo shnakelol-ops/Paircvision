@@ -30,9 +30,11 @@ export function proTaggerMatchToSnapshotInput(
   m: ProTaggerSavedMatch,
   snapshotMode: "HALF_TIME_SNAPSHOT" | "FULL_TIME_SNAPSHOT",
 ): SnapshotPdfExportInput {
+  const rawDir = m.restoreContext.firstHalfAttackingDirection;
   return {
     ...proTaggerMatchToPdfInput(m),
     snapshotMode,
+    homeAttackingDirection: rawDir === "left" ? "LEFT" : "RIGHT",
   };
 }
 
@@ -57,5 +59,9 @@ export function buildLiveSnapshotInput(
   events: readonly LoggedMatchEvent[],
   snapshotMode: "HALF_TIME_SNAPSHOT" | "FULL_TIME_SNAPSHOT",
 ): SnapshotPdfExportInput {
-  return { ...buildLivePdfInput(session, events), snapshotMode };
+  return {
+    ...buildLivePdfInput(session, events),
+    snapshotMode,
+    homeAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
+  };
 }

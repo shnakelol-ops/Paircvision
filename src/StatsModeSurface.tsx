@@ -4798,6 +4798,7 @@ export default function StatsModeSurface() {
       sport: mode.pitchSport,
       snapshotMode: "HALF_TIME_SNAPSHOT",
       targets: activeTargets,
+      homeAttackingDirection: firstHalfAttackingDirection,
     })
       .then(() => {
         setSaveFeedback("HT Snapshot exported");
@@ -4827,6 +4828,7 @@ export default function StatsModeSurface() {
       sport: mode.pitchSport,
       snapshotMode: "FULL_TIME_SNAPSHOT",
       targets: activeTargets,
+      homeAttackingDirection: firstHalfAttackingDirection,
     })
       .then(() => {
         setSaveFeedback("FT Snapshot exported");
@@ -6045,6 +6047,7 @@ export default function StatsModeSurface() {
                 }
               }}
               maxLength={15}
+              autoCapitalize="words"
               aria-label="Edit team A name"
             />
           ) : (
@@ -6107,6 +6110,7 @@ export default function StatsModeSurface() {
                 }
               }}
               maxLength={15}
+              autoCapitalize="words"
               aria-label="Edit team B name"
             />
           ) : (
@@ -6225,6 +6229,7 @@ export default function StatsModeSurface() {
                   }
                 }}
                 maxLength={15}
+                autoCapitalize="words"
                 aria-label="Edit team A name"
               />
             ) : (
@@ -6287,6 +6292,7 @@ export default function StatsModeSurface() {
                   }
                 }}
                 maxLength={15}
+                autoCapitalize="words"
                 aria-label="Edit team B name"
               />
             ) : (
