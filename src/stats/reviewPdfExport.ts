@@ -11712,7 +11712,7 @@ function makeHtTacticalSummaryPage(
     (p) => p.kind === "PRESSURE_PATTERN" || p.kind === "WASTED_CHAIN",
   );
   if (pressurePattern) {
-    watchItems.push(pressurePattern.observation);
+    watchItems.push(xRestartStr(pressurePattern.observation, sport));
   }
   if (totalAllKO > 0 && koWinPct < 50 && watchItems.length < 2) {
     watchItems.push(`${100 - koWinPct}% ${restartTerm} possession lost`);
