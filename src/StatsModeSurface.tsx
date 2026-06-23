@@ -581,6 +581,7 @@ function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
   const maybeMatchTimeSeconds = "matchTimeSeconds" in input ? input.matchTimeSeconds : null;
   const maybeHalfSegment = "halfSegment" in input ? input.halfSegment : null;
   const maybeTags = "tags" in input ? input.tags : null;
+  const maybeRestartOwner = "restartOwner" in input ? input.restartOwner : null;
 
   if (typeof maybeId !== "string" || maybeId.trim().length === 0) return null;
   const rawKind = typeof maybeType === "string" ? maybeType : typeof maybeKind === "string" ? maybeKind : null;
@@ -652,6 +653,10 @@ function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
 
   if (parsedTeam) {
     next.team = parsedTeam;
+  }
+
+  if (maybeRestartOwner === "FOR" || maybeRestartOwner === "OPP") {
+    next.restartOwner = maybeRestartOwner;
   }
 
   return next;
@@ -4243,8 +4248,9 @@ export default function StatsModeSurface() {
           isLoggingActive(matchEngineStateRef.current.matchState) &&
           activeTeamRef.current === "HOME",
       });
-      // On context-loss remount, push existing logged events back into the fresh surface.
-      if (pixiSurfaceKey > 0) {
+      // Restore events whenever the surface is (re)created with existing events in state.
+      // This covers context-loss remounts AND sport mode changes during draft resume.
+      if (loggedEventsRef.current.length > 0) {
         nextHandle.setEvents([...loggedEventsRef.current]);
       }
       pitchReadyRafA = window.requestAnimationFrame(() => {
