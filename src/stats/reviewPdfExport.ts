@@ -8020,9 +8020,9 @@ function makeHtPressureDamageMapPage(
 
   const facts: string[] = [];
   if (totalOppScores > 0) facts.push(`${truncTeam(awayTeam, 14)} scored ${totalOppScores} time${totalOppScores !== 1 ? "s" : ""}`);
-  if (oppScoreHot)        facts.push(`Scoring danger: ${oppScoreHot.label} (${oppScoreHot.count})`);
+  if (oppScoreHot)        facts.push(`${truncTeam(awayTeam, 14)} scoring danger: ${oppScoreHot.label} (${oppScoreHot.count})`);
   if (totalForLosses > 0) facts.push(`${truncTeam(homeTeam, 14)} lost possession ${totalForLosses} time${totalForLosses !== 1 ? "s" : ""}`);
-  if (forLossHot && facts.length < 3) facts.push(`Loss zone: ${forLossHot.label} (${forLossHot.count})`);
+  if (forLossHot && facts.length < 3) facts.push(`${truncTeam(homeTeam, 14)} loss zone: ${forLossHot.label} (${forLossHot.count})`);
   if (facts.length === 0) facts.push("No scoring threats or possession losses recorded.");
 
   drawHtCalloutStrip(ctx, facts, ["#ef4444", "#fbbf24", "#94a3b8"]);
@@ -8212,8 +8212,8 @@ function makeHtKickoutVisionPage(
 
   const facts: string[] = [];
   if (totalKO > 0) facts.push(`${truncTeam(homeTeam, 14)} ${restartTerm}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
-  if (forHot)      facts.push(`Best zone: ${forHot.label}`);
-  if (oppHot)      facts.push(`Conceded most: ${oppHot.label}`);
+  if (forHot)      facts.push(`${truncTeam(homeTeam, 14)} best zone: ${forHot.label}`);
+  if (oppHot)      facts.push(`${truncTeam(homeTeam, 14)} conceded most: ${oppHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTerm} data recorded.`);
 
   drawHtCalloutStrip(ctx, facts, ["#14b8a6", "#14b8a6", "#ef4444"]);
@@ -9212,9 +9212,9 @@ function makeFtAttackCorridorsPage(
 
   const facts: string[] = [];
   if (chScores[bestScoreCh] > 0)
-    facts.push(`Scoring corridor: ${bestScoreCh.toLowerCase()} channel (${chScores[bestScoreCh]} score${chScores[bestScoreCh] !== 1 ? "s" : ""})`);
+    facts.push(`${truncTeam(homeTeam, 14)} scoring: ${bestScoreCh.toLowerCase()} channel (${chScores[bestScoreCh]} score${chScores[bestScoreCh] !== 1 ? "s" : ""})`);
   if (chFails[mostWastedCh] > 0 && mostWastedCh !== bestScoreCh)
-    facts.push(`Most wastage: ${mostWastedCh.toLowerCase()} channel (${chFails[mostWastedCh]} miss${chFails[mostWastedCh] !== 1 ? "es" : ""})`);
+    facts.push(`${truncTeam(homeTeam, 14)} wastage: ${mostWastedCh.toLowerCase()} channel (${chFails[mostWastedCh]} miss${chFails[mostWastedCh] !== 1 ? "es" : ""})`);
   if (totalShots > 0)
     facts.push(`${totalScores} / ${totalShots} shots converted (${shotEff}%)`);
   if (facts.length === 0) facts.push("No FOR attack data recorded.");
@@ -10637,7 +10637,7 @@ function makeOurShotProfilePage(
     colors.push("#818cf8");
   }
   if (scoreHot && facts.length < 3) {
-    facts.push(`Best scoring zone: ${scoreHot.label} (${scoreHot.count})`);
+    facts.push(`${truncTeam(homeTeam, 12)} best zone: ${scoreHot.label} (${scoreHot.count})`);
     colors.push("#34d399");
   }
   if (facts.length === 0) facts.push("No shot data recorded.");
@@ -10785,7 +10785,7 @@ function makeOppShotProfilePage(
     colors.push("#f472b6");
   }
   if (oppScoreHot && facts.length < 3) {
-    facts.push(`Their best zone: ${oppScoreHot.label} (${oppScoreHot.count})`);
+    facts.push(`${truncTeam(awayTeam, 12)} best scoring zone: ${oppScoreHot.label} (${oppScoreHot.count})`);
     colors.push("#ef4444");
   }
   if (facts.length === 0) facts.push("No opposition shot data recorded.");
