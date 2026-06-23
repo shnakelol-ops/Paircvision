@@ -134,6 +134,7 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
   const [packGenerating, setPackGenerating] = useState(false);
   const [pack, setPack]                     = useState<IntelligencePack | null>(null);
   const [previewOpen, setPreviewOpen]       = useState(false);
+  const [mapOpen,     setMapOpen]           = useState(false);
 
   // ── Review filter state ────────────────────────────────────────────────────
   const [reviewHalf,     setReviewHalf]     = useState<ReviewHalf>("FULL");
@@ -265,48 +266,16 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
           <div style={S.eventCount}>{match.eventCount} events</div>
         </div>
 
-        {/* ── Pitch review map ──────────────────────────────────────────── */}
-        <div style={S.sectionLabel}>Event Map</div>
-        <div style={S.pitchShell}>
-          <div style={S.filterRow}>
-            {(["FULL", "H1", "H2"] as const).map((h) => (
-              <button
-                key={h}
-                style={{ ...S.chip, ...(reviewHalf === h ? S.chipActive : {}) }}
-                onClick={() => setReviewHalf(h)}
-              >
-                {h === "FULL" ? "ALL" : h}
-              </button>
-            ))}
-            <div style={S.chipSep} />
-            {(["ALL", "FOR", "OPP"] as const).map((t) => (
-              <button
-                key={t}
-                style={{ ...S.chip, ...(reviewTeam === t ? S.chipActive : {}) }}
-                onClick={() => setReviewTeam(t)}
-              >
-                {t}
-              </button>
-            ))}
+        {/* ── Event Map card ────────────────────────────────────────────── */}
+        <button style={S.eventMapCard} onClick={() => setMapOpen(true)}>
+          <div style={S.eventMapInfo}>
+            <span style={S.eventMapTitle}>Event Map</span>
+            <span style={S.eventMapDesc}>
+              {match.eventCount} event{match.eventCount !== 1 ? "s" : ""} · tap to open full board
+            </span>
           </div>
-          <div style={S.filterRowScroll}>
-            {categoryOptions.map(({ id, label }) => (
-              <button
-                key={id}
-                style={{ ...S.chip, ...(reviewCategory === id ? S.chipActive : {}) }}
-                onClick={() => setReviewCategory(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div style={S.pitchWrap}>
-            <PitchCanvas events={filteredEvents} sport={pitchSport} />
-          </div>
-          <div style={S.eventCountBar}>
-            {filteredEvents.length} events shown
-          </div>
-        </div>
+          <span style={S.eventMapArrow}>→</span>
+        </button>
 
         {/* ── Voice Notes ───────────────────────────────────────────────── */}
         {(() => {
@@ -381,6 +350,60 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
           PDF opens or downloads depending on your browser.
         </span>
       </div>
+
+      {/* ── Full-screen Pixi board ───────────────────────────────────── */}
+      {mapOpen && (
+        <div style={B.shell}>
+          <div style={B.header}>
+            <button style={B.backBtn} onClick={() => setMapOpen(false)}>← Review</button>
+            <div style={B.headerCenter}>
+              <span style={B.headerTeams}>
+                {match.homeTeamName || "Home"} v {match.awayTeamName || "Away"}
+              </span>
+              <span style={B.headerMeta}>
+                {match.scorelineSnapshot}{match.venue ? ` · ${match.venue}` : ""}
+              </span>
+            </div>
+          </div>
+          <div style={B.filterRow}>
+            {(["FULL", "H1", "H2"] as const).map((h) => (
+              <button
+                key={h}
+                style={{ ...B.chip, ...(reviewHalf === h ? B.chipActive : {}) }}
+                onClick={() => setReviewHalf(h)}
+              >
+                {h === "FULL" ? "ALL" : h}
+              </button>
+            ))}
+            <div style={B.chipSep} />
+            {(["ALL", "FOR", "OPP"] as const).map((t) => (
+              <button
+                key={t}
+                style={{ ...B.chip, ...(reviewTeam === t ? B.chipActive : {}) }}
+                onClick={() => setReviewTeam(t)}
+              >
+                {t}
+              </button>
+            ))}
+            <div style={B.chipSep} />
+            {categoryOptions.map(({ id, label }) => (
+              <button
+                key={id}
+                style={{ ...B.chip, ...(reviewCategory === id ? B.chipActive : {}) }}
+                onClick={() => setReviewCategory(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div style={B.pitchArea}>
+            <PitchCanvas events={filteredEvents} sport={pitchSport} />
+          </div>
+          <div style={B.footer}>
+            {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
+          </div>
+        </div>
+      )}
 
       {/* ── Intelligence Pack Preview (fullscreen overlay) ────────────── */}
       {previewOpen && pack && (
@@ -569,68 +592,40 @@ const S: Record<string, CSSProperties> = {
     marginTop:      4,
   },
 
-  // ── Pitch review ────────────────────────────────────────────────────────────
-  pitchShell: {
-    background:    "#161b22",
-    border:        "1px solid #21262d",
-    borderRadius:  10,
-    overflow:      "hidden",
+  // ── Event Map card ──────────────────────────────────────────────────────────
+  eventMapCard: {
+    background:     "rgba(34,211,238,0.06)",
+    border:         "1px solid rgba(34,211,238,0.28)",
+    borderRadius:   12,
+    padding:        "16px",
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    cursor:         "pointer",
+    outline:        "none",
+    width:          "100%",
+    textAlign:      "left" as const,
+    WebkitTapHighlightColor: "transparent",
+  },
+  eventMapInfo: {
     display:       "flex",
     flexDirection: "column",
-  },
-  filterRow: {
-    display:    "flex",
-    alignItems: "center",
-    gap:        4,
-    padding:    "8px 10px 4px",
-    flexWrap:   "wrap" as const,
-  },
-  filterRowScroll: {
-    display:       "flex",
-    alignItems:    "center",
     gap:           4,
-    padding:       "0 10px 8px",
-    overflowX:     "auto" as const,
-    scrollbarWidth: "none" as const,
   },
-  chip: {
-    background:    "#0d1117",
-    border:        "1px solid #30363d",
-    borderRadius:  6,
-    color:         "#8b949e",
-    fontSize:      11,
-    fontWeight:    600,
-    padding:       "4px 9px",
-    cursor:        "pointer",
-    outline:       "none",
-    whiteSpace:    "nowrap" as const,
-    flexShrink:    0,
-    letterSpacing: "0.04em",
+  eventMapTitle: {
+    fontSize:      16,
+    fontWeight:    700,
+    color:         "#e6edf3",
+    letterSpacing: "-0.3px",
   },
-  chipActive: {
-    background: "rgba(14,116,144,0.38)",
-    border:     "1px solid rgba(125,211,252,0.9)",
-    color:      "#7dd3fc",
+  eventMapDesc: {
+    fontSize: 12,
+    color:    "#6e7681",
   },
-  chipSep: {
-    width:      1,
-    height:     14,
-    background: "#30363d",
+  eventMapArrow: {
+    fontSize:   20,
+    color:      "#22d3ee",
     flexShrink: 0,
-    margin:     "0 2px",
-  },
-  pitchWrap: {
-    width:      "100%",
-    height:     280,
-    background: "#0a1628",
-    position:   "relative" as const,
-  },
-  eventCountBar: {
-    padding:     "5px 10px",
-    fontSize:    10,
-    color:       "#484f58",
-    textAlign:   "right" as const,
-    borderTop:   "1px solid #21262d",
   },
 
   // ── Voice notes ─────────────────────────────────────────────────────────────
@@ -750,5 +745,112 @@ const S: Record<string, CSSProperties> = {
     color:     "#484f58",
     textAlign: "center" as const,
     marginTop: 8,
+  },
+};
+
+// ── Full-screen board styles ──────────────────────────────────────────────────
+
+const B: Record<string, CSSProperties> = {
+  shell: {
+    position:      "fixed",
+    inset:         0,
+    zIndex:        100,
+    display:       "flex",
+    flexDirection: "column",
+    background:    "#0d1117",
+    color:         "#e6edf3",
+    fontFamily:    "'Inter', 'Helvetica Neue', system-ui, sans-serif",
+    userSelect:    "none",
+  },
+  header: {
+    display:       "flex",
+    flexDirection: "column",
+    padding:       "10px 14px 8px",
+    background:    "#161b22",
+    borderBottom:  "1px solid #21262d",
+    flexShrink:    0,
+    gap:           5,
+  },
+  backBtn: {
+    background:   "transparent",
+    border:       "1px solid #30363d",
+    borderRadius: 7,
+    color:        "#8b949e",
+    fontSize:     13,
+    fontWeight:   600,
+    padding:      "5px 10px",
+    cursor:       "pointer",
+    outline:      "none",
+    alignSelf:    "flex-start" as const,
+    whiteSpace:   "nowrap" as const,
+  },
+  headerCenter: {
+    display:       "flex",
+    flexDirection: "column",
+    gap:           2,
+  },
+  headerTeams: {
+    fontSize:      15,
+    fontWeight:    700,
+    color:         "#e6edf3",
+    letterSpacing: "-0.3px",
+  },
+  headerMeta: {
+    fontSize: 11,
+    color:    "#6e7681",
+  },
+  filterRow: {
+    display:        "flex",
+    alignItems:     "center",
+    gap:            4,
+    padding:        "8px 10px",
+    overflowX:      "auto" as const,
+    scrollbarWidth: "none" as const,
+    flexShrink:     0,
+    background:     "#161b22",
+    borderBottom:   "1px solid #21262d",
+  },
+  chip: {
+    background:    "#0d1117",
+    border:        "1px solid #30363d",
+    borderRadius:  6,
+    color:         "#8b949e",
+    fontSize:      11,
+    fontWeight:    600,
+    padding:       "5px 10px",
+    cursor:        "pointer",
+    outline:       "none",
+    whiteSpace:    "nowrap" as const,
+    flexShrink:    0,
+    letterSpacing: "0.04em",
+    WebkitTapHighlightColor: "transparent",
+  },
+  chipActive: {
+    background: "rgba(14,116,144,0.38)",
+    border:     "1px solid rgba(125,211,252,0.9)",
+    color:      "#7dd3fc",
+  },
+  chipSep: {
+    width:      1,
+    height:     16,
+    background: "#30363d",
+    flexShrink: 0,
+    margin:     "0 2px",
+  },
+  pitchArea: {
+    flex:      1,
+    background: "#0a1628",
+    position:  "relative" as const,
+    overflow:  "hidden",
+    minHeight: 0,
+  },
+  footer: {
+    padding:    "6px 14px",
+    fontSize:   11,
+    color:      "#484f58",
+    background: "#161b22",
+    borderTop:  "1px solid #21262d",
+    flexShrink: 0,
+    textAlign:  "right" as const,
   },
 };
