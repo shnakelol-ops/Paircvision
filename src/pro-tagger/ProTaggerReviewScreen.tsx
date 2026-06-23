@@ -361,7 +361,8 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
                 {match.homeTeamName || "Home"} v {match.awayTeamName || "Away"}
               </span>
               <span style={B.headerMeta}>
-                {match.scorelineSnapshot}{match.venue ? ` · ${match.venue}` : ""}
+                {[match.scorelineSnapshot, match.venue, fmtDate(match.createdAt)]
+                  .filter(Boolean).join(" · ")}
               </span>
             </div>
           </div>
@@ -763,13 +764,13 @@ const B: Record<string, CSSProperties> = {
     userSelect:    "none",
   },
   header: {
-    display:       "flex",
-    flexDirection: "column",
-    padding:       "10px 14px 8px",
-    background:    "#161b22",
-    borderBottom:  "1px solid #21262d",
-    flexShrink:    0,
-    gap:           5,
+    display:      "flex",
+    alignItems:   "center",
+    gap:          10,
+    padding:      "10px 14px",
+    background:   "#161b22",
+    borderBottom: "1px solid #21262d",
+    flexShrink:   0,
   },
   backBtn: {
     background:   "transparent",
@@ -781,29 +782,37 @@ const B: Record<string, CSSProperties> = {
     padding:      "5px 10px",
     cursor:       "pointer",
     outline:      "none",
-    alignSelf:    "flex-start" as const,
     whiteSpace:   "nowrap" as const,
+    flexShrink:   0,
   },
   headerCenter: {
     display:       "flex",
     flexDirection: "column",
     gap:           2,
+    flex:          1,
+    minWidth:      0,
   },
   headerTeams: {
-    fontSize:      15,
+    fontSize:      14,
     fontWeight:    700,
     color:         "#e6edf3",
     letterSpacing: "-0.3px",
+    overflow:      "hidden",
+    textOverflow:  "ellipsis",
+    whiteSpace:    "nowrap" as const,
   },
   headerMeta: {
-    fontSize: 11,
-    color:    "#6e7681",
+    fontSize:     11,
+    color:        "#6e7681",
+    overflow:     "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace:   "nowrap" as const,
   },
   filterRow: {
     display:        "flex",
     alignItems:     "center",
-    gap:            4,
-    padding:        "8px 10px",
+    gap:            6,
+    padding:        "9px 16px 9px 10px",
     overflowX:      "auto" as const,
     scrollbarWidth: "none" as const,
     flexShrink:     0,
@@ -817,7 +826,7 @@ const B: Record<string, CSSProperties> = {
     color:         "#8b949e",
     fontSize:      11,
     fontWeight:    600,
-    padding:       "5px 10px",
+    padding:       "6px 11px",
     cursor:        "pointer",
     outline:       "none",
     whiteSpace:    "nowrap" as const,
@@ -835,7 +844,7 @@ const B: Record<string, CSSProperties> = {
     height:     16,
     background: "#30363d",
     flexShrink: 0,
-    margin:     "0 2px",
+    margin:     "0 4px",
   },
   pitchArea: {
     flex:      1,
