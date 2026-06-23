@@ -61,6 +61,15 @@ function getProPitchSport(
   return sport === "ladies_football" ? "gaelic" : sport;
 }
 
+// Pro SVG capture stores nx = portrait_vertical, ny = portrait_horizontal.
+// Pixi review expects nx = landscape_horizontal, ny = landscape_vertical.
+// Swap nx/ny (and x/y) for display only — stored data is never mutated.
+function toProPortrait(
+  events: readonly LoggedMatchEvent[],
+): readonly LoggedMatchEvent[] {
+  return events.map((e) => ({ ...e, nx: e.ny, ny: e.nx, x: e.y, y: e.x }));
+}
+
 // ── Pitch review filter config ────────────────────────────────────────────────
 
 type ReviewHalf     = "FULL" | "H1" | "H2";
@@ -157,6 +166,8 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
     }),
     [match.events, reviewHalf, reviewTeam, reviewCategory],
   );
+
+  const displayEvents = useMemo(() => toProPortrait(filteredEvents), [filteredEvents]);
 
   // ── Export helpers ─────────────────────────────────────────────────────────
   const hasFirstHalfEvents = match.events.some((e) => e.period === "1H");
@@ -398,7 +409,7 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
             ))}
           </div>
           <div style={B.pitchArea}>
-            <PitchCanvas events={filteredEvents} sport={pitchSport} />
+            <PitchCanvas events={displayEvents} sport={pitchSport} />
           </div>
           <div style={B.footer}>
             {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
