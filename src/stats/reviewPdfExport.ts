@@ -6331,17 +6331,20 @@ function makeRestartVisualPage(
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, "Restart Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
-  // ── Event subsets (tactical beneficiary, same logic as selectPdfEvents) ────
-  const forWonEvts = events.filter(
-    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
-           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
+  // ── Ownership helpers (V1.2+ explicit; legacy fallback = teamSide) ─────────
+  const getOwner = (e: PdfExportEvent): "FOR" | "OPP" =>
+    e.restartOwner != null ? e.restartOwner : e.teamSide as "FOR" | "OPP";
+
+  // ── Event subsets — ownership-based (who physically took the restart) ────
+  const forOwnedEvts = events.filter(
+    (e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwner(e) === "FOR",
   );
-  const oppWonEvts = events.filter(
-    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP") ||
-           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR"),
+  const oppOwnedEvts = events.filter(
+    (e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwner(e) === "OPP",
   );
 
   // ── Chain data (hoisted before pitches for callout bullets) ─────────────
+  // Chain analysis uses the involvement layer (unchanged) — do not modify.
   const ko            = analysis.kickouts;
   const outcomes      = ko.outcomes;
   const totalKO       = ko.won + ko.lost;
@@ -6360,7 +6363,8 @@ function makeRestartVisualPage(
   const h1Opp = h1Out.length - h1For;
   const h2For = h2Out.filter((o) => o.winningSide === "FOR").length;
   const h2Opp = h2Out.length - h2For;
-  const forKoEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && e.teamSide === "FOR");
+  // Tag counts scoped to our owned restarts only
+  const forKoEvts = forOwnedEvts;
   function countKoTag(tag: string): number {
     return forKoEvts.filter((e) => e.tags?.includes(tag)).length;
   }
@@ -6376,7 +6380,7 @@ function makeRestartVisualPage(
   const CALLOUT_H = 120;
   const INNER_H   = DP_PITCH_H - CALLOUT_H;
 
-  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Restart Possession — ${homeTeam}`,  forWonEvts.length, "#22d3ee");
+  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Restart Possession — ${homeTeam}`,  forOwnedEvts.length, "#22d3ee");
   dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `${homeTeam} won ${ko.won} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
     `${homeTeam} scored from ${forScoredFromKo} restart${forScoredFromKo !== 1 ? "s" : ""}`,
@@ -6384,9 +6388,9 @@ function makeRestartVisualPage(
     "#22d3ee",
   );
   const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
-  renderEventMarkers(ctx, forWonEvts, leftInner);
+  renderEventMarkers(ctx, forOwnedEvts, leftInner);
 
-  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Restart Possession — ${awayTeam}`, oppWonEvts.length, "#fb7185");
+  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Restart Possession — ${awayTeam}`, oppOwnedEvts.length, "#fb7185");
   dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `${awayTeam} won ${ko.lost} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
     `${awayTeam} scored from ${oppScoredFromKo} restart${oppScoredFromKo !== 1 ? "s" : ""}`,
@@ -6394,7 +6398,7 @@ function makeRestartVisualPage(
     "#fb7185",
   );
   const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
-  renderEventMarkers(ctx, oppWonEvts, rightInner);
+  renderEventMarkers(ctx, oppOwnedEvts, rightInner);
 
   // ── Panel 1: Restart Summary ──────────────────────────────────────────────
   {
@@ -6444,7 +6448,7 @@ function makeRestartVisualPage(
     dpIntelligencePanel(ctx, prompts, "KICKOUT", DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 8, "#22d3ee");
   }
 
-  drawEventCountFooter(ctx, forWonEvts.length + oppWonEvts.length);
+  drawEventCountFooter(ctx, forOwnedEvts.length + oppOwnedEvts.length);
   return canvas;
 }
 
@@ -8044,9 +8048,9 @@ function makeHtPressureDamageMapPage(
 
   const facts: string[] = [];
   if (totalOppScores > 0) facts.push(`${truncTeam(awayTeam, 14)} scored ${totalOppScores} time${totalOppScores !== 1 ? "s" : ""}`);
-  if (oppScoreHot)        facts.push(`Scoring danger: ${oppScoreHot.label} (${oppScoreHot.count})`);
+  if (oppScoreHot)        facts.push(`${truncTeam(awayTeam, 14)} scoring danger: ${oppScoreHot.label} (${oppScoreHot.count})`);
   if (totalForLosses > 0) facts.push(`${truncTeam(homeTeam, 14)} lost possession ${totalForLosses} time${totalForLosses !== 1 ? "s" : ""}`);
-  if (forLossHot && facts.length < 3) facts.push(`Loss zone: ${forLossHot.label} (${forLossHot.count})`);
+  if (forLossHot && facts.length < 3) facts.push(`${truncTeam(homeTeam, 14)} loss zone: ${forLossHot.label} (${forLossHot.count})`);
   if (facts.length === 0) facts.push("No scoring threats or possession losses recorded.");
 
   drawHtCalloutStrip(ctx, facts, ["#ef4444", "#fbbf24", "#94a3b8"]);
@@ -8236,8 +8240,8 @@ function makeHtKickoutVisionPage(
 
   const facts: string[] = [];
   if (totalKO > 0) facts.push(`${truncTeam(homeTeam, 14)} ${restartTerm}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
-  if (forHot)      facts.push(`Best zone: ${forHot.label}`);
-  if (oppHot)      facts.push(`Conceded most: ${oppHot.label}`);
+  if (forHot)      facts.push(`${truncTeam(homeTeam, 14)} best zone: ${forHot.label}`);
+  if (oppHot)      facts.push(`${truncTeam(homeTeam, 14)} conceded most: ${oppHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTerm} data recorded.`);
 
   drawHtCalloutStrip(ctx, facts, ["#14b8a6", "#14b8a6", "#ef4444"]);
@@ -9236,9 +9240,9 @@ function makeFtAttackCorridorsPage(
 
   const facts: string[] = [];
   if (chScores[bestScoreCh] > 0)
-    facts.push(`Scoring corridor: ${bestScoreCh.toLowerCase()} channel (${chScores[bestScoreCh]} score${chScores[bestScoreCh] !== 1 ? "s" : ""})`);
+    facts.push(`${truncTeam(homeTeam, 14)} scoring: ${bestScoreCh.toLowerCase()} channel (${chScores[bestScoreCh]} score${chScores[bestScoreCh] !== 1 ? "s" : ""})`);
   if (chFails[mostWastedCh] > 0 && mostWastedCh !== bestScoreCh)
-    facts.push(`Most wastage: ${mostWastedCh.toLowerCase()} channel (${chFails[mostWastedCh]} miss${chFails[mostWastedCh] !== 1 ? "es" : ""})`);
+    facts.push(`${truncTeam(homeTeam, 14)} wastage: ${mostWastedCh.toLowerCase()} channel (${chFails[mostWastedCh]} miss${chFails[mostWastedCh] !== 1 ? "es" : ""})`);
   if (totalShots > 0)
     facts.push(`${totalScores} / ${totalShots} shots converted (${shotEff}%)`);
   if (facts.length === 0) facts.push("No FOR attack data recorded.");
@@ -10661,7 +10665,7 @@ function makeOurShotProfilePage(
     colors.push("#818cf8");
   }
   if (scoreHot && facts.length < 3) {
-    facts.push(`Best scoring zone: ${scoreHot.label} (${scoreHot.count})`);
+    facts.push(`${truncTeam(homeTeam, 12)} best zone: ${scoreHot.label} (${scoreHot.count})`);
     colors.push("#34d399");
   }
   if (facts.length === 0) facts.push("No shot data recorded.");
@@ -10809,7 +10813,7 @@ function makeOppShotProfilePage(
     colors.push("#f472b6");
   }
   if (oppScoreHot && facts.length < 3) {
-    facts.push(`Their best zone: ${oppScoreHot.label} (${oppScoreHot.count})`);
+    facts.push(`${truncTeam(awayTeam, 12)} best scoring zone: ${oppScoreHot.label} (${oppScoreHot.count})`);
     colors.push("#ef4444");
   }
   if (facts.length === 0) facts.push("No opposition shot data recorded.");
@@ -10845,32 +10849,34 @@ function makeOurRestartPlatformPage(
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, restartTitle, `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
-  // ── Event subsets ─────────────────────────────────────────────────────────
-  // FOR won = KICKOUT_WON by FOR, or KICKOUT_CONCEDED by OPP
-  const forWonEvts = events.filter(
-    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
-           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
+  // ── Ownership helpers (V1.2+ explicit; legacy fallback = teamSide) ─────────
+  const getOwnerOur = (e: PdfExportEvent): "FOR" | "OPP" =>
+    e.restartOwner != null ? e.restartOwner : e.teamSide as "FOR" | "OPP";
+  const getWinnerOur = (e: PdfExportEvent): "FOR" | "OPP" =>
+    e.kind === "KICKOUT_WON"
+      ? e.teamSide as "FOR" | "OPP"
+      : e.teamSide === "FOR" ? "OPP" : "FOR";
+
+  // ── Event subsets — FOR-owned restarts only ───────────────────────────────
+  const forOwnedEvts    = events.filter(
+    (e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwnerOur(e) === "FOR",
   );
-  // OPP won = KICKOUT_CONCEDED by FOR, or KICKOUT_WON by OPP
-  const oppWonEvts = events.filter(
-    (e) => (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR") ||
-           (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP"),
-  );
-  const allKickoutEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind));
+  const forRetainedEvts = forOwnedEvts.filter((e) => getWinnerOur(e) === "FOR");
+  const forLostEvts     = forOwnedEvts.filter((e) => getWinnerOur(e) !== "FOR");
 
   // ── Pitch + zone colour overlays ──────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  const forWonCounts = pdfZoneCounts(forWonEvts);
-  const oppWonCounts = pdfZoneCounts(oppWonEvts);
+  const forRetainedCounts = pdfZoneCounts(forRetainedEvts);
+  const forLostCounts     = pdfZoneCounts(forLostEvts);
 
-  for (let i = 0; i < forWonCounts.length; i++) {
-    const forZone = forWonCounts[i];
-    const oppZone = oppWonCounts[i];
-    const total   = forZone.count + oppZone.count;
+  for (let i = 0; i < forRetainedCounts.length; i++) {
+    const retZone  = forRetainedCounts[i];
+    const lostZone = forLostCounts[i];
+    const total    = retZone.count + lostZone.count;
     if (total === 0) continue;
-    const rect      = zonePixelRect(forZone.bounds, inner);
-    const diff      = forZone.count - oppZone.count;
+    const rect      = zonePixelRect(retZone.bounds, inner);
+    const diff      = retZone.count - lostZone.count;
     const intensity = Math.min(total / 4, 1);
     if (diff > 1) {
       ctx.fillStyle = `rgba(20,184,166,${(0.20 + intensity * 0.38).toFixed(2)})`;
@@ -10882,8 +10888,8 @@ function makeOurRestartPlatformPage(
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   }
 
-  // ── Event markers ─────────────────────────────────────────────────────────
-  renderHtMarkers(ctx, allKickoutEvts, inner);
+  // ── Event markers — our restarts only ────────────────────────────────────
+  renderHtMarkers(ctx, forOwnedEvts, inner);
 
   // ── Zone badge pills ──────────────────────────────────────────────────────
   ctx.save();
@@ -10891,18 +10897,18 @@ function makeOurRestartPlatformPage(
   ctx.textAlign    = "center";
   ctx.font         = "bold 14px sans-serif";
 
-  for (let i = 0; i < forWonCounts.length; i++) {
-    const forZone = forWonCounts[i];
-    const oppZone = oppWonCounts[i];
-    const total   = forZone.count + oppZone.count;
+  for (let i = 0; i < forRetainedCounts.length; i++) {
+    const retZone  = forRetainedCounts[i];
+    const lostZone = forLostCounts[i];
+    const total    = retZone.count + lostZone.count;
     if (total === 0) continue;
-    const rect   = zonePixelRect(forZone.bounds, inner);
+    const rect   = zonePixelRect(retZone.bounds, inner);
     const midX   = rect.x + rect.w / 2;
     const midY   = rect.y + rect.h / 2;
-    const label  = `${forZone.count}W / ${oppZone.count}L`;
+    const label  = `${retZone.count}W / ${lostZone.count}L`;
     const tw     = ctx.measureText(label).width + 16;
-    const isTeal = forZone.count > oppZone.count;
-    const isRed  = oppZone.count > forZone.count;
+    const isTeal = retZone.count > lostZone.count;
+    const isRed  = lostZone.count > retZone.count;
     ctx.fillStyle = isTeal ? "rgba(20,184,166,0.88)"
                  : isRed  ? "rgba(248,113,113,0.88)"
                  :           "rgba(251,191,36,0.88)";
@@ -10913,14 +10919,14 @@ function makeOurRestartPlatformPage(
   ctx.restore();
 
   // ── Tactical Threat Overlays ──────────────────────────────────────────────
-  // OPP-dominant zones = kickout loss zones (we are conceding possession there)
-  for (let i = 0; i < oppWonCounts.length; i++) {
-    const oZone = oppWonCounts[i];
-    const fZone = forWonCounts[i];
-    const score = computeZoneThreatScore(oZone.count, 0, fZone.count);
+  // Loss-dominant zones = zones where our own restarts are being turned over
+  for (let i = 0; i < forLostCounts.length; i++) {
+    const lostZone = forLostCounts[i];
+    const retZone  = forRetainedCounts[i];
+    const score = computeZoneThreatScore(lostZone.count, 0, retZone.count);
     const level = getThreatLevel(score);
     if (level === "NONE") continue;
-    const rect = zonePixelRect(oZone.bounds, inner);
+    const rect = zonePixelRect(lostZone.bounds, inner);
     const cx   = rect.x + rect.w / 2;
     const cy   = rect.y + rect.h / 2;
     drawThreatRings(ctx, cx, cy, level);
@@ -10934,12 +10940,12 @@ function makeOurRestartPlatformPage(
   // ── Directional Pressure Sweeps ───────────────────────────────────────────
   {
     let bestIdx = -1, bestScore = 0;
-    for (let i = 0; i < oppWonCounts.length; i++) {
-      const s = computeZoneThreatScore(oppWonCounts[i].count, 0, forWonCounts[i].count);
+    for (let i = 0; i < forLostCounts.length; i++) {
+      const s = computeZoneThreatScore(forLostCounts[i].count, 0, forRetainedCounts[i].count);
       if (s > bestScore) { bestScore = s; bestIdx = i; }
     }
     if (bestIdx >= 0 && getThreatLevel(bestScore) !== "NONE") {
-      const rect      = zonePixelRect(oppWonCounts[bestIdx].bounds, inner);
+      const rect      = zonePixelRect(forLostCounts[bestIdx].bounds, inner);
       const cx        = rect.x + rect.w / 2;
       const cy        = rect.y + rect.h / 2;
       const intensity = Math.min(bestScore / 10, 1.0);
@@ -10974,21 +10980,21 @@ function makeOurRestartPlatformPage(
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  const totalFor = forWonEvts.length;
-  const totalOpp = oppWonEvts.length;
-  const totalKO  = totalFor + totalOpp;
-  const forPct   = totalKO > 0 ? Math.round((totalFor / totalKO) * 100) : 0;
-  const forHot   = pdfZoneHotspots(forWonEvts)[0];
-  const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
+  const totalRetained = forRetainedEvts.length;
+  const totalLost     = forLostEvts.length;
+  const totalKO       = forOwnedEvts.length;
+  const retainedPct   = totalKO > 0 ? Math.round((totalRetained / totalKO) * 100) : 0;
+  const retainedHot   = pdfZoneHotspots(forRetainedEvts)[0];
+  const lostHot       = pdfZoneHotspots(forLostEvts)[0];
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`${truncTeam(homeTeam, 14)} ${restartTermLC}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
-  if (forHot)      facts.push(`Best zone: ${forHot.label}`);
-  if (oppHot)      facts.push(`Conceded most: ${oppHot.label}`);
+  if (totalKO > 0) facts.push(`${truncTeam(homeTeam, 14)} ${restartTermLC}: ${totalRetained}W · ${totalLost}L (${retainedPct}% retained)`);
+  if (retainedHot) facts.push(`Best zone: ${retainedHot.label}`);
+  if (lostHot)     facts.push(`Conceded most: ${lostHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTermLC} data recorded.`);
 
   drawHtCalloutStrip(ctx, facts, ["#14b8a6", "#14b8a6", "#ef4444"]);
-  drawEventCountFooter(ctx, allKickoutEvts.length);
+  drawEventCountFooter(ctx, forOwnedEvts.length);
   return canvas;
 }
 
@@ -11019,32 +11025,34 @@ function makeOppRestartPlatformPage(
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, restartTitle, `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
-  // ── Event subsets ─────────────────────────────────────────────────────────
-  // OPP won = KICKOUT_WON by OPP, or KICKOUT_CONCEDED by FOR
-  const oppWonEvts = events.filter(
-    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "OPP") ||
-           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "FOR"),
+  // ── Ownership helpers (V1.2+ explicit; legacy fallback = teamSide) ─────────
+  const getOwnerOpp = (e: PdfExportEvent): "FOR" | "OPP" =>
+    e.restartOwner != null ? e.restartOwner : e.teamSide as "FOR" | "OPP";
+  const getWinnerOpp = (e: PdfExportEvent): "FOR" | "OPP" =>
+    e.kind === "KICKOUT_WON"
+      ? e.teamSide as "FOR" | "OPP"
+      : e.teamSide === "FOR" ? "OPP" : "FOR";
+
+  // ── Event subsets — OPP-owned restarts only ───────────────────────────────
+  const oppOwnedEvts    = events.filter(
+    (e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwnerOpp(e) === "OPP",
   );
-  // FOR won = KICKOUT_WON by FOR, or KICKOUT_CONCEDED by OPP (our pressure on their restarts)
-  const forWonEvts = events.filter(
-    (e) => (e.kind === "KICKOUT_WON"      && e.teamSide === "FOR") ||
-           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
-  );
-  const allKickoutEvts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind));
+  const oppRetainedEvts = oppOwnedEvts.filter((e) => getWinnerOpp(e) === "OPP");
+  const oppLostEvts     = oppOwnedEvts.filter((e) => getWinnerOpp(e) !== "OPP");
 
   // ── Pitch + zone colour overlays ──────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  const oppWonCounts = pdfZoneCounts(oppWonEvts);
-  const forWonCounts = pdfZoneCounts(forWonEvts);
+  const oppRetainedCounts = pdfZoneCounts(oppRetainedEvts);
+  const oppLostCounts     = pdfZoneCounts(oppLostEvts);
 
-  for (let i = 0; i < oppWonCounts.length; i++) {
-    const oppZone = oppWonCounts[i];
-    const forZone = forWonCounts[i];
-    const total   = oppZone.count + forZone.count;
+  for (let i = 0; i < oppRetainedCounts.length; i++) {
+    const retZone  = oppRetainedCounts[i];
+    const lostZone = oppLostCounts[i];
+    const total    = retZone.count + lostZone.count;
     if (total === 0) continue;
-    const rect      = zonePixelRect(oppZone.bounds, inner);
-    const diff      = oppZone.count - forZone.count;
+    const rect      = zonePixelRect(retZone.bounds, inner);
+    const diff      = retZone.count - lostZone.count;
     const intensity = Math.min(total / 4, 1);
     if (diff > 1) {
       // They dominate — amber danger
@@ -11058,8 +11066,8 @@ function makeOppRestartPlatformPage(
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
   }
 
-  // ── Event markers ─────────────────────────────────────────────────────────
-  renderHtMarkers(ctx, allKickoutEvts, inner);
+  // ── Event markers — opp restarts only ────────────────────────────────────
+  renderHtMarkers(ctx, oppOwnedEvts, inner);
 
   // ── Zone badge pills ──────────────────────────────────────────────────────
   ctx.save();
@@ -11067,19 +11075,19 @@ function makeOppRestartPlatformPage(
   ctx.textAlign    = "center";
   ctx.font         = "bold 14px sans-serif";
 
-  for (let i = 0; i < oppWonCounts.length; i++) {
-    const oppZone = oppWonCounts[i];
-    const forZone = forWonCounts[i];
-    const total   = oppZone.count + forZone.count;
+  for (let i = 0; i < oppRetainedCounts.length; i++) {
+    const retZone  = oppRetainedCounts[i];
+    const lostZone = oppLostCounts[i];
+    const total    = retZone.count + lostZone.count;
     if (total === 0) continue;
-    const rect    = zonePixelRect(oppZone.bounds, inner);
+    const rect    = zonePixelRect(retZone.bounds, inner);
     const midX    = rect.x + rect.w / 2;
     const midY    = rect.y + rect.h / 2;
     // THEIR wins / THEIR losses (= our wins on their ball)
-    const label   = `${oppZone.count}W / ${forZone.count}L`;
+    const label   = `${retZone.count}W / ${lostZone.count}L`;
     const tw      = ctx.measureText(label).width + 16;
-    const isAmber = oppZone.count > forZone.count;
-    const isTeal  = forZone.count > oppZone.count;
+    const isAmber = retZone.count > lostZone.count;
+    const isTeal  = lostZone.count > retZone.count;
     ctx.fillStyle = isAmber ? "rgba(245,158,11,0.88)"
                  : isTeal  ? "rgba(20,184,166,0.88)"
                  :            "rgba(251,191,36,0.88)";
@@ -11090,14 +11098,14 @@ function makeOppRestartPlatformPage(
   ctx.restore();
 
   // ── Tactical Threat Overlays ──────────────────────────────────────────────
-  // OPP-dominant zones = their kickout weapon
-  for (let i = 0; i < oppWonCounts.length; i++) {
-    const oZone = oppWonCounts[i];
-    const fZone = forWonCounts[i];
-    const score = computeZoneThreatScore(oZone.count, 0, fZone.count);
+  // OPP-retention-dominant zones = their kickout weapon
+  for (let i = 0; i < oppRetainedCounts.length; i++) {
+    const retZone  = oppRetainedCounts[i];
+    const lostZone = oppLostCounts[i];
+    const score = computeZoneThreatScore(retZone.count, 0, lostZone.count);
     const level = getThreatLevel(score);
     if (level === "NONE") continue;
-    const rect = zonePixelRect(oZone.bounds, inner);
+    const rect = zonePixelRect(retZone.bounds, inner);
     const cx   = rect.x + rect.w / 2;
     const cy   = rect.y + rect.h / 2;
     drawThreatRings(ctx, cx, cy, level);
@@ -11111,12 +11119,12 @@ function makeOppRestartPlatformPage(
   // ── Directional Pressure Sweeps ───────────────────────────────────────────
   {
     let bestIdx = -1, bestScore = 0;
-    for (let i = 0; i < oppWonCounts.length; i++) {
-      const s = computeZoneThreatScore(oppWonCounts[i].count, 0, forWonCounts[i].count);
+    for (let i = 0; i < oppRetainedCounts.length; i++) {
+      const s = computeZoneThreatScore(oppRetainedCounts[i].count, 0, oppLostCounts[i].count);
       if (s > bestScore) { bestScore = s; bestIdx = i; }
     }
     if (bestIdx >= 0 && getThreatLevel(bestScore) !== "NONE") {
-      const rect      = zonePixelRect(oppWonCounts[bestIdx].bounds, inner);
+      const rect      = zonePixelRect(oppRetainedCounts[bestIdx].bounds, inner);
       const cx        = rect.x + rect.w / 2;
       const cy        = rect.y + rect.h / 2;
       const intensity = Math.min(bestScore / 10, 1.0);
@@ -11152,21 +11160,21 @@ function makeOppRestartPlatformPage(
   ctx.restore();
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
-  const totalOpp = oppWonEvts.length;
-  const totalFor = forWonEvts.length;
-  const totalKO  = totalOpp + totalFor;
-  const oppPct   = totalKO > 0 ? Math.round((totalOpp / totalKO) * 100) : 0;
-  const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
-  const forHot   = pdfZoneHotspots(forWonEvts)[0];
+  const totalOppRetained = oppRetainedEvts.length;
+  const totalOppLost     = oppLostEvts.length;
+  const totalKO          = oppOwnedEvts.length;
+  const oppPct           = totalKO > 0 ? Math.round((totalOppRetained / totalKO) * 100) : 0;
+  const oppHot           = pdfZoneHotspots(oppRetainedEvts)[0];
+  const pressureHot      = pdfZoneHotspots(oppLostEvts)[0];
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`${truncTeam(awayTeam, 14)} ${restartTermLC}: ${totalOpp}W · ${totalFor}L (${oppPct}% won)`);
+  if (totalKO > 0) facts.push(`${truncTeam(awayTeam, 14)} ${restartTermLC}: ${totalOppRetained}W · ${totalOppLost}L (${oppPct}% retained)`);
   if (oppHot)      facts.push(`${truncTeam(awayTeam, 14)} best zone: ${oppHot.label}`);
-  if (forHot)      facts.push(`${truncTeam(homeTeam, 14)} pressure zone: ${forHot.label}`);
+  if (pressureHot) facts.push(`${truncTeam(homeTeam, 14)} pressure zone: ${pressureHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTermLC} data recorded.`);
 
   drawHtCalloutStrip(ctx, facts, ["#ef4444", "#ef4444", "#14b8a6"]);
-  drawEventCountFooter(ctx, allKickoutEvts.length);
+  drawEventCountFooter(ctx, oppOwnedEvts.length);
   return canvas;
 }
 
