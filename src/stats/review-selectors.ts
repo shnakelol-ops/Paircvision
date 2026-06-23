@@ -114,3 +114,30 @@ export function selectReviewEvents<TEvent extends ReviewSelectableEvent, TCatego
     return true;
   });
 }
+
+/**
+ * Returns only restart events (KICKOUT_WON / KICKOUT_CONCEDED) owned by `owner`.
+ *
+ * Ownership = who physically took the restart:
+ *   V1.2+  → event.restartOwner (explicit, mutually exclusive)
+ *   Legacy → event.teamSide (kicker always logged under their own teamSide)
+ *
+ * FOR ownership IDs ∩ OPP ownership IDs = empty by construction.
+ * Safe to call before selectReviewEvents; pass the result with teamSide:"ALL".
+ */
+export function selectRestartEventsByOwner<TEvent extends ReviewSelectableEvent>(
+  events: readonly TEvent[],
+  owner: "FOR" | "OPP",
+  half?: "H1" | "H2",
+): TEvent[] {
+  return events.filter((event) => {
+    if (event.kind !== "KICKOUT_WON" && event.kind !== "KICKOUT_CONCEDED") return false;
+    if (event.id.includes("-instant-score-")) return false;
+    if (half === "H1" && resolveReviewEventPeriod(event) !== "1H") return false;
+    if (half === "H2" && resolveReviewEventPeriod(event) !== "2H") return false;
+    if (event.restartOwner === "FOR" || event.restartOwner === "OPP") {
+      return event.restartOwner === owner;
+    }
+    return normalizeReviewEventTeamSide(event) === owner;
+  });
+}

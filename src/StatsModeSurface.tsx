@@ -37,7 +37,7 @@ import { NotesQuickPanel, getMatchNotes } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 import { buildStatsShareCardPng } from "./stats/statsShareCard";
-import { selectReviewEvents } from "./stats/review-selectors";
+import { selectReviewEvents, selectRestartEventsByOwner } from "./stats/review-selectors";
 import { createReviewSession, parseReviewSession, restoreReviewSession, serializeReviewSession } from "./stats/reviewSession";
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "./stats/zones/zone-types";
@@ -1374,10 +1374,22 @@ function getRenderablePitchEvents(
   reviewActivePlayerOnly: boolean,
   activePlayerId: string | null,
 ): LoggedMatchEvent[] {
-  return selectReviewEvents(events, {
+  // For KICKOUTS with a FOR/OPP team filter, gate on ownership before the general selector
+  // so that FOR ownership IDs and OPP ownership IDs are mutually exclusive.
+  const isKickoutOwnershipFilter =
+    reviewEventFilter === "KICKOUTS" &&
+    (reviewTeamContext === "FOR" || reviewTeamContext === "OPP");
+
+  const sourceEvents = isKickoutOwnershipFilter
+    ? selectRestartEventsByOwner(events, reviewTeamContext)
+    : events;
+
+  return selectReviewEvents(sourceEvents, {
     half: reviewHalf,
     segment: reviewSegment,
-    teamSide: reviewTeamContext,
+    // Ownership filtering already applied above; pass ALL so selectReviewEvents
+    // does not re-apply the involvement-based KICKOUTS team filter.
+    teamSide: isKickoutOwnershipFilter ? "ALL" : reviewTeamContext,
     category: reviewEventFilter,
     categoryKinds: reviewFilterKinds,
     zone: reviewZone,
