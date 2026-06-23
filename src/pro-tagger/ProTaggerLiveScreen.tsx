@@ -17,6 +17,7 @@ import { ProTaggerPlayerPicker } from "./ProTaggerPlayerPicker";
 import type { SelectedPlayer } from "./ProTaggerPlayerPicker";
 import { ProTaggerPitchView } from "./ProTaggerPitchView";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
+import { ProTaggerReviewScreen } from "./ProTaggerReviewScreen";
 
 export interface RestoreState {
   events: readonly LoggedMatchEvent[];
@@ -249,6 +250,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const [subOutId, setSubOutId]         = useState<string | null>(null);
   const [subInId, setSubInId]           = useState<string | null>(null);
 
+  // ── Live review overlay ───────────────────────────────────────────────────
+  const [reviewOpen, setReviewOpen]             = useState(false);
+  const [reviewMatch, setReviewMatch]           = useState<ProTaggerSavedMatch | null>(null);
+
   // ── CTS / Actions / Reset / Notes state ─────────────────────────────────────
   const [ctsOpen, setCtsOpen]                   = useState(false);
   const [actionsOpen, setActionsOpen]           = useState(false);
@@ -470,6 +475,40 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const undo = useCallback(() => {
     setLoggedEvents((prev) => prev.slice(0, -1));
   }, []);
+
+  const openReview = useCallback(() => {
+    const events = loggedRef.current;
+    const home   = session.homeTeamName.trim() || "Team A";
+    const away   = session.awayTeamName.trim() || "Team B";
+    const forS   = computeScoreSide(events, "FOR");
+    const oppS   = computeScoreSide(events, "OPP");
+    const snap   = `${fmtGP(forS.goals, forS.points)} – ${fmtGP(oppS.goals, oppS.points)}`;
+    setReviewMatch({
+      id:                  session.id,
+      createdAt:           session.createdAt,
+      homeTeamName:        home,
+      awayTeamName:        away,
+      venue:               session.venue.trim(),
+      sport:               session.sport,
+      matchType:           session.matchType,
+      halfDurationMinutes: session.halfDurationMinutes,
+      scorelineSnapshot:   snap,
+      eventCount:          events.length,
+      events,
+      homeSquad:           session.homeSquad,
+      awaySquad:           session.awaySquad,
+      homeSquadLiveState:  homeSquadState,
+      awaySquadLiveState:  awaySquadState,
+      restoreContext: {
+        matchState:                  matchStateRef.current,
+        currentHalf:                 halfRef.current,
+        matchTimeSeconds:            clockSecondsRef.current,
+        firstHalfAttackingDirection: session.attackDirection,
+      },
+      targets: session.targets,
+    });
+    setReviewOpen(true);
+  }, [session, homeSquadState, awaySquadState]);
 
   // Used only by FT "Save & Finish" — saves AND exits.
   const handleSaveAndEnd = useCallback(() => {
@@ -863,6 +902,11 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           <button onClick={handleStartSecondHalf} style={S.resumeBtn}>
             START SECOND HALF
           </button>
+          {loggedEvents.length > 0 && (
+            <button style={S.reviewMapBtn} onClick={openReview}>
+              Event Map
+            </button>
+          )}
           <button
             style={S.htActionsBtn}
             onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
@@ -892,6 +936,11 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           ) : (
             <button onClick={onEnd} style={{ ...S.resumeBtn, background: "#21262d", borderColor: "#30363d" }}>
               Finish
+            </button>
+          )}
+          {loggedEvents.length > 0 && (
+            <button style={S.reviewMapBtn} onClick={openReview}>
+              Event Map
             </button>
           )}
           {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
@@ -1182,6 +1231,14 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 Save Match
               </button>
 
+              <button
+                style={{ ...AS.actionBtn, ...(loggedEvents.length === 0 ? AS.actionBtnDisabled : {}) }}
+                disabled={loggedEvents.length === 0}
+                onClick={() => { setActionsOpen(false); openReview(); }}
+              >
+                Event Map
+              </button>
+
               <button style={AS.actionBtn} onClick={handleShare}>
                 Share Summary PNG
               </button>
@@ -1251,6 +1308,16 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
             </div>
 
           </div>
+        </div>
+      )}
+
+      {/* ── Live review overlay ────────────────────────────────────── */}
+      {reviewOpen && reviewMatch && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 200 }}>
+          <ProTaggerReviewScreen
+            match={reviewMatch}
+            onBack={() => setReviewOpen(false)}
+          />
         </div>
       )}
 
@@ -1531,6 +1598,18 @@ const S: Record<string, CSSProperties> = {
     border: "1px solid #388bfd",
     borderRadius: 8,
     color: "#79c0ff",
+    fontSize: 13,
+    fontWeight: 700,
+    padding: "10px 24px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+  },
+  reviewMapBtn: {
+    background: "rgba(34,211,238,0.08)",
+    border: "1px solid #22d3ee",
+    borderRadius: 8,
+    color: "#22d3ee",
     fontSize: 13,
     fontWeight: 700,
     padding: "10px 24px",
