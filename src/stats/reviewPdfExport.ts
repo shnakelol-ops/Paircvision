@@ -1474,12 +1474,13 @@ function calcPlayerPageCount(
   if (players.length === 0) return 1; // "no data" page
 
   const HDR_H = 54;   // table column header
+  const NOTE_H = hasIncompletePlayerAttribution(events) ? 22 : 0;
   const SEC_H = 36;   // team section banner
   const ROW_H = 58;   // player data row
   const BREAK_LIMIT = CANVAS_H - 28; // 1052
 
   let pages = 1;
-  let ry = 82 + HDR_H; // start below page header + table header
+  let ry = 82 + NOTE_H + HDR_H; // start below page header + optional note + table header
   let currentSide: "FOR" | "OPP" | null = null;
 
   for (const p of players) {
@@ -1488,7 +1489,7 @@ function calcPlayerPageCount(
       currentSide = p.teamSide;
       if (ry + SEC_H > BREAK_LIMIT) {
         pages++;
-        ry = 82 + HDR_H;
+        ry = 82 + NOTE_H + HDR_H;
       }
       ry += SEC_H;
     }
@@ -1496,12 +1497,18 @@ function calcPlayerPageCount(
     if (ry + ROW_H > BREAK_LIMIT) {
       pages++;
       // On continuation pages we always redraw the section banner for context
-      ry = 82 + HDR_H + SEC_H;
+      ry = 82 + NOTE_H + HDR_H + SEC_H;
     }
     ry += ROW_H;
   }
 
   return pages;
+}
+
+function hasIncompletePlayerAttribution(events: readonly PdfExportEvent[]): boolean {
+  const validEvts = events.filter((e) => !e.id.includes("-instant-score-"));
+  if (validEvts.length === 0) return false;
+  return validEvts.some((e) => e.playerId == null && e.playerNumber == null);
 }
 
 /**
@@ -1520,6 +1527,7 @@ function makePlayerPages(
   sport: PitchSport = "gaelic",
 ): HTMLCanvasElement[] {
   const players = collectPlayerStats(events, homeSquad, awaySquad);
+  const showAttributionNote = hasIncompletePlayerAttribution(events);
 
   // ── Table geometry — 13 columns; Net T/O added; centered on 1920px canvas ────
   // #(65) Name(230) Score(150) Shots(100) Wides(75) T/O Won(100) T/O Lost(100)
@@ -1556,8 +1564,21 @@ function makePlayerPages(
     drawPageHeader(activeCtx, "Player Breakdown",
       `${homeTeam} v ${awayTeam}`, startPageNum + pageIdx, totalPages);
 
-    // Table column header row
     ry = 82;
+    if (showAttributionNote) {
+      activeCtx.fillStyle    = "#fbbf24";
+      activeCtx.font         = "13px sans-serif";
+      activeCtx.textBaseline = "middle";
+      activeCtx.textAlign    = "left";
+      activeCtx.fillText(
+        "Player attribution incomplete: table includes only player-tagged events; team totals use all events.",
+        tL,
+        ry + 11,
+      );
+      ry += 22;
+    }
+
+    // Table column header row
     activeCtx.fillStyle = "rgba(255,255,255,0.07)";
     activeCtx.fillRect(tL, ry, tableW, HDR_H);
     activeCtx.fillStyle = "#7dd3fc";
@@ -1611,6 +1632,14 @@ function makePlayerPages(
     activeCtx.textBaseline = "middle";
     activeCtx.textAlign    = "center";
     activeCtx.fillText("No player-tagged events recorded.", CANVAS_W / 2, CANVAS_H / 2);
+    if (showAttributionNote) {
+      activeCtx.font = "18px sans-serif";
+      activeCtx.fillText(
+        "Team totals still include all logged events.",
+        CANVAS_W / 2,
+        CANVAS_H / 2 + 34,
+      );
+    }
     results.push(activeCanvas);
     return results;
   }
@@ -1871,7 +1900,7 @@ function makeChainSummaryPage(
 
     const chainRows: { label: string; ruleId: import("./chains/chain-types").ChainRuleId }[] = [
       { label: `${koLabel(sport)} Won → Score`,       ruleId: "KICKOUT_TO_SCORE"              },
-      { label: `${koLabel(sport)} Lost → Score Agst`, ruleId: "KICKOUT_LOST_TO_SCORE_AGAINST" },
+      { label: `${koLabel(sport)} Lost → Score Against`, ruleId: "KICKOUT_LOST_TO_SCORE_AGAINST" },
       { label: "Turnover Won → Score",       ruleId: "TURNOVER_TO_SCORE"              },
       { label: "Turnover Won → Shot",        ruleId: "TURNOVER_TO_SHOT"               },
       { label: "Free Won → Goal",            ruleId: "FREE_WON_TO_GOAL"               },
@@ -1984,7 +2013,7 @@ function makeChainSummaryPage(
     cy += 6;
     cy = drawStatRow(COL2_X, cy, COL_W, "Won → Score",        `${val(to.wonToScore)} (${pct(to.wonToScorePercent)})`,  "#4ade80", true);
     cy = drawStatRow(COL2_X, cy, COL_W, "Won → Shot",         `${val(to.wonToShot)} (${pct(to.wonToShotPercent)})`,    "#a78bfa", false);
-    cy = drawStatRow(COL2_X, cy, COL_W, "Lost → Score Agst",  val(to.lostAllowedScore),                                "#f97316", true);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Lost → Score Against", val(to.lostAllowedScore),                                "#f97316", true);
   }
 
   // ── COL 3: Scoring Runs detail ──────────────────────────────────────────────
@@ -2459,10 +2488,10 @@ function makeKickoutChainPage(
     const koLostFor    = koLostScoreChains.filter((c) => c.teamSide === "FOR").length;
     const koLostOpp    = koLostScoreChains.filter((c) => c.teamSide === "OPP").length;
 
-    cy = drawStatRow(COL3_X, cy, COL_W, `KO Won → Score  (${truncTeam(homeTeam, 10)})`,     String(koToScoreFor), "#7dd3fc", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `KO Won → Score  (${truncTeam(awayTeam, 10)})`,     String(koToScoreOpp), "#fb7185", true);
-    cy = drawStatRow(COL3_X, cy, COL_W, `KO Lost → Score Agst (${truncTeam(homeTeam, 8)})`, String(koLostFor),    "#f97316", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `KO Lost → Score Agst (${truncTeam(awayTeam, 8)})`, String(koLostOpp),    "#f97316", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${koLabel(sport)} Won → Score (${truncTeam(homeTeam, 10)})`,      String(koToScoreFor), "#7dd3fc", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${koLabel(sport)} Won → Score (${truncTeam(awayTeam, 10)})`,      String(koToScoreOpp), "#fb7185", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${koLabel(sport)} Lost → Score Against (${truncTeam(homeTeam, 8)})`, String(koLostFor), "#f97316", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${koLabel(sport)} Lost → Score Against (${truncTeam(awayTeam, 8)})`, String(koLostOpp), "#f97316", true);
     cy += 12;
 
     // Scoring from kickout possession
@@ -4140,8 +4169,11 @@ function makeOppositionSnapshotPage(
   const oppShotsAll = events.filter(
     (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
   ).length;
-  const oppShotAcc = oppShotsAll > 0
-    ? Math.round((oppScore.total / oppShotsAll) * 100)
+  const oppScoreCount = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
+  ).length;
+  const oppScoreConversion = oppShotsAll > 0
+    ? Math.round((oppScoreCount / oppShotsAll) * 100)
     : 0;
 
   // Score zone: average normalised-x across OPP score events (nx always finite on PdfExportEvent)
@@ -4338,8 +4370,8 @@ function makeOppositionSnapshotPage(
                        oppScore.goals >= 2 ? OPP_ACCENT : "#f8fafc", false);
     cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Points (incl. frees & 2-pointers)",
                        String(oppScore.points), "#f8fafc", true);
-    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Shot accuracy",
-                       oppShotsAll > 0 ? `${oppShotAcc}%` : "—", "#f8fafc", false);
+    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Score Conversion",
+                       oppShotsAll > 0 ? `${oppScoreConversion}%` : "—", "#f8fafc", false);
     drawMetricRow(L_COL_X, cy, L_COL_W, "Score zone (avg position)",
                   scoreZoneLabel, "#94a3b8", true);
   }
@@ -5517,7 +5549,7 @@ function makeShotEfficiencyPage(
       stats.freeScored > 0 ? accentColor : MUTED, false);
     cy = drawRow(colX, cy, "Placed Missed", String(stats.freeMissed),
       stats.freeMissed > 0 ? NEUTRAL    : MUTED, true);
-    cy = drawRow(colX, cy, "Free Conv %", freeTotal > 0 ? `${stats.freeConvPct}%` : "—",
+    cy = drawRow(colX, cy, "Placed Conv %", freeTotal > 0 ? `${stats.freeConvPct}%` : "—",
       freeTotal        > 0 ? accentColor : MUTED, false);
   }
 
@@ -6357,20 +6389,20 @@ function makeRestartVisualPage(
   const CALLOUT_H = 120;
   const INNER_H   = DP_PITCH_H - CALLOUT_H;
 
-  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Our Restarts — ${homeTeam}`,        forWonEvts.length, "#22d3ee");
+  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Restart Possession — ${homeTeam}`,  forWonEvts.length, "#22d3ee");
   dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
-    `Won ${ko.won} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
-    `${forScoredFromKo} led to score${forScoredFromKo !== 1 ? "s" : ""}`,
+    `${homeTeam} won ${ko.won} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
+    `${homeTeam} scored from ${forScoredFromKo} restart${forScoredFromKo !== 1 ? "s" : ""}`,
     `H1: ${h1For}–${h1Opp} / H2: ${h2For}–${h2Opp}`,
     "#22d3ee",
   );
   const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
   renderEventMarkers(ctx, forWonEvts, leftInner);
 
-  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Opposition Restarts — ${awayTeam}`, oppWonEvts.length, "#fb7185");
+  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Restart Possession — ${awayTeam}`, oppWonEvts.length, "#fb7185");
   dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
-    `Opposition won ${ko.lost} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
-    `${oppScoredFromKo} score${oppScoredFromKo !== 1 ? "s" : ""} conceded`,
+    `${awayTeam} won ${ko.lost} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
+    `${awayTeam} scored from ${oppScoredFromKo} restart${oppScoredFromKo !== 1 ? "s" : ""}`,
     `H1: ${h1Opp}–${h1For} / H2: ${h2Opp}–${h2For}`,
     "#fb7185",
   );
@@ -6652,7 +6684,7 @@ function makeFreeAnalysisPage(
   // Prompts: CHAIN category covers FREE_WON_TO_GOAL rule; fall back to GENERAL.
   const allPrompts   = deriveReviewPrompts(analysis, homeTeam, awayTeam, sport);
   const chainPrompts = allPrompts.filter((p) => p.category === "CHAIN");
-  const freePomptCat: ReviewPromptCategory = chainPrompts.length > 0 ? "CHAIN" : "GENERAL";
+  const freePromptCat: ReviewPromptCategory = chainPrompts.length > 0 ? "CHAIN" : "GENERAL";
 
   // Scoring chains from free wins — FREE_WON_TO_GOAL chains already in ChainAnalysis
   const forFreeScoringChains = (analysis.byRule["FREE_WON_TO_GOAL"] ?? []).filter((c) => c.teamSide === "FOR").length;
@@ -6724,7 +6756,7 @@ function makeFreeAnalysisPage(
   // ── Panel 3: Free Intelligence ────────────────────────────────────────────
   {
     const panelY = dpPanelStart(ctx, DP_P3_X, DP_STRIP_Y, DP_P3_W, DP_STRIP_H, "Free Intelligence", "#818cf8");
-    dpIntelligencePanel(ctx, allPrompts, freePomptCat, DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 8, "#818cf8");
+    dpIntelligencePanel(ctx, allPrompts, freePromptCat, DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 8, "#818cf8");
   }
 
   drawEventCountFooter(ctx, forFreeEvts.length + oppFreeEvts.length);
@@ -6753,6 +6785,7 @@ function makeQuadPitchMapPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  footerEventCount?: number,
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -6821,7 +6854,7 @@ function makeQuadPitchMapPage(
     renderEventMarkers(ctx, quad.events, inner);
   });
 
-  drawEventCountFooter(ctx, totalEvents);
+  drawEventCountFooter(ctx, footerEventCount ?? totalEvents);
   return canvas;
 }
 
@@ -7036,16 +7069,18 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // p.9+N — 1H Pitch Overview
   const p_arch = p_shotBase + 3;
   try {
+    const h1AllEvents = selectPdfEvents(events, "H1", "ALL", "ALL");
     const c = makeQuadPitchMapPage(
       sport,
       [
-        { title: "1H — All Events",            events: selectPdfEvents(events, "H1", "ALL", "ALL"),    accentColor: "#94a3b8" },
+        { title: "1H — All Events",            events: h1AllEvents,                                    accentColor: "#94a3b8" },
         { title: "1H — Scores",                events: selectPdfEvents(events, "H1", "ALL", "SCORES"), accentColor: "#4ade80" },
         { title: `1H — ${homeTeamName} Shots`, events: selectPdfEvents(events, "H1", "FOR", "SHOTS"), accentColor: "#7dd3fc" },
         { title: `1H — ${awayTeamName} Shots`, events: selectPdfEvents(events, "H1", "OPP", "SHOTS"), accentColor: "#fb7185" },
       ],
       "1H Pitch Overview",
       homeTeamName, awayTeamName, p_arch, TOTAL_PAGES,
+      h1AllEvents.length,
     );
     stampLayerBadge(c, "STATISTICS");
     addCanvasPage(c, true, "1H Pitch Overview");
@@ -7056,16 +7091,18 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   // p.10+N — 2H Pitch Overview
   try {
+    const h2AllEvents = selectPdfEvents(events, "H2", "ALL", "ALL");
     const c = makeQuadPitchMapPage(
       sport,
       [
-        { title: "2H — All Events",            events: selectPdfEvents(events, "H2", "ALL", "ALL"),    accentColor: "#94a3b8" },
+        { title: "2H — All Events",            events: h2AllEvents,                                    accentColor: "#94a3b8" },
         { title: "2H — Scores",                events: selectPdfEvents(events, "H2", "ALL", "SCORES"), accentColor: "#4ade80" },
         { title: `2H — ${homeTeamName} Shots`, events: selectPdfEvents(events, "H2", "FOR", "SHOTS"), accentColor: "#7dd3fc" },
         { title: `2H — ${awayTeamName} Shots`, events: selectPdfEvents(events, "H2", "OPP", "SHOTS"), accentColor: "#fb7185" },
       ],
       "2H Pitch Overview",
       homeTeamName, awayTeamName, p_arch + 1, TOTAL_PAGES,
+      h2AllEvents.length,
     );
     stampLayerBadge(c, "STATISTICS");
     addCanvasPage(c, true, "2H Pitch Overview");
@@ -9877,11 +9914,11 @@ function makeFtTacticalMatchStoryPage(
   if (ko.total >= 3) {
     if (ko.won > ko.lost) {
       sentences.push(
-        `Restart dominance was a clear platform: won ${ko.won} of ${ko.total} ${koLabelPluralLC(sport)}${ko.wonToScore > 0 ? `, converting ${ko.wonToScore} to score${ko.wonToScore !== 1 ? "s" : ""}` : ""}.`,
+        `${homeTeam} restart possession was a clear platform: ${homeTeam} won ${ko.won} of ${ko.total} ${koLabelPluralLC(sport)}${ko.wonToScore > 0 ? `, converting ${ko.wonToScore} to score${ko.wonToScore !== 1 ? "s" : ""}` : ""}.`,
       );
     } else if (ko.lost > ko.won) {
       sentences.push(
-        `Restart losses were costly — conceded ${ko.lost} of ${ko.total} ${koLabelPluralLC(sport)}${ko.lostAllowedScore > 0 ? `, allowing ${ko.lostAllowedScore} opposition score${ko.lostAllowedScore !== 1 ? "s" : ""}` : ""}.`,
+        `${awayTeam} restart pressure was costly for ${homeTeam} — ${awayTeam} won ${ko.lost} of ${ko.total} ${koLabelPluralLC(sport)}${ko.lostAllowedScore > 0 ? `, scoring ${ko.lostAllowedScore} time${ko.lostAllowedScore !== 1 ? "s" : ""} from those wins` : ""}.`,
       );
     }
   }
@@ -9890,15 +9927,15 @@ function makeFtTacticalMatchStoryPage(
   if (forShots.length >= 3) {
     if (shotEff >= 60) {
       sentences.push(
-        `Clinical in front of goal: ${forScoreEvts.length} scores from ${forShots.length} attempts (${shotEff}% efficiency).`,
+        `${homeTeam} were clinical in front of goal: ${forScoreEvts.length} scores from ${forShots.length} attempts (${shotEff}% score conversion).`,
       );
     } else if (forWides >= 4) {
       sentences.push(
-        `${forWides} wides and misses undermined the tally — ${shotEff}% efficiency from ${forShots.length} attempts.`,
+        `${homeTeam} recorded ${forWides} wides and misses — ${shotEff}% score conversion from ${forShots.length} attempts.`,
       );
     } else {
       sentences.push(
-        `Shot accuracy: ${forScoreEvts.length} of ${forShots.length} attempts converted (${shotEff}%).`,
+        `${homeTeam} score conversion: ${forScoreEvts.length} of ${forShots.length} attempts converted (${shotEff}%).`,
       );
     }
   }
@@ -9908,13 +9945,13 @@ function makeFtTacticalMatchStoryPage(
   const bestOpp = analysis.scoringRuns.maxConsecutiveOpp;
   if (bestFor >= 3 || bestOpp >= 3) {
     if (bestFor >= bestOpp) {
-      sentences.push(`Best scoring run: ${bestFor} consecutive — a key period of momentum.`);
+      sentences.push(`${homeTeam}'s best scoring run was ${bestFor} consecutive scores — a key period of momentum.`);
     } else {
-      sentences.push(`Opposition mounted a ${bestOpp}-score run — a momentum shift to address.`);
+      sentences.push(`${awayTeam} mounted a ${bestOpp}-score run — a momentum shift to address.`);
     }
   } else if (analysis.turnovers.wonToScore > 0) {
     sentences.push(
-      `Turnover-to-score: ${analysis.turnovers.wonToScore} possession win${analysis.turnovers.wonToScore !== 1 ? "s" : ""} converted directly into scores.`,
+      `${homeTeam} converted ${analysis.turnovers.wonToScore} turnover possession win${analysis.turnovers.wonToScore !== 1 ? "s" : ""} directly into scores.`,
     );
   }
 

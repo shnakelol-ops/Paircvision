@@ -12,11 +12,16 @@ export function eventSource(event: EventLike): ScoreSource {
   const tags = event.tags;
   if (!tags) return "UNKNOWN";
 
-  // Stats Lite uses SOURCE_* prefix; Stats Pro uses bare label
+  // Stats Lite uses SOURCE_* prefix; Stats Pro uses bare labels.
+  // Pro JSON can emit FORTY_FIVE, which should display in the "45" source row.
   if (tags.includes("SOURCE_FREE")    || tags.includes("FREE"))    return "FREE";
   if (tags.includes("SOURCE_PLAY")    || tags.includes("PLAY"))    return "PLAY";
   if (tags.includes("SOURCE_MARK")    || tags.includes("MARK"))    return "MARK";
-  if (tags.includes("SOURCE_45")      || tags.includes("45"))      return "45";
+  if (
+    tags.includes("SOURCE_45") ||
+    tags.includes("45") ||
+    tags.includes("FORTY_FIVE")
+  ) return "45";
   if (tags.includes("SOURCE_PENALTY") || tags.includes("PENALTY")) return "PENALTY";
   return "UNKNOWN";
 }
