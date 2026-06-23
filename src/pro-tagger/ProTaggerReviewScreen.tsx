@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { CSSProperties } from "react";
 import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
 import {
+  openProTaggerMatchStatsReview,
   proTaggerMatchToPdfInput,
   proTaggerMatchToSnapshotInput,
 } from "./pro-tagger-review-adapter";
@@ -62,6 +63,7 @@ interface Props {
 export function ProTaggerReviewScreen({ match, onBack }: Props) {
   const [exporting, setExporting]     = useState<ExportKey | null>(null);
   const [results, setResults]         = useState<Partial<Record<ExportKey, ExportResult>>>({});
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [packGenerating, setPackGenerating] = useState(false);
   const [pack, setPack]               = useState<IntelligencePack | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -81,6 +83,14 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
       .then(() => setResult("full", { ok: true, text: "Exported" }))
       .catch(() => setResult("full", { ok: false, text: "Export failed" }))
       .finally(() => setExporting(null));
+  }
+
+  function handleOpenReview() {
+    if (busy || match.events.length === 0) return;
+    setReviewError(null);
+    if (!openProTaggerMatchStatsReview(match)) {
+      setReviewError("Review failed — storage unavailable");
+    }
   }
 
   function handleHtSnapshot() {
@@ -162,6 +172,18 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
           </div>
           <div style={S.eventCount}>{match.eventCount} events</div>
         </div>
+
+        <button
+          style={{
+            ...S.openReviewBtn,
+            ...((busy || match.events.length === 0) ? S.openReviewBtnDisabled : {}),
+          }}
+          disabled={busy || match.events.length === 0}
+          onClick={handleOpenReview}
+        >
+          Open Match Stats Review
+        </button>
+        {reviewError ? <span style={S.reviewError}>{reviewError}</span> : null}
 
         {/* ── Voice Notes ─────────────────────────────────────────────── */}
         {(() => {
@@ -417,6 +439,28 @@ const S: Record<string, CSSProperties> = {
     fontSize: 11,
     color: "#6e7681",
     marginTop: 2,
+  },
+  openReviewBtn: {
+    background: "#1f6feb",
+    border: "1px solid #388bfd",
+    borderRadius: 10,
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: 700,
+    padding: "14px 16px",
+    width: "100%",
+    cursor: "pointer",
+    outline: "none",
+    letterSpacing: "-0.2px",
+  },
+  openReviewBtnDisabled: {
+    opacity: 0.4,
+    cursor: "default",
+  },
+  reviewError: {
+    fontSize: 11,
+    color: "#f85149",
+    textAlign: "center" as const,
   },
   sectionLabel: {
     fontSize: 10,
