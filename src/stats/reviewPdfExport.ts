@@ -1571,7 +1571,7 @@ function makePlayerPages(
       activeCtx.textBaseline = "middle";
       activeCtx.textAlign    = "left";
       activeCtx.fillText(
-        "Player attribution incomplete: table includes only player-tagged events; team totals use all events.",
+        "Player stats show only events logged with a selected player.",
         tL,
         ry + 11,
       );
@@ -3935,7 +3935,7 @@ function makeTacticalIntelligencePage(
  *   Rows 2–11:         One prompt strip per prompt (h=64, gap=10)
  *
  * Each strip:
- *   [4 px category-colour accent bar] [category chip] [prompt text] [evidence tag]
+ *   [4 px category-colour accent bar] [category chip] [prompt text]
  *
  * All prompts from deriveReviewPrompts() are guaranteed to be:
  *   - Factual, non-prescriptive, and non-judgmental
@@ -4055,7 +4055,6 @@ function makeTacticalReviewGuidePage(
 
     // Vertical centre of the strip — content row 1
     const ROW1_Y = stripY + 22;
-    const ROW2_Y = stripY + 50;
 
     // Category chip (row 1, left)
     ctx.font = "bold 12px sans-serif";
@@ -4090,12 +4089,6 @@ function makeTacticalReviewGuidePage(
     }
     ctx.fillText(display, TEXT_X, ROW1_Y);
 
-    // Evidence tag (row 2, right-aligned — small, dimmed)
-    ctx.fillStyle = "#64748b";
-    ctx.font = "12px sans-serif";
-    ctx.textBaseline = "alphabetic";
-    ctx.textAlign = "right";
-    ctx.fillText(p.evidenceTag, STRIP_X + STRIP_W - 10, ROW2_Y);
   }
 
   // ── Render all strips ──────────────────────────────────────────────────────
@@ -6232,7 +6225,7 @@ function dpPossessionBar(
 
 /**
  * Renders coaching prompts (filtered by category) as a compact intelligence list.
- * Each item: 3px accent bar | wrapped text (2 lines max) | evidence tag.
+ * Each item: 3px accent bar | wrapped text (2 lines max).
  */
 function dpIntelligencePanel(
   ctx: CanvasRenderingContext2D,
@@ -6301,12 +6294,6 @@ function dpIntelligencePanel(
       ctx.font = "13px sans-serif";
       ctx.fillText(line2, x + 15, cy + 4 + LINE_H);
     }
-
-    ctx.font = "11px sans-serif";
-    ctx.fillStyle = "#64748b";
-    ctx.textAlign = "right";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText(prompt.evidenceTag, x + w - 10, cy + ITEM_H - 6);
 
     cy += ITEM_H + 4;
   }
