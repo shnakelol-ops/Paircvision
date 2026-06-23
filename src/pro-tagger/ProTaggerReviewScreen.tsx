@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import type { CSSProperties } from "react";
+import type { ChangeEvent, CSSProperties } from "react";
 import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
 import {
   proTaggerMatchToPdfInput,
   proTaggerMatchToSnapshotInput,
 } from "./pro-tagger-review-adapter";
+import { saveProTaggerMatchFull } from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildIntelligencePack } from "../stats/intelligencePack";
 import type { IntelligencePack } from "../stats/intelligencePack";
@@ -88,6 +89,20 @@ const FILTER_KINDS: Record<Exclude<ReviewCategory, "ALL">, readonly MatchEventKi
               "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "WIDE"],
 };
 
+function isValidProMatch(obj: unknown): obj is ProTaggerSavedMatch {
+  if (typeof obj !== "object" || obj === null) return false;
+  const r = obj as Record<string, unknown>;
+  return (
+    typeof r["id"] === "string" &&
+    typeof r["createdAt"] === "number" &&
+    typeof r["homeTeamName"] === "string" &&
+    typeof r["awayTeamName"] === "string" &&
+    Array.isArray(r["events"]) &&
+    typeof r["restoreContext"] === "object" &&
+    r["restoreContext"] !== null
+  );
+}
+
 // ── Pitch canvas sub-component ────────────────────────────────────────────────
 
 function PitchCanvas({
@@ -137,7 +152,7 @@ interface Props {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function ProTaggerReviewScreen({ match, onBack }: Props) {
+export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
   const [exporting, setExporting]           = useState<ExportKey | null>(null);
   const [results, setResults]               = useState<Partial<Record<ExportKey, ExportResult>>>({});
   const [packGenerating, setPackGenerating] = useState(false);
@@ -149,6 +164,15 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
   const [reviewHalf,     setReviewHalf]     = useState<ReviewHalf>("FULL");
   const [reviewTeam,     setReviewTeam]     = useState<ReviewTeam>("ALL");
   const [reviewCategory, setReviewCategory] = useState<ReviewCategory>("ALL");
+
+  // ── Import state ───────────────────────────────────────────────────────────
+  const [importedMatch, setImportedMatch]   = useState<ProTaggerSavedMatch | null>(null);
+  const [importResult,  setImportResult]    = useState<{ ok: boolean; text: string } | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  // Active match: imported (if any) shadows the prop so all downstream code
+  // (Event Map, PDF export, Intelligence Pack) operates on the same value.
+  const match = importedMatch ?? _match;
 
   const pitchSport = getProPitchSport(match.sport);
   const isHurling  = match.sport === "hurling" || match.sport === "camogie";
@@ -231,6 +255,44 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
       .finally(() => setPackGenerating(false));
   }
 
+  function handleExportJson() {
+    const json = JSON.stringify(match, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    const home = (match.homeTeamName || "home").replace(/[^a-z0-9]+/gi, "-").slice(0, 20);
+    const away = (match.awayTeamName || "away").replace(/[^a-z0-9]+/gi, "-").slice(0, 20);
+    const date = new Date(match.createdAt).toISOString().slice(0, 10);
+    a.download = `paircvision-pro-${home}-v-${away}-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImportFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const raw = evt.target?.result;
+        if (typeof raw !== "string") throw new Error("Could not read file");
+        const parsed: unknown = JSON.parse(raw);
+        if (!isValidProMatch(parsed)) throw new Error("Not a valid Pro match file");
+        saveProTaggerMatchFull(parsed);
+        setImportedMatch(parsed);
+        setImportResult({ ok: true, text: "Imported" });
+      } catch (err) {
+        setImportResult({
+          ok:   false,
+          text: err instanceof Error ? err.message : "Import failed",
+        });
+      }
+      if (importFileRef.current) importFileRef.current.value = "";
+    };
+    reader.readAsText(file);
+  }
+
   const metaParts: string[] = [
     SPORT_LABEL[match.sport]          ?? match.sport,
     MATCH_TYPE_LABEL[match.matchType] ?? match.matchType,
@@ -259,6 +321,12 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
         <span style={S.title}>Review</span>
         <span style={S.headerBadge}>Pro</span>
       </div>
+
+      {importedMatch && (
+        <div style={S.importBanner}>
+          Viewing imported match · {importedMatch.homeTeamName || "Home"} v {importedMatch.awayTeamName || "Away"}
+        </div>
+      )}
 
       <div style={S.body}>
         {/* ── Match card ───────────────────────────────────────────────── */}
@@ -325,6 +393,40 @@ export function ProTaggerReviewScreen({ match, onBack }: Props) {
             {packGenerating ? "Generating…" : "Generate"}
           </button>
         </div>
+
+        {/* ── Match Data ────────────────────────────────────────────────── */}
+        <div style={S.sectionLabel}>Match Data</div>
+
+        <ExportRow
+          label="Export Match JSON"
+          description="Download full match data as JSON"
+          loading={false}
+          result={undefined}
+          disabled={false}
+          onClick={handleExportJson}
+        />
+
+        <div style={S.exportRow}>
+          <button style={S.exportBtn} onClick={() => importFileRef.current?.click()}>
+            <span style={S.exportBtnLabel}>Import Match JSON</span>
+          </button>
+          <div style={S.exportMeta}>
+            <span style={S.exportDesc}>Restore a previously exported Pro match</span>
+            {importResult && (
+              <span style={{ ...S.exportStatus, color: importResult.ok ? "#3fb950" : "#f85149" }}>
+                {importResult.text}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <input
+          ref={importFileRef}
+          type="file"
+          accept=".json,application/json"
+          style={{ display: "none" }}
+          onChange={handleImportFileChange}
+        />
 
         {/* ── PDF Export (secondary) ────────────────────────────────────── */}
         <div style={S.sectionLabel}>PDF Export</div>
@@ -757,6 +859,16 @@ const S: Record<string, CSSProperties> = {
     color:     "#484f58",
     textAlign: "center" as const,
     marginTop: 8,
+  },
+  importBanner: {
+    background:   "rgba(34,211,238,0.08)",
+    borderBottom: "1px solid rgba(34,211,238,0.2)",
+    color:        "#22d3ee",
+    fontSize:     11,
+    fontWeight:   600,
+    padding:      "6px 14px",
+    textAlign:    "center" as const,
+    flexShrink:   0,
   },
 };
 
