@@ -5982,13 +5982,17 @@ export default function StatsModeSurface() {
   const selectedReviewPlayerLabel =
     selectedReviewEvent == null
       ? null
-      : selectedReviewEvent.playerId == null
-        ? "No player"
-        : (() => {
-            const matchedPlayer = playerById.get(selectedReviewEvent.playerId);
-            if (!matchedPlayer) return "Unknown player";
-            return `#${matchedPlayer.number} ${matchedPlayer.name}`;
-          })();
+      : selectedReviewEvent.playerName
+        ? (selectedReviewEvent.playerNumber != null
+            ? `#${selectedReviewEvent.playerNumber} ${selectedReviewEvent.playerName}`
+            : selectedReviewEvent.playerName)
+        : selectedReviewEvent.playerId == null
+          ? "No player"
+          : (() => {
+              const matchedPlayer = playerById.get(selectedReviewEvent.playerId);
+              if (!matchedPlayer) return "Unknown player";
+              return `#${matchedPlayer.number} ${matchedPlayer.name}`;
+            })();
   const selectedReviewKickoutTagLabel =
     selectedReviewEvent == null ||
     !KICKOUT_EVENT_KIND_SET.has(selectedReviewEvent.kind)
