@@ -16,6 +16,7 @@ import { selectReviewEvents } from "../stats/review-selectors";
 import { createPixiPitchSurface } from "../core/pitch/create-pixi-pitch-surface";
 import type { PixiPitchSurfaceHandle } from "../core/pitch/create-pixi-pitch-surface";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
+import { formatMatchClock } from "../core/match/match-state-store";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,14 @@ function getProPitchSport(
   return sport === "ladies_football" ? "gaelic" : sport;
 }
 
+function getProEventTypeLabel(kind: MatchEventKind): string {
+  if (kind === "KICKOUT_CONCEDED") return "KICKOUT LOST";
+  if (kind === "KICKOUT_WON")      return "KICKOUT WON";
+  if (kind === "TURNOVER_LOST")    return "TURNOVER LOST";
+  if (kind === "TURNOVER_WON")     return "TURNOVER WON";
+  return kind;
+}
+
 // ── Pitch review filter config ────────────────────────────────────────────────
 
 type ReviewHalf     = "FULL" | "H1" | "H2";
@@ -99,20 +108,31 @@ function isValidProMatch(obj: unknown): obj is ProTaggerSavedMatch {
 function PitchCanvas({
   events,
   sport,
+  onMarkerTap,
 }: {
   events: readonly LoggedMatchEvent[];
   sport: "gaelic" | "hurling" | "camogie" | "soccer";
+  onMarkerTap?: (eventId: string) => void;
 }) {
-  const hostRef   = useRef<HTMLDivElement>(null);
-  const handleRef = useRef<PixiPitchSurfaceHandle | null>(null);
-  const eventsRef = useRef(events);
-  eventsRef.current = events;
+  const hostRef        = useRef<HTMLDivElement>(null);
+  const handleRef      = useRef<PixiPitchSurfaceHandle | null>(null);
+  const eventsRef      = useRef(events);
+  eventsRef.current    = events;
+  const onMarkerTapRef = useRef(onMarkerTap);
+  onMarkerTapRef.current = onMarkerTap;
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     let disposed = false;
-    void createPixiPitchSurface(host, { sport, canLogEvents: false }).then((h) => {
+    const stableTap = onMarkerTapRef.current
+      ? (id: string) => onMarkerTapRef.current?.(id)
+      : undefined;
+    void createPixiPitchSurface(host, {
+      sport,
+      canLogEvents: false,
+      onMarkerTap: stableTap,
+    }).then((h) => {
       if (disposed) { h.destroy(); return; }
       handleRef.current = h;
       h.setEvents(eventsRef.current);
@@ -122,6 +142,8 @@ function PitchCanvas({
       handleRef.current?.destroy();
       handleRef.current = null;
     };
+  // onMarkerTap intentionally omitted: stableTap is built once from the ref
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sport]);
 
   useEffect(() => {
@@ -161,16 +183,43 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
   const [importResult,  setImportResult]    = useState<{ ok: boolean; text: string } | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
 
+  // ── Event Map marker tap state ─────────────────────────────────────────────
+  const [selectedMapEventId,   setSelectedMapEventId]   = useState<string | null>(null);
+  const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
+  const [localDeletedIds,      setLocalDeletedIds]      = useState(() => new Set<string>());
+
   // Active match: imported (if any) shadows the prop so all downstream code
   // (Event Map, PDF export, Intelligence Pack) operates on the same value.
   const match = importedMatch ?? _match;
+
+  // Reset local delete state when the match identity changes (e.g. after import).
+  useEffect(() => {
+    setLocalDeletedIds(new Set());
+    setSelectedMapEventId(null);
+  }, [match.id]);
+
+  // Reset delete-confirm state whenever the selected event changes.
+  useEffect(() => {
+    setDeleteConfirmPending(false);
+  }, [selectedMapEventId]);
+
+  // Clear selection when the Event Map board is closed.
+  useEffect(() => {
+    if (!mapOpen) setSelectedMapEventId(null);
+  }, [mapOpen]);
 
   const pitchSport = getProPitchSport(match.sport);
   const isHurling  = match.sport === "hurling" || match.sport === "camogie";
   const koLabel    = isHurling ? "P/O" : "K/O";
 
+  // Events minus anything the coach deleted in this session.
+  const effectiveEvents = useMemo(
+    () => match.events.filter((e) => !localDeletedIds.has(e.id)),
+    [match.events, localDeletedIds],
+  );
+
   const filteredEvents = useMemo(
-    () => selectReviewEvents(match.events, {
+    () => selectReviewEvents(effectiveEvents, {
       half:               reviewHalf,
       segment:            "ALL",
       teamSide:           reviewTeam,
@@ -179,9 +228,39 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
       zone:               "FULL",
       attackingDirection: "RIGHT",
     }),
-    [match.events, reviewHalf, reviewTeam, reviewCategory],
+    [effectiveEvents, reviewHalf, reviewTeam, reviewCategory],
   );
 
+  // ── Selected event derivations ─────────────────────────────────────────────
+  const selectedMapEvent = selectedMapEventId == null
+    ? null
+    : effectiveEvents.find((e) => e.id === selectedMapEventId) ?? null;
+
+  const selectedMapTeamLabel = selectedMapEvent == null
+    ? null
+    : selectedMapEvent.team === "HOME"
+      ? match.homeTeamName
+      : selectedMapEvent.team === "AWAY"
+        ? match.awayTeamName
+        : selectedMapEvent.teamSide === "FOR"
+          ? match.homeTeamName
+          : match.awayTeamName;
+
+  const selectedMapPlayerLabel = selectedMapEvent == null
+    ? null
+    : selectedMapEvent.playerName
+      ? (selectedMapEvent.playerNumber
+          ? `#${selectedMapEvent.playerNumber} ${selectedMapEvent.playerName}`
+          : selectedMapEvent.playerName)
+      : "No player";
+
+  const deleteSelectedMapEvent = () => {
+    if (!selectedMapEventId) return;
+    const targetId = selectedMapEventId;
+    setLocalDeletedIds((prev) => new Set([...prev, targetId]));
+    setSelectedMapEventId(null);
+    setDeleteConfirmPending(false);
+  };
 
   // ── Export helpers ─────────────────────────────────────────────────────────
   const hasFirstHalfEvents = match.events.some((e) => e.period === "1H");
@@ -501,11 +580,76 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
             ))}
           </div>
           <div style={B.pitchArea}>
-            <PitchCanvas events={filteredEvents} sport={pitchSport} />
+            <PitchCanvas
+              events={filteredEvents}
+              sport={pitchSport}
+              onMarkerTap={(id) => setSelectedMapEventId(id)}
+            />
           </div>
           <div style={B.footer}>
             {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
           </div>
+
+          {/* ── Event detail bottom sheet ──────────────────────────────── */}
+          {selectedMapEvent ? (
+            <div style={B.sheet}>
+              <div style={B.sheetHandle} />
+              <div style={B.sheetInner}>
+                <div style={B.sheetHead}>
+                  <span style={B.sheetTitle}>Event detail</span>
+                  <button
+                    style={B.sheetClose}
+                    onClick={() => setSelectedMapEventId(null)}
+                    aria-label="Close event detail"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div style={B.sheetRow}>
+                  <span style={B.sheetRowLabel}>Type</span>
+                  <span style={B.sheetRowValue}>{getProEventTypeLabel(selectedMapEvent.type)}</span>
+                </div>
+                {selectedMapTeamLabel ? (
+                  <div style={B.sheetRow}>
+                    <span style={B.sheetRowLabel}>Team</span>
+                    <span style={B.sheetRowValue}>{selectedMapTeamLabel}</span>
+                  </div>
+                ) : null}
+                <div style={B.sheetRow}>
+                  <span style={B.sheetRowLabel}>Player</span>
+                  <span style={B.sheetRowValue}>{selectedMapPlayerLabel}</span>
+                </div>
+                <div style={B.sheetRow}>
+                  <span style={B.sheetRowLabel}>Half</span>
+                  <span style={B.sheetRowValue}>{selectedMapEvent.period}</span>
+                </div>
+                <div style={B.sheetRow}>
+                  <span style={B.sheetRowLabel}>Time</span>
+                  <span style={B.sheetRowValue}>
+                    {formatMatchClock(selectedMapEvent.matchClockSeconds)}
+                  </span>
+                </div>
+                <div style={B.sheetActions}>
+                  <button style={B.sheetBtnEdit} disabled aria-label="Edit event (coming next)">
+                    Edit
+                  </button>
+                  <button
+                    style={deleteConfirmPending ? B.sheetBtnDeleteConfirm : B.sheetBtnDelete}
+                    aria-label={deleteConfirmPending ? "Confirm delete" : "Delete event"}
+                    onClick={() => {
+                      if (deleteConfirmPending) {
+                        deleteSelectedMapEvent();
+                      } else {
+                        setDeleteConfirmPending(true);
+                      }
+                    }}
+                  >
+                    {deleteConfirmPending ? "Confirm?" : "Delete"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -973,6 +1117,127 @@ const B: Record<string, CSSProperties> = {
     background: "#161b22",
     borderTop:  "1px solid #21262d",
     flexShrink: 0,
+  },
+
+  // ── Event detail bottom sheet ─────────────────────────────────────────────
+  sheet: {
+    position:              "absolute",
+    left:                  0,
+    right:                 0,
+    bottom:                0,
+    zIndex:                10,
+    background:            "rgba(10, 20, 35, 0.97)",
+    backdropFilter:        "blur(12px)",
+    WebkitBackdropFilter:  "blur(12px)",
+    borderRadius:          "16px 16px 0 0",
+    border:                "1px solid rgba(148, 163, 184, 0.28)",
+    borderBottom:          "none",
+    boxShadow:             "0 -4px 28px rgba(4, 12, 24, 0.6)",
+    display:               "flex",
+    flexDirection:         "column",
+  } as CSSProperties,
+  sheetHandle: {
+    width:        36,
+    height:       4,
+    borderRadius: 99,
+    background:   "rgba(148, 163, 184, 0.32)",
+    margin:       "10px auto 0",
+    flexShrink:   0,
+  },
+  sheetInner: {
+    padding:       "10px 16px 20px",
+    display:       "flex",
+    flexDirection: "column",
+    gap:           6,
+  } as CSSProperties,
+  sheetHead: {
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    gap:            8,
+    marginBottom:   2,
+  },
+  sheetTitle: {
+    color:         "#e6edf3",
+    fontSize:      10,
+    fontWeight:    700,
+    letterSpacing: "0.18px",
+    textTransform: "uppercase" as const,
+  },
+  sheetClose: {
+    width:        22,
+    height:       22,
+    borderRadius: 999,
+    border:       "1px solid rgba(148, 163, 184, 0.34)",
+    background:   "rgba(15, 23, 42, 0.86)",
+    color:        "#e6edf3",
+    fontSize:     13,
+    lineHeight:   "1",
+    display:      "inline-flex",
+    alignItems:   "center",
+    justifyContent: "center",
+    cursor:       "pointer",
+    outline:      "none",
+  } as CSSProperties,
+  sheetRow: {
+    display:        "flex",
+    alignItems:     "center",
+    justifyContent: "space-between",
+    gap:            10,
+    color:          "#e6edf3",
+    fontSize:       11,
+    minHeight:      22,
+  },
+  sheetRowLabel: {
+    opacity:       0.72,
+    textTransform: "uppercase" as const,
+    fontSize:      10,
+    flexShrink:    0,
+  },
+  sheetRowValue: {
+    fontWeight: 700,
     textAlign:  "right" as const,
+  },
+  sheetActions: {
+    display:   "flex",
+    gap:       8,
+    marginTop: 8,
+  },
+  sheetBtnEdit: {
+    flex:         1,
+    minHeight:    42,
+    borderRadius: 10,
+    border:       "1px solid rgba(148, 163, 184, 0.34)",
+    background:   "rgba(30, 41, 59, 0.8)",
+    color:        "#e6edf3",
+    fontSize:     12,
+    fontWeight:   700,
+    cursor:       "not-allowed",
+    opacity:      0.4,
+    outline:      "none",
+  },
+  sheetBtnDelete: {
+    flex:         1,
+    minHeight:    42,
+    borderRadius: 10,
+    border:       "1px solid rgba(239, 68, 68, 0.5)",
+    background:   "rgba(127, 29, 29, 0.4)",
+    color:        "#fca5a5",
+    fontSize:     12,
+    fontWeight:   700,
+    cursor:       "pointer",
+    outline:      "none",
+  },
+  sheetBtnDeleteConfirm: {
+    flex:         1,
+    minHeight:    42,
+    borderRadius: 10,
+    border:       "1px solid rgba(239, 68, 68, 0.9)",
+    background:   "rgba(185, 28, 28, 0.92)",
+    color:        "#fff",
+    fontSize:     12,
+    fontWeight:   700,
+    cursor:       "pointer",
+    outline:      "none",
   },
 };
