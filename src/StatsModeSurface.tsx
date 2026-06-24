@@ -2269,10 +2269,11 @@ const PANEL_CSS = `
 
 .review-event-card {
   position: fixed;
-  z-index: 24;
+  z-index: 10010;
   left: 0;
   right: 0;
   bottom: 0;
+  max-height: 70vh;
   display: flex;
   flex-direction: column;
   border-radius: 16px 16px 0 0;
@@ -2292,6 +2293,7 @@ const PANEL_CSS = `
   border: 1px solid rgba(148, 163, 184, 0.34);
   min-width: 224px;
   max-width: 280px;
+  max-height: 80vh;
   box-shadow: 0 8px 24px rgba(4, 12, 24, 0.44);
 }
 
@@ -2310,6 +2312,8 @@ const PANEL_CSS = `
   display: flex;
   flex-direction: column;
   gap: 6px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .review-event-card--landscape .review-event-card-handle {
@@ -7598,101 +7602,6 @@ export default function StatsModeSurface() {
           Review
         </button>
       ) : null}
-      {isReviewModeActive && selectedReviewEvent ? (
-        <div
-          className={`review-event-card ${isLandscape ? "review-event-card--landscape" : ""}`}
-          role="dialog"
-          aria-label="Event detail"
-        >
-          <div className="review-event-card-handle" />
-          <div className="review-event-card-inner">
-            <div className="review-event-card-head">
-              <div className="review-event-card-title">Event detail</div>
-              <button
-                type="button"
-                className="review-event-card-close"
-                aria-label="Close event detail"
-                onClick={() => {
-                  setSelectedReviewEventId(null);
-                }}
-              >
-                ×
-              </button>
-            </div>
-            <div className="review-event-card-row">
-              <span className="review-event-card-row-label">Type</span>
-              <span className="review-event-card-row-value">{getReviewEventTypeLabel(selectedReviewEvent.type)}</span>
-            </div>
-            {selectedReviewTeamLabel ? (
-              <div className="review-event-card-row">
-                <span className="review-event-card-row-label">Team</span>
-                <span className="review-event-card-row-value">{selectedReviewTeamLabel}</span>
-              </div>
-            ) : null}
-            <div className="review-event-card-row">
-              <span className="review-event-card-row-label">Player</span>
-              <span className="review-event-card-row-value">{selectedReviewPlayerLabel}</span>
-            </div>
-            <div className="review-event-card-row">
-              <span className="review-event-card-row-label">Half</span>
-              <span className="review-event-card-row-value">{selectedReviewEvent.period}</span>
-            </div>
-            <div className="review-event-card-row">
-              <span className="review-event-card-row-label">Segment</span>
-              <span className="review-event-card-row-value">{getSegmentDisplayLabel(selectedReviewEvent.segment)}</span>
-            </div>
-            <div className="review-event-card-row">
-              <span className="review-event-card-row-label">Time</span>
-              <span className="review-event-card-row-value">
-                {formatMatchClock(selectedReviewEvent.matchClockSeconds)}
-              </span>
-            </div>
-            {selectedReviewKickoutTagLabel ? (
-              <div className="review-event-card-row">
-                <span className="review-event-card-row-label">K/O Tag</span>
-                <span className="review-event-card-row-value">{selectedReviewKickoutTagLabel}</span>
-              </div>
-            ) : null}
-            {(selectedReviewEvent.kind === "TURNOVER_WON" || selectedReviewEvent.kind === "TURNOVER_LOST") &&
-            getTurnoverTagLabel(selectedReviewEvent.tags) ? (
-              <div className="review-event-card-row">
-                <span className="review-event-card-row-label">T/O Tag</span>
-                <span className="review-event-card-row-value">{getTurnoverTagLabel(selectedReviewEvent.tags)}</span>
-              </div>
-            ) : null}
-            {selectedReviewEvent.kind === "SHOT" && getShotTagLabel(selectedReviewEvent.tags) ? (
-              <div className="review-event-card-row">
-                <span className="review-event-card-row-label">Shot Tag</span>
-                <span className="review-event-card-row-value">{getShotTagLabel(selectedReviewEvent.tags)}</span>
-              </div>
-            ) : null}
-            <div className="review-event-card-actions">
-              <button
-                type="button"
-                className="review-event-card-action-btn"
-                disabled
-                aria-label="Edit event (not yet available)"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                className={`review-event-card-action-btn ${deleteConfirmPending ? "review-event-card-action-btn--delete-confirm" : "review-event-card-action-btn--delete"}`}
-                aria-label={deleteConfirmPending ? "Confirm delete event" : "Delete event"}
-                onClick={() => {
-                  if (deleteConfirmPending) {
-                    deleteSelectedReviewEvent();
-                  } else {
-                    setDeleteConfirmPending(true);
-                  }
-                }}
-              >
-                {deleteConfirmPending ? "Confirm?" : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
       <div className="match-stopwatch" aria-live="polite">
         <span className="match-stopwatch-state">{matchStateToken}</span>
         <span className="match-stopwatch-clock">{formatMatchClock(matchTimeSeconds)}</span>
@@ -7980,6 +7889,101 @@ export default function StatsModeSurface() {
           role="img"
         />
       </main>
+      {/* Event detail bottom sheet — rendered outside <main> so it sits above
+          the utility controls (z-index 10001) in the root stacking context. */}
+      {isReviewModeActive && selectedReviewEvent ? (
+        <div
+          className={`review-event-card ${isLandscape ? "review-event-card--landscape" : ""}`}
+          role="dialog"
+          aria-label="Event detail"
+        >
+          <div className="review-event-card-handle" />
+          <div className="review-event-card-inner">
+            <div className="review-event-card-head">
+              <div className="review-event-card-title">Event detail</div>
+              <button
+                type="button"
+                className="review-event-card-close"
+                aria-label="Close event detail"
+                onClick={() => setSelectedReviewEventId(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="review-event-card-row">
+              <span className="review-event-card-row-label">Type</span>
+              <span className="review-event-card-row-value">{getReviewEventTypeLabel(selectedReviewEvent.type)}</span>
+            </div>
+            {selectedReviewTeamLabel ? (
+              <div className="review-event-card-row">
+                <span className="review-event-card-row-label">Team</span>
+                <span className="review-event-card-row-value">{selectedReviewTeamLabel}</span>
+              </div>
+            ) : null}
+            <div className="review-event-card-row">
+              <span className="review-event-card-row-label">Player</span>
+              <span className="review-event-card-row-value">{selectedReviewPlayerLabel}</span>
+            </div>
+            <div className="review-event-card-row">
+              <span className="review-event-card-row-label">Half</span>
+              <span className="review-event-card-row-value">{selectedReviewEvent.period}</span>
+            </div>
+            <div className="review-event-card-row">
+              <span className="review-event-card-row-label">Segment</span>
+              <span className="review-event-card-row-value">{getSegmentDisplayLabel(selectedReviewEvent.segment)}</span>
+            </div>
+            <div className="review-event-card-row">
+              <span className="review-event-card-row-label">Time</span>
+              <span className="review-event-card-row-value">
+                {formatMatchClock(selectedReviewEvent.matchClockSeconds)}
+              </span>
+            </div>
+            {selectedReviewKickoutTagLabel ? (
+              <div className="review-event-card-row">
+                <span className="review-event-card-row-label">K/O Tag</span>
+                <span className="review-event-card-row-value">{selectedReviewKickoutTagLabel}</span>
+              </div>
+            ) : null}
+            {(selectedReviewEvent.kind === "TURNOVER_WON" || selectedReviewEvent.kind === "TURNOVER_LOST") &&
+            getTurnoverTagLabel(selectedReviewEvent.tags) ? (
+              <div className="review-event-card-row">
+                <span className="review-event-card-row-label">T/O Tag</span>
+                <span className="review-event-card-row-value">{getTurnoverTagLabel(selectedReviewEvent.tags)}</span>
+              </div>
+            ) : null}
+            {selectedReviewEvent.kind === "SHOT" && getShotTagLabel(selectedReviewEvent.tags) ? (
+              <div className="review-event-card-row">
+                <span className="review-event-card-row-label">Shot Tag</span>
+                <span className="review-event-card-row-value">{getShotTagLabel(selectedReviewEvent.tags)}</span>
+              </div>
+            ) : null}
+            <div className="review-event-card-actions">
+              <button
+                type="button"
+                className="review-event-card-action-btn"
+                disabled
+                aria-label="Edit event (not yet available)"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                className={`review-event-card-action-btn ${deleteConfirmPending ? "review-event-card-action-btn--delete-confirm" : "review-event-card-action-btn--delete"}`}
+                aria-label={deleteConfirmPending ? "Confirm delete event" : "Delete event"}
+                onClick={() => {
+                  if (deleteConfirmPending) {
+                    deleteSelectedReviewEvent();
+                  } else {
+                    setDeleteConfirmPending(true);
+                  }
+                }}
+              >
+                {deleteConfirmPending ? "Confirm?" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {activePlayerChipText ? (
         <button
           type="button"
