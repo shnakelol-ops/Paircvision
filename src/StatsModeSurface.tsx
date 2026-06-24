@@ -2343,6 +2343,136 @@ const PANEL_CSS = `
   text-align: right;
 }
 
+.review-event-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.review-event-card-action-btn {
+  flex: 1;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: rgba(15, 23, 42, 0.86);
+  color: #dbe7f5;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.review-event-card-action-btn--edit {
+  border-color: rgba(96, 165, 250, 0.5);
+  color: #93c5fd;
+}
+
+.review-event-card-action-btn--delete {
+  border-color: rgba(248, 113, 113, 0.5);
+  color: #fca5a5;
+}
+
+.review-edit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(4, 12, 24, 0.72);
+  display: flex;
+  align-items: flex-end;
+}
+
+.review-edit-sheet {
+  width: 100%;
+  max-height: 75vh;
+  overflow-y: auto;
+  background: #0d1b2e;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px 14px 0 0;
+  padding: 12px 14px max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.review-edit-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.review-edit-sheet-title {
+  color: #dbe7f5;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+
+.review-edit-sheet-section-label {
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18px;
+  text-transform: uppercase;
+}
+
+.review-edit-sheet-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.review-edit-chip {
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.88);
+  color: #dbe7f5;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14px;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.review-edit-chip--active {
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(30, 58, 138, 0.72);
+  color: #bfdbfe;
+}
+
+.review-edit-sheet-footer {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.review-edit-sheet-btn {
+  flex: 1;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18px;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.review-edit-sheet-btn--confirm {
+  background: rgba(30, 58, 138, 0.88);
+  border-color: rgba(96, 165, 250, 0.6);
+  color: #bfdbfe;
+}
+
+.review-edit-sheet-btn--cancel {
+  background: rgba(15, 23, 42, 0.88);
+  color: #94a3b8;
+}
+
 .review-quick-strip {
   position: fixed;
   left: 8px;
@@ -3261,6 +3391,9 @@ export default function StatsModeSurface() {
   const [showReviewStrip, setShowReviewStrip] = useState(false);
   const [isReviewStripCollapsed, setIsReviewStripCollapsed] = useState(false);
   const [selectedReviewEventId, setSelectedReviewEventId] = useState<string | null>(null);
+  const [reviewEditOpen, setReviewEditOpen] = useState(false);
+  const [reviewEditKind, setReviewEditKind] = useState<MatchEventKind>("POINT");
+  const [reviewEditPlayerId, setReviewEditPlayerId] = useState<string | null>(null);
   const [pendingFollowup, setPendingFollowup] = useState<{
     eventId: string;
     kind: PendingFollowupKind;
@@ -5544,6 +5677,7 @@ export default function StatsModeSurface() {
     if (!selectedReviewEventId) return;
     if (loggedEvents.some((event) => event.id === selectedReviewEventId)) return;
     setSelectedReviewEventId(null);
+    setReviewEditOpen(false);
   }, [loggedEvents, selectedReviewEventId]);
 
   useEffect(() => {
@@ -5837,6 +5971,14 @@ export default function StatsModeSurface() {
     !KICKOUT_EVENT_KIND_SET.has(selectedReviewEvent.kind)
       ? null
       : getKickoutTagLabel(selectedReviewEvent.tags);
+  const reviewEditSquadPlayers: SquadPlayer[] = (() => {
+    if (selectedReviewEvent == null) return [];
+    const squadId =
+      selectedReviewEvent.squadId ??
+      (selectedReviewEvent.team != null ? activeSquadIdsByTeam[selectedReviewEvent.team] : null);
+    const squad = squadId != null ? squads.find((s) => s.id === squadId) : squads[0];
+    return squad?.players ?? [];
+  })();
   const pendingFollowupEvent =
     pendingFollowup == null
       ? null
@@ -7570,6 +7712,123 @@ export default function StatsModeSurface() {
             <span className="review-event-card-row-value">
               {formatMatchClock(selectedReviewEvent.matchClockSeconds)}
             </span>
+          </div>
+          <div className="review-event-card-actions">
+            <button
+              type="button"
+              className="review-event-card-action-btn review-event-card-action-btn--edit"
+              onClick={() => {
+                setReviewEditKind(selectedReviewEvent.kind);
+                setReviewEditPlayerId(selectedReviewEvent.playerId ?? null);
+                setReviewEditOpen(true);
+              }}
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              className="review-event-card-action-btn review-event-card-action-btn--delete"
+              onClick={() => {
+                setLoggedEvents((prev) => prev.filter((e) => e.id !== selectedReviewEventId));
+                setSelectedReviewEventId(null);
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {isReviewModeActive && reviewEditOpen && selectedReviewEvent ? (
+        <div
+          className="review-edit-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit event"
+          onClick={() => setReviewEditOpen(false)}
+        >
+          <div
+            className="review-edit-sheet"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="review-edit-sheet-header">
+              <span className="review-edit-sheet-title">Edit Event</span>
+              <button
+                type="button"
+                className="review-event-card-close"
+                aria-label="Cancel edit"
+                onClick={() => setReviewEditOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="review-edit-sheet-section-label">Event Type</div>
+            <div className="review-edit-sheet-chips">
+              {MATCH_EVENT_KINDS.map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  className={`review-edit-chip${reviewEditKind === kind ? " review-edit-chip--active" : ""}`}
+                  onClick={() => setReviewEditKind(kind)}
+                >
+                  {getReviewEventTypeLabel(kind)}
+                </button>
+              ))}
+            </div>
+            <div className="review-edit-sheet-section-label">Player</div>
+            <div className="review-edit-sheet-chips">
+              <button
+                type="button"
+                className={`review-edit-chip${reviewEditPlayerId == null ? " review-edit-chip--active" : ""}`}
+                onClick={() => setReviewEditPlayerId(null)}
+              >
+                No player
+              </button>
+              {reviewEditSquadPlayers.map((player) => (
+                <button
+                  key={player.id}
+                  type="button"
+                  className={`review-edit-chip${reviewEditPlayerId === player.id ? " review-edit-chip--active" : ""}`}
+                  onClick={() => setReviewEditPlayerId(player.id)}
+                >
+                  #{player.number} {player.name}
+                </button>
+              ))}
+            </div>
+            <div className="review-edit-sheet-footer">
+              <button
+                type="button"
+                className="review-edit-sheet-btn review-edit-sheet-btn--confirm"
+                onClick={() => {
+                  if (selectedReviewEventId == null) return;
+                  const player =
+                    reviewEditPlayerId != null ? playerById.get(reviewEditPlayerId) : undefined;
+                  setLoggedEvents((prev) =>
+                    prev.map((e) =>
+                      e.id !== selectedReviewEventId
+                        ? e
+                        : {
+                            ...e,
+                            kind: reviewEditKind,
+                            type: reviewEditKind,
+                            playerId: reviewEditPlayerId ?? undefined,
+                            playerName: player?.name,
+                            playerNumber: player?.number,
+                          },
+                    ),
+                  );
+                  setReviewEditOpen(false);
+                }}
+              >
+                Confirm
+              </button>
+              <button
+                type="button"
+                className="review-edit-sheet-btn review-edit-sheet-btn--cancel"
+                onClick={() => setReviewEditOpen(false)}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
