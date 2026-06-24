@@ -54,6 +54,29 @@ export type MovementBoardRoute = {
   sequenceIndex?: number;
 };
 
+/**
+ * A single timed movement for one player within a continuous scenario.
+ * Multiple segments per player are allowed; startMs is wall-clock ms
+ * from scenario start at 1× speed. triggeredBy is preserved for backward
+ * compat with existing "start after player X" scenarios; the timeline engine
+ * resolves it to an effective startMs at build time.
+ */
+export type MovementSegment = {
+  id: string;
+  playerId: string;
+  startMs: number;
+  points: NormalizedPoint[];
+  concept?: MovementConcept;
+  label?: string;
+  triggeredBy?: string;
+};
+
+export type ScenarioBookmark = {
+  id: string;
+  atMs: number;
+  label: string;
+};
+
 export type TacticalPassEvent = {
   id: string;
   fromPlayerId: string;
@@ -180,6 +203,13 @@ export type MovementCanvasShellHandle = {
   setTrainingItems: (items: readonly TacticalTrainingItem[]) => void;
   getTrainingItems: () => TacticalTrainingItem[];
   setSelectedTrainingItemId: (id: string | null) => void;
+  /** Set additional movement segments (runs beyond the first drawn route per player). */
+  setExtraSegments: (segments: readonly MovementSegment[]) => void;
+  getExtraSegments: () => MovementSegment[];
+  /** Current playhead position in ms from scenario start (updated during playback). */
+  getPlayheadMs: () => number;
+  /** Seek the timeline to an absolute ms position (internal; no UI yet). */
+  seek: (ms: number) => void;
   reflow: () => void;
   destroy: () => void;
 };

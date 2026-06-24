@@ -1,4 +1,4 @@
-import type { BallState, MovementBoardRoute, MovementBoardToken, MovementPlaybackSpeed, TacticalPassEvent, TacticalShotEvent, TacticalTrainingItem, ZoneRecord } from "../../movement-board/shell/types";
+import type { BallState, MovementBoardRoute, MovementBoardToken, MovementPlaybackSpeed, MovementSegment, TacticalPassEvent, TacticalShotEvent, TacticalTrainingItem, ZoneRecord } from "../../movement-board/shell/types";
 import type { TacticalUnit } from "./tacticalUnitTypes";
 
 const STORAGE_KEY = "paircvision-tp-scenarios";
@@ -10,6 +10,8 @@ export type TacticalScenario = {
   savedAt: number;
   tokens: MovementBoardToken[];
   routes: MovementBoardRoute[];
+  /** Extra segments (runs beyond the first per player). `routes` is kept for backward compat. */
+  segments?: MovementSegment[];
   ballState: BallState;
   passEvents: TacticalPassEvent[];
   shotEvents: TacticalShotEvent[];
@@ -18,6 +20,14 @@ export type TacticalScenario = {
   zones?: ZoneRecord[];
   items?: TacticalTrainingItem[];
 };
+
+/**
+ * Returns extra segments stored in a scenario, or an empty array for old saves
+ * that predate the segment model (those have no segments field).
+ */
+export function migrateToSegments(scenario: TacticalScenario): MovementSegment[] {
+  return scenario.segments ?? [];
+}
 
 export function listScenarios(): TacticalScenario[] {
   try {
@@ -49,6 +59,7 @@ export function saveScenario(
   units?: TacticalUnit[],
   zones?: ZoneRecord[],
   items?: TacticalTrainingItem[],
+  segments?: MovementSegment[],
 ): TacticalScenario {
   const scenario: TacticalScenario = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -56,6 +67,7 @@ export function saveScenario(
     savedAt: Date.now(),
     tokens,
     routes,
+    segments: segments && segments.length > 0 ? segments : undefined,
     ballState,
     passEvents,
     shotEvents,

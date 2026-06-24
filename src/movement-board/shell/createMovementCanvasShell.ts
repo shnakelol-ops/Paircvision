@@ -12,7 +12,7 @@ import { createTrainingItemLayer } from "../items/item-layer";
 import { createPitchRoot } from "../pitch/create-pitch-root";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
 import { createBallLayer } from "../ball/ball-layer";
-import { createPlaybackOrchestrator } from "../playback/playback-orchestrator";
+import { createTimelineEngine } from "../playback/timeline-engine";
 import { createZoneLayer } from "../zones/zone-layer";
 import { routeStyleForToken } from "../routes/route-colors";
 import { createRouteLayer } from "../routes/route-layer";
@@ -28,6 +28,7 @@ import type {
   MovementCanvasShellHandle,
   MovementCanvasShellOptions,
   MovementRouteEditState,
+  MovementSegment,
   RouteMetadata,
   TacticalPassEvent,
   TacticalShotEvent,
@@ -196,6 +197,9 @@ export async function createMovementCanvasShell(
   let routeByTokenId = new Map<string, NormalizedPoint[]>();
   let routeMetaByTokenId = new Map<string, RouteMetadata>();
   let startPositionByTokenId = new Map<string, NormalizedPoint>();
+  // Extra movement segments (additional runs beyond the first per player).
+  // Managed by the Surface; synthesised together with routeByTokenId at playback time.
+  let extraSegments: MovementSegment[] = [];
 
   const tokenLayer = createTokenLayer({
     layer: tokenLayerContainer,
@@ -242,10 +246,26 @@ export async function createMovementCanvasShell(
     emitBallState();
   };
 
-  const orchestrator = createPlaybackOrchestrator(options.playbackSpeed ?? "normal", {
-    getTokens: () => tokenLayer.getTokens(),
-    getRoute: (tokenId) => routeByTokenId.get(tokenId) ?? null,
-    getRouteMeta: (tokenId) => routeMetaByTokenId.get(tokenId) ?? null,
+  const engine = createTimelineEngine(options.playbackSpeed ?? "normal", {
+    getSegments: () => {
+      // Synthesise all segments: one per player from routeByTokenId (preserving
+      // their existing delayMs / triggeredBy timing) plus any extra segments.
+      const fromRoutes: MovementSegment[] = Array.from(routeByTokenId.entries()).map(
+        ([playerId, points]) => {
+          const meta = routeMetaByTokenId.get(playerId);
+          return {
+            id: `main-${playerId}`,
+            playerId,
+            startMs: meta?.delayMs ?? 0,
+            triggeredBy: meta?.triggeredBy,
+            points: points.map(clonePoint),
+            concept: meta?.concept,
+            label: meta?.label,
+          };
+        },
+      );
+      return [...fromRoutes, ...extraSegments];
+    },
     getStartPosition: (tokenId) => startPositionByTokenId.get(tokenId) ?? null,
     getPassEvents: () => passEvents,
     getShotEvents: () => shotEvents,
@@ -386,7 +406,7 @@ export async function createMovementCanvasShell(
     options.onPassEventsChange?.([...passEvents]);
   };
 
-  const isPlaybackLocked = () => orchestrator.isLocked();
+  const isPlaybackLocked = () => engine.isLocked();
   const canInteractWithTrainingItems = () => dragEnabled && mode === "setup" && !isPlaybackLocked();
   trainingItemLayer.setInteractive(canInteractWithTrainingItems());
 
@@ -640,9 +660,9 @@ export async function createMovementCanvasShell(
   };
 
   const startPlayback = () => {
-    const state = orchestrator.getState();
+    const state = engine.getState();
     if (state.isPlaying) return;
-    if (!state.isPaused || !orchestrator.hasActiveRuns()) {
+    if (!state.isPaused || !engine.hasActiveRuns()) {
       releaseDrag();
       releaseRouteHandleDrag();
       clearRouteDraft();
@@ -654,11 +674,11 @@ export async function createMovementCanvasShell(
       tokenLayer.setBallCarrier(ballStateAtPlayStart.carrierId ?? null);
       emitBallState();
     }
-    orchestrator.start();
+    engine.start();
   };
 
   const reset = () => {
-    orchestrator.stop();
+    engine.stop();
     activeBallPass = null;
     deferredPasses = [];
     if (longPressTimer !== null) { clearTimeout(longPressTimer); longPressTimer = null; }
@@ -931,7 +951,7 @@ export async function createMovementCanvasShell(
   });
 
   const tick = () => {
-    orchestrator.step(app.ticker.deltaMS);
+    engine.step(app.ticker.deltaMS);
     if (activeBallPass) {
       activeBallPass.elapsedMs += app.ticker.deltaMS;
       if (activeBallPass.elapsedMs >= activeBallPass.durationMs) {
@@ -946,7 +966,7 @@ export async function createMovementCanvasShell(
           ballState = { carrierId: toPlayerId, ballType: ballState.ballType ?? "footballSmall" };
           tokenLayer.setBallCarrier(toPlayerId);
           emitBallState();
-          orchestrator.notifyPassLanded(toPlayerId);
+          engine.notifyPassLanded(toPlayerId);
           // Fire the first deferred pass whose sender is now the carrier,
           // but only if notifyPassLanded didn't already start a shot animation.
           if (activeBallPass === null) {
@@ -983,7 +1003,7 @@ export async function createMovementCanvasShell(
   resizeObserver.observe(host);
   syncToHost();
   refreshRouteLayer();
-  options.onPlaybackStateChange?.(orchestrator.getState());
+  options.onPlaybackStateChange?.(engine.getState());
   emitRouteEditState();
 
   return {
@@ -991,11 +1011,11 @@ export async function createMovementCanvasShell(
     getSelectedToken: () => (selectedTokenId ? tokenLayer.getTokenById(selectedTokenId) : null),
     getMode: () => mode,
     getRoutes: () => buildRoutesSnapshot(),
-    getPlaybackSpeed: () => orchestrator.getSpeed(),
-    getPlaybackState: () => orchestrator.getState(),
+    getPlaybackSpeed: () => engine.getSpeed(),
+    getPlaybackState: () => engine.getState(),
     getRouteEditState: () => getRouteEditState(),
     setTokens: (tokens) => {
-      orchestrator.stop();
+      engine.stop();
       tokenLayer.setTokens(tokens);
       tokenLayer.syncToMapper();
 
@@ -1052,10 +1072,10 @@ export async function createMovementCanvasShell(
       setModeState(nextMode);
     },
     setPlaybackSpeed: (speed) => {
-      orchestrator.setSpeed(speed);
+      engine.setSpeed(speed);
     },
     setSpeedMultiplier: (multiplier) => {
-      orchestrator.setSpeedMultiplier(multiplier);
+      engine.setSpeedMultiplier(multiplier);
     },
     removeSelectedWaypoint: () => {
       if (!selectedTokenId) return false;
@@ -1088,10 +1108,10 @@ export async function createMovementCanvasShell(
       startPlayback();
     },
     pausePlayback: () => {
-      orchestrator.pause();
+      engine.pause();
     },
     resumePlayback: () => {
-      orchestrator.resume();
+      engine.resume();
     },
     reset: () => {
       reset();
@@ -1105,7 +1125,7 @@ export async function createMovementCanvasShell(
     giveBall: (playerId) => {
       if (!tokenLayer.getTokenById(playerId)) return;
       ballState = { carrierId: playerId, ballType: ballState.ballType ?? "footballSmall" };
-      if (!orchestrator.isLocked()) {
+      if (!engine.isLocked()) {
         ballStateAtPlayStart = { ...ballState };
       }
       syncBallPosition();
@@ -1114,7 +1134,7 @@ export async function createMovementCanvasShell(
     placeBall: (ballType: BallType, position?) => {
       const pos = position ?? { x: 50, y: 50 };
       ballState = { position: pos, ballType };
-      if (!orchestrator.isLocked()) {
+      if (!engine.isLocked()) {
         ballStateAtPlayStart = { ...ballState };
       }
       syncBallPosition();
@@ -1122,7 +1142,7 @@ export async function createMovementCanvasShell(
     },
     removeBall: () => {
       ballState = {};
-      if (!orchestrator.isLocked()) {
+      if (!engine.isLocked()) {
         ballStateAtPlayStart = {};
       }
       syncBallPosition();
@@ -1135,7 +1155,7 @@ export async function createMovementCanvasShell(
         ? clampNormalizedPoint(mapper.worldToNormalized(worldPos))
         : { x: 50, y: 50 };
       ballState = { position, ballType: ballState.ballType };
-      if (!orchestrator.isLocked()) {
+      if (!engine.isLocked()) {
         ballStateAtPlayStart = { ...ballState };
       }
       syncBallPosition();
@@ -1215,11 +1235,17 @@ export async function createMovementCanvasShell(
     setTrainingItems: (items) => trainingItemLayer.setItems(items),
     getTrainingItems: () => trainingItemLayer.getItems(),
     setSelectedTrainingItemId: (id) => trainingItemLayer.setSelectedItemId(id),
+    setExtraSegments: (segs) => {
+      extraSegments = segs.map((s) => ({ ...s }));
+    },
+    getExtraSegments: () => [...extraSegments],
+    getPlayheadMs: () => engine.getPlayheadMs(),
+    seek: (ms) => engine.seek(ms),
     reflow: () => {
       syncToHost();
     },
     destroy: () => {
-      orchestrator.stop();
+      engine.stop();
       resizeObserver.disconnect();
       canvas.removeEventListener("webglcontextlost", onContextLost);
       canvas.removeEventListener("webglcontextrestored", onContextRestored);

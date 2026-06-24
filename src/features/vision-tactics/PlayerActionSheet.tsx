@@ -31,6 +31,7 @@ type PlayerActionSheetProps = {
   onFreeBall?: () => void;
   onPlay: () => void;
   onBehaviour: () => void;
+  onAddRun?: () => void;
 };
 
 type ExpandedSection = "run-timing" | "pass" | "ball" | null;
@@ -234,6 +235,7 @@ export default function PlayerActionSheet({
   onFreeBall,
   onPlay,
   onBehaviour,
+  onAddRun,
 }: PlayerActionSheetProps) {
   const [expanded, setExpanded] = useState<ExpandedSection>(null);
   const [passToId, setPassToId] = useState<string | null>(null);
@@ -291,7 +293,7 @@ export default function PlayerActionSheet({
             style={ACTION_BTN}
             onClick={() => { onDrawRun(); onClose(); }}
           >
-            Draw Run
+            {hasRoute ? "Draw Run" : "Draw First Run"}
           </button>
           <button
             type="button"
@@ -301,6 +303,12 @@ export default function PlayerActionSheet({
             Behaviour
           </button>
         </div>
+
+        {onAddRun ? (
+          <p style={{ margin: 0, fontFamily: "Inter, system-ui, sans-serif", fontSize: "8px", fontWeight: 500, color: "rgba(180, 210, 255, 0.38)", letterSpacing: "0.04em", paddingLeft: "2px", userSelect: "none" }}>
+            Build this player&rsquo;s movement step by step.
+          </p>
+        ) : null}
 
         {/* Route actions row — only when player has a route */}
         {hasRoute && (
@@ -312,6 +320,15 @@ export default function PlayerActionSheet({
             >
               Edit Run
             </button>
+            {onAddRun && (
+              <button
+                type="button"
+                style={ACTION_BTN_GREEN}
+                onClick={() => { onAddRun(); onClose(); }}
+              >
+                Add Another Run
+              </button>
+            )}
             <button
               type="button"
               style={{ ...ACTION_BTN, border: "1px solid rgba(255, 100, 100, 0.30)", color: "rgba(255, 180, 180, 0.80)" }}
