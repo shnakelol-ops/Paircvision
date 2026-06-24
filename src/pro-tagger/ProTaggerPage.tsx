@@ -1,5 +1,5 @@
-import { useState } from "react";
-import type { CSSProperties } from "react";
+import { useState, useRef } from "react";
+import type { ChangeEvent, CSSProperties } from "react";
 import type { ProTaggerSession } from "./pro-tagger-session";
 import { ProTaggerSetupScreen } from "./ProTaggerSetupScreen";
 import { ProTaggerSquadScreen } from "./ProTaggerSquadScreen";
@@ -8,9 +8,25 @@ import type { RestoreState } from "./ProTaggerLiveScreen";
 import { ProTaggerSavedMatchesScreen } from "./ProTaggerSavedMatchesScreen";
 import { ProTaggerReviewScreen } from "./ProTaggerReviewScreen";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
-import { readProTaggerMatches } from "./pro-tagger-storage";
+import { readProTaggerMatches, saveProTaggerMatchFull } from "./pro-tagger-storage";
+import { exportSnapshotPdf } from "../stats/reviewPdfExport";
+import { proTaggerMatchToSnapshotInput } from "./pro-tagger-review-adapter";
 
 type AppPhase = "home" | "setup" | "squads" | "live" | "saved-matches" | "review";
+
+function isValidProMatch(obj: unknown): obj is ProTaggerSavedMatch {
+  if (typeof obj !== "object" || obj === null) return false;
+  const r = obj as Record<string, unknown>;
+  return (
+    typeof r["id"] === "string" &&
+    typeof r["createdAt"] === "number" &&
+    typeof r["homeTeamName"] === "string" &&
+    typeof r["awayTeamName"] === "string" &&
+    Array.isArray(r["events"]) &&
+    typeof r["restoreContext"] === "object" &&
+    r["restoreContext"] !== null
+  );
+}
 
 function savedMatchToSession(m: ProTaggerSavedMatch): ProTaggerSession {
   return {
@@ -46,6 +62,61 @@ export default function ProTaggerPage() {
   const [savedCount, setSavedCount]     = useState(() => readProTaggerMatches().length);
   const [reviewMatch, setReviewMatch]   = useState<ProTaggerSavedMatch | null>(null);
 
+  // ── Actions menu ────────────────────────────────────────────────────────────
+  const [actionsOpen, setActionsOpen]         = useState(false);
+  const [actionsLatest, setActionsLatest]     = useState<ProTaggerSavedMatch | null>(null);
+  const [actionsImport, setActionsImport]     = useState<{ ok: boolean; text: string } | null>(null);
+  const [snapshotBusy, setSnapshotBusy]       = useState<"ht" | "ft" | null>(null);
+  const importFileRef                         = useRef<HTMLInputElement>(null);
+
+  function openActions() {
+    setActionsLatest(readProTaggerMatches()[0] ?? null);
+    setActionsImport(null);
+    setSnapshotBusy(null);
+    setActionsOpen(true);
+  }
+
+  function handleImportFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const raw = evt.target?.result;
+        if (typeof raw !== "string") throw new Error("Could not read file");
+        const parsed: unknown = JSON.parse(raw);
+        if (!isValidProMatch(parsed)) throw new Error("Not a valid Pro match file");
+        saveProTaggerMatchFull(parsed);
+        setActionsLatest(parsed);
+        setSavedCount(readProTaggerMatches().length);
+        setActionsImport({ ok: true, text: "Imported successfully" });
+      } catch (err) {
+        setActionsImport({
+          ok:   false,
+          text: err instanceof Error ? err.message : "Import failed",
+        });
+      }
+      if (importFileRef.current) importFileRef.current.value = "";
+    };
+    reader.readAsText(file);
+  }
+
+  function handleHtSnapshot() {
+    if (snapshotBusy || !actionsLatest) return;
+    setSnapshotBusy("ht");
+    void exportSnapshotPdf(proTaggerMatchToSnapshotInput(actionsLatest, "HALF_TIME_SNAPSHOT"))
+      .finally(() => setSnapshotBusy(null));
+  }
+
+  function handleFtSnapshot() {
+    if (snapshotBusy || !actionsLatest) return;
+    setSnapshotBusy("ft");
+    void exportSnapshotPdf(proTaggerMatchToSnapshotInput(actionsLatest, "FULL_TIME_SNAPSHOT"))
+      .finally(() => setSnapshotBusy(null));
+  }
+
+  const hasFirstHalfEvents = (actionsLatest?.events ?? []).some((e) => e.half === 1);
+
   // ── Home landing ────────────────────────────────────────────────────────────
 
   if (phase === "home") {
@@ -53,6 +124,7 @@ export default function ProTaggerPage() {
       <div style={H.shell}>
         <div style={H.header}>
           <span style={H.title}>Stats Pro</span>
+          <button style={H.actionsBtn} onClick={openActions}>Actions</button>
         </div>
 
         <div style={H.body}>
@@ -78,6 +150,83 @@ export default function ProTaggerPage() {
             )}
           </button>
         </div>
+
+        {/* ── Actions modal ────────────────────────────────────────────── */}
+        {actionsOpen && (
+          <div style={H.overlay} onClick={() => setActionsOpen(false)}>
+            <div style={H.sheet} onClick={(e) => e.stopPropagation()}>
+              <div style={H.sheetHandle} />
+              <div style={H.sheetHeader}>Actions</div>
+
+              <button
+                style={H.sheetItem}
+                onClick={() => importFileRef.current?.click()}
+              >
+                Import Match JSON
+              </button>
+
+              <button
+                style={H.sheetItem}
+                onClick={() => {
+                  setActionsOpen(false);
+                  setSavedCount(readProTaggerMatches().length);
+                  setPhase("saved-matches");
+                }}
+              >
+                Saved Matches
+                {savedCount > 0 && <span style={H.sheetBadge}>{savedCount}</span>}
+              </button>
+
+              {actionsLatest && (
+                <>
+                  <div style={H.sheetDivider}>
+                    {actionsLatest.homeTeamName} v {actionsLatest.awayTeamName}
+                  </div>
+
+                  <button
+                    style={{
+                      ...H.sheetItem,
+                      ...((!hasFirstHalfEvents || snapshotBusy !== null) ? H.sheetItemDisabled : {}),
+                    }}
+                    disabled={!hasFirstHalfEvents || snapshotBusy !== null}
+                    onClick={handleHtSnapshot}
+                  >
+                    {snapshotBusy === "ht" ? "Exporting…" : "HT Snapshot PDF"}
+                  </button>
+
+                  <button
+                    style={{
+                      ...H.sheetItem,
+                      ...(snapshotBusy !== null ? H.sheetItemDisabled : {}),
+                    }}
+                    disabled={snapshotBusy !== null}
+                    onClick={handleFtSnapshot}
+                  >
+                    {snapshotBusy === "ft" ? "Exporting…" : "FT Snapshot PDF"}
+                  </button>
+                </>
+              )}
+
+              {actionsImport && (
+                <div style={{ ...H.sheetFeedback, color: actionsImport.ok ? "#4ade80" : "#f87171" }}>
+                  {actionsImport.text}
+                </div>
+              )}
+
+              <button style={H.sheetClose} onClick={() => setActionsOpen(false)}>
+                Close
+              </button>
+
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".json,application/json"
+                style={{ display: "none" }}
+                onChange={handleImportFile}
+              />
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -259,5 +408,105 @@ const H: Record<string, CSSProperties> = {
     padding: "1px 7px",
     lineHeight: "1.4",
     flexShrink: 0,
+  },
+  actionsBtn: {
+    background: "transparent",
+    border: "1px solid #30363d",
+    borderRadius: 8,
+    color: "#8b949e",
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "5px 12px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+  },
+  overlay: {
+    position: "fixed" as const,
+    inset: 0,
+    background: "rgba(0,0,0,0.6)",
+    display: "flex",
+    alignItems: "flex-end",
+    zIndex: 200,
+  },
+  sheet: {
+    background: "#161b22",
+    borderTop: "1px solid #30363d",
+    borderRadius: "16px 16px 0 0",
+    width: "100%",
+    padding: "8px 0 32px",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 2,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    background: "#30363d",
+    borderRadius: 2,
+    margin: "0 auto 12px",
+  },
+  sheetHeader: {
+    color: "#8b949e",
+    fontSize: 12,
+    fontWeight: 600,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase" as const,
+    padding: "0 20px 8px",
+  },
+  sheetItem: {
+    background: "transparent",
+    border: "none",
+    color: "#e6edf3",
+    fontSize: 16,
+    fontWeight: 500,
+    padding: "14px 20px",
+    textAlign: "left" as const,
+    cursor: "pointer",
+    outline: "none",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    width: "100%",
+  },
+  sheetItemDisabled: {
+    color: "#484f58",
+    cursor: "not-allowed" as const,
+  },
+  sheetBadge: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 10,
+    color: "#8b949e",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "1px 7px",
+    lineHeight: "1.4",
+  },
+  sheetDivider: {
+    color: "#484f58",
+    fontSize: 12,
+    fontWeight: 500,
+    padding: "10px 20px 2px",
+    borderTop: "1px solid #21262d",
+    marginTop: 4,
+  },
+  sheetFeedback: {
+    fontSize: 13,
+    fontWeight: 500,
+    padding: "6px 20px",
+  },
+  sheetClose: {
+    background: "transparent",
+    border: "1px solid #30363d",
+    borderRadius: 10,
+    color: "#8b949e",
+    fontSize: 15,
+    fontWeight: 600,
+    padding: "12px 20px",
+    margin: "12px 16px 0",
+    cursor: "pointer",
+    outline: "none",
+    textAlign: "center" as const,
   },
 };
