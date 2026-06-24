@@ -186,17 +186,19 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
   // ── Event Map marker tap state ─────────────────────────────────────────────
   const [selectedMapEventId,   setSelectedMapEventId]   = useState<string | null>(null);
   const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
-  const [localDeletedIds,      setLocalDeletedIds]      = useState(() => new Set<string>());
+  // localMatch holds a mutated copy of the match after in-session event deletes.
+  // It shadows importedMatch and _match so every export path sees the same data.
+  const [localMatch,           setLocalMatch]           = useState<ProTaggerSavedMatch | null>(null);
 
-  // Active match: imported (if any) shadows the prop so all downstream code
-  // (Event Map, PDF export, Intelligence Pack) operates on the same value.
-  const match = importedMatch ?? _match;
+  // Active match: localMatch (post-delete) > importedMatch > prop match.
+  // All exports, PDFs, snapshots, and Intelligence Pack read from this value.
+  const match = localMatch ?? importedMatch ?? _match;
 
-  // Reset local delete state when the match identity changes (e.g. after import).
+  // Reset local-delete state when the underlying match changes (prop swap or import).
   useEffect(() => {
-    setLocalDeletedIds(new Set());
+    setLocalMatch(null);
     setSelectedMapEventId(null);
-  }, [match.id]);
+  }, [_match.id, importedMatch]);
 
   // Reset delete-confirm state whenever the selected event changes.
   useEffect(() => {
@@ -212,14 +214,8 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
   const isHurling  = match.sport === "hurling" || match.sport === "camogie";
   const koLabel    = isHurling ? "P/O" : "K/O";
 
-  // Events minus anything the coach deleted in this session.
-  const effectiveEvents = useMemo(
-    () => match.events.filter((e) => !localDeletedIds.has(e.id)),
-    [match.events, localDeletedIds],
-  );
-
   const filteredEvents = useMemo(
-    () => selectReviewEvents(effectiveEvents, {
+    () => selectReviewEvents(match.events, {
       half:               reviewHalf,
       segment:            "ALL",
       teamSide:           reviewTeam,
@@ -228,13 +224,13 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
       zone:               "FULL",
       attackingDirection: "RIGHT",
     }),
-    [effectiveEvents, reviewHalf, reviewTeam, reviewCategory],
+    [match.events, reviewHalf, reviewTeam, reviewCategory],
   );
 
   // ── Selected event derivations ─────────────────────────────────────────────
   const selectedMapEvent = selectedMapEventId == null
     ? null
-    : effectiveEvents.find((e) => e.id === selectedMapEventId) ?? null;
+    : match.events.find((e) => e.id === selectedMapEventId) ?? null;
 
   const selectedMapTeamLabel = selectedMapEvent == null
     ? null
@@ -257,7 +253,12 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
   const deleteSelectedMapEvent = () => {
     if (!selectedMapEventId) return;
     const targetId = selectedMapEventId;
-    setLocalDeletedIds((prev) => new Set([...prev, targetId]));
+    const updatedEvents = match.events.filter((e) => e.id !== targetId);
+    setLocalMatch({
+      ...match,
+      events:     updatedEvents,
+      eventCount: updatedEvents.length,
+    });
     setSelectedMapEventId(null);
     setDeleteConfirmPending(false);
   };
