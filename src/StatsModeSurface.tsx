@@ -2269,28 +2269,96 @@ const PANEL_CSS = `
 
 .review-event-card {
   position: fixed;
-  z-index: 22;
-  left: 12px;
-  min-width: 170px;
-  max-width: min(58vw, 260px);
+  z-index: 10010;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  left: auto;
+  min-width: 224px;
+  max-width: 280px;
+  max-height: 80vh;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: rgba(10, 20, 35, 0.97);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(4, 12, 24, 0.44);
+  overflow: hidden;
+}
+
+.review-event-card-inner {
+  padding: 10px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.review-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.review-edit-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14px;
+  text-transform: uppercase;
+  opacity: 0.72;
+  color: #dbe7f5;
+}
+
+.review-edit-select,
+.review-edit-input {
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  background: rgba(15, 23, 42, 0.86);
+  color: #dbe7f5;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.review-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.review-edit-cancel {
+  flex: 1;
+  min-height: 38px;
   border-radius: 10px;
   border: 1px solid rgba(148, 163, 184, 0.34);
-  background: rgba(10, 20, 35, 0.9);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 8px 16px rgba(4, 12, 24, 0.28);
+  background: rgba(30, 41, 59, 0.8);
+  color: #dbe7f5;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.review-event-card--portrait {
-  top: max(96px, calc(env(safe-area-inset-top) + 92px));
-}
-
-.review-event-card--landscape {
-  top: max(48px, calc(env(safe-area-inset-top) + 44px));
+.review-edit-save {
+  flex: 1;
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(34, 197, 94, 0.6);
+  background: rgba(22, 101, 52, 0.7);
+  color: #86efac;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .review-event-card-head {
@@ -2298,24 +2366,25 @@ const PANEL_CSS = `
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin-bottom: 2px;
 }
 
 .review-event-card-title {
   color: #dbe7f5;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.18px;
   text-transform: uppercase;
 }
 
 .review-event-card-close {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.34);
   background: rgba(15, 23, 42, 0.86);
   color: #dbe7f5;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1;
   display: inline-flex;
   align-items: center;
@@ -2329,18 +2398,61 @@ const PANEL_CSS = `
   justify-content: space-between;
   gap: 10px;
   color: #dbe7f5;
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.16px;
+  min-height: 22px;
 }
 
 .review-event-card-row-label {
-  opacity: 0.84;
+  opacity: 0.72;
   text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.14px;
+  flex-shrink: 0;
 }
 
 .review-event-card-row-value {
   font-weight: 700;
   text-align: right;
+}
+
+.review-event-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.review-event-card-action-btn {
+  flex: 1;
+  min-height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: rgba(30, 41, 59, 0.8);
+  color: #dbe7f5;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.review-event-card-action-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.review-event-card-action-btn--delete {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(127, 29, 29, 0.4);
+  color: #fca5a5;
+}
+
+.review-event-card-action-btn--delete-confirm {
+  border-color: rgba(239, 68, 68, 0.9);
+  background: rgba(185, 28, 28, 0.92);
+  color: #fff;
 }
 
 .review-quick-strip {
@@ -3097,10 +3209,6 @@ const PANEL_CSS = `
     top: max(104px, calc(env(safe-area-inset-top, 0px) + 100px));
   }
 
-  .review-event-card--portrait {
-    top: max(104px, calc(env(safe-area-inset-top, 0px) + 100px));
-  }
-
   .bubble-btn--counts {
     position: fixed;
     left: max(16px, calc(env(safe-area-inset-left, 0px) + 12px));
@@ -3261,6 +3369,11 @@ export default function StatsModeSurface() {
   const [showReviewStrip, setShowReviewStrip] = useState(false);
   const [isReviewStripCollapsed, setIsReviewStripCollapsed] = useState(false);
   const [selectedReviewEventId, setSelectedReviewEventId] = useState<string | null>(null);
+  const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
+  const [reviewEditMode, setReviewEditMode] = useState(false);
+  const [reviewEditKind, setReviewEditKind] = useState<MatchEventKind>("GOAL");
+  const [reviewEditPlayerName, setReviewEditPlayerName] = useState("");
+  const [reviewEditPlayerNumber, setReviewEditPlayerNumber] = useState("");
   const [pendingFollowup, setPendingFollowup] = useState<{
     eventId: string;
     kind: PendingFollowupKind;
@@ -3638,6 +3751,45 @@ export default function StatsModeSurface() {
       handleRef.current?.undoLastEvent();
     }
     setLoggedEvents((prev) => prev.slice(0, -1));
+  };
+
+  const deleteSelectedReviewEvent = () => {
+    if (!selectedReviewEventId) return;
+    const targetId = selectedReviewEventId;
+    setLoggedEvents((prev) => prev.filter((e) => e.id !== targetId));
+    setSelectedReviewEventId(null);
+    setDeleteConfirmPending(false);
+  };
+
+  const openReviewEdit = () => {
+    const event = loggedEvents.find((e) => e.id === selectedReviewEventId);
+    if (!event) return;
+    setReviewEditKind(event.kind);
+    setReviewEditPlayerName(event.playerName ?? "");
+    setReviewEditPlayerNumber(event.playerNumber != null ? String(event.playerNumber) : "");
+    setReviewEditMode(true);
+  };
+
+  const saveReviewEdit = () => {
+    if (!selectedReviewEventId) return;
+    const num = parseInt(reviewEditPlayerNumber, 10);
+    setLoggedEvents((prev) =>
+      prev.map((e) =>
+        e.id === selectedReviewEventId
+          ? {
+              ...e,
+              kind: reviewEditKind,
+              type: reviewEditKind,
+              playerName: reviewEditPlayerName.trim() || undefined,
+              playerNumber: Number.isFinite(num) && num > 0 ? num : undefined,
+            }
+          : e,
+      ),
+    );
+    // Close the card entirely so the user sees the marker update (colour change
+    // if type changed) rather than staying on the detail view with no visible diff.
+    // The useEffect([selectedReviewEventId]) resets reviewEditMode automatically.
+    setSelectedReviewEventId(null);
   };
 
   const startTeamNameEdit = (team: TeamSide) => {
@@ -5547,6 +5699,11 @@ export default function StatsModeSurface() {
   }, [loggedEvents, selectedReviewEventId]);
 
   useEffect(() => {
+    setDeleteConfirmPending(false);
+    setReviewEditMode(false);
+  }, [selectedReviewEventId]);
+
+  useEffect(() => {
     if (!pendingFollowup) return;
     if (loggedEvents.some((event) => event.id === pendingFollowup.eventId)) return;
     setPendingFollowup(null);
@@ -5825,18 +5982,32 @@ export default function StatsModeSurface() {
   const selectedReviewPlayerLabel =
     selectedReviewEvent == null
       ? null
-      : selectedReviewEvent.playerId == null
-        ? "No player"
-        : (() => {
-            const matchedPlayer = playerById.get(selectedReviewEvent.playerId);
-            if (!matchedPlayer) return "Unknown player";
-            return `#${matchedPlayer.number} ${matchedPlayer.name}`;
-          })();
+      : selectedReviewEvent.playerName
+        ? (selectedReviewEvent.playerNumber != null
+            ? `#${selectedReviewEvent.playerNumber} ${selectedReviewEvent.playerName}`
+            : selectedReviewEvent.playerName)
+        : selectedReviewEvent.playerId == null
+          ? "No player"
+          : (() => {
+              const matchedPlayer = playerById.get(selectedReviewEvent.playerId);
+              if (!matchedPlayer) return "Unknown player";
+              return `#${matchedPlayer.number} ${matchedPlayer.name}`;
+            })();
   const selectedReviewKickoutTagLabel =
     selectedReviewEvent == null ||
     !KICKOUT_EVENT_KIND_SET.has(selectedReviewEvent.kind)
       ? null
       : getKickoutTagLabel(selectedReviewEvent.tags);
+  const selectedReviewTeamLabel =
+    selectedReviewEvent == null
+      ? null
+      : selectedReviewEvent.team === "HOME"
+        ? teamNames.HOME
+        : selectedReviewEvent.team === "AWAY"
+          ? teamNames.AWAY
+          : selectedReviewEvent.teamSide === "FOR"
+            ? teamNames.HOME
+            : teamNames.AWAY;
   const pendingFollowupEvent =
     pendingFollowup == null
       ? null
@@ -7508,71 +7679,6 @@ export default function StatsModeSurface() {
           Review
         </button>
       ) : null}
-      {isReviewModeActive && selectedReviewEvent ? (
-        <div
-          className={`review-event-card ${isLandscape ? "review-event-card--landscape" : "review-event-card--portrait"}`}
-          role="status"
-          aria-live="polite"
-        >
-          <div className="review-event-card-head">
-            <div className="review-event-card-title">Event detail</div>
-            <button
-              type="button"
-              className="review-event-card-close"
-              aria-label="Close event detail"
-              onClick={() => {
-                setSelectedReviewEventId(null);
-              }}
-            >
-              ×
-            </button>
-          </div>
-          <div className="review-event-card-row">
-            <span className="review-event-card-row-label">Type</span>
-            <span className="review-event-card-row-value">{getReviewEventTypeLabel(selectedReviewEvent.type)}</span>
-          </div>
-          {selectedReviewKickoutTagLabel ? (
-            <div className="review-event-card-row">
-              <span className="review-event-card-row-label">K/O Tag</span>
-              <span className="review-event-card-row-value">{selectedReviewKickoutTagLabel}</span>
-            </div>
-          ) : null}
-          {selectedReviewEvent.kind === "TURNOVER_WON" || selectedReviewEvent.kind === "TURNOVER_LOST" ? (
-            getTurnoverTagLabel(selectedReviewEvent.tags) ? (
-              <div className="review-event-card-row">
-                <span className="review-event-card-row-label">T/O Tag</span>
-                <span className="review-event-card-row-value">{getTurnoverTagLabel(selectedReviewEvent.tags)}</span>
-              </div>
-            ) : null
-          ) : null}
-          {selectedReviewEvent.kind === "SHOT" ? (
-            getShotTagLabel(selectedReviewEvent.tags) ? (
-              <div className="review-event-card-row">
-                <span className="review-event-card-row-label">Shot Tag</span>
-                <span className="review-event-card-row-value">{getShotTagLabel(selectedReviewEvent.tags)}</span>
-              </div>
-            ) : null
-          ) : null}
-          <div className="review-event-card-row">
-            <span className="review-event-card-row-label">Player</span>
-            <span className="review-event-card-row-value">{selectedReviewPlayerLabel}</span>
-          </div>
-          <div className="review-event-card-row">
-            <span className="review-event-card-row-label">Half</span>
-            <span className="review-event-card-row-value">{selectedReviewEvent.period}</span>
-          </div>
-          <div className="review-event-card-row">
-            <span className="review-event-card-row-label">Segment</span>
-              <span className="review-event-card-row-value">{getSegmentDisplayLabel(selectedReviewEvent.segment)}</span>
-          </div>
-          <div className="review-event-card-row">
-            <span className="review-event-card-row-label">Time</span>
-            <span className="review-event-card-row-value">
-              {formatMatchClock(selectedReviewEvent.matchClockSeconds)}
-            </span>
-          </div>
-        </div>
-      ) : null}
       <div className="match-stopwatch" aria-live="polite">
         <span className="match-stopwatch-state">{matchStateToken}</span>
         <span className="match-stopwatch-clock">{formatMatchClock(matchTimeSeconds)}</span>
@@ -7860,6 +7966,166 @@ export default function StatsModeSurface() {
           role="img"
         />
       </main>
+      {/* Event detail bottom sheet — rendered outside <main> so it sits above
+          the utility controls (z-index 10001) in the root stacking context. */}
+      {isReviewModeActive && selectedReviewEvent ? (
+        <div
+          className="review-event-card"
+          role="dialog"
+          aria-label="Event detail"
+        >
+          <div className="review-event-card-inner">
+            <div className="review-event-card-head">
+              <div className="review-event-card-title">
+                {reviewEditMode ? "Edit event" : "Event detail"}
+              </div>
+              <button
+                type="button"
+                className="review-event-card-close"
+                aria-label="Close"
+                onClick={() => {
+                  if (reviewEditMode) {
+                    setReviewEditMode(false);
+                  } else {
+                    setSelectedReviewEventId(null);
+                  }
+                }}
+              >
+                ×
+              </button>
+            </div>
+            {reviewEditMode ? (
+              <div className="review-edit-form">
+                <div className="review-edit-field">
+                  <label className="review-edit-label">Type</label>
+                  <select
+                    className="review-edit-select"
+                    value={reviewEditKind}
+                    onChange={(e) => setReviewEditKind(e.target.value as MatchEventKind)}
+                  >
+                    {MATCH_EVENT_KINDS.map((k) => (
+                      <option key={k} value={k}>{getReviewEventTypeLabel(k)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="review-edit-field">
+                  <label className="review-edit-label">Player #</label>
+                  <input
+                    className="review-edit-input"
+                    type="number"
+                    min="1"
+                    max="99"
+                    placeholder="—"
+                    value={reviewEditPlayerNumber}
+                    onChange={(e) => setReviewEditPlayerNumber(e.target.value)}
+                  />
+                </div>
+                <div className="review-edit-field">
+                  <label className="review-edit-label">Player name</label>
+                  <input
+                    className="review-edit-input"
+                    type="text"
+                    placeholder="—"
+                    maxLength={40}
+                    value={reviewEditPlayerName}
+                    onChange={(e) => setReviewEditPlayerName(e.target.value)}
+                  />
+                </div>
+                <div className="review-edit-actions">
+                  <button
+                    type="button"
+                    className="review-edit-cancel"
+                    onClick={() => setReviewEditMode(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="review-edit-save"
+                    onClick={saveReviewEdit}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="review-event-card-row">
+                  <span className="review-event-card-row-label">Type</span>
+                  <span className="review-event-card-row-value">{getReviewEventTypeLabel(selectedReviewEvent.type)}</span>
+                </div>
+                {selectedReviewTeamLabel ? (
+                  <div className="review-event-card-row">
+                    <span className="review-event-card-row-label">Team</span>
+                    <span className="review-event-card-row-value">{selectedReviewTeamLabel}</span>
+                  </div>
+                ) : null}
+                <div className="review-event-card-row">
+                  <span className="review-event-card-row-label">Player</span>
+                  <span className="review-event-card-row-value">{selectedReviewPlayerLabel}</span>
+                </div>
+                <div className="review-event-card-row">
+                  <span className="review-event-card-row-label">Half</span>
+                  <span className="review-event-card-row-value">{selectedReviewEvent.period}</span>
+                </div>
+                <div className="review-event-card-row">
+                  <span className="review-event-card-row-label">Segment</span>
+                  <span className="review-event-card-row-value">{getSegmentDisplayLabel(selectedReviewEvent.segment)}</span>
+                </div>
+                <div className="review-event-card-row">
+                  <span className="review-event-card-row-label">Time</span>
+                  <span className="review-event-card-row-value">
+                    {formatMatchClock(selectedReviewEvent.matchClockSeconds)}
+                  </span>
+                </div>
+                {selectedReviewKickoutTagLabel ? (
+                  <div className="review-event-card-row">
+                    <span className="review-event-card-row-label">K/O Tag</span>
+                    <span className="review-event-card-row-value">{selectedReviewKickoutTagLabel}</span>
+                  </div>
+                ) : null}
+                {(selectedReviewEvent.kind === "TURNOVER_WON" || selectedReviewEvent.kind === "TURNOVER_LOST") &&
+                getTurnoverTagLabel(selectedReviewEvent.tags) ? (
+                  <div className="review-event-card-row">
+                    <span className="review-event-card-row-label">T/O Tag</span>
+                    <span className="review-event-card-row-value">{getTurnoverTagLabel(selectedReviewEvent.tags)}</span>
+                  </div>
+                ) : null}
+                {selectedReviewEvent.kind === "SHOT" && getShotTagLabel(selectedReviewEvent.tags) ? (
+                  <div className="review-event-card-row">
+                    <span className="review-event-card-row-label">Shot Tag</span>
+                    <span className="review-event-card-row-value">{getShotTagLabel(selectedReviewEvent.tags)}</span>
+                  </div>
+                ) : null}
+                <div className="review-event-card-actions">
+                  <button
+                    type="button"
+                    className="review-event-card-action-btn"
+                    aria-label="Edit event"
+                    onClick={openReviewEdit}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className={`review-event-card-action-btn ${deleteConfirmPending ? "review-event-card-action-btn--delete-confirm" : "review-event-card-action-btn--delete"}`}
+                    aria-label={deleteConfirmPending ? "Confirm delete event" : "Delete event"}
+                    onClick={() => {
+                      if (deleteConfirmPending) {
+                        deleteSelectedReviewEvent();
+                      } else {
+                        setDeleteConfirmPending(true);
+                      }
+                    }}
+                  >
+                    {deleteConfirmPending ? "Confirm?" : "Delete"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
       {activePlayerChipText ? (
         <button
           type="button"
