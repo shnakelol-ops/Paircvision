@@ -156,14 +156,9 @@ export default function ProTaggerPage() {
           <div style={H.overlay} onClick={() => setActionsOpen(false)}>
             <div style={H.sheet} onClick={(e) => e.stopPropagation()}>
               <div style={H.sheetHandle} />
-              <div style={H.sheetHeader}>Actions</div>
 
-              <button
-                style={H.sheetItem}
-                onClick={() => importFileRef.current?.click()}
-              >
-                Import Match JSON
-              </button>
+              {/* ── Matches ───────────────────────────────────── */}
+              <div style={H.sheetSection}>Matches</div>
 
               <button
                 style={H.sheetItem}
@@ -177,10 +172,35 @@ export default function ProTaggerPage() {
                 {savedCount > 0 && <span style={H.sheetBadge}>{savedCount}</span>}
               </button>
 
+              <button
+                style={H.sheetItem}
+                onClick={() => importFileRef.current?.click()}
+              >
+                Import Match JSON
+              </button>
+
+              {actionsImport && (
+                <div style={{ ...H.sheetFeedback, color: actionsImport.ok ? "#4ade80" : "#f87171" }}>
+                  {actionsImport.text}
+                </div>
+              )}
+
+              {/* ── Recent match ──────────────────────────────── */}
               {actionsLatest && (
                 <>
-                  <div style={H.sheetDivider}>
-                    {actionsLatest.homeTeamName} v {actionsLatest.awayTeamName}
+                  <div style={H.sheetSection}>Recent Match</div>
+
+                  <div style={H.sheetMatchCard}>
+                    <span style={H.sheetMatchName}>
+                      {actionsLatest.homeTeamName} v {actionsLatest.awayTeamName}
+                    </span>
+                    <span style={H.sheetMatchMeta}>
+                      {actionsLatest.scorelineSnapshot}
+                      {" · "}
+                      {new Date(actionsLatest.createdAt).toLocaleDateString(undefined, {
+                        day: "numeric", month: "short", year: "numeric",
+                      })}
+                    </span>
                   </div>
 
                   <button
@@ -205,12 +225,6 @@ export default function ProTaggerPage() {
                     {snapshotBusy === "ft" ? "Exporting…" : "FT Snapshot PDF"}
                   </button>
                 </>
-              )}
-
-              {actionsImport && (
-                <div style={{ ...H.sheetFeedback, color: actionsImport.ok ? "#4ade80" : "#f87171" }}>
-                  {actionsImport.text}
-                </div>
               )}
 
               <button style={H.sheetClose} onClick={() => setActionsOpen(false)}>
@@ -410,16 +424,17 @@ const H: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
   actionsBtn: {
-    background: "transparent",
-    border: "1px solid #30363d",
+    background: "rgba(56,139,253,0.08)",
+    border: "1px solid rgba(56,139,253,0.40)",
     borderRadius: 8,
-    color: "#8b949e",
+    color: "#58a6ff",
     fontSize: 13,
     fontWeight: 600,
     padding: "5px 12px",
     cursor: "pointer",
     outline: "none",
     flexShrink: 0,
+    boxShadow: "0 0 8px rgba(56,139,253,0.10)",
   },
   overlay: {
     position: "fixed" as const,
@@ -483,13 +498,34 @@ const H: Record<string, CSSProperties> = {
     padding: "1px 7px",
     lineHeight: "1.4",
   },
-  sheetDivider: {
-    color: "#484f58",
+  sheetSection: {
+    color: "#8b949e",
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase" as const,
+    padding: "14px 20px 4px",
+  },
+  sheetMatchCard: {
+    margin: "4px 16px 2px",
+    padding: "10px 14px",
+    background: "#0d1117",
+    border: "1px solid #30363d",
+    borderRadius: 10,
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: 3,
+  },
+  sheetMatchName: {
+    color: "#e6edf3",
+    fontSize: 14,
+    fontWeight: 600,
+    letterSpacing: "-0.2px",
+  },
+  sheetMatchMeta: {
+    color: "#8b949e",
     fontSize: 12,
-    fontWeight: 500,
-    padding: "10px 20px 2px",
-    borderTop: "1px solid #21262d",
-    marginTop: 4,
+    fontWeight: 400,
   },
   sheetFeedback: {
     fontSize: 13,
