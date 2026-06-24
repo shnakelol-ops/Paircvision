@@ -777,6 +777,33 @@ const TP_ENUM_TO_MULTIPLIER: Record<string, number> = {
   fast: 1.25,
 };
 
+const QUICK_DELAY_OPTIONS = [
+  { ms: 0,    label: "Now" },
+  { ms: 1000, label: "+1s" },
+  { ms: 2000, label: "+2s" },
+  { ms: 3000, label: "+3s" },
+  { ms: 4000, label: "+4s" },
+] as const;
+
+const EXTENDED_DELAY_OPTIONS = [
+  { ms: 5000,  label: "+5s"  },
+  { ms: 10000, label: "+10s" },
+  { ms: 15000, label: "+15s" },
+  { ms: 20000, label: "+20s" },
+  { ms: 30000, label: "+30s" },
+  { ms: 40000, label: "+40s" },
+  { ms: 50000, label: "+50s" },
+  { ms: 60000, label: "+60s" },
+] as const;
+
+const SHOT_DELAY_OPTIONS = [
+  { ms: 0,    label: "Now" },
+  { ms: 1000, label: "+1s" },
+  { ms: 2000, label: "+2s" },
+  { ms: 3000, label: "+3s" },
+  { ms: 4000, label: "+4s" },
+] as const;
+
 function multiplierToPlaybackSpeed(n: number): "slow" | "normal" | "fast" {
   if (n < 0.85) return "slow";
   if (n > 1.15) return "fast";
@@ -868,6 +895,8 @@ export default function TacticalPlaySurface() {
   const [passToId, setPassToId] = useState<string | null>(null);
   const [passTimingMs, setPassTimingMs] = useState<number>(0);
   const [passTriggerId, setPassTriggerId] = useState<string | null>(null);
+  const [routeDelayPickerOpen, setRouteDelayPickerOpen] = useState(false);
+  const [passTimingPickerOpen, setPassTimingPickerOpen] = useState(false);
   const [shootDelayMs, setShootDelayMs] = useState<number>(0);
   const [shotOpen, setShotOpen] = useState(false);
   const [shotEvents, setShotEvents] = useState<TacticalShotEvent[]>([]);
@@ -2591,13 +2620,7 @@ export default function TacticalPlaySurface() {
 
                 <div style={MP_ROW}>
                   <span style={MP_ROW_LABEL}>Time</span>
-                  {([
-                    { ms: 0, label: "Now" },
-                    { ms: 1000, label: "+1s" },
-                    { ms: 2000, label: "+2s" },
-                    { ms: 3000, label: "+3s" },
-                    { ms: 4000, label: "+4s" },
-                  ] as const).map((opt) => (
+                  {QUICK_DELAY_OPTIONS.map((opt) => (
                     <button
                       key={opt.ms}
                       type="button"
@@ -2607,11 +2630,20 @@ export default function TacticalPlaySurface() {
                           ? MP_CHIP_ACTIVE
                           : MP_CHIP
                       }
-                      onClick={() => onMovementsSetDelay(opt.ms)}
+                      onClick={() => { onMovementsSetDelay(opt.ms); setRouteDelayPickerOpen(false); }}
                     >
                       {opt.label}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    style={movementsRouteTrigger == null && movementsRouteDelay != null && movementsRouteDelay > 4000 ? MP_CHIP_ACTIVE : MP_CHIP}
+                    onClick={() => setRouteDelayPickerOpen((prev) => !prev)}
+                  >
+                    {movementsRouteTrigger == null && movementsRouteDelay != null && movementsRouteDelay > 4000
+                      ? `+${movementsRouteDelay / 1000}s ▾`
+                      : "More ▾"}
+                  </button>
                   {movementsOtherPlayers.length > 0 ? (
                     <>
                       <span style={{ ...MP_ROW_LABEL, marginLeft: "3px" }}>After</span>
@@ -2625,7 +2657,7 @@ export default function TacticalPlaySurface() {
                           key={p.playerId}
                           type="button"
                           style={movementsRouteTrigger === p.playerId ? MP_CHIP_ACTIVE : MP_CHIP}
-                          onClick={() => onMovementsSetTrigger(p.playerId)}
+                          onClick={() => { onMovementsSetTrigger(p.playerId); setRouteDelayPickerOpen(false); }}
                         >
                           P{p.number}
                         </button>
@@ -2633,6 +2665,20 @@ export default function TacticalPlaySurface() {
                     </>
                   ) : null}
                 </div>
+                {routeDelayPickerOpen ? (
+                  <div style={MP_ROW}>
+                    {EXTENDED_DELAY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.ms}
+                        type="button"
+                        style={movementsRouteTrigger == null && movementsRouteDelay === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
+                        onClick={() => { onMovementsSetDelay(opt.ms); setRouteDelayPickerOpen(false); }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </>
             ) : null}
 
@@ -3067,48 +3113,65 @@ export default function TacticalPlaySurface() {
             ) : null}
 
             {passFromId && passToId ? (
-              <div style={MP_ROW}>
-                <span style={MP_ROW_LABEL}>Time</span>
-                {([
-                  { ms: 0, label: "Now" },
-                  { ms: 1000, label: "+1s" },
-                  { ms: 2000, label: "+2s" },
-                  { ms: 3000, label: "+3s" },
-                  { ms: 4000, label: "+4s" },
-                ] as const).map((opt) => (
+              <>
+                <div style={MP_ROW}>
+                  <span style={MP_ROW_LABEL}>Time</span>
+                  {QUICK_DELAY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.ms}
+                      type="button"
+                      style={passTriggerId == null && passTimingMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
+                      onClick={() => { setPassTimingMs(opt.ms); setPassTriggerId(null); setPassTimingPickerOpen(false); }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                   <button
-                    key={opt.ms}
                     type="button"
-                    style={passTriggerId == null && passTimingMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
-                    onClick={() => { setPassTimingMs(opt.ms); setPassTriggerId(null); }}
+                    style={passTriggerId == null && passTimingMs > 4000 ? MP_CHIP_ACTIVE : MP_CHIP}
+                    onClick={() => setPassTimingPickerOpen((prev) => !prev)}
                   >
-                    {opt.label}
+                    {passTriggerId == null && passTimingMs > 4000 ? `+${passTimingMs / 1000}s ▾` : "More ▾"}
                   </button>
-                ))}
-                {routes.length > 0 || passEvents.length > 0 ? (
-                  <>
-                    <span style={{ ...MP_ROW_LABEL, marginLeft: "3px" }}>After</span>
-                    {passTriggerId != null ? (
-                      <button type="button" style={MP_CHIP_SECONDARY} onClick={() => setPassTriggerId(null)}>
-                        ×
-                      </button>
-                    ) : null}
-                    {routes.filter((r) => !awayTokenIds.has(r.playerId)).map((r) => {
-                      const num = tokenNumberById[r.playerId] ?? "?";
-                      return (
-                        <button
-                          key={r.playerId}
-                          type="button"
-                          style={passTriggerId === r.playerId ? MP_CHIP_ACTIVE : MP_CHIP}
-                          onClick={() => setPassTriggerId(passTriggerId === r.playerId ? null : r.playerId)}
-                        >
-                          P{num}
+                  {routes.length > 0 || passEvents.length > 0 ? (
+                    <>
+                      <span style={{ ...MP_ROW_LABEL, marginLeft: "3px" }}>After</span>
+                      {passTriggerId != null ? (
+                        <button type="button" style={MP_CHIP_SECONDARY} onClick={() => setPassTriggerId(null)}>
+                          ×
                         </button>
-                      );
-                    })}
-                  </>
+                      ) : null}
+                      {routes.filter((r) => !awayTokenIds.has(r.playerId)).map((r) => {
+                        const num = tokenNumberById[r.playerId] ?? "?";
+                        return (
+                          <button
+                            key={r.playerId}
+                            type="button"
+                            style={passTriggerId === r.playerId ? MP_CHIP_ACTIVE : MP_CHIP}
+                            onClick={() => { setPassTriggerId(passTriggerId === r.playerId ? null : r.playerId); setPassTimingPickerOpen(false); }}
+                          >
+                            P{num}
+                          </button>
+                        );
+                      })}
+                    </>
+                  ) : null}
+                </div>
+                {passTimingPickerOpen ? (
+                  <div style={MP_ROW}>
+                    {EXTENDED_DELAY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.ms}
+                        type="button"
+                        style={passTriggerId == null && passTimingMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
+                        onClick={() => { setPassTimingMs(opt.ms); setPassTriggerId(null); setPassTimingPickerOpen(false); }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 ) : null}
-              </div>
+              </>
             ) : null}
 
             {shotOpen ? (() => {
@@ -3136,11 +3199,7 @@ export default function TacticalPlaySurface() {
                   <span style={MP_ROW_LABEL}>Shooter</span>
                   <span style={MP_CHIP_SECONDARY}>P{shooterNum}</span>
                   <span style={{ ...MP_ROW_LABEL, marginLeft: "4px" }}>Delay</span>
-                  {([
-                    { ms: 0, label: "Now" },
-                    { ms: 1000, label: "+1s" },
-                    { ms: 2000, label: "+2s" },
-                  ] as const).map((opt) => (
+                  {SHOT_DELAY_OPTIONS.map((opt) => (
                     <button
                       key={opt.ms}
                       type="button"
