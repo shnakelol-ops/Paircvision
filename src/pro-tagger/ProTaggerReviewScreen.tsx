@@ -15,7 +15,7 @@ import { NotesQuickPanel, getMatchNotes } from "../features/notes";
 import { selectReviewEvents } from "../stats/review-selectors";
 import { createPixiPitchSurface } from "../core/pitch/create-pixi-pitch-surface";
 import type { PixiPitchSurfaceHandle } from "../core/pitch/create-pixi-pitch-surface";
-import type { MatchEventKind } from "../core/stats/stats-event-model";
+import { MATCH_EVENT_KINDS, type MatchEventKind } from "../core/stats/stats-event-model";
 import { formatMatchClock } from "../core/match/match-state-store";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -186,7 +186,11 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
   // ── Event Map marker tap state ─────────────────────────────────────────────
   const [selectedMapEventId,   setSelectedMapEventId]   = useState<string | null>(null);
   const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
-  // localMatch holds a mutated copy of the match after in-session event deletes.
+  const [proEditMode,          setProEditMode]          = useState(false);
+  const [proEditKind,          setProEditKind]          = useState<MatchEventKind>("GOAL");
+  const [proEditPlayerName,    setProEditPlayerName]    = useState("");
+  const [proEditPlayerNumber,  setProEditPlayerNumber]  = useState("");
+  // localMatch holds a mutated copy of the match after in-session edits/deletes.
   // It shadows importedMatch and _match so every export path sees the same data.
   const [localMatch,           setLocalMatch]           = useState<ProTaggerSavedMatch | null>(null);
 
@@ -200,9 +204,10 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
     setSelectedMapEventId(null);
   }, [_match.id, importedMatch]);
 
-  // Reset delete-confirm state whenever the selected event changes.
+  // Reset delete-confirm and edit state whenever the selected event changes.
   useEffect(() => {
     setDeleteConfirmPending(false);
+    setProEditMode(false);
   }, [selectedMapEventId]);
 
   // Clear selection when the Event Map board is closed.
@@ -261,6 +266,32 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
     });
     setSelectedMapEventId(null);
     setDeleteConfirmPending(false);
+  };
+
+  const openProEdit = () => {
+    if (!selectedMapEvent) return;
+    setProEditKind(selectedMapEvent.type);
+    setProEditPlayerName(selectedMapEvent.playerName ?? "");
+    setProEditPlayerNumber(selectedMapEvent.playerNumber != null ? String(selectedMapEvent.playerNumber) : "");
+    setProEditMode(true);
+  };
+
+  const saveProEdit = () => {
+    if (!selectedMapEventId) return;
+    const num = parseInt(proEditPlayerNumber, 10);
+    const updatedEvents = match.events.map((e) =>
+      e.id === selectedMapEventId
+        ? {
+            ...e,
+            kind:         proEditKind,
+            type:         proEditKind,
+            playerName:   proEditPlayerName.trim() || undefined,
+            playerNumber: Number.isFinite(num) && num > 0 ? num : undefined,
+          }
+        : e,
+    );
+    setLocalMatch({ ...match, events: updatedEvents, eventCount: updatedEvents.length });
+    setProEditMode(false);
   };
 
   // ── Export helpers ─────────────────────────────────────────────────────────
@@ -591,63 +622,123 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
             {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
           </div>
 
-          {/* ── Event detail bottom sheet ──────────────────────────────── */}
+          {/* ── Event detail / edit card ──────────────────────────────── */}
           {selectedMapEvent ? (
             <div style={B.sheet}>
               <div style={B.sheetHandle} />
               <div style={B.sheetInner}>
                 <div style={B.sheetHead}>
-                  <span style={B.sheetTitle}>Event detail</span>
+                  <span style={B.sheetTitle}>{proEditMode ? "Edit event" : "Event detail"}</span>
                   <button
                     style={B.sheetClose}
-                    onClick={() => setSelectedMapEventId(null)}
-                    aria-label="Close event detail"
+                    onClick={() => {
+                      if (proEditMode) {
+                        setProEditMode(false);
+                      } else {
+                        setSelectedMapEventId(null);
+                      }
+                    }}
+                    aria-label="Close"
                   >
                     ×
                   </button>
                 </div>
-                <div style={B.sheetRow}>
-                  <span style={B.sheetRowLabel}>Type</span>
-                  <span style={B.sheetRowValue}>{getProEventTypeLabel(selectedMapEvent.type)}</span>
-                </div>
-                {selectedMapTeamLabel ? (
-                  <div style={B.sheetRow}>
-                    <span style={B.sheetRowLabel}>Team</span>
-                    <span style={B.sheetRowValue}>{selectedMapTeamLabel}</span>
+                {proEditMode ? (
+                  <div style={B.editForm}>
+                    <div style={B.editField}>
+                      <label style={B.editLabel}>Type</label>
+                      <select
+                        style={B.editSelect}
+                        value={proEditKind}
+                        onChange={(e) => setProEditKind(e.target.value as MatchEventKind)}
+                      >
+                        {MATCH_EVENT_KINDS.map((k) => (
+                          <option key={k} value={k}>{getProEventTypeLabel(k)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={B.editField}>
+                      <label style={B.editLabel}>Player #</label>
+                      <input
+                        style={B.editInput}
+                        type="number"
+                        min="1"
+                        max="99"
+                        placeholder="—"
+                        value={proEditPlayerNumber}
+                        onChange={(e) => setProEditPlayerNumber(e.target.value)}
+                      />
+                    </div>
+                    <div style={B.editField}>
+                      <label style={B.editLabel}>Player name</label>
+                      <input
+                        style={B.editInput}
+                        type="text"
+                        placeholder="—"
+                        maxLength={40}
+                        value={proEditPlayerName}
+                        onChange={(e) => setProEditPlayerName(e.target.value)}
+                      />
+                    </div>
+                    <div style={B.editActions}>
+                      <button style={B.editCancel} onClick={() => setProEditMode(false)}>
+                        Cancel
+                      </button>
+                      <button style={B.editSave} onClick={saveProEdit}>
+                        Save
+                      </button>
+                    </div>
                   </div>
-                ) : null}
-                <div style={B.sheetRow}>
-                  <span style={B.sheetRowLabel}>Player</span>
-                  <span style={B.sheetRowValue}>{selectedMapPlayerLabel}</span>
-                </div>
-                <div style={B.sheetRow}>
-                  <span style={B.sheetRowLabel}>Half</span>
-                  <span style={B.sheetRowValue}>{selectedMapEvent.period}</span>
-                </div>
-                <div style={B.sheetRow}>
-                  <span style={B.sheetRowLabel}>Time</span>
-                  <span style={B.sheetRowValue}>
-                    {formatMatchClock(selectedMapEvent.matchClockSeconds)}
-                  </span>
-                </div>
-                <div style={B.sheetActions}>
-                  <button style={B.sheetBtnEdit} disabled aria-label="Edit event (coming next)">
-                    Edit
-                  </button>
-                  <button
-                    style={deleteConfirmPending ? B.sheetBtnDeleteConfirm : B.sheetBtnDelete}
-                    aria-label={deleteConfirmPending ? "Confirm delete" : "Delete event"}
-                    onClick={() => {
-                      if (deleteConfirmPending) {
-                        deleteSelectedMapEvent();
-                      } else {
-                        setDeleteConfirmPending(true);
-                      }
-                    }}
-                  >
-                    {deleteConfirmPending ? "Confirm?" : "Delete"}
-                  </button>
-                </div>
+                ) : (
+                  <>
+                    <div style={B.sheetRow}>
+                      <span style={B.sheetRowLabel}>Type</span>
+                      <span style={B.sheetRowValue}>{getProEventTypeLabel(selectedMapEvent.type)}</span>
+                    </div>
+                    {selectedMapTeamLabel ? (
+                      <div style={B.sheetRow}>
+                        <span style={B.sheetRowLabel}>Team</span>
+                        <span style={B.sheetRowValue}>{selectedMapTeamLabel}</span>
+                      </div>
+                    ) : null}
+                    <div style={B.sheetRow}>
+                      <span style={B.sheetRowLabel}>Player</span>
+                      <span style={B.sheetRowValue}>{selectedMapPlayerLabel}</span>
+                    </div>
+                    <div style={B.sheetRow}>
+                      <span style={B.sheetRowLabel}>Half</span>
+                      <span style={B.sheetRowValue}>{selectedMapEvent.period}</span>
+                    </div>
+                    <div style={B.sheetRow}>
+                      <span style={B.sheetRowLabel}>Time</span>
+                      <span style={B.sheetRowValue}>
+                        {formatMatchClock(selectedMapEvent.matchClockSeconds)}
+                      </span>
+                    </div>
+                    <div style={B.sheetActions}>
+                      <button
+                        style={B.sheetBtnEdit}
+                        aria-label="Edit event"
+                        onClick={openProEdit}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        style={deleteConfirmPending ? B.sheetBtnDeleteConfirm : B.sheetBtnDelete}
+                        aria-label={deleteConfirmPending ? "Confirm delete" : "Delete event"}
+                        onClick={() => {
+                          if (deleteConfirmPending) {
+                            deleteSelectedMapEvent();
+                          } else {
+                            setDeleteConfirmPending(true);
+                          }
+                        }}
+                      >
+                        {deleteConfirmPending ? "Confirm?" : "Delete"}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           ) : null}
@@ -1120,33 +1211,30 @@ const B: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
 
-  // ── Event detail bottom sheet ─────────────────────────────────────────────
+  // ── Event detail card (compact right-anchored) ────────────────────────────
   sheet: {
-    position:              "absolute",
-    left:                  0,
-    right:                 0,
-    bottom:                0,
-    zIndex:                10,
-    background:            "rgba(10, 20, 35, 0.97)",
-    backdropFilter:        "blur(12px)",
-    WebkitBackdropFilter:  "blur(12px)",
-    borderRadius:          "16px 16px 0 0",
-    border:                "1px solid rgba(148, 163, 184, 0.28)",
-    borderBottom:          "none",
-    boxShadow:             "0 -4px 28px rgba(4, 12, 24, 0.6)",
-    display:               "flex",
-    flexDirection:         "column",
+    position:             "absolute",
+    right:                12,
+    bottom:               12,
+    left:                 "auto",
+    zIndex:               10,
+    minWidth:             224,
+    maxWidth:             280,
+    background:           "rgba(10, 20, 35, 0.97)",
+    backdropFilter:       "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    borderRadius:         14,
+    border:               "1px solid rgba(148, 163, 184, 0.34)",
+    boxShadow:            "0 8px 24px rgba(4, 12, 24, 0.44)",
+    display:              "flex",
+    flexDirection:        "column",
+    overflow:             "hidden",
   } as CSSProperties,
   sheetHandle: {
-    width:        36,
-    height:       4,
-    borderRadius: 99,
-    background:   "rgba(148, 163, 184, 0.32)",
-    margin:       "10px auto 0",
-    flexShrink:   0,
+    display: "none",
   },
   sheetInner: {
-    padding:       "10px 16px 20px",
+    padding:       "10px 12px 14px",
     display:       "flex",
     flexDirection: "column",
     gap:           6,
@@ -1213,8 +1301,7 @@ const B: Record<string, CSSProperties> = {
     color:        "#e6edf3",
     fontSize:     12,
     fontWeight:   700,
-    cursor:       "not-allowed",
-    opacity:      0.4,
+    cursor:       "pointer",
     outline:      "none",
   },
   sheetBtnDelete: {
@@ -1237,6 +1324,78 @@ const B: Record<string, CSSProperties> = {
     background:   "rgba(185, 28, 28, 0.92)",
     color:        "#fff",
     fontSize:     12,
+    fontWeight:   700,
+    cursor:       "pointer",
+    outline:      "none",
+  },
+  // ── Edit form ─────────────────────────────────────────────────────────────
+  editForm: {
+    display:       "flex",
+    flexDirection: "column",
+    gap:           8,
+  } as CSSProperties,
+  editField: {
+    display:       "flex",
+    flexDirection: "column",
+    gap:           3,
+  } as CSSProperties,
+  editLabel: {
+    fontSize:      9,
+    fontWeight:    700,
+    letterSpacing: "0.14px",
+    textTransform: "uppercase" as const,
+    opacity:       0.72,
+    color:         "#e6edf3",
+  },
+  editSelect: {
+    minHeight:   34,
+    borderRadius: 8,
+    border:      "1px solid rgba(148, 163, 184, 0.38)",
+    background:  "rgba(15, 23, 42, 0.86)",
+    color:       "#e6edf3",
+    fontSize:    11,
+    fontWeight:  600,
+    padding:     "0 10px",
+    width:       "100%",
+    boxSizing:   "border-box" as const,
+  },
+  editInput: {
+    minHeight:   34,
+    borderRadius: 8,
+    border:      "1px solid rgba(148, 163, 184, 0.38)",
+    background:  "rgba(15, 23, 42, 0.86)",
+    color:       "#e6edf3",
+    fontSize:    11,
+    fontWeight:  600,
+    padding:     "0 10px",
+    width:       "100%",
+    boxSizing:   "border-box" as const,
+  },
+  editActions: {
+    display:   "flex",
+    gap:       8,
+    marginTop: 4,
+  },
+  editCancel: {
+    flex:         1,
+    minHeight:    38,
+    borderRadius: 10,
+    border:       "1px solid rgba(148, 163, 184, 0.34)",
+    background:   "rgba(30, 41, 59, 0.8)",
+    color:        "#e6edf3",
+    fontSize:     11,
+    fontWeight:   700,
+    cursor:       "pointer",
+    outline:      "none",
+  },
+  editSave: {
+    flex:         1,
+    minHeight:    38,
+    borderRadius: 10,
+    border:       "1px solid rgba(34, 197, 94, 0.6)",
+    background:   "rgba(22, 101, 52, 0.7)",
+    color:        "#86efac",
+    fontSize:     11,
     fontWeight:   700,
     cursor:       "pointer",
     outline:      "none",

@@ -2270,45 +2270,25 @@ const PANEL_CSS = `
 .review-event-card {
   position: fixed;
   z-index: 10010;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  max-height: 70vh;
-  display: flex;
-  flex-direction: column;
-  border-radius: 16px 16px 0 0;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-bottom: none;
-  background: rgba(10, 20, 35, 0.97);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 -4px 28px rgba(4, 12, 24, 0.52);
-}
-
-.review-event-card--landscape {
-  left: auto;
   right: max(12px, env(safe-area-inset-right, 0px));
   bottom: max(12px, env(safe-area-inset-bottom, 0px));
-  border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.34);
+  left: auto;
   min-width: 224px;
   max-width: 280px;
   max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: rgba(10, 20, 35, 0.97);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 8px 24px rgba(4, 12, 24, 0.44);
-}
-
-.review-event-card-handle {
-  width: 36px;
-  height: 4px;
-  border-radius: 99px;
-  background: rgba(148, 163, 184, 0.32);
-  margin: 10px auto 0;
-  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .review-event-card-inner {
-  padding: 10px 16px;
-  padding-bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+  padding: 10px 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2316,12 +2296,69 @@ const PANEL_CSS = `
   -webkit-overflow-scrolling: touch;
 }
 
-.review-event-card--landscape .review-event-card-handle {
-  display: none;
+.review-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.review-event-card--landscape .review-event-card-inner {
-  padding: 10px 12px 12px;
+.review-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.review-edit-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14px;
+  text-transform: uppercase;
+  opacity: 0.72;
+  color: #dbe7f5;
+}
+
+.review-edit-select,
+.review-edit-input {
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  background: rgba(15, 23, 42, 0.86);
+  color: #dbe7f5;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.review-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.review-edit-cancel {
+  flex: 1;
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: rgba(30, 41, 59, 0.8);
+  color: #dbe7f5;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.review-edit-save {
+  flex: 1;
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(34, 197, 94, 0.6);
+  background: rgba(22, 101, 52, 0.7);
+  color: #86efac;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .review-event-card-head {
@@ -3333,6 +3370,10 @@ export default function StatsModeSurface() {
   const [isReviewStripCollapsed, setIsReviewStripCollapsed] = useState(false);
   const [selectedReviewEventId, setSelectedReviewEventId] = useState<string | null>(null);
   const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
+  const [reviewEditMode, setReviewEditMode] = useState(false);
+  const [reviewEditKind, setReviewEditKind] = useState<MatchEventKind>("GOAL");
+  const [reviewEditPlayerName, setReviewEditPlayerName] = useState("");
+  const [reviewEditPlayerNumber, setReviewEditPlayerNumber] = useState("");
   const [pendingFollowup, setPendingFollowup] = useState<{
     eventId: string;
     kind: PendingFollowupKind;
@@ -3718,6 +3759,34 @@ export default function StatsModeSurface() {
     setLoggedEvents((prev) => prev.filter((e) => e.id !== targetId));
     setSelectedReviewEventId(null);
     setDeleteConfirmPending(false);
+  };
+
+  const openReviewEdit = () => {
+    const event = loggedEvents.find((e) => e.id === selectedReviewEventId);
+    if (!event) return;
+    setReviewEditKind(event.kind);
+    setReviewEditPlayerName(event.playerName ?? "");
+    setReviewEditPlayerNumber(event.playerNumber != null ? String(event.playerNumber) : "");
+    setReviewEditMode(true);
+  };
+
+  const saveReviewEdit = () => {
+    if (!selectedReviewEventId) return;
+    const num = parseInt(reviewEditPlayerNumber, 10);
+    setLoggedEvents((prev) =>
+      prev.map((e) =>
+        e.id === selectedReviewEventId
+          ? {
+              ...e,
+              kind: reviewEditKind,
+              type: reviewEditKind,
+              playerName: reviewEditPlayerName.trim() || undefined,
+              playerNumber: Number.isFinite(num) && num > 0 ? num : undefined,
+            }
+          : e,
+      ),
+    );
+    setReviewEditMode(false);
   };
 
   const startTeamNameEdit = (team: TeamSide) => {
@@ -5628,6 +5697,7 @@ export default function StatsModeSurface() {
 
   useEffect(() => {
     setDeleteConfirmPending(false);
+    setReviewEditMode(false);
   }, [selectedReviewEventId]);
 
   useEffect(() => {
@@ -7893,94 +7963,159 @@ export default function StatsModeSurface() {
           the utility controls (z-index 10001) in the root stacking context. */}
       {isReviewModeActive && selectedReviewEvent ? (
         <div
-          className={`review-event-card ${isLandscape ? "review-event-card--landscape" : ""}`}
+          className="review-event-card"
           role="dialog"
           aria-label="Event detail"
         >
-          <div className="review-event-card-handle" />
           <div className="review-event-card-inner">
             <div className="review-event-card-head">
-              <div className="review-event-card-title">Event detail</div>
+              <div className="review-event-card-title">
+                {reviewEditMode ? "Edit event" : "Event detail"}
+              </div>
               <button
                 type="button"
                 className="review-event-card-close"
-                aria-label="Close event detail"
-                onClick={() => setSelectedReviewEventId(null)}
+                aria-label="Close"
+                onClick={() => {
+                  if (reviewEditMode) {
+                    setReviewEditMode(false);
+                  } else {
+                    setSelectedReviewEventId(null);
+                  }
+                }}
               >
                 ×
               </button>
             </div>
-            <div className="review-event-card-row">
-              <span className="review-event-card-row-label">Type</span>
-              <span className="review-event-card-row-value">{getReviewEventTypeLabel(selectedReviewEvent.type)}</span>
-            </div>
-            {selectedReviewTeamLabel ? (
-              <div className="review-event-card-row">
-                <span className="review-event-card-row-label">Team</span>
-                <span className="review-event-card-row-value">{selectedReviewTeamLabel}</span>
+            {reviewEditMode ? (
+              <div className="review-edit-form">
+                <div className="review-edit-field">
+                  <label className="review-edit-label">Type</label>
+                  <select
+                    className="review-edit-select"
+                    value={reviewEditKind}
+                    onChange={(e) => setReviewEditKind(e.target.value as MatchEventKind)}
+                  >
+                    {MATCH_EVENT_KINDS.map((k) => (
+                      <option key={k} value={k}>{getReviewEventTypeLabel(k)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="review-edit-field">
+                  <label className="review-edit-label">Player #</label>
+                  <input
+                    className="review-edit-input"
+                    type="number"
+                    min="1"
+                    max="99"
+                    placeholder="—"
+                    value={reviewEditPlayerNumber}
+                    onChange={(e) => setReviewEditPlayerNumber(e.target.value)}
+                  />
+                </div>
+                <div className="review-edit-field">
+                  <label className="review-edit-label">Player name</label>
+                  <input
+                    className="review-edit-input"
+                    type="text"
+                    placeholder="—"
+                    maxLength={40}
+                    value={reviewEditPlayerName}
+                    onChange={(e) => setReviewEditPlayerName(e.target.value)}
+                  />
+                </div>
+                <div className="review-edit-actions">
+                  <button
+                    type="button"
+                    className="review-edit-cancel"
+                    onClick={() => setReviewEditMode(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="review-edit-save"
+                    onClick={saveReviewEdit}
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
-            ) : null}
-            <div className="review-event-card-row">
-              <span className="review-event-card-row-label">Player</span>
-              <span className="review-event-card-row-value">{selectedReviewPlayerLabel}</span>
-            </div>
-            <div className="review-event-card-row">
-              <span className="review-event-card-row-label">Half</span>
-              <span className="review-event-card-row-value">{selectedReviewEvent.period}</span>
-            </div>
-            <div className="review-event-card-row">
-              <span className="review-event-card-row-label">Segment</span>
-              <span className="review-event-card-row-value">{getSegmentDisplayLabel(selectedReviewEvent.segment)}</span>
-            </div>
-            <div className="review-event-card-row">
-              <span className="review-event-card-row-label">Time</span>
-              <span className="review-event-card-row-value">
-                {formatMatchClock(selectedReviewEvent.matchClockSeconds)}
-              </span>
-            </div>
-            {selectedReviewKickoutTagLabel ? (
-              <div className="review-event-card-row">
-                <span className="review-event-card-row-label">K/O Tag</span>
-                <span className="review-event-card-row-value">{selectedReviewKickoutTagLabel}</span>
-              </div>
-            ) : null}
-            {(selectedReviewEvent.kind === "TURNOVER_WON" || selectedReviewEvent.kind === "TURNOVER_LOST") &&
-            getTurnoverTagLabel(selectedReviewEvent.tags) ? (
-              <div className="review-event-card-row">
-                <span className="review-event-card-row-label">T/O Tag</span>
-                <span className="review-event-card-row-value">{getTurnoverTagLabel(selectedReviewEvent.tags)}</span>
-              </div>
-            ) : null}
-            {selectedReviewEvent.kind === "SHOT" && getShotTagLabel(selectedReviewEvent.tags) ? (
-              <div className="review-event-card-row">
-                <span className="review-event-card-row-label">Shot Tag</span>
-                <span className="review-event-card-row-value">{getShotTagLabel(selectedReviewEvent.tags)}</span>
-              </div>
-            ) : null}
-            <div className="review-event-card-actions">
-              <button
-                type="button"
-                className="review-event-card-action-btn"
-                disabled
-                aria-label="Edit event (not yet available)"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                className={`review-event-card-action-btn ${deleteConfirmPending ? "review-event-card-action-btn--delete-confirm" : "review-event-card-action-btn--delete"}`}
-                aria-label={deleteConfirmPending ? "Confirm delete event" : "Delete event"}
-                onClick={() => {
-                  if (deleteConfirmPending) {
-                    deleteSelectedReviewEvent();
-                  } else {
-                    setDeleteConfirmPending(true);
-                  }
-                }}
-              >
-                {deleteConfirmPending ? "Confirm?" : "Delete"}
-              </button>
-            </div>
+            ) : (
+              <>
+                <div className="review-event-card-row">
+                  <span className="review-event-card-row-label">Type</span>
+                  <span className="review-event-card-row-value">{getReviewEventTypeLabel(selectedReviewEvent.type)}</span>
+                </div>
+                {selectedReviewTeamLabel ? (
+                  <div className="review-event-card-row">
+                    <span className="review-event-card-row-label">Team</span>
+                    <span className="review-event-card-row-value">{selectedReviewTeamLabel}</span>
+                  </div>
+                ) : null}
+                <div className="review-event-card-row">
+                  <span className="review-event-card-row-label">Player</span>
+                  <span className="review-event-card-row-value">{selectedReviewPlayerLabel}</span>
+                </div>
+                <div className="review-event-card-row">
+                  <span className="review-event-card-row-label">Half</span>
+                  <span className="review-event-card-row-value">{selectedReviewEvent.period}</span>
+                </div>
+                <div className="review-event-card-row">
+                  <span className="review-event-card-row-label">Segment</span>
+                  <span className="review-event-card-row-value">{getSegmentDisplayLabel(selectedReviewEvent.segment)}</span>
+                </div>
+                <div className="review-event-card-row">
+                  <span className="review-event-card-row-label">Time</span>
+                  <span className="review-event-card-row-value">
+                    {formatMatchClock(selectedReviewEvent.matchClockSeconds)}
+                  </span>
+                </div>
+                {selectedReviewKickoutTagLabel ? (
+                  <div className="review-event-card-row">
+                    <span className="review-event-card-row-label">K/O Tag</span>
+                    <span className="review-event-card-row-value">{selectedReviewKickoutTagLabel}</span>
+                  </div>
+                ) : null}
+                {(selectedReviewEvent.kind === "TURNOVER_WON" || selectedReviewEvent.kind === "TURNOVER_LOST") &&
+                getTurnoverTagLabel(selectedReviewEvent.tags) ? (
+                  <div className="review-event-card-row">
+                    <span className="review-event-card-row-label">T/O Tag</span>
+                    <span className="review-event-card-row-value">{getTurnoverTagLabel(selectedReviewEvent.tags)}</span>
+                  </div>
+                ) : null}
+                {selectedReviewEvent.kind === "SHOT" && getShotTagLabel(selectedReviewEvent.tags) ? (
+                  <div className="review-event-card-row">
+                    <span className="review-event-card-row-label">Shot Tag</span>
+                    <span className="review-event-card-row-value">{getShotTagLabel(selectedReviewEvent.tags)}</span>
+                  </div>
+                ) : null}
+                <div className="review-event-card-actions">
+                  <button
+                    type="button"
+                    className="review-event-card-action-btn"
+                    aria-label="Edit event"
+                    onClick={openReviewEdit}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className={`review-event-card-action-btn ${deleteConfirmPending ? "review-event-card-action-btn--delete-confirm" : "review-event-card-action-btn--delete"}`}
+                    aria-label={deleteConfirmPending ? "Confirm delete event" : "Delete event"}
+                    onClick={() => {
+                      if (deleteConfirmPending) {
+                        deleteSelectedReviewEvent();
+                      } else {
+                        setDeleteConfirmPending(true);
+                      }
+                    }}
+                  >
+                    {deleteConfirmPending ? "Confirm?" : "Delete"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       ) : null}
