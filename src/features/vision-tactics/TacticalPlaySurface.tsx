@@ -676,6 +676,17 @@ const MP_CHIP_SECONDARY: CSSProperties = {
   border: "1px solid rgba(180, 210, 255, 0.09)",
 };
 
+// Horizontally-scrollable chip strip — prevents chip rows from wrapping to a
+// second line on phone landscape where panel height budget is tight.
+const TP_CHIP_SCROLL: CSSProperties = {
+  display: "flex",
+  flexWrap: "nowrap",
+  gap: "3px",
+  alignItems: "center",
+  overflowX: "auto",
+  scrollbarWidth: "none",
+};
+
 const MP_PLAYER_CHIP: CSSProperties = {
   height: "28px",
   minWidth: "0",
@@ -2619,34 +2630,36 @@ export default function TacticalPlaySurface() {
                 </div>
 
                 <div style={MP_ROW}>
-                  <span style={MP_ROW_LABEL}>Time</span>
-                  {QUICK_DELAY_OPTIONS.map((opt) => (
+                  <span style={{ ...MP_ROW_LABEL, flexShrink: 0 }}>Time</span>
+                  <div style={{ ...TP_CHIP_SCROLL, flex: 1, minWidth: 0 }}>
+                    {QUICK_DELAY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.ms}
+                        type="button"
+                        style={
+                          movementsRouteTrigger == null &&
+                          (movementsRouteDelay === opt.ms || (opt.ms === 0 && movementsRouteDelay == null))
+                            ? MP_CHIP_ACTIVE
+                            : MP_CHIP
+                        }
+                        onClick={() => { onMovementsSetDelay(opt.ms); setRouteDelayPickerOpen(false); }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
                     <button
-                      key={opt.ms}
                       type="button"
-                      style={
-                        movementsRouteTrigger == null &&
-                        (movementsRouteDelay === opt.ms || (opt.ms === 0 && movementsRouteDelay == null))
-                          ? MP_CHIP_ACTIVE
-                          : MP_CHIP
-                      }
-                      onClick={() => { onMovementsSetDelay(opt.ms); setRouteDelayPickerOpen(false); }}
+                      style={movementsRouteTrigger == null && movementsRouteDelay != null && movementsRouteDelay > 4000 ? MP_CHIP_ACTIVE : MP_CHIP}
+                      onClick={() => setRouteDelayPickerOpen((prev) => !prev)}
                     >
-                      {opt.label}
+                      {movementsRouteTrigger == null && movementsRouteDelay != null && movementsRouteDelay > 4000
+                        ? `+${movementsRouteDelay / 1000}s ▾`
+                        : "More ▾"}
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    style={movementsRouteTrigger == null && movementsRouteDelay != null && movementsRouteDelay > 4000 ? MP_CHIP_ACTIVE : MP_CHIP}
-                    onClick={() => setRouteDelayPickerOpen((prev) => !prev)}
-                  >
-                    {movementsRouteTrigger == null && movementsRouteDelay != null && movementsRouteDelay > 4000
-                      ? `+${movementsRouteDelay / 1000}s ▾`
-                      : "More ▾"}
-                  </button>
+                  </div>
                   {movementsOtherPlayers.length > 0 ? (
                     <>
-                      <span style={{ ...MP_ROW_LABEL, marginLeft: "3px" }}>After</span>
+                      <span style={{ ...MP_ROW_LABEL, marginLeft: "3px", flexShrink: 0 }}>After</span>
                       {movementsRouteTrigger != null ? (
                         <button type="button" style={MP_CHIP_SECONDARY} onClick={() => onMovementsSetTrigger(null)}>
                           ×
@@ -2666,7 +2679,7 @@ export default function TacticalPlaySurface() {
                   ) : null}
                 </div>
                 {routeDelayPickerOpen ? (
-                  <div style={MP_ROW}>
+                  <div style={TP_CHIP_SCROLL}>
                     {EXTENDED_DELAY_OPTIONS.map((opt) => (
                       <button
                         key={opt.ms}
@@ -3115,27 +3128,29 @@ export default function TacticalPlaySurface() {
             {passFromId && passToId ? (
               <>
                 <div style={MP_ROW}>
-                  <span style={MP_ROW_LABEL}>Time</span>
-                  {QUICK_DELAY_OPTIONS.map((opt) => (
+                  <span style={{ ...MP_ROW_LABEL, flexShrink: 0 }}>Time</span>
+                  <div style={{ ...TP_CHIP_SCROLL, flex: 1, minWidth: 0 }}>
+                    {QUICK_DELAY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.ms}
+                        type="button"
+                        style={passTriggerId == null && passTimingMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
+                        onClick={() => { setPassTimingMs(opt.ms); setPassTriggerId(null); setPassTimingPickerOpen(false); }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
                     <button
-                      key={opt.ms}
                       type="button"
-                      style={passTriggerId == null && passTimingMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
-                      onClick={() => { setPassTimingMs(opt.ms); setPassTriggerId(null); setPassTimingPickerOpen(false); }}
+                      style={passTriggerId == null && passTimingMs > 4000 ? MP_CHIP_ACTIVE : MP_CHIP}
+                      onClick={() => setPassTimingPickerOpen((prev) => !prev)}
                     >
-                      {opt.label}
+                      {passTriggerId == null && passTimingMs > 4000 ? `+${passTimingMs / 1000}s ▾` : "More ▾"}
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    style={passTriggerId == null && passTimingMs > 4000 ? MP_CHIP_ACTIVE : MP_CHIP}
-                    onClick={() => setPassTimingPickerOpen((prev) => !prev)}
-                  >
-                    {passTriggerId == null && passTimingMs > 4000 ? `+${passTimingMs / 1000}s ▾` : "More ▾"}
-                  </button>
+                  </div>
                   {routes.length > 0 || passEvents.length > 0 ? (
                     <>
-                      <span style={{ ...MP_ROW_LABEL, marginLeft: "3px" }}>After</span>
+                      <span style={{ ...MP_ROW_LABEL, marginLeft: "3px", flexShrink: 0 }}>After</span>
                       {passTriggerId != null ? (
                         <button type="button" style={MP_CHIP_SECONDARY} onClick={() => setPassTriggerId(null)}>
                           ×
@@ -3158,7 +3173,7 @@ export default function TacticalPlaySurface() {
                   ) : null}
                 </div>
                 {passTimingPickerOpen ? (
-                  <div style={MP_ROW}>
+                  <div style={TP_CHIP_SCROLL}>
                     {EXTENDED_DELAY_OPTIONS.map((opt) => (
                       <button
                         key={opt.ms}
