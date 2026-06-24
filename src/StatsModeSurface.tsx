@@ -3786,7 +3786,10 @@ export default function StatsModeSurface() {
           : e,
       ),
     );
-    setReviewEditMode(false);
+    // Close the card entirely so the user sees the marker update (colour change
+    // if type changed) rather than staying on the detail view with no visible diff.
+    // The useEffect([selectedReviewEventId]) resets reviewEditMode automatically.
+    setSelectedReviewEventId(null);
   };
 
   const startTeamNameEdit = (team: TeamSide) => {
