@@ -107,7 +107,8 @@ export async function createPixiPitchSurface(
   zoneOverlayLayer.eventMode = "none";
   world.addChild(zoneOverlayLayer);
   const statsMarkers = new Graphics();
-  statsMarkers.eventMode = "none";
+  statsMarkers.eventMode = options.onMarkerTap ? "passive" : "none";
+  statsMarkers.zIndex = options.onMarkerTap ? 200 : 0;
   world.addChild(statsMarkers);
 
   const eventStore = createMatchEventStore(options.events ?? []);
@@ -168,6 +169,7 @@ export async function createPixiPitchSurface(
     const { nx, ny } = worldToBoardNorm(worldX, worldY, BOARD_PITCH_VIEWBOX);
 
     if (!canLogEventsState) return;
+    if (onMarkerTapState) return;
 
     if (onPitchTapState) {
       onPitchTapState(nx, ny);
@@ -213,6 +215,13 @@ export async function createPixiPitchSurface(
     },
     setOnMarkerTap: (handler) => {
       onMarkerTapState = handler;
+      if (handler) {
+        statsMarkers.eventMode = "passive";
+        statsMarkers.zIndex = 200;
+      } else {
+        statsMarkers.eventMode = "none";
+        statsMarkers.zIndex = 0;
+      }
       redrawMarkers();
     },
     setHeatmapEnabled: (enabled) => {
