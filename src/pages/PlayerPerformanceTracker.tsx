@@ -81,6 +81,25 @@ export default function PlayerPerformanceTracker(){
           s.players.length >= 30 ? s : { ...s, players: [...s.players, { id: `player-${id()}`, name: `Player ${s.players.length + 1}`, number: s.players.length + 1 }] },
         )
       }
+      onAddTeamA={() =>
+        setState((s) => {
+          const toAdd = Math.min(15, 30 - s.players.length);
+          if (toAdd <= 0) return s;
+          const next = Array.from({ length: toAdd }, (_, i) => ({ id: `player-${id()}`, name: `Player ${i + 1}`, number: i + 1 }));
+          return { ...s, players: [...s.players, ...next] };
+        })
+      }
+      onAddTeamB={() =>
+        setState((s) => {
+          const toAdd = Math.min(15, 30 - s.players.length);
+          if (toAdd <= 0) return s;
+          const next = Array.from({ length: toAdd }, (_, i) => ({ id: `player-${id()}`, name: `Player ${i + 1}`, number: i + 1 }));
+          return { ...s, players: [...s.players, ...next] };
+        })
+      }
+      onRemovePlayer={(playerId) =>
+        setState((s) => ({ ...s, players: s.players.filter((p) => p.id !== playerId) }))
+      }
       onStart={() => {
         setState((s) => ({ ...s, hasStarted: true, activeTab: "tracker" }));
         resetSaveSessionDuplicateGuard();
