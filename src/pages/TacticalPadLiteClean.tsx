@@ -45,7 +45,9 @@ import { useScreenWakeLock } from "../hooks/useScreenWakeLock";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { exportBoardSetupAsPng } from "../features/quickboard/export/board-png-export";
 import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
-import { type SlateTextAnnotation } from "../features/quickboard/annotations/slateTextAnnotation";
+import SlateBackgroundPositioner from "../features/quickboard/background/SlateBackgroundPositioner";
+import SlateLabelEntryModal from "../features/quickboard/annotations/SlateLabelEntryModal";
+import { type SlateTextAnnotation, type SlateTextFontSize } from "../features/quickboard/annotations/slateTextAnnotation";
 
 type PadMode = "tactical" | "stats" | "whiteboard";
 type TacticalPadLiteCleanProps = {
@@ -53,6 +55,8 @@ type TacticalPadLiteCleanProps = {
 };
 
 const CAN_USE_CSS_SUPPORTS = typeof window !== "undefined" && typeof window.CSS !== "undefined";
+// Phase 1 image-background prototype. Set true only for dev/experiment — keep false in production.
+const SLATE_IMAGE_BG_ENABLED = true;
 const VIEWPORT_WIDTH_UNIT = CAN_USE_CSS_SUPPORTS && window.CSS.supports("width: 100dvw") ? "100dvw" : "100vw";
 const BOARD_VIEWPORT_HEIGHT_CSS_VAR = "--board-app-height";
 const VIEWPORT_HEIGHT_EXPR = `var(${BOARD_VIEWPORT_HEIGHT_CSS_VAR}, 100dvh)`;
@@ -923,6 +927,33 @@ const QUICK_SHARE_OPTION_SUBTITLE_STYLE: CSSProperties = {
   fontWeight: 520,
   letterSpacing: "0.12px",
   lineHeight: 1.25,
+};
+
+const BG_PICKER_OVERLAY_STYLE: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "rgba(0, 0, 0, 0.55)",
+  backdropFilter: "blur(4px)",
+  WebkitBackdropFilter: "blur(4px)",
+  zIndex: 50,
+};
+
+const BG_PICKER_CARD_STYLE: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "10px",
+  padding: "20px 16px",
+  borderRadius: "16px",
+  background: "rgba(10, 20, 25, 0.92)",
+  border: "1px solid rgba(215, 228, 224, 0.20)",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+  boxShadow: "0 12px 36px rgba(0, 0, 0, 0.5)",
+  minWidth: "220px",
+  maxWidth: "calc(100vw - 48px)",
 };
 
 const QUICK_SHARE_ONBOARDING_OVERLAY_STYLE: CSSProperties = {
@@ -2037,8 +2068,14 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [kitEditorTab, setKitEditorTab] = useState<KitEditorTab>("base");
   const [textAnnotations, setTextAnnotations] = useState<SlateTextAnnotation[]>([]);
   const [textToolActive, setTextToolActive] = useState(false);
+  const [showLabelModal, setShowLabelModal] = useState(false);
+  const [pendingLabelDraft, setPendingLabelDraft] = useState<{ text: string; fontSize: SlateTextFontSize; color: string } | null>(null);
   const textAnnotationsRef = useRef<SlateTextAnnotation[]>([]);
   const textAnnotationsBaselineRef = useRef<string>("[]");
+  const [showBgPicker, setShowBgPicker] = useState(false);
+  const [bgPositionerDataUrl, setBgPositionerDataUrl] = useState<string | null>(null);
+  const bgImageInputRef = useRef<HTMLInputElement | null>(null);
+  const bgCameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const isStatsMode = mode === "stats";
   const isWhiteboardMode = mode === "whiteboard";
@@ -3303,11 +3340,25 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (isPortraitViewingMode || isPlaybackLocked) return;
     const surface = surfaceRef.current;
     if (!surface) return;
-    setTextToolActive(true);
     setTacticalTool("move");
     surface.setWhiteboardDrawTool("move");
     setRouteCaptureMode(false);
     if (isCompactLandscapeToolsMenu) setToolsOpen(false);
+    setShowLabelModal(true);
+  };
+
+  const handleLabelModalDone = (text: string, fontSize: SlateTextFontSize, color: string) => {
+    setShowLabelModal(false);
+    setTextToolActive(true);
+    setPendingLabelDraft({ text, fontSize, color });
+  };
+
+  const handleLabelModalCancel = () => {
+    setShowLabelModal(false);
+  };
+
+  const handleLabelPlacementDone = () => {
+    setPendingLabelDraft(null);
   };
 
   const syncTeamCounts = () => {
@@ -3344,15 +3395,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     syncTeamCounts();
   };
 
-  const handleNewBoard = () => {
-    if (isWhiteboardMode || isStatsMode || isPortraitViewingMode) return;
+  const executePitchNewBoard = () => {
     const surface = surfaceRef.current;
-    if (!surface) {
-      showQuickBoardNotice("PáircVision Board not ready");
-      return;
-    }
-    const confirmed = window.confirm("Start a new board?\nUnsaved changes on the current board will be lost.");
-    if (!confirmed) return;
+    if (!surface) return;
     surface.newBoard();
     const pristineSnapshot = captureCurrentBoardSnapshot();
     boardBaselineSignatureRef.current = serializeBoardState(pristineSnapshot);
@@ -3377,6 +3422,44 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     closeActionsMenu();
     showQuickBoardNotice("New board ready");
     syncTeamCounts();
+  };
+
+  const handleBgImageFile = (file: File) => {
+    setShowBgPicker(false);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result;
+      if (typeof dataUrl === "string") setBgPositionerDataUrl(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleBgPositionerDone = (composited: string) => {
+    setBgPositionerDataUrl(null);
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    executePitchNewBoard();
+    surface.setBackgroundImage(composited);
+  };
+
+  const handleBgPositionerCancel = () => {
+    setBgPositionerDataUrl(null);
+  };
+
+  const handleNewBoard = () => {
+    if (isWhiteboardMode || isStatsMode || isPortraitViewingMode) return;
+    const surface = surfaceRef.current;
+    if (!surface) {
+      showQuickBoardNotice("PáircVision Board not ready");
+      return;
+    }
+    const confirmed = window.confirm("Start a new board?\nUnsaved changes on the current board will be lost.");
+    if (!confirmed) return;
+    if (SLATE_IMAGE_BG_ENABLED) {
+      setShowBgPicker(true);
+      return;
+    }
+    executePitchNewBoard();
   };
 
   const openMenuFromTools = () => {
@@ -3799,6 +3882,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               annotations={textAnnotations}
               active={textToolActive && !toolsOpen && !isPlaybackLocked}
               onAnnotationsChange={setTextAnnotations}
+              placementDraft={pendingLabelDraft}
+              onPlacementDone={handleLabelPlacementDone}
             />
           ) : null}
         </div>
@@ -5515,6 +5600,79 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           </>
         ) : null}
       </div>
+      {showLabelModal ? (
+        <SlateLabelEntryModal
+          onDone={handleLabelModalDone}
+          onCancel={handleLabelModalCancel}
+        />
+      ) : null}
+      {SLATE_IMAGE_BG_ENABLED && bgPositionerDataUrl ? (
+        <SlateBackgroundPositioner
+          imageDataUrl={bgPositionerDataUrl}
+          onDone={handleBgPositionerDone}
+          onCancel={handleBgPositionerCancel}
+        />
+      ) : null}
+      {SLATE_IMAGE_BG_ENABLED && showBgPicker ? (
+        <div style={BG_PICKER_OVERLAY_STYLE} role="dialog" aria-modal="true" aria-label="Choose board background">
+          <div style={BG_PICKER_CARD_STYLE}>
+            <p style={{ margin: 0, color: "rgba(255,255,255,0.7)", fontSize: "11px", fontFamily: "Inter, system-ui, sans-serif", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+              Board Background
+            </p>
+            <button
+              type="button"
+              style={{ padding: "12px 16px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "#ffffff", fontFamily: "Inter, system-ui, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", textAlign: "left" }}
+              onClick={() => { setShowBgPicker(false); surfaceRef.current?.setBackgroundImage(null); executePitchNewBoard(); }}
+            >
+              Blank Pitch
+            </button>
+            <button
+              type="button"
+              style={{ padding: "12px 16px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "#ffffff", fontFamily: "Inter, system-ui, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", textAlign: "left" }}
+              onClick={() => bgImageInputRef.current?.click()}
+            >
+              Upload Image
+            </button>
+            <button
+              type="button"
+              style={{ padding: "12px 16px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "#ffffff", fontFamily: "Inter, system-ui, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", textAlign: "left" }}
+              onClick={() => bgCameraInputRef.current?.click()}
+            >
+              Take Photo
+            </button>
+            <button
+              type="button"
+              style={{ marginTop: "2px", padding: "8px 16px", borderRadius: "8px", border: "none", background: "transparent", color: "rgba(255,255,255,0.4)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "13px", cursor: "pointer" }}
+              onClick={() => setShowBgPicker(false)}
+            >
+              Cancel
+            </button>
+          </div>
+          <input
+            ref={bgImageInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/heic"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) handleBgImageFile(file);
+            }}
+          />
+          <input
+            ref={bgCameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) handleBgImageFile(file);
+            }}
+          />
+        </div>
+      ) : null}
     </OrientationGate>
   );
 }

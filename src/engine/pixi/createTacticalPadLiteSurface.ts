@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Text } from "pixi.js";
+import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 
 import { createWorldViewport } from "./createWorldViewport";
 import {
@@ -149,6 +149,7 @@ export type TacticalPadLiteSurface = {
   eraseWhiteboardPenStroke: () => void;
   undoWhiteboardStroke: () => void;
   clearWhiteboardStrokes: () => void;
+  setBackgroundImage: (dataUrl: string | null) => void;
   exportBoardState: () => TacticalBoardState;
   importBoardState: (state: TacticalBoardState) => boolean;
   exportImageCanvas: () => HTMLCanvasElement | null;
@@ -942,6 +943,7 @@ export async function createTacticalPadLiteSurface(
     surfaceVariant === "whiteboard" ? "whiteboard" : "default";
   const pitchMount = createTacticalPitchVisualRoot("gaelic", { theme: pitchTheme });
   world.addChild(pitchMount.root);
+  let backgroundSprite: Sprite | null = null;
 
   if (surfaceVariant === "whiteboard") {
     const watermarkLabel = new Text({
@@ -3814,6 +3816,36 @@ export async function createTacticalPadLiteSurface(
     clearWhiteboardStrokes: () => {
       if (!isDrawingEnabledSurface) return;
       tacticalDrawingController.clear();
+    },
+    setBackgroundImage: (dataUrl: string | null) => {
+      if (backgroundSprite) {
+        world.removeChild(backgroundSprite);
+        backgroundSprite.destroy({ texture: true });
+        backgroundSprite = null;
+      }
+      if (!dataUrl) {
+        pitchMount.root.visible = true;
+        return;
+      }
+      pitchMount.root.visible = false;
+      const img = new Image();
+      img.onload = () => {
+        if (world.destroyed) return;
+        const offscreen = document.createElement("canvas");
+        offscreen.width = img.naturalWidth;
+        offscreen.height = img.naturalHeight;
+        const ctx = offscreen.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0);
+        const texture = Texture.from(offscreen);
+        const sprite = new Sprite(texture);
+        sprite.width = WORLD_SIZE.width;
+        sprite.height = WORLD_SIZE.height;
+        sprite.eventMode = "none";
+        world.addChildAt(sprite, 0);
+        backgroundSprite = sprite;
+      };
+      img.src = dataUrl;
     },
     exportBoardState: () => captureBoardState(),
     importBoardState: (state) => importBoardState(state),
