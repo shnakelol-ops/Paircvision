@@ -54,7 +54,7 @@ type TacticalPadLiteCleanProps = {
 
 const CAN_USE_CSS_SUPPORTS = typeof window !== "undefined" && typeof window.CSS !== "undefined";
 // Phase 1 image-background prototype. Set true only for dev/experiment — keep false in production.
-const SLATE_IMAGE_BG_ENABLED = false;
+const SLATE_IMAGE_BG_ENABLED = true;
 const VIEWPORT_WIDTH_UNIT = CAN_USE_CSS_SUPPORTS && window.CSS.supports("width: 100dvw") ? "100dvw" : "100vw";
 const BOARD_VIEWPORT_HEIGHT_CSS_VAR = "--board-app-height";
 const VIEWPORT_HEIGHT_EXPR = `var(${BOARD_VIEWPORT_HEIGHT_CSS_VAR}, 100dvh)`;
