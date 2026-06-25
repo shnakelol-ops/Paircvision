@@ -3839,15 +3839,8 @@ export async function createTacticalPadLiteSurface(
         ctx.drawImage(img, 0, 0);
         const texture = Texture.from(offscreen);
         const sprite = new Sprite(texture);
-        // Contain fit: preserve aspect ratio, centre with letterbox.
-        const imgAspect = img.naturalWidth / img.naturalHeight;
-        const worldAspect = WORLD_SIZE.width / WORLD_SIZE.height;
-        const fitW = imgAspect > worldAspect ? WORLD_SIZE.width : WORLD_SIZE.height * imgAspect;
-        const fitH = imgAspect > worldAspect ? WORLD_SIZE.width / imgAspect : WORLD_SIZE.height;
-        sprite.width = fitW;
-        sprite.height = fitH;
-        sprite.x = (WORLD_SIZE.width - fitW) / 2;
-        sprite.y = (WORLD_SIZE.height - fitH) / 2;
+        sprite.width = WORLD_SIZE.width;
+        sprite.height = WORLD_SIZE.height;
         sprite.eventMode = "none";
         world.addChildAt(sprite, 0);
         backgroundSprite = sprite;

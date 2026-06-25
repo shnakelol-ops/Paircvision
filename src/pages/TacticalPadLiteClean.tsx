@@ -45,6 +45,7 @@ import { useScreenWakeLock } from "../hooks/useScreenWakeLock";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { exportBoardSetupAsPng } from "../features/quickboard/export/board-png-export";
 import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
+import SlateBackgroundPositioner from "../features/quickboard/background/SlateBackgroundPositioner";
 import { type SlateTextAnnotation } from "../features/quickboard/annotations/slateTextAnnotation";
 
 type PadMode = "tactical" | "stats" | "whiteboard";
@@ -2069,6 +2070,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const textAnnotationsRef = useRef<SlateTextAnnotation[]>([]);
   const textAnnotationsBaselineRef = useRef<string>("[]");
   const [showBgPicker, setShowBgPicker] = useState(false);
+  const [bgPositionerDataUrl, setBgPositionerDataUrl] = useState<string | null>(null);
   const bgImageInputRef = useRef<HTMLInputElement | null>(null);
   const bgCameraInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -3407,16 +3409,24 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   const handleBgImageFile = (file: File) => {
     setShowBgPicker(false);
-    const surface = surfaceRef.current;
-    if (!surface) return;
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target?.result;
-      if (typeof dataUrl !== "string") return;
-      executePitchNewBoard();
-      surface.setBackgroundImage(dataUrl);
+      if (typeof dataUrl === "string") setBgPositionerDataUrl(dataUrl);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleBgPositionerDone = (composited: string) => {
+    setBgPositionerDataUrl(null);
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    executePitchNewBoard();
+    surface.setBackgroundImage(composited);
+  };
+
+  const handleBgPositionerCancel = () => {
+    setBgPositionerDataUrl(null);
   };
 
   const handleNewBoard = () => {
@@ -5571,6 +5581,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           </>
         ) : null}
       </div>
+      {SLATE_IMAGE_BG_ENABLED && bgPositionerDataUrl ? (
+        <SlateBackgroundPositioner
+          imageDataUrl={bgPositionerDataUrl}
+          onDone={handleBgPositionerDone}
+          onCancel={handleBgPositionerCancel}
+        />
+      ) : null}
       {SLATE_IMAGE_BG_ENABLED && showBgPicker ? (
         <div style={BG_PICKER_OVERLAY_STYLE} role="dialog" aria-modal="true" aria-label="Choose board background">
           <div style={BG_PICKER_CARD_STYLE}>
