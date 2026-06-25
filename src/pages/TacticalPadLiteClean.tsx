@@ -5580,7 +5580,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             <button
               type="button"
               style={{ padding: "12px 16px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "#ffffff", fontFamily: "Inter, system-ui, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", textAlign: "left" }}
-              onClick={() => { setShowBgPicker(false); executePitchNewBoard(); }}
+              onClick={() => { setShowBgPicker(false); surfaceRef.current?.setBackgroundImage(null); executePitchNewBoard(); }}
             >
               Blank Pitch
             </button>
