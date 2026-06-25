@@ -37,12 +37,23 @@ type ExpandedSection = "run-timing" | "pass" | "ball" | null;
 
 const SHOOT_SENTINEL = "__shoot__";
 
-const DELAY_OPTIONS = [
+const QUICK_DELAY_OPTIONS = [
   { ms: 0,    label: "Now"  },
-  { ms: 500,  label: "+0.5s" },
   { ms: 1000, label: "+1s"  },
   { ms: 2000, label: "+2s"  },
   { ms: 3000, label: "+3s"  },
+  { ms: 4000, label: "+4s"  },
+] as const;
+
+const EXTENDED_DELAY_OPTIONS = [
+  { ms: 5000,  label: "+5s"  },
+  { ms: 10000, label: "+10s" },
+  { ms: 15000, label: "+15s" },
+  { ms: 20000, label: "+20s" },
+  { ms: 30000, label: "+30s" },
+  { ms: 40000, label: "+40s" },
+  { ms: 50000, label: "+50s" },
+  { ms: 60000, label: "+60s" },
 ] as const;
 
 const PASS_DELAY_OPTIONS = [
@@ -189,6 +200,15 @@ const CHIP_ROW: CSSProperties = {
   alignItems: "center",
 };
 
+const CHIP_ROW_SCROLL: CSSProperties = {
+  display: "flex",
+  gap: "4px",
+  flexWrap: "nowrap",
+  alignItems: "center",
+  overflowX: "auto",
+  scrollbarWidth: "none",
+};
+
 const SUB_SECTION: CSSProperties = {
   display: "grid",
   gap: "5px",
@@ -238,6 +258,7 @@ export default function PlayerActionSheet({
   const [expanded, setExpanded] = useState<ExpandedSection>(null);
   const [passToId, setPassToId] = useState<string | null>(null);
   const [passDelayMs, setPassDelayMs] = useState(0);
+  const [runDelayMoreOpen, setRunDelayMoreOpen] = useState(false);
 
   const toggle = (section: ExpandedSection) =>
     setExpanded((prev) => (prev === section ? null : section));
@@ -358,9 +379,9 @@ export default function PlayerActionSheet({
         {/* Run Timing sub-section */}
         {expanded === "run-timing" && (
           <div style={SUB_SECTION}>
-            <div style={CHIP_ROW}>
+            <div style={CHIP_ROW_SCROLL}>
               <span style={SUB_LABEL}>Delay</span>
-              {DELAY_OPTIONS.map((opt) => (
+              {QUICK_DELAY_OPTIONS.map((opt) => (
                 <button
                   key={opt.ms}
                   type="button"
@@ -370,7 +391,28 @@ export default function PlayerActionSheet({
                   {opt.label}
                 </button>
               ))}
+              <button
+                type="button"
+                style={runDelayMoreOpen ? CHIP_ACTIVE : CHIP}
+                onClick={() => setRunDelayMoreOpen((v) => !v)}
+              >
+                {runDelayMoreOpen ? "Less ▴" : "More ▾"}
+              </button>
             </div>
+            {runDelayMoreOpen && (
+              <div style={CHIP_ROW_SCROLL}>
+                {EXTENDED_DELAY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.ms}
+                    type="button"
+                    style={currentRunTriggerId == null && currentRunDelayMs === opt.ms ? CHIP_ACTIVE : CHIP}
+                    onClick={() => onSetRunDelay(opt.ms)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
             {triggerCandidates.length > 0 && (
               <div style={CHIP_ROW}>
                 <span style={SUB_LABEL}>After</span>

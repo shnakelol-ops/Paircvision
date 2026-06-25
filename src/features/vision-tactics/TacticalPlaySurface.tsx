@@ -1139,7 +1139,22 @@ export default function TacticalPlaySurface() {
     };
 
     const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") scheduleReflow();
+      if (document.visibilityState !== "visible") return;
+      // After a long background period (5+ min) iOS/Android may permanently kill
+      // the WebGL context without firing webglcontextrestored. Detect the dead
+      // context and remount rather than leaving the canvas blank.
+      const canvas = shellRef.current?.getCanvas();
+      const gl = canvas
+        ? ((canvas.getContext("webgl2") ?? canvas.getContext("webgl")) as WebGLRenderingContext | null)
+        : null;
+      if (gl?.isContextLost()) {
+        destroyShell?.();
+        destroyShell = null;
+        shellRef.current = null;
+        if (!disposed) mountShell();
+      } else {
+        scheduleReflow();
+      }
     };
 
     window.addEventListener("resize", scheduleReflow);
