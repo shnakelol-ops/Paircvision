@@ -7,10 +7,18 @@ import {
   TEXT_COLOR_CHOICES,
 } from "./slateTextAnnotation";
 
+type PlacementDraft = {
+  text: string;
+  fontSize: SlateTextFontSize;
+  color: string;
+};
+
 interface SlateTextOverlayProps {
   annotations: SlateTextAnnotation[];
   active: boolean;
   onAnnotationsChange: (updated: SlateTextAnnotation[]) => void;
+  placementDraft?: PlacementDraft | null;
+  onPlacementDone?: () => void;
 }
 
 type DragState = {
@@ -31,6 +39,8 @@ export default function SlateTextOverlay({
   annotations,
   active,
   onAnnotationsChange,
+  placementDraft,
+  onPlacementDone,
 }: SlateTextOverlayProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -49,14 +59,14 @@ export default function SlateTextOverlay({
   const handleBackgroundPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!active) return;
     if (event.target !== event.currentTarget) return;
-    // If editing, let the textarea blur handler close it
     if (editingId !== null) return;
+    if (!placementDraft) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const x = Math.max(2, Math.min(98, ((event.clientX - rect.left) / rect.width) * 100));
     const y = Math.max(2, Math.min(98, ((event.clientY - rect.top) / rect.height) * 100));
-    const newAnn = createTextAnnotation(x, y);
+    const newAnn = { ...createTextAnnotation(x, y), text: placementDraft.text, fontSize: placementDraft.fontSize, color: placementDraft.color };
     onAnnotationsChange([...annotations, newAnn]);
-    setEditingId(newAnn.id);
+    onPlacementDone?.();
   };
 
   const handleAnnotationPointerDown = (event: React.PointerEvent<HTMLDivElement>, annId: string) => {
@@ -139,11 +149,35 @@ export default function SlateTextOverlay({
             inset: 0,
             borderRadius: "12px",
             zIndex: 1,
-            cursor: "crosshair",
+            cursor: placementDraft ? "crosshair" : "default",
             pointerEvents: "auto",
           }}
           onPointerDown={handleBackgroundPointerDown}
-        />
+        >
+          {placementDraft && (
+            <div
+              style={{
+                position: "absolute",
+                top: "12px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                background: "rgba(34,197,94,0.88)",
+                color: "#fff",
+                fontSize: "11px",
+                fontWeight: 700,
+                padding: "4px 12px",
+                borderRadius: "20px",
+                fontFamily: "Inter, system-ui, sans-serif",
+                zIndex: 5,
+                pointerEvents: "none",
+                whiteSpace: "nowrap",
+                letterSpacing: "0.2px",
+              }}
+            >
+              Tap to place label
+            </div>
+          )}
+        </div>
       )}
 
       {annotations.map((ann) => {

@@ -46,7 +46,8 @@ import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { exportBoardSetupAsPng } from "../features/quickboard/export/board-png-export";
 import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
 import SlateBackgroundPositioner from "../features/quickboard/background/SlateBackgroundPositioner";
-import { type SlateTextAnnotation } from "../features/quickboard/annotations/slateTextAnnotation";
+import SlateLabelEntryModal from "../features/quickboard/annotations/SlateLabelEntryModal";
+import { type SlateTextAnnotation, type SlateTextFontSize } from "../features/quickboard/annotations/slateTextAnnotation";
 
 type PadMode = "tactical" | "stats" | "whiteboard";
 type TacticalPadLiteCleanProps = {
@@ -2067,6 +2068,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [kitEditorTab, setKitEditorTab] = useState<KitEditorTab>("base");
   const [textAnnotations, setTextAnnotations] = useState<SlateTextAnnotation[]>([]);
   const [textToolActive, setTextToolActive] = useState(false);
+  const [showLabelModal, setShowLabelModal] = useState(false);
+  const [pendingLabelDraft, setPendingLabelDraft] = useState<{ text: string; fontSize: SlateTextFontSize; color: string } | null>(null);
   const textAnnotationsRef = useRef<SlateTextAnnotation[]>([]);
   const textAnnotationsBaselineRef = useRef<string>("[]");
   const [showBgPicker, setShowBgPicker] = useState(false);
@@ -3337,11 +3340,25 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (isPortraitViewingMode || isPlaybackLocked) return;
     const surface = surfaceRef.current;
     if (!surface) return;
-    setTextToolActive(true);
     setTacticalTool("move");
     surface.setWhiteboardDrawTool("move");
     setRouteCaptureMode(false);
     if (isCompactLandscapeToolsMenu) setToolsOpen(false);
+    setShowLabelModal(true);
+  };
+
+  const handleLabelModalDone = (text: string, fontSize: SlateTextFontSize, color: string) => {
+    setShowLabelModal(false);
+    setTextToolActive(true);
+    setPendingLabelDraft({ text, fontSize, color });
+  };
+
+  const handleLabelModalCancel = () => {
+    setShowLabelModal(false);
+  };
+
+  const handleLabelPlacementDone = () => {
+    setPendingLabelDraft(null);
   };
 
   const syncTeamCounts = () => {
@@ -3865,6 +3882,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               annotations={textAnnotations}
               active={textToolActive && !toolsOpen && !isPlaybackLocked}
               onAnnotationsChange={setTextAnnotations}
+              placementDraft={pendingLabelDraft}
+              onPlacementDone={handleLabelPlacementDone}
             />
           ) : null}
         </div>
@@ -5581,6 +5600,12 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           </>
         ) : null}
       </div>
+      {showLabelModal ? (
+        <SlateLabelEntryModal
+          onDone={handleLabelModalDone}
+          onCancel={handleLabelModalCancel}
+        />
+      ) : null}
       {SLATE_IMAGE_BG_ENABLED && bgPositionerDataUrl ? (
         <SlateBackgroundPositioner
           imageDataUrl={bgPositionerDataUrl}
