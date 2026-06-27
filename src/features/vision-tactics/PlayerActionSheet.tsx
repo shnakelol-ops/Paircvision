@@ -37,13 +37,16 @@ type ExpandedSection = "run-timing" | "pass" | "ball" | null;
 
 const SHOOT_SENTINEL = "__shoot__";
 
-const DELAY_OPTIONS = [
+const QUICK_DELAY_OPTIONS = [
   { ms: 0,    label: "Now"  },
-  { ms: 500,  label: "+0.5s" },
   { ms: 1000, label: "+1s"  },
   { ms: 2000, label: "+2s"  },
   { ms: 3000, label: "+3s"  },
+  { ms: 4000, label: "+4s"  },
 ] as const;
+
+const CUSTOM_JUMPS = [5, 10, 20, 30, 60, 120] as const;
+const MAX_CUSTOM_SEC = 120;
 
 const PASS_DELAY_OPTIONS = [
   { ms: 0,    label: "Now"  },
@@ -189,6 +192,48 @@ const CHIP_ROW: CSSProperties = {
   alignItems: "center",
 };
 
+const CHIP_ROW_SCROLL: CSSProperties = {
+  display: "flex",
+  gap: "4px",
+  flexWrap: "nowrap",
+  alignItems: "center",
+  overflowX: "auto",
+  scrollbarWidth: "none",
+};
+
+const STEPPER_ROW: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+};
+
+const STEPPER_BTN: CSSProperties = {
+  width: "32px",
+  height: "32px",
+  borderRadius: "8px",
+  border: "1px solid rgba(180, 210, 255, 0.22)",
+  background: "rgba(10, 22, 50, 0.80)",
+  color: "rgba(200, 230, 255, 0.90)",
+  fontSize: "18px",
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 0,
+  flexShrink: 0,
+  userSelect: "none",
+};
+
+const STEPPER_VALUE: CSSProperties = {
+  flex: 1,
+  textAlign: "center",
+  color: "rgba(230, 245, 255, 0.95)",
+  fontSize: "22px",
+  fontWeight: 700,
+  letterSpacing: "-0.02em",
+  userSelect: "none",
+};
+
 const SUB_SECTION: CSSProperties = {
   display: "grid",
   gap: "5px",
@@ -210,6 +255,56 @@ const CONFIRM_BTN: CSSProperties = {
   cursor: "pointer",
   alignSelf: "flex-start",
 };
+
+function CustomDelayPicker({
+  seconds,
+  onSeconds,
+  onDone,
+}: {
+  seconds: number;
+  onSeconds: (s: number) => void;
+  onDone: () => void;
+}) {
+  const clamp = (v: number) => Math.max(0, Math.min(MAX_CUSTOM_SEC, v));
+  return (
+    <div style={{ display: "grid", gap: "5px" }}>
+      <div style={STEPPER_ROW}>
+        <button
+          type="button"
+          style={STEPPER_BTN}
+          onClick={() => onSeconds(clamp(seconds - 1))}
+          aria-label="Decrease delay"
+        >
+          −
+        </button>
+        <span style={STEPPER_VALUE}>{seconds}s</span>
+        <button
+          type="button"
+          style={STEPPER_BTN}
+          onClick={() => onSeconds(clamp(seconds + 1))}
+          aria-label="Increase delay"
+        >
+          +
+        </button>
+      </div>
+      <div style={CHIP_ROW_SCROLL}>
+        {CUSTOM_JUMPS.map((j) => (
+          <button
+            key={j}
+            type="button"
+            style={seconds === j ? CHIP_ACTIVE : CHIP}
+            onClick={() => onSeconds(j)}
+          >
+            +{j}s
+          </button>
+        ))}
+      </div>
+      <button type="button" style={CONFIRM_BTN} onClick={onDone}>
+        Done
+      </button>
+    </div>
+  );
+}
 
 export default function PlayerActionSheet({
   playerId,
@@ -238,6 +333,10 @@ export default function PlayerActionSheet({
   const [expanded, setExpanded] = useState<ExpandedSection>(null);
   const [passToId, setPassToId] = useState<string | null>(null);
   const [passDelayMs, setPassDelayMs] = useState(0);
+  const [runCustomOpen, setRunCustomOpen] = useState(false);
+  const [runCustomSec, setRunCustomSec] = useState(5);
+  const [passCustomOpen, setPassCustomOpen] = useState(false);
+  const [passCustomSec, setPassCustomSec] = useState(5);
 
   const toggle = (section: ExpandedSection) =>
     setExpanded((prev) => (prev === section ? null : section));
@@ -358,19 +457,36 @@ export default function PlayerActionSheet({
         {/* Run Timing sub-section */}
         {expanded === "run-timing" && (
           <div style={SUB_SECTION}>
-            <div style={CHIP_ROW}>
+            <div style={CHIP_ROW_SCROLL}>
               <span style={SUB_LABEL}>Delay</span>
-              {DELAY_OPTIONS.map((opt) => (
+              {QUICK_DELAY_OPTIONS.map((opt) => (
                 <button
                   key={opt.ms}
                   type="button"
-                  style={currentRunTriggerId == null && currentRunDelayMs === opt.ms ? CHIP_ACTIVE : CHIP}
-                  onClick={() => onSetRunDelay(opt.ms)}
+                  style={!runCustomOpen && currentRunTriggerId == null && currentRunDelayMs === opt.ms ? CHIP_ACTIVE : CHIP}
+                  onClick={() => { onSetRunDelay(opt.ms); setRunCustomOpen(false); }}
                 >
                   {opt.label}
                 </button>
               ))}
+              <button
+                type="button"
+                style={runCustomOpen ? CHIP_ACTIVE : CHIP}
+                onClick={() => {
+                  setRunCustomSec(Math.round(currentRunDelayMs / 1000) || 5);
+                  setRunCustomOpen(true);
+                }}
+              >
+                Custom
+              </button>
             </div>
+            {runCustomOpen && (
+              <CustomDelayPicker
+                seconds={runCustomSec}
+                onSeconds={setRunCustomSec}
+                onDone={() => { onSetRunDelay(runCustomSec * 1000); setRunCustomOpen(false); }}
+              />
+            )}
             {triggerCandidates.length > 0 && (
               <div style={CHIP_ROW}>
                 <span style={SUB_LABEL}>After</span>
@@ -453,18 +569,37 @@ export default function PlayerActionSheet({
               </button>
             </div>
             {passToId && (
-              <div style={CHIP_ROW}>
-                <span style={SUB_LABEL}>Time</span>
-                {PASS_DELAY_OPTIONS.map((opt) => (
+              <>
+                <div style={CHIP_ROW}>
+                  <span style={SUB_LABEL}>Time</span>
+                  {PASS_DELAY_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.ms}
+                      type="button"
+                      style={!passCustomOpen && passDelayMs === opt.ms ? CHIP_ACTIVE : CHIP}
+                      onClick={() => { setPassDelayMs(opt.ms); setPassCustomOpen(false); }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                   <button
-                    key={opt.ms}
                     type="button"
-                    style={passDelayMs === opt.ms ? CHIP_ACTIVE : CHIP}
-                    onClick={() => setPassDelayMs(opt.ms)}
+                    style={passCustomOpen ? CHIP_ACTIVE : CHIP}
+                    onClick={() => {
+                      setPassCustomSec(Math.round(passDelayMs / 1000) || 5);
+                      setPassCustomOpen(true);
+                    }}
                   >
-                    {opt.label}
+                    Custom
                   </button>
-                ))}
+                </div>
+                {passCustomOpen && (
+                  <CustomDelayPicker
+                    seconds={passCustomSec}
+                    onSeconds={setPassCustomSec}
+                    onDone={() => { setPassDelayMs(passCustomSec * 1000); setPassCustomOpen(false); }}
+                  />
+                )}
                 <button
                   type="button"
                   style={CONFIRM_BTN}
@@ -476,12 +611,13 @@ export default function PlayerActionSheet({
                     }
                     setPassToId(null);
                     setPassDelayMs(0);
+                    setPassCustomOpen(false);
                     setExpanded(null);
                   }}
                 >
                   {passToId === SHOOT_SENTINEL ? "Add Shoot" : "Add Pass"}
                 </button>
-              </div>
+              </>
             )}
           </div>
         )}
