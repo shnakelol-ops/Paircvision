@@ -285,6 +285,7 @@ export async function createMovementCanvasShell(
       // If the ball isn't with this player yet (e.g. two zero-delay chained passes
       // fire in the same tick), defer until the previous pass lands.
       if (ballState.carrierId !== fromPlayerId) {
+        console.log("[deferred-pass-debug] deferring", fromPlayerId, "→", toPlayerId, "carrier is:", ballState.carrierId, "queue before:", JSON.stringify(deferredPasses));
         deferredPasses.push({ fromPlayerId, toPlayerId });
         return;
       }
@@ -655,6 +656,13 @@ export async function createMovementCanvasShell(
       tokenLayer.setBallCarrier(ballStateAtPlayStart.carrierId ?? null);
       emitBallState();
     }
+    // DEBUG: confirm all pass events reach playback with unique IDs and correct delayMs
+    console.log("[deferred-pass-debug] passEvents before start:", passEvents.map((e) => ({
+      id: e.id,
+      from: e.fromPlayerId,
+      to: e.toPlayerId,
+      delayMs: e.delayMs,
+    })));
     orchestrator.start();
   };
 
@@ -953,9 +961,13 @@ export async function createMovementCanvasShell(
           // Only one pass can animate at a time; extras re-enter the tail of the
           // queue and fire the next time this player receives the ball.
           if (activeBallPass === null) {
+            console.log("[deferred-pass-debug] flush at landing, receiver:", toPlayerId, "queue:", JSON.stringify(deferredPasses));
             const { toFire, remaining } = flushDeferredPasses(deferredPasses, toPlayerId);
             deferredPasses = remaining;
-            if (toFire) startPassAnimation(toFire.fromPlayerId, toFire.toPlayerId);
+            if (toFire) {
+              console.log("[deferred-pass-debug] firing:", toFire, "remaining:", JSON.stringify(remaining));
+              startPassAnimation(toFire.fromPlayerId, toFire.toPlayerId);
+            }
           }
         }
       }
