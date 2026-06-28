@@ -54,6 +54,7 @@ const PASS_DELAY_OPTIONS = [
   { ms: 1000, label: "+1s"  },
   { ms: 2000, label: "+2s"  },
   { ms: 3000, label: "+3s"  },
+  { ms: 4000, label: "+4s"  },
 ] as const;
 
 const BACKDROP: CSSProperties = {
@@ -646,26 +647,38 @@ export default function PlayerActionSheet({
                   <CustomDelayPicker
                     seconds={passCustomSec}
                     onSeconds={setPassCustomSec}
-                    onDone={() => { setPassDelayMs(passCustomSec * 1000); setPassCustomOpen(false); }}
+                    onDone={() => {
+                      const ms = passCustomSec * 1000;
+                      if (passToId === SHOOT_SENTINEL) {
+                        onAddShot(ms);
+                      } else if (passToId) {
+                        onAddPass(passToId, ms);
+                      }
+                      setPassToId(null);
+                      setPassDelayMs(0);
+                      setPassCustomOpen(false);
+                      setExpanded(null);
+                    }}
                   />
                 )}
-                <button
-                  type="button"
-                  style={CONFIRM_BTN}
-                  onClick={() => {
-                    if (passToId === SHOOT_SENTINEL) {
-                      onAddShot(passDelayMs);
-                    } else {
-                      onAddPass(passToId, passDelayMs);
-                    }
-                    setPassToId(null);
-                    setPassDelayMs(0);
-                    setPassCustomOpen(false);
-                    setExpanded(null);
-                  }}
-                >
-                  {passToId === SHOOT_SENTINEL ? "Add Shoot" : "Add Pass"}
-                </button>
+                {!passCustomOpen && (
+                  <button
+                    type="button"
+                    style={CONFIRM_BTN}
+                    onClick={() => {
+                      if (passToId === SHOOT_SENTINEL) {
+                        onAddShot(passDelayMs);
+                      } else {
+                        onAddPass(passToId, passDelayMs);
+                      }
+                      setPassToId(null);
+                      setPassDelayMs(0);
+                      setExpanded(null);
+                    }}
+                  >
+                    {passToId === SHOOT_SENTINEL ? "Add Shoot" : "Add Pass"}
+                  </button>
+                )}
               </>
             )}
           </div>
