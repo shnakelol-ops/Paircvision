@@ -23,6 +23,7 @@ type PlayerActionSheetProps = {
   onSetRunDelay: (delayMs: number) => void;
   onSetRunTrigger: (triggeredById: string | null) => void;
   onAddPass: (toId: string, delayMs: number) => void;
+  onRemovePass: (id: string) => void;
   onAddShot: (delayMs: number) => void;
   sport: "football" | "hurling";
   onEditRun: () => void;
@@ -313,6 +314,7 @@ export default function PlayerActionSheet({
   hasRoute,
   routeMeta,
   routes,
+  passEventsFromPlayer,
   tokenNumberById,
   awayTokenIds,
   onClose,
@@ -321,6 +323,7 @@ export default function PlayerActionSheet({
   onSetRunDelay,
   onSetRunTrigger,
   onAddPass,
+  onRemovePass,
   onAddShot,
   sport,
   onEditRun,
@@ -546,6 +549,52 @@ export default function PlayerActionSheet({
         {/* Pass sub-section */}
         {expanded === "pass" && (
           <div style={SUB_SECTION}>
+            {passEventsFromPlayer.length > 0 && (
+              <div style={CHIP_ROW}>
+                <span style={SUB_LABEL}>Saved</span>
+                {passEventsFromPlayer.map((p) => {
+                  const toNum = tokenNumberById[p.toPlayerId] ?? "?";
+                  const delayLabel = p.delayMs ? `+${p.delayMs / 1000}s` : "Now";
+                  return (
+                    <span
+                      key={p.id}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "3px",
+                        height: "24px",
+                        borderRadius: "999px",
+                        border: "1px solid rgba(251, 191, 36, 0.35)",
+                        background: "rgba(40, 28, 6, 0.80)",
+                        color: "rgba(253, 224, 120, 0.90)",
+                        fontSize: "9px",
+                        fontWeight: 600,
+                        padding: "0 6px 0 9px",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      P{toNum} {delayLabel}
+                      <button
+                        type="button"
+                        aria-label={`Remove pass to P${toNum}`}
+                        onClick={() => onRemovePass(p.id)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "rgba(251, 191, 36, 0.55)",
+                          fontSize: "11px",
+                          lineHeight: "1",
+                          cursor: "pointer",
+                          padding: "0 0 0 2px",
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
             <div style={CHIP_ROW}>
               <span style={SUB_LABEL}>To</span>
               {homePlayerEntries
