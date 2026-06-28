@@ -1964,7 +1964,7 @@ export default function TacticalPlaySurface() {
   const speedLabel = TP_SPEED_OPTIONS[speedIndex]?.label ?? "1×";
   const speedFillPct = (speedIndex / Math.max(1, TP_SPEED_OPTIONS.length - 1)) * 100;
   const SpeedBarCompact = (
-    <div style={{ ...TP_SPEED_BAR_STYLE, width: "84px", padding: "0 6px" }}>
+    <div style={{ ...TP_SPEED_BAR_STYLE, width: "116px", height: "36px", padding: "0 8px" }}>
       <span style={TP_SPEED_LABEL_STYLE}>SPD</span>
       <input
         type="range"
@@ -2011,7 +2011,7 @@ export default function TacticalPlaySurface() {
 
   return (
     <OrientationGate modeLabel="Tactical Play">
-      <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}input.tp-speed-range{-webkit-appearance:none;appearance:none;background:var(--tp-speed-track);height:3px;border-radius:3px;outline:none;cursor:pointer}input.tp-speed-range::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.50)}input.tp-speed-range::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:#fff;cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,.50)}`}</style>
+      <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}input.tp-speed-range{-webkit-appearance:none;appearance:none;background:var(--tp-speed-track);height:8px;border-radius:4px;outline:none;cursor:pointer}input.tp-speed-range::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.50)}input.tp-speed-range::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,.50)}`}</style>
       <div style={rootStyle}>
         <VisionStadiumBackground variant="play" />
         <div style={CONTENT_STYLE}>

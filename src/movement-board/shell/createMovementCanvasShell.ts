@@ -939,7 +939,7 @@ export async function createMovementCanvasShell(
   const tick = () => {
     orchestrator.step(app.ticker.deltaMS);
     if (activeBallPass) {
-      activeBallPass.elapsedMs += app.ticker.deltaMS;
+      activeBallPass.elapsedMs += app.ticker.deltaMS * orchestrator.getSpeedMultiplier();
       if (activeBallPass.elapsedMs >= activeBallPass.durationMs) {
         const toPlayerId = activeBallPass.toPlayerId;
         const wasShot = activeBallPass.toWorld != null;

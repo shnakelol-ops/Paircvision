@@ -98,6 +98,8 @@ export type PlaybackOrchestrator = {
   setSpeed: (speed: MovementPlaybackSpeed) => void;
   setSpeedMultiplier: (n: number) => void;
   getSpeed: () => MovementPlaybackSpeed;
+  /** Returns the numeric multiplier currently in effect (e.g. 0.15, 0.5, 1.0). */
+  getSpeedMultiplier: () => number;
 };
 
 function clonePoint(point: NormalizedPoint): NormalizedPoint {
@@ -425,5 +427,6 @@ export function createPlaybackOrchestrator(
     setSpeed: (speed) => { playbackSpeed = speed; speedMultiplierOverride = PLAYBACK_SPEED_MULTIPLIER[speed]; },
     setSpeedMultiplier: (n) => { speedMultiplierOverride = n; },
     getSpeed: () => playbackSpeed,
+    getSpeedMultiplier: () => speedMultiplierOverride,
   };
 }
