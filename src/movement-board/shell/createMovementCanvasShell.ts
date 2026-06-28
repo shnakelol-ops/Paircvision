@@ -285,7 +285,6 @@ export async function createMovementCanvasShell(
       // If the ball isn't with this player yet (e.g. two zero-delay chained passes
       // fire in the same tick), defer until the previous pass lands.
       if (ballState.carrierId !== fromPlayerId) {
-        console.log("[deferred-pass-debug] deferring", fromPlayerId, "→", toPlayerId, "carrier is:", ballState.carrierId, "queue before:", JSON.stringify(deferredPasses));
         deferredPasses.push({ fromPlayerId, toPlayerId });
         return;
       }
@@ -645,6 +644,11 @@ export async function createMovementCanvasShell(
     const state = orchestrator.getState();
     if (state.isPlaying) return;
     if (!state.isPaused || !orchestrator.hasActiveRuns()) {
+      // The orchestrator auto-stops as soon as all its pass timers fire, but ball
+      // animations and the deferred-pass queue may still be completing. Resetting
+      // here would kill the in-flight arc and drop queued passes (e.g. P3→P2 in a
+      // 5-pass chain). Wait for the chain to fully resolve before accepting a restart.
+      if (activeBallPass !== null || deferredPasses.length > 0) return;
       releaseDrag();
       releaseRouteHandleDrag();
       clearRouteDraft();
@@ -656,13 +660,6 @@ export async function createMovementCanvasShell(
       tokenLayer.setBallCarrier(ballStateAtPlayStart.carrierId ?? null);
       emitBallState();
     }
-    // DEBUG: confirm all pass events reach playback with unique IDs and correct delayMs
-    console.log("[deferred-pass-debug] passEvents before start:", passEvents.map((e) => ({
-      id: e.id,
-      from: e.fromPlayerId,
-      to: e.toPlayerId,
-      delayMs: e.delayMs,
-    })));
     orchestrator.start();
   };
 
@@ -961,11 +958,9 @@ export async function createMovementCanvasShell(
           // Only one pass can animate at a time; extras re-enter the tail of the
           // queue and fire the next time this player receives the ball.
           if (activeBallPass === null) {
-            console.log("[deferred-pass-debug] flush at landing, receiver:", toPlayerId, "queue:", JSON.stringify(deferredPasses));
             const { toFire, remaining } = flushDeferredPasses(deferredPasses, toPlayerId);
             deferredPasses = remaining;
             if (toFire) {
-              console.log("[deferred-pass-debug] firing:", toFire, "remaining:", JSON.stringify(remaining));
               startPassAnimation(toFire.fromPlayerId, toFire.toPlayerId);
             }
           }
