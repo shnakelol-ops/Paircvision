@@ -3698,6 +3698,9 @@ export default function TacticalPlaySurface() {
                   delayMs,
                 });
               }}
+              onRemovePass={(id) => {
+                shellRef.current?.removePassEvent(id);
+              }}
               onBallChoice={(ballType) => {
                 const shell = shellRef.current;
                 if (!shell) return;

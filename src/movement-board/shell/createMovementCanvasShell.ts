@@ -1,4 +1,5 @@
 import { Application, Container } from "pixi.js";
+import { flushDeferredPasses, type DeferredPass } from "./flushDeferredPasses";
 
 import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
 import { createWorldViewport, type WorldViewportMapper } from "../coordinates/viewport";
@@ -301,7 +302,7 @@ export async function createMovementCanvasShell(
   let passEvents: TacticalPassEvent[] = [];
   let shotEvents: TacticalShotEvent[] = [];
   let activeBallPass: ActiveBallPass | null = null;
-  let deferredPasses: Array<{ fromPlayerId: string; toPlayerId: string }> = [];
+  let deferredPasses: DeferredPass[] = [];
 
   const BALL_CARRIER_OFFSET_X = 3.5;
   const BALL_CARRIER_OFFSET_Y = -2.5;
@@ -643,6 +644,11 @@ export async function createMovementCanvasShell(
     const state = orchestrator.getState();
     if (state.isPlaying) return;
     if (!state.isPaused || !orchestrator.hasActiveRuns()) {
+      // The orchestrator auto-stops as soon as all its pass timers fire, but ball
+      // animations and the deferred-pass queue may still be completing. Resetting
+      // here would kill the in-flight arc and drop queued passes (e.g. P3→P2 in a
+      // 5-pass chain). Wait for the chain to fully resolve before accepting a restart.
+      if (activeBallPass !== null || deferredPasses.length > 0) return;
       releaseDrag();
       releaseRouteHandleDrag();
       clearRouteDraft();
@@ -947,13 +953,15 @@ export async function createMovementCanvasShell(
           tokenLayer.setBallCarrier(toPlayerId);
           emitBallState();
           orchestrator.notifyPassLanded(toPlayerId);
-          // Fire the first deferred pass whose sender is now the carrier,
+          // Flush all deferred passes whose sender is now the carrier,
           // but only if notifyPassLanded didn't already start a shot animation.
+          // Only one pass can animate at a time; extras re-enter the tail of the
+          // queue and fire the next time this player receives the ball.
           if (activeBallPass === null) {
-            const nextIdx = deferredPasses.findIndex(p => p.fromPlayerId === toPlayerId);
-            if (nextIdx !== -1) {
-              const next = deferredPasses.splice(nextIdx, 1)[0];
-              startPassAnimation(next.fromPlayerId, next.toPlayerId);
+            const { toFire, remaining } = flushDeferredPasses(deferredPasses, toPlayerId);
+            deferredPasses = remaining;
+            if (toFire) {
+              startPassAnimation(toFire.fromPlayerId, toFire.toPlayerId);
             }
           }
         }
