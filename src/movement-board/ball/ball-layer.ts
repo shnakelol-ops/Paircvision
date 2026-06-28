@@ -1,4 +1,4 @@
-import { Container, Graphics } from "pixi.js";
+import { Circle, Container, Graphics } from "pixi.js";
 
 import type { BallType } from "../shell/types";
 
@@ -9,6 +9,8 @@ export type BallLayerHandle = {
   setBallPosition: (worldX: number, worldY: number) => void;
   setVisible: (visible: boolean) => void;
   setBallType: (ballType: BallType) => void;
+  setInteractive: (enabled: boolean, hitRadius: number) => void;
+  setOnPointerDown: (handler: ((event: unknown) => void) | null) => void;
   destroy: () => void;
 };
 
@@ -190,6 +192,23 @@ export function createBallLayer(parent: Container): BallLayerHandle {
     },
     setBallType: (ballType) => {
       drawBallGraphics(ball, ballType);
+    },
+    setInteractive: (enabled, hitRadius) => {
+      if (enabled) {
+        group.eventMode = "static";
+        group.hitArea = new Circle(0, 0, hitRadius);
+        group.cursor = "grab";
+      } else {
+        group.eventMode = "none";
+        group.hitArea = null;
+        group.cursor = "default";
+      }
+    },
+    setOnPointerDown: (handler) => {
+      group.removeAllListeners("pointerdown");
+      if (handler) {
+        group.on("pointerdown", (event) => handler(event));
+      }
     },
     destroy: () => {
       group.destroy({ children: true });

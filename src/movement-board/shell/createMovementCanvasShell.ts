@@ -45,9 +45,15 @@ const ROUTE_HANDLE_TOUCH_RADIUS_PX = 30;
 const ROUTE_INSERT_TOUCH_DISTANCE_PX = 24;
 const TAP_MOVE_THRESHOLD_PX = 6;
 const LONG_PRESS_MS = 420;
+const BALL_DRAG_HIT_RADIUS_WORLD = 5;
 
 type DragState = {
   tokenId: string;
+  pointerId: number | null;
+  offsetWorld: { x: number; y: number };
+} | null;
+
+type BallDragState = {
   pointerId: number | null;
   offsetWorld: { x: number; y: number };
 } | null;
@@ -189,6 +195,7 @@ export async function createMovementCanvasShell(
   let selectedTokenId: string | null = null;
   let selectedWaypointIndex: number | null = null;
   let activeDrag: DragState = null;
+  let activeBallDrag: BallDragState = null;
   let activeRouteHandleDrag: RouteHandleDragState = null;
   let routeDraft: RouteDraftState = null;
   let tokenTapStart: { tokenId: string; x: number; y: number } | null = null;
@@ -279,6 +286,8 @@ export async function createMovementCanvasShell(
       }
       zoneLayer.setInteractive(!state.isPlaying && !state.isPaused);
       trainingItemLayer.setInteractive(mode === "setup" && dragEnabled && !state.isPlaying && !state.isPaused);
+      if (state.isPlaying || state.isPaused) activeBallDrag = null;
+      syncBallInteraction();
       options.onPlaybackStateChange?.(state);
     },
     onPassStart: (fromPlayerId, toPlayerId) => {
@@ -380,6 +389,7 @@ export async function createMovementCanvasShell(
   };
 
   const emitBallState = () => {
+    syncBallInteraction();
     options.onBallStateChange?.({ ...ballState });
   };
 
@@ -390,6 +400,28 @@ export async function createMovementCanvasShell(
   const isPlaybackLocked = () => orchestrator.isLocked();
   const canInteractWithTrainingItems = () => dragEnabled && mode === "setup" && !isPlaybackLocked();
   trainingItemLayer.setInteractive(canInteractWithTrainingItems());
+
+  const canDragFreeBall = () =>
+    !!ballState.position && !ballState.carrierId && dragEnabled && !isPlaybackLocked();
+
+  const syncBallInteraction = () => {
+    ballLayer.setInteractive(canDragFreeBall(), BALL_DRAG_HIT_RADIUS_WORLD);
+  };
+
+  ballLayer.setOnPointerDown((event) => {
+    (event as { stopPropagation?: () => void }).stopPropagation?.();
+    if (!canDragFreeBall() || activeDrag) return;
+    const pointerWorld = getWorldPointFromEvent(event, app.stage, mapper);
+    if (!pointerWorld) return;
+    const ballWorld = mapper.normalizedToWorld(ballState.position!);
+    activeBallDrag = {
+      pointerId: getPointerIdFromEvent(event),
+      offsetWorld: {
+        x: ballWorld.x - pointerWorld.x,
+        y: ballWorld.y - pointerWorld.y,
+      },
+    };
+  });
 
   const buildRoutesSnapshot = (): MovementBoardRoute[] =>
     Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
@@ -494,6 +526,17 @@ export async function createMovementCanvasShell(
     activeRouteHandleDrag = null;
   };
 
+  const finalizeBallDrag = (event: unknown) => {
+    if (!activeBallDrag) return;
+    const pointerId = getPointerIdFromEvent(event);
+    if (activeBallDrag.pointerId != null && pointerId != null && pointerId !== activeBallDrag.pointerId) return;
+    activeBallDrag = null;
+    if (!orchestrator.isLocked()) {
+      ballStateAtPlayStart = { ...ballState };
+    }
+    emitBallState();
+  };
+
   const canDragTokens = () => dragEnabled && mode === "setup" && !isPlaybackLocked();
 
   const setModeState = (nextMode: MovementBoardMode) => {
@@ -501,6 +544,7 @@ export async function createMovementCanvasShell(
     trainingItemLayer.setInteractive(canInteractWithTrainingItems());
     releaseDrag();
     releaseRouteHandleDrag();
+    activeBallDrag = null;
     clearRouteDraft();
     if (mode !== "route") {
       setSelectedWaypoint(null);
@@ -815,6 +859,21 @@ export async function createMovementCanvasShell(
       handleDragMove(event);
       return;
     }
+    if (activeBallDrag) {
+      const pointerId = getPointerIdFromEvent(event);
+      if (activeBallDrag.pointerId == null || pointerId == null || pointerId === activeBallDrag.pointerId) {
+        const pointerWorld = getWorldPointFromEvent(event, app.stage, mapper);
+        if (pointerWorld) {
+          const nextWorld = clampWorldPoint({
+            x: pointerWorld.x + activeBallDrag.offsetWorld.x,
+            y: pointerWorld.y + activeBallDrag.offsetWorld.y,
+          });
+          ballState = { position: clampNormalizedPoint(mapper.worldToNormalized(nextWorld)), ballType: ballState.ballType };
+          syncBallPosition();
+        }
+      }
+      return;
+    }
     if (activeRouteHandleDrag) {
       handleRouteHandleDragMove(event);
       return;
@@ -842,6 +901,10 @@ export async function createMovementCanvasShell(
     tokenTapStart = null;
     if (activeDrag) {
       releaseDrag();
+      return;
+    }
+    if (activeBallDrag) {
+      finalizeBallDrag(event);
       return;
     }
     if (activeRouteHandleDrag) {
@@ -1210,8 +1273,10 @@ export async function createMovementCanvasShell(
       dragEnabled = enabled;
       if (!enabled) {
         releaseDrag();
+        activeBallDrag = null;
       }
       trainingItemLayer.setInteractive(canInteractWithTrainingItems());
+      syncBallInteraction();
     },
     setBallCarrier: (tokenId) => {
       tokenLayer.setBallCarrier(tokenId);
