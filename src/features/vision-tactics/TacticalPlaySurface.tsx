@@ -1686,6 +1686,7 @@ export default function TacticalPlaySurface() {
   const onLoadScenario = (scenario: TacticalScenario) => {
     const shell = shellRef.current;
     if (!shell) return;
+    setPlaysOpen(false);
     shell.setTokens(scenario.tokens);
     shell.setRoutes(scenario.routes);
     if (scenario.ballState.carrierId) {
@@ -1722,6 +1723,9 @@ export default function TacticalPlaySurface() {
     setAwayTokenIds(loadedAwayIds);
     const firstAway = scenario.tokens.find((t) => t.team === "away");
     if (firstAway) setAwayColorState(firstAway.color);
+    const loadedNums: Record<string, number> = {};
+    for (const t of scenario.tokens) loadedNums[t.id] = t.number;
+    setTokenNumberById(loadedNums);
     setScenarioRenameId(null);
   };
 
