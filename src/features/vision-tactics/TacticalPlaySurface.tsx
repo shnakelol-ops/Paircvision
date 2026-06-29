@@ -934,6 +934,9 @@ export default function TacticalPlaySurface() {
   const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
   const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
   const editRunPlayerIdRef = useRef<string | null>(null);
+  // Ref bridge so the stale mount-time closure in the shell useEffect can read
+  // the latest units value (needed for WebGL context-loss restore).
+  const unitsRef = useRef<TacticalUnit[]>([]);
   const {
     recordPhase, setRecordPhase,
     recordCountdown,
@@ -1022,6 +1025,19 @@ export default function TacticalPlaySurface() {
     let mountFrameB = 0;
     let resizeFrameA = 0;
     let resizeFrameB = 0;
+
+    // Holds a snapshot captured just before a WebGL context-loss remount so the
+    // fresh shell can be restored to exactly the same board state.
+    let lastSnapshot: {
+      tokens: MovementBoardToken[];
+      routes: MovementBoardRoute[];
+      ballState: { carrierId?: string; position?: NormalizedPoint; ballType?: BallType };
+      passEvents: TacticalPassEvent[];
+      shotEvents: TacticalShotEvent[];
+      zones: ZoneRecord[];
+      trainingItems: TacticalTrainingItem[];
+      units: TacticalUnit[];
+    } | null = null;
 
     const mountShell = () => {
       void createMovementCanvasShell(host, {
@@ -1124,6 +1140,33 @@ export default function TacticalPlaySurface() {
         setZones(shell.getZones());
         setTrainingItems(shell.getTrainingItems());
         destroyShell = shell.destroy;
+
+        // After a WebGL context-loss remount, restore the full board state that
+        // was captured before the dead shell was destroyed.
+        if (lastSnapshot) {
+          const snap = lastSnapshot;
+          lastSnapshot = null;
+          shell.setTokens(snap.tokens);
+          shell.setRoutes(snap.routes);
+          if (snap.ballState.carrierId) {
+            shell.giveBall(snap.ballState.carrierId);
+          } else if (snap.ballState.position) {
+            shell.placeBall(snap.ballState.ballType ?? "footballSmall", snap.ballState.position);
+          } else {
+            shell.removeBall();
+          }
+          shell.setPassEvents(snap.passEvents);
+          setPassEvents(snap.passEvents);
+          for (const existing of shell.getShotEvents()) shell.removeShotEvent(existing.id);
+          for (const shot of snap.shotEvents) shell.addShotEvent(shot);
+          setShotEvents(snap.shotEvents);
+          shell.setZones(snap.zones);
+          setZones(snap.zones);
+          shell.setTrainingItems(snap.trainingItems);
+          setTrainingItems(snap.trainingItems);
+          setUnits(snap.units);
+          shell.setStartPositions();
+        }
       });
     };
 
@@ -1148,6 +1191,18 @@ export default function TacticalPlaySurface() {
         ? ((canvas.getContext("webgl2") ?? canvas.getContext("webgl")) as WebGLRenderingContext | null)
         : null;
       if (gl?.isContextLost()) {
+        if (shellRef.current) {
+          lastSnapshot = {
+            tokens: shellRef.current.getTokens(),
+            routes: shellRef.current.getRoutes(),
+            ballState: shellRef.current.getBallState(),
+            passEvents: shellRef.current.getPassEvents(),
+            shotEvents: shellRef.current.getShotEvents(),
+            zones: shellRef.current.getZones(),
+            trainingItems: shellRef.current.getTrainingItems(),
+            units: unitsRef.current,
+          };
+        }
         destroyShell?.();
         destroyShell = null;
         shellRef.current = null;
@@ -1179,6 +1234,8 @@ export default function TacticalPlaySurface() {
       destroyShell?.();
     };
   }, []);
+
+  useEffect(() => { unitsRef.current = units; }, [units]);
 
   useEffect(() => {
     shellRef.current?.setDragEnabled(!isPortrait);
