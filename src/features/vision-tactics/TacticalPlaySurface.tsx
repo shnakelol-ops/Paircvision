@@ -889,7 +889,7 @@ export default function TacticalPlaySurface() {
   const [playersOpen, setPlayersOpen] = useState(false);
   const [activeSetupSport, setActiveSetupSport] = useState<SetupSport>("football");
   const [activeSetupSituation, setActiveSetupSituation] = useState<TacticalTemplateSituation | null>(null);
-  const [, setTokenSizeState] = useState<TokenSize>("medium");
+  const [tokenSizeState, setTokenSizeState] = useState<TokenSize>("medium");
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("pixi");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
   const [awayColor, setAwayColorState] = useState<PremiumPlayerTokenColor>("red");
@@ -2547,7 +2547,7 @@ export default function TacticalPlaySurface() {
                 style={unitsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                 onClick={() => { setUnitsOpen((prev) => !prev); setMovementsOpen(false); setPassesOpen(false); setIsControlsOpen(false); }}
               >
-                Group Move
+                Move as 1
               </button>
               <button
                 type="button"
@@ -2562,7 +2562,7 @@ export default function TacticalPlaySurface() {
               </button>
             </div>
 
-            {/* Row 4: Advanced drawer (Group Move promoted to Row 3) */}
+            {/* Row 4: Advanced drawer (Move as 1 promoted to Row 3) */}
             {advancedOpen ? (
               <div style={PANEL_ROW_STYLE}>
                 <button
@@ -2585,6 +2585,17 @@ export default function TacticalPlaySurface() {
                   onClick={() => { setItemsOpen((prev) => !prev); setZonesOpen(false); setIsControlsOpen(false); }}
                 >
                   Items{trainingItems.length > 0 ? ` (${trainingItems.length})` : ""}
+                </button>
+                <button
+                  type="button"
+                  style={tokenSizeState === "small" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => {
+                    const next: TokenSize = tokenSizeState === "small" ? "medium" : "small";
+                    shellRef.current?.setTokenSize(next);
+                    setTokenSizeState(next);
+                  }}
+                >
+                  Compact
                 </button>
                 <button
                   type="button"
@@ -2782,7 +2793,7 @@ export default function TacticalPlaySurface() {
         {unitsOpen && !modeIsPlaybackLocked ? (
           <div style={MOVEMENT_PANEL_STYLE}>
             <div style={MP_HEADER_STYLE}>
-              <span style={MP_TITLE_STYLE}>Group Move</span>
+              <span style={MP_TITLE_STYLE}>Move as 1</span>
               <button type="button" style={MP_CLOSE_STYLE} onClick={() => setUnitsOpen(false)}>×</button>
             </div>
 
