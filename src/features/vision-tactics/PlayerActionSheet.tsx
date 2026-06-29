@@ -332,7 +332,6 @@ export default function PlayerActionSheet({
   onBallChoice,
   onFreeBall,
   onPlay,
-  onBehaviour,
 }: PlayerActionSheetProps) {
   const [expanded, setExpanded] = useState<ExpandedSection>(null);
   const [passToId, setPassToId] = useState<string | null>(null);
@@ -395,13 +394,6 @@ export default function PlayerActionSheet({
             onClick={() => { onDrawRun(); onClose(); }}
           >
             Draw Run
-          </button>
-          <button
-            type="button"
-            style={ACTION_BTN}
-            onClick={() => { onBehaviour(); }}
-          >
-            Behaviour
           </button>
         </div>
 
