@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from "react";
+import { ConfirmSheet, type ConfirmSheetProps } from "../../components/ConfirmSheet";
 
 import type {
   BallType,
@@ -334,6 +335,7 @@ export default function PlayerActionSheet({
   onPlay,
 }: PlayerActionSheetProps) {
   const [expanded, setExpanded] = useState<ExpandedSection>(null);
+  const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
   const [passToId, setPassToId] = useState<string | null>(null);
   const [passDelayMs, setPassDelayMs] = useState(0);
   const [runCustomOpen, setRunCustomOpen] = useState(false);
@@ -410,7 +412,15 @@ export default function PlayerActionSheet({
             <button
               type="button"
               style={{ ...ACTION_BTN, border: "1px solid rgba(255, 100, 100, 0.30)", color: "rgba(255, 180, 180, 0.80)" }}
-              onClick={() => { if (window.confirm(`Delete P${playerNumber}'s run? This cannot be undone.`)) onResetRun(); }}
+              onClick={() => {
+                setConfirmSheet({
+                  message: `Delete P${playerNumber}'s run? This cannot be undone.`,
+                  confirmLabel: "Delete",
+                  danger: true,
+                  onConfirm: () => { setConfirmSheet(null); onResetRun(); },
+                  onCancel: () => setConfirmSheet(null),
+                });
+              }}
             >
               Reset Run
             </button>
@@ -676,6 +686,7 @@ export default function PlayerActionSheet({
           </div>
         )}
       </div>
+      {confirmSheet && <ConfirmSheet {...confirmSheet} />}
     </>
   );
 }

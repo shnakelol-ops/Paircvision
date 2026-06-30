@@ -1,5 +1,6 @@
 import "./visionTraining.css";
 import { useState } from "react";
+import { ConfirmSheet, type ConfirmSheetProps } from "../components/ConfirmSheet";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { loadSavedSquads } from "../features/player-performance-tracker/storage/trainingSessionStorage";
 import type { AttendanceRecord, TrainingHubSquad, TrainingSession } from "./types";
@@ -41,6 +42,7 @@ export default function NewSessionScreen() {
     () => loadTrainingHubSquads()
   );
   const [showLoadPanel, setShowLoadPanel] = useState(false);
+  const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
 
   const selectedSquad = squads.find((s) => s.id === selectedSquadId) ?? null;
 
@@ -94,25 +96,40 @@ export default function NewSessionScreen() {
     if (validQuickPlayers.length === 0) return;
     const current = loadTrainingHubSquads();
     if (current.length >= 10) {
-      window.alert("Maximum 10 saved training squads reached.");
+      setConfirmSheet({
+        variant: "alert",
+        message: "Maximum 10 saved training squads reached.",
+        confirmLabel: "OK",
+        onConfirm: () => setConfirmSheet(null),
+        onCancel: () => setConfirmSheet(null),
+      });
       return;
     }
-    const name = window.prompt("Name this training squad:", "");
-    if (!name?.trim()) return;
-    const now = new Date().toISOString();
-    const squad: TrainingHubSquad = {
-      id: `ths-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      name: name.trim(),
-      players: validQuickPlayers.map((p) => ({
-        playerId: `sp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        playerNumber: parseInt(p.number, 10) || 0,
-        playerName: p.name.trim(),
-      })),
-      createdAt: now,
-      updatedAt: now,
-    };
-    upsertTrainingHubSquad(squad);
-    setTrainingHubSquads(loadTrainingHubSquads());
+    setConfirmSheet({
+      variant: "prompt",
+      message: "Name this training squad:",
+      promptPlaceholder: "Squad name",
+      confirmLabel: "Save Squad",
+      onConfirm: (name) => {
+        setConfirmSheet(null);
+        if (!name?.trim()) return;
+        const now = new Date().toISOString();
+        const squad: TrainingHubSquad = {
+          id: `ths-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name: name.trim(),
+          players: validQuickPlayers.map((p) => ({
+            playerId: `sp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            playerNumber: parseInt(p.number, 10) || 0,
+            playerName: p.name.trim(),
+          })),
+          createdAt: now,
+          updatedAt: now,
+        };
+        upsertTrainingHubSquad(squad);
+        setTrainingHubSquads(loadTrainingHubSquads());
+      },
+      onCancel: () => setConfirmSheet(null),
+    });
   }
 
   function handleLoadSquad(squad: TrainingHubSquad) {
@@ -390,6 +407,7 @@ export default function NewSessionScreen() {
 
         </div>
       </div>
+      {confirmSheet && <ConfirmSheet {...confirmSheet} />}
     </div>
   );
 }

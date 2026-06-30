@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+const ALLOW_NATIVE_DIALOG =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+   window.location.hostname === "127.0.0.1" ||
+   window.location.hostname.endsWith(".paircvision.com") ||
+   window.location.hostname === "paircvision.com");
+
 import {
   createInitialMatchEngineState,
   goToHalfTime,
@@ -1622,6 +1629,7 @@ export default function App() {
   };
 
   const editPlayer = (playerId: string) => {
+    if (!ALLOW_NATIVE_DIALOG) return;
     const targetPlayer = activeSquadPlayers.find((player) => player.id === playerId);
     if (!targetPlayer) return;
     const nextNameInput = window.prompt("Player name", targetPlayer.name);
