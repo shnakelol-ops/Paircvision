@@ -2019,7 +2019,6 @@ export default function TacticalPlaySurface() {
   const playbackFloatingVisible = isPlaying || isPaused;
   const tokenIds = Object.keys(tokenNumberById);
   const homePlayerCount = tokenIds.filter((id) => !awayTokenIds.has(id)).length;
-  const awayPlayerCount = tokenIds.filter((id) => awayTokenIds.has(id)).length;
 
   const speedIndex = Math.max(0, TP_SPEED_OPTIONS.findIndex((o) => o.multiplier === playbackSpeedMultiplier));
   const speedLabel = TP_SPEED_OPTIONS[speedIndex]?.label ?? "1×";
@@ -3441,16 +3440,27 @@ export default function TacticalPlaySurface() {
                       {r.label}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    style={tokenSizeState === "small" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                    onClick={() => {
+                      const next: TokenSize = tokenSizeState === "small" ? "medium" : "small";
+                      shellRef.current?.setTokenSize(next);
+                      setTokenSizeState(next);
+                    }}
+                  >
+                    Compact
+                  </button>
                 </div>
                 <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Home ({homePlayerCount})</span>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill 15 Home</button>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>Clear Home</button>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Our Team ({homePlayerCount})</span>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill Our Team</button>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>Clear</button>
                   {ALL_TOKEN_COLORS.map((c) => (
                     <button
                       key={c}
                       type="button"
-                      aria-label={`Home ${c}`}
+                      aria-label={c}
                       style={{
                         width: "26px",
                         height: "26px",
@@ -3467,34 +3477,6 @@ export default function TacticalPlaySurface() {
                         transition: "outline-width 0.1s, outline-offset 0.1s",
                       }}
                       onClick={() => onSetPrimaryColor(c)}
-                    />
-                  ))}
-                </div>
-                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={{ ...SETUP_SECTION_LABEL_STYLE, color: "rgba(255, 160, 140, 0.85)" }}>Away ({awayPlayerCount})</span>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillAwayTeam}>Fill 15 Away</button>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearAwayTeam}>Clear Away</button>
-                  {ALL_TOKEN_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      aria-label={`Away ${c}`}
-                      style={{
-                        width: "26px",
-                        height: "26px",
-                        minWidth: "26px",
-                        borderRadius: "50%",
-                        background: TOKEN_COLOR_BG[c],
-                        border: "none",
-                        cursor: "pointer",
-                        padding: 0,
-                        flexShrink: 0,
-                        outline: awayColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
-                        outlineOffset: awayColor === c ? "2px" : "1px",
-                        boxShadow: awayColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
-                        transition: "outline-width 0.1s, outline-offset 0.1s",
-                      }}
-                      onClick={() => onSetAwayColor(c)}
                     />
                   ))}
                 </div>
