@@ -402,7 +402,7 @@ export async function createMovementCanvasShell(
   trainingItemLayer.setInteractive(canInteractWithTrainingItems());
 
   const canDragFreeBall = () =>
-    !!ballState.position && !ballState.carrierId && dragEnabled && !isPlaybackLocked();
+    !!ballState.position && !ballState.carrierId && dragEnabled && !orchestrator.getState().isPlaying;
 
   const syncBallInteraction = () => {
     ballLayer.setInteractive(canDragFreeBall(), BALL_DRAG_HIT_RADIUS_WORLD);
@@ -1177,9 +1177,11 @@ export async function createMovementCanvasShell(
     },
     pausePlayback: () => {
       orchestrator.pause();
+      syncBallInteraction();
     },
     resumePlayback: () => {
       orchestrator.resume();
+      syncBallInteraction();
     },
     reset: () => {
       reset();
