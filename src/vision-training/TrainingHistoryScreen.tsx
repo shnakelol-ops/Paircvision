@@ -1,5 +1,6 @@
 import "./visionTraining.css";
 import { useRef, useState } from "react";
+import { ConfirmSheet, type ConfirmSheetProps } from "../components/ConfirmSheet";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import type { TrainingSession } from "./types";
 import { deleteAllCompletedSessions, deleteSessionById, loadSessions } from "./trainingStorage";
@@ -28,11 +29,20 @@ export default function TrainingHistoryScreen() {
   const [holdProgress, setHoldProgress] = useState(0);
   const holdIntervalRef = useRef<number | null>(null);
   const holdStartRef = useRef<number>(0);
+  const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
 
   function handleDelete(id: string) {
-    if (!window.confirm("Delete this completed training session?")) return;
-    deleteSessionById(id);
-    setSessions((prev) => prev.filter((s) => s.id !== id));
+    setConfirmSheet({
+      message: "Delete this completed training session?",
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () => {
+        setConfirmSheet(null);
+        deleteSessionById(id);
+        setSessions((prev) => prev.filter((s) => s.id !== id));
+      },
+      onCancel: () => setConfirmSheet(null),
+    });
   }
 
   function startHold() {
@@ -47,14 +57,17 @@ export default function TrainingHistoryScreen() {
           holdIntervalRef.current = null;
         }
         setHoldProgress(0);
-        if (
-          window.confirm(
-            "Delete all completed training sessions? This cannot be undone."
-          )
-        ) {
-          deleteAllCompletedSessions();
-          setSessions([]);
-        }
+        setConfirmSheet({
+          message: "Delete all completed training sessions? This cannot be undone.",
+          confirmLabel: "Delete All",
+          danger: true,
+          onConfirm: () => {
+            setConfirmSheet(null);
+            deleteAllCompletedSessions();
+            setSessions([]);
+          },
+          onCancel: () => setConfirmSheet(null),
+        });
       }
     }, 30);
   }
@@ -192,6 +205,7 @@ export default function TrainingHistoryScreen() {
 
         </div>
       </div>
+      {confirmSheet && <ConfirmSheet {...confirmSheet} />}
     </div>
   );
 }

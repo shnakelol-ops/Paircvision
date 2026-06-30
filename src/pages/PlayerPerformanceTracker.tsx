@@ -1,5 +1,6 @@
 import "../features/player-performance-tracker/playerPerformanceTracker.css";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ConfirmSheet, type ConfirmSheetProps } from "../components/ConfirmSheet";
 import SetupScreen from "../features/player-performance-tracker/components/SetupScreen";
 import TrackerScreen from "../features/player-performance-tracker/components/TrackerScreen";
 import RatingsScreen from "../features/player-performance-tracker/components/RatingsScreen";
@@ -24,6 +25,7 @@ export default function PlayerPerformanceTracker(){
   const saveSessionFeedbackTimeoutRef=useRef<number|null>(null);
   const hasSavedCurrentSessionRef=useRef(false);
   const isTrainingSessionActive = state.hasStarted;
+  const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
 
   useScreenWakeLock(isTrainingSessionActive);
 
@@ -147,10 +149,17 @@ export default function PlayerPerformanceTracker(){
                 activeEventKey={state.activeEventKey}
                 onToggleTimer={() => setState((s) => ({ ...s, isRunning: !s.isRunning }))}
                 onReset={() => {
-                  if (window.confirm("Reset session timer and logs?")) {
-                    setState((s) => ({ ...s, elapsedSeconds: 0, logs: [], isRunning: false, lastDeleted: null }));
-                    resetSaveSessionDuplicateGuard();
-                  }
+                  setConfirmSheet({
+                    message: "Reset session timer and logs?",
+                    confirmLabel: "Reset",
+                    danger: true,
+                    onConfirm: () => {
+                      setConfirmSheet(null);
+                      setState((s) => ({ ...s, elapsedSeconds: 0, logs: [], isRunning: false, lastDeleted: null }));
+                      resetSaveSessionDuplicateGuard();
+                    },
+                    onCancel: () => setConfirmSheet(null),
+                  });
                 }}
                 onPeriod={(period: TrainingPeriod) => setState((s) => ({ ...s, period }))}
                 onSelectEvent={(k) => setState((s) => ({ ...s, activeEventKey: s.activeEventKey === k ? null : k }))}
@@ -170,10 +179,17 @@ export default function PlayerPerformanceTracker(){
               <SeasonScreen
                 seasonTable={seasonTable}
                 onClearSeason={() => {
-                  if (window.confirm("Clear season table?")) {
-                    setSeasonTable([]);
-                    saveSeasonTable([]);
-                  }
+                  setConfirmSheet({
+                    message: "Clear season table?",
+                    confirmLabel: "Clear",
+                    danger: true,
+                    onConfirm: () => {
+                      setConfirmSheet(null);
+                      setSeasonTable([]);
+                      saveSeasonTable([]);
+                    },
+                    onCancel: () => setConfirmSheet(null),
+                  });
                 }}
               />
             )}
@@ -210,6 +226,7 @@ export default function PlayerPerformanceTracker(){
           </nav>
         </div>
       )}
+      {confirmSheet && <ConfirmSheet {...confirmSheet} />}
     </div>
   );
 }

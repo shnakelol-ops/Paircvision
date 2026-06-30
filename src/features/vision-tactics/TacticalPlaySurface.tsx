@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import OrientationGate, { usePortraitOrientation } from "../../components/OrientationGate";
 import VisionStadiumBackground from "../../components/VisionStadiumBackground";
+import { ConfirmSheet, type ConfirmSheetProps } from "../../components/ConfirmSheet";
 import { useCanvasRecorder } from "../shared/useCanvasRecorder";
 import { buildDefaultTokens } from "../../movement-board/tokens/default-tokens";
 import { createMovementCanvasShell } from "../../movement-board/shell/createMovementCanvasShell";
@@ -933,6 +934,7 @@ export default function TacticalPlaySurface() {
   const [playerSheetId, setPlayerSheetId] = useState<string | null>(null);
   const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
   const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
+  const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
   const editRunPlayerIdRef = useRef<string | null>(null);
   // Ref bridge so the stale mount-time closure in the shell useEffect can read
   // the latest units value (needed for WebGL context-loss restore).
@@ -1959,8 +1961,16 @@ export default function TacticalPlaySurface() {
   const onResetBoard = () => {
     const shell = shellRef.current;
     if (!shell) return;
-    const confirmed = window.confirm("Reset the Tactical Play board? This clears the current board only.\nSaved scenarios are not deleted.");
-    if (!confirmed) return;
+    setConfirmSheet({
+      message: "Reset the Tactical Play board? This clears the current board only.\nSaved scenarios are not deleted.",
+      confirmLabel: "Reset",
+      danger: true,
+      onConfirm: () => { setConfirmSheet(null); doResetBoard(shell); },
+      onCancel: () => setConfirmSheet(null),
+    });
+  };
+
+  const doResetBoard = (shell: MovementCanvasShellHandle) => {
 
     shell.reset();
     const defaultTokens = buildDefaultTokens();
@@ -3637,7 +3647,13 @@ export default function TacticalPlaySurface() {
                 style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(255, 80, 80, 0.38)", color: "rgba(255, 190, 190, 0.95)", width: "100%", justifyContent: "center", height: "30px" }}
                 onClick={() => {
                   if (!canRecord()) {
-                    alert("Recording is not supported in this browser.\n\niPhone: use Screen Recording from Control Centre.\nAndroid: use Chrome for full recording support.");
+                    setConfirmSheet({
+                      variant: "alert",
+                      message: "Recording is not supported in this browser.\n\niPhone: use Screen Recording from Control Centre.\nAndroid: use Chrome for full recording support.",
+                      confirmLabel: "OK",
+                      onConfirm: () => setConfirmSheet(null),
+                      onCancel: () => setConfirmSheet(null),
+                    });
                     return;
                   }
                   setRecordPhase("panel");
@@ -3797,6 +3813,7 @@ export default function TacticalPlaySurface() {
             />
           );
         })() : null}
+        {confirmSheet && <ConfirmSheet {...confirmSheet} />}
       </div>
     </OrientationGate>
   );

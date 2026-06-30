@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ChangeEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { ConfirmSheet, type ConfirmSheetProps } from "../components/ConfirmSheet";
 import { createPortal } from "react-dom";
 
 import {
@@ -2037,6 +2038,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [kitEditorTab, setKitEditorTab] = useState<KitEditorTab>("base");
   const [textAnnotations, setTextAnnotations] = useState<SlateTextAnnotation[]>([]);
   const [textToolActive, setTextToolActive] = useState(false);
+  const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
   const textAnnotationsRef = useRef<SlateTextAnnotation[]>([]);
   const textAnnotationsBaselineRef = useRef<string>("[]");
 
@@ -2895,13 +2897,19 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           })
           .filter((entry): entry is TacticalItem => entry != null)
       : [];
-  const confirmDiscardUnsavedBoardChanges = (reason: "load" | "reset"): boolean => {
-    if (!hasUnsavedBoardChanges()) return true;
+  const withDiscardConfirm = (reason: "load" | "reset", action: () => void) => {
+    if (!hasUnsavedBoardChanges()) { action(); return; }
     const message =
       reason === "load"
         ? "Load this board and discard unsaved changes on the current board?"
         : "Reset this board and discard unsaved changes?";
-    return window.confirm(message);
+    setConfirmSheet({
+      message,
+      confirmLabel: "Discard & Continue",
+      danger: true,
+      onConfirm: () => { setConfirmSheet(null); action(); },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
   const closeActionsMenu = () => {
     setActionsOpen(false);
@@ -3081,7 +3089,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       showQuickBoardNotice("Board unavailable");
       return;
     }
-    if (!confirmDiscardUnsavedBoardChanges("load")) return;
+    withDiscardConfirm("load", () => {
     const saved = loadBoard(boardId);
     if (!saved) {
       showQuickBoardNotice("Board not found");
@@ -3110,19 +3118,26 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     showQuickBoardNotice("Board loaded");
     setLoadedBoardName(saved.name);
     syncTeamCounts();
+    });
   };
   const lastBoardSavedLabel =
     lastBoardSavedAtMillis != null ? formatBoardUpdatedAt(lastBoardSavedAtMillis) : null;
   const handleRenameBoard = (boardId: string, currentName: string) => {
-    const drafted = window.prompt("Rename board", currentName);
-    if (drafted == null) return;
-    const renamed = renameBoard(boardId, sanitizeBoardName(drafted));
-    if (!renamed) {
-      showQuickBoardNotice("Rename failed");
-      return;
-    }
-    refreshSavedBoards();
-    showQuickBoardNotice("Board renamed");
+    setConfirmSheet({
+      variant: "prompt",
+      message: "Rename board",
+      promptDefault: currentName,
+      confirmLabel: "Rename",
+      onConfirm: (drafted) => {
+        setConfirmSheet(null);
+        if (!drafted?.trim()) return;
+        const renamed = renameBoard(boardId, sanitizeBoardName(drafted));
+        if (!renamed) { showQuickBoardNotice("Rename failed"); return; }
+        refreshSavedBoards();
+        showQuickBoardNotice("Board renamed");
+      },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
   const handleDuplicateBoard = (boardId: string) => {
     const duplicated = duplicateBoard(boardId);
@@ -3134,15 +3149,19 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     showQuickBoardNotice("Board duplicated");
   };
   const handleDeleteBoard = (boardId: string, name: string) => {
-    const confirmed = window.confirm(`Delete "${name}"?`);
-    if (!confirmed) return;
-    const deleted = deleteBoard(boardId);
-    if (!deleted) {
-      showQuickBoardNotice("Delete failed");
-      return;
-    }
-    refreshSavedBoards();
-    showQuickBoardNotice("Board deleted");
+    setConfirmSheet({
+      message: `Delete "${name}"?`,
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () => {
+        setConfirmSheet(null);
+        const deleted = deleteBoard(boardId);
+        if (!deleted) { showQuickBoardNotice("Delete failed"); return; }
+        refreshSavedBoards();
+        showQuickBoardNotice("Board deleted");
+      },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
   const dismissQuickShareOnboarding = (openQuickShareAfter = false) => {
     setQuickShareOnboardingOpen(false);
@@ -3329,7 +3348,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   const resetBoardFromTools = () => {
     if (isPortraitViewingMode) return;
-    if (!confirmDiscardUnsavedBoardChanges("reset")) return;
+    withDiscardConfirm("reset", () => {
     const surface = surfaceRef.current;
     surface?.reset();
     setIsPlaying(false);
@@ -3342,6 +3361,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     clearActiveBoardDraft();
     setPendingRecoveredBoardDraft(null);
     syncTeamCounts();
+    });
   };
 
   const handleNewBoard = () => {
@@ -3351,8 +3371,16 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       showQuickBoardNotice("PáircVision Board not ready");
       return;
     }
-    const confirmed = window.confirm("Start a new board?\nUnsaved changes on the current board will be lost.");
-    if (!confirmed) return;
+    setConfirmSheet({
+      message: "Start a new board?\nUnsaved changes on the current board will be lost.",
+      confirmLabel: "New Board",
+      danger: true,
+      onConfirm: () => { setConfirmSheet(null); doNewBoard(surface); },
+      onCancel: () => setConfirmSheet(null),
+    });
+  };
+
+  const doNewBoard = (surface: TacticalPadLiteSurface) => {
     surface.newBoard();
     const pristineSnapshot = captureCurrentBoardSnapshot();
     boardBaselineSignatureRef.current = serializeBoardState(pristineSnapshot);
@@ -5514,6 +5542,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             ) : null}
           </>
         ) : null}
+        {confirmSheet && <ConfirmSheet {...confirmSheet} />}
       </div>
     </OrientationGate>
   );

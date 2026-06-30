@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { ConfirmSheet, type ConfirmSheetProps } from "../components/ConfirmSheet";
 
 import {
   AGE_FILTER_OPTIONS,
@@ -1060,6 +1061,7 @@ function NotesPage() {
   const [bodyDraft, setBodyDraft] = useState("");
   const [dateDraft, setDateDraft] = useState("");
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+  const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -1125,11 +1127,18 @@ function NotesPage() {
     if (!activeNoteId) return;
     const selected = notes.find((note) => note.id === activeNoteId);
     if (!selected) return;
-    const confirmed = window.confirm(`Delete "${selected.title || "Untitled note"}"?`);
-    if (!confirmed) return;
-    setNotes((previous) => previous.filter((note) => note.id !== activeNoteId));
-    startNewNote();
-    setSaveFeedback("Note deleted");
+    setConfirmSheet({
+      message: `Delete "${selected.title || "Untitled note"}"?`,
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () => {
+        setConfirmSheet(null);
+        setNotes((previous) => previous.filter((note) => note.id !== activeNoteId));
+        startNewNote();
+        setSaveFeedback("Note deleted");
+      },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
 
   return (
@@ -1243,6 +1252,7 @@ function NotesPage() {
           </p>
         ) : null}
       </div>
+      {confirmSheet && <ConfirmSheet {...confirmSheet} />}
     </>
   );
 }
