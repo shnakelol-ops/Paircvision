@@ -705,6 +705,17 @@ export async function createMovementCanvasShell(
       emitBallState();
     }
     orchestrator.start();
+    // Promote a shot for the initial ball carrier only when they have no
+    // outgoing pass — if they do pass first, notifyPassLanded fires naturally
+    // when the return pass arc completes.
+    if (ballStateAtPlayStart.carrierId) {
+      const hasOutgoingPass = passEvents.some(
+        (e) => e.fromPlayerId === ballStateAtPlayStart.carrierId,
+      );
+      if (!hasOutgoingPass) {
+        orchestrator.notifyPassLanded(ballStateAtPlayStart.carrierId);
+      }
+    }
   };
 
   const reset = () => {
