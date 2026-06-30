@@ -8,9 +8,9 @@ const GAELIC_HOME_POSITIONS: ReadonlyArray<{ number: number; x: number; y: numbe
   { number: 2,  x: 20, y: 78 },  // Right corner-back
   { number: 3,  x: 20, y: 50 },  // Full-back
   { number: 4,  x: 20, y: 22 },  // Left corner-back
-  { number: 5,  x: 34, y: 18 },  // Right half-back
+  { number: 5,  x: 34, y: 82 },  // Left wing-back
   { number: 6,  x: 34, y: 50 },  // Centre half-back
-  { number: 7,  x: 34, y: 82 },  // Left half-back
+  { number: 7,  x: 34, y: 18 },  // Right wing-back
   { number: 8,  x: 48, y: 38 },  // Midfield
   { number: 9,  x: 48, y: 62 },  // Midfield
   { number: 10, x: 62, y: 82 },  // Right half-forward
