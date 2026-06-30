@@ -43,7 +43,7 @@ const ROUTE_MIN_POINT_DISTANCE = 0.9;
 const POSITION_EPSILON = 0.0001;
 const ROUTE_HANDLE_TOUCH_RADIUS_PX = 30;
 const ROUTE_INSERT_TOUCH_DISTANCE_PX = 24;
-const TAP_MOVE_THRESHOLD_PX = 6;
+const TAP_MOVE_THRESHOLD_PX = 10;
 const LONG_PRESS_MS = 420;
 const BALL_DRAG_HIT_RADIUS_WORLD = 5;
 
@@ -743,6 +743,7 @@ export async function createMovementCanvasShell(
   };
 
   tokenLayer.setOnTokenPointerDown((tokenId, event) => {
+    if (mode === "route") return;
     (event as { stopPropagation?: () => void }).stopPropagation?.();
     setSelectedToken(tokenId);
     const tapStagePoint = getStagePointFromEvent(event, app.stage);
