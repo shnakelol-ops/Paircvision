@@ -1230,6 +1230,7 @@ export async function createMovementCanvasShell(
       emitBallState();
     },
     getBallState: () => ({ ...ballState }),
+    getBallStateAtStart: () => ({ ...ballStateAtPlayStart }),
     setPassEvents: (events) => {
       passEvents = events.map((e) => ({ ...e }));
       deferredPasses = [];

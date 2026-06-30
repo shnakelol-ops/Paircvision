@@ -1754,7 +1754,7 @@ export default function TacticalPlaySurface() {
       playsNameDraft.trim() || "Scenario",
       shell.getTokensAtStart(),
       shell.getRoutes(),
-      shell.getBallState(),
+      shell.getBallStateAtStart(),
       shell.getPassEvents(),
       shell.getShotEvents(),
       multiplierToPlaybackSpeed(playbackSpeedMultiplier),
