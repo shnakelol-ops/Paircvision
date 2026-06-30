@@ -289,7 +289,7 @@ const PANEL_ROW_STYLE: CSSProperties = {
 };
 
 const TOOL_BUTTON_STYLE: CSSProperties = {
-  height: "31px",
+  height: "40px",
   minWidth: "68px",
   borderRadius: "999px",
   border: "1px solid rgba(180, 210, 255, 0.22)",
@@ -339,7 +339,7 @@ const PLAYBACK_SIDE_STYLE: CSSProperties = {
 const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
   ...TOOL_BUTTON_STYLE,
   minWidth: "76px",
-  height: "29px",
+  height: "40px",
   padding: "0 8px",
 };
 
@@ -885,6 +885,7 @@ export default function TacticalPlaySurface() {
   const [ballMenuStep, setBallMenuStep] = useState<BallMenuStep | null>(null);
   const [appViewportHeight, setAppViewportHeight] = useState(() => getTPViewportHeight());
   const [startFlash, setStartFlash] = useState(false);
+  const [saveFlash, setSaveFlash] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [playersOpen, setPlayersOpen] = useState(false);
   const [activeSetupSport, setActiveSetupSport] = useState<SetupSport>("football");
@@ -1747,6 +1748,8 @@ export default function TacticalPlaySurface() {
   const onSavePlays = () => {
     const shell = shellRef.current;
     if (!shell) return;
+    setSaveFlash(true);
+    setTimeout(() => { setSaveFlash(false); }, 700);
     saveScenario(
       playsNameDraft.trim() || "Scenario",
       shell.getTokens(),
@@ -3485,20 +3488,18 @@ export default function TacticalPlaySurface() {
           </div>
         ) : null}
 
-        {!isPortrait ? (
-          <div style={PLAYBACK_SIDE_STYLE}>
-            <button
-              type="button"
-              style={PLAYBACK_SIDE_BUTTON_STYLE}
-              onClick={onPauseResumePress}
-            >
-              {isPlaying ? "Pause" : isPaused ? "Resume" : "▶ Play"}
-            </button>
-            <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetPlaybackState}>
-              Reset
-            </button>
-          </div>
-        ) : null}
+        <div style={PLAYBACK_SIDE_STYLE}>
+          <button
+            type="button"
+            style={PLAYBACK_SIDE_BUTTON_STYLE}
+            onClick={onPauseResumePress}
+          >
+            {isPlaying ? "Pause" : isPaused ? "Resume" : "▶ Play"}
+          </button>
+          <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetPlaybackState}>
+            Reset
+          </button>
+        </div>
 
         {/* PLAYS floating button — right-side, vertically centered */}
         {!playbackFloatingVisible ? (
@@ -3540,8 +3541,8 @@ export default function TacticalPlaySurface() {
                 onChange={(e) => setPlaysNameDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") onSavePlays(); }}
               />
-              <button type="button" style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.34)", color: "#c4ffbf" }} onClick={onSavePlays}>
-                Save
+              <button type="button" style={saveFlash ? { ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.80)", color: "#c4ffbf", background: "rgba(18, 56, 34, 0.82)" } : { ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.34)", color: "#c4ffbf" }} onClick={onSavePlays}>
+                {saveFlash ? "Saved ✓" : "Save"}
               </button>
             </div>
 

@@ -102,8 +102,8 @@ const HEADER_TITLE: CSSProperties = {
 };
 
 const CLOSE_BTN: CSSProperties = {
-  width: "22px",
-  height: "22px",
+  width: "32px",
+  height: "32px",
   borderRadius: "50%",
   border: "1px solid rgba(180, 210, 255, 0.15)",
   background: "rgba(10, 20, 42, 0.60)",
@@ -124,7 +124,7 @@ const BTN_ROW: CSSProperties = {
 };
 
 const ACTION_BTN: CSSProperties = {
-  height: "30px",
+  height: "40px",
   minWidth: "70px",
   borderRadius: "8px",
   border: "1px solid rgba(180, 210, 255, 0.18)",
@@ -168,7 +168,7 @@ const SUB_LABEL: CSSProperties = {
 };
 
 const CHIP: CSSProperties = {
-  height: "24px",
+  height: "32px",
   borderRadius: "999px",
   border: "1px solid rgba(180, 210, 255, 0.18)",
   background: "rgba(8, 18, 40, 0.70)",
@@ -210,8 +210,8 @@ const STEPPER_ROW: CSSProperties = {
 };
 
 const STEPPER_BTN: CSSProperties = {
-  width: "32px",
-  height: "32px",
+  width: "40px",
+  height: "40px",
   borderRadius: "8px",
   border: "1px solid rgba(180, 210, 255, 0.22)",
   background: "rgba(10, 22, 50, 0.80)",
@@ -244,7 +244,7 @@ const SUB_SECTION: CSSProperties = {
 };
 
 const CONFIRM_BTN: CSSProperties = {
-  height: "28px",
+  height: "36px",
   borderRadius: "8px",
   border: "1px solid rgba(74, 222, 128, 0.40)",
   background: "rgba(16, 48, 30, 0.82)",
@@ -410,7 +410,7 @@ export default function PlayerActionSheet({
             <button
               type="button"
               style={{ ...ACTION_BTN, border: "1px solid rgba(255, 100, 100, 0.30)", color: "rgba(255, 180, 180, 0.80)" }}
-              onClick={() => { onResetRun(); }}
+              onClick={() => { if (window.confirm(`Delete P${playerNumber}'s run? This cannot be undone.`)) onResetRun(); }}
             >
               Reset Run
             </button>
