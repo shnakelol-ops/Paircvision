@@ -743,6 +743,7 @@ export async function createMovementCanvasShell(
   };
 
   tokenLayer.setOnTokenPointerDown((tokenId, event) => {
+    if (mode === "route") return;
     (event as { stopPropagation?: () => void }).stopPropagation?.();
     setSelectedToken(tokenId);
     const tapStagePoint = getStagePointFromEvent(event, app.stage);
