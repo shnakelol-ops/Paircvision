@@ -133,6 +133,7 @@ export type MovementCanvasShellOptions = {
 
 export type MovementCanvasShellHandle = {
   getTokens: () => MovementBoardToken[];
+  getTokensAtStart: () => MovementBoardToken[];
   getSelectedToken: () => MovementBoardToken | null;
   getMode: () => MovementBoardMode;
   getRoutes: () => MovementBoardRoute[];

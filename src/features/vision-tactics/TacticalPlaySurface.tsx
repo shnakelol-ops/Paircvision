@@ -1752,7 +1752,7 @@ export default function TacticalPlaySurface() {
     setTimeout(() => { setSaveFlash(false); }, 700);
     saveScenario(
       playsNameDraft.trim() || "Scenario",
-      shell.getTokens(),
+      shell.getTokensAtStart(),
       shell.getRoutes(),
       shell.getBallState(),
       shell.getPassEvents(),
