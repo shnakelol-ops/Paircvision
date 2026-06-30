@@ -1071,6 +1071,11 @@ export async function createMovementCanvasShell(
 
   return {
     getTokens: () => tokenLayer.getTokens(),
+    getTokensAtStart: () =>
+      tokenLayer.getTokens().map((t) => {
+        const start = startPositionByTokenId.get(t.id);
+        return start ? { ...t, position: { ...start } } : t;
+      }),
     getSelectedToken: () => (selectedTokenId ? tokenLayer.getTokenById(selectedTokenId) : null),
     getMode: () => mode,
     getRoutes: () => buildRoutesSnapshot(),
@@ -1225,6 +1230,7 @@ export async function createMovementCanvasShell(
       emitBallState();
     },
     getBallState: () => ({ ...ballState }),
+    getBallStateAtStart: () => ({ ...ballStateAtPlayStart }),
     setPassEvents: (events) => {
       passEvents = events.map((e) => ({ ...e }));
       deferredPasses = [];
