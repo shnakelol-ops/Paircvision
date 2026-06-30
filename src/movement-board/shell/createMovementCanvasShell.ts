@@ -1177,9 +1177,11 @@ export async function createMovementCanvasShell(
     },
     pausePlayback: () => {
       orchestrator.pause();
+      syncBallInteraction();
     },
     resumePlayback: () => {
       orchestrator.resume();
+      syncBallInteraction();
     },
     reset: () => {
       reset();
