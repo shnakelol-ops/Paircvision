@@ -251,11 +251,12 @@ const PITCH_WATERMARK_STYLE: CSSProperties = {
   bottom: "14px",
   right: "18px",
   zIndex: 2,
-  color: "rgba(200, 220, 255, 0.07)",
+  color: "rgba(220, 235, 255, 0.22)",
   fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "10px",
+  fontSize: "11px",
   fontWeight: 600,
-  letterSpacing: "0.10em",
+  letterSpacing: "0.12em",
+  textShadow: "0 1px 4px rgba(0, 0, 0, 0.55), 0 0 12px rgba(0, 0, 0, 0.35)",
   pointerEvents: "none",
   userSelect: "none",
 };
@@ -386,21 +387,6 @@ const EDIT_RUN_DONE_STYLE: CSSProperties = {
   cursor: "pointer",
 };
 
-const HINT_PILL_STYLE: CSSProperties = {
-  position: "fixed",
-  bottom: "max(54px, calc(env(safe-area-inset-bottom, 0px) + 52px))",
-  left: "50%",
-  transform: "translateX(-50%)",
-  zIndex: 20,
-  color: "rgba(198, 228, 210, 0.44)",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "9px",
-  fontWeight: 500,
-  letterSpacing: "0.05em",
-  whiteSpace: "nowrap",
-  pointerEvents: "none",
-  userSelect: "none",
-};
 
 const TOKEN_COLOR_BG: Record<PremiumPlayerTokenColor, string> = {
   blue:   "rgba(37, 99, 235, 0.78)",
@@ -2287,10 +2273,6 @@ export default function TacticalPlaySurface() {
             </div>
           );
         })() : null}
-
-        {!isControlsOpen && !setupOpen && !isPlaying && !isPaused && editRunPlayerId === null ? (
-          <div style={HINT_PILL_STYLE}>Move players → Set Start → Draw Movements → Play</div>
-        ) : null}
 
         {/* Done Editing pill — shown while Edit Run isolated mode is active */}
         {editRunPlayerId !== null && !isPlaying && !isPaused ? (
