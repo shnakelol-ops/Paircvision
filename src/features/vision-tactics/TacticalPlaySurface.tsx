@@ -345,7 +345,7 @@ const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
 
 const EDIT_RUN_PILL_STYLE: CSSProperties = {
   position: "fixed",
-  bottom: "max(66px, calc(env(safe-area-inset-bottom, 0px) + 64px))",
+  top: "max(52px, calc(env(safe-area-inset-top, 0px) + 50px))",
   left: "50%",
   transform: "translateX(-50%)",
   zIndex: 30,
