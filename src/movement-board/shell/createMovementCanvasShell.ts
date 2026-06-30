@@ -705,11 +705,16 @@ export async function createMovementCanvasShell(
       emitBallState();
     }
     orchestrator.start();
-    // Promote any shot whose shooter already has the ball at playback start.
-    // notifyPassLanded is only called when a pass arc completes, so without
-    // this call a shot set up for the initial ball carrier would never fire.
+    // Promote a shot for the initial ball carrier only when they have no
+    // outgoing pass — if they do pass first, notifyPassLanded fires naturally
+    // when the return pass arc completes.
     if (ballStateAtPlayStart.carrierId) {
-      orchestrator.notifyPassLanded(ballStateAtPlayStart.carrierId);
+      const hasOutgoingPass = passEvents.some(
+        (e) => e.fromPlayerId === ballStateAtPlayStart.carrierId,
+      );
+      if (!hasOutgoingPass) {
+        orchestrator.notifyPassLanded(ballStateAtPlayStart.carrierId);
+      }
     }
   };
 
