@@ -300,6 +300,8 @@ export async function createMovementCanvasShell(
       startPassAnimation(fromPlayerId, toPlayerId);
     },
     onShotStart: (shooterId) => {
+      // DEBUG – remove before merge
+      console.log('[shot-debug] onShotStart shooterId=', shooterId, 'ballState.carrierId=', ballState.carrierId, 'match=', ballState.carrierId === shooterId);
       if (ballState.carrierId !== shooterId) return;
       shootToGoalInternal();
     },
@@ -708,10 +710,13 @@ export async function createMovementCanvasShell(
     // Promote a shot for the initial ball carrier only when they have no
     // outgoing pass — if they do pass first, notifyPassLanded fires naturally
     // when the return pass arc completes.
+    // DEBUG – remove before merge
+    console.log('[shot-debug] startPlayback carrierId=', ballStateAtPlayStart.carrierId, 'passEvents=', JSON.stringify(passEvents.map((e) => ({ from: e.fromPlayerId, to: e.toPlayerId }))), 'shotEvents=', JSON.stringify(shotEvents.map((e) => ({ id: e.id, shooter: e.shooterId, delayMs: e.delayMs }))));
     if (ballStateAtPlayStart.carrierId) {
       const hasOutgoingPass = passEvents.some(
         (e) => e.fromPlayerId === ballStateAtPlayStart.carrierId,
       );
+      console.log('[shot-debug] hasOutgoingPass=', hasOutgoingPass, '→ calling notifyPassLanded=', !hasOutgoingPass);
       if (!hasOutgoingPass) {
         orchestrator.notifyPassLanded(ballStateAtPlayStart.carrierId);
       }
@@ -1256,6 +1261,8 @@ export async function createMovementCanvasShell(
       shootToGoalInternal();
     },
     addShotEvent: (event) => {
+      // DEBUG – remove before merge
+      console.log('[shot-debug] addShotEvent', JSON.stringify(event));
       shotEvents = shotEvents.filter((e) => e.id !== event.id).concat({ ...event });
     },
     getShotEvents: () => [...shotEvents],
