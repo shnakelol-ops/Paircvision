@@ -2963,6 +2963,7 @@ export async function createTacticalPadLiteSurface(
   function stepBasicRouteFollow(deltaMs: number): void {
     if (isPaused) return;
     if (activeRouteRunsByPlayerId.size <= 0) return;
+    const scaledDeltaMs = deltaMs * playbackSpeedMultiplier;
     const completedIds: string[] = [];
     for (const [playerId, active] of activeRouteRunsByPlayerId.entries()) {
       const player = players.find((entry) => entry.id === playerId);
@@ -2974,7 +2975,7 @@ export async function createTacticalPadLiteSurface(
         completedIds.push(playerId);
         continue;
       }
-      active.session.step(deltaMs);
+      active.session.step(scaledDeltaMs);
       setTokenWorldPositionForPoint(player, player.current, mapper);
       updateAttachedBallsForPlayer(player.id);
       if (!active.session.isActive()) {
