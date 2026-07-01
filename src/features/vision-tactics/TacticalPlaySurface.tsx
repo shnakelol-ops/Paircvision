@@ -3,6 +3,8 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import OrientationGate, { usePortraitOrientation } from "../../components/OrientationGate";
 import VisionStadiumBackground from "../../components/VisionStadiumBackground";
 import { ConfirmSheet, type ConfirmSheetProps } from "../../components/ConfirmSheet";
+import TextAnnotationOverlay from "../../components/annotations/TextAnnotationOverlay";
+import { type SlateTextAnnotation } from "../../components/annotations/textAnnotation";
 import { useCanvasRecorder } from "../shared/useCanvasRecorder";
 import { buildDefaultTokens } from "../../movement-board/tokens/default-tokens";
 import { createMovementCanvasShell } from "../../movement-board/shell/createMovementCanvasShell";
@@ -921,6 +923,8 @@ export default function TacticalPlaySurface() {
   const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
   const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
   const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
+  const [textAnnotations, setTextAnnotations] = useState<SlateTextAnnotation[]>([]);
+  const [labelToolActive, setLabelToolActive] = useState(false);
   const editRunPlayerIdRef = useRef<string | null>(null);
   // Ref bridge so the stale mount-time closure in the shell useEffect can read
   // the latest units value (needed for WebGL context-loss restore).
@@ -1707,6 +1711,8 @@ export default function TacticalPlaySurface() {
     setTrainingItems(loadedItems);
     shell.setSelectedTrainingItemId(null);
     setSelectedTrainingItemId(null);
+    setTextAnnotations(scenario.textAnnotations ?? []);
+    setLabelToolActive(false);
     const loadedAwayIds = new Set(scenario.tokens.filter((t) => t.team === "away").map((t) => t.id));
     setAwayTokenIds(loadedAwayIds);
     const firstAway = scenario.tokens.find((t) => t.team === "away");
@@ -1748,6 +1754,7 @@ export default function TacticalPlaySurface() {
       units,
       shell.getZones(),
       shell.getTrainingItems(),
+      textAnnotations.length > 0 ? textAnnotations : undefined,
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
@@ -2009,6 +2016,8 @@ export default function TacticalPlaySurface() {
     setIsPlaying(false);
     setIsPaused(false);
     setTokenNumberById(Object.fromEntries(defaultTokens.map((token) => [token.id, token.number])));
+    setTextAnnotations([]);
+    setLabelToolActive(false);
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
@@ -2075,6 +2084,12 @@ export default function TacticalPlaySurface() {
         <div style={CONTENT_STYLE}>
           <div ref={hostRef} style={PITCH_STYLE} />
           <div style={PITCH_WATERMARK_STYLE}>PáircVision</div>
+          <TextAnnotationOverlay
+            annotations={textAnnotations}
+            active={labelToolActive && !isPlaying && !isPaused && editRunPlayerId === null}
+            onAnnotationsChange={setTextAnnotations}
+            showFormatting={false}
+          />
         </div>
 
         <button type="button" style={BACK_BUTTON_STYLE} onClick={goBack}>
@@ -2541,6 +2556,13 @@ export default function TacticalPlaySurface() {
                 onClick={() => { setUnitsOpen((prev) => !prev); setMovementsOpen(false); setPassesOpen(false); setIsControlsOpen(false); }}
               >
                 Move as 1
+              </button>
+              <button
+                type="button"
+                style={labelToolActive && !isPlaying && !isPaused ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                onClick={() => setLabelToolActive((prev) => !prev)}
+              >
+                Labels{textAnnotations.length > 0 ? ` (${textAnnotations.length})` : ""}
               </button>
               <button
                 type="button"
