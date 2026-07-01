@@ -115,6 +115,7 @@ export type TacticalRouteState = {
   isRouteCaptureMode: boolean;
   routeCount: number;
   maxRoutes: number;
+  ballAttachedPlayerId: string | null;
 };
 
 export type TacticalPadLiteSurface = {
@@ -173,6 +174,7 @@ type TacticalPadLiteSurfaceOptions = {
   onItemMove?: (id: string, x: number, y: number) => void;
   onTacticalPlayerDoubleTap?: (payload: { playerId: string; clientX: number; clientY: number }) => void;
   onRouteStateChange?: (state: TacticalRouteState) => void;
+  onRouteLimitReached?: (maxRoutes: number) => void;
 };
 
 type PhaseBallSnapshot = {
@@ -1273,6 +1275,7 @@ export async function createTacticalPadLiteSurface(
       isRouteCaptureMode,
       routeCount: routeByPlayerId.size,
       maxRoutes: MAX_BASIC_ROUTE_PLAYERS,
+      ballAttachedPlayerId: getAttachedBallPlayerId(),
     });
   }
 
@@ -1451,6 +1454,14 @@ export async function createTacticalPadLiteSurface(
     return tacticalItems.find((item) => isBallItem(item)) ?? null;
   }
 
+  function getAttachedBallPlayerId(): string | null {
+    const ball = findPrimaryBallItem();
+    if (!ball) return null;
+    const state = ballStatesByItemId.get(ball.id);
+    if (!state || state.isFree) return null;
+    return state.attachedPlayerId;
+  }
+
   function detachPrimaryBall(): void {
     if (surfaceVariant !== "tactical" || isPlaybackInputLocked()) return;
     const ball = findPrimaryBallItem();
@@ -1463,6 +1474,7 @@ export async function createTacticalPadLiteSurface(
     setItemWorldPosition(ball, mapper);
     renderTacticalItems();
     syncWhiteboardTokenInputMode();
+    emitRouteStateChange();
   }
 
   function attachPrimaryBallToPlayer(player: TacticalPlayer): void {
@@ -1480,6 +1492,7 @@ export async function createTacticalPadLiteSurface(
     setItemWorldPosition(ball, mapper);
     renderTacticalItems();
     syncWhiteboardTokenInputMode();
+    emitRouteStateChange();
   }
 
   function handlePossessionPassTap(player: TacticalPlayer): void {
@@ -2950,6 +2963,7 @@ export async function createTacticalPadLiteSurface(
   function stepBasicRouteFollow(deltaMs: number): void {
     if (isPaused) return;
     if (activeRouteRunsByPlayerId.size <= 0) return;
+    const scaledDeltaMs = deltaMs * playbackSpeedMultiplier;
     const completedIds: string[] = [];
     for (const [playerId, active] of activeRouteRunsByPlayerId.entries()) {
       const player = players.find((entry) => entry.id === playerId);
@@ -2961,7 +2975,7 @@ export async function createTacticalPadLiteSurface(
         completedIds.push(playerId);
         continue;
       }
-      active.session.step(deltaMs);
+      active.session.step(scaledDeltaMs);
       setTokenWorldPositionForPoint(player, player.current, mapper);
       updateAttachedBallsForPlayer(player.id);
       if (!active.session.isActive()) {
@@ -3561,6 +3575,8 @@ export async function createTacticalPadLiteSurface(
               currentRouteDraftPoints.map((point) => ({ x: point.x, y: point.y })),
             );
             emitRouteStateChange();
+          } else {
+            options.onRouteLimitReached?.(MAX_BASIC_ROUTE_PLAYERS);
           }
         }
         currentRouteDraftPoints = [];
@@ -3748,6 +3764,7 @@ export async function createTacticalPadLiteSurface(
       isRouteCaptureMode,
       routeCount: routeByPlayerId.size,
       maxRoutes: MAX_BASIC_ROUTE_PLAYERS,
+      ballAttachedPlayerId: getAttachedBallPlayerId(),
     }),
     clearRoutes: () => {
       cancelBasicRouteFollow();
