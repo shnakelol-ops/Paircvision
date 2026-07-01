@@ -17,8 +17,8 @@ const STEPS: TourStep[] = [
   },
   {
     icon: "🔬",
-    title: "Stats Pro",
-    body: "The same fast match engine with richer event capture. Record players, team context and outcomes to create more detailed match reviews.",
+    title: "Event Stats",
+    body: "Live event capture with outcome-first tagging. Record players, team context and outcomes as they happen — PáircVision builds the same halftime snapshots and full match reports.",
   },
   {
     icon: "🎨",

@@ -118,7 +118,7 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
   return (
     <div style={S.shell}>
       <div style={S.header}>
-        <span style={S.title}>Pro Tagger</span>
+        <span style={S.title}>Event Stats</span>
         <span style={S.badge}>Setup</span>
       </div>
 

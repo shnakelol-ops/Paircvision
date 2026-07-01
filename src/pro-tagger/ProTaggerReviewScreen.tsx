@@ -379,7 +379,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
         const raw = evt.target?.result;
         if (typeof raw !== "string") throw new Error("Could not read file");
         const parsed: unknown = JSON.parse(raw);
-        if (!isValidProMatch(parsed)) throw new Error("Not a valid Pro match file");
+        if (!isValidProMatch(parsed)) throw new Error("Not a valid Event Stats match file");
         saveProTaggerMatchFull(parsed);
         setImportedMatch(parsed);
         setImportResult({ ok: true, text: "Imported" });
@@ -418,9 +418,9 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
     <div style={S.shell}>
       {/* ── Header ───────────────────────────────────────────────────── */}
       <div style={S.header}>
-        <button style={S.backBtn} onClick={onBack}>← Stats Pro</button>
+        <button style={S.backBtn} onClick={onBack}>← Event Stats</button>
         <span style={S.title}>Review</span>
-        <span style={S.headerBadge}>Pro</span>
+        <span style={S.headerBadge}>Event</span>
       </div>
 
       {importedMatch && (
@@ -512,7 +512,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
             <span style={S.exportBtnLabel}>Import Match JSON</span>
           </button>
           <div style={S.exportMeta}>
-            <span style={S.exportDesc}>Restore a previously exported Pro match</span>
+            <span style={S.exportDesc}>Restore a previously exported Event Stats match</span>
             {importResult && (
               <span style={{ ...S.exportStatus, color: importResult.ok ? "#3fb950" : "#f85149" }}>
                 {importResult.text}

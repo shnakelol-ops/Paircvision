@@ -52,7 +52,7 @@ export default function ProTaggerPage() {
     return (
       <div style={H.shell}>
         <div style={H.header}>
-          <span style={H.title}>Stats Pro</span>
+          <span style={H.title}>Event Stats</span>
         </div>
 
         <div style={H.body}>
