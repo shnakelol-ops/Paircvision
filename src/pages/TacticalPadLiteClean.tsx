@@ -1505,11 +1505,19 @@ const PLAYBACK_SPEED_SLIDER_STYLE: CSSProperties = {
   minWidth: 0,
 };
 
-const MOVEMENT_MODE_PILL_STYLE: CSSProperties = {
+const MOVEMENT_MODE_CONTROLS_WRAP_STYLE: CSSProperties = {
   position: "fixed",
   left: "50%",
   transform: "translateX(-50%)",
   bottom: "max(54px, calc(env(safe-area-inset-bottom, 0px) + 52px))",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "6px",
+  zIndex: 20,
+};
+
+const MOVEMENT_MODE_PILL_STYLE: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: "4px",
@@ -1520,12 +1528,11 @@ const MOVEMENT_MODE_PILL_STYLE: CSSProperties = {
   backdropFilter: "blur(14px)",
   WebkitBackdropFilter: "blur(14px)",
   boxShadow: "0 12px 26px rgba(1, 7, 4, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
-  zIndex: 20,
 };
 
 const MOVEMENT_MODE_PILL_BUTTON_STYLE: CSSProperties = {
   minWidth: "58px",
-  height: "30px",
+  height: "42px",
   borderRadius: "999px",
   border: "1px solid rgba(212, 229, 222, 0.26)",
   background: "rgba(14, 30, 24, 0.66)",
@@ -1550,6 +1557,57 @@ const MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE: CSSProperties = {
 const MOVEMENT_MODE_PILL_BUTTON_DISABLED_STYLE: CSSProperties = {
   opacity: 0.46,
   cursor: "not-allowed",
+};
+
+const ROUTE_COUNT_BADGE_STYLE: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  height: "42px",
+  padding: "0 4px 0 8px",
+  color: "rgba(230, 244, 236, 0.68)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 620,
+  letterSpacing: "0.16px",
+  whiteSpace: "nowrap",
+};
+
+const BALL_FOLLOW_HINT_STYLE: CSSProperties = {
+  padding: "6px 13px",
+  borderRadius: "999px",
+  border: "1px solid rgba(124, 255, 114, 0.4)",
+  background: "rgba(9, 22, 18, 0.72)",
+  color: "rgba(230, 244, 236, 0.92)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10.5px",
+  fontWeight: 600,
+  letterSpacing: "0.1px",
+  whiteSpace: "nowrap",
+  boxShadow: "0 8px 18px rgba(0, 0, 0, 0.35)",
+  pointerEvents: "none",
+};
+
+const ROUTE_LIMIT_TOAST_STYLE: CSSProperties = {
+  position: "fixed",
+  top: "max(14px, calc(env(safe-area-inset-top, 0px) + 12px))",
+  left: "50%",
+  transform: "translateX(-50%)",
+  maxWidth: "min(92vw, 360px)",
+  padding: "9px 16px",
+  borderRadius: "12px",
+  border: "1px solid rgba(239, 68, 68, 0.55)",
+  background: "rgba(30, 10, 10, 0.9)",
+  color: "#ffe8e8",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "12px",
+  fontWeight: 640,
+  letterSpacing: "0.1px",
+  textAlign: "center",
+  boxShadow: "0 10px 26px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  zIndex: 40,
+  pointerEvents: "none",
 };
 
 const BALL_POPUP_STYLE: CSSProperties = {
@@ -1960,7 +2018,29 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     isRouteCaptureMode: false,
     routeCount: 0,
     maxRoutes: 6,
+    ballAttachedPlayerId: null,
   });
+  const [routeLimitWarning, setRouteLimitWarning] = useState<string | null>(null);
+  const routeLimitWarningTimeoutRef = useRef<number | null>(null);
+
+  const showRouteLimitWarning = (message: string) => {
+    if (routeLimitWarningTimeoutRef.current != null) {
+      window.clearTimeout(routeLimitWarningTimeoutRef.current);
+    }
+    setRouteLimitWarning(message);
+    routeLimitWarningTimeoutRef.current = window.setTimeout(() => {
+      setRouteLimitWarning(null);
+      routeLimitWarningTimeoutRef.current = null;
+    }, 2600);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (routeLimitWarningTimeoutRef.current != null) {
+        window.clearTimeout(routeLimitWarningTimeoutRef.current);
+      }
+    };
+  }, []);
   const [playbackSpeedMultiplier, setPlaybackSpeedMultiplier] = useState<number>(DEFAULT_PLAYBACK_SPEED_MULTIPLIER);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [quickShareOpen, setQuickShareOpen] = useState(false);
@@ -2365,6 +2445,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       onRouteStateChange: (state) => {
         if (disposed) return;
         setRouteState(state);
+      },
+      onRouteLimitReached: (maxRoutes) => {
+        if (disposed) return;
+        showRouteLimitWarning(`Route limit reached — Tactical Slate supports ${maxRoutes} routed players.`);
       },
       onItemMove: (itemId, x, y) => {
         if (disposed) return;
@@ -3817,6 +3901,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     <OrientationGate modeLabel="PáircVision Board">
       <div style={rootShellStyle}>
         <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}`}</style>
+        {!isWhiteboardMode && routeLimitWarning ? (
+          <div style={ROUTE_LIMIT_TOAST_STYLE} role="status" aria-live="assertive">
+            {routeLimitWarning}
+          </div>
+        ) : null}
         {!isWhiteboardMode ? <style>{STADIUM_FLOODLIGHT_CSS}</style> : null}
         {!isWhiteboardMode ? <VisionStadiumBackground variant="board" /> : null}
         <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : CONTENT_STYLE}>
@@ -4311,33 +4400,41 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           </div>
         ) : null}
         {!isWhiteboardMode && !isPortraitViewingMode && controlsOpen ? (
-          <div style={MOVEMENT_MODE_PILL_STYLE} role="group" aria-label="Movement mode">
-            {([
-              { id: "move", label: "Move" },
-              { id: "route", label: "Route" },
-              { id: "ball", label: "Ball" },
-            ] as const).map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className="control-button"
-                style={{
-                  ...(option.id === "ball"
-                    ? (ballPopupStep !== null || movementModePillSelection === "ball")
+          <div style={MOVEMENT_MODE_CONTROLS_WRAP_STYLE}>
+            {routeState.ballAttachedPlayerId && (routeState.isRouteCaptureMode || hasAssignedRoutes) ? (
+              <div style={BALL_FOLLOW_HINT_STYLE}>Ball attached — follows player during route.</div>
+            ) : null}
+            <div style={MOVEMENT_MODE_PILL_STYLE} role="group" aria-label="Movement mode">
+              {([
+                { id: "move", label: "Move" },
+                { id: "route", label: "Route" },
+                { id: "ball", label: "Ball" },
+              ] as const).map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className="control-button"
+                  style={{
+                    ...(option.id === "ball"
+                      ? (ballPopupStep !== null || movementModePillSelection === "ball")
+                          ? MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE
+                          : MOVEMENT_MODE_PILL_BUTTON_STYLE
+                      : movementModePillSelection === option.id
                         ? MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE
-                        : MOVEMENT_MODE_PILL_BUTTON_STYLE
-                    : movementModePillSelection === option.id
-                      ? MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE
-                      : MOVEMENT_MODE_PILL_BUTTON_STYLE),
-                  ...(isPlaybackLocked ? MOVEMENT_MODE_PILL_BUTTON_DISABLED_STYLE : null),
-                }}
-                aria-pressed={option.id === "ball" ? ballPopupStep !== null : movementModePillSelection === option.id}
-                disabled={isPlaybackLocked}
-                onClick={() => option.id === "ball" ? handleBallButtonPress() : applyMovementModePillSelection(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
+                        : MOVEMENT_MODE_PILL_BUTTON_STYLE),
+                    ...(isPlaybackLocked ? MOVEMENT_MODE_PILL_BUTTON_DISABLED_STYLE : null),
+                  }}
+                  aria-pressed={option.id === "ball" ? ballPopupStep !== null : movementModePillSelection === option.id}
+                  disabled={isPlaybackLocked}
+                  onClick={() => option.id === "ball" ? handleBallButtonPress() : applyMovementModePillSelection(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+              <span style={ROUTE_COUNT_BADGE_STYLE} aria-live="polite">
+                {`Routes ${routeState.routeCount}/${routeState.maxRoutes}`}
+              </span>
+            </div>
           </div>
         ) : null}
         {!isWhiteboardMode && (controlsOpen || isPortraitViewingMode) ? (
