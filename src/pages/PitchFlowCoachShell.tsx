@@ -994,11 +994,11 @@ function BoardPage({ onReplayTour }: { onReplayTour: () => void }) {
           </button>
           <button type="button" className="pf-home-secondary-btn pf-home-tile--blue" onClick={() => navigateTo("/flowstats")}>
             <span className="pf-home-tile-name">Match Stats</span>
-            <small>Event-first match tracking.</small>
+            <small>Live event capture with pitch-first tagging.</small>
           </button>
           <button type="button" className="pf-home-secondary-btn pf-home-tile--amber" onClick={() => navigateTo("/pro-tagger")}>
-            <span className="pf-home-tile-name">Stats Pro</span>
-            <small>Outcome-first match tracking.</small>
+            <span className="pf-home-tile-name">Event Stats</span>
+            <small>Live event capture with outcome-first tagging.</small>
           </button>
           <button type="button" className="pf-home-secondary-btn pf-home-tile--purple" onClick={() => navigateTo("/notes")}>
             <span className="pf-home-tile-name">Notes</span>
