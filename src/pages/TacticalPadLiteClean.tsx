@@ -5190,7 +5190,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 aria-expanded={playerTokensSubmenuOpen}
                 onClick={() => setPlayerTokensSubmenuOpen((open) => !open)}
               >
-                <span style={PLAYER_TOKENS_MENU_TRIGGER_TITLE_ROW_STYLE}>🎽 Player Tokens</span>
+                <span style={PLAYER_TOKENS_MENU_TRIGGER_TITLE_ROW_STYLE}>Player Tokens</span>
                 <span style={PLAYER_TOKENS_MENU_TRIGGER_CURRENT_STYLE}>
                   Current: {TOKEN_STYLE_CHOICES.find((choice) => choice.value === tacticalTokenStyle)?.label ?? ""}
                   {" "}
