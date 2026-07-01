@@ -820,7 +820,6 @@ const TOKEN_STYLE_MENU_LABEL_STYLE: CSSProperties = {
 
 const TOKEN_STYLE_MENU_ROW_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
   gap: "3px",
 };
 
@@ -830,12 +829,14 @@ const TOKEN_STYLE_MENU_BUTTON_STYLE: CSSProperties = {
   background: "rgba(15, 24, 31, 0.82)",
   color: "rgba(232, 241, 249, 0.95)",
   fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "9px",
+  fontSize: "10px",
   fontWeight: 620,
   letterSpacing: "0.14px",
-  height: "25px",
+  height: "26px",
+  width: "100%",
   cursor: "pointer",
-  padding: "0 3px",
+  padding: "0 8px",
+  textAlign: "left",
 };
 
 const TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE: CSSProperties = {
@@ -843,6 +844,56 @@ const TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE: CSSProperties = {
   border: "1px solid rgba(124, 255, 114, 0.5)",
   background: "rgba(124, 255, 114, 0.12)",
   color: "#f3fff1",
+};
+
+const PLAYER_TOKENS_MENU_TRIGGER_STYLE: CSSProperties = {
+  ...ACTIONS_MENU_BUTTON_STYLE,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  justifyContent: "center",
+  gap: "2px",
+  height: "38px",
+  padding: "4px 9px",
+};
+
+const PLAYER_TOKENS_MENU_TRIGGER_TITLE_ROW_STYLE: CSSProperties = {
+  width: "100%",
+  whiteSpace: "nowrap",
+};
+
+const PLAYER_TOKENS_MENU_TRIGGER_CURRENT_STYLE: CSSProperties = {
+  color: "rgba(200, 218, 232, 0.68)",
+  fontWeight: 560,
+  fontSize: "9px",
+  letterSpacing: "0.14px",
+};
+
+const PLAYER_TOKENS_SUBMENU_STYLE: CSSProperties = {
+  borderRadius: "8px",
+  border: "1px solid rgba(224, 236, 248, 0.22)",
+  background: "rgba(12, 21, 27, 0.76)",
+  padding: "6px",
+  display: "grid",
+  gap: "5px",
+};
+
+const PLAYER_TOKENS_SUBMENU_DIVIDER_STYLE: CSSProperties = {
+  height: "1px",
+  background: "rgba(224, 236, 248, 0.16)",
+  margin: "1px 0",
+};
+
+const COMPACT_TOKENS_TOGGLE_ROW_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "7px",
+  color: "rgba(232, 241, 249, 0.95)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 620,
+  cursor: "pointer",
+  padding: "3px 2px",
 };
 
 function formatRecordTime(secs: number): string {
@@ -2011,6 +2062,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [itemMode, setItemMode] = useState<ItemMode>("locked");
   const [phaseCount, setPhaseCount] = useState(0);
   const [tacticalTokenStyle, setTacticalTokenStyle] = useState<TacticalPlayerTokenStyle>("vision-v3");
+  const [isCompactPlayerTokens, setIsCompactPlayerTokens] = useState(false);
+  const [playerTokensSubmenuOpen, setPlayerTokensSubmenuOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [movementModePillSelection, setMovementModePillSelection] = useState<MovementModePillOption>("move");
@@ -2432,6 +2485,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       whiteboardTeamColors: whiteboardTeamColorsRef.current,
       whiteboardDrawColor: isWhiteboardMode ? whiteboardPenColor : tacticalPenColor,
       tacticalTokenStyle,
+      compactPlayerTokens: isCompactPlayerTokens,
       onPhaseCountChange: (count) => {
         if (!disposed) {
           setPhaseCount(count);
@@ -2561,6 +2615,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (isStatsMode || isWhiteboardMode) return;
     surfaceRef.current?.setTacticalTokenStyle(tacticalTokenStyle);
   }, [isStatsMode, isWhiteboardMode, tacticalTokenStyle]);
+
+  useEffect(() => {
+    if (isStatsMode || isWhiteboardMode) return;
+    surfaceRef.current?.setCompactPlayerTokens(isCompactPlayerTokens);
+  }, [isStatsMode, isWhiteboardMode, isCompactPlayerTokens]);
+
+  useEffect(() => {
+    if (!actionsOpen) setPlayerTokensSubmenuOpen(false);
+  }, [actionsOpen]);
 
   useEffect(() => {
     if (isStatsMode || isWhiteboardMode) return;
@@ -5120,20 +5183,48 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         {!isWhiteboardMode && actionsOpen ? (
           <div ref={actionsMenuRef} style={actionsPopoutStyle}>
             <div style={TOKEN_STYLE_MENU_SECTION_STYLE}>
-              <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Token Style</p>
-              <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
-                {TOKEN_STYLE_CHOICES.map((choice) => (
-                  <button
-                    key={`token-style-${choice.value}`}
-                    type="button"
-                    className="control-button"
-                    style={tacticalTokenStyle === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
-                    onClick={() => setTacticalTokenStyle(choice.value)}
-                  >
-                    {choice.label}
-                  </button>
-                ))}
-              </div>
+              <button
+                type="button"
+                className="control-button"
+                style={PLAYER_TOKENS_MENU_TRIGGER_STYLE}
+                aria-expanded={playerTokensSubmenuOpen}
+                onClick={() => setPlayerTokensSubmenuOpen((open) => !open)}
+              >
+                <span style={PLAYER_TOKENS_MENU_TRIGGER_TITLE_ROW_STYLE}>🎽 Player Tokens</span>
+                <span style={PLAYER_TOKENS_MENU_TRIGGER_CURRENT_STYLE}>
+                  Current: {TOKEN_STYLE_CHOICES.find((choice) => choice.value === tacticalTokenStyle)?.label ?? ""}
+                  {" "}
+                  {playerTokensSubmenuOpen ? "⌄" : "›"}
+                </span>
+              </button>
+              {playerTokensSubmenuOpen ? (
+                <div style={PLAYER_TOKENS_SUBMENU_STYLE}>
+                  <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Style</p>
+                  <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
+                    {TOKEN_STYLE_CHOICES.map((choice) => (
+                      <button
+                        key={`token-style-${choice.value}`}
+                        type="button"
+                        className="control-button"
+                        style={tacticalTokenStyle === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
+                        onClick={() => setTacticalTokenStyle(choice.value)}
+                      >
+                        {tacticalTokenStyle === choice.value ? "✓ " : ""}
+                        {choice.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={PLAYER_TOKENS_SUBMENU_DIVIDER_STYLE} />
+                  <label style={COMPACT_TOKENS_TOGGLE_ROW_STYLE}>
+                    <input
+                      type="checkbox"
+                      checked={isCompactPlayerTokens}
+                      onChange={(event) => setIsCompactPlayerTokens(event.target.checked)}
+                    />
+                    Compact Tokens
+                  </label>
+                </div>
+              ) : null}
             </div>
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openQuickShareEntry}>
               Share Board

@@ -145,6 +145,7 @@ export type TacticalPadLiteSurface = {
     colors: { blue: WhiteboardTokenColor; red: WhiteboardTokenColor };
   }) => void;
   setTacticalTokenStyle: (style: TacticalPlayerTokenStyle) => void;
+  setCompactPlayerTokens: (enabled: boolean) => void;
   setWhiteboardDrawTool: (tool: WhiteboardDrawTool) => void;
   setWhiteboardDrawColor: (color: number) => void;
   eraseWhiteboardPenStroke: () => void;
@@ -171,6 +172,7 @@ type TacticalPadLiteSurfaceOptions = {
   };
   whiteboardDrawColor?: number;
   tacticalTokenStyle?: TacticalPlayerTokenStyle;
+  compactPlayerTokens?: boolean;
   onItemMove?: (id: string, x: number, y: number) => void;
   onTacticalPlayerDoubleTap?: (payload: { playerId: string; clientX: number; clientY: number }) => void;
   onRouteStateChange?: (state: TacticalRouteState) => void;
@@ -194,6 +196,8 @@ const WORLD_SIZE = { width: 160, height: 100 } as const;
 const PLAYER_RADIUS = 4.1;
 const PLAYER_TOUCH_HIT_DIAMETER_PX = 48;
 const TACTICAL_PLAYER_VISUAL_SCALE = 0.8;
+// Matches Tactical Play's compact/"small" token size factor (movement-board/tokens/token-layer.ts SIZE_FACTOR.small).
+const COMPACT_PLAYER_TOKEN_SCALE_FACTOR = 0.75;
 const TACTICAL_ITEM_HALF_SIZE = 2.2;
 const TACTICAL_ITEM_DRAG_THRESHOLD_PX = 5;
 const TACTICAL_ITEM_TOUCH_HIT_DIAMETER_PX = 46;
@@ -1201,7 +1205,7 @@ export async function createTacticalPadLiteSurface(
       current: { ...base.position },
       token,
       tokenShadow: shadow,
-      dragScaleTarget: PREMIUM_TOKEN_IDLE_SCALE,
+      dragScaleTarget: getIdlePlayerTokenScale(),
       dragShadowAlphaTarget: PREMIUM_TOKEN_IDLE_SHADOW_ALPHA,
       kitBaseColor: sanitizeKitColor(nextKitFields.kitBaseColor),
       kitPattern: sanitizeKitPattern(nextKitFields.kitPattern),
@@ -1209,6 +1213,16 @@ export async function createTacticalPadLiteSurface(
       labelMode: sanitizeLabelMode(nextKitFields.labelMode),
       initials: sanitizeInitials(nextKitFields.initials),
     };
+  }
+
+  // Compact Tokens shrinks the idle/drag scale target by the same factor Tactical Play
+  // uses for its "small" token size (see movement-board/tokens/token-layer.ts SIZE_FACTOR.small).
+  let isCompactPlayerTokens = options.compactPlayerTokens === true;
+  function getIdlePlayerTokenScale(): number {
+    return isCompactPlayerTokens ? PREMIUM_TOKEN_IDLE_SCALE * COMPACT_PLAYER_TOKEN_SCALE_FACTOR : PREMIUM_TOKEN_IDLE_SCALE;
+  }
+  function getDragPlayerTokenScale(): number {
+    return isCompactPlayerTokens ? PREMIUM_TOKEN_DRAG_SCALE * COMPACT_PLAYER_TOKEN_SCALE_FACTOR : PREMIUM_TOKEN_DRAG_SCALE;
   }
 
   const players: TacticalPlayer[] = playerSeeds.map((seed) => createSurfacePlayer(seed));
@@ -2341,7 +2355,7 @@ export async function createTacticalPadLiteSurface(
   }
 
   function setPlayerDragVisualTarget(player: TacticalPlayer, isDragging: boolean): void {
-    player.dragScaleTarget = isDragging ? PREMIUM_TOKEN_DRAG_SCALE : PREMIUM_TOKEN_IDLE_SCALE;
+    player.dragScaleTarget = isDragging ? getDragPlayerTokenScale() : getIdlePlayerTokenScale();
     player.dragShadowAlphaTarget = isDragging
       ? PREMIUM_TOKEN_DRAG_SHADOW_ALPHA
       : PREMIUM_TOKEN_IDLE_SHADOW_ALPHA;
@@ -3799,6 +3813,16 @@ export async function createTacticalPadLiteSurface(
       if (nextStyle === tacticalTokenStyle) return;
       tacticalTokenStyle = nextStyle;
       rerenderAllTacticalPlayers();
+    },
+    setCompactPlayerTokens: (enabled) => {
+      const nextEnabled = Boolean(enabled);
+      if (nextEnabled === isCompactPlayerTokens) return;
+      isCompactPlayerTokens = nextEnabled;
+      for (const player of players) {
+        const isDraggingThisPlayer =
+          activeDrag !== null && activeDrag.type === "player" && activeDrag.playerId === player.id;
+        setPlayerDragVisualTarget(player, isDraggingThisPlayer);
+      }
     },
     setWhiteboardDrawTool: (tool) => {
       if (!isDrawingEnabledSurface) return;
