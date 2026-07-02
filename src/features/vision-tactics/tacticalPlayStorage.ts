@@ -1,5 +1,6 @@
 import type { BallState, MovementBoardRoute, MovementBoardToken, MovementPlaybackSpeed, TacticalPassEvent, TacticalShotEvent, TacticalTrainingItem, ZoneRecord } from "../../movement-board/shell/types";
 import type { TacticalUnit } from "./tacticalUnitTypes";
+import type { SlateTextAnnotation } from "../../components/annotations/textAnnotation";
 
 const STORAGE_KEY = "paircvision-tp-scenarios";
 const MAX_SCENARIOS = 20;
@@ -17,6 +18,7 @@ export type TacticalScenario = {
   units?: TacticalUnit[];
   zones?: ZoneRecord[];
   items?: TacticalTrainingItem[];
+  textAnnotations?: SlateTextAnnotation[];
 };
 
 export function listScenarios(): TacticalScenario[] {
@@ -49,6 +51,7 @@ export function saveScenario(
   units?: TacticalUnit[],
   zones?: ZoneRecord[],
   items?: TacticalTrainingItem[],
+  textAnnotations?: SlateTextAnnotation[],
 ): TacticalScenario {
   const scenario: TacticalScenario = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -63,6 +66,7 @@ export function saveScenario(
     units,
     zones,
     items,
+    textAnnotations: textAnnotations && textAnnotations.length > 0 ? textAnnotations : undefined,
   };
   persistList([scenario, ...listScenarios()].slice(0, MAX_SCENARIOS));
   return scenario;

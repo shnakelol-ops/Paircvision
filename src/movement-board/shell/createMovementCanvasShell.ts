@@ -1,4 +1,5 @@
 import { Application, Container } from "pixi.js";
+import { flushDeferredPasses, type DeferredPass } from "./flushDeferredPasses";
 
 import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
 import { createWorldViewport, type WorldViewportMapper } from "../coordinates/viewport";
@@ -42,11 +43,17 @@ const ROUTE_MIN_POINT_DISTANCE = 0.9;
 const POSITION_EPSILON = 0.0001;
 const ROUTE_HANDLE_TOUCH_RADIUS_PX = 30;
 const ROUTE_INSERT_TOUCH_DISTANCE_PX = 24;
-const TAP_MOVE_THRESHOLD_PX = 6;
+const TAP_MOVE_THRESHOLD_PX = 10;
 const LONG_PRESS_MS = 420;
+const BALL_DRAG_HIT_RADIUS_WORLD = 5;
 
 type DragState = {
   tokenId: string;
+  pointerId: number | null;
+  offsetWorld: { x: number; y: number };
+} | null;
+
+type BallDragState = {
   pointerId: number | null;
   offsetWorld: { x: number; y: number };
 } | null;
@@ -188,6 +195,7 @@ export async function createMovementCanvasShell(
   let selectedTokenId: string | null = null;
   let selectedWaypointIndex: number | null = null;
   let activeDrag: DragState = null;
+  let activeBallDrag: BallDragState = null;
   let activeRouteHandleDrag: RouteHandleDragState = null;
   let routeDraft: RouteDraftState = null;
   let tokenTapStart: { tokenId: string; x: number; y: number } | null = null;
@@ -278,6 +286,8 @@ export async function createMovementCanvasShell(
       }
       zoneLayer.setInteractive(!state.isPlaying && !state.isPaused);
       trainingItemLayer.setInteractive(mode === "setup" && dragEnabled && !state.isPlaying && !state.isPaused);
+      if (state.isPlaying || state.isPaused) activeBallDrag = null;
+      syncBallInteraction();
       options.onPlaybackStateChange?.(state);
     },
     onPassStart: (fromPlayerId, toPlayerId) => {
@@ -301,7 +311,7 @@ export async function createMovementCanvasShell(
   let passEvents: TacticalPassEvent[] = [];
   let shotEvents: TacticalShotEvent[] = [];
   let activeBallPass: ActiveBallPass | null = null;
-  let deferredPasses: Array<{ fromPlayerId: string; toPlayerId: string }> = [];
+  let deferredPasses: DeferredPass[] = [];
 
   const BALL_CARRIER_OFFSET_X = 3.5;
   const BALL_CARRIER_OFFSET_Y = -2.5;
@@ -379,6 +389,7 @@ export async function createMovementCanvasShell(
   };
 
   const emitBallState = () => {
+    syncBallInteraction();
     options.onBallStateChange?.({ ...ballState });
   };
 
@@ -389,6 +400,28 @@ export async function createMovementCanvasShell(
   const isPlaybackLocked = () => orchestrator.isLocked();
   const canInteractWithTrainingItems = () => dragEnabled && mode === "setup" && !isPlaybackLocked();
   trainingItemLayer.setInteractive(canInteractWithTrainingItems());
+
+  const canDragFreeBall = () =>
+    !!ballState.position && !ballState.carrierId && dragEnabled && !orchestrator.getState().isPlaying;
+
+  const syncBallInteraction = () => {
+    ballLayer.setInteractive(canDragFreeBall(), BALL_DRAG_HIT_RADIUS_WORLD);
+  };
+
+  ballLayer.setOnPointerDown((event) => {
+    (event as { stopPropagation?: () => void }).stopPropagation?.();
+    if (!canDragFreeBall() || activeDrag) return;
+    const pointerWorld = getWorldPointFromEvent(event, app.stage, mapper);
+    if (!pointerWorld) return;
+    const ballWorld = mapper.normalizedToWorld(ballState.position!);
+    activeBallDrag = {
+      pointerId: getPointerIdFromEvent(event),
+      offsetWorld: {
+        x: ballWorld.x - pointerWorld.x,
+        y: ballWorld.y - pointerWorld.y,
+      },
+    };
+  });
 
   const buildRoutesSnapshot = (): MovementBoardRoute[] =>
     Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
@@ -493,6 +526,17 @@ export async function createMovementCanvasShell(
     activeRouteHandleDrag = null;
   };
 
+  const finalizeBallDrag = (event: unknown) => {
+    if (!activeBallDrag) return;
+    const pointerId = getPointerIdFromEvent(event);
+    if (activeBallDrag.pointerId != null && pointerId != null && pointerId !== activeBallDrag.pointerId) return;
+    activeBallDrag = null;
+    if (!orchestrator.isLocked()) {
+      ballStateAtPlayStart = { ...ballState };
+    }
+    emitBallState();
+  };
+
   const canDragTokens = () => dragEnabled && mode === "setup" && !isPlaybackLocked();
 
   const setModeState = (nextMode: MovementBoardMode) => {
@@ -500,6 +544,7 @@ export async function createMovementCanvasShell(
     trainingItemLayer.setInteractive(canInteractWithTrainingItems());
     releaseDrag();
     releaseRouteHandleDrag();
+    activeBallDrag = null;
     clearRouteDraft();
     if (mode !== "route") {
       setSelectedWaypoint(null);
@@ -643,6 +688,11 @@ export async function createMovementCanvasShell(
     const state = orchestrator.getState();
     if (state.isPlaying) return;
     if (!state.isPaused || !orchestrator.hasActiveRuns()) {
+      // The orchestrator auto-stops as soon as all its pass timers fire, but ball
+      // animations and the deferred-pass queue may still be completing. Resetting
+      // here would kill the in-flight arc and drop queued passes (e.g. P3→P2 in a
+      // 5-pass chain). Wait for the chain to fully resolve before accepting a restart.
+      if (activeBallPass !== null || deferredPasses.length > 0) return;
       releaseDrag();
       releaseRouteHandleDrag();
       clearRouteDraft();
@@ -655,6 +705,17 @@ export async function createMovementCanvasShell(
       emitBallState();
     }
     orchestrator.start();
+    // Promote a shot for the initial ball carrier only when they have no
+    // outgoing pass — if they do pass first, notifyPassLanded fires naturally
+    // when the return pass arc completes.
+    if (ballStateAtPlayStart.carrierId) {
+      const hasOutgoingPass = passEvents.some(
+        (e) => e.fromPlayerId === ballStateAtPlayStart.carrierId,
+      );
+      if (!hasOutgoingPass) {
+        orchestrator.notifyPassLanded(ballStateAtPlayStart.carrierId);
+      }
+    }
   };
 
   const reset = () => {
@@ -682,6 +743,7 @@ export async function createMovementCanvasShell(
   };
 
   tokenLayer.setOnTokenPointerDown((tokenId, event) => {
+    if (mode === "route") return;
     (event as { stopPropagation?: () => void }).stopPropagation?.();
     setSelectedToken(tokenId);
     const tapStagePoint = getStagePointFromEvent(event, app.stage);
@@ -809,6 +871,21 @@ export async function createMovementCanvasShell(
       handleDragMove(event);
       return;
     }
+    if (activeBallDrag) {
+      const pointerId = getPointerIdFromEvent(event);
+      if (activeBallDrag.pointerId == null || pointerId == null || pointerId === activeBallDrag.pointerId) {
+        const pointerWorld = getWorldPointFromEvent(event, app.stage, mapper);
+        if (pointerWorld) {
+          const nextWorld = clampWorldPoint({
+            x: pointerWorld.x + activeBallDrag.offsetWorld.x,
+            y: pointerWorld.y + activeBallDrag.offsetWorld.y,
+          });
+          ballState = { position: clampNormalizedPoint(mapper.worldToNormalized(nextWorld)), ballType: ballState.ballType };
+          syncBallPosition();
+        }
+      }
+      return;
+    }
     if (activeRouteHandleDrag) {
       handleRouteHandleDragMove(event);
       return;
@@ -836,6 +913,10 @@ export async function createMovementCanvasShell(
     tokenTapStart = null;
     if (activeDrag) {
       releaseDrag();
+      return;
+    }
+    if (activeBallDrag) {
+      finalizeBallDrag(event);
       return;
     }
     if (activeRouteHandleDrag) {
@@ -933,7 +1014,7 @@ export async function createMovementCanvasShell(
   const tick = () => {
     orchestrator.step(app.ticker.deltaMS);
     if (activeBallPass) {
-      activeBallPass.elapsedMs += app.ticker.deltaMS;
+      activeBallPass.elapsedMs += app.ticker.deltaMS * orchestrator.getSpeedMultiplier();
       if (activeBallPass.elapsedMs >= activeBallPass.durationMs) {
         const toPlayerId = activeBallPass.toPlayerId;
         const wasShot = activeBallPass.toWorld != null;
@@ -947,13 +1028,15 @@ export async function createMovementCanvasShell(
           tokenLayer.setBallCarrier(toPlayerId);
           emitBallState();
           orchestrator.notifyPassLanded(toPlayerId);
-          // Fire the first deferred pass whose sender is now the carrier,
+          // Flush all deferred passes whose sender is now the carrier,
           // but only if notifyPassLanded didn't already start a shot animation.
+          // Only one pass can animate at a time; extras re-enter the tail of the
+          // queue and fire the next time this player receives the ball.
           if (activeBallPass === null) {
-            const nextIdx = deferredPasses.findIndex(p => p.fromPlayerId === toPlayerId);
-            if (nextIdx !== -1) {
-              const next = deferredPasses.splice(nextIdx, 1)[0];
-              startPassAnimation(next.fromPlayerId, next.toPlayerId);
+            const { toFire, remaining } = flushDeferredPasses(deferredPasses, toPlayerId);
+            deferredPasses = remaining;
+            if (toFire) {
+              startPassAnimation(toFire.fromPlayerId, toFire.toPlayerId);
             }
           }
         }
@@ -988,6 +1071,11 @@ export async function createMovementCanvasShell(
 
   return {
     getTokens: () => tokenLayer.getTokens(),
+    getTokensAtStart: () =>
+      tokenLayer.getTokens().map((t) => {
+        const start = startPositionByTokenId.get(t.id);
+        return start ? { ...t, position: { ...start } } : t;
+      }),
     getSelectedToken: () => (selectedTokenId ? tokenLayer.getTokenById(selectedTokenId) : null),
     getMode: () => mode,
     getRoutes: () => buildRoutesSnapshot(),
@@ -1089,9 +1177,11 @@ export async function createMovementCanvasShell(
     },
     pausePlayback: () => {
       orchestrator.pause();
+      syncBallInteraction();
     },
     resumePlayback: () => {
       orchestrator.resume();
+      syncBallInteraction();
     },
     reset: () => {
       reset();
@@ -1142,6 +1232,7 @@ export async function createMovementCanvasShell(
       emitBallState();
     },
     getBallState: () => ({ ...ballState }),
+    getBallStateAtStart: () => ({ ...ballStateAtPlayStart }),
     setPassEvents: (events) => {
       passEvents = events.map((e) => ({ ...e }));
       deferredPasses = [];
@@ -1202,8 +1293,10 @@ export async function createMovementCanvasShell(
       dragEnabled = enabled;
       if (!enabled) {
         releaseDrag();
+        activeBallDrag = null;
       }
       trainingItemLayer.setInteractive(canInteractWithTrainingItems());
+      syncBallInteraction();
     },
     setBallCarrier: (tokenId) => {
       tokenLayer.setBallCarrier(tokenId);

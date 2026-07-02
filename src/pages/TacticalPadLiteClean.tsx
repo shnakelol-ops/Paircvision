@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ChangeEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { ConfirmSheet, type ConfirmSheetProps } from "../components/ConfirmSheet";
 import { createPortal } from "react-dom";
 
 import {
@@ -823,7 +824,6 @@ const TOKEN_STYLE_MENU_LABEL_STYLE: CSSProperties = {
 
 const TOKEN_STYLE_MENU_ROW_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
   gap: "3px",
 };
 
@@ -833,12 +833,14 @@ const TOKEN_STYLE_MENU_BUTTON_STYLE: CSSProperties = {
   background: "rgba(15, 24, 31, 0.82)",
   color: "rgba(232, 241, 249, 0.95)",
   fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "9px",
+  fontSize: "10px",
   fontWeight: 620,
   letterSpacing: "0.14px",
-  height: "25px",
+  height: "26px",
+  width: "100%",
   cursor: "pointer",
-  padding: "0 3px",
+  padding: "0 8px",
+  textAlign: "left",
 };
 
 const TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE: CSSProperties = {
@@ -846,6 +848,56 @@ const TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE: CSSProperties = {
   border: "1px solid rgba(124, 255, 114, 0.5)",
   background: "rgba(124, 255, 114, 0.12)",
   color: "#f3fff1",
+};
+
+const PLAYER_TOKENS_MENU_TRIGGER_STYLE: CSSProperties = {
+  ...ACTIONS_MENU_BUTTON_STYLE,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  justifyContent: "center",
+  gap: "2px",
+  height: "38px",
+  padding: "4px 9px",
+};
+
+const PLAYER_TOKENS_MENU_TRIGGER_TITLE_ROW_STYLE: CSSProperties = {
+  width: "100%",
+  whiteSpace: "nowrap",
+};
+
+const PLAYER_TOKENS_MENU_TRIGGER_CURRENT_STYLE: CSSProperties = {
+  color: "rgba(200, 218, 232, 0.68)",
+  fontWeight: 560,
+  fontSize: "9px",
+  letterSpacing: "0.14px",
+};
+
+const PLAYER_TOKENS_SUBMENU_STYLE: CSSProperties = {
+  borderRadius: "8px",
+  border: "1px solid rgba(224, 236, 248, 0.22)",
+  background: "rgba(12, 21, 27, 0.76)",
+  padding: "6px",
+  display: "grid",
+  gap: "5px",
+};
+
+const PLAYER_TOKENS_SUBMENU_DIVIDER_STYLE: CSSProperties = {
+  height: "1px",
+  background: "rgba(224, 236, 248, 0.16)",
+  margin: "1px 0",
+};
+
+const COMPACT_TOKENS_TOGGLE_ROW_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "7px",
+  color: "rgba(232, 241, 249, 0.95)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 620,
+  cursor: "pointer",
+  padding: "3px 2px",
 };
 
 function formatRecordTime(secs: number): string {
@@ -1535,11 +1587,19 @@ const PLAYBACK_SPEED_SLIDER_STYLE: CSSProperties = {
   minWidth: 0,
 };
 
-const MOVEMENT_MODE_PILL_STYLE: CSSProperties = {
+const MOVEMENT_MODE_CONTROLS_WRAP_STYLE: CSSProperties = {
   position: "fixed",
   left: "50%",
   transform: "translateX(-50%)",
   bottom: "max(54px, calc(env(safe-area-inset-bottom, 0px) + 52px))",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "6px",
+  zIndex: 20,
+};
+
+const MOVEMENT_MODE_PILL_STYLE: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: "4px",
@@ -1550,12 +1610,11 @@ const MOVEMENT_MODE_PILL_STYLE: CSSProperties = {
   backdropFilter: "blur(14px)",
   WebkitBackdropFilter: "blur(14px)",
   boxShadow: "0 12px 26px rgba(1, 7, 4, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
-  zIndex: 20,
 };
 
 const MOVEMENT_MODE_PILL_BUTTON_STYLE: CSSProperties = {
   minWidth: "58px",
-  height: "30px",
+  height: "42px",
   borderRadius: "999px",
   border: "1px solid rgba(212, 229, 222, 0.26)",
   background: "rgba(14, 30, 24, 0.66)",
@@ -1580,6 +1639,57 @@ const MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE: CSSProperties = {
 const MOVEMENT_MODE_PILL_BUTTON_DISABLED_STYLE: CSSProperties = {
   opacity: 0.46,
   cursor: "not-allowed",
+};
+
+const ROUTE_COUNT_BADGE_STYLE: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  height: "42px",
+  padding: "0 4px 0 8px",
+  color: "rgba(230, 244, 236, 0.68)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 620,
+  letterSpacing: "0.16px",
+  whiteSpace: "nowrap",
+};
+
+const BALL_FOLLOW_HINT_STYLE: CSSProperties = {
+  padding: "6px 13px",
+  borderRadius: "999px",
+  border: "1px solid rgba(124, 255, 114, 0.4)",
+  background: "rgba(9, 22, 18, 0.72)",
+  color: "rgba(230, 244, 236, 0.92)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10.5px",
+  fontWeight: 600,
+  letterSpacing: "0.1px",
+  whiteSpace: "nowrap",
+  boxShadow: "0 8px 18px rgba(0, 0, 0, 0.35)",
+  pointerEvents: "none",
+};
+
+const ROUTE_LIMIT_TOAST_STYLE: CSSProperties = {
+  position: "fixed",
+  top: "max(14px, calc(env(safe-area-inset-top, 0px) + 12px))",
+  left: "50%",
+  transform: "translateX(-50%)",
+  maxWidth: "min(92vw, 360px)",
+  padding: "9px 16px",
+  borderRadius: "12px",
+  border: "1px solid rgba(239, 68, 68, 0.55)",
+  background: "rgba(30, 10, 10, 0.9)",
+  color: "#ffe8e8",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "12px",
+  fontWeight: 640,
+  letterSpacing: "0.1px",
+  textAlign: "center",
+  boxShadow: "0 10px 26px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  zIndex: 40,
+  pointerEvents: "none",
 };
 
 const BALL_POPUP_STYLE: CSSProperties = {
@@ -1983,6 +2093,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [itemMode, setItemMode] = useState<ItemMode>("locked");
   const [phaseCount, setPhaseCount] = useState(0);
   const [tacticalTokenStyle, setTacticalTokenStyle] = useState<TacticalPlayerTokenStyle>("vision-v3");
+  const [isCompactPlayerTokens, setIsCompactPlayerTokens] = useState(false);
+  const [playerTokensSubmenuOpen, setPlayerTokensSubmenuOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [movementModePillSelection, setMovementModePillSelection] = useState<MovementModePillOption>("move");
@@ -1990,7 +2102,29 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     isRouteCaptureMode: false,
     routeCount: 0,
     maxRoutes: 6,
+    ballAttachedPlayerId: null,
   });
+  const [routeLimitWarning, setRouteLimitWarning] = useState<string | null>(null);
+  const routeLimitWarningTimeoutRef = useRef<number | null>(null);
+
+  const showRouteLimitWarning = (message: string) => {
+    if (routeLimitWarningTimeoutRef.current != null) {
+      window.clearTimeout(routeLimitWarningTimeoutRef.current);
+    }
+    setRouteLimitWarning(message);
+    routeLimitWarningTimeoutRef.current = window.setTimeout(() => {
+      setRouteLimitWarning(null);
+      routeLimitWarningTimeoutRef.current = null;
+    }, 2600);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (routeLimitWarningTimeoutRef.current != null) {
+        window.clearTimeout(routeLimitWarningTimeoutRef.current);
+      }
+    };
+  }, []);
   const [playbackSpeedMultiplier, setPlaybackSpeedMultiplier] = useState<number>(DEFAULT_PLAYBACK_SPEED_MULTIPLIER);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [quickShareOpen, setQuickShareOpen] = useState(false);
@@ -2070,6 +2204,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [textToolActive, setTextToolActive] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [pendingLabelDraft, setPendingLabelDraft] = useState<{ text: string; fontSize: SlateTextFontSize; color: string } | null>(null);
+  const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
   const textAnnotationsRef = useRef<SlateTextAnnotation[]>([]);
   const textAnnotationsBaselineRef = useRef<string>("[]");
   const [showBgPicker, setShowBgPicker] = useState(false);
@@ -2387,6 +2522,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       whiteboardTeamColors: whiteboardTeamColorsRef.current,
       whiteboardDrawColor: isWhiteboardMode ? whiteboardPenColor : tacticalPenColor,
       tacticalTokenStyle,
+      compactPlayerTokens: isCompactPlayerTokens,
       onPhaseCountChange: (count) => {
         if (!disposed) {
           setPhaseCount(count);
@@ -2400,6 +2536,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       onRouteStateChange: (state) => {
         if (disposed) return;
         setRouteState(state);
+      },
+      onRouteLimitReached: (maxRoutes) => {
+        if (disposed) return;
+        showRouteLimitWarning(`Route limit reached — Tactical Slate supports ${maxRoutes} routed players.`);
       },
       onItemMove: (itemId, x, y) => {
         if (disposed) return;
@@ -2512,6 +2652,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (isStatsMode || isWhiteboardMode) return;
     surfaceRef.current?.setTacticalTokenStyle(tacticalTokenStyle);
   }, [isStatsMode, isWhiteboardMode, tacticalTokenStyle]);
+
+  useEffect(() => {
+    if (isStatsMode || isWhiteboardMode) return;
+    surfaceRef.current?.setCompactPlayerTokens(isCompactPlayerTokens);
+  }, [isStatsMode, isWhiteboardMode, isCompactPlayerTokens]);
+
+  useEffect(() => {
+    if (!actionsOpen) setPlayerTokensSubmenuOpen(false);
+  }, [actionsOpen]);
 
   useEffect(() => {
     if (isStatsMode || isWhiteboardMode) return;
@@ -2932,13 +3081,19 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           })
           .filter((entry): entry is TacticalItem => entry != null)
       : [];
-  const confirmDiscardUnsavedBoardChanges = (reason: "load" | "reset"): boolean => {
-    if (!hasUnsavedBoardChanges()) return true;
+  const withDiscardConfirm = (reason: "load" | "reset", action: () => void) => {
+    if (!hasUnsavedBoardChanges()) { action(); return; }
     const message =
       reason === "load"
         ? "Load this board and discard unsaved changes on the current board?"
         : "Reset this board and discard unsaved changes?";
-    return window.confirm(message);
+    setConfirmSheet({
+      message,
+      confirmLabel: "Discard & Continue",
+      danger: true,
+      onConfirm: () => { setConfirmSheet(null); action(); },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
   const closeActionsMenu = () => {
     setActionsOpen(false);
@@ -3118,7 +3273,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       showQuickBoardNotice("Board unavailable");
       return;
     }
-    if (!confirmDiscardUnsavedBoardChanges("load")) return;
+    withDiscardConfirm("load", () => {
     const saved = loadBoard(boardId);
     if (!saved) {
       showQuickBoardNotice("Board not found");
@@ -3147,19 +3302,26 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     showQuickBoardNotice("Board loaded");
     setLoadedBoardName(saved.name);
     syncTeamCounts();
+    });
   };
   const lastBoardSavedLabel =
     lastBoardSavedAtMillis != null ? formatBoardUpdatedAt(lastBoardSavedAtMillis) : null;
   const handleRenameBoard = (boardId: string, currentName: string) => {
-    const drafted = window.prompt("Rename board", currentName);
-    if (drafted == null) return;
-    const renamed = renameBoard(boardId, sanitizeBoardName(drafted));
-    if (!renamed) {
-      showQuickBoardNotice("Rename failed");
-      return;
-    }
-    refreshSavedBoards();
-    showQuickBoardNotice("Board renamed");
+    setConfirmSheet({
+      variant: "prompt",
+      message: "Rename board",
+      promptDefault: currentName,
+      confirmLabel: "Rename",
+      onConfirm: (drafted) => {
+        setConfirmSheet(null);
+        if (!drafted?.trim()) return;
+        const renamed = renameBoard(boardId, sanitizeBoardName(drafted));
+        if (!renamed) { showQuickBoardNotice("Rename failed"); return; }
+        refreshSavedBoards();
+        showQuickBoardNotice("Board renamed");
+      },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
   const handleDuplicateBoard = (boardId: string) => {
     const duplicated = duplicateBoard(boardId);
@@ -3171,15 +3333,19 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     showQuickBoardNotice("Board duplicated");
   };
   const handleDeleteBoard = (boardId: string, name: string) => {
-    const confirmed = window.confirm(`Delete "${name}"?`);
-    if (!confirmed) return;
-    const deleted = deleteBoard(boardId);
-    if (!deleted) {
-      showQuickBoardNotice("Delete failed");
-      return;
-    }
-    refreshSavedBoards();
-    showQuickBoardNotice("Board deleted");
+    setConfirmSheet({
+      message: `Delete "${name}"?`,
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () => {
+        setConfirmSheet(null);
+        const deleted = deleteBoard(boardId);
+        if (!deleted) { showQuickBoardNotice("Delete failed"); return; }
+        refreshSavedBoards();
+        showQuickBoardNotice("Board deleted");
+      },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
   const dismissQuickShareOnboarding = (openQuickShareAfter = false) => {
     setQuickShareOnboardingOpen(false);
@@ -3380,7 +3546,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   const resetBoardFromTools = () => {
     if (isPortraitViewingMode) return;
-    if (!confirmDiscardUnsavedBoardChanges("reset")) return;
+    withDiscardConfirm("reset", () => {
     const surface = surfaceRef.current;
     surface?.reset();
     setIsPlaying(false);
@@ -3393,11 +3559,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     clearActiveBoardDraft();
     setPendingRecoveredBoardDraft(null);
     syncTeamCounts();
+    });
   };
 
-  const executePitchNewBoard = () => {
-    const surface = surfaceRef.current;
-    if (!surface) return;
+  const doNewBoard = (surface: TacticalPadLiteSurface) => {
     surface.newBoard();
     const pristineSnapshot = captureCurrentBoardSnapshot();
     boardBaselineSignatureRef.current = serializeBoardState(pristineSnapshot);
@@ -3438,7 +3603,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setBgPositionerDataUrl(null);
     const surface = surfaceRef.current;
     if (!surface) return;
-    executePitchNewBoard();
+    doNewBoard(surface);
     surface.setBackgroundImage(composited);
   };
 
@@ -3453,13 +3618,20 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       showQuickBoardNotice("PáircVision Board not ready");
       return;
     }
-    const confirmed = window.confirm("Start a new board?\nUnsaved changes on the current board will be lost.");
-    if (!confirmed) return;
-    if (SLATE_IMAGE_BG_ENABLED) {
-      setShowBgPicker(true);
-      return;
-    }
-    executePitchNewBoard();
+    setConfirmSheet({
+      message: "Start a new board?\nUnsaved changes on the current board will be lost.",
+      confirmLabel: "New Board",
+      danger: true,
+      onConfirm: () => {
+        setConfirmSheet(null);
+        if (SLATE_IMAGE_BG_ENABLED) {
+          setShowBgPicker(true);
+          return;
+        }
+        doNewBoard(surface);
+      },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
 
   const openMenuFromTools = () => {
@@ -3872,6 +4044,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     <OrientationGate modeLabel="PáircVision Board">
       <div style={rootShellStyle}>
         <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}`}</style>
+        {!isWhiteboardMode && routeLimitWarning ? (
+          <div style={ROUTE_LIMIT_TOAST_STYLE} role="status" aria-live="assertive">
+            {routeLimitWarning}
+          </div>
+        ) : null}
         {!isWhiteboardMode ? <style>{STADIUM_FLOODLIGHT_CSS}</style> : null}
         {!isWhiteboardMode ? <VisionStadiumBackground variant="board" /> : null}
         <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : CONTENT_STYLE}>
@@ -4368,33 +4545,41 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           </div>
         ) : null}
         {!isWhiteboardMode && !isPortraitViewingMode && controlsOpen ? (
-          <div style={MOVEMENT_MODE_PILL_STYLE} role="group" aria-label="Movement mode">
-            {([
-              { id: "move", label: "Move" },
-              { id: "route", label: "Route" },
-              { id: "ball", label: "Ball" },
-            ] as const).map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className="control-button"
-                style={{
-                  ...(option.id === "ball"
-                    ? (ballPopupStep !== null || movementModePillSelection === "ball")
+          <div style={MOVEMENT_MODE_CONTROLS_WRAP_STYLE}>
+            {routeState.ballAttachedPlayerId && (routeState.isRouteCaptureMode || hasAssignedRoutes) ? (
+              <div style={BALL_FOLLOW_HINT_STYLE}>Ball attached — follows player during route.</div>
+            ) : null}
+            <div style={MOVEMENT_MODE_PILL_STYLE} role="group" aria-label="Movement mode">
+              {([
+                { id: "move", label: "Move" },
+                { id: "route", label: "Route" },
+                { id: "ball", label: "Ball" },
+              ] as const).map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className="control-button"
+                  style={{
+                    ...(option.id === "ball"
+                      ? (ballPopupStep !== null || movementModePillSelection === "ball")
+                          ? MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE
+                          : MOVEMENT_MODE_PILL_BUTTON_STYLE
+                      : movementModePillSelection === option.id
                         ? MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE
-                        : MOVEMENT_MODE_PILL_BUTTON_STYLE
-                    : movementModePillSelection === option.id
-                      ? MOVEMENT_MODE_PILL_BUTTON_ACTIVE_STYLE
-                      : MOVEMENT_MODE_PILL_BUTTON_STYLE),
-                  ...(isPlaybackLocked ? MOVEMENT_MODE_PILL_BUTTON_DISABLED_STYLE : null),
-                }}
-                aria-pressed={option.id === "ball" ? ballPopupStep !== null : movementModePillSelection === option.id}
-                disabled={isPlaybackLocked}
-                onClick={() => option.id === "ball" ? handleBallButtonPress() : applyMovementModePillSelection(option.id)}
-              >
-                {option.label}
-              </button>
-            ))}
+                        : MOVEMENT_MODE_PILL_BUTTON_STYLE),
+                    ...(isPlaybackLocked ? MOVEMENT_MODE_PILL_BUTTON_DISABLED_STYLE : null),
+                  }}
+                  aria-pressed={option.id === "ball" ? ballPopupStep !== null : movementModePillSelection === option.id}
+                  disabled={isPlaybackLocked}
+                  onClick={() => option.id === "ball" ? handleBallButtonPress() : applyMovementModePillSelection(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+              <span style={ROUTE_COUNT_BADGE_STYLE} aria-live="polite">
+                {`Routes ${routeState.routeCount}/${routeState.maxRoutes}`}
+              </span>
+            </div>
           </div>
         ) : null}
         {!isWhiteboardMode && (controlsOpen || isPortraitViewingMode) ? (
@@ -5080,20 +5265,48 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         {!isWhiteboardMode && actionsOpen ? (
           <div ref={actionsMenuRef} style={actionsPopoutStyle}>
             <div style={TOKEN_STYLE_MENU_SECTION_STYLE}>
-              <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Token Style</p>
-              <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
-                {TOKEN_STYLE_CHOICES.map((choice) => (
-                  <button
-                    key={`token-style-${choice.value}`}
-                    type="button"
-                    className="control-button"
-                    style={tacticalTokenStyle === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
-                    onClick={() => setTacticalTokenStyle(choice.value)}
-                  >
-                    {choice.label}
-                  </button>
-                ))}
-              </div>
+              <button
+                type="button"
+                className="control-button"
+                style={PLAYER_TOKENS_MENU_TRIGGER_STYLE}
+                aria-expanded={playerTokensSubmenuOpen}
+                onClick={() => setPlayerTokensSubmenuOpen((open) => !open)}
+              >
+                <span style={PLAYER_TOKENS_MENU_TRIGGER_TITLE_ROW_STYLE}>Player Tokens</span>
+                <span style={PLAYER_TOKENS_MENU_TRIGGER_CURRENT_STYLE}>
+                  Current: {TOKEN_STYLE_CHOICES.find((choice) => choice.value === tacticalTokenStyle)?.label ?? ""}
+                  {" "}
+                  {playerTokensSubmenuOpen ? "⌄" : "›"}
+                </span>
+              </button>
+              {playerTokensSubmenuOpen ? (
+                <div style={PLAYER_TOKENS_SUBMENU_STYLE}>
+                  <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Style</p>
+                  <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
+                    {TOKEN_STYLE_CHOICES.map((choice) => (
+                      <button
+                        key={`token-style-${choice.value}`}
+                        type="button"
+                        className="control-button"
+                        style={tacticalTokenStyle === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
+                        onClick={() => setTacticalTokenStyle(choice.value)}
+                      >
+                        {tacticalTokenStyle === choice.value ? "✓ " : ""}
+                        {choice.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={PLAYER_TOKENS_SUBMENU_DIVIDER_STYLE} />
+                  <label style={COMPACT_TOKENS_TOGGLE_ROW_STYLE}>
+                    <input
+                      type="checkbox"
+                      checked={isCompactPlayerTokens}
+                      onChange={(event) => setIsCompactPlayerTokens(event.target.checked)}
+                    />
+                    Compact Tokens
+                  </label>
+                </div>
+              ) : null}
             </div>
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openQuickShareEntry}>
               Share Board
@@ -5599,6 +5812,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             ) : null}
           </>
         ) : null}
+        {confirmSheet && <ConfirmSheet {...confirmSheet} />}
       </div>
       {showLabelModal ? (
         <SlateLabelEntryModal
@@ -5622,7 +5836,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             <button
               type="button"
               style={{ padding: "12px 16px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "#ffffff", fontFamily: "Inter, system-ui, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", textAlign: "left" }}
-              onClick={() => { setShowBgPicker(false); surfaceRef.current?.setBackgroundImage(null); executePitchNewBoard(); }}
+              onClick={() => {
+                setShowBgPicker(false);
+                const surface = surfaceRef.current;
+                if (!surface) return;
+                surface.setBackgroundImage(null);
+                doNewBoard(surface);
+              }}
             >
               Blank Pitch
             </button>

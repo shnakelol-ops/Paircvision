@@ -17,20 +17,9 @@ import { createPixiPitchSurface } from "../core/pitch/create-pixi-pitch-surface"
 import type { PixiPitchSurfaceHandle } from "../core/pitch/create-pixi-pitch-surface";
 import { MATCH_EVENT_KINDS, type MatchEventKind } from "../core/stats/stats-event-model";
 import { formatMatchClock } from "../core/match/match-state-store";
+import { computeScoreSide, computeScorelineSnapshot } from "./pro-tagger-score";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function computeScoreSide(
-  events: readonly LoggedMatchEvent[],
-  side: "FOR" | "OPP",
-): { goals: number; points: number; total: number } {
-  const scored      = events.filter((e) => e.teamSide === side);
-  const goals       = scored.filter((e) => e.kind === "GOAL").length;
-  const onePointers = scored.filter((e) => e.kind === "POINT").length;
-  const twoPointers = scored.filter((e) => e.kind === "TWO_POINTER").length;
-  const pts = onePointers + twoPointers * 2;
-  return { goals, points: pts, total: goals * 3 + pts };
-}
 
 function deriveStageLabel(
   matchState: ProTaggerSavedMatch["restoreContext"]["matchState"],
@@ -161,11 +150,20 @@ type ExportResult = { ok: boolean; text: string };
 interface Props {
   match: ProTaggerSavedMatch;
   onBack: () => void;
+  /**
+   * Called with the corrected match whenever an in-review edit or delete changes
+   * the event log. The caller owns persistence: the live screen folds it back into
+   * its own in-memory event log (which its own save/autosave paths already persist),
+   * while the saved-matches review screen has no live state and must write it to
+   * storage itself. Without this, edits/deletes only ever lived in local component
+   * state and vanished the moment Review was closed.
+   */
+  onMatchUpdate: (updatedMatch: ProTaggerSavedMatch) => void;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
+export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: Props) {
   const [exporting, setExporting]           = useState<ExportKey | null>(null);
   const [results, setResults]               = useState<Partial<Record<ExportKey, ExportResult>>>({});
   const [packGenerating, setPackGenerating] = useState(false);
@@ -255,15 +253,25 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
           : selectedMapEvent.playerName)
       : "No player";
 
+  // Builds the corrected match object, applies it locally, and propagates it to
+  // the owning screen (live in-memory state or saved-match storage) so the edit
+  // survives closing Review, reopening it, and every export generated afterwards.
+  function commitEventsChange(updatedEvents: LoggedMatchEvent[]): void {
+    const updated: ProTaggerSavedMatch = {
+      ...match,
+      events:            updatedEvents,
+      eventCount:        updatedEvents.length,
+      scorelineSnapshot: computeScorelineSnapshot(updatedEvents, match.homeTeamName, match.awayTeamName),
+    };
+    setLocalMatch(updated);
+    onMatchUpdate(updated);
+  }
+
   const deleteSelectedMapEvent = () => {
     if (!selectedMapEventId) return;
     const targetId = selectedMapEventId;
     const updatedEvents = match.events.filter((e) => e.id !== targetId);
-    setLocalMatch({
-      ...match,
-      events:     updatedEvents,
-      eventCount: updatedEvents.length,
-    });
+    commitEventsChange(updatedEvents);
     setSelectedMapEventId(null);
     setDeleteConfirmPending(false);
   };
@@ -290,7 +298,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
           }
         : e,
     );
-    setLocalMatch({ ...match, events: updatedEvents, eventCount: updatedEvents.length });
+    commitEventsChange(updatedEvents);
     setProEditMode(false);
   };
 
@@ -379,7 +387,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
         const raw = evt.target?.result;
         if (typeof raw !== "string") throw new Error("Could not read file");
         const parsed: unknown = JSON.parse(raw);
-        if (!isValidProMatch(parsed)) throw new Error("Not a valid Pro match file");
+        if (!isValidProMatch(parsed)) throw new Error("Not a valid Event Stats match file");
         saveProTaggerMatchFull(parsed);
         setImportedMatch(parsed);
         setImportResult({ ok: true, text: "Imported" });
@@ -418,9 +426,9 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
     <div style={S.shell}>
       {/* ── Header ───────────────────────────────────────────────────── */}
       <div style={S.header}>
-        <button style={S.backBtn} onClick={onBack}>← Stats Pro</button>
+        <button style={S.backBtn} onClick={onBack}>← Event Stats</button>
         <span style={S.title}>Review</span>
-        <span style={S.headerBadge}>Pro</span>
+        <span style={S.headerBadge}>Event</span>
       </div>
 
       {importedMatch && (
@@ -512,7 +520,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack }: Props) {
             <span style={S.exportBtnLabel}>Import Match JSON</span>
           </button>
           <div style={S.exportMeta}>
-            <span style={S.exportDesc}>Restore a previously exported Pro match</span>
+            <span style={S.exportDesc}>Restore a previously exported Event Stats match</span>
             {importResult && (
               <span style={{ ...S.exportStatus, color: importResult.ok ? "#3fb950" : "#f85149" }}>
                 {importResult.text}

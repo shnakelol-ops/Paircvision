@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { ConfirmSheet, type ConfirmSheetProps } from "./components/ConfirmSheet";
+
+const ALLOW_NATIVE_DIALOG =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+   window.location.hostname === "127.0.0.1" ||
+   window.location.hostname.endsWith(".paircvision.com") ||
+   window.location.hostname === "paircvision.com");
 
 import {
   createInitialMatchEngineState,
@@ -3404,6 +3412,7 @@ export default function StatsModeSurface() {
   const [isCountsOverlayOpen, setIsCountsOverlayOpen] = useState(false);
   const [isFullTimeActionsOpen, setIsFullTimeActionsOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
   const [currentMatchId, setCurrentMatchId] = useState<string>(() => newMatchSessionId("live"));
   /** True only during an active demo session — blocks all localStorage persistence. */
   const [isDemoSession, setIsDemoSession] = useState(false);
@@ -3653,6 +3662,7 @@ export default function StatsModeSurface() {
   };
 
   const editPlayer = (playerId: string) => {
+    if (!ALLOW_NATIVE_DIALOG) return;
     const targetPlayer = activeSquadPlayers.find((player) => player.id === playerId);
     if (!targetPlayer) return;
     const nextNameInput = window.prompt("Player name", targetPlayer.name);
@@ -4341,7 +4351,7 @@ export default function StatsModeSurface() {
             : {}),
         };
         const activePlayerEntry = activePlayerEntryRef.current;
-        const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? null;
+        const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? undefined;
         nextEvent.playerId = selectedPlayerId;
         if (SCORE_EVENT_KINDS.has(event.kind) && pendingScorerRef.current) {
           nextEvent.playerName = pendingScorerRef.current.name;
@@ -5175,9 +5185,19 @@ export default function StatsModeSurface() {
       return;
     }
     if (hasDirtyLiveSession) {
-      const confirmed = window.confirm("Load this saved match and replace current unsaved live session?");
-      if (!confirmed) return;
+      setConfirmSheet({
+        message: "Load this saved match and replace current unsaved live session?",
+        confirmLabel: "Load",
+        danger: true,
+        onConfirm: () => { setConfirmSheet(null); doLoadSavedMatch(parsedRecord); },
+        onCancel: () => setConfirmSheet(null),
+      });
+      return;
     }
+    doLoadSavedMatch(parsedRecord);
+  };
+
+  const doLoadSavedMatch = (parsedRecord: SavedMatch) => {
     const loadedMatchId =
       parsedRecord.id.trim().length > 0 ? parsedRecord.id : newMatchSessionId("loaded");
     setCurrentMatchId(loadedMatchId);
@@ -5460,9 +5480,13 @@ export default function StatsModeSurface() {
   };
 
   const requestResetSquads = () => {
-    const shouldReset = window.confirm("Reset HOME and AWAY squads to blank #1–#30?");
-    if (!shouldReset) return;
-    resetSquadsToDefault();
+    setConfirmSheet({
+      message: "Reset HOME and AWAY squads to blank #1–#30?",
+      confirmLabel: "Reset",
+      danger: true,
+      onConfirm: () => { setConfirmSheet(null); resetSquadsToDefault(); },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
 
   const resetMatchNow = () => {
@@ -5538,8 +5562,14 @@ export default function StatsModeSurface() {
 
   const confirmResetMatch = () => {
     if (hasDirtyLiveSession) {
-      const confirmedDiscard = window.confirm("Discard unsaved match progress and clear recovered draft?");
-      if (!confirmedDiscard) return;
+      setConfirmSheet({
+        message: "Discard unsaved match progress and clear recovered draft?",
+        confirmLabel: "Discard",
+        danger: true,
+        onConfirm: () => { setConfirmSheet(null); clearActiveMatchDraft(); resetMatchNow(); },
+        onCancel: () => setConfirmSheet(null),
+      });
+      return;
     }
     clearActiveMatchDraft();
     resetMatchNow();
@@ -8293,6 +8323,7 @@ export default function StatsModeSurface() {
           onClose={() => setPackPreviewOpen(false)}
         />
       )}
+      {confirmSheet && <ConfirmSheet {...confirmSheet} />}
     </>
   );
 }

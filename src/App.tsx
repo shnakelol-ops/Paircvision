@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+const ALLOW_NATIVE_DIALOG =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+   window.location.hostname === "127.0.0.1" ||
+   window.location.hostname.endsWith(".paircvision.com") ||
+   window.location.hostname === "paircvision.com");
+
 import {
   createInitialMatchEngineState,
   goToHalfTime,
@@ -1622,6 +1629,7 @@ export default function App() {
   };
 
   const editPlayer = (playerId: string) => {
+    if (!ALLOW_NATIVE_DIALOG) return;
     const targetPlayer = activeSquadPlayers.find((player) => player.id === playerId);
     if (!targetPlayer) return;
     const nextNameInput = window.prompt("Player name", targetPlayer.name);
@@ -1916,7 +1924,7 @@ export default function App() {
           team: teamSide,
         };
         if (teamSide === "HOME") {
-          nextEvent.playerId = activePlayerIdRef.current ?? null;
+          nextEvent.playerId = activePlayerIdRef.current ?? undefined;
           if (SCORE_EVENT_KINDS.has(event.kind) && pendingScorerRef.current) {
             nextEvent.playerName = pendingScorerRef.current.name;
             nextEvent.playerNumber = pendingScorerRef.current.number;

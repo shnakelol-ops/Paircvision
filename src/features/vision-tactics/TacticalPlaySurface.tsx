@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import OrientationGate, { usePortraitOrientation } from "../../components/OrientationGate";
 import VisionStadiumBackground from "../../components/VisionStadiumBackground";
+import { ConfirmSheet, type ConfirmSheetProps } from "../../components/ConfirmSheet";
+import TextAnnotationOverlay from "../../components/annotations/TextAnnotationOverlay";
+import { type SlateTextAnnotation } from "../../components/annotations/textAnnotation";
 import { useCanvasRecorder } from "../shared/useCanvasRecorder";
 import { buildDefaultTokens } from "../../movement-board/tokens/default-tokens";
 import { createMovementCanvasShell } from "../../movement-board/shell/createMovementCanvasShell";
@@ -250,11 +253,12 @@ const PITCH_WATERMARK_STYLE: CSSProperties = {
   bottom: "14px",
   right: "18px",
   zIndex: 2,
-  color: "rgba(200, 220, 255, 0.07)",
+  color: "rgba(220, 235, 255, 0.22)",
   fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "10px",
+  fontSize: "11px",
   fontWeight: 600,
-  letterSpacing: "0.10em",
+  letterSpacing: "0.12em",
+  textShadow: "0 1px 4px rgba(0, 0, 0, 0.55), 0 0 12px rgba(0, 0, 0, 0.35)",
   pointerEvents: "none",
   userSelect: "none",
 };
@@ -289,7 +293,7 @@ const PANEL_ROW_STYLE: CSSProperties = {
 };
 
 const TOOL_BUTTON_STYLE: CSSProperties = {
-  height: "31px",
+  height: "40px",
   minWidth: "68px",
   borderRadius: "999px",
   border: "1px solid rgba(180, 210, 255, 0.22)",
@@ -339,15 +343,14 @@ const PLAYBACK_SIDE_STYLE: CSSProperties = {
 const PLAYBACK_SIDE_BUTTON_STYLE: CSSProperties = {
   ...TOOL_BUTTON_STYLE,
   minWidth: "76px",
-  height: "29px",
+  height: "40px",
   padding: "0 8px",
 };
 
 const EDIT_RUN_PILL_STYLE: CSSProperties = {
   position: "fixed",
-  bottom: "max(66px, calc(env(safe-area-inset-bottom, 0px) + 64px))",
-  left: "50%",
-  transform: "translateX(-50%)",
+  top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))",
+  right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
   zIndex: 30,
   display: "flex",
   gap: "8px",
@@ -386,21 +389,6 @@ const EDIT_RUN_DONE_STYLE: CSSProperties = {
   cursor: "pointer",
 };
 
-const HINT_PILL_STYLE: CSSProperties = {
-  position: "fixed",
-  bottom: "max(54px, calc(env(safe-area-inset-bottom, 0px) + 52px))",
-  left: "50%",
-  transform: "translateX(-50%)",
-  zIndex: 20,
-  color: "rgba(198, 228, 210, 0.44)",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "9px",
-  fontWeight: 500,
-  letterSpacing: "0.05em",
-  whiteSpace: "nowrap",
-  pointerEvents: "none",
-  userSelect: "none",
-};
 
 const TOKEN_COLOR_BG: Record<PremiumPlayerTokenColor, string> = {
   blue:   "rgba(37, 99, 235, 0.78)",
@@ -676,6 +664,17 @@ const MP_CHIP_SECONDARY: CSSProperties = {
   border: "1px solid rgba(180, 210, 255, 0.09)",
 };
 
+// Horizontally-scrollable chip strip — prevents chip rows from wrapping to a
+// second line on phone landscape where panel height budget is tight.
+const TP_CHIP_SCROLL: CSSProperties = {
+  display: "flex",
+  flexWrap: "nowrap",
+  gap: "3px",
+  alignItems: "center",
+  overflowX: "auto",
+  scrollbarWidth: "none",
+};
+
 const MP_PLAYER_CHIP: CSSProperties = {
   height: "28px",
   minWidth: "0",
@@ -777,6 +776,33 @@ const TP_ENUM_TO_MULTIPLIER: Record<string, number> = {
   fast: 1.25,
 };
 
+const QUICK_DELAY_OPTIONS = [
+  { ms: 0,    label: "Now" },
+  { ms: 1000, label: "+1s" },
+  { ms: 2000, label: "+2s" },
+  { ms: 3000, label: "+3s" },
+  { ms: 4000, label: "+4s" },
+] as const;
+
+const EXTENDED_DELAY_OPTIONS = [
+  { ms: 5000,  label: "+5s"  },
+  { ms: 10000, label: "+10s" },
+  { ms: 15000, label: "+15s" },
+  { ms: 20000, label: "+20s" },
+  { ms: 30000, label: "+30s" },
+  { ms: 40000, label: "+40s" },
+  { ms: 50000, label: "+50s" },
+  { ms: 60000, label: "+60s" },
+] as const;
+
+const SHOT_DELAY_OPTIONS = [
+  { ms: 0,    label: "Now" },
+  { ms: 1000, label: "+1s" },
+  { ms: 2000, label: "+2s" },
+  { ms: 3000, label: "+3s" },
+  { ms: 4000, label: "+4s" },
+] as const;
+
 function multiplierToPlaybackSpeed(n: number): "slow" | "normal" | "fast" {
   if (n < 0.85) return "slow";
   if (n > 1.15) return "fast";
@@ -847,14 +873,15 @@ export default function TacticalPlaySurface() {
   const [ballMenuStep, setBallMenuStep] = useState<BallMenuStep | null>(null);
   const [appViewportHeight, setAppViewportHeight] = useState(() => getTPViewportHeight());
   const [startFlash, setStartFlash] = useState(false);
+  const [saveFlash, setSaveFlash] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [playersOpen, setPlayersOpen] = useState(false);
   const [activeSetupSport, setActiveSetupSport] = useState<SetupSport>("football");
   const [activeSetupSituation, setActiveSetupSituation] = useState<TacticalTemplateSituation | null>(null);
-  const [, setTokenSizeState] = useState<TokenSize>("medium");
+  const [tokenSizeState, setTokenSizeState] = useState<TokenSize>("medium");
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("pixi");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
-  const [awayColor, setAwayColorState] = useState<PremiumPlayerTokenColor>("red");
+  const [, setAwayColorState] = useState<PremiumPlayerTokenColor>("red");
   const [awayTokenIds, setAwayTokenIds] = useState<Set<string>>(() => new Set());
   const [routes, setRoutes] = useState<MovementBoardRoute[]>([]);
   const [tokenNumberById, setTokenNumberById] = useState<Record<string, number>>({});
@@ -868,6 +895,8 @@ export default function TacticalPlaySurface() {
   const [passToId, setPassToId] = useState<string | null>(null);
   const [passTimingMs, setPassTimingMs] = useState<number>(0);
   const [passTriggerId, setPassTriggerId] = useState<string | null>(null);
+  const [routeDelayPickerOpen, setRouteDelayPickerOpen] = useState(false);
+  const [passTimingPickerOpen, setPassTimingPickerOpen] = useState(false);
   const [shootDelayMs, setShootDelayMs] = useState<number>(0);
   const [shotOpen, setShotOpen] = useState(false);
   const [shotEvents, setShotEvents] = useState<TacticalShotEvent[]>([]);
@@ -893,7 +922,13 @@ export default function TacticalPlaySurface() {
   const [playerSheetId, setPlayerSheetId] = useState<string | null>(null);
   const sheetDrawRunPlayerIdRef = useRef<string | null>(null);
   const [editRunPlayerId, setEditRunPlayerId] = useState<string | null>(null);
+  const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
+  const [textAnnotations, setTextAnnotations] = useState<SlateTextAnnotation[]>([]);
+  const [labelToolActive, setLabelToolActive] = useState(false);
   const editRunPlayerIdRef = useRef<string | null>(null);
+  // Ref bridge so the stale mount-time closure in the shell useEffect can read
+  // the latest units value (needed for WebGL context-loss restore).
+  const unitsRef = useRef<TacticalUnit[]>([]);
   const {
     recordPhase, setRecordPhase,
     recordCountdown,
@@ -982,6 +1017,19 @@ export default function TacticalPlaySurface() {
     let mountFrameB = 0;
     let resizeFrameA = 0;
     let resizeFrameB = 0;
+
+    // Holds a snapshot captured just before a WebGL context-loss remount so the
+    // fresh shell can be restored to exactly the same board state.
+    let lastSnapshot: {
+      tokens: MovementBoardToken[];
+      routes: MovementBoardRoute[];
+      ballState: { carrierId?: string; position?: NormalizedPoint; ballType?: BallType };
+      passEvents: TacticalPassEvent[];
+      shotEvents: TacticalShotEvent[];
+      zones: ZoneRecord[];
+      trainingItems: TacticalTrainingItem[];
+      units: TacticalUnit[];
+    } | null = null;
 
     const mountShell = () => {
       void createMovementCanvasShell(host, {
@@ -1084,6 +1132,33 @@ export default function TacticalPlaySurface() {
         setZones(shell.getZones());
         setTrainingItems(shell.getTrainingItems());
         destroyShell = shell.destroy;
+
+        // After a WebGL context-loss remount, restore the full board state that
+        // was captured before the dead shell was destroyed.
+        if (lastSnapshot) {
+          const snap = lastSnapshot;
+          lastSnapshot = null;
+          shell.setTokens(snap.tokens);
+          shell.setRoutes(snap.routes);
+          if (snap.ballState.carrierId) {
+            shell.giveBall(snap.ballState.carrierId);
+          } else if (snap.ballState.position) {
+            shell.placeBall(snap.ballState.ballType ?? "footballSmall", snap.ballState.position);
+          } else {
+            shell.removeBall();
+          }
+          shell.setPassEvents(snap.passEvents);
+          setPassEvents(snap.passEvents);
+          for (const existing of shell.getShotEvents()) shell.removeShotEvent(existing.id);
+          for (const shot of snap.shotEvents) shell.addShotEvent(shot);
+          setShotEvents(snap.shotEvents);
+          shell.setZones(snap.zones);
+          setZones(snap.zones);
+          shell.setTrainingItems(snap.trainingItems);
+          setTrainingItems(snap.trainingItems);
+          setUnits(snap.units);
+          shell.setStartPositions();
+        }
       });
     };
 
@@ -1099,7 +1174,34 @@ export default function TacticalPlaySurface() {
     };
 
     const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") scheduleReflow();
+      if (document.visibilityState !== "visible") return;
+      // After a long background period (5+ min) iOS/Android may permanently kill
+      // the WebGL context without firing webglcontextrestored. Detect the dead
+      // context and remount rather than leaving the canvas blank.
+      const canvas = shellRef.current?.getCanvas();
+      const gl = canvas
+        ? ((canvas.getContext("webgl2") ?? canvas.getContext("webgl")) as WebGLRenderingContext | null)
+        : null;
+      if (gl?.isContextLost()) {
+        if (shellRef.current) {
+          lastSnapshot = {
+            tokens: shellRef.current.getTokens(),
+            routes: shellRef.current.getRoutes(),
+            ballState: shellRef.current.getBallState(),
+            passEvents: shellRef.current.getPassEvents(),
+            shotEvents: shellRef.current.getShotEvents(),
+            zones: shellRef.current.getZones(),
+            trainingItems: shellRef.current.getTrainingItems(),
+            units: unitsRef.current,
+          };
+        }
+        destroyShell?.();
+        destroyShell = null;
+        shellRef.current = null;
+        if (!disposed) mountShell();
+      } else {
+        scheduleReflow();
+      }
     };
 
     window.addEventListener("resize", scheduleReflow);
@@ -1124,6 +1226,8 @@ export default function TacticalPlaySurface() {
       destroyShell?.();
     };
   }, []);
+
+  useEffect(() => { unitsRef.current = units; }, [units]);
 
   useEffect(() => {
     shellRef.current?.setDragEnabled(!isPortrait);
@@ -1364,13 +1468,6 @@ export default function TacticalPlaySurface() {
     setPrimaryColorState(color);
   };
 
-  const onSetAwayColor = (color: PremiumPlayerTokenColor) => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    shell.setTokens(shell.getTokens().map((t) => (t.team === "away" ? { ...t, color } : t)));
-    setAwayColorState(color);
-  };
-
   const onSelectBallType = (ballType: BallType) => {
     shellRef.current?.placeBall(ballType);
     setBallMenuStep(null);
@@ -1574,6 +1671,7 @@ export default function TacticalPlaySurface() {
   const onLoadScenario = (scenario: TacticalScenario) => {
     const shell = shellRef.current;
     if (!shell) return;
+    setPlaysOpen(false);
     shell.setTokens(scenario.tokens);
     shell.setRoutes(scenario.routes);
     if (scenario.ballState.carrierId) {
@@ -1606,10 +1704,15 @@ export default function TacticalPlaySurface() {
     setTrainingItems(loadedItems);
     shell.setSelectedTrainingItemId(null);
     setSelectedTrainingItemId(null);
+    setTextAnnotations(scenario.textAnnotations ?? []);
+    setLabelToolActive(false);
     const loadedAwayIds = new Set(scenario.tokens.filter((t) => t.team === "away").map((t) => t.id));
     setAwayTokenIds(loadedAwayIds);
     const firstAway = scenario.tokens.find((t) => t.team === "away");
     if (firstAway) setAwayColorState(firstAway.color);
+    const loadedNums: Record<string, number> = {};
+    for (const t of scenario.tokens) loadedNums[t.id] = t.number;
+    setTokenNumberById(loadedNums);
     setScenarioRenameId(null);
   };
 
@@ -1631,17 +1734,20 @@ export default function TacticalPlaySurface() {
   const onSavePlays = () => {
     const shell = shellRef.current;
     if (!shell) return;
+    setSaveFlash(true);
+    setTimeout(() => { setSaveFlash(false); }, 700);
     saveScenario(
       playsNameDraft.trim() || "Scenario",
-      shell.getTokens(),
+      shell.getTokensAtStart(),
       shell.getRoutes(),
-      shell.getBallState(),
+      shell.getBallStateAtStart(),
       shell.getPassEvents(),
       shell.getShotEvents(),
       multiplierToPlaybackSpeed(playbackSpeedMultiplier),
       units,
       shell.getZones(),
       shell.getTrainingItems(),
+      textAnnotations.length > 0 ? textAnnotations : undefined,
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
@@ -1755,34 +1861,6 @@ export default function TacticalPlaySurface() {
     removePlayersById(homeIds);
   };
 
-  const fillAwayTeam = () => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    const tokens = shell.getTokens();
-    const usedNums = new Set(tokens.filter((t) => t.team === "away").map((t) => t.number));
-    const newTokens: MovementBoardToken[] = [];
-    const newNums: Record<string, number> = {};
-    const newIds: string[] = [];
-    for (let n = 1; n <= 15; n += 1) {
-      if (usedNums.has(n)) continue;
-      const id = `token-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-a${n}`;
-      newTokens.push({ id, number: n, color: awayColor, position: getFormationPos("away", n), team: "away" });
-      newNums[id] = n;
-      newIds.push(id);
-    }
-    if (newTokens.length === 0) return;
-    shell.setTokens([...tokens, ...newTokens]);
-    setAwayTokenIds((prev) => new Set([...prev, ...newIds]));
-    setTokenNumberById((prev) => ({ ...prev, ...newNums }));
-  };
-
-  const clearAwayTeam = () => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    const awayIds = new Set(shell.getTokens().filter((t) => t.team === "away").map((t) => t.id));
-    removePlayersById(awayIds);
-  };
-
   const onAddPlayer = () => {
     const shell = shellRef.current;
     if (!shell) return;
@@ -1841,8 +1919,16 @@ export default function TacticalPlaySurface() {
   const onResetBoard = () => {
     const shell = shellRef.current;
     if (!shell) return;
-    const confirmed = window.confirm("Reset the Tactical Play board? This clears the current board only.\nSaved scenarios are not deleted.");
-    if (!confirmed) return;
+    setConfirmSheet({
+      message: "Reset the Tactical Play board? This clears the current board only.\nSaved scenarios are not deleted.",
+      confirmLabel: "Reset",
+      danger: true,
+      onConfirm: () => { setConfirmSheet(null); doResetBoard(shell); },
+      onCancel: () => setConfirmSheet(null),
+    });
+  };
+
+  const doResetBoard = (shell: MovementCanvasShellHandle) => {
 
     shell.reset();
     const defaultTokens = buildDefaultTokens();
@@ -1895,6 +1981,8 @@ export default function TacticalPlaySurface() {
     setIsPlaying(false);
     setIsPaused(false);
     setTokenNumberById(Object.fromEntries(defaultTokens.map((token) => [token.id, token.number])));
+    setTextAnnotations([]);
+    setLabelToolActive(false);
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
@@ -1903,13 +1991,12 @@ export default function TacticalPlaySurface() {
   const playbackFloatingVisible = isPlaying || isPaused;
   const tokenIds = Object.keys(tokenNumberById);
   const homePlayerCount = tokenIds.filter((id) => !awayTokenIds.has(id)).length;
-  const awayPlayerCount = tokenIds.filter((id) => awayTokenIds.has(id)).length;
 
   const speedIndex = Math.max(0, TP_SPEED_OPTIONS.findIndex((o) => o.multiplier === playbackSpeedMultiplier));
   const speedLabel = TP_SPEED_OPTIONS[speedIndex]?.label ?? "1×";
   const speedFillPct = (speedIndex / Math.max(1, TP_SPEED_OPTIONS.length - 1)) * 100;
   const SpeedBarCompact = (
-    <div style={{ ...TP_SPEED_BAR_STYLE, width: "84px", padding: "0 6px" }}>
+    <div style={{ ...TP_SPEED_BAR_STYLE, width: "116px", height: "36px", padding: "0 8px" }}>
       <span style={TP_SPEED_LABEL_STYLE}>SPD</span>
       <input
         type="range"
@@ -1956,12 +2043,18 @@ export default function TacticalPlaySurface() {
 
   return (
     <OrientationGate modeLabel="Tactical Play">
-      <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}input.tp-speed-range{-webkit-appearance:none;appearance:none;background:var(--tp-speed-track);height:3px;border-radius:3px;outline:none;cursor:pointer}input.tp-speed-range::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.50)}input.tp-speed-range::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:#fff;cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,.50)}`}</style>
+      <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}input.tp-speed-range{-webkit-appearance:none;appearance:none;background:var(--tp-speed-track);height:8px;border-radius:4px;outline:none;cursor:pointer}input.tp-speed-range::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.50)}input.tp-speed-range::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,.50)}`}</style>
       <div style={rootStyle}>
         <VisionStadiumBackground variant="play" />
         <div style={CONTENT_STYLE}>
           <div ref={hostRef} style={PITCH_STYLE} />
           <div style={PITCH_WATERMARK_STYLE}>PáircVision</div>
+          <TextAnnotationOverlay
+            annotations={textAnnotations}
+            active={labelToolActive && !isPlaying && !isPaused && editRunPlayerId === null}
+            onAnnotationsChange={setTextAnnotations}
+            showFormatting={false}
+          />
         </div>
 
         <button type="button" style={BACK_BUTTON_STYLE} onClick={goBack}>
@@ -2160,10 +2253,6 @@ export default function TacticalPlaySurface() {
             </div>
           );
         })() : null}
-
-        {!isControlsOpen && !setupOpen && !isPlaying && !isPaused && editRunPlayerId === null ? (
-          <div style={HINT_PILL_STYLE}>Move players → Set Start → Draw Movements → Play</div>
-        ) : null}
 
         {/* Done Editing pill — shown while Edit Run isolated mode is active */}
         {editRunPlayerId !== null && !isPlaying && !isPaused ? (
@@ -2431,7 +2520,14 @@ export default function TacticalPlaySurface() {
                 style={unitsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                 onClick={() => { setUnitsOpen((prev) => !prev); setMovementsOpen(false); setPassesOpen(false); setIsControlsOpen(false); }}
               >
-                Group Move
+                Move as 1
+              </button>
+              <button
+                type="button"
+                style={labelToolActive && !isPlaying && !isPaused ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                onClick={() => setLabelToolActive((prev) => !prev)}
+              >
+                Labels{textAnnotations.length > 0 ? ` (${textAnnotations.length})` : ""}
               </button>
               <button
                 type="button"
@@ -2446,7 +2542,7 @@ export default function TacticalPlaySurface() {
               </button>
             </div>
 
-            {/* Row 4: Advanced drawer (Group Move promoted to Row 3) */}
+            {/* Row 4: Advanced drawer (Move as 1 promoted to Row 3) */}
             {advancedOpen ? (
               <div style={PANEL_ROW_STYLE}>
                 <button
@@ -2469,6 +2565,17 @@ export default function TacticalPlaySurface() {
                   onClick={() => { setItemsOpen((prev) => !prev); setZonesOpen(false); setIsControlsOpen(false); }}
                 >
                   Items{trainingItems.length > 0 ? ` (${trainingItems.length})` : ""}
+                </button>
+                <button
+                  type="button"
+                  style={tokenSizeState === "small" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                  onClick={() => {
+                    const next: TokenSize = tokenSizeState === "small" ? "medium" : "small";
+                    shellRef.current?.setTokenSize(next);
+                    setTokenSizeState(next);
+                  }}
+                >
+                  Compact
                 </button>
                 <button
                   type="button"
@@ -2590,31 +2697,36 @@ export default function TacticalPlaySurface() {
                 </div>
 
                 <div style={MP_ROW}>
-                  <span style={MP_ROW_LABEL}>Time</span>
-                  {([
-                    { ms: 0, label: "Now" },
-                    { ms: 1000, label: "+1s" },
-                    { ms: 2000, label: "+2s" },
-                    { ms: 3000, label: "+3s" },
-                    { ms: 4000, label: "+4s" },
-                  ] as const).map((opt) => (
+                  <span style={{ ...MP_ROW_LABEL, flexShrink: 0 }}>Time</span>
+                  <div style={{ ...TP_CHIP_SCROLL, flex: 1, minWidth: 0 }}>
+                    {QUICK_DELAY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.ms}
+                        type="button"
+                        style={
+                          movementsRouteTrigger == null &&
+                          (movementsRouteDelay === opt.ms || (opt.ms === 0 && movementsRouteDelay == null))
+                            ? MP_CHIP_ACTIVE
+                            : MP_CHIP
+                        }
+                        onClick={() => { onMovementsSetDelay(opt.ms); setRouteDelayPickerOpen(false); }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
                     <button
-                      key={opt.ms}
                       type="button"
-                      style={
-                        movementsRouteTrigger == null &&
-                        (movementsRouteDelay === opt.ms || (opt.ms === 0 && movementsRouteDelay == null))
-                          ? MP_CHIP_ACTIVE
-                          : MP_CHIP
-                      }
-                      onClick={() => onMovementsSetDelay(opt.ms)}
+                      style={movementsRouteTrigger == null && movementsRouteDelay != null && movementsRouteDelay > 4000 ? MP_CHIP_ACTIVE : MP_CHIP}
+                      onClick={() => setRouteDelayPickerOpen((prev) => !prev)}
                     >
-                      {opt.label}
+                      {movementsRouteTrigger == null && movementsRouteDelay != null && movementsRouteDelay > 4000
+                        ? `+${movementsRouteDelay / 1000}s ▾`
+                        : "More ▾"}
                     </button>
-                  ))}
+                  </div>
                   {movementsOtherPlayers.length > 0 ? (
                     <>
-                      <span style={{ ...MP_ROW_LABEL, marginLeft: "3px" }}>After</span>
+                      <span style={{ ...MP_ROW_LABEL, marginLeft: "3px", flexShrink: 0 }}>After</span>
                       {movementsRouteTrigger != null ? (
                         <button type="button" style={MP_CHIP_SECONDARY} onClick={() => onMovementsSetTrigger(null)}>
                           ×
@@ -2625,7 +2737,7 @@ export default function TacticalPlaySurface() {
                           key={p.playerId}
                           type="button"
                           style={movementsRouteTrigger === p.playerId ? MP_CHIP_ACTIVE : MP_CHIP}
-                          onClick={() => onMovementsSetTrigger(p.playerId)}
+                          onClick={() => { onMovementsSetTrigger(p.playerId); setRouteDelayPickerOpen(false); }}
                         >
                           P{p.number}
                         </button>
@@ -2633,6 +2745,20 @@ export default function TacticalPlaySurface() {
                     </>
                   ) : null}
                 </div>
+                {routeDelayPickerOpen ? (
+                  <div style={TP_CHIP_SCROLL}>
+                    {EXTENDED_DELAY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.ms}
+                        type="button"
+                        style={movementsRouteTrigger == null && movementsRouteDelay === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
+                        onClick={() => { onMovementsSetDelay(opt.ms); setRouteDelayPickerOpen(false); }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </>
             ) : null}
 
@@ -2647,7 +2773,7 @@ export default function TacticalPlaySurface() {
         {unitsOpen && !modeIsPlaybackLocked ? (
           <div style={MOVEMENT_PANEL_STYLE}>
             <div style={MP_HEADER_STYLE}>
-              <span style={MP_TITLE_STYLE}>Group Move</span>
+              <span style={MP_TITLE_STYLE}>Move as 1</span>
               <button type="button" style={MP_CLOSE_STYLE} onClick={() => setUnitsOpen(false)}>×</button>
             </div>
 
@@ -3067,48 +3193,67 @@ export default function TacticalPlaySurface() {
             ) : null}
 
             {passFromId && passToId ? (
-              <div style={MP_ROW}>
-                <span style={MP_ROW_LABEL}>Time</span>
-                {([
-                  { ms: 0, label: "Now" },
-                  { ms: 1000, label: "+1s" },
-                  { ms: 2000, label: "+2s" },
-                  { ms: 3000, label: "+3s" },
-                  { ms: 4000, label: "+4s" },
-                ] as const).map((opt) => (
-                  <button
-                    key={opt.ms}
-                    type="button"
-                    style={passTriggerId == null && passTimingMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
-                    onClick={() => { setPassTimingMs(opt.ms); setPassTriggerId(null); }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-                {routes.length > 0 || passEvents.length > 0 ? (
-                  <>
-                    <span style={{ ...MP_ROW_LABEL, marginLeft: "3px" }}>After</span>
-                    {passTriggerId != null ? (
-                      <button type="button" style={MP_CHIP_SECONDARY} onClick={() => setPassTriggerId(null)}>
-                        ×
+              <>
+                <div style={MP_ROW}>
+                  <span style={{ ...MP_ROW_LABEL, flexShrink: 0 }}>Time</span>
+                  <div style={{ ...TP_CHIP_SCROLL, flex: 1, minWidth: 0 }}>
+                    {QUICK_DELAY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.ms}
+                        type="button"
+                        style={passTriggerId == null && passTimingMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
+                        onClick={() => { setPassTimingMs(opt.ms); setPassTriggerId(null); setPassTimingPickerOpen(false); }}
+                      >
+                        {opt.label}
                       </button>
-                    ) : null}
-                    {routes.filter((r) => !awayTokenIds.has(r.playerId)).map((r) => {
-                      const num = tokenNumberById[r.playerId] ?? "?";
-                      return (
-                        <button
-                          key={r.playerId}
-                          type="button"
-                          style={passTriggerId === r.playerId ? MP_CHIP_ACTIVE : MP_CHIP}
-                          onClick={() => setPassTriggerId(passTriggerId === r.playerId ? null : r.playerId)}
-                        >
-                          P{num}
+                    ))}
+                    <button
+                      type="button"
+                      style={passTriggerId == null && passTimingMs > 4000 ? MP_CHIP_ACTIVE : MP_CHIP}
+                      onClick={() => setPassTimingPickerOpen((prev) => !prev)}
+                    >
+                      {passTriggerId == null && passTimingMs > 4000 ? `+${passTimingMs / 1000}s ▾` : "More ▾"}
+                    </button>
+                  </div>
+                  {routes.length > 0 || passEvents.length > 0 ? (
+                    <>
+                      <span style={{ ...MP_ROW_LABEL, marginLeft: "3px", flexShrink: 0 }}>After</span>
+                      {passTriggerId != null ? (
+                        <button type="button" style={MP_CHIP_SECONDARY} onClick={() => setPassTriggerId(null)}>
+                          ×
                         </button>
-                      );
-                    })}
-                  </>
+                      ) : null}
+                      {routes.filter((r) => !awayTokenIds.has(r.playerId)).map((r) => {
+                        const num = tokenNumberById[r.playerId] ?? "?";
+                        return (
+                          <button
+                            key={r.playerId}
+                            type="button"
+                            style={passTriggerId === r.playerId ? MP_CHIP_ACTIVE : MP_CHIP}
+                            onClick={() => { setPassTriggerId(passTriggerId === r.playerId ? null : r.playerId); setPassTimingPickerOpen(false); }}
+                          >
+                            P{num}
+                          </button>
+                        );
+                      })}
+                    </>
+                  ) : null}
+                </div>
+                {passTimingPickerOpen ? (
+                  <div style={TP_CHIP_SCROLL}>
+                    {EXTENDED_DELAY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.ms}
+                        type="button"
+                        style={passTriggerId == null && passTimingMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
+                        onClick={() => { setPassTimingMs(opt.ms); setPassTriggerId(null); setPassTimingPickerOpen(false); }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 ) : null}
-              </div>
+              </>
             ) : null}
 
             {shotOpen ? (() => {
@@ -3136,11 +3281,7 @@ export default function TacticalPlaySurface() {
                   <span style={MP_ROW_LABEL}>Shooter</span>
                   <span style={MP_CHIP_SECONDARY}>P{shooterNum}</span>
                   <span style={{ ...MP_ROW_LABEL, marginLeft: "4px" }}>Delay</span>
-                  {([
-                    { ms: 0, label: "Now" },
-                    { ms: 1000, label: "+1s" },
-                    { ms: 2000, label: "+2s" },
-                  ] as const).map((opt) => (
+                  {SHOT_DELAY_OPTIONS.map((opt) => (
                     <button
                       key={opt.ms}
                       type="button"
@@ -3280,16 +3421,27 @@ export default function TacticalPlaySurface() {
                       {r.label}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    style={tokenSizeState === "small" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                    onClick={() => {
+                      const next: TokenSize = tokenSizeState === "small" ? "medium" : "small";
+                      shellRef.current?.setTokenSize(next);
+                      setTokenSizeState(next);
+                    }}
+                  >
+                    Compact
+                  </button>
                 </div>
                 <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Home ({homePlayerCount})</span>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill 15 Home</button>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>Clear Home</button>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Our Team ({homePlayerCount})</span>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill Our Team</button>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>Clear</button>
                   {ALL_TOKEN_COLORS.map((c) => (
                     <button
                       key={c}
                       type="button"
-                      aria-label={`Home ${c}`}
+                      aria-label={c}
                       style={{
                         width: "26px",
                         height: "26px",
@@ -3309,53 +3461,23 @@ export default function TacticalPlaySurface() {
                     />
                   ))}
                 </div>
-                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={{ ...SETUP_SECTION_LABEL_STYLE, color: "rgba(255, 160, 140, 0.85)" }}>Away ({awayPlayerCount})</span>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillAwayTeam}>Fill 15 Away</button>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearAwayTeam}>Clear Away</button>
-                  {ALL_TOKEN_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      aria-label={`Away ${c}`}
-                      style={{
-                        width: "26px",
-                        height: "26px",
-                        minWidth: "26px",
-                        borderRadius: "50%",
-                        background: TOKEN_COLOR_BG[c],
-                        border: "none",
-                        cursor: "pointer",
-                        padding: 0,
-                        flexShrink: 0,
-                        outline: awayColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
-                        outlineOffset: awayColor === c ? "2px" : "1px",
-                        boxShadow: awayColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
-                        transition: "outline-width 0.1s, outline-offset 0.1s",
-                      }}
-                      onClick={() => onSetAwayColor(c)}
-                    />
-                  ))}
-                </div>
               </>
             ) : null}
           </div>
         ) : null}
 
-        {!isPortrait ? (
-          <div style={PLAYBACK_SIDE_STYLE}>
-            <button
-              type="button"
-              style={PLAYBACK_SIDE_BUTTON_STYLE}
-              onClick={onPauseResumePress}
-            >
-              {isPlaying ? "Pause" : isPaused ? "Resume" : "▶ Play"}
-            </button>
-            <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetPlaybackState}>
-              Reset
-            </button>
-          </div>
-        ) : null}
+        <div style={PLAYBACK_SIDE_STYLE}>
+          <button
+            type="button"
+            style={PLAYBACK_SIDE_BUTTON_STYLE}
+            onClick={onPauseResumePress}
+          >
+            {isPlaying ? "Pause" : isPaused ? "Resume" : "▶ Play"}
+          </button>
+          <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetPlaybackState}>
+            Reset
+          </button>
+        </div>
 
         {/* PLAYS floating button — right-side, vertically centered */}
         {!playbackFloatingVisible ? (
@@ -3397,8 +3519,8 @@ export default function TacticalPlaySurface() {
                 onChange={(e) => setPlaysNameDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") onSavePlays(); }}
               />
-              <button type="button" style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.34)", color: "#c4ffbf" }} onClick={onSavePlays}>
-                Save
+              <button type="button" style={saveFlash ? { ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.80)", color: "#c4ffbf", background: "rgba(18, 56, 34, 0.82)" } : { ...PLAYS_ACTION_BTN, border: "1px solid rgba(124, 255, 114, 0.34)", color: "#c4ffbf" }} onClick={onSavePlays}>
+                {saveFlash ? "Saved ✓" : "Save"}
               </button>
             </div>
 
@@ -3494,7 +3616,13 @@ export default function TacticalPlaySurface() {
                 style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(255, 80, 80, 0.38)", color: "rgba(255, 190, 190, 0.95)", width: "100%", justifyContent: "center", height: "30px" }}
                 onClick={() => {
                   if (!canRecord()) {
-                    alert("Recording is not supported in this browser.\n\niPhone: use Screen Recording from Control Centre.\nAndroid: use Chrome for full recording support.");
+                    setConfirmSheet({
+                      variant: "alert",
+                      message: "Recording is not supported in this browser.\n\niPhone: use Screen Recording from Control Centre.\nAndroid: use Chrome for full recording support.",
+                      confirmLabel: "OK",
+                      onConfirm: () => setConfirmSheet(null),
+                      onCancel: () => setConfirmSheet(null),
+                    });
                     return;
                   }
                   setRecordPhase("panel");
@@ -3609,6 +3737,9 @@ export default function TacticalPlaySurface() {
                   delayMs,
                 });
               }}
+              onRemovePass={(id) => {
+                shellRef.current?.removePassEvent(id);
+              }}
               onBallChoice={(ballType) => {
                 const shell = shellRef.current;
                 if (!shell) return;
@@ -3651,6 +3782,7 @@ export default function TacticalPlaySurface() {
             />
           );
         })() : null}
+        {confirmSheet && <ConfirmSheet {...confirmSheet} />}
       </div>
     </OrientationGate>
   );
