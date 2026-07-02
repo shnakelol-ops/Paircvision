@@ -1061,8 +1061,9 @@ function makeSegmentsPage(
   const canvas = document.createElement("canvas");
   canvas.width = CANVAS_W;
   canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -1753,8 +1754,9 @@ function makeChainSummaryPage(
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -2133,8 +2135,9 @@ function makeKickoutChainPage(
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -2580,8 +2583,9 @@ function makeTurnoverPunishmentPage(
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -3001,8 +3005,9 @@ function makeMomentumRunsPage(
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -3498,8 +3503,9 @@ function makeTacticalIntelligencePage(
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -3956,8 +3962,9 @@ function makeTacticalReviewGuidePage(
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -4134,8 +4141,9 @@ function makeOppositionSnapshotPage(
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -4551,8 +4559,9 @@ function makeZoneAnalysisPage(
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -4854,8 +4863,9 @@ function makeMatchSwingTimelinePage(
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -5302,8 +5312,9 @@ function makeShotEfficiencyPage(
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
 
   const validEvts = events.filter((e) => !e.id.includes("-instant-score-"));
 

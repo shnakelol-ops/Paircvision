@@ -27,8 +27,8 @@ function normalizeToZoneCoordinate(value: number, zoneMap: ZoneMap): number {
 }
 
 function extractCoordinateValue(
-  primary: number | undefined,
-  fallback: number | undefined,
+  primary: number | null | undefined,
+  fallback: number | null | undefined,
   zoneMap: ZoneMap,
 ): number | null {
   const sourceValue = typeof primary === "number" && Number.isFinite(primary)

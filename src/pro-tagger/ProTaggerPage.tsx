@@ -8,7 +8,7 @@ import type { RestoreState } from "./ProTaggerLiveScreen";
 import { ProTaggerSavedMatchesScreen } from "./ProTaggerSavedMatchesScreen";
 import { ProTaggerReviewScreen } from "./ProTaggerReviewScreen";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
-import { readProTaggerMatches } from "./pro-tagger-storage";
+import { readProTaggerMatches, saveProTaggerMatchFull } from "./pro-tagger-storage";
 
 type AppPhase = "home" | "setup" | "squads" | "live" | "saved-matches" | "review";
 
@@ -39,12 +39,26 @@ function savedMatchToRestoreState(m: ProTaggerSavedMatch): RestoreState {
   };
 }
 
+// Autosave (see ProTaggerLiveScreen) keeps every in-progress match written to the
+// same store as manual Save Match, so recovery after a refresh/crash is just:
+// find the most recent match that hasn't reached Full Time and offer to resume it.
+function findInProgressMatch(): ProTaggerSavedMatch | null {
+  return readProTaggerMatches().find((m) => m.restoreContext.matchState !== "FULL_TIME") ?? null;
+}
+
 export default function ProTaggerPage() {
   const [phase, setPhase]               = useState<AppPhase>("home");
   const [draftSession, setDraftSession] = useState<ProTaggerSession | null>(null);
   const [restoreState, setRestoreState] = useState<RestoreState | undefined>(undefined);
   const [savedCount, setSavedCount]     = useState(() => readProTaggerMatches().length);
   const [reviewMatch, setReviewMatch]   = useState<ProTaggerSavedMatch | null>(null);
+  const [inProgressMatch, setInProgressMatch] = useState<ProTaggerSavedMatch | null>(() => findInProgressMatch());
+
+  function resumeMatch(match: ProTaggerSavedMatch) {
+    setDraftSession(savedMatchToSession(match));
+    setRestoreState(savedMatchToRestoreState(match));
+    setPhase("live");
+  }
 
   // ── Home landing ────────────────────────────────────────────────────────────
 
@@ -59,6 +73,17 @@ export default function ProTaggerPage() {
           <div style={H.logoWrap}>
             <img src="/pv-logo-icon.svg" alt="PáircVision" style={H.logo} />
           </div>
+          {inProgressMatch && (
+            <button
+              style={H.resumeBtn}
+              onClick={() => resumeMatch(inProgressMatch)}
+            >
+              <span>Resume in-progress match</span>
+              <small style={H.resumeSub}>
+                {inProgressMatch.scorelineSnapshot || `${inProgressMatch.homeTeamName} v ${inProgressMatch.awayTeamName}`}
+              </small>
+            </button>
+          )}
           <button
             style={H.primaryBtn}
             onClick={() => setPhase("setup")}
@@ -69,6 +94,7 @@ export default function ProTaggerPage() {
             style={H.secondaryBtn}
             onClick={() => {
               setSavedCount(readProTaggerMatches().length);
+              setInProgressMatch(findInProgressMatch());
               setPhase("saved-matches");
             }}
           >
@@ -89,15 +115,10 @@ export default function ProTaggerPage() {
       <ProTaggerSavedMatchesScreen
         onBack={() => {
           setSavedCount(readProTaggerMatches().length);
+          setInProgressMatch(findInProgressMatch());
           setPhase("home");
         }}
-        onOpen={(match: ProTaggerSavedMatch) => {
-          const session      = savedMatchToSession(match);
-          const restore      = savedMatchToRestoreState(match);
-          setDraftSession(session);
-          setRestoreState(restore);
-          setPhase("live");
-        }}
+        onOpen={resumeMatch}
         onReview={(match: ProTaggerSavedMatch) => {
           setReviewMatch(match);
           setPhase("review");
@@ -113,6 +134,10 @@ export default function ProTaggerPage() {
       <ProTaggerReviewScreen
         match={reviewMatch}
         onBack={() => setPhase("saved-matches")}
+        onMatchUpdate={(updated) => {
+          saveProTaggerMatchFull(updated);
+          setReviewMatch(updated);
+        }}
       />
     );
   }
@@ -157,6 +182,7 @@ export default function ProTaggerPage() {
           setDraftSession(null);
           setRestoreState(undefined);
           setSavedCount(readProTaggerMatches().length);
+          setInProgressMatch(findInProgressMatch());
           setPhase("home");
         }}
       />
@@ -212,6 +238,30 @@ const H: Record<string, CSSProperties> = {
     borderRadius: 20,
     display: "block",
     filter: "drop-shadow(0 0 14px rgba(122,255,178,0.18))",
+  },
+  resumeBtn: {
+    background: "rgba(31,111,235,0.1)",
+    border: "1px solid #1f6feb",
+    borderRadius: 12,
+    color: "#79c0ff",
+    fontSize: 15,
+    fontWeight: 700,
+    padding: "14px 0",
+    width: "100%",
+    maxWidth: 360,
+    cursor: "pointer",
+    outline: "none",
+    letterSpacing: "-0.2px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  resumeSub: {
+    fontSize: 12,
+    fontWeight: 500,
+    color: "#8b949e",
   },
   primaryBtn: {
     background: "#238636",

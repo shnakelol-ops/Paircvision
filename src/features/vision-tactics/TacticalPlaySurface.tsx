@@ -881,7 +881,7 @@ export default function TacticalPlaySurface() {
   const [tokenSizeState, setTokenSizeState] = useState<TokenSize>("medium");
   const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("pixi");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
-  const [awayColor, setAwayColorState] = useState<PremiumPlayerTokenColor>("red");
+  const [, setAwayColorState] = useState<PremiumPlayerTokenColor>("red");
   const [awayTokenIds, setAwayTokenIds] = useState<Set<string>>(() => new Set());
   const [routes, setRoutes] = useState<MovementBoardRoute[]>([]);
   const [tokenNumberById, setTokenNumberById] = useState<Record<string, number>>({});
@@ -1468,13 +1468,6 @@ export default function TacticalPlaySurface() {
     setPrimaryColorState(color);
   };
 
-  const onSetAwayColor = (color: PremiumPlayerTokenColor) => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    shell.setTokens(shell.getTokens().map((t) => (t.team === "away" ? { ...t, color } : t)));
-    setAwayColorState(color);
-  };
-
   const onSelectBallType = (ballType: BallType) => {
     shellRef.current?.placeBall(ballType);
     setBallMenuStep(null);
@@ -1866,34 +1859,6 @@ export default function TacticalPlaySurface() {
     if (!shell) return;
     const homeIds = new Set(shell.getTokens().filter((t) => t.team !== "away").map((t) => t.id));
     removePlayersById(homeIds);
-  };
-
-  const fillAwayTeam = () => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    const tokens = shell.getTokens();
-    const usedNums = new Set(tokens.filter((t) => t.team === "away").map((t) => t.number));
-    const newTokens: MovementBoardToken[] = [];
-    const newNums: Record<string, number> = {};
-    const newIds: string[] = [];
-    for (let n = 1; n <= 15; n += 1) {
-      if (usedNums.has(n)) continue;
-      const id = `token-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-a${n}`;
-      newTokens.push({ id, number: n, color: awayColor, position: getFormationPos("away", n), team: "away" });
-      newNums[id] = n;
-      newIds.push(id);
-    }
-    if (newTokens.length === 0) return;
-    shell.setTokens([...tokens, ...newTokens]);
-    setAwayTokenIds((prev) => new Set([...prev, ...newIds]));
-    setTokenNumberById((prev) => ({ ...prev, ...newNums }));
-  };
-
-  const clearAwayTeam = () => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    const awayIds = new Set(shell.getTokens().filter((t) => t.team === "away").map((t) => t.id));
-    removePlayersById(awayIds);
   };
 
   const onAddPlayer = () => {

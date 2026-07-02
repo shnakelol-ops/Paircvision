@@ -18,6 +18,7 @@ import type { SelectedPlayer } from "./ProTaggerPlayerPicker";
 import { ProTaggerPitchView } from "./ProTaggerPitchView";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 import { ProTaggerReviewScreen } from "./ProTaggerReviewScreen";
+import { computeScoreSide, fmtGP, fmtScore } from "./pro-tagger-score";
 
 export interface RestoreState {
   events: readonly LoggedMatchEvent[];
@@ -78,34 +79,6 @@ type PendingAction = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function newEventId(): string {
-  const c = globalThis.crypto;
-  if (c && typeof c.randomUUID === "function") return c.randomUUID();
-  return `pro-evt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function computeScoreSide(
-  events: readonly LoggedMatchEvent[],
-  side: "FOR" | "OPP",
-): { goals: number; points: number; total: number } {
-  const scored      = events.filter((e) => e.teamSide === side);
-  const goals       = scored.filter((e) => e.kind === "GOAL").length;
-  const onePointers = scored.filter((e) => e.kind === "POINT").length;
-  const twoPointers = scored.filter((e) =>
-    (["TWO_POINTER", "FORTY_FIVE_TWO_POINT"] as MatchEventKind[]).includes(e.kind),
-  ).length;
-  const pts = onePointers + twoPointers * 2;
-  return { goals, points: pts, total: goals * 3 + pts };
-}
-
-function fmtGP(goals: number, points: number): string {
-  return `${goals}-${String(points).padStart(2, "0")}`;
-}
-
-function fmtScore(s: { goals: number; points: number; total: number }): string {
-  return `${s.goals}-${String(s.points).padStart(2, "0")} (${s.total})`;
-}
 
 function fmtClock(s: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -234,6 +207,11 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const [half, setHalf]                 = useState<1 | 2>(restoreState?.half ?? 1);
   const [clockSeconds, setClockSeconds] = useState(restoreState?.clockSeconds ?? 0);
   const [matchState, setMatchState]     = useState<MatchState>(restoreState?.matchState ?? "PRE_MATCH");
+  // Whether the live clock interval is actually ticking. A freshly-restored match
+  // that was saved mid-half always starts paused — the clock must not resume, and
+  // tagging must not be allowed, until the coach explicitly taps Resume Match.
+  // This prevents new events from being timestamped with stale, frozen clock data.
+  const [clockRunning, setClockRunning] = useState(false);
   const [feedbackDot, setFeedbackDot]   = useState<{ nx: number; ny: number } | null>(null);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [wrongWayActive, setWrongWayActive] = useState(false);
@@ -259,6 +237,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const [actionsOpen, setActionsOpen]           = useState(false);
   const [notesOpen, setNotesOpen]               = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [htConfirmOpen, setHtConfirmOpen]       = useState(false);
+  const [ftConfirmOpen, setFtConfirmOpen]       = useState(false);
   const [actionsFeedback, setActionsFeedback]   = useState<string | null>(null);
   const [pdfExporting, setPdfExporting]         = useState<"ht" | "ft" | "full" | null>(null);
 
@@ -269,6 +249,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const loggedRef              = useRef<readonly LoggedMatchEvent[]>(restoreState?.events ?? []);
   const feedbackTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const matchStateRef          = useRef<MatchState>(restoreState?.matchState ?? "PRE_MATCH");
+  const clockRunningRef        = useRef(false);
   const wrongWayActiveRef      = useRef(false);
   const wrongWayTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const actionsFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -277,6 +258,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   useEffect(() => { halfRef.current = half; }, [half]);
   useEffect(() => { loggedRef.current = loggedEvents; }, [loggedEvents]);
   useEffect(() => { matchStateRef.current = matchState; }, [matchState]);
+  useEffect(() => { clockRunningRef.current = clockRunning; }, [clockRunning]);
   useEffect(() => { wrongWayActiveRef.current = wrongWayActive; }, [wrongWayActive]);
 
   useEffect(() => {
@@ -290,16 +272,25 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
 
   // ── Match flow transitions ────────────────────────────────────────────────
 
-  const handleStartMatch = useCallback(() => {
-    clockSecondsRef.current = 0;
-    setClockSeconds(0);
-    clockStartRef.current = Date.now();
+  // Starts (or restarts) the 500ms clock tick from clockSecondsRef.current.
+  // Shared by first-half start, second-half start, and resume-after-reload —
+  // the only three places the clock is allowed to begin ticking.
+  function startClockInterval() {
+    clockStartRef.current = Date.now() - clockSecondsRef.current * 1000;
     if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
     clockIntervalRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - clockStartRef.current!) / 1000);
       clockSecondsRef.current = elapsed;
       setClockSeconds(elapsed);
     }, 500);
+    clockRunningRef.current = true;
+    setClockRunning(true);
+  }
+
+  const handleStartMatch = useCallback(() => {
+    clockSecondsRef.current = 0;
+    setClockSeconds(0);
+    startClockInterval();
     halfRef.current = 1;
     setHalf(1);
     matchStateRef.current = "FIRST_HALF";
@@ -311,6 +302,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
       clearInterval(clockIntervalRef.current);
       clockIntervalRef.current = null;
     }
+    clockRunningRef.current = false;
+    setClockRunning(false);
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     if (wrongWayTimerRef.current) { clearTimeout(wrongWayTimerRef.current); wrongWayTimerRef.current = null; }
     wrongWayActiveRef.current = false;
@@ -328,13 +321,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   }, []);
 
   const handleStartSecondHalf = useCallback(() => {
-    clockStartRef.current = Date.now() - clockSecondsRef.current * 1000;
-    if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
-    clockIntervalRef.current = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - clockStartRef.current!) / 1000);
-      clockSecondsRef.current = elapsed;
-      setClockSeconds(elapsed);
-    }, 500);
+    startClockInterval();
     halfRef.current = 2;
     setHalf(2);
     matchStateRef.current = "SECOND_HALF";
@@ -346,13 +333,23 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Resumes a match that was reopened mid-half (restoreState.matchState is
+  // FIRST_HALF/SECOND_HALF but the clock interval was never started this
+  // session). Continues ticking from the saved elapsed time — never resets it.
+  const handleResumeClock = useCallback(() => {
+    startClockInterval();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Capture flow ──────────────────────────────────────────────────────────
 
-  // Tagging is only allowed during active halves.
+  // Tagging is only allowed during active halves with the clock actually running —
+  // never while paused/frozen (pre-resume), which would timestamp events with stale data.
   const handleTileTap = useCallback(
     (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP", restartOwner?: "FOR" | "OPP") => {
       const ms = matchStateRef.current;
       if (ms !== "FIRST_HALF" && ms !== "SECOND_HALF") return;
+      if (!clockRunningRef.current) return;
       setPending({ familyId, tileLabel, teamSide, restartOwner, player: null, playerResolved: false });
       setPhase("PLAYER_PICK");
     },
@@ -510,28 +507,30 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     setReviewOpen(true);
   }, [session, homeSquadState, awaySquadState]);
 
-  // Used only by FT "Save & Finish" — saves AND exits.
-  const handleSaveAndEnd = useCallback(() => {
-    const events = loggedRef.current;
-    if (events.length === 0) {
-      setSaveFeedback("No events to save.");
-      setTimeout(() => setSaveFeedback(null), 2000);
-      return;
-    }
-
+  // Shared by manual Save Match, Save & Finish, and autosave so every write uses
+  // the same stable id (session.id) — an upsert, never a duplicate — and the same
+  // field derivation. Previously each call site minted a fresh random matchId,
+  // which meant saving twice in one live session created two separate saved
+  // matches instead of updating one.
+  const buildSaveRecords = useCallback((events: readonly LoggedMatchEvent[]): {
+    record: SavedMatch;
+    fullRecord: ProTaggerSavedMatch;
+  } => {
     const home  = session.homeTeamName.trim() || "Team A";
     const away  = session.awayTeamName.trim() || "Team B";
     const venue = session.venue.trim() || "Unknown venue";
     const currentMatchState = matchStateRef.current;
+    const restoreMatchState = currentMatchState === "FULL_TIME"
+      ? "FULL_TIME"
+      : halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF";
 
     const forScore = computeScoreSide(events, "FOR");
     const oppScore = computeScoreSide(events, "OPP");
     const scoreSnap = `${home} ${fmtScore(forScore)} v ${away} ${fmtScore(oppScore)}`;
-    const matchId = `pro-tagger-${newEventId()}`;
 
     const record: SavedMatch = {
-      id:                matchId,
-      createdAt:         Date.now(),
+      id:                session.id,
+      createdAt:         session.createdAt,
       label:             `${home} v ${away}`,
       homeTeamName:      home,
       awayTeamName:      away,
@@ -540,7 +539,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
       eventCount:        events.length,
       scorelineSnapshot: scoreSnap,
       restoreContext: {
-        matchState:                  currentMatchState === "FULL_TIME" ? "FULL_TIME" : halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF",
+        matchState:                  restoreMatchState,
         currentHalf:                 halfRef.current,
         matchTimeSeconds:            clockSecondsRef.current,
         firstHalfAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
@@ -549,8 +548,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     };
 
     const fullRecord: ProTaggerSavedMatch = {
-      id:                  matchId,
-      createdAt:           record.createdAt,
+      id:                  session.id,
+      createdAt:           session.createdAt,
       homeTeamName:        home,
       awayTeamName:        away,
       venue,
@@ -565,7 +564,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
       homeSquadLiveState:  homeSquadState,
       awaySquadLiveState:  awaySquadState,
       restoreContext: {
-        matchState:                  currentMatchState === "FULL_TIME" ? "FULL_TIME" : halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF",
+        matchState:                  restoreMatchState,
         currentHalf:                 halfRef.current,
         matchTimeSeconds:            clockSecondsRef.current,
         firstHalfAttackingDirection: session.attackDirection,
@@ -573,6 +572,48 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
       targets: session.targets,
     };
 
+    return { record, fullRecord };
+  }, [session, homeSquadState, awaySquadState]);
+
+  // ── Autosave ────────────────────────────────────────────────────────────────
+  // Debounced background save so a refresh, crash, or accidental tab close mid-half
+  // never loses the whole half. Writes to the same upsert-by-id store as manual
+  // Save Match, so a recovered draft shows up in Saved Matches and the home-screen
+  // "Resume in-progress match" banner without any separate recovery mechanism.
+  useEffect(() => {
+    if (matchState === "PRE_MATCH" && loggedEvents.length === 0) return;
+    const timer = setTimeout(() => {
+      const { fullRecord } = buildSaveRecords(loggedRef.current);
+      saveProTaggerMatchFull(fullRecord);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [loggedEvents, matchState, half, buildSaveRecords]);
+
+  // Best-effort synchronous flush right before the tab closes/refreshes/navigates
+  // away, so the debounce window above can't silently drop the last few events.
+  useEffect(() => {
+    const hasLiveMatchState = loggedEvents.length > 0 || matchState !== "PRE_MATCH";
+    if (!hasLiveMatchState) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      const { fullRecord } = buildSaveRecords(loggedRef.current);
+      saveProTaggerMatchFull(fullRecord);
+      event.preventDefault();
+      event.returnValue = "Save match before leaving or refreshing.";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [loggedEvents.length, matchState, buildSaveRecords]);
+
+  // Used only by FT "Save & Finish" — saves AND exits.
+  const handleSaveAndEnd = useCallback(() => {
+    const events = loggedRef.current;
+    if (events.length === 0) {
+      setSaveFeedback("No events to save.");
+      setTimeout(() => setSaveFeedback(null), 2000);
+      return;
+    }
+
+    const { record, fullRecord } = buildSaveRecords(events);
     saveProTaggerMatch(record);
     const ok = saveProTaggerMatchFull(fullRecord);
     if (!ok) {
@@ -581,7 +622,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
       return;
     }
     onEnd();
-  }, [session, onEnd, homeSquadState, awaySquadState]);
+  }, [buildSaveRecords, onEnd]);
 
   // Actions → Save Match: saves to localStorage, stays in match, no onEnd().
   const handleSaveMatch = useCallback(() => {
@@ -594,60 +635,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
       return;
     }
 
-    const home  = session.homeTeamName.trim() || "Team A";
-    const away  = session.awayTeamName.trim() || "Team B";
-    const venue = session.venue.trim() || "Unknown venue";
-    const currentMatchState = matchStateRef.current;
-
-    const forScore = computeScoreSide(events, "FOR");
-    const oppScore = computeScoreSide(events, "OPP");
-    const scoreSnap = `${home} ${fmtScore(forScore)} v ${away} ${fmtScore(oppScore)}`;
-    const matchId = `pro-tagger-${newEventId()}`;
-
-    const record: SavedMatch = {
-      id:                matchId,
-      createdAt:         Date.now(),
-      label:             `${home} v ${away}`,
-      homeTeamName:      home,
-      awayTeamName:      away,
-      venue,
-      events:            events as LoggedMatchEvent[],
-      eventCount:        events.length,
-      scorelineSnapshot: scoreSnap,
-      restoreContext: {
-        matchState:                  currentMatchState === "FULL_TIME" ? "FULL_TIME" : halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF",
-        currentHalf:                 halfRef.current,
-        matchTimeSeconds:            clockSecondsRef.current,
-        firstHalfAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
-      },
-      targets: session.targets,
-    };
-
-    const fullRecord: ProTaggerSavedMatch = {
-      id:                  matchId,
-      createdAt:           record.createdAt,
-      homeTeamName:        home,
-      awayTeamName:        away,
-      venue,
-      sport:               session.sport,
-      matchType:           session.matchType,
-      halfDurationMinutes: session.halfDurationMinutes,
-      scorelineSnapshot:   scoreSnap,
-      eventCount:          events.length,
-      events:              events as LoggedMatchEvent[],
-      homeSquad:           session.homeSquad,
-      awaySquad:           session.awaySquad,
-      homeSquadLiveState:  homeSquadState,
-      awaySquadLiveState:  awaySquadState,
-      restoreContext: {
-        matchState:                  currentMatchState === "FULL_TIME" ? "FULL_TIME" : halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF",
-        currentHalf:                 halfRef.current,
-        matchTimeSeconds:            clockSecondsRef.current,
-        firstHalfAttackingDirection: session.attackDirection,
-      },
-      targets: session.targets,
-    };
-
+    const { record, fullRecord } = buildSaveRecords(events);
     saveProTaggerMatch(record);
     const ok = saveProTaggerMatchFull(fullRecord);
     if (!ok) {
@@ -658,7 +646,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     setActionsFeedback("✓ Match saved");
     actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
     setActionsOpen(false);
-  }, [session, homeSquadState, awaySquadState]);
+  }, [buildSaveRecords]);
 
   // Actions → Share Summary PNG.
   const handleShare = useCallback(async () => {
@@ -817,6 +805,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const subCanConfirm    = subOutId !== null && subInId !== null;
 
   const isActivePlaying = matchState === "FIRST_HALF" || matchState === "SECOND_HALF";
+  // A resumed-mid-half match starts paused (clockRunning=false) until the coach
+  // explicitly confirms; tagging and normal controls stay hidden until then.
+  const needsClockResume = isActivePlaying && !clockRunning;
+  const isLiveTagging = isActivePlaying && clockRunning;
   const isHurlingOrCamogie = session.sport === "hurling" || session.sport === "camogie";
 
   // CTS counts — only computed when CTS sheet is open.
@@ -851,13 +843,13 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           {matchState === "PRE_MATCH" && (
             <button onClick={handleStartMatch} style={S.startBtn}>▶ Start</button>
           )}
-          {matchState === "FIRST_HALF" && (
-            <button onClick={handleHalfTime} style={S.htBtn}>HT</button>
+          {matchState === "FIRST_HALF" && clockRunning && (
+            <button onClick={() => setHtConfirmOpen(true)} style={S.htBtn}>HT</button>
           )}
-          {matchState === "SECOND_HALF" && (
-            <button onClick={handleFullTime} style={S.ftBtn}>FT</button>
+          {matchState === "SECOND_HALF" && clockRunning && (
+            <button onClick={() => setFtConfirmOpen(true)} style={S.ftBtn}>FT</button>
           )}
-          {isActivePlaying && (
+          {isLiveTagging && (
             <button style={S.subsBtn} onClick={openSubSheet}>⇄ Subs</button>
           )}
 
@@ -947,9 +939,38 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         </div>
       )}
 
+      {needsClockResume && (
+        <div style={S.breakScreen}>
+          <span style={S.breakLabel}>MATCH REOPENED</span>
+          <span style={S.resumeHint}>
+            This match was reloaded mid-{half === 2 ? "second" : "first"}-half. The clock is
+            paused at {fmtClock(clockSeconds)} — tap Resume to continue timing and logging.
+          </span>
+          <div style={S.breakScoreLine}>
+            <span style={S.breakScoreTeam}>{homeLabel}</span>
+            <span style={S.breakScoreValue}>
+              {fmtGP(forScore.goals, forScore.points)}
+            </span>
+            <span style={S.breakScoreVSep}>–</span>
+            <span style={S.breakScoreValue}>
+              {fmtGP(oppScore.goals, oppScore.points)}
+            </span>
+            <span style={S.breakScoreTeam}>{awayLabel}</span>
+          </div>
+          <button onClick={handleResumeClock} style={S.resumeBtn}>
+            RESUME MATCH
+          </button>
+          {loggedEvents.length > 0 && (
+            <button style={S.reviewMapBtn} onClick={openReview}>
+              Event Map
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ══ NORMAL CAPTURE FLOW (hidden during break screens) ═══════════════ */}
 
-      {matchState !== "HALF_TIME" && matchState !== "FULL_TIME" && (
+      {matchState !== "HALF_TIME" && matchState !== "FULL_TIME" && !needsClockResume && (
         <>
           {/* SCREEN: IDLE */}
           {phase === "IDLE" && (
@@ -1317,6 +1338,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           <ProTaggerReviewScreen
             match={reviewMatch}
             onBack={() => setReviewOpen(false)}
+            onMatchUpdate={(updated) => setLoggedEvents(updated.events)}
           />
         </div>
       )}
@@ -1335,6 +1357,46 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               </button>
               <button style={RC.confirmBtn} onClick={handleReset}>
                 Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Half-time confirm overlay ─────────────────────────────────── */}
+      {htConfirmOpen && (
+        <div style={RC.overlay} onClick={() => setHtConfirmOpen(false)}>
+          <div style={RC.sheet} onClick={(e) => e.stopPropagation()}>
+            <span style={RC.title}>End first half?</span>
+            <span style={RC.body}>
+              The clock will pause and tagging will lock until you start the second half.
+            </span>
+            <div style={RC.btnRow}>
+              <button style={RC.cancelBtn} onClick={() => setHtConfirmOpen(false)}>
+                Cancel
+              </button>
+              <button style={RC.confirmBtn} onClick={() => { setHtConfirmOpen(false); handleHalfTime(); }}>
+                End Half
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Full-time confirm overlay ─────────────────────────────────── */}
+      {ftConfirmOpen && (
+        <div style={RC.overlay} onClick={() => setFtConfirmOpen(false)}>
+          <div style={RC.sheet} onClick={(e) => e.stopPropagation()}>
+            <span style={RC.title}>Finish match?</span>
+            <span style={RC.body}>
+              The clock will stop and no further events can be logged for this match.
+            </span>
+            <div style={RC.btnRow}>
+              <button style={RC.cancelBtn} onClick={() => setFtConfirmOpen(false)}>
+                Cancel
+              </button>
+              <button style={RC.confirmBtn} onClick={() => { setFtConfirmOpen(false); handleFullTime(); }}>
+                Finish Match
               </button>
             </div>
           </div>
@@ -1554,6 +1616,14 @@ const S: Record<string, CSSProperties> = {
     color: "#e6edf3",
     letterSpacing: "0.06em",
     textAlign: "center" as const,
+  },
+  resumeHint: {
+    fontSize: 13,
+    fontWeight: 500,
+    color: "#8b949e",
+    textAlign: "center" as const,
+    maxWidth: 320,
+    lineHeight: 1.5,
   },
   breakScoreLine: {
     display: "flex",

@@ -4351,7 +4351,7 @@ export default function StatsModeSurface() {
             : {}),
         };
         const activePlayerEntry = activePlayerEntryRef.current;
-        const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? null;
+        const selectedPlayerId = activePlayerIdRef.current ?? activePlayerEntry?.id ?? undefined;
         nextEvent.playerId = selectedPlayerId;
         if (SCORE_EVENT_KINDS.has(event.kind) && pendingScorerRef.current) {
           nextEvent.playerName = pendingScorerRef.current.name;
