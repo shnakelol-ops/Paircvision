@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+import { canCaptureCanvasStream, downloadClipBlob, getBestVideoMimeType, shareClipBlob } from "./mediaClipExport";
+
 export type RecordPhase = "idle" | "panel" | "countdown" | "recording" | "done";
 export type MicStatus = "off" | "requesting" | "active" | "denied" | "unavailable";
 
@@ -93,42 +95,6 @@ export function useCanvasRecorder(params: {
       revokeBlobUrl();
     };
   }, []);
-
-  function getBestMimeType(): string {
-    if (typeof MediaRecorder === "undefined") return "video/webm";
-    // Probe in preference order.
-    //
-    // H.264+AAC in MP4 first — this is the only combination WhatsApp reliably
-    // preserves audio for. The specific codec strings are tested before the
-    // generic "video/mp4" because "video/mp4" alone may be honoured by the
-    // browser but produce VP9+Opus internally (observed on Chrome for Android).
-    //
-    // VP9+Opus in WebM before generic "video/mp4" so that devices without an
-    // H.264 hardware encoder land on correctly-labelled WebM rather than
-    // VP9+Opus mislabelled as MP4.
-    //
-    // Generic "video/mp4" is kept as a last resort only.
-    const candidates = [
-      "video/mp4;codecs=avc1.42E01E,mp4a.40.2",  // H.264 Baseline + AAC-LC
-      "video/mp4;codecs=avc1,mp4a.40.2",          // H.264 + AAC shorthand
-      "video/webm;codecs=vp9,opus",               // VP9+Opus in WebM (correct label)
-      "video/webm;codecs=vp8,opus",
-      "video/webm",
-      "video/mp4",                                // last resort — may produce VP9/Opus-in-MP4
-    ] as const;
-    const support = candidates.map((t) => `${t}:${MediaRecorder.isTypeSupported(t)}`);
-    console.debug("[PV REC] isTypeSupported audit:", support.join(" | "));
-    for (const t of candidates) {
-      if (MediaRecorder.isTypeSupported(t)) return t;
-    }
-    return "video/webm";
-  }
-
-  function canRecord(): boolean {
-    if (typeof window === "undefined" || typeof MediaRecorder === "undefined") return false;
-    const c = document.createElement("canvas");
-    return typeof (c as HTMLCanvasElement & { captureStream?: unknown }).captureStream === "function";
-  }
 
   const stopRecording = () => {
     if (recordTimerRef.current) { clearTimeout(recordTimerRef.current); recordTimerRef.current = null; }
@@ -232,7 +198,7 @@ export function useCanvasRecorder(params: {
     setRecordPhase("countdown");
     setRecordCountdown(3);
     let count = 3;
-    const mimeType = getBestMimeType();
+    const mimeType = getBestVideoMimeType();
     const tick = () => {
       count -= 1;
       if (count <= 0) {
@@ -276,68 +242,21 @@ export function useCanvasRecorder(params: {
     setRecordHasAudio(false);
   };
 
-  // Determines the MIME type and file extension to use when sharing.
-  //
-  // The key case: MediaRecorder on some Chrome for Android versions produces
-  // VP9+Opus bytes when given the generic "video/mp4" MIME type. We detect
-  // this by checking whether the recorded MIME contains an explicit H.264
-  // codec identifier. If not, the file is shared as video/webm so WhatsApp
-  // routes it to a VP9-capable player rather than a H.264-only path.
-  //
-  // This applies to sharing only. saveClip preserves the original container
-  // label because local media players (VLC, QuickTime) handle VP9-in-MP4.
-  function resolveShareMeta(blob: Blob): { mimeType: string; ext: string } {
-    const raw = blob.type || recordMimeType;
-    const base = raw.split(";")[0].trim().toLowerCase();
-    const isMp4Container = base === "video/mp4";
-
-    if (isMp4Container) {
-      // Only treat as a genuine H.264/AAC MP4 if the recorded MIME contained
-      // an explicit H.264 codec string. Generic "video/mp4" may be VP9+Opus.
-      const hasExplicitH264 =
-        recordMimeType.includes("avc1") || recordMimeType.toLowerCase().includes("h264");
-      if (!hasExplicitH264) {
-        // VP9/Opus mislabelled as MP4 — share as WebM so the codec is honest.
-        return { mimeType: "video/webm", ext: "webm" };
-      }
-      return { mimeType: "video/mp4", ext: "mp4" };
-    }
-
-    return { mimeType: "video/webm", ext: "webm" };
-  }
-
   const saveClip = () => {
     if (!recordBlob) return;
-    // Use the actual container format for downloads — local media players handle
-    // VP9-in-MP4 correctly. The WhatsApp MIME correction is for sharing only.
-    const raw = recordBlob.type || recordMimeType;
-    const base = raw.split(";")[0].trim().toLowerCase();
-    const ext = base === "video/mp4" ? "mp4" : "webm";
-    const filename = `paircvision-clip-${Date.now()}.${ext}`;
-    const file = new File([recordBlob], filename, { type: base });
-    const url = URL.createObjectURL(file);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1200);
+    downloadClipBlob(recordBlob, recordMimeType, "paircvision-clip");
   };
 
   const shareClip = async () => {
     if (!recordBlob) return;
     setIsSharing(true);
-    const { mimeType, ext } = resolveShareMeta(recordBlob);
-    const filename = `paircvision-clip-${Date.now()}.${ext}`;
-    const file = new File([recordBlob], filename, { type: mimeType });
     try {
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: "PáircVision Coaching Clip" });
-      } else {
-        saveClip();
-      }
-    } catch {
-      saveClip();
+      await shareClipBlob({
+        blob: recordBlob,
+        requestedMimeType: recordMimeType,
+        filenamePrefix: "paircvision-clip",
+        title: "PáircVision Coaching Clip",
+      });
     } finally {
       setIsSharing(false);
     }
@@ -354,7 +273,7 @@ export function useCanvasRecorder(params: {
     micStatus,
     isSharing,
     setRecordPhase,
-    canRecord,
+    canRecord: canCaptureCanvasStream,
     startCountdown,
     startCountdownWithVoice,
     stopRecording,

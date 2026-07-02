@@ -5,10 +5,11 @@ import { exportBoardSetupAsPng } from "../export/board-png-export";
 import type { SlateTextAnnotation } from "../annotations/slateTextAnnotation";
 import {
   canCaptureCanvasStream,
-  downloadBlob,
-  getBestClipVideoMimeType,
-  shareOrDownloadBlob,
-} from "./coachingClipMedia";
+  downloadClipBlob,
+  getBestVideoMimeType,
+  shareClipBlob,
+} from "../../shared/mediaClipExport";
+import { useAudioRecorder } from "../../shared/useAudioRecorder";
 
 export type CoachingClipFrame = {
   id: string;
@@ -121,9 +122,6 @@ export function useCoachingClip(): CoachingClipHandle {
   const [isSharing, setIsSharing] = useState(false);
 
   const framesRef = useRef<CoachingClipFrame[]>([]);
-  const narrationRecorderRef = useRef<MediaRecorder | null>(null);
-  const narrationStreamRef = useRef<MediaStream | null>(null);
-  const narrationChunksRef = useRef<Blob[]>([]);
   const narrationUrlRef = useRef<string | null>(null);
 
   const exportRecorderRef = useRef<MediaRecorder | null>(null);
@@ -165,15 +163,27 @@ export function useCoachingClip(): CoachingClipHandle {
       framesRef.current.forEach((frame) => URL.revokeObjectURL(frame.url));
       if (narrationUrlRef.current) URL.revokeObjectURL(narrationUrlRef.current);
       if (exportUrlRef.current) URL.revokeObjectURL(exportUrlRef.current);
-      narrationStreamRef.current?.getTracks().forEach((track) => track.stop());
-      const narrationRecorder = narrationRecorderRef.current;
-      if (narrationRecorder && narrationRecorder.state !== "inactive") narrationRecorder.stop();
       const exportRecorder = exportRecorderRef.current;
       if (exportRecorder && exportRecorder.state !== "inactive") exportRecorder.stop();
       exportTimersRef.current.forEach((timer) => window.clearTimeout(timer));
       void exportAudioCtxRef.current?.close();
     };
   }, []);
+
+  const narrationRecorder = useAudioRecorder({
+    onStop: (blob) => {
+      if (narrationUrlRef.current) URL.revokeObjectURL(narrationUrlRef.current);
+      const url = URL.createObjectURL(blob);
+      narrationUrlRef.current = url;
+      setNarrationBlob(blob);
+      setNarrationUrl(url);
+      setNarrationPhase("recorded");
+    },
+    onRecordingError: () => {
+      setNarrationError("Recording failed — please try again.");
+      setNarrationPhase("idle");
+    },
+  });
 
   const addFrame = async (
     surface: TacticalPadLiteSurface,
@@ -226,67 +236,31 @@ export function useCoachingClip(): CoachingClipHandle {
     setCaptureError(null);
   };
 
-  const canRecordNarration = (): boolean => {
-    return (
-      typeof navigator !== "undefined" &&
-      typeof navigator.mediaDevices?.getUserMedia === "function" &&
-      typeof MediaRecorder !== "undefined"
-    );
-  };
+  const canRecordNarration = (): boolean => narrationRecorder.isSupported();
 
   const startNarration = async (): Promise<void> => {
     if (narrationPhase === "recording" || narrationPhase === "requesting") return;
-    if (!canRecordNarration()) {
-      setNarrationError("Voice recording not supported on this device.");
-      return;
-    }
     setNarrationError(null);
     setNarrationPhase("requesting");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      narrationStreamRef.current = stream;
-      narrationChunksRef.current = [];
-      const recorder = new MediaRecorder(stream);
-      narrationRecorderRef.current = recorder;
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) narrationChunksRef.current.push(event.data);
-      };
-      recorder.onstop = () => {
-        const blob = new Blob(narrationChunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        narrationChunksRef.current = [];
-        if (narrationUrlRef.current) URL.revokeObjectURL(narrationUrlRef.current);
-        const url = URL.createObjectURL(blob);
-        narrationUrlRef.current = url;
-        setNarrationBlob(blob);
-        setNarrationUrl(url);
-        setNarrationPhase("recorded");
-        narrationStreamRef.current?.getTracks().forEach((track) => track.stop());
-        narrationStreamRef.current = null;
-      };
-      recorder.onerror = () => {
-        setNarrationError("Recording failed — please try again.");
-        setNarrationPhase("idle");
-        narrationStreamRef.current?.getTracks().forEach((track) => track.stop());
-        narrationStreamRef.current = null;
-      };
-      recorder.start();
-      setNarrationPhase("recording");
-    } catch {
-      setNarrationError("Microphone access denied.");
+    const result = await narrationRecorder.start();
+    if (result.status !== "started") {
+      setNarrationError(
+        result.status === "getUserMedia-failed"
+          ? "Microphone access denied."
+          : "Voice recording not supported on this device.",
+      );
       setNarrationPhase("idle");
+      return;
     }
+    setNarrationPhase("recording");
   };
 
   const stopNarration = (): void => {
-    const recorder = narrationRecorderRef.current;
-    if (recorder && recorder.state !== "inactive") recorder.stop();
+    narrationRecorder.stop();
   };
 
   const clearNarration = (): void => {
-    const recorder = narrationRecorderRef.current;
-    if (recorder && recorder.state !== "inactive") recorder.stop();
-    narrationStreamRef.current?.getTracks().forEach((track) => track.stop());
-    narrationStreamRef.current = null;
+    narrationRecorder.stop();
     if (narrationUrlRef.current) {
       URL.revokeObjectURL(narrationUrlRef.current);
       narrationUrlRef.current = null;
@@ -367,7 +341,7 @@ export function useCoachingClip(): CoachingClipHandle {
       }
 
       const stream = new MediaStream(tracks);
-      const mimeType = getBestClipVideoMimeType();
+      const mimeType = getBestVideoMimeType();
       const recorder = new MediaRecorder(stream, { mimeType });
       exportRecorderRef.current = recorder;
       const chunks: Blob[] = [];
@@ -378,13 +352,18 @@ export function useCoachingClip(): CoachingClipHandle {
       const recordingDone = new Promise<void>((resolve, reject) => {
         recorder.onstop = () => {
           try {
+            // Blob itself is labelled with the base container type only (no codec
+            // params) so playback auto-detects the actual codec from the bitstream —
+            // see getBestVideoMimeType's mp4/webm mismatch note. exportMimeType keeps
+            // the full *requested* string (with codec params) so save/share can tell
+            // a genuine H.264 MP4 apart from VP9 mislabelled as MP4.
             const blobType = mimeType.split(";")[0]!.trim();
             const blob = new Blob(chunks, { type: blobType });
             const url = URL.createObjectURL(blob);
             exportUrlRef.current = url;
             setExportBlob(blob);
             setExportUrl(url);
-            setExportMimeType(blobType);
+            setExportMimeType(mimeType);
             setExportProgress(1);
             setExportPhase("done");
             resolve();
@@ -427,23 +406,19 @@ export function useCoachingClip(): CoachingClipHandle {
 
   const saveClip = (): void => {
     if (!exportBlob) return;
-    const base = exportMimeType.split(";")[0]!.trim().toLowerCase();
-    const ext = base === "video/mp4" ? "mp4" : "webm";
-    downloadBlob(exportBlob, `paircvision-coaching-clip-${Date.now()}.${ext}`);
+    downloadClipBlob(exportBlob, exportMimeType, "paircvision-coaching-clip");
   };
 
   const shareClip = async (): Promise<void> => {
     if (!exportBlob) return;
     setIsSharing(true);
     try {
-      const base = exportMimeType.split(";")[0]!.trim().toLowerCase();
-      const ext = base === "video/mp4" ? "mp4" : "webm";
-      await shareOrDownloadBlob(
-        exportBlob,
-        `paircvision-coaching-clip-${Date.now()}.${ext}`,
-        base,
-        "PáircVision Coaching Clip",
-      );
+      await shareClipBlob({
+        blob: exportBlob,
+        requestedMimeType: exportMimeType,
+        filenamePrefix: "paircvision-coaching-clip",
+        title: "PáircVision Coaching Clip",
+      });
     } finally {
       setIsSharing(false);
     }
