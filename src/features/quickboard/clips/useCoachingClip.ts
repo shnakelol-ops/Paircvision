@@ -30,7 +30,9 @@ export type CoachingSlide = {
 export type ExportPhase = "idle" | "rendering" | "done" | "error";
 
 export const MAX_COACHING_SLIDES = 12;
-const SLIDE_HOLD_SECONDS = 3;
+export const SLIDE_DURATION_OPTIONS_SECONDS = [3, 5, 7, 10] as const;
+export type SlideDurationSeconds = (typeof SLIDE_DURATION_OPTIONS_SECONDS)[number];
+const DEFAULT_SLIDE_DURATION_SECONDS: SlideDurationSeconds = 5;
 const OUTPUT_MAX_DIM = 1280;
 const OUTPUT_FPS = 30;
 
@@ -74,6 +76,9 @@ export type CoachingClipHandle = {
   moveSlideUp: (id: string) => void;
   moveSlideDown: (id: string) => void;
 
+  slideDurationSeconds: SlideDurationSeconds;
+  setSlideDurationSeconds: (seconds: SlideDurationSeconds) => void;
+
   exportPhase: ExportPhase;
   exportProgress: number;
   exportUrl: string | null;
@@ -92,6 +97,9 @@ export function useCoachingClip(): CoachingClipHandle {
   const [slides, setSlides] = useState<CoachingSlide[]>([]);
   const [isCapturing, setIsCapturing] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
+  const [slideDurationSeconds, setSlideDurationSeconds] = useState<SlideDurationSeconds>(
+    DEFAULT_SLIDE_DURATION_SECONDS,
+  );
 
   const [exportPhase, setExportPhase] = useState<ExportPhase>("idle");
   const [exportProgress, setExportProgress] = useState(0);
@@ -102,6 +110,7 @@ export function useCoachingClip(): CoachingClipHandle {
   const [isSharing, setIsSharing] = useState(false);
 
   const slidesRef = useRef<CoachingSlide[]>([]);
+  const slideDurationRef = useRef<SlideDurationSeconds>(DEFAULT_SLIDE_DURATION_SECONDS);
   const exportRecorderRef = useRef<MediaRecorder | null>(null);
   const exportTimersRef = useRef<number[]>([]);
   const exportUrlRef = useRef<string | null>(null);
@@ -111,6 +120,10 @@ export function useCoachingClip(): CoachingClipHandle {
   useEffect(() => {
     slidesRef.current = slides;
   }, [slides]);
+
+  useEffect(() => {
+    slideDurationRef.current = slideDurationSeconds;
+  }, [slideDurationSeconds]);
 
   useEffect(() => {
     exportPhaseRef.current = exportPhase;
@@ -263,7 +276,7 @@ export function useCoachingClip(): CoachingClipHandle {
 
       drawSlide(bitmaps[0]!);
 
-      const perSlideMs = SLIDE_HOLD_SECONDS * 1000;
+      const perSlideMs = slideDurationRef.current * 1000;
 
       const canvasStream = (
         canvas as HTMLCanvasElement & { captureStream(fps: number): MediaStream }
@@ -300,9 +313,23 @@ export function useCoachingClip(): CoachingClipHandle {
       exportTimersRef.current = [];
       recorder.start(200);
 
+      // Some browsers only push a fresh captureStream() frame when the
+      // canvas is actually redrawn, even with a fixed frameRate requested —
+      // a canvas left untouched for the whole hold can starve the recorder
+      // of frames and produce a shorter file than the slide count x
+      // duration implies. Redraw the current slide periodically so the
+      // canvas stays invalidated for the full hold, not just at
+      // transitions.
+      let currentBitmap = bitmaps[0]!;
+      const redrawTimer = window.setInterval(() => {
+        drawSlide(currentBitmap);
+      }, 200);
+      exportTimersRef.current.push(redrawTimer);
+
       for (let i = 1; i < bitmaps.length; i += 1) {
         const bitmap = bitmaps[i]!;
         const timer = window.setTimeout(() => {
+          currentBitmap = bitmap;
           drawSlide(bitmap);
           setExportProgress(Math.min(0.95, i / bitmaps.length));
         }, Math.round(perSlideMs * i));
@@ -310,6 +337,7 @@ export function useCoachingClip(): CoachingClipHandle {
       }
       const stopAt = Math.round(perSlideMs * bitmaps.length) + 150;
       const stopTimer = window.setTimeout(() => {
+        window.clearInterval(redrawTimer);
         if (recorder.state !== "inactive") recorder.stop();
       }, stopAt);
       exportTimersRef.current.push(stopTimer);
@@ -371,6 +399,9 @@ export function useCoachingClip(): CoachingClipHandle {
     clearSlides,
     moveSlideUp,
     moveSlideDown,
+
+    slideDurationSeconds,
+    setSlideDurationSeconds,
 
     exportPhase,
     exportProgress,

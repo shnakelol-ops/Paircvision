@@ -2,7 +2,11 @@ import { type CSSProperties, type RefObject } from "react";
 
 import type { TacticalPadLiteSurface } from "../../../engine/pixi/createTacticalPadLiteSurface";
 import type { SlateTextAnnotation } from "../annotations/slateTextAnnotation";
-import { MAX_COACHING_SLIDES, type CoachingClipHandle } from "./useCoachingClip";
+import {
+  MAX_COACHING_SLIDES,
+  SLIDE_DURATION_OPTIONS_SECONDS,
+  type CoachingClipHandle,
+} from "./useCoachingClip";
 
 type CoachingClipPanelProps = {
   clip: CoachingClipHandle;
@@ -19,7 +23,11 @@ const PANEL_STYLE: CSSProperties = {
   right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
   top: "max(56px, calc(env(safe-area-inset-top, 0px) + 54px))",
   width: "min(280px, calc(100vw - 24px))",
-  maxHeight: "min(78vh, 620px)",
+  // `dvh` (not `vh`) so the cap tracks the actual visible viewport on mobile
+  // browsers that show/hide a toolbar in landscape — plain `vh` can measure
+  // taller than what's really visible, pushing the sticky footer off-screen.
+  maxHeight:
+    "min(78dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 66px))",
   display: "flex",
   flexDirection: "column",
   gap: "8px",
@@ -223,9 +231,37 @@ const DIVIDER_STYLE: CSSProperties = {
 
 const PREVIEW_VIDEO_STYLE: CSSProperties = {
   width: "100%",
+  // Capped so a tall/portrait-shaped slideshow can't push the Save/Share/
+  // Discard row out of the sticky footer — it letterboxes instead.
+  maxHeight: "26dvh",
+  objectFit: "contain",
   borderRadius: "8px",
   background: "#000",
   display: "block",
+};
+
+const DURATION_ROW_STYLE: CSSProperties = {
+  display: "flex",
+  gap: "6px",
+};
+
+const DURATION_BUTTON_STYLE: CSSProperties = {
+  border: "1px solid rgba(212, 228, 244, 0.28)",
+  borderRadius: "8px",
+  background: "rgba(38, 58, 78, 0.7)",
+  color: "#eef7ff",
+  fontSize: "10.5px",
+  fontWeight: 650,
+  padding: "5px 0",
+  cursor: "pointer",
+  flex: "1 1 0",
+};
+
+const DURATION_BUTTON_ACTIVE_STYLE: CSSProperties = {
+  ...DURATION_BUTTON_STYLE,
+  border: "1px solid rgba(100, 200, 140, 0.5)",
+  background: "rgba(20, 70, 45, 0.78)",
+  color: "rgba(190, 255, 210, 0.96)",
 };
 
 export default function CoachingClipPanel({
@@ -344,6 +380,21 @@ export default function CoachingClipPanel({
         <p style={SECTION_LABEL_STYLE}>Export</p>
         {clip.exportPhase === "idle" || clip.exportPhase === "error" ? (
           <>
+            <p style={SECTION_LABEL_STYLE}>Slide length</p>
+            <div style={DURATION_ROW_STYLE}>
+              {SLIDE_DURATION_OPTIONS_SECONDS.map((seconds) => (
+                <button
+                  key={seconds}
+                  type="button"
+                  className="control-button"
+                  style={clip.slideDurationSeconds === seconds ? DURATION_BUTTON_ACTIVE_STYLE : DURATION_BUTTON_STYLE}
+                  onClick={() => clip.setSlideDurationSeconds(seconds)}
+                  aria-pressed={clip.slideDurationSeconds === seconds}
+                >
+                  {seconds}s
+                </button>
+              ))}
+            </div>
             <button
               type="button"
               className="control-button"
