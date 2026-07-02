@@ -25,8 +25,7 @@ const PANEL_STYLE: CSSProperties = {
   gap: "8px",
   padding: "9px",
   borderRadius: "12px",
-  overflowY: "auto",
-  overflowX: "hidden",
+  overflow: "hidden",
   background: "rgba(20, 28, 36, 0.92)",
   border: "1px solid rgba(212, 228, 244, 0.24)",
   boxShadow: "0 12px 26px rgba(0, 0, 0, 0.34)",
@@ -34,6 +33,41 @@ const PANEL_STYLE: CSSProperties = {
   WebkitBackdropFilter: "blur(10px)",
   zIndex: 26,
   fontFamily: "Inter, system-ui, sans-serif",
+};
+
+// The slide list can grow arbitrarily long, but the export action (and its
+// progress/preview once rendering) must always stay on-screen — especially
+// in landscape, where the panel's available height is small. Only this
+// middle section scrolls; the header and the export footer are fixed.
+const BODY_SCROLL_STYLE: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "8px",
+  flex: "1 1 auto",
+  minHeight: 0,
+  overflowY: "auto",
+  overflowX: "hidden",
+};
+
+const HEADER_GROUP_STYLE: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "6px",
+  flexShrink: 0,
+};
+
+const FOOTER_STYLE: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "8px",
+  flexShrink: 0,
+};
+
+const HELPER_TEXT_STYLE: CSSProperties = {
+  margin: 0,
+  color: "rgba(188, 210, 228, 0.78)",
+  fontSize: "9.5px",
+  lineHeight: 1.4,
 };
 
 const HEADER_STYLE: CSSProperties = {
@@ -213,147 +247,153 @@ export default function CoachingClipPanel({
   const atSlideLimit = clip.slides.length >= MAX_COACHING_SLIDES;
 
   return (
-    <div ref={panelRef} style={PANEL_STYLE} role="dialog" aria-modal="false" aria-label="Coaching Clip">
-      <div style={HEADER_STYLE}>
-        <p style={TITLE_STYLE}>🎬 Coaching Clip</p>
-        <button type="button" className="control-button" style={CLOSE_BUTTON_STYLE} onClick={onClose}>
-          Close
-        </button>
-      </div>
-
-      <p style={SECTION_LABEL_STYLE}>Slides · {slideCountLabel}</p>
-      <div style={ROW_STYLE}>
-        <button
-          type="button"
-          className="control-button"
-          style={atSlideLimit ? DISABLED_BUTTON_STYLE : BUTTON_STYLE}
-          onClick={onAddSlide}
-          disabled={atSlideLimit}
-        >
-          + New Slide
-        </button>
-        <button
-          type="button"
-          className="control-button"
-          style={clip.isCapturing || atSlideLimit ? DISABLED_BUTTON_STYLE : PRIMARY_BUTTON_STYLE}
-          onClick={handleSaveAsSlide}
-          disabled={clip.isCapturing || atSlideLimit}
-        >
-          {clip.isCapturing ? "Saving…" : "💾 Save as Slide"}
-        </button>
-        <button
-          type="button"
-          className="control-button"
-          style={clip.slides.length <= 0 ? DISABLED_BUTTON_STYLE : BUTTON_STYLE}
-          onClick={clip.clearSlides}
-          disabled={clip.slides.length <= 0}
-        >
-          Clear Slides
-        </button>
-      </div>
-      {clip.captureError ? <p style={ERROR_TEXT_STYLE}>{clip.captureError}</p> : null}
-      {clip.slides.length > 0 ? (
-        <div style={SLIDE_LIST_STYLE}>
-          {clip.slides.map((slide, index) => (
-            <div key={slide.id} style={SLIDE_CARD_STYLE}>
-              <span style={SLIDE_INDEX_STYLE}>{index + 1}</span>
-              <img src={slide.url} alt={`Slide ${index + 1}`} style={SLIDE_THUMB_STYLE} />
-              <div style={SLIDE_ACTIONS_STYLE}>
-                <button
-                  type="button"
-                  aria-label={`Move slide ${index + 1} up`}
-                  style={index === 0 ? { ...SLIDE_ACTION_BUTTON_STYLE, opacity: 0.35 } : SLIDE_ACTION_BUTTON_STYLE}
-                  disabled={index === 0}
-                  onClick={() => clip.moveSlideUp(slide.id)}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Move slide ${index + 1} down`}
-                  style={
-                    index === clip.slides.length - 1
-                      ? { ...SLIDE_ACTION_BUTTON_STYLE, opacity: 0.35 }
-                      : SLIDE_ACTION_BUTTON_STYLE
-                  }
-                  disabled={index === clip.slides.length - 1}
-                  onClick={() => clip.moveSlideDown(slide.id)}
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Remove slide ${index + 1}`}
-                  style={SLIDE_REMOVE_BUTTON_STYLE}
-                  onClick={() => clip.removeSlide(slide.id)}
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-          ))}
+    <div ref={panelRef} style={PANEL_STYLE} role="dialog" aria-modal="false" aria-label="Coaching Slideshow">
+      <div style={HEADER_GROUP_STYLE}>
+        <div style={HEADER_STYLE}>
+          <p style={TITLE_STYLE}>🎬 Coaching Slideshow</p>
+          <button type="button" className="control-button" style={CLOSE_BUTTON_STYLE} onClick={onClose}>
+            Close
+          </button>
         </div>
-      ) : (
-        <p style={EMPTY_TEXT_STYLE}>
-          No slides yet. Tap New Slide to upload/position an image, annotate it with Tactical Slate tools, then Save
-          as Slide.
-        </p>
-      )}
+        <p style={HELPER_TEXT_STYLE}>Add a picture, mark it up, then save it as a slide.</p>
+      </div>
 
-      <div style={DIVIDER_STYLE} />
-
-      <p style={SECTION_LABEL_STYLE}>Export</p>
-      {clip.exportPhase === "idle" || clip.exportPhase === "error" ? (
-        <>
+      <div style={BODY_SCROLL_STYLE}>
+        <p style={SECTION_LABEL_STYLE}>Slides · {slideCountLabel}</p>
+        <div style={ROW_STYLE}>
           <button
             type="button"
             className="control-button"
-            style={clip.slides.length <= 0 ? DISABLED_BUTTON_STYLE : PRIMARY_BUTTON_STYLE}
-            onClick={() => void clip.generateClip()}
+            style={atSlideLimit ? DISABLED_BUTTON_STYLE : BUTTON_STYLE}
+            onClick={onAddSlide}
+            disabled={atSlideLimit}
+          >
+            + Add Picture Slide
+          </button>
+          <button
+            type="button"
+            className="control-button"
+            style={clip.isCapturing || atSlideLimit ? DISABLED_BUTTON_STYLE : PRIMARY_BUTTON_STYLE}
+            onClick={handleSaveAsSlide}
+            disabled={clip.isCapturing || atSlideLimit}
+          >
+            {clip.isCapturing ? "Saving…" : "💾 Save Current Slide"}
+          </button>
+          <button
+            type="button"
+            className="control-button"
+            style={clip.slides.length <= 0 ? DISABLED_BUTTON_STYLE : BUTTON_STYLE}
+            onClick={clip.clearSlides}
             disabled={clip.slides.length <= 0}
           >
-            Generate Clip
+            Clear Slideshow
           </button>
-          {clip.exportError ? <p style={ERROR_TEXT_STYLE}>{clip.exportError}</p> : null}
-        </>
-      ) : null}
-      {isRendering ? (
-        <>
-          <p style={EMPTY_TEXT_STYLE}>Rendering slideshow…</p>
-          <div style={PROGRESS_TRACK_STYLE}>
-            <div
-              style={{
-                width: `${Math.round(clip.exportProgress * 100)}%`,
-                height: "100%",
-                background: "rgba(100, 220, 150, 0.85)",
-                transition: "width 0.15s linear",
-              }}
-            />
+        </div>
+        {clip.captureError ? <p style={ERROR_TEXT_STYLE}>{clip.captureError}</p> : null}
+        {clip.slides.length > 0 ? (
+          <div style={SLIDE_LIST_STYLE}>
+            {clip.slides.map((slide, index) => (
+              <div key={slide.id} style={SLIDE_CARD_STYLE}>
+                <span style={SLIDE_INDEX_STYLE}>{index + 1}</span>
+                <img src={slide.url} alt={`Slide ${index + 1}`} style={SLIDE_THUMB_STYLE} />
+                <div style={SLIDE_ACTIONS_STYLE}>
+                  <button
+                    type="button"
+                    aria-label={`Move slide ${index + 1} up`}
+                    style={index === 0 ? { ...SLIDE_ACTION_BUTTON_STYLE, opacity: 0.35 } : SLIDE_ACTION_BUTTON_STYLE}
+                    disabled={index === 0}
+                    onClick={() => clip.moveSlideUp(slide.id)}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Move slide ${index + 1} down`}
+                    style={
+                      index === clip.slides.length - 1
+                        ? { ...SLIDE_ACTION_BUTTON_STYLE, opacity: 0.35 }
+                        : SLIDE_ACTION_BUTTON_STYLE
+                    }
+                    disabled={index === clip.slides.length - 1}
+                    onClick={() => clip.moveSlideDown(slide.id)}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Remove slide ${index + 1}`}
+                    style={SLIDE_REMOVE_BUTTON_STYLE}
+                    onClick={() => clip.removeSlide(slide.id)}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        </>
-      ) : null}
-      {clip.exportPhase === "done" && clip.exportUrl ? (
-        <div style={{ display: "grid", gap: "6px" }}>
-          <video src={clip.exportUrl} controls playsInline style={PREVIEW_VIDEO_STYLE} />
-          <div style={ROW_STYLE}>
-            <button type="button" className="control-button" style={BUTTON_STYLE} onClick={clip.saveClip}>
-              💾 Save
-            </button>
+        ) : (
+          <p style={EMPTY_TEXT_STYLE}>
+            No slides yet. Tap Add Picture Slide to upload/position an image, annotate it with Tactical Slate tools,
+            then Save Current Slide.
+          </p>
+        )}
+      </div>
+
+      <div style={FOOTER_STYLE}>
+        <div style={DIVIDER_STYLE} />
+        <p style={SECTION_LABEL_STYLE}>Export</p>
+        {clip.exportPhase === "idle" || clip.exportPhase === "error" ? (
+          <>
             <button
               type="button"
               className="control-button"
-              style={clip.isSharing ? DISABLED_BUTTON_STYLE : BUTTON_STYLE}
-              onClick={() => void clip.shareClip()}
-              disabled={clip.isSharing}
+              style={clip.slides.length <= 0 ? DISABLED_BUTTON_STYLE : PRIMARY_BUTTON_STYLE}
+              onClick={() => void clip.generateClip()}
+              disabled={clip.slides.length <= 0}
             >
-              {clip.isSharing ? "Sharing…" : "📤 Share"}
+              Generate Slideshow
             </button>
-            <button type="button" className="control-button" style={BUTTON_STYLE} onClick={clip.resetExport}>
-              Discard
-            </button>
+            {clip.exportError ? <p style={ERROR_TEXT_STYLE}>{clip.exportError}</p> : null}
+          </>
+        ) : null}
+        {isRendering ? (
+          <>
+            <p style={EMPTY_TEXT_STYLE}>Rendering slideshow…</p>
+            <div style={PROGRESS_TRACK_STYLE}>
+              <div
+                style={{
+                  width: `${Math.round(clip.exportProgress * 100)}%`,
+                  height: "100%",
+                  background: "rgba(100, 220, 150, 0.85)",
+                  transition: "width 0.15s linear",
+                }}
+              />
+            </div>
+          </>
+        ) : null}
+        {clip.exportPhase === "done" && clip.exportUrl ? (
+          <div style={{ display: "grid", gap: "6px" }}>
+            <video src={clip.exportUrl} controls playsInline style={PREVIEW_VIDEO_STYLE} />
+            <div style={ROW_STYLE}>
+              <button type="button" className="control-button" style={BUTTON_STYLE} onClick={clip.saveClip}>
+                💾 Save
+              </button>
+              <button
+                type="button"
+                className="control-button"
+                style={clip.isSharing ? DISABLED_BUTTON_STYLE : BUTTON_STYLE}
+                onClick={() => void clip.shareClip()}
+                disabled={clip.isSharing}
+              >
+                {clip.isSharing ? "Sharing…" : "📤 Share"}
+              </button>
+              <button type="button" className="control-button" style={BUTTON_STYLE} onClick={clip.resetExport}>
+                Discard
+              </button>
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </div>
   );
 }

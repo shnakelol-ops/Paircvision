@@ -5389,7 +5389,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               My Boards
             </button>
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openCoachingClipEntry}>
-              🎬 Coaching Clip
+              🎬 Coaching Slideshow
             </button>
             <button
               type="button"
