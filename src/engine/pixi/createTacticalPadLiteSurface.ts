@@ -109,6 +109,8 @@ export type TacticalBoardState = {
   drawTool?: unknown;
   drawColor?: unknown;
   itemMode?: unknown;
+  /** Data URL of the uploaded board background image (PR #210), or null/absent for the default pitch. */
+  backgroundImage?: string | null;
 };
 
 export type TacticalRouteState = {
@@ -950,6 +952,7 @@ export async function createTacticalPadLiteSurface(
   const pitchMount = createTacticalPitchVisualRoot("gaelic", { theme: pitchTheme });
   world.addChild(pitchMount.root);
   let backgroundSprite: Sprite | null = null;
+  let backgroundImageDataUrl: string | null = null;
 
   if (surfaceVariant === "whiteboard") {
     const watermarkLabel = new Text({
@@ -3244,6 +3247,42 @@ export async function createTacticalPadLiteSurface(
     renderAllWhiteboardDrawings();
   }
 
+  function applyBackgroundImage(dataUrl: string | null): void {
+    backgroundImageDataUrl = dataUrl;
+    if (backgroundSprite) {
+      world.removeChild(backgroundSprite);
+      backgroundSprite.destroy({ texture: true });
+      backgroundSprite = null;
+    }
+    if (!dataUrl) {
+      pitchMount.root.visible = true;
+      return;
+    }
+    pitchMount.root.visible = false;
+    const img = new Image();
+    img.onload = () => {
+      if (world.destroyed) return;
+      // Re-check that this load is still the current background — an older
+      // load resolving after a newer setBackgroundImage()/importBoardState()
+      // call must not clobber the newer image.
+      if (backgroundImageDataUrl !== dataUrl) return;
+      const offscreen = document.createElement("canvas");
+      offscreen.width = img.naturalWidth;
+      offscreen.height = img.naturalHeight;
+      const ctx = offscreen.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0);
+      const texture = Texture.from(offscreen);
+      const sprite = new Sprite(texture);
+      sprite.width = WORLD_SIZE.width;
+      sprite.height = WORLD_SIZE.height;
+      sprite.eventMode = "none";
+      world.addChildAt(sprite, 0);
+      backgroundSprite = sprite;
+    };
+    img.src = dataUrl;
+  }
+
   function captureBoardState(): TacticalBoardState {
     const playerStates: TacticalBoardPlayerState[] = players.map((player) => ({
       id: player.id,
@@ -3322,6 +3361,7 @@ export async function createTacticalPadLiteSurface(
       drawTool: activeWhiteboardTool,
       drawColor: activeWhiteboardColor,
       itemMode,
+      backgroundImage: backgroundImageDataUrl,
     };
   }
 
@@ -3453,6 +3493,11 @@ export async function createTacticalPadLiteSurface(
     if (state.itemMode === "edit" || state.itemMode === "locked") {
       itemMode = state.itemMode;
     }
+    const parsedBackgroundImage =
+      typeof state.backgroundImage === "string" && state.backgroundImage.startsWith("data:image/")
+        ? state.backgroundImage
+        : null;
+    applyBackgroundImage(parsedBackgroundImage);
 
     syncPlayersToViewport();
     if (itemMode === "locked") {
@@ -3860,34 +3905,7 @@ export async function createTacticalPadLiteSurface(
       tacticalDrawingController.clear();
     },
     setBackgroundImage: (dataUrl: string | null) => {
-      if (backgroundSprite) {
-        world.removeChild(backgroundSprite);
-        backgroundSprite.destroy({ texture: true });
-        backgroundSprite = null;
-      }
-      if (!dataUrl) {
-        pitchMount.root.visible = true;
-        return;
-      }
-      pitchMount.root.visible = false;
-      const img = new Image();
-      img.onload = () => {
-        if (world.destroyed) return;
-        const offscreen = document.createElement("canvas");
-        offscreen.width = img.naturalWidth;
-        offscreen.height = img.naturalHeight;
-        const ctx = offscreen.getContext("2d");
-        if (!ctx) return;
-        ctx.drawImage(img, 0, 0);
-        const texture = Texture.from(offscreen);
-        const sprite = new Sprite(texture);
-        sprite.width = WORLD_SIZE.width;
-        sprite.height = WORLD_SIZE.height;
-        sprite.eventMode = "none";
-        world.addChildAt(sprite, 0);
-        backgroundSprite = sprite;
-      };
-      img.src = dataUrl;
+      applyBackgroundImage(dataUrl);
     },
     exportBoardState: () => captureBoardState(),
     importBoardState: (state) => importBoardState(state),

@@ -1106,6 +1106,7 @@ function serializeBoardState(state: QuickBoardBoardState | null): string | null 
     ...(state.teamKits !== undefined ? { teamKits: state.teamKits } : {}),
     ...(state.teamState !== undefined ? { teamState: state.teamState } : {}),
     ...(state.startSnapshot !== undefined ? { startSnapshot: state.startSnapshot } : {}),
+    ...(state.backgroundImage !== undefined ? { backgroundImage: state.backgroundImage } : {}),
   };
   try {
     return JSON.stringify(recoverableState);
@@ -2044,6 +2045,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const quickShareOnboardingCardRef = useRef<HTMLDivElement | null>(null);
   const myBoardsPopoverRef = useRef<HTMLDivElement | null>(null);
   const coachingClipPanelRef = useRef<HTMLDivElement | null>(null);
+  // True while a board reset was triggered from Coaching Clip's "New Slide" flow —
+  // used to reopen the Coaching Clip panel afterward, since doNewBoard() (shared
+  // with the main "New Board" action) otherwise closes the whole actions menu.
+  const coachingSlideFlowActiveRef = useRef(false);
   const toolsBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
   const toolsMenuRef = useRef<HTMLDivElement | null>(null);
   const shareTipTimerRef = useRef<number | null>(null);
@@ -2901,6 +2906,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (isWhiteboardMode || isStatsMode || !coachingClipOpen) return;
 
     const handlePointerDownOutside = (event: PointerEvent) => {
+      // A ConfirmSheet (e.g. the "New Slide" confirmation) renders outside the
+      // panel ref — tapping its Cancel/confirm buttons must not be treated as
+      // an outside click that dismisses the Coaching Clip panel underneath it.
+      if (confirmSheet) return;
       const target = event.target as Node | null;
       if (!target) return;
       if (actionsBubbleButtonRef.current?.contains(target)) return;
@@ -2910,6 +2919,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     };
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      if (confirmSheet) return;
       event.preventDefault();
       setCoachingClipOpen(false);
     };
@@ -2920,7 +2930,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       document.removeEventListener("pointerdown", handlePointerDownOutside);
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [isWhiteboardMode, isStatsMode, coachingClipOpen]);
+  }, [isWhiteboardMode, isStatsMode, coachingClipOpen, confirmSheet]);
 
   useEffect(() => {
     if (isWhiteboardMode || !quickShareOnboardingOpen) return;
@@ -3218,11 +3228,23 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const closeCoachingClipPanel = () => setCoachingClipOpen(false);
   const handleAddCoachingSlide = () => {
     if (isWhiteboardMode || isStatsMode || isPortraitViewingMode) return;
-    if (!surfaceRef.current) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
     // Reuses the same board-background picker as "New Board" (PR #210) — the
     // coach uploads/positions an image (or picks Blank Pitch), then annotates
     // with the existing Tactical Slate tools before tapping "Save as Slide".
-    setShowBgPicker(true);
+    // Resetting the board is destructive, so confirm first — same as "New Board".
+    setConfirmSheet({
+      message: "Start a new slide? Unsaved board changes will be cleared.",
+      confirmLabel: "New Slide",
+      danger: true,
+      onConfirm: () => {
+        setConfirmSheet(null);
+        coachingSlideFlowActiveRef.current = true;
+        setShowBgPicker(true);
+      },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
   const resumeRecoveredBoardDraft = () => {
     const draft = pendingRecoveredBoardDraft;
@@ -3652,10 +3674,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (!surface) return;
     doNewBoard(surface);
     surface.setBackgroundImage(composited);
+    if (coachingSlideFlowActiveRef.current) {
+      coachingSlideFlowActiveRef.current = false;
+      setCoachingClipOpen(true);
+    }
   };
 
   const handleBgPositionerCancel = () => {
     setBgPositionerDataUrl(null);
+    coachingSlideFlowActiveRef.current = false;
   };
 
   const handleNewBoard = () => {
@@ -5902,6 +5929,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 if (!surface) return;
                 surface.setBackgroundImage(null);
                 doNewBoard(surface);
+                if (coachingSlideFlowActiveRef.current) {
+                  coachingSlideFlowActiveRef.current = false;
+                  setCoachingClipOpen(true);
+                }
               }}
             >
               Blank Pitch
@@ -5923,7 +5954,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             <button
               type="button"
               style={{ marginTop: "2px", padding: "8px 16px", borderRadius: "8px", border: "none", background: "transparent", color: "rgba(255,255,255,0.4)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "13px", cursor: "pointer" }}
-              onClick={() => setShowBgPicker(false)}
+              onClick={() => {
+                setShowBgPicker(false);
+                coachingSlideFlowActiveRef.current = false;
+              }}
             >
               Cancel
             </button>

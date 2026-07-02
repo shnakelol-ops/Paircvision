@@ -20,6 +20,8 @@ export type QuickBoardBoardState = {
   drawColor?: unknown;
   itemMode?: unknown;
   textAnnotations?: SlateTextAnnotation[];
+  /** Data URL of the uploaded board background image (PR #210), or absent for the default pitch. */
+  backgroundImage?: string | null;
 };
 
 export type SavedQuickBoard = {
@@ -65,6 +67,9 @@ export function sanitizeQuickBoardState(value: unknown): QuickBoardBoardState | 
     ...(value.drawColor !== undefined ? { drawColor: value.drawColor } : {}),
     ...(value.itemMode !== undefined ? { itemMode: value.itemMode } : {}),
     textAnnotations: sanitizeTextAnnotations(value.textAnnotations),
+    ...(typeof value.backgroundImage === "string" && value.backgroundImage.startsWith("data:image/")
+      ? { backgroundImage: value.backgroundImage }
+      : {}),
   };
 }
 
