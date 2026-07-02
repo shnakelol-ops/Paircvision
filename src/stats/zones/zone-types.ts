@@ -1,8 +1,8 @@
 export type ZoneCoordinateEvent = {
-  x?: number;
-  y?: number;
-  nx?: number;
-  ny?: number;
+  x?: number | null;
+  y?: number | null;
+  nx?: number | null;
+  ny?: number | null;
 };
 
 export type ZoneBounds = {

@@ -1027,7 +1027,7 @@ export async function createTacticalPadLiteSurface(
     { width: host.clientWidth || 800, height: host.clientHeight || 520 },
   );
 
-  let tacticalTeamColors: TacticalPadLiteSurfaceOptions["whiteboardTeamColors"] = {
+  let tacticalTeamColors: NonNullable<TacticalPadLiteSurfaceOptions["whiteboardTeamColors"]> = {
     blue: options.whiteboardTeamColors?.blue ?? "blue",
     red: options.whiteboardTeamColors?.red ?? "red",
   };
@@ -2731,9 +2731,10 @@ export async function createTacticalPadLiteSurface(
   }
 
   function playSingleStartToCurrent(): void {
-    const shouldReplayStoredTarget = singlePlayTargetSnapshot != null && isCurrentAtStartPosition();
-    const playbackTarget = shouldReplayStoredTarget
-      ? cloneSnapshot(singlePlayTargetSnapshot)
+    const storedTarget = singlePlayTargetSnapshot;
+    const shouldReplayStoredTarget = storedTarget != null && isCurrentAtStartPosition();
+    const playbackTarget = storedTarget != null && shouldReplayStoredTarget
+      ? cloneSnapshot(storedTarget)
       : captureCurrentSnapshot();
     if (!shouldReplayStoredTarget) {
       singlePlayTargetSnapshot = cloneSnapshot(playbackTarget);

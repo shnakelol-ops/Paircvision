@@ -1924,7 +1924,7 @@ export default function App() {
           team: teamSide,
         };
         if (teamSide === "HOME") {
-          nextEvent.playerId = activePlayerIdRef.current ?? null;
+          nextEvent.playerId = activePlayerIdRef.current ?? undefined;
           if (SCORE_EVENT_KINDS.has(event.kind) && pendingScorerRef.current) {
             nextEvent.playerName = pendingScorerRef.current.name;
             nextEvent.playerNumber = pendingScorerRef.current.number;
