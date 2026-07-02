@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getVoiceBlob, saveVoiceBlob } from "./audio-storage";
 import { appendCoachNote, loadCoachNotes } from "./notes-storage";
 import { newCoachNoteId, type CoachNote } from "./types";
+import { useAudioRecorder } from "../shared/useAudioRecorder";
 
 type MatchContext = {
   matchId: string;
@@ -55,9 +56,6 @@ export default function NotesQuickPanel({
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const activeStreamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
   const recordStartedAtRef = useRef<number | null>(null);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const activeAudioUrlRef = useRef<string | null>(null);
@@ -68,15 +66,6 @@ export default function NotesQuickPanel({
     () => notes.filter((note) => note.scope === "match" && note.matchId === resolvedMatchId),
     [resolvedMatchId, notes],
   );
-
-  const stopLiveStreamTracks = () => {
-    const stream = activeStreamRef.current;
-    if (!stream) return;
-    for (const track of stream.getTracks()) {
-      track.stop();
-    }
-    activeStreamRef.current = null;
-  };
 
   const cleanupPlayback = () => {
     if (activeAudioRef.current) {
@@ -96,91 +85,64 @@ export default function NotesQuickPanel({
   useEffect(() => {
     return () => {
       cleanupPlayback();
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-        mediaRecorderRef.current.stop();
-      }
-      stopLiveStreamTracks();
     };
   }, []);
 
+  const audioRecorder = useAudioRecorder({
+    onStop: async (blob) => {
+      setIsRecording(false);
+      setIsSaving(true);
+      try {
+        const durationMs = Math.max(0, Date.now() - (recordStartedAtRef.current ?? Date.now()));
+        recordStartedAtRef.current = null;
+        const audioBlobId = await saveVoiceBlob(blob);
+        const note: CoachNote = {
+          id: newCoachNoteId(),
+          type: "voice",
+          scope: "match",
+          matchId: matchContext.matchId,
+          half: matchContext.half,
+          matchClockMs: matchContext.matchClockMs,
+          audioBlobId,
+          durationMs,
+          createdAt: Date.now(),
+        };
+        const nextNotes = appendCoachNote(note);
+        setNotes(nextNotes);
+        setFeedback("Voice note saved.");
+        onNoteAdded?.();
+      } catch (error: unknown) {
+        setFeedback(`Could not save voice note: ${toErrorMessage(error)}`);
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    onRecordingError: () => {
+      setFeedback("Recording failed.");
+      setIsRecording(false);
+    },
+  });
+
   const startRecording = async () => {
     if (isRecording || isSaving) return;
-    if (typeof window === "undefined" || !window.navigator.mediaDevices?.getUserMedia) {
-      setFeedback("Voice recording not supported on this device.");
+    const result = await audioRecorder.start();
+    if (result.status !== "started") {
+      if (result.status === "no-getUserMedia") {
+        setFeedback("Voice recording not supported on this device.");
+      } else if (result.status === "no-MediaRecorder") {
+        setFeedback("Voice recording not available in this browser.");
+      } else {
+        setFeedback(`Microphone unavailable: ${toErrorMessage(result.error)}`);
+      }
       return;
     }
-    if (typeof MediaRecorder === "undefined") {
-      setFeedback("Voice recording not available in this browser.");
-      return;
-    }
-
-    try {
-      const stream = await window.navigator.mediaDevices.getUserMedia({ audio: true });
-      activeStreamRef.current = stream;
-      chunksRef.current = [];
-      recordStartedAtRef.current = Date.now();
-
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          chunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onstop = async () => {
-        setIsRecording(false);
-        setIsSaving(true);
-        try {
-          const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-          chunksRef.current = [];
-          const durationMs = Math.max(0, Date.now() - (recordStartedAtRef.current ?? Date.now()));
-          recordStartedAtRef.current = null;
-          const audioBlobId = await saveVoiceBlob(blob);
-          const note: CoachNote = {
-            id: newCoachNoteId(),
-            type: "voice",
-            scope: "match",
-            matchId: matchContext.matchId,
-            half: matchContext.half,
-            matchClockMs: matchContext.matchClockMs,
-            audioBlobId,
-            durationMs,
-            createdAt: Date.now(),
-          };
-          const nextNotes = appendCoachNote(note);
-          setNotes(nextNotes);
-          setFeedback("Voice note saved.");
-          onNoteAdded?.();
-        } catch (error: unknown) {
-          setFeedback(`Could not save voice note: ${toErrorMessage(error)}`);
-        } finally {
-          stopLiveStreamTracks();
-          setIsSaving(false);
-        }
-      };
-
-      recorder.onerror = () => {
-        setFeedback("Recording failed.");
-        setIsRecording(false);
-        stopLiveStreamTracks();
-      };
-
-      recorder.start();
-      setFeedback(null);
-      setIsRecording(true);
-    } catch (error: unknown) {
-      setFeedback(`Microphone unavailable: ${toErrorMessage(error)}`);
-      stopLiveStreamTracks();
-      setIsRecording(false);
-    }
+    recordStartedAtRef.current = Date.now();
+    setFeedback(null);
+    setIsRecording(true);
   };
 
   const stopRecording = () => {
-    const recorder = mediaRecorderRef.current;
-    if (!recorder || recorder.state === "inactive") return;
-    recorder.stop();
+    audioRecorder.stop();
   };
 
   const playVoiceNote = async (note: CoachNote) => {
