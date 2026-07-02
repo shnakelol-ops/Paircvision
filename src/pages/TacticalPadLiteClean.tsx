@@ -47,6 +47,8 @@ import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { exportBoardSetupAsPng } from "../features/quickboard/export/board-png-export";
 import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
 import { type SlateTextAnnotation } from "../features/quickboard/annotations/slateTextAnnotation";
+import { useCoachingClip } from "../features/quickboard/clips/useCoachingClip";
+import CoachingClipPanel from "../features/quickboard/clips/CoachingClipPanel";
 
 type PadMode = "tactical" | "stats" | "whiteboard";
 type TacticalPadLiteCleanProps = {
@@ -2010,6 +2012,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const quickSharePopoverRef = useRef<HTMLDivElement | null>(null);
   const quickShareOnboardingCardRef = useRef<HTMLDivElement | null>(null);
   const myBoardsPopoverRef = useRef<HTMLDivElement | null>(null);
+  const coachingClipPanelRef = useRef<HTMLDivElement | null>(null);
   const toolsBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
   const toolsMenuRef = useRef<HTMLDivElement | null>(null);
   const shareTipTimerRef = useRef<number | null>(null);
@@ -2121,6 +2124,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     onComplete: () => setQuickShareOpen(true),
   });
   // slateRecordElapsed holds the final elapsed value after stop — used as the clip duration display.
+  const coachingClip = useCoachingClip();
 
   type SlateClipDiag = { events: string[]; rs: number; ns: number; src: string; dur: number; vw: number; vh: number; err: string | null; seeked: boolean };
   const [slateClipDiag, setSlateClipDiag] = useState<SlateClipDiag>({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
@@ -2141,6 +2145,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   }, [slateRecordBlobUrl]);
 
   const [myBoardsOpen, setMyBoardsOpen] = useState(false);
+  const [coachingClipOpen, setCoachingClipOpen] = useState(false);
   const [savedBoards, setSavedBoards] = useState<SavedQuickBoard[]>([]);
   const [pendingRecoveredBoardDraft, setPendingRecoveredBoardDraft] = useState<QuickBoardBoardState | null>(null);
   const [isRecoveredBoardPromptVisible, setIsRecoveredBoardPromptVisible] = useState(false);
@@ -2203,6 +2208,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       setKitEditorState(null);
       setKitEditorTab("base");
       setMyBoardsOpen(false);
+      setCoachingClipOpen(false);
     }
   }, [isWhiteboardMode, isStatsMode]);
 
@@ -2855,6 +2861,31 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   }, [isWhiteboardMode, myBoardsOpen]);
 
   useEffect(() => {
+    if (isWhiteboardMode || isStatsMode || !coachingClipOpen) return;
+
+    const handlePointerDownOutside = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (actionsBubbleButtonRef.current?.contains(target)) return;
+      if (actionsMenuRef.current?.contains(target)) return;
+      if (coachingClipPanelRef.current?.contains(target)) return;
+      setCoachingClipOpen(false);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setCoachingClipOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDownOutside);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDownOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isWhiteboardMode, isStatsMode, coachingClipOpen]);
+
+  useEffect(() => {
     if (isWhiteboardMode || !quickShareOnboardingOpen) return;
 
     const handlePointerDownOutside = (event: PointerEvent) => {
@@ -3062,6 +3093,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setActionsOpen(false);
     setQuickShareOpen(false);
     setMyBoardsOpen(false);
+    setCoachingClipOpen(false);
   };
   const closeMyBoardsMenu = () => setMyBoardsOpen(false);
   const closeControlsMenu = () => setControlsOpen(false);
@@ -3140,6 +3172,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     refreshSavedBoards();
     setMyBoardsOpen(true);
   };
+  const openCoachingClipEntry = () => {
+    setQuickShareOpen(false);
+    setActionsOpen(false);
+    setMyBoardsOpen(false);
+    setCoachingClipOpen(true);
+  };
+  const closeCoachingClipPanel = () => setCoachingClipOpen(false);
   const resumeRecoveredBoardDraft = () => {
     const draft = pendingRecoveredBoardDraft;
     const surface = surfaceRef.current;
@@ -5232,6 +5271,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openMyBoardsEntry}>
               My Boards
             </button>
+            <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openCoachingClipEntry}>
+              🎬 Coaching Clip
+            </button>
             <button
               type="button"
               className="control-button"
@@ -5304,6 +5346,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               Close
             </button>
           </div>
+        ) : null}
+        {!isWhiteboardMode && !isStatsMode && coachingClipOpen ? (
+          <CoachingClipPanel
+            clip={coachingClip}
+            onClose={closeCoachingClipPanel}
+            getSurface={() => surfaceRef.current}
+            getTextAnnotations={() => textAnnotationsRef.current}
+            panelRef={coachingClipPanelRef}
+          />
         ) : null}
         {!isWhiteboardMode ? (
           <button
