@@ -7,12 +7,25 @@ import {
   TEXT_COLOR_CHOICES,
 } from "./textAnnotation";
 
+type PlacementDraft = {
+  text: string;
+  fontSize: SlateTextFontSize;
+  color: string;
+};
+
 interface TextAnnotationOverlayProps {
   annotations: SlateTextAnnotation[];
   active: boolean;
   onAnnotationsChange: (updated: SlateTextAnnotation[]) => void;
   /** When false, hides font-size and colour controls. Defaults to true. */
   showFormatting?: boolean;
+  /**
+   * When set, a tap places a pre-composed label (text/fontSize/color already
+   * chosen via a modal) instead of opening the inline editor immediately.
+   * Callers that omit this prop keep the original tap-to-place-then-edit flow.
+   */
+  placementDraft?: PlacementDraft | null;
+  onPlacementDone?: () => void;
 }
 
 type DragState = {
@@ -34,6 +47,8 @@ export default function TextAnnotationOverlay({
   active,
   onAnnotationsChange,
   showFormatting = true,
+  placementDraft,
+  onPlacementDone,
 }: TextAnnotationOverlayProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -56,6 +71,17 @@ export default function TextAnnotationOverlay({
     const rect = event.currentTarget.getBoundingClientRect();
     const x = Math.max(2, Math.min(98, ((event.clientX - rect.left) / rect.width) * 100));
     const y = Math.max(2, Math.min(98, ((event.clientY - rect.top) / rect.height) * 100));
+    if (placementDraft) {
+      const newAnn = {
+        ...createTextAnnotation(x, y),
+        text: placementDraft.text,
+        fontSize: placementDraft.fontSize,
+        color: placementDraft.color,
+      };
+      onAnnotationsChange([...annotations, newAnn]);
+      onPlacementDone?.();
+      return;
+    }
     const newAnn = createTextAnnotation(x, y);
     onAnnotationsChange([...annotations, newAnn]);
     setEditingId(newAnn.id);
@@ -145,7 +171,31 @@ export default function TextAnnotationOverlay({
             pointerEvents: "auto",
           }}
           onPointerDown={handleBackgroundPointerDown}
-        />
+        >
+          {placementDraft && (
+            <div
+              style={{
+                position: "absolute",
+                top: "12px",
+                left: "50%",
+                transform: "translateX(-50%)",
+                background: "rgba(34,197,94,0.88)",
+                color: "#fff",
+                fontSize: "11px",
+                fontWeight: 700,
+                padding: "4px 12px",
+                borderRadius: "20px",
+                fontFamily: "Inter, system-ui, sans-serif",
+                zIndex: 5,
+                pointerEvents: "none",
+                whiteSpace: "nowrap",
+                letterSpacing: "0.2px",
+              }}
+            >
+              Tap to place label
+            </div>
+          )}
+        </div>
       )}
 
       {annotations.map((ann) => {

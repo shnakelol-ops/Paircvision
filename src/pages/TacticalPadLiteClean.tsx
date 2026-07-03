@@ -46,7 +46,11 @@ import { useScreenWakeLock } from "../hooks/useScreenWakeLock";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { exportBoardSetupAsPng } from "../features/quickboard/export/board-png-export";
 import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
-import { type SlateTextAnnotation } from "../features/quickboard/annotations/slateTextAnnotation";
+import SlateBackgroundPositioner from "../features/quickboard/background/SlateBackgroundPositioner";
+import SlateLabelEntryModal from "../features/quickboard/annotations/SlateLabelEntryModal";
+import { type SlateTextAnnotation, type SlateTextFontSize } from "../features/quickboard/annotations/slateTextAnnotation";
+import { useCoachingClip } from "../features/quickboard/clips/useCoachingClip";
+import CoachingClipPanel from "../features/quickboard/clips/CoachingClipPanel";
 
 type PadMode = "tactical" | "stats" | "whiteboard";
 type TacticalPadLiteCleanProps = {
@@ -54,6 +58,8 @@ type TacticalPadLiteCleanProps = {
 };
 
 const CAN_USE_CSS_SUPPORTS = typeof window !== "undefined" && typeof window.CSS !== "undefined";
+// Phase 1 image-background prototype. Set true only for dev/experiment — keep false in production.
+const SLATE_IMAGE_BG_ENABLED = true;
 const VIEWPORT_WIDTH_UNIT = CAN_USE_CSS_SUPPORTS && window.CSS.supports("width: 100dvw") ? "100dvw" : "100vw";
 const BOARD_VIEWPORT_HEIGHT_CSS_VAR = "--board-app-height";
 const VIEWPORT_HEIGHT_EXPR = `var(${BOARD_VIEWPORT_HEIGHT_CSS_VAR}, 100dvh)`;
@@ -977,6 +983,33 @@ const QUICK_SHARE_OPTION_SUBTITLE_STYLE: CSSProperties = {
   lineHeight: 1.25,
 };
 
+const BG_PICKER_OVERLAY_STYLE: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "rgba(0, 0, 0, 0.55)",
+  backdropFilter: "blur(4px)",
+  WebkitBackdropFilter: "blur(4px)",
+  zIndex: 50,
+};
+
+const BG_PICKER_CARD_STYLE: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "10px",
+  padding: "20px 16px",
+  borderRadius: "16px",
+  background: "rgba(10, 20, 25, 0.92)",
+  border: "1px solid rgba(215, 228, 224, 0.20)",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+  boxShadow: "0 12px 36px rgba(0, 0, 0, 0.5)",
+  minWidth: "220px",
+  maxWidth: "calc(100vw - 48px)",
+};
+
 const QUICK_SHARE_ONBOARDING_OVERLAY_STYLE: CSSProperties = {
   position: "fixed",
   inset: 0,
@@ -1073,6 +1106,7 @@ function serializeBoardState(state: QuickBoardBoardState | null): string | null 
     ...(state.teamKits !== undefined ? { teamKits: state.teamKits } : {}),
     ...(state.teamState !== undefined ? { teamState: state.teamState } : {}),
     ...(state.startSnapshot !== undefined ? { startSnapshot: state.startSnapshot } : {}),
+    ...(state.backgroundImage !== undefined ? { backgroundImage: state.backgroundImage } : {}),
   };
   try {
     return JSON.stringify(recoverableState);
@@ -2010,6 +2044,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const quickSharePopoverRef = useRef<HTMLDivElement | null>(null);
   const quickShareOnboardingCardRef = useRef<HTMLDivElement | null>(null);
   const myBoardsPopoverRef = useRef<HTMLDivElement | null>(null);
+  const coachingClipPanelRef = useRef<HTMLDivElement | null>(null);
+  // True while a board reset was triggered from Coaching Clip's "New Slide" flow —
+  // used to reopen the Coaching Clip panel afterward, since doNewBoard() (shared
+  // with the main "New Board" action) otherwise closes the whole actions menu.
+  const coachingSlideFlowActiveRef = useRef(false);
   const toolsBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
   const toolsMenuRef = useRef<HTMLDivElement | null>(null);
   const shareTipTimerRef = useRef<number | null>(null);
@@ -2121,6 +2160,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     onComplete: () => setQuickShareOpen(true),
   });
   // slateRecordElapsed holds the final elapsed value after stop — used as the clip duration display.
+  const coachingClip = useCoachingClip();
 
   type SlateClipDiag = { events: string[]; rs: number; ns: number; src: string; dur: number; vw: number; vh: number; err: string | null; seeked: boolean };
   const [slateClipDiag, setSlateClipDiag] = useState<SlateClipDiag>({ events: [], rs: -1, ns: -1, src: "", dur: NaN, vw: 0, vh: 0, err: null, seeked: false });
@@ -2141,6 +2181,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   }, [slateRecordBlobUrl]);
 
   const [myBoardsOpen, setMyBoardsOpen] = useState(false);
+  const [coachingClipOpen, setCoachingClipOpen] = useState(false);
   const [savedBoards, setSavedBoards] = useState<SavedQuickBoard[]>([]);
   const [pendingRecoveredBoardDraft, setPendingRecoveredBoardDraft] = useState<QuickBoardBoardState | null>(null);
   const [isRecoveredBoardPromptVisible, setIsRecoveredBoardPromptVisible] = useState(false);
@@ -2171,9 +2212,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [kitEditorTab, setKitEditorTab] = useState<KitEditorTab>("base");
   const [textAnnotations, setTextAnnotations] = useState<SlateTextAnnotation[]>([]);
   const [textToolActive, setTextToolActive] = useState(false);
+  const [showLabelModal, setShowLabelModal] = useState(false);
+  const [pendingLabelDraft, setPendingLabelDraft] = useState<{ text: string; fontSize: SlateTextFontSize; color: string } | null>(null);
   const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
   const textAnnotationsRef = useRef<SlateTextAnnotation[]>([]);
   const textAnnotationsBaselineRef = useRef<string>("[]");
+  const [showBgPicker, setShowBgPicker] = useState(false);
+  const [bgPositionerDataUrl, setBgPositionerDataUrl] = useState<string | null>(null);
+  const bgImageInputRef = useRef<HTMLInputElement | null>(null);
+  const bgCameraInputRef = useRef<HTMLInputElement | null>(null);
 
   const isStatsMode = mode === "stats";
   const isWhiteboardMode = mode === "whiteboard";
@@ -2203,6 +2250,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       setKitEditorState(null);
       setKitEditorTab("base");
       setMyBoardsOpen(false);
+      setCoachingClipOpen(false);
     }
   }, [isWhiteboardMode, isStatsMode]);
 
@@ -2855,6 +2903,40 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   }, [isWhiteboardMode, myBoardsOpen]);
 
   useEffect(() => {
+    if (isWhiteboardMode || isStatsMode || !coachingClipOpen) return;
+
+    const handlePointerDownOutside = (event: PointerEvent) => {
+      // A ConfirmSheet (e.g. the "New Slide" confirmation) renders outside the
+      // panel ref — tapping its Cancel/confirm buttons must not be treated as
+      // an outside click that dismisses the Coaching Clip panel underneath it.
+      if (confirmSheet) return;
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (actionsBubbleButtonRef.current?.contains(target)) return;
+      if (actionsMenuRef.current?.contains(target)) return;
+      if (coachingClipPanelRef.current?.contains(target)) return;
+      // The whole point of this panel is to stay open while the coach
+      // annotates the board (dragging players, drawing, placing labels) —
+      // interacting with the pitch itself must not be treated as "outside".
+      if (hostRef.current?.contains(target)) return;
+      setCoachingClipOpen(false);
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (confirmSheet) return;
+      event.preventDefault();
+      setCoachingClipOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDownOutside);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDownOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isWhiteboardMode, isStatsMode, coachingClipOpen, confirmSheet]);
+
+  useEffect(() => {
     if (isWhiteboardMode || !quickShareOnboardingOpen) return;
 
     const handlePointerDownOutside = (event: PointerEvent) => {
@@ -3062,6 +3144,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setActionsOpen(false);
     setQuickShareOpen(false);
     setMyBoardsOpen(false);
+    setCoachingClipOpen(false);
   };
   const closeMyBoardsMenu = () => setMyBoardsOpen(false);
   const closeControlsMenu = () => setControlsOpen(false);
@@ -3139,6 +3222,33 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setActionsOpen(false);
     refreshSavedBoards();
     setMyBoardsOpen(true);
+  };
+  const openCoachingClipEntry = () => {
+    setQuickShareOpen(false);
+    setActionsOpen(false);
+    setMyBoardsOpen(false);
+    setCoachingClipOpen(true);
+  };
+  const closeCoachingClipPanel = () => setCoachingClipOpen(false);
+  const handleAddCoachingSlide = () => {
+    if (isWhiteboardMode || isStatsMode || isPortraitViewingMode) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    // Reuses the same board-background picker as "New Board" (PR #210) — the
+    // coach uploads/positions an image (or picks Blank Pitch), then annotates
+    // with the existing Tactical Slate tools before tapping "Save as Slide".
+    // Resetting the board is destructive, so confirm first — same as "New Board".
+    setConfirmSheet({
+      message: "Start a new slide? Unsaved board changes will be cleared.",
+      confirmLabel: "New Slide",
+      danger: true,
+      onConfirm: () => {
+        setConfirmSheet(null);
+        coachingSlideFlowActiveRef.current = true;
+        setShowBgPicker(true);
+      },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
   const resumeRecoveredBoardDraft = () => {
     const draft = pendingRecoveredBoardDraft;
@@ -3469,11 +3579,25 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (isPortraitViewingMode || isPlaybackLocked) return;
     const surface = surfaceRef.current;
     if (!surface) return;
-    setTextToolActive(true);
     setTacticalTool("move");
     surface.setWhiteboardDrawTool("move");
     setRouteCaptureMode(false);
     if (isCompactLandscapeToolsMenu) setToolsOpen(false);
+    setShowLabelModal(true);
+  };
+
+  const handleLabelModalDone = (text: string, fontSize: SlateTextFontSize, color: string) => {
+    setShowLabelModal(false);
+    setTextToolActive(true);
+    setPendingLabelDraft({ text, fontSize, color });
+  };
+
+  const handleLabelModalCancel = () => {
+    setShowLabelModal(false);
+  };
+
+  const handleLabelPlacementDone = () => {
+    setPendingLabelDraft(null);
   };
 
   const syncTeamCounts = () => {
@@ -3511,22 +3635,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     });
   };
 
-  const handleNewBoard = () => {
-    if (isWhiteboardMode || isStatsMode || isPortraitViewingMode) return;
-    const surface = surfaceRef.current;
-    if (!surface) {
-      showQuickBoardNotice("PáircVision Board not ready");
-      return;
-    }
-    setConfirmSheet({
-      message: "Start a new board?\nUnsaved changes on the current board will be lost.",
-      confirmLabel: "New Board",
-      danger: true,
-      onConfirm: () => { setConfirmSheet(null); doNewBoard(surface); },
-      onCancel: () => setConfirmSheet(null),
-    });
-  };
-
   const doNewBoard = (surface: TacticalPadLiteSurface) => {
     surface.newBoard();
     const pristineSnapshot = captureCurrentBoardSnapshot();
@@ -3552,6 +3660,56 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     closeActionsMenu();
     showQuickBoardNotice("New board ready");
     syncTeamCounts();
+  };
+
+  const handleBgImageFile = (file: File) => {
+    setShowBgPicker(false);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result;
+      if (typeof dataUrl === "string") setBgPositionerDataUrl(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleBgPositionerDone = (composited: string) => {
+    setBgPositionerDataUrl(null);
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    doNewBoard(surface);
+    surface.setBackgroundImage(composited);
+    if (coachingSlideFlowActiveRef.current) {
+      coachingSlideFlowActiveRef.current = false;
+      setCoachingClipOpen(true);
+    }
+  };
+
+  const handleBgPositionerCancel = () => {
+    setBgPositionerDataUrl(null);
+    coachingSlideFlowActiveRef.current = false;
+  };
+
+  const handleNewBoard = () => {
+    if (isWhiteboardMode || isStatsMode || isPortraitViewingMode) return;
+    const surface = surfaceRef.current;
+    if (!surface) {
+      showQuickBoardNotice("PáircVision Board not ready");
+      return;
+    }
+    setConfirmSheet({
+      message: "Start a new board?\nUnsaved changes on the current board will be lost.",
+      confirmLabel: "New Board",
+      danger: true,
+      onConfirm: () => {
+        setConfirmSheet(null);
+        if (SLATE_IMAGE_BG_ENABLED) {
+          setShowBgPicker(true);
+          return;
+        }
+        doNewBoard(surface);
+      },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
 
   const openMenuFromTools = () => {
@@ -3979,6 +4137,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               annotations={textAnnotations}
               active={textToolActive && !toolsOpen && !isPlaybackLocked}
               onAnnotationsChange={setTextAnnotations}
+              placementDraft={pendingLabelDraft}
+              onPlacementDone={handleLabelPlacementDone}
             />
           ) : null}
         </div>
@@ -5232,6 +5392,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openMyBoardsEntry}>
               My Boards
             </button>
+            <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openCoachingClipEntry}>
+              🎬 Coaching Slideshow
+            </button>
             <button
               type="button"
               className="control-button"
@@ -5304,6 +5467,16 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               Close
             </button>
           </div>
+        ) : null}
+        {!isWhiteboardMode && !isStatsMode && coachingClipOpen ? (
+          <CoachingClipPanel
+            clip={coachingClip}
+            onClose={closeCoachingClipPanel}
+            onAddSlide={handleAddCoachingSlide}
+            getSurface={() => surfaceRef.current}
+            getTextAnnotations={() => textAnnotationsRef.current}
+            panelRef={coachingClipPanelRef}
+          />
         ) : null}
         {!isWhiteboardMode ? (
           <button
@@ -5732,6 +5905,92 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         ) : null}
         {confirmSheet && <ConfirmSheet {...confirmSheet} />}
       </div>
+      {showLabelModal ? (
+        <SlateLabelEntryModal
+          onDone={handleLabelModalDone}
+          onCancel={handleLabelModalCancel}
+        />
+      ) : null}
+      {SLATE_IMAGE_BG_ENABLED && bgPositionerDataUrl ? (
+        <SlateBackgroundPositioner
+          imageDataUrl={bgPositionerDataUrl}
+          onDone={handleBgPositionerDone}
+          onCancel={handleBgPositionerCancel}
+        />
+      ) : null}
+      {SLATE_IMAGE_BG_ENABLED && showBgPicker ? (
+        <div style={BG_PICKER_OVERLAY_STYLE} role="dialog" aria-modal="true" aria-label="Choose board background">
+          <div style={BG_PICKER_CARD_STYLE}>
+            <p style={{ margin: 0, color: "rgba(255,255,255,0.7)", fontSize: "11px", fontFamily: "Inter, system-ui, sans-serif", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+              Board Background
+            </p>
+            <button
+              type="button"
+              style={{ padding: "12px 16px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "#ffffff", fontFamily: "Inter, system-ui, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", textAlign: "left" }}
+              onClick={() => {
+                setShowBgPicker(false);
+                const surface = surfaceRef.current;
+                if (!surface) return;
+                surface.setBackgroundImage(null);
+                doNewBoard(surface);
+                if (coachingSlideFlowActiveRef.current) {
+                  coachingSlideFlowActiveRef.current = false;
+                  setCoachingClipOpen(true);
+                }
+              }}
+            >
+              Blank Pitch
+            </button>
+            <button
+              type="button"
+              style={{ padding: "12px 16px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "#ffffff", fontFamily: "Inter, system-ui, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", textAlign: "left" }}
+              onClick={() => bgImageInputRef.current?.click()}
+            >
+              Upload Image
+            </button>
+            <button
+              type="button"
+              style={{ padding: "12px 16px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "#ffffff", fontFamily: "Inter, system-ui, sans-serif", fontSize: "14px", fontWeight: 600, cursor: "pointer", textAlign: "left" }}
+              onClick={() => bgCameraInputRef.current?.click()}
+            >
+              Take Photo
+            </button>
+            <button
+              type="button"
+              style={{ marginTop: "2px", padding: "8px 16px", borderRadius: "8px", border: "none", background: "transparent", color: "rgba(255,255,255,0.4)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "13px", cursor: "pointer" }}
+              onClick={() => {
+                setShowBgPicker(false);
+                coachingSlideFlowActiveRef.current = false;
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+          <input
+            ref={bgImageInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/heic"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) handleBgImageFile(file);
+            }}
+          />
+          <input
+            ref={bgCameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) handleBgImageFile(file);
+            }}
+          />
+        </div>
+      ) : null}
     </OrientationGate>
   );
 }
