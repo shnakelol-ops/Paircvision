@@ -30,9 +30,18 @@ export type CoachingSlide = {
 export type ExportPhase = "idle" | "rendering" | "done" | "error";
 
 export const MAX_COACHING_SLIDES = 12;
-export const SLIDE_DURATION_OPTIONS_SECONDS = [3, 5, 7, 10] as const;
+export const SLIDE_DURATION_OPTIONS_SECONDS = [3, 5, 7, 10, 15] as const;
 export type SlideDurationSeconds = (typeof SLIDE_DURATION_OPTIONS_SECONDS)[number];
 const DEFAULT_SLIDE_DURATION_SECONDS: SlideDurationSeconds = 5;
+
+export type SlideAdvanceMode = "auto" | "manual";
+const DEFAULT_SLIDE_ADVANCE_MODE: SlideAdvanceMode = "auto";
+// "Manual style" trades a fixed, longer hold for a baked-in viewing cue —
+// still just a fixed-duration slideshow under the hood, not real
+// interactivity.
+const MANUAL_MODE_SLIDE_SECONDS = 10;
+const MANUAL_MODE_CAPTION = "Tap to pause / swipe to skip";
+
 const OUTPUT_MAX_DIM = 1280;
 const OUTPUT_FPS = 30;
 
@@ -78,6 +87,8 @@ export type CoachingClipHandle = {
 
   slideDurationSeconds: SlideDurationSeconds;
   setSlideDurationSeconds: (seconds: SlideDurationSeconds) => void;
+  slideAdvanceMode: SlideAdvanceMode;
+  setSlideAdvanceMode: (mode: SlideAdvanceMode) => void;
 
   exportPhase: ExportPhase;
   exportProgress: number;
@@ -100,6 +111,7 @@ export function useCoachingClip(): CoachingClipHandle {
   const [slideDurationSeconds, setSlideDurationSeconds] = useState<SlideDurationSeconds>(
     DEFAULT_SLIDE_DURATION_SECONDS,
   );
+  const [slideAdvanceMode, setSlideAdvanceMode] = useState<SlideAdvanceMode>(DEFAULT_SLIDE_ADVANCE_MODE);
 
   const [exportPhase, setExportPhase] = useState<ExportPhase>("idle");
   const [exportProgress, setExportProgress] = useState(0);
@@ -111,6 +123,7 @@ export function useCoachingClip(): CoachingClipHandle {
 
   const slidesRef = useRef<CoachingSlide[]>([]);
   const slideDurationRef = useRef<SlideDurationSeconds>(DEFAULT_SLIDE_DURATION_SECONDS);
+  const slideAdvanceModeRef = useRef<SlideAdvanceMode>(DEFAULT_SLIDE_ADVANCE_MODE);
   const exportRecorderRef = useRef<MediaRecorder | null>(null);
   const exportTimersRef = useRef<number[]>([]);
   const exportUrlRef = useRef<string | null>(null);
@@ -124,6 +137,10 @@ export function useCoachingClip(): CoachingClipHandle {
   useEffect(() => {
     slideDurationRef.current = slideDurationSeconds;
   }, [slideDurationSeconds]);
+
+  useEffect(() => {
+    slideAdvanceModeRef.current = slideAdvanceMode;
+  }, [slideAdvanceMode]);
 
   useEffect(() => {
     exportPhaseRef.current = exportPhase;
@@ -265,6 +282,8 @@ export function useCoachingClip(): CoachingClipHandle {
       const ctx = canvas.getContext("2d", { alpha: false });
       if (!ctx) throw new Error("Canvas rendering not available");
 
+      const isManualStyle = slideAdvanceModeRef.current === "manual";
+
       const drawSlide = (bitmap: ImageBitmap) => {
         ctx.fillStyle = "#0b1110";
         ctx.fillRect(0, 0, outputWidth, outputHeight);
@@ -272,11 +291,33 @@ export function useCoachingClip(): CoachingClipHandle {
         const w = bitmap.width * fitScale;
         const h = bitmap.height * fitScale;
         ctx.drawImage(bitmap, (outputWidth - w) / 2, (outputHeight - h) / 2, w, h);
+        if (isManualStyle) {
+          // A baked-in viewing cue for "Manual style" — not real
+          // interactivity, just a coach-friendly hint for WhatsApp/video
+          // players that this slideshow is meant to be paused/skipped
+          // through rather than watched straight.
+          const fontSize = Math.max(12, Math.round(outputWidth * 0.022));
+          ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
+          const paddingX = Math.round(fontSize * 0.7);
+          const paddingY = Math.round(fontSize * 0.5);
+          const textWidth = ctx.measureText(MANUAL_MODE_CAPTION).width;
+          const boxW = textWidth + paddingX * 2;
+          const boxH = fontSize + paddingY * 2;
+          const margin = Math.round(outputWidth * 0.02);
+          const boxX = outputWidth - boxW - margin;
+          const boxY = outputHeight - boxH - margin;
+          ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
+          ctx.fillRect(boxX, boxY, boxW, boxH);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+          ctx.textBaseline = "middle";
+          ctx.textAlign = "left";
+          ctx.fillText(MANUAL_MODE_CAPTION, boxX + paddingX, boxY + boxH / 2);
+        }
       };
 
       drawSlide(bitmaps[0]!);
 
-      const perSlideMs = slideDurationRef.current * 1000;
+      const perSlideMs = (isManualStyle ? MANUAL_MODE_SLIDE_SECONDS : slideDurationRef.current) * 1000;
 
       const canvasStream = (
         canvas as HTMLCanvasElement & { captureStream(fps: number): MediaStream }
@@ -402,6 +443,8 @@ export function useCoachingClip(): CoachingClipHandle {
 
     slideDurationSeconds,
     setSlideDurationSeconds,
+    slideAdvanceMode,
+    setSlideAdvanceMode,
 
     exportPhase,
     exportProgress,

@@ -6,7 +6,13 @@ import {
   MAX_COACHING_SLIDES,
   SLIDE_DURATION_OPTIONS_SECONDS,
   type CoachingClipHandle,
+  type SlideAdvanceMode,
 } from "./useCoachingClip";
+
+const SLIDE_ADVANCE_MODES: { mode: SlideAdvanceMode; label: string }[] = [
+  { mode: "auto", label: "Auto" },
+  { mode: "manual", label: "Manual style" },
+];
 
 type CoachingClipPanelProps = {
   clip: CoachingClipHandle;
@@ -380,21 +386,46 @@ export default function CoachingClipPanel({
         <p style={SECTION_LABEL_STYLE}>Export</p>
         {clip.exportPhase === "idle" || clip.exportPhase === "error" ? (
           <>
-            <p style={SECTION_LABEL_STYLE}>Slide length</p>
+            <p style={SECTION_LABEL_STYLE}>Slide advance</p>
             <div style={DURATION_ROW_STYLE}>
-              {SLIDE_DURATION_OPTIONS_SECONDS.map((seconds) => (
+              {SLIDE_ADVANCE_MODES.map(({ mode, label }) => (
                 <button
-                  key={seconds}
+                  key={mode}
                   type="button"
                   className="control-button"
-                  style={clip.slideDurationSeconds === seconds ? DURATION_BUTTON_ACTIVE_STYLE : DURATION_BUTTON_STYLE}
-                  onClick={() => clip.setSlideDurationSeconds(seconds)}
-                  aria-pressed={clip.slideDurationSeconds === seconds}
+                  style={clip.slideAdvanceMode === mode ? DURATION_BUTTON_ACTIVE_STYLE : DURATION_BUTTON_STYLE}
+                  onClick={() => clip.setSlideAdvanceMode(mode)}
+                  aria-pressed={clip.slideAdvanceMode === mode}
                 >
-                  {seconds}s
+                  {label}
                 </button>
               ))}
             </div>
+            {clip.slideAdvanceMode === "auto" ? (
+              <>
+                <p style={SECTION_LABEL_STYLE}>Slide length</p>
+                <div style={DURATION_ROW_STYLE}>
+                  {SLIDE_DURATION_OPTIONS_SECONDS.map((seconds) => (
+                    <button
+                      key={seconds}
+                      type="button"
+                      className="control-button"
+                      style={
+                        clip.slideDurationSeconds === seconds ? DURATION_BUTTON_ACTIVE_STYLE : DURATION_BUTTON_STYLE
+                      }
+                      onClick={() => clip.setSlideDurationSeconds(seconds)}
+                      aria-pressed={clip.slideDurationSeconds === seconds}
+                    >
+                      {seconds}s
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p style={HELPER_TEXT_STYLE}>
+                Holds each slide for 10s with a "tap to pause / swipe to skip" cue baked into the video.
+              </p>
+            )}
             <button
               type="button"
               className="control-button"
