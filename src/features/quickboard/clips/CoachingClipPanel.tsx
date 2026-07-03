@@ -36,7 +36,7 @@ const PANEL_STYLE: CSSProperties = {
     "min(78dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 66px))",
   display: "flex",
   flexDirection: "column",
-  gap: "8px",
+  gap: "6px",
   padding: "9px",
   borderRadius: "12px",
   overflow: "hidden",
@@ -49,18 +49,23 @@ const PANEL_STYLE: CSSProperties = {
   fontFamily: "Inter, system-ui, sans-serif",
 };
 
-// The slide list can grow arbitrarily long, but the export action (and its
-// progress/preview once rendering) must always stay on-screen — especially
-// in landscape, where the panel's available height is small. Only this
-// middle section scrolls; the header and the export footer are fixed.
-const BODY_SCROLL_STYLE: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "8px",
+// The slide list is the primary surface — it gets whatever height is left
+// over and scrolls independently. The controls above it (Add/Save/Clear)
+// and the export footer below it are both fixed, so neither the primary
+// actions nor Generate Slideshow ever get squeezed out or scrolled away,
+// especially in landscape where the panel's available height is small.
+const SLIDE_LIST_SCROLL_STYLE: CSSProperties = {
   flex: "1 1 auto",
   minHeight: 0,
   overflowY: "auto",
   overflowX: "hidden",
+};
+
+const SLIDE_CONTROLS_STYLE: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "6px",
+  flexShrink: 0,
 };
 
 const HEADER_GROUP_STYLE: CSSProperties = {
@@ -73,7 +78,7 @@ const HEADER_GROUP_STYLE: CSSProperties = {
 const FOOTER_STYLE: CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: "8px",
+  gap: "6px",
   flexShrink: 0,
 };
 
@@ -99,15 +104,6 @@ const TITLE_STYLE: CSSProperties = {
   letterSpacing: "0.14px",
 };
 
-const SECTION_LABEL_STYLE: CSSProperties = {
-  margin: 0,
-  color: "rgba(200, 222, 240, 0.86)",
-  fontSize: "10px",
-  fontWeight: 700,
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-};
-
 const BUTTON_STYLE: CSSProperties = {
   border: "1px solid rgba(212, 228, 244, 0.28)",
   borderRadius: "8px",
@@ -115,7 +111,7 @@ const BUTTON_STYLE: CSSProperties = {
   color: "#eef7ff",
   fontSize: "10.5px",
   fontWeight: 650,
-  padding: "6px 9px",
+  padding: "5px 8px",
   cursor: "pointer",
   minWidth: 0,
 };
@@ -147,22 +143,22 @@ const ROW_STYLE: CSSProperties = {
 const SLIDE_LIST_STYLE: CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: "6px",
+  gap: "4px",
 };
 
 const SLIDE_CARD_STYLE: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: "7px",
-  padding: "5px",
+  padding: "4px",
   borderRadius: "8px",
   border: "1px solid rgba(183, 207, 230, 0.22)",
   background: "rgba(13, 22, 30, 0.6)",
 };
 
 const SLIDE_THUMB_STYLE: CSSProperties = {
-  width: "52px",
-  height: "52px",
+  width: "40px",
+  height: "40px",
   objectFit: "cover",
   borderRadius: "6px",
   border: "1px solid rgba(183, 207, 230, 0.28)",
@@ -181,14 +177,14 @@ const SLIDE_INDEX_STYLE: CSSProperties = {
 
 const SLIDE_ACTIONS_STYLE: CSSProperties = {
   display: "flex",
-  flexDirection: "column",
+  flexDirection: "row",
   gap: "3px",
   marginLeft: "auto",
   flexShrink: 0,
 };
 
 const SLIDE_ACTION_BUTTON_STYLE: CSSProperties = {
-  width: "22px",
+  width: "20px",
   height: "18px",
   borderRadius: "4px",
   border: "1px solid rgba(212, 228, 244, 0.28)",
@@ -258,7 +254,7 @@ const DURATION_BUTTON_STYLE: CSSProperties = {
   color: "#eef7ff",
   fontSize: "10.5px",
   fontWeight: 650,
-  padding: "5px 0",
+  padding: "4px 0",
   cursor: "pointer",
   flex: "1 1 0",
 };
@@ -292,7 +288,7 @@ export default function CoachingClipPanel({
     <div ref={panelRef} style={PANEL_STYLE} role="dialog" aria-modal="false" aria-label="Coaching Slideshow">
       <div style={HEADER_GROUP_STYLE}>
         <div style={HEADER_STYLE}>
-          <p style={TITLE_STYLE}>🎬 Coaching Slideshow</p>
+          <p style={TITLE_STYLE}>🎬 Coaching Slideshow · {slideCountLabel}</p>
           <button type="button" className="control-button" style={CLOSE_BUTTON_STYLE} onClick={onClose}>
             Close
           </button>
@@ -300,8 +296,7 @@ export default function CoachingClipPanel({
         <p style={HELPER_TEXT_STYLE}>Add a picture, mark it up, then save it as a slide.</p>
       </div>
 
-      <div style={BODY_SCROLL_STYLE}>
-        <p style={SECTION_LABEL_STYLE}>Slides · {slideCountLabel}</p>
+      <div style={SLIDE_CONTROLS_STYLE}>
         <div style={ROW_STYLE}>
           <button
             type="button"
@@ -332,6 +327,9 @@ export default function CoachingClipPanel({
           </button>
         </div>
         {clip.captureError ? <p style={ERROR_TEXT_STYLE}>{clip.captureError}</p> : null}
+      </div>
+
+      <div style={SLIDE_LIST_SCROLL_STYLE}>
         {clip.slides.length > 0 ? (
           <div style={SLIDE_LIST_STYLE}>
             {clip.slides.map((slide, index) => (
@@ -383,10 +381,8 @@ export default function CoachingClipPanel({
 
       <div style={FOOTER_STYLE}>
         <div style={DIVIDER_STYLE} />
-        <p style={SECTION_LABEL_STYLE}>Export</p>
         {clip.exportPhase === "idle" || clip.exportPhase === "error" ? (
           <>
-            <p style={SECTION_LABEL_STYLE}>Slide advance</p>
             <div style={DURATION_ROW_STYLE}>
               {SLIDE_ADVANCE_MODES.map(({ mode, label }) => (
                 <button
@@ -402,29 +398,24 @@ export default function CoachingClipPanel({
               ))}
             </div>
             {clip.slideAdvanceMode === "auto" ? (
-              <>
-                <p style={SECTION_LABEL_STYLE}>Slide length</p>
-                <div style={DURATION_ROW_STYLE}>
-                  {SLIDE_DURATION_OPTIONS_SECONDS.map((seconds) => (
-                    <button
-                      key={seconds}
-                      type="button"
-                      className="control-button"
-                      style={
-                        clip.slideDurationSeconds === seconds ? DURATION_BUTTON_ACTIVE_STYLE : DURATION_BUTTON_STYLE
-                      }
-                      onClick={() => clip.setSlideDurationSeconds(seconds)}
-                      aria-pressed={clip.slideDurationSeconds === seconds}
-                    >
-                      {seconds}s
-                    </button>
-                  ))}
-                </div>
-              </>
+              <div style={DURATION_ROW_STYLE}>
+                {SLIDE_DURATION_OPTIONS_SECONDS.map((seconds) => (
+                  <button
+                    key={seconds}
+                    type="button"
+                    className="control-button"
+                    style={
+                      clip.slideDurationSeconds === seconds ? DURATION_BUTTON_ACTIVE_STYLE : DURATION_BUTTON_STYLE
+                    }
+                    onClick={() => clip.setSlideDurationSeconds(seconds)}
+                    aria-pressed={clip.slideDurationSeconds === seconds}
+                  >
+                    {seconds}s
+                  </button>
+                ))}
+              </div>
             ) : (
-              <p style={HELPER_TEXT_STYLE}>
-                Holds each slide for 10s with a "tap to pause / swipe to skip" cue baked into the video.
-              </p>
+              <p style={HELPER_TEXT_STYLE}>10s per slide + pause cue</p>
             )}
             <button
               type="button"
