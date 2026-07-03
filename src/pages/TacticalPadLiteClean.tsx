@@ -2915,6 +2915,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       if (actionsBubbleButtonRef.current?.contains(target)) return;
       if (actionsMenuRef.current?.contains(target)) return;
       if (coachingClipPanelRef.current?.contains(target)) return;
+      // The whole point of this panel is to stay open while the coach
+      // annotates the board (dragging players, drawing, placing labels) —
+      // interacting with the pitch itself must not be treated as "outside".
+      if (hostRef.current?.contains(target)) return;
       setCoachingClipOpen(false);
     };
     const handleEscape = (event: KeyboardEvent) => {
