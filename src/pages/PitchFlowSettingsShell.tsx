@@ -1,8 +1,15 @@
 import { useState } from "react";
+import { BackupRestoreView } from "../backup/BackupRestoreView";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SettingsView = "landing" | "privacy" | "terms" | "storage" | "contact";
+type SettingsView = "landing" | "backup" | "privacy" | "terms" | "storage" | "contact";
+
+function initialSettingsView(): SettingsView {
+  if (typeof window === "undefined") return "landing";
+  const params = new URLSearchParams(window.location.search);
+  return params.get("view") === "backup" ? "backup" : "landing";
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -345,6 +352,13 @@ const SETTINGS_CSS = `
   letter-spacing: 0.06em;
 }
 
+.ps-info-card-body {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ps-text-muted);
+  line-height: 1.55;
+}
+
 .ps-info-card-value {
   margin: 0;
   font-size: 13px;
@@ -353,6 +367,39 @@ const SETTINGS_CSS = `
 }
 
 .ps-info-card-value strong { color: var(--ps-text); font-weight: 650; }
+
+.ps-primary-btn,
+.ps-secondary-btn {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.ps-primary-btn {
+  border: 1px solid var(--ps-primary-strong);
+  background: linear-gradient(180deg, rgba(34,197,94,0.28) 0%, rgba(16,41,27,0.95) 100%);
+  color: var(--ps-text);
+}
+
+.ps-primary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ps-secondary-btn {
+  border: 1px solid var(--ps-border);
+  background: rgba(16,41,27,0.75);
+  color: var(--ps-text);
+}
+
+.ps-primary-btn:active:not(:disabled),
+.ps-secondary-btn:active {
+  transform: scale(0.99);
+}
 
 /* ── Storage & Permissions ──────────────────────────────────────────────── */
 
@@ -491,6 +538,15 @@ function SubHeader({ title, onBack }: { title: string; onBack: () => void }) {
 // ─── Landing ──────────────────────────────────────────────────────────────────
 
 function LandingView({ onNavigate }: { onNavigate: (v: SettingsView) => void }) {
+  const dataItems: Array<{ view: SettingsView; icon: string; title: string; desc: string }> = [
+    {
+      view: "backup",
+      icon: "💾",
+      title: "Backup & Restore",
+      desc: "Save every match, board and squad to a file you control",
+    },
+  ];
+
   const items: Array<{ view: SettingsView; icon: string; title: string; desc: string }> = [
     {
       view: "privacy",
@@ -534,6 +590,29 @@ function LandingView({ onNavigate }: { onNavigate: (v: SettingsView) => void }) 
           <p className="ps-landing-subtitle">Privacy, legal and support</p>
         </div>
       </div>
+
+      <p className="ps-section-label">Your data</p>
+      <nav className="ps-list" aria-label="Backup and data" style={{ marginBottom: "20px" }}>
+        {dataItems.map((item) => (
+          <button
+            key={item.view}
+            type="button"
+            className="ps-list-item"
+            onClick={() => onNavigate(item.view)}
+          >
+            <span className="ps-list-icon" aria-hidden="true">
+              {item.icon}
+            </span>
+            <span className="ps-list-text">
+              <span className="ps-list-item-title">{item.title}</span>
+              <span className="ps-list-item-desc">{item.desc}</span>
+            </span>
+            <span className="ps-chevron" aria-hidden="true">
+              ›
+            </span>
+          </button>
+        ))}
+      </nav>
 
       <p className="ps-section-label">Privacy &amp; Legal</p>
       <nav className="ps-list" aria-label="Privacy and legal">
@@ -1674,12 +1753,13 @@ function ContactView({ onBack }: { onBack: () => void }) {
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export default function PitchFlowSettingsShell() {
-  const [view, setView] = useState<SettingsView>("landing");
+  const [view, setView] = useState<SettingsView>(initialSettingsView);
 
   return (
     <main className="ps-shell">
       <style>{SETTINGS_CSS}</style>
       {view === "landing" && <LandingView onNavigate={setView} />}
+      {view === "backup" && <BackupRestoreView onBack={() => setView("landing")} />}
       {view === "privacy" && <PrivacyPolicyView onBack={() => setView("landing")} />}
       {view === "terms" && <TermsView onBack={() => setView("landing")} />}
       {view === "storage" && <StoragePermissionsView onBack={() => setView("landing")} />}

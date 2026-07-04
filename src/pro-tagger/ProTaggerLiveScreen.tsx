@@ -18,6 +18,7 @@ import type { SelectedPlayer } from "./ProTaggerPlayerPicker";
 import { ProTaggerPitchView } from "./ProTaggerPitchView";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 import { ProTaggerReviewScreen } from "./ProTaggerReviewScreen";
+import { BackupPostMatchReminderDark } from "../backup/BackupPostMatchReminder";
 import { computeScoreSide, fmtGP, fmtScore } from "./pro-tagger-score";
 
 export interface RestoreState {
@@ -240,6 +241,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const [htConfirmOpen, setHtConfirmOpen]       = useState(false);
   const [ftConfirmOpen, setFtConfirmOpen]       = useState(false);
   const [actionsFeedback, setActionsFeedback]   = useState<string | null>(null);
+  const [showBackupReminder, setShowBackupReminder] = useState(false);
   const [pdfExporting, setPdfExporting]         = useState<"ht" | "ft" | "full" | null>(null);
 
   const clockStartRef          = useRef<number | null>(null);
@@ -644,6 +646,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
       return;
     }
     setActionsFeedback("✓ Match saved");
+    setShowBackupReminder(true);
     actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
     setActionsOpen(false);
   }, [buildSaveRecords]);
@@ -936,6 +939,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
             </button>
           )}
           {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
+          <BackupPostMatchReminderDark />
         </div>
       )}
 
@@ -1243,6 +1247,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               {actionsFeedback && (
                 <div style={AS.feedbackBanner}>{actionsFeedback}</div>
               )}
+              {showBackupReminder ? <BackupPostMatchReminderDark /> : null}
 
               <button style={AS.actionBtn} onClick={() => { setActionsOpen(false); onEnd(); }}>
                 Home
