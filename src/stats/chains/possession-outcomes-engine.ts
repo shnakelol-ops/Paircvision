@@ -18,6 +18,10 @@
  */
 
 import type { MatchEventKind, MatchEventSegment } from "../../core/stats/stats-event-model";
+import {
+  RESTART_ORIGIN_SCORES_CONCEDED_LABEL,
+  RESTART_ORIGIN_SCORES_LABEL,
+} from "../restarts/restartMetrics";
 import type {
   ChainableEvent,
   MatchIntelligence,
@@ -406,46 +410,47 @@ export function buildMatchIntelligence(
   // ── Coaching priorities (deterministic threshold rules) ──────────────────
   const candidates: InsightCandidate[] = [];
 
-  // Kickout retention
+  // Restart Share (all kickouts both teams — canonical name; never "retention",
+  // which is reserved for the own-kickouts-only figure. See restartMetrics.ts.)
   if (kickouts.total >= 5) {
     if (kickouts.retentionPct >= 70) {
       candidates.push(makePriority(
-        `Kickout retention strong — won ${kickouts.retainedCount}/${kickouts.total} (${kickouts.retentionPct}%)`,
+        `Restart Share strong — won ${kickouts.retainedCount}/${kickouts.total} (${kickouts.retentionPct}%)`,
         kickouts.retentionPct - 50,
       ));
     } else if (kickouts.retentionPct < 45) {
       candidates.push(makePriority(
-        `Kickout retention below par — won ${kickouts.retainedCount}/${kickouts.total} (${kickouts.retentionPct}%)`,
+        `Restart Share below par — won ${kickouts.retainedCount}/${kickouts.total} (${kickouts.retentionPct}%)`,
         50 - kickouts.retentionPct,
       ));
     }
   }
 
-  // Kickout damage (when they won kickouts)
+  // Kickout damage (when they won restarts)
   if (kickouts.concededCount >= 3) {
     if (kickouts.damagePct >= 60) {
       candidates.push(makePriority(
-        `Opposition scored from ${kickouts.conceded.goals + kickouts.conceded.points}/${kickouts.concededCount} kickouts they won (${kickouts.damagePct}%)`,
+        `${RESTART_ORIGIN_SCORES_CONCEDED_LABEL}: Opposition produced ${kickouts.conceded.goals + kickouts.conceded.points}/${kickouts.concededCount} restart-origin scores (${kickouts.damagePct}%)`,
         kickouts.damagePct - 40,
       ));
     } else if (kickouts.damagePct < 25) {
       candidates.push(makePriority(
-        `Good resistance when kickout lost — opposition scored from only ${kickouts.conceded.goals + kickouts.conceded.points}/${kickouts.concededCount} (${kickouts.damagePct}%)`,
+        `Good resistance when restart lost — Opposition produced only ${kickouts.conceded.goals + kickouts.conceded.points}/${kickouts.concededCount} restart-origin scores conceded (${kickouts.damagePct}%)`,
         25 - kickouts.damagePct,
       ));
     }
   }
 
-  // Kickout scoring (when we won kickouts)
+  // Restart scoring (when we won restarts)
   if (kickouts.retainedCount >= 3) {
     if (kickouts.retained.scoringPct >= 55) {
       candidates.push(makePriority(
-        `Kickouts won converted well — scored from ${kickouts.retained.goals + kickouts.retained.points}/${kickouts.retainedCount} (${kickouts.retained.scoringPct}%)`,
+        `${RESTART_ORIGIN_SCORES_LABEL} strong — ${kickouts.retained.goals + kickouts.retained.points}/${kickouts.retainedCount} restart-origin scores (${kickouts.retained.scoringPct}%)`,
         kickouts.retained.scoringPct - 35,
       ));
     } else if (kickouts.retained.scoringPct < 20) {
       candidates.push(makePriority(
-        `Low conversion from kickouts won — scored from ${kickouts.retained.goals + kickouts.retained.points}/${kickouts.retainedCount} (${kickouts.retained.scoringPct}%)`,
+        `${RESTART_ORIGIN_SCORES_LABEL} below par — ${kickouts.retained.goals + kickouts.retained.points}/${kickouts.retainedCount} restart-origin scores (${kickouts.retained.scoringPct}%)`,
         20 - kickouts.retained.scoringPct,
       ));
     }
@@ -528,7 +533,7 @@ export function buildMatchIntelligence(
     if (topThree.length === 0) {
       topThree.push(`Net match effect across all sources: ${netLabel(net2)} points`);
     } else if (topThree.length === 1) {
-      topThree.push(`Kickouts — won ${kickouts.retainedCount}, lost ${kickouts.concededCount}`);
+      topThree.push(`Restarts — won ${kickouts.retainedCount}, lost ${kickouts.concededCount}`);
     } else {
       topThree.push(`Turnovers — won ${turnovers.retainedCount}, lost ${turnovers.concededCount}`);
     }

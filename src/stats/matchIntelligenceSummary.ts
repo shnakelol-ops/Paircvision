@@ -109,7 +109,7 @@ export function buildMatchIntelligenceSummary(
   const dangerInsights: string[] = [];
   if (koConcededScores >= 2 && koConcededCount >= 2) {
     dangerInsights.push(
-      `${awayTeam} scored from ${koConcededScores} of ${koConcededCount} ${restartWord}s they won`,
+      `${awayTeam} produced ${koConcededScores} restart-origin scores conceded from ${koConcededCount} ${restartWord}s they won`,
     );
   }
   if (toConcededScores >= 2 && poss.turnovers.concededCount >= 2) {
@@ -124,7 +124,7 @@ export function buildMatchIntelligenceSummary(
   const weaponInsights: string[] = [];
   if (koRetainedScores >= 2 && koRetainedCount >= 2) {
     weaponInsights.push(
-      `${homeTeam} scored from ${koRetainedScores} of ${koRetainedCount} ${restartWord} wins`,
+      `${homeTeam} produced ${koRetainedScores} restart-origin scores from ${koRetainedCount} ${restartWord} wins`,
     );
   }
   if (toRetainedScores >= 2 && poss.turnovers.retainedCount >= 2) {
@@ -137,6 +137,8 @@ export function buildMatchIntelligenceSummary(
   let ourRestartInsight: string | null = null;
   let theirRestartInsight: string | null = null;
 
+  const restartWordTitle = restartWord.charAt(0).toUpperCase() + restartWord.slice(1);
+
   if (poss.ourKickouts !== null && poss.theirKickouts !== null) {
     // V1.2+ data with restartOwner split
     const ok = poss.ourKickouts;
@@ -144,20 +146,23 @@ export function buildMatchIntelligenceSummary(
     if (ok.total >= 5) {
       const rate = ok.retainedCount / ok.total;
       if (rate >= 0.65) {
-        ourRestartInsight = `${homeTeam} won ${ok.retainedCount} of ${ok.total} their own ${restartWord}s (${Math.round(rate * 100)}%)`;
+        ourRestartInsight = `${homeTeam}'s Own ${restartWordTitle} Retention was ${Math.round(rate * 100)}% (${ok.retainedCount} of ${ok.total})`;
       }
     }
     if (tk.total >= 5) {
-      const rate = tk.retainedCount / tk.total;
+      // On theirKickouts, `retained` = possessions where the HOME side had the
+      // ball (their kickouts WE won) — see restartOutcomesCard branch 3.
+      // The away team keeping their own kickout is `concededCount`.
+      const rate = tk.concededCount / tk.total;
       if (rate >= 0.65) {
-        theirRestartInsight = `${awayTeam} won ${tk.retainedCount} of ${tk.total} their own ${restartWord}s (${Math.round(rate * 100)}%)`;
+        theirRestartInsight = `${awayTeam}'s Own ${restartWordTitle} Retention was ${Math.round(rate * 100)}% (${tk.concededCount} of ${tk.total})`;
       }
     }
   } else if (ko.total >= 5) {
-    // Older data without restartOwner — use combined kickout dataset for our team
+    // Older data without restartOwner — the combined figure is Restart Share
     const rate = ko.won / ko.total;
     if (rate >= 0.65) {
-      ourRestartInsight = `${homeTeam} won ${ko.won} of ${ko.total} ${restartWord}s (${Math.round(rate * 100)}%)`;
+      ourRestartInsight = `${homeTeam} held ${Math.round(rate * 100)}% Restart Share (${ko.won} of ${ko.total} ${restartWord}s)`;
     }
   }
 
@@ -175,21 +180,21 @@ export function buildMatchIntelligenceSummary(
   // ── Best attack source ────────────────────────────────────────────────────
   let bestAttackInsight: string | null = null;
   const attackFamilies: Array<{ label: string; pct: number; count: number }> = [
-    { label: `${restartWord} wins`, pct: koRetainedScoringPct, count: koRetainedCount },
+    { label: "restart-origin scores", pct: koRetainedScoringPct, count: koRetainedCount },
     { label: "turnover wins",       pct: poss.turnovers.retained.scoringPct, count: poss.turnovers.retainedCount },
     { label: "placed balls",        pct: poss.frees.retained.scoringPct, count: poss.frees.retainedCount },
   ].filter((f) => f.count >= 4);
   if (attackFamilies.length > 0) {
     const best = attackFamilies.reduce((a, b) => (b.pct > a.pct ? b : a));
     if (best.pct >= 60) {
-      bestAttackInsight = `${homeTeam} most dangerous from ${best.label} — ${Math.round(best.pct)}% converted to scores`;
+      bestAttackInsight = `${homeTeam} most dangerous from ${best.label} — ${Math.round(best.pct)}% conversion`;
     }
   }
 
   // ── Worst defensive exposure ──────────────────────────────────────────────
   let worstExposureInsight: string | null = null;
   const exposureFamilies = [
-    { label: `${restartWord}s they won`, pct: koConcededDamagePct, count: koConcededCount },
+    { label: "restart-origin scores conceded", pct: koConcededDamagePct, count: koConcededCount },
     { label: "turnover wins",            pct: poss.turnovers.damagePct, count: poss.turnovers.concededCount },
     { label: "placed balls won",         pct: poss.frees.damagePct, count: poss.frees.concededCount },
   ].filter((f) => f.count >= 3 && f.pct >= 50);
@@ -220,7 +225,7 @@ export function buildMatchIntelligenceSummary(
   }
   if (koConcededScores >= 2 && koConcededCount >= 2 && coachingPriorities.length < 3) {
     coachingPriorities.push(
-      `Win the ${restartWord} — ${awayTeam} scored from ${koConcededScores} conceded`,
+      `Win the ${restartWord} — ${awayTeam} produced ${koConcededScores} restart-origin scores conceded`,
     );
   }
   if (koRetainedScores >= 2 && koRetainedCount >= 2 && coachingPriorities.length < 3) {

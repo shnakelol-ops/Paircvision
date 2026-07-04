@@ -182,7 +182,7 @@ function sportLabel(metric: MatchTargetMetric, sport: PitchSport): string {
   switch (metric) {
     case "shots":                 return "Shots per half";
     case "shootingEfficiency":    return "Shooting %";
-    case "kickoutWinRate":        return isPuckout ? "Puckouts" : "Kickouts";
+    case "kickoutWinRate":        return "Restart Share";
     case "turnoversWon":          return "Turnovers Won";
     case "turnoversLost":         return "Turnovers Lost";
     case "possessionRetention":   return "Possession Retention";

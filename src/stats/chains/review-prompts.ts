@@ -11,7 +11,7 @@
  *
  * Design constraints:
  *   - Pure TypeScript — no canvas, DOM, jsPDF, React, Pixi, or browser APIs.
- *   - Imports ONLY from ./chain-types.
+ *   - Imports from ./chain-types and ../restarts/restartMetrics (labels only).
  *   - All prompts are deterministic threshold evaluations — no inference.
  *   - Every prompt text is factual, non-prescriptive, and non-judgmental.
  *   - Prompt count is capped at MAX_PROMPTS (10).
@@ -29,6 +29,10 @@ import type {
   ChainAnalysis,
 } from "./chain-types";
 import type { PitchSport } from "../../core/pitch/pitch-config";
+import {
+  DIRECT_RESTART_SCORES_CONCEDED_LABEL,
+  DIRECT_RESTART_SCORES_LABEL,
+} from "../restarts/restartMetrics";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -114,25 +118,27 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   const koExpPct  = ko.lostAllowedScorePercent;
   const koNetAdv  = koConvPct - koExpPct;  // positive = net kickout advantage
 
-  // Kickout win-rate observation (always generated when sample is sufficient)
+  // Restart Share observation (always generated when sample is sufficient).
+  // Canonical vocabulary: the all-restarts figure is ALWAYS "Restart Share"
+  // (see src/stats/restarts/restartMetrics.ts). Never call it retention.
   if (koTotal >= 3) {
     if (koWinPct >= 60) {
       push(
         "KICKOUT",
-        `${home} won ${koWinPct}% of ${koTermS} (${koWon} of ${koTotal}). Worth reviewing whether this was consistent across both halves.`,
-        `kickout:winPct=${koWinPct}`,
+        `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}). Worth reviewing whether this was consistent across both halves.`,
+        `kickout:restartShare=${koWinPct}`,
       );
     } else if (koWinPct < 45) {
       push(
         "KICKOUT",
-        `${home} won ${koWinPct}% of ${koTermS} (${koWon} of ${koTotal}). Worth reviewing where possession was being contested during those phases.`,
-        `kickout:winPct=${koWinPct}`,
+        `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}). Worth reviewing where possession was being contested during those phases.`,
+        `kickout:restartShare=${koWinPct}`,
       );
     } else {
       push(
         "KICKOUT",
-        `${home} won ${koWinPct}% of ${koTermS} (${koWon} of ${koTotal}) and converted ${koConvPct}% of those to scores.`,
-        `kickout:winPct=${koWinPct}`,
+        `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) and ${DIRECT_RESTART_SCORES_LABEL.toLowerCase()} rate was ${koConvPct}% on won ${koTermS}.`,
+        `kickout:restartShare=${koWinPct}`,
       );
     }
   }
@@ -141,19 +147,19 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (koTotal >= 3 && koNetAdv < -10) {
     push(
       "KICKOUT",
-      `${home} scored from ${koConvPct}% of won ${koTermS}, but ${away} scored from ${koExpPct}% of theirs. Worth reviewing whether ${koTerm} direction patterns changed during the match.`,
+      `${home}'s ${DIRECT_RESTART_SCORES_LABEL.toLowerCase()} rate was ${koConvPct}% (${ko.wonToScore} of ${koWon}), but ${away}'s ${DIRECT_RESTART_SCORES_CONCEDED_LABEL.toLowerCase()} rate was ${koExpPct}% (${ko.lostAllowedScore} of ${ko.lost}). Worth reviewing whether ${koTerm} direction patterns changed during the match.`,
       `kickout:netAdv=${koNetAdv}`,
     );
   } else if (koWon >= 3 && koConvPct >= 40) {
     // Positive conversion rate — worth flagging as a repeatable pattern
     push(
       "KICKOUT",
-      `${home} converted ${koConvPct}% of won ${koTermS} to scores (${ko.wonToScore} from ${koWon} wins). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
-      `kickout:convPct=${koConvPct}`,
+      `${home}'s ${DIRECT_RESTART_SCORES_LABEL.toLowerCase()} rate was ${koConvPct}% (${ko.wonToScore} of ${koWon} restarts won). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
+      `kickout:restartToScore=${koConvPct}`,
     );
   }
 
-  // Half-split kickout win rate (minimum 3 outcomes per half for meaningful comparison)
+  // Half-split Restart Share (minimum 3 outcomes per half for meaningful comparison)
   const h1KoOut = ko.outcomes.filter((o) => o.kickoutEvent.period === "1H");
   const h2KoOut = ko.outcomes.filter((o) => o.kickoutEvent.period === "2H");
   if (h1KoOut.length >= 3 && h2KoOut.length >= 3) {
@@ -164,8 +170,8 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (h2Pct < h1Pct - 12) {
       push(
         "KICKOUT",
-        `${home}'s ${koTerm} win rate dropped in the second half (${h2Pct}% vs ${h1Pct}% in the first half). Worth reviewing what changed after the interval.`,
-        `kickout:h2WinPct=${h2Pct},h1WinPct=${h1Pct}`,
+        `${home}'s Restart Share dropped in the second half (${h2Pct}% vs ${h1Pct}% in the first half). Worth reviewing what changed after the interval.`,
+        `kickout:h2RestartShare=${h2Pct},h1RestartShare=${h1Pct}`,
       );
     }
   }

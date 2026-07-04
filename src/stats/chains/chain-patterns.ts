@@ -1,4 +1,8 @@
 import type { ChainableEvent, ChainAnalysis } from "./chain-types";
+import {
+  DIRECT_RESTART_SCORES_CONCEDED_LABEL,
+  DIRECT_RESTART_SCORES_LABEL,
+} from "../restarts/restartMetrics";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -126,11 +130,11 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     );
     candidates.push({
       kind:          "DANGER_CHAIN",
-      badge:         "KICKOUT RISK",
-      headline:      "Kickout Loss → Score",
-      observation:   `${team} lost ${ko.lost} kickouts — ${ko.lostAllowedScore} led to a score for ${opp}`,
+      badge:         "RESTART RISK",
+      headline:      "Restart Loss → Direct Score",
+      observation:   `${team} lost ${ko.lost} restarts — ${ko.lostAllowedScore} direct scores conceded off restarts for ${opp}`,
       primaryMetric: ko.lostAllowedScore,
-      metricLabel:   "opposition scores",
+      metricLabel:   DIRECT_RESTART_SCORES_CONCEDED_LABEL,
       occurrences:   ko.lost,
       priorityScore: ko.lostAllowedScore * 5 + ko.lost * 2,
       side:          "OPP",
@@ -151,11 +155,11 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     );
     candidates.push({
       kind:          "CHAIN_WEAPON",
-      badge:         "KICKOUT STRENGTH",
-      headline:      "Kickout Platform",
-      observation:   `${team} won ${ko.won} kickouts — ${ko.wonToScore} converted to scores`,
+      badge:         "RESTART STRENGTH",
+      headline:      "Restart Platform",
+      observation:   `${team} won ${ko.won} restarts — ${ko.wonToScore} ${DIRECT_RESTART_SCORES_LABEL.toLowerCase()}`,
       primaryMetric: ko.wonToScore,
-      metricLabel:   "scores from kickouts",
+      metricLabel:   DIRECT_RESTART_SCORES_LABEL,
       occurrences:   ko.won,
       priorityScore: ko.wonToScore * 5 + ko.won * 2,
       side:          "FOR",
@@ -226,7 +230,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
   // pattern for the same ball-source already qualifies above.
   {
     const hasKoPattern = candidates.some(
-      (c) => c.headline === "Kickout Loss → Score" || c.headline === "Kickout Platform",
+      (c) => c.headline === "Restart Loss → Direct Score" || c.headline === "Restart Platform",
     );
     const hasTvPattern = candidates.some(
       (c) => c.headline === "Possession Lost → Score" || c.headline === "Turnovers Won",
@@ -236,11 +240,11 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     if (!hasKoPattern && ko.total >= (mode === "HT" ? 3 : 4)) {
       candidates.push({
         kind:          "PRESSURE_PATTERN",
-        badge:         "KICKOUT CONTEST",
-        headline:      "Kickout Contest",
-        observation:   `${ko.total} kickouts contested — ${team} scored from ${ko.wonToScore}, conceded ${ko.lostAllowedScore}`,
+        badge:         "RESTART CONTEST",
+        headline:      "Restart Contest",
+        observation:   `${ko.total} restarts contested — ${team} ${DIRECT_RESTART_SCORES_LABEL.toLowerCase()}: ${ko.wonToScore}, ${DIRECT_RESTART_SCORES_CONCEDED_LABEL.toLowerCase()}: ${ko.lostAllowedScore}`,
         primaryMetric: ko.total,
-        metricLabel:   "kickouts in match",
+        metricLabel:   "restarts in match",
         occurrences:   ko.total,
         priorityScore: ko.total * 2,
         side:          ko.won >= ko.lost ? "FOR" : "OPP",

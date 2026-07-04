@@ -418,7 +418,7 @@ function deriveHalftimeNotes(
   }
 
   if (positives.length < 3 && s.kickoutTotal >= 5 && s.kickoutPct >= 65) {
-    positives.push(`${homeTeam} won ${s.kickoutsWon} of ${s.kickoutTotal} ${restartWord}s (${s.kickoutPct}%)`);
+    positives.push(`${homeTeam} held ${s.kickoutPct}% Restart Share (${s.kickoutsWon} of ${s.kickoutTotal} ${restartWord}s)`);
   }
   if (positives.length < 3 && s.attempts >= 5 && s.conversionPct >= 65) {
     positives.push(`${homeTeam} converted ${s.conversionPct}% of shots — efficient in front of goal`);
@@ -485,7 +485,7 @@ function deriveHalftimeNotes(
     concerns.push(`${homeTeam} missed ${s.wides} shots wide — shot selection`);
   }
   if (s.kickoutTotal >= 5 && s.kickoutPct <= 45) {
-    concerns.push(`${homeTeam} retained only ${s.kickoutPct}% of ${restartWord}s — ${awayTeam} winning this battle`);
+    concerns.push(`${homeTeam} held only ${s.kickoutPct}% Restart Share — ${awayTeam} winning this battle`);
   }
   if (s.turnoversLost - s.turnoversWon >= 3) {
     concerns.push(`${homeTeam} lost the turnover battle ${s.turnoversLost}–${s.turnoversWon}`);
@@ -590,7 +590,7 @@ function deriveFullTimeSummary(
   } else if (intel && !intel.lowSampleWarning && intel.overallInsight) {
     biggestPositive = intel.overallInsight + ".";
   } else if (s.kickoutTotal >= 5 && s.kickoutPct >= 60) {
-    biggestPositive = `${homeTeam} won ${s.kickoutsWon} of ${s.kickoutTotal} ${restartWord}s (${s.kickoutPct}%) — controlled the restarts throughout.`;
+    biggestPositive = `${homeTeam} held ${s.kickoutPct}% Restart Share (${s.kickoutsWon} of ${s.kickoutTotal} ${restartWord}s) — controlled the restarts throughout.`;
   } else if (s.attempts >= 5 && s.conversionPct >= 65) {
     biggestPositive = `${homeTeam} converted ${s.conversionPct}% of shots — clinical in front of goal.`;
   } else if (s.turnoversWon - s.turnoversLost >= 3) {
@@ -614,7 +614,7 @@ function deriveFullTimeSummary(
   if (s.wides >= 5) {
     biggestConcern = `${homeTeam} missed ${s.wides} shots wide — shot selection and accuracy must improve.`;
   } else if (s.kickoutTotal >= 5 && s.kickoutPct <= 45) {
-    biggestConcern = `${homeTeam} retained only ${s.kickoutPct}% of ${restartWord}s — ${awayTeam} controlled the restarts.`;
+    biggestConcern = `${homeTeam} held only ${s.kickoutPct}% Restart Share — ${awayTeam} controlled the restarts.`;
   } else if (s.turnoversLost - s.turnoversWon >= 3) {
     biggestConcern = `${homeTeam} lost the turnover battle ${s.turnoversLost}–${s.turnoversWon} — possession discipline is a priority.`;
   } else if (s.freesConceded >= 8) {
