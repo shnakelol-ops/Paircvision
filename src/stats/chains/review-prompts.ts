@@ -11,7 +11,7 @@
  *
  * Design constraints:
  *   - Pure TypeScript — no canvas, DOM, jsPDF, React, Pixi, or browser APIs.
- *   - Imports ONLY from ./chain-types.
+ *   - Imports from ./chain-types and ../restarts/restartMetrics (labels only).
  *   - All prompts are deterministic threshold evaluations — no inference.
  *   - Every prompt text is factual, non-prescriptive, and non-judgmental.
  *   - Prompt count is capped at MAX_PROMPTS (10).
@@ -29,6 +29,10 @@ import type {
   ChainAnalysis,
 } from "./chain-types";
 import type { PitchSport } from "../../core/pitch/pitch-config";
+import {
+  DIRECT_RESTART_SCORES_CONCEDED_LABEL,
+  DIRECT_RESTART_SCORES_LABEL,
+} from "../restarts/restartMetrics";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -133,7 +137,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     } else {
       push(
         "KICKOUT",
-        `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) and converted ${koConvPct}% of won ${koTermS} to scores.`,
+        `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) and ${DIRECT_RESTART_SCORES_LABEL.toLowerCase()} rate was ${koConvPct}% on won ${koTermS}.`,
         `kickout:restartShare=${koWinPct}`,
       );
     }
@@ -143,14 +147,14 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (koTotal >= 3 && koNetAdv < -10) {
     push(
       "KICKOUT",
-      `${home} scored from ${koConvPct}% of won ${koTermS}, but ${away} scored from ${koExpPct}% of theirs. Worth reviewing whether ${koTerm} direction patterns changed during the match.`,
+      `${home}'s ${DIRECT_RESTART_SCORES_LABEL.toLowerCase()} rate was ${koConvPct}% (${ko.wonToScore} of ${koWon}), but ${away}'s ${DIRECT_RESTART_SCORES_CONCEDED_LABEL.toLowerCase()} rate was ${koExpPct}% (${ko.lostAllowedScore} of ${ko.lost}). Worth reviewing whether ${koTerm} direction patterns changed during the match.`,
       `kickout:netAdv=${koNetAdv}`,
     );
   } else if (koWon >= 3 && koConvPct >= 40) {
     // Positive conversion rate — worth flagging as a repeatable pattern
     push(
       "KICKOUT",
-      `${home}'s Restarts Won → Scores rate was ${koConvPct}% (${ko.wonToScore} of ${koWon} restarts won). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
+      `${home}'s ${DIRECT_RESTART_SCORES_LABEL.toLowerCase()} rate was ${koConvPct}% (${ko.wonToScore} of ${koWon} restarts won). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
       `kickout:restartToScore=${koConvPct}`,
     );
   }

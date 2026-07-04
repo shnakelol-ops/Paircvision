@@ -22,11 +22,19 @@
  *   oppKickoutWinRate      "Won on Their Kickout" / "Won on Their Puckout"
  *     Opposition kickouts we won ÷ opposition kickouts taken.
  *
- *   restartToScore         "Restarts Won → Scores"
- *     Scores from restarts we won ÷ restarts we won.
+ *   restartToScore         "Direct restart scores"
+ *     Immediate chain-window scores after restarts we won (nextScore) ÷
+ *     restarts we won. Never label this "Restart-origin scores".
  *
- *   restartLossPunishment  "Restarts Lost → Scored Against"
- *     Opposition scores from restarts we lost ÷ restarts we lost.
+ *   restartLossPunishment  "Direct scores conceded off restarts"
+ *     Immediate chain-window scores conceded after restarts we lost
+ *     (nextScore) ÷ restarts we lost.
+ *
+ * Separate ledger / possession-origin vocabulary (not these metrics):
+ *   "Restart-origin scores"            — scores attributed to a won-restart
+ *                                        possession origin (ledger row / outcomes).
+ *   "Restart-origin scores conceded"   — scores conceded after lost-restart
+ *                                        possession origins.
  *
  * Hard display rules:
  *   1. The word "Retention" may ONLY ever label ownKickoutRetention.
@@ -59,6 +67,15 @@ export type RestartMetricId =
   | "restartToScore"
   | "restartLossPunishment";
 
+/** Chain-window immediate score after a restart win (nextScore). */
+export const DIRECT_RESTART_SCORES_LABEL = "Direct restart scores";
+/** Chain-window immediate score conceded after a restart loss (nextScore). */
+export const DIRECT_RESTART_SCORES_CONCEDED_LABEL = "Direct scores conceded off restarts";
+/** Possession-origin / ledger attribution of scores from won restarts. */
+export const RESTART_ORIGIN_SCORES_LABEL = "Restart-origin scores";
+/** Possession-origin / ledger attribution of scores conceded after lost restarts. */
+export const RESTART_ORIGIN_SCORES_CONCEDED_LABEL = "Restart-origin scores conceded";
+
 /**
  * Returns the canonical display name for a restart metric.
  * Sport-aware: "Kickout" becomes "Puckout" for hurling / camogie.
@@ -69,8 +86,8 @@ export function restartMetricLabel(id: RestartMetricId, sport?: PitchSport): str
     case "restartShare":          return "Restart Share";
     case "ownKickoutRetention":   return `Own ${ko} Retention`;
     case "oppKickoutWinRate":     return `Won on Their ${ko}`;
-    case "restartToScore":        return "Restarts Won → Scores";
-    case "restartLossPunishment": return "Restarts Lost → Scored Against";
+    case "restartToScore":        return DIRECT_RESTART_SCORES_LABEL;
+    case "restartLossPunishment": return DIRECT_RESTART_SCORES_CONCEDED_LABEL;
   }
 }
 

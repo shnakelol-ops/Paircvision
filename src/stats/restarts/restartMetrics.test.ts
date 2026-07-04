@@ -8,8 +8,8 @@
  *   Restart Share            15/24 = 63%
  *   Own Kickout Retention    1H 4/5 = 80% · 2H 6/8 = 75% · match 10/13 = 77%
  *   Won on Their Kickout     5/11 = 45%
- *   Restarts Won → Scores    5/15 = 33%
- *   Restarts Lost → Scored Against  4/9 = 44%
+ *   Direct restart scores    5/15 = 33%
+ *   Direct scores conceded off restarts  4/9 = 44%
  */
 
 import { describe, expect, it } from "vitest";
@@ -131,11 +131,11 @@ describe("computeRestartMetrics — spec fixture values", () => {
     expect(metrics.oppKickoutWinRate.full).toEqual({ num: 5, den: 11, pct: 45 });
   });
 
-  it("Restarts Won → Scores is 5/15 = 33%", () => {
+  it("Direct restart scores is 5/15 = 33%", () => {
     expect(metrics.restartToScore).toEqual({ num: 5, den: 15, pct: 33 });
   });
 
-  it("Restarts Lost → Scored Against is 4/9 = 44%", () => {
+  it("Direct scores conceded off restarts is 4/9 = 44%", () => {
     expect(metrics.restartLossPunishment).toEqual({ num: 4, den: 9, pct: 44 });
   });
 });
@@ -146,8 +146,8 @@ describe("canonical naming rules", () => {
     expect(restartMetricLabel("ownKickoutRetention")).toBe("Own Kickout Retention");
     expect(restartMetricLabel("ownKickoutRetention", "hurling")).toBe("Own Puckout Retention");
     expect(restartMetricLabel("oppKickoutWinRate")).toBe("Won on Their Kickout");
-    expect(restartMetricLabel("restartToScore")).toBe("Restarts Won → Scores");
-    expect(restartMetricLabel("restartLossPunishment")).toBe("Restarts Lost → Scored Against");
+    expect(restartMetricLabel("restartToScore")).toBe("Direct restart scores");
+    expect(restartMetricLabel("restartLossPunishment")).toBe("Direct scores conceded off restarts");
   });
 
   it("explainer line replaces the old 'both are correct' disclaimer", () => {

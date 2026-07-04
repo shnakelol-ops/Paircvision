@@ -18,6 +18,10 @@
  */
 
 import type { MatchEventKind, MatchEventSegment } from "../../core/stats/stats-event-model";
+import {
+  RESTART_ORIGIN_SCORES_CONCEDED_LABEL,
+  RESTART_ORIGIN_SCORES_LABEL,
+} from "../restarts/restartMetrics";
 import type {
   ChainableEvent,
   MatchIntelligence,
@@ -426,12 +430,12 @@ export function buildMatchIntelligence(
   if (kickouts.concededCount >= 3) {
     if (kickouts.damagePct >= 60) {
       candidates.push(makePriority(
-        `Restarts Lost → Scored Against: Opposition scored from ${kickouts.conceded.goals + kickouts.conceded.points}/${kickouts.concededCount} restarts they won (${kickouts.damagePct}%)`,
+        `${RESTART_ORIGIN_SCORES_CONCEDED_LABEL}: Opposition produced ${kickouts.conceded.goals + kickouts.conceded.points}/${kickouts.concededCount} restart-origin scores (${kickouts.damagePct}%)`,
         kickouts.damagePct - 40,
       ));
     } else if (kickouts.damagePct < 25) {
       candidates.push(makePriority(
-        `Good resistance when restart lost — Opposition scored from only ${kickouts.conceded.goals + kickouts.conceded.points}/${kickouts.concededCount} (${kickouts.damagePct}%)`,
+        `Good resistance when restart lost — Opposition produced only ${kickouts.conceded.goals + kickouts.conceded.points}/${kickouts.concededCount} restart-origin scores conceded (${kickouts.damagePct}%)`,
         25 - kickouts.damagePct,
       ));
     }
@@ -441,12 +445,12 @@ export function buildMatchIntelligence(
   if (kickouts.retainedCount >= 3) {
     if (kickouts.retained.scoringPct >= 55) {
       candidates.push(makePriority(
-        `Restarts Won → Scores strong — scored from ${kickouts.retained.goals + kickouts.retained.points}/${kickouts.retainedCount} (${kickouts.retained.scoringPct}%)`,
+        `${RESTART_ORIGIN_SCORES_LABEL} strong — ${kickouts.retained.goals + kickouts.retained.points}/${kickouts.retainedCount} restart-origin scores (${kickouts.retained.scoringPct}%)`,
         kickouts.retained.scoringPct - 35,
       ));
     } else if (kickouts.retained.scoringPct < 20) {
       candidates.push(makePriority(
-        `Restarts Won → Scores below par — scored from ${kickouts.retained.goals + kickouts.retained.points}/${kickouts.retainedCount} (${kickouts.retained.scoringPct}%)`,
+        `${RESTART_ORIGIN_SCORES_LABEL} below par — ${kickouts.retained.goals + kickouts.retained.points}/${kickouts.retainedCount} restart-origin scores (${kickouts.retained.scoringPct}%)`,
         20 - kickouts.retained.scoringPct,
       ));
     }

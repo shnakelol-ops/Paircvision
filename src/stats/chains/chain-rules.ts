@@ -55,7 +55,7 @@ export const CHAIN_RULES: readonly ChainRule[] = [
 
   {
     id: "KICKOUT_TO_SCORE",
-    label: "Kickout Won → Score",
+    label: "Kickout Won — Direct restart scores",
     description:
       "Team won possession from a kickout and scored within the next possession window.",
     steps: [
@@ -67,7 +67,7 @@ export const CHAIN_RULES: readonly ChainRule[] = [
 
   {
     id: "KICKOUT_LOST_TO_SCORE_AGAINST",
-    label: "Kickout Lost → Score Against",
+    label: "Kickout Lost — Direct scores conceded off restarts",
     description:
       "Team conceded a kickout and opposition scored directly from the resulting possession.",
     steps: [
