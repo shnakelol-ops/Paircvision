@@ -137,6 +137,8 @@ export function buildMatchIntelligenceSummary(
   let ourRestartInsight: string | null = null;
   let theirRestartInsight: string | null = null;
 
+  const restartWordTitle = restartWord.charAt(0).toUpperCase() + restartWord.slice(1);
+
   if (poss.ourKickouts !== null && poss.theirKickouts !== null) {
     // V1.2+ data with restartOwner split
     const ok = poss.ourKickouts;
@@ -144,20 +146,23 @@ export function buildMatchIntelligenceSummary(
     if (ok.total >= 5) {
       const rate = ok.retainedCount / ok.total;
       if (rate >= 0.65) {
-        ourRestartInsight = `${homeTeam} won ${ok.retainedCount} of ${ok.total} their own ${restartWord}s (${Math.round(rate * 100)}%)`;
+        ourRestartInsight = `${homeTeam}'s Own ${restartWordTitle} Retention was ${Math.round(rate * 100)}% (${ok.retainedCount} of ${ok.total})`;
       }
     }
     if (tk.total >= 5) {
-      const rate = tk.retainedCount / tk.total;
+      // On theirKickouts, `retained` = possessions where the HOME side had the
+      // ball (their kickouts WE won) — see restartOutcomesCard branch 3.
+      // The away team keeping their own kickout is `concededCount`.
+      const rate = tk.concededCount / tk.total;
       if (rate >= 0.65) {
-        theirRestartInsight = `${awayTeam} won ${tk.retainedCount} of ${tk.total} their own ${restartWord}s (${Math.round(rate * 100)}%)`;
+        theirRestartInsight = `${awayTeam} retained ${tk.concededCount} of ${tk.total} of their own ${restartWord}s (${Math.round(rate * 100)}%)`;
       }
     }
   } else if (ko.total >= 5) {
-    // Older data without restartOwner — use combined kickout dataset for our team
+    // Older data without restartOwner — the combined figure is Restart Share
     const rate = ko.won / ko.total;
     if (rate >= 0.65) {
-      ourRestartInsight = `${homeTeam} won ${ko.won} of ${ko.total} ${restartWord}s (${Math.round(rate * 100)}%)`;
+      ourRestartInsight = `${homeTeam} held ${Math.round(rate * 100)}% Restart Share (${ko.won} of ${ko.total} ${restartWord}s)`;
     }
   }
 

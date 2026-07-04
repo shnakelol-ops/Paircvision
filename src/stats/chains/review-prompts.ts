@@ -114,25 +114,27 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   const koExpPct  = ko.lostAllowedScorePercent;
   const koNetAdv  = koConvPct - koExpPct;  // positive = net kickout advantage
 
-  // Kickout win-rate observation (always generated when sample is sufficient)
+  // Restart Share observation (always generated when sample is sufficient).
+  // Canonical vocabulary: the all-restarts figure is ALWAYS "Restart Share"
+  // (see src/stats/restarts/restartMetrics.ts). Never call it retention.
   if (koTotal >= 3) {
     if (koWinPct >= 60) {
       push(
         "KICKOUT",
-        `${home} won ${koWinPct}% of ${koTermS} (${koWon} of ${koTotal}). Worth reviewing whether this was consistent across both halves.`,
-        `kickout:winPct=${koWinPct}`,
+        `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}). Worth reviewing whether this was consistent across both halves.`,
+        `kickout:restartShare=${koWinPct}`,
       );
     } else if (koWinPct < 45) {
       push(
         "KICKOUT",
-        `${home} won ${koWinPct}% of ${koTermS} (${koWon} of ${koTotal}). Worth reviewing where possession was being contested during those phases.`,
-        `kickout:winPct=${koWinPct}`,
+        `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}). Worth reviewing where possession was being contested during those phases.`,
+        `kickout:restartShare=${koWinPct}`,
       );
     } else {
       push(
         "KICKOUT",
-        `${home} won ${koWinPct}% of ${koTermS} (${koWon} of ${koTotal}) and converted ${koConvPct}% of those to scores.`,
-        `kickout:winPct=${koWinPct}`,
+        `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) and converted ${koConvPct}% of won ${koTermS} to scores.`,
+        `kickout:restartShare=${koWinPct}`,
       );
     }
   }
@@ -164,8 +166,8 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (h2Pct < h1Pct - 12) {
       push(
         "KICKOUT",
-        `${home}'s ${koTerm} win rate dropped in the second half (${h2Pct}% vs ${h1Pct}% in the first half). Worth reviewing what changed after the interval.`,
-        `kickout:h2WinPct=${h2Pct},h1WinPct=${h1Pct}`,
+        `${home}'s Restart Share dropped in the second half (${h2Pct}% vs ${h1Pct}% in the first half). Worth reviewing what changed after the interval.`,
+        `kickout:h2RestartShare=${h2Pct},h1RestartShare=${h1Pct}`,
       );
     }
   }
