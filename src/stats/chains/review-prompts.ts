@@ -150,12 +150,12 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     // Positive conversion rate — worth flagging as a repeatable pattern
     push(
       "KICKOUT",
-      `${home} converted ${koConvPct}% of won ${koTermS} to scores (${ko.wonToScore} from ${koWon} wins). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
-      `kickout:convPct=${koConvPct}`,
+      `${home}'s Restarts Won → Scores rate was ${koConvPct}% (${ko.wonToScore} of ${koWon} restarts won). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
+      `kickout:restartToScore=${koConvPct}`,
     );
   }
 
-  // Half-split kickout win rate (minimum 3 outcomes per half for meaningful comparison)
+  // Half-split Restart Share (minimum 3 outcomes per half for meaningful comparison)
   const h1KoOut = ko.outcomes.filter((o) => o.kickoutEvent.period === "1H");
   const h2KoOut = ko.outcomes.filter((o) => o.kickoutEvent.period === "2H");
   if (h1KoOut.length >= 3 && h2KoOut.length >= 3) {

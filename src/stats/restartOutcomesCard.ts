@@ -387,7 +387,7 @@ export async function buildRestartOutcomesCardPng(
       // Branch 1: home took kickout → home kept it
       branches.push({
         groupLabel:    `${home.toUpperCase()} KICKOUTS`,
-        branchLabel:   `${home} retained`,
+        branchLabel:   `${home} — Own Kickout Retention`,
         accentColor:   CLR.green,
         count:         ok.retainedCount,
         total:         ok.total,
@@ -430,7 +430,7 @@ export async function buildRestartOutcomesCardPng(
       // Branch 4: away took kickout → away kept it
       branches.push({
         groupLabel:    `${away.toUpperCase()} KICKOUTS`,
-        branchLabel:   `${away} retained`,
+        branchLabel:   `${away} — Own Kickout Retention`,
         accentColor:   CLR.red,
         count:         tk.concededCount,
         total:         tk.total,
@@ -458,12 +458,12 @@ export async function buildRestartOutcomesCardPng(
 
     y = drawLegacyKickoutSection(
       ctx,
-      "KICKOUTS — ALL RESTARTS COMBINED",
+      "RESTARTS — ALL RESTARTS COMBINED",
       CLR.green,
-      "Kickouts",
+      "Restart Share",
       ko.netOutcome,
       {
-        header:        `${home} won`,
+        header:        `${home} Restart Share`,
         count:         ko.retainedCount,
         total:         ko.total,
         pct:           ko.retentionPct,

@@ -422,31 +422,31 @@ export function buildMatchIntelligence(
     }
   }
 
-  // Kickout damage (when they won kickouts)
+  // Kickout damage (when they won restarts)
   if (kickouts.concededCount >= 3) {
     if (kickouts.damagePct >= 60) {
       candidates.push(makePriority(
-        `Opposition scored from ${kickouts.conceded.goals + kickouts.conceded.points}/${kickouts.concededCount} kickouts they won (${kickouts.damagePct}%)`,
+        `Restarts Lost → Scored Against: Opposition scored from ${kickouts.conceded.goals + kickouts.conceded.points}/${kickouts.concededCount} restarts they won (${kickouts.damagePct}%)`,
         kickouts.damagePct - 40,
       ));
     } else if (kickouts.damagePct < 25) {
       candidates.push(makePriority(
-        `Good resistance when kickout lost — opposition scored from only ${kickouts.conceded.goals + kickouts.conceded.points}/${kickouts.concededCount} (${kickouts.damagePct}%)`,
+        `Good resistance when restart lost — Opposition scored from only ${kickouts.conceded.goals + kickouts.conceded.points}/${kickouts.concededCount} (${kickouts.damagePct}%)`,
         25 - kickouts.damagePct,
       ));
     }
   }
 
-  // Kickout scoring (when we won kickouts)
+  // Restart scoring (when we won restarts)
   if (kickouts.retainedCount >= 3) {
     if (kickouts.retained.scoringPct >= 55) {
       candidates.push(makePriority(
-        `Kickouts won converted well — scored from ${kickouts.retained.goals + kickouts.retained.points}/${kickouts.retainedCount} (${kickouts.retained.scoringPct}%)`,
+        `Restarts Won → Scores strong — scored from ${kickouts.retained.goals + kickouts.retained.points}/${kickouts.retainedCount} (${kickouts.retained.scoringPct}%)`,
         kickouts.retained.scoringPct - 35,
       ));
     } else if (kickouts.retained.scoringPct < 20) {
       candidates.push(makePriority(
-        `Low conversion from kickouts won — scored from ${kickouts.retained.goals + kickouts.retained.points}/${kickouts.retainedCount} (${kickouts.retained.scoringPct}%)`,
+        `Restarts Won → Scores below par — scored from ${kickouts.retained.goals + kickouts.retained.points}/${kickouts.retainedCount} (${kickouts.retained.scoringPct}%)`,
         20 - kickouts.retained.scoringPct,
       ));
     }
@@ -529,7 +529,7 @@ export function buildMatchIntelligence(
     if (topThree.length === 0) {
       topThree.push(`Net match effect across all sources: ${netLabel(net2)} points`);
     } else if (topThree.length === 1) {
-      topThree.push(`Kickouts — won ${kickouts.retainedCount}, lost ${kickouts.concededCount}`);
+      topThree.push(`Restarts — won ${kickouts.retainedCount}, lost ${kickouts.concededCount}`);
     } else {
       topThree.push(`Turnovers — won ${turnovers.retainedCount}, lost ${turnovers.concededCount}`);
     }

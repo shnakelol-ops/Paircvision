@@ -36,7 +36,7 @@ type TeamBreakdown = {
 const CARD_WIDTH = 1080;
 const BASE_CARD_HEIGHT = 1640;
 const FOOTER_TEXT_OFFSET = 78;
-const FOOTER_SAFE_PADDING = 148;
+const FOOTER_SAFE_PADDING = 188;
 const formatGaelicScore = (s: TeamScore) => `${s.goals}-${s.points}`;
 const pct = (n:number,d:number)=> d>0?`${Math.round((n/d)*100)}%`:"0%";
 const init = ():TeamBreakdown=>({shots:0,scores:0,wides:0,goals:0,points:0,twoPt:0,short:0,post:0,fortyFive:0,blocked:0,kickWon:0,kickLost:0,kickClean:0,kickBreak:0,kickFoulWon:0,kickFoulConceded:0,kickDead:0,toWon:0,toLost:0,toForced:0,toUnforced:0,toTackle:0,toPress:0,toSwarm:0,toIntercept:0,toSlackKP:0,toSlackHP:0,toOvercarried:0,toStripped:0,freesFor:0,freesAgainst:0,freeScored:0,freeMissed:0,yellow:0,black:0,red:0});
@@ -161,9 +161,9 @@ export async function buildStatsShareCardPng(input: StatsShareCardInput): Promis
   row(ctx,y,"Wides",String(d.HOME.wides),String(d.AWAY.wides)); y+=42;
   row(ctx,y,"Conversion",pct(d.HOME.scores,d.HOME.shots),pct(d.AWAY.scores,d.AWAY.shots)); y+=42;
   row(ctx,y,"Short/Post/45/Blk",`${d.HOME.short}/${d.HOME.post}/${d.HOME.fortyFive}/${d.HOME.blocked}`,`${d.AWAY.short}/${d.AWAY.post}/${d.AWAY.fortyFive}/${d.AWAY.blocked}`); y+=56;
-  ctx.fillStyle="#93c5fd"; ctx.font="700 28px Inter,system-ui,sans-serif"; ctx.fillText("Kickouts",72,y); y+=34;
+  ctx.fillStyle="#93c5fd"; ctx.font="700 28px Inter,system-ui,sans-serif"; ctx.fillText("Restarts",72,y); y+=34;
   row(ctx,y,"Won / Total",`${d.HOME.kickWon}/${d.HOME.kickWon+d.HOME.kickLost}`,`${d.AWAY.kickWon}/${d.AWAY.kickWon+d.AWAY.kickLost}`); y+=42;
-  row(ctx,y,"Win %",pct(d.HOME.kickWon,d.HOME.kickWon+d.HOME.kickLost),pct(d.AWAY.kickWon,d.AWAY.kickWon+d.AWAY.kickLost)); y+=42;
+  row(ctx,y,"Won %",pct(d.HOME.kickWon,d.HOME.kickWon+d.HOME.kickLost),pct(d.AWAY.kickWon,d.AWAY.kickWon+d.AWAY.kickLost)); y+=42;
   row(ctx,y,"Clean / Break",`${d.HOME.kickClean}/${d.HOME.kickBreak}`,`${d.AWAY.kickClean}/${d.AWAY.kickBreak}`); y+=56;
   row(ctx,y,"Foul Won / Conceded",`${d.HOME.kickFoulWon}/${d.HOME.kickFoulConceded}`,`${d.AWAY.kickFoulWon}/${d.AWAY.kickFoulConceded}`); y+=42;
   row(ctx,y,"Kicked Dead",`${d.HOME.kickDead}`,`${d.AWAY.kickDead}`); y+=56;
@@ -192,6 +192,7 @@ export async function buildStatsShareCardPng(input: StatsShareCardInput): Promis
   ctx.lineTo(CARD_WIDTH - 56, footerY - 38);
   ctx.stroke();
   ctx.fillStyle="#9ca3af"; ctx.font="600 24px Inter,system-ui,sans-serif"; ctx.fillText(`Logged events: ${input.eventCount}`,72,footerY);
+  ctx.fillStyle="#6b7280"; ctx.font="500 20px Inter,system-ui,sans-serif"; ctx.fillText("Restart Share counts every restart in the game. Own Kickout Retention counts only our own.",72,footerY+28);
   ctx.fillStyle="#6b7280"; ctx.font="500 24px Inter,system-ui,sans-serif"; ctx.textAlign="right"; ctx.fillText("PáircVision Stats Summary",CARD_WIDTH-72,footerY); ctx.textAlign="left";
   const blob = await new Promise<Blob | null>((resolve)=>c.toBlob((b)=>resolve(b),"image/png")); if(!blob) return null;
   const fileLabel=`${input.homeTeamName}-${input.awayTeamName}-${input.stageLabel}`.toLowerCase().replace(/[^a-z0-9-]+/g,"-").replace(/^-+|-+$/g,"");

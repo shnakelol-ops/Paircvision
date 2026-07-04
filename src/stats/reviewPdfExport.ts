@@ -50,6 +50,7 @@ import {
   fmtMarginLabel,
   fmtNet,
   fmtScoreLine,
+  LEDGER_RESTART_LOSS_CONTEXT_LABEL,
 } from "./ledger/scoreLedger";
 import {
   buildInfluenceAnalysis,
@@ -2610,7 +2611,7 @@ function makeKickoutChainPage(
       ctx.font = "bold 12px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
-      ctx.fillText(`OWN ${koLabelUC(sport)}S RETAINED`, COL2_X + 14, cy + 10);
+      ctx.fillText(`OWN ${restartMetricLabel("ownKickoutRetention", sport).toUpperCase()}`, COL2_X + 14, cy + 10);
       ctx.restore();
       cy += 20;
       cy = drawStatRow(COL2_X, cy, COL_W, "Clean Won",     String(forCleanWon),  "#4ade80", false);
@@ -2654,7 +2655,7 @@ function makeKickoutChainPage(
       ctx.font = "bold 12px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
-      ctx.fillText(`OWN ${koLabelUC(sport)}S RETAINED`, COL2_X + 14, cy + 10);
+      ctx.fillText(`OWN ${restartMetricLabel("ownKickoutRetention", sport).toUpperCase()}`, COL2_X + 14, cy + 10);
       ctx.restore();
       cy += 20;
       cy = drawStatRow(COL2_X, cy, COL_W, "Clean Won",     String(oppCleanWon),  "#4ade80", false);
@@ -3930,15 +3931,15 @@ function makeTacticalIntelligencePage(
 
   // ── LEFT — CARD 1: RESTART PLATFORM ──────────────────────────────────────
   drawCardBg(L_COL_X, card1Y, L_COL_W, CARD_H_TOP, "#22d3ee");
-  let cy = drawCardTitle(L_COL_X, card1Y, L_COL_W, `${koLabel(sport)} Platform`, "#22d3ee");
+  let cy = drawCardTitle(L_COL_X, card1Y, L_COL_W, "Restart Platform", "#22d3ee");
   cy = drawHeroMetric(
     L_COL_X, cy,
     koTotal > 0 ? `${koWinPct}%` : "—",
     `${restartMetricLabel("restartShare", sport)}  (${koWon} won of ${koTotal} total)`,
     "#22d3ee",
   );
-  cy = drawMetricRow(L_COL_X, cy, L_COL_W, `${koLabelPlural(sport)} won → score`,              `${koConvPct}%`, "#34d399", false);
-  cy = drawMetricRow(L_COL_X, cy, L_COL_W, `${koLabelPlural(sport)} lost → opposition scored`, `${koExpPct}%`, "#fb7185", true);
+  cy = drawMetricRow(L_COL_X, cy, L_COL_W, `Restarts Won → Scores`,              `${koConvPct}%`, "#34d399", false);
+  cy = drawMetricRow(L_COL_X, cy, L_COL_W, `Restarts Lost → Scored Against`, `${koExpPct}%`, "#fb7185", true);
   {
     const netColor = koNetAdv > 0 ? "#34d399" : koNetAdv < 0 ? "#fb7185" : "#94a3b8";
     const netStr   = koNetAdv === 0 ? "0 %pt" : (koNetAdv > 0 ? `+${koNetAdv} %pt` : `${koNetAdv} %pt`);
@@ -4481,7 +4482,7 @@ function makeOppositionSnapshotPage(
   if (maxConsOpp >= 4)    watchlist.push(`Peak run of ${maxConsOpp} unanswered — sustained pressure threat`);
   if (tvConvPct  >= 40)   watchlist.push(`${tvConvPct}% of gifted possession converted to opposition scores`);
   if (koOppWinPct >= 55)  watchlist.push(`Opposition held ${koOppWinPct}% Restart Share (${koOppWon} of ${ko.total})`);
-  if (koLostScore >= 2)   watchlist.push(`${koLostScore} score${koLostScore !== 1 ? "s" : ""} conceded directly from kickout losses`);
+  if (koLostScore >= 2)   watchlist.push(`${koLostScore} score${koLostScore !== 1 ? "s" : ""} conceded directly from restarts ${truncTeam(homeTeam, 14)} lost`);
   if (oppChainPct >= 55)  watchlist.push(`Held tactical chain advantage — ${oppChainPct}% of all detected chains`);
   // Fallback: always at least one bullet
   if (watchlist.length === 0) watchlist.push("No critical tactical thresholds exceeded in this match");
@@ -4634,12 +4635,12 @@ function makeOppositionSnapshotPage(
     );
     cy = drawMetricRow(
       L_COL_X, cy, L_COL_W,
-      `Scores from ${koLabelLC(sport)} losses`, `${koLostScore}  (${koLostScorePct}%)`,
+      `Restarts Lost → Scored Against`, `${koLostScore}  (${koLostScorePct}%)`,
       koLostScore >= 2 ? OPP_ACCENT : "#f8fafc", false,
     );
     drawMetricRow(
       L_COL_X, cy, L_COL_W,
-      `Direct ${koLabelLC(sport)} lost → score`, String(koFromLost),
+      `Direct restarts lost → score`, String(koFromLost),
       koFromLost >= 2 ? OPP_ACCENT : "#f8fafc", true,
     );
   }
@@ -8101,7 +8102,7 @@ function derivePossessionChainObservations(
     if (ko.lostAllowedScore > 0) {
       const lostPct = Math.round(ko.lostAllowedScorePercent);
       obs.push(
-        `Conceded restarts led to opposition score in ${lostPct}% of cases (${ko.lostAllowedScore} of ${ko.lost})`,
+        `Restarts Lost → Scored Against: ${ko.lostAllowedScore} of ${ko.lost} restarts lost (${lostPct}%)`,
       );
     }
   }
@@ -8549,7 +8550,7 @@ function makeHtKickoutVisionPage(
   const restartTerm = isPuck(sport) ? "puckouts" : "kickouts";
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`${truncTeam(homeTeam, 14)} ${restartTerm}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
+  if (totalKO > 0) facts.push(`${truncTeam(homeTeam, 14)} Restart Share: ${totalFor}W · ${totalOpp}L (${forPct}%)`);
   if (forHot)      facts.push(`${truncTeam(homeTeam, 14)} best zone: ${forHot.label}`);
   if (oppHot)      facts.push(`${truncTeam(homeTeam, 14)} conceded most: ${oppHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTerm} data recorded.`);
@@ -9883,15 +9884,15 @@ function makeFtRestartEscapeRoutesPage(
   const ftRestartTerm = isPuck(sport) ? "puckouts" : "kickouts";
   const facts: string[] = [];
   if (ko.total > 0)
-    facts.push(`${truncTeam(homeTeam, 14)} ${ftRestartTerm}: ${ko.won}W · ${ko.total - ko.won}L (${koRate}% won)`);
+    facts.push(`${truncTeam(homeTeam, 14)} Restart Share: ${ko.won}W · ${ko.total - ko.won}L (${koRate}%)`);
   // Possession Chain V1: richer conversion language (rate, not just count)
   if (ko.wonToScore > 0) {
     const wsPct = Math.round(ko.wonToScorePercent);
-    facts.push(`${truncTeam(homeTeam, 14)}: ${ko.wonToScore} of ${ko.won} wins converted to score (${wsPct}%)`);
+    facts.push(`${truncTeam(homeTeam, 14)} Restarts Won → Scores: ${ko.wonToScore} of ${ko.won} (${wsPct}%)`);
   }
   if (ko.lostAllowedScore > 0) {
     const lsPct = Math.round(ko.lostAllowedScorePercent);
-    facts.push(`${truncTeam(awayTeam, 14)} scored from ${ko.lostAllowedScore} of those restarts won (${lsPct}%)`);
+    facts.push(`${truncTeam(awayTeam, 14)} Restarts Lost → Scored Against: ${ko.lostAllowedScore} of ${ko.lost} (${lsPct}%)`);
   }
   if (bestEscCol >= 0 && facts.length < 3) {
     const esc = grid[bestEscCol][bestEscRow];
@@ -10505,7 +10506,7 @@ function makeChainPressurePage(
 
     // Pattern arrow — rank #1 only, requires explicit chain evidence (≥2 occurrences)
     if (pattern.rank === 1 && pattern.arrowKind !== null) {
-      if (pattern.arrowKind === "TRAP" && pattern.headline === "Kickout Loss → Score") {
+      if (pattern.arrowKind === "TRAP" && pattern.headline === "Restart Loss → Score") {
         // TRAP: OPP won kickout here → OPP scored there
         // Zone-pair deduplication + ≥2 threshold (identical guard as RestartEscapeRoutes)
         const trapMap = new Map<string, {
@@ -10537,7 +10538,7 @@ function makeChainPressurePage(
         }>();
         // Source outcomes: kickout wins or turnover wins that led to FOR score
         const entryOutcomes: Array<{ srcNx: number; srcNy: number; dstNx: number; dstNy: number }> = [];
-        if (pattern.headline === "Kickout Platform") {
+        if (pattern.headline === "Restart Platform") {
           for (const o of analysis.kickouts.outcomes) {
             if (o.winningSide !== "FOR" || o.nextScore === null) continue;
             entryOutcomes.push({ srcNx: o.kickoutEvent.nx, srcNy: o.kickoutEvent.ny, dstNx: o.nextScore.nx, dstNy: o.nextScore.ny });
@@ -11153,7 +11154,7 @@ function makeOurRestartPlatformPage(
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
-  const restartTitle = isPuck(sport) ? "Our Puckout Platform" : "Our Kickout Platform";
+  const restartTitle = isPuck(sport) ? "Our Puckout Platform" : "Our Restart Platform";
   const restartTermLC = isPuck(sport) ? "puckouts" : "kickouts";
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -11298,7 +11299,7 @@ function makeOurRestartPlatformPage(
   const lostHot       = pdfZoneHotspots(forLostEvts)[0];
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`${truncTeam(homeTeam, 14)} ${restartTermLC}: ${totalRetained}W · ${totalLost}L (${retainedPct}% retained)`);
+  if (totalKO > 0) facts.push(`${truncTeam(homeTeam, 14)}'s Own ${koLabel(sport)} Retention: ${totalRetained}W · ${totalLost}L (${retainedPct}%)`);
   if (retainedHot) facts.push(`Best zone: ${retainedHot.label}`);
   if (lostHot)     facts.push(`Conceded most: ${lostHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTermLC} data recorded.`);
@@ -11329,7 +11330,7 @@ function makeOppRestartPlatformPage(
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
-  const restartTitle = isPuck(sport) ? "Opposition Puckout Platform" : "Opposition Kickout Platform";
+  const restartTitle = isPuck(sport) ? "Opposition Puckout Platform" : "Opposition Restart Platform";
   const restartTermLC = isPuck(sport) ? "puckouts" : "kickouts";
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
@@ -11478,7 +11479,7 @@ function makeOppRestartPlatformPage(
   const pressureHot      = pdfZoneHotspots(oppLostEvts)[0];
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`${truncTeam(awayTeam, 14)} ${restartTermLC}: ${totalOppRetained}W · ${totalOppLost}L (${oppPct}% retained)`);
+  if (totalKO > 0) facts.push(`${truncTeam(awayTeam, 14)}'s Own ${koLabel(sport)} Retention: ${totalOppRetained}W · ${totalOppLost}L (${oppPct}%)`);
   if (oppHot)      facts.push(`${truncTeam(awayTeam, 14)} best zone: ${oppHot.label}`);
   if (pressureHot) facts.push(`${truncTeam(homeTeam, 14)} pressure zone: ${pressureHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTermLC} data recorded.`);
@@ -11733,7 +11734,7 @@ function makeRestartBattlePage(
       heading: `${truncTeam(homeTeam, 16)} ${restartTerm}s`,
       lines: [
         homeTotal > 0
-          ? `${truncTeam(homeTeam, 14)} retained ${homeRetCount}/${homeTotal} (${homePct}%)`
+          ? `${truncTeam(homeTeam, 14)}'s Own ${koLabel(sport)} Retention: ${homeRetCount}/${homeTotal} (${homePct}%)`
           : `No ${restartTermLC} logged`,
       ],
       color: "#22c55e",
@@ -11742,7 +11743,7 @@ function makeRestartBattlePage(
       heading: `${truncTeam(awayTeam, 16)} ${restartTerm}s`,
       lines: [
         awayTotal > 0
-          ? `${truncTeam(awayTeam, 14)} retained ${awayRetCount}/${awayTotal} (${awayPct}%)`
+          ? `${truncTeam(awayTeam, 14)}'s Own ${koLabel(sport)} Retention: ${awayRetCount}/${awayTotal} (${awayPct}%)`
           : `No ${restartTermLC} logged`,
       ],
       color: "#ef4444",
@@ -12343,7 +12344,7 @@ function makePointsLedgerPage(
     ctx.fillStyle = "#94a3b8";
     ctx.font      = "italic 21px sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText("Scored against off restarts lost", COL_SRC, mid);
+    ctx.fillText(LEDGER_RESTART_LOSS_CONTEXT_LABEL, COL_SRC, mid);
     ctx.textAlign = "center";
     ctx.fillStyle = ledger.restartLossContext.usConcededValue > 0 ? "#f87171" : "#94a3b8";
     ctx.fillText(`−${ledger.restartLossContext.usConcededValue} conceded`, COL_US, mid);

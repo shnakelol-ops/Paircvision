@@ -155,7 +155,7 @@ export function buildMatchIntelligenceSummary(
       // The away team keeping their own kickout is `concededCount`.
       const rate = tk.concededCount / tk.total;
       if (rate >= 0.65) {
-        theirRestartInsight = `${awayTeam} retained ${tk.concededCount} of ${tk.total} of their own ${restartWord}s (${Math.round(rate * 100)}%)`;
+        theirRestartInsight = `${awayTeam}'s Own ${restartWordTitle} Retention was ${Math.round(rate * 100)}% (${tk.concededCount} of ${tk.total})`;
       }
     }
   } else if (ko.total >= 5) {
@@ -180,7 +180,7 @@ export function buildMatchIntelligenceSummary(
   // ── Best attack source ────────────────────────────────────────────────────
   let bestAttackInsight: string | null = null;
   const attackFamilies: Array<{ label: string; pct: number; count: number }> = [
-    { label: `${restartWord} wins`, pct: koRetainedScoringPct, count: koRetainedCount },
+    { label: "restarts won", pct: koRetainedScoringPct, count: koRetainedCount },
     { label: "turnover wins",       pct: poss.turnovers.retained.scoringPct, count: poss.turnovers.retainedCount },
     { label: "placed balls",        pct: poss.frees.retained.scoringPct, count: poss.frees.retainedCount },
   ].filter((f) => f.count >= 4);
@@ -194,7 +194,7 @@ export function buildMatchIntelligenceSummary(
   // ── Worst defensive exposure ──────────────────────────────────────────────
   let worstExposureInsight: string | null = null;
   const exposureFamilies = [
-    { label: `${restartWord}s they won`, pct: koConcededDamagePct, count: koConcededCount },
+    { label: "restarts they won", pct: koConcededDamagePct, count: koConcededCount },
     { label: "turnover wins",            pct: poss.turnovers.damagePct, count: poss.turnovers.concededCount },
     { label: "placed balls won",         pct: poss.frees.damagePct, count: poss.frees.concededCount },
   ].filter((f) => f.count >= 3 && f.pct >= 50);

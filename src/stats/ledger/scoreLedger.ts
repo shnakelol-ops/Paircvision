@@ -141,6 +141,9 @@ export const LEDGER_ROW_LABELS: Record<LedgerRowId, string> = {
   UNATTRIBUTED: "Unattributed",
 };
 
+/** Context mirror row — not a partition row; labels the conceding-side view. */
+export const LEDGER_RESTART_LOSS_CONTEXT_LABEL = "Restarts Lost → Scored Against";
+
 // ─── Main builder ─────────────────────────────────────────────────────────────
 
 export function buildScoreLedger<TEvent extends ChainableEvent>(
@@ -271,8 +274,8 @@ export function buildScoreLedger<TEvent extends ChainableEvent>(
           : `${home} won the turnover exchange by ${net} ${plural}: ${row.us.value} scored from ${tv.won} turnovers won against ${row.them.value} conceded from ${tv.lost} lost.`;
       case "RESTART_WON":
         return net < 0
-          ? `The restart battle cost ${home} ${Math.abs(net)} ${plural}: ${row.us.value} scored off restarts ${home} won against ${row.them.value} by ${away}. Worth reviewing restart structure.`
-          : `${home} won the restart battle by ${net} ${plural}: ${row.us.value} scored off restarts won against ${row.them.value} by ${away}.`;
+          ? `The restart battle cost ${home} ${Math.abs(net)} ${plural}: ${row.us.value} scored off Restarts Won → Scores against ${row.them.value} by ${away}. Worth reviewing restart structure.`
+          : `${home} won the restart battle by ${net} ${plural}: ${row.us.value} scored off Restarts Won → Scores against ${row.them.value} by ${away}.`;
       case "FROM_PLAY":
         return net < 0
           ? `${away} outscored ${home} from open play by ${Math.abs(net)} ${plural} (${row.them.value} to ${row.us.value}). Worth reviewing how open-play chances were created.`
