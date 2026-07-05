@@ -18,6 +18,8 @@ import { deriveReviewPrompts } from "../chains/review-prompts";
 import type { ChainableEvent } from "../chains/chain-types";
 import {
   computeRestartMetrics,
+  restartAttributionFootnote,
+  restartAttributionFootnoteShort,
   restartExplainerLine,
   restartMetricLabel,
 } from "./restartMetrics";
@@ -148,6 +150,17 @@ describe("canonical naming rules", () => {
     expect(restartMetricLabel("oppKickoutWinRate")).toBe("Won on Their Kickout");
     expect(restartMetricLabel("restartToScore")).toBe("Restarts Won → Scores");
     expect(restartMetricLabel("restartLossPunishment")).toBe("Restarts Lost → Scored Against");
+  });
+
+  it("attribution footnotes match the spec verbatim", () => {
+    expect(restartAttributionFootnote("gaelic")).toBe(
+      "Restart-origin counts every score in a possession that began with a kickout, " +
+      "including frees won during it. Direct restart scores attribute placed balls " +
+      "separately, so ledger sources sum to the final margin.",
+    );
+    expect(restartAttributionFootnoteShort()).toBe(
+      "Origin chains include frees won in the possession. The ledger counts those under Placed balls.",
+    );
   });
 
   it("explainer line replaces the old 'both are correct' disclaimer", () => {

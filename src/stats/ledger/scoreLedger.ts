@@ -136,8 +136,8 @@ function isPlacedMiss(e: ChainableEvent): boolean {
 export const LEDGER_ROW_LABELS: Record<LedgerRowId, string> = {
   FROM_PLAY:    "From play",
   PLACED:       "Placed balls",
-  RESTART_WON:  "Scores off restarts won",
-  TURNOVER_WON: "Scores off turnovers won",
+  RESTART_WON:  "Direct restart scores",
+  TURNOVER_WON: "Direct turnover scores",
   UNATTRIBUTED: "Unattributed",
 };
 
@@ -268,11 +268,11 @@ export function buildScoreLedger<TEvent extends ChainableEvent>(
       case "TURNOVER_WON":
         return net < 0
           ? `Turnover exchanges netted ${net} for ${home}: ${row.us.value} ${row.us.value === 1 ? "point" : "points"} from ${tv.won} turnovers won against ${row.them.value} conceded from ${tv.lost} lost. Worth reviewing transition structure.`
-          : `${home} won the turnover exchange by ${net} ${plural}: ${row.us.value} scored from ${tv.won} turnovers won against ${row.them.value} conceded from ${tv.lost} lost.`;
+          : `${home} won the turnover exchange by ${net} ${plural}: ${row.us.value} direct turnover point${row.us.value !== 1 ? "s" : ""} from ${tv.won} won against ${row.them.value} conceded from ${tv.lost} lost.`;
       case "RESTART_WON":
         return net < 0
-          ? `The restart battle cost ${home} ${Math.abs(net)} ${plural}: ${row.us.value} scored off restarts ${home} won against ${row.them.value} by ${away}. Worth reviewing restart structure.`
-          : `${home} won the restart battle by ${net} ${plural}: ${row.us.value} scored off restarts won against ${row.them.value} by ${away}.`;
+          ? `The restart battle cost ${home} ${Math.abs(net)} ${plural}: ${row.us.value} direct restart points against ${row.them.value} by ${away}. Worth reviewing restart structure.`
+          : `${home} won the restart battle by ${net} ${plural}: ${row.us.value} direct restart points against ${row.them.value} by ${away}.`;
       case "FROM_PLAY":
         return net < 0
           ? `${away} outscored ${home} from open play by ${Math.abs(net)} ${plural} (${row.them.value} to ${row.us.value}). Worth reviewing how open-play chances were created.`

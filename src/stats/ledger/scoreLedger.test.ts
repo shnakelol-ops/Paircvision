@@ -17,6 +17,7 @@ import {
   buildScoreLedger,
   fmtMarginLabel,
   fmtScoreLine,
+  LEDGER_ROW_LABELS,
 } from "./scoreLedger";
 
 type FixtureEvent = ChainableEvent & { tags?: string[] };
@@ -169,6 +170,11 @@ describe("buildScoreLedger — spec fixture acceptance", () => {
     expect(joined).toContain("Worth reviewing");
     // No prescriptive language
     expect(joined).not.toMatch(/must|should|failed|poor|weak/i);
+  });
+
+  it("ledger rows use the direct-attribution vocabulary", () => {
+    expect(LEDGER_ROW_LABELS.RESTART_WON).toBe("Direct restart scores");
+    expect(LEDGER_ROW_LABELS.TURNOVER_WON).toBe("Direct turnover scores");
   });
 
   it("renders an unattributed row only when a score cannot be classified", () => {

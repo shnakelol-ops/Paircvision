@@ -226,7 +226,7 @@ export async function buildTurnoverFreeOutcomesCardPng(
       net:           -turnovers.conceded.scoreValue,
     },
     {
-      title:         "FREES WON",
+      title:         "POSSESSION FREES WON",
       accentColor:   CLR.amber,
       count:         frees.retainedCount,
       producedLabel: "Produced",

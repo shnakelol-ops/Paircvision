@@ -41,6 +41,8 @@ import { buildMatchTargetsCard } from "./matchTargetsCard";
 import {
   computeRestartMetrics,
   fmtFractionCounts,
+  restartAttributionFootnote,
+  restartAttributionFootnoteShort,
   restartExplainerLine,
   restartMetricLabel,
 } from "./restarts/restartMetrics";
@@ -2111,9 +2113,9 @@ function makeChainSummaryPage(
     const { byRule } = analysis;
 
     const chainRows: { label: string; ruleId: import("./chains/chain-types").ChainRuleId }[] = [
-      { label: `${koLabel(sport)} Won → Score`,       ruleId: "KICKOUT_TO_SCORE"              },
-      { label: `${koLabel(sport)} Lost → Score Against`, ruleId: "KICKOUT_LOST_TO_SCORE_AGAINST" },
-      { label: "Turnover Won → Score",       ruleId: "TURNOVER_TO_SCORE"              },
+      { label: `${koLabel(sport)} Won → Score (direct)`,       ruleId: "KICKOUT_TO_SCORE"              },
+      { label: `${koLabel(sport)} Lost → Score Against (direct)`, ruleId: "KICKOUT_LOST_TO_SCORE_AGAINST" },
+      { label: "Turnover Won → Score (direct)",       ruleId: "TURNOVER_TO_SCORE"              },
       { label: "Turnover Won → Shot",        ruleId: "TURNOVER_TO_SHOT"               },
       { label: "Free Won → Goal",            ruleId: "FREE_WON_TO_GOAL"               },
     ];
@@ -2190,8 +2192,8 @@ function makeChainSummaryPage(
     cy = drawStatRow(COL2_X, cy, COL_W, "Won",                val(ko.won),   "#7dd3fc", true);
     cy = drawStatRow(COL2_X, cy, COL_W, "Lost / Conceded",    val(ko.lost),  "#fb7185", false);
     cy += 6;
-    cy = drawStatRow(COL2_X, cy, COL_W, "Won → Score",        `${val(ko.wonToScore)} (${pct(ko.wonToScorePercent)})`,           "#4ade80", true);
-    cy = drawStatRow(COL2_X, cy, COL_W, "Lost → Score Against", `${val(ko.lostAllowedScore)} (${pct(ko.lostAllowedScorePercent)})`, "#f97316", false);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Won → Origin score",        `${val(ko.wonToScore)} (${pct(ko.wonToScorePercent)})`,           "#4ade80", true);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Lost → Origin score against", `${val(ko.lostAllowedScore)} (${pct(ko.lostAllowedScorePercent)})`, "#f97316", false);
 
     // Kickout possession efficiency bar
     cy += 10;
@@ -2214,6 +2216,15 @@ function makeChainSummaryPage(
       ctx.restore();
     }
 
+    // Attribution footnote — origin vs direct vocabulary (restartMetrics.ts)
+    ctx.save();
+    ctx.fillStyle = "#64748b";
+    ctx.font = "italic 12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(restartAttributionFootnoteShort(), COL2_X + 12, PANEL_Y1 + HALF_H - 14, COL_W - 24);
+    ctx.restore();
+
     // Turnover panel
     drawPanelBg(COL2_X, PANEL_Y2, COL_W, HALF_H, "#a78bfa");
     cy = drawPanelTitle(COL2_X, PANEL_Y2, "Turnover Chains", "#a78bfa");
@@ -2223,9 +2234,9 @@ function makeChainSummaryPage(
     cy = drawStatRow(COL2_X, cy, COL_W, "Won",                val(to.won),   "#7dd3fc", true);
     cy = drawStatRow(COL2_X, cy, COL_W, "Lost",               val(to.lost),  "#fb7185", false);
     cy += 6;
-    cy = drawStatRow(COL2_X, cy, COL_W, "Won → Score",        `${val(to.wonToScore)} (${pct(to.wonToScorePercent)})`,  "#4ade80", true);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Won → Origin score",        `${val(to.wonToScore)} (${pct(to.wonToScorePercent)})`,  "#4ade80", true);
     cy = drawStatRow(COL2_X, cy, COL_W, "Won → Shot",         `${val(to.wonToShot)} (${pct(to.wonToShotPercent)})`,    "#a78bfa", false);
-    cy = drawStatRow(COL2_X, cy, COL_W, "Lost → Score Against", val(to.lostAllowedScore),                                "#f97316", true);
+    cy = drawStatRow(COL2_X, cy, COL_W, "Lost → Origin score against", val(to.lostAllowedScore),                                "#f97316", true);
   }
 
   // ── COL 3: Scoring Runs detail ──────────────────────────────────────────────
@@ -2550,8 +2561,8 @@ function makeKickoutChainPage(
 
       const wonPctStr  = ko.won  > 0 ? `${ko.wonToScore} (${ko.wonToScorePercent}%)`             : "0 (—)";
       const lostPctStr = ko.lost > 0 ? `${ko.lostAllowedScore} (${ko.lostAllowedScorePercent}%)` : "0 (—)";
-      cy = drawStatRow(COL1_X, cy, COL_W, "Won → Score",          wonPctStr,  "#4ade80", true);
-      cy = drawStatRow(COL1_X, cy, COL_W, "Lost → Score Against", lostPctStr, "#f97316", false);
+      cy = drawStatRow(COL1_X, cy, COL_W, "Won → Score (origin)",          wonPctStr,  "#4ade80", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, "Lost → Score Against (origin)", lostPctStr, "#f97316", false);
       cy += 8;
 
       // Half split sub-header
@@ -2573,10 +2584,10 @@ function makeKickoutChainPage(
 
       cy = drawStatRow(COL1_X, cy, COL_W, "1H — Won / Lost",    `${h1Won} / ${h1Lost}`, "#e2e8f0", false);
       cy = drawStatRow(COL1_X, cy, COL_W, "1H — Restart Share", h1WonPct,               "#22d3ee", true);
-      cy = drawStatRow(COL1_X, cy, COL_W, "1H — Won → Score",   String(h1WonToScore),   "#4ade80", false);
+      cy = drawStatRow(COL1_X, cy, COL_W, "1H — Won → Score (origin)",   String(h1WonToScore),   "#4ade80", false);
       cy = drawStatRow(COL1_X, cy, COL_W, "2H — Won / Lost",    `${h2Won} / ${h2Lost}`, "#e2e8f0", true);
       cy = drawStatRow(COL1_X, cy, COL_W, "2H — Restart Share", h2WonPct,               "#22d3ee", false);
-      cy = drawStatRow(COL1_X, cy, COL_W, "2H — Won → Score",   String(h2WonToScore),   "#4ade80", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, "2H — Won → Score (origin)",   String(h2WonToScore),   "#4ade80", true);
       cy += 8;
 
       const avgStr = avgSecsToScore !== null ? `${avgSecsToScore}s` : "—";
@@ -2701,10 +2712,10 @@ function makeKickoutChainPage(
     const koLostFor    = koLostScoreChains.filter((c) => c.teamSide === "FOR").length;
     const koLostOpp    = koLostScoreChains.filter((c) => c.teamSide === "OPP").length;
 
-    cy = drawStatRow(COL3_X, cy, COL_W, `${koLabel(sport)} Won → Score (${truncTeam(homeTeam, 10)})`,      String(koToScoreFor), "#7dd3fc", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `${koLabel(sport)} Won → Score (${truncTeam(awayTeam, 10)})`,      String(koToScoreOpp), "#fb7185", true);
-    cy = drawStatRow(COL3_X, cy, COL_W, `${koLabel(sport)} Lost → Score Against (${truncTeam(homeTeam, 8)})`, String(koLostFor), "#f97316", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `${koLabel(sport)} Lost → Score Against (${truncTeam(awayTeam, 8)})`, String(koLostOpp), "#f97316", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `Won → Score (direct) — ${truncTeam(homeTeam, 10)}`,      String(koToScoreFor), "#7dd3fc", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `Won → Score (direct) — ${truncTeam(awayTeam, 10)}`,      String(koToScoreOpp), "#fb7185", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `Lost → Score Against (direct) — ${truncTeam(homeTeam, 8)}`, String(koLostFor), "#f97316", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `Lost → Score Against (direct) — ${truncTeam(awayTeam, 8)}`, String(koLostOpp), "#f97316", true);
     cy += 12;
 
     // Scoring from kickout possession
@@ -2719,9 +2730,9 @@ function makeKickoutChainPage(
     ctx.restore();
     cy += 20;
 
-    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Scores from Kickout`, String(forScoredFromKo),  "#4ade80", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Restart-origin scores`, String(forScoredFromKo),  "#4ade80", false);
     cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Shots from Kickout`,  String(forShotFromKo),    "#7dd3fc", true);
-    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(awayTeam, 16)} — Scores from Kickout`, String(oppScoredFromKo),  "#fb7185", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(awayTeam, 16)} — Restart-origin scores`, String(oppScoredFromKo),  "#fb7185", false);
     cy += 12;
 
     // FOR possession outcome breakdown
@@ -2742,7 +2753,7 @@ function makeKickoutChainPage(
 
     cy = drawStatRow(COL3_X, cy, COL_W, `Won ${koLabelPluralLC(sport)} total`, String(forWonTotal), "#e2e8f0", false);
     cy = drawStatRow(COL3_X, cy, COL_W, "→ Generated a shot",   `${forShotFromKo} (${forShotPct})`,              "#22d3ee", true);
-    cy = drawStatRow(COL3_X, cy, COL_W, "→ Converted to score", `${forScoredFromKo} (${forScorePct})`,           "#4ade80", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, "→ Origin score", `${forScoredFromKo} (${forScorePct})`,           "#4ade80", false);
     cy = drawStatRow(COL3_X, cy, COL_W, "→ No shot attempt",    String(forNoShot),                               "#f97316", true);
     cy += 8;
 
@@ -3024,7 +3035,7 @@ function makeTurnoverPunishmentPage(
     } else {
       // Consequence summary
       cy = drawStatRow(COL1_X, cy, COL_W, "Turnovers won / gained",  String(forWonTotal),                    "#e2e8f0", false);
-      cy = drawStatRow(COL1_X, cy, COL_W, "→ Converted to score",    withPct(forWonToScore,   forWonTotal),  "#4ade80", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, "→ Origin score",    withPct(forWonToScore,   forWonTotal),  "#4ade80", true);
       cy = drawStatRow(COL1_X, cy, COL_W, "→ Shot / wide, no score", withPct(forWonToShotOnly, forWonTotal), "#fbbf24", false);
       cy = drawStatRow(COL1_X, cy, COL_W, "→ No shot attempt",       withPct(forWonNoShot,    forWonTotal),  "#f97316", true);
       cy = drawStatRow(COL1_X, cy, COL_W, "→ Attack immediately lost", withPct(forBrokenAttacks, forWonTotal), "#94a3b8", false);
@@ -3064,7 +3075,7 @@ function makeTurnoverPunishmentPage(
       ctx.restore();
     } else {
       cy = drawStatRow(COL2_X, cy, COL_W, "Turnovers won / gained",  String(oppWonTotal),                    "#e2e8f0", false);
-      cy = drawStatRow(COL2_X, cy, COL_W, "→ Converted to score",    withPct(oppWonToScore,   oppWonTotal),  "#4ade80", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, "→ Origin score",    withPct(oppWonToScore,   oppWonTotal),  "#4ade80", true);
       cy = drawStatRow(COL2_X, cy, COL_W, "→ Shot / wide, no score", withPct(oppWonToShotOnly, oppWonTotal), "#fbbf24", false);
       cy = drawStatRow(COL2_X, cy, COL_W, "→ No shot attempt",       withPct(oppWonNoShot,    oppWonTotal),  "#f97316", true);
       cy = drawStatRow(COL2_X, cy, COL_W, "→ Attack immediately lost", withPct(oppBrokenAttacks, oppWonTotal), "#94a3b8", false);
@@ -3101,16 +3112,16 @@ function makeTurnoverPunishmentPage(
       "#a78bfa", "#fb7185",
     );
     cy += 4;
-    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Won → Score %`, pctStr(forWonToScore, forWonTotal),  "#a78bfa", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(awayTeam, 16)} — Won → Score %`, pctStr(oppWonToScore, oppWonTotal),  "#fb7185", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Won → Origin score %`, pctStr(forWonToScore, forWonTotal),  "#a78bfa", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(awayTeam, 16)} — Won → Origin score %`, pctStr(oppWonToScore, oppWonTotal),  "#fb7185", true);
     cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Won → Shot %`,  pctStr(forWonToShotAny, forWonTotal), "#a78bfa", false);
     cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(awayTeam, 16)} — Won → Shot %`,  pctStr(oppWonToShotAny, oppWonTotal), "#fb7185", true);
     cy += 10;
 
     // Chain rule matches
     cy = drawSubHeader(COL3_X, cy, COL_W, "CHAIN RULE MATCHES", "#fbbf24");
-    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score  (${truncTeam(homeTeam, 10)})`,  String(toToScoreFor),  "#a78bfa", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score  (${truncTeam(awayTeam, 10)})`,  String(toToScoreOpp),  "#fb7185", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score (direct) — ${truncTeam(homeTeam, 10)}`,  String(toToScoreFor),  "#a78bfa", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score (direct) — ${truncTeam(awayTeam, 10)}`,  String(toToScoreOpp),  "#fb7185", true);
     cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Shot   (${truncTeam(homeTeam, 10)})`,  String(toToShotFor),   "#a78bfa", false);
     cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Shot   (${truncTeam(awayTeam, 10)})`,  String(toToShotOpp),   "#fb7185", true);
     cy += 10;
@@ -3937,8 +3948,8 @@ function makeTacticalIntelligencePage(
     `${restartMetricLabel("restartShare", sport)}  (${koWon} won of ${koTotal} total)`,
     "#22d3ee",
   );
-  cy = drawMetricRow(L_COL_X, cy, L_COL_W, `${koLabelPlural(sport)} won → score`,              `${koConvPct}%`, "#34d399", false);
-  cy = drawMetricRow(L_COL_X, cy, L_COL_W, `${koLabelPlural(sport)} lost → opposition scored`, `${koExpPct}%`, "#fb7185", true);
+  cy = drawMetricRow(L_COL_X, cy, L_COL_W, `${koLabel(sport)} wins → origin score`,             `${koConvPct}%`, "#34d399", false);
+  cy = drawMetricRow(L_COL_X, cy, L_COL_W, `${koLabel(sport)} losses → origin score against`,   `${koExpPct}%`, "#fb7185", true);
   {
     const netColor = koNetAdv > 0 ? "#34d399" : koNetAdv < 0 ? "#fb7185" : "#94a3b8";
     const netStr   = koNetAdv === 0 ? "0 %pt" : (koNetAdv > 0 ? `+${koNetAdv} %pt` : `${koNetAdv} %pt`);
@@ -3954,9 +3965,9 @@ function makeTacticalIntelligencePage(
     `Turnover Win Rate  (${tvWon} won of ${tvTotal} total)`,
     "#a78bfa",
   );
-  cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Turnovers won → score",             `${tvConvPct}%`, "#34d399", false);
-  cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Turnovers won → shot, no score",   `${tvShotOnly}%`, "#fbbf24", true);
-  drawMetricRow(L_COL_X, cy, L_COL_W, "Turnovers lost → opposition scored", `${tvDefExp}%`, "#fb7185", false);
+  cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Turnover wins → origin score",             `${tvConvPct}%`, "#34d399", false);
+  cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Turnover wins → shot, no score",   `${tvShotOnly}%`, "#fbbf24", true);
+  drawMetricRow(L_COL_X, cy, L_COL_W, "Turnover losses → origin score against", `${tvDefExp}%`, "#fb7185", false);
 
   // ── LEFT — CARD 3: MATCH INTELLIGENCE ─────────────────────────────────────
   drawCardBg(L_COL_X, card3Y, L_COL_W, CARD_H_BOT, "#f59e0b");
@@ -3968,21 +3979,21 @@ function makeTacticalIntelligencePage(
 
   if (koTotal > 0) {
     if (koWinPct >= 55) {
-      insights.push({ text: `${truncTeam(homeTeam, 16)} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) — ${koConvPct}% converted to scores.` });
+      insights.push({ text: `${truncTeam(homeTeam, 16)} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) — ${koConvPct}% produced a restart-origin score.` });
     } else if (koWinPct < 45) {
-      insights.push({ text: `${truncTeam(homeTeam, 16)} held only ${koWinPct}% Restart Share (${koWon} of ${koTotal}); ${truncTeam(awayTeam, 16)} scored from ${koExpPct}% of their wins.` });
+      insights.push({ text: `${truncTeam(homeTeam, 16)} held only ${koWinPct}% Restart Share (${koWon} of ${koTotal}); ${koExpPct}% of ${truncTeam(awayTeam, 16)}'s wins produced a restart-origin score.` });
     } else {
-      insights.push({ text: `Balanced ${koLabelLC(sport)} contest — ${truncTeam(homeTeam, 16)} held ${koWinPct}% Restart Share, converting ${koConvPct}% to scores.` });
+      insights.push({ text: `Balanced ${koLabelLC(sport)} contest — ${truncTeam(homeTeam, 16)} held ${koWinPct}% Restart Share; ${koConvPct}% of wins produced a restart-origin score.` });
     }
   }
 
   if (tvTotal > 0) {
     if (tvConvPct >= 35) {
-      insights.push({ text: `${truncTeam(homeTeam, 16)} converted ${tvConvPct}% of won turnovers to scores.` });
+      insights.push({ text: `${tvConvPct}% of ${truncTeam(homeTeam, 16)}'s won turnovers produced a turnover-origin score.` });
     } else if (tvConvPct < 20 && tvWon > 0) {
-      insights.push({ text: `${truncTeam(homeTeam, 16)} won ${tvWon}/${tvTotal} turnovers but converted only ${tvConvPct}% to scores.` });
+      insights.push({ text: `${truncTeam(homeTeam, 16)} won ${tvWon}/${tvTotal} turnovers but only ${tvConvPct}% produced a turnover-origin score.` });
     } else {
-      insights.push({ text: `${truncTeam(homeTeam, 16)} won ${tvWinPct}% of turnovers (${tvConvPct}% to scores). ${truncTeam(awayTeam, 16)} scored from ${tvDefExp}% of theirs.` });
+      insights.push({ text: `${truncTeam(homeTeam, 16)} won ${tvWinPct}% of turnovers (${tvConvPct}% origin scores); ${tvDefExp}% of ${truncTeam(awayTeam, 16)}'s wins produced one.` });
     }
   }
 
@@ -4062,9 +4073,9 @@ function makeTacticalIntelligencePage(
       chainColor,
     );
   }
-  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, `${koLabelPlural(sport)} leading to scores`, `${koToScore}`, "#22d3ee", false);
-  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, "Turnovers leading to scores",   `${tvToScore}`,  "#a78bfa", true);
-  drawMetricRow(R_COL_X, rcy, R_COL_W, "Placed balls leading to goals",       `${freeToGoal}`, "#fbbf24", false);
+  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, `${koLabel(sport)} → score chains (direct)`, `${koToScore}`, "#22d3ee", false);
+  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, "Turnover → score chains (direct)",   `${tvToScore}`,  "#a78bfa", true);
+  drawMetricRow(R_COL_X, rcy, R_COL_W, "Placed ball → goal chains (direct)",       `${freeToGoal}`, "#fbbf24", false);
 
   // ── RIGHT — CARD 3: PERFORMANCE SUMMARY ───────────────────────────────────
   drawCardBg(R_COL_X, card3Y, R_COL_W, CARD_H_BOT, "#34d399");
@@ -4481,7 +4492,7 @@ function makeOppositionSnapshotPage(
   if (maxConsOpp >= 4)    watchlist.push(`Peak run of ${maxConsOpp} unanswered — sustained pressure threat`);
   if (tvConvPct  >= 40)   watchlist.push(`${tvConvPct}% of gifted possession converted to opposition scores`);
   if (koOppWinPct >= 55)  watchlist.push(`Opposition held ${koOppWinPct}% Restart Share (${koOppWon} of ${ko.total})`);
-  if (koLostScore >= 2)   watchlist.push(`${koLostScore} score${koLostScore !== 1 ? "s" : ""} conceded directly from kickout losses`);
+  if (koLostScore >= 2)   watchlist.push(`${koLostScore} restart-origin score${koLostScore !== 1 ? "s" : ""} conceded off kickout losses`);
   if (oppChainPct >= 55)  watchlist.push(`Held tactical chain advantage — ${oppChainPct}% of all detected chains`);
   // Fallback: always at least one bullet
   if (watchlist.length === 0) watchlist.push("No critical tactical thresholds exceeded in this match");
@@ -4629,12 +4640,12 @@ function makeOppositionSnapshotPage(
     );
     cy = drawMetricRow(
       L_COL_X, cy, L_COL_W,
-      `${koLabel(sport)} won → score chains`, String(koOppChains),
+      `Direct ${koLabelLC(sport)}-win scores`, String(koOppChains),
       koOppChains >= 2 ? OPP_ACCENT : "#f8fafc", true,
     );
     cy = drawMetricRow(
       L_COL_X, cy, L_COL_W,
-      `Scores from ${koLabelLC(sport)} losses`, `${koLostScore}  (${koLostScorePct}%)`,
+      `Restart-origin scores off our losses`, `${koLostScore}  (${koLostScorePct}%)`,
       koLostScore >= 2 ? OPP_ACCENT : "#f8fafc", false,
     );
     drawMetricRow(
@@ -4671,7 +4682,7 @@ function makeOppositionSnapshotPage(
     );
     cy = drawMetricRow(
       L_COL_X, cy, L_COL_W,
-      "Turnover won → score chains", String(tvOppToScore),
+      "Direct turnover-win scores", String(tvOppToScore),
       tvOppToScore >= 2 ? OPP_ACCENT : "#f8fafc", true,
     );
     drawMetricRow(
@@ -5970,7 +5981,7 @@ function makeHowToReadPage(
       title:    "CHAIN INTELLIGENCE",
       subtitle: "Why did those attacks become scores?",
       question: "Complete attacking sequences showing how pressure became scores.",
-      body:     "A chain traces a full attack, even when it spans multiple possessions. A turnover → free won → score is one chain. This layer explains how pressure became points.",
+      body:     "A chain traces a full attack, even when it spans multiple possessions. A turnover → free won → score is one chain. This layer explains how pressure became points. If a restart isn't logged live, the next score attributes to From play — origin chains only know what was captured.",
       surfaces: ["Chain Intelligence", "Restart Chain Analysis", "Turnover Chain Analysis", "Scoring Momentum"],
     },
   ];
@@ -6045,15 +6056,12 @@ function makeHowToReadPage(
     });
   });
 
-  // ── Footer disclaimer ─────────────────────────────────────────────────────
-  const footY = CANVAS_H - 36;
+  // ── Footer disclaimers — canonical restart vocabulary ─────────────────────
   ctx.fillStyle = "#475569";
   ctx.font = "italic 16px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(
-    restartExplainerLine(sport),
-    CANVAS_W / 2, footY,
-  );
+  ctx.fillText(restartAttributionFootnote(sport), CANVAS_W / 2, CANVAS_H - 58);
+  ctx.fillText(restartExplainerLine(sport), CANVAS_W / 2, CANVAS_H - 36);
 
   ctx.restore();
   return canvas;
@@ -6660,7 +6668,7 @@ function makeRestartVisualPage(
   dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Restart Possession — ${homeTeam}`,  forOwnedEvts.length, "#22d3ee");
   dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `${homeTeam} won ${ko.won} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
-    `${homeTeam} scored from ${forScoredFromKo} restart${forScoredFromKo !== 1 ? "s" : ""}`,
+    `${homeTeam}: ${forScoredFromKo} restart-origin score${forScoredFromKo !== 1 ? "s" : ""}`,
     `H1: ${h1For}–${h1Opp} / H2: ${h2For}–${h2Opp}`,
     "#22d3ee",
   );
@@ -6670,7 +6678,7 @@ function makeRestartVisualPage(
   dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Restart Possession — ${awayTeam}`, oppOwnedEvts.length, "#fb7185");
   dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `${awayTeam} won ${ko.lost} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
-    `${awayTeam} scored from ${oppScoredFromKo} restart${oppScoredFromKo !== 1 ? "s" : ""}`,
+    `${awayTeam}: ${oppScoredFromKo} restart-origin score${oppScoredFromKo !== 1 ? "s" : ""}`,
     `H1: ${h1Opp}–${h1For} / H2: ${h2Opp}–${h2For}`,
     "#fb7185",
   );
@@ -6704,12 +6712,12 @@ function makeRestartVisualPage(
     let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Chain Outcomes", "#fbbf24");
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14)} WON POSSESSION`, "#22d3ee");
-    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(forScoredFromKo, forWonTotal), forWonTotal > 0 ? forScoredFromKo / forWonTotal : 0, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score (origin)",        withPct(forScoredFromKo, forWonTotal), forWonTotal > 0 ? forScoredFromKo / forWonTotal : 0, "#4ade80", "#4ade80", false);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(forShotFromKo,   forWonTotal), forWonTotal > 0 ? forShotFromKo   / forWonTotal : 0, "#7dd3fc", "#7dd3fc", true);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → No shot",      String(Math.max(0, forWonTotal - forShotFromKo)), forWonTotal > 0 ? Math.max(0, forWonTotal - forShotFromKo) / forWonTotal : 0, "#f97316", "#f97316", false);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14)} WON POSSESSION`, "#fb7185");
-    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against", withPct(oppScoredFromKo, oppWonTotal), oppWonTotal > 0 ? oppScoredFromKo / oppWonTotal : 0, "#f97316", "#f97316", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against (origin)", withPct(oppScoredFromKo, oppWonTotal), oppWonTotal > 0 ? oppScoredFromKo / oppWonTotal : 0, "#f97316", "#f97316", false);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → No score",      String(Math.max(0, oppWonTotal - oppScoredFromKo)), oppWonTotal > 0 ? Math.max(0, oppWonTotal - oppScoredFromKo) / oppWonTotal : 0, "#94a3b8", "#94a3b8", true);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "OVERALL", "#fbbf24");
@@ -6732,7 +6740,15 @@ function makeRestartVisualPage(
   // ── Panel 3: Restart Intelligence ─────────────────────────────────────────
   {
     const panelY = dpPanelStart(ctx, DP_P3_X, DP_STRIP_Y, DP_P3_W, DP_STRIP_H, "Restart Intelligence", "#14b8a6");
-    dpIntelligencePanel(ctx, prompts, "KICKOUT", DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 8, "#22d3ee");
+    dpIntelligencePanel(ctx, prompts, "KICKOUT", DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 26, "#22d3ee");
+    // Attribution footnote — origin vs direct vocabulary (restartMetrics.ts)
+    ctx.save();
+    ctx.fillStyle = "#64748b";
+    ctx.font = "italic 12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(restartAttributionFootnoteShort(), DP_P3_X + 12, DP_STRIP_Y + DP_STRIP_H - 16, DP_P3_W - 24);
+    ctx.restore();
   }
 
   drawEventCountFooter(ctx, forOwnedEvts.length + oppOwnedEvts.length);
@@ -6871,16 +6887,16 @@ function makeTurnoverVisualPage(
     let cy = dpPanelStart(ctx, DP_P2_X, DP_STRIP_Y, DP_PANEL_W, DP_STRIP_H, "Consequences", "#fbbf24");
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14)} ATTACKED`, "#a78bfa");
-    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(forWonToScore, forWonTotal), forWonTotal > 0 ? forWonToScore / forWonTotal : 0, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score (origin)",        withPct(forWonToScore, forWonTotal), forWonTotal > 0 ? forWonToScore / forWonTotal : 0, "#4ade80", "#4ade80", false);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(forWonToShot,  forWonTotal), forWonTotal > 0 ? forWonToShot  / forWonTotal : 0, "#7dd3fc", "#7dd3fc", true);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → No shot",      String(Math.max(0, forWonTotal - forWonToShot)), forWonTotal > 0 ? Math.max(0, forWonTotal - forWonToShot) / forWonTotal : 0, "#f97316", "#f97316", false);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "DAMAGE CONCEDED", "#f97316");
-    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against", withPct(forLostToOppScore, forLostTotal), forLostTotal > 0 ? forLostToOppScore / forLostTotal : 0, "#f97316", "#f97316", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Score against (origin)", withPct(forLostToOppScore, forLostTotal), forLostTotal > 0 ? forLostToOppScore / forLostTotal : 0, "#f97316", "#f97316", false);
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Lost → Shot against",  withPct(forLostToOppShot,  forLostTotal), forLostTotal > 0 ? forLostToOppShot  / forLostTotal : 0, "#fbbf24", "#fbbf24", true);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14)} ATTACKED`, "#fb7185");
-    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score",        withPct(oppWonToScore, oppWonTotal), oppWonTotal > 0 ? oppWonToScore / oppWonTotal : 0, "#fb7185", "#fb7185", false);
+    cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Score (origin)",        withPct(oppWonToScore, oppWonTotal), oppWonTotal > 0 ? oppWonToScore / oppWonTotal : 0, "#fb7185", "#fb7185", false);
         dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W, "Won → Shot attempt", withPct(oppWonToShot,  oppWonTotal), oppWonTotal > 0 ? oppWonToShot  / oppWonTotal : 0, "#fbbf24", "#fbbf24", true);
   }
 
@@ -8095,13 +8111,13 @@ function derivePossessionChainObservations(
     if (ko.wonToScore > 0) {
       const pct = Math.round(ko.wonToScorePercent);
       obs.push(
-        `Restarts Won → Scores: ${ko.wonToScore} of ${ko.won} won restart${ko.won !== 1 ? "s" : ""} produced a score (${pct}%)`,
+        `Restarts Won → Scores: ${ko.wonToScore} of ${ko.won} won restart${ko.won !== 1 ? "s" : ""} produced a restart-origin score (${pct}%)`,
       );
     }
     if (ko.lostAllowedScore > 0) {
       const lostPct = Math.round(ko.lostAllowedScorePercent);
       obs.push(
-        `Conceded restarts led to opposition score in ${lostPct}% of cases (${ko.lostAllowedScore} of ${ko.lost})`,
+        `Conceded restarts produced a restart-origin score for the opposition in ${lostPct}% of cases (${ko.lostAllowedScore} of ${ko.lost})`,
       );
     }
   }
@@ -8109,7 +8125,7 @@ function derivePossessionChainObservations(
   if (to.total >= 3 && to.wonToScore > 0) {
     const pct = Math.round(to.wonToScorePercent);
     obs.push(
-      `Turnover possession produced direct scores ${to.wonToScore} time${to.wonToScore !== 1 ? "s" : ""} (${pct}% conversion)`,
+      `Turnover wins produced a turnover-origin score ${to.wonToScore} time${to.wonToScore !== 1 ? "s" : ""} (${pct}% conversion)`,
     );
   }
 
@@ -9887,11 +9903,11 @@ function makeFtRestartEscapeRoutesPage(
   // Possession Chain V1: richer conversion language (rate, not just count)
   if (ko.wonToScore > 0) {
     const wsPct = Math.round(ko.wonToScorePercent);
-    facts.push(`${truncTeam(homeTeam, 14)}: ${ko.wonToScore} of ${ko.won} wins converted to score (${wsPct}%)`);
+    facts.push(`${truncTeam(homeTeam, 14)}: ${ko.wonToScore} restart-origin score${ko.wonToScore !== 1 ? "s" : ""} from ${ko.won} wins (${wsPct}%)`);
   }
   if (ko.lostAllowedScore > 0) {
     const lsPct = Math.round(ko.lostAllowedScorePercent);
-    facts.push(`${truncTeam(awayTeam, 14)} scored from ${ko.lostAllowedScore} of those restarts won (${lsPct}%)`);
+    facts.push(`${truncTeam(awayTeam, 14)}: ${ko.lostAllowedScore} restart-origin score${ko.lostAllowedScore !== 1 ? "s" : ""} off ${truncTeam(homeTeam, 14)}'s losses (${lsPct}%)`);
   }
   if (bestEscCol >= 0 && facts.length < 3) {
     const esc = grid[bestEscCol][bestEscRow];
@@ -10215,7 +10231,7 @@ function makeFtTacticalMatchStoryPage(
   if (ko.total >= 3) {
     if (ko.won > ko.lost) {
       sentences.push(
-        `${homeTeam} restart possession was a clear platform: ${homeTeam} won ${ko.won} of ${ko.total} ${koLabelPluralLC(sport)}${ko.wonToScore > 0 ? `, converting ${ko.wonToScore} to score${ko.wonToScore !== 1 ? "s" : ""}` : ""}.`,
+        `${homeTeam} restart possession was a clear platform: ${homeTeam} won ${ko.won} of ${ko.total} ${koLabelPluralLC(sport)}${ko.wonToScore > 0 ? ` — ${ko.wonToScore} restart-origin score${ko.wonToScore !== 1 ? "s" : ""}` : ""}.`,
       );
     } else if (ko.lost > ko.won) {
       sentences.push(
@@ -11943,7 +11959,6 @@ function makeHtTacticalSummaryPage(
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
-  const restartTerm = isPuck(sport) ? "puckout" : "kickout";
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, "Tactical Match Summary", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
@@ -12000,7 +12015,7 @@ function makeHtTacticalSummaryPage(
 
   // Working — our best platform
   if (ko.wonToScore > 0) {
-    workingItems.push(`${ko.wonToScore} ${restartTerm} win${ko.wonToScore !== 1 ? "s" : ""} → direct score`);
+    workingItems.push(`${ko.wonToScore} restart-origin score${ko.wonToScore !== 1 ? "s" : ""}`);
   }
   if (totalAllKO > 0 && koWinPct >= 50) {
     workingItems.push(`${koWinPct}% Restart Share (${totalForKO} of ${totalAllKO})`);
@@ -12009,7 +12024,7 @@ function makeHtTacticalSummaryPage(
     workingItems.push(`${forShotEff}% shooting efficiency`);
   }
   if (to.wonToScore > 0) {
-    workingItems.push(`${to.wonToScore} turnover win${to.wonToScore !== 1 ? "s" : ""} → score`);
+    workingItems.push(`${to.wonToScore} turnover-origin score${to.wonToScore !== 1 ? "s" : ""}`);
   }
   const weaponPattern = patterns.find((p) => p.kind === "CHAIN_WEAPON");
   if (weaponPattern && workingItems.length < 4) {
@@ -12028,13 +12043,13 @@ function makeHtTacticalSummaryPage(
     dangerItems.push(xRestartStr(dangerPattern.observation, sport));
   }
   if (ko.lostAllowedScore > 0) {
-    dangerItems.push(`${ko.lostAllowedScore} ${restartTerm} concession${ko.lostAllowedScore !== 1 ? "s" : ""} → score`);
+    dangerItems.push(`${ko.lostAllowedScore} restart-origin score${ko.lostAllowedScore !== 1 ? "s" : ""} conceded`);
   }
   if (oppShotEff >= 50 && oppShotEvts.length >= 3 && dangerItems.length < 3) {
     dangerItems.push(`OPP shooting ${oppShotEff}% efficiency`);
   }
   if (to.lostAllowedScore > 0 && dangerItems.length < 4) {
-    dangerItems.push(`${to.lostAllowedScore} turnover${to.lostAllowedScore !== 1 ? "s" : ""} conceded → their score`);
+    dangerItems.push(`${to.lostAllowedScore} turnover-origin score${to.lostAllowedScore !== 1 ? "s" : ""} conceded`);
   }
   if (dangerItems.length === 0) {
     dangerItems.push("No critical possession threat detected");
@@ -12343,7 +12358,7 @@ function makePointsLedgerPage(
     ctx.fillStyle = "#94a3b8";
     ctx.font      = "italic 21px sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText("Scored against off restarts lost", COL_SRC, mid);
+    ctx.fillText("Direct scores conceded off restarts", COL_SRC, mid);
     ctx.textAlign = "center";
     ctx.fillStyle = ledger.restartLossContext.usConcededValue > 0 ? "#f87171" : "#94a3b8";
     ctx.fillText(`−${ledger.restartLossContext.usConcededValue} conceded`, COL_US, mid);
@@ -12368,7 +12383,8 @@ function makePointsLedgerPage(
       : `Source nets sum to the final margin: ${fmtNet(rowNetSum)}`,
     TBL_X + TBL_W, ty + 10,
   );
-  ty += 44;
+  ctx.fillText(restartAttributionFootnoteShort(), TBL_X + TBL_W, ty + 32);
+  ty += 62;
 
   // ── HT-only: top influence tiles (one per team, nothing more at halftime) ──
   if (isHT) {

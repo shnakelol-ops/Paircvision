@@ -133,7 +133,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     } else {
       push(
         "KICKOUT",
-        `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) and converted ${koConvPct}% of won ${koTermS} to scores.`,
+        `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) — ${koConvPct}% of won ${koTermS} produced a restart-origin score.`,
         `kickout:restartShare=${koWinPct}`,
       );
     }
@@ -143,14 +143,14 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (koTotal >= 3 && koNetAdv < -10) {
     push(
       "KICKOUT",
-      `${home} scored from ${koConvPct}% of won ${koTermS}, but ${away} scored from ${koExpPct}% of theirs. Worth reviewing whether ${koTerm} direction patterns changed during the match.`,
+      `${koConvPct}% of ${home}'s ${koTerm} wins produced a restart-origin score; ${koExpPct}% of their losses produced one for ${away}. Worth reviewing whether ${koTerm} direction patterns changed during the match.`,
       `kickout:netAdv=${koNetAdv}`,
     );
   } else if (koWon >= 3 && koConvPct >= 40) {
     // Positive conversion rate — worth flagging as a repeatable pattern
     push(
       "KICKOUT",
-      `${home} converted ${koConvPct}% of won ${koTermS} to scores (${ko.wonToScore} from ${koWon} wins). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
+      `${koConvPct}% of ${home}'s won ${koTermS} produced a restart-origin score (${ko.wonToScore} from ${koWon} wins). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
       `kickout:convPct=${koConvPct}`,
     );
   }
@@ -189,19 +189,19 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (tvConvPct >= 35) {
       push(
         "TURNOVER",
-        `${home} converted ${tvConvPct}% of won turnovers directly to scores (${tv.wonToScore} of ${tvWon}). Worth reviewing whether a specific zone or type was most productive.`,
+        `${tvConvPct}% of ${home}'s won turnovers produced a turnover-origin score (${tv.wonToScore} of ${tvWon}). Worth reviewing whether a specific zone or type was most productive.`,
         `turnover:convPct=${tvConvPct}`,
       );
     } else if (tvConvPct < 20 && tvWon >= 3) {
       push(
         "TURNOVER",
-        `${home} won ${tvWon} turnovers and converted ${tvConvPct}% to scores. Worth reviewing what happened to possession after recovery.`,
+        `${home} won ${tvWon} turnovers but only ${tvConvPct}% produced a turnover-origin score. Worth reviewing what happened to possession after recovery.`,
         `turnover:convPct=${tvConvPct}`,
       );
     } else {
       push(
         "TURNOVER",
-        `${home} won ${tvWinPct}% of turnovers (${tvWon} of ${tvTotal}). ${home} converted ${tvConvPct}% of wins to scores; ${away} scored from ${tvLostAllowPct}% of their turnover wins.`,
+        `${home} won ${tvWinPct}% of turnovers (${tvWon} of ${tvTotal}); ${tvConvPct}% of wins produced a turnover-origin score, against ${tvLostAllowPct}% for ${away}.`,
         `turnover:winPct=${tvWinPct},convPct=${tvConvPct}`,
       );
     }
@@ -211,7 +211,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (tvLost >= 3 && tvLostAllowPct > 45) {
     push(
       "TURNOVER",
-      `${away} scored from ${tvLostAllowPct}% of turnovers they won against ${home} (${tv.lostAllowedScore} of ${tvLost}). Worth reviewing whether these concessions clustered in a particular zone or period.`,
+      `${tvLostAllowPct}% of the turnovers ${away} won against ${home} produced a turnover-origin score (${tv.lostAllowedScore} of ${tvLost}). Worth reviewing whether these concessions clustered in a particular zone or period.`,
       `turnover:lostAllowedPct=${tvLostAllowPct}`,
     );
   }
@@ -342,13 +342,13 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (koToScore > tvToScore) {
       push(
         "CHAIN",
-        `${home} scored more from ${koTermS} (${koToScore}) than from turnovers (${tvToScore}). Worth reviewing whether the ${koTerm} was the primary scoring platform.`,
+        `${home} had more direct ${koTerm}-to-score chains (${koToScore}) than turnover-to-score chains (${tvToScore}). Worth reviewing whether the ${koTerm} was the primary scoring platform.`,
         `chain:koToScore=${koToScore},tvToScore=${tvToScore}`,
       );
     } else if (tvToScore > koToScore) {
       push(
         "CHAIN",
-        `${home} scored more from turnovers (${tvToScore}) than from ${koTermS} (${koToScore}). Worth reviewing whether quick transition was the main scoring route.`,
+        `${home} had more direct turnover-to-score chains (${tvToScore}) than ${koTerm}-to-score chains (${koToScore}). Worth reviewing whether quick transition was the main scoring route.`,
         `chain:tvToScore=${tvToScore},koToScore=${koToScore}`,
       );
     }

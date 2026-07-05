@@ -83,6 +83,41 @@ export function restartExplainerLine(sport?: PitchSport): string {
   return `Restart Share counts every ${ko} in the game. Own ${ko.charAt(0).toUpperCase()}${ko.slice(1)} Retention counts only our own.`;
 }
 
+// ─── Attribution vocabulary: direct vs restart-origin ────────────────────────
+//
+// "Scores from kickouts" means two different things in two layers:
+//
+//   Direct restart scores   — each score attributed to exactly ONE source.
+//     A free scored is always a Placed ball, even if the possession began
+//     with a kickout win. Used by the ledger and WhatsApp cards; sources
+//     always sum to the final margin.
+//
+//   Restart-origin scores   — every score in a possession chain credited to
+//     the chain's ORIGIN event (kickout won → free won → free scored counts
+//     here). Used by the Possession and Chain Intelligence layers; answers
+//     "what did that kickout win eventually produce?"
+//
+// The same rule generalises to turnovers: direct turnover scores vs
+// turnover-origin scores.
+
+/**
+ * Standard attribution footnote — reuse verbatim wherever a page shows
+ * restart-origin figures near ledger/direct figures.
+ */
+export function restartAttributionFootnote(sport?: PitchSport): string {
+  const ko = sport === "hurling" || sport === "camogie" ? "puckout" : "kickout";
+  return (
+    `Restart-origin counts every score in a possession that began with a ${ko}, ` +
+    `including frees won during it. Direct restart scores attribute placed balls ` +
+    `separately, so ledger sources sum to the final margin.`
+  );
+}
+
+/** Short attribution footnote for tight card/panel layouts. */
+export function restartAttributionFootnoteShort(): string {
+  return "Origin chains include frees won in the possession. The ledger counts those under Placed balls.";
+}
+
 // ─── Value shapes ─────────────────────────────────────────────────────────────
 
 /** A numerator/denominator pair with a pre-rounded 0–100 integer percent. */
