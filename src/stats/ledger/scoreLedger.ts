@@ -32,7 +32,7 @@
  * chain-types + eventSource (no circular import with reviewPdfExport).
  */
 
-import type { ChainableEvent, ChainAnalysis } from "../chains/chain-types";
+import type { ChainableEvent, ChainAnalysis, KickoutOutcome } from "../chains/chain-types";
 import type { MatchEventKind } from "../../core/stats/stats-event-model";
 import { eventSource, isFreeMiss } from "../eventSource";
 
@@ -295,6 +295,56 @@ export function buildScoreLedger<TEvent extends ChainableEvent>(
   }
 
   return { rows, restartLossContext, forScore, oppScore, margin, verdicts };
+}
+
+// ─── Origin ↔ direct reconciliation bridge ────────────────────────────────────
+//
+// The chain layer's restart-origin counts and the ledger's direct counts can
+// legitimately differ: a placed free won inside a kickout-origin possession
+// is a restart-origin score to the chain engine but lands under Placed balls
+// in the ledger. These helpers compute that exact bridge so both ends can
+// print a matching footnote with the real number — never a silent divergence.
+
+/**
+ * Counts scores that the chain engine attributes to a restart origin but the
+ * ledger classifies as placed balls (frees / 45s / penalties / marks).
+ */
+export function countPlacedRestartOriginScores<TEvent extends ChainableEvent>(
+  outcomes: readonly KickoutOutcome<TEvent>[],
+): { us: number; them: number } {
+  let us = 0;
+  let them = 0;
+  for (const o of outcomes) {
+    if (o.nextScore != null && isPlacedScore(o.nextScore)) {
+      if (o.winningSide === "FOR") us++;
+      else them++;
+    }
+  }
+  return { us, them };
+}
+
+/**
+ * The bridging footnote printed on BOTH the chain-layer pages and the ledger.
+ * When no placed scores sit inside restart-origin possessions, falls back to
+ * the generic wording (callers pass it through restartAttributionFootnoteShort
+ * when preferred).
+ */
+export function restartOriginBridgeNote(
+  bridge: { us: number; them: number },
+  homeTeam: string,
+  awayTeam: string,
+): string {
+  const total = bridge.us + bridge.them;
+  if (total === 0) {
+    return "Origin chains include frees won in the possession. The ledger counts those under Placed balls.";
+  }
+  const home = homeTeam.slice(0, 14) || "Home";
+  const away = awayTeam.slice(0, 14) || "Away";
+  return (
+    `Origin counts include ${total} placed free${total !== 1 ? "s" : ""} won inside ` +
+    `kickout-origin possessions (${home} ${bridge.us} · ${away} ${bridge.them}) — ` +
+    `counted under Placed balls in the scoring ledger.`
+  );
 }
 
 // ─── Display helpers ──────────────────────────────────────────────────────────

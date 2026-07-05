@@ -42,16 +42,17 @@ import {
   computeRestartMetrics,
   fmtFractionCounts,
   restartAttributionFootnote,
-  restartAttributionFootnoteShort,
   restartExplainerLine,
   restartMetricLabel,
 } from "./restarts/restartMetrics";
 import {
   buildScoreLedger,
+  countPlacedRestartOriginScores,
   fmtLedgerSide,
   fmtMarginLabel,
   fmtNet,
   fmtScoreLine,
+  restartOriginBridgeNote,
 } from "./ledger/scoreLedger";
 import {
   buildInfluenceAnalysis,
@@ -779,10 +780,16 @@ function drawSummaryStatsTable(
                     + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "CLEAN"),
       koBreakLost:    countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "BREAK")
                     + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "BREAK"),
+      // Foul rows accept BOTH foul tags on the mirrored (other-team) event:
+      // the tag vocabulary is perspective-relative (KICKOUT_WON carries
+      // FOUL_WON, KICKOUT_CONCEDED carries FOUL_CONCEDED), so the opposition
+      // retaining their kickout via a won foul is tagged FOUL_WON on their
+      // KICKOUT_WON — previously invisible to our "Foul Conceded" row, which
+      // made the Kickout Lost breakdown under-sum against its stated total.
       koFoulWon:      countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "FOUL_WON")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "FOUL_WON"),
+                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "FOUL_WON", "FOUL_CONCEDED"),
       koFoulCon:      countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "FOUL_CONCEDED")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "FOUL_CONCEDED"),
+                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "FOUL_CONCEDED", "FOUL_WON"),
       koKickedDead:   countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "KICKED_DEAD")
                     + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "KICKED_DEAD"),
       // Turnovers — mirrored top-level counts; sub-tags on TURNOVER_WON are "how we won it",
@@ -2158,6 +2165,20 @@ function makeChainSummaryPage(
     ctx.restore();
     cy += 30;
 
+    // (direct) vs origin — the two kickout panels on this page are different
+    // metrics by design; say so where both are visible (see restartMetrics.ts).
+    ctx.save();
+    ctx.fillStyle = "#64748b";
+    ctx.font = "italic 12px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(
+      "(direct) counts exact rule matches. The origin panels follow the full possession.",
+      COL1_X + 14, cy + 6, COL_W - 24,
+    );
+    ctx.restore();
+    cy += 20;
+
     // Momentum summary teaser
     cy += 12;
     ctx.save();
@@ -2216,13 +2237,17 @@ function makeChainSummaryPage(
       ctx.restore();
     }
 
-    // Attribution footnote — origin vs direct vocabulary (restartMetrics.ts)
+    // Attribution footnote — origin vs direct, with the computed bridge count
+    // so this panel and the ledger reconcile with the same number (Bug 2).
     ctx.save();
     ctx.fillStyle = "#64748b";
     ctx.font = "italic 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText(restartAttributionFootnoteShort(), COL2_X + 12, PANEL_Y1 + HALF_H - 14, COL_W - 24);
+    ctx.fillText(
+      restartOriginBridgeNote(countPlacedRestartOriginScores(ko.outcomes), homeTeam, awayTeam),
+      COL2_X + 12, PANEL_Y1 + HALF_H - 14, COL_W - 24,
+    );
     ctx.restore();
 
     // Turnover panel
@@ -2591,7 +2616,19 @@ function makeKickoutChainPage(
       cy += 8;
 
       const avgStr = avgSecsToScore !== null ? `${avgSecsToScore}s` : "—";
-      drawStatRow(COL1_X, cy, COL_W, `Avg secs to score (won ${koLabel(sport)})`, avgStr, "#fbbf24", false);
+      cy = drawStatRow(COL1_X, cy, COL_W, `Avg secs to score (won ${koLabel(sport)})`, avgStr, "#fbbf24", false);
+
+      // Origin ↔ ledger bridge footnote (Bug 2) — same wording as the ledger.
+      ctx.save();
+      ctx.fillStyle = "#64748b";
+      ctx.font = "italic 12px sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+      ctx.fillText(
+        restartOriginBridgeNote(countPlacedRestartOriginScores(ko.outcomes), homeTeam, awayTeam),
+        COL1_X + 14, cy + 12, COL_W - 24,
+      );
+      ctx.restore();
     }
   }
 
@@ -6741,13 +6778,17 @@ function makeRestartVisualPage(
   {
     const panelY = dpPanelStart(ctx, DP_P3_X, DP_STRIP_Y, DP_P3_W, DP_STRIP_H, "Restart Intelligence", "#14b8a6");
     dpIntelligencePanel(ctx, prompts, "KICKOUT", DP_P3_X, panelY, DP_P3_W, DP_STRIP_Y + DP_STRIP_H - 26, "#22d3ee");
-    // Attribution footnote — origin vs direct vocabulary (restartMetrics.ts)
+    // Attribution footnote — origin vs direct, with the computed bridge count
+    // so this page and the ledger reconcile with the same number (Bug 2).
     ctx.save();
     ctx.fillStyle = "#64748b";
     ctx.font = "italic 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText(restartAttributionFootnoteShort(), DP_P3_X + 12, DP_STRIP_Y + DP_STRIP_H - 16, DP_P3_W - 24);
+    ctx.fillText(
+      restartOriginBridgeNote(countPlacedRestartOriginScores(outcomes), homeTeam, awayTeam),
+      DP_P3_X + 12, DP_STRIP_Y + DP_STRIP_H - 16, DP_P3_W - 24,
+    );
     ctx.restore();
   }
 
@@ -12383,7 +12424,13 @@ function makePointsLedgerPage(
       : `Source nets sum to the final margin: ${fmtNet(rowNetSum)}`,
     TBL_X + TBL_W, ty + 10,
   );
-  ctx.fillText(restartAttributionFootnoteShort(), TBL_X + TBL_W, ty + 32);
+  ctx.fillText(
+    restartOriginBridgeNote(
+      countPlacedRestartOriginScores(analysis.kickouts.outcomes),
+      homeTeam, awayTeam,
+    ),
+    TBL_X + TBL_W, ty + 32,
+  );
   ty += 62;
 
   // ── HT-only: top influence tiles (one per team, nothing more at halftime) ──

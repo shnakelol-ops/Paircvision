@@ -15,9 +15,11 @@ import { analyseChains } from "../chains/chain-engine";
 import type { ChainableEvent } from "../chains/chain-types";
 import {
   buildScoreLedger,
+  countPlacedRestartOriginScores,
   fmtMarginLabel,
   fmtScoreLine,
   LEDGER_ROW_LABELS,
+  restartOriginBridgeNote,
 } from "./scoreLedger";
 
 type FixtureEvent = ChainableEvent & { tags?: string[] };
@@ -189,5 +191,53 @@ describe("buildScoreLedger — spec fixture acceptance", () => {
     expect(unattributed?.us.scores).toBe(1);
     const netSum = ledger2.rows.reduce((s, r) => s + r.net, 0);
     expect(netSum).toBe(ledger2.margin);
+  });
+});
+
+describe("origin ↔ direct reconciliation bridge", () => {
+  // A placed free won inside a kickout-origin possession: the chain engine
+  // counts it as a restart-origin score; the ledger buckets it under Placed
+  // balls. The bridge count is the exact off-by-n between the two layers.
+  function buildBridgeFixture(): FixtureEvent[] {
+    return [
+      // Ballylanders: kickout won → free scored 30s later (origin, placed)
+      mk({ kind: "KICKOUT_WON", teamSide: "FOR", restartOwner: "FOR", matchClockSeconds: 100 }),
+      mk({ kind: "FREE_SCORED", teamSide: "FOR", matchClockSeconds: 130 }),
+      // St.Patricks: same shape
+      mk({ kind: "KICKOUT_WON", teamSide: "OPP", restartOwner: "OPP", matchClockSeconds: 400 }),
+      mk({ kind: "FREE_SCORED", teamSide: "OPP", matchClockSeconds: 430 }),
+      // A plain open-play restart-origin score — must NOT count toward the bridge
+      mk({ kind: "KICKOUT_WON", teamSide: "FOR", restartOwner: "FOR", matchClockSeconds: 700 }),
+      mk({ kind: "POINT", teamSide: "FOR", matchClockSeconds: 720, tags: ["SOURCE_PLAY"] }),
+    ];
+  }
+
+  it("counts exactly the placed scores inside restart-origin possessions", () => {
+    const events = buildBridgeFixture();
+    const analysis = analyseChains(events);
+    const bridge = countPlacedRestartOriginScores(analysis.kickouts.outcomes);
+    expect(bridge).toEqual({ us: 1, them: 1 });
+
+    // Chain layer sees 2 FOR origin scores; the ledger's direct restart row
+    // holds only 1 — the bridge is the difference, and the placed free stays
+    // under Placed balls (direct attribution untouched).
+    expect(analysis.kickouts.wonToScore).toBe(2);
+    const ledger = buildScoreLedger(events, analysis, "Ballylanders", "St.Patricks");
+    const restartRow = ledger.rows.find((r) => r.id === "RESTART_WON")!;
+    const placedRow  = ledger.rows.find((r) => r.id === "PLACED")!;
+    expect(restartRow.us.scores).toBe(1);
+    expect(placedRow.us.scores).toBe(1);
+    expect(placedRow.them.scores).toBe(1);
+  });
+
+  it("words the bridging footnote with the computed counts", () => {
+    expect(restartOriginBridgeNote({ us: 1, them: 1 }, "Ballylanders", "St.Patricks")).toBe(
+      "Origin counts include 2 placed frees won inside kickout-origin possessions " +
+      "(Ballylanders 1 · St.Patricks 1) — counted under Placed balls in the scoring ledger.",
+    );
+    // Zero bridge falls back to the generic attribution wording
+    expect(restartOriginBridgeNote({ us: 0, them: 0 }, "A", "B")).toBe(
+      "Origin chains include frees won in the possession. The ledger counts those under Placed balls.",
+    );
   });
 });
