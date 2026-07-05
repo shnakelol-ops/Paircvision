@@ -3140,8 +3140,8 @@ function makeTurnoverPunishmentPage(
     drawPanelBg(COL3_X, CONTENT_TOP, COL_W, CONTENT_H, "#fbbf24");
     let cy = drawPanelTitle(COL3_X, CONTENT_TOP, "Turnover Punishment Summary", "#fbbf24");
 
-    // Transition efficiency comparison bar
-    cy = drawSubHeader(COL3_X, cy, COL_W, "TRANSITION EFFICIENCY (WON → SCORE %)", "#fbbf24");
+    // Turnover share comparison bar
+    cy = drawSubHeader(COL3_X, cy, COL_W, "TURNOVER SHARE (WON → ORIGIN SCORE %)", "#fbbf24");
     cy = drawComparisonBar(
       COL3_X, cy, COL_W,
       forWonToScore, oppWonToScore,
@@ -3195,8 +3195,8 @@ function makeTurnoverPunishmentPage(
     cy = drawStatRow(COL3_X, cy, COL_W, "Shot differential from T/Os",  netShotStr, netShotColor, true);
     cy += 10;
 
-    // Transition breakdown summary
-    cy = drawSubHeader(COL3_X, cy, COL_W, "TRANSITION OUTCOMES (BOTH TEAMS)", "#94a3b8");
+    // Turnover outcomes summary
+    cy = drawSubHeader(COL3_X, cy, COL_W, "TURNOVER OUTCOMES (BOTH TEAMS)", "#94a3b8");
     const bothTotal       = forWonTotal + oppWonTotal;
     const bothScored      = forWonToScore + oppWonToScore;
     const bothShotOnly    = forWonToShotOnly + oppWonToShotOnly;
@@ -3755,7 +3755,7 @@ function makeMomentumRunsPage(
  * no invented prose. Every sentence is filled from the actual match numbers.
  *
  * Layout (1920×1080, 2 wide columns):
- *   Left  (x 24–951):  Kickout Platform · Turnover Efficiency · Match Intelligence
+ *   Left  (x 24–951):  Kickout Platform · Turnover Battle · Match Intelligence
  *   Right (x 968–1895): Momentum Control · Chain Efficiency   · Performance Summary
  *
  * Division guards: every percentage computation checks denominator > 0.
@@ -3993,13 +3993,13 @@ function makeTacticalIntelligencePage(
     drawMetricRow(L_COL_X, cy, L_COL_W, `Net ${koLabelLC(sport)} advantage (%pt)`, netStr, netColor, false);
   }
 
-  // ── LEFT — CARD 2: TURNOVER EFFICIENCY ────────────────────────────────────
+  // ── LEFT — CARD 2: TURNOVER BATTLE ────────────────────────────────────────
   drawCardBg(L_COL_X, card2Y, L_COL_W, CARD_H_MID, "#a78bfa");
-  cy = drawCardTitle(L_COL_X, card2Y, L_COL_W, "Turnover Efficiency", "#a78bfa");
+  cy = drawCardTitle(L_COL_X, card2Y, L_COL_W, "Turnover Battle", "#a78bfa");
   cy = drawHeroMetric(
     L_COL_X, cy,
     tvTotal > 0 ? `${tvWinPct}%` : "—",
-    `Turnover Win Rate  (${tvWon} won of ${tvTotal} total)`,
+    `Turnover Share  (${tvWon} won of ${tvTotal} total)`,
     "#a78bfa",
   );
   cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Turnover wins → origin score",             `${tvConvPct}%`, "#34d399", false);
@@ -4069,7 +4069,7 @@ function makeTacticalIntelligencePage(
   if (tvDefExp > 40)     fx = drawFlagChip(fx, flagsY, "Turnover Risk",     "rgba(251,113,133,0.15)", "#fb7185");
   if (maxConsFor >= 4)   fx = drawFlagChip(fx, flagsY, "Momentum Burst",    "rgba(34,211,238,0.15)",  "#22d3ee");
   if (maxConsOpp >= 4)   fx = drawFlagChip(fx, flagsY, "Opposition Run",    "rgba(251,113,133,0.15)", "#fb7185");
-  if (chainForPct >= 60) drawFlagChip(fx, flagsY, "Possession Control", "rgba(167,139,250,0.15)", "#a78bfa");
+  if (chainForPct >= 60) drawFlagChip(fx, flagsY, "Chain Control", "rgba(167,139,250,0.15)", "#a78bfa");
 
   // ── RIGHT — CARD 1: MOMENTUM CONTROL ──────────────────────────────────────
   drawCardBg(R_COL_X, card1Y, R_COL_W, CARD_H_TOP, "#22d3ee");
@@ -4098,7 +4098,7 @@ function makeTacticalIntelligencePage(
 
   // ── RIGHT — CARD 2: CHAIN EFFICIENCY ──────────────────────────────────────
   drawCardBg(R_COL_X, card2Y, R_COL_W, CARD_H_MID, "#a78bfa");
-  rcy = drawCardTitle(R_COL_X, card2Y, R_COL_W, "Possession Sequences", "#a78bfa");
+  rcy = drawCardTitle(R_COL_X, card2Y, R_COL_W, "Chain Sequences", "#a78bfa");
   {
     const chainColor = chainForPct >= 60 ? "#34d399"
       : chainForPct <= 40 ? "#fb7185"
@@ -4106,7 +4106,7 @@ function makeTacticalIntelligencePage(
     rcy = drawHeroMetric(
       R_COL_X, rcy,
       chainTotal > 0 ? `${chainForPct}%` : "—",
-      `Possession Sequence Win Rate  (${sm.forChains} of ${chainTotal} won)`,
+      `Chain Sequence Win Rate  (${sm.forChains} of ${chainTotal} won)`,
       chainColor,
     );
   }
@@ -4165,7 +4165,7 @@ function makeTacticalIntelligencePage(
       oppColor: longestOpp > longestFor  ? "#fb7185" : "#94a3b8",
     },
     {
-      label:    "Possession sequences won",
+      label:    "Chain sequences won",
       forVal:   `${sm.forChains}`,
       oppVal:   `${sm.oppChains}`,
       forColor: sm.forChains >= sm.oppChains ? "#22d3ee" : "#94a3b8",
@@ -7470,9 +7470,12 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   }
 
   // p.11+N — Opposition Snapshot
+  // MIXED: Restart/Turnover Threat cards are chain-origin figures and the
+  // Rematch Watchlist draws on the Player Influence module — not a single
+  // STATISTICS-only page (see terminology audit, Task 3).
   try {
     const c = makeOppositionSnapshotPage(events, chainAnalysis, homeTeamName, awayTeamName, p_arch + 2, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "STATISTICS");
+    stampLayerBadge(c, "MIXED");
     addCanvasPage(c, true, "Opposition Snapshot");
   } catch (err) {
     console.error("Opposition Snapshot page generation failed", err);
@@ -10380,19 +10383,19 @@ function makeChainPressurePage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Possession Patterns", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Chain Patterns", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Rank patterns ──────────────────────────────────────────────────────────
   const patterns = rankChainPatterns(analysis, mode, homeTeam, awayTeam);
 
   // ── Colour helpers (all based on kind — no new palette colours) ───────────
-  // headline is threaded through so "Possession Lost → Score" (a DANGER_CHAIN
+  // headline is threaded through so "Turnover Loss → Score" (a DANGER_CHAIN
   // whose root cause is a turnover, not a kickout error) renders amber instead
   // of red — amber = possession-loss patterns across pitch AND cards.
   function cpRgb(kind: ChainPressureKind, headline?: string): string {
     if (kind === "DANGER_CHAIN") {
-      // Possession Lost → Score: amber — possession loss. Kickout Loss → Score: red — scoring danger.
-      return headline === "Possession Lost → Score" ? "245,158,11" : "239,68,68";
+      // Turnover Loss → Score: amber — possession loss. Kickout Loss → Score: red — scoring danger.
+      return headline === "Turnover Loss → Score" ? "245,158,11" : "239,68,68";
     }
     if (kind === "CHAIN_WEAPON")     return "34,197,94";
     if (kind === "PRESSURE_PATTERN") return "245,158,11";
@@ -10400,7 +10403,7 @@ function makeChainPressurePage(
   }
   function cpHex(kind: ChainPressureKind, headline?: string): string {
     if (kind === "DANGER_CHAIN") {
-      return headline === "Possession Lost → Score" ? "#f59e0b" : "#ef4444";
+      return headline === "Turnover Loss → Score" ? "#f59e0b" : "#ef4444";
     }
     if (kind === "CHAIN_WEAPON")     return "#22c55e";
     if (kind === "PRESSURE_PATTERN") return "#f59e0b";
@@ -10452,7 +10455,7 @@ function makeChainPressurePage(
   // Green = success platform · Amber = pressure building · Red = active damage.
   // No rings, no badges, no arrows — ambient fill only.
   for (const pattern of patterns) {
-    const isTurnoverConceded = pattern.headline === "Possession Lost → Score";
+    const isTurnoverConceded = pattern.headline === "Turnover Loss → Score";
     if (pattern.kind !== "PRESSURE_PATTERN" && !isTurnoverConceded) continue;
     if (pattern.zoneCol === null || pattern.zoneRow === null) continue;
 
@@ -10501,7 +10504,7 @@ function makeChainPressurePage(
 
     // Threat rings
     const ringLevel = cpThreatLevel(pattern.priorityScore);
-    const isTurnoverConceded = pattern.headline === "Possession Lost → Score";
+    const isTurnoverConceded = pattern.headline === "Turnover Loss → Score";
     if (isTurnoverConceded && ringLevel !== "NONE") {
       // Amber dashed ring — signals possession-loss origin, not scoring danger.
       // Mirrors drawThreatRings ring count logic but locks colour to amber so
@@ -10527,12 +10530,16 @@ function makeChainPressurePage(
 
     // Threat badge — rank #1 only (keeps rank #2 visually quieter)
     if (pattern.rank === 1) {
-      // "Possession Lost → Score" gets a distinct label; badge colour is still
+      // "Turnover Loss → Score" gets a distinct label; badge colour is still
       // threat-level driven (communicates urgency separately from pattern type).
+      // CHAIN_WEAPON covers both "Kickout Platform" and "Turnovers Won" — the
+      // headline (not just kind) decides which win-side badge text to show.
+      const isTurnoverWon = pattern.headline === "Turnovers Won";
       const badgeLbl =
-        isTurnoverConceded                   ? "POSSESSION RISK"                    :
+        isTurnoverConceded                   ? "TURNOVER RISK"                     :
         pattern.kind === "DANGER_CHAIN"      ? `${koLabelUC(sport)} RISK`           :
-        pattern.kind === "CHAIN_WEAPON"      ? "POSSESSION WIN"                     :
+        isTurnoverWon                        ? "TURNOVER WIN"                      :
+        pattern.kind === "CHAIN_WEAPON"      ? `${koLabelUC(sport)} WIN`            :
         pattern.kind === "PRESSURE_PATTERN"  ? `${koLabelUC(sport)} CONTEST`        :
                                                "MISSED CHANCES";
       drawThreatBadge(ctx, cx, cy - 52, badgeLbl, ringLevel !== "NONE" ? ringLevel : "ELEVATED");
@@ -10544,7 +10551,7 @@ function makeChainPressurePage(
         pattern.rank === 1
           ? Math.min(pattern.priorityScore / 20, 1.0)
           : Math.min(pattern.priorityScore / 32, 0.65);
-      // Possession Lost → Score uses PRESSURE_COLLAPSE (amber sweep) — possession
+      // Turnover Loss → Score uses PRESSURE_COLLAPSE (amber sweep) — possession
       // lost in zone, not an active scoring threat entering from outside.
       const sweepKind =
         pattern.kind === "CHAIN_WEAPON"                                            ? "PRESSURE_EXIT"    :
@@ -10816,7 +10823,7 @@ function makeChainPressurePage(
       const META_ABS  = cardY + cardH - META_BOT;
       const severity  = cpSeverity(p.priorityScore);
       // ELEVATED chip inherits the pattern's accent colour — amber for
-      // possession-loss patterns (Possession Lost → Score, PRESSURE_PATTERN),
+      // possession-loss patterns (Turnover Loss → Score, PRESSURE_PATTERN),
       // red for scoring-danger patterns (Kickout Loss → Score). This ends the
       // yellow-chip-on-red-card confusion.
       // CRITICAL and HIGH keep universal urgency colours (red / orange).
@@ -12042,7 +12049,7 @@ function makeHtTacticalSummaryPage(
 
   // Inline colour helper (mirrors cpHex inside makeChainPressurePage)
   function summaryPatternHex(kind: ChainPressureKind, headline?: string): string {
-    if (kind === "DANGER_CHAIN")     return headline === "Possession Lost → Score" ? "#f59e0b" : "#ef4444";
+    if (kind === "DANGER_CHAIN")     return headline === "Turnover Loss → Score" ? "#f59e0b" : "#ef4444";
     if (kind === "CHAIN_WEAPON")     return "#22c55e";
     if (kind === "PRESSURE_PATTERN") return "#f59e0b";
     return "#818cf8";
@@ -12612,11 +12619,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "POSSESSION",
     );
 
-    // 5. Possession Patterns — HT-calibrated (relaxed thresholds for smaller H1 dataset)
+    // 5. Chain Patterns — HT-calibrated (relaxed thresholds for smaller H1 dataset)
     addPage(
       makeChainPressurePage(events, sport, chainAnalysis, home, away, 5, TOTAL_PAGES, "HT"),
       true,
-      "Possession Patterns",
+      "Chain Patterns",
       "CHAIN",
     );
 
@@ -12710,7 +12717,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     addPage(
       makeChainPressurePage(events, sport, chainAnalysis, home, away, 6, TOTAL_PAGES),
       true,
-      "Possession Patterns",
+      "Chain Patterns",
       "CHAIN",
     );
 
@@ -12765,11 +12772,13 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     );
 
     // 13. Opposition Snapshot
+    // MIXED: Restart/Turnover Threat cards are chain-origin figures and the
+    // Rematch Watchlist draws on the Player Influence module.
     addPage(
       makeOppositionSnapshotPage(events, chainAnalysis, home, away, 13, TOTAL_PAGES, sport),
       true,
       "Opposition Snapshot",
-      "STATISTICS",
+      "MIXED",
     );
 
     // 14. Tactical Match Story — narrative arc of the match

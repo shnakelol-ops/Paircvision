@@ -165,7 +165,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     });
   }
 
-  // ── 3. POSSESSION RISK (DANGER_CHAIN) ──────────────────────────────────────
+  // ── 3. TURNOVER RISK (DANGER_CHAIN) ────────────────────────────────────────
   // OPP scored after winning possession from a FOR turnover.
   if (cpQualifies(to.lostAllowedScore, to.lost, 0, mode)) {
     const dangerOutcomes = to.outcomes.filter(
@@ -179,8 +179,8 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     );
     candidates.push({
       kind:          "DANGER_CHAIN",
-      badge:         "POSSESSION RISK",
-      headline:      "Possession Lost → Score",
+      badge:         "TURNOVER RISK",
+      headline:      "Turnover Loss → Score",
       observation:   `${team} lost possession ${to.lost} times — ${to.lostAllowedScore} turnover-origin score${to.lostAllowedScore !== 1 ? "s" : ""} for ${opp}`,
       primaryMetric: to.lostAllowedScore,
       metricLabel:   "opposition scores",
@@ -229,7 +229,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
       (c) => c.headline === "Kickout Loss → Score" || c.headline === "Kickout Platform",
     );
     const hasTvPattern = candidates.some(
-      (c) => c.headline === "Possession Lost → Score" || c.headline === "Turnovers Won",
+      (c) => c.headline === "Turnover Loss → Score" || c.headline === "Turnovers Won",
     );
 
     // HT: threshold lowered to 3 — smaller first-half dataset
@@ -254,7 +254,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
     if (!hasTvPattern && to.won >= (mode === "HT" ? 2 : 3) && to.wonToShot >= 2) {
       candidates.push({
         kind:          "PRESSURE_PATTERN",
-        badge:         "POSSESSION WINS",
+        badge:         "TURNOVER WINS",
         headline:      "Turnovers Won, Low Conversion",
         observation:   `${team} won ${to.won} turnovers — took ${to.wonToShot} shots, scored ${to.wonToScore}`,
         primaryMetric: to.won,
