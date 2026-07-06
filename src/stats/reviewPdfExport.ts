@@ -34,7 +34,11 @@ import { getZoneCounts, getZoneHotspots } from "./zones/zone-engine";
 import type { ZoneCount } from "./zones/zone-types";
 import { eventSource, isFreeScore, isFreeMiss } from "./eventSource";
 import type { ScoreSource } from "./eventSource";
-import { resolvePlayerDisplayName } from "./player-display";
+import {
+  buildPlayerNumberAliasMap,
+  resolvePlayerDisplayName,
+  resolvePlayerIdentityKey,
+} from "./player-display";
 import type { MatchTargets } from "./matchTargets";
 import { computeTargetResults, hasEnabledTargets } from "./matchTargets";
 import { buildMatchTargetsCard } from "./matchTargetsCard";
@@ -1391,7 +1395,7 @@ function makeSegmentsPage(
  * Shared player stats type used by collectPlayerStats, calcPlayerPageCount,
  * and makePlayerPages.
  */
-type PlayerStatsFull = {
+export type PlayerStatsFull = {
   id: string;
   number: number | null;
   name: string | null;
@@ -1404,8 +1408,11 @@ type PlayerStatsFull = {
   freesWon: number; freesCon: number;
 };
 
-/** Collects and sorts all player-tagged stats from events. */
-function collectPlayerStats(
+/** Collects and sorts all player-tagged stats from events.
+ *  Exported for regression testing of player identity resolution (a player
+ *  tagged sometimes by playerId, sometimes by number-only, must collapse to
+ *  one row) — not intended as a general public API of this module. */
+export function collectPlayerStats(
   events: readonly PdfExportEvent[],
   homeSquad?: readonly PdfSquadPlayer[],
   awaySquad?: readonly PdfSquadPlayer[],
@@ -1441,14 +1448,20 @@ function collectPlayerStats(
 
   const validEvts = events.filter((e) => !e.id.includes("-instant-score-"));
 
+  // Identity merge: a player tagged by playerId on some events and by
+  // number-only on others must land on the same row — see resolvePlayerIdentityKey.
+  const numberAliasMap = buildPlayerNumberAliasMap(validEvts);
+
   for (const e of validEvts) {
     if (e.playerId == null && e.playerNumber == null) continue;
-    // Prefer player-ID key; fall back to team-scoped number key
-    const numKey = `__num_${e.teamSide}_${e.playerNumber ?? "?"}`;
+    const identityKey = resolvePlayerIdentityKey(e, numberAliasMap);
+    const rawNumKey = `__num_${e.teamSide}_${e.playerNumber ?? "?"}`;
+    // Prefer whichever key the map already knows (squad pre-seed or an
+    // earlier event for this player), falling back to the resolved identity.
     const key =
-      e.playerId && playerMap.has(e.playerId) ? e.playerId
-      : playerMap.has(numKey)                 ? numKey
-      : e.playerId                            ?? numKey;
+      identityKey && playerMap.has(identityKey) ? identityKey
+      : playerMap.has(rawNumKey)                ? rawNumKey
+      : identityKey ?? rawNumKey;
     if (!playerMap.has(key)) {
       playerMap.set(key, {
         id:         e.playerId ?? key,
@@ -1464,6 +1477,15 @@ function collectPlayerStats(
       });
     }
     const ps = playerMap.get(key)!;
+    // Backfill whichever identity field this entry is missing — covers both
+    // a squad-seeded row with a blank name and an event-created row whose
+    // first-seen tag didn't carry every field.
+    if (ps.name == null && typeof e.playerName === "string" && e.playerName.trim()) {
+      ps.name = e.playerName.trim();
+    }
+    if (ps.number == null && typeof e.playerNumber === "number") {
+      ps.number = e.playerNumber;
+    }
     ps.actions++;
     if (e.kind === "GOAL")                                                    { ps.goals++;         ps.scoreTotal += 3; }
     else if (e.kind === "TWO_POINTER" || e.kind === "FORTY_FIVE_TWO_POINT")  { ps.scorePoints += 2; ps.scoreTotal += 2; }

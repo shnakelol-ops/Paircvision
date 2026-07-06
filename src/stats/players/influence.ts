@@ -33,6 +33,11 @@
 
 import type { MatchEventKind } from "../../core/stats/stats-event-model";
 import type { ChainableEvent, ChainAnalysis, ChainMatch } from "../chains/chain-types";
+import {
+  buildPlayerNumberAliasMap,
+  resolvePlayerDisplayName,
+  resolvePlayerIdentityKey,
+} from "../player-display";
 
 // ─── Input event shape ────────────────────────────────────────────────────────
 
@@ -79,7 +84,8 @@ export type PlayerInfluence = {
   teamSide: "FOR" | "OPP";
   name: string | null;
   number: number | null;
-  /** "Shane" / "#15" / "Unknown player" */
+  /** "Shane" / "#15" / "—" — resolved via resolvePlayerDisplayName, the same
+   *  function every other report surface uses for the same playerId. */
   displayName: string;
   goals: number;
   /** Non-goal points value (points + 2×two-pointers). */
@@ -169,12 +175,14 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
 ): InfluenceAnalysis {
   const valid = events.filter((e) => !e.id.includes("-instant-score-"));
 
-  // Player keying mirrors the Player Breakdown table: prefer playerId,
-  // fall back to a team-scoped jersey number so number-only tags accumulate.
+  // Player keying: an explicit playerId always wins; a number-only event
+  // resolves through the alias map so it lands on the same row as any
+  // playerId-tagged event for the same team+number — a player tagged both
+  // ways across the match (picker sometimes, number-only quick-tag other
+  // times) never fragments into a named row and a separate "#N" row.
+  const numberAliasMap = buildPlayerNumberAliasMap(valid);
   function playerKey(e: InfluenceEvent): string | null {
-    if (e.playerId != null) return e.playerId;
-    if (e.playerNumber != null) return `__num_${e.teamSide}_${e.playerNumber}`;
-    return null;
+    return resolvePlayerIdentityKey(e, numberAliasMap);
   }
 
   const players = new Map<string, PlayerInfluence>();
@@ -191,7 +199,7 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
         teamSide: e.teamSide,
         name,
         number,
-        displayName: name ?? (number != null ? `#${number}` : "Unknown player"),
+        displayName: "", // resolved once, after all backfills, in the derived-metrics pass below
         goals: 0, points: 0, scoreValue: 0, scores: 0, shots: 0,
         toWon: 0, toLost: 0, koWon: 0, koLost: 0, freesWon: 0, freesConceded: 0,
         scoringSharePct: 0, shotEfficiencyPct: 0,
@@ -199,9 +207,16 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
         assistsProxy: 0, netBallImpact: 0, influenceIndex: 0,
       };
       players.set(key, p);
-    } else if (p.name == null && typeof e.playerName === "string" && e.playerName.trim()) {
-      p.name = e.playerName.trim();
-      p.displayName = p.name;
+    } else {
+      // Backfill whichever identity field this event adds that earlier
+      // events for the same key didn't carry (e.g. the first-seen event was
+      // number-only; a later one resolves to the same key and carries a name).
+      if (p.name == null && typeof e.playerName === "string" && e.playerName.trim()) {
+        p.name = e.playerName.trim();
+      }
+      if (p.number == null && typeof e.playerNumber === "number") {
+        p.number = e.playerNumber;
+      }
     }
     return p;
   }
@@ -280,6 +295,10 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
   // ── Derived metrics ───────────────────────────────────────────────────────
   const w = INFLUENCE_WEIGHTS;
   for (const p of players.values()) {
+    // Resolved once, after every event (and identity backfill) has been
+    // accumulated — the single source every insight and table row reads via
+    // p.displayName, so no surface can print a name another surface doesn't.
+    p.displayName = resolvePlayerDisplayName(p.name, p.number);
     const totals = p.teamSide === "FOR" ? forTotals : oppTotals;
     p.scoringSharePct    = totals.value  > 0 ? Math.round((p.scoreValue / totals.value) * 100) : 0;
     p.shotEfficiencyPct  = p.shots       > 0 ? Math.round((p.scores / p.shots) * 100) : 0;

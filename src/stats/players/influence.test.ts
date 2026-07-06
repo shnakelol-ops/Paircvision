@@ -165,3 +165,72 @@ describe("buildInfluenceAnalysis — spec fixture acceptance", () => {
     expect(danny.influenceIndex).toBe(2);   // 2 points value, no ball-winning events
   });
 });
+
+describe("player identity regression — mixed playerId / number-only tagging", () => {
+  /**
+   * Reproduces the reported bug exactly: "Shane" (#14) is tagged with a
+   * playerId on some events (via the player picker) and with only a jersey
+   * number on others (quick number-tag). Before the identity-merge fix this
+   * split into two rows — a named "Shane" bucket (whichever events carried
+   * playerId) and an unnamed "#14" bucket (the number-only events) — so the
+   * ranked table and any insight built from a different bucket could name
+   * the same player two different ways, or an insight could name a player
+   * the table showed only as a number.
+   */
+  function buildMixedTaggingFixture(): FixtureEvent[] {
+    const events: FixtureEvent[] = [];
+    let clock = 0;
+    const at = () => (clock += 200);
+
+    // Scoring events tagged via the player picker (playerId + name present)
+    at();
+    events.push(mk({
+      kind: "POINT", teamSide: "FOR", matchClockSeconds: clock,
+      playerId: "p-shane", playerNumber: 14, playerName: "Shane",
+    }));
+
+    // Four wides for the same player, tagged number-only (no playerId, no name)
+    // — exactly how a sideline quick-tag would log a shot without opening the picker.
+    for (let i = 0; i < 4; i++) {
+      at();
+      events.push(mk({ kind: "WIDE", teamSide: "FOR", matchClockSeconds: clock, playerNumber: 14 }));
+    }
+
+    // A team-mate so the fixture isn't a single-player match
+    at();
+    events.push(mk({
+      kind: "POINT", teamSide: "FOR", matchClockSeconds: clock,
+      playerId: "p-danny", playerNumber: 8, playerName: "Danny",
+    }));
+
+    return events;
+  }
+
+  it("collapses the mixed-tagged player into one row with the full, merged stat line", () => {
+    const events = buildMixedTaggingFixture();
+    const analysis = analyseChains(events);
+    const influence = buildInfluenceAnalysis(events, analysis, "Ballylanders", "St.Patricks");
+
+    const shaneRows = influence.home.players.filter((p) => p.number === 14);
+    expect(shaneRows.length).toBe(1); // not split into a named row + a "#14" row
+
+    const shane = shaneRows[0];
+    expect(shane.displayName).toBe("Shane");
+    expect(shane.name).toBe("Shane");
+    expect(shane.scores).toBe(1);
+    expect(shane.shots).toBe(5); // 1 point + 4 wides, all attributed to the same player
+  });
+
+  it("an efficiency-watch insight never names a player the ranked table shows only by number", () => {
+    const events = buildMixedTaggingFixture();
+    const analysis = analyseChains(events);
+    const influence = buildInfluenceAnalysis(events, analysis, "Ballylanders", "St.Patricks");
+
+    const shane = influence.home.players.find((p) => p.number === 14)!;
+    expect(influence.home.efficiencyWatch.some((f) => f.text.startsWith("Shane"))).toBe(true);
+
+    // The exact same displayName the table renders is the one the insight used.
+    const insight = influence.home.efficiencyWatch.find((f) => f.text.includes(shane.displayName));
+    expect(insight).toBeDefined();
+  });
+});
