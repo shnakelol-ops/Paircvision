@@ -35,9 +35,14 @@ import type { MatchEventKind } from "../../core/stats/stats-event-model";
 import type { ChainableEvent, ChainAnalysis, ChainMatch } from "../chains/chain-types";
 import {
   buildPlayerNumberAliasMap,
+  buildPlayerRosterLookup,
   resolvePlayerDisplayName,
   resolvePlayerIdentityKey,
+  type PlayerRosterEntry,
+  type TeamRoster,
 } from "../player-display";
+
+export type { PlayerRosterEntry } from "../player-display";
 
 // ─── Input event shape ────────────────────────────────────────────────────────
 
@@ -172,15 +177,29 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
   analysis: ChainAnalysis<TEvent>,
   homeTeam: string,
   awayTeam: string,
+  homeSquadPlayers?: readonly PlayerRosterEntry[],
+  awaySquadPlayers?: readonly PlayerRosterEntry[],
 ): InfluenceAnalysis {
   const valid = events.filter((e) => !e.id.includes("-instant-score-"));
 
+  // Squad rosters are the GUARANTEED identity bridge (id + number + name
+  // always travel together in a roster row) — seed the alias map from them
+  // first, then let events augment it for players missing from any roster.
+  // Do not rely on events alone: a player exclusively quick-tagged by
+  // number may never log a single event carrying both playerId and
+  // playerNumber, so without the roster their identity would never link up.
+  const rosters: TeamRoster[] = [
+    ...(homeSquadPlayers ? [{ teamSide: "FOR" as const, players: homeSquadPlayers }] : []),
+    ...(awaySquadPlayers ? [{ teamSide: "OPP" as const, players: awaySquadPlayers }] : []),
+  ];
+  const numberAliasMap = buildPlayerNumberAliasMap(valid, rosters);
+  const rosterLookup = buildPlayerRosterLookup(rosters);
+
   // Player keying: an explicit playerId always wins; a number-only event
   // resolves through the alias map so it lands on the same row as any
-  // playerId-tagged event for the same team+number — a player tagged both
-  // ways across the match (picker sometimes, number-only quick-tag other
-  // times) never fragments into a named row and a separate "#N" row.
-  const numberAliasMap = buildPlayerNumberAliasMap(valid);
+  // playerId-tagged event OR roster entry for the same team+number — a
+  // player tagged both ways across the match (picker sometimes, number-only
+  // quick-tag other times) never fragments into a named row and a "#N" row.
   function playerKey(e: InfluenceEvent): string | null {
     return resolvePlayerIdentityKey(e, numberAliasMap);
   }
@@ -192,13 +211,17 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
     if (key == null) return null;
     let p = players.get(key);
     if (!p) {
-      const name = typeof e.playerName === "string" && e.playerName.trim() ? e.playerName.trim() : null;
-      const number = typeof e.playerNumber === "number" ? e.playerNumber : null;
+      // Roster name/number is authoritative when present (it's the
+      // guaranteed bridge); fall back to whatever this individual event
+      // itself carries.
+      const roster = rosterLookup.get(key);
+      const eventName = typeof e.playerName === "string" && e.playerName.trim() ? e.playerName.trim() : null;
+      const eventNumber = typeof e.playerNumber === "number" ? e.playerNumber : null;
       p = {
         key,
         teamSide: e.teamSide,
-        name,
-        number,
+        name: roster?.name ?? eventName,
+        number: roster?.number ?? eventNumber,
         displayName: "", // resolved once, after all backfills, in the derived-metrics pass below
         goals: 0, points: 0, scoreValue: 0, scores: 0, shots: 0,
         toWon: 0, toLost: 0, koWon: 0, koLost: 0, freesWon: 0, freesConceded: 0,
@@ -208,14 +231,18 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
       };
       players.set(key, p);
     } else {
-      // Backfill whichever identity field this event adds that earlier
-      // events for the same key didn't carry (e.g. the first-seen event was
-      // number-only; a later one resolves to the same key and carries a name).
-      if (p.name == null && typeof e.playerName === "string" && e.playerName.trim()) {
-        p.name = e.playerName.trim();
+      // Backfill whichever identity field this entry is still missing —
+      // roster first, then whatever this event itself carries (covers the
+      // first-seen event for a key being number-only, with a name arriving
+      // later, either from the roster or from a subsequent tagged event).
+      const roster = rosterLookup.get(key);
+      if (p.name == null) {
+        const eventName = typeof e.playerName === "string" && e.playerName.trim() ? e.playerName.trim() : null;
+        p.name = roster?.name ?? eventName;
       }
-      if (p.number == null && typeof e.playerNumber === "number") {
-        p.number = e.playerNumber;
+      if (p.number == null) {
+        const eventNumber = typeof e.playerNumber === "number" ? e.playerNumber : null;
+        p.number = roster?.number ?? eventNumber;
       }
     }
     return p;

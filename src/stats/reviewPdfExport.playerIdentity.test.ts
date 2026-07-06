@@ -93,4 +93,41 @@ describe("player identity — Player Breakdown and Player Influence agree", () =
     expect(breakdownOppLabel).toBe("#15");
     expect(influenceOpp.displayName).toBe("#15");
   });
+
+  it("every scorer from Player Breakdown appears exactly once in Player Influence with matching points, even when the squad roster is the only id/number/name bridge", () => {
+    // Ballylanders squad uploaded with full names, but the sideline only
+    // ever quick-tags by jersey number during the match — no event carries
+    // both playerId and playerNumber for any home player.
+    const homeSquad: PdfSquadPlayer[] = [
+      { id: "squad-14", number: 14, name: "Shane" },
+      { id: "squad-8", number: 8, name: "Darren" },
+    ];
+    const events: PdfExportEvent[] = [
+      mk({ kind: "POINT", teamSide: "FOR", playerNumber: 14 }),
+      mk({ kind: "WIDE", teamSide: "FOR", playerNumber: 14 }),
+      mk({ kind: "WIDE", teamSide: "FOR", playerNumber: 14 }),
+      mk({ kind: "WIDE", teamSide: "FOR", playerNumber: 14 }),
+      mk({ kind: "WIDE", teamSide: "FOR", playerNumber: 14 }),
+      mk({ kind: "POINT", teamSide: "FOR", playerNumber: 8 }),
+    ];
+
+    const analysis = analyseChains(events);
+    const breakdownRows = collectPlayerStats(events, homeSquad, undefined);
+    const influence = buildInfluenceAnalysis(events, analysis, "Ballylanders", "St.Patricks", homeSquad);
+
+    for (const row of breakdownRows) {
+      const matches = influence.home.players.filter((p) => p.number === row.number);
+      expect(matches.length).toBe(1); // no duplicate identity fragments
+    }
+
+    const shaneBreakdown = breakdownRows.find((r) => r.number === 14)!;
+    const shaneInfluence = influence.home.players.find((p) => p.number === 14)!;
+    expect(shaneInfluence.displayName).toBe(resolvePlayerDisplayName(shaneBreakdown.name, shaneBreakdown.number));
+    expect(shaneInfluence.points).toBe(1);
+    expect(shaneInfluence.shots).toBe(5);
+
+    const darrenInfluence = influence.home.players.find((p) => p.number === 8)!;
+    expect(darrenInfluence.displayName).toBe("Darren");
+    expect(darrenInfluence.points).toBe(1);
+  });
 });

@@ -45,22 +45,74 @@ export type PlayerIdentityEvent = {
 };
 
 /**
- * Scans events once to learn which team-scoped jersey numbers belong to
- * which playerId, from any event that happens to carry both. Pass the
- * result to resolvePlayerIdentityKey so a later number-only event for the
- * same player resolves to the identity already established, instead of
+ * A squad roster entry — the GUARANTEED bridge between a jersey number and
+ * a playerId, because a roster row always carries id + number + name
+ * together, unlike a logged event which may carry only one or two of them.
+ */
+export type PlayerRosterEntry = {
+  id: string;
+  number: number;
+  name: string;
+};
+
+export type TeamRoster<TEntry extends PlayerRosterEntry = PlayerRosterEntry> = {
+  teamSide: "FOR" | "OPP";
+  players: readonly TEntry[];
+};
+
+/**
+ * Scans squad rosters (when supplied) and events to learn which team-scoped
+ * jersey numbers belong to which playerId. Rosters seed the map FIRST and
+ * are never overwritten — they're the guaranteed bridge. Events only
+ * augment the map for players missing from any roster (e.g. an opposition
+ * team with no squad uploaded), and only where a bridging event happens to
+ * carry both playerId and playerNumber together.
+ *
+ * Do not rely on events alone: a coach who exclusively quick-tags by number
+ * for one player and exclusively uses the picker for another may never log
+ * a single event carrying both fields for the quick-tagged player — the
+ * roster is the only place that link exists.
+ *
+ * Pass the result to resolvePlayerIdentityKey so a number-only event for a
+ * known player resolves to the identity already established, instead of
  * starting a new, unnamed fragment.
  */
 export function buildPlayerNumberAliasMap<TEvent extends PlayerIdentityEvent>(
   events: readonly TEvent[],
+  rosters?: readonly TeamRoster[],
 ): Map<string, string> {
   const aliasMap = new Map<string, string>();
+  if (rosters) {
+    for (const roster of rosters) {
+      for (const p of roster.players) {
+        aliasMap.set(`__num_${roster.teamSide}_${p.number}`, p.id);
+      }
+    }
+  }
   for (const e of events) {
     if (e.playerId != null && e.playerNumber != null) {
-      aliasMap.set(`__num_${e.teamSide}_${e.playerNumber}`, e.playerId);
+      const numKey = `__num_${e.teamSide}_${e.playerNumber}`;
+      if (!aliasMap.has(numKey)) aliasMap.set(numKey, e.playerId);
     }
   }
   return aliasMap;
+}
+
+/**
+ * Builds a playerId → roster entry lookup from one or more team rosters.
+ * Used to resolve a player's name/number even when no individual event for
+ * them ever carries a name — the roster is authoritative once present.
+ */
+export function buildPlayerRosterLookup(
+  rosters: readonly TeamRoster[],
+): Map<string, PlayerRosterEntry> {
+  const lookup = new Map<string, PlayerRosterEntry>();
+  for (const roster of rosters) {
+    for (const p of roster.players) {
+      if (p.name.trim()) lookup.set(p.id, p);
+    }
+  }
+  return lookup;
 }
 
 /**

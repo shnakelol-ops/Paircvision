@@ -17,6 +17,7 @@ import {
   buildInfluenceAnalysis,
   influenceEvidenceLine,
   type InfluenceEvent,
+  type PlayerRosterEntry,
 } from "./influence";
 
 type FixtureEvent = InfluenceEvent & ChainableEvent;
@@ -232,5 +233,93 @@ describe("player identity regression — mixed playerId / number-only tagging", 
     // The exact same displayName the table renders is the one the insight used.
     const insight = influence.home.efficiencyWatch.find((f) => f.text.includes(shane.displayName));
     expect(insight).toBeDefined();
+  });
+});
+
+describe("player identity regression — roster-seeded bridge, no event ever carries both fields", () => {
+  /**
+   * The gap the mixed-tagging fix (above) didn't cover: a coach who
+   * exclusively quick-tags a player by jersey number never logs a single
+   * event carrying both playerId and playerNumber, so an events-only alias
+   * map has nothing to link the number to the roster's playerId. The squad
+   * roster is the ONLY place the id↔number↔name bridge exists for these
+   * players — it must seed the alias map, not just backfill names after
+   * the fact.
+   */
+  const homeRoster: PlayerRosterEntry[] = [
+    { id: "p-shane", number: 14, name: "Shane" },
+    { id: "p-darren", number: 8, name: "Darren" },
+  ];
+
+  function buildRosterOnlyFixture(): FixtureEvent[] {
+    const events: FixtureEvent[] = [];
+    let clock = 0;
+    const at = () => (clock += 200);
+
+    // Shane: 1 point + 4 wides — every single event is number-only (14),
+    // never playerId. The roster is the only bridge to "p-shane".
+    at(); events.push(mk({ kind: "POINT", teamSide: "FOR", matchClockSeconds: clock, playerNumber: 14 }));
+    for (let i = 0; i < 4; i++) {
+      at(); events.push(mk({ kind: "WIDE", teamSide: "FOR", matchClockSeconds: clock, playerNumber: 14 }));
+    }
+
+    // Darren: 1 point, also number-only.
+    at(); events.push(mk({ kind: "POINT", teamSide: "FOR", matchClockSeconds: clock, playerNumber: 8 }));
+
+    // St.Patricks: no roster supplied for this side — number-only rows
+    // must render exactly as before (unchanged behaviour).
+    at(); events.push(mk({ kind: "POINT", teamSide: "OPP", matchClockSeconds: clock, playerNumber: 4 }));
+    at(); events.push(mk({ kind: "WIDE", teamSide: "OPP", matchClockSeconds: clock, playerNumber: 4 }));
+
+    return events;
+  }
+
+  it("Shane resolves to his roster name with 1 point and 1/5 shooting despite never being id-tagged", () => {
+    const events = buildRosterOnlyFixture();
+    const analysis = analyseChains(events);
+    const influence = buildInfluenceAnalysis(events, analysis, "Ballylanders", "St.Patricks", homeRoster);
+
+    const shaneRows = influence.home.players.filter((p) => p.number === 14);
+    expect(shaneRows.length).toBe(1); // no duplicate identity fragments
+
+    const shane = shaneRows[0];
+    expect(shane.displayName).toBe("Shane");
+    expect(shane.points).toBe(1);
+    expect(shane.shots).toBe(5);
+  });
+
+  it("Darren resolves to his roster name with 1 point", () => {
+    const events = buildRosterOnlyFixture();
+    const analysis = analyseChains(events);
+    const influence = buildInfluenceAnalysis(events, analysis, "Ballylanders", "St.Patricks", homeRoster);
+
+    const darrenRows = influence.home.players.filter((p) => p.number === 8);
+    expect(darrenRows.length).toBe(1);
+    expect(darrenRows[0].displayName).toBe("Darren");
+    expect(darrenRows[0].points).toBe(1);
+  });
+
+  it("St.Patricks (no roster supplied) still renders number-only rows unchanged", () => {
+    const events = buildRosterOnlyFixture();
+    const analysis = analyseChains(events);
+    const influence = buildInfluenceAnalysis(events, analysis, "Ballylanders", "St.Patricks", homeRoster);
+
+    const oppRows = influence.away.players.filter((p) => p.number === 4);
+    expect(oppRows.length).toBe(1);
+    expect(oppRows[0].displayName).toBe("#4");
+  });
+
+  it("no duplicate identity fragments survive anywhere and influence scoring shares sum to team total points", () => {
+    const events = buildRosterOnlyFixture();
+    const analysis = analyseChains(events);
+    const influence = buildInfluenceAnalysis(events, analysis, "Ballylanders", "St.Patricks", homeRoster);
+
+    const homeNumbers = influence.home.players.map((p) => p.number);
+    expect(new Set(homeNumbers).size).toBe(homeNumbers.length);
+
+    const homeTeamPoints = influence.home.players.reduce((sum, p) => sum + p.points, 0);
+    expect(homeTeamPoints).toBe(2); // Shane's 1 + Darren's 1
+    const homeShareSum = influence.home.players.reduce((sum, p) => sum + p.scoringSharePct, 0);
+    expect(homeShareSum).toBeGreaterThan(0);
   });
 });

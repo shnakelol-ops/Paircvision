@@ -1802,6 +1802,8 @@ function makePlayerInfluencePage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeSquadPlayers?: readonly PdfSquadPlayer[],
+  awaySquadPlayers?: readonly PdfSquadPlayer[],
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -1815,7 +1817,7 @@ function makePlayerInfluencePage(
   drawPageHeader(ctx, "Player Influence", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
   drawEventCountFooter(ctx, events.filter((e) => !e.id.includes("-instant-score-")).length);
 
-  const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam);
+  const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam, homeSquadPlayers, awaySquadPlayers);
 
   const CONTENT_TOP = 86;
   const L_COL_X = 24;
@@ -4429,6 +4431,8 @@ function makeOppositionSnapshotPage(
   pageNum: number,
   totalPages: number,
   sport: PitchSport = "gaelic",
+  homeSquadPlayers?: readonly PdfSquadPlayer[],
+  awaySquadPlayers?: readonly PdfSquadPlayer[],
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -4538,7 +4542,7 @@ function makeOppositionSnapshotPage(
   // dependency flag when it fires) is the rematch-planning headline.
   const watchlist: string[] = [];
   {
-    const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam);
+    const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam, homeSquadPlayers, awaySquadPlayers);
     const oppInfluence = influence.away;
     const oppTop = oppInfluence.top3[0];
     if (oppTop && oppTop.influenceIndex > 0) {
@@ -7344,7 +7348,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // ── p.2 — Where the Points Went (margin decomposition ledger) ────────────────
 
   try {
-    const c = makePointsLedgerPage(events, chainAnalysis, homeTeamName, awayTeamName, 2, TOTAL_PAGES);
+    const c = makePointsLedgerPage(events, chainAnalysis, homeTeamName, awayTeamName, 2, TOTAL_PAGES, "FULL", homeSquadPlayers, awaySquadPlayers);
     stampLayerBadge(c, "MIXED");
     addCanvasPage(c, true, "Where the Points Went");
   } catch (err) {
@@ -7397,7 +7401,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   // p.7+N — Player Influence
   try {
-    const c = makePlayerInfluencePage(events, chainAnalysis, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES);
+    const c = makePlayerInfluencePage(events, chainAnalysis, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
     stampLayerBadge(c, "MIXED");
     addCanvasPage(c, true, "Player Influence");
   } catch (err) {
@@ -7496,7 +7500,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // Rematch Watchlist draws on the Player Influence module — not a single
   // STATISTICS-only page (see terminology audit, Task 3).
   try {
-    const c = makeOppositionSnapshotPage(events, chainAnalysis, homeTeamName, awayTeamName, p_arch + 2, TOTAL_PAGES, sport);
+    const c = makeOppositionSnapshotPage(events, chainAnalysis, homeTeamName, awayTeamName, p_arch + 2, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers);
     stampLayerBadge(c, "MIXED");
     addCanvasPage(c, true, "Opposition Snapshot");
   } catch (err) {
@@ -12321,6 +12325,8 @@ function makePointsLedgerPage(
   pageNum: number,
   totalPages: number,
   variant: "FULL" | "HT" = "FULL",
+  homeSquadPlayers?: readonly PdfSquadPlayer[],
+  awaySquadPlayers?: readonly PdfSquadPlayer[],
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -12464,7 +12470,7 @@ function makePointsLedgerPage(
 
   // ── HT-only: top influence tiles (one per team, nothing more at halftime) ──
   if (isHT) {
-    const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam);
+    const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam, homeSquadPlayers, awaySquadPlayers);
     const tiles: Array<{ team: TeamInfluence; accent: string }> = [
       { team: influence.home, accent: "#7dd3fc" },
       { team: influence.away, accent: "#fb7185" },
@@ -12552,6 +12558,8 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     snapshotMode,
     targets,
     homeAttackingDirection = "RIGHT",
+    homeSquadPlayers,
+    awaySquadPlayers,
   } = input;
 
   const isHT = snapshotMode === "HALF_TIME_SNAPSHOT";
@@ -12659,7 +12667,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 7. The Ledger So Far — compact margin decomposition (placed / restarts / turnovers)
     addPage(
-      makePointsLedgerPage(events, chainAnalysis, home, away, 7, TOTAL_PAGES, "HT"),
+      makePointsLedgerPage(events, chainAnalysis, home, away, 7, TOTAL_PAGES, "HT", homeSquadPlayers, awaySquadPlayers),
       true,
       "The Ledger So Far",
       "MIXED",
@@ -12691,7 +12699,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 1. Where the Points Went — the margin decomposed by scoring source
     addPage(
-      makePointsLedgerPage(events, chainAnalysis, home, away, 1, TOTAL_PAGES),
+      makePointsLedgerPage(events, chainAnalysis, home, away, 1, TOTAL_PAGES, "FULL", homeSquadPlayers, awaySquadPlayers),
       false,
       "Where the Points Went",
       "MIXED",
@@ -12797,7 +12805,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     // MIXED: Restart/Turnover Threat cards are chain-origin figures and the
     // Rematch Watchlist draws on the Player Influence module.
     addPage(
-      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 13, TOTAL_PAGES, sport),
+      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 13, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers),
       true,
       "Opposition Snapshot",
       "MIXED",
