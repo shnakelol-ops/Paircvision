@@ -22,7 +22,9 @@
  *   2. RESTART_WON / TURNOVER_WON — the score is the chain engine's next
  *      score after a restart/turnover won by the scoring side; when both
  *      origins claim the score the nearer origin wins
- *   3. FROM_PLAY    — source tagged "From Play"
+ *   3. FROM_PLAY    — "From General Play": no placed-ball source and no
+ *      restart/turnover origin found — possession-origin catch-all, distinct
+ *      from the Shot & Scoring Efficiency page's "Open Play" shot-source tag
  *   4. UNATTRIBUTED — no source, no chain origin (legacy data)
  *
  * Goals decompose as their point value within their source row
@@ -134,7 +136,7 @@ function isPlacedMiss(e: ChainableEvent): boolean {
 // ─── Row labels ───────────────────────────────────────────────────────────────
 
 export const LEDGER_ROW_LABELS: Record<LedgerRowId, string> = {
-  FROM_PLAY:    "From play",
+  FROM_PLAY:    "From general play",
   PLACED:       "Placed balls",
   RESTART_WON:  "Direct restart scores",
   TURNOVER_WON: "Direct turnover scores",
@@ -275,8 +277,8 @@ export function buildScoreLedger<TEvent extends ChainableEvent>(
           : `${home} won the restart battle by ${net} ${plural}: ${row.us.value} direct restart points against ${row.them.value} by ${away}.`;
       case "FROM_PLAY":
         return net < 0
-          ? `${away} outscored ${home} from open play by ${Math.abs(net)} ${plural} (${row.them.value} to ${row.us.value}). Worth reviewing how open-play chances were created.`
-          : `${home} outscored ${away} from open play by ${net} ${plural} (${row.us.value} to ${row.them.value}).`;
+          ? `${away} outscored ${home} from general play by ${Math.abs(net)} ${plural} (${row.them.value} to ${row.us.value}). Worth reviewing how those chances were created.`
+          : `${home} outscored ${away} from general play by ${net} ${plural} (${row.us.value} to ${row.them.value}).`;
       default:
         return null;
     }
@@ -361,16 +363,15 @@ export function fmtMarginLabel(margin: number, homeTeam: string, awayTeam: strin
   return "Draw";
 }
 
-/** Ledger side cell: "1-04 (7 pts)" or "6 pts"; placed rows show conversion. */
+/** Ledger side cell: "1-04 (7 pts)" or "0-04 (4 pts)"; placed rows show conversion. */
 export function fmtLedgerSide(row: LedgerRow, side: LedgerSide): string {
   if (row.id === "PLACED" && side.attempts != null) {
     return `${side.scores}/${side.attempts} scored · ${side.value} pts`;
   }
-  if (side.goals > 0) {
-    const pts = side.value - side.goals * 3;
-    return `${side.goals}-${String(pts).padStart(2, "0")} (${side.value} pts)`;
-  }
-  return `${side.value} pts`;
+  // Always full GAA notation (goals-points), even with 0 goals — never mix
+  // plain "N pts" with "G-PP (N pts)" between rows or between teams.
+  const pts = side.value - side.goals * 3;
+  return `${side.goals}-${String(pts).padStart(2, "0")} (${side.value} pts)`;
 }
 
 /** "+1" / "-2" / "0" */

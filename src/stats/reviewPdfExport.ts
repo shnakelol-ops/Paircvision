@@ -697,10 +697,10 @@ function renderEventMarkers(
  * Five sections per block: SCORING / SHOT DETAIL / KICKOUTS / TURNOVERS / FREES.
  * All tracked sub-type tags are represented — nothing is omitted.
  *
- * Row counts: SCORING=7, SHOT DETAIL=4, KICKOUTS=10, TURNOVERS=8, FREES=4 → 33 data rows.
- * Geometry: rowH=20, secH=18 → BLOCK_H≈793px.
- * With default blockY=244: bottom y=1037 — safe within canvas (footer at y=1060).
- * With blockY=162 (segment detail pages): bottom y=955 — very comfortable.
+ * Row counts: SCORING=7, SHOT DETAIL=4, KICKOUTS=11, TURNOVERS=8, FREES=4 → 34 data rows.
+ * Geometry: rowH=19, secH=18 → BLOCK_H≈779px.
+ * With default blockY=244: bottom y=1023 — safe within canvas (footer at y=1060).
+ * With blockY=162 (segment detail pages): bottom y=941 — very comfortable.
  */
 function drawSummaryStatsTable(
   ctx: CanvasRenderingContext2D,
@@ -732,7 +732,7 @@ function drawSummaryStatsTable(
     koWon: number; koCon: number; koPct: string;
     koCleanWon: number; koBreakWon: number;
     koCleanLost: number; koBreakLost: number;
-    koFoulWon: number; koFoulCon: number; koKickedDead: number;
+    koFoulWon: number; koFoulCon: number; koKickedDead: number; koDeadWon: number;
     toWon: number; toLost: number; netTo: number;
     toTacklePress: number; toSwarmInt: number;
     toUnforced: number; toSlackKpHp: number; toOcStripped: number;
@@ -796,6 +796,15 @@ function drawSummaryStatsTable(
                     + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "FOUL_CONCEDED", "FOUL_WON"),
       koKickedDead:   countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "KICKED_DEAD")
                     + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "KICKED_DEAD"),
+      // Dead-ball won: the opposition's own kickout can only be tagged
+      // KICKED_DEAD on their KICKOUT_CONCEDED event (KICKOUT_WON never
+      // carries this tag) — that possession is awarded to us, so it belongs
+      // in the Won breakdown. Without this row, Clean+Break+Foul Won
+      // under-summed against the stated Kickout Won total by exactly the
+      // dead-ball count. Additive only — does not change koCleanWon,
+      // koBreakWon, koFoulWon, or koKickedDead above.
+      koDeadWon:      countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "KICKED_DEAD")
+                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "KICKED_DEAD"),
       // Turnovers — mirrored top-level counts; sub-tags on TURNOVER_WON are "how we won it",
       // on TURNOVER_LOST are "how we lost it" — mirror by inverting the kind too
       toWon, toLost, netTo: toWon - toLost,
@@ -821,16 +830,16 @@ function drawSummaryStatsTable(
   const oppStats = buildStats(oppEvts, forEvts);
 
   // ── Block geometry ────────────────────────────────────────────────────────────
-  // Rows: SCORING=7, SHOT DETAIL=4, KICKOUTS=10, TURNOVERS=8, FREES=4 → 33 data rows
-  // BLOCK_H = hdrH(28)+hdrGap(3) + 5×secH(90) + 33×rowH(660) + 4×gap(12) = 793px
+  // Rows: SCORING=7, SHOT DETAIL=4, KICKOUTS=11, TURNOVERS=8, FREES=4 → 34 data rows
+  // BLOCK_H = hdrH(28)+hdrGap(3) + 5×secH(90) + 34×rowH(646) + 4×gap(12) = 779px
   const blockW  = 848;
   const blockX1 = 72;
   const blockX2 = 1000;
-  const rowH    = 20;
+  const rowH    = 19;
   const secH    = 18;
   const hdrH    = 28;
   const gap     = 3;
-  const BLOCK_H = 793;
+  const BLOCK_H = 779;
 
   type SRow = { label: string; value: string; vColor?: string };
   type Section = { label: string; accent: string; bg: string; rows: SRow[] };
@@ -869,6 +878,7 @@ function drawSummaryStatsTable(
           { label: "Clean Won",      value: String(st.koCleanWon) },
           { label: "Break Won",      value: String(st.koBreakWon) },
           { label: "Foul Won",       value: String(st.koFoulWon) },
+          { label: "Dead Ball Won",  value: String(st.koDeadWon) },
           { label: "Clean Lost",     value: String(st.koCleanLost) },
           { label: "Break Lost",     value: String(st.koBreakLost) },
           { label: "Foul Conceded",  value: String(st.koFoulCon) },
@@ -1529,7 +1539,10 @@ function calcPlayerPageCount(
   if (players.length === 0) return 1; // "no data" page
 
   const HDR_H = 54;   // table column header
-  const NOTE_H = hasIncompletePlayerAttribution(events) ? 22 : 0;
+  // Standing "identified receivers only" note (always on) + the conditional
+  // "selected player" attribution note — must match startNewCanvas() exactly,
+  // or the page-count pre-calculation drifts from what's actually rendered.
+  const NOTE_H = 22 + (hasIncompletePlayerAttribution(events) ? 22 : 0);
   const SEC_H = 36;   // team section banner
   const ROW_H = 58;   // player data row
   const BREAK_LIMIT = CANVAS_H - 28; // 1052
@@ -1620,6 +1633,16 @@ function makePlayerPages(
       `${homeTeam} v ${awayTeam}`, startPageNum + pageIdx, totalPages);
 
     ry = 82;
+    activeCtx.fillStyle    = "#64748b";
+    activeCtx.font         = "13px sans-serif";
+    activeCtx.textBaseline = "middle";
+    activeCtx.textAlign    = "left";
+    activeCtx.fillText(
+      "Player totals include only identified receivers.",
+      tL,
+      ry + 11,
+    );
+    ry += 22;
     if (showAttributionNote) {
       activeCtx.fillStyle    = "#fbbf24";
       activeCtx.font         = "13px sans-serif";
@@ -1814,7 +1837,7 @@ function makePlayerInfluencePage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Player Influence", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Top Players by Influence Index", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
   drawEventCountFooter(ctx, events.filter((e) => !e.id.includes("-instant-score-")).length);
 
   const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam, homeSquadPlayers, awaySquadPlayers);
@@ -5673,7 +5696,7 @@ function makeShotEfficiencyPage(
 
   const SRC_KEYS: readonly SrcKey[] = ["PLAY", "FREE", "MARK", "45", "PENALTY", "UNKNOWN"];
   const SRC_LABELS: Record<SrcKey, string> = {
-    PLAY:    "From Play",
+    PLAY:    "Open Play",
     FREE:    "Free",
     MARK:    "Mark",
     "45":    "45",
@@ -5691,7 +5714,7 @@ function makeShotEfficiencyPage(
     const blocked   = evts.filter((e) => e.kind === "SHOT").length;
 
     // "Unclassified" appears only when it has attempts — sources default to
-    // "From Play" at tag time, so it now only shows for legacy matches or
+    // "Open Play" at tag time, so it now only shows for legacy matches or
     // events logged outside the tagging keyboards.
     const srcRows: SrcRow[] = SRC_KEYS.map((src) => {
       const srcAtt  = attempts.filter((e) => eventSource(e) === src).length;
@@ -6044,7 +6067,7 @@ function makeHowToReadPage(
       title:    "CHAIN INTELLIGENCE",
       subtitle: "Why did those attacks become scores?",
       question: "Complete attacking sequences showing how pressure became scores.",
-      body:     "A chain traces a full attack, even when it spans multiple possessions. A turnover → free won → score is one chain. This layer explains how pressure became points. If a restart isn't logged live, the next score attributes to From play — origin chains only know what was captured.",
+      body:     "A chain traces a full attack, even when it spans multiple possessions. A turnover → free won → score is one chain. This layer explains how pressure became points. If a restart isn't logged live, the next score attributes to From General Play — origin chains only know what was captured.",
       surfaces: ["Chain Intelligence", "Restart Chain Analysis", "Turnover Chain Analysis", "Scoring Momentum"],
     },
   ];
@@ -6767,7 +6790,18 @@ function makeRestartVisualPage(
     cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "HOW WON", "#22d3ee");
     cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Clean Won", String(countKoTag("CLEAN")),    ko.won > 0 ? countKoTag("CLEAN")    / ko.won : 0, "#4ade80", "#4ade80", false);
     cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Break Won", String(countKoTag("BREAK")),    ko.won > 0 ? countKoTag("BREAK")    / ko.won : 0, "#e2e8f0", "#e2e8f0", true);
-        dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Foul Won",  String(countKoTag("FOUL_WON")), ko.won > 0 ? countKoTag("FOUL_WON") / ko.won : 0, "#fbbf24", "#fbbf24", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Foul Won",  String(countKoTag("FOUL_WON")), ko.won > 0 ? countKoTag("FOUL_WON") / ko.won : 0, "#fbbf24", "#fbbf24", false);
+    // Dead-ball wins aren't split out in this own-restart type mix — they're
+    // already inside the Won total above (Restart Summary / Match Summary).
+    // Footnote, not a fabricated row, since this panel's tag mix isn't scoped
+    // the same way as the mirrored Won total (see final report).
+    ctx.save();
+    ctx.fillStyle = "#64748b";
+    ctx.font = "italic 10px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText("Excludes dead-ball restarts, already counted in Won above.", DP_P1_X + 10, cy + 7);
+    ctx.restore();
   }
 
   // ── Panel 2: Chain Outcomes ───────────────────────────────────────────────
@@ -7403,10 +7437,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   try {
     const c = makePlayerInfluencePage(events, chainAnalysis, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
     stampLayerBadge(c, "MIXED");
-    addCanvasPage(c, true, "Player Influence");
+    addCanvasPage(c, true, "Top Players by Influence Index");
   } catch (err) {
     console.error("Player Influence page generation failed", err);
-    addCanvasPage(fallbackCanvas("Player Influence"), true, "Player Influence");
+    addCanvasPage(fallbackCanvas("Top Players by Influence Index"), true, "Top Players by Influence Index");
   }
 
   // p.8+N — Shot Pitch Maps
