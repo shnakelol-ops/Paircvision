@@ -364,6 +364,18 @@ const SCORING_SOURCE_TAGS = {
   MARK: "SOURCE_MARK",
   FORTY_FIVE: "SOURCE_45",
 } as const;
+/** Shot-outcome kinds whose source defaults to "From Play" when none is tagged.
+ *  The event keyboard's source options (Play/Free/Penalty/Mark/45) remain the
+ *  one-tap override — an explicit source tag always wins over the default. */
+const SOURCE_DEFAULTABLE_KINDS = new Set<MatchEventKind>(["GOAL", "POINT", "TWO_POINTER", "WIDE"]);
+const SCORING_SOURCE_TAG_VALUES = new Set<string>([
+  ...Object.values(SCORING_SOURCE_TAGS),
+  // Legacy bare labels written by Stats Pro JSON imports
+  "PLAY", "FREE", "MARK", "45", "FORTY_FIVE", "PENALTY",
+]);
+function hasScoringSourceTag(tags: readonly string[] | undefined): boolean {
+  return tags != null && tags.some((tag) => SCORING_SOURCE_TAG_VALUES.has(tag));
+}
 function buildReviewFilterOptions(
   isHurlingMode: boolean,
 ): ReadonlyArray<{ id: ReviewEventFilter; label: string }> {
@@ -4320,9 +4332,13 @@ export default function StatsModeSurface() {
           queuedTag == null
             ? event.tags
             : [...(Array.isArray(event.tags) ? event.tags : []), queuedTag];
-        const eventTags = parseEventTags(rawEventTags);
+        let eventTags = parseEventTags(rawEventTags);
         if (queuedTag != null) {
           queuedEventTagRef.current = null;
+        }
+        // Shot source defaults to "From Play" when no source was tagged.
+        if (SOURCE_DEFAULTABLE_KINDS.has(eventKind) && !hasScoringSourceTag(eventTags)) {
+          eventTags = [...(eventTags ?? []), SCORING_SOURCE_TAGS.PLAY];
         }
         const nextEvent: LoggedMatchEvent = {
           ...event,
@@ -7236,7 +7252,7 @@ export default function StatsModeSurface() {
             const LABELS: Record<string, string> = {
               shots:                "Shots per half",
               shootingEfficiency:   "Shooting %",
-              kickoutWinRate:       isPuckout ? "Puckout Win %" : "Kickout Win %",
+              kickoutWinRate:       "Restart Share %",
               turnoversWon:         "Turnovers Won",
               turnoversLost:        "Turnovers Lost",
               possessionRetention:  "Possession Retention %",

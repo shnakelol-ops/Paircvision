@@ -37,7 +37,7 @@ type TargetRow = {
 const TARGET_ROWS: readonly TargetRow[] = [
   { metric: "shots",                label: () => "Shots per half",                                                unit: "",  defaultValue: 12 },
   { metric: "shootingEfficiency",   label: () => "Shooting %",                                                   unit: "%", defaultValue: 50 },
-  { metric: "kickoutWinRate",       label: (s) => (s === "hurling" || s === "camogie" ? "Puckout Win %" : "Kickout Win %"), unit: "%", defaultValue: 50 },
+  { metric: "kickoutWinRate",       label: () => "Restart Share %",                                              unit: "%", defaultValue: 50 },
   { metric: "turnoversWon",         label: () => "Turnovers Won",                                                unit: "",  defaultValue: 10 },
   { metric: "turnoversLost",        label: () => "Turnovers Lost",                                               unit: "",  defaultValue: 10 },
   { metric: "possessionRetention",  label: () => "Possession Retention %",                                       unit: "%", defaultValue: 60 },

@@ -179,8 +179,8 @@ export async function buildStatsShareCardPng(input: StatsShareCardInput): Promis
   ctx.fillStyle="#93c5fd"; ctx.font="700 28px Inter,system-ui,sans-serif"; ctx.fillText("Frees",72,y); y+=34;
   row(ctx,y,"Frees For",String(d.HOME.freesFor),String(d.AWAY.freesFor)); y+=42;
   row(ctx,y,"Frees Against",String(d.HOME.freesAgainst),String(d.AWAY.freesAgainst)); y+=42;
-  row(ctx,y,"Free Scores",String(d.HOME.freeScored),String(d.AWAY.freeScored)); y+=42;
-  row(ctx,y,"Free Missed",String(d.HOME.freeMissed),String(d.AWAY.freeMissed)); y+=56;
+  row(ctx,y,"Placed Scored",String(d.HOME.freeScored),String(d.AWAY.freeScored)); y+=42;
+  row(ctx,y,"Placed Missed",String(d.HOME.freeMissed),String(d.AWAY.freeMissed)); y+=56;
   if (hasDiscipline){
     ctx.fillStyle="#93c5fd"; ctx.font="700 28px Inter,system-ui,sans-serif"; ctx.fillText("Discipline",72,y); y+=34;
     row(ctx,y,"Y / B / R",`${d.HOME.yellow}/${d.HOME.black}/${d.HOME.red}`,`${d.AWAY.yellow}/${d.AWAY.black}/${d.AWAY.red}`); y+=48;

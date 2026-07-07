@@ -148,6 +148,8 @@ function drawNetBadge(
 
 type ContributionRow = {
   sourceLabel: string;
+  /** Optional clarifying line under the row (dim italic). */
+  subLabel?: string;
   accentColor: string;
   homeWon: number;
   awayWon: number;
@@ -214,6 +216,13 @@ function drawContributionsPanel(
     ctx.font = "600 20px Inter,system-ui,sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(`${fmtGaelic(r.awayScore.goals, r.awayScore.points)} scored  ${away}`, ix + iw, rowStart + 62);
+
+    if (r.subLabel) {
+      ctx.fillStyle = CLR.dim;
+      ctx.font = "italic 500 16px Inter,system-ui,sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(r.subLabel, ix, rowStart + 88, iw);
+    }
 
     y = rowStart + 100;
 
@@ -337,7 +346,12 @@ export async function buildMatchIntelligenceCardPng(
       net:         turnovers.netOutcome,
     },
     {
-      sourceLabel: "FREES WON",
+      // Possession-frees family (possession-outcomes engine) — a different
+      // defined set from Placed Balls in the ledger. The sub-label makes the
+      // source visible so this row reconciles with the Turnover & Free
+      // Outcomes card ("POSSESSION FREES WON") and Free Kick Analysis.
+      sourceLabel: "POSSESSION FREES",
+      subLabel:    "Scores in possessions after frees won — placed-ball conversion is in the scoring ledger",
       accentColor: CLR.green,
       homeWon:     frees.retainedCount,
       awayWon:     frees.concededCount,
@@ -366,7 +380,7 @@ export async function buildMatchIntelligenceCardPng(
       value: `${home} won ${turnovers.retainedCount}  ·  ${away} won ${turnovers.concededCount}`,
     },
     {
-      label: "Frees",
+      label: "Possession frees",
       value: `${home} won ${frees.retainedCount}  ·  ${away} won ${frees.concededCount}`,
     },
   ];

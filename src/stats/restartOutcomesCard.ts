@@ -344,8 +344,16 @@ function drawLegacyKickoutSection(
 }
 
 function drawFooter(ctx: CanvasRenderingContext2D): void {
-  ctx.fillStyle = CLR.dim; ctx.font = "500 22px Inter,system-ui,sans-serif";
-  ctx.textAlign = "center"; ctx.fillText("PÁIRCVISION  ·  Restart Outcomes", W / 2, H - 24);
+  // Attribution footnote — this card's produced figures are per-denominator
+  // direct scores and reconcile with the ledger (see restartMetrics.ts).
+  ctx.fillStyle = CLR.dim; ctx.font = "italic 500 17px Inter,system-ui,sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(
+    "Origin chains include frees won in the possession. The ledger counts those under Placed balls.",
+    W / 2, H - 56,
+  );
+  ctx.font = "500 22px Inter,system-ui,sans-serif";
+  ctx.fillText("PÁIRCVISION  ·  Restart Outcomes", W / 2, H - 24);
   ctx.textAlign = "left";
 }
 

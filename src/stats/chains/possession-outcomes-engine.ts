@@ -406,16 +406,17 @@ export function buildMatchIntelligence(
   // ── Coaching priorities (deterministic threshold rules) ──────────────────
   const candidates: InsightCandidate[] = [];
 
-  // Kickout retention
+  // Restart Share (all kickouts both teams — canonical name; never "retention",
+  // which is reserved for the own-kickouts-only figure. See restartMetrics.ts.)
   if (kickouts.total >= 5) {
     if (kickouts.retentionPct >= 70) {
       candidates.push(makePriority(
-        `Kickout retention strong — won ${kickouts.retainedCount}/${kickouts.total} (${kickouts.retentionPct}%)`,
+        `Restart Share strong — won ${kickouts.retainedCount}/${kickouts.total} (${kickouts.retentionPct}%)`,
         kickouts.retentionPct - 50,
       ));
     } else if (kickouts.retentionPct < 45) {
       candidates.push(makePriority(
-        `Kickout retention below par — won ${kickouts.retainedCount}/${kickouts.total} (${kickouts.retentionPct}%)`,
+        `Restart Share below par — won ${kickouts.retainedCount}/${kickouts.total} (${kickouts.retentionPct}%)`,
         50 - kickouts.retentionPct,
       ));
     }
