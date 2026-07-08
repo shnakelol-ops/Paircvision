@@ -95,6 +95,7 @@ export function drawStatsMarkers(
   opts?: {
     worldToScreenScale?: number;
     minScreenRadiusPx?: number;
+    maxScreenRadiusPx?: number;
     showPlayerLabels?: boolean;
     onMarkerTap?: (eventId: string) => void;
   },
@@ -107,7 +108,9 @@ export function drawStatsMarkers(
 
   const worldToScreenScale = Math.max(opts?.worldToScreenScale ?? 1, 0.004);
   const minPx = opts?.minScreenRadiusPx ?? 4;
+  const maxPx = Math.max(minPx, opts?.maxScreenRadiusPx ?? 10);
   const minWorldRadius = minPx / worldToScreenScale;
+  const maxWorldRadius = maxPx / worldToScreenScale;
   const showPlayerLabels = opts?.showPlayerLabels ?? true;
   const onMarkerTap = opts?.onMarkerTap;
 
@@ -130,7 +133,10 @@ export function drawStatsMarkers(
       }
       const subtleGraphic = new Graphics();
       markerContainer.addChild(subtleGraphic);
-      const subtleRadius = Math.max(minWorldRadius * 0.62, 1.1 / worldToScreenScale);
+      const subtleRadius = Math.min(
+        Math.max(minWorldRadius * 0.62, 1.1 / worldToScreenScale),
+        maxWorldRadius * 0.62,
+      );
       subtleGraphic.circle(0, 0, subtleRadius).fill({ color: 0xf1f5f9, alpha: 0.45 }).stroke({
         width: Math.max(0.85 / worldToScreenScale, 0.72 / worldToScreenScale),
         color: 0x475569,
@@ -143,7 +149,7 @@ export function drawStatsMarkers(
     const isTwoPointer = event.kind === "TWO_POINTER";
     const isScoring = SCORING_KINDS.has(event.kind);
     const styleRadius = isTwoPointer ? style.radius * 1.06 : style.radius;
-    const radius = Math.max(styleRadius, minWorldRadius);
+    const radius = Math.min(Math.max(styleRadius, minWorldRadius), maxWorldRadius);
     const fill = parseCssColorForPixi(style.fill);
 
     const markerContainer = new Container();

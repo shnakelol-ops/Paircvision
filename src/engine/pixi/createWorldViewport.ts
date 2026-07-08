@@ -33,8 +33,23 @@ function safeDimension(value: number): number {
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
+// Shared viewport-fit rule: keep this formula identical to the copies in
+// core/coordinates/pitch-coordinates.ts and movement-board/coordinates/viewport.ts.
+const PITCH_SAFE_MARGIN_RATIO = 0.03;
+const PITCH_SAFE_MARGIN_MIN_PX = 8;
+const PITCH_SAFE_MARGIN_MAX_PX = 24;
+
+function computeSafeMarginPx(viewportWidth: number, viewportHeight: number): number {
+  const minSide = Math.min(viewportWidth, viewportHeight);
+  return Math.min(
+    PITCH_SAFE_MARGIN_MAX_PX,
+    Math.max(PITCH_SAFE_MARGIN_MIN_PX, minSide * PITCH_SAFE_MARGIN_RATIO),
+  );
+}
+
 /**
- * Computes a letterbox fit so the full world is visible in the viewport.
+ * Computes a letterbox fit so the full world is visible in the viewport,
+ * inset by a small safe margin so it never touches the host edge.
  * Offsets center the scaled world in whichever axis has spare room.
  */
 export function getLetterboxTransform(
@@ -50,7 +65,10 @@ export function getLetterboxTransform(
     return { scale: 0, offsetX: 0, offsetY: 0 };
   }
 
-  const scale = Math.min(viewportWidth / worldWidth, viewportHeight / worldHeight);
+  const margin = computeSafeMarginPx(viewportWidth, viewportHeight);
+  const availWidth = Math.max(1, viewportWidth - margin * 2);
+  const availHeight = Math.max(1, viewportHeight - margin * 2);
+  const scale = Math.min(availWidth / worldWidth, availHeight / worldHeight);
   const offsetX = (viewportWidth - worldWidth * scale) / 2;
   const offsetY = (viewportHeight - worldHeight * scale) / 2;
 

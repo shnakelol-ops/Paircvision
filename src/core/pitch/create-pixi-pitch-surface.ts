@@ -50,10 +50,10 @@ export type PixiPitchSurfaceHandle = {
   destroy: () => void;
 };
 
-function fitWorld(host: HTMLElement, app: Application, world: Container): void {
+function fitWorld(host: HTMLElement, app: Application, world: Container): boolean {
   const width = host.clientWidth;
   const height = host.clientHeight;
-  if (width <= 0 || height <= 0) return;
+  if (width <= 0 || height <= 0) return false;
 
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   app.renderer.resolution = dpr;
@@ -62,6 +62,7 @@ function fitWorld(host: HTMLElement, app: Application, world: Container): void {
   const { scale, offsetX, offsetY } = letterboxPitchWorld(width, height);
   world.scale.set(scale, scale);
   world.position.set(offsetX, offsetY);
+  return true;
 }
 
 export async function createPixiPitchSurface(
@@ -139,6 +140,8 @@ export async function createPixiPitchSurface(
     }
     drawStatsZoneOverlay(zoneOverlayLayer, zoneOverlayModelState);
     drawStatsMarkers(statsMarkers, renderableEvents, {
+      worldToScreenScale: world.scale.x,
+      maxScreenRadiusPx: 10,
       showPlayerLabels: showPlayerInitialsState,
       onMarkerTap: onMarkerTapState ?? undefined,
     });
@@ -189,7 +192,9 @@ export async function createPixiPitchSurface(
     redrawMarkers();
   });
 
-  const resizeObserver = new ResizeObserver(() => fitWorld(host, app, world));
+  const resizeObserver = new ResizeObserver(() => {
+    if (fitWorld(host, app, world)) redrawMarkers();
+  });
   resizeObserver.observe(host);
   fitWorld(host, app, world);
   redrawMarkers();
