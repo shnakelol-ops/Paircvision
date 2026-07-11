@@ -16,6 +16,17 @@ import type {
   AttackDirection,
 } from "./rapid-session";
 import { RapidSignalBar } from "./RapidSignalBar";
+import {
+  clearActiveRapidSession,
+  deleteSavedRapidMatch,
+  listSavedRapidMatches,
+  loadActiveRapidSession,
+  newRapidMatchId,
+  RAPID_CAPTURE_SCHEMA_VERSION,
+  saveActiveRapidSession,
+  saveCompletedRapidMatch,
+  type RapidSavedMatch,
+} from "./rapid-capture-storage";
 
 const SPORT_LABELS: Record<Sport, string> = {
   hurling: "Hurling",
@@ -62,7 +73,19 @@ function fmtClock(totalSeconds: number): string {
 
 // ── Setup Screen ─────────────────────────────────────────────────────────────
 
-function RapidSetupScreen({ onStart }: { onStart: (s: RapidSession) => void }) {
+function RapidSetupScreen({
+  onStart,
+  resumeCandidate,
+  onResume,
+  onDiscardResume,
+  onOpenSavedMatches,
+}: {
+  onStart: (s: RapidSession) => void;
+  resumeCandidate: RapidSavedMatch | null;
+  onResume: () => void;
+  onDiscardResume: () => void;
+  onOpenSavedMatches: () => void;
+}) {
   const [sport, setSport] = useState<Sport>("hurling");
   const [forTeamName, setForTeamName] = useState("");
   const [oppTeamName, setOppTeamName] = useState("");
@@ -91,10 +114,32 @@ function RapidSetupScreen({ onStart }: { onStart: (s: RapidSession) => void }) {
     <div style={S.shell}>
       <div style={S.header}>
         <span style={S.title}>⚡ Rapid Capture</span>
+        <button onClick={onOpenSavedMatches} style={S.savedMatchesBtn}>
+          Saved Matches
+        </button>
         <span style={S.setupBadge}>Setup</span>
       </div>
 
       <div style={S.setupBody}>
+        {resumeCandidate && (
+          <div style={S.resumeBanner}>
+            <span style={S.resumeText}>
+              Match in progress: <strong>{resumeCandidate.session.forTeamName || "FOR"}</strong> vs{" "}
+              <strong>{resumeCandidate.session.oppTeamName || "OPP"}</strong>
+              {" · "}
+              {resumeCandidate.events.length} logged · {resumeCandidate.half}H
+            </span>
+            <div style={S.resumeActions}>
+              <button onClick={onDiscardResume} style={S.resumeDiscardBtn}>
+                Discard
+              </button>
+              <button onClick={onResume} style={S.resumeBtn}>
+                Resume
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Sport */}
         <span style={S.sectionLabel}>Sport</span>
         <div style={S.chipGroup}>
@@ -224,18 +269,98 @@ function RapidSetupScreen({ onStart }: { onStart: (s: RapidSession) => void }) {
   );
 }
 
+// ── Saved Matches Screen ───────────────────────────────────────────────────────
+
+function fmtSavedMatchDate(createdAt: number): string {
+  return new Date(createdAt).toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+}
+
+function RapidSavedMatchesScreen({
+  onBack,
+  onReopen,
+}: {
+  onBack: () => void;
+  onReopen: (match: RapidSavedMatch) => void;
+}) {
+  const [matches, setMatches] = useState<RapidSavedMatch[]>(() => listSavedRapidMatches());
+
+  function handleDelete(id: string) {
+    deleteSavedRapidMatch(id);
+    setMatches(listSavedRapidMatches());
+  }
+
+  return (
+    <div style={S.shell}>
+      <div style={S.header}>
+        <button onClick={onBack} style={S.backBtn}>
+          ← Back
+        </button>
+        <span style={S.title}>Saved Matches</span>
+      </div>
+      <div style={S.setupBody}>
+        {matches.length === 0 ? (
+          <span style={S.hint}>No saved matches yet.</span>
+        ) : (
+          matches.map((match) => (
+            <div key={match.id} style={S.savedMatchRow}>
+              <div style={S.savedMatchInfo}>
+                <span style={S.savedMatchTeams}>
+                  {match.session.forTeamName || "FOR"} v {match.session.oppTeamName || "OPP"}
+                </span>
+                <span style={S.savedMatchMeta}>
+                  {fmtSavedMatchDate(match.createdAt)} · {match.events.length} events · {match.status === "COMPLETED" ? "Completed" : "In progress"}
+                </span>
+              </div>
+              <div style={S.savedMatchActions}>
+                <button onClick={() => handleDelete(match.id)} style={S.savedMatchDeleteBtn}>
+                  Delete
+                </button>
+                <button onClick={() => onReopen(match)} style={S.savedMatchReopenBtn}>
+                  Reopen
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Live Screen ───────────────────────────────────────────────────────────────
 
-function RapidLiveScreen({ session }: { session: RapidSession }) {
+type RapidLiveScreenProps = {
+  matchId: string;
+  session: RapidSession;
+  createdAt: number;
+  initialEvents: MatchEvent[];
+  initialHalf: 1 | 2;
+  initialClockSeconds: number;
+  onFinish: () => void;
+};
+
+// Active-session autosave cadence while the clock is running — frequent enough
+// that a refresh loses at most a few seconds of clock progress, not the match.
+const AUTOSAVE_INTERVAL_MS = 5000;
+
+function RapidLiveScreen({
+  matchId,
+  session,
+  createdAt,
+  initialEvents,
+  initialHalf,
+  initialClockSeconds,
+  onFinish,
+}: RapidLiveScreenProps) {
   const { sport } = session;
 
-  const [half, setHalf] = useState<1 | 2>(1);
+  const [half, setHalf] = useState<1 | 2>(initialHalf);
   // teamSide = annotation perspective (whose story is this event).
   // Sticky manual context — never auto-switches. Mirrors Stats Lite semantics.
   const [teamSide, setTeamSide] = useState<"FOR" | "OPP">("FOR");
   const [armedKind, setArmedKind] = useState<MatchEventKind | null>(null);
-  const [loggedEvents, setLoggedEvents] = useState<MatchEvent[]>([]);
-  const [clockSeconds, setClockSeconds] = useState(0);
+  const [loggedEvents, setLoggedEvents] = useState<MatchEvent[]>(initialEvents);
+  const [clockSeconds, setClockSeconds] = useState(initialClockSeconds);
   const [clockRunning, setClockRunning] = useState(false);
 
   const pitchHostRef = useRef<HTMLDivElement>(null);
@@ -244,11 +369,12 @@ function RapidLiveScreen({ session }: { session: RapidSession }) {
   // Refs provide synchronous latest values for the Pixi tap closure and for undo
   const armedKindRef = useRef<MatchEventKind | null>(null);
   const teamSideRef = useRef<"FOR" | "OPP">("FOR");
-  const halfRef = useRef<1 | 2>(1);
-  const clockSecondsRef = useRef(0);
-  const loggedEventsRef = useRef<MatchEvent[]>([]);
+  const halfRef = useRef<1 | 2>(initialHalf);
+  const clockSecondsRef = useRef(initialClockSeconds);
+  const loggedEventsRef = useRef<MatchEvent[]>(initialEvents);
   const clockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clockStartRef = useRef<number | null>(null);
+  const autosaveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => { armedKindRef.current = armedKind; }, [armedKind]);
   useEffect(() => { teamSideRef.current = teamSide; }, [teamSide]);
@@ -259,9 +385,30 @@ function RapidLiveScreen({ session }: { session: RapidSession }) {
     pixiHandleRef.current?.setEvents(loggedEvents);
   }, [loggedEvents]);
 
+  const persistActiveSession = useCallback(() => {
+    saveActiveRapidSession({
+      schemaVersion: RAPID_CAPTURE_SCHEMA_VERSION,
+      id: matchId,
+      createdAt,
+      updatedAt: Date.now(),
+      status: "IN_PROGRESS",
+      session,
+      events: loggedEventsRef.current,
+      half: halfRef.current,
+      clockSeconds: clockSecondsRef.current,
+    });
+  }, [matchId, createdAt, session]);
+
+  // Autosave after every event or half change — the state that matters most
+  // for a faithful resume.
+  useEffect(() => {
+    persistActiveSession();
+  }, [loggedEvents, half, persistActiveSession]);
+
   useEffect(() => {
     return () => {
       if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
+      if (autosaveIntervalRef.current) clearInterval(autosaveIntervalRef.current);
     };
   }, []);
 
@@ -304,6 +451,10 @@ function RapidLiveScreen({ session }: { session: RapidSession }) {
       if (destroyed) { h.destroy(); return; }
       handle = h;
       pixiHandleRef.current = h;
+      // The [loggedEvents] effect may have already fired (and no-opped) before
+      // this promise resolved — e.g. on resume, where events are pre-populated
+      // at mount. Push whatever is logged right now so restored markers render.
+      h.setEvents(loggedEventsRef.current);
     });
 
     return () => {
@@ -324,7 +475,12 @@ function RapidLiveScreen({ session }: { session: RapidSession }) {
         clearInterval(clockIntervalRef.current);
         clockIntervalRef.current = null;
       }
+      if (autosaveIntervalRef.current) {
+        clearInterval(autosaveIntervalRef.current);
+        autosaveIntervalRef.current = null;
+      }
       setClockRunning(false);
+      persistActiveSession();
     } else {
       clockStartRef.current = Date.now() - clockSecondsRef.current * 1000;
       clockIntervalRef.current = setInterval(() => {
@@ -332,9 +488,27 @@ function RapidLiveScreen({ session }: { session: RapidSession }) {
         clockSecondsRef.current = elapsed;
         setClockSeconds(elapsed);
       }, 500);
+      autosaveIntervalRef.current = setInterval(persistActiveSession, AUTOSAVE_INTERVAL_MS);
       setClockRunning(true);
+      persistActiveSession();
     }
-  }, [clockRunning]);
+  }, [clockRunning, persistActiveSession]);
+
+  const finishAndSaveMatch = useCallback(() => {
+    saveCompletedRapidMatch({
+      schemaVersion: RAPID_CAPTURE_SCHEMA_VERSION,
+      id: matchId,
+      createdAt,
+      updatedAt: Date.now(),
+      status: "COMPLETED",
+      session,
+      events: loggedEventsRef.current,
+      half: halfRef.current,
+      clockSeconds: clockSecondsRef.current,
+    });
+    clearActiveRapidSession();
+    onFinish();
+  }, [matchId, createdAt, session, onFinish]);
 
   // Undo removes the last logged event — teamSide context is not affected
   const undo = useCallback(() => {
@@ -444,6 +618,9 @@ function RapidLiveScreen({ session }: { session: RapidSession }) {
         >
           ↓ JSON
         </button>
+        <button onClick={finishAndSaveMatch} style={S.finishBtn}>
+          Finish & Save
+        </button>
       </div>
 
       {/* ── Signal bar ─────────────────────────── */}
@@ -499,14 +676,100 @@ function RapidLiveScreen({ session }: { session: RapidSession }) {
 
 // ── Page Phase Controller ─────────────────────────────────────────────────────
 
-export default function RapidCaptureLitePage() {
-  const [session, setSession] = useState<RapidSession | null>(null);
+type LiveSlot = {
+  matchId: string;
+  session: RapidSession;
+  createdAt: number;
+  events: MatchEvent[];
+  half: 1 | 2;
+  clockSeconds: number;
+};
 
-  if (!session) {
-    return <RapidSetupScreen onStart={setSession} />;
+function liveSlotFromSavedMatch(match: RapidSavedMatch): LiveSlot {
+  return {
+    matchId: match.id,
+    session: match.session,
+    createdAt: match.createdAt,
+    events: match.events,
+    half: match.half,
+    clockSeconds: match.clockSeconds,
+  };
+}
+
+export default function RapidCaptureLitePage() {
+  const [view, setView] = useState<"setup" | "live" | "matches">("setup");
+  const [live, setLive] = useState<LiveSlot | null>(null);
+  const [resumeCandidate, setResumeCandidate] = useState<RapidSavedMatch | null>(() =>
+    loadActiveRapidSession(),
+  );
+
+  function handleStart(session: RapidSession) {
+    setLive({
+      matchId: newRapidMatchId(),
+      session,
+      createdAt: Date.now(),
+      events: [],
+      half: 1,
+      clockSeconds: 0,
+    });
+    setView("live");
   }
 
-  return <RapidLiveScreen session={session} />;
+  function handleResume() {
+    if (!resumeCandidate) return;
+    setLive(liveSlotFromSavedMatch(resumeCandidate));
+    setView("live");
+  }
+
+  function handleDiscardResume() {
+    clearActiveRapidSession();
+    setResumeCandidate(null);
+  }
+
+  function handleReopenSavedMatch(match: RapidSavedMatch) {
+    setLive(liveSlotFromSavedMatch(match));
+    setView("live");
+  }
+
+  function handleFinish() {
+    setResumeCandidate(null);
+    setLive(null);
+    setView("setup");
+  }
+
+  if (view === "matches") {
+    return (
+      <RapidSavedMatchesScreen
+        onBack={() => setView("setup")}
+        onReopen={handleReopenSavedMatch}
+      />
+    );
+  }
+
+  if (view === "live" && live) {
+    return (
+      <RapidLiveScreen
+        key={live.matchId}
+        matchId={live.matchId}
+        session={live.session}
+        createdAt={live.createdAt}
+        initialEvents={live.events}
+        initialHalf={live.half}
+        initialClockSeconds={live.clockSeconds}
+        onFinish={handleFinish}
+      />
+    );
+  }
+
+  return (
+    <RapidSetupScreen
+      onStart={handleStart}
+      resumeCandidate={resumeCandidate}
+      onResume={handleResume}
+      onDiscardResume={handleDiscardResume}
+      onOpenSavedMatches={() => setView("matches")}
+    />
+  );
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────
@@ -857,5 +1120,144 @@ const S: Record<string, CSSProperties> = {
     marginLeft: 10,
     color: "#8b949e",
     fontWeight: 400,
+  },
+
+  // ── Live: Finish & Save ──────────────────────────────────────────────────
+  finishBtn: {
+    background: "#238636",
+    border: "1px solid #2ea043",
+    borderRadius: 6,
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "6px 10px",
+    cursor: "pointer",
+    outline: "none",
+    whiteSpace: "nowrap",
+  },
+
+  // ── Setup: Saved matches entry point ─────────────────────────────────────
+  savedMatchesBtn: {
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "5px 10px",
+    cursor: "pointer",
+    outline: "none",
+    whiteSpace: "nowrap",
+  },
+  backBtn: {
+    background: "transparent",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#8b949e",
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "6px 10px",
+    cursor: "pointer",
+    outline: "none",
+  },
+
+  // ── Setup: Resume banner ──────────────────────────────────────────────────
+  resumeBanner: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    background: "#1c2128",
+    border: "1px solid #f0883e",
+    borderRadius: 10,
+    padding: "12px 14px",
+  },
+  resumeText: {
+    fontSize: 13,
+    color: "#e6edf3",
+    lineHeight: 1.4,
+  },
+  resumeActions: {
+    display: "flex",
+    gap: 8,
+    justifyContent: "flex-end",
+  },
+  resumeDiscardBtn: {
+    background: "transparent",
+    border: "1px solid #30363d",
+    borderRadius: 8,
+    color: "#8b949e",
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "8px 14px",
+    cursor: "pointer",
+    outline: "none",
+  },
+  resumeBtn: {
+    background: "#f0883e",
+    border: "1px solid #f0883e",
+    borderRadius: 8,
+    color: "#0d1117",
+    fontSize: 13,
+    fontWeight: 700,
+    padding: "8px 14px",
+    cursor: "pointer",
+    outline: "none",
+  },
+
+  // ── Saved Matches screen ──────────────────────────────────────────────────
+  savedMatchRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    background: "#161b22",
+    border: "1px solid #21262d",
+    borderRadius: 10,
+    padding: "12px 14px",
+  },
+  savedMatchInfo: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    minWidth: 0,
+  },
+  savedMatchTeams: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#e6edf3",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  savedMatchMeta: {
+    fontSize: 12,
+    color: "#8b949e",
+  },
+  savedMatchActions: {
+    display: "flex",
+    gap: 6,
+    flexShrink: 0,
+  },
+  savedMatchDeleteBtn: {
+    background: "transparent",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#f85149",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "6px 10px",
+    cursor: "pointer",
+    outline: "none",
+  },
+  savedMatchReopenBtn: {
+    background: "#238636",
+    border: "1px solid #2ea043",
+    borderRadius: 6,
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "6px 10px",
+    cursor: "pointer",
+    outline: "none",
   },
 };
