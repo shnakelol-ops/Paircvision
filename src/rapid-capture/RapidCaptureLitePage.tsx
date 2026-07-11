@@ -451,6 +451,10 @@ function RapidLiveScreen({
       if (destroyed) { h.destroy(); return; }
       handle = h;
       pixiHandleRef.current = h;
+      // The [loggedEvents] effect may have already fired (and no-opped) before
+      // this promise resolved — e.g. on resume, where events are pre-populated
+      // at mount. Push whatever is logged right now so restored markers render.
+      h.setEvents(loggedEventsRef.current);
     });
 
     return () => {
