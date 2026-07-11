@@ -2,8 +2,7 @@
 // No React, no Pixi, no DOM.
 //
 // Translates territorial pressure states into at most 2 calm, factual
-// signal messages. Only surfaces amber and red states — notable is
-// intentionally excluded as too low to be meaningful at match pace.
+// signal messages. Surfaces yellow (early warning), amber, and red states.
 // No recommendations, no AI language, no player references.
 
 import type { SemanticZoneId } from "./semantic-zones";
@@ -11,7 +10,7 @@ import type { TerritorialPressureState, PressureCategory } from "./pressure-engi
 
 export type TacticalSignal = {
   id: string;
-  level: "amber" | "red";
+  level: "yellow" | "amber" | "red";
   text: string;
 };
 
@@ -84,6 +83,15 @@ function deriveBenefit(
         ? (rawPositive ? "positive" : "negative")
         : (rawPositive ? "negative" : "positive");
     }
+    case "POSSESSION": {
+      const won  = eventKinds.includes("POSSESSION_WON");
+      const lost = eventKinds.includes("POSSESSION_LOST");
+      if (won && lost) return "mixed";
+      const rawPositive = won;
+      return teamSide === "FOR"
+        ? (rawPositive ? "positive" : "negative")
+        : (rawPositive ? "negative" : "positive"); // OPP winning possession = bad for us
+    }
   }
 }
 
@@ -135,17 +143,30 @@ function generateSignalText(state: TerritorialPressureState): string {
       if (benefit === "positive") {
         return state.teamSide === "FOR"
           ? `Scoring from ${zone}.`
-          : `Opposition scoring from ${zone}.`;
+          : `Opposition misfiring from ${zone}.`;
       }
       if (benefit === "negative") {
         return state.teamSide === "FOR"
           ? `Wides building from ${zone}.`
-          : `Opposition misfiring from ${zone}.`;
+          : `Opposition scoring from ${zone}.`;
       }
       // neutral (SHOT-only) or mixed
       return state.teamSide === "FOR"
         ? `Attacks building through ${zone}.`
         : `Opposition attacking from ${zone}.`;
+
+    case "POSSESSION":
+      if (benefit === "positive") {
+        return state.teamSide === "FOR"
+          ? `Winning possession in ${zone}.`
+          : `Disrupting opposition possession in ${zone}.`;
+      }
+      if (benefit === "negative") {
+        return state.teamSide === "FOR"
+          ? `Losing possession in ${zone}.`
+          : `Opposition winning possession in ${zone}.`;
+      }
+      return `Possession contest in ${zone}.`;
   }
 }
 
@@ -156,8 +177,6 @@ export function computeTacticalSignals(
 
   for (const state of states) {
     if (signals.length >= 2) break;
-    if (state.level === "notable") continue;
-
     signals.push({
       id: state.id,
       level: state.level,

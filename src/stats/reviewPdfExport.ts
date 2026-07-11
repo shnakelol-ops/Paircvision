@@ -342,6 +342,9 @@ const EVENT_COLORS: Record<MatchEventKind, string> = {
   KICKOUT_CONCEDED:     "#fb7185",  // Pink
   FREE_WON:             "#818cf8",  // Indigo
   FREE_CONCEDED:        "#f472b6",  // Pink
+  // Rapid Capture-only kinds — no PDF/report page emits these today.
+  POSSESSION_WON:       "#a78bfa",  // Purple (parallels Turnover Won)
+  POSSESSION_LOST:      "#f97316",  // Orange (parallels Turnover Lost)
 };
 
 
