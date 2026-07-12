@@ -31,12 +31,6 @@ export type CreatePixiPitchSurfaceOptions = {
   eventTimestampSeconds?: number;
   canLogEvents?: boolean;
   showPlayerInitials?: boolean;
-  /**
-   * When provided, markers are coloured by team side instead of event kind —
-   * used by Rapid Capture's shared Event Map. Omitted by every other caller,
-   * so their marker colouring is unaffected.
-   */
-  teamColours?: { FOR: string; OPP: string };
   onEventLogged?: (event: MatchEvent) => void;
   onPitchTap?: (nx: number, ny: number) => void;
   onMarkerTap?: (eventId: string) => void;
@@ -48,7 +42,6 @@ export type PixiPitchSurfaceHandle = {
   setActiveEventKind: (kind: MatchEventKind) => void;
   setEventContext: (context: { half: 1 | 2; timestamp: number; canLog: boolean }) => void;
   setShowPlayerInitials: (show: boolean) => void;
-  setTeamColours: (colours: { FOR: string; OPP: string } | null) => void;
   setOnMarkerTap: (handler: ((eventId: string) => void) | null) => void;
   setHeatmapEnabled: (enabled: boolean) => void;
   setZoneOverlayModel: (model: ZoneOverlayModel | null) => void;
@@ -126,7 +119,6 @@ export async function createPixiPitchSurface(
   let eventTimestampSecondsState = Math.max(0, Math.floor(options.eventTimestampSeconds ?? 0));
   let canLogEventsState = options.canLogEvents ?? true;
   let showPlayerInitialsState = options.showPlayerInitials ?? true;
-  let teamColoursState = options.teamColours ?? null;
   let onMarkerTapState = options.onMarkerTap ?? null;
   let heatmapEnabledState = false;
   let zoneOverlayModelState: ZoneOverlayModel | null = null;
@@ -152,7 +144,6 @@ export async function createPixiPitchSurface(
       maxScreenRadiusPx: 10,
       showPlayerLabels: showPlayerInitialsState,
       onMarkerTap: onMarkerTapState ?? undefined,
-      teamColours: teamColoursState ?? undefined,
     });
   };
 
@@ -225,10 +216,6 @@ export async function createPixiPitchSurface(
     },
     setShowPlayerInitials: (show) => {
       showPlayerInitialsState = show;
-      redrawMarkers();
-    },
-    setTeamColours: (colours) => {
-      teamColoursState = colours;
       redrawMarkers();
     },
     setOnMarkerTap: (handler) => {

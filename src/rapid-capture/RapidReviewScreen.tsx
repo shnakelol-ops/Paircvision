@@ -102,25 +102,25 @@ const CATEGORY_KINDS: Record<Exclude<RapidReviewCategory, "ALL">, readonly Match
   ],
 };
 
-// ── Pitch canvas sub-component — same engine, team-coloured markers ────────
+// ── Pitch canvas sub-component — same engine and marker colours Rapid
+// Capture's own live pitch uses (kind-based: goal/point/wide/turnover/
+// kickout/free each keep their distinct colour). Team identity is conveyed
+// by the FOR/OPP filter chips, not by recolouring markers — recolouring by
+// team would make different event kinds indistinguishable on the board. ──
 
 function RapidPitchCanvas({
   events,
   sport,
-  teamColours,
   onMarkerTap,
 }: {
   events: readonly RapidMatchEvent[];
   sport: "gaelic" | "hurling" | "camogie" | "soccer";
-  teamColours: { FOR: string; OPP: string };
   onMarkerTap?: (eventId: string) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<PixiPitchSurfaceHandle | null>(null);
   const eventsRef = useRef(events);
   eventsRef.current = events;
-  const teamColoursRef = useRef(teamColours);
-  teamColoursRef.current = teamColours;
   const onMarkerTapRef = useRef(onMarkerTap);
   onMarkerTapRef.current = onMarkerTap;
 
@@ -132,7 +132,6 @@ function RapidPitchCanvas({
     void createPixiPitchSurface(host, {
       sport,
       canLogEvents: false,
-      teamColours: teamColoursRef.current,
       onMarkerTap: stableTap,
     }).then((h) => {
       if (disposed) { h.destroy(); return; }
@@ -151,10 +150,6 @@ function RapidPitchCanvas({
   useEffect(() => {
     handleRef.current?.setEvents(events);
   }, [events]);
-
-  useEffect(() => {
-    handleRef.current?.setTeamColours(teamColours);
-  }, [teamColours]);
 
   return <div ref={hostRef} style={{ width: "100%", height: "100%", overflow: "hidden" }} />;
 }
@@ -253,7 +248,6 @@ export function RapidReviewScreen({ match, backLabel, onBack, onEventsChange }: 
   const koLabel = isPuckout ? "P/O" : "K/O";
   const forLabel = session.forTeamName || "FOR";
   const oppLabel = session.oppTeamName || "OPP";
-  const teamColours = { FOR: session.forTeamColour, OPP: session.oppTeamColour };
 
   const filteredEvents = useMemo(
     () =>
@@ -533,7 +527,6 @@ export function RapidReviewScreen({ match, backLabel, onBack, onEventsChange }: 
             <RapidPitchCanvas
               events={filteredEvents}
               sport={pitchSport}
-              teamColours={teamColours}
               onMarkerTap={(id) => setSelectedEventId(id)}
             />
           </div>
