@@ -27,7 +27,17 @@ const PORTRAIT_VIEWBOX = {
   w: GAELIC_PITCH_CONFIG.viewBox.h,
   h: GAELIC_PITCH_CONFIG.viewBox.w,
 } as const;
-const PORTRAIT_MARKINGS_TRANSFORM = "matrix(0 1 1 0 0 0)";
+// Rotates canonical landscape pitch space (X = length axis 0..160, Y = width/
+// touchline axis 0..100 — see src/core/pitch/pitch-space.ts) a genuine 90°
+// clockwise turn into this portrait view: screenX = landscapeH - Y, screenY = X.
+// This MUST stay the exact inverse of svgPointToPitchNorm below — together they
+// are what keep a tapped location, the live feedback dot, and every downstream
+// consumer of stored nx/ny (Review, HT/FT snapshots, PDFs, Intelligence Pack)
+// agreeing on which physical sideline an event happened on. A bare axis swap
+// (no landscapeH - Y term) is a mirror reflection, not a rotation, and silently
+// flips every tap onto the opposite touchline — see the coordinate integrity
+// audit that introduced this comment.
+const PORTRAIT_MARKINGS_TRANSFORM = `matrix(0 1 -1 0 ${GAELIC_PITCH_CONFIG.viewBox.h} 0)`;
 const SVG_EPSILON = 1e-9;
 
 function clamp(value: number, min: number, max: number): number {
@@ -70,7 +80,9 @@ export function svgPointToPitchNorm(
 ): BoardNorm {
   const clampedSvgX = clamp(svgX, 0, PORTRAIT_VIEWBOX.w);
   const clampedSvgY = clamp(svgY, 0, PORTRAIT_VIEWBOX.h);
-  const world: PitchWorldPoint = { x: clampedSvgY, y: clampedSvgX };
+  // Inverse of PORTRAIT_MARKINGS_TRANSFORM's 90° clockwise rotation
+  // (screenX = landscapeH - Y, screenY = X) — must stay in lockstep with it.
+  const world: PitchWorldPoint = { x: clampedSvgY, y: landscapeViewBox.h - clampedSvgX };
 
   return worldToBoardNorm(world.x, world.y, landscapeViewBox);
 }
