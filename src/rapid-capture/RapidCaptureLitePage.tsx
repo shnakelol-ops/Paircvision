@@ -817,6 +817,12 @@ function RapidLiveScreen({
   ];
 
   if (reviewOpen) {
+    // TEMP DIAGNOSTIC — see Review event-count investigation.
+    // eslint-disable-next-line no-console
+    console.log(
+      "[REVIEW-PIPELINE-DEBUG] stage=loggedEvents (live session)",
+      "count=", loggedEvents.length,
+    );
     return (
       <RapidReviewScreen
         match={{
@@ -1129,6 +1135,12 @@ export default function RapidCaptureLitePage() {
   }
 
   if (view === "review" && reviewMatch) {
+    // TEMP DIAGNOSTIC — see Review event-count investigation.
+    // eslint-disable-next-line no-console
+    console.log(
+      "[REVIEW-PIPELINE-DEBUG] stage=reviewMatch.events (from Saved Matches / storage)",
+      "count=", reviewMatch.events.length,
+    );
     return (
       <RapidReviewScreen
         match={reviewMatch}

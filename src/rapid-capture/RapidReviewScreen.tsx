@@ -149,6 +149,29 @@ function RapidPitchCanvas({
 
   useEffect(() => {
     handleRef.current?.setEvents(events);
+
+    // TEMP DIAGNOSTIC — see Review event-count investigation.
+    // Groups events by rounded (nx, ny) to surface markers that would render
+    // exactly (or near-exactly) on top of one another and be visually
+    // indistinguishable, even though every one of them is still drawn.
+    const coordGroups = new Map<string, RapidMatchEvent[]>();
+    for (const event of events) {
+      const key = `${event.nx.toFixed(3)},${event.ny.toFixed(3)}`;
+      const group = coordGroups.get(key);
+      if (group) group.push(event);
+      else coordGroups.set(key, [event]);
+    }
+    const overlapping = [...coordGroups.entries()].filter(([, group]) => group.length > 1);
+    // eslint-disable-next-line no-console
+    console.log(
+      "[REVIEW-PIPELINE-DEBUG] stage=markersToRender (fed into RapidPitchCanvas)",
+      "count=", events.length,
+      "distinctCoordGroups=", coordGroups.size,
+      "overlappingCoordGroups=", overlapping.length,
+      overlapping.length > 0
+        ? overlapping.map(([coord, group]) => ({ coord, ids: group.map((e) => e.id), kinds: group.map((e) => e.kind) }))
+        : undefined,
+    );
   }, [events]);
 
   return <div ref={hostRef} style={{ width: "100%", height: "100%", overflow: "hidden" }} />;
@@ -249,6 +272,12 @@ export function RapidReviewScreen({ match, backLabel, onBack, onEventsChange }: 
   const forLabel = session.forTeamName || "FOR";
   const oppLabel = session.oppTeamName || "OPP";
 
+  // TEMP DIAGNOSTIC — see Review event-count investigation.
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log("[REVIEW-PIPELINE-DEBUG] stage=reviewEvents (match.events reaching RapidReviewScreen)", "count=", events.length);
+  }, [events]);
+
   const filteredEvents = useMemo(
     () =>
       selectReviewEvents<RapidMatchEvent, RapidReviewCategory>(events, {
@@ -262,6 +291,19 @@ export function RapidReviewScreen({ match, backLabel, onBack, onEventsChange }: 
       }),
     [events, reviewHalf, reviewTeam, reviewCategory],
   );
+
+  // TEMP DIAGNOSTIC — see Review event-count investigation.
+  useEffect(() => {
+    const dropped = events.filter((e) => !filteredEvents.some((f) => f.id === e.id));
+    // eslint-disable-next-line no-console
+    console.log(
+      "[REVIEW-PIPELINE-DEBUG] stage=filteredEvents (after selectReviewEvents)",
+      "filter=", { reviewHalf, reviewTeam, reviewCategory },
+      "count=", filteredEvents.length,
+      "droppedByFilter=", dropped.length,
+      dropped.length > 0 ? dropped : undefined,
+    );
+  }, [events, filteredEvents, reviewHalf, reviewTeam, reviewCategory]);
 
   const selectedEvent = selectedEventId == null ? null : events.find((e) => e.id === selectedEventId) ?? null;
   const selectedTeamLabel = selectedEvent == null ? null : selectedEvent.teamSide === "OPP" ? oppLabel : forLabel;
