@@ -13,6 +13,7 @@ import { buildStatsShareCardPng } from "../stats/statsShareCard";
 import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
 import { buildLivePdfInput, buildLiveSnapshotInput } from "./pro-tagger-review-adapter";
 import { ProTaggerFamilyGrid } from "./ProTaggerFamilyGrid";
+import { buildPendingWinnerSummary } from "./pro-tagger-team-labels";
 import { ProTaggerPlayerPicker } from "./ProTaggerPlayerPicker";
 import type { SelectedPlayer } from "./ProTaggerPlayerPicker";
 import { ProTaggerPitchView } from "./ProTaggerPitchView";
@@ -127,11 +128,15 @@ function computeProTaggerCounts(events: readonly LoggedMatchEvent[], side: "FOR"
 function PendingContextBar({
   pending,
   sport,
+  homeTeamName,
+  awayTeamName,
   showPlayer,
   onCancel,
 }: {
   pending: PendingAction;
   sport: ProTaggerSession["sport"];
+  homeTeamName: string;
+  awayTeamName: string;
   showPlayer: boolean;
   onCancel: () => void;
 }) {
@@ -139,15 +144,32 @@ function PendingContextBar({
   const colour = family?.colour ?? "#8b949e";
   const familyLabel = family ? getFamilyLabel(family, sport) : pending.familyId;
   const isOpp = pending.teamSide === "OPP";
+  // Human-readable "who won" summary for Turnover/Restart only — every other
+  // family keeps its existing family-label + tile-label + OPP-badge display.
+  const winnerSummary = buildPendingWinnerSummary({
+    familyId:     pending.familyId,
+    tileLabel:    pending.tileLabel,
+    teamSide:     pending.teamSide,
+    restartOwner: pending.restartOwner,
+    sport,
+    homeTeamName,
+    awayTeamName,
+  });
 
   return (
     <div style={{ ...CB.bar, borderLeftColor: colour }}>
       <div style={CB.left}>
         <span style={{ ...CB.dot, background: colour }} />
-        <span style={CB.familyText}>{familyLabel}</span>
-        <span style={CB.sep}>·</span>
-        <span style={CB.tileText}>{isOpp ? "−" : ""}{pending.tileLabel}</span>
-        {isOpp && <span style={CB.oppBadge}>OPP</span>}
+        {winnerSummary ? (
+          <span style={CB.summaryText}>{winnerSummary}</span>
+        ) : (
+          <>
+            <span style={CB.familyText}>{familyLabel}</span>
+            <span style={CB.sep}>·</span>
+            <span style={CB.tileText}>{isOpp ? "−" : ""}{pending.tileLabel}</span>
+            {isOpp && <span style={CB.oppBadge}>OPP</span>}
+          </>
+        )}
         {showPlayer && (
           <span style={CB.playerText}>
             {pending.player
@@ -189,6 +211,10 @@ const CB: Record<string, CSSProperties> = {
     background: "rgba(248,113,113,0.12)", borderRadius: 4, padding: "1px 5px", flexShrink: 0,
   },
   playerText: { fontSize: 12, color: "#8b949e", whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis" },
+  summaryText: {
+    fontSize: 12, fontWeight: 700, color: "#e6edf3",
+    whiteSpace: "nowrap" as const, overflow: "hidden", textOverflow: "ellipsis", minWidth: 0,
+  },
   cancelBtn: {
     background: "transparent", border: "1px solid #30363d", borderRadius: 6,
     color: "#8b949e", fontSize: 12, fontWeight: 600, padding: "4px 10px",
@@ -975,7 +1001,12 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           {/* SCREEN: IDLE */}
           {phase === "IDLE" && (
             <>
-              <ProTaggerFamilyGrid sport={session.sport} onTileTap={handleTileTap} />
+              <ProTaggerFamilyGrid
+                sport={session.sport}
+                homeTeamName={homeLabel}
+                awayTeamName={awayLabel}
+                onTileTap={handleTileTap}
+              />
               <div style={S.strip}>
                 {saveFeedback ? (
                   <span style={S.saveFeedbackText}>{saveFeedback}</span>
@@ -1005,6 +1036,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               <PendingContextBar
                 pending={pending}
                 sport={session.sport}
+                homeTeamName={homeLabel}
+                awayTeamName={awayLabel}
                 showPlayer={false}
                 onCancel={cancelFlow}
               />
@@ -1043,6 +1076,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               <PendingContextBar
                 pending={pending}
                 sport={session.sport}
+                homeTeamName={homeLabel}
+                awayTeamName={awayLabel}
                 showPlayer={true}
                 onCancel={cancelFlow}
               />

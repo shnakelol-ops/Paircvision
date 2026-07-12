@@ -4,24 +4,45 @@ import {
   getFamiliesForSport,
   getTileLabel,
   getFamilyLabel,
+  getRestartOwnerLabel,
+  tileNeedsOppositionAttribution,
 } from "./pro-tagger-families";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
 import type { ProTaggerSport } from "./pro-tagger-session";
+import { getShortTeamName, resolveTeamDisplayName } from "./pro-tagger-team-labels";
 
 interface Props {
   sport: ProTaggerSport;
+  homeTeamName: string;
+  awayTeamName: string;
   onTileTap: (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP", restartOwner?: "FOR" | "OPP") => void;
 }
 
-export function ProTaggerFamilyGrid({ sport, onTileTap }: Props) {
+// Families where the two rows can otherwise be misread as generic "us/them"
+// tiles rather than "which team actually won the ball" — these get an
+// explicit team-name heading above each row. Every other family keeps its
+// existing colour + minus-sign distinction unchanged.
+const TEAM_HEADING_FAMILY_IDS = new Set<ProTaggerFamilyId>(["TURNOVER", "RESTART"]);
+
+export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileTap }: Props) {
   const families = getFamiliesForSport(sport);
   const [restartOwner, setRestartOwner] = useState<"FOR" | "OPP">("FOR");
+
+  const homeLabel = resolveTeamDisplayName(homeTeamName, "Home");
+  const awayLabel = resolveTeamDisplayName(awayTeamName, "Away");
+  const homeShortLabel = getShortTeamName(homeTeamName, "Home");
 
   return (
     <div style={S.scroll}>
       {families.map((family) => {
         const familyLabel = getFamilyLabel(family, sport);
         const isRestart = family.id === "RESTART";
+        const isTurnover = family.id === "TURNOVER";
+        const showTeamHeadings = TEAM_HEADING_FAMILY_IDS.has(family.id);
+        const ownerSuffix = isRestart ? ` ${getRestartOwnerLabel(sport, restartOwner)}` : "";
+        const forHeading = `${homeLabel} WON${ownerSuffix}`;
+        const oppHeading = `${awayLabel} WON${ownerSuffix}`;
+
         return (
           <div key={family.id} style={S.card}>
             {/* Family header */}
@@ -36,17 +57,20 @@ export function ProTaggerFamilyGrid({ sport, onTileTap }: Props) {
                     style={{ ...S.ownerBtn, ...(restartOwner === "FOR" ? S.ownerBtnActive : {}) }}
                     onClick={() => setRestartOwner("FOR")}
                   >
-                    OUR K/O
+                    {getRestartOwnerLabel(sport, "FOR")}
                   </button>
                   <button
                     style={{ ...S.ownerBtn, ...(restartOwner === "OPP" ? S.ownerBtnActive : {}) }}
                     onClick={() => setRestartOwner("OPP")}
                   >
-                    THEIR K/O
+                    {getRestartOwnerLabel(sport, "OPP")}
                   </button>
                 </div>
               )}
             </div>
+
+            {/* FOR row heading — Turnover / Restart only */}
+            {showTeamHeadings && <span style={S.rowHeading}>{forHeading}</span>}
 
             {/* FOR tile row */}
             <div style={S.tileRow}>
@@ -66,22 +90,34 @@ export function ProTaggerFamilyGrid({ sport, onTileTap }: Props) {
 
             {/* OPP minus row */}
             {family.hasMinus && (
-              <div style={S.tileRow}>
-                {family.tiles.map((tile) => {
-                  const label = getTileLabel(tile, sport);
-                  return (
-                    <button
-                      key={label}
-                      style={S.minusTile}
-                      onClick={() => onTileTap(family.id, label, "OPP", isRestart ? restartOwner : undefined)}
-                      aria-label={`Opposition ${familyLabel} ${label}`}
-                    >
-                      <span style={S.minusSign}>−</span>
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
+              <>
+                {showTeamHeadings && (
+                  <span style={{ ...S.rowHeading, ...S.rowHeadingOpp }}>{oppHeading}</span>
+                )}
+                <div style={S.tileRow}>
+                  {family.tiles.map((tile) => {
+                    const label = getTileLabel(tile, sport);
+                    // Display-only: name the team whose mistake this was on the
+                    // opposition row. The tap always sends the original `label` —
+                    // the stored tile value/tag is never affected.
+                    const displayLabel =
+                      isTurnover && tileNeedsOppositionAttribution(family.id, label, sport)
+                        ? `${homeShortLabel} ${label}`
+                        : label;
+                    return (
+                      <button
+                        key={label}
+                        style={S.minusTile}
+                        onClick={() => onTileTap(family.id, label, "OPP", isRestart ? restartOwner : undefined)}
+                        aria-label={`Opposition ${familyLabel} ${label}`}
+                      >
+                        <span style={S.minusSign}>−</span>
+                        {displayLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         );
@@ -151,6 +187,22 @@ const S: Record<string, CSSProperties> = {
     borderColor: "#9333ea",
     color: "#c084fc",
     background: "rgba(147,51,234,0.12)",
+  },
+  // Team-winner row headings (Turnover / Restart only) — supplements the
+  // colour + minus-sign distinction, doesn't replace it.
+  rowHeading: {
+    fontSize: 10,
+    fontWeight: 800,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase" as const,
+    color: "#c9d1d9",
+    lineHeight: "1.25",
+    wordBreak: "break-word" as const,
+    overflowWrap: "break-word" as const,
+    margin: "1px 0 0",
+  },
+  rowHeadingOpp: {
+    color: "#f87171",
   },
   tileRow: {
     display: "flex",
