@@ -76,7 +76,7 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function parseRapidSession(value: unknown): RapidSession | null {
+export function parseRapidSession(value: unknown): RapidSession | null {
   if (!value || typeof value !== "object") return null;
   const source = value as Record<string, unknown>;
   if (!SPORTS.includes(source.sport as Sport)) return null;
@@ -101,7 +101,7 @@ function parseRapidSession(value: unknown): RapidSession | null {
   };
 }
 
-function parseRapidEvent(value: unknown): MatchEvent | null {
+export function parseRapidEvent(value: unknown): MatchEvent | null {
   if (!value || typeof value !== "object") return null;
   const source = value as Record<string, unknown>;
   if (typeof source.id !== "string" || source.id.length === 0) return null;

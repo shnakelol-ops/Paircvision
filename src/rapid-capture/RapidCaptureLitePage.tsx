@@ -27,6 +27,8 @@ import {
   saveCompletedRapidMatch,
   type RapidSavedMatch,
 } from "./rapid-capture-storage";
+import { RapidMatchHubFab, type MatchHubMenuSection } from "./RapidMatchHubFab";
+import { deriveHalfAndClockFromEvents, parseImportedMatchFile } from "./rapid-match-import";
 
 const SPORT_LABELS: Record<Sport, string> = {
   hurling: "Hurling",
@@ -77,14 +79,18 @@ function RapidSetupScreen({
   onStart,
   resumeCandidate,
   onResume,
-  onDiscardResume,
   onOpenSavedMatches,
+  onImportJsonFile,
+  importError,
+  onDismissImportError,
 }: {
   onStart: (s: RapidSession) => void;
   resumeCandidate: RapidSavedMatch | null;
   onResume: () => void;
-  onDiscardResume: () => void;
   onOpenSavedMatches: () => void;
+  onImportJsonFile: (file: File) => void;
+  importError: string | null;
+  onDismissImportError: () => void;
 }) {
   const [sport, setSport] = useState<Sport>("hurling");
   const [forTeamName, setForTeamName] = useState("");
@@ -110,33 +116,55 @@ function RapidSetupScreen({
     });
   }
 
+  const sections: MatchHubMenuSection[] = [
+    {
+      id: "match",
+      label: "Match",
+      items: [
+        ...(resumeCandidate
+          ? [{ id: "resume", label: "Resume Match", onSelect: onResume }]
+          : []),
+        { id: "saved-matches", label: "Saved Matches", onSelect: onOpenSavedMatches },
+      ],
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      items: [
+        { id: "ht-snapshot", label: "HT Snapshot", disabled: true, badge: "Coming Soon" },
+        { id: "ft-snapshot", label: "FT Snapshot", disabled: true, badge: "Coming Soon" },
+        { id: "full-intelligence", label: "Full Intelligence PDF", disabled: true, badge: "Coming Soon" },
+      ],
+    },
+    {
+      id: "data",
+      label: "Data",
+      items: [
+        { id: "export-json", label: "Export JSON", disabled: true },
+        {
+          id: "import-json",
+          label: "Import JSON",
+          onFileSelect: onImportJsonFile,
+          accept: "application/json,.json",
+        },
+      ],
+    },
+  ];
+
   return (
     <div style={S.shell}>
       <div style={S.header}>
         <span style={S.title}>⚡ Rapid Capture</span>
-        <button onClick={onOpenSavedMatches} style={S.savedMatchesBtn}>
-          Saved Matches
-        </button>
         <span style={S.setupBadge}>Setup</span>
       </div>
 
       <div style={S.setupBody}>
-        {resumeCandidate && (
-          <div style={S.resumeBanner}>
-            <span style={S.resumeText}>
-              Match in progress: <strong>{resumeCandidate.session.forTeamName || "FOR"}</strong> vs{" "}
-              <strong>{resumeCandidate.session.oppTeamName || "OPP"}</strong>
-              {" · "}
-              {resumeCandidate.events.length} logged · {resumeCandidate.half}H
-            </span>
-            <div style={S.resumeActions}>
-              <button onClick={onDiscardResume} style={S.resumeDiscardBtn}>
-                Discard
-              </button>
-              <button onClick={onResume} style={S.resumeBtn}>
-                Resume
-              </button>
-            </div>
+        {importError && (
+          <div style={S.importErrorBanner}>
+            <span style={S.importErrorText}>{importError}</span>
+            <button onClick={onDismissImportError} style={S.importErrorDismissBtn}>
+              ✕
+            </button>
           </div>
         )}
 
@@ -265,6 +293,8 @@ function RapidSetupScreen({
           Start Match
         </button>
       </div>
+
+      <RapidMatchHubFab sections={sections} />
     </div>
   );
 }
@@ -337,6 +367,10 @@ type RapidLiveScreenProps = {
   initialHalf: 1 | 2;
   initialClockSeconds: number;
   onFinish: () => void;
+  onOpenSavedMatches: () => void;
+  onImportJsonFile: (file: File) => void;
+  importError: string | null;
+  onDismissImportError: () => void;
 };
 
 // Active-session autosave cadence while the clock is running — frequent enough
@@ -351,6 +385,10 @@ function RapidLiveScreen({
   initialHalf,
   initialClockSeconds,
   onFinish,
+  onOpenSavedMatches,
+  onImportJsonFile,
+  importError,
+  onDismissImportError,
 }: RapidLiveScreenProps) {
   const { sport } = session;
 
@@ -556,6 +594,39 @@ function RapidLiveScreen({
   const forLabel = session.forTeamName || "FOR";
   const oppLabel = session.oppTeamName || "OPP";
 
+  const sections: MatchHubMenuSection[] = [
+    {
+      id: "match",
+      label: "Match",
+      items: [
+        { id: "finish-save", label: "Finish & Save", onSelect: finishAndSaveMatch },
+        { id: "saved-matches", label: "Saved Matches", onSelect: onOpenSavedMatches },
+      ],
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      items: [
+        { id: "ht-snapshot", label: "HT Snapshot", disabled: true, badge: "Coming Soon" },
+        { id: "ft-snapshot", label: "FT Snapshot", disabled: true, badge: "Coming Soon" },
+        { id: "full-intelligence", label: "Full Intelligence PDF", disabled: true, badge: "Coming Soon" },
+      ],
+    },
+    {
+      id: "data",
+      label: "Data",
+      items: [
+        { id: "export-json", label: "Export JSON", onSelect: handleExport, disabled: loggedEvents.length === 0 },
+        {
+          id: "import-json",
+          label: "Import JSON",
+          onFileSelect: onImportJsonFile,
+          accept: "application/json,.json",
+        },
+      ],
+    },
+  ];
+
   return (
     <div style={S.shell}>
       {/* ── Header ─────────────────────────────── */}
@@ -575,8 +646,20 @@ function RapidLiveScreen({
         </div>
       </div>
 
+      {importError && (
+        <div style={S.importErrorBanner}>
+          <span style={S.importErrorText}>{importError}</span>
+          <button onClick={onDismissImportError} style={S.importErrorDismissBtn}>
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* ── Pitch ──────────────────────────────── */}
-      <div ref={pitchHostRef} style={S.pitchHost} />
+      <div style={S.pitchWrap}>
+        <div ref={pitchHostRef} style={S.pitchHost} />
+        <RapidMatchHubFab sections={sections} />
+      </div>
 
       {/* ── Controls row ───────────────────────── */}
       <div style={S.controlsRow}>
@@ -610,16 +693,6 @@ function RapidLiveScreen({
         <span style={S.clock}>{fmtClock(clockSeconds)}</span>
         <button onClick={toggleClock} style={S.clockBtn}>
           {clockRunning ? "⏸" : "▶"}
-        </button>
-        <button
-          onClick={handleExport}
-          disabled={loggedEvents.length === 0}
-          style={S.exportBtn}
-        >
-          ↓ JSON
-        </button>
-        <button onClick={finishAndSaveMatch} style={S.finishBtn}>
-          Finish & Save
         </button>
       </div>
 
@@ -702,6 +775,7 @@ export default function RapidCaptureLitePage() {
   const [resumeCandidate, setResumeCandidate] = useState<RapidSavedMatch | null>(() =>
     loadActiveRapidSession(),
   );
+  const [importError, setImportError] = useState<string | null>(null);
 
   function handleStart(session: RapidSession) {
     setLive({
@@ -721,11 +795,6 @@ export default function RapidCaptureLitePage() {
     setView("live");
   }
 
-  function handleDiscardResume() {
-    clearActiveRapidSession();
-    setResumeCandidate(null);
-  }
-
   function handleReopenSavedMatch(match: RapidSavedMatch) {
     setLive(liveSlotFromSavedMatch(match));
     setView("live");
@@ -735,6 +804,34 @@ export default function RapidCaptureLitePage() {
     setResumeCandidate(null);
     setLive(null);
     setView("setup");
+  }
+
+  function handleImportJsonFile(file: File) {
+    if (view === "live" && !window.confirm("Importing will replace the match you're currently capturing. Continue?")) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === "string" ? reader.result : "";
+      const result = parseImportedMatchFile(text);
+      if (!result.ok) {
+        setImportError(result.reason);
+        return;
+      }
+      setImportError(null);
+      const { half, clockSeconds } = deriveHalfAndClockFromEvents(result.match.events);
+      setLive({
+        matchId: newRapidMatchId(),
+        session: result.match.session,
+        createdAt: Date.now(),
+        events: result.match.events,
+        half,
+        clockSeconds,
+      });
+      setView("live");
+    };
+    reader.onerror = () => setImportError("Could not read the selected file.");
+    reader.readAsText(file);
   }
 
   if (view === "matches") {
@@ -757,6 +854,10 @@ export default function RapidCaptureLitePage() {
         initialHalf={live.half}
         initialClockSeconds={live.clockSeconds}
         onFinish={handleFinish}
+        onOpenSavedMatches={() => setView("matches")}
+        onImportJsonFile={handleImportJsonFile}
+        importError={importError}
+        onDismissImportError={() => setImportError(null)}
       />
     );
   }
@@ -766,8 +867,10 @@ export default function RapidCaptureLitePage() {
       onStart={handleStart}
       resumeCandidate={resumeCandidate}
       onResume={handleResume}
-      onDiscardResume={handleDiscardResume}
       onOpenSavedMatches={() => setView("matches")}
+      onImportJsonFile={handleImportJsonFile}
+      importError={importError}
+      onDismissImportError={() => setImportError(null)}
     />
   );
 }
@@ -786,6 +889,7 @@ const S: Record<string, CSSProperties> = {
     userSelect: "none",
     overflow: "hidden",
     WebkitTapHighlightColor: "transparent",
+    position: "relative",
   },
 
   // ── Shared: Header ───────────────────────────────────────────────────────
@@ -980,10 +1084,17 @@ const S: Record<string, CSSProperties> = {
   },
 
   // ── Live: Pitch ──────────────────────────────────────────────────────────
-  pitchHost: {
+  // pitchWrap owns the flex sizing and is the Match Hub FAB's anchor;
+  // pitchHost fills it exactly and stays a Pixi-only DOM node (no React
+  // children rendered into it — Pixi appends its canvas here directly).
+  pitchWrap: {
     flex: 1,
     minHeight: 0,
     position: "relative",
+  },
+  pitchHost: {
+    position: "absolute",
+    inset: 0,
     background: "#0d1117",
   },
 
@@ -1053,17 +1164,6 @@ const S: Record<string, CSSProperties> = {
     cursor: "pointer",
     outline: "none",
   },
-  exportBtn: {
-    background: "transparent",
-    border: "1px solid #30363d",
-    borderRadius: 6,
-    color: "#8b949e",
-    fontSize: 12,
-    padding: "6px 10px",
-    cursor: "pointer",
-    outline: "none",
-  },
-
   // ── Live: Rapid event bar ────────────────────────────────────────────────
   rapidBar: {
     display: "grid",
@@ -1122,33 +1222,33 @@ const S: Record<string, CSSProperties> = {
     fontWeight: 400,
   },
 
-  // ── Live: Finish & Save ──────────────────────────────────────────────────
-  finishBtn: {
-    background: "#238636",
-    border: "1px solid #2ea043",
-    borderRadius: 6,
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: 700,
-    padding: "6px 10px",
+  // ── Import error banner (Setup + Live) ────────────────────────────────────
+  importErrorBanner: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 10,
+    background: "#2d1214",
+    border: "1px solid #f85149",
+    borderRadius: 10,
+    padding: "10px 12px",
+    margin: "8px 12px 4px",
+  },
+  importErrorText: {
+    fontSize: 13,
+    color: "#ffd7d5",
+    lineHeight: 1.4,
+  },
+  importErrorDismissBtn: {
+    background: "transparent",
+    border: "none",
+    color: "#ffd7d5",
+    fontSize: 14,
     cursor: "pointer",
     outline: "none",
-    whiteSpace: "nowrap",
+    flexShrink: 0,
   },
 
-  // ── Setup: Saved matches entry point ─────────────────────────────────────
-  savedMatchesBtn: {
-    background: "#21262d",
-    border: "1px solid #30363d",
-    borderRadius: 6,
-    color: "#8b949e",
-    fontSize: 12,
-    fontWeight: 600,
-    padding: "5px 10px",
-    cursor: "pointer",
-    outline: "none",
-    whiteSpace: "nowrap",
-  },
   backBtn: {
     background: "transparent",
     border: "1px solid #30363d",
@@ -1157,49 +1257,6 @@ const S: Record<string, CSSProperties> = {
     fontSize: 13,
     fontWeight: 600,
     padding: "6px 10px",
-    cursor: "pointer",
-    outline: "none",
-  },
-
-  // ── Setup: Resume banner ──────────────────────────────────────────────────
-  resumeBanner: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
-    background: "#1c2128",
-    border: "1px solid #f0883e",
-    borderRadius: 10,
-    padding: "12px 14px",
-  },
-  resumeText: {
-    fontSize: 13,
-    color: "#e6edf3",
-    lineHeight: 1.4,
-  },
-  resumeActions: {
-    display: "flex",
-    gap: 8,
-    justifyContent: "flex-end",
-  },
-  resumeDiscardBtn: {
-    background: "transparent",
-    border: "1px solid #30363d",
-    borderRadius: 8,
-    color: "#8b949e",
-    fontSize: 13,
-    fontWeight: 600,
-    padding: "8px 14px",
-    cursor: "pointer",
-    outline: "none",
-  },
-  resumeBtn: {
-    background: "#f0883e",
-    border: "1px solid #f0883e",
-    borderRadius: 8,
-    color: "#0d1117",
-    fontSize: 13,
-    fontWeight: 700,
-    padding: "8px 14px",
     cursor: "pointer",
     outline: "none",
   },
