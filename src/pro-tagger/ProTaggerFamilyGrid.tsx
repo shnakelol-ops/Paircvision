@@ -9,7 +9,7 @@ import {
 } from "./pro-tagger-families";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
 import type { ProTaggerSport } from "./pro-tagger-session";
-import { getShortTeamName, resolveTeamDisplayName } from "./pro-tagger-team-labels";
+import { getShortTeamName } from "./pro-tagger-team-labels";
 
 interface Props {
   sport: ProTaggerSport;
@@ -18,19 +18,14 @@ interface Props {
   onTileTap: (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP", restartOwner?: "FOR" | "OPP") => void;
 }
 
-// Families where the two rows can otherwise be misread as generic "us/them"
-// tiles rather than "which team actually won the ball" — these get an
-// explicit team-name heading above each row. Every other family keeps its
-// existing colour + minus-sign distinction unchanged.
-const TEAM_HEADING_FAMILY_IDS = new Set<ProTaggerFamilyId>(["TURNOVER", "RESTART"]);
-
 export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileTap }: Props) {
   const families = getFamiliesForSport(sport);
   const [restartOwner, setRestartOwner] = useState<"FOR" | "OPP">("FOR");
 
-  const homeLabel = resolveTeamDisplayName(homeTeamName, "Home");
-  const awayLabel = resolveTeamDisplayName(awayTeamName, "Away");
+  // Short team names for the opposition-row label and the Turnover
+  // opponent-error attribution. Falls back to "Home"/"Away" for a blank name.
   const homeShortLabel = getShortTeamName(homeTeamName, "Home");
+  const awayShortLabel = getShortTeamName(awayTeamName, "Away");
 
   return (
     <div style={S.scroll}>
@@ -38,10 +33,6 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
         const familyLabel = getFamilyLabel(family, sport);
         const isRestart = family.id === "RESTART";
         const isTurnover = family.id === "TURNOVER";
-        const showTeamHeadings = TEAM_HEADING_FAMILY_IDS.has(family.id);
-        const ownerSuffix = isRestart ? ` ${getRestartOwnerLabel(sport, restartOwner)}` : "";
-        const forHeading = `${homeLabel} WON${ownerSuffix}`;
-        const oppHeading = `${awayLabel} WON${ownerSuffix}`;
 
         return (
           <div key={family.id} style={S.card}>
@@ -69,10 +60,8 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
               )}
             </div>
 
-            {/* FOR row heading — Turnover / Restart only */}
-            {showTeamHeadings && <span style={S.rowHeading}>{forHeading}</span>}
-
-            {/* FOR tile row */}
+            {/* FOR tile row — unchanged; the filled family colour already
+                reads as "this team" without needing a label. */}
             <div style={S.tileRow}>
               {family.tiles.map((tile) => {
                 const label = getTileLabel(tile, sport);
@@ -88,12 +77,14 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
               })}
             </div>
 
-            {/* OPP minus row */}
+            {/* OPP minus row — a compact team-name label sits on its own thin
+                line directly above the row (not inline with the tiles, so it
+                never competes with them for width and can't force a wrap). It
+                is grouped with its row in one flex child so it doesn't cost an
+                extra card-level gap. */}
             {family.hasMinus && (
-              <>
-                {showTeamHeadings && (
-                  <span style={{ ...S.rowHeading, ...S.rowHeadingOpp }}>{oppHeading}</span>
-                )}
+              <div style={S.oppGroup}>
+                <span style={S.oppTeamLabel} title={awayShortLabel}>{awayShortLabel}</span>
                 <div style={S.tileRow}>
                   {family.tiles.map((tile) => {
                     const label = getTileLabel(tile, sport);
@@ -117,7 +108,7 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
                     );
                   })}
                 </div>
-              </>
+              </div>
             )}
           </div>
         );
@@ -188,25 +179,32 @@ const S: Record<string, CSSProperties> = {
     color: "#c084fc",
     background: "rgba(147,51,234,0.12)",
   },
-  // Team-winner row headings (Turnover / Restart only) — supplements the
-  // colour + minus-sign distinction, doesn't replace it.
-  rowHeading: {
-    fontSize: 10,
-    fontWeight: 800,
-    letterSpacing: "0.04em",
-    textTransform: "uppercase" as const,
-    color: "#c9d1d9",
-    lineHeight: "1.25",
-    wordBreak: "break-word" as const,
-    overflowWrap: "break-word" as const,
-    margin: "1px 0 0",
+  // Opposition row group — a one-line team-name label plus its tile row,
+  // bundled as a single flex child of `card` so the label doesn't consume an
+  // extra card-level gap slot. The label sits on its own line (full row
+  // width available to it) instead of competing with the tiles for space,
+  // which is what caused wrapping when tried inline. Supplements the
+  // colour/minus-sign distinction on the row below it, doesn't replace it.
+  oppGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 1,
   },
-  rowHeadingOpp: {
+  oppTeamLabel: {
+    fontSize: 9,
+    fontWeight: 800,
+    letterSpacing: "0.03em",
+    textTransform: "uppercase" as const,
     color: "#f87171",
+    lineHeight: "1",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
   },
   tileRow: {
     display: "flex",
     flexWrap: "wrap" as const,
+    alignItems: "center",
     gap: 4,
   },
   tile: {
