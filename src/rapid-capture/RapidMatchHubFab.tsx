@@ -25,7 +25,24 @@ export type MatchHubMenuSection = {
   items: MatchHubMenuItem[];
 };
 
-export function RapidMatchHubFab({ sections }: { sections: MatchHubMenuSection[] }) {
+/**
+ * Inset from the viewport's bottom-right corner, in px (safe-area-inset-
+ * bottom is added on top of `bottom` automatically). A plain fixed default
+ * for now — kept as a typed prop, not a hardcoded style, so a future PR can
+ * make this stateful (drag-to-reposition) without touching how the FAB
+ * renders.
+ */
+export type MatchHubFabPosition = { right: number; bottom: number };
+
+export const DEFAULT_FAB_POSITION: MatchHubFabPosition = { right: 14, bottom: 14 };
+
+export function RapidMatchHubFab({
+  sections,
+  position = DEFAULT_FAB_POSITION,
+}: {
+  sections: MatchHubMenuSection[];
+  position?: MatchHubFabPosition;
+}) {
   const [open, setOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingFileHandlerRef = useRef<((file: File) => void) | null>(null);
@@ -52,6 +69,11 @@ export function RapidMatchHubFab({ sections }: { sections: MatchHubMenuSection[]
     pendingFileHandlerRef.current = null;
   }
 
+  // env(safe-area-inset-bottom) keeps the FAB clear of device home-indicator
+  // / gesture-nav areas; `position.bottom` is the extra margin above that.
+  const fabBottom = `calc(${position.bottom}px + env(safe-area-inset-bottom, 0px))`;
+  const panelBottom = `calc(${position.bottom + 60}px + env(safe-area-inset-bottom, 0px))`;
+
   return (
     <>
       <input
@@ -68,7 +90,11 @@ export function RapidMatchHubFab({ sections }: { sections: MatchHubMenuSection[]
       )}
 
       {open && (
-        <div style={S.panel} role="menu" aria-label="Match Hub">
+        <div
+          style={{ ...S.panel, right: position.right, bottom: panelBottom }}
+          role="menu"
+          aria-label="Match Hub"
+        >
           {sections.map((section) => (
             <div key={section.id} style={S.section}>
               <span style={S.sectionLabel}>{section.label}</span>
@@ -91,7 +117,12 @@ export function RapidMatchHubFab({ sections }: { sections: MatchHubMenuSection[]
 
       <button
         onClick={() => setOpen((v) => !v)}
-        style={{ ...S.fab, ...(open ? S.fabOpen : {}) }}
+        style={{
+          ...S.fab,
+          ...(open ? S.fabOpen : {}),
+          right: position.right,
+          bottom: fabBottom,
+        }}
         aria-label="Match Hub"
         aria-expanded={open}
       >
@@ -111,9 +142,7 @@ const S: Record<string, CSSProperties> = {
     pointerEvents: "none",
   },
   fab: {
-    position: "absolute",
-    right: 14,
-    bottom: 14,
+    position: "fixed",
     width: 52,
     height: 52,
     borderRadius: "50%",
@@ -135,15 +164,13 @@ const S: Record<string, CSSProperties> = {
     color: "#0d1117",
   },
   backdrop: {
-    position: "absolute",
+    position: "fixed",
     inset: 0,
     background: "rgba(0,0,0,0.35)",
     zIndex: 25,
   },
   panel: {
-    position: "absolute",
-    right: 14,
-    bottom: 74,
+    position: "fixed",
     width: 250,
     maxHeight: "min(70%, 480px)",
     overflowY: "auto",

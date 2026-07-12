@@ -8,16 +8,23 @@ const DEFAULT_JERSEY_NUMBERS: RapidSquadPlayer[] = Array.from({ length: 20 }, (_
 // otherwise falls back to a plain 1-20 jersey grid with no names.
 export function RapidPlayerBar({
   squad,
+  teamColour,
   onSelect,
 }: {
   squad: readonly RapidSquadPlayer[] | undefined;
+  teamColour: string;
   onSelect: (player: RapidSquadPlayer) => void;
 }) {
   const players = squad && squad.length > 0 ? squad : DEFAULT_JERSEY_NUMBERS;
   return (
     <div style={S.bar}>
       {players.map((p) => (
-        <button key={p.id ?? p.number} onClick={() => onSelect(p)} style={S.btn} title={p.name}>
+        <button
+          key={p.id ?? p.number}
+          onClick={() => onSelect(p)}
+          style={{ ...S.btn, borderColor: teamColour }}
+          title={p.name}
+        >
           {p.number}
         </button>
       ))}

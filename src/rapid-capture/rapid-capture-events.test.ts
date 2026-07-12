@@ -9,8 +9,10 @@ import {
   detailOptionsForKind,
   formatScoreLine,
   isEnrichmentTargetVisible,
+  isKindAllowedForTeamSide,
   isPlayerRecognitionEligible,
   nextTeamSideAfterEvent,
+  resolveTeamColour,
   startEnrichment,
   type RapidMatchEvent,
 } from "./rapid-capture-events";
@@ -288,5 +290,82 @@ describe("live scoreboard", () => {
   it("is a pure function — same input always yields the same output, no hidden state", () => {
     const events = [score("POINT", "FOR"), score("GOAL", "OPP")];
     expect(computeRapidScoreboard(events)).toEqual(computeRapidScoreboard(events));
+  });
+});
+
+describe("one incident, one event — OPP-side turnover/free capture disabled", () => {
+  it("disallows Turn+/Turn-/Free+/Free- under OPP (downstream inversion already covers this)", () => {
+    expect(isKindAllowedForTeamSide("TURNOVER_WON", "OPP")).toBe(false);
+    expect(isKindAllowedForTeamSide("TURNOVER_LOST", "OPP")).toBe(false);
+    expect(isKindAllowedForTeamSide("FREE_WON", "OPP")).toBe(false);
+    expect(isKindAllowedForTeamSide("FREE_CONCEDED", "OPP")).toBe(false);
+  });
+
+  it("allows Turn+/Turn-/Free+/Free- under FOR", () => {
+    expect(isKindAllowedForTeamSide("TURNOVER_WON", "FOR")).toBe(true);
+    expect(isKindAllowedForTeamSide("TURNOVER_LOST", "FOR")).toBe(true);
+    expect(isKindAllowedForTeamSide("FREE_WON", "FOR")).toBe(true);
+    expect(isKindAllowedForTeamSide("FREE_CONCEDED", "FOR")).toBe(true);
+  });
+
+  it("still allows scores and wides under both FOR and OPP", () => {
+    for (const kind of ["SHOT", "POINT", "GOAL", "TWO_POINTER", "WIDE"] as const) {
+      expect(isKindAllowedForTeamSide(kind, "FOR")).toBe(true);
+      expect(isKindAllowedForTeamSide(kind, "OPP")).toBe(true);
+    }
+  });
+
+  it("still allows kickout/puckout ownership under both FOR and OPP — restart ownership is a distinct fact", () => {
+    for (const kind of ["KICKOUT_WON", "KICKOUT_CONCEDED"] as const) {
+      expect(isKindAllowedForTeamSide(kind, "FOR")).toBe(true);
+      expect(isKindAllowedForTeamSide(kind, "OPP")).toBe(true);
+    }
+  });
+
+  it("does not alter stored event semantics — a captured OPP-side turnover event, if built directly, keeps its normal shape", () => {
+    // The restriction lives in the UI/tap-handler layer, not in buildCapturedEvent
+    // or the storage schema. This proves the event model itself is untouched.
+    const event = buildCapturedEvent({
+      kind: "TURNOVER_WON",
+      nx: 0.5,
+      ny: 0.5,
+      half: 1,
+      timestamp: 30,
+      teamSide: "OPP",
+    });
+    expect(event.kind).toBe("TURNOVER_WON");
+    expect(event.teamSide).toBe("OPP");
+  });
+
+  it("does not break existing saved matches — legacy OPP-side turnover/free events still parse via the storage layer", async () => {
+    const { parseRapidEvent } = await import("./rapid-capture-storage");
+    const legacyEvent = buildCapturedEvent({
+      kind: "FREE_WON",
+      nx: 0.4,
+      ny: 0.6,
+      half: 2,
+      timestamp: 500,
+      teamSide: "OPP",
+    });
+    const parsed = parseRapidEvent(legacyEvent);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.kind).toBe("FREE_WON");
+    expect(parsed?.teamSide).toBe("OPP");
+  });
+});
+
+describe("team-coloured player recognition", () => {
+  const colours = { forTeamColour: "#1f6feb", oppTeamColour: "#b91c1c" };
+
+  it("resolves the FOR colour for a FOR-side event", () => {
+    expect(resolveTeamColour("FOR", colours)).toBe("#1f6feb");
+  });
+
+  it("resolves the OPP colour for an OPP-side event", () => {
+    expect(resolveTeamColour("OPP", colours)).toBe("#b91c1c");
+  });
+
+  it("defaults to the FOR colour when teamSide is undefined", () => {
+    expect(resolveTeamColour(undefined, colours)).toBe("#1f6feb");
   });
 });

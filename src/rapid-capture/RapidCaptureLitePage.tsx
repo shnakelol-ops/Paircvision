@@ -36,7 +36,9 @@ import {
   detailOptionsForKind,
   formatScoreLine,
   isEnrichmentTargetVisible,
+  isKindAllowedForTeamSide,
   nextTeamSideAfterEvent,
+  resolveTeamColour,
   startEnrichment,
   type EnrichmentState,
   type RapidMatchEvent,
@@ -511,6 +513,11 @@ function RapidLiveScreen({
       onPitchTap: (nx, ny) => {
         const kind = armedKindRef.current;
         if (!kind) return;
+        // One incident, one event: turnovers/frees are only ever logged from
+        // FOR's perspective — downstream intelligence derives the OPP-benefit
+        // side by inversion. The UI already prevents arming these under OPP;
+        // this is the authoritative guard regardless of UI state timing.
+        if (!isKindAllowedForTeamSide(kind, teamSideRef.current)) return;
 
         const ts = clockSecondsRef.current;
 
@@ -563,6 +570,13 @@ function RapidLiveScreen({
   const handleTeamSideChange = useCallback((side: "FOR" | "OPP") => {
     teamSideRef.current = side;
     setTeamSide(side);
+    // Switching to OPP can make the currently-armed kind unavailable
+    // (Turn+/Turn−/Free+/Free−) — disarm rather than leave a stale armed
+    // state the coach can no longer see feedback for.
+    if (armedKindRef.current && !isKindAllowedForTeamSide(armedKindRef.current, side)) {
+      armedKindRef.current = null;
+      setArmedKind(null);
+    }
   }, []);
 
   const toggleClock = useCallback(() => {
@@ -667,6 +681,10 @@ function RapidLiveScreen({
         )
       : [];
   const enrichmentSquad = enrichmentEvent?.teamSide === "OPP" ? session.oppSquad : session.forSquad;
+  // Colour follows the event's actual teamSide, not the live toggle — the
+  // toggle may have already moved on (e.g. the KICKOUT_CONCEDED auto-reset)
+  // by the time the player bar renders.
+  const enrichmentTeamColour = resolveTeamColour(enrichmentEvent?.teamSide as "FOR" | "OPP" | undefined, session);
 
   const sections: MatchHubMenuSection[] = [
     {
@@ -732,7 +750,6 @@ function RapidLiveScreen({
       {/* ── Pitch ──────────────────────────────── */}
       <div style={S.pitchWrap}>
         <div ref={pitchHostRef} style={S.pitchHost} />
-        <RapidMatchHubFab sections={sections} />
       </div>
 
       {/* ── Live scoreboard (above the timer) ───── */}
@@ -792,6 +809,7 @@ function RapidLiveScreen({
       {showEnrichmentBar && enrichment!.stage === "player" && (
         <RapidPlayerBar
           squad={enrichmentSquad}
+          teamColour={enrichmentTeamColour}
           onSelect={(player) => applyPlayerChoice(enrichment!.eventId, player)}
         />
       )}
@@ -802,14 +820,23 @@ function RapidLiveScreen({
           const label =
             item.puckoutLabel && isPuckout ? item.puckoutLabel : item.label;
           const isArmed = armedKind === item.kind;
+          // Turn+/Turn−/Free+/Free− are one-sided by design — see
+          // isKindAllowedForTeamSide. Kept in place (not removed) so the
+          // grid layout stays spatially consistent between FOR and OPP.
+          const isDisabledForTeamSide = !isKindAllowedForTeamSide(item.kind, teamSide);
           return (
             <button
               key={item.kind}
+              disabled={isDisabledForTeamSide}
               onClick={() => {
                 setEnrichment(null);
                 setArmedKind(isArmed ? null : item.kind);
               }}
-              style={{ ...S.rapidBtn, ...(isArmed ? S.rapidBtnArmed : {}) }}
+              style={{
+                ...S.rapidBtn,
+                ...(isArmed ? S.rapidBtnArmed : {}),
+                ...(isDisabledForTeamSide ? S.rapidBtnDisabled : {}),
+              }}
             >
               {label}
             </button>
@@ -843,6 +870,10 @@ function RapidLiveScreen({
           </span>
         )}
       </div>
+
+      {/* Fixed to the viewport, not the pitch — never covers pitch markers,
+          the scoreboard, detail/player bars, or the tagging grid. */}
+      <RapidMatchHubFab sections={sections} />
     </div>
   );
 }
@@ -1184,9 +1215,10 @@ const S: Record<string, CSSProperties> = {
   },
 
   // ── Live: Pitch ──────────────────────────────────────────────────────────
-  // pitchWrap owns the flex sizing and is the Match Hub FAB's anchor;
-  // pitchHost fills it exactly and stays a Pixi-only DOM node (no React
-  // children rendered into it — Pixi appends its canvas here directly).
+  // pitchWrap owns the flex sizing; pitchHost fills it exactly and stays a
+  // Pixi-only DOM node (no React children rendered into it — Pixi appends
+  // its canvas here directly). The Match Hub FAB is no longer anchored here
+  // — it's position:fixed to the viewport (see RapidMatchHubFab.tsx).
   pitchWrap: {
     flex: 1,
     minHeight: 0,
@@ -1322,6 +1354,10 @@ const S: Record<string, CSSProperties> = {
     background: "#f0883e",
     borderColor: "#f0883e",
     color: "#0d1117",
+  },
+  rapidBtnDisabled: {
+    opacity: 0.35,
+    cursor: "default",
   },
 
   // ── Live: Status banner ──────────────────────────────────────────────────

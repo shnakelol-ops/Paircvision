@@ -213,6 +213,39 @@ export function nextTeamSideAfterEvent(kind: MatchEventKind, teamSide: "FOR" | "
   return kind === "KICKOUT_CONCEDED" ? "FOR" : teamSide;
 }
 
+// ─── One incident, one event ─────────────────────────────────────────────────
+// Turnovers and frees are zero-sum between the two teams: TURNOVER_LOST/
+// FREE_CONCEDED logged under FOR's perspective already tell the whole story —
+// downstream intelligence derives the OPP-benefit side by inversion (see the
+// Match Stats parity audit's TACTICAL_INVERT_KINDS). Logging the same
+// incident again from OPP's perspective would double-count it. Kickouts are
+// exempt: ownership of a restart is a distinct fact worth recording from
+// either side directly.
+
+/** Kinds disabled while OPP is the active annotation perspective. */
+export const OPP_DISABLED_KINDS = new Set<MatchEventKind>([
+  "TURNOVER_WON",
+  "TURNOVER_LOST",
+  "FREE_WON",
+  "FREE_CONCEDED",
+]);
+
+export function isKindAllowedForTeamSide(kind: MatchEventKind, teamSide: "FOR" | "OPP"): boolean {
+  return teamSide === "FOR" || !OPP_DISABLED_KINDS.has(kind);
+}
+
+// ─── Team-coloured player chips ──────────────────────────────────────────────
+// Colour is presentation only — resolved from the event's actual teamSide
+// (immutable once captured), never from whatever the live FOR/OPP toggle
+// happens to show by the time the player bar renders.
+
+export function resolveTeamColour(
+  teamSide: "FOR" | "OPP" | undefined,
+  colours: { forTeamColour: string; oppTeamColour: string },
+): string {
+  return teamSide === "OPP" ? colours.oppTeamColour : colours.forTeamColour;
+}
+
 // ─── Enrichment sequencing ──────────────────────────────────────────────────
 // Detail bar first (if the kind has one), then the optional Player
 // Recognition bar, then nothing. Only one bar exists at any moment — starting
