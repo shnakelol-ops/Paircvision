@@ -1,47 +1,33 @@
-import { useState } from "react";
 import type { CSSProperties } from "react";
-import type { RapidMatchEvent } from "./rapid-capture-events";
-
-function fmtClock(totalSeconds: number): string {
-  const m = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
-  const s = (totalSeconds % 60).toString().padStart(2, "0");
-  return `${m}:${s}`;
-}
-
-/** "TURNOVER_WON" -> "Turnover Won" — display-only, never touches the stored kind. */
-function humanizeKind(kind: string): string {
-  return kind
-    .toLowerCase()
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
 
 // Shown in place of the tagging grid at HALF_TIME and FULL_TIME — tagging is
 // locked in both, so the same panel serves both checkpoints, distinguished
 // only by which primary action and heading it offers. The pitch and
 // scoreboard above this panel stay visible throughout (never covered).
+//
+// "Review" opens the full shared Review screen (RapidReviewScreen) — Event
+// Map, filters, marker inspect/edit/delete, and report exports — rather than
+// a lightweight inline list, so the coach gets the same review experience
+// reachable from the Match Hub or Saved Matches.
 export function RapidHalfBreakPanel({
   matchState,
   forLabel,
   oppLabel,
   scoreLine,
-  events,
   onStartSecondHalf,
   onDone,
+  onOpenReview,
   onOpenActions,
 }: {
   matchState: "HALF_TIME" | "FULL_TIME";
   forLabel: string;
   oppLabel: string;
   scoreLine: string;
-  events: readonly RapidMatchEvent[];
   onStartSecondHalf?: () => void;
   onDone?: () => void;
+  onOpenReview: () => void;
   onOpenActions: () => void;
 }) {
-  const [reviewOpen, setReviewOpen] = useState(false);
-
   return (
     <div style={S.panel}>
       <span style={S.heading}>{matchState === "HALF_TIME" ? "Half Time" : "Full Time"}</span>
@@ -49,45 +35,24 @@ export function RapidHalfBreakPanel({
         {forLabel} {scoreLine} {oppLabel}
       </span>
 
-      {reviewOpen ? (
-        <>
-          <div style={S.reviewList}>
-            {events.length === 0 ? (
-              <span style={S.reviewEmpty}>No events logged yet.</span>
-            ) : (
-              events.map((e) => (
-                <div key={e.id} style={S.reviewRow}>
-                  <span style={S.reviewClock}>{fmtClock(e.matchClockSeconds ?? e.timestamp ?? 0)}</span>
-                  <span style={S.reviewTeam}>{e.teamSide === "OPP" ? oppLabel : forLabel}</span>
-                  <span style={S.reviewKind}>{humanizeKind(e.kind)}</span>
-                </div>
-              ))
-            )}
-          </div>
-          <button onClick={() => setReviewOpen(false)} style={S.backBtn}>
-            ← Back
+      <div style={S.actionsRow}>
+        {onStartSecondHalf && (
+          <button onClick={onStartSecondHalf} style={S.primaryBtn}>
+            Start Second Half
           </button>
-        </>
-      ) : (
-        <div style={S.actionsRow}>
-          {onStartSecondHalf && (
-            <button onClick={onStartSecondHalf} style={S.primaryBtn}>
-              Start Second Half
-            </button>
-          )}
-          {onDone && (
-            <button onClick={onDone} style={S.primaryBtn}>
-              Done
-            </button>
-          )}
-          <button onClick={() => setReviewOpen(true)} style={S.secondaryBtn}>
-            Review
+        )}
+        {onDone && (
+          <button onClick={onDone} style={S.primaryBtn}>
+            Done
           </button>
-          <button onClick={onOpenActions} style={S.secondaryBtn}>
-            Actions
-          </button>
-        </div>
-      )}
+        )}
+        <button onClick={onOpenReview} style={S.secondaryBtn}>
+          Review
+        </button>
+        <button onClick={onOpenActions} style={S.secondaryBtn}>
+          Actions
+        </button>
+      </div>
     </div>
   );
 }
@@ -145,56 +110,6 @@ const S: Record<string, CSSProperties> = {
     fontSize: 14,
     fontWeight: 600,
     padding: "14px 10px",
-    cursor: "pointer",
-    outline: "none",
-  },
-  reviewList: {
-    width: "100%",
-    maxHeight: 160,
-    overflowY: "auto",
-    display: "flex",
-    flexDirection: "column",
-    gap: 4,
-  },
-  reviewRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    fontSize: 12,
-    padding: "4px 8px",
-    background: "#0d1117",
-    borderRadius: 6,
-  },
-  reviewClock: {
-    fontVariantNumeric: "tabular-nums",
-    color: "#8b949e",
-    minWidth: 40,
-  },
-  reviewTeam: {
-    fontWeight: 700,
-    color: "#e6edf3",
-    minWidth: 70,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  reviewKind: {
-    color: "#8b949e",
-    flex: 1,
-  },
-  reviewEmpty: {
-    fontSize: 12,
-    color: "#6e7681",
-    padding: "8px 0",
-  },
-  backBtn: {
-    background: "transparent",
-    border: "1px solid #30363d",
-    borderRadius: 8,
-    color: "#8b949e",
-    fontSize: 13,
-    fontWeight: 600,
-    padding: "8px 14px",
     cursor: "pointer",
     outline: "none",
   },
