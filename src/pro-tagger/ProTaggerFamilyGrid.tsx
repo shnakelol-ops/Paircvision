@@ -102,7 +102,6 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
                         onClick={() => onTileTap(family.id, label, "OPP", isRestart ? restartOwner : undefined)}
                         aria-label={`Opposition ${familyLabel} ${label}`}
                       >
-                        <span style={S.minusSign}>−</span>
                         {displayLabel}
                       </button>
                     );
@@ -232,15 +231,6 @@ const S: Record<string, CSSProperties> = {
     outline: "none",
     whiteSpace: "nowrap" as const,
     WebkitTapHighlightColor: "transparent",
-    display: "flex",
-    alignItems: "center",
-    gap: 2,
     flexShrink: 0,
-  },
-  minusSign: {
-    color: "#f87171",
-    fontWeight: 700,
-    fontSize: 13,
-    lineHeight: "1",
   },
 };
