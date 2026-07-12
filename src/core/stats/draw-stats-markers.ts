@@ -24,8 +24,18 @@ function rgbToPixiColor(r: number, g: number, b: number): number {
   return (clampByte(r) << 16) | (clampByte(g) << 8) | clampByte(b);
 }
 
-function parseCssColorForPixi(css: string): ParsedCssColor {
+export function parseCssColorForPixi(css: string): ParsedCssColor {
   const s = css.trim();
+  // Hex (#rgb / #rrggbb) — needed for team colours (RapidSession.forTeamColour/
+  // oppTeamColour are stored as hex), which getStatsMarkerStyle never produces.
+  if (s.startsWith("#")) {
+    const hex = s.slice(1);
+    const full = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex;
+    const num = parseInt(full, 16);
+    if (full.length === 6 && Number.isFinite(num)) {
+      return { color: num, alpha: 1 };
+    }
+  }
   const m = s.match(/^rgba?\(\s*(.+?)\s*\)$/i);
   if (!m) return { color: 0xffffff, alpha: 1 };
 
@@ -98,6 +108,14 @@ export function drawStatsMarkers(
     maxScreenRadiusPx?: number;
     showPlayerLabels?: boolean;
     onMarkerTap?: (eventId: string) => void;
+    /**
+     * When provided, marker fill follows the event's team side instead of its
+     * kind — used by Rapid Capture's shared Event Map. Shape, radius, glow and
+     * tap area stay kind-based; only fill/stroke colour changes. Omitted by
+     * every other caller (Match Stats, Event Stats), so their rendering is
+     * completely unaffected.
+     */
+    teamColours?: { FOR: string; OPP: string };
   },
 ): void {
   g.clear();
@@ -113,6 +131,7 @@ export function drawStatsMarkers(
   const maxWorldRadius = maxPx / worldToScreenScale;
   const showPlayerLabels = opts?.showPlayerLabels ?? true;
   const onMarkerTap = opts?.onMarkerTap;
+  const teamColours = opts?.teamColours;
 
   for (const event of events) {
     const worldPoint = boardNormToWorld(event.nx, event.ny);
@@ -150,7 +169,8 @@ export function drawStatsMarkers(
     const isScoring = SCORING_KINDS.has(event.kind);
     const styleRadius = isTwoPointer ? style.radius * 1.06 : style.radius;
     const radius = Math.min(Math.max(styleRadius, minWorldRadius), maxWorldRadius);
-    const fill = parseCssColorForPixi(style.fill);
+    const fillCss = teamColours ? (event.teamSide === "OPP" ? teamColours.OPP : teamColours.FOR) : style.fill;
+    const fill = parseCssColorForPixi(fillCss);
 
     const markerContainer = new Container();
     markerContainer.position.set(worldPoint.x, worldPoint.y);

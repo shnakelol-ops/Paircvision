@@ -151,13 +151,18 @@ const S: Record<string, CSSProperties> = {
     opacity: 0,
     pointerEvents: "none",
   },
+  // Split border (not shorthand) — fabOpen overrides borderColor every time
+  // the FAB toggles open/closed; mixing shorthand/non-shorthand for the same
+  // property trips a React styling warning across rerenders.
   fab: {
     position: "fixed",
     width: 52,
     height: 52,
     borderRadius: "50%",
     background: "#161b22",
-    border: "1.5px solid #30363d",
+    borderWidth: 1.5,
+    borderStyle: "solid",
+    borderColor: "#30363d",
     color: "#e6edf3",
     fontSize: 20,
     display: "flex",
