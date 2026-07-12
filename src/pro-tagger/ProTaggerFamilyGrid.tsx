@@ -4,24 +4,36 @@ import {
   getFamiliesForSport,
   getTileLabel,
   getFamilyLabel,
+  getRestartOwnerLabel,
+  tileNeedsOppositionAttribution,
 } from "./pro-tagger-families";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
 import type { ProTaggerSport } from "./pro-tagger-session";
+import { getShortTeamName } from "./pro-tagger-team-labels";
 
 interface Props {
   sport: ProTaggerSport;
+  homeTeamName: string;
+  awayTeamName: string;
   onTileTap: (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP", restartOwner?: "FOR" | "OPP") => void;
 }
 
-export function ProTaggerFamilyGrid({ sport, onTileTap }: Props) {
+export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileTap }: Props) {
   const families = getFamiliesForSport(sport);
   const [restartOwner, setRestartOwner] = useState<"FOR" | "OPP">("FOR");
+
+  // Short team names for the opposition-row label and the Turnover
+  // opponent-error attribution. Falls back to "Home"/"Away" for a blank name.
+  const homeShortLabel = getShortTeamName(homeTeamName, "Home");
+  const awayShortLabel = getShortTeamName(awayTeamName, "Away");
 
   return (
     <div style={S.scroll}>
       {families.map((family) => {
         const familyLabel = getFamilyLabel(family, sport);
         const isRestart = family.id === "RESTART";
+        const isTurnover = family.id === "TURNOVER";
+
         return (
           <div key={family.id} style={S.card}>
             {/* Family header */}
@@ -36,19 +48,20 @@ export function ProTaggerFamilyGrid({ sport, onTileTap }: Props) {
                     style={{ ...S.ownerBtn, ...(restartOwner === "FOR" ? S.ownerBtnActive : {}) }}
                     onClick={() => setRestartOwner("FOR")}
                   >
-                    OUR K/O
+                    {getRestartOwnerLabel(sport, "FOR")}
                   </button>
                   <button
                     style={{ ...S.ownerBtn, ...(restartOwner === "OPP" ? S.ownerBtnActive : {}) }}
                     onClick={() => setRestartOwner("OPP")}
                   >
-                    THEIR K/O
+                    {getRestartOwnerLabel(sport, "OPP")}
                   </button>
                 </div>
               )}
             </div>
 
-            {/* FOR tile row */}
+            {/* FOR tile row — unchanged; the filled family colour already
+                reads as "this team" without needing a label. */}
             <div style={S.tileRow}>
               {family.tiles.map((tile) => {
                 const label = getTileLabel(tile, sport);
@@ -64,23 +77,36 @@ export function ProTaggerFamilyGrid({ sport, onTileTap }: Props) {
               })}
             </div>
 
-            {/* OPP minus row */}
+            {/* OPP minus row — a compact team-name label sits on its own thin
+                line directly above the row (not inline with the tiles, so it
+                never competes with them for width and can't force a wrap). It
+                is grouped with its row in one flex child so it doesn't cost an
+                extra card-level gap. */}
             {family.hasMinus && (
-              <div style={S.tileRow}>
-                {family.tiles.map((tile) => {
-                  const label = getTileLabel(tile, sport);
-                  return (
-                    <button
-                      key={label}
-                      style={S.minusTile}
-                      onClick={() => onTileTap(family.id, label, "OPP", isRestart ? restartOwner : undefined)}
-                      aria-label={`Opposition ${familyLabel} ${label}`}
-                    >
-                      <span style={S.minusSign}>−</span>
-                      {label}
-                    </button>
-                  );
-                })}
+              <div style={S.oppGroup}>
+                <span style={S.oppTeamLabel} title={awayShortLabel}>{awayShortLabel}</span>
+                <div style={S.tileRow}>
+                  {family.tiles.map((tile) => {
+                    const label = getTileLabel(tile, sport);
+                    // Display-only: name the team whose mistake this was on the
+                    // opposition row. The tap always sends the original `label` —
+                    // the stored tile value/tag is never affected.
+                    const displayLabel =
+                      isTurnover && tileNeedsOppositionAttribution(family.id, label, sport)
+                        ? `${homeShortLabel} ${label}`
+                        : label;
+                    return (
+                      <button
+                        key={label}
+                        style={S.minusTile}
+                        onClick={() => onTileTap(family.id, label, "OPP", isRestart ? restartOwner : undefined)}
+                        aria-label={`Opposition ${familyLabel} ${label}`}
+                      >
+                        {displayLabel}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -152,9 +178,32 @@ const S: Record<string, CSSProperties> = {
     color: "#c084fc",
     background: "rgba(147,51,234,0.12)",
   },
+  // Opposition row group — a one-line team-name label plus its tile row,
+  // bundled as a single flex child of `card` so the label doesn't consume an
+  // extra card-level gap slot. The label sits on its own line (full row
+  // width available to it) instead of competing with the tiles for space,
+  // which is what caused wrapping when tried inline. Supplements the
+  // colour/minus-sign distinction on the row below it, doesn't replace it.
+  oppGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 1,
+  },
+  oppTeamLabel: {
+    fontSize: 9,
+    fontWeight: 800,
+    letterSpacing: "0.03em",
+    textTransform: "uppercase" as const,
+    color: "#f87171",
+    lineHeight: "1",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  },
   tileRow: {
     display: "flex",
     flexWrap: "wrap" as const,
+    alignItems: "center",
     gap: 4,
   },
   tile: {
@@ -182,15 +231,6 @@ const S: Record<string, CSSProperties> = {
     outline: "none",
     whiteSpace: "nowrap" as const,
     WebkitTapHighlightColor: "transparent",
-    display: "flex",
-    alignItems: "center",
-    gap: 2,
     flexShrink: 0,
-  },
-  minusSign: {
-    color: "#f87171",
-    fontWeight: 700,
-    fontSize: 13,
-    lineHeight: "1",
   },
 };

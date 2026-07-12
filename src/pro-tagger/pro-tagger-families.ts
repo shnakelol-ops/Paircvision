@@ -14,6 +14,14 @@ export type ProTaggerTile = {
   label: string;
   altLabel?: string;
   altForSports?: readonly ProTaggerSport[];
+  /**
+   * Display-only. On the opposition (minus) row, this tile represents a
+   * mistake made by the *other* team (not the row's own team) — e.g. an
+   * opposition-row "HP Error" only makes sense once you know whose handpass
+   * error it was. When true, the rendered label is prefixed with the other
+   * team's short name. Does not change the stored tile value/tag.
+   */
+  attributeOtherTeamOnOppositionRow?: boolean;
 };
 
 export type ProTaggerFamily = {
@@ -127,9 +135,9 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
     textColour: "#ffffff",
     tiles: [
       { label: "Tackle" },
-      { label: "HP Error" },
-      { label: "KP Error" },
-      { label: "Overcarried" },
+      { label: "HP Error", attributeOtherTeamOnOppositionRow: true },
+      { label: "KP Error", attributeOtherTeamOnOppositionRow: true },
+      { label: "Overcarried", attributeOtherTeamOnOppositionRow: true },
     ],
     hasMinus: true,
   },
@@ -158,4 +166,44 @@ export function getTileLabel(tile: ProTaggerTile, sport: ProTaggerSport): string
 export function getFamilyLabel(family: ProTaggerFamily, sport: ProTaggerSport): string {
   if (family.altLabel && family.altLabelForSports?.includes(sport)) return family.altLabel;
   return family.label;
+}
+
+// ── Restart (kickout/puckout) terminology ────────────────────────────────────
+
+function isHurlingOrCamogie(sport: ProTaggerSport): boolean {
+  return sport === "hurling" || sport === "camogie";
+}
+
+/** Full word for the RESTART family, sport-aware: "Kickout" / "Puckout". */
+export function getRestartTerm(sport: ProTaggerSport): "Kickout" | "Puckout" {
+  return isHurlingOrCamogie(sport) ? "Puckout" : "Kickout";
+}
+
+/** Short form for the RESTART family, sport-aware: "K/O" / "P/O". */
+export function getRestartAbbreviation(sport: ProTaggerSport): "K/O" | "P/O" {
+  return isHurlingOrCamogie(sport) ? "P/O" : "K/O";
+}
+
+/** "OUR K/O" / "THEIR K/O" (or P/O for hurling/camogie) — used by both the
+ *  restart-owner toggle and the team-winner row headings, so the two never
+ *  disagree on wording. */
+export function getRestartOwnerLabel(sport: ProTaggerSport, owner: "FOR" | "OPP"): string {
+  const abbrev = getRestartAbbreviation(sport);
+  return owner === "FOR" ? `OUR ${abbrev}` : `THEIR ${abbrev}`;
+}
+
+/**
+ * Display-only lookup: does this tile, when shown on the opposition (minus)
+ * row, need its label prefixed with the *other* team's name to stay
+ * unambiguous? Looked up by resolved tile label so callers never have to
+ * duplicate the family/tile data. Never affects the stored tile value.
+ */
+export function tileNeedsOppositionAttribution(
+  familyId: ProTaggerFamilyId,
+  tileLabel: string,
+  sport: ProTaggerSport,
+): boolean {
+  const family = PRO_TAGGER_FAMILIES.find((f) => f.id === familyId);
+  const tile = family?.tiles.find((t) => getTileLabel(t, sport) === tileLabel);
+  return tile?.attributeOtherTeamOnOppositionRow === true;
 }
