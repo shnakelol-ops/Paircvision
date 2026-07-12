@@ -5,7 +5,8 @@
 // Reuses the shared MatchEvent/MATCH_EVENT_KINDS contract so events round-trip
 // through the same shape the rest of the app already understands.
 
-import { MATCH_EVENT_KINDS, type MatchEvent, type MatchEventKind } from "../core/stats/stats-event-model";
+import { MATCH_EVENT_KINDS, type MatchEventKind } from "../core/stats/stats-event-model";
+import type { RapidMatchEvent, RapidSquadPlayer } from "./rapid-capture-events";
 import type { AttackDirection, MatchType, RapidSession, Sport } from "./rapid-session";
 
 export const RAPID_CAPTURE_SCHEMA_VERSION = 1;
@@ -24,7 +25,7 @@ export type RapidSavedMatch = {
   updatedAt: number;
   status: RapidMatchStatus;
   session: RapidSession;
-  events: MatchEvent[];
+  events: RapidMatchEvent[];
   half: 1 | 2;
   clockSeconds: number;
 };
@@ -76,6 +77,23 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+/** Lenient — an invalid squad array is simply dropped, never treated as a corruption of the whole record. */
+function parseRapidSquad(value: unknown): RapidSquadPlayer[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const players: RapidSquadPlayer[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+    const source = entry as Record<string, unknown>;
+    if (!isFiniteNumber(source.number)) continue;
+    players.push({
+      number: source.number,
+      ...(typeof source.name === "string" && source.name.length > 0 ? { name: source.name } : {}),
+      ...(typeof source.id === "string" && source.id.length > 0 ? { id: source.id } : {}),
+    });
+  }
+  return players.length > 0 ? players : undefined;
+}
+
 export function parseRapidSession(value: unknown): RapidSession | null {
   if (!value || typeof value !== "object") return null;
   const source = value as Record<string, unknown>;
@@ -88,6 +106,8 @@ export function parseRapidSession(value: unknown): RapidSession | null {
   if (typeof source.forTeamColour !== "string") return null;
   if (typeof source.oppTeamColour !== "string") return null;
   if (!isFiniteNumber(source.halfDurationMinutes)) return null;
+  const forSquad = parseRapidSquad(source.forSquad);
+  const oppSquad = parseRapidSquad(source.oppSquad);
   return {
     sport: source.sport as Sport,
     forTeamName: source.forTeamName,
@@ -98,10 +118,12 @@ export function parseRapidSession(value: unknown): RapidSession | null {
     oppTeamColour: source.oppTeamColour,
     attackDirection: source.attackDirection as AttackDirection,
     halfDurationMinutes: source.halfDurationMinutes,
+    ...(forSquad ? { forSquad } : {}),
+    ...(oppSquad ? { oppSquad } : {}),
   };
 }
 
-export function parseRapidEvent(value: unknown): MatchEvent | null {
+export function parseRapidEvent(value: unknown): RapidMatchEvent | null {
   if (!value || typeof value !== "object") return null;
   const source = value as Record<string, unknown>;
   if (typeof source.id !== "string" || source.id.length === 0) return null;
@@ -110,8 +132,9 @@ export function parseRapidEvent(value: unknown): MatchEvent | null {
   if (source.half !== 1 && source.half !== 2) return null;
   if (!isFiniteNumber(source.timestamp)) return null;
   // Required fields are structurally sound — pass the record through as-is so
-  // optional fields (tags, teamSide, matchClockSeconds, ...) survive intact.
-  return source as unknown as MatchEvent;
+  // optional fields (tags, teamSide, matchClockSeconds, playerId/Name/Number,
+  // squadId, ...) survive intact.
+  return source as unknown as RapidMatchEvent;
 }
 
 function parseStoredRapidMatch(value: unknown): RapidSavedMatch | null {
@@ -130,7 +153,7 @@ function parseStoredRapidMatch(value: unknown): RapidSavedMatch | null {
 
   const events = source.events
     .map(parseRapidEvent)
-    .filter((event): event is MatchEvent => event != null);
+    .filter((event): event is RapidMatchEvent => event != null);
 
   return {
     schemaVersion: RAPID_CAPTURE_SCHEMA_VERSION,

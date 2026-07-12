@@ -30,8 +30,8 @@ describe("Rapid Capture format", () => {
       exportedAt: new Date().toISOString(),
     });
     const result = parseImportedMatchFile(raw);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.status).toBe("ok");
+    if (result.status === "error") return;
     expect(result.format).toBe("RAPID_CAPTURE");
     expect(result.match.session.forTeamName).toBe("Ballyboden");
     expect(result.match.events.map((e) => e.kind)).toEqual(["KICKOUT_WON", "POINT"]);
@@ -48,8 +48,8 @@ describe("Match Stats format", () => {
     });
     const raw = JSON.stringify(reviewSession);
     const result = parseImportedMatchFile(raw);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.status).toBe("ok");
+    if (result.status === "error") return;
     expect(result.format).toBe("MATCH_STATS");
     expect(result.match.session.forTeamName).toBe("Kilmacud Crokes");
     expect(result.match.session.oppTeamName).toBe("Cuala");
@@ -84,8 +84,8 @@ describe("Event Stats (Pro Tagger) format", () => {
       },
     });
     const result = parseImportedMatchFile(raw);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    expect(result.status).toBe("ok");
+    if (result.status === "error") return;
     expect(result.format).toBe("EVENT_STATS");
     expect(result.match.session.forTeamName).toBe("St Judes");
     // No distinct Rapid Capture sport for ladies football — falls back to gaelic.
@@ -93,17 +93,59 @@ describe("Event Stats (Pro Tagger) format", () => {
     expect(result.match.session.attackDirection).toBe("left");
     expect(result.match.session.halfDurationMinutes).toBe(25);
   });
+
+  it("extracts squad rosters for the Player Recognition bar when present", () => {
+    const raw = JSON.stringify({
+      id: "pro-match-2",
+      createdAt: Date.now(),
+      homeTeamName: "St Judes",
+      awayTeamName: "Ballinteer St Johns",
+      venue: "",
+      sport: "gaelic",
+      matchType: "league",
+      halfDurationMinutes: 30,
+      scorelineSnapshot: "",
+      eventCount: sampleEvents.length,
+      events: sampleEvents,
+      homeSquad: {
+        id: "h",
+        teamSide: "HOME",
+        players: [
+          { id: "p1", number: 3, name: "A. Player", position: "FB" },
+          { id: "p2", number: 9, name: "B. Player", position: "MF" },
+        ],
+      },
+      awaySquad: { id: "a", teamSide: "AWAY", players: [] },
+      homeSquadLiveState: [],
+      awaySquadLiveState: [],
+      restoreContext: {
+        matchState: "FIRST_HALF",
+        currentHalf: 1,
+        matchTimeSeconds: 0,
+        firstHalfAttackingDirection: "right",
+      },
+    });
+    const result = parseImportedMatchFile(raw);
+    expect(result.status).toBe("ok");
+    if (result.status === "error") return;
+    expect(result.match.session.forSquad).toEqual([
+      { id: "p1", number: 3, name: "A. Player" },
+      { id: "p2", number: 9, name: "B. Player" },
+    ]);
+    // An empty players array yields no roster — falls back to default jersey numbers.
+    expect(result.match.session.oppSquad).toBeUndefined();
+  });
 });
 
 describe("rejection", () => {
   it("rejects invalid JSON gracefully", () => {
     const result = parseImportedMatchFile("{not json");
-    expect(result.ok).toBe(false);
+    expect(result.status).toBe("error");
   });
 
   it("rejects an unrecognised shape gracefully", () => {
     const result = parseImportedMatchFile(JSON.stringify({ hello: "world" }));
-    expect(result.ok).toBe(false);
+    expect(result.status).toBe("error");
   });
 
   it("rejects a Rapid Capture file containing a structurally invalid event", () => {
@@ -114,7 +156,7 @@ describe("rejection", () => {
       exportedAt: new Date().toISOString(),
     });
     const result = parseImportedMatchFile(raw);
-    expect(result.ok).toBe(false);
+    expect(result.status).toBe("error");
   });
 });
 

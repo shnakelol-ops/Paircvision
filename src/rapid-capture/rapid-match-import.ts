@@ -11,19 +11,25 @@
 
 import { parseReviewSession } from "../stats/reviewSession";
 import { parseRapidEvent, parseRapidSession } from "./rapid-capture-storage";
-import type { MatchEvent } from "../core/stats/stats-event-model";
+import type { RapidMatchEvent, RapidSquadPlayer } from "./rapid-capture-events";
 import type { AttackDirection, MatchType, RapidSession, Sport } from "./rapid-session";
 
 export type ImportSourceFormat = "RAPID_CAPTURE" | "MATCH_STATS" | "EVENT_STATS";
 
 export type ImportedMatch = {
   session: RapidSession;
-  events: MatchEvent[];
+  events: RapidMatchEvent[];
 };
 
+// Discriminated on `status` (a string literal) rather than a boolean `ok`
+// flag — this project's tsconfig doesn't enable strictNullChecks, and
+// TypeScript's control-flow narrowing for `if (!result.ok)` on a boolean
+// discriminant doesn't reliably narrow the union under those settings
+// (see useAudioRecorder.ts for the same pattern). A string-literal
+// discriminant narrows correctly either way.
 export type ImportResult =
-  | { ok: true; format: ImportSourceFormat; match: ImportedMatch }
-  | { ok: false; reason: string };
+  | { status: "ok"; format: ImportSourceFormat; match: ImportedMatch }
+  | { status: "error"; reason: string };
 
 const DEFAULT_SESSION_DEFAULTS = {
   forTeamColour: "#1f6feb",
@@ -40,15 +46,39 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * validation — for a foreign file we'd rather refuse it outright than load a
  * silently incomplete match onto the pitch.
  */
-function parseImportedEvents(value: unknown): MatchEvent[] | null {
+function parseImportedEvents(value: unknown): RapidMatchEvent[] | null {
   if (!Array.isArray(value)) return null;
-  const events: MatchEvent[] = [];
+  const events: RapidMatchEvent[] = [];
   for (const raw of value) {
     const event = parseRapidEvent(raw);
     if (!event) return null;
     events.push(event);
   }
   return events;
+}
+
+/**
+ * Extracts a squad roster from a Pro Tagger/Event Stats-shaped squad object
+ * ({ players: [{ number, name, id }, ...] }) for the Player Recognition bar.
+ * Lenient — a malformed squad is simply omitted, never a reason to reject
+ * the whole import.
+ */
+function parseSquadRoster(value: unknown): RapidSquadPlayer[] | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const players = (value as Record<string, unknown>).players;
+  if (!Array.isArray(players)) return undefined;
+  const roster: RapidSquadPlayer[] = [];
+  for (const entry of players) {
+    if (!entry || typeof entry !== "object") continue;
+    const source = entry as Record<string, unknown>;
+    if (typeof source.number !== "number" || !Number.isFinite(source.number)) continue;
+    roster.push({
+      number: source.number,
+      ...(typeof source.name === "string" && source.name.length > 0 ? { name: source.name } : {}),
+      ...(typeof source.id === "string" && source.id.length > 0 ? { id: source.id } : {}),
+    });
+  }
+  return roster.length > 0 ? roster : undefined;
 }
 
 // ─── Rapid Capture format ─────────────────────────────────────────────────────
@@ -138,6 +168,9 @@ function parseEventStatsFormat(json: unknown): ImportedMatch | null {
     ? (attackDirRaw as AttackDirection)
     : "right";
 
+  const forSquad = parseSquadRoster(json.homeSquad);
+  const oppSquad = parseSquadRoster(json.awaySquad);
+
   const session: RapidSession = {
     sport,
     forTeamName: json.homeTeamName as string,
@@ -148,6 +181,8 @@ function parseEventStatsFormat(json: unknown): ImportedMatch | null {
     oppTeamColour: DEFAULT_SESSION_DEFAULTS.oppTeamColour,
     attackDirection,
     halfDurationMinutes,
+    ...(forSquad ? { forSquad } : {}),
+    ...(oppSquad ? { oppSquad } : {}),
   };
   return { session, events };
 }
@@ -168,22 +203,22 @@ export function parseImportedMatchFile(raw: string): ImportResult {
   try {
     json = JSON.parse(raw);
   } catch {
-    return { ok: false, reason: "This file is not valid JSON." };
+    return { status: "error", reason: "This file is not valid JSON." };
   }
 
   for (const parser of IMPORT_FORMAT_PARSERS) {
     const match = parser.parse(json);
-    if (match) return { ok: true, format: parser.id, match };
+    if (match) return { status: "ok", format: parser.id, match };
   }
 
   return {
-    ok: false,
+    status: "error",
     reason: "Unrecognised or corrupted match file — expected a Rapid Capture, Match Stats, or Event Stats export.",
   };
 }
 
 /** Derives a sensible resume point (half + clock) from an imported event list. */
-export function deriveHalfAndClockFromEvents(events: readonly MatchEvent[]): {
+export function deriveHalfAndClockFromEvents(events: readonly RapidMatchEvent[]): {
   half: 1 | 2;
   clockSeconds: number;
 } {
