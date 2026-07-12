@@ -66,6 +66,7 @@ function buildMatch(overrides: Partial<RapidSavedMatch> = {}): RapidSavedMatch {
     ],
     half: 1,
     clockSeconds: 40,
+    matchState: "FIRST_HALF",
     ...overrides,
   };
 }
@@ -236,5 +237,56 @@ describe("corrupted storage recovery", () => {
     saveActiveRapidSession(match);
     const resumed = loadActiveRapidSession();
     expect(resumed!.events).toHaveLength(2);
+  });
+});
+
+describe("match-state persistence and restore", () => {
+  it("round-trips matchState through the active-session slot for every live state", () => {
+    (["FIRST_HALF", "HALF_TIME", "SECOND_HALF", "FULL_TIME"] as const).forEach((matchState) => {
+      saveActiveRapidSession(buildMatch({ matchState }));
+      expect(loadActiveRapidSession()!.matchState).toBe(matchState);
+    });
+  });
+
+  it("round-trips matchState through the completed-matches list", () => {
+    saveCompletedRapidMatch(buildMatch({ matchState: "FULL_TIME" }));
+    expect(listSavedRapidMatches()[0].matchState).toBe("FULL_TIME");
+  });
+
+  it("saveCompletedRapidMatch always forces matchState to FULL_TIME, even if the caller passed something else", () => {
+    saveCompletedRapidMatch(buildMatch({ matchState: "SECOND_HALF" }));
+    expect(listSavedRapidMatches()[0].matchState).toBe("FULL_TIME");
+  });
+
+  it("derives FIRST_HALF for a legacy in-progress record with no matchState field and half 1", () => {
+    const legacy = buildMatch({ half: 1, status: "IN_PROGRESS" }) as Record<string, unknown>;
+    delete legacy.matchState;
+    window.localStorage.setItem(RAPID_CAPTURE_ACTIVE_STORAGE_KEY, JSON.stringify(legacy));
+    expect(loadActiveRapidSession()!.matchState).toBe("FIRST_HALF");
+  });
+
+  it("derives SECOND_HALF for a legacy in-progress record with no matchState field and half 2", () => {
+    const legacy = buildMatch({ half: 2, status: "IN_PROGRESS" }) as Record<string, unknown>;
+    delete legacy.matchState;
+    window.localStorage.setItem(RAPID_CAPTURE_ACTIVE_STORAGE_KEY, JSON.stringify(legacy));
+    expect(loadActiveRapidSession()!.matchState).toBe("SECOND_HALF");
+  });
+
+  it("derives FULL_TIME for a legacy completed record regardless of its half field", () => {
+    const legacy = buildMatch({ half: 1, status: "COMPLETED" }) as Record<string, unknown>;
+    delete legacy.matchState;
+    window.localStorage.setItem(RAPID_CAPTURE_MATCHES_STORAGE_KEY, JSON.stringify([legacy]));
+    expect(listSavedRapidMatches()[0].matchState).toBe("FULL_TIME");
+  });
+
+  it("does not restore HALF_TIME for a legacy in-progress record — that state never existed pre-migration", () => {
+    // Only status+half were ever persisted before matchState existed, and
+    // HALF_TIME/FULL_TIME were indistinguishable states in that old shape
+    // for an IN_PROGRESS record — this documents that the derivation is a
+    // best-effort mapping, not a lossless one, for pre-migration data.
+    const legacy = buildMatch({ half: 1, status: "IN_PROGRESS" }) as Record<string, unknown>;
+    delete legacy.matchState;
+    window.localStorage.setItem(RAPID_CAPTURE_ACTIVE_STORAGE_KEY, JSON.stringify(legacy));
+    expect(loadActiveRapidSession()!.matchState).not.toBe("HALF_TIME");
   });
 });

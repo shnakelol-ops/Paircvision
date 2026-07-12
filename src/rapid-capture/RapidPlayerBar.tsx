@@ -47,7 +47,12 @@ const S: Record<string, CSSProperties> = {
     minWidth: 44,
     minHeight: 44,
     background: "#21262d",
-    border: "1.5px solid #388bfd",
+    // Split out (not shorthand `border`) — borderColor is overridden
+    // per-render with the team colour, and mixing shorthand/non-shorthand
+    // for the same property trips a React styling warning across rerenders.
+    borderWidth: 1.5,
+    borderStyle: "solid",
+    borderColor: "#388bfd",
     borderRadius: 8,
     color: "#e6edf3",
     fontSize: 14,

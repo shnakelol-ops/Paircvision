@@ -39,11 +39,21 @@ export const DEFAULT_FAB_POSITION: MatchHubFabPosition = { right: 14, bottom: 14
 export function RapidMatchHubFab({
   sections,
   position = DEFAULT_FAB_POSITION,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   sections: MatchHubMenuSection[];
   position?: MatchHubFabPosition;
+  /** Externally-controlled open state (e.g. a halftime panel's "Actions" button). Uncontrolled if omitted. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  function setOpen(next: boolean) {
+    onOpenChange?.(next);
+    if (controlledOpen === undefined) setInternalOpen(next);
+  }
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingFileHandlerRef = useRef<((file: File) => void) | null>(null);
 
@@ -116,7 +126,7 @@ export function RapidMatchHubFab({
       )}
 
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
         style={{
           ...S.fab,
           ...(open ? S.fabOpen : {}),

@@ -7,6 +7,7 @@
 
 import { MATCH_EVENT_KINDS, type MatchEventKind } from "../core/stats/stats-event-model";
 import type { RapidMatchEvent, RapidSquadPlayer } from "./rapid-capture-events";
+import { isLiveMatchState, type RapidMatchState } from "./rapid-match-state";
 import type { AttackDirection, MatchType, RapidSession, Sport } from "./rapid-session";
 
 export const RAPID_CAPTURE_SCHEMA_VERSION = 1;
@@ -28,6 +29,7 @@ export type RapidSavedMatch = {
   events: RapidMatchEvent[];
   half: 1 | 2;
   clockSeconds: number;
+  matchState: RapidMatchState;
 };
 
 export function newRapidMatchId(): string {
@@ -137,6 +139,17 @@ export function parseRapidEvent(value: unknown): RapidMatchEvent | null {
   return source as unknown as RapidMatchEvent;
 }
 
+/**
+ * Records saved before matchState existed carry only status + half. COMPLETED
+ * maps unambiguously to FULL_TIME; an in-progress record resumes into
+ * whichever half its `half` field already says, since HALF_TIME was never a
+ * representable state before this field existed.
+ */
+function deriveLegacyMatchState(status: RapidMatchStatus, half: 1 | 2): RapidMatchState {
+  if (status === "COMPLETED") return "FULL_TIME";
+  return half === 2 ? "SECOND_HALF" : "FIRST_HALF";
+}
+
 function parseStoredRapidMatch(value: unknown): RapidSavedMatch | null {
   if (!value || typeof value !== "object") return null;
   const source = value as Record<string, unknown>;
@@ -155,6 +168,10 @@ function parseStoredRapidMatch(value: unknown): RapidSavedMatch | null {
     .map(parseRapidEvent)
     .filter((event): event is RapidMatchEvent => event != null);
 
+  const matchState = isLiveMatchState(source.matchState)
+    ? source.matchState
+    : deriveLegacyMatchState(source.status, source.half);
+
   return {
     schemaVersion: RAPID_CAPTURE_SCHEMA_VERSION,
     id: source.id,
@@ -165,6 +182,7 @@ function parseStoredRapidMatch(value: unknown): RapidSavedMatch | null {
     events,
     half: source.half,
     clockSeconds: source.clockSeconds,
+    matchState,
   };
 }
 
@@ -226,7 +244,9 @@ export function getSavedRapidMatch(id: string): RapidSavedMatch | null {
 
 /** Upserts by id (newest-first), caps the list, and marks the record COMPLETED. */
 export function saveCompletedRapidMatch(match: RapidSavedMatch): boolean {
-  const record: RapidSavedMatch = { ...match, status: "COMPLETED", updatedAt: Date.now() };
+  // COMPLETED and FULL_TIME must never diverge — force it here rather than
+  // trusting every call site to have stamped it correctly.
+  const record: RapidSavedMatch = { ...match, status: "COMPLETED", matchState: "FULL_TIME", updatedAt: Date.now() };
   const existing = readSavedRapidMatches();
   const idx = existing.findIndex((m) => m.id === record.id);
   let next: RapidSavedMatch[];

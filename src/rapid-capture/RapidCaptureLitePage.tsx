@@ -26,6 +26,8 @@ import {
 import { RapidMatchHubFab, type MatchHubMenuSection } from "./RapidMatchHubFab";
 import { RapidDetailBar } from "./RapidDetailBar";
 import { RapidPlayerBar } from "./RapidPlayerBar";
+import { RapidPausePanel } from "./RapidPausePanel";
+import { RapidHalfBreakPanel } from "./RapidHalfBreakPanel";
 import { deriveHalfAndClockFromEvents, parseImportedMatchFile } from "./rapid-match-import";
 import {
   advanceEnrichment,
@@ -44,6 +46,18 @@ import {
   type RapidMatchEvent,
   type RapidSquadPlayer,
 } from "./rapid-capture-events";
+import {
+  halfForMatchState,
+  initialMatchStateForHalf,
+  isCaptureAllowed,
+  isTaggingLocked,
+  matchStateBadgeLabel,
+  pauseActionForMatchState,
+  requestEndFirstHalf,
+  requestEndMatch,
+  startSecondHalf,
+  type RapidMatchState,
+} from "./rapid-match-state";
 
 const SPORT_LABELS: Record<Sport, string> = {
   hurling: "Hurling",
@@ -382,7 +396,7 @@ type RapidLiveScreenProps = {
   session: RapidSession;
   createdAt: number;
   initialEvents: RapidMatchEvent[];
-  initialHalf: 1 | 2;
+  initialMatchState: RapidMatchState;
   initialClockSeconds: number;
   onFinish: () => void;
   onOpenSavedMatches: () => void;
@@ -400,7 +414,7 @@ function RapidLiveScreen({
   session,
   createdAt,
   initialEvents,
-  initialHalf,
+  initialMatchState,
   initialClockSeconds,
   onFinish,
   onOpenSavedMatches,
@@ -410,7 +424,7 @@ function RapidLiveScreen({
 }: RapidLiveScreenProps) {
   const { sport } = session;
 
-  const [half, setHalf] = useState<1 | 2>(initialHalf);
+  const [matchState, setMatchState] = useState<RapidMatchState>(initialMatchState);
   // teamSide = annotation perspective (whose story is this event).
   // Manual context — only ever auto-changes for the Match Stats-mirrored
   // active-team reset after a conceded/lost restart (KICKOUT_CONCEDED).
@@ -419,6 +433,12 @@ function RapidLiveScreen({
   const [loggedEvents, setLoggedEvents] = useState<RapidMatchEvent[]>(initialEvents);
   const [clockSeconds, setClockSeconds] = useState(initialClockSeconds);
   const [clockRunning, setClockRunning] = useState(false);
+  // True once the coach has explicitly tapped pause mid-half — distinct from
+  // "clock simply hasn't been started yet," which shows a plain ▶ instead.
+  const [showPausedActions, setShowPausedActions] = useState(false);
+  // Lets the halftime/full-time panel's "Actions" button open the same FAB
+  // used everywhere else, instead of duplicating its menu.
+  const [fabOpen, setFabOpen] = useState(false);
   // Detail bar, then optional Player Recognition bar, for the most recently
   // logged event — never blocks capture. Starting another capture (a new
   // tap, or arming a different kind) always replaces this outright.
@@ -430,7 +450,8 @@ function RapidLiveScreen({
   // Refs provide synchronous latest values for the Pixi tap closure and for undo
   const armedKindRef = useRef<MatchEventKind | null>(null);
   const teamSideRef = useRef<"FOR" | "OPP">("FOR");
-  const halfRef = useRef<1 | 2>(initialHalf);
+  const matchStateRef = useRef<RapidMatchState>(initialMatchState);
+  const clockRunningRef = useRef(false);
   const clockSecondsRef = useRef(initialClockSeconds);
   const loggedEventsRef = useRef<RapidMatchEvent[]>(initialEvents);
   const clockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -439,7 +460,8 @@ function RapidLiveScreen({
 
   useEffect(() => { armedKindRef.current = armedKind; }, [armedKind]);
   useEffect(() => { teamSideRef.current = teamSide; }, [teamSide]);
-  useEffect(() => { halfRef.current = half; }, [half]);
+  useEffect(() => { matchStateRef.current = matchState; }, [matchState]);
+  useEffect(() => { clockRunningRef.current = clockRunning; }, [clockRunning]);
   useEffect(() => { loggedEventsRef.current = loggedEvents; }, [loggedEvents]);
 
   useEffect(() => {
@@ -455,16 +477,17 @@ function RapidLiveScreen({
       status: "IN_PROGRESS",
       session,
       events: loggedEventsRef.current,
-      half: halfRef.current,
+      half: halfForMatchState(matchStateRef.current),
       clockSeconds: clockSecondsRef.current,
+      matchState: matchStateRef.current,
     });
   }, [matchId, createdAt, session]);
 
-  // Autosave after every event or half change — the state that matters most
-  // for a faithful resume.
+  // Autosave after every event or match-state change — the state that
+  // matters most for a faithful resume (including mid-halftime/full-time).
   useEffect(() => {
     persistActiveSession();
-  }, [loggedEvents, half, persistActiveSession]);
+  }, [loggedEvents, matchState, persistActiveSession]);
 
   useEffect(() => {
     return () => {
@@ -513,6 +536,12 @@ function RapidLiveScreen({
       onPitchTap: (nx, ny) => {
         const kind = armedKindRef.current;
         if (!kind) return;
+        // Authoritative capture gate: tagging must be unlocked (FIRST_HALF/
+        // SECOND_HALF, never HALF_TIME/FULL_TIME) AND the clock must
+        // actually be running (not merely paused mid-half). The UI already
+        // hides the tagging grid in every other case; this guard doesn't
+        // depend on that UI state having rendered correctly.
+        if (!isCaptureAllowed(matchStateRef.current, clockRunningRef.current)) return;
         // One incident, one event: turnovers/frees are only ever logged from
         // FOR's perspective — downstream intelligence derives the OPP-benefit
         // side by inversion. The UI already prevents arming these under OPP;
@@ -526,7 +555,7 @@ function RapidLiveScreen({
           kind,
           nx,
           ny,
-          half: halfRef.current,
+          half: halfForMatchState(matchStateRef.current),
           timestamp: ts,
           teamSide: teamSideRef.current,
           createdAt: Date.now(),
@@ -590,6 +619,9 @@ function RapidLiveScreen({
         autosaveIntervalRef.current = null;
       }
       setClockRunning(false);
+      // Pausing mid-half surfaces the Resume/End decision panel — see
+      // RapidPausePanel. Only meaningful while a half is actually live.
+      if (!isTaggingLocked(matchStateRef.current)) setShowPausedActions(true);
       persistActiveSession();
     } else {
       clockStartRef.current = Date.now() - clockSecondsRef.current * 1000;
@@ -600,10 +632,67 @@ function RapidLiveScreen({
       }, 500);
       autosaveIntervalRef.current = setInterval(persistActiveSession, AUTOSAVE_INTERVAL_MS);
       setClockRunning(true);
+      setShowPausedActions(false);
       persistActiveSession();
     }
   }, [clockRunning, persistActiveSession]);
 
+  const handleStartSecondHalf = useCallback(() => {
+    const next = startSecondHalf(matchStateRef.current);
+    if (next === matchStateRef.current) return;
+    matchStateRef.current = next;
+    setMatchState(next);
+    setShowPausedActions(false);
+  }, []);
+
+  const handleEndFirstHalf = useCallback(() => {
+    const next = requestEndFirstHalf(matchStateRef.current, () =>
+      window.confirm("End the first half now? The clock will pause and tagging will lock until the second half starts."),
+    );
+    if (next === matchStateRef.current) return;
+    matchStateRef.current = next;
+    setMatchState(next);
+    setShowPausedActions(false);
+  }, []);
+
+  const completeMatch = useCallback(() => {
+    matchStateRef.current = "FULL_TIME";
+    setMatchState("FULL_TIME");
+    setShowPausedActions(false);
+    const record = {
+      schemaVersion: RAPID_CAPTURE_SCHEMA_VERSION,
+      id: matchId,
+      createdAt,
+      updatedAt: Date.now(),
+      status: "COMPLETED" as const,
+      session,
+      events: loggedEventsRef.current,
+      half: halfForMatchState("FULL_TIME"),
+      clockSeconds: clockSecondsRef.current,
+      matchState: "FULL_TIME" as const,
+    };
+    saveCompletedRapidMatch(record);
+    // Keep the active-session slot alive (now COMPLETED/FULL_TIME) so a
+    // refresh while still viewing the Full Time summary restores it —
+    // clearing only happens once the coach explicitly taps Done.
+    saveActiveRapidSession(record);
+  }, [matchId, createdAt, session]);
+
+  const handleEndMatch = useCallback(() => {
+    const next = requestEndMatch(matchStateRef.current, () =>
+      window.confirm("End the match now? This will mark it completed and save it."),
+    );
+    if (next !== "FULL_TIME") return;
+    completeMatch();
+  }, [completeMatch]);
+
+  const handleDoneAfterFullTime = useCallback(() => {
+    clearActiveRapidSession();
+    onFinish();
+  }, [onFinish]);
+
+  // Manual "abandon and save" escape hatch (Match Hub FAB), available at any
+  // match state — always exits immediately, unlike the guided End Match flow.
   const finishAndSaveMatch = useCallback(() => {
     saveCompletedRapidMatch({
       schemaVersion: RAPID_CAPTURE_SCHEMA_VERSION,
@@ -613,8 +702,9 @@ function RapidLiveScreen({
       status: "COMPLETED",
       session,
       events: loggedEventsRef.current,
-      half: halfRef.current,
+      half: halfForMatchState("FULL_TIME"),
       clockSeconds: clockSecondsRef.current,
+      matchState: "FULL_TIME",
     });
     clearActiveRapidSession();
     onFinish();
@@ -686,6 +776,14 @@ function RapidLiveScreen({
   // by the time the player bar renders.
   const enrichmentTeamColour = resolveTeamColour(enrichmentEvent?.teamSide as "FOR" | "OPP" | undefined, session);
 
+  // Canonical match-state gates: tagging is only ever possible during a live,
+  // running half — everything else (HALF_TIME, FULL_TIME, or simply paused
+  // mid-half) replaces the tagging grid with a decision panel instead.
+  const taggingLocked = isTaggingLocked(matchState);
+  const pauseAction = pauseActionForMatchState(matchState);
+  const showPauseMenu = !taggingLocked && !clockRunning && showPausedActions && pauseAction != null;
+  const scoreLineText = `${formatScoreLine(scoreboard.for)} – ${formatScoreLine(scoreboard.opp)}`;
+
   const sections: MatchHubMenuSection[] = [
     {
       id: "match",
@@ -725,17 +823,10 @@ function RapidLiveScreen({
       <div style={S.header}>
         <span style={S.title}>Rapid Capture</span>
         <span style={S.sportBadge}>{SPORT_LABELS[sport]}</span>
-        <div style={S.halfGroup}>
-          {([1, 2] as const).map((h) => (
-            <button
-              key={h}
-              onClick={() => setHalf(h)}
-              style={{ ...S.halfBtn, ...(half === h ? S.halfBtnOn : {}) }}
-            >
-              {h}H
-            </button>
-          ))}
-        </div>
+        {/* Read-only — half is derived from matchState, never picked manually. */}
+        <span style={{ ...S.matchStateBadge, ...(taggingLocked ? S.matchStateBadgeLocked : {}) }}>
+          {matchStateBadgeLabel(matchState)}
+        </span>
       </div>
 
       {importError && (
@@ -791,7 +882,11 @@ function RapidLiveScreen({
         </button>
         <span style={S.spacer} />
         <span style={S.clock}>{fmtClock(clockSeconds)}</span>
-        <button onClick={toggleClock} style={S.clockBtn}>
+        <button
+          onClick={toggleClock}
+          disabled={taggingLocked}
+          style={{ ...S.clockBtn, ...(taggingLocked ? S.clockBtnDisabled : {}) }}
+        >
           {clockRunning ? "⏸" : "▶"}
         </button>
       </div>
@@ -799,81 +894,109 @@ function RapidLiveScreen({
       {/* ── Signal bar ─────────────────────────── */}
       <RapidSignalBar events={loggedEvents} clockSeconds={clockSeconds} />
 
-      {/* ── Detail bar, then optional Player Recognition bar (~4s each, non-blocking) ── */}
-      {showEnrichmentBar && enrichment!.stage === "detail" && (
-        <RapidDetailBar
-          options={detailOptions}
-          onSelect={(tag) => applyDetailChoice(enrichment!.eventId, tag)}
+      {/* ── Tagging surface, replaced by a decision panel whenever tagging
+          is locked (HALF_TIME/FULL_TIME) or the clock is explicitly paused
+          mid-half. The pitch and scoreboard above stay visible throughout. ── */}
+      {taggingLocked ? (
+        <RapidHalfBreakPanel
+          matchState={matchState as "HALF_TIME" | "FULL_TIME"}
+          forLabel={forLabel}
+          oppLabel={oppLabel}
+          scoreLine={scoreLineText}
+          events={loggedEvents}
+          onStartSecondHalf={matchState === "HALF_TIME" ? handleStartSecondHalf : undefined}
+          onDone={matchState === "FULL_TIME" ? handleDoneAfterFullTime : undefined}
+          onOpenActions={() => setFabOpen(true)}
         />
-      )}
-      {showEnrichmentBar && enrichment!.stage === "player" && (
-        <RapidPlayerBar
-          squad={enrichmentSquad}
-          teamColour={enrichmentTeamColour}
-          onSelect={(player) => applyPlayerChoice(enrichment!.eventId, player)}
+      ) : showPauseMenu && pauseAction ? (
+        <RapidPausePanel
+          action={pauseAction}
+          forLabel={forLabel}
+          oppLabel={oppLabel}
+          scoreLine={scoreLineText}
+          onResume={toggleClock}
+          onEndFirstHalf={handleEndFirstHalf}
+          onEndMatch={handleEndMatch}
         />
+      ) : (
+        <>
+          {/* ── Detail bar, then optional Player Recognition bar (~4s each, non-blocking) ── */}
+          {showEnrichmentBar && enrichment!.stage === "detail" && (
+            <RapidDetailBar
+              options={detailOptions}
+              onSelect={(tag) => applyDetailChoice(enrichment!.eventId, tag)}
+            />
+          )}
+          {showEnrichmentBar && enrichment!.stage === "player" && (
+            <RapidPlayerBar
+              squad={enrichmentSquad}
+              teamColour={enrichmentTeamColour}
+              onSelect={(player) => applyPlayerChoice(enrichment!.eventId, player)}
+            />
+          )}
+
+          {/* ── Rapid event bar ────────────────────── */}
+          <div style={S.rapidBar}>
+            {visibleBar.map((item) => {
+              const label =
+                item.puckoutLabel && isPuckout ? item.puckoutLabel : item.label;
+              const isArmed = armedKind === item.kind;
+              // Turn+/Turn−/Free+/Free− are one-sided by design — see
+              // isKindAllowedForTeamSide. Kept in place (not removed) so the
+              // grid layout stays spatially consistent between FOR and OPP.
+              const isDisabledForTeamSide = !isKindAllowedForTeamSide(item.kind, teamSide);
+              return (
+                <button
+                  key={item.kind}
+                  disabled={isDisabledForTeamSide}
+                  onClick={() => {
+                    setEnrichment(null);
+                    setArmedKind(isArmed ? null : item.kind);
+                  }}
+                  style={{
+                    ...S.rapidBtn,
+                    ...(isArmed ? S.rapidBtnArmed : {}),
+                    ...(isDisabledForTeamSide ? S.rapidBtnDisabled : {}),
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── Status banner ──────────────────────── */}
+          <div style={S.statusBanner}>
+            {armedItem ? (
+              <span>
+                <span style={{ ...S.contextPip, ...(teamSide === "FOR" ? S.pipFor : S.pipOpp) }} />
+                {teamSide === "FOR" ? forLabel : oppLabel}
+                {" · Tap pitch · "}
+                <strong>
+                  {armedItem.puckoutLabel && isPuckout
+                    ? armedItem.puckoutLabel
+                    : armedItem.label}
+                </strong>
+                {loggedEvents.length > 0 && (
+                  <span style={S.eventCount}>{loggedEvents.length} logged</span>
+                )}
+              </span>
+            ) : (
+              <span style={S.hint}>
+                <span style={{ ...S.contextPip, ...(teamSide === "FOR" ? S.pipFor : S.pipOpp) }} />
+                {teamSide === "FOR" ? forLabel : oppLabel} · Select event then tap pitch
+                {loggedEvents.length > 0 && (
+                  <span style={S.eventCount}>{loggedEvents.length} logged</span>
+                )}
+              </span>
+            )}
+          </div>
+        </>
       )}
-
-      {/* ── Rapid event bar ────────────────────── */}
-      <div style={S.rapidBar}>
-        {visibleBar.map((item) => {
-          const label =
-            item.puckoutLabel && isPuckout ? item.puckoutLabel : item.label;
-          const isArmed = armedKind === item.kind;
-          // Turn+/Turn−/Free+/Free− are one-sided by design — see
-          // isKindAllowedForTeamSide. Kept in place (not removed) so the
-          // grid layout stays spatially consistent between FOR and OPP.
-          const isDisabledForTeamSide = !isKindAllowedForTeamSide(item.kind, teamSide);
-          return (
-            <button
-              key={item.kind}
-              disabled={isDisabledForTeamSide}
-              onClick={() => {
-                setEnrichment(null);
-                setArmedKind(isArmed ? null : item.kind);
-              }}
-              style={{
-                ...S.rapidBtn,
-                ...(isArmed ? S.rapidBtnArmed : {}),
-                ...(isDisabledForTeamSide ? S.rapidBtnDisabled : {}),
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Status banner ──────────────────────── */}
-      <div style={S.statusBanner}>
-        {armedItem ? (
-          <span>
-            <span style={{ ...S.contextPip, ...(teamSide === "FOR" ? S.pipFor : S.pipOpp) }} />
-            {teamSide === "FOR" ? forLabel : oppLabel}
-            {" · Tap pitch · "}
-            <strong>
-              {armedItem.puckoutLabel && isPuckout
-                ? armedItem.puckoutLabel
-                : armedItem.label}
-            </strong>
-            {loggedEvents.length > 0 && (
-              <span style={S.eventCount}>{loggedEvents.length} logged</span>
-            )}
-          </span>
-        ) : (
-          <span style={S.hint}>
-            <span style={{ ...S.contextPip, ...(teamSide === "FOR" ? S.pipFor : S.pipOpp) }} />
-            {teamSide === "FOR" ? forLabel : oppLabel} · Select event then tap pitch
-            {loggedEvents.length > 0 && (
-              <span style={S.eventCount}>{loggedEvents.length} logged</span>
-            )}
-          </span>
-        )}
-      </div>
 
       {/* Fixed to the viewport, not the pitch — never covers pitch markers,
           the scoreboard, detail/player bars, or the tagging grid. */}
-      <RapidMatchHubFab sections={sections} />
+      <RapidMatchHubFab sections={sections} open={fabOpen} onOpenChange={setFabOpen} />
     </div>
   );
 }
@@ -885,7 +1008,7 @@ type LiveSlot = {
   session: RapidSession;
   createdAt: number;
   events: RapidMatchEvent[];
-  half: 1 | 2;
+  matchState: RapidMatchState;
   clockSeconds: number;
 };
 
@@ -895,7 +1018,7 @@ function liveSlotFromSavedMatch(match: RapidSavedMatch): LiveSlot {
     session: match.session,
     createdAt: match.createdAt,
     events: match.events,
-    half: match.half,
+    matchState: match.matchState,
     clockSeconds: match.clockSeconds,
   };
 }
@@ -914,7 +1037,7 @@ export default function RapidCaptureLitePage() {
       session,
       createdAt: Date.now(),
       events: [],
-      half: 1,
+      matchState: "FIRST_HALF",
       clockSeconds: 0,
     });
     setView("live");
@@ -956,7 +1079,7 @@ export default function RapidCaptureLitePage() {
         session: result.match.session,
         createdAt: Date.now(),
         events: result.match.events,
-        half,
+        matchState: initialMatchStateForHalf(half),
         clockSeconds,
       });
       setView("live");
@@ -982,7 +1105,7 @@ export default function RapidCaptureLitePage() {
         session={live.session}
         createdAt={live.createdAt}
         initialEvents={live.events}
-        initialHalf={live.half}
+        initialMatchState={live.matchState}
         initialClockSeconds={live.clockSeconds}
         onFinish={handleFinish}
         onOpenSavedMatches={() => setView("matches")}
@@ -1196,22 +1319,26 @@ const S: Record<string, CSSProperties> = {
     padding: "3px 8px",
     whiteSpace: "nowrap",
   },
-  halfGroup: { display: "flex", gap: 4 },
-  halfBtn: {
-    background: "#21262d",
-    border: "1px solid #30363d",
+  // Read-only — half is derived from matchState, never picked manually.
+  // Split border (not shorthand) — borderColor/background/color are
+  // overridden per-render when locked, and mixing shorthand/non-shorthand
+  // for the same property trips a React styling warning across rerenders.
+  matchStateBadge: {
+    background: "#1f6feb22",
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "#388bfd",
     borderRadius: 6,
-    color: "#8b949e",
-    fontSize: 13,
-    fontWeight: 600,
-    padding: "4px 10px",
-    cursor: "pointer",
-    outline: "none",
+    color: "#79c0ff",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "3px 8px",
+    whiteSpace: "nowrap",
   },
-  halfBtnOn: {
-    background: "#238636",
-    borderColor: "#2ea043",
-    color: "#ffffff",
+  matchStateBadgeLocked: {
+    background: "#f0883e22",
+    borderColor: "#f0883e",
+    color: "#f0883e",
   },
 
   // ── Live: Pitch ──────────────────────────────────────────────────────────
@@ -1295,6 +1422,10 @@ const S: Record<string, CSSProperties> = {
     padding: "6px 10px",
     cursor: "pointer",
     outline: "none",
+  },
+  clockBtnDisabled: {
+    opacity: 0.35,
+    cursor: "default",
   },
   // ── Live: Scoreboard (above the timer) ────────────────────────────────────
   scoreboardRow: {
