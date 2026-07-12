@@ -2,6 +2,22 @@ import { useState, useCallback } from "react";
 import type { CSSProperties } from "react";
 import { readProTaggerMatches, deleteProTaggerMatch } from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
+import {
+  isCoordinateRepairApplied,
+  repairProTaggerMatchById,
+} from "./pro-tagger-coordinate-repair";
+
+const REPAIR_CONFIRM_MESSAGE =
+  "Repair mirrored Event Stats locations?\n\n" +
+  "This flips ONLY the touchline (left/right sideline) axis of every event " +
+  "in this match back to where it was originally tagged. The length-of-" +
+  "pitch position, scores, players, teams, timestamps and halves are not " +
+  "changed.\n\n" +
+  "A backup of the match is kept before repairing. This action is one-time " +
+  "— it cannot be applied twice, and running it again on an already-" +
+  "repaired match has no effect.\n\n" +
+  "Only apply this to a match you know was tagged with the old, mirrored " +
+  "Event Stats pitch view.";
 
 const SPORT_LABEL: Record<string, string> = {
   gaelic:          "Gaelic Football",
@@ -36,6 +52,16 @@ export function ProTaggerSavedMatchesScreen({ onOpen, onReview, onBack }: Props)
     deleteProTaggerMatch(id);
     setMatches(readProTaggerMatches());
     setConfirmDeleteId(null);
+  }, []);
+
+  const handleRepair = useCallback((id: string) => {
+    if (!window.confirm(REPAIR_CONFIRM_MESSAGE)) return;
+    const result = repairProTaggerMatchById(id);
+    if (result.ok) {
+      setMatches(readProTaggerMatches());
+    } else if (result.reason === "already-repaired") {
+      window.alert("This match has already been repaired — it cannot be repaired twice.");
+    }
   }, []);
 
   return (
@@ -102,6 +128,20 @@ export function ProTaggerSavedMatchesScreen({ onOpen, onReview, onBack }: Props)
                   >
                     Review
                   </button>
+                  {isCoordinateRepairApplied(m) ? (
+                    <span style={S.repairedBadge} aria-label="Locations already repaired">
+                      ✓ Repaired
+                    </span>
+                  ) : (
+                    <button
+                      style={S.repairBtn}
+                      onClick={() => handleRepair(m.id)}
+                      aria-label="Repair mirrored Event Stats locations"
+                      title="Repair mirrored Event Stats locations"
+                    >
+                      Repair locations
+                    </button>
+                  )}
                   <button
                     style={S.deleteBtn}
                     onClick={() => setConfirmDeleteId(m.id)}
@@ -279,6 +319,25 @@ const S: Record<string, CSSProperties> = {
     padding: "4px 6px",
     borderRadius: 6,
     outline: "none",
+  },
+  repairBtn: {
+    background: "transparent",
+    border: "1px solid #9e6a03",
+    borderRadius: 6,
+    color: "#e3b341",
+    fontSize: 10,
+    fontWeight: 600,
+    padding: "5px 8px",
+    cursor: "pointer",
+    outline: "none",
+    whiteSpace: "nowrap" as const,
+  },
+  repairedBadge: {
+    fontSize: 10,
+    fontWeight: 600,
+    color: "#3fb950",
+    padding: "5px 2px",
+    whiteSpace: "nowrap" as const,
   },
   confirmDeleteBtn: {
     background: "#7f1d1d",

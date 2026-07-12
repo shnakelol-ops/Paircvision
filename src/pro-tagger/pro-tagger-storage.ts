@@ -90,6 +90,15 @@ export type ProTaggerSavedMatch = {
   // Clock + match phase restore
   restoreContext: ProTaggerRestoreContext;
   targets?: MatchTargets;
+
+  // Set once the touchline-axis coordinate mirror repair (see
+  // pro-tagger-coordinate-repair.ts) has been applied to this match's
+  // events. Absent on every match that has never been repaired — its
+  // presence is what makes the repair a one-time, idempotent action.
+  coordinateRepair?: {
+    version: number;
+    appliedAt: number;
+  };
 };
 
 function readProTaggerMatchesRaw(): ProTaggerSavedMatch[] {
