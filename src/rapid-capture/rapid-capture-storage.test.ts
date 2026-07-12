@@ -167,6 +167,29 @@ describe("delete", () => {
   });
 });
 
+describe("legacy possession compatibility", () => {
+  it("still saves and resumes a legacy POSSESSION_WON/POSSESSION_LOST event (no UI creates new ones, but old data still loads)", () => {
+    const match = buildMatch({
+      events: [
+        createMatchEvent({ kind: "POSSESSION_WON", nx: 0.4, ny: 0.5, half: 1, timestamp: 5, teamSide: "FOR" }),
+        createMatchEvent({ kind: "POSSESSION_LOST", nx: 0.6, ny: 0.5, half: 1, timestamp: 8, teamSide: "OPP" }),
+      ],
+    });
+    expect(saveActiveRapidSession(match)).toBe(true);
+
+    const resumed = loadActiveRapidSession();
+    expect(resumed!.events.map((e) => e.kind)).toEqual(["POSSESSION_WON", "POSSESSION_LOST"]);
+  });
+
+  it("still lists a completed match containing legacy possession events", () => {
+    const match = buildMatch({
+      events: [createMatchEvent({ kind: "POSSESSION_LOST", nx: 0.5, ny: 0.5, half: 2, timestamp: 900, teamSide: "FOR" })],
+    });
+    saveCompletedRapidMatch(match);
+    expect(listSavedRapidMatches()[0].events[0].kind).toBe("POSSESSION_LOST");
+  });
+});
+
 describe("corrupted storage recovery", () => {
   it("recovers with an empty list when the matches key holds invalid JSON", () => {
     window.localStorage.setItem(RAPID_CAPTURE_MATCHES_STORAGE_KEY, "{not json");

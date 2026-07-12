@@ -4,11 +4,7 @@ import {
   createPixiPitchSurface,
   type PixiPitchSurfaceHandle,
 } from "../core/pitch/create-pixi-pitch-surface";
-import {
-  createMatchEvent,
-  type MatchEvent,
-  type MatchEventKind,
-} from "../core/stats/stats-event-model";
+import type { MatchEvent, MatchEventKind } from "../core/stats/stats-event-model";
 import type {
   RapidSession,
   Sport,
@@ -29,6 +25,14 @@ import {
 } from "./rapid-capture-storage";
 import { RapidMatchHubFab, type MatchHubMenuSection } from "./RapidMatchHubFab";
 import { deriveHalfAndClockFromEvents, parseImportedMatchFile } from "./rapid-match-import";
+import {
+  applySourceTag,
+  buildCapturedEvent,
+  isSourceBarVisible,
+  isSourceTaggableKind,
+  nextTeamSideAfterEvent,
+  type SourceBarTag,
+} from "./rapid-capture-events";
 
 const SPORT_LABELS: Record<Sport, string> = {
   hurling: "Hurling",
@@ -51,7 +55,12 @@ type RapidBarItem = {
   hideFor?: readonly Sport[];
 };
 
-const RAPID_BAR: RapidBarItem[] = [
+// Poss+/Poss− were removed per the Match Stats parity audit: Match Stats has
+// no capture equivalent for POSSESSION_WON/POSSESSION_LOST and no report
+// consumes them. Legacy/imported events of those kinds still load and render
+// correctly (rapid-capture-storage.ts and rapid-match-import.ts both still
+// accept them) — this button set simply stops creating new ones.
+export const RAPID_BAR: RapidBarItem[] = [
   { kind: "SHOT",              label: "Shot"                                      },
   { kind: "POINT",             label: "Point"                                     },
   { kind: "GOAL",              label: "Goal"                                      },
@@ -61,8 +70,6 @@ const RAPID_BAR: RapidBarItem[] = [
   { kind: "TURNOVER_LOST",     label: "Turn−"                                     },
   { kind: "KICKOUT_WON",       label: "Kickout+", puckoutLabel: "Puckout+"        },
   { kind: "KICKOUT_CONCEDED",  label: "Kickout−", puckoutLabel: "Puckout−"        },
-  { kind: "POSSESSION_WON",    label: "Poss+",    hideFor: ["gaelic", "soccer"]   },
-  { kind: "POSSESSION_LOST",   label: "Poss−",    hideFor: ["gaelic", "soccer"]   },
   { kind: "FREE_WON",          label: "Free+"                                     },
   { kind: "FREE_CONCEDED",     label: "Free−"                                     },
 ];
@@ -394,12 +401,17 @@ function RapidLiveScreen({
 
   const [half, setHalf] = useState<1 | 2>(initialHalf);
   // teamSide = annotation perspective (whose story is this event).
-  // Sticky manual context — never auto-switches. Mirrors Stats Lite semantics.
+  // Manual context — only ever auto-changes for the Match Stats-mirrored
+  // active-team reset after a conceded/lost restart (KICKOUT_CONCEDED).
   const [teamSide, setTeamSide] = useState<"FOR" | "OPP">("FOR");
   const [armedKind, setArmedKind] = useState<MatchEventKind | null>(null);
   const [loggedEvents, setLoggedEvents] = useState<MatchEvent[]>(initialEvents);
   const [clockSeconds, setClockSeconds] = useState(initialClockSeconds);
   const [clockRunning, setClockRunning] = useState(false);
+  // Id of the most recently logged score awaiting a source choice (Play/Free/
+  // Mark/45/Penalty). Cleared on timeout, on override, or when another event
+  // is logged — never blocks capture.
+  const [pendingSourceEventId, setPendingSourceEventId] = useState<string | null>(null);
 
   const pitchHostRef = useRef<HTMLDivElement>(null);
   const pixiHandleRef = useRef<PixiPitchSurfaceHandle | null>(null);
@@ -410,6 +422,7 @@ function RapidLiveScreen({
   const halfRef = useRef<1 | 2>(initialHalf);
   const clockSecondsRef = useRef(initialClockSeconds);
   const loggedEventsRef = useRef<MatchEvent[]>(initialEvents);
+  const sourceBarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const clockStartRef = useRef<number | null>(null);
   const autosaveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -447,8 +460,24 @@ function RapidLiveScreen({
     return () => {
       if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
       if (autosaveIntervalRef.current) clearInterval(autosaveIntervalRef.current);
+      if (sourceBarTimeoutRef.current) clearTimeout(sourceBarTimeoutRef.current);
     };
   }, []);
+
+  const dismissSourceBar = useCallback(() => {
+    if (sourceBarTimeoutRef.current) {
+      clearTimeout(sourceBarTimeoutRef.current);
+      sourceBarTimeoutRef.current = null;
+    }
+    setPendingSourceEventId(null);
+  }, []);
+
+  const applySourceChoice = useCallback((eventId: string, tag: SourceBarTag) => {
+    const next = applySourceTag(loggedEventsRef.current, eventId, tag);
+    loggedEventsRef.current = next;
+    setLoggedEvents(next);
+    dismissSourceBar();
+  }, [dismissSourceBar]);
 
   // Sport is fixed for the lifetime of this screen — initialises Pixi once on mount
   useEffect(() => {
@@ -465,16 +494,20 @@ function RapidLiveScreen({
         const kind = armedKindRef.current;
         if (!kind) return;
 
+        // Starting another capture dismisses any pending source choice from
+        // the previous score immediately — it keeps whatever tag it already
+        // has (SOURCE_PLAY by default), nothing is lost or blocked.
+        dismissSourceBar();
+
         const ts = clockSecondsRef.current;
 
         // teamSide = annotation perspective at log time — no inference, no auto-advance
-        const event = createMatchEvent({
+        const event = buildCapturedEvent({
           kind,
           nx,
           ny,
           half: halfRef.current,
           timestamp: ts,
-          matchClockSeconds: ts,
           teamSide: teamSideRef.current,
           createdAt: Date.now(),
         });
@@ -484,6 +517,21 @@ function RapidLiveScreen({
         loggedEventsRef.current = next;
         setLoggedEvents(next);
 
+        if (isSourceTaggableKind(kind)) {
+          setPendingSourceEventId(event.id);
+          sourceBarTimeoutRef.current = setTimeout(() => {
+            setPendingSourceEventId(null);
+            sourceBarTimeoutRef.current = null;
+          }, 4000);
+        }
+
+        // Match Stats resets its active-team toggle back to "own" immediately
+        // after logging a conceded/lost restart — mirrored here exactly.
+        const nextSide = nextTeamSideAfterEvent(kind, teamSideRef.current);
+        if (nextSide !== teamSideRef.current) {
+          teamSideRef.current = nextSide;
+          setTeamSide(nextSide);
+        }
       },
     }).then((h) => {
       if (destroyed) { h.destroy(); return; }
@@ -594,6 +642,17 @@ function RapidLiveScreen({
   const forLabel = session.forTeamName || "FOR";
   const oppLabel = session.oppTeamName || "OPP";
 
+  // Same canonical source tags Match Stats writes — label only, never the
+  // stored tag, is sport-aware (45 for Gaelic games, 65 for hurling/camogie).
+  const sourceBarOptions: { tag: SourceBarTag; label: string }[] = [
+    { tag: "SOURCE_PLAY", label: "Play" },
+    { tag: "SOURCE_FREE", label: "Free" },
+    { tag: "SOURCE_MARK", label: "Mark" },
+    { tag: "SOURCE_45", label: isPuckout ? "65" : "45" },
+    { tag: "SOURCE_PENALTY", label: "Penalty" },
+  ];
+  const showSourceBar = isSourceBarVisible(pendingSourceEventId, loggedEvents);
+
   const sections: MatchHubMenuSection[] = [
     {
       id: "match",
@@ -699,6 +758,21 @@ function RapidLiveScreen({
       {/* ── Signal bar ─────────────────────────── */}
       <RapidSignalBar events={loggedEvents} clockSeconds={clockSeconds} />
 
+      {/* ── Source bar (Point/Goal/2pt/Wide only, ~4s, non-blocking) ────── */}
+      {showSourceBar && (
+        <div style={S.sourceBar}>
+          {sourceBarOptions.map((opt) => (
+            <button
+              key={opt.tag}
+              onClick={() => applySourceChoice(pendingSourceEventId!, opt.tag)}
+              style={S.sourceBarBtn}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── Rapid event bar ────────────────────── */}
       <div style={S.rapidBar}>
         {visibleBar.map((item) => {
@@ -708,7 +782,10 @@ function RapidLiveScreen({
           return (
             <button
               key={item.kind}
-              onClick={() => setArmedKind(isArmed ? null : item.kind)}
+              onClick={() => {
+                dismissSourceBar();
+                setArmedKind(isArmed ? null : item.kind);
+              }}
               style={{ ...S.rapidBtn, ...(isArmed ? S.rapidBtnArmed : {}) }}
             >
               {label}
@@ -1164,6 +1241,28 @@ const S: Record<string, CSSProperties> = {
     cursor: "pointer",
     outline: "none",
   },
+  // ── Live: Source bar (temporary, non-blocking) ────────────────────────────
+  sourceBar: {
+    display: "flex",
+    gap: 6,
+    padding: "8px 12px",
+    background: "#161b22",
+    borderTop: "1px solid #21262d",
+    flexShrink: 0,
+  },
+  sourceBarBtn: {
+    flex: 1,
+    background: "#21262d",
+    border: "1.5px solid #f0883e",
+    borderRadius: 8,
+    color: "#e6edf3",
+    fontSize: 13,
+    fontWeight: 600,
+    minHeight: 44,
+    cursor: "pointer",
+    outline: "none",
+  },
+
   // ── Live: Rapid event bar ────────────────────────────────────────────────
   rapidBar: {
     display: "grid",
