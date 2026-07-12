@@ -70,6 +70,9 @@ function buildEventLabels({
     FREE_SCORED: "FS",
     FREE_MISSED: "FM",
     FORTY_FIVE_TWO_POINT: "45+2",
+    // Rapid Capture-only kinds — not surfaced by any Match Stats event button.
+    POSSESSION_WON: "POSS+",
+    POSSESSION_LOST: "POSS−",
   };
 }
 

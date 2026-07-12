@@ -15,6 +15,8 @@ export const MATCH_EVENT_KINDS = [
   "FREE_MISSED",
   "KICKOUT_WON",
   "KICKOUT_CONCEDED",
+  "POSSESSION_WON",
+  "POSSESSION_LOST",
 ] as const;
 
 export type MatchEventKind = (typeof MATCH_EVENT_KINDS)[number];

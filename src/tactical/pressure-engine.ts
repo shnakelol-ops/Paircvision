@@ -12,9 +12,9 @@ import { PRESSURE_WINDOW_SECONDS, countToEscalation } from "./escalation-rules";
 import { classifyEventZone } from "./classify-event-zone";
 import type { SemanticZoneId, TacticalCategory } from "./semantic-zones";
 
-export type PressureCategory = "TURNOVER" | "RESTART" | "FREE" | "SCORING_CORRIDOR";
+export type PressureCategory = "TURNOVER" | "RESTART" | "FREE" | "SCORING_CORRIDOR" | "POSSESSION";
 
-export type PressureLevel = "notable" | "amber" | "red";
+export type PressureLevel = "yellow" | "amber" | "red";
 
 // Minimal structural input — any MatchEvent satisfies this.
 export type PressureEngineInput = {
@@ -55,6 +55,8 @@ const KIND_TO_CATEGORY: Partial<Record<MatchEventKind, PressureCategory>> = {
   TWO_POINTER:          "SCORING_CORRIDOR",
   FORTY_FIVE_TWO_POINT: "SCORING_CORRIDOR",
   FREE_SCORED:          "SCORING_CORRIDOR",
+  POSSESSION_WON:       "POSSESSION",
+  POSSESSION_LOST:      "POSSESSION",
 };
 
 type GroupAccumulator = {
@@ -69,7 +71,7 @@ type GroupAccumulator = {
 };
 
 const LEVEL_MAP: Record<1 | 2 | 3, PressureLevel> = {
-  1: "notable",
+  1: "yellow",
   2: "amber",
   3: "red",
 };
@@ -77,12 +79,13 @@ const LEVEL_MAP: Record<1 | 2 | 3, PressureLevel> = {
 const LEVEL_RANK: Record<PressureLevel, number> = {
   red: 3,
   amber: 2,
-  notable: 1,
+  yellow: 1,
 };
 
 export function computeTerritorialPressure(
   events: readonly PressureEngineInput[],
   clockNow: number,
+  options?: { screenSpace?: boolean },
 ): TerritorialPressureState[] {
   const windowStart = clockNow - PRESSURE_WINDOW_SECONDS;
   const groups = new Map<string, GroupAccumulator>();
@@ -97,9 +100,11 @@ export function computeTerritorialPressure(
     const category = KIND_TO_CATEGORY[event.kind];
     if (category === undefined) continue;
 
-    // classifyEventZone applies OPP x-mirror so both teams are evaluated
-    // in team-relative space — attacking-right, defending-left.
-    const classification = classifyEventZone({ nx: event.nx, ny: event.ny, teamSide: side });
+    // screenSpace mode (Rapid live capture): omit teamSide so the OPP x-mirror
+    // never fires — zone matches the visible tap location on screen.
+    // Default (no option): mirror is applied for team-relative analysis.
+    const classifySide = options?.screenSpace ? undefined : side;
+    const classification = classifyEventZone({ nx: event.nx, ny: event.ny, teamSide: classifySide });
     if (classification === null) continue;
 
     const key = `${side}:${category}:${classification.zone}`;
