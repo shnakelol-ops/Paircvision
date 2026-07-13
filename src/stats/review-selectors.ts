@@ -1,6 +1,6 @@
 import type { MatchEventKind, MatchEventPeriod, MatchEventSegment } from "../core/stats/stats-event-model";
 import { isFreeMiss, isFreeScore } from "./eventSource";
-import { deriveSegmentFromPeriodClock, periodFromHalf } from "./statsSegments";
+import { deriveRebasedSegment, periodFromHalf, resolveSecondHalfStartOffsetSeconds } from "./statsSegments";
 import type { ReviewEventFilters, ReviewSelectableEvent } from "./review-types";
 
 function normalizeReviewEventTeamSide(event: ReviewSelectableEvent): "FOR" | "OPP" {
@@ -15,10 +15,18 @@ function resolveReviewEventPeriod(event: ReviewSelectableEvent): MatchEventPerio
   return event.period ?? periodFromHalf(event.half);
 }
 
-function resolveReviewEventSegment(event: ReviewSelectableEvent): MatchEventSegment {
-  if (event.segment != null) return event.segment;
-  const eventClockSeconds = event.matchClockSeconds ?? event.matchTimeSeconds ?? event.timestamp;
-  return deriveSegmentFromPeriodClock(resolveReviewEventPeriod(event), eventClockSeconds);
+/**
+ * Always derives the segment from the clock rather than trusting a stored
+ * segment field — matches captured before the second-half clock-rebase fix
+ * have every 2H event's stored segment poisoned to 6 (see statsSegments.ts).
+ * secondHalfStartOffsetSeconds must come from
+ * resolveSecondHalfStartOffsetSeconds over the full match's events.
+ */
+function resolveReviewEventSegment(
+  event: ReviewSelectableEvent,
+  secondHalfStartOffsetSeconds: number | null,
+): MatchEventSegment {
+  return deriveRebasedSegment(event, secondHalfStartOffsetSeconds);
 }
 
 function getCategoryKinds<TCategory extends string>(
@@ -57,12 +65,13 @@ export function selectReviewEvents<TEvent extends ReviewSelectableEvent, TCatego
   const categoryKindList = getCategoryKinds(category, categoryKinds);
   const filterKinds = categoryKindList == null ? null : new Set<MatchEventKind>(categoryKindList);
   const segmentFilter = segment === "ALL" ? null : Number(segment.slice(1));
+  const secondHalfStartOffsetSeconds = resolveSecondHalfStartOffsetSeconds(events);
 
   return events.filter((event) => {
     if (event.id.includes("-instant-score-")) return false;
 
     const eventPeriod = resolveReviewEventPeriod(event);
-    const eventSegment = resolveReviewEventSegment(event);
+    const eventSegment = resolveReviewEventSegment(event, secondHalfStartOffsetSeconds);
 
     if (half === "H1" && eventPeriod !== "1H") return false;
     if (half === "H2" && eventPeriod !== "2H") return false;

@@ -39,6 +39,7 @@ import {
 } from "./zones/zone-orientation";
 import type { AttackingDirection } from "./zones/zone-orientation";
 import { computeSegmentResults } from "./segmentResults";
+import { rebaseEventSegments, resolveSecondHalfStartOffsetSeconds } from "./statsSegments";
 import { computeTurnoverOutcomeBucketCounts } from "./chains/turnoverOutcomeBucket";
 import {
   classifyTurnoverCauseTags,
@@ -3342,6 +3343,7 @@ function makeMomentumRunsPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  secondHalfStartOffsetSeconds: number = 1800,
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -3431,11 +3433,16 @@ function makeMomentumRunsPage(
   }
 
   // ── Clock formatting ──────────────────────────────────────────────────────────
-  // ScoringRun clocks include SECOND_HALF_OFFSET = 3600 for 2H events.
-  // Subtract before converting to display minutes.
+  // ScoringRun clocks are the raw absolute matchClockSeconds plus a flat
+  // +3600 sort offset for 2H events (chain-engine.ts). Undo that offset AND
+  // rebase against the match's *actual* second-half start — not a fixed
+  // 3600 — or a 2H run reads on the absolute clock instead of how far into
+  // the second half it occurred.
   function clockToMin(clockSecs: number, period: "1H" | "2H"): number {
-    const adjusted = period === "2H" ? clockSecs - 3600 : clockSecs;
-    return Math.floor(Math.max(0, adjusted) / 60);
+    if (period !== "2H") return Math.floor(Math.max(0, clockSecs) / 60);
+    const rawAbsolute  = clockSecs - 3600;
+    const halfRelative = rawAbsolute - secondHalfStartOffsetSeconds;
+    return Math.floor(Math.max(0, halfRelative) / 60);
   }
 
   function runTimeLabel(run: typeof runs[number]): string {
@@ -4565,9 +4572,15 @@ function makeOppositionSnapshotPage(
   const longestOpp = sr.longestRunOpp;   // may be null — always null-checked below
   const maxConsOpp = sr.maxConsecutiveOpp;
 
+  // ScoringRun clocks are the raw absolute matchClockSeconds plus a flat
+  // +3600 sort offset for 2H events (chain-engine.ts). Undo that offset AND
+  // rebase against the match's *actual* second-half start, not a fixed 3600.
+  const secondHalfStartOffsetSeconds = resolveSecondHalfStartOffsetSeconds(events) ?? 1800;
   function clockToMin(clockSecs: number, period: "1H" | "2H"): number {
-    const adjusted = period === "2H" ? clockSecs - 3600 : clockSecs;
-    return Math.floor(Math.max(0, adjusted) / 60);
+    if (period !== "2H") return Math.floor(Math.max(0, clockSecs) / 60);
+    const rawAbsolute  = clockSecs - 3600;
+    const halfRelative = rawAbsolute - secondHalfStartOffsetSeconds;
+    return Math.floor(Math.max(0, halfRelative) / 60);
   }
 
   const longestOppTimeLabel = longestOpp != null
@@ -5285,9 +5298,19 @@ function makeMatchSwingTimelinePage(
   };
 
   // ── Clock helpers ─────────────────────────────────────────────────────────────
+  // clockOrder values passed in here (from resolveRawClock below and from
+  // ScoringRun.startClockSeconds/endClockSeconds) are always the raw
+  // absolute matchClockSeconds plus a flat +3600 sort offset for 2H. Before
+  // display, that sort offset must be undone AND the result rebased against
+  // the match's *actual* second-half start — not a fixed 3600 — or a 2H
+  // event reads as its absolute-clock minute (e.g. "2H 61'") instead of how
+  // far into the second half it actually occurred.
+  const secondHalfStartOffsetSeconds = resolveSecondHalfStartOffsetSeconds(events) ?? 1800;
   function clockToMin(clockSecs: number, period: "1H" | "2H"): number {
-    const adjusted = period === "2H" ? clockSecs - 3600 : clockSecs;
-    return Math.floor(Math.max(0, adjusted) / 60);
+    if (period !== "2H") return Math.floor(Math.max(0, clockSecs) / 60);
+    const rawAbsolute  = clockSecs - 3600;
+    const halfRelative = rawAbsolute - secondHalfStartOffsetSeconds;
+    return Math.floor(Math.max(0, halfRelative) / 60);
   }
 
   // Segment midpoint in half-relative seconds (no SECOND_HALF_OFFSET applied here).
@@ -7343,7 +7366,7 @@ void makeOppRestartPlatformPage;
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
   const {
-    events,
+    events: rawEvents,
     homeTeamName,
     awayTeamName,
     venueName,
@@ -7353,6 +7376,14 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     targets,
     homeAttackingDirection = "RIGHT",
   } = input;
+
+  // Recompute segment/halfSegment for every event from the clock rather than
+  // trusting the stored value — matches captured before the second-half
+  // clock-rebase fix have every 2H event poisoned to segment 6 (see
+  // statsSegments.ts). This repairs them for every page in this report
+  // without a data migration.
+  const events = rebaseEventSegments(rawEvents);
+  const secondHalfStartOffsetSeconds = resolveSecondHalfStartOffsetSeconds(events) ?? 1800;
 
   const hasTargets = hasEnabledTargets(targets);
 
@@ -7712,7 +7743,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   // p.22+N — Scoring Momentum
   try {
-    const c = makeMomentumRunsPage(chainAnalysis, homeTeamName, awayTeamName, p_ch3div + 4, TOTAL_PAGES);
+    const c = makeMomentumRunsPage(chainAnalysis, homeTeamName, awayTeamName, p_ch3div + 4, TOTAL_PAGES, secondHalfStartOffsetSeconds);
     stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Scoring Momentum");
   } catch (err) {
@@ -12672,7 +12703,7 @@ function makePointsLedgerPage(
 
 export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<void> {
   const {
-    events: allEvents,
+    events: rawEvents,
     homeTeamName,
     awayTeamName,
     sport = "gaelic",
@@ -12685,6 +12716,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
   const isHT = snapshotMode === "HALF_TIME_SNAPSHOT";
   const hasTargets = hasEnabledTargets(targets);
+
+  // Recompute segment/halfSegment from the clock rather than trusting the
+  // stored value (see statsSegments.ts) — the offset must be resolved from
+  // the whole match, so this runs before the HT/FT split below.
+  const allEvents = rebaseEventSegments(rawEvents);
 
   // HT: restrict every page to first-half data by pre-filtering events.
   // MatchEventPeriod values are "1H" and "2H".
