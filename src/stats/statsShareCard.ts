@@ -98,7 +98,8 @@ export async function buildStatsShareCardPng(input: StatsShareCardInput): Promis
   row(ctx,y,"Conversion",homeConv,awayConv); y+=42;
   row(ctx,y,"Short/Post/45/Blk",`${d.HOME.short}/${d.HOME.post}/${d.HOME.fortyFive}/${d.HOME.blocked}`,`${d.AWAY.short}/${d.AWAY.post}/${d.AWAY.fortyFive}/${d.AWAY.blocked}`); y+=56;
   ctx.fillStyle="#93c5fd"; ctx.font="700 28px Inter,system-ui,sans-serif"; ctx.fillText("Kickouts",72,y); y+=34;
-  row(ctx,y,"Won / Total",`${d.HOME.kickWon}/${d.HOME.kickWon+d.HOME.kickLost}`,`${d.AWAY.kickWon}/${d.AWAY.kickWon+d.AWAY.kickLost}`); y+=42;
+  row(ctx,y,"Restart Share Won",String(d.HOME.kickWon),String(d.AWAY.kickWon)); y+=42;
+  row(ctx,y,"Restart Share Conceded",String(d.HOME.kickLost),String(d.AWAY.kickLost)); y+=42;
   row(ctx,y,"Restart Share",d.HOME.kickWinPct,d.AWAY.kickWinPct); y+=42;
   row(ctx,y,"Clean / Break",`${d.HOME.kickClean}/${d.HOME.kickBreak}`,`${d.AWAY.kickClean}/${d.AWAY.kickBreak}`); y+=56;
   row(ctx,y,"Foul Won / Conceded",`${d.HOME.kickFoulWon}/${d.HOME.kickFoulConceded}`,`${d.AWAY.kickFoulWon}/${d.AWAY.kickFoulConceded}`); y+=42;
@@ -115,8 +116,9 @@ export async function buildStatsShareCardPng(input: StatsShareCardInput): Promis
   ctx.fillStyle="#93c5fd"; ctx.font="700 28px Inter,system-ui,sans-serif"; ctx.fillText("Frees",72,y); y+=34;
   row(ctx,y,"Frees For",String(d.HOME.freesFor),String(d.AWAY.freesFor)); y+=42;
   row(ctx,y,"Frees Against",String(d.HOME.freesAgainst),String(d.AWAY.freesAgainst)); y+=42;
-  row(ctx,y,"Placed Scored",String(d.HOME.freeScored),String(d.AWAY.freeScored)); y+=42;
-  row(ctx,y,"Placed Missed",String(d.HOME.freeMissed),String(d.AWAY.freeMissed)); y+=56;
+  row(ctx,y,"Placed Attempts",String(d.HOME.freeScored+d.HOME.freeMissed),String(d.AWAY.freeScored+d.AWAY.freeMissed)); y+=42;
+  row(ctx,y,"Placed Scores",String(d.HOME.freeScored),String(d.AWAY.freeScored)); y+=42;
+  row(ctx,y,"Placed Misses",String(d.HOME.freeMissed),String(d.AWAY.freeMissed)); y+=42;
   if (hasDiscipline){
     ctx.fillStyle="#93c5fd"; ctx.font="700 28px Inter,system-ui,sans-serif"; ctx.fillText("Discipline",72,y); y+=34;
     row(ctx,y,"Y / B / R",`${d.HOME.yellow}/${d.HOME.black}/${d.HOME.red}`,`${d.AWAY.yellow}/${d.AWAY.black}/${d.AWAY.red}`); y+=48;

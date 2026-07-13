@@ -119,14 +119,16 @@ function addToSide(side: LedgerSide, kind: MatchEventKind): void {
   side.value += scoreValue(kind);
 }
 
-/** A placed ball: free / 45 / penalty / mark — by kind or by source tag. */
-function isPlacedScore(e: ChainableEvent): boolean {
+/** A placed ball score — free / 45 / penalty / mark by kind or source tag. */
+export function isPlacedScore(e: ChainableEvent): boolean {
+  if (isPlacedMiss(e)) return false;
   if (e.kind === "FREE_SCORED" || e.kind === "FORTY_FIVE_TWO_POINT") return true;
+  if (!SCORE_KINDS.has(e.kind)) return false;
   const src = eventSource(e);
   return src === "FREE" || src === "45" || src === "PENALTY" || src === "MARK";
 }
 
-function isPlacedMiss(e: ChainableEvent): boolean {
+export function isPlacedMiss(e: ChainableEvent): boolean {
   if (isFreeMiss(e)) return true;
   if (e.kind !== "WIDE") return false;
   const src = eventSource(e);

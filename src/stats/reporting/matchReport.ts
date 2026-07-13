@@ -19,6 +19,8 @@ import { selectChainAnalysis, selectPossessionOutcomeSummary } from "../chains/c
 import { buildScoreLedger, type ScoreLedger } from "../ledger/scoreLedger";
 import { computeRestartMetrics, type RestartMetrics } from "../restarts/restartMetrics";
 import { computeTurnoverMetrics, type TurnoverMetrics } from "./turnoverMetrics";
+import { computeRestartTeamMetrics, type RestartTeamMetrics } from "./restartTeamMetrics";
+import { computePlacedBallMetrics, type PlacedBallMetrics } from "./placedBallMetrics";
 import { type ReportScope, scopeToPeriod } from "./report-types";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -35,8 +37,12 @@ export type MatchReport<TEvent extends ChainableEvent = ChainableEvent> = {
   possessions: PossessionOutcomeSummary<TEvent>;
   /** Canonical restart dictionary (chain-origin layer). */
   restarts: RestartMetrics;
+  /** Per-team restart share vs own-kickout outcomes. */
+  restartTeams: RestartTeamMetrics;
   /** Canonical turnover dictionary (chain-origin layer). */
   turnovers: TurnoverMetrics;
+  /** Placed-ball attempts / scores / points / misses (ledger taxonomy). */
+  placedBalls: PlacedBallMetrics;
   /** Direct score attribution — ledger partition. */
   ledger: ScoreLedger;
 };
@@ -75,7 +81,9 @@ export function buildMatchReport<TEvent extends ChainableEvent>(
   const chain = selectChainAnalysis(events);
   const possessions = selectPossessionOutcomeSummary(events);
   const restarts = computeRestartMetrics(chain.kickouts.outcomes);
+  const restartTeams = computeRestartTeamMetrics(chain.kickouts.outcomes);
   const turnovers = computeTurnoverMetrics(chain.turnovers.outcomes);
+  const placedBalls = computePlacedBallMetrics(events);
   const ledger = buildScoreLedger(events, chain, input.homeTeam, input.awayTeam);
 
   return {
@@ -86,7 +94,9 @@ export function buildMatchReport<TEvent extends ChainableEvent>(
     chain,
     possessions,
     restarts,
+    restartTeams,
     turnovers,
+    placedBalls,
     ledger,
   };
 }

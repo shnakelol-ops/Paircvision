@@ -170,9 +170,19 @@ export type TeamSummaryBlock = {
   shotPost: number;
   shot45: number;
   shotBlock: number;
-  koWon: number;
-  koCon: number;
+  /** Restart Share won (all-match restarts this team won). */
+  restartShareWon: number;
+  /** Restart Share conceded (restarts opposition won). */
+  restartShareConceded: number;
   koPct: string;
+  /** Own kickouts retained on kicks this team took. */
+  ownRestartsRetained: number;
+  /** Own kickouts lost on kicks this team took. */
+  ownRestartsLost: number;
+  /** @deprecated Use restartShareWon — kept for transitional callers */
+  koWon: number;
+  /** @deprecated Use restartShareConceded */
+  koCon: number;
   koCleanWon: number;
   koBreakWon: number;
   koCleanLost: number;
@@ -191,7 +201,13 @@ export type TeamSummaryBlock = {
   toOcStripped: number;
   freesWon: number;
   freesCon: number;
+  placedAttempts: number;
+  placedScores: number;
+  placedPoints: number;
+  placedMisses: number;
+  /** @deprecated Use placedScores */
   freeScored: number;
+  /** @deprecated Use placedMisses */
   freeMissed: number;
 };
 
@@ -209,14 +225,15 @@ export function buildTeamSummaryBlock<T extends ChainableEvent>(
 
   const scoreR = scoreFromEvents(ownEvts);
   const shots = countKinds(ownEvts, ...SHOT_KINDS);
-  const mirrored = viewMirroredCountsForTeam(report, team);
+  const teamRestarts = team === "FOR" ? report.restartTeams.for : report.restartTeams.opp;
+  const placed = team === "FOR" ? report.placedBalls.for : report.placedBalls.opp;
   const koShare = viewRestartShareForTeam(report, team);
 
-  const koWon = mirrored.kickoutsWon;
-  const koCon = mirrored.kickoutsLost;
+  const restartShareWon = teamRestarts.restartShareWon;
+  const restartShareConceded = teamRestarts.restartShareConceded;
+  const mirrored = viewMirroredCountsForTeam(report, team);
   const toWon = mirrored.turnoversWon;
   const toLost = mirrored.turnoversLost;
-
   const freesWon = countKinds(ownEvts, "FREE_WON") + countKinds(otherEvts, "FREE_CONCEDED");
   const freesCon = countKinds(ownEvts, "FREE_CONCEDED") + countKinds(otherEvts, "FREE_WON");
 
@@ -233,8 +250,12 @@ export function buildTeamSummaryBlock<T extends ChainableEvent>(
     shot45: countTagOnKinds(ownEvts, "FORTY_FIVE", ...SHOT_KINDS),
     shotBlock: countKindWithAnyTag(ownEvts, "SHOT", "BLOCK_SAVE", "BLOCKED")
       + countKindWithAnyTag(ownEvts, "WIDE", "BLOCK_SAVE", "BLOCKED"),
-    koWon,
-    koCon,
+    restartShareWon,
+    restartShareConceded,
+    ownRestartsRetained: teamRestarts.ownRestartsRetained,
+    ownRestartsLost: teamRestarts.ownRestartsLost,
+    koWon: restartShareWon,
+    koCon: restartShareConceded,
     koPct: koShare.den > 0 ? `${koShare.pct}%` : "—",
     koCleanWon: countKindWithAnyTag(ownEvts, "KICKOUT_WON", "CLEAN")
       + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "CLEAN"),
@@ -267,8 +288,12 @@ export function buildTeamSummaryBlock<T extends ChainableEvent>(
       + countKindWithAnyTag(otherEvts, "TURNOVER_WON", "OVERCARRIED", "STRIPPED"),
     freesWon,
     freesCon,
-    freeScored: ownEvts.filter((e) => e.kind === "FREE_SCORED").length,
-    freeMissed: ownEvts.filter((e) => e.kind === "FREE_MISSED").length,
+    placedAttempts: placed.attempts,
+    placedScores: placed.scores,
+    placedPoints: placed.points,
+    placedMisses: placed.misses,
+    freeScored: placed.scores,
+    freeMissed: placed.misses,
   };
 }
 
@@ -428,14 +453,19 @@ export function buildShareCardBreakdown<T extends ChainableEvent>(
 
   const homeMirrored = viewMirroredCountsForTeam(report, "FOR");
   const awayMirrored = viewMirroredCountsForTeam(report, "OPP");
-  r.HOME.kickWon = homeMirrored.kickoutsWon;
-  r.HOME.kickLost = homeMirrored.kickoutsLost;
-  r.AWAY.kickWon = awayMirrored.kickoutsWon;
-  r.AWAY.kickLost = awayMirrored.kickoutsLost;
+  r.HOME.kickWon = report.restartTeams.for.restartShareWon;
+  r.HOME.kickLost = report.restartTeams.for.restartShareConceded;
+  r.AWAY.kickWon = report.restartTeams.opp.restartShareWon;
+  r.AWAY.kickLost = report.restartTeams.opp.restartShareConceded;
   r.HOME.toWon = homeMirrored.turnoversWon;
   r.HOME.toLost = homeMirrored.turnoversLost;
   r.AWAY.toWon = awayMirrored.turnoversWon;
   r.AWAY.toLost = awayMirrored.turnoversLost;
+
+  r.HOME.freeScored = report.placedBalls.for.scores;
+  r.HOME.freeMissed = report.placedBalls.for.misses;
+  r.AWAY.freeScored = report.placedBalls.opp.scores;
+  r.AWAY.freeMissed = report.placedBalls.opp.misses;
 
   const homeKoShare = viewRestartShareForTeam(report, "FOR");
   const awayKoShare = viewRestartShareForTeam(report, "OPP");
@@ -468,6 +498,7 @@ export function viewCoachingBriefStats<T extends ChainableEvent>(
 ): CoachingBriefStats {
   const mirrored = viewMirroredCountsForTeam(report, "FOR");
   const shooting = viewShootingConversion(report, "FOR");
+  const restarts = report.restartTeams.for;
   const own = report.events.filter((e) => e.teamSide === "FOR");
   let goals = 0;
   let scores = 0;
@@ -488,9 +519,9 @@ export function viewCoachingBriefStats<T extends ChainableEvent>(
   return {
     turnoversWon: mirrored.turnoversWon,
     turnoversLost: mirrored.turnoversLost,
-    kickoutsWon: mirrored.kickoutsWon,
-    kickoutsLost: mirrored.kickoutsLost,
-    kickoutTotal: mirrored.kickoutsTotal,
+    kickoutsWon: restarts.restartShareWon,
+    kickoutsLost: restarts.restartShareConceded,
+    kickoutTotal: restarts.restartShareTotal,
     kickoutPct,
     conversionPct: shooting.pct,
     attempts,

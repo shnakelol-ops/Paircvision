@@ -781,8 +781,8 @@ function drawSummaryStatsTable(
       {
         label: koLabelPluralUC(sport), accent: "#22d3ee", bg: "rgba(34,211,238,0.06)",
         rows: [
-          { label: `${koLabel(sport)} Won`,  value: String(st.koWon) },
-          { label: `${koLabel(sport)} Lost`, value: String(st.koCon) },
+          { label: "Restart Share Won",      value: String(st.restartShareWon) },
+          { label: "Restart Share Conceded", value: String(st.restartShareConceded) },
           { label: "Restart Share", value: st.koPct },
           { label: "Clean Won",      value: String(st.koCleanWon) },
           { label: "Break Won",      value: String(st.koBreakWon) },
@@ -812,8 +812,10 @@ function drawSummaryStatsTable(
         rows: [
           { label: "Frees Won",      value: String(st.freesWon) },
           { label: "Frees Conceded", value: String(st.freesCon) },
-          { label: "Placed Scored",  value: String(st.freeScored) },
-          { label: "Placed Missed",  value: String(st.freeMissed) },
+          { label: "Placed Attempts", value: String(st.placedAttempts) },
+          { label: "Placed Scores",   value: String(st.placedScores) },
+          { label: "Placed Points",   value: String(st.placedPoints) },
+          { label: "Placed Misses",   value: String(st.placedMisses) },
         ],
       },
     ];
@@ -5552,6 +5554,7 @@ function makeMatchSwingTimelinePage(
  */
 function makeShotEfficiencyPage(
   events: readonly PdfExportEvent[],
+  report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
   pageNum: number,
@@ -5657,6 +5660,19 @@ function makeShotEfficiencyPage(
   const oppEvts  = validEvts.filter((e) => e.teamSide === "OPP");
   const forStats = buildStats(forEvts);
   const oppStats = buildStats(oppEvts);
+
+  const forPlaced = report.placedBalls.for;
+  const oppPlaced = report.placedBalls.opp;
+  forStats.freeScored = forPlaced.scores;
+  forStats.freeMissed = forPlaced.misses;
+  forStats.freeConvPct = forPlaced.attempts > 0
+    ? Math.round((forPlaced.scores / forPlaced.attempts) * 100)
+    : 0;
+  oppStats.freeScored = oppPlaced.scores;
+  oppStats.freeMissed = oppPlaced.misses;
+  oppStats.freeConvPct = oppPlaced.attempts > 0
+    ? Math.round((oppPlaced.scores / oppPlaced.attempts) * 100)
+    : 0;
 
   // ── Rendering helpers ─────────────────────────────────────────────────────────
 
@@ -6972,13 +6988,15 @@ function makeFreeAnalysisPage(
 
   const forFreesWon     = countKinds(forEvts, "FREE_WON")      + countKinds(oppEvts, "FREE_CONCEDED");
   const oppFreesWon     = countKinds(oppEvts, "FREE_WON")      + countKinds(forEvts, "FREE_CONCEDED");
-  const forFreeScored   = forEvts.filter((e) => isFreeScore(e)).length;
-  const forFreeMissed   = forEvts.filter((e) => isFreeMiss(e)).length;
-  const oppFreeScored   = oppEvts.filter((e) => isFreeScore(e)).length;
-  const oppFreeMissed   = oppEvts.filter((e) => isFreeMiss(e)).length;
+  const forPlaced = report.placedBalls.for;
+  const oppPlaced = report.placedBalls.opp;
+  const forFreeScored   = forPlaced.scores;
+  const forFreeMissed   = forPlaced.misses;
+  const oppFreeScored   = oppPlaced.scores;
+  const oppFreeMissed   = oppPlaced.misses;
 
-  const forFreeAttempts = forFreeScored + forFreeMissed;
-  const oppFreeAttempts = oppFreeScored + oppFreeMissed;
+  const forFreeAttempts = forPlaced.attempts;
+  const oppFreeAttempts = oppPlaced.attempts;
   const totalScored     = forFreeScored + oppFreeScored;
   const totalAttempts   = forFreeAttempts + oppFreeAttempts;
 
@@ -7387,7 +7405,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   // p.7+N — Shot & Scoring Efficiency
   try {
-    const c = makeShotEfficiencyPage(events, homeTeamName, awayTeamName, p_shotBase + 1, TOTAL_PAGES, sport);
+    const c = makeShotEfficiencyPage(events, report, homeTeamName, awayTeamName, p_shotBase + 1, TOTAL_PAGES, sport);
     stampLayerBadge(c, "STATISTICS");
     addCanvasPage(c, true, "Shot & Scoring Efficiency");
   } catch (err) {
@@ -10371,7 +10389,7 @@ function makeChainPressurePage(
   drawPageHeader(ctx, "Chain Patterns", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Rank patterns ──────────────────────────────────────────────────────────
-  const patterns = rankChainPatterns(analysis, mode, homeTeam, awayTeam);
+  const patterns = rankChainPatterns(analysis, mode, homeTeam, awayTeam, report.restartTeams);
 
   // ── Colour helpers (all based on kind — no new palette colours) ───────────
   // headline is threaded through so "Turnover Loss → Score" (a DANGER_CHAIN
@@ -12006,7 +12024,7 @@ function makeHtTacticalSummaryPage(
   const ROW_H = Math.floor((P_BOT - P_TOP - GAP) / 2); // 393
 
   // ── Derive panel content from chain analysis ──────────────────────────────
-  const patterns = rankChainPatterns(analysis, mode, homeTeam, awayTeam);
+  const patterns = rankChainPatterns(analysis, mode, homeTeam, awayTeam, report.restartTeams);
   const ko = analysis.kickouts;
   const to = analysis.turnovers;
   const sr = analysis.scoringRuns;
@@ -12747,7 +12765,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 10. Shot Efficiency
     addPage(
-      makeShotEfficiencyPage(events, home, away, 10, TOTAL_PAGES, sport),
+      makeShotEfficiencyPage(events, report, home, away, 10, TOTAL_PAGES, sport),
       true,
       "Shot Efficiency",
       "STATISTICS",

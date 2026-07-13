@@ -1,4 +1,6 @@
 import type { ChainableEvent, ChainAnalysis } from "./chain-types";
+import type { RestartTeamMetrics } from "../reporting/restartTeamMetrics";
+import { formatOwnKickoutsLost } from "../reporting/restartTeamMetrics";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -105,9 +107,11 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
   mode: "FT" | "HT" = "FT",
   homeTeam?: string,
   awayTeam?: string,
+  restartTeams?: RestartTeamMetrics,
 ): ChainPressurePattern[] {
   const ko = analysis.kickouts;
   const to = analysis.turnovers;
+  const forRestarts = restartTeams?.for;
 
   const team = (homeTeam ?? "").slice(0, 18) || "Home";
   const opp  = (awayTeam ?? "").slice(0, 18) || "Away";
@@ -115,24 +119,32 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
   type Candidate = Omit<ChainPressurePattern, "rank">;
   const candidates: Candidate[] = [];
 
+  const ownLost = forRestarts?.ownRestartsLost ?? ko.lost;
+  const ownTaken = forRestarts?.ownRestartsTaken ?? ko.won + ko.lost;
+  const shareWon = forRestarts?.restartShareWon ?? ko.won;
+  const shareTotal = forRestarts?.restartShareTotal ?? ko.total;
+
   // ── 1. KICKOUT RISK (DANGER_CHAIN) ─────────────────────────────────────────
-  // OPP scored directly from kickouts we conceded.
-  if (cpQualifies(ko.lostAllowedScore, ko.lost, 0, mode)) {
+  // OPP scored directly from kickouts we conceded on our own restarts.
+  if (cpQualifies(ko.lostAllowedScore, ownLost, 0, mode)) {
     const trapOutcomes = ko.outcomes.filter(
       (o) => o.winningSide === "OPP" && o.nextScore !== null,
     );
     const zone = cpDominantZone(
       trapOutcomes.map((o) => ({ nx: o.kickoutEvent.nx, ny: o.kickoutEvent.ny })),
     );
+    const ownLostLabel = forRestarts
+      ? formatOwnKickoutsLost(team, forRestarts)
+      : `${team} lost ${ownLost} kickouts`;
     candidates.push({
       kind:          "DANGER_CHAIN",
       badge:         "KICKOUT RISK",
       headline:      "Kickout Loss → Score",
-      observation:   `${team} lost ${ko.lost} kickouts — ${ko.lostAllowedScore} restart-origin score${ko.lostAllowedScore !== 1 ? "s" : ""} for ${opp}`,
+      observation:   `${ownLostLabel} — ${ko.lostAllowedScore} restart-origin score${ko.lostAllowedScore !== 1 ? "s" : ""} for ${opp}`,
       primaryMetric: ko.lostAllowedScore,
       metricLabel:   "opposition scores",
-      occurrences:   ko.lost,
-      priorityScore: ko.lostAllowedScore * 5 + ko.lost * 2,
+      occurrences:   ownLost,
+      priorityScore: ko.lostAllowedScore * 5 + ownLost * 2,
       side:          "OPP",
       zoneCol:       zone?.col ?? null,
       zoneRow:       zone?.row ?? null,
@@ -141,8 +153,8 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
   }
 
   // ── 2. KICKOUT PLATFORM (CHAIN_WEAPON) ─────────────────────────────────────
-  // FOR scored directly from kickouts we won.
-  if (cpQualifies(ko.wonToScore, ko.won, 0, mode)) {
+  // FOR scored directly from restarts we won.
+  if (cpQualifies(ko.wonToScore, shareWon, 0, mode)) {
     const weaponOutcomes = ko.outcomes.filter(
       (o) => o.winningSide === "FOR" && o.nextScore !== null,
     );
@@ -153,11 +165,11 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
       kind:          "CHAIN_WEAPON",
       badge:         "KICKOUT STRENGTH",
       headline:      "Kickout Platform",
-      observation:   `${team} won ${ko.won} kickouts — ${ko.wonToScore} restart-origin score${ko.wonToScore !== 1 ? "s" : ""}`,
+      observation:   `${team} won ${shareWon} of ${shareTotal} restarts — ${ko.wonToScore} restart-origin score${ko.wonToScore !== 1 ? "s" : ""}`,
       primaryMetric: ko.wonToScore,
       metricLabel:   "scores from kickouts",
-      occurrences:   ko.won,
-      priorityScore: ko.wonToScore * 5 + ko.won * 2,
+      occurrences:   shareWon,
+      priorityScore: ko.wonToScore * 5 + shareWon * 2,
       side:          "FOR",
       zoneCol:       zone?.col ?? null,
       zoneRow:       zone?.row ?? null,
