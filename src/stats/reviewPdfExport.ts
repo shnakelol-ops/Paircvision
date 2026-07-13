@@ -392,13 +392,22 @@ function countKinds(evts: readonly PdfExportEvent[], ...kinds: MatchEventKind[])
   return evts.filter((e) => set.has(e.kind)).length;
 }
 
-/** Count events of a specific kind that carry ANY of the given tag values */
-function countKindWithAnyTag(
+/** Count events of a specific kind classifying into a specific kickout-type bucket (tag-vocabulary aware). */
+function countKickoutTypeOnKind(
   evts: readonly PdfExportEvent[],
   kind: MatchEventKind,
-  ...tags: string[]
+  bucket: ReturnType<typeof classifyKickoutTypeTags>,
 ): number {
-  return evts.filter((e) => e.kind === kind && tags.some((t) => e.tags?.includes(t))).length;
+  return evts.filter((e) => e.kind === kind && classifyKickoutTypeTags(e.tags) === bucket).length;
+}
+
+/** Count events of a specific kind classifying into a specific turnover-cause bucket (tag-vocabulary aware). */
+function countTurnoverCauseOnKind(
+  evts: readonly PdfExportEvent[],
+  kind: MatchEventKind,
+  bucket: ReturnType<typeof classifyTurnoverCauseTags>,
+): number {
+  return evts.filter((e) => e.kind === kind && classifyTurnoverCauseTags(e.tags) === bucket).length;
 }
 
 /** Count events from a set of kinds classifying into a specific shot-detail bucket (tag-vocabulary aware). */
@@ -798,51 +807,57 @@ function drawSummaryStatsTable(
       shotPost:       countShotDetailOnKinds(ownEvts, "POST",       SHOT_KINDS),
       shot45:         countShotDetailOnKinds(ownEvts, "FORTY_FIVE", SHOT_KINDS),
       shotBlock:      countShotDetailOnKinds(ownEvts, "BLOCK_SAVE", SHOT_KINDS),
-      // Kickouts — mirrored top-level counts; sub-tags follow same mirror logic
+      // Kickouts — mirrored top-level counts; sub-tags classified through
+      // the shared tag-vocabulary module (Pro Tagger's bare CLEAN/BREAK/FOUL
+      // vs Rapid Capture's FOUL_WON/FOUL_CONCEDED/KICKED_DEAD) so a
+      // Pro-Tagger-sourced match doesn't zero out every one of these rows.
       koWon, koCon,
       koPct:          koTotal > 0 ? `${Math.round((koWon / koTotal) * 100)}%` : "—",
-      koCleanWon:     countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "CLEAN")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "CLEAN"),
-      koBreakWon:     countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "BREAK")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "BREAK"),
-      koCleanLost:    countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "CLEAN")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "CLEAN"),
-      koBreakLost:    countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "BREAK")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "BREAK"),
-      // Foul rows accept BOTH foul tags on the mirrored (other-team) event:
-      // the tag vocabulary is perspective-relative (KICKOUT_WON carries
-      // FOUL_WON, KICKOUT_CONCEDED carries FOUL_CONCEDED), so the opposition
-      // retaining their kickout via a won foul is tagged FOUL_WON on their
-      // KICKOUT_WON — previously invisible to our "Foul Conceded" row, which
-      // made the Kickout Lost breakdown under-sum against its stated total.
-      koFoulWon:      countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "FOUL_WON")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "FOUL_WON", "FOUL_CONCEDED"),
-      koFoulCon:      countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "FOUL_CONCEDED")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "FOUL_CONCEDED", "FOUL_WON"),
-      koKickedDead:   countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "KICKED_DEAD")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "KICKED_DEAD"),
+      koCleanWon:     countKickoutTypeOnKind(ownEvts,   "KICKOUT_WON",      "CLEAN")
+                    + countKickoutTypeOnKind(otherEvts, "KICKOUT_CONCEDED", "CLEAN"),
+      koBreakWon:     countKickoutTypeOnKind(ownEvts,   "KICKOUT_WON",      "BREAK")
+                    + countKickoutTypeOnKind(otherEvts, "KICKOUT_CONCEDED", "BREAK"),
+      koCleanLost:    countKickoutTypeOnKind(ownEvts,   "KICKOUT_CONCEDED", "CLEAN")
+                    + countKickoutTypeOnKind(otherEvts, "KICKOUT_WON",      "CLEAN"),
+      koBreakLost:    countKickoutTypeOnKind(ownEvts,   "KICKOUT_CONCEDED", "BREAK")
+                    + countKickoutTypeOnKind(otherEvts, "KICKOUT_WON",      "BREAK"),
+      koFoulWon:      countKickoutTypeOnKind(ownEvts,   "KICKOUT_WON",      "FOUL")
+                    + countKickoutTypeOnKind(otherEvts, "KICKOUT_CONCEDED", "FOUL"),
+      koFoulCon:      countKickoutTypeOnKind(ownEvts,   "KICKOUT_CONCEDED", "FOUL")
+                    + countKickoutTypeOnKind(otherEvts, "KICKOUT_WON",      "FOUL"),
+      koKickedDead:   countKickoutTypeOnKind(ownEvts,   "KICKOUT_CONCEDED", "KICKED_DEAD")
+                    + countKickoutTypeOnKind(otherEvts, "KICKOUT_WON",      "KICKED_DEAD"),
       // Dead-ball won: the opposition's own kickout can only be tagged
       // KICKED_DEAD on their KICKOUT_CONCEDED event (KICKOUT_WON never
       // carries this tag) — that possession is awarded to us, so it belongs
-      // in the Won breakdown. Without this row, Clean+Break+Foul Won
-      // under-summed against the stated Kickout Won total by exactly the
-      // dead-ball count. Additive only — does not change koCleanWon,
+      // in the Won breakdown. Additive only — does not change koCleanWon,
       // koBreakWon, koFoulWon, or koKickedDead above.
-      koDeadWon:      countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "KICKED_DEAD")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "KICKED_DEAD"),
+      koDeadWon:      countKickoutTypeOnKind(ownEvts,   "KICKOUT_WON",      "KICKED_DEAD")
+                    + countKickoutTypeOnKind(otherEvts, "KICKOUT_CONCEDED", "KICKED_DEAD"),
       // Turnovers — mirrored top-level counts; sub-tags on TURNOVER_WON are "how we won it",
-      // on TURNOVER_LOST are "how we lost it" — mirror by inverting the kind too
+      // on TURNOVER_LOST are "how we lost it" — mirror by inverting the kind too.
+      // Classified through the shared tag-vocabulary module.
       toWon, toLost, netTo: toWon - toLost,
-      toTacklePress:  countKindWithAnyTag(ownEvts,   "TURNOVER_WON",  "TACKLE", "PRESS")
-                    + countKindWithAnyTag(otherEvts, "TURNOVER_LOST", "TACKLE", "PRESS"),
-      toSwarmInt:     countKindWithAnyTag(ownEvts,   "TURNOVER_WON",  "SWARM",  "INTERCEPT")
-                    + countKindWithAnyTag(otherEvts, "TURNOVER_LOST", "SWARM",  "INTERCEPT"),
-      toUnforced:     countKindWithAnyTag(ownEvts,   "TURNOVER_LOST", "UNFORCED")
-                    + countKindWithAnyTag(otherEvts, "TURNOVER_WON",  "UNFORCED"),
-      toSlackKpHp:    countKindWithAnyTag(ownEvts,   "TURNOVER_LOST", "SLACK_KICK_PASS", "SLACK_HAND_PASS")
-                    + countKindWithAnyTag(otherEvts, "TURNOVER_WON",  "SLACK_KICK_PASS", "SLACK_HAND_PASS"),
-      toOcStripped:   countKindWithAnyTag(ownEvts,   "TURNOVER_LOST", "OVERCARRIED", "STRIPPED")
-                    + countKindWithAnyTag(otherEvts, "TURNOVER_WON",  "OVERCARRIED", "STRIPPED"),
+      toTacklePress:  countTurnoverCauseOnKind(ownEvts,   "TURNOVER_WON",  "TACKLE_PRESS")
+                    + countTurnoverCauseOnKind(otherEvts, "TURNOVER_LOST", "TACKLE_PRESS"),
+      toSwarmInt:     countTurnoverCauseOnKind(ownEvts,   "TURNOVER_WON",  "SWARM_INTERCEPT")
+                    + countTurnoverCauseOnKind(otherEvts, "TURNOVER_LOST", "SWARM_INTERCEPT"),
+      // Unforced/Slack KP-HP/OC-Stripped are all still "how THIS team won
+      // its own turnovers" (own TURNOVER_WON primary), matching
+      // Tackle/Press and Swarm/Int above and the ground truth's own framing
+      // ("Adare won 10: Tackle 4, KP error 3, HP error 2, Overcarried 1" —
+      // one unified breakdown, not split across "won" and "lost" causes).
+      // Previously these three used the OWN team's TURNOVER_LOST kind as
+      // primary, which for capture sources that only ever log TURNOVER_WON
+      // (teamSide = the actual winner) is always empty — the mirror term
+      // then silently substituted the OPPOSITION's own win breakdown here,
+      // so a team's Slack KP/HP count was actually its opponent's.
+      toUnforced:     countTurnoverCauseOnKind(ownEvts,   "TURNOVER_WON",  "UNFORCED")
+                    + countTurnoverCauseOnKind(otherEvts, "TURNOVER_LOST", "UNFORCED"),
+      toSlackKpHp:    countTurnoverCauseOnKind(ownEvts,   "TURNOVER_WON",  "SLACK_KP_HP")
+                    + countTurnoverCauseOnKind(otherEvts, "TURNOVER_LOST", "SLACK_KP_HP"),
+      toOcStripped:   countTurnoverCauseOnKind(ownEvts,   "TURNOVER_WON",  "OC_STRIPPED")
+                    + countTurnoverCauseOnKind(otherEvts, "TURNOVER_LOST", "OC_STRIPPED"),
       // Frees — mirrored
       freesWon,
       freesCon,

@@ -173,6 +173,26 @@ describe("Adare v Mungret — cross-page consistency QA gate", () => {
     expect(oppCauses.length).toBe(6);
   });
 
+  it("Match Summary's own+mirror cause-bucket sum equals T/O Won for both teams (live-verification regression)", () => {
+    // Match Summary computes each cause bucket as
+    // own-team-TURNOVER_WON-tagged + opposition-TURNOVER_LOST-tagged (the
+    // latter always 0 for this single-kind fixture). Found live: an earlier
+    // version of this computation used the OWN team's TURNOVER_LOST kind as
+    // primary for Unforced/Slack KP-HP/OC-Stripped specifically, which
+    // silently substituted the OPPONENT's own cause breakdown instead —
+    // Adare's "Slack KP/HP" rendered Mungret's count. Asserting the sum
+    // equals T/O Won catches that class of bug even if a future edit
+    // reintroduces it under a different guise.
+    function bucketSum(evts: FixtureEvent[], side: "FOR" | "OPP"): number {
+      const own = evts.filter((e) => e.kind === "TURNOVER_WON" && e.teamSide === side);
+      const buckets = own.map((e) => classifyTurnoverCauseTags(e.tags));
+      return (["TACKLE_PRESS", "SWARM_INTERCEPT", "UNFORCED", "SLACK_KP_HP", "OC_STRIPPED"] as const)
+        .reduce((sum, b) => sum + buckets.filter((x) => x === b).length, 0);
+    }
+    expect(bucketSum(events, "FOR")).toBe(analysis.turnovers.won);
+    expect(bucketSum(events, "OPP")).toBe(analysis.turnovers.lost);
+  });
+
   it("turnover-origin scores: Adare 1 (10%), Mungret 2 (33%) — not 3/16 both-team (P0-1)", () => {
     expect(analysis.turnovers.wonToScore).toBe(1);
     expect(analysis.turnovers.wonToScorePercent).toBe(10);
