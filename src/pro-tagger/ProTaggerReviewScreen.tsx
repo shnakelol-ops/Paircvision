@@ -5,8 +5,16 @@ import {
   proTaggerMatchToPdfInput,
   proTaggerMatchToSnapshotInput,
 } from "./pro-tagger-review-adapter";
-import { saveProTaggerMatchFull } from "./pro-tagger-storage";
+import {
+  readProTaggerMatches,
+  resolveImportIdCollision,
+  saveProTaggerMatchFull,
+} from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
+import {
+  isCoordinateRepairApplied,
+  repairMirroredEventLocations,
+} from "./pro-tagger-coordinate-repair";
 import { buildIntelligencePack } from "../stats/intelligencePack";
 import type { IntelligencePack } from "../stats/intelligencePack";
 import { IntelligencePackPreview } from "../stats/IntelligencePackPreview";
@@ -40,6 +48,18 @@ const MATCH_TYPE_LABEL: Record<string, string> = {
   friendly:     "Friendly",
   training:     "Training",
 };
+
+const REPAIR_LOCATIONS_CONFIRM_MESSAGE =
+  "Repair mirrored locations?\n\n" +
+  "This flips ONLY the touchline (left/right sideline) axis of every event " +
+  "in this match back to where it was originally tagged. The length-of-" +
+  "pitch position, scores, players, teams, timestamps and halves are not " +
+  "changed.\n\n" +
+  "An untouched backup of the current match JSON will download first. " +
+  "This action is one-time — it cannot be applied twice, and running it " +
+  "again on an already-repaired match has no effect.\n\n" +
+  "Only apply this to a match you know was tagged with the old, mirrored " +
+  "Event Stats pitch view.";
 
 function fmtDate(ts: number): string {
   const d = new Date(ts);
@@ -181,6 +201,9 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
   const [importResult,  setImportResult]    = useState<{ ok: boolean; text: string } | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
 
+  // ── Coordinate repair state ────────────────────────────────────────────────
+  const [repairFeedback, setRepairFeedback] = useState<ExportResult | undefined>(undefined);
+
   // ── Event Map marker tap state ─────────────────────────────────────────────
   const [selectedMapEventId,   setSelectedMapEventId]   = useState<string | null>(null);
   const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
@@ -196,10 +219,15 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
   // All exports, PDFs, snapshots, and Intelligence Pack read from this value.
   const match = localMatch ?? importedMatch ?? _match;
 
+  const repairAlreadyApplied = isCoordinateRepairApplied(match);
+  const repairDisplayResult: ExportResult | undefined =
+    repairFeedback ?? (repairAlreadyApplied ? { ok: true, text: "✓ Repaired" } : undefined);
+
   // Reset local-delete state when the underlying match changes (prop swap or import).
   useEffect(() => {
     setLocalMatch(null);
     setSelectedMapEventId(null);
+    setRepairFeedback(undefined);
   }, [_match.id, importedMatch]);
 
   // Reset delete-confirm and edit state whenever the selected event changes.
@@ -364,18 +392,22 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
       .finally(() => setPackGenerating(false));
   }
 
-  function handleExportJson() {
-    const json = JSON.stringify(match, null, 2);
+  function downloadMatchJson(m: ProTaggerSavedMatch, filenameSuffix = "") {
+    const json = JSON.stringify(m, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href     = url;
-    const home = (match.homeTeamName || "home").replace(/[^a-z0-9]+/gi, "-").slice(0, 20);
-    const away = (match.awayTeamName || "away").replace(/[^a-z0-9]+/gi, "-").slice(0, 20);
-    const date = new Date(match.createdAt).toISOString().slice(0, 10);
-    a.download = `paircvision-pro-${home}-v-${away}-${date}.json`;
+    const home = (m.homeTeamName || "home").replace(/[^a-z0-9]+/gi, "-").slice(0, 20);
+    const away = (m.awayTeamName || "away").replace(/[^a-z0-9]+/gi, "-").slice(0, 20);
+    const date = new Date(m.createdAt).toISOString().slice(0, 10);
+    a.download = `paircvision-pro-${home}-v-${away}-${date}${filenameSuffix}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  function handleExportJson() {
+    downloadMatchJson(match);
   }
 
   function handleImportFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -388,9 +420,18 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
         if (typeof raw !== "string") throw new Error("Could not read file");
         const parsed: unknown = JSON.parse(raw);
         if (!isValidProMatch(parsed)) throw new Error("Not a valid Event Stats match file");
-        saveProTaggerMatchFull(parsed);
-        setImportedMatch(parsed);
-        setImportResult({ ok: true, text: "Imported" });
+
+        // Guard against a coincidental id collision with an unrelated saved
+        // match (e.g. re-importing a file that was originally tagged on a
+        // different deployment/origin) silently clobbering it.
+        const { match: toSave, idRewritten } = resolveImportIdCollision(parsed, readProTaggerMatches());
+
+        saveProTaggerMatchFull(toSave);
+        setImportedMatch(toSave);
+        setImportResult({
+          ok:   true,
+          text: idRewritten ? "Imported as a new match (id conflict avoided)" : "Imported",
+        });
       } catch (err) {
         setImportResult({
           ok:   false,
@@ -400,6 +441,28 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
       if (importFileRef.current) importFileRef.current.value = "";
     };
     reader.readAsText(file);
+  }
+
+  function handleRepairLocations() {
+    if (isCoordinateRepairApplied(match)) {
+      setRepairFeedback({ ok: false, text: "Already repaired" });
+      return;
+    }
+    if (!window.confirm(REPAIR_LOCATIONS_CONFIRM_MESSAGE)) return;
+
+    // Untouched backup of the pre-repair data, downloaded so it survives
+    // independent of this origin's localStorage — the match may only exist
+    // as an in-memory import, not (yet) a persisted Saved Match.
+    downloadMatchJson(match, "-PRE-REPAIR-BACKUP");
+
+    const result = repairMirroredEventLocations(match);
+    if (!result.ok) {
+      setRepairFeedback({ ok: false, text: "Already repaired" });
+      return;
+    }
+    setLocalMatch(result.match);
+    onMatchUpdate(result.match);
+    setRepairFeedback({ ok: true, text: "✓ Repaired — backup downloaded" });
   }
 
   const metaParts: string[] = [
@@ -535,6 +598,15 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
           accept=".json,application/json"
           style={{ display: "none" }}
           onChange={handleImportFileChange}
+        />
+
+        <ExportRow
+          label="Repair mirrored locations"
+          description="One-time touchline-axis fix for matches tagged with the old Event Stats pitch view. Downloads a backup first."
+          loading={false}
+          result={repairDisplayResult}
+          disabled={repairAlreadyApplied}
+          onClick={handleRepairLocations}
         />
 
         {/* ── PDF Export (secondary) ────────────────────────────────────── */}
