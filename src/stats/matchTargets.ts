@@ -1,6 +1,7 @@
 import type { MatchEventKind, MatchEventPeriod, MatchEventSegment } from "../core/stats/stats-event-model";
 import type { PitchSport } from "../core/pitch/pitch-config";
-import { buildPossessionOutcomeSummary } from "./chains/possession-outcomes-engine";
+import { buildMatchReport } from "./reporting/matchReport";
+import { viewPossessionRetention, viewTargetsKickoutWinRate } from "./reporting/reportViews";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -121,17 +122,21 @@ function computeActuals(events: readonly TargetableEvent[], period: "1H" | "FULL
   const scoredAttempts = forScoped.filter(e => SCORE_KINDS.has(e.kind)).length;
   const shootingEfficiency = attempts > 0 ? Math.round((scoredAttempts / attempts) * 100) : (hasAny ? 0 : null);
 
-  // Kickout win rate
-  const koWon   = countFor(scoped, new Set<MatchEventKind>(["KICKOUT_WON"]));
-  const koLost  = countFor(scoped, new Set<MatchEventKind>(["KICKOUT_CONCEDED"]));
-  const koTotal = koWon + koLost;
-  const kickoutWinRate = koTotal > 0 ? Math.round((koWon / koTotal) * 100) : null;
+  // Kickout win rate — canonical Restart Share from MatchReport
+  const reportScope = period === "1H" ? "1H" : "FULL";
+  const report = buildMatchReport({
+    events: scoped,
+    homeTeam: "FOR",
+    awayTeam: "OPP",
+    scope: reportScope,
+  });
+  const kickoutWinRate = viewTargetsKickoutWinRate(report);
 
-  // Possession retention
-  const summary       = buildPossessionOutcomeSummary(scoped);
-  const totalRetained = summary.kickouts.retainedCount + summary.turnovers.retainedCount + summary.frees.retainedCount;
-  const totalTracked  = summary.kickouts.total + summary.turnovers.total + summary.frees.total;
-  const possessionRetention = totalTracked > 0 ? Math.round((totalRetained / totalTracked) * 100) : null;
+  // Possession retention — possession-outcomes layer on the same MatchReport
+  const possessionRetention = (() => {
+    const f = viewPossessionRetention(report);
+    return f.den > 0 ? f.pct : null;
+  })();
 
   // Count metrics derived from FOR-side events
   const hasFor = forScoped.length > 0;

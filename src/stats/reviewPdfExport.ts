@@ -20,8 +20,15 @@ import type {
   MatchEventPeriod,
   MatchEventSegment,
 } from "../core/stats/stats-event-model";
-import { selectChainAnalysis } from "./chains/chain-selectors";
 import type { ChainAnalysis } from "./chains/chain-types";
+import { buildMatchReport, type MatchReport } from "./reporting/matchReport";
+import {
+  viewRestartShare,
+  viewTurnoverLossPunishment,
+  viewTurnoverShare,
+  viewTurnoverWinsToScore,
+  viewTurnoverWonToShotOnly,
+} from "./reporting/reportViews";
 import {
   cpCol,
   cpRow,
@@ -3191,7 +3198,7 @@ function makeTurnoverPunishmentPage(
     let cy = drawPanelTitle(COL3_X, CONTENT_TOP, "Turnover Punishment Summary", "#fbbf24");
 
     // Turnover share comparison bar
-    cy = drawSubHeader(COL3_X, cy, COL_W, "TURNOVER SHARE (WON → ORIGIN SCORE %)", "#fbbf24");
+    cy = drawSubHeader(COL3_X, cy, COL_W, "ORIGIN SCORES FROM WON TURNOVERS", "#fbbf24");
     cy = drawComparisonBar(
       COL3_X, cy, COL_W,
       forWonToScore, oppWonToScore,
@@ -3814,6 +3821,7 @@ function makeMomentumRunsPage(
  */
 function makeTacticalIntelligencePage(
   analysis: ChainAnalysis<PdfExportEvent>,
+  report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
   pageNum: number,
@@ -3854,20 +3862,15 @@ function makeTacticalIntelligencePage(
   const koExpPct  = ko.lostAllowedScorePercent;
   const koNetAdv  = koConvPct - koExpPct;  // positive = net kickout advantage
 
-  // Turnover
+  // Turnover — canonical metrics from MatchReport
   const tv        = analysis.turnovers;
   const tvTotal   = tv.total;
   const tvWon     = tv.won;
   const tvLost    = tv.lost;
-  const tvWinPct  = tvTotal > 0 ? Math.round((tvWon  / tvTotal) * 100) : 0;
-  const tvConvPct = tv.wonToScorePercent;   // pre-computed by engine
-  // wonToShot includes scores; subtract to get shot-only rate
-  const tvShotOnly = tvWon > 0
-    ? Math.round(((tv.wonToShot - tv.wonToScore) / tvWon) * 100)
-    : 0;
-  const tvDefExp   = tvLost > 0
-    ? Math.round((tv.lostAllowedScore / tvLost) * 100)
-    : 0;
+  const tvWinPct  = viewTurnoverShare(report).pct;
+  const tvConvPct = viewTurnoverWinsToScore(report).pct;
+  const tvShotOnly = viewTurnoverWonToShotOnly(report).pct;
+  const tvDefExp   = viewTurnoverLossPunishment(report).pct;
 
   // Scoring runs
   const sr         = analysis.scoringRuns;
@@ -4452,6 +4455,7 @@ function makeTacticalReviewGuidePage(
 function makeOppositionSnapshotPage(
   events: readonly PdfExportEvent[],
   analysis: ChainAnalysis<PdfExportEvent>,
+  report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
   pageNum: number,
@@ -4524,7 +4528,7 @@ function makeOppositionSnapshotPage(
   const tvOppToScore = (analysis.byRule["TURNOVER_TO_SCORE"] ?? []).filter((c) => c.teamSide === "OPP").length;
   const tvOppToShot  = (analysis.byRule["TURNOVER_TO_SHOT"]  ?? []).filter((c) => c.teamSide === "OPP").length;
   const tvLostScore  = tv.lostAllowedScore;
-  const tvConvPct    = tvLost > 0 ? Math.round((tvLostScore / tvLost) * 100) : 0;
+  const tvPunishPct  = viewTurnoverLossPunishment(report).pct;
 
   // Momentum spell
   const sr         = analysis.scoringRuns;
@@ -4579,7 +4583,7 @@ function makeOppositionSnapshotPage(
     }
   }
   if (maxConsOpp >= 4)    watchlist.push(`Peak run of ${maxConsOpp} unanswered — sustained pressure threat`);
-  if (tvConvPct  >= 40)   watchlist.push(`${tvConvPct}% of gifted possession converted to opposition scores`);
+  if (tvPunishPct >= 40)   watchlist.push(`${tvPunishPct}% of gifted possession converted to opposition scores`);
   if (koOppWinPct >= 55)  watchlist.push(`Opposition held ${koOppWinPct}% Restart Share (${koOppWon} of ${ko.total})`);
   if (koLostScore >= 2)   watchlist.push(`${koLostScore} restart-origin score${koLostScore !== 1 ? "s" : ""} conceded off kickout losses`);
   if (oppChainPct >= 55)  watchlist.push(`Held tactical chain advantage — ${oppChainPct}% of all detected chains`);
@@ -4766,8 +4770,8 @@ function makeOppositionSnapshotPage(
     );
     cy = drawMetricRow(
       L_COL_X, cy, L_COL_W,
-      "Turnover conversion rate", tvLost > 0 ? `${tvConvPct}%` : "—",
-      tvConvPct >= 40 ? OPP_ACCENT : "#f8fafc", false,
+      "Turnover punishment rate", tvLost > 0 ? `${tvPunishPct}%` : "—",
+      tvPunishPct >= 40 ? OPP_ACCENT : "#f8fafc", false,
     );
     cy = drawMetricRow(
       L_COL_X, cy, L_COL_W,
@@ -7342,8 +7346,13 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   const playerPageCount = calcPlayerPageCount(events, homeSquadPlayers, awaySquadPlayers);
   const TOTAL_PAGES = 24 + playerPageCount + (hasTargets ? 1 : 0);
 
-  // Chain analysis — computed once; shared by all chain page builders.
-  const chainAnalysis = selectChainAnalysis(events);
+  // Chain analysis — computed once via canonical MatchReport; shared by all page builders.
+  const report = buildMatchReport({
+    events,
+    homeTeam: homeTeamName,
+    awayTeam: awayTeamName,
+  });
+  const chainAnalysis = report.chain;
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297;
@@ -7537,7 +7546,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // Rematch Watchlist draws on the Player Influence module — not a single
   // STATISTICS-only page (see terminology audit, Task 3).
   try {
-    const c = makeOppositionSnapshotPage(events, chainAnalysis, homeTeamName, awayTeamName, p_arch + 2, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers);
+    const c = makeOppositionSnapshotPage(events, chainAnalysis, report, homeTeamName, awayTeamName, p_arch + 2, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers);
     stampLayerBadge(c, "MIXED");
     addCanvasPage(c, true, "Opposition Snapshot");
   } catch (err) {
@@ -7595,7 +7604,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   // p.16+N — Intelligence Summary (mixed — Possession primary, Chain context)
   try {
-    const c = makeTacticalIntelligencePage(chainAnalysis, homeTeamName, awayTeamName, p_ch2div + 4, TOTAL_PAGES, sport);
+    const c = makeTacticalIntelligencePage(chainAnalysis, report, homeTeamName, awayTeamName, p_ch2div + 4, TOTAL_PAGES, sport);
     stampLayerBadge(c, "MIXED");
     addCanvasPage(c, true, "Intelligence Summary");
   } catch (err) {
@@ -8197,7 +8206,7 @@ function drawDirectionalPressureSweep(
 // ─── Possession Chain Lite V1 helpers ─────────────────────────────────────────
 //
 // Read-only consumers of the pre-computed ChainAnalysis object.
-// No new chain computation — all data flows from selectChainAnalysis(events).
+// No new chain computation — all data flows from buildMatchReport(events).
 //
 // Product voice: observational only. No tactical advice. No false certainty.
 // Low-event matches (ko.total < 3 AND to.total < 3) degrade cleanly to [].
@@ -12058,6 +12067,7 @@ function makeHtTacticalSummaryPage(
   events: readonly PdfExportEvent[],
   sport: PitchSport,
   analysis: ChainAnalysis<PdfExportEvent>,
+  report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
   pageNum: number,
@@ -12099,12 +12109,7 @@ function makeHtTacticalSummaryPage(
   const oppShotEvts = events.filter(
     (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
   );
-  const totalForKO = events.filter(
-    (e) => (e.kind === "KICKOUT_WON" && e.teamSide === "FOR") ||
-           (e.kind === "KICKOUT_CONCEDED" && e.teamSide === "OPP"),
-  ).length;
-  const totalAllKO = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind)).length;
-  const koWinPct   = totalAllKO > 0 ? Math.round((totalForKO / totalAllKO) * 100) : 0;
+  const koWinPct   = viewRestartShare(report).pct;
   const forShotEff = forShotEvts.length > 0
     ? Math.round((forScoreEvts.length / forShotEvts.length) * 100) : 0;
   const oppShotEff = oppShotEvts.length > 0
@@ -12609,7 +12614,13 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     : allEvents;
 
   // Chain analysis scoped to the same event set — H1-only for HT, full for FT.
-  const chainAnalysis = selectChainAnalysis(events);
+  const report = buildMatchReport({
+    events,
+    homeTeam: home,
+    awayTeam: away,
+    scope: isHT ? "1H" : "FULL",
+  });
+  const chainAnalysis = report.chain;
 
   const TOTAL_PAGES = (isHT ? 7 : 14) + (hasTargets ? 1 : 0);
 
@@ -12696,7 +12707,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 6. Tactical Match Summary — 2×2 panel, no pitch, coaching message board
     addPage(
-      makeHtTacticalSummaryPage(events, sport, chainAnalysis, home, away, 6, TOTAL_PAGES, "HT"),
+      makeHtTacticalSummaryPage(events, sport, chainAnalysis, report, home, away, 6, TOTAL_PAGES, "HT"),
       true,
       "Tactical Summary",
       "MIXED",
@@ -12798,7 +12809,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 8. Tactical Match Summary — 2×2 panel, no pitch, coaching message board
     addPage(
-      makeHtTacticalSummaryPage(events, sport, chainAnalysis, home, away, 8, TOTAL_PAGES, "FT"),
+      makeHtTacticalSummaryPage(events, sport, chainAnalysis, report, home, away, 8, TOTAL_PAGES, "FT"),
       true,
       "Tactical Summary",
       "MIXED",
@@ -12842,7 +12853,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     // MIXED: Restart/Turnover Threat cards are chain-origin figures and the
     // Rematch Watchlist draws on the Player Influence module.
     addPage(
-      makeOppositionSnapshotPage(events, chainAnalysis, home, away, 13, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers),
+      makeOppositionSnapshotPage(events, chainAnalysis, report, home, away, 13, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers),
       true,
       "Opposition Snapshot",
       "MIXED",
