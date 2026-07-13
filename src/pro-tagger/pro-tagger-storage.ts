@@ -130,6 +130,38 @@ export function saveProTaggerMatchFull(record: ProTaggerSavedMatch): boolean {
   return safeWrite(PRO_TAGGER_MATCHES_STORAGE_KEY, JSON.stringify(next));
 }
 
+export type ImportIdCollisionResult = {
+  match: ProTaggerSavedMatch;
+  /** True when the candidate's id was rewritten to avoid clobbering an unrelated saved match. */
+  idRewritten: boolean;
+};
+
+/**
+ * Guards an imported match against a coincidental id collision with a
+ * different, unrelated saved match (e.g. importing a file exported from a
+ * different deployment/origin whose id happens to match something already
+ * saved here). Only reuses the imported id when there's no collision, or the
+ * collision is the same match (re-importing an identical file stays a stable
+ * no-op upsert) — never silently overwrites a genuinely different record.
+ */
+export function resolveImportIdCollision(
+  candidate: ProTaggerSavedMatch,
+  existingMatches: readonly ProTaggerSavedMatch[],
+): ImportIdCollisionResult {
+  const collision = existingMatches.find((m) => m.id === candidate.id);
+  const isDifferentMatch =
+    collision != null &&
+    (collision.homeTeamName !== candidate.homeTeamName ||
+      collision.awayTeamName !== candidate.awayTeamName ||
+      collision.createdAt !== candidate.createdAt);
+
+  if (!isDifferentMatch) return { match: candidate, idRewritten: false };
+  return {
+    match: { ...candidate, id: `${candidate.id}-imported-${Date.now()}` },
+    idRewritten: true,
+  };
+}
+
 export function deleteProTaggerMatch(id: string): boolean {
   const existing = readProTaggerMatchesRaw();
   const next = existing.filter((m) => m.id !== id);
