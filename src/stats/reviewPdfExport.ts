@@ -38,6 +38,7 @@ import {
   toTeamRelativeZoneEvent,
 } from "./zones/zone-orientation";
 import type { AttackingDirection } from "./zones/zone-orientation";
+import { computeSegmentResults } from "./segmentResults";
 import { eventSource, isFreeScore, isFreeMiss } from "./eventSource";
 import type { ScoreSource } from "./eventSource";
 import {
@@ -9037,12 +9038,13 @@ function makeHtGameFlowPage(
     bullets: string[];
   };
 
+  // Shared segment results (segmentResults.ts) — forScore/oppScore/status
+  // must be the same numbers this page (and every other report) displays as
+  // the segment margin, never a separate kickout/turnover-weighted score.
+  const segmentResultsBySeg = new Map(computeSegmentResults(events).map((r) => [r.segment, r]));
+
   const segDataList: SegData[] = segNums.map((seg) => {
     const segEvts    = events.filter((e) => e.segment === seg);
-    const forSEvts   = segEvts.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind));
-    const oppSEvts   = segEvts.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind));
-    const forScore   = scoreFromEvents(forSEvts).total;
-    const oppScore   = scoreFromEvents(oppSEvts).total;
     const koWon      = segEvts.filter((e) => e.kind === "KICKOUT_WON").length;
     const koConceded = segEvts.filter((e) => e.kind === "KICKOUT_CONCEDED").length;
     const toWon      = segEvts.filter((e) => e.kind === "TURNOVER_WON").length;
@@ -9051,12 +9053,12 @@ function makeHtGameFlowPage(
     const kickoutBalance  = koWon - koConceded;
     const turnoverBalance = toWon - toLost;
 
-    // Composite control score: scoring weighted 2×, kickout balance 1×, turnover 0.5×
-    const controlScore =
-      (forScore - oppScore) * 2 + kickoutBalance + Math.round(turnoverBalance * 0.5);
-
+    const result       = segmentResultsBySeg.get(seg);
+    const forScore     = result?.forScore ?? 0;
+    const oppScore     = result?.oppScore ?? 0;
+    const controlScore = result?.margin ?? 0;
     const status: SegControl =
-      controlScore >= 2 ? "FOR" : controlScore <= -2 ? "OPP" : "CONTESTED";
+      result == null || result.winner === "LEVEL" ? "CONTESTED" : result.winner;
 
     // Tactical bullet causes (up to 3, highest impact first)
     const bullets: string[] = [];
@@ -10104,42 +10106,37 @@ function makeFtTacticalMatchStoryPage(
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, "Tactical Match Story", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
-  // ── Segment control data (same logic as makeHtGameFlowPage, inline) ───────
-  const segNums = Array.from(
-    new Set(
-      events
-        .map((e) => e.segment)
-        .filter((s): s is MatchEventSegment => s != null),
-    ),
-  ).sort((a, b) => a - b);
-
+  // ── Segment control data ──────────────────────────────────────────────────
+  // Single shared source (segmentResults.ts) for forScore/oppScore/margin/
+  // winner — the same numbers this page prints on each segment bar below
+  // (diffLabel) and the same ones the Segment Control table and any other
+  // report use. The winner is derived from the margin alone (never from
+  // kickouts/turnovers), so this page's narrative can never contradict the
+  // number it displays on its own bars.
   type SegControl = "FOR" | "OPP" | "CONTESTED";
   type SegData = {
     seg: MatchEventSegment;
     label: string;
     forScore: number;
     oppScore: number;
-    kickoutBalance: number;
-    controlScore: number;
+    controlScore: number; // == margin (forScore - oppScore) — kept as the field name pins/thresholds below already use
     status: SegControl;
   };
 
-  const segDataList: SegData[] = segNums.map((seg) => {
-    const segEvts       = events.filter((e) => e.segment === seg);
-    const forScore      = scoreFromEvents(segEvts.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind))).total;
-    const oppScore      = scoreFromEvents(segEvts.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind))).total;
-    const koWon         = segEvts.filter((e) => e.kind === "KICKOUT_WON").length;
-    const koConceded    = segEvts.filter((e) => e.kind === "KICKOUT_CONCEDED").length;
-    const toWon         = segEvts.filter((e) => e.kind === "TURNOVER_WON").length;
-    const toLost        = segEvts.filter((e) => e.kind === "TURNOVER_LOST").length;
-    const kickoutBalance  = koWon - koConceded;
-    const turnoverBalance = toWon - toLost;
-    const controlScore    = (forScore - oppScore) * 2 + kickoutBalance + Math.round(turnoverBalance * 0.5);
-    const status: SegControl = controlScore >= 2 ? "FOR" : controlScore <= -2 ? "OPP" : "CONTESTED";
-    const start = (seg - 1) * 10;
-    const end   = seg * 10;
-    return { seg, label: `${start}–${end}'`, forScore, oppScore, kickoutBalance, controlScore, status };
-  });
+  const segDataList: SegData[] = computeSegmentResults(events)
+    .filter((r) => r.eventCount > 0)
+    .map((r) => {
+      const start = (r.segment - 1) * 10;
+      const end   = r.segment * 10;
+      return {
+        seg:  r.segment,
+        label: `${start}–${end}'`,
+        forScore: r.forScore,
+        oppScore: r.oppScore,
+        controlScore: r.margin,
+        status: r.winner === "LEVEL" ? "CONTESTED" : r.winner,
+      };
+    });
 
   // ── Layout constants ──────────────────────────────────────────────────────
   const RIVER_X  = 80;
