@@ -18,6 +18,8 @@ import {
   countPlacedRestartOriginScores,
   fmtMarginLabel,
   fmtScoreLine,
+  isPlacedMiss,
+  isPlacedScore,
   LEDGER_ROW_LABELS,
   restartOriginBridgeNote,
 } from "./scoreLedger";
@@ -239,5 +241,44 @@ describe("origin ↔ direct reconciliation bridge", () => {
     expect(restartOriginBridgeNote({ us: 0, them: 0 }, "A", "B")).toBe(
       "Origin chains include frees won in the possession. The ledger counts those under Placed balls.",
     );
+  });
+});
+
+describe("isPlacedScore / isPlacedMiss — the canonical 'Placed' definition (P0-8)", () => {
+  // Match Summary, Shot & Scoring Efficiency, Shot Profile cards, and Free
+  // Kick Analysis must all reuse these exact functions for their "Placed
+  // Scored"/"Placed Missed" rows — a frees-only count under that same label
+  // silently means something different from this ledger's Placed balls row.
+  it("counts frees, 45s, penalties and marks as placed — not frees only", () => {
+    expect(isPlacedScore(mk({ kind: "FREE_SCORED", teamSide: "FOR" }))).toBe(true);
+    expect(isPlacedScore(mk({ kind: "FORTY_FIVE_TWO_POINT", teamSide: "FOR" }))).toBe(true);
+    expect(isPlacedScore(mk({ kind: "POINT", teamSide: "FOR", tags: ["SOURCE_PENALTY"] }))).toBe(true);
+    expect(isPlacedScore(mk({ kind: "POINT", teamSide: "FOR", tags: ["SOURCE_MARK"] }))).toBe(true);
+    // Open-play scores are never placed balls.
+    expect(isPlacedScore(mk({ kind: "POINT", teamSide: "FOR", tags: ["SOURCE_PLAY"] }))).toBe(false);
+    expect(isPlacedScore(mk({ kind: "GOAL", teamSide: "FOR" }))).toBe(false);
+  });
+
+  it("counts missed frees, 45s and penalties as placed misses", () => {
+    expect(isPlacedMiss(mk({ kind: "FREE_MISSED", teamSide: "FOR" }))).toBe(true);
+    expect(isPlacedMiss(mk({ kind: "WIDE", teamSide: "FOR", tags: ["SOURCE_FREE"] }))).toBe(true);
+    expect(isPlacedMiss(mk({ kind: "WIDE", teamSide: "FOR", tags: ["SOURCE_45"] }))).toBe(true);
+    expect(isPlacedMiss(mk({ kind: "WIDE", teamSide: "FOR", tags: ["SOURCE_PENALTY"] }))).toBe(true);
+    expect(isPlacedMiss(mk({ kind: "WIDE", teamSide: "FOR", tags: ["SOURCE_PLAY"] }))).toBe(false);
+  });
+
+  it("Adare v Mungret regression: Placed total is frees + 45s, never frees alone (Adare 4 scored, not 2)", () => {
+    const events: FixtureEvent[] = [
+      mk({ kind: "FREE_SCORED", teamSide: "FOR" }),
+      mk({ kind: "FREE_SCORED", teamSide: "FOR" }),
+      mk({ kind: "FREE_MISSED", teamSide: "FOR" }),
+      mk({ kind: "FORTY_FIVE_TWO_POINT", teamSide: "FOR" }),
+      mk({ kind: "FORTY_FIVE_TWO_POINT", teamSide: "FOR" }),
+    ];
+    const scored = events.filter((e) => e.teamSide === "FOR" && isPlacedScore(e)).length;
+    const missed = events.filter((e) => e.teamSide === "FOR" && isPlacedMiss(e)).length;
+    expect(scored).toBe(4); // 2 frees + 2 45s — not 2 (frees-only)
+    expect(missed).toBe(1);
+    expect(scored + missed).toBe(5); // matches the ground-truth "5 att / 4 sc" placed total
   });
 });

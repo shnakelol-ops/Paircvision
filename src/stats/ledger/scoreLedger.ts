@@ -119,14 +119,27 @@ function addToSide(side: LedgerSide, kind: MatchEventKind): void {
   side.value += scoreValue(kind);
 }
 
-/** A placed ball: free / 45 / penalty / mark — by kind or by source tag. */
-function isPlacedScore(e: ChainableEvent): boolean {
+/**
+ * A placed ball SCORE: free / 45 / penalty / mark — by kind or by source
+ * tag. Exported as the single canonical "Placed" definition — every other
+ * surface (Match Summary, Shot Efficiency, shot-profile cards) must reuse
+ * this rather than a frees-only count, or "Placed Scored/Missed" means two
+ * different things on two different pages of the same report.
+ *
+ * Explicitly false for miss/wide kinds — eventSource() returns "FREE" for
+ * FREE_MISSED too (it's a source classifier, not an outcome classifier), so
+ * without this guard a missed free would count as a placed *score*. The
+ * ledger never hit this because it only ever calls isPlacedScore on
+ * already-filtered SCORE_KINDS events; other callers may not.
+ */
+export function isPlacedScore(e: ChainableEvent): boolean {
+  if (e.kind === "WIDE" || e.kind === "FREE_MISSED" || e.kind === "SHOT") return false;
   if (e.kind === "FREE_SCORED" || e.kind === "FORTY_FIVE_TWO_POINT") return true;
   const src = eventSource(e);
   return src === "FREE" || src === "45" || src === "PENALTY" || src === "MARK";
 }
 
-function isPlacedMiss(e: ChainableEvent): boolean {
+export function isPlacedMiss(e: ChainableEvent): boolean {
   if (isFreeMiss(e)) return true;
   if (e.kind !== "WIDE") return false;
   const src = eventSource(e);

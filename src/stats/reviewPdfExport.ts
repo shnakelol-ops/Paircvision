@@ -71,6 +71,8 @@ import {
   fmtMarginLabel,
   fmtNet,
   fmtScoreLine,
+  isPlacedMiss,
+  isPlacedScore,
   restartOriginBridgeNote,
 } from "./ledger/scoreLedger";
 import {
@@ -844,8 +846,13 @@ function drawSummaryStatsTable(
       // Frees — mirrored
       freesWon,
       freesCon,
-      freeScored:     ownEvts.filter((e) => isFreeScore(e)).length,
-      freeMissed:     ownEvts.filter((e) => isFreeMiss(e)).length,
+      // "Placed Scored"/"Placed Missed" = placed balls (frees + 45s +
+      // penalties + marks), matching the canonical definition in
+      // scoreLedger.ts's isPlacedScore/isPlacedMiss — never frees-only, or
+      // this row silently means something different from the same-named
+      // figure on Where the Points Went.
+      freeScored:     ownEvts.filter((e) => isPlacedScore(e)).length,
+      freeMissed:     ownEvts.filter((e) => isPlacedMiss(e)).length,
     };
   }
 
@@ -897,7 +904,7 @@ function drawSummaryStatsTable(
         rows: [
           { label: `${koLabel(sport)} Won`,  value: String(st.koWon) },
           { label: `${koLabel(sport)} Lost`, value: String(st.koCon) },
-          { label: `${koLabel(sport)} %`,    value: st.koPct },
+          { label: restartMetricLabel("restartShare", sport), value: st.koPct },
           { label: "Clean Won",      value: String(st.koCleanWon) },
           { label: "Break Won",      value: String(st.koBreakWon) },
           { label: "Foul Won",       value: String(st.koFoulWon) },
@@ -5790,8 +5797,11 @@ function makeShotEfficiencyPage(
 
     const twoPointerSc   = evts.filter((e) => e.kind === "TWO_POINTER").length;
     const fortyFiveTwoSc = evts.filter((e) => e.kind === "FORTY_FIVE_TWO_POINT").length;
-    const freeScored     = evts.filter((e) => isFreeScore(e)).length;
-    const freeMissed     = evts.filter((e) => isFreeMiss(e)).length;
+    // "Placed Scored"/"Placed Missed" = placed balls (frees + 45s + penalties
+    // + marks), matching scoreLedger.ts's isPlacedScore/isPlacedMiss — never
+    // frees-only.
+    const freeScored     = evts.filter((e) => isPlacedScore(e)).length;
+    const freeMissed     = evts.filter((e) => isPlacedMiss(e)).length;
     const freeTotal      = freeScored + freeMissed;
     const freeConvPct    = freeTotal  > 0 ? Math.round((freeScored / freeTotal) * 100) : 0;
 
@@ -7129,10 +7139,13 @@ function makeFreeAnalysisPage(
 
   const forFreesWon     = countKinds(forEvts, "FREE_WON")      + countKinds(oppEvts, "FREE_CONCEDED");
   const oppFreesWon     = countKinds(oppEvts, "FREE_WON")      + countKinds(forEvts, "FREE_CONCEDED");
-  const forFreeScored   = forEvts.filter((e) => isFreeScore(e)).length;
-  const forFreeMissed   = forEvts.filter((e) => isFreeMiss(e)).length;
-  const oppFreeScored   = oppEvts.filter((e) => isFreeScore(e)).length;
-  const oppFreeMissed   = oppEvts.filter((e) => isFreeMiss(e)).length;
+  // "Placed balls" = frees + 45s + penalties + marks (isPlacedScore/isPlacedMiss,
+  // the same canonical definition as scoreLedger.ts) — every row and callout
+  // on this page under "PLACED BALLS" uses this, never frees-only.
+  const forFreeScored   = forEvts.filter((e) => isPlacedScore(e)).length;
+  const forFreeMissed   = forEvts.filter((e) => isPlacedMiss(e)).length;
+  const oppFreeScored   = oppEvts.filter((e) => isPlacedScore(e)).length;
+  const oppFreeMissed   = oppEvts.filter((e) => isPlacedMiss(e)).length;
 
   const forFreeAttempts = forFreeScored + forFreeMissed;
   const oppFreeAttempts = oppFreeScored + oppFreeMissed;
@@ -11102,12 +11115,14 @@ function makeOurShotProfilePage(
   const freeWonEvts = events.filter(
     (e) => e.teamSide === "FOR" && e.kind === "FREE_WON",
   );
-  // Placed-ball counts — source-tag aware
+  // Placed-ball counts — frees + 45s + penalties + marks (isPlacedScore/
+  // isPlacedMiss, the same canonical definition as scoreLedger.ts), never
+  // frees-only.
   const forFreeScored = events.filter(
-    (e) => e.teamSide === "FOR" && isFreeScore(e),
+    (e) => e.teamSide === "FOR" && isPlacedScore(e),
   ).length;
   const forFreeMissed = events.filter(
-    (e) => e.teamSide === "FOR" && isFreeMiss(e),
+    (e) => e.teamSide === "FOR" && isPlacedMiss(e),
   ).length;
 
   // ── Zone counts (for headline + hotspot highlight) ────────────────────────
@@ -11256,12 +11271,12 @@ function makeOppShotProfilePage(
   const freeConcededEvts = events.filter(
     (e) => e.teamSide === "FOR" && e.kind === "FREE_CONCEDED",
   );
-  // OPP placed-ball counts — source-tag aware
+  // OPP placed-ball counts — frees + 45s + penalties + marks, never frees-only.
   const oppFreeScored = events.filter(
-    (e) => e.teamSide === "OPP" && isFreeScore(e),
+    (e) => e.teamSide === "OPP" && isPlacedScore(e),
   ).length;
   const oppFreeMissed = events.filter(
-    (e) => e.teamSide === "OPP" && isFreeMiss(e),
+    (e) => e.teamSide === "OPP" && isPlacedMiss(e),
   ).length;
 
   // ── Zone counts (for headline + hotspot highlight) ────────────────────────
