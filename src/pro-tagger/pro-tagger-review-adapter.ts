@@ -13,16 +13,24 @@ function toSquadPlayers(squad: ProTaggerSquad): readonly PdfSquadPlayer[] {
   return squad.players.map((p) => ({ id: p.id, number: p.number, name: p.name }));
 }
 
+function toHomeAttackingDirection(rawDir: "left" | "right"): "LEFT" | "RIGHT" {
+  return rawDir === "left" ? "LEFT" : "RIGHT";
+}
+
 export function proTaggerMatchToPdfInput(m: ProTaggerSavedMatch): ReviewPdfExportInput {
   return {
-    events:           m.events,
-    homeTeamName:     m.homeTeamName,
-    awayTeamName:     m.awayTeamName,
-    venueName:        m.venue || undefined,
-    sport:            toPitchSport(m.sport),
-    homeSquadPlayers: toSquadPlayers(m.homeSquad),
-    awaySquadPlayers: toSquadPlayers(m.awaySquad),
-    targets:          m.targets,
+    events:                 m.events,
+    homeTeamName:           m.homeTeamName,
+    awayTeamName:           m.awayTeamName,
+    venueName:              m.venue || undefined,
+    sport:                  toPitchSport(m.sport),
+    homeSquadPlayers:       toSquadPlayers(m.homeSquad),
+    awaySquadPlayers:       toSquadPlayers(m.awaySquad),
+    targets:                m.targets,
+    // Needed so every zone label (Attacking/Defensive thirds, hotspots) in
+    // the Full Review PDF resolves against this match's real attacking
+    // direction instead of the "RIGHT" default — see zones/zone-orientation.ts.
+    homeAttackingDirection: toHomeAttackingDirection(m.restoreContext.firstHalfAttackingDirection),
   };
 }
 
@@ -30,11 +38,9 @@ export function proTaggerMatchToSnapshotInput(
   m: ProTaggerSavedMatch,
   snapshotMode: "HALF_TIME_SNAPSHOT" | "FULL_TIME_SNAPSHOT",
 ): SnapshotPdfExportInput {
-  const rawDir = m.restoreContext.firstHalfAttackingDirection;
   return {
     ...proTaggerMatchToPdfInput(m),
     snapshotMode,
-    homeAttackingDirection: rawDir === "left" ? "LEFT" : "RIGHT",
   };
 }
 
@@ -44,13 +50,14 @@ export function buildLivePdfInput(
 ): ReviewPdfExportInput {
   return {
     events,
-    homeTeamName:     session.homeTeamName.trim() || "Team A",
-    awayTeamName:     session.awayTeamName.trim() || "Team B",
-    venueName:        session.venue.trim() || undefined,
-    sport:            toPitchSport(session.sport),
-    homeSquadPlayers: toSquadPlayers(session.homeSquad),
-    awaySquadPlayers: toSquadPlayers(session.awaySquad),
-    targets:          session.targets,
+    homeTeamName:           session.homeTeamName.trim() || "Team A",
+    awayTeamName:           session.awayTeamName.trim() || "Team B",
+    venueName:              session.venue.trim() || undefined,
+    sport:                  toPitchSport(session.sport),
+    homeSquadPlayers:       toSquadPlayers(session.homeSquad),
+    awaySquadPlayers:       toSquadPlayers(session.awaySquad),
+    targets:                session.targets,
+    homeAttackingDirection: toHomeAttackingDirection(session.attackDirection),
   };
 }
 
@@ -62,6 +69,5 @@ export function buildLiveSnapshotInput(
   return {
     ...buildLivePdfInput(session, events),
     snapshotMode,
-    homeAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
   };
 }

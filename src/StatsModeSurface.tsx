@@ -4962,6 +4962,7 @@ export default function StatsModeSurface() {
       homeSquadPlayers: homeSquad?.players.map((p) => ({ id: p.id, number: p.number, name: p.name })),
       awaySquadPlayers: awaySquad?.players.map((p) => ({ id: p.id, number: p.number, name: p.name })),
       targets: activeTargets,
+      homeAttackingDirection: firstHalfAttackingDirection,
     })
       .then(() => {
         setSaveFeedback("PDF exported");
