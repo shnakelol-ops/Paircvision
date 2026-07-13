@@ -35,6 +35,7 @@ import type { PitchSport } from "../../core/pitch/pitch-config";
 export type ReviewPromptCategory =
   | "KICKOUT"
   | "TURNOVER"
+  | "FREE"
   | "MOMENTUM"
   | "CHAIN"
   | "GENERAL";
@@ -328,13 +329,13 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (chainForPct <= 40) {
       push(
         "CHAIN",
-        `${away} won more possession sequences (${100 - chainForPct}% vs ${chainForPct}% for ${home} — ${chainTotal} total). Worth reviewing whether this pattern shifted across the match.`,
+        `${away} won more chain rule matches (${100 - chainForPct}% vs ${chainForPct}% for ${home} — ${chainTotal} total). Worth reviewing whether this pattern shifted across the match.`,
         `chain:forPct=${chainForPct}`,
       );
     } else if (chainForPct >= 60) {
       push(
         "CHAIN",
-        `${home} won ${chainForPct}% of all possession sequences (${sm.forChains} of ${chainTotal}). Worth reviewing what drove this advantage.`,
+        `${home} won ${chainForPct}% of all chain rule matches (${sm.forChains} of ${chainTotal}). Worth reviewing what drove this advantage.`,
         `chain:forPct=${chainForPct}`,
       );
     }
@@ -357,12 +358,14 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     }
   }
 
-  // Free kicks to goal
+  // Free kicks to goal — genuinely about frees, not general chain balance;
+  // tagged FREE so it routes to the Free Intelligence panel, not a page
+  // showing kickout/turnover chain balance.
   if (freeToGoal >= 2) {
     push(
-      "CHAIN",
+      "FREE",
       `${home} converted ${freeToGoal} placed balls directly to goals. Worth reviewing the positions and defensive setups when these occurred.`,
-      `chain:freeToGoal=${freeToGoal}`,
+      `free:freeToGoal=${freeToGoal}`,
     );
   }
 
@@ -378,7 +381,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
         : `lower in the second half (${h2ForPct}% vs ${h1ForPct}% in the first)`;
       push(
         "CHAIN",
-        `${home}'s possession sequence win rate was ${halfLabel}. Worth reviewing what changed after the interval.`,
+        `${home}'s chain rule match win rate was ${halfLabel}. Worth reviewing what changed after the interval.`,
         `chain:h1ForPct=${h1ForPct},h2ForPct=${h2ForPct}`,
       );
     }
@@ -390,14 +393,14 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (chainTotal >= 12 && chainForPct >= 47 && chainForPct <= 53) {
     push(
       "GENERAL",
-      `Possession sequences were closely contested — ${home} won ${sm.forChains} and ${away} won ${sm.oppChains} from ${chainTotal} total. Worth reviewing what decided the close possessions.`,
+      `Chain rule matches were closely contested — ${home} won ${sm.forChains} and ${away} won ${sm.oppChains} from ${chainTotal} total. Worth reviewing what decided the close possessions.`,
       `general:totalChains=${chainTotal},forPct=${chainForPct}`,
     );
   } else if (chainTotal < 6 && analysis.totalEventsAnalysed >= 20) {
     // Few sequences detected despite reasonable event volume — worth flagging
     push(
       "GENERAL",
-      `Only ${chainTotal} possession sequences were detected. Worth reviewing whether the match involved a high proportion of set-piece play.`,
+      `Only ${chainTotal} chain rule matches were detected. Worth reviewing whether the match involved a high proportion of set-piece play.`,
       `general:totalChains=${chainTotal}`,
     );
   }

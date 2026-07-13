@@ -4143,11 +4143,11 @@ function makeTacticalIntelligencePage(
 
   if (chainTotal > 0) {
     if (chainForPct >= 60) {
-      insights.push({ text: `${truncTeam(homeTeam, 16)} controlled possession — winning ${chainForPct}% of all sequences.` });
+      insights.push({ text: `${truncTeam(homeTeam, 16)} controlled — winning ${chainForPct}% of all chain rule matches.` });
     } else if (chainForPct <= 40) {
-      insights.push({ text: `${truncTeam(awayTeam, 16)} held the possession edge — ${truncTeam(homeTeam, 16)} won only ${chainForPct}% of sequences.` });
+      insights.push({ text: `${truncTeam(awayTeam, 16)} held the edge — ${truncTeam(homeTeam, 16)} won only ${chainForPct}% of chain rule matches.` });
     } else {
-      insights.push({ text: `Closely matched — ${truncTeam(homeTeam, 16)} won ${chainForPct}% of ${chainTotal} possession sequences.` });
+      insights.push({ text: `Closely matched — ${truncTeam(homeTeam, 16)} won ${chainForPct}% of ${chainTotal} chain rule matches.` });
     }
   }
 
@@ -4368,6 +4368,7 @@ function makeTacticalReviewGuidePage(
     switch (cat) {
       case "KICKOUT":  return "#22d3ee";
       case "TURNOVER": return "#a78bfa";
+      case "FREE":     return "#818cf8";
       case "MOMENTUM": return "#fbbf24";
       case "CHAIN":    return "#34d399";
       case "GENERAL":  return "#94a3b8";
@@ -4378,6 +4379,7 @@ function makeTacticalReviewGuidePage(
     switch (cat) {
       case "KICKOUT":  return "rgba(34,211,238,0.15)";
       case "TURNOVER": return "rgba(167,139,250,0.15)";
+      case "FREE":     return "rgba(129,140,248,0.15)";
       case "MOMENTUM": return "rgba(251,191,36,0.15)";
       case "CHAIN":    return "rgba(52,211,153,0.15)";
       case "GENERAL":  return "rgba(148,163,184,0.15)";
@@ -4388,7 +4390,7 @@ function makeTacticalReviewGuidePage(
   // Shows count per category before the prompt list.
 
   const ORDERED_CATS: readonly ReviewPromptCategory[] = [
-    "KICKOUT", "TURNOVER", "MOMENTUM", "CHAIN", "GENERAL",
+    "KICKOUT", "TURNOVER", "FREE", "MOMENTUM", "CHAIN", "GENERAL",
   ];
   const countByCategory = new Map<ReviewPromptCategory, number>();
   for (const p of prompts) {
@@ -7163,10 +7165,11 @@ function makeFreeAnalysisPage(
   const forConv = pct(forFreeScored, forFreeAttempts);
   const oppConv = pct(oppFreeScored, oppFreeAttempts);
 
-  // Prompts: CHAIN category covers FREE_WON_TO_GOAL rule; fall back to GENERAL.
+  // Route only FREE-category prompts here — CHAIN prompts include
+  // kickout-vs-turnover chain balance, which is not about frees and
+  // previously showed up in this panel whenever any CHAIN prompt existed.
   const allPrompts   = deriveReviewPrompts(analysis, homeTeam, awayTeam, sport);
-  const chainPrompts = allPrompts.filter((p) => p.category === "CHAIN");
-  const freePromptCat: ReviewPromptCategory = chainPrompts.length > 0 ? "CHAIN" : "GENERAL";
+  const freePromptCat: ReviewPromptCategory = "FREE";
 
   // Scoring chains from free wins — FREE_WON_TO_GOAL chains already in ChainAnalysis
   const forFreeScoringChains = (analysis.byRule["FREE_WON_TO_GOAL"] ?? []).filter((c) => c.teamSide === "FOR").length;
@@ -7179,7 +7182,7 @@ function makeFreeAnalysisPage(
   dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Our Frees — ${homeTeam}`,        forFreeEvts.length, "#818cf8");
   dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Won ${forFreesWon} possession free${forFreesWon !== 1 ? "s" : ""}`,
-    `${forFreeScoringChains} scoring chain${forFreeScoringChains !== 1 ? "s" : ""} from those frees`,
+    `${forFreeScoringChains} free-to-goal chain${forFreeScoringChains !== 1 ? "s" : ""} (direct)`,
     forFreeAttempts > 0 ? `Placed balls: ${forFreeScored}/${forFreeAttempts} scored` : "No placed balls attempted",
     "#818cf8",
   );
@@ -7189,7 +7192,7 @@ function makeFreeAnalysisPage(
   dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Opposition Frees — ${awayTeam}`, oppFreeEvts.length, "#f472b6");
   dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Opposition won ${oppFreesWon} possession free${oppFreesWon !== 1 ? "s" : ""}`,
-    `${oppFreeScoringChains} scoring chain${oppFreeScoringChains !== 1 ? "s" : ""} from those frees`,
+    `${oppFreeScoringChains} free-to-goal chain${oppFreeScoringChains !== 1 ? "s" : ""} (direct)`,
     oppFreeAttempts > 0 ? `Placed balls: ${oppFreeScored}/${oppFreeAttempts} scored` : "No placed balls attempted",
     "#f472b6",
   );
@@ -8778,7 +8781,7 @@ function makeHtKickoutVisionPage(
   const restartTerm = isPuck(sport) ? "puckouts" : "kickouts";
 
   const facts: string[] = [];
-  if (totalKO > 0) facts.push(`${truncTeam(homeTeam, 14)} ${restartTerm}: ${totalFor}W · ${totalOpp}L (${forPct}% won)`);
+  if (totalKO > 0) facts.push(`${truncTeam(homeTeam, 14)} ${restartMetricLabel("restartShare", sport)}: ${totalFor}W · ${totalOpp}L (${forPct}%)`);
   if (forHot)      facts.push(`${truncTeam(homeTeam, 14)} best zone: ${forHot.label}`);
   if (oppHot)      facts.push(`${truncTeam(homeTeam, 14)} conceded most: ${oppHot.label}`);
   if (facts.length === 0) facts.push(`No ${restartTerm} data recorded.`);
@@ -10123,7 +10126,7 @@ function makeFtRestartEscapeRoutesPage(
   const ftRestartTerm = isPuck(sport) ? "puckouts" : "kickouts";
   const facts: string[] = [];
   if (ko.total > 0)
-    facts.push(`${truncTeam(homeTeam, 14)} ${ftRestartTerm}: ${ko.won}W · ${ko.total - ko.won}L (${koRate}% won)`);
+    facts.push(`${truncTeam(homeTeam, 14)} ${restartMetricLabel("restartShare", sport)}: ${ko.won}W · ${ko.total - ko.won}L (${koRate}%)`);
   // Possession Chain V1: richer conversion language (rate, not just count)
   if (ko.wonToScore > 0) {
     const wsPct = Math.round(ko.wonToScorePercent);
@@ -12306,10 +12309,21 @@ function makeHtTacticalSummaryPage(
   if (sr.maxConsecutiveOpp >= 2) {
     swingItems.push(`Best OPP run: ${sr.maxConsecutiveOpp} unanswered`);
   }
-  if (sr.maxConsecutiveFor > sr.maxConsecutiveOpp && sr.maxConsecutiveFor > 0) {
-    swingItems.push(`${homeTeam} controlled the scoring`);
-  } else if (sr.maxConsecutiveOpp > sr.maxConsecutiveFor && sr.maxConsecutiveOpp > 0) {
-    swingItems.push(`${awayTeam} controlled the scoring`);
+  // A "controlled the scoring" verdict must be gated on the actual margin
+  // AND the net run-score — not on run *length* alone. A team can have the
+  // single longest unanswered run while still losing on the scoreboard and
+  // trailing on total run-scores; asserting "controlled" there contradicts
+  // the match result on another page of the same report.
+  {
+    const scoreMargin  = scoreFromEvents(forScoreEvts).total - scoreFromEvents(oppScoreEvts).total;
+    const forRunScores = sr.runs.filter((r) => r.teamSide === "FOR").reduce((s, r) => s + r.count, 0);
+    const oppRunScores = sr.runs.filter((r) => r.teamSide === "OPP").reduce((s, r) => s + r.count, 0);
+    const netRunScore  = forRunScores - oppRunScores;
+    if (scoreMargin > 0 && netRunScore > 0) {
+      swingItems.push(`${homeTeam} controlled the scoring`);
+    } else if (scoreMargin < 0 && netRunScore < 0) {
+      swingItems.push(`${awayTeam} controlled the scoring`);
+    }
   }
   if (swingItems.length === 0) {
     const forTotal = forScoreEvts.length;

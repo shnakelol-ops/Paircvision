@@ -56,19 +56,27 @@ export type InfluenceEvent = ChainableEvent & {
 
 /**
  * Influence Index v1 weights — one place to tune. Keep it dumb and explainable:
- *   index = pointsValue×w + toWon×w − toLost×w + koWon×w − koLost×w
- *         + freesWon×w − freesConceded×w + assistsProxy×w
+ *   index = pointsValue×w + toWon×w + koWon×w − koLost×w + assistsProxy×w
  * assistsProxy = chain involvements in team scores that were NOT the player's
  * own score (goals already carry their 3-point value — no extra goal bonus).
+ *
+ * Turnovers lost, frees won, and frees conceded are deliberately excluded
+ * from the index (and from netBallImpact): TURNOVER_LOST is never logged by
+ * capture sources that only record TURNOVER_WON (teamSide = the actual
+ * winner), so it is always 0 for every player on both sides. FREE_WON and
+ * FREE_CONCEDED are only ever attributed to a specific player on the FOR
+ * side (the FREE family has no opposition player picker), so an opposition
+ * player can never carry either stat — including them would let FOR players
+ * earn or lose index points on a feature opposition players can structurally
+ * never have, making the two squads' indices not comparable. Reinstate a
+ * term here only once a capture path attributes it to individual players on
+ * both sides.
  */
 export const INFLUENCE_WEIGHTS = {
   pointsValue:   1,
   turnoverWon:   1,
-  turnoverLost:  1,
   kickoutWon:    1,
   kickoutLost:   1,
-  freeWon:       1,
-  freeConceded:  1,
   assistsProxy:  1,
 } as const;
 
@@ -76,9 +84,10 @@ export const INFLUENCE_WEIGHTS = {
 export function influenceFormulaText(): string {
   const w = INFLUENCE_WEIGHTS;
   return (
-    `Influence Index = points value ×${w.pointsValue} + turnovers won ×${w.turnoverWon} − turnovers lost ×${w.turnoverLost} ` +
-    `+ kickouts won ×${w.kickoutWon} − kickouts lost ×${w.kickoutLost} + frees won ×${w.freeWon} − frees conceded ×${w.freeConceded} ` +
-    `+ scoring-chain involvements beyond own scores ×${w.assistsProxy}. Goals count as 3 points, 2-pointers as 2.`
+    `Influence Index = points value ×${w.pointsValue} + turnovers won ×${w.turnoverWon} ` +
+    `+ kickouts won ×${w.kickoutWon} − kickouts lost ×${w.kickoutLost} ` +
+    `+ scoring-chain involvements beyond own scores ×${w.assistsProxy}. Goals count as 3 points, 2-pointers as 2. ` +
+    `Turnovers lost and frees won/conceded are excluded — they can't yet be attributed to individual opposition players.`
   );
 }
 
@@ -319,23 +328,45 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
     }
   }
 
+  // A surname (or any resolved name) shared by two different players on the
+  // same squad must not render identically in the Influence table — a coach
+  // has no way to tell "Costello #3" from "Costello #13" apart, and each
+  // row's stats silently belong to a different person. Counted per team
+  // side: two players on DIFFERENT teams sharing a surname need no
+  // disambiguation from each other.
+  const nameCountByTeam = new Map<string, Map<string, number>>();
+  for (const p of players.values()) {
+    const resolved = resolvePlayerDisplayName(p.name, p.number);
+    const teamCounts = nameCountByTeam.get(p.teamSide) ?? new Map<string, number>();
+    teamCounts.set(resolved, (teamCounts.get(resolved) ?? 0) + 1);
+    nameCountByTeam.set(p.teamSide, teamCounts);
+  }
+
   // ── Derived metrics ───────────────────────────────────────────────────────
   const w = INFLUENCE_WEIGHTS;
   for (const p of players.values()) {
     // Resolved once, after every event (and identity backfill) has been
     // accumulated — the single source every insight and table row reads via
     // p.displayName, so no surface can print a name another surface doesn't.
-    p.displayName = resolvePlayerDisplayName(p.name, p.number);
+    const resolved = resolvePlayerDisplayName(p.name, p.number);
+    const isDuplicateName = !resolved.startsWith("#") && (nameCountByTeam.get(p.teamSide)?.get(resolved) ?? 0) > 1;
+    p.displayName = isDuplicateName && typeof p.number === "number" && isFinite(p.number)
+      ? `#${p.number} ${resolved}`
+      : resolved;
     const totals = p.teamSide === "FOR" ? forTotals : oppTotals;
     p.scoringSharePct    = totals.value  > 0 ? Math.round((p.scoreValue / totals.value) * 100) : 0;
     p.shotEfficiencyPct  = p.shots       > 0 ? Math.round((p.scores / p.shots) * 100) : 0;
     p.chainInvolvementPct = totals.scores > 0 ? Math.round((p.chainInvolvementCount / totals.scores) * 100) : 0;
-    p.netBallImpact = (p.toWon + p.koWon + p.freesWon) - (p.toLost + p.koLost + p.freesConceded);
+    // netBallImpact and influenceIndex deliberately exclude turnovers lost,
+    // frees won, and frees conceded — see INFLUENCE_WEIGHTS' comment. Those
+    // three raw counts (p.toLost, p.freesWon, p.freesConceded) are still
+    // computed and available for informational display; they're just not
+    // ranking inputs.
+    p.netBallImpact = (p.toWon + p.koWon) - p.koLost;
     p.influenceIndex =
       p.scoreValue * w.pointsValue +
-      p.toWon * w.turnoverWon - p.toLost * w.turnoverLost +
+      p.toWon * w.turnoverWon +
       p.koWon * w.kickoutWon  - p.koLost * w.kickoutLost +
-      p.freesWon * w.freeWon  - p.freesConceded * w.freeConceded +
       p.assistsProxy * w.assistsProxy;
   }
 

@@ -16,6 +16,8 @@ import type { ChainableEvent } from "../chains/chain-types";
 import {
   buildInfluenceAnalysis,
   influenceEvidenceLine,
+  influenceFormulaText,
+  INFLUENCE_WEIGHTS,
   type InfluenceEvent,
   type PlayerRosterEntry,
 } from "./influence";
@@ -321,5 +323,124 @@ describe("player identity regression — roster-seeded bridge, no event ever car
     expect(homeTeamPoints).toBe(2); // Shane's 1 + Darren's 1
     const homeShareSum = influence.home.players.reduce((sum, p) => sum + p.scoringSharePct, 0);
     expect(homeShareSum).toBeGreaterThan(0);
+  });
+});
+
+describe("duplicate surname disambiguation (P1-6)", () => {
+  // Squad contains two different Costellos (#3 and #13) — the Influence
+  // table must not render two rows both bare-labelled "Costello" with no
+  // way to tell them apart.
+  const duplicateSurnameRoster: PlayerRosterEntry[] = [
+    { id: "p-costello-3", number: 3, name: "Costello" },
+    { id: "p-costello-13", number: 13, name: "Costello" },
+    { id: "p-unique", number: 7, name: "Ryan" },
+  ];
+
+  function buildDuplicateSurnameFixture(): FixtureEvent[] {
+    const events: FixtureEvent[] = [];
+    let clock = 0;
+    const at = () => (clock += 200);
+    at(); events.push(mk({ kind: "POINT", teamSide: "FOR", matchClockSeconds: clock, playerId: "p-costello-3", playerNumber: 3 }));
+    at(); events.push(mk({ kind: "WIDE",  teamSide: "FOR", matchClockSeconds: clock, playerId: "p-costello-3", playerNumber: 3 }));
+    at(); events.push(mk({ kind: "GOAL",  teamSide: "FOR", matchClockSeconds: clock, playerId: "p-costello-13", playerNumber: 13 }));
+    at(); events.push(mk({ kind: "POINT", teamSide: "FOR", matchClockSeconds: clock, playerId: "p-unique", playerNumber: 7 }));
+    at(); events.push(mk({ kind: "POINT", teamSide: "OPP", matchClockSeconds: clock, playerNumber: 20 }));
+    return events;
+  }
+
+  it("prefixes the jersey number onto both Costellos, but leaves the unique Ryan bare", () => {
+    const events = buildDuplicateSurnameFixture();
+    const analysis = analyseChains(events);
+    const influence = buildInfluenceAnalysis(events, analysis, "Ballylanders", "St.Patricks", duplicateSurnameRoster);
+
+    const costello3  = influence.home.players.find((p) => p.number === 3)!;
+    const costello13 = influence.home.players.find((p) => p.number === 13)!;
+    const ryan       = influence.home.players.find((p) => p.number === 7)!;
+
+    expect(costello3.displayName).toBe("#3 Costello");
+    expect(costello13.displayName).toBe("#13 Costello");
+    expect(ryan.displayName).toBe("Ryan");
+    // Each Costello keeps their own distinct stats — no cross-attribution.
+    expect(costello3.points).toBe(1);
+    expect(costello13.goals).toBe(1);
+  });
+
+  it("does not disambiguate a shared surname across different teams", () => {
+    const rosters: PlayerRosterEntry[] = [{ id: "p-costello-home", number: 3, name: "Costello" }];
+    const oppRoster: PlayerRosterEntry[] = [{ id: "p-costello-opp", number: 20, name: "Costello" }];
+    const events: FixtureEvent[] = [
+      mk({ kind: "POINT", teamSide: "FOR", playerId: "p-costello-home", playerNumber: 3 }),
+      mk({ kind: "POINT", teamSide: "OPP", playerId: "p-costello-opp", playerNumber: 20 }),
+    ];
+    const analysis = analyseChains(events);
+    const influence = buildInfluenceAnalysis(
+      events, analysis, "Ballylanders", "St.Patricks",
+      rosters,
+      oppRoster,
+    );
+    expect(influence.home.players.find((p) => p.number === 3)!.displayName).toBe("Costello");
+    expect(influence.away.players.find((p) => p.number === 20)!.displayName).toBe("Costello");
+  });
+});
+
+describe("Influence Index excludes non-comparable terms (P1-8)", () => {
+  // FREE_WON/FREE_CONCEDED are only ever attributed to a FOR-side player
+  // (the FREE family has no opposition player picker) and TURNOVER_LOST is
+  // never logged by capture sources that only record TURNOVER_WON — so
+  // opposition players can never carry either stat. Including them in the
+  // index would let FOR players gain/lose points on a feature opposition
+  // players structurally can never have.
+  it("the weight table no longer contains turnoverLost, freeWon or freeConceded", () => {
+    expect(INFLUENCE_WEIGHTS).not.toHaveProperty("turnoverLost");
+    expect(INFLUENCE_WEIGHTS).not.toHaveProperty("freeWon");
+    expect(INFLUENCE_WEIGHTS).not.toHaveProperty("freeConceded");
+  });
+
+  it("the printed formula text does not include frees or turnovers-lost as active weighted terms (a trailing exclusion footnote is fine)", () => {
+    const text = influenceFormulaText();
+    expect(text).not.toMatch(/frees won ×/i);
+    expect(text).not.toMatch(/frees conceded ×/i);
+    expect(text).not.toMatch(/turnovers lost ×/i);
+    // The footnote explaining the exclusion is expected and useful.
+    expect(text).toMatch(/excluded/i);
+  });
+
+  it("a FOR player's index is unaffected by frees won/conceded or turnovers lost — same score events either way", () => {
+    const withFrees: FixtureEvent[] = [
+      mk({ kind: "POINT", teamSide: "FOR", playerId: "p1", playerNumber: 1 }),
+      mk({ kind: "FREE_WON", teamSide: "FOR", playerId: "p1", playerNumber: 1 }),
+      mk({ kind: "FREE_CONCEDED", teamSide: "FOR", playerId: "p1", playerNumber: 1 }),
+      mk({ kind: "TURNOVER_LOST", teamSide: "FOR", playerId: "p1", playerNumber: 1 }),
+    ];
+    const withoutFrees: FixtureEvent[] = [
+      mk({ kind: "POINT", teamSide: "FOR", playerId: "p1", playerNumber: 1 }),
+    ];
+    const a1 = analyseChains(withFrees);
+    const a2 = analyseChains(withoutFrees);
+    const inf1 = buildInfluenceAnalysis(withFrees, a1, "Home", "Away");
+    const inf2 = buildInfluenceAnalysis(withoutFrees, a2, "Home", "Away");
+    const p1 = inf1.home.players.find((p) => p.number === 1)!;
+    const p2 = inf2.home.players.find((p) => p.number === 1)!;
+    expect(p1.influenceIndex).toBe(p2.influenceIndex);
+    expect(p1.netBallImpact).toBe(p2.netBallImpact);
+    // Raw counts are still tracked for informational display, just not ranked.
+    expect(p1.freesWon).toBe(1);
+    expect(p1.freesConceded).toBe(1);
+    expect(p1.toLost).toBe(1);
+  });
+
+  it("an OPP player who can never carry frees/turnover-loss stats is ranked on the same feature set as a FOR player", () => {
+    const events: FixtureEvent[] = [
+      mk({ kind: "TURNOVER_WON", teamSide: "FOR", playerId: "p-for", playerNumber: 1 }),
+      mk({ kind: "TURNOVER_WON", teamSide: "OPP", playerId: "p-opp", playerNumber: 1 }),
+    ];
+    const analysis = analyseChains(events);
+    const influence = buildInfluenceAnalysis(events, analysis, "Home", "Away");
+    const forPlayer = influence.home.players.find((p) => p.number === 1)!;
+    const oppPlayer = influence.away.players.find((p) => p.number === 1)!;
+    // Identical underlying action (one turnover won each) -> identical index,
+    // even though only the FOR player could ever structurally carry a
+    // freesWon/freesConceded value.
+    expect(forPlayer.influenceIndex).toBe(oppPlayer.influenceIndex);
   });
 });
