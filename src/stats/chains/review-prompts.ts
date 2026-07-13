@@ -219,7 +219,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   // Unconverted attacks: won turnovers where no shot or score followed
   // (possession was recovered but the attack did not reach the forward line)
   const unconvertedWins = tv.outcomes.filter(
-    (o) => o.direction === "WON" &&
+    (o) => o.actingSide === "FOR" &&
             o.nextEvent !== null &&
             !o.resultedInScore &&
             !o.resultedInShot,
@@ -235,8 +235,8 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   // Half-split turnover conversion
   const h1TvOut = tv.outcomes.filter((o) => o.turnoverEvent.period === "1H");
   const h2TvOut = tv.outcomes.filter((o) => o.turnoverEvent.period === "2H");
-  const h1TvWon = h1TvOut.filter((o) => o.direction === "WON");
-  const h2TvWon = h2TvOut.filter((o) => o.direction === "WON");
+  const h1TvWon = h1TvOut.filter((o) => o.actingSide === "FOR");
+  const h2TvWon = h2TvOut.filter((o) => o.actingSide === "FOR");
   if (h1TvWon.length >= 3 && h2TvWon.length >= 3) {
     const h1Conv = Math.round((h1TvWon.filter((o) => o.resultedInScore).length / h1TvWon.length) * 100);
     const h2Conv = Math.round((h2TvWon.filter((o) => o.resultedInScore).length / h2TvWon.length) * 100);
@@ -316,9 +316,12 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   const sm         = analysis.summary;
   const chainTotal  = sm.totalChains;
   const chainForPct = chainTotal > 0 ? Math.round((sm.forChains / chainTotal) * 100) : 0;
-  const koToScore   = sm.byRule["KICKOUT_TO_SCORE"]  ?? 0;
-  const tvToScore   = sm.byRule["TURNOVER_TO_SCORE"] ?? 0;
-  const freeToGoal  = sm.byRule["FREE_WON_TO_GOAL"]  ?? 0;
+  // sm.byRule counts are BOTH-team totals — every sentence below attributes
+  // its number to `home` alone, so it must use home's own share of each rule
+  // (analysis.byRule holds the raw per-chain matches, filterable by side).
+  const koToScore   = (analysis.byRule["KICKOUT_TO_SCORE"]  ?? []).filter((c) => c.teamSide === "FOR").length;
+  const tvToScore   = (analysis.byRule["TURNOVER_TO_SCORE"] ?? []).filter((c) => c.teamSide === "FOR").length;
+  const freeToGoal  = (analysis.byRule["FREE_WON_TO_GOAL"]  ?? []).filter((c) => c.teamSide === "FOR").length;
 
   // Chain efficiency (only flag notable imbalances)
   if (chainTotal >= 6) {

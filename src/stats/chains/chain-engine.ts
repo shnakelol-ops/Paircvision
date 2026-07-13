@@ -341,7 +341,15 @@ function buildTurnoverDataset<TEvent extends ChainableEvent>(
     const direction: "WON" | "LOST" = turnoverEvent.kind === "TURNOVER_WON" ? "WON" : "LOST";
     const actingSide: "FOR" | "OPP" = direction === "WON" ? turnoverEvent.teamSide : (turnoverEvent.teamSide === "FOR" ? "OPP" : "FOR");
 
-    if (direction === "WON") won++; else lost++;
+    // Aggregate by acting side, not raw direction: capture sources that only
+    // ever log kind TURNOVER_WON (teamSide = whichever team actually won it,
+    // no TURNOVER_LOST counterpart) would otherwise count every event as
+    // "won" and never populate "lost" at all. actingSide already resolves
+    // the true beneficiary regardless of which kind/teamSide combination the
+    // source used, so aggregating on it keeps FOR-locked dual-kind data
+    // (direction and actingSide always agree there) and single-kind data
+    // both correct.
+    if (actingSide === "FOR") won++; else lost++;
 
     let nextEvent: TEvent | null = null;
     let resultedInScore = false;
@@ -371,13 +379,14 @@ function buildTurnoverDataset<TEvent extends ChainableEvent>(
       break;
     }
 
-    if (direction === "WON" && resultedInScore) wonToScore++;
-    if (direction === "WON" && resultedInShot) wonToShot++;
-    if (direction === "LOST" && resultedInScore) lostAllowedScore++;
+    if (actingSide === "FOR" && resultedInScore) wonToScore++;
+    if (actingSide === "FOR" && resultedInShot) wonToShot++;
+    if (actingSide === "OPP" && resultedInScore) lostAllowedScore++;
 
     outcomes.push({
       turnoverEvent,
       direction,
+      actingSide,
       nextEvent,
       resultedInScore,
       resultedInShot,

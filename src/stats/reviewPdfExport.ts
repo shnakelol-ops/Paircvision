@@ -39,6 +39,12 @@ import {
 } from "./zones/zone-orientation";
 import type { AttackingDirection } from "./zones/zone-orientation";
 import { computeSegmentResults } from "./segmentResults";
+import { computeTurnoverOutcomeBucketCounts } from "./chains/turnoverOutcomeBucket";
+import {
+  classifyTurnoverCauseTags,
+  classifyKickoutTypeTags,
+  classifyShotDetailTags,
+} from "./tagVocabulary";
 import { eventSource, isFreeScore, isFreeMiss } from "./eventSource";
 import type { ScoreSource } from "./eventSource";
 import {
@@ -52,6 +58,7 @@ import { buildMatchTargetsCard } from "./matchTargetsCard";
 import {
   computeRestartMetrics,
   fmtFractionCounts,
+  resolveRestartOwner,
   restartAttributionFootnote,
   restartExplainerLine,
   restartMetricLabel,
@@ -391,14 +398,14 @@ function countKindWithAnyTag(
   return evts.filter((e) => e.kind === kind && tags.some((t) => e.tags?.includes(t))).length;
 }
 
-/** Count events from a set of kinds that carry a specific tag value */
-function countTagOnKinds(
+/** Count events from a set of kinds classifying into a specific shot-detail bucket (tag-vocabulary aware). */
+function countShotDetailOnKinds(
   evts: readonly PdfExportEvent[],
-  tag: string,
-  ...kinds: MatchEventKind[]
+  bucket: ReturnType<typeof classifyShotDetailTags>,
+  kinds: readonly MatchEventKind[],
 ): number {
   const kindSet = new Set<MatchEventKind>(kinds);
-  return evts.filter((e) => kindSet.has(e.kind) && e.tags?.includes(tag)).length;
+  return evts.filter((e) => kindSet.has(e.kind) && classifyShotDetailTags(e.tags) === bucket).length;
 }
 
 // ─── Team name display helper ────────────────────────────────────────────────
@@ -779,12 +786,15 @@ function drawSummaryStatsTable(
       shots,
       wides:          countKinds(ownEvts, "WIDE"),
       conv:           shots > 0 ? `${Math.round((scoreKind / shots) * 100)}%` : "—",
-      // Shot sub-types — own events only (shots are not mirrored)
-      shotShort:      countTagOnKinds(ownEvts, "SHORT",      ...SHOT_KINDS),
-      shotPost:       countTagOnKinds(ownEvts, "POST",       ...SHOT_KINDS),
-      shot45:         countTagOnKinds(ownEvts, "FORTY_FIVE", ...SHOT_KINDS),
-      shotBlock:      countKindWithAnyTag(ownEvts, "SHOT", "BLOCK_SAVE", "BLOCKED")
-                    + countKindWithAnyTag(ownEvts, "WIDE", "BLOCK_SAVE", "BLOCKED"),
+      // Shot sub-types — own events only (shots are not mirrored). Classified
+      // through the shared tag-vocabulary module: Pro Tagger writes "45"/"65"
+      // and "BLOCK/SAVE" for these details, Match Stats writes "FORTY_FIVE"
+      // and "BLOCK_SAVE"/"BLOCKED" — matching only one literal spelling left
+      // Pro-Tagger-sourced matches showing 0 for every one of these rows.
+      shotShort:      countShotDetailOnKinds(ownEvts, "SHORT",      SHOT_KINDS),
+      shotPost:       countShotDetailOnKinds(ownEvts, "POST",       SHOT_KINDS),
+      shot45:         countShotDetailOnKinds(ownEvts, "FORTY_FIVE", SHOT_KINDS),
+      shotBlock:      countShotDetailOnKinds(ownEvts, "BLOCK_SAVE", SHOT_KINDS),
       // Kickouts — mirrored top-level counts; sub-tags follow same mirror logic
       koWon, koCon,
       koPct:          koTotal > 0 ? `${Math.round((koWon / koTotal) * 100)}%` : "—",
@@ -2566,39 +2576,46 @@ function makeKickoutChainPage(
   const h1WonToScore = h1Out.filter((o) => o.winningSide === "FOR" && o.nextScore !== null).length;
   const h2WonToScore = h2Out.filter((o) => o.winningSide === "FOR" && o.nextScore !== null).length;
 
-  // Tag counting helper (operates on a filtered sub-slice)
-  function countOutcomeTag(
+  // "Own kickouts retained/conceded" means: restarts a team actually took
+  // (restartOwner), split by whether they then won or lost that same
+  // restart — NOT "every restart this team won", which also includes
+  // restarts won off the opposition's own kickout. Scoping by kind+teamSide
+  // alone (the old approach) collapsed onto the latter for capture sources
+  // that only ever log kind KICKOUT_WON (teamSide = the actual winner),
+  // since KICKOUT_CONCEDED never fires there — "retained" silently became
+  // "won" and "conceded" silently became empty.
+  function countKickoutType(
     sub: readonly typeof outcomes[number][],
-    ...tags: string[]
+    bucket: ReturnType<typeof classifyKickoutTypeTags>,
   ): number {
-    return sub.filter((o) => tags.some((t) => o.kickoutEvent.tags?.includes(t))).length;
+    return sub.filter((o) => classifyKickoutTypeTags(o.kickoutEvent.tags) === bucket).length;
   }
 
   // FOR own kickout sub-slices
-  const forKoWonOut  = outcomes.filter((o) => o.kickoutEvent.kind === "KICKOUT_WON"      && o.kickoutEvent.teamSide === "FOR");
-  const forKoConOut  = outcomes.filter((o) => o.kickoutEvent.kind === "KICKOUT_CONCEDED"  && o.kickoutEvent.teamSide === "FOR");
-  const forCleanWon  = countOutcomeTag(forKoWonOut,  "CLEAN");
-  const forBreakWon  = countOutcomeTag(forKoWonOut,  "BREAK");
-  const forFoulWon   = countOutcomeTag(forKoWonOut,  "FOUL_WON");
-  const forCleanLost = countOutcomeTag(forKoConOut,  "CLEAN");
-  const forBreakLost = countOutcomeTag(forKoConOut,  "BREAK");
-  const forFoulCon   = countOutcomeTag(forKoConOut,  "FOUL_CONCEDED");
-  const forKickedDead = countOutcomeTag(
-    outcomes.filter((o) => o.kickoutEvent.teamSide === "FOR"),
+  const forKoWonOut  = outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === "FOR" && o.winningSide === "FOR");
+  const forKoConOut  = outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === "FOR" && o.winningSide === "OPP");
+  const forCleanWon  = countKickoutType(forKoWonOut, "CLEAN");
+  const forBreakWon  = countKickoutType(forKoWonOut, "BREAK");
+  const forFoulWon   = countKickoutType(forKoWonOut, "FOUL");
+  const forCleanLost = countKickoutType(forKoConOut, "CLEAN");
+  const forBreakLost = countKickoutType(forKoConOut, "BREAK");
+  const forFoulCon   = countKickoutType(forKoConOut, "FOUL");
+  const forKickedDead = countKickoutType(
+    outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === "FOR"),
     "KICKED_DEAD",
   );
 
   // OPP own kickout sub-slices
-  const oppKoWonOut  = outcomes.filter((o) => o.kickoutEvent.kind === "KICKOUT_WON"      && o.kickoutEvent.teamSide === "OPP");
-  const oppKoConOut  = outcomes.filter((o) => o.kickoutEvent.kind === "KICKOUT_CONCEDED"  && o.kickoutEvent.teamSide === "OPP");
-  const oppCleanWon  = countOutcomeTag(oppKoWonOut,  "CLEAN");
-  const oppBreakWon  = countOutcomeTag(oppKoWonOut,  "BREAK");
-  const oppFoulWon   = countOutcomeTag(oppKoWonOut,  "FOUL_WON");
-  const oppCleanLost = countOutcomeTag(oppKoConOut,  "CLEAN");
-  const oppBreakLost = countOutcomeTag(oppKoConOut,  "BREAK");
-  const oppFoulCon   = countOutcomeTag(oppKoConOut,  "FOUL_CONCEDED");
-  const oppKickedDead = countOutcomeTag(
-    outcomes.filter((o) => o.kickoutEvent.teamSide === "OPP"),
+  const oppKoWonOut  = outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === "OPP" && o.winningSide === "OPP");
+  const oppKoConOut  = outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === "OPP" && o.winningSide === "FOR");
+  const oppCleanWon  = countKickoutType(oppKoWonOut, "CLEAN");
+  const oppBreakWon  = countKickoutType(oppKoWonOut, "BREAK");
+  const oppFoulWon   = countKickoutType(oppKoWonOut, "FOUL");
+  const oppCleanLost = countKickoutType(oppKoConOut, "CLEAN");
+  const oppBreakLost = countKickoutType(oppKoConOut, "BREAK");
+  const oppFoulCon   = countKickoutType(oppKoConOut, "FOUL");
+  const oppKickedDead = countKickoutType(
+    outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === "OPP"),
     "KICKED_DEAD",
   );
 
@@ -3029,13 +3046,11 @@ function makeTurnoverPunishmentPage(
     return cy + barH + 26;
   }
 
-  // ── Derive acting side — who gained possession from this turnover event ───────
-  // Engine logic: TURNOVER_WON → recording side gained ball;
-  //               TURNOVER_LOST → opposite side gained ball.
-  // Not stored in TurnoverOutcome; derived here.
+  // ── Acting side — who gained possession from this turnover event ──────────────
+  // Resolved once by the chain engine (TurnoverOutcome.actingSide); use it
+  // directly instead of re-deriving direction+teamSide locally.
   function actingSide(o: typeof outcomes[number]): "FOR" | "OPP" {
-    if (o.direction === "WON") return o.turnoverEvent.teamSide;
-    return o.turnoverEvent.teamSide === "FOR" ? "OPP" : "FOR";
+    return o.actingSide;
   }
 
   // ── Per-team attacking outcome slices ─────────────────────────────────────────
@@ -3044,18 +3059,19 @@ function makeTurnoverPunishmentPage(
   const forAttacking = outcomes.filter((o) => actingSide(o) === "FOR");
   const oppAttacking = outcomes.filter((o) => actingSide(o) === "OPP");
 
-  // FOR attacking consequences
+  // FOR attacking consequences — one mutually-exclusive, exhaustive
+  // classification per outcome (origin score > shot no score > attack lost
+  // > no shot attempt), so the four buckets always sum to forWonTotal.
+  // Previously "no shot attempt" and "attack immediately lost" were two
+  // independent, overlapping dimensions and could both fire for the same
+  // outcome, inflating the displayed total past 100%.
   const forWonTotal       = forAttacking.length;
   const forWonToScore     = forAttacking.filter((o) => o.resultedInScore).length;
-  // wonToShot includes scores — "shot but no score" = wonToShot minus wonToScore
   const forWonToShotAny   = forAttacking.filter((o) => o.resultedInShot).length;
-  const forWonToShotOnly  = forWonToShotAny - forWonToScore;
-  const forWonNoShot      = forWonTotal - forWonToShotAny;
-  // Transition breakdown: next event immediately turned over again
-  const forBrokenAttacks  = forAttacking.filter((o) =>
-    o.nextEvent !== null &&
-    (o.nextEvent.kind === "TURNOVER_WON" || o.nextEvent.kind === "TURNOVER_LOST")
-  ).length;
+  const forBuckets        = computeTurnoverOutcomeBucketCounts(forAttacking);
+  const forWonToShotOnly  = forBuckets.shotNoScore;
+  const forWonNoShot      = forBuckets.noShotAttempt;
+  const forBrokenAttacks  = forBuckets.attackLost;
   // Average time to outcome (when available)
   const forWithTime = forAttacking.filter((o) => o.secondsToOutcome !== null);
   const forAvgSecs  = forWithTime.length > 0
@@ -3066,12 +3082,10 @@ function makeTurnoverPunishmentPage(
   const oppWonTotal       = oppAttacking.length;
   const oppWonToScore     = oppAttacking.filter((o) => o.resultedInScore).length;
   const oppWonToShotAny   = oppAttacking.filter((o) => o.resultedInShot).length;
-  const oppWonToShotOnly  = oppWonToShotAny - oppWonToScore;
-  const oppWonNoShot      = oppWonTotal - oppWonToShotAny;
-  const oppBrokenAttacks  = oppAttacking.filter((o) =>
-    o.nextEvent !== null &&
-    (o.nextEvent.kind === "TURNOVER_WON" || o.nextEvent.kind === "TURNOVER_LOST")
-  ).length;
+  const oppBuckets        = computeTurnoverOutcomeBucketCounts(oppAttacking);
+  const oppWonToShotOnly  = oppBuckets.shotNoScore;
+  const oppWonNoShot      = oppBuckets.noShotAttempt;
+  const oppBrokenAttacks  = oppBuckets.attackLost;
   const oppWithTime = oppAttacking.filter((o) => o.secondsToOutcome !== null);
   const oppAvgSecs  = oppWithTime.length > 0
     ? Math.round(oppWithTime.reduce((s, o) => s + (o.secondsToOutcome ?? 0), 0) / oppWithTime.length)
@@ -3084,20 +3098,25 @@ function makeTurnoverPunishmentPage(
   const oppH2 = oppAttacking.filter((o) => o.turnoverEvent.period === "2H");
 
   // ── Tag breakdown on turnover-won events (FOR) ────────────────────────────────
-  // Tags come from the turnoverEvent itself; count across all FOR-attacking outcomes
-  function countTag(slice: typeof outcomes, ...tags: string[]): number {
-    return slice.filter((o) => tags.some((t) => o.turnoverEvent.tags?.includes(t))).length;
+  // Classified through the shared tag-vocabulary module so this reconciles
+  // regardless of which capture UI wrote the tags (Pro Tagger's TACKLE / HP
+  // ERROR / KP ERROR / OVERCARRIED vs Rapid Capture's TACKLE / INTERCEPT /
+  // OPP_ERROR / SLACK_KICK_PASS / SLACK_HAND_PASS / STRIPPED).
+  function countCause(slice: typeof outcomes, bucket: ReturnType<typeof classifyTurnoverCauseTags>): number {
+    return slice.filter((o) => classifyTurnoverCauseTags(o.turnoverEvent.tags) === bucket).length;
   }
-  const forTagTacklePress = countTag(forAttacking, "TACKLE", "PRESS");
-  const forTagSwarmInt    = countTag(forAttacking, "SWARM", "INTERCEPT");
-  const forTagUnforced    = countTag(forAttacking, "UNFORCED");
-  const forTagSlack       = countTag(forAttacking, "SLACK_KICK_PASS", "SLACK_HAND_PASS");
+  const forTagTacklePress = countCause(forAttacking, "TACKLE_PRESS");
+  const forTagSwarmInt    = countCause(forAttacking, "SWARM_INTERCEPT");
+  const forTagUnforced    = countCause(forAttacking, "UNFORCED");
+  const forTagSlack       = countCause(forAttacking, "SLACK_KP_HP");
+  const forTagOcStripped  = countCause(forAttacking, "OC_STRIPPED");
 
   // ── Tag breakdown for OPP ─────────────────────────────────────────────────────
-  const oppTagTacklePress = countTag(oppAttacking, "TACKLE", "PRESS");
-  const oppTagSwarmInt    = countTag(oppAttacking, "SWARM", "INTERCEPT");
-  const oppTagUnforced    = countTag(oppAttacking, "UNFORCED");
-  const oppTagSlack       = countTag(oppAttacking, "SLACK_KICK_PASS", "SLACK_HAND_PASS");
+  const oppTagTacklePress = countCause(oppAttacking, "TACKLE_PRESS");
+  const oppTagSwarmInt    = countCause(oppAttacking, "SWARM_INTERCEPT");
+  const oppTagUnforced    = countCause(oppAttacking, "UNFORCED");
+  const oppTagSlack       = countCause(oppAttacking, "SLACK_KP_HP");
+  const oppTagOcStripped  = countCause(oppAttacking, "OC_STRIPPED");
 
   // ── Chain rule matches ─────────────────────────────────────────────────────────
   const toToScoreChains = analysis.byRule["TURNOVER_TO_SCORE"] ?? [];
@@ -3152,7 +3171,8 @@ function makeTurnoverPunishmentPage(
       cy = drawStatRow(COL1_X, cy, COL_W, "Tackle / Press",     String(forTagTacklePress), "#22d3ee", false);
       cy = drawStatRow(COL1_X, cy, COL_W, "Swarm / Intercept",  String(forTagSwarmInt),    "#22d3ee", true);
       cy = drawStatRow(COL1_X, cy, COL_W, "Opposition unforced error", String(forTagUnforced),    "#fbbf24", false);
-      drawStatRow(COL1_X, cy, COL_W,      "Opposition slack pass",     String(forTagSlack),       "#fbbf24", true);
+      cy = drawStatRow(COL1_X, cy, COL_W, "Opposition slack pass",     String(forTagSlack),       "#fbbf24", true);
+      drawStatRow(COL1_X, cy, COL_W,      "Opposition overcarried / stripped", String(forTagOcStripped), "#fbbf24", false);
     }
   }
 
@@ -3190,7 +3210,8 @@ function makeTurnoverPunishmentPage(
       cy = drawStatRow(COL2_X, cy, COL_W, "Tackle / Press",     String(oppTagTacklePress), "#22d3ee", false);
       cy = drawStatRow(COL2_X, cy, COL_W, "Swarm / Intercept",  String(oppTagSwarmInt),    "#22d3ee", true);
       cy = drawStatRow(COL2_X, cy, COL_W, "Opposition unforced error", String(oppTagUnforced),    "#fbbf24", false);
-      drawStatRow(COL2_X, cy, COL_W,      "Opposition slack pass",     String(oppTagSlack),       "#fbbf24", true);
+      cy = drawStatRow(COL2_X, cy, COL_W, "Opposition slack pass",     String(oppTagSlack),       "#fbbf24", true);
+      drawStatRow(COL2_X, cy, COL_W,      "Opposition overcarried / stripped", String(oppTagOcStripped), "#fbbf24", false);
     }
   }
 
@@ -3224,14 +3245,17 @@ function makeTurnoverPunishmentPage(
 
     // Damage conceded
     cy = drawSubHeader(COL3_X, cy, COL_W, "DAMAGE CONCEDED FROM TURNOVERS LOST", "#f97316");
-    // FOR lost TOs → OPP scored / shot (= oppAttacking outcomes where source was a FOR-lost TO)
-    const forLostToOppScore = oppAttacking.filter((o) => o.turnoverEvent.teamSide === "FOR" && o.resultedInScore).length;
-    const forLostToOppShot  = oppAttacking.filter((o) => o.turnoverEvent.teamSide === "FOR" && o.resultedInShot).length;
-    const forLostTotal      = outcomes.filter((o) => o.turnoverEvent.kind === "TURNOVER_LOST" && o.turnoverEvent.teamSide === "FOR").length;
-    // OPP lost TOs → FOR scored / shot
-    const oppLostToForScore = forAttacking.filter((o) => o.turnoverEvent.teamSide === "OPP" && o.resultedInScore).length;
-    const oppLostToForShot  = forAttacking.filter((o) => o.turnoverEvent.teamSide === "OPP" && o.resultedInShot).length;
-    const oppLostTotal      = outcomes.filter((o) => o.turnoverEvent.kind === "TURNOVER_LOST" && o.turnoverEvent.teamSide === "OPP").length;
+    // FOR's turnovers lost are identically OPP's turnovers gained — derive
+    // from oppAttacking directly rather than looking up a TURNOVER_LOST kind,
+    // which capture sources that only ever log TURNOVER_WON (teamSide = the
+    // actual winner) never produce.
+    const forLostToOppScore = oppWonToScore;
+    const forLostToOppShot  = oppWonToShotAny;
+    const forLostTotal      = oppWonTotal;
+    // OPP's turnovers lost are identically FOR's turnovers gained.
+    const oppLostToForScore = forWonToScore;
+    const oppLostToForShot  = forWonToShotAny;
+    const oppLostTotal      = forWonTotal;
 
     cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 14)} lost → OPP scored`, withPct(forLostToOppScore, forLostTotal), "#f97316", false);
     cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 14)} lost → OPP shot`,   withPct(forLostToOppShot,  forLostTotal), "#fbbf24", true);
@@ -5429,8 +5453,7 @@ function makeMatchSwingTimelinePage(
   //    Acting side: who benefited (team that won the ball and scored).
   {
     function actingSide(o: (typeof analysis.turnovers.outcomes)[number]): "FOR" | "OPP" {
-      if (o.direction === "WON") return o.turnoverEvent.teamSide;
-      return o.turnoverEvent.teamSide === "FOR" ? "OPP" : "FOR";
+      return o.actingSide;
     }
 
     const tvScored = analysis.turnovers.outcomes
@@ -5726,7 +5749,10 @@ function makeShotEfficiencyPage(
     const totalSc   = scores.length;
     const convPct   = totalAtt > 0 ? Math.round((totalSc  / totalAtt) * 100) : 0;
     const wides     = evts.filter((e) => e.kind === "WIDE").length;
-    const blocked   = evts.filter((e) => e.kind === "SHOT").length;
+    // "Blocked / Saved" must count only the BLOCK_SAVE detail, not every
+    // kind:"SHOT" event — SHORT-tagged attempts are also logged under kind
+    // "SHOT" and were previously lumped in here undistinguished.
+    const blocked   = evts.filter((e) => e.kind === "SHOT" && classifyShotDetailTags(e.tags) === "BLOCK_SAVE").length;
 
     // "Unclassified" appears only when it has attempts — sources default to
     // "Open Play" at tag time, so it now only shows for legacy matches or
@@ -6749,10 +6775,13 @@ function makeRestartVisualPage(
   const h1Opp = h1Out.length - h1For;
   const h2For = h2Out.filter((o) => o.winningSide === "FOR").length;
   const h2Opp = h2Out.length - h2For;
-  // Tag counts scoped to our owned restarts only
-  const forKoEvts = forOwnedEvts;
-  function countKoTag(tag: string): number {
-    return forKoEvts.filter((e) => e.tags?.includes(tag)).length;
+  // "HOW WON" must be scoped to every restart FOR won (ko.won, regardless of
+  // who physically took it) — not to FOR's owned restarts, which mixes wins
+  // and losses under a "Won" label and previously produced a total that
+  // matched ko.won by coincidence rather than by construction.
+  const forWonOutcomes = outcomes.filter((o) => o.winningSide === "FOR");
+  function countKoTypeTag(bucket: ReturnType<typeof classifyKickoutTypeTags>): number {
+    return forWonOutcomes.filter((o) => classifyKickoutTypeTags(o.kickoutEvent.tags) === bucket).length;
   }
   function pct(num: number, den: number): string {
     return den > 0 ? `${Math.round((num / den) * 100)}%` : "—";
@@ -6803,9 +6832,9 @@ function makeRestartVisualPage(
     cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "H2 — Won / Lost", `${h2For} / ${h2Opp}`, "#e2e8f0", true);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "HOW WON", "#22d3ee");
-    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Clean Won", String(countKoTag("CLEAN")),    ko.won > 0 ? countKoTag("CLEAN")    / ko.won : 0, "#4ade80", "#4ade80", false);
-    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Break Won", String(countKoTag("BREAK")),    ko.won > 0 ? countKoTag("BREAK")    / ko.won : 0, "#e2e8f0", "#e2e8f0", true);
-    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Foul Won",  String(countKoTag("FOUL_WON")), ko.won > 0 ? countKoTag("FOUL_WON") / ko.won : 0, "#fbbf24", "#fbbf24", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Clean Won", String(countKoTypeTag("CLEAN")), ko.won > 0 ? countKoTypeTag("CLEAN") / ko.won : 0, "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Break Won", String(countKoTypeTag("BREAK")), ko.won > 0 ? countKoTypeTag("BREAK") / ko.won : 0, "#e2e8f0", "#e2e8f0", true);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Foul Won",  String(countKoTypeTag("FOUL")),  ko.won > 0 ? countKoTypeTag("FOUL")  / ko.won : 0, "#fbbf24", "#fbbf24", false);
     // Dead-ball wins aren't split out in this own-restart type mix — they're
     // already inside the Won total above (Restart Summary / Match Summary).
     // Footnote, not a fabricated row, since this panel's tag mix isn't scoped
@@ -6915,8 +6944,7 @@ function makeTurnoverVisualPage(
   const outcomes = analysis.turnovers.outcomes;
 
   function actingSideTo(o: typeof outcomes[number]): "FOR" | "OPP" {
-    if (o.direction === "WON") return o.turnoverEvent.teamSide;
-    return o.turnoverEvent.teamSide === "FOR" ? "OPP" : "FOR";
+    return o.actingSide;
   }
 
   const forAttacking  = outcomes.filter((o) => actingSideTo(o) === "FOR");
@@ -6939,17 +6967,24 @@ function makeTurnoverVisualPage(
     return den > 0 ? `${num} (${pct(num, den)})` : String(num);
   }
 
-  function countToTag(slice: typeof outcomes, ...tags: string[]): number {
-    return slice.filter((o) => tags.some((t) => o.turnoverEvent.tags?.includes(t))).length;
+  // Classified through the shared tag-vocabulary module so this reconciles
+  // regardless of which capture UI wrote the tags.
+  function countCause(slice: typeof outcomes, bucket: ReturnType<typeof classifyTurnoverCauseTags>): number {
+    return slice.filter((o) => classifyTurnoverCauseTags(o.turnoverEvent.tags) === bucket).length;
   }
-  const tagTackle  = countToTag(forAttacking, "TACKLE", "PRESS");
-  const tagSwarm   = countToTag(forAttacking, "SWARM", "INTERCEPT");
-  const tagUnforce = countToTag(forAttacking, "UNFORCED");
-  const tagSlack   = countToTag(forAttacking, "SLACK_KICK_PASS", "SLACK_HAND_PASS");
+  const tagTackle     = countCause(forAttacking, "TACKLE_PRESS");
+  const tagSwarm      = countCause(forAttacking, "SWARM_INTERCEPT");
+  const tagUnforce    = countCause(forAttacking, "UNFORCED");
+  const tagSlack      = countCause(forAttacking, "SLACK_KP_HP");
+  const tagOcStripped = countCause(forAttacking, "OC_STRIPPED");
 
-  const forLostTotal      = outcomes.filter((o) => o.turnoverEvent.kind === "TURNOVER_LOST" && o.turnoverEvent.teamSide === "FOR").length;
-  const forLostToOppScore = oppAttacking.filter((o) => o.turnoverEvent.teamSide === "FOR" && o.resultedInScore).length;
-  const forLostToOppShot  = oppAttacking.filter((o) => o.turnoverEvent.teamSide === "FOR" && o.resultedInShot).length;
+  // FOR's turnovers lost are identically OPP's turnovers gained — derive
+  // from oppAttacking/oppWonTotal directly rather than looking up a
+  // TURNOVER_LOST kind, which capture sources that only ever log
+  // TURNOVER_WON (teamSide = the actual winner) never produce.
+  const forLostTotal      = oppWonTotal;
+  const forLostToOppScore = oppWonToScore;
+  const forLostToOppShot  = oppWonToShot;
 
   const prompts = deriveReviewPrompts(analysis, homeTeam, awayTeam, sport);
 
@@ -6995,7 +7030,8 @@ function makeTurnoverVisualPage(
     cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Tackle / Press",    String(tagTackle),  forWonTotal > 0 ? tagTackle  / forWonTotal : 0, "#22d3ee", "#22d3ee", false);
     cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Swarm / Intercept", String(tagSwarm),   forWonTotal > 0 ? tagSwarm   / forWonTotal : 0, "#22d3ee", "#22d3ee", true);
     cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Unforced error",    String(tagUnforce), forWonTotal > 0 ? tagUnforce / forWonTotal : 0, "#fbbf24", "#fbbf24", false);
-        dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Slack pass",        String(tagSlack),   forWonTotal > 0 ? tagSlack   / forWonTotal : 0, "#fbbf24", "#fbbf24", true);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Slack pass",        String(tagSlack),   forWonTotal > 0 ? tagSlack   / forWonTotal : 0, "#fbbf24", "#fbbf24", true);
+        dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Overcarried / stripped", String(tagOcStripped), forWonTotal > 0 ? tagOcStripped / forWonTotal : 0, "#fbbf24", "#fbbf24", false);
   }
 
   // ── Panel 2: Consequences ─────────────────────────────────────────────────

@@ -159,6 +159,14 @@ export type KickoutChainDataset<TEvent extends ChainableEvent = ChainableEvent> 
 export type TurnoverOutcome<TEvent extends ChainableEvent = ChainableEvent> = {
   turnoverEvent: TEvent;
   direction: "WON" | "LOST";
+  /**
+   * Which side actually gained possession from this turnover — WON events
+   * are gained by turnoverEvent.teamSide, LOST events are gained by the
+   * opposite side. Resolved once here so every consumer filters on the same
+   * value instead of re-deriving direction+teamSide locally (the mirrors of
+   * that flip in reviewPdfExport.ts previously drifted from each other).
+   */
+  actingSide: "FOR" | "OPP";
   /** First relevant event (shot/score/turnover) after this turnover, or null */
   nextEvent: TEvent | null;
   resultedInScore: boolean;
