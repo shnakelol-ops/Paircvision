@@ -29,6 +29,14 @@ import { RapidPlayerBar } from "./RapidPlayerBar";
 import { RapidPausePanel } from "./RapidPausePanel";
 import { RapidHalfBreakPanel } from "./RapidHalfBreakPanel";
 import { deriveHalfAndClockFromEvents, parseImportedMatchFile } from "./rapid-match-import";
+import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
+import { buildIntelligencePack, packToFiles } from "../stats/intelligencePack";
+import {
+  rapidMatchToIntelligencePackInput,
+  rapidMatchToSnapshotPdfInput,
+  rapidSessionToReviewPdfInput,
+} from "./rapid-capture-review-adapter";
+import { deriveRapidReportCapability } from "./rapid-report-capability";
 import {
   advanceEnrichment,
   applyDetailTag,
@@ -710,6 +718,70 @@ function RapidLiveScreen({
     onFinish();
   }, [matchId, createdAt, session, onFinish]);
 
+  // ── Reports: HT/FT Snapshot, Full Review PDF, Intelligence Pack ──────────
+  // Rapid Capture -> rapid-capture-review-adapter.ts -> the exact same
+  // exportReviewPdf/exportSnapshotPdf/buildIntelligencePack functions Match
+  // Stats calls directly (StatsModeSurface.tsx imports the same three). No
+  // second PDF engine, no Rapid-specific intelligence — this is purely a
+  // shape adapter feeding the one canonical report pipeline.
+  const buildCurrentRapidSavedMatch = useCallback(
+    (): RapidSavedMatch => ({
+      schemaVersion: RAPID_CAPTURE_SCHEMA_VERSION,
+      id: matchId,
+      createdAt,
+      updatedAt: Date.now(),
+      status: matchState === "FULL_TIME" ? "COMPLETED" : "IN_PROGRESS",
+      session,
+      events: loggedEventsRef.current,
+      half: halfForMatchState(matchState),
+      clockSeconds: clockSecondsRef.current,
+      matchState,
+    }),
+    [matchId, createdAt, session, matchState],
+  );
+
+  const handleHtSnapshot = useCallback(() => {
+    if (!deriveRapidReportCapability(loggedEventsRef.current).canExportHtSnapshot) return;
+    void exportSnapshotPdf(rapidMatchToSnapshotPdfInput(buildCurrentRapidSavedMatch(), "HALF_TIME_SNAPSHOT")).catch(
+      () => {},
+    );
+  }, [buildCurrentRapidSavedMatch]);
+
+  const handleFtSnapshot = useCallback(() => {
+    if (!deriveRapidReportCapability(loggedEventsRef.current).canExportFtSnapshot) return;
+    void exportSnapshotPdf(rapidMatchToSnapshotPdfInput(buildCurrentRapidSavedMatch(), "FULL_TIME_SNAPSHOT")).catch(
+      () => {},
+    );
+  }, [buildCurrentRapidSavedMatch]);
+
+  const handleFullReviewPdf = useCallback(() => {
+    if (!deriveRapidReportCapability(loggedEventsRef.current).canExportFullReview) return;
+    void exportReviewPdf(rapidSessionToReviewPdfInput(buildCurrentRapidSavedMatch())).catch(() => {});
+  }, [buildCurrentRapidSavedMatch]);
+
+  const handleIntelligencePack = useCallback(() => {
+    if (!deriveRapidReportCapability(loggedEventsRef.current).canExportIntelligencePack) return;
+    const match = buildCurrentRapidSavedMatch();
+    const stageLabel = match.matchState === "SECOND_HALF" || match.matchState === "FULL_TIME" ? "Full Time" : "Half Time";
+    void buildIntelligencePack(rapidMatchToIntelligencePackInput(match, stageLabel))
+      .then((pack) => {
+        // Same File objects/names Match Stats and Event Stats already produce
+        // (restart-outcomes.png, turnover-free-outcomes.png, match-impact.png)
+        // — no in-app preview in this PR, just trigger the standard downloads.
+        packToFiles(pack).forEach((file, i) => {
+          setTimeout(() => {
+            const url = URL.createObjectURL(file);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = file.name;
+            a.click();
+            URL.revokeObjectURL(url);
+          }, i * 400);
+        });
+      })
+      .catch(() => {});
+  }, [buildCurrentRapidSavedMatch]);
+
   // Undo removes the last logged event — teamSide context is not affected
   const undo = useCallback(() => {
     if (loggedEventsRef.current.length === 0) return;
@@ -784,6 +856,12 @@ function RapidLiveScreen({
   const showPauseMenu = !taggingLocked && !clockRunning && showPausedActions && pauseAction != null;
   const scoreLineText = `${formatScoreLine(scoreboard.for)} – ${formatScoreLine(scoreboard.opp)}`;
 
+  // Suppresses only the specific report an event stream genuinely can't
+  // support (e.g. HT Snapshot with no first-half data) — never a fabricated
+  // or Rapid-specific variant; every enabled item calls the exact same
+  // Match Stats report engine with real captured data.
+  const reportCapability = deriveRapidReportCapability(loggedEvents);
+
   const sections: MatchHubMenuSection[] = [
     {
       id: "match",
@@ -797,9 +875,34 @@ function RapidLiveScreen({
       id: "reports",
       label: "Reports",
       items: [
-        { id: "ht-snapshot", label: "HT Snapshot", disabled: true, badge: "Coming Soon" },
-        { id: "ft-snapshot", label: "FT Snapshot", disabled: true, badge: "Coming Soon" },
-        { id: "full-intelligence", label: "Full Intelligence PDF", disabled: true, badge: "Coming Soon" },
+        {
+          id: "ht-snapshot",
+          label: "HT Snapshot",
+          onSelect: handleHtSnapshot,
+          disabled: !reportCapability.canExportHtSnapshot,
+          badge: reportCapability.canExportHtSnapshot ? undefined : "No 1H Data",
+        },
+        {
+          id: "ft-snapshot",
+          label: "FT Snapshot",
+          onSelect: handleFtSnapshot,
+          disabled: !reportCapability.canExportFtSnapshot,
+          badge: reportCapability.canExportFtSnapshot ? undefined : "No Data",
+        },
+        {
+          id: "full-review",
+          label: "Full Review PDF",
+          onSelect: handleFullReviewPdf,
+          disabled: !reportCapability.canExportFullReview,
+          badge: reportCapability.canExportFullReview ? undefined : "No Data",
+        },
+        {
+          id: "intelligence-pack",
+          label: "Intelligence Pack",
+          onSelect: handleIntelligencePack,
+          disabled: !reportCapability.canExportIntelligencePack,
+          badge: reportCapability.canExportIntelligencePack ? undefined : "No Data",
+        },
       ],
     },
     {
