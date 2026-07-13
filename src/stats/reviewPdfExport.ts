@@ -22,6 +22,7 @@ import type {
 } from "../core/stats/stats-event-model";
 import type { ChainAnalysis } from "./chains/chain-types";
 import { buildMatchReport, type MatchReport } from "./reporting/matchReport";
+import { buildTeamSummaryBlock } from "./reporting/teamStatsViews";
 import {
   viewRestartShare,
   viewTurnoverLossPunishment,
@@ -714,130 +715,16 @@ function renderEventMarkers(
  */
 function drawSummaryStatsTable(
   ctx: CanvasRenderingContext2D,
-  events: readonly PdfExportEvent[],
+  report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
   blockY = 244,
   sport: PitchSport = "gaelic",
 ): void {
-  const forEvts = events.filter(
-    (e) => e.teamSide === "FOR" && !e.id.includes("-instant-score-"),
-  );
-  const oppEvts = events.filter(
-    (e) => e.teamSide === "OPP" && !e.id.includes("-instant-score-"),
-  );
+  type BlockStats = ReturnType<typeof buildTeamSummaryBlock<PdfExportEvent>>;
 
-  const SHOT_KINDS: MatchEventKind[] = [
-    "SHOT", "GOAL", "POINT", "WIDE", "TWO_POINTER",
-    "FORTY_FIVE_TWO_POINT", "FREE_MISSED", "FREE_SCORED",
-  ];
-  const SCORE_KINDS: MatchEventKind[] = [
-    "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED",
-  ];
-
-  type BlockStats = {
-    goals: number; points: number; twoPointers: number; scoreTotal: number;
-    shots: number; wides: number; conv: string;
-    shotShort: number; shotPost: number; shot45: number; shotBlock: number;
-    koWon: number; koCon: number; koPct: string;
-    koCleanWon: number; koBreakWon: number;
-    koCleanLost: number; koBreakLost: number;
-    koFoulWon: number; koFoulCon: number; koKickedDead: number; koDeadWon: number;
-    toWon: number; toLost: number; netTo: number;
-    toTacklePress: number; toSwarmInt: number;
-    toUnforced: number; toSlackKpHp: number; toOcStripped: number;
-    freesWon: number; freesCon: number; freeScored: number; freeMissed: number;
-  };
-
-  function buildStats(ownEvts: readonly PdfExportEvent[], otherEvts: readonly PdfExportEvent[]): BlockStats {
-    const scoreR    = scoreFromEvents(ownEvts);
-    const shots     = countKinds(ownEvts, ...SHOT_KINDS);
-    const scoreKind = countKinds(ownEvts, ...SCORE_KINDS);
-
-    // ── Tactical mirroring: count by beneficiary, not recorder ──
-    // K/O Won = kickouts we retained (ownKICKOUT_WON) + their kickouts we won (otherKICKOUT_CONCEDED)
-    // K/O Lost = our kickouts they won (ownKICKOUT_CONCEDED) + their kickouts they retained (otherKICKOUT_WON)
-    const koWon   = countKinds(ownEvts, "KICKOUT_WON")    + countKinds(otherEvts, "KICKOUT_CONCEDED");
-    const koCon   = countKinds(ownEvts, "KICKOUT_CONCEDED") + countKinds(otherEvts, "KICKOUT_WON");
-    const koTotal = koWon + koCon;
-
-    // T/O Won = our own turnovers won + their turnovers lost (which we gained)
-    const toWon  = countKinds(ownEvts, "TURNOVER_WON")  + countKinds(otherEvts, "TURNOVER_LOST");
-    const toLost = countKinds(ownEvts, "TURNOVER_LOST") + countKinds(otherEvts, "TURNOVER_WON");
-
-    // Frees Won = our own frees won + their frees conceded (which become our frees)
-    const freesWon = countKinds(ownEvts, "FREE_WON")      + countKinds(otherEvts, "FREE_CONCEDED");
-    const freesCon = countKinds(ownEvts, "FREE_CONCEDED") + countKinds(otherEvts, "FREE_WON");
-
-    return {
-      goals:          scoreR.goals,
-      points:         scoreR.points,
-      twoPointers:    countKinds(ownEvts, "TWO_POINTER", "FORTY_FIVE_TWO_POINT"),
-      scoreTotal:     scoreR.total,
-      shots,
-      wides:          countKinds(ownEvts, "WIDE"),
-      conv:           shots > 0 ? `${Math.round((scoreKind / shots) * 100)}%` : "—",
-      // Shot sub-types — own events only (shots are not mirrored)
-      shotShort:      countTagOnKinds(ownEvts, "SHORT",      ...SHOT_KINDS),
-      shotPost:       countTagOnKinds(ownEvts, "POST",       ...SHOT_KINDS),
-      shot45:         countTagOnKinds(ownEvts, "FORTY_FIVE", ...SHOT_KINDS),
-      shotBlock:      countKindWithAnyTag(ownEvts, "SHOT", "BLOCK_SAVE", "BLOCKED")
-                    + countKindWithAnyTag(ownEvts, "WIDE", "BLOCK_SAVE", "BLOCKED"),
-      // Kickouts — mirrored top-level counts; sub-tags follow same mirror logic
-      koWon, koCon,
-      koPct:          koTotal > 0 ? `${Math.round((koWon / koTotal) * 100)}%` : "—",
-      koCleanWon:     countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "CLEAN")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "CLEAN"),
-      koBreakWon:     countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "BREAK")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "BREAK"),
-      koCleanLost:    countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "CLEAN")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "CLEAN"),
-      koBreakLost:    countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "BREAK")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "BREAK"),
-      // Foul rows accept BOTH foul tags on the mirrored (other-team) event:
-      // the tag vocabulary is perspective-relative (KICKOUT_WON carries
-      // FOUL_WON, KICKOUT_CONCEDED carries FOUL_CONCEDED), so the opposition
-      // retaining their kickout via a won foul is tagged FOUL_WON on their
-      // KICKOUT_WON — previously invisible to our "Foul Conceded" row, which
-      // made the Kickout Lost breakdown under-sum against its stated total.
-      koFoulWon:      countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "FOUL_WON")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "FOUL_WON", "FOUL_CONCEDED"),
-      koFoulCon:      countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "FOUL_CONCEDED")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "FOUL_CONCEDED", "FOUL_WON"),
-      koKickedDead:   countKindWithAnyTag(ownEvts,   "KICKOUT_CONCEDED", "KICKED_DEAD")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_WON",      "KICKED_DEAD"),
-      // Dead-ball won: the opposition's own kickout can only be tagged
-      // KICKED_DEAD on their KICKOUT_CONCEDED event (KICKOUT_WON never
-      // carries this tag) — that possession is awarded to us, so it belongs
-      // in the Won breakdown. Without this row, Clean+Break+Foul Won
-      // under-summed against the stated Kickout Won total by exactly the
-      // dead-ball count. Additive only — does not change koCleanWon,
-      // koBreakWon, koFoulWon, or koKickedDead above.
-      koDeadWon:      countKindWithAnyTag(ownEvts,   "KICKOUT_WON",      "KICKED_DEAD")
-                    + countKindWithAnyTag(otherEvts, "KICKOUT_CONCEDED", "KICKED_DEAD"),
-      // Turnovers — mirrored top-level counts; sub-tags on TURNOVER_WON are "how we won it",
-      // on TURNOVER_LOST are "how we lost it" — mirror by inverting the kind too
-      toWon, toLost, netTo: toWon - toLost,
-      toTacklePress:  countKindWithAnyTag(ownEvts,   "TURNOVER_WON",  "TACKLE", "PRESS")
-                    + countKindWithAnyTag(otherEvts, "TURNOVER_LOST", "TACKLE", "PRESS"),
-      toSwarmInt:     countKindWithAnyTag(ownEvts,   "TURNOVER_WON",  "SWARM",  "INTERCEPT")
-                    + countKindWithAnyTag(otherEvts, "TURNOVER_LOST", "SWARM",  "INTERCEPT"),
-      toUnforced:     countKindWithAnyTag(ownEvts,   "TURNOVER_LOST", "UNFORCED")
-                    + countKindWithAnyTag(otherEvts, "TURNOVER_WON",  "UNFORCED"),
-      toSlackKpHp:    countKindWithAnyTag(ownEvts,   "TURNOVER_LOST", "SLACK_KICK_PASS", "SLACK_HAND_PASS")
-                    + countKindWithAnyTag(otherEvts, "TURNOVER_WON",  "SLACK_KICK_PASS", "SLACK_HAND_PASS"),
-      toOcStripped:   countKindWithAnyTag(ownEvts,   "TURNOVER_LOST", "OVERCARRIED", "STRIPPED")
-                    + countKindWithAnyTag(otherEvts, "TURNOVER_WON",  "OVERCARRIED", "STRIPPED"),
-      // Frees — mirrored
-      freesWon,
-      freesCon,
-      freeScored:     ownEvts.filter((e) => isFreeScore(e)).length,
-      freeMissed:     ownEvts.filter((e) => isFreeMiss(e)).length,
-    };
-  }
-
-  const forStats = buildStats(forEvts, oppEvts);
-  const oppStats = buildStats(oppEvts, forEvts);
+  const forStats = buildTeamSummaryBlock(report, "FOR");
+  const oppStats = buildTeamSummaryBlock(report, "OPP");
 
   // ── Block geometry ────────────────────────────────────────────────────────────
   // Rows: SCORING=7, SHOT DETAIL=4, KICKOUTS=11, TURNOVERS=8, FREES=4 → 34 data rows
@@ -884,7 +771,7 @@ function drawSummaryStatsTable(
         rows: [
           { label: `${koLabel(sport)} Won`,  value: String(st.koWon) },
           { label: `${koLabel(sport)} Lost`, value: String(st.koCon) },
-          { label: `${koLabel(sport)} %`,    value: st.koPct },
+          { label: "Restart Share", value: st.koPct },
           { label: "Clean Won",      value: String(st.koCleanWon) },
           { label: "Break Won",      value: String(st.koBreakWon) },
           { label: "Foul Won",       value: String(st.koFoulWon) },
@@ -998,6 +885,7 @@ function drawSummaryStatsTable(
 /** Builds the Match Summary canvas (page 1). */
 function makeSummaryPage(
   events: readonly PdfExportEvent[],
+  report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
   venueName: string | undefined,
@@ -1088,7 +976,7 @@ function makeSummaryPage(
   ctx.restore();
 
   // ── Two-block stats table (starts at y=244) ───────────────────────────────────
-  drawSummaryStatsTable(ctx, events, homeTeam, awayTeam, 244, sport);
+  drawSummaryStatsTable(ctx, report, homeTeam, awayTeam, 244, sport);
 
   // ── Footer ────────────────────────────────────────────────────────────────────
   ctx.save();
@@ -3851,15 +3739,13 @@ function makeTacticalIntelligencePage(
 
   // ── Derived data ───────────────────────────────────────────────────────────
 
-  // Kickout
+  // Kickout — canonical Restart Share from MatchReport
   const ko       = analysis.kickouts;
   const koTotal  = ko.total;
   const koWon    = ko.won;
-  const koWinPct = koTotal > 0 ? Math.round((koWon  / koTotal) * 100) : 0;
-  // wonToScorePercent and lostAllowedScorePercent are pre-computed and
-  // already division-guarded by the chain engine — use directly.
-  const koConvPct = ko.wonToScorePercent;
-  const koExpPct  = ko.lostAllowedScorePercent;
+  const koWinPct = viewRestartShare(report).pct;
+  const koConvPct = report.restarts.restartToScore.pct;
+  const koExpPct  = report.restarts.restartLossPunishment.pct;
   const koNetAdv  = koConvPct - koExpPct;  // positive = net kickout advantage
 
   // Turnover — canonical metrics from MatchReport
@@ -7388,7 +7274,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   // ── p.1 — Match Summary (cover) ─────────────────────────────────────────────
 
-  const p1 = makeSummaryPage(events, homeTeamName, awayTeamName, venueName, TOTAL_PAGES, sport);
+  const p1 = makeSummaryPage(events, report, homeTeamName, awayTeamName, venueName, TOTAL_PAGES, sport);
   addCanvasPage(p1, false, "Match Summary");
 
   // ── p.2 — Where the Points Went (margin decomposition ledger) ────────────────
