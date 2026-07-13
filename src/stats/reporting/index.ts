@@ -41,3 +41,10 @@ export {
   type CoachingBriefStats,
   type CoachingScoringRun,
 } from "./teamStatsViews";
+export {
+  pctLabel,
+  fractionPctLabel,
+  viewRestartShareOpposition,
+  viewChainOppShare,
+  viewShootingConversionPct,
+} from "./pdfReportViews";

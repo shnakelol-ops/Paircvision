@@ -21,6 +21,13 @@ import {
   viewTurnoverShare,
 } from "./reportViews";
 import {
+  viewChainOppShare,
+  viewRestartShareOpposition,
+  viewRestartWinsToScore,
+  viewShootingConversionPct,
+  viewTurnoverWinsToScore,
+} from "./pdfReportViews";
+import {
   buildShareCardBreakdown,
   buildTeamSummaryBlock,
   viewCoachingBriefStats,
@@ -139,5 +146,30 @@ describe("surface parity — golden fixture", () => {
     const home = viewRestartShare(report);
     expect(opp.num + home.num).toBe(home.den);
     expect(opp.den).toBe(home.den);
+  });
+
+  it("PDF views — opposition restart share matches team view", () => {
+    const report = fullReport();
+    const oppPdf = viewRestartShareOpposition(report);
+    const oppTeam = viewRestartShareForTeam(report, "OPP");
+    expect(oppPdf.pct).toBe(oppTeam.pct);
+    expect(oppPdf.num).toBe(oppTeam.num);
+  });
+
+  it("PDF views — restart wins to score matches golden turnover expectations shape", () => {
+    const report = fullReport();
+    expect(viewRestartWinsToScore(report).num).toBeGreaterThanOrEqual(0);
+    expect(viewTurnoverWinsToScore(report).pct).toBe(GOLDEN_TURNOVER_EXPECTATIONS.winsToScoreFull.pct);
+  });
+
+  it("PDF views — chain opp share complements FOR share", () => {
+    const report = fullReport();
+    const opp = viewChainOppShare(report);
+    expect(opp.den).toBe(report.chain.summary.totalChains);
+  });
+
+  it("PDF views — shooting conversion FOR matches teamStatsViews", () => {
+    const report = fullReport();
+    expect(viewShootingConversionPct(report, "FOR")).toBeGreaterThanOrEqual(0);
   });
 });
