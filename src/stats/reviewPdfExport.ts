@@ -12534,6 +12534,9 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     ? allEvents.filter((e) => e.period === "1H")
     : allEvents;
 
+  const home = homeTeamName;
+  const away = awayTeamName;
+
   // Chain analysis scoped to the same event set — H1-only for HT, full for FT.
   const report = buildMatchReport({
     events,
@@ -12567,9 +12570,6 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       pdf.text("This review page could not be rendered.", PW / 2, PH / 2, { align: "center" });
     }
   }
-
-  const home = homeTeamName;
-  const away = awayTeamName;
 
   if (isHT) {
     // ── HT Snapshot ── 6 pages, coaching-first, first-half events only ────────
