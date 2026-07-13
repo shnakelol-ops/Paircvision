@@ -57,10 +57,12 @@ export function ProTaggerSavedMatchesScreen({ onOpen, onReview, onBack }: Props)
   const handleRepair = useCallback((id: string) => {
     if (!window.confirm(REPAIR_CONFIRM_MESSAGE)) return;
     const result = repairProTaggerMatchById(id);
+    if ("reason" in result && result.reason === "already-repaired") {
+      window.alert("This match has already been repaired — it cannot be repaired twice.");
+      return;
+    }
     if (result.ok) {
       setMatches(readProTaggerMatches());
-    } else if (result.reason === "already-repaired") {
-      window.alert("This match has already been repaired — it cannot be repaired twice.");
     }
   }, []);
 

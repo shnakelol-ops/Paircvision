@@ -31,7 +31,12 @@ import {
 import { deriveReviewPrompts } from "./chains/review-prompts";
 import type { ReviewPrompt, ReviewPromptCategory } from "./chains/review-prompts";
 import type { ZoneCount } from "./zones/zone-types";
-import { getTeamRelativeZoneCounts, getTeamRelativeZoneHotspots } from "./zones/zone-orientation";
+import {
+  getTeamRelativeZoneCounts,
+  getTeamRelativeZoneDisplayBounds,
+  getTeamRelativeZoneHotspots,
+  toTeamRelativeZoneEvent,
+} from "./zones/zone-orientation";
 import type { AttackingDirection } from "./zones/zone-orientation";
 import { eventSource, isFreeScore, isFreeMiss } from "./eventSource";
 import type { ScoreSource } from "./eventSource";
@@ -9734,6 +9739,7 @@ function makeFtRestartEscapeRoutesPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -9769,7 +9775,11 @@ function makeFtRestartEscapeRoutesPage(
   );
 
   for (const outcome of analysis.kickouts.outcomes) {
-    const { nx, ny } = outcome.kickoutEvent;
+    // Rotated to the reporting team's own attacking direction for this
+    // event's half — see zones/zone-orientation.ts. Every zone label/bucket
+    // on this page must agree with Shot Profile / Zone Analysis, regardless
+    // of which side actually took the kickout.
+    const { nx, ny } = toTeamRelativeZoneEvent(outcome.kickoutEvent, homeAttackingDirection);
     const col = nx < 0.333 ? 0 : nx < 0.667 ? 1 : 2;
     const row = ny < 0.333 ? 0 : ny < 0.667 ? 1 : 2;
     const cell = grid[col][row];
@@ -9911,10 +9921,13 @@ function makeFtRestartEscapeRoutesPage(
     for (const outcome of analysis.kickouts.outcomes) {
       if (outcome.winningSide !== "OPP") continue;
       if (outcome.nextScore === null) continue;
-      const kNx    = outcome.kickoutEvent.nx;
-      const kNy    = outcome.kickoutEvent.ny;
-      const sNx    = outcome.nextScore.nx;
-      const sNy    = outcome.nextScore.ny;
+      // Each side of the arrow rotated by its own event's half, same as above.
+      const kickoutRel = toTeamRelativeZoneEvent(outcome.kickoutEvent, homeAttackingDirection);
+      const scoreRel   = toTeamRelativeZoneEvent(outcome.nextScore, homeAttackingDirection);
+      const kNx    = kickoutRel.nx;
+      const kNy    = kickoutRel.ny;
+      const sNx    = scoreRel.nx;
+      const sNy    = scoreRel.ny;
       const srcCol = kNx < 0.333 ? 0 : kNx < 0.667 ? 1 : 2;
       const srcRow = kNy < 0.333 ? 0 : kNy < 0.667 ? 1 : 2;
       const dstCol = sNx < 0.333 ? 0 : sNx < 0.667 ? 1 : 2;
@@ -11063,9 +11076,15 @@ function makeOurShotProfilePage(
   const pitchArea = { x: HT_PITCH_AREA.x, y: HT_PITCH_AREA.y + SHOT_HEADLINE_H, w: HT_PITCH_AREA.w, h: HT_PITCH_AREA.h - SHOT_HEADLINE_H };
   const inner = renderPitch(ctx, sport, pitchArea);
 
-  // Subtle border on the hottest scoring zone — no fills elsewhere
+  // Subtle border on the hottest scoring zone — no fills elsewhere.
+  // Bounds reflected back to physical space so the box lines up with the
+  // actual event dots below (see zones/zone-orientation.ts) — a zone's own
+  // .bounds are always the fixed canonical bounds, never rotated.
   if (topScoreZone && topScoreZone.count >= 2) {
-    const rect = zonePixelRect(topScoreZone.bounds, inner);
+    const displayBounds = getTeamRelativeZoneDisplayBounds(
+      forScoreEvts, topScoreZone.id, topScoreZone.bounds, homeAttackingDirection,
+    );
+    const rect = zonePixelRect(displayBounds, inner);
     ctx.fillStyle = "rgba(52,211,153,0.10)";
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     ctx.strokeStyle = "rgba(52,211,153,0.42)";
@@ -11212,9 +11231,14 @@ function makeOppShotProfilePage(
   const pitchArea = { x: HT_PITCH_AREA.x, y: HT_PITCH_AREA.y + SHOT_HEADLINE_H, w: HT_PITCH_AREA.w, h: HT_PITCH_AREA.h - SHOT_HEADLINE_H };
   const inner = renderPitch(ctx, sport, pitchArea);
 
-  // Subtle border on the hottest OPP scoring zone — pitch stays clean
+  // Subtle border on the hottest OPP scoring zone — pitch stays clean.
+  // Bounds reflected back to physical space so the box lines up with the
+  // actual event dots below — see zones/zone-orientation.ts.
   if (topScoreZone && topScoreZone.count >= 2) {
-    const rect = zonePixelRect(topScoreZone.bounds, inner);
+    const displayBounds = getTeamRelativeZoneDisplayBounds(
+      oppScoreEvts, topScoreZone.id, topScoreZone.bounds, homeAttackingDirection,
+    );
+    const rect = zonePixelRect(displayBounds, inner);
     ctx.fillStyle = "rgba(239,68,68,0.10)";
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     ctx.strokeStyle = "rgba(239,68,68,0.42)";
@@ -12859,7 +12883,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 12. Restart Escape Routes — kickout destination zone outcome map
     addPage(
-      makeFtRestartEscapeRoutesPage(events, sport, chainAnalysis, home, away, 12, TOTAL_PAGES),
+      makeFtRestartEscapeRoutesPage(events, sport, chainAnalysis, home, away, 12, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Restart Escape Routes",
       "POSSESSION",

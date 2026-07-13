@@ -200,7 +200,7 @@ describe("repairMirroredEventLocations — pure repair", () => {
 
     const second = repairMirroredEventLocations(first.match);
     expect(second.ok).toBe(false);
-    if (second.ok) return;
+    if (!("reason" in second)) return;
     expect(second.reason).toBe("already-repaired");
 
     // The event coordinates from the first (correct) repair must still stand —
@@ -248,7 +248,7 @@ describe("repairProTaggerMatchById — storage-level flow", () => {
 
     const second = repairProTaggerMatchById(match.id);
     expect(second.ok).toBe(false);
-    if (second.ok) return;
+    if (!("reason" in second)) return;
     expect(second.reason).toBe("already-repaired");
 
     const [stored] = readProTaggerMatches();
@@ -259,7 +259,7 @@ describe("repairProTaggerMatchById — storage-level flow", () => {
   it("returns not-found for an unknown match id and touches no storage", () => {
     const result = repairProTaggerMatchById("does-not-exist");
     expect(result.ok).toBe(false);
-    if (result.ok) return;
+    if (!("reason" in result)) return;
     expect(result.reason).toBe("not-found");
     expect(readProTaggerCoordinateRepairBackups()).toHaveLength(0);
   });
