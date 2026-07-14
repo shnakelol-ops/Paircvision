@@ -11,7 +11,9 @@ import {
   makeOppShotProfilePage,
   makeOurShotProfilePage,
 } from "../reviewPdfExport";
+import type { PdfExportEvent } from "../reviewPdfExport";
 import { mkAdareEvent } from "./adare-mungret-fixture";
+import { buildMatchReport } from "./matchReport";
 
 class CaptureCanvasContext {
   fillStyle = "";
@@ -99,8 +101,10 @@ describe("Shot Profile zone labels — Adare v Mungret, attacking LEFT in H1", (
 
   it("Our Shot Profile → Attacking Centre", () => {
     const events = adareZoneFixture();
+    const report = buildMatchReport<PdfExportEvent>({ events, homeTeam: "Adare", awayTeam: "Mungret" });
     const canvas = makeOurShotProfilePage(
       events,
+      report,
       "gaelic",
       "Adare",
       "Mungret",
@@ -114,8 +118,10 @@ describe("Shot Profile zone labels — Adare v Mungret, attacking LEFT in H1", (
 
   it("Opposition Shot Profile → Attacking Centre (from their perspective)", () => {
     const events = adareZoneFixture();
+    const report = buildMatchReport<PdfExportEvent>({ events, homeTeam: "Adare", awayTeam: "Mungret" });
     const canvas = makeOppShotProfilePage(
       events,
+      report,
       "gaelic",
       "Adare",
       "Mungret",
@@ -129,11 +135,12 @@ describe("Shot Profile zone labels — Adare v Mungret, attacking LEFT in H1", (
 
   it("both profiles agree on zone label for the same fixture", () => {
     const events = adareZoneFixture();
+    const report = buildMatchReport<PdfExportEvent>({ events, homeTeam: "Adare", awayTeam: "Mungret" });
     const ourCanvas = makeOurShotProfilePage(
-      events, "gaelic", "Adare", "Mungret", 1, 7, "LEFT",
+      events, report, "gaelic", "Adare", "Mungret", 1, 7, "LEFT",
     ) as unknown as CaptureCanvas;
     const oppCanvas = makeOppShotProfilePage(
-      events, "gaelic", "Adare", "Mungret", 2, 7, "LEFT",
+      events, report, "gaelic", "Adare", "Mungret", 2, 7, "LEFT",
     ) as unknown as CaptureCanvas;
 
     expect(zoneLabelFromCanvas(ourCanvas)).toBe(zoneLabelFromCanvas(oppCanvas));

@@ -103,18 +103,6 @@ function isAwayEvent(e: CBEvent): boolean {
   return e.team === "AWAY" || e.id.startsWith("team-away-");
 }
 
-function computeScore(events: readonly CBEvent[], forHome: boolean): TeamScore {
-  let goals = 0;
-  let points = 0;
-  for (const e of events) {
-    if (forHome ? !isHomeEvent(e) : !isAwayEvent(e)) continue;
-    if (e.kind === "GOAL") goals += 1;
-    else if (e.kind === "POINT") points += 1;
-    else if (e.kind === "TWO_POINTER" || e.kind === "FORTY_FIVE_TWO_POINT") points += 2;
-  }
-  return { goals, points, total: goals * 3 + points };
-}
-
 function formatScore(s: TeamScore): string {
   return `${s.goals}-${String(s.points).padStart(2, "0")} (${s.total})`;
 }
@@ -152,8 +140,8 @@ function computeMatchStats(
   const report = buildCoachingReport(events, homeTeam, awayTeam, scope);
   const brief = viewCoachingBriefStats(report);
   return {
-    homeScore: computeScore(events, true),
-    awayScore: computeScore(events, false),
+    homeScore: report.ledger.forScore,
+    awayScore: report.ledger.oppScore,
     goals: brief.goals,
     attempts: brief.attempts,
     scores: brief.scores,

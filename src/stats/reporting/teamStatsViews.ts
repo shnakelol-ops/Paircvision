@@ -411,11 +411,13 @@ export function buildShareCardBreakdown<T extends ChainableEvent>(
     AWAY: initShareBreakdown(),
   };
 
+  const events = report.events.filter((e) => !e.id.includes("-instant-score-"));
+
   let hasOppKickoutEvents = false;
   let hasOppTurnoverEvents = false;
   let hasOppFreeEvents = false;
 
-  for (const e of report.events) {
+  for (const e of events) {
     if (e.teamSide === "OPP") {
       const k = e.kind;
       if (k === "KICKOUT_WON" || k === "KICKOUT_CONCEDED") hasOppKickoutEvents = true;
@@ -426,7 +428,7 @@ export function buildShareCardBreakdown<T extends ChainableEvent>(
     }
   }
 
-  for (const e of report.events) {
+  for (const e of events) {
     const team = e.teamSide === "FOR" ? "HOME" : "AWAY";
     const b = r[team];
     applyShareTagCounts(b, e);
@@ -496,7 +498,9 @@ export function viewCoachingBriefStats<T extends ChainableEvent>(
   const mirrored = viewMirroredCountsForTeam(report, "FOR");
   const shooting = viewShootingConversion(report, "FOR");
   const restarts = report.restartTeams.for;
-  const own = report.events.filter((e) => e.teamSide === "FOR");
+  const own = report.events.filter(
+    (e) => e.teamSide === "FOR" && !e.id.includes("-instant-score-"),
+  );
   let goals = 0;
   let scores = 0;
   let attempts = 0;

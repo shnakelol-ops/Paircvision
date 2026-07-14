@@ -10790,6 +10790,7 @@ function makeChainPressurePage(
  */
 export function makeOurShotProfilePage(
   events: readonly PdfExportEvent[],
+  report: MatchReport<PdfExportEvent>,
   sport: PitchSport,
   homeTeam: string,
   awayTeam: string,
@@ -10807,13 +10808,16 @@ export function makeOurShotProfilePage(
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, "Our Shot Profile", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
-  // ── Event subsets ─────────────────────────────────────────────────────────
+  // ── Event subsets — synthetic "-instant-score-" markers excluded, same as
+  // the canonical MatchReport ledger, so headline numbers agree with the PDF
+  // Match Summary Table / Shot Efficiency page and no phantom dot is plotted
+  // for a marker event with no real shot location. ──────────────────────────
   const forScoreEvts = events.filter(
-    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind),
+    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind) && !e.id.includes("-instant-score-"),
   );
 
   const forShotEvts = events.filter(
-    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind),
+    (e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind) && !e.id.includes("-instant-score-"),
   );
   // FREE_WON spatial markers — where we won frees on the pitch
   const freeWonEvts = events.filter(
@@ -10829,15 +10833,17 @@ export function makeOurShotProfilePage(
 
   // ── Zone counts (for headline + hotspot highlight) ────────────────────────
   const scoreCounts = pdfZoneCounts(forScoreEvts, homeAttackingDirection);
-  // ── Headline band ─────────────────────────────────────────────────────────
+  // ── Headline band — canonical shooting conversion (same figure as the
+  // Shot Efficiency page and Match Summary Table) ───────────────────────────
   const SHOT_HEADLINE_H = 90;
   const topScoreZone = scoreCounts.reduce(
     (top, z) => z.count > (top?.count ?? 0) ? z : top,
     null as typeof scoreCounts[0] | null,
   );
-  const totalShots  = forShotEvts.length;
-  const totalScores = forScoreEvts.length;
-  const shotEff     = totalShots > 0 ? Math.round((totalScores / totalShots) * 100) : 0;
+  const forConv     = viewShootingConversion(report, "FOR");
+  const totalShots  = forConv.den;
+  const totalScores = forConv.num;
+  const shotEff     = forConv.pct;
   const headlineText = totalShots > 0
     ? `${totalScores} score${totalScores !== 1 ? "s" : ""} from ${totalShots} shot${totalShots !== 1 ? "s" : ""} · ${shotEff}% efficiency${topScoreZone && topScoreZone.count > 0 ? ` · Best zone: ${topScoreZone.label}` : ""}`
     : "No shot data recorded for this match";
@@ -10941,6 +10947,7 @@ export function makeOurShotProfilePage(
  */
 export function makeOppShotProfilePage(
   events: readonly PdfExportEvent[],
+  report: MatchReport<PdfExportEvent>,
   sport: PitchSport,
   homeTeam: string,
   awayTeam: string,
@@ -10958,13 +10965,14 @@ export function makeOppShotProfilePage(
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, "Opposition Shot Profile", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
-  // ── Event subsets ─────────────────────────────────────────────────────────
+  // ── Event subsets — synthetic "-instant-score-" markers excluded, same as
+  // the canonical MatchReport ledger. ───────────────────────────────────────
   const oppScoreEvts = events.filter(
-    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind) && !e.id.includes("-instant-score-"),
   );
 
   const oppShotEvts = events.filter(
-    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind) && !e.id.includes("-instant-score-"),
   );
   // FREE_CONCEDED (FOR) = positions where we gave away frees — pink danger markers
   const freeConcededEvts = events.filter(
@@ -10981,15 +10989,17 @@ export function makeOppShotProfilePage(
   // ── Zone counts (for headline + hotspot highlight) ────────────────────────
   const scoreCounts = pdfZoneCounts(oppScoreEvts, homeAttackingDirection, "OPP");
 
-  // ── Headline band ─────────────────────────────────────────────────────────
+  // ── Headline band — canonical shooting conversion (same figure as the
+  // Shot Efficiency page and Match Summary Table) ───────────────────────────
   const SHOT_HEADLINE_H = 90;
   const topScoreZone = scoreCounts.reduce(
     (top, z) => z.count > (top?.count ?? 0) ? z : top,
     null as typeof scoreCounts[0] | null,
   );
-  const totalOppShots  = oppShotEvts.length;
-  const totalOppScores = oppScoreEvts.length;
-  const oppShotEff     = totalOppShots > 0 ? Math.round((totalOppScores / totalOppShots) * 100) : 0;
+  const oppConv        = viewShootingConversion(report, "OPP");
+  const totalOppShots  = oppConv.den;
+  const totalOppScores = oppConv.num;
+  const oppShotEff     = oppConv.pct;
   const headlineText = totalOppShots > 0
     ? `${totalOppScores} score${totalOppScores !== 1 ? "s" : ""} from ${totalOppShots} shot${totalOppShots !== 1 ? "s" : ""} · ${oppShotEff}% efficiency${topScoreZone && topScoreZone.count > 0 ? ` · Most dangerous zone: ${topScoreZone.label}` : ""}`
     : "No opposition shot data recorded for this match";
@@ -12539,7 +12549,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 1. Our Shot Profile
     addPage(
-      makeOurShotProfilePage(events, sport, home, away, 1, TOTAL_PAGES, homeAttackingDirection),
+      makeOurShotProfilePage(events, report, sport, home, away, 1, TOTAL_PAGES, homeAttackingDirection),
       false,
       "Our Shots",
       "STATISTICS",
@@ -12547,7 +12557,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 2. Opposition Shot Profile
     addPage(
-      makeOppShotProfilePage(events, sport, home, away, 2, TOTAL_PAGES, homeAttackingDirection),
+      makeOppShotProfilePage(events, report, sport, home, away, 2, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Their Shots",
       "STATISTICS",
@@ -12627,7 +12637,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 2. Our Shot Profile
     addPage(
-      makeOurShotProfilePage(events, sport, home, away, 2, TOTAL_PAGES, homeAttackingDirection),
+      makeOurShotProfilePage(events, report, sport, home, away, 2, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Our Shots",
       "STATISTICS",
@@ -12635,7 +12645,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 3. Opposition Shot Profile
     addPage(
-      makeOppShotProfilePage(events, sport, home, away, 3, TOTAL_PAGES, homeAttackingDirection),
+      makeOppShotProfilePage(events, report, sport, home, away, 3, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Their Shots",
       "STATISTICS",

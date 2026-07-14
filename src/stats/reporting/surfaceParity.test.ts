@@ -14,6 +14,7 @@ import {
   GOLDEN_TEAMS,
   GOLDEN_TURNOVER_EXPECTATIONS,
   buildGoldenReportingFixture,
+  mkGoldenEvent,
 } from "./golden-fixture";
 import {
   viewPossessionRetention,
@@ -32,6 +33,7 @@ import {
   buildTeamSummaryBlock,
   viewCoachingBriefStats,
   viewRestartShareForTeam,
+  viewShootingConversion,
 } from "./teamStatsViews";
 import { adaptEventsToChainable } from "./eventAdapter";
 
@@ -178,5 +180,79 @@ describe("surface parity — golden fixture", () => {
   it("PDF views — shooting conversion FOR matches teamStatsViews", () => {
     const report = fullReport();
     expect(viewShootingConversionPct(report, "FOR")).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("instant-score parity — opposition instant-score marker excluded consistently everywhere", () => {
+  // "Log opposition instant score" (App.tsx logAwayInstantScore) produces a
+  // synthetic event with no real shot location — id contains "-instant-score-",
+  // nx/ny both 0. It must be excluded from every coach-facing surface's score
+  // and shot totals, identically, the same way the ledger already excludes it.
+  const instantOppGoal = mkGoldenEvent({
+    id: "team-away-instant-score-regression",
+    kind: "GOAL",
+    teamSide: "OPP",
+    period: "1H",
+    nx: 0,
+    ny: 0,
+  });
+
+  const baseEvents = buildGoldenReportingFixture();
+  const eventsWithInstant = [...baseEvents, instantOppGoal];
+
+  const reportBase = buildMatchReport({
+    events: baseEvents,
+    homeTeam: GOLDEN_TEAMS.home,
+    awayTeam: GOLDEN_TEAMS.away,
+  });
+  const reportWithInstant = buildMatchReport({
+    events: eventsWithInstant,
+    homeTeam: GOLDEN_TEAMS.home,
+    awayTeam: GOLDEN_TEAMS.away,
+  });
+
+  it("Full Review PDF — Match Summary Table (OPP) is unchanged", () => {
+    expect(buildTeamSummaryBlock(reportWithInstant, "OPP")).toEqual(
+      buildTeamSummaryBlock(reportBase, "OPP"),
+    );
+  });
+
+  it("Coaching Brief — ledger opposition scoreline is unchanged", () => {
+    expect(reportWithInstant.ledger.oppScore).toEqual(reportBase.ledger.oppScore);
+  });
+
+  it("Stats Share Card — AWAY breakdown is unchanged", () => {
+    expect(buildShareCardBreakdown(reportWithInstant).AWAY).toEqual(
+      buildShareCardBreakdown(reportBase).AWAY,
+    );
+  });
+
+  it("Opposition Shot Profile totals — shooting conversion is unchanged", () => {
+    expect(viewShootingConversion(reportWithInstant, "OPP")).toEqual(
+      viewShootingConversion(reportBase, "OPP"),
+    );
+  });
+
+  it("Match Targets — opposition shooting efficiency is unchanged", () => {
+    const targetsFor = (events: typeof baseEvents) =>
+      computeTargetResults(
+        { targets: [{ metric: "oppShootingEfficiency", targetValue: 50, direction: "atLeast", enabled: true }] },
+        events,
+        "FULL",
+        "gaelic",
+      ).find((r) => r.metric === "oppShootingEfficiency")?.actual;
+    expect(targetsFor(eventsWithInstant)).toBe(targetsFor(baseEvents));
+  });
+
+  it("all five surfaces agree with each other on the OPP score total, instant score included", () => {
+    const fullReviewOppTotal = buildTeamSummaryBlock(reportWithInstant, "OPP").scoreTotal;
+    const coachingBriefOppTotal = reportWithInstant.ledger.oppScore.total;
+    const shareCardOppTotal =
+      buildShareCardBreakdown(reportWithInstant).AWAY.goals * 3
+      + buildShareCardBreakdown(reportWithInstant).AWAY.points
+      + buildShareCardBreakdown(reportWithInstant).AWAY.twoPt * 2;
+
+    expect(coachingBriefOppTotal).toBe(fullReviewOppTotal);
+    expect(shareCardOppTotal).toBe(fullReviewOppTotal);
   });
 });
