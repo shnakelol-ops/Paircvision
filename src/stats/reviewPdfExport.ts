@@ -22,7 +22,7 @@ import type {
 } from "../core/stats/stats-event-model";
 import type { ChainAnalysis } from "./chains/chain-types";
 import { buildMatchReport, type MatchReport } from "./reporting/matchReport";
-import { buildTeamSummaryBlock } from "./reporting/teamStatsViews";
+import { buildTeamSummaryBlock, viewShootingConversion } from "./reporting/teamStatsViews";
 import {
   countPctLabel,
   fractionPctLabel,
@@ -10015,8 +10015,156 @@ function makeFtRestartEscapeRoutesPage(
  *
  * Data: events (all periods) + ChainAnalysis (scoringRuns, kickouts, turnovers).
  */
+type TacticalStorySection = {
+  heading: string;
+  accent: string;
+  lines: string[];
+};
+
+/** Assembles factual story lines from canonical MatchReport views only. */
+function buildTacticalMatchStorySections(
+  report: MatchReport<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  sport: PitchSport,
+): TacticalStorySection[] {
+  const sections: TacticalStorySection[] = [];
+  const analysis = report.chain;
+  const sr = analysis.scoringRuns;
+  const home = truncTeam(homeTeam, 18);
+  const away = truncTeam(awayTeam, 18);
+
+  function runPhaseLabel(run: NonNullable<typeof sr.longestRunFor>): string {
+    return run.period === "1H"
+      ? `1H · Seg ${run.events[0].segment}`
+      : `2H · Seg ${run.events[0].segment}`;
+  }
+
+  // ── Scoring Momentum ───────────────────────────────────────────────────────
+  const momentumLines: string[] = [];
+  if (sr.longestRunFor) {
+    const lrf = sr.longestRunFor;
+    momentumLines.push(
+      `${home} longest unanswered scoring run: ${lrf.count} consecutive scores (${runPhaseLabel(lrf)}).`,
+    );
+    momentumLines.push(
+      `${home} best scoring phase (longest run): ${runPhaseLabel(lrf)} — ${lrf.count} consecutive scores.`,
+    );
+  }
+  if (sr.longestRunOpp) {
+    const lro = sr.longestRunOpp;
+    momentumLines.push(
+      `${away} longest unanswered scoring run: ${lro.count} consecutive scores (${runPhaseLabel(lro)}).`,
+    );
+    momentumLines.push(
+      `${away} best scoring phase (longest run): ${runPhaseLabel(lro)} — ${lro.count} consecutive scores.`,
+    );
+  }
+  if (momentumLines.length > 0) {
+    sections.push({ heading: "Scoring Momentum", accent: "#fbbf24", lines: momentumLines });
+  }
+
+  // ── Restart Chain Analysis ─────────────────────────────────────────────────
+  const restartLines: string[] = [];
+  const restartShare = viewRestartShare(report);
+  if (restartShare.den > 0) {
+    restartLines.push(
+      `${home} restart platform — Restart Share: ${pctLabel(restartShare)} (${fmtFractionCounts(restartShare)}).`,
+    );
+  }
+  const restartToScore = viewRestartWinsToScore(report);
+  if (restartToScore.num > 0) {
+    restartLines.push(
+      `${home} won restarts → origin score: ${countPctLabel(restartToScore.num, restartToScore)} (${fmtRestartOriginScoredFor(analysis)}).`,
+    );
+  }
+  const restartLoss = viewRestartLossPunishment(report);
+  if (restartLoss.num > 0) {
+    restartLines.push(
+      `${away} restart threat — ${home} lost restarts → origin score against: ${countPctLabel(restartLoss.num, restartLoss)} (${fmtRestartOriginConcededFor(analysis)}).`,
+    );
+  }
+  if (restartLines.length > 0) {
+    sections.push({ heading: "Restart Chain Analysis", accent: "#22d3ee", lines: restartLines });
+  }
+
+  // ── Turnover Chain Analysis ────────────────────────────────────────────────
+  const turnoverLines: string[] = [];
+  const turnoverShare = viewTurnoverShare(report);
+  if (turnoverShare.den > 0) {
+    turnoverLines.push(
+      `${home} turnover platform — Turnover Share: ${pctLabel(turnoverShare)} (${fmtFractionCounts(turnoverShare)}).`,
+    );
+  }
+  const turnoverToScore = viewTurnoverWinsToScore(report);
+  if (turnoverToScore.num > 0) {
+    turnoverLines.push(
+      `${home} won turnovers → origin score: ${countPctLabel(turnoverToScore.num, turnoverToScore)} (${fmtTurnoverOriginScoredFor(analysis)}).`,
+    );
+  }
+  const turnoverLoss = viewTurnoverLossPunishment(report);
+  if (turnoverLoss.num > 0) {
+    turnoverLines.push(
+      `${away} turnover punishment — ${home} lost turnovers → origin score against: ${countPctLabel(turnoverLoss.num, turnoverLoss)} (${fmtTurnoverOriginConcededFor(analysis)}).`,
+    );
+  }
+  if (turnoverLines.length > 0) {
+    sections.push({ heading: "Turnover Chain Analysis", accent: "#a78bfa", lines: turnoverLines });
+  }
+
+  // ── Shot & Scoring Efficiency ──────────────────────────────────────────────
+  const shootingLines: string[] = [];
+  const forConv = viewShootingConversion(report, "FOR");
+  if (forConv.den > 0) {
+    shootingLines.push(
+      `${home} score conversion: ${forConv.num} of ${forConv.den} attempts (${pctLabel(forConv)}).`,
+    );
+  }
+  const oppConv = viewShootingConversion(report, "OPP");
+  if (oppConv.den > 0) {
+    shootingLines.push(
+      `${away} score conversion: ${oppConv.num} of ${oppConv.den} attempts (${pctLabel(oppConv)}).`,
+    );
+  }
+  if (shootingLines.length > 0) {
+    sections.push({ heading: "Shot & Scoring Efficiency", accent: "#4ade80", lines: shootingLines });
+  }
+
+  // ── Where the Points Went ──────────────────────────────────────────────────
+  const ledgerLines: string[] = [];
+  const { ledger } = report;
+  ledgerLines.push(
+    `${home} ${fmtScoreLine(ledger.forScore)} v ${away} ${fmtScoreLine(ledger.oppScore)} — ${fmtMarginLabel(ledger.margin, homeTeam, awayTeam)}.`,
+  );
+  for (const row of ledger.rows) {
+    if (row.us.value === 0 && row.them.value === 0) continue;
+    ledgerLines.push(
+      `${row.label}: ${home} ${fmtLedgerSide(row, row.us)}, ${away} ${fmtLedgerSide(row, row.them)} (net ${fmtNet(row.net)}).`,
+    );
+  }
+  for (const verdict of ledger.verdicts) {
+    ledgerLines.push(verdict);
+  }
+  if (ledgerLines.length > 0) {
+    sections.push({ heading: "Where the Points Went", accent: "#7dd3fc", lines: ledgerLines });
+  }
+
+  // ── Chain Intelligence ─────────────────────────────────────────────────────
+  const chainLines: string[] = [];
+  const patterns = rankChainPatterns(analysis, "FT", homeTeam, awayTeam, report.restartTeams);
+  const weaponPattern = patterns.find((p) => p.kind === "CHAIN_WEAPON");
+  if (weaponPattern) {
+    chainLines.push(xRestartStr(weaponPattern.observation, sport));
+  }
+  if (chainLines.length > 0) {
+    sections.push({ heading: "Chain Intelligence", accent: "#818cf8", lines: chainLines });
+  }
+
+  return sections;
+}
+
 function makeFtTacticalMatchStoryPage(
-  events: readonly PdfExportEvent[],
+  _events: readonly PdfExportEvent[],
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
@@ -10035,348 +10183,89 @@ function makeFtTacticalMatchStoryPage(
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, "Tactical Match Story", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
-  // ── Segment control data (same logic as makeHtGameFlowPage, inline) ───────
-  const segNums = Array.from(
-    new Set(
-      events
-        .map((e) => e.segment)
-        .filter((s): s is MatchEventSegment => s != null),
-    ),
-  ).sort((a, b) => a - b);
+  const CONTENT_X   = 48;
+  const CONTENT_W   = CANVAS_W - 96;
+  const CONTENT_TOP = 118;
+  const CONTENT_BOT = HT_STRIP_TOP - 16;
+  const COL_GAP     = 32;
+  const COL_W       = Math.floor((CONTENT_W - COL_GAP) / 2);
+  const COL1_X      = CONTENT_X;
+  const COL2_X      = CONTENT_X + COL_W + COL_GAP;
 
-  type SegControl = "FOR" | "OPP" | "CONTESTED";
-  type SegData = {
-    seg: MatchEventSegment;
-    label: string;
-    forScore: number;
-    oppScore: number;
-    kickoutBalance: number;
-    controlScore: number;
-    status: SegControl;
-  };
-
-  const segDataList: SegData[] = segNums.map((seg) => {
-    const segEvts       = events.filter((e) => e.segment === seg);
-    const forScore      = scoreFromEvents(segEvts.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind))).total;
-    const oppScore      = scoreFromEvents(segEvts.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind))).total;
-    const koWon         = segEvts.filter((e) => e.kind === "KICKOUT_WON").length;
-    const koConceded    = segEvts.filter((e) => e.kind === "KICKOUT_CONCEDED").length;
-    const toWon         = segEvts.filter((e) => e.kind === "TURNOVER_WON").length;
-    const toLost        = segEvts.filter((e) => e.kind === "TURNOVER_LOST").length;
-    const kickoutBalance  = koWon - koConceded;
-    const turnoverBalance = toWon - toLost;
-    const controlScore    = (forScore - oppScore) * 2 + kickoutBalance + Math.round(turnoverBalance * 0.5);
-    const status: SegControl = controlScore >= 2 ? "FOR" : controlScore <= -2 ? "OPP" : "CONTESTED";
-    const start = (seg - 1) * 10;
-    const end   = seg * 10;
-    return { seg, label: `${start}–${end}'`, forScore, oppScore, kickoutBalance, controlScore, status };
-  });
-
-  // ── Layout constants ──────────────────────────────────────────────────────
-  const RIVER_X  = 80;
-  const RIVER_Y  = 130;
-  const RIVER_W  = CANVAS_W - 160;
-  const RIVER_H  = 160;
-  const N        = segDataList.length;
-  const SEG_GAP  = 8;
-  const segW     = N > 0 ? Math.floor((RIVER_W - SEG_GAP * (N - 1)) / N) : RIVER_W;
-
-  // Sub-heading
   ctx.fillStyle    = "#64748b";
-  ctx.font         = "18px sans-serif";
+  ctx.font         = "17px sans-serif";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign    = "left";
-  ctx.fillText("MATCH NARRATIVE  ·  Segment control + key moments + editorial summary", RIVER_X, RIVER_Y - 12);
-
-  // ── Draw flow river ───────────────────────────────────────────────────────
-  if (segDataList.length > 0) {
-    segDataList.forEach((sd, i) => {
-      const bx = RIVER_X + i * (segW + SEG_GAP);
-      const barColor =
-        sd.status === "FOR"  ? "#22c55e" :
-        sd.status === "OPP"  ? "#ef4444" :
-                               "#f59e0b";
-      ctx.globalAlpha = 0.88;
-      ctx.fillStyle   = barColor;
-      ctx.fillRect(bx, RIVER_Y, segW, RIVER_H);
-      ctx.globalAlpha = 1.0;
-
-      ctx.strokeStyle = "rgba(255,255,255,0.15)";
-      ctx.lineWidth   = 1;
-      ctx.strokeRect(bx, RIVER_Y, segW, RIVER_H);
-
-      // Score diff (large, centred)
-      const diff      = sd.forScore - sd.oppScore;
-      const diffLabel = diff > 0 ? `+${diff}` : String(diff);
-      ctx.font         = "bold 40px sans-serif";
-      ctx.fillStyle    = "rgba(255,255,255,0.90)";
-      ctx.textBaseline = "middle";
-      ctx.textAlign    = "center";
-      ctx.fillText(diffLabel, bx + segW / 2, RIVER_Y + RIVER_H / 2 + 4);
-
-      // Time label bottom of bar
-      ctx.font      = "bold 16px sans-serif";
-      ctx.fillStyle = "rgba(255,255,255,0.65)";
-      ctx.fillText(sd.label, bx + segW / 2, RIVER_Y + RIVER_H - 12);
-    });
-  } else {
-    // No segment data fallback
-    ctx.fillStyle    = "#64748b";
-    ctx.font         = "22px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign    = "center";
-    ctx.fillText("No segment data available.", CANVAS_W / 2, RIVER_Y + RIVER_H / 2);
-  }
-
-  // ── Story pins ────────────────────────────────────────────────────────────
-  // Pins hang below the flow river: stem from RIVER_Y+RIVER_H downward, card below.
-  type StoryPin = {
-    segIdx: number;
-    title: string;
-    sub: string;
-    color: string;
-  };
-
-  const pins: StoryPin[] = [];
-
-  // 1. Control flips (adjacent segments switching between FOR and OPP)
-  for (let i = 1; i < segDataList.length && pins.length < 6; i++) {
-    const prev = segDataList[i - 1];
-    const curr = segDataList[i];
-    if (
-      prev.status !== "CONTESTED" &&
-      curr.status !== "CONTESTED" &&
-      prev.status !== curr.status
-    ) {
-      pins.push({
-        segIdx: i,
-        title:  "CONTROL SWING",
-        sub:    `${prev.status} → ${curr.status}`,
-        color:  curr.status === "OPP" ? "#ef4444" : "#22c55e",
-      });
-    }
-  }
-
-  // 2. Best FOR segment (control score ≥ 4)
-  const bestForIdx = segDataList.reduce(
-    (best, sd, idx) => sd.controlScore > (segDataList[best]?.controlScore ?? -Infinity) ? idx : best, 0,
+  ctx.fillText(
+    "MATCH FACTS  ·  Canonical metrics from report views (no local inference)",
+    CONTENT_X, CONTENT_TOP - 14,
   );
-  const bestSd = segDataList[bestForIdx];
-  if (bestSd && bestSd.controlScore >= 4 && !pins.some((p) => p.segIdx === bestForIdx) && pins.length < 6) {
-    pins.push({
-      segIdx: bestForIdx,
-      title:  "BEST PHASE",
-      sub:    `+${bestSd.forScore - bestSd.oppScore} score diff`,
-      color:  "#22c55e",
-    });
-  }
 
-  // 3. Hardest FOR segment (control score ≤ -4)
-  const worstForIdx = segDataList.reduce(
-    (worst, sd, idx) => sd.controlScore < (segDataList[worst]?.controlScore ?? Infinity) ? idx : worst, 0,
-  );
-  const worstSd = segDataList[worstForIdx];
-  if (worstSd && worstSd.controlScore <= -4 && !pins.some((p) => p.segIdx === worstForIdx) && pins.length < 6) {
-    pins.push({
-      segIdx: worstForIdx,
-      title:  "TOUGH PHASE",
-      sub:    `${worstSd.forScore - worstSd.oppScore} score diff`,
-      color:  "#ef4444",
-    });
-  }
+  const sections = buildTacticalMatchStorySections(report, homeTeam, awayTeam, sport);
 
-  // 4. Scoring runs ≥ 3
-  for (const run of analysis.scoringRuns.runs) {
-    if (run.count < 3 || pins.length >= 6) break;
-    // Map clock seconds to segment index (600s = ~10 min per segment)
-    const rawIdx  = run.startClockSeconds > 0
-      ? Math.min(Math.floor(run.startClockSeconds / 600), segDataList.length - 1)
-      : (run.period === "1H" ? 1 : Math.max(3, segDataList.length - 2));
-    const segIdx  = Math.max(0, Math.min(rawIdx, segDataList.length - 1));
-    if (pins.some((p) => p.segIdx === segIdx)) continue;
-    const teamLabel = run.teamSide === "FOR" ? homeTeam : "Opposition";
-    pins.push({
-      segIdx,
-      title: `${run.count}-SCORE RUN`,
-      sub:   `${teamLabel}`,
-      color: run.teamSide === "FOR" ? "#22c55e" : "#ef4444",
-    });
-  }
-
-  // Sort pins by segment position
-  pins.sort((a, b) => a.segIdx - b.segIdx);
-
-  // Render pins
-  const PIN_STEM_TOP  = RIVER_Y + RIVER_H;
-  const PIN_STEM_H    = 28;
-  const PIN_CARD_H    = 72;
-  const PIN_CARD_ACCW = 4;
-
-  for (const pin of pins) {
-    if (pin.segIdx >= segDataList.length) continue;
-    const bx     = RIVER_X + pin.segIdx * (segW + SEG_GAP);
-    const stemX  = bx + segW / 2;
-    const cardY  = PIN_STEM_TOP + PIN_STEM_H;
-    const cardW  = Math.min(segW + SEG_GAP - 4, 260);
-    const cardX  = Math.max(RIVER_X, Math.min(stemX - cardW / 2, RIVER_X + RIVER_W - cardW));
-
-    // Stem
-    ctx.strokeStyle = pin.color;
-    ctx.lineWidth   = 2;
-    ctx.beginPath();
-    ctx.moveTo(stemX, PIN_STEM_TOP);
-    ctx.lineTo(stemX, PIN_STEM_TOP + PIN_STEM_H);
-    ctx.stroke();
-
-    // Stem circle
-    ctx.fillStyle = pin.color;
-    ctx.beginPath();
-    ctx.arc(stemX, PIN_STEM_TOP + PIN_STEM_H, 5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Card background
-    ctx.fillStyle = "rgba(255,255,255,0.05)";
-    ctx.fillRect(cardX + PIN_CARD_ACCW, cardY, cardW - PIN_CARD_ACCW, PIN_CARD_H);
-
-    // Card accent bar
-    ctx.fillStyle = pin.color;
-    ctx.fillRect(cardX, cardY, PIN_CARD_ACCW, PIN_CARD_H);
-
-    // Card title
-    ctx.font         = "bold 18px sans-serif";
-    ctx.fillStyle    = "#f1f5f9";
+  function drawSection(
+    x: number, startY: number, w: number,
+    section: TacticalStorySection,
+  ): number {
+    let y = startY;
+    ctx.fillStyle = section.accent;
+    ctx.fillRect(x, y, 4, 22);
+    ctx.fillStyle = section.accent;
+    ctx.font = "bold 14px sans-serif";
     ctx.textBaseline = "alphabetic";
-    ctx.textAlign    = "left";
-    ctx.fillText(pin.title, cardX + PIN_CARD_ACCW + 10, cardY + 28);
+    ctx.textAlign = "left";
+    ctx.fillText(section.heading.toUpperCase(), x + 14, y + 16);
+    y += 30;
 
-    // Card sub-text
-    ctx.font      = "15px sans-serif";
-    ctx.fillStyle = "#94a3b8";
-    ctx.fillText(pin.sub, cardX + PIN_CARD_ACCW + 10, cardY + 50);
+    ctx.font = "20px sans-serif";
+    ctx.fillStyle = "#e2e8f0";
+    for (const line of section.lines) {
+      const wrapped = wrapText(ctx, line, w - 8);
+      for (const wl of wrapped) {
+        if (y > CONTENT_BOT - 8) return y;
+        ctx.fillText(wl, x + 8, y);
+        y += 28;
+      }
+      y += 6;
+    }
+    return y + 10;
   }
 
-  // ── Editorial match story text ────────────────────────────────────────────
-  const STORY_Y = PIN_STEM_TOP + PIN_STEM_H + PIN_CARD_H + 44;
-
-  // Section label
-  ctx.fillStyle    = "#64748b";
-  ctx.font         = "bold 15px sans-serif";
-  ctx.textBaseline = "alphabetic";
-  ctx.textAlign    = "left";
-  ctx.fillText("MATCH STORY", RIVER_X, STORY_Y);
-
-  // Separator line
-  ctx.strokeStyle = "rgba(255,255,255,0.08)";
-  ctx.lineWidth   = 1;
-  ctx.beginPath();
-  ctx.moveTo(RIVER_X, STORY_Y + 10);
-  ctx.lineTo(RIVER_X + RIVER_W, STORY_Y + 10);
-  ctx.stroke();
-
-  // Derive editorial sentences (template-based, no AI)
-  const forCtrlCount = segDataList.filter((s) => s.status === "FOR").length;
-  const oppCtrlCount = segDataList.filter((s) => s.status === "OPP").length;
-  const totalSegs    = segDataList.length;
-  const ko           = analysis.kickouts;
-  const forShots     = events.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SHOTS.has(e.kind));
-  const forScoreEvts = events.filter((e) => e.teamSide === "FOR" && PDF_KIND_SETS.SCORES.has(e.kind));
-  const forWides     = events.filter((e) => e.teamSide === "FOR" && (e.kind === "WIDE" || isFreeMiss(e))).length;
-  const shotEff      = forShots.length > 0 ? Math.round((forScoreEvts.length / forShots.length) * 100) : 0;
-
-  const sentences: string[] = [];
-
-  // 1. Control summary
-  if (forCtrlCount > oppCtrlCount) {
-    sentences.push(
-      `${homeTeam} controlled ${forCtrlCount} of ${totalSegs} segments, dominating possession for long periods.`,
-    );
-  } else if (oppCtrlCount > forCtrlCount) {
-    sentences.push(
-      `A difficult match — ${homeTeam} conceded control in ${oppCtrlCount} of ${totalSegs} segments.`,
-    );
-  } else if (totalSegs > 0) {
-    sentences.push(
-      `An evenly contested match — both teams controlled ${forCtrlCount} segment${forCtrlCount !== 1 ? "s" : ""} each.`,
-    );
-  }
-
-  // 2. Restart narrative
-  if (ko.total >= 3) {
-    if (ko.won > ko.lost) {
-      sentences.push(
-        `${homeTeam} restart possession was a clear platform: ${homeTeam} won ${ko.won} of ${ko.total} ${koLabelPluralLC(sport)}${ko.wonToScore > 0 ? ` — ${fmtRestartOriginScoredFor(analysis)} from Restart Origin` : ""}.`,
-      );
-    } else if (ko.lost > ko.won) {
-      sentences.push(
-        `${awayTeam} restart pressure was costly for ${homeTeam} — ${awayTeam} won ${ko.lost} of ${ko.total} ${koLabelPluralLC(sport)}${ko.lostAllowedScore > 0 ? `, ${fmtRestartOriginConcededFor(analysis)} from Restart Origin` : ""}.`,
-      );
+  if (sections.length === 0) {
+    ctx.fillStyle = "#64748b";
+    ctx.font = "22px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No canonical match facts available for this period.", CANVAS_W / 2, (CONTENT_TOP + CONTENT_BOT) / 2);
+  } else {
+    const leftSections  = sections.filter((_, i) => i % 2 === 0);
+    const rightSections = sections.filter((_, i) => i % 2 === 1);
+    let leftY  = CONTENT_TOP;
+    let rightY = CONTENT_TOP;
+    for (const section of leftSections) {
+      leftY = drawSection(COL1_X, leftY, COL_W, section);
+    }
+    for (const section of rightSections) {
+      rightY = drawSection(COL2_X, rightY, COL_W, section);
     }
   }
 
-  // 3. Attack narrative
-  if (forShots.length >= 3) {
-    if (shotEff >= 60) {
-      sentences.push(
-        `${homeTeam} were clinical in front of goal: ${forScoreEvts.length} scores from ${forShots.length} attempts (${shotEff}% score conversion).`,
-      );
-    } else if (forWides >= 4) {
-      sentences.push(
-        `${homeTeam} recorded ${forWides} wides and misses — ${shotEff}% score conversion from ${forShots.length} attempts.`,
-      );
-    } else {
-      sentences.push(
-        `${homeTeam} score conversion: ${forScoreEvts.length} of ${forShots.length} attempts converted (${shotEff}%).`,
-      );
-    }
-  }
-
-  // 4. Momentum / scoring run narrative
-  const bestFor = analysis.scoringRuns.maxConsecutiveFor;
-  const bestOpp = analysis.scoringRuns.maxConsecutiveOpp;
-  if (bestFor >= 3 || bestOpp >= 3) {
-    if (bestFor >= bestOpp) {
-      sentences.push(`${homeTeam}'s best scoring run was ${bestFor} consecutive scores — a key period of momentum.`);
-    } else {
-      sentences.push(`${awayTeam} mounted a ${bestOpp}-score run — a momentum shift to address.`);
-    }
-  } else if (analysis.turnovers.wonToScore > 0) {
-    sentences.push(
-      `${homeTeam} converted ${analysis.turnovers.wonToScore} turnover possession win${analysis.turnovers.wonToScore !== 1 ? "s" : ""} directly into scores.`,
-    );
-  }
-
-  // Render sentences (22px, 44px line spacing)
-  const SENTENCE_X   = RIVER_X;
-  const SENTENCE_Y0  = STORY_Y + 30;
-  const LINE_SPACING = 42;
-  ctx.font         = "24px sans-serif";
-  ctx.fillStyle    = "#e2e8f0";
-  ctx.textBaseline = "alphabetic";
-  ctx.textAlign    = "left";
-  sentences.slice(0, 4).forEach((sentence, i) => {
-    ctx.fillText(sentence, SENTENCE_X, SENTENCE_Y0 + i * LINE_SPACING);
-  });
-
-  // ── Possession Chain V1 block ─────────────────────────────────────────────
-  // Rendered in the gap between the editorial sentences and the callout strip.
-  // drawPossessionChainBlock is a no-op when chain observations array is empty.
-  {
-    const pcObs = derivePossessionChainObservations(report);
-    const sentenceCount = Math.min(sentences.length, 4);
-    const pcY = SENTENCE_Y0 + sentenceCount * LINE_SPACING + 28;
-    drawPossessionChainBlock(ctx, pcObs, RIVER_X, pcY, RIVER_W);
-  }
-
-  // ── Bottom callout strip ──────────────────────────────────────────────────
-  const forFinal  = scoreFromEvents(forScoreEvts);
-  const oppFinal  = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind)));
-  const scoreDiff = forFinal.total - oppFinal.total;
+  // ── Bottom callout strip — ledger margin + canonical share metrics only ──
   const facts: string[] = [];
-  facts.push(`${fmtScore(forFinal)} vs ${fmtScore(oppFinal)} — ${scoreDiff > 0 ? `${homeTeam} won by ${scoreDiff}` : scoreDiff < 0 ? `${truncTeam(awayTeam, 12)} won by ${Math.abs(scoreDiff)}` : "draw"}`);
-  if (forCtrlCount > 0) facts.push(`${truncTeam(homeTeam, 14)} controlled ${forCtrlCount} segment${forCtrlCount !== 1 ? "s" : ""}`);
-  if (ko.total > 0)     facts.push(`${truncTeam(homeTeam, 14)} won ${ko.won} of ${ko.total} ${koLabelPluralLC(sport)}`);
+  const { ledger } = report;
+  facts.push(
+    `${truncTeam(homeTeam, 14)} ${fmtScoreLine(ledger.forScore)} v ${truncTeam(awayTeam, 14)} ${fmtScoreLine(ledger.oppScore)} — ${fmtMarginLabel(ledger.margin, homeTeam, awayTeam)}`,
+  );
+  const restartShare = viewRestartShare(report);
+  if (restartShare.den > 0) {
+    facts.push(`${truncTeam(homeTeam, 14)} Restart Share ${pctLabel(restartShare)} (${fmtFractionCounts(restartShare)})`);
+  }
+  const turnoverShare = viewTurnoverShare(report);
+  if (turnoverShare.den > 0) {
+    facts.push(`${truncTeam(homeTeam, 14)} Turnover Share ${pctLabel(turnoverShare)} (${fmtFractionCounts(turnoverShare)})`);
+  }
 
-  drawHtCalloutStrip(ctx, facts, ["#f8fafc", "#22c55e", "#14b8a6"]);
+  drawHtCalloutStrip(ctx, facts, ["#f8fafc", "#22d3ee", "#a78bfa"]);
   drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
   return canvas;
 }
