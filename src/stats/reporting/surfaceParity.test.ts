@@ -83,13 +83,20 @@ describe("surface parity — golden fixture", () => {
 
   it("Match Intelligence — rebuilds same possession totals", () => {
     const report = fullReport();
-    buildMatchIntelligenceSummary(events, GOLDEN_TEAMS.home, GOLDEN_TEAMS.away, "FT", "kickout");
+    const asMatchEvents = events.map((e) => ({
+      ...e,
+      half: e.period === "1H" ? 1 as const : 2 as const,
+      timestamp: e.matchClockSeconds ?? 0,
+      matchClockSeconds: e.matchClockSeconds ?? undefined,
+      tags: e.tags ?? undefined,
+      restartOwner: e.restartOwner ?? undefined,
+    }));
+    buildMatchIntelligenceSummary(asMatchEvents, GOLDEN_TEAMS.home, GOLDEN_TEAMS.away, "FT", "kickout");
     expect(report.possessions.kickouts.retainedCount).toBeGreaterThan(0);
     expect(viewRestartShare(report).pct).toBe(GOLDEN_RESTART_EXPECTATIONS.restartShare.pct);
   });
 
   it("Coaching Brief — kickoutPct matches Restart Share", () => {
-    const report = fullReport();
     const adapted = adaptEventsToChainable(events.map((e) => ({
       ...e,
       half: e.period === "1H" ? 1 as const : 2 as const,

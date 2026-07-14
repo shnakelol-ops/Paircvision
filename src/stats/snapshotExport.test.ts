@@ -106,8 +106,6 @@ function toLoggedEvent(
   return {
     ...base,
     type: base.kind,
-    teamSide: partial.teamSide,
-    period: partial.period,
     segment: partial.segment ?? 1,
     matchClockSeconds: partial.matchClockSeconds ?? 0,
     createdAt: partial.createdAt ?? Date.now(),
@@ -130,8 +128,8 @@ function buildAdareMungretEvents(): LoggedMatchEvent[] {
       matchClockSeconds: e.matchClockSeconds ?? i * 60,
       nx: e.nx,
       ny: e.ny,
-      restartOwner: e.restartOwner ?? null,
-      tags: e.tags ?? null,
+      restartOwner: e.restartOwner ?? undefined,
+      tags: e.tags ?? undefined,
     }),
   );
 }

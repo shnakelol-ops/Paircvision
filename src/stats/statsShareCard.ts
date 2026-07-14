@@ -1,4 +1,4 @@
-import { isFreeScore, isFreeMiss } from "./eventSource";
+import type { MatchEventKind, MatchEventPeriod } from "../core/stats/stats-event-model";
 import { adaptEventsToChainable } from "./reporting/eventAdapter";
 import { buildMatchReport } from "./reporting/matchReport";
 import {
@@ -9,15 +9,15 @@ import {
 
 type TeamScore = { goals: number; points: number; total: number };
 type LoggedEventLike = {
-  kind?: string;
-  team?: string;
+  kind: MatchEventKind;
+  team?: "HOME" | "AWAY";
   teamSide?: string;
-  id?: string;
+  id: string;
   half?: 1 | 2;
-  period?: string;
+  period?: MatchEventPeriod;
   timestamp?: number;
   matchClockSeconds?: number | null;
-  tags?: readonly string[] | undefined;
+  tags?: string[];
 };
 
 type StatsShareCardInput = {

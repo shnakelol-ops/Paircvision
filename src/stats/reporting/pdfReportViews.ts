@@ -162,7 +162,6 @@ export function viewKickoutWonTagShare<T extends ChainableEvent>(
   report: MatchReport<T>,
   tag: string,
 ): MetricFraction {
-  const won = report.restarts.restartToScore.den + (report.chain.kickouts.won - report.restarts.restartToScore.den);
   // Use chain won count as denominator
   const denom = report.chain.kickouts.won;
   let num = 0;

@@ -5,6 +5,7 @@
  * context, then delegate to scoringBreakdownFormat for coach-facing copy.
  */
 
+import type { MatchEventKind } from "../../core/stats/stats-event-model";
 import type { ChainableEvent, ChainAnalysis } from "../chains/chain-types";
 import type { LedgerRowId } from "../ledger/scoreLedger";
 import { isPlacedScore } from "../ledger/scoreLedger";
@@ -17,9 +18,9 @@ import {
   type ScoringBreakdown,
 } from "./scoringBreakdownFormat";
 
-const SCORE_KINDS = new Set([
+const SCORE_KINDS = new Set<MatchEventKind>([
   "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED",
-] as const);
+]);
 
 // ─── Chain-origin breakdowns ──────────────────────────────────────────────────
 

@@ -9,10 +9,6 @@ import type { MatchEventKind } from "../../core/stats/stats-event-model";
 import type { ChainableEvent } from "../chains/chain-types";
 import { isPlacedMiss, isPlacedScore } from "../ledger/scoreLedger";
 
-const SCORE_KINDS = new Set<MatchEventKind>([
-  "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED",
-]);
-
 function scoreValue(kind: MatchEventKind): number {
   if (kind === "GOAL") return 3;
   if (kind === "TWO_POINTER" || kind === "FORTY_FIVE_TWO_POINT") return 2;

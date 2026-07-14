@@ -401,9 +401,6 @@ function applyShareTagCounts(
     if (hasTag(tags, "OVERCARRIED")) b.toOvercarried++;
     if (hasTag(tags, "STRIPPED")) b.toStripped++;
   }
-  if (k === "YELLOW_CARD") b.yellow++;
-  if (k === "BLACK_CARD") b.black++;
-  if (k === "RED_CARD") b.red++;
 }
 
 export function buildShareCardBreakdown<T extends ChainableEvent>(
@@ -429,7 +426,7 @@ export function buildShareCardBreakdown<T extends ChainableEvent>(
     }
   }
 
-  for (const e of report.events as TaggedEvent[]) {
+  for (const e of report.events) {
     const team = e.teamSide === "FOR" ? "HOME" : "AWAY";
     const b = r[team];
     applyShareTagCounts(b, e);

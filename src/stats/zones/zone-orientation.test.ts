@@ -7,7 +7,6 @@ import {
   toTeamRelativeZoneEvent,
 } from "./zone-orientation";
 import { getZoneCounts, getZoneHotspots } from "./zone-engine";
-import { ZONE_MAP_V1_NINE_GRID } from "./zone-maps";
 
 describe("resolveForAttackingDirection", () => {
   it("keeps the first-half direction in 1H", () => {

@@ -126,7 +126,6 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
   const candidates: Candidate[] = [];
 
   const ownLost = forRestarts?.ownRestartsLost ?? ko.lost;
-  const ownTaken = forRestarts?.ownRestartsTaken ?? ko.won + ko.lost;
   const shareWon = forRestarts?.restartShareWon ?? ko.won;
   const shareTotal = forRestarts?.restartShareTotal ?? ko.total;
 

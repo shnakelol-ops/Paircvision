@@ -190,7 +190,14 @@ describe("coach-facing surface contracts", () => {
       scope: "FULL",
     });
     const intel = buildMatchIntelligenceSummary(
-      events,
+      events.map((e) => ({
+        ...e,
+        half: e.period === "1H" ? 1 as const : 2 as const,
+        timestamp: e.matchClockSeconds ?? 0,
+        matchClockSeconds: e.matchClockSeconds ?? undefined,
+        tags: e.tags ?? undefined,
+        restartOwner: e.restartOwner ?? undefined,
+      })),
       GOLDEN_TEAMS.home,
       GOLDEN_TEAMS.away,
       "FT",

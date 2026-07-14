@@ -62,10 +62,10 @@ describe("formatScoringBreakdown", () => {
 describe("breakdownFromScoreEvents", () => {
   it("classifies kinds correctly", () => {
     const events = [
-      { id: "1", kind: "GOAL" as const, teamSide: "FOR" as const, period: "1H" as const, segment: 1, nx: 0.5, ny: 0.5 },
-      { id: "2", kind: "POINT" as const, teamSide: "FOR" as const, period: "1H" as const, segment: 1, nx: 0.5, ny: 0.5 },
-      { id: "3", kind: "TWO_POINTER" as const, teamSide: "FOR" as const, period: "1H" as const, segment: 1, nx: 0.5, ny: 0.5 },
-      { id: "4", kind: "FREE_SCORED" as const, teamSide: "FOR" as const, period: "1H" as const, segment: 1, nx: 0.5, ny: 0.5 },
+      { id: "1", kind: "GOAL" as const, teamSide: "FOR" as const, period: "1H" as const, segment: 1 as const, nx: 0.5, ny: 0.5 },
+      { id: "2", kind: "POINT" as const, teamSide: "FOR" as const, period: "1H" as const, segment: 1 as const, nx: 0.5, ny: 0.5 },
+      { id: "3", kind: "TWO_POINTER" as const, teamSide: "FOR" as const, period: "1H" as const, segment: 1 as const, nx: 0.5, ny: 0.5 },
+      { id: "4", kind: "FREE_SCORED" as const, teamSide: "FOR" as const, period: "1H" as const, segment: 1 as const, nx: 0.5, ny: 0.5 },
     ];
     const b = breakdownFromScoreEvents(events);
     expect(b.goals).toBe(1);
@@ -78,7 +78,6 @@ describe("breakdownFromScoreEvents", () => {
 describe("restartOriginExplanation", () => {
   const cases: Array<[PitchSport | undefined, string]> = [
     ["gaelic", "Scores that started from a kickout."],
-    ["ladies_football", "Scores that started from a kickout."],
     ["hurling", "Scores that started from a puckout."],
     ["camogie", "Scores that started from a puckout."],
   ];

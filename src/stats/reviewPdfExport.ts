@@ -80,7 +80,6 @@ import type { MatchTargets } from "./matchTargets";
 import { computeTargetResults, hasEnabledTargets } from "./matchTargets";
 import { buildMatchTargetsCard } from "./matchTargetsCard";
 import {
-  computeRestartMetrics,
   fmtFractionCounts,
   restartAttributionFootnote,
   restartExplainerLine,
@@ -414,25 +413,6 @@ function fmtScore(s: ScoreResult): string {
 function countKinds(evts: readonly PdfExportEvent[], ...kinds: MatchEventKind[]): number {
   const set = new Set<MatchEventKind>(kinds);
   return evts.filter((e) => set.has(e.kind)).length;
-}
-
-/** Count events of a specific kind that carry ANY of the given tag values */
-function countKindWithAnyTag(
-  evts: readonly PdfExportEvent[],
-  kind: MatchEventKind,
-  ...tags: string[]
-): number {
-  return evts.filter((e) => e.kind === kind && tags.some((t) => e.tags?.includes(t))).length;
-}
-
-/** Count events from a set of kinds that carry a specific tag value */
-function countTagOnKinds(
-  evts: readonly PdfExportEvent[],
-  tag: string,
-  ...kinds: MatchEventKind[]
-): number {
-  const kindSet = new Set<MatchEventKind>(kinds);
-  return evts.filter((e) => kindSet.has(e.kind) && e.tags?.includes(tag)).length;
 }
 
 // ─── Team name display helper ────────────────────────────────────────────────
@@ -2095,10 +2075,6 @@ function makeChainSummaryPage(
     return cy + ROW_H;
   }
 
-  function pct(n: number): string {
-    return `${n}%`;
-  }
-
   function val(n: number): string {
     return String(n);
   }
@@ -2546,7 +2522,6 @@ function makeKickoutChainPage(
   const forWonTotal    = outcomes.filter((o) => o.winningSide === "FOR").length;
   const forScoredFromKo = outcomes.filter((o) => o.winningSide === "FOR" && o.nextScore      !== null).length;
   const forShotFromKo  = outcomes.filter((o) => o.winningSide === "FOR" && o.nextShotOrScore !== null).length;
-  const oppScoredFromKo = outcomes.filter((o) => o.winningSide === "OPP" && o.nextScore     !== null).length;
   const forRestartOriginFmt = fmtRestartOriginScoredFor(analysis);
   const oppRestartOriginFmt = fmtRestartOriginScoredOpp(analysis);
 
@@ -3820,7 +3795,6 @@ function makeTacticalIntelligencePage(
   const tv        = analysis.turnovers;
   const tvTotal   = tv.total;
   const tvWon     = tv.won;
-  const tvLost    = tv.lost;
   const tvWinPct  = viewTurnoverShare(report).pct;
   const tvConvPct = viewTurnoverWinsToScore(report).pct;
   const tvShotOnly = viewTurnoverWonToShotOnly(report).pct;
@@ -4448,9 +4422,6 @@ function makeOppositionSnapshotPage(
 
   const oppShotsAll = events.filter(
     (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
-  ).length;
-  const oppScoreCount = events.filter(
-    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind),
   ).length;
   const oppScoreConversion = viewShootingConversionPct(report, "OPP");
 
@@ -8241,52 +8212,6 @@ function derivePossessionChainObservations(
   return obs.slice(0, 3);
 }
 
-/**
- * Renders a labelled possession chain observation block onto a canvas page.
- * Used on p.12 (Tactical Match Story) which has space in the narrative area.
- * Other pages inject possession chain observations into their existing strip/facts.
- * Renders nothing when observations array is empty.
- */
-function drawPossessionChainBlock(
-  ctx: CanvasRenderingContext2D,
-  observations: string[],
-  x: number,
-  y: number,
-  w: number,
-): void {
-  if (observations.length === 0) return;
-
-  ctx.save();
-
-  // Section label
-  ctx.fillStyle    = "#64748b";
-  ctx.font         = "bold 15px sans-serif";
-  ctx.textBaseline = "alphabetic";
-  ctx.textAlign    = "left";
-  ctx.fillText("POSSESSION CHAINS", x, y);
-
-  // Separator line
-  ctx.strokeStyle = "rgba(255,255,255,0.07)";
-  ctx.lineWidth   = 1;
-  ctx.beginPath();
-  ctx.moveTo(x, y + 6);
-  ctx.lineTo(x + w, y + 6);
-  ctx.stroke();
-
-  // Observation rows: accent bar + text
-  const LINE_H = 36;
-  observations.forEach((obs, i) => {
-    ctx.fillStyle = "rgba(96,165,250,0.55)";
-    ctx.fillRect(x, y + 16 + i * LINE_H, 3, 24);
-    ctx.font         = "22px sans-serif";
-    ctx.fillStyle    = "#94a3b8";
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText(obs, x + 12, y + 34 + i * LINE_H);
-  });
-
-  ctx.restore();
-}
-
 // ─── HT Page 1: Pressure & Damage Map ────────────────────────────────────────
 
 /**
@@ -10225,6 +10150,7 @@ function makeFtTacticalMatchStoryPage(
   let clipped = false;
 
   function drawSection(
+    ctx: CanvasRenderingContext2D,
     x: number, startY: number, w: number,
     section: TacticalStorySection,
   ): number {
@@ -10267,9 +10193,9 @@ function makeFtTacticalMatchStoryPage(
     for (const section of sections) {
       const targetLeft = leftY <= rightY;
       if (targetLeft) {
-        leftY = drawSection(COL1_X, leftY, COL_W, section);
+        leftY = drawSection(ctx, COL1_X, leftY, COL_W, section);
       } else {
-        rightY = drawSection(COL2_X, rightY, COL_W, section);
+        rightY = drawSection(ctx, COL2_X, rightY, COL_W, section);
       }
     }
     if (clipped) {
@@ -12020,7 +11946,6 @@ function makeHtTacticalSummaryPage(
 
   // ── Derive panel content from chain analysis ──────────────────────────────
   const patterns = rankChainPatterns(analysis, mode, homeTeam, awayTeam, report.restartTeams);
-  const ko = analysis.kickouts;
   const to = analysis.turnovers;
   const sr = analysis.scoringRuns;
 
