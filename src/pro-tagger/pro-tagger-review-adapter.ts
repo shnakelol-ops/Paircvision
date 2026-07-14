@@ -14,6 +14,7 @@ function toSquadPlayers(squad: ProTaggerSquad): readonly PdfSquadPlayer[] {
 }
 
 export function proTaggerMatchToPdfInput(m: ProTaggerSavedMatch): ReviewPdfExportInput {
+  const rawDir = m.restoreContext.firstHalfAttackingDirection;
   return {
     events:           m.events,
     homeTeamName:     m.homeTeamName,
@@ -23,6 +24,7 @@ export function proTaggerMatchToPdfInput(m: ProTaggerSavedMatch): ReviewPdfExpor
     homeSquadPlayers: toSquadPlayers(m.homeSquad),
     awaySquadPlayers: toSquadPlayers(m.awaySquad),
     targets:          m.targets,
+    homeAttackingDirection: rawDir === "left" ? "LEFT" : "RIGHT",
   };
 }
 
@@ -51,6 +53,7 @@ export function buildLivePdfInput(
     homeSquadPlayers: toSquadPlayers(session.homeSquad),
     awaySquadPlayers: toSquadPlayers(session.awaySquad),
     targets:          session.targets,
+    homeAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
   };
 }
 

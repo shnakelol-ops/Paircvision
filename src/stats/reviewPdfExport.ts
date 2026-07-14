@@ -61,7 +61,13 @@ import {
 } from "./chains/chain-patterns";
 import { deriveReviewPrompts } from "./chains/review-prompts";
 import type { ReviewPrompt, ReviewPromptCategory } from "./chains/review-prompts";
-import { getZoneCounts, getZoneHotspots } from "./zones/zone-engine";
+import {
+  getTeamRelativeZoneCounts,
+  getTeamRelativeZoneDisplayBounds,
+  getTeamRelativeZoneHotspots,
+  toTeamRelativeZoneEvent,
+} from "./zones/zone-orientation";
+import type { AttackingDirection, ZoneLabelPerspective } from "./zones/zone-orientation";
 import type { ZoneCount } from "./zones/zone-types";
 import { eventSource, isFreeScore, isFreeMiss } from "./eventSource";
 import type { ScoreSource } from "./eventSource";
@@ -156,6 +162,12 @@ export type ReviewPdfExportInput = {
   awaySquadPlayers?: readonly PdfSquadPlayer[];
   /** Optional pre-match performance targets. When set, a targets card is appended to reports. */
   targets?: MatchTargets;
+  /**
+   * First-half attacking direction for the home (FOR) team.
+   * Drives team-relative zone labels on every pitch page — must match the
+   * direction used to draw the pitch arrows on Restart Battle.
+   */
+  homeAttackingDirection?: "LEFT" | "RIGHT";
 };
 
 // ─── Snapshot export types ────────────────────────────────────────────────────
@@ -4823,7 +4835,7 @@ function makeOppositionSnapshotPage(
  *               Semi-transparent red overlays; opacity ∝ event count.
  * Bottom strip: Zone Summary | Key Zones | Zone Intelligence.
  *
- * Data calculations: unchanged — getZoneCounts / getZoneHotspots / event subsets.
+ * Data calculations: team-relative zone counts/hotspots — see zone-orientation.ts.
  * Intelligence bullets: unchanged deterministic text from original Zone Notes strip.
  * Safari < 15.4 safe — no ctx.roundRect.
  */
@@ -4834,6 +4846,7 @@ function makeZoneAnalysisPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -4862,16 +4875,16 @@ function makeZoneAnalysisPage(
   );
 
   // ── Zone counts (9 entries each, stable order, zero-filled) ──────────────
-  const forScoreCounts = getZoneCounts(forScoreEvts);
-  const forTvWonCounts = getZoneCounts(forTvWonEvts);
-  const oppScoreCounts = getZoneCounts(oppScoreEvts);
-  const oppGainCounts  = getZoneCounts(oppGainEvts);
+  const forScoreCounts = getTeamRelativeZoneCounts(forScoreEvts, homeAttackingDirection);
+  const forTvWonCounts = getTeamRelativeZoneCounts(forTvWonEvts, homeAttackingDirection);
+  const oppScoreCounts = getTeamRelativeZoneCounts(oppScoreEvts, homeAttackingDirection);
+  const oppGainCounts  = getTeamRelativeZoneCounts(oppGainEvts, homeAttackingDirection);
 
   // ── Hotspots ──────────────────────────────────────────────────────────────
-  const forScoreHots = getZoneHotspots(forScoreEvts);
-  const forTvWonHots = getZoneHotspots(forTvWonEvts);
-  const oppScoreHots = getZoneHotspots(oppScoreEvts);
-  const oppGainHots  = getZoneHotspots(oppGainEvts);
+  const forScoreHots = getTeamRelativeZoneHotspots(forScoreEvts, homeAttackingDirection);
+  const forTvWonHots = getTeamRelativeZoneHotspots(forTvWonEvts, homeAttackingDirection);
+  const oppScoreHots = getTeamRelativeZoneHotspots(oppScoreEvts, homeAttackingDirection);
+  const oppGainHots  = getTeamRelativeZoneHotspots(oppGainEvts, homeAttackingDirection);
 
   // ── Merged activity counts for unified pitch overlays ─────────────────────
   function mergeZoneCounts(a: readonly ZoneCount[], b: readonly ZoneCount[]): ZoneCount[] {
@@ -7267,6 +7280,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     homeSquadPlayers,
     awaySquadPlayers,
     targets,
+    homeAttackingDirection = "RIGHT",
   } = input;
 
   const hasTargets = hasEnabledTargets(targets);
@@ -7447,7 +7461,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   // p.8+N — Zone Analysis
   try {
-    const c = makeZoneAnalysisPage(events, sport, homeTeamName, awayTeamName, p_shotBase + 2, TOTAL_PAGES);
+    const c = makeZoneAnalysisPage(events, sport, homeTeamName, awayTeamName, p_shotBase + 2, TOTAL_PAGES, homeAttackingDirection);
     stampLayerBadge(c, "STATISTICS");
     addCanvasPage(c, true, "Zone Analysis");
   } catch (err) {
@@ -7684,17 +7698,31 @@ const HT_STRIP_H   = CANVAS_H - HT_STRIP_TOP - 10;            // 170
 /** Reserved below callout panels so event-count footer does not overlap strip text. */
 const HT_STRIP_FOOTER_RESERVE = 28;
 
-// Zone engine type-bridge helpers.
-// PdfExportEvent.x / .y are typed as number | null | undefined, but the zone
-// engine's ZoneCoordinateEvent expects x?: number (no null). At runtime the zone
-// engine uses nx/ny (0–1 normalised) for zone assignment — x/y are never read —
-// so null vs undefined is inconsequential. The casts below silence the mismatch
-// without touching the zone engine or PdfExportEvent schema.
-function pdfZoneCounts(evts: readonly PdfExportEvent[]) {
-  return getZoneCounts(evts as unknown as Parameters<typeof getZoneCounts>[0]);
+// Team-relative zone helpers — every PDF zone label must flow through
+// zones/zone-orientation.ts (never call zone-engine directly from renderers).
+function pdfZoneCounts(
+  evts: readonly PdfExportEvent[],
+  homeAttackingDirection: AttackingDirection = "RIGHT",
+  perspective: ZoneLabelPerspective = "REPORT",
+) {
+  return getTeamRelativeZoneCounts(
+    evts as unknown as Parameters<typeof getTeamRelativeZoneCounts>[0],
+    homeAttackingDirection,
+    undefined,
+    perspective,
+  );
 }
-function pdfZoneHotspots(evts: readonly PdfExportEvent[]) {
-  return getZoneHotspots(evts as unknown as Parameters<typeof getZoneHotspots>[0]);
+function pdfZoneHotspots(
+  evts: readonly PdfExportEvent[],
+  homeAttackingDirection: AttackingDirection = "RIGHT",
+  perspective: ZoneLabelPerspective = "REPORT",
+) {
+  return getTeamRelativeZoneHotspots(
+    evts as unknown as Parameters<typeof getTeamRelativeZoneHotspots>[0],
+    homeAttackingDirection,
+    undefined,
+    perspective,
+  );
 }
 
 /**
@@ -8280,6 +8308,7 @@ function makeHtPressureDamageMapPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -8303,8 +8332,8 @@ function makeHtPressureDamageMapPage(
   // ── Pitch + zone colour overlays ──────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  const oppScoreCounts = pdfZoneCounts(oppScoreEvts);
-  const forLossCounts  = pdfZoneCounts(forLossEvts);
+  const oppScoreCounts = pdfZoneCounts(oppScoreEvts, homeAttackingDirection);
+  const forLossCounts  = pdfZoneCounts(forLossEvts, homeAttackingDirection);
   const maxOpp = oppScoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
   const maxFor = forLossCounts.reduce((m, z) => Math.max(m, z.count), 0);
 
@@ -8450,8 +8479,8 @@ function makeHtPressureDamageMapPage(
   // ── Bottom callout strip ──────────────────────────────────────────────────
   const totalOppScores = oppScoreEvts.length;
   const totalForLosses = forLossEvts.length;
-  const oppScoreHot    = pdfZoneHotspots(oppScoreEvts)[0];
-  const forLossHot     = pdfZoneHotspots(forLossEvts)[0];
+  const oppScoreHot    = pdfZoneHotspots(oppScoreEvts, homeAttackingDirection)[0];
+  const forLossHot     = pdfZoneHotspots(forLossEvts, homeAttackingDirection)[0];
 
   const facts: string[] = [];
   if (totalOppScores > 0) facts.push(`${truncTeam(awayTeam, 14)} scored ${totalOppScores} time${totalOppScores !== 1 ? "s" : ""}`);
@@ -8488,6 +8517,7 @@ function makeHtKickoutVisionPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -8515,8 +8545,8 @@ function makeHtKickoutVisionPage(
   // ── Pitch + zone colour overlays ──────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  const forWonCounts = pdfZoneCounts(forWonEvts);
-  const oppWonCounts = pdfZoneCounts(oppWonEvts);
+  const forWonCounts = pdfZoneCounts(forWonEvts, homeAttackingDirection);
+  const oppWonCounts = pdfZoneCounts(oppWonEvts, homeAttackingDirection);
 
   for (let i = 0; i < forWonCounts.length; i++) {
     const forZone = forWonCounts[i];
@@ -8640,8 +8670,8 @@ function makeHtKickoutVisionPage(
   const totalOpp = oppWonEvts.length;
   const totalKO  = totalFor + totalOpp;
   const forPct   = totalKO > 0 ? Math.round((totalFor / totalKO) * 100) : 0;
-  const forHot   = pdfZoneHotspots(forWonEvts)[0];
-  const oppHot   = pdfZoneHotspots(oppWonEvts)[0];
+  const forHot   = pdfZoneHotspots(forWonEvts, homeAttackingDirection)[0];
+  const oppHot   = pdfZoneHotspots(oppWonEvts, homeAttackingDirection)[0];
   // Sport-aware terminology: kickouts (GAA football) / puckouts (hurling)
   const restartTerm = isPuck(sport) ? "puckouts" : "kickouts";
 
@@ -8678,6 +8708,7 @@ function makeHtAttackShotVisionPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -8722,8 +8753,8 @@ function makeHtAttackShotVisionPage(
   // ── Pitch + zone colour overlays ──────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  const scoreCounts = pdfZoneCounts(forScoreEvts);
-  const wideCounts  = pdfZoneCounts(forWideEvts);
+  const scoreCounts = pdfZoneCounts(forScoreEvts, homeAttackingDirection);
+  const wideCounts  = pdfZoneCounts(forWideEvts, homeAttackingDirection);
   const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
   const maxWide     = wideCounts.reduce((m, z) => Math.max(m, z.count), 0);
 
@@ -8886,7 +8917,7 @@ function makeHtAttackShotVisionPage(
   const totalOppScores = oppScoreEvts.length;
   const totalOppWides  = oppWideEvts.length;
   const oppShotEff     = totalOppShots > 0 ? Math.round((totalOppScores / totalOppShots) * 100) : 0;
-  const scoreHot      = pdfZoneHotspots(forScoreEvts)[0];
+  const scoreHot      = pdfZoneHotspots(forScoreEvts, homeAttackingDirection)[0];
 
   const facts: string[]  = [];
   const colors: string[] = [];
@@ -9420,6 +9451,7 @@ function makeFtAttackCorridorsPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -9450,8 +9482,8 @@ function makeFtAttackCorridorsPage(
   // ── Pitch + zone colour overlays ──────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  const scoreCounts = pdfZoneCounts(forScoreEvts);
-  const failCounts  = pdfZoneCounts(forFailEvts);
+  const scoreCounts = pdfZoneCounts(forScoreEvts, homeAttackingDirection);
+  const failCounts  = pdfZoneCounts(forFailEvts, homeAttackingDirection);
   const maxScore    = scoreCounts.reduce((m, z) => Math.max(m, z.count), 0);
   const maxFail     = failCounts.reduce((m, z) => Math.max(m, z.count), 0);
 
@@ -9687,6 +9719,7 @@ function makeFtRestartEscapeRoutesPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const analysis = report.chain;
   const canvas = document.createElement("canvas");
@@ -9723,7 +9756,7 @@ function makeFtRestartEscapeRoutesPage(
   );
 
   for (const outcome of analysis.kickouts.outcomes) {
-    const { nx, ny } = outcome.kickoutEvent;
+    const { nx, ny } = toTeamRelativeZoneEvent(outcome.kickoutEvent, homeAttackingDirection);
     const col = nx < 0.333 ? 0 : nx < 0.667 ? 1 : 2;
     const row = ny < 0.333 ? 0 : ny < 0.667 ? 1 : 2;
     const cell = grid[col][row];
@@ -10829,13 +10862,14 @@ function makeChainPressurePage(
  * FREE_WON spatial markers added when logged (indigo dots).
  * Callout: placed-ball scores/wides + frees won count when non-zero.
  */
-function makeOurShotProfilePage(
+export function makeOurShotProfilePage(
   events: readonly PdfExportEvent[],
   sport: PitchSport,
   homeTeam: string,
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -10868,7 +10902,7 @@ function makeOurShotProfilePage(
   ).length;
 
   // ── Zone counts (for headline + hotspot highlight) ────────────────────────
-  const scoreCounts = pdfZoneCounts(forScoreEvts);
+  const scoreCounts = pdfZoneCounts(forScoreEvts, homeAttackingDirection);
   // ── Headline band ─────────────────────────────────────────────────────────
   const SHOT_HEADLINE_H = 90;
   const topScoreZone = scoreCounts.reduce(
@@ -10897,9 +10931,12 @@ function makeOurShotProfilePage(
   const pitchArea = { x: HT_PITCH_AREA.x, y: HT_PITCH_AREA.y + SHOT_HEADLINE_H, w: HT_PITCH_AREA.w, h: HT_PITCH_AREA.h - SHOT_HEADLINE_H };
   const inner = renderPitch(ctx, sport, pitchArea);
 
-  // Subtle border on the hottest scoring zone — no fills elsewhere
+  // Subtle border on the hottest scoring zone — bounds reflected to physical space
   if (topScoreZone && topScoreZone.count >= 2) {
-    const rect = zonePixelRect(topScoreZone.bounds, inner);
+    const displayBounds = getTeamRelativeZoneDisplayBounds(
+      forScoreEvts, topScoreZone.id, topScoreZone.bounds, homeAttackingDirection,
+    );
+    const rect = zonePixelRect(displayBounds, inner);
     ctx.fillStyle = "rgba(52,211,153,0.10)";
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     ctx.strokeStyle = "rgba(52,211,153,0.42)";
@@ -10939,7 +10976,7 @@ function makeOurShotProfilePage(
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
   const totalMisses = totalShots - totalScores;
-  const scoreHot    = pdfZoneHotspots(forScoreEvts)[0];
+  const scoreHot    = pdfZoneHotspots(forScoreEvts, homeAttackingDirection)[0];
 
   const facts: string[]  = [];
   const colors: string[] = [];
@@ -10976,13 +11013,14 @@ function makeOurShotProfilePage(
  * FREE_CONCEDED (FOR teamSide) = where we gave away frees to OPP — pink spatial markers.
  * Callout: OPP placed-ball scores/wides when non-zero.
  */
-function makeOppShotProfilePage(
+export function makeOppShotProfilePage(
   events: readonly PdfExportEvent[],
   sport: PitchSport,
   homeTeam: string,
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -11015,7 +11053,7 @@ function makeOppShotProfilePage(
   ).length;
 
   // ── Zone counts (for headline + hotspot highlight) ────────────────────────
-  const scoreCounts = pdfZoneCounts(oppScoreEvts);
+  const scoreCounts = pdfZoneCounts(oppScoreEvts, homeAttackingDirection, "OPP");
 
   // ── Headline band ─────────────────────────────────────────────────────────
   const SHOT_HEADLINE_H = 90;
@@ -11045,9 +11083,12 @@ function makeOppShotProfilePage(
   const pitchArea = { x: HT_PITCH_AREA.x, y: HT_PITCH_AREA.y + SHOT_HEADLINE_H, w: HT_PITCH_AREA.w, h: HT_PITCH_AREA.h - SHOT_HEADLINE_H };
   const inner = renderPitch(ctx, sport, pitchArea);
 
-  // Subtle border on the hottest OPP scoring zone — pitch stays clean
+  // Subtle border on the hottest OPP scoring zone — bounds reflected to physical space
   if (topScoreZone && topScoreZone.count >= 2) {
-    const rect = zonePixelRect(topScoreZone.bounds, inner);
+    const displayBounds = getTeamRelativeZoneDisplayBounds(
+      oppScoreEvts, topScoreZone.id, topScoreZone.bounds, homeAttackingDirection, undefined, "OPP",
+    );
+    const rect = zonePixelRect(displayBounds, inner);
     ctx.fillStyle = "rgba(239,68,68,0.10)";
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     ctx.strokeStyle = "rgba(239,68,68,0.42)";
@@ -11087,7 +11128,7 @@ function makeOppShotProfilePage(
 
   // ── Bottom callout strip ──────────────────────────────────────────────────
   const totalOppMisses = totalOppShots - totalOppScores;
-  const oppScoreHot    = pdfZoneHotspots(oppScoreEvts)[0];
+  const oppScoreHot    = pdfZoneHotspots(oppScoreEvts, homeAttackingDirection, "OPP")[0];
 
   const facts: string[]  = [];
   const colors: string[] = [];
@@ -11130,6 +11171,7 @@ function makeOurRestartPlatformPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -11161,8 +11203,8 @@ function makeOurRestartPlatformPage(
   // ── Pitch + zone colour overlays ──────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  const forRetainedCounts = pdfZoneCounts(forRetainedEvts);
-  const forLostCounts     = pdfZoneCounts(forLostEvts);
+  const forRetainedCounts = pdfZoneCounts(forRetainedEvts, homeAttackingDirection);
+  const forLostCounts     = pdfZoneCounts(forLostEvts, homeAttackingDirection);
 
   for (let i = 0; i < forRetainedCounts.length; i++) {
     const retZone  = forRetainedCounts[i];
@@ -11278,8 +11320,8 @@ function makeOurRestartPlatformPage(
   const totalLost     = forLostEvts.length;
   const totalKO       = forOwnedEvts.length;
   const retainedPct   = totalKO > 0 ? Math.round((totalRetained / totalKO) * 100) : 0;
-  const retainedHot   = pdfZoneHotspots(forRetainedEvts)[0];
-  const lostHot       = pdfZoneHotspots(forLostEvts)[0];
+  const retainedHot   = pdfZoneHotspots(forRetainedEvts, homeAttackingDirection)[0];
+  const lostHot       = pdfZoneHotspots(forLostEvts, homeAttackingDirection)[0];
 
   const facts: string[] = [];
   if (totalKO > 0) facts.push(`${truncTeam(homeTeam, 14)} ${restartTermLC}: ${totalRetained}W · ${totalLost}L (${retainedPct}% retained)`);
@@ -11306,6 +11348,7 @@ function makeOppRestartPlatformPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -11337,8 +11380,8 @@ function makeOppRestartPlatformPage(
   // ── Pitch + zone colour overlays ──────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  const oppRetainedCounts = pdfZoneCounts(oppRetainedEvts);
-  const oppLostCounts     = pdfZoneCounts(oppLostEvts);
+  const oppRetainedCounts = pdfZoneCounts(oppRetainedEvts, homeAttackingDirection);
+  const oppLostCounts     = pdfZoneCounts(oppLostEvts, homeAttackingDirection);
 
   for (let i = 0; i < oppRetainedCounts.length; i++) {
     const retZone  = oppRetainedCounts[i];
@@ -11458,8 +11501,8 @@ function makeOppRestartPlatformPage(
   const totalOppLost     = oppLostEvts.length;
   const totalKO          = oppOwnedEvts.length;
   const oppPct           = totalKO > 0 ? Math.round((totalOppRetained / totalKO) * 100) : 0;
-  const oppHot           = pdfZoneHotspots(oppRetainedEvts)[0];
-  const pressureHot      = pdfZoneHotspots(oppLostEvts)[0];
+  const oppHot           = pdfZoneHotspots(oppRetainedEvts, homeAttackingDirection)[0];
+  const pressureHot      = pdfZoneHotspots(oppLostEvts, homeAttackingDirection)[0];
 
   const facts: string[] = [];
   if (totalKO > 0) facts.push(`${truncTeam(awayTeam, 14)} ${restartTermLC}: ${totalOppRetained}W · ${totalOppLost}L (${oppPct}% retained)`);
@@ -11797,6 +11840,7 @@ export function makeTurnoverTerritoryPage(
   awayTeam: string,
   pageNum: number,
   totalPages: number,
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const analysis = report.chain;
   const canvas = document.createElement("canvas");
@@ -11849,8 +11893,8 @@ export function makeTurnoverTerritoryPage(
   const totalLost = lostEvts.length;
   const totalTO   = totalWon + totalLost;
   const wonPct    = totalTO > 0 ? Math.round((totalWon / totalTO) * 100) : 0;
-  const wonHot    = pdfZoneHotspots(wonEvts)[0];
-  const lostHot   = pdfZoneHotspots(lostEvts)[0];
+  const wonHot    = pdfZoneHotspots(wonEvts, homeAttackingDirection)[0];
+  const lostHot   = pdfZoneHotspots(lostEvts, homeAttackingDirection)[0];
 
   type StripPanel = { label: string; text: string; accent: string; highlight: boolean };
   const panels: StripPanel[] = [
@@ -12570,7 +12614,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 1. Our Shot Profile
     addPage(
-      makeOurShotProfilePage(events, sport, home, away, 1, TOTAL_PAGES),
+      makeOurShotProfilePage(events, sport, home, away, 1, TOTAL_PAGES, homeAttackingDirection),
       false,
       "Our Shots",
       "STATISTICS",
@@ -12578,7 +12622,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 2. Opposition Shot Profile
     addPage(
-      makeOppShotProfilePage(events, sport, home, away, 2, TOTAL_PAGES),
+      makeOppShotProfilePage(events, sport, home, away, 2, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Their Shots",
       "STATISTICS",
@@ -12594,7 +12638,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 4. Turnover & Territory
     addPage(
-      makeTurnoverTerritoryPage(events, report, sport, home, away, 4, TOTAL_PAGES),
+      makeTurnoverTerritoryPage(events, report, sport, home, away, 4, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Turnover & Territory",
       "POSSESSION",
@@ -12658,7 +12702,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 2. Our Shot Profile
     addPage(
-      makeOurShotProfilePage(events, sport, home, away, 2, TOTAL_PAGES),
+      makeOurShotProfilePage(events, sport, home, away, 2, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Our Shots",
       "STATISTICS",
@@ -12666,7 +12710,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 3. Opposition Shot Profile
     addPage(
-      makeOppShotProfilePage(events, sport, home, away, 3, TOTAL_PAGES),
+      makeOppShotProfilePage(events, sport, home, away, 3, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Their Shots",
       "STATISTICS",
@@ -12704,7 +12748,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 7. Turnover & Territory
     addPage(
-      makeTurnoverTerritoryPage(events, report, sport, home, away, 7, TOTAL_PAGES),
+      makeTurnoverTerritoryPage(events, report, sport, home, away, 7, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Turnover & Territory",
       "POSSESSION",
@@ -12738,7 +12782,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 11. Attack Corridors — channel-based attack shape analysis
     addPage(
-      makeFtAttackCorridorsPage(events, sport, home, away, 11, TOTAL_PAGES),
+      makeFtAttackCorridorsPage(events, sport, home, away, 11, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Attack Corridors",
       "STATISTICS",
@@ -12746,7 +12790,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // 12. Restart Escape Routes — kickout destination zone outcome map
     addPage(
-      makeFtRestartEscapeRoutesPage(events, sport, report, home, away, 12, TOTAL_PAGES),
+      makeFtRestartEscapeRoutesPage(events, sport, report, home, away, 12, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Restart Escape Routes",
       "POSSESSION",
