@@ -43,6 +43,17 @@ import {
   viewRestartShareHalf,
 } from "./reporting/pdfReportViews";
 import {
+  fmtRestartOriginConcededFor,
+  fmtRestartOriginScoredFor,
+  fmtRestartOriginScoredOpp,
+  fmtTurnoverOriginConcededFor,
+  fmtTurnoverOriginScoredFor,
+} from "./reporting/scoringBreakdownViews";
+import {
+  RESTART_ORIGIN_HEADING,
+  restartOriginExplanation,
+} from "./restarts/restartMetrics";
+import {
   cpCol,
   cpRow,
   rankChainPatterns,
@@ -2515,6 +2526,8 @@ function makeKickoutChainPage(
   const forScoredFromKo = outcomes.filter((o) => o.winningSide === "FOR" && o.nextScore      !== null).length;
   const forShotFromKo  = outcomes.filter((o) => o.winningSide === "FOR" && o.nextShotOrScore !== null).length;
   const oppScoredFromKo = outcomes.filter((o) => o.winningSide === "OPP" && o.nextScore     !== null).length;
+  const forRestartOriginFmt = fmtRestartOriginScoredFor(analysis);
+  const oppRestartOriginFmt = fmtRestartOriginScoredOpp(analysis);
 
   // Average seconds to score across all kickouts that led to a score
   const scoringOuts    = outcomes.filter((o) => o.secondsToScore !== null);
@@ -2724,7 +2737,7 @@ function makeKickoutChainPage(
     cy = drawStatRow(COL3_X, cy, COL_W, `Lost → Score Against (direct) — ${truncTeam(awayTeam, 8)}`, String(koLostOpp), "#f97316", true);
     cy += 12;
 
-    // Scoring from kickout possession
+    // Restart Origin — scoring from kickout/puckout possession chains
     ctx.save();
     ctx.fillStyle = "rgba(255,255,255,0.04)";
     ctx.fillRect(COL3_X + 4, cy, COL_W - 4, 20);
@@ -2732,13 +2745,21 @@ function makeKickoutChainPage(
     ctx.font = "bold 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.fillText("SCORING FROM POSSESSION", COL3_X + 14, cy + 10);
+    ctx.fillText(RESTART_ORIGIN_HEADING.toUpperCase(), COL3_X + 14, cy + 10);
     ctx.restore();
     cy += 20;
+    ctx.save();
+    ctx.fillStyle = "#64748b";
+    ctx.font = "italic 11px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.fillText(restartOriginExplanation(sport), COL3_X + 14, cy + 8, COL_W - 28);
+    ctx.restore();
+    cy += 18;
 
-    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Restart-origin scores`, String(forScoredFromKo),  "#4ade80", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Restart Origin`, forRestartOriginFmt,  "#4ade80", false);
     cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(homeTeam, 16)} — Shots from Kickout`,  String(forShotFromKo),    "#7dd3fc", true);
-    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(awayTeam, 16)} — Restart-origin scores`, String(oppScoredFromKo),  "#fb7185", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `${truncTeam(awayTeam, 16)} — Restart Origin`, oppRestartOriginFmt,  "#fb7185", false);
     cy += 12;
 
     // FOR possession outcome breakdown
@@ -2759,7 +2780,7 @@ function makeKickoutChainPage(
 
     cy = drawStatRow(COL3_X, cy, COL_W, `Won ${koLabelPluralLC(sport)} total`, String(forWonTotal), "#e2e8f0", false);
     cy = drawStatRow(COL3_X, cy, COL_W, "→ Generated a shot",   `${forShotFromKo} (${forShotPct})`,              "#22d3ee", true);
-    cy = drawStatRow(COL3_X, cy, COL_W, "→ Origin score", `${forScoredFromKo} (${forScorePct})`,           "#4ade80", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, "→ Restart Origin", `${forRestartOriginFmt} (${forScorePct} of wins)`,           "#4ade80", false);
     cy = drawStatRow(COL3_X, cy, COL_W, "→ No shot attempt",    String(forNoShot),                               "#f97316", true);
     cy += 8;
 
@@ -3979,21 +4000,21 @@ function makeTacticalIntelligencePage(
 
   if (koTotal > 0) {
     if (koWinPct >= 55) {
-      insights.push({ text: `${truncTeam(homeTeam, 16)} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) — ${koConvPct}% produced a restart-origin score.` });
+      insights.push({ text: `${truncTeam(homeTeam, 16)} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) — ${koConvPct}% produced restart-origin point value (${fmtRestartOriginScoredFor(analysis)}).` });
     } else if (koWinPct < 45) {
-      insights.push({ text: `${truncTeam(homeTeam, 16)} held only ${koWinPct}% Restart Share (${koWon} of ${koTotal}); ${koExpPct}% of ${truncTeam(awayTeam, 16)}'s wins produced a restart-origin score.` });
+      insights.push({ text: `${truncTeam(homeTeam, 16)} held only ${koWinPct}% Restart Share (${koWon} of ${koTotal}); ${koExpPct}% of ${truncTeam(awayTeam, 16)}'s wins produced restart-origin point value (${fmtRestartOriginScoredOpp(analysis)}).` });
     } else {
-      insights.push({ text: `Balanced ${koLabelLC(sport)} contest — ${truncTeam(homeTeam, 16)} held ${koWinPct}% Restart Share; ${koConvPct}% of wins produced a restart-origin score.` });
+      insights.push({ text: `Balanced ${koLabelLC(sport)} contest — ${truncTeam(homeTeam, 16)} held ${koWinPct}% Restart Share; ${koConvPct}% of wins produced restart-origin point value (${fmtRestartOriginScoredFor(analysis)}).` });
     }
   }
 
   if (tvTotal > 0) {
     if (tvConvPct >= 35) {
-      insights.push({ text: `${tvConvPct}% of ${truncTeam(homeTeam, 16)}'s won turnovers produced a turnover-origin score.` });
+      insights.push({ text: `${tvConvPct}% of ${truncTeam(homeTeam, 16)}'s won turnovers produced turnover-origin point value (${fmtTurnoverOriginScoredFor(analysis)}).` });
     } else if (tvConvPct < 20 && tvWon > 0) {
-      insights.push({ text: `${truncTeam(homeTeam, 16)} won ${tvWon}/${tvTotal} turnovers but only ${tvConvPct}% produced a turnover-origin score.` });
+      insights.push({ text: `${truncTeam(homeTeam, 16)} won ${tvWon}/${tvTotal} turnovers but only ${tvConvPct}% produced turnover-origin point value (${fmtTurnoverOriginScoredFor(analysis)}).` });
     } else {
-      insights.push({ text: `${truncTeam(homeTeam, 16)} won ${tvWinPct}% of turnovers (${tvConvPct}% origin scores); ${tvDefExp}% of ${truncTeam(awayTeam, 16)}'s wins produced one.` });
+      insights.push({ text: `${truncTeam(homeTeam, 16)} won ${tvWinPct}% of turnovers (${tvConvPct}% origin point value); ${tvDefExp}% of ${truncTeam(awayTeam, 16)}'s wins produced turnover-origin point value (${fmtTurnoverOriginConcededFor(analysis)}).` });
     }
   }
 
@@ -4495,7 +4516,7 @@ function makeOppositionSnapshotPage(
   if (maxConsOpp >= 4)    watchlist.push(`Peak run of ${maxConsOpp} unanswered — sustained pressure threat`);
   if (tvPunishPct >= 40)   watchlist.push(`${tvPunishPct}% of gifted possession converted to opposition scores`);
   if (koOppWinPct >= 55)  watchlist.push(`Opposition held ${koOppWinPct}% Restart Share (${koOppWon} of ${ko.total})`);
-  if (koLostScore >= 2)   watchlist.push(`${koLostScore} restart-origin score${koLostScore !== 1 ? "s" : ""} conceded off kickout losses`);
+  if (koLostScore >= 2)   watchlist.push(`${fmtRestartOriginConcededFor(analysis)} conceded off ${koLabelLC(sport)} losses`);
   if (oppChainPct >= 55)  watchlist.push(`Held tactical chain advantage — ${oppChainPct}% of all detected chains`);
   // Fallback: always at least one bullet
   if (watchlist.length === 0) watchlist.push("No critical tactical thresholds exceeded in this match");
@@ -4648,7 +4669,7 @@ function makeOppositionSnapshotPage(
     );
     cy = drawMetricRow(
       L_COL_X, cy, L_COL_W,
-      `Restart-origin scores off our losses`, `${koLostScore}  (${koLostScorePct}%)`,
+      `Restart Origin off our losses`, `${fmtRestartOriginConcededFor(analysis)}  (${koLostScorePct}%)`,
       koLostScore >= 2 ? OPP_ACCENT : "#f8fafc", false,
     );
     drawMetricRow(
@@ -6657,6 +6678,8 @@ function makeRestartVisualPage(
   const forScoredFromKo = outcomes.filter((o) => o.winningSide === "FOR" && o.nextScore      !== null).length;
   const forShotFromKo   = outcomes.filter((o) => o.winningSide === "FOR" && o.nextShotOrScore !== null).length;
   const oppScoredFromKo = outcomes.filter((o) => o.winningSide === "OPP" && o.nextScore      !== null).length;
+  const forRestartOriginFmt = fmtRestartOriginScoredFor(analysis);
+  const oppRestartOriginFmt = fmtRestartOriginScoredOpp(analysis);
   const scoringOuts    = outcomes.filter((o) => o.secondsToScore !== null);
   const avgSecsToScore = scoringOuts.length > 0
     ? Math.round(scoringOuts.reduce((s, o) => s + (o.secondsToScore ?? 0), 0) / scoringOuts.length)
@@ -6685,7 +6708,7 @@ function makeRestartVisualPage(
   dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Restart Possession — ${homeTeam}`,  forOwnedEvts.length, "#22d3ee");
   dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `${homeTeam} won ${ko.won} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
-    `${homeTeam}: ${forScoredFromKo} restart-origin score${forScoredFromKo !== 1 ? "s" : ""}`,
+    `${homeTeam}: ${forRestartOriginFmt}`,
     `H1: ${h1For}–${h1Opp} / H2: ${h2For}–${h2Opp}`,
     "#22d3ee",
   );
@@ -6695,7 +6718,7 @@ function makeRestartVisualPage(
   dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Restart Possession — ${awayTeam}`, oppOwnedEvts.length, "#fb7185");
   dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `${awayTeam} won ${ko.lost} of ${totalKO} restart${totalKO !== 1 ? "s" : ""}`,
-    `${awayTeam}: ${oppScoredFromKo} restart-origin score${oppScoredFromKo !== 1 ? "s" : ""}`,
+    `${awayTeam}: ${oppRestartOriginFmt}`,
     `H1: ${h1Opp}–${h1For} / H2: ${h2Opp}–${h2For}`,
     "#fb7185",
   );
@@ -8153,22 +8176,26 @@ function derivePossessionChainObservations(
   const turnoverToScore = viewTurnoverWinsToScore(report);
   const obs: string[] = [];
 
+  const restartOriginFmt = fmtRestartOriginScoredFor(report.chain);
+  const restartConcededFmt = fmtRestartOriginConcededFor(report.chain);
+  const turnoverOriginFmt = fmtTurnoverOriginScoredFor(report.chain);
+
   if (ko.total >= 3) {
     if (restartToScore.num > 0) {
       obs.push(
-        `Restarts Won → Scores: ${restartToScore.num} of ${ko.won} won restart${ko.won !== 1 ? "s" : ""} produced a restart-origin score (${restartToScore.pct}%)`,
+        `Restarts Won → Scores: ${restartToScore.num} of ${ko.won} won restart${ko.won !== 1 ? "s" : ""} produced restart-origin point value (${restartOriginFmt}, ${restartToScore.pct}%)`,
       );
     }
     if (restartLossPunish.num > 0) {
       obs.push(
-        `Conceded restarts produced a restart-origin score for the opposition in ${restartLossPunish.pct}% of cases (${restartLossPunish.num} of ${ko.lost})`,
+        `Conceded restarts produced restart-origin point value for the opposition (${restartConcededFmt}) in ${restartLossPunish.pct}% of cases (${restartLossPunish.num} of ${ko.lost})`,
       );
     }
   }
 
   if (to.total >= 3 && turnoverToScore.num > 0) {
     obs.push(
-      `Turnover wins produced a turnover-origin score ${turnoverToScore.num} time${turnoverToScore.num !== 1 ? "s" : ""} (${turnoverToScore.pct}% conversion)`,
+      `Turnover wins produced turnover-origin point value (${turnoverOriginFmt}, ${turnoverToScore.pct}% conversion)`,
     );
   }
 
@@ -9949,10 +9976,10 @@ function makeFtRestartEscapeRoutesPage(
   if (ko.total > 0)
     facts.push(`${truncTeam(homeTeam, 14)} ${ftRestartTerm}: ${ko.won}W · ${ko.total - ko.won}L (${koRate}% won)`);
   if (restartToScore.num > 0) {
-    facts.push(`${truncTeam(homeTeam, 14)}: ${restartToScore.num} restart-origin score${restartToScore.num !== 1 ? "s" : ""} from ${ko.won} wins (${restartToScore.pct}%)`);
+    facts.push(`${truncTeam(homeTeam, 14)} Restart Origin: ${fmtRestartOriginScoredFor(analysis)} from ${ko.won} wins (${restartToScore.pct}%)`);
   }
   if (restartLossPunish.num > 0) {
-    facts.push(`${truncTeam(awayTeam, 14)}: ${restartLossPunish.num} restart-origin score${restartLossPunish.num !== 1 ? "s" : ""} off ${truncTeam(homeTeam, 14)}'s losses (${restartLossPunish.pct}%)`);
+    facts.push(`${truncTeam(awayTeam, 14)} Restart Origin: ${fmtRestartOriginConcededFor(analysis)} off ${truncTeam(homeTeam, 14)}'s losses (${restartLossPunish.pct}%)`);
   }
   if (bestEscCol >= 0 && facts.length < 3) {
     const esc = grid[bestEscCol][bestEscRow];
@@ -10277,11 +10304,11 @@ function makeFtTacticalMatchStoryPage(
   if (ko.total >= 3) {
     if (ko.won > ko.lost) {
       sentences.push(
-        `${homeTeam} restart possession was a clear platform: ${homeTeam} won ${ko.won} of ${ko.total} ${koLabelPluralLC(sport)}${ko.wonToScore > 0 ? ` — ${ko.wonToScore} restart-origin score${ko.wonToScore !== 1 ? "s" : ""}` : ""}.`,
+        `${homeTeam} restart possession was a clear platform: ${homeTeam} won ${ko.won} of ${ko.total} ${koLabelPluralLC(sport)}${ko.wonToScore > 0 ? ` — ${fmtRestartOriginScoredFor(analysis)} from Restart Origin` : ""}.`,
       );
     } else if (ko.lost > ko.won) {
       sentences.push(
-        `${awayTeam} restart pressure was costly for ${homeTeam} — ${awayTeam} won ${ko.lost} of ${ko.total} ${koLabelPluralLC(sport)}${ko.lostAllowedScore > 0 ? `, scoring ${ko.lostAllowedScore} time${ko.lostAllowedScore !== 1 ? "s" : ""} from those wins` : ""}.`,
+        `${awayTeam} restart pressure was costly for ${homeTeam} — ${awayTeam} won ${ko.lost} of ${ko.total} ${koLabelPluralLC(sport)}${ko.lostAllowedScore > 0 ? `, ${fmtRestartOriginConcededFor(analysis)} from Restart Origin` : ""}.`,
       );
     }
   }
@@ -12067,9 +12094,14 @@ function makeHtTacticalSummaryPage(
   const swingItems:   string[] = [];
   const watchItems:   string[] = [];
 
+  const restartOriginWorking = fmtRestartOriginScoredFor(report.chain);
+  const restartOriginDanger = fmtRestartOriginConcededFor(report.chain);
+  const turnoverOriginWorking = fmtTurnoverOriginScoredFor(report.chain);
+  const turnoverOriginDanger = fmtTurnoverOriginConcededFor(report.chain);
+
   // Working — our best platform
   if (restartToScore.num > 0) {
-    workingItems.push(`${restartToScore.num} restart-origin score${restartToScore.num !== 1 ? "s" : ""}`);
+    workingItems.push(`Restart Origin: ${restartOriginWorking}`);
   }
   if (totalAllKO > 0 && koWinPct >= 50) {
     workingItems.push(`${koWinPct}% Restart Share (${totalForKO} of ${totalAllKO})`);
@@ -12078,7 +12110,7 @@ function makeHtTacticalSummaryPage(
     workingItems.push(`${forShotEff}% shooting efficiency`);
   }
   if (turnoverToScore.num > 0) {
-    workingItems.push(`${turnoverToScore.num} turnover-origin score${turnoverToScore.num !== 1 ? "s" : ""}`);
+    workingItems.push(`Turnover Origin: ${turnoverOriginWorking}`);
   }
   const weaponPattern = patterns.find((p) => p.kind === "CHAIN_WEAPON");
   if (weaponPattern && workingItems.length < 4) {
@@ -12097,13 +12129,13 @@ function makeHtTacticalSummaryPage(
     dangerItems.push(xRestartStr(dangerPattern.observation, sport));
   }
   if (restartLossPunish.num > 0) {
-    dangerItems.push(`${restartLossPunish.num} restart-origin score${restartLossPunish.num !== 1 ? "s" : ""} conceded`);
+    dangerItems.push(`Restart Origin conceded: ${restartOriginDanger}`);
   }
   if (oppShotEff >= 50 && oppShotEvts.length >= 3 && dangerItems.length < 3) {
     dangerItems.push(`OPP shooting ${oppShotEff}% efficiency`);
   }
   if (turnoverLossPunish.num > 0 && dangerItems.length < 4) {
-    dangerItems.push(`${turnoverLossPunish.num} turnover-origin score${turnoverLossPunish.num !== 1 ? "s" : ""} conceded`);
+    dangerItems.push(`Turnover Origin conceded: ${turnoverOriginDanger}`);
   }
   if (dangerItems.length === 0) {
     dangerItems.push("No critical possession threat detected");

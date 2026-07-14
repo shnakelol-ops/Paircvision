@@ -1,6 +1,12 @@
 import type { ChainableEvent, ChainAnalysis } from "./chain-types";
 import type { RestartTeamMetrics } from "../reporting/restartTeamMetrics";
 import { formatOwnKickoutsLost } from "../reporting/restartTeamMetrics";
+import {
+  fmtRestartOriginConcededFor,
+  fmtRestartOriginScoredFor,
+  fmtTurnoverOriginConcededFor,
+  fmtTurnoverOriginScoredFor,
+} from "../reporting/scoringBreakdownViews";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -140,7 +146,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
       kind:          "DANGER_CHAIN",
       badge:         "KICKOUT RISK",
       headline:      "Kickout Loss → Score",
-      observation:   `${ownLostLabel} — ${ko.lostAllowedScore} restart-origin score${ko.lostAllowedScore !== 1 ? "s" : ""} for ${opp}`,
+      observation:   `${ownLostLabel} — ${fmtRestartOriginConcededFor(analysis)} for ${opp}`,
       primaryMetric: ko.lostAllowedScore,
       metricLabel:   "opposition scores",
       occurrences:   ownLost,
@@ -165,7 +171,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
       kind:          "CHAIN_WEAPON",
       badge:         "KICKOUT STRENGTH",
       headline:      "Kickout Platform",
-      observation:   `${team} won ${shareWon} of ${shareTotal} restarts — ${ko.wonToScore} restart-origin score${ko.wonToScore !== 1 ? "s" : ""}`,
+      observation:   `${team} won ${shareWon} of ${shareTotal} restarts — ${fmtRestartOriginScoredFor(analysis)}`,
       primaryMetric: ko.wonToScore,
       metricLabel:   "scores from kickouts",
       occurrences:   shareWon,
@@ -193,7 +199,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
       kind:          "DANGER_CHAIN",
       badge:         "TURNOVER RISK",
       headline:      "Turnover Loss → Score",
-      observation:   `${team} lost possession ${to.lost} times — ${to.lostAllowedScore} turnover-origin score${to.lostAllowedScore !== 1 ? "s" : ""} for ${opp}`,
+      observation:   `${team} lost possession ${to.lost} times — ${fmtTurnoverOriginConcededFor(analysis)} for ${opp}`,
       primaryMetric: to.lostAllowedScore,
       metricLabel:   "opposition scores",
       occurrences:   to.lost,
@@ -221,7 +227,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
       kind:          "CHAIN_WEAPON",
       badge:         "TURNOVERS WON",
       headline:      "Turnovers Won",
-      observation:   `${team} won ${to.won} turnovers — only ${to.wonToScore} turnover-origin score${to.wonToScore !== 1 ? "s" : ""}`,
+      observation:   `${team} won ${to.won} turnovers — ${fmtTurnoverOriginScoredFor(analysis)}`,
       primaryMetric: to.wonToScore,
       metricLabel:   "scores from turnovers",
       occurrences:   to.won,
@@ -250,7 +256,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
         kind:          "PRESSURE_PATTERN",
         badge:         "KICKOUT CONTEST",
         headline:      "Kickout Contest",
-        observation:   `${ko.total} kickouts contested — ${team}: ${ko.wonToScore} restart-origin score${ko.wonToScore !== 1 ? "s" : ""}, ${ko.lostAllowedScore} conceded`,
+        observation:   `${ko.total} kickouts contested — ${team}: ${fmtRestartOriginScoredFor(analysis)}, ${fmtRestartOriginConcededFor(analysis)} conceded`,
         primaryMetric: ko.total,
         metricLabel:   "kickouts in match",
         occurrences:   ko.total,
@@ -268,7 +274,7 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
         kind:          "PRESSURE_PATTERN",
         badge:         "TURNOVER WINS",
         headline:      "Turnovers Won, Low Conversion",
-        observation:   `${team} won ${to.won} turnovers — took ${to.wonToShot} shots, scored ${to.wonToScore}`,
+        observation:   `${team} won ${to.won} turnovers — took ${to.wonToShot} shots, ${fmtTurnoverOriginScoredFor(analysis)}`,
         primaryMetric: to.won,
         metricLabel:   "turnovers won",
         occurrences:   to.won,
