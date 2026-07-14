@@ -1,173 +1,221 @@
 /**
- * pdfMapMarkers.test.ts — Turnover & Territory regression archaeology tests.
+ * pdfMapMarkers.test.ts — Turnover & Territory renderer regression tests.
  *
- * Known-good reference: main @ c72daebf ("Snapshot visual refresh: dots-first clarity pass")
- * and its descendant 08061bb9 (original Turnover & Territory page).
- *
- * Turnover & Territory scoping (locked):
- *   card won  = TURNOVER_WON logged by FOR
- *   card lost = TURNOVER_LOST by FOR OR TURNOVER_WON by OPP
- *   map       = all events in PDF_KIND_SETS.TURNOVERS (renderHtMarkers — purple/orange dots)
- *
- * Renderer paths:
- *   HT Snapshot / FT Snapshot → makeTurnoverTerritoryPage (single map, renderHtMarkers)
- *   Full Review               → makeTurnoverVisualPage (split pitches, renderEventMarkers)
+ * Exercises makeTurnoverTerritoryPage (HT/FT snapshot path) with a capturing
+ * canvas context and asserts purple (#a78bfa) / orange (#f97316) marker fills.
  */
 
-import { describe, expect, it } from "vitest";
-import type { MatchEventKind } from "../../core/stats/stats-event-model";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { PdfExportEvent } from "../reviewPdfExport";
+import { makeTurnoverTerritoryPage } from "../reviewPdfExport";
+import { buildMatchReport } from "./matchReport";
 import {
+  ADARE_MUNGRET_TEAMS,
   buildAdareMungretFixture,
   mkAdareEvent,
 } from "./adare-mungret-fixture";
 import {
+  GOLDEN_TEAMS,
   buildGoldenReportingFixture,
 } from "./golden-fixture";
 
-const TURNOVER_KINDS = new Set<MatchEventKind>(["TURNOVER_WON", "TURNOVER_LOST"]);
+const PURPLE = "#a78bfa";
+const ORANGE = "#f97316";
 
-/** Known-good Territory Balance card — won scope (FOR logged wins only). */
-function territoryCardWon(events: readonly PdfExportEvent[]): PdfExportEvent[] {
-  return events.filter((e) => e.kind === "TURNOVER_WON" && e.teamSide === "FOR");
+class CaptureCanvasContext {
+  fillStyle = "";
+  strokeStyle = "";
+  font = "";
+  lineWidth = 1;
+  textBaseline = "alphabetic";
+  textAlign = "left";
+  globalAlpha = 1;
+  markerFills: string[] = [];
+  private pendingArc = false;
+
+  save() {}
+  restore() {}
+  fillRect() {}
+  strokeRect() {}
+  fillText() {}
+  stroke() {}
+  beginPath() {}
+  moveTo() {}
+  lineTo() {}
+  arc() { this.pendingArc = true; }
+  ellipse() {}
+  quadraticCurveTo() {}
+  closePath() {}
+  fill() {
+    if (this.pendingArc && (this.fillStyle === PURPLE || this.fillStyle === ORANGE)) {
+      this.markerFills.push(this.fillStyle);
+    }
+    this.pendingArc = false;
+  }
+  measureText(text: string) {
+    return { width: text.length * 8 };
+  }
+  setLineDash() {}
+  clip() {}
+  rect() {}
+  roundRect() {}
+  drawImage() {}
+  createLinearGradient() {
+    return { addColorStop() {} };
+  }
 }
 
-/** Known-good Territory Balance card — lost scope (beneficiary mirror). */
-function territoryCardLost(events: readonly PdfExportEvent[]): PdfExportEvent[] {
-  return events.filter(
-    (e) => (e.kind === "TURNOVER_LOST" && e.teamSide === "FOR") ||
-           (e.kind === "TURNOVER_WON"  && e.teamSide === "OPP"),
-  );
+class CaptureCanvas {
+  width = 1920;
+  height = 1080;
+  readonly ctx = new CaptureCanvasContext();
+  getContext() {
+    return this.ctx as unknown as CanvasRenderingContext2D;
+  }
+  toDataURL() {
+    return "data:image/jpeg;base64,AAAA";
+  }
 }
 
-/** Known-good map scope — every turnover event in the feed. */
-function territoryMapEvents(events: readonly PdfExportEvent[]): PdfExportEvent[] {
-  return events.filter((e) => TURNOVER_KINDS.has(e.kind));
+function installDomMocks(): void {
+  class MockPath2D {
+    constructor(_d?: string) {}
+  }
+  (globalThis as unknown as { Path2D: typeof MockPath2D }).Path2D = MockPath2D;
+  (globalThis as unknown as { document: { createElement: (tag: string) => unknown } }).document = {
+    createElement(tag: string) {
+      if (tag === "canvas") return new CaptureCanvas();
+      return {};
+    },
+  };
 }
 
-function countByKind(events: readonly PdfExportEvent[], kind: MatchEventKind): number {
-  return events.filter((e) => e.kind === kind).length;
-}
-
-function spreadTurnovers(
+function spreadCoords(
   count: number,
   kind: "TURNOVER_WON" | "TURNOVER_LOST",
+  teamSide: "FOR" | "OPP",
   period: "1H" | "2H",
   startNx: number,
+  startNy: number,
 ): PdfExportEvent[] {
   const out: PdfExportEvent[] = [];
   for (let i = 0; i < count; i++) {
     out.push(
       mkAdareEvent({
         kind,
-        teamSide: "FOR",
+        teamSide,
         period,
-        nx: startNx + i * 0.04,
-        ny: 0.3 + (i % 3) * 0.15,
+        nx: startNx + i * 0.05,
+        ny: startNy + (i % 2) * 0.08,
       }) as PdfExportEvent,
     );
   }
   return out;
 }
 
-/** Ballylanders-style single-perspective turnover log (5 won · 5 lost). */
-function buildBallylandersTurnoverFixture(): PdfExportEvent[] {
-  return [
-    ...spreadTurnovers(5, "TURNOVER_WON", "1H", 0.2),
-    ...spreadTurnovers(5, "TURNOVER_LOST", "1H", 0.55),
-  ] as PdfExportEvent[];
+function renderTerritoryMarkerFills(events: readonly PdfExportEvent[]): string[] {
+  const report = buildMatchReport({
+    events,
+    homeTeam: ADARE_MUNGRET_TEAMS.home,
+    awayTeam: ADARE_MUNGRET_TEAMS.away,
+    scope: "FULL",
+  });
+  const canvas = makeTurnoverTerritoryPage(
+    events,
+    report,
+    "gaelic",
+    ADARE_MUNGRET_TEAMS.home,
+    ADARE_MUNGRET_TEAMS.away,
+    7,
+    14,
+  );
+  const ctx = (canvas as unknown as CaptureCanvas).ctx;
+  return ctx.markerFills;
 }
 
-/** Adare HT turnover log shape from production QA (7 won · 1 lost, first half). */
-function buildAdareHtTurnoverFixture(): PdfExportEvent[] {
-  return [
-    ...spreadTurnovers(7, "TURNOVER_WON", "1H", 0.15),
-    ...spreadTurnovers(1, "TURNOVER_LOST", "1H", 0.75),
-  ] as PdfExportEvent[];
+function countColors(fills: readonly string[]) {
+  return {
+    purple: fills.filter((c) => c === PURPLE).length,
+    orange: fills.filter((c) => c === ORANGE).length,
+  };
 }
 
-describe("Turnover & Territory — known-good scope (c72daebf / main)", () => {
-  it("Ballylanders v St.Patricks golden fixture: card 7 · 5, map 12, both kinds on pitch", () => {
-    const events = buildGoldenReportingFixture() as PdfExportEvent[];
-    const won = territoryCardWon(events);
-    const lost = territoryCardLost(events);
-    const map = territoryMapEvents(events);
+beforeEach(() => {
+  installDomMocks();
+});
 
-    expect(won.length).toBe(7);
-    expect(lost.length).toBe(5);
-    expect(map.length).toBe(12);
-    expect(countByKind(map, "TURNOVER_WON")).toBe(7);
-    expect(countByKind(map, "TURNOVER_LOST")).toBe(5);
-  });
-
-  it("Ballylanders 5 · 5 turnover log: map markers reconcile with Territory Balance card", () => {
-    const events = buildBallylandersTurnoverFixture();
-    const won = territoryCardWon(events);
-    const lost = territoryCardLost(events);
-    const map = territoryMapEvents(events);
-
-    expect(won.length).toBe(5);
-    expect(lost.length).toBe(5);
-    expect(map.length).toBe(10);
-    expect(map.length).toBe(won.length + lost.length);
-    expect(countByKind(map, "TURNOVER_WON")).toBe(5);
-    expect(countByKind(map, "TURNOVER_LOST")).toBe(5);
-  });
-
-  it("Adare HT (7 won · 1 lost): map plots 8 markers with exactly one loss", () => {
-    const events = buildAdareHtTurnoverFixture();
-    const won = territoryCardWon(events);
-    const lost = territoryCardLost(events);
-    const map = territoryMapEvents(events);
-
-    expect(won.length).toBe(7);
-    expect(lost.length).toBe(1);
-    expect(map.length).toBe(8);
-    expect(map.length).toBe(won.length + lost.length);
-    expect(countByKind(map, "TURNOVER_LOST")).toBe(1);
-  });
-
-  it("Adare FT: card Won 10 · Lost 6 → 16 purple/orange map markers", () => {
+describe("makeTurnoverTerritoryPage — renderer colour proof", () => {
+  it("Adare FT (TURNOVER_LOST logging): draws 10 purple + 6 orange markers", () => {
     const events = buildAdareMungretFixture() as PdfExportEvent[];
-    const won = territoryCardWon(events);
-    const lost = territoryCardLost(events);
-    const map = territoryMapEvents(events);
+    const fills = renderTerritoryMarkerFills(events);
+    const { purple, orange } = countColors(fills);
 
-    expect(won.length).toBe(10);
-    expect(lost.length).toBe(6);
-    expect(map.length).toBe(16);
-    expect(map.length).toBe(won.length + lost.length);
-    expect(countByKind(map, "TURNOVER_WON")).toBe(10);
-    expect(countByKind(map, "TURNOVER_LOST")).toBe(6);
+    expect(purple).toBe(10);
+    expect(orange).toBe(6);
+    expect(purple + orange).toBe(16);
   });
-});
 
-describe("Turnover & Territory — renderer path separation", () => {
-  it("snapshot path uses makeTurnoverTerritoryPage (renderHtMarkers + allTurnoverEvts)", () => {
-    const src = require("node:fs").readFileSync(
-      require("node:path").join(process.cwd(), "src/stats/reviewPdfExport.ts"),
-      "utf8",
+  it("Adare FT (mirror TURNOVER_WON/OPP losses): draws 10 purple + 6 orange markers", () => {
+    const events = [
+      ...spreadCoords(10, "TURNOVER_WON", "FOR", "1H", 0.1, 0.25),
+      ...spreadCoords(5, "TURNOVER_WON", "OPP", "1H", 0.1, 0.65),
+      ...spreadCoords(1, "TURNOVER_WON", "OPP", "2H", 0.5, 0.65),
+    ] as PdfExportEvent[];
+
+    const fills = renderTerritoryMarkerFills(events);
+    const { purple, orange } = countColors(fills);
+
+    expect(purple).toBe(10);
+    expect(orange).toBe(6);
+  });
+
+  it("Adare HT (7 won · 1 lost): draws 7 purple + 1 orange marker", () => {
+    const events = [
+      ...spreadCoords(7, "TURNOVER_WON", "FOR", "1H", 0.12, 0.3),
+      ...spreadCoords(1, "TURNOVER_LOST", "FOR", "1H", 0.7, 0.6),
+    ] as PdfExportEvent[];
+
+    const fills = renderTerritoryMarkerFills(events);
+    const { purple, orange } = countColors(fills);
+
+    expect(purple).toBe(7);
+    expect(orange).toBe(1);
+  });
+
+  it("Ballylanders 5 · 5: draws 5 purple + 5 orange markers", () => {
+    const events = [
+      ...spreadCoords(5, "TURNOVER_WON", "FOR", "1H", 0.15, 0.25),
+      ...spreadCoords(5, "TURNOVER_LOST", "FOR", "1H", 0.15, 0.65),
+    ] as PdfExportEvent[];
+
+    const fills = renderTerritoryMarkerFills(events);
+    const { purple, orange } = countColors(fills);
+
+    expect(purple).toBe(5);
+    expect(orange).toBe(5);
+  });
+
+  it("Ballylanders golden fixture: draws 7 purple + 5 orange markers", () => {
+    const events = buildGoldenReportingFixture() as PdfExportEvent[];
+    const report = buildMatchReport({
+      events,
+      homeTeam: GOLDEN_TEAMS.home,
+      awayTeam: GOLDEN_TEAMS.away,
+      scope: "FULL",
+    });
+    const canvas = makeTurnoverTerritoryPage(
+      events,
+      report,
+      "gaelic",
+      GOLDEN_TEAMS.home,
+      GOLDEN_TEAMS.away,
+      7,
+      14,
     );
-    expect(src).toContain("makeTurnoverTerritoryPage(");
-    expect(src).toContain("renderHtMarkers(ctx, allTurnoverEvts, inner)");
-    expect(src).not.toMatch(/makeTurnoverTerritoryPage[\s\S]*?renderHtMarkers\(ctx, mapEvts/);
-  });
+    const ctx = (canvas as unknown as CaptureCanvas).ctx;
+    const { purple, orange } = countColors(ctx.markerFills);
 
-  it("Full Review turnover chapter uses makeTurnoverVisualPage (split renderEventMarkers)", () => {
-    const src = require("node:fs").readFileSync(
-      require("node:path").join(process.cwd(), "src/stats/reviewPdfExport.ts"),
-      "utf8",
-    );
-    expect(src).toContain("makeTurnoverVisualPage(");
-    expect(src).toContain("renderEventMarkers(ctx, wonEvts, leftInner)");
-    expect(src).toContain("renderEventMarkers(ctx, lostEvts, rightInner)");
-  });
-});
-
-describe("Turnover & Territory — regression guard against a687d965 invented scopes", () => {
-  it("does not export pdfTurnoverMapEvents helper (replaced by allTurnoverEvts inline filter)", async () => {
-    const mod = await import("../reviewPdfExport");
-    expect("pdfTurnoverMapEvents" in mod).toBe(false);
-    expect("pdfTurnoverWonEvents" in mod).toBe(false);
+    expect(purple).toBe(7);
+    expect(orange).toBe(5);
   });
 });

@@ -11753,7 +11753,43 @@ function makeRestartBattlePage(
  *
  * Callouts: DANGER ZONE on high-loss zones; teal PRESSURE ZONE on best win zone.
  */
-function makeTurnoverTerritoryPage(
+const TURNOVER_TERRITORY_WON_COLOR  = "#a78bfa";
+const TURNOVER_TERRITORY_LOST_COLOR = "#f97316";
+
+/**
+ * Turnover & Territory markers — outcome colours, not raw event kind.
+ * wonEvts / lostEvts match the Territory Balance card; opposition gains logged
+ * as TURNOVER_WON/OPP must render orange, not purple.
+ */
+function renderTurnoverTerritoryMarkers(
+  ctx: CanvasRenderingContext2D,
+  wonEvts: readonly PdfExportEvent[],
+  lostEvts: readonly PdfExportEvent[],
+  inner: InnerPitch,
+): void {
+  const r = Math.max(9, inner.w * 0.007);
+
+  const drawCircle = (event: PdfExportEvent, fill: string): void => {
+    const ex = typeof event.x === "number" ? event.x : event.nx;
+    const ey = typeof event.y === "number" ? event.y : event.ny;
+    if (ex == null || ey == null || !isFinite(ex) || !isFinite(ey)) return;
+
+    const cx = inner.x + ex * inner.w;
+    const cy = inner.y + ey * inner.h;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.70)";
+    ctx.lineWidth = 1.8;
+    ctx.stroke();
+  };
+
+  for (const event of wonEvts) drawCircle(event, TURNOVER_TERRITORY_WON_COLOR);
+  for (const event of lostEvts) drawCircle(event, TURNOVER_TERRITORY_LOST_COLOR);
+}
+
+export function makeTurnoverTerritoryPage(
   events: readonly PdfExportEvent[],
   report: MatchReport<PdfExportEvent>,
   sport: PitchSport,
@@ -11781,14 +11817,12 @@ function makeTurnoverTerritoryPage(
     (e) => (e.kind === "TURNOVER_LOST" && e.teamSide === "FOR") ||
            (e.kind === "TURNOVER_WON"  && e.teamSide === "OPP"),
   );
-  const allTurnoverEvts = events.filter((e) => PDF_KIND_SETS.TURNOVERS.has(e.kind));
 
   // ── Pitch ─────────────────────────────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  // ── Event markers — dots tell the story ──────────────────────────────────
-  // Purple = turnover won  ·  Orange = turnover lost
-  renderHtMarkers(ctx, allTurnoverEvts, inner);
+  // ── Event markers — outcome colours (won = purple · lost = orange) ────────
+  renderTurnoverTerritoryMarkers(ctx, wonEvts, lostEvts, inner);
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
@@ -11895,7 +11929,7 @@ function makeTurnoverTerritoryPage(
     ctx.fillText(display, px + TEXT_X, contentY + 15 + 10);
   }
   ctx.restore();
-  drawEventCountFooter(ctx, allTurnoverEvts.length);
+  drawEventCountFooter(ctx, wonEvts.length + lostEvts.length);
   return canvas;
 }
 
