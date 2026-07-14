@@ -10,6 +10,7 @@ import type { ChainableEvent, ChainAnalysis } from "../chains/chain-types";
 import type { LedgerRowId } from "../ledger/scoreLedger";
 import { isPlacedScore } from "../ledger/scoreLedger";
 import { eventSource } from "../eventSource";
+import { resolveRestartOwner } from "../restarts/restartMetrics";
 import type { MatchReport } from "./matchReport";
 import {
   breakdownFromScoreEvents,
@@ -46,6 +47,28 @@ export function viewRestartOriginConcededFor<T extends ChainableEvent>(
   analysis: ChainAnalysis<T>,
 ): ScoringBreakdown {
   return viewRestartOriginScoredOpp(analysis);
+}
+
+/**
+ * Scores conceded from kickouts this team physically took and lost
+ * (restartOwner = FOR, winner = OPP) — narrower than
+ * viewRestartOriginConcededFor, which also includes scores off restarts
+ * the opposition took and retained (their own restart, not ours to lose).
+ * Pair only with an own-kickout-lost occurrence count (e.g.
+ * RestartTeamMetrics.ownRestartsLost) — never with the all-restarts figure.
+ */
+export function viewOwnKickoutLossOriginConcededFor<T extends ChainableEvent>(
+  analysis: ChainAnalysis<T>,
+): ScoringBreakdown {
+  const events = analysis.kickouts.outcomes
+    .filter(
+      (o) =>
+        resolveRestartOwner(o.kickoutEvent) === "FOR"
+        && o.winningSide === "OPP"
+        && o.nextScore != null,
+    )
+    .map((o) => o.nextScore!);
+  return breakdownFromScoreEvents(events);
 }
 
 export function viewTurnoverOriginScoredFor<T extends ChainableEvent>(
@@ -166,6 +189,12 @@ export function fmtRestartOriginConcededFor<T extends ChainableEvent>(
   analysis: ChainAnalysis<T>,
 ): string {
   return formatScoringBreakdown(viewRestartOriginConcededFor(analysis));
+}
+
+export function fmtOwnKickoutLossOriginConcededFor<T extends ChainableEvent>(
+  analysis: ChainAnalysis<T>,
+): string {
+  return formatScoringBreakdown(viewOwnKickoutLossOriginConcededFor(analysis));
 }
 
 export function fmtTurnoverOriginScoredFor<T extends ChainableEvent>(

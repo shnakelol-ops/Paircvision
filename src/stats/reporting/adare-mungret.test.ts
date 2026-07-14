@@ -227,9 +227,12 @@ describe("Adare v Mungret — PDF coach-facing output", () => {
     expect(allCoachText).toContain("Restart Share Won");
     expect(allCoachText).toContain("Restart Share Conceded");
     expect(allCoachText).toContain("Placed Attempts");
-    expect(
-      allCoachText.includes("Adare lost 10 of 22 own kickouts")
-        || allCoachText.includes("Adare won 22 of the match's 42 restarts"),
-    ).toBe(true);
+    // KICKOUT RISK (DANGER_CHAIN) must not mis-pair Adare's own-kickout-loss
+    // count with a score that actually came from Mungret's own successfully
+    // -retained kickout — none of Adare's 10 own-kickout losses in this
+    // fixture are followed directly by a Mungret score (that score comes
+    // from Mungret's own retained restart instead), so the card must not
+    // render this mismatched claim at all.
+    expect(allCoachText).not.toContain("Adare lost 10 of 22 own kickouts —");
   });
 });

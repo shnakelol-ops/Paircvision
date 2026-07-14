@@ -1,7 +1,9 @@
 import type { ChainableEvent, ChainAnalysis } from "./chain-types";
 import type { RestartTeamMetrics } from "../reporting/restartTeamMetrics";
 import { formatOwnKickoutsLost } from "../reporting/restartTeamMetrics";
+import { resolveRestartOwner } from "../restarts/restartMetrics";
 import {
+  fmtOwnKickoutLossOriginConcededFor,
   fmtRestartOriginConcededFor,
   fmtRestartOriginScoredFor,
   fmtTurnoverOriginConcededFor,
@@ -130,11 +132,17 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
   const shareTotal = forRestarts?.restartShareTotal ?? ko.total;
 
   // ── 1. KICKOUT RISK (DANGER_CHAIN) ─────────────────────────────────────────
-  // OPP scored directly from kickouts we conceded on our own restarts.
-  if (cpQualifies(ko.lostAllowedScore, ownLost, 0, mode)) {
-    const trapOutcomes = ko.outcomes.filter(
-      (o) => o.winningSide === "OPP" && o.nextScore !== null,
-    );
+  // OPP scored directly from kickouts we took and lost. The occurrence count
+  // (ownLost) and the score breakdown below must share one population —
+  // restartOwner = FOR, winner = OPP — never paired with the broader
+  // all-restarts-lost figure, which also includes restarts the opposition
+  // took and retained (their own restart, not ours to have lost).
+  const ownLostOutcomes = ko.outcomes.filter(
+    (o) => resolveRestartOwner(o.kickoutEvent) === "FOR" && o.winningSide === "OPP",
+  );
+  const ownLostAllowedScore = ownLostOutcomes.filter((o) => o.nextScore !== null).length;
+  if (cpQualifies(ownLostAllowedScore, ownLost, 0, mode)) {
+    const trapOutcomes = ownLostOutcomes.filter((o) => o.nextScore !== null);
     const zone = cpDominantZone(
       trapOutcomes.map((o) => ({ nx: o.kickoutEvent.nx, ny: o.kickoutEvent.ny })),
     );
@@ -145,11 +153,11 @@ export function rankChainPatterns<TEvent extends ChainableEvent>(
       kind:          "DANGER_CHAIN",
       badge:         "KICKOUT RISK",
       headline:      "Kickout Loss → Score",
-      observation:   `${ownLostLabel} — ${fmtRestartOriginConcededFor(analysis)} for ${opp}`,
-      primaryMetric: ko.lostAllowedScore,
+      observation:   `${ownLostLabel} — ${fmtOwnKickoutLossOriginConcededFor(analysis)} for ${opp}`,
+      primaryMetric: ownLostAllowedScore,
       metricLabel:   "opposition scores",
       occurrences:   ownLost,
-      priorityScore: ko.lostAllowedScore * 5 + ownLost * 2,
+      priorityScore: ownLostAllowedScore * 5 + ownLost * 2,
       side:          "OPP",
       zoneCol:       zone?.col ?? null,
       zoneRow:       zone?.row ?? null,
