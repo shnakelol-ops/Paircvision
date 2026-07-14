@@ -700,34 +700,131 @@ function renderPitch(
   };
 }
 
+// ─── PDF map event scoping (rendering only — mirrors summary card counts) ───
+
+/** FOR gained possession from a turnover (same scope as Turnover Analysis left pitch). */
+export function pdfTurnoverWonEvents(events: readonly PdfExportEvent[]): PdfExportEvent[] {
+  return events.filter(
+    (e) => (e.kind === "TURNOVER_WON"  && e.teamSide === "FOR") ||
+           (e.kind === "TURNOVER_LOST" && e.teamSide === "OPP"),
+  );
+}
+
+/** Opposition gained possession from a turnover (same scope as Turnover Analysis right pitch). */
+export function pdfTurnoverLostEvents(events: readonly PdfExportEvent[]): PdfExportEvent[] {
+  return events.filter(
+    (e) => (e.kind === "TURNOVER_LOST" && e.teamSide === "FOR") ||
+           (e.kind === "TURNOVER_WON"  && e.teamSide === "OPP"),
+  );
+}
+
+/** All turnover markers on Turnover & Territory — won + lost, deduped by event id. */
+export function pdfTurnoverMapEvents(events: readonly PdfExportEvent[]): PdfExportEvent[] {
+  const seen = new Set<string>();
+  const out: PdfExportEvent[] = [];
+  for (const e of [...pdfTurnoverWonEvents(events), ...pdfTurnoverLostEvents(events)]) {
+    if (seen.has(e.id)) continue;
+    seen.add(e.id);
+    out.push(e);
+  }
+  return out;
+}
+
+export function pdfRestartOwner(
+  e: PdfExportEvent,
+): "FOR" | "OPP" {
+  return e.restartOwner != null ? e.restartOwner : e.teamSide;
+}
+
+export function pdfRestartWinner(
+  e: PdfExportEvent,
+): "FOR" | "OPP" {
+  return e.kind === "KICKOUT_WON"
+    ? e.teamSide
+    : e.teamSide === "FOR" ? "OPP" : "FOR";
+}
+
+/** Restarts taken by owner — includes both retained (WON) and lost (CONCEDED). */
+export function pdfRestartOwnerEvents(
+  events: readonly PdfExportEvent[],
+  owner: "FOR" | "OPP",
+): PdfExportEvent[] {
+  return events.filter(
+    (e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && pdfRestartOwner(e) === owner,
+  );
+}
+
+export function pdfRestartRetainedEvents(
+  events: readonly PdfExportEvent[],
+  owner: "FOR" | "OPP",
+): PdfExportEvent[] {
+  return pdfRestartOwnerEvents(events, owner).filter((e) => pdfRestartWinner(e) === owner);
+}
+
+export function pdfRestartLostEvents(
+  events: readonly PdfExportEvent[],
+  owner: "FOR" | "OPP",
+): PdfExportEvent[] {
+  return pdfRestartOwnerEvents(events, owner).filter((e) => pdfRestartWinner(e) !== owner);
+}
+
+/** Possession frees won by beneficiary (FREE_WON on their side + FREE_CONCEDED by opponent). */
+export function pdfFreePossessionWonEvents(
+  events: readonly PdfExportEvent[],
+  beneficiary: "FOR" | "OPP",
+): PdfExportEvent[] {
+  return events.filter(
+    (e) => (e.kind === "FREE_WON" && e.teamSide === beneficiary) ||
+           (e.kind === "FREE_CONCEDED" && e.teamSide === (beneficiary === "FOR" ? "OPP" : "FOR")),
+  );
+}
+
+/** Possession frees conceded by team (FREE_CONCEDED on their side + FREE_WON by opponent). */
+export function pdfFreePossessionConcededEvents(
+  events: readonly PdfExportEvent[],
+  team: "FOR" | "OPP",
+): PdfExportEvent[] {
+  return events.filter(
+    (e) => (e.kind === "FREE_CONCEDED" && e.teamSide === team) ||
+           (e.kind === "FREE_WON" && e.teamSide === (team === "FOR" ? "OPP" : "FOR")),
+  );
+}
+
+/** Map markers for one team's free possession — FREE_WON + FREE_CONCEDED they logged. */
+export function pdfFreeMapEvents(
+  events: readonly PdfExportEvent[],
+  team: "FOR" | "OPP",
+): PdfExportEvent[] {
+  return events.filter(
+    (e) => (e.kind === "FREE_WON" || e.kind === "FREE_CONCEDED") && e.teamSide === team,
+  );
+}
+
+/** Count events with valid pitch coordinates (matches renderer skip logic). */
+export function pdfCountPlottableMarkers(events: readonly PdfExportEvent[]): number {
+  let n = 0;
+  for (const event of events) {
+    const ex = typeof event.x === "number" ? event.x : event.nx;
+    const ey = typeof event.y === "number" ? event.y : event.ny;
+    if (ex != null && ey != null && isFinite(ex) && isFinite(ey)) n++;
+  }
+  return n;
+}
+
 /**
  * Draws coloured event markers onto the pitch.
  * Positions are mapped from normalised (nx, ny) → canvas pixels using the
  * inner pitch bounds returned by renderPitch().
+ *
+ * Delegates to renderHtMarkers so won/retained (circles) and lost/conceded (✕)
+ * use the same visual language as HT vision map pages.
  */
 function renderEventMarkers(
   ctx: CanvasRenderingContext2D,
   events: readonly PdfExportEvent[],
   inner: InnerPitch,
 ): void {
-  const r = Math.max(7, inner.w * 0.006);
-  for (const event of events) {
-    const ex = typeof event.x === "number" ? event.x : event.nx;
-    const ey = typeof event.y === "number" ? event.y : event.ny;
-    // Skip rendering if coordinates are invalid
-    if (ex == null || ey == null || !isFinite(ex) || !isFinite(ey)) {
-      continue;
-    }
-    const cx = inner.x + ex * inner.w;
-    const cy = inner.y + ey * inner.h;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = EVENT_COLORS[event.kind] ?? "#ffffff";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.65)";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-  }
+  renderHtMarkers(ctx, events, inner);
 }
 
 
@@ -6666,16 +6763,11 @@ function makeRestartVisualPage(
   drawPageHeader(ctx, "Restart Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Ownership helpers (V1.2+ explicit; legacy fallback = teamSide) ─────────
-  const getOwner = (e: PdfExportEvent): "FOR" | "OPP" =>
-    e.restartOwner != null ? e.restartOwner : e.teamSide as "FOR" | "OPP";
+  const getOwner = (e: PdfExportEvent): "FOR" | "OPP" => pdfRestartOwner(e);
 
   // ── Event subsets — ownership-based (who physically took the restart) ────
-  const forOwnedEvts = events.filter(
-    (e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwner(e) === "FOR",
-  );
-  const oppOwnedEvts = events.filter(
-    (e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwner(e) === "OPP",
-  );
+  const forOwnedEvts = pdfRestartOwnerEvents(events, "FOR");
+  const oppOwnedEvts = pdfRestartOwnerEvents(events, "OPP");
 
   // ── Chain data (hoisted before pitches for callout bullets) ─────────────
   // Chain analysis uses the involvement layer (unchanged) — do not modify.
@@ -6851,14 +6943,9 @@ function makeTurnoverVisualPage(
   drawPageHeader(ctx, "Turnover Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Event subsets ─────────────────────────────────────────────────────────
-  const wonEvts  = events.filter(
-    (e) => (e.kind === "TURNOVER_WON"  && e.teamSide === "FOR") ||
-           (e.kind === "TURNOVER_LOST" && e.teamSide === "OPP"),
-  );
-  const lostEvts = events.filter(
-    (e) => (e.kind === "TURNOVER_LOST" && e.teamSide === "FOR") ||
-           (e.kind === "TURNOVER_WON"  && e.teamSide === "OPP"),
-  );
+  const wonEvts  = pdfTurnoverWonEvents(events);
+  const lostEvts = pdfTurnoverLostEvents(events);
+  const mapEvts  = pdfTurnoverMapEvents(events);
 
   // ── Chain data (hoisted before pitches for callout bullets) ─────────────
   const outcomes = analysis.turnovers.outcomes;
@@ -7007,12 +7094,8 @@ function makeFreeAnalysisPage(
   drawPageHeader(ctx, "Free Kick Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Event subsets ─────────────────────────────────────────────────────────
-  const forFreeEvts = events.filter(
-    (e) => isFreeRelatedPdfEvent(e) && tacticalSide(e) === "FOR",
-  );
-  const oppFreeEvts = events.filter(
-    (e) => isFreeRelatedPdfEvent(e) && tacticalSide(e) === "OPP",
-  );
+  const forFreeEvts = pdfFreeMapEvents(events, "FOR");
+  const oppFreeEvts = pdfFreeMapEvents(events, "OPP");
 
   // ── Derived stats (hoisted before pitches for callout bullets) ───────────
   const forEvts = events.filter((e) => e.teamSide === "FOR" && !e.id.includes("-instant-score-"));
@@ -7720,7 +7803,7 @@ const HT_MARKER_COLORS: Partial<Record<MatchEventKind, string>> = {
   TWO_POINTER:          "#fbbf24",   // gold circle
   FORTY_FIVE_TWO_POINT: "#fbbf24",   // gold circle (same as 2pt)
   FREE_SCORED:          "#4ade80",   // light green (score = point)
-  // WIDE / FREE_MISSED / KICKOUT_CONCEDED → drawn as ✕, handled separately
+  // WIDE / FREE_MISSED / KICKOUT_CONCEDED / FREE_CONCEDED → drawn as ✕, handled separately
   KICKOUT_WON:          "#22d3ee",   // cyan
   TURNOVER_WON:         "#a78bfa",   // purple
   TURNOVER_LOST:        "#f97316",   // orange
@@ -7735,7 +7818,7 @@ const HT_MARKER_COLORS: Partial<Record<MatchEventKind, string>> = {
  * Visual language (coach reads at arm's length in 3 seconds, outdoors):
  *   SCORE (GOAL, POINT, FREE_SCORED…) — filled coloured circle; GOAL is 38% larger
  *   WIDE / FREE_MISSED                — red ✕              (possession wasted)
- *   KICKOUT_CONCEDED                  — pink ✕             (restart territory lost)
+ *   KICKOUT_CONCEDED / FREE_CONCEDED  — pink ✕             (possession conceded)
  *   SHOT + BLOCK_SAVE tag             — grey hollow ring    (keeper stopped it)
  *   SHOT + SHORT tag                  — grey ↓             (possession ceded short)
  *   SHOT (other)                      — grey filled circle  (neutral / blocked attempt)
@@ -7763,9 +7846,11 @@ function renderHtMarkers(
 
     ctx.save();
 
-    if (kind === "WIDE" || kind === "FREE_MISSED" || kind === "KICKOUT_CONCEDED") {
-      // ✕ marker: red for WIDE/FREE_MISSED (miss = waste), pink for KICKOUT_CONCEDED (restart lost)
-      const color = kind === "KICKOUT_CONCEDED" ? "#fb7185" : "#ef4444";
+    if (kind === "WIDE" || kind === "FREE_MISSED" || kind === "KICKOUT_CONCEDED" || kind === "FREE_CONCEDED") {
+      // ✕ marker: red for WIDE/FREE_MISSED (miss = waste), pink for conceded restarts/frees
+      const color = kind === "KICKOUT_CONCEDED" ? "#fb7185"
+        : kind === "FREE_CONCEDED" ? "#f472b6"
+        : "#ef4444";
       const sz = r * 0.90;
 
       // Dark halo first (separates X from pitch lines)
@@ -11774,21 +11859,15 @@ function makeTurnoverTerritoryPage(
   drawPageHeader(ctx, "Turnover & Territory", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Event subsets ─────────────────────────────────────────────────────────
-  const wonEvts = events.filter(
-    (e) => e.kind === "TURNOVER_WON" && e.teamSide === "FOR",
-  );
-  const lostEvts = events.filter(
-    (e) => (e.kind === "TURNOVER_LOST" && e.teamSide === "FOR") ||
-           (e.kind === "TURNOVER_WON"  && e.teamSide === "OPP"),
-  );
-  const allTurnoverEvts = events.filter((e) => PDF_KIND_SETS.TURNOVERS.has(e.kind));
+  const wonEvts  = pdfTurnoverWonEvents(events);
+  const lostEvts = pdfTurnoverLostEvents(events);
+  const mapEvts  = pdfTurnoverMapEvents(events);
 
   // ── Pitch ─────────────────────────────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
-  // ── Event markers — dots tell the story ──────────────────────────────────
-  // Purple = turnover won  ·  Orange = turnover lost
-  renderHtMarkers(ctx, allTurnoverEvts, inner);
+  // ── Event markers — scoped to match Territory Balance card (won + lost) ───
+  renderHtMarkers(ctx, mapEvts, inner);
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
@@ -11895,7 +11974,7 @@ function makeTurnoverTerritoryPage(
     ctx.fillText(display, px + TEXT_X, contentY + 15 + 10);
   }
   ctx.restore();
-  drawEventCountFooter(ctx, allTurnoverEvts.length);
+  drawEventCountFooter(ctx, mapEvts.length);
   return canvas;
 }
 
