@@ -8,6 +8,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  exportReviewPdf,
   makeOppShotProfilePage,
   makeOurShotProfilePage,
 } from "../reviewPdfExport";
@@ -144,5 +145,79 @@ describe("Shot Profile zone labels — Adare v Mungret, attacking LEFT in H1", (
     ) as unknown as CaptureCanvas;
 
     expect(zoneLabelFromCanvas(ourCanvas)).toBe(zoneLabelFromCanvas(oppCanvas));
+  });
+});
+
+describe("Full Review PDF Zone Analysis — homeAttackingDirection threaded end to end", () => {
+  // Regression for the gap where StatsModeSurface.tsx's "Export PDF" button
+  // called exportReviewPdf() without homeAttackingDirection at all (it
+  // silently defaulted to "RIGHT"), even though HT/FT Snapshot already
+  // threaded the real value — the Full Review's Zone Analysis page is the
+  // one report surface that must also get this right when the caller
+  // supplies homeAttackingDirection, exactly as the fixed call site does.
+  const capturedTexts: string[] = [];
+
+  class GlobalCaptureCanvasContext extends CaptureCanvasContext {
+    override fillText(text: string) {
+      capturedTexts.push(text);
+      super.fillText(text);
+    }
+  }
+
+  class GlobalCaptureCanvas {
+    width = 1920;
+    height = 1080;
+    readonly ctx = new GlobalCaptureCanvasContext();
+    getContext() {
+      return this.ctx as unknown as CanvasRenderingContext2D;
+    }
+    toDataURL() {
+      return "data:image/jpeg;base64,AAAA";
+    }
+  }
+
+  beforeEach(() => {
+    capturedTexts.length = 0;
+    class MockPath2D {
+      constructor(_d?: string) {}
+    }
+    (globalThis as unknown as { Path2D: typeof MockPath2D }).Path2D = MockPath2D;
+    (globalThis as { document?: unknown }).document = {
+      createElement(tag: string) {
+        if (tag === "canvas") return new GlobalCaptureCanvas();
+        return {};
+      },
+    };
+  });
+
+  it("Zone Analysis reads Attacking Centre when homeAttackingDirection is LEFT", async () => {
+    const events = adareZoneFixture();
+    await exportReviewPdf({
+      events: events as PdfExportEvent[],
+      homeTeamName: "Adare",
+      awayTeamName: "Mungret",
+      sport: "gaelic",
+      homeAttackingDirection: "LEFT",
+    });
+
+    const zoneLine = capturedTexts.find((t) => /^Most scores for:/.test(t));
+    expect(zoneLine).toBeDefined();
+    expect(zoneLine).toContain("Attacking Centre");
+  });
+
+  it("Zone Analysis mislabels (Defensive, not Attacking) when the direction is omitted — proves the export path must supply it", async () => {
+    const events = adareZoneFixture();
+    await exportReviewPdf({
+      events: events as PdfExportEvent[],
+      homeTeamName: "Adare",
+      awayTeamName: "Mungret",
+      sport: "gaelic",
+      // homeAttackingDirection intentionally omitted — this is the exact bug
+      // that used to exist at StatsModeSurface.tsx's handleExportPdf call site.
+    });
+
+    const zoneLine = capturedTexts.find((t) => /^Most scores for:/.test(t));
+    expect(zoneLine).toBeDefined();
+    expect(zoneLine).not.toContain("Attacking Centre");
   });
 });
