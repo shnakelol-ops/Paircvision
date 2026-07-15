@@ -115,7 +115,7 @@ export function restartAttributionFootnote(sport?: PitchSport): string {
 
 /** Short attribution footnote for tight card/panel layouts. */
 export function restartAttributionFootnoteShort(): string {
-  return "Origin chains include frees won in the possession. The ledger counts those under Placed balls.";
+  return "Origin possessions include later frees won during the same possession. The scoring ledger attributes those scores to placed balls.";
 }
 
 /** Coach-facing section heading for restart-origin scoring panels. */

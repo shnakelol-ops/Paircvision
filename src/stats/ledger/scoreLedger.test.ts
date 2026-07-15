@@ -175,8 +175,20 @@ describe("buildScoreLedger — spec fixture acceptance", () => {
   });
 
   it("ledger rows use the direct-attribution vocabulary", () => {
-    expect(LEDGER_ROW_LABELS.RESTART_WON).toBe("Direct restart scores");
-    expect(LEDGER_ROW_LABELS.TURNOVER_WON).toBe("Direct turnover scores");
+    expect(LEDGER_ROW_LABELS.RESTART_WON).toBe("Direct scores attributed to restarts");
+    expect(LEDGER_ROW_LABELS.TURNOVER_WON).toBe("Direct scores attributed to turnovers");
+  });
+
+  it("direct-attribution labels stay textually distinct from origin-possession wording", () => {
+    // Direct (ledger) and origin (chain) are two legitimate but different
+    // attribution models — a coach must never be able to mistake one row
+    // for the other because the wording overlapped.
+    expect(LEDGER_ROW_LABELS.RESTART_WON).not.toContain("origin");
+    expect(LEDGER_ROW_LABELS.TURNOVER_WON).not.toContain("origin");
+    const footnote = restartOriginBridgeNote({ us: 0, them: 0 }, "A", "B");
+    expect(footnote).toContain("Origin possessions");
+    expect(footnote).not.toBe(LEDGER_ROW_LABELS.RESTART_WON);
+    expect(footnote).not.toBe(LEDGER_ROW_LABELS.TURNOVER_WON);
   });
 
   it("renders an unattributed row only when a score cannot be classified", () => {
@@ -232,12 +244,12 @@ describe("origin ↔ direct reconciliation bridge", () => {
 
   it("words the bridging footnote with the computed counts", () => {
     expect(restartOriginBridgeNote({ us: 1, them: 1 }, "Ballylanders", "St.Patricks")).toBe(
-      "Origin counts include 2 placed frees won inside kickout-origin possessions " +
-      "(Ballylanders 1 · St.Patricks 1) — counted under Placed balls in the scoring ledger.",
+      "Origin possessions include 2 placed frees won during kickout-origin possessions " +
+      "(Ballylanders 1 · St.Patricks 1) — the scoring ledger attributes those scores to placed balls.",
     );
     // Zero bridge falls back to the generic attribution wording
     expect(restartOriginBridgeNote({ us: 0, them: 0 }, "A", "B")).toBe(
-      "Origin chains include frees won in the possession. The ledger counts those under Placed balls.",
+      "Origin possessions include later frees won during the same possession. The scoring ledger attributes those scores to placed balls.",
     );
   });
 });

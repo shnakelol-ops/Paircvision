@@ -159,7 +159,7 @@ describe("canonical naming rules", () => {
       "separately, so ledger sources sum to the final margin.",
     );
     expect(restartAttributionFootnoteShort()).toBe(
-      "Origin chains include frees won in the possession. The ledger counts those under Placed balls.",
+      "Origin possessions include later frees won during the same possession. The scoring ledger attributes those scores to placed balls.",
     );
   });
 
