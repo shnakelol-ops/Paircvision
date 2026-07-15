@@ -74,7 +74,15 @@ function toSquadPlayers(squad: readonly RapidSquadPlayer[] | undefined): readonl
   }));
 }
 
-/** Builds the shared PDF pipeline's input from a Rapid Capture saved match — feeds both Full Review and (via the snapshot variant below) HT/FT Snapshot PDFs. */
+/**
+ * Builds the shared PDF pipeline's input from a Rapid Capture saved match —
+ * feeds both Full Review and (via the snapshot variant below) HT/FT Snapshot
+ * PDFs. Sets homeAttackingDirection here (not only on the snapshot variant)
+ * because exportReviewPdf threads it into every zone-oriented Full Review
+ * page exactly like exportSnapshotPdf already does — mirrors Match Stats'
+ * StatsModeSurface.tsx (handleExportPdf) and Event Stats'
+ * proTaggerMatchToPdfInput, both of which set it on their Review input too.
+ */
 export function rapidSessionToReviewPdfInput(match: RapidSavedMatch): ReviewPdfExportInput {
   const session: RapidSession = match.session;
   return {
@@ -85,6 +93,7 @@ export function rapidSessionToReviewPdfInput(match: RapidSavedMatch): ReviewPdfE
     sport: toPitchSport(session.sport),
     homeSquadPlayers: toSquadPlayers(session.forSquad),
     awaySquadPlayers: toSquadPlayers(session.oppSquad),
+    homeAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
   };
 }
 
@@ -95,7 +104,6 @@ export function rapidMatchToSnapshotPdfInput(
   return {
     ...rapidSessionToReviewPdfInput(match),
     snapshotMode,
-    homeAttackingDirection: match.session.attackDirection === "left" ? "LEFT" : "RIGHT",
   };
 }
 

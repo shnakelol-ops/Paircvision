@@ -13,6 +13,7 @@ import type {
 } from "./rapid-session";
 import { RapidSignalBar } from "./RapidSignalBar";
 import {
+  buildRapidExportPayload,
   clearActiveRapidSession,
   deleteSavedRapidMatch,
   listSavedRapidMatches,
@@ -727,26 +728,7 @@ function RapidLiveScreen({
 
   const handleExport = useCallback(() => {
     if (loggedEvents.length === 0) return;
-    const payload = JSON.stringify(
-      {
-        version: 2,
-        session: {
-          sport: session.sport,
-          forTeamName: session.forTeamName,
-          oppTeamName: session.oppTeamName,
-          venue: session.venue,
-          matchType: session.matchType,
-          forTeamColour: session.forTeamColour,
-          oppTeamColour: session.oppTeamColour,
-          attackDirection: session.attackDirection,
-          halfDurationMinutes: session.halfDurationMinutes,
-        },
-        events: loggedEvents,
-        exportedAt: new Date().toISOString(),
-      },
-      null,
-      2,
-    );
+    const payload = JSON.stringify(buildRapidExportPayload(session, loggedEvents), null, 2);
     const blob = new Blob([payload], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

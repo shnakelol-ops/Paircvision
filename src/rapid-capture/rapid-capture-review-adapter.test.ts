@@ -80,6 +80,22 @@ describe("rapidSessionToReviewPdfInput — field mapping", () => {
     expect(input.homeSquadPlayers).toBeUndefined();
     expect(input.awaySquadPlayers).toBeUndefined();
   });
+
+  // Regression: exportReviewPdf's Full Review PDF threads homeAttackingDirection
+  // into every zone-oriented page (Zone Analysis, Shot Pitch Maps, Restart/
+  // Turnover/Free Kick breakdowns) exactly like exportSnapshotPdf already does.
+  // StatsModeSurface.tsx (Match Stats) and pro-tagger-review-adapter.ts (Event
+  // Stats) both supply this field on their *Review* input, not just their
+  // Snapshot input. Without it, exportReviewPdf's own default of "RIGHT" silently
+  // overrides any match where the team actually attacked LEFT in the first half —
+  // this was the exact bug PR #246 Phase 4 fixed for Match Stats' handleExportPdf.
+  it("maps attackDirection to homeAttackingDirection on the Full Review input, mirroring the Snapshot input", () => {
+    const leftMatch = buildMatch({ session: { ...session, attackDirection: "left" } });
+    expect(rapidSessionToReviewPdfInput(leftMatch).homeAttackingDirection).toBe("LEFT");
+
+    const rightMatch = buildMatch({ session: { ...session, attackDirection: "right" } });
+    expect(rapidSessionToReviewPdfInput(rightMatch).homeAttackingDirection).toBe("RIGHT");
+  });
 });
 
 describe("rapidSessionToReviewPdfInput — event field passthrough", () => {

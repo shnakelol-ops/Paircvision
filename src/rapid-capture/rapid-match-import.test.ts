@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { createMatchEvent } from "../core/stats/stats-event-model";
 import { createReviewSession } from "../stats/reviewSession";
 import type { RapidSession } from "./rapid-session";
+import type { RapidMatchEvent } from "./rapid-capture-events";
 import { deriveHalfAndClockFromEvents, parseImportedMatchFile } from "./rapid-match-import";
+import { buildRapidExportPayload } from "./rapid-capture-storage";
 
 const session: RapidSession = {
   sport: "hurling",
@@ -36,6 +38,36 @@ describe("Rapid Capture format", () => {
     expect(result.match.session.forTeamName).toBe("Ballyboden");
     expect(result.match.events.map((e) => e.kind)).toEqual(["KICKOUT_WON", "POINT"]);
     expect(result.match.events.map((e) => e.timestamp)).toEqual([12, 950]);
+  });
+
+  // Regression: "Export JSON" (RapidCaptureLitePage.tsx's handleExport, via
+  // buildRapidExportPayload) must round-trip through its own "Import JSON"
+  // path without losing the squad roster. Losing forSquad/oppSquad here means
+  // every player in Review, Player Breakdown, Player Influence, and every PDF
+  // falls back to a bare jersey number — no name survives the reload, even
+  // though playerNumber-level attribution on each event is untouched.
+  it("round-trips forSquad/oppSquad through export -> JSON -> import", () => {
+    const sessionWithSquads: RapidSession = {
+      ...session,
+      forSquad: [{ id: "p1", number: 3, name: "A. Player" }, { id: "p2", number: 9, name: "B. Player" }],
+      oppSquad: [{ id: "p3", number: 5, name: "C. Player" }],
+    };
+    const events: RapidMatchEvent[] = sampleEvents as unknown as RapidMatchEvent[];
+
+    const payload = buildRapidExportPayload(sessionWithSquads, events);
+    const raw = JSON.stringify(payload);
+    const result = parseImportedMatchFile(raw);
+
+    expect(result.status).toBe("ok");
+    if (result.status === "error") return;
+    expect(result.match.session.forSquad).toEqual(sessionWithSquads.forSquad);
+    expect(result.match.session.oppSquad).toEqual(sessionWithSquads.oppSquad);
+  });
+
+  it("omits forSquad/oppSquad on export when no roster was ever set, rather than emitting an empty array", () => {
+    const payload = buildRapidExportPayload(session, sampleEvents as unknown as RapidMatchEvent[]);
+    expect(payload.session.forSquad).toBeUndefined();
+    expect(payload.session.oppSquad).toBeUndefined();
   });
 });
 
