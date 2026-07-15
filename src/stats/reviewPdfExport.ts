@@ -1742,7 +1742,7 @@ function makePlayerPages(
  *
  * Players with zero logged events never appear here.
  */
-function makePlayerInfluencePage(
+export function makePlayerInfluencePage(
   events: readonly PdfExportEvent[],
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
@@ -1762,12 +1762,22 @@ function makePlayerInfluencePage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Top Players by Influence Index", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Top Players by Net Influence", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  ctx.save();
+  ctx.fillStyle = "#64748b";
+  ctx.font = "italic 14px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(
+    "Net contribution combines scoring, possession wins and losses, restarts, frees and assisted scoring actions.",
+    24, 86,
+  );
+  ctx.restore();
   drawEventCountFooter(ctx, events.filter((e) => !e.id.includes("-instant-score-")).length);
 
   const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam, homeSquadPlayers, awaySquadPlayers);
 
-  const CONTENT_TOP = 86;
+  const CONTENT_TOP = 106;
   const L_COL_X = 24;
   const R_COL_X = 968;
   const COL_W   = 928;
@@ -4810,7 +4820,7 @@ function makeOppositionSnapshotPage(
  * Intelligence bullets: unchanged deterministic text from original Zone Notes strip.
  * Safari < 15.4 safe — no ctx.roundRect.
  */
-function makeZoneAnalysisPage(
+export function makeZoneAnalysisPage(
   events: readonly PdfExportEvent[],
   sport: PitchSport,
   homeTeam: string,
@@ -4961,7 +4971,7 @@ function makeZoneAnalysisPage(
   const CALLOUT_H = 120;
   const INNER_H   = DP_PITCH_H - CALLOUT_H;
 
-  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `${homeTeam} Zone Activity`,        forTotal, "#34d399");
+  dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `${homeTeam} Attacking Activity — Scores + Turnovers Won`, forTotal, "#34d399");
   dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Most scoring: ${forScoreHots[0]?.label ?? "No data"}`,
     `Turnovers won: ${forTvWonHots[0]?.label ?? "No data"}`,
@@ -4971,7 +4981,7 @@ function makeZoneAnalysisPage(
   const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
   renderZoneOverlay(forActivityCounts, leftInner, "#34d399");
 
-  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `${awayTeam} Zone Activity`, oppTotal, "#f87171");
+  dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `${awayTeam} Attacking Activity — Scores + Turnovers Won`, oppTotal, "#f87171");
   dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Opposition scoring: ${oppScoreHots[0]?.label ?? "No data"}`,
     `Opposition gains: ${oppGainHots[0]?.label ?? "No data"}`,
@@ -5008,7 +5018,7 @@ function makeZoneAnalysisPage(
     const maxScoringHot = Math.max(forScoreHots[0]?.count ?? 0, oppScoreHots[0]?.count ?? 0) || 1;
     const maxTvHot      = Math.max(forTvWonHots[0]?.count ?? 0, oppGainHots[0]?.count ?? 0)  || 1;
 
-    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "SCORING ZONES", "#4ade80");
+    cy = dpSubHeader(ctx, DP_P2_X, cy, DP_PANEL_W, "TOP SCORING ZONES — SCORES ONLY", "#4ade80");
     cy = dpMiniBarRow(ctx, DP_P2_X, cy, DP_PANEL_W,
       `${truncTeam(homeTeam, 14)} hotspot`,
       forScoreHots[0] ? `${forScoreHots[0].label} (${forScoreHots[0].count})` : "—",
@@ -7393,10 +7403,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   try {
     const c = makePlayerInfluencePage(events, report, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
     stampLayerBadge(c, "MIXED");
-    addCanvasPage(c, true, "Top Players by Influence Index");
+    addCanvasPage(c, true, "Top Players by Net Influence");
   } catch (err) {
     console.error("Player Influence page generation failed", err);
-    addCanvasPage(fallbackCanvas("Top Players by Influence Index"), true, "Top Players by Influence Index");
+    addCanvasPage(fallbackCanvas("Top Players by Net Influence"), true, "Top Players by Net Influence");
   }
 
   // p.8+N — Shot Pitch Maps
@@ -11926,7 +11936,7 @@ export function makeTurnoverTerritoryPage(
  *
  * All text is observational — metric-driven, no prescriptive coaching advice.
  */
-function makeHtTacticalSummaryPage(
+export function makeHtTacticalSummaryPage(
   events: readonly PdfExportEvent[],
   sport: PitchSport,
   report: MatchReport<PdfExportEvent>,
@@ -12079,7 +12089,10 @@ function makeHtTacticalSummaryPage(
     watchItems.push(`${home} Restart Share: ${koWinPct}% (${totalForKO} of ${totalAllKO})`);
   }
   if (to.won >= 3 && watchItems.length < 3) {
-    watchItems.push(`${home} turnover wins → shot: ${pctLabel(turnoverToShot)} (${turnoverToShot.num} of ${turnoverToShot.den})`);
+    // Matches the sibling metric's exact wording (Turnover Chain Analysis's
+    // "Turnover wins → shot, no score" row) — turnoverToShot is the missed-
+    // shot population, not "any shot"; the label must say so precisely.
+    watchItems.push(`${home} turnover wins → shot, no score: ${pctLabel(turnoverToShot)} (${turnoverToShot.num} of ${turnoverToShot.den})`);
   }
   if (watchItems.length === 0) {
     if (patterns.length > 0) {

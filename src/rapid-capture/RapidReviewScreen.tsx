@@ -26,6 +26,12 @@ import { buildIntelligencePack, type IntelligencePack } from "../stats/intellige
 import { IntelligencePackPreview } from "../stats/IntelligencePackPreview";
 import { selectReviewEvents } from "../stats/review-selectors";
 import type { ReviewHalfFilter, ReviewTeamSideFilter } from "../stats/review-types";
+// Same zones engine StatsModeSurface.tsx's Match Stats Review uses (its
+// "ZONES" toggle chip -> selectZoneOverlayModel -> handle.setZoneOverlayModel
+// -> drawStatsZoneOverlay, all inside the shared createPixiPitchSurface board).
+// No Rapid-specific zone aggregation or rendering exists anywhere in this file.
+import { selectZoneOverlayModel } from "../stats/zones/zone-selectors";
+import type { ZoneOverlayModel } from "../stats/zones/zone-types";
 import {
   rapidMatchToIntelligencePackInput,
   rapidMatchToSnapshotPdfInput,
@@ -112,10 +118,14 @@ function RapidPitchCanvas({
   events,
   sport,
   onMarkerTap,
+  zoneOverlayModel,
 }: {
   events: readonly RapidMatchEvent[];
   sport: "gaelic" | "hurling" | "camogie" | "soccer";
   onMarkerTap?: (eventId: string) => void;
+  /** Same ZoneOverlayModel | null contract handleRef.setZoneOverlayModel takes
+   *  in StatsModeSurface.tsx's Match Stats Review — null hides the overlay. */
+  zoneOverlayModel?: ZoneOverlayModel | null;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<PixiPitchSurfaceHandle | null>(null);
@@ -150,6 +160,10 @@ function RapidPitchCanvas({
   useEffect(() => {
     handleRef.current?.setEvents(events);
   }, [events]);
+
+  useEffect(() => {
+    handleRef.current?.setZoneOverlayModel(zoneOverlayModel ?? null);
+  }, [zoneOverlayModel]);
 
   return <div ref={hostRef} style={{ width: "100%", height: "100%", overflow: "hidden" }} />;
 }
@@ -225,6 +239,9 @@ export function RapidReviewScreen({ match, backLabel, onBack, onEventsChange }: 
   const [reviewHalf, setReviewHalf] = useState<ReviewHalfFilter>("FULL");
   const [reviewTeam, setReviewTeam] = useState<ReviewTeamSideFilter>("ALL");
   const [reviewCategory, setReviewCategory] = useState<RapidReviewCategory>("ALL");
+  // Mirrors StatsModeSurface.tsx's showReviewZones toggle exactly — same
+  // default (off), same scope (the currently filtered event set).
+  const [showReviewZones, setShowReviewZones] = useState(false);
 
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
@@ -261,6 +278,13 @@ export function RapidReviewScreen({ match, backLabel, onBack, onEventsChange }: 
         attackingDirection: "RIGHT",
       }),
     [events, reviewHalf, reviewTeam, reviewCategory],
+  );
+
+  // Same call StatsModeSurface.tsx makes for its reviewZoneOverlayModel — the
+  // already-filtered event set, no separate Rapid zone aggregation.
+  const filteredZoneOverlayModel: ZoneOverlayModel = useMemo(
+    () => selectZoneOverlayModel(filteredEvents),
+    [filteredEvents],
   );
 
   const selectedEvent = selectedEventId == null ? null : events.find((e) => e.id === selectedEventId) ?? null;
@@ -522,12 +546,23 @@ export function RapidReviewScreen({ match, backLabel, onBack, onEventsChange }: 
                 {label}
               </button>
             ))}
+            <div style={B.chipSep} />
+            <button
+              type="button"
+              style={{ ...B.chip, ...(showReviewZones ? B.chipActive : {}) }}
+              onClick={() => setShowReviewZones((prev) => !prev)}
+              aria-pressed={showReviewZones}
+              aria-label="Toggle review zones overlay"
+            >
+              ZONES
+            </button>
           </div>
           <div style={B.pitchArea}>
             <RapidPitchCanvas
               events={filteredEvents}
               sport={pitchSport}
               onMarkerTap={(id) => setSelectedEventId(id)}
+              zoneOverlayModel={showReviewZones ? filteredZoneOverlayModel : null}
             />
           </div>
           <div style={B.footer}>

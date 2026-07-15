@@ -140,8 +140,8 @@ export function isPlacedMiss(e: ChainableEvent): boolean {
 export const LEDGER_ROW_LABELS: Record<LedgerRowId, string> = {
   FROM_PLAY:    "From general play",
   PLACED:       "Placed balls",
-  RESTART_WON:  "Direct restart scores",
-  TURNOVER_WON: "Direct turnover scores",
+  RESTART_WON:  "Direct scores attributed to restarts",
+  TURNOVER_WON: "Direct scores attributed to turnovers",
   UNATTRIBUTED: "Unattributed",
 };
 
@@ -340,14 +340,14 @@ export function restartOriginBridgeNote(
 ): string {
   const total = bridge.us + bridge.them;
   if (total === 0) {
-    return "Origin chains include frees won in the possession. The ledger counts those under Placed balls.";
+    return "Origin possessions include later frees won during the same possession. The scoring ledger attributes those scores to placed balls.";
   }
   const home = homeTeam.slice(0, 14) || "Home";
   const away = awayTeam.slice(0, 14) || "Away";
   return (
-    `Origin counts include ${total} placed free${total !== 1 ? "s" : ""} won inside ` +
+    `Origin possessions include ${total} placed free${total !== 1 ? "s" : ""} won during ` +
     `kickout-origin possessions (${home} ${bridge.us} · ${away} ${bridge.them}) — ` +
-    `counted under Placed balls in the scoring ledger.`
+    `the scoring ledger attributes those scores to placed balls.`
   );
 }
 

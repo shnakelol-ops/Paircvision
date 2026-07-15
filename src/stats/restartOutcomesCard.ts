@@ -349,7 +349,7 @@ function drawFooter(ctx: CanvasRenderingContext2D): void {
   ctx.fillStyle = CLR.dim; ctx.font = "italic 500 17px Inter,system-ui,sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(
-    "Origin chains include frees won in the possession. The ledger counts those under Placed balls.",
+    "Origin possessions include later frees won during the same possession. The scoring ledger attributes those scores to placed balls.",
     W / 2, H - 56,
   );
   ctx.font = "500 22px Inter,system-ui,sans-serif";
