@@ -139,6 +139,54 @@ export function parseRapidEvent(value: unknown): RapidMatchEvent | null {
   return source as unknown as RapidMatchEvent;
 }
 
+/** The "Export JSON" file shape — parsed back by parseRapidCaptureFormat (rapid-match-import.ts) via parseRapidSession/parseRapidEvent above. */
+export type RapidExportPayloadV2 = {
+  version: 2;
+  session: {
+    sport: Sport;
+    forTeamName: string;
+    oppTeamName: string;
+    venue: string;
+    matchType: MatchType;
+    forTeamColour: string;
+    oppTeamColour: string;
+    attackDirection: AttackDirection;
+    halfDurationMinutes: number;
+    forSquad?: RapidSquadPlayer[];
+    oppSquad?: RapidSquadPlayer[];
+  };
+  events: RapidMatchEvent[];
+  exportedAt: string;
+};
+
+/**
+ * Builds the "Export JSON" payload from a live session + event list.
+ * Must carry every RapidSession field parseRapidSession (above) knows how to
+ * read back, including forSquad/oppSquad — omitting the roster here means a
+ * re-imported match loses every player's name (falls back to bare jersey
+ * numbers everywhere: Review, Player Breakdown, Player Influence, PDFs).
+ */
+export function buildRapidExportPayload(session: RapidSession, events: readonly RapidMatchEvent[]): RapidExportPayloadV2 {
+  return {
+    version: 2,
+    session: {
+      sport: session.sport,
+      forTeamName: session.forTeamName,
+      oppTeamName: session.oppTeamName,
+      venue: session.venue,
+      matchType: session.matchType,
+      forTeamColour: session.forTeamColour,
+      oppTeamColour: session.oppTeamColour,
+      attackDirection: session.attackDirection,
+      halfDurationMinutes: session.halfDurationMinutes,
+      ...(session.forSquad ? { forSquad: session.forSquad } : {}),
+      ...(session.oppSquad ? { oppSquad: session.oppSquad } : {}),
+    },
+    events: [...events],
+    exportedAt: new Date().toISOString(),
+  };
+}
+
 /**
  * Records saved before matchState existed carry only status + half. COMPLETED
  * maps unambiguously to FULL_TIME; an in-progress record resumes into

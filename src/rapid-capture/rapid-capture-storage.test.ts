@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createMatchEvent } from "../core/stats/stats-event-model";
 import type { RapidSession } from "./rapid-session";
 import {
+  buildRapidExportPayload,
   clearActiveRapidSession,
   deleteSavedRapidMatch,
   getSavedRapidMatch,
@@ -70,6 +71,44 @@ function buildMatch(overrides: Partial<RapidSavedMatch> = {}): RapidSavedMatch {
     ...overrides,
   };
 }
+
+describe("buildRapidExportPayload", () => {
+  it("includes forSquad/oppSquad when the session has a roster", () => {
+    const withSquads: RapidSession = {
+      ...session,
+      forSquad: [{ id: "p1", number: 4, name: "Player Four" }],
+      oppSquad: [{ id: "p2", number: 6, name: "Player Six" }],
+    };
+    const payload = buildRapidExportPayload(withSquads, buildMatch().events);
+    expect(payload.session.forSquad).toEqual(withSquads.forSquad);
+    expect(payload.session.oppSquad).toEqual(withSquads.oppSquad);
+  });
+
+  it("omits forSquad/oppSquad (not an empty array) when the session has no roster", () => {
+    const payload = buildRapidExportPayload(session, buildMatch().events);
+    expect(payload.session.forSquad).toBeUndefined();
+    expect(payload.session.oppSquad).toBeUndefined();
+  });
+
+  it("carries every other session field and every event through unchanged", () => {
+    const events = buildMatch().events;
+    const payload = buildRapidExportPayload(session, events);
+    expect(payload.version).toBe(2);
+    expect(payload.session).toMatchObject({
+      sport: session.sport,
+      forTeamName: session.forTeamName,
+      oppTeamName: session.oppTeamName,
+      venue: session.venue,
+      matchType: session.matchType,
+      forTeamColour: session.forTeamColour,
+      oppTeamColour: session.oppTeamColour,
+      attackDirection: session.attackDirection,
+      halfDurationMinutes: session.halfDurationMinutes,
+    });
+    expect(payload.events).toEqual(events);
+    expect(typeof payload.exportedAt).toBe("string");
+  });
+});
 
 describe("autosave + resume", () => {
   it("round-trips an active session and preserves event order/timestamps exactly", () => {
