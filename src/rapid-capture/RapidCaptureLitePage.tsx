@@ -28,6 +28,7 @@ import { RapidDetailBar } from "./RapidDetailBar";
 import { RapidPlayerBar } from "./RapidPlayerBar";
 import { RapidPausePanel } from "./RapidPausePanel";
 import { RapidHalfBreakPanel } from "./RapidHalfBreakPanel";
+import { RapidReviewScreen } from "./RapidReviewScreen";
 import { deriveHalfAndClockFromEvents, parseImportedMatchFile } from "./rapid-match-import";
 import {
   advanceEnrichment,
@@ -157,15 +158,6 @@ function RapidSetupScreen({
           ? [{ id: "resume", label: "Resume Match", onSelect: onResume }]
           : []),
         { id: "saved-matches", label: "Saved Matches", onSelect: onOpenSavedMatches },
-      ],
-    },
-    {
-      id: "reports",
-      label: "Reports",
-      items: [
-        { id: "ht-snapshot", label: "HT Snapshot", disabled: true, badge: "Coming Soon" },
-        { id: "ft-snapshot", label: "FT Snapshot", disabled: true, badge: "Coming Soon" },
-        { id: "full-intelligence", label: "Full Intelligence PDF", disabled: true, badge: "Coming Soon" },
       ],
     },
     {
@@ -340,9 +332,11 @@ function fmtSavedMatchDate(createdAt: number): string {
 function RapidSavedMatchesScreen({
   onBack,
   onReopen,
+  onReview,
 }: {
   onBack: () => void;
   onReopen: (match: RapidSavedMatch) => void;
+  onReview: (match: RapidSavedMatch) => void;
 }) {
   const [matches, setMatches] = useState<RapidSavedMatch[]>(() => listSavedRapidMatches());
 
@@ -376,6 +370,9 @@ function RapidSavedMatchesScreen({
               <div style={S.savedMatchActions}>
                 <button onClick={() => handleDelete(match.id)} style={S.savedMatchDeleteBtn}>
                   Delete
+                </button>
+                <button onClick={() => onReview(match)} style={S.savedMatchReviewBtn}>
+                  Review
                 </button>
                 <button onClick={() => onReopen(match)} style={S.savedMatchReopenBtn}>
                   Reopen
@@ -439,6 +436,11 @@ function RapidLiveScreen({
   // Lets the halftime/full-time panel's "Actions" button open the same FAB
   // used everywhere else, instead of duplicating its menu.
   const [fabOpen, setFabOpen] = useState(false);
+  // Full takeover by the shared Review screen — Event Map, filters, marker
+  // inspect/edit/delete, and report exports, reachable from the Match Hub or
+  // the Half Time / Full Time panel. Edits write straight back into
+  // loggedEvents (the same session), never a second store.
+  const [reviewOpen, setReviewOpen] = useState(false);
   // Detail bar, then optional Player Recognition bar, for the most recently
   // logged event — never blocks capture. Starting another capture (a new
   // tap, or arming a different kind) always replaces this outright.
@@ -522,7 +524,12 @@ function RapidLiveScreen({
     setEnrichment((current) => advanceEnrichment(current));
   }, []);
 
-  // Sport is fixed for the lifetime of this screen — initialises Pixi once on mount
+  // Sport is fixed for the lifetime of this screen — initialises Pixi once on
+  // mount. Also depends on reviewOpen: opening Review early-returns a
+  // completely different tree (RapidReviewScreen instead of this pitch host),
+  // so without reviewOpen as a dependency this effect would never re-run and
+  // its cleanup would never fire — leaving the live-capture Pixi instance
+  // orphaned (detached from the DOM, but still alive and erroring on redraw).
   useEffect(() => {
     const host = pitchHostRef.current;
     if (!host) return;
@@ -594,7 +601,7 @@ function RapidLiveScreen({
       handle?.destroy();
       pixiHandleRef.current = null;
     };
-  }, [sport]);
+  }, [sport, reviewOpen]);
 
   const handleTeamSideChange = useCallback((side: "FOR" | "OPP") => {
     teamSideRef.current = side;
@@ -789,17 +796,9 @@ function RapidLiveScreen({
       id: "match",
       label: "Match",
       items: [
+        { id: "review", label: "Review", onSelect: () => setReviewOpen(true) },
         { id: "finish-save", label: "Finish & Save", onSelect: finishAndSaveMatch },
         { id: "saved-matches", label: "Saved Matches", onSelect: onOpenSavedMatches },
-      ],
-    },
-    {
-      id: "reports",
-      label: "Reports",
-      items: [
-        { id: "ht-snapshot", label: "HT Snapshot", disabled: true, badge: "Coming Soon" },
-        { id: "ft-snapshot", label: "FT Snapshot", disabled: true, badge: "Coming Soon" },
-        { id: "full-intelligence", label: "Full Intelligence PDF", disabled: true, badge: "Coming Soon" },
       ],
     },
     {
@@ -816,6 +815,31 @@ function RapidLiveScreen({
       ],
     },
   ];
+
+  if (reviewOpen) {
+    return (
+      <RapidReviewScreen
+        match={{
+          schemaVersion: RAPID_CAPTURE_SCHEMA_VERSION,
+          id: matchId,
+          createdAt,
+          updatedAt: Date.now(),
+          status: matchState === "FULL_TIME" ? "COMPLETED" : "IN_PROGRESS",
+          session,
+          events: loggedEvents,
+          half: halfForMatchState(matchState),
+          clockSeconds,
+          matchState,
+        }}
+        backLabel="Rapid Capture"
+        onBack={() => setReviewOpen(false)}
+        onEventsChange={(next) => {
+          loggedEventsRef.current = next;
+          setLoggedEvents(next);
+        }}
+      />
+    );
+  }
 
   return (
     <div style={S.shell}>
@@ -903,9 +927,9 @@ function RapidLiveScreen({
           forLabel={forLabel}
           oppLabel={oppLabel}
           scoreLine={scoreLineText}
-          events={loggedEvents}
           onStartSecondHalf={matchState === "HALF_TIME" ? handleStartSecondHalf : undefined}
           onDone={matchState === "FULL_TIME" ? handleDoneAfterFullTime : undefined}
+          onOpenReview={() => setReviewOpen(true)}
           onOpenActions={() => setFabOpen(true)}
         />
       ) : showPauseMenu && pauseAction ? (
@@ -1024,8 +1048,9 @@ function liveSlotFromSavedMatch(match: RapidSavedMatch): LiveSlot {
 }
 
 export default function RapidCaptureLitePage() {
-  const [view, setView] = useState<"setup" | "live" | "matches">("setup");
+  const [view, setView] = useState<"setup" | "live" | "matches" | "review">("setup");
   const [live, setLive] = useState<LiveSlot | null>(null);
+  const [reviewMatch, setReviewMatch] = useState<RapidSavedMatch | null>(null);
   const [resumeCandidate, setResumeCandidate] = useState<RapidSavedMatch | null>(() =>
     loadActiveRapidSession(),
   );
@@ -1052,6 +1077,11 @@ export default function RapidCaptureLitePage() {
   function handleReopenSavedMatch(match: RapidSavedMatch) {
     setLive(liveSlotFromSavedMatch(match));
     setView("live");
+  }
+
+  function handleReviewSavedMatch(match: RapidSavedMatch) {
+    setReviewMatch(match);
+    setView("review");
   }
 
   function handleFinish() {
@@ -1093,6 +1123,28 @@ export default function RapidCaptureLitePage() {
       <RapidSavedMatchesScreen
         onBack={() => setView("setup")}
         onReopen={handleReopenSavedMatch}
+        onReview={handleReviewSavedMatch}
+      />
+    );
+  }
+
+  if (view === "review" && reviewMatch) {
+    return (
+      <RapidReviewScreen
+        match={reviewMatch}
+        backLabel="Saved Matches"
+        onBack={() => {
+          setReviewMatch(null);
+          setView("matches");
+        }}
+        onEventsChange={(next) => {
+          // Every entry in the completed-matches store is already FULL_TIME —
+          // saveCompletedRapidMatch upserts by id, updating the same session
+          // in place rather than copying it into a second store.
+          const updated: RapidSavedMatch = { ...reviewMatch, events: next };
+          saveCompletedRapidMatch(updated);
+          setReviewMatch(updated);
+        }}
       />
     );
   }
@@ -1209,9 +1261,14 @@ const S: Record<string, CSSProperties> = {
     flexWrap: "wrap",
     gap: 8,
   },
+  // Split border (not shorthand) — chipActive overrides borderColor per-render
+  // as the coach picks sport/match-type/etc; mixing shorthand/non-shorthand
+  // for the same property trips a React styling warning across rerenders.
   chip: {
     background: "#21262d",
-    border: "1px solid #30363d",
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "#30363d",
     borderRadius: 8,
     color: "#8b949e",
     fontSize: 14,
@@ -1368,9 +1425,14 @@ const S: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
   teamGroup: { display: "flex", gap: 4 },
+  // Split border (not shorthand) — teamBtnFor/teamBtnOpp override borderColor
+  // every time the FOR/OPP toggle is tapped; mixing shorthand/non-shorthand
+  // for the same property trips a React styling warning across rerenders.
   teamBtn: {
     background: "#21262d",
-    border: "1px solid #30363d",
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "#30363d",
     borderRadius: 6,
     color: "#8b949e",
     fontSize: 12,
@@ -1467,9 +1529,14 @@ const S: Record<string, CSSProperties> = {
     borderTop: "1px solid #21262d",
     flexShrink: 0,
   },
+  // Split border (not shorthand) — rapidBtnArmed overrides borderColor every
+  // time a kind is armed/disarmed; mixing shorthand/non-shorthand for the
+  // same property trips a React styling warning across rerenders.
   rapidBtn: {
     background: "#161b22",
-    border: "1.5px solid #30363d",
+    borderWidth: 1.5,
+    borderStyle: "solid",
+    borderColor: "#30363d",
     borderRadius: 8,
     color: "#e6edf3",
     fontSize: 14,
@@ -1597,6 +1664,17 @@ const S: Record<string, CSSProperties> = {
     border: "1px solid #30363d",
     borderRadius: 6,
     color: "#f85149",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "6px 10px",
+    cursor: "pointer",
+    outline: "none",
+  },
+  savedMatchReviewBtn: {
+    background: "transparent",
+    border: "1px solid #30363d",
+    borderRadius: 6,
+    color: "#e6edf3",
     fontSize: 12,
     fontWeight: 600,
     padding: "6px 10px",
