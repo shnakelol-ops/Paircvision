@@ -168,6 +168,18 @@ function parseStoredRapidMatch(value: unknown): RapidSavedMatch | null {
     .map(parseRapidEvent)
     .filter((event): event is RapidMatchEvent => event != null);
 
+  // TEMP DIAGNOSTIC — see Review event-count investigation.
+  if (events.length !== source.events.length) {
+    // eslint-disable-next-line no-console
+    console.log(
+      "[REVIEW-PIPELINE-DEBUG] stage=parseStoredRapidMatch — events DROPPED by parseRapidEvent",
+      "raw=", source.events.length,
+      "parsed=", events.length,
+      "droppedRaw=",
+      source.events.filter((raw) => parseRapidEvent(raw) == null),
+    );
+  }
+
   const matchState = isLiveMatchState(source.matchState)
     ? source.matchState
     : deriveLegacyMatchState(source.status, source.half);

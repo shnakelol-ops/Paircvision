@@ -114,6 +114,9 @@ export function drawStatsMarkers(
   const showPlayerLabels = opts?.showPlayerLabels ?? true;
   const onMarkerTap = opts?.onMarkerTap;
 
+  // TEMP DIAGNOSTIC — see Review event-count investigation.
+  let markersActuallyDrawn = 0;
+
   for (const event of events) {
     const worldPoint = boardNormToWorld(event.nx, event.ny);
     const renderAsSubtleDot = event.renderAsSubtleDot === true;
@@ -143,6 +146,7 @@ export function drawStatsMarkers(
         alpha: 0.52,
       });
       g.addChild(markerContainer);
+      markersActuallyDrawn += 1;
       continue;
     }
     const style = getStatsMarkerStyle(event);
@@ -200,5 +204,14 @@ export function drawStatsMarkers(
     }
 
     g.addChild(markerContainer);
+    markersActuallyDrawn += 1;
   }
+
+  // TEMP DIAGNOSTIC — see Review event-count investigation.
+  // eslint-disable-next-line no-console
+  console.log(
+    "[REVIEW-PIPELINE-DEBUG] stage=drawStatsMarkers (actual draw loop)",
+    "inputEventsCount=", events.length,
+    "markersActuallyDrawn=", markersActuallyDrawn,
+  );
 }

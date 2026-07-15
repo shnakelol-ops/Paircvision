@@ -139,6 +139,17 @@ export async function createPixiPitchSurface(
       heatmapLayer.clear();
     }
     drawStatsZoneOverlay(zoneOverlayLayer, zoneOverlayModelState);
+    // TEMP DIAGNOSTIC — see Review event-count investigation. Fires for
+    // every pitch surface instance (Match Stats/Event Stats/Rapid Capture
+    // live + review), not just Rapid Review — that's intentional, it
+    // confirms this shared engine never slices/drops events on its own.
+    // eslint-disable-next-line no-console
+    console.log(
+      "[REVIEW-PIPELINE-DEBUG] stage=redrawMarkers (createPixiPitchSurface, pre-draw)",
+      "eventsStateCount=", eventsState.length,
+      "visibleEventLimitState=", visibleEventLimitState,
+      "renderableEventsCount=", renderableEvents.length,
+    );
     drawStatsMarkers(statsMarkers, renderableEvents, {
       worldToScreenScale: world.scale.x,
       maxScreenRadiusPx: 10,
