@@ -118,6 +118,18 @@ export function restartAttributionFootnoteShort(): string {
   return "Origin chains include frees won in the possession. The ledger counts those under Placed balls.";
 }
 
+/** Coach-facing section heading for restart-origin scoring panels. */
+export const RESTART_ORIGIN_HEADING = "Restart Origin";
+
+/**
+ * One-line explanation beneath the Restart Origin heading.
+ * Sport-aware: kickout for football, puckout for hurling/camogie.
+ */
+export function restartOriginExplanation(sport?: PitchSport): string {
+  const ko = sport === "hurling" || sport === "camogie" ? "puckout" : "kickout";
+  return `Scores that started from a ${ko}.`;
+}
+
 // ─── Value shapes ─────────────────────────────────────────────────────────────
 
 /** A numerator/denominator pair with a pre-rounded 0–100 integer percent. */

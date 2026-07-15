@@ -13,12 +13,12 @@
  *   packToFiles(pack)             → File[]   (ordered, non-null cards only)
  *
  * Design:
- *   - Possession outcomes are computed once and shared by all three cards.
+ *   - Canonical MatchReport is built once; possessions shared by all three cards.
  *   - All three cards render in parallel (Promise.all).
  */
 
 import type { ChainableEvent } from "./chains/chain-types";
-import { buildPossessionOutcomeSummary } from "./chains/possession-outcomes-engine";
+import { buildMatchReport } from "./reporting/matchReport";
 import { buildRestartOutcomesCardPng } from "./restartOutcomesCard";
 import { buildTurnoverFreeOutcomesCardPng } from "./turnoverFreeOutcomesCard";
 import { buildMatchIntelligenceCardPng } from "./matchIntelligenceCard";
@@ -72,7 +72,14 @@ export async function buildIntelligencePack(
     homeScore, awayScore, events,
   } = input;
 
-  const summary = buildPossessionOutcomeSummary(events);
+  const scope = stageLabel === "Half Time" ? "1H" : "FULL";
+  const report = buildMatchReport({
+    events,
+    homeTeam: homeTeamName,
+    awayTeam: awayTeamName,
+    scope,
+  });
+  const summary = report.possessions;
 
   const [restartOutcomesCard, turnoverFreeOutcomesCard, matchIntelligenceCard] =
     await Promise.all([

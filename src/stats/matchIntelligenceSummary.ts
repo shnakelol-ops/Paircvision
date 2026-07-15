@@ -10,7 +10,8 @@
 
 import type { MatchEvent } from "../core/stats/stats-event-model";
 import type { ChainableEvent } from "./chains/chain-types";
-import { selectChainAnalysis, selectPossessionOutcomeSummary } from "./chains/chain-selectors";
+import { buildMatchReport } from "./reporting/matchReport";
+import { viewRestartShare } from "./reporting/reportViews";
 
 // ─── Public type ──────────────────────────────────────────────────────────────
 
@@ -74,14 +75,18 @@ export function buildMatchIntelligenceSummary(
   restartWord: string,
 ): MatchIntelligenceSummary {
   const chainEvents = events.filter(isChainableEvent);
+  const scope = mode === "HT" ? "1H" : "FULL";
 
-  const analysis = selectChainAnalysis(chainEvents);
-  const poss = selectPossessionOutcomeSummary(chainEvents);
+  const report = buildMatchReport({
+    events: chainEvents,
+    homeTeam,
+    awayTeam,
+    scope,
+  });
+  const poss = report.possessions;
+  const ko = report.chain.kickouts;
 
-  const ko = analysis.kickouts;
-  const to = analysis.turnovers;
-
-  const lowSampleWarning = ko.total + to.total < 5;
+  const lowSampleWarning = ko.total + report.chain.turnovers.total < 5;
 
   // ── Kickout consequence numbers — possession-outcomes-engine is the source of truth ──
   // V1.2+ (restartOwner split): aligns with Restart Outcomes card exactly.
@@ -159,10 +164,10 @@ export function buildMatchIntelligenceSummary(
       }
     }
   } else if (ko.total >= 5) {
-    // Older data without restartOwner — the combined figure is Restart Share
-    const rate = ko.won / ko.total;
-    if (rate >= 0.65) {
-      ourRestartInsight = `${homeTeam} held ${Math.round(rate * 100)}% Restart Share (${ko.won} of ${ko.total} ${restartWord}s)`;
+    // Older data without restartOwner — canonical Restart Share from MatchReport
+    const share = viewRestartShare(report);
+    if (share.pct >= 65) {
+      ourRestartInsight = `${homeTeam} held ${share.pct}% Restart Share (${share.num} of ${share.den} ${restartWord}s)`;
     }
   }
 

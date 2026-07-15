@@ -2,6 +2,9 @@ import type { MatchEventKind } from "../core/stats/stats-event-model";
 import type { MatchState } from "../core/match/match-state-store";
 import type { MatchIntelligenceSummary } from "./matchIntelligenceSummary";
 import { resolvePlayerDisplayName } from "./player-display";
+import { adaptEventsToChainable } from "./reporting/eventAdapter";
+import { buildMatchReport } from "./reporting/matchReport";
+import { viewCoachingBriefStats, viewCoachingScoringRuns } from "./reporting/teamStatsViews";
 
 // Minimal structural interface — satisfied by both App.tsx's local LoggedMatchEvent
 // and saved-match.ts's LoggedMatchEvent without any explicit cast.
@@ -100,18 +103,6 @@ function isAwayEvent(e: CBEvent): boolean {
   return e.team === "AWAY" || e.id.startsWith("team-away-");
 }
 
-function computeScore(events: readonly CBEvent[], forHome: boolean): TeamScore {
-  let goals = 0;
-  let points = 0;
-  for (const e of events) {
-    if (forHome ? !isHomeEvent(e) : !isAwayEvent(e)) continue;
-    if (e.kind === "GOAL") goals += 1;
-    else if (e.kind === "POINT") points += 1;
-    else if (e.kind === "TWO_POINTER" || e.kind === "FORTY_FIVE_TWO_POINT") points += 2;
-  }
-  return { goals, points, total: goals * 3 + points };
-}
-
 function formatScore(s: TeamScore): string {
   return `${s.goals}-${String(s.points).padStart(2, "0")} (${s.total})`;
 }
@@ -123,104 +114,60 @@ function formatMargin(home: TeamScore, away: TeamScore, homeName: string, awayNa
   return `${leader} ahead by ${Math.abs(diff)}`;
 }
 
-// ─── Stats aggregation ────────────────────────────────────────────────────────
+// ─── Stats aggregation (canonical — via MatchReport) ─────────────────────────
 
-function computeMatchStats(events: readonly CBEvent[]): MatchStats {
-  let goals = 0, attempts = 0, scores = 0, wides = 0;
-  let turnoversWon = 0, turnoversLost = 0;
-  let kickoutsWon = 0, kickoutsLost = 0;
-  let freesWon = 0, freesConceded = 0;
+function buildCoachingReport(
+  events: readonly CBEvent[],
+  homeTeam: string,
+  awayTeam: string,
+  scope: "1H" | "FULL",
+) {
+  const chainable = adaptEventsToChainable(events);
+  return buildMatchReport({
+    events: chainable,
+    homeTeam,
+    awayTeam,
+    scope: scope === "1H" ? "1H" : "FULL",
+  });
+}
 
-  for (const e of events) {
-    if (!isHomeEvent(e)) continue;
-    if (e.kind === "GOAL") { goals += 1; scores += 1; attempts += 1; }
-    else if (e.kind === "POINT") { scores += 1; attempts += 1; }
-    else if (e.kind === "TWO_POINTER" || e.kind === "FORTY_FIVE_TWO_POINT") { scores += 1; attempts += 1; }
-    else if (e.kind === "WIDE") { wides += 1; attempts += 1; }
-    else if (e.kind === "SHOT") { attempts += 1; }
-    else if (e.kind === "TURNOVER_WON") turnoversWon += 1;
-    else if (e.kind === "TURNOVER_LOST") turnoversLost += 1;
-    else if (e.kind === "KICKOUT_WON") kickoutsWon += 1;
-    else if (e.kind === "KICKOUT_CONCEDED") kickoutsLost += 1;
-    else if (e.kind === "FREE_WON") freesWon += 1;
-    else if (e.kind === "FREE_CONCEDED") freesConceded += 1;
-  }
-
-  const kickoutTotal = kickoutsWon + kickoutsLost;
+function computeMatchStats(
+  events: readonly CBEvent[],
+  homeTeam: string,
+  awayTeam: string,
+  scope: "1H" | "FULL",
+): MatchStats {
+  const report = buildCoachingReport(events, homeTeam, awayTeam, scope);
+  const brief = viewCoachingBriefStats(report);
   return {
-    homeScore: computeScore(events, true),
-    awayScore: computeScore(events, false),
-    goals,
-    attempts,
-    scores,
-    wides,
-    conversionPct: attempts > 0 ? Math.round((scores / attempts) * 100) : 0,
-    turnoversWon,
-    turnoversLost,
-    kickoutsWon,
-    kickoutsLost,
-    kickoutTotal,
-    kickoutPct: kickoutTotal > 0 ? Math.round((kickoutsWon / kickoutTotal) * 100) : 0,
-    freesWon,
-    freesConceded,
+    homeScore: report.ledger.forScore,
+    awayScore: report.ledger.oppScore,
+    goals: brief.goals,
+    attempts: brief.attempts,
+    scores: brief.scores,
+    wides: brief.wides,
+    conversionPct: brief.conversionPct,
+    turnoversWon: brief.turnoversWon,
+    turnoversLost: brief.turnoversLost,
+    kickoutsWon: brief.kickoutsWon,
+    kickoutsLost: brief.kickoutsLost,
+    kickoutTotal: brief.kickoutTotal,
+    kickoutPct: brief.kickoutPct,
+    freesWon: brief.freesWon,
+    freesConceded: brief.freesConceded,
   };
 }
 
-// ─── Scoring run detection (turning point) ────────────────────────────────────
+// ─── Scoring run detection (canonical — via MatchReport chain scoring runs) ───
 
-function deriveScoringRuns(events: readonly CBEvent[]): { longestFor: ScoringRun | null; longestOpp: ScoringRun | null } {
-  const SCORE_KINDS = new Set<MatchEventKind>(["GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT"]);
-
-  const scoreEvents = [...events]
-    .filter(e => SCORE_KINDS.has(e.kind) && (isHomeEvent(e) || isAwayEvent(e)))
-    .sort((a, b) => {
-      if (a.half !== b.half) return a.half - b.half;
-      return (a.matchClockSeconds ?? a.timestamp) - (b.matchClockSeconds ?? b.timestamp);
-    });
-
-  if (scoreEvents.length < 3) return { longestFor: null, longestOpp: null };
-
-  const runs: ScoringRun[] = [];
-  let runTeam: "HOME" | "AWAY" = isHomeEvent(scoreEvents[0]) ? "HOME" : "AWAY";
-  let runCount = 1;
-  let runStartSecs = scoreEvents[0].matchClockSeconds ?? scoreEvents[0].timestamp;
-  let runPeriod: 1 | 2 = scoreEvents[0].half;
-
-  const commitRun = (endSecs: number) => {
-    if (runCount >= 2) {
-      runs.push({
-        team: runTeam,
-        count: runCount,
-        startMin: Math.max(1, Math.floor(runStartSecs / 60) + 1),
-        endMin: Math.max(1, Math.floor(endSecs / 60) + 1),
-        period: runPeriod,
-      });
-    }
-  };
-
-  for (let i = 1; i < scoreEvents.length; i++) {
-    const e = scoreEvents[i];
-    const team: "HOME" | "AWAY" = isHomeEvent(e) ? "HOME" : "AWAY";
-    const secs = e.matchClockSeconds ?? e.timestamp;
-    if (team === runTeam) {
-      runCount += 1;
-    } else {
-      commitRun(scoreEvents[i - 1].matchClockSeconds ?? scoreEvents[i - 1].timestamp);
-      runTeam = team;
-      runCount = 1;
-      runStartSecs = secs;
-      runPeriod = e.half;
-    }
-  }
-  commitRun(scoreEvents[scoreEvents.length - 1].matchClockSeconds ?? scoreEvents[scoreEvents.length - 1].timestamp);
-
-  const bestOf = (arr: ScoringRun[]): ScoringRun | null =>
-    arr.length === 0 ? null : arr.reduce((a, b) => (b.count > a.count ? b : a));
-
-  return {
-    longestFor: bestOf(runs.filter(r => r.team === "HOME")),
-    longestOpp: bestOf(runs.filter(r => r.team === "AWAY")),
-  };
+function deriveScoringRuns(
+  events: readonly CBEvent[],
+  homeTeam: string,
+  awayTeam: string,
+  scope: "1H" | "FULL",
+): { longestFor: ScoringRun | null; longestOpp: ScoringRun | null } {
+  const report = buildCoachingReport(events, homeTeam, awayTeam, scope);
+  return viewCoachingScoringRuns(report);
 }
 
 // ─── Player notes ─────────────────────────────────────────────────────────────
@@ -386,7 +333,7 @@ function deriveHalftimeNotes(
   intel?: MatchIntelligenceSummary,
 ): CoachingBriefLine[] {
   const restartWord = isHurlingMode ? "puckout" : "kickout";
-  const s = computeMatchStats(events);
+  const s = computeMatchStats(events, homeTeam, awayTeam, "1H");
   const diff = s.homeScore.total - s.awayScore.total;
   const lines: CoachingBriefLine[] = [];
 
@@ -493,7 +440,7 @@ function deriveHalftimeNotes(
   if (s.freesConceded >= 8) {
     concerns.push(`${homeTeam} conceded ${s.freesConceded} placed balls — discipline`);
   }
-  const { longestOpp } = deriveScoringRuns(events);
+  const { longestOpp } = deriveScoringRuns(events, homeTeam, awayTeam, "1H");
   if (longestOpp && longestOpp.count >= 3) {
     concerns.push(`${awayTeam} hit ${longestOpp.count} unanswered — check the momentum swing`);
   }
@@ -569,7 +516,7 @@ function deriveFullTimeSummary(
   intel?: MatchIntelligenceSummary,
 ): CoachingBriefLine[] {
   const restartWord = isHurlingMode ? "puckout" : "kickout";
-  const s = computeMatchStats(events);
+  const s = computeMatchStats(events, homeTeam, awayTeam, "FULL");
   const diff = s.homeScore.total - s.awayScore.total;
   const lines: CoachingBriefLine[] = [];
 
@@ -660,7 +607,7 @@ function deriveFullTimeSummary(
   }
 
   // TURNING POINT — only shown when ≥3 consecutive scores found
-  const { longestFor, longestOpp } = deriveScoringRuns(events);
+  const { longestFor, longestOpp } = deriveScoringRuns(events, homeTeam, awayTeam, "FULL");
   const topRun =
     longestFor && longestOpp
       ? longestFor.count >= longestOpp.count ? longestFor : longestOpp

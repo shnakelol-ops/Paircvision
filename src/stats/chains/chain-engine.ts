@@ -341,7 +341,11 @@ function buildTurnoverDataset<TEvent extends ChainableEvent>(
     const direction: "WON" | "LOST" = turnoverEvent.kind === "TURNOVER_WON" ? "WON" : "LOST";
     const actingSide: "FOR" | "OPP" = direction === "WON" ? turnoverEvent.teamSide : (turnoverEvent.teamSide === "FOR" ? "OPP" : "FOR");
 
-    if (direction === "WON") won++; else lost++;
+    // won/lost are FOR-perspective counts (mirrors buildKickoutDataset's
+    // winningSide gating below) — not a raw count of TURNOVER_WON-kind
+    // events, which would also include the opposition's own mirror-logged
+    // wins.
+    if (actingSide === "FOR") won++; else lost++;
 
     let nextEvent: TEvent | null = null;
     let resultedInScore = false;
@@ -371,9 +375,9 @@ function buildTurnoverDataset<TEvent extends ChainableEvent>(
       break;
     }
 
-    if (direction === "WON" && resultedInScore) wonToScore++;
-    if (direction === "WON" && resultedInShot) wonToShot++;
-    if (direction === "LOST" && resultedInScore) lostAllowedScore++;
+    if (actingSide === "FOR" && resultedInScore) wonToScore++;
+    if (actingSide === "FOR" && resultedInShot) wonToShot++;
+    if (actingSide === "OPP" && resultedInScore) lostAllowedScore++;
 
     outcomes.push({
       turnoverEvent,

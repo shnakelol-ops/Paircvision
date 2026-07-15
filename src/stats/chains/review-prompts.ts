@@ -29,6 +29,11 @@ import type {
   ChainAnalysis,
 } from "./chain-types";
 import type { PitchSport } from "../../core/pitch/pitch-config";
+import {
+  fmtRestartOriginScoredFor,
+  fmtTurnoverOriginConcededFor,
+  fmtTurnoverOriginScoredFor,
+} from "../reporting/scoringBreakdownViews";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -133,7 +138,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     } else {
       push(
         "KICKOUT",
-        `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) — ${koConvPct}% of won ${koTermS} produced a restart-origin score.`,
+        `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) — ${koConvPct}% of won ${koTermS} produced restart-origin point value (${fmtRestartOriginScoredFor(analysis)}).`,
         `kickout:restartShare=${koWinPct}`,
       );
     }
@@ -143,14 +148,14 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (koTotal >= 3 && koNetAdv < -10) {
     push(
       "KICKOUT",
-      `${koConvPct}% of ${home}'s ${koTerm} wins produced a restart-origin score; ${koExpPct}% of their losses produced one for ${away}. Worth reviewing whether ${koTerm} direction patterns changed during the match.`,
+      `${koConvPct}% of ${home}'s ${koTerm} wins produced restart-origin point value; ${koExpPct}% of their losses produced restart-origin point value for ${away}. Worth reviewing whether ${koTerm} direction patterns changed during the match.`,
       `kickout:netAdv=${koNetAdv}`,
     );
   } else if (koWon >= 3 && koConvPct >= 40) {
     // Positive conversion rate — worth flagging as a repeatable pattern
     push(
       "KICKOUT",
-      `${koConvPct}% of ${home}'s won ${koTermS} produced a restart-origin score (${ko.wonToScore} from ${koWon} wins). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
+      `${koConvPct}% of ${home}'s won ${koTermS} produced restart-origin point value (${fmtRestartOriginScoredFor(analysis)} from ${koWon} wins). Worth reviewing whether repeatable patterns exist in how these attacks developed.`,
       `kickout:convPct=${koConvPct}`,
     );
   }
@@ -189,19 +194,19 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (tvConvPct >= 35) {
       push(
         "TURNOVER",
-        `${tvConvPct}% of ${home}'s won turnovers produced a turnover-origin score (${tv.wonToScore} of ${tvWon}). Worth reviewing whether a specific zone or type was most productive.`,
+        `${tvConvPct}% of ${home}'s won turnovers produced turnover-origin point value (${fmtTurnoverOriginScoredFor(analysis)} from ${tvWon} wins). Worth reviewing whether a specific zone or type was most productive.`,
         `turnover:convPct=${tvConvPct}`,
       );
     } else if (tvConvPct < 20 && tvWon >= 3) {
       push(
         "TURNOVER",
-        `${home} won ${tvWon} turnovers but only ${tvConvPct}% produced a turnover-origin score. Worth reviewing what happened to possession after recovery.`,
+        `${home} won ${tvWon} turnovers but only ${tvConvPct}% produced turnover-origin point value. Worth reviewing what happened to possession after recovery.`,
         `turnover:convPct=${tvConvPct}`,
       );
     } else {
       push(
         "TURNOVER",
-        `${home} won ${tvWinPct}% of turnovers (${tvWon} of ${tvTotal}); ${tvConvPct}% of wins produced a turnover-origin score, against ${tvLostAllowPct}% for ${away}.`,
+        `${home} won ${tvWinPct}% of turnovers (${tvWon} of ${tvTotal}); ${tvConvPct}% of wins produced turnover-origin point value, against ${tvLostAllowPct}% for ${away}.`,
         `turnover:winPct=${tvWinPct},convPct=${tvConvPct}`,
       );
     }
@@ -211,7 +216,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (tvLost >= 3 && tvLostAllowPct > 45) {
     push(
       "TURNOVER",
-      `${tvLostAllowPct}% of the turnovers ${away} won against ${home} produced a turnover-origin score (${tv.lostAllowedScore} of ${tvLost}). Worth reviewing whether these concessions clustered in a particular zone or period.`,
+      `${tvLostAllowPct}% of the turnovers ${away} won against ${home} produced turnover-origin point value (${fmtTurnoverOriginConcededFor(analysis)} from ${tvLost} losses). Worth reviewing whether these concessions clustered in a particular zone or period.`,
       `turnover:lostAllowedPct=${tvLostAllowPct}`,
     );
   }
