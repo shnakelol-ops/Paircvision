@@ -10148,10 +10148,10 @@ function buildTacticalMatchStorySections(
     );
   }
   if (momentumLines.length > 0) {
-    sections.push({ heading: "Scoring Momentum", accent: "#fbbf24", lines: momentumLines });
+    sections.push({ heading: "Scoring Momentum", accent: "#fbbf24", lines: momentumLines.slice(0, 2) });
   }
 
-  // ── Restart Chain Analysis ─────────────────────────────────────────────────
+  // ── Restart Platform ───────────────────────────────────────────────────────
   const restartLines: string[] = [];
   const restartShare = viewRestartShare(report);
   if (restartShare.den > 0) {
@@ -10172,10 +10172,10 @@ function buildTacticalMatchStorySections(
     );
   }
   if (restartLines.length > 0) {
-    sections.push({ heading: "Restart Chain Analysis", accent: "#22d3ee", lines: restartLines });
+    sections.push({ heading: "Restart Platform", accent: "#22d3ee", lines: restartLines.slice(0, 2) });
   }
 
-  // ── Turnover Chain Analysis ────────────────────────────────────────────────
+  // ── Turnover Platform ──────────────────────────────────────────────────────
   const turnoverLines: string[] = [];
   const turnoverShare = viewTurnoverShare(report);
   if (turnoverShare.den > 0) {
@@ -10196,10 +10196,10 @@ function buildTacticalMatchStorySections(
     );
   }
   if (turnoverLines.length > 0) {
-    sections.push({ heading: "Turnover Chain Analysis", accent: "#a78bfa", lines: turnoverLines });
+    sections.push({ heading: "Turnover Platform", accent: "#a78bfa", lines: turnoverLines.slice(0, 2) });
   }
 
-  // ── Shot & Scoring Efficiency ──────────────────────────────────────────────
+  // ── Shooting ────────────────────────────────────────────────────────────────
   const shootingLines: string[] = [];
   const forConv = viewShootingConversion(report, "FOR");
   if (forConv.den > 0) {
@@ -10214,18 +10214,24 @@ function buildTacticalMatchStorySections(
     );
   }
   if (shootingLines.length > 0) {
-    sections.push({ heading: "Shot & Scoring Efficiency", accent: "#4ade80", lines: shootingLines });
+    sections.push({ heading: "Shooting", accent: "#4ade80", lines: shootingLines.slice(0, 2) });
   }
 
   // ── Chain Intelligence ─────────────────────────────────────────────────────
+  // Suppressed when its weapon pattern would just restate the Restart/Turnover
+  // Platform section above — both "Kickout Platform" and "Turnovers Won"
+  // observations are built from the same fmtRestartOriginScoredFor /
+  // fmtTurnoverOriginScoredFor helpers already surfaced in those sections.
   const chainLines: string[] = [];
   const patterns = rankChainPatterns(analysis, "FT", homeTeam, awayTeam, report.restartTeams);
   const weaponPattern = patterns.find((p) => p.kind === "CHAIN_WEAPON");
-  if (weaponPattern) {
+  const weaponDuplicatesRestart  = weaponPattern?.headline === "Kickout Platform" && restartLines.length > 0;
+  const weaponDuplicatesTurnover = weaponPattern?.headline === "Turnovers Won" && turnoverLines.length > 0;
+  if (weaponPattern && !weaponDuplicatesRestart && !weaponDuplicatesTurnover) {
     chainLines.push(xRestartStr(weaponPattern.observation, sport));
   }
   if (chainLines.length > 0) {
-    sections.push({ heading: "Chain Intelligence", accent: "#818cf8", lines: chainLines });
+    sections.push({ heading: "Chain Intelligence", accent: "#818cf8", lines: chainLines.slice(0, 2) });
   }
 
   return sections;
@@ -10271,20 +10277,23 @@ function makeFtTacticalMatchStoryPage(
   const explanatoryRows = selectDecisiveLedgerFacts(ledger);
   const heading = fmtHowGameWasHeading(ledger.margin);
 
+  // Visual hierarchy: this is the dominant block on the page — largest
+  // heading, largest cards. Everything below (MATCH FACTS + the two-column
+  // body) is deliberately smaller and secondary.
   let bodyTop = CONTENT_TOP;
   if (explanatoryRows.length > 0) {
     ctx.fillStyle = "#7dd3fc";
-    ctx.font      = "bold 17px sans-serif";
+    ctx.font      = "bold 28px sans-serif";
     ctx.fillText(heading.toUpperCase(), CONTENT_X, bodyTop);
-    bodyTop += 10;
+    bodyTop += 16;
     ctx.fillStyle = "#7dd3fc";
-    ctx.fillRect(CONTENT_X, bodyTop, CONTENT_W, 3);
-    bodyTop += 26;
+    ctx.fillRect(CONTENT_X, bodyTop, CONTENT_W, 4);
+    bodyTop += 32;
 
     const CARD_GAP   = 20;
     const CARD_COUNT = explanatoryRows.length;
     const CARD_W     = Math.floor((CONTENT_W - CARD_GAP * (CARD_COUNT - 1)) / CARD_COUNT);
-    const CARD_H     = 96;
+    const CARD_H     = 132;
 
     explanatoryRows.forEach((row, i) => {
       const cx     = CONTENT_X + i * (CARD_W + CARD_GAP);
@@ -10296,30 +10305,31 @@ function makeFtTacticalMatchStoryPage(
       ctx.fillRect(cx, bodyTop, 4, CARD_H);
 
       ctx.fillStyle = accent;
-      ctx.font      = "bold 14px sans-serif";
+      ctx.font      = "bold 16px sans-serif";
       let label     = row.label.toUpperCase();
-      const labelMaxW = CARD_W - 32;
+      const labelMaxW = CARD_W - 36;
       if (ctx.measureText(label).width > labelMaxW) {
         while (label.length > 0 && ctx.measureText(label + "…").width > labelMaxW) {
           label = label.slice(0, -1);
         }
         label += "…";
       }
-      ctx.fillText(label, cx + 16, bodyTop + 26);
+      ctx.fillText(label, cx + 18, bodyTop + 32);
 
+      // Evidence wraps naturally (never truncated with an ellipsis) — up to
+      // 2 lines at a ~1.4 line-height comfortably clears the card's height.
       ctx.fillStyle = "#e2e8f0";
-      ctx.font      = "17px sans-serif";
-      let evidence  = fmtLedgerRowEvidenceLine(row, homeTeam, awayTeam);
-      const maxW    = CARD_W - 32;
-      if (ctx.measureText(evidence).width > maxW) {
-        while (evidence.length > 0 && ctx.measureText(evidence + "…").width > maxW) {
-          evidence = evidence.slice(0, -1);
-        }
-        evidence += "…";
+      ctx.font      = "20px sans-serif";
+      const evidence = fmtLedgerRowEvidenceLine(row, homeTeam, awayTeam);
+      const evidenceLines = wrapText(ctx, evidence, CARD_W - 36).slice(0, 2);
+      let ey = bodyTop + 66;
+      for (const el of evidenceLines) {
+        ctx.fillText(el, cx + 18, ey);
+        ey += 28;
       }
-      ctx.fillText(evidence, cx + 16, bodyTop + 60);
     });
-    bodyTop += CARD_H + 24;
+    // +18px beyond the prior gap — required padding before MATCH FACTS.
+    bodyTop += CARD_H + 42;
   }
 
   ctx.fillStyle = "#64748b";
@@ -10328,7 +10338,8 @@ function makeFtTacticalMatchStoryPage(
     "MATCH FACTS  ·  Verified metrics from existing report pages",
     CONTENT_X, bodyTop,
   );
-  bodyTop += 24;
+  // +14px beyond the prior gap — matches the increased inter-section spacing.
+  bodyTop += 38;
 
   const sections = buildTacticalMatchStorySections(report, homeTeam, awayTeam, sport);
   let clipped = false;
@@ -10346,8 +10357,12 @@ function makeFtTacticalMatchStoryPage(
     ctx.textBaseline = "alphabetic";
     ctx.textAlign = "left";
     ctx.fillText(section.heading.toUpperCase(), x + 14, y + 16);
-    y += 30;
+    y += 32;
 
+    // 20px font at a 28px increment ≈ 1.4 line-height, within the required
+    // 1.35-1.5 range. wrapText already wraps every line naturally — nothing
+    // on this page is truncated with an ellipsis except the fixed-height
+    // fact-card labels above, which have their own overflow guard.
     ctx.font = "20px sans-serif";
     ctx.fillStyle = "#e2e8f0";
     for (const line of section.lines) {
@@ -10360,9 +10375,10 @@ function makeFtTacticalMatchStoryPage(
         ctx.fillText(wl, x + 8, y);
         y += 28;
       }
-      y += 6;
+      y += 8;
     }
-    return y + 10;
+    // +14px beyond the prior gap — the required inter-section spacing.
+    return y + 24;
   }
 
   if (sections.length === 0) {
