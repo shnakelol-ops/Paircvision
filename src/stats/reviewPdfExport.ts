@@ -94,6 +94,7 @@ import {
   fmtScoreLine,
   restartOriginBridgeNote,
 } from "./ledger/scoreLedger";
+import type { LedgerRow, ScoreLedger } from "./ledger/scoreLedger";
 import {
   buildInfluenceAnalysis,
   fmtPlayerScore,
@@ -7266,40 +7267,42 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   const hasTargets = hasEnabledTargets(targets);
 
-  // 19 fixed pages + player pages.
-  // Fixed: p.1 Match Summary, p.2 Match Swing, p.3 Tactical Intelligence,
-  //        p.4 Segment Control, p.5–6 Kickout chapter, p.7–8 Turnover chapter,
+  // 20 fixed pages + player pages.
+  // Fixed: p.1 Match Summary, p.2 Tactical Match Story, p.3 Match Swing,
+  //        p.4 Tactical Intelligence, p.5 Segment Control, p.6–7 Kickout chapter,
+  //        p.8–9 Turnover chapter,
   // Page count — three analytical chapters + one intro page + three chapter dividers.
   // Fixed pages (excluding player pages):
   //   p.1  Match Summary (cover)
-  //   p.2  Where the Points Went (margin decomposition ledger — mixed)
-  //   p.3  Understanding PáircVision Analytics (intro)
-  //   p.4  Chapter 1 divider — Statistics
-  //   p.5  Match Swing Timeline
-  //   p.6  Segment Control
-  //   p.7…6+N  Player Breakdown (N = playerPageCount)
-  //   p.7+N  Player Influence
-  //   p.8+N  Shot Pitch Maps
-  //   p.9+N  Shot & Scoring Efficiency
-  //   p.10+N  Zone Analysis
-  //   p.11+N  1H Pitch Overview
-  //   p.12+N  2H Pitch Overview
-  //   p.13+N  Opposition Snapshot
-  //   p.14+N  Chapter 2 divider — Possession Intelligence
-  //   p.15+N  Restart Analysis
-  //   p.16+N  Turnover Analysis
-  //   p.17+N  Free Kick Analysis
-  //   p.18+N  Intelligence Summary     (mixed — POSSESSION primary)
-  //   p.19+N  Tactical Review Guide    (mixed)
-  //   p.20+N  Chapter 3 divider — Chain Intelligence
-  //   p.21+N  Chain Intelligence
-  //   p.22+N  Restart Chain Analysis
-  //   p.23+N  Turnover Chain Analysis
-  //   p.24+N  Scoring Momentum
-  //   p.25+N  Performance Against Targets (optional — only when targets are set)
-  //   Total fixed: 24 + N (+ 1 when targets set)
+  //   p.2  Tactical Match Story (executive summary — decisive facts first — mixed)
+  //   p.3  Where the Points Went (margin decomposition ledger — mixed)
+  //   p.4  Understanding PáircVision Analytics (intro)
+  //   p.5  Chapter 1 divider — Statistics
+  //   p.6  Match Swing Timeline
+  //   p.7  Segment Control
+  //   p.8…7+N  Player Breakdown (N = playerPageCount)
+  //   p.8+N  Player Influence
+  //   p.9+N  Shot Pitch Maps
+  //   p.10+N  Shot & Scoring Efficiency
+  //   p.11+N  Zone Analysis
+  //   p.12+N  1H Pitch Overview
+  //   p.13+N  2H Pitch Overview
+  //   p.14+N  Opposition Snapshot
+  //   p.15+N  Chapter 2 divider — Possession Intelligence
+  //   p.16+N  Restart Analysis
+  //   p.17+N  Turnover Analysis
+  //   p.18+N  Free Kick Analysis
+  //   p.19+N  Intelligence Summary     (mixed — POSSESSION primary)
+  //   p.20+N  Tactical Review Guide    (mixed)
+  //   p.21+N  Chapter 3 divider — Chain Intelligence
+  //   p.22+N  Chain Intelligence
+  //   p.23+N  Restart Chain Analysis
+  //   p.24+N  Turnover Chain Analysis
+  //   p.25+N  Scoring Momentum
+  //   p.26+N  Performance Against Targets (optional — only when targets are set)
+  //   Total fixed: 25 + N (+ 1 when targets set)
   const playerPageCount = calcPlayerPageCount(events, homeSquadPlayers, awaySquadPlayers);
-  const TOTAL_PAGES = 24 + playerPageCount + (hasTargets ? 1 : 0);
+  const TOTAL_PAGES = 25 + playerPageCount + (hasTargets ? 1 : 0);
 
   // Chain analysis — computed once via canonical MatchReport; shared by all page builders.
   const report = buildMatchReport({
@@ -7345,10 +7348,21 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   const p1 = makeSummaryPage(events, report, homeTeamName, awayTeamName, venueName, TOTAL_PAGES, sport);
   addCanvasPage(p1, false, "Match Summary");
 
-  // ── p.2 — Where the Points Went (margin decomposition ledger) ────────────────
+  // ── p.2 — Tactical Match Story (executive summary — first page after cover) ─
 
   try {
-    const c = makePointsLedgerPage(events, report, homeTeamName, awayTeamName, 2, TOTAL_PAGES, "FULL", homeSquadPlayers, awaySquadPlayers);
+    const c = makeFtTacticalMatchStoryPage(events, report, homeTeamName, awayTeamName, 2, TOTAL_PAGES, sport);
+    stampLayerBadge(c, "MIXED");
+    addCanvasPage(c, true, "Tactical Match Story");
+  } catch (err) {
+    console.error("Tactical Match Story page generation failed", err);
+    addCanvasPage(fallbackCanvas("Tactical Match Story"), true, "Tactical Match Story");
+  }
+
+  // ── p.3 — Where the Points Went (margin decomposition ledger) ────────────────
+
+  try {
+    const c = makePointsLedgerPage(events, report, homeTeamName, awayTeamName, 3, TOTAL_PAGES, "FULL", homeSquadPlayers, awaySquadPlayers);
     stampLayerBadge(c, "MIXED");
     addCanvasPage(c, true, "Where the Points Went");
   } catch (err) {
@@ -7356,10 +7370,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Where the Points Went"), true, "Where the Points Went");
   }
 
-  // ── p.3 — Understanding PáircVision Analytics ────────────────────────────────
+  // ── p.4 — Understanding PáircVision Analytics ────────────────────────────────
 
   addCanvasPage(
-    makeHowToReadPage(homeTeamName, awayTeamName, 3, TOTAL_PAGES, sport),
+    makeHowToReadPage(homeTeamName, awayTeamName, 4, TOTAL_PAGES, sport),
     true, "How to Read This Report",
   );
 
@@ -7375,14 +7389,14 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
       ["Match Swing Timeline", "Game Segments", "Player Breakdown",
        "Shot Pitch Maps", "Shot & Scoring Efficiency",
        "Zone Analysis", "1H & 2H Pitch Overviews", "Opposition Snapshot"],
-      "#60a5fa", 4, TOTAL_PAGES,
+      "#60a5fa", 5, TOTAL_PAGES,
     ),
     true, "Chapter 1 — Statistics",
   );
 
-  // p.5 — Match Swing Timeline
+  // p.6 — Match Swing Timeline
   try {
-    const c = makeMatchSwingTimelinePage(events, report, homeTeamName, awayTeamName, 5, TOTAL_PAGES, sport);
+    const c = makeMatchSwingTimelinePage(events, report, homeTeamName, awayTeamName, 6, TOTAL_PAGES, sport);
     stampLayerBadge(c, "STATISTICS");
     addCanvasPage(c, true, "Match Swing Timeline");
   } catch (err) {
@@ -7390,18 +7404,18 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Match Swing Timeline"), true, "Match Swing Timeline");
   }
 
-  // p.6 — Segment Control
-  const p_seg = makeSegmentsPage(events, homeTeamName, awayTeamName, 6, TOTAL_PAGES, sport);
+  // p.7 — Segment Control
+  const p_seg = makeSegmentsPage(events, homeTeamName, awayTeamName, 7, TOTAL_PAGES, sport);
   stampLayerBadge(p_seg, "STATISTICS");
   addCanvasPage(p_seg, true, "Segment Control");
 
-  // p.7…6+N — Player Breakdown
-  const playerCanvases = makePlayerPages(events, homeTeamName, awayTeamName, 7, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers, sport);
+  // p.8…7+N — Player Breakdown
+  const playerCanvases = makePlayerPages(events, homeTeamName, awayTeamName, 8, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers, sport);
   playerCanvases.forEach((c) => { stampLayerBadge(c, "STATISTICS"); addCanvasPage(c, true); });
 
-  // p.7+N — Player Influence
+  // p.8+N — Player Influence
   try {
-    const c = makePlayerInfluencePage(events, report, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
+    const c = makePlayerInfluencePage(events, report, homeTeamName, awayTeamName, 8 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
     stampLayerBadge(c, "MIXED");
     addCanvasPage(c, true, "Top Players by Net Influence");
   } catch (err) {
@@ -7409,8 +7423,8 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Top Players by Net Influence"), true, "Top Players by Net Influence");
   }
 
-  // p.8+N — Shot Pitch Maps
-  const p_shotBase = 8 + playerPageCount;
+  // p.9+N — Shot Pitch Maps
+  const p_shotBase = 9 + playerPageCount;
   try {
     const c = makeQuadPitchMapPage(
       sport,
@@ -7430,7 +7444,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Shot Pitch Maps"), true, "Shot Pitch Maps");
   }
 
-  // p.7+N — Shot & Scoring Efficiency
+  // p.10+N — Shot & Scoring Efficiency
   try {
     const c = makeShotEfficiencyPage(events, report, homeTeamName, awayTeamName, p_shotBase + 1, TOTAL_PAGES, sport);
     stampLayerBadge(c, "STATISTICS");
@@ -7440,7 +7454,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Shot & Scoring Efficiency"), true, "Shot & Scoring Efficiency");
   }
 
-  // p.8+N — Zone Analysis
+  // p.11+N — Zone Analysis
   try {
     const c = makeZoneAnalysisPage(events, sport, homeTeamName, awayTeamName, p_shotBase + 2, TOTAL_PAGES, homeAttackingDirection);
     stampLayerBadge(c, "STATISTICS");
@@ -7450,7 +7464,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Zone Analysis"), true, "Zone Analysis");
   }
 
-  // p.9+N — 1H Pitch Overview
+  // p.12+N — 1H Pitch Overview
   const p_arch = p_shotBase + 3;
   try {
     const h1AllEvents = selectPdfEvents(events, "H1", "ALL", "ALL");
@@ -7473,7 +7487,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("1H Pitch Overview"), true, "1H Pitch Overview");
   }
 
-  // p.10+N — 2H Pitch Overview
+  // p.13+N — 2H Pitch Overview
   try {
     const h2AllEvents = selectPdfEvents(events, "H2", "ALL", "ALL");
     const c = makeQuadPitchMapPage(
@@ -7495,7 +7509,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("2H Pitch Overview"), true, "2H Pitch Overview");
   }
 
-  // p.11+N — Opposition Snapshot
+  // p.14+N — Opposition Snapshot
   // MIXED: Restart/Turnover Threat cards are chain-origin figures and the
   // Rematch Watchlist draws on the Player Influence module — not a single
   // STATISTICS-only page (see terminology audit, Task 3).
@@ -7513,7 +7527,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   //             (Possession Intelligence — emerald #34d399)
   // ════════════════════════════════════════════════════════════════════════════
 
-  const p_ch2div = p_arch + 3;  // p.12+N
+  const p_ch2div = p_arch + 3;  // p.15+N
   addCanvasPage(
     makeChapterDividerPage(
       2, "WHAT HAPPENED FROM OUR POSSESSIONS?", "Possession Intelligence",
@@ -7526,7 +7540,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     true, "Chapter 2 — Possession Intelligence",
   );
 
-  // p.13+N — Restart Analysis
+  // p.16+N — Restart Analysis
   try {
     const c = makeRestartVisualPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 1, TOTAL_PAGES);
     stampLayerBadge(c, "POSSESSION");
@@ -7536,7 +7550,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Restart Analysis"), true, "Restart Analysis");
   }
 
-  // p.14+N — Turnover Analysis
+  // p.17+N — Turnover Analysis
   try {
     const c = makeTurnoverVisualPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 2, TOTAL_PAGES);
     stampLayerBadge(c, "POSSESSION");
@@ -7546,7 +7560,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Turnover Analysis"), true, "Turnover Analysis");
   }
 
-  // p.15+N — Free Kick Analysis
+  // p.18+N — Free Kick Analysis
   try {
     const c = makeFreeAnalysisPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 3, TOTAL_PAGES);
     stampLayerBadge(c, "POSSESSION");
@@ -7556,7 +7570,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Free Kick Analysis"), true, "Free Kick Analysis");
   }
 
-  // p.16+N — Intelligence Summary (mixed — Possession primary, Chain context)
+  // p.19+N — Intelligence Summary (mixed — Possession primary, Chain context)
   try {
     const c = makeTacticalIntelligencePage(report, homeTeamName, awayTeamName, p_ch2div + 4, TOTAL_PAGES, sport);
     stampLayerBadge(c, "MIXED");
@@ -7566,7 +7580,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Intelligence Summary"), true, "Intelligence Summary");
   }
 
-  // p.17+N — Tactical Review Guide (mixed)
+  // p.20+N — Tactical Review Guide (mixed)
   try {
     const c = makeTacticalReviewGuidePage(report, homeTeamName, awayTeamName, p_ch2div + 5, TOTAL_PAGES, sport);
     stampLayerBadge(c, "MIXED");
@@ -7581,7 +7595,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   //             (Chain Intelligence — violet #818cf8)
   // ════════════════════════════════════════════════════════════════════════════
 
-  const p_ch3div = p_ch2div + 6;  // p.18+N
+  const p_ch3div = p_ch2div + 6;  // p.21+N
   addCanvasPage(
     makeChapterDividerPage(
       3, "WHY DID THOSE ATTACKS BECOME SCORES?", "Chain Intelligence",
@@ -7594,7 +7608,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     true, "Chapter 3 — Chain Intelligence",
   );
 
-  // p.19+N — Chain Intelligence
+  // p.22+N — Chain Intelligence
   try {
     const c = makeChainSummaryPage(report, homeTeamName, awayTeamName, p_ch3div + 1, TOTAL_PAGES, sport);
     stampLayerBadge(c, "CHAIN");
@@ -7604,7 +7618,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Chain Intelligence"), true, "Chain Intelligence");
   }
 
-  // p.20+N — Restart Chain Analysis
+  // p.23+N — Restart Chain Analysis
   try {
     const c = makeKickoutChainPage(report, homeTeamName, awayTeamName, p_ch3div + 2, TOTAL_PAGES, sport);
     stampLayerBadge(c, "CHAIN");
@@ -7614,7 +7628,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Restart Chain Analysis"), true, "Restart Chain Analysis");
   }
 
-  // p.21+N — Turnover Chain Analysis
+  // p.24+N — Turnover Chain Analysis
   try {
     const c = makeTurnoverPunishmentPage(report, homeTeamName, awayTeamName, p_ch3div + 3, TOTAL_PAGES);
     stampLayerBadge(c, "CHAIN");
@@ -7624,7 +7638,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Turnover Chain Analysis"), true, "Turnover Chain Analysis");
   }
 
-  // p.22+N — Scoring Momentum
+  // p.25+N — Scoring Momentum
   try {
     const c = makeMomentumRunsPage(report, homeTeamName, awayTeamName, p_ch3div + 4, TOTAL_PAGES);
     stampLayerBadge(c, "CHAIN");
@@ -7634,7 +7648,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Scoring Momentum"), true, "Scoring Momentum");
   }
 
-  // p.23+N — Performance Against Targets (only when targets are set)
+  // p.26+N — Performance Against Targets (only when targets are set)
   if (hasTargets && targets) {
     const targetResults = computeTargetResults(targets, events, "FULL", sport);
     if (targetResults.length > 0) {
@@ -9988,6 +10002,56 @@ type TacticalStorySection = {
   lines: string[];
 };
 
+type DecisiveLedgerFact = {
+  row: LedgerRow;
+  exceededMargin: boolean;
+};
+
+/**
+ * Selects up to 3 ledger rows with the largest scoreboard swing.
+ *
+ * Reads only report.ledger.rows / report.ledger.margin — no recalculation.
+ * The ledger partition (scoreLedger.ts classify()) is the only breakdown of
+ * the final margin that is mutually exclusive by construction, so this is
+ * the sole safe ranking input: chain-origin figures (restart-origin vs
+ * turnover-origin) can both claim the same score and must not be ranked
+ * against each other here. Unattributed rows are excluded — they name no
+ * source, so they cannot produce a team-attributed fact.
+ */
+function selectDecisiveLedgerFacts(ledger: ScoreLedger): DecisiveLedgerFact[] {
+  const margin = Math.abs(ledger.margin);
+  const candidates = ledger.rows.filter(
+    (row) => row.id !== "UNATTRIBUTED" && row.net !== 0,
+  );
+  const ranked = [...candidates].sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+  return ranked.slice(0, 3).map((row) => ({
+    row,
+    exceededMargin: margin > 0 && Math.abs(row.net) >= margin,
+  }));
+}
+
+/** Neutral, team-attributed sentence for one decisive ledger fact. */
+function fmtDecisiveFactLine(
+  fact: DecisiveLedgerFact,
+  homeTeam: string,
+  awayTeam: string,
+  margin: number,
+): string {
+  const { row, exceededMargin } = fact;
+  const home = truncTeam(homeTeam, 18);
+  const away = truncTeam(awayTeam, 18);
+  const higher = row.net > 0 ? home : away;
+  const lower = row.net > 0 ? away : home;
+  const diff = Math.abs(row.net);
+  const absMargin = Math.abs(margin);
+  const comparison = absMargin === 0
+    ? "decisive in this game, in a match that finished level"
+    : exceededMargin
+      ? `a difference that exceeded the final margin of ${absMargin}, decisive in this game`
+      : `a difference of ${diff} against the ${absMargin}-point final margin`;
+  return `${row.label}: ${higher} generated ${diff} more points than ${lower} — ${comparison}.`;
+}
+
 /** Assembles factual story lines from canonical MatchReport views only. */
 function buildTacticalMatchStorySections(
   report: MatchReport<PdfExportEvent>,
@@ -10147,14 +10211,48 @@ function makeFtTacticalMatchStoryPage(
   const COL1_X      = CONTENT_X;
   const COL2_X      = CONTENT_X + COL_W + COL_GAP;
 
-  ctx.fillStyle    = "#64748b";
-  ctx.font         = "17px sans-serif";
   ctx.textBaseline = "alphabetic";
   ctx.textAlign    = "left";
+
+  // ── Decisive Game Facts — top 1-3 ledger rows by scoreboard swing ──────────
+  // Presentation only: reads report.ledger.rows/margin via a pure selector,
+  // no recalculation. See selectDecisiveLedgerFacts for the ranking rule.
+  const { ledger } = report;
+  const decisiveFacts = selectDecisiveLedgerFacts(ledger);
+  const decisiveLines = decisiveFacts.map(
+    (f) => fmtDecisiveFactLine(f, homeTeam, awayTeam, ledger.margin),
+  );
+
+  let bodyTop = CONTENT_TOP;
+  if (decisiveLines.length > 0) {
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font      = "bold 15px sans-serif";
+    ctx.fillText("DECISIVE GAME FACTS", CONTENT_X, bodyTop);
+    bodyTop += 10;
+    ctx.fillStyle = "#7dd3fc";
+    ctx.fillRect(CONTENT_X, bodyTop, CONTENT_W, 3);
+    bodyTop += 22;
+
+    ctx.font      = "19px sans-serif";
+    ctx.fillStyle = "#f8fafc";
+    for (const line of decisiveLines) {
+      const wrapped = wrapText(ctx, line, CONTENT_W - 8);
+      for (const wl of wrapped) {
+        ctx.fillText(wl, CONTENT_X, bodyTop);
+        bodyTop += 25;
+      }
+      bodyTop += 5;
+    }
+    bodyTop += 14;
+  }
+
+  ctx.fillStyle = "#64748b";
+  ctx.font      = "17px sans-serif";
   ctx.fillText(
     "MATCH FACTS  ·  Verified metrics from existing report pages",
-    CONTENT_X, CONTENT_TOP - 14,
+    CONTENT_X, bodyTop,
   );
+  bodyTop += 24;
 
   const sections = buildTacticalMatchStorySections(report, homeTeam, awayTeam, sport);
   let clipped = false;
@@ -10196,10 +10294,10 @@ function makeFtTacticalMatchStoryPage(
     ctx.font = "22px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
-    ctx.fillText("No canonical match facts available for this period.", CANVAS_W / 2, (CONTENT_TOP + CONTENT_BOT) / 2);
+    ctx.fillText("No canonical match facts available for this period.", CANVAS_W / 2, (bodyTop + CONTENT_BOT) / 2);
   } else {
-    let leftY  = CONTENT_TOP;
-    let rightY = CONTENT_TOP;
+    let leftY  = bodyTop;
+    let rightY = bodyTop;
     for (const section of sections) {
       const targetLeft = leftY <= rightY;
       if (targetLeft) {
@@ -10218,7 +10316,6 @@ function makeFtTacticalMatchStoryPage(
 
   // ── Bottom callout strip — score + share metrics (no body duplication) ─────
   const facts: string[] = [];
-  const { ledger } = report;
   facts.push(
     `${truncTeam(homeTeam, 14)} ${fmtScoreLine(ledger.forScore)} v ${truncTeam(awayTeam, 14)} ${fmtScoreLine(ledger.oppScore)} — ${fmtMarginLabel(ledger.margin, homeTeam, awayTeam)}`,
   );
@@ -12616,27 +12713,34 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "MIXED",
     );
   } else {
-    // ── FT Snapshot ── 13 pages ───────────────────────────────────────────────
+    // ── FT Snapshot ── 14 pages ───────────────────────────────────────────────
     //
-    // PART 1 — COACHING LAYER (p.1–7): coaching structure, full-match events.
+    // Tactical Match Story moved to p.2 — first information page after the
+    // Where the Points Went cover — so the executive summary (decisive facts
+    // + reorganised chain/shooting/ledger sections) reads before the
+    // page-by-page detail. Page count unchanged: this is a reorder, not an
+    // added page (TOTAL_PAGES stays 14 for FT). Not present in HT Snapshot.
+    //
+    // PART 1 — COACHING LAYER (p.1–9): coaching structure, full-match events.
     //   Restart Battle now spans two pages (one per half) for maximum pitch size.
     //
-    // 1. Our Shot Profile          — "Where are we getting joy?"
-    // 2. Opposition Shot Profile   — "Where are they hurting us?"
-    // 3. Restart Battle – 1st Half — "Where did restarts go in the first half?"
-    // 4. Restart Battle – 2nd Half — "Where did restarts go in the second half?"
-    // 5. Chain Pressure            — ranked chain patterns (FT-calibrated)
-    // 6. Turnover & Territory      — where possession is won and lost
-    // 7. Tactical Match Summary    — 2×2 coaching panel
+    // 1. Where the Points Went     — margin decomposition ledger (cover)
+    // 2. Tactical Match Story      — executive summary, decisive facts first
+    // 3. Our Shot Profile          — "Where are we getting joy?"
+    // 4. Opposition Shot Profile   — "Where are they hurting us?"
+    // 5. Restart Battle – 1st Half — "Where did restarts go in the first half?"
+    // 6. Restart Battle – 2nd Half — "Where did restarts go in the second half?"
+    // 7. Chain Pressure            — ranked chain patterns (FT-calibrated)
+    // 8. Turnover & Territory      — where possession is won and lost
+    // 9. Tactical Match Summary    — 2×2 coaching panel
     //
-    // PART 2 — ANALYTICAL DEPTH (p.8–13): unchanged analytical review pages.
+    // PART 2 — ANALYTICAL DEPTH (p.10–14): unchanged analytical review pages.
     //
-    // 8.  Turnover Punishment      — possession chain punishment
-    // 9.  Shot Efficiency          — scoring efficiency analysis
-    // 10. Attack Corridors         — channel-based attack shape
-    // 11. Restart Escape Routes    — kickout landing zone outcome map
-    // 12. Opposition Snapshot      — opposition tactical profile
-    // 13. Tactical Match Story     — narrative arc of the match
+    // 10. Turnover Punishment      — possession chain punishment
+    // 11. Shot Efficiency          — scoring efficiency analysis
+    // 12. Attack Corridors         — channel-based attack shape
+    // 13. Restart Escape Routes    — kickout landing zone outcome map
+    // 14. Opposition Snapshot      — opposition tactical profile
 
     // ── PART 1 — COACHING LAYER ───────────────────────────────────────────────
 
@@ -12648,63 +12752,71 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "MIXED",
     );
 
-    // 2. Our Shot Profile
+    // 2. Tactical Match Story — executive summary, first page after the cover
     addPage(
-      makeOurShotProfilePage(events, report, sport, home, away, 2, TOTAL_PAGES, homeAttackingDirection),
+      makeFtTacticalMatchStoryPage(events, report, home, away, 2, TOTAL_PAGES, sport),
+      true,
+      "Tactical Match Story",
+      "MIXED",
+    );
+
+    // 3. Our Shot Profile
+    addPage(
+      makeOurShotProfilePage(events, report, sport, home, away, 3, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Our Shots",
       "STATISTICS",
     );
 
-    // 3. Opposition Shot Profile
+    // 4. Opposition Shot Profile
     addPage(
-      makeOppShotProfilePage(events, report, sport, home, away, 3, TOTAL_PAGES, homeAttackingDirection),
+      makeOppShotProfilePage(events, report, sport, home, away, 4, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Their Shots",
       "STATISTICS",
     );
 
-    // 4. Restart Battle – First Half
+    // 5. Restart Battle – First Half
     addPage(
       makeRestartBattlePage(
         events.filter((e) => e.period === "1H"),
-        sport, home, away, 4, TOTAL_PAGES, "1H", homeAttackingDirection,
+        sport, home, away, 5, TOTAL_PAGES, "1H", homeAttackingDirection,
       ),
       true,
       "Restart Battle – 1st Half",
       "STATISTICS",
     );
 
-    // 5. Restart Battle – Second Half
+    // 6. Restart Battle – Second Half
     addPage(
       makeRestartBattlePage(
         events.filter((e) => e.period === "2H"),
-        sport, home, away, 5, TOTAL_PAGES, "2H", homeAttackingDirection,
+        sport, home, away, 6, TOTAL_PAGES, "2H", homeAttackingDirection,
       ),
       true,
       "Restart Battle – 2nd Half",
       "STATISTICS",
     );
 
-    // 6. Chain Pressure — FT-calibrated (standard thresholds for full-match dataset)
+    // 7. Chain Pressure — FT-calibrated (standard thresholds for full-match dataset)
     addPage(
-      makeChainPressurePage(events, sport, report, home, away, 6, TOTAL_PAGES),
+      makeChainPressurePage(events, sport, report, home, away, 7, TOTAL_PAGES),
       true,
       "Chain Patterns",
       "CHAIN",
     );
 
-    // 7. Turnover & Territory
+    // 8. Turnover & Territory
     addPage(
-      makeTurnoverTerritoryPage(events, report, sport, home, away, 7, TOTAL_PAGES, homeAttackingDirection),
+      makeTurnoverTerritoryPage(events, report, sport, home, away, 8, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Turnover & Territory",
       "POSSESSION",
     );
 
-    // 8. Tactical Match Summary — 2×2 panel, no pitch, coaching message board
+    // 9. Tactical Match Summary — 2×2 panel, no pitch, coaching message board
     addPage(
-      makeHtTacticalSummaryPage(events, sport, report, home, away, 8, TOTAL_PAGES, "FT"),
+      makeHtTacticalSummaryPage(events, sport, report, home, away, 9, TOTAL_PAGES, "FT"),
       true,
       "Tactical Summary",
       "MIXED",
@@ -12712,53 +12824,45 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
 
     // ── PART 2 — ANALYTICAL DEPTH ─────────────────────────────────────────────
 
-    // 9. Turnover Punishment
+    // 10. Turnover Punishment
     addPage(
-      makeTurnoverPunishmentPage(report, home, away, 9, TOTAL_PAGES),
+      makeTurnoverPunishmentPage(report, home, away, 10, TOTAL_PAGES),
       true,
       "Turnover Punishment",
       "CHAIN",
     );
 
-    // 10. Shot Efficiency
+    // 11. Shot Efficiency
     addPage(
-      makeShotEfficiencyPage(events, report, home, away, 10, TOTAL_PAGES, sport),
+      makeShotEfficiencyPage(events, report, home, away, 11, TOTAL_PAGES, sport),
       true,
       "Shot Efficiency",
       "STATISTICS",
     );
 
-    // 11. Attack Corridors — channel-based attack shape analysis
+    // 12. Attack Corridors — channel-based attack shape analysis
     addPage(
-      makeFtAttackCorridorsPage(events, sport, home, away, 11, TOTAL_PAGES, homeAttackingDirection),
+      makeFtAttackCorridorsPage(events, sport, home, away, 12, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Attack Corridors",
       "STATISTICS",
     );
 
-    // 12. Restart Escape Routes — kickout destination zone outcome map
+    // 13. Restart Escape Routes — kickout destination zone outcome map
     addPage(
-      makeFtRestartEscapeRoutesPage(events, sport, report, home, away, 12, TOTAL_PAGES, homeAttackingDirection),
+      makeFtRestartEscapeRoutesPage(events, sport, report, home, away, 13, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Restart Escape Routes",
       "POSSESSION",
     );
 
-    // 13. Opposition Snapshot
+    // 14. Opposition Snapshot
     // MIXED: Restart/Turnover Threat cards are chain-origin figures and the
     // Rematch Watchlist draws on the Player Influence module.
     addPage(
-      makeOppositionSnapshotPage(events, report, home, away, 13, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers),
+      makeOppositionSnapshotPage(events, report, home, away, 14, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers),
       true,
       "Opposition Snapshot",
-      "MIXED",
-    );
-
-    // 14. Tactical Match Story — narrative arc of the match
-    addPage(
-      makeFtTacticalMatchStoryPage(events, report, home, away, 14, TOTAL_PAGES, sport),
-      true,
-      "Tactical Match Story",
       "MIXED",
     );
   }
