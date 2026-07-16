@@ -10003,7 +10003,7 @@ type TacticalStorySection = {
 };
 
 /**
- * Selects up to 3 ledger rows with the largest scoreboard swing.
+ * Selects every ledger row with a nonzero scoreboard swing, largest first.
  *
  * Reads only report.ledger.rows — no recalculation. The ledger partition
  * (scoreLedger.ts classify()) is the only breakdown of the final margin
@@ -10012,12 +10012,17 @@ type TacticalStorySection = {
  * can both claim the same score and must not be ranked against each other
  * here. Unattributed rows are excluded — they name no source, so they
  * cannot produce a team-attributed fact.
+ *
+ * There are at most 4 named sources (placed / restart / turnover / from
+ * play), so this naturally returns 0-4 rows — callers slice further only
+ * if a page-specific cap is needed (see makePointsLedgerPage's Block C,
+ * which keeps its existing top-3 cap unchanged).
  */
 function selectDecisiveLedgerFacts(ledger: ScoreLedger): LedgerRow[] {
   const candidates = ledger.rows.filter(
     (row) => row.id !== "UNATTRIBUTED" && row.net !== 0,
   );
-  return [...candidates].sort((a, b) => Math.abs(b.net) - Math.abs(a.net)).slice(0, 3);
+  return [...candidates].sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
 }
 
 /** Card accent per ledger source — reuses existing canonical page colours. */
@@ -10096,6 +10101,17 @@ function fmtLedgerRowFactSentence(
       ? `The ${spellNumber(diff)}-point difference exceeded the final margin.`
       : `The ${spellNumber(diff)}-point difference did not exceed the ${spellNumber(absMargin)}-point final margin.`;
   return `${lead} ${tail}`;
+}
+
+/**
+ * "How the Game Was Won" / "...Lost" / "...Finished Level" — reads only
+ * report.ledger.margin. homeTeam is the analysed team by this codebase's
+ * existing convention (see "Our Shot Profile" vs "Opposition Shot Profile").
+ */
+function fmtHowGameWasHeading(margin: number): string {
+  if (margin > 0) return "How the Game Was Won";
+  if (margin < 0) return "How the Game Was Lost";
+  return "How the Game Finished Level";
 }
 
 /** Assembles factual story lines from canonical MatchReport views only. */
@@ -10247,30 +10263,30 @@ function makeFtTacticalMatchStoryPage(
   ctx.textBaseline = "alphabetic";
   ctx.textAlign    = "left";
 
-  // ── Decisive Game Facts — top 1-3 ledger rows by scoreboard swing ──────────
-  // Presentation only: reads report.ledger.rows/margin via a pure selector,
-  // no recalculation. See selectDecisiveLedgerFacts for the ranking rule.
-  // Each row renders as a short evidence card; one combined conclusion
-  // sentence (the single highest-swing row vs the final margin) sits below.
+  // ── How the Game Was Won/Lost — every nonzero ledger source, not just the
+  // largest, so the explanation is the complete margin breakdown rather than
+  // a magnitude-only cut. Presentation only: reads report.ledger.rows/margin
+  // via a pure selector, no recalculation. See selectDecisiveLedgerFacts.
   const { ledger } = report;
-  const decisiveRows = selectDecisiveLedgerFacts(ledger);
+  const explanatoryRows = selectDecisiveLedgerFacts(ledger);
+  const heading = fmtHowGameWasHeading(ledger.margin);
 
   let bodyTop = CONTENT_TOP;
-  if (decisiveRows.length > 0) {
+  if (explanatoryRows.length > 0) {
     ctx.fillStyle = "#7dd3fc";
-    ctx.font      = "bold 15px sans-serif";
-    ctx.fillText("DECISIVE GAME FACTS", CONTENT_X, bodyTop);
+    ctx.font      = "bold 17px sans-serif";
+    ctx.fillText(heading.toUpperCase(), CONTENT_X, bodyTop);
     bodyTop += 10;
     ctx.fillStyle = "#7dd3fc";
     ctx.fillRect(CONTENT_X, bodyTop, CONTENT_W, 3);
     bodyTop += 26;
 
-    const CARD_GAP = 24;
-    const CARD_COUNT = decisiveRows.length;
-    const CARD_W = Math.floor((CONTENT_W - CARD_GAP * (CARD_COUNT - 1)) / CARD_COUNT);
-    const CARD_H = 96;
+    const CARD_GAP   = 20;
+    const CARD_COUNT = explanatoryRows.length;
+    const CARD_W     = Math.floor((CONTENT_W - CARD_GAP * (CARD_COUNT - 1)) / CARD_COUNT);
+    const CARD_H     = 96;
 
-    decisiveRows.forEach((row, i) => {
+    explanatoryRows.forEach((row, i) => {
       const cx     = CONTENT_X + i * (CARD_W + CARD_GAP);
       const accent = LEDGER_ROW_ACCENT[row.id];
 
@@ -10280,11 +10296,19 @@ function makeFtTacticalMatchStoryPage(
       ctx.fillRect(cx, bodyTop, 4, CARD_H);
 
       ctx.fillStyle = accent;
-      ctx.font      = "bold 15px sans-serif";
-      ctx.fillText(row.label.toUpperCase(), cx + 16, bodyTop + 26);
+      ctx.font      = "bold 14px sans-serif";
+      let label     = row.label.toUpperCase();
+      const labelMaxW = CARD_W - 32;
+      if (ctx.measureText(label).width > labelMaxW) {
+        while (label.length > 0 && ctx.measureText(label + "…").width > labelMaxW) {
+          label = label.slice(0, -1);
+        }
+        label += "…";
+      }
+      ctx.fillText(label, cx + 16, bodyTop + 26);
 
       ctx.fillStyle = "#e2e8f0";
-      ctx.font      = "18px sans-serif";
+      ctx.font      = "17px sans-serif";
       let evidence  = fmtLedgerRowEvidenceLine(row, homeTeam, awayTeam);
       const maxW    = CARD_W - 32;
       if (ctx.measureText(evidence).width > maxW) {
@@ -10295,18 +10319,7 @@ function makeFtTacticalMatchStoryPage(
       }
       ctx.fillText(evidence, cx + 16, bodyTop + 60);
     });
-    bodyTop += CARD_H + 20;
-
-    // One combined conclusion — the single highest-swing row vs the margin.
-    const conclusion = fmtLedgerRowFactSentence(decisiveRows[0], homeTeam, awayTeam, ledger.margin);
-    ctx.font      = "19px sans-serif";
-    ctx.fillStyle = "#f8fafc";
-    const wrapped = wrapText(ctx, conclusion, CONTENT_W - 8);
-    for (const wl of wrapped) {
-      ctx.fillText(wl, CONTENT_X, bodyTop);
-      bodyTop += 25;
-    }
-    bodyTop += 14;
+    bodyTop += CARD_H + 24;
   }
 
   ctx.fillStyle = "#64748b";
@@ -12614,8 +12627,9 @@ function makePointsLedgerPage(
     // Neutral scoreboard facts only — no coaching recommendations. Built
     // locally from ledger.rows/margin rather than ledger.verdicts, which
     // carries advisory phrasing ("Worth reviewing ..."). Same selector and
-    // sentence format as the Tactical Match Story Decisive Game Facts cards.
-    const verdictFacts = selectDecisiveLedgerFacts(ledger).map(
+    // sentence format as Tactical Match Story's fact cards; top-3 cap
+    // preserved here unchanged so this page's output stays identical.
+    const verdictFacts = selectDecisiveLedgerFacts(ledger).slice(0, 3).map(
       (row) => fmtLedgerRowFactSentence(row, homeTeam, awayTeam, ledger.margin),
     );
     for (const verdict of verdictFacts) {
