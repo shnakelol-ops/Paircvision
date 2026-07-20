@@ -1,14 +1,17 @@
 // Pure event-construction and enrichment logic for Rapid Capture, kept out
 // of the React component so it can be tested directly. Match Stats is
-// canonical here — every tag string, restartOwner rule, player field name,
-// and scoring rule mirrors capture behaviour already confirmed in
-// StatsModeSurface.tsx. No new event semantics are introduced.
+// canonical here — every tag string, restartOwner rule, and player field
+// name mirrors capture behaviour already confirmed in StatsModeSurface.tsx.
+// Score values are computed via the shared scoreLedger helpers (the same
+// definition MatchReport's ledger uses), not a local copy. No new event
+// semantics are introduced.
 //
 // Philosophy: capture first, enrich second, never block. A tap always
 // produces exactly one saved event immediately; the detail bar and player
 // bar only ever update an already-saved event afterwards.
 
 import { createMatchEvent, type MatchEvent, type MatchEventKind } from "../core/stats/stats-event-model";
+import { SCORE_KINDS, scoreValue } from "../stats/ledger/scoreLedger";
 
 /**
  * Rapid Capture's working event type. Adds the same optional player-
@@ -285,13 +288,14 @@ function tallyTeamScore(events: readonly RapidMatchEvent[], side: "FOR" | "OPP")
   let points = 0;
   let twoPointers = 0;
   for (const event of events) {
-    if (event.teamSide !== side) continue;
-    if (event.kind === "GOAL") goals += 1;
-    else if (event.kind === "POINT") points += 1;
-    else if (event.kind === "TWO_POINTER") {
-      twoPointers += 1;
-      points += 2;
+    if (event.teamSide !== side || !SCORE_KINDS.has(event.kind)) continue;
+    if (event.kind === "GOAL") {
+      goals += 1;
+      continue;
     }
+    const value = scoreValue(event.kind);
+    if (value === 2) twoPointers += 1;
+    points += value;
   }
   return { goals, points, twoPointers, total: goals * 3 + points };
 }

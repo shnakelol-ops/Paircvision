@@ -258,7 +258,9 @@ describe("legacy possession compatibility (UI side)", () => {
 });
 
 describe("live scoreboard", () => {
-  function score(kind: "GOAL" | "POINT" | "TWO_POINTER" | "WIDE", teamSide: "FOR" | "OPP", nx = 0.9): RapidMatchEvent {
+  type ScoreKind = "GOAL" | "POINT" | "TWO_POINTER" | "WIDE" | "FREE_SCORED" | "FORTY_FIVE_TWO_POINT" | "FREE_MISSED";
+
+  function score(kind: ScoreKind, teamSide: "FOR" | "OPP", nx = 0.9): RapidMatchEvent {
     return buildCapturedEvent({ kind, nx, ny: 0.5, half: 1, timestamp: 10, teamSide });
   }
 
@@ -276,6 +278,41 @@ describe("live scoreboard", () => {
     expect(board.opp).toEqual({ goals: 0, points: 1, twoPointers: 0, total: 1 });
   });
 
+  // Regression test for audit finding F01: computeRapidScoreboard previously
+  // handled only GOAL/POINT/TWO_POINTER, silently dropping FREE_SCORED and
+  // FORTY_FIVE_TWO_POINT — the two kinds a Match Stats/Event Stats export
+  // uses for placed-ball and 45 two-point scores respectively. A Rapid
+  // Capture match imported from either format understated its own score
+  // relative to the Full Review PDF for the identical events.
+  it("counts every canonical scoring kind — including placed-ball FREE_SCORED and 45 two-pointers previously omitted (regression, audit F01)", () => {
+    const events = [
+      // FOR: one of each of the six required scoring variants.
+      score("POINT", "FOR"), // 1pt from play
+      score("GOAL", "FOR"), // goal
+      score("FREE_SCORED", "FOR"), // 1pt placed ball
+      score("TWO_POINTER", "FOR"), // 2pt from play
+      score("TWO_POINTER", "FOR"), // 2pt placed ball (kind is the same; tag distinguishes it, value doesn't change)
+      score("FORTY_FIVE_TWO_POINT", "FOR"), // 2pt 45
+      // OPP: the identical six variants.
+      score("POINT", "OPP", 0.1),
+      score("GOAL", "OPP", 0.1),
+      score("FREE_SCORED", "OPP", 0.1),
+      score("TWO_POINTER", "OPP", 0.1),
+      score("TWO_POINTER", "OPP", 0.1),
+      score("FORTY_FIVE_TWO_POINT", "OPP", 0.1),
+      // Non-scoring controls — must never contribute.
+      score("WIDE", "FOR"),
+      score("FREE_MISSED", "OPP", 0.1),
+    ];
+    const board = computeRapidScoreboard(events);
+    // goals: 1; points: 1(POINT) + 1(FREE_SCORED) + 2(TWO_POINTER) + 2(TWO_POINTER) + 2(FORTY_FIVE_TWO_POINT) = 8; twoPointers: 3; total: 3 + 8 = 11
+    expect(board.for).toEqual({ goals: 1, points: 8, twoPointers: 3, total: 11 });
+    expect(board.opp).toEqual({ goals: 1, points: 8, twoPointers: 3, total: 11 });
+    // Event count must be unaffected by the fix — the scoreboard tally
+    // changed, not what counts as "one captured event".
+    expect(events).toHaveLength(14);
+  });
+
   it("formats a scoreline in GAA notation", () => {
     expect(formatScoreLine({ goals: 1, points: 8, twoPointers: 0, total: 11 })).toBe("1-08");
     expect(formatScoreLine({ goals: 0, points: 7, twoPointers: 2, total: 7 })).toBe("0-07 (2×2pt)");
@@ -285,6 +322,14 @@ describe("live scoreboard", () => {
     const events = [score("GOAL", "FOR"), score("POINT", "FOR")];
     const afterUndo = events.slice(0, -1);
     expect(computeRapidScoreboard(afterUndo).for.total).toBe(3);
+  });
+
+  it("recalculates correctly after Undo removes a placed-ball or 45 score (regression, audit F01)", () => {
+    const events = [score("FREE_SCORED", "FOR"), score("FORTY_FIVE_TWO_POINT", "FOR")];
+    const afterUndoFortyFive = events.slice(0, -1);
+    expect(computeRapidScoreboard(afterUndoFortyFive).for).toEqual({ goals: 0, points: 1, twoPointers: 0, total: 1 });
+    const afterUndoBoth = afterUndoFortyFive.slice(0, -1);
+    expect(computeRapidScoreboard(afterUndoBoth).for).toEqual({ goals: 0, points: 0, twoPointers: 0, total: 0 });
   });
 
   it("is a pure function — same input always yields the same output, no hidden state", () => {
