@@ -34,7 +34,9 @@ import {
   type SavedMatchRestoreContext,
   SAVED_MATCHES_STORAGE_KEY,
   SAVED_SQUADS_STORAGE_KEY,
-  MAX_SAVED_MATCHES,
+  orderSavedMatches,
+  deleteSavedMatch,
+  resolveSaveIdentity,
 } from "./core/stats/saved-match";
 import { gaaModeConfig, type GaaModeKey } from "./config/gaaModeConfig";
 import { deriveCoachingBrief, type CoachingBriefLine } from "./stats/coachingBrief";
@@ -785,26 +787,26 @@ function parseStoredSavedMatch(input: unknown): SavedMatch | null {
   };
 }
 
-function sanitizeSavedMatches(matches: readonly SavedMatch[]): SavedMatch[] {
-  const normalized = [...matches]
-    .filter(
-      (match) =>
-        match.events.length > 0 &&
-        match.eventCount > 0 &&
-        match.homeTeamName.trim().length > 0 &&
-        match.awayTeamName.trim().length > 0 &&
-        match.venue.trim().length > 0,
-    )
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const seenIds = new Set<string>();
-  return normalized.filter((match) => {
-    if (seenIds.has(match.id)) return false;
-    seenIds.add(match.id);
-    return true;
-  }).slice(0, MAX_SAVED_MATCHES);
+// Validates + orders the saved-match archive. Deliberately does not limit
+// how many matches are kept — every explicitly saved or imported match
+// remains until the coach deletes it themselves (see deleteSavedMatch).
+// Exported (along with persistSavedMatches/readSavedMatchesFromStorage
+// below) so the retention/rehydration/failure-safety behaviour can be
+// regression-tested directly against the real save pipeline, not a
+// reimplementation of it.
+export function sanitizeSavedMatches(matches: readonly SavedMatch[]): SavedMatch[] {
+  const valid = matches.filter(
+    (match) =>
+      match.events.length > 0 &&
+      match.eventCount > 0 &&
+      match.homeTeamName.trim().length > 0 &&
+      match.awayTeamName.trim().length > 0 &&
+      match.venue.trim().length > 0,
+  );
+  return orderSavedMatches(valid);
 }
 
-type ReadSavedMatchesResult = {
+export type ReadSavedMatchesResult = {
   matches: SavedMatch[];
   isCorrupt: boolean;
 };
@@ -928,7 +930,7 @@ function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActive
   }
 }
 
-function readSavedMatchesFromStorage(): ReadSavedMatchesResult {
+export function readSavedMatchesFromStorage(): ReadSavedMatchesResult {
   if (typeof window === "undefined") return { matches: [], isCorrupt: false };
   return parseStoredSavedMatches(safeReadLocalStorage(SAVED_MATCHES_STORAGE_KEY));
 }
@@ -1020,7 +1022,7 @@ function resolveSavedMatchRestoreContext(record: SavedMatch): {
   };
 }
 
-function persistSavedMatches(matches: readonly SavedMatch[]): boolean {
+export function persistSavedMatches(matches: readonly SavedMatch[]): boolean {
   if (typeof window === "undefined") return false;
   return safeWriteLocalStorage(SAVED_MATCHES_STORAGE_KEY, JSON.stringify(sanitizeSavedMatches(matches)));
 }
@@ -5086,6 +5088,19 @@ export default function StatsModeSurface() {
       return;
     }
     try {
+      const savedMatchesResult = readSavedMatchesFromStorage();
+      if (savedMatchesResult.isCorrupt) {
+        console.warn("[stats-storage] Saved matches storage is corrupt; refusing to overwrite.", {
+          key: SAVED_MATCHES_STORAGE_KEY,
+        });
+        setSaveFeedback("Save blocked — saved matches storage is corrupted.");
+        return;
+      }
+      // Saving while a specific already-archived match is loaded (via Load
+      // Match, or a previous save this session) updates that match in place
+      // — same id, same original createdAt so its position in the list
+      // doesn't move — rather than inserting a duplicate record.
+      const identity = resolveSaveIdentity(savedMatchesResult.matches, currentMatchIdRef.current);
       const snapshotEvents = [...loggedEvents];
       const snapshotHomeScore = computeTeamScore(snapshotEvents, "HOME");
       const snapshotAwayScore = computeTeamScore(snapshotEvents, "AWAY");
@@ -5093,8 +5108,8 @@ export default function StatsModeSurface() {
       const awayTeamName = teamNames.AWAY.trim() || "Opponent";
       const venue = venueName.trim() || "Unknown venue";
       const savedRecord: SavedMatch = {
-        id: `saved-match-${newLocalEventId()}`,
-        createdAt: Date.now(),
+        id: identity ? identity.id : `saved-match-${newLocalEventId()}`,
+        createdAt: identity ? identity.createdAt : Date.now(),
         label: `${homeTeamName} v ${awayTeamName}`,
         homeTeamName,
         awayTeamName,
@@ -5121,14 +5136,6 @@ export default function StatsModeSurface() {
         },
         targets: activeTargets,
       };
-      const savedMatchesResult = readSavedMatchesFromStorage();
-      if (savedMatchesResult.isCorrupt) {
-        console.warn("[stats-storage] Saved matches storage is corrupt; refusing to overwrite.", {
-          key: SAVED_MATCHES_STORAGE_KEY,
-        });
-        setSaveFeedback("Save blocked — saved matches storage is corrupted.");
-        return;
-      }
       const nextSavedMatches = sanitizeSavedMatches([savedRecord, ...savedMatchesResult.matches]);
       const didPersist = persistSavedMatches(nextSavedMatches);
       if (!didPersist) {
@@ -5139,6 +5146,8 @@ export default function StatsModeSurface() {
       clearActiveMatchDraft();
       setPendingRecoveredDraft(null);
       setSavedMatches(nextSavedMatches);
+      setCurrentMatchId(savedRecord.id);
+      currentMatchIdRef.current = savedRecord.id;
       setSaveFeedback("Saved");
       setLastSavedAtMillis(savedRecord.createdAt);
       setSaveLoadBlockedReason(null);
@@ -5193,6 +5202,33 @@ export default function StatsModeSurface() {
     link.remove();
     URL.revokeObjectURL(url);
     setSaveFeedback("Summary image downloaded");
+  };
+
+  // Manual, one-at-a-time deletion — the only way a saved match is ever
+  // removed now that saving no longer evicts the oldest one automatically.
+  const requestDeleteSavedMatch = (record: SavedMatch) => {
+    setConfirmSheet({
+      message: `Delete "${record.homeTeamName} v ${record.awayTeamName}" (${formatSavedMatchCreatedAt(record.createdAt)})? This cannot be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () => {
+        setConfirmSheet(null);
+        const savedMatchesResult = readSavedMatchesFromStorage();
+        if (savedMatchesResult.isCorrupt) {
+          setSaveLoadBlockedReason("Delete blocked: saved matches storage is corrupted.");
+          return;
+        }
+        const nextSavedMatches = deleteSavedMatch(savedMatchesResult.matches, record.id);
+        const didPersist = persistSavedMatches(nextSavedMatches);
+        if (!didPersist) {
+          setSaveLoadBlockedReason("Delete failed — storage unavailable.");
+          return;
+        }
+        setSavedMatches(nextSavedMatches);
+        setSaveLoadBlockedReason(null);
+      },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
 
   const loadSavedMatchRecord = (record: SavedMatch) => {
@@ -7462,6 +7498,15 @@ export default function StatsModeSurface() {
                           🎤 Play Voice Notes
                         </button>
                       ) : null}
+                      <button
+                        type="button"
+                        className="utility-review-btn"
+                        onClick={() => {
+                          requestDeleteSavedMatch(savedMatch);
+                        }}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 );
