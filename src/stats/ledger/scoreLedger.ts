@@ -88,11 +88,18 @@ export type ScoreLedger = {
 
 // ─── Scoring helpers ──────────────────────────────────────────────────────────
 
-const SCORE_KINDS = new Set<MatchEventKind>([
+/**
+ * Canonical score-event kinds and their point values — the single source of
+ * truth MatchReport's ledger (buildScoreLedger, below) is built from.
+ * Exported so other capture surfaces that need to tally a score (e.g. Rapid
+ * Capture's live scoreboard) reuse this definition instead of maintaining a
+ * second, independently-drifting one.
+ */
+export const SCORE_KINDS = new Set<MatchEventKind>([
   "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "FREE_SCORED",
 ]);
 
-function scoreValue(kind: MatchEventKind): number {
+export function scoreValue(kind: MatchEventKind): number {
   if (kind === "GOAL") return 3;
   if (kind === "TWO_POINTER" || kind === "FORTY_FIVE_TWO_POINT") return 2;
   return 1;
