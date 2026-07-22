@@ -16,20 +16,22 @@ import {
   createVisionV3Token,
   createPillToken,
   createNumberedPillToken,
+  createUnderPillToken,
 } from "./createCleanTokenAdapters";
 import type { MovementBoardToken } from "../shell/types";
 
-export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor" | "pill" | "pill-numbered";
+export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor" | "pill" | "pill-numbered" | "pill-under";
 
 type AnyRendererFn = typeof createJerseyTokenV2;
 
 const RENDERER_MAP: Record<TokenRendererName, AnyRendererFn> = {
-  pixi:          createPixiToken as AnyRendererFn,
-  vision:        createVisionV3Token as AnyRendererFn,
-  jersey:        createJerseyTokenV2,
-  phosphor:      createPhosphorToken as AnyRendererFn,
-  pill:          createPillToken as AnyRendererFn,
+  pixi:            createPixiToken as AnyRendererFn,
+  vision:          createVisionV3Token as AnyRendererFn,
+  jersey:          createJerseyTokenV2,
+  phosphor:        createPhosphorToken as AnyRendererFn,
+  pill:            createPillToken as AnyRendererFn,
   "pill-numbered": createNumberedPillToken as AnyRendererFn,
+  "pill-under":    createUnderPillToken as AnyRendererFn,
 };
 
 let _renderer: AnyRendererFn = createJerseyTokenV2;

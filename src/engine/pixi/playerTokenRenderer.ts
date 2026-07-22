@@ -10,7 +10,15 @@ import { createPremiumGlowPlayerToken } from "./createPremiumGlowPlayerToken";
 import { createVisionV3PlayerToken } from "./createVisionV3PlayerToken";
 import type { PremiumPlayerTokenColor } from "./createPremiumPlayerToken";
 
-export type PlayerTokenStyle = "vision-v3" | "classic" | "premium" | "pixi" | "phosphor" | "pill" | "pill-numbered";
+export type PlayerTokenStyle =
+  | "vision-v3"
+  | "classic"
+  | "premium"
+  | "pixi"
+  | "phosphor"
+  | "pill"
+  | "pill-numbered"
+  | "pill-under";
 
 export type PlayerTokenRendererInput = {
   label: string;
@@ -139,7 +147,19 @@ export const NumberedNamePillRenderer: PlayerTokenRenderer = ({ label, number, s
     style: style as Partial<CleanTacticalPlayerTokenStyle>,
     radius,
     number,
-    showNumberBadge: true,
+    badgePosition: "side",
+  });
+  token.scale.set(scale);
+  return { token, shadow };
+};
+
+export const UnderNamePillRenderer: PlayerTokenRenderer = ({ label, number, style, scale, radius }) => {
+  const { token, shadow } = createNamePillPlayerToken({
+    label,
+    style: style as Partial<CleanTacticalPlayerTokenStyle>,
+    radius,
+    number,
+    badgePosition: "under",
   });
   token.scale.set(scale);
   return { token, shadow };
@@ -152,6 +172,7 @@ export function resolvePlayerTokenRenderer(style: PlayerTokenStyle): PlayerToken
   if (style === "phosphor") return PhosphorRenderer;
   if (style === "pill") return NamePillRenderer;
   if (style === "pill-numbered") return NumberedNamePillRenderer;
+  if (style === "pill-under") return UnderNamePillRenderer;
   return ClassicRingRenderer;
 }
 
@@ -163,7 +184,8 @@ export function sanitizePlayerTokenStyle(value: unknown): PlayerTokenStyle {
     value === "pixi" ||
     value === "phosphor" ||
     value === "pill" ||
-    value === "pill-numbered"
+    value === "pill-numbered" ||
+    value === "pill-under"
   ) {
     return value;
   }
