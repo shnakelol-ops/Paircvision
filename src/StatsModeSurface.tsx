@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { ConfirmSheet, type ConfirmSheetProps } from "./components/ConfirmSheet";
+import { BackupPostMatchReminder } from "./backup/BackupPostMatchReminder";
 
 const ALLOW_NATIVE_DIALOG =
   typeof window !== "undefined" &&
@@ -3403,6 +3404,7 @@ export default function StatsModeSurface() {
   const [loggedEvents, setLoggedEvents] = useState<readonly LoggedMatchEvent[]>([]);
   const [savedMatches, setSavedMatches] = useState<SavedMatch[]>(() => readSavedMatchesFromStorage().matches);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+  const [showFtBackupReminder, setShowFtBackupReminder] = useState(false);
   const [isPdfExporting, setIsPdfExporting] = useState(false);
   /** "HT" | "FT" while a snapshot export is in progress; null when idle. */
   const [snapshotExporting, setSnapshotExporting] = useState<"HT" | "FT" | null>(null);
@@ -5149,6 +5151,7 @@ export default function StatsModeSurface() {
       setCurrentMatchId(savedRecord.id);
       currentMatchIdRef.current = savedRecord.id;
       setSaveFeedback("Saved");
+      setShowFtBackupReminder(true);
       setLastSavedAtMillis(savedRecord.createdAt);
       setSaveLoadBlockedReason(null);
     } catch {
@@ -6875,6 +6878,7 @@ export default function StatsModeSurface() {
             <button type="button" className="utility-panel-close" onClick={() => setIsFullTimeActionsOpen(false)}>
               Close
             </button>
+            {showFtBackupReminder ? <BackupPostMatchReminder /> : null}
           </div>
         ) : null}
         {isResetConfirmOpen ? (

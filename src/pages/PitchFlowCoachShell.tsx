@@ -19,6 +19,7 @@ import {
 import { loadAllBoards } from "../features/quickboard/storage/quickboard-storage";
 import type { SavedQuickBoard } from "../features/quickboard/storage/quickboard-types";
 import GuidedTour from "../components/GuidedTour";
+import { BackupNudgeBanner } from "../backup/BackupNudgeBanner";
 
 export type PitchFlowTab = "home" | "notes" | "library" | "sessions" | "plans";
 
@@ -980,6 +981,22 @@ function BoardPage({ onReplayTour }: { onReplayTour: () => void }) {
           </button>
         </div>
         <p className="pf-subtitle">Gaelic Games Coaching Hub</p>
+      </div>
+      <BackupNudgeBanner />
+      <div className="pf-card pf-card-soft" style={{ marginBottom: "14px" }}>
+        <p className="pf-card-title">Backup &amp; Restore</p>
+        <p className="pf-card-text" style={{ marginTop: "6px", marginBottom: "10px" }}>
+          Your data lives only on this phone. Keep a copy to Google Drive, iCloud or Files.
+        </p>
+        <button
+          type="button"
+          className="pf-home-secondary-btn pf-home-tile--green"
+          style={{ width: "100%", minHeight: "44px" }}
+          onClick={() => navigateTo("/settings?view=backup")}
+        >
+          <span className="pf-home-tile-name">Back up everything</span>
+          <small>One file — every match, board, play and squad.</small>
+        </button>
       </div>
       <p className="pf-section-title pf-home-section-title-actions">Tools</p>
       <div className="pf-card">
