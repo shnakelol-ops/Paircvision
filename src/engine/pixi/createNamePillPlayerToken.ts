@@ -10,6 +10,13 @@ const MIN_LABEL_FONT_SCALE = 0.62;
 // at full size. Under a circle anchor it's a secondary label, so it stays compact.
 const PILL_HEIGHT_RATIO = 1.5;
 const UNDER_PILL_HEIGHT_RATIO = 1.05;
+// Under-pill text sits noticeably larger relative to its (unchanged) height than
+// the side/plain pill does — the fixed height just gets less padding around it.
+const UNDER_PILL_FONT_TO_HEIGHT_RATIO = 0.73;
+const PILL_FONT_TO_HEIGHT_RATIO = 0.62;
+const UNDER_PILL_PADDING_X_RATIO = 0.32;
+const PILL_PADDING_X_RATIO = 0.42;
+const UNDER_PILL_GAP_RATIO = 0.1;
 
 const FONT_FAMILY = "\"Barlow Condensed\", \"Inter Tight\", Inter, system-ui, sans-serif";
 
@@ -145,7 +152,7 @@ export function createNamePillPlayerToken({
 
   const pillHeight = safeRadius * (isUnder ? UNDER_PILL_HEIGHT_RATIO : PILL_HEIGHT_RATIO);
   const cornerRadius = pillHeight / 2;
-  const paddingX = safeRadius * 0.42;
+  const paddingX = safeRadius * (isUnder ? UNDER_PILL_PADDING_X_RATIO : PILL_PADDING_X_RATIO);
   const borderWidth = Math.max(safeRadius * 0.04, 0.1);
   const maxPillWidth = pillHeight * MAX_PILL_WIDTH_RATIO;
   const innerGap = isSide ? safeRadius * 0.22 : 0;
@@ -174,7 +181,7 @@ export function createNamePillPlayerToken({
   token.addChild(shadow);
 
   const safeLabel = label.trim() || "?";
-  const baseFontSize = pillHeight * 0.62;
+  const baseFontSize = pillHeight * (isUnder ? UNDER_PILL_FONT_TO_HEIGHT_RATIO : PILL_FONT_TO_HEIGHT_RATIO);
 
   const labelText = new Text({
     text: safeLabel,
@@ -193,13 +200,17 @@ export function createNamePillPlayerToken({
   const maxTextWidth = Math.max(pillHeight * 0.6, maxPillWidth - leadingWidth - paddingX);
   fitLabelToWidth(labelText, maxTextWidth, baseFontSize);
 
-  const minPillWidth = isSide ? leadingWidth + pillHeight * 0.35 : pillHeight * 1.05;
+  const minPillWidth = isSide
+    ? leadingWidth + pillHeight * 0.35
+    : isUnder
+      ? pillHeight * 0.9
+      : pillHeight * 1.05;
   const naturalPillWidth = leadingWidth + labelText.width + paddingX;
   const pillWidth = Math.min(maxPillWidth, Math.max(minPillWidth, naturalPillWidth));
   const halfWidth = pillWidth / 2;
   const halfHeight = pillHeight / 2;
 
-  const pillCenterY = isUnder ? safeRadius + safeRadius * 0.22 + halfHeight : 0;
+  const pillCenterY = isUnder ? safeRadius + safeRadius * UNDER_PILL_GAP_RATIO + halfHeight : 0;
 
   const capsule = new Graphics();
   capsule
