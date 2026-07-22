@@ -1,8 +1,9 @@
 import { useState } from "react";
+import BackupRestoreView from "../backup/BackupRestoreView";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SettingsView = "landing" | "privacy" | "terms" | "storage" | "contact";
+type SettingsView = "landing" | "privacy" | "terms" | "storage" | "backup" | "contact";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -468,6 +469,49 @@ const SETTINGS_CSS = `
 }
 
 .ps-btn-secondary:active { transform: scale(0.97); }
+
+.ps-btn:disabled, .ps-btn-secondary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Backup & Restore ──────────────────────────────────────────────────── */
+
+.ps-backup-status {
+  margin: 0;
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ps-text-muted);
+  border: 1px solid var(--ps-border);
+  background: rgba(20,52,33,0.7);
+}
+
+.ps-backup-status--success {
+  color: var(--ps-primary);
+  border-color: var(--ps-primary-strong);
+  background: rgba(34,197,94,0.14);
+}
+
+.ps-backup-status--error {
+  color: #FCA5A5;
+  border-color: #B91C1C;
+  background: rgba(185,28,28,0.14);
+}
+
+.ps-backup-preview {
+  border-radius: 14px;
+  border: 1px solid var(--ps-border);
+  background: linear-gradient(180deg, rgba(20,52,33,0.7) 0%, rgba(16,41,27,0.85) 100%);
+  padding: 14px;
+  margin-bottom: 18px;
+}
+
+.ps-backup-warning {
+  margin-top: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ps-warning);
+  background: rgba(245,166,35,0.12);
+  padding: 13px 14px;
+}
 `;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -509,6 +553,12 @@ function LandingView({ onNavigate }: { onNavigate: (v: SettingsView) => void }) 
       icon: "📱",
       title: "Storage & Permissions",
       desc: "What the app stores on your device and why",
+    },
+    {
+      view: "backup",
+      icon: "💾",
+      title: "Backup & Restore",
+      desc: "Protect your matches, boards and training records",
     },
     {
       view: "contact",
@@ -1683,6 +1733,7 @@ export default function PitchFlowSettingsShell() {
       {view === "privacy" && <PrivacyPolicyView onBack={() => setView("landing")} />}
       {view === "terms" && <TermsView onBack={() => setView("landing")} />}
       {view === "storage" && <StoragePermissionsView onBack={() => setView("landing")} />}
+      {view === "backup" && <BackupRestoreView onBack={() => setView("landing")} />}
       {view === "contact" && <ContactView onBack={() => setView("landing")} />}
     </main>
   );
