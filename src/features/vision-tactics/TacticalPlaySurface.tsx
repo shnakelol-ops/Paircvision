@@ -3425,6 +3425,7 @@ export default function TacticalPlaySurface() {
                     { id: "vision", label: "Vision" },
                     { id: "jersey", label: "Jersey" },
                     { id: "pill", label: "Name Pill" },
+                    { id: "pill-numbered", label: "Numbered Pill" },
                   ] as const).map((r) => (
                     <button
                       key={r.id}
@@ -3449,11 +3450,11 @@ export default function TacticalPlaySurface() {
                 </div>
                 {selectedToken ? (
                   <div style={MP_ROW}>
-                    <span style={MP_ROW_LABEL}>Name (P{selectedToken.number})</span>
+                    <span style={MP_ROW_LABEL}>Nickname (P{selectedToken.number})</span>
                     <input
                       style={{ ...PLAYS_INPUT_STYLE, flex: 1, height: "26px", fontSize: "9px" }}
                       type="text"
-                      placeholder="Jordan"
+                      placeholder="Jordan, Dozer, Pat…"
                       value={selectedToken.label ?? ""}
                       maxLength={20}
                       onChange={(e) => onSetSelectedTokenName(e.target.value)}

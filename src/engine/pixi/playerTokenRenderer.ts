@@ -10,7 +10,7 @@ import { createPremiumGlowPlayerToken } from "./createPremiumGlowPlayerToken";
 import { createVisionV3PlayerToken } from "./createVisionV3PlayerToken";
 import type { PremiumPlayerTokenColor } from "./createPremiumPlayerToken";
 
-export type PlayerTokenStyle = "vision-v3" | "classic" | "premium" | "pixi" | "phosphor" | "pill";
+export type PlayerTokenStyle = "vision-v3" | "classic" | "premium" | "pixi" | "phosphor" | "pill" | "pill-numbered";
 
 export type PlayerTokenRendererInput = {
   label: string;
@@ -133,12 +133,25 @@ export const NamePillRenderer: PlayerTokenRenderer = ({ label, style, scale, rad
   return { token, shadow };
 };
 
+export const NumberedNamePillRenderer: PlayerTokenRenderer = ({ label, number, style, scale, radius }) => {
+  const { token, shadow } = createNamePillPlayerToken({
+    label,
+    style: style as Partial<CleanTacticalPlayerTokenStyle>,
+    radius,
+    number,
+    showNumberBadge: true,
+  });
+  token.scale.set(scale);
+  return { token, shadow };
+};
+
 export function resolvePlayerTokenRenderer(style: PlayerTokenStyle): PlayerTokenRenderer {
   if (style === "vision-v3") return VisionV3Renderer;
   if (style === "premium") return PremiumGlowRenderer;
   if (style === "pixi") return ProceduralPixiRenderer;
   if (style === "phosphor") return PhosphorRenderer;
   if (style === "pill") return NamePillRenderer;
+  if (style === "pill-numbered") return NumberedNamePillRenderer;
   return ClassicRingRenderer;
 }
 
@@ -149,7 +162,8 @@ export function sanitizePlayerTokenStyle(value: unknown): PlayerTokenStyle {
     value === "premium" ||
     value === "pixi" ||
     value === "phosphor" ||
-    value === "pill"
+    value === "pill" ||
+    value === "pill-numbered"
   ) {
     return value;
   }

@@ -10,19 +10,26 @@ import {
   type PremiumPlayerTokenColor,
 } from "./createPremiumPlayerToken";
 import { createJerseyTokenV2 } from "./createJerseyTokenV2";
-import { createPixiToken, createPhosphorToken, createVisionV3Token, createPillToken } from "./createCleanTokenAdapters";
+import {
+  createPixiToken,
+  createPhosphorToken,
+  createVisionV3Token,
+  createPillToken,
+  createNumberedPillToken,
+} from "./createCleanTokenAdapters";
 import type { MovementBoardToken } from "../shell/types";
 
-export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor" | "pill";
+export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor" | "pill" | "pill-numbered";
 
 type AnyRendererFn = typeof createJerseyTokenV2;
 
 const RENDERER_MAP: Record<TokenRendererName, AnyRendererFn> = {
-  pixi:     createPixiToken as AnyRendererFn,
-  vision:   createVisionV3Token as AnyRendererFn,
-  jersey:   createJerseyTokenV2,
-  phosphor: createPhosphorToken as AnyRendererFn,
-  pill:     createPillToken as AnyRendererFn,
+  pixi:          createPixiToken as AnyRendererFn,
+  vision:        createVisionV3Token as AnyRendererFn,
+  jersey:        createJerseyTokenV2,
+  phosphor:      createPhosphorToken as AnyRendererFn,
+  pill:          createPillToken as AnyRendererFn,
+  "pill-numbered": createNumberedPillToken as AnyRendererFn,
 };
 
 let _renderer: AnyRendererFn = createJerseyTokenV2;

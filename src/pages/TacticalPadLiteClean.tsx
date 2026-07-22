@@ -193,6 +193,7 @@ const TOKEN_STYLE_CHOICES: ReadonlyArray<{ value: TacticalPlayerTokenStyle; labe
   { value: "pixi", label: "Pixi" },
   { value: "phosphor", label: "Phosphor" },
   { value: "pill", label: "Name Pill" },
+  { value: "pill-numbered", label: "Numbered Pill" },
 ];
 type KitEditorTab = "base" | "pattern" | "label";
 const KIT_EDITOR_TABS: ReadonlyArray<{ id: KitEditorTab; label: string }> = [
@@ -4257,7 +4258,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                         style={isActive ? KIT_EDITOR_OPTION_BUTTON_ACTIVE_STYLE : KIT_EDITOR_OPTION_BUTTON_STYLE}
                         onClick={() => applyPlayerKitPatch({ labelMode: modeValue })}
                       >
-                        {modeValue === "number" ? "Number" : modeValue === "initials" ? "Initials" : "Name"}
+                        {modeValue === "number" ? "Number" : modeValue === "initials" ? "Initials" : "Nickname"}
                       </button>
                     );
                   })}
@@ -4269,8 +4270,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     value={sanitizeName(activeKitPlayer.name) ?? ""}
                     onChange={(event) => handleKitNameChange(event.target.value)}
                     style={KIT_EDITOR_INPUT_STYLE}
-                    placeholder="Jordan"
-                    aria-label="Player name"
+                    placeholder="Jordan, Dozer, Pat…"
+                    aria-label="Player nickname or display name"
                   />
                 ) : (
                   <input

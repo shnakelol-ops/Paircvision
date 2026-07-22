@@ -4,6 +4,8 @@ import type { CleanTacticalPlayerTokenStyle } from "./createCleanTacticalPlayerT
 
 const FALLBACK_PRIMARY_COLOR = 0x2563eb;
 const FALLBACK_OUTLINE_COLOR = 0x0f172a;
+const MAX_PILL_WIDTH_RATIO = 4.0;
+const MIN_LABEL_FONT_SCALE = 0.62;
 
 function clampColorChannel(value: number): number {
   return Math.max(0, Math.min(255, Math.round(value)));
@@ -40,18 +42,42 @@ function safeColor(value: number | undefined, fallback: number): number {
 }
 
 /**
+ * Shrinks (down to a floor) then truncates-with-ellipsis so a label never
+ * pushes the pill past maxTextWidth, instead of growing the pill unbounded.
+ */
+function fitLabelToWidth(text: Text, maxTextWidth: number, baseFontSize: number): void {
+  if (text.width <= maxTextWidth) return;
+  const scale = Math.max(MIN_LABEL_FONT_SCALE, maxTextWidth / text.width);
+  text.style.fontSize = baseFontSize * scale;
+  if (text.width <= maxTextWidth) return;
+  let content = text.text;
+  while (content.length > 1 && text.width > maxTextWidth) {
+    content = content.slice(0, -1);
+    text.text = `${content}…`;
+  }
+}
+
+/**
  * Renders a player token as a rounded name-pill capsule instead of a disc.
- * Width auto-fits the label so a future "full name" display mode can reuse
- * this renderer unchanged — only the label text passed in needs to change.
+ * Width auto-fits the label up to a fixed maximum, so a long display name
+ * shrinks/truncates rather than growing the token without bound.
+ *
+ * When showNumberBadge is set, a small circular jersey-number badge is fused
+ * to the left cap of the same capsule (e.g. "④ Jordan") — still one Container,
+ * one render object, so it drags/animates/exports exactly like the plain pill.
  */
 export function createNamePillPlayerToken({
   label,
   style,
   radius,
+  number,
+  showNumberBadge,
 }: {
   label: string;
   style?: Partial<CleanTacticalPlayerTokenStyle>;
   radius: number;
+  number?: number;
+  showNumberBadge?: boolean;
 }): { token: Container; shadow: Graphics } {
   const fillColor = safeColor(style?.primaryColor, FALLBACK_PRIMARY_COLOR);
   const outlineColor = safeColor(style?.outlineColor, FALLBACK_OUTLINE_COLOR);
@@ -63,6 +89,14 @@ export function createNamePillPlayerToken({
   const cornerRadius = pillHeight / 2;
   const paddingX = safeRadius * 0.66;
   const borderWidth = Math.max(safeRadius * 0.045, 0.12);
+  const maxPillWidth = pillHeight * MAX_PILL_WIDTH_RATIO;
+
+  const badgeNumberLabel =
+    showNumberBadge && Number.isFinite(number) ? String(Math.max(0, Math.trunc(Number(number)))) : "";
+  const hasBadge = badgeNumberLabel.length > 0;
+  const innerGap = hasBadge ? safeRadius * 0.34 : 0;
+  // Space the badge + gap (or plain left padding) reserve before the name starts.
+  const leadingWidth = hasBadge ? cornerRadius * 2 + innerGap : paddingX;
 
   const token = new Container();
   token.eventMode = "static";
@@ -79,7 +113,7 @@ export function createNamePillPlayerToken({
   token.addChild(shadow);
 
   const safeLabel = label.trim() || "?";
-  const fontSize = pillHeight * 0.5;
+  const baseFontSize = pillHeight * 0.5;
   const textResolution =
     typeof window !== "undefined" ? Math.max(2, Math.min(3, window.devicePixelRatio || 1)) : 2;
 
@@ -87,18 +121,22 @@ export function createNamePillPlayerToken({
     text: safeLabel,
     style: {
       fill: textColor,
-      fontSize,
+      fontSize: baseFontSize,
       fontWeight: "700",
       fontFamily: "\"Barlow Condensed\", \"Inter Tight\", Inter, system-ui, sans-serif",
       align: "center",
       letterSpacing: 0.02,
     },
   });
-  labelText.anchor.set(0.5);
   labelText.resolution = textResolution;
   labelText.roundPixels = true;
 
-  const pillWidth = Math.max(pillHeight * 1.2, labelText.width + paddingX * 2);
+  const maxTextWidth = Math.max(pillHeight * 0.6, maxPillWidth - leadingWidth - paddingX);
+  fitLabelToWidth(labelText, maxTextWidth, baseFontSize);
+
+  const minPillWidth = hasBadge ? leadingWidth + pillHeight * 0.5 : pillHeight * 1.2;
+  const naturalPillWidth = leadingWidth + labelText.width + paddingX;
+  const pillWidth = Math.min(maxPillWidth, Math.max(minPillWidth, naturalPillWidth));
   const halfWidth = pillWidth / 2;
   const halfHeight = pillHeight / 2;
 
@@ -109,6 +147,43 @@ export function createNamePillPlayerToken({
     .roundRect(-halfWidth, -halfHeight, pillWidth, pillHeight, cornerRadius)
     .stroke({ color: borderColor, width: borderWidth, alignment: 1, alpha: 0.55 });
   token.addChild(capsule);
+
+  if (hasBadge) {
+    const badgeCenterX = -halfWidth + cornerRadius;
+    const badgeFill = mixColor(fillColor, 0x000000, 0.24);
+    const badgeTextColor = readableTextColor(badgeFill);
+    const badgeRadius = cornerRadius * 0.94;
+
+    const badge = new Graphics();
+    badge
+      .circle(badgeCenterX, 0, badgeRadius)
+      .fill({ color: badgeFill })
+      .circle(badgeCenterX, 0, badgeRadius)
+      .stroke({ color: borderColor, width: borderWidth, alignment: 1, alpha: 0.6 });
+    token.addChild(badge);
+
+    const badgeText = new Text({
+      text: badgeNumberLabel.slice(0, 2),
+      style: {
+        fill: badgeTextColor,
+        fontSize: badgeRadius * (badgeNumberLabel.length >= 2 ? 1.0 : 1.16),
+        fontWeight: "800",
+        fontFamily: "\"Barlow Condensed\", \"Inter Tight\", Inter, system-ui, sans-serif",
+        align: "center",
+      },
+    });
+    badgeText.anchor.set(0.5);
+    badgeText.position.set(badgeCenterX, 0);
+    badgeText.resolution = textResolution;
+    badgeText.roundPixels = true;
+    token.addChild(badgeText);
+
+    labelText.anchor.set(0, 0.5);
+    labelText.position.set(badgeCenterX + cornerRadius + innerGap, 0);
+  } else {
+    labelText.anchor.set(0.5);
+    labelText.position.set(0, 0);
+  }
   token.addChild(labelText);
 
   return { token, shadow };

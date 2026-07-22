@@ -106,6 +106,27 @@ export function createPillToken({ color, number, label, radius }: CleanAdapterIn
   return { token, body: token, shadow, ballMarker };
 }
 
+export function createNumberedPillToken({ color, number, label, radius }: CleanAdapterInput): CleanAdapterOutput {
+  const safeLabel = (label?.trim() ?? "") || String(number);
+  const { token, shadow } = createNamePillPlayerToken({
+    label: safeLabel,
+    style: PALETTE[color],
+    radius,
+    number,
+    showNumberBadge: true,
+  });
+  const safeRadius = Math.max(2.8, radius);
+  const ballMarker = new Graphics();
+  ballMarker
+    .circle(0, safeRadius * 1.4, safeRadius * 0.105)
+    .fill({ color: 0xffffff })
+    .circle(0, safeRadius * 1.4, safeRadius * 0.105)
+    .stroke({ color: 0xfbbf24, width: 1.2, alpha: 1 });
+  ballMarker.visible = false;
+  token.addChild(ballMarker);
+  return { token, body: token, shadow, ballMarker };
+}
+
 export function createVisionV3Token({ color, secondaryColor, number, label, radius }: CleanAdapterInput): CleanAdapterOutput {
   const safeLabel = (label?.trim().slice(0, 3) ?? "") || String(number);
   const teamColor = V3_TEAM_COLOR[color];
