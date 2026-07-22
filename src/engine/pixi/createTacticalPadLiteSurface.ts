@@ -39,7 +39,7 @@ import {
 } from "./movement/basicRouteFollow";
 
 export type TacticalKitPattern = MicroAthleteKitPattern;
-export type TacticalLabelMode = "number" | "initials";
+export type TacticalLabelMode = "number" | "initials" | "name";
 export type TacticalPlayerTokenStyle = PlayerTokenStyle;
 export type TacticalPlayerKitFields = {
   kitBaseColor?: string;
@@ -47,6 +47,7 @@ export type TacticalPlayerKitFields = {
   kitPatternColor?: string;
   labelMode?: TacticalLabelMode;
   initials?: string;
+  name?: string;
 };
 export type TacticalPlayerKitPatch = Partial<TacticalPlayerKitFields>;
 export type TacticalPlayerKitSnapshot = TacticalPlayerKitFields & {
@@ -508,13 +509,19 @@ function sanitizeKitPattern(value: TacticalKitPattern | undefined): TacticalKitP
 }
 
 function sanitizeLabelMode(value: TacticalLabelMode | undefined): TacticalLabelMode | undefined {
-  if (value === "number" || value === "initials") return value;
+  if (value === "number" || value === "initials" || value === "name") return value;
   return undefined;
 }
 
 export function sanitizeInitials(value: string | undefined): string | undefined {
   if (typeof value !== "string") return undefined;
   const sanitized = value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3);
+  return sanitized.length > 0 ? sanitized : undefined;
+}
+
+export function sanitizeName(value: string | undefined): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const sanitized = value.replace(/[^A-Za-z' -.]/g, "").replace(/\s+/g, " ").trim().slice(0, 20);
   return sanitized.length > 0 ? sanitized : undefined;
 }
 
@@ -623,6 +630,7 @@ function sanitizeBoardPlayerState(input: unknown): TacticalBoardPlayerState | nu
     kitPatternColor: sanitizeKitColor(typeof input.kitPatternColor === "string" ? input.kitPatternColor : undefined),
     labelMode: sanitizeLabelMode((input.labelMode as TacticalLabelMode | undefined) ?? undefined),
     initials: sanitizeInitials(typeof input.initials === "string" ? input.initials : undefined),
+    name: sanitizeName(typeof input.name === "string" ? input.name : undefined),
   };
 }
 
@@ -688,12 +696,14 @@ function sanitizePlayerKitPatch(patch: TacticalPlayerKitPatch): TacticalPlayerKi
   const nextPatternColor = sanitizeKitColor(patch.kitPatternColor);
   const nextLabelMode = sanitizeLabelMode(patch.labelMode);
   const nextInitials = sanitizeInitials(patch.initials);
+  const nextName = sanitizeName(patch.name);
   return {
     ...(patch.kitBaseColor !== undefined ? { kitBaseColor: nextBaseColor } : {}),
     ...(patch.kitPattern !== undefined ? { kitPattern: nextPattern } : {}),
     ...(patch.kitPatternColor !== undefined ? { kitPatternColor: nextPatternColor } : {}),
     ...(patch.labelMode !== undefined ? { labelMode: nextLabelMode } : {}),
     ...(patch.initials !== undefined ? { initials: nextInitials } : {}),
+    ...(patch.name !== undefined ? { name: nextName } : {}),
   };
 }
 
@@ -1133,8 +1143,12 @@ export async function createTacticalPadLiteSurface(
     return sanitizeKitColor(player.kitPatternColor) ?? defaultKitPatternColor(baseColor);
   }
 
-  function resolvePlayerLabel(player: Pick<TacticalPlayer, "number" | "labelMode" | "initials">): string {
+  function resolvePlayerLabel(player: Pick<TacticalPlayer, "number" | "labelMode" | "initials" | "name">): string {
     const labelMode = sanitizeLabelMode(player.labelMode) ?? "number";
+    if (labelMode === "name") {
+      const name = sanitizeName(player.name);
+      if (name) return name;
+    }
     const initials = sanitizeInitials(player.initials);
     if (labelMode === "initials" && initials) {
       return initials;
@@ -1142,7 +1156,7 @@ export async function createTacticalPadLiteSurface(
     return safePlayerNumberLabel(player.number);
   }
 
-  function createTokenPackForPlayer(player: Pick<TacticalPlayer, "number" | "team" | "teamColor" | "kitBaseColor" | "kitPattern" | "kitPatternColor" | "labelMode" | "initials">): {
+  function createTokenPackForPlayer(player: Pick<TacticalPlayer, "number" | "team" | "teamColor" | "kitBaseColor" | "kitPattern" | "kitPatternColor" | "labelMode" | "initials" | "name">): {
     token: Container;
     shadow: Graphics;
   } {
@@ -1217,6 +1231,7 @@ export async function createTacticalPadLiteSurface(
       kitPatternColor: sanitizeKitColor(nextKitFields.kitPatternColor),
       labelMode: sanitizeLabelMode(nextKitFields.labelMode),
       initials: sanitizeInitials(nextKitFields.initials),
+      name: sanitizeName(nextKitFields.name),
     };
   }
 
@@ -3027,6 +3042,7 @@ export async function createTacticalPadLiteSurface(
       kitPatternColor: sanitizeKitColor(player.kitPatternColor),
       labelMode: sanitizeLabelMode(player.labelMode),
       initials: sanitizeInitials(player.initials),
+      name: sanitizeName(player.name),
     };
   }
 
@@ -3062,6 +3078,9 @@ export async function createTacticalPadLiteSurface(
     }
     if ("initials" in sanitizedPatch) {
       player.initials = sanitizedPatch.initials;
+    }
+    if ("name" in sanitizedPatch) {
+      player.name = sanitizedPatch.name;
     }
     const hasTeamKitPatch =
       "kitBaseColor" in sanitizedPatch ||
@@ -3222,6 +3241,7 @@ export async function createTacticalPadLiteSurface(
         {
           labelMode: player.labelMode,
           initials: player.initials,
+          name: player.name,
         } as TacticalPlayerKitFields,
       ]),
     );
@@ -3296,6 +3316,7 @@ export async function createTacticalPadLiteSurface(
       kitPatternColor: sanitizeKitColor(player.kitPatternColor),
       labelMode: sanitizeLabelMode(player.labelMode),
       initials: sanitizeInitials(player.initials),
+      name: sanitizeName(player.name),
     }));
     const kitsByPlayer = playerStates.reduce<Record<string, TacticalPlayerKitFields>>((acc, playerState) => {
       acc[playerState.id] = {
@@ -3304,6 +3325,7 @@ export async function createTacticalPadLiteSurface(
         kitPatternColor: playerState.kitPatternColor,
         labelMode: playerState.labelMode,
         initials: playerState.initials,
+        name: playerState.name,
       };
       return acc;
     }, {});
@@ -3446,6 +3468,7 @@ export async function createTacticalPadLiteSurface(
           ? {
               labelMode: source.labelMode,
               initials: source.initials,
+              name: source.name,
             }
           : undefined,
       );

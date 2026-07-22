@@ -1468,6 +1468,19 @@ export default function TacticalPlaySurface() {
     setPrimaryColorState(color);
   };
 
+  const onSetSelectedTokenName = (rawValue: string) => {
+    const shell = shellRef.current;
+    if (!shell || !selectedToken) return;
+    const sanitized = rawValue.replace(/[^A-Za-z' -.]/g, "").slice(0, 20);
+    const nextLabel = sanitized || undefined;
+    shell.setTokens(
+      shell.getTokens().map((t) => (t.id === selectedToken.id ? { ...t, label: nextLabel } : t)),
+    );
+    setSelectedToken((previous) =>
+      previous && previous.id === selectedToken.id ? { ...previous, label: nextLabel } : previous,
+    );
+  };
+
   const onSelectBallType = (ballType: BallType) => {
     shellRef.current?.placeBall(ballType);
     setBallMenuStep(null);
@@ -3434,6 +3447,19 @@ export default function TacticalPlaySurface() {
                     Compact
                   </button>
                 </div>
+                {selectedToken ? (
+                  <div style={MP_ROW}>
+                    <span style={MP_ROW_LABEL}>Name (P{selectedToken.number})</span>
+                    <input
+                      style={{ ...PLAYS_INPUT_STYLE, flex: 1, height: "26px", fontSize: "9px" }}
+                      type="text"
+                      placeholder="Jordan"
+                      value={selectedToken.label ?? ""}
+                      maxLength={20}
+                      onChange={(e) => onSetSelectedTokenName(e.target.value)}
+                    />
+                  </div>
+                ) : null}
                 <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
                   <span style={SETUP_SECTION_LABEL_STYLE}>Our Team ({homePlayerCount})</span>
                   <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill Our Team</button>

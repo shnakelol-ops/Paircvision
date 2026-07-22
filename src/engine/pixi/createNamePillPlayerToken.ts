@@ -56,26 +56,30 @@ export function createNamePillPlayerToken({
   const fillColor = safeColor(style?.primaryColor, FALLBACK_PRIMARY_COLOR);
   const outlineColor = safeColor(style?.outlineColor, FALLBACK_OUTLINE_COLOR);
   const textColor = safeColor(style?.textColor, readableTextColor(fillColor));
-  const borderColor = mixColor(outlineColor, fillColor, 0.35);
+  const borderColor = mixColor(outlineColor, fillColor, 0.5);
 
   const safeRadius = Math.max(2.8, radius);
-  const pillHeight = safeRadius * 1.62;
+  const pillHeight = safeRadius * 1.86;
   const cornerRadius = pillHeight / 2;
-  const paddingX = safeRadius * 0.62;
-  const borderWidth = Math.max(safeRadius * 0.055, 0.16);
+  const paddingX = safeRadius * 0.66;
+  const borderWidth = Math.max(safeRadius * 0.045, 0.12);
 
   const token = new Container();
   token.eventMode = "static";
   token.cursor = "grab";
 
+  // Soft two-layer chip shadow — a tight contact shadow plus a wider, fainter
+  // halo instead of a single hard-edged blob, closer to iOS/Android chip elevation.
   const shadow = new Graphics();
   shadow
-    .ellipse(0.18, pillHeight * 0.62, pillHeight * 0.72, pillHeight * 0.22)
-    .fill({ color: 0x020617, alpha: 0.22 });
+    .ellipse(0.16, pillHeight * 0.58, pillHeight * 0.86, pillHeight * 0.3)
+    .fill({ color: 0x020617, alpha: 0.1 })
+    .ellipse(0.12, pillHeight * 0.54, pillHeight * 0.6, pillHeight * 0.2)
+    .fill({ color: 0x020617, alpha: 0.16 });
   token.addChild(shadow);
 
   const safeLabel = label.trim() || "?";
-  const fontSize = pillHeight * 0.56;
+  const fontSize = pillHeight * 0.5;
   const textResolution =
     typeof window !== "undefined" ? Math.max(2, Math.min(3, window.devicePixelRatio || 1)) : 2;
 
@@ -84,17 +88,17 @@ export function createNamePillPlayerToken({
     style: {
       fill: textColor,
       fontSize,
-      fontWeight: "800",
+      fontWeight: "700",
       fontFamily: "\"Barlow Condensed\", \"Inter Tight\", Inter, system-ui, sans-serif",
       align: "center",
-      letterSpacing: 0.06,
+      letterSpacing: 0.02,
     },
   });
   labelText.anchor.set(0.5);
   labelText.resolution = textResolution;
   labelText.roundPixels = true;
 
-  const pillWidth = Math.max(pillHeight * 1.3, labelText.width + paddingX * 2);
+  const pillWidth = Math.max(pillHeight * 1.2, labelText.width + paddingX * 2);
   const halfWidth = pillWidth / 2;
   const halfHeight = pillHeight / 2;
 
@@ -103,7 +107,7 @@ export function createNamePillPlayerToken({
     .roundRect(-halfWidth, -halfHeight, pillWidth, pillHeight, cornerRadius)
     .fill({ color: fillColor })
     .roundRect(-halfWidth, -halfHeight, pillWidth, pillHeight, cornerRadius)
-    .stroke({ color: borderColor, width: borderWidth, alignment: 1, alpha: 0.75 });
+    .stroke({ color: borderColor, width: borderWidth, alignment: 1, alpha: 0.55 });
   token.addChild(capsule);
   token.addChild(labelText);
 
