@@ -12,11 +12,15 @@ const PILL_HEIGHT_RATIO = 1.5;
 const UNDER_PILL_HEIGHT_RATIO = 1.05;
 // Under-pill text sits noticeably larger relative to its (unchanged) height than
 // the side/plain pill does — the fixed height just gets less padding around it.
-const UNDER_PILL_FONT_TO_HEIGHT_RATIO = 0.73;
+// Lands just under the side-pill's own font size — name is readable but the
+// circle above stays the primary read.
+const UNDER_PILL_FONT_TO_HEIGHT_RATIO = 0.876;
 const PILL_FONT_TO_HEIGHT_RATIO = 0.62;
-const UNDER_PILL_PADDING_X_RATIO = 0.32;
+const UNDER_PILL_PADDING_X_RATIO = 0.22;
 const PILL_PADDING_X_RATIO = 0.42;
-const UNDER_PILL_GAP_RATIO = 0.1;
+// Tight enough that the circle and pill read as one fused object, not two
+// stacked shapes.
+const UNDER_PILL_GAP_RATIO = 0.05;
 
 const FONT_FAMILY = "\"Barlow Condensed\", \"Inter Tight\", Inter, system-ui, sans-serif";
 
@@ -233,6 +237,9 @@ export function createNamePillPlayerToken({
   token.addChild(labelText);
 
   if (isUnder) {
+    // The circle is the tactical anchor — always draw it at the full token
+    // radius (same as the standalone circle-only styles). Never shrink this
+    // below the reference; the pill is the secondary element, not the circle.
     drawNumberCircle(token, 0, 0, safeRadius, fillColor, borderColor, borderWidth, numberLabel);
   }
 
