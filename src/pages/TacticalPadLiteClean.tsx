@@ -191,6 +191,7 @@ const TOKEN_STYLE_CHOICES: ReadonlyArray<{ value: TacticalPlayerTokenStyle; labe
   { value: "premium", label: "Glow" },
   { value: "pixi", label: "Pixi" },
   { value: "phosphor", label: "Phosphor" },
+  { value: "pill", label: "Name Pill" },
 ];
 type KitEditorTab = "base" | "pattern" | "label";
 const KIT_EDITOR_TABS: ReadonlyArray<{ id: KitEditorTab; label: string }> = [

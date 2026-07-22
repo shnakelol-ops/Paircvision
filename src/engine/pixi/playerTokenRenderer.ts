@@ -5,11 +5,12 @@ import {
   type CleanTacticalPlayerTokenStyle,
 } from "./createCleanTacticalPlayerToken";
 import { createMicroAthleteToken, type MicroAthleteKitPattern, type MicroAthleteStyle } from "./createMicroAthleteToken";
+import { createNamePillPlayerToken } from "./createNamePillPlayerToken";
 import { createPremiumGlowPlayerToken } from "./createPremiumGlowPlayerToken";
 import { createVisionV3PlayerToken } from "./createVisionV3PlayerToken";
 import type { PremiumPlayerTokenColor } from "./createPremiumPlayerToken";
 
-export type PlayerTokenStyle = "vision-v3" | "classic" | "premium" | "pixi" | "phosphor";
+export type PlayerTokenStyle = "vision-v3" | "classic" | "premium" | "pixi" | "phosphor" | "pill";
 
 export type PlayerTokenRendererInput = {
   label: string;
@@ -122,16 +123,34 @@ export const PhosphorRenderer: PlayerTokenRenderer = ({
   return { token, shadow };
 };
 
+export const NamePillRenderer: PlayerTokenRenderer = ({ label, style, scale, radius }) => {
+  const { token, shadow } = createNamePillPlayerToken({
+    label,
+    style: style as Partial<CleanTacticalPlayerTokenStyle>,
+    radius,
+  });
+  token.scale.set(scale);
+  return { token, shadow };
+};
+
 export function resolvePlayerTokenRenderer(style: PlayerTokenStyle): PlayerTokenRenderer {
   if (style === "vision-v3") return VisionV3Renderer;
   if (style === "premium") return PremiumGlowRenderer;
   if (style === "pixi") return ProceduralPixiRenderer;
   if (style === "phosphor") return PhosphorRenderer;
+  if (style === "pill") return NamePillRenderer;
   return ClassicRingRenderer;
 }
 
 export function sanitizePlayerTokenStyle(value: unknown): PlayerTokenStyle {
-  if (value === "vision-v3" || value === "classic" || value === "premium" || value === "pixi" || value === "phosphor") {
+  if (
+    value === "vision-v3" ||
+    value === "classic" ||
+    value === "premium" ||
+    value === "pixi" ||
+    value === "phosphor" ||
+    value === "pill"
+  ) {
     return value;
   }
   // Migrate old torso selections to classic so older saved states still render.

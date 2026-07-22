@@ -10,10 +10,10 @@ import {
   type PremiumPlayerTokenColor,
 } from "./createPremiumPlayerToken";
 import { createJerseyTokenV2 } from "./createJerseyTokenV2";
-import { createPixiToken, createPhosphorToken, createVisionV3Token } from "./createCleanTokenAdapters";
+import { createPixiToken, createPhosphorToken, createVisionV3Token, createPillToken } from "./createCleanTokenAdapters";
 import type { MovementBoardToken } from "../shell/types";
 
-export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor";
+export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor" | "pill";
 
 type AnyRendererFn = typeof createJerseyTokenV2;
 
@@ -22,6 +22,7 @@ const RENDERER_MAP: Record<TokenRendererName, AnyRendererFn> = {
   vision:   createVisionV3Token as AnyRendererFn,
   jersey:   createJerseyTokenV2,
   phosphor: createPhosphorToken as AnyRendererFn,
+  pill:     createPillToken as AnyRendererFn,
 };
 
 let _renderer: AnyRendererFn = createJerseyTokenV2;
