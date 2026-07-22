@@ -3,9 +3,11 @@ import {
   PRO_TAGGER_MATCHES_STORAGE_KEY,
   readProTaggerMatches,
   resolveImportIdCollision,
+  saveProTaggerMatch,
   saveProTaggerMatchFull,
   type ProTaggerSavedMatch,
 } from "./pro-tagger-storage";
+import { SAVED_MATCHES_STORAGE_KEY, type LoggedMatchEvent, type SavedMatch } from "../core/stats/saved-match";
 
 // vitest runs this file under Node, not jsdom — supply a minimal in-memory
 // localStorage, mirroring rapid-capture-storage.test.ts's setup.
@@ -123,5 +125,68 @@ describe("saveProTaggerMatchFull / readProTaggerMatches", () => {
   it("stores under the dedicated Pro Tagger key", () => {
     saveProTaggerMatchFull(buildMatch());
     expect(window.localStorage.getItem(PRO_TAGGER_MATCHES_STORAGE_KEY)).not.toBeNull();
+  });
+});
+
+// saveProTaggerMatch (distinct from saveProTaggerMatchFull above) writes
+// into SAVED_MATCHES_STORAGE_KEY — the exact same key Match Stats' own
+// archive uses (StatsModeSurface.tsx). It used to cap that shared array at
+// MAX_SAVED_MATCHES via its own independent .slice(), which meant a Pro
+// Tagger "Save Match" could silently evict a *Match Stats* match (or an
+// earlier Pro Tagger one) once the combined count exceeded 10. Regression
+// coverage for that shared-key eviction (same root cause as audit F03).
+function buildSharedEvent(): LoggedMatchEvent {
+  return {
+    id: "evt-1",
+    kind: "POINT",
+    type: "POINT",
+    nx: 0.9,
+    ny: 0.5,
+    half: 1,
+    timestamp: 10,
+    teamSide: "FOR",
+    x: 0.9,
+    y: 0.5,
+    period: "1H",
+    segment: 1,
+    matchClockSeconds: 10,
+    createdAt: 10,
+  };
+}
+
+function buildSharedMatch(n: number): SavedMatch {
+  return {
+    id: `pro-tagger-shared-${n}`,
+    createdAt: n * 1000,
+    label: `Retention Test ${String(n).padStart(2, "0")}`,
+    homeTeamName: `Retention Test ${String(n).padStart(2, "0")}`,
+    awayTeamName: "Opponent",
+    venue: "Fraher Field",
+    events: [buildSharedEvent()],
+    eventCount: 1,
+    scorelineSnapshot: "0-01 (1) v 0-00 (0)",
+  };
+}
+
+describe("saveProTaggerMatch — shared Match Stats archive, no eviction", () => {
+  it("keeps all 12 matches saved through this path, with no cap", () => {
+    for (let n = 1; n <= 12; n++) {
+      saveProTaggerMatch(buildSharedMatch(n));
+    }
+    const raw = window.localStorage.getItem(SAVED_MATCHES_STORAGE_KEY);
+    const stored = JSON.parse(raw ?? "[]") as SavedMatch[];
+    expect(stored).toHaveLength(12);
+    expect(stored.some((m) => m.id === "pro-tagger-shared-1")).toBe(true);
+  });
+
+  it("does not evict a match already saved via Match Stats' own path when Pro Tagger saves into the same key", () => {
+    const matchStatsMatch: SavedMatch = { ...buildSharedMatch(1), id: "match-stats-native-1" };
+    window.localStorage.setItem(SAVED_MATCHES_STORAGE_KEY, JSON.stringify([matchStatsMatch]));
+    for (let n = 2; n <= 12; n++) {
+      saveProTaggerMatch(buildSharedMatch(n));
+    }
+    const stored = JSON.parse(window.localStorage.getItem(SAVED_MATCHES_STORAGE_KEY) ?? "[]") as SavedMatch[];
+    expect(stored).toHaveLength(12);
+    expect(stored.some((m) => m.id === "match-stats-native-1")).toBe(true);
   });
 });

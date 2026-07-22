@@ -1,6 +1,6 @@
 import {
   SAVED_MATCHES_STORAGE_KEY,
-  MAX_SAVED_MATCHES,
+  orderSavedMatches,
 } from "../core/stats/saved-match";
 import type { SavedMatch, LoggedMatchEvent } from "../core/stats/saved-match";
 import type {
@@ -41,9 +41,11 @@ function readExisting(): SavedMatch[] {
   }
 }
 
+// Shares SAVED_MATCHES_STORAGE_KEY with Match Stats' own archive (StatsModeSurface.tsx)
+// — every saved match on either side is kept, no rolling cap.
 export function saveProTaggerMatch(record: SavedMatch): boolean {
   const existing = readExisting();
-  const next = [record, ...existing].slice(0, MAX_SAVED_MATCHES);
+  const next = orderSavedMatches([record, ...existing]);
   return safeWrite(SAVED_MATCHES_STORAGE_KEY, JSON.stringify(next));
 }
 
