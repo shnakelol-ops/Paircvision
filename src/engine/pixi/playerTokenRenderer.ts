@@ -16,8 +16,6 @@ export type PlayerTokenStyle =
   | "premium"
   | "pixi"
   | "phosphor"
-  | "pill"
-  | "pill-numbered"
   | "pill-under";
 
 export type PlayerTokenRendererInput = {
@@ -131,28 +129,6 @@ export const PhosphorRenderer: PlayerTokenRenderer = ({
   return { token, shadow };
 };
 
-export const NamePillRenderer: PlayerTokenRenderer = ({ label, style, scale, radius }) => {
-  const { token, shadow } = createNamePillPlayerToken({
-    label,
-    style: style as Partial<CleanTacticalPlayerTokenStyle>,
-    radius,
-  });
-  token.scale.set(scale);
-  return { token, shadow };
-};
-
-export const NumberedNamePillRenderer: PlayerTokenRenderer = ({ label, number, style, scale, radius }) => {
-  const { token, shadow } = createNamePillPlayerToken({
-    label,
-    style: style as Partial<CleanTacticalPlayerTokenStyle>,
-    radius,
-    number,
-    badgePosition: "side",
-  });
-  token.scale.set(scale);
-  return { token, shadow };
-};
-
 export const UnderNamePillRenderer: PlayerTokenRenderer = ({
   label,
   number,
@@ -167,7 +143,6 @@ export const UnderNamePillRenderer: PlayerTokenRenderer = ({
     style: style as Partial<CleanTacticalPlayerTokenStyle>,
     radius,
     number,
-    badgePosition: "under",
     kitPattern,
     kitPatternColor,
   });
@@ -180,8 +155,6 @@ export function resolvePlayerTokenRenderer(style: PlayerTokenStyle): PlayerToken
   if (style === "premium") return PremiumGlowRenderer;
   if (style === "pixi") return ProceduralPixiRenderer;
   if (style === "phosphor") return PhosphorRenderer;
-  if (style === "pill") return NamePillRenderer;
-  if (style === "pill-numbered") return NumberedNamePillRenderer;
   if (style === "pill-under") return UnderNamePillRenderer;
   return ClassicRingRenderer;
 }
@@ -193,8 +166,6 @@ export function sanitizePlayerTokenStyle(value: unknown): PlayerTokenStyle {
     value === "premium" ||
     value === "pixi" ||
     value === "phosphor" ||
-    value === "pill" ||
-    value === "pill-numbered" ||
     value === "pill-under"
   ) {
     return value;

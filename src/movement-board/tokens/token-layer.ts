@@ -14,14 +14,12 @@ import {
   createPixiToken,
   createPhosphorToken,
   createVisionV3Token,
-  createPillToken,
-  createNumberedPillToken,
   createUnderPillToken,
 } from "./createCleanTokenAdapters";
 import type { MovementBoardToken } from "../shell/types";
 import { UNDER_PILL_NORMAL_SHRINK } from "../../engine/pixi/createNamePillPlayerToken";
 
-export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor" | "pill" | "pill-numbered" | "pill-under";
+export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor" | "pill-under";
 
 type AnyRendererFn = typeof createJerseyTokenV2;
 
@@ -30,8 +28,6 @@ const RENDERER_MAP: Record<TokenRendererName, AnyRendererFn> = {
   vision:          createVisionV3Token as AnyRendererFn,
   jersey:          createJerseyTokenV2,
   phosphor:        createPhosphorToken as AnyRendererFn,
-  pill:            createPillToken as AnyRendererFn,
-  "pill-numbered": createNumberedPillToken as AnyRendererFn,
   "pill-under":    createUnderPillToken as AnyRendererFn,
 };
 

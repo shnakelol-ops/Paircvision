@@ -7,23 +7,16 @@ const FALLBACK_PRIMARY_COLOR = 0x2563eb;
 const FALLBACK_OUTLINE_COLOR = 0x0f172a;
 const MAX_PILL_WIDTH_RATIO = 4.0;
 const MIN_LABEL_FONT_SCALE = 0.62;
-// The pill is the primary token surface in "none"/"side" layouts, so it reads
-// at full size. Under a circle anchor it's a secondary label, so it stays compact.
-const PILL_HEIGHT_RATIO = 1.5;
 const UNDER_PILL_HEIGHT_RATIO = 1.05;
-// Under-pill text sits noticeably larger relative to its (unchanged) height than
-// the side/plain pill does — the fixed height just gets less padding around it.
 // Lands just under the side-pill's own font size — name is readable but the
 // circle above stays the primary read.
 const UNDER_PILL_FONT_TO_HEIGHT_RATIO = 0.876;
-const PILL_FONT_TO_HEIGHT_RATIO = 0.62;
 // Must clear the capsule's own corner radius (pillHeight / 2) on each side, or
 // the rounded end visibly cuts into the first/last character — 0.22 was below
 // that and clipped. 0.30 is the smallest bump that reliably clears it in
 // practice (font glyphs have their own left/right bearing) without visibly
 // widening the pill.
 const UNDER_PILL_PADDING_X_RATIO = 0.3;
-const PILL_PADDING_X_RATIO = 0.42;
 // Safety margin (beyond the two end-caps just touching) so even a single
 // fallback character never sits under the curve.
 const UNDER_PILL_MIN_WIDTH_BUFFER_RATIO = 0.06;
@@ -133,10 +126,7 @@ function drawKitPatternAccent(
   target.stroke({ color: accentColor, width: strokeWidth, alpha: 0.9, cap: "round", join: "round" });
 }
 
-/**
- * A flat, minimal circular number marker — used both as the side-pill's fused
- * badge (no pattern) and as the under-pill's position anchor (pattern optional).
- */
+/** A flat, minimal circular number marker — the under-pill's position anchor (pattern optional). */
 function drawNumberCircle(
   target: Container,
   centerX: number,
@@ -180,19 +170,15 @@ function drawNumberCircle(
 }
 
 /**
- * Renders a player token built around a rounded name-pill capsule instead of
- * a disc. Width auto-fits the label up to a fixed maximum — past that it
- * shrinks the font, then truncates with an ellipsis — and padding is kept
- * tight so the capsule hugs the text like a label, not a UI chip.
+ * Renders the Under-Pill player token: a full-size number circle is the
+ * position anchor; a compact rounded name-pill capsule is centred directly
+ * beneath it, carrying only the coach-chosen name/label. kitPattern renders
+ * on the circle only — never on the pill itself. Width auto-fits the label
+ * up to a fixed maximum — past that it shrinks the font, then truncates with
+ * an ellipsis — and padding is kept tight so the capsule hugs the text like
+ * a label, not a UI chip.
  *
- * badgePosition selects the layout:
- * - undefined/"none": plain pill, label only.
- * - "side": a small number badge is fused to the left cap (e.g. "① Jordan").
- * - "under": a full-size number circle is the position anchor; a compact
- *   pill is centred directly beneath it, carrying the name only. kitPattern
- *   renders on this circle only — never on the pill itself.
- *
- * All three are a single Container — one render object, so dragging,
+ * The whole thing is a single Container — one render object, so dragging,
  * animation (player.x/y), phases, and PNG export all work unchanged.
  */
 export function createNamePillPlayerToken({
@@ -200,7 +186,6 @@ export function createNamePillPlayerToken({
   style,
   radius,
   number,
-  badgePosition,
   kitPattern,
   kitPatternColor,
 }: {
@@ -208,7 +193,6 @@ export function createNamePillPlayerToken({
   style?: Partial<CleanTacticalPlayerTokenStyle>;
   radius: number;
   number?: number;
-  badgePosition?: "side" | "under";
   kitPattern?: MicroAthleteKitPattern;
   kitPatternColor?: number;
 }): { token: Container; shadow: Graphics } {
@@ -219,29 +203,24 @@ export function createNamePillPlayerToken({
 
   const safeRadius = Math.max(2.8, radius);
   const numberLabel = Number.isFinite(number) ? String(Math.max(0, Math.trunc(Number(number)))) : "";
-  const isUnder = badgePosition === "under" && numberLabel.length > 0;
-  const isSide = badgePosition === "side" && numberLabel.length > 0;
+  const hasNumber = numberLabel.length > 0;
   // The under-pill's complete assembly (circle + gap + pill) scales off this
-  // reduced radius in Normal Mode; side/plain pills are untouched and keep
-  // using safeRadius directly.
+  // reduced radius in Normal Mode.
   const underAssemblyRadius = safeRadius * UNDER_PILL_NORMAL_SHRINK;
-  const underRadius = isUnder ? underAssemblyRadius : safeRadius;
+  const underRadius = hasNumber ? underAssemblyRadius : safeRadius;
 
-  const pillHeight = underRadius * (isUnder ? UNDER_PILL_HEIGHT_RATIO : PILL_HEIGHT_RATIO);
+  const pillHeight = underRadius * UNDER_PILL_HEIGHT_RATIO;
   const cornerRadius = pillHeight / 2;
-  const paddingX = underRadius * (isUnder ? UNDER_PILL_PADDING_X_RATIO : PILL_PADDING_X_RATIO);
+  const paddingX = underRadius * UNDER_PILL_PADDING_X_RATIO;
   const borderWidth = Math.max(underRadius * 0.04, 0.1);
   const maxPillWidth = pillHeight * MAX_PILL_WIDTH_RATIO;
-  const innerGap = isSide ? safeRadius * 0.22 : 0;
-  // Space the side badge + gap reserves before the name starts; "under"/plain use plain left padding.
-  const leadingWidth = isSide ? cornerRadius * 2 + innerGap : paddingX;
 
   const token = new Container();
   token.eventMode = "static";
   token.cursor = "grab";
 
   const shadow = new Graphics();
-  if (isUnder) {
+  if (hasNumber) {
     // The circle is the visual anchor here, so it carries the (only) contact shadow.
     shadow
       .ellipse(0.14, underRadius * 1.02, underRadius * 0.82, underRadius * 0.22)
@@ -258,7 +237,7 @@ export function createNamePillPlayerToken({
   token.addChild(shadow);
 
   const safeLabel = label.trim() || "?";
-  const baseFontSize = pillHeight * (isUnder ? UNDER_PILL_FONT_TO_HEIGHT_RATIO : PILL_FONT_TO_HEIGHT_RATIO);
+  const baseFontSize = pillHeight * UNDER_PILL_FONT_TO_HEIGHT_RATIO;
 
   const labelText = new Text({
     text: safeLabel,
@@ -274,23 +253,21 @@ export function createNamePillPlayerToken({
   labelText.resolution = textResolution();
   labelText.roundPixels = true;
 
-  const maxTextWidth = Math.max(pillHeight * 0.6, maxPillWidth - leadingWidth - paddingX);
+  const maxTextWidth = Math.max(pillHeight * 0.6, maxPillWidth - paddingX * 2);
   fitLabelToWidth(labelText, maxTextWidth, baseFontSize);
 
-  const minPillWidth = isSide
-    ? leadingWidth + pillHeight * 0.35
-    : isUnder
-      // pillHeight == 2 x cornerRadius: the point where the two rounded ends
-      // just touch. Anything narrower forces Pixi to clamp/overlap the radius,
-      // which is exactly what clipped short labels like "Pa" — never go below it.
-      ? pillHeight + underRadius * UNDER_PILL_MIN_WIDTH_BUFFER_RATIO
-      : pillHeight * 1.05;
-  const naturalPillWidth = leadingWidth + labelText.width + paddingX;
+  const minPillWidth = hasNumber
+    // pillHeight == 2 x cornerRadius: the point where the two rounded ends
+    // just touch. Anything narrower forces Pixi to clamp/overlap the radius,
+    // which is exactly what clipped short labels like "Pa" — never go below it.
+    ? pillHeight + underRadius * UNDER_PILL_MIN_WIDTH_BUFFER_RATIO
+    : pillHeight * 1.05;
+  const naturalPillWidth = paddingX * 2 + labelText.width;
   const pillWidth = Math.min(maxPillWidth, Math.max(minPillWidth, naturalPillWidth));
   const halfWidth = pillWidth / 2;
   const halfHeight = pillHeight / 2;
 
-  const pillCenterY = isUnder ? underRadius + underRadius * UNDER_PILL_GAP_RATIO + halfHeight : 0;
+  const pillCenterY = hasNumber ? underRadius + underRadius * UNDER_PILL_GAP_RATIO + halfHeight : 0;
 
   const capsule = new Graphics();
   capsule
@@ -300,21 +277,13 @@ export function createNamePillPlayerToken({
     .stroke({ color: borderColor, width: borderWidth, alignment: 1, alpha: 0.45 });
   token.addChild(capsule);
 
-  if (isSide) {
-    const badgeCenterX = -halfWidth + cornerRadius;
-    const badgeFill = mixColor(fillColor, 0x000000, 0.24);
-    drawNumberCircle(token, badgeCenterX, 0, cornerRadius * 0.94, badgeFill, borderColor, borderWidth, numberLabel);
-    labelText.anchor.set(0, 0.5);
-    labelText.position.set(badgeCenterX + cornerRadius + innerGap, 0);
-  } else {
-    // Mathematically centred on both axes — text anchor 0.5/0.5 at the
-    // capsule's own centre point.
-    labelText.anchor.set(0.5, 0.5);
-    labelText.position.set(0, pillCenterY);
-  }
+  // Mathematically centred on both axes — text anchor 0.5/0.5 at the
+  // capsule's own centre point.
+  labelText.anchor.set(0.5, 0.5);
+  labelText.position.set(0, pillCenterY);
   token.addChild(labelText);
 
-  if (isUnder) {
+  if (hasNumber) {
     // The circle is the tactical anchor — always draw it at the full token
     // radius (same as the standalone circle-only styles), reduced only by
     // the same Normal-Mode assembly shrink applied to the rest of the
