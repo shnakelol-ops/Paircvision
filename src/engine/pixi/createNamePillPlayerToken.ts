@@ -17,8 +17,16 @@ const UNDER_PILL_HEIGHT_RATIO = 1.05;
 // circle above stays the primary read.
 const UNDER_PILL_FONT_TO_HEIGHT_RATIO = 0.876;
 const PILL_FONT_TO_HEIGHT_RATIO = 0.62;
-const UNDER_PILL_PADDING_X_RATIO = 0.22;
+// Must clear the capsule's own corner radius (pillHeight / 2) on each side, or
+// the rounded end visibly cuts into the first/last character — 0.22 was below
+// that and clipped. 0.30 is the smallest bump that reliably clears it in
+// practice (font glyphs have their own left/right bearing) without visibly
+// widening the pill.
+const UNDER_PILL_PADDING_X_RATIO = 0.3;
 const PILL_PADDING_X_RATIO = 0.42;
+// Safety margin (beyond the two end-caps just touching) so even a single
+// fallback character never sits under the curve.
+const UNDER_PILL_MIN_WIDTH_BUFFER_RATIO = 0.06;
 // Tight enough that the circle and pill read as one fused object, not two
 // stacked shapes.
 const UNDER_PILL_GAP_RATIO = 0.05;
@@ -272,7 +280,10 @@ export function createNamePillPlayerToken({
   const minPillWidth = isSide
     ? leadingWidth + pillHeight * 0.35
     : isUnder
-      ? pillHeight * 0.9
+      // pillHeight == 2 x cornerRadius: the point where the two rounded ends
+      // just touch. Anything narrower forces Pixi to clamp/overlap the radius,
+      // which is exactly what clipped short labels like "Pa" — never go below it.
+      ? pillHeight + underRadius * UNDER_PILL_MIN_WIDTH_BUFFER_RATIO
       : pillHeight * 1.05;
   const naturalPillWidth = leadingWidth + labelText.width + paddingX;
   const pillWidth = Math.min(maxPillWidth, Math.max(minPillWidth, naturalPillWidth));
