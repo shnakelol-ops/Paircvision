@@ -153,13 +153,23 @@ export const NumberedNamePillRenderer: PlayerTokenRenderer = ({ label, number, s
   return { token, shadow };
 };
 
-export const UnderNamePillRenderer: PlayerTokenRenderer = ({ label, number, style, scale, radius }) => {
+export const UnderNamePillRenderer: PlayerTokenRenderer = ({
+  label,
+  number,
+  style,
+  scale,
+  radius,
+  kitPattern,
+  kitPatternColor,
+}) => {
   const { token, shadow } = createNamePillPlayerToken({
     label,
     style: style as Partial<CleanTacticalPlayerTokenStyle>,
     radius,
     number,
     badgePosition: "under",
+    kitPattern,
+    kitPatternColor,
   });
   token.scale.set(scale);
   return { token, shadow };

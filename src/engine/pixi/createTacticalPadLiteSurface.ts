@@ -15,6 +15,7 @@ import {
   sanitizePlayerTokenStyle,
   type PlayerTokenStyle,
 } from "./playerTokenRenderer";
+import { UNDER_PILL_NORMAL_SHRINK } from "./createNamePillPlayerToken";
 import {
   createTacticalPitchVisualRoot,
   type TacticalPitchTheme,
@@ -1102,6 +1103,12 @@ export async function createTacticalPadLiteSurface(
     if (surfaceVariant !== "tactical") return;
     for (const tacticalPlayer of players) {
       rerenderTacticalPlayerToken(tacticalPlayer);
+      // Refresh the idle/drag scale target so a style switch (e.g. into or out
+      // of Under-Pill, which compensates Compact Mode's multiplier) takes
+      // effect immediately rather than waiting for the next drag/toggle.
+      const isDraggingThisPlayer =
+        activeDrag !== null && activeDrag.type === "player" && activeDrag.playerId === tacticalPlayer.id;
+      setPlayerDragVisualTarget(tacticalPlayer, isDraggingThisPlayer);
     }
   }
 
@@ -1238,11 +1245,20 @@ export async function createTacticalPadLiteSurface(
   // Compact Tokens shrinks the idle/drag scale target by the same factor Tactical Play
   // uses for its "small" token size (see movement-board/tokens/token-layer.ts SIZE_FACTOR.small).
   let isCompactPlayerTokens = options.compactPlayerTokens === true;
+  // Under-Pill's own assembly renders UNDER_PILL_NORMAL_SHRINK smaller than the raw
+  // token radius in Normal Mode (see createNamePillPlayerToken.ts). Compact Mode's
+  // multiplier is compensated here so its on-screen size stays exactly what it was
+  // before that reduction — every other style is untouched.
+  function compactScaleFactor(): number {
+    return tacticalTokenStyle === "pill-under"
+      ? COMPACT_PLAYER_TOKEN_SCALE_FACTOR / UNDER_PILL_NORMAL_SHRINK
+      : COMPACT_PLAYER_TOKEN_SCALE_FACTOR;
+  }
   function getIdlePlayerTokenScale(): number {
-    return isCompactPlayerTokens ? PREMIUM_TOKEN_IDLE_SCALE * COMPACT_PLAYER_TOKEN_SCALE_FACTOR : PREMIUM_TOKEN_IDLE_SCALE;
+    return isCompactPlayerTokens ? PREMIUM_TOKEN_IDLE_SCALE * compactScaleFactor() : PREMIUM_TOKEN_IDLE_SCALE;
   }
   function getDragPlayerTokenScale(): number {
-    return isCompactPlayerTokens ? PREMIUM_TOKEN_DRAG_SCALE * COMPACT_PLAYER_TOKEN_SCALE_FACTOR : PREMIUM_TOKEN_DRAG_SCALE;
+    return isCompactPlayerTokens ? PREMIUM_TOKEN_DRAG_SCALE * compactScaleFactor() : PREMIUM_TOKEN_DRAG_SCALE;
   }
 
   const players: TacticalPlayer[] = playerSeeds.map((seed) => createSurfacePlayer(seed));

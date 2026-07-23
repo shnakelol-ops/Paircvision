@@ -19,6 +19,7 @@ import {
   createUnderPillToken,
 } from "./createCleanTokenAdapters";
 import type { MovementBoardToken } from "../shell/types";
+import { UNDER_PILL_NORMAL_SHRINK } from "../../engine/pixi/createNamePillPlayerToken";
 
 export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor" | "pill" | "pill-numbered" | "pill-under";
 
@@ -35,6 +36,7 @@ const RENDERER_MAP: Record<TokenRendererName, AnyRendererFn> = {
 };
 
 let _renderer: AnyRendererFn = createJerseyTokenV2;
+let _rendererName: TokenRendererName = "jersey";
 
 // ── Token Size Mode ───────────────────────────────────────────────────────────
 // small  (0.75×) — 25–30 player tactical view, numbers hidden
@@ -155,7 +157,14 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
     const isMoving = visual.movementAngle !== null;
     const isBallCarrier = ballCarrierTokenId === visual.token.id;
     const isGhost = visual.token.isGhost === true;
-    const sizeFactor = SIZE_FACTOR[currentSize];
+    // Under-Pill's assembly renders UNDER_PILL_NORMAL_SHRINK smaller than the raw
+    // token radius in Normal/medium/large sizes (see createNamePillPlayerToken.ts).
+    // Compact ("small") is compensated so its on-screen size is unaffected — every
+    // other renderer/size combination is untouched.
+    const sizeFactor =
+      currentSize === "small" && _rendererName === "pill-under"
+        ? SIZE_FACTOR.small / UNDER_PILL_NORMAL_SHRINK
+        : SIZE_FACTOR[currentSize];
 
     // Tokens always remain upright — movement is shown through routes
     visual.body.rotation = 0;
@@ -347,6 +356,7 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
     getTokenSize: () => currentSize,
     setRenderer: (name) => {
       _renderer = RENDERER_MAP[name];
+      _rendererName = name;
       rebuild(getCurrentTokenData());
     },
     setOnTokenPointerDown: (handler) => {
