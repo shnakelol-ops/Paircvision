@@ -192,7 +192,7 @@ const TOKEN_STYLE_CHOICES: ReadonlyArray<{ value: TacticalPlayerTokenStyle; labe
   { value: "premium", label: "Glow" },
   { value: "pixi", label: "Pixi" },
   { value: "phosphor", label: "Phosphor" },
-  { value: "pill-under", label: "Under-Pill" },
+  { value: "pill-under", label: "Name Badge" },
 ];
 type KitEditorTab = "base" | "pattern" | "label";
 const KIT_EDITOR_TABS: ReadonlyArray<{ id: KitEditorTab; label: string }> = [

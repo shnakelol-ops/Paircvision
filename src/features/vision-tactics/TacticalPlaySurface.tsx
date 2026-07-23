@@ -3424,7 +3424,7 @@ export default function TacticalPlaySurface() {
                     { id: "pixi", label: "Pixi" },
                     { id: "vision", label: "Vision" },
                     { id: "jersey", label: "Jersey" },
-                    { id: "pill-under", label: "Under-Pill" },
+                    { id: "pill-under", label: "Name Badge" },
                   ] as const).map((r) => (
                     <button
                       key={r.id}
