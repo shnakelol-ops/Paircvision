@@ -4,7 +4,6 @@ import type {
   ProTaggerSession,
   ProTaggerSport,
   ProTaggerMatchType,
-  ProTaggerAttackDirection,
 } from "./pro-tagger-session";
 import { newSessionId, buildDefaultSquad } from "./pro-tagger-session";
 import type { MatchTarget, MatchTargetDirection } from "../stats/matchTargets";
@@ -58,7 +57,6 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
   const [awayTeam, setAwayTeam]       = useState("");
   const [venue, setVenue]             = useState("");
   const [matchType, setMatchType]     = useState<ProTaggerMatchType>("league");
-  const [attackDir, setAttackDir]     = useState<ProTaggerAttackDirection>("right");
   const [halfMins, setHalfMins]       = useState(35);
 
   // Match Targets state
@@ -91,7 +89,10 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
       awayTeamName:        awayTeam.trim(),
       venue:               venue.trim(),
       matchType,
-      attackDirection:     attackDir,
+      // Default 1H attacking direction. The selector now lives on the Squads
+      // screen (immediately before Go To Game); this seeds the session default
+      // and remains the single source of truth on session.attackDirection.
+      attackDirection:     "right",
       halfDurationMinutes: halfMins,
       createdAt:           Date.now(),
       homeSquad:           buildDefaultSquad("HOME"),
@@ -182,23 +183,6 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
               {MATCH_TYPE_LABELS[mt]}
             </button>
           ))}
-        </div>
-
-        {/* Attack direction */}
-        <span style={S.label}>1H Attacking Direction</span>
-        <div style={S.chips}>
-          <button
-            onClick={() => setAttackDir("left")}
-            style={{ ...S.chip, ...(attackDir === "left" ? S.chipOn : {}) }}
-          >
-            Left
-          </button>
-          <button
-            onClick={() => setAttackDir("right")}
-            style={{ ...S.chip, ...(attackDir === "right" ? S.chipOn : {}) }}
-          >
-            Right
-          </button>
         </div>
 
         {/* Half duration */}

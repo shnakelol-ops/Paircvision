@@ -1,7 +1,11 @@
 import { useState, useCallback } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
-import type { ProTaggerSession, ProTaggerSquadPlayer } from "./pro-tagger-session";
+import type {
+  ProTaggerSession,
+  ProTaggerSquadPlayer,
+  ProTaggerAttackDirection,
+} from "./pro-tagger-session";
 import {
   loadSavedTeams,
   saveTeam,
@@ -48,6 +52,13 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
   );
   const [awaySquadTeamName, setAwaySquadTeamName] = useState<string | undefined>(
     session.awaySquad.teamName,
+  );
+
+  // 1H attacking direction — seeded from the session (single source of truth,
+  // set to its default in Setup) and finalised back onto the session at Go To
+  // Game. Both Go To Game buttons on this screen read from this state.
+  const [attackDir, setAttackDir] = useState<ProTaggerAttackDirection>(
+    session.attackDirection,
   );
 
   // Library overlay
@@ -164,6 +175,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
   function handleStart() {
     onStart({
       ...session,
+      attackDirection: attackDir,
       homeSquad: {
         ...session.homeSquad,
         players:         homePlayers,
@@ -284,6 +296,23 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
 
       {/* ── Footer ─────────────────────────────────────────────────── */}
       <div style={S.footer}>
+        <div style={S.directionSection}>
+          <span style={S.directionLabel}>1H Attacking Direction</span>
+          <div style={S.directionChips}>
+            <button
+              onClick={() => setAttackDir("left")}
+              style={{ ...S.directionChip, ...(attackDir === "left" ? S.directionChipOn : {}) }}
+            >
+              ← Left
+            </button>
+            <button
+              onClick={() => setAttackDir("right")}
+              style={{ ...S.directionChip, ...(attackDir === "right" ? S.directionChipOn : {}) }}
+            >
+              Right →
+            </button>
+          </div>
+        </div>
         <button style={S.footerStartBtn} onClick={handleStart}>
           Go To Game
         </button>
@@ -596,10 +625,50 @@ const S: Record<string, CSSProperties> = {
 
   // ── Footer ───────────────────────────────────────────────────────────────
   footer: {
-    padding: "10px 12px 16px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    // Extra bottom padding + safe-area inset keeps the selector and the Go To
+    // Game button clear of the Android nav bar / iOS home indicator.
+    padding: "10px 12px calc(16px + env(safe-area-inset-bottom, 0px))",
     background: "#0d1117",
     borderTop: "1px solid #21262d",
     flexShrink: 0,
+  },
+  directionSection: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+  directionLabel: {
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase" as const,
+    color: "#8b949e",
+  },
+  directionChips: {
+    display: "flex",
+    gap: 8,
+  },
+  directionChip: {
+    flex: 1,
+    background: "#21262d",
+    border: "1px solid #30363d",
+    borderRadius: 8,
+    color: "#8b949e",
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "9px 12px",
+    cursor: "pointer",
+    outline: "none",
+    whiteSpace: "nowrap" as const,
+    WebkitTapHighlightColor: "transparent",
+  },
+  directionChipOn: {
+    background: "#238636",
+    borderColor: "#2ea043",
+    color: "#ffffff",
   },
   footerStartBtn: {
     background: "#238636",
