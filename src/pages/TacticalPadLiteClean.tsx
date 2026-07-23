@@ -2605,6 +2605,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         surface.setItemMode(initialSurfaceItemMode);
         surface.setRouteCaptureMode(false);
         surface.setPossessionPassMode(false);
+        // Without this, blueActiveNumbers/redActiveNumbers start empty even
+        // though the board already has its default players — the Teams panel
+        // shows 0/15, and the first number toggle rebuilds each team from that
+        // wrong baseline, dropping every existing player it doesn't list.
+        syncTeamCounts();
         const initialSnapshot = captureQuickBoardSnapshot(surface);
         boardBaselineSignatureRef.current = serializeBoardState(initialSnapshot);
         const query = new URLSearchParams(window.location.search);
@@ -3735,14 +3740,29 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     const boardState = surface.exportBoardState();
     const prefix = team === "BLUE" ? "B" : "R";
     const teamColor = team === "BLUE" ? "blue" : "red";
-    const otherPlayers = (boardState.players as Array<Record<string, unknown>>).filter(
-      (p) => p.team !== team,
+    const allPlayers = boardState.players as Array<Record<string, unknown>>;
+    const otherPlayers = allPlayers.filter((p) => p.team !== team);
+    // Match existing players on this team by id so surviving players keep their
+    // nickname/initials/kit/pattern metadata — only id/number/team/teamColor/x/y
+    // are ever recomputed here. A brand-new number has no prior entry to merge,
+    // so it correctly starts with no kit customization.
+    const existingTeamPlayersById = new Map(
+      allPlayers.filter((p) => p.team === team).map((p) => [p.id as string, p]),
     );
     const teamPlayers = Array.from(numbers)
       .sort((a, b) => a - b)
       .map((number) => {
+        const id = `${prefix}${number}`;
         const pos = getGaelicFormationPos(team, number);
-        return { id: `${prefix}${number}`, number, team, teamColor, x: pos.x, y: pos.y };
+        return {
+          ...(existingTeamPlayersById.get(id) ?? {}),
+          id,
+          number,
+          team,
+          teamColor,
+          x: pos.x,
+          y: pos.y,
+        };
       });
     surface.importBoardState({ ...boardState, players: [...otherPlayers, ...teamPlayers] });
     setKitEditorState(null);
