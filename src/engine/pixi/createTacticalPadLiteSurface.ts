@@ -1103,12 +1103,6 @@ export async function createTacticalPadLiteSurface(
     if (surfaceVariant !== "tactical") return;
     for (const tacticalPlayer of players) {
       rerenderTacticalPlayerToken(tacticalPlayer);
-      // Refresh the idle/drag scale target so a style switch (e.g. into or out
-      // of Under-Pill, which compensates Compact Mode's multiplier) takes
-      // effect immediately rather than waiting for the next drag/toggle.
-      const isDraggingThisPlayer =
-        activeDrag !== null && activeDrag.type === "player" && activeDrag.playerId === tacticalPlayer.id;
-      setPlayerDragVisualTarget(tacticalPlayer, isDraggingThisPlayer);
     }
   }
 
@@ -3898,8 +3892,20 @@ export async function createTacticalPadLiteSurface(
       if (surfaceVariant !== "tactical") return;
       const nextStyle = sanitizePlayerTokenStyle(style);
       if (nextStyle === tacticalTokenStyle) return;
+      const prevStyle = tacticalTokenStyle;
       tacticalTokenStyle = nextStyle;
       rerenderAllTacticalPlayers();
+      // Under-Pill compensates Compact Mode's scale multiplier (see
+      // compactScaleFactor above), so a switch into or out of it must refresh
+      // the idle/drag scale target immediately rather than waiting for the
+      // next drag/toggle. No other style transition needs this.
+      if (prevStyle === "pill-under" || nextStyle === "pill-under") {
+        for (const tacticalPlayer of players) {
+          const isDraggingThisPlayer =
+            activeDrag !== null && activeDrag.type === "player" && activeDrag.playerId === tacticalPlayer.id;
+          setPlayerDragVisualTarget(tacticalPlayer, isDraggingThisPlayer);
+        }
+      }
     },
     setCompactPlayerTokens: (enabled) => {
       const nextEnabled = Boolean(enabled);
