@@ -5,11 +5,18 @@ import {
   type CleanTacticalPlayerTokenStyle,
 } from "./createCleanTacticalPlayerToken";
 import { createMicroAthleteToken, type MicroAthleteKitPattern, type MicroAthleteStyle } from "./createMicroAthleteToken";
+import { createNamePillPlayerToken } from "./createNamePillPlayerToken";
 import { createPremiumGlowPlayerToken } from "./createPremiumGlowPlayerToken";
 import { createVisionV3PlayerToken } from "./createVisionV3PlayerToken";
 import type { PremiumPlayerTokenColor } from "./createPremiumPlayerToken";
 
-export type PlayerTokenStyle = "vision-v3" | "classic" | "premium" | "pixi" | "phosphor";
+export type PlayerTokenStyle =
+  | "vision-v3"
+  | "classic"
+  | "premium"
+  | "pixi"
+  | "phosphor"
+  | "pill-under";
 
 export type PlayerTokenRendererInput = {
   label: string;
@@ -122,16 +129,45 @@ export const PhosphorRenderer: PlayerTokenRenderer = ({
   return { token, shadow };
 };
 
+export const UnderNamePillRenderer: PlayerTokenRenderer = ({
+  label,
+  number,
+  style,
+  scale,
+  radius,
+  kitPattern,
+  kitPatternColor,
+}) => {
+  const { token, shadow } = createNamePillPlayerToken({
+    label,
+    style: style as Partial<CleanTacticalPlayerTokenStyle>,
+    radius,
+    number,
+    kitPattern,
+    kitPatternColor,
+  });
+  token.scale.set(scale);
+  return { token, shadow };
+};
+
 export function resolvePlayerTokenRenderer(style: PlayerTokenStyle): PlayerTokenRenderer {
   if (style === "vision-v3") return VisionV3Renderer;
   if (style === "premium") return PremiumGlowRenderer;
   if (style === "pixi") return ProceduralPixiRenderer;
   if (style === "phosphor") return PhosphorRenderer;
+  if (style === "pill-under") return UnderNamePillRenderer;
   return ClassicRingRenderer;
 }
 
 export function sanitizePlayerTokenStyle(value: unknown): PlayerTokenStyle {
-  if (value === "vision-v3" || value === "classic" || value === "premium" || value === "pixi" || value === "phosphor") {
+  if (
+    value === "vision-v3" ||
+    value === "classic" ||
+    value === "premium" ||
+    value === "pixi" ||
+    value === "phosphor" ||
+    value === "pill-under"
+  ) {
     return value;
   }
   // Migrate old torso selections to classic so older saved states still render.

@@ -15,6 +15,7 @@ import {
   type TacticalItem,
   type WhiteboardTokenColor,
   sanitizeInitials,
+  sanitizeName,
 } from "../engine/pixi/createTacticalPadLiteSurface";
 import StatsModeSurface from "../StatsModeSurface";
 import OrientationGate, { usePortraitOrientation } from "../components/OrientationGate";
@@ -184,13 +185,14 @@ const KIT_PATTERN_LABEL: Record<TacticalKitPattern, string> = {
   stripes: "Stripes",
   slash: "Slash",
 };
-const LABEL_MODE_CHOICES: TacticalLabelMode[] = ["number", "initials"];
+const LABEL_MODE_CHOICES: TacticalLabelMode[] = ["number", "initials", "name"];
 const TOKEN_STYLE_CHOICES: ReadonlyArray<{ value: TacticalPlayerTokenStyle; label: string }> = [
   { value: "vision-v3", label: "Vision V3" },
   { value: "classic", label: "Classic" },
   { value: "premium", label: "Glow" },
   { value: "pixi", label: "Pixi" },
   { value: "phosphor", label: "Phosphor" },
+  { value: "pill-under", label: "Name Badge" },
 ];
 type KitEditorTab = "base" | "pattern" | "label";
 const KIT_EDITOR_TABS: ReadonlyArray<{ id: KitEditorTab; label: string }> = [
@@ -3930,6 +3932,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     applyPlayerKitPatch({ initials: sanitized });
   };
 
+  const handleKitNameChange = (rawValue: string) => {
+    const sanitized = sanitizeName(rawValue) ?? "";
+    applyPlayerKitPatch({ name: sanitized });
+  };
+
   const whiteboardBubbleStyle =
     whiteboardBubblePosition == null
       ? undefined
@@ -4250,23 +4257,35 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                         style={isActive ? KIT_EDITOR_OPTION_BUTTON_ACTIVE_STYLE : KIT_EDITOR_OPTION_BUTTON_STYLE}
                         onClick={() => applyPlayerKitPatch({ labelMode: modeValue })}
                       >
-                        {modeValue === "number" ? "Number" : "Initials"}
+                        {modeValue === "number" ? "Number" : modeValue === "initials" ? "Initials" : "Nickname"}
                       </button>
                     );
                   })}
                 </div>
-                <input
-                  type="text"
-                  maxLength={3}
-                  value={sanitizeInitials(activeKitPlayer.initials) ?? ""}
-                  onChange={(event) => handleKitInitialsChange(event.target.value)}
-                  style={{
-                    ...KIT_EDITOR_INPUT_STYLE,
-                    ...(activeKitPlayer.labelMode === "initials" ? null : { opacity: 0.72 }),
-                  }}
-                  placeholder="ABC"
-                  aria-label="Player initials"
-                />
+                {(activeKitPlayer.labelMode ?? "number") === "name" ? (
+                  <input
+                    type="text"
+                    maxLength={20}
+                    value={sanitizeName(activeKitPlayer.name) ?? ""}
+                    onChange={(event) => handleKitNameChange(event.target.value)}
+                    style={KIT_EDITOR_INPUT_STYLE}
+                    placeholder="Jordan, Dozer, Pat…"
+                    aria-label="Player nickname or display name"
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    maxLength={3}
+                    value={sanitizeInitials(activeKitPlayer.initials) ?? ""}
+                    onChange={(event) => handleKitInitialsChange(event.target.value)}
+                    style={{
+                      ...KIT_EDITOR_INPUT_STYLE,
+                      ...(activeKitPlayer.labelMode === "initials" ? null : { opacity: 0.72 }),
+                    }}
+                    placeholder="ABC"
+                    aria-label="Player initials"
+                  />
+                )}
               </div>
             ) : null}
           </div>
