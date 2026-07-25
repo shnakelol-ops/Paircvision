@@ -144,6 +144,14 @@ export type TacticalPadLiteSurface = {
   getRouteState: () => TacticalRouteState;
   reset: () => void;
   reflow: () => void;
+  /**
+   * Sets the board orientation as a quarter-turn count consumed by the merged
+   * orientation-aware mapper. 0 = landscape (unchanged). 1/3 = portrait
+   * (end-line) views. Purely presentational: world coordinates, saves, undo and
+   * formations are unaffected. Player tokens counter-rotate so numbers/labels
+   * stay upright.
+   */
+  setOrientation: (quarterTurns: number) => void;
   setWhiteboardTeamConfig: (config: {
     counts: { blue: number; red: number };
     colors: { blue: WhiteboardTokenColor; red: WhiteboardTokenColor };
@@ -1038,6 +1046,14 @@ export async function createTacticalPadLiteSurface(
   };
   world.addChild(whiteboardInputLayer);
 
+  // Single source of truth for board orientation. 0 = landscape (default,
+  // unchanged). Portrait views (1/3) rotate the world container; tokens
+  // counter-rotate by the same angle so numbers/labels stay upright. Only
+  // fitToHost() reads these; nothing else applies rotation, so there is no
+  // risk of double rotation.
+  let orientationQuarterTurns = 0;
+  let worldRotationRadians = 0;
+
   let mapper = createWorldViewport(
     WORLD_SIZE,
     { width: host.clientWidth || 800, height: host.clientHeight || 520 },
@@ -1217,6 +1233,8 @@ export async function createTacticalPadLiteSurface(
     });
     const { token, shadow } = tokenPack;
     playersLayer.addChild(token);
+    // Keep the token upright under the current orientation (0 in landscape).
+    token.rotation = -worldRotationRadians;
     return {
       id: base.id,
       number: base.number,
@@ -1356,13 +1374,30 @@ export async function createTacticalPadLiteSurface(
     app.renderer.resolution = Math.min(2, window.devicePixelRatio || 1);
     app.renderer.resize(width, height);
 
-    mapper = createWorldViewport(WORLD_SIZE, { width, height });
-    world.scale.set(mapper.transform.scale, mapper.transform.scale);
-    world.position.set(mapper.transform.offsetX, mapper.transform.offsetY);
+    mapper = createWorldViewport(WORLD_SIZE, { width, height }, orientationQuarterTurns);
+    const turns = mapper.transform.quarterTurns;
+    worldRotationRadians = turns * (Math.PI / 2);
+    if (turns === 0) {
+      // Landscape: identical to the pre-portrait transform (no pivot/rotation).
+      world.pivot.set(0, 0);
+      world.rotation = 0;
+      world.scale.set(mapper.transform.scale, mapper.transform.scale);
+      world.position.set(mapper.transform.offsetX, mapper.transform.offsetY);
+    } else {
+      // Portrait: rotate the world about its centre. Pivot + position are driven
+      // from the same mapper that inverts pointer input, so the two never drift.
+      world.pivot.set(WORLD_SIZE.width / 2, WORLD_SIZE.height / 2);
+      world.rotation = worldRotationRadians;
+      world.scale.set(mapper.transform.scale, mapper.transform.scale);
+      const origin = mapper.worldToViewport({ x: WORLD_SIZE.width / 2, y: WORLD_SIZE.height / 2 });
+      world.position.set(origin.x, origin.y);
+    }
 
     for (const player of players) {
       setPlayerTouchHitArea(player, mapper);
       setTokenWorldPositionForPoint(player, player.current, mapper);
+      // Counter-rotate so numbers/name badges stay upright while the pitch rotates.
+      player.token.rotation = -worldRotationRadians;
     }
     for (const item of tacticalItems) {
       setItemTouchHitArea(item, mapper);
@@ -3069,6 +3104,7 @@ export async function createTacticalPadLiteSurface(
     player.tokenShadow = nextPack.shadow;
     player.token.position.set(previousPositionX, previousPositionY);
     player.token.scale.set(previousScaleX, previousScaleY);
+    player.token.rotation = -worldRotationRadians;
     playersLayer.removeChild(previousToken);
     playersLayer.addChildAt(player.token, previousIndex);
     previousToken.removeAllListeners();
@@ -3954,6 +3990,12 @@ export async function createTacticalPadLiteSurface(
     },
     exportBoardState: () => captureBoardState(),
     importBoardState: (state) => importBoardState(state),
+    setOrientation: (quarterTurns: number) => {
+      const next = ((Math.trunc(Number.isFinite(quarterTurns) ? quarterTurns : 0) % 4) + 4) % 4;
+      if (next === orientationQuarterTurns) return;
+      orientationQuarterTurns = next;
+      fitToHost();
+    },
     exportImageCanvas: () => {
       const rendererWithExtract = app.renderer as typeof app.renderer & {
         extract?: {
