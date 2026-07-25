@@ -11,10 +11,20 @@ export type ViewportSize = {
   height: number;
 };
 
+/**
+ * Number of 90-degree clockwise turns applied to the world before it is fit
+ * into the viewport. 0 = landscape (unchanged legacy behaviour). 1 and 3 are
+ * the two portrait (end-line) orientations; 2 is a 180-degree flip. Any integer
+ * is accepted and normalized into {0,1,2,3}.
+ */
+export type QuarterTurns = 0 | 1 | 2 | 3;
+
 export type ViewportTransform = {
   scale: number;
   offsetX: number;
   offsetY: number;
+  /** Normalized quarter-turn count in {0,1,2,3}. 0 preserves legacy landscape. */
+  quarterTurns: QuarterTurns;
 };
 
 export type WorldViewportMapper = {
@@ -31,6 +41,31 @@ export type WorldViewportMapper = {
 
 function safeDimension(value: number): number {
   return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+/** Normalizes any integer turn count into the {0,1,2,3} range. */
+export function normalizeQuarterTurns(quarterTurns: number): QuarterTurns {
+  const q = Number.isFinite(quarterTurns) ? Math.trunc(quarterTurns) : 0;
+  return (((q % 4) + 4) % 4) as QuarterTurns;
+}
+
+/**
+ * Rotates a centre-relative delta by a quarter turn using pure axis swaps and
+ * sign flips (no trigonometry, so quarter turns are exact and lossless).
+ * Convention: q counts clockwise turns in a y-down (screen) coordinate frame.
+ */
+function rotateQuarter(point: WorldPoint, quarterTurns: QuarterTurns): WorldPoint {
+  switch (quarterTurns) {
+    case 1:
+      return { x: -point.y, y: point.x };
+    case 2:
+      return { x: -point.x, y: -point.y };
+    case 3:
+      return { x: point.y, y: -point.x };
+    case 0:
+    default:
+      return { x: point.x, y: point.y };
+  }
 }
 
 // Shared viewport-fit rule: keep this formula identical to the copies in
@@ -51,51 +86,104 @@ function computeSafeMarginPx(viewportWidth: number, viewportHeight: number): num
  * Computes a letterbox fit so the full world is visible in the viewport,
  * inset by a small safe margin so it never touches the host edge.
  * Offsets center the scaled world in whichever axis has spare room.
+ *
+ * When quarterTurns is 1 or 3 the world is rotated a quarter turn about its
+ * centre first, so the fit is computed against the swapped (portrait) extents.
+ * quarterTurns = 0 (the default) reproduces the legacy landscape transform
+ * exactly.
  */
 export function getLetterboxTransform(
   worldSize: WorldSize,
   viewportSize: ViewportSize,
+  quarterTurns: number = 0,
 ): ViewportTransform {
+  const turns = normalizeQuarterTurns(quarterTurns);
   const worldWidth = safeDimension(worldSize.width);
   const worldHeight = safeDimension(worldSize.height);
   const viewportWidth = safeDimension(viewportSize.width);
   const viewportHeight = safeDimension(viewportSize.height);
 
   if (worldWidth <= 0 || worldHeight <= 0 || viewportWidth <= 0 || viewportHeight <= 0) {
-    return { scale: 0, offsetX: 0, offsetY: 0 };
+    return { scale: 0, offsetX: 0, offsetY: 0, quarterTurns: turns };
   }
+
+  // Odd quarter turns swap the world's footprint (landscape <-> portrait).
+  const isQuarter = turns === 1 || turns === 3;
+  const rotatedWidth = isQuarter ? worldHeight : worldWidth;
+  const rotatedHeight = isQuarter ? worldWidth : worldHeight;
 
   const margin = computeSafeMarginPx(viewportWidth, viewportHeight);
   const availWidth = Math.max(1, viewportWidth - margin * 2);
   const availHeight = Math.max(1, viewportHeight - margin * 2);
-  const scale = Math.min(availWidth / worldWidth, availHeight / worldHeight);
-  const offsetX = (viewportWidth - worldWidth * scale) / 2;
-  const offsetY = (viewportHeight - worldHeight * scale) / 2;
+  const scale = Math.min(availWidth / rotatedWidth, availHeight / rotatedHeight);
+  const offsetX = (viewportWidth - rotatedWidth * scale) / 2;
+  const offsetY = (viewportHeight - rotatedHeight * scale) / 2;
 
-  return { scale, offsetX, offsetY };
+  return { scale, offsetX, offsetY, quarterTurns: turns };
 }
 
 /**
  * Creates pure mappers for normalized(0-100), world, and viewport coordinates.
- * Flow: normalized <-> world handles pitch semantics, then world <-> viewport applies letterbox transform.
+ * Flow: normalized <-> world handles pitch semantics, then world <-> viewport
+ * applies a rotate-about-centre + letterbox transform.
+ *
+ * The world is rotated about its own centre (worldWidth/2, worldHeight/2) — for
+ * the canonical 160x100 pitch this is (80, 50) — before scaling into the
+ * viewport. quarterTurns defaults to 0, which is byte-for-byte identical to the
+ * legacy landscape transform. Forward and inverse share one transform, so
+ * world -> viewport -> world round-trips exactly in every orientation.
  */
 export function createWorldViewport(
   worldSize: WorldSize,
   viewportSize: ViewportSize,
+  quarterTurns: number = 0,
 ): WorldViewportMapper {
-  const transform = getLetterboxTransform(worldSize, viewportSize);
-  const scale = transform.scale;
+  const transform = getLetterboxTransform(worldSize, viewportSize, quarterTurns);
+  const { scale, offsetX, offsetY } = transform;
+  const turns = transform.quarterTurns;
+  const inverseTurns = normalizeQuarterTurns(4 - turns);
 
-  const toViewport = (point: WorldPoint): WorldPoint => ({
-    x: point.x * scale + transform.offsetX,
-    y: point.y * scale + transform.offsetY,
-  });
+  // World centre to rotate about; (80, 50) for the canonical 160x100 pitch.
+  const centreX = safeDimension(worldSize.width) / 2;
+  const centreY = safeDimension(worldSize.height) / 2;
+
+  // Half-extents of the rotated footprint, used to re-centre after rotation.
+  const isQuarter = turns === 1 || turns === 3;
+  const rotatedHalfWidth = (isQuarter ? safeDimension(worldSize.height) : safeDimension(worldSize.width)) / 2;
+  const rotatedHalfHeight = (isQuarter ? safeDimension(worldSize.width) : safeDimension(worldSize.height)) / 2;
+  const originX = rotatedHalfWidth * scale + offsetX;
+  const originY = rotatedHalfHeight * scale + offsetY;
+
+  const toViewport = (point: WorldPoint): WorldPoint => {
+    // Landscape fast path: byte-for-byte the legacy arithmetic, so the existing
+    // production surfaces see identical mapped coordinates (no ULP drift).
+    if (turns === 0) {
+      return {
+        x: point.x * scale + offsetX,
+        y: point.y * scale + offsetY,
+      };
+    }
+    const rotated = rotateQuarter({ x: point.x - centreX, y: point.y - centreY }, turns);
+    return {
+      x: rotated.x * scale + originX,
+      y: rotated.y * scale + originY,
+    };
+  };
 
   const toWorld = (point: WorldPoint): WorldPoint => {
     if (scale <= 0) return { x: 0, y: 0 };
+    // Landscape fast path: byte-for-byte the legacy inverse arithmetic.
+    if (turns === 0) {
+      return {
+        x: (point.x - offsetX) / scale,
+        y: (point.y - offsetY) / scale,
+      };
+    }
+    const rotated = { x: (point.x - originX) / scale, y: (point.y - originY) / scale };
+    const unrotated = rotateQuarter(rotated, inverseTurns);
     return {
-      x: (point.x - transform.offsetX) / scale,
-      y: (point.y - transform.offsetY) / scale,
+      x: unrotated.x + centreX,
+      y: unrotated.y + centreY,
     };
   };
 
