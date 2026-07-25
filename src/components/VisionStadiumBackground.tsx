@@ -5,14 +5,25 @@ type VisionStadiumBackgroundVariant = "board" | "play" | "stats" | "training";
 type VisionStadiumBackgroundProps = {
   variant?: VisionStadiumBackgroundVariant;
   ready?: boolean;
+  /**
+   * Portrait modifier. When true, the stadium lights are rendered smaller,
+   * higher and dimmer so they read as subtle background decoration that never
+   * competes with a portrait pitch. Scoped so landscape and other surfaces are
+   * unaffected.
+   */
+  portrait?: boolean;
 };
 
 const STADIUM_LIGHT_DOTS = Array.from({ length: 12 }, (_, index) => index);
 
-export default function VisionStadiumBackground({ variant = "board", ready = true }: VisionStadiumBackgroundProps) {
+export default function VisionStadiumBackground({
+  variant = "board",
+  ready = true,
+  portrait = false,
+}: VisionStadiumBackgroundProps) {
   return (
     <div
-      className={`vision-stadium-shell vision-stadium-shell--${variant}${ready ? " vision-stadium-shell--ready" : ""}`}
+      className={`vision-stadium-shell vision-stadium-shell--${variant}${ready ? " vision-stadium-shell--ready" : ""}${portrait ? " vision-stadium-shell--portrait" : ""}`}
       aria-hidden="true"
     >
       <div className="vision-stadium-shell__base" />

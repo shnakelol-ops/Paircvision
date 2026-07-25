@@ -471,10 +471,10 @@ const CONTENT_STYLE: CSSProperties = {
 // box becomes 10:16 (100x160); the content box matches that aspect and grows to
 // the largest size the phone-portrait viewport allows, so the pitch fills the
 // screen vertically instead of sitting in a small landscape-shaped band.
-const PORTRAIT_CONTENT_WIDTH_EXPR = `min(calc(${VIEWPORT_WIDTH_UNIT} - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc(${CONTENT_MAX_HEIGHT_EXPR} * 0.625), 900px)`;
+const PORTRAIT_CONTENT_WIDTH_EXPR = `min(calc(${VIEWPORT_WIDTH_UNIT} - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc(${CONTENT_MAX_HEIGHT_EXPR} * 0.625), 900px)`;
 const PORTRAIT_CONTENT_STYLE: CSSProperties = {
   width: PORTRAIT_CONTENT_WIDTH_EXPR,
-  maxWidth: "calc(100vw - 16px)",
+  maxWidth: "calc(100vw - 8px)",
   aspectRatio: "10 / 16",
   maxHeight: CONTENT_MAX_HEIGHT_EXPR,
   boxSizing: "border-box",
@@ -4221,7 +4221,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           </div>
         ) : null}
         {!isWhiteboardMode ? <style>{STADIUM_FLOODLIGHT_CSS}</style> : null}
-        {!isWhiteboardMode && !isPortrait ? <VisionStadiumBackground variant="board" /> : null}
+        {!isWhiteboardMode ? <VisionStadiumBackground variant="board" portrait={isPortrait} /> : null}
         <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
           <div ref={hostRef} style={pitchSurfaceStyle} />
           {!isWhiteboardMode && shouldBlockPortraitInput ? <div style={PORTRAIT_INTERACTION_SHIELD_STYLE} aria-hidden="true" /> : null}
