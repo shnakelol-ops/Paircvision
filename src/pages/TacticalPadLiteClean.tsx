@@ -2039,6 +2039,18 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const overlayPortalRoot = useOverlayPortalRoot();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const surfaceRef = useRef<TacticalPadLiteSurface | null>(null);
+  // Serializes surface creation/teardown across the mount effect below so that
+  // React StrictMode's development-only double-invoke (mount -> cleanup ->
+  // remount) never has two createTacticalPadLiteSurface() calls constructing
+  // PixiJS Applications concurrently. Both would share PixiJS's process-wide
+  // text/texture-pool singletons, and the second call previously started
+  // before the first (already-disposed) call's async teardown had run, which
+  // could corrupt that shared pool bookkeeping (see the "black screen" crash
+  // in TexturePoolClass.returnTexture). Chaining here guarantees the prior
+  // surface's create-then-destroy cycle fully settles before a new one
+  // begins; it never runs in production, where React only invokes effects
+  // once.
+  const surfaceCreationChainRef = useRef<Promise<void>>(Promise.resolve());
   const latestThumbnailSaveTokenRef = useRef(0);
   const tacticalItemCounterRef = useRef(0);
   const actionsBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -2529,60 +2541,61 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     let disposed = false;
     let destroySurface: (() => void) | null = null;
 
-    void createTacticalPadLiteSurface(host, {
-      surfaceVariant: isWhiteboardMode ? "whiteboard" : "tactical",
-      whiteboardTeamCounts: isWhiteboardMode ? whiteboardCountsRef.current : undefined,
-      whiteboardTeamColors: whiteboardTeamColorsRef.current,
-      whiteboardDrawColor: isWhiteboardMode ? whiteboardPenColor : tacticalPenColor,
-      tacticalTokenStyle,
-      compactPlayerTokens: isCompactPlayerTokens,
-      onPhaseCountChange: (count) => {
-        if (!disposed) {
-          setPhaseCount(count);
-        }
-      },
-      onPlaybackStateChange: (state) => {
-        if (disposed) return;
-        setIsPlaying(state.isPlaying);
-        setIsPaused(state.isPaused);
-      },
-      onRouteStateChange: (state) => {
-        if (disposed) return;
-        setRouteState(state);
-      },
-      onRouteLimitReached: (maxRoutes) => {
-        if (disposed) return;
-        showRouteLimitWarning(`Route limit reached — Tactical Slate supports ${maxRoutes} routed players.`);
-      },
-      onItemMove: (itemId, x, y) => {
-        if (disposed) return;
-        const nextX = Math.max(0, Math.min(100, x));
-        const nextY = Math.max(0, Math.min(100, y));
-        setItems((previous) =>
-          previous.map((item) =>
-            item.id === itemId
-              ? {
-                  ...item,
-                  x: nextX,
-                  y: nextY,
-                }
-              : item,
-          ),
-        );
-      },
-      onTacticalPlayerDoubleTap: ({ playerId, clientX, clientY }) => {
-        if (disposed || isWhiteboardMode || isPortraitViewingModeRef.current) return;
-        const player = surfaceRef.current?.getTacticalPlayer(playerId);
-        if (!player) return;
-        setKitEditorTab("base");
-        setKitEditorState({
-          playerId: player.id,
-          anchorLeft: clientX,
-          anchorTop: clientY,
-          revision: 0,
-        });
-      },
-    }).then((surface) => {
+    const runCreateSurface = async () => {
+      const surface = await createTacticalPadLiteSurface(host, {
+        surfaceVariant: isWhiteboardMode ? "whiteboard" : "tactical",
+        whiteboardTeamCounts: isWhiteboardMode ? whiteboardCountsRef.current : undefined,
+        whiteboardTeamColors: whiteboardTeamColorsRef.current,
+        whiteboardDrawColor: isWhiteboardMode ? whiteboardPenColor : tacticalPenColor,
+        tacticalTokenStyle,
+        compactPlayerTokens: isCompactPlayerTokens,
+        onPhaseCountChange: (count) => {
+          if (!disposed) {
+            setPhaseCount(count);
+          }
+        },
+        onPlaybackStateChange: (state) => {
+          if (disposed) return;
+          setIsPlaying(state.isPlaying);
+          setIsPaused(state.isPaused);
+        },
+        onRouteStateChange: (state) => {
+          if (disposed) return;
+          setRouteState(state);
+        },
+        onRouteLimitReached: (maxRoutes) => {
+          if (disposed) return;
+          showRouteLimitWarning(`Route limit reached — Tactical Slate supports ${maxRoutes} routed players.`);
+        },
+        onItemMove: (itemId, x, y) => {
+          if (disposed) return;
+          const nextX = Math.max(0, Math.min(100, x));
+          const nextY = Math.max(0, Math.min(100, y));
+          setItems((previous) =>
+            previous.map((item) =>
+              item.id === itemId
+                ? {
+                    ...item,
+                    x: nextX,
+                    y: nextY,
+                  }
+                : item,
+            ),
+          );
+        },
+        onTacticalPlayerDoubleTap: ({ playerId, clientX, clientY }) => {
+          if (disposed || isWhiteboardMode || isPortraitViewingModeRef.current) return;
+          const player = surfaceRef.current?.getTacticalPlayer(playerId);
+          if (!player) return;
+          setKitEditorTab("base");
+          setKitEditorState({
+            playerId: player.id,
+            anchorLeft: clientX,
+            anchorTop: clientY,
+            revision: 0,
+          });
+        },
+      });
       if (disposed) {
         surface.destroy();
         return;
@@ -2622,7 +2635,21 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           surface.reflow();
         });
       });
-    });
+    };
+
+    // Chain onto any prior in-flight creation/teardown for this host instead
+    // of starting a new PixiJS Application immediately. Under React
+    // StrictMode's development-only double-invoke (mount -> cleanup ->
+    // remount), this guarantees the first call's create-then-destroy cycle
+    // fully settles before the second one begins, instead of the two
+    // constructing overlapping Applications that share PixiJS's process-wide
+    // texture/text-pool singletons. See surfaceCreationChainRef above.
+    surfaceCreationChainRef.current = surfaceCreationChainRef.current
+      .catch(() => {})
+      .then(runCreateSurface)
+      .catch((error) => {
+        console.error("Failed to create Tactical Slate surface", error);
+      });
 
     return () => {
       disposed = true;
