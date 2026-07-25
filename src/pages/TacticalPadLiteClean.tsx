@@ -471,12 +471,22 @@ const CONTENT_STYLE: CSSProperties = {
 // box becomes 10:16 (100x160); the content box matches that aspect and grows to
 // the largest size the phone-portrait viewport allows, so the pitch fills the
 // screen vertically instead of sitting in a small landscape-shaped band.
-const PORTRAIT_CONTENT_WIDTH_EXPR = `min(calc(${VIEWPORT_WIDTH_UNIT} - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc(${CONTENT_MAX_HEIGHT_EXPR} * 0.625), 900px)`;
+//
+// The pitch is flex-centred by ROOT_STYLE. Because it is width-limited on phones
+// its height can exceed the space between the raised stadium lights (top) and the
+// bottom control bubbles, which previously pushed the top edge up into the light
+// region on shorter viewports. Reserving a symmetric top+bottom band caps the
+// height so the centred pitch always keeps clear breathing room above it (below
+// the lights) and below it (above the controls) on every viewport, without ever
+// shrinking the pitch on tall phones where it stays width-limited.
+const PORTRAIT_FIT_RESERVE_PX = 76; // top (lights) + bottom (controls) clearance, each side
+const PORTRAIT_CONTENT_MAX_HEIGHT_EXPR = `calc(${VIEWPORT_HEIGHT_EXPR} - ${PORTRAIT_FIT_RESERVE_PX * 2}px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))`;
+const PORTRAIT_CONTENT_WIDTH_EXPR = `min(calc(${VIEWPORT_WIDTH_UNIT} - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc(${PORTRAIT_CONTENT_MAX_HEIGHT_EXPR} * 0.625), 900px)`;
 const PORTRAIT_CONTENT_STYLE: CSSProperties = {
   width: PORTRAIT_CONTENT_WIDTH_EXPR,
   maxWidth: "calc(100vw - 8px)",
   aspectRatio: "10 / 16",
-  maxHeight: CONTENT_MAX_HEIGHT_EXPR,
+  maxHeight: PORTRAIT_CONTENT_MAX_HEIGHT_EXPR,
   boxSizing: "border-box",
   position: "relative",
   zIndex: 1,
