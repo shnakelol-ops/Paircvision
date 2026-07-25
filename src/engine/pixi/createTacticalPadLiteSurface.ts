@@ -1,6 +1,7 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 
 import { createWorldViewport } from "./createWorldViewport";
+import { quarterTurnRadians } from "./orientation";
 import {
   createPremiumPlayerToken,
   PREMIUM_TOKEN_DRAG_SCALE,
@@ -1376,7 +1377,7 @@ export async function createTacticalPadLiteSurface(
 
     mapper = createWorldViewport(WORLD_SIZE, { width, height }, orientationQuarterTurns);
     const turns = mapper.transform.quarterTurns;
-    worldRotationRadians = turns * (Math.PI / 2);
+    worldRotationRadians = quarterTurnRadians(turns);
     if (turns === 0) {
       // Landscape: identical to the pre-portrait transform (no pivot/rotation).
       world.pivot.set(0, 0);

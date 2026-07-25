@@ -3,6 +3,13 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 type OrientationGateProps = {
   modeLabel?: string;
   children: ReactNode;
+  /**
+   * When true, portrait is a fully supported editable orientation for this
+   * surface, so the "rotate to landscape" viewing-mode notice is suppressed.
+   * Defaults to false to preserve the view-only behaviour of every other
+   * surface that still requires landscape.
+   */
+  portraitEditable?: boolean;
 };
 
 const ORIENTATION_SETTLE_DEBOUNCE_MS = 140;
@@ -116,13 +123,17 @@ export function usePortraitOrientation(): boolean {
   return isPortrait;
 }
 
-export default function OrientationGate({ modeLabel = "PáircVision Board", children }: OrientationGateProps) {
+export default function OrientationGate({
+  modeLabel = "PáircVision Board",
+  children,
+  portraitEditable = false,
+}: OrientationGateProps) {
   const isPortrait = usePortraitOrientation();
 
   return (
     <>
       {children}
-      {isPortrait ? (
+      {isPortrait && !portraitEditable ? (
         <div style={ROOT_STYLE} role="status" aria-live="polite" aria-label={`${modeLabel} viewing mode notice`}>
           <div style={BANNER_STYLE}>
             <p style={HEADING_STYLE}>VIEWING MODE</p>
