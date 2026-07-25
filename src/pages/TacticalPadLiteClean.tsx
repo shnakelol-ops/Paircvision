@@ -2226,7 +2226,18 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   const isStatsMode = mode === "stats";
   const isWhiteboardMode = mode === "whiteboard";
-  const isPortraitViewingMode = !isStatsMode && !isWhiteboardMode && isPortraitOrientation;
+  // PR-2: Portrait is now a fully editable orientation, not a view-only lockout.
+  // The pitch canvas rotates via the orientation-aware mapper (see
+  // portraitQuarterTurns below) while every DOM control stays upright, so
+  // nothing needs to be disabled in portrait. This was already `false` in
+  // landscape (isPortraitOrientation is false there), so pinning it to `false`
+  // leaves landscape behaviour byte-for-byte unchanged and only unlocks portrait.
+  const isPortraitViewingMode = false;
+  // Single source of truth for the portrait rotation direction: ONE clockwise
+  // quarter-turn. This places the landscape left-hand goal at the TOP and the
+  // right-hand goal at the BOTTOM, with the pitch running vertically and all
+  // markings aligned. Landscape (and stats/whiteboard) always use 0.
+  const portraitQuarterTurns = !isStatsMode && !isWhiteboardMode && isPortraitOrientation ? 1 : 0;
   const isPortraitViewingModeRef = useRef(isPortraitViewingMode);
   const shouldKeepScreenAwakeForBoard = !isStatsMode && !isWhiteboardMode;
   const playbackSpeedMultiplierRef = useRef(playbackSpeedMultiplier);
@@ -2782,6 +2793,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     const isPossessionPassModeActive = !isPortraitViewingMode && movementModePillSelection === "ball";
     surface.setPossessionPassMode(isPossessionPassModeActive);
   }, [isStatsMode, isWhiteboardMode, isPortraitViewingMode, movementModePillSelection]);
+
+  // Drive the board orientation from the single source of truth. Re-applies when
+  // the device rotates or when a fresh surface becomes ready. setOrientation is
+  // idempotent (no-op if unchanged) and only re-fits — it never touches board
+  // state, so rotating the device cannot erase, duplicate or reset the board.
+  useEffect(() => {
+    if (isStatsMode || isWhiteboardMode) return;
+    surfaceRef.current?.setOrientation(portraitQuarterTurns);
+  }, [portraitQuarterTurns, boardSurfaceReadyNonce, isStatsMode, isWhiteboardMode]);
 
   useEffect(() => {
     if (isStatsMode || isWhiteboardMode) return;
