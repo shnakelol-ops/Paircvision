@@ -3521,18 +3521,24 @@ export default function TacticalPlaySurface() {
           </div>
         ) : null}
 
-        <div style={PLAYBACK_SIDE_STYLE}>
-          <button
-            type="button"
-            style={PLAYBACK_SIDE_BUTTON_STYLE}
-            onClick={onPauseResumePress}
-          >
-            {isPlaying ? "Pause" : isPaused ? "Resume" : "▶ Play"}
-          </button>
-          <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetPlaybackState}>
-            Reset
-          </button>
-        </div>
+        {/* Persistent Play/Reset controls are hidden in portrait only, to free
+            pitch area and avoid overlap when menus are open. Playback logic is
+            unchanged and Play stays reachable from the player action card
+            (PlayerActionSheet). Landscape keeps these controls unchanged. */}
+        {!isPortrait ? (
+          <div style={PLAYBACK_SIDE_STYLE}>
+            <button
+              type="button"
+              style={PLAYBACK_SIDE_BUTTON_STYLE}
+              onClick={onPauseResumePress}
+            >
+              {isPlaying ? "Pause" : isPaused ? "Resume" : "▶ Play"}
+            </button>
+            <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetPlaybackState}>
+              Reset
+            </button>
+          </div>
+        ) : null}
 
         {/* PLAYS floating button — right-side, vertically centered */}
         {!playbackFloatingVisible ? (
