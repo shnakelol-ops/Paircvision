@@ -2165,7 +2165,7 @@ export default function TacticalPlaySurface() {
           style={CTRL_BUBBLE_STYLE}
           onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setMovementsOpen(false); setPassesOpen(false); setPlaysOpen(false); setPlayerSheetId(null); }}
         >
-          CTRL
+          TOOLS
         </button>
         {showPortraitPlaybackButton ? (
           <button
