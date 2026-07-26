@@ -183,6 +183,12 @@ export type MovementCanvasShellHandle = {
   getTrainingItems: () => TacticalTrainingItem[];
   setSelectedTrainingItemId: (id: string | null) => void;
   reflow: () => void;
+  /**
+   * Sets the board orientation as a quarter-turn count (0 = landscape, 1/3 =
+   * portrait). Presentational only — the world container rotates and elements
+   * counter-rotate; coordinates, routes, timeline and saves are unaffected.
+   */
+  setOrientation: (quarterTurns: number) => void;
   destroy: () => void;
 };
 

@@ -2,6 +2,7 @@ import { Container, Graphics } from "pixi.js";
 
 import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
 import type { WorldViewportMapper } from "../coordinates/viewport";
+import { quarterTurnCounterRotationRadians } from "../coordinates/viewport";
 import {
   PREMIUM_TOKEN_DRAG_SCALE,
   PREMIUM_TOKEN_DRAG_SHADOW_ALPHA,
@@ -162,8 +163,10 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
         ? SIZE_FACTOR.small / UNDER_PILL_NORMAL_SHRINK
         : SIZE_FACTOR[currentSize];
 
-    // Tokens always remain upright — movement is shown through routes
-    visual.body.rotation = 0;
+    // Tokens always remain upright — movement is shown through routes. In
+    // portrait the world container is rotated, so counter-rotate the body by the
+    // same angle (0 in landscape) to keep numbers/name pills upright.
+    visual.body.rotation = quarterTurnCounterRotationRadians(options.mapperProvider().transform.quarterTurns);
 
     // Scale = interaction multiplier × size mode factor
     const baseScale = isDragging

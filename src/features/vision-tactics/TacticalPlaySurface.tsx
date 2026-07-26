@@ -130,6 +130,28 @@ const CONTENT_STYLE: CSSProperties = {
   alignItems: "stretch",
 };
 
+// Portrait (end-line) Tactical Play box — the same full-height portrait pitch
+// proven in Tactical Slate. The world rotates a quarter turn (10:16 footprint);
+// a symmetric top+bottom reserve keeps the centred pitch clear of the top HUD /
+// stadium lights above and the bottom action sheet / controls below on every
+// phone viewport, while staying width-limited (full size) on tall phones. The
+// action sheet is an overlay, so it never resizes or reflows this box.
+const TP_PORTRAIT_FIT_RESERVE_PX = 76;
+const TP_PORTRAIT_CONTENT_MAX_HEIGHT = `calc(${TP_H} - ${TP_PORTRAIT_FIT_RESERVE_PX * 2}px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))`;
+const TP_PORTRAIT_CONTENT_WIDTH = `min(calc(${_VW} - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc(${TP_PORTRAIT_CONTENT_MAX_HEIGHT} * 0.625), 900px)`;
+const PORTRAIT_CONTENT_STYLE: CSSProperties = {
+  width: TP_PORTRAIT_CONTENT_WIDTH,
+  maxWidth: "calc(100vw - 8px)",
+  aspectRatio: "10 / 16",
+  maxHeight: TP_PORTRAIT_CONTENT_MAX_HEIGHT,
+  boxSizing: "border-box",
+  position: "relative",
+  zIndex: 1,
+  display: "flex",
+  alignItems: "stretch",
+  margin: "0 auto",
+};
+
 const PITCH_STYLE: CSSProperties = {
   width: "100%",
   height: "100%",
@@ -203,6 +225,20 @@ const CTRL_BUBBLE_STYLE: CSSProperties = {
   boxShadow: "0 12px 28px rgba(0, 4, 14, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.18)",
 };
 
+// Portrait-only contextual playback control: one pill centred at the bottom,
+// between the CTRL (left) and SETUP (right) bubbles, at the same bottom offset so
+// it never overlaps them. Reuses the existing bubble look with a play-green
+// accent to read as the primary action.
+const PORTRAIT_PLAYBACK_BUTTON_STYLE: CSSProperties = {
+  ...CTRL_BUBBLE_STYLE,
+  left: "50%",
+  right: "auto",
+  transform: "translateX(-50%)",
+  border: "1px solid rgba(124, 255, 114, 0.42)",
+  background: "rgba(14, 32, 22, 0.82)",
+  color: "#c4ffbf",
+};
+
 const SETUP_BUBBLE_STYLE: CSSProperties = {
   position: "fixed",
   right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
@@ -261,6 +297,15 @@ const PITCH_WATERMARK_STYLE: CSSProperties = {
   textShadow: "0 1px 4px rgba(0, 0, 0, 0.55), 0 0 12px rgba(0, 0, 0, 0.35)",
   pointerEvents: "none",
   userSelect: "none",
+};
+
+// Portrait watermark position only (size/opacity/style unchanged): lifted above
+// the bottom end line and kept inside the right pitch border. Percentage bottom
+// tracks the end line as the pitch scales.
+const PORTRAIT_PITCH_WATERMARK_STYLE: CSSProperties = {
+  ...PITCH_WATERMARK_STYLE,
+  bottom: "14%",
+  right: "24px",
 };
 
 const CONTROL_PANEL_STYLE: CSSProperties = {
@@ -866,6 +911,12 @@ export default function TacticalPlaySurface() {
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  // Playback "completed" is a UI-only derivation from the existing engine state
+  // (the engine has no completion flag). It flips true when a run finishes on its
+  // own (playing -> stopped, not paused) and clears on play start / reset. Used
+  // only to label the portrait contextual playback button; no engine change.
+  const [playbackCompleted, setPlaybackCompleted] = useState(false);
+  const wasPlayingRef = useRef(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
   const [ballCarrierId, setBallCarrierId] = useState<string | null>(null);
   const [ballOnPitch, setBallOnPitch] = useState(false);
@@ -1034,7 +1085,9 @@ export default function TacticalPlaySurface() {
     const mountShell = () => {
       void createMovementCanvasShell(host, {
         mode: toShellMode(menuMode),
-        dragEnabled: !isPortrait,
+        // Portrait is now a fully editable orientation (end-line view), so drag
+        // is enabled in both orientations; the pitch rotates via setOrientation.
+        dragEnabled: true,
         onTokenMove: (token) => {
           setSelectedToken((previous) => (previous?.id === token.id ? token : previous));
         },
@@ -1053,6 +1106,13 @@ export default function TacticalPlaySurface() {
         onPlaybackStateChange: (state) => {
           setIsPlaying(state.isPlaying);
           setIsPaused(state.isPaused);
+          if (state.isPlaying) {
+            setPlaybackCompleted(false);
+          } else if (!state.isPaused && wasPlayingRef.current) {
+            // Playing -> stopped without pausing = the sequence finished.
+            setPlaybackCompleted(true);
+          }
+          wasPlayingRef.current = state.isPlaying;
         },
         onRouteEditStateChange: (state) => {
           setRouteEditState(state);
@@ -1126,7 +1186,8 @@ export default function TacticalPlaySurface() {
         const initialBallState = shell.getBallState();
         setBallCarrierId(initialBallState.carrierId ?? null);
         setBallOnPitch(!!(initialBallState.carrierId || initialBallState.position));
-        shell.setDragEnabled(!isPortrait);
+        shell.setDragEnabled(true);
+        shell.setOrientation(isPortrait ? 1 : 0);
         setScenarios(listScenarios());
         setPassEvents(shell.getPassEvents());
         setZones(shell.getZones());
@@ -1230,7 +1291,10 @@ export default function TacticalPlaySurface() {
   useEffect(() => { unitsRef.current = units; }, [units]);
 
   useEffect(() => {
-    shellRef.current?.setDragEnabled(!isPortrait);
+    // Portrait is editable in both orientations; only the board orientation
+    // changes when the device rotates. setOrientation is idempotent (no-op if
+    // unchanged) and only re-fits — it never touches board state or saves.
+    shellRef.current?.setOrientation(isPortrait ? 1 : 0);
   }, [isPortrait]);
 
   useEffect(() => {
@@ -1382,6 +1446,12 @@ export default function TacticalPlaySurface() {
     sheetDrawRunPlayerIdRef.current = null;
     exitEditRun();
     setMenuMode("move");
+    // Clear completion tracking BEFORE reset(): reset() re-emits playback state
+    // synchronously, and a stale wasPlayingRef would otherwise re-flag completion.
+    wasPlayingRef.current = false;
+    setPlaybackCompleted(false);
+    // shell.reset() returns every player and the ball to the sequence start and
+    // preserves routes, passes, shots, delays, phases, timing and saved data.
     shellRef.current?.reset();
   };
 
@@ -2002,6 +2072,20 @@ export default function TacticalPlaySurface() {
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
   const clearAllDisabled = isPlaying || (routes.length === 0 && passEvents.length === 0 && shotEvents.length === 0);
   const playbackFloatingVisible = isPlaying || isPaused;
+  // Portrait contextual playback button: shown only when the board has something
+  // playable (a run/movement, pass, or shot) and no bottom panel/sheet is open,
+  // so it never overlaps CTRL, SETUP, the player action sheet or open menus.
+  const hasPlayableContent = routes.length > 0 || passEvents.length > 0 || shotEvents.length > 0;
+  const portraitBottomPanelOpen =
+    isControlsOpen || setupOpen || sequenceOpen || movementsOpen || passesOpen || playsOpen || playerSheetId != null;
+  const showPortraitPlaybackButton = isPortrait && hasPlayableContent && !portraitBottomPanelOpen;
+  const portraitPlaybackLabel = playbackCompleted
+    ? "↺ Reset Play"
+    : isPlaying
+      ? "⏸ Pause"
+      : isPaused
+        ? "▶ Resume"
+        : "▶ Play";
   const tokenIds = Object.keys(tokenNumberById);
   const homePlayerCount = tokenIds.filter((id) => !awayTokenIds.has(id)).length;
 
@@ -2055,13 +2139,13 @@ export default function TacticalPlaySurface() {
   } as CSSProperties;
 
   return (
-    <OrientationGate modeLabel="Tactical Play">
+    <OrientationGate modeLabel="Tactical Play" portraitEditable>
       <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}input.tp-speed-range{-webkit-appearance:none;appearance:none;background:var(--tp-speed-track);height:8px;border-radius:4px;outline:none;cursor:pointer}input.tp-speed-range::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.50)}input.tp-speed-range::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,.50)}`}</style>
       <div style={rootStyle}>
-        <VisionStadiumBackground variant="play" />
-        <div style={CONTENT_STYLE}>
+        <VisionStadiumBackground variant="play" portrait={isPortrait} />
+        <div style={isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
           <div ref={hostRef} style={PITCH_STYLE} />
-          <div style={PITCH_WATERMARK_STYLE}>PáircVision</div>
+          <div style={isPortrait ? PORTRAIT_PITCH_WATERMARK_STYLE : PITCH_WATERMARK_STYLE}>PáircVision</div>
           <TextAnnotationOverlay
             annotations={textAnnotations}
             active={labelToolActive && !isPlaying && !isPaused && editRunPlayerId === null}
@@ -2083,6 +2167,22 @@ export default function TacticalPlaySurface() {
         >
           CTRL
         </button>
+        {showPortraitPlaybackButton ? (
+          <button
+            type="button"
+            style={PORTRAIT_PLAYBACK_BUTTON_STYLE}
+            aria-label={playbackCompleted ? "Reset play" : isPlaying ? "Pause playback" : isPaused ? "Resume playback" : "Play"}
+            onClick={() => {
+              if (playbackCompleted) {
+                resetPlaybackState();
+                return;
+              }
+              onPauseResumePress();
+            }}
+          >
+            {portraitPlaybackLabel}
+          </button>
+        ) : null}
         <button
           type="button"
           style={setupOpen
@@ -3493,18 +3593,24 @@ export default function TacticalPlaySurface() {
           </div>
         ) : null}
 
-        <div style={PLAYBACK_SIDE_STYLE}>
-          <button
-            type="button"
-            style={PLAYBACK_SIDE_BUTTON_STYLE}
-            onClick={onPauseResumePress}
-          >
-            {isPlaying ? "Pause" : isPaused ? "Resume" : "▶ Play"}
-          </button>
-          <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetPlaybackState}>
-            Reset
-          </button>
-        </div>
+        {/* Persistent Play/Reset controls are hidden in portrait only, to free
+            pitch area and avoid overlap when menus are open. Playback logic is
+            unchanged and Play stays reachable from the player action card
+            (PlayerActionSheet). Landscape keeps these controls unchanged. */}
+        {!isPortrait ? (
+          <div style={PLAYBACK_SIDE_STYLE}>
+            <button
+              type="button"
+              style={PLAYBACK_SIDE_BUTTON_STYLE}
+              onClick={onPauseResumePress}
+            >
+              {isPlaying ? "Pause" : isPaused ? "Resume" : "▶ Play"}
+            </button>
+            <button type="button" style={PLAYBACK_SIDE_BUTTON_STYLE} onClick={resetPlaybackState}>
+              Reset
+            </button>
+          </div>
+        ) : null}
 
         {/* PLAYS floating button — right-side, vertically centered */}
         {!playbackFloatingVisible ? (

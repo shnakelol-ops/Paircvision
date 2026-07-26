@@ -8,6 +8,8 @@ const BALL_RADIUS_MEDIUM = 3.1;
 export type BallLayerHandle = {
   setBallPosition: (worldX: number, worldY: number) => void;
   setVisible: (visible: boolean) => void;
+  /** Keeps the ball's seams upright while the world rotates (0 in landscape). */
+  setCounterRotation: (radians: number) => void;
   setBallType: (ballType: BallType) => void;
   setInteractive: (enabled: boolean, hitRadius: number) => void;
   setOnPointerDown: (handler: ((event: unknown) => void) | null) => void;
@@ -189,6 +191,9 @@ export function createBallLayer(parent: Container): BallLayerHandle {
     },
     setVisible: (visible) => {
       group.visible = visible;
+    },
+    setCounterRotation: (radians) => {
+      group.rotation = radians;
     },
     setBallType: (ballType) => {
       drawBallGraphics(ball, ballType);

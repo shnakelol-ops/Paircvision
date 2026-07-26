@@ -2,6 +2,7 @@ import { Container, Graphics, Text } from "pixi.js";
 
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
 import type { WorldViewportMapper } from "../coordinates/viewport";
+import { quarterTurnCounterRotationRadians } from "../coordinates/viewport";
 import type { ZoneColor, ZoneRecord } from "../shell/types";
 import { getStagePointFromEvent, getPointerIdFromEvent } from "../input/pointer-controller";
 
@@ -229,6 +230,8 @@ export function createZoneLayer(options: CreateZoneLayerOptions): ZoneLayerHandl
     if (visual.label) {
       visual.label.text = zone.label || "";
       visual.label.visible = zone.label.trim().length > 0;
+      // Keep zone labels upright while the world rotates in portrait (0 in landscape).
+      visual.label.rotation = quarterTurnCounterRotationRadians(getMapper().transform.quarterTurns);
     }
   };
 
