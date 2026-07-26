@@ -130,6 +130,28 @@ const CONTENT_STYLE: CSSProperties = {
   alignItems: "stretch",
 };
 
+// Portrait (end-line) Tactical Play box — the same full-height portrait pitch
+// proven in Tactical Slate. The world rotates a quarter turn (10:16 footprint);
+// a symmetric top+bottom reserve keeps the centred pitch clear of the top HUD /
+// stadium lights above and the bottom action sheet / controls below on every
+// phone viewport, while staying width-limited (full size) on tall phones. The
+// action sheet is an overlay, so it never resizes or reflows this box.
+const TP_PORTRAIT_FIT_RESERVE_PX = 76;
+const TP_PORTRAIT_CONTENT_MAX_HEIGHT = `calc(${TP_H} - ${TP_PORTRAIT_FIT_RESERVE_PX * 2}px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))`;
+const TP_PORTRAIT_CONTENT_WIDTH = `min(calc(${_VW} - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc(${TP_PORTRAIT_CONTENT_MAX_HEIGHT} * 0.625), 900px)`;
+const PORTRAIT_CONTENT_STYLE: CSSProperties = {
+  width: TP_PORTRAIT_CONTENT_WIDTH,
+  maxWidth: "calc(100vw - 8px)",
+  aspectRatio: "10 / 16",
+  maxHeight: TP_PORTRAIT_CONTENT_MAX_HEIGHT,
+  boxSizing: "border-box",
+  position: "relative",
+  zIndex: 1,
+  display: "flex",
+  alignItems: "stretch",
+  margin: "0 auto",
+};
+
 const PITCH_STYLE: CSSProperties = {
   width: "100%",
   height: "100%",
@@ -1034,7 +1056,9 @@ export default function TacticalPlaySurface() {
     const mountShell = () => {
       void createMovementCanvasShell(host, {
         mode: toShellMode(menuMode),
-        dragEnabled: !isPortrait,
+        // Portrait is now a fully editable orientation (end-line view), so drag
+        // is enabled in both orientations; the pitch rotates via setOrientation.
+        dragEnabled: true,
         onTokenMove: (token) => {
           setSelectedToken((previous) => (previous?.id === token.id ? token : previous));
         },
@@ -1126,7 +1150,8 @@ export default function TacticalPlaySurface() {
         const initialBallState = shell.getBallState();
         setBallCarrierId(initialBallState.carrierId ?? null);
         setBallOnPitch(!!(initialBallState.carrierId || initialBallState.position));
-        shell.setDragEnabled(!isPortrait);
+        shell.setDragEnabled(true);
+        shell.setOrientation(isPortrait ? 1 : 0);
         setScenarios(listScenarios());
         setPassEvents(shell.getPassEvents());
         setZones(shell.getZones());
@@ -1230,7 +1255,10 @@ export default function TacticalPlaySurface() {
   useEffect(() => { unitsRef.current = units; }, [units]);
 
   useEffect(() => {
-    shellRef.current?.setDragEnabled(!isPortrait);
+    // Portrait is editable in both orientations; only the board orientation
+    // changes when the device rotates. setOrientation is idempotent (no-op if
+    // unchanged) and only re-fits — it never touches board state or saves.
+    shellRef.current?.setOrientation(isPortrait ? 1 : 0);
   }, [isPortrait]);
 
   useEffect(() => {
@@ -2055,11 +2083,11 @@ export default function TacticalPlaySurface() {
   } as CSSProperties;
 
   return (
-    <OrientationGate modeLabel="Tactical Play">
+    <OrientationGate modeLabel="Tactical Play" portraitEditable>
       <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}input.tp-speed-range{-webkit-appearance:none;appearance:none;background:var(--tp-speed-track);height:8px;border-radius:4px;outline:none;cursor:pointer}input.tp-speed-range::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.50)}input.tp-speed-range::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,.50)}`}</style>
       <div style={rootStyle}>
-        <VisionStadiumBackground variant="play" />
-        <div style={CONTENT_STYLE}>
+        <VisionStadiumBackground variant="play" portrait={isPortrait} />
+        <div style={isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
           <div ref={hostRef} style={PITCH_STYLE} />
           <div style={PITCH_WATERMARK_STYLE}>PáircVision</div>
           <TextAnnotationOverlay

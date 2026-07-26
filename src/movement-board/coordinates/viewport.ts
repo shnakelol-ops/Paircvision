@@ -49,6 +49,21 @@ export function normalizeQuarterTurns(quarterTurns: number): QuarterTurns {
   return (((q % 4) + 4) % 4) as QuarterTurns;
 }
 
+/** Radians the rotated world container turns for a given quarter-turn count. */
+export function quarterTurnRadians(quarterTurns: number): number {
+  return normalizeQuarterTurns(quarterTurns) * (Math.PI / 2);
+}
+
+/**
+ * Rotation (radians) a presentation element (token, item, label, ball) must
+ * apply to counter the world container rotation so it stays upright. Exactly 0
+ * in landscape (0 turns) so nothing is touched there.
+ */
+export function quarterTurnCounterRotationRadians(quarterTurns: number): number {
+  const radians = quarterTurnRadians(quarterTurns);
+  return radians === 0 ? 0 : -radians;
+}
+
 /**
  * Rotates a centre-relative delta by a quarter turn using pure axis swaps and
  * sign flips (no trigonometry, so quarter turns are exact and lossless).

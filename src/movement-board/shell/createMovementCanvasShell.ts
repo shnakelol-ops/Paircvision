@@ -2,7 +2,12 @@ import { Application, Container } from "pixi.js";
 import { flushDeferredPasses, type DeferredPass } from "./flushDeferredPasses";
 
 import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
-import { createWorldViewport, type WorldViewportMapper } from "../coordinates/viewport";
+import {
+  createWorldViewport,
+  normalizeQuarterTurns,
+  quarterTurnRadians,
+  type WorldViewportMapper,
+} from "../coordinates/viewport";
 import {
   getNormalizedPointFromEvent,
   getPointerIdFromEvent,
@@ -189,6 +194,14 @@ export async function createMovementCanvasShell(
     width: host.clientWidth || 800,
     height: host.clientHeight || 520,
   });
+
+  // Board orientation, driven from the merged orientation-aware mapper. 0 =
+  // landscape (default, byte-for-byte the legacy transform). 1/3 = portrait
+  // (end-line) views: the world container rotates and every presentation element
+  // counter-rotates so it stays upright. Purely presentational — normalized
+  // coordinates, routes, timeline and saves are unaffected.
+  let orientationQuarterTurns = 0;
+  let worldRotationRadians = 0;
 
   let dragEnabled = options.dragEnabled ?? true;
   let mode: MovementBoardMode = options.mode ?? "setup";
@@ -505,9 +518,26 @@ export async function createMovementCanvasShell(
     app.renderer.resolution = Math.min(2, window.devicePixelRatio || 1);
     app.renderer.resize(width, height);
 
-    mapper = createWorldViewport(WORLD_SIZE, { width, height });
-    world.scale.set(mapper.transform.scale, mapper.transform.scale);
-    world.position.set(mapper.transform.offsetX, mapper.transform.offsetY);
+    mapper = createWorldViewport(WORLD_SIZE, { width, height }, orientationQuarterTurns);
+    const turns = mapper.transform.quarterTurns;
+    worldRotationRadians = quarterTurnRadians(turns);
+    if (turns === 0) {
+      // Landscape: byte-for-byte the legacy transform (no pivot/rotation).
+      world.pivot.set(0, 0);
+      world.rotation = 0;
+      world.scale.set(mapper.transform.scale, mapper.transform.scale);
+      world.position.set(mapper.transform.offsetX, mapper.transform.offsetY);
+    } else {
+      // Portrait: rotate the world about its centre. pivot + position come from
+      // the same mapper that inverts pointer input (viewportToWorld), so forward
+      // rendering and inverse hit-testing share one transform and cannot drift.
+      world.pivot.set(WORLD_SIZE.width / 2, WORLD_SIZE.height / 2);
+      world.rotation = worldRotationRadians;
+      world.scale.set(mapper.transform.scale, mapper.transform.scale);
+      const origin = mapper.worldToViewport({ x: WORLD_SIZE.width / 2, y: WORLD_SIZE.height / 2 });
+      world.position.set(origin.x, origin.y);
+    }
+    ballLayer.setCounterRotation(-worldRotationRadians);
     tokenLayer.syncToMapper();
     trainingItemLayer.syncToMapper();
     routeLayer.syncToMapper();
@@ -1309,6 +1339,12 @@ export async function createMovementCanvasShell(
     getTrainingItems: () => trainingItemLayer.getItems(),
     setSelectedTrainingItemId: (id) => trainingItemLayer.setSelectedItemId(id),
     reflow: () => {
+      syncToHost();
+    },
+    setOrientation: (quarterTurns: number) => {
+      const next = normalizeQuarterTurns(quarterTurns);
+      if (next === orientationQuarterTurns) return;
+      orientationQuarterTurns = next;
       syncToHost();
     },
     destroy: () => {

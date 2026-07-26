@@ -1,6 +1,7 @@
 import { Container, Graphics } from "pixi.js";
 
 import type { WorldViewportMapper } from "../coordinates/viewport";
+import { quarterTurnCounterRotationRadians } from "../coordinates/viewport";
 import { getPointerIdFromEvent, getStagePointFromEvent } from "../input/pointer-controller";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
 import type { TacticalTrainingItem } from "../shell/types";
@@ -166,6 +167,8 @@ export function createTrainingItemLayer(options: CreateTrainingItemLayerOptions)
   const syncVisual = (visual: TrainingItemVisual) => {
     const worldPoint = normToWorld(visual.item.x, visual.item.y);
     visual.container.position.set(worldPoint.x, worldPoint.y);
+    // Keep equipment upright while the world rotates in portrait (0 in landscape).
+    visual.container.rotation = quarterTurnCounterRotationRadians(getMapper().transform.quarterTurns);
     drawItemGraphic(visual.graphic, visual.item);
     drawSelection(visual.selection, visual.item.id === selectedItemId);
     const touchRadiusWorld = ITEM_TOUCH_RADIUS_PX / Math.max(0.001, getMapper().transform.scale);
