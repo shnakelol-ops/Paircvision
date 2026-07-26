@@ -108,12 +108,11 @@ const TACTICAL_ITEM_CHOICES: ReadonlyArray<{ label: string; type: TacticalItem["
   { label: "Ladder", type: "ladder" },
   { label: "Hurdle", type: "hurdle" },
   { label: "Tackle Bag", type: "tackleBag" },
-  { label: "Football (S)", type: "footballSmall" },
-  { label: "Football (M)", type: "football" },
-  { label: "Football (L)", type: "footballLarge" },
-  { label: "Sliotar (S)", type: "sliotarSmall" },
-  { label: "Sliotar (M)", type: "sliotar" },
-  { label: "Sliotar (L)", type: "sliotarLarge" },
+  // Football/sliotar are intentionally NOT addable from the Items menu — the
+  // dedicated Ball mode is the single place to select and place a ball. The ball
+  // FlowItemTypes remain fully supported by the type union, isBallItemType and
+  // the renderer so previously saved boards containing ball items still load and
+  // render correctly.
 ];
 
 function isBallItemType(type: TacticalItem["type"]): boolean {

@@ -1856,9 +1856,13 @@ export async function createTacticalPadLiteSurface(
     const worldPoint = itemMapper.normalizedToWorld({ x: item.x, y: item.y });
     item.graphic.position.set(worldPoint.x, worldPoint.y);
     item.selectionGraphic.position.set(worldPoint.x, worldPoint.y);
-    item.graphic.rotation = item.rotation ?? 0;
+    // Counter-rotate the presentation by the world rotation (0 in landscape) so
+    // every equipment sprite stays upright in portrait, exactly like player
+    // tokens. Presentation only: the stored item.rotation is left untouched, so
+    // saved coordinates/rotation and landscape rendering are unchanged.
+    item.graphic.rotation = (item.rotation ?? 0) - worldRotationRadians;
     item.graphic.scale.set(item.scale ?? 1);
-    item.selectionGraphic.rotation = item.rotation ?? 0;
+    item.selectionGraphic.rotation = (item.rotation ?? 0) - worldRotationRadians;
     item.selectionGraphic.scale.set(item.scale ?? 1);
   }
 
