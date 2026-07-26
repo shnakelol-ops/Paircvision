@@ -47,6 +47,7 @@ import { useScreenWakeLock } from "../hooks/useScreenWakeLock";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { exportBoardSetupAsPng } from "../features/quickboard/export/board-png-export";
 import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
+import { resolveSlateQuarterTurns } from "./tacticalSlateOrientation";
 import SlateBackgroundPositioner from "../features/quickboard/background/SlateBackgroundPositioner";
 import SlateLabelEntryModal from "../features/quickboard/annotations/SlateLabelEntryModal";
 import { type SlateTextAnnotation, type SlateTextFontSize } from "../features/quickboard/annotations/slateTextAnnotation";
@@ -107,12 +108,11 @@ const TACTICAL_ITEM_CHOICES: ReadonlyArray<{ label: string; type: TacticalItem["
   { label: "Ladder", type: "ladder" },
   { label: "Hurdle", type: "hurdle" },
   { label: "Tackle Bag", type: "tackleBag" },
-  { label: "Football (S)", type: "footballSmall" },
-  { label: "Football (M)", type: "football" },
-  { label: "Football (L)", type: "footballLarge" },
-  { label: "Sliotar (S)", type: "sliotarSmall" },
-  { label: "Sliotar (M)", type: "sliotar" },
-  { label: "Sliotar (L)", type: "sliotarLarge" },
+  // Football/sliotar are intentionally NOT addable from the Items menu — the
+  // dedicated Ball mode is the single place to select and place a ball. The ball
+  // FlowItemTypes remain fully supported by the type union, isBallItemType and
+  // the renderer so previously saved boards containing ball items still load and
+  // render correctly.
 ];
 
 function isBallItemType(type: TacticalItem["type"]): boolean {
@@ -466,6 +466,34 @@ const CONTENT_STYLE: CSSProperties = {
   alignItems: "stretch",
 };
 
+// Portrait (end-line) Slate box. The world rotates a quarter-turn so its bounding
+// box becomes 10:16 (100x160); the content box matches that aspect and grows to
+// the largest size the phone-portrait viewport allows, so the pitch fills the
+// screen vertically instead of sitting in a small landscape-shaped band.
+//
+// The pitch is flex-centred by ROOT_STYLE. Because it is width-limited on phones
+// its height can exceed the space between the raised stadium lights (top) and the
+// bottom control bubbles, which previously pushed the top edge up into the light
+// region on shorter viewports. Reserving a symmetric top+bottom band caps the
+// height so the centred pitch always keeps clear breathing room above it (below
+// the lights) and below it (above the controls) on every viewport, without ever
+// shrinking the pitch on tall phones where it stays width-limited.
+const PORTRAIT_FIT_RESERVE_PX = 76; // top (lights) + bottom (controls) clearance, each side
+const PORTRAIT_CONTENT_MAX_HEIGHT_EXPR = `calc(${VIEWPORT_HEIGHT_EXPR} - ${PORTRAIT_FIT_RESERVE_PX * 2}px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))`;
+const PORTRAIT_CONTENT_WIDTH_EXPR = `min(calc(${VIEWPORT_WIDTH_UNIT} - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)), calc(${PORTRAIT_CONTENT_MAX_HEIGHT_EXPR} * 0.625), 900px)`;
+const PORTRAIT_CONTENT_STYLE: CSSProperties = {
+  width: PORTRAIT_CONTENT_WIDTH_EXPR,
+  maxWidth: "calc(100vw - 8px)",
+  aspectRatio: "10 / 16",
+  maxHeight: PORTRAIT_CONTENT_MAX_HEIGHT_EXPR,
+  boxSizing: "border-box",
+  position: "relative",
+  zIndex: 1,
+  display: "flex",
+  alignItems: "stretch",
+  margin: "0 auto",
+};
+
 const WHITEBOARD_CONTENT_STYLE: CSSProperties = {
   width: "100%",
   maxWidth: `min(900px, calc((${VIEWPORT_HEIGHT_EXPR} - 16px) * 1.6))`,
@@ -546,11 +574,11 @@ const ACTIONS_BUBBLE_STYLE: CSSProperties = {
 
 const PORTRAIT_ACTIONS_BUBBLE_STYLE: CSSProperties = {
   ...ACTIONS_BUBBLE_STYLE,
-  left: "auto",
-  right: "max(12px, calc(env(safe-area-inset-right, 0px) + 10px))",
+  left: "50%",
+  right: "auto",
   top: "auto",
   bottom: "max(12px, calc(env(safe-area-inset-bottom, 0px) + 10px))",
-  transform: "none",
+  transform: "translateX(-50%)",
 };
 
 const RIGHT_BUBBLE_STYLE: CSSProperties = {
@@ -750,6 +778,27 @@ const CONTROLS_POPOUT_STYLE: CSSProperties = {
   flexWrap: "nowrap",
   background: "rgba(20, 16, 17, 0.58)",
   border: "1px solid rgba(238, 146, 146, 0.16)",
+};
+
+// Portrait variant of the CTRL controls card. Bottom-anchored and centred, sized
+// to a phone-portrait width (never the full viewport height), wrapping the
+// controls into rows instead of a cramped horizontal scroll, and lifted clear of
+// the bottom CTRL/TOOLS bubbles. Respects the bottom + side safe-area insets.
+const PORTRAIT_CONTROLS_POPOUT_STYLE: CSSProperties = {
+  ...CONTROLS_POPOUT_STYLE,
+  left: "50%",
+  right: "auto",
+  transform: "translateX(-50%)",
+  bottom: "max(64px, calc(env(safe-area-inset-bottom, 0px) + 60px))",
+  width: "min(calc(100vw - 24px), 420px)",
+  maxWidth: "min(calc(100vw - 24px), 420px)",
+  overflowX: "hidden",
+  overflowY: "visible",
+  whiteSpace: "normal",
+  flexWrap: "wrap",
+  justifyContent: "center",
+  rowGap: "6px",
+  columnGap: "6px",
 };
 
 const ACTIONS_POPOUT_STYLE: CSSProperties = {
@@ -1712,6 +1761,19 @@ const BALL_POPUP_STYLE: CSSProperties = {
   zIndex: 20,
 };
 
+// Portrait control stack. The portrait controls card (bottom ~64px, cleared of
+// the corner CTRL/TOOLS bubbles) wraps to multiple rows, so the movement-mode
+// pills and the ball-type popup are lifted above it to preserve the same
+// bottom-up ordering the landscape stack uses (card -> pills -> ball popup).
+const PORTRAIT_MOVEMENT_MODE_CONTROLS_WRAP_STYLE: CSSProperties = {
+  ...MOVEMENT_MODE_CONTROLS_WRAP_STYLE,
+  bottom: "max(196px, calc(env(safe-area-inset-bottom, 0px) + 194px))",
+};
+const PORTRAIT_BALL_POPUP_STYLE: CSSProperties = {
+  ...BALL_POPUP_STYLE,
+  bottom: "max(250px, calc(env(safe-area-inset-bottom, 0px) + 248px))",
+};
+
 const SHARE_TIP_TOAST_STYLE: CSSProperties = {
   position: "fixed",
   left: "max(62px, calc(env(safe-area-inset-left, 0px) + 60px))",
@@ -2226,8 +2288,27 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   const isStatsMode = mode === "stats";
   const isWhiteboardMode = mode === "whiteboard";
-  const isPortraitViewingMode = !isStatsMode && !isWhiteboardMode && isPortraitOrientation;
-  const isPortraitViewingModeRef = useRef(isPortraitViewingMode);
+  // PR-2: Portrait is a genuine editable orientation. The old single
+  // `shouldBlockPortraitInput` flag conflated two concerns, so it is split into two
+  // narrow flags:
+  //   - isPortrait: portrait LAYOUT is active (drives portrait-specific control
+  //     positioning). True only in portrait tactical mode.
+  //   - shouldBlockPortraitInput: whether portrait input/editing is blocked.
+  //     Portrait is now fully editable, so this is always false. Kept as a named
+  //     flag (not inlined) so intent is explicit and every gate stays auditable.
+  // Both were false in landscape before, so landscape behaviour is unchanged.
+  // Single source of truth for the portrait rotation direction (see
+  // resolveSlateQuarterTurns / SLATE_PORTRAIT_QUARTER_TURNS): ONE clockwise
+  // quarter-turn in portrait tactical mode, 0 everywhere else. Direction places
+  // the landscape left-hand goal at the TOP and the right-hand goal at the BOTTOM.
+  const portraitQuarterTurns = resolveSlateQuarterTurns({
+    isStatsMode,
+    isWhiteboardMode,
+    isPortraitOrientation,
+  });
+  const isPortrait = portraitQuarterTurns !== 0;
+  const shouldBlockPortraitInput = false;
+  const shouldBlockPortraitInputRef = useRef(shouldBlockPortraitInput);
   const shouldKeepScreenAwakeForBoard = !isStatsMode && !isWhiteboardMode;
   const playbackSpeedMultiplierRef = useRef(playbackSpeedMultiplier);
   const boardBaselineSignatureRef = useRef<string | null>(null);
@@ -2236,8 +2317,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   useScreenWakeLock(shouldKeepScreenAwakeForBoard);
 
   useEffect(() => {
-    isPortraitViewingModeRef.current = isPortraitViewingMode;
-  }, [isPortraitViewingMode]);
+    shouldBlockPortraitInputRef.current = shouldBlockPortraitInput;
+  }, [shouldBlockPortraitInput]);
 
   useEffect(() => {
     textAnnotationsRef.current = textAnnotations;
@@ -2571,7 +2652,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         );
       },
       onTacticalPlayerDoubleTap: ({ playerId, clientX, clientY }) => {
-        if (disposed || isWhiteboardMode || isPortraitViewingModeRef.current) return;
+        if (disposed || isWhiteboardMode || shouldBlockPortraitInputRef.current) return;
         const player = surfaceRef.current?.getTacticalPlayer(playerId);
         if (!player) return;
         setKitEditorTab("base");
@@ -2736,7 +2817,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   }, [isStatsMode, isWhiteboardMode, pendingRecoveredBoardDraft, boardSurfaceReadyNonce]);
 
   useEffect(() => {
-    if (isStatsMode || isWhiteboardMode || !isPortraitViewingMode) return;
+    if (isStatsMode || isWhiteboardMode || !shouldBlockPortraitInput) return;
     setToolsOpen(false);
     setKitEditorState(null);
     setMovementModePillSelection("move");
@@ -2748,7 +2829,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     surface.setItemMode("locked");
     surface.setWhiteboardDrawTool("move");
     surface.setRouteCaptureMode(false);
-  }, [isPortraitViewingMode, isStatsMode, isWhiteboardMode]);
+  }, [shouldBlockPortraitInput, isStatsMode, isWhiteboardMode]);
 
   const isPlaybackLocked = isPlaying || isPaused;
   const hasBallOnPitch = items.some((item) => isBallItemType(item.type));
@@ -2766,7 +2847,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     "--speed-track": `linear-gradient(90deg, rgba(34, 197, 94, 0.95) 0%, rgba(34, 197, 94, 0.95) ${playbackSpeedTrackFillPercent}%, rgba(255, 255, 255, 0.9) ${playbackSpeedTrackFillPercent}%, rgba(255, 255, 255, 0.9) 100%)`,
   } as CSSProperties;
   const effectiveItemMode: ItemMode =
-    isPortraitViewingMode || routeState.isRouteCaptureMode || (itemMode !== "edit" || tacticalTool !== "move" || isPlaybackLocked)
+    shouldBlockPortraitInput || routeState.isRouteCaptureMode || (itemMode !== "edit" || tacticalTool !== "move" || isPlaybackLocked)
       ? "locked"
       : "edit";
 
@@ -2779,9 +2860,18 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (isStatsMode || isWhiteboardMode) return;
     const surface = surfaceRef.current;
     if (!surface) return;
-    const isPossessionPassModeActive = !isPortraitViewingMode && movementModePillSelection === "ball";
+    const isPossessionPassModeActive = !shouldBlockPortraitInput && movementModePillSelection === "ball";
     surface.setPossessionPassMode(isPossessionPassModeActive);
-  }, [isStatsMode, isWhiteboardMode, isPortraitViewingMode, movementModePillSelection]);
+  }, [isStatsMode, isWhiteboardMode, shouldBlockPortraitInput, movementModePillSelection]);
+
+  // Drive the board orientation from the single source of truth. Re-applies when
+  // the device rotates or when a fresh surface becomes ready. setOrientation is
+  // idempotent (no-op if unchanged) and only re-fits — it never touches board
+  // state, so rotating the device cannot erase, duplicate or reset the board.
+  useEffect(() => {
+    if (isStatsMode || isWhiteboardMode) return;
+    surfaceRef.current?.setOrientation(portraitQuarterTurns);
+  }, [portraitQuarterTurns, boardSurfaceReadyNonce, isStatsMode, isWhiteboardMode]);
 
   useEffect(() => {
     if (isStatsMode || isWhiteboardMode) return;
@@ -3233,7 +3323,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   };
   const closeCoachingClipPanel = () => setCoachingClipOpen(false);
   const handleAddCoachingSlide = () => {
-    if (isWhiteboardMode || isStatsMode || isPortraitViewingMode) return;
+    if (isWhiteboardMode || isStatsMode || shouldBlockPortraitInput) return;
     const surface = surfaceRef.current;
     if (!surface) return;
     // Reuses the same board-background picker as "New Board" (PR #210) — the
@@ -3536,20 +3626,20 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   };
 
   const applyTacticalPenColor = (color: number) => {
-    if (isPortraitViewingMode) return;
+    if (shouldBlockPortraitInput) return;
     setTacticalPenColor(color);
     surfaceRef.current?.setWhiteboardDrawColor(color);
   };
 
   const setRouteCaptureMode = (enabled: boolean) => {
-    if (isPortraitViewingMode) return;
+    if (shouldBlockPortraitInput) return;
     const surface = surfaceRef.current;
     if (!surface) return;
     surface.setRouteCaptureMode(enabled);
   };
 
   const clearCommittedRoutes = () => {
-    if (isPortraitViewingMode || isPlaybackLocked) return;
+    if (shouldBlockPortraitInput || isPlaybackLocked) return;
     const surface = surfaceRef.current;
     if (!surface) return;
     surface.clearRoutes();
@@ -3560,7 +3650,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   };
 
   const applyTacticalTool = (tool: WhiteboardToolAction) => {
-    if (isPortraitViewingMode && tool !== "move") return;
+    if (shouldBlockPortraitInput && tool !== "move") return;
     setTextToolActive(false);
     const surface = surfaceRef.current;
     if (!surface) return;
@@ -3578,7 +3668,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     }
   };
   const activateTextTool = () => {
-    if (isPortraitViewingMode || isPlaybackLocked) return;
+    if (shouldBlockPortraitInput || isPlaybackLocked) return;
     const surface = surfaceRef.current;
     if (!surface) return;
     setTacticalTool("move");
@@ -3615,12 +3705,12 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   };
 
   const clearTacticalDrawings = () => {
-    if (isPortraitViewingMode) return;
+    if (shouldBlockPortraitInput) return;
     surfaceRef.current?.clearWhiteboardStrokes();
   };
 
   const resetBoardFromTools = () => {
-    if (isPortraitViewingMode) return;
+    if (shouldBlockPortraitInput) return;
     withDiscardConfirm("reset", () => {
     const surface = surfaceRef.current;
     surface?.reset();
@@ -3692,7 +3782,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   };
 
   const handleNewBoard = () => {
-    if (isWhiteboardMode || isStatsMode || isPortraitViewingMode) return;
+    if (isWhiteboardMode || isStatsMode || shouldBlockPortraitInput) return;
     const surface = surfaceRef.current;
     if (!surface) {
       showQuickBoardNotice("PáircVision Board not ready");
@@ -3729,7 +3819,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   const applyTeamNumbers = (team: "BLUE" | "RED", numbers: Set<number>) => {
     const surface = surfaceRef.current;
-    if (!surface || isPortraitViewingMode) return;
+    if (!surface || shouldBlockPortraitInput) return;
     const boardState = surface.exportBoardState();
     const prefix = team === "BLUE" ? "B" : "R";
     const teamColor = team === "BLUE" ? "blue" : "red";
@@ -3767,7 +3857,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   };
 
   const addItem = (type: TacticalItem["type"]) => {
-    if (isPortraitViewingMode) return;
+    if (shouldBlockPortraitInput) return;
     tacticalItemCounterRef.current += 1;
     const nextId = `item-${tacticalItemCounterRef.current}`;
     setItems((previous) => {
@@ -3781,12 +3871,12 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   };
 
   const clearItems = () => {
-    if (isPortraitViewingMode) return;
+    if (shouldBlockPortraitInput) return;
     setItems([]);
   };
 
   const freeBall = () => {
-    if (isPortraitViewingMode || isPlaybackLocked) return;
+    if (shouldBlockPortraitInput || isPlaybackLocked) return;
     setRouteCaptureMode(false);
     surfaceRef.current?.freeBall();
     setMovementModePillSelection("ball");
@@ -3795,7 +3885,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   };
 
   const handleBallButtonPress = () => {
-    if (isPortraitViewingMode || isPlaybackLocked) return;
+    if (shouldBlockPortraitInput || isPlaybackLocked) return;
     setBallPopupStep((prev) => (prev === null ? "root" : null));
   };
 
@@ -3821,7 +3911,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   };
 
   const applyMovementModePillSelection = (nextMode: MovementModePillOption) => {
-    if (isPortraitViewingMode || isPlaybackLocked) return;
+    if (shouldBlockPortraitInput || isPlaybackLocked) return;
     setMovementModePillSelection(nextMode);
     if (nextMode === "move") {
       setRouteCaptureMode(false);
@@ -3957,16 +4047,21 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       zIndex: 22,
     } as const;
   })();
-  const actionsBubbleStyle = isPortraitViewingMode ? PORTRAIT_ACTIONS_BUBBLE_STYLE : ACTIONS_BUBBLE_STYLE;
-  const actionsPopoutStyle = isPortraitViewingMode ? PORTRAIT_ACTIONS_POPOUT_STYLE : ACTIONS_POPOUT_STYLE;
+  const actionsBubbleStyle = isPortrait ? PORTRAIT_ACTIONS_BUBBLE_STYLE : ACTIONS_BUBBLE_STYLE;
+  const actionsPopoutStyle = isPortrait ? PORTRAIT_ACTIONS_POPOUT_STYLE : ACTIONS_POPOUT_STYLE;
   // In landscape the base style uses overflow:hidden which clips the recording
   // preview when it's taller than the default popover. Override to scroll.
-  const quickSharePopoverStyle: CSSProperties = isPortraitViewingMode
+  const quickSharePopoverStyle: CSSProperties = isPortrait
     ? PORTRAIT_QUICK_SHARE_POPOUT_STYLE
     : { ...QUICK_SHARE_POPOUT_STYLE, overflowY: "auto", maxHeight: "min(78vh, 400px)" };
-  const myBoardsPopoverStyle = isPortraitViewingMode ? PORTRAIT_MY_BOARDS_POPOUT_STYLE : MY_BOARDS_POPOUT_STYLE;
-  const isToolsOverlayOpen = !isWhiteboardMode && !isPortraitViewingMode && toolsOpen;
-  const isCompactLandscapeTools = !isWhiteboardMode && !isPortraitViewingMode && isCompactLandscapeToolsMenu;
+  const myBoardsPopoverStyle = isPortrait ? PORTRAIT_MY_BOARDS_POPOUT_STYLE : MY_BOARDS_POPOUT_STYLE;
+  const controlsPopoutStyle = isPortrait ? PORTRAIT_CONTROLS_POPOUT_STYLE : CONTROLS_POPOUT_STYLE;
+  const movementModeControlsWrapStyle = isPortrait
+    ? PORTRAIT_MOVEMENT_MODE_CONTROLS_WRAP_STYLE
+    : MOVEMENT_MODE_CONTROLS_WRAP_STYLE;
+  const ballPopupStyle = isPortrait ? PORTRAIT_BALL_POPUP_STYLE : BALL_POPUP_STYLE;
+  const isToolsOverlayOpen = !isWhiteboardMode && toolsOpen;
+  const isCompactLandscapeTools = !isWhiteboardMode && !isPortrait && isCompactLandscapeToolsMenu;
   const isIphoneLandscapeTools = isCompactLandscapeTools && isIphoneLandscapeToolsMenu;
   const compactLandscapeViewportWidth = isCompactLandscapeTools ? getViewportRect().width : 0;
   const isTightCompactLandscapeTools = isCompactLandscapeTools && compactLandscapeViewportWidth <= 760;
@@ -4126,7 +4221,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   }
 
   return (
-    <OrientationGate modeLabel="PáircVision Board">
+    <OrientationGate modeLabel="PáircVision Board" portraitEditable={!isWhiteboardMode}>
       <div style={rootShellStyle}>
         <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}`}</style>
         {!isWhiteboardMode && routeLimitWarning ? (
@@ -4135,11 +4230,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           </div>
         ) : null}
         {!isWhiteboardMode ? <style>{STADIUM_FLOODLIGHT_CSS}</style> : null}
-        {!isWhiteboardMode ? <VisionStadiumBackground variant="board" /> : null}
-        <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : CONTENT_STYLE}>
+        {!isWhiteboardMode ? <VisionStadiumBackground variant="board" portrait={isPortrait} /> : null}
+        <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
           <div ref={hostRef} style={pitchSurfaceStyle} />
-          {!isWhiteboardMode && isPortraitViewingMode ? <div style={PORTRAIT_INTERACTION_SHIELD_STYLE} aria-hidden="true" /> : null}
-          {!isWhiteboardMode && !isPortraitViewingMode ? (
+          {!isWhiteboardMode && shouldBlockPortraitInput ? <div style={PORTRAIT_INTERACTION_SHIELD_STYLE} aria-hidden="true" /> : null}
+          {!isWhiteboardMode && !shouldBlockPortraitInput ? (
             <SlateTextOverlay
               annotations={textAnnotations}
               active={textToolActive && !toolsOpen && !isPlaybackLocked}
@@ -4149,7 +4244,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             />
           ) : null}
         </div>
-        {!isWhiteboardMode && !isPortraitViewingMode && kitEditorState && activeKitPlayer && kitEditorPosition ? (
+        {!isWhiteboardMode && !shouldBlockPortraitInput && kitEditorState && activeKitPlayer && kitEditorPosition ? (
           <div
             style={{
               ...KIT_EDITOR_STYLE,
@@ -4541,8 +4636,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             )}
           </div>
         ) : null}
-        {!isWhiteboardMode && !isPortraitViewingMode && controlsOpen && ballPopupStep !== null ? (
-          <div style={BALL_POPUP_STYLE} role="group" aria-label="Ball type selection">
+        {!isWhiteboardMode && !shouldBlockPortraitInput && controlsOpen && ballPopupStep !== null ? (
+          <div style={ballPopupStyle} role="group" aria-label="Ball type selection">
             {ballPopupStep === "root" ? (
               <>
                 {hasBallOnPitch ? (
@@ -4641,8 +4736,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             ) : null}
           </div>
         ) : null}
-        {!isWhiteboardMode && !isPortraitViewingMode && controlsOpen ? (
-          <div style={MOVEMENT_MODE_CONTROLS_WRAP_STYLE}>
+        {!isWhiteboardMode && !shouldBlockPortraitInput && controlsOpen ? (
+          <div style={movementModeControlsWrapStyle}>
             {routeState.ballAttachedPlayerId && (routeState.isRouteCaptureMode || hasAssignedRoutes) ? (
               <div style={BALL_FOLLOW_HINT_STYLE}>Ball attached — follows player during route.</div>
             ) : null}
@@ -4679,8 +4774,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             </div>
           </div>
         ) : null}
-        {!isWhiteboardMode && (controlsOpen || isPortraitViewingMode) ? (
-          <div style={CONTROLS_POPOUT_STYLE}>
+        {!isWhiteboardMode && controlsOpen ? (
+          <div style={controlsPopoutStyle}>
             <div style={PLAYBACK_SPEED_BAR_STYLE}>
               <span style={PLAYBACK_SPEED_LABEL_STYLE}>SPEED</span>
               <input
@@ -4696,7 +4791,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               />
               <span style={PLAYBACK_SPEED_VALUE_STYLE}>{playbackSpeedLabel}</span>
             </div>
-            {!isPortraitViewingMode ? (
+            {!shouldBlockPortraitInput ? (
               <button
                 type="button"
                 className="control-button"
@@ -4711,7 +4806,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 Set Start
               </button>
             ) : null}
-            {!isPortraitViewingMode ? (
+            {!shouldBlockPortraitInput ? (
               <button
                 type="button"
                 className="control-button"
@@ -4757,7 +4852,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             >
               Pause
             </button>
-            {!isPortraitViewingMode ? (
+            {!shouldBlockPortraitInput ? (
               <button
                 type="button"
                 className="control-button"
@@ -5417,9 +5512,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             <button
               type="button"
               className="control-button"
-              style={isPortraitViewingMode ? DISABLED_CONTROL_BUTTON_STYLE : ACTIONS_MENU_BUTTON_STYLE}
+              style={shouldBlockPortraitInput ? DISABLED_CONTROL_BUTTON_STYLE : ACTIONS_MENU_BUTTON_STYLE}
               onClick={handleNewBoard}
-              disabled={isPortraitViewingMode}
+              disabled={shouldBlockPortraitInput}
             >
               New Board
             </button>
@@ -5497,7 +5592,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             panelRef={coachingClipPanelRef}
           />
         ) : null}
-        {!isWhiteboardMode ? (
+        {!isWhiteboardMode && !(isPortrait && controlsOpen) ? (
           <button
             ref={actionsBubbleButtonRef}
             type="button"
@@ -5519,7 +5614,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             ⋯
           </button>
         ) : null}
-        {!isWhiteboardMode && !isPortraitViewingMode ? (
+        {!isWhiteboardMode && !shouldBlockPortraitInput ? (
           <button
             type="button"
             className="floating-bubble"
@@ -5540,7 +5635,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             Ctrl
           </button>
         ) : null}
-        {!isWhiteboardMode && !isPortraitViewingMode ? (
+        {!isWhiteboardMode && !shouldBlockPortraitInput ? (
           <button
             ref={toolsBubbleButtonRef}
             type="button"

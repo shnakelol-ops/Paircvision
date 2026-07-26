@@ -180,3 +180,28 @@
     top: 14px;
   }
 }
+
+/*
+ * Portrait Slate: raise the light clusters higher above the pitch frame, shrink
+ * them ~25% and dim them so they are subtle background identity, not a focal
+ * point. Two-class specificity (0,2,0) intentionally overrides the phone media
+ * query above (0,1,0). Landscape and other surfaces never get this modifier.
+ */
+.vision-stadium-shell--portrait .vision-stadium-shell__lights {
+  top: 2.5%;
+  width: 46px;
+  height: 38px;
+  gap: 4px;
+  opacity: 0.6;
+}
+
+.vision-stadium-shell--portrait .vision-stadium-shell__lights span {
+  width: 6px;
+  height: 6px;
+}
+
+.vision-stadium-shell--portrait .vision-stadium-shell__lights::before {
+  width: 112px;
+  height: 120px;
+  top: 10px;
+}
