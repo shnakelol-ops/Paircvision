@@ -930,7 +930,7 @@ export default function TacticalPlaySurface() {
   const [activeSetupSport, setActiveSetupSport] = useState<SetupSport>("football");
   const [activeSetupSituation, setActiveSetupSituation] = useState<TacticalTemplateSituation | null>(null);
   const [tokenSizeState, setTokenSizeState] = useState<TokenSize>("medium");
-  const [tokenRenderer, setTokenRendererState] = useState<TokenRendererName>("pixi");
+  const [, setTokenRendererState] = useState<TokenRendererName>("pixi");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
   const [, setAwayColorState] = useState<PremiumPlayerTokenColor>("red");
   const [awayTokenIds, setAwayTokenIds] = useState<Set<string>>(() => new Set());
@@ -1480,13 +1480,6 @@ export default function TacticalPlaySurface() {
     setPassTriggerId(null);
   };
 
-  const giveSelectedPlayerBall = () => {
-    const shell = shellRef.current;
-    const token = selectedToken;
-    if (!shell || !token) return;
-    shell.giveBall(token.id);
-  };
-
   const onSetupPress = () => {
     setIsControlsOpen(false);
     setSetupOpen((prev) => !prev);
@@ -1503,11 +1496,6 @@ export default function TacticalPlaySurface() {
     const currentBall = shell.getBallState();
     if (currentBall.carrierId || currentBall.position) return;
     shell.placeBall(SETUP_BALL_BY_SPORT[sport]);
-  };
-
-  const onSetTokenRenderer = (name: TokenRendererName) => {
-    shellRef.current?.setTokenRenderer(name);
-    setTokenRendererState(name);
   };
 
   const onLoadTemplate = (template: TacticalTemplate) => {
@@ -2471,29 +2459,17 @@ export default function TacticalPlaySurface() {
                 >
                   Set Start
                 </button>
-                <button type="button" style={TOOL_BUTTON_STYLE} onClick={resetPlaybackState}>
-                  Reset
-                </button>
                 <button type="button" style={TOOL_BUTTON_STYLE} onClick={onAddPlayer}>
                   + Player
                 </button>
                 {selectedToken ? (
-                  <>
-                    <button
-                      type="button"
-                      style={selectedHasBall ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                      onClick={giveSelectedPlayerBall}
-                    >
-                      {selectedHasBall ? "Has Ball" : "Give Ball"}
-                    </button>
-                    <button
-                      type="button"
-                      style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 140, 140, 0.80)" }}
-                      onClick={onRemoveSelectedPlayer}
-                    >
-                      − Player
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 140, 140, 0.80)" }}
+                    onClick={onRemoveSelectedPlayer}
+                  >
+                    − Player
+                  </button>
                 ) : null}
               </div>
             ) : null}
@@ -2538,15 +2514,6 @@ export default function TacticalPlaySurface() {
                     onClick={onApplyUnitRoute}
                   >
                     Apply to Unit
-                  </button>
-                ) : null}
-                {selectedToken ? (
-                  <button
-                    type="button"
-                    style={selectedHasBall ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                    onClick={giveSelectedPlayerBall}
-                  >
-                    {selectedHasBall ? "Has Ball" : "Give Ball"}
                   </button>
                 ) : null}
               </div>
@@ -2598,15 +2565,6 @@ export default function TacticalPlaySurface() {
                     <button type="button" style={TOOL_BUTTON_STYLE} onClick={onRemoveBall}>
                       Remove Ball
                     </button>
-                    {selectedToken ? (
-                      <button
-                        type="button"
-                        style={selectedHasBall ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                        onClick={giveSelectedPlayerBall}
-                      >
-                        {selectedHasBall ? "Has Ball" : "Give Ball"}
-                      </button>
-                    ) : null}
                   </>
                 ) : null}
               </div>
@@ -2678,17 +2636,6 @@ export default function TacticalPlaySurface() {
                   onClick={() => { setItemsOpen((prev) => !prev); setZonesOpen(false); setIsControlsOpen(false); }}
                 >
                   Items{trainingItems.length > 0 ? ` (${trainingItems.length})` : ""}
-                </button>
-                <button
-                  type="button"
-                  style={tokenSizeState === "small" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => {
-                    const next: TokenSize = tokenSizeState === "small" ? "medium" : "small";
-                    shellRef.current?.setTokenSize(next);
-                    setTokenSizeState(next);
-                  }}
-                >
-                  Compact
                 </button>
                 <button
                   type="button"
@@ -3520,21 +3467,7 @@ export default function TacticalPlaySurface() {
             {playersOpen ? (
               <>
                 <div style={PANEL_ROW_STYLE}>
-                  {([
-                    { id: "pixi", label: "Pixi" },
-                    { id: "vision", label: "Vision" },
-                    { id: "jersey", label: "Jersey" },
-                    { id: "pill-under", label: "Name Badge" },
-                  ] as const).map((r) => (
-                    <button
-                      key={r.id}
-                      type="button"
-                      style={tokenRenderer === r.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                      onClick={() => onSetTokenRenderer(r.id)}
-                    >
-                      {r.label}
-                    </button>
-                  ))}
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Token Size</span>
                   <button
                     type="button"
                     style={tokenSizeState === "small" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
@@ -3881,10 +3814,6 @@ export default function TacticalPlaySurface() {
               }}
               onFreeBall={() => {
                 shellRef.current?.freeBall();
-                setPlayerSheetId(null);
-              }}
-              onPlay={() => {
-                shellRef.current?.playAll();
                 setPlayerSheetId(null);
               }}
               onEditRun={() => {
