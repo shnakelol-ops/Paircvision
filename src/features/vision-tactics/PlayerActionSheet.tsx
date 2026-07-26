@@ -31,7 +31,6 @@ type PlayerActionSheetProps = {
   onResetRun: () => void;
   onBallChoice: (ballType: BallType) => void;
   onFreeBall?: () => void;
-  onPlay: () => void;
   onBehaviour: () => void;
 };
 
@@ -332,7 +331,6 @@ export default function PlayerActionSheet({
   onResetRun,
   onBallChoice,
   onFreeBall,
-  onPlay,
 }: PlayerActionSheetProps) {
   const [expanded, setExpanded] = useState<ExpandedSection>(null);
   const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
@@ -450,13 +448,6 @@ export default function PlayerActionSheet({
             onClick={() => toggle("pass")}
           >
             Pass
-          </button>
-          <button
-            type="button"
-            style={ACTION_BTN_GREEN}
-            onClick={() => { onPlay(); onClose(); }}
-          >
-            Play
           </button>
         </div>
 
