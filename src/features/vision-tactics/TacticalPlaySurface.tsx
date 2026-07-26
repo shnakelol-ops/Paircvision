@@ -709,17 +709,6 @@ const MP_CHIP_SECONDARY: CSSProperties = {
   border: "1px solid rgba(180, 210, 255, 0.09)",
 };
 
-// Horizontally-scrollable chip strip — prevents chip rows from wrapping to a
-// second line on phone landscape where panel height budget is tight.
-const TP_CHIP_SCROLL: CSSProperties = {
-  display: "flex",
-  flexWrap: "nowrap",
-  gap: "3px",
-  alignItems: "center",
-  overflowX: "auto",
-  scrollbarWidth: "none",
-};
-
 const MP_PLAYER_CHIP: CSSProperties = {
   height: "28px",
   minWidth: "0",
@@ -821,33 +810,6 @@ const TP_ENUM_TO_MULTIPLIER: Record<string, number> = {
   fast: 1.25,
 };
 
-const QUICK_DELAY_OPTIONS = [
-  { ms: 0,    label: "Now" },
-  { ms: 1000, label: "+1s" },
-  { ms: 2000, label: "+2s" },
-  { ms: 3000, label: "+3s" },
-  { ms: 4000, label: "+4s" },
-] as const;
-
-const EXTENDED_DELAY_OPTIONS = [
-  { ms: 5000,  label: "+5s"  },
-  { ms: 10000, label: "+10s" },
-  { ms: 15000, label: "+15s" },
-  { ms: 20000, label: "+20s" },
-  { ms: 30000, label: "+30s" },
-  { ms: 40000, label: "+40s" },
-  { ms: 50000, label: "+50s" },
-  { ms: 60000, label: "+60s" },
-] as const;
-
-const SHOT_DELAY_OPTIONS = [
-  { ms: 0,    label: "Now" },
-  { ms: 1000, label: "+1s" },
-  { ms: 2000, label: "+2s" },
-  { ms: 3000, label: "+3s" },
-  { ms: 4000, label: "+4s" },
-] as const;
-
 function multiplierToPlaybackSpeed(n: number): "slow" | "normal" | "fast" {
   if (n < 0.85) return "slow";
   if (n > 1.15) return "fast";
@@ -938,18 +900,7 @@ export default function TacticalPlaySurface() {
   const [tokenNumberById, setTokenNumberById] = useState<Record<string, number>>({});
   const [sequenceOpen, setSequenceOpen] = useState(false);
   const [scenarios, setScenarios] = useState<TacticalScenario[]>([]);
-  const [movementsOpen, setMovementsOpen] = useState(false);
-  const [movementsSelectedPlayerId, setMovementsSelectedPlayerId] = useState<string | null>(null);
   const [passEvents, setPassEvents] = useState<TacticalPassEvent[]>([]);
-  const [passesOpen, setPassesOpen] = useState(false);
-  const [passFromId, setPassFromId] = useState<string | null>(null);
-  const [passToId, setPassToId] = useState<string | null>(null);
-  const [passTimingMs, setPassTimingMs] = useState<number>(0);
-  const [passTriggerId, setPassTriggerId] = useState<string | null>(null);
-  const [routeDelayPickerOpen, setRouteDelayPickerOpen] = useState(false);
-  const [passTimingPickerOpen, setPassTimingPickerOpen] = useState(false);
-  const [shootDelayMs, setShootDelayMs] = useState<number>(0);
-  const [shotOpen, setShotOpen] = useState(false);
   const [shotEvents, setShotEvents] = useState<TacticalShotEvent[]>([]);
   const [scenarioRenameId, setScenarioRenameId] = useState<string | null>(null);
   const [scenarioRenameDraft, setScenarioRenameDraft] = useState("");
@@ -1310,8 +1261,6 @@ export default function TacticalPlaySurface() {
       setIsControlsOpen(false);
       setSetupOpen(false);
       setBallMenuStep(null);
-      setMovementsOpen(false);
-      setPassesOpen(false);
       setPlaysOpen(false);
       setUnitsOpen(false);
       setAdvancedOpen(false);
@@ -1362,21 +1311,6 @@ export default function TacticalPlaySurface() {
     const bOrd = bTriggered != null ? Infinity : bDelay;
     return aOrd - bOrd;
   });
-
-  const movementsRoute = movementsSelectedPlayerId
-    ? routes.find((r) => r.playerId === movementsSelectedPlayerId) ?? null
-    : null;
-  const movementsRouteConcept = movementsRoute?.concept ?? null;
-  const movementsRouteDelay = movementsRoute?.delayMs ?? null;
-  const movementsRouteTrigger = movementsRoute?.triggeredBy ?? null;
-  const movementsRoutedPlayers = routes
-    .filter((r) => !awayTokenIds.has(r.playerId))
-    .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
-    .sort((a, b) => a.number - b.number);
-  const movementsOtherPlayers = routes
-    .filter((r) => r.playerId !== movementsSelectedPlayerId && !awayTokenIds.has(r.playerId))
-    .map((r) => ({ playerId: r.playerId, number: tokenNumberById[r.playerId] ?? 0 }))
-    .sort((a, b) => a.number - b.number);
 
   const modeLabelByMenu: Record<MovementMenuMode, string> = {
     move: "Move",
@@ -1474,10 +1408,6 @@ export default function TacticalPlaySurface() {
     for (const shot of shell.getShotEvents()) shell.removeShotEvent(shot.id);
     setShotEvents([]);
     setUnitDrawingId(null);
-    setMovementsSelectedPlayerId(null);
-    setPassFromId(null);
-    setPassToId(null);
-    setPassTriggerId(null);
   };
 
   const onSetupPress = () => {
@@ -1570,44 +1500,6 @@ export default function TacticalPlaySurface() {
       return;
     }
     window.location.assign("/vision-tactics");
-  };
-
-  const onMovementsSetConcept = (concept: MovementConcept | null) => {
-    const shell = shellRef.current;
-    if (!shell || !movementsSelectedPlayerId) return;
-    shell.setRouteMeta(movementsSelectedPlayerId, { concept: concept ?? undefined });
-  };
-
-  const onMovementsSetDelay = (delayMs: number) => {
-    const shell = shellRef.current;
-    if (!shell || !movementsSelectedPlayerId) return;
-    shell.setRouteMeta(movementsSelectedPlayerId, { delayMs, triggeredBy: undefined });
-  };
-
-  const onMovementsSetTrigger = (triggeredBy: string | null) => {
-    const shell = shellRef.current;
-    if (!shell || !movementsSelectedPlayerId) return;
-    shell.setRouteMeta(movementsSelectedPlayerId, { triggeredBy: triggeredBy ?? undefined, delayMs: undefined });
-  };
-
-  const onAddPass = () => {
-    const shell = shellRef.current;
-    if (!shell || !passFromId || !passToId || passFromId === passToId) return;
-    const event: TacticalPassEvent = {
-      id: `pass-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      fromPlayerId: passFromId,
-      toPlayerId: passToId,
-      ...(passTriggerId != null
-        ? { triggeredBy: passTriggerId }
-        : { delayMs: passTimingMs }),
-    };
-    shell.addPassEvent(event);
-    setPassFromId(passToId);
-    setPassToId(null);
-  };
-
-  const onRemovePass = (id: string) => {
-    shellRef.current?.removePassEvent(id);
   };
 
   const onAddTrainingItem = (type: TacticalTrainingItemType) => {
@@ -1896,10 +1788,6 @@ export default function TacticalPlaySurface() {
     });
     if (ballCarrierId && removedIds.has(ballCarrierId)) shell.removeBall();
     if (selectedToken && removedIds.has(selectedToken.id)) shell.setSelectedToken(null);
-    if (passFromId && removedIds.has(passFromId)) setPassFromId(null);
-    if (passToId && removedIds.has(passToId)) setPassToId(null);
-    if (passTriggerId && removedIds.has(passTriggerId)) setPassTriggerId(null);
-    if (movementsSelectedPlayerId && removedIds.has(movementsSelectedPlayerId)) setMovementsSelectedPlayerId(null);
     setTokenNumberById((prev) => {
       const next = { ...prev };
       for (const id of removedIds) delete next[id];
@@ -1970,11 +1858,6 @@ export default function TacticalPlaySurface() {
     // Clean unit memberships
     setUnits((prev) => prev.map((u) => ({ ...u, memberIds: u.memberIds.filter((mid) => mid !== removedId) })));
     setAwayTokenIds((prev) => { const next = new Set(prev); next.delete(removedId); return next; });
-    // Clean pass/trigger UI state
-    if (passFromId === removedId) setPassFromId(null);
-    if (passToId === removedId) setPassToId(null);
-    if (passTriggerId === removedId) setPassTriggerId(null);
-    if (movementsSelectedPlayerId === removedId) setMovementsSelectedPlayerId(null);
     setTokenNumberById((prev) => { const next = { ...prev }; delete next[removedId]; return next; });
   };
 
@@ -2043,12 +1926,6 @@ export default function TacticalPlaySurface() {
     setTrainingItems([]);
     setSelectedTrainingItemId(null);
     setAwayTokenIds(new Set());
-    setMovementsSelectedPlayerId(null);
-    setPassFromId(null);
-    setPassToId(null);
-    setPassTriggerId(null);
-    setPassTimingMs(0);
-    setShootDelayMs(0);
     setIsPlaying(false);
     setIsPaused(false);
     setTokenNumberById(Object.fromEntries(defaultTokens.map((token) => [token.id, token.number])));
@@ -2065,7 +1942,7 @@ export default function TacticalPlaySurface() {
   // so it never overlaps CTRL, SETUP, the player action sheet or open menus.
   const hasPlayableContent = routes.length > 0 || passEvents.length > 0 || shotEvents.length > 0;
   const portraitBottomPanelOpen =
-    isControlsOpen || setupOpen || sequenceOpen || movementsOpen || passesOpen || playsOpen || playerSheetId != null;
+    isControlsOpen || setupOpen || sequenceOpen || playsOpen || playerSheetId != null;
   const showPortraitPlaybackButton = isPortrait && hasPlayableContent && !portraitBottomPanelOpen;
   const portraitPlaybackLabel = playbackCompleted
     ? "↺ Reset Play"
@@ -2151,7 +2028,7 @@ export default function TacticalPlaySurface() {
         <button
           type="button"
           style={CTRL_BUBBLE_STYLE}
-          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setMovementsOpen(false); setPassesOpen(false); setPlaysOpen(false); setPlayerSheetId(null); }}
+          onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setPlaysOpen(false); setPlayerSheetId(null); }}
         >
           TOOLS
         </button>
@@ -2574,22 +2451,8 @@ export default function TacticalPlaySurface() {
             <div style={PANEL_ROW_STYLE}>
               <button
                 type="button"
-                style={movementsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => { setMovementsOpen((prev) => !prev); setPassesOpen(false); setUnitsOpen(false); setIsControlsOpen(false); }}
-              >
-                Movements
-              </button>
-              <button
-                type="button"
-                style={passesOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => { setPassesOpen((prev) => !prev); setMovementsOpen(false); setIsControlsOpen(false); }}
-              >
-                Passes
-              </button>
-              <button
-                type="button"
                 style={unitsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => { setUnitsOpen((prev) => !prev); setMovementsOpen(false); setPassesOpen(false); setIsControlsOpen(false); }}
+                onClick={() => { setUnitsOpen((prev) => !prev); setIsControlsOpen(false); }}
               >
                 Move as 1
               </button>
@@ -2695,138 +2558,6 @@ export default function TacticalPlaySurface() {
                 })}
               </div>
             ) : null}
-          </div>
-        ) : null}
-
-        {movementsOpen && routes.length > 0 ? (
-          <div style={MOVEMENT_PANEL_STYLE}>
-            <div style={MP_HEADER_STYLE}>
-              <span style={MP_TITLE_STYLE}>Movements</span>
-              <button type="button" style={MP_CLOSE_STYLE} onClick={() => setMovementsOpen(false)}>
-                ×
-              </button>
-            </div>
-
-            <div style={MP_ROW}>
-              {movementsRoutedPlayers.map((p) => {
-                const r = routes.find((route) => route.playerId === p.playerId);
-                const conceptShort = r?.concept != null ? CONCEPT_LABELS[r.concept].split(" ")[0] : null;
-                const timingShort = r?.triggeredBy
-                  ? `P${tokenNumberById[r.triggeredBy] ?? "?"}`
-                  : r?.delayMs != null
-                    ? r.delayMs === 0 ? "Now" : `+${r.delayMs / 1000}s`
-                    : null;
-                const summary = [conceptShort, timingShort].filter(Boolean).join(" · ");
-                const isSelected = movementsSelectedPlayerId === p.playerId;
-                return (
-                  <button
-                    key={p.playerId}
-                    type="button"
-                    style={isSelected ? MP_PLAYER_CHIP_ACTIVE : MP_PLAYER_CHIP}
-                    onClick={() => setMovementsSelectedPlayerId(isSelected ? null : p.playerId)}
-                  >
-                    <span>P{p.number}</span>
-                    {summary ? (
-                      <span style={{ opacity: 0.52, fontSize: "8px", letterSpacing: "0.02em" }}>{summary}</span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-
-            {movementsSelectedPlayerId ? (
-              <>
-                <div style={MP_ROW}>
-                  <span style={MP_ROW_LABEL}>Type</span>
-                  {([
-                    { id: "support-run" as MovementConcept, label: "Support" },
-                    { id: "overlap" as MovementConcept, label: "Overlap" },
-                    { id: "shadow-run" as MovementConcept, label: "Decoy" },
-                    { id: "rotation" as MovementConcept, label: "Rotation" },
-                    { id: "custom" as MovementConcept, label: "Custom" },
-                  ] as const).map((opt) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      style={movementsRouteConcept === opt.id ? MP_CHIP_ACTIVE : MP_CHIP}
-                      onClick={() => onMovementsSetConcept(movementsRouteConcept === opt.id ? null : opt.id)}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div style={MP_ROW}>
-                  <span style={{ ...MP_ROW_LABEL, flexShrink: 0 }}>Time</span>
-                  <div style={{ ...TP_CHIP_SCROLL, flex: 1, minWidth: 0 }}>
-                    {QUICK_DELAY_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.ms}
-                        type="button"
-                        style={
-                          movementsRouteTrigger == null &&
-                          (movementsRouteDelay === opt.ms || (opt.ms === 0 && movementsRouteDelay == null))
-                            ? MP_CHIP_ACTIVE
-                            : MP_CHIP
-                        }
-                        onClick={() => { onMovementsSetDelay(opt.ms); setRouteDelayPickerOpen(false); }}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      style={movementsRouteTrigger == null && movementsRouteDelay != null && movementsRouteDelay > 4000 ? MP_CHIP_ACTIVE : MP_CHIP}
-                      onClick={() => setRouteDelayPickerOpen((prev) => !prev)}
-                    >
-                      {movementsRouteTrigger == null && movementsRouteDelay != null && movementsRouteDelay > 4000
-                        ? `+${movementsRouteDelay / 1000}s ▾`
-                        : "More ▾"}
-                    </button>
-                  </div>
-                  {movementsOtherPlayers.length > 0 ? (
-                    <>
-                      <span style={{ ...MP_ROW_LABEL, marginLeft: "3px", flexShrink: 0 }}>After</span>
-                      {movementsRouteTrigger != null ? (
-                        <button type="button" style={MP_CHIP_SECONDARY} onClick={() => onMovementsSetTrigger(null)}>
-                          ×
-                        </button>
-                      ) : null}
-                      {movementsOtherPlayers.map((p) => (
-                        <button
-                          key={p.playerId}
-                          type="button"
-                          style={movementsRouteTrigger === p.playerId ? MP_CHIP_ACTIVE : MP_CHIP}
-                          onClick={() => { onMovementsSetTrigger(p.playerId); setRouteDelayPickerOpen(false); }}
-                        >
-                          P{p.number}
-                        </button>
-                      ))}
-                    </>
-                  ) : null}
-                </div>
-                {routeDelayPickerOpen ? (
-                  <div style={TP_CHIP_SCROLL}>
-                    {EXTENDED_DELAY_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.ms}
-                        type="button"
-                        style={movementsRouteTrigger == null && movementsRouteDelay === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
-                        onClick={() => { onMovementsSetDelay(opt.ms); setRouteDelayPickerOpen(false); }}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </>
-            ) : null}
-
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button type="button" style={MP_DONE} onClick={() => setMovementsOpen(false)}>
-                Done
-              </button>
-            </div>
           </div>
         ) : null}
 
@@ -3176,233 +2907,6 @@ export default function TacticalPlaySurface() {
           </div>
         ) : null}
 
-        {passesOpen ? (
-          <div style={MOVEMENT_PANEL_STYLE}>
-            <div style={MP_HEADER_STYLE}>
-              <span style={MP_TITLE_STYLE}>Passes</span>
-              <button type="button" style={MP_CLOSE_STYLE} onClick={() => { setPassesOpen(false); setShotOpen(false); }}>
-                ×
-              </button>
-            </div>
-
-            {passEvents.length > 0 || shotEvents.length > 0 ? (
-              <div style={MP_ROW}>
-                {passEvents.map((p) => {
-                  const fromNum = tokenNumberById[p.fromPlayerId] ?? "?";
-                  const toNum = tokenNumberById[p.toPlayerId] ?? "?";
-                  return (
-                    <span key={p.id} style={{ ...MP_CHIP_SECONDARY, display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                      <span style={{ color: "rgba(255, 220, 100, 0.80)" }}>P{fromNum}→P{toNum}</span>
-                      <button
-                        type="button"
-                        style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "11px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
-                        onClick={() => onRemovePass(p.id)}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  );
-                })}
-                {shotEvents.map((s) => {
-                  const num = tokenNumberById[s.shooterId] ?? "?";
-                  const delayLabel = s.delayMs > 0 ? ` +${s.delayMs / 1000}s` : "";
-                  return (
-                    <span key={s.id} style={{ ...MP_CHIP_SECONDARY, display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                      <span style={{ color: "rgba(180, 255, 140, 0.80)" }}>P{num}→Goal{delayLabel}</span>
-                      <button
-                        type="button"
-                        style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "11px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
-                        onClick={() => { setShotEvents((prev) => prev.filter((e) => e.id !== s.id)); shellRef.current?.removeShotEvent(s.id); }}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  );
-                })}
-              </div>
-            ) : null}
-
-            <div style={MP_ROW}>
-              <span style={MP_ROW_LABEL}>From</span>
-              {Object.entries(tokenNumberById).filter(([id]) => !awayTokenIds.has(id)).sort((a, b) => a[1] - b[1]).map(([id, num]) => (
-                <button
-                  key={id}
-                  type="button"
-                  style={passFromId === id ? MP_PLAYER_CHIP_ACTIVE : MP_PLAYER_CHIP}
-                  onClick={() => setPassFromId(passFromId === id ? null : id)}
-                >
-                  P{num}
-                </button>
-              ))}
-            </div>
-
-            {passFromId ? (
-              <div style={MP_ROW}>
-                <span style={MP_ROW_LABEL}>To</span>
-                {Object.entries(tokenNumberById).filter(([id]) => id !== passFromId && !awayTokenIds.has(id)).sort((a, b) => a[1] - b[1]).map(([id, num]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    style={passToId === id ? MP_PLAYER_CHIP_ACTIVE : MP_PLAYER_CHIP}
-                    onClick={() => setPassToId(passToId === id ? null : id)}
-                  >
-                    P{num}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-
-            {passFromId && passToId ? (
-              <>
-                <div style={MP_ROW}>
-                  <span style={{ ...MP_ROW_LABEL, flexShrink: 0 }}>Time</span>
-                  <div style={{ ...TP_CHIP_SCROLL, flex: 1, minWidth: 0 }}>
-                    {QUICK_DELAY_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.ms}
-                        type="button"
-                        style={passTriggerId == null && passTimingMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
-                        onClick={() => { setPassTimingMs(opt.ms); setPassTriggerId(null); setPassTimingPickerOpen(false); }}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      style={passTriggerId == null && passTimingMs > 4000 ? MP_CHIP_ACTIVE : MP_CHIP}
-                      onClick={() => setPassTimingPickerOpen((prev) => !prev)}
-                    >
-                      {passTriggerId == null && passTimingMs > 4000 ? `+${passTimingMs / 1000}s ▾` : "More ▾"}
-                    </button>
-                  </div>
-                  {routes.length > 0 || passEvents.length > 0 ? (
-                    <>
-                      <span style={{ ...MP_ROW_LABEL, marginLeft: "3px", flexShrink: 0 }}>After</span>
-                      {passTriggerId != null ? (
-                        <button type="button" style={MP_CHIP_SECONDARY} onClick={() => setPassTriggerId(null)}>
-                          ×
-                        </button>
-                      ) : null}
-                      {routes.filter((r) => !awayTokenIds.has(r.playerId)).map((r) => {
-                        const num = tokenNumberById[r.playerId] ?? "?";
-                        return (
-                          <button
-                            key={r.playerId}
-                            type="button"
-                            style={passTriggerId === r.playerId ? MP_CHIP_ACTIVE : MP_CHIP}
-                            onClick={() => { setPassTriggerId(passTriggerId === r.playerId ? null : r.playerId); setPassTimingPickerOpen(false); }}
-                          >
-                            P{num}
-                          </button>
-                        );
-                      })}
-                    </>
-                  ) : null}
-                </div>
-                {passTimingPickerOpen ? (
-                  <div style={TP_CHIP_SCROLL}>
-                    {EXTENDED_DELAY_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.ms}
-                        type="button"
-                        style={passTriggerId == null && passTimingMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
-                        onClick={() => { setPassTimingMs(opt.ms); setPassTriggerId(null); setPassTimingPickerOpen(false); }}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </>
-            ) : null}
-
-            {shotOpen ? (() => {
-              const lastReceiverId = passEvents.length > 0 ? passEvents[passEvents.length - 1].toPlayerId : null;
-              const shooterId = lastReceiverId ?? ballCarrierId;
-              if (!shooterId) {
-                return (
-                  <div style={MP_ROW}>
-                    <span style={{ fontSize: "11px", color: "rgba(255, 200, 100, 0.70)", fontStyle: "italic" }}>
-                      Give ball to a player or add a pass first.
-                    </span>
-                    <button
-                      type="button"
-                      style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "14px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
-                      onClick={() => setShotOpen(false)}
-                    >
-                      ×
-                    </button>
-                  </div>
-                );
-              }
-              const shooterNum = tokenNumberById[shooterId] ?? "?";
-              return (
-                <div style={MP_ROW}>
-                  <span style={MP_ROW_LABEL}>Shooter</span>
-                  <span style={MP_CHIP_SECONDARY}>P{shooterNum}</span>
-                  <span style={{ ...MP_ROW_LABEL, marginLeft: "4px" }}>Delay</span>
-                  {SHOT_DELAY_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.ms}
-                      type="button"
-                      style={shootDelayMs === opt.ms ? MP_CHIP_ACTIVE : MP_CHIP}
-                      onClick={() => setShootDelayMs(opt.ms)}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    style={MP_CHIP_ACTIVE}
-                    onClick={() => {
-                      const delay = shootDelayMs;
-                      const sid = shooterId;
-                      const entry = { id: `shot-${Date.now()}`, shooterId: sid, delayMs: delay };
-                      setShotEvents((prev) => [...prev, entry]);
-                      shellRef.current?.addShotEvent(entry);
-                      setShotOpen(false);
-                    }}
-                  >
-                    Add Shot
-                  </button>
-                  <button
-                    type="button"
-                    style={{ background: "none", border: "none", color: "rgba(255, 140, 140, 0.70)", fontSize: "14px", cursor: "pointer", padding: "0 2px", lineHeight: "1" }}
-                    onClick={() => setShotOpen(false)}
-                  >
-                    ×
-                  </button>
-                </div>
-              );
-            })() : null}
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  style={passFromId && passToId ? MP_CHIP_ACTIVE : { ...MP_CHIP, opacity: 0.45, cursor: "not-allowed" }}
-                  disabled={!passFromId || !passToId || passFromId === passToId}
-                  onClick={onAddPass}
-                >
-                  + Add Pass
-                </button>
-                {passEvents.length > 0 || ballCarrierId ? (
-                  <button
-                    type="button"
-                    style={shotOpen ? MP_CHIP_ACTIVE : MP_CHIP}
-                    onClick={() => setShotOpen((prev) => !prev)}
-                  >
-                    + Add Shot
-                  </button>
-                ) : null}
-              </div>
-              <button type="button" style={MP_DONE} onClick={() => { setPassesOpen(false); setShotOpen(false); }}>
-                Done
-              </button>
-            </div>
-          </div>
-        ) : null}
-
         {setupOpen ? (
           <div style={setupPanelStyle}>
             <div style={PANEL_ROW_STYLE}>
@@ -3557,8 +3061,6 @@ export default function TacticalPlaySurface() {
               setPlaysOpen((prev) => !prev);
               setIsControlsOpen(false);
               setSetupOpen(false);
-              setMovementsOpen(false);
-              setPassesOpen(false);
             }}
           >
             Share
@@ -3761,6 +3263,7 @@ export default function TacticalPlaySurface() {
           const sheetRoute = routes.find((r) => r.playerId === playerSheetId) ?? null;
           const sheetMeta = shellRef.current?.getRouteMeta(playerSheetId) ?? null;
           const sheetPassEvents = passEvents.filter((p) => p.fromPlayerId === playerSheetId);
+          const sheetShotEvents = shotEvents.filter((s) => s.shooterId === playerSheetId);
           return (
             <PlayerActionSheet
               playerId={playerSheetId}
@@ -3770,6 +3273,7 @@ export default function TacticalPlaySurface() {
               routeMeta={sheetMeta}
               routes={routes}
               passEventsFromPlayer={sheetPassEvents}
+              shotEventsFromPlayer={sheetShotEvents}
               tokenNumberById={tokenNumberById}
               awayTokenIds={awayTokenIds}
               sport={activeSetupSport}
@@ -3793,14 +3297,19 @@ export default function TacticalPlaySurface() {
                   delayMs: undefined,
                 });
               }}
-              onAddPass={(toId, delayMs) => {
+              onSetRunConcept={(concept) => {
+                shellRef.current?.setRouteMeta(playerSheetId, { concept: concept ?? undefined });
+              }}
+              onAddPass={(toId, timing) => {
                 const shell = shellRef.current;
                 if (!shell) return;
                 shell.addPassEvent({
                   id: `pass-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                   fromPlayerId: playerSheetId,
                   toPlayerId: toId,
-                  delayMs,
+                  ...(timing.triggeredBy != null
+                    ? { triggeredBy: timing.triggeredBy }
+                    : { delayMs: timing.delayMs ?? 0 }),
                 });
               }}
               onRemovePass={(id) => {
@@ -3829,17 +3338,19 @@ export default function TacticalPlaySurface() {
               onAddShot={(delayMs) => {
                 const shell = shellRef.current;
                 if (!shell) return;
-                shell.addShotEvent({
+                const entry: TacticalShotEvent = {
                   id: `shot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                   shooterId: playerSheetId,
                   delayMs,
-                });
+                };
+                shell.addShotEvent(entry);
+                // No shell onShotEventsChange callback exists, so keep the React
+                // shotEvents state in sync manually (matches the retired panel).
+                setShotEvents((prev) => [...prev, entry]);
               }}
-              onBehaviour={() => {
-                setMovementsSelectedPlayerId(playerSheetId);
-                setMovementsOpen(true);
-                setIsControlsOpen(true);
-                setPlayerSheetId(null);
+              onRemoveShot={(id) => {
+                setShotEvents((prev) => prev.filter((s) => s.id !== id));
+                shellRef.current?.removeShotEvent(id);
               }}
             />
           );
