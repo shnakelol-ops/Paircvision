@@ -225,6 +225,20 @@ const CTRL_BUBBLE_STYLE: CSSProperties = {
   boxShadow: "0 12px 28px rgba(0, 4, 14, 0.50), inset 0 1px 0 rgba(255, 255, 255, 0.18)",
 };
 
+// Portrait-only contextual playback control: one pill centred at the bottom,
+// between the CTRL (left) and SETUP (right) bubbles, at the same bottom offset so
+// it never overlaps them. Reuses the existing bubble look with a play-green
+// accent to read as the primary action.
+const PORTRAIT_PLAYBACK_BUTTON_STYLE: CSSProperties = {
+  ...CTRL_BUBBLE_STYLE,
+  left: "50%",
+  right: "auto",
+  transform: "translateX(-50%)",
+  border: "1px solid rgba(124, 255, 114, 0.42)",
+  background: "rgba(14, 32, 22, 0.82)",
+  color: "#c4ffbf",
+};
+
 const SETUP_BUBBLE_STYLE: CSSProperties = {
   position: "fixed",
   right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
@@ -283,6 +297,15 @@ const PITCH_WATERMARK_STYLE: CSSProperties = {
   textShadow: "0 1px 4px rgba(0, 0, 0, 0.55), 0 0 12px rgba(0, 0, 0, 0.35)",
   pointerEvents: "none",
   userSelect: "none",
+};
+
+// Portrait watermark position only (size/opacity/style unchanged): lifted above
+// the bottom end line and kept inside the right pitch border. Percentage bottom
+// tracks the end line as the pitch scales.
+const PORTRAIT_PITCH_WATERMARK_STYLE: CSSProperties = {
+  ...PITCH_WATERMARK_STYLE,
+  bottom: "14%",
+  right: "24px",
 };
 
 const CONTROL_PANEL_STYLE: CSSProperties = {
@@ -888,6 +911,12 @@ export default function TacticalPlaySurface() {
   });
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  // Playback "completed" is a UI-only derivation from the existing engine state
+  // (the engine has no completion flag). It flips true when a run finishes on its
+  // own (playing -> stopped, not paused) and clears on play start / reset. Used
+  // only to label the portrait contextual playback button; no engine change.
+  const [playbackCompleted, setPlaybackCompleted] = useState(false);
+  const wasPlayingRef = useRef(false);
   const [isControlsOpen, setIsControlsOpen] = useState(false);
   const [ballCarrierId, setBallCarrierId] = useState<string | null>(null);
   const [ballOnPitch, setBallOnPitch] = useState(false);
@@ -1077,6 +1106,13 @@ export default function TacticalPlaySurface() {
         onPlaybackStateChange: (state) => {
           setIsPlaying(state.isPlaying);
           setIsPaused(state.isPaused);
+          if (state.isPlaying) {
+            setPlaybackCompleted(false);
+          } else if (!state.isPaused && wasPlayingRef.current) {
+            // Playing -> stopped without pausing = the sequence finished.
+            setPlaybackCompleted(true);
+          }
+          wasPlayingRef.current = state.isPlaying;
         },
         onRouteEditStateChange: (state) => {
           setRouteEditState(state);
@@ -1410,6 +1446,12 @@ export default function TacticalPlaySurface() {
     sheetDrawRunPlayerIdRef.current = null;
     exitEditRun();
     setMenuMode("move");
+    // Clear completion tracking BEFORE reset(): reset() re-emits playback state
+    // synchronously, and a stale wasPlayingRef would otherwise re-flag completion.
+    wasPlayingRef.current = false;
+    setPlaybackCompleted(false);
+    // shell.reset() returns every player and the ball to the sequence start and
+    // preserves routes, passes, shots, delays, phases, timing and saved data.
     shellRef.current?.reset();
   };
 
@@ -2030,6 +2072,20 @@ export default function TacticalPlaySurface() {
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
   const clearAllDisabled = isPlaying || (routes.length === 0 && passEvents.length === 0 && shotEvents.length === 0);
   const playbackFloatingVisible = isPlaying || isPaused;
+  // Portrait contextual playback button: shown only when the board has something
+  // playable (a run/movement, pass, or shot) and no bottom panel/sheet is open,
+  // so it never overlaps CTRL, SETUP, the player action sheet or open menus.
+  const hasPlayableContent = routes.length > 0 || passEvents.length > 0 || shotEvents.length > 0;
+  const portraitBottomPanelOpen =
+    isControlsOpen || setupOpen || sequenceOpen || movementsOpen || passesOpen || playsOpen || playerSheetId != null;
+  const showPortraitPlaybackButton = isPortrait && hasPlayableContent && !portraitBottomPanelOpen;
+  const portraitPlaybackLabel = playbackCompleted
+    ? "↺ Reset Play"
+    : isPlaying
+      ? "⏸ Pause"
+      : isPaused
+        ? "▶ Resume"
+        : "▶ Play";
   const tokenIds = Object.keys(tokenNumberById);
   const homePlayerCount = tokenIds.filter((id) => !awayTokenIds.has(id)).length;
 
@@ -2089,7 +2145,7 @@ export default function TacticalPlaySurface() {
         <VisionStadiumBackground variant="play" portrait={isPortrait} />
         <div style={isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
           <div ref={hostRef} style={PITCH_STYLE} />
-          <div style={PITCH_WATERMARK_STYLE}>PáircVision</div>
+          <div style={isPortrait ? PORTRAIT_PITCH_WATERMARK_STYLE : PITCH_WATERMARK_STYLE}>PáircVision</div>
           <TextAnnotationOverlay
             annotations={textAnnotations}
             active={labelToolActive && !isPlaying && !isPaused && editRunPlayerId === null}
@@ -2111,6 +2167,22 @@ export default function TacticalPlaySurface() {
         >
           CTRL
         </button>
+        {showPortraitPlaybackButton ? (
+          <button
+            type="button"
+            style={PORTRAIT_PLAYBACK_BUTTON_STYLE}
+            aria-label={playbackCompleted ? "Reset play" : isPlaying ? "Pause playback" : isPaused ? "Resume playback" : "Play"}
+            onClick={() => {
+              if (playbackCompleted) {
+                resetPlaybackState();
+                return;
+              }
+              onPauseResumePress();
+            }}
+          >
+            {portraitPlaybackLabel}
+          </button>
+        ) : null}
         <button
           type="button"
           style={setupOpen
