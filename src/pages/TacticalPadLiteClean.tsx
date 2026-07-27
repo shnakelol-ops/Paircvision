@@ -17,6 +17,10 @@ import {
   sanitizeInitials,
   sanitizeName,
 } from "../engine/pixi/createTacticalPadLiteSurface";
+import {
+  createTacticalSlateTeamFormationSeeds,
+  TACTICAL_SLATE_FULL_TEAM_NUMBERS,
+} from "../engine/pixi/tacticalSlateDefaultPlayers";
 import StatsModeSurface from "../StatsModeSurface";
 import OrientationGate, { usePortraitOrientation } from "../components/OrientationGate";
 import { useCanvasRecorder } from "../features/shared/useCanvasRecorder";
@@ -1485,30 +1489,6 @@ const COACH_HUB_ACTION_GRID_STYLE: CSSProperties = {
   gap: "3px",
 };
 
-const GAELIC_FORMATION_BASE: ReadonlyArray<{ number: number; x: number; y: number }> = [
-  { number: 1,  x: 8,  y: 50 },
-  { number: 2,  x: 20, y: 22 },
-  { number: 3,  x: 20, y: 50 },
-  { number: 4,  x: 20, y: 78 },
-  { number: 5,  x: 34, y: 18 },
-  { number: 6,  x: 34, y: 50 },
-  { number: 7,  x: 34, y: 82 },
-  { number: 8,  x: 48, y: 38 },
-  { number: 9,  x: 48, y: 62 },
-  { number: 10, x: 62, y: 18 },
-  { number: 11, x: 62, y: 50 },
-  { number: 12, x: 62, y: 82 },
-  { number: 13, x: 78, y: 25 },
-  { number: 14, x: 78, y: 50 },
-  { number: 15, x: 78, y: 75 },
-];
-
-function getGaelicFormationPos(team: "BLUE" | "RED", number: number): { x: number; y: number } {
-  const base = GAELIC_FORMATION_BASE.find((p) => p.number === number);
-  if (!base) return { x: team === "BLUE" ? 30 : 70, y: 50 };
-  return team === "RED" ? { x: 100 - base.x, y: base.y } : { x: base.x, y: base.y };
-}
-
 const COACH_HUB_ACTION_BUTTON_STYLE: CSSProperties = {
   ...COACH_HUB_TOOL_BUTTON_STYLE,
   minWidth: 0,
@@ -2698,6 +2678,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         }
       }
       setBoardSurfaceReadyNonce((previous) => previous + 1);
+      if (!isWhiteboardMode) {
+        syncTeamCounts();
+      }
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
           surface.reflow();
@@ -3709,25 +3692,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     surfaceRef.current?.clearWhiteboardStrokes();
   };
 
-  const resetBoardFromTools = () => {
-    if (shouldBlockPortraitInput) return;
-    withDiscardConfirm("reset", () => {
-    const surface = surfaceRef.current;
-    surface?.reset();
-    setIsPlaying(false);
-    setIsPaused(false);
-    setTextAnnotations([]);
-    setTextToolActive(false);
-    const resetSnapshot = captureCurrentBoardSnapshot();
-    boardBaselineSignatureRef.current = serializeBoardState(resetSnapshot);
-    textAnnotationsBaselineRef.current = "[]";
-    clearActiveBoardDraft();
-    setPendingRecoveredBoardDraft(null);
-    syncTeamCounts();
-    });
-  };
-
-  const doNewBoard = (surface: TacticalPadLiteSurface) => {
+  const restoreCanonicalNewBoard = (surface: TacticalPadLiteSurface, notice?: string) => {
     surface.newBoard();
     const pristineSnapshot = captureCurrentBoardSnapshot();
     boardBaselineSignatureRef.current = serializeBoardState(pristineSnapshot);
@@ -3750,8 +3715,22 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setToolsOpen(false);
     setControlsOpen(false);
     closeActionsMenu();
-    showQuickBoardNotice("New board ready");
+    if (notice) showQuickBoardNotice(notice);
     syncTeamCounts();
+  };
+
+  const resetBoardFromTools = () => {
+    if (shouldBlockPortraitInput) return;
+    withDiscardConfirm("reset", () => {
+      const surface = surfaceRef.current;
+      if (!surface) return;
+      // Same canonical pristine state as first launch / New Board.
+      restoreCanonicalNewBoard(surface);
+    });
+  };
+
+  const doNewBoard = (surface: TacticalPadLiteSurface) => {
+    restoreCanonicalNewBoard(surface, "New board ready");
   };
 
   const handleBgImageFile = (file: File) => {
@@ -3821,24 +3800,25 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     const surface = surfaceRef.current;
     if (!surface || shouldBlockPortraitInput) return;
     const boardState = surface.exportBoardState();
-    const prefix = team === "BLUE" ? "B" : "R";
     const teamColor = team === "BLUE" ? "blue" : "red";
     const otherPlayers = (boardState.players as Array<Record<string, unknown>>).filter(
       (p) => p.team !== team,
     );
-    const teamPlayers = Array.from(numbers)
-      .sort((a, b) => a - b)
-      .map((number) => {
-        const pos = getGaelicFormationPos(team, number);
-        return { id: `${prefix}${number}`, number, team, teamColor, x: pos.x, y: pos.y };
-      });
+    const teamPlayers = createTacticalSlateTeamFormationSeeds(team, Array.from(numbers)).map((seed) => ({
+      id: seed.id,
+      number: seed.number,
+      team: seed.team,
+      teamColor,
+      x: seed.position.x,
+      y: seed.position.y,
+    }));
     surface.importBoardState({ ...boardState, players: [...otherPlayers, ...teamPlayers] });
     setKitEditorState(null);
     syncTeamCounts();
   };
 
   const fillTeam = (team: "BLUE" | "RED") => {
-    applyTeamNumbers(team, new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
+    applyTeamNumbers(team, new Set(TACTICAL_SLATE_FULL_TEAM_NUMBERS));
   };
 
   const clearTeam = (team: "BLUE" | "RED") => {
