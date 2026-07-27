@@ -27,6 +27,29 @@ describe("tacticalSlateDefaultPlayers", () => {
     }
   });
 
+  it("keeps even wing jerseys on the left (higher y) and odd wings on the right", () => {
+    const byNumber = new Map(
+      TACTICAL_SLATE_GAELIC_FORMATION_BASE.map((point) => [point.number, point] as const),
+    );
+    const leftRightPairs: ReadonlyArray<readonly [number, number]> = [
+      [2, 4],
+      [5, 7],
+      [10, 12],
+      [13, 15],
+    ];
+    for (const [leftEven, rightOdd] of leftRightPairs) {
+      const left = byNumber.get(leftEven);
+      const right = byNumber.get(rightOdd);
+      expect(left, `missing #${leftEven}`).toBeTruthy();
+      expect(right, `missing #${rightOdd}`).toBeTruthy();
+      expect(left!.x).toBe(right!.x);
+      expect(left!.y).toBeGreaterThan(right!.y);
+    }
+    for (const centre of [1, 3, 6, 11, 14] as const) {
+      expect(byNumber.get(centre)?.y).toBe(50);
+    }
+  });
+
   it("mirrors Team B formation across the pitch midline", () => {
     const home = getTacticalSlateGaelicFormationPos("BLUE", 14);
     const away = getTacticalSlateGaelicFormationPos("RED", 14);

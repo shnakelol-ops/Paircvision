@@ -18,23 +18,36 @@ export type TacticalSlateFormationPoint = {
   y: number;
 };
 
-/** Normalised pitch coords [0,100]. Same geometry Fill 15 has always used on Slate. */
+/**
+ * Normalised pitch coords [0,100].
+ *
+ * Coach tactical-board view (own goal at low x, attack toward high x):
+ *   - Lower y = right side of the pitch
+ *   - Higher y = left side of the pitch
+ *
+ * Conventional Gaelic numbering from that view:
+ *   even jerseys (#2/#5/#10/#13) on the LEFT (higher y)
+ *   odd wing jerseys (#4/#7/#12/#15) on the RIGHT (lower y)
+ *   centres (#1/#3/#6/#11/#14) and midfield (#8/#9) stay on the spine
+ *
+ * Do not "fix" left/right by patching callers — edit this table only.
+ */
 export const TACTICAL_SLATE_GAELIC_FORMATION_BASE: ReadonlyArray<TacticalSlateFormationPoint> = [
   { number: 1, x: 8, y: 50 },
-  { number: 2, x: 20, y: 22 },
+  { number: 2, x: 20, y: 78 },
   { number: 3, x: 20, y: 50 },
-  { number: 4, x: 20, y: 78 },
-  { number: 5, x: 34, y: 18 },
+  { number: 4, x: 20, y: 22 },
+  { number: 5, x: 34, y: 82 },
   { number: 6, x: 34, y: 50 },
-  { number: 7, x: 34, y: 82 },
+  { number: 7, x: 34, y: 18 },
   { number: 8, x: 48, y: 38 },
   { number: 9, x: 48, y: 62 },
-  { number: 10, x: 62, y: 18 },
+  { number: 10, x: 62, y: 82 },
   { number: 11, x: 62, y: 50 },
-  { number: 12, x: 62, y: 82 },
-  { number: 13, x: 78, y: 25 },
+  { number: 12, x: 62, y: 18 },
+  { number: 13, x: 78, y: 75 },
   { number: 14, x: 78, y: 50 },
-  { number: 15, x: 78, y: 75 },
+  { number: 15, x: 78, y: 25 },
 ];
 
 export const TACTICAL_SLATE_FULL_TEAM_NUMBERS: ReadonlyArray<number> = [
