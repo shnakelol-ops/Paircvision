@@ -4283,7 +4283,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         {!isWhiteboardMode ? <VisionStadiumBackground variant="board" portrait={isPortrait} /> : null}
         <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
           <div ref={hostRef} style={pitchSurfaceStyle} />
-          {!isWhiteboardMode ? <PitchWatermark portrait={isPortrait} /> : null}
+          {!isWhiteboardMode ? <PitchWatermark portrait={isPortrait} lowered /> : null}
           {!isWhiteboardMode && shouldBlockPortraitInput ? <div style={PORTRAIT_INTERACTION_SHIELD_STYLE} aria-hidden="true" /> : null}
           {!isWhiteboardMode && !shouldBlockPortraitInput ? (
             <SlateTextOverlay

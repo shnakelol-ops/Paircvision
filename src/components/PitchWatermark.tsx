@@ -28,6 +28,20 @@ const PORTRAIT_PITCH_WATERMARK_STYLE: CSSProperties = {
   right: "24px",
 };
 
-export function PitchWatermark({ portrait }: { portrait: boolean }) {
-  return <div style={portrait ? PORTRAIT_PITCH_WATERMARK_STYLE : PITCH_WATERMARK_STYLE}>PáircVision</div>;
+// Tactical Slate portrait only: same right-edge offset as Tactical Play, but
+// held lower so it sits in the endline-to-13m strip instead of drifting up
+// toward the 20m line (GAA pitch markings sit at 13/145 ≈ 9% and 20/145 ≈ 13.8%
+// of pitch length from the endline — see t13/t20 in core/pitch/pitch-config.ts).
+const PORTRAIT_SLATE_PITCH_WATERMARK_STYLE: CSSProperties = {
+  ...PORTRAIT_PITCH_WATERMARK_STYLE,
+  bottom: "5%",
+};
+
+export function PitchWatermark({ portrait, lowered }: { portrait: boolean; lowered?: boolean }) {
+  const style = portrait
+    ? lowered
+      ? PORTRAIT_SLATE_PITCH_WATERMARK_STYLE
+      : PORTRAIT_PITCH_WATERMARK_STYLE
+    : PITCH_WATERMARK_STYLE;
+  return <div style={style}>PáircVision</div>;
 }
