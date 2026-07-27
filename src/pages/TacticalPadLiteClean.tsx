@@ -23,6 +23,7 @@ import {
 } from "../engine/pixi/tacticalSlateDefaultPlayers";
 import StatsModeSurface from "../StatsModeSurface";
 import OrientationGate, { usePortraitOrientation } from "../components/OrientationGate";
+import { PitchWatermark } from "../components/PitchWatermark";
 import { useCanvasRecorder } from "../features/shared/useCanvasRecorder";
 import { captureQuickBoardSnapshot, restoreQuickBoardSnapshot } from "../features/quickboard/storage/quickboard-snapshot";
 import { generateQuickBoardThumbnail } from "../features/quickboard/storage/quickboard-thumbnail";
@@ -4282,6 +4283,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         {!isWhiteboardMode ? <VisionStadiumBackground variant="board" portrait={isPortrait} /> : null}
         <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
           <div ref={hostRef} style={pitchSurfaceStyle} />
+          {!isWhiteboardMode ? <PitchWatermark portrait={isPortrait} /> : null}
           {!isWhiteboardMode && shouldBlockPortraitInput ? <div style={PORTRAIT_INTERACTION_SHIELD_STYLE} aria-hidden="true" /> : null}
           {!isWhiteboardMode && !shouldBlockPortraitInput ? (
             <SlateTextOverlay
