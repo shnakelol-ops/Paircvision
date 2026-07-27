@@ -44,6 +44,10 @@ import {
   orderMembersForGuide,
   type ShapePoint,
 } from "./shapeLockTranslation";
+import {
+  createTacticalSlateDefaultPlayerSeeds,
+  type TacticalSlateDefaultPlayerSeed,
+} from "./tacticalSlateDefaultPlayers";
 
 /**
  * Shape Lock is an editing-only convenience for Tactical Slate. It is never
@@ -410,10 +414,6 @@ type TacticalBoardTeamKitsState = {
   B: TacticalTeamKitState;
 };
 
-const TACTICAL_INITIAL_TEAM_COUNTS = {
-  blue: 1,
-  red: 1,
-} as const;
 const DEFAULT_PLAYBACK_SPEED_MULTIPLIER = 1;
 const MIN_PLAYBACK_SPEED_MULTIPLIER = 0.25;
 const MAX_PLAYBACK_SPEED_MULTIPLIER = 1.5;
@@ -843,6 +843,28 @@ function createWhiteboardPlayerSeeds(
   return [...bluePlayers, ...redPlayers];
 }
 
+function mapSlateDefaultSeedToPlayerSeed(
+  seed: TacticalSlateDefaultPlayerSeed,
+  colors: NonNullable<TacticalPadLiteSurfaceOptions["whiteboardTeamColors"]>,
+): PlayerSeed {
+  return {
+    id: seed.id,
+    number: seed.number,
+    team: seed.team,
+    color: seed.team === "RED" ? (colors.red ?? "red") : (colors.blue ?? "blue"),
+    position: { x: seed.position.x, y: seed.position.y },
+  };
+}
+
+/** Canonical tactical new-board roster (Team A × 15, Team B empty). */
+function createTacticalDefaultPlayerSeeds(
+  colors: NonNullable<TacticalPadLiteSurfaceOptions["whiteboardTeamColors"]>,
+): PlayerSeed[] {
+  return createTacticalSlateDefaultPlayerSeeds().map((seed) =>
+    mapSlateDefaultSeedToPlayerSeed(seed, colors),
+  );
+}
+
 function teamPrefix(team: "BLUE" | "RED"): "B" | "R" {
   return team === "RED" ? "R" : "B";
 }
@@ -1095,7 +1117,7 @@ export async function createTacticalPadLiteSurface(
   const playerSeeds =
     surfaceVariant === "whiteboard"
       ? createWhiteboardPlayerSeeds(options.whiteboardTeamCounts, options.whiteboardTeamColors)
-      : createWhiteboardPlayerSeeds(TACTICAL_INITIAL_TEAM_COUNTS, tacticalTeamColors);
+      : createTacticalDefaultPlayerSeeds(tacticalTeamColors);
 
   function getTeamKitForTeam(team: "BLUE" | "RED"): TacticalTeamKitState {
     return team === "BLUE" ? tacticalTeamKits.A : tacticalTeamKits.B;
@@ -3691,7 +3713,7 @@ export async function createTacticalPadLiteSurface(
           color: player.teamColor,
           position: { x: player.x, y: player.y },
         }))
-      : createWhiteboardPlayerSeeds(TACTICAL_INITIAL_TEAM_COUNTS, tacticalTeamColors);
+      : createTacticalDefaultPlayerSeeds(tacticalTeamColors);
 
     for (let index = 0; index < playerSeeds.length; index += 1) {
       const seed = playerSeeds[index];
