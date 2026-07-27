@@ -212,7 +212,6 @@ function buildGaelicFootballLandscapeMarkings(): PitchMarking[] {
   const t65 = 65 / Lm;
   const xAt = (lenFrac: number) => pitchLeft + lenFrac * pitchWidth;
 
-  const dash13 = "4.2 3.6";
   const wTouch = 0.52;
   const wHalf = 0.6;
   const w45 = 0.54;
@@ -265,8 +264,8 @@ function buildGaelicFootballLandscapeMarkings(): PitchMarking[] {
 
   return [
     { kind: "rect", x: pitchLeft, y: pitchTop, w: pitchWidth, h: pitchHeight, stroke: Lg.lineGridStrong, strokeWidth: wTouch },
-    { kind: "line", x1: x13L, y1: pitchTop, x2: x13L, y2: pitchBottom, stroke: Lg.lineGridSoft, strokeWidth: w13, strokeDasharray: dash13 },
-    { kind: "line", x1: x13R, y1: pitchTop, x2: x13R, y2: pitchBottom, stroke: Lg.lineGridSoft, strokeWidth: w13, strokeDasharray: dash13 },
+    { kind: "line", x1: x13L, y1: pitchTop, x2: x13L, y2: pitchBottom, stroke: Lg.lineGridSoft, strokeWidth: w13 },
+    { kind: "line", x1: x13R, y1: pitchTop, x2: x13R, y2: pitchBottom, stroke: Lg.lineGridSoft, strokeWidth: w13 },
     { kind: "line", x1: left20mX, y1: pitchTop, x2: left20mX, y2: pitchBottom, stroke: Lg.lineGridMid, strokeWidth: w20 },
     { kind: "line", x1: right20mX, y1: pitchTop, x2: right20mX, y2: pitchBottom, stroke: Lg.lineGridMid, strokeWidth: w20 },
     { kind: "line", x1: x45L, y1: pitchTop, x2: x45L, y2: pitchBottom, stroke: Lg.lineGridStrong, strokeWidth: w45 },
@@ -304,7 +303,6 @@ const hurlingCamogieLandscapeMarkings: PitchMarking[] = (() => {
   const t65 = 65 / Lm;
   const xAt = (lenFrac: number) => pitchLeft + lenFrac * pitchWidth;
 
-  const dash13 = "4.2 3.6";
   const wTouch = 0.52;
   const wHalf = 0.6;
   const w45 = 0.54;
@@ -350,8 +348,8 @@ const hurlingCamogieLandscapeMarkings: PitchMarking[] = (() => {
 
   return [
     { kind: "rect", x: pitchLeft, y: pitchTop, w: pitchWidth, h: pitchHeight, stroke: Lg.lineGridStrong, strokeWidth: wTouch },
-    { kind: "line", x1: x13L, y1: pitchTop, x2: x13L, y2: pitchBottom, stroke: Lg.lineGridSoft, strokeWidth: w13, strokeDasharray: dash13 },
-    { kind: "line", x1: x13R, y1: pitchTop, x2: x13R, y2: pitchBottom, stroke: Lg.lineGridSoft, strokeWidth: w13, strokeDasharray: dash13 },
+    { kind: "line", x1: x13L, y1: pitchTop, x2: x13L, y2: pitchBottom, stroke: Lg.lineGridSoft, strokeWidth: w13 },
+    { kind: "line", x1: x13R, y1: pitchTop, x2: x13R, y2: pitchBottom, stroke: Lg.lineGridSoft, strokeWidth: w13 },
     { kind: "line", x1: left20mX, y1: pitchTop, x2: left20mX, y2: pitchBottom, stroke: Lg.lineGridMid, strokeWidth: w20 },
     { kind: "line", x1: right20mX, y1: pitchTop, x2: right20mX, y2: pitchBottom, stroke: Lg.lineGridMid, strokeWidth: w20 },
     { kind: "line", x1: x45L, y1: pitchTop, x2: x45L, y2: pitchBottom, stroke: Lg.lineGridStrong, strokeWidth: w45 },
