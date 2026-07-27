@@ -47,6 +47,12 @@ import type { TacticalUnit } from "./tacticalUnitTypes";
 import { buildMemberRoutes } from "./tacticalUnitHelpers";
 import type { NormalizedPoint } from "../../movement-board/coordinates/normalization";
 import PlayerActionSheet from "./PlayerActionSheet";
+import {
+  SETUP_SITUATIONS,
+  TP_SPEED_OPTIONS,
+  ARRANGE_MODE_LABEL,
+  computeAnyBottomPanelOpen,
+} from "./tacticalPlayUi";
 
 type SetupSport = Extract<TacticalTemplateSport, "football" | "hurling">;
 
@@ -55,13 +61,6 @@ const SETUP_SPORT_OPTIONS: Array<{ id: SetupSport; label: string }> = [
   { id: "hurling", label: "Hurling/Camogie" },
 ];
 
-const SETUP_SITUATIONS: Array<{ id: TacticalTemplateSituation; label: string }> = [
-  { id: "restart", label: "Restart" },
-  { id: "attack", label: "Attack" },
-  { id: "defence", label: "Defence" },
-  { id: "press", label: "Press" },
-  { id: "demo", label: "Demo" },
-];
 
 const TRAINING_ITEM_CHOICES: ReadonlyArray<{ type: TacticalTrainingItemType; label: string }> = [
   { type: "cone", label: "Cone" },
@@ -335,6 +334,17 @@ const PANEL_ROW_STYLE: CSSProperties = {
   overflowX: "auto",
   scrollbarWidth: "none",
   msOverflowStyle: "none",
+};
+
+// Wrapping variant of PANEL_ROW_STYLE. Unlike the scrolling default, this wraps
+// so every control stays visible on narrow phones without hidden horizontal
+// scrolling. Used for Setup's primary category row and the speed preset row.
+const WRAP_PANEL_ROW_STYLE: CSSProperties = {
+  ...PANEL_ROW_STYLE,
+  flexWrap: "wrap",
+  overflowX: "visible",
+  rowGap: "3px",
+  borderRadius: "18px",
 };
 
 const TOOL_BUTTON_STYLE: CSSProperties = {
@@ -786,15 +796,6 @@ function getFormationPos(team: "home" | "away", number: number): { x: number; y:
   return team === "away" ? { x: 100 - base.x, y: base.y } : { x: base.x, y: base.y };
 }
 
-const TP_SPEED_OPTIONS: ReadonlyArray<{ multiplier: number; label: string }> = [
-  { multiplier: 0.15, label: "0.15×" },
-  { multiplier: 0.25, label: "0.25×" },
-  { multiplier: 0.5,  label: "0.5×"  },
-  { multiplier: 0.75, label: "0.75×" },
-  { multiplier: 1.0,  label: "1×"    },
-  { multiplier: 1.25, label: "1.25×" },
-  { multiplier: 1.5,  label: "1.5×"  },
-];
 const TP_DEFAULT_SPEED_MULTIPLIER = 1.0;
 const MAX_ZONES = 12;
 
@@ -816,39 +817,6 @@ function multiplierToPlaybackSpeed(n: number): "slow" | "normal" | "fast" {
   return "normal";
 }
 
-const TP_SPEED_BAR_STYLE: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "auto 1fr auto",
-  alignItems: "center",
-  gap: "5px",
-  height: "30px",
-  padding: "0 8px",
-  borderRadius: "999px",
-  border: "1px solid rgba(180, 210, 255, 0.22)",
-  background: "rgba(6, 14, 30, 0.72)",
-  backdropFilter: "blur(12px)",
-  WebkitBackdropFilter: "blur(12px)",
-  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 6px 18px rgba(0, 0, 0, 0.36)",
-  flex: "0 0 auto",
-};
-const TP_SPEED_LABEL_STYLE: CSSProperties = {
-  color: "rgba(200, 230, 255, 0.50)",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "8px",
-  fontWeight: 700,
-  letterSpacing: "0.18px",
-  userSelect: "none",
-};
-const TP_SPEED_VALUE_STYLE: CSSProperties = {
-  color: "rgba(220, 240, 255, 0.92)",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "9px",
-  fontWeight: 700,
-  letterSpacing: "0.12px",
-  textAlign: "right",
-  userSelect: "none",
-  minWidth: "32px",
-};
 
 export default function TacticalPlaySurface() {
   type MovementMenuMode = "move" | "route" | "ball" | "play";
@@ -912,6 +880,7 @@ export default function TacticalPlaySurface() {
   const [unitEditingId, setUnitEditingId] = useState<string | null>(null);
   const [unitDrawingId, setUnitDrawingId] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [speedOpen, setSpeedOpen] = useState(false);
   const [itemsOpen, setItemsOpen] = useState(false);
   const [trainingItems, setTrainingItems] = useState<TacticalTrainingItem[]>([]);
   const [selectedTrainingItemId, setSelectedTrainingItemId] = useState<string | null>(null);
@@ -1264,6 +1233,7 @@ export default function TacticalPlaySurface() {
       setPlaysOpen(false);
       setUnitsOpen(false);
       setAdvancedOpen(false);
+      setSpeedOpen(false);
       setItemsOpen(false);
       setZonesOpen(false);
       setZoneLibraryOpen("none");
@@ -1312,8 +1282,11 @@ export default function TacticalPlaySurface() {
     return aOrd - bOrd;
   });
 
+  // Coach-facing mode labels. "Arrange" describes the resting/authoring state
+  // (drag to reposition, Set Start, add/remove players). The internal enum key
+  // stays "move" — only this display label changes.
   const modeLabelByMenu: Record<MovementMenuMode, string> = {
-    move: "Move",
+    move: ARRANGE_MODE_LABEL,
     route: "Route",
     ball: "Ball",
     play: "Play",
@@ -1941,8 +1914,13 @@ export default function TacticalPlaySurface() {
   // playable (a run/movement, pass, or shot) and no bottom panel/sheet is open,
   // so it never overlaps CTRL, SETUP, the player action sheet or open menus.
   const hasPlayableContent = routes.length > 0 || passEvents.length > 0 || shotEvents.length > 0;
-  const portraitBottomPanelOpen =
-    isControlsOpen || setupOpen || sequenceOpen || playsOpen || playerSheetId != null;
+  // Any authoring panel/sheet open (excludes the Share panel, which owns playsOpen).
+  // Used to hide floating controls so they never overlap an open panel.
+  const anyBottomPanelOpen = computeAnyBottomPanelOpen({
+    isControlsOpen, setupOpen, sequenceOpen, unitsOpen, zonesOpen, itemsOpen,
+    playerSheetOpen: playerSheetId != null,
+  });
+  const portraitBottomPanelOpen = anyBottomPanelOpen || playsOpen;
   const showPortraitPlaybackButton = isPortrait && hasPlayableContent && !portraitBottomPanelOpen;
   const portraitPlaybackLabel = playbackCompleted
     ? "↺ Reset Play"
@@ -1956,27 +1934,19 @@ export default function TacticalPlaySurface() {
 
   const speedIndex = Math.max(0, TP_SPEED_OPTIONS.findIndex((o) => o.multiplier === playbackSpeedMultiplier));
   const speedLabel = TP_SPEED_OPTIONS[speedIndex]?.label ?? "1×";
-  const speedFillPct = (speedIndex / Math.max(1, TP_SPEED_OPTIONS.length - 1)) * 100;
-  const SpeedBarCompact = (
-    <div style={{ ...TP_SPEED_BAR_STYLE, width: "116px", height: "36px", padding: "0 8px" }}>
-      <span style={TP_SPEED_LABEL_STYLE}>SPD</span>
-      <input
-        type="range"
-        className="tp-speed-range"
-        min={0}
-        max={TP_SPEED_OPTIONS.length - 1}
-        step={1}
-        value={speedIndex}
-        aria-label="Playback speed"
-        style={{ width: "100%", minWidth: 0, "--tp-speed-track": `linear-gradient(90deg, rgba(34,197,94,0.95) 0%, rgba(34,197,94,0.95) ${speedFillPct}%, rgba(200,230,255,0.35) ${speedFillPct}%, rgba(200,230,255,0.35) 100%)` } as CSSProperties}
-        onChange={(e) => {
-          const idx = Math.max(0, Math.min(TP_SPEED_OPTIONS.length - 1, Number.parseInt(e.target.value, 10)));
-          const next = TP_SPEED_OPTIONS[idx]?.multiplier;
-          if (next != null) setPlaybackSpeedMultiplier(next);
-        }}
-      />
-      <span style={{ ...TP_SPEED_VALUE_STYLE, minWidth: "24px" }}>{speedLabel}</span>
-    </div>
+  // Compact speed control: a "Speed 1×" button that expands a full-size preset
+  // row on tap. The current speed stays visible on the button. Playback speed
+  // model and values (TP_SPEED_OPTIONS) are unchanged.
+  const SpeedButton = (
+    <button
+      type="button"
+      style={speedOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+      aria-label="Playback speed"
+      aria-expanded={speedOpen}
+      onClick={() => setSpeedOpen((prev) => !prev)}
+    >
+      Speed {speedLabel}
+    </button>
   );
 
   // Portrait: anchor PLAYS to bottom-right stack (above Setup), not pitch-center right.
@@ -2005,7 +1975,7 @@ export default function TacticalPlaySurface() {
 
   return (
     <OrientationGate modeLabel="Tactical Play" portraitEditable>
-      <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}input.tp-speed-range{-webkit-appearance:none;appearance:none;background:var(--tp-speed-track);height:8px;border-radius:4px;outline:none;cursor:pointer}input.tp-speed-range::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.50)}input.tp-speed-range::-moz-range-thumb{width:28px;height:28px;border-radius:50%;background:#fff;cursor:pointer;border:none;box-shadow:0 1px 4px rgba(0,0,0,.50)}`}</style>
+      <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}`}</style>
       <div style={rootStyle}>
         <VisionStadiumBackground variant="play" portrait={isPortrait} />
         <div style={isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
@@ -2470,11 +2440,29 @@ export default function TacticalPlaySurface() {
               >
                 Advanced {advancedOpen ? "▲" : "▾"}
               </button>
-              {SpeedBarCompact}
+              {SpeedButton}
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
               </button>
             </div>
+
+            {/* Speed presets — expanded from the Speed button. Full-size tap
+                targets that wrap, so speed is comfortably usable on narrow phones. */}
+            {speedOpen ? (
+              <div style={WRAP_PANEL_ROW_STYLE}>
+                <span style={SETUP_SECTION_LABEL_STYLE}>Speed</span>
+                {TP_SPEED_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.multiplier}
+                    type="button"
+                    style={opt.multiplier === playbackSpeedMultiplier ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                    onClick={() => { setPlaybackSpeedMultiplier(opt.multiplier); setSpeedOpen(false); }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
             {/* Row 4: Advanced drawer (Move as 1 promoted to Row 3) */}
             {advancedOpen ? (
@@ -2923,7 +2911,17 @@ export default function TacticalPlaySurface() {
               ))}
             </div>
 
-            <div style={PANEL_ROW_STYLE}>
+            <div style={WRAP_PANEL_ROW_STYLE}>
+              <button
+                type="button"
+                style={playersOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                onClick={() => {
+                  setActiveSetupSituation(null);
+                  setPlayersOpen((prev) => !prev);
+                }}
+              >
+                Players
+              </button>
               {SETUP_SITUATIONS.map((situation) => (
                 <button
                   key={situation.id}
@@ -2937,16 +2935,6 @@ export default function TacticalPlaySurface() {
                   {situation.label}
                 </button>
               ))}
-              <button
-                type="button"
-                style={playersOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => {
-                  setActiveSetupSituation(null);
-                  setPlayersOpen((prev) => !prev);
-                }}
-              >
-                Players
-              </button>
             </div>
 
             {activeSetupSituation !== null ? (
@@ -3049,8 +3037,11 @@ export default function TacticalPlaySurface() {
           </div>
         ) : null}
 
-        {/* PLAYS floating button — right-side, vertically centered */}
-        {!playbackFloatingVisible ? (
+        {/* PLAYS floating button — right-side, vertically centered.
+            Hidden while any authoring panel is open so it never overlaps Setup,
+            templates, Tools, the Player Card, or the speed control; restored when
+            they close. */}
+        {!playbackFloatingVisible && !anyBottomPanelOpen ? (
           <button
             type="button"
             style={playsOpen
