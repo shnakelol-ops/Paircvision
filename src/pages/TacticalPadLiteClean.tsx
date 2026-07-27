@@ -1575,6 +1575,13 @@ const RESET_BUTTON_STYLE: CSSProperties = {
     "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 18px rgba(239, 68, 68, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
 };
 
+const SHAPE_LOCK_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  border: "1px solid rgba(148, 163, 184, 0.6)",
+  boxShadow:
+    "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 18px rgba(148, 163, 184, 0.28), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
+};
+
 const UNDO_PHASE_BUTTON_STYLE: CSSProperties = {
   ...CONTROL_BUTTON_STYLE,
   border: "1px solid rgba(168, 85, 247, 0.6)",
@@ -1833,6 +1840,44 @@ const PHASES_CHIP_STYLE: CSSProperties = {
   backdropFilter: "blur(10px)",
   WebkitBackdropFilter: "blur(10px)",
   zIndex: 20,
+};
+
+const SHAPE_LOCK_PANEL_STYLE: CSSProperties = {
+  position: "fixed",
+  right: "max(12px, calc(env(safe-area-inset-right, 0px) + 10px))",
+  top: "max(12px, calc(env(safe-area-inset-top, 0px) + 10px))",
+  display: "flex",
+  flexDirection: "column",
+  gap: "6px",
+  maxWidth: "min(72vw, 244px)",
+  padding: "9px 11px",
+  borderRadius: "12px",
+  border: "1px solid rgba(148, 163, 184, 0.3)",
+  background: "rgba(10, 19, 20, 0.66)",
+  color: "#dce9e4",
+  fontFamily: "Inter, system-ui, sans-serif",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  boxShadow: "0 10px 24px rgba(0, 0, 0, 0.25)",
+  zIndex: 21,
+};
+
+const SHAPE_LOCK_PANEL_TITLE_STYLE: CSSProperties = {
+  fontSize: "11px",
+  fontWeight: 700,
+  letterSpacing: "0.2px",
+};
+
+const SHAPE_LOCK_PANEL_HINT_STYLE: CSSProperties = {
+  fontSize: "10px",
+  lineHeight: 1.35,
+  opacity: 0.74,
+};
+
+const SHAPE_LOCK_PANEL_ACTIONS_STYLE: CSSProperties = {
+  display: "flex",
+  gap: "6px",
+  flexWrap: "wrap",
 };
 
 const PHASES_TRAY_STYLE: CSSProperties = {
@@ -2144,6 +2189,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [items, setItems] = useState<TacticalItem[]>([]);
   const [itemMode, setItemMode] = useState<ItemMode>("locked");
   const [phaseCount, setPhaseCount] = useState(0);
+  // Shape Lock — transient editor convenience (Tactical Slate only). Mirrors the
+  // surface's own transient state; nothing here is persisted.
+  const [shapeLockMode, setShapeLockModeState] = useState<"off" | "select" | "active">("off");
+  const [shapeLockMemberCount, setShapeLockMemberCount] = useState(0);
   const [tacticalTokenStyle, setTacticalTokenStyle] = useState<TacticalPlayerTokenStyle>("vision-v3");
   const [isCompactPlayerTokens, setIsCompactPlayerTokens] = useState(false);
   const [playerTokensSubmenuOpen, setPlayerTokensSubmenuOpen] = useState(false);
@@ -2615,6 +2664,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         if (disposed) return;
         showRouteLimitWarning(`Route limit reached — Tactical Slate supports ${maxRoutes} routed players.`);
       },
+      onShapeLockChange: (state) => {
+        if (disposed) return;
+        setShapeLockModeState(state.mode);
+        setShapeLockMemberCount(state.memberIds.length);
+      },
       onItemMove: (itemId, x, y) => {
         if (disposed) return;
         const nextX = Math.max(0, Math.min(100, x));
@@ -2691,6 +2745,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     return () => {
       disposed = true;
       surfaceRef.current = null;
+      // Shape Lock is per-surface transient state; clear it when the surface is
+      // torn down so a fresh surface never inherits a stale selection panel.
+      setShapeLockModeState("off");
+      setShapeLockMemberCount(0);
       destroySurface?.();
     };
   }, [isStatsMode, isWhiteboardMode]);
@@ -3223,6 +3281,17 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   };
   const closeMyBoardsMenu = () => setMyBoardsOpen(false);
   const closeControlsMenu = () => setControlsOpen(false);
+  const enterShapeLock = () => {
+    // Shape Lock edits live positions with the Move tool; force it so tapping
+    // players selects them and dragging moves the group.
+    setTacticalTool("move");
+    setMovementModePillSelection("move");
+    surfaceRef.current?.setShapeLockMode("select");
+    closeControlsMenu();
+  };
+  const confirmShapeLock = () => surfaceRef.current?.setShapeLockMode("active");
+  const editShapeLockSelection = () => surfaceRef.current?.setShapeLockMode("select");
+  const releaseShapeLock = () => surfaceRef.current?.setShapeLockMode("off");
   const goHome = () => {
     closeActionsMenu();
     window.location.assign("/board");
@@ -4603,6 +4672,52 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             Phases: {phaseCount}
           </button>
         ) : null}
+        {!isWhiteboardMode && shapeLockMode !== "off" ? (
+          <div style={SHAPE_LOCK_PANEL_STYLE} role="group" aria-label="Shape Lock">
+            <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>
+              {shapeLockMode === "select"
+                ? `Shape Lock · ${shapeLockMemberCount} selected`
+                : `Shape Lock · ${shapeLockMemberCount} players`}
+            </div>
+            <div style={SHAPE_LOCK_PANEL_HINT_STYLE}>
+              {shapeLockMode === "select"
+                ? "Tap players to add or remove them, then confirm."
+                : "Drag any linked player to move them together while keeping their spacing."}
+            </div>
+            <div style={SHAPE_LOCK_PANEL_ACTIONS_STYLE}>
+              {shapeLockMode === "select" ? (
+                <button
+                  type="button"
+                  className="control-button"
+                  disabled={shapeLockMemberCount < 2}
+                  style={
+                    shapeLockMemberCount < 2 ? DISABLED_CONTROL_BUTTON_STYLE : SHAPE_LOCK_BUTTON_STYLE
+                  }
+                  onClick={confirmShapeLock}
+                >
+                  Move together
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="control-button"
+                  style={CONTROL_BUTTON_STYLE}
+                  onClick={editShapeLockSelection}
+                >
+                  Edit selection
+                </button>
+              )}
+              <button
+                type="button"
+                className="control-button"
+                style={RESET_BUTTON_STYLE}
+                onClick={releaseShapeLock}
+              >
+                Release
+              </button>
+            </div>
+          </div>
+        ) : null}
         {!isWhiteboardMode && phasesOpen ? (
           <div style={PHASES_TRAY_STYLE}>
             {phaseItems.length > 0 ? (
@@ -4798,6 +4913,22 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 }}
               >
                 Add Phase
+              </button>
+            ) : null}
+            {!shouldBlockPortraitInput ? (
+              <button
+                type="button"
+                className="control-button"
+                disabled={isAddPhaseBlocked || shapeLockMode !== "off"}
+                style={
+                  isAddPhaseBlocked || shapeLockMode !== "off"
+                    ? DISABLED_CONTROL_BUTTON_STYLE
+                    : SHAPE_LOCK_BUTTON_STYLE
+                }
+                title="Move players together while keeping their spacing"
+                onClick={enterShapeLock}
+              >
+                Shape Lock
               </button>
             ) : null}
             <button

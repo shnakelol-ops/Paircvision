@@ -40,9 +40,25 @@ import {
   type RoutePoint,
 } from "./movement/basicRouteFollow";
 import {
+  computeSharedDelta,
+  orderMembersForGuide,
+  type ShapePoint,
+} from "./shapeLockTranslation";
+import {
   createTacticalSlateDefaultPlayerSeeds,
   type TacticalSlateDefaultPlayerSeed,
 } from "./tacticalSlateDefaultPlayers";
+
+/**
+ * Shape Lock is an editing-only convenience for Tactical Slate. It is never
+ * persisted and never runs during playback. "off" = normal Slate; "select" =
+ * tap players to add/remove them from the shape; "active" = dragging any member
+ * translates the whole shape by the same delta, preserving spacing.
+ */
+export type ShapeLockMode = "off" | "select" | "active";
+
+/** Coach-facing cap on how many players can be linked into one shape. */
+const SHAPE_LOCK_MAX_MEMBERS = 15;
 
 export type TacticalKitPattern = MicroAthleteKitPattern;
 export type TacticalLabelMode = "number" | "initials" | "name";
@@ -173,6 +189,9 @@ export type TacticalPadLiteSurface = {
   importBoardState: (state: TacticalBoardState) => boolean;
   exportImageCanvas: () => HTMLCanvasElement | null;
   getCanvas: () => HTMLCanvasElement | null;
+  /** Shape Lock (Tactical Slate editing convenience). Transient, never persisted. */
+  setShapeLockMode: (mode: ShapeLockMode) => void;
+  getShapeLockState: () => { mode: ShapeLockMode; memberIds: string[] };
   destroy: () => void;
 };
 
@@ -195,6 +214,7 @@ type TacticalPadLiteSurfaceOptions = {
   onTacticalPlayerDoubleTap?: (payload: { playerId: string; clientX: number; clientY: number }) => void;
   onRouteStateChange?: (state: TacticalRouteState) => void;
   onRouteLimitReached?: (maxRoutes: number) => void;
+  onShapeLockChange?: (state: { mode: ShapeLockMode; memberIds: string[] }) => void;
 };
 
 type PhaseBallSnapshot = {
@@ -1046,6 +1066,11 @@ export async function createTacticalPadLiteSurface(
   const playerOriginGraphic = new Graphics();
   playerOriginGraphic.eventMode = "none";
   playerOriginLayer.addChild(playerOriginGraphic);
+  // Shape Lock guide outline. Shares the origin layer so it renders behind the
+  // player tokens and is non-interactive (never intercepts drags).
+  const shapeGuideGraphic = new Graphics();
+  shapeGuideGraphic.eventMode = "none";
+  playerOriginLayer.addChild(shapeGuideGraphic);
 
   const playersLayer = new Container();
   world.addChild(playersLayer);
@@ -1314,6 +1339,10 @@ export async function createTacticalPadLiteSurface(
   };
   let phases: PhaseSnapshot[] = [];
   let selectedPlayerId: string | null = null;
+  // Shape Lock — transient editor state only (never persisted / never in snapshots).
+  let shapeLockMode: ShapeLockMode = "off";
+  const shapeMemberIds = new Set<string>();
+  let shapeDragStart: { anchor: ShapePoint; positions: Map<string, ShapePoint> } | null = null;
   let isRouteCaptureMode = false;
   let routeByPlayerId = new Map<string, RoutePoint[]>();
   let activeRouteRunsByPlayerId = new Map<string, ActiveBasicRouteFollow>();
@@ -1352,6 +1381,11 @@ export async function createTacticalPadLiteSurface(
 
   function emitPlaybackStateChange(): void {
     syncWhiteboardTokenInputMode();
+    // Restore the Shape Lock guide once playback fully stops (it is suppressed
+    // while playing/paused). No-op when Shape Lock is off.
+    if (!isPlaying && !isPaused) {
+      renderShapeGuideGraphic();
+    }
     options.onPlaybackStateChange?.({ isPlaying, isPaused });
   }
 
@@ -1680,6 +1714,7 @@ export async function createTacticalPadLiteSurface(
       if (dragPlayer) {
         setPlayerDragVisualTarget(dragPlayer, true);
       }
+      beginShapeDragIfApplicable(activePlayerId);
       syncWhiteboardTokenInputMode();
       renderPlayerOriginGraphic();
     }
@@ -1697,6 +1732,33 @@ export async function createTacticalPadLiteSurface(
       clearPlayerOriginGraphic();
       return;
     }
+
+    // Shape Lock: translate every linked member by one shared, boundary-clamped
+    // delta so the group moves together and keeps its spacing.
+    if (shapeDragStart) {
+      const intendedAnchor: ShapePoint = {
+        x: Math.max(NORMALIZED_MIN, Math.min(NORMALIZED_MAX, normalized.x)),
+        y: Math.max(NORMALIZED_MIN, Math.min(NORMALIZED_MAX, normalized.y)),
+      };
+      const delta = computeSharedDelta(
+        shapeDragStart.positions,
+        shapeDragStart.anchor,
+        intendedAnchor,
+        NORMALIZED_MIN,
+        NORMALIZED_MAX,
+      );
+      for (const player of players) {
+        const start = shapeDragStart.positions.get(player.id);
+        if (!start) continue;
+        player.current = { x: start.x + delta.dx, y: start.y + delta.dy };
+        setTokenWorldPositionForPoint(player, player.current, mapper);
+        updateAttachedBallsForPlayer(player.id);
+      }
+      renderShapeGuideGraphic();
+      renderPlayerOriginGraphic();
+      return;
+    }
+
     dragPlayer.current = {
       x: Math.max(NORMALIZED_MIN, Math.min(NORMALIZED_MAX, normalized.x)),
       y: Math.max(NORMALIZED_MIN, Math.min(NORMALIZED_MAX, normalized.y)),
@@ -1786,6 +1848,112 @@ export async function createTacticalPadLiteSurface(
 
   function clearPlayerOriginGraphic(): void {
     playerOriginGraphic.clear();
+  }
+
+  function emitShapeLockChange(): void {
+    options.onShapeLockChange?.({ mode: shapeLockMode, memberIds: [...shapeMemberIds] });
+  }
+
+  function clearShapeGuideGraphic(): void {
+    shapeGuideGraphic.clear();
+  }
+
+  function renderShapeGuideGraphic(): void {
+    clearShapeGuideGraphic();
+    if (surfaceVariant !== "tactical") return;
+    if (shapeLockMode === "off") return;
+    if (isPlaybackInputLocked()) return;
+    if (shapeMemberIds.size < 2) return;
+
+    const memberPoints: ShapePoint[] = [];
+    for (const player of players) {
+      if (shapeMemberIds.has(player.id)) {
+        memberPoints.push({ x: player.current.x, y: player.current.y });
+      }
+    }
+    if (memberPoints.length < 2) return;
+
+    const ordered = orderMembersForGuide(memberPoints).map((point) =>
+      mapper.normalizedToWorld(point),
+    );
+    const first = ordered[0];
+    shapeGuideGraphic.moveTo(first.x, first.y);
+    for (let index = 1; index < ordered.length; index += 1) {
+      shapeGuideGraphic.lineTo(ordered[index].x, ordered[index].y);
+    }
+    if (ordered.length > 2) {
+      shapeGuideGraphic.lineTo(first.x, first.y);
+    }
+    // Quiet neutral grey outline — an editing aid, not a tactical mark.
+    shapeGuideGraphic.stroke({
+      color: 0x94a3b8,
+      alpha: 0.5,
+      width: 0.5,
+      cap: "round",
+      join: "round",
+      alignment: 0.5,
+    });
+    for (const point of ordered) {
+      shapeGuideGraphic.circle(point.x, point.y, 0.7).fill({ color: 0x94a3b8, alpha: 0.3 });
+    }
+  }
+
+  function toggleShapeMember(playerId: string): void {
+    if (!players.some((player) => player.id === playerId)) return;
+    if (shapeMemberIds.has(playerId)) {
+      shapeMemberIds.delete(playerId);
+    } else {
+      if (shapeMemberIds.size >= SHAPE_LOCK_MAX_MEMBERS) return;
+      shapeMemberIds.add(playerId);
+    }
+    renderShapeGuideGraphic();
+    emitShapeLockChange();
+  }
+
+  function releaseShapeLock(): void {
+    if (shapeLockMode === "off" && shapeMemberIds.size === 0) return;
+    shapeLockMode = "off";
+    shapeMemberIds.clear();
+    shapeDragStart = null;
+    clearShapeGuideGraphic();
+    emitShapeLockChange();
+  }
+
+  function setShapeLockModeInternal(mode: ShapeLockMode): void {
+    if (surfaceVariant !== "tactical") return;
+    if (mode === "off") {
+      releaseShapeLock();
+      return;
+    }
+    if (mode === shapeLockMode) return;
+    releaseActiveDrag();
+    clearSelectedItem();
+    shapeLockMode = mode;
+    shapeDragStart = null;
+    renderShapeGuideGraphic();
+    emitShapeLockChange();
+  }
+
+  /**
+   * At the start of a linked drag, snapshot the live position of every member.
+   * The shared delta is measured from these start positions on each move, so any
+   * prior individual fine-tuning is naturally captured as the new shape.
+   */
+  function beginShapeDragIfApplicable(draggedId: string): void {
+    shapeDragStart = null;
+    if (shapeLockMode !== "active") return;
+    if (!shapeMemberIds.has(draggedId)) return;
+    if (shapeMemberIds.size < 2) return;
+    const positions = new Map<string, ShapePoint>();
+    let anchor: ShapePoint | null = null;
+    for (const player of players) {
+      if (!shapeMemberIds.has(player.id)) continue;
+      const point = { x: player.current.x, y: player.current.y };
+      positions.set(player.id, point);
+      if (player.id === draggedId) anchor = point;
+    }
+    if (!anchor || positions.size < 2) return;
+    shapeDragStart = { anchor, positions };
   }
 
   function getCurrentPhaseStartSnapshot(): PhaseSnapshot {
@@ -2405,6 +2573,7 @@ export async function createTacticalPadLiteSurface(
       }
     }
     activeDrag = null;
+    shapeDragStart = null;
     clearPlayerOriginGraphic();
     syncWhiteboardTokenInputMode();
   }
@@ -2842,6 +3011,9 @@ export async function createTacticalPadLiteSurface(
   function handlePlay(): void {
     releaseActiveDrag();
     clearSelectedItem();
+    // Shape Lock guides are editing-only; hide them for the duration of playback.
+    // The selection itself is retained and its guide is redrawn once playback ends.
+    clearShapeGuideGraphic();
     if (isPaused && playbackPath.length >= 2) {
       isPaused = false;
       isPlaying = true;
@@ -3261,6 +3433,14 @@ export async function createTacticalPadLiteSurface(
         lastTappedPlayer = null;
         return;
       }
+      // Shape Lock intercepts taps: in "select" mode a tap toggles membership;
+      // in "active" mode a tap is a no-op. Either way, suppress ball attach and
+      // the double-tap kit editor while a shape is being edited.
+      if (shapeLockMode !== "off") {
+        if (shapeLockMode === "select") toggleShapeMember(player.id);
+        lastTappedPlayer = null;
+        return;
+      }
       if (isPossessionPassModeEnabled) {
         lastTappedPlayer = null;
         handlePossessionPassTap(player);
@@ -3278,6 +3458,7 @@ export async function createTacticalPadLiteSurface(
     }
     renderTacticalItems();
     renderPlayerOriginGraphic();
+    renderShapeGuideGraphic();
   }
 
   function rebuildWhiteboardPlayers(
@@ -3470,6 +3651,9 @@ export async function createTacticalPadLiteSurface(
   function importBoardState(state: TacticalBoardState): boolean {
     if (surfaceVariant !== "tactical") return false;
     if (!isRecord(state)) return false;
+    // Player identities are rebuilt on import, so any Shape Lock selection would
+    // reference stale tokens. Release it (covers newBoard, which imports too).
+    releaseShapeLock();
 
     const parsedPlayers = Array.isArray(state.players)
       ? state.players.map((entry) => sanitizeBoardPlayerState(entry)).filter((entry): entry is TacticalBoardPlayerState => entry != null)
@@ -3648,6 +3832,7 @@ export async function createTacticalPadLiteSurface(
     if (surfaceVariant !== "tactical") return;
     const nextSeed = createNextTacticalPlayerSeed(team);
     if (!nextSeed) return;
+    releaseShapeLock();
     releaseActiveDrag();
     const nextPlayer = createSurfacePlayer(nextSeed);
     players.push(nextPlayer);
@@ -3662,6 +3847,7 @@ export async function createTacticalPadLiteSurface(
       .map((player, index) => ({ index, serial: getTacticalPlayerSerial(player, team) }))
       .filter((entry) => players[entry.index]?.team === team);
     if (removablePlayers.length <= 0) return;
+    releaseShapeLock();
     releaseActiveDrag();
     const removalTarget = removablePlayers.reduce((current, next) => {
       if (next.serial > current.serial) return next;
@@ -4038,25 +4224,38 @@ export async function createTacticalPadLiteSurface(
       const resolveHtmlCanvas = (candidate: unknown): HTMLCanvasElement | null =>
         typeof HTMLCanvasElement !== "undefined" && candidate instanceof HTMLCanvasElement ? candidate : null;
 
+      // Editing-only overlays (Shape Lock guide, drag origin line) must never
+      // appear in an exported image/screenshot.
+      const guideWasVisible = shapeGuideGraphic.visible;
+      const originWasVisible = playerOriginGraphic.visible;
+      shapeGuideGraphic.visible = false;
+      playerOriginGraphic.visible = false;
       try {
-        const extractedFromStage = resolveHtmlCanvas(extract.canvas(app.stage));
-        if (extractedFromStage) {
-          return extractedFromStage;
+        try {
+          const extractedFromStage = resolveHtmlCanvas(extract.canvas(app.stage));
+          if (extractedFromStage) {
+            return extractedFromStage;
+          }
+        } catch {
+          // Fall back to texture extraction path.
         }
-      } catch {
-        // Fall back to texture extraction path.
-      }
 
-      const generatedTexture = app.renderer.textureGenerator.generateTexture(app.stage);
-      try {
-        return resolveHtmlCanvas(extract.canvas(generatedTexture));
-      } catch {
-        return null;
+        const generatedTexture = app.renderer.textureGenerator.generateTexture(app.stage);
+        try {
+          return resolveHtmlCanvas(extract.canvas(generatedTexture));
+        } catch {
+          return null;
+        } finally {
+          generatedTexture.destroy(true);
+        }
       } finally {
-        generatedTexture.destroy(true);
+        shapeGuideGraphic.visible = guideWasVisible;
+        playerOriginGraphic.visible = originWasVisible;
       }
     },
     getCanvas: () => canvas as HTMLCanvasElement,
+    setShapeLockMode: (mode) => setShapeLockModeInternal(mode),
+    getShapeLockState: () => ({ mode: shapeLockMode, memberIds: [...shapeMemberIds] }),
     destroy: () => {
       cancelBasicRouteFollow();
       clearRouteAssignments();
