@@ -2,6 +2,7 @@ import { Container, FillGradient, Graphics, GraphicsPath, Sprite, Texture, Tilin
 
 import { getPitchConfig, type PitchMarking, type PitchSport } from "../../core/pitch/pitch-config";
 import { BOARD_PITCH_VIEWBOX } from "../../core/pitch/pitch-space";
+import { buildGaaGoalMarkings } from "../../tactics/pitch/gaa-goal-markings";
 
 export type TacticalPitchVisualMount = {
   root: Container;
@@ -509,6 +510,19 @@ export function createTacticalPitchVisualRoot(
     markingsClarity.alpha = isSoccer ? 0.20 : 0.18;
   }
   face.addChild(markingsClarity);
+
+  // Tactics-only GAA goal graphic (Tactical Slate). Drawn from a dedicated
+  // tactics-only marking set — never the shared pitchConfig markings — so it
+  // stays out of Stats Mode, Pro Tagger, and every review/PDF export. See
+  // src/tactics/pitch/gaa-goal-markings.ts.
+  if (!isSoccer) {
+    const goalMarkings = buildGaaGoalMarkings();
+    const goalGraphics = new Graphics();
+    goalGraphics.zIndex = 4.5;
+    drawMarkings(goalGraphics, goalMarkings);
+    goalGraphics.tint = isWhiteboardTheme ? 0x0b1219 : 0xffffff;
+    face.addChild(goalGraphics);
+  }
 
   if (!isWhiteboardTheme) {
     const sheen = new FillGradient({
