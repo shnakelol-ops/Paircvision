@@ -176,6 +176,10 @@ export type MovementCanvasShellHandle = {
   getShotEvents: () => TacticalShotEvent[];
   removeShotEvent: (id: string) => void;
   getCanvas: () => HTMLCanvasElement | null;
+  /** Extracts the current Pixi scene as a still image, excluding all DOM
+   * chrome (which is never part of the canvas). Used by the unified Share
+   * sheet's Tactical Play adapter. Returns null if extraction is unavailable. */
+  exportImageCanvas: () => HTMLCanvasElement | null;
   setZones: (zones: readonly ZoneRecord[]) => void;
   getZones: () => ZoneRecord[];
   setSelectedZoneId: (id: string | null) => void;
