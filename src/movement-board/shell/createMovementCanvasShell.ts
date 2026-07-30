@@ -220,9 +220,9 @@ export async function createMovementCanvasShell(
   let routeMetaByTokenId = new Map<string, RouteMetadata>();
   let startPositionByTokenId = new Map<string, NormalizedPoint>();
   // Coach-chosen authoring visibility for committed routes. Presentation only —
-  // never read by playback and never persisted. Defaults to fully hidden so a
-  // busy walkthrough doesn't clutter the pitch with every route by default.
-  let routeVisibilityMode: RouteVisibilityMode = options.routeVisibilityMode ?? "hidden";
+  // never read by playback and never persisted. Defaults to "selected": no
+  // routes show until a player is picked, then only that player's route does.
+  let routeVisibilityMode: RouteVisibilityMode = options.routeVisibilityMode ?? "selected";
 
   const tokenLayer = createTokenLayer({
     layer: tokenLayerContainer,
@@ -1070,7 +1070,11 @@ export async function createMovementCanvasShell(
 
   const tick = () => {
     orchestrator.step(app.ticker.deltaMS);
-    if (activeBallPass) {
+    // A ball mid-flight must freeze exactly like everything else while paused
+    // or stopped — otherwise the pass "lands" during the pause and silently
+    // consumes the one-shot notifyPassLanded trigger while it's a no-op,
+    // permanently stranding anything gated on that pass (e.g. a shot).
+    if (activeBallPass && orchestrator.getState().isPlaying) {
       activeBallPass.elapsedMs += app.ticker.deltaMS * orchestrator.getSpeedMultiplier();
       if (activeBallPass.elapsedMs >= activeBallPass.durationMs) {
         const toPlayerId = activeBallPass.toPlayerId;

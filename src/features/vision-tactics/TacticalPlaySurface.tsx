@@ -855,9 +855,10 @@ export default function TacticalPlaySurface() {
   const [units, setUnits] = useState<TacticalUnit[]>([]);
   const [unitsOpen, setUnitsOpen] = useState(false);
   // Coach-chosen route-visibility mode. Presentation only — never saved with
-  // the play, never sent to export/JSON. Defaults to Hide All so a busy
-  // walkthrough doesn't start out cluttered with every committed route.
-  const [routeVisibilityMode, setRouteVisibilityMode] = useState<RouteVisibilityMode>("hidden");
+  // the play, never sent to export/JSON. Defaults to Selected Player: the
+  // standard coaching experience is a clean pitch until a player is picked,
+  // at which point only that player's route shows.
+  const [routeVisibilityMode, setRouteVisibilityMode] = useState<RouteVisibilityMode>("selected");
   const [routesMenuOpen, setRoutesMenuOpen] = useState(false);
   const [unitNameDraft, setUnitNameDraft] = useState("");
   const [unitEditingId, setUnitEditingId] = useState<string | null>(null);
@@ -2447,10 +2448,16 @@ export default function TacticalPlaySurface() {
                 Advanced {advancedOpen ? "▲" : "▾"}
               </button>
               {SpeedButton}
-              {RoutesButton}
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
               </button>
+            </div>
+
+            {/* Row 3b: Route visibility — its own row so the full mode name
+                (e.g. "Selected Player") always has room and never competes
+                with Row 3's other controls for space or gets clipped. */}
+            <div style={PANEL_ROW_STYLE}>
+              {RoutesButton}
             </div>
 
             {/* Route-visibility modes — expanded from the Routes button.

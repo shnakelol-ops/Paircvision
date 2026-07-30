@@ -125,6 +125,19 @@ export function createPlaybackOrchestrator(
     callbacks.onStateChange({ isPlaying, isPaused });
   };
 
+  // Single source of truth for "is there anything left for playback to do."
+  // A walkthrough can still have work pending in delayed/triggered passes,
+  // shots or triggers even when no player token is currently mid-route — any
+  // check that only looked at activePlaybackRuns would treat that state as
+  // "finished" and refuse to resume it.
+  const hasWork = () =>
+    activePlaybackRuns.size > 0 ||
+    pendingTriggerRuns.size > 0 ||
+    activePassRuns.size > 0 ||
+    pendingPassRuns.size > 0 ||
+    activeShotRuns.size > 0 ||
+    pendingShotRuns.size > 0;
+
   const cancelRuns = () => {
     for (const run of activePlaybackRuns.values()) {
       run.session.cancel();
@@ -242,14 +255,7 @@ export function createPlaybackOrchestrator(
   };
 
   const step = (deltaMs: number) => {
-    const hasWork =
-      activePlaybackRuns.size > 0 ||
-      pendingTriggerRuns.size > 0 ||
-      activePassRuns.size > 0 ||
-      pendingPassRuns.size > 0 ||
-      activeShotRuns.size > 0 ||
-      pendingShotRuns.size > 0;
-    if (!isPlaying || !hasWork) return;
+    if (!isPlaying || !hasWork()) return;
 
     const multiplier = speedMultiplierOverride;
     const completedIds: string[] = [];
@@ -335,21 +341,14 @@ export function createPlaybackOrchestrator(
       }
     }
 
-    if (
-      activePlaybackRuns.size === 0 &&
-      pendingTriggerRuns.size === 0 &&
-      activePassRuns.size === 0 &&
-      pendingPassRuns.size === 0 &&
-      activeShotRuns.size === 0 &&
-      pendingShotRuns.size === 0
-    ) {
+    if (!hasWork()) {
       stop();
     }
   };
 
   const start = () => {
     if (isPlaying) return;
-    if (isPaused && activePlaybackRuns.size > 0) {
+    if (isPaused && hasWork()) {
       isPaused = false;
       isPlaying = true;
       emitState();
@@ -380,7 +379,7 @@ export function createPlaybackOrchestrator(
   };
 
   const resume = () => {
-    if (!isPaused || activePlaybackRuns.size === 0) return;
+    if (!isPaused || !hasWork()) return;
     isPaused = false;
     isPlaying = true;
     emitState();
@@ -416,13 +415,7 @@ export function createPlaybackOrchestrator(
     step,
     notifyPassLanded,
     isLocked: () => isPlaying || isPaused,
-    hasActiveRuns: () =>
-      activePlaybackRuns.size > 0 ||
-      pendingTriggerRuns.size > 0 ||
-      activePassRuns.size > 0 ||
-      pendingPassRuns.size > 0 ||
-      activeShotRuns.size > 0 ||
-      pendingShotRuns.size > 0,
+    hasActiveRuns: () => hasWork(),
     getState: () => ({ isPlaying, isPaused }),
     setSpeed: (speed) => { playbackSpeed = speed; speedMultiplierOverride = PLAYBACK_SPEED_MULTIPLIER[speed]; },
     setSpeedMultiplier: (n) => { speedMultiplierOverride = n; },

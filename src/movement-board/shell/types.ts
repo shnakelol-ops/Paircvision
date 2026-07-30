@@ -116,7 +116,7 @@ export type MovementCanvasShellOptions = {
   mode?: MovementBoardMode;
   dragEnabled?: boolean;
   playbackSpeed?: MovementPlaybackSpeed;
-  /** Coach-chosen authoring visibility for committed routes. Presentation only — never persisted. Defaults to "hidden". */
+  /** Coach-chosen authoring visibility for committed routes. Presentation only — never persisted. Defaults to "selected". */
   routeVisibilityMode?: RouteVisibilityMode;
   initialTokens?: MovementBoardToken[];
   onPitchTap?: (payload: MovementCanvasTapPayload) => void;
