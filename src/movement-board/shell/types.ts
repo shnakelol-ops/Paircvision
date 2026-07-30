@@ -2,9 +2,11 @@ import type { PitchSport } from "../pitch/pitch-config";
 import type { NormalizedPoint } from "../coordinates/normalization";
 import type { PremiumPlayerTokenColor } from "../tokens/createPremiumPlayerToken";
 import type { TokenSize, TokenRendererName } from "../tokens/token-layer";
+import type { RouteVisibilityMode } from "../routes/route-visibility";
 
 export type { PremiumPlayerTokenColor };
 export type { TokenSize, TokenRendererName };
+export type { RouteVisibilityMode };
 
 export type BallType = "footballSmall" | "footballMedium" | "sliotarSmall" | "sliotarMedium";
 
@@ -114,6 +116,8 @@ export type MovementCanvasShellOptions = {
   mode?: MovementBoardMode;
   dragEnabled?: boolean;
   playbackSpeed?: MovementPlaybackSpeed;
+  /** Coach-chosen authoring visibility for committed routes. Presentation only — never persisted. Defaults to "hidden". */
+  routeVisibilityMode?: RouteVisibilityMode;
   initialTokens?: MovementBoardToken[];
   onPitchTap?: (payload: MovementCanvasTapPayload) => void;
   onTokenMove?: (token: MovementBoardToken) => void;
@@ -152,6 +156,9 @@ export type MovementCanvasShellHandle = {
   setSpeedMultiplier: (multiplier: number) => void;
   removeSelectedWaypoint: () => boolean;
   clearSelectedRoute: () => boolean;
+  /** Sets which committed routes are rendered. Rendering only — routeByTokenId, playback and selection are untouched. */
+  setRouteVisibilityMode: (mode: RouteVisibilityMode) => void;
+  getRouteVisibilityMode: () => RouteVisibilityMode;
   playAll: () => void;
   pausePlayback: () => void;
   resumePlayback: () => void;

@@ -23,6 +23,7 @@ import { createZoneLayer } from "../zones/zone-layer";
 import { routeStyleForToken } from "../routes/route-colors";
 import { createRouteLayer } from "../routes/route-layer";
 import { normalizeRoutePoints } from "../routes/route-sampling";
+import { shouldRenderCommittedRoute } from "../routes/route-visibility";
 import { buildDefaultTokens } from "../tokens/default-tokens";
 import { createTokenLayer } from "../tokens/token-layer";
 import type {
@@ -35,6 +36,7 @@ import type {
   MovementCanvasShellOptions,
   MovementRouteEditState,
   RouteMetadata,
+  RouteVisibilityMode,
   TacticalPassEvent,
   TacticalShotEvent,
 } from "./types";
@@ -217,6 +219,10 @@ export async function createMovementCanvasShell(
   let routeByTokenId = new Map<string, NormalizedPoint[]>();
   let routeMetaByTokenId = new Map<string, RouteMetadata>();
   let startPositionByTokenId = new Map<string, NormalizedPoint>();
+  // Coach-chosen authoring visibility for committed routes. Presentation only —
+  // never read by playback and never persisted. Defaults to fully hidden so a
+  // busy walkthrough doesn't clutter the pitch with every route by default.
+  let routeVisibilityMode: RouteVisibilityMode = options.routeVisibilityMode ?? "hidden";
 
   const tokenLayer = createTokenLayer({
     layer: tokenLayerContainer,
@@ -288,15 +294,12 @@ export async function createMovementCanvasShell(
       if (movedToken) options.onTokenMove?.(movedToken);
     },
     onStateChange: (state) => {
-      // Fade routes during playback so movement reads as animation, not diagram.
-      // Pause partially restores so the coach can still see the intended path.
-      if (state.isPlaying) {
-        routeLayer.setPlaybackAlpha(0.12);
-      } else if (state.isPaused) {
-        routeLayer.setPlaybackAlpha(0.50);
-      } else {
-        routeLayer.setPlaybackAlpha(1.0);
-      }
+      // Committed routes are always fully hidden while playing or paused (a
+      // clean walkthrough, not a diagram), and reappear according to the
+      // coach's chosen authoring mode the moment playback is no longer
+      // locked — refreshRouteLayer() re-evaluates isPlaybackLocked() itself,
+      // so this is the single place that needs to react to state changes.
+      refreshRouteLayer();
       zoneLayer.setInteractive(!state.isPlaying && !state.isPaused);
       trainingItemLayer.setInteractive(mode === "setup" && dragEnabled && !state.isPlaying && !state.isPaused);
       if (state.isPlaying || state.isPaused) activeBallDrag = null;
@@ -472,12 +475,31 @@ export async function createMovementCanvasShell(
     routeLayer.setDraftRoute(null);
   };
 
+  // The route currently being drawn, or — once committed — the route still
+  // parked in Route mode for waypoint editing under existing behaviour. Not a
+  // new selection model: it's derived entirely from routeDraft/mode/selectedTokenId,
+  // the same state the rest of the shell already owns.
+  const getActiveMovementTokenId = (): string | null =>
+    routeDraft?.tokenId ?? (mode === "route" ? selectedTokenId : null);
+
   const refreshRouteLayer = () => {
+    const activeTokenId = getActiveMovementTokenId();
+    const playbackLocked = isPlaybackLocked();
     routeLayer.setRoutes(
-      Array.from(routeByTokenId.entries()).map(([playerId, points]) => ({
-        playerId,
-        points: points.map((point) => clonePoint(point)),
-      })),
+      Array.from(routeByTokenId.entries())
+        .filter(([playerId]) =>
+          shouldRenderCommittedRoute({
+            mode: routeVisibilityMode,
+            tokenId: playerId,
+            selectedTokenId,
+            activeTokenId,
+            isPlaybackLocked: playbackLocked,
+          }),
+        )
+        .map(([playerId, points]) => ({
+          playerId,
+          points: points.map((point) => clonePoint(point)),
+        })),
     );
     routeLayer.setDraftRoute(
       routeDraft
@@ -501,8 +523,10 @@ export async function createMovementCanvasShell(
     const selectedToken = tokenLayer.setSelectedToken(tokenId);
     selectedTokenId = tokenLayer.getSelectedTokenId();
     selectedWaypointIndex = null;
-    routeLayer.setSelectedPlayer(selectedTokenId);
-    routeLayer.setSelectedWaypoint(selectedTokenId, selectedWaypointIndex);
+    // Selection change can change which committed routes are visible in
+    // "active" and "selected" modes, so refresh rather than just updating the
+    // selected-player highlight.
+    refreshRouteLayer();
     options.onSelectedTokenChange?.(
       selectedToken ? { ...selectedToken, position: { ...selectedToken.position } } : null,
     );
@@ -579,6 +603,9 @@ export async function createMovementCanvasShell(
     if (mode !== "route") {
       setSelectedWaypoint(null);
     }
+    // Leaving/entering Route mode changes what "active movement" means for
+    // the selected player, so "active" mode needs to be re-evaluated.
+    refreshRouteLayer();
   };
 
   const setRouteForToken = (
@@ -1169,6 +1196,11 @@ export async function createMovementCanvasShell(
     setMode: (nextMode) => {
       setModeState(nextMode);
     },
+    setRouteVisibilityMode: (nextMode) => {
+      routeVisibilityMode = nextMode;
+      refreshRouteLayer();
+    },
+    getRouteVisibilityMode: () => routeVisibilityMode,
     setPlaybackSpeed: (speed) => {
       orchestrator.setSpeed(speed);
     },
