@@ -9,6 +9,7 @@ import { type SlateTextAnnotation } from "../../components/annotations/textAnnot
 import { useCanvasRecorder } from "../shared/useCanvasRecorder";
 import { buildDefaultTokens } from "../../movement-board/tokens/default-tokens";
 import { createMovementCanvasShell } from "../../movement-board/shell/createMovementCanvasShell";
+import { ROUTE_VISIBILITY_MODE_OPTIONS, type RouteVisibilityMode } from "../../movement-board/routes/route-visibility";
 import type {
   BallType,
   MovementBoardMode,
@@ -853,6 +854,12 @@ export default function TacticalPlaySurface() {
   const [playsNameDraft, setPlaysNameDraft] = useState("");
   const [units, setUnits] = useState<TacticalUnit[]>([]);
   const [unitsOpen, setUnitsOpen] = useState(false);
+  // Coach-chosen route-visibility mode. Presentation only — never saved with
+  // the play, never sent to export/JSON. Defaults to Selected Player: the
+  // standard coaching experience is a clean pitch until a player is picked,
+  // at which point only that player's route shows.
+  const [routeVisibilityMode, setRouteVisibilityMode] = useState<RouteVisibilityMode>("selected");
+  const [routesMenuOpen, setRoutesMenuOpen] = useState(false);
   const [unitNameDraft, setUnitNameDraft] = useState("");
   const [unitEditingId, setUnitEditingId] = useState<string | null>(null);
   const [unitDrawingId, setUnitDrawingId] = useState<string | null>(null);
@@ -1203,6 +1210,10 @@ export default function TacticalPlaySurface() {
   }, [playbackSpeedMultiplier]);
 
   useEffect(() => {
+    shellRef.current?.setRouteVisibilityMode(routeVisibilityMode);
+  }, [routeVisibilityMode]);
+
+  useEffect(() => {
     if (isPlaying) {
       setIsControlsOpen(false);
       setSetupOpen(false);
@@ -1211,6 +1222,7 @@ export default function TacticalPlaySurface() {
       setUnitsOpen(false);
       setAdvancedOpen(false);
       setSpeedOpen(false);
+      setRoutesMenuOpen(false);
       setItemsOpen(false);
       setZonesOpen(false);
       setZoneLibraryOpen("none");
@@ -1926,6 +1938,24 @@ export default function TacticalPlaySurface() {
     </button>
   );
 
+  // Compact route-visibility control: a "Routes" button that expands the four
+  // presentation-only modes on tap, same pattern as SpeedButton. This never
+  // touches movement data, saved-play data, or playback — it only decides
+  // which already-stored committed routes get rendered.
+  const routeVisibilityLabel =
+    ROUTE_VISIBILITY_MODE_OPTIONS.find((option) => option.id === routeVisibilityMode)?.label ?? "Hide All";
+  const RoutesButton = (
+    <button
+      type="button"
+      style={routesMenuOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+      aria-label="Route visibility"
+      aria-expanded={routesMenuOpen}
+      onClick={() => setRoutesMenuOpen((prev) => !prev)}
+    >
+      Routes: {routeVisibilityLabel}
+    </button>
+  );
+
   // Portrait: anchor PLAYS to bottom-right stack (above Setup), not pitch-center right.
   const playsButtonStyle: CSSProperties = isPortrait
     ? { ...PLAYS_BUBBLE_STYLE, top: "auto", bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))", transform: "none" }
@@ -2422,6 +2452,33 @@ export default function TacticalPlaySurface() {
                 Hide
               </button>
             </div>
+
+            {/* Row 3b: Route visibility — its own row so the full mode name
+                (e.g. "Selected Player") always has room and never competes
+                with Row 3's other controls for space or gets clipped. */}
+            <div style={PANEL_ROW_STYLE}>
+              {RoutesButton}
+            </div>
+
+            {/* Route-visibility modes — expanded from the Routes button.
+                Presentation only: switching modes never touches movement
+                data, saved-play data, or playback. */}
+            {routesMenuOpen ? (
+              <div style={WRAP_PANEL_ROW_STYLE}>
+                <span style={SETUP_SECTION_LABEL_STYLE}>Routes</span>
+                {ROUTE_VISIBILITY_MODE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    aria-pressed={opt.id === routeVisibilityMode}
+                    style={opt.id === routeVisibilityMode ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                    onClick={() => { setRouteVisibilityMode(opt.id); setRoutesMenuOpen(false); }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
             {/* Speed presets — expanded from the Speed button. Full-size tap
                 targets that wrap, so speed is comfortably usable on narrow phones. */}
