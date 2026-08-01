@@ -1714,9 +1714,15 @@ const BALL_FOLLOW_HINT_STYLE: CSSProperties = {
 const PASS_TIMING_PROMPT_OVERLAY_STYLE: CSSProperties = {
   position: "fixed",
   left: "50%",
-  bottom: "max(96px, calc(env(safe-area-inset-bottom, 0px) + 88px))",
+  // Clear of MOVEMENT_MODE_CONTROLS_WRAP_STYLE's pill/hint/routes-badge stack
+  // entirely, rather than relying on z-index alone to win the overlap.
+  bottom: "max(200px, calc(env(safe-area-inset-bottom, 0px) + 190px))",
   transform: "translateX(-50%)",
-  zIndex: 13,
+  // MOVEMENT_MODE_CONTROLS_WRAP_STYLE and BALL_POPUP_STYLE are both zIndex 20 —
+  // this must render above them (and their pointer-events:none hint pill) or the
+  // "After Run" choice visually collides with "Ball attached — follows player
+  // during route." and becomes unreadable.
+  zIndex: 26,
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
@@ -1729,6 +1735,13 @@ const PASS_TIMING_PROMPT_OVERLAY_STYLE: CSSProperties = {
   WebkitBackdropFilter: "blur(14px)",
   boxShadow: "0 12px 30px rgba(0, 0, 0, 0.5)",
   maxWidth: "min(94vw, 320px)",
+};
+
+const PORTRAIT_PASS_TIMING_PROMPT_OVERLAY_STYLE: CSSProperties = {
+  ...PASS_TIMING_PROMPT_OVERLAY_STYLE,
+  // Portrait's pill wrapper sits much higher (bottom: ~196px) than landscape's
+  // (~54px) — mirror that same offset relationship so the prompt still clears it.
+  bottom: "max(340px, calc(env(safe-area-inset-bottom, 0px) + 330px))",
 };
 
 const PASS_TIMING_PROMPT_LABEL_STYLE: CSSProperties = {
@@ -4166,6 +4179,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     ? PORTRAIT_MOVEMENT_MODE_CONTROLS_WRAP_STYLE
     : MOVEMENT_MODE_CONTROLS_WRAP_STYLE;
   const ballPopupStyle = isPortrait ? PORTRAIT_BALL_POPUP_STYLE : BALL_POPUP_STYLE;
+  const passTimingPromptOverlayStyle = isPortrait
+    ? PORTRAIT_PASS_TIMING_PROMPT_OVERLAY_STYLE
+    : PASS_TIMING_PROMPT_OVERLAY_STYLE;
   const isToolsOverlayOpen = !isWhiteboardMode && toolsOpen;
   const isCompactLandscapeTools = !isWhiteboardMode && !isPortrait && isCompactLandscapeToolsMenu;
   const isIphoneLandscapeTools = isCompactLandscapeTools && isIphoneLandscapeToolsMenu;
@@ -4336,7 +4352,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           </div>
         ) : null}
         {!isWhiteboardMode && passTimingPrompt ? (
-          <div style={PASS_TIMING_PROMPT_OVERLAY_STYLE} role="dialog" aria-label="Choose pass timing">
+          <div style={passTimingPromptOverlayStyle} role="dialog" aria-label="Choose pass timing">
             <div style={PASS_TIMING_PROMPT_LABEL_STYLE}>Pass</div>
             <div style={PASS_TIMING_PROMPT_ROW_STYLE}>
               <button
