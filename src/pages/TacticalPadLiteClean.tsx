@@ -2876,7 +2876,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const isPlaybackLocked = isPlaying || isPaused;
   const hasBallOnPitch = items.some((item) => isBallItemType(item.type));
   const hasAssignedRoutes = routeState.routeCount > 0;
-  const isAddPhaseBlocked = isPlaybackLocked || routeState.isRouteCaptureMode || hasAssignedRoutes;
+  // Routes are now phase-aware (Model B) — a route no longer implies "final stage",
+  // so committing one must not block adding further phases after it.
+  const isAddPhaseBlocked = isPlaybackLocked || routeState.isRouteCaptureMode;
   const playbackSpeedOptionIndex = Math.max(
     0,
     PLAYBACK_SPEED_OPTIONS.findIndex((option) => option.multiplier === playbackSpeedMultiplier),

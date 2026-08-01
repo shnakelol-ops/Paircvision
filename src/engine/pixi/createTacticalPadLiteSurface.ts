@@ -258,7 +258,7 @@ const POSSESSION_PASS_MAX_DURATION_MS = 1800;
 const POSSESSION_PASS_REFERENCE_DISTANCE = 14;
 const BASIC_ROUTE_FOLLOW_SPEED = 18;
 const BASIC_ROUTE_MIN_POINT_DISTANCE = 0.9;
-const MAX_BASIC_ROUTE_PLAYERS = 6;
+const MAX_BASIC_ROUTE_PLAYERS = 12;
 const BASIC_ROUTE_PREVIEW_SHADOW_COLOR = 0x1c1205;
 const BASIC_ROUTE_PREVIEW_CORE_COLOR = 0xf59e0b;
 const BASIC_ROUTE_PREVIEW_HIGHLIGHT_COLOR = 0xffd8a1;
@@ -345,7 +345,6 @@ type ActiveBasicRouteFollow = {
 type PlaybackKind = "default" | "possession-pass";
 
 type PlaybackStartOptions = {
-  suppressRoutePlayback?: boolean;
   kind?: PlaybackKind;
   possessionReceiverId?: string | null;
 };
@@ -700,9 +699,16 @@ function sanitizeTacticalItemCandidate(input: unknown): TacticalItem | null {
   });
 }
 
-function sanitizeBoardRoutes(input: unknown): Map<string, RoutePoint[]> {
+type SanitizedBoardRoute = {
+  points: RoutePoint[];
+  // Phase transition (playbackPath segment index) the route starts at, once resolved.
+  // Absent for legacy saves — those default to "after the final phase" on import.
+  startSegmentIndex: number | null;
+};
+
+function sanitizeBoardRoutes(input: unknown): Map<string, SanitizedBoardRoute> {
   if (!Array.isArray(input)) return new Map();
-  const parsed = new Map<string, RoutePoint[]>();
+  const parsed = new Map<string, SanitizedBoardRoute>();
   for (const entry of input) {
     if (!isRecord(entry)) continue;
     const playerId = typeof entry.playerId === "string" ? entry.playerId.trim() : "";
@@ -715,7 +721,13 @@ function sanitizeBoardRoutes(input: unknown): Map<string, RoutePoint[]> {
           .map((point) => ({ x: point.x, y: point.y }))
       : [];
     if (points.length < 2) continue;
-    parsed.set(playerId, points);
+    const startSegmentIndex =
+      typeof entry.startSegmentIndex === "number" &&
+      Number.isFinite(entry.startSegmentIndex) &&
+      entry.startSegmentIndex >= 0
+        ? Math.floor(entry.startSegmentIndex)
+        : null;
+    parsed.set(playerId, { points, startSegmentIndex });
   }
   return parsed;
 }
@@ -1327,6 +1339,10 @@ export async function createTacticalPadLiteSurface(
   let playbackSpeedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
   let isPlaying = false;
   let isPaused = false;
+  // True from startPlayback() until the final phase segment resolves. Playback as a
+  // whole (isPlaying) stays true past that point as long as any route is still active —
+  // see maybeCompletePlayback().
+  let phasesRunning = false;
   let playElapsedMs = 0;
   let playbackPath: PhaseSnapshot[] = [];
   let activeSegmentIndex = 0;
@@ -1345,6 +1361,10 @@ export async function createTacticalPadLiteSurface(
   let shapeDragStart: { anchor: ShapePoint; positions: Map<string, ShapePoint> } | null = null;
   let isRouteCaptureMode = false;
   let routeByPlayerId = new Map<string, RoutePoint[]>();
+  // Phase transition (playbackPath segment index) each route starts at, once resolved.
+  // Missing/absent entries — legacy boards, or any index at/after the final phase —
+  // default to "after the final phase", matching pre-Model-B behaviour.
+  let routeStartSegmentIndexByPlayerId = new Map<string, number>();
   let activeRouteRunsByPlayerId = new Map<string, ActiveBasicRouteFollow>();
   let routeControlledPlayerIds = new Set<string>();
   let currentRouteDraftPoints: RoutePoint[] = [];
@@ -1381,10 +1401,12 @@ export async function createTacticalPadLiteSurface(
 
   function emitPlaybackStateChange(): void {
     syncWhiteboardTokenInputMode();
-    // Restore the Shape Lock guide once playback fully stops (it is suppressed
-    // while playing/paused). No-op when Shape Lock is off.
+    // Restore the Shape Lock guide and committed route graphics once playback fully
+    // stops (both are suppressed while playing/paused). No-op if there's nothing to
+    // restore (Shape Lock off / no committed routes).
     if (!isPlaying && !isPaused) {
       renderShapeGuideGraphic();
+      renderBasicRoutePreview();
     }
     options.onPlaybackStateChange?.({ isPlaying, isPaused });
   }
@@ -1665,7 +1687,6 @@ export async function createTacticalPadLiteSurface(
     passTargetBall.isFree = true;
     passTargetBall.path = [passStartPoint, passTargetPoint];
     startPlayback([passStartSnapshot, passTargetSnapshot], {
-      suppressRoutePlayback: true,
       kind: "possession-pass",
       possessionReceiverId: player.id,
     });
@@ -2827,9 +2848,11 @@ export async function createTacticalPadLiteSurface(
 
     const resolveAlphaScale = (path: (typeof worldPaths)[number]): number => {
       if (path.isDraft) return 0.78;
-      if (!isPlaybackInputLocked()) return path.isSelected ? 1 : 0.9;
-      if (path.isPlaybackActive) return path.isSelected ? 1 : 0.92;
-      return path.isSelected ? 0.78 : 0.56;
+      // Committed routes stay fully hidden for the duration of playback (playing or
+      // paused) — the coach's authoring view returns once emitPlaybackStateChange()
+      // detects playback has fully stopped. Movement data is untouched either way.
+      if (isPlaybackInputLocked()) return 0;
+      return path.isSelected ? 1 : 0.9;
     };
 
     const resolveWidthScale = (path: (typeof worldPaths)[number]): number => {
@@ -2880,6 +2903,7 @@ export async function createTacticalPadLiteSurface(
     currentRouteDraftPoints = [];
     currentRouteDraftPlayerId = null;
     routeByPlayerId.clear();
+    routeStartSegmentIndexByPlayerId.clear();
     selectedPlayerId = null;
     clearBasicRoutePreview();
     renderRouteSelectionHighlight();
@@ -2924,11 +2948,15 @@ export async function createTacticalPadLiteSurface(
     return closest;
   }
 
-  function buildBasicRouteRunsForCurrentPlayers(segmentIndex: number): Map<string, ActiveBasicRouteFollow> {
+  function buildBasicRouteRunsForPlayers(
+    playerIds: Iterable<string>,
+    segmentIndex: number,
+  ): Map<string, ActiveBasicRouteFollow> {
     const runs = new Map<string, ActiveBasicRouteFollow>();
-    for (const [playerId, route] of routeByPlayerId.entries()) {
+    for (const playerId of playerIds) {
+      const route = routeByPlayerId.get(playerId);
       const player = players.find((entry) => entry.id === playerId);
-      if (!player || route.length < 2) continue;
+      if (!route || !player || route.length < 2) continue;
       const sampledRoute = sampleRoutePoints(route);
       if (sampledRoute.length < 2) continue;
       const origin = { x: player.current.x, y: player.current.y };
@@ -2942,9 +2970,41 @@ export async function createTacticalPadLiteSurface(
     return runs;
   }
 
+  // Starts any routes assigned to the phase transition that just resolved. Routes
+  // whose recorded start index is at or beyond the final segment (including legacy
+  // routes with no recorded index, which default to phases.length) start once the
+  // final segment resolves — preserving the original "after the final phase" behaviour.
+  function startRoutesForResolvedSegment(resolvedSegmentIndex: number, isFinalSegment: boolean): void {
+    if (playbackKind !== "default" || routeByPlayerId.size <= 0) return;
+    const dueIds: string[] = [];
+    for (const playerId of routeByPlayerId.keys()) {
+      if (activeRouteRunsByPlayerId.has(playerId) || routeControlledPlayerIds.has(playerId)) continue;
+      const startIndex = routeStartSegmentIndexByPlayerId.get(playerId) ?? phases.length;
+      const isDue = startIndex === resolvedSegmentIndex || (isFinalSegment && startIndex >= resolvedSegmentIndex);
+      if (isDue) dueIds.push(playerId);
+    }
+    if (dueIds.length <= 0) return;
+    const newRuns = buildBasicRouteRunsForPlayers(dueIds, resolvedSegmentIndex);
+    for (const [playerId, run] of newRuns) {
+      activeRouteRunsByPlayerId.set(playerId, run);
+      routeControlledPlayerIds.add(playerId);
+    }
+    renderBasicRoutePreview();
+  }
+
+  // True once neither the phase sequence nor any route is still animating. Call
+  // whenever either condition could have just become true — phase completion and
+  // route-session completion both funnel through here so isPlaying only drops once
+  // the whole combined phases-then-routes animation is actually finished.
+  function maybeCompletePlayback(): void {
+    if (phasesRunning || activeRouteRunsByPlayerId.size > 0) return;
+    cancelPlaybackAnimation();
+  }
+
   function cancelPlaybackAnimation(): void {
     isPlaying = false;
     isPaused = false;
+    phasesRunning = false;
     playElapsedMs = 0;
     playbackPath = [];
     activeSegmentIndex = 0;
@@ -2959,6 +3019,7 @@ export async function createTacticalPadLiteSurface(
     activeSegmentIndex = 0;
     isPlaying = true;
     isPaused = false;
+    phasesRunning = true;
     playElapsedMs = 0;
     playbackKind = optionsForPlayback?.kind ?? "default";
     playbackPossessionReceiverId =
@@ -2966,13 +3027,13 @@ export async function createTacticalPadLiteSurface(
         ? optionsForPlayback?.possessionReceiverId ?? null
         : null;
     applySnapshotToSurface(path[0]!);
-    const shouldSuppressRoutePlayback = optionsForPlayback?.suppressRoutePlayback === true;
-    activeRouteRunsByPlayerId =
-      !shouldSuppressRoutePlayback && routeByPlayerId.size > 0
-        ? buildBasicRouteRunsForCurrentPlayers(activeSegmentIndex)
-        : new Map();
-    routeControlledPlayerIds = new Set(activeRouteRunsByPlayerId.keys());
+    // Routes no longer start here — each one starts when its assigned phase
+    // transition resolves, handled per-segment inside stepPlayback(). Bookkeeping is
+    // just reset to empty; startRoutesForResolvedSegment() populates it as segments land.
+    activeRouteRunsByPlayerId = new Map();
+    routeControlledPlayerIds = new Set();
     emitPlaybackStateChange();
+    renderBasicRoutePreview();
   }
 
   function isCurrentAtStartPosition(): boolean {
@@ -3129,7 +3190,7 @@ export async function createTacticalPadLiteSurface(
   }
 
   function stepPlayback(deltaMs: number): void {
-    if (!isPlaying || playbackPath.length < 2) return;
+    if (!isPlaying || !phasesRunning || playbackPath.length < 2) return;
 
     let remainingMs = deltaMs;
     while (remainingMs > 0 && isPlaying) {
@@ -3169,10 +3230,15 @@ export async function createTacticalPadLiteSurface(
         const state = getBallRuntimeState(item);
         const targetAttachedPlayerId = toBall.isFree ? null : toBall.attachedPlayerId ?? null;
         const sourceAttachedPlayerId = fromBall?.isFree ? null : fromBall?.attachedPlayerId ?? null;
+        // A route-controlled receiver has no discrete "final position" captured in
+        // toBall/toSnapshot — their real position only exists live, during playback.
+        // Skip the deterministic captured-endpoint replay below for that case and
+        // fall through to the live attach-tracking branch instead.
         const isAttachedToAttachedPassTransition =
           sourceAttachedPlayerId != null &&
           targetAttachedPlayerId != null &&
-          sourceAttachedPlayerId !== targetAttachedPlayerId;
+          sourceAttachedPlayerId !== targetAttachedPlayerId &&
+          !routeControlledPlayerIds.has(targetAttachedPlayerId);
         if (targetAttachedPlayerId) {
           if (isAttachedToAttachedPassTransition && fromBall) {
             // Replay holder-switch transitions using the recorded snapshot endpoints.
@@ -3216,18 +3282,22 @@ export async function createTacticalPadLiteSurface(
 
       if (progress >= 1) {
         applySnapshotToSurface(toSnapshot, { preserveActiveRoutePlayers: true });
+        const resolvedSegmentIndex = activeSegmentIndex;
         activeSegmentIndex += 1;
         playElapsedMs = 0;
-        if (activeSegmentIndex >= playbackPath.length - 1) {
+        const isFinalSegment = activeSegmentIndex >= playbackPath.length - 1;
+        startRoutesForResolvedSegment(resolvedSegmentIndex, isFinalSegment);
+        if (isFinalSegment) {
+          phasesRunning = false;
           const possessionReceiverId =
             playbackKind === "possession-pass" ? playbackPossessionReceiverId : null;
-          cancelPlaybackAnimation();
           if (possessionReceiverId) {
             const receiver = players.find((entry) => entry.id === possessionReceiverId);
             if (receiver) {
               attachPrimaryBallToPlayer(receiver);
             }
           }
+          maybeCompletePlayback();
           return;
         }
         // Avoid a boundary stall when a segment ends exactly on a frame.
@@ -3266,6 +3336,7 @@ export async function createTacticalPadLiteSurface(
     }
     if (activeRouteRunsByPlayerId.size <= 0) {
       syncWhiteboardTokenInputMode();
+      maybeCompletePlayback();
     }
   }
 
@@ -3625,6 +3696,7 @@ export async function createTacticalPadLiteSurface(
       routes: Array.from(routeByPlayerId.entries()).map(([playerId, points]) => ({
         playerId,
         points: points.map((point) => ({ x: point.x, y: point.y })),
+        startSegmentIndex: routeStartSegmentIndexByPlayerId.get(playerId) ?? phases.length,
       })),
       kits: kitsByPlayer,
       teamKits: currentTeamKits,
@@ -3750,14 +3822,21 @@ export async function createTacticalPadLiteSurface(
     );
     startPositions = nextStartSnapshot;
     phases = parsedPhases.map((phase) => normalizePhaseForPlayerCount(phase, players.length));
+    const importedRouteEntries = Array.from(parsedRoutes.entries())
+      .filter(([playerId]) => players.some((player) => player.id === playerId))
+      .slice(0, MAX_BASIC_ROUTE_PLAYERS);
     routeByPlayerId = new Map(
-      Array.from(parsedRoutes.entries())
-        .filter(([playerId]) => players.some((player) => player.id === playerId))
-        .slice(0, MAX_BASIC_ROUTE_PLAYERS)
-        .map(
-          ([playerId, points]) =>
-            [playerId, points.map((point) => ({ x: point.x, y: point.y }))] as [string, RoutePoint[]],
-        ),
+      importedRouteEntries.map(
+        ([playerId, route]) =>
+          [playerId, route.points.map((point) => ({ x: point.x, y: point.y }))] as [string, RoutePoint[]],
+      ),
+    );
+    // Legacy saves (no recorded start index) default to "after the final phase" —
+    // identical to this board's pre-Model-B behaviour.
+    routeStartSegmentIndexByPlayerId = new Map(
+      importedRouteEntries.map(
+        ([playerId, route]) => [playerId, route.startSegmentIndex ?? phases.length] as [string, number],
+      ),
     );
     options.onPhaseCountChange?.(phases.length);
     renderBasicRoutePreview();
@@ -3859,6 +3938,7 @@ export async function createTacticalPadLiteSurface(
     if (selectedPlayerId === removedPlayer.id) {
       selectedPlayerId = null;
     }
+    routeStartSegmentIndexByPlayerId.delete(removedPlayer.id);
     if (routeByPlayerId.delete(removedPlayer.id)) {
       emitRouteStateChange();
     }
@@ -3918,6 +3998,9 @@ export async function createTacticalPadLiteSurface(
               currentRouteDraftPlayerId,
               currentRouteDraftPoints.map((point) => ({ x: point.x, y: point.y })),
             );
+            // Assign the route to the phase transition currently being authored —
+            // i.e. it starts once the transition into the *next* phase resolves.
+            routeStartSegmentIndexByPlayerId.set(currentRouteDraftPlayerId, phases.length);
             emitRouteStateChange();
           } else {
             options.onRouteLimitReached?.(MAX_BASIC_ROUTE_PLAYERS);
