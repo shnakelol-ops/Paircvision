@@ -143,6 +143,16 @@ export type TacticalRouteState = {
   ballAttachedPlayerId: string | null;
 };
 
+// A pass to a receiver who has a Draw Run, timed relative to that run rather than
+// to a phase boundary. "Now" (today's existing instant tap-to-pass) is intentionally
+// not one of these modes — it stays the separate, unchanged, immediate behaviour.
+export type PassTimingMode = "before-run" | "during-run" | "after-run";
+
+export type RoutePassTiming = {
+  passerId: string;
+  mode: PassTimingMode;
+};
+
 export type TacticalPadLiteSurface = {
   setStart: () => void;
   addPhase: () => void;
@@ -163,6 +173,14 @@ export type TacticalPadLiteSurface = {
   setRouteCaptureMode: (enabled: boolean) => void;
   clearRoutes: () => void;
   getRouteState: () => TacticalRouteState;
+  /**
+   * Records (or clears, with null) a Before/During/After timed pass for a receiver
+   * who already has a Draw Run — in response to onPassTimingChoiceRequested. Does
+   * not animate anything; the pass executes automatically during the next Play.
+   */
+  setRoutePassTiming: (receiverPlayerId: string, mode: PassTimingMode | null) => void;
+  /** Coach chose "Now" from the pass-timing prompt — plays today's existing instant demo. */
+  confirmImmediatePass: (receiverPlayerId: string) => void;
   reset: () => void;
   reflow: () => void;
   /**
@@ -214,6 +232,12 @@ type TacticalPadLiteSurfaceOptions = {
   onTacticalPlayerDoubleTap?: (payload: { playerId: string; clientX: number; clientY: number }) => void;
   onRouteStateChange?: (state: TacticalRouteState) => void;
   onRouteLimitReached?: (maxRoutes: number) => void;
+  /**
+   * Tapped receiver already has a Draw Run — today's instant tap-to-pass is held
+   * pending the coach's choice (Now / Before Run / During Run / After Run) instead
+   * of firing immediately. Call setRoutePassTiming or confirmImmediatePass in response.
+   */
+  onPassTimingChoiceRequested?: (info: { receiverPlayerId: string; passerPlayerId: string }) => void;
   onShapeLockChange?: (state: { mode: ShapeLockMode; memberIds: string[] }) => void;
 };
 
@@ -699,11 +723,25 @@ function sanitizeTacticalItemCandidate(input: unknown): TacticalItem | null {
   });
 }
 
+const PASS_TIMING_MODES: readonly PassTimingMode[] = ["before-run", "during-run", "after-run"];
+
+function sanitizeRoutePassTiming(input: unknown): RoutePassTiming | null {
+  if (!isRecord(input)) return null;
+  const passerId = typeof input.passerId === "string" ? input.passerId.trim() : "";
+  if (passerId.length <= 0) return null;
+  const mode = typeof input.mode === "string" ? input.mode : "";
+  if (!PASS_TIMING_MODES.includes(mode as PassTimingMode)) return null;
+  return { passerId, mode: mode as PassTimingMode };
+}
+
 type SanitizedBoardRoute = {
   points: RoutePoint[];
   // Phase transition (playbackPath segment index) the route starts at, once resolved.
   // Absent for legacy saves — those default to "after the final phase" on import.
   startSegmentIndex: number | null;
+  // Absent for legacy saves and for routes with no timed pass — no auto-pass tied
+  // to this route, matching pre-existing behaviour exactly.
+  passTiming: RoutePassTiming | null;
 };
 
 function sanitizeBoardRoutes(input: unknown): Map<string, SanitizedBoardRoute> {
@@ -727,7 +765,7 @@ function sanitizeBoardRoutes(input: unknown): Map<string, SanitizedBoardRoute> {
       entry.startSegmentIndex >= 0
         ? Math.floor(entry.startSegmentIndex)
         : null;
-    parsed.set(playerId, { points, startSegmentIndex });
+    parsed.set(playerId, { points, startSegmentIndex, passTiming: sanitizeRoutePassTiming(entry.passTiming) });
   }
   return parsed;
 }
@@ -1365,6 +1403,18 @@ export async function createTacticalPadLiteSurface(
   // Missing/absent entries — legacy boards, or any index at/after the final phase —
   // default to "after the final phase", matching pre-Model-B behaviour.
   let routeStartSegmentIndexByPlayerId = new Map<string, number>();
+  // Timed-pass intent per receiver (only set for receivers with a Draw Run).
+  // Read-only during playback; the two trigger points below consume it.
+  let routePassTimingByPlayerId = new Map<string, RoutePassTiming>();
+  // Tapped a routed receiver while pass mode is on — awaiting the coach's choice.
+  let pendingPassTimingChoice: { receiverPlayerId: string; passerPlayerId: string } | null = null;
+  // The one in-flight timed pass (ball travelling toward a live target, not yet
+  // attached). At most one at a time — boards only have one primary ball in practice.
+  let activePassTimingTransition: { itemId: string; targetPlayerId: string } | null = null;
+  // Once a ball is driven by the timed-pass mechanism this playback run, the ordinary
+  // phase-snapshot ball loop in stepPlayback() must not fight it for control — see
+  // the guard at the top of that loop.
+  let passTimingControlledItemId: string | null = null;
   let activeRouteRunsByPlayerId = new Map<string, ActiveBasicRouteFollow>();
   let routeControlledPlayerIds = new Set<string>();
   let currentRouteDraftPoints: RoutePoint[] = [];
@@ -1653,24 +1703,25 @@ export async function createTacticalPadLiteSurface(
     emitRouteStateChange();
   }
 
-  function handlePossessionPassTap(player: TacticalPlayer): void {
-    if (surfaceVariant !== "tactical" || isPlaybackInputLocked()) return;
+  // Today's existing instant tap-to-pass demo, unchanged — preserved as-is and reused
+  // both for receivers with no Draw Run and for the "Now" choice on routed receivers.
+  function performImmediatePass(receiverPlayer: TacticalPlayer): void {
     const ball = findPrimaryBallItem();
     if (!ball) return;
     applyBallRuntimeStateToItem(ball);
     const state = getBallRuntimeState(ball);
     const currentHolderPlayerId = state.isFree ? null : state.attachedPlayerId;
-    if (!currentHolderPlayerId || currentHolderPlayerId === player.id) {
-      attachPrimaryBallToPlayer(player);
+    if (!currentHolderPlayerId || currentHolderPlayerId === receiverPlayer.id) {
+      attachPrimaryBallToPlayer(receiverPlayer);
       return;
     }
 
-    const receiverAttachedPoint = getAttachedBallPositionForPlayer(player);
+    const receiverAttachedPoint = getAttachedBallPositionForPlayer(receiverPlayer);
     const passStartSnapshot = captureCurrentSnapshot();
     const passTargetSnapshot = cloneSnapshot(passStartSnapshot);
     const passTargetBall = passTargetSnapshot.football.find((entry) => entry.id === ball.id);
     if (!passTargetBall) {
-      attachPrimaryBallToPlayer(player);
+      attachPrimaryBallToPlayer(receiverPlayer);
       return;
     }
     const passStartPoint = {
@@ -1688,8 +1739,32 @@ export async function createTacticalPadLiteSurface(
     passTargetBall.path = [passStartPoint, passTargetPoint];
     startPlayback([passStartSnapshot, passTargetSnapshot], {
       kind: "possession-pass",
-      possessionReceiverId: player.id,
+      possessionReceiverId: receiverPlayer.id,
     });
+  }
+
+  function handlePossessionPassTap(player: TacticalPlayer): void {
+    if (surfaceVariant !== "tactical" || isPlaybackInputLocked()) return;
+    const ball = findPrimaryBallItem();
+    if (!ball) return;
+    applyBallRuntimeStateToItem(ball);
+    const state = getBallRuntimeState(ball);
+    const currentHolderPlayerId = state.isFree ? null : state.attachedPlayerId;
+    if (!currentHolderPlayerId || currentHolderPlayerId === player.id) {
+      attachPrimaryBallToPlayer(player);
+      return;
+    }
+    // Receiver has a Draw Run — hold the instant demo and let the coach choose
+    // Now / Before Run / During Run / After Run instead. No route: unchanged.
+    if (routeByPlayerId.has(player.id)) {
+      pendingPassTimingChoice = { receiverPlayerId: player.id, passerPlayerId: currentHolderPlayerId };
+      options.onPassTimingChoiceRequested?.({
+        receiverPlayerId: player.id,
+        passerPlayerId: currentHolderPlayerId,
+      });
+      return;
+    }
+    performImmediatePass(player);
   }
 
   function updateAttachedBallsForPlayer(playerId: string): void {
@@ -2904,6 +2979,8 @@ export async function createTacticalPadLiteSurface(
     currentRouteDraftPlayerId = null;
     routeByPlayerId.clear();
     routeStartSegmentIndexByPlayerId.clear();
+    routePassTimingByPlayerId.clear();
+    pendingPassTimingChoice = null;
     selectedPlayerId = null;
     clearBasicRoutePreview();
     renderRouteSelectionHighlight();
@@ -2984,6 +3061,17 @@ export async function createTacticalPadLiteSurface(
       if (isDue) dueIds.push(playerId);
     }
     if (dueIds.length <= 0) return;
+    for (const playerId of dueIds) {
+      const timing = routePassTimingByPlayerId.get(playerId);
+      if (!timing) continue;
+      const ball = findPrimaryBallItem();
+      if (!ball) continue;
+      if (timing.mode === "before-run") {
+        finalizePassTimingAttach(ball.id, playerId);
+      } else if (timing.mode === "during-run") {
+        beginPassTimingTransition(ball.id, playerId);
+      }
+    }
     const newRuns = buildBasicRouteRunsForPlayers(dueIds, resolvedSegmentIndex);
     for (const [playerId, run] of newRuns) {
       activeRouteRunsByPlayerId.set(playerId, run);
@@ -2997,7 +3085,7 @@ export async function createTacticalPadLiteSurface(
   // route-session completion both funnel through here so isPlaying only drops once
   // the whole combined phases-then-routes animation is actually finished.
   function maybeCompletePlayback(): void {
-    if (phasesRunning || activeRouteRunsByPlayerId.size > 0) return;
+    if (phasesRunning || activeRouteRunsByPlayerId.size > 0 || activePassTimingTransition) return;
     cancelPlaybackAnimation();
   }
 
@@ -3005,6 +3093,8 @@ export async function createTacticalPadLiteSurface(
     isPlaying = false;
     isPaused = false;
     phasesRunning = false;
+    activePassTimingTransition = null;
+    passTimingControlledItemId = null;
     playElapsedMs = 0;
     playbackPath = [];
     activeSegmentIndex = 0;
@@ -3075,6 +3165,8 @@ export async function createTacticalPadLiteSurface(
     // Shape Lock guides are editing-only; hide them for the duration of playback.
     // The selection itself is retained and its guide is redrawn once playback ends.
     clearShapeGuideGraphic();
+    // Discard any unanswered pass-timing prompt rather than carry it into playback.
+    pendingPassTimingChoice = null;
     if (isPaused && playbackPath.length >= 2) {
       isPaused = false;
       isPlaying = true;
@@ -3170,6 +3262,84 @@ export async function createTacticalPadLiteSurface(
     return clamped * clamped * (3 - 2 * clamped);
   }
 
+  // Moves a ball item one step closer to a live target point, capping how far it can
+  // lead the target so it reads as "closing the gap" rather than snapping or lagging
+  // indefinitely. Returns true once close enough to be considered arrived (caller
+  // decides what "arrived" means — full snap-attach vs. just letting the next step
+  // continue). Shared by ordinary phase-to-phase attach transitions and timed passes.
+  function stepBallTowardLiveTarget(item: TacticalSurfaceItem, targetPoint: NormalizedPoint): boolean {
+    const rawDx = targetPoint.x - item.x;
+    const rawDy = targetPoint.y - item.y;
+    const rawDistance = Math.hypot(rawDx, rawDy);
+    if (rawDistance <= ATTACHED_BALL_FOLLOW_MAX_LEAD_WORLD) {
+      item.x = targetPoint.x;
+      item.y = targetPoint.y;
+      setItemWorldPosition(item, mapper);
+      return true;
+    }
+    const cappedScale = ATTACHED_BALL_FOLLOW_MAX_LEAD_WORLD / rawDistance;
+    const cappedX = targetPoint.x - rawDx * cappedScale;
+    const cappedY = targetPoint.y - rawDy * cappedScale;
+    item.x += (cappedX - item.x) * ATTACHED_BALL_FOLLOW_SMOOTHING;
+    item.y += (cappedY - item.y) * ATTACHED_BALL_FOLLOW_SMOOTHING;
+    setItemWorldPosition(item, mapper);
+    return false;
+  }
+
+  // Before Run: the pass must have already landed by the time the run begins, so
+  // this resolves instantly rather than travelling.
+  function finalizePassTimingAttach(itemId: string, targetPlayerId: string): void {
+    const item = findTacticalItemById(itemId);
+    if (item && isBallItem(item)) {
+      const state = getBallRuntimeState(item);
+      const attachedPoint = getAttachedBallPositionForPlayerId(targetPlayerId);
+      state.attachedPlayerId = targetPlayerId;
+      state.isFree = false;
+      state.path = [];
+      if (attachedPoint) {
+        item.x = attachedPoint.x;
+        item.y = attachedPoint.y;
+        setItemWorldPosition(item, mapper);
+      }
+    }
+    passTimingControlledItemId = itemId;
+    if (activePassTimingTransition?.itemId === itemId) {
+      activePassTimingTransition = null;
+    }
+    // This may be the last thing keeping playback alive (e.g. an After Run pass
+    // finishing after every route and phase has already resolved).
+    maybeCompletePlayback();
+  }
+
+  // During Run / After Run: the ball travels toward the receiver's live position —
+  // stays "in flight" (isFree) until it actually arrives, so nothing else (ordinary
+  // attached-ball follow, the phase-snapshot ball loop) tries to move it meanwhile.
+  function beginPassTimingTransition(itemId: string, targetPlayerId: string): void {
+    const item = findTacticalItemById(itemId);
+    if (!item || !isBallItem(item)) return;
+    const state = getBallRuntimeState(item);
+    state.attachedPlayerId = null;
+    state.isFree = true;
+    state.path = [];
+    passTimingControlledItemId = itemId;
+    activePassTimingTransition = { itemId, targetPlayerId };
+  }
+
+  function stepActivePassTimingTransition(): void {
+    if (isPaused) return;
+    if (!activePassTimingTransition) return;
+    const { itemId, targetPlayerId } = activePassTimingTransition;
+    const item = findTacticalItemById(itemId);
+    const targetPoint = getAttachedBallPositionForPlayerId(targetPlayerId);
+    if (!item || !isBallItem(item) || !targetPoint) {
+      activePassTimingTransition = null;
+      return;
+    }
+    if (stepBallTowardLiveTarget(item, targetPoint)) {
+      finalizePassTimingAttach(itemId, targetPlayerId);
+    }
+  }
+
   function resolvePossessionPassSegmentDurationMs(fromSnapshot: PhaseSnapshot, toSnapshot: PhaseSnapshot): number {
     let maxBallDistance = 0;
     for (const toBall of toSnapshot.football) {
@@ -3224,6 +3394,10 @@ export async function createTacticalPadLiteSurface(
         setTokenWorldPositionForPoint(player, player.current, mapper);
       }
       for (const toBall of toSnapshot.football) {
+        // A timed pass (Before/During/After Run) has taken ownership of this ball for
+        // the rest of this playback run — don't let the ordinary phase-snapshot ball
+        // loop fight it for control (see beginPassTimingTransition/finalizePassTimingAttach).
+        if (passTimingControlledItemId === toBall.id) continue;
         const fromBall = fromSnapshot.football.find((point) => point.id === toBall.id) ?? null;
         const item = findTacticalItemById(toBall.id);
         if (!item || !isBallItem(item)) continue;
@@ -3256,19 +3430,8 @@ export async function createTacticalPadLiteSurface(
           state.path = [];
           const attachedPoint = getAttachedBallPositionForPlayerId(targetAttachedPlayerId);
           if (!attachedPoint) continue;
-          const rawDx = attachedPoint.x - item.x;
-          const rawDy = attachedPoint.y - item.y;
-          const rawDistance = Math.hypot(rawDx, rawDy);
-          if (rawDistance <= ATTACHED_BALL_FOLLOW_MAX_LEAD_WORLD) {
-            item.x = attachedPoint.x;
-            item.y = attachedPoint.y;
-          } else {
-            const cappedScale = ATTACHED_BALL_FOLLOW_MAX_LEAD_WORLD / rawDistance;
-            const cappedX = attachedPoint.x - rawDx * cappedScale;
-            const cappedY = attachedPoint.y - rawDy * cappedScale;
-            item.x += (cappedX - item.x) * ATTACHED_BALL_FOLLOW_SMOOTHING;
-            item.y += (cappedY - item.y) * ATTACHED_BALL_FOLLOW_SMOOTHING;
-          }
+          stepBallTowardLiveTarget(item, attachedPoint);
+          continue;
         } else {
           const freePoint = interpolateBallPath(fromBall, toBall, progress);
           state.attachedPlayerId = null;
@@ -3333,6 +3496,13 @@ export async function createTacticalPadLiteSurface(
     }
     for (const playerId of completedIds) {
       activeRouteRunsByPlayerId.delete(playerId);
+      // After Run: the receiver has just finished their route (now stationary) —
+      // start the pass toward them now, reusing the same live-tracking travel.
+      const timing = routePassTimingByPlayerId.get(playerId);
+      if (timing?.mode === "after-run") {
+        const ball = findPrimaryBallItem();
+        if (ball) beginPassTimingTransition(ball.id, playerId);
+      }
     }
     if (activeRouteRunsByPlayerId.size <= 0) {
       syncWhiteboardTokenInputMode();
@@ -3697,6 +3867,7 @@ export async function createTacticalPadLiteSurface(
         playerId,
         points: points.map((point) => ({ x: point.x, y: point.y })),
         startSegmentIndex: routeStartSegmentIndexByPlayerId.get(playerId) ?? phases.length,
+        passTiming: routePassTimingByPlayerId.get(playerId) ?? null,
       })),
       kits: kitsByPlayer,
       teamKits: currentTeamKits,
@@ -3838,6 +4009,13 @@ export async function createTacticalPadLiteSurface(
         ([playerId, route]) => [playerId, route.startSegmentIndex ?? phases.length] as [string, number],
       ),
     );
+    // Only keep passTiming entries whose passer still exists on this board.
+    routePassTimingByPlayerId = new Map(
+      importedRouteEntries
+        .filter(([, route]) => route.passTiming && players.some((player) => player.id === route.passTiming!.passerId))
+        .map(([playerId, route]) => [playerId, route.passTiming!] as [string, RoutePassTiming]),
+    );
+    pendingPassTimingChoice = null;
     options.onPhaseCountChange?.(phases.length);
     renderBasicRoutePreview();
     emitRouteStateChange();
@@ -3939,6 +4117,13 @@ export async function createTacticalPadLiteSurface(
       selectedPlayerId = null;
     }
     routeStartSegmentIndexByPlayerId.delete(removedPlayer.id);
+    routePassTimingByPlayerId.delete(removedPlayer.id);
+    if (pendingPassTimingChoice?.receiverPlayerId === removedPlayer.id) {
+      pendingPassTimingChoice = null;
+    }
+    if (activePassTimingTransition?.targetPlayerId === removedPlayer.id) {
+      activePassTimingTransition = null;
+    }
     if (routeByPlayerId.delete(removedPlayer.id)) {
       emitRouteStateChange();
     }
@@ -4058,6 +4243,7 @@ export async function createTacticalPadLiteSurface(
   app.ticker.add(() => {
     stepPlayback(app.ticker.deltaMS);
     stepBasicRouteFollow(app.ticker.deltaMS);
+    stepActivePassTimingTransition();
     animatePlayerDragVisuals(app.ticker.deltaMS);
     animateRouteSelectionHighlight(app.ticker.deltaMS);
   });
@@ -4193,6 +4379,24 @@ export async function createTacticalPadLiteSurface(
       maxRoutes: MAX_BASIC_ROUTE_PLAYERS,
       ballAttachedPlayerId: getAttachedBallPlayerId(),
     }),
+    setRoutePassTiming: (receiverPlayerId, mode) => {
+      if (!pendingPassTimingChoice || pendingPassTimingChoice.receiverPlayerId !== receiverPlayerId) return;
+      if (mode) {
+        routePassTimingByPlayerId.set(receiverPlayerId, {
+          passerId: pendingPassTimingChoice.passerPlayerId,
+          mode,
+        });
+      } else {
+        routePassTimingByPlayerId.delete(receiverPlayerId);
+      }
+      pendingPassTimingChoice = null;
+    },
+    confirmImmediatePass: (receiverPlayerId) => {
+      if (!pendingPassTimingChoice || pendingPassTimingChoice.receiverPlayerId !== receiverPlayerId) return;
+      pendingPassTimingChoice = null;
+      const receiverPlayer = players.find((entry) => entry.id === receiverPlayerId);
+      if (receiverPlayer) performImmediatePass(receiverPlayer);
+    },
     clearRoutes: () => {
       cancelBasicRouteFollow();
       clearRouteAssignments();

@@ -1711,6 +1711,47 @@ const BALL_FOLLOW_HINT_STYLE: CSSProperties = {
   pointerEvents: "none",
 };
 
+const PASS_TIMING_PROMPT_OVERLAY_STYLE: CSSProperties = {
+  position: "fixed",
+  left: "50%",
+  bottom: "max(96px, calc(env(safe-area-inset-bottom, 0px) + 88px))",
+  transform: "translateX(-50%)",
+  zIndex: 13,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "8px",
+  padding: "12px 14px",
+  borderRadius: "14px",
+  border: "1px solid rgba(255, 255, 255, 0.22)",
+  background: "rgba(12, 16, 20, 0.92)",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+  boxShadow: "0 12px 30px rgba(0, 0, 0, 0.5)",
+  maxWidth: "min(94vw, 320px)",
+};
+
+const PASS_TIMING_PROMPT_LABEL_STYLE: CSSProperties = {
+  color: "rgba(255, 255, 255, 0.75)",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "11px",
+  fontWeight: 600,
+  letterSpacing: "0.3px",
+  textTransform: "uppercase",
+};
+
+const PASS_TIMING_PROMPT_ROW_STYLE: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "8px",
+  justifyContent: "center",
+};
+
+const PASS_TIMING_PROMPT_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  minWidth: "84px",
+};
+
 const ROUTE_LIMIT_TOAST_STYLE: CSSProperties = {
   position: "fixed",
   top: "max(14px, calc(env(safe-area-inset-top, 0px) + 12px))",
@@ -2203,11 +2244,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [routeState, setRouteState] = useState<TacticalRouteState>({
     isRouteCaptureMode: false,
     routeCount: 0,
-    maxRoutes: 6,
+    maxRoutes: 12,
     ballAttachedPlayerId: null,
   });
   const [routeLimitWarning, setRouteLimitWarning] = useState<string | null>(null);
   const routeLimitWarningTimeoutRef = useRef<number | null>(null);
+  const [passTimingPrompt, setPassTimingPrompt] = useState<{
+    receiverPlayerId: string;
+    passerPlayerId: string;
+  } | null>(null);
 
   const showRouteLimitWarning = (message: string) => {
     if (routeLimitWarningTimeoutRef.current != null) {
@@ -2665,6 +2710,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         if (disposed) return;
         showRouteLimitWarning(`Route limit reached — Tactical Slate supports ${maxRoutes} routed players.`);
       },
+      onPassTimingChoiceRequested: (info) => {
+        if (disposed) return;
+        setPassTimingPrompt(info);
+      },
       onShapeLockChange: (state) => {
         if (disposed) return;
         setShapeLockModeState(state.mode);
@@ -2874,6 +2923,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   }, [shouldBlockPortraitInput, isStatsMode, isWhiteboardMode]);
 
   const isPlaybackLocked = isPlaying || isPaused;
+  useEffect(() => {
+    if (isPlaybackLocked) setPassTimingPrompt(null);
+  }, [isPlaybackLocked]);
   const hasBallOnPitch = items.some((item) => isBallItemType(item.type));
   const hasAssignedRoutes = routeState.routeCount > 0;
   // Routes are now phase-aware (Model B) — a route no longer implies "final stage",
@@ -3698,6 +3750,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     const surface = surfaceRef.current;
     if (!surface) return;
     surface.clearRoutes();
+    setPassTimingPrompt(null);
     setMovementModePillSelection("move");
     setItemMode("edit");
     setTacticalTool("move");
@@ -3766,6 +3819,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   const restoreCanonicalNewBoard = (surface: TacticalPadLiteSurface, notice?: string) => {
     surface.newBoard();
+    setPassTimingPrompt(null);
     const pristineSnapshot = captureCurrentBoardSnapshot();
     boardBaselineSignatureRef.current = serializeBoardState(pristineSnapshot);
     textAnnotationsBaselineRef.current = "[]";
@@ -4279,6 +4333,53 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         {!isWhiteboardMode && routeLimitWarning ? (
           <div style={ROUTE_LIMIT_TOAST_STYLE} role="status" aria-live="assertive">
             {routeLimitWarning}
+          </div>
+        ) : null}
+        {!isWhiteboardMode && passTimingPrompt ? (
+          <div style={PASS_TIMING_PROMPT_OVERLAY_STYLE} role="dialog" aria-label="Choose pass timing">
+            <div style={PASS_TIMING_PROMPT_LABEL_STYLE}>Pass</div>
+            <div style={PASS_TIMING_PROMPT_ROW_STYLE}>
+              <button
+                type="button"
+                style={PASS_TIMING_PROMPT_BUTTON_STYLE}
+                onClick={() => {
+                  surfaceRef.current?.confirmImmediatePass(passTimingPrompt.receiverPlayerId);
+                  setPassTimingPrompt(null);
+                }}
+              >
+                Now
+              </button>
+              <button
+                type="button"
+                style={PASS_TIMING_PROMPT_BUTTON_STYLE}
+                onClick={() => {
+                  surfaceRef.current?.setRoutePassTiming(passTimingPrompt.receiverPlayerId, "before-run");
+                  setPassTimingPrompt(null);
+                }}
+              >
+                Before Run
+              </button>
+              <button
+                type="button"
+                style={PASS_TIMING_PROMPT_BUTTON_STYLE}
+                onClick={() => {
+                  surfaceRef.current?.setRoutePassTiming(passTimingPrompt.receiverPlayerId, "during-run");
+                  setPassTimingPrompt(null);
+                }}
+              >
+                During Run
+              </button>
+              <button
+                type="button"
+                style={PASS_TIMING_PROMPT_BUTTON_STYLE}
+                onClick={() => {
+                  surfaceRef.current?.setRoutePassTiming(passTimingPrompt.receiverPlayerId, "after-run");
+                  setPassTimingPrompt(null);
+                }}
+              >
+                After Run
+              </button>
+            </div>
           </div>
         ) : null}
         {!isWhiteboardMode ? <style>{STADIUM_FLOODLIGHT_CSS}</style> : null}
@@ -4898,6 +4999,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 style={isPlaybackLocked ? DISABLED_CONTROL_BUTTON_STYLE : SET_START_BUTTON_STYLE}
                 onClick={() => {
                   surfaceRef.current?.setStart();
+                  setPassTimingPrompt(null);
                   setMovementModePillSelection("move");
                   closeControlsMenu();
                 }}
@@ -4975,6 +5077,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 style={phaseCount <= 0 ? DISABLED_CONTROL_BUTTON_STYLE : UNDO_PHASE_BUTTON_STYLE}
                 onClick={() => {
                   surfaceRef.current?.undoPhase();
+                  setPassTimingPrompt(null);
                   closeControlsMenu();
                 }}
               >
@@ -4989,6 +5092,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 surfaceRef.current?.reset();
                 setIsPlaying(false);
                 setIsPaused(false);
+                setPassTimingPrompt(null);
                 closeControlsMenu();
               }}
             >
