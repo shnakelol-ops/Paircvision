@@ -141,6 +141,10 @@ export type TacticalRouteState = {
   routeCount: number;
   maxRoutes: number;
   ballAttachedPlayerId: string | null;
+  /** True when the selected player already has at least one Draw Run, so Continue Run is meaningful. */
+  canContinueSelectedRoute: boolean;
+  /** True once Continue Run has been armed for the currently selected player. */
+  isContinueRouteModeArmed: boolean;
 };
 
 export type TacticalPadLiteSurface = {
@@ -161,6 +165,8 @@ export type TacticalPadLiteSurface = {
   setItems: (items: TacticalItem[]) => void;
   setItemMode: (mode: ItemMode) => void;
   setRouteCaptureMode: (enabled: boolean) => void;
+  /** Arms/disarms Continue Run for the currently selected player. No-op if that player has no existing route. */
+  setContinueRouteMode: (enabled: boolean) => void;
   clearRoutes: () => void;
   getRouteState: () => TacticalRouteState;
   reset: () => void;
@@ -337,9 +343,17 @@ type PlayerSeed = {
 
 type ActiveBasicRouteFollow = {
   playerId: string;
+  entryId: string;
   origin: NormalizedPoint;
   segmentIndex: number;
   session: BasicRouteFollowSession;
+};
+
+/** One independently phase-anchored Draw Run. A player may hold several (Multiple Draw Runs). */
+type RouteEntry = {
+  id: string;
+  points: RoutePoint[];
+  startSegmentIndex: number;
 };
 
 type PlaybackKind = "default" | "possession-pass";
@@ -706,14 +720,13 @@ type SanitizedBoardRoute = {
   startSegmentIndex: number | null;
 };
 
-function sanitizeBoardRoutes(input: unknown): Map<string, SanitizedBoardRoute> {
+function sanitizeBoardRoutes(input: unknown): Map<string, SanitizedBoardRoute[]> {
   if (!Array.isArray(input)) return new Map();
-  const parsed = new Map<string, SanitizedBoardRoute>();
+  const parsed = new Map<string, SanitizedBoardRoute[]>();
   for (const entry of input) {
     if (!isRecord(entry)) continue;
     const playerId = typeof entry.playerId === "string" ? entry.playerId.trim() : "";
     if (playerId.length <= 0) continue;
-    if (parsed.has(playerId)) continue;
     const points = Array.isArray(entry.points)
       ? entry.points
           .map((point) => sanitizeNormalizedPoint(point))
@@ -727,7 +740,13 @@ function sanitizeBoardRoutes(input: unknown): Map<string, SanitizedBoardRoute> {
       entry.startSegmentIndex >= 0
         ? Math.floor(entry.startSegmentIndex)
         : null;
-    parsed.set(playerId, { points, startSegmentIndex });
+    const sanitized = { points, startSegmentIndex };
+    const existing = parsed.get(playerId);
+    if (existing) {
+      existing.push(sanitized);
+    } else {
+      parsed.set(playerId, [sanitized]);
+    }
   }
   return parsed;
 }
@@ -1360,17 +1379,30 @@ export async function createTacticalPadLiteSurface(
   const shapeMemberIds = new Set<string>();
   let shapeDragStart: { anchor: ShapePoint; positions: Map<string, ShapePoint> } | null = null;
   let isRouteCaptureMode = false;
-  let routeByPlayerId = new Map<string, RoutePoint[]>();
-  // Phase transition (playbackPath segment index) each route starts at, once resolved.
-  // Missing/absent entries — legacy boards, or any index at/after the final phase —
-  // default to "after the final phase", matching pre-Model-B behaviour.
-  let routeStartSegmentIndexByPlayerId = new Map<string, number>();
+  // Multiple Draw Runs: each player may hold several independently phase-anchored
+  // RouteEntry items. startSegmentIndex records the phase transition (playbackPath
+  // segment index) each entry starts at, once resolved — set at commit time to
+  // phases.length (or, on import, defaulted from a legacy save missing the field).
+  let routesByPlayerId = new Map<string, RouteEntry[]>();
+  let routeEntrySerial = 0;
+  function createRouteEntryId(): string {
+    routeEntrySerial += 1;
+    return `route-${routeEntrySerial}`;
+  }
+  // Runtime scheduling state — one active run per player at a time (a later-due entry
+  // for the same player supersedes/cancels a still-running earlier one). Reset at the
+  // start of every Play so replay-from-scratch re-fires every entry.
   let activeRouteRunsByPlayerId = new Map<string, ActiveBasicRouteFollow>();
   let routeControlledPlayerIds = new Set<string>();
+  let startedRouteEntryIds = new Set<string>();
   let currentRouteDraftPoints: RoutePoint[] = [];
   let currentRouteDraftPlayerId: string | null = null;
   let routeCapturePointerId: number | null = null;
   let routeSelectionPulseMs = 0;
+  // Continue Run: armed for exactly one player at a time via setContinueRouteMode().
+  // Disarmed whenever the selection changes, a draft is committed/discarded, or route
+  // capture mode turns off — arming never silently persists past the moment it applies to.
+  let continueRouteModeArmedForPlayerId: string | null = null;
   let isPossessionPassModeEnabled = false;
 
   let activeDrag: ActiveDragState = null;
@@ -1412,11 +1444,15 @@ export async function createTacticalPadLiteSurface(
   }
 
   function emitRouteStateChange(): void {
+    const selectedPlayerRouteEntries = selectedPlayerId ? routesByPlayerId.get(selectedPlayerId) : undefined;
     options.onRouteStateChange?.({
       isRouteCaptureMode,
-      routeCount: routeByPlayerId.size,
+      routeCount: routesByPlayerId.size,
       maxRoutes: MAX_BASIC_ROUTE_PLAYERS,
       ballAttachedPlayerId: getAttachedBallPlayerId(),
+      canContinueSelectedRoute: Boolean(selectedPlayerRouteEntries && selectedPlayerRouteEntries.length > 0),
+      isContinueRouteModeArmed:
+        continueRouteModeArmedForPlayerId != null && continueRouteModeArmedForPlayerId === selectedPlayerId,
     });
   }
 
@@ -2830,12 +2866,14 @@ export async function createTacticalPadLiteSurface(
         points: sampled.map((point) => mapper.normalizedToWorld(point)),
       });
     };
-    for (const [playerId, route] of routeByPlayerId.entries()) {
-      appendPath(route, {
-        isDraft: false,
-        isSelected: selectedPlayerId === playerId,
-        isPlaybackActive: activeRoutePlayerIds.has(playerId),
-      });
+    for (const [playerId, entries] of routesByPlayerId.entries()) {
+      for (const entry of entries) {
+        appendPath(entry.points, {
+          isDraft: false,
+          isSelected: selectedPlayerId === playerId,
+          isPlaybackActive: activeRoutePlayerIds.has(playerId),
+        });
+      }
     }
     if (currentRouteDraftPoints.length > 0) {
       appendPath(currentRouteDraftPoints, {
@@ -2895,6 +2933,7 @@ export async function createTacticalPadLiteSurface(
     routeCapturePointerId = null;
     currentRouteDraftPoints = [];
     currentRouteDraftPlayerId = null;
+    continueRouteModeArmedForPlayerId = null;
     renderBasicRoutePreview();
   }
 
@@ -2902,8 +2941,8 @@ export async function createTacticalPadLiteSurface(
     routeCapturePointerId = null;
     currentRouteDraftPoints = [];
     currentRouteDraftPlayerId = null;
-    routeByPlayerId.clear();
-    routeStartSegmentIndexByPlayerId.clear();
+    continueRouteModeArmedForPlayerId = null;
+    routesByPlayerId.clear();
     selectedPlayerId = null;
     clearBasicRoutePreview();
     renderRouteSelectionHighlight();
@@ -2948,16 +2987,15 @@ export async function createTacticalPadLiteSurface(
     return closest;
   }
 
-  function buildBasicRouteRunsForPlayers(
-    playerIds: Iterable<string>,
+  function buildBasicRouteRunsForEntries(
+    dueEntriesByPlayerId: Map<string, RouteEntry>,
     segmentIndex: number,
   ): Map<string, ActiveBasicRouteFollow> {
     const runs = new Map<string, ActiveBasicRouteFollow>();
-    for (const playerId of playerIds) {
-      const route = routeByPlayerId.get(playerId);
-      const player = players.find((entry) => entry.id === playerId);
-      if (!route || !player || route.length < 2) continue;
-      const sampledRoute = sampleRoutePoints(route);
+    for (const [playerId, entry] of dueEntriesByPlayerId) {
+      const player = players.find((candidate) => candidate.id === playerId);
+      if (!player || entry.points.length < 2) continue;
+      const sampledRoute = sampleRoutePoints(entry.points);
       if (sampledRoute.length < 2) continue;
       const origin = { x: player.current.x, y: player.current.y };
       const session = createBasicRouteFollowSession({
@@ -2965,26 +3003,46 @@ export async function createTacticalPadLiteSurface(
         route: sampledRoute.map((point) => ({ ...point })),
         speed: BASIC_ROUTE_FOLLOW_SPEED,
       });
-      runs.set(player.id, { playerId: player.id, origin, segmentIndex, session });
+      runs.set(player.id, { playerId: player.id, entryId: entry.id, origin, segmentIndex, session });
     }
     return runs;
   }
 
-  // Starts any routes assigned to the phase transition that just resolved. Routes
-  // whose recorded start index is at or beyond the final segment (including legacy
-  // routes with no recorded index, which default to phases.length) start once the
-  // final segment resolves — preserving the original "after the final phase" behaviour.
+  // Starts any route entries assigned to the phase transition that just resolved.
+  // Entries whose recorded start index is at or beyond the final segment (including
+  // legacy entries with no recorded index, which default to phases.length) start once
+  // the final segment resolves — preserving the original "after the final phase"
+  // behaviour. Multiple Draw Runs: a player can have several entries due at different
+  // segments over the course of one playback; startedRouteEntryIds (reset every Play)
+  // tracks which specific entries have already fired, not just which players have ever
+  // been route-controlled. If a later entry becomes due while an earlier one for the
+  // same player is still animating, the earlier run is superseded (cancelled) so the
+  // later one takes over from wherever the player currently is.
   function startRoutesForResolvedSegment(resolvedSegmentIndex: number, isFinalSegment: boolean): void {
-    if (playbackKind !== "default" || routeByPlayerId.size <= 0) return;
-    const dueIds: string[] = [];
-    for (const playerId of routeByPlayerId.keys()) {
-      if (activeRouteRunsByPlayerId.has(playerId) || routeControlledPlayerIds.has(playerId)) continue;
-      const startIndex = routeStartSegmentIndexByPlayerId.get(playerId) ?? phases.length;
-      const isDue = startIndex === resolvedSegmentIndex || (isFinalSegment && startIndex >= resolvedSegmentIndex);
-      if (isDue) dueIds.push(playerId);
+    if (playbackKind !== "default" || routesByPlayerId.size <= 0) return;
+    const dueEntriesByPlayerId = new Map<string, RouteEntry>();
+    for (const [playerId, entries] of routesByPlayerId.entries()) {
+      for (const entry of entries) {
+        if (startedRouteEntryIds.has(entry.id)) continue;
+        const startIndex = entry.startSegmentIndex;
+        const isDue = startIndex === resolvedSegmentIndex || (isFinalSegment && startIndex >= resolvedSegmentIndex);
+        if (!isDue) continue;
+        const existingDue = dueEntriesByPlayerId.get(playerId);
+        if (!existingDue || entry.startSegmentIndex >= existingDue.startSegmentIndex) {
+          dueEntriesByPlayerId.set(playerId, entry);
+        }
+      }
     }
-    if (dueIds.length <= 0) return;
-    const newRuns = buildBasicRouteRunsForPlayers(dueIds, resolvedSegmentIndex);
+    if (dueEntriesByPlayerId.size <= 0) return;
+    for (const [playerId, entry] of dueEntriesByPlayerId) {
+      const activeRun = activeRouteRunsByPlayerId.get(playerId);
+      if (activeRun) {
+        activeRun.session.cancel();
+        activeRouteRunsByPlayerId.delete(playerId);
+      }
+      startedRouteEntryIds.add(entry.id);
+    }
+    const newRuns = buildBasicRouteRunsForEntries(dueEntriesByPlayerId, resolvedSegmentIndex);
     for (const [playerId, run] of newRuns) {
       activeRouteRunsByPlayerId.set(playerId, run);
       routeControlledPlayerIds.add(playerId);
@@ -3032,6 +3090,7 @@ export async function createTacticalPadLiteSurface(
     // just reset to empty; startRoutesForResolvedSegment() populates it as segments land.
     activeRouteRunsByPlayerId = new Map();
     routeControlledPlayerIds = new Set();
+    startedRouteEntryIds = new Set();
     emitPlaybackStateChange();
     renderBasicRoutePreview();
   }
@@ -3483,9 +3542,13 @@ export async function createTacticalPadLiteSurface(
       if (isPlaybackInputLocked()) return;
       if (activeRouteRunsByPlayerId.size > 0) return;
       if (isRouteCaptureMode) {
+        if (selectedPlayerId !== player.id) {
+          continueRouteModeArmedForPlayerId = null;
+        }
         selectedPlayerId = player.id;
         clearSelectedItem();
         syncWhiteboardTokenInputMode();
+        emitRouteStateChange();
         return;
       }
       if (activeWhiteboardTool !== "move") return;
@@ -3707,11 +3770,13 @@ export async function createTacticalPadLiteSurface(
       drawings: drawingStates,
       phases: phaseStates,
       movementPaths: phaseStates.map((phase) => cloneSnapshot(phase)),
-      routes: Array.from(routeByPlayerId.entries()).map(([playerId, points]) => ({
-        playerId,
-        points: points.map((point) => ({ x: point.x, y: point.y })),
-        startSegmentIndex: routeStartSegmentIndexByPlayerId.get(playerId) ?? phases.length,
-      })),
+      routes: Array.from(routesByPlayerId.entries()).flatMap(([playerId, entries]) =>
+        entries.map((entry) => ({
+          playerId,
+          points: entry.points.map((point) => ({ x: point.x, y: point.y })),
+          startSegmentIndex: entry.startSegmentIndex,
+        })),
+      ),
       kits: kitsByPlayer,
       teamKits: currentTeamKits,
       teamState: currentTeamState,
@@ -3836,21 +3901,21 @@ export async function createTacticalPadLiteSurface(
     );
     startPositions = nextStartSnapshot;
     phases = parsedPhases.map((phase) => normalizePhaseForPlayerCount(phase, players.length));
-    const importedRouteEntries = Array.from(parsedRoutes.entries())
-      .filter(([playerId]) => players.some((player) => player.id === playerId))
+    const importedRoutePlayerIds = Array.from(parsedRoutes.keys())
+      .filter((playerId) => players.some((player) => player.id === playerId))
       .slice(0, MAX_BASIC_ROUTE_PLAYERS);
-    routeByPlayerId = new Map(
-      importedRouteEntries.map(
-        ([playerId, route]) =>
-          [playerId, route.points.map((point) => ({ x: point.x, y: point.y }))] as [string, RoutePoint[]],
-      ),
-    );
-    // Legacy saves (no recorded start index) default to "after the final phase" —
-    // identical to this board's pre-Model-B behaviour.
-    routeStartSegmentIndexByPlayerId = new Map(
-      importedRouteEntries.map(
-        ([playerId, route]) => [playerId, route.startSegmentIndex ?? phases.length] as [string, number],
-      ),
+    routesByPlayerId = new Map(
+      importedRoutePlayerIds.map((playerId) => {
+        const sanitizedEntries = parsedRoutes.get(playerId) ?? [];
+        const entries: RouteEntry[] = sanitizedEntries.map((route) => ({
+          id: createRouteEntryId(),
+          points: route.points.map((point) => ({ x: point.x, y: point.y })),
+          // Legacy saves (no recorded start index) default to "after the final
+          // phase" — identical to this board's pre-Model-B behaviour.
+          startSegmentIndex: route.startSegmentIndex ?? phases.length,
+        }));
+        return [playerId, entries] as [string, RouteEntry[]];
+      }),
     );
     options.onPhaseCountChange?.(phases.length);
     renderBasicRoutePreview();
@@ -3952,8 +4017,16 @@ export async function createTacticalPadLiteSurface(
     if (selectedPlayerId === removedPlayer.id) {
       selectedPlayerId = null;
     }
-    routeStartSegmentIndexByPlayerId.delete(removedPlayer.id);
-    if (routeByPlayerId.delete(removedPlayer.id)) {
+    if (continueRouteModeArmedForPlayerId === removedPlayer.id) {
+      continueRouteModeArmedForPlayerId = null;
+    }
+    const removedRouteEntries = routesByPlayerId.get(removedPlayer.id);
+    if (removedRouteEntries) {
+      for (const entry of removedRouteEntries) {
+        startedRouteEntryIds.delete(entry.id);
+      }
+    }
+    if (routesByPlayerId.delete(removedPlayer.id)) {
       emitRouteStateChange();
     }
     const activeRoute = activeRouteRunsByPlayerId.get(removedPlayer.id);
@@ -4006,15 +4079,32 @@ export async function createTacticalPadLiteSurface(
       const pointerId = getPointerIdFromEvent(event);
       if (routeCapturePointerId == null || pointerId == null || pointerId === routeCapturePointerId) {
         if (currentRouteDraftPlayerId && currentRouteDraftPoints.length >= 2) {
-          const hasExistingRoute = routeByPlayerId.has(currentRouteDraftPlayerId);
-          if (hasExistingRoute || routeByPlayerId.size < MAX_BASIC_ROUTE_PLAYERS) {
-            routeByPlayerId.set(
-              currentRouteDraftPlayerId,
-              currentRouteDraftPoints.map((point) => ({ x: point.x, y: point.y })),
-            );
-            // Assign the route to the phase transition currently being authored —
-            // i.e. it starts once the transition into the *next* phase resolves.
-            routeStartSegmentIndexByPlayerId.set(currentRouteDraftPlayerId, phases.length);
+          const existingEntries = routesByPlayerId.get(currentRouteDraftPlayerId) ?? [];
+          const isContinuingExistingRoute =
+            continueRouteModeArmedForPlayerId === currentRouteDraftPlayerId && existingEntries.length > 0;
+          if (isContinuingExistingRoute) {
+            // Continue Run: append to the most recent entry in place, preserving its
+            // original phase-start anchor — a distinct action from starting a new run.
+            const lastEntry = existingEntries[existingEntries.length - 1]!;
+            lastEntry.points = [
+              ...lastEntry.points,
+              ...currentRouteDraftPoints.map((point) => ({ x: point.x, y: point.y })),
+            ];
+            emitRouteStateChange();
+          } else if (existingEntries.length > 0 || routesByPlayerId.size < MAX_BASIC_ROUTE_PLAYERS) {
+            // Multiple Draw Runs: a fresh draw always adds a new, independently
+            // phase-anchored entry rather than overwriting the player's prior run(s).
+            const nextEntries = [
+              ...existingEntries,
+              {
+                id: createRouteEntryId(),
+                points: currentRouteDraftPoints.map((point) => ({ x: point.x, y: point.y })),
+                // Assign the entry to the phase transition currently being authored —
+                // i.e. it starts once the transition into the *next* phase resolves.
+                startSegmentIndex: phases.length,
+              },
+            ];
+            routesByPlayerId.set(currentRouteDraftPlayerId, nextEntries);
             emitRouteStateChange();
           } else {
             options.onRouteLimitReached?.(MAX_BASIC_ROUTE_PLAYERS);
@@ -4022,6 +4112,7 @@ export async function createTacticalPadLiteSurface(
         }
         currentRouteDraftPoints = [];
         currentRouteDraftPlayerId = null;
+        continueRouteModeArmedForPlayerId = null;
         routeCapturePointerId = null;
         renderBasicRoutePreview();
       }
@@ -4052,8 +4143,12 @@ export async function createTacticalPadLiteSurface(
       const previousSelectedPlayerId = selectedPlayerId;
       const tappedPlayer = findRouteSelectablePlayerAtWorldPoint(worldPoint);
       if (tappedPlayer) {
+        if (previousSelectedPlayerId !== tappedPlayer.id) {
+          continueRouteModeArmedForPlayerId = null;
+        }
         selectedPlayerId = tappedPlayer.id;
         syncWhiteboardTokenInputMode();
+        emitRouteStateChange();
         if (previousSelectedPlayerId !== tappedPlayer.id) return;
       }
       if (!selectedPlayerId) return;
@@ -4201,12 +4296,31 @@ export async function createTacticalPadLiteSurface(
         renderAllWhiteboardDrawings();
       }
     },
-    getRouteState: () => ({
-      isRouteCaptureMode,
-      routeCount: routeByPlayerId.size,
-      maxRoutes: MAX_BASIC_ROUTE_PLAYERS,
-      ballAttachedPlayerId: getAttachedBallPlayerId(),
-    }),
+    setContinueRouteMode: (enabled) => {
+      if (!enabled) {
+        if (continueRouteModeArmedForPlayerId === null) return;
+        continueRouteModeArmedForPlayerId = null;
+        emitRouteStateChange();
+        return;
+      }
+      if (!isRouteCaptureMode || !selectedPlayerId) return;
+      const existingEntries = routesByPlayerId.get(selectedPlayerId);
+      if (!existingEntries || existingEntries.length <= 0) return;
+      continueRouteModeArmedForPlayerId = selectedPlayerId;
+      emitRouteStateChange();
+    },
+    getRouteState: () => {
+      const selectedPlayerRouteEntries = selectedPlayerId ? routesByPlayerId.get(selectedPlayerId) : undefined;
+      return {
+        isRouteCaptureMode,
+        routeCount: routesByPlayerId.size,
+        maxRoutes: MAX_BASIC_ROUTE_PLAYERS,
+        ballAttachedPlayerId: getAttachedBallPlayerId(),
+        canContinueSelectedRoute: Boolean(selectedPlayerRouteEntries && selectedPlayerRouteEntries.length > 0),
+        isContinueRouteModeArmed:
+          continueRouteModeArmedForPlayerId != null && continueRouteModeArmedForPlayerId === selectedPlayerId,
+      };
+    },
     clearRoutes: () => {
       cancelBasicRouteFollow();
       clearRouteAssignments();

@@ -1590,6 +1590,21 @@ const UNDO_PHASE_BUTTON_STYLE: CSSProperties = {
     "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 18px rgba(168, 85, 247, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
 };
 
+const CONTINUE_RUN_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  border: "1px solid rgba(45, 212, 191, 0.6)",
+  boxShadow:
+    "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 18px rgba(45, 212, 191, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
+};
+
+const CONTINUE_RUN_BUTTON_ARMED_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  border: "1px solid rgba(45, 212, 191, 0.9)",
+  background: "linear-gradient(180deg, rgba(20, 130, 118, 0.85) 0%, rgba(8, 46, 41, 0.95) 100%)",
+  boxShadow:
+    "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 20px rgba(45, 212, 191, 0.55), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
+};
+
 const PLAYBACK_SPEED_BAR_STYLE: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "auto 56px auto",
@@ -2205,6 +2220,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     routeCount: 0,
     maxRoutes: 12,
     ballAttachedPlayerId: null,
+    canContinueSelectedRoute: false,
+    isContinueRouteModeArmed: false,
   });
   const [routeLimitWarning, setRouteLimitWarning] = useState<string | null>(null);
   const routeLimitWarningTimeoutRef = useRef<number | null>(null);
@@ -3693,6 +3710,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     surface.setRouteCaptureMode(enabled);
   };
 
+  const toggleContinueRouteMode = () => {
+    if (shouldBlockPortraitInput) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    surface.setContinueRouteMode(!routeState.isContinueRouteModeArmed);
+  };
+
   const clearCommittedRoutes = () => {
     if (shouldBlockPortraitInput || isPlaybackLocked) return;
     const surface = surfaceRef.current;
@@ -4944,6 +4968,27 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             >
               {hasAssignedRoutes ? "Play Routes" : "Play"}
             </button>
+            {routeState.isRouteCaptureMode ? (
+              <button
+                type="button"
+                className="control-button"
+                disabled={!routeState.canContinueSelectedRoute}
+                style={
+                  !routeState.canContinueSelectedRoute
+                    ? DISABLED_CONTROL_BUTTON_STYLE
+                    : routeState.isContinueRouteModeArmed
+                      ? CONTINUE_RUN_BUTTON_ARMED_STYLE
+                      : CONTINUE_RUN_BUTTON_STYLE
+                }
+                title="Extend the selected player's existing Draw Run instead of starting a new one"
+                onClick={() => {
+                  toggleContinueRouteMode();
+                  closeControlsMenu();
+                }}
+              >
+                {routeState.isContinueRouteModeArmed ? "Continue Run: Draw Now" : "Continue Run"}
+              </button>
+            ) : null}
             {hasAssignedRoutes ? (
               <button
                 type="button"
