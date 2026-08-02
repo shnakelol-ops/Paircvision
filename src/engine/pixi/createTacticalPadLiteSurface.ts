@@ -2090,8 +2090,10 @@ export async function createTacticalPadLiteSurface(
    * Each link's whole chain is traced as a single path and stroked once per
    * pass (glow, then core) — not per member-to-member segment — so an
    * interior linked player never gets its own cap/seam. Round caps only ever
-   * land at the two ends of the whole unit, which is what reads as one
-   * continuous band instead of a series of joined links.
+   * land at the two ends of the whole unit. Tension (and so width and sag)
+   * is computed once for the entire chain (computeChainTetherSegments), not
+   * per pair, so a stretch anywhere in the group reads as the whole band
+   * flexing together — one connected unit, not a series of joined links.
    */
   function renderShapeLinksGraphic(): void {
     clearShapeLinksGraphic();
@@ -2114,11 +2116,9 @@ export async function createTacticalPadLiteSurface(
       const segments = computeChainTetherSegments(liveWorld, restWorld, SHAPE_LINK_BASE_SAG_WORLD);
       if (segments.length === 0) continue;
 
-      // One width for the whole chain (mean tension across its segments) so
-      // the band never appears to step or pinch at an interior member — a
-      // single Graphics.stroke() call can only take one width per pass anyway.
-      const meanTension = segments.reduce((sum, segment) => sum + segment.tension, 0) / segments.length;
-      const widthScale = tensionToWidthScale(meanTension);
+      // Every segment already shares one tension (computeChainTetherSegments
+      // propagates it across the whole chain), so any segment's reading works.
+      const widthScale = tensionToWidthScale(segments[0].tension);
       const first = segments[0].from;
       const traceChain = (): void => {
         shapeLinksGraphic.moveTo(first.x, first.y);

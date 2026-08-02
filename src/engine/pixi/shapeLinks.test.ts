@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeChainTetherSegments,
   computeTetherSegment,
+  computeUnitTension,
   tensionToWidthScale,
   type ShapePoint,
 } from "./shapeLinks";
@@ -109,14 +110,30 @@ describe("computeChainTetherSegments", () => {
     expect(computeChainTetherSegments([], [], 1)).toHaveLength(0);
   });
 
-  it("skips a pair when either member has no resolvable rest position", () => {
+  it("still draws every segment when a member's rest position is unresolved", () => {
     const live: ShapePoint[] = [
       { x: 0, y: 0 },
       { x: 10, y: 0 },
       { x: 20, y: 0 },
     ];
-    // Middle rest position missing (e.g. a stale/unresolved member).
+    // Middle rest position missing (e.g. a stale/unresolved member). The
+    // chain's connectivity is a live-position concern only, so both segments
+    // still draw — just at the neutral resting tension, since no rest pair
+    // is resolvable at all to derive a real reading from.
     const rest: ShapePoint[] = [{ x: 0, y: 0 }, undefined as unknown as ShapePoint, { x: 20, y: 0 }];
+    const segments = computeChainTetherSegments(live, rest, 1);
+    expect(segments).toHaveLength(2);
+    expect(segments[0].tension).toBeCloseTo(1, 10);
+    expect(segments[1].tension).toBeCloseTo(1, 10);
+  });
+
+  it("only omits a segment when one of its own live points is unresolved", () => {
+    const live: ShapePoint[] = [{ x: 0, y: 0 }, undefined as unknown as ShapePoint, { x: 20, y: 0 }];
+    const rest: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 20, y: 0 },
+    ];
     const segments = computeChainTetherSegments(live, rest, 1);
     expect(segments).toHaveLength(0);
   });
@@ -135,5 +152,78 @@ describe("computeChainTetherSegments", () => {
     ];
     const segments = computeChainTetherSegments(liveTranslated, rest, 1);
     expect(segments[0].tension).toBeCloseTo(1, 10);
+  });
+
+  it("propagates one shared tension across the whole chain rather than per pair", () => {
+    const rest: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 20, y: 0 },
+    ];
+    // The first pair stretched to double its rest distance and the second
+    // pair collapsed to zero — a per-pair model would show very different
+    // tension for each segment. The whole unit should read as one
+    // consistent tension instead: here, total live length (20) equals total
+    // rest length (20), so both segments should read exactly resting (1).
+    const live: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { x: 20, y: 0 },
+    ];
+    const segments = computeChainTetherSegments(live, rest, 1);
+    expect(segments).toHaveLength(2);
+    expect(segments[0].tension).toBeCloseTo(segments[1].tension, 10);
+    expect(segments[0].tension).toBeCloseTo(1, 10);
+  });
+});
+
+describe("computeUnitTension", () => {
+  it("is 1 when total live length equals total rest length", () => {
+    const rest: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 20, y: 0 },
+    ];
+    const live: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 15, y: 0 },
+      { x: 20, y: 0 },
+    ];
+    expect(computeUnitTension(live, rest)).toBeCloseTo(1, 10);
+  });
+
+  it("is greater than 1 when the whole chain has stretched overall", () => {
+    const rest: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 20, y: 0 },
+    ];
+    const live: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { x: 40, y: 0 },
+    ];
+    expect(computeUnitTension(live, rest)).toBeGreaterThan(1);
+  });
+
+  it("defaults to 1 (resting) when no rest pair is resolvable", () => {
+    const live: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ];
+    const rest: ShapePoint[] = [{ x: 0, y: 0 }, undefined as unknown as ShapePoint];
+    expect(computeUnitTension(live, rest)).toBe(1);
+  });
+
+  it("clamps like a single segment would", () => {
+    const rest: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+    ];
+    const live: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 1000, y: 0 },
+    ];
+    expect(computeUnitTension(live, rest)).toBeLessThanOrEqual(2);
   });
 });
