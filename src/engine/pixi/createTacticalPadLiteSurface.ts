@@ -44,6 +44,7 @@ import {
   orderMembersForGuide,
   type ShapePoint,
 } from "./shapeLockTranslation";
+import { computeChainTetherSegments, tensionToWidthScale } from "./shapeLinks";
 import {
   createTacticalSlateDefaultPlayerSeeds,
   type TacticalSlateDefaultPlayerSeed,
@@ -59,6 +60,22 @@ export type ShapeLockMode = "off" | "select" | "active";
 
 /** Coach-facing cap on how many players can be linked into one shape. */
 const SHAPE_LOCK_MAX_MEMBERS = 15;
+
+/**
+ * Shape Links is a separate, persisted presentation feature: it renders a
+ * thin elastic tether between players the coach has manually animated as one
+ * tactical unit (front three, half-back line, midfield screen, ...). Unlike
+ * Shape Lock it never moves players, never runs drag math, and is saved with
+ * the board. Members are stored in the order the coach selected them, which
+ * is also the tether's chain order.
+ */
+export type ShapeLinkRecord = {
+  id: string;
+  memberIds: string[];
+  visible: boolean;
+};
+/** Mirrors Shape Lock's cap — a Shape Link can span at most one full team. */
+const SHAPE_LINK_MAX_MEMBERS = SHAPE_LOCK_MAX_MEMBERS;
 
 export type TacticalKitPattern = MicroAthleteKitPattern;
 export type TacticalLabelMode = "number" | "initials" | "name";
@@ -134,6 +151,9 @@ export type TacticalBoardState = {
   itemMode?: unknown;
   /** Data URL of the uploaded board background image (PR #210), or null/absent for the default pitch. */
   backgroundImage?: string | null;
+  /** Shape Links (Tactical Slate presentation feature). Persisted, unlike Shape Lock. */
+  shapeLinks?: unknown;
+  shapeLinksVisible?: unknown;
 };
 
 export type TacticalRouteState = {
@@ -192,6 +212,12 @@ export type TacticalPadLiteSurface = {
   /** Shape Lock (Tactical Slate editing convenience). Transient, never persisted. */
   setShapeLockMode: (mode: ShapeLockMode) => void;
   getShapeLockState: () => { mode: ShapeLockMode; memberIds: string[] };
+  /** Shape Links (Tactical Slate presentation feature). Persisted with the board. */
+  setShapeLinkSelectMode: (enabled: boolean) => void;
+  createShapeLinkFromSelection: () => void;
+  deleteShapeLink: (shapeLinkId: string) => void;
+  setShapeLinksVisible: (visible: boolean) => void;
+  getShapeLinksState: () => ShapeLinksState;
   destroy: () => void;
 };
 
@@ -215,6 +241,15 @@ type TacticalPadLiteSurfaceOptions = {
   onRouteStateChange?: (state: TacticalRouteState) => void;
   onRouteLimitReached?: (maxRoutes: number) => void;
   onShapeLockChange?: (state: { mode: ShapeLockMode; memberIds: string[] }) => void;
+  onShapeLinksChange?: (state: ShapeLinksState) => void;
+};
+
+export type ShapeLinkSummary = { id: string; memberCount: number; visible: boolean };
+export type ShapeLinksState = {
+  isSelectMode: boolean;
+  selectedCount: number;
+  showShapeLinks: boolean;
+  links: ShapeLinkSummary[];
 };
 
 type PhaseBallSnapshot = {
@@ -720,6 +755,43 @@ function sanitizeBoardRoutes(input: unknown): Map<string, RoutePoint[]> {
   return parsed;
 }
 
+// Structural validation only — membership is not checked against the live
+// roster here (it isn't rebuilt yet at parse time). importBoardState() drops
+// any memberId that no longer resolves to a player once the new roster
+// exists, the same two-step pattern sanitizeBoardRoutes()'s caller uses.
+function sanitizeShapeLinkCandidate(input: unknown): ShapeLinkRecord | null {
+  if (!isRecord(input)) return null;
+  const id = typeof input.id === "string" ? input.id.trim() : "";
+  if (id.length <= 0) return null;
+  const rawMemberIds = Array.isArray(input.memberIds) ? input.memberIds : [];
+  const seen = new Set<string>();
+  const memberIds: string[] = [];
+  for (const candidate of rawMemberIds) {
+    if (typeof candidate !== "string") continue;
+    const trimmed = candidate.trim();
+    if (trimmed.length <= 0 || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    memberIds.push(trimmed);
+    if (memberIds.length >= SHAPE_LINK_MAX_MEMBERS) break;
+  }
+  if (memberIds.length < 2) return null;
+  const visible = typeof input.visible === "boolean" ? input.visible : true;
+  return { id, memberIds, visible };
+}
+
+function sanitizeShapeLinks(input: unknown): ShapeLinkRecord[] {
+  if (!Array.isArray(input)) return [];
+  const seenIds = new Set<string>();
+  const result: ShapeLinkRecord[] = [];
+  for (const entry of input) {
+    const candidate = sanitizeShapeLinkCandidate(entry);
+    if (!candidate || seenIds.has(candidate.id)) continue;
+    seenIds.add(candidate.id);
+    result.push(candidate);
+  }
+  return result;
+}
+
 function sanitizePlayerKitPatch(patch: TacticalPlayerKitPatch): TacticalPlayerKitFields {
   const nextBaseColor = sanitizeKitColor(patch.kitBaseColor);
   const nextPattern = sanitizeKitPattern(patch.kitPattern);
@@ -1071,6 +1143,11 @@ export async function createTacticalPadLiteSurface(
   const shapeGuideGraphic = new Graphics();
   shapeGuideGraphic.eventMode = "none";
   playerOriginLayer.addChild(shapeGuideGraphic);
+  // Shape Links tethers. Same layer (behind player tokens) as the Shape Lock
+  // guide, but — unlike that guide — this one renders during playback too.
+  const shapeLinksGraphic = new Graphics();
+  shapeLinksGraphic.eventMode = "none";
+  playerOriginLayer.addChild(shapeLinksGraphic);
 
   const playersLayer = new Container();
   world.addChild(playersLayer);
@@ -1343,6 +1420,14 @@ export async function createTacticalPadLiteSurface(
   let shapeLockMode: ShapeLockMode = "off";
   const shapeMemberIds = new Set<string>();
   let shapeDragStart: { anchor: ShapePoint; positions: Map<string, ShapePoint> } | null = null;
+  // Shape Links — persisted presentation layer. `shapeLinks` and
+  // `showShapeLinks` round-trip through captureBoardState/importBoardState;
+  // the select-mode fields below are transient UI state, same as Shape Lock's.
+  let shapeLinks: ShapeLinkRecord[] = [];
+  let showShapeLinks = true;
+  let isShapeLinkSelectMode = false;
+  const shapeLinkSelectedIds = new Set<string>();
+  let shapeLinkCounter = 0;
   let isRouteCaptureMode = false;
   let routeByPlayerId = new Map<string, RoutePoint[]>();
   let activeRouteRunsByPlayerId = new Map<string, ActiveBasicRouteFollow>();
@@ -1926,6 +2011,8 @@ export async function createTacticalPadLiteSurface(
       return;
     }
     if (mode === shapeLockMode) return;
+    // Mutually exclusive with Shape Links selection — both intercept player taps.
+    setShapeLinkSelectModeInternal(false);
     releaseActiveDrag();
     clearSelectedItem();
     shapeLockMode = mode;
@@ -1954,6 +2041,164 @@ export async function createTacticalPadLiteSurface(
     }
     if (!anchor || positions.size < 2) return;
     shapeDragStart = { anchor, positions };
+  }
+
+  // Visual language for the tether: a quiet, neutral band distinct from every
+  // color already claimed by shot outcomes and event families, since a Shape
+  // Link is structure, not an event. Two stroke passes (soft outer glow, thin
+  // brighter core) mirror the language already used for the drag-origin
+  // trail below, kept subtle enough to sit behind live player movement.
+  const SHAPE_LINK_BASE_SAG_WORLD = 1.4;
+  const SHAPE_LINK_BASE_WIDTH_WORLD = 0.3;
+  const SHAPE_LINK_COLOR = 0xe2e8f0;
+  const SHAPE_LINK_GLOW_ALPHA = 0.1;
+  const SHAPE_LINK_CORE_ALPHA = 0.24;
+
+  function emitShapeLinksChange(): void {
+    options.onShapeLinksChange?.({
+      isSelectMode: isShapeLinkSelectMode,
+      selectedCount: shapeLinkSelectedIds.size,
+      showShapeLinks,
+      links: shapeLinks.map((link) => ({
+        id: link.id,
+        memberCount: link.memberIds.length,
+        visible: link.visible,
+      })),
+    });
+  }
+
+  /** Phase-0 (rest) position for a member — the fixed baseline tether tension is measured against. */
+  function getPhaseZeroPositionForPlayer(playerId: string): NormalizedPoint | null {
+    const playerIndex = players.findIndex((player) => player.id === playerId);
+    if (playerIndex < 0) return null;
+    const point = startPositions.players[playerIndex];
+    if (!point) return null;
+    return { x: clampNormalizedValue(point.x), y: clampNormalizedValue(point.y) };
+  }
+
+  function clearShapeLinksGraphic(): void {
+    shapeLinksGraphic.clear();
+  }
+
+  /**
+   * Redraws every visible Shape Link as a chain of soft elastic tethers. Pure
+   * rendering: reads player.current (already computed by playback/dragging)
+   * and phase-0 rest positions, and never writes back to either. Called every
+   * tick so tethers stay live-synced during both playback and manual editing.
+   */
+  function renderShapeLinksGraphic(): void {
+    clearShapeLinksGraphic();
+    if (surfaceVariant !== "tactical") return;
+    if (!showShapeLinks || shapeLinks.length === 0) return;
+
+    for (const link of shapeLinks) {
+      if (!link.visible) continue;
+      const liveWorld: ShapePoint[] = [];
+      const restWorld: ShapePoint[] = [];
+      for (const memberId of link.memberIds) {
+        const player = players.find((candidate) => candidate.id === memberId);
+        const restPoint = getPhaseZeroPositionForPlayer(memberId);
+        if (!player || !restPoint) continue;
+        liveWorld.push(mapper.normalizedToWorld(player.current));
+        restWorld.push(mapper.normalizedToWorld(restPoint));
+      }
+      if (liveWorld.length < 2) continue;
+
+      const segments = computeChainTetherSegments(liveWorld, restWorld, SHAPE_LINK_BASE_SAG_WORLD);
+      for (const segment of segments) {
+        const widthScale = tensionToWidthScale(segment.tension);
+        shapeLinksGraphic
+          .moveTo(segment.from.x, segment.from.y)
+          .quadraticCurveTo(segment.control.x, segment.control.y, segment.to.x, segment.to.y)
+          .stroke({
+            color: SHAPE_LINK_COLOR,
+            alpha: SHAPE_LINK_GLOW_ALPHA,
+            width: SHAPE_LINK_BASE_WIDTH_WORLD * widthScale * 2.4,
+            cap: "round",
+            join: "round",
+            alignment: 0.5,
+          })
+          .moveTo(segment.from.x, segment.from.y)
+          .quadraticCurveTo(segment.control.x, segment.control.y, segment.to.x, segment.to.y)
+          .stroke({
+            color: SHAPE_LINK_COLOR,
+            alpha: SHAPE_LINK_CORE_ALPHA,
+            width: SHAPE_LINK_BASE_WIDTH_WORLD * widthScale,
+            cap: "round",
+            join: "round",
+            alignment: 0.5,
+          });
+      }
+    }
+  }
+
+  function toggleShapeLinkMemberSelection(playerId: string): void {
+    if (!players.some((player) => player.id === playerId)) return;
+    if (shapeLinkSelectedIds.has(playerId)) {
+      shapeLinkSelectedIds.delete(playerId);
+    } else {
+      if (shapeLinkSelectedIds.size >= SHAPE_LINK_MAX_MEMBERS) return;
+      shapeLinkSelectedIds.add(playerId);
+    }
+    emitShapeLinksChange();
+  }
+
+  function setShapeLinkSelectModeInternal(enabled: boolean): void {
+    if (surfaceVariant !== "tactical") return;
+    if (enabled === isShapeLinkSelectMode) return;
+    if (enabled) {
+      // Mutually exclusive with Shape Lock editing — both intercept player taps.
+      releaseShapeLock();
+      releaseActiveDrag();
+      clearSelectedItem();
+    } else {
+      shapeLinkSelectedIds.clear();
+    }
+    isShapeLinkSelectMode = enabled;
+    emitShapeLinksChange();
+  }
+
+  function createShapeLinkFromSelectionInternal(): void {
+    if (!isShapeLinkSelectMode || shapeLinkSelectedIds.size < 2) return;
+    shapeLinkCounter += 1;
+    // Set iteration order is insertion order, so this preserves the order the
+    // coach tapped players in — the tether's chain order.
+    const memberIds = [...shapeLinkSelectedIds];
+    shapeLinks = [
+      ...shapeLinks,
+      { id: `shape-link-${shapeLinkCounter}-${Date.now()}`, memberIds, visible: true },
+    ];
+    isShapeLinkSelectMode = false;
+    shapeLinkSelectedIds.clear();
+    renderShapeLinksGraphic();
+    emitShapeLinksChange();
+  }
+
+  function deleteShapeLinkInternal(shapeLinkId: string): void {
+    const nextShapeLinks = shapeLinks.filter((link) => link.id !== shapeLinkId);
+    if (nextShapeLinks.length === shapeLinks.length) return;
+    shapeLinks = nextShapeLinks;
+    renderShapeLinksGraphic();
+    emitShapeLinksChange();
+  }
+
+  function setShapeLinksVisibleInternal(visible: boolean): void {
+    if (visible === showShapeLinks) return;
+    showShapeLinks = visible;
+    renderShapeLinksGraphic();
+    emitShapeLinksChange();
+  }
+
+  /** Drops members that no longer resolve to a player (e.g. after roster resize) and any link left with under 2. */
+  function pruneShapeLinksForRoster(): void {
+    shapeLinks = shapeLinks
+      .map((link) => ({
+        ...link,
+        memberIds: link.memberIds.filter((memberId) => players.some((player) => player.id === memberId)),
+      }))
+      .filter((link) => link.memberIds.length >= 2);
+    renderShapeLinksGraphic();
+    emitShapeLinksChange();
   }
 
   function getCurrentPhaseStartSnapshot(): PhaseSnapshot {
@@ -3433,6 +3678,13 @@ export async function createTacticalPadLiteSurface(
         lastTappedPlayer = null;
         return;
       }
+      // Shape Links select mode intercepts taps the same way Shape Lock's
+      // "select" mode does: a tap toggles membership in the in-progress link.
+      if (isShapeLinkSelectMode) {
+        toggleShapeLinkMemberSelection(player.id);
+        lastTappedPlayer = null;
+        return;
+      }
       // Shape Lock intercepts taps: in "select" mode a tap toggles membership;
       // in "active" mode a tap is a no-op. Either way, suppress ball attach and
       // the double-tap kit editor while a shape is being edited.
@@ -3459,6 +3711,7 @@ export async function createTacticalPadLiteSurface(
     renderTacticalItems();
     renderPlayerOriginGraphic();
     renderShapeGuideGraphic();
+    renderShapeLinksGraphic();
   }
 
   function rebuildWhiteboardPlayers(
@@ -3616,7 +3869,9 @@ export async function createTacticalPadLiteSurface(
       },
     };
     return {
-      version: 3,
+      // Bumped from 3 → 4 for shapeLinks/shapeLinksVisible; version is
+      // write-only (informational), importBoardState() does not branch on it.
+      version: 4,
       players: playerStates,
       items: itemStates,
       drawings: drawingStates,
@@ -3638,6 +3893,12 @@ export async function createTacticalPadLiteSurface(
       drawColor: activeWhiteboardColor,
       itemMode,
       backgroundImage: backgroundImageDataUrl,
+      shapeLinks: shapeLinks.map((link) => ({
+        id: link.id,
+        memberIds: [...link.memberIds],
+        visible: link.visible,
+      })),
+      shapeLinksVisible: showShapeLinks,
     };
   }
 
@@ -3654,6 +3915,10 @@ export async function createTacticalPadLiteSurface(
     // Player identities are rebuilt on import, so any Shape Lock selection would
     // reference stale tokens. Release it (covers newBoard, which imports too).
     releaseShapeLock();
+    // Same reasoning for an in-progress Shape Links selection. The persisted
+    // shapeLinks themselves are handled below, once the new roster exists.
+    isShapeLinkSelectMode = false;
+    shapeLinkSelectedIds.clear();
 
     const parsedPlayers = Array.isArray(state.players)
       ? state.players.map((entry) => sanitizeBoardPlayerState(entry)).filter((entry): entry is TacticalBoardPlayerState => entry != null)
@@ -3674,6 +3939,11 @@ export async function createTacticalPadLiteSurface(
           .filter((entry): entry is PhaseSnapshot => entry != null)
       : [];
     const parsedRoutes = sanitizeBoardRoutes(state.routes);
+    // Structural validation only; membership is re-checked against the new
+    // roster once it exists, below (same two-step pattern as parsedRoutes).
+    const parsedShapeLinks = sanitizeShapeLinks(state.shapeLinks);
+    const parsedShowShapeLinks =
+      typeof state.shapeLinksVisible === "boolean" ? state.shapeLinksVisible : true;
     const parsedStart = sanitizePhaseSnapshot(state.startSnapshot);
     const parsedTeamState = isRecord(state.teamState) ? state.teamState : null;
     const nextBlueColor = sanitizeWhiteboardTokenColor(parsedTeamState?.colors && isRecord(parsedTeamState.colors) ? parsedTeamState.colors.blue : undefined);
@@ -3763,6 +4033,16 @@ export async function createTacticalPadLiteSurface(
     renderBasicRoutePreview();
     emitRouteStateChange();
 
+    // Drop any member no longer present in the rebuilt roster, and any link
+    // left with fewer than 2 resolvable members.
+    shapeLinks = parsedShapeLinks
+      .map((link) => ({
+        ...link,
+        memberIds: link.memberIds.filter((memberId) => players.some((player) => player.id === memberId)),
+      }))
+      .filter((link) => link.memberIds.length >= 2);
+    showShapeLinks = parsedShowShapeLinks;
+
     const parsedDrawTool = sanitizeDrawingTool(state.drawTool);
     if (parsedDrawTool) {
       activeWhiteboardTool = drawingToolToWhiteboardTool(parsedDrawTool);
@@ -3788,6 +4068,7 @@ export async function createTacticalPadLiteSurface(
     tacticalDrawingController.setColor(activeWhiteboardColor);
     tacticalDrawingController.setTool(sanitizeDrawingTool(activeWhiteboardTool) ?? "move");
     renderAllWhiteboardDrawings();
+    emitShapeLinksChange();
     return true;
   }
 
@@ -3876,8 +4157,12 @@ export async function createTacticalPadLiteSurface(
       ballState.attachedPlayerId = null;
       ballState.isFree = true;
     }
+    if (shapeLinkSelectedIds.delete(removedPlayer.id)) {
+      emitShapeLinksChange();
+    }
     removedPlayer.token.removeAllListeners();
     removedPlayer.token.destroy({ children: true });
+    pruneShapeLinksForRoster();
     syncPlayersToViewport();
     syncWhiteboardTokenInputMode();
   }
@@ -3977,6 +4262,9 @@ export async function createTacticalPadLiteSurface(
     stepBasicRouteFollow(app.ticker.deltaMS);
     animatePlayerDragVisuals(app.ticker.deltaMS);
     animateRouteSelectionHighlight(app.ticker.deltaMS);
+    // Read-only: redraws tethers from whatever positions the steps above (or
+    // a manual drag) already produced this frame. Never feeds back into them.
+    renderShapeLinksGraphic();
   });
 
   syncWhiteboardTokenInputMode();
@@ -4256,6 +4544,20 @@ export async function createTacticalPadLiteSurface(
     getCanvas: () => canvas as HTMLCanvasElement,
     setShapeLockMode: (mode) => setShapeLockModeInternal(mode),
     getShapeLockState: () => ({ mode: shapeLockMode, memberIds: [...shapeMemberIds] }),
+    setShapeLinkSelectMode: (enabled) => setShapeLinkSelectModeInternal(enabled),
+    createShapeLinkFromSelection: () => createShapeLinkFromSelectionInternal(),
+    deleteShapeLink: (shapeLinkId) => deleteShapeLinkInternal(shapeLinkId),
+    setShapeLinksVisible: (visible) => setShapeLinksVisibleInternal(visible),
+    getShapeLinksState: () => ({
+      isSelectMode: isShapeLinkSelectMode,
+      selectedCount: shapeLinkSelectedIds.size,
+      showShapeLinks,
+      links: shapeLinks.map((link) => ({
+        id: link.id,
+        memberCount: link.memberIds.length,
+        visible: link.visible,
+      })),
+    }),
     destroy: () => {
       cancelBasicRouteFollow();
       clearRouteAssignments();
