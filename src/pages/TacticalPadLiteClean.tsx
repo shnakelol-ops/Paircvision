@@ -1916,6 +1916,23 @@ const SHAPE_LINKS_DELETE_BUTTON_STYLE: CSSProperties = {
   cursor: "pointer",
 };
 
+const SHAPE_LINKS_PANEL_HEADER_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "8px",
+};
+
+const SHAPE_LINKS_DISMISS_BUTTON_STYLE: CSSProperties = {
+  border: "none",
+  background: "transparent",
+  color: "#94a3b8",
+  fontSize: "13px",
+  lineHeight: 1,
+  padding: "2px 4px",
+  cursor: "pointer",
+};
+
 const PHASES_TRAY_STYLE: CSSProperties = {
   position: "fixed",
   left: "max(12px, calc(env(safe-area-inset-left, 0px) + 10px))",
@@ -2237,6 +2254,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     showShapeLinks: true,
     links: [],
   });
+  // Purely local UI state: lets a coach dismiss the panel (e.g. during
+  // playback) without touching the tethers themselves, which stay driven by
+  // shapeLinksState.showShapeLinks on the surface.
+  const [isShapeLinksPanelDismissed, setIsShapeLinksPanelDismissed] = useState(false);
   const [tacticalTokenStyle, setTacticalTokenStyle] = useState<TacticalPlayerTokenStyle>("vision-v3");
   const [isCompactPlayerTokens, setIsCompactPlayerTokens] = useState(false);
   const [playerTokensSubmenuOpen, setPlayerTokensSubmenuOpen] = useState(false);
@@ -2800,6 +2821,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       // Shape Links select-mode is also per-surface transient state (the
       // links themselves live in board state and reload with the next surface).
       setShapeLinksState({ isSelectMode: false, selectedCount: 0, showShapeLinks: true, links: [] });
+      setIsShapeLinksPanelDismissed(false);
       destroySurface?.();
     };
   }, [isStatsMode, isWhiteboardMode]);
@@ -3348,6 +3370,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     // same as Shape Lock's selection step.
     setTacticalTool("move");
     setMovementModePillSelection("move");
+    setIsShapeLinksPanelDismissed(false);
     surfaceRef.current?.setShapeLinkSelectMode(true);
     closeControlsMenu();
   };
@@ -3356,6 +3379,14 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const deleteShapeLink = (shapeLinkId: string) => surfaceRef.current?.deleteShapeLink(shapeLinkId);
   const toggleShapeLinksVisible = () =>
     surfaceRef.current?.setShapeLinksVisible(!shapeLinksState.showShapeLinks);
+  const dismissShapeLinksPanel = () => {
+    // Closing while mid-selection cancels it too, rather than leaving an
+    // invisible in-progress selection that taps would still be feeding.
+    if (shapeLinksState.isSelectMode) {
+      cancelShapeLinkSelect();
+    }
+    setIsShapeLinksPanelDismissed(true);
+  };
   const goHome = () => {
     closeActionsMenu();
     window.location.assign("/board");
@@ -4783,12 +4814,25 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             </div>
           </div>
         ) : null}
-        {!isWhiteboardMode && (shapeLinksState.isSelectMode || shapeLinksState.links.length > 0) ? (
+        {!isWhiteboardMode &&
+        !isShapeLinksPanelDismissed &&
+        (shapeLinksState.isSelectMode || shapeLinksState.links.length > 0) ? (
           <div style={SHAPE_LINKS_PANEL_STYLE} role="group" aria-label="Shape Links">
-            <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>
-              {shapeLinksState.isSelectMode
-                ? `Shape Links · ${shapeLinksState.selectedCount} selected`
-                : `Shape Links · ${shapeLinksState.links.length}`}
+            <div style={SHAPE_LINKS_PANEL_HEADER_STYLE}>
+              <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>
+                {shapeLinksState.isSelectMode
+                  ? `Shape Links · ${shapeLinksState.selectedCount} selected`
+                  : `Shape Links · ${shapeLinksState.links.length}`}
+              </div>
+              <button
+                type="button"
+                className="control-button"
+                style={SHAPE_LINKS_DISMISS_BUTTON_STYLE}
+                aria-label="Dismiss Shape Links panel"
+                onClick={dismissShapeLinksPanel}
+              >
+                ✕
+              </button>
             </div>
             {shapeLinksState.isSelectMode ? (
               <>

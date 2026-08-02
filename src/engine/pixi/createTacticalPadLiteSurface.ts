@@ -2081,10 +2081,17 @@ export async function createTacticalPadLiteSurface(
   }
 
   /**
-   * Redraws every visible Shape Link as a chain of soft elastic tethers. Pure
-   * rendering: reads player.current (already computed by playback/dragging)
-   * and phase-0 rest positions, and never writes back to either. Called every
-   * tick so tethers stay live-synced during both playback and manual editing.
+   * Redraws every visible Shape Link as one continuous soft elastic tether.
+   * Pure rendering: reads player.current (already computed by
+   * playback/dragging) and phase-0 rest positions, and never writes back to
+   * either. Called every tick so tethers stay live-synced during both
+   * playback and manual editing.
+   *
+   * Each link's whole chain is traced as a single path and stroked once per
+   * pass (glow, then core) — not per member-to-member segment — so an
+   * interior linked player never gets its own cap/seam. Round caps only ever
+   * land at the two ends of the whole unit, which is what reads as one
+   * continuous band instead of a series of joined links.
    */
   function renderShapeLinksGraphic(): void {
     clearShapeLinksGraphic();
@@ -2105,30 +2112,39 @@ export async function createTacticalPadLiteSurface(
       if (liveWorld.length < 2) continue;
 
       const segments = computeChainTetherSegments(liveWorld, restWorld, SHAPE_LINK_BASE_SAG_WORLD);
-      for (const segment of segments) {
-        const widthScale = tensionToWidthScale(segment.tension);
-        shapeLinksGraphic
-          .moveTo(segment.from.x, segment.from.y)
-          .quadraticCurveTo(segment.control.x, segment.control.y, segment.to.x, segment.to.y)
-          .stroke({
-            color: SHAPE_LINK_COLOR,
-            alpha: SHAPE_LINK_GLOW_ALPHA,
-            width: SHAPE_LINK_BASE_WIDTH_WORLD * widthScale * 2.4,
-            cap: "round",
-            join: "round",
-            alignment: 0.5,
-          })
-          .moveTo(segment.from.x, segment.from.y)
-          .quadraticCurveTo(segment.control.x, segment.control.y, segment.to.x, segment.to.y)
-          .stroke({
-            color: SHAPE_LINK_COLOR,
-            alpha: SHAPE_LINK_CORE_ALPHA,
-            width: SHAPE_LINK_BASE_WIDTH_WORLD * widthScale,
-            cap: "round",
-            join: "round",
-            alignment: 0.5,
-          });
-      }
+      if (segments.length === 0) continue;
+
+      // One width for the whole chain (mean tension across its segments) so
+      // the band never appears to step or pinch at an interior member — a
+      // single Graphics.stroke() call can only take one width per pass anyway.
+      const meanTension = segments.reduce((sum, segment) => sum + segment.tension, 0) / segments.length;
+      const widthScale = tensionToWidthScale(meanTension);
+      const first = segments[0].from;
+      const traceChain = (): void => {
+        shapeLinksGraphic.moveTo(first.x, first.y);
+        for (const segment of segments) {
+          shapeLinksGraphic.quadraticCurveTo(segment.control.x, segment.control.y, segment.to.x, segment.to.y);
+        }
+      };
+
+      traceChain();
+      shapeLinksGraphic.stroke({
+        color: SHAPE_LINK_COLOR,
+        alpha: SHAPE_LINK_GLOW_ALPHA,
+        width: SHAPE_LINK_BASE_WIDTH_WORLD * widthScale * 2.4,
+        cap: "round",
+        join: "round",
+        alignment: 0.5,
+      });
+      traceChain();
+      shapeLinksGraphic.stroke({
+        color: SHAPE_LINK_COLOR,
+        alpha: SHAPE_LINK_CORE_ALPHA,
+        width: SHAPE_LINK_BASE_WIDTH_WORLD * widthScale,
+        cap: "round",
+        join: "round",
+        alignment: 0.5,
+      });
     }
   }
 
