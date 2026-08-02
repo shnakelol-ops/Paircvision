@@ -145,6 +145,8 @@ export type TacticalRouteState = {
   canContinueSelectedRoute: boolean;
   /** True once Continue Run has been armed for the currently selected player. */
   isContinueRouteModeArmed: boolean;
+  /** True when a player is selected and a ball exists to attach, so Attach Ball is meaningful. */
+  canAttachBallToSelectedPlayer: boolean;
 };
 
 export type TacticalPadLiteSurface = {
@@ -167,6 +169,8 @@ export type TacticalPadLiteSurface = {
   setRouteCaptureMode: (enabled: boolean) => void;
   /** Arms/disarms Continue Run for the currently selected player. No-op if that player has no existing route. */
   setContinueRouteMode: (enabled: boolean) => void;
+  /** Attaches the primary ball to the currently selected player (Route Mode only). Reuses the existing attach-ball function — not a new passing mechanism. */
+  attachBallToSelectedPlayer: () => void;
   clearRoutes: () => void;
   getRouteState: () => TacticalRouteState;
   reset: () => void;
@@ -1453,6 +1457,7 @@ export async function createTacticalPadLiteSurface(
       canContinueSelectedRoute: Boolean(selectedPlayerRouteEntries && selectedPlayerRouteEntries.length > 0),
       isContinueRouteModeArmed:
         continueRouteModeArmedForPlayerId != null && continueRouteModeArmedForPlayerId === selectedPlayerId,
+      canAttachBallToSelectedPlayer: Boolean(selectedPlayerId && findPrimaryBallItem()),
     });
   }
 
@@ -4201,7 +4206,10 @@ export async function createTacticalPadLiteSurface(
       releaseActiveDrag();
       clearSelectedItem();
       cancelBasicRouteFollow();
-      setRouteCaptureModeState(false);
+      // Unlike Undo Phase / New Board / Reset, Add Phase deliberately does NOT force
+      // Route Mode off — a coach mid-authoring a Draw Run can add a phase and keep
+      // drawing/continuing without an unrelated mode round-trip. Nothing in the
+      // capture below depends on route-capture state either way.
       cancelPlaybackAnimation();
       singlePlayTargetSnapshot = null;
       phases = [...phases, captureCurrentSnapshot()];
@@ -4272,6 +4280,10 @@ export async function createTacticalPadLiteSurface(
     patchTacticalPlayer,
     setItems: (items) => {
       upsertTacticalItems(items);
+      // A ball being placed/removed changes whether Attach Ball is meaningful for
+      // whichever player is currently selected — keep that state fresh regardless
+      // of authoring order (ball placed before or after selecting a route player).
+      emitRouteStateChange();
     },
     setItemMode: (mode) => {
       if (surfaceVariant !== "tactical") return;
@@ -4309,6 +4321,16 @@ export async function createTacticalPadLiteSurface(
       continueRouteModeArmedForPlayerId = selectedPlayerId;
       emitRouteStateChange();
     },
+    attachBallToSelectedPlayer: () => {
+      if (surfaceVariant !== "tactical" || isPlaybackInputLocked()) return;
+      if (!isRouteCaptureMode || !selectedPlayerId) return;
+      const player = players.find((entry) => entry.id === selectedPlayerId);
+      if (!player) return;
+      // Reuses the same attach primitive every other attach path (Tap Pass, the
+      // ordinary Move-mode tap) already goes through — not a new passing mechanism,
+      // and no new playback/timing state is introduced.
+      attachPrimaryBallToPlayer(player);
+    },
     getRouteState: () => {
       const selectedPlayerRouteEntries = selectedPlayerId ? routesByPlayerId.get(selectedPlayerId) : undefined;
       return {
@@ -4319,6 +4341,7 @@ export async function createTacticalPadLiteSurface(
         canContinueSelectedRoute: Boolean(selectedPlayerRouteEntries && selectedPlayerRouteEntries.length > 0),
         isContinueRouteModeArmed:
           continueRouteModeArmedForPlayerId != null && continueRouteModeArmedForPlayerId === selectedPlayerId,
+        canAttachBallToSelectedPlayer: Boolean(selectedPlayerId && findPrimaryBallItem()),
       };
     },
     clearRoutes: () => {

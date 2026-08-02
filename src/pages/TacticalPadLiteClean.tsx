@@ -1605,6 +1605,13 @@ const CONTINUE_RUN_BUTTON_ARMED_STYLE: CSSProperties = {
     "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 20px rgba(45, 212, 191, 0.55), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
 };
 
+const ATTACH_BALL_BUTTON_STYLE: CSSProperties = {
+  ...CONTROL_BUTTON_STYLE,
+  border: "1px solid rgba(56, 189, 248, 0.6)",
+  boxShadow:
+    "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 18px rgba(56, 189, 248, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
+};
+
 const PLAYBACK_SPEED_BAR_STYLE: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "auto 56px auto",
@@ -2222,6 +2229,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     ballAttachedPlayerId: null,
     canContinueSelectedRoute: false,
     isContinueRouteModeArmed: false,
+    canAttachBallToSelectedPlayer: false,
   });
   const [routeLimitWarning, setRouteLimitWarning] = useState<string | null>(null);
   const routeLimitWarningTimeoutRef = useRef<number | null>(null);
@@ -2894,8 +2902,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const hasBallOnPitch = items.some((item) => isBallItemType(item.type));
   const hasAssignedRoutes = routeState.routeCount > 0;
   // Routes are now phase-aware (Model B) — a route no longer implies "final stage",
-  // so committing one must not block adding further phases after it.
-  const isAddPhaseBlocked = isPlaybackLocked || routeState.isRouteCaptureMode;
+  // so committing one must not block adding further phases after it. Being in Route
+  // Mode doesn't block it either: Add Phase's own capture logic has no dependency on
+  // route-capture state, so a coach can draw a run, add a phase, and keep authoring
+  // without leaving Route Mode.
+  const isAddPhaseBlocked = isPlaybackLocked;
   const playbackSpeedOptionIndex = Math.max(
     0,
     PLAYBACK_SPEED_OPTIONS.findIndex((option) => option.multiplier === playbackSpeedMultiplier),
@@ -3715,6 +3726,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     const surface = surfaceRef.current;
     if (!surface) return;
     surface.setContinueRouteMode(!routeState.isContinueRouteModeArmed);
+  };
+
+  const attachBallToSelectedRoutePlayer = () => {
+    if (shouldBlockPortraitInput) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    surface.attachBallToSelectedPlayer();
   };
 
   const clearCommittedRoutes = () => {
@@ -4947,9 +4965,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               <button
                 type="button"
                 className="control-button"
-                disabled={isAddPhaseBlocked || shapeLockMode !== "off"}
+                disabled={isAddPhaseBlocked || routeState.isRouteCaptureMode || shapeLockMode !== "off"}
                 style={
-                  isAddPhaseBlocked || shapeLockMode !== "off"
+                  isAddPhaseBlocked || routeState.isRouteCaptureMode || shapeLockMode !== "off"
                     ? DISABLED_CONTROL_BUTTON_STYLE
                     : SHAPE_LOCK_BUTTON_STYLE
                 }
@@ -4968,6 +4986,23 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             >
               {hasAssignedRoutes ? "Play Routes" : "Play"}
             </button>
+            {routeState.isRouteCaptureMode ? (
+              <button
+                type="button"
+                className="control-button"
+                disabled={!routeState.canAttachBallToSelectedPlayer}
+                style={
+                  !routeState.canAttachBallToSelectedPlayer ? DISABLED_CONTROL_BUTTON_STYLE : ATTACH_BALL_BUTTON_STYLE
+                }
+                title="Attach the ball to the selected player, without leaving Route Mode"
+                onClick={() => {
+                  attachBallToSelectedRoutePlayer();
+                  closeControlsMenu();
+                }}
+              >
+                ⚽ Attach Ball
+              </button>
+            ) : null}
             {routeState.isRouteCaptureMode ? (
               <button
                 type="button"
