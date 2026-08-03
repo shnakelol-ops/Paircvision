@@ -1933,6 +1933,11 @@ const SHAPE_LINKS_DISMISS_BUTTON_STYLE: CSSProperties = {
   cursor: "pointer",
 };
 
+const SHAPE_LINKS_STATUS_STYLE: CSSProperties = {
+  fontSize: "10px",
+  opacity: 0.65,
+};
+
 const PHASES_TRAY_STYLE: CSSProperties = {
   position: "fixed",
   left: "max(12px, calc(env(safe-area-inset-left, 0px) + 10px))",
@@ -2255,10 +2260,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     showShapeLinks: true,
     links: [],
   });
-  // Purely local UI state: lets a coach dismiss the panel (e.g. during
-  // playback) without touching the tethers themselves, which stay driven by
-  // shapeLinksState.showShapeLinks on the surface.
-  const [isShapeLinksPanelDismissed, setIsShapeLinksPanelDismissed] = useState(false);
+  // Purely local UI state: whether the Shape Links panel itself is open.
+  // Independent of showShapeLinks (the tethers' own visibility on the
+  // surface) — closing this panel (e.g. during playback) never touches them.
+  const [isShapeLinksPanelOpen, setIsShapeLinksPanelOpen] = useState(false);
   const [tacticalTokenStyle, setTacticalTokenStyle] = useState<TacticalPlayerTokenStyle>("vision-v3");
   const [isCompactPlayerTokens, setIsCompactPlayerTokens] = useState(false);
   const [playerTokensSubmenuOpen, setPlayerTokensSubmenuOpen] = useState(false);
@@ -2828,7 +2833,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         showShapeLinks: true,
         links: [],
       });
-      setIsShapeLinksPanelDismissed(false);
+      setIsShapeLinksPanelOpen(false);
       destroySurface?.();
     };
   }, [isStatsMode, isWhiteboardMode]);
@@ -3372,12 +3377,18 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const confirmShapeLock = () => surfaceRef.current?.setShapeLockMode("active");
   const editShapeLockSelection = () => surfaceRef.current?.setShapeLockMode("select");
   const releaseShapeLock = () => surfaceRef.current?.setShapeLockMode("off");
+  // Opens the panel itself (management view / empty state) — does not start
+  // a selection. That happens only via the "+ Create Link" button inside it.
+  const openShapeLinksPanel = () => {
+    setIsShapeLinksPanelOpen(true);
+    closeControlsMenu();
+  };
   const enterShapeLinkSelect = () => {
     // Shape Links selection happens by tapping players with the Move tool,
     // same as Shape Lock's selection step.
     setTacticalTool("move");
     setMovementModePillSelection("move");
-    setIsShapeLinksPanelDismissed(false);
+    setIsShapeLinksPanelOpen(true);
     surfaceRef.current?.setShapeLinkSelectMode(true);
     closeControlsMenu();
   };
@@ -3392,7 +3403,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (shapeLinksState.isSelectMode) {
       cancelShapeLinkSelect();
     }
-    setIsShapeLinksPanelDismissed(true);
+    setIsShapeLinksPanelOpen(false);
   };
   const goHome = () => {
     closeActionsMenu();
@@ -4821,18 +4832,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             </div>
           </div>
         ) : null}
-        {!isWhiteboardMode &&
-        !isShapeLinksPanelDismissed &&
-        (shapeLinksState.isSelectMode || shapeLinksState.links.length > 0) ? (
+        {!isWhiteboardMode && isShapeLinksPanelOpen ? (
           <div style={SHAPE_LINKS_PANEL_STYLE} role="group" aria-label="Shape Links">
             <div style={SHAPE_LINKS_PANEL_HEADER_STYLE}>
-              <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>
-                {shapeLinksState.isSelectMode
-                  ? `Shape Links · ${shapeLinksState.selectedCount} selected${
-                      shapeLinksState.isSelectionClosed ? " · closed" : ""
-                    }`
-                  : `Shape Links · ${shapeLinksState.links.length}`}
-              </div>
+              <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>Shape Links</div>
               <button
                 type="button"
                 className="control-button"
@@ -4846,9 +4849,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             {shapeLinksState.isSelectMode ? (
               <>
                 <div style={SHAPE_LOCK_PANEL_HINT_STYLE}>
-                  Tap players in the order you want to link. Tap the first player again to close the shape. Tap
-                  Done when finished.
+                  Tap players in order. Tap the first player again to close the shape. Press Done to save.
                 </div>
+                {shapeLinksState.selectedCount > 0 ? (
+                  <div style={SHAPE_LINKS_STATUS_STYLE}>
+                    {`${shapeLinksState.selectedCount} selected${
+                      shapeLinksState.isSelectionClosed ? " · closed" : ""
+                    }`}
+                  </div>
+                ) : null}
                 <div style={SHAPE_LOCK_PANEL_ACTIONS_STYLE}>
                   <button
                     type="button"
@@ -4873,34 +4882,45 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               </>
             ) : (
               <>
-                <div style={SHAPE_LOCK_PANEL_HINT_STYLE}>
-                  A thin tether shows these players moving as one unit.
-                </div>
-                <div style={SHAPE_LINKS_LIST_STYLE}>
-                  {shapeLinksState.links.map((link, index) => (
-                    <div key={link.id} style={SHAPE_LINKS_LIST_ITEM_STYLE}>
-                      <span>{`Link ${index + 1} · ${link.memberCount} players${link.closed ? " · closed" : ""}`}</span>
-                      <button
-                        type="button"
-                        className="control-button"
-                        style={SHAPE_LINKS_DELETE_BUTTON_STYLE}
-                        aria-label={`Delete Link ${index + 1}`}
-                        onClick={() => deleteShapeLink(link.id)}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                {shapeLinksState.links.length === 0 ? (
+                  <div style={SHAPE_LOCK_PANEL_HINT_STYLE}>No Shape Links</div>
+                ) : (
+                  <div style={SHAPE_LINKS_LIST_STYLE}>
+                    {shapeLinksState.links.map((link, index) => (
+                      <div key={link.id} style={SHAPE_LINKS_LIST_ITEM_STYLE}>
+                        <span>{`${link.closed ? "●" : "○"} ${link.closed ? "Closed" : "Open"} Link (${link.memberCount})`}</span>
+                        <button
+                          type="button"
+                          className="control-button"
+                          style={SHAPE_LINKS_DELETE_BUTTON_STYLE}
+                          aria-label={`Delete ${link.closed ? "Closed" : "Open"} Link ${index + 1}`}
+                          onClick={() => deleteShapeLink(link.id)}
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div style={SHAPE_LOCK_PANEL_ACTIONS_STYLE}>
                   <button
                     type="button"
                     className="control-button"
-                    style={CONTROL_BUTTON_STYLE}
-                    onClick={toggleShapeLinksVisible}
+                    style={SHAPE_LOCK_BUTTON_STYLE}
+                    onClick={enterShapeLinkSelect}
                   >
-                    {shapeLinksState.showShapeLinks ? "Hide Shape Links" : "Show Shape Links"}
+                    + Create Link
                   </button>
+                  {shapeLinksState.links.length > 0 ? (
+                    <button
+                      type="button"
+                      className="control-button"
+                      style={CONTROL_BUTTON_STYLE}
+                      onClick={toggleShapeLinksVisible}
+                    >
+                      {shapeLinksState.showShapeLinks ? "Hide Shape Links" : "Show Shape Links"}
+                    </button>
+                  ) : null}
                 </div>
               </>
             )}
@@ -5130,7 +5150,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     : SHAPE_LOCK_BUTTON_STYLE
                 }
                 title="Show a group of players moving as one connected unit during playback"
-                onClick={enterShapeLinkSelect}
+                onClick={openShapeLinksPanel}
               >
                 Shape Links
               </button>
