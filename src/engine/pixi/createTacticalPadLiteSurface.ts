@@ -3340,17 +3340,24 @@ export async function createTacticalPadLiteSurface(
     playSingleStartToCurrent();
   }
 
-  function interpolateBallPath(
-    fromBall: PhaseBallSnapshot | null,
-    toBall: PhaseBallSnapshot,
+  /**
+   * Shared Phase-engine interpolation: walks an optional stored freehand
+   * `path` proportionally by arc length, or falls back to a straight lerp
+   * when no path is present. Originally the football's own interpolation;
+   * kept generic (`{ x, y, path? }`) so any Phase-tracked object — not just
+   * the football — can reuse it.
+   */
+  function interpolatePath(
+    from: { x: number; y: number; path?: NormalizedPoint[] } | null,
+    to: { x: number; y: number; path?: NormalizedPoint[] },
     progress: number,
   ): NormalizedPoint {
-    const fallbackStart = fromBall ?? toBall;
+    const fallbackStart = from ?? to;
     const fallbackPoint = {
-      x: fallbackStart.x + (toBall.x - fallbackStart.x) * progress,
-      y: fallbackStart.y + (toBall.y - fallbackStart.y) * progress,
+      x: fallbackStart.x + (to.x - fallbackStart.x) * progress,
+      y: fallbackStart.y + (to.y - fallbackStart.y) * progress,
     };
-    const storedPath = toBall.path ?? [];
+    const storedPath = to.path ?? [];
     if (storedPath.length < 2) {
       return fallbackPoint;
     }
@@ -3360,10 +3367,10 @@ export async function createTacticalPadLiteSurface(
       y: clampNormalizedValue(point.y),
     }));
 
-    if (fromBall) {
+    if (from) {
       const fromPoint = {
-        x: clampNormalizedValue(fromBall.x),
-        y: clampNormalizedValue(fromBall.y),
+        x: clampNormalizedValue(from.x),
+        y: clampNormalizedValue(from.y),
       };
       // Trim stale prefix points so each playback segment begins from the current segment origin.
       const firstAlignedIndex = path.findIndex(
@@ -3410,8 +3417,8 @@ export async function createTacticalPadLiteSurface(
       traveledDistance += segmentDistance;
     }
     return {
-      x: clampNormalizedValue(toBall.x),
-      y: clampNormalizedValue(toBall.y),
+      x: clampNormalizedValue(to.x),
+      y: clampNormalizedValue(to.y),
     };
   }
 
@@ -3515,7 +3522,7 @@ export async function createTacticalPadLiteSurface(
             item.y += (cappedY - item.y) * ATTACHED_BALL_FOLLOW_SMOOTHING;
           }
         } else {
-          const freePoint = interpolateBallPath(fromBall, toBall, progress);
+          const freePoint = interpolatePath(fromBall, toBall, progress);
           state.attachedPlayerId = null;
           state.isFree = true;
           state.path = toBall.path?.map((pathPoint) => ({ x: pathPoint.x, y: pathPoint.y })) ?? [];
