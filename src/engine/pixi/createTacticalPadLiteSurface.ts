@@ -68,11 +68,16 @@ const SHAPE_LOCK_MAX_MEMBERS = 15;
  * Shape Lock it never moves players, never runs drag math, and is saved with
  * the board. Members are stored in the order the coach selected them, which
  * is also the tether's chain order.
+ *
+ * Topology is never a mode the coach picks — it's read off how they tapped:
+ * `closed` is true only when they re-tapped the first member to close the
+ * loop (see handleShapeLinkPlayerTap). An open chain otherwise.
  */
 export type ShapeLinkRecord = {
   id: string;
   memberIds: string[];
   visible: boolean;
+  closed: boolean;
 };
 /** Mirrors Shape Lock's cap — a Shape Link can span at most one full team. */
 const SHAPE_LINK_MAX_MEMBERS = SHAPE_LOCK_MAX_MEMBERS;
@@ -244,10 +249,12 @@ type TacticalPadLiteSurfaceOptions = {
   onShapeLinksChange?: (state: ShapeLinksState) => void;
 };
 
-export type ShapeLinkSummary = { id: string; memberCount: number; visible: boolean };
+export type ShapeLinkSummary = { id: string; memberCount: number; visible: boolean; closed: boolean };
 export type ShapeLinksState = {
   isSelectMode: boolean;
   selectedCount: number;
+  /** True once the coach has re-tapped the first member to close the loop. */
+  isSelectionClosed: boolean;
   showShapeLinks: boolean;
   links: ShapeLinkSummary[];
 };
@@ -776,7 +783,8 @@ function sanitizeShapeLinkCandidate(input: unknown): ShapeLinkRecord | null {
   }
   if (memberIds.length < 2) return null;
   const visible = typeof input.visible === "boolean" ? input.visible : true;
-  return { id, memberIds, visible };
+  const closed = typeof input.closed === "boolean" ? input.closed : false;
+  return { id, memberIds, visible, closed };
 }
 
 function sanitizeShapeLinks(input: unknown): ShapeLinkRecord[] {
@@ -1423,10 +1431,14 @@ export async function createTacticalPadLiteSurface(
   // Shape Links — persisted presentation layer. `shapeLinks` and
   // `showShapeLinks` round-trip through captureBoardState/importBoardState;
   // the select-mode fields below are transient UI state, same as Shape Lock's.
+  // `shapeLinkSelectionOrder` is an ordered array (not a Set) because the tap
+  // order *is* the chain order and it also decides topology — see
+  // handleShapeLinkPlayerTap.
   let shapeLinks: ShapeLinkRecord[] = [];
   let showShapeLinks = true;
   let isShapeLinkSelectMode = false;
-  const shapeLinkSelectedIds = new Set<string>();
+  const shapeLinkSelectionOrder: string[] = [];
+  let shapeLinkSelectionClosed = false;
   let shapeLinkCounter = 0;
   let isRouteCaptureMode = false;
   let routeByPlayerId = new Map<string, RoutePoint[]>();
@@ -2057,12 +2069,14 @@ export async function createTacticalPadLiteSurface(
   function emitShapeLinksChange(): void {
     options.onShapeLinksChange?.({
       isSelectMode: isShapeLinkSelectMode,
-      selectedCount: shapeLinkSelectedIds.size,
+      selectedCount: shapeLinkSelectionOrder.length,
+      isSelectionClosed: shapeLinkSelectionClosed,
       showShapeLinks,
       links: shapeLinks.map((link) => ({
         id: link.id,
         memberCount: link.memberIds.length,
         visible: link.visible,
+        closed: link.closed,
       })),
     });
   }
@@ -2113,7 +2127,12 @@ export async function createTacticalPadLiteSurface(
       }
       if (liveWorld.length < 2) continue;
 
-      const segments = computeChainTetherSegments(liveWorld, restWorld, SHAPE_LINK_BASE_SAG_WORLD);
+      const segments = computeChainTetherSegments(
+        liveWorld,
+        restWorld,
+        SHAPE_LINK_BASE_SAG_WORLD,
+        link.closed,
+      );
       if (segments.length === 0) continue;
 
       // Every segment already shares one tension (computeChainTetherSegments
@@ -2124,6 +2143,12 @@ export async function createTacticalPadLiteSurface(
         shapeLinksGraphic.moveTo(first.x, first.y);
         for (const segment of segments) {
           shapeLinksGraphic.quadraticCurveTo(segment.control.x, segment.control.y, segment.to.x, segment.to.y);
+        }
+        // Closing pairs already end back at `first`; closePath() tells the
+        // stroker this is one closed contour so the seam gets a smooth join
+        // instead of treating the coincident start/end as two open caps.
+        if (link.closed && segments.length >= 3) {
+          shapeLinksGraphic.closePath();
         }
       };
 
@@ -2148,14 +2173,38 @@ export async function createTacticalPadLiteSurface(
     }
   }
 
-  function toggleShapeLinkMemberSelection(playerId: string): void {
+  /**
+   * A coach draws a Shape Link by tapping players in order — there is no
+   * separate chain/loop mode to pick. Tapping a new player appends it to the
+   * chain. Re-tapping the *first* player once at least 3 members are
+   * selected closes the loop (adds exactly one edge, last back to first);
+   * below 3 members that tap is a no-op, since closing 1 or 2 points is
+   * meaningless. Any other repeat tap (an already-selected interior member)
+   * is ignored — mistakes are corrected via Cancel, not by re-tapping.
+   * Once closed, further taps are ignored; Done/Cancel are the only next steps.
+   */
+  function handleShapeLinkPlayerTap(playerId: string): void {
     if (!players.some((player) => player.id === playerId)) return;
-    if (shapeLinkSelectedIds.has(playerId)) {
-      shapeLinkSelectedIds.delete(playerId);
-    } else {
-      if (shapeLinkSelectedIds.size >= SHAPE_LINK_MAX_MEMBERS) return;
-      shapeLinkSelectedIds.add(playerId);
+    if (shapeLinkSelectionClosed) return;
+
+    if (shapeLinkSelectionOrder.length === 0) {
+      shapeLinkSelectionOrder.push(playerId);
+      emitShapeLinksChange();
+      return;
     }
+
+    const firstMemberId = shapeLinkSelectionOrder[0];
+    if (playerId === firstMemberId) {
+      if (shapeLinkSelectionOrder.length >= 3) {
+        shapeLinkSelectionClosed = true;
+        emitShapeLinksChange();
+      }
+      return;
+    }
+
+    if (shapeLinkSelectionOrder.includes(playerId)) return;
+    if (shapeLinkSelectionOrder.length >= SHAPE_LINK_MAX_MEMBERS) return;
+    shapeLinkSelectionOrder.push(playerId);
     emitShapeLinksChange();
   }
 
@@ -2168,24 +2217,25 @@ export async function createTacticalPadLiteSurface(
       releaseActiveDrag();
       clearSelectedItem();
     } else {
-      shapeLinkSelectedIds.clear();
+      shapeLinkSelectionOrder.length = 0;
+      shapeLinkSelectionClosed = false;
     }
     isShapeLinkSelectMode = enabled;
     emitShapeLinksChange();
   }
 
   function createShapeLinkFromSelectionInternal(): void {
-    if (!isShapeLinkSelectMode || shapeLinkSelectedIds.size < 2) return;
+    if (!isShapeLinkSelectMode || shapeLinkSelectionOrder.length < 2) return;
     shapeLinkCounter += 1;
-    // Set iteration order is insertion order, so this preserves the order the
-    // coach tapped players in — the tether's chain order.
-    const memberIds = [...shapeLinkSelectedIds];
+    const memberIds = [...shapeLinkSelectionOrder];
+    const closed = shapeLinkSelectionClosed;
     shapeLinks = [
       ...shapeLinks,
-      { id: `shape-link-${shapeLinkCounter}-${Date.now()}`, memberIds, visible: true },
+      { id: `shape-link-${shapeLinkCounter}-${Date.now()}`, memberIds, visible: true, closed },
     ];
     isShapeLinkSelectMode = false;
-    shapeLinkSelectedIds.clear();
+    shapeLinkSelectionOrder.length = 0;
+    shapeLinkSelectionClosed = false;
     renderShapeLinksGraphic();
     emitShapeLinksChange();
   }
@@ -3694,10 +3744,10 @@ export async function createTacticalPadLiteSurface(
         lastTappedPlayer = null;
         return;
       }
-      // Shape Links select mode intercepts taps the same way Shape Lock's
-      // "select" mode does: a tap toggles membership in the in-progress link.
+      // Shape Links select mode intercepts taps: the order tapped in defines
+      // the chain, and re-tapping the first member closes it into a loop.
       if (isShapeLinkSelectMode) {
-        toggleShapeLinkMemberSelection(player.id);
+        handleShapeLinkPlayerTap(player.id);
         lastTappedPlayer = null;
         return;
       }
@@ -3913,6 +3963,7 @@ export async function createTacticalPadLiteSurface(
         id: link.id,
         memberIds: [...link.memberIds],
         visible: link.visible,
+        closed: link.closed,
       })),
       shapeLinksVisible: showShapeLinks,
     };
@@ -3934,7 +3985,8 @@ export async function createTacticalPadLiteSurface(
     // Same reasoning for an in-progress Shape Links selection. The persisted
     // shapeLinks themselves are handled below, once the new roster exists.
     isShapeLinkSelectMode = false;
-    shapeLinkSelectedIds.clear();
+    shapeLinkSelectionOrder.length = 0;
+    shapeLinkSelectionClosed = false;
 
     const parsedPlayers = Array.isArray(state.players)
       ? state.players.map((entry) => sanitizeBoardPlayerState(entry)).filter((entry): entry is TacticalBoardPlayerState => entry != null)
@@ -4173,7 +4225,12 @@ export async function createTacticalPadLiteSurface(
       ballState.attachedPlayerId = null;
       ballState.isFree = true;
     }
-    if (shapeLinkSelectedIds.delete(removedPlayer.id)) {
+    if (shapeLinkSelectionOrder.includes(removedPlayer.id)) {
+      // An in-progress selection referencing a just-removed player is reset
+      // wholesale rather than spliced — the same "clear, don't repair"
+      // approach Shape Lock already takes for roster changes mid-edit.
+      shapeLinkSelectionOrder.length = 0;
+      shapeLinkSelectionClosed = false;
       emitShapeLinksChange();
     }
     removedPlayer.token.removeAllListeners();
@@ -4566,12 +4623,14 @@ export async function createTacticalPadLiteSurface(
     setShapeLinksVisible: (visible) => setShapeLinksVisibleInternal(visible),
     getShapeLinksState: () => ({
       isSelectMode: isShapeLinkSelectMode,
-      selectedCount: shapeLinkSelectedIds.size,
+      selectedCount: shapeLinkSelectionOrder.length,
+      isSelectionClosed: shapeLinkSelectionClosed,
       showShapeLinks,
       links: shapeLinks.map((link) => ({
         id: link.id,
         memberCount: link.memberIds.length,
         visible: link.visible,
+        closed: link.closed,
       })),
     }),
     destroy: () => {

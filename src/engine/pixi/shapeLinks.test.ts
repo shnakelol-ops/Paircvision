@@ -175,6 +175,69 @@ describe("computeChainTetherSegments", () => {
     expect(segments[0].tension).toBeCloseTo(segments[1].tension, 10);
     expect(segments[0].tension).toBeCloseTo(1, 10);
   });
+
+  it("adds exactly one closing segment (last back to first) when closed", () => {
+    // The 4-5-6-7 square from the spec: an open chain gives 3 segments
+    // (4-5, 5-6, 6-7); closing it adds exactly one more (7-4) and nothing else.
+    const square: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+      { x: 0, y: 10 },
+    ];
+    const open = computeChainTetherSegments(square, square, 1, false);
+    expect(open).toHaveLength(3);
+
+    const closed = computeChainTetherSegments(square, square, 1, true);
+    expect(closed).toHaveLength(4);
+    // The first 3 segments are unchanged; the 4th is the new closing edge.
+    expect(closed[0].from).toEqual(square[0]);
+    expect(closed[0].to).toEqual(square[1]);
+    expect(closed[1].from).toEqual(square[1]);
+    expect(closed[1].to).toEqual(square[2]);
+    expect(closed[2].from).toEqual(square[2]);
+    expect(closed[2].to).toEqual(square[3]);
+    expect(closed[3].from).toEqual(square[3]);
+    expect(closed[3].to).toEqual(square[0]);
+  });
+
+  it("does not close a chain of fewer than 3 members (a 2-member loop is meaningless)", () => {
+    const pair: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+    ];
+    const segments = computeChainTetherSegments(pair, pair, 1, true);
+    expect(segments).toHaveLength(1);
+  });
+
+  it("defaults to an open chain when closed is omitted", () => {
+    const live: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+    ];
+    expect(computeChainTetherSegments(live, live, 1)).toHaveLength(2);
+  });
+
+  it("includes the closing pair in the shared tension reading", () => {
+    const rest: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 10, y: 0 },
+      { x: 10, y: 10 },
+    ];
+    // Every pair (including the closing 3rd-back-to-1st edge) has doubled in
+    // live distance, so the whole loop should read as uniformly stretched.
+    const live: ShapePoint[] = [
+      { x: 0, y: 0 },
+      { x: 20, y: 0 },
+      { x: 20, y: 20 },
+    ];
+    const segments = computeChainTetherSegments(live, rest, 1, true);
+    expect(segments).toHaveLength(3);
+    for (const segment of segments) {
+      expect(segment.tension).toBeCloseTo(2, 10);
+    }
+  });
 });
 
 describe("computeUnitTension", () => {

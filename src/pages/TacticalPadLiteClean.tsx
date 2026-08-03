@@ -2251,6 +2251,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [shapeLinksState, setShapeLinksState] = useState<ShapeLinksState>({
     isSelectMode: false,
     selectedCount: 0,
+    isSelectionClosed: false,
     showShapeLinks: true,
     links: [],
   });
@@ -2820,7 +2821,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       setShapeLockMemberCount(0);
       // Shape Links select-mode is also per-surface transient state (the
       // links themselves live in board state and reload with the next surface).
-      setShapeLinksState({ isSelectMode: false, selectedCount: 0, showShapeLinks: true, links: [] });
+      setShapeLinksState({
+        isSelectMode: false,
+        selectedCount: 0,
+        isSelectionClosed: false,
+        showShapeLinks: true,
+        links: [],
+      });
       setIsShapeLinksPanelDismissed(false);
       destroySurface?.();
     };
@@ -4821,7 +4828,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             <div style={SHAPE_LINKS_PANEL_HEADER_STYLE}>
               <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>
                 {shapeLinksState.isSelectMode
-                  ? `Shape Links · ${shapeLinksState.selectedCount} selected`
+                  ? `Shape Links · ${shapeLinksState.selectedCount} selected${
+                      shapeLinksState.isSelectionClosed ? " · closed" : ""
+                    }`
                   : `Shape Links · ${shapeLinksState.links.length}`}
               </div>
               <button
@@ -4837,7 +4846,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             {shapeLinksState.isSelectMode ? (
               <>
                 <div style={SHAPE_LOCK_PANEL_HINT_STYLE}>
-                  Tap players to add or remove them, then create the link.
+                  Tap players in the order you want to link. Tap the first player again to close the shape. Tap
+                  Done when finished.
                 </div>
                 <div style={SHAPE_LOCK_PANEL_ACTIONS_STYLE}>
                   <button
@@ -4849,7 +4859,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     }
                     onClick={createShapeLinkFromSelection}
                   >
-                    Create Link
+                    Done
                   </button>
                   <button
                     type="button"
@@ -4869,7 +4879,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 <div style={SHAPE_LINKS_LIST_STYLE}>
                   {shapeLinksState.links.map((link, index) => (
                     <div key={link.id} style={SHAPE_LINKS_LIST_ITEM_STYLE}>
-                      <span>{`Link ${index + 1} · ${link.memberCount} players`}</span>
+                      <span>{`Link ${index + 1} · ${link.memberCount} players${link.closed ? " · closed" : ""}`}</span>
                       <button
                         type="button"
                         className="control-button"

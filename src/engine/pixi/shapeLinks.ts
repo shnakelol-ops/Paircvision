@@ -16,6 +16,12 @@
  * segment moving on its own. Only each segment's local direction (and so its
  * curve orientation) is per-segment — the "how stretched" reading is shared.
  *
+ * Topology is exactly two shapes, chosen by how the coach tapped players —
+ * never a separate mode setting: an open chain (the default) connects every
+ * consecutive pair in tap order; a closed loop additionally connects the
+ * last member back to the first, when the coach re-taps the first member
+ * they started with. No mesh, no polygon fill, no auto-generated pairs.
+ *
  * Framework-free so it can be unit tested without PixiJS.
  */
 
@@ -45,25 +51,47 @@ function clampTension(value: number): number {
 }
 
 /**
+ * Index pairs to connect for a chain of `count` members: every consecutive
+ * pair, plus — only when `closed` and there are at least 3 members — one
+ * extra pair closing the last member back to the first. That is the entire
+ * topology vocabulary: no diagonals, no mesh, no auto-generated pairs beyond
+ * this single closing edge. A 2-member "loop" is meaningless (closing it
+ * would just re-draw the one edge that already exists), so closing is a
+ * no-op below 3 members.
+ */
+function pairsForChain(count: number, closed: boolean): Array<[number, number]> {
+  const pairs: Array<[number, number]> = [];
+  for (let index = 0; index < count - 1; index += 1) {
+    pairs.push([index, index + 1]);
+  }
+  if (closed && count >= 3) {
+    pairs.push([count - 1, 0]);
+  }
+  return pairs;
+}
+
+/**
  * One tension value for an entire chain: total live path length versus total
- * rest (phase-0) path length, summed across every resolvable consecutive
- * pair. This is what makes the tether read as one unit — a stretch in one
- * part of the group and a compression in another can net out, but the
- * result is a single number every segment renders with, not a per-pair
- * reading. Falls back to 1 (resting) when no rest pair is resolvable at all,
- * so a missing rest position never inflates or erases the visible tension.
+ * rest (phase-0) path length, summed across every resolvable pair (including
+ * the closing pair, when `closed`). This is what makes the tether read as
+ * one unit — a stretch in one part of the group and a compression in
+ * another can net out, but the result is a single number every segment
+ * renders with, not a per-pair reading. Falls back to 1 (resting) when no
+ * rest pair is resolvable at all, so a missing rest position never inflates
+ * or erases the visible tension.
  */
 export function computeUnitTension(
   liveMembers: readonly ShapePoint[],
   restMembers: readonly ShapePoint[],
+  closed = false,
 ): number {
   let liveLength = 0;
   let restLength = 0;
-  for (let index = 0; index < liveMembers.length - 1; index += 1) {
-    const liveFrom = liveMembers[index];
-    const liveTo = liveMembers[index + 1];
-    const restFrom = restMembers[index];
-    const restTo = restMembers[index + 1];
+  for (const [i, j] of pairsForChain(liveMembers.length, closed)) {
+    const liveFrom = liveMembers[i];
+    const liveTo = liveMembers[j];
+    const restFrom = restMembers[i];
+    const restTo = restMembers[j];
     if (!liveFrom || !liveTo || !restFrom || !restTo) continue;
     liveLength += distance(liveFrom, liveTo);
     restLength += distance(restFrom, restTo);
@@ -114,10 +142,16 @@ export function tensionToWidthScale(tension: number): number {
 }
 
 /**
- * Builds one tether segment per consecutive pair in a chain of members (in
- * selection order), given their live positions and phase-0 rest positions.
+ * Builds one tether segment per pair in a chain of members (in selection
+ * order): every consecutive pair, plus one closing pair (last back to
+ * first) when `closed` is true and there are at least 3 members — nothing
+ * else. This is the coach's own drawing order deciding the topology: an
+ * open chain if they tapped "Done", a closed loop if they tapped the first
+ * member again first. There is no mesh, polygon, or auto-generated pair
+ * beyond that single closing edge.
+ *
  * Every segment shares the same computeUnitTension() reading, so the whole
- * chain visually flexes as one connected structure rather than a series of
+ * shape visually flexes as one connected structure rather than a series of
  * independently-stretching pair links. A segment is only omitted when one of
  * its own live points is unresolved — a missing rest position affects the
  * shared tension reading, not whether the segment is drawn.
@@ -126,12 +160,13 @@ export function computeChainTetherSegments(
   liveMembers: readonly ShapePoint[],
   restMembers: readonly ShapePoint[],
   baseSag: number,
+  closed = false,
 ): TetherSegment[] {
-  const unitTension = computeUnitTension(liveMembers, restMembers);
+  const unitTension = computeUnitTension(liveMembers, restMembers, closed);
   const segments: TetherSegment[] = [];
-  for (let index = 0; index < liveMembers.length - 1; index += 1) {
-    const from = liveMembers[index];
-    const to = liveMembers[index + 1];
+  for (const [i, j] of pairsForChain(liveMembers.length, closed)) {
+    const from = liveMembers[i];
+    const to = liveMembers[j];
     if (!from || !to) continue;
     segments.push(buildTetherSegment(from, to, unitTension, baseSag));
   }
