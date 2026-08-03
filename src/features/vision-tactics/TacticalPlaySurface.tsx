@@ -1897,6 +1897,10 @@ export default function TacticalPlaySurface() {
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
   const clearRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || isPlaying;
+  // Continue Route only makes sense once the selected player already has a
+  // committed route (>= 2 points) to extend — same waypointCount signal
+  // clearRouteDisabled already uses, kept in sync via onRouteEditStateChange.
+  const continueRouteDisabled = menuMode !== "route" || routeEditState.waypointCount < 2 || modeIsPlaybackLocked;
   const clearAllDisabled = isPlaying || (routes.length === 0 && passEvents.length === 0 && shotEvents.length === 0);
   const playbackFloatingVisible = isPlaying || isPaused;
   // Portrait contextual playback button: shown only when the board has something
@@ -2344,6 +2348,14 @@ export default function TacticalPlaySurface() {
                   onClick={() => cycleSelectedEntity("next")}
                 >
                   Next
+                </button>
+                <button
+                  type="button"
+                  style={continueRouteDisabled ? TOOL_DISABLED_STYLE : TOOL_BUTTON_STYLE}
+                  disabled={continueRouteDisabled}
+                  onClick={() => shellRef.current?.continueSelectedRoute()}
+                >
+                  Continue Route
                 </button>
                 <button
                   type="button"

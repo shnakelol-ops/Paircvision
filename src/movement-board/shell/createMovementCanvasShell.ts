@@ -217,6 +217,11 @@ export async function createMovementCanvasShell(
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
   let longPressTriggered = false;
   let routeByTokenId = new Map<string, NormalizedPoint[]>();
+  // Armed by continueSelectedRoute(); consumed by the next route-mode
+  // pointerdown, which seeds the new draft from the existing route instead
+  // of the token's rest position. Purely an authoring-flow flag — it never
+  // touches routeByTokenId, playback, or persistence.
+  let continueRouteArmed = false;
   let routeMetaByTokenId = new Map<string, RouteMetadata>();
   let startPositionByTokenId = new Map<string, NormalizedPoint>();
   // Coach-chosen authoring visibility for committed routes. Presentation only —
@@ -472,6 +477,7 @@ export async function createMovementCanvasShell(
 
   const clearRouteDraft = () => {
     routeDraft = null;
+    continueRouteArmed = false;
     routeLayer.setDraftRoute(null);
   };
 
@@ -510,7 +516,17 @@ export async function createMovementCanvasShell(
         : null,
     );
     routeLayer.setSelectedPlayer(selectedTokenId);
-    routeLayer.setSelectedWaypoint(selectedTokenId, selectedWaypointIndex);
+    // While Continue Route is armed, highlight the route's final waypoint
+    // (via the same handle-highlight the coach already sees when dragging an
+    // existing waypoint) so it's visually clear where the next drag will
+    // extend from. Reuses setSelectedWaypoint's existing rendering — no new
+    // visual primitive — and never touches selectedWaypointIndex itself, so
+    // "Remove Waypoint" enablement is unaffected.
+    const continueArmedRoute = continueRouteArmed && selectedTokenId ? routeByTokenId.get(selectedTokenId) : null;
+    routeLayer.setSelectedWaypoint(
+      selectedTokenId,
+      continueArmedRoute && continueArmedRoute.length > 0 ? continueArmedRoute.length - 1 : selectedWaypointIndex,
+    );
   };
 
   const setSelectedWaypoint = (nextIndex: number | null) => {
@@ -523,6 +539,7 @@ export async function createMovementCanvasShell(
     const selectedToken = tokenLayer.setSelectedToken(tokenId);
     selectedTokenId = tokenLayer.getSelectedTokenId();
     selectedWaypointIndex = null;
+    continueRouteArmed = false;
     // Selection change can change which committed routes are visible in
     // "active" and "selected" modes, so refresh rather than just updating the
     // selected-player highlight.
@@ -1003,6 +1020,34 @@ export async function createMovementCanvasShell(
 
     if (mode === "route" && !isPlaybackLocked() && selectedTokenId) {
       const route = routeByTokenId.get(selectedTokenId);
+
+      // Continue Route: consume the armed flag unconditionally, bypassing the
+      // waypoint-handle and mid-route-insertion checks below. This is
+      // intentional — the coach explicitly asked to continue, and the most
+      // natural place to touch down is at/near the highlighted final
+      // waypoint, which the handle-hit-test below would otherwise interpret
+      // as "grab and reposition that waypoint." Seeding the draft with the
+      // existing route's points (rather than the token's rest position)
+      // guarantees the extended route stays geometrically continuous at the
+      // join, regardless of exactly where the drag starts.
+      if (continueRouteArmed) {
+        continueRouteArmed = false;
+        if (route && route.length >= 2) {
+          const pointerId = getPointerIdFromEvent(event);
+          routeDraft = {
+            tokenId: selectedTokenId,
+            pointerId,
+            points: route.map((point) => clonePoint(point)),
+          };
+          setSelectedWaypoint(null);
+          appendRouteDraftPoint(clampNormalizedPoint(mapper.worldToNormalized(worldPoint)));
+          return;
+        }
+        // Route disappeared since arming (e.g. cleared elsewhere) — fall
+        // through to normal route-mode handling below rather than dropping
+        // the tap.
+      }
+
       const editableWaypointIndex = findEditableWaypointIndexAtWorldPoint(selectedTokenId, worldPoint);
       if (editableWaypointIndex != null && route) {
         const waypoint = route[editableWaypointIndex];
@@ -1178,6 +1223,7 @@ export async function createMovementCanvasShell(
     },
     setRoutes: (routes: readonly MovementBoardRoute[]) => {
       if (isPlaybackLocked()) return;
+      continueRouteArmed = false;
       routeByTokenId.clear();
       routeMetaByTokenId.clear();
       for (const route of routes) {
@@ -1236,6 +1282,16 @@ export async function createMovementCanvasShell(
       emitRoutes();
       refreshRouteLayer();
       emitRouteEditState();
+      return true;
+    },
+    continueSelectedRoute: () => {
+      if (mode !== "route" || isPlaybackLocked() || !selectedTokenId) return false;
+      const route = routeByTokenId.get(selectedTokenId);
+      if (!route || route.length < 2) return false;
+      clearRouteDraft();
+      releaseRouteHandleDrag();
+      continueRouteArmed = true;
+      refreshRouteLayer();
       return true;
     },
     playAll: () => {

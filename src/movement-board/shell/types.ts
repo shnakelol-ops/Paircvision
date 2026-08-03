@@ -156,6 +156,14 @@ export type MovementCanvasShellHandle = {
   setSpeedMultiplier: (multiplier: number) => void;
   removeSelectedWaypoint: () => boolean;
   clearSelectedRoute: () => boolean;
+  /**
+   * Arms Continue Route for the selected player: the next drag in Route mode
+   * seeds its draft from the player's existing route (instead of their rest
+   * position) and appends onto it, producing one longer continuous polyline
+   * rather than replacing it. Returns false if there's no selected player,
+   * no existing route for them, playback is locked, or mode isn't "route".
+   */
+  continueSelectedRoute: () => boolean;
   /** Sets which committed routes are rendered. Rendering only — routeByTokenId, playback and selection are untouched. */
   setRouteVisibilityMode: (mode: RouteVisibilityMode) => void;
   getRouteVisibilityMode: () => RouteVisibilityMode;
