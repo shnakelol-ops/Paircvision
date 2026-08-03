@@ -146,8 +146,8 @@ export type TacticalBoardState = {
   phases: unknown[];
   movementPaths: unknown[];
   routes?: unknown;
-  /** RouteEntry Boundary Pass declarations. Absent/legacy = no pending passes. */
-  possessionBoundaryPasses?: unknown;
+  /** Phase→Route deferred possession declarations. Absent/legacy = no pending passes. */
+  possessionPhaseToRoutePasses?: unknown;
   kits?: unknown;
   teamKits?: unknown;
   teamState?: unknown;
@@ -400,32 +400,12 @@ type RouteEntry = {
   startSegmentIndex: number;
 };
 
-// RouteEntry Boundary Pass: a Tap Pass targeting a receiver who already has two or
-// more separately drawn runs defers the transfer to the boundary between the two
-// most recently drawn ones, instead of transferring instantly. Registered at tap
-// time; consumed once triggerEntryId's session completes during a later Play.
-type PendingBoundaryPass = {
-  ballItemId: string;
-  receiverPlayerId: string;
-  triggerEntryId: string;
-  receivingEntryId: string;
-};
-
-// A short, purpose-built ball flight from wherever the ball currently sits to the
-// receiver's live position, started once triggerEntryId completes. Deliberately not
-// stepBallTowardLiveTarget's lead-capped chase smoothing (tuned for closing a small
-// gap to an already-moving target frame by frame) — over a real pass distance to a
-// stationary receiver that math converges in well under 200ms regardless of how far
-// the ball has to travel, which reads as a snap, not a visible pass. Reuses the same
-// distance-scaled duration + easing already used by ordinary Tap Pass instead, so a
-// RouteEntry Boundary Pass looks and paces exactly like any other pass.
-type ActiveBoundaryPassFlight = {
-  receiverPlayerId: string;
-  receivingEntryId: string;
-  fromPoint: NormalizedPoint;
-  elapsedMs: number;
-  durationMs: number;
-};
+// Phase→Route deferred possession: a Tap Pass targeting a receiver who is not yet
+// route-controlled but has at least one authored, not-yet-started RouteEntry defers
+// the transfer to the moment that entry starts (their Phase→Route boundary), instead
+// of transferring instantly. Registered at tap time (as a ballItemId, keyed by
+// receiverPlayerId, in pendingPhaseToRouteBallItemIdByReceiverId below); consumed the
+// instant the receiver is added to routeControlledPlayerIds during a later Play.
 
 type PlaybackKind = "default" | "possession-pass";
 
@@ -822,35 +802,20 @@ function sanitizeBoardRoutes(input: unknown): Map<string, SanitizedBoardRoute[]>
   return parsed;
 }
 
-type SanitizedPossessionBoundaryPass = {
+type SanitizedPhaseToRoutePass = {
   ballItemId: string;
   receiverPlayerId: string;
-  // Indices within the receiver's own imported entries array, not persisted ids —
-  // RouteEntry ids are runtime-only and regenerated on every import.
-  triggerEntryIndex: number;
-  receivingEntryIndex: number;
 };
 
-function sanitizeBoardPossessionBoundaryPasses(input: unknown): SanitizedPossessionBoundaryPass[] {
+function sanitizeBoardPhaseToRoutePasses(input: unknown): SanitizedPhaseToRoutePass[] {
   if (!Array.isArray(input)) return [];
-  const parsed: SanitizedPossessionBoundaryPass[] = [];
+  const parsed: SanitizedPhaseToRoutePass[] = [];
   for (const entry of input) {
     if (!isRecord(entry)) continue;
     const ballItemId = typeof entry.ballItemId === "string" ? entry.ballItemId.trim() : "";
     const receiverPlayerId = typeof entry.receiverPlayerId === "string" ? entry.receiverPlayerId.trim() : "";
     if (ballItemId.length <= 0 || receiverPlayerId.length <= 0) continue;
-    const triggerEntryIndex =
-      typeof entry.triggerEntryIndex === "number" && Number.isFinite(entry.triggerEntryIndex) && entry.triggerEntryIndex >= 0
-        ? Math.floor(entry.triggerEntryIndex)
-        : -1;
-    const receivingEntryIndex =
-      typeof entry.receivingEntryIndex === "number" &&
-      Number.isFinite(entry.receivingEntryIndex) &&
-      entry.receivingEntryIndex >= 0
-        ? Math.floor(entry.receivingEntryIndex)
-        : -1;
-    if (triggerEntryIndex < 0 || receivingEntryIndex < 0) continue;
-    parsed.push({ ballItemId, receiverPlayerId, triggerEntryIndex, receivingEntryIndex });
+    parsed.push({ ballItemId, receiverPlayerId });
   }
   return parsed;
 }
@@ -1562,30 +1527,17 @@ export async function createTacticalPadLiteSurface(
   // Disarmed whenever the selection changes, a draft is committed/discarded, or route
   // capture mode turns off — arming never silently persists past the moment it applies to.
   let continueRouteModeArmedForPlayerId: string | null = null;
-  // RouteEntry Boundary Pass state.
-  // pendingBoundaryPassesByReceiverId is AUTHORED, coach-declared state — set by Tap
-  // Pass, at most one per receiver (a later Tap Pass to the same multi-entry receiver
-  // replaces the earlier one). Like routesByPlayerId, it survives across repeated
-  // Plays/replays untouched; only Tap Pass re-registering it, a direct re-attach
-  // invalidating it, or explicit board cleanup ever mutates it.
-  // activeBoundaryPassFlights is transient PLAY-runtime state — in-progress ball
-  // flights keyed by ball item id — reset fresh at the start of every Play, exactly
-  // like activeRouteRunsByPlayerId, so replay-from-scratch re-fires every pass too.
-  let pendingBoundaryPassesByReceiverId = new Map<string, PendingBoundaryPass>();
-  let activeBoundaryPassFlights = new Map<string, ActiveBoundaryPassFlight>();
-
-  // A receiving entry is withheld from the ordinary phase-anchored scheduler for as
-  // long as it's referenced by either map above — derived fresh each check rather
-  // than tracked as separate state, so there's nothing to keep in sync across replay.
-  function isBoundaryGatedEntryId(entryId: string): boolean {
-    for (const pending of pendingBoundaryPassesByReceiverId.values()) {
-      if (pending.receivingEntryId === entryId) return true;
-    }
-    for (const flight of activeBoundaryPassFlights.values()) {
-      if (flight.receivingEntryId === entryId) return true;
-    }
-    return false;
-  }
+  // Phase→Route deferred possession state.
+  // pendingPhaseToRouteBallItemIdByReceiverId is AUTHORED, coach-declared state — set
+  // by Tap Pass, at most one per receiver (a later Tap Pass to the same not-yet-routed
+  // receiver replaces the earlier one). Like routesByPlayerId, it survives across
+  // repeated Plays/replays untouched; only Tap Pass re-registering it, a direct
+  // re-attach invalidating it, or explicit board cleanup ever mutates it.
+  // chasingBallItemIdByReceiverPlayerId is transient PLAY-runtime state — a ball
+  // currently gliding toward a newly route-controlled receiver's live position,
+  // reset fresh at the start of every Play, exactly like activeRouteRunsByPlayerId.
+  let pendingPhaseToRouteBallItemIdByReceiverId = new Map<string, string>();
+  let chasingBallItemIdByReceiverPlayerId = new Map<string, string>();
   let isPossessionPassModeEnabled = false;
 
   let activeDrag: ActiveDragState = null;
@@ -1854,8 +1806,8 @@ export async function createTacticalPadLiteSurface(
     emitRouteStateChange();
   }
 
-  // Shared by the interactive attach path below and the RouteEntry Boundary Pass
-  // flight-arrival resolution, which needs to attach the ball mid-Play — a state
+  // Shared by the interactive attach path below and Phase→Route deferred possession's
+  // chase-arrival resolution, which needs to attach the ball mid-Play — a state
   // interactive callers must never be able to reach, so the lock guard lives only in
   // the public wrapper, not here.
   function applyBallAttachToPlayer(ball: TacticalSurfaceItem, player: TacticalPlayer): void {
@@ -1877,12 +1829,12 @@ export async function createTacticalPadLiteSurface(
     if (surfaceVariant !== "tactical" || isPlaybackInputLocked()) return;
     const ball = findPrimaryBallItem();
     if (!ball) return;
-    // Any direct/interactive attach invalidates a not-yet-triggered RouteEntry
-    // Boundary Pass for this receiver — the coach just resolved possession some
+    // Any direct/interactive attach invalidates a not-yet-triggered Phase→Route
+    // deferred pass for this receiver — the coach just resolved possession some
     // other way, so the deferred one should not also fire later. Once a pass has
-    // already triggered (flight in progress or resolved), this is a no-op: the
-    // registration is removed the moment the flight starts, not on arrival.
-    pendingBoundaryPassesByReceiverId.delete(player.id);
+    // already triggered (chase in progress or resolved), this is a no-op: the
+    // registration is removed the moment the chase starts, not on arrival.
+    pendingPhaseToRouteBallItemIdByReceiverId.delete(player.id);
     applyBallAttachToPlayer(ball, player);
   }
 
@@ -1898,22 +1850,16 @@ export async function createTacticalPadLiteSurface(
       return;
     }
 
-    // RouteEntry Boundary Pass: if the receiver already has two or more separately
-    // drawn runs, defer the transfer to the boundary between the two most recently
-    // drawn ones instead of transferring instantly — the coach has already authored
-    // the event by drawing two separate runs, nothing else needs to be picked. A
-    // receiver with 0 or 1 runs falls straight through to the ordinary instant path
-    // below, byte-identical to before.
+    // Phase→Route deferred possession: if the receiver is not yet route-controlled
+    // but has at least one authored, not-yet-started RouteEntry, defer the transfer
+    // to the moment that entry starts (their Phase→Route boundary) instead of
+    // transferring instantly — the coach has already authored the event by drawing
+    // a run for this player, nothing else needs to be picked. A receiver who is
+    // already route-controlled, or who has no routes at all, falls straight through
+    // to the ordinary instant path below, byte-identical to before.
     const receiverEntries = routesByPlayerId.get(player.id);
-    if (receiverEntries && receiverEntries.length >= 2) {
-      const triggerEntry = receiverEntries[receiverEntries.length - 2]!;
-      const receivingEntry = receiverEntries[receiverEntries.length - 1]!;
-      pendingBoundaryPassesByReceiverId.set(player.id, {
-        ballItemId: ball.id,
-        receiverPlayerId: player.id,
-        triggerEntryId: triggerEntry.id,
-        receivingEntryId: receivingEntry.id,
-      });
+    if (!routeControlledPlayerIds.has(player.id) && receiverEntries && receiverEntries.length > 0) {
+      pendingPhaseToRouteBallItemIdByReceiverId.set(player.id, ball.id);
       return;
     }
 
@@ -3271,11 +3217,11 @@ export async function createTacticalPadLiteSurface(
     routeControlledPlayerIds.clear();
     // Every interactive path that forcibly stops a route animation (Reset, Undo
     // Phase, New Board, Set Start, Clear Routes...) already funnels through this
-    // function — stop any in-progress RouteEntry Boundary Pass flight the same way,
-    // rather than leaving it ticking after the coach has left Play. The ball simply
-    // stays wherever it was interrupted, free — the same state a coach already gets
-    // from a plain loose ball elsewhere in the app.
-    activeBoundaryPassFlights.clear();
+    // function — stop any in-progress Phase→Route ball chase the same way, rather
+    // than leaving it ticking after the coach has left Play. The ball simply stays
+    // wherever it was interrupted, attached to its last holder — the same state a
+    // coach already gets from any other interrupted animation elsewhere in the app.
+    chasingBallItemIdByReceiverPlayerId.clear();
     syncWhiteboardTokenInputMode();
   }
 
@@ -3380,8 +3326,8 @@ export async function createTacticalPadLiteSurface(
     currentRouteDraftPlayerId = null;
     continueRouteModeArmedForPlayerId = null;
     routesByPlayerId.clear();
-    // Every pending RouteEntry Boundary Pass references entries that just got wiped.
-    pendingBoundaryPassesByReceiverId.clear();
+    // Every pending Phase→Route pass references a receiver whose routes just got wiped.
+    pendingPhaseToRouteBallItemIdByReceiverId.clear();
     selectedPlayerId = null;
     clearBasicRoutePreview();
     renderRouteSelectionHighlight();
@@ -3463,10 +3409,6 @@ export async function createTacticalPadLiteSurface(
     for (const [playerId, entries] of routesByPlayerId.entries()) {
       for (const entry of entries) {
         if (startedRouteEntryIds.has(entry.id)) continue;
-        // RouteEntry Boundary Pass: a receivingEntryId is withheld from the ordinary
-        // phase-anchored scheduler entirely — it may only start once its flight
-        // arrives (see stepBasicRouteFollow / stepBoundaryPassFlights below).
-        if (isBoundaryGatedEntryId(entry.id)) continue;
         const startIndex = entry.startSegmentIndex;
         const isDue = startIndex === resolvedSegmentIndex || (isFinalSegment && startIndex >= resolvedSegmentIndex);
         if (!isDue) continue;
@@ -3487,8 +3429,14 @@ export async function createTacticalPadLiteSurface(
     }
     const newRuns = buildBasicRouteRunsForEntries(dueEntriesByPlayerId, resolvedSegmentIndex);
     for (const [playerId, run] of newRuns) {
+      const isFirstEntryForPlayer = !routeControlledPlayerIds.has(playerId);
       activeRouteRunsByPlayerId.set(playerId, run);
       routeControlledPlayerIds.add(playerId);
+      // This is the Phase→Route boundary: the exact instant a player's phase movement
+      // ends and their first Draw Run begins. If a Tap Pass deferred possession to this
+      // player, this is where the ball starts chasing them — never gated or withheld,
+      // the run itself always starts on schedule regardless.
+      if (isFirstEntryForPlayer) beginPhaseToRouteChaseIfPending(playerId);
     }
     renderBasicRoutePreview();
   }
@@ -3498,7 +3446,13 @@ export async function createTacticalPadLiteSurface(
   // route-session completion both funnel through here so isPlaying only drops once
   // the whole combined phases-then-routes animation is actually finished.
   function maybeCompletePlayback(): void {
-    if (phasesRunning || activeRouteRunsByPlayerId.size > 0 || activeBoundaryPassFlights.size > 0) return;
+    if (
+      phasesRunning ||
+      activeRouteRunsByPlayerId.size > 0 ||
+      chasingBallItemIdByReceiverPlayerId.size > 0
+    ) {
+      return;
+    }
     cancelPlaybackAnimation();
   }
 
@@ -3534,10 +3488,10 @@ export async function createTacticalPadLiteSurface(
     activeRouteRunsByPlayerId = new Map();
     routeControlledPlayerIds = new Set();
     startedRouteEntryIds = new Set();
-    // pendingBoundaryPassesByReceiverId is authored state and stays untouched, so a
-    // replay re-fires the same RouteEntry Boundary Pass(es); only the in-progress
-    // flight bookkeeping resets.
-    activeBoundaryPassFlights = new Map();
+    // pendingPhaseToRouteBallItemIdByReceiverId is authored state and stays untouched,
+    // so a replay re-fires the same Phase→Route pass(es); only the in-progress chase
+    // bookkeeping resets.
+    chasingBallItemIdByReceiverPlayerId = new Map();
     emitPlaybackStateChange();
     renderBasicRoutePreview();
   }
@@ -3701,8 +3655,9 @@ export async function createTacticalPadLiteSurface(
   }
 
 
-  // Shared by ordinary Tap Pass's own flight and the RouteEntry Boundary Pass flight
-  // below, so both look and pace identically — a boundary pass is still just a pass.
+  // Used by ordinary Tap Pass's own instant-transfer flight (Phase→Route deferred
+  // possession uses stepBallTowardLiveTarget's glide instead, since its target is a
+  // live, moving receiver rather than a fixed endpoint).
   function resolvePossessionPassDurationMsForDistance(distance: number): number {
     const distanceBasedDuration =
       (PLAY_DURATION_MS * (Math.max(0, distance) / POSSESSION_PASS_REFERENCE_DISTANCE)) /
@@ -3839,32 +3794,26 @@ export async function createTacticalPadLiteSurface(
     if (isPaused) return;
     if (activeRouteRunsByPlayerId.size <= 0) return;
     const scaledDeltaMs = deltaMs * playbackSpeedMultiplier;
-    const completed: Array<{ playerId: string; entryId: string }> = [];
+    const completedPlayerIds: string[] = [];
     for (const [playerId, active] of activeRouteRunsByPlayerId.entries()) {
       const player = players.find((entry) => entry.id === playerId);
       if (!player) {
-        completed.push({ playerId, entryId: active.entryId });
+        completedPlayerIds.push(playerId);
         continue;
       }
       if (!active.session.isActive()) {
-        completed.push({ playerId, entryId: active.entryId });
+        completedPlayerIds.push(playerId);
         continue;
       }
       active.session.step(scaledDeltaMs);
       setTokenWorldPositionForPoint(player, player.current, mapper);
       updateAttachedBallsForPlayer(player.id);
       if (!active.session.isActive()) {
-        completed.push({ playerId, entryId: active.entryId });
+        completedPlayerIds.push(playerId);
       }
     }
-    for (const { playerId } of completed) {
+    for (const playerId of completedPlayerIds) {
       activeRouteRunsByPlayerId.delete(playerId);
-    }
-    // RouteEntry Boundary Pass: a completed entry may be the trigger half of a pass
-    // registered earlier by Tap Pass. Checked after removal above so the ball-flight
-    // step that follows never sees a still-"active" trigger entry.
-    for (const { playerId, entryId } of completed) {
-      tryStartBoundaryPassFlight(playerId, entryId);
     }
     if (activeRouteRunsByPlayerId.size <= 0) {
       syncWhiteboardTokenInputMode();
@@ -3872,104 +3821,61 @@ export async function createTacticalPadLiteSurface(
     }
   }
 
-  // Starts the ball flight for a RouteEntry Boundary Pass once its trigger entry
-  // (Run 1) completes. No-ops if completedEntryId isn't a registered trigger. The
-  // ball is detached from its previous holder for the flight's duration — otherwise
-  // updateAttachedBallsForPlayer would snap it straight back to them every frame.
-  function tryStartBoundaryPassFlight(receiverPlayerId: string, completedEntryId: string): void {
-    // pendingBoundaryPassesByReceiverId is authored state and is deliberately NOT
-    // cleared here — it needs to survive so a later replay re-fires the same pass.
-    // Nothing re-triggers it within this same Play: a given entry can only complete
-    // once per Play (startedRouteEntryIds prevents it from ever restarting), so this
-    // whole function only ever runs once per pass per Play.
-    const pending = pendingBoundaryPassesByReceiverId.get(receiverPlayerId);
-    if (!pending || pending.triggerEntryId !== completedEntryId) return;
-    const ball = findTacticalItemById(pending.ballItemId);
-    const receiver = players.find((entry) => entry.id === receiverPlayerId);
-    if (!ball || !isBallItem(ball) || !receiver) return;
-    const fromPoint = { x: clampNormalizedValue(ball.x), y: clampNormalizedValue(ball.y) };
-    const targetPoint = getAttachedBallPositionForPlayer(receiver);
-    const distance = Math.hypot(targetPoint.x - fromPoint.x, targetPoint.y - fromPoint.y);
-    activeBoundaryPassFlights.set(pending.ballItemId, {
-      receiverPlayerId,
-      receivingEntryId: pending.receivingEntryId,
-      fromPoint,
-      elapsedMs: 0,
-      durationMs: resolvePossessionPassDurationMsForDistance(distance),
-    });
+  // Consumes a pending Phase→Route pass for receiverPlayerId, if one exists, at the
+  // exact instant their Draw Run begins (called from startRoutesForResolvedSegment).
+  // The run itself is never gated by this — it always starts on schedule; this only
+  // detaches the ball from its current holder and marks it as chasing the receiver's
+  // now-live position, stepped independently every frame by stepPhaseToRouteBallChases.
+  function beginPhaseToRouteChaseIfPending(receiverPlayerId: string): void {
+    const ballItemId = pendingPhaseToRouteBallItemIdByReceiverId.get(receiverPlayerId);
+    if (!ballItemId) return;
+    const ball = findTacticalItemById(ballItemId);
+    if (!ball || !isBallItem(ball)) return;
     const state = getBallRuntimeState(ball);
     state.attachedPlayerId = null;
     state.isFree = true;
     state.path = [];
+    chasingBallItemIdByReceiverPlayerId.set(receiverPlayerId, ballItemId);
   }
 
-  // Steps every in-progress RouteEntry Boundary Pass ball flight. Recomputes the
-  // live target every frame (matching the "closing the gap" philosophy used
-  // elsewhere) though the receiver is normally stationary here, since their trigger
-  // entry has already completed and the receiving entry hasn't started yet.
-  function stepBoundaryPassFlights(deltaMs: number): void {
+  // Steps every in-progress Phase→Route ball chase, gliding each ball toward its
+  // receiver's live (currently-animating) position using the same lead-capped
+  // smoothing already used for phase-to-phase possession-pass transitions to a
+  // route-controlled receiver. Deliberately decoupled from stepBasicRouteFollow's
+  // per-player loop and run immediately after it in the ticker, so a chase in
+  // progress is never stranded if its receiver's own Draw Run finishes first — this
+  // step keeps running (and its position write wins for the frame) until the ball
+  // itself reports arrival.
+  function stepPhaseToRouteBallChases(_deltaMs: number): void {
     if (isPaused) return;
-    if (activeBoundaryPassFlights.size <= 0) return;
-    const scaledDeltaMs = deltaMs * playbackSpeedMultiplier;
-    const arrivedBallIds: string[] = [];
-    for (const [ballItemId, flight] of activeBoundaryPassFlights.entries()) {
+    if (chasingBallItemIdByReceiverPlayerId.size <= 0) return;
+    const arrivedReceiverIds: string[] = [];
+    for (const [receiverPlayerId, ballItemId] of chasingBallItemIdByReceiverPlayerId.entries()) {
       const item = findTacticalItemById(ballItemId);
-      const receiver = players.find((entry) => entry.id === flight.receiverPlayerId);
+      const receiver = players.find((entry) => entry.id === receiverPlayerId);
       if (!item || !isBallItem(item) || !receiver) {
-        arrivedBallIds.push(ballItemId);
+        arrivedReceiverIds.push(receiverPlayerId);
         continue;
       }
-      flight.elapsedMs = Math.min(flight.durationMs, flight.elapsedMs + scaledDeltaMs);
-      const progress = flight.durationMs <= 0 ? 1 : flight.elapsedMs / flight.durationMs;
-      const easedProgress = getPlaybackEaseProgress(progress);
-      const liveTarget = getAttachedBallPositionForPlayer(receiver);
-      item.x = clampNormalizedValue(flight.fromPoint.x + (liveTarget.x - flight.fromPoint.x) * easedProgress);
-      item.y = clampNormalizedValue(flight.fromPoint.y + (liveTarget.y - flight.fromPoint.y) * easedProgress);
-      setItemWorldPosition(item, mapper);
-      if (progress >= 1) {
-        arrivedBallIds.push(ballItemId);
+      const targetPoint = getAttachedBallPositionForPlayer(receiver);
+      const arrived = stepBallTowardLiveTarget(item, targetPoint);
+      if (arrived) {
+        arrivedReceiverIds.push(receiverPlayerId);
       }
     }
-    for (const ballItemId of arrivedBallIds) {
-      const flight = activeBoundaryPassFlights.get(ballItemId);
-      activeBoundaryPassFlights.delete(ballItemId);
-      if (flight) {
-        resolveBoundaryPassArrival(ballItemId, flight);
+    for (const receiverPlayerId of arrivedReceiverIds) {
+      const ballItemId = chasingBallItemIdByReceiverPlayerId.get(receiverPlayerId);
+      chasingBallItemIdByReceiverPlayerId.delete(receiverPlayerId);
+      if (!ballItemId) continue;
+      const item = findTacticalItemById(ballItemId);
+      const receiver = players.find((entry) => entry.id === receiverPlayerId);
+      if (item && isBallItem(item) && receiver) {
+        applyBallAttachToPlayer(item, receiver);
       }
     }
-    if (activeBoundaryPassFlights.size <= 0) {
+    if (chasingBallItemIdByReceiverPlayerId.size <= 0) {
       maybeCompletePlayback();
     }
-  }
-
-  // Possession transfers and Run 2 (the receiving entry) starts in the same instant —
-  // both deferred past the boundary together, never independently.
-  function resolveBoundaryPassArrival(ballItemId: string, flight: ActiveBoundaryPassFlight): void {
-    // isBoundaryGatedEntryId stops considering this entry gated as soon as it's no
-    // longer referenced by activeBoundaryPassFlights (removed by the caller just
-    // before this runs) — no separate flag to clear here.
-    const item = findTacticalItemById(ballItemId);
-    const receiver = players.find((entry) => entry.id === flight.receiverPlayerId);
-    if (!item || !isBallItem(item) || !receiver) return;
-    applyBallAttachToPlayer(item, receiver);
-    const entries = routesByPlayerId.get(flight.receiverPlayerId);
-    const receivingEntry = entries?.find((entry) => entry.id === flight.receivingEntryId);
-    if (!receivingEntry || startedRouteEntryIds.has(receivingEntry.id)) return;
-    const existingActive = activeRouteRunsByPlayerId.get(flight.receiverPlayerId);
-    if (existingActive) {
-      existingActive.session.cancel();
-      activeRouteRunsByPlayerId.delete(flight.receiverPlayerId);
-    }
-    startedRouteEntryIds.add(receivingEntry.id);
-    const newRuns = buildBasicRouteRunsForEntries(
-      new Map([[flight.receiverPlayerId, receivingEntry]]),
-      activeSegmentIndex,
-    );
-    for (const [playerId, run] of newRuns) {
-      activeRouteRunsByPlayerId.set(playerId, run);
-      routeControlledPlayerIds.add(playerId);
-    }
-    renderBasicRoutePreview();
   }
 
   function findTacticalPlayer(playerId: string): TacticalPlayer | null {
@@ -4346,25 +4252,11 @@ export async function createTacticalPadLiteSurface(
           startSegmentIndex: entry.startSegmentIndex,
         })),
       ),
-      // RouteEntry ids are runtime-only (regenerated on import, see createRouteEntryId),
-      // so references here are by index within the receiver's own entries array —
-      // stable across a save/reload round trip since entries are only ever appended
-      // to (New Run) or extended in place (Continue Run), never reordered or removed
-      // individually.
-      possessionBoundaryPasses: Array.from(pendingBoundaryPassesByReceiverId.values())
-        .map((pending) => {
-          const entries = routesByPlayerId.get(pending.receiverPlayerId) ?? [];
-          const triggerEntryIndex = entries.findIndex((entry) => entry.id === pending.triggerEntryId);
-          const receivingEntryIndex = entries.findIndex((entry) => entry.id === pending.receivingEntryId);
-          if (triggerEntryIndex < 0 || receivingEntryIndex < 0) return null;
-          return {
-            ballItemId: pending.ballItemId,
-            receiverPlayerId: pending.receiverPlayerId,
-            triggerEntryIndex,
-            receivingEntryIndex,
-          };
-        })
-        .filter((entry): entry is NonNullable<typeof entry> => entry != null),
+      // No entry reference needed — the trigger is generic ("next time this player
+      // becomes route-controlled"), not tied to a particular RouteEntry.
+      possessionPhaseToRoutePasses: Array.from(
+        pendingPhaseToRouteBallItemIdByReceiverId.entries(),
+      ).map(([receiverPlayerId, ballItemId]) => ({ ballItemId, receiverPlayerId })),
       kits: kitsByPlayer,
       teamKits: currentTeamKits,
       teamState: currentTeamState,
@@ -4425,7 +4317,7 @@ export async function createTacticalPadLiteSurface(
           .filter((entry): entry is PhaseSnapshot => entry != null)
       : [];
     const parsedRoutes = sanitizeBoardRoutes(state.routes);
-    const parsedPossessionBoundaryPasses = sanitizeBoardPossessionBoundaryPasses(state.possessionBoundaryPasses);
+    const parsedPossessionPhaseToRoutePasses = sanitizeBoardPhaseToRoutePasses(state.possessionPhaseToRoutePasses);
     // Structural validation only; membership is re-checked against the new
     // roster once it exists, below (same two-step pattern as parsedRoutes).
     const parsedShapeLinks = sanitizeShapeLinks(state.shapeLinks);
@@ -4523,23 +4415,15 @@ export async function createTacticalPadLiteSurface(
         return [playerId, entries] as [string, RouteEntry[]];
       }),
     );
-    // Re-resolve saved RouteEntry Boundary Pass declarations against the entries
-    // just rebuilt above, by index (their ids were only just regenerated). A pass
-    // referencing a player/ball/index that no longer exists is silently dropped
-    // rather than failing the whole import.
-    pendingBoundaryPassesByReceiverId = new Map();
-    for (const pending of parsedPossessionBoundaryPasses) {
-      const entries = routesByPlayerId.get(pending.receiverPlayerId);
-      const triggerEntry = entries?.[pending.triggerEntryIndex];
-      const receivingEntry = entries?.[pending.receivingEntryIndex];
+    // A pass referencing a player/ball that no longer exists is silently dropped
+    // rather than failing the whole import. No entries to re-resolve — the trigger
+    // is generic, not tied to a particular RouteEntry.
+    pendingPhaseToRouteBallItemIdByReceiverId = new Map();
+    for (const pending of parsedPossessionPhaseToRoutePasses) {
+      const hasEntries = (routesByPlayerId.get(pending.receiverPlayerId)?.length ?? 0) > 0;
       const ballExists = tacticalItems.some((item) => item.id === pending.ballItemId && isBallItem(item));
-      if (!triggerEntry || !receivingEntry || !ballExists) continue;
-      pendingBoundaryPassesByReceiverId.set(pending.receiverPlayerId, {
-        ballItemId: pending.ballItemId,
-        receiverPlayerId: pending.receiverPlayerId,
-        triggerEntryId: triggerEntry.id,
-        receivingEntryId: receivingEntry.id,
-      });
+      if (!hasEntries || !ballExists) continue;
+      pendingPhaseToRouteBallItemIdByReceiverId.set(pending.receiverPlayerId, pending.ballItemId);
     }
     options.onPhaseCountChange?.(phases.length);
     renderBasicRoutePreview();
@@ -4655,7 +4539,7 @@ export async function createTacticalPadLiteSurface(
     if (continueRouteModeArmedForPlayerId === removedPlayer.id) {
       continueRouteModeArmedForPlayerId = null;
     }
-    pendingBoundaryPassesByReceiverId.delete(removedPlayer.id);
+    pendingPhaseToRouteBallItemIdByReceiverId.delete(removedPlayer.id);
     const removedRouteEntries = routesByPlayerId.get(removedPlayer.id);
     if (removedRouteEntries) {
       for (const entry of removedRouteEntries) {
@@ -4671,11 +4555,7 @@ export async function createTacticalPadLiteSurface(
       activeRouteRunsByPlayerId.delete(removedPlayer.id);
       routeControlledPlayerIds.delete(removedPlayer.id);
     }
-    for (const [ballItemId, flight] of activeBoundaryPassFlights.entries()) {
-      if (flight.receiverPlayerId === removedPlayer.id) {
-        activeBoundaryPassFlights.delete(ballItemId);
-      }
-    }
+    chasingBallItemIdByReceiverPlayerId.delete(removedPlayer.id);
     if (lastTappedPlayer?.playerId === removedPlayer.id) {
       lastTappedPlayer = null;
     }
@@ -4817,7 +4697,7 @@ export async function createTacticalPadLiteSurface(
   app.ticker.add(() => {
     stepPlayback(app.ticker.deltaMS);
     stepBasicRouteFollow(app.ticker.deltaMS);
-    stepBoundaryPassFlights(app.ticker.deltaMS);
+    stepPhaseToRouteBallChases(app.ticker.deltaMS);
     animatePlayerDragVisuals(app.ticker.deltaMS);
     animateRouteSelectionHighlight(app.ticker.deltaMS);
     // Read-only: redraws tethers from whatever positions the steps above (or
