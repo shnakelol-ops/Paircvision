@@ -109,6 +109,12 @@ function sanitizeToken(token: MovementBoardToken): MovementBoardToken {
     position: clampNormalizedPoint(token.position),
     draggable: token.draggable !== false,
     isGhost: token.isGhost === true,
+    // Pre-existing gap: this function previously dropped `team` on every
+    // setTokens() round-trip, silently breaking away-team tracking. Preserved
+    // here (plus the new `playerRole`) since both are plain app-level data —
+    // the renderer below never reads either field.
+    team: token.team === "away" || token.team === "home" ? token.team : undefined,
+    playerRole: token.playerRole === "bib" || token.playerRole === "team" ? token.playerRole : undefined,
   };
 }
 
