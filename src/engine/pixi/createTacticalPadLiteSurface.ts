@@ -272,8 +272,15 @@ type PhaseBallSnapshot = {
  * path — mirrors PhaseBallSnapshot's shape so both can share one
  * interpolation function (see interpolatePath). `path` is unused until
  * playback/authoring are migrated in later milestones.
+ *
+ * `id` is looked up against the live TacticalPlayer.id, the same way
+ * PhaseBallSnapshot.id is — never by array position. Positional matching
+ * silently breaks the moment a player is removed from the middle of the
+ * roster (removeLastTacticalPlayer splices by serial, not always the tail),
+ * because startPositions/phases are never reindexed after a live removal.
  */
 type PhasePlayerSnapshot = {
+  id: string;
   x: number;
   y: number;
   path?: NormalizedPoint[];
@@ -667,22 +674,34 @@ function sanitizeSnapshotFootball(input: unknown): PhaseBallSnapshot[] {
     .filter((entry): entry is PhaseBallSnapshot => entry != null);
 }
 
-function sanitizePhasePlayerSnapshot(input: unknown): PhasePlayerSnapshot | null {
+/**
+ * `fallbackId` covers boards saved before player snapshots carried an id
+ * (Phase Engine Identity migration): those entries are purely positional, so
+ * the caller supplies the id the live roster had at that same position at
+ * save time (see sanitizePhaseSnapshot / importBoardState). Once a snapshot
+ * has been round-tripped through this once, every entry carries its own id
+ * and the fallback is never needed again.
+ */
+function sanitizePhasePlayerSnapshot(input: unknown, fallbackId: string | null): PhasePlayerSnapshot | null {
   const point = sanitizeNormalizedPoint(input);
   if (!point) return null;
+  const rawId = isRecord(input) && typeof input.id === "string" ? input.id.trim() : "";
+  const id = rawId.length > 0 ? rawId : fallbackId;
+  if (!id) return null;
   const path = isRecord(input) ? sanitizePointPath(input.path) : [];
   return {
+    id,
     x: point.x,
     y: point.y,
     ...(path.length > 0 ? { path } : {}),
   };
 }
 
-function sanitizePhaseSnapshot(input: unknown): PhaseSnapshot | null {
+function sanitizePhaseSnapshot(input: unknown, legacyFallbackIdsByIndex: readonly string[] = []): PhaseSnapshot | null {
   if (!isRecord(input)) return null;
   const players = Array.isArray(input.players)
     ? input.players
-        .map((entry) => sanitizePhasePlayerSnapshot(entry))
+        .map((entry, index) => sanitizePhasePlayerSnapshot(entry, legacyFallbackIdsByIndex[index] ?? null))
         .filter((entry): entry is PhasePlayerSnapshot => entry != null)
     : [];
   const football = sanitizeSnapshotFootball(input.football);
@@ -1441,7 +1460,7 @@ export async function createTacticalPadLiteSurface(
   let playbackPossessionReceiverId: string | null = null;
   let singlePlayTargetSnapshot: PhaseSnapshot | null = null;
   let startPositions: PhaseSnapshot = {
-    players: players.map((player) => ({ ...player.current })),
+    players: players.map((player) => ({ id: player.id, ...player.current })),
     football: [],
   };
   let phases: PhaseSnapshot[] = [];
@@ -2105,9 +2124,7 @@ export async function createTacticalPadLiteSurface(
 
   /** Phase-0 (rest) position for a member — the fixed baseline tether tension is measured against. */
   function getPhaseZeroPositionForPlayer(playerId: string): NormalizedPoint | null {
-    const playerIndex = players.findIndex((player) => player.id === playerId);
-    if (playerIndex < 0) return null;
-    const point = startPositions.players[playerIndex];
+    const point = startPositions.players.find((entry) => entry.id === playerId);
     if (!point) return null;
     return { x: clampNormalizedValue(point.x), y: clampNormalizedValue(point.y) };
   }
@@ -2295,10 +2312,8 @@ export async function createTacticalPadLiteSurface(
   }
 
   function getPhaseStartPositionForPlayer(playerId: string): NormalizedPoint | null {
-    const playerIndex = players.findIndex((player) => player.id === playerId);
-    if (playerIndex < 0) return null;
     const phaseStartSnapshot = getCurrentPhaseStartSnapshot();
-    const phaseStartPoint = phaseStartSnapshot.players[playerIndex];
+    const phaseStartPoint = phaseStartSnapshot.players.find((entry) => entry.id === playerId);
     if (!phaseStartPoint) return null;
     return {
       x: clampNormalizedValue(phaseStartPoint.x),
@@ -2971,6 +2986,7 @@ export async function createTacticalPadLiteSurface(
   function cloneSnapshot(snapshot: PhaseSnapshot): PhaseSnapshot {
     return {
       players: snapshot.players.map((point) => ({
+        id: point.id,
         x: point.x,
         y: point.y,
         ...(point.path ? { path: point.path.map((pathPoint) => ({ x: pathPoint.x, y: pathPoint.y })) } : {}),
@@ -2986,9 +3002,19 @@ export async function createTacticalPadLiteSurface(
     };
   }
 
-  function normalizePhaseForPlayerCount(snapshot: PhaseSnapshot, playerCount: number): PhaseSnapshot {
-    const normalizedPlayers: PhasePlayerSnapshot[] = Array.from({ length: playerCount }, (_, index) => {
-      const existing = snapshot.players[index];
+  /**
+   * Aligns a snapshot's players to the CURRENT live roster, by id — never by
+   * array position. Must only be called after `players` reflects the roster
+   * this snapshot should be read against (e.g. after importBoardState has
+   * finished rebuilding `players`). A player present in the live roster but
+   * missing from `snapshot` (newly added, or a legacy/mismatched save) falls
+   * back to their current live position with no path. A snapshot entry whose
+   * id has no live counterpart (a removed player) is dropped.
+   */
+  function normalizePhaseForRoster(snapshot: PhaseSnapshot): PhaseSnapshot {
+    const existingById = new Map(snapshot.players.map((entry) => [entry.id, entry] as const));
+    const normalizedPlayers: PhasePlayerSnapshot[] = players.map((player) => {
+      const existing = existingById.get(player.id);
       if (existing) {
         const path = (existing.path ?? [])
           .map((pathPoint) => ({
@@ -2997,16 +3023,13 @@ export async function createTacticalPadLiteSurface(
           }))
           .filter((pathPoint) => Number.isFinite(pathPoint.x) && Number.isFinite(pathPoint.y));
         return {
+          id: player.id,
           x: clampNormalizedValue(existing.x),
           y: clampNormalizedValue(existing.y),
           ...(path.length > 0 ? { path } : {}),
         };
       }
-      const fallback = players[index]?.current;
-      if (fallback) {
-        return { x: clampNormalizedValue(fallback.x), y: clampNormalizedValue(fallback.y) };
-      }
-      return { x: 50, y: 50 };
+      return { id: player.id, x: clampNormalizedValue(player.current.x), y: clampNormalizedValue(player.current.y) };
     });
     return {
       players: normalizedPlayers,
@@ -3044,9 +3067,21 @@ export async function createTacticalPadLiteSurface(
     };
   }
 
+  /**
+   * Drops a removed player's entries from startPositions and every phase.
+   * With id-based lookup elsewhere, stale entries are already harmless (they
+   * simply never match a live player again) — this is hygiene, not a
+   * correctness fix: it keeps saved boards from carrying dead weight for a
+   * player who no longer exists, same spirit as pruneShapeLinksForRoster.
+   */
+  function prunePlayerFromPhaseSnapshots(playerId: string): void {
+    startPositions = { ...startPositions, players: startPositions.players.filter((entry) => entry.id !== playerId) };
+    phases = phases.map((phase) => ({ ...phase, players: phase.players.filter((entry) => entry.id !== playerId) }));
+  }
+
   function captureCurrentSnapshot(): PhaseSnapshot {
     return {
-      players: players.map((player) => ({ x: player.current.x, y: player.current.y })),
+      players: players.map((player) => ({ id: player.id, x: player.current.x, y: player.current.y })),
       football: tacticalItems
         .filter((item) => isBallItem(item))
         .map((item) => {
@@ -3081,9 +3116,10 @@ export async function createTacticalPadLiteSurface(
       preserveActiveRoutePlayers?: boolean;
     },
   ): void {
+    const snapshotPlayersById = new Map(snapshot.players.map((entry) => [entry.id, entry] as const));
     for (const player of players) {
       if (options?.preserveActiveRoutePlayers && routeControlledPlayerIds.has(player.id)) continue;
-      const point = snapshot.players[players.indexOf(player)];
+      const point = snapshotPlayersById.get(player.id);
       if (!point) continue;
       player.current = { x: point.x, y: point.y };
       setTokenWorldPositionForPoint(player, player.current, mapper);
@@ -3322,8 +3358,7 @@ export async function createTacticalPadLiteSurface(
   function isCurrentAtStartPosition(): boolean {
     const epsilon = 0.0001;
     for (const player of players) {
-      const idx = players.indexOf(player);
-      const startPoint = startPositions.players[idx];
+      const startPoint = startPositions.players.find((entry) => entry.id === player.id);
       if (!startPoint) continue;
       if (
         Math.abs(player.current.x - startPoint.x) > epsilon ||
@@ -3501,11 +3536,12 @@ export async function createTacticalPadLiteSurface(
       const progress = Math.max(0, Math.min(1, playElapsedMs / segmentDurationMs));
       const easedProgress = getPlaybackEaseProgress(progress);
 
+      const fromPlayersById = new Map(fromSnapshot.players.map((entry) => [entry.id, entry] as const));
+      const toPlayersById = new Map(toSnapshot.players.map((entry) => [entry.id, entry] as const));
       for (const player of players) {
         if (routeControlledPlayerIds.has(player.id)) continue;
-        const idx = players.indexOf(player);
-        const fromPoint = fromSnapshot.players[idx];
-        const toPoint = toSnapshot.players[idx];
+        const fromPoint = fromPlayersById.get(player.id);
+        const toPoint = toPlayersById.get(player.id);
         if (!fromPoint || !toPoint) continue;
         player.current = {
           x: fromPoint.x + (toPoint.x - fromPoint.x) * easedProgress,
@@ -4041,9 +4077,14 @@ export async function createTacticalPadLiteSurface(
           .map((entry) => sanitizeBoardDrawingSnapshot(entry, mapper))
           .filter((entry): entry is TacticalBoardDrawingSnapshot => entry != null)
       : [];
+    // Boards saved before the Phase Engine Identity migration have no id on
+    // their player snapshot entries — only array position. parsedPlayers was
+    // captured in save-time order from the same payload, so it's the correct
+    // fallback id source for that legacy, positional-only data.
+    const legacyFallbackIdsByIndex = parsedPlayers.map((player) => player.id);
     const parsedPhases = Array.isArray(state.phases)
       ? state.phases
-          .map((entry) => sanitizePhaseSnapshot(entry))
+          .map((entry) => sanitizePhaseSnapshot(entry, legacyFallbackIdsByIndex))
           .filter((entry): entry is PhaseSnapshot => entry != null)
       : [];
     const parsedRoutes = sanitizeBoardRoutes(state.routes);
@@ -4052,7 +4093,7 @@ export async function createTacticalPadLiteSurface(
     const parsedShapeLinks = sanitizeShapeLinks(state.shapeLinks);
     const parsedShowShapeLinks =
       typeof state.shapeLinksVisible === "boolean" ? state.shapeLinksVisible : true;
-    const parsedStart = sanitizePhaseSnapshot(state.startSnapshot);
+    const parsedStart = sanitizePhaseSnapshot(state.startSnapshot, legacyFallbackIdsByIndex);
     const parsedTeamState = isRecord(state.teamState) ? state.teamState : null;
     const nextBlueColor = sanitizeWhiteboardTokenColor(parsedTeamState?.colors && isRecord(parsedTeamState.colors) ? parsedTeamState.colors.blue : undefined);
     const nextRedColor = sanitizeWhiteboardTokenColor(parsedTeamState?.colors && isRecord(parsedTeamState.colors) ? parsedTeamState.colors.red : undefined);
@@ -4122,12 +4163,9 @@ export async function createTacticalPadLiteSurface(
     }, 0);
     whiteboardDrawingCounter = Math.max(whiteboardDrawingCounter, parsedMaxDrawingSerial);
 
-    const nextStartSnapshot = normalizePhaseForPlayerCount(
-      parsedStart ?? captureCurrentSnapshot(),
-      players.length,
-    );
+    const nextStartSnapshot = normalizePhaseForRoster(parsedStart ?? captureCurrentSnapshot());
     startPositions = nextStartSnapshot;
-    phases = parsedPhases.map((phase) => normalizePhaseForPlayerCount(phase, players.length));
+    phases = parsedPhases.map((phase) => normalizePhaseForRoster(phase));
     routeByPlayerId = new Map(
       Array.from(parsedRoutes.entries())
         .filter(([playerId]) => players.some((player) => player.id === playerId))
@@ -4245,6 +4283,7 @@ export async function createTacticalPadLiteSurface(
     });
     const [removedPlayer] = players.splice(removalTarget.index, 1);
     if (!removedPlayer) return;
+    prunePlayerFromPhaseSnapshots(removedPlayer.id);
     if (selectedPlayerId === removedPlayer.id) {
       selectedPlayerId = null;
     }
