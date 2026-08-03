@@ -10,3 +10,7 @@ dist/
 
 # TypeScript build info
 *.tsbuildinfo
+
+# Scratch PDFs written to the repo root by src/stats/snapshotExport.test.ts
+# (cleaned up in its afterEach, but can race under parallel test workers)
+/Adare_v_Mungret_*.pdf

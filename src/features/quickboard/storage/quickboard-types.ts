@@ -22,6 +22,9 @@ export type QuickBoardBoardState = {
   textAnnotations?: SlateTextAnnotation[];
   /** Data URL of the uploaded board background image (PR #210), or absent for the default pitch. */
   backgroundImage?: string | null;
+  /** Shape Links (Tactical Slate presentation feature). Deep validation happens in createTacticalPadLiteSurface.ts. */
+  shapeLinks?: unknown;
+  shapeLinksVisible?: unknown;
 };
 
 export type SavedQuickBoard = {
@@ -66,6 +69,8 @@ export function sanitizeQuickBoardState(value: unknown): QuickBoardBoardState | 
     ...(value.drawTool !== undefined ? { drawTool: value.drawTool } : {}),
     ...(value.drawColor !== undefined ? { drawColor: value.drawColor } : {}),
     ...(value.itemMode !== undefined ? { itemMode: value.itemMode } : {}),
+    ...(value.shapeLinks !== undefined ? { shapeLinks: value.shapeLinks } : {}),
+    ...(value.shapeLinksVisible !== undefined ? { shapeLinksVisible: value.shapeLinksVisible } : {}),
     textAnnotations: sanitizeTextAnnotations(value.textAnnotations),
     ...(typeof value.backgroundImage === "string" && value.backgroundImage.startsWith("data:image/")
       ? { backgroundImage: value.backgroundImage }
