@@ -267,8 +267,19 @@ type PhaseBallSnapshot = {
   isFree: boolean;
   path?: NormalizedPoint[];
 };
+/**
+ * A player's position within a Phase, plus an optional freehand movement
+ * path — mirrors PhaseBallSnapshot's shape so both can share one
+ * interpolation function (see interpolatePath). `path` is unused until
+ * playback/authoring are migrated in later milestones.
+ */
+type PhasePlayerSnapshot = {
+  x: number;
+  y: number;
+  path?: NormalizedPoint[];
+};
 type PhaseSnapshot = {
-  players: NormalizedPoint[];
+  players: PhasePlayerSnapshot[];
   football: PhaseBallSnapshot[];
 };
 
@@ -621,7 +632,7 @@ function sanitizeNormalizedPoint(point: unknown): NormalizedPoint | null {
   return { x, y };
 }
 
-function sanitizeBallPath(input: unknown): NormalizedPoint[] {
+function sanitizePointPath(input: unknown): NormalizedPoint[] {
   if (!Array.isArray(input)) return [];
   return input
     .map((entry) => sanitizeNormalizedPoint(entry))
@@ -643,7 +654,7 @@ function sanitizeSnapshotFootball(input: unknown): PhaseBallSnapshot[] {
           ? entry.attachedPlayerId.trim()
           : null;
       const isFree = typeof entry.isFree === "boolean" ? entry.isFree : attachedPlayerId == null;
-      const path = isFree ? sanitizeBallPath(entry.path) : [];
+      const path = isFree ? sanitizePointPath(entry.path) : [];
       return {
         id,
         x,
@@ -656,12 +667,23 @@ function sanitizeSnapshotFootball(input: unknown): PhaseBallSnapshot[] {
     .filter((entry): entry is PhaseBallSnapshot => entry != null);
 }
 
+function sanitizePhasePlayerSnapshot(input: unknown): PhasePlayerSnapshot | null {
+  const point = sanitizeNormalizedPoint(input);
+  if (!point) return null;
+  const path = isRecord(input) ? sanitizePointPath(input.path) : [];
+  return {
+    x: point.x,
+    y: point.y,
+    ...(path.length > 0 ? { path } : {}),
+  };
+}
+
 function sanitizePhaseSnapshot(input: unknown): PhaseSnapshot | null {
   if (!isRecord(input)) return null;
   const players = Array.isArray(input.players)
     ? input.players
-        .map((entry) => sanitizeNormalizedPoint(entry))
-        .filter((entry): entry is NormalizedPoint => entry != null)
+        .map((entry) => sanitizePhasePlayerSnapshot(entry))
+        .filter((entry): entry is PhasePlayerSnapshot => entry != null)
     : [];
   const football = sanitizeSnapshotFootball(input.football);
   return {
@@ -2948,7 +2970,11 @@ export async function createTacticalPadLiteSurface(
 
   function cloneSnapshot(snapshot: PhaseSnapshot): PhaseSnapshot {
     return {
-      players: snapshot.players.map((point) => ({ x: point.x, y: point.y })),
+      players: snapshot.players.map((point) => ({
+        x: point.x,
+        y: point.y,
+        ...(point.path ? { path: point.path.map((pathPoint) => ({ x: pathPoint.x, y: pathPoint.y })) } : {}),
+      })),
       football: snapshot.football.map((point) => ({
         id: point.id,
         x: point.x,
@@ -2961,12 +2987,19 @@ export async function createTacticalPadLiteSurface(
   }
 
   function normalizePhaseForPlayerCount(snapshot: PhaseSnapshot, playerCount: number): PhaseSnapshot {
-    const normalizedPlayers = Array.from({ length: playerCount }, (_, index) => {
+    const normalizedPlayers: PhasePlayerSnapshot[] = Array.from({ length: playerCount }, (_, index) => {
       const existing = snapshot.players[index];
       if (existing) {
+        const path = (existing.path ?? [])
+          .map((pathPoint) => ({
+            x: clampNormalizedValue(pathPoint.x),
+            y: clampNormalizedValue(pathPoint.y),
+          }))
+          .filter((pathPoint) => Number.isFinite(pathPoint.x) && Number.isFinite(pathPoint.y));
         return {
           x: clampNormalizedValue(existing.x),
           y: clampNormalizedValue(existing.y),
+          ...(path.length > 0 ? { path } : {}),
         };
       }
       const fallback = players[index]?.current;
