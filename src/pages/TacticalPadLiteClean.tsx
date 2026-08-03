@@ -1605,13 +1605,6 @@ const CONTINUE_RUN_BUTTON_ARMED_STYLE: CSSProperties = {
     "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 20px rgba(45, 212, 191, 0.55), inset 0 1px 2px rgba(255, 255, 255, 0.3)",
 };
 
-const ATTACH_BALL_BUTTON_STYLE: CSSProperties = {
-  ...CONTROL_BUTTON_STYLE,
-  border: "1px solid rgba(56, 189, 248, 0.6)",
-  boxShadow:
-    "0 6px 20px rgba(0, 0, 0, 0.45), 0 0 18px rgba(56, 189, 248, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.25)",
-};
-
 const PLAYBACK_SPEED_BAR_STYLE: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "auto 56px auto",
@@ -2229,7 +2222,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     ballAttachedPlayerId: null,
     canContinueSelectedRoute: false,
     isContinueRouteModeArmed: false,
-    canAttachBallToSelectedPlayer: false,
   });
   const [routeLimitWarning, setRouteLimitWarning] = useState<string | null>(null);
   const routeLimitWarningTimeoutRef = useRef<number | null>(null);
@@ -3728,13 +3720,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     surface.setContinueRouteMode(!routeState.isContinueRouteModeArmed);
   };
 
-  const attachBallToSelectedRoutePlayer = () => {
-    if (shouldBlockPortraitInput) return;
-    const surface = surfaceRef.current;
-    if (!surface) return;
-    surface.attachBallToSelectedPlayer();
-  };
-
   const clearCommittedRoutes = () => {
     if (shouldBlockPortraitInput || isPlaybackLocked) return;
     const surface = surfaceRef.current;
@@ -4986,23 +4971,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             >
               {hasAssignedRoutes ? "Play Routes" : "Play"}
             </button>
-            {routeState.isRouteCaptureMode ? (
-              <button
-                type="button"
-                className="control-button"
-                disabled={!routeState.canAttachBallToSelectedPlayer}
-                style={
-                  !routeState.canAttachBallToSelectedPlayer ? DISABLED_CONTROL_BUTTON_STYLE : ATTACH_BALL_BUTTON_STYLE
-                }
-                title="Attach the ball to the selected player, without leaving Route Mode"
-                onClick={() => {
-                  attachBallToSelectedRoutePlayer();
-                  closeControlsMenu();
-                }}
-              >
-                ⚽ Attach Ball
-              </button>
-            ) : null}
             {routeState.isRouteCaptureMode ? (
               <button
                 type="button"
