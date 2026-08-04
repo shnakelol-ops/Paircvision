@@ -144,7 +144,7 @@ type WhiteboardToolControl =
   | "circleZone"
   | "eraser";
 type WhiteboardToolAction = WhiteboardToolControl;
-type MovementModePillOption = "move" | "route" | "ball";
+type MovementModePillOption = "move" | "route" | "ball" | "freeDraw";
 const WHITEBOARD_BUBBLE_SIZE = 36;
 const WHITEBOARD_BUBBLE_MARGIN = 12;
 const KIT_EDITOR_MARGIN = 10;
@@ -2278,6 +2278,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   });
   const [routeLimitWarning, setRouteLimitWarning] = useState<string | null>(null);
   const routeLimitWarningTimeoutRef = useRef<number | null>(null);
+  // Milestone 4 — Free Draw authoring. Separate from routeState above.
+  const [isFreeDrawCaptureMode, setIsFreeDrawCaptureMode] = useState(false);
 
   const showRouteLimitWarning = (message: string) => {
     if (routeLimitWarningTimeoutRef.current != null) {
@@ -2735,6 +2737,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         if (disposed) return;
         showRouteLimitWarning(`Route limit reached — Tactical Slate supports ${maxRoutes} routed players.`);
       },
+      onFreeDrawStateChange: (state) => {
+        if (disposed) return;
+        setIsFreeDrawCaptureMode(state.isFreeDrawCaptureMode);
+      },
       onShapeLockChange: (state) => {
         if (disposed) return;
         setShapeLockModeState(state.mode);
@@ -3013,6 +3019,19 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       setMovementModePillSelection("move");
     }
   }, [isStatsMode, isWhiteboardMode, routeState.isRouteCaptureMode, tacticalTool, itemMode, movementModePillSelection]);
+
+  // Milestone 4 — keep the pill in sync when the surface disables Free Draw
+  // internally (e.g. after Add Phase commits the drawn path).
+  useEffect(() => {
+    if (isStatsMode || isWhiteboardMode) return;
+    if (isFreeDrawCaptureMode) {
+      setMovementModePillSelection("freeDraw");
+      return;
+    }
+    if (movementModePillSelection === "freeDraw") {
+      setMovementModePillSelection("move");
+    }
+  }, [isStatsMode, isWhiteboardMode, isFreeDrawCaptureMode, movementModePillSelection]);
 
   useEffect(() => {
     if (!isWhiteboardMode) return;
@@ -3803,6 +3822,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     surface.setRouteCaptureMode(enabled);
   };
 
+  const setFreeDrawCaptureMode = (enabled: boolean) => {
+    if (shouldBlockPortraitInput) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    surface.setFreeDrawCaptureMode(enabled);
+  };
+
   const clearCommittedRoutes = () => {
     if (shouldBlockPortraitInput || isPlaybackLocked) return;
     const surface = surfaceRef.current;
@@ -3821,6 +3847,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (!surface) return;
     if (tool !== "move") {
       setRouteCaptureMode(false);
+      setFreeDrawCaptureMode(false);
     }
     setTacticalTool(tool);
     surface.setWhiteboardDrawTool(tool);
@@ -4040,6 +4067,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const freeBall = () => {
     if (shouldBlockPortraitInput || isPlaybackLocked) return;
     setRouteCaptureMode(false);
+    setFreeDrawCaptureMode(false);
     surfaceRef.current?.freeBall();
     setMovementModePillSelection("ball");
     setTacticalTool("move");
@@ -4077,6 +4105,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setMovementModePillSelection(nextMode);
     if (nextMode === "move") {
       setRouteCaptureMode(false);
+      setFreeDrawCaptureMode(false);
       setItemMode("edit");
       applyTacticalTool("move");
       return;
@@ -4084,7 +4113,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (nextMode === "route") {
       setItemMode("locked");
       applyTacticalTool("move");
+      setFreeDrawCaptureMode(false);
       setRouteCaptureMode(true);
+      return;
+    }
+    if (nextMode === "freeDraw") {
+      setItemMode("locked");
+      applyTacticalTool("move");
+      setRouteCaptureMode(false);
+      setFreeDrawCaptureMode(true);
       return;
     }
     setItemMode("locked");
@@ -5049,6 +5086,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 { id: "move", label: "Move" },
                 { id: "route", label: "Route" },
                 { id: "ball", label: "Ball" },
+                { id: "freeDraw", label: "Free Draw" },
               ] as const).map((option) => (
                 <button
                   key={option.id}

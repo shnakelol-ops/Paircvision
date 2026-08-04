@@ -188,6 +188,13 @@ export type TacticalPadLiteSurface = {
   setRouteCaptureMode: (enabled: boolean) => void;
   clearRoutes: () => void;
   getRouteState: () => TacticalRouteState;
+  /**
+   * Milestone 4 — minimal Free Draw authoring. Draw one curved movement for
+   * a player (press on them, drag a curve, release) directly into the Phase
+   * engine's player.path, consumed by playback since Milestone 3. Entirely
+   * separate from Route capture/playback.
+   */
+  setFreeDrawCaptureMode: (enabled: boolean) => void;
   reset: () => void;
   reflow: () => void;
   /**
@@ -245,6 +252,7 @@ type TacticalPadLiteSurfaceOptions = {
   onTacticalPlayerDoubleTap?: (payload: { playerId: string; clientX: number; clientY: number }) => void;
   onRouteStateChange?: (state: TacticalRouteState) => void;
   onRouteLimitReached?: (maxRoutes: number) => void;
+  onFreeDrawStateChange?: (state: { isFreeDrawCaptureMode: boolean }) => void;
   onShapeLockChange?: (state: { mode: ShapeLockMode; memberIds: string[] }) => void;
   onShapeLinksChange?: (state: ShapeLinksState) => void;
 };
@@ -267,8 +275,26 @@ type PhaseBallSnapshot = {
   isFree: boolean;
   path?: NormalizedPoint[];
 };
+/**
+ * A player's position within a Phase, plus an optional freehand movement
+ * path — mirrors PhaseBallSnapshot's shape so both can share one
+ * interpolation function (see interpolatePath). `path` is unused until
+ * playback/authoring are migrated in later milestones.
+ *
+ * `id` is looked up against the live TacticalPlayer.id, the same way
+ * PhaseBallSnapshot.id is — never by array position. Positional matching
+ * silently breaks the moment a player is removed from the middle of the
+ * roster (removeLastTacticalPlayer splices by serial, not always the tail),
+ * because startPositions/phases are never reindexed after a live removal.
+ */
+type PhasePlayerSnapshot = {
+  id: string;
+  x: number;
+  y: number;
+  path?: NormalizedPoint[];
+};
 type PhaseSnapshot = {
-  players: NormalizedPoint[];
+  players: PhasePlayerSnapshot[];
   football: PhaseBallSnapshot[];
 };
 
@@ -304,6 +330,7 @@ const MAX_BASIC_ROUTE_PLAYERS = 6;
 const BASIC_ROUTE_PREVIEW_SHADOW_COLOR = 0x1c1205;
 const BASIC_ROUTE_PREVIEW_CORE_COLOR = 0xf59e0b;
 const BASIC_ROUTE_PREVIEW_HIGHLIGHT_COLOR = 0xffd8a1;
+const FREE_DRAW_PREVIEW_COLOR = 0x2dd4bf;
 const BASIC_ROUTE_SAMPLE_MIN_POINT_DISTANCE = 0.1;
 const BASIC_ROUTE_SAMPLES_PER_SEGMENT = 16;
 const BASIC_ROUTE_MIN_CORNER_TENSION_SCALE = 0.28;
@@ -621,7 +648,7 @@ function sanitizeNormalizedPoint(point: unknown): NormalizedPoint | null {
   return { x, y };
 }
 
-function sanitizeBallPath(input: unknown): NormalizedPoint[] {
+function sanitizePointPath(input: unknown): NormalizedPoint[] {
   if (!Array.isArray(input)) return [];
   return input
     .map((entry) => sanitizeNormalizedPoint(entry))
@@ -643,7 +670,7 @@ function sanitizeSnapshotFootball(input: unknown): PhaseBallSnapshot[] {
           ? entry.attachedPlayerId.trim()
           : null;
       const isFree = typeof entry.isFree === "boolean" ? entry.isFree : attachedPlayerId == null;
-      const path = isFree ? sanitizeBallPath(entry.path) : [];
+      const path = isFree ? sanitizePointPath(entry.path) : [];
       return {
         id,
         x,
@@ -656,12 +683,35 @@ function sanitizeSnapshotFootball(input: unknown): PhaseBallSnapshot[] {
     .filter((entry): entry is PhaseBallSnapshot => entry != null);
 }
 
-function sanitizePhaseSnapshot(input: unknown): PhaseSnapshot | null {
+/**
+ * `fallbackId` covers boards saved before player snapshots carried an id
+ * (Phase Engine Identity migration): those entries are purely positional, so
+ * the caller supplies the id the live roster had at that same position at
+ * save time (see sanitizePhaseSnapshot / importBoardState). Once a snapshot
+ * has been round-tripped through this once, every entry carries its own id
+ * and the fallback is never needed again.
+ */
+function sanitizePhasePlayerSnapshot(input: unknown, fallbackId: string | null): PhasePlayerSnapshot | null {
+  const point = sanitizeNormalizedPoint(input);
+  if (!point) return null;
+  const rawId = isRecord(input) && typeof input.id === "string" ? input.id.trim() : "";
+  const id = rawId.length > 0 ? rawId : fallbackId;
+  if (!id) return null;
+  const path = isRecord(input) ? sanitizePointPath(input.path) : [];
+  return {
+    id,
+    x: point.x,
+    y: point.y,
+    ...(path.length > 0 ? { path } : {}),
+  };
+}
+
+function sanitizePhaseSnapshot(input: unknown, legacyFallbackIdsByIndex: readonly string[] = []): PhaseSnapshot | null {
   if (!isRecord(input)) return null;
   const players = Array.isArray(input.players)
     ? input.players
-        .map((entry) => sanitizeNormalizedPoint(entry))
-        .filter((entry): entry is NormalizedPoint => entry != null)
+        .map((entry, index) => sanitizePhasePlayerSnapshot(entry, legacyFallbackIdsByIndex[index] ?? null))
+        .filter((entry): entry is PhasePlayerSnapshot => entry != null)
     : [];
   const football = sanitizeSnapshotFootball(input.football);
   return {
@@ -1135,6 +1185,9 @@ export async function createTacticalPadLiteSurface(
   const basicRoutePreviewGraphic = new Graphics();
   basicRoutePreviewGraphic.eventMode = "none";
   whiteboardPreviewLayer.addChild(basicRoutePreviewGraphic);
+  const freeDrawPreviewGraphic = new Graphics();
+  freeDrawPreviewGraphic.eventMode = "none";
+  whiteboardPreviewLayer.addChild(freeDrawPreviewGraphic);
 
   const itemsLayer = new Container();
   itemsLayer.eventMode = "passive";
@@ -1419,7 +1472,7 @@ export async function createTacticalPadLiteSurface(
   let playbackPossessionReceiverId: string | null = null;
   let singlePlayTargetSnapshot: PhaseSnapshot | null = null;
   let startPositions: PhaseSnapshot = {
-    players: players.map((player) => ({ ...player.current })),
+    players: players.map((player) => ({ id: player.id, ...player.current })),
     football: [],
   };
   let phases: PhaseSnapshot[] = [];
@@ -1449,6 +1502,15 @@ export async function createTacticalPadLiteSurface(
   let routeCapturePointerId: number | null = null;
   let routeSelectionPulseMs = 0;
   let isPossessionPassModeEnabled = false;
+  // Milestone 4 — Free Draw authoring. Entirely separate from Route capture
+  // above: committed paths write straight into PhasePlayerSnapshot.path via
+  // captureCurrentSnapshot, consumed by the Phase engine itself (Milestone 3),
+  // not by any Route-style playback/scheduling.
+  let isFreeDrawCaptureMode = false;
+  let freeDrawPathByPlayerId = new Map<string, RoutePoint[]>();
+  let freeDrawDraftPoints: RoutePoint[] = [];
+  let freeDrawDraftPlayerId: string | null = null;
+  let freeDrawCapturePointerId: number | null = null;
 
   let activeDrag: ActiveDragState = null;
   let selectedItemId: string | null = null;
@@ -1901,7 +1963,8 @@ export async function createTacticalPadLiteSurface(
   function syncWhiteboardTokenInputMode(): void {
     if (!isDrawingEnabledSurface) return;
     const canInteractItems = isItemInteractionEnabled();
-    const isDrawingInteractionActive = (activeWhiteboardTool !== "move" || isRouteCaptureMode) && !isPlaybackInputLocked();
+    const isDrawingInteractionActive =
+      (activeWhiteboardTool !== "move" || isRouteCaptureMode || isFreeDrawCaptureMode) && !isPlaybackInputLocked();
     let draggingItemId: string | null = null;
     let draggingPlayerId: string | null = null;
     if (activeDrag && activeDrag.type === "item" && activeDrag.hasCrossedThreshold) {
@@ -1924,22 +1987,24 @@ export async function createTacticalPadLiteSurface(
       activeWhiteboardTool === "move" &&
       !isPlaybackInputLocked() &&
       !isRouteCaptureMode &&
+      !isFreeDrawCaptureMode &&
       activeRouteRunsByPlayerId.size <= 0;
     const canSelectRoutePlayers = surfaceVariant === "tactical" && isRouteCaptureMode && !isPlaybackInputLocked();
+    const canSelectFreeDrawPlayers = surfaceVariant === "tactical" && isFreeDrawCaptureMode && !isPlaybackInputLocked();
     for (const player of players) {
       const isCurrentPlayerDragging = draggingPlayerId === player.id;
-      player.token.eventMode = canDragPlayers || canSelectRoutePlayers ? "static" : "none";
+      player.token.eventMode = canDragPlayers || canSelectRoutePlayers || canSelectFreeDrawPlayers ? "static" : "none";
       player.token.cursor = isCurrentPlayerDragging
         ? "grabbing"
         : canDragPlayers
           ? "grab"
-          : canSelectRoutePlayers
+          : canSelectRoutePlayers || canSelectFreeDrawPlayers
             ? "pointer"
             : "default";
     }
     whiteboardInputLayer.eventMode = isDrawingInteractionActive ? "static" : "none";
     whiteboardInputLayer.cursor =
-      isRouteCaptureMode || activeWhiteboardTool !== "eraser" ? "crosshair" : "not-allowed";
+      isRouteCaptureMode || isFreeDrawCaptureMode || activeWhiteboardTool !== "eraser" ? "crosshair" : "not-allowed";
     renderRouteSelectionHighlight();
   }
 
@@ -2083,9 +2148,7 @@ export async function createTacticalPadLiteSurface(
 
   /** Phase-0 (rest) position for a member — the fixed baseline tether tension is measured against. */
   function getPhaseZeroPositionForPlayer(playerId: string): NormalizedPoint | null {
-    const playerIndex = players.findIndex((player) => player.id === playerId);
-    if (playerIndex < 0) return null;
-    const point = startPositions.players[playerIndex];
+    const point = startPositions.players.find((entry) => entry.id === playerId);
     if (!point) return null;
     return { x: clampNormalizedValue(point.x), y: clampNormalizedValue(point.y) };
   }
@@ -2273,10 +2336,8 @@ export async function createTacticalPadLiteSurface(
   }
 
   function getPhaseStartPositionForPlayer(playerId: string): NormalizedPoint | null {
-    const playerIndex = players.findIndex((player) => player.id === playerId);
-    if (playerIndex < 0) return null;
     const phaseStartSnapshot = getCurrentPhaseStartSnapshot();
-    const phaseStartPoint = phaseStartSnapshot.players[playerIndex];
+    const phaseStartPoint = phaseStartSnapshot.players.find((entry) => entry.id === playerId);
     if (!phaseStartPoint) return null;
     return {
       x: clampNormalizedValue(phaseStartPoint.x),
@@ -2948,7 +3009,12 @@ export async function createTacticalPadLiteSurface(
 
   function cloneSnapshot(snapshot: PhaseSnapshot): PhaseSnapshot {
     return {
-      players: snapshot.players.map((point) => ({ x: point.x, y: point.y })),
+      players: snapshot.players.map((point) => ({
+        id: point.id,
+        x: point.x,
+        y: point.y,
+        ...(point.path ? { path: point.path.map((pathPoint) => ({ x: pathPoint.x, y: pathPoint.y })) } : {}),
+      })),
       football: snapshot.football.map((point) => ({
         id: point.id,
         x: point.x,
@@ -2960,20 +3026,34 @@ export async function createTacticalPadLiteSurface(
     };
   }
 
-  function normalizePhaseForPlayerCount(snapshot: PhaseSnapshot, playerCount: number): PhaseSnapshot {
-    const normalizedPlayers = Array.from({ length: playerCount }, (_, index) => {
-      const existing = snapshot.players[index];
+  /**
+   * Aligns a snapshot's players to the CURRENT live roster, by id — never by
+   * array position. Must only be called after `players` reflects the roster
+   * this snapshot should be read against (e.g. after importBoardState has
+   * finished rebuilding `players`). A player present in the live roster but
+   * missing from `snapshot` (newly added, or a legacy/mismatched save) falls
+   * back to their current live position with no path. A snapshot entry whose
+   * id has no live counterpart (a removed player) is dropped.
+   */
+  function normalizePhaseForRoster(snapshot: PhaseSnapshot): PhaseSnapshot {
+    const existingById = new Map(snapshot.players.map((entry) => [entry.id, entry] as const));
+    const normalizedPlayers: PhasePlayerSnapshot[] = players.map((player) => {
+      const existing = existingById.get(player.id);
       if (existing) {
+        const path = (existing.path ?? [])
+          .map((pathPoint) => ({
+            x: clampNormalizedValue(pathPoint.x),
+            y: clampNormalizedValue(pathPoint.y),
+          }))
+          .filter((pathPoint) => Number.isFinite(pathPoint.x) && Number.isFinite(pathPoint.y));
         return {
+          id: player.id,
           x: clampNormalizedValue(existing.x),
           y: clampNormalizedValue(existing.y),
+          ...(path.length > 0 ? { path } : {}),
         };
       }
-      const fallback = players[index]?.current;
-      if (fallback) {
-        return { x: clampNormalizedValue(fallback.x), y: clampNormalizedValue(fallback.y) };
-      }
-      return { x: 50, y: 50 };
+      return { id: player.id, x: clampNormalizedValue(player.current.x), y: clampNormalizedValue(player.current.y) };
     });
     return {
       players: normalizedPlayers,
@@ -3011,9 +3091,31 @@ export async function createTacticalPadLiteSurface(
     };
   }
 
+  /**
+   * Drops a removed player's entries from startPositions and every phase.
+   * With id-based lookup elsewhere, stale entries are already harmless (they
+   * simply never match a live player again) — this is hygiene, not a
+   * correctness fix: it keeps saved boards from carrying dead weight for a
+   * player who no longer exists, same spirit as pruneShapeLinksForRoster.
+   */
+  function prunePlayerFromPhaseSnapshots(playerId: string): void {
+    startPositions = { ...startPositions, players: startPositions.players.filter((entry) => entry.id !== playerId) };
+    phases = phases.map((phase) => ({ ...phase, players: phase.players.filter((entry) => entry.id !== playerId) }));
+  }
+
   function captureCurrentSnapshot(): PhaseSnapshot {
     return {
-      players: players.map((player) => ({ x: player.current.x, y: player.current.y })),
+      players: players.map((player) => {
+        const freeDrawPath = freeDrawPathByPlayerId.get(player.id);
+        return {
+          id: player.id,
+          x: player.current.x,
+          y: player.current.y,
+          ...(freeDrawPath && freeDrawPath.length > 0
+            ? { path: freeDrawPath.map((point) => ({ x: point.x, y: point.y })) }
+            : {}),
+        };
+      }),
       football: tacticalItems
         .filter((item) => isBallItem(item))
         .map((item) => {
@@ -3048,9 +3150,10 @@ export async function createTacticalPadLiteSurface(
       preserveActiveRoutePlayers?: boolean;
     },
   ): void {
+    const snapshotPlayersById = new Map(snapshot.players.map((entry) => [entry.id, entry] as const));
     for (const player of players) {
       if (options?.preserveActiveRoutePlayers && routeControlledPlayerIds.has(player.id)) continue;
-      const point = snapshot.players[players.indexOf(player)];
+      const point = snapshotPlayersById.get(player.id);
       if (!point) continue;
       player.current = { x: point.x, y: point.y };
       setTokenWorldPositionForPoint(player, player.current, mapper);
@@ -3235,6 +3338,67 @@ export async function createTacticalPadLiteSurface(
     return closest;
   }
 
+  // --- Milestone 4: Free Draw authoring ---------------------------------
+  // Deliberately separate from the Route capture functions above: no
+  // scheduling, no session, no playback engine of its own. A committed
+  // draw is just data that rides on the next captureCurrentSnapshot() call,
+  // exactly like the football's own path already does.
+
+  function clearFreeDrawPreview(): void {
+    freeDrawPreviewGraphic.clear();
+  }
+
+  function renderFreeDrawPreview(): void {
+    clearFreeDrawPreview();
+    if (freeDrawDraftPoints.length <= 0) return;
+    const sampled = sampleRoutePoints(freeDrawDraftPoints);
+    if (sampled.length < 2) return;
+    const worldPoints = sampled.map((point) => mapper.normalizedToWorld(point));
+    const first = worldPoints[0];
+    if (!first) return;
+    freeDrawPreviewGraphic.moveTo(first.x, first.y);
+    for (let index = 1; index < worldPoints.length; index += 1) {
+      const point = worldPoints[index];
+      if (!point) continue;
+      freeDrawPreviewGraphic.lineTo(point.x, point.y);
+    }
+    freeDrawPreviewGraphic.stroke({
+      color: FREE_DRAW_PREVIEW_COLOR,
+      width: 1.6,
+      alpha: 0.92,
+      cap: "round",
+      join: "round",
+      alignment: 0.5,
+    });
+  }
+
+  function clearFreeDrawDraft(): void {
+    freeDrawCapturePointerId = null;
+    freeDrawDraftPoints = [];
+    freeDrawDraftPlayerId = null;
+    clearFreeDrawPreview();
+  }
+
+  function appendFreeDrawPoint(point: RoutePoint): void {
+    const previous = freeDrawDraftPoints[freeDrawDraftPoints.length - 1];
+    if (previous && Math.hypot(previous.x - point.x, previous.y - point.y) < BASIC_ROUTE_MIN_POINT_DISTANCE) {
+      return;
+    }
+    freeDrawDraftPoints = [...freeDrawDraftPoints, point];
+    renderFreeDrawPreview();
+  }
+
+  function setFreeDrawCaptureModeState(enabled: boolean): void {
+    const next = Boolean(enabled) && surfaceVariant === "tactical";
+    if (next === isFreeDrawCaptureMode) return;
+    isFreeDrawCaptureMode = next;
+    if (!isFreeDrawCaptureMode) {
+      clearFreeDrawDraft();
+    }
+    syncWhiteboardTokenInputMode();
+    options.onFreeDrawStateChange?.({ isFreeDrawCaptureMode });
+  }
+
   function buildBasicRouteRunsForCurrentPlayers(segmentIndex: number): Map<string, ActiveBasicRouteFollow> {
     const runs = new Map<string, ActiveBasicRouteFollow>();
     for (const [playerId, route] of routeByPlayerId.entries()) {
@@ -3289,8 +3453,7 @@ export async function createTacticalPadLiteSurface(
   function isCurrentAtStartPosition(): boolean {
     const epsilon = 0.0001;
     for (const player of players) {
-      const idx = players.indexOf(player);
-      const startPoint = startPositions.players[idx];
+      const startPoint = startPositions.players.find((entry) => entry.id === player.id);
       if (!startPoint) continue;
       if (
         Math.abs(player.current.x - startPoint.x) > epsilon ||
@@ -3340,17 +3503,24 @@ export async function createTacticalPadLiteSurface(
     playSingleStartToCurrent();
   }
 
-  function interpolateBallPath(
-    fromBall: PhaseBallSnapshot | null,
-    toBall: PhaseBallSnapshot,
+  /**
+   * Shared Phase-engine interpolation: walks an optional stored freehand
+   * `path` proportionally by arc length, or falls back to a straight lerp
+   * when no path is present. Originally the football's own interpolation;
+   * kept generic (`{ x, y, path? }`) so any Phase-tracked object — not just
+   * the football — can reuse it.
+   */
+  function interpolatePath(
+    from: { x: number; y: number; path?: NormalizedPoint[] } | null,
+    to: { x: number; y: number; path?: NormalizedPoint[] },
     progress: number,
   ): NormalizedPoint {
-    const fallbackStart = fromBall ?? toBall;
+    const fallbackStart = from ?? to;
     const fallbackPoint = {
-      x: fallbackStart.x + (toBall.x - fallbackStart.x) * progress,
-      y: fallbackStart.y + (toBall.y - fallbackStart.y) * progress,
+      x: fallbackStart.x + (to.x - fallbackStart.x) * progress,
+      y: fallbackStart.y + (to.y - fallbackStart.y) * progress,
     };
-    const storedPath = toBall.path ?? [];
+    const storedPath = to.path ?? [];
     if (storedPath.length < 2) {
       return fallbackPoint;
     }
@@ -3360,10 +3530,10 @@ export async function createTacticalPadLiteSurface(
       y: clampNormalizedValue(point.y),
     }));
 
-    if (fromBall) {
+    if (from) {
       const fromPoint = {
-        x: clampNormalizedValue(fromBall.x),
-        y: clampNormalizedValue(fromBall.y),
+        x: clampNormalizedValue(from.x),
+        y: clampNormalizedValue(from.y),
       };
       // Trim stale prefix points so each playback segment begins from the current segment origin.
       const firstAlignedIndex = path.findIndex(
@@ -3410,8 +3580,8 @@ export async function createTacticalPadLiteSurface(
       traveledDistance += segmentDistance;
     }
     return {
-      x: clampNormalizedValue(toBall.x),
-      y: clampNormalizedValue(toBall.y),
+      x: clampNormalizedValue(to.x),
+      y: clampNormalizedValue(to.y),
     };
   }
 
@@ -3461,16 +3631,19 @@ export async function createTacticalPadLiteSurface(
       const progress = Math.max(0, Math.min(1, playElapsedMs / segmentDurationMs));
       const easedProgress = getPlaybackEaseProgress(progress);
 
+      const fromPlayersById = new Map(fromSnapshot.players.map((entry) => [entry.id, entry] as const));
+      const toPlayersById = new Map(toSnapshot.players.map((entry) => [entry.id, entry] as const));
       for (const player of players) {
         if (routeControlledPlayerIds.has(player.id)) continue;
-        const idx = players.indexOf(player);
-        const fromPoint = fromSnapshot.players[idx];
-        const toPoint = toSnapshot.players[idx];
+        const fromPoint = fromPlayersById.get(player.id);
+        const toPoint = toPlayersById.get(player.id);
         if (!fromPoint || !toPoint) continue;
-        player.current = {
-          x: fromPoint.x + (toPoint.x - fromPoint.x) * easedProgress,
-          y: fromPoint.y + (toPoint.y - fromPoint.y) * easedProgress,
-        };
+        player.current = toPoint.path?.length
+          ? interpolatePath(fromPoint, toPoint, progress)
+          : {
+              x: fromPoint.x + (toPoint.x - fromPoint.x) * easedProgress,
+              y: fromPoint.y + (toPoint.y - fromPoint.y) * easedProgress,
+            };
         setTokenWorldPositionForPoint(player, player.current, mapper);
       }
       for (const toBall of toSnapshot.football) {
@@ -3515,7 +3688,7 @@ export async function createTacticalPadLiteSurface(
             item.y += (cappedY - item.y) * ATTACHED_BALL_FOLLOW_SMOOTHING;
           }
         } else {
-          const freePoint = interpolateBallPath(fromBall, toBall, progress);
+          const freePoint = interpolatePath(fromBall, toBall, progress);
           state.attachedPlayerId = null;
           state.isFree = true;
           state.path = toBall.path?.map((pathPoint) => ({ x: pathPoint.x, y: pathPoint.y })) ?? [];
@@ -3704,6 +3877,32 @@ export async function createTacticalPadLiteSurface(
     };
   }
 
+  /**
+   * The single tap-on-a-player action: possession (via handlePossessionPassTap
+   * — attach if the tapped player already holds the ball or it's loose,
+   * animated Tap Pass otherwise) or the Shape Lock/Shape Links intercepts
+   * that take priority over it. Shared by every gesture that can end in
+   * "the coach tapped this player without dragging" — Move-mode's own token
+   * drag/tap, and Free Draw's tap-vs-draw disambiguation — so there is one
+   * possession model, not one per mode. isPossessionPassModeEnabled (the
+   * "Ball" tool) no longer branches this: a plain tap always runs the same
+   * possession logic regardless of which authoring mode is active.
+   */
+  function handlePlayerTapAction(player: TacticalPlayer, event: unknown): void {
+    if (isShapeLinkSelectMode) {
+      handleShapeLinkPlayerTap(player.id);
+      lastTappedPlayer = null;
+      return;
+    }
+    if (shapeLockMode !== "off") {
+      if (shapeLockMode === "select") toggleShapeMember(player.id);
+      lastTappedPlayer = null;
+      return;
+    }
+    handlePossessionPassTap(player);
+    emitPlayerDoubleTap(player, event);
+  }
+
   function bindPlayerTokenInteraction(player: TacticalPlayer): void {
     player.token.on("pointerdown", (event) => {
       if (isPlaybackInputLocked()) return;
@@ -3744,28 +3943,7 @@ export async function createTacticalPadLiteSurface(
         lastTappedPlayer = null;
         return;
       }
-      // Shape Links select mode intercepts taps: the order tapped in defines
-      // the chain, and re-tapping the first member closes it into a loop.
-      if (isShapeLinkSelectMode) {
-        handleShapeLinkPlayerTap(player.id);
-        lastTappedPlayer = null;
-        return;
-      }
-      // Shape Lock intercepts taps: in "select" mode a tap toggles membership;
-      // in "active" mode a tap is a no-op. Either way, suppress ball attach and
-      // the double-tap kit editor while a shape is being edited.
-      if (shapeLockMode !== "off") {
-        if (shapeLockMode === "select") toggleShapeMember(player.id);
-        lastTappedPlayer = null;
-        return;
-      }
-      if (isPossessionPassModeEnabled) {
-        lastTappedPlayer = null;
-        handlePossessionPassTap(player);
-        return;
-      }
-      attachPrimaryBallToPlayer(player);
-      emitPlayerDoubleTap(player, event);
+      handlePlayerTapAction(player, event);
     });
   }
 
@@ -4001,9 +4179,14 @@ export async function createTacticalPadLiteSurface(
           .map((entry) => sanitizeBoardDrawingSnapshot(entry, mapper))
           .filter((entry): entry is TacticalBoardDrawingSnapshot => entry != null)
       : [];
+    // Boards saved before the Phase Engine Identity migration have no id on
+    // their player snapshot entries — only array position. parsedPlayers was
+    // captured in save-time order from the same payload, so it's the correct
+    // fallback id source for that legacy, positional-only data.
+    const legacyFallbackIdsByIndex = parsedPlayers.map((player) => player.id);
     const parsedPhases = Array.isArray(state.phases)
       ? state.phases
-          .map((entry) => sanitizePhaseSnapshot(entry))
+          .map((entry) => sanitizePhaseSnapshot(entry, legacyFallbackIdsByIndex))
           .filter((entry): entry is PhaseSnapshot => entry != null)
       : [];
     const parsedRoutes = sanitizeBoardRoutes(state.routes);
@@ -4012,7 +4195,7 @@ export async function createTacticalPadLiteSurface(
     const parsedShapeLinks = sanitizeShapeLinks(state.shapeLinks);
     const parsedShowShapeLinks =
       typeof state.shapeLinksVisible === "boolean" ? state.shapeLinksVisible : true;
-    const parsedStart = sanitizePhaseSnapshot(state.startSnapshot);
+    const parsedStart = sanitizePhaseSnapshot(state.startSnapshot, legacyFallbackIdsByIndex);
     const parsedTeamState = isRecord(state.teamState) ? state.teamState : null;
     const nextBlueColor = sanitizeWhiteboardTokenColor(parsedTeamState?.colors && isRecord(parsedTeamState.colors) ? parsedTeamState.colors.blue : undefined);
     const nextRedColor = sanitizeWhiteboardTokenColor(parsedTeamState?.colors && isRecord(parsedTeamState.colors) ? parsedTeamState.colors.red : undefined);
@@ -4033,6 +4216,8 @@ export async function createTacticalPadLiteSurface(
     cancelBasicRouteFollow();
     clearRouteAssignments();
     setRouteCaptureModeState(false);
+    setFreeDrawCaptureModeState(false);
+    freeDrawPathByPlayerId = new Map();
     singlePlayTargetSnapshot = null;
     resetActiveWhiteboardDrawing();
     lastTappedPlayer = null;
@@ -4082,12 +4267,9 @@ export async function createTacticalPadLiteSurface(
     }, 0);
     whiteboardDrawingCounter = Math.max(whiteboardDrawingCounter, parsedMaxDrawingSerial);
 
-    const nextStartSnapshot = normalizePhaseForPlayerCount(
-      parsedStart ?? captureCurrentSnapshot(),
-      players.length,
-    );
+    const nextStartSnapshot = normalizePhaseForRoster(parsedStart ?? captureCurrentSnapshot());
     startPositions = nextStartSnapshot;
-    phases = parsedPhases.map((phase) => normalizePhaseForPlayerCount(phase, players.length));
+    phases = parsedPhases.map((phase) => normalizePhaseForRoster(phase));
     routeByPlayerId = new Map(
       Array.from(parsedRoutes.entries())
         .filter(([playerId]) => players.some((player) => player.id === playerId))
@@ -4205,6 +4387,8 @@ export async function createTacticalPadLiteSurface(
     });
     const [removedPlayer] = players.splice(removalTarget.index, 1);
     if (!removedPlayer) return;
+    prunePlayerFromPhaseSnapshots(removedPlayer.id);
+    freeDrawPathByPlayerId.delete(removedPlayer.id);
     if (selectedPlayerId === removedPlayer.id) {
       selectedPlayerId = null;
     }
@@ -4260,12 +4444,66 @@ export async function createTacticalPadLiteSurface(
       }
       return;
     }
+    if (isFreeDrawCaptureMode && !isPlaybackInputLocked() && freeDrawCapturePointerId !== null) {
+      const pointerId = getPointerIdFromEvent(event);
+      if (pointerId == null || pointerId === freeDrawCapturePointerId) {
+        const worldPoint = getBoundedWorldPointFromEvent(event);
+        if (worldPoint) {
+          const normalized = mapper.worldToNormalized(worldPoint);
+          appendFreeDrawPoint({
+            x: clampNormalizedValue(normalized.x),
+            y: clampNormalizedValue(normalized.y),
+          });
+        }
+      }
+      return;
+    }
     updateDraggedPlayerFromEvent(event);
     updateDraggedItemFromEvent(event);
     updateWhiteboardDrawing(event);
   }
 
   function handleStagePointerUp(event: unknown): void {
+    if (isFreeDrawCaptureMode && !isPlaybackInputLocked()) {
+      const pointerId = getPointerIdFromEvent(event);
+      if (freeDrawCapturePointerId == null || pointerId == null || pointerId === freeDrawCapturePointerId) {
+        const player = freeDrawDraftPlayerId
+          ? players.find((entry) => entry.id === freeDrawDraftPlayerId)
+          : undefined;
+        if (player && freeDrawDraftPoints.length >= 2) {
+          // Smooth once, here, at commit time — the same sampleRoutePoints
+          // Catmull-Rom/Bezier pass the live preview already uses (see
+          // renderFreeDrawPreview) and Route already uses before playback.
+          // Storing the smoothed path (not the raw pointer capture) is what
+          // makes playback match the curve the coach actually saw while
+          // drawing. Nothing about interpolatePath or the Phase engine's
+          // walk changes — only the data it walks.
+          const smoothedPath = sampleRoutePoints(freeDrawDraftPoints);
+          const finalPoint = smoothedPath[smoothedPath.length - 1];
+          if (finalPoint) {
+            freeDrawPathByPlayerId.set(player.id, smoothedPath);
+            player.current = { x: finalPoint.x, y: finalPoint.y };
+            setTokenWorldPositionForPoint(player, player.current, mapper);
+            // Movement authoring must never leave a held ball behind: keep it
+            // glued to its holder exactly as a straight drag already does
+            // every frame (updateDraggedPlayerFromEvent). Possession itself
+            // is untouched — only the attached ball's rendered position is
+            // refreshed to follow the player's new spot.
+            updateAttachedBallsForPlayer(player.id);
+          }
+        } else if (player) {
+          // A tap without a meaningful drag is not a movement edit — it's the
+          // same possession gesture Move mode already has. Free Draw does not
+          // get its own attach/pass behaviour; it reuses this one exactly.
+          handlePlayerTapAction(player, event);
+        }
+        freeDrawCapturePointerId = null;
+        freeDrawDraftPoints = [];
+        freeDrawDraftPlayerId = null;
+        clearFreeDrawPreview();
+      }
+      return;
+    }
     if (isRouteCaptureMode && !isPlaybackInputLocked()) {
       const pointerId = getPointerIdFromEvent(event);
       if (routeCapturePointerId == null || pointerId == null || pointerId === routeCapturePointerId) {
@@ -4297,7 +4535,13 @@ export async function createTacticalPadLiteSurface(
   app.stage.on("pointerup", handleStagePointerUp);
   app.stage.on("pointerupoutside", handleStagePointerUp);
   app.stage.on("pointerdown", (event) => {
-    if (activeDrag == null && activeWhiteboardTool === "move" && !isPlaybackInputLocked() && !isRouteCaptureMode) {
+    if (
+      activeDrag == null &&
+      activeWhiteboardTool === "move" &&
+      !isPlaybackInputLocked() &&
+      !isRouteCaptureMode &&
+      !isFreeDrawCaptureMode
+    ) {
       const stagePoint = getStagePointFromEvent(event, app.stage);
       if (stagePoint) {
         clearSelectedItem();
@@ -4305,6 +4549,25 @@ export async function createTacticalPadLiteSurface(
     }
   });
   whiteboardInputLayer.on("pointerdown", (event) => {
+    if (isFreeDrawCaptureMode && !isPlaybackInputLocked()) {
+      releaseActiveDrag();
+      clearSelectedItem();
+      const worldPoint = getBoundedWorldPointFromEvent(event);
+      if (!worldPoint) return;
+      // findRouteSelectablePlayerAtWorldPoint is a pure hit-test (nearest
+      // player within touch radius) — reused as-is, not Route-specific.
+      const tappedPlayer = findRouteSelectablePlayerAtWorldPoint(worldPoint);
+      if (!tappedPlayer) return;
+      freeDrawCapturePointerId = getPointerIdFromEvent(event);
+      freeDrawDraftPlayerId = tappedPlayer.id;
+      freeDrawDraftPoints = [];
+      const normalized = mapper.worldToNormalized(worldPoint);
+      appendFreeDrawPoint({
+        x: clampNormalizedValue(normalized.x),
+        y: clampNormalizedValue(normalized.y),
+      });
+      return;
+    }
     if (isRouteCaptureMode && !isPlaybackInputLocked()) {
       releaseActiveDrag();
       clearSelectedItem();
@@ -4359,11 +4622,13 @@ export async function createTacticalPadLiteSurface(
       cancelBasicRouteFollow();
       clearRouteAssignments();
       setRouteCaptureModeState(false);
+      setFreeDrawCaptureModeState(false);
       cancelPlaybackAnimation();
       singlePlayTargetSnapshot = null;
       startPositions = captureCurrentSnapshot();
       phases = [];
       resetAllBallMovementPaths();
+      freeDrawPathByPlayerId.clear();
       options.onPhaseCountChange?.(0);
     },
     addPhase: () => {
@@ -4371,10 +4636,12 @@ export async function createTacticalPadLiteSurface(
       clearSelectedItem();
       cancelBasicRouteFollow();
       setRouteCaptureModeState(false);
+      setFreeDrawCaptureModeState(false);
       cancelPlaybackAnimation();
       singlePlayTargetSnapshot = null;
       phases = [...phases, captureCurrentSnapshot()];
       resetAllBallMovementPaths();
+      freeDrawPathByPlayerId.clear();
       options.onPhaseCountChange?.(phases.length);
     },
     undoPhase: () => {
@@ -4382,6 +4649,7 @@ export async function createTacticalPadLiteSurface(
       clearSelectedItem();
       cancelBasicRouteFollow();
       setRouteCaptureModeState(false);
+      setFreeDrawCaptureModeState(false);
       cancelPlaybackAnimation();
       singlePlayTargetSnapshot = null;
       if (phases.length <= 0) return;
@@ -4459,6 +4727,19 @@ export async function createTacticalPadLiteSurface(
         clearSelectedItem();
       }
       setRouteCaptureModeState(enabled);
+      if (enabled && activeWhiteboardTool !== "move") {
+        activeWhiteboardTool = "move";
+        tacticalDrawingController.setTool("move");
+        renderAllWhiteboardDrawings();
+      }
+    },
+    setFreeDrawCaptureMode: (enabled) => {
+      if (surfaceVariant !== "tactical") return;
+      if (enabled) {
+        releaseActiveDrag();
+        clearSelectedItem();
+      }
+      setFreeDrawCaptureModeState(enabled);
       if (enabled && activeWhiteboardTool !== "move") {
         activeWhiteboardTool = "move";
         tacticalDrawingController.setTool("move");
