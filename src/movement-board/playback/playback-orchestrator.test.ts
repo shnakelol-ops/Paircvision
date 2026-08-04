@@ -202,3 +202,75 @@ describe("createPlaybackOrchestrator — solo delayed pass stays playing through
     expect(orchestrator.isLocked()).toBe(true);
   });
 });
+
+describe("createPlaybackOrchestrator — deferred pass/shot queue counts as work", () => {
+  // Regression (Phase A): the shell's hasActiveBallAnimation callback used to
+  // report only `activeBallPass !== null`, so a pass or shot that got queued
+  // into the shell's own deferredPasses/deferredShots arrays (because the
+  // sender/shooter wasn't the ball carrier yet — e.g. two zero-delay chained
+  // events firing in the same tick) was invisible to hasWork(). The instant
+  // activePassRuns/activeShotRuns emptied out, step() saw "no work left" and
+  // called stop() — silently stranding the deferred event and prematurely
+  // ending playback even though the walkthrough wasn't actually finished.
+  it("does not auto-stop while a pass is deferred (queued, not yet animating)", () => {
+    let deferred = false;
+    const callbacks = makeCallbacks({
+      getPassEvents: () => [{ id: "p1", fromPlayerId: "a", toPlayerId: "b", delayMs: 0 }],
+      onPassStart: vi.fn(() => {
+        // Simulate the shell finding the sender isn't the carrier yet: the
+        // pass is pushed onto deferredPasses instead of animating.
+        deferred = true;
+      }),
+      hasActiveBallAnimation: () => deferred,
+    });
+    const orchestrator = createPlaybackOrchestrator("normal", callbacks);
+
+    orchestrator.start();
+    orchestrator.step(0); // zero-delay pass fires immediately, gets deferred
+    expect(callbacks.onPassStart).toHaveBeenCalledWith("a", "b");
+
+    // Before the fix: activePassRuns is now empty and nothing else signals
+    // work, so this step() call would have stopped playback here, stranding
+    // the deferred pass forever (nothing left running to ever flush it).
+    expect(orchestrator.getState().isPlaying).toBe(true);
+    expect(orchestrator.hasActiveRuns()).toBe(true);
+
+    // The shell later flushes the deferred pass once its sender actually
+    // becomes the carrier, clearing the flag.
+    deferred = false;
+    orchestrator.step(16);
+    expect(orchestrator.getState().isPlaying).toBe(false);
+  });
+
+  it("does not auto-stop while a shot is deferred (carrier-timing race)", () => {
+    let deferred = false;
+    const callbacks = makeCallbacks({
+      getShotEvents: () => [{ id: "s1", shooterId: "p1", delayMs: 0 }],
+      onShotStart: vi.fn(() => {
+        // Simulate the shell finding the shooter isn't the carrier yet: the
+        // shot is pushed onto deferredShots instead of firing.
+        deferred = true;
+      }),
+      hasActiveBallAnimation: () => deferred,
+    });
+    const orchestrator = createPlaybackOrchestrator("normal", callbacks);
+
+    orchestrator.start();
+    // A shot only promotes via notifyPassLanded; simulate the shooter
+    // receiving the ball with a zero-delay shot pending.
+    orchestrator.notifyPassLanded("p1");
+    expect(callbacks.onShotStart).toHaveBeenCalledWith("p1");
+
+    // Before the fix: nothing else is queued, so the next step() would stop
+    // playback here and the deferred shot would never get a second chance.
+    expect(orchestrator.getState().isPlaying).toBe(true);
+    orchestrator.step(16);
+    expect(orchestrator.getState().isPlaying).toBe(true);
+    expect(orchestrator.hasActiveRuns()).toBe(true);
+
+    // Carrier-timing race resolves; the shell fires the shot for real.
+    deferred = false;
+    orchestrator.step(16);
+    expect(orchestrator.getState().isPlaying).toBe(false);
+  });
+});
