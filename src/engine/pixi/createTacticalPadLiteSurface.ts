@@ -3878,13 +3878,15 @@ export async function createTacticalPadLiteSurface(
   }
 
   /**
-   * The single tap-on-a-player action: possession (attach/Tap Pass) or the
-   * Shape Lock/Shape Links intercepts that take priority over it. Shared by
-   * every gesture that can end in "the coach tapped this player without
-   * dragging" — Move-mode's own token drag/tap, and Free Draw's tap-vs-draw
-   * disambiguation — so possession logic is never duplicated or reimplemented
-   * per mode. Free Draw does not get its own possession model; it reuses
-   * this one exactly.
+   * The single tap-on-a-player action: possession (via handlePossessionPassTap
+   * — attach if the tapped player already holds the ball or it's loose,
+   * animated Tap Pass otherwise) or the Shape Lock/Shape Links intercepts
+   * that take priority over it. Shared by every gesture that can end in
+   * "the coach tapped this player without dragging" — Move-mode's own token
+   * drag/tap, and Free Draw's tap-vs-draw disambiguation — so there is one
+   * possession model, not one per mode. isPossessionPassModeEnabled (the
+   * "Ball" tool) no longer branches this: a plain tap always runs the same
+   * possession logic regardless of which authoring mode is active.
    */
   function handlePlayerTapAction(player: TacticalPlayer, event: unknown): void {
     if (isShapeLinkSelectMode) {
@@ -3897,12 +3899,7 @@ export async function createTacticalPadLiteSurface(
       lastTappedPlayer = null;
       return;
     }
-    if (isPossessionPassModeEnabled) {
-      lastTappedPlayer = null;
-      handlePossessionPassTap(player);
-      return;
-    }
-    attachPrimaryBallToPlayer(player);
+    handlePossessionPassTap(player);
     emitPlayerDoubleTap(player, event);
   }
 
