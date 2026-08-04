@@ -1365,15 +1365,25 @@ export default function TacticalPlaySurface() {
     shellRef.current?.clearSelectedRoute();
   };
 
-  const clearAll = () => {
-    const shell = shellRef.current;
-    if (!shell) return;
+  const doClearAll = (shell: MovementCanvasShellHandle) => {
     shell.setRoutes([]);
     shell.setPassEvents([]);
     setPassEvents([]);
     for (const shot of shell.getShotEvents()) shell.removeShotEvent(shot.id);
     setShotEvents([]);
     setUnitDrawingId(null);
+  };
+
+  const clearAll = () => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    setConfirmSheet({
+      message: "Clear all routes, passes and shots? This cannot be undone.",
+      confirmLabel: "Clear All",
+      danger: true,
+      onConfirm: () => { setConfirmSheet(null); doClearAll(shell); },
+      onCancel: () => setConfirmSheet(null),
+    });
   };
 
   const onSetupPress = () => {
@@ -1810,7 +1820,11 @@ export default function TacticalPlaySurface() {
   const clearHomeTeam = () => {
     const shell = shellRef.current;
     if (!shell) return;
-    const homeIds = new Set(shell.getTokens().filter((t) => t.team !== "away").map((t) => t.id));
+    // Bib Players are shown and managed as their own group (separate "Bib
+    // Players" section/count), so clearing "Our Team" must not sweep them up.
+    const homeIds = new Set(
+      shell.getTokens().filter((t) => t.team !== "away" && t.playerRole !== "bib").map((t) => t.id),
+    );
     removePlayersById(homeIds);
   };
 

@@ -67,4 +67,12 @@ describe("PlayerActionSheet — canonical player actions", () => {
     expect(html).not.toMatch(/>\s*Play\s*</);
     expect(html).toContain("Give Ball");
   });
+
+  // Phase A regression guard: "Draw Run" must stay reachable in both states —
+  // the overwrite-confirm added for hasRoute=true is a click-time branch
+  // (gated behind ConfirmSheet), not a structural change to the button itself.
+  it("keeps Draw Run present whether or not the player already has a route", () => {
+    expect(renderCard({ hasRoute: true })).toContain("Draw Run");
+    expect(renderCard({ hasRoute: false })).toContain("Draw Run");
+  });
 });

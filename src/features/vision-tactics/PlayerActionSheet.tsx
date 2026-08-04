@@ -423,7 +423,24 @@ export default function PlayerActionSheet({
           <button
             type="button"
             style={ACTION_BTN}
-            onClick={() => { onDrawRun(); onClose(); }}
+            onClick={() => {
+              if (hasRoute) {
+                // Starting a fresh draft away from the existing route replaces
+                // it outright (see finalizeRouteDraft/setRouteForToken) — warn
+                // before entering draw mode, same as Reset Run does for an
+                // explicit delete.
+                setConfirmSheet({
+                  message: `P${playerNumber} already has a run. Drawing a new one will replace it.`,
+                  confirmLabel: "Draw New Run",
+                  danger: true,
+                  onConfirm: () => { setConfirmSheet(null); onDrawRun(); onClose(); },
+                  onCancel: () => setConfirmSheet(null),
+                });
+                return;
+              }
+              onDrawRun();
+              onClose();
+            }}
           >
             Draw Run
           </button>

@@ -316,13 +316,25 @@ export async function createMovementCanvasShell(
       startPassAnimation(fromPlayerId, toPlayerId);
     },
     onShotStart: (shooterId) => {
-      if (ballState.carrierId !== shooterId) return;
+      // Same carrier-timing race as onPassStart above: a delayed shot's timer
+      // can expire before the ball has actually landed on the shooter (e.g. a
+      // pass to this player is still mid-flight). Defer instead of dropping it.
+      if (ballState.carrierId !== shooterId) {
+        deferredShots.push(shooterId);
+        return;
+      }
       shootToGoalInternal();
     },
     // A fired pass hands its flight off to tick()'s own elapsedMs tracking —
     // without surfacing that here, hasWork() has no way to know the flight is
-    // still in progress once activePassRuns/activeShotRuns are empty.
-    hasActiveBallAnimation: () => activeBallPass !== null,
+    // still in progress once activePassRuns/activeShotRuns are empty. The same
+    // is true of deferredPasses/deferredShots: an event that arrives before its
+    // sender is the ball carrier sits there (not in activePassRuns/activeShotRuns,
+    // no activeBallPass yet) until a later ball landing flushes it — see
+    // startPlayback()'s own busy-check above, which this mirrors so the
+    // orchestrator doesn't stop() out from under it.
+    hasActiveBallAnimation: () =>
+      activeBallPass !== null || deferredPasses.length > 0 || deferredShots.length > 0,
   });
 
   const ballLayer = createBallLayer(ballLayerContainer);
@@ -332,6 +344,7 @@ export async function createMovementCanvasShell(
   let shotEvents: TacticalShotEvent[] = [];
   let activeBallPass: ActiveBallPass | null = null;
   let deferredPasses: DeferredPass[] = [];
+  let deferredShots: string[] = [];
 
   const BALL_CARRIER_OFFSET_X = 3.5;
   const BALL_CARRIER_OFFSET_Y = -2.5;
@@ -750,10 +763,11 @@ export async function createMovementCanvasShell(
     if (state.isPlaying) return;
     if (!state.isPaused || !orchestrator.hasActiveRuns()) {
       // The orchestrator auto-stops as soon as all its pass timers fire, but ball
-      // animations and the deferred-pass queue may still be completing. Resetting
-      // here would kill the in-flight arc and drop queued passes (e.g. P3→P2 in a
-      // 5-pass chain). Wait for the chain to fully resolve before accepting a restart.
-      if (activeBallPass !== null || deferredPasses.length > 0) return;
+      // animations and the deferred-pass/deferred-shot queues may still be
+      // completing. Resetting here would kill the in-flight arc and drop queued
+      // passes or shots (e.g. P3→P2 in a 5-pass chain). Wait for the chain to
+      // fully resolve before accepting a restart.
+      if (activeBallPass !== null || deferredPasses.length > 0 || deferredShots.length > 0) return;
       releaseDrag();
       releaseRouteHandleDrag();
       clearRouteDraft();
@@ -761,6 +775,7 @@ export async function createMovementCanvasShell(
       // (post-play) state — prevents ball looping back to previous pass destination.
       activeBallPass = null;
       deferredPasses = [];
+      deferredShots = [];
       ballState = { ...ballStateAtPlayStart };
       tokenLayer.setBallCarrier(ballStateAtPlayStart.carrierId ?? null);
       emitBallState();
@@ -783,6 +798,7 @@ export async function createMovementCanvasShell(
     orchestrator.stop();
     activeBallPass = null;
     deferredPasses = [];
+    deferredShots = [];
     if (longPressTimer !== null) { clearTimeout(longPressTimer); longPressTimer = null; }
     longPressTriggered = false;
     clearRouteDraft();
@@ -1102,6 +1118,12 @@ export async function createMovementCanvasShell(
             deferredPasses = remaining;
             if (toFire) {
               startPassAnimation(toFire.fromPlayerId, toFire.toPlayerId);
+            } else if (deferredShots.includes(toPlayerId)) {
+              // Same flush point as deferred passes above: this player's shot
+              // timer already expired once and was deferred; now that they
+              // actually have the ball, take it.
+              deferredShots = deferredShots.filter((id) => id !== toPlayerId);
+              shootToGoalInternal();
             }
           }
         }
