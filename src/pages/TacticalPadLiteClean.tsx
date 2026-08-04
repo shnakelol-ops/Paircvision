@@ -11,7 +11,6 @@ import {
   type TacticalPlayerKitPatch,
   type TacticalPlayerKitSnapshot,
   type TacticalPadLiteSurface,
-  type TacticalRouteState,
   type TacticalItem,
   type WhiteboardTokenColor,
   type ShapeLinksState,
@@ -144,7 +143,7 @@ type WhiteboardToolControl =
   | "circleZone"
   | "eraser";
 type WhiteboardToolAction = WhiteboardToolControl;
-type MovementModePillOption = "move" | "route" | "ball" | "freeDraw";
+type MovementModePillOption = "move" | "ball" | "freeDraw";
 const WHITEBOARD_BUBBLE_SIZE = 36;
 const WHITEBOARD_BUBBLE_MARGIN = 12;
 const KIT_EDITOR_MARGIN = 10;
@@ -1684,57 +1683,6 @@ const MOVEMENT_MODE_PILL_BUTTON_DISABLED_STYLE: CSSProperties = {
   cursor: "not-allowed",
 };
 
-const ROUTE_COUNT_BADGE_STYLE: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  height: "42px",
-  padding: "0 4px 0 8px",
-  color: "rgba(230, 244, 236, 0.68)",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "10px",
-  fontWeight: 620,
-  letterSpacing: "0.16px",
-  whiteSpace: "nowrap",
-};
-
-const BALL_FOLLOW_HINT_STYLE: CSSProperties = {
-  padding: "6px 13px",
-  borderRadius: "999px",
-  border: "1px solid rgba(124, 255, 114, 0.4)",
-  background: "rgba(9, 22, 18, 0.72)",
-  color: "rgba(230, 244, 236, 0.92)",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "10.5px",
-  fontWeight: 600,
-  letterSpacing: "0.1px",
-  whiteSpace: "nowrap",
-  boxShadow: "0 8px 18px rgba(0, 0, 0, 0.35)",
-  pointerEvents: "none",
-};
-
-const ROUTE_LIMIT_TOAST_STYLE: CSSProperties = {
-  position: "fixed",
-  top: "max(14px, calc(env(safe-area-inset-top, 0px) + 12px))",
-  left: "50%",
-  transform: "translateX(-50%)",
-  maxWidth: "min(92vw, 360px)",
-  padding: "9px 16px",
-  borderRadius: "12px",
-  border: "1px solid rgba(239, 68, 68, 0.55)",
-  background: "rgba(30, 10, 10, 0.9)",
-  color: "#ffe8e8",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "12px",
-  fontWeight: 640,
-  letterSpacing: "0.1px",
-  textAlign: "center",
-  boxShadow: "0 10px 26px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
-  backdropFilter: "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  zIndex: 40,
-  pointerEvents: "none",
-};
-
 const BALL_POPUP_STYLE: CSSProperties = {
   ...POPOUT_BASE_STYLE,
   left: "50%",
@@ -2270,35 +2218,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [movementModePillSelection, setMovementModePillSelection] = useState<MovementModePillOption>("move");
-  const [routeState, setRouteState] = useState<TacticalRouteState>({
-    isRouteCaptureMode: false,
-    routeCount: 0,
-    maxRoutes: 6,
-    ballAttachedPlayerId: null,
-  });
-  const [routeLimitWarning, setRouteLimitWarning] = useState<string | null>(null);
-  const routeLimitWarningTimeoutRef = useRef<number | null>(null);
-  // Milestone 4 — Free Draw authoring. Separate from routeState above.
   const [isFreeDrawCaptureMode, setIsFreeDrawCaptureMode] = useState(false);
-
-  const showRouteLimitWarning = (message: string) => {
-    if (routeLimitWarningTimeoutRef.current != null) {
-      window.clearTimeout(routeLimitWarningTimeoutRef.current);
-    }
-    setRouteLimitWarning(message);
-    routeLimitWarningTimeoutRef.current = window.setTimeout(() => {
-      setRouteLimitWarning(null);
-      routeLimitWarningTimeoutRef.current = null;
-    }, 2600);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (routeLimitWarningTimeoutRef.current != null) {
-        window.clearTimeout(routeLimitWarningTimeoutRef.current);
-      }
-    };
-  }, []);
   const [playbackSpeedMultiplier, setPlaybackSpeedMultiplier] = useState<number>(DEFAULT_PLAYBACK_SPEED_MULTIPLIER);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [quickShareOpen, setQuickShareOpen] = useState(false);
@@ -2729,14 +2649,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         setIsPlaying(state.isPlaying);
         setIsPaused(state.isPaused);
       },
-      onRouteStateChange: (state) => {
-        if (disposed) return;
-        setRouteState(state);
-      },
-      onRouteLimitReached: (maxRoutes) => {
-        if (disposed) return;
-        showRouteLimitWarning(`Route limit reached — Tactical Slate supports ${maxRoutes} routed players.`);
-      },
       onFreeDrawStateChange: (state) => {
         if (disposed) return;
         setIsFreeDrawCaptureMode(state.isFreeDrawCaptureMode);
@@ -2797,7 +2709,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             ? "edit"
             : "locked";
         surface.setItemMode(initialSurfaceItemMode);
-        surface.setRouteCaptureMode(false);
         surface.setPossessionPassMode(false);
         const initialSnapshot = captureQuickBoardSnapshot(surface);
         boardBaselineSignatureRef.current = serializeBoardState(initialSnapshot);
@@ -2955,18 +2866,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setMovementModePillSelection("move");
     setItemMode("locked");
     setTacticalTool("move");
-    setRouteState((previous) => ({ ...previous, isRouteCaptureMode: false }));
     const surface = surfaceRef.current;
     if (!surface) return;
     surface.setItemMode("locked");
     surface.setWhiteboardDrawTool("move");
-    surface.setRouteCaptureMode(false);
   }, [shouldBlockPortraitInput, isStatsMode, isWhiteboardMode]);
 
   const isPlaybackLocked = isPlaying || isPaused;
   const hasBallOnPitch = items.some((item) => isBallItemType(item.type));
-  const hasAssignedRoutes = routeState.routeCount > 0;
-  const isAddPhaseBlocked = isPlaybackLocked || routeState.isRouteCaptureMode || hasAssignedRoutes;
+  const isAddPhaseBlocked = isPlaybackLocked;
   const playbackSpeedOptionIndex = Math.max(
     0,
     PLAYBACK_SPEED_OPTIONS.findIndex((option) => option.multiplier === playbackSpeedMultiplier),
@@ -2979,7 +2887,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     "--speed-track": `linear-gradient(90deg, rgba(34, 197, 94, 0.95) 0%, rgba(34, 197, 94, 0.95) ${playbackSpeedTrackFillPercent}%, rgba(255, 255, 255, 0.9) ${playbackSpeedTrackFillPercent}%, rgba(255, 255, 255, 0.9) 100%)`,
   } as CSSProperties;
   const effectiveItemMode: ItemMode =
-    shouldBlockPortraitInput || routeState.isRouteCaptureMode || (itemMode !== "edit" || tacticalTool !== "move" || isPlaybackLocked)
+    shouldBlockPortraitInput || (itemMode !== "edit" || tacticalTool !== "move" || isPlaybackLocked)
       ? "locked"
       : "edit";
 
@@ -3007,18 +2915,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   useEffect(() => {
     if (isStatsMode || isWhiteboardMode) return;
-    if (routeState.isRouteCaptureMode) {
-      setMovementModePillSelection("route");
-      return;
-    }
-    if (movementModePillSelection === "route") {
-      setMovementModePillSelection("move");
-    }
     if (tacticalTool !== "move") return;
     if (itemMode === "edit") {
       setMovementModePillSelection("move");
     }
-  }, [isStatsMode, isWhiteboardMode, routeState.isRouteCaptureMode, tacticalTool, itemMode, movementModePillSelection]);
+  }, [isStatsMode, isWhiteboardMode, tacticalTool, itemMode]);
 
   // Milestone 4 — keep the pill in sync when the surface disables Free Draw
   // internally (e.g. after Add Phase commits the drawn path).
@@ -3815,29 +3716,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     surfaceRef.current?.setWhiteboardDrawColor(color);
   };
 
-  const setRouteCaptureMode = (enabled: boolean) => {
-    if (shouldBlockPortraitInput) return;
-    const surface = surfaceRef.current;
-    if (!surface) return;
-    surface.setRouteCaptureMode(enabled);
-  };
-
   const setFreeDrawCaptureMode = (enabled: boolean) => {
     if (shouldBlockPortraitInput) return;
     const surface = surfaceRef.current;
     if (!surface) return;
     surface.setFreeDrawCaptureMode(enabled);
-  };
-
-  const clearCommittedRoutes = () => {
-    if (shouldBlockPortraitInput || isPlaybackLocked) return;
-    const surface = surfaceRef.current;
-    if (!surface) return;
-    surface.clearRoutes();
-    setMovementModePillSelection("move");
-    setItemMode("edit");
-    setTacticalTool("move");
-    surface.setWhiteboardDrawTool("move");
   };
 
   const applyTacticalTool = (tool: WhiteboardToolAction) => {
@@ -3846,7 +3729,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     const surface = surfaceRef.current;
     if (!surface) return;
     if (tool !== "move") {
-      setRouteCaptureMode(false);
       setFreeDrawCaptureMode(false);
     }
     setTacticalTool(tool);
@@ -3865,7 +3747,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (!surface) return;
     setTacticalTool("move");
     surface.setWhiteboardDrawTool("move");
-    setRouteCaptureMode(false);
     if (isCompactLandscapeToolsMenu) setToolsOpen(false);
     setShowLabelModal(true);
   };
@@ -3913,7 +3794,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setTextAnnotations([]);
     setTextToolActive(false);
     setMovementModePillSelection("move");
-    setRouteState((previous) => ({ ...previous, isRouteCaptureMode: false, routeCount: 0 }));
     setItemMode("locked");
     setTacticalTool("move");
     setKitEditorState(null);
@@ -4066,7 +3946,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   const freeBall = () => {
     if (shouldBlockPortraitInput || isPlaybackLocked) return;
-    setRouteCaptureMode(false);
     setFreeDrawCaptureMode(false);
     surfaceRef.current?.freeBall();
     setMovementModePillSelection("ball");
@@ -4104,23 +3983,14 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (shouldBlockPortraitInput || isPlaybackLocked) return;
     setMovementModePillSelection(nextMode);
     if (nextMode === "move") {
-      setRouteCaptureMode(false);
       setFreeDrawCaptureMode(false);
       setItemMode("edit");
       applyTacticalTool("move");
       return;
     }
-    if (nextMode === "route") {
-      setItemMode("locked");
-      applyTacticalTool("move");
-      setFreeDrawCaptureMode(false);
-      setRouteCaptureMode(true);
-      return;
-    }
     if (nextMode === "freeDraw") {
       setItemMode("locked");
       applyTacticalTool("move");
-      setRouteCaptureMode(false);
       setFreeDrawCaptureMode(true);
       return;
     }
@@ -4423,11 +4293,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     <OrientationGate modeLabel="PáircVision Board" portraitEditable={!isWhiteboardMode}>
       <div style={rootShellStyle}>
         <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}`}</style>
-        {!isWhiteboardMode && routeLimitWarning ? (
-          <div style={ROUTE_LIMIT_TOAST_STYLE} role="status" aria-live="assertive">
-            {routeLimitWarning}
-          </div>
-        ) : null}
         {!isWhiteboardMode ? <style>{STADIUM_FLOODLIGHT_CSS}</style> : null}
         {!isWhiteboardMode ? <VisionStadiumBackground variant="board" portrait={isPortrait} /> : null}
         <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
@@ -5078,13 +4943,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         ) : null}
         {!isWhiteboardMode && !shouldBlockPortraitInput && controlsOpen ? (
           <div style={movementModeControlsWrapStyle}>
-            {routeState.ballAttachedPlayerId && (routeState.isRouteCaptureMode || hasAssignedRoutes) ? (
-              <div style={BALL_FOLLOW_HINT_STYLE}>Ball attached — follows player during route.</div>
-            ) : null}
             <div style={MOVEMENT_MODE_PILL_STYLE} role="group" aria-label="Movement mode">
               {([
                 { id: "move", label: "Move" },
-                { id: "route", label: "Route" },
                 { id: "ball", label: "Ball" },
                 { id: "freeDraw", label: "Free Draw" },
               ] as const).map((option) => (
@@ -5109,9 +4970,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                   {option.label}
                 </button>
               ))}
-              <span style={ROUTE_COUNT_BADGE_STYLE} aria-live="polite">
-                {`Routes ${routeState.routeCount}/${routeState.maxRoutes}`}
-              </span>
             </div>
           </div>
         ) : null}
@@ -5200,22 +5058,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               style={isPlaying ? DISABLED_CONTROL_BUTTON_STYLE : PLAY_BUTTON_STYLE}
               onClick={handlePlayPress}
             >
-              {hasAssignedRoutes ? "Play Routes" : "Play"}
+              Play
             </button>
-            {hasAssignedRoutes ? (
-              <button
-                type="button"
-                className="control-button"
-                disabled={isPlaybackLocked}
-                style={isPlaybackLocked ? DISABLED_CONTROL_BUTTON_STYLE : ADD_PHASE_BUTTON_STYLE}
-                onClick={() => {
-                  clearCommittedRoutes();
-                  closeControlsMenu();
-                }}
-              >
-                Clear Routes
-              </button>
-            ) : null}
             <button
               type="button"
               className="control-button"
