@@ -6,6 +6,7 @@ import {
   ARRANGE_MODE_LABEL,
   computeAnyBottomPanelOpen,
   computeFloatingShareVisible,
+  situationDisplayLabel,
   type BottomPanelFlags,
 } from "./tacticalPlayUi";
 import { TACTICAL_TEMPLATES } from "./tacticalTemplates";
@@ -36,6 +37,28 @@ describe("Setup categories — Demo removed, Players unaffected", () => {
     const demo = TACTICAL_TEMPLATES.find((t) => t.situation === "demo");
     expect(demo).toBeDefined();
     expect(demo?.routes && demo.routes.length).toBeGreaterThan(0);
+  });
+});
+
+describe("Situation display label — sport-correct terminology (Phase B)", () => {
+  const restart = SETUP_SITUATIONS.find((s) => s.id === "restart")!;
+  const attack = SETUP_SITUATIONS.find((s) => s.id === "attack")!;
+
+  it("never shows 'Restart' to a coach — Kickout in football", () => {
+    expect(situationDisplayLabel(restart, "football")).toBe("Kickout");
+  });
+
+  it("never shows 'Restart' to a coach — Puckout in hurling", () => {
+    expect(situationDisplayLabel(restart, "hurling")).toBe("Puckout");
+  });
+
+  it("leaves sport-neutral situations unchanged", () => {
+    expect(situationDisplayLabel(attack, "football")).toBe("Attack");
+    expect(situationDisplayLabel(attack, "hurling")).toBe("Attack");
+  });
+
+  it("keeps 'restart' as the underlying id (code-only, not shown)", () => {
+    expect(restart.id).toBe("restart");
   });
 });
 

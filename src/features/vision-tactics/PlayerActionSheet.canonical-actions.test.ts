@@ -11,7 +11,8 @@ import PlayerActionSheet from "./PlayerActionSheet";
 //
 // These tests guard the duplicate-removal pass:
 //   - The Player Card is the single home for player-specific authoring
-//     (Give Ball, Draw Run, Pass — with Shoot reachable inside Pass).
+//     (Give Ball, Draw Run, Pass, Shot — Shot is its own action, not nested
+//     inside Pass).
 //   - "Play" is playback transport, not a card action, and must NOT appear on
 //     the card after this pass.
 function renderCard(overrides: Record<string, unknown> = {}): string {
@@ -52,6 +53,9 @@ describe("PlayerActionSheet — canonical player actions", () => {
     expect(html).toContain("Give Ball");
     expect(html).toContain("Draw Run");
     expect(html).toContain("Pass");
+    // Phase B: Shot is a first-class button next to Pass, not a chip nested
+    // inside the Pass panel's "To" list.
+    expect(html).toMatch(/>\s*Shot\s*</);
     // Run Timing is the delay + after-trigger control, present when the player
     // has a route.
     expect(html).toContain("Run Timing");

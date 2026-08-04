@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from "react";
 
 import { canCaptureCanvasStream, downloadClipBlob, getBestVideoMimeType, shareClipBlob } from "./mediaClipExport";
 
+// Verbose recording diagnostics (track/codec/container details) are gated
+// behind the same "?diag" opt-in convention used elsewhere in the app, so
+// they don't ship to every user's console by default. Enable by loading the
+// page with ?diag in the URL at initial page load.
+const IS_DIAG_PREVIEW =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).has("diag");
+
 export type RecordPhase = "idle" | "panel" | "countdown" | "recording" | "done";
 export type MicStatus = "off" | "requesting" | "active" | "denied" | "unavailable";
 
@@ -118,10 +126,12 @@ export function useCanvasRecorder(params: {
     const canvasStream = (canvas as HTMLCanvasElement & { captureStream(fps: number): MediaStream }).captureStream(30);
 
     // Log canvas video track info.
-    canvasStream.getVideoTracks().forEach((t, i) => {
-      const s = t.getSettings();
-      console.debug(`[PV REC] videoTrack[${i}] readyState:${t.readyState} label:"${t.label}" enabled:${t.enabled} muted:${t.muted} w:${s.width} h:${s.height} fps:${s.frameRate}`);
-    });
+    if (IS_DIAG_PREVIEW) {
+      canvasStream.getVideoTracks().forEach((t, i) => {
+        const s = t.getSettings();
+        console.debug(`[PV REC] videoTrack[${i}] readyState:${t.readyState} label:"${t.label}" enabled:${t.enabled} muted:${t.muted} w:${s.width} h:${s.height} fps:${s.frameRate}`);
+      });
+    }
 
     const audioStream = activeAudioStreamRef.current;
     const audioTracks = audioStream?.getAudioTracks() ?? [];
@@ -129,10 +139,12 @@ export function useCanvasRecorder(params: {
     hasAudioRef.current = hasAudio;
 
     // Log audio track info.
-    audioTracks.forEach((t, i) => {
-      const s = t.getSettings();
-      console.debug(`[PV REC] audioTrack[${i}] readyState:${t.readyState} label:"${t.label}" enabled:${t.enabled} muted:${t.muted} sampleRate:${s.sampleRate} channelCount:${s.channelCount}`);
-    });
+    if (IS_DIAG_PREVIEW) {
+      audioTracks.forEach((t, i) => {
+        const s = t.getSettings();
+        console.debug(`[PV REC] audioTrack[${i}] readyState:${t.readyState} label:"${t.label}" enabled:${t.enabled} muted:${t.muted} sampleRate:${s.sampleRate} channelCount:${s.channelCount}`);
+      });
+    }
 
     const stream = hasAudio
       ? new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks])
@@ -140,17 +152,21 @@ export function useCanvasRecorder(params: {
 
     // Audit the final merged stream — catch duplicate/stopped tracks before recorder starts.
     const allTracks = stream.getTracks();
-    console.debug(`[PV REC] stream composition — ${allTracks.length} track(s): ${allTracks.map((t) => `${t.kind}/${t.readyState}/${t.enabled ? "on" : "off"}`).join(", ")}`);
-    allTracks.forEach((t, i) => {
-      const s = t.getSettings();
-      const c = t.getConstraints();
-      console.debug(`[PV REC] stream.track[${i}] kind:${t.kind} readyState:${t.readyState} enabled:${t.enabled} muted:${t.muted} label:"${t.label}" settings:${JSON.stringify(s)} constraints:${JSON.stringify(c)}`);
-    });
+    if (IS_DIAG_PREVIEW) {
+      console.debug(`[PV REC] stream composition — ${allTracks.length} track(s): ${allTracks.map((t) => `${t.kind}/${t.readyState}/${t.enabled ? "on" : "off"}`).join(", ")}`);
+      allTracks.forEach((t, i) => {
+        const s = t.getSettings();
+        const c = t.getConstraints();
+        console.debug(`[PV REC] stream.track[${i}] kind:${t.kind} readyState:${t.readyState} enabled:${t.enabled} muted:${t.muted} label:"${t.label}" settings:${JSON.stringify(s)} constraints:${JSON.stringify(c)}`);
+      });
+    }
 
     const recorder = new MediaRecorder(stream, { mimeType });
     recorderRef.current = recorder;
     // Log actual mimeType chosen by the browser and bitrate properties — may differ from requested.
-    console.debug(`[PV REC] MediaRecorder — requested:"${mimeType}" actual:"${recorder.mimeType}" videoBPS:${recorder.videoBitsPerSecond} audioBPS:${recorder.audioBitsPerSecond}`);
+    if (IS_DIAG_PREVIEW) {
+      console.debug(`[PV REC] MediaRecorder — requested:"${mimeType}" actual:"${recorder.mimeType}" videoBPS:${recorder.videoBitsPerSecond} audioBPS:${recorder.audioBitsPerSecond}`);
+    }
     recorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) recordChunksRef.current.push(e.data);
     };
@@ -165,21 +181,23 @@ export function useCanvasRecorder(params: {
       // actual codec from the bitstream, so playback works regardless.
       const blobType = mimeType.split(";")[0].trim();
       const chunks = recordChunksRef.current;
-      console.debug("[PV REC] onstop — chunks:", chunks.length, "sizes:", chunks.map((c) => c.size).join(","));
+      if (IS_DIAG_PREVIEW) console.debug("[PV REC] onstop — chunks:", chunks.length, "sizes:", chunks.map((c) => c.size).join(","));
       const blob = new Blob(chunks, { type: blobType });
       const url = URL.createObjectURL(blob);
-      console.debug("[PV REC] blob — size:", blob.size, "type:", blob.type, "requestedMime:", mimeType, "url:", url.slice(0, 60));
+      if (IS_DIAG_PREVIEW) console.debug("[PV REC] blob — size:", blob.size, "type:", blob.type, "requestedMime:", mimeType, "url:", url.slice(0, 60));
       // Read first 32 bytes to detect actual container format.
-      void chunks[0]?.arrayBuffer().then((buf) => {
-        const arr = new Uint8Array(buf, 0, Math.min(32, buf.byteLength));
-        const hex = Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join(" ");
-        const isWebM = arr[0] === 0x1a && arr[1] === 0x45 && arr[2] === 0xdf && arr[3] === 0xa3;
-        // MP4 "ftyp" box appears at byte offset 4; bytes 4-7 = 0x66 0x74 0x79 0x70
-        const hasMP4Ftyp = arr.length >= 8 && arr[4] === 0x66 && arr[5] === 0x74 && arr[6] === 0x79 && arr[7] === 0x70;
-        const container = isWebM ? "WebM/EBML" : hasMP4Ftyp ? "MP4 (ftyp)" : "UNKNOWN";
-        console.debug("[PV REC] magic bytes (first 32):", hex);
-        console.debug("[PV REC] detected container:", container, "| blobType claimed:", blobType, "| MISMATCH:", (isWebM && blobType === "video/mp4") || (hasMP4Ftyp && blobType === "video/webm"));
-      });
+      if (IS_DIAG_PREVIEW) {
+        void chunks[0]?.arrayBuffer().then((buf) => {
+          const arr = new Uint8Array(buf, 0, Math.min(32, buf.byteLength));
+          const hex = Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join(" ");
+          const isWebM = arr[0] === 0x1a && arr[1] === 0x45 && arr[2] === 0xdf && arr[3] === 0xa3;
+          // MP4 "ftyp" box appears at byte offset 4; bytes 4-7 = 0x66 0x74 0x79 0x70
+          const hasMP4Ftyp = arr.length >= 8 && arr[4] === 0x66 && arr[5] === 0x74 && arr[6] === 0x79 && arr[7] === 0x70;
+          const container = isWebM ? "WebM/EBML" : hasMP4Ftyp ? "MP4 (ftyp)" : "UNKNOWN";
+          console.debug("[PV REC] magic bytes (first 32):", hex);
+          console.debug("[PV REC] detected container:", container, "| blobType claimed:", blobType, "| MISMATCH:", (isWebM && blobType === "video/mp4") || (hasMP4Ftyp && blobType === "video/webm"));
+        });
+      }
       blobUrlRef.current = url;
       setRecordBlob(blob);
       setRecordBlobUrl(url);

@@ -54,6 +54,7 @@ import {
   TP_SPEED_OPTIONS,
   ARRANGE_MODE_LABEL,
   computeAnyBottomPanelOpen,
+  situationDisplayLabel,
 } from "./tacticalPlayUi";
 
 type SetupSport = Extract<TacticalTemplateSport, "football" | "hurling">;
@@ -203,7 +204,7 @@ const BACK_BUTTON_STYLE: CSSProperties = {
   boxShadow: "0 8px 20px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.10)",
 };
 
-const CTRL_BUBBLE_STYLE: CSSProperties = {
+const TOOLS_BUBBLE_STYLE: CSSProperties = {
   position: "fixed",
   left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
   bottom: "max(10px, calc(env(safe-area-inset-bottom, 0px) + 8px))",
@@ -227,17 +228,36 @@ const CTRL_BUBBLE_STYLE: CSSProperties = {
 };
 
 // Portrait-only contextual playback control: one pill centred at the bottom,
-// between the CTRL (left) and SETUP (right) bubbles, at the same bottom offset so
+// between the TOOLS (left) and SETUP (right) bubbles, at the same bottom offset so
 // it never overlaps them. Reuses the existing bubble look with a play-green
 // accent to read as the primary action.
 const PORTRAIT_PLAYBACK_BUTTON_STYLE: CSSProperties = {
-  ...CTRL_BUBBLE_STYLE,
+  ...TOOLS_BUBBLE_STYLE,
   left: "50%",
   right: "auto",
   transform: "translateX(-50%)",
   border: "1px solid rgba(124, 255, 114, 0.42)",
   background: "rgba(14, 32, 22, 0.82)",
   color: "#c4ffbf",
+};
+
+// Portrait-only secondary Reset control. Landscape's persistent Play/Reset
+// pair (PLAYBACK_SIDE_STYLE) keeps Reset reachable the whole time playback is
+// running or paused; portrait's single contextual pill only becomes "Reset
+// Play" once playback finishes on its own, so mid-session there was no way
+// back to Reset without waiting it out. This sits in its own row above the
+// main pill, shown only for that same mid-session window, so Reset behaves
+// the same in both orientations without touching the main pill's cycle.
+const PORTRAIT_RESET_BUTTON_STYLE: CSSProperties = {
+  ...TOOLS_BUBBLE_STYLE,
+  left: "50%",
+  right: "auto",
+  bottom: "max(56px, calc(env(safe-area-inset-bottom, 0px) + 54px))",
+  transform: "translateX(-50%)",
+  height: "30px",
+  minWidth: "0",
+  fontSize: "10px",
+  padding: "0 12px",
 };
 
 const SETUP_BUBBLE_STYLE: CSSProperties = {
@@ -1957,7 +1977,7 @@ export default function TacticalPlaySurface() {
   const playbackFloatingVisible = isPlaying || isPaused;
   // Portrait contextual playback button: shown only when the board has something
   // playable (a run/movement, pass, or shot) and no bottom panel/sheet is open,
-  // so it never overlaps CTRL, SETUP, the player action sheet or open menus.
+  // so it never overlaps TOOLS, SETUP, the player action sheet or open menus.
   const hasPlayableContent = routes.length > 0 || passEvents.length > 0 || shotEvents.length > 0;
   // Any authoring panel/sheet open (excludes the Share panel, which owns playsOpen).
   // Used to hide floating controls so they never overlap an open panel.
@@ -2060,7 +2080,7 @@ export default function TacticalPlaySurface() {
 
         <button
           type="button"
-          style={CTRL_BUBBLE_STYLE}
+          style={TOOLS_BUBBLE_STYLE}
           onClick={() => { setIsControlsOpen((prev) => !prev); setSetupOpen(false); setSequenceOpen(false); setPlaysOpen(false); setPlayerSheetId(null); }}
         >
           TOOLS
@@ -2079,6 +2099,16 @@ export default function TacticalPlaySurface() {
             }}
           >
             {portraitPlaybackLabel}
+          </button>
+        ) : null}
+        {showPortraitPlaybackButton && !playbackCompleted && (isPlaying || isPaused) ? (
+          <button
+            type="button"
+            style={PORTRAIT_RESET_BUTTON_STYLE}
+            aria-label="Reset play"
+            onClick={resetPlaybackState}
+          >
+            Reset
           </button>
         ) : null}
         <button
@@ -2105,57 +2135,71 @@ export default function TacticalPlaySurface() {
                 playsInline
                 onLoadStart={(e) => {
                   const vid = e.currentTarget as HTMLVideoElement;
-                  console.debug("[PV REC] video loadstart rs:", vid.readyState, "ns:", vid.networkState);
-                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "loadstart"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc }));
+                  if (IS_DIAG_PREVIEW) {
+                    console.debug("[PV REC] video loadstart rs:", vid.readyState, "ns:", vid.networkState);
+                    setClipDiag((p) => ({ ...p, events: [...p.events, "loadstart"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc }));
+                  }
                 }}
                 onLoadedMetadata={(e) => {
                   const vid = e.currentTarget as HTMLVideoElement;
                   const d = vid.duration;
-                  console.debug("[PV REC] video loadedmetadata dur:", d, "readyState:", vid.readyState, "vw:", vid.videoWidth, "vh:", vid.videoHeight);
                   setClipVideoReady(true);
                   setClipBlankWarning(false);
                   if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; }
                   if (IS_DIAG_PREVIEW) {
+                    console.debug("[PV REC] video loadedmetadata dur:", d, "readyState:", vid.readyState, "vw:", vid.videoWidth, "vh:", vid.videoHeight);
                     try { vid.currentTime = 0.001; } catch { /* seek may throw */ }
                     setClipDiag((p) => ({ ...p, events: [...p.events, "loadedmetadata"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc, dur: d, vw: vid.videoWidth, vh: vid.videoHeight, seeked: true }));
                   }
                 }}
                 onLoadedData={(e) => {
                   const vid = e.currentTarget as HTMLVideoElement;
-                  console.debug("[PV REC] video loadeddata rs:", vid.readyState);
                   setClipVideoReady(true);
                   setClipBlankWarning(false);
                   if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; }
-                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "loadeddata"], rs: vid.readyState, ns: vid.networkState }));
+                  if (IS_DIAG_PREVIEW) {
+                    console.debug("[PV REC] video loadeddata rs:", vid.readyState);
+                    setClipDiag((p) => ({ ...p, events: [...p.events, "loadeddata"], rs: vid.readyState, ns: vid.networkState }));
+                  }
                 }}
                 onCanPlay={(e) => {
                   const vid = e.currentTarget as HTMLVideoElement;
-                  console.debug("[PV REC] video canplay rs:", vid.readyState);
                   setClipVideoReady(true);
                   setClipBlankWarning(false);
                   if (clipBlankTimerRef.current) { clearTimeout(clipBlankTimerRef.current); clipBlankTimerRef.current = null; }
-                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "canplay"], rs: vid.readyState, ns: vid.networkState }));
+                  if (IS_DIAG_PREVIEW) {
+                    console.debug("[PV REC] video canplay rs:", vid.readyState);
+                    setClipDiag((p) => ({ ...p, events: [...p.events, "canplay"], rs: vid.readyState, ns: vid.networkState }));
+                  }
                 }}
                 onSeeked={(e) => {
                   const vid = e.currentTarget as HTMLVideoElement;
-                  console.debug("[PV REC] video seeked rs:", vid.readyState);
-                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "seeked"], rs: vid.readyState }));
+                  if (IS_DIAG_PREVIEW) {
+                    console.debug("[PV REC] video seeked rs:", vid.readyState);
+                    setClipDiag((p) => ({ ...p, events: [...p.events, "seeked"], rs: vid.readyState }));
+                  }
                 }}
                 onStalled={(e) => {
                   const vid = e.currentTarget as HTMLVideoElement;
-                  console.debug("[PV REC] video stalled rs:", vid.readyState, "ns:", vid.networkState);
-                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "stalled"], rs: vid.readyState, ns: vid.networkState }));
+                  if (IS_DIAG_PREVIEW) {
+                    console.debug("[PV REC] video stalled rs:", vid.readyState, "ns:", vid.networkState);
+                    setClipDiag((p) => ({ ...p, events: [...p.events, "stalled"], rs: vid.readyState, ns: vid.networkState }));
+                  }
                 }}
                 onAbort={(e) => {
                   const vid = e.currentTarget as HTMLVideoElement;
-                  console.debug("[PV REC] video abort rs:", vid.readyState);
-                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "abort"], rs: vid.readyState }));
+                  if (IS_DIAG_PREVIEW) {
+                    console.debug("[PV REC] video abort rs:", vid.readyState);
+                    setClipDiag((p) => ({ ...p, events: [...p.events, "abort"], rs: vid.readyState }));
+                  }
                 }}
                 onError={(e) => {
                   const vid = e.currentTarget as HTMLVideoElement;
                   const errMsg = vid.error ? `${vid.error.code}: ${vid.error.message}` : "unknown";
-                  console.debug("[PV REC] video error code:", vid.error?.code, "msg:", vid.error?.message, "src:", vid.src.slice(0, 40));
-                  if (IS_DIAG_PREVIEW) setClipDiag((p) => ({ ...p, events: [...p.events, "error"], rs: vid.readyState, ns: vid.networkState, err: errMsg }));
+                  if (IS_DIAG_PREVIEW) {
+                    console.debug("[PV REC] video error code:", vid.error?.code, "msg:", vid.error?.message, "src:", vid.src.slice(0, 40));
+                    setClipDiag((p) => ({ ...p, events: [...p.events, "error"], rs: vid.readyState, ns: vid.networkState, err: errMsg }));
+                  }
                 }}
                 style={{ width: "100%", maxHeight: "140px", borderRadius: "8px", background: "#000", display: "block" }}
               />
@@ -2545,6 +2589,7 @@ export default function TacticalPlaySurface() {
                   <button
                     key={opt.multiplier}
                     type="button"
+                    aria-pressed={opt.multiplier === playbackSpeedMultiplier}
                     style={opt.multiplier === playbackSpeedMultiplier ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                     onClick={() => { setPlaybackSpeedMultiplier(opt.multiplier); setSpeedOpen(false); }}
                   >
@@ -2588,7 +2633,7 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
-            {/* Sequence chips (when open inside CTRL) */}
+            {/* Sequence chips (when open inside TOOLS) */}
             {sequenceOpen && sortedItems.length > 0 ? (
               <div style={PANEL_ROW_STYLE}>
                 <span style={SETUP_SECTION_LABEL_STYLE}>Sequence</span>
@@ -2643,7 +2688,7 @@ export default function TacticalPlaySurface() {
           <div style={MOVEMENT_PANEL_STYLE}>
             <div style={MP_HEADER_STYLE}>
               <span style={MP_TITLE_STYLE}>Move as 1</span>
-              <button type="button" style={MP_CLOSE_STYLE} onClick={() => setUnitsOpen(false)}>×</button>
+              <button type="button" style={MP_CLOSE_STYLE} aria-label="Close" onClick={() => setUnitsOpen(false)}>×</button>
             </div>
 
             <div style={MP_ROW}>
@@ -2746,7 +2791,7 @@ export default function TacticalPlaySurface() {
                   <span style={{ ...MP_TITLE_STYLE, color: "rgba(180, 210, 255, 0.55)" }}>{trainingItems.length}</span>
                 ) : null}
               </div>
-              <button type="button" style={MP_CLOSE_STYLE} onClick={() => setItemsOpen(false)}>×</button>
+              <button type="button" style={MP_CLOSE_STYLE} aria-label="Close" onClick={() => setItemsOpen(false)}>×</button>
             </div>
 
             <div style={MP_ROW}>
@@ -2803,7 +2848,7 @@ export default function TacticalPlaySurface() {
                   <span style={{ ...MP_TITLE_STYLE, color: "rgba(180, 210, 255, 0.55)" }}>{zones.length}/{MAX_ZONES}</span>
                 ) : null}
               </div>
-              <button type="button" style={MP_CLOSE_STYLE} onClick={() => setZonesOpen(false)}>×</button>
+              <button type="button" style={MP_CLOSE_STYLE} aria-label="Close" onClick={() => setZonesOpen(false)}>×</button>
             </div>
 
             {/* Shape selector */}
@@ -3022,7 +3067,7 @@ export default function TacticalPlaySurface() {
                     setActiveSetupSituation((prev) => prev === situation.id ? null : situation.id);
                   }}
                 >
-                  {situation.label}
+                  {situationDisplayLabel(situation, activeSetupSport)}
                 </button>
               ))}
             </div>
@@ -3137,7 +3182,10 @@ export default function TacticalPlaySurface() {
         {/* Persistent Play/Reset controls are hidden in portrait only, to free
             pitch area and avoid overlap when menus are open. Playback logic is
             unchanged and Play stays reachable from the player action card
-            (PlayerActionSheet). Landscape keeps these controls unchanged. */}
+            (PlayerActionSheet). Landscape keeps these controls unchanged.
+            Portrait's equivalent Reset access (mid-session only) is the
+            PORTRAIT_RESET_BUTTON_STYLE button rendered above, next to the
+            contextual playback pill. */}
         {!isPortrait ? (
           <div style={PLAYBACK_SIDE_STYLE}>
             <button
@@ -3178,7 +3226,7 @@ export default function TacticalPlaySurface() {
           <div style={playsPanelStyle}>
             <div style={MP_HEADER_STYLE}>
               <span style={MP_TITLE_STYLE}>Share &amp; Save</span>
-              <button type="button" style={MP_CLOSE_STYLE} onClick={() => { setPlaysOpen(false); setScenarioRenameId(null); }}>
+              <button type="button" style={MP_CLOSE_STYLE} aria-label="Close" onClick={() => { setPlaysOpen(false); setScenarioRenameId(null); }}>
                 ×
               </button>
             </div>
@@ -3354,16 +3402,10 @@ export default function TacticalPlaySurface() {
                 </span>
               </div>
             ) : null}
-
-            {/* ── Templates placeholder ── */}
-            <div style={{ height: "1px", background: "rgba(180, 210, 255, 0.08)", margin: "2px 0 4px" }} />
-            <span style={{ fontSize: "9px", color: "rgba(180, 210, 255, 0.28)", fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.06em", textTransform: "uppercase", padding: "0 2px" }}>
-              Templates — Coming Soon
-            </span>
           </div>
         ) : null}
 
-        {/* Player Action Sheet — tap-player bottom sheet (additive, CTRL remains fallback) */}
+        {/* Player Action Sheet — tap-player bottom sheet (additive, TOOLS remains fallback) */}
         {playerSheetId != null && !modeIsPlaybackLocked && menuMode !== "route" ? (() => {
           const sheetNum = tokenNumberById[playerSheetId] ?? 0;
           const sheetHasBall = ballCarrierId === playerSheetId;

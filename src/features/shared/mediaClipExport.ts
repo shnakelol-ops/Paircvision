@@ -29,8 +29,10 @@ export function getBestVideoMimeType(): string {
     "video/webm",
     "video/mp4", // last resort — may produce VP9/Opus-in-MP4
   ] as const;
-  const support = candidates.map((t) => `${t}:${MediaRecorder.isTypeSupported(t)}`);
-  console.debug("[PV REC] isTypeSupported audit:", support.join(" | "));
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("diag")) {
+    const support = candidates.map((t) => `${t}:${MediaRecorder.isTypeSupported(t)}`);
+    console.debug("[PV REC] isTypeSupported audit:", support.join(" | "));
+  }
   for (const t of candidates) {
     if (MediaRecorder.isTypeSupported(t)) return t;
   }

@@ -14,6 +14,21 @@ export const SETUP_SITUATIONS: Array<{ id: TacticalTemplateSituation; label: str
   { id: "press", label: "Press" },
 ];
 
+// Coach-facing display label for a Setup situation. The "restart" id stays a
+// code-only identifier (CLAUDE.md: "Kickouts / Puckouts (in display)" /
+// "Restarts (in code, not display)") — its label is sport-correct, never
+// "Restart", wherever it's actually shown to a coach. Every other situation
+// is sport-neutral and keeps its static label unchanged.
+export function situationDisplayLabel(
+  situation: { id: TacticalTemplateSituation; label: string },
+  sport: "football" | "hurling",
+): string {
+  if (situation.id === "restart") {
+    return sport === "hurling" ? "Puckout" : "Kickout";
+  }
+  return situation.label;
+}
+
 // Playback speed presets. Multipliers and their persisted mapping are unchanged
 // by the polish PR — only the control's presentation changed.
 export const TP_SPEED_OPTIONS: ReadonlyArray<{ multiplier: number; label: string }> = [
