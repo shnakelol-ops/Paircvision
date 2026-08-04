@@ -188,6 +188,13 @@ export type TacticalPadLiteSurface = {
   setRouteCaptureMode: (enabled: boolean) => void;
   clearRoutes: () => void;
   getRouteState: () => TacticalRouteState;
+  /**
+   * Milestone 4 — minimal Free Draw authoring. Draw one curved movement for
+   * a player (press on them, drag a curve, release) directly into the Phase
+   * engine's player.path, consumed by playback since Milestone 3. Entirely
+   * separate from Route capture/playback.
+   */
+  setFreeDrawCaptureMode: (enabled: boolean) => void;
   reset: () => void;
   reflow: () => void;
   /**
@@ -245,6 +252,7 @@ type TacticalPadLiteSurfaceOptions = {
   onTacticalPlayerDoubleTap?: (payload: { playerId: string; clientX: number; clientY: number }) => void;
   onRouteStateChange?: (state: TacticalRouteState) => void;
   onRouteLimitReached?: (maxRoutes: number) => void;
+  onFreeDrawStateChange?: (state: { isFreeDrawCaptureMode: boolean }) => void;
   onShapeLockChange?: (state: { mode: ShapeLockMode; memberIds: string[] }) => void;
   onShapeLinksChange?: (state: ShapeLinksState) => void;
 };
@@ -322,6 +330,7 @@ const MAX_BASIC_ROUTE_PLAYERS = 6;
 const BASIC_ROUTE_PREVIEW_SHADOW_COLOR = 0x1c1205;
 const BASIC_ROUTE_PREVIEW_CORE_COLOR = 0xf59e0b;
 const BASIC_ROUTE_PREVIEW_HIGHLIGHT_COLOR = 0xffd8a1;
+const FREE_DRAW_PREVIEW_COLOR = 0x2dd4bf;
 const BASIC_ROUTE_SAMPLE_MIN_POINT_DISTANCE = 0.1;
 const BASIC_ROUTE_SAMPLES_PER_SEGMENT = 16;
 const BASIC_ROUTE_MIN_CORNER_TENSION_SCALE = 0.28;
@@ -1176,6 +1185,9 @@ export async function createTacticalPadLiteSurface(
   const basicRoutePreviewGraphic = new Graphics();
   basicRoutePreviewGraphic.eventMode = "none";
   whiteboardPreviewLayer.addChild(basicRoutePreviewGraphic);
+  const freeDrawPreviewGraphic = new Graphics();
+  freeDrawPreviewGraphic.eventMode = "none";
+  whiteboardPreviewLayer.addChild(freeDrawPreviewGraphic);
 
   const itemsLayer = new Container();
   itemsLayer.eventMode = "passive";
@@ -1490,6 +1502,15 @@ export async function createTacticalPadLiteSurface(
   let routeCapturePointerId: number | null = null;
   let routeSelectionPulseMs = 0;
   let isPossessionPassModeEnabled = false;
+  // Milestone 4 — Free Draw authoring. Entirely separate from Route capture
+  // above: committed paths write straight into PhasePlayerSnapshot.path via
+  // captureCurrentSnapshot, consumed by the Phase engine itself (Milestone 3),
+  // not by any Route-style playback/scheduling.
+  let isFreeDrawCaptureMode = false;
+  let freeDrawPathByPlayerId = new Map<string, RoutePoint[]>();
+  let freeDrawDraftPoints: RoutePoint[] = [];
+  let freeDrawDraftPlayerId: string | null = null;
+  let freeDrawCapturePointerId: number | null = null;
 
   let activeDrag: ActiveDragState = null;
   let selectedItemId: string | null = null;
@@ -1942,7 +1963,8 @@ export async function createTacticalPadLiteSurface(
   function syncWhiteboardTokenInputMode(): void {
     if (!isDrawingEnabledSurface) return;
     const canInteractItems = isItemInteractionEnabled();
-    const isDrawingInteractionActive = (activeWhiteboardTool !== "move" || isRouteCaptureMode) && !isPlaybackInputLocked();
+    const isDrawingInteractionActive =
+      (activeWhiteboardTool !== "move" || isRouteCaptureMode || isFreeDrawCaptureMode) && !isPlaybackInputLocked();
     let draggingItemId: string | null = null;
     let draggingPlayerId: string | null = null;
     if (activeDrag && activeDrag.type === "item" && activeDrag.hasCrossedThreshold) {
@@ -1965,22 +1987,24 @@ export async function createTacticalPadLiteSurface(
       activeWhiteboardTool === "move" &&
       !isPlaybackInputLocked() &&
       !isRouteCaptureMode &&
+      !isFreeDrawCaptureMode &&
       activeRouteRunsByPlayerId.size <= 0;
     const canSelectRoutePlayers = surfaceVariant === "tactical" && isRouteCaptureMode && !isPlaybackInputLocked();
+    const canSelectFreeDrawPlayers = surfaceVariant === "tactical" && isFreeDrawCaptureMode && !isPlaybackInputLocked();
     for (const player of players) {
       const isCurrentPlayerDragging = draggingPlayerId === player.id;
-      player.token.eventMode = canDragPlayers || canSelectRoutePlayers ? "static" : "none";
+      player.token.eventMode = canDragPlayers || canSelectRoutePlayers || canSelectFreeDrawPlayers ? "static" : "none";
       player.token.cursor = isCurrentPlayerDragging
         ? "grabbing"
         : canDragPlayers
           ? "grab"
-          : canSelectRoutePlayers
+          : canSelectRoutePlayers || canSelectFreeDrawPlayers
             ? "pointer"
             : "default";
     }
     whiteboardInputLayer.eventMode = isDrawingInteractionActive ? "static" : "none";
     whiteboardInputLayer.cursor =
-      isRouteCaptureMode || activeWhiteboardTool !== "eraser" ? "crosshair" : "not-allowed";
+      isRouteCaptureMode || isFreeDrawCaptureMode || activeWhiteboardTool !== "eraser" ? "crosshair" : "not-allowed";
     renderRouteSelectionHighlight();
   }
 
@@ -3081,7 +3105,17 @@ export async function createTacticalPadLiteSurface(
 
   function captureCurrentSnapshot(): PhaseSnapshot {
     return {
-      players: players.map((player) => ({ id: player.id, x: player.current.x, y: player.current.y })),
+      players: players.map((player) => {
+        const freeDrawPath = freeDrawPathByPlayerId.get(player.id);
+        return {
+          id: player.id,
+          x: player.current.x,
+          y: player.current.y,
+          ...(freeDrawPath && freeDrawPath.length > 0
+            ? { path: freeDrawPath.map((point) => ({ x: point.x, y: point.y })) }
+            : {}),
+        };
+      }),
       football: tacticalItems
         .filter((item) => isBallItem(item))
         .map((item) => {
@@ -3302,6 +3336,67 @@ export async function createTacticalPadLiteSurface(
       closestDistanceSquared = distanceSquared;
     }
     return closest;
+  }
+
+  // --- Milestone 4: Free Draw authoring ---------------------------------
+  // Deliberately separate from the Route capture functions above: no
+  // scheduling, no session, no playback engine of its own. A committed
+  // draw is just data that rides on the next captureCurrentSnapshot() call,
+  // exactly like the football's own path already does.
+
+  function clearFreeDrawPreview(): void {
+    freeDrawPreviewGraphic.clear();
+  }
+
+  function renderFreeDrawPreview(): void {
+    clearFreeDrawPreview();
+    if (freeDrawDraftPoints.length <= 0) return;
+    const sampled = sampleRoutePoints(freeDrawDraftPoints);
+    if (sampled.length < 2) return;
+    const worldPoints = sampled.map((point) => mapper.normalizedToWorld(point));
+    const first = worldPoints[0];
+    if (!first) return;
+    freeDrawPreviewGraphic.moveTo(first.x, first.y);
+    for (let index = 1; index < worldPoints.length; index += 1) {
+      const point = worldPoints[index];
+      if (!point) continue;
+      freeDrawPreviewGraphic.lineTo(point.x, point.y);
+    }
+    freeDrawPreviewGraphic.stroke({
+      color: FREE_DRAW_PREVIEW_COLOR,
+      width: 1.6,
+      alpha: 0.92,
+      cap: "round",
+      join: "round",
+      alignment: 0.5,
+    });
+  }
+
+  function clearFreeDrawDraft(): void {
+    freeDrawCapturePointerId = null;
+    freeDrawDraftPoints = [];
+    freeDrawDraftPlayerId = null;
+    clearFreeDrawPreview();
+  }
+
+  function appendFreeDrawPoint(point: RoutePoint): void {
+    const previous = freeDrawDraftPoints[freeDrawDraftPoints.length - 1];
+    if (previous && Math.hypot(previous.x - point.x, previous.y - point.y) < BASIC_ROUTE_MIN_POINT_DISTANCE) {
+      return;
+    }
+    freeDrawDraftPoints = [...freeDrawDraftPoints, point];
+    renderFreeDrawPreview();
+  }
+
+  function setFreeDrawCaptureModeState(enabled: boolean): void {
+    const next = Boolean(enabled) && surfaceVariant === "tactical";
+    if (next === isFreeDrawCaptureMode) return;
+    isFreeDrawCaptureMode = next;
+    if (!isFreeDrawCaptureMode) {
+      clearFreeDrawDraft();
+    }
+    syncWhiteboardTokenInputMode();
+    options.onFreeDrawStateChange?.({ isFreeDrawCaptureMode });
   }
 
   function buildBasicRouteRunsForCurrentPlayers(segmentIndex: number): Map<string, ActiveBasicRouteFollow> {
@@ -4116,6 +4211,8 @@ export async function createTacticalPadLiteSurface(
     cancelBasicRouteFollow();
     clearRouteAssignments();
     setRouteCaptureModeState(false);
+    setFreeDrawCaptureModeState(false);
+    freeDrawPathByPlayerId = new Map();
     singlePlayTargetSnapshot = null;
     resetActiveWhiteboardDrawing();
     lastTappedPlayer = null;
@@ -4286,6 +4383,7 @@ export async function createTacticalPadLiteSurface(
     const [removedPlayer] = players.splice(removalTarget.index, 1);
     if (!removedPlayer) return;
     prunePlayerFromPhaseSnapshots(removedPlayer.id);
+    freeDrawPathByPlayerId.delete(removedPlayer.id);
     if (selectedPlayerId === removedPlayer.id) {
       selectedPlayerId = null;
     }
@@ -4341,12 +4439,48 @@ export async function createTacticalPadLiteSurface(
       }
       return;
     }
+    if (isFreeDrawCaptureMode && !isPlaybackInputLocked() && freeDrawCapturePointerId !== null) {
+      const pointerId = getPointerIdFromEvent(event);
+      if (pointerId == null || pointerId === freeDrawCapturePointerId) {
+        const worldPoint = getBoundedWorldPointFromEvent(event);
+        if (worldPoint) {
+          const normalized = mapper.worldToNormalized(worldPoint);
+          appendFreeDrawPoint({
+            x: clampNormalizedValue(normalized.x),
+            y: clampNormalizedValue(normalized.y),
+          });
+        }
+      }
+      return;
+    }
     updateDraggedPlayerFromEvent(event);
     updateDraggedItemFromEvent(event);
     updateWhiteboardDrawing(event);
   }
 
   function handleStagePointerUp(event: unknown): void {
+    if (isFreeDrawCaptureMode && !isPlaybackInputLocked()) {
+      const pointerId = getPointerIdFromEvent(event);
+      if (freeDrawCapturePointerId == null || pointerId == null || pointerId === freeDrawCapturePointerId) {
+        if (freeDrawDraftPlayerId && freeDrawDraftPoints.length >= 2) {
+          const player = players.find((entry) => entry.id === freeDrawDraftPlayerId);
+          const finalPoint = freeDrawDraftPoints[freeDrawDraftPoints.length - 1];
+          if (player && finalPoint) {
+            freeDrawPathByPlayerId.set(
+              freeDrawDraftPlayerId,
+              freeDrawDraftPoints.map((point) => ({ x: point.x, y: point.y })),
+            );
+            player.current = { x: finalPoint.x, y: finalPoint.y };
+            setTokenWorldPositionForPoint(player, player.current, mapper);
+          }
+        }
+        freeDrawCapturePointerId = null;
+        freeDrawDraftPoints = [];
+        freeDrawDraftPlayerId = null;
+        clearFreeDrawPreview();
+      }
+      return;
+    }
     if (isRouteCaptureMode && !isPlaybackInputLocked()) {
       const pointerId = getPointerIdFromEvent(event);
       if (routeCapturePointerId == null || pointerId == null || pointerId === routeCapturePointerId) {
@@ -4378,7 +4512,13 @@ export async function createTacticalPadLiteSurface(
   app.stage.on("pointerup", handleStagePointerUp);
   app.stage.on("pointerupoutside", handleStagePointerUp);
   app.stage.on("pointerdown", (event) => {
-    if (activeDrag == null && activeWhiteboardTool === "move" && !isPlaybackInputLocked() && !isRouteCaptureMode) {
+    if (
+      activeDrag == null &&
+      activeWhiteboardTool === "move" &&
+      !isPlaybackInputLocked() &&
+      !isRouteCaptureMode &&
+      !isFreeDrawCaptureMode
+    ) {
       const stagePoint = getStagePointFromEvent(event, app.stage);
       if (stagePoint) {
         clearSelectedItem();
@@ -4386,6 +4526,25 @@ export async function createTacticalPadLiteSurface(
     }
   });
   whiteboardInputLayer.on("pointerdown", (event) => {
+    if (isFreeDrawCaptureMode && !isPlaybackInputLocked()) {
+      releaseActiveDrag();
+      clearSelectedItem();
+      const worldPoint = getBoundedWorldPointFromEvent(event);
+      if (!worldPoint) return;
+      // findRouteSelectablePlayerAtWorldPoint is a pure hit-test (nearest
+      // player within touch radius) — reused as-is, not Route-specific.
+      const tappedPlayer = findRouteSelectablePlayerAtWorldPoint(worldPoint);
+      if (!tappedPlayer) return;
+      freeDrawCapturePointerId = getPointerIdFromEvent(event);
+      freeDrawDraftPlayerId = tappedPlayer.id;
+      freeDrawDraftPoints = [];
+      const normalized = mapper.worldToNormalized(worldPoint);
+      appendFreeDrawPoint({
+        x: clampNormalizedValue(normalized.x),
+        y: clampNormalizedValue(normalized.y),
+      });
+      return;
+    }
     if (isRouteCaptureMode && !isPlaybackInputLocked()) {
       releaseActiveDrag();
       clearSelectedItem();
@@ -4440,11 +4599,13 @@ export async function createTacticalPadLiteSurface(
       cancelBasicRouteFollow();
       clearRouteAssignments();
       setRouteCaptureModeState(false);
+      setFreeDrawCaptureModeState(false);
       cancelPlaybackAnimation();
       singlePlayTargetSnapshot = null;
       startPositions = captureCurrentSnapshot();
       phases = [];
       resetAllBallMovementPaths();
+      freeDrawPathByPlayerId.clear();
       options.onPhaseCountChange?.(0);
     },
     addPhase: () => {
@@ -4452,10 +4613,12 @@ export async function createTacticalPadLiteSurface(
       clearSelectedItem();
       cancelBasicRouteFollow();
       setRouteCaptureModeState(false);
+      setFreeDrawCaptureModeState(false);
       cancelPlaybackAnimation();
       singlePlayTargetSnapshot = null;
       phases = [...phases, captureCurrentSnapshot()];
       resetAllBallMovementPaths();
+      freeDrawPathByPlayerId.clear();
       options.onPhaseCountChange?.(phases.length);
     },
     undoPhase: () => {
@@ -4463,6 +4626,7 @@ export async function createTacticalPadLiteSurface(
       clearSelectedItem();
       cancelBasicRouteFollow();
       setRouteCaptureModeState(false);
+      setFreeDrawCaptureModeState(false);
       cancelPlaybackAnimation();
       singlePlayTargetSnapshot = null;
       if (phases.length <= 0) return;
@@ -4540,6 +4704,19 @@ export async function createTacticalPadLiteSurface(
         clearSelectedItem();
       }
       setRouteCaptureModeState(enabled);
+      if (enabled && activeWhiteboardTool !== "move") {
+        activeWhiteboardTool = "move";
+        tacticalDrawingController.setTool("move");
+        renderAllWhiteboardDrawings();
+      }
+    },
+    setFreeDrawCaptureMode: (enabled) => {
+      if (surfaceVariant !== "tactical") return;
+      if (enabled) {
+        releaseActiveDrag();
+        clearSelectedItem();
+      }
+      setFreeDrawCaptureModeState(enabled);
       if (enabled && activeWhiteboardTool !== "move") {
         activeWhiteboardTool = "move";
         tacticalDrawingController.setTool("move");
