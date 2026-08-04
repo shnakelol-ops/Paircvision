@@ -136,3 +136,69 @@ describe("createPlaybackOrchestrator — resume with non-token work pending", ()
     expect(orchestrator.getSpeedMultiplier()).toBe(1.5);
   });
 });
+
+describe("createPlaybackOrchestrator — solo delayed pass stays playing through the ball flight", () => {
+  // Regression: a lone delayed pass (nothing else queued) used to auto-stop
+  // playback the instant its delay timer fired, because hasWork() had no
+  // visibility into the ball-flight animation the shell starts in response
+  // to onPassStart. isPlaying going false mid-flight then permanently froze
+  // the flight (the shell's tick() gates flight progress on isPlaying), so
+  // the receiver never got the ball. hasActiveBallAnimation() closes that gap.
+  it("does not auto-stop the instant a solo delayed pass fires — the flight callback is still 'work'", () => {
+    let ballInFlight = false;
+    const callbacks = makeCallbacks({
+      getPassEvents: () => [{ id: "p1", fromPlayerId: "a", toPlayerId: "b", delayMs: 1000 }],
+      onPassStart: vi.fn(() => {
+        ballInFlight = true;
+      }),
+      hasActiveBallAnimation: () => ballInFlight,
+    });
+    const orchestrator = createPlaybackOrchestrator("normal", callbacks);
+
+    orchestrator.start();
+    expect(orchestrator.getState().isPlaying).toBe(true);
+
+    // Advance past the 1000ms delay so the pass fires.
+    orchestrator.step(1000);
+    expect(callbacks.onPassStart).toHaveBeenCalledWith("a", "b");
+
+    // Before the fix: activePassRuns is now empty and hasWork() had no other
+    // signal, so step()'s own "no work left" check stopped playback in this
+    // exact call — freezing the flight at elapsed=0 forever, since nothing
+    // would ever set isPlaying back to true (restart is blocked while a
+    // flight is conceptually in progress, and there is no other trigger).
+    expect(orchestrator.getState().isPlaying).toBe(true);
+    expect(orchestrator.hasActiveRuns()).toBe(true);
+
+    // Flight lands — shell clears its own in-flight flag and the caller
+    // reports it via notifyPassLanded's normal landing path.
+    ballInFlight = false;
+    orchestrator.step(16);
+
+    // Now that the flight is done and nothing else is queued, playback
+    // correctly auto-stops (unrelated existing behavior, unchanged).
+    expect(orchestrator.getState().isPlaying).toBe(false);
+    expect(orchestrator.hasActiveRuns()).toBe(false);
+  });
+
+  it("keeps playback locked (cannot restart) while a solo pass's ball animation is still reported in flight", () => {
+    let ballInFlight = false;
+    const callbacks = makeCallbacks({
+      getPassEvents: () => [{ id: "p1", fromPlayerId: "a", toPlayerId: "b", delayMs: 200 }],
+      onPassStart: vi.fn(() => {
+        ballInFlight = true;
+      }),
+      hasActiveBallAnimation: () => ballInFlight,
+    });
+    const orchestrator = createPlaybackOrchestrator("normal", callbacks);
+
+    orchestrator.start();
+    orchestrator.step(200);
+    expect(callbacks.onPassStart).toHaveBeenCalled();
+
+    // isLocked() (isPlaying || isPaused) must stay true mid-flight — this is
+    // what the shell's startPlayback() checks before deciding whether a Play
+    // press is a fresh restart or a no-op resume.
+    expect(orchestrator.isLocked()).toBe(true);
+  });
+});

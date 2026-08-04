@@ -842,6 +842,10 @@ export default function TacticalPlaySurface() {
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
   const [, setAwayColorState] = useState<PremiumPlayerTokenColor>("red");
   const [awayTokenIds, setAwayTokenIds] = useState<Set<string>>(() => new Set());
+  // Bib Players (training role, players #16-31 by default) — colour is
+  // independent of the team colour above and never touched by onSetPrimaryColor.
+  const [bibColor, setBibColorState] = useState<PremiumPlayerTokenColor>("yellow");
+  const [bibTokenIds, setBibTokenIds] = useState<Set<string>>(() => new Set());
   const [routes, setRoutes] = useState<MovementBoardRoute[]>([]);
   const [tokenNumberById, setTokenNumberById] = useState<Record<string, number>>({});
   const [sequenceOpen, setSequenceOpen] = useState(false);
@@ -1414,8 +1418,17 @@ export default function TacticalPlaySurface() {
   const onSetPrimaryColor = (color: PremiumPlayerTokenColor) => {
     const shell = shellRef.current;
     if (!shell) return;
-    shell.setTokens(shell.getTokens().map((t) => (t.team === "away" ? t : { ...t, color })));
+    shell.setTokens(
+      shell.getTokens().map((t) => (t.team === "away" || t.playerRole === "bib" ? t : { ...t, color })),
+    );
     setPrimaryColorState(color);
+  };
+
+  const onSetBibColor = (color: PremiumPlayerTokenColor) => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    shell.setTokens(shell.getTokens().map((t) => (t.playerRole === "bib" ? { ...t, color } : t)));
+    setBibColorState(color);
   };
 
   const onSetSelectedTokenName = (rawValue: string) => {
@@ -1635,6 +1648,13 @@ export default function TacticalPlaySurface() {
     setAwayTokenIds(loadedAwayIds);
     const firstAway = scenario.tokens.find((t) => t.team === "away");
     if (firstAway) setAwayColorState(firstAway.color);
+    // Bib Players: undefined playerRole on older saves means "team" (no
+    // migration needed) — Tactical Plays saved before this feature simply
+    // load with zero bib players, exactly as before.
+    const loadedBibIds = new Set(scenario.tokens.filter((t) => t.playerRole === "bib").map((t) => t.id));
+    setBibTokenIds(loadedBibIds);
+    const firstBib = scenario.tokens.find((t) => t.playerRole === "bib");
+    if (firstBib) setBibColorState(firstBib.color);
     const loadedNums: Record<string, number> = {};
     for (const t of scenario.tokens) loadedNums[t.id] = t.number;
     setTokenNumberById(loadedNums);
@@ -1748,6 +1768,11 @@ export default function TacticalPlaySurface() {
       for (const id of removedIds) next.delete(id);
       return next;
     });
+    setBibTokenIds((prev) => {
+      const next = new Set(prev);
+      for (const id of removedIds) next.delete(id);
+      return next;
+    });
     if (ballCarrierId && removedIds.has(ballCarrierId)) shell.removeBall();
     if (selectedToken && removedIds.has(selectedToken.id)) shell.setSelectedToken(null);
     setTokenNumberById((prev) => {
@@ -1767,7 +1792,14 @@ export default function TacticalPlaySurface() {
     for (let n = 1; n <= 15; n += 1) {
       if (usedNums.has(n)) continue;
       const id = `token-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-h${n}`;
-      newTokens.push({ id, number: n, color: primaryColor, position: getFormationPos("home", n), team: "home" });
+      newTokens.push({
+        id,
+        number: n,
+        color: primaryColor,
+        position: getFormationPos("home", n),
+        team: "home",
+        playerRole: "team",
+      });
       newNums[id] = n;
     }
     if (newTokens.length === 0) return;
@@ -1789,15 +1821,22 @@ export default function TacticalPlaySurface() {
     const usedNums = new Set(tokens.filter((t) => t.team !== "away").map((t) => t.number));
     let nextNumber = 1;
     while (usedNums.has(nextNumber) && nextNumber <= 30) nextNumber += 1;
+    // Players 1-15 are Team Players; #16+ default to Bib Players (training
+    // opposition) so they never inherit future team-colour changes.
+    const isBib = nextNumber > 15;
     const newToken: MovementBoardToken = {
       id: `token-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       number: nextNumber,
-      color: primaryColor,
+      color: isBib ? bibColor : primaryColor,
       position: { x: 25, y: 50 },
       team: "home",
+      playerRole: isBib ? "bib" : "team",
     };
     shell.setTokens([...tokens, newToken]);
     setTokenNumberById((prev) => ({ ...prev, [newToken.id]: nextNumber }));
+    if (isBib) {
+      setBibTokenIds((prev) => new Set(prev).add(newToken.id));
+    }
   };
 
   const onRemoveSelectedPlayer = () => {
@@ -1820,6 +1859,7 @@ export default function TacticalPlaySurface() {
     // Clean unit memberships
     setUnits((prev) => prev.map((u) => ({ ...u, memberIds: u.memberIds.filter((mid) => mid !== removedId) })));
     setAwayTokenIds((prev) => { const next = new Set(prev); next.delete(removedId); return next; });
+    setBibTokenIds((prev) => { const next = new Set(prev); next.delete(removedId); return next; });
     setTokenNumberById((prev) => { const next = { ...prev }; delete next[removedId]; return next; });
   };
 
@@ -1870,6 +1910,7 @@ export default function TacticalPlaySurface() {
     setTokenSizeState("medium");
     setPrimaryColorState("blue");
     setAwayColorState("red");
+    setBibColorState("yellow");
     setSelectedToken(null);
     setRouteCount(0);
     setRoutes([]);
@@ -1888,6 +1929,7 @@ export default function TacticalPlaySurface() {
     setTrainingItems([]);
     setSelectedTrainingItemId(null);
     setAwayTokenIds(new Set());
+    setBibTokenIds(new Set());
     setIsPlaying(false);
     setIsPaused(false);
     setTokenNumberById(Object.fromEntries(defaultTokens.map((token) => [token.id, token.number])));
@@ -3044,6 +3086,32 @@ export default function TacticalPlaySurface() {
                         transition: "outline-width 0.1s, outline-offset 0.1s",
                       }}
                       onClick={() => onSetPrimaryColor(c)}
+                    />
+                  ))}
+                </div>
+                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Bib Players ({bibTokenIds.size})</span>
+                  {ALL_TOKEN_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-label={`Bib ${c}`}
+                      style={{
+                        width: "26px",
+                        height: "26px",
+                        minWidth: "26px",
+                        borderRadius: "50%",
+                        background: TOKEN_COLOR_BG[c],
+                        border: "none",
+                        cursor: "pointer",
+                        padding: 0,
+                        flexShrink: 0,
+                        outline: bibColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
+                        outlineOffset: bibColor === c ? "2px" : "1px",
+                        boxShadow: bibColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
+                        transition: "outline-width 0.1s, outline-offset 0.1s",
+                      }}
+                      onClick={() => onSetBibColor(c)}
                     />
                   ))}
                 </div>

@@ -26,6 +26,11 @@ export type MovementBoardToken = {
   draggable?: boolean;
   isGhost?: boolean;
   team?: "home" | "away";
+  // Training role, independent of `team`. Undefined behaves exactly like
+  // "team" (today's behaviour) so existing saved Tactical Plays are
+  // unaffected. Bib Players keep a fixed bib colour and are excluded from
+  // team-colour changes — see onSetPrimaryColor in TacticalPlaySurface.
+  playerRole?: "team" | "bib";
 };
 
 export type MovementCanvasTapPayload = {

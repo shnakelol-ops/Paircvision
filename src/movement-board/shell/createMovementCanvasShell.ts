@@ -319,6 +319,10 @@ export async function createMovementCanvasShell(
       if (ballState.carrierId !== shooterId) return;
       shootToGoalInternal();
     },
+    // A fired pass hands its flight off to tick()'s own elapsedMs tracking —
+    // without surfacing that here, hasWork() has no way to know the flight is
+    // still in progress once activePassRuns/activeShotRuns are empty.
+    hasActiveBallAnimation: () => activeBallPass !== null,
   });
 
   const ballLayer = createBallLayer(ballLayerContainer);

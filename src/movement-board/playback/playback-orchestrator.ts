@@ -74,6 +74,14 @@ export type PlaybackOrchestratorCallbacks = {
   getShotEvents: () => readonly TacticalShotEvent[];
   /** Called when a shot delay expires — shell fires the goal animation. */
   onShotStart: (shooterId: string) => void;
+  /**
+   * Whether a pass's ball-flight arc is still travelling in the shell. The
+   * orchestrator has no other visibility into that animation — once a pass's
+   * delay elapses, onPassStart hands the flight off entirely to the shell's
+   * own ticker. Without this, hasWork() goes false (and auto-stops playback)
+   * the instant the pass fires, freezing the flight before it can land.
+   */
+  hasActiveBallAnimation?: () => boolean;
 };
 
 export type PlaybackOrchestrator = {
@@ -136,7 +144,8 @@ export function createPlaybackOrchestrator(
     activePassRuns.size > 0 ||
     pendingPassRuns.size > 0 ||
     activeShotRuns.size > 0 ||
-    pendingShotRuns.size > 0;
+    pendingShotRuns.size > 0 ||
+    (callbacks.hasActiveBallAnimation?.() ?? false);
 
   const cancelRuns = () => {
     for (const run of activePlaybackRuns.values()) {
@@ -255,7 +264,16 @@ export function createPlaybackOrchestrator(
   };
 
   const step = (deltaMs: number) => {
-    if (!isPlaying || !hasWork()) return;
+    // Only gate on isPlaying here, not hasWork(): a ball-flight animation
+    // (see hasActiveBallAnimation above) can go from "in progress" to "done"
+    // entirely between step() calls, from the shell's own ticker, not from
+    // anything this function does. If step() also bailed early whenever
+    // hasWork() was already false at entry, that transition would never
+    // reach the "no work left" check below, and playback would stay stuck
+    // "playing" forever once the last thing to finish was a ball flight.
+    // The loops below are no-ops on empty maps, so this costs nothing when
+    // there's genuinely nothing to do.
+    if (!isPlaying) return;
 
     const multiplier = speedMultiplierOverride;
     const completedIds: string[] = [];
