@@ -3543,10 +3543,12 @@ export async function createTacticalPadLiteSurface(
         const fromPoint = fromPlayersById.get(player.id);
         const toPoint = toPlayersById.get(player.id);
         if (!fromPoint || !toPoint) continue;
-        player.current = {
-          x: fromPoint.x + (toPoint.x - fromPoint.x) * easedProgress,
-          y: fromPoint.y + (toPoint.y - fromPoint.y) * easedProgress,
-        };
+        player.current = toPoint.path?.length
+          ? interpolatePath(fromPoint, toPoint, progress)
+          : {
+              x: fromPoint.x + (toPoint.x - fromPoint.x) * easedProgress,
+              y: fromPoint.y + (toPoint.y - fromPoint.y) * easedProgress,
+            };
         setTokenWorldPositionForPoint(player, player.current, mapper);
       }
       for (const toBall of toSnapshot.football) {
