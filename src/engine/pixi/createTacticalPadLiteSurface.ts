@@ -34,11 +34,7 @@ import {
   type TacticalDrawingSnapshot,
   type WhiteboardDrawTool,
 } from "../../features/quickboard/drawing/tacticalDrawingTypes";
-import {
-  createBasicRouteFollowSession,
-  type BasicRouteFollowSession,
-  type RoutePoint,
-} from "./movement/basicRouteFollow";
+import { type RoutePoint } from "./movement/basicRouteFollow";
 import {
   computeSharedDelta,
   orderMembersForGuide,
@@ -161,13 +157,6 @@ export type TacticalBoardState = {
   shapeLinksVisible?: unknown;
 };
 
-export type TacticalRouteState = {
-  isRouteCaptureMode: boolean;
-  routeCount: number;
-  maxRoutes: number;
-  ballAttachedPlayerId: string | null;
-};
-
 export type TacticalPadLiteSurface = {
   setStart: () => void;
   addPhase: () => void;
@@ -185,14 +174,10 @@ export type TacticalPadLiteSurface = {
   patchTacticalPlayer: (playerId: string, patch: TacticalPlayerKitPatch) => void;
   setItems: (items: TacticalItem[]) => void;
   setItemMode: (mode: ItemMode) => void;
-  setRouteCaptureMode: (enabled: boolean) => void;
-  clearRoutes: () => void;
-  getRouteState: () => TacticalRouteState;
   /**
-   * Milestone 4 — minimal Free Draw authoring. Draw one curved movement for
-   * a player (press on them, drag a curve, release) directly into the Phase
-   * engine's player.path, consumed by playback since Milestone 3. Entirely
-   * separate from Route capture/playback.
+   * Free Draw authoring: draw one curved movement for a player (press on
+   * them, drag a curve, release) directly into the Phase engine's
+   * player.path, consumed by playback.
    */
   setFreeDrawCaptureMode: (enabled: boolean) => void;
   reset: () => void;
@@ -250,8 +235,6 @@ type TacticalPadLiteSurfaceOptions = {
   compactPlayerTokens?: boolean;
   onItemMove?: (id: string, x: number, y: number) => void;
   onTacticalPlayerDoubleTap?: (payload: { playerId: string; clientX: number; clientY: number }) => void;
-  onRouteStateChange?: (state: TacticalRouteState) => void;
-  onRouteLimitReached?: (maxRoutes: number) => void;
   onFreeDrawStateChange?: (state: { isFreeDrawCaptureMode: boolean }) => void;
   onShapeLockChange?: (state: { mode: ShapeLockMode; memberIds: string[] }) => void;
   onShapeLinksChange?: (state: ShapeLinksState) => void;
@@ -324,12 +307,9 @@ const BALL_PATH_MIN_POINT_DISTANCE = 0.35;
 const POSSESSION_PASS_MIN_DURATION_MS = 900;
 const POSSESSION_PASS_MAX_DURATION_MS = 1800;
 const POSSESSION_PASS_REFERENCE_DISTANCE = 14;
-const BASIC_ROUTE_FOLLOW_SPEED = 18;
+// Reused by Free Draw's own capture dedup (appendFreeDrawPoint) and preview
+// smoothing (sampleRoutePoints) — Route-era names, still live dependencies.
 const BASIC_ROUTE_MIN_POINT_DISTANCE = 0.9;
-const MAX_BASIC_ROUTE_PLAYERS = 6;
-const BASIC_ROUTE_PREVIEW_SHADOW_COLOR = 0x1c1205;
-const BASIC_ROUTE_PREVIEW_CORE_COLOR = 0xf59e0b;
-const BASIC_ROUTE_PREVIEW_HIGHLIGHT_COLOR = 0xffd8a1;
 const FREE_DRAW_PREVIEW_COLOR = 0x2dd4bf;
 const BASIC_ROUTE_SAMPLE_MIN_POINT_DISTANCE = 0.1;
 const BASIC_ROUTE_SAMPLES_PER_SEGMENT = 16;
@@ -404,17 +384,9 @@ type PlayerSeed = {
   kitPatternColor?: TacticalKitColor;
 };
 
-type ActiveBasicRouteFollow = {
-  playerId: string;
-  origin: NormalizedPoint;
-  segmentIndex: number;
-  session: BasicRouteFollowSession;
-};
-
 type PlaybackKind = "default" | "possession-pass";
 
 type PlaybackStartOptions = {
-  suppressRoutePlayback?: boolean;
   kind?: PlaybackKind;
   possessionReceiverId?: string | null;
 };
@@ -792,30 +764,10 @@ function sanitizeTacticalItemCandidate(input: unknown): TacticalItem | null {
   });
 }
 
-function sanitizeBoardRoutes(input: unknown): Map<string, RoutePoint[]> {
-  if (!Array.isArray(input)) return new Map();
-  const parsed = new Map<string, RoutePoint[]>();
-  for (const entry of input) {
-    if (!isRecord(entry)) continue;
-    const playerId = typeof entry.playerId === "string" ? entry.playerId.trim() : "";
-    if (playerId.length <= 0) continue;
-    if (parsed.has(playerId)) continue;
-    const points = Array.isArray(entry.points)
-      ? entry.points
-          .map((point) => sanitizeNormalizedPoint(point))
-          .filter((point): point is NormalizedPoint => point != null)
-          .map((point) => ({ x: point.x, y: point.y }))
-      : [];
-    if (points.length < 2) continue;
-    parsed.set(playerId, points);
-  }
-  return parsed;
-}
-
 // Structural validation only — membership is not checked against the live
 // roster here (it isn't rebuilt yet at parse time). importBoardState() drops
 // any memberId that no longer resolves to a player once the new roster
-// exists, the same two-step pattern sanitizeBoardRoutes()'s caller uses.
+// exists.
 function sanitizeShapeLinkCandidate(input: unknown): ShapeLinkRecord | null {
   if (!isRecord(input)) return null;
   const id = typeof input.id === "string" ? input.id.trim() : "";
@@ -1182,9 +1134,6 @@ export async function createTacticalPadLiteSurface(
   const whiteboardPreviewGraphic = new Graphics();
   whiteboardPreviewGraphic.eventMode = "none";
   whiteboardPreviewLayer.addChild(whiteboardPreviewGraphic);
-  const basicRoutePreviewGraphic = new Graphics();
-  basicRoutePreviewGraphic.eventMode = "none";
-  whiteboardPreviewLayer.addChild(basicRoutePreviewGraphic);
   const freeDrawPreviewGraphic = new Graphics();
   freeDrawPreviewGraphic.eventMode = "none";
   whiteboardPreviewLayer.addChild(freeDrawPreviewGraphic);
@@ -1212,13 +1161,6 @@ export async function createTacticalPadLiteSurface(
 
   const playersLayer = new Container();
   world.addChild(playersLayer);
-
-  const routeSelectionLayer = new Container();
-  routeSelectionLayer.eventMode = "none";
-  world.addChild(routeSelectionLayer);
-  const routeSelectionGraphic = new Graphics();
-  routeSelectionGraphic.eventMode = "none";
-  routeSelectionLayer.addChild(routeSelectionGraphic);
 
   const ballLayer = new Container();
   ballLayer.eventMode = "passive";
@@ -1493,19 +1435,10 @@ export async function createTacticalPadLiteSurface(
   const shapeLinkSelectionOrder: string[] = [];
   let shapeLinkSelectionClosed = false;
   let shapeLinkCounter = 0;
-  let isRouteCaptureMode = false;
-  let routeByPlayerId = new Map<string, RoutePoint[]>();
-  let activeRouteRunsByPlayerId = new Map<string, ActiveBasicRouteFollow>();
-  let routeControlledPlayerIds = new Set<string>();
-  let currentRouteDraftPoints: RoutePoint[] = [];
-  let currentRouteDraftPlayerId: string | null = null;
-  let routeCapturePointerId: number | null = null;
-  let routeSelectionPulseMs = 0;
   let isPossessionPassModeEnabled = false;
-  // Milestone 4 — Free Draw authoring. Entirely separate from Route capture
-  // above: committed paths write straight into PhasePlayerSnapshot.path via
-  // captureCurrentSnapshot, consumed by the Phase engine itself (Milestone 3),
-  // not by any Route-style playback/scheduling.
+  // Free Draw authoring: committed paths write straight into
+  // PhasePlayerSnapshot.path via captureCurrentSnapshot, consumed by the
+  // Phase engine itself.
   let isFreeDrawCaptureMode = false;
   let freeDrawPathByPlayerId = new Map<string, RoutePoint[]>();
   let freeDrawDraftPoints: RoutePoint[] = [];
@@ -1546,15 +1479,6 @@ export async function createTacticalPadLiteSurface(
       renderShapeGuideGraphic();
     }
     options.onPlaybackStateChange?.({ isPlaying, isPaused });
-  }
-
-  function emitRouteStateChange(): void {
-    options.onRouteStateChange?.({
-      isRouteCaptureMode,
-      routeCount: routeByPlayerId.size,
-      maxRoutes: MAX_BASIC_ROUTE_PLAYERS,
-      ballAttachedPlayerId: getAttachedBallPlayerId(),
-    });
   }
 
   function isPlaybackInputLocked(): boolean {
@@ -1620,8 +1544,6 @@ export async function createTacticalPadLiteSurface(
     }
     renderTacticalItems();
     renderAllWhiteboardDrawings();
-    renderBasicRoutePreview();
-    renderRouteSelectionHighlight();
     renderPlayerOriginGraphic();
   }
 
@@ -1749,14 +1671,6 @@ export async function createTacticalPadLiteSurface(
     return tacticalItems.find((item) => isBallItem(item)) ?? null;
   }
 
-  function getAttachedBallPlayerId(): string | null {
-    const ball = findPrimaryBallItem();
-    if (!ball) return null;
-    const state = ballStatesByItemId.get(ball.id);
-    if (!state || state.isFree) return null;
-    return state.attachedPlayerId;
-  }
-
   function detachPrimaryBall(): void {
     if (surfaceVariant !== "tactical" || isPlaybackInputLocked()) return;
     const ball = findPrimaryBallItem();
@@ -1769,7 +1683,6 @@ export async function createTacticalPadLiteSurface(
     setItemWorldPosition(ball, mapper);
     renderTacticalItems();
     syncWhiteboardTokenInputMode();
-    emitRouteStateChange();
   }
 
   function attachPrimaryBallToPlayer(player: TacticalPlayer): void {
@@ -1787,7 +1700,6 @@ export async function createTacticalPadLiteSurface(
     setItemWorldPosition(ball, mapper);
     renderTacticalItems();
     syncWhiteboardTokenInputMode();
-    emitRouteStateChange();
   }
 
   function handlePossessionPassTap(player: TacticalPlayer): void {
@@ -1824,7 +1736,6 @@ export async function createTacticalPadLiteSurface(
     passTargetBall.isFree = true;
     passTargetBall.path = [passStartPoint, passTargetPoint];
     startPlayback([passStartSnapshot, passTargetSnapshot], {
-      suppressRoutePlayback: true,
       kind: "possession-pass",
       possessionReceiverId: player.id,
     });
@@ -1927,44 +1838,11 @@ export async function createTacticalPadLiteSurface(
     renderPlayerOriginGraphic();
   }
 
-  function renderRouteSelectionHighlight(): void {
-    routeSelectionGraphic.clear();
-    if (surfaceVariant !== "tactical") return;
-    if (!isRouteCaptureMode || isPlaybackInputLocked() || activeRouteRunsByPlayerId.size > 0) return;
-    if (!selectedPlayerId) return;
-    const selectedPlayer = players.find((player) => player.id === selectedPlayerId);
-    if (!selectedPlayer) return;
-    const worldPoint = mapper.normalizedToWorld(selectedPlayer.current);
-    const pulse = (Math.sin(routeSelectionPulseMs * 0.006) + 1) * 0.5;
-    const outerRadius = PLAYER_RADIUS * (1.56 + pulse * 0.12);
-    const innerRadius = PLAYER_RADIUS * (1.34 + pulse * 0.08);
-    routeSelectionGraphic
-      .circle(worldPoint.x, worldPoint.y, outerRadius)
-      .stroke({
-        color: 0x7cedb8,
-        width: 0.34,
-        alpha: 0.64 + pulse * 0.14,
-        alignment: 0.5,
-      })
-      .circle(worldPoint.x, worldPoint.y, innerRadius)
-      .stroke({
-        color: 0xe9fff2,
-        width: 0.24,
-        alpha: 0.68 + pulse * 0.14,
-        alignment: 0.5,
-      });
-  }
-
-  function animateRouteSelectionHighlight(deltaMs: number): void {
-    routeSelectionPulseMs += Math.max(0, deltaMs);
-    renderRouteSelectionHighlight();
-  }
-
   function syncWhiteboardTokenInputMode(): void {
     if (!isDrawingEnabledSurface) return;
     const canInteractItems = isItemInteractionEnabled();
     const isDrawingInteractionActive =
-      (activeWhiteboardTool !== "move" || isRouteCaptureMode || isFreeDrawCaptureMode) && !isPlaybackInputLocked();
+      (activeWhiteboardTool !== "move" || isFreeDrawCaptureMode) && !isPlaybackInputLocked();
     let draggingItemId: string | null = null;
     let draggingPlayerId: string | null = null;
     if (activeDrag && activeDrag.type === "item" && activeDrag.hasCrossedThreshold) {
@@ -1984,28 +1862,22 @@ export async function createTacticalPadLiteSurface(
       renderTacticalItems();
     }
     const canDragPlayers =
-      activeWhiteboardTool === "move" &&
-      !isPlaybackInputLocked() &&
-      !isRouteCaptureMode &&
-      !isFreeDrawCaptureMode &&
-      activeRouteRunsByPlayerId.size <= 0;
-    const canSelectRoutePlayers = surfaceVariant === "tactical" && isRouteCaptureMode && !isPlaybackInputLocked();
+      activeWhiteboardTool === "move" && !isPlaybackInputLocked() && !isFreeDrawCaptureMode;
     const canSelectFreeDrawPlayers = surfaceVariant === "tactical" && isFreeDrawCaptureMode && !isPlaybackInputLocked();
     for (const player of players) {
       const isCurrentPlayerDragging = draggingPlayerId === player.id;
-      player.token.eventMode = canDragPlayers || canSelectRoutePlayers || canSelectFreeDrawPlayers ? "static" : "none";
+      player.token.eventMode = canDragPlayers || canSelectFreeDrawPlayers ? "static" : "none";
       player.token.cursor = isCurrentPlayerDragging
         ? "grabbing"
         : canDragPlayers
           ? "grab"
-          : canSelectRoutePlayers || canSelectFreeDrawPlayers
+          : canSelectFreeDrawPlayers
             ? "pointer"
             : "default";
     }
     whiteboardInputLayer.eventMode = isDrawingInteractionActive ? "static" : "none";
     whiteboardInputLayer.cursor =
-      isRouteCaptureMode || isFreeDrawCaptureMode || activeWhiteboardTool !== "eraser" ? "crosshair" : "not-allowed";
-    renderRouteSelectionHighlight();
+      isFreeDrawCaptureMode || activeWhiteboardTool !== "eraser" ? "crosshair" : "not-allowed";
   }
 
   function clearPlayerOriginGraphic(): void {
@@ -3144,15 +3016,9 @@ export async function createTacticalPadLiteSurface(
     };
   }
 
-  function applySnapshotToSurface(
-    snapshot: PhaseSnapshot,
-    options?: {
-      preserveActiveRoutePlayers?: boolean;
-    },
-  ): void {
+  function applySnapshotToSurface(snapshot: PhaseSnapshot): void {
     const snapshotPlayersById = new Map(snapshot.players.map((entry) => [entry.id, entry] as const));
     for (const player of players) {
-      if (options?.preserveActiveRoutePlayers && routeControlledPlayerIds.has(player.id)) continue;
       const point = snapshotPlayersById.get(player.id);
       if (!point) continue;
       player.current = { x: point.x, y: point.y };
@@ -3182,144 +3048,6 @@ export async function createTacticalPadLiteSurface(
     }
   }
 
-  function cancelBasicRouteFollow(options?: { restoreOrigin?: boolean }): void {
-    if (activeRouteRunsByPlayerId.size > 0) {
-      for (const previous of activeRouteRunsByPlayerId.values()) {
-        previous.session.cancel();
-        if (!options?.restoreOrigin) continue;
-        const player = players.find((entry) => entry.id === previous.playerId);
-        if (!player) continue;
-        player.current = { x: previous.origin.x, y: previous.origin.y };
-        setTokenWorldPositionForPoint(player, player.current, mapper);
-        updateAttachedBallsForPlayer(player.id);
-      }
-    }
-    activeRouteRunsByPlayerId.clear();
-    routeControlledPlayerIds.clear();
-    syncWhiteboardTokenInputMode();
-  }
-
-  function clearBasicRoutePreview(): void {
-    basicRoutePreviewGraphic.clear();
-  }
-
-  function renderBasicRoutePreview(): void {
-    clearBasicRoutePreview();
-    const worldPaths: Array<{
-      points: Array<{ x: number; y: number }>;
-      isDraft: boolean;
-      isSelected: boolean;
-      isPlaybackActive: boolean;
-    }> = [];
-    const activeRoutePlayerIds = new Set(activeRouteRunsByPlayerId.keys());
-    const appendPath = (
-      points: RoutePoint[],
-      optionsForPath: { isDraft: boolean; isSelected: boolean; isPlaybackActive: boolean },
-    ): void => {
-      const sampled = sampleRoutePoints(points);
-      if (sampled.length < 2) return;
-      worldPaths.push({
-        ...optionsForPath,
-        points: sampled.map((point) => mapper.normalizedToWorld(point)),
-      });
-    };
-    for (const [playerId, route] of routeByPlayerId.entries()) {
-      appendPath(route, {
-        isDraft: false,
-        isSelected: selectedPlayerId === playerId,
-        isPlaybackActive: activeRoutePlayerIds.has(playerId),
-      });
-    }
-    if (currentRouteDraftPoints.length > 0) {
-      appendPath(currentRouteDraftPoints, {
-        isDraft: true,
-        isSelected: currentRouteDraftPlayerId != null && currentRouteDraftPlayerId === selectedPlayerId,
-        isPlaybackActive: false,
-      });
-    }
-    if (worldPaths.length <= 0) return;
-
-    const resolveAlphaScale = (path: (typeof worldPaths)[number]): number => {
-      if (path.isDraft) return 0.78;
-      if (!isPlaybackInputLocked()) return path.isSelected ? 1 : 0.9;
-      if (path.isPlaybackActive) return path.isSelected ? 1 : 0.92;
-      return path.isSelected ? 0.78 : 0.56;
-    };
-
-    const resolveWidthScale = (path: (typeof worldPaths)[number]): number => {
-      if (path.isSelected) return 1.18;
-      if (path.isPlaybackActive) return 1.06;
-      return 1;
-    };
-
-    const strokePaths = (style: { color: number; width: number; alpha: number }): void => {
-      for (const path of worldPaths) {
-        const first = path.points[0];
-        if (!first) continue;
-        basicRoutePreviewGraphic.moveTo(first.x, first.y);
-        for (let index = 1; index < path.points.length; index += 1) {
-          const point = path.points[index];
-          if (!point) continue;
-          basicRoutePreviewGraphic.lineTo(point.x, point.y);
-        }
-        const alphaScale = resolveAlphaScale(path);
-        const widthScale = resolveWidthScale(path);
-        basicRoutePreviewGraphic.stroke({
-          color: style.color,
-          width: style.width * widthScale,
-          alpha: style.alpha * alphaScale,
-          cap: "round",
-          join: "round",
-          alignment: 0.5,
-        });
-      }
-    };
-
-    // Layered tactical stroke keeps lines readable on dark pitch and screen share,
-    // while preserving a restrained telestrator feel.
-    strokePaths({ color: BASIC_ROUTE_PREVIEW_SHADOW_COLOR, width: 2.3, alpha: 0.33 });
-    strokePaths({ color: BASIC_ROUTE_PREVIEW_CORE_COLOR, width: 1.35, alpha: 0.95 });
-    strokePaths({ color: BASIC_ROUTE_PREVIEW_HIGHLIGHT_COLOR, width: 0.58, alpha: 0.46 });
-  }
-
-  function clearRouteDraft(): void {
-    routeCapturePointerId = null;
-    currentRouteDraftPoints = [];
-    currentRouteDraftPlayerId = null;
-    renderBasicRoutePreview();
-  }
-
-  function clearRouteAssignments(): void {
-    routeCapturePointerId = null;
-    currentRouteDraftPoints = [];
-    currentRouteDraftPlayerId = null;
-    routeByPlayerId.clear();
-    selectedPlayerId = null;
-    clearBasicRoutePreview();
-    renderRouteSelectionHighlight();
-    emitRouteStateChange();
-  }
-
-  function setRouteCaptureModeState(enabled: boolean): void {
-    const next = Boolean(enabled) && surfaceVariant === "tactical";
-    if (next === isRouteCaptureMode) return;
-    isRouteCaptureMode = next;
-    if (!isRouteCaptureMode) {
-      clearRouteDraft();
-    }
-    syncWhiteboardTokenInputMode();
-    emitRouteStateChange();
-  }
-
-  function appendBasicRoutePoint(point: RoutePoint): void {
-    const previous = currentRouteDraftPoints[currentRouteDraftPoints.length - 1];
-    if (previous && Math.hypot(previous.x - point.x, previous.y - point.y) < BASIC_ROUTE_MIN_POINT_DISTANCE) {
-      return;
-    }
-    currentRouteDraftPoints = [...currentRouteDraftPoints, point];
-    renderBasicRoutePreview();
-  }
-
   function findRouteSelectablePlayerAtWorldPoint(worldPoint: { x: number; y: number }): TacticalPlayer | null {
     if (surfaceVariant !== "tactical") return null;
     const touchRadiusInWorld = (PLAYER_TOUCH_HIT_DIAMETER_PX * 0.5) / mapper.transform.scale;
@@ -3338,9 +3066,8 @@ export async function createTacticalPadLiteSurface(
     return closest;
   }
 
-  // --- Milestone 4: Free Draw authoring ---------------------------------
-  // Deliberately separate from the Route capture functions above: no
-  // scheduling, no session, no playback engine of its own. A committed
+  // --- Free Draw authoring ------------------------------------------------
+  // No scheduling, no session, no playback engine of its own. A committed
   // draw is just data that rides on the next captureCurrentSnapshot() call,
   // exactly like the football's own path already does.
 
@@ -3399,24 +3126,6 @@ export async function createTacticalPadLiteSurface(
     options.onFreeDrawStateChange?.({ isFreeDrawCaptureMode });
   }
 
-  function buildBasicRouteRunsForCurrentPlayers(segmentIndex: number): Map<string, ActiveBasicRouteFollow> {
-    const runs = new Map<string, ActiveBasicRouteFollow>();
-    for (const [playerId, route] of routeByPlayerId.entries()) {
-      const player = players.find((entry) => entry.id === playerId);
-      if (!player || route.length < 2) continue;
-      const sampledRoute = sampleRoutePoints(route);
-      if (sampledRoute.length < 2) continue;
-      const origin = { x: player.current.x, y: player.current.y };
-      const session = createBasicRouteFollowSession({
-        target: player.current,
-        route: sampledRoute.map((point) => ({ ...point })),
-        speed: BASIC_ROUTE_FOLLOW_SPEED,
-      });
-      runs.set(player.id, { playerId: player.id, origin, segmentIndex, session });
-    }
-    return runs;
-  }
-
   function cancelPlaybackAnimation(): void {
     isPlaying = false;
     isPaused = false;
@@ -3441,12 +3150,6 @@ export async function createTacticalPadLiteSurface(
         ? optionsForPlayback?.possessionReceiverId ?? null
         : null;
     applySnapshotToSurface(path[0]!);
-    const shouldSuppressRoutePlayback = optionsForPlayback?.suppressRoutePlayback === true;
-    activeRouteRunsByPlayerId =
-      !shouldSuppressRoutePlayback && routeByPlayerId.size > 0
-        ? buildBasicRouteRunsForCurrentPlayers(activeSegmentIndex)
-        : new Map();
-    routeControlledPlayerIds = new Set(activeRouteRunsByPlayerId.keys());
     emitPlaybackStateChange();
   }
 
@@ -3494,7 +3197,6 @@ export async function createTacticalPadLiteSurface(
       emitPlaybackStateChange();
       return;
     }
-    cancelBasicRouteFollow();
     cancelPlaybackAnimation();
     if (phases.length > 0) {
       playSavedPhaseSequence();
@@ -3634,7 +3336,6 @@ export async function createTacticalPadLiteSurface(
       const fromPlayersById = new Map(fromSnapshot.players.map((entry) => [entry.id, entry] as const));
       const toPlayersById = new Map(toSnapshot.players.map((entry) => [entry.id, entry] as const));
       for (const player of players) {
-        if (routeControlledPlayerIds.has(player.id)) continue;
         const fromPoint = fromPlayersById.get(player.id);
         const toPoint = toPlayersById.get(player.id);
         if (!fromPoint || !toPoint) continue;
@@ -3699,7 +3400,7 @@ export async function createTacticalPadLiteSurface(
       }
 
       if (progress >= 1) {
-        applySnapshotToSurface(toSnapshot, { preserveActiveRoutePlayers: true });
+        applySnapshotToSurface(toSnapshot);
         activeSegmentIndex += 1;
         playElapsedMs = 0;
         if (activeSegmentIndex >= playbackPath.length - 1) {
@@ -3720,36 +3421,6 @@ export async function createTacticalPadLiteSurface(
           remainingMs = 0.0001;
         }
       }
-    }
-  }
-
-  function stepBasicRouteFollow(deltaMs: number): void {
-    if (isPaused) return;
-    if (activeRouteRunsByPlayerId.size <= 0) return;
-    const scaledDeltaMs = deltaMs * playbackSpeedMultiplier;
-    const completedIds: string[] = [];
-    for (const [playerId, active] of activeRouteRunsByPlayerId.entries()) {
-      const player = players.find((entry) => entry.id === playerId);
-      if (!player) {
-        completedIds.push(playerId);
-        continue;
-      }
-      if (!active.session.isActive()) {
-        completedIds.push(playerId);
-        continue;
-      }
-      active.session.step(scaledDeltaMs);
-      setTokenWorldPositionForPoint(player, player.current, mapper);
-      updateAttachedBallsForPlayer(player.id);
-      if (!active.session.isActive()) {
-        completedIds.push(playerId);
-      }
-    }
-    for (const playerId of completedIds) {
-      activeRouteRunsByPlayerId.delete(playerId);
-    }
-    if (activeRouteRunsByPlayerId.size <= 0) {
-      syncWhiteboardTokenInputMode();
     }
   }
 
@@ -3906,13 +3577,6 @@ export async function createTacticalPadLiteSurface(
   function bindPlayerTokenInteraction(player: TacticalPlayer): void {
     player.token.on("pointerdown", (event) => {
       if (isPlaybackInputLocked()) return;
-      if (activeRouteRunsByPlayerId.size > 0) return;
-      if (isRouteCaptureMode) {
-        selectedPlayerId = player.id;
-        clearSelectedItem();
-        syncWhiteboardTokenInputMode();
-        return;
-      }
       if (activeWhiteboardTool !== "move") return;
       if (activeDrag) return;
       selectedPlayerId = player.id;
@@ -3936,7 +3600,6 @@ export async function createTacticalPadLiteSurface(
     player.token.on("pointerup", (event) => {
       if (surfaceVariant !== "tactical") return;
       if (isPlaybackInputLocked()) return;
-      if (isRouteCaptureMode) return;
       if (activeWhiteboardTool !== "move") return;
       if (!activeDrag || activeDrag.type !== "player" || activeDrag.playerId !== player.id) return;
       if (activeDrag.hasCrossedThreshold) {
@@ -4121,10 +3784,6 @@ export async function createTacticalPadLiteSurface(
       drawings: drawingStates,
       phases: phaseStates,
       movementPaths: phaseStates.map((phase) => cloneSnapshot(phase)),
-      routes: Array.from(routeByPlayerId.entries()).map(([playerId, points]) => ({
-        playerId,
-        points: points.map((point) => ({ x: point.x, y: point.y })),
-      })),
       kits: kitsByPlayer,
       teamKits: currentTeamKits,
       teamState: currentTeamState,
@@ -4189,9 +3848,8 @@ export async function createTacticalPadLiteSurface(
           .map((entry) => sanitizePhaseSnapshot(entry, legacyFallbackIdsByIndex))
           .filter((entry): entry is PhaseSnapshot => entry != null)
       : [];
-    const parsedRoutes = sanitizeBoardRoutes(state.routes);
     // Structural validation only; membership is re-checked against the new
-    // roster once it exists, below (same two-step pattern as parsedRoutes).
+    // roster once it exists, below.
     const parsedShapeLinks = sanitizeShapeLinks(state.shapeLinks);
     const parsedShowShapeLinks =
       typeof state.shapeLinksVisible === "boolean" ? state.shapeLinksVisible : true;
@@ -4213,9 +3871,6 @@ export async function createTacticalPadLiteSurface(
     releaseActiveDrag();
     clearSelectedItem();
     cancelPlaybackAnimation();
-    cancelBasicRouteFollow();
-    clearRouteAssignments();
-    setRouteCaptureModeState(false);
     setFreeDrawCaptureModeState(false);
     freeDrawPathByPlayerId = new Map();
     singlePlayTargetSnapshot = null;
@@ -4270,18 +3925,7 @@ export async function createTacticalPadLiteSurface(
     const nextStartSnapshot = normalizePhaseForRoster(parsedStart ?? captureCurrentSnapshot());
     startPositions = nextStartSnapshot;
     phases = parsedPhases.map((phase) => normalizePhaseForRoster(phase));
-    routeByPlayerId = new Map(
-      Array.from(parsedRoutes.entries())
-        .filter(([playerId]) => players.some((player) => player.id === playerId))
-        .slice(0, MAX_BASIC_ROUTE_PLAYERS)
-        .map(
-          ([playerId, points]) =>
-            [playerId, points.map((point) => ({ x: point.x, y: point.y }))] as [string, RoutePoint[]],
-        ),
-    );
     options.onPhaseCountChange?.(phases.length);
-    renderBasicRoutePreview();
-    emitRouteStateChange();
 
     // Drop any member no longer present in the rebuilt roster, and any link
     // left with fewer than 2 resolvable members.
@@ -4392,15 +4036,6 @@ export async function createTacticalPadLiteSurface(
     if (selectedPlayerId === removedPlayer.id) {
       selectedPlayerId = null;
     }
-    if (routeByPlayerId.delete(removedPlayer.id)) {
-      emitRouteStateChange();
-    }
-    const activeRoute = activeRouteRunsByPlayerId.get(removedPlayer.id);
-    if (activeRoute) {
-      activeRoute.session.cancel();
-      activeRouteRunsByPlayerId.delete(removedPlayer.id);
-      routeControlledPlayerIds.delete(removedPlayer.id);
-    }
     if (lastTappedPlayer?.playerId === removedPlayer.id) {
       lastTappedPlayer = null;
     }
@@ -4430,20 +4065,6 @@ export async function createTacticalPadLiteSurface(
   syncPlayersToViewport();
 
   function handleStagePointerMove(event: unknown): void {
-    if (isRouteCaptureMode && !isPlaybackInputLocked() && routeCapturePointerId !== null) {
-      const pointerId = getPointerIdFromEvent(event);
-      if (pointerId == null || pointerId === routeCapturePointerId) {
-        const worldPoint = getBoundedWorldPointFromEvent(event);
-        if (worldPoint) {
-          const normalized = mapper.worldToNormalized(worldPoint);
-          appendBasicRoutePoint({
-            x: clampNormalizedValue(normalized.x),
-            y: clampNormalizedValue(normalized.y),
-          });
-        }
-      }
-      return;
-    }
     if (isFreeDrawCaptureMode && !isPlaybackInputLocked() && freeDrawCapturePointerId !== null) {
       const pointerId = getPointerIdFromEvent(event);
       if (pointerId == null || pointerId === freeDrawCapturePointerId) {
@@ -4473,8 +4094,8 @@ export async function createTacticalPadLiteSurface(
         if (player && freeDrawDraftPoints.length >= 2) {
           // Smooth once, here, at commit time — the same sampleRoutePoints
           // Catmull-Rom/Bezier pass the live preview already uses (see
-          // renderFreeDrawPreview) and Route already uses before playback.
-          // Storing the smoothed path (not the raw pointer capture) is what
+          // renderFreeDrawPreview). Storing the smoothed path (not the raw
+          // pointer capture) is what
           // makes playback match the curve the coach actually saw while
           // drawing. Nothing about interpolatePath or the Phase engine's
           // walk changes — only the data it walks.
@@ -4504,28 +4125,6 @@ export async function createTacticalPadLiteSurface(
       }
       return;
     }
-    if (isRouteCaptureMode && !isPlaybackInputLocked()) {
-      const pointerId = getPointerIdFromEvent(event);
-      if (routeCapturePointerId == null || pointerId == null || pointerId === routeCapturePointerId) {
-        if (currentRouteDraftPlayerId && currentRouteDraftPoints.length >= 2) {
-          const hasExistingRoute = routeByPlayerId.has(currentRouteDraftPlayerId);
-          if (hasExistingRoute || routeByPlayerId.size < MAX_BASIC_ROUTE_PLAYERS) {
-            routeByPlayerId.set(
-              currentRouteDraftPlayerId,
-              currentRouteDraftPoints.map((point) => ({ x: point.x, y: point.y })),
-            );
-            emitRouteStateChange();
-          } else {
-            options.onRouteLimitReached?.(MAX_BASIC_ROUTE_PLAYERS);
-          }
-        }
-        currentRouteDraftPoints = [];
-        currentRouteDraftPlayerId = null;
-        routeCapturePointerId = null;
-        renderBasicRoutePreview();
-      }
-      return;
-    }
     if (!isMatchingActivePointer(event)) return;
     endWhiteboardDrawing(event);
     releaseActiveDrag();
@@ -4539,7 +4138,6 @@ export async function createTacticalPadLiteSurface(
       activeDrag == null &&
       activeWhiteboardTool === "move" &&
       !isPlaybackInputLocked() &&
-      !isRouteCaptureMode &&
       !isFreeDrawCaptureMode
     ) {
       const stagePoint = getStagePointFromEvent(event, app.stage);
@@ -4554,8 +4152,7 @@ export async function createTacticalPadLiteSurface(
       clearSelectedItem();
       const worldPoint = getBoundedWorldPointFromEvent(event);
       if (!worldPoint) return;
-      // findRouteSelectablePlayerAtWorldPoint is a pure hit-test (nearest
-      // player within touch radius) — reused as-is, not Route-specific.
+      // A pure hit-test (nearest player within touch radius).
       const tappedPlayer = findRouteSelectablePlayerAtWorldPoint(worldPoint);
       if (!tappedPlayer) return;
       freeDrawCapturePointerId = getPointerIdFromEvent(event);
@@ -4568,36 +4165,11 @@ export async function createTacticalPadLiteSurface(
       });
       return;
     }
-    if (isRouteCaptureMode && !isPlaybackInputLocked()) {
-      releaseActiveDrag();
-      clearSelectedItem();
-      const worldPoint = getBoundedWorldPointFromEvent(event);
-      if (!worldPoint) return;
-      const previousSelectedPlayerId = selectedPlayerId;
-      const tappedPlayer = findRouteSelectablePlayerAtWorldPoint(worldPoint);
-      if (tappedPlayer) {
-        selectedPlayerId = tappedPlayer.id;
-        syncWhiteboardTokenInputMode();
-        if (previousSelectedPlayerId !== tappedPlayer.id) return;
-      }
-      if (!selectedPlayerId) return;
-      routeCapturePointerId = getPointerIdFromEvent(event);
-      currentRouteDraftPlayerId = selectedPlayerId;
-      currentRouteDraftPoints = [];
-      const normalized = mapper.worldToNormalized(worldPoint);
-      appendBasicRoutePoint({
-        x: clampNormalizedValue(normalized.x),
-        y: clampNormalizedValue(normalized.y),
-      });
-      return;
-    }
     startWhiteboardDrawing(event);
   });
   app.ticker.add(() => {
     stepPlayback(app.ticker.deltaMS);
-    stepBasicRouteFollow(app.ticker.deltaMS);
     animatePlayerDragVisuals(app.ticker.deltaMS);
-    animateRouteSelectionHighlight(app.ticker.deltaMS);
     // Read-only: redraws tethers from whatever positions the steps above (or
     // a manual drag) already produced this frame. Never feeds back into them.
     renderShapeLinksGraphic();
@@ -4612,16 +4184,12 @@ export async function createTacticalPadLiteSurface(
   fitToHost();
   options.onPhaseCountChange?.(0);
   emitPlaybackStateChange();
-  emitRouteStateChange();
   const pristineBoardState = cloneBoardStateSnapshot(captureBoardState());
 
   return {
     setStart: () => {
       releaseActiveDrag();
       clearSelectedItem();
-      cancelBasicRouteFollow();
-      clearRouteAssignments();
-      setRouteCaptureModeState(false);
       setFreeDrawCaptureModeState(false);
       cancelPlaybackAnimation();
       singlePlayTargetSnapshot = null;
@@ -4634,8 +4202,6 @@ export async function createTacticalPadLiteSurface(
     addPhase: () => {
       releaseActiveDrag();
       clearSelectedItem();
-      cancelBasicRouteFollow();
-      setRouteCaptureModeState(false);
       setFreeDrawCaptureModeState(false);
       cancelPlaybackAnimation();
       singlePlayTargetSnapshot = null;
@@ -4647,8 +4213,6 @@ export async function createTacticalPadLiteSurface(
     undoPhase: () => {
       releaseActiveDrag();
       clearSelectedItem();
-      cancelBasicRouteFollow();
-      setRouteCaptureModeState(false);
       setFreeDrawCaptureModeState(false);
       cancelPlaybackAnimation();
       singlePlayTargetSnapshot = null;
@@ -4660,9 +4224,6 @@ export async function createTacticalPadLiteSurface(
     },
     newBoard: () => {
       if (surfaceVariant !== "tactical") return;
-      cancelBasicRouteFollow();
-      clearRouteAssignments();
-      setRouteCaptureModeState(false);
       singlePlayTargetSnapshot = null;
       importBoardState(cloneBoardStateSnapshot(pristineBoardState));
     },
@@ -4720,19 +4281,6 @@ export async function createTacticalPadLiteSurface(
       syncWhiteboardTokenInputMode();
       renderTacticalItems();
     },
-    setRouteCaptureMode: (enabled) => {
-      if (surfaceVariant !== "tactical") return;
-      if (enabled) {
-        releaseActiveDrag();
-        clearSelectedItem();
-      }
-      setRouteCaptureModeState(enabled);
-      if (enabled && activeWhiteboardTool !== "move") {
-        activeWhiteboardTool = "move";
-        tacticalDrawingController.setTool("move");
-        renderAllWhiteboardDrawings();
-      }
-    },
     setFreeDrawCaptureMode: (enabled) => {
       if (surfaceVariant !== "tactical") return;
       if (enabled) {
@@ -4746,22 +4294,9 @@ export async function createTacticalPadLiteSurface(
         renderAllWhiteboardDrawings();
       }
     },
-    getRouteState: () => ({
-      isRouteCaptureMode,
-      routeCount: routeByPlayerId.size,
-      maxRoutes: MAX_BASIC_ROUTE_PLAYERS,
-      ballAttachedPlayerId: getAttachedBallPlayerId(),
-    }),
-    clearRoutes: () => {
-      cancelBasicRouteFollow();
-      clearRouteAssignments();
-      setRouteCaptureModeState(false);
-      singlePlayTargetSnapshot = null;
-    },
     reset: () => {
       releaseActiveDrag();
       cancelPlaybackAnimation();
-      cancelBasicRouteFollow({ restoreOrigin: true });
       applySnapshotToSurface(startPositions);
     },
     reflow: () => {
@@ -4813,9 +4348,6 @@ export async function createTacticalPadLiteSurface(
       if (tool !== "move") {
         releaseActiveDrag();
         clearSelectedItem();
-        if (isRouteCaptureMode) {
-          setRouteCaptureModeState(false);
-        }
       }
       activeWhiteboardTool = tool;
       tacticalDrawingController.setTool(sanitizeDrawingTool(tool) ?? "move");
@@ -4915,8 +4447,6 @@ export async function createTacticalPadLiteSurface(
       })),
     }),
     destroy: () => {
-      cancelBasicRouteFollow();
-      clearRouteAssignments();
       resizeObserver.disconnect();
       canvas.removeEventListener("webglcontextlost", handleContextLost);
       canvas.removeEventListener("webglcontextrestored", handleContextRestored);
