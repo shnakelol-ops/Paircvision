@@ -3877,6 +3877,35 @@ export async function createTacticalPadLiteSurface(
     };
   }
 
+  /**
+   * The single tap-on-a-player action: possession (attach/Tap Pass) or the
+   * Shape Lock/Shape Links intercepts that take priority over it. Shared by
+   * every gesture that can end in "the coach tapped this player without
+   * dragging" — Move-mode's own token drag/tap, and Free Draw's tap-vs-draw
+   * disambiguation — so possession logic is never duplicated or reimplemented
+   * per mode. Free Draw does not get its own possession model; it reuses
+   * this one exactly.
+   */
+  function handlePlayerTapAction(player: TacticalPlayer, event: unknown): void {
+    if (isShapeLinkSelectMode) {
+      handleShapeLinkPlayerTap(player.id);
+      lastTappedPlayer = null;
+      return;
+    }
+    if (shapeLockMode !== "off") {
+      if (shapeLockMode === "select") toggleShapeMember(player.id);
+      lastTappedPlayer = null;
+      return;
+    }
+    if (isPossessionPassModeEnabled) {
+      lastTappedPlayer = null;
+      handlePossessionPassTap(player);
+      return;
+    }
+    attachPrimaryBallToPlayer(player);
+    emitPlayerDoubleTap(player, event);
+  }
+
   function bindPlayerTokenInteraction(player: TacticalPlayer): void {
     player.token.on("pointerdown", (event) => {
       if (isPlaybackInputLocked()) return;
@@ -3917,28 +3946,7 @@ export async function createTacticalPadLiteSurface(
         lastTappedPlayer = null;
         return;
       }
-      // Shape Links select mode intercepts taps: the order tapped in defines
-      // the chain, and re-tapping the first member closes it into a loop.
-      if (isShapeLinkSelectMode) {
-        handleShapeLinkPlayerTap(player.id);
-        lastTappedPlayer = null;
-        return;
-      }
-      // Shape Lock intercepts taps: in "select" mode a tap toggles membership;
-      // in "active" mode a tap is a no-op. Either way, suppress ball attach and
-      // the double-tap kit editor while a shape is being edited.
-      if (shapeLockMode !== "off") {
-        if (shapeLockMode === "select") toggleShapeMember(player.id);
-        lastTappedPlayer = null;
-        return;
-      }
-      if (isPossessionPassModeEnabled) {
-        lastTappedPlayer = null;
-        handlePossessionPassTap(player);
-        return;
-      }
-      attachPrimaryBallToPlayer(player);
-      emitPlayerDoubleTap(player, event);
+      handlePlayerTapAction(player, event);
     });
   }
 
@@ -4462,17 +4470,30 @@ export async function createTacticalPadLiteSurface(
     if (isFreeDrawCaptureMode && !isPlaybackInputLocked()) {
       const pointerId = getPointerIdFromEvent(event);
       if (freeDrawCapturePointerId == null || pointerId == null || pointerId === freeDrawCapturePointerId) {
-        if (freeDrawDraftPlayerId && freeDrawDraftPoints.length >= 2) {
-          const player = players.find((entry) => entry.id === freeDrawDraftPlayerId);
+        const player = freeDrawDraftPlayerId
+          ? players.find((entry) => entry.id === freeDrawDraftPlayerId)
+          : undefined;
+        if (player && freeDrawDraftPoints.length >= 2) {
           const finalPoint = freeDrawDraftPoints[freeDrawDraftPoints.length - 1];
-          if (player && finalPoint) {
+          if (finalPoint) {
             freeDrawPathByPlayerId.set(
-              freeDrawDraftPlayerId,
+              player.id,
               freeDrawDraftPoints.map((point) => ({ x: point.x, y: point.y })),
             );
             player.current = { x: finalPoint.x, y: finalPoint.y };
             setTokenWorldPositionForPoint(player, player.current, mapper);
+            // Movement authoring must never leave a held ball behind: keep it
+            // glued to its holder exactly as a straight drag already does
+            // every frame (updateDraggedPlayerFromEvent). Possession itself
+            // is untouched — only the attached ball's rendered position is
+            // refreshed to follow the player's new spot.
+            updateAttachedBallsForPlayer(player.id);
           }
+        } else if (player) {
+          // A tap without a meaningful drag is not a movement edit — it's the
+          // same possession gesture Move mode already has. Free Draw does not
+          // get its own attach/pass behaviour; it reuses this one exactly.
+          handlePlayerTapAction(player, event);
         }
         freeDrawCapturePointerId = null;
         freeDrawDraftPoints = [];
