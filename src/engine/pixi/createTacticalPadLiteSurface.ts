@@ -4471,12 +4471,17 @@ export async function createTacticalPadLiteSurface(
           ? players.find((entry) => entry.id === freeDrawDraftPlayerId)
           : undefined;
         if (player && freeDrawDraftPoints.length >= 2) {
-          const finalPoint = freeDrawDraftPoints[freeDrawDraftPoints.length - 1];
+          // Smooth once, here, at commit time — the same sampleRoutePoints
+          // Catmull-Rom/Bezier pass the live preview already uses (see
+          // renderFreeDrawPreview) and Route already uses before playback.
+          // Storing the smoothed path (not the raw pointer capture) is what
+          // makes playback match the curve the coach actually saw while
+          // drawing. Nothing about interpolatePath or the Phase engine's
+          // walk changes — only the data it walks.
+          const smoothedPath = sampleRoutePoints(freeDrawDraftPoints);
+          const finalPoint = smoothedPath[smoothedPath.length - 1];
           if (finalPoint) {
-            freeDrawPathByPlayerId.set(
-              player.id,
-              freeDrawDraftPoints.map((point) => ({ x: point.x, y: point.y })),
-            );
+            freeDrawPathByPlayerId.set(player.id, smoothedPath);
             player.current = { x: finalPoint.x, y: finalPoint.y };
             setTokenWorldPositionForPoint(player, player.current, mapper);
             // Movement authoring must never leave a held ball behind: keep it
