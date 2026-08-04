@@ -22,7 +22,7 @@ type CardOverrides = {
   routeMeta?: RouteMetadata | null;
   passEventsFromPlayer?: TacticalPassEvent[];
   shotEventsFromPlayer?: TacticalShotEvent[];
-  initialExpanded?: "run-timing" | "pass" | "ball" | null;
+  initialExpanded?: "run-timing" | "pass" | "shot" | "ball" | null;
 };
 
 function renderCard(overrides: CardOverrides = {}): string {
@@ -122,9 +122,9 @@ describe("PlayerActionSheet — migrated authoring parity", () => {
   it("lists this player's shots with a removal control on the card", () => {
     const html = renderCard({
       shotEventsFromPlayer: [{ id: "shot-1", shooterId: "p1", delayMs: 3000 }],
-      initialExpanded: "pass",
+      initialExpanded: "shot",
     });
-    expect(html).toContain("Shoot");
+    expect(html).toContain("Shot");
     expect(html).toContain("Remove shot");
   });
 });

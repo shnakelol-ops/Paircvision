@@ -52,9 +52,7 @@ type PlayerActionSheetProps = {
   initialExpanded?: ExpandedSection;
 };
 
-type ExpandedSection = "run-timing" | "pass" | "ball" | null;
-
-const SHOOT_SENTINEL = "__shoot__";
+type ExpandedSection = "run-timing" | "pass" | "shot" | "ball" | null;
 
 const QUICK_DELAY_OPTIONS = [
   { ms: 0,    label: "Now"  },
@@ -363,6 +361,9 @@ export default function PlayerActionSheet({
   const [runCustomSec, setRunCustomSec] = useState(5);
   const [passCustomOpen, setPassCustomOpen] = useState(false);
   const [passCustomSec, setPassCustomSec] = useState(5);
+  const [shotDelayMs, setShotDelayMs] = useState(0);
+  const [shotCustomOpen, setShotCustomOpen] = useState(false);
+  const [shotCustomSec, setShotCustomSec] = useState(5);
 
   const toggle = (section: ExpandedSection) =>
     setExpanded((prev) => (prev === section ? null : section));
@@ -498,6 +499,13 @@ export default function PlayerActionSheet({
           >
             Pass
           </button>
+          <button
+            type="button"
+            style={expanded === "shot" ? ACTION_BTN_ACTIVE : ACTION_BTN}
+            onClick={() => toggle("shot")}
+          >
+            Shot
+          </button>
         </div>
 
         {/* Run Timing sub-section */}
@@ -537,7 +545,7 @@ export default function PlayerActionSheet({
               <div style={CHIP_ROW}>
                 <span style={SUB_LABEL}>After</span>
                 {currentRunTriggerId != null && (
-                  <button type="button" style={CHIP} onClick={() => onSetRunTrigger(null)}>
+                  <button type="button" style={CHIP} aria-label="Clear trigger" onClick={() => onSetRunTrigger(null)}>
                     ×
                   </button>
                 )}
@@ -605,7 +613,7 @@ export default function PlayerActionSheet({
         {/* Pass sub-section */}
         {expanded === "pass" && (
           <div style={SUB_SECTION}>
-            {(passEventsFromPlayer.length > 0 || shotEventsFromPlayer.length > 0) && (
+            {passEventsFromPlayer.length > 0 && (
               <div style={CHIP_ROW}>
                 <span style={SUB_LABEL}>Saved</span>
                 {passEventsFromPlayer.map((p) => {
@@ -651,46 +659,6 @@ export default function PlayerActionSheet({
                     </span>
                   );
                 })}
-                {shotEventsFromPlayer.map((s) => {
-                  const delayLabel = s.delayMs > 0 ? ` +${s.delayMs / 1000}s` : "";
-                  return (
-                    <span
-                      key={s.id}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "3px",
-                        height: "24px",
-                        borderRadius: "999px",
-                        border: "1px solid rgba(74, 222, 128, 0.35)",
-                        background: "rgba(12, 40, 22, 0.80)",
-                        color: "rgba(180, 255, 160, 0.90)",
-                        fontSize: "9px",
-                        fontWeight: 600,
-                        padding: "0 6px 0 9px",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Shoot{delayLabel}
-                      <button
-                        type="button"
-                        aria-label="Remove shot"
-                        onClick={() => onRemoveShot(s.id)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          color: "rgba(74, 222, 128, 0.55)",
-                          fontSize: "11px",
-                          lineHeight: "1",
-                          cursor: "pointer",
-                          padding: "0 0 0 2px",
-                        }}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  );
-                })}
               </div>
             )}
             <div style={CHIP_ROW}>
@@ -707,13 +675,6 @@ export default function PlayerActionSheet({
                     P{num}
                   </button>
                 ))}
-              <button
-                type="button"
-                style={passToId === SHOOT_SENTINEL ? CHIP_ACTIVE : CHIP}
-                onClick={() => { setPassTriggerId(null); setPassDelayMs(0); setPassCustomOpen(false); setPassToId((prev) => (prev === SHOOT_SENTINEL ? null : SHOOT_SENTINEL)); }}
-              >
-                Shoot
-              </button>
             </div>
             {passToId && (
               <>
@@ -741,12 +702,11 @@ export default function PlayerActionSheet({
                     Custom
                   </button>
                 </div>
-                {/* Pass "after Pn" trigger — not applicable to a shot */}
-                {passToId !== SHOOT_SENTINEL && passTriggerCandidates.length > 0 && (
+                {passTriggerCandidates.length > 0 && (
                   <div style={CHIP_ROW_SCROLL}>
                     <span style={SUB_LABEL}>After</span>
                     {passTriggerId != null && (
-                      <button type="button" style={CHIP} onClick={() => setPassTriggerId(null)}>
+                      <button type="button" style={CHIP} aria-label="Clear trigger" onClick={() => setPassTriggerId(null)}>
                         ×
                       </button>
                     )}
@@ -770,12 +730,7 @@ export default function PlayerActionSheet({
                     seconds={passCustomSec}
                     onSeconds={setPassCustomSec}
                     onDone={() => {
-                      const ms = passCustomSec * 1000;
-                      if (passToId === SHOOT_SENTINEL) {
-                        onAddShot(ms);
-                      } else if (passToId) {
-                        onAddPass(passToId, { delayMs: ms });
-                      }
+                      onAddPass(passToId, { delayMs: passCustomSec * 1000 });
                       setPassToId(null);
                       setPassDelayMs(0);
                       setPassTriggerId(null);
@@ -789,26 +744,121 @@ export default function PlayerActionSheet({
                     type="button"
                     style={CONFIRM_BTN}
                     onClick={() => {
-                      if (passToId === SHOOT_SENTINEL) {
-                        onAddShot(passDelayMs);
-                      } else {
-                        onAddPass(
-                          passToId,
-                          passTriggerId != null
-                            ? { triggeredBy: passTriggerId }
-                            : { delayMs: passDelayMs },
-                        );
-                      }
+                      onAddPass(
+                        passToId,
+                        passTriggerId != null
+                          ? { triggeredBy: passTriggerId }
+                          : { delayMs: passDelayMs },
+                      );
                       setPassToId(null);
                       setPassDelayMs(0);
                       setPassTriggerId(null);
                       setExpanded(null);
                     }}
                   >
-                    {passToId === SHOOT_SENTINEL ? "Add Shoot" : "Add Pass"}
+                    Add Pass
                   </button>
                 )}
               </>
+            )}
+          </div>
+        )}
+
+        {/* Shot sub-section */}
+        {expanded === "shot" && (
+          <div style={SUB_SECTION}>
+            {shotEventsFromPlayer.length > 0 && (
+              <div style={CHIP_ROW}>
+                <span style={SUB_LABEL}>Saved</span>
+                {shotEventsFromPlayer.map((s) => {
+                  const delayLabel = s.delayMs > 0 ? ` +${s.delayMs / 1000}s` : "";
+                  return (
+                    <span
+                      key={s.id}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "3px",
+                        height: "24px",
+                        borderRadius: "999px",
+                        border: "1px solid rgba(74, 222, 128, 0.35)",
+                        background: "rgba(12, 40, 22, 0.80)",
+                        color: "rgba(180, 255, 160, 0.90)",
+                        fontSize: "9px",
+                        fontWeight: 600,
+                        padding: "0 6px 0 9px",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Shot{delayLabel}
+                      <button
+                        type="button"
+                        aria-label="Remove shot"
+                        onClick={() => onRemoveShot(s.id)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "rgba(74, 222, 128, 0.55)",
+                          fontSize: "11px",
+                          lineHeight: "1",
+                          cursor: "pointer",
+                          padding: "0 0 0 2px",
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            <div style={CHIP_ROW_SCROLL}>
+              <span style={SUB_LABEL}>Time</span>
+              {PASS_DELAY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.ms}
+                  type="button"
+                  style={!shotCustomOpen && shotDelayMs === opt.ms ? CHIP_ACTIVE : CHIP}
+                  onClick={() => { setShotDelayMs(opt.ms); setShotCustomOpen(false); }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                style={shotCustomOpen ? CHIP_ACTIVE : CHIP}
+                onClick={() => {
+                  setShotCustomSec(Math.round(shotDelayMs / 1000) || 5);
+                  setShotCustomOpen(true);
+                }}
+              >
+                Custom
+              </button>
+            </div>
+            {shotCustomOpen && (
+              <CustomDelayPicker
+                seconds={shotCustomSec}
+                onSeconds={setShotCustomSec}
+                onDone={() => {
+                  onAddShot(shotCustomSec * 1000);
+                  setShotDelayMs(0);
+                  setShotCustomOpen(false);
+                  setExpanded(null);
+                }}
+              />
+            )}
+            {!shotCustomOpen && (
+              <button
+                type="button"
+                style={CONFIRM_BTN}
+                onClick={() => {
+                  onAddShot(shotDelayMs);
+                  setShotDelayMs(0);
+                  setExpanded(null);
+                }}
+              >
+                Add Shot
+              </button>
             )}
           </div>
         )}
