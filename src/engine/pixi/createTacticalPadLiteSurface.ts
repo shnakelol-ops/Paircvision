@@ -217,6 +217,8 @@ export type TacticalPadLiteSurface = {
   /** Shape Lock (Tactical Slate editing convenience). Transient, never persisted. */
   setShapeLockMode: (mode: ShapeLockMode) => void;
   getShapeLockState: () => { mode: ShapeLockMode; memberIds: string[] };
+  /** True if any player has a committed Free Draw path. Read-only query, no side effects. */
+  hasFreeDrawContent: () => boolean;
   /** Shape Links (Tactical Slate presentation feature). Persisted with the board. */
   setShapeLinkSelectMode: (enabled: boolean) => void;
   createShapeLinkFromSelection: () => void;
@@ -4457,6 +4459,7 @@ export async function createTacticalPadLiteSurface(
     getCanvas: () => canvas as HTMLCanvasElement,
     setShapeLockMode: (mode) => setShapeLockModeInternal(mode),
     getShapeLockState: () => ({ mode: shapeLockMode, memberIds: [...shapeMemberIds] }),
+    hasFreeDrawContent: () => freeDrawPathByPlayerId.size > 0,
     setShapeLinkSelectMode: (enabled) => setShapeLinkSelectModeInternal(enabled),
     createShapeLinkFromSelection: () => createShapeLinkFromSelectionInternal(),
     deleteShapeLink: (shapeLinkId) => deleteShapeLinkInternal(shapeLinkId),

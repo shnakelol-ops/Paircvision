@@ -5012,9 +5012,27 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 disabled={isPlaybackLocked}
                 style={isPlaybackLocked ? DISABLED_CONTROL_BUTTON_STYLE : SET_START_BUTTON_STYLE}
                 onClick={() => {
-                  surfaceRef.current?.setStart();
-                  setMovementModePillSelection("move");
-                  closeControlsMenu();
+                  const surface = surfaceRef.current;
+                  if (!surface) return;
+                  const doSetStart = () => {
+                    surface.setStart();
+                    setMovementModePillSelection("move");
+                    closeControlsMenu();
+                  };
+                  const hasContentToLose = phaseCount > 0 || surface.hasFreeDrawContent();
+                  if (!hasContentToLose) {
+                    doSetStart();
+                    return;
+                  }
+                  setConfirmSheet({
+                    title: "Set current positions as the new starting shape?",
+                    message:
+                      "This will:\n• Update the starting position for playback.\n• Clear all existing phases.\n• Remove Free Draw annotations.",
+                    confirmLabel: "Set Start",
+                    danger: true,
+                    onConfirm: () => { setConfirmSheet(null); doSetStart(); },
+                    onCancel: () => setConfirmSheet(null),
+                  });
                 }}
               >
                 Set Start
