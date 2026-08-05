@@ -47,6 +47,7 @@ import { NotesQuickPanel, getMatchNotes } from "./features/notes";
 import VisionStadiumBackground from "./components/VisionStadiumBackground";
 import { deriveSegmentFromPeriodClock, halfFromPeriod, periodFromHalf } from "./stats/statsSegments";
 import { buildStatsShareCardPng } from "./stats/statsShareCard";
+import { ShareSheet } from "./features/shared/ShareSheet";
 import { selectReviewEvents, selectRestartEventsByOwner } from "./stats/review-selectors";
 import { createReviewSession, parseReviewSession, restoreReviewSession, serializeReviewSession } from "./stats/reviewSession";
 import { selectZoneOverlayModel } from "./stats/zones/zone-selectors";
@@ -3425,6 +3426,7 @@ export default function StatsModeSurface() {
   const [pixiSurfaceKey, setPixiSurfaceKey] = useState(0);
   const [isCountsOverlayOpen, setIsCountsOverlayOpen] = useState(false);
   const [isFullTimeActionsOpen, setIsFullTimeActionsOpen] = useState(false);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
   const [currentMatchId, setCurrentMatchId] = useState<string>(() => newMatchSessionId("live"));
@@ -5156,20 +5158,9 @@ export default function StatsModeSurface() {
     }
   };
 
-  const shareOrExportMatch = async () => {
+  const captureMatchSummaryBlob = async (): Promise<Blob> => {
     const homeTeamName = safeShareLabel(teamNames.HOME, "Team A");
     const awayTeamName = safeShareLabel(teamNames.AWAY, "Team B");
-    const fallbackText = buildMatchShareSummaryText({
-      homeTeamName,
-      awayTeamName,
-      venueLabel: venueName,
-      stateLabel: matchState === "FULL_TIME" ? "Full Time" : matchStateToken,
-      clockLabel: formatMatchClock(matchTimeSeconds),
-      homeScore,
-      awayScore,
-      eventCount: loggedEvents.length,
-      liveCounts,
-    });
     const cardFile = await buildStatsShareCardPng({
       stageLabel: matchState === "FULL_TIME" ? "Full Time" : "Half Time",
       homeTeamName,
@@ -5182,26 +5173,9 @@ export default function StatsModeSurface() {
       events: loggedEvents,
     });
     if (!cardFile) {
-      setSaveFeedback("Share failed — could not generate summary image.");
-      return;
+      throw new Error("Could not generate summary image");
     }
-    const shareData: ShareData & { files?: File[] } = { title: `${homeTeamName} v ${awayTeamName}`, text: fallbackText, files: [cardFile] };
-    const navWithShare = navigator as Navigator & { share?: (data: ShareData & { files?: File[] }) => Promise<void>; canShare?: (data: ShareData & { files?: File[] }) => boolean; };
-    if (typeof navWithShare.share === "function") {
-      const canShare = typeof navWithShare.canShare === "function" ? navWithShare.canShare(shareData) : true;
-      if (canShare) {
-        try { await navWithShare.share(shareData); setSaveFeedback("Summary image shared"); return; } catch {}
-      }
-    }
-    const url = URL.createObjectURL(cardFile);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = cardFile.name;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    setSaveFeedback("Summary image downloaded");
+    return cardFile;
   };
 
   // Manual, one-at-a-time deletion — the only way a saved match is ever
@@ -6855,12 +6829,31 @@ export default function StatsModeSurface() {
             <button
               type="button"
               className="utility-review-btn"
-              onClick={() => {
-                void shareOrExportMatch();
-              }}
+              onClick={() => setShareSheetOpen(true)}
             >
               Share Summary PNG
             </button>
+            <ShareSheet
+              open={shareSheetOpen}
+              onClose={() => setShareSheetOpen(false)}
+              heading="Share Summary"
+              input={{
+                getBlob: captureMatchSummaryBlob,
+                filename: `${safeShareLabel(teamNames.HOME, "team-a")}-${safeShareLabel(teamNames.AWAY, "team-b")}-summary.png`,
+                title: `${safeShareLabel(teamNames.HOME, "Team A")} v ${safeShareLabel(teamNames.AWAY, "Team B")}`,
+                text: buildMatchShareSummaryText({
+                  homeTeamName: safeShareLabel(teamNames.HOME, "Team A"),
+                  awayTeamName: safeShareLabel(teamNames.AWAY, "Team B"),
+                  venueLabel: venueName,
+                  stateLabel: matchState === "FULL_TIME" ? "Full Time" : matchStateToken,
+                  clockLabel: formatMatchClock(matchTimeSeconds),
+                  homeScore,
+                  awayScore,
+                  eventCount: loggedEvents.length,
+                  liveCounts,
+                }),
+              }}
+            />
             <button type="button" className="utility-review-btn" onClick={resumeMatchFromFullTime}>
               Resume Match
             </button>

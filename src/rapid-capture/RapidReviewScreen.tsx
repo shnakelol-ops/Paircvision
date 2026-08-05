@@ -18,8 +18,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
   createPixiPitchSurface,
+  exportPixiPitchSurfacePng,
   type PixiPitchSurfaceHandle,
 } from "../core/pitch/create-pixi-pitch-surface";
+import { ShareSheet } from "../features/shared/ShareSheet";
 import { MATCH_EVENT_KINDS, type MatchEventKind } from "../core/stats/stats-event-model";
 import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
 import { buildIntelligencePack, type IntelligencePack } from "../stats/intelligencePack";
@@ -119,6 +121,7 @@ function RapidPitchCanvas({
   sport,
   onMarkerTap,
   zoneOverlayModel,
+  onHandleReady,
 }: {
   events: readonly RapidMatchEvent[];
   sport: "gaelic" | "hurling" | "camogie" | "soccer";
@@ -126,6 +129,9 @@ function RapidPitchCanvas({
   /** Same ZoneOverlayModel | null contract handleRef.setZoneOverlayModel takes
    *  in StatsModeSurface.tsx's Match Stats Review — null hides the overlay. */
   zoneOverlayModel?: ZoneOverlayModel | null;
+  /** Exposes the underlying PixiPitchSurfaceHandle to the parent so it can
+   * drive the unified Share sheet's capture adapter. */
+  onHandleReady?: (handle: PixiPitchSurfaceHandle | null) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<PixiPitchSurfaceHandle | null>(null);
@@ -133,6 +139,8 @@ function RapidPitchCanvas({
   eventsRef.current = events;
   const onMarkerTapRef = useRef(onMarkerTap);
   onMarkerTapRef.current = onMarkerTap;
+  const onHandleReadyRef = useRef(onHandleReady);
+  onHandleReadyRef.current = onHandleReady;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -147,11 +155,13 @@ function RapidPitchCanvas({
       if (disposed) { h.destroy(); return; }
       handleRef.current = h;
       h.setEvents(eventsRef.current);
+      onHandleReadyRef.current?.(h);
     });
     return () => {
       disposed = true;
       handleRef.current?.destroy();
       handleRef.current = null;
+      onHandleReadyRef.current?.(null);
     };
     // onMarkerTap intentionally omitted: stableTap is built once from the ref
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -235,6 +245,8 @@ export function RapidReviewScreen({ match, backLabel, onBack, onEventsChange }: 
   const [pack, setPack] = useState<IntelligencePack | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [mapShareOpen, setMapShareOpen] = useState(false);
+  const pitchHandleRef = useRef<PixiPitchSurfaceHandle | null>(null);
 
   const [reviewHalf, setReviewHalf] = useState<ReviewHalfFilter>("FULL");
   const [reviewTeam, setReviewTeam] = useState<ReviewTeamSideFilter>("ALL");
@@ -506,7 +518,17 @@ export function RapidReviewScreen({ match, backLabel, onBack, onEventsChange }: 
       {mapOpen && (
         <div style={B.shell}>
           <div style={B.header}>
-            <button style={B.backBtn} onClick={() => setMapOpen(false)}>← Review</button>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <button style={B.backBtn} onClick={() => setMapOpen(false)}>← Review</button>
+              <button
+                type="button"
+                style={B.backBtn}
+                onClick={() => setMapShareOpen(true)}
+                aria-label="Share pitch map image"
+              >
+                Share
+              </button>
+            </div>
             <div style={B.headerCenter}>
               <span style={B.headerTeams}>{forLabel} v {oppLabel}</span>
               <span style={B.headerMeta}>
@@ -563,8 +585,23 @@ export function RapidReviewScreen({ match, backLabel, onBack, onEventsChange }: 
               sport={pitchSport}
               onMarkerTap={(id) => setSelectedEventId(id)}
               zoneOverlayModel={showReviewZones ? filteredZoneOverlayModel : null}
+              onHandleReady={(h) => { pitchHandleRef.current = h; }}
             />
           </div>
+          <ShareSheet
+            open={mapShareOpen}
+            onClose={() => setMapShareOpen(false)}
+            heading="Share Pitch Map"
+            input={{
+              getBlob: async () => {
+                const blob = await exportPixiPitchSurfacePng(pitchHandleRef.current);
+                if (!blob) throw new Error("Pitch map snapshot capture failed");
+                return blob;
+              },
+              filename: `${forLabel}-${oppLabel}-event-map.png`,
+              title: `${forLabel} v ${oppLabel} · Event Map`,
+            }}
+          />
           <div style={B.footer}>
             {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
           </div>

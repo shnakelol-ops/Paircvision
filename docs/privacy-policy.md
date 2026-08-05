@@ -149,9 +149,10 @@ Once you download or share the clip, it exists only on your device or with whoev
 PáircVision allows you to export your coaching data in several formats:
 
 - **PDF reports** — Match intelligence reports are generated entirely within your browser. The resulting file is downloaded to your device. Nothing is sent to a server during this process.
-- **PNG images** — Tactical board screenshots are generated within your browser and downloaded to your device or shared via your operating system's share sheet.
+- **PNG images** — Tactical board, pitch/event map, and coaching-card screenshots are generated within your browser and shared, copied, or downloaded to your device.
 - **Video clips** — As described in Section 8.
 - **Web Share** — Where available, the app uses your operating system's native share function. You choose where to send the file. PáircVision has no visibility into where you share it or to whom.
+- **Copy Image** — Where you explicitly tap "Copy Image," the app writes that one image to your device clipboard using your browser's clipboard API, so you can paste it elsewhere yourself. See Section 10 for how this differs from general clipboard access.
 
 All export and sharing activity is initiated explicitly by you. Nothing is shared automatically in the background.
 
@@ -166,8 +167,9 @@ The table below summarises every browser permission PáircVision may request and
 | **Microphone** | When you first tap the voice note record button | To capture audio for voice note memos | No — the app works fully without it |
 | **Storage** (localStorage / IndexedDB) | Automatically on first use | To save your coaching data locally between sessions | Yes — necessary for the app to function |
 | **Service Worker / Cache** | Automatically on first use | To cache app files for offline use | No — automatic PWA behaviour; disabling does not prevent use |
+| **Clipboard (write only)** | Only when you tap a "Copy Image" (or "Copy") button | To copy that one item to your clipboard so you can paste it elsewhere | No — Save/Share alternatives are always offered alongside it |
 
-PáircVision does not request camera access, location data, notifications, or clipboard access.
+PáircVision never reads your clipboard and never writes to it in the background. Clipboard access happens only at the moment you tap a copy action, only for the single item that action names, and only to write — not to read whatever else you may have copied elsewhere. PáircVision does not request camera access, location data, or notifications.
 
 ---
 

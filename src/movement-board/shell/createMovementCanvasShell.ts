@@ -1394,6 +1394,32 @@ export async function createMovementCanvasShell(
       tokenLayer.setBallCarrier(tokenId);
     },
     getCanvas: () => app.canvas as HTMLCanvasElement,
+    exportImageCanvas: () => {
+      const rendererWithExtract = app.renderer as typeof app.renderer & {
+        extract?: { canvas?: (target: unknown) => unknown };
+      };
+      const extract = rendererWithExtract.extract;
+      if (!extract || typeof extract.canvas !== "function") return null;
+
+      const resolveHtmlCanvas = (candidate: unknown): HTMLCanvasElement | null =>
+        typeof HTMLCanvasElement !== "undefined" && candidate instanceof HTMLCanvasElement ? candidate : null;
+
+      try {
+        const extractedFromStage = resolveHtmlCanvas(extract.canvas(app.stage));
+        if (extractedFromStage) return extractedFromStage;
+      } catch {
+        // Fall back to texture extraction path.
+      }
+
+      const generatedTexture = app.renderer.textureGenerator.generateTexture(app.stage);
+      try {
+        return resolveHtmlCanvas(extract.canvas(generatedTexture));
+      } catch {
+        return null;
+      } finally {
+        generatedTexture.destroy(true);
+      }
+    },
     setZones: (zones) => zoneLayer.setZones(zones),
     getZones: () => zoneLayer.getZones(),
     setSelectedZoneId: (id) => zoneLayer.setSelectedZoneId(id),
