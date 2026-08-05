@@ -65,8 +65,14 @@ type TacticalPadLiteCleanProps = {
 };
 
 const CAN_USE_CSS_SUPPORTS = typeof window !== "undefined" && typeof window.CSS !== "undefined";
-// Phase 1 image-background prototype. Set true only for dev/experiment — keep false in production.
-const SLATE_IMAGE_BG_ENABLED = true;
+// Phase 1 image-background prototype. Frozen for V1.5 launch — Presentation
+// Mode (Upload Image / Take Photo / background positioning / Coaching
+// Slideshow) is deferred to V2. Set true only for dev/experiment.
+// The compatibility layer (save/load + rendering of a background image on an
+// existing board) is intentionally untouched by this flag — see
+// applyBackgroundImage() and captureBoardState()/importBoardState() in
+// createTacticalPadLiteSurface.ts, none of which read this constant.
+const SLATE_IMAGE_BG_ENABLED = false;
 const VIEWPORT_WIDTH_UNIT = CAN_USE_CSS_SUPPORTS && window.CSS.supports("width: 100dvw") ? "100dvw" : "100vw";
 const BOARD_VIEWPORT_HEIGHT_CSS_VAR = "--board-app-height";
 const VIEWPORT_HEIGHT_EXPR = `var(${BOARD_VIEWPORT_HEIGHT_CSS_VAR}, 100dvh)`;
@@ -3431,6 +3437,12 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   };
   const closeCoachingClipPanel = () => setCoachingClipOpen(false);
   const handleAddCoachingSlide = () => {
+    // Coaching Slideshow is frozen for V1.5 alongside the background-image
+    // picker it depends on (see SLATE_IMAGE_BG_ENABLED) — its only entry
+    // point is already hidden, but this guard keeps the function itself from
+    // ever opening a picker that no longer renders if it's ever reached by
+    // another path in the future.
+    if (!SLATE_IMAGE_BG_ENABLED) return;
     if (isWhiteboardMode || isStatsMode || shouldBlockPortraitInput) return;
     const surface = surfaceRef.current;
     if (!surface) return;
@@ -5800,9 +5812,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openMyBoardsEntry}>
               My Boards
             </button>
-            <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openCoachingClipEntry}>
-              🎬 Coaching Slideshow
-            </button>
+            {SLATE_IMAGE_BG_ENABLED ? (
+              <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openCoachingClipEntry}>
+                🎬 Coaching Slideshow
+              </button>
+            ) : null}
             <button
               type="button"
               className="control-button"
@@ -5876,7 +5890,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             </button>
           </div>
         ) : null}
-        {!isWhiteboardMode && !isStatsMode && coachingClipOpen ? (
+        {SLATE_IMAGE_BG_ENABLED && !isWhiteboardMode && !isStatsMode && coachingClipOpen ? (
           <CoachingClipPanel
             clip={coachingClip}
             onClose={closeCoachingClipPanel}
