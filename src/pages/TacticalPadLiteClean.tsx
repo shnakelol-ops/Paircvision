@@ -4796,7 +4796,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                           className="control-button"
                           style={SHAPE_LINKS_DELETE_BUTTON_STYLE}
                           aria-label={`Delete ${link.closed ? "Closed" : "Open"} Link ${index + 1}`}
-                          onClick={() => deleteShapeLink(link.id)}
+                          onClick={() => {
+                            setConfirmSheet({
+                              message: `Delete ${link.closed ? "Closed" : "Open"} Link ${index + 1}?`,
+                              confirmLabel: "Delete",
+                              danger: true,
+                              onConfirm: () => { setConfirmSheet(null); deleteShapeLink(link.id); },
+                              onCancel: () => setConfirmSheet(null),
+                            });
+                          }}
                         >
                           🗑
                         </button>
@@ -5076,8 +5084,17 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 disabled={phaseCount <= 0}
                 style={phaseCount <= 0 ? DISABLED_CONTROL_BUTTON_STYLE : UNDO_PHASE_BUTTON_STYLE}
                 onClick={() => {
-                  surfaceRef.current?.undoPhase();
-                  closeControlsMenu();
+                  setConfirmSheet({
+                    message: "Undo the last phase? This cannot be undone.",
+                    confirmLabel: "Undo Phase",
+                    danger: true,
+                    onConfirm: () => {
+                      setConfirmSheet(null);
+                      surfaceRef.current?.undoPhase();
+                      closeControlsMenu();
+                    },
+                    onCancel: () => setConfirmSheet(null),
+                  });
                 }}
               >
                 Undo Phase
@@ -5088,10 +5105,19 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               className="control-button"
               style={RESET_BUTTON_STYLE}
               onClick={() => {
-                surfaceRef.current?.reset();
-                setIsPlaying(false);
-                setIsPaused(false);
-                closeControlsMenu();
+                setConfirmSheet({
+                  message: "Reset the board to its starting positions? This cannot be undone.",
+                  confirmLabel: "Reset",
+                  danger: true,
+                  onConfirm: () => {
+                    setConfirmSheet(null);
+                    surfaceRef.current?.reset();
+                    setIsPlaying(false);
+                    setIsPaused(false);
+                    closeControlsMenu();
+                  },
+                  onCancel: () => setConfirmSheet(null),
+                });
               }}
             >
               Reset
