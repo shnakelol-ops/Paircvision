@@ -1830,9 +1830,32 @@ const SHAPE_LOCK_PANEL_ACTIONS_STYLE: CSSProperties = {
   flexWrap: "wrap",
 };
 
+// Bottom-anchored and centred instead of top-right: top-right sat directly
+// over the pitch's right side, where a coach most often needs to tap players
+// while building a Shape Link, blocking selection underneath it on phones.
+// Centring it at the bottom, above the persistent Phases/Actions/Tools bubble
+// row, keeps the whole pitch reachable during selection — same bottom-center
+// + safe-area offset convention already used by the main controls popout
+// (CONTROLS_POPOUT_STYLE / PORTRAIT_CONTROLS_POPOUT_STYLE). The two panels
+// are never open at the same time (opening Shape Links closes the controls
+// popout), so there's no risk of them colliding in that shared space.
 const SHAPE_LINKS_PANEL_STYLE: CSSProperties = {
   ...SHAPE_LOCK_PANEL_STYLE,
-  top: "max(58px, calc(env(safe-area-inset-top, 0px) + 56px))",
+  left: "50%",
+  right: "auto",
+  top: "auto",
+  bottom: "max(12px, calc(env(safe-area-inset-bottom, 0px) + 10px))",
+  transform: "translateX(-50%)",
+  maxWidth: "min(calc(100vw - 24px), 320px)",
+};
+
+// Portrait needs a taller bottom offset than landscape — the "Actions" (⋯)
+// bubble also sits bottom-center in portrait (PORTRAIT_ACTIONS_BUBBLE_STYLE),
+// so this must clear it the same way PORTRAIT_CONTROLS_POPOUT_STYLE already
+// does for the main controls popout.
+const PORTRAIT_SHAPE_LINKS_PANEL_STYLE: CSSProperties = {
+  ...SHAPE_LINKS_PANEL_STYLE,
+  bottom: "max(64px, calc(env(safe-area-inset-bottom, 0px) + 60px))",
 };
 
 const SHAPE_LINKS_LIST_STYLE: CSSProperties = {
@@ -4125,6 +4148,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     : { ...QUICK_SHARE_POPOUT_STYLE, overflowY: "auto", maxHeight: "min(78vh, 400px)" };
   const myBoardsPopoverStyle = isPortrait ? PORTRAIT_MY_BOARDS_POPOUT_STYLE : MY_BOARDS_POPOUT_STYLE;
   const controlsPopoutStyle = isPortrait ? PORTRAIT_CONTROLS_POPOUT_STYLE : CONTROLS_POPOUT_STYLE;
+  const shapeLinksPanelStyle = isPortrait ? PORTRAIT_SHAPE_LINKS_PANEL_STYLE : SHAPE_LINKS_PANEL_STYLE;
   const movementModeControlsWrapStyle = isPortrait
     ? PORTRAIT_MOVEMENT_MODE_CONTROLS_WRAP_STYLE
     : MOVEMENT_MODE_CONTROLS_WRAP_STYLE;
@@ -4735,7 +4759,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           </div>
         ) : null}
         {!isWhiteboardMode && isShapeLinksPanelOpen ? (
-          <div style={SHAPE_LINKS_PANEL_STYLE} role="group" aria-label="Shape Links">
+          <div style={shapeLinksPanelStyle} role="group" aria-label="Shape Links">
             <div style={SHAPE_LINKS_PANEL_HEADER_STYLE}>
               <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>Shape Links</div>
               <button
