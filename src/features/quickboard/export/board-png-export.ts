@@ -12,6 +12,13 @@ function nextFrame(): Promise<void> {
   return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
 }
 
+// Verbose export diagnostics are gated behind the same "?diag" opt-in
+// convention used elsewhere in the app, so they don't ship to every user's
+// console by default.
+function isDiagPreview(): boolean {
+  return typeof window !== "undefined" && new URLSearchParams(window.location.search).has("diag");
+}
+
 function dataUrlToBlob(dataUrl: string): Blob | null {
   try {
     const [header, body] = dataUrl.split(",");
@@ -44,9 +51,10 @@ export async function exportBoardSetupAsPng(
   // Wait one frame so PixiJS has rendered the latest state before extracting.
   await nextFrame();
 
-  console.debug("[PV PNG] exportBoardSetupAsPng: calling exportImageCanvas");
+  const diag = isDiagPreview();
+  if (diag) console.debug("[PV PNG] exportBoardSetupAsPng: calling exportImageCanvas");
   const source = surface.exportImageCanvas();
-  console.debug("[PV PNG] exportImageCanvas result:", source ? `${source.width}x${source.height}` : "null");
+  if (diag) console.debug("[PV PNG] exportImageCanvas result:", source ? `${source.width}x${source.height}` : "null");
 
   if (!source || source.width <= 0 || source.height <= 0) return null;
 
@@ -58,7 +66,7 @@ export async function exportBoardSetupAsPng(
 
   // alpha: false prevents transparent pixels becoming black after compositing.
   const ctx = canvas.getContext("2d", { alpha: false });
-  console.debug("[PV PNG] 2d context:", ctx ? "ok" : "null");
+  if (diag) console.debug("[PV PNG] 2d context:", ctx ? "ok" : "null");
   if (!ctx) return null;
 
   // Fill solid background first — the PixiJS canvas uses backgroundAlpha: 0,
@@ -109,7 +117,7 @@ export async function exportBoardSetupAsPng(
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(
       (b) => {
-        console.debug("[PV PNG] toBlob result:", b ? `${b.size} bytes` : "null");
+        if (diag) console.debug("[PV PNG] toBlob result:", b ? `${b.size} bytes` : "null");
         resolve(b);
       },
       "image/png",
@@ -120,15 +128,15 @@ export async function exportBoardSetupAsPng(
   }
 
   // Fallback: toDataURL → Blob conversion (Android Chrome resilience)
-  console.debug("[PV PNG] toBlob returned null — trying toDataURL fallback");
+  if (diag) console.debug("[PV PNG] toBlob returned null — trying toDataURL fallback");
   try {
     const dataUrl = canvas.toDataURL("image/png");
     if (!dataUrl || dataUrl === "data:,") {
-      console.debug("[PV PNG] toDataURL also failed");
+      if (diag) console.debug("[PV PNG] toDataURL also failed");
       return null;
     }
     const fallbackBlob = dataUrlToBlob(dataUrl);
-    console.debug("[PV PNG] dataUrl fallback blob:", fallbackBlob ? `${fallbackBlob.size} bytes` : "null");
+    if (diag) console.debug("[PV PNG] dataUrl fallback blob:", fallbackBlob ? `${fallbackBlob.size} bytes` : "null");
     if (!fallbackBlob) return null;
     return new File([fallbackBlob], "paircvision-board.png", { type: "image/png" });
   } catch (err) {

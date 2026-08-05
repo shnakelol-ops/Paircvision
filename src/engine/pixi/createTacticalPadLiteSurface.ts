@@ -161,6 +161,14 @@ export type TacticalPadLiteSurface = {
   setStart: () => void;
   addPhase: () => void;
   undoPhase: () => void;
+  /**
+   * Instantly restores the board to a saved phase's positions (no animation,
+   * no change to the phases array). index is 0-based into the phases list —
+   * out-of-range indices are ignored. Independent of Play: this never touches
+   * playbackPath/isPlaying beyond stopping any animation already in flight so
+   * the jump isn't immediately overwritten by its next tick.
+   */
+  goToPhase: (index: number) => void;
   newBoard: () => void;
   play: () => void;
   pausePlayback: () => void;
@@ -4227,6 +4235,19 @@ export async function createTacticalPadLiteSurface(
       const previousSnapshot = phases[phases.length - 1] ?? startPositions;
       applySnapshotToSurface(previousSnapshot);
       options.onPhaseCountChange?.(phases.length);
+    },
+    goToPhase: (index: number) => {
+      if (index < 0 || index >= phases.length) return;
+      releaseActiveDrag();
+      clearSelectedItem();
+      setFreeDrawCaptureModeState(false);
+      // Stop any in-flight playback animation first — otherwise its next
+      // tick would immediately overwrite the instant jump on the following
+      // frame. This mirrors the same guard Add Phase/Undo Phase/Set Start
+      // already apply; it does not start, resume, or otherwise alter Play.
+      cancelPlaybackAnimation();
+      singlePlayTargetSnapshot = null;
+      applySnapshotToSurface(phases[index]!);
     },
     newBoard: () => {
       if (surfaceVariant !== "tactical") return;

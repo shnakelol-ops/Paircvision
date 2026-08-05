@@ -785,10 +785,10 @@ const CONTROLS_POPOUT_STYLE: CSSProperties = {
   border: "1px solid rgba(238, 146, 146, 0.16)",
 };
 
-// Portrait variant of the CTRL controls card. Bottom-anchored and centred, sized
+// Portrait variant of the Phases controls card. Bottom-anchored and centred, sized
 // to a phone-portrait width (never the full viewport height), wrapping the
 // controls into rows instead of a cramped horizontal scroll, and lifted clear of
-// the bottom CTRL/TOOLS bubbles. Respects the bottom + side safe-area insets.
+// the bottom Phases/Tools bubbles. Respects the bottom + side safe-area insets.
 const PORTRAIT_CONTROLS_POPOUT_STYLE: CSSProperties = {
   ...CONTROLS_POPOUT_STYLE,
   left: "50%",
@@ -1699,7 +1699,7 @@ const BALL_POPUP_STYLE: CSSProperties = {
 };
 
 // Portrait control stack. The portrait controls card (bottom ~64px, cleared of
-// the corner CTRL/TOOLS bubbles) wraps to multiple rows, so the movement-mode
+// the corner Phases/Tools bubbles) wraps to multiple rows, so the movement-mode
 // pills and the ball-type popup are lifted above it to preserve the same
 // bottom-up ordering the landscape stack uses (card -> pills -> ball popup).
 const PORTRAIT_MOVEMENT_MODE_CONTROLS_WRAP_STYLE: CSSProperties = {
@@ -3350,7 +3350,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const handleQuickShareSnapshot = async () => {
     if (isExportingSnapshotRef.current) return;
     const surface = surfaceRef.current;
-    console.debug("[PV share] surface:", surface ? "ok" : "null", "exportImageCanvas:", typeof surface?.exportImageCanvas);
+    if (IS_DIAG_PREVIEW) console.debug("[PV share] surface:", surface ? "ok" : "null", "exportImageCanvas:", typeof surface?.exportImageCanvas);
     if (!surface) {
       showShareTip("Board not ready — please try again.");
       return;
@@ -3361,7 +3361,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     try {
       const file = await exportBoardSetupAsPng(surface, { textAnnotations });
       if (!file) {
-        console.debug("[PV share] exportBoardSetupAsPng returned null");
+        if (IS_DIAG_PREVIEW) console.debug("[PV share] exportBoardSetupAsPng returned null");
         showShareTip("Could not generate image — please try again.");
         return;
       }
@@ -4837,12 +4837,19 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           </div>
         ) : null}
         {!isWhiteboardMode && phasesOpen ? (
-          <div style={PHASES_TRAY_STYLE}>
+          <div style={PHASES_TRAY_STYLE} title="Tap a phase to instantly show it">
             {phaseItems.length > 0 ? (
               phaseItems.map((phase) => (
-                <div key={phase} style={PHASE_ITEM_STYLE}>
+                <button
+                  key={phase}
+                  type="button"
+                  className="control-button"
+                  style={{ ...PHASE_ITEM_STYLE, cursor: "pointer" }}
+                  aria-label={`Show Phase ${phase}`}
+                  onClick={() => surfaceRef.current?.goToPhase(phase - 1)}
+                >
                   Phase {phase}
-                </div>
+                </button>
               ))
             ) : (
               <div style={PHASES_EMPTY_STYLE}>No phases</div>
@@ -5019,6 +5026,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 className="control-button"
                 disabled={isAddPhaseBlocked}
                 style={isAddPhaseBlocked ? DISABLED_CONTROL_BUTTON_STYLE : ADD_PHASE_BUTTON_STYLE}
+                title="Save the current positions as a new phase"
                 onClick={() => {
                   surfaceRef.current?.addPhase();
                   closeControlsMenu();
@@ -5083,6 +5091,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 className="control-button"
                 disabled={phaseCount <= 0}
                 style={phaseCount <= 0 ? DISABLED_CONTROL_BUTTON_STYLE : UNDO_PHASE_BUTTON_STYLE}
+                title="Remove the most recently added phase"
                 onClick={() => {
                   setConfirmSheet({
                     message: "Undo the last phase? This cannot be undone.",
@@ -5862,7 +5871,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             type="button"
             className="floating-bubble"
             style={LEFT_BUBBLE_STYLE}
-            aria-label="Open controls"
+            aria-label="Open phases"
+            title="Phases, playback and board controls"
             onClick={() =>
               setControlsOpen((open) => {
                 const next = !open;
@@ -5875,7 +5885,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               })
             }
           >
-            Ctrl
+            Phases
           </button>
         ) : null}
         {!isWhiteboardMode && !shouldBlockPortraitInput ? (
@@ -6010,57 +6020,71 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     playsInline
                     onLoadStart={(e) => {
                       const vid = e.currentTarget as HTMLVideoElement;
-                      console.debug("[PV REC] slate video loadstart rs:", vid.readyState, "ns:", vid.networkState);
-                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadstart"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc }));
+                      if (IS_DIAG_PREVIEW) {
+                        console.debug("[PV REC] slate video loadstart rs:", vid.readyState, "ns:", vid.networkState);
+                        setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadstart"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc }));
+                      }
                     }}
                     onLoadedMetadata={(e) => {
                       const vid = e.currentTarget as HTMLVideoElement;
                       const d = vid.duration;
-                      console.debug("[PV REC] slate video loadedmetadata dur:", d, "readyState:", vid.readyState, "vw:", vid.videoWidth, "vh:", vid.videoHeight);
                       setSlateClipVideoReady(true);
                       setSlateClipBlankWarning(false);
                       if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; }
                       if (IS_DIAG_PREVIEW) {
+                        console.debug("[PV REC] slate video loadedmetadata dur:", d, "readyState:", vid.readyState, "vw:", vid.videoWidth, "vh:", vid.videoHeight);
                         try { vid.currentTime = 0.001; } catch { /* seek may throw */ }
                         setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadedmetadata"], rs: vid.readyState, ns: vid.networkState, src: vid.currentSrc, dur: d, vw: vid.videoWidth, vh: vid.videoHeight, seeked: true }));
                       }
                     }}
                     onLoadedData={(e) => {
                       const vid = e.currentTarget as HTMLVideoElement;
-                      console.debug("[PV REC] slate video loadeddata rs:", vid.readyState);
                       setSlateClipVideoReady(true);
                       setSlateClipBlankWarning(false);
                       if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; }
-                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadeddata"], rs: vid.readyState, ns: vid.networkState }));
+                      if (IS_DIAG_PREVIEW) {
+                        console.debug("[PV REC] slate video loadeddata rs:", vid.readyState);
+                        setSlateClipDiag((p) => ({ ...p, events: [...p.events, "loadeddata"], rs: vid.readyState, ns: vid.networkState }));
+                      }
                     }}
                     onCanPlay={(e) => {
                       const vid = e.currentTarget as HTMLVideoElement;
-                      console.debug("[PV REC] slate video canplay rs:", vid.readyState);
                       setSlateClipVideoReady(true);
                       setSlateClipBlankWarning(false);
                       if (slateClipBlankTimerRef.current) { clearTimeout(slateClipBlankTimerRef.current); slateClipBlankTimerRef.current = null; }
-                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "canplay"], rs: vid.readyState, ns: vid.networkState }));
+                      if (IS_DIAG_PREVIEW) {
+                        console.debug("[PV REC] slate video canplay rs:", vid.readyState);
+                        setSlateClipDiag((p) => ({ ...p, events: [...p.events, "canplay"], rs: vid.readyState, ns: vid.networkState }));
+                      }
                     }}
                     onSeeked={(e) => {
                       const vid = e.currentTarget as HTMLVideoElement;
-                      console.debug("[PV REC] slate video seeked rs:", vid.readyState);
-                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "seeked"], rs: vid.readyState }));
+                      if (IS_DIAG_PREVIEW) {
+                        console.debug("[PV REC] slate video seeked rs:", vid.readyState);
+                        setSlateClipDiag((p) => ({ ...p, events: [...p.events, "seeked"], rs: vid.readyState }));
+                      }
                     }}
                     onStalled={(e) => {
                       const vid = e.currentTarget as HTMLVideoElement;
-                      console.debug("[PV REC] slate video stalled rs:", vid.readyState, "ns:", vid.networkState);
-                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "stalled"], rs: vid.readyState, ns: vid.networkState }));
+                      if (IS_DIAG_PREVIEW) {
+                        console.debug("[PV REC] slate video stalled rs:", vid.readyState, "ns:", vid.networkState);
+                        setSlateClipDiag((p) => ({ ...p, events: [...p.events, "stalled"], rs: vid.readyState, ns: vid.networkState }));
+                      }
                     }}
                     onAbort={(e) => {
                       const vid = e.currentTarget as HTMLVideoElement;
-                      console.debug("[PV REC] slate video abort rs:", vid.readyState);
-                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "abort"], rs: vid.readyState }));
+                      if (IS_DIAG_PREVIEW) {
+                        console.debug("[PV REC] slate video abort rs:", vid.readyState);
+                        setSlateClipDiag((p) => ({ ...p, events: [...p.events, "abort"], rs: vid.readyState }));
+                      }
                     }}
                     onError={(e) => {
                       const vid = e.currentTarget as HTMLVideoElement;
                       const errMsg = vid.error ? `${vid.error.code}: ${vid.error.message}` : "unknown";
-                      console.debug("[PV REC] slate video error code:", vid.error?.code, "msg:", vid.error?.message, "src:", vid.src.slice(0, 40));
-                      if (IS_DIAG_PREVIEW) setSlateClipDiag((p) => ({ ...p, events: [...p.events, "error"], rs: vid.readyState, ns: vid.networkState, err: errMsg }));
+                      if (IS_DIAG_PREVIEW) {
+                        console.debug("[PV REC] slate video error code:", vid.error?.code, "msg:", vid.error?.message, "src:", vid.src.slice(0, 40));
+                        setSlateClipDiag((p) => ({ ...p, events: [...p.events, "error"], rs: vid.readyState, ns: vid.networkState, err: errMsg }));
+                      }
                     }}
                     style={{ width: "100%", maxHeight: "110px", borderRadius: "6px", background: "#000", display: "block" }}
                   />
