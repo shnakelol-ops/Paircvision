@@ -200,7 +200,7 @@ const LABEL_MODE_CHOICES: TacticalLabelMode[] = ["number", "initials", "name"];
 const TOKEN_STYLE_CHOICES: ReadonlyArray<{ value: TacticalPlayerTokenStyle; label: string }> = [
   { value: "vision-v3", label: "Vision V3" },
   { value: "classic", label: "Classic" },
-  { value: "premium", label: "Glow" },
+  { value: "premium", label: "Heroicon" },
   { value: "pixi", label: "Pixi" },
   { value: "phosphor", label: "Phosphor" },
   { value: "pill-under", label: "Name Badge" },
