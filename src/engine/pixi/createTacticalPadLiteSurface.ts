@@ -1771,6 +1771,12 @@ export async function createTacticalPadLiteSurface(
 
   function updateDraggedPlayerFromEvent(event: unknown): void {
     if (!activeDrag || activeDrag.type !== "player" || isPlaybackInputLocked()) return;
+    // Shape Lock "select" mode is tap-to-toggle only — a coach's finger
+    // drifting past the drag threshold while trying to tap a player must
+    // never reposition them. Ignoring movement here keeps hasCrossedThreshold
+    // false, so pointerup's tap handler (toggleShapeMember) always fires
+    // instead of silently moving the player.
+    if (shapeLockMode === "select") return;
     const activePlayerId = activeDrag.playerId;
     if (activeWhiteboardTool !== "move") return;
     if (!isMatchingActivePointer(event)) return;
