@@ -161,6 +161,14 @@ export type TacticalPadLiteSurface = {
   setStart: () => void;
   addPhase: () => void;
   undoPhase: () => void;
+  /**
+   * Instantly restores the board to a saved phase's positions (no animation,
+   * no change to the phases array). index is 0-based into the phases list —
+   * out-of-range indices are ignored. Independent of Play: this never touches
+   * playbackPath/isPlaying beyond stopping any animation already in flight so
+   * the jump isn't immediately overwritten by its next tick.
+   */
+  goToPhase: (index: number) => void;
   newBoard: () => void;
   play: () => void;
   pausePlayback: () => void;
@@ -209,6 +217,8 @@ export type TacticalPadLiteSurface = {
   /** Shape Lock (Tactical Slate editing convenience). Transient, never persisted. */
   setShapeLockMode: (mode: ShapeLockMode) => void;
   getShapeLockState: () => { mode: ShapeLockMode; memberIds: string[] };
+  /** True if any player has a committed Free Draw path. Read-only query, no side effects. */
+  hasFreeDrawContent: () => boolean;
   /** Shape Links (Tactical Slate presentation feature). Persisted with the board. */
   setShapeLinkSelectMode: (enabled: boolean) => void;
   createShapeLinkFromSelection: () => void;
@@ -4228,6 +4238,19 @@ export async function createTacticalPadLiteSurface(
       applySnapshotToSurface(previousSnapshot);
       options.onPhaseCountChange?.(phases.length);
     },
+    goToPhase: (index: number) => {
+      if (index < 0 || index >= phases.length) return;
+      releaseActiveDrag();
+      clearSelectedItem();
+      setFreeDrawCaptureModeState(false);
+      // Stop any in-flight playback animation first — otherwise its next
+      // tick would immediately overwrite the instant jump on the following
+      // frame. This mirrors the same guard Add Phase/Undo Phase/Set Start
+      // already apply; it does not start, resume, or otherwise alter Play.
+      cancelPlaybackAnimation();
+      singlePlayTargetSnapshot = null;
+      applySnapshotToSurface(phases[index]!);
+    },
     newBoard: () => {
       if (surfaceVariant !== "tactical") return;
       singlePlayTargetSnapshot = null;
@@ -4436,6 +4459,7 @@ export async function createTacticalPadLiteSurface(
     getCanvas: () => canvas as HTMLCanvasElement,
     setShapeLockMode: (mode) => setShapeLockModeInternal(mode),
     getShapeLockState: () => ({ mode: shapeLockMode, memberIds: [...shapeMemberIds] }),
+    hasFreeDrawContent: () => freeDrawPathByPlayerId.size > 0,
     setShapeLinkSelectMode: (enabled) => setShapeLinkSelectModeInternal(enabled),
     createShapeLinkFromSelection: () => createShapeLinkFromSelectionInternal(),
     deleteShapeLink: (shapeLinkId) => deleteShapeLinkInternal(shapeLinkId),
