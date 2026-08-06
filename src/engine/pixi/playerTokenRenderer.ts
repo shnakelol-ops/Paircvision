@@ -7,6 +7,7 @@ import {
 import { createMicroAthleteToken, type MicroAthleteKitPattern, type MicroAthleteStyle } from "./createMicroAthleteToken";
 import { createNamePillPlayerToken } from "./createNamePillPlayerToken";
 import { createPremiumGlowPlayerToken } from "./createPremiumGlowPlayerToken";
+import { createHeroiconUserCircleToken } from "./createHeroiconUserCircleToken";
 import { createVisionV3PlayerToken } from "./createVisionV3PlayerToken";
 import type { PremiumPlayerTokenColor } from "./createPremiumPlayerToken";
 
@@ -53,6 +54,8 @@ export const ClassicRingRenderer: PlayerTokenRenderer = ({
     kitPatternColor,
   });
 
+// Retained (unused) so restoring the "Glow" style is a one-file change:
+// swap HeroiconUserCircleRenderer back to PremiumGlowRenderer below.
 export const PremiumGlowRenderer: PlayerTokenRenderer = ({
   label,
   teamColor,
@@ -62,6 +65,26 @@ export const PremiumGlowRenderer: PlayerTokenRenderer = ({
   kitPatternColor,
 }) =>
   createPremiumGlowPlayerToken({
+    label,
+    teamColor,
+    scale,
+    style,
+    kitPattern,
+    kitPatternColor,
+  });
+
+// Prototype — evaluating a Heroicons "user-circle" (solid, MIT) pictogram as a
+// replacement for Glow. See createHeroiconUserCircleToken.ts for the source
+// verification trail and docs/heroicon-token-evaluation.md for the audit.
+export const HeroiconUserCircleRenderer: PlayerTokenRenderer = ({
+  label,
+  teamColor,
+  scale,
+  style,
+  kitPattern,
+  kitPatternColor,
+}) =>
+  createHeroiconUserCircleToken({
     label,
     teamColor,
     scale,
@@ -152,7 +175,9 @@ export const UnderNamePillRenderer: PlayerTokenRenderer = ({
 
 export function resolvePlayerTokenRenderer(style: PlayerTokenStyle): PlayerTokenRenderer {
   if (style === "vision-v3") return VisionV3Renderer;
-  if (style === "premium") return PremiumGlowRenderer;
+  // Prototype swap for evaluation — was PremiumGlowRenderer. Revert this one
+  // line to restore "Glow" if the Heroicon trial doesn't pan out.
+  if (style === "premium") return HeroiconUserCircleRenderer;
   if (style === "pixi") return ProceduralPixiRenderer;
   if (style === "phosphor") return PhosphorRenderer;
   if (style === "pill-under") return UnderNamePillRenderer;

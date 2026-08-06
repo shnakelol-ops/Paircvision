@@ -770,22 +770,25 @@ const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
   "blue", "red", "green", "yellow", "orange", "purple", "black", "white",
 ];
 
+// Matches GAELIC_HOME_POSITIONS in movement-board/tokens/default-tokens.ts and
+// TACTICAL_SLATE_GAELIC_FORMATION_BASE in tacticalSlateDefaultPlayers.ts — keep
+// all three in sync if positions are ever adjusted.
 const GAELIC_FORMATION_BASE: ReadonlyArray<{ number: number; x: number; y: number }> = [
   { number: 1,  x: 8,  y: 50 },
-  { number: 2,  x: 20, y: 22 },
+  { number: 2,  x: 20, y: 78 },
   { number: 3,  x: 20, y: 50 },
-  { number: 4,  x: 20, y: 78 },
-  { number: 5,  x: 34, y: 18 },
+  { number: 4,  x: 20, y: 22 },
+  { number: 5,  x: 34, y: 82 },
   { number: 6,  x: 34, y: 50 },
-  { number: 7,  x: 34, y: 82 },
+  { number: 7,  x: 34, y: 18 },
   { number: 8,  x: 48, y: 38 },
   { number: 9,  x: 48, y: 62 },
-  { number: 10, x: 62, y: 18 },
+  { number: 10, x: 62, y: 82 },
   { number: 11, x: 62, y: 50 },
-  { number: 12, x: 62, y: 82 },
-  { number: 13, x: 78, y: 25 },
+  { number: 12, x: 62, y: 18 },
+  { number: 13, x: 78, y: 75 },
   { number: 14, x: 78, y: 50 },
-  { number: 15, x: 78, y: 75 },
+  { number: 15, x: 78, y: 25 },
 ];
 
 function getFormationPos(team: "home" | "away", number: number): { x: number; y: number } {
