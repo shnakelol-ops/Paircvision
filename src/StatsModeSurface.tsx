@@ -21,6 +21,7 @@ import {
   type MatchState,
 } from "./core/match/match-state-store";
 import { createPixiPitchSurface } from "./core/pitch/create-pixi-pitch-surface";
+import { letterboxPitchWorld } from "./core/coordinates/pitch-coordinates";
 import {
   MATCH_EVENT_KINDS,
   type MatchEvent,
@@ -1625,14 +1626,16 @@ const PANEL_CSS = `
    Pixi canvas, immediately outside the pitch boundary, instead of stacking
    it above the event panel. The right offset matches .match-stopwatch's own
    offset so it lines up with the H1/clock card above it.
-   The top offset was originally borrowed from .review-strip--portrait's
-   generic "below header" clearance; nudged down slightly (104->118) to
-   close the visible whitespace between the toggle and the pitch below it
-   and read as pitch-attached rather than header-attached. Only ever paired
-   with the plain .team-side-toggle class (never with --scoreboard, which
-   is landscape-only), so landscape is unaffected. position:fixed lifts it
-   out of the .floating-controls flex column without needing to move it in
-   the markup. */
+   The top value here is a same-frame fallback only, used until the pitchTopInsetPx
+   effect (see hostRef in the component body) has measured the pitch's real
+   letterboxed position and applied it as an inline style — the pitch is
+   drawn inside a full-bleed canvas via letterboxPitchWorld(), so its actual
+   top edge isn't a fixed distance from the viewport or header and can't be
+   captured as a static value here. Only ever paired with the plain
+   .team-side-toggle class (never with --scoreboard, which is
+   landscape-only), so landscape is unaffected. position:fixed lifts it out
+   of the .floating-controls flex column without needing to move it in the
+   markup. */
 .team-side-toggle--pitch-dock {
   position: fixed;
   right: max(10px, calc(env(safe-area-inset-right, 0px) + 8px));
@@ -3355,6 +3358,13 @@ const TARGET_METRICS: readonly MatchTarget["metric"][] = [
 
 export default function StatsModeSurface() {
   const hostRef = useRef<HTMLDivElement>(null);
+  // Vertical CSS-px offset, measured from the pitch host's own top edge, of
+  // where the Pixi pitch is actually drawn — the host is full-bleed and the
+  // pitch is letterboxed inside it (see letterboxPitchWorld / fitWorld in
+  // create-pixi-pitch-surface.ts), so this is not derivable from the
+  // viewport or header height alone. Portrait-only consumer: the FOR/OPP
+  // dock anchors to this instead of a guessed pixel offset from the top.
+  const [pitchTopInsetPx, setPitchTopInsetPx] = useState(0);
   const floatingControlsRef = useRef<HTMLDivElement>(null);
   const utilityMenuRef = useRef<HTMLDivElement>(null);
   const utilityBubbleDragRef = useRef<{
@@ -5851,6 +5861,26 @@ export default function StatsModeSurface() {
     };
   }, []);
 
+  // Tracks where the Pixi pitch is actually drawn inside its full-bleed host,
+  // using the exact same letterbox math the pitch surface itself uses to
+  // place the pitch — so pitchTopInsetPx always matches the real rendered
+  // pitch regardless of screen size, safe-area insets, or sport aspect
+  // ratio, and stays correct across resizes/orientation changes.
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    const updatePitchTopInset = () => {
+      const { offsetY } = letterboxPitchWorld(host.clientWidth, host.clientHeight);
+      setPitchTopInsetPx(Math.round(offsetY));
+    };
+
+    updatePitchTopInset();
+    const observer = new ResizeObserver(updatePitchTopInset);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;
@@ -6054,6 +6084,14 @@ export default function StatsModeSurface() {
     if (!canSetFirstHalfAttackingDirection) return;
     setFirstHalfAttackingDirection((prev) => oppositeAttackingDirection(prev));
   };
+  // Once the pitch host has been measured at least once, anchor the toggle's
+  // top edge to the real letterboxed pitch top (plus a small fixed gap)
+  // instead of the CSS class's guessed fallback. Landscape never gets this
+  // inline override — it keeps the .team-side-toggle--scoreboard layout.
+  const pitchDockStyle: CSSProperties | undefined =
+    !isLandscape && pitchTopInsetPx > 0
+      ? { top: `${pitchTopInsetPx + 6}px` }
+      : undefined;
   const ownershipToggleControl = (
     <div
       className={
@@ -6061,6 +6099,7 @@ export default function StatsModeSurface() {
           ? "team-side-toggle team-side-toggle--scoreboard"
           : "team-side-toggle team-side-toggle--pitch-dock"
       }
+      style={pitchDockStyle}
       role="group"
       aria-label="Event ownership toggle"
     >
