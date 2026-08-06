@@ -6084,13 +6084,22 @@ export default function StatsModeSurface() {
     if (!canSetFirstHalfAttackingDirection) return;
     setFirstHalfAttackingDirection((prev) => oppositeAttackingDirection(prev));
   };
-  // Once the pitch host has been measured at least once, anchor the toggle's
-  // top edge to the real letterboxed pitch top (plus a small fixed gap)
-  // instead of the CSS class's guessed fallback. Landscape never gets this
-  // inline override — it keeps the .team-side-toggle--scoreboard layout.
+  // Once the pitch host has been measured at least once, anchor the toggle
+  // so its BOTTOM edge sits PITCH_DOCK_GAP_PX above the real letterboxed
+  // pitch top — not its top edge, which would seat the toggle's own height
+  // down onto the playing surface instead of above it. `top` is set to the
+  // desired bottom position, then translateY(-100%) shifts the box up by
+  // its own rendered height (whatever that happens to be, without needing
+  // to measure it) so the bottom edge lands exactly there. Landscape never
+  // gets this inline override — it keeps the .team-side-toggle--scoreboard
+  // layout.
+  const PITCH_DOCK_GAP_PX = 3;
   const pitchDockStyle: CSSProperties | undefined =
     !isLandscape && pitchTopInsetPx > 0
-      ? { top: `${pitchTopInsetPx + 6}px` }
+      ? {
+          top: `${Math.max(0, pitchTopInsetPx - PITCH_DOCK_GAP_PX)}px`,
+          transform: "translateY(-100%)",
+        }
       : undefined;
   const ownershipToggleControl = (
     <div
