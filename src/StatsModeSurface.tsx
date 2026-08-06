@@ -6245,6 +6245,14 @@ export default function StatsModeSurface() {
   // has gone and the clock is running," so it tracks matchState exactly and
   // clears itself automatically at HALF_TIME/FULL_TIME.
   const isLiveMatchMode = isLoggingActive(matchState);
+  // Live Match Mode's presentation changes (auto-shown Event Panel, hidden
+  // FAB, hidden setup/configuration controls) are portrait-only — landscape
+  // keeps its original always-present controls and manual isPickerOpen
+  // toggle, matching main. Outcome-focus (isOutcomeFocusActive, below) is
+  // NOT gated by this — it stays in both orientations, since it lives
+  // inside the shared .event-keyboard markup rather than being an
+  // orientation-specific layout change.
+  const isLiveMatchModePortraitUi = isLiveMatchMode && !isLandscape;
   // The Event Panel is the primary capture surface throughout live play: it
   // auto-shows once no other overlay (player picker, targets, notes, saved
   // matches, summary, review) is occupying the screen, so the coach never
@@ -6252,7 +6260,7 @@ export default function StatsModeSurface() {
   // Outside live play (or whenever another panel is in front) it keeps the
   // existing manual isPickerOpen toggle behaviour unchanged.
   const isEventPanelVisible =
-    (isPickerOpen || (isLiveMatchMode && utilityPanel == null)) && !isReviewModeActive;
+    (isPickerOpen || (isLiveMatchModePortraitUi && utilityPanel == null)) && !isReviewModeActive;
   const openEventKeyboardMenuTitle =
     openEventKeyboardMenuId === "TURNOVER_WON"
       ? "Turnover+ options"
@@ -8134,11 +8142,12 @@ export default function StatsModeSurface() {
               Cts
             </button>
           ) : null}
-          {/* During live play the Event Panel is already always available
-              (see isEventPanelVisible) — this manual opener would be a dead
-              tap with nothing to toggle, so it's hidden rather than left
-              inert. Untouched outside live play. */}
-          {!isLiveMatchMode ? (
+          {/* During live play in portrait the Event Panel is already always
+              available (see isEventPanelVisible) — this manual opener would
+              be a dead tap with nothing to toggle, so it's hidden rather
+              than left inert. Landscape keeps this control always, matching
+              main, since it never gets the auto-show behaviour. */}
+          {!isLiveMatchModePortraitUi ? (
             <button
               type="button"
               onClick={() => {
@@ -8375,11 +8384,13 @@ export default function StatsModeSurface() {
               {/* Setup/configuration controls (Sport, Match Targets, Save/Load,
                   Restart) are only useful before or between play, and never
                   required to capture the next event — hidden for the
-                  duration of Live Match Mode, same gate as isEventPanelVisible.
-                  Nothing here is removed: it's exactly the pre-existing menu,
-                  just not rendered while isLiveMatchMode is true. Home and
-                  Notes stay available throughout, live or not. */}
-              {!isLiveMatchMode && (
+                  duration of Live Match Mode in portrait, same gate as
+                  isEventPanelVisible. Landscape always shows this menu in
+                  full, matching main — it never gets this hide. Nothing
+                  here is removed: it's exactly the pre-existing menu, just
+                  conditionally rendered. Home and Notes stay available
+                  throughout, live or not, in both orientations. */}
+              {!isLiveMatchModePortraitUi && (
                 <>
                   {/* Sport compact select */}
                   <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86, marginTop: "2px" }}>
@@ -8416,7 +8427,7 @@ export default function StatsModeSurface() {
                 Notes
               </button>
 
-              {!isLiveMatchMode && (
+              {!isLiveMatchModePortraitUi && (
                 <>
                   {/* FILES section */}
                   <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.7, marginTop: "6px" }}>
