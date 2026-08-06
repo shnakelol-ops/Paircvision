@@ -1621,8 +1621,12 @@ const PANEL_CSS = `
   -webkit-backdrop-filter: none;
 }
 
-/* Portrait only — docks the FOR/OPP toggle to the right edge of the pitch,
-   just above the touchline, instead of stacking it above the event panel.
+/* Portrait only — docks the FOR/OPP toggle to the top-right corner of the
+   Pixi canvas, immediately outside the pitch boundary, instead of stacking
+   it above the event panel. The right offset matches .match-stopwatch's own
+   offset so it lines up with the H1/clock card above it; the top offset
+   reuses the same below-header clearance already established by
+   .review-strip--portrait.
    Only ever paired with the plain .team-side-toggle class (never with
    --scoreboard, which is landscape-only), so landscape is unaffected.
    position:fixed lifts it out of the .floating-controls flex column without
@@ -1630,7 +1634,7 @@ const PANEL_CSS = `
 .team-side-toggle--pitch-dock {
   position: fixed;
   right: max(10px, calc(env(safe-area-inset-right, 0px) + 8px));
-  bottom: 34%;
+  top: max(104px, calc(env(safe-area-inset-top, 0px) + 100px));
   z-index: 20;
 }
 
@@ -2032,9 +2036,16 @@ const PANEL_CSS = `
      .utility-bubble-btn override below. Only the popup menu actually flows
      through this container's flex layout (the bubble button has its own
      fixed position, see .utility-controls--portrait .utility-bubble-btn),
-     so centring the container centres the menu above the button. */
-  left: 50%;
-  transform: translateX(-50%);
+     so centring the container centres the menu above the button.
+     Centred with left/right/margin auto rather than transform: a
+     transform here would create a new containing block for the button's
+     position:fixed, making its bottom offset resolve against this
+     container's box instead of the viewport — pulling it back up into the
+     event panel's zone instead of sitting near the true screen edge. */
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin: 0 auto;
   bottom: max(64px, calc(env(safe-area-inset-bottom, 0px) + 58px));
   align-items: center;
   z-index: 10001;
