@@ -21,6 +21,7 @@ import {
   type MatchState,
 } from "./core/match/match-state-store";
 import { createPixiPitchSurface } from "./core/pitch/create-pixi-pitch-surface";
+import { letterboxPitchWorld } from "./core/coordinates/pitch-coordinates";
 import {
   MATCH_EVENT_KINDS,
   type MatchEvent,
@@ -1621,6 +1622,27 @@ const PANEL_CSS = `
   -webkit-backdrop-filter: none;
 }
 
+/* Portrait only — docks the FOR/OPP toggle to the top-right corner of the
+   Pixi canvas, immediately outside the pitch boundary, instead of stacking
+   it above the event panel. The right offset matches .match-stopwatch's own
+   offset so it lines up with the H1/clock card above it.
+   The top value here is a same-frame fallback only, used until the pitchTopInsetPx
+   effect (see hostRef in the component body) has measured the pitch's real
+   letterboxed position and applied it as an inline style — the pitch is
+   drawn inside a full-bleed canvas via letterboxPitchWorld(), so its actual
+   top edge isn't a fixed distance from the viewport or header and can't be
+   captured as a static value here. Only ever paired with the plain
+   .team-side-toggle class (never with --scoreboard, which is
+   landscape-only), so landscape is unaffected. position:fixed lifts it out
+   of the .floating-controls flex column without needing to move it in the
+   markup. */
+.team-side-toggle--pitch-dock {
+  position: fixed;
+  right: max(10px, calc(env(safe-area-inset-right, 0px) + 8px));
+  top: max(118px, calc(env(safe-area-inset-top, 0px) + 114px));
+  z-index: 20;
+}
+
 .team-side-toggle-btn {
   min-height: 26px;
   min-width: 0;
@@ -2015,9 +2037,22 @@ const PANEL_CSS = `
 }
 
 .utility-controls--portrait {
-  left: max(16px, calc(env(safe-area-inset-left, 0px) + 12px));
-  bottom: max(88px, calc(env(safe-area-inset-bottom, 0px) + 84px));
-  align-items: flex-start;
+  /* Bottom-centre, clear of Android gesture-nav — matches the
+     .utility-bubble-btn override below. Only the popup menu actually flows
+     through this container's flex layout (the bubble button has its own
+     fixed position, see .utility-controls--portrait .utility-bubble-btn),
+     so centring the container centres the menu above the button.
+     Centred with left/right/margin auto rather than transform: a
+     transform here would create a new containing block for the button's
+     position:fixed, making its bottom offset resolve against this
+     container's box instead of the viewport — pulling it back up into the
+     event panel's zone instead of sitting near the true screen edge. */
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin: 0 auto;
+  bottom: max(64px, calc(env(safe-area-inset-bottom, 0px) + 58px));
+  align-items: center;
   z-index: 10001;
 }
 
@@ -3239,8 +3274,13 @@ const PANEL_CSS = `
   }
 
   .utility-controls--portrait .utility-bubble-btn {
-    left: max(16px, calc(env(safe-area-inset-left, 0px) + 12px));
-    bottom: max(88px, calc(env(safe-area-inset-bottom, 0px) + 84px));
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
     z-index: 10001;
   }
 }
@@ -3318,6 +3358,13 @@ const TARGET_METRICS: readonly MatchTarget["metric"][] = [
 
 export default function StatsModeSurface() {
   const hostRef = useRef<HTMLDivElement>(null);
+  // Vertical CSS-px offset, measured from the pitch host's own top edge, of
+  // where the Pixi pitch is actually drawn — the host is full-bleed and the
+  // pitch is letterboxed inside it (see letterboxPitchWorld / fitWorld in
+  // create-pixi-pitch-surface.ts), so this is not derivable from the
+  // viewport or header height alone. Portrait-only consumer: the FOR/OPP
+  // dock anchors to this instead of a guessed pixel offset from the top.
+  const [pitchTopInsetPx, setPitchTopInsetPx] = useState(0);
   const floatingControlsRef = useRef<HTMLDivElement>(null);
   const utilityMenuRef = useRef<HTMLDivElement>(null);
   const utilityBubbleDragRef = useRef<{
@@ -5814,6 +5861,26 @@ export default function StatsModeSurface() {
     };
   }, []);
 
+  // Tracks where the Pixi pitch is actually drawn inside its full-bleed host,
+  // using the exact same letterbox math the pitch surface itself uses to
+  // place the pitch — so pitchTopInsetPx always matches the real rendered
+  // pitch regardless of screen size, safe-area insets, or sport aspect
+  // ratio, and stays correct across resizes/orientation changes.
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    const updatePitchTopInset = () => {
+      const { offsetY } = letterboxPitchWorld(host.clientWidth, host.clientHeight);
+      setPitchTopInsetPx(Math.round(offsetY));
+    };
+
+    updatePitchTopInset();
+    const observer = new ResizeObserver(updatePitchTopInset);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;
@@ -6017,13 +6084,31 @@ export default function StatsModeSurface() {
     if (!canSetFirstHalfAttackingDirection) return;
     setFirstHalfAttackingDirection((prev) => oppositeAttackingDirection(prev));
   };
+  // Once the pitch host has been measured at least once, anchor the toggle
+  // so its BOTTOM edge sits PITCH_DOCK_GAP_PX above the real letterboxed
+  // pitch top — not its top edge, which would seat the toggle's own height
+  // down onto the playing surface instead of above it. `top` is set to the
+  // desired bottom position, then translateY(-100%) shifts the box up by
+  // its own rendered height (whatever that happens to be, without needing
+  // to measure it) so the bottom edge lands exactly there. Landscape never
+  // gets this inline override — it keeps the .team-side-toggle--scoreboard
+  // layout.
+  const PITCH_DOCK_GAP_PX = 3;
+  const pitchDockStyle: CSSProperties | undefined =
+    !isLandscape && pitchTopInsetPx > 0
+      ? {
+          top: `${Math.max(0, pitchTopInsetPx - PITCH_DOCK_GAP_PX)}px`,
+          transform: "translateY(-100%)",
+        }
+      : undefined;
   const ownershipToggleControl = (
     <div
       className={
         isLandscape
           ? "team-side-toggle team-side-toggle--scoreboard"
-          : "team-side-toggle"
+          : "team-side-toggle team-side-toggle--pitch-dock"
       }
+      style={pitchDockStyle}
       role="group"
       aria-label="Event ownership toggle"
     >
@@ -6154,6 +6239,28 @@ export default function StatsModeSurface() {
     openEventKeyboardMenuId == null ? null : EVENT_KEYBOARD_MENU_KIND[openEventKeyboardMenuId];
   const openEventKeyboardTone = getEventKeyboardToneByMenuId(openEventKeyboardMenuId);
   const isOutcomeFocusActive = openEventKeyboardMenuId != null;
+  // Live Match Mode: derived directly from the same FIRST_HALF/SECOND_HALF
+  // gate the capture engine already uses to allow logging (isLoggingActive).
+  // Not a new application mode — just a presentation alias for "the whistle
+  // has gone and the clock is running," so it tracks matchState exactly and
+  // clears itself automatically at HALF_TIME/FULL_TIME.
+  const isLiveMatchMode = isLoggingActive(matchState);
+  // Live Match Mode's presentation changes (auto-shown Event Panel, hidden
+  // FAB, hidden setup/configuration controls) are portrait-only — landscape
+  // keeps its original always-present controls and manual isPickerOpen
+  // toggle, matching main. Outcome-focus (isOutcomeFocusActive, below) is
+  // NOT gated by this — it stays in both orientations, since it lives
+  // inside the shared .event-keyboard markup rather than being an
+  // orientation-specific layout change.
+  const isLiveMatchModePortraitUi = isLiveMatchMode && !isLandscape;
+  // The Event Panel is the primary capture surface throughout live play: it
+  // auto-shows once no other overlay (player picker, targets, notes, saved
+  // matches, summary, review) is occupying the screen, so the coach never
+  // has to tap the logo bubble to reopen it after returning to the palette.
+  // Outside live play (or whenever another panel is in front) it keeps the
+  // existing manual isPickerOpen toggle behaviour unchanged.
+  const isEventPanelVisible =
+    (isPickerOpen || (isLiveMatchModePortraitUi && utilityPanel == null)) && !isReviewModeActive;
   const openEventKeyboardMenuTitle =
     openEventKeyboardMenuId === "TURNOVER_WON"
       ? "Turnover+ options"
@@ -7802,7 +7909,7 @@ export default function StatsModeSurface() {
         className="floating-controls"
       >
           {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
-          {isPickerOpen && !isReviewModeActive ? (
+          {isEventPanelVisible ? (
             <div className={isLandscape ? "landscape-toolbar" : "event-panel"}>
               <div className="event-keyboard">
                 {/* Outcome focus: while an outcome drawer is open below, the event
@@ -8003,7 +8110,7 @@ export default function StatsModeSurface() {
               </div>
             </div>
           ) : null}
-          {!isPickerOpen && !isLandscape ? (
+          {!isEventPanelVisible && !isLandscape ? (
             <div aria-live="polite" className="active-chip">
               {EVENT_LABEL_BY_KIND[selectedEventKind]}
             </div>
@@ -8035,27 +8142,34 @@ export default function StatsModeSurface() {
               Cts
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={() => {
-              if (isReviewModeActive) return;
-              toggleMatchBubble();
-            }}
-            aria-label="Toggle event picker"
-            aria-expanded={!isReviewModeActive && isPickerOpen}
-            className="bubble-btn"
-            disabled={isReviewModeActive}
-            style={{
-              border: "none",
-              background: "transparent",
-              opacity: isReviewModeActive ? 0.52 : 1,
-              boxShadow: isPickerOpen
-                ? "0 5px 12px rgba(2, 8, 15, 0.28)"
-                : "0 4px 10px rgba(2, 8, 15, 0.22)",
-            }}
-          >
-            <img src="/pv-logo-icon.svg" alt="PáircVision menu" aria-hidden="true" style={EVENT_PICKER_LOGO_STYLE} />
-          </button>
+          {/* During live play in portrait the Event Panel is already always
+              available (see isEventPanelVisible) — this manual opener would
+              be a dead tap with nothing to toggle, so it's hidden rather
+              than left inert. Landscape keeps this control always, matching
+              main, since it never gets the auto-show behaviour. */}
+          {!isLiveMatchModePortraitUi ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (isReviewModeActive) return;
+                toggleMatchBubble();
+              }}
+              aria-label="Toggle event picker"
+              aria-expanded={!isReviewModeActive && isPickerOpen}
+              className="bubble-btn"
+              disabled={isReviewModeActive}
+              style={{
+                border: "none",
+                background: "transparent",
+                opacity: isReviewModeActive ? 0.52 : 1,
+                boxShadow: isPickerOpen
+                  ? "0 5px 12px rgba(2, 8, 15, 0.28)"
+                  : "0 4px 10px rgba(2, 8, 15, 0.22)",
+              }}
+            >
+              <img src="/pv-logo-icon.svg" alt="PáircVision menu" aria-hidden="true" style={EVENT_PICKER_LOGO_STYLE} />
+            </button>
+          ) : null}
       </div>
         <div
           ref={hostRef}
@@ -8267,82 +8381,99 @@ export default function StatsModeSurface() {
                 ⌂
               </button>
 
-              {/* Sport compact select */}
-              <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86, marginTop: "2px" }}>
-                Sport
-              </div>
-              <select
-                value={currentMode}
-                onChange={(e) => setCurrentMode(e.target.value as GaaModeKey)}
-                className="utility-menu-btn"
-                style={{ cursor: "pointer", paddingRight: 4 }}
-              >
-                {MODE_MENU_OPTIONS.map((opt) => (
-                  <option key={opt.key} value={opt.key}>{opt.label}</option>
-                ))}
-              </select>
+              {/* Setup/configuration controls (Sport, Match Targets, Save/Load,
+                  Restart) are only useful before or between play, and never
+                  required to capture the next event — hidden for the
+                  duration of Live Match Mode in portrait, same gate as
+                  isEventPanelVisible. Landscape always shows this menu in
+                  full, matching main — it never gets this hide. Nothing
+                  here is removed: it's exactly the pre-existing menu, just
+                  conditionally rendered. Home and Notes stay available
+                  throughout, live or not, in both orientations. */}
+              {!isLiveMatchModePortraitUi && (
+                <>
+                  {/* Sport compact select */}
+                  <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86, marginTop: "2px" }}>
+                    Sport
+                  </div>
+                  <select
+                    value={currentMode}
+                    onChange={(e) => setCurrentMode(e.target.value as GaaModeKey)}
+                    className="utility-menu-btn"
+                    style={{ cursor: "pointer", paddingRight: 4 }}
+                  >
+                    {MODE_MENU_OPTIONS.map((opt) => (
+                      <option key={opt.key} value={opt.key}>{opt.label}</option>
+                    ))}
+                  </select>
 
-              {/* MATCH section */}
-              <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.7, marginTop: "6px" }}>
-                Match
-              </div>
-              <button
-                type="button"
-                className="utility-menu-btn"
-                onClick={() => { setUtilityPanel("TARGETS"); setIsUtilityOpen(false); }}
-                style={activeEnabledTargetCount > 0
-                  ? { border: "1px solid rgba(34,197,94,0.6)", background: "rgba(22,101,52,0.4)" }
-                  : undefined}
-              >
-                Match Targets{activeEnabledTargetCount > 0 ? ` (${activeEnabledTargetCount}/15)` : ""}
-              </button>
+                  {/* MATCH section */}
+                  <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.7, marginTop: "6px" }}>
+                    Match
+                  </div>
+                  <button
+                    type="button"
+                    className="utility-menu-btn"
+                    onClick={() => { setUtilityPanel("TARGETS"); setIsUtilityOpen(false); }}
+                    style={activeEnabledTargetCount > 0
+                      ? { border: "1px solid rgba(34,197,94,0.6)", background: "rgba(22,101,52,0.4)" }
+                      : undefined}
+                  >
+                    Match Targets{activeEnabledTargetCount > 0 ? ` (${activeEnabledTargetCount}/15)` : ""}
+                  </button>
+                </>
+              )}
               <button type="button" className="utility-menu-btn" onClick={openNotesPanel}>
                 Notes
               </button>
 
-              {/* FILES section */}
-              <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.7, marginTop: "6px" }}>
-                Files
-              </div>
-              <button
-                type="button"
-                className="utility-menu-btn"
-                onClick={() => { saveCurrentMatchSnapshot(); }}
-                style={
-                  saveFeedback === "Saved"
-                    ? { border: "1px solid rgba(34,197,94,0.92)", background: "rgba(22,101,52,0.76)" }
-                    : undefined
-                }
-              >
-                {saveFeedback === "Saved" ? "Saved" : "Save Match"}
-              </button>
-              <button type="button" className="utility-menu-btn" onClick={openSavedMatchesPanel}>
-                Load Match
-              </button>
+              {!isLiveMatchModePortraitUi && (
+                <>
+                  {/* FILES section */}
+                  <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.7, marginTop: "6px" }}>
+                    Files
+                  </div>
+                  <button
+                    type="button"
+                    className="utility-menu-btn"
+                    onClick={() => { saveCurrentMatchSnapshot(); }}
+                    style={
+                      saveFeedback === "Saved"
+                        ? { border: "1px solid rgba(34,197,94,0.92)", background: "rgba(22,101,52,0.76)" }
+                        : undefined
+                    }
+                  >
+                    {saveFeedback === "Saved" ? "Saved" : "Save Match"}
+                  </button>
+                  <button type="button" className="utility-menu-btn" onClick={openSavedMatchesPanel}>
+                    Load Match
+                  </button>
 
-              {saveFeedback ? (
-                <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
-                  {saveFeedback}
-                </div>
-              ) : null}
-              {saveLoadBlockedReason ? (
-                <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
-                  {saveLoadBlockedReason}
-                </div>
-              ) : null}
-              {lastSavedLabel ? (
-                <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.8, textTransform: "none" }}>
-                  Last saved: {lastSavedLabel}
-                </div>
-              ) : null}
-              {loadedMatchLabel ? (
-                <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.8, textTransform: "none" }}>
-                  Loaded: {loadedMatchLabel}
-                </div>
-              ) : null}
-              <button type="button" className="utility-menu-btn" style={{ marginTop: "8px" }} onClick={requestResetMatch}>
-                Restart Match
-              </button>
+                  {saveFeedback ? (
+                    <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
+                      {saveFeedback}
+                    </div>
+                  ) : null}
+                  {saveLoadBlockedReason ? (
+                    <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
+                      {saveLoadBlockedReason}
+                    </div>
+                  ) : null}
+                  {lastSavedLabel ? (
+                    <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.8, textTransform: "none" }}>
+                      Last saved: {lastSavedLabel}
+                    </div>
+                  ) : null}
+                  {loadedMatchLabel ? (
+                    <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.8, textTransform: "none" }}>
+                      Loaded: {loadedMatchLabel}
+                    </div>
+                  ) : null}
+                  <button type="button" className="utility-menu-btn" style={{ marginTop: "8px" }} onClick={requestResetMatch}>
+                    Restart Match
+                  </button>
+                </>
+              )}
             </div>
           ) : null}
           <button
