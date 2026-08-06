@@ -6154,6 +6154,20 @@ export default function StatsModeSurface() {
     openEventKeyboardMenuId == null ? null : EVENT_KEYBOARD_MENU_KIND[openEventKeyboardMenuId];
   const openEventKeyboardTone = getEventKeyboardToneByMenuId(openEventKeyboardMenuId);
   const isOutcomeFocusActive = openEventKeyboardMenuId != null;
+  // Live Match Mode: derived directly from the same FIRST_HALF/SECOND_HALF
+  // gate the capture engine already uses to allow logging (isLoggingActive).
+  // Not a new application mode — just a presentation alias for "the whistle
+  // has gone and the clock is running," so it tracks matchState exactly and
+  // clears itself automatically at HALF_TIME/FULL_TIME.
+  const isLiveMatchMode = isLoggingActive(matchState);
+  // The Event Panel is the primary capture surface throughout live play: it
+  // auto-shows once no other overlay (player picker, targets, notes, saved
+  // matches, summary, review) is occupying the screen, so the coach never
+  // has to tap the logo bubble to reopen it after returning to the palette.
+  // Outside live play (or whenever another panel is in front) it keeps the
+  // existing manual isPickerOpen toggle behaviour unchanged.
+  const isEventPanelVisible =
+    (isPickerOpen || (isLiveMatchMode && utilityPanel == null)) && !isReviewModeActive;
   const openEventKeyboardMenuTitle =
     openEventKeyboardMenuId === "TURNOVER_WON"
       ? "Turnover+ options"
@@ -7802,7 +7816,7 @@ export default function StatsModeSurface() {
         className="floating-controls"
       >
           {!isLandscape && !isReviewModeActive ? ownershipToggleControl : null}
-          {isPickerOpen && !isReviewModeActive ? (
+          {isEventPanelVisible ? (
             <div className={isLandscape ? "landscape-toolbar" : "event-panel"}>
               <div className="event-keyboard">
                 {/* Outcome focus: while an outcome drawer is open below, the event
@@ -8003,7 +8017,7 @@ export default function StatsModeSurface() {
               </div>
             </div>
           ) : null}
-          {!isPickerOpen && !isLandscape ? (
+          {!isEventPanelVisible && !isLandscape ? (
             <div aria-live="polite" className="active-chip">
               {EVENT_LABEL_BY_KIND[selectedEventKind]}
             </div>
@@ -8035,27 +8049,33 @@ export default function StatsModeSurface() {
               Cts
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={() => {
-              if (isReviewModeActive) return;
-              toggleMatchBubble();
-            }}
-            aria-label="Toggle event picker"
-            aria-expanded={!isReviewModeActive && isPickerOpen}
-            className="bubble-btn"
-            disabled={isReviewModeActive}
-            style={{
-              border: "none",
-              background: "transparent",
-              opacity: isReviewModeActive ? 0.52 : 1,
-              boxShadow: isPickerOpen
-                ? "0 5px 12px rgba(2, 8, 15, 0.28)"
-                : "0 4px 10px rgba(2, 8, 15, 0.22)",
-            }}
-          >
-            <img src="/pv-logo-icon.svg" alt="PáircVision menu" aria-hidden="true" style={EVENT_PICKER_LOGO_STYLE} />
-          </button>
+          {/* During live play the Event Panel is already always available
+              (see isEventPanelVisible) — this manual opener would be a dead
+              tap with nothing to toggle, so it's hidden rather than left
+              inert. Untouched outside live play. */}
+          {!isLiveMatchMode ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (isReviewModeActive) return;
+                toggleMatchBubble();
+              }}
+              aria-label="Toggle event picker"
+              aria-expanded={!isReviewModeActive && isPickerOpen}
+              className="bubble-btn"
+              disabled={isReviewModeActive}
+              style={{
+                border: "none",
+                background: "transparent",
+                opacity: isReviewModeActive ? 0.52 : 1,
+                boxShadow: isPickerOpen
+                  ? "0 5px 12px rgba(2, 8, 15, 0.28)"
+                  : "0 4px 10px rgba(2, 8, 15, 0.22)",
+              }}
+            >
+              <img src="/pv-logo-icon.svg" alt="PáircVision menu" aria-hidden="true" style={EVENT_PICKER_LOGO_STYLE} />
+            </button>
+          ) : null}
       </div>
         <div
           ref={hostRef}
@@ -8267,82 +8287,97 @@ export default function StatsModeSurface() {
                 ⌂
               </button>
 
-              {/* Sport compact select */}
-              <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86, marginTop: "2px" }}>
-                Sport
-              </div>
-              <select
-                value={currentMode}
-                onChange={(e) => setCurrentMode(e.target.value as GaaModeKey)}
-                className="utility-menu-btn"
-                style={{ cursor: "pointer", paddingRight: 4 }}
-              >
-                {MODE_MENU_OPTIONS.map((opt) => (
-                  <option key={opt.key} value={opt.key}>{opt.label}</option>
-                ))}
-              </select>
+              {/* Setup/configuration controls (Sport, Match Targets, Save/Load,
+                  Restart) are only useful before or between play, and never
+                  required to capture the next event — hidden for the
+                  duration of Live Match Mode, same gate as isEventPanelVisible.
+                  Nothing here is removed: it's exactly the pre-existing menu,
+                  just not rendered while isLiveMatchMode is true. Home and
+                  Notes stay available throughout, live or not. */}
+              {!isLiveMatchMode && (
+                <>
+                  {/* Sport compact select */}
+                  <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.86, marginTop: "2px" }}>
+                    Sport
+                  </div>
+                  <select
+                    value={currentMode}
+                    onChange={(e) => setCurrentMode(e.target.value as GaaModeKey)}
+                    className="utility-menu-btn"
+                    style={{ cursor: "pointer", paddingRight: 4 }}
+                  >
+                    {MODE_MENU_OPTIONS.map((opt) => (
+                      <option key={opt.key} value={opt.key}>{opt.label}</option>
+                    ))}
+                  </select>
 
-              {/* MATCH section */}
-              <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.7, marginTop: "6px" }}>
-                Match
-              </div>
-              <button
-                type="button"
-                className="utility-menu-btn"
-                onClick={() => { setUtilityPanel("TARGETS"); setIsUtilityOpen(false); }}
-                style={activeEnabledTargetCount > 0
-                  ? { border: "1px solid rgba(34,197,94,0.6)", background: "rgba(22,101,52,0.4)" }
-                  : undefined}
-              >
-                Match Targets{activeEnabledTargetCount > 0 ? ` (${activeEnabledTargetCount}/15)` : ""}
-              </button>
+                  {/* MATCH section */}
+                  <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.7, marginTop: "6px" }}>
+                    Match
+                  </div>
+                  <button
+                    type="button"
+                    className="utility-menu-btn"
+                    onClick={() => { setUtilityPanel("TARGETS"); setIsUtilityOpen(false); }}
+                    style={activeEnabledTargetCount > 0
+                      ? { border: "1px solid rgba(34,197,94,0.6)", background: "rgba(22,101,52,0.4)" }
+                      : undefined}
+                  >
+                    Match Targets{activeEnabledTargetCount > 0 ? ` (${activeEnabledTargetCount}/15)` : ""}
+                  </button>
+                </>
+              )}
               <button type="button" className="utility-menu-btn" onClick={openNotesPanel}>
                 Notes
               </button>
 
-              {/* FILES section */}
-              <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.7, marginTop: "6px" }}>
-                Files
-              </div>
-              <button
-                type="button"
-                className="utility-menu-btn"
-                onClick={() => { saveCurrentMatchSnapshot(); }}
-                style={
-                  saveFeedback === "Saved"
-                    ? { border: "1px solid rgba(34,197,94,0.92)", background: "rgba(22,101,52,0.76)" }
-                    : undefined
-                }
-              >
-                {saveFeedback === "Saved" ? "Saved" : "Save Match"}
-              </button>
-              <button type="button" className="utility-menu-btn" onClick={openSavedMatchesPanel}>
-                Load Match
-              </button>
+              {!isLiveMatchMode && (
+                <>
+                  {/* FILES section */}
+                  <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.7, marginTop: "6px" }}>
+                    Files
+                  </div>
+                  <button
+                    type="button"
+                    className="utility-menu-btn"
+                    onClick={() => { saveCurrentMatchSnapshot(); }}
+                    style={
+                      saveFeedback === "Saved"
+                        ? { border: "1px solid rgba(34,197,94,0.92)", background: "rgba(22,101,52,0.76)" }
+                        : undefined
+                    }
+                  >
+                    {saveFeedback === "Saved" ? "Saved" : "Save Match"}
+                  </button>
+                  <button type="button" className="utility-menu-btn" onClick={openSavedMatchesPanel}>
+                    Load Match
+                  </button>
 
-              {saveFeedback ? (
-                <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
-                  {saveFeedback}
-                </div>
-              ) : null}
-              {saveLoadBlockedReason ? (
-                <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
-                  {saveLoadBlockedReason}
-                </div>
-              ) : null}
-              {lastSavedLabel ? (
-                <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.8, textTransform: "none" }}>
-                  Last saved: {lastSavedLabel}
-                </div>
-              ) : null}
-              {loadedMatchLabel ? (
-                <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.8, textTransform: "none" }}>
-                  Loaded: {loadedMatchLabel}
-                </div>
-              ) : null}
-              <button type="button" className="utility-menu-btn" style={{ marginTop: "8px" }} onClick={requestResetMatch}>
-                Restart Match
-              </button>
+                  {saveFeedback ? (
+                    <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
+                      {saveFeedback}
+                    </div>
+                  ) : null}
+                  {saveLoadBlockedReason ? (
+                    <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.9, textTransform: "none" }}>
+                      {saveLoadBlockedReason}
+                    </div>
+                  ) : null}
+                  {lastSavedLabel ? (
+                    <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.8, textTransform: "none" }}>
+                      Last saved: {lastSavedLabel}
+                    </div>
+                  ) : null}
+                  {loadedMatchLabel ? (
+                    <div className="utility-panel-title" style={{ fontSize: "9px", opacity: 0.8, textTransform: "none" }}>
+                      Loaded: {loadedMatchLabel}
+                    </div>
+                  ) : null}
+                  <button type="button" className="utility-menu-btn" style={{ marginTop: "8px" }} onClick={requestResetMatch}>
+                    Restart Match
+                  </button>
+                </>
+              )}
             </div>
           ) : null}
           <button
