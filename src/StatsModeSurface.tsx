@@ -1621,6 +1621,19 @@ const PANEL_CSS = `
   -webkit-backdrop-filter: none;
 }
 
+/* Portrait only — docks the FOR/OPP toggle to the right edge of the pitch,
+   just above the touchline, instead of stacking it above the event panel.
+   Only ever paired with the plain .team-side-toggle class (never with
+   --scoreboard, which is landscape-only), so landscape is unaffected.
+   position:fixed lifts it out of the .floating-controls flex column without
+   needing to move it in the markup. */
+.team-side-toggle--pitch-dock {
+  position: fixed;
+  right: max(10px, calc(env(safe-area-inset-right, 0px) + 8px));
+  bottom: 34%;
+  z-index: 20;
+}
+
 .team-side-toggle-btn {
   min-height: 26px;
   min-width: 0;
@@ -2015,9 +2028,15 @@ const PANEL_CSS = `
 }
 
 .utility-controls--portrait {
-  left: max(16px, calc(env(safe-area-inset-left, 0px) + 12px));
-  bottom: max(88px, calc(env(safe-area-inset-bottom, 0px) + 84px));
-  align-items: flex-start;
+  /* Bottom-centre, clear of Android gesture-nav — matches the
+     .utility-bubble-btn override below. Only the popup menu actually flows
+     through this container's flex layout (the bubble button has its own
+     fixed position, see .utility-controls--portrait .utility-bubble-btn),
+     so centring the container centres the menu above the button. */
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(64px, calc(env(safe-area-inset-bottom, 0px) + 58px));
+  align-items: center;
   z-index: 10001;
 }
 
@@ -3239,8 +3258,13 @@ const PANEL_CSS = `
   }
 
   .utility-controls--portrait .utility-bubble-btn {
-    left: max(16px, calc(env(safe-area-inset-left, 0px) + 12px));
-    bottom: max(88px, calc(env(safe-area-inset-bottom, 0px) + 84px));
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 12px));
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
     z-index: 10001;
   }
 }
@@ -6022,7 +6046,7 @@ export default function StatsModeSurface() {
       className={
         isLandscape
           ? "team-side-toggle team-side-toggle--scoreboard"
-          : "team-side-toggle"
+          : "team-side-toggle team-side-toggle--pitch-dock"
       }
       role="group"
       aria-label="Event ownership toggle"
