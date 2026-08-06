@@ -7805,69 +7805,78 @@ export default function StatsModeSurface() {
           {isPickerOpen && !isReviewModeActive ? (
             <div className={isLandscape ? "landscape-toolbar" : "event-panel"}>
               <div className="event-keyboard">
-                <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
-                  {scoringKeyboardButtons.map((button) => {
-                    const isKindAvailable = visibleEventKindSet.has(button.kind);
-                    const isActive = selectedEventKind === button.kind;
-                    const isOpen = openEventKeyboardMenuId === button.id;
-                    return (
-                      <button
-                        key={`keyboard-scoring-${button.id}`}
-                        type="button"
-                        className={`event-keyboard-btn event-keyboard-btn--${button.tone} ${isActive ? "is-active" : ""} ${isOpen ? "is-open" : ""}`}
-                        aria-expanded={isOpen}
-                        onClick={() => {
-                          if (!isKindAvailable || !isLoggingActive(matchState)) return;
-                          setOpenEventKeyboardMenuId((prev) => (prev === button.id ? null : button.id));
-                        }}
-                        disabled={!isKindAvailable || !isLoggingActive(matchState)}
-                      >
-                        {button.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-                  {possessionKeyboardButtons.map((button) => {
-                    const isKindAvailable = visibleEventKindSet.has(button.kind);
-                    const isActive = selectedEventKind === button.kind;
-                    const isOpen = openEventKeyboardMenuId === button.id;
-                    return (
-                      <button
-                        key={`keyboard-possession-${button.id}`}
-                        type="button"
-                        className={`event-keyboard-btn event-keyboard-btn--${button.tone} ${isActive ? "is-active" : ""} ${isOpen ? "is-open" : ""}`}
-                        aria-expanded={isOpen}
-                        onClick={() => {
-                          if (!isKindAvailable || !isLoggingActive(matchState)) return;
-                          setOpenEventKeyboardMenuId((prev) => (prev === button.id ? null : button.id));
-                        }}
-                        disabled={!isKindAvailable || !isLoggingActive(matchState)}
-                      >
-                        {button.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-                  {freeKeyboardButtons.map((button) => {
-                    const isKindAvailable = visibleEventKindSet.has(button.kind);
-                    const isActive = selectedEventKind === button.kind;
-                    return (
-                      <button
-                        key={`keyboard-free-${button.kind}`}
-                        type="button"
-                        className={`event-keyboard-btn event-keyboard-btn--${button.tone} ${isActive ? "is-active" : ""}`}
-                        onClick={() => {
-                          handleEventButtonPress(button.kind);
-                        }}
-                        disabled={!isKindAvailable || !isLoggingActive(matchState)}
-                      >
-                        {button.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                {/* Outcome focus: while an outcome drawer is open below, the event
+                    grid is hidden rather than dimmed — the coach should never have
+                    to visually scan both the event palette and the outcome chips
+                    at once. Free events never open a drawer, so hiding the grid
+                    here can never strand them mid-selection. */}
+                {!isOutcomeFocusActive && (
+                  <>
+                    <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
+                      {scoringKeyboardButtons.map((button) => {
+                        const isKindAvailable = visibleEventKindSet.has(button.kind);
+                        const isActive = selectedEventKind === button.kind;
+                        const isOpen = openEventKeyboardMenuId === button.id;
+                        return (
+                          <button
+                            key={`keyboard-scoring-${button.id}`}
+                            type="button"
+                            className={`event-keyboard-btn event-keyboard-btn--${button.tone} ${isActive ? "is-active" : ""} ${isOpen ? "is-open" : ""}`}
+                            aria-expanded={isOpen}
+                            onClick={() => {
+                              if (!isKindAvailable || !isLoggingActive(matchState)) return;
+                              setOpenEventKeyboardMenuId((prev) => (prev === button.id ? null : button.id));
+                            }}
+                            disabled={!isKindAvailable || !isLoggingActive(matchState)}
+                          >
+                            {button.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+                      {possessionKeyboardButtons.map((button) => {
+                        const isKindAvailable = visibleEventKindSet.has(button.kind);
+                        const isActive = selectedEventKind === button.kind;
+                        const isOpen = openEventKeyboardMenuId === button.id;
+                        return (
+                          <button
+                            key={`keyboard-possession-${button.id}`}
+                            type="button"
+                            className={`event-keyboard-btn event-keyboard-btn--${button.tone} ${isActive ? "is-active" : ""} ${isOpen ? "is-open" : ""}`}
+                            aria-expanded={isOpen}
+                            onClick={() => {
+                              if (!isKindAvailable || !isLoggingActive(matchState)) return;
+                              setOpenEventKeyboardMenuId((prev) => (prev === button.id ? null : button.id));
+                            }}
+                            disabled={!isKindAvailable || !isLoggingActive(matchState)}
+                          >
+                            {button.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="event-keyboard-row" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                      {freeKeyboardButtons.map((button) => {
+                        const isKindAvailable = visibleEventKindSet.has(button.kind);
+                        const isActive = selectedEventKind === button.kind;
+                        return (
+                          <button
+                            key={`keyboard-free-${button.kind}`}
+                            type="button"
+                            className={`event-keyboard-btn event-keyboard-btn--${button.tone} ${isActive ? "is-active" : ""}`}
+                            onClick={() => {
+                              handleEventButtonPress(button.kind);
+                            }}
+                            disabled={!isKindAvailable || !isLoggingActive(matchState)}
+                          >
+                            {button.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
                 {openEventKeyboardMenuId && openEventKeyboardMenuKind ? (
                   <div
                     className={`event-keyboard-drawer ${openEventKeyboardTone ? `event-keyboard-drawer--${openEventKeyboardTone}` : ""}`}
@@ -7903,6 +7912,14 @@ export default function StatsModeSurface() {
                         );
                       })}
                     </div>
+                    <button
+                      type="button"
+                      className="undo-btn"
+                      style={{ border: "1px solid rgba(148,163,184,0.4)", textAlign: "center" }}
+                      onClick={() => setOpenEventKeyboardMenuId(null)}
+                    >
+                      Cancel
+                    </button>
                   </div>
                 ) : null}
               </div>
