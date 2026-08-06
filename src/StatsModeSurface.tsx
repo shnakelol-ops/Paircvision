@@ -1624,17 +1624,19 @@ const PANEL_CSS = `
 /* Portrait only — docks the FOR/OPP toggle to the top-right corner of the
    Pixi canvas, immediately outside the pitch boundary, instead of stacking
    it above the event panel. The right offset matches .match-stopwatch's own
-   offset so it lines up with the H1/clock card above it; the top offset
-   reuses the same below-header clearance already established by
-   .review-strip--portrait.
-   Only ever paired with the plain .team-side-toggle class (never with
-   --scoreboard, which is landscape-only), so landscape is unaffected.
-   position:fixed lifts it out of the .floating-controls flex column without
-   needing to move it in the markup. */
+   offset so it lines up with the H1/clock card above it.
+   The top offset was originally borrowed from .review-strip--portrait's
+   generic "below header" clearance; nudged down slightly (104->118) to
+   close the visible whitespace between the toggle and the pitch below it
+   and read as pitch-attached rather than header-attached. Only ever paired
+   with the plain .team-side-toggle class (never with --scoreboard, which
+   is landscape-only), so landscape is unaffected. position:fixed lifts it
+   out of the .floating-controls flex column without needing to move it in
+   the markup. */
 .team-side-toggle--pitch-dock {
   position: fixed;
   right: max(10px, calc(env(safe-area-inset-right, 0px) + 8px));
-  top: max(104px, calc(env(safe-area-inset-top, 0px) + 100px));
+  top: max(118px, calc(env(safe-area-inset-top, 0px) + 114px));
   z-index: 20;
 }
 
