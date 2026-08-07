@@ -7,6 +7,8 @@ import { ConfirmSheet, type ConfirmSheetProps } from "../../components/ConfirmSh
 import TextAnnotationOverlay from "../../components/annotations/TextAnnotationOverlay";
 import { type SlateTextAnnotation } from "../../components/annotations/textAnnotation";
 import { useCanvasRecorder } from "../shared/useCanvasRecorder";
+import { ShareSheet } from "../shared/ShareSheet";
+import { exportPixiCanvasToPngBlob } from "../shared/pixiCanvasPngExport";
 import { buildDefaultTokens } from "../../movement-board/tokens/default-tokens";
 import { createMovementCanvasShell } from "../../movement-board/shell/createMovementCanvasShell";
 import { ROUTE_VISIBILITY_MODE_OPTIONS, type RouteVisibilityMode } from "../../movement-board/routes/route-visibility";
@@ -184,6 +186,29 @@ const INFO_PILL_STYLE: CSSProperties = {
 const BACK_BUTTON_STYLE: CSSProperties = {
   position: "fixed",
   left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
+  top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))",
+  zIndex: 13,
+  height: "34px",
+  minWidth: "58px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.22)",
+  background: "rgba(6, 12, 26, 0.82)",
+  color: "#e8f0ff",
+  fontFamily: "Inter, system-ui, sans-serif",
+  fontSize: "10px",
+  fontWeight: 700,
+  letterSpacing: "0.03em",
+  textTransform: "uppercase",
+  padding: "0 12px",
+  cursor: "pointer",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  boxShadow: "0 8px 20px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.10)",
+};
+
+const SHARE_IMAGE_BUTTON_STYLE: CSSProperties = {
+  position: "fixed",
+  right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
   top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))",
   zIndex: 13,
   height: "34px",
@@ -770,22 +795,25 @@ const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
   "blue", "red", "green", "yellow", "orange", "purple", "black", "white",
 ];
 
+// Matches GAELIC_HOME_POSITIONS in movement-board/tokens/default-tokens.ts and
+// TACTICAL_SLATE_GAELIC_FORMATION_BASE in tacticalSlateDefaultPlayers.ts — keep
+// all three in sync if positions are ever adjusted.
 const GAELIC_FORMATION_BASE: ReadonlyArray<{ number: number; x: number; y: number }> = [
   { number: 1,  x: 8,  y: 50 },
-  { number: 2,  x: 20, y: 22 },
+  { number: 2,  x: 20, y: 78 },
   { number: 3,  x: 20, y: 50 },
-  { number: 4,  x: 20, y: 78 },
-  { number: 5,  x: 34, y: 18 },
+  { number: 4,  x: 20, y: 22 },
+  { number: 5,  x: 34, y: 82 },
   { number: 6,  x: 34, y: 50 },
-  { number: 7,  x: 34, y: 82 },
+  { number: 7,  x: 34, y: 18 },
   { number: 8,  x: 48, y: 38 },
   { number: 9,  x: 48, y: 62 },
-  { number: 10, x: 62, y: 18 },
+  { number: 10, x: 62, y: 82 },
   { number: 11, x: 62, y: 50 },
-  { number: 12, x: 62, y: 82 },
-  { number: 13, x: 78, y: 25 },
+  { number: 12, x: 62, y: 18 },
+  { number: 13, x: 78, y: 75 },
   { number: 14, x: 78, y: 50 },
-  { number: 15, x: 78, y: 75 },
+  { number: 15, x: 78, y: 25 },
 ];
 
 function getFormationPos(team: "home" | "away", number: number): { x: number; y: number } {
@@ -829,6 +857,7 @@ export default function TacticalPlaySurface() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const shellRef = useRef<MovementCanvasShellHandle | null>(null);
   const [menuMode, setMenuMode] = useState<MovementMenuMode>("move");
+  const [imageShareOpen, setImageShareOpen] = useState(false);
   const [playbackSpeedMultiplier, setPlaybackSpeedMultiplier] = useState<number>(TP_DEFAULT_SPEED_MULTIPLIER);
   const [selectedToken, setSelectedToken] = useState<MovementBoardToken | null>(null);
   const [routeCount, setRouteCount] = useState(0);
@@ -930,6 +959,21 @@ export default function TacticalPlaySurface() {
     onBeforeCountdown: () => setPlaysOpen(false),
     onComplete: () => setPlaysOpen(true),
   });
+
+  // Phase 1 unified Share: still-image only (video Record→Share above already
+  // covers clip sharing). Mirrors Tactical Slate's board-png-export.ts
+  // background + watermark convention via the shared pixiCanvasPngExport helper.
+  const captureTacticalPlaySnapshotBlob = async (): Promise<Blob> => {
+    const canvas = shellRef.current?.exportImageCanvas() ?? null;
+    const blob = await exportPixiCanvasToPngBlob(canvas, {
+      backgroundColor: "#103629",
+      watermarkText: "PáircVision",
+    });
+    if (!blob) {
+      throw new Error("Tactical Play snapshot capture failed");
+    }
+    return blob;
+  };
 
   // recordElapsed holds the final elapsed value after stop — used as the clip duration display.
 
@@ -2075,6 +2119,26 @@ export default function TacticalPlaySurface() {
         <button type="button" style={BACK_BUTTON_STYLE} onClick={goBack}>
           Vision Tactics
         </button>
+
+        <button
+          type="button"
+          style={SHARE_IMAGE_BUTTON_STYLE}
+          onClick={() => setImageShareOpen(true)}
+          aria-label="Share board image"
+        >
+          Share
+        </button>
+
+        <ShareSheet
+          open={imageShareOpen}
+          onClose={() => setImageShareOpen(false)}
+          heading="Share Board"
+          input={{
+            getBlob: captureTacticalPlaySnapshotBlob,
+            filename: "paircvision-tactical-play.png",
+            title: "PáircVision Tactical Play",
+          }}
+        />
 
         <div style={INFO_PILL_STYLE}>{coachInfoLabel}</div>
 

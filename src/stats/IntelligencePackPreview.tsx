@@ -9,15 +9,17 @@
  *   - position:fixed overlay at zIndex:1000 (above all existing UI)
  *   - Touch swipe (left/right) to navigate between cards
  *   - Page dots for current position
- *   - Two share actions: all 3 cards, or current card only
- *   - Falls back to download links when Web Share API is unavailable
- *   - Entirely additive — no existing files modified
+ *   - Two actions: "Share This Card" (unified Share sheet — native share,
+ *     copy, or save, for the currently-viewed card only) and "Download All 3
+ *     Cards" (explicit, unconditional download of every card — never a
+ *     surprise fallback from a button labelled "Share").
  */
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import type { CSSProperties } from "react";
 import type { IntelligencePack } from "./intelligencePack";
 import { packToFiles } from "./intelligencePack";
+import { ShareSheet } from "../features/shared/ShareSheet";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,6 +53,7 @@ export function IntelligencePackPreview({
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [urls, setUrls] = useState<string[]>([]);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const touchStartXRef = useRef<number | null>(null);
 
   // Create object URLs once per mount; revoke on unmount.
@@ -87,51 +90,15 @@ export function IntelligencePackPreview({
     else if (delta > 50) goPrev();
   }
 
-  async function shareAll() {
-    if (!files.length) return;
-    const title = `${homeTeamName} v ${awayTeamName} · PáircVision`;
-    const canShareFiles =
-      typeof navigator.share === "function" &&
-      typeof navigator.canShare === "function" &&
-      navigator.canShare({ files });
-    if (canShareFiles) {
-      try {
-        await navigator.share({ title, files });
-      } catch {
-        // user cancelled — no action needed
-      }
-    } else {
-      for (const f of files) {
-        const url = URL.createObjectURL(f);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = f.name;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    }
-  }
-
-  async function shareCurrent() {
-    const file = files[safeIdx];
-    if (!file) return;
-    const title = `${homeTeamName} v ${awayTeamName} · PáircVision`;
-    const singleFiles = [file];
-    const canShareFile =
-      typeof navigator.share === "function" &&
-      typeof navigator.canShare === "function" &&
-      navigator.canShare({ files: singleFiles });
-    if (canShareFile) {
-      try {
-        await navigator.share({ title, files: singleFiles });
-      } catch {
-        // user cancelled — no action needed
-      }
-    } else {
-      const url = URL.createObjectURL(file);
+  /** Explicit, unconditional download of every card — never invoked as an
+   * undeclared fallback from a "Share" button (see docs/unified-share-audit.md
+   * §2.3.6). The label says "Download" and this is the only thing it does. */
+  function downloadAllCards() {
+    for (const f of files) {
+      const url = URL.createObjectURL(f);
       const a = document.createElement("a");
       a.href = url;
-      a.download = file.name;
+      a.download = f.name;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -212,13 +179,28 @@ export function IntelligencePackPreview({
 
       {/* ── Actions ──────────────────────────────────────────────────── */}
       <div style={SS.actions}>
-        <button style={SS.primaryBtn} onClick={() => void shareAll()}>
-          Share Intelligence Pack
-        </button>
-        <button style={SS.secondaryBtn} onClick={() => void shareCurrent()}>
+        <button style={SS.primaryBtn} onClick={() => setShareSheetOpen(true)}>
           Share This Card
         </button>
+        <button style={SS.secondaryBtn} onClick={downloadAllCards}>
+          Download All 3 Cards
+        </button>
       </div>
+
+      <ShareSheet
+        open={shareSheetOpen}
+        onClose={() => setShareSheetOpen(false)}
+        heading={currentName}
+        input={{
+          getBlob: async () => {
+            const file = files[safeIdx];
+            if (!file) throw new Error("Card not available");
+            return file;
+          },
+          filename: files[safeIdx]?.name ?? `${homeTeamName}-${awayTeamName}-card.png`,
+          title: `${homeTeamName} v ${awayTeamName} · PáircVision`,
+        }}
+      />
     </div>
   );
 }

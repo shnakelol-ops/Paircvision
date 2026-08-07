@@ -16,6 +16,7 @@ import {
 } from "../stats/stats-event-model";
 import { createMatchEventStore } from "../stats/match-event-store";
 import type { ZoneOverlayModel } from "../../stats/zones/zone-types";
+import { exportPixiCanvasToPngBlob } from "../../features/shared/pixiCanvasPngExport";
 
 type RenderableMatchEvent = MatchEvent & {
   playerName?: string;
@@ -47,8 +48,24 @@ export type PixiPitchSurfaceHandle = {
   setZoneOverlayModel: (model: ZoneOverlayModel | null) => void;
   setVisibleEventLimit: (limit: number | null) => void;
   undoLastEvent: () => void;
+  /** Extracts the current pitch/marker/heatmap view as a still image,
+   * excluding all DOM chrome. Used by the unified Share sheet's stats
+   * pitch/map adapter. Returns null if extraction is unavailable. */
+  exportImageCanvas: () => HTMLCanvasElement | null;
   destroy: () => void;
 };
+
+/**
+ * Shared capture adapter for the unified Share sheet — used identically by
+ * Match Stats pitch/map review and Event Stats maps, since both consume this
+ * same engine. Composites onto a solid background (the live surface renders
+ * with backgroundAlpha: 0) and bakes on the same corner watermark convention
+ * as Tactical Slate/Play board exports.
+ */
+export async function exportPixiPitchSurfacePng(handle: PixiPitchSurfaceHandle | null): Promise<Blob | null> {
+  const canvas = handle?.exportImageCanvas() ?? null;
+  return exportPixiCanvasToPngBlob(canvas, { backgroundColor: "#0b1020", watermarkText: "PáircVision" });
+}
 
 function fitWorld(host: HTMLElement, app: Application, world: Container): boolean {
   const width = host.clientWidth;
@@ -245,6 +262,40 @@ export async function createPixiPitchSurface(
       eventStore.removeLast();
       eventsState = eventStore.getAll();
       redrawMarkers();
+    },
+    exportImageCanvas: () => {
+      const rendererWithExtract = app.renderer as typeof app.renderer & {
+        extract?: { canvas?: (target: unknown) => unknown };
+      };
+      const extract = rendererWithExtract.extract;
+      if (!extract || typeof extract.canvas !== "function") return null;
+
+      const resolveHtmlCanvas = (candidate: unknown): HTMLCanvasElement | null =>
+        typeof HTMLCanvasElement !== "undefined" && candidate instanceof HTMLCanvasElement ? candidate : null;
+
+      // The near-invisible hit-testing overlay is editing-only and must never
+      // appear in an exported image.
+      const hitAreaWasVisible = hitArea.visible;
+      hitArea.visible = false;
+      try {
+        try {
+          const extractedFromStage = resolveHtmlCanvas(extract.canvas(app.stage));
+          if (extractedFromStage) return extractedFromStage;
+        } catch {
+          // Fall back to texture extraction path.
+        }
+
+        const generatedTexture = app.renderer.textureGenerator.generateTexture(app.stage);
+        try {
+          return resolveHtmlCanvas(extract.canvas(generatedTexture));
+        } catch {
+          return null;
+        } finally {
+          generatedTexture.destroy(true);
+        }
+      } finally {
+        hitArea.visible = hitAreaWasVisible;
+      }
     },
     destroy: () => {
       resizeObserver.disconnect();

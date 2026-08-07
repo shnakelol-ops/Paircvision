@@ -51,6 +51,7 @@ import { useOverlayPortalRoot } from "../overlay/OverlayPortalContext";
 import { useScreenWakeLock } from "../hooks/useScreenWakeLock";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { exportBoardSetupAsPng } from "../features/quickboard/export/board-png-export";
+import { ShareSheet } from "../features/shared/ShareSheet";
 import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
 import { resolveSlateQuarterTurns } from "./tacticalSlateOrientation";
 import SlateBackgroundPositioner from "../features/quickboard/background/SlateBackgroundPositioner";
@@ -200,7 +201,7 @@ const LABEL_MODE_CHOICES: TacticalLabelMode[] = ["number", "initials", "name"];
 const TOKEN_STYLE_CHOICES: ReadonlyArray<{ value: TacticalPlayerTokenStyle; label: string }> = [
   { value: "vision-v3", label: "Vision V3" },
   { value: "classic", label: "Classic" },
-  { value: "premium", label: "Glow" },
+  { value: "premium", label: "Heroicon" },
   { value: "pixi", label: "Pixi" },
   { value: "phosphor", label: "Phosphor" },
   { value: "pill-under", label: "Name Badge" },
@@ -2176,7 +2177,6 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const toolsBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
   const toolsMenuRef = useRef<HTMLDivElement | null>(null);
   const shareTipTimerRef = useRef<number | null>(null);
-  const isExportingSnapshotRef = useRef(false);
   const quickBoardFeedbackTimerRef = useRef<number | null>(null);
   const whiteboardBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
   const whiteboardBubbleMenuRef = useRef<HTMLDivElement | null>(null);
@@ -2251,6 +2251,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [playbackSpeedMultiplier, setPlaybackSpeedMultiplier] = useState<number>(DEFAULT_PLAYBACK_SPEED_MULTIPLIER);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [quickShareOpen, setQuickShareOpen] = useState(false);
+  const [boardShareOpen, setBoardShareOpen] = useState(false);
   const {
     recordPhase: slateRecordPhase,
     setRecordPhase: setSlateRecordPhase,
@@ -3376,52 +3377,21 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     }
     setSlateRecordPhase("panel");
   };
-  const handleQuickShareSnapshot = async () => {
-    if (isExportingSnapshotRef.current) return;
+  const captureBoardSnapshotBlob = async (): Promise<Blob> => {
     const surface = surfaceRef.current;
-    if (IS_DIAG_PREVIEW) console.debug("[PV share] surface:", surface ? "ok" : "null", "exportImageCanvas:", typeof surface?.exportImageCanvas);
     if (!surface) {
-      showShareTip("Board not ready — please try again.");
-      return;
+      throw new Error("Board not ready");
     }
-    isExportingSnapshotRef.current = true;
-    closeQuickShareMenu();
     surface.pausePlayback();
-    try {
-      const file = await exportBoardSetupAsPng(surface, { textAnnotations });
-      if (!file) {
-        if (IS_DIAG_PREVIEW) console.debug("[PV share] exportBoardSetupAsPng returned null");
-        showShareTip("Could not generate image — please try again.");
-        return;
-      }
-      const canShareFiles =
-        typeof navigator !== "undefined" &&
-        typeof (navigator as Navigator & { canShare?: (data?: ShareData) => boolean }).canShare === "function" &&
-        (navigator as Navigator & { canShare?: (data?: ShareData) => boolean }).canShare!({ files: [file] });
-      if (canShareFiles) {
-        try {
-          await navigator.share({ title: "PáircVision Board", files: [file] });
-        } catch {
-          // User cancelled the share sheet — no error toast needed.
-        }
-      } else {
-        const url = URL.createObjectURL(file);
-        try {
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "paircvision-board.png";
-          a.click();
-          showShareTip("Image saved — check your downloads.");
-        } finally {
-          URL.revokeObjectURL(url);
-        }
-      }
-    } catch (err) {
-      console.error("[PV share] export threw:", err);
-      showShareTip("Share failed — please try again.");
-    } finally {
-      isExportingSnapshotRef.current = false;
+    const file = await exportBoardSetupAsPng(surface, { textAnnotations: textAnnotationsRef.current });
+    if (!file) {
+      throw new Error("Could not generate board image");
     }
+    return file;
+  };
+  const handleQuickShareSnapshot = () => {
+    closeQuickShareMenu();
+    setBoardShareOpen(true);
   };
   const openMyBoardsEntry = () => {
     setQuickShareOpen(false);
@@ -5898,6 +5868,18 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             getSurface={() => surfaceRef.current}
             getTextAnnotations={() => textAnnotationsRef.current}
             panelRef={coachingClipPanelRef}
+          />
+        ) : null}
+        {!isWhiteboardMode ? (
+          <ShareSheet
+            open={boardShareOpen}
+            onClose={() => setBoardShareOpen(false)}
+            heading="Share Board"
+            input={{
+              getBlob: captureBoardSnapshotBlob,
+              filename: "paircvision-board.png",
+              title: "PáircVision Board",
+            }}
           />
         ) : null}
         {!isWhiteboardMode && !(isPortrait && controlsOpen) ? (

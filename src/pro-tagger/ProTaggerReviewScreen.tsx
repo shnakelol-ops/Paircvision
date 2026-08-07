@@ -21,8 +21,9 @@ import { IntelligencePackPreview } from "../stats/IntelligencePackPreview";
 import type { LoggedMatchEvent } from "../core/stats/saved-match";
 import { NotesQuickPanel, getMatchNotes } from "../features/notes";
 import { selectReviewEvents } from "../stats/review-selectors";
-import { createPixiPitchSurface } from "../core/pitch/create-pixi-pitch-surface";
+import { createPixiPitchSurface, exportPixiPitchSurfacePng } from "../core/pitch/create-pixi-pitch-surface";
 import type { PixiPitchSurfaceHandle } from "../core/pitch/create-pixi-pitch-surface";
+import { ShareSheet } from "../features/shared/ShareSheet";
 import { MATCH_EVENT_KINDS, type MatchEventKind } from "../core/stats/stats-event-model";
 import { formatMatchClock } from "../core/match/match-state-store";
 import { computeScoreSide, computeScorelineSnapshot } from "./pro-tagger-score";
@@ -118,10 +119,14 @@ function PitchCanvas({
   events,
   sport,
   onMarkerTap,
+  onHandleReady,
 }: {
   events: readonly LoggedMatchEvent[];
   sport: "gaelic" | "hurling" | "camogie" | "soccer";
   onMarkerTap?: (eventId: string) => void;
+  /** Exposes the underlying PixiPitchSurfaceHandle to the parent so it can
+   * drive the unified Share sheet's capture adapter. */
+  onHandleReady?: (handle: PixiPitchSurfaceHandle | null) => void;
 }) {
   const hostRef        = useRef<HTMLDivElement>(null);
   const handleRef      = useRef<PixiPitchSurfaceHandle | null>(null);
@@ -129,6 +134,8 @@ function PitchCanvas({
   eventsRef.current    = events;
   const onMarkerTapRef = useRef(onMarkerTap);
   onMarkerTapRef.current = onMarkerTap;
+  const onHandleReadyRef = useRef(onHandleReady);
+  onHandleReadyRef.current = onHandleReady;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -145,11 +152,13 @@ function PitchCanvas({
       if (disposed) { h.destroy(); return; }
       handleRef.current = h;
       h.setEvents(eventsRef.current);
+      onHandleReadyRef.current?.(h);
     });
     return () => {
       disposed = true;
       handleRef.current?.destroy();
       handleRef.current = null;
+      onHandleReadyRef.current?.(null);
     };
   // onMarkerTap intentionally omitted: stableTap is built once from the ref
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -190,6 +199,8 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
   const [pack, setPack]                     = useState<IntelligencePack | null>(null);
   const [previewOpen, setPreviewOpen]       = useState(false);
   const [mapOpen,     setMapOpen]           = useState(false);
+  const [mapShareOpen, setMapShareOpen]     = useState(false);
+  const pitchHandleRef = useRef<PixiPitchSurfaceHandle | null>(null);
 
   // ── Review filter state ────────────────────────────────────────────────────
   const [reviewHalf,     setReviewHalf]     = useState<ReviewHalf>("FULL");
@@ -649,7 +660,17 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
       {mapOpen && (
         <div style={B.shell}>
           <div style={B.header}>
-            <button style={B.backBtn} onClick={() => setMapOpen(false)}>← Review</button>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <button style={B.backBtn} onClick={() => setMapOpen(false)}>← Review</button>
+              <button
+                type="button"
+                style={B.backBtn}
+                onClick={() => setMapShareOpen(true)}
+                aria-label="Share pitch map image"
+              >
+                Share
+              </button>
+            </div>
             <div style={B.headerCenter}>
               <span style={B.headerTeams}>
                 {match.homeTeamName || "Home"} v {match.awayTeamName || "Away"}
@@ -696,8 +717,23 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
               events={filteredEvents}
               sport={pitchSport}
               onMarkerTap={(id) => setSelectedMapEventId(id)}
+              onHandleReady={(h) => { pitchHandleRef.current = h; }}
             />
           </div>
+          <ShareSheet
+            open={mapShareOpen}
+            onClose={() => setMapShareOpen(false)}
+            heading="Share Pitch Map"
+            input={{
+              getBlob: async () => {
+                const blob = await exportPixiPitchSurfacePng(pitchHandleRef.current);
+                if (!blob) throw new Error("Pitch map snapshot capture failed");
+                return blob;
+              },
+              filename: `${match.homeTeamName || "home"}-${match.awayTeamName || "away"}-event-map.png`,
+              title: `${match.homeTeamName || "Home"} v ${match.awayTeamName || "Away"} · Event Map`,
+            }}
+          />
           <div style={B.footer}>
             {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
           </div>
