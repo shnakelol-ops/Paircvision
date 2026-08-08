@@ -21,6 +21,7 @@ import type {
   MatchEventSegment,
 } from "../core/stats/stats-event-model";
 import type { ChainAnalysis } from "./chains/chain-types";
+import { selectPossessionOutcomeSummary } from "./chains/chain-selectors";
 import { buildMatchReport, type MatchReport } from "./reporting/matchReport";
 import { buildTeamSummaryBlock, viewShootingConversion } from "./reporting/teamStatsViews";
 import {
@@ -4372,6 +4373,48 @@ function makeTacticalReviewGuidePage(
 // ─── Opposition Snapshot page ──────────────────────────────────────────────────
 
 /**
+ * OPP turnover-origin scoring-possession count.
+ *
+ * The chain-rule "TURNOVER_TO_SCORE" anchors on TURNOVER_WON, which capture
+ * only ever records with teamSide "FOR" (opposition turnover wins are logged
+ * as FOR's TURNOVER_LOST instead) — so a `teamSide === "OPP"` filter on that
+ * rule's chains is structurally always 0, regardless of what actually
+ * happened on the pitch. selectPossessionOutcomeSummary() resolves the
+ * acting side via inversion (TURNOVER_LOST → OPP acted) over the same 60s
+ * window (TURNOVER_TO_SCORE's maxWindowSeconds and possession-outcomes-
+ * engine's TURNOVER_WINDOW_SECS are both 60), so `conceded.goals +
+ * conceded.points` is the correct replacement — a scoring-*possession*
+ * count (each possession scores 0 or 1 times), not a scoreboard-points value.
+ *
+ * Exported so the Opposition Snapshot regression fixture can assert this
+ * exact production formula, not a re-derivation of it.
+ */
+export function computeOppTurnoverOriginScoringPossessions(events: readonly PdfExportEvent[]): number {
+  const summary = selectPossessionOutcomeSummary(events);
+  return summary.turnovers.conceded.goals + summary.turnovers.conceded.points;
+}
+
+/**
+ * OPP free-origin *goal* count (matches "FREE_WON_TO_GOAL" chain-rule scope
+ * exactly — goals only, never points; do not broaden to goals + points).
+ *
+ * Same structural defect as computeOppTurnoverOriginScoringPossessions above:
+ * FREE_WON_TO_GOAL anchors on FREE_WON, which capture never records with
+ * teamSide "OPP" (opposition free wins are logged as FOR's FREE_CONCEDED
+ * instead), so a `teamSide === "OPP"` filter on it is always 0.
+ * `conceded.goals` inverts FREE_CONCEDED correctly. Note: the window differs
+ * slightly (FREE_WON_TO_GOAL is 30s; possession-outcomes-engine's
+ * FREE_WINDOW_SECS is 45s) — left as-is; narrowing it would mean editing
+ * chain-rules.ts or possession-outcomes-engine.ts, out of scope here.
+ *
+ * Exported so the Free Kick Analysis regression fixture can assert this
+ * exact production formula, not a re-derivation of it.
+ */
+export function computeOppFreeOriginGoals(events: readonly PdfExportEvent[]): number {
+  return selectPossessionOutcomeSummary(events).frees.conceded.goals;
+}
+
+/**
  * Renders the Opposition Snapshot — the final PDF page.
  *
  * Data sources:
@@ -4458,8 +4501,20 @@ function makeOppositionSnapshotPage(
   // Turnover threat
   const tv           = analysis.turnovers;
   const tvLost       = tv.lost;
-  const tvOppToScore = (analysis.byRule["TURNOVER_TO_SCORE"] ?? []).filter((c) => c.teamSide === "OPP").length;
-  const tvOppToShot  = (analysis.byRule["TURNOVER_TO_SHOT"]  ?? []).filter((c) => c.teamSide === "OPP").length;
+  // See computeOppTurnoverOriginScoringPossessions() above for why this can't
+  // be read off analysis.byRule["TURNOVER_TO_SCORE"] filtered by teamSide OPP.
+  const tvOppToScore = computeOppTurnoverOriginScoringPossessions(events);
+  // "TURNOVER_TO_SHOT" has the same structural defect as TURNOVER_TO_SCORE above,
+  // but unlike the score case, possession-outcomes-engine is NOT a certified exact
+  // equivalent here: its resolveOutcome() stops a possession early at the next
+  // KICKOUT_WON/CONCEDED or FREE_WON/CONCEDED event, while the chain-rule scan
+  // does not treat those as boundaries and keeps looking for a same-side shot
+  // within the window. That divergence is real (a turnover win followed by an
+  // intervening free before any shot), so this row is intentionally left
+  // unfixed here rather than substituting a metric that isn't provably identical
+  // — see audit "Section C" / handback for detail. Row is suppressed below
+  // rather than displaying the knowingly-false 0.
+  const tvOppToShot  = null;
   const tvLostScore  = tv.lostAllowedScore;
   const tvPunishPct  = viewTurnoverLossPunishment(report).pct;
 
@@ -4713,7 +4768,8 @@ function makeOppositionSnapshotPage(
     );
     drawMetricRow(
       L_COL_X, cy, L_COL_W,
-      "Turnover won → shot chains", String(tvOppToShot),
+      // Known-bad metric intentionally suppressed rather than showing a false 0 — see tvOppToShot above.
+      "Turnover won → shot chains", tvOppToShot == null ? "—" : String(tvOppToShot),
       "#f8fafc", false,
     );
   }
@@ -7042,9 +7098,22 @@ function makeFreeAnalysisPage(
   const chainPrompts = allPrompts.filter((p) => p.category === "CHAIN");
   const freePromptCat: ReviewPromptCategory = chainPrompts.length > 0 ? "CHAIN" : "GENERAL";
 
-  // Scoring chains from free wins — FREE_WON_TO_GOAL chains already in ChainAnalysis
+  // Scoring chains from free wins — FREE_WON_TO_GOAL chains already in ChainAnalysis.
+  // FOR side is unaffected: FREE_WON only ever captures with teamSide "FOR", so every
+  // real free-to-goal chain is already representable and this filter is correct as-is.
   const forFreeScoringChains = (analysis.byRule["FREE_WON_TO_GOAL"] ?? []).filter((c) => c.teamSide === "FOR").length;
-  const oppFreeScoringChains = (analysis.byRule["FREE_WON_TO_GOAL"] ?? []).filter((c) => c.teamSide === "OPP").length;
+  // OPP side has the structural defect: FREE_WON_TO_GOAL anchors on FREE_WON, which
+  // capture never records with teamSide "OPP" (opposition free wins are recorded as
+  // FOR's FREE_CONCEDED instead) — so this filter is always 0 regardless of reality.
+  // selectPossessionOutcomeSummary() resolves acting side via inversion
+  // (FREE_CONCEDED → OPP acted) and reports goals separately from points, so
+  // `.conceded.goals` matches FREE_WON_TO_GOAL's goal-only scope exactly (NOT
+  // goals+points — that rule never counted points, only goals, and this must not
+  // silently broaden to "any score"). Window differs slightly (FREE_WON_TO_GOAL is
+  // 30s; possession-outcomes-engine's FREE_WINDOW_SECS is 45s) — noted, not fixed,
+  // since narrowing/aligning that constant would mean editing chain-rules.ts or
+  // possession-outcomes-engine.ts, both out of scope for this patch.
+  const oppFreeScoringChains = computeOppFreeOriginGoals(events);
 
   // ── Pitches ───────────────────────────────────────────────────────────────
   const CALLOUT_H = 120;
