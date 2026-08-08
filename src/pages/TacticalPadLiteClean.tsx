@@ -59,6 +59,7 @@ import SlateLabelEntryModal from "../features/quickboard/annotations/SlateLabelE
 import { type SlateTextAnnotation, type SlateTextFontSize } from "../features/quickboard/annotations/slateTextAnnotation";
 import { useCoachingClip } from "../features/quickboard/clips/useCoachingClip";
 import CoachingClipPanel from "../features/quickboard/clips/CoachingClipPanel";
+import { useTacticalSlateTour, TacticalSlateTour } from "../components/TacticalSlateTour";
 
 type PadMode = "tactical" | "stats" | "whiteboard";
 type TacticalPadLiteCleanProps = {
@@ -2176,6 +2177,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const coachingSlideFlowActiveRef = useRef(false);
   const toolsBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
   const toolsMenuRef = useRef<HTMLDivElement | null>(null);
+  // Tactical Slate Phase D — refs the guided tour spotlights, one per step.
+  // Purely observational: attaching a ref to an existing button changes nothing
+  // about its behaviour.
+  const tourSetStartButtonRef = useRef<HTMLButtonElement | null>(null);
+  const tourAddPhaseButtonRef = useRef<HTMLButtonElement | null>(null);
+  const tourPlayButtonRef = useRef<HTMLButtonElement | null>(null);
+  const tourSaveCurrentButtonRef = useRef<HTMLButtonElement | null>(null);
   const shareTipTimerRef = useRef<number | null>(null);
   const quickBoardFeedbackTimerRef = useRef<number | null>(null);
   const whiteboardBubbleButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -2224,6 +2232,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [items, setItems] = useState<TacticalItem[]>([]);
   const [itemMode, setItemMode] = useState<ItemMode>("locked");
   const [phaseCount, setPhaseCount] = useState(0);
+  // Tactical Slate Phase D — increments once per completed Set Start call.
+  // Purely an observability signal for the guided tour; nothing reads it besides
+  // useTacticalSlateTour.
+  const [tourSetStartSignal, setTourSetStartSignal] = useState(0);
+  // Tactical Slate Phase D — bumped by the "Guided Tour" menu entry to force
+  // a replay regardless of completed/dismissed state.
+  const [tourRestartSignal, setTourRestartSignal] = useState(0);
   // Shape Lock — transient editor convenience (Tactical Slate only). Mirrors the
   // surface's own transient state; nothing here is persisted.
   const [shapeLockMode, setShapeLockModeState] = useState<"off" | "select" | "active">("off");
@@ -3399,6 +3414,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     refreshSavedBoards();
     setMyBoardsOpen(true);
   };
+  const replayGuidedTour = () => {
+    setActionsOpen(false);
+    setTourRestartSignal((count) => count + 1);
+  };
   const openCoachingClipEntry = () => {
     setQuickShareOpen(false);
     setActionsOpen(false);
@@ -4287,6 +4306,51 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     [BOARD_VIEWPORT_HEIGHT_CSS_VAR]: `${Math.max(0, Math.floor(appViewportHeight))}px`,
   } as CSSProperties;
 
+  // Tactical Slate Phase D — first-run guided tour. Auto-starts only on a
+  // fresh tactical board (phaseCount === 0) that hasn't been completed or
+  // dismissed for this session; once started it runs to completion or
+  // "Not Now" regardless of later phaseCount changes. Replayable anytime via
+  // the "Guided Tour" menu entry, which bumps tourRestartSignal. See
+  // TacticalSlateTour.tsx for the step state machine.
+  const tacticalSlateTour = useTacticalSlateTour({
+    autoStartEligible: !isWhiteboardMode && !isStatsMode && phaseCount === 0,
+    phaseCount,
+    isPlaying,
+    isPaused,
+    setStartSignal: tourSetStartSignal,
+    boardSavedSignal: lastBoardSavedAtMillis,
+    restartSignal: tourRestartSignal,
+  });
+  useEffect(() => {
+    // Steps 1-3 all point at buttons inside the same Phases controls popout
+    // (Set Start, Add Phase, Play). Set Start and Add Phase both close that
+    // popout on press (existing, unrelated behaviour — see
+    // closeControlsMenu()), so this also re-fires on every phaseCount change
+    // while step 2 is in progress, reopening the popout after the coach's
+    // first Add Phase so the ring can find the button again for the second
+    // one, and once more on the transition into step 3 for Play. It never
+    // fights a coach who closes the popout without pressing anything.
+    if (tacticalSlateTour.step === 1 || tacticalSlateTour.step === 2 || tacticalSlateTour.step === 3) {
+      setControlsOpen(true);
+    }
+  }, [tacticalSlateTour.step, phaseCount]);
+  useEffect(() => {
+    if (tacticalSlateTour.step === 4) {
+      setControlsOpen(false);
+      openMyBoardsEntry();
+    }
+  }, [tacticalSlateTour.step]);
+  const tacticalSlateTourTargetRef =
+    tacticalSlateTour.step === 1
+      ? tourSetStartButtonRef
+      : tacticalSlateTour.step === 2
+        ? tourAddPhaseButtonRef
+        : tacticalSlateTour.step === 3
+          ? tourPlayButtonRef
+          : tacticalSlateTour.step === 4
+            ? tourSaveCurrentButtonRef
+            : null;
+
   if (isStatsMode) {
     return (
       <>
@@ -5013,6 +5077,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             </div>
             {!shouldBlockPortraitInput ? (
               <button
+                ref={tourSetStartButtonRef}
                 type="button"
                 className="control-button"
                 disabled={isPlaybackLocked}
@@ -5024,6 +5089,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     surface.setStart();
                     setMovementModePillSelection("move");
                     closeControlsMenu();
+                    setTourSetStartSignal((count) => count + 1);
                   };
                   const hasContentToLose = phaseCount > 0 || surface.hasFreeDrawContent();
                   if (!hasContentToLose) {
@@ -5046,6 +5112,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             ) : null}
             {!shouldBlockPortraitInput ? (
               <button
+                ref={tourAddPhaseButtonRef}
                 type="button"
                 className="control-button"
                 disabled={isAddPhaseBlocked}
@@ -5092,6 +5159,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               </button>
             ) : null}
             <button
+              ref={tourPlayButtonRef}
               type="button"
               className="control-button"
               disabled={isPlaying}
@@ -5782,6 +5850,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openMyBoardsEntry}>
               My Boards
             </button>
+            <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={replayGuidedTour}>
+              Guided Tour
+            </button>
             {SLATE_IMAGE_BG_ENABLED ? (
               <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openCoachingClipEntry}>
                 🎬 Coaching Slideshow
@@ -5805,7 +5876,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           <div ref={myBoardsPopoverRef} style={myBoardsPopoverStyle} role="dialog" aria-modal="false" aria-label="My Boards">
             <div style={MY_BOARDS_HEADER_STYLE}>
               <p style={MY_BOARDS_TITLE_STYLE}>My Boards</p>
-              <button type="button" className="control-button" style={MY_BOARDS_SAVE_BUTTON_STYLE} onClick={handleSaveCurrentBoard}>
+              <button ref={tourSaveCurrentButtonRef} type="button" className="control-button" style={MY_BOARDS_SAVE_BUTTON_STYLE} onClick={handleSaveCurrentBoard}>
                 Save Current
               </button>
             </div>
@@ -6410,6 +6481,12 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           />
         </div>
       ) : null}
+      <TacticalSlateTour
+        step={tacticalSlateTour.step}
+        justFinished={tacticalSlateTour.justFinished}
+        onNotNow={tacticalSlateTour.notNow}
+        targetRef={tacticalSlateTourTargetRef}
+      />
     </OrientationGate>
   );
 }
