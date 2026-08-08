@@ -13,15 +13,21 @@ import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 
 // ring around the current step's target button and leaves the entire pitch
 // (and everything else) fully interactive throughout.
 
-const TACTICAL_SLATE_TOUR_STORAGE_KEY = "paircvision_tactical_slate_tour_v1";
+// Permanent — only ever written once all four steps are actually completed.
+// Checked before ever auto-starting the tour again.
+const TACTICAL_SLATE_TOUR_COMPLETED_KEY = "paircvision_tactical_slate_tour_v1";
+// Session-only — written by "Not Now". Cleared automatically when the browser
+// tab/session ends (sessionStorage, not localStorage), or immediately by a
+// manual replay from the menu. Never marks the tour as done.
+const TACTICAL_SLATE_TOUR_SESSION_DISMISSED_KEY = "paircvision_tactical_slate_tour_session_dismissed_v1";
 
-export { TACTICAL_SLATE_TOUR_STORAGE_KEY };
+export { TACTICAL_SLATE_TOUR_COMPLETED_KEY, TACTICAL_SLATE_TOUR_SESSION_DISMISSED_KEY };
 
 export type TacticalSlateTourStep = 1 | 2 | 3 | 4;
 
 export type TacticalSlateTourSignals = {
-  /** Gate the tour on Tactical Slate's own "tactical" surface, fresh board only. */
-  enabled: boolean;
+  /** Gates the automatic first-run start only — tactical surface, fresh board. */
+  autoStartEligible: boolean;
   phaseCount: number;
   isPlaying: boolean;
   isPaused: boolean;
@@ -30,24 +36,44 @@ export type TacticalSlateTourSignals = {
   /** The board's last-saved timestamp (existing lastBoardSavedAtMillis state) — any
    *  change while on step 4 means a save completed. */
   boardSavedSignal: number | null;
+  /** Increments when the coach picks "Guided Tour" from the menu. Always
+   *  (re)starts the tour from step 1, bypassing both the completed flag and
+   *  the session dismissal — a deliberate replay overrides both. */
+  restartSignal: number;
 };
 
 export type TacticalSlateTourState = {
   active: boolean;
   step: TacticalSlateTourStep | null;
   justFinished: boolean;
-  skip: () => void;
+  /** "Not Now" — dismiss for this session only. Does not mark the tour complete. */
+  notNow: () => void;
 };
+
+function initBaselineRefs(
+  signals: TacticalSlateTourSignals,
+  refs: {
+    prevSetStartSignalRef: RefObject<number | null>;
+    prevIsPlayingRef: RefObject<boolean>;
+    boardSavedBaselineRef: RefObject<number | null>;
+    boardSavedBaselineSetRef: RefObject<boolean>;
+  },
+) {
+  refs.prevSetStartSignalRef.current = signals.setStartSignal;
+  refs.prevIsPlayingRef.current = signals.isPlaying;
+  refs.boardSavedBaselineRef.current = signals.boardSavedSignal;
+  refs.boardSavedBaselineSetRef.current = true;
+}
 
 export function useTacticalSlateTour(signals: TacticalSlateTourSignals): TacticalSlateTourState {
   const [step, setStep] = useState<TacticalSlateTourStep | null>(null);
   const [justFinished, setJustFinished] = useState(false);
 
-  const hasStartedRef = useRef(false);
-  const finishedRef = useRef(false);
+  const hasAutoStartedRef = useRef(false);
   const phaseCountAtStep2StartRef = useRef(0);
   const prevSetStartSignalRef = useRef<number | null>(null);
   const prevIsPlayingRef = useRef(false);
+  const prevRestartSignalRef = useRef<number | null>(null);
   // boardSavedSignal is number | null — null is *also* the legitimate "never
   // saved" value, so it can't double as its own "not initialized yet"
   // sentinel the way prevSetStartSignalRef (always a number) can. A separate
@@ -55,23 +81,49 @@ export function useTacticalSlateTour(signals: TacticalSlateTourSignals): Tactica
   const boardSavedBaselineRef = useRef<number | null>(null);
   const boardSavedBaselineSetRef = useRef(false);
 
-  // Start once, the first time the surface is ready, unless already seen.
+  // Auto-start once per mount, the first time the surface is ready — unless
+  // already completed (permanent) or dismissed for this session.
   useEffect(() => {
-    if (hasStartedRef.current || finishedRef.current) return;
-    if (!signals.enabled) return;
+    if (hasAutoStartedRef.current) return;
+    if (!signals.autoStartEligible) return;
     if (typeof window === "undefined") return;
-    if (window.localStorage.getItem(TACTICAL_SLATE_TOUR_STORAGE_KEY)) {
-      finishedRef.current = true;
-      return;
-    }
-    hasStartedRef.current = true;
-    prevSetStartSignalRef.current = signals.setStartSignal;
-    prevIsPlayingRef.current = signals.isPlaying;
-    boardSavedBaselineRef.current = signals.boardSavedSignal;
-    boardSavedBaselineSetRef.current = true;
+    if (window.localStorage.getItem(TACTICAL_SLATE_TOUR_COMPLETED_KEY)) return;
+    if (window.sessionStorage.getItem(TACTICAL_SLATE_TOUR_SESSION_DISMISSED_KEY)) return;
+    hasAutoStartedRef.current = true;
+    initBaselineRefs(signals, {
+      prevSetStartSignalRef,
+      prevIsPlayingRef,
+      boardSavedBaselineRef,
+      boardSavedBaselineSetRef,
+    });
     setStep(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signals.enabled]);
+  }, [signals.autoStartEligible]);
+
+  // Manual replay from the menu — always (re)starts from step 1, regardless
+  // of current step or stored completed/dismissed state. A deliberate replay
+  // request overrides both.
+  useEffect(() => {
+    if (prevRestartSignalRef.current === null) {
+      prevRestartSignalRef.current = signals.restartSignal;
+      return;
+    }
+    if (signals.restartSignal === prevRestartSignalRef.current) return;
+    prevRestartSignalRef.current = signals.restartSignal;
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(TACTICAL_SLATE_TOUR_SESSION_DISMISSED_KEY);
+    }
+    hasAutoStartedRef.current = true;
+    initBaselineRefs(signals, {
+      prevSetStartSignalRef,
+      prevIsPlayingRef,
+      boardSavedBaselineRef,
+      boardSavedBaselineSetRef,
+    });
+    setJustFinished(false);
+    setStep(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signals.restartSignal]);
 
   // Step 1 -> 2: Set Start actually ran.
   useEffect(() => {
@@ -123,15 +175,14 @@ export function useTacticalSlateTour(signals: TacticalSlateTourSignals): Tactica
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, signals.boardSavedSignal]);
 
-  function persistSeen() {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(TACTICAL_SLATE_TOUR_STORAGE_KEY, "seen");
-    }
-  }
-
   function finish() {
-    persistSeen();
-    finishedRef.current = true;
+    if (typeof window !== "undefined") {
+      // Completed — permanent, never auto-shown again. A prior "Not Now"
+      // dismissal for this session is moot now, but clear it anyway so
+      // nothing stale lingers in sessionStorage.
+      window.localStorage.setItem(TACTICAL_SLATE_TOUR_COMPLETED_KEY, "seen");
+      window.sessionStorage.removeItem(TACTICAL_SLATE_TOUR_SESSION_DISMISSED_KEY);
+    }
     setStep(null);
     setJustFinished(true);
     if (typeof window !== "undefined") {
@@ -139,14 +190,18 @@ export function useTacticalSlateTour(signals: TacticalSlateTourSignals): Tactica
     }
   }
 
-  function skip() {
-    persistSeen();
-    finishedRef.current = true;
+  function notNow() {
+    if (typeof window !== "undefined") {
+      // Session-only — deliberately does NOT touch the completed flag, so
+      // the tour is still eligible to auto-start next session (or right away
+      // via a manual replay from the menu).
+      window.sessionStorage.setItem(TACTICAL_SLATE_TOUR_SESSION_DISMISSED_KEY, "dismissed");
+    }
     setStep(null);
     setJustFinished(false);
   }
 
-  return { active: step !== null, step, justFinished, skip };
+  return { active: step !== null, step, justFinished, notNow };
 }
 
 const STEP_COPY: Record<TacticalSlateTourStep, { title: string; instruction: string; explain?: string }> = {
@@ -173,12 +228,12 @@ const STEP_COPY: Record<TacticalSlateTourStep, { title: string; instruction: str
 export function TacticalSlateTour({
   step,
   justFinished,
-  onSkip,
+  onNotNow,
   targetRef,
 }: {
   step: TacticalSlateTourStep | null;
   justFinished: boolean;
-  onSkip: () => void;
+  onNotNow: () => void;
   targetRef: RefObject<HTMLElement | null> | null;
 }) {
   const [ring, setRing] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
@@ -245,8 +300,8 @@ export function TacticalSlateTour({
         <p style={S.title}>{copy.title}</p>
         <p style={S.instruction}>{copy.instruction}</p>
         {copy.explain ? <p style={S.explain}>{copy.explain}</p> : null}
-        <button type="button" style={S.skipBtn} onClick={onSkip}>
-          Skip
+        <button type="button" style={S.skipBtn} onClick={onNotNow}>
+          Not Now
         </button>
       </div>
     </>

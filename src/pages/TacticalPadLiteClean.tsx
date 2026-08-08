@@ -2236,6 +2236,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   // Purely an observability signal for the guided tour; nothing reads it besides
   // useTacticalSlateTour.
   const [tourSetStartSignal, setTourSetStartSignal] = useState(0);
+  // Tactical Slate Phase D — bumped by the "Guided Tour" menu entry to force
+  // a replay regardless of completed/dismissed state.
+  const [tourRestartSignal, setTourRestartSignal] = useState(0);
   // Shape Lock — transient editor convenience (Tactical Slate only). Mirrors the
   // surface's own transient state; nothing here is persisted.
   const [shapeLockMode, setShapeLockModeState] = useState<"off" | "select" | "active">("off");
@@ -3411,6 +3414,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     refreshSavedBoards();
     setMyBoardsOpen(true);
   };
+  const replayGuidedTour = () => {
+    setActionsOpen(false);
+    setTourRestartSignal((count) => count + 1);
+  };
   const openCoachingClipEntry = () => {
     setQuickShareOpen(false);
     setActionsOpen(false);
@@ -4299,17 +4306,20 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     [BOARD_VIEWPORT_HEIGHT_CSS_VAR]: `${Math.max(0, Math.floor(appViewportHeight))}px`,
   } as CSSProperties;
 
-  // Tactical Slate Phase D — first-run guided tour. Only ever starts on a
-  // fresh tactical board (phaseCount === 0); once started it runs to
-  // completion or Skip regardless of later phaseCount changes. See
+  // Tactical Slate Phase D — first-run guided tour. Auto-starts only on a
+  // fresh tactical board (phaseCount === 0) that hasn't been completed or
+  // dismissed for this session; once started it runs to completion or
+  // "Not Now" regardless of later phaseCount changes. Replayable anytime via
+  // the "Guided Tour" menu entry, which bumps tourRestartSignal. See
   // TacticalSlateTour.tsx for the step state machine.
   const tacticalSlateTour = useTacticalSlateTour({
-    enabled: !isWhiteboardMode && !isStatsMode && phaseCount === 0,
+    autoStartEligible: !isWhiteboardMode && !isStatsMode && phaseCount === 0,
     phaseCount,
     isPlaying,
     isPaused,
     setStartSignal: tourSetStartSignal,
     boardSavedSignal: lastBoardSavedAtMillis,
+    restartSignal: tourRestartSignal,
   });
   useEffect(() => {
     // Steps 1-3 all point at buttons inside the same Phases controls popout
@@ -5840,6 +5850,9 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openMyBoardsEntry}>
               My Boards
             </button>
+            <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={replayGuidedTour}>
+              Guided Tour
+            </button>
             {SLATE_IMAGE_BG_ENABLED ? (
               <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openCoachingClipEntry}>
                 🎬 Coaching Slideshow
@@ -6471,7 +6484,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       <TacticalSlateTour
         step={tacticalSlateTour.step}
         justFinished={tacticalSlateTour.justFinished}
-        onSkip={tacticalSlateTour.skip}
+        onNotNow={tacticalSlateTour.notNow}
         targetRef={tacticalSlateTourTargetRef}
       />
     </OrientationGate>
