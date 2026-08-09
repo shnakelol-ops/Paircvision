@@ -2264,9 +2264,9 @@ function makeChainSummaryPage(
     const { byRule } = analysis;
 
     const chainRows: { label: string; ruleId: import("./chains/chain-types").ChainRuleId }[] = [
-      { label: `${koLabel(sport)} Won → Score (direct)`,       ruleId: "KICKOUT_TO_SCORE"              },
-      { label: `${koLabel(sport)} Lost → Score Against (direct)`, ruleId: "KICKOUT_LOST_TO_SCORE_AGAINST" },
-      { label: "Turnover Won → Score (direct)",       ruleId: "TURNOVER_TO_SCORE"              },
+      { label: `${koLabel(sport)} Won → Score (rule match)`,       ruleId: "KICKOUT_TO_SCORE"              },
+      { label: `${koLabel(sport)} Lost → Score Against (rule match)`, ruleId: "KICKOUT_LOST_TO_SCORE_AGAINST" },
+      { label: "Turnover Won → Score (rule match)",       ruleId: "TURNOVER_TO_SCORE"              },
       { label: "Turnover Won → Shot",        ruleId: "TURNOVER_TO_SHOT"               },
       { label: "Free Won → Goal",            ruleId: "FREE_WON_TO_GOAL"               },
     ];
@@ -2309,15 +2309,18 @@ function makeChainSummaryPage(
     ctx.restore();
     cy += 30;
 
-    // (direct) vs origin — the two kickout panels on this page are different
-    // metrics by design; say so where both are visible (see restartMetrics.ts).
+    // (rule match) vs origin — the two kickout panels on this page are
+    // different metrics by design; say so where both are visible (see
+    // restartMetrics.ts). Never call a rule-match count "direct" — it is
+    // still chain-origin attribution, just a narrower window than the
+    // origin panels' full-possession forward scan.
     ctx.save();
     ctx.fillStyle = "#64748b";
     ctx.font = "italic 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(
-      "(direct) counts exact rule matches. The origin panels follow the full possession.",
+      "(rule match) counts exact rule matches. The origin panels follow the full possession.",
       COL1_X + 14, cy + 6, COL_W - 24,
     );
     ctx.restore();
@@ -2902,10 +2905,10 @@ function makeKickoutChainPage(
     const koLostFor    = koLostScoreChains.filter((c) => c.teamSide === "FOR").length;
     const koLostOpp    = koLostScoreChains.filter((c) => c.teamSide === "OPP").length;
 
-    cy = drawStatRow(COL3_X, cy, COL_W, `Won → Score (direct) — ${truncTeam(homeTeam, 10)}`,      String(koToScoreFor), "#7dd3fc", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `Won → Score (direct) — ${truncTeam(awayTeam, 10)}`,      String(koToScoreOpp), "#fb7185", true);
-    cy = drawStatRow(COL3_X, cy, COL_W, `Lost → Score Against (direct) — ${truncTeam(homeTeam, 8)}`, String(koLostFor), "#f97316", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `Lost → Score Against (direct) — ${truncTeam(awayTeam, 8)}`, String(koLostOpp), "#f97316", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `Won → Score (rule match) — ${truncTeam(homeTeam, 10)}`,      String(koToScoreFor), "#7dd3fc", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `Won → Score (rule match) — ${truncTeam(awayTeam, 10)}`,      String(koToScoreOpp), "#fb7185", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `Lost → Score Against (rule match) — ${truncTeam(homeTeam, 8)}`, String(koLostFor), "#f97316", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `Lost → Score Against (rule match) — ${truncTeam(awayTeam, 8)}`, String(koLostOpp), "#f97316", true);
     cy += 12;
 
     // Restart Origin — scoring from kickout/puckout possession chains
@@ -3319,8 +3322,8 @@ function makeTurnoverPunishmentPage(
 
     // Chain rule matches
     cy = drawSubHeader(COL3_X, cy, COL_W, "CHAIN RULE MATCHES", "#fbbf24");
-    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score (direct) — ${truncTeam(homeTeam, 10)}`,  String(toToScoreFor),  "#a78bfa", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score (direct) — ${truncTeam(awayTeam, 10)}`,  String(toToScoreOpp),  "#fb7185", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score (rule match) — ${truncTeam(homeTeam, 10)}`,  String(toToScoreFor),  "#a78bfa", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score (rule match) — ${truncTeam(awayTeam, 10)}`,  String(toToScoreOpp),  "#fb7185", true);
     cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Shot   (${truncTeam(homeTeam, 10)})`,  String(toToShotFor),   "#a78bfa", false);
     cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Shot   (${truncTeam(awayTeam, 10)})`,  String(toToShotOpp),   "#fb7185", true);
     cy += 10;
@@ -3925,7 +3928,7 @@ function makeMomentumRunsPage(
  * Empty state: renders "No match data recorded" when totalEventsAnalysed === 0.
  * No ctx.roundRect() — uses ctx.fillRect() throughout (Safari < 15.4 safe).
  */
-function makeTacticalIntelligencePage(
+export function makeTacticalIntelligencePage(
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
@@ -4264,9 +4267,9 @@ function makeTacticalIntelligencePage(
       chainColor,
     );
   }
-  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, `${koLabel(sport)} → score chains (direct)`, `${koToScore}`, "#22d3ee", false);
-  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, "Turnover → score chains (direct)",   `${tvToScore}`,  "#a78bfa", true);
-  drawMetricRow(R_COL_X, rcy, R_COL_W, "Placed ball → goal chains (direct)",       `${freeToGoal}`, "#fbbf24", false);
+  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, `${koLabel(sport)} → score chains (rule match)`, `${koToScore}`, "#22d3ee", false);
+  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, "Turnover → score chains (rule match)",   `${tvToScore}`,  "#a78bfa", true);
+  drawMetricRow(R_COL_X, rcy, R_COL_W, "Placed ball → goal chains (rule match)",       `${freeToGoal}`, "#fbbf24", false);
 
   // ── RIGHT — CARD 3: PERFORMANCE SUMMARY ───────────────────────────────────
   drawCardBg(R_COL_X, card3Y, R_COL_W, CARD_H_BOT, "#34d399");
@@ -4375,7 +4378,7 @@ function makeTacticalIntelligencePage(
  * No ctx.roundRect() — uses ctx.fillRect() throughout (Safari < 15.4 safe).
  * Empty state: "No review patterns identified — too few tactical events recorded."
  */
-function makeTacticalReviewGuidePage(
+export function makeTacticalReviewGuidePage(
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
@@ -7769,20 +7772,27 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Free Kick Analysis"), true, "Free Kick Analysis");
   }
 
-  // p.16+N — Intelligence Summary (mixed — Possession primary, Chain context)
+  // p.16+N — Intelligence Summary — Part 3 (Game Origin / Chain Analysis).
+  // Reclassified from MIXED: every insight here quotes a restart/turnover-
+  // origin percentage (koConvPct/tvConvPct against
+  // fmtRestartOriginScoredFor/fmtTurnoverOriginScoredFor) - chain-origin
+  // content, not possession-fact. NOTE: still called from the Chapter 2
+  // (Possession Intelligence) call site pending the page-reassembly pass
+  // later in this branch, which moves it to Part 3's page order.
   try {
     const c = makeTacticalIntelligencePage(report, homeTeamName, awayTeamName, p_ch2div + 4, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "MIXED");
+    stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Intelligence Summary");
   } catch (err) {
     console.error("Intelligence Summary page generation failed", err);
     addCanvasPage(fallbackCanvas("Intelligence Summary"), true, "Intelligence Summary");
   }
 
-  // p.17+N — Tactical Review Guide (mixed)
+  // p.17+N — Tactical Review Guide — Part 3 (Game Origin / Chain Analysis).
+  // Reclassified from MIXED for the same reason as Intelligence Summary.
   try {
     const c = makeTacticalReviewGuidePage(report, homeTeamName, awayTeamName, p_ch2div + 5, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "MIXED");
+    stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Tactical Review Guide");
   } catch (err) {
     console.error("Tactical Review Guide page generation failed", err);

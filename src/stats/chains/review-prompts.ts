@@ -347,13 +347,13 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (koToScore > tvToScore) {
       push(
         "CHAIN",
-        `${home} had more direct ${koTerm}-to-score chains (${koToScore}) than turnover-to-score chains (${tvToScore}). Worth reviewing whether the ${koTerm} was the primary scoring platform.`,
+        `${home} had more ${koTerm}-to-score chains (${koToScore}) than turnover-to-score chains (${tvToScore}). Worth reviewing whether the ${koTerm} was the primary scoring platform.`,
         `chain:koToScore=${koToScore},tvToScore=${tvToScore}`,
       );
     } else if (tvToScore > koToScore) {
       push(
         "CHAIN",
-        `${home} had more direct turnover-to-score chains (${tvToScore}) than ${koTerm}-to-score chains (${koToScore}). Worth reviewing whether quick transition was the main scoring route.`,
+        `${home} had more turnover-to-score chains (${tvToScore}) than ${koTerm}-to-score chains (${koToScore}). Worth reviewing whether quick transition was the main scoring route.`,
         `chain:tvToScore=${tvToScore},koToScore=${koToScore}`,
       );
     }
