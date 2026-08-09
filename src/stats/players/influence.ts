@@ -1,9 +1,12 @@
 /**
  * influence.ts
  *
- * Player Influence layer — turns existing player-attributed events into
- * ranked influence intelligence for BOTH teams. No new tagging: every metric
- * derives from events already captured.
+ * Player chain-involvement layer — turns existing player-attributed events
+ * into factual per-player counts for BOTH teams. No new tagging: every
+ * metric derives from events already captured. No composite score: every
+ * field here is either a raw count or transparent arithmetic (a sum or a
+ * difference of raw counts) — never a weighted index, rating, or ranking
+ * coefficient. PáircVision records and connects; it does not grade players.
  *
  * Metrics (per player, per match):
  *   Scoring Share     — player's points value ÷ team's total points value
@@ -13,22 +16,23 @@
  *                       membership (analysis.allChains) — the corner-back-
  *                       credit stat.
  *   Net Ball Impact   — (T/O won + kickouts won + frees won)
- *                       − (T/O lost + kickouts lost + frees conceded)
- *   Influence Index   — v1, deliberately dumb and explainable. Weights live
- *                       in the exported INFLUENCE_WEIGHTS object so they can
- *                       be tuned in one place; the formula is printed on the
- *                       report page ("How this is calculated").
+ *                       − (T/O lost + kickouts lost + frees conceded) —
+ *                       transparent arithmetic, not a weighted score.
  *
- * Insight rules (minimum-sample guarded; below thresholds the data still
- * shows but insights are suppressed):
- *   Dependency flag   — any player's Scoring Share ≥ 40% with team total
- *                       ≥ 5 scores. The spread insight fires otherwise.
- *   Efficiency watch  — ≥ 3 shots and < 34% conversion. Neutral tone.
- *   Quiet influence   — highest Chain Involvement among players with 0 scores.
+ * Factual observations (minimum-sample guarded; below thresholds the data
+ * still shows but the observation is suppressed). Each is a bare fact about
+ * what was recorded — no recommendation, no judgement:
+ *   Scoring concentration — a player's Scoring Share ≥ 40% with team total
+ *                       ≥ 5 scores states the share; below that, a "spread"
+ *                       observation states the top share instead.
+ *   Shot volume note  — ≥ 3 shots and < 34% conversion states the scores-
+ *                       from-attempts count.
+ *   Non-scoring involvement — highest Chain Involvement among players with
+ *                       0 scores.
  *
  * Design constraints: pure TypeScript — no canvas/DOM/React. Imports only
- * chain-types (no circular import with reviewPdfExport). All insight strings
- * carry evidence tags and name the team/player performing the action.
+ * chain-types (no circular import with reviewPdfExport). All observation
+ * strings carry evidence tags and name the team/player the fact is about.
  */
 
 import type { MatchEventKind } from "../../core/stats/stats-event-model";
@@ -51,36 +55,6 @@ export type InfluenceEvent = ChainableEvent & {
   playerName?: string | null;
   playerNumber?: number | null;
 };
-
-// ─── Tunable weights ──────────────────────────────────────────────────────────
-
-/**
- * Influence Index v1 weights — one place to tune. Keep it dumb and explainable:
- *   index = pointsValue×w + toWon×w − toLost×w + koWon×w − koLost×w
- *         + freesWon×w − freesConceded×w + assistsProxy×w
- * assistsProxy = chain involvements in team scores that were NOT the player's
- * own score (goals already carry their 3-point value — no extra goal bonus).
- */
-export const INFLUENCE_WEIGHTS = {
-  pointsValue:   1,
-  turnoverWon:   1,
-  turnoverLost:  1,
-  kickoutWon:    1,
-  kickoutLost:   1,
-  freeWon:       1,
-  freeConceded:  1,
-  assistsProxy:  1,
-} as const;
-
-/** Human-readable formula string — printed on the Player Influence page. */
-export function influenceFormulaText(): string {
-  const w = INFLUENCE_WEIGHTS;
-  return (
-    `Influence Index = points value ×${w.pointsValue} + turnovers won ×${w.turnoverWon} − turnovers lost ×${w.turnoverLost} ` +
-    `+ kickouts won ×${w.kickoutWon} − kickouts lost ×${w.kickoutLost} + frees won ×${w.freeWon} − frees conceded ×${w.freeConceded} ` +
-    `+ scoring-chain involvements beyond own scores ×${w.assistsProxy}. Goals count as 3 points, 2-pointers as 2.`
-  );
-}
 
 // ─── Output types ─────────────────────────────────────────────────────────────
 
@@ -116,7 +90,6 @@ export type PlayerInfluence = {
   /** Chain involvements in team scores that were not the player's own score. */
   assistsProxy: number;
   netBallImpact: number;
-  influenceIndex: number;
 };
 
 export type InfluenceInsight = {
@@ -127,7 +100,8 @@ export type InfluenceInsight = {
 export type TeamInfluence = {
   teamSide: "FOR" | "OPP";
   teamName: string;
-  /** All players with ≥1 logged event, ranked by Influence Index (desc). */
+  /** All players with ≥1 logged event, ranked by scoring-chain involvement
+   *  count (desc) — a factual sort field, not a composite rating. */
   players: PlayerInfluence[];
   top3: PlayerInfluence[];
   /** Team total scores (count) and points value. */
@@ -227,7 +201,7 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
         toWon: 0, toLost: 0, koWon: 0, koLost: 0, freesWon: 0, freesConceded: 0,
         scoringSharePct: 0, shotEfficiencyPct: 0,
         chainInvolvementCount: 0, chainInvolvementPct: 0,
-        assistsProxy: 0, netBallImpact: 0, influenceIndex: 0,
+        assistsProxy: 0, netBallImpact: 0,
       };
       players.set(key, p);
     } else {
@@ -320,7 +294,6 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
   }
 
   // ── Derived metrics ───────────────────────────────────────────────────────
-  const w = INFLUENCE_WEIGHTS;
   for (const p of players.values()) {
     // Resolved once, after every event (and identity backfill) has been
     // accumulated — the single source every insight and table row reads via
@@ -331,22 +304,18 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
     p.shotEfficiencyPct  = p.shots       > 0 ? Math.round((p.scores / p.shots) * 100) : 0;
     p.chainInvolvementPct = totals.scores > 0 ? Math.round((p.chainInvolvementCount / totals.scores) * 100) : 0;
     p.netBallImpact = (p.toWon + p.koWon + p.freesWon) - (p.toLost + p.koLost + p.freesConceded);
-    p.influenceIndex =
-      p.scoreValue * w.pointsValue +
-      p.toWon * w.turnoverWon - p.toLost * w.turnoverLost +
-      p.koWon * w.kickoutWon  - p.koLost * w.kickoutLost +
-      p.freesWon * w.freeWon  - p.freesConceded * w.freeConceded +
-      p.assistsProxy * w.assistsProxy;
   }
 
   // ── Team assembly ─────────────────────────────────────────────────────────
   function buildTeam(side: "FOR" | "OPP", teamName: string): TeamInfluence {
     const totals = side === "FOR" ? forTotals : oppTotals;
     const team = teamName.slice(0, 18) || (side === "FOR" ? "Home" : "Away");
+    // Sorted by scoring-chain involvement count — a factual field ("most
+    // scoring-chain involvements"), not a composite rating.
     const ranked = Array.from(players.values())
       .filter((p) => p.teamSide === side)
       .sort((a, b) =>
-        b.influenceIndex - a.influenceIndex ||
+        b.chainInvolvementCount - a.chainInvolvementCount ||
         b.scoreValue - a.scoreValue ||
         (a.number ?? 99) - (b.number ?? 99),
       );
@@ -362,26 +331,23 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
         dependencyPlayer = topScorer;
         dependencyInsight = {
           text:
-            `${team} scoring ran through ${topScorer.displayName} — ` +
-            `${fmtPlayerScore(topScorer)} of ${teamScoreStr} (${topScorer.scoringSharePct}%). ` +
-            `Worth reviewing matchup options for the rematch.`,
+            `${topScorer.displayName} (${team}) scored ${fmtPlayerScore(topScorer)} of ${teamScoreStr} ` +
+            `(${topScorer.scoringSharePct}% of team score).`,
           evidenceTag: `influence:scoringShare=${topScorer.scoringSharePct}`,
         };
       } else if (topScorer.scoreValue > 0) {
         dependencyInsight = {
-          text: `${team} scoring was spread — top scorer share ${topScorer.scoringSharePct}%.`,
+          text: `${team} top scorer share was ${topScorer.scoringSharePct}%.`,
           evidenceTag: `influence:topShare=${topScorer.scoringSharePct}`,
         };
       }
     }
 
-    // Efficiency watch — ≥3 shots, <34% conversion; neutral tone
+    // Shot-volume note — ≥3 shots, <34% conversion; states the count only
     const efficiencyWatch: InfluenceInsight[] = ranked
       .filter((p) => p.shots >= 3 && p.shotEfficiencyPct < 34)
       .map((p) => ({
-        text:
-          `${p.displayName} (${team}): ${p.scores} from ${p.shots} attempts. ` +
-          `Worth reviewing shot selection or supply.`,
+        text: `${p.displayName} (${team}) recorded ${p.scores} from ${p.shots} shot attempts.`,
         evidenceTag: `influence:shotEff=${p.shotEfficiencyPct},shots=${p.shots}`,
       }));
 
@@ -436,6 +402,6 @@ export function influenceEvidenceLine(p: PlayerInfluence, team: TeamInfluence): 
   if (p.netBallImpact !== 0) {
     parts.push(`${p.netBallImpact > 0 ? "+" : ""}${p.netBallImpact} net ball impact`);
   }
-  if (parts.length === 0) parts.push(`${p.shots} shot${p.shots !== 1 ? "s" : ""}, index ${p.influenceIndex}`);
+  if (parts.length === 0) parts.push(`${p.shots} shot${p.shots !== 1 ? "s" : ""}`);
   return `${p.displayName}: ${parts.join(" · ")}`;
 }

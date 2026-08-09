@@ -137,7 +137,7 @@ describe("Full Review — chapter copy and language guard (whole export)", () =>
     expect(allTexts).toContain("Scoring Breakdown");
     expect(allTexts).toContain("Scoring Possession Origins");
     expect(allTexts).toContain("Opposition Facts");
-    expect(allTexts).toContain("Opposition Origin & Chain Threat");
+    expect(allTexts).toContain("Opposition Origin & Chain Analysis");
     expect(allTexts).toContain("Player Contributions");
   });
 });

@@ -3,7 +3,7 @@
  *
  * Regression coverage for the Opposition Snapshot split:
  *   - Opposition Facts (Part 1/2) — match-fact + possession-fact only.
- *   - Opposition Origin & Chain Threat (Part 3) — chain-origin +
+ *   - Opposition Origin & Chain Analysis (Part 3) — chain-origin +
  *     interpretive, and never uses "Direct" language for origin rows.
  */
 
@@ -103,7 +103,7 @@ describe("Opposition Facts (Part 1/2) — provenance", () => {
   });
 });
 
-describe("Opposition Origin & Chain Threat (Part 3) — provenance", () => {
+describe("Opposition Origin & Chain Analysis (Part 3) — provenance", () => {
   it("row label list is chain-origin + interpretive only", () => {
     const rows = buildOppositionOriginRows();
     expect(() => assertPartProvenance("GAME_ORIGIN", rows)).not.toThrow();
@@ -125,7 +125,7 @@ describe("Opposition Origin & Chain Threat (Part 3) — provenance", () => {
     const canvas = makeOppositionOriginPage(events, report, GOLDEN_TEAMS.home, GOLDEN_TEAMS.away, 1, 7) as unknown as CaptureCanvas;
     const texts = canvas.ctx.texts;
 
-    expect(texts).toContain("Opposition Origin & Chain Threat");
+    expect(texts).toContain("Opposition Origin & Chain Analysis");
     const directHits = texts.filter((t) => containsDirectLanguage(t));
     expect(directHits).toEqual([]);
   });

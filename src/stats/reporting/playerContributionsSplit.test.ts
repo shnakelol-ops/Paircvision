@@ -145,23 +145,24 @@ describe("Player Chain Involvement (Part 3) — carries the chain-derived terms"
     expect(() => assertPartProvenance("GAME_ORIGIN", rows)).not.toThrow();
   });
 
-  it("row labels include chain involvement, assists proxy, and influence index", () => {
+  it("row labels include chain involvement and assists proxy — no composite index", () => {
     const rows = buildPlayerChainInvolvementRows();
     const labels = rows.map((r) => r.label);
     expect(labels).toContain("Chain Involvement");
     expect(labels).toContain("Assists Proxy");
-    expect(labels).toContain("Influence Index");
+    expect(labels).not.toContain("Influence Index");
   });
 
-  it("rendered page still prints CHAIN INV / INDEX columns and the formula (unchanged)", () => {
+  it("rendered page prints 'Player Chain Involvement' and a CHAIN INV column, never an Index", () => {
     installDomMocks();
     const events = fixtureEvents();
     const report = buildMatchReport<PdfExportEvent>({ events, homeTeam: "Adare", awayTeam: "Mungret" });
     const canvas = makePlayerInfluencePage(events, report, "Adare", "Mungret", 1, 7) as unknown as CaptureCanvas;
     const texts = canvas.ctx.texts;
 
-    expect(texts).toContain("Top Players by Net Influence");
+    expect(texts).toContain("Player Chain Involvement");
     expect(texts.some((t) => t.includes("CHAIN INV"))).toBe(true);
-    expect(texts.some((t) => t.includes("How this is calculated"))).toBe(true);
+    expect(texts.some((t) => t.toLowerCase().includes("influence index"))).toBe(false);
+    expect(texts).not.toContain("INDEX");
   });
 });
