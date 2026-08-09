@@ -8,7 +8,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { PdfExportEvent } from "../reviewPdfExport";
 import { makeTurnoverTerritoryPage } from "../reviewPdfExport";
-import { buildMatchReport } from "./matchReport";
 import {
   ADARE_MUNGRET_TEAMS,
   buildAdareMungretFixture,
@@ -114,15 +113,8 @@ function spreadCoords(
 }
 
 function renderTerritoryMarkerFills(events: readonly PdfExportEvent[]): string[] {
-  const report = buildMatchReport({
-    events,
-    homeTeam: ADARE_MUNGRET_TEAMS.home,
-    awayTeam: ADARE_MUNGRET_TEAMS.away,
-    scope: "FULL",
-  });
   const canvas = makeTurnoverTerritoryPage(
     events,
-    report,
     "gaelic",
     ADARE_MUNGRET_TEAMS.home,
     ADARE_MUNGRET_TEAMS.away,
@@ -197,15 +189,8 @@ describe("makeTurnoverTerritoryPage — renderer colour proof", () => {
 
   it("Ballylanders golden fixture: draws 7 purple + 5 orange markers", () => {
     const events = buildGoldenReportingFixture() as PdfExportEvent[];
-    const report = buildMatchReport({
-      events,
-      homeTeam: GOLDEN_TEAMS.home,
-      awayTeam: GOLDEN_TEAMS.away,
-      scope: "FULL",
-    });
     const canvas = makeTurnoverTerritoryPage(
       events,
-      report,
       "gaelic",
       GOLDEN_TEAMS.home,
       GOLDEN_TEAMS.away,
