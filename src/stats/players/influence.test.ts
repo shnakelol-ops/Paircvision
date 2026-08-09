@@ -108,9 +108,9 @@ describe("buildInfluenceAnalysis — spec fixture acceptance", () => {
     expect(p15.shots).toBe(6);
     expect(p15.scoringSharePct).toBe(64);
     expect(influence.away.dependencyPlayer?.number).toBe(15);
-    expect(influence.away.dependencyInsight?.text).toContain("St.Patricks scoring ran through #15");
-    expect(influence.away.dependencyInsight?.text).toContain("1-04 of 1-08 (64%)");
-    expect(influence.away.dependencyInsight?.text).toContain("Worth reviewing matchup options");
+    expect(influence.away.dependencyInsight?.text).toBe(
+      "#15 (St.Patricks) scored 1-04 of 1-08 (64% of team score).",
+    );
   });
 
   it("#15 tops the away influence ranking and the evidence line reads correctly", () => {
@@ -123,15 +123,14 @@ describe("buildInfluenceAnalysis — spec fixture acceptance", () => {
 
   it("Shane gets an efficiency flag (1/5); Danny does not (2/3)", () => {
     const texts = influence.home.efficiencyWatch.map((f) => f.text);
-    expect(texts.some((t) => t.startsWith("Shane (Ballylanders): 1 from 5 attempts"))).toBe(true);
+    expect(texts.some((t) => t === "Shane (Ballylanders) recorded 1 from 5 shot attempts.")).toBe(true);
     expect(texts.some((t) => t.includes("Danny"))).toBe(false);
-    expect(texts.join(" ")).toContain("Worth reviewing shot selection or supply");
   });
 
-  it("Ballylanders dependency flag does NOT fire — spread insight instead (top share 29%)", () => {
+  it("Ballylanders dependency flag does NOT fire — spread observation instead (top share 29%)", () => {
     expect(influence.home.dependencyPlayer).toBeNull();
     expect(influence.home.dependencyInsight?.text).toBe(
-      "Ballylanders scoring was spread — top scorer share 29%.",
+      "Ballylanders top scorer share was 29%.",
     );
   });
 
@@ -156,14 +155,13 @@ describe("buildInfluenceAnalysis — spec fixture acceptance", () => {
     }
   });
 
-  it("net ball impact and influence index follow the printed formula", () => {
+  it("net ball impact is transparent arithmetic; no composite index exists on the model", () => {
     const johnno = influence.home.players.find((p) => p.name === "Johnno")!;
     expect(johnno.netBallImpact).toBe(1);   // 1 turnover won
-    expect(johnno.influenceIndex).toBe(2);  // 1 T/O won + 1 assist proxy
     const danny = influence.home.players.find((p) => p.name === "Danny")!;
     expect(danny.scoreValue).toBe(2);
     expect(danny.shotEfficiencyPct).toBe(67);
-    expect(danny.influenceIndex).toBe(2);   // 2 points value, no ball-winning events
+    expect((danny as unknown as Record<string, unknown>).influenceIndex).toBeUndefined();
   });
 });
 

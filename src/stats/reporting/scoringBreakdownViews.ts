@@ -107,6 +107,54 @@ export function viewTurnoverOriginConcededFor<T extends ChainableEvent>(
   return viewTurnoverOriginScoredOpp(analysis);
 }
 
+// ─── De-duplicated possession-origin split (Full Review Part 3) ──────────────
+
+export type ScoringPossessionOrigins = {
+  restartOrigin: ScoringBreakdown;
+  turnoverOrigin: ScoringBreakdown;
+};
+
+/**
+ * De-duplicated possession-origin split for one team's scores: every scoring
+ * event is attributed to AT MOST ONE origin (restart or turnover), using the
+ * same nearer-origin-wins tie-break as the score ledger (buildOriginClockMaps
+ * + "later clock wins" below), so a score whose forward-scan is claimed by
+ * both a kickout outcome and a turnover outcome is never double-counted
+ * across the two totals. Unlike buildScoreLedger, this does NOT give placed
+ * balls precedence — a placed free scored inside a restart-origin possession
+ * still counts as a restart-origin score here, because Part 3 answers "where
+ * did the possession begin," not "how was the score recorded."
+ */
+export function viewScoringPossessionOrigins<T extends ChainableEvent>(
+  report: MatchReport<T>,
+  team: "FOR" | "OPP",
+): ScoringPossessionOrigins {
+  const maps = buildOriginClockMaps(report.chain);
+  const restartEvents: T[] = [];
+  const turnoverEvents: T[] = [];
+
+  for (const e of report.events) {
+    if (e.id.includes("-instant-score-")) continue;
+    if (e.teamSide !== team) continue;
+    if (!SCORE_KINDS.has(e.kind)) continue;
+
+    const koClock = maps.restart.get(e.id);
+    const toClock = maps.turnover.get(e.id);
+    if (koClock != null && toClock != null) {
+      (toClock >= koClock ? turnoverEvents : restartEvents).push(e);
+    } else if (koClock != null) {
+      restartEvents.push(e);
+    } else if (toClock != null) {
+      turnoverEvents.push(e);
+    }
+  }
+
+  return {
+    restartOrigin: breakdownFromScoreEvents(restartEvents),
+    turnoverOrigin: breakdownFromScoreEvents(turnoverEvents),
+  };
+}
+
 // ─── Ledger-row breakdowns (read-only classification mirror) ─────────────────
 
 function buildOriginClockMaps<T extends ChainableEvent>(

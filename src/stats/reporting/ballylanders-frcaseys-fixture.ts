@@ -62,8 +62,13 @@ function pushScores(
   placedPoints: number,
   goals: number,
 ): void {
-  for (let i = 0; i < goals; i++) out.push(mk({ kind: "GOAL", teamSide, period }));
-  for (let i = 0; i < openPlayPoints; i++) out.push(mk({ kind: "POINT", teamSide, period }));
+  // SOURCE_PLAY tags every open-play score/wide explicitly, matching how
+  // capture UIs tag them in production — an untagged event means "source not
+  // captured" (UNATTRIBUTED) to eventSource(), not "open play". Without this
+  // tag, buildDirectScoringBreakdown()'s Scoring Breakdown page (Part 1)
+  // would misreport genuine open-play scores as Unattributed.
+  for (let i = 0; i < goals; i++) out.push(mk({ kind: "GOAL", teamSide, period, tags: ["SOURCE_PLAY"] }));
+  for (let i = 0; i < openPlayPoints; i++) out.push(mk({ kind: "POINT", teamSide, period, tags: ["SOURCE_PLAY"] }));
   for (let i = 0; i < placedPoints; i++) out.push(mk({ kind: "POINT", teamSide, period, tags: ["SOURCE_FREE"] }));
 }
 
@@ -74,7 +79,7 @@ function pushWides(
   openPlayWides: number,
   placedWides: number,
 ): void {
-  for (let i = 0; i < openPlayWides; i++) out.push(mk({ kind: "WIDE", teamSide, period }));
+  for (let i = 0; i < openPlayWides; i++) out.push(mk({ kind: "WIDE", teamSide, period, tags: ["SOURCE_PLAY"] }));
   for (let i = 0; i < placedWides; i++) out.push(mk({ kind: "WIDE", teamSide, period, tags: ["SOURCE_FREE"] }));
 }
 

@@ -54,6 +54,7 @@ import {
   fmtRestartOriginScoredOpp,
   fmtTurnoverOriginConcededFor,
   fmtTurnoverOriginScoredFor,
+  viewOwnKickoutLossOriginConcededFor,
 } from "./reporting/scoringBreakdownViews";
 import {
   RESTART_ORIGIN_HEADING,
@@ -92,21 +93,25 @@ import {
   restartMetricLabel,
 } from "./restarts/restartMetrics";
 import {
-  buildScoreLedger,
+  buildDirectScoringBreakdown,
   countPlacedRestartOriginScores,
   fmtLedgerSide,
   fmtMarginLabel,
   fmtNet,
   fmtScoreLine,
   restartOriginBridgeNote,
+  type DirectScoringBreakdown,
 } from "./ledger/scoreLedger";
 import {
   buildInfluenceAnalysis,
   fmtPlayerScore,
   influenceEvidenceLine,
-  influenceFormulaText,
   type TeamInfluence,
 } from "./players/influence";
+import { viewScoringPossessionOrigins } from "./reporting/scoringBreakdownViews";
+import { formatScoringBreakdownOrDash, scoringBreakdownTotal, type ScoringBreakdown } from "./reporting/scoringBreakdownFormat";
+import type { ProvenanceRow } from "./reporting/reportProvenance";
+import { GAME_ORIGIN_EXPLANATION, PART_QUESTIONS } from "./reporting/fullReviewCopy";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -1734,20 +1739,176 @@ function makePlayerPages(
   return results;
 }
 
-// ─── Player Influence page ────────────────────────────────────────────────────
+// ─── Player Contributions page (Part 1 — Match Facts) ─────────────────────────
 
 /**
- * Player Influence — ranked influence intelligence for both teams, derived
- * entirely from existing player-attributed events (see players/influence.ts).
+ * Player Contributions — factual per-player counts, Part 1 (Match Facts).
+ *
+ * PROVENANCE: match-fact only. Reuses buildInfluenceAnalysis() (the same
+ * calculation Player Chain Involvement draws on, Part 3) but reads only its
+ * direct-count fields: score, scoring share, shot conversion, turnovers,
+ * kickouts, frees, net ball impact. Never reads chainInvolvementCount/
+ * chainInvolvementPct/assistsProxy/influenceIndex, and never prints the
+ * "Worth reviewing…" insight lines (those are interpretive, Part 3 territory,
+ * and two of the three insight types are chain-derived). Ranked by score
+ * value, not by Influence Index — the index is a chain-tainted composite.
+ */
+const PLAYER_CONTRIBUTIONS_FACT_LABELS = [
+  "Score", "Scoring Share", "Shot Conversion",
+  "Turnovers Won/Lost", "Kickouts Won/Lost", "Frees Won/Conceded", "Net Ball Impact",
+] as const;
+
+export function buildPlayerContributionsRows(): ProvenanceRow[] {
+  return PLAYER_CONTRIBUTIONS_FACT_LABELS.map((label) => ({ label, provenance: "match-fact" as const }));
+}
+
+export function makePlayerContributionsPage(
+  events: readonly PdfExportEvent[],
+  report: MatchReport<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+  homeSquadPlayers?: readonly PdfSquadPlayer[],
+  awaySquadPlayers?: readonly PdfSquadPlayer[],
+): HTMLCanvasElement {
+  const analysis = report.chain;
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Player Contributions", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  ctx.save();
+  ctx.fillStyle = "#64748b";
+  ctx.font = "italic 14px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText("Raw per-player counts — scoring, shooting, restarts, turnovers and frees. Ranked by score value.", 24, 86);
+  ctx.restore();
+  drawEventCountFooter(ctx, events.filter((e) => !e.id.includes("-instant-score-")).length);
+
+  const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam, homeSquadPlayers, awaySquadPlayers);
+
+  const CONTENT_TOP = 106;
+  const L_COL_X = 24;
+  const R_COL_X = 968;
+  const COL_W   = 928;
+
+  function drawTeamColumn(colX: number, team: TeamInfluence, accent: string): void {
+    let cy = CONTENT_TOP;
+
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(colX, cy, COL_W, 36);
+    ctx.fillStyle = accent;
+    ctx.fillRect(colX, cy, 3, 36);
+    ctx.font = "bold 15px sans-serif";
+    ctx.fillStyle = accent;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(team.teamName.toUpperCase(), colX + 14, cy + 18);
+    cy += 44;
+
+    if (team.players.length === 0) {
+      ctx.fillStyle = "#64748b";
+      ctx.font = "18px sans-serif";
+      ctx.fillText("No player-tagged events recorded", colX + 14, cy + 20);
+      return;
+    }
+
+    const ranked = [...team.players].sort(
+      (a, b) => b.scoreValue - a.scoreValue || b.netBallImpact - a.netBallImpact,
+    );
+
+    const cols: Array<[string, number]> = [
+      ["PLAYER", 0], ["SCORE", 300], ["SHARE", 400], ["SHOTS", 500],
+      ["T/O W-L", 620], ["KO W-L", 740], ["NET BALL", 860],
+    ];
+    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    ctx.fillRect(colX, cy, COL_W, 26);
+    ctx.font = "bold 12px sans-serif";
+    ctx.fillStyle = "#64748b";
+    for (const [label, off] of cols) {
+      ctx.textAlign = off === 0 ? "left" : "center";
+      ctx.fillText(label, colX + 14 + off, cy + 13);
+    }
+    cy += 26;
+
+    for (const p of ranked.slice(0, 12)) {
+      const mid = cy + 15;
+      ctx.font = "16px sans-serif";
+      ctx.fillStyle = "#e2e8f0";
+      ctx.textAlign = "left";
+      let nm = p.displayName;
+      while (nm.length > 0 && ctx.measureText(nm).width > 270) nm = nm.slice(0, -1);
+      ctx.fillText(nm, colX + 14, mid);
+      ctx.textAlign = "center";
+      ctx.fillText(p.scoreValue > 0 ? fmtPlayerScore(p) : "—", colX + 14 + 300, mid);
+      ctx.fillText(p.scoreValue > 0 ? `${p.scoringSharePct}%` : "—", colX + 14 + 400, mid);
+      ctx.fillText(p.shots > 0 ? `${p.scores}/${p.shots}` : "—", colX + 14 + 500, mid);
+      ctx.fillText(`${p.toWon}-${p.toLost}`, colX + 14 + 620, mid);
+      ctx.fillText(`${p.koWon}-${p.koLost}`, colX + 14 + 740, mid);
+      ctx.fillStyle = p.netBallImpact > 0 ? "#4ade80" : p.netBallImpact < 0 ? "#fb7185" : "#94a3b8";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText(p.netBallImpact > 0 ? `+${p.netBallImpact}` : String(p.netBallImpact), colX + 14 + 860, mid);
+      cy += 30;
+    }
+  }
+
+  drawTeamColumn(L_COL_X, influence.home, "#7dd3fc");
+  drawTeamColumn(R_COL_X, influence.away, "#fb7185");
+
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.fillRect(R_COL_X - 20, CONTENT_TOP, 1, CANVAS_H - 60 - CONTENT_TOP);
+
+  ctx.fillStyle = "#475569";
+  ctx.font = "italic 14px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    "Direct event counts only. Chain involvement and net influence ranking appear in Game Origin Analysis (Part 3).",
+    CANVAS_W / 2, CANVAS_H - 40,
+  );
+
+  return canvas;
+}
+
+// ─── Player Chain Involvement page (Part 3 — Game Origin / Chain Analysis) ────
+
+/**
+ * Player Chain Involvement — factual per-player chain-involvement counts for
+ * both teams, derived entirely from existing player-attributed events (see
+ * players/influence.ts). No composite score: players are ranked by scoring-
+ * chain involvement count, a single named factual field — never a weighted
+ * index, rating, or ranking coefficient.
+ *
+ * PROVENANCE: Part 3 (Game Origin / Chain Analysis). Chain Involvement and
+ * Assists Proxy both incorporate chain membership (analysis.allChains) —
+ * chain-origin, not match-fact — so this page lives in Part 3, not Part 1.
+ * The pure-factual per-player counts (score, shots, turnovers, kickouts,
+ * frees, net ball impact) live on their own page, Player Contributions
+ * (Part 1) — see makePlayerContributionsPage above.
  *
  * LEFT column = home team · RIGHT column = away team. Each column shows the
- * Top 3 influencers with evidence lines, a compact metric table, and the
- * insight flags (dependency / efficiency watch / quiet influence).
- * The Influence Index formula is printed at the bottom of the page —
- * never hide the formula.
+ * players with the most scoring-chain involvements, a compact factual metric
+ * table, and recorded-pattern observations (scoring concentration / shot
+ * volume / non-scoring involvement) — every observation states a fact only;
+ * none recommends a coaching response.
  *
  * Players with zero logged events never appear here.
  */
+const PLAYER_CHAIN_INVOLVEMENT_LABELS = [
+  "Chain Involvement", "Assists Proxy",
+] as const;
+
+export function buildPlayerChainInvolvementRows(): ProvenanceRow[] {
+  return PLAYER_CHAIN_INVOLVEMENT_LABELS.map((label) => ({ label, provenance: "chain-origin" as const }));
+}
+
 export function makePlayerInfluencePage(
   events: readonly PdfExportEvent[],
   report: MatchReport<PdfExportEvent>,
@@ -1768,14 +1929,14 @@ export function makePlayerInfluencePage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Top Players by Net Influence", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Player Chain Involvement", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
   ctx.save();
   ctx.fillStyle = "#64748b";
   ctx.font = "italic 14px sans-serif";
   ctx.textBaseline = "middle";
   ctx.textAlign = "left";
   ctx.fillText(
-    "Net contribution combines scoring, possession wins and losses, restarts, frees and assisted scoring actions.",
+    "Scoring-chain involvement and recorded ball actions, ranked by most scoring-chain involvements.",
     24, 86,
   );
   ctx.restore();
@@ -1810,10 +1971,10 @@ export function makePlayerInfluencePage(
       return;
     }
 
-    // ── Top 3 influencers ────────────────────────────────────────────────────
+    // ── Most scoring-chain involvements ─────────────────────────────────────
     ctx.fillStyle = "#fbbf24";
     ctx.font = "bold 14px sans-serif";
-    ctx.fillText("TOP 3 INFLUENCERS", colX + 14, cy + 8);
+    ctx.fillText("MOST SCORING-CHAIN INVOLVEMENTS", colX + 14, cy + 8);
     cy += 26;
     team.top3.forEach((p, i) => {
       ctx.fillStyle = accent;
@@ -1822,7 +1983,10 @@ export function makePlayerInfluencePage(
       ctx.fillStyle = "#94a3b8";
       ctx.font = "bold 18px sans-serif";
       ctx.textAlign = "right";
-      ctx.fillText(`Index ${p.influenceIndex}`, colX + COL_W - 14, cy + 12);
+      ctx.fillText(
+        `${p.chainInvolvementCount} of ${team.teamScores} chains`,
+        colX + COL_W - 14, cy + 12,
+      );
       ctx.textAlign = "left";
       cy += 30;
       ctx.fillStyle = "#cbd5e1";
@@ -1836,10 +2000,10 @@ export function makePlayerInfluencePage(
     });
     cy += 8;
 
-    // ── Metric table (top 9 by index) ────────────────────────────────────────
+    // ── Metric table (top 9 by scoring-chain involvement count) ─────────────
     const cols: Array<[string, number]> = [
-      ["PLAYER", 0], ["SCORE", 300], ["SHARE", 400], ["SHOTS", 500],
-      ["CHAIN INV", 620], ["NET BALL", 740], ["INDEX", 860],
+      ["PLAYER", 0], ["SCORE", 340], ["SHARE", 460], ["SHOTS", 580],
+      ["CHAIN INV", 720], ["NET BALL", 860],
     ];
     ctx.fillStyle = "rgba(255,255,255,0.06)";
     ctx.fillRect(colX, cy, COL_W, 26);
@@ -1857,55 +2021,58 @@ export function makePlayerInfluencePage(
       ctx.fillStyle = "#e2e8f0";
       ctx.textAlign = "left";
       let nm = p.displayName;
-      while (nm.length > 0 && ctx.measureText(nm).width > 270) nm = nm.slice(0, -1);
+      while (nm.length > 0 && ctx.measureText(nm).width > 310) nm = nm.slice(0, -1);
       ctx.fillText(nm, colX + 14, mid);
       ctx.textAlign = "center";
-      ctx.fillText(p.scoreValue > 0 ? fmtPlayerScore(p) : "—", colX + 14 + 300, mid);
-      ctx.fillText(p.scoreValue > 0 ? `${p.scoringSharePct}%` : "—", colX + 14 + 400, mid);
-      ctx.fillText(p.shots > 0 ? `${p.scores}/${p.shots}` : "—", colX + 14 + 500, mid);
-      ctx.fillText(
-        p.chainInvolvementCount > 0 ? `${p.chainInvolvementCount}/${team.teamScores}` : "—",
-        colX + 14 + 620, mid,
-      );
-      ctx.fillStyle = p.netBallImpact > 0 ? "#4ade80" : p.netBallImpact < 0 ? "#fb7185" : "#94a3b8";
-      ctx.fillText(p.netBallImpact > 0 ? `+${p.netBallImpact}` : String(p.netBallImpact), colX + 14 + 740, mid);
+      ctx.fillText(p.scoreValue > 0 ? fmtPlayerScore(p) : "—", colX + 14 + 340, mid);
+      ctx.fillText(p.scoreValue > 0 ? `${p.scoringSharePct}%` : "—", colX + 14 + 460, mid);
+      ctx.fillText(p.shots > 0 ? `${p.scores}/${p.shots}` : "—", colX + 14 + 580, mid);
       ctx.fillStyle = accent;
       ctx.font = "bold 16px sans-serif";
-      ctx.fillText(String(p.influenceIndex), colX + 14 + 860, mid);
+      ctx.fillText(
+        p.chainInvolvementCount > 0 ? `${p.chainInvolvementCount}/${team.teamScores}` : "—",
+        colX + 14 + 720, mid,
+      );
+      ctx.font = "16px sans-serif";
+      ctx.fillStyle = p.netBallImpact > 0 ? "#4ade80" : p.netBallImpact < 0 ? "#fb7185" : "#94a3b8";
+      ctx.fillText(p.netBallImpact > 0 ? `+${p.netBallImpact}` : String(p.netBallImpact), colX + 14 + 860, mid);
       cy += 30;
     }
     cy += 14;
 
-    // ── Insight flags ────────────────────────────────────────────────────────
+    // ── Recorded patterns ────────────────────────────────────────────────────
+    // Every line below states a recorded fact only — no recommendation, no
+    // judgement of quality. Thresholds decide which facts are surfaced, not
+    // what a coach should do about them (see players/influence.ts header).
     ctx.textAlign = "left";
     ctx.fillStyle = "#fbbf24";
     ctx.font = "bold 14px sans-serif";
-    ctx.fillText("INSIGHTS", colX + 14, cy + 8);
+    ctx.fillText("RECORDED PATTERNS", colX + 14, cy + 8);
     cy += 28;
 
-    const insights: Array<{ text: string; colour: string }> = [];
+    const patterns: Array<{ text: string; colour: string }> = [];
     if (team.dependencyInsight) {
-      insights.push({
+      patterns.push({
         text: team.dependencyInsight.text,
         colour: team.dependencyPlayer ? "#fb7185" : "#4ade80",
       });
     }
     for (const flag of team.efficiencyWatch.slice(0, 2)) {
-      insights.push({ text: flag.text, colour: "#fbbf24" });
+      patterns.push({ text: flag.text, colour: "#fbbf24" });
     }
     if (team.quietInfluence) {
-      insights.push({ text: team.quietInfluence.text, colour: "#7dd3fc" });
+      patterns.push({ text: team.quietInfluence.text, colour: "#7dd3fc" });
     }
-    if (insights.length === 0) {
-      insights.push({ text: "No influence thresholds met — sample below minimums.", colour: "#64748b" });
+    if (patterns.length === 0) {
+      patterns.push({ text: "No additional patterns met the minimum sample.", colour: "#64748b" });
     }
 
     ctx.font = "17px sans-serif";
-    for (const insight of insights.slice(0, 4)) {
-      ctx.fillStyle = insight.colour;
+    for (const pattern of patterns.slice(0, 4)) {
+      ctx.fillStyle = pattern.colour;
       ctx.fillRect(colX + 14, cy, 3, 24);
       ctx.fillStyle = "#cbd5e1";
-      const lines = wrapText(ctx, insight.text, COL_W - 60);
+      const lines = wrapText(ctx, pattern.text, COL_W - 60);
       for (const line of lines.slice(0, 2)) {
         ctx.fillText(line, colX + 26, cy + 10);
         cy += 24;
@@ -1920,16 +2087,6 @@ export function makePlayerInfluencePage(
   // Centre divider
   ctx.fillStyle = "rgba(255,255,255,0.07)";
   ctx.fillRect(R_COL_X - 20, CONTENT_TOP, 1, CANVAS_H - 60 - CONTENT_TOP);
-
-  // "How this is calculated" — the formula is always printed, never hidden.
-  ctx.fillStyle = "#475569";
-  ctx.font = "italic 14px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  const formulaLines = wrapText(ctx, `How this is calculated: ${influenceFormulaText()}`, CANVAS_W - 300);
-  formulaLines.slice(0, 2).forEach((line, i) => {
-    ctx.fillText(line, CANVAS_W / 2, CANVAS_H - 76 + i * 18);
-  });
 
   return canvas;
 }
@@ -2105,9 +2262,9 @@ function makeChainSummaryPage(
     const { byRule } = analysis;
 
     const chainRows: { label: string; ruleId: import("./chains/chain-types").ChainRuleId }[] = [
-      { label: `${koLabel(sport)} Won → Score (direct)`,       ruleId: "KICKOUT_TO_SCORE"              },
-      { label: `${koLabel(sport)} Lost → Score Against (direct)`, ruleId: "KICKOUT_LOST_TO_SCORE_AGAINST" },
-      { label: "Turnover Won → Score (direct)",       ruleId: "TURNOVER_TO_SCORE"              },
+      { label: `${koLabel(sport)} Won → Score (rule match)`,       ruleId: "KICKOUT_TO_SCORE"              },
+      { label: `${koLabel(sport)} Lost → Score Against (rule match)`, ruleId: "KICKOUT_LOST_TO_SCORE_AGAINST" },
+      { label: "Turnover Won → Score (rule match)",       ruleId: "TURNOVER_TO_SCORE"              },
       { label: "Turnover Won → Shot",        ruleId: "TURNOVER_TO_SHOT"               },
       { label: "Free Won → Goal",            ruleId: "FREE_WON_TO_GOAL"               },
     ];
@@ -2150,15 +2307,18 @@ function makeChainSummaryPage(
     ctx.restore();
     cy += 30;
 
-    // (direct) vs origin — the two kickout panels on this page are different
-    // metrics by design; say so where both are visible (see restartMetrics.ts).
+    // (rule match) vs origin — the two kickout panels on this page are
+    // different metrics by design; say so where both are visible (see
+    // restartMetrics.ts). Never call a rule-match count "direct" — it is
+    // still chain-origin attribution, just a narrower window than the
+    // origin panels' full-possession forward scan.
     ctx.save();
     ctx.fillStyle = "#64748b";
     ctx.font = "italic 12px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     ctx.fillText(
-      "(direct) counts exact rule matches. The origin panels follow the full possession.",
+      "(rule match) counts exact rule matches. The origin panels follow the full possession.",
       COL1_X + 14, cy + 6, COL_W - 24,
     );
     ctx.restore();
@@ -2743,10 +2903,10 @@ function makeKickoutChainPage(
     const koLostFor    = koLostScoreChains.filter((c) => c.teamSide === "FOR").length;
     const koLostOpp    = koLostScoreChains.filter((c) => c.teamSide === "OPP").length;
 
-    cy = drawStatRow(COL3_X, cy, COL_W, `Won → Score (direct) — ${truncTeam(homeTeam, 10)}`,      String(koToScoreFor), "#7dd3fc", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `Won → Score (direct) — ${truncTeam(awayTeam, 10)}`,      String(koToScoreOpp), "#fb7185", true);
-    cy = drawStatRow(COL3_X, cy, COL_W, `Lost → Score Against (direct) — ${truncTeam(homeTeam, 8)}`, String(koLostFor), "#f97316", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `Lost → Score Against (direct) — ${truncTeam(awayTeam, 8)}`, String(koLostOpp), "#f97316", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `Won → Score (rule match) — ${truncTeam(homeTeam, 10)}`,      String(koToScoreFor), "#7dd3fc", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `Won → Score (rule match) — ${truncTeam(awayTeam, 10)}`,      String(koToScoreOpp), "#fb7185", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `Lost → Score Against (rule match) — ${truncTeam(homeTeam, 8)}`, String(koLostFor), "#f97316", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `Lost → Score Against (rule match) — ${truncTeam(awayTeam, 8)}`, String(koLostOpp), "#f97316", true);
     cy += 12;
 
     // Restart Origin — scoring from kickout/puckout possession chains
@@ -3160,8 +3320,8 @@ function makeTurnoverPunishmentPage(
 
     // Chain rule matches
     cy = drawSubHeader(COL3_X, cy, COL_W, "CHAIN RULE MATCHES", "#fbbf24");
-    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score (direct) — ${truncTeam(homeTeam, 10)}`,  String(toToScoreFor),  "#a78bfa", false);
-    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score (direct) — ${truncTeam(awayTeam, 10)}`,  String(toToScoreOpp),  "#fb7185", true);
+    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score (rule match) — ${truncTeam(homeTeam, 10)}`,  String(toToScoreFor),  "#a78bfa", false);
+    cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Score (rule match) — ${truncTeam(awayTeam, 10)}`,  String(toToScoreOpp),  "#fb7185", true);
     cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Shot   (${truncTeam(homeTeam, 10)})`,  String(toToShotFor),   "#a78bfa", false);
     cy = drawStatRow(COL3_X, cy, COL_W, `T/O Won → Shot   (${truncTeam(awayTeam, 10)})`,  String(toToShotOpp),   "#fb7185", true);
     cy += 10;
@@ -3646,7 +3806,7 @@ function makeMomentumRunsPage(
   // ── COL 3: Run Quality, Response Timing, Segment Control ─────────────────────
   {
     drawPanelBg(COL3_X, CONTENT_TOP, COL_W, CONTENT_H, "#a78bfa");
-    let cy = drawPanelTitle(COL3_X, CONTENT_TOP, "Run Quality & Match Control", "#a78bfa");
+    let cy = drawPanelTitle(COL3_X, CONTENT_TOP, "Run Quality & Segment Detail", "#a78bfa");
 
     // ── Best runs ─────────────────────────────────────────────────────────────────
     cy = drawSubHeader(COL3_X, cy, COL_W, "BEST SCORING RUNS", "#fbbf24");
@@ -3721,7 +3881,7 @@ function makeMomentumRunsPage(
     cy += 10;
 
     // ── Segment control ───────────────────────────────────────────────────────────
-    cy = drawSubHeader(COL3_X, cy, COL_W, "SEGMENT CONTROL (BY RUN-SCORES)", "#22d3ee");
+    cy = drawSubHeader(COL3_X, cy, COL_W, "RUN-SCORES BY SEGMENT", "#22d3ee");
 
     ([1, 2, 3, 4, 5, 6] as const).forEach((seg, i) => {
       const { forScore, oppScore } = segControl[seg];
@@ -3766,7 +3926,7 @@ function makeMomentumRunsPage(
  * Empty state: renders "No match data recorded" when totalEventsAnalysed === 0.
  * No ctx.roundRect() — uses ctx.fillRect() throughout (Safari < 15.4 safe).
  */
-function makeTacticalIntelligencePage(
+export function makeTacticalIntelligencePage(
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
@@ -4031,21 +4191,21 @@ function makeTacticalIntelligencePage(
 
   const maxCons = Math.max(maxConsFor, maxConsOpp);
   if (maxCons >= 2) {
-    const pressureSide = maxConsFor >= maxConsOpp
+    const runSide = maxConsFor >= maxConsOpp
       ? truncTeam(homeTeam, 16)
       : truncTeam(awayTeam, 16);
     insights.push({
-      text: `${pressureSide} had a ${maxCons}-score unanswered run — the game’s defining pressure period.`,
+      text: `${runSide} recorded a ${maxCons}-score unanswered run.`,
     });
   }
 
   if (chainTotal > 0) {
     if (chainForPct >= 60) {
-      insights.push({ text: `${truncTeam(homeTeam, 16)} controlled possession — winning ${chainForPct}% of all sequences.` });
+      insights.push({ text: `${truncTeam(homeTeam, 16)} won ${chainForPct}% of all possession sequences (${sm.forChains} of ${chainTotal}).` });
     } else if (chainForPct <= 40) {
-      insights.push({ text: `${truncTeam(awayTeam, 16)} held the possession edge — ${truncTeam(homeTeam, 16)} won only ${chainForPct}% of sequences.` });
+      insights.push({ text: `${truncTeam(homeTeam, 16)} won ${chainForPct}% of possession sequences (${truncTeam(awayTeam, 16)} won ${100 - chainForPct}%).` });
     } else {
-      insights.push({ text: `Closely matched — ${truncTeam(homeTeam, 16)} won ${chainForPct}% of ${chainTotal} possession sequences.` });
+      insights.push({ text: `${truncTeam(homeTeam, 16)} won ${chainForPct}% of ${chainTotal} possession sequences.` });
     }
   }
 
@@ -4055,20 +4215,22 @@ function makeTacticalIntelligencePage(
     cy += 10;
   }
 
-  // Status flag chips — anchored near the bottom of the card
+  // Threshold chips — each names the recorded metric and threshold it marks,
+  // anchored near the bottom of the card. No evaluative labels (no "Risk",
+  // "Strength", "Clinical", "Control" — see the professional-language guard).
   const flagsY = Math.max(cy + 8, card3Y + CARD_H_BOT - 52);
   let fx = L_COL_X + 16;
-  if (koWinPct >= 55)    fx = drawFlagChip(fx, flagsY, `${koLabel(sport)} Strength`, "rgba(34,211,238,0.15)",  "#22d3ee");
-  if (koNetAdv < -10)    fx = drawFlagChip(fx, flagsY, `${koLabel(sport)} Risk`,     "rgba(251,113,133,0.15)", "#fb7185");
-  if (tvConvPct >= 35)   fx = drawFlagChip(fx, flagsY, "Clinical",          "rgba(52,211,153,0.15)",  "#34d399");
-  if (tvDefExp > 40)     fx = drawFlagChip(fx, flagsY, "Turnover Risk",     "rgba(251,113,133,0.15)", "#fb7185");
-  if (maxConsFor >= 4)   fx = drawFlagChip(fx, flagsY, "Momentum Burst",    "rgba(34,211,238,0.15)",  "#22d3ee");
-  if (maxConsOpp >= 4)   fx = drawFlagChip(fx, flagsY, "Opposition Run",    "rgba(251,113,133,0.15)", "#fb7185");
-  if (chainForPct >= 60) drawFlagChip(fx, flagsY, "Chain Control", "rgba(167,139,250,0.15)", "#a78bfa");
+  if (koWinPct >= 55)    fx = drawFlagChip(fx, flagsY, `${koLabel(sport)} Share ≥55%`, "rgba(34,211,238,0.15)",  "#22d3ee");
+  if (koNetAdv < -10)    fx = drawFlagChip(fx, flagsY, `${koLabel(sport)} Net <−10%pt`, "rgba(251,113,133,0.15)", "#fb7185");
+  if (tvConvPct >= 35)   fx = drawFlagChip(fx, flagsY, "Turnover Conversion ≥35%", "rgba(52,211,153,0.15)",  "#34d399");
+  if (tvDefExp > 40)     fx = drawFlagChip(fx, flagsY, "Turnover Concession >40%", "rgba(251,113,133,0.15)", "#fb7185");
+  if (maxConsFor >= 4)   fx = drawFlagChip(fx, flagsY, `${truncTeam(homeTeam, 12)} Run ≥4`, "rgba(34,211,238,0.15)",  "#22d3ee");
+  if (maxConsOpp >= 4)   fx = drawFlagChip(fx, flagsY, `${truncTeam(awayTeam, 12)} Run ≥4`, "rgba(251,113,133,0.15)", "#fb7185");
+  if (chainForPct >= 60) drawFlagChip(fx, flagsY, "Chain Share ≥60%", "rgba(167,139,250,0.15)", "#a78bfa");
 
-  // ── RIGHT — CARD 1: MOMENTUM CONTROL ──────────────────────────────────────
+  // ── RIGHT — CARD 1: SCORING RUNS ──────────────────────────────────────────
   drawCardBg(R_COL_X, card1Y, R_COL_W, CARD_H_TOP, "#22d3ee");
-  let rcy = drawCardTitle(R_COL_X, card1Y, R_COL_W, "Momentum Control", "#22d3ee");
+  let rcy = drawCardTitle(R_COL_X, card1Y, R_COL_W, "Scoring Runs", "#22d3ee");
   {
     const runAdvColor = runsFor > runsOpp ? "#22d3ee"
       : runsFor < runsOpp ? "#fb7185"
@@ -4105,13 +4267,13 @@ function makeTacticalIntelligencePage(
       chainColor,
     );
   }
-  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, `${koLabel(sport)} → score chains (direct)`, `${koToScore}`, "#22d3ee", false);
-  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, "Turnover → score chains (direct)",   `${tvToScore}`,  "#a78bfa", true);
-  drawMetricRow(R_COL_X, rcy, R_COL_W, "Placed ball → goal chains (direct)",       `${freeToGoal}`, "#fbbf24", false);
+  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, `${koLabel(sport)} → score chains (rule match)`, `${koToScore}`, "#22d3ee", false);
+  rcy = drawMetricRow(R_COL_X, rcy, R_COL_W, "Turnover → score chains (rule match)",   `${tvToScore}`,  "#a78bfa", true);
+  drawMetricRow(R_COL_X, rcy, R_COL_W, "Placed ball → goal chains (rule match)",       `${freeToGoal}`, "#fbbf24", false);
 
-  // ── RIGHT — CARD 3: PERFORMANCE SUMMARY ───────────────────────────────────
+  // ── RIGHT — CARD 3: TEAM COMPARISON ───────────────────────────────────────
   drawCardBg(R_COL_X, card3Y, R_COL_W, CARD_H_BOT, "#34d399");
-  rcy = drawCardTitle(R_COL_X, card3Y, R_COL_W, "Performance Summary", "#34d399");
+  rcy = drawCardTitle(R_COL_X, card3Y, R_COL_W, "Team Comparison", "#34d399");
   rcy += 12;
 
   // Two value columns: FOR (home) and OPP (away)
@@ -4193,30 +4355,32 @@ function makeTacticalIntelligencePage(
   return canvas;
 }
 
-// ─── Tactical Review Guide page ───────────────────────────────────────────────
+// ─── Match Markers page ───────────────────────────────────────────────
 
 /**
- * Renders the Tactical Review Guide — the final PDF page.
+ * Match Markers — a list of deterministic, factual, threshold-triggered
+ * observations about the match (renamed from "Tactical Review Guide": the
+ * old name implied a coaching-review checklist, which this page is not).
  *
  * Calls deriveReviewPrompts() to obtain up to 10 deterministic, threshold-based
- * review prompts, then renders them as a vertical list of full-width strips.
+ * observations, then renders them as a vertical list of full-width strips.
  *
  * Layout (1920×1080):
  *   Row 1 (y 86–122):  Category summary chips (count per category)
- *   Rows 2–11:         One prompt strip per prompt (h=64, gap=10)
+ *   Rows 2–11:         One marker strip per observation (h=64, gap=10)
  *
  * Each strip:
- *   [4 px category-colour accent bar] [category chip] [prompt text]
+ *   [4 px category-colour accent bar] [category chip] [marker text]
  *
- * All prompts from deriveReviewPrompts() are guaranteed to be:
- *   - Factual, non-prescriptive, and non-judgmental
+ * All observations from deriveReviewPrompts() are guaranteed to be:
+ *   - A bare fact the recorded events and chain calculations can prove
  *   - Traceable to a specific metric via evidenceTag
- *   - Free of tactical prescriptions or manager-style advice
+ *   - Free of recommendations, coaching advice, or judgement of quality
  *
  * No ctx.roundRect() — uses ctx.fillRect() throughout (Safari < 15.4 safe).
- * Empty state: "No review patterns identified — too few tactical events recorded."
+ * Empty state: "No recorded patterns met the minimum sample."
  */
-function makeTacticalReviewGuidePage(
+export function makeTacticalReviewGuidePage(
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
@@ -4234,7 +4398,7 @@ function makeTacticalReviewGuidePage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Tactical Review Guide", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Match Markers", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
   drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
 
   const prompts = deriveReviewPrompts(analysis, homeTeam, awayTeam, sport);
@@ -4246,7 +4410,7 @@ function makeTacticalReviewGuidePage(
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText(
-      "No review patterns identified — too few tactical events recorded.",
+      "No recorded patterns met the minimum sample.",
       CANVAS_W / 2, CANVAS_H / 2,
     );
     return canvas;
@@ -4375,27 +4539,239 @@ function makeTacticalReviewGuidePage(
   return canvas;
 }
 
-// ─── Opposition Snapshot page ──────────────────────────────────────────────────
+// ─── Shared card-drawing helpers (Opposition Facts / Opposition Origin) ───────
+
+function oppDrawCardBg(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, accentColor: string): void {
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,0.022)";
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = accentColor;
+  ctx.fillRect(x, y, 3, h);
+  ctx.restore();
+}
+
+function oppDrawCardTitle(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, label: string, accentColor: string): number {
+  ctx.save();
+  ctx.fillStyle = accentColor;
+  ctx.font = "bold 15px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(label.toUpperCase(), x + 16, y + 14);
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + 4, y + 28);
+  ctx.lineTo(x + w, y + 28);
+  ctx.stroke();
+  ctx.restore();
+  return y + 30;
+}
+
+/** Large hero value (42 px bold) + small descriptor below. Returns cy + 76. */
+function oppDrawHeroStat(
+  ctx: CanvasRenderingContext2D, x: number, cy: number, value: string, label: string, valueColor: string,
+): number {
+  ctx.save();
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left";
+  ctx.fillStyle = valueColor;
+  ctx.font = "bold 42px sans-serif";
+  ctx.fillText(value, x + 20, cy + 46);
+  ctx.fillStyle = "#64748b";
+  ctx.font = "13px sans-serif";
+  ctx.fillText(label.toUpperCase(), x + 20, cy + 63);
+  ctx.restore();
+  return cy + 76;
+}
+
+/** Compact label/value row. Returns cy + 30. */
+function oppDrawMetricRow(
+  ctx: CanvasRenderingContext2D, x: number, cy: number, w: number,
+  label: string, value: string, valueColor: string, isAlt: boolean,
+): number {
+  const ROW_H = 30;
+  if (isAlt) {
+    ctx.fillStyle = "rgba(255,255,255,0.025)";
+    ctx.fillRect(x + 4, cy, w - 4, ROW_H);
+  }
+  const mid = cy + ROW_H / 2;
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "14px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText(label, x + 16, mid);
+  ctx.fillStyle = valueColor;
+  ctx.font = "bold 15px sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(value, x + w - 14, mid);
+  return cy + ROW_H;
+}
+
+// ─── Opposition Facts page (Part 1/2 — Match Facts / Possession Facts) ────────
 
 /**
- * Renders the Opposition Snapshot — the final PDF page.
+ * Opposition Facts — the opposition's scoring profile, restart share, and
+ * turnover count. PROVENANCE: match-fact + possession-fact only.
  *
- * Data sources:
- *   - ChainAnalysis: byTeamSide.opp, kickouts, turnovers, scoringRuns, byRule,
- *                    byPeriod, bySegment, summary.
- *   - Raw events array: for score position (nx/ny) and OPP shot count derivation.
- *
- * Accent colour: #f87171 (OPP red) — distinct from all other chain page accents.
- *
- * Layout: Two-column (L 928 px / R 928 px), dark background.
- *   Left  — Scoring Profile · Restart Threat · Turnover Threat
- *   Right — Momentum Spell  · Chain Rate     · Rematch Watchlist
- *
- * All metrics are deterministic — no AI language, no prescriptions.
- * Rematch Watchlist bullets are threshold-based rules only (max 5).
- * No ctx.roundRect() — uses ctx.fillRect() throughout (Safari < 15.4 safe).
+ * Everything the old Opposition Snapshot's Restart/Turnover Threat cards
+ * derived from analysis.byRule (KICKOUT_TO_SCORE, TURNOVER_TO_SCORE, etc.) or
+ * tv.lostAllowedScore is chain-origin and lives on Opposition Origin & Chain
+ * Threat (Part 3) instead — see makeOppositionOriginPage below. Restart
+ * Share itself stays here: it's the immediate outcome of the kickout event,
+ * a possession-fact, not a forward chain result.
  */
-function makeOppositionSnapshotPage(
+const OPPOSITION_FACTS_LABELS = [
+  "Score", "1st/2nd Half", "Goals", "Points", "Score Conversion", "Score Zone",
+  "Restart Share", "Turnovers Gifted",
+] as const;
+
+export function buildOppositionFactsRows(): ProvenanceRow[] {
+  return [
+    ...OPPOSITION_FACTS_LABELS.filter((l) => l !== "Restart Share").map((label) => ({ label, provenance: "match-fact" as const })),
+    { label: "Restart Share", provenance: "possession-fact" as const },
+  ];
+}
+
+export function makeOppositionFactsPage(
+  events: readonly PdfExportEvent[],
+  report: MatchReport<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+  sport: PitchSport = "gaelic",
+): HTMLCanvasElement {
+  const analysis = report.chain;
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Opposition Facts", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
+
+  const CONTENT_TOP = 86;
+  const CONTENT_BOT = CANVAS_H - 36;
+  const L_COL_X     = 24;
+  const L_COL_W     = 928;
+  const R_COL_X     = 968;
+  const R_COL_W     = 928;
+  const CARD_GAP    = 20;
+  const OPP_ACCENT  = "#f87171";
+  const CONTENT_H   = CONTENT_BOT - CONTENT_TOP;
+
+  const oppScore   = scoreFromEvents(events.filter((e) => e.teamSide === "OPP"));
+  const oppScore1H = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && e.period === "1H"));
+  const oppScore2H = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && e.period === "2H"));
+  const oppShotsAll = events.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind)).length;
+  const oppScoreConversion = viewShootingConversionPct(report, "OPP");
+
+  const oppScoreEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind) && isFinite(e.nx),
+  );
+  let scoreZoneLabel = "—";
+  if (oppScoreEvts.length > 0) {
+    const avgNx = oppScoreEvts.reduce((sum, e) => sum + e.nx, 0) / oppScoreEvts.length;
+    scoreZoneLabel = avgNx < 0.35 ? "Left Channel" : avgNx > 0.65 ? "Right Channel" : "Central";
+  }
+
+  const ko = analysis.kickouts;
+  const oppRestartShare = viewRestartShareOpposition(report);
+  const koOppWon = oppRestartShare.num;
+  const koOppWinPct = oppRestartShare.pct;
+
+  const tv = analysis.turnovers;
+  const tvLost = tv.lost;
+
+  if (analysis.totalEventsAnalysed === 0) {
+    ctx.fillStyle = "#64748b";
+    ctx.font = "18px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No match data recorded", CANVAS_W / 2, CANVAS_H / 2);
+    return canvas;
+  }
+
+  // ── LEFT: Scoring Profile (full column height) ─────────────────────────────
+  oppDrawCardBg(ctx, L_COL_X, CONTENT_TOP, L_COL_W, CONTENT_H, OPP_ACCENT);
+  let cy = oppDrawCardTitle(ctx, L_COL_X, CONTENT_TOP, L_COL_W, `${truncTeam(awayTeam, 20)} — Scoring Profile`, OPP_ACCENT);
+  if (oppScore.total === 0) {
+    ctx.fillStyle = "#64748b";
+    ctx.font = "16px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No opposition scores recorded", L_COL_X + L_COL_W / 2, CONTENT_TOP + CONTENT_H / 2);
+  } else {
+    cy = oppDrawHeroStat(ctx, L_COL_X, cy, fmtScore(oppScore), "Full match score line", OPP_ACCENT);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "1st Half", fmtScore(oppScore1H), "#f8fafc", false);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "2nd Half", fmtScore(oppScore2H), "#f8fafc", true);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Goals", String(oppScore.goals), "#f8fafc", false);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Points (incl. frees & 2-pointers)", String(oppScore.points), "#f8fafc", true);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Score Conversion", oppShotsAll > 0 ? `${oppScoreConversion}%` : "—", "#f8fafc", false);
+    oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Score zone (avg position)", scoreZoneLabel, "#94a3b8", true);
+  }
+
+  // ── RIGHT CARD 1: Restart Share (possession-fact) ───────────────────────────
+  const R_CARD_H_1 = Math.round((CONTENT_H - CARD_GAP) * 0.46);
+  const R_CARD_H_2 = CONTENT_H - CARD_GAP - R_CARD_H_1;
+  const rCard1Y = CONTENT_TOP;
+  const rCard2Y = rCard1Y + R_CARD_H_1 + CARD_GAP;
+
+  oppDrawCardBg(ctx, R_COL_X, rCard1Y, R_COL_W, R_CARD_H_1, "#fbbf24");
+  cy = oppDrawCardTitle(ctx, R_COL_X, rCard1Y, R_COL_W, `${koLabelPlural(sport)} — Restart Share`, "#fbbf24");
+  if (ko.total === 0) {
+    ctx.fillStyle = "#64748b";
+    ctx.font = "16px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText(`No ${koLabelLC(sport)} data recorded`, R_COL_X + R_COL_W / 2, rCard1Y + R_CARD_H_1 / 2);
+  } else {
+    cy = oppDrawHeroStat(ctx, R_COL_X, cy, `${koOppWinPct}%`, "OPP restart share", "#fbbf24");
+    oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, `${restartMetricLabel("restartShare", sport)} won by OPP`, `${koOppWon} of ${ko.total}`, "#f8fafc", false);
+  }
+
+  // ── RIGHT CARD 2: Turnovers Gifted (match-fact) ─────────────────────────────
+  oppDrawCardBg(ctx, R_COL_X, rCard2Y, R_COL_W, R_CARD_H_2, "#a78bfa");
+  cy = oppDrawCardTitle(ctx, R_COL_X, rCard2Y, R_COL_W, "Turnovers Gifted", "#a78bfa");
+  if (tvLost === 0) {
+    ctx.fillStyle = "#64748b";
+    ctx.font = "16px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.fillText("No turnover data recorded", R_COL_X + R_COL_W / 2, rCard2Y + R_CARD_H_2 / 2);
+  } else {
+    oppDrawHeroStat(ctx, R_COL_X, cy, String(tvLost), "Turnovers gifted to opposition", "#a78bfa");
+  }
+
+  return canvas;
+}
+
+// ─── Opposition Origin & Chain Analysis page (Part 3 — Game Origin / Chain) ─────
+
+/**
+ * Opposition Origin & Chain Analysis — chain/origin-derived opposition
+ * intelligence: restart-origin scoring, turnover-origin scoring, momentum
+ * spells, chain share, and Opposition Markers. PROVENANCE: chain-origin.
+ * Every row states a recorded fact — no rematch or matchup recommendation.
+ * Row labels never use "Direct" — the old page's "Direct kickout-win
+ * scores" / "Direct turnover-win scores" language claimed direct
+ * attribution for chain-origin figures (analysis.byRule matches); renamed
+ * to "…-origin scores" here.
+ */
+const OPPOSITION_ORIGIN_LABELS = [
+  "Restart-origin scores", "Restart-origin scores conceded", "Turnover-origin scores",
+  "Turnover-origin scores conceded", "Momentum Spell", "Chain Rate", "Opposition Markers",
+] as const;
+
+export function buildOppositionOriginRows(): ProvenanceRow[] {
+  return OPPOSITION_ORIGIN_LABELS.map((label) => ({ label, provenance: "chain-origin" as const }));
+}
+
+export function makeOppositionOriginPage(
   events: readonly PdfExportEvent[],
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
@@ -4416,10 +4792,9 @@ function makeOppositionSnapshotPage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Opposition Snapshot", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  drawPageHeader(ctx, "Opposition Origin & Chain Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
   drawEventCountFooter(ctx, analysis.totalEventsAnalysed);
 
-  // ── Layout constants ───────────────────────────────────────────────────────
   const CONTENT_TOP = 86;
   const CONTENT_BOT = CANVAS_H - 36;
   const L_COL_X     = 24;
@@ -4428,177 +4803,72 @@ function makeOppositionSnapshotPage(
   const R_COL_W     = 928;
   const CARD_GAP    = 20;
   const OPP_ACCENT  = "#f87171";
+  const CONTENT_H   = CONTENT_BOT - CONTENT_TOP;
 
-  // ── Derived data ───────────────────────────────────────────────────────────
-
-  // Scoring profile
-  const oppScore   = scoreFromEvents(events.filter((e) => e.teamSide === "OPP"));
-  const oppScore1H = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && e.period === "1H"));
-  const oppScore2H = scoreFromEvents(events.filter((e) => e.teamSide === "OPP" && e.period === "2H"));
-
-  const oppShotsAll = events.filter(
-    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind),
-  ).length;
-  const oppScoreConversion = viewShootingConversionPct(report, "OPP");
-
-  // Score zone: average normalised-x across OPP score events (nx always finite on PdfExportEvent)
-  const oppScoreEvts = events.filter(
-    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind) && isFinite(e.nx),
-  );
-  let scoreZoneLabel = "—";
-  if (oppScoreEvts.length > 0) {
-    const avgNx = oppScoreEvts.reduce((sum, e) => sum + e.nx, 0) / oppScoreEvts.length;
-    scoreZoneLabel = avgNx < 0.35 ? "Left Channel" : avgNx > 0.65 ? "Right Channel" : "Central";
-  }
-
-  // Kickout restart threat
-  const ko          = analysis.kickouts;
-  const oppRestartShare = viewRestartShareOpposition(report);
-  const koOppWon    = oppRestartShare.num;
-  const koOppWinPct = oppRestartShare.pct;
-  const koOppChains = (analysis.byRule["KICKOUT_TO_SCORE"]             ?? []).filter((c) => c.teamSide === "OPP").length;
-  const koFromLost  = (analysis.byRule["KICKOUT_LOST_TO_SCORE_AGAINST"] ?? []).filter((c) => c.teamSide === "OPP").length;
+  const ko = analysis.kickouts;
+  // De-duplicated origin dataset (same source as the Scoring Possession
+  // Origins page and the Opposition Markers card below), not the chain-rules
+  // pattern detector — matches what "Restart-origin ..." / "Turnover-origin
+  // ..." labels elsewhere in the report actually mean. Hoisted above its
+  // other use (oppInfluence/oppTop) so both card blocks share one call.
+  const oppOrigins = viewScoringPossessionOrigins(report, "OPP");
+  const koOppOriginBreakdown = oppOrigins.restartOrigin;
+  const koOppOriginTotal = scoringBreakdownTotal(koOppOriginBreakdown);
+  // Narrower than koOppOriginBreakdown: specifically restarts FOR physically
+  // took and lost (restartOwner = FOR, winner = OPP), not every OPP
+  // restart-origin score — see viewOwnKickoutLossOriginConcededFor's docs.
+  const koFromLostBreakdown = viewOwnKickoutLossOriginConcededFor(analysis);
+  const koFromLostTotal = scoringBreakdownTotal(koFromLostBreakdown);
   const koLostScore    = viewRestartLossPunishment(report).num;
   const koLostScorePct = viewRestartLossPunishment(report).pct;
 
-  // Turnover threat
   const tv           = analysis.turnovers;
-  const tvLost       = tv.lost;
-  const tvOppToScore = (analysis.byRule["TURNOVER_TO_SCORE"] ?? []).filter((c) => c.teamSide === "OPP").length;
+  const tvOppOriginBreakdown = oppOrigins.turnoverOrigin;
+  const tvOppOriginTotal = scoringBreakdownTotal(tvOppOriginBreakdown);
   const tvOppToShot  = (analysis.byRule["TURNOVER_TO_SHOT"]  ?? []).filter((c) => c.teamSide === "OPP").length;
   const tvLostScore  = tv.lostAllowedScore;
   const tvPunishPct  = viewTurnoverLossPunishment(report).pct;
+  const tvLost       = tv.lost;
 
-  // Momentum spell
   const sr         = analysis.scoringRuns;
   const oppRuns    = sr.runs.filter((r) => r.teamSide === "OPP");
-  const longestOpp = sr.longestRunOpp;   // may be null — always null-checked below
+  const longestOpp = sr.longestRunOpp;
   const maxConsOpp = sr.maxConsecutiveOpp;
 
   function clockToMin(clockSecs: number, period: "1H" | "2H"): number {
     const adjusted = period === "2H" ? clockSecs - 3600 : clockSecs;
     return Math.floor(Math.max(0, adjusted) / 60);
   }
-
   const longestOppTimeLabel = longestOpp != null
     ? `${longestOpp.period === "1H" ? "1H" : "2H"} ~${clockToMin(longestOpp.startClockSeconds, longestOpp.period)}'`
     : "—";
 
-  // Chain rate
   const oppChainShare = viewChainOppShare(report);
-  const oppChains   = analysis.summary.oppChains;
-  const chainTotal  = analysis.summary.totalChains;
+  const oppChains  = analysis.summary.oppChains;
+  const chainTotal = analysis.summary.totalChains;
   const oppChainPct = oppChainShare.pct;
   const opp1HChains = (analysis.byPeriod["1H"] ?? []).filter((c) => c.teamSide === "OPP").length;
   const opp2HChains = (analysis.byPeriod["2H"] ?? []).filter((c) => c.teamSide === "OPP").length;
 
-  // Strongest OPP segment (by OPP chain count per segment — iterate 1–6)
   const SEG_LABELS: Record<number, string> = {
     1: "Seg 1 (1H Early)", 2: "Seg 2 (1H Mid)", 3: "Seg 3 (1H Late)",
     4: "Seg 4 (2H Early)", 5: "Seg 5 (2H Mid)", 6: "Seg 6 (2H Late)",
   };
-  let strongestSeg   = 0;
+  let strongestSeg = 0;
   let strongestCount = 0;
   for (let seg = 1; seg <= 6; seg++) {
-    const key   = seg as MatchEventSegment;
+    const key = seg as MatchEventSegment;
     const count = (analysis.bySegment[key] ?? []).filter((c) => c.teamSide === "OPP").length;
     if (count > strongestCount) { strongestCount = count; strongestSeg = seg; }
   }
   const strongestSegLabel = strongestSeg > 0 ? (SEG_LABELS[strongestSeg] ?? "—") : "—";
 
-  // Rematch Watchlist — deterministic threshold rules only, max 5 bullets.
-  // Player-influence items lead: the top opposition influencer (and their
-  // dependency flag when it fires) is the rematch-planning headline.
-  const watchlist: string[] = [];
-  {
-    const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam, homeSquadPlayers, awaySquadPlayers);
-    const oppInfluence = influence.away;
-    const oppTop = oppInfluence.top3[0];
-    if (oppTop && oppTop.influenceIndex > 0) {
-      watchlist.push(`Top influence: ${influenceEvidenceLine(oppTop, oppInfluence)}`);
-    }
-    if (oppInfluence.dependencyPlayer && oppInfluence.dependencyInsight) {
-      watchlist.push(oppInfluence.dependencyInsight.text);
-    }
-  }
-  if (maxConsOpp >= 4)    watchlist.push(`Peak run of ${maxConsOpp} unanswered — sustained pressure threat`);
-  if (tvPunishPct >= 40)   watchlist.push(`${tvPunishPct}% of gifted possession converted to opposition scores`);
-  if (koOppWinPct >= 55)  watchlist.push(`Opposition held ${koOppWinPct}% Restart Share (${koOppWon} of ${ko.total})`);
-  if (koLostScore >= 2)   watchlist.push(`${fmtRestartOriginConcededFor(analysis)} conceded off ${koLabelLC(sport)} losses`);
-  if (oppChainPct >= 55)  watchlist.push(`Held tactical chain advantage — ${oppChainPct}% of all detected chains`);
-  // Fallback: always at least one bullet
-  if (watchlist.length === 0) watchlist.push("No critical tactical thresholds exceeded in this match");
-  const bullets = watchlist.slice(0, 5);
+  // Opposition Markers — recorded facts only, no rematch/matchup advice.
+  // Top scorer is named because it is a directly recorded fact (who scored
+  // what); everything else is a plain metric already computed above.
+  const oppInfluence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam, homeSquadPlayers, awaySquadPlayers).away;
+  const oppTop = oppInfluence.top3.find((p) => p.scoreValue > 0) ?? null;
 
-  // ── Local helpers ──────────────────────────────────────────────────────────
-
-  function drawCardBg(x: number, y: number, w: number, h: number, accentColor: string): void {
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.022)";
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = accentColor;
-    ctx.fillRect(x, y, 3, h);
-    ctx.restore();
-  }
-
-  function drawCardTitle(x: number, y: number, w: number, label: string, accentColor: string): number {
-    ctx.save();
-    ctx.fillStyle = accentColor;
-    ctx.font = "bold 15px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label.toUpperCase(), x + 16, y + 14);
-    ctx.strokeStyle = "rgba(255,255,255,0.07)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + 4, y + 28);
-    ctx.lineTo(x + w, y + 28);
-    ctx.stroke();
-    ctx.restore();
-    return y + 30;
-  }
-
-  /** Large hero value (42 px bold) + small descriptor below. Returns cy + 76. */
-  function drawHeroStat(
-    x: number, cy: number, value: string, label: string, valueColor: string,
-  ): number {
-    ctx.save();
-    ctx.textBaseline = "alphabetic";
-    ctx.textAlign = "left";
-    ctx.fillStyle = valueColor;
-    ctx.font = "bold 42px sans-serif";
-    ctx.fillText(value, x + 20, cy + 46);
-    ctx.fillStyle = "#64748b";
-    ctx.font = "13px sans-serif";
-    ctx.fillText(label.toUpperCase(), x + 20, cy + 63);
-    ctx.restore();
-    return cy + 76;
-  }
-
-  /** Compact label/value row. Returns cy + 30. */
-  function drawMetricRow(
-    x: number, cy: number, w: number,
-    label: string, value: string, valueColor: string, isAlt: boolean,
-  ): number {
-    const ROW_H = 30;
-    if (isAlt) {
-      ctx.fillStyle = "rgba(255,255,255,0.025)";
-      ctx.fillRect(x + 4, cy, w - 4, ROW_H);
-    }
-    const mid = cy + ROW_H / 2;
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "14px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText(label, x + 16, mid);
-    ctx.fillStyle = valueColor;
-    ctx.font = "bold 15px sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(value, x + w - 14, mid);
-    return cy + ROW_H;
-  }
-
-  // ── Empty state ────────────────────────────────────────────────────────────
   if (analysis.totalEventsAnalysed === 0) {
     ctx.fillStyle = "#64748b";
     ctx.font = "18px sans-serif";
@@ -4608,150 +4878,65 @@ function makeOppositionSnapshotPage(
     return canvas;
   }
 
-  // ── Card geometry ──────────────────────────────────────────────────────────
-  // CONTENT_H = 958 (= CANVAS_H − 36 − 86)
-  // Left:  Scoring Profile 310 + gap + Restart Threat 220 + gap + Turnover Threat 388 = 958
-  // Right: Momentum Spell  240 + gap + Chain Rate    240 + gap + Rematch Watchlist 438 = 958
-  const CONTENT_H  = CONTENT_BOT - CONTENT_TOP;   // 958
-  const L_CARD_H_1 = 310;
-  const L_CARD_H_2 = 220;
-  const L_CARD_H_3 = CONTENT_H - L_CARD_H_1 - CARD_GAP - L_CARD_H_2 - CARD_GAP; // 388
+  // ── Card geometry: Left = Restart Origin (460) + Turnover Origin (478) ─────
+  const L_CARD_H_1 = 460;
+  const L_CARD_H_2 = CONTENT_H - CARD_GAP - L_CARD_H_1;
+  const lCard1Y = CONTENT_TOP;
+  const lCard2Y = lCard1Y + L_CARD_H_1 + CARD_GAP;
 
   const R_CARD_H_1 = 240;
   const R_CARD_H_2 = 240;
-  const R_CARD_H_3 = CONTENT_H - R_CARD_H_1 - CARD_GAP - R_CARD_H_2 - CARD_GAP; // 438
+  const R_CARD_H_3 = CONTENT_H - R_CARD_H_1 - CARD_GAP - R_CARD_H_2 - CARD_GAP;
+  const rCard1Y = CONTENT_TOP;
+  const rCard2Y = rCard1Y + R_CARD_H_1 + CARD_GAP;
+  const rCard3Y = rCard2Y + R_CARD_H_2 + CARD_GAP;
 
-  const lCard1Y = CONTENT_TOP;                                     //  86
-  const lCard2Y = lCard1Y + L_CARD_H_1 + CARD_GAP;               // 416
-  const lCard3Y = lCard2Y + L_CARD_H_2 + CARD_GAP;               // 656
-
-  const rCard1Y = CONTENT_TOP;                                     //  86
-  const rCard2Y = rCard1Y + R_CARD_H_1 + CARD_GAP;               // 346
-  const rCard3Y = rCard2Y + R_CARD_H_2 + CARD_GAP;               // 606
-
-  // ── LEFT CARD 1: Opposition Scoring Profile ────────────────────────────────
-  drawCardBg(L_COL_X, lCard1Y, L_COL_W, L_CARD_H_1, OPP_ACCENT);
-  let cy = drawCardTitle(
-    L_COL_X, lCard1Y, L_COL_W,
-    `${truncTeam(awayTeam, 20)} — Scoring Profile`, OPP_ACCENT,
-  );
-  if (oppScore.total === 0) {
-    ctx.fillStyle = "#64748b";
-    ctx.font = "16px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "center";
-    ctx.fillText("No opposition scores recorded", L_COL_X + L_COL_W / 2, lCard1Y + L_CARD_H_1 / 2);
-  } else {
-    cy = drawHeroStat(L_COL_X, cy, fmtScore(oppScore), "Full match score line", OPP_ACCENT);
-    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "1st Half", fmtScore(oppScore1H), "#f8fafc", false);
-    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "2nd Half", fmtScore(oppScore2H), "#f8fafc", true);
-    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Goals", String(oppScore.goals),
-                       oppScore.goals >= 2 ? OPP_ACCENT : "#f8fafc", false);
-    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Points (incl. frees & 2-pointers)",
-                       String(oppScore.points), "#f8fafc", true);
-    cy = drawMetricRow(L_COL_X, cy, L_COL_W, "Score Conversion",
-                       oppShotsAll > 0 ? `${oppScoreConversion}%` : "—", "#f8fafc", false);
-    drawMetricRow(L_COL_X, cy, L_COL_W, "Score zone (avg position)",
-                  scoreZoneLabel, "#94a3b8", true);
-  }
-
-  // ── LEFT CARD 2: Opposition Restart Threat ───────────────────────────────
-  drawCardBg(L_COL_X, lCard2Y, L_COL_W, L_CARD_H_2, "#fbbf24");
-  cy = drawCardTitle(L_COL_X, lCard2Y, L_COL_W, `Restart Threat (${koLabelPlural(sport)})`, "#fbbf24");
+  // ── LEFT CARD 1: Restart Origin ─────────────────────────────────────────────
+  oppDrawCardBg(ctx, L_COL_X, lCard1Y, L_COL_W, L_CARD_H_1, "#fbbf24");
+  let cy = oppDrawCardTitle(ctx, L_COL_X, lCard1Y, L_COL_W, `Restart Origin (${koLabelPlural(sport)})`, "#fbbf24");
   if (ko.total === 0) {
     ctx.fillStyle = "#64748b";
     ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
-    ctx.fillText(`No ${koLabelLC(sport)} data recorded`, L_COL_X + L_COL_W / 2, lCard2Y + L_CARD_H_2 / 2);
+    ctx.fillText(`No ${koLabelLC(sport)} data recorded`, L_COL_X + L_COL_W / 2, lCard1Y + L_CARD_H_1 / 2);
   } else {
-    cy = drawMetricRow(
-      L_COL_X, cy, L_COL_W,
-      `OPP ${restartMetricLabel("restartShare", sport)}`, `${koOppWinPct}%  (${koOppWon} of ${ko.total})`,
-      koOppWinPct >= 55 ? OPP_ACCENT : "#f8fafc", false,
-    );
-    cy = drawMetricRow(
-      L_COL_X, cy, L_COL_W,
-      `Direct ${koLabelLC(sport)}-win scores`, String(koOppChains),
-      koOppChains >= 2 ? OPP_ACCENT : "#f8fafc", true,
-    );
-    cy = drawMetricRow(
-      L_COL_X, cy, L_COL_W,
-      `Restart Origin off our losses`, `${fmtRestartOriginConcededFor(analysis)}  (${koLostScorePct}%)`,
-      koLostScore >= 2 ? OPP_ACCENT : "#f8fafc", false,
-    );
-    drawMetricRow(
-      L_COL_X, cy, L_COL_W,
-      `Direct ${koLabelLC(sport)} lost → score`, String(koFromLost),
-      koFromLost >= 2 ? OPP_ACCENT : "#f8fafc", true,
-    );
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Restart-origin scores for OPP", formatScoringBreakdownOrDash(koOppOriginBreakdown), koOppOriginTotal >= 2 ? OPP_ACCENT : "#f8fafc", false);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Restart-origin scores conceded", `${fmtRestartOriginConcededFor(analysis)}  (${koLostScorePct}%)`, koLostScore >= 2 ? OPP_ACCENT : "#f8fafc", true);
+    oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, `Restart-origin scores from our ${koLabelLC(sport)} losses`, formatScoringBreakdownOrDash(koFromLostBreakdown), koFromLostTotal >= 2 ? OPP_ACCENT : "#f8fafc", false);
   }
 
-  // ── LEFT CARD 3: Opposition Turnover Threat ────────────────────────────────
-  drawCardBg(L_COL_X, lCard3Y, L_COL_W, L_CARD_H_3, "#a78bfa");
-  cy = drawCardTitle(L_COL_X, lCard3Y, L_COL_W, "Turnover Threat", "#a78bfa");
-  if (tvLost === 0 && tvOppToScore === 0) {
+  // ── LEFT CARD 2: Turnover Origin ─────────────────────────────────────────────
+  oppDrawCardBg(ctx, L_COL_X, lCard2Y, L_COL_W, L_CARD_H_2, "#a78bfa");
+  cy = oppDrawCardTitle(ctx, L_COL_X, lCard2Y, L_COL_W, "Turnover Origin", "#a78bfa");
+  if (tvLost === 0 && tvOppOriginTotal === 0) {
     ctx.fillStyle = "#64748b";
     ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
-    ctx.fillText("No turnover data recorded", L_COL_X + L_COL_W / 2, lCard3Y + L_CARD_H_3 / 2);
+    ctx.fillText("No turnover data recorded", L_COL_X + L_COL_W / 2, lCard2Y + L_CARD_H_2 / 2);
   } else {
-    cy = drawMetricRow(
-      L_COL_X, cy, L_COL_W,
-      "Turnovers gifted to OPP", String(tvLost),
-      tvLost >= 5 ? OPP_ACCENT : "#f8fafc", false,
-    );
-    cy = drawMetricRow(
-      L_COL_X, cy, L_COL_W,
-      "OPP scores from turnovers", String(tvLostScore),
-      tvLostScore >= 2 ? OPP_ACCENT : "#f8fafc", true,
-    );
-    cy = drawMetricRow(
-      L_COL_X, cy, L_COL_W,
-      "Turnover punishment rate", tvLost > 0 ? `${tvPunishPct}%` : "—",
-      tvPunishPct >= 40 ? OPP_ACCENT : "#f8fafc", false,
-    );
-    cy = drawMetricRow(
-      L_COL_X, cy, L_COL_W,
-      "Direct turnover-win scores", String(tvOppToScore),
-      tvOppToScore >= 2 ? OPP_ACCENT : "#f8fafc", true,
-    );
-    drawMetricRow(
-      L_COL_X, cy, L_COL_W,
-      "Turnover won → shot chains", String(tvOppToShot),
-      "#f8fafc", false,
-    );
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Turnover-origin scores for OPP", formatScoringBreakdownOrDash(tvOppOriginBreakdown), tvOppOriginTotal >= 2 ? OPP_ACCENT : "#f8fafc", false);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Turnover-origin scores conceded", String(tvLostScore), tvLostScore >= 2 ? OPP_ACCENT : "#f8fafc", true);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Turnover-origin punishment rate", tvLost > 0 ? `${tvPunishPct}%` : "—", tvPunishPct >= 40 ? OPP_ACCENT : "#f8fafc", false);
+    oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Turnover won → shot chains", String(tvOppToShot), "#f8fafc", true);
   }
 
-  // ── RIGHT CARD 1: Opposition Momentum Spell ────────────────────────────────
-  drawCardBg(R_COL_X, rCard1Y, R_COL_W, R_CARD_H_1, "#fbbf24");
-  cy = drawCardTitle(R_COL_X, rCard1Y, R_COL_W, "Momentum Spell", "#fbbf24");
+  // ── RIGHT CARD 1: Momentum Spell ────────────────────────────────────────────
+  oppDrawCardBg(ctx, R_COL_X, rCard1Y, R_COL_W, R_CARD_H_1, "#fbbf24");
+  cy = oppDrawCardTitle(ctx, R_COL_X, rCard1Y, R_COL_W, "Momentum Spell", "#fbbf24");
   if (longestOpp == null || maxConsOpp < 2) {
-    cy = drawHeroStat(R_COL_X, cy, "None", "No OPP unanswered run of 2+ detected", "#64748b");
-    drawMetricRow(R_COL_X, cy, R_COL_W, "Scoring runs ≥ 2", "0", "#f8fafc", false);
+    cy = oppDrawHeroStat(ctx, R_COL_X, cy, "None", "No OPP unanswered run of 2+ detected", "#64748b");
+    oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, "Scoring runs ≥ 2", "0", "#f8fafc", false);
   } else {
-    cy = drawHeroStat(
-      R_COL_X, cy,
-      String(maxConsOpp),
-      `Longest unanswered run — ${longestOppTimeLabel}`,
-      OPP_ACCENT,
-    );
-    cy = drawMetricRow(
-      R_COL_X, cy, R_COL_W,
-      "Total OPP runs ≥ 2", String(oppRuns.length),
-      oppRuns.length >= 3 ? OPP_ACCENT : "#f8fafc", false,
-    );
-    drawMetricRow(
-      R_COL_X, cy, R_COL_W,
-      "Half of peak run", longestOpp.period,
-      "#f8fafc", true,
-    );
+    cy = oppDrawHeroStat(ctx, R_COL_X, cy, String(maxConsOpp), `Longest unanswered run — ${longestOppTimeLabel}`, OPP_ACCENT);
+    cy = oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, "Total OPP runs ≥ 2", String(oppRuns.length), oppRuns.length >= 3 ? OPP_ACCENT : "#f8fafc", false);
+    oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, "Half of peak run", longestOpp.period, "#f8fafc", true);
   }
 
-  // ── RIGHT CARD 2: Opposition Chain Rate ────────────────────────────────────
-  drawCardBg(R_COL_X, rCard2Y, R_COL_W, R_CARD_H_2, "#22d3ee");
-  cy = drawCardTitle(R_COL_X, rCard2Y, R_COL_W, "Chain Rate", "#22d3ee");
+  // ── RIGHT CARD 2: Chain Rate ─────────────────────────────────────────────────
+  oppDrawCardBg(ctx, R_COL_X, rCard2Y, R_COL_W, R_CARD_H_2, "#22d3ee");
+  cy = oppDrawCardTitle(ctx, R_COL_X, rCard2Y, R_COL_W, "Chain Rate", "#22d3ee");
   if (chainTotal === 0) {
     ctx.fillStyle = "#64748b";
     ctx.font = "16px sans-serif";
@@ -4759,54 +4944,30 @@ function makeOppositionSnapshotPage(
     ctx.textAlign = "center";
     ctx.fillText("No chain data recorded", R_COL_X + R_COL_W / 2, rCard2Y + R_CARD_H_2 / 2);
   } else {
-    cy = drawHeroStat(
-      R_COL_X, cy,
-      `${oppChainPct}%`,
-      `OPP chain share  (${oppChains} of ${chainTotal} chains)`,
-      oppChainPct >= 55 ? OPP_ACCENT : "#22d3ee",
-    );
-    cy = drawMetricRow(R_COL_X, cy, R_COL_W,
-                       "OPP chains — 1st Half", String(opp1HChains), "#f8fafc", false);
-    cy = drawMetricRow(R_COL_X, cy, R_COL_W,
-                       "OPP chains — 2nd Half", String(opp2HChains), "#f8fafc", true);
-    drawMetricRow(R_COL_X, cy, R_COL_W,
-                  "Busiest OPP segment", strongestSegLabel, "#94a3b8", false);
+    cy = oppDrawHeroStat(ctx, R_COL_X, cy, `${oppChainPct}%`, `OPP chain share  (${oppChains} of ${chainTotal} chains)`, oppChainPct >= 55 ? OPP_ACCENT : "#22d3ee");
+    cy = oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, "OPP chains — 1st Half", String(opp1HChains), "#f8fafc", false);
+    cy = oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, "OPP chains — 2nd Half", String(opp2HChains), "#f8fafc", true);
+    oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, "Busiest OPP segment", strongestSegLabel, "#94a3b8", false);
   }
 
-  // ── RIGHT CARD 3: Rematch Watchlist ────────────────────────────────────────
-  // Threshold-based bullets only — factual, no prescriptions, max 5.
-  drawCardBg(R_COL_X, rCard3Y, R_COL_W, R_CARD_H_3, OPP_ACCENT);
-  cy = drawCardTitle(R_COL_X, rCard3Y, R_COL_W, "Rematch Watchlist", OPP_ACCENT);
+  // ── RIGHT CARD 3: Opposition Markers (recorded facts only) ──────────────────
+  oppDrawCardBg(ctx, R_COL_X, rCard3Y, R_COL_W, R_CARD_H_3, OPP_ACCENT);
+  cy = oppDrawCardTitle(ctx, R_COL_X, rCard3Y, R_COL_W, "Opposition Markers", OPP_ACCENT);
 
-  const WATCH_LINE_H = 52;
-  const watchStartY  = cy + 16;  // padding below title separator
-  bullets.forEach((bullet, idx) => {
-    const rowY = watchStartY + idx * WATCH_LINE_H;
-    const midY = rowY + WATCH_LINE_H / 2;
-    if (idx % 2 === 1) {
-      ctx.fillStyle = "rgba(255,255,255,0.025)";
-      ctx.fillRect(R_COL_X + 4, rowY, R_COL_W - 4, WATCH_LINE_H);
-    }
-    ctx.fillStyle = OPP_ACCENT;
-    ctx.font = "bold 16px sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "left";
-    ctx.fillText("—", R_COL_X + 16, midY);
-    ctx.fillStyle = "#cbd5e1";
-    ctx.font = "15px sans-serif";
-    const maxW = R_COL_W - 50;
-    let display = bullet;
-    if (ctx.measureText(display).width > maxW) {
-      let iterations = 0;
-      const maxIterations = 1000;
-      while (display.length > 0 && ctx.measureText(display + "…").width > maxW && iterations < maxIterations) {
-        display = display.slice(0, -1);
-        iterations++;
-      }
-      display += "…";
-    }
-    ctx.fillText(display, R_COL_X + 34, midY);
-  });
+  if (oppTop) {
+    cy = oppDrawHeroStat(
+      ctx, R_COL_X, cy,
+      `${oppTop.displayName}  ${fmtPlayerScore(oppTop)}`,
+      `${oppTop.scoringSharePct}% of ${truncTeam(awayTeam, 14)} score · ${oppTop.scores}/${oppTop.shots || oppTop.scores} shooting`,
+      OPP_ACCENT,
+    );
+  } else {
+    cy = oppDrawHeroStat(ctx, R_COL_X, cy, "—", "No opposition scores recorded", "#64748b");
+  }
+  cy = oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, "Longest unanswered run", maxConsOpp > 0 ? `${maxConsOpp} scores` : "—", "#f8fafc", false);
+  cy = oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, "Restart-origin scoring", formatScoringBreakdownOrDash(oppOrigins.restartOrigin), "#f8fafc", true);
+  cy = oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, "Turnover-origin scoring", formatScoringBreakdownOrDash(oppOrigins.turnoverOrigin), "#f8fafc", false);
+  oppDrawMetricRow(ctx, R_COL_X, cy, R_COL_W, "Chain share", chainTotal > 0 ? `${oppChainPct}%` : "—", "#f8fafc", true);
 
   return canvas;
 }
@@ -4945,7 +5106,7 @@ export function makeZoneAnalysisPage(
   }
   if (oppScoreHots.length > 0) {
     const t = oppScoreHots[0];
-    bullets.push(`Worth reviewing — opposition scoring in: ${t.label} (${t.count})`);
+    bullets.push(`Most opposition scores: ${t.label} (${t.count})`);
   }
   if (oppGainHots.length > 0) {
     const t = oppGainHots[0];
@@ -5889,7 +6050,7 @@ function makeShotEfficiencyPage(
     ctx.textAlign    = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(
-      "No 2-point attempts by either side — worth reviewing whether the arc is being used.",
+      "No 2-point attempts recorded by either side.",
       CANVAS_W / 2, CONTENT_BOT + 14,
     );
   }
@@ -6010,27 +6171,27 @@ function makeHowToReadPage(
   const layers: Array<{ colour: string; title: string; subtitle: string; question: string; body: string; surfaces: string[] }> = [
     {
       colour:   "#60a5fa",
-      title:    "STATISTICS",
-      subtitle: "What happened?",
-      question: "Raw match events exactly as they were recorded.",
+      title:    "PART 1 — MATCH FACTS",
+      subtitle: PART_QUESTIONS.MATCH_FACTS,
+      question: "Raw match events, exactly as they were recorded.",
       body:     `Scores, shots, ${koLabelPluralLC(sport)}, turnovers and frees — the numbers you would record on a clipboard.`,
-      surfaces: ["Match Swing Timeline", "Game Segments", "Player Breakdown", "Shot Pitch Maps", "Shot Efficiency", "Zone Analysis", "Pitch Overviews"],
+      surfaces: ["Scoring Breakdown", "Match Swing Timeline", "Game Segments", "Player Breakdown", "Shot Pitch Maps", "Shot Efficiency", "Zone Analysis", "Pitch Overviews"],
     },
     {
       colour:   "#34d399",
-      title:    "POSSESSION INTELLIGENCE",
-      subtitle: "What happened after each possession?",
+      title:    "PART 2 — POSSESSION FACTS",
+      subtitle: PART_QUESTIONS.POSSESSION_FACTS,
       question: "Every restart, turnover and free is followed to its immediate outcome.",
-      body:     "Each possession is tracked from its origin to its result — a score, a wide, or possession lost. This is the official source of truth for coaching summaries.",
-      surfaces: ["Restart Analysis", "Turnover Analysis", "Free Kick Analysis", "Intelligence Summary"],
+      body:     "Each possession is tracked from its start to its immediate result — a score, a wide, or possession lost. This is the official source of truth for what we won or lost, and where.",
+      surfaces: ["Opposition Facts", "Restart Analysis", "Turnover Analysis", "Free Kick Analysis"],
     },
     {
       colour:   "#818cf8",
-      title:    "CHAIN INTELLIGENCE",
-      subtitle: "Why did those attacks become scores?",
-      question: "Complete attacking sequences showing how pressure became scores.",
-      body:     "A chain traces a full attack, even when it spans multiple possessions. A turnover → free won → score is one chain. This layer explains how pressure became points. If a restart isn't logged live, the next score attributes to From General Play — origin chains only know what was captured.",
-      surfaces: ["Chain Intelligence", "Restart Chain Analysis", "Turnover Chain Analysis", "Scoring Momentum"],
+      title:    "PART 3 — GAME ORIGIN / CHAIN ANALYSIS",
+      subtitle: PART_QUESTIONS.GAME_ORIGIN,
+      question: "Where did the possessions that eventually produced scores begin?",
+      body:     "A chain traces a full attack, even when it spans multiple possessions. A turnover → free won → score is one chain. This layer shows where scoring possessions began — it does not establish tactical causation. If a restart isn't logged live, the next score attributes to From General Play — origin chains only know what was captured.",
+      surfaces: ["Scoring Possession Origins", "Player Chain Involvement", "Opposition Origin & Chain Analysis", "Intelligence Summary", "Match Markers", "Chain Intelligence", "Restart Chain Analysis", "Turnover Chain Analysis", "Scoring Momentum"],
     },
   ];
 
@@ -6985,6 +7146,23 @@ function makeTurnoverVisualPage(
  * Bottom strip: Free Summary | Free Outcomes | Free Intelligence.
  *
  * No new data is calculated — all values use existing event filters.
+ *
+ * Three genuinely different populations appear in the pitch callouts — kept
+ * distinct in wording so they are never read as one figure narrowing into
+ * the next:
+ *   "Won N possession frees"            — FREE_WON/FREE_CONCEDED events
+ *                                          (every free awarded, however taken).
+ *   "N free-won → goal chain(s)"        — FREE_WON_TO_GOAL rule matches: a
+ *                                          free won immediately followed by a
+ *                                          GOAL (not any score) within 30s.
+ *                                          Can be 0 even with many frees won,
+ *                                          since most conversions are points
+ *                                          and/or land outside the 30s window.
+ *   "Direct placed-ball scoring: X/Y"   — report.placedBalls, the ledger's
+ *                                          direct classification of placed-
+ *                                          ball attempts, independent of
+ *                                          whether a FREE_WON event preceded
+ *                                          the attempt within any window.
  */
 function makeFreeAnalysisPage(
   events: readonly PdfExportEvent[],
@@ -7059,8 +7237,8 @@ function makeFreeAnalysisPage(
   dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Our Frees — ${homeTeam}`,        forFreeEvts.length, "#818cf8");
   dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Won ${forFreesWon} possession free${forFreesWon !== 1 ? "s" : ""}`,
-    `${forFreeScoringChains} scoring chain${forFreeScoringChains !== 1 ? "s" : ""} from those frees`,
-    forFreeAttempts > 0 ? `Placed balls: ${forFreeScored}/${forFreeAttempts} scored` : "No placed balls attempted",
+    `${forFreeScoringChains} free-won → goal chain${forFreeScoringChains !== 1 ? "s" : ""} (rule match)`,
+    forFreeAttempts > 0 ? `Direct placed-ball scoring: ${forFreeScored}/${forFreeAttempts} scored` : "No placed balls attempted",
     "#818cf8",
   );
   const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
@@ -7069,8 +7247,8 @@ function makeFreeAnalysisPage(
   dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Opposition Frees — ${awayTeam}`, oppFreeEvts.length, "#f472b6");
   dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Opposition won ${oppFreesWon} possession free${oppFreesWon !== 1 ? "s" : ""}`,
-    `${oppFreeScoringChains} scoring chain${oppFreeScoringChains !== 1 ? "s" : ""} from those frees`,
-    oppFreeAttempts > 0 ? `Placed balls: ${oppFreeScored}/${oppFreeAttempts} scored` : "No placed balls attempted",
+    `${oppFreeScoringChains} free-won → goal chain${oppFreeScoringChains !== 1 ? "s" : ""} (rule match)`,
+    oppFreeAttempts > 0 ? `Direct placed-ball scoring: ${oppFreeScored}/${oppFreeAttempts} scored` : "No placed balls attempted",
     "#f472b6",
   );
   const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
@@ -7249,7 +7427,7 @@ void makeOppRestartPlatformPage;
  *   Last−7.  Momentum & Scoring Runs page
  *   Last−6.  Tactical Chain Analysis summary page
  *   Last−5.  Tactical Intelligence Summary page
- *   Last−4.  Tactical Review Guide page
+ *   Last−4.  Match Markers page
  *   Last−3.  Opposition Snapshot page
  *   Last−2.  Zone Analysis page
  *   Last−1.  Match Swing Timeline page
@@ -7272,40 +7450,44 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   const hasTargets = hasEnabledTargets(targets);
 
-  // 19 fixed pages + player pages.
-  // Fixed: p.1 Match Summary, p.2 Match Swing, p.3 Tactical Intelligence,
-  //        p.4 Segment Control, p.5–6 Kickout chapter, p.7–8 Turnover chapter,
-  // Page count — three analytical chapters + one intro page + three chapter dividers.
+  // 27 fixed pages + player pages, grouped into three provenance-separated
+  // parts (see reporting/reportProvenance.ts and reporting/fullReviewCopy.ts):
+  //   PART 1 — MATCH FACTS            (match-fact only)
+  //   PART 2 — POSSESSION FACTS       (match-fact + possession-fact)
+  //   PART 3 — GAME ORIGIN / CHAIN    (chain-origin + interpretive)
   // Fixed pages (excluding player pages):
   //   p.1  Match Summary (cover)
-  //   p.2  Where the Points Went (margin decomposition ledger — mixed)
-  //   p.3  Understanding PáircVision Analytics (intro)
-  //   p.4  Chapter 1 divider — Statistics
+  //   p.2  Understanding PáircVision Analytics (intro)
+  //   p.3  Part 1 divider — Match Facts
+  //   p.4  Scoring Breakdown
   //   p.5  Match Swing Timeline
   //   p.6  Segment Control
   //   p.7…6+N  Player Breakdown (N = playerPageCount)
-  //   p.7+N  Player Influence
+  //   p.7+N  Player Contributions
   //   p.8+N  Shot Pitch Maps
   //   p.9+N  Shot & Scoring Efficiency
   //   p.10+N  Zone Analysis
   //   p.11+N  1H Pitch Overview
   //   p.12+N  2H Pitch Overview
-  //   p.13+N  Opposition Snapshot
-  //   p.14+N  Chapter 2 divider — Possession Intelligence
+  //   p.13+N  Part 2 divider — Possession Facts
+  //   p.14+N  Opposition Facts
   //   p.15+N  Restart Analysis
   //   p.16+N  Turnover Analysis
   //   p.17+N  Free Kick Analysis
-  //   p.18+N  Intelligence Summary     (mixed — POSSESSION primary)
-  //   p.19+N  Tactical Review Guide    (mixed)
-  //   p.20+N  Chapter 3 divider — Chain Intelligence
-  //   p.21+N  Chain Intelligence
-  //   p.22+N  Restart Chain Analysis
-  //   p.23+N  Turnover Chain Analysis
-  //   p.24+N  Scoring Momentum
-  //   p.25+N  Performance Against Targets (optional — only when targets are set)
-  //   Total fixed: 24 + N (+ 1 when targets set)
+  //   p.18+N  Part 3 divider — Game Origin / Chain Analysis
+  //   p.19+N  Scoring Possession Origins
+  //   p.20+N  Player Chain Involvement
+  //   p.21+N  Opposition Origin & Chain Analysis
+  //   p.22+N  Intelligence Summary
+  //   p.23+N  Match Markers
+  //   p.24+N  Chain Intelligence
+  //   p.25+N  Restart Chain Analysis
+  //   p.26+N  Turnover Chain Analysis
+  //   p.27+N  Scoring Momentum
+  //   p.28+N  Performance Against Targets (optional — only when targets are set)
+  //   Total fixed: 27 + N (+ 1 when targets set)
   const playerPageCount = calcPlayerPageCount(events, homeSquadPlayers, awaySquadPlayers);
-  const TOTAL_PAGES = 24 + playerPageCount + (hasTargets ? 1 : 0);
+  const TOTAL_PAGES = 27 + playerPageCount + (hasTargets ? 1 : 0);
 
   // Chain analysis — computed once via canonical MatchReport; shared by all page builders.
   const report = buildMatchReport({
@@ -7351,40 +7533,39 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   const p1 = makeSummaryPage(events, report, homeTeamName, awayTeamName, venueName, TOTAL_PAGES, sport);
   addCanvasPage(p1, false, "Match Summary");
 
-  // ── p.2 — Where the Points Went (margin decomposition ledger) ────────────────
-
-  try {
-    const c = makePointsLedgerPage(events, report, homeTeamName, awayTeamName, 2, TOTAL_PAGES, "FULL", homeSquadPlayers, awaySquadPlayers);
-    stampLayerBadge(c, "MIXED");
-    addCanvasPage(c, true, "Where the Points Went");
-  } catch (err) {
-    console.error("Where the Points Went page generation failed", err);
-    addCanvasPage(fallbackCanvas("Where the Points Went"), true, "Where the Points Went");
-  }
-
-  // ── p.3 — Understanding PáircVision Analytics ────────────────────────────────
+  // ── p.2 — Understanding PáircVision Analytics ────────────────────────────────
 
   addCanvasPage(
-    makeHowToReadPage(homeTeamName, awayTeamName, 3, TOTAL_PAGES, sport),
+    makeHowToReadPage(homeTeamName, awayTeamName, 2, TOTAL_PAGES, sport),
     true, "How to Read This Report",
   );
 
   // ════════════════════════════════════════════════════════════════════════════
-  // CHAPTER 1 — WHAT HAPPENED?   (Statistics — blue #60a5fa)
+  // PART 1 — MATCH FACTS   (blue #60a5fa)
   // ════════════════════════════════════════════════════════════════════════════
 
   addCanvasPage(
     makeChapterDividerPage(
-      1, "WHAT HAPPENED?", "Statistics",
-      "Raw match events exactly as they were recorded.",
-      "What happened during the game?",
-      ["Match Swing Timeline", "Game Segments", "Player Breakdown",
-       "Shot Pitch Maps", "Shot & Scoring Efficiency",
-       "Zone Analysis", "1H & 2H Pitch Overviews", "Opposition Snapshot"],
-      "#60a5fa", 4, TOTAL_PAGES,
+      1, "PART 1 — MATCH FACTS", PART_QUESTIONS.MATCH_FACTS,
+      "Raw match events and direct event-source classification exactly as they were recorded.",
+      PART_QUESTIONS.MATCH_FACTS,
+      ["Scoring Breakdown", "Match Swing Timeline", "Game Segments", "Player Breakdown",
+       "Player Contributions", "Shot Pitch Maps", "Shot & Scoring Efficiency",
+       "Zone Analysis", "1H & 2H Pitch Overviews"],
+      "#60a5fa", 3, TOTAL_PAGES,
     ),
-    true, "Chapter 1 — Statistics",
+    true, "Part 1 — Match Facts",
   );
+
+  // p.4 — Scoring Breakdown
+  try {
+    const c = makeScoringBreakdownPage(events, homeTeamName, awayTeamName, 4, TOTAL_PAGES);
+    stampLayerBadge(c, "STATISTICS");
+    addCanvasPage(c, true, "Scoring Breakdown");
+  } catch (err) {
+    console.error("Scoring Breakdown page generation failed", err);
+    addCanvasPage(fallbackCanvas("Scoring Breakdown"), true, "Scoring Breakdown");
+  }
 
   // p.5 — Match Swing Timeline
   try {
@@ -7405,14 +7586,14 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   const playerCanvases = makePlayerPages(events, homeTeamName, awayTeamName, 7, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers, sport);
   playerCanvases.forEach((c) => { stampLayerBadge(c, "STATISTICS"); addCanvasPage(c, true); });
 
-  // p.7+N — Player Influence
+  // p.7+N — Player Contributions (Part 1 — Match Facts; factual only)
   try {
-    const c = makePlayerInfluencePage(events, report, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
-    stampLayerBadge(c, "MIXED");
-    addCanvasPage(c, true, "Top Players by Net Influence");
+    const c = makePlayerContributionsPage(events, report, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
+    stampLayerBadge(c, "STATISTICS");
+    addCanvasPage(c, true, "Player Contributions");
   } catch (err) {
-    console.error("Player Influence page generation failed", err);
-    addCanvasPage(fallbackCanvas("Top Players by Net Influence"), true, "Top Players by Net Influence");
+    console.error("Player Contributions page generation failed", err);
+    addCanvasPage(fallbackCanvas("Player Contributions"), true, "Player Contributions");
   }
 
   // p.8+N — Shot Pitch Maps
@@ -7501,40 +7682,35 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("2H Pitch Overview"), true, "2H Pitch Overview");
   }
 
-  // p.11+N — Opposition Snapshot
-  // MIXED: Restart/Turnover Threat cards are chain-origin figures and the
-  // Rematch Watchlist draws on the Player Influence module — not a single
-  // STATISTICS-only page (see terminology audit, Task 3).
-  try {
-    const c = makeOppositionSnapshotPage(events, report, homeTeamName, awayTeamName, p_arch + 2, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers);
-    stampLayerBadge(c, "MIXED");
-    addCanvasPage(c, true, "Opposition Snapshot");
-  } catch (err) {
-    console.error("Opposition Snapshot page generation failed", err);
-    addCanvasPage(fallbackCanvas("Opposition Snapshot"), true, "Opposition Snapshot");
-  }
-
   // ════════════════════════════════════════════════════════════════════════════
-  // CHAPTER 2 — WHAT HAPPENED FROM OUR POSSESSIONS?
-  //             (Possession Intelligence — emerald #34d399)
+  // PART 2 — POSSESSION FACTS   (emerald #34d399)
   // ════════════════════════════════════════════════════════════════════════════
 
-  const p_ch2div = p_arch + 3;  // p.12+N
+  const p_ch2div = p_arch + 2;  // p.13+N
   addCanvasPage(
     makeChapterDividerPage(
-      2, "WHAT HAPPENED FROM OUR POSSESSIONS?", "Possession Intelligence",
-      "Every restart, turnover and free is followed to its immediate outcome.",
-      "What happened every time possession changed?",
-      ["Restart Analysis", "Turnover Analysis", "Free Kick Analysis",
-       "Intelligence Summary", "Tactical Review Guide"],
+      2, "PART 2 — POSSESSION FACTS", PART_QUESTIONS.POSSESSION_FACTS,
+      "Every restart, turnover and free is followed to its immediate outcome — what we won or lost, and where.",
+      PART_QUESTIONS.POSSESSION_FACTS,
+      ["Opposition Facts", "Restart Analysis", "Turnover Analysis", "Free Kick Analysis"],
       "#34d399", p_ch2div, TOTAL_PAGES,
     ),
-    true, "Chapter 2 — Possession Intelligence",
+    true, "Part 2 — Possession Facts",
   );
 
-  // p.13+N — Restart Analysis
+  // p.14+N — Opposition Facts (match-fact + possession-fact only)
   try {
-    const c = makeRestartVisualPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 1, TOTAL_PAGES);
+    const c = makeOppositionFactsPage(events, report, homeTeamName, awayTeamName, p_ch2div + 1, TOTAL_PAGES, sport);
+    stampLayerBadge(c, "STATISTICS");
+    addCanvasPage(c, true, "Opposition Facts");
+  } catch (err) {
+    console.error("Opposition Facts page generation failed", err);
+    addCanvasPage(fallbackCanvas("Opposition Facts"), true, "Opposition Facts");
+  }
+
+  // p.15+N — Restart Analysis
+  try {
+    const c = makeRestartVisualPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 2, TOTAL_PAGES);
     stampLayerBadge(c, "POSSESSION");
     addCanvasPage(c, true, "Restart Analysis");
   } catch (err) {
@@ -7542,9 +7718,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Restart Analysis"), true, "Restart Analysis");
   }
 
-  // p.14+N — Turnover Analysis
+  // p.16+N — Turnover Analysis
   try {
-    const c = makeTurnoverVisualPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 2, TOTAL_PAGES);
+    const c = makeTurnoverVisualPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 3, TOTAL_PAGES);
     stampLayerBadge(c, "POSSESSION");
     addCanvasPage(c, true, "Turnover Analysis");
   } catch (err) {
@@ -7552,9 +7728,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Turnover Analysis"), true, "Turnover Analysis");
   }
 
-  // p.15+N — Free Kick Analysis
+  // p.17+N — Free Kick Analysis
   try {
-    const c = makeFreeAnalysisPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 3, TOTAL_PAGES);
+    const c = makeFreeAnalysisPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 4, TOTAL_PAGES);
     stampLayerBadge(c, "POSSESSION");
     addCanvasPage(c, true, "Free Kick Analysis");
   } catch (err) {
@@ -7562,47 +7738,82 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Free Kick Analysis"), true, "Free Kick Analysis");
   }
 
-  // p.16+N — Intelligence Summary (mixed — Possession primary, Chain context)
+  // ════════════════════════════════════════════════════════════════════════════
+  // PART 3 — GAME ORIGIN / CHAIN ANALYSIS   (violet #818cf8)
+  // ════════════════════════════════════════════════════════════════════════════
+  // Chain/origin data traces where a scoring possession began — it does not
+  // establish tactical causation. This chapter answers "what happened after
+  // those possessions began," not "why" a score happened (see
+  // GAME_ORIGIN_EXPLANATION, printed on Scoring Possession Origins below).
+
+  const p_ch3div = p_ch2div + 5;  // p.18+N
+  addCanvasPage(
+    makeChapterDividerPage(
+      3, "PART 3 — GAME ORIGIN / CHAIN ANALYSIS", PART_QUESTIONS.GAME_ORIGIN,
+      "Traces the possession beyond the initial event — where scoring possessions began, followed forward.",
+      PART_QUESTIONS.GAME_ORIGIN,
+      ["Scoring Possession Origins", "Player Chain Involvement", "Opposition Origin & Chain Analysis",
+       "Intelligence Summary", "Match Markers", "Chain Intelligence",
+       "Restart Chain Analysis", "Turnover Chain Analysis", "Scoring Momentum"],
+      "#818cf8", p_ch3div, TOTAL_PAGES,
+    ),
+    true, "Part 3 — Game Origin / Chain Analysis",
+  );
+
+  // p.19+N — Chain Intelligence
+  // p.19+N — Scoring Possession Origins (prints GAME_ORIGIN_EXPLANATION first)
   try {
-    const c = makeTacticalIntelligencePage(report, homeTeamName, awayTeamName, p_ch2div + 4, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "MIXED");
+    const c = makeScoringPossessionOriginsPage(report, homeTeamName, awayTeamName, p_ch3div + 1, TOTAL_PAGES);
+    stampLayerBadge(c, "CHAIN");
+    addCanvasPage(c, true, "Scoring Possession Origins");
+  } catch (err) {
+    console.error("Scoring Possession Origins page generation failed", err);
+    addCanvasPage(fallbackCanvas("Scoring Possession Origins"), true, "Scoring Possession Origins");
+  }
+
+  // p.20+N — Player Chain Involvement
+  try {
+    const c = makePlayerInfluencePage(events, report, homeTeamName, awayTeamName, p_ch3div + 2, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
+    stampLayerBadge(c, "CHAIN");
+    addCanvasPage(c, true, "Top Players by Net Influence");
+  } catch (err) {
+    console.error("Player Chain Involvement page generation failed", err);
+    addCanvasPage(fallbackCanvas("Top Players by Net Influence"), true, "Top Players by Net Influence");
+  }
+
+  // p.21+N — Opposition Origin & Chain Analysis
+  try {
+    const c = makeOppositionOriginPage(events, report, homeTeamName, awayTeamName, p_ch3div + 3, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers);
+    stampLayerBadge(c, "CHAIN");
+    addCanvasPage(c, true, "Opposition Origin & Chain Analysis");
+  } catch (err) {
+    console.error("Opposition Origin & Chain Analysis page generation failed", err);
+    addCanvasPage(fallbackCanvas("Opposition Origin & Chain Analysis"), true, "Opposition Origin & Chain Analysis");
+  }
+
+  // p.22+N — Intelligence Summary
+  try {
+    const c = makeTacticalIntelligencePage(report, homeTeamName, awayTeamName, p_ch3div + 4, TOTAL_PAGES, sport);
+    stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Intelligence Summary");
   } catch (err) {
     console.error("Intelligence Summary page generation failed", err);
     addCanvasPage(fallbackCanvas("Intelligence Summary"), true, "Intelligence Summary");
   }
 
-  // p.17+N — Tactical Review Guide (mixed)
+  // p.23+N — Match Markers
   try {
-    const c = makeTacticalReviewGuidePage(report, homeTeamName, awayTeamName, p_ch2div + 5, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "MIXED");
-    addCanvasPage(c, true, "Tactical Review Guide");
+    const c = makeTacticalReviewGuidePage(report, homeTeamName, awayTeamName, p_ch3div + 5, TOTAL_PAGES, sport);
+    stampLayerBadge(c, "CHAIN");
+    addCanvasPage(c, true, "Match Markers");
   } catch (err) {
-    console.error("Tactical Review Guide page generation failed", err);
-    addCanvasPage(fallbackCanvas("Tactical Review Guide"), true, "Tactical Review Guide");
+    console.error("Match Markers page generation failed", err);
+    addCanvasPage(fallbackCanvas("Match Markers"), true, "Match Markers");
   }
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // CHAPTER 3 — WHY DID THOSE ATTACKS BECOME SCORES?
-  //             (Chain Intelligence — violet #818cf8)
-  // ════════════════════════════════════════════════════════════════════════════
-
-  const p_ch3div = p_ch2div + 6;  // p.18+N
-  addCanvasPage(
-    makeChapterDividerPage(
-      3, "WHY DID THOSE ATTACKS BECOME SCORES?", "Chain Intelligence",
-      "Complete attacking sequences showing how pressure became scores.",
-      "Why did those attacks actually become scores?",
-      ["Chain Intelligence", "Restart Chain Analysis",
-       "Turnover Chain Analysis", "Scoring Momentum"],
-      "#818cf8", p_ch3div, TOTAL_PAGES,
-    ),
-    true, "Chapter 3 — Chain Intelligence",
-  );
-
-  // p.19+N — Chain Intelligence
+  // p.24+N — Chain Intelligence
   try {
-    const c = makeChainSummaryPage(report, homeTeamName, awayTeamName, p_ch3div + 1, TOTAL_PAGES, sport);
+    const c = makeChainSummaryPage(report, homeTeamName, awayTeamName, p_ch3div + 6, TOTAL_PAGES, sport);
     stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Chain Intelligence");
   } catch (err) {
@@ -7610,9 +7821,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Chain Intelligence"), true, "Chain Intelligence");
   }
 
-  // p.20+N — Restart Chain Analysis
+  // p.25+N — Restart Chain Analysis
   try {
-    const c = makeKickoutChainPage(report, homeTeamName, awayTeamName, p_ch3div + 2, TOTAL_PAGES, sport);
+    const c = makeKickoutChainPage(report, homeTeamName, awayTeamName, p_ch3div + 7, TOTAL_PAGES, sport);
     stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Restart Chain Analysis");
   } catch (err) {
@@ -7620,9 +7831,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Restart Chain Analysis"), true, "Restart Chain Analysis");
   }
 
-  // p.21+N — Turnover Chain Analysis
+  // p.26+N — Turnover Chain Analysis
   try {
-    const c = makeTurnoverPunishmentPage(report, homeTeamName, awayTeamName, p_ch3div + 3, TOTAL_PAGES);
+    const c = makeTurnoverPunishmentPage(report, homeTeamName, awayTeamName, p_ch3div + 8, TOTAL_PAGES);
     stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Turnover Chain Analysis");
   } catch (err) {
@@ -7630,9 +7841,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Turnover Chain Analysis"), true, "Turnover Chain Analysis");
   }
 
-  // p.22+N — Scoring Momentum
+  // p.27+N — Scoring Momentum
   try {
-    const c = makeMomentumRunsPage(report, homeTeamName, awayTeamName, p_ch3div + 4, TOTAL_PAGES);
+    const c = makeMomentumRunsPage(report, homeTeamName, awayTeamName, p_ch3div + 9, TOTAL_PAGES);
     stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Scoring Momentum");
   } catch (err) {
@@ -7640,7 +7851,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Scoring Momentum"), true, "Scoring Momentum");
   }
 
-  // p.23+N — Performance Against Targets (only when targets are set)
+  // p.28+N — Performance Against Targets (only when targets are set)
   if (hasTargets && targets) {
     const targetResults = computeTargetResults(targets, events, "FULL", sport);
     if (targetResults.length > 0) {
@@ -12254,82 +12465,75 @@ export function makeHtTacticalSummaryPage(
   return canvas;
 }
 
-// ─── "Where the Points Went" — margin decomposition ledger page ───────────────
+// ─── Scoring Breakdown page (Part 1 — Match Facts) ────────────────────────────
 /**
- * Where the Points Went — decomposes the final margin into scoring sources.
+ * Scoring Breakdown — "How was the score recorded?"
  *
- * Block A — the margin (final score line + who won by how much).
- * Block B — the ledger (two-column differential table; row nets sum to margin).
- * Block C — the verdict (one sentence for the biggest positive and negative rows).
- *
- * Cross-engine page (Statistics + Chain) — callers stamp the MIXED badge.
- * All figures come from buildScoreLedger(); nothing is computed locally.
- *
- * variant "HT" renders the compact 3-row "The Ledger So Far"
- * (placed balls / restarts / turnovers) for the halftime snapshot.
+ * PROVENANCE: match-fact only. Every row comes from
+ * buildDirectScoringBreakdown(), which classifies each score using only its
+ * own event-source tag (isPlacedScore/eventSource) — never chain/origin
+ * attribution. Row nets sum to the final margin; every score appears in
+ * exactly one row. This replaces the old mixed "Where the Points Went" page,
+ * which reclassified some From Play scores as restart/turnover "wins" using
+ * chain-origin clocks — that reclassification now lives on its own page,
+ * Scoring Possession Origins (Part 3), and is never mixed back in here.
  */
-function makePointsLedgerPage(
+export function buildScoringBreakdownRows(
+  breakdown: DirectScoringBreakdown,
+): ProvenanceRow[] {
+  return breakdown.rows.map((row) => ({ label: row.label, provenance: "match-fact" as const }));
+}
+
+function makeScoringBreakdownPage(
   events: readonly PdfExportEvent[],
-  report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
   pageNum: number,
   totalPages: number,
-  variant: "FULL" | "HT" = "FULL",
-  homeSquadPlayers?: readonly PdfSquadPlayer[],
-  awaySquadPlayers?: readonly PdfSquadPlayer[],
 ): HTMLCanvasElement {
-  const analysis = report.chain;
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
-  const ledger = buildScoreLedger(events, analysis, homeTeam, awayTeam);
-  const isHT   = variant === "HT";
+  const breakdown = buildDirectScoringBreakdown(events);
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(
-    ctx,
-    isHT ? "The Ledger So Far" : "Where the Points Went",
-    `${homeTeam} v ${awayTeam}`,
-    pageNum, totalPages,
-  );
+  drawPageHeader(ctx, "Scoring Breakdown", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  ctx.save();
+  ctx.fillStyle = "#64748b";
+  ctx.font = "italic 14px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText("How was the score recorded? Direct event classification only — no restart or turnover attribution.", 24, 86);
+  ctx.restore();
 
-  // ── Block A — The Margin ──────────────────────────────────────────────────
-  const marginLabel = isHT
-    ? (ledger.margin === 0 ? "Level at the break" : `${fmtMarginLabel(ledger.margin, homeTeam, awayTeam)} at the break`)
-    : fmtMarginLabel(ledger.margin, homeTeam, awayTeam);
+  // ── The Margin ─────────────────────────────────────────────────────────────
   ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle    = "#f8fafc";
   ctx.font         = "bold 44px sans-serif";
   ctx.fillText(
-    `${truncTeam(homeTeam, 20)}  ${fmtScoreLine(ledger.forScore)}   v   ${fmtScoreLine(ledger.oppScore)}  ${truncTeam(awayTeam, 20)}`,
-    CANVAS_W / 2, 140,
+    `${truncTeam(homeTeam, 20)}  ${fmtScoreLine(breakdown.forScore)}   v   ${fmtScoreLine(breakdown.oppScore)}  ${truncTeam(awayTeam, 20)}`,
+    CANVAS_W / 2, 150,
   );
-  ctx.fillStyle = ledger.margin > 0 ? "#4ade80" : ledger.margin < 0 ? "#f87171" : "#94a3b8";
+  ctx.fillStyle = breakdown.margin > 0 ? "#4ade80" : breakdown.margin < 0 ? "#f87171" : "#94a3b8";
   ctx.font      = "bold 30px sans-serif";
-  ctx.fillText(marginLabel, CANVAS_W / 2, 194);
+  ctx.fillText(fmtMarginLabel(breakdown.margin, homeTeam, awayTeam), CANVAS_W / 2, 200);
 
-  // ── Block B — The Ledger ──────────────────────────────────────────────────
-  const rows = isHT
-    ? ledger.rows.filter((r) => r.id === "PLACED" || r.id === "RESTART_WON" || r.id === "TURNOVER_WON")
-    : ledger.rows;
-
+  // ── The Table ──────────────────────────────────────────────────────────────
   const TBL_W    = 1500;
   const TBL_X    = Math.round((CANVAS_W - TBL_W) / 2);
-  const COL_SRC  = TBL_X + 24;                 // Source (left aligned)
-  const COL_US   = TBL_X + Math.round(TBL_W * 0.46);  // centre of home column
-  const COL_THEM = TBL_X + Math.round(TBL_W * 0.70);  // centre of away column
-  const COL_NET  = TBL_X + Math.round(TBL_W * 0.91);  // centre of net column
+  const COL_SRC  = TBL_X + 24;
+  const COL_US   = TBL_X + Math.round(TBL_W * 0.46);
+  const COL_THEM = TBL_X + Math.round(TBL_W * 0.70);
+  const COL_NET  = TBL_X + Math.round(TBL_W * 0.91);
   const HDR_H    = 46;
   const ROW_H    = 62;
-  let ty = 244;
+  let ty = 250;
 
-  // Header strip
   ctx.fillStyle = "rgba(255,255,255,0.07)";
   ctx.fillRect(TBL_X, ty, TBL_W, HDR_H);
   ctx.fillStyle = "#7dd3fc";
@@ -12345,7 +12549,7 @@ function makePointsLedgerPage(
   ctx.fillText("NET", COL_NET, ty + HDR_H / 2);
   ty += HDR_H;
 
-  rows.forEach((row, i) => {
+  breakdown.rows.forEach((row, i) => {
     if (i % 2 === 0) {
       ctx.fillStyle = "rgba(255,255,255,0.025)";
       ctx.fillRect(TBL_X, ty, TBL_W, ROW_H);
@@ -12376,112 +12580,143 @@ function makePointsLedgerPage(
     ty += ROW_H;
   });
 
-  // Context row — the restart battle seen from the conceding side. Mirrors the
-  // "Scores off restarts won" row, so it carries no net (no double-counting).
-  {
-    const mid = ty + ROW_H / 2;
-    ctx.fillStyle = "rgba(251,113,133,0.05)";
-    ctx.fillRect(TBL_X, ty, TBL_W, ROW_H);
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "#94a3b8";
-    ctx.font      = "italic 21px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText("Direct scores conceded off restarts", COL_SRC, mid);
-    ctx.textAlign = "center";
-    ctx.fillStyle = ledger.restartLossContext.usConcededValue > 0 ? "#f87171" : "#94a3b8";
-    ctx.fillText(`−${ledger.restartLossContext.usConcededValue} conceded`, COL_US, mid);
-    ctx.fillStyle = ledger.restartLossContext.themConcededValue > 0 ? "#f87171" : "#94a3b8";
-    ctx.fillText(`−${ledger.restartLossContext.themConcededValue} conceded`, COL_THEM, mid);
-    ctx.fillStyle = "#64748b";
-    ctx.font      = "italic 17px sans-serif";
-    ctx.fillText("context", COL_NET, mid);
-    ty += ROW_H;
-  }
-
   // Sum line — the honesty check, printed on the page.
-  ty += 14;
+  ty += 20;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
   ctx.font = "italic 18px sans-serif";
   ctx.fillStyle = "#64748b";
-  const rowNetSum = rows.reduce((s, r) => s + r.net, 0);
+  const rowNetSum = breakdown.rows.reduce((s, r) => s + r.net, 0);
+  ctx.fillText(`Source nets sum to the final margin: ${fmtNet(rowNetSum)}`, TBL_X + TBL_W, ty + 10);
   ctx.fillText(
-    isHT
-      ? `Placed balls, restarts and turnovers only — the full ledger appears in the full-time report`
-      : `Source nets sum to the final margin: ${fmtNet(rowNetSum)}`,
-    TBL_X + TBL_W, ty + 10,
-  );
-  ctx.fillText(
-    restartOriginBridgeNote(
-      countPlacedRestartOriginScores(analysis.kickouts.outcomes),
-      homeTeam, awayTeam,
-    ),
+    "Where a scoring possession began is a different question — see Game Origin Analysis (Part 3).",
     TBL_X + TBL_W, ty + 32,
   );
-  ty += 62;
 
-  // ── HT-only: top influence tiles (one per team, nothing more at halftime) ──
-  if (isHT) {
-    const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam, homeSquadPlayers, awaySquadPlayers);
-    const tiles: Array<{ team: TeamInfluence; accent: string }> = [
-      { team: influence.home, accent: "#7dd3fc" },
-      { team: influence.away, accent: "#fb7185" },
-    ];
-    const TILE_W = Math.floor((TBL_W - 24) / 2);
-    tiles.forEach(({ team, accent }, i) => {
-      const tx = TBL_X + i * (TILE_W + 24);
-      ctx.fillStyle = "rgba(255,255,255,0.03)";
-      ctx.fillRect(tx, ty, TILE_W, 96);
-      ctx.fillStyle = accent;
-      ctx.fillRect(tx, ty, 4, 96);
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = accent;
-      ctx.font = "bold 17px sans-serif";
-      ctx.fillText(`TOP INFLUENCE SO FAR — ${truncTeam(team.teamName, 18).toUpperCase()}`, tx + 18, ty + 26);
-      ctx.fillStyle = "#e2e8f0";
-      ctx.font = "20px sans-serif";
-      const top = team.top3[0];
-      let line = top && top.influenceIndex > 0
-        ? influenceEvidenceLine(top, team)
-        : "No player-tagged events yet";
-      while (line.length > 0 && ctx.measureText(line + "…").width > TILE_W - 36) {
-        line = line.slice(0, -1);
-      }
-      ctx.fillText(line, tx + 18, ty + 62);
-    });
-  }
+  drawEventCountFooter(ctx, events.filter((e) => !e.id.includes("-instant-score-")).length);
+  return canvas;
+}
 
-  // ── Block C — The Verdict ─────────────────────────────────────────────────
-  if (!isHT) {
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#fbbf24";
-    ctx.font      = "bold 22px sans-serif";
-    ctx.fillText("THE VERDICT", TBL_X, ty + 12);
-    ctx.strokeStyle = "rgba(251,191,36,0.3)";
-    ctx.beginPath();
-    ctx.moveTo(TBL_X, ty + 32);
-    ctx.lineTo(TBL_X + TBL_W, ty + 32);
-    ctx.stroke();
-    ty += 56;
-    ctx.font = "22px sans-serif";
-    for (const verdict of ledger.verdicts.slice(0, 3)) {
-      ctx.fillStyle = "rgba(251,191,36,0.55)";
-      ctx.fillRect(TBL_X, ty - 2, 3, 28);
-      ctx.fillStyle = "#cbd5e1";
-      const lines = wrapText(ctx, verdict, TBL_W - 24);
-      for (const line of lines) {
-        ctx.fillText(line, TBL_X + 14, ty + 10);
-        ty += 30;
-      }
-      ty += 14;
+// ─── Scoring Possession Origins page (Part 3 — Game Origin / Chain Analysis) ──
+/**
+ * Scoring Possession Origins — "Where did the possessions that eventually
+ * produced scores begin?"
+ *
+ * PROVENANCE: chain-origin. Every row comes from
+ * viewScoringPossessionOrigins(), which reads only report.chain's kickout
+ * and turnover outcome datasets. Not required to reconcile 1:1 with the
+ * Scoring Breakdown page (Part 1) — a placed free scored during a
+ * restart-origin possession legitimately appears once on each page,
+ * answering two different questions. See the Game Origin explanation
+ * printed at the top of this page.
+ */
+function makeScoringPossessionOriginsPage(
+  report: MatchReport<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Scoring Possession Origins", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Game Origin explanation — must appear before any origin table ─────────
+  ctx.save();
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "16px sans-serif";
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+  const explainerLines = wrapText(ctx, GAME_ORIGIN_EXPLANATION, CANVAS_W - 48);
+  let ey = 88;
+  explainerLines.forEach((line) => { ctx.fillText(line, 24, ey); ey += 22; });
+  ctx.restore();
+
+  const usOrigins   = viewScoringPossessionOrigins(report, "FOR");
+  const themOrigins = viewScoringPossessionOrigins(report, "OPP");
+
+  const TBL_W    = 1500;
+  const TBL_X    = Math.round((CANVAS_W - TBL_W) / 2);
+  const COL_SRC  = TBL_X + 24;
+  const COL_US   = TBL_X + Math.round(TBL_W * 0.46);
+  const COL_THEM = TBL_X + Math.round(TBL_W * 0.70);
+  const HDR_H    = 46;
+  const ROW_H    = 68;
+  let ty = ey + 30;
+
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.fillRect(TBL_X, ty, TBL_W, HDR_H);
+  ctx.fillStyle = "#818cf8";
+  ctx.fillRect(TBL_X, ty, 4, HDR_H);
+  ctx.font         = "bold 19px sans-serif";
+  ctx.fillStyle    = "#94a3b8";
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.fillText("POSSESSION ORIGIN", COL_SRC, ty + HDR_H / 2);
+  ctx.textAlign = "center";
+  ctx.fillText(truncTeam(homeTeam, 16).toUpperCase(), COL_US,   ty + HDR_H / 2);
+  ctx.fillText(truncTeam(awayTeam, 16).toUpperCase(), COL_THEM, ty + HDR_H / 2);
+  ty += HDR_H;
+
+  const rows: Array<{ label: string; us: ScoringBreakdown; them: ScoringBreakdown }> = [
+    { label: "Restart-origin scores", us: usOrigins.restartOrigin, them: themOrigins.restartOrigin },
+    { label: "Turnover-origin scores", us: usOrigins.turnoverOrigin, them: themOrigins.turnoverOrigin },
+  ];
+
+  rows.forEach((row, i) => {
+    if (i % 2 === 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fillRect(TBL_X, ty, TBL_W, ROW_H);
     }
-  }
+    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(TBL_X, ty + ROW_H);
+    ctx.lineTo(TBL_X + TBL_W, ty + ROW_H);
+    ctx.stroke();
 
-  drawEventCountFooter(
+    const mid = ty + ROW_H / 2;
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font      = "bold 22px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(row.label, COL_SRC, mid);
+
+    ctx.font      = "22px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillText(formatScoringBreakdownOrDash(row.us),   COL_US,   mid);
+    ctx.fillText(formatScoringBreakdownOrDash(row.them), COL_THEM, mid);
+    ty += ROW_H;
+  });
+
+  // Bridge footnote — explains, never "reconciles away", the overlap with Part 1.
+  ty += 26;
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#64748b";
+  ctx.font = "italic 17px sans-serif";
+  const bridgeLines = wrapText(
     ctx,
-    events.filter((e) => !e.id.includes("-instant-score-")).length,
+    restartOriginBridgeNote(
+      countPlacedRestartOriginScores(report.chain.kickouts.outcomes),
+      homeTeam, awayTeam,
+    ),
+    TBL_W,
   );
+  bridgeLines.forEach((line) => { ctx.fillText(line, TBL_X, ty); ty += 22; });
+  ty += 10;
+  ctx.fillText(
+    "Only restart and turnover origins are currently tracked — a score with neither origin has no row here.",
+    TBL_X, ty,
+  );
+
+  drawEventCountFooter(ctx, report.chain.totalEventsAnalysed);
   return canvas;
 }
 
