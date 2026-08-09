@@ -248,6 +248,47 @@ describe("exportSnapshotPdf — HT/FT factual composition", () => {
     expect(model.us.placed.scores).toBeLessThanOrEqual(model.us.shooting.num);
     expect(model.them.placed.scores).toBeLessThanOrEqual(model.them.shooting.num);
   });
+
+  it("1H + 2H Restart Battle retained/total reconciles exactly with the FT Dashboard's own-kickout totals", async () => {
+    await exportSnapshotPdf({ ...base, snapshotMode: "FULL_TIME_SNAPSHOT" });
+
+    const byTitle = (title: string) =>
+      capturedCanvases.find((c) => c.ctx.title === title)?.ctx.textDraws ?? [];
+
+    // Two "<team> retained N/D (P%)" lines per Restart Battle page — home first, away second —
+    // drawn by drawTwoColumnHtStrip inside makeRestartBattlePage.
+    function parseRetainedLines(draws: Array<{ text: string }>): Array<{ retained: number; total: number }> {
+      return draws
+        .map((d) => d.text.match(/retained (\d+)\/(\d+)/))
+        .filter((m): m is RegExpMatchArray => m != null)
+        .map((m) => ({ retained: Number(m[1]), total: Number(m[2]) }));
+    }
+
+    const [home1H, away1H] = parseRetainedLines(byTitle("Restart Battle – First Half"));
+    const [home2H, away2H] = parseRetainedLines(byTitle("Restart Battle – Second Half"));
+
+    expect(home1H).toEqual({ retained: 3, total: 7 });
+    expect(away1H).toEqual({ retained: 7, total: 7 });
+    expect(home2H).toEqual({ retained: 3, total: 6 });
+    expect(away2H).toEqual({ retained: 4, total: 8 });
+
+    const report = buildMatchReport({
+      events,
+      homeTeam: base.homeTeamName,
+      awayTeam: base.awayTeamName,
+      scope: "FULL",
+    });
+    const ftModel = buildSnapshotDashboardModel(report, "FT");
+
+    expect(home1H.retained + home2H.retained).toBe(ftModel.us.ownKickouts.retained);
+    expect(home1H.total + home2H.total).toBe(ftModel.us.ownKickouts.total);
+    expect(away1H.retained + away2H.retained).toBe(ftModel.them.ownKickouts.retained);
+    expect(away1H.total + away2H.total).toBe(ftModel.them.ownKickouts.total);
+
+    // And the exact approved reference: 3/7 + 3/6 = 6/13; 7/7 + 4/8 = 11/15.
+    expect(ftModel.us.ownKickouts).toEqual({ retained: 6, total: 13, lost: 7, pct: 46 });
+    expect(ftModel.them.ownKickouts).toEqual({ retained: 11, total: 15, lost: 4, pct: 73 });
+  });
 });
 
 describe("exportSnapshotPdf — empty / low-data match", () => {
