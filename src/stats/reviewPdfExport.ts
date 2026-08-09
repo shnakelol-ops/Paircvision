@@ -111,7 +111,7 @@ import {
 import { viewScoringPossessionOrigins } from "./reporting/scoringBreakdownViews";
 import { formatScoringBreakdownOrDash, type ScoringBreakdown } from "./reporting/scoringBreakdownFormat";
 import type { ProvenanceRow } from "./reporting/reportProvenance";
-import { GAME_ORIGIN_EXPLANATION } from "./reporting/fullReviewCopy";
+import { GAME_ORIGIN_EXPLANATION, PART_QUESTIONS } from "./reporting/fullReviewCopy";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -6187,27 +6187,27 @@ function makeHowToReadPage(
   const layers: Array<{ colour: string; title: string; subtitle: string; question: string; body: string; surfaces: string[] }> = [
     {
       colour:   "#60a5fa",
-      title:    "STATISTICS",
-      subtitle: "What happened?",
-      question: "Raw match events exactly as they were recorded.",
+      title:    "PART 1 — MATCH FACTS",
+      subtitle: PART_QUESTIONS.MATCH_FACTS,
+      question: "Raw match events, exactly as they were recorded.",
       body:     `Scores, shots, ${koLabelPluralLC(sport)}, turnovers and frees — the numbers you would record on a clipboard.`,
-      surfaces: ["Match Swing Timeline", "Game Segments", "Player Breakdown", "Shot Pitch Maps", "Shot Efficiency", "Zone Analysis", "Pitch Overviews"],
+      surfaces: ["Scoring Breakdown", "Match Swing Timeline", "Game Segments", "Player Breakdown", "Shot Pitch Maps", "Shot Efficiency", "Zone Analysis", "Pitch Overviews"],
     },
     {
       colour:   "#34d399",
-      title:    "POSSESSION INTELLIGENCE",
-      subtitle: "What happened after each possession?",
+      title:    "PART 2 — POSSESSION FACTS",
+      subtitle: PART_QUESTIONS.POSSESSION_FACTS,
       question: "Every restart, turnover and free is followed to its immediate outcome.",
-      body:     "Each possession is tracked from its origin to its result — a score, a wide, or possession lost. This is the official source of truth for coaching summaries.",
-      surfaces: ["Restart Analysis", "Turnover Analysis", "Free Kick Analysis", "Intelligence Summary"],
+      body:     "Each possession is tracked from its start to its immediate result — a score, a wide, or possession lost. This is the official source of truth for what we won or lost, and where.",
+      surfaces: ["Opposition Facts", "Restart Analysis", "Turnover Analysis", "Free Kick Analysis"],
     },
     {
       colour:   "#818cf8",
-      title:    "CHAIN INTELLIGENCE",
-      subtitle: "Why did those attacks become scores?",
-      question: "Complete attacking sequences showing how pressure became scores.",
-      body:     "A chain traces a full attack, even when it spans multiple possessions. A turnover → free won → score is one chain. This layer explains how pressure became points. If a restart isn't logged live, the next score attributes to From General Play — origin chains only know what was captured.",
-      surfaces: ["Chain Intelligence", "Restart Chain Analysis", "Turnover Chain Analysis", "Scoring Momentum"],
+      title:    "PART 3 — GAME ORIGIN / CHAIN ANALYSIS",
+      subtitle: PART_QUESTIONS.GAME_ORIGIN,
+      question: "Where did the possessions that eventually produced scores begin?",
+      body:     "A chain traces a full attack, even when it spans multiple possessions. A turnover → free won → score is one chain. This layer shows where scoring possessions began — it does not establish tactical causation. If a restart isn't logged live, the next score attributes to From General Play — origin chains only know what was captured.",
+      surfaces: ["Scoring Possession Origins", "Player Chain Involvement", "Opposition Origin & Chain Threat", "Intelligence Summary", "Tactical Review Guide", "Chain Intelligence", "Restart Chain Analysis", "Turnover Chain Analysis", "Scoring Momentum"],
     },
   ];
 
@@ -7559,20 +7559,20 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   );
 
   // ════════════════════════════════════════════════════════════════════════════
-  // CHAPTER 1 — WHAT HAPPENED?   (Statistics — blue #60a5fa)
+  // PART 1 — MATCH FACTS   (blue #60a5fa)
   // ════════════════════════════════════════════════════════════════════════════
 
   addCanvasPage(
     makeChapterDividerPage(
-      1, "WHAT HAPPENED?", "Statistics",
-      "Raw match events exactly as they were recorded.",
-      "What happened during the game?",
-      ["Match Swing Timeline", "Game Segments", "Player Breakdown",
-       "Shot Pitch Maps", "Shot & Scoring Efficiency",
-       "Zone Analysis", "1H & 2H Pitch Overviews", "Opposition Snapshot"],
+      1, "PART 1 — MATCH FACTS", PART_QUESTIONS.MATCH_FACTS,
+      "Raw match events and direct event-source classification exactly as they were recorded.",
+      PART_QUESTIONS.MATCH_FACTS,
+      ["Scoring Breakdown", "Match Swing Timeline", "Game Segments", "Player Breakdown",
+       "Player Contributions", "Shot Pitch Maps", "Shot & Scoring Efficiency",
+       "Zone Analysis", "1H & 2H Pitch Overviews"],
       "#60a5fa", 4, TOTAL_PAGES,
     ),
-    true, "Chapter 1 — Statistics",
+    true, "Part 1 — Match Facts",
   );
 
   // p.5 — Match Swing Timeline
@@ -7725,21 +7725,19 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // CHAPTER 2 — WHAT HAPPENED FROM OUR POSSESSIONS?
-  //             (Possession Intelligence — emerald #34d399)
+  // PART 2 — POSSESSION FACTS   (emerald #34d399)
   // ════════════════════════════════════════════════════════════════════════════
 
   const p_ch2div = p_arch + 3;  // p.12+N
   addCanvasPage(
     makeChapterDividerPage(
-      2, "WHAT HAPPENED FROM OUR POSSESSIONS?", "Possession Intelligence",
-      "Every restart, turnover and free is followed to its immediate outcome.",
-      "What happened every time possession changed?",
-      ["Restart Analysis", "Turnover Analysis", "Free Kick Analysis",
-       "Intelligence Summary", "Tactical Review Guide"],
+      2, "PART 2 — POSSESSION FACTS", PART_QUESTIONS.POSSESSION_FACTS,
+      "Every restart, turnover and free is followed to its immediate outcome — what we won or lost, and where.",
+      PART_QUESTIONS.POSSESSION_FACTS,
+      ["Opposition Facts", "Restart Analysis", "Turnover Analysis", "Free Kick Analysis"],
       "#34d399", p_ch2div, TOTAL_PAGES,
     ),
-    true, "Chapter 2 — Possession Intelligence",
+    true, "Part 2 — Possession Facts",
   );
 
   // p.13+N — Restart Analysis
@@ -7800,21 +7798,25 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // CHAPTER 3 — WHY DID THOSE ATTACKS BECOME SCORES?
-  //             (Chain Intelligence — violet #818cf8)
+  // PART 3 — GAME ORIGIN / CHAIN ANALYSIS   (violet #818cf8)
   // ════════════════════════════════════════════════════════════════════════════
+  // Chain/origin data traces where a scoring possession began — it does not
+  // establish tactical causation. This chapter answers "what happened after
+  // those possessions began," not "why" a score happened (see
+  // GAME_ORIGIN_EXPLANATION, printed on Scoring Possession Origins below).
 
   const p_ch3div = p_ch2div + 6;  // p.18+N
   addCanvasPage(
     makeChapterDividerPage(
-      3, "WHY DID THOSE ATTACKS BECOME SCORES?", "Chain Intelligence",
-      "Complete attacking sequences showing how pressure became scores.",
-      "Why did those attacks actually become scores?",
-      ["Chain Intelligence", "Restart Chain Analysis",
-       "Turnover Chain Analysis", "Scoring Momentum"],
+      3, "PART 3 — GAME ORIGIN / CHAIN ANALYSIS", PART_QUESTIONS.GAME_ORIGIN,
+      "Traces the possession beyond the initial event — where scoring possessions began, followed forward.",
+      PART_QUESTIONS.GAME_ORIGIN,
+      ["Scoring Possession Origins", "Player Chain Involvement", "Opposition Origin & Chain Threat",
+       "Intelligence Summary", "Tactical Review Guide", "Chain Intelligence",
+       "Restart Chain Analysis", "Turnover Chain Analysis", "Scoring Momentum"],
       "#818cf8", p_ch3div, TOTAL_PAGES,
     ),
-    true, "Chapter 3 — Chain Intelligence",
+    true, "Part 3 — Game Origin / Chain Analysis",
   );
 
   // p.19+N — Chain Intelligence
