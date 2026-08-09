@@ -54,6 +54,7 @@ import {
   fmtRestartOriginScoredOpp,
   fmtTurnoverOriginConcededFor,
   fmtTurnoverOriginScoredFor,
+  viewOwnKickoutLossOriginConcededFor,
 } from "./reporting/scoringBreakdownViews";
 import {
   RESTART_ORIGIN_HEADING,
@@ -108,7 +109,7 @@ import {
   type TeamInfluence,
 } from "./players/influence";
 import { viewScoringPossessionOrigins } from "./reporting/scoringBreakdownViews";
-import { formatScoringBreakdownOrDash, type ScoringBreakdown } from "./reporting/scoringBreakdownFormat";
+import { formatScoringBreakdownOrDash, scoringBreakdownTotal, type ScoringBreakdown } from "./reporting/scoringBreakdownFormat";
 import type { ProvenanceRow } from "./reporting/reportProvenance";
 import { GAME_ORIGIN_EXPLANATION, PART_QUESTIONS } from "./reporting/fullReviewCopy";
 
@@ -4805,13 +4806,25 @@ export function makeOppositionOriginPage(
   const CONTENT_H   = CONTENT_BOT - CONTENT_TOP;
 
   const ko = analysis.kickouts;
-  const koOppChains = (analysis.byRule["KICKOUT_TO_SCORE"] ?? []).filter((c) => c.teamSide === "OPP").length;
-  const koFromLost  = (analysis.byRule["KICKOUT_LOST_TO_SCORE_AGAINST"] ?? []).filter((c) => c.teamSide === "OPP").length;
+  // De-duplicated origin dataset (same source as the Scoring Possession
+  // Origins page and the Opposition Markers card below), not the chain-rules
+  // pattern detector — matches what "Restart-origin ..." / "Turnover-origin
+  // ..." labels elsewhere in the report actually mean. Hoisted above its
+  // other use (oppInfluence/oppTop) so both card blocks share one call.
+  const oppOrigins = viewScoringPossessionOrigins(report, "OPP");
+  const koOppOriginBreakdown = oppOrigins.restartOrigin;
+  const koOppOriginTotal = scoringBreakdownTotal(koOppOriginBreakdown);
+  // Narrower than koOppOriginBreakdown: specifically restarts FOR physically
+  // took and lost (restartOwner = FOR, winner = OPP), not every OPP
+  // restart-origin score — see viewOwnKickoutLossOriginConcededFor's docs.
+  const koFromLostBreakdown = viewOwnKickoutLossOriginConcededFor(analysis);
+  const koFromLostTotal = scoringBreakdownTotal(koFromLostBreakdown);
   const koLostScore    = viewRestartLossPunishment(report).num;
   const koLostScorePct = viewRestartLossPunishment(report).pct;
 
   const tv           = analysis.turnovers;
-  const tvOppToScore = (analysis.byRule["TURNOVER_TO_SCORE"] ?? []).filter((c) => c.teamSide === "OPP").length;
+  const tvOppOriginBreakdown = oppOrigins.turnoverOrigin;
+  const tvOppOriginTotal = scoringBreakdownTotal(tvOppOriginBreakdown);
   const tvOppToShot  = (analysis.byRule["TURNOVER_TO_SHOT"]  ?? []).filter((c) => c.teamSide === "OPP").length;
   const tvLostScore  = tv.lostAllowedScore;
   const tvPunishPct  = viewTurnoverLossPunishment(report).pct;
@@ -4855,7 +4868,6 @@ export function makeOppositionOriginPage(
   // what); everything else is a plain metric already computed above.
   const oppInfluence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam, homeSquadPlayers, awaySquadPlayers).away;
   const oppTop = oppInfluence.top3.find((p) => p.scoreValue > 0) ?? null;
-  const oppOrigins = viewScoringPossessionOrigins(report, "OPP");
 
   if (analysis.totalEventsAnalysed === 0) {
     ctx.fillStyle = "#64748b";
@@ -4889,22 +4901,22 @@ export function makeOppositionOriginPage(
     ctx.textAlign = "center";
     ctx.fillText(`No ${koLabelLC(sport)} data recorded`, L_COL_X + L_COL_W / 2, lCard1Y + L_CARD_H_1 / 2);
   } else {
-    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Restart-origin scores for OPP", String(koOppChains), koOppChains >= 2 ? OPP_ACCENT : "#f8fafc", false);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Restart-origin scores for OPP", formatScoringBreakdownOrDash(koOppOriginBreakdown), koOppOriginTotal >= 2 ? OPP_ACCENT : "#f8fafc", false);
     cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Restart-origin scores conceded", `${fmtRestartOriginConcededFor(analysis)}  (${koLostScorePct}%)`, koLostScore >= 2 ? OPP_ACCENT : "#f8fafc", true);
-    oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, `Restart-origin scores from our ${koLabelLC(sport)} losses`, String(koFromLost), koFromLost >= 2 ? OPP_ACCENT : "#f8fafc", false);
+    oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, `Restart-origin scores from our ${koLabelLC(sport)} losses`, formatScoringBreakdownOrDash(koFromLostBreakdown), koFromLostTotal >= 2 ? OPP_ACCENT : "#f8fafc", false);
   }
 
   // ── LEFT CARD 2: Turnover Origin ─────────────────────────────────────────────
   oppDrawCardBg(ctx, L_COL_X, lCard2Y, L_COL_W, L_CARD_H_2, "#a78bfa");
   cy = oppDrawCardTitle(ctx, L_COL_X, lCard2Y, L_COL_W, "Turnover Origin", "#a78bfa");
-  if (tvLost === 0 && tvOppToScore === 0) {
+  if (tvLost === 0 && tvOppOriginTotal === 0) {
     ctx.fillStyle = "#64748b";
     ctx.font = "16px sans-serif";
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
     ctx.fillText("No turnover data recorded", L_COL_X + L_COL_W / 2, lCard2Y + L_CARD_H_2 / 2);
   } else {
-    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Turnover-origin scores for OPP", String(tvOppToScore), tvOppToScore >= 2 ? OPP_ACCENT : "#f8fafc", false);
+    cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Turnover-origin scores for OPP", formatScoringBreakdownOrDash(tvOppOriginBreakdown), tvOppOriginTotal >= 2 ? OPP_ACCENT : "#f8fafc", false);
     cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Turnover-origin scores conceded", String(tvLostScore), tvLostScore >= 2 ? OPP_ACCENT : "#f8fafc", true);
     cy = oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Turnover-origin punishment rate", tvLost > 0 ? `${tvPunishPct}%` : "—", tvPunishPct >= 40 ? OPP_ACCENT : "#f8fafc", false);
     oppDrawMetricRow(ctx, L_COL_X, cy, L_COL_W, "Turnover won → shot chains", String(tvOppToShot), "#f8fafc", true);
@@ -7134,6 +7146,23 @@ function makeTurnoverVisualPage(
  * Bottom strip: Free Summary | Free Outcomes | Free Intelligence.
  *
  * No new data is calculated — all values use existing event filters.
+ *
+ * Three genuinely different populations appear in the pitch callouts — kept
+ * distinct in wording so they are never read as one figure narrowing into
+ * the next:
+ *   "Won N possession frees"            — FREE_WON/FREE_CONCEDED events
+ *                                          (every free awarded, however taken).
+ *   "N free-won → goal chain(s)"        — FREE_WON_TO_GOAL rule matches: a
+ *                                          free won immediately followed by a
+ *                                          GOAL (not any score) within 30s.
+ *                                          Can be 0 even with many frees won,
+ *                                          since most conversions are points
+ *                                          and/or land outside the 30s window.
+ *   "Direct placed-ball scoring: X/Y"   — report.placedBalls, the ledger's
+ *                                          direct classification of placed-
+ *                                          ball attempts, independent of
+ *                                          whether a FREE_WON event preceded
+ *                                          the attempt within any window.
  */
 function makeFreeAnalysisPage(
   events: readonly PdfExportEvent[],
@@ -7208,8 +7237,8 @@ function makeFreeAnalysisPage(
   dpPitchTitle(ctx, DP_LEFT_X,  DP_PITCH_Y, DP_PITCH_W, `Our Frees — ${homeTeam}`,        forFreeEvts.length, "#818cf8");
   dpPitchCallout(ctx, DP_LEFT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Won ${forFreesWon} possession free${forFreesWon !== 1 ? "s" : ""}`,
-    `${forFreeScoringChains} scoring chain${forFreeScoringChains !== 1 ? "s" : ""} from those frees`,
-    forFreeAttempts > 0 ? `Placed balls: ${forFreeScored}/${forFreeAttempts} scored` : "No placed balls attempted",
+    `${forFreeScoringChains} free-won → goal chain${forFreeScoringChains !== 1 ? "s" : ""} (rule match)`,
+    forFreeAttempts > 0 ? `Direct placed-ball scoring: ${forFreeScored}/${forFreeAttempts} scored` : "No placed balls attempted",
     "#818cf8",
   );
   const leftInner  = renderPitch(ctx, sport, { x: DP_LEFT_X,  y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });
@@ -7218,8 +7247,8 @@ function makeFreeAnalysisPage(
   dpPitchTitle(ctx, DP_RIGHT_X, DP_PITCH_Y, DP_PITCH_W, `Opposition Frees — ${awayTeam}`, oppFreeEvts.length, "#f472b6");
   dpPitchCallout(ctx, DP_RIGHT_X, DP_PITCH_Y + DP_TITLE_H, DP_PITCH_W, CALLOUT_H - DP_TITLE_H,
     `Opposition won ${oppFreesWon} possession free${oppFreesWon !== 1 ? "s" : ""}`,
-    `${oppFreeScoringChains} scoring chain${oppFreeScoringChains !== 1 ? "s" : ""} from those frees`,
-    oppFreeAttempts > 0 ? `Placed balls: ${oppFreeScored}/${oppFreeAttempts} scored` : "No placed balls attempted",
+    `${oppFreeScoringChains} free-won → goal chain${oppFreeScoringChains !== 1 ? "s" : ""} (rule match)`,
+    oppFreeAttempts > 0 ? `Direct placed-ball scoring: ${oppFreeScored}/${oppFreeAttempts} scored` : "No placed balls attempted",
     "#f472b6",
   );
   const rightInner = renderPitch(ctx, sport, { x: DP_RIGHT_X, y: DP_PITCH_Y + CALLOUT_H, w: DP_PITCH_W, h: INNER_H });

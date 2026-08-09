@@ -106,13 +106,16 @@ describe("Full Review — chapter copy and language guard (whole export)", () =>
     expect(found).toBe(true);
   });
 
-  it("'Direct' only ever describes genuinely direct (Part 1) data, never a chain-origin row", async () => {
+  it("'Direct' only ever describes genuinely direct (non-origin) data, never a chain-origin row", async () => {
     // Rule 2 forbids "Direct" for a chain/origin-derived number, not the word
-    // itself — Part 1 pages correctly call their own non-origin data "direct"
-    // (e.g. "Direct event classification only" on Scoring Breakdown, and the
+    // itself — pages correctly call their own non-origin data "direct" (e.g.
+    // "Direct event classification only" on Scoring Breakdown, the
     // pre-existing restartAttributionFootnote(), which uses "Direct restart
-    // scores" specifically to contrast with restart-origin scores). Assert
-    // every hit is one of those known-good, non-origin-labelling sentences.
+    // scores" specifically to contrast with restart-origin scores, and
+    // "Direct placed-ball scoring" on Free Kick Analysis, which contrasts the
+    // ledger's placed-ball classification against the FREE_WON_TO_GOAL
+    // rule-match figure on the same callout). Assert every hit is one of
+    // those known-good, non-origin-labelling sentences.
     const events = buildGoldenReportingFixture() as unknown as PdfExportEvent[];
     await exportReviewPdf({ events, homeTeamName: GOLDEN_TEAMS.home, awayTeamName: GOLDEN_TEAMS.away, sport: "gaelic" });
 
@@ -122,6 +125,7 @@ describe("Full Review — chapter copy and language guard (whole export)", () =>
       "Direct restart scores attribute placed balls separately",
       "direct event-source classification",
       "Direct event counts only",
+      "Direct placed-ball scoring",
     ];
     for (const hit of directHits) {
       expect(knownGoodFragments.some((fragment) => hit.includes(fragment))).toBe(true);

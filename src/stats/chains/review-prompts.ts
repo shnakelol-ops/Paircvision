@@ -346,13 +346,13 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     if (koToScore > tvToScore) {
       push(
         "CHAIN",
-        `${home} had more ${koTerm}-to-score chains (${koToScore}) than turnover-to-score chains (${tvToScore}).`,
+        `${home} had more ${koTerm}-to-score chains (${koToScore}) than turnover-to-score chains (${tvToScore}) — both are chain rule matches, not scoring totals.`,
         `chain:koToScore=${koToScore},tvToScore=${tvToScore}`,
       );
     } else if (tvToScore > koToScore) {
       push(
         "CHAIN",
-        `${home} had more turnover-to-score chains (${tvToScore}) than ${koTerm}-to-score chains (${koToScore}).`,
+        `${home} had more turnover-to-score chains (${tvToScore}) than ${koTerm}-to-score chains (${koToScore}) — both are chain rule matches, not scoring totals.`,
         `chain:tvToScore=${tvToScore},koToScore=${koToScore}`,
       );
     }
@@ -362,7 +362,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (freeToGoal >= 2) {
     push(
       "CHAIN",
-      `${home} converted ${freeToGoal} placed balls directly to goals.`,
+      `${home} had ${freeToGoal} free-won-to-goal chain${freeToGoal !== 1 ? "s" : ""} (rule match) — a free won followed by a goal within 30 seconds.`,
       `chain:freeToGoal=${freeToGoal}`,
     );
   }
