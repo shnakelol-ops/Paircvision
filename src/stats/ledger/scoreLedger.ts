@@ -308,6 +308,77 @@ export function buildScoreLedger<TEvent extends ChainableEvent>(
   return { rows, restartLossContext, forScore, oppScore, margin, verdicts };
 }
 
+// ─── Direct-only scoring breakdown (no chain/origin attribution) ──────────────
+//
+// Full Review "Scoring Breakdown" (Part 1 — Match Facts) needs a partition
+// that never reclassifies a score using chain/origin data — unlike
+// buildScoreLedger's RESTART_WON/TURNOVER_WON rows, which use the nearer
+// kickout/turnover origin clock to override a plain event-source read. This
+// builder uses only isPlacedScore()/eventSource() (both pure event-level
+// reads) so every row here is a match-fact, safe for Part 1.
+
+export type DirectLedgerRowId = "FROM_PLAY" | "PLACED" | "UNATTRIBUTED";
+
+export type DirectScoringBreakdown = {
+  /** Partition rows in display order. UNATTRIBUTED present only when non-empty. */
+  rows: LedgerRow[];
+  forScore: ScoreLine;
+  oppScore: ScoreLine;
+  margin: number;
+};
+
+function classifyDirect(e: ChainableEvent): DirectLedgerRowId {
+  if (isPlacedScore(e)) return "PLACED";
+  return eventSource(e) === "UNKNOWN" ? "UNATTRIBUTED" : "FROM_PLAY";
+}
+
+/**
+ * Builds the direct (non-origin) scoring partition: every score is FROM_PLAY,
+ * PLACED, or UNATTRIBUTED based solely on its own event-source tag — never on
+ * where the possession that produced it began. Row nets sum to the final
+ * margin, same partition guarantee as buildScoreLedger.
+ */
+export function buildDirectScoringBreakdown<TEvent extends ChainableEvent>(
+  events: readonly TEvent[],
+): DirectScoringBreakdown {
+  const valid = events.filter((e) => !e.id.includes("-instant-score-"));
+
+  const forScore = scoreLine(valid, "FOR");
+  const oppScore = scoreLine(valid, "OPP");
+  const margin = forScore.total - oppScore.total;
+
+  const rowsById: Record<DirectLedgerRowId, LedgerRow> = {
+    FROM_PLAY:    { id: "FROM_PLAY",    label: LEDGER_ROW_LABELS.FROM_PLAY,    us: emptySide(), them: emptySide(), net: 0 },
+    PLACED:       { id: "PLACED",       label: LEDGER_ROW_LABELS.PLACED,       us: emptySide(), them: emptySide(), net: 0 },
+    UNATTRIBUTED: { id: "UNATTRIBUTED", label: LEDGER_ROW_LABELS.UNATTRIBUTED, us: emptySide(), them: emptySide(), net: 0 },
+  };
+
+  for (const e of valid) {
+    if (!SCORE_KINDS.has(e.kind)) continue;
+    const row = rowsById[classifyDirect(e)];
+    addToSide(e.teamSide === "FOR" ? row.us : row.them, e.kind);
+  }
+
+  const usPlacedMisses   = valid.filter((e) => e.teamSide === "FOR" && isPlacedMiss(e)).length;
+  const themPlacedMisses = valid.filter((e) => e.teamSide === "OPP" && isPlacedMiss(e)).length;
+  rowsById.PLACED.us.attempts   = rowsById.PLACED.us.scores + usPlacedMisses;
+  rowsById.PLACED.them.attempts = rowsById.PLACED.them.scores + themPlacedMisses;
+
+  for (const row of Object.values(rowsById)) {
+    row.net = row.us.value - row.them.value;
+  }
+
+  const rows: LedgerRow[] = [
+    rowsById.FROM_PLAY,
+    rowsById.PLACED,
+    ...(rowsById.UNATTRIBUTED.us.scores + rowsById.UNATTRIBUTED.them.scores > 0
+      ? [rowsById.UNATTRIBUTED]
+      : []),
+  ];
+
+  return { rows, forScore, oppScore, margin };
+}
+
 // ─── Origin ↔ direct reconciliation bridge ────────────────────────────────────
 //
 // The chain layer's restart-origin counts and the ledger's direct counts can

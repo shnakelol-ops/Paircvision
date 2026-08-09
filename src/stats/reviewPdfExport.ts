@@ -92,13 +92,14 @@ import {
   restartMetricLabel,
 } from "./restarts/restartMetrics";
 import {
-  buildScoreLedger,
+  buildDirectScoringBreakdown,
   countPlacedRestartOriginScores,
   fmtLedgerSide,
   fmtMarginLabel,
   fmtNet,
   fmtScoreLine,
   restartOriginBridgeNote,
+  type DirectScoringBreakdown,
 } from "./ledger/scoreLedger";
 import {
   buildInfluenceAnalysis,
@@ -107,6 +108,10 @@ import {
   influenceFormulaText,
   type TeamInfluence,
 } from "./players/influence";
+import { viewScoringPossessionOrigins } from "./reporting/scoringBreakdownViews";
+import { formatScoringBreakdownOrDash, type ScoringBreakdown } from "./reporting/scoringBreakdownFormat";
+import type { ProvenanceRow } from "./reporting/reportProvenance";
+import { GAME_ORIGIN_EXPLANATION } from "./reporting/fullReviewCopy";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -7351,15 +7356,27 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   const p1 = makeSummaryPage(events, report, homeTeamName, awayTeamName, venueName, TOTAL_PAGES, sport);
   addCanvasPage(p1, false, "Match Summary");
 
-  // ── p.2 — Where the Points Went (margin decomposition ledger) ────────────────
+  // ── p.2 — Scoring Breakdown (Part 1 — Match Facts; direct classification) ────
+  // NOTE: provisional position — final Part 1/2/3 placement lands in the
+  // page-reassembly pass later in this branch.
 
   try {
-    const c = makePointsLedgerPage(events, report, homeTeamName, awayTeamName, 2, TOTAL_PAGES, "FULL", homeSquadPlayers, awaySquadPlayers);
-    stampLayerBadge(c, "MIXED");
-    addCanvasPage(c, true, "Where the Points Went");
+    const c = makeScoringBreakdownPage(events, homeTeamName, awayTeamName, 2, TOTAL_PAGES);
+    stampLayerBadge(c, "STATISTICS");
+    addCanvasPage(c, true, "Scoring Breakdown");
   } catch (err) {
-    console.error("Where the Points Went page generation failed", err);
-    addCanvasPage(fallbackCanvas("Where the Points Went"), true, "Where the Points Went");
+    console.error("Scoring Breakdown page generation failed", err);
+    addCanvasPage(fallbackCanvas("Scoring Breakdown"), true, "Scoring Breakdown");
+  }
+
+  // ── p.3 — Scoring Possession Origins (Part 3 — Game Origin / Chain) ─────────
+  try {
+    const c = makeScoringPossessionOriginsPage(report, homeTeamName, awayTeamName, 3, TOTAL_PAGES);
+    stampLayerBadge(c, "CHAIN");
+    addCanvasPage(c, true, "Scoring Possession Origins");
+  } catch (err) {
+    console.error("Scoring Possession Origins page generation failed", err);
+    addCanvasPage(fallbackCanvas("Scoring Possession Origins"), true, "Scoring Possession Origins");
   }
 
   // ── p.3 — Understanding PáircVision Analytics ────────────────────────────────
@@ -12254,82 +12271,75 @@ export function makeHtTacticalSummaryPage(
   return canvas;
 }
 
-// ─── "Where the Points Went" — margin decomposition ledger page ───────────────
+// ─── Scoring Breakdown page (Part 1 — Match Facts) ────────────────────────────
 /**
- * Where the Points Went — decomposes the final margin into scoring sources.
+ * Scoring Breakdown — "How was the score recorded?"
  *
- * Block A — the margin (final score line + who won by how much).
- * Block B — the ledger (two-column differential table; row nets sum to margin).
- * Block C — the verdict (one sentence for the biggest positive and negative rows).
- *
- * Cross-engine page (Statistics + Chain) — callers stamp the MIXED badge.
- * All figures come from buildScoreLedger(); nothing is computed locally.
- *
- * variant "HT" renders the compact 3-row "The Ledger So Far"
- * (placed balls / restarts / turnovers) for the halftime snapshot.
+ * PROVENANCE: match-fact only. Every row comes from
+ * buildDirectScoringBreakdown(), which classifies each score using only its
+ * own event-source tag (isPlacedScore/eventSource) — never chain/origin
+ * attribution. Row nets sum to the final margin; every score appears in
+ * exactly one row. This replaces the old mixed "Where the Points Went" page,
+ * which reclassified some From Play scores as restart/turnover "wins" using
+ * chain-origin clocks — that reclassification now lives on its own page,
+ * Scoring Possession Origins (Part 3), and is never mixed back in here.
  */
-function makePointsLedgerPage(
+export function buildScoringBreakdownRows(
+  breakdown: DirectScoringBreakdown,
+): ProvenanceRow[] {
+  return breakdown.rows.map((row) => ({ label: row.label, provenance: "match-fact" as const }));
+}
+
+function makeScoringBreakdownPage(
   events: readonly PdfExportEvent[],
-  report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
   pageNum: number,
   totalPages: number,
-  variant: "FULL" | "HT" = "FULL",
-  homeSquadPlayers?: readonly PdfSquadPlayer[],
-  awaySquadPlayers?: readonly PdfSquadPlayer[],
 ): HTMLCanvasElement {
-  const analysis = report.chain;
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
-  const ledger = buildScoreLedger(events, analysis, homeTeam, awayTeam);
-  const isHT   = variant === "HT";
+  const breakdown = buildDirectScoringBreakdown(events);
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(
-    ctx,
-    isHT ? "The Ledger So Far" : "Where the Points Went",
-    `${homeTeam} v ${awayTeam}`,
-    pageNum, totalPages,
-  );
+  drawPageHeader(ctx, "Scoring Breakdown", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  ctx.save();
+  ctx.fillStyle = "#64748b";
+  ctx.font = "italic 14px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText("How was the score recorded? Direct event classification only — no restart or turnover attribution.", 24, 86);
+  ctx.restore();
 
-  // ── Block A — The Margin ──────────────────────────────────────────────────
-  const marginLabel = isHT
-    ? (ledger.margin === 0 ? "Level at the break" : `${fmtMarginLabel(ledger.margin, homeTeam, awayTeam)} at the break`)
-    : fmtMarginLabel(ledger.margin, homeTeam, awayTeam);
+  // ── The Margin ─────────────────────────────────────────────────────────────
   ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle    = "#f8fafc";
   ctx.font         = "bold 44px sans-serif";
   ctx.fillText(
-    `${truncTeam(homeTeam, 20)}  ${fmtScoreLine(ledger.forScore)}   v   ${fmtScoreLine(ledger.oppScore)}  ${truncTeam(awayTeam, 20)}`,
-    CANVAS_W / 2, 140,
+    `${truncTeam(homeTeam, 20)}  ${fmtScoreLine(breakdown.forScore)}   v   ${fmtScoreLine(breakdown.oppScore)}  ${truncTeam(awayTeam, 20)}`,
+    CANVAS_W / 2, 150,
   );
-  ctx.fillStyle = ledger.margin > 0 ? "#4ade80" : ledger.margin < 0 ? "#f87171" : "#94a3b8";
+  ctx.fillStyle = breakdown.margin > 0 ? "#4ade80" : breakdown.margin < 0 ? "#f87171" : "#94a3b8";
   ctx.font      = "bold 30px sans-serif";
-  ctx.fillText(marginLabel, CANVAS_W / 2, 194);
+  ctx.fillText(fmtMarginLabel(breakdown.margin, homeTeam, awayTeam), CANVAS_W / 2, 200);
 
-  // ── Block B — The Ledger ──────────────────────────────────────────────────
-  const rows = isHT
-    ? ledger.rows.filter((r) => r.id === "PLACED" || r.id === "RESTART_WON" || r.id === "TURNOVER_WON")
-    : ledger.rows;
-
+  // ── The Table ──────────────────────────────────────────────────────────────
   const TBL_W    = 1500;
   const TBL_X    = Math.round((CANVAS_W - TBL_W) / 2);
-  const COL_SRC  = TBL_X + 24;                 // Source (left aligned)
-  const COL_US   = TBL_X + Math.round(TBL_W * 0.46);  // centre of home column
-  const COL_THEM = TBL_X + Math.round(TBL_W * 0.70);  // centre of away column
-  const COL_NET  = TBL_X + Math.round(TBL_W * 0.91);  // centre of net column
+  const COL_SRC  = TBL_X + 24;
+  const COL_US   = TBL_X + Math.round(TBL_W * 0.46);
+  const COL_THEM = TBL_X + Math.round(TBL_W * 0.70);
+  const COL_NET  = TBL_X + Math.round(TBL_W * 0.91);
   const HDR_H    = 46;
   const ROW_H    = 62;
-  let ty = 244;
+  let ty = 250;
 
-  // Header strip
   ctx.fillStyle = "rgba(255,255,255,0.07)";
   ctx.fillRect(TBL_X, ty, TBL_W, HDR_H);
   ctx.fillStyle = "#7dd3fc";
@@ -12345,7 +12355,7 @@ function makePointsLedgerPage(
   ctx.fillText("NET", COL_NET, ty + HDR_H / 2);
   ty += HDR_H;
 
-  rows.forEach((row, i) => {
+  breakdown.rows.forEach((row, i) => {
     if (i % 2 === 0) {
       ctx.fillStyle = "rgba(255,255,255,0.025)";
       ctx.fillRect(TBL_X, ty, TBL_W, ROW_H);
@@ -12376,112 +12386,143 @@ function makePointsLedgerPage(
     ty += ROW_H;
   });
 
-  // Context row — the restart battle seen from the conceding side. Mirrors the
-  // "Scores off restarts won" row, so it carries no net (no double-counting).
-  {
-    const mid = ty + ROW_H / 2;
-    ctx.fillStyle = "rgba(251,113,133,0.05)";
-    ctx.fillRect(TBL_X, ty, TBL_W, ROW_H);
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "#94a3b8";
-    ctx.font      = "italic 21px sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillText("Direct scores conceded off restarts", COL_SRC, mid);
-    ctx.textAlign = "center";
-    ctx.fillStyle = ledger.restartLossContext.usConcededValue > 0 ? "#f87171" : "#94a3b8";
-    ctx.fillText(`−${ledger.restartLossContext.usConcededValue} conceded`, COL_US, mid);
-    ctx.fillStyle = ledger.restartLossContext.themConcededValue > 0 ? "#f87171" : "#94a3b8";
-    ctx.fillText(`−${ledger.restartLossContext.themConcededValue} conceded`, COL_THEM, mid);
-    ctx.fillStyle = "#64748b";
-    ctx.font      = "italic 17px sans-serif";
-    ctx.fillText("context", COL_NET, mid);
-    ty += ROW_H;
-  }
-
   // Sum line — the honesty check, printed on the page.
-  ty += 14;
+  ty += 20;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
   ctx.font = "italic 18px sans-serif";
   ctx.fillStyle = "#64748b";
-  const rowNetSum = rows.reduce((s, r) => s + r.net, 0);
+  const rowNetSum = breakdown.rows.reduce((s, r) => s + r.net, 0);
+  ctx.fillText(`Source nets sum to the final margin: ${fmtNet(rowNetSum)}`, TBL_X + TBL_W, ty + 10);
   ctx.fillText(
-    isHT
-      ? `Placed balls, restarts and turnovers only — the full ledger appears in the full-time report`
-      : `Source nets sum to the final margin: ${fmtNet(rowNetSum)}`,
-    TBL_X + TBL_W, ty + 10,
-  );
-  ctx.fillText(
-    restartOriginBridgeNote(
-      countPlacedRestartOriginScores(analysis.kickouts.outcomes),
-      homeTeam, awayTeam,
-    ),
+    "Where a scoring possession began is a different question — see Game Origin Analysis (Part 3).",
     TBL_X + TBL_W, ty + 32,
   );
-  ty += 62;
 
-  // ── HT-only: top influence tiles (one per team, nothing more at halftime) ──
-  if (isHT) {
-    const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam, homeSquadPlayers, awaySquadPlayers);
-    const tiles: Array<{ team: TeamInfluence; accent: string }> = [
-      { team: influence.home, accent: "#7dd3fc" },
-      { team: influence.away, accent: "#fb7185" },
-    ];
-    const TILE_W = Math.floor((TBL_W - 24) / 2);
-    tiles.forEach(({ team, accent }, i) => {
-      const tx = TBL_X + i * (TILE_W + 24);
-      ctx.fillStyle = "rgba(255,255,255,0.03)";
-      ctx.fillRect(tx, ty, TILE_W, 96);
-      ctx.fillStyle = accent;
-      ctx.fillRect(tx, ty, 4, 96);
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = accent;
-      ctx.font = "bold 17px sans-serif";
-      ctx.fillText(`TOP INFLUENCE SO FAR — ${truncTeam(team.teamName, 18).toUpperCase()}`, tx + 18, ty + 26);
-      ctx.fillStyle = "#e2e8f0";
-      ctx.font = "20px sans-serif";
-      const top = team.top3[0];
-      let line = top && top.influenceIndex > 0
-        ? influenceEvidenceLine(top, team)
-        : "No player-tagged events yet";
-      while (line.length > 0 && ctx.measureText(line + "…").width > TILE_W - 36) {
-        line = line.slice(0, -1);
-      }
-      ctx.fillText(line, tx + 18, ty + 62);
-    });
-  }
+  drawEventCountFooter(ctx, events.filter((e) => !e.id.includes("-instant-score-")).length);
+  return canvas;
+}
 
-  // ── Block C — The Verdict ─────────────────────────────────────────────────
-  if (!isHT) {
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#fbbf24";
-    ctx.font      = "bold 22px sans-serif";
-    ctx.fillText("THE VERDICT", TBL_X, ty + 12);
-    ctx.strokeStyle = "rgba(251,191,36,0.3)";
-    ctx.beginPath();
-    ctx.moveTo(TBL_X, ty + 32);
-    ctx.lineTo(TBL_X + TBL_W, ty + 32);
-    ctx.stroke();
-    ty += 56;
-    ctx.font = "22px sans-serif";
-    for (const verdict of ledger.verdicts.slice(0, 3)) {
-      ctx.fillStyle = "rgba(251,191,36,0.55)";
-      ctx.fillRect(TBL_X, ty - 2, 3, 28);
-      ctx.fillStyle = "#cbd5e1";
-      const lines = wrapText(ctx, verdict, TBL_W - 24);
-      for (const line of lines) {
-        ctx.fillText(line, TBL_X + 14, ty + 10);
-        ty += 30;
-      }
-      ty += 14;
+// ─── Scoring Possession Origins page (Part 3 — Game Origin / Chain Analysis) ──
+/**
+ * Scoring Possession Origins — "Where did the possessions that eventually
+ * produced scores begin?"
+ *
+ * PROVENANCE: chain-origin. Every row comes from
+ * viewScoringPossessionOrigins(), which reads only report.chain's kickout
+ * and turnover outcome datasets. Not required to reconcile 1:1 with the
+ * Scoring Breakdown page (Part 1) — a placed free scored during a
+ * restart-origin possession legitimately appears once on each page,
+ * answering two different questions. See the Game Origin explanation
+ * printed at the top of this page.
+ */
+function makeScoringPossessionOriginsPage(
+  report: MatchReport<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Scoring Possession Origins", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Game Origin explanation — must appear before any origin table ─────────
+  ctx.save();
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "16px sans-serif";
+  ctx.textBaseline = "top";
+  ctx.textAlign = "left";
+  const explainerLines = wrapText(ctx, GAME_ORIGIN_EXPLANATION, CANVAS_W - 48);
+  let ey = 88;
+  explainerLines.forEach((line) => { ctx.fillText(line, 24, ey); ey += 22; });
+  ctx.restore();
+
+  const usOrigins   = viewScoringPossessionOrigins(report, "FOR");
+  const themOrigins = viewScoringPossessionOrigins(report, "OPP");
+
+  const TBL_W    = 1500;
+  const TBL_X    = Math.round((CANVAS_W - TBL_W) / 2);
+  const COL_SRC  = TBL_X + 24;
+  const COL_US   = TBL_X + Math.round(TBL_W * 0.46);
+  const COL_THEM = TBL_X + Math.round(TBL_W * 0.70);
+  const HDR_H    = 46;
+  const ROW_H    = 68;
+  let ty = ey + 30;
+
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.fillRect(TBL_X, ty, TBL_W, HDR_H);
+  ctx.fillStyle = "#818cf8";
+  ctx.fillRect(TBL_X, ty, 4, HDR_H);
+  ctx.font         = "bold 19px sans-serif";
+  ctx.fillStyle    = "#94a3b8";
+  ctx.textBaseline = "middle";
+  ctx.textAlign    = "left";
+  ctx.fillText("POSSESSION ORIGIN", COL_SRC, ty + HDR_H / 2);
+  ctx.textAlign = "center";
+  ctx.fillText(truncTeam(homeTeam, 16).toUpperCase(), COL_US,   ty + HDR_H / 2);
+  ctx.fillText(truncTeam(awayTeam, 16).toUpperCase(), COL_THEM, ty + HDR_H / 2);
+  ty += HDR_H;
+
+  const rows: Array<{ label: string; us: ScoringBreakdown; them: ScoringBreakdown }> = [
+    { label: "Restart-origin scores", us: usOrigins.restartOrigin, them: themOrigins.restartOrigin },
+    { label: "Turnover-origin scores", us: usOrigins.turnoverOrigin, them: themOrigins.turnoverOrigin },
+  ];
+
+  rows.forEach((row, i) => {
+    if (i % 2 === 0) {
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fillRect(TBL_X, ty, TBL_W, ROW_H);
     }
-  }
+    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(TBL_X, ty + ROW_H);
+    ctx.lineTo(TBL_X + TBL_W, ty + ROW_H);
+    ctx.stroke();
 
-  drawEventCountFooter(
+    const mid = ty + ROW_H / 2;
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font      = "bold 22px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(row.label, COL_SRC, mid);
+
+    ctx.font      = "22px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillText(formatScoringBreakdownOrDash(row.us),   COL_US,   mid);
+    ctx.fillText(formatScoringBreakdownOrDash(row.them), COL_THEM, mid);
+    ty += ROW_H;
+  });
+
+  // Bridge footnote — explains, never "reconciles away", the overlap with Part 1.
+  ty += 26;
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#64748b";
+  ctx.font = "italic 17px sans-serif";
+  const bridgeLines = wrapText(
     ctx,
-    events.filter((e) => !e.id.includes("-instant-score-")).length,
+    restartOriginBridgeNote(
+      countPlacedRestartOriginScores(report.chain.kickouts.outcomes),
+      homeTeam, awayTeam,
+    ),
+    TBL_W,
   );
+  bridgeLines.forEach((line) => { ctx.fillText(line, TBL_X, ty); ty += 22; });
+  ty += 10;
+  ctx.fillText(
+    "Only restart and turnover origins are currently tracked — a score with neither origin has no row here.",
+    TBL_X, ty,
+  );
+
+  drawEventCountFooter(ctx, report.chain.totalEventsAnalysed);
   return canvas;
 }
 
