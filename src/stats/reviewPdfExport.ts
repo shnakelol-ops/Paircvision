@@ -1739,11 +1739,157 @@ function makePlayerPages(
   return results;
 }
 
-// ─── Player Influence page ────────────────────────────────────────────────────
+// ─── Player Contributions page (Part 1 — Match Facts) ─────────────────────────
 
 /**
- * Player Influence — ranked influence intelligence for both teams, derived
- * entirely from existing player-attributed events (see players/influence.ts).
+ * Player Contributions — factual per-player counts, Part 1 (Match Facts).
+ *
+ * PROVENANCE: match-fact only. Reuses buildInfluenceAnalysis() (the same
+ * calculation Player Chain Involvement draws on, Part 3) but reads only its
+ * direct-count fields: score, scoring share, shot conversion, turnovers,
+ * kickouts, frees, net ball impact. Never reads chainInvolvementCount/
+ * chainInvolvementPct/assistsProxy/influenceIndex, and never prints the
+ * "Worth reviewing…" insight lines (those are interpretive, Part 3 territory,
+ * and two of the three insight types are chain-derived). Ranked by score
+ * value, not by Influence Index — the index is a chain-tainted composite.
+ */
+const PLAYER_CONTRIBUTIONS_FACT_LABELS = [
+  "Score", "Scoring Share", "Shot Conversion",
+  "Turnovers Won/Lost", "Kickouts Won/Lost", "Frees Won/Conceded", "Net Ball Impact",
+] as const;
+
+export function buildPlayerContributionsRows(): ProvenanceRow[] {
+  return PLAYER_CONTRIBUTIONS_FACT_LABELS.map((label) => ({ label, provenance: "match-fact" as const }));
+}
+
+export function makePlayerContributionsPage(
+  events: readonly PdfExportEvent[],
+  report: MatchReport<PdfExportEvent>,
+  homeTeam: string,
+  awayTeam: string,
+  pageNum: number,
+  totalPages: number,
+  homeSquadPlayers?: readonly PdfSquadPlayer[],
+  awaySquadPlayers?: readonly PdfSquadPlayer[],
+): HTMLCanvasElement {
+  const analysis = report.chain;
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx2d = canvas.getContext("2d");
+  if (!ctx2d) return canvas;
+  const ctx: CanvasRenderingContext2D = ctx2d;
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, "Player Contributions", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  ctx.save();
+  ctx.fillStyle = "#64748b";
+  ctx.font = "italic 14px sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "left";
+  ctx.fillText("Raw per-player counts — scoring, shooting, restarts, turnovers and frees. Ranked by score value.", 24, 86);
+  ctx.restore();
+  drawEventCountFooter(ctx, events.filter((e) => !e.id.includes("-instant-score-")).length);
+
+  const influence = buildInfluenceAnalysis(events, analysis, homeTeam, awayTeam, homeSquadPlayers, awaySquadPlayers);
+
+  const CONTENT_TOP = 106;
+  const L_COL_X = 24;
+  const R_COL_X = 968;
+  const COL_W   = 928;
+
+  function drawTeamColumn(colX: number, team: TeamInfluence, accent: string): void {
+    let cy = CONTENT_TOP;
+
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(colX, cy, COL_W, 36);
+    ctx.fillStyle = accent;
+    ctx.fillRect(colX, cy, 3, 36);
+    ctx.font = "bold 15px sans-serif";
+    ctx.fillStyle = accent;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(team.teamName.toUpperCase(), colX + 14, cy + 18);
+    cy += 44;
+
+    if (team.players.length === 0) {
+      ctx.fillStyle = "#64748b";
+      ctx.font = "18px sans-serif";
+      ctx.fillText("No player-tagged events recorded", colX + 14, cy + 20);
+      return;
+    }
+
+    const ranked = [...team.players].sort(
+      (a, b) => b.scoreValue - a.scoreValue || b.netBallImpact - a.netBallImpact,
+    );
+
+    const cols: Array<[string, number]> = [
+      ["PLAYER", 0], ["SCORE", 300], ["SHARE", 400], ["SHOTS", 500],
+      ["T/O W-L", 620], ["KO W-L", 740], ["NET BALL", 860],
+    ];
+    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    ctx.fillRect(colX, cy, COL_W, 26);
+    ctx.font = "bold 12px sans-serif";
+    ctx.fillStyle = "#64748b";
+    for (const [label, off] of cols) {
+      ctx.textAlign = off === 0 ? "left" : "center";
+      ctx.fillText(label, colX + 14 + off, cy + 13);
+    }
+    cy += 26;
+
+    for (const p of ranked.slice(0, 12)) {
+      const mid = cy + 15;
+      ctx.font = "16px sans-serif";
+      ctx.fillStyle = "#e2e8f0";
+      ctx.textAlign = "left";
+      let nm = p.displayName;
+      while (nm.length > 0 && ctx.measureText(nm).width > 270) nm = nm.slice(0, -1);
+      ctx.fillText(nm, colX + 14, mid);
+      ctx.textAlign = "center";
+      ctx.fillText(p.scoreValue > 0 ? fmtPlayerScore(p) : "—", colX + 14 + 300, mid);
+      ctx.fillText(p.scoreValue > 0 ? `${p.scoringSharePct}%` : "—", colX + 14 + 400, mid);
+      ctx.fillText(p.shots > 0 ? `${p.scores}/${p.shots}` : "—", colX + 14 + 500, mid);
+      ctx.fillText(`${p.toWon}-${p.toLost}`, colX + 14 + 620, mid);
+      ctx.fillText(`${p.koWon}-${p.koLost}`, colX + 14 + 740, mid);
+      ctx.fillStyle = p.netBallImpact > 0 ? "#4ade80" : p.netBallImpact < 0 ? "#fb7185" : "#94a3b8";
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillText(p.netBallImpact > 0 ? `+${p.netBallImpact}` : String(p.netBallImpact), colX + 14 + 860, mid);
+      cy += 30;
+    }
+  }
+
+  drawTeamColumn(L_COL_X, influence.home, "#7dd3fc");
+  drawTeamColumn(R_COL_X, influence.away, "#fb7185");
+
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  ctx.fillRect(R_COL_X - 20, CONTENT_TOP, 1, CANVAS_H - 60 - CONTENT_TOP);
+
+  ctx.fillStyle = "#475569";
+  ctx.font = "italic 14px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    "Direct event counts only. Chain involvement and net influence ranking appear in Game Origin Analysis (Part 3).",
+    CANVAS_W / 2, CANVAS_H - 40,
+  );
+
+  return canvas;
+}
+
+// ─── Player Chain Involvement page (Part 3 — Game Origin / Chain Analysis) ────
+
+/**
+ * Player Influence / Chain Involvement — ranked influence intelligence for
+ * both teams, derived entirely from existing player-attributed events (see
+ * players/influence.ts).
+ *
+ * PROVENANCE: Part 3 (Game Origin / Chain Analysis). The Influence Index and
+ * Chain Involvement % both incorporate assistsProxy / chain membership
+ * (analysis.allChains) — chain-origin, not match-fact — so this page lives
+ * in Part 3, not Part 1. The pure-factual per-player counts (score, shots,
+ * turnovers, kickouts, frees, net ball impact) live on their own page,
+ * Player Contributions (Part 1) — see makePlayerContributionsPage above.
  *
  * LEFT column = home team · RIGHT column = away team. Each column shows the
  * Top 3 influencers with evidence lines, a compact metric table, and the
@@ -1753,6 +1899,14 @@ function makePlayerPages(
  *
  * Players with zero logged events never appear here.
  */
+const PLAYER_CHAIN_INVOLVEMENT_LABELS = [
+  "Chain Involvement", "Assists Proxy", "Influence Index",
+] as const;
+
+export function buildPlayerChainInvolvementRows(): ProvenanceRow[] {
+  return PLAYER_CHAIN_INVOLVEMENT_LABELS.map((label) => ({ label, provenance: "chain-origin" as const }));
+}
+
 export function makePlayerInfluencePage(
   events: readonly PdfExportEvent[],
   report: MatchReport<PdfExportEvent>,
@@ -7422,13 +7576,25 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   const playerCanvases = makePlayerPages(events, homeTeamName, awayTeamName, 7, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers, sport);
   playerCanvases.forEach((c) => { stampLayerBadge(c, "STATISTICS"); addCanvasPage(c, true); });
 
-  // p.7+N — Player Influence
+  // p.7+N — Player Contributions (Part 1 — Match Facts; factual only)
+  // NOTE: provisional position — final Part 1/2/3 placement lands in the
+  // page-reassembly pass later in this branch.
   try {
-    const c = makePlayerInfluencePage(events, report, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
-    stampLayerBadge(c, "MIXED");
+    const c = makePlayerContributionsPage(events, report, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
+    stampLayerBadge(c, "STATISTICS");
+    addCanvasPage(c, true, "Player Contributions");
+  } catch (err) {
+    console.error("Player Contributions page generation failed", err);
+    addCanvasPage(fallbackCanvas("Player Contributions"), true, "Player Contributions");
+  }
+
+  // p.8+N — Player Chain Involvement (Part 3 — Game Origin / Chain Analysis)
+  try {
+    const c = makePlayerInfluencePage(events, report, homeTeamName, awayTeamName, 8 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
+    stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Top Players by Net Influence");
   } catch (err) {
-    console.error("Player Influence page generation failed", err);
+    console.error("Player Chain Involvement page generation failed", err);
     addCanvasPage(fallbackCanvas("Top Players by Net Influence"), true, "Top Players by Net Influence");
   }
 
