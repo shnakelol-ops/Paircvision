@@ -7449,40 +7449,44 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   const hasTargets = hasEnabledTargets(targets);
 
-  // 19 fixed pages + player pages.
-  // Fixed: p.1 Match Summary, p.2 Match Swing, p.3 Tactical Intelligence,
-  //        p.4 Segment Control, p.5–6 Kickout chapter, p.7–8 Turnover chapter,
-  // Page count — three analytical chapters + one intro page + three chapter dividers.
+  // 27 fixed pages + player pages, grouped into three provenance-separated
+  // parts (see reporting/reportProvenance.ts and reporting/fullReviewCopy.ts):
+  //   PART 1 — MATCH FACTS            (match-fact only)
+  //   PART 2 — POSSESSION FACTS       (match-fact + possession-fact)
+  //   PART 3 — GAME ORIGIN / CHAIN    (chain-origin + interpretive)
   // Fixed pages (excluding player pages):
   //   p.1  Match Summary (cover)
-  //   p.2  Where the Points Went (margin decomposition ledger — mixed)
-  //   p.3  Understanding PáircVision Analytics (intro)
-  //   p.4  Chapter 1 divider — Statistics
+  //   p.2  Understanding PáircVision Analytics (intro)
+  //   p.3  Part 1 divider — Match Facts
+  //   p.4  Scoring Breakdown
   //   p.5  Match Swing Timeline
   //   p.6  Segment Control
   //   p.7…6+N  Player Breakdown (N = playerPageCount)
-  //   p.7+N  Player Influence
+  //   p.7+N  Player Contributions
   //   p.8+N  Shot Pitch Maps
   //   p.9+N  Shot & Scoring Efficiency
   //   p.10+N  Zone Analysis
   //   p.11+N  1H Pitch Overview
   //   p.12+N  2H Pitch Overview
-  //   p.13+N  Opposition Snapshot
-  //   p.14+N  Chapter 2 divider — Possession Intelligence
+  //   p.13+N  Part 2 divider — Possession Facts
+  //   p.14+N  Opposition Facts
   //   p.15+N  Restart Analysis
   //   p.16+N  Turnover Analysis
   //   p.17+N  Free Kick Analysis
-  //   p.18+N  Intelligence Summary     (mixed — POSSESSION primary)
-  //   p.19+N  Tactical Review Guide    (mixed)
-  //   p.20+N  Chapter 3 divider — Chain Intelligence
-  //   p.21+N  Chain Intelligence
-  //   p.22+N  Restart Chain Analysis
-  //   p.23+N  Turnover Chain Analysis
-  //   p.24+N  Scoring Momentum
-  //   p.25+N  Performance Against Targets (optional — only when targets are set)
-  //   Total fixed: 24 + N (+ 1 when targets set)
+  //   p.18+N  Part 3 divider — Game Origin / Chain Analysis
+  //   p.19+N  Scoring Possession Origins
+  //   p.20+N  Player Chain Involvement
+  //   p.21+N  Opposition Origin & Chain Threat
+  //   p.22+N  Intelligence Summary
+  //   p.23+N  Tactical Review Guide
+  //   p.24+N  Chain Intelligence
+  //   p.25+N  Restart Chain Analysis
+  //   p.26+N  Turnover Chain Analysis
+  //   p.27+N  Scoring Momentum
+  //   p.28+N  Performance Against Targets (optional — only when targets are set)
+  //   Total fixed: 27 + N (+ 1 when targets set)
   const playerPageCount = calcPlayerPageCount(events, homeSquadPlayers, awaySquadPlayers);
-  const TOTAL_PAGES = 24 + playerPageCount + (hasTargets ? 1 : 0);
+  const TOTAL_PAGES = 27 + playerPageCount + (hasTargets ? 1 : 0);
 
   // Chain analysis — computed once via canonical MatchReport; shared by all page builders.
   const report = buildMatchReport({
@@ -7528,33 +7532,10 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   const p1 = makeSummaryPage(events, report, homeTeamName, awayTeamName, venueName, TOTAL_PAGES, sport);
   addCanvasPage(p1, false, "Match Summary");
 
-  // ── p.2 — Scoring Breakdown (Part 1 — Match Facts; direct classification) ────
-  // NOTE: provisional position — final Part 1/2/3 placement lands in the
-  // page-reassembly pass later in this branch.
-
-  try {
-    const c = makeScoringBreakdownPage(events, homeTeamName, awayTeamName, 2, TOTAL_PAGES);
-    stampLayerBadge(c, "STATISTICS");
-    addCanvasPage(c, true, "Scoring Breakdown");
-  } catch (err) {
-    console.error("Scoring Breakdown page generation failed", err);
-    addCanvasPage(fallbackCanvas("Scoring Breakdown"), true, "Scoring Breakdown");
-  }
-
-  // ── p.3 — Scoring Possession Origins (Part 3 — Game Origin / Chain) ─────────
-  try {
-    const c = makeScoringPossessionOriginsPage(report, homeTeamName, awayTeamName, 3, TOTAL_PAGES);
-    stampLayerBadge(c, "CHAIN");
-    addCanvasPage(c, true, "Scoring Possession Origins");
-  } catch (err) {
-    console.error("Scoring Possession Origins page generation failed", err);
-    addCanvasPage(fallbackCanvas("Scoring Possession Origins"), true, "Scoring Possession Origins");
-  }
-
-  // ── p.3 — Understanding PáircVision Analytics ────────────────────────────────
+  // ── p.2 — Understanding PáircVision Analytics ────────────────────────────────
 
   addCanvasPage(
-    makeHowToReadPage(homeTeamName, awayTeamName, 3, TOTAL_PAGES, sport),
+    makeHowToReadPage(homeTeamName, awayTeamName, 2, TOTAL_PAGES, sport),
     true, "How to Read This Report",
   );
 
@@ -7570,10 +7551,20 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
       ["Scoring Breakdown", "Match Swing Timeline", "Game Segments", "Player Breakdown",
        "Player Contributions", "Shot Pitch Maps", "Shot & Scoring Efficiency",
        "Zone Analysis", "1H & 2H Pitch Overviews"],
-      "#60a5fa", 4, TOTAL_PAGES,
+      "#60a5fa", 3, TOTAL_PAGES,
     ),
     true, "Part 1 — Match Facts",
   );
+
+  // p.4 — Scoring Breakdown
+  try {
+    const c = makeScoringBreakdownPage(events, homeTeamName, awayTeamName, 4, TOTAL_PAGES);
+    stampLayerBadge(c, "STATISTICS");
+    addCanvasPage(c, true, "Scoring Breakdown");
+  } catch (err) {
+    console.error("Scoring Breakdown page generation failed", err);
+    addCanvasPage(fallbackCanvas("Scoring Breakdown"), true, "Scoring Breakdown");
+  }
 
   // p.5 — Match Swing Timeline
   try {
@@ -7595,8 +7586,6 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   playerCanvases.forEach((c) => { stampLayerBadge(c, "STATISTICS"); addCanvasPage(c, true); });
 
   // p.7+N — Player Contributions (Part 1 — Match Facts; factual only)
-  // NOTE: provisional position — final Part 1/2/3 placement lands in the
-  // page-reassembly pass later in this branch.
   try {
     const c = makePlayerContributionsPage(events, report, homeTeamName, awayTeamName, 7 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
     stampLayerBadge(c, "STATISTICS");
@@ -7604,16 +7593,6 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   } catch (err) {
     console.error("Player Contributions page generation failed", err);
     addCanvasPage(fallbackCanvas("Player Contributions"), true, "Player Contributions");
-  }
-
-  // p.8+N — Player Chain Involvement (Part 3 — Game Origin / Chain Analysis)
-  try {
-    const c = makePlayerInfluencePage(events, report, homeTeamName, awayTeamName, 8 + playerPageCount, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
-    stampLayerBadge(c, "CHAIN");
-    addCanvasPage(c, true, "Top Players by Net Influence");
-  } catch (err) {
-    console.error("Player Chain Involvement page generation failed", err);
-    addCanvasPage(fallbackCanvas("Top Players by Net Influence"), true, "Top Players by Net Influence");
   }
 
   // p.8+N — Shot Pitch Maps
@@ -7702,33 +7681,11 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("2H Pitch Overview"), true, "2H Pitch Overview");
   }
 
-  // p.11+N — Opposition Facts (Part 1/2 — match-fact + possession-fact only)
-  // NOTE: provisional position — final Part 1/2/3 placement lands in the
-  // page-reassembly pass later in this branch.
-  try {
-    const c = makeOppositionFactsPage(events, report, homeTeamName, awayTeamName, p_arch + 2, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "STATISTICS");
-    addCanvasPage(c, true, "Opposition Facts");
-  } catch (err) {
-    console.error("Opposition Facts page generation failed", err);
-    addCanvasPage(fallbackCanvas("Opposition Facts"), true, "Opposition Facts");
-  }
-
-  // p.12+N — Opposition Origin & Chain Threat (Part 3 — chain-origin only)
-  try {
-    const c = makeOppositionOriginPage(events, report, homeTeamName, awayTeamName, p_arch + 3, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers);
-    stampLayerBadge(c, "CHAIN");
-    addCanvasPage(c, true, "Opposition Origin & Chain Threat");
-  } catch (err) {
-    console.error("Opposition Origin & Chain Threat page generation failed", err);
-    addCanvasPage(fallbackCanvas("Opposition Origin & Chain Threat"), true, "Opposition Origin & Chain Threat");
-  }
-
   // ════════════════════════════════════════════════════════════════════════════
   // PART 2 — POSSESSION FACTS   (emerald #34d399)
   // ════════════════════════════════════════════════════════════════════════════
 
-  const p_ch2div = p_arch + 3;  // p.12+N
+  const p_ch2div = p_arch + 2;  // p.13+N
   addCanvasPage(
     makeChapterDividerPage(
       2, "PART 2 — POSSESSION FACTS", PART_QUESTIONS.POSSESSION_FACTS,
@@ -7740,9 +7697,19 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     true, "Part 2 — Possession Facts",
   );
 
-  // p.13+N — Restart Analysis
+  // p.14+N — Opposition Facts (match-fact + possession-fact only)
   try {
-    const c = makeRestartVisualPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 1, TOTAL_PAGES);
+    const c = makeOppositionFactsPage(events, report, homeTeamName, awayTeamName, p_ch2div + 1, TOTAL_PAGES, sport);
+    stampLayerBadge(c, "STATISTICS");
+    addCanvasPage(c, true, "Opposition Facts");
+  } catch (err) {
+    console.error("Opposition Facts page generation failed", err);
+    addCanvasPage(fallbackCanvas("Opposition Facts"), true, "Opposition Facts");
+  }
+
+  // p.15+N — Restart Analysis
+  try {
+    const c = makeRestartVisualPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 2, TOTAL_PAGES);
     stampLayerBadge(c, "POSSESSION");
     addCanvasPage(c, true, "Restart Analysis");
   } catch (err) {
@@ -7750,9 +7717,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Restart Analysis"), true, "Restart Analysis");
   }
 
-  // p.14+N — Turnover Analysis
+  // p.16+N — Turnover Analysis
   try {
-    const c = makeTurnoverVisualPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 2, TOTAL_PAGES);
+    const c = makeTurnoverVisualPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 3, TOTAL_PAGES);
     stampLayerBadge(c, "POSSESSION");
     addCanvasPage(c, true, "Turnover Analysis");
   } catch (err) {
@@ -7760,41 +7727,14 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Turnover Analysis"), true, "Turnover Analysis");
   }
 
-  // p.15+N — Free Kick Analysis
+  // p.17+N — Free Kick Analysis
   try {
-    const c = makeFreeAnalysisPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 3, TOTAL_PAGES);
+    const c = makeFreeAnalysisPage(events, sport, report, homeTeamName, awayTeamName, p_ch2div + 4, TOTAL_PAGES);
     stampLayerBadge(c, "POSSESSION");
     addCanvasPage(c, true, "Free Kick Analysis");
   } catch (err) {
     console.error("Free Kick Analysis page generation failed", err);
     addCanvasPage(fallbackCanvas("Free Kick Analysis"), true, "Free Kick Analysis");
-  }
-
-  // p.16+N — Intelligence Summary — Part 3 (Game Origin / Chain Analysis).
-  // Reclassified from MIXED: every insight here quotes a restart/turnover-
-  // origin percentage (koConvPct/tvConvPct against
-  // fmtRestartOriginScoredFor/fmtTurnoverOriginScoredFor) - chain-origin
-  // content, not possession-fact. NOTE: still called from the Chapter 2
-  // (Possession Intelligence) call site pending the page-reassembly pass
-  // later in this branch, which moves it to Part 3's page order.
-  try {
-    const c = makeTacticalIntelligencePage(report, homeTeamName, awayTeamName, p_ch2div + 4, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "CHAIN");
-    addCanvasPage(c, true, "Intelligence Summary");
-  } catch (err) {
-    console.error("Intelligence Summary page generation failed", err);
-    addCanvasPage(fallbackCanvas("Intelligence Summary"), true, "Intelligence Summary");
-  }
-
-  // p.17+N — Tactical Review Guide — Part 3 (Game Origin / Chain Analysis).
-  // Reclassified from MIXED for the same reason as Intelligence Summary.
-  try {
-    const c = makeTacticalReviewGuidePage(report, homeTeamName, awayTeamName, p_ch2div + 5, TOTAL_PAGES, sport);
-    stampLayerBadge(c, "CHAIN");
-    addCanvasPage(c, true, "Tactical Review Guide");
-  } catch (err) {
-    console.error("Tactical Review Guide page generation failed", err);
-    addCanvasPage(fallbackCanvas("Tactical Review Guide"), true, "Tactical Review Guide");
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -7805,7 +7745,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   // those possessions began," not "why" a score happened (see
   // GAME_ORIGIN_EXPLANATION, printed on Scoring Possession Origins below).
 
-  const p_ch3div = p_ch2div + 6;  // p.18+N
+  const p_ch3div = p_ch2div + 5;  // p.18+N
   addCanvasPage(
     makeChapterDividerPage(
       3, "PART 3 — GAME ORIGIN / CHAIN ANALYSIS", PART_QUESTIONS.GAME_ORIGIN,
@@ -7820,8 +7760,59 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
   );
 
   // p.19+N — Chain Intelligence
+  // p.19+N — Scoring Possession Origins (prints GAME_ORIGIN_EXPLANATION first)
   try {
-    const c = makeChainSummaryPage(report, homeTeamName, awayTeamName, p_ch3div + 1, TOTAL_PAGES, sport);
+    const c = makeScoringPossessionOriginsPage(report, homeTeamName, awayTeamName, p_ch3div + 1, TOTAL_PAGES);
+    stampLayerBadge(c, "CHAIN");
+    addCanvasPage(c, true, "Scoring Possession Origins");
+  } catch (err) {
+    console.error("Scoring Possession Origins page generation failed", err);
+    addCanvasPage(fallbackCanvas("Scoring Possession Origins"), true, "Scoring Possession Origins");
+  }
+
+  // p.20+N — Player Chain Involvement
+  try {
+    const c = makePlayerInfluencePage(events, report, homeTeamName, awayTeamName, p_ch3div + 2, TOTAL_PAGES, homeSquadPlayers, awaySquadPlayers);
+    stampLayerBadge(c, "CHAIN");
+    addCanvasPage(c, true, "Top Players by Net Influence");
+  } catch (err) {
+    console.error("Player Chain Involvement page generation failed", err);
+    addCanvasPage(fallbackCanvas("Top Players by Net Influence"), true, "Top Players by Net Influence");
+  }
+
+  // p.21+N — Opposition Origin & Chain Threat
+  try {
+    const c = makeOppositionOriginPage(events, report, homeTeamName, awayTeamName, p_ch3div + 3, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers);
+    stampLayerBadge(c, "CHAIN");
+    addCanvasPage(c, true, "Opposition Origin & Chain Threat");
+  } catch (err) {
+    console.error("Opposition Origin & Chain Threat page generation failed", err);
+    addCanvasPage(fallbackCanvas("Opposition Origin & Chain Threat"), true, "Opposition Origin & Chain Threat");
+  }
+
+  // p.22+N — Intelligence Summary
+  try {
+    const c = makeTacticalIntelligencePage(report, homeTeamName, awayTeamName, p_ch3div + 4, TOTAL_PAGES, sport);
+    stampLayerBadge(c, "CHAIN");
+    addCanvasPage(c, true, "Intelligence Summary");
+  } catch (err) {
+    console.error("Intelligence Summary page generation failed", err);
+    addCanvasPage(fallbackCanvas("Intelligence Summary"), true, "Intelligence Summary");
+  }
+
+  // p.23+N — Tactical Review Guide
+  try {
+    const c = makeTacticalReviewGuidePage(report, homeTeamName, awayTeamName, p_ch3div + 5, TOTAL_PAGES, sport);
+    stampLayerBadge(c, "CHAIN");
+    addCanvasPage(c, true, "Tactical Review Guide");
+  } catch (err) {
+    console.error("Tactical Review Guide page generation failed", err);
+    addCanvasPage(fallbackCanvas("Tactical Review Guide"), true, "Tactical Review Guide");
+  }
+
+  // p.24+N — Chain Intelligence
+  try {
+    const c = makeChainSummaryPage(report, homeTeamName, awayTeamName, p_ch3div + 6, TOTAL_PAGES, sport);
     stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Chain Intelligence");
   } catch (err) {
@@ -7829,9 +7820,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Chain Intelligence"), true, "Chain Intelligence");
   }
 
-  // p.20+N — Restart Chain Analysis
+  // p.25+N — Restart Chain Analysis
   try {
-    const c = makeKickoutChainPage(report, homeTeamName, awayTeamName, p_ch3div + 2, TOTAL_PAGES, sport);
+    const c = makeKickoutChainPage(report, homeTeamName, awayTeamName, p_ch3div + 7, TOTAL_PAGES, sport);
     stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Restart Chain Analysis");
   } catch (err) {
@@ -7839,9 +7830,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Restart Chain Analysis"), true, "Restart Chain Analysis");
   }
 
-  // p.21+N — Turnover Chain Analysis
+  // p.26+N — Turnover Chain Analysis
   try {
-    const c = makeTurnoverPunishmentPage(report, homeTeamName, awayTeamName, p_ch3div + 3, TOTAL_PAGES);
+    const c = makeTurnoverPunishmentPage(report, homeTeamName, awayTeamName, p_ch3div + 8, TOTAL_PAGES);
     stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Turnover Chain Analysis");
   } catch (err) {
@@ -7849,9 +7840,9 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Turnover Chain Analysis"), true, "Turnover Chain Analysis");
   }
 
-  // p.22+N — Scoring Momentum
+  // p.27+N — Scoring Momentum
   try {
-    const c = makeMomentumRunsPage(report, homeTeamName, awayTeamName, p_ch3div + 4, TOTAL_PAGES);
+    const c = makeMomentumRunsPage(report, homeTeamName, awayTeamName, p_ch3div + 9, TOTAL_PAGES);
     stampLayerBadge(c, "CHAIN");
     addCanvasPage(c, true, "Scoring Momentum");
   } catch (err) {
@@ -7859,7 +7850,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
     addCanvasPage(fallbackCanvas("Scoring Momentum"), true, "Scoring Momentum");
   }
 
-  // p.23+N — Performance Against Targets (only when targets are set)
+  // p.28+N — Performance Against Targets (only when targets are set)
   if (hasTargets && targets) {
     const targetResults = computeTargetResults(targets, events, "FULL", sport);
     if (targetResults.length > 0) {
