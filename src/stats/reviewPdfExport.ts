@@ -24,6 +24,12 @@ import type { ChainAnalysis } from "./chains/chain-types";
 import { buildMatchReport, type MatchReport } from "./reporting/matchReport";
 import { buildTeamSummaryBlock, viewShootingConversion } from "./reporting/teamStatsViews";
 import {
+  buildSnapshotDashboardModel,
+  snapshotMarginLabel,
+  type SnapshotDashboardModel,
+  type SnapshotDashboardTeam,
+} from "./reporting/snapshotDashboardModel";
+import {
   countPctLabel,
   fractionPctLabel,
   pctLabel,
@@ -9379,7 +9385,7 @@ function makeHtGameFlowFactorsPage(
  *
  * Data: FOR SHOTS events (full match, all periods).
  */
-function makeFtAttackCorridorsPage(
+export function makeFtAttackCorridorsPage(
   events: readonly PdfExportEvent[],
   sport: PitchSport,
   homeTeam: string,
@@ -9646,7 +9652,7 @@ function makeFtAttackCorridorsPage(
  *
  * Data: analysis.kickouts.outcomes[] (kickoutEvent.nx/ny for zone placement).
  */
-function makeFtRestartEscapeRoutesPage(
+export function makeFtRestartEscapeRoutesPage(
   events: readonly PdfExportEvent[],
   sport: PitchSport,
   report: MatchReport<PdfExportEvent>,
@@ -10118,7 +10124,7 @@ function buildTacticalMatchStorySections(
   return sections;
 }
 
-function makeFtTacticalMatchStoryPage(
+export function makeFtTacticalMatchStoryPage(
   _events: readonly PdfExportEvent[],
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
@@ -10249,7 +10255,7 @@ function makeFtTacticalMatchStoryPage(
  *
  * Builder signature follows existing FT page convention (events + sport + analysis).
  */
-function makeChainPressurePage(
+export function makeChainPressurePage(
   events: readonly PdfExportEvent[],
   sport: PitchSport,
   report: MatchReport<PdfExportEvent>,
@@ -11011,7 +11017,7 @@ export function makeOppShotProfilePage(
   const totalOppScores = oppConv.num;
   const oppShotEff     = oppConv.pct;
   const headlineText = totalOppShots > 0
-    ? `${totalOppScores} score${totalOppScores !== 1 ? "s" : ""} from ${totalOppShots} shot${totalOppShots !== 1 ? "s" : ""} · ${oppShotEff}% efficiency${topScoreZone && topScoreZone.count > 0 ? ` · Most dangerous zone: ${topScoreZone.label}` : ""}`
+    ? `${totalOppScores} score${totalOppScores !== 1 ? "s" : ""} from ${totalOppShots} shot${totalOppShots !== 1 ? "s" : ""} · ${oppShotEff}% efficiency${topScoreZone && topScoreZone.count > 0 ? ` · Most scoring zone: ${topScoreZone.label}` : ""}`
     : "No opposition shot data recorded for this match";
   ctx.save();
   ctx.fillStyle = "rgba(239,68,68,0.12)";
@@ -11740,7 +11746,10 @@ function makeRestartBattlePage(
  *   Red   = they dominate (lostCount > wonCount + 1)
  *   Amber = contested (both sides active ≥ 2)
  *
- * Callouts: DANGER ZONE on high-loss zones; teal PRESSURE ZONE on best win zone.
+ * Callouts: "Most Turnovers Won" / "Most Turnovers Lost" name the zone with
+ * the most recorded events of that kind — a location fact, not a claim that
+ * those turnovers were press-generated (that would require explicit press
+ * tagging, which this page does not read).
  */
 const TURNOVER_TERRITORY_WON_COLOR  = "#a78bfa";
 const TURNOVER_TERRITORY_LOST_COLOR = "#f97316";
@@ -11778,9 +11787,17 @@ function renderTurnoverTerritoryMarkers(
   for (const event of lostEvts) drawCircle(event, TURNOVER_TERRITORY_LOST_COLOR);
 }
 
+/**
+ * Turnover & Territory — factual STATISTICS-layer page.
+ *
+ * Shows only direct turnover-event counts and their recorded locations.
+ * Deliberately takes raw `events`, not a MatchReport — there is nothing for
+ * a chain/origin figure to attach to. The former "Consequence" panel (which
+ * showed chain-origin wonToScore/lostAllowedScore) has been removed; that
+ * question belongs to Game Origin Analysis / Full Review, not Snapshot.
+ */
 export function makeTurnoverTerritoryPage(
   events: readonly PdfExportEvent[],
-  report: MatchReport<PdfExportEvent>,
   sport: PitchSport,
   homeTeam: string,
   awayTeam: string,
@@ -11788,7 +11805,6 @@ export function makeTurnoverTerritoryPage(
   totalPages: number,
   homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
-  const analysis = report.chain;
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
   canvas.height = CANVAS_H;
@@ -11833,8 +11849,12 @@ export function makeTurnoverTerritoryPage(
   ctx.fillText("Turnover Lost", lx + 22, ly);
   ctx.restore();
 
-  // ── Bottom callout strip — 4 coaching panels ─────────────────────────────
-  const to        = analysis.turnovers;
+  // ── Bottom callout strip — 3 factual panels ──────────────────────────────
+  // "Best Press Zone" / "Danger Zone" renamed to plain turnover-location
+  // wording: the underlying data is only WHERE a turnover was won or lost,
+  // not proof of a press (that requires explicit press tagging, which this
+  // page does not read). "Consequence" (chain-origin wonToScore /
+  // lostAllowedScore) has been removed — see Game Origin Analysis instead.
   const totalWon  = wonEvts.length;
   const totalLost = lostEvts.length;
   const totalTO   = totalWon + totalLost;
@@ -11851,22 +11871,16 @@ export function makeTurnoverTerritoryPage(
       highlight: false,
     },
     {
-      label: "Best Press Zone",
+      label: "Most Turnovers Won",
       text: wonHot ? wonHot.label : "—",
       accent: "#a78bfa",
       highlight: false,
     },
     {
-      label: "Danger Zone",
+      label: "Most Turnovers Lost",
       text: lostHot ? lostHot.label : "—",
-      accent: "#ef4444",
+      accent: "#f97316",
       highlight: false,
-    },
-    {
-      label: "Consequence",
-      text: totalTO > 0 ? `Created ${to.wonToScore} · Conceded ${to.lostAllowedScore}` : "—",
-      accent: to.wonToScore > to.lostAllowedScore ? "#22c55e" : to.lostAllowedScore > to.wonToScore ? "#ef4444" : "#f59e0b",
-      highlight: true,
     },
   ];
 
@@ -11881,7 +11895,7 @@ export function makeTurnoverTerritoryPage(
   const STRIP_X  = 24;
   const STRIP_W  = CANVAS_W - 48;
   const GAP_PX   = 20;
-  const panelW   = Math.floor((STRIP_W - GAP_PX * 3) / 4);
+  const panelW   = Math.floor((STRIP_W - GAP_PX * 2) / 3);
   const panelY   = HT_STRIP_TOP + 10;
   const panelH   = HT_STRIP_H - 18 - HT_STRIP_FOOTER_RESERVE;
   const contentH = 15 + 10 + 24;
@@ -12471,21 +12485,238 @@ function makePointsLedgerPage(
   return canvas;
 }
 
+// ─── p.1 Snapshot Dashboard ────────────────────────────────────────────────────
+/**
+ * Snapshot Dashboard — "What happened?", readable in seconds.
+ *
+ * PROVENANCE: every figure comes from SnapshotDashboardModel
+ * (src/stats/reporting/snapshotDashboardModel.ts), itself built exclusively
+ * from buildTeamSummaryBlock()/viewShootingConversion() — direct event
+ * counts, never chain/origin attribution (no report.chain.byRule, no
+ * report.ledger row attribution, no report.possessions). This function only
+ * ever reads the model, never `report` or `analysis` directly, so there is
+ * no way for an origin/chain figure to reach this page without a visible
+ * model/type change first.
+ *
+ * "Our kickouts" / "Their kickouts" are OWN-kickout retention, never
+ * Restart Share (see snapshotDashboardModel.ts header comment).
+ *
+ * No verdict, no tactical language — states what happened, not why.
+ */
+function fmtDashboardScore(s: { goals: number; points: number; total: number }): string {
+  return `${s.goals}-${String(s.points).padStart(2, "0")} (${s.total})`;
+}
+
+/** Shared panel chrome (background + accent bar + heading) for the 4 KPI blocks. Returns the y to start content at. */
+function dashboardPanelChrome(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number,
+  accent: string, heading: string,
+): number {
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,0.045)";
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = accent;
+  ctx.fillRect(x, y, 6, h);
+  ctx.font = "bold 18px sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(heading, x + 22, y + 20);
+  ctx.restore();
+  return y + 58;
+}
+
+function drawDashboardShootingPanel(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number,
+  homeTeam: string, awayTeam: string,
+  us: SnapshotDashboardTeam["shooting"], them: SnapshotDashboardTeam["shooting"],
+): void {
+  const contentY = dashboardPanelChrome(ctx, x, y, w, h, "#7dd3fc", "SHOOTING");
+  ctx.save();
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+
+  ctx.font = "600 19px sans-serif";
+  ctx.fillStyle = "#4ade80";
+  ctx.fillText(truncTeam(homeTeam, 16), x + 22, contentY + 20);
+  ctx.font = "bold 34px sans-serif";
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillText(us.den > 0 ? `${us.num}/${us.den}` : "0/0", x + 22, contentY + 62);
+  ctx.font = "600 22px sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.fillText(us.den > 0 ? `${us.pct}%` : "—", x + 22, contentY + 98);
+
+  const row2 = contentY + 160;
+  ctx.font = "600 19px sans-serif";
+  ctx.fillStyle = "#f87171";
+  ctx.fillText(truncTeam(awayTeam, 16), x + 22, row2 + 20);
+  ctx.font = "bold 34px sans-serif";
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillText(them.den > 0 ? `${them.num}/${them.den}` : "0/0", x + 22, row2 + 62);
+  ctx.font = "600 22px sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.fillText(them.den > 0 ? `${them.pct}%` : "—", x + 22, row2 + 98);
+  ctx.restore();
+}
+
+function drawDashboardKickoutPanel(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number,
+  heading: string, accent: string,
+  kickouts: SnapshotDashboardTeam["ownKickouts"],
+): void {
+  const contentY = dashboardPanelChrome(ctx, x, y, w, h, accent, heading);
+  ctx.save();
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.font = "bold 44px sans-serif";
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillText(kickouts.total > 0 ? `${kickouts.retained}/${kickouts.total}` : "0/0", x + 22, contentY + 40);
+  ctx.font = "600 26px sans-serif";
+  ctx.fillStyle = accent;
+  ctx.fillText(kickouts.total > 0 ? `${kickouts.pct}%` : "—", x + 22, contentY + 92);
+  ctx.font = "20px sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.fillText(`Lost ${kickouts.lost}/${kickouts.total}`, x + 22, contentY + 136);
+  ctx.restore();
+}
+
+function drawDashboardTurnoverPanel(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number,
+  turnovers: SnapshotDashboardTeam["turnovers"],
+): void {
+  const contentY = dashboardPanelChrome(ctx, x, y, w, h, "#a78bfa", "TURNOVERS");
+  ctx.save();
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.font = "20px sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.fillText("Won", x + 22, contentY + 4);
+  ctx.font = "bold 44px sans-serif";
+  ctx.fillStyle = "#4ade80";
+  ctx.fillText(`${turnovers.won}`, x + 22, contentY + 48);
+
+  ctx.font = "20px sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.fillText("Lost", x + 22, contentY + 116);
+  ctx.font = "bold 44px sans-serif";
+  ctx.fillStyle = "#f87171";
+  ctx.fillText(`${turnovers.lost}`, x + 22, contentY + 160);
+  ctx.restore();
+}
+
+function makeSnapshotDashboardPage(
+  model: SnapshotDashboardModel,
+  pageNum: number,
+  totalPages: number,
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width  = CANVAS_W;
+  canvas.height = CANVAS_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  const { homeTeam, awayTeam, us, them } = model;
+  const title = model.period === "HT" ? "Half-Time Dashboard" : "Full-Time Dashboard";
+
+  fillDarkBg(ctx);
+  drawTopAccentBar(ctx);
+  drawPageHeader(ctx, title, `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+
+  // ── Score block ────────────────────────────────────────────────────────────
+  const forCX = 72 + 424;   // 496 — matches makeSummaryPage's column centres
+  const oppCX = 1000 + 424; // 1424
+  ctx.save();
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+
+  ctx.font = "bold 40px sans-serif";
+  ctx.fillStyle = "#4ade80";
+  ctx.fillText(truncTeam(homeTeam, 22), forCX, 118);
+  ctx.fillStyle = "#f87171";
+  ctx.fillText(truncTeam(awayTeam, 22), oppCX, 118);
+
+  ctx.font = "bold 60px sans-serif";
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillText(fmtDashboardScore(us.score), forCX, 190);
+  ctx.fillText(fmtDashboardScore(them.score), oppCX, 190);
+
+  ctx.font = "bold 34px sans-serif";
+  ctx.fillStyle = "#64748b";
+  ctx.fillText("v", Math.round(CANVAS_W / 2), 150);
+
+  ctx.font = "600 24px sans-serif";
+  ctx.fillStyle = "#e2e8f0";
+  ctx.fillText(snapshotMarginLabel(model), Math.round(CANVAS_W / 2), 244);
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(72, 266);
+  ctx.lineTo(CANVAS_W - 72, 266);
+  ctx.stroke();
+  ctx.restore();
+
+  // ── 4 KPI panels — Shooting · Our Kickouts · Their Kickouts · Turnovers ────
+  const PAD_X  = 64;
+  const GAP    = 24;
+  const panelY = 296;
+  const panelH = 420;
+  const panelW = Math.floor((CANVAS_W - PAD_X * 2 - GAP * 3) / 4);
+
+  drawDashboardShootingPanel(ctx, PAD_X + 0 * (panelW + GAP), panelY, panelW, panelH, homeTeam, awayTeam, us.shooting, them.shooting);
+  drawDashboardKickoutPanel(ctx, PAD_X + 1 * (panelW + GAP), panelY, panelW, panelH, "OUR KICKOUTS", "#4ade80", us.ownKickouts);
+  drawDashboardKickoutPanel(ctx, PAD_X + 2 * (panelW + GAP), panelY, panelW, panelH, "THEIR KICKOUTS", "#f87171", them.ownKickouts);
+  drawDashboardTurnoverPanel(ctx, PAD_X + 3 * (panelW + GAP), panelY, panelW, panelH, us.turnovers);
+
+  // ── Placed balls — reuses the two-column strip used on Restart Battle ─────
+  drawTwoColumnHtStrip(ctx,
+    {
+      heading: `${truncTeam(homeTeam, 18)} placed balls`,
+      lines: [us.placed.attempts > 0 || us.placed.scores > 0 ? `${us.placed.scores}/${us.placed.attempts} scored` : "No placed balls"],
+      color: "#4ade80",
+    },
+    {
+      heading: `${truncTeam(awayTeam, 18)} placed balls`,
+      lines: [them.placed.attempts > 0 || them.placed.scores > 0 ? `${them.placed.scores}/${them.placed.attempts} scored` : "No placed balls"],
+      color: "#f87171",
+    },
+  );
+
+  drawEventCountFooter(ctx, model.eventCount);
+  return canvas;
+}
+
 // ─── Snapshot PDF export ──────────────────────────────────────────────────────
 //
-// Lightweight coaching reports. All rendering delegates to the same page builders
-// used by exportReviewPdf. exportReviewPdf and every pre-existing page builder
-// function body are completely untouched.
+// Factual coach-facing reports: "what happened" + "where it happened" only.
+// No chain/origin attribution (restart-origin score, turnover-origin score,
+// chain rate/share, punishment rate) may appear here — those live in Game
+// Origin Analysis / Full Review. See snapshotDashboardModel.ts for the
+// provenance boundary enforced on page 1.
 //
-// HT Snapshot (5 pages): VISION FIRST — events pre-filtered to period "1H".
-//   Chain analysis is computed from the H1 event set only — no builder changes
-//   needed; each builder naturally sees first-half data.
-//   Pages: Pressure & Damage → Game Flow → Kickout Vision →
-//          Attack Shape → Game Flow Factors
+// HT Snapshot (5 pages) — events pre-filtered to period "1H":
+//   1. Dashboard              4. Restart Battle – First Half
+//   2. Our Shot Profile       5. Turnover & Territory
+//   3. Opposition Shot Profile
 //
-// FT Snapshot (12 pages): full-match events, two-part tactical narrative.
-//   PART 1 — SEE  (p.1–5): pitch-based visual intelligence (reuses HT builders)
-//   PART 2 — UNDERSTAND (p.6–12): analytical depth + narrative story
+// FT Snapshot (7 pages) — full-match events:
+//   1. Dashboard                     5. Restart Battle – Second Half
+//   2. Our Shot Profile              6. Turnover & Territory
+//   3. Opposition Shot Profile       7. Shot & Scoring Efficiency
+//   4. Restart Battle – First Half
+//
+// Chain Patterns, Tactical Match Summary, Where the Points Went / The Ledger
+// So Far, Turnover Punishment, Attack Corridors, Restart Escape Routes,
+// Opposition Snapshot, and Tactical Match Story are intentionally NOT part
+// of Snapshot composition (chain/origin content, or pending ledger-language
+// reconciliation). Their builder functions are untouched and still power
+// exportReviewPdf (Full Review) where applicable — nothing was deleted.
 
 export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<void> {
   const {
@@ -12496,9 +12727,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     snapshotMode,
     targets,
     homeAttackingDirection = "RIGHT",
-    homeSquadPlayers,
-    awaySquadPlayers,
   } = input;
+  // Player-squad data (homeSquadPlayers/awaySquadPlayers) is no longer read
+  // here — it was only used by the excluded Ledger/"So Far" page (see the
+  // composition comment above). Still present on SnapshotPdfExportInput for
+  // other callers; simply unused by this function now.
 
   const isHT = snapshotMode === "HALF_TIME_SNAPSHOT";
   const hasTargets = hasEnabledTargets(targets);
@@ -12513,6 +12746,8 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   const away = awayTeamName;
 
   // Chain analysis scoped to the same event set — H1-only for HT, full for FT.
+  // (Restart Battle / Turnover & Territory still consume `report` for their
+  // pitch-map layer; the Dashboard consumes only the factual model below.)
   const report = buildMatchReport({
     events,
     homeTeam: home,
@@ -12520,7 +12755,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
     scope: isHT ? "1H" : "FULL",
   });
 
-  const TOTAL_PAGES = (isHT ? 7 : 14) + (hasTargets ? 1 : 0);
+  // Factual dashboard model — STATISTICS layer only. See
+  // snapshotDashboardModel.ts for the provenance boundary.
+  const dashboardModel = buildSnapshotDashboardModel(report, isHT ? "HT" : "FT");
+
+  const TOTAL_PAGES = (isHT ? 5 : 7) + (hasTargets ? 1 : 0);
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -12547,105 +12786,63 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   }
 
   if (isHT) {
-    // ── HT Snapshot ── 6 pages, coaching-first, first-half events only ────────
+    // ── HT Snapshot ── 5 pages, factual, first-half events only ───────────────
     //
-    // Locked architecture (Phase 6). Coach-readable in under 90 seconds.
-    // VISION FIRST: one page per side for shots, one page per side for restarts,
-    // then chain pressure, then a 2×2 summary panel.
-    //
-    // 1. Our Shot Profile          — "Where are we getting joy?"
-    // 2. Opposition Shot Profile   — "Where are they hurting us?"
-    // 3. Our Restart Platform      — "How are our kickouts functioning?"
-    // 4. Opposition Restart        — "What are they trying to do on restarts?"
-    // 5. Chain Pressure            — ranked chain patterns (HT-calibrated)
-    // 6. Tactical Match Summary    — 2×2 coaching panel (Working/Danger/Swing/Watch)
+    // Approved composition: Dashboard → Our Shots → Their Shots →
+    // Restart Battle (1H) → Turnover & Territory. No chain/origin content.
 
-    // 1. Our Shot Profile
+    // 1. Dashboard — "What happened in the first half?"
     addPage(
-      makeOurShotProfilePage(events, report, sport, home, away, 1, TOTAL_PAGES, homeAttackingDirection),
+      makeSnapshotDashboardPage(dashboardModel, 1, TOTAL_PAGES),
       false,
+      "Dashboard",
+      "STATISTICS",
+    );
+
+    // 2. Our Shot Profile
+    addPage(
+      makeOurShotProfilePage(events, report, sport, home, away, 2, TOTAL_PAGES, homeAttackingDirection),
+      true,
       "Our Shots",
       "STATISTICS",
     );
 
-    // 2. Opposition Shot Profile
+    // 3. Opposition Shot Profile
     addPage(
-      makeOppShotProfilePage(events, report, sport, home, away, 2, TOTAL_PAGES, homeAttackingDirection),
+      makeOppShotProfilePage(events, report, sport, home, away, 3, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Their Shots",
       "STATISTICS",
     );
 
-    // 3. Restart Battle – First Half
+    // 4. Restart Battle – First Half
     addPage(
-      makeRestartBattlePage(events, sport, home, away, 3, TOTAL_PAGES, "1H", homeAttackingDirection),
+      makeRestartBattlePage(events, sport, home, away, 4, TOTAL_PAGES, "1H", homeAttackingDirection),
       true,
       "Restart Battle",
       "STATISTICS",
     );
 
-    // 4. Turnover & Territory
+    // 5. Turnover & Territory
     addPage(
-      makeTurnoverTerritoryPage(events, report, sport, home, away, 4, TOTAL_PAGES, homeAttackingDirection),
+      makeTurnoverTerritoryPage(events, sport, home, away, 5, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Turnover & Territory",
-      "POSSESSION",
-    );
-
-    // 5. Chain Patterns — HT-calibrated (relaxed thresholds for smaller H1 dataset)
-    addPage(
-      makeChainPressurePage(events, sport, report, home, away, 5, TOTAL_PAGES, "HT"),
-      true,
-      "Chain Patterns",
-      "CHAIN",
-    );
-
-    // 6. Tactical Match Summary — 2×2 panel, no pitch, coaching message board
-    addPage(
-      makeHtTacticalSummaryPage(events, sport, report, home, away, 6, TOTAL_PAGES, "HT"),
-      true,
-      "Tactical Summary",
-      "MIXED",
-    );
-
-    // 7. The Ledger So Far — compact margin decomposition (placed / restarts / turnovers)
-    addPage(
-      makePointsLedgerPage(events, report, home, away, 7, TOTAL_PAGES, "HT", homeSquadPlayers, awaySquadPlayers),
-      true,
-      "The Ledger So Far",
-      "MIXED",
+      "STATISTICS",
     );
   } else {
-    // ── FT Snapshot ── 13 pages ───────────────────────────────────────────────
+    // ── FT Snapshot ── 7 pages, factual, full-match events ────────────────────
     //
-    // PART 1 — COACHING LAYER (p.1–7): coaching structure, full-match events.
-    //   Restart Battle now spans two pages (one per half) for maximum pitch size.
-    //
-    // 1. Our Shot Profile          — "Where are we getting joy?"
-    // 2. Opposition Shot Profile   — "Where are they hurting us?"
-    // 3. Restart Battle – 1st Half — "Where did restarts go in the first half?"
-    // 4. Restart Battle – 2nd Half — "Where did restarts go in the second half?"
-    // 5. Chain Pressure            — ranked chain patterns (FT-calibrated)
-    // 6. Turnover & Territory      — where possession is won and lost
-    // 7. Tactical Match Summary    — 2×2 coaching panel
-    //
-    // PART 2 — ANALYTICAL DEPTH (p.8–13): unchanged analytical review pages.
-    //
-    // 8.  Turnover Punishment      — possession chain punishment
-    // 9.  Shot Efficiency          — scoring efficiency analysis
-    // 10. Attack Corridors         — channel-based attack shape
-    // 11. Restart Escape Routes    — kickout landing zone outcome map
-    // 12. Opposition Snapshot      — opposition tactical profile
-    // 13. Tactical Match Story     — narrative arc of the match
+    // Approved composition: Dashboard → Our Shots → Their Shots →
+    // Restart Battle (1H) → Restart Battle (2H) → Turnover & Territory →
+    // Shot & Scoring Efficiency. No chain/origin content.
 
-    // ── PART 1 — COACHING LAYER ───────────────────────────────────────────────
-
-    // 1. Where the Points Went — the margin decomposed by scoring source
+    // 1. Dashboard — "What happened?"
     addPage(
-      makePointsLedgerPage(events, report, home, away, 1, TOTAL_PAGES, "FULL", homeSquadPlayers, awaySquadPlayers),
+      makeSnapshotDashboardPage(dashboardModel, 1, TOTAL_PAGES),
       false,
-      "Where the Points Went",
-      "MIXED",
+      "Dashboard",
+      "STATISTICS",
     );
 
     // 2. Our Shot Profile
@@ -12686,80 +12883,20 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "STATISTICS",
     );
 
-    // 6. Chain Pressure — FT-calibrated (standard thresholds for full-match dataset)
+    // 6. Turnover & Territory
     addPage(
-      makeChainPressurePage(events, sport, report, home, away, 6, TOTAL_PAGES),
-      true,
-      "Chain Patterns",
-      "CHAIN",
-    );
-
-    // 7. Turnover & Territory
-    addPage(
-      makeTurnoverTerritoryPage(events, report, sport, home, away, 7, TOTAL_PAGES, homeAttackingDirection),
+      makeTurnoverTerritoryPage(events, sport, home, away, 6, TOTAL_PAGES, homeAttackingDirection),
       true,
       "Turnover & Territory",
-      "POSSESSION",
+      "STATISTICS",
     );
 
-    // 8. Tactical Match Summary — 2×2 panel, no pitch, coaching message board
+    // 7. Shot & Scoring Efficiency
     addPage(
-      makeHtTacticalSummaryPage(events, sport, report, home, away, 8, TOTAL_PAGES, "FT"),
-      true,
-      "Tactical Summary",
-      "MIXED",
-    );
-
-    // ── PART 2 — ANALYTICAL DEPTH ─────────────────────────────────────────────
-
-    // 9. Turnover Punishment
-    addPage(
-      makeTurnoverPunishmentPage(report, home, away, 9, TOTAL_PAGES),
-      true,
-      "Turnover Punishment",
-      "CHAIN",
-    );
-
-    // 10. Shot Efficiency
-    addPage(
-      makeShotEfficiencyPage(events, report, home, away, 10, TOTAL_PAGES, sport),
+      makeShotEfficiencyPage(events, report, home, away, 7, TOTAL_PAGES, sport),
       true,
       "Shot Efficiency",
       "STATISTICS",
-    );
-
-    // 11. Attack Corridors — channel-based attack shape analysis
-    addPage(
-      makeFtAttackCorridorsPage(events, sport, home, away, 11, TOTAL_PAGES, homeAttackingDirection),
-      true,
-      "Attack Corridors",
-      "STATISTICS",
-    );
-
-    // 12. Restart Escape Routes — kickout destination zone outcome map
-    addPage(
-      makeFtRestartEscapeRoutesPage(events, sport, report, home, away, 12, TOTAL_PAGES, homeAttackingDirection),
-      true,
-      "Restart Escape Routes",
-      "POSSESSION",
-    );
-
-    // 13. Opposition Snapshot
-    // MIXED: Restart/Turnover Threat cards are chain-origin figures and the
-    // Rematch Watchlist draws on the Player Influence module.
-    addPage(
-      makeOppositionSnapshotPage(events, report, home, away, 13, TOTAL_PAGES, sport, homeSquadPlayers, awaySquadPlayers),
-      true,
-      "Opposition Snapshot",
-      "MIXED",
-    );
-
-    // 14. Tactical Match Story — narrative arc of the match
-    addPage(
-      makeFtTacticalMatchStoryPage(events, report, home, away, 14, TOTAL_PAGES, sport),
-      true,
-      "Tactical Match Story",
-      "MIXED",
     );
   }
 
