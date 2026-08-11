@@ -18,6 +18,7 @@ import { createTrainingItemLayer } from "../items/item-layer";
 import { createPitchRoot } from "../pitch/create-pitch-root";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
 import { createBallLayer } from "../ball/ball-layer";
+import { applyCarrierOffset } from "../ball/carried-ball-position";
 import { createPlaybackOrchestrator } from "../playback/playback-orchestrator";
 import { createZoneLayer } from "../zones/zone-layer";
 import { routeStyleForToken } from "../routes/route-colors";
@@ -258,12 +259,16 @@ export async function createMovementCanvasShell(
     if (!ballState.carrierId) return;
     const fromWorldPos = tokenLayer.getTokenWorldPosition(ballState.carrierId);
     if (!fromWorldPos) return;
+    // Flight must start from the ball's currently visible (carrier-offset)
+    // position, not the carrier's raw centre — see getVisibleCarriedBallWorldPosition.
+    const carriedBallWorldPos = getVisibleCarriedBallWorldPosition(ballState.carrierId);
+    if (!carriedBallWorldPos) return;
     const goalWorld = { x: WORLD_SIZE.width, y: WORLD_SIZE.height / 2 };
     const dx = goalWorld.x - fromWorldPos.x;
     const dy = goalWorld.y - fromWorldPos.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const durationMs = Math.max(PASS_MIN_DURATION_MS, Math.min(PASS_MAX_DURATION_MS, dist / PASS_SPEED_PX_PER_MS));
-    activeBallPass = { fromWorld: fromWorldPos, toPlayerId: "", toWorld: goalWorld, elapsedMs: 0, durationMs, ballType: ballState.ballType ?? "footballSmall" };
+    activeBallPass = { fromWorld: carriedBallWorldPos, toPlayerId: "", toWorld: goalWorld, elapsedMs: 0, durationMs, ballType: ballState.ballType ?? "footballSmall" };
     ballState = { ballType: ballState.ballType };
     tokenLayer.setBallCarrier(null);
     emitBallState();
@@ -346,12 +351,20 @@ export async function createMovementCanvasShell(
   let deferredPasses: DeferredPass[] = [];
   let deferredShots: string[] = [];
 
-  const BALL_CARRIER_OFFSET_X = 3.5;
-  const BALL_CARRIER_OFFSET_Y = -2.5;
   const PASS_ARC_HEIGHT_PX = 10;
   const PASS_MIN_DURATION_MS = 850;
   const PASS_MAX_DURATION_MS = 1800;
   const PASS_SPEED_PX_PER_MS = 0.067;
+
+  // Canonical currently-visible carried-ball world position: a player's raw
+  // world position plus the same carrier offset the idle carry render uses.
+  // Every place that needs "where the ball is right now while carried" —
+  // idle rendering, pass flight origin, shot flight origin — must go through
+  // this so they can never disagree (see BALL_CARRIER_OFFSET pop audit).
+  const getVisibleCarriedBallWorldPosition = (playerId: string): { x: number; y: number } | null => {
+    const worldPos = tokenLayer.getTokenWorldPosition(playerId);
+    return worldPos ? applyCarrierOffset(worldPos) : null;
+  };
 
   // Start pass flight animation. Safe to call only when ballState.carrierId === fromPlayerId.
   const startPassAnimation = (fromPlayerId: string, toPlayerId: string) => {
@@ -364,8 +377,10 @@ export async function createMovementCanvasShell(
       const dist = Math.sqrt(dx * dx + dy * dy);
       durationMs = Math.max(PASS_MIN_DURATION_MS, Math.min(PASS_MAX_DURATION_MS, dist / PASS_SPEED_PX_PER_MS));
     }
+    // Flight must start from the ball's currently visible (carrier-offset)
+    // position, not the carrier's raw centre — see getVisibleCarriedBallWorldPosition.
     activeBallPass = {
-      fromWorld: fromWorldPos ?? { x: WORLD_SIZE.width / 2, y: WORLD_SIZE.height / 2 },
+      fromWorld: getVisibleCarriedBallWorldPosition(fromPlayerId) ?? { x: WORLD_SIZE.width / 2, y: WORLD_SIZE.height / 2 },
       toPlayerId,
       elapsedMs: 0,
       durationMs,
@@ -403,13 +418,13 @@ export async function createMovementCanvasShell(
     let worldY: number;
 
     if (ballState.carrierId) {
-      const worldPos = tokenLayer.getTokenWorldPosition(ballState.carrierId);
-      if (!worldPos) {
+      const carriedPos = getVisibleCarriedBallWorldPosition(ballState.carrierId);
+      if (!carriedPos) {
         ballLayer.setVisible(false);
         return;
       }
-      worldX = worldPos.x + BALL_CARRIER_OFFSET_X;
-      worldY = worldPos.y + BALL_CARRIER_OFFSET_Y;
+      worldX = carriedPos.x;
+      worldY = carriedPos.y;
     } else {
       const worldPos = mapper.normalizedToWorld(ballState.position!);
       worldX = worldPos.x;
