@@ -86,6 +86,25 @@ function fmtClock(s: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
+/**
+ * Applies the HALF_TIME -> SECOND_HALF clock reset: both the ref (read
+ * synchronously by every tap during capture) and the display state must
+ * land on 0 before startClockInterval() resumes ticking — otherwise the
+ * interval carries over whatever elapsed value 1H was paused at, and every
+ * captured 2H event is timestamped with continuing match time instead of
+ * elapsed second-half time. Mirrors match-state-store.ts's
+ * startSecondHalf(), which already resets matchTimeSeconds to 0 for Match
+ * Stats. Pure and framework-free so this transition is unit-testable
+ * without rendering the capture screen.
+ */
+export function resetClockForSecondHalf(
+  clockSecondsRef: { current: number },
+  setClockSeconds: (seconds: number) => void,
+): void {
+  clockSecondsRef.current = 0;
+  setClockSeconds(0);
+}
+
 // Initialise live squad from session — always starts with starters 1–15 active.
 function initSquad(players: ProTaggerSquadPlayer[]): ProTaggerSquadPlayer[] {
   return players.map((p, i) => ({
@@ -349,6 +368,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   }, []);
 
   const handleStartSecondHalf = useCallback(() => {
+    resetClockForSecondHalf(clockSecondsRef, setClockSeconds);
     startClockInterval();
     halfRef.current = 2;
     setHalf(2);

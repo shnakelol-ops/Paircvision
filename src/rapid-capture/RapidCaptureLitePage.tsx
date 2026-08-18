@@ -107,6 +107,25 @@ function fmtClock(totalSeconds: number): string {
   return `${m}:${s}`;
 }
 
+/**
+ * Applies the HALF_TIME -> SECOND_HALF clock reset: both the ref (read
+ * synchronously by every pitch tap during capture) and the display state
+ * must land on 0 before the coach can resume the clock (toggleClock) or log
+ * a second-half event — otherwise the clock continues from whatever
+ * elapsed value 1H was paused at, and every captured 2H event is
+ * timestamped with continuing match time instead of elapsed second-half
+ * time. Mirrors match-state-store.ts's startSecondHalf(), which already
+ * resets matchTimeSeconds to 0 for Match Stats. Pure and framework-free so
+ * this transition is unit-testable without rendering the capture screen.
+ */
+export function resetClockForSecondHalf(
+  clockSecondsRef: { current: number },
+  setClockSeconds: (seconds: number) => void,
+): void {
+  clockSecondsRef.current = 0;
+  setClockSeconds(0);
+}
+
 // ── Setup Screen ─────────────────────────────────────────────────────────────
 
 function RapidSetupScreen({
@@ -648,6 +667,7 @@ function RapidLiveScreen({
   const handleStartSecondHalf = useCallback(() => {
     const next = startSecondHalf(matchStateRef.current);
     if (next === matchStateRef.current) return;
+    resetClockForSecondHalf(clockSecondsRef, setClockSeconds);
     matchStateRef.current = next;
     setMatchState(next);
     setShowPausedActions(false);
