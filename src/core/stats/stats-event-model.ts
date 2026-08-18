@@ -17,6 +17,21 @@ export const MATCH_EVENT_KINDS = [
   "KICKOUT_CONCEDED",
   "POSSESSION_WON",
   "POSSESSION_LOST",
+  // Restart-won/conceded facts — sport-neutral kind covering football's 45
+  // and hurling/camogie's 65 (same dead-ball restart, different distance/
+  // name). Distinct from the SHOT-origin "45" tag on GOAL/POINT/SHOT/WIDE
+  // events (eventSource() === "45"), which records where a shot came from,
+  // not that the restart itself was earned. See eventSource.ts.
+  "FORTY_FIVE_WON",
+  "FORTY_FIVE_CONCEDED",
+  "SIDELINE_WON",
+  "SIDELINE_CONCEDED",
+  // Discipline — raw sanction facts only (team, player, time, sanction
+  // type). No derived analysis (e.g. numerical-advantage windows) is
+  // computed from these yet.
+  "YELLOW_CARD",
+  "SIN_BIN",
+  "RED_CARD",
 ] as const;
 
 export type MatchEventKind = (typeof MATCH_EVENT_KINDS)[number];

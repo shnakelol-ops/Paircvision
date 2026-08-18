@@ -398,6 +398,17 @@ const EVENT_COLORS: Record<MatchEventKind, string> = {
   // Rapid Capture-only kinds — no PDF/report page emits these today.
   POSSESSION_WON:       "#a78bfa",  // Purple (parallels Turnover Won)
   POSSESSION_LOST:      "#f97316",  // Orange (parallels Turnover Lost)
+  // Event Stats (ProTagger)-only kinds — no PDF/report page emits these
+  // today (see PDF_KIND_SETS). Restart facts reuse the canonical Restart
+  // Won/Lost colours (CLAUDE.md Visual Language); discipline uses the
+  // real-world card colours as a neutral default.
+  FORTY_FIVE_WON:       "#22d3ee",  // Cyan (canonical Restart Won)
+  FORTY_FIVE_CONCEDED:  "#fb7185",  // Pink (canonical Restart Lost)
+  SIDELINE_WON:         "#22d3ee",  // Cyan (canonical Restart Won)
+  SIDELINE_CONCEDED:    "#fb7185",  // Pink (canonical Restart Lost)
+  YELLOW_CARD:          "#facc15",  // Yellow
+  SIN_BIN:              "#f59e0b",  // Amber (distinct from Yellow/Red)
+  RED_CARD:             "#ef4444",  // Red
 };
 
 

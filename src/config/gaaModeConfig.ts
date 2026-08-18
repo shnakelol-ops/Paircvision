@@ -73,6 +73,15 @@ function buildEventLabels({
     // Rapid Capture-only kinds — not surfaced by any Match Stats event button.
     POSSESSION_WON: "POSS+",
     POSSESSION_LOST: "POSS−",
+    // Event Stats (ProTagger)-only kinds — not surfaced by any Match Stats
+    // event button. Present only to satisfy this exhaustive label map.
+    FORTY_FIVE_WON: "45+",
+    FORTY_FIVE_CONCEDED: "45−",
+    SIDELINE_WON: "SL+",
+    SIDELINE_CONCEDED: "SL−",
+    YELLOW_CARD: "YC",
+    SIN_BIN: "SB",
+    RED_CARD: "RC",
   };
 }
 

@@ -8,7 +8,9 @@ export type ProTaggerFamilyId =
   | "WIDE"
   | "RESTART"
   | "TURNOVER"
-  | "FREE";
+  | "FREE"
+  | "FORTY_FIVE"
+  | "SIDELINE";
 
 export type ProTaggerTile = {
   label: string;
@@ -151,6 +153,35 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
       { label: "Conceded" },
     ],
     hasMinus: false,
+  },
+
+  // Restart-won/conceded facts (dead-ball restart, not a shot origin — see
+  // FORTY_FIVE_WON/CONCEDED in stats-event-model.ts). Both team rows are
+  // exposed (unlike FREE above) so "Home won" and "Away won" are each a
+  // direct tap, matching FREE_WON/FREE_CONCEDED's team-side convention.
+  {
+    id: "FORTY_FIVE",
+    label: "45",
+    altLabel: "65",
+    altLabelForSports: ["hurling", "camogie"],
+    colour: "#0891b2",
+    textColour: "#ffffff",
+    tiles: [
+      { label: "Won" },
+      { label: "Conceded" },
+    ],
+    hasMinus: true,
+  },
+  {
+    id: "SIDELINE",
+    label: "Sideline",
+    colour: "#4338ca",
+    textColour: "#ffffff",
+    tiles: [
+      { label: "Won" },
+      { label: "Conceded" },
+    ],
+    hasMinus: true,
   },
 ];
 
