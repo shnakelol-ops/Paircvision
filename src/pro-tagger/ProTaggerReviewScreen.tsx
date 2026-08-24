@@ -74,10 +74,17 @@ function getProPitchSport(
 }
 
 function getProEventTypeLabel(kind: MatchEventKind): string {
-  if (kind === "KICKOUT_CONCEDED") return "KICKOUT LOST";
-  if (kind === "KICKOUT_WON")      return "KICKOUT WON";
-  if (kind === "TURNOVER_LOST")    return "TURNOVER LOST";
-  if (kind === "TURNOVER_WON")     return "TURNOVER WON";
+  if (kind === "KICKOUT_CONCEDED")    return "KICKOUT LOST";
+  if (kind === "KICKOUT_WON")         return "KICKOUT WON";
+  if (kind === "TURNOVER_LOST")       return "TURNOVER LOST";
+  if (kind === "TURNOVER_WON")        return "TURNOVER WON";
+  if (kind === "FORTY_FIVE_WON")      return "45/65 WON";
+  if (kind === "FORTY_FIVE_CONCEDED") return "45/65 LOST";
+  if (kind === "SIDELINE_WON")        return "SIDELINE WON";
+  if (kind === "SIDELINE_CONCEDED")   return "SIDELINE LOST";
+  if (kind === "YELLOW_CARD")         return "YELLOW CARD";
+  if (kind === "SIN_BIN")             return "SIN BIN";
+  if (kind === "RED_CARD")            return "RED CARD";
   return kind;
 }
 

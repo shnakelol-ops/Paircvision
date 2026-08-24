@@ -20,29 +20,56 @@ interface Props {
 
 export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileTap }: Props) {
   const families = getFamiliesForSport(sport);
-  const [restartOwner, setRestartOwner] = useState<"FOR" | "OPP">("FOR");
+  // One owner value per hasOwnerToggle family (Kickout, 45/65, Sideline can
+  // each have a different answer to "whose restart is this" in flight at
+  // once) — keyed by family id, defaulting to "FOR" until first touched.
+  const [restartOwnerByFamily, setRestartOwnerByFamily] = useState<Record<string, "FOR" | "OPP">>({});
+  // Secondary (collapsed-by-default) families, e.g. Discipline, expand
+  // in place on tap rather than always occupying primary-grid space.
+  const [expandedSecondary, setExpandedSecondary] = useState<Set<string>>(new Set());
 
   // Short team names for the opposition-row label and the Turnover
   // opponent-error attribution. Falls back to "Home"/"Away" for a blank name.
   const homeShortLabel = getShortTeamName(homeTeamName, "Home");
   const awayShortLabel = getShortTeamName(awayTeamName, "Away");
 
+  function toggleSecondaryExpanded(familyId: string) {
+    setExpandedSecondary((prev) => {
+      const next = new Set(prev);
+      if (next.has(familyId)) next.delete(familyId);
+      else next.add(familyId);
+      return next;
+    });
+  }
+
   return (
     <div style={S.scroll}>
       {families.map((family) => {
         const familyLabel = getFamilyLabel(family, sport);
-        const isRestart = family.id === "RESTART";
+        const hasOwnerToggle = family.hasOwnerToggle === true;
         const isTurnover = family.id === "TURNOVER";
+        const restartOwner = restartOwnerByFamily[family.id] ?? "FOR";
+        const setRestartOwner = (owner: "FOR" | "OPP") =>
+          setRestartOwnerByFamily((prev) => ({ ...prev, [family.id]: owner }));
+
+        const isSecondary = family.secondary === true;
+        const isExpanded = !isSecondary || expandedSecondary.has(family.id);
 
         return (
-          <div key={family.id} style={S.card}>
+          <div key={family.id} style={isSecondary ? S.secondaryCard : S.card}>
             {/* Family header */}
-            <div style={S.cardHeader}>
+            <div
+              style={{ ...S.cardHeader, ...(isSecondary ? S.secondaryCardHeader : {}) }}
+              onClick={isSecondary ? () => toggleSecondaryExpanded(family.id) : undefined}
+            >
               <span style={{ ...S.dot, background: family.colour }} />
               <span style={S.familyLabel}>{familyLabel}</span>
+              {isSecondary && (
+                <span style={S.secondaryChevron}>{isExpanded ? "▾" : "▸"}</span>
+              )}
 
-              {/* Restart ownership toggle — RESTART family only */}
-              {isRestart && (
+              {/* Restart ownership toggle — any hasOwnerToggle family */}
+              {hasOwnerToggle && isExpanded && (
                 <div style={S.ownerToggle}>
                   <button
                     style={{ ...S.ownerBtn, ...(restartOwner === "FOR" ? S.ownerBtnActive : {}) }}
@@ -60,54 +87,58 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
               )}
             </div>
 
-            {/* FOR tile row — unchanged; the filled family colour already
-                reads as "this team" without needing a label. */}
-            <div style={S.tileRow}>
-              {family.tiles.map((tile) => {
-                const label = getTileLabel(tile, sport);
-                return (
-                  <button
-                    key={label}
-                    style={{ ...S.tile, background: family.colour, color: family.textColour }}
-                    onClick={() => onTileTap(family.id, label, "FOR", isRestart ? restartOwner : undefined)}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* OPP minus row — a compact team-name label sits on its own thin
-                line directly above the row (not inline with the tiles, so it
-                never competes with them for width and can't force a wrap). It
-                is grouped with its row in one flex child so it doesn't cost an
-                extra card-level gap. */}
-            {family.hasMinus && (
-              <div style={S.oppGroup}>
-                <span style={S.oppTeamLabel} title={awayShortLabel}>{awayShortLabel}</span>
+            {isExpanded && (
+              <>
+                {/* FOR tile row — unchanged; the filled family colour already
+                    reads as "this team" without needing a label. */}
                 <div style={S.tileRow}>
                   {family.tiles.map((tile) => {
                     const label = getTileLabel(tile, sport);
-                    // Display-only: name the team whose mistake this was on the
-                    // opposition row. The tap always sends the original `label` —
-                    // the stored tile value/tag is never affected.
-                    const displayLabel =
-                      isTurnover && tileNeedsOppositionAttribution(family.id, label, sport)
-                        ? `${homeShortLabel} ${label}`
-                        : label;
                     return (
                       <button
                         key={label}
-                        style={S.minusTile}
-                        onClick={() => onTileTap(family.id, label, "OPP", isRestart ? restartOwner : undefined)}
-                        aria-label={`Opposition ${familyLabel} ${label}`}
+                        style={{ ...S.tile, background: family.colour, color: family.textColour }}
+                        onClick={() => onTileTap(family.id, label, "FOR", hasOwnerToggle ? restartOwner : undefined)}
                       >
-                        {displayLabel}
+                        {label}
                       </button>
                     );
                   })}
                 </div>
-              </div>
+
+                {/* OPP minus row — a compact team-name label sits on its own thin
+                    line directly above the row (not inline with the tiles, so it
+                    never competes with them for width and can't force a wrap). It
+                    is grouped with its row in one flex child so it doesn't cost an
+                    extra card-level gap. */}
+                {family.hasMinus && (
+                  <div style={S.oppGroup}>
+                    <span style={S.oppTeamLabel} title={awayShortLabel}>{awayShortLabel}</span>
+                    <div style={S.tileRow}>
+                      {family.tiles.map((tile) => {
+                        const label = getTileLabel(tile, sport);
+                        // Display-only: name the team whose mistake this was on the
+                        // opposition row. The tap always sends the original `label` —
+                        // the stored tile value/tag is never affected.
+                        const displayLabel =
+                          isTurnover && tileNeedsOppositionAttribution(family.id, label, sport)
+                            ? `${homeShortLabel} ${label}`
+                            : label;
+                        return (
+                          <button
+                            key={label}
+                            style={S.minusTile}
+                            onClick={() => onTileTap(family.id, label, "OPP", hasOwnerToggle ? restartOwner : undefined)}
+                            aria-label={`Opposition ${familyLabel} ${label}`}
+                          >
+                            {displayLabel}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         );
@@ -135,11 +166,32 @@ const S: Record<string, CSSProperties> = {
     flexDirection: "column",
     gap: 5,
   },
+  // Rare, low-frequency families (Discipline) — visually quieter than the
+  // core cards so they never compete with scoring/turnover/restart tiles.
+  secondaryCard: {
+    background: "#161b22",
+    border: "1px dashed #30363d",
+    borderRadius: 8,
+    padding: "4px 8px 5px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 5,
+    opacity: 0.82,
+  },
   cardHeader: {
     display: "flex",
     alignItems: "center",
     gap: 6,
     marginBottom: 0,
+  },
+  secondaryCardHeader: {
+    cursor: "pointer",
+    WebkitTapHighlightColor: "transparent",
+  },
+  secondaryChevron: {
+    fontSize: 10,
+    color: "#6e7681",
+    marginLeft: "auto",
   },
   dot: {
     width: 8,

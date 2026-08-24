@@ -191,7 +191,14 @@ describe("pro-tagger-families — restart terminology and attribution lookup", (
 });
 
 describe("regression — display label changes never alter the stored event payload", () => {
-  it("an OPP-row turnover tap still stores the plain tile tag and teamSide, unaffected by the display prefix", () => {
+  // Updated for the TURNOVER_LOST fix: an OPP-row turnover tap now correctly
+  // records that the opposition won the ball (i.e. FOR lost it), stored as
+  // TURNOVER_LOST with teamSide "FOR" — see resolveKindAndSide's TURNOVER
+  // case in pro-tagger-adapter.ts. Previously this was always stored as
+  // TURNOVER_WON/teamSide "OPP", which left TURNOVER_LOST-dependent chain and
+  // report logic permanently starved of data. The tile tag itself is
+  // unaffected either way, which is what this test guards.
+  it("an OPP-row turnover tap stores TURNOVER_LOST with teamSide FOR and the plain tile tag, unaffected by the display prefix", () => {
     // This is exactly the label the FamilyGrid taps with — the raw tile label,
     // never the "Ballylanders HP Error" display string.
     const event = adaptProTaggerAction({
@@ -203,12 +210,19 @@ describe("regression — display label changes never alter the stored event payl
       half: 1,
       matchClockSeconds: 120,
     });
-    expect(event.kind).toBe("TURNOVER_WON");
-    expect(event.teamSide).toBe("OPP");
+    expect(event.kind).toBe("TURNOVER_LOST");
+    expect(event.teamSide).toBe("FOR");
     expect(event.tags).toEqual(["HP ERROR"]);
   });
 
-  it("a FOR-row restart tap still stores KICKOUT_WON with teamSide FOR and the chosen restartOwner", () => {
+  // Updated for the KICKOUT_CONCEDED fix: tapping the FOR row while the
+  // restart owner is toggled to OPP means the opposition's own restart was
+  // won back by FOR — i.e. OPP conceded it. Stored as KICKOUT_CONCEDED with
+  // teamSide "OPP" (the side that conceded), not KICKOUT_WON/"FOR" — see
+  // resolveRestartOutcome in pro-tagger-adapter.ts. Previously every restart
+  // tap was stored as KICKOUT_WON regardless of owner, which is exactly the
+  // defect that left KICKOUT_LOST_TO_SCORE_AGAINST unable to fire.
+  it("a FOR-row restart tap against an OPP-owned restart stores KICKOUT_CONCEDED with teamSide OPP, preserving restartOwner and the tile tag", () => {
     const event = adaptProTaggerAction({
       familyId: "RESTART",
       tileLabel: "Break",
@@ -219,9 +233,26 @@ describe("regression — display label changes never alter the stored event payl
       half: 1,
       matchClockSeconds: 300,
     });
-    expect(event.kind).toBe("KICKOUT_WON");
-    expect(event.teamSide).toBe("FOR");
+    expect(event.kind).toBe("KICKOUT_CONCEDED");
+    expect(event.teamSide).toBe("OPP");
     expect(event.restartOwner).toBe("OPP");
     expect(event.tags).toEqual(["BREAK"]);
+  });
+
+  it("a FOR-row restart tap against a FOR-owned restart still stores KICKOUT_WON with teamSide FOR (unchanged behaviour)", () => {
+    const event = adaptProTaggerAction({
+      familyId: "RESTART",
+      tileLabel: "Clean",
+      teamSide: "FOR",
+      restartOwner: "FOR",
+      nx: 0.5,
+      ny: 0.5,
+      half: 1,
+      matchClockSeconds: 60,
+    });
+    expect(event.kind).toBe("KICKOUT_WON");
+    expect(event.teamSide).toBe("FOR");
+    expect(event.restartOwner).toBe("FOR");
+    expect(event.tags).toEqual(["CLEAN"]);
   });
 });
