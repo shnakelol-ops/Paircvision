@@ -1,10 +1,16 @@
 import type { LoggedMatchEvent } from "../core/stats/saved-match";
-import type { MatchEventKind } from "../core/stats/stats-event-model";
+import { SCORE_KINDS, scoreValue } from "../stats/ledger/scoreLedger";
 
 // Shared by ProTaggerLiveScreen and ProTaggerReviewScreen so the live scoreline,
 // the review scoreline, and the persisted scorelineSnapshot never disagree.
-
-const TWO_POINT_KINDS: readonly MatchEventKind[] = ["TWO_POINTER", "FORTY_FIVE_TWO_POINT"];
+//
+// Score-kind membership and point values are read from scoreLedger.ts's
+// SCORE_KINDS/scoreValue — the same canonical definition the report layer
+// (teamStatsViews, chain-engine, possession-outcomes-engine) uses. This is
+// the only allowlist; a kind can't count here without also counting in the
+// canonical report score, so the live header and a report-derived score can
+// never disagree (e.g. after a FREE_SCORED reclassification in the review
+// screen — previously uncounted here despite being a real score).
 
 export type SideScore = { goals: number; points: number; total: number };
 
@@ -12,12 +18,14 @@ export function computeScoreSide(
   events: readonly LoggedMatchEvent[],
   side: "FOR" | "OPP",
 ): SideScore {
-  const scored      = events.filter((e) => e.teamSide === side);
-  const goals       = scored.filter((e) => e.kind === "GOAL").length;
-  const onePointers = scored.filter((e) => e.kind === "POINT").length;
-  const twoPointers = scored.filter((e) => TWO_POINT_KINDS.includes(e.kind)).length;
-  const pts = onePointers + twoPointers * 2;
-  return { goals, points: pts, total: goals * 3 + pts };
+  let goals = 0;
+  let points = 0;
+  for (const e of events) {
+    if (e.teamSide !== side || !SCORE_KINDS.has(e.kind)) continue;
+    if (e.kind === "GOAL") goals++;
+    else points += scoreValue(e.kind);
+  }
+  return { goals, points, total: goals * 3 + points };
 }
 
 export function fmtGP(goals: number, points: number): string {
