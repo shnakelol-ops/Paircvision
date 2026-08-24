@@ -963,18 +963,6 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           >
             ↩
           </button>
-          <button
-            style={S.ctsBtn}
-            onClick={() => setCtsOpen(true)}
-          >
-            CTS
-          </button>
-          <button
-            style={S.actionsBtn}
-            onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
-          >
-            Actions
-          </button>
         </div>
       </div>
 
@@ -1006,7 +994,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
             style={S.htActionsBtn}
             onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
           >
-            Actions
+            ⋯ Options
           </button>
           {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
         </div>
@@ -1341,13 +1329,31 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         </div>
       )}
 
-      {/* ── Actions sheet ─────────────────────────────────────────── */}
+      {/* ── Persistent Options trigger (floating) ───────────────────────────
+          Always available during live capture — mirrors the old header
+          button's unconditional availability (PRE/1H/HT/2H/FT/reload-pending
+          all reach it) — with one exception: hidden during PITCH_TAP, where
+          the pitch is a full-surface coordinate input and no persistent
+          control may sit on top of any part of it. Reappears the instant
+          phase leaves PITCH_TAP (event saved or flow cancelled), since
+          visibility is derived directly from `phase` on every render. */}
+      {phase !== "PITCH_TAP" && (
+        <button
+          style={S.optionsFab}
+          onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
+          aria-label="Options"
+        >
+          ⋯ Options
+        </button>
+      )}
+
+      {/* ── Options sheet ─────────────────────────────────────────── */}
       {actionsOpen && (
         <div style={AS.overlay} onClick={() => setActionsOpen(false)}>
           <div style={AS.sheet} onClick={(e) => e.stopPropagation()}>
 
             <div style={AS.header}>
-              <span style={AS.title}>Actions</span>
+              <span style={AS.title}>Options</span>
               <button style={AS.closeBtn} onClick={() => setActionsOpen(false)}>✕</button>
             </div>
 
@@ -1440,6 +1446,13 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 }}
               >
                 Discipline
+              </button>
+
+              <button
+                style={AS.actionBtn}
+                onClick={() => { setActionsOpen(false); setCtsOpen(true); }}
+              >
+                Counts Sheet (CTS)
               </button>
 
               <button
@@ -1812,30 +1825,28 @@ const S: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
   btnDisabled: { opacity: 0.35, cursor: "default" },
-  ctsBtn: {
-    background: "#21262d",
-    border: "1px solid #30363d",
-    borderRadius: 6,
-    color: "#8b949e",
-    fontSize: 11,
-    fontWeight: 700,
-    padding: "5px 9px",
-    cursor: "pointer",
-    outline: "none",
-    flexShrink: 0,
-    WebkitTapHighlightColor: "transparent",
-  },
-  actionsBtn: {
+
+  // Persistent floating Options trigger — anchored bottom-right, clear of the
+  // IDLE-phase footer strip (Voice Notes / event count) below it and of the
+  // scrollable family grid's last card (see ProTaggerFamilyGrid's bottom
+  // padding). z-index sits below every sheet overlay (100/200) so opening
+  // Options, CTS, Discipline, Subs, etc. naturally covers it.
+  optionsFab: {
+    position: "fixed",
+    right: "calc(14px + env(safe-area-inset-right, 0px))",
+    bottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
+    zIndex: 50,
     background: "#21262d",
     border: "1px solid #388bfd",
-    borderRadius: 6,
+    borderRadius: 999,
     color: "#79c0ff",
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 700,
-    padding: "5px 9px",
+    padding: "10px 16px",
+    minHeight: 44,
     cursor: "pointer",
     outline: "none",
-    flexShrink: 0,
+    boxShadow: "0 4px 14px rgba(0,0,0,0.45)",
     WebkitTapHighlightColor: "transparent",
   },
 
@@ -2199,7 +2210,7 @@ const CS: Record<string, CSSProperties> = {
   },
 };
 
-// ── Actions sheet styles ──────────────────────────────────────────────────────
+// ── Options sheet styles (style object name kept as AS internally) ────────────
 
 const AS: Record<string, CSSProperties> = {
   overlay: {
