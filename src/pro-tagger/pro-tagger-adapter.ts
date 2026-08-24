@@ -7,8 +7,8 @@ import type { ProTaggerFamilyId } from "./pro-tagger-families";
 export type ProTaggerAction = {
   familyId:          ProTaggerFamilyId;
   tileLabel:         string;           // resolved display label (e.g. "65" for hurling wide)
-  teamSide:          "FOR" | "OPP";   // ignored for FREE family (derived from tile)
-  /** Who took this restart. Only set for RESTART family tiles. */
+  teamSide:          "FOR" | "OPP";   // ignored for FREE (derived from tile) and re-derived for RESTART/FORTY_FIVE/SIDELINE/TURNOVER — see resolveKindAndSide
+  /** Who took this restart. Set for RESTART, FORTY_FIVE, and SIDELINE tiles — every family with hasOwnerToggle. */
   restartOwner?:     "FOR" | "OPP";
   nx:                number;
   ny:                number;
@@ -22,7 +22,38 @@ export type ProTaggerAction = {
 
 type Resolved = { kind: MatchEventKind; teamSide: "FOR" | "OPP"; tag: string };
 
-function resolveKindAndSide(familyId: ProTaggerFamilyId, rawLabel: string, teamSide: "FOR" | "OPP"): Resolved {
+/**
+ * Shared Won/Conceded derivation for every restart family (Kickout/Puckout,
+ * 45/65, Sideline). `restartOwner` names the side whose restart this is;
+ * `teamSide` names the row actually tapped. When they agree, the owner kept
+ * their own restart (WON, teamSide = the owner). When they disagree, the
+ * owner lost it to the other side (CONCEDED, teamSide = the owner — the side
+ * that conceded, not the side that benefited) — this is what lets
+ * chain-engine's existing WON/CONCEDED ternary and possession-outcomes-engine
+ * resolve the correct winner without any change on their side. `restartOwner`
+ * is only ever absent for a family that hasn't wired up the owner toggle; in
+ * that case the tapped row is treated as the owner (equivalent to today's
+ * always-WON behaviour).
+ */
+function resolveRestartOutcome(
+  teamSide: "FOR" | "OPP",
+  restartOwner: "FOR" | "OPP" | undefined,
+  wonKind: MatchEventKind,
+  concededKind: MatchEventKind,
+): { kind: MatchEventKind; teamSide: "FOR" | "OPP" } {
+  const owner = restartOwner ?? teamSide;
+  if (owner === teamSide) {
+    return { kind: wonKind, teamSide };
+  }
+  return { kind: concededKind, teamSide: owner };
+}
+
+function resolveKindAndSide(
+  familyId: ProTaggerFamilyId,
+  rawLabel: string,
+  teamSide: "FOR" | "OPP",
+  restartOwner?: "FOR" | "OPP",
+): Resolved {
   const tag = rawLabel.trim().toUpperCase();
 
   switch (familyId) {
@@ -45,19 +76,32 @@ function resolveKindAndSide(familyId: ProTaggerFamilyId, rawLabel: string, teamS
     case "WIDE":
       return { kind: "WIDE", teamSide, tag };
 
-    case "RESTART":
-      return {
-        kind: "KICKOUT_WON",
-        teamSide,
-        tag,
-      };
+    case "RESTART": {
+      const resolved = resolveRestartOutcome(teamSide, restartOwner, "KICKOUT_WON", "KICKOUT_CONCEDED");
+      return { ...resolved, tag };
+    }
 
+    case "FORTY_FIVE": {
+      const resolved = resolveRestartOutcome(teamSide, restartOwner, "FORTY_FIVE_WON", "FORTY_FIVE_CONCEDED");
+      return { ...resolved, tag };
+    }
+
+    case "SIDELINE": {
+      const resolved = resolveRestartOutcome(teamSide, restartOwner, "SIDELINE_WON", "SIDELINE_CONCEDED");
+      return { ...resolved, tag };
+    }
+
+    // A turnover has no independent "owner" fact the way a restart does — the
+    // tapped row alone already fully determines both sides of the event.
+    // FOR row: unchanged, we won it. OPP row: the opposition won it, i.e. we
+    // lost it — recorded as TURNOVER_LOST with teamSide "FOR" (the side that
+    // conceded), matching the same teamSide convention KICKOUT_CONCEDED uses,
+    // so chain-engine's existing ternary and possession-outcomes-engine
+    // resolve the correct winner with no change on their side.
     case "TURNOVER":
-      return {
-        kind: "TURNOVER_WON",
-        teamSide,
-        tag,
-      };
+      return teamSide === "FOR"
+        ? { kind: "TURNOVER_WON", teamSide: "FOR", tag }
+        : { kind: "TURNOVER_LOST", teamSide: "FOR", tag };
 
     case "FREE": {
       const FREE_MAP: Record<string, Resolved> = {
@@ -66,11 +110,25 @@ function resolveKindAndSide(familyId: ProTaggerFamilyId, rawLabel: string, teamS
       };
       return FREE_MAP[tag] ?? { kind: "FREE_WON", teamSide: "FOR", tag };
     }
+
+    case "DISCIPLINE": {
+      const DISCIPLINE_MAP: Record<string, MatchEventKind> = {
+        YELLOW: "YELLOW_CARD",
+        "SIN BIN": "SIN_BIN",
+        RED: "RED_CARD",
+      };
+      return { kind: DISCIPLINE_MAP[tag] ?? "YELLOW_CARD", teamSide, tag };
+    }
   }
 }
 
 export function adaptProTaggerAction(action: ProTaggerAction): LoggedMatchEvent {
-  const { kind, teamSide, tag } = resolveKindAndSide(action.familyId, action.tileLabel, action.teamSide);
+  const { kind, teamSide, tag } = resolveKindAndSide(
+    action.familyId,
+    action.tileLabel,
+    action.teamSide,
+    action.restartOwner,
+  );
   const period = periodFromHalf(action.half);
   const segment = deriveSegmentFromPeriodClock(period, action.matchClockSeconds);
   const createdAt = Date.now();

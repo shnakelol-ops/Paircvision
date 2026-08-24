@@ -7,8 +7,11 @@ export type ProTaggerFamilyId =
   | "SHOT"
   | "WIDE"
   | "RESTART"
+  | "FORTY_FIVE"
+  | "SIDELINE"
   | "TURNOVER"
-  | "FREE";
+  | "FREE"
+  | "DISCIPLINE";
 
 export type ProTaggerTile = {
   label: string;
@@ -34,6 +37,15 @@ export type ProTaggerFamily = {
   tiles: readonly ProTaggerTile[];
   hideForSports?: readonly ProTaggerSport[];
   hasMinus: boolean;
+  /** Renders the same restart-owner FOR/OPP toggle as RESTART, and shares its
+   *  Won/Conceded derivation (see resolveRestartOutcome in pro-tagger-adapter.ts):
+   *  tapping a row records the restart as WON when that row matches the
+   *  current owner, CONCEDED (attributed to the owner) otherwise. */
+  hasOwnerToggle?: boolean;
+  /** Rendered collapsed by default, behind a tap-to-expand header, so a rare
+   *  action (e.g. Discipline) never competes with the core tiles for visual
+   *  weight or thumb space. */
+  secondary?: boolean;
 };
 
 const FORTY_FIVE_TILE: ProTaggerTile = {
@@ -127,6 +139,36 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
       { label: "Foul" },
     ],
     hasMinus: true,
+    hasOwnerToggle: true,
+  },
+  {
+    // Restart award only — deliberately distinct from the existing "45"/"65"
+    // tag on Goal/Point/Shot/Wide, which records the *outcome* of a shot
+    // taken from a 45/65, not the restart being earned. Minimal granularity
+    // by design: a single "Won" tile, Won/Conceded derived the same way as
+    // Kickout via the shared owner toggle (see resolveRestartOutcome).
+    id: "FORTY_FIVE",
+    label: "45",
+    altLabel: "65",
+    altLabelForSports: ["hurling", "camogie"],
+    colour: "#0891b2",
+    textColour: "#ffffff",
+    tiles: [
+      { label: "Won" },
+    ],
+    hasMinus: true,
+    hasOwnerToggle: true,
+  },
+  {
+    id: "SIDELINE",
+    label: "Sideline",
+    colour: "#0e7490",
+    textColour: "#ffffff",
+    tiles: [
+      { label: "Won" },
+    ],
+    hasMinus: true,
+    hasOwnerToggle: true,
   },
   {
     id: "TURNOVER",
@@ -135,6 +177,7 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
     textColour: "#ffffff",
     tiles: [
       { label: "Tackle" },
+      { label: "Interception" },
       { label: "HP Error", attributeOtherTeamOnOppositionRow: true },
       { label: "KP Error", attributeOtherTeamOnOppositionRow: true },
       { label: "Overcarried", attributeOtherTeamOnOppositionRow: true },
@@ -151,6 +194,25 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
       { label: "Conceded" },
     ],
     hasMinus: false,
+  },
+  {
+    // Secondary/collapsed by default (see ProTaggerFamily.secondary) — a card
+    // is rare relative to scoring/turnover/restart taps and must not compete
+    // with them for thumb space. FOR/OPP records which team's player was
+    // sanctioned; Sin Bin is kept as its own distinct kind (not a Yellow
+    // alias) so a later pass can derive the resulting player-count window
+    // from it without re-tagging historical data.
+    id: "DISCIPLINE",
+    label: "Discipline",
+    colour: "#78716c",
+    textColour: "#ffffff",
+    tiles: [
+      { label: "Yellow" },
+      { label: "Sin Bin" },
+      { label: "Red" },
+    ],
+    hasMinus: true,
+    secondary: true,
   },
 ];
 

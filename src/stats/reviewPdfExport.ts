@@ -398,6 +398,16 @@ const EVENT_COLORS: Record<MatchEventKind, string> = {
   // Rapid Capture-only kinds — no PDF/report page emits these today.
   POSSESSION_WON:       "#a78bfa",  // Purple (parallels Turnover Won)
   POSSESSION_LOST:      "#f97316",  // Orange (parallels Turnover Lost)
+  // Event Stats (Pro Tagger)-only kinds, deliberately not wired into any
+  // PDF_KIND_SETS/page — present only so this exhaustive map compiles.
+  // Colours follow the same paired-hue convention as the kinds above.
+  FORTY_FIVE_WON:       "#22d3ee",  // Cyan (parallels Kickout Won)
+  FORTY_FIVE_CONCEDED:  "#fb7185",  // Pink (parallels Kickout Conceded)
+  SIDELINE_WON:         "#67e8f9",  // Light cyan
+  SIDELINE_CONCEDED:    "#fda4af",  // Light pink
+  YELLOW_CARD:          "#facc15",  // Yellow
+  SIN_BIN:              "#fb923c",  // Amber-orange
+  RED_CARD:             "#dc2626",  // Red
 };
 
 

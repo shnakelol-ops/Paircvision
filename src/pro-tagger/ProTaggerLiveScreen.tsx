@@ -116,7 +116,7 @@ function initSquad(players: ProTaggerSquadPlayer[]): ProTaggerSquadPlayer[] {
 
 // ── CTS counts ────────────────────────────────────────────────────────────────
 
-type ProTaggerCounts = {
+export type ProTaggerCounts = {
   goals: number;
   points: number;
   twoPointers: number;
@@ -126,20 +126,60 @@ type ProTaggerCounts = {
   kickoutWon: number;
   freeWon: number;
   freeConceded: number;
+  fortyFiveWon: number;
+  sidelineWon: number;
+  yellowCards: number;
+  sinBins: number;
+  redCards: number;
 };
 
-function computeProTaggerCounts(events: readonly LoggedMatchEvent[], side: "FOR" | "OPP"): ProTaggerCounts {
+/**
+ * Counts a side's *combined* wins for a Won/Conceded restart pair (kickout,
+ * 45/65, sideline). The WON kind's teamSide already names the winner, so it
+ * counts directly; the CONCEDED kind's teamSide names the side that lost its
+ * own restart (see resolveRestartOutcome in pro-tagger-adapter.ts), so a
+ * CONCEDED event attributed to the *other* side means this side actually won
+ * it. No Won/Lost split is introduced — this only keeps each side's single
+ * "won" total correct now that a restart can resolve to either kind.
+ */
+function countRestartWon(
+  sideEvents: readonly LoggedMatchEvent[],
+  allEvents: readonly LoggedMatchEvent[],
+  otherSide: "FOR" | "OPP",
+  wonKind: MatchEventKind,
+  concededKind: MatchEventKind,
+): number {
+  return (
+    sideEvents.filter((e) => e.kind === wonKind).length +
+    allEvents.filter((e) => e.kind === concededKind && e.teamSide === otherSide).length
+  );
+}
+
+export function computeProTaggerCounts(events: readonly LoggedMatchEvent[], side: "FOR" | "OPP"): ProTaggerCounts {
   const s = events.filter((e) => e.teamSide === side);
+  const otherSide: "FOR" | "OPP" = side === "FOR" ? "OPP" : "FOR";
   return {
     goals:        s.filter((e) => e.kind === "GOAL").length,
     points:       s.filter((e) => e.kind === "POINT").length,
     twoPointers:  s.filter((e) => (["TWO_POINTER", "FORTY_FIVE_TWO_POINT"] as MatchEventKind[]).includes(e.kind)).length,
     shots:        s.filter((e) => e.kind === "SHOT").length,
     wides:        s.filter((e) => e.kind === "WIDE").length,
-    turnoverWon:  s.filter((e) => e.kind === "TURNOVER_WON").length,
-    kickoutWon:   s.filter((e) => e.kind === "KICKOUT_WON").length,
+    // TURNOVER_LOST is only ever recorded with teamSide "FOR" (the side that
+    // lost the ball — see pro-tagger-adapter.ts); it represents the *other*
+    // side winning. Adding it here for the OPP side keeps each side's
+    // combined "turnovers won" total correct with no Won/Lost split, and is a
+    // no-op for legacy matches, which never contain TURNOVER_LOST at all.
+    turnoverWon:
+      s.filter((e) => e.kind === "TURNOVER_WON").length +
+      (side === "OPP" ? events.filter((e) => e.kind === "TURNOVER_LOST" && e.teamSide === "FOR").length : 0),
+    kickoutWon:   countRestartWon(s, events, otherSide, "KICKOUT_WON", "KICKOUT_CONCEDED"),
     freeWon:      s.filter((e) => e.kind === "FREE_WON").length,
     freeConceded: s.filter((e) => e.kind === "FREE_CONCEDED").length,
+    fortyFiveWon: countRestartWon(s, events, otherSide, "FORTY_FIVE_WON", "FORTY_FIVE_CONCEDED"),
+    sidelineWon:  countRestartWon(s, events, otherSide, "SIDELINE_WON", "SIDELINE_CONCEDED"),
+    yellowCards:  s.filter((e) => e.kind === "YELLOW_CARD").length,
+    sinBins:      s.filter((e) => e.kind === "SIN_BIN").length,
+    redCards:     s.filter((e) => e.kind === "RED_CARD").length,
   };
 }
 
@@ -843,6 +883,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const needsClockResume = isActivePlaying && !clockRunning;
   const isLiveTagging = isActivePlaying && clockRunning;
   const isHurlingOrCamogie = session.sport === "hurling" || session.sport === "camogie";
+  const restartTerm45 = isHurlingOrCamogie ? "65" : "45";
 
   // CTS counts — only computed when CTS sheet is open.
   const forCts = ctsOpen ? computeProTaggerCounts(loggedEvents, "FOR") : null;
@@ -1237,6 +1278,13 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 ["Kickout Lost",   oppCts.kickoutWon,   forCts.kickoutWon],
                 ["Free Won",       forCts.freeWon,      forCts.freeConceded],
                 ["Free Conceded",  forCts.freeConceded, forCts.freeWon],
+                [`${restartTerm45} Won`,  forCts.fortyFiveWon, oppCts.fortyFiveWon],
+                [`${restartTerm45} Lost`, oppCts.fortyFiveWon, forCts.fortyFiveWon],
+                ["Sideline Won",   forCts.sidelineWon,  oppCts.sidelineWon],
+                ["Sideline Lost",  oppCts.sidelineWon,  forCts.sidelineWon],
+                ["Yellow Cards",   forCts.yellowCards,  oppCts.yellowCards],
+                ["Sin Bins",       forCts.sinBins,      oppCts.sinBins],
+                ["Red Cards",      forCts.redCards,     oppCts.redCards],
               ] as [string, number, number][]).map(([label, fv, ov]) => (
                 <div key={label} style={CS.row}>
                   <span style={CS.val}>{fv}</span>
