@@ -16,6 +16,10 @@ interface Props {
   teamColour?: string;
   secondaryColour?: string;
   onSelect: (player: SelectedPlayer | null) => void;
+  /** Suppress the built-in "{teamLabel} — Player" header — for callers (e.g.
+   *  Discipline) that already show their own contextual title above this
+   *  component, so the coach never sees two stacked headings. */
+  hideHeader?: boolean;
 }
 
 // GAA formation: 1-based active slot numbers matching LiveScreen initialisation.
@@ -28,7 +32,7 @@ const FORMATION_ROWS: readonly (readonly number[])[] = [
   [13, 14, 15],   // #13 #14 #15 (RF FF LF)
 ];
 
-export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, onSelect }: Props) {
+export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, onSelect, hideHeader }: Props) {
   const colour = teamColour ?? "#238636";
 
   // Active players in formation slots (1–15).
@@ -52,10 +56,12 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
   return (
     <div style={S.shell}>
       {/* Header */}
-      <div style={{ ...S.header, borderLeft: `3px solid ${colour}` }}>
-        <ProTaggerMiniJersey primary={colour} secondary={secondaryColour ?? "#ffffff"} size={18} />
-        <span style={S.title}>{teamLabel} — Player</span>
-      </div>
+      {!hideHeader && (
+        <div style={{ ...S.header, borderLeft: `3px solid ${colour}` }}>
+          <ProTaggerMiniJersey primary={colour} secondary={secondaryColour ?? "#ffffff"} size={18} />
+          <span style={S.title}>{teamLabel} — Player</span>
+        </div>
+      )}
 
       {/* Scrollable formation + bench */}
       <div style={S.scroll}>
@@ -102,10 +108,10 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
         )}
       </div>
 
-      {/* NULL — no player */}
+      {/* Explicit no-player selection — still resolves to onSelect(null). */}
       <div style={S.nullRow}>
         <button style={S.nullBtn} onClick={() => onSelect(null)}>
-          NULL — No player
+          No player / Unknown
         </button>
       </div>
     </div>

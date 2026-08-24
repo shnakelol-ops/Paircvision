@@ -121,9 +121,7 @@ const S: Record<string, CSSProperties> = {
     flex: 1,
     minHeight: 0,
     overflowY: "auto",
-    // Extra bottom clearance so the last card (Free / 45-65 / Sideline) never
-    // sits directly under the persistent floating Options trigger at rest.
-    padding: "4px 10px 76px",
+    padding: "4px 10px 12px",
     display: "flex",
     flexDirection: "column",
     gap: 4,

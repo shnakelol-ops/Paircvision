@@ -87,6 +87,14 @@ function fmtClock(s: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
+// Display label matching GAA terminology: "Yellow Card" / "Red Card", but
+// plain "Sin Bin" (not a card).
+function disciplineCardLabel(cardKind: ProTaggerDisciplineCardKind): string {
+  if (cardKind === "YELLOW_CARD") return "Yellow Card";
+  if (cardKind === "RED_CARD") return "Red Card";
+  return "Sin Bin";
+}
+
 // Initialise live squad from session — always starts with starters 1–15 active.
 function initSquad(players: ProTaggerSquadPlayer[]): ProTaggerSquadPlayer[] {
   return players.map((p, i) => ({
@@ -991,7 +999,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
             </button>
           )}
           <button
-            style={S.htActionsBtn}
+            style={S.breakOptionsBtn}
             onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
           >
             ⋯ Options
@@ -1026,6 +1034,15 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               Event Map
             </button>
           )}
+          {/* FULL_TIME has no other route to Options (the footer strip that
+              normally carries it isn't rendered on break screens) — Save/
+              Share/PDF exports live there, so it must stay reachable. */}
+          <button
+            style={S.breakOptionsBtn}
+            onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
+          >
+            ⋯ Options
+          </button>
           {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
         </div>
       )}
@@ -1056,6 +1073,12 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               Event Map
             </button>
           )}
+          <button
+            style={S.breakOptionsBtn}
+            onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
+          >
+            ⋯ Options
+          </button>
         </div>
       )}
 
@@ -1074,7 +1097,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               />
               <div style={S.strip}>
                 {saveFeedback ? (
-                  <span style={S.saveFeedbackText}>{saveFeedback}</span>
+                  <span style={{ ...S.saveFeedbackText, ...S.stripStatusFlex }}>{saveFeedback}</span>
                 ) : matchState === "PRE_MATCH" ? (
                   <span style={S.eventCount}>Press ▶ Start to begin</span>
                 ) : (
@@ -1084,13 +1107,20 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                       : "Tap a tile to log an event"}
                   </span>
                 )}
-                <span style={{ flex: 1 }} />
-                <button
-                  style={S.voiceNotesBtn}
-                  onClick={() => setNotesOpen(true)}
-                >
-                  🎤 Voice Notes
-                </button>
+                <div style={S.stripActions}>
+                  <button
+                    style={S.stripOptionsBtn}
+                    onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
+                  >
+                    ⋯ Options
+                  </button>
+                  <button
+                    style={S.voiceNotesBtn}
+                    onClick={() => setNotesOpen(true)}
+                  >
+                    🎤 Voice Notes
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -1329,24 +1359,6 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         </div>
       )}
 
-      {/* ── Persistent Options trigger (floating) ───────────────────────────
-          Always available during live capture — mirrors the old header
-          button's unconditional availability (PRE/1H/HT/2H/FT/reload-pending
-          all reach it) — with one exception: hidden during PITCH_TAP, where
-          the pitch is a full-surface coordinate input and no persistent
-          control may sit on top of any part of it. Reappears the instant
-          phase leaves PITCH_TAP (event saved or flow cancelled), since
-          visibility is derived directly from `phase` on every render. */}
-      {phase !== "PITCH_TAP" && (
-        <button
-          style={S.optionsFab}
-          onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
-          aria-label="Options"
-        >
-          ⋯ Options
-        </button>
-      )}
-
       {/* ── Options sheet ─────────────────────────────────────────── */}
       {actionsOpen && (
         <div style={AS.overlay} onClick={() => setActionsOpen(false)}>
@@ -1484,78 +1496,92 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         }}
       />
 
-      {/* ── Discipline sheet (Actions → Discipline → card → team → player) ── */}
-      {disciplineOpen && (
-        <div style={AS.overlay} onClick={closeDiscipline}>
-          <div style={AS.sheet} onClick={(e) => e.stopPropagation()}>
-            <div style={AS.header}>
-              <span style={AS.title}>
-                {disciplineCardKind == null
-                  ? "Discipline"
-                  : disciplineTeamSide == null
-                    ? "Discipline — Team"
-                    : "Discipline — Player"}
-              </span>
-              <button style={AS.closeBtn} onClick={closeDiscipline}>✕</button>
-            </div>
+      {/* ── Discipline sheet (Options → Discipline → card → team → player) ── */}
+      {disciplineOpen && (() => {
+        const isPlayerStep = disciplineCardKind != null && disciplineTeamSide != null;
+        const cardLabel = disciplineCardKind != null ? disciplineCardLabel(disciplineCardKind) : null;
+        const title =
+          cardLabel == null
+            ? "Discipline"
+            : disciplineTeamSide == null
+              ? `${cardLabel} — Team`
+              // Single contextual title carries card + team; the reused
+              // player picker below renders with hideHeader so it never
+              // repeats "{team} — Player" underneath.
+              : `${cardLabel} — ${disciplineTeamSide === "FOR" ? homeLabel : awayLabel}`;
 
-            <div style={AS.body}>
-              {/* STEP 1: card type */}
-              {disciplineCardKind == null && (
-                <>
-                  <button style={AS.actionBtn} onClick={() => setDisciplineCardKind("YELLOW_CARD")}>
-                    🟨 Yellow
-                  </button>
-                  <button style={AS.actionBtn} onClick={() => setDisciplineCardKind("SIN_BIN")}>
-                    🟧 Sin Bin
-                  </button>
-                  <button
-                    style={{ ...AS.actionBtn, ...AS.actionBtnDanger }}
-                    onClick={() => setDisciplineCardKind("RED_CARD")}
-                  >
-                    🟥 Red
-                  </button>
-                </>
-              )}
-
-              {/* STEP 2: team */}
-              {disciplineCardKind != null && disciplineTeamSide == null && (
-                <>
-                  <button
-                    style={{ ...AS.actionBtn, color: homeColour, borderColor: homeColour }}
-                    onClick={() => setDisciplineTeamSide("FOR")}
-                  >
-                    {homeLabel}
-                  </button>
-                  <button
-                    style={{ ...AS.actionBtn, color: awayColour, borderColor: awayColour }}
-                    onClick={() => setDisciplineTeamSide("OPP")}
-                  >
-                    {awayLabel}
-                  </button>
-                  <button style={AS.actionBtn} onClick={() => setDisciplineCardKind(null)}>
-                    ← Back
-                  </button>
-                </>
-              )}
-            </div>
-
-            {/* STEP 3: player — reuses the same picker as normal tile capture */}
-            {disciplineCardKind != null && disciplineTeamSide != null && (
-              <div style={S.pickerWrap}>
-                <ProTaggerPlayerPicker
-                  teamLabel={disciplineTeamSide === "FOR" ? homeLabel : awayLabel}
-                  squad={disciplineTeamSide === "FOR" ? homeSquadState : awaySquadState}
-                  squadId={disciplineTeamSide === "FOR" ? session.homeSquad.id : session.awaySquad.id}
-                  teamColour={disciplineTeamSide === "FOR" ? homeColour : awayColour}
-                  secondaryColour={disciplineTeamSide === "FOR" ? homeSecondaryColour : awaySecondaryColour}
-                  onSelect={handleDisciplinePlayerSelect}
-                />
+        return (
+          <div style={AS.overlay} onClick={closeDiscipline}>
+            <div style={{ ...AS.sheet, ...(isPlayerStep ? { height: "70vh" } : {}) }} onClick={(e) => e.stopPropagation()}>
+              <div style={AS.header}>
+                <span style={AS.title}>{title}</span>
+                <button style={AS.closeBtn} onClick={closeDiscipline}>✕</button>
               </div>
-            )}
+
+              {/* STEPS 1–2 only: card type, then team. Once both are chosen
+                  this is skipped entirely (not rendered empty) so it can
+                  never leave dead space above the player grid. */}
+              {!isPlayerStep && (
+                <div style={AS.body}>
+                  {disciplineCardKind == null && (
+                    <>
+                      <button style={AS.actionBtn} onClick={() => setDisciplineCardKind("YELLOW_CARD")}>
+                        🟨 Yellow
+                      </button>
+                      <button style={AS.actionBtn} onClick={() => setDisciplineCardKind("SIN_BIN")}>
+                        🟧 Sin Bin
+                      </button>
+                      <button
+                        style={{ ...AS.actionBtn, ...AS.actionBtnDanger }}
+                        onClick={() => setDisciplineCardKind("RED_CARD")}
+                      >
+                        🟥 Red
+                      </button>
+                    </>
+                  )}
+
+                  {disciplineCardKind != null && disciplineTeamSide == null && (
+                    <>
+                      <button
+                        style={{ ...AS.actionBtn, color: homeColour, borderColor: homeColour }}
+                        onClick={() => setDisciplineTeamSide("FOR")}
+                      >
+                        {homeLabel}
+                      </button>
+                      <button
+                        style={{ ...AS.actionBtn, color: awayColour, borderColor: awayColour }}
+                        onClick={() => setDisciplineTeamSide("OPP")}
+                      >
+                        {awayLabel}
+                      </button>
+                      <button style={AS.actionBtn} onClick={() => setDisciplineCardKind(null)}>
+                        ← Back
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* STEP 3: player — reuses the same picker/selection logic as
+                  normal tile capture, header suppressed (title above already
+                  carries the context). */}
+              {isPlayerStep && (
+                <div style={S.pickerWrap}>
+                  <ProTaggerPlayerPicker
+                    hideHeader
+                    teamLabel={disciplineTeamSide === "FOR" ? homeLabel : awayLabel}
+                    squad={disciplineTeamSide === "FOR" ? homeSquadState : awaySquadState}
+                    squadId={disciplineTeamSide === "FOR" ? session.homeSquad.id : session.awaySquad.id}
+                    teamColour={disciplineTeamSide === "FOR" ? homeColour : awayColour}
+                    secondaryColour={disciplineTeamSide === "FOR" ? homeSecondaryColour : awaySecondaryColour}
+                    onSelect={handleDisciplinePlayerSelect}
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Live review overlay ────────────────────────────────────── */}
       {reviewOpen && reviewMatch && (
@@ -1826,30 +1852,6 @@ const S: Record<string, CSSProperties> = {
   },
   btnDisabled: { opacity: 0.35, cursor: "default" },
 
-  // Persistent floating Options trigger — anchored bottom-right, clear of the
-  // IDLE-phase footer strip (Voice Notes / event count) below it and of the
-  // scrollable family grid's last card (see ProTaggerFamilyGrid's bottom
-  // padding). z-index sits below every sheet overlay (100/200) so opening
-  // Options, CTS, Discipline, Subs, etc. naturally covers it.
-  optionsFab: {
-    position: "fixed",
-    right: "calc(14px + env(safe-area-inset-right, 0px))",
-    bottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
-    zIndex: 50,
-    background: "#21262d",
-    border: "1px solid #388bfd",
-    borderRadius: 999,
-    color: "#79c0ff",
-    fontSize: 13,
-    fontWeight: 700,
-    padding: "10px 16px",
-    minHeight: 44,
-    cursor: "pointer",
-    outline: "none",
-    boxShadow: "0 4px 14px rgba(0,0,0,0.45)",
-    WebkitTapHighlightColor: "transparent",
-  },
-
   // ── Break screens (HALF_TIME / FULL_TIME) ───────────────────────────────────
   breakScreen: {
     flex: 1,
@@ -1914,7 +1916,9 @@ const S: Record<string, CSSProperties> = {
     outline: "none",
     letterSpacing: "0.03em",
   },
-  htActionsBtn: {
+  // Break-screen Options entry point — shared by HALF_TIME, FULL_TIME and
+  // the reload-pending screen, none of which render the footer strip.
+  breakOptionsBtn: {
     background: "#21262d",
     border: "1px solid #388bfd",
     borderRadius: 8,
@@ -1940,29 +1944,75 @@ const S: Record<string, CSSProperties> = {
   },
 
   // ── IDLE: strip ─────────────────────────────────────────────────────────────
+  // Persistent footer: [event count/context — flexes & truncates first]
+  // [Options] [Voice Notes — both fixed-size, never shrink, never wrap].
   strip: {
-    padding: "7px 14px 9px",
+    padding: "7px 14px calc(9px + env(safe-area-inset-bottom, 0px))",
     background: "#0d1117",
     borderTop: "1px solid #21262d",
     flexShrink: 0,
     display: "flex",
     alignItems: "center",
+    gap: 8,
   },
-  eventCount:       { fontSize: 12, color: "#8b949e", fontVariantNumeric: "tabular-nums" },
-  voiceNotesBtn: {
-    background: "transparent",
-    border: "1px solid rgba(125,211,252,0.55)",
+  eventCount: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 12,
+    color: "#8b949e",
+    fontVariantNumeric: "tabular-nums",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  },
+  // Base treatment — also used standalone (no flex/truncate) on the HALF_TIME
+  // / FULL_TIME break screens, which are a centered column, not a row.
+  saveFeedbackText: { fontSize: 12, color: "#f85149", fontWeight: 600 },
+  // Row-flex override for the strip specifically (event count/status text
+  // flexes and truncates first; the action buttons never shrink).
+  stripStatusFlex: {
+    flex: 1,
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  },
+  // Right-side action group — never truncates or shrinks; the event count
+  // gives way first if width is genuinely constrained.
+  stripActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexShrink: 0,
+  },
+  stripOptionsBtn: {
+    background: "#21262d",
+    border: "1px solid #388bfd",
     borderRadius: 999,
-    color: "#7dd3fc",
-    fontSize: 11,
-    fontWeight: 600,
-    padding: "4px 10px",
+    color: "#79c0ff",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "8px 12px",
+    minHeight: 36,
     cursor: "pointer",
     outline: "none",
     flexShrink: 0,
     WebkitTapHighlightColor: "transparent",
   },
-  saveFeedbackText: { fontSize: 12, color: "#f85149", fontWeight: 600 },
+  voiceNotesBtn: {
+    background: "transparent",
+    border: "1px solid rgba(125,211,252,0.55)",
+    borderRadius: 999,
+    color: "#7dd3fc",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "8px 12px",
+    minHeight: 36,
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
+  },
 
   // ── PLAYER_PICK ─────────────────────────────────────────────────────────────
   pickerWrap: {
