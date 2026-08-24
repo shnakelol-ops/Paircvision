@@ -6,7 +6,8 @@ import type { ProTaggerFamilyId } from "./pro-tagger-families";
 import { PRO_TAGGER_FAMILIES, getFamilyLabel } from "./pro-tagger-families";
 import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
-import { adaptProTaggerAction } from "./pro-tagger-adapter";
+import { adaptProTaggerAction, adaptProTaggerDisciplineAction } from "./pro-tagger-adapter";
+import type { ProTaggerDisciplineCardKind } from "./pro-tagger-adapter";
 import { saveProTaggerMatch, saveProTaggerMatchFull } from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildStatsShareCardPng } from "../stats/statsShareCard";
@@ -289,6 +290,22 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const [actionsFeedback, setActionsFeedback]   = useState<string | null>(null);
   const [pdfExporting, setPdfExporting]         = useState<"ht" | "ft" | "full" | null>(null);
 
+  // ── Discipline (Actions → Discipline → card → team → player) ────────────────
+  // Deliberately independent of the tile/pitch-tap `phase`/`pending` state
+  // machine above — discipline never needs a pitch tap, so it doesn't touch
+  // that flow at all.
+  const [disciplineOpen, setDisciplineOpen]         = useState(false);
+  const [disciplineCardKind, setDisciplineCardKind] = useState<ProTaggerDisciplineCardKind | null>(null);
+  const [disciplineTeamSide, setDisciplineTeamSide] = useState<"FOR" | "OPP" | null>(null);
+
+  // ── Clock pause/resume ───────────────────────────────────────────────────────
+  // Distinct from `clockRunning`/`needsClockResume` above, which represent the
+  // "reopened mid-half, clock never started this session" state and gate the
+  // MATCH REOPENED screen + block tagging. A manual pause must NOT trigger
+  // that screen and must NOT block tagging — so it gets its own flag.
+  const [isManuallyPaused, setIsManuallyPaused] = useState(false);
+  const isManuallyPausedRef = useRef(false);
+
   const clockStartRef          = useRef<number | null>(null);
   const clockIntervalRef       = useRef<ReturnType<typeof setInterval> | null>(null);
   const clockSecondsRef        = useRef(restoreState?.clockSeconds ?? 0);
@@ -306,6 +323,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   useEffect(() => { loggedRef.current = loggedEvents; }, [loggedEvents]);
   useEffect(() => { matchStateRef.current = matchState; }, [matchState]);
   useEffect(() => { clockRunningRef.current = clockRunning; }, [clockRunning]);
+  useEffect(() => { isManuallyPausedRef.current = isManuallyPaused; }, [isManuallyPaused]);
   useEffect(() => { wrongWayActiveRef.current = wrongWayActive; }, [wrongWayActive]);
 
   useEffect(() => {
@@ -342,6 +360,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     setHalf(1);
     matchStateRef.current = "FIRST_HALF";
     setMatchState("FIRST_HALF");
+    isManuallyPausedRef.current = false;
+    setIsManuallyPaused(false);
   }, []);
 
   function freezeMatch(nextState: "HALF_TIME" | "FULL_TIME") {
@@ -351,6 +371,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     }
     clockRunningRef.current = false;
     setClockRunning(false);
+    isManuallyPausedRef.current = false;
+    setIsManuallyPaused(false);
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     if (wrongWayTimerRef.current) { clearTimeout(wrongWayTimerRef.current); wrongWayTimerRef.current = null; }
     wrongWayActiveRef.current = false;
@@ -367,6 +389,9 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Always resets the clock to 00:00 — regardless of first-half elapsed time
+  // or any pause taken during the first half. This is the fix for the
+  // confirmed second-half clock defect; pause/resume must never touch it.
   const handleStartSecondHalf = useCallback(() => {
     resetClockForSecondHalf(clockSecondsRef, setClockSeconds);
     startClockInterval();
@@ -374,6 +399,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     setHalf(2);
     matchStateRef.current = "SECOND_HALF";
     setMatchState("SECOND_HALF");
+    isManuallyPausedRef.current = false;
+    setIsManuallyPaused(false);
   }, []);
 
   const handleFullTime = useCallback(() => {
@@ -385,6 +412,30 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // FIRST_HALF/SECOND_HALF but the clock interval was never started this
   // session). Continues ticking from the saved elapsed time — never resets it.
   const handleResumeClock = useCallback(() => {
+    startClockInterval();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Manual clock pause/resume ────────────────────────────────────────────
+  // Stops/restarts only the setInterval tick — deliberately does NOT touch
+  // clockRunning/clockRunningRef. clockRunning represents "has this session's
+  // clock been started at all" (it also gates the reload MATCH REOPENED
+  // screen and the tagging guard below); leaving it true across a manual
+  // pause means tagging stays usable and the reload screen never appears,
+  // while the frozen clockSeconds display and resume-with-no-jump behaviour
+  // fall out for free from the same mechanism handleResumeClock already uses.
+  const handlePauseClock = useCallback(() => {
+    if (clockIntervalRef.current) {
+      clearInterval(clockIntervalRef.current);
+      clockIntervalRef.current = null;
+    }
+    isManuallyPausedRef.current = true;
+    setIsManuallyPaused(true);
+  }, []);
+
+  const handleResumeFromManualPause = useCallback(() => {
+    isManuallyPausedRef.current = false;
+    setIsManuallyPaused(false);
     startClockInterval();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -410,6 +461,35 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     );
     setPhase("PITCH_TAP");
   }, []);
+
+  // ── Discipline capture (Actions → Discipline → card → team → player) ────────
+  // Independent of the tile/pitch-tap phase machine — records only team,
+  // player, match clock, and sanction type. No pitch tap, no derived
+  // analysis (e.g. numerical-advantage windows) computed here.
+  const closeDiscipline = useCallback(() => {
+    setDisciplineOpen(false);
+    setDisciplineCardKind(null);
+    setDisciplineTeamSide(null);
+  }, []);
+
+  const handleDisciplinePlayerSelect = useCallback(
+    (player: SelectedPlayer | null) => {
+      if (!disciplineCardKind || !disciplineTeamSide) return;
+      const event = adaptProTaggerDisciplineAction({
+        cardKind: disciplineCardKind,
+        teamSide: disciplineTeamSide,
+        half: halfRef.current,
+        matchClockSeconds: clockSecondsRef.current,
+        playerId: player?.playerId,
+        playerName: player?.playerName,
+        playerNumber: player?.playerNumber,
+        squadId: player?.squadId,
+      });
+      setLoggedEvents((prev) => [...prev, event]);
+      closeDiscipline();
+    },
+    [disciplineCardKind, disciplineTeamSide, closeDiscipline],
+  );
 
   // Attack direction logic: `nx` is normalised landscape-X [0,1] — the
   // length-of-pitch axis. attackingDown=true means FOR attacks toward nx=1.
@@ -797,6 +877,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     loggedRef.current = [];
     matchStateRef.current = "PRE_MATCH";
     wrongWayActiveRef.current = false;
+    isManuallyPausedRef.current = false;
     setLoggedEvents([]);
     setClockSeconds(0);
     setHalf(1);
@@ -805,10 +886,13 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     setPending(null);
     setFeedbackDot(null);
     setWrongWayActive(false);
+    setIsManuallyPaused(false);
     setSaveFeedback(null);
     setActionsFeedback(null);
     setResetConfirmOpen(false);
     setActionsOpen(false);
+    setDisciplineCardKind(null);
+    setDisciplineTeamSide(null);
     setHomeSquadState(initSquad(session.homeSquad.players));
     setAwaySquadState(initSquad(session.awaySquad.players));
   }, [session]);
@@ -876,6 +960,12 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           {matchState === "PRE_MATCH" && (
             <button onClick={handleStartMatch} style={S.startBtn}>▶ Start</button>
           )}
+          {isActivePlaying && !needsClockResume && !isManuallyPaused && (
+            <button onClick={handlePauseClock} style={S.pauseBtn}>⏸ Pause</button>
+          )}
+          {isManuallyPaused && (
+            <button onClick={handleResumeFromManualPause} style={S.resumeClockBtn}>▶ Resume</button>
+          )}
           {matchState === "FIRST_HALF" && clockRunning && (
             <button onClick={() => setHtConfirmOpen(true)} style={S.htBtn}>HT</button>
           )}
@@ -892,18 +982,6 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
             style={{ ...S.iconBtn, ...(!canUndo ? S.btnDisabled : {}) }}
           >
             ↩
-          </button>
-          <button
-            style={S.ctsBtn}
-            onClick={() => setCtsOpen(true)}
-          >
-            CTS
-          </button>
-          <button
-            style={S.actionsBtn}
-            onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
-          >
-            Actions
           </button>
         </div>
       </div>
@@ -936,7 +1014,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
             style={S.htActionsBtn}
             onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
           >
-            Actions
+            ⋯ Options
           </button>
           {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
         </div>
@@ -1271,13 +1349,31 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         </div>
       )}
 
-      {/* ── Actions sheet ─────────────────────────────────────────── */}
+      {/* ── Persistent Options trigger (floating) ───────────────────────────
+          Always available during live capture — mirrors the old header
+          button's unconditional availability (PRE/1H/HT/2H/FT/reload-pending
+          all reach it) — with one exception: hidden during PITCH_TAP, where
+          the pitch is a full-surface coordinate input and no persistent
+          control may sit on top of any part of it. Reappears the instant
+          phase leaves PITCH_TAP (event saved or flow cancelled), since
+          visibility is derived directly from `phase` on every render. */}
+      {phase !== "PITCH_TAP" && (
+        <button
+          style={S.optionsFab}
+          onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
+          aria-label="Options"
+        >
+          ⋯ Options
+        </button>
+      )}
+
+      {/* ── Options sheet ─────────────────────────────────────────── */}
       {actionsOpen && (
         <div style={AS.overlay} onClick={() => setActionsOpen(false)}>
           <div style={AS.sheet} onClick={(e) => e.stopPropagation()}>
 
             <div style={AS.header}>
-              <span style={AS.title}>Actions</span>
+              <span style={AS.title}>Options</span>
               <button style={AS.closeBtn} onClick={() => setActionsOpen(false)}>✕</button>
             </div>
 
@@ -1357,6 +1453,29 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               )}
 
               <button
+                style={{
+                  ...AS.actionBtn,
+                  ...((!isActivePlaying || needsClockResume) ? AS.actionBtnDisabled : {}),
+                }}
+                disabled={!isActivePlaying || needsClockResume}
+                onClick={() => {
+                  setActionsOpen(false);
+                  setDisciplineCardKind(null);
+                  setDisciplineTeamSide(null);
+                  setDisciplineOpen(true);
+                }}
+              >
+                Discipline
+              </button>
+
+              <button
+                style={AS.actionBtn}
+                onClick={() => { setActionsOpen(false); setCtsOpen(true); }}
+              >
+                Counts Sheet (CTS)
+              </button>
+
+              <button
                 style={{ ...AS.actionBtn, ...AS.actionBtnDanger }}
                 onClick={() => setResetConfirmOpen(true)}
               >
@@ -1384,6 +1503,79 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           title: `${session.homeTeamName || "Home"} v ${session.awayTeamName || "Away"}`,
         }}
       />
+
+      {/* ── Discipline sheet (Actions → Discipline → card → team → player) ── */}
+      {disciplineOpen && (
+        <div style={AS.overlay} onClick={closeDiscipline}>
+          <div style={AS.sheet} onClick={(e) => e.stopPropagation()}>
+            <div style={AS.header}>
+              <span style={AS.title}>
+                {disciplineCardKind == null
+                  ? "Discipline"
+                  : disciplineTeamSide == null
+                    ? "Discipline — Team"
+                    : "Discipline — Player"}
+              </span>
+              <button style={AS.closeBtn} onClick={closeDiscipline}>✕</button>
+            </div>
+
+            <div style={AS.body}>
+              {/* STEP 1: card type */}
+              {disciplineCardKind == null && (
+                <>
+                  <button style={AS.actionBtn} onClick={() => setDisciplineCardKind("YELLOW_CARD")}>
+                    🟨 Yellow
+                  </button>
+                  <button style={AS.actionBtn} onClick={() => setDisciplineCardKind("SIN_BIN")}>
+                    🟧 Sin Bin
+                  </button>
+                  <button
+                    style={{ ...AS.actionBtn, ...AS.actionBtnDanger }}
+                    onClick={() => setDisciplineCardKind("RED_CARD")}
+                  >
+                    🟥 Red
+                  </button>
+                </>
+              )}
+
+              {/* STEP 2: team */}
+              {disciplineCardKind != null && disciplineTeamSide == null && (
+                <>
+                  <button
+                    style={{ ...AS.actionBtn, color: homeColour, borderColor: homeColour }}
+                    onClick={() => setDisciplineTeamSide("FOR")}
+                  >
+                    {homeLabel}
+                  </button>
+                  <button
+                    style={{ ...AS.actionBtn, color: awayColour, borderColor: awayColour }}
+                    onClick={() => setDisciplineTeamSide("OPP")}
+                  >
+                    {awayLabel}
+                  </button>
+                  <button style={AS.actionBtn} onClick={() => setDisciplineCardKind(null)}>
+                    ← Back
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* STEP 3: player — reuses the same picker as normal tile capture */}
+            {disciplineCardKind != null && disciplineTeamSide != null && (
+              <div style={S.pickerWrap}>
+                <ProTaggerPlayerPicker
+                  teamLabel={disciplineTeamSide === "FOR" ? homeLabel : awayLabel}
+                  squad={disciplineTeamSide === "FOR" ? homeSquadState : awaySquadState}
+                  squadId={disciplineTeamSide === "FOR" ? session.homeSquad.id : session.awaySquad.id}
+                  teamColour={disciplineTeamSide === "FOR" ? homeColour : awayColour}
+                  secondaryColour={disciplineTeamSide === "FOR" ? homeSecondaryColour : awaySecondaryColour}
+                  onSelect={handleDisciplinePlayerSelect}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Live review overlay ────────────────────────────────────── */}
       {reviewOpen && reviewMatch && (
@@ -1613,6 +1805,34 @@ const S: Record<string, CSSProperties> = {
     flexShrink: 0,
     WebkitTapHighlightColor: "transparent",
   },
+  pauseBtn: {
+    background: "#21262d",
+    border: "1px solid #6e7681",
+    borderRadius: 6,
+    color: "#c9d1d9",
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: "0.04em",
+    padding: "4px 11px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
+  },
+  resumeClockBtn: {
+    background: "rgba(56,189,248,0.18)",
+    border: "1px solid #38bdf8",
+    borderRadius: 6,
+    color: "#7dd3fc",
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: "0.04em",
+    padding: "4px 11px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
+  },
   iconBtn: {
     background: "#21262d",
     border: "1px solid #30363d",
@@ -1625,30 +1845,28 @@ const S: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
   btnDisabled: { opacity: 0.35, cursor: "default" },
-  ctsBtn: {
-    background: "#21262d",
-    border: "1px solid #30363d",
-    borderRadius: 6,
-    color: "#8b949e",
-    fontSize: 11,
-    fontWeight: 700,
-    padding: "5px 9px",
-    cursor: "pointer",
-    outline: "none",
-    flexShrink: 0,
-    WebkitTapHighlightColor: "transparent",
-  },
-  actionsBtn: {
+
+  // Persistent floating Options trigger — anchored bottom-right, clear of the
+  // IDLE-phase footer strip (Voice Notes / event count) below it and of the
+  // scrollable family grid's last card (see ProTaggerFamilyGrid's bottom
+  // padding). z-index sits below every sheet overlay (100/200) so opening
+  // Options, CTS, Discipline, Subs, etc. naturally covers it.
+  optionsFab: {
+    position: "fixed",
+    right: "calc(14px + env(safe-area-inset-right, 0px))",
+    bottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
+    zIndex: 50,
     background: "#21262d",
     border: "1px solid #388bfd",
-    borderRadius: 6,
+    borderRadius: 999,
     color: "#79c0ff",
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 700,
-    padding: "5px 9px",
+    padding: "10px 16px",
+    minHeight: 44,
     cursor: "pointer",
     outline: "none",
-    flexShrink: 0,
+    boxShadow: "0 4px 14px rgba(0,0,0,0.45)",
     WebkitTapHighlightColor: "transparent",
   },
 
@@ -2012,7 +2230,7 @@ const CS: Record<string, CSSProperties> = {
   },
 };
 
-// ── Actions sheet styles ──────────────────────────────────────────────────────
+// ── Options sheet styles (style object name kept as AS internally) ────────────
 
 const AS: Record<string, CSSProperties> = {
   overlay: {
