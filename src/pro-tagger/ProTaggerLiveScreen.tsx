@@ -1545,7 +1545,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 style={AS.actionBtn}
                 onClick={() => { setActionsOpen(false); openQuickReview(); }}
               >
-                Counts Sheet (CTS)
+                Quick Review
               </button>
 
               {(() => {
