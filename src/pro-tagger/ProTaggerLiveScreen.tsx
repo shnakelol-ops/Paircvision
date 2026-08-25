@@ -8,6 +8,7 @@ import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction, adaptProTaggerDisciplineAction } from "./pro-tagger-adapter";
 import type { ProTaggerDisciplineCardKind } from "./pro-tagger-adapter";
+import { buildDisciplineStatusMap, getDisciplineOptions } from "./pro-tagger-discipline";
 import { saveProTaggerMatch, saveProTaggerMatchFull } from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildStatsShareCardPng } from "../stats/statsShareCard";
@@ -920,6 +921,13 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const forCts = ctsOpen ? computeProTaggerCounts(loggedEvents, "FOR") : null;
   const oppCts = ctsOpen ? computeProTaggerCounts(loggedEvents, "OPP") : null;
 
+  // Discipline player status — derived fresh from loggedEvents every render
+  // (no independent mutable state), so Undo/reload/restore all just work.
+  // Shared by every player picker in this screen so RED/SIN BIN behave
+  // identically wherever a player is selected.
+  const disciplineStatus = buildDisciplineStatusMap(loggedEvents, half === 1 ? "1H" : "2H", clockSeconds);
+  const disciplineOptions = getDisciplineOptions(session.sport);
+
   return (
     <div style={S.shell}>
 
@@ -1159,6 +1167,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                   secondaryColour={
                     pending.teamSide === "FOR" ? homeSecondaryColour : awaySecondaryColour
                   }
+                  disciplineStatus={disciplineStatus}
                   onSelect={handlePlayerSelect}
                 />
               </div>
@@ -1523,20 +1532,29 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                   never leave dead space above the player grid. */}
               {!isPlayerStep && (
                 <div style={AS.body}>
+                  {/* Sport mode decides which sanctions exist — a sanction
+                      not valid for this sport simply isn't in this list,
+                      never shown disabled. */}
                   {disciplineCardKind == null && (
                     <>
-                      <button style={AS.actionBtn} onClick={() => setDisciplineCardKind("YELLOW_CARD")}>
-                        🟨 Yellow
-                      </button>
-                      <button style={AS.actionBtn} onClick={() => setDisciplineCardKind("SIN_BIN")}>
-                        🟧 Sin Bin
-                      </button>
-                      <button
-                        style={{ ...AS.actionBtn, ...AS.actionBtnDanger }}
-                        onClick={() => setDisciplineCardKind("RED_CARD")}
-                      >
-                        🟥 Red
-                      </button>
+                      {disciplineOptions.includes("YELLOW_CARD") && (
+                        <button style={AS.actionBtn} onClick={() => setDisciplineCardKind("YELLOW_CARD")}>
+                          🟨 Yellow
+                        </button>
+                      )}
+                      {disciplineOptions.includes("SIN_BIN") && (
+                        <button style={AS.actionBtn} onClick={() => setDisciplineCardKind("SIN_BIN")}>
+                          🟧 Sin Bin
+                        </button>
+                      )}
+                      {disciplineOptions.includes("RED_CARD") && (
+                        <button
+                          style={{ ...AS.actionBtn, ...AS.actionBtnDanger }}
+                          onClick={() => setDisciplineCardKind("RED_CARD")}
+                        >
+                          🟥 Red
+                        </button>
+                      )}
                     </>
                   )}
 
@@ -1574,6 +1592,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                     squadId={disciplineTeamSide === "FOR" ? session.homeSquad.id : session.awaySquad.id}
                     teamColour={disciplineTeamSide === "FOR" ? homeColour : awayColour}
                     secondaryColour={disciplineTeamSide === "FOR" ? homeSecondaryColour : awaySecondaryColour}
+                    disciplineStatus={disciplineStatus}
                     onSelect={handleDisciplinePlayerSelect}
                   />
                 </div>

@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
+import type { DisciplinePlayerStatus } from "./pro-tagger-discipline";
 
 export type SelectedPlayer = {
   playerId: string;
@@ -20,6 +21,15 @@ interface Props {
    *  Discipline) that already show their own contextual title above this
    *  component, so the coach never sees two stacked headings. */
   hideHeader?: boolean;
+  /**
+   * Per-player Discipline status (derived from event history — see
+   * pro-tagger-discipline.ts), keyed by playerId. Applied to every picker
+   * usage so all Event Stats pickers behave consistently: RED disables the
+   * tile (number stays visible, still identifiable); SIN_BIN marks the tile
+   * but leaves it fully selectable. Omit for pickers where this doesn't
+   * apply — every tile then renders normally.
+   */
+  disciplineStatus?: ReadonlyMap<string, DisciplinePlayerStatus>;
 }
 
 // GAA formation: 1-based active slot numbers matching LiveScreen initialisation.
@@ -32,7 +42,7 @@ const FORMATION_ROWS: readonly (readonly number[])[] = [
   [13, 14, 15],   // #13 #14 #15 (RF FF LF)
 ];
 
-export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, onSelect, hideHeader }: Props) {
+export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, onSelect, hideHeader, disciplineStatus }: Props) {
   const colour = teamColour ?? "#238636";
 
   // Active players in formation slots (1–15).
@@ -45,12 +55,33 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
   const bench = squad.filter((p) => p.isActive !== false && p.activeSlot === undefined);
 
   function tap(p: ProTaggerSquadPlayer) {
+    if (disciplineStatus?.get(p.id) === "RED") return; // sent off — not selectable
     onSelect({
       playerId:     p.id,
       playerName:   p.name.trim() || `#${p.number}`,
       playerNumber: p.number,
       squadId,
     });
+  }
+
+  // Status label always replaces the name/position line (never colour alone)
+  // and the tile is disabled only for RED — SIN_BIN stays fully tappable.
+  function renderTileContent(p: ProTaggerSquadPlayer, fallbackPos: string) {
+    const status = disciplineStatus?.get(p.id);
+    return (
+      <>
+        <span style={S.number}>{p.number}</span>
+        {status === "RED" ? (
+          <span style={S.statusRed}>RED</span>
+        ) : status === "SIN_BIN" ? (
+          <span style={S.statusSinBin}>SIN BIN</span>
+        ) : p.name.trim() ? (
+          <span style={S.name}>{p.name.trim()}</span>
+        ) : (
+          <span style={S.pos}>{p.position ?? fallbackPos}</span>
+        )}
+      </>
+    );
   }
 
   return (
@@ -72,17 +103,19 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
             {slots.map((slot) => {
               const p = findSlot(slot);
               if (!p) return null;
+              const isRed = disciplineStatus?.get(p.id) === "RED";
               return (
                 <button
                   key={slot}
-                  style={{ ...S.playerBtn, border: `1px solid ${colour}` }}
+                  disabled={isRed}
+                  style={{
+                    ...S.playerBtn,
+                    border: `1px solid ${colour}`,
+                    ...(isRed ? S.playerBtnRed : {}),
+                  }}
                   onClick={() => tap(p)}
                 >
-                  <span style={S.number}>{p.number}</span>
-                  {p.name.trim()
-                    ? <span style={S.name}>{p.name.trim()}</span>
-                    : <span style={S.pos}>{p.position ?? ""}</span>
-                  }
+                  {renderTileContent(p, "")}
                 </button>
               );
             })}
@@ -94,15 +127,19 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
           <>
             <div style={S.subsDivider}>Bench</div>
             <div style={S.subsRow}>
-              {bench.map((p) => (
-                <button key={p.id} style={S.subBtn} onClick={() => tap(p)}>
-                  <span style={S.number}>{p.number}</span>
-                  {p.name.trim()
-                    ? <span style={S.name}>{p.name.trim()}</span>
-                    : <span style={S.pos}>{p.position ?? "SUB"}</span>
-                  }
-                </button>
-              ))}
+              {bench.map((p) => {
+                const isRed = disciplineStatus?.get(p.id) === "RED";
+                return (
+                  <button
+                    key={p.id}
+                    disabled={isRed}
+                    style={{ ...S.subBtn, ...(isRed ? S.playerBtnRed : {}) }}
+                    onClick={() => tap(p)}
+                  >
+                    {renderTileContent(p, "SUB")}
+                  </button>
+                );
+              })}
             </div>
           </>
         )}
@@ -173,6 +210,15 @@ const S: Record<string, CSSProperties> = {
     WebkitTapHighlightColor: "transparent",
     flexShrink: 0,
   },
+  // Applied on top of playerBtn/subBtn for a Red-Carded player — visibly
+  // disabled (dimmed, no pointer cursor) but the tile and number stay put;
+  // never removed from the grid. The "RED" text label (not colour alone) is
+  // the actual signal — see statusRed below.
+  playerBtnRed: {
+    opacity: 0.45,
+    cursor: "default",
+    borderColor: "#6e7681",
+  },
 
   // ── Bench ──────────────────────────────────────────────────────────────────
   subsDivider: {
@@ -232,6 +278,28 @@ const S: Record<string, CSSProperties> = {
   pos: {
     fontSize: 9,
     color: "#6e7681",
+    marginTop: 2,
+    textAlign: "center" as const,
+    whiteSpace: "nowrap" as const,
+    lineHeight: "1.2",
+  },
+
+  // ── Discipline status labels — text, never colour alone ─────────────────────
+  statusRed: {
+    fontSize: 9,
+    fontWeight: 800,
+    letterSpacing: "0.04em",
+    color: "#f85149",
+    marginTop: 2,
+    textAlign: "center" as const,
+    whiteSpace: "nowrap" as const,
+    lineHeight: "1.2",
+  },
+  statusSinBin: {
+    fontSize: 9,
+    fontWeight: 800,
+    letterSpacing: "0.02em",
+    color: "#f0883e",
     marginTop: 2,
     textAlign: "center" as const,
     whiteSpace: "nowrap" as const,
