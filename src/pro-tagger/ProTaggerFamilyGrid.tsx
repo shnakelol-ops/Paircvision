@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { CSSProperties } from "react";
 import {
   getFamiliesForSport,
+  getFamilyTiles,
   getTileLabel,
   getFamilyLabel,
   getRestartOwnerLabel,
@@ -54,6 +55,10 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
 
         const isSecondary = family.secondary === true;
         const isExpanded = !isSecondary || expandedSecondary.has(family.id);
+        // Sport-filtered — identical to family.tiles except for DISCIPLINE,
+        // where a sanction not valid for this sport (e.g. Sin Bin in
+        // Camogie) is simply absent from the tile list, not shown disabled.
+        const tiles = getFamilyTiles(family, sport);
 
         return (
           <div key={family.id} style={isSecondary ? S.secondaryCard : S.card}>
@@ -92,7 +97,7 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
                 {/* FOR tile row — unchanged; the filled family colour already
                     reads as "this team" without needing a label. */}
                 <div style={S.tileRow}>
-                  {family.tiles.map((tile) => {
+                  {tiles.map((tile) => {
                     const label = getTileLabel(tile, sport);
                     return (
                       <button
@@ -115,7 +120,7 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
                   <div style={S.oppGroup}>
                     <span style={S.oppTeamLabel} title={awayShortLabel}>{awayShortLabel}</span>
                     <div style={S.tileRow}>
-                      {family.tiles.map((tile) => {
+                      {tiles.map((tile) => {
                         const label = getTileLabel(tile, sport);
                         // Display-only: name the team whose mistake this was on the
                         // opposition row. The tap always sends the original `label` —

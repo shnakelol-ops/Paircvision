@@ -1,4 +1,5 @@
 import type { ProTaggerSport } from "./pro-tagger-session";
+import { getDisciplineOptions, type ProTaggerDisciplineCardKind } from "./pro-tagger-discipline";
 
 export type ProTaggerFamilyId =
   | "GOAL"
@@ -218,6 +219,31 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
 
 export function getFamiliesForSport(sport: ProTaggerSport): readonly ProTaggerFamily[] {
   return PRO_TAGGER_FAMILIES.filter((f) => !f.hideForSports?.includes(sport));
+}
+
+// Maps the DISCIPLINE family's tile labels to the sanction kind
+// getDisciplineOptions() reasons about. Case matches tile.label exactly
+// (resolveKindAndSide upper-cases it separately for the stored tag).
+const DISCIPLINE_TILE_CARD_KIND: Record<string, ProTaggerDisciplineCardKind> = {
+  "Yellow": "YELLOW_CARD",
+  "Sin Bin": "SIN_BIN",
+  "Red": "RED_CARD",
+};
+
+/**
+ * A family's tiles for the given sport. Identical to family.tiles for every
+ * family except DISCIPLINE, whose tiles are filtered against
+ * getDisciplineOptions(sport) — e.g. Sin Bin never renders for Camogie.
+ * Non-destructive: PRO_TAGGER_FAMILIES itself is never mutated, so this must
+ * be called at render time by anything that iterates a family's tiles.
+ */
+export function getFamilyTiles(family: ProTaggerFamily, sport: ProTaggerSport): readonly ProTaggerTile[] {
+  if (family.id !== "DISCIPLINE") return family.tiles;
+  const allowed = getDisciplineOptions(sport);
+  return family.tiles.filter((tile) => {
+    const cardKind = DISCIPLINE_TILE_CARD_KIND[tile.label];
+    return cardKind == null || allowed.includes(cardKind);
+  });
 }
 
 export function getTileLabel(tile: ProTaggerTile, sport: ProTaggerSport): string {
