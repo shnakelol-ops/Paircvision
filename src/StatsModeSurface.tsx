@@ -140,7 +140,7 @@ type LiveRenderablePitchEvent = LoggedMatchEvent & {
   renderAsSubtleDot?: boolean;
 };
 // SavedMatchRestoreContext and SavedMatch are defined in core/stats/saved-match.ts and imported below.
-type StatsActiveMatchDraft = {
+export type StatsActiveMatchDraft = {
   version: 1;
   updatedAt: number;
   matchId: string;
@@ -609,7 +609,13 @@ function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
 
   if (typeof maybeId !== "string" || maybeId.trim().length === 0) return null;
   const rawKind = typeof maybeType === "string" ? maybeType : typeof maybeKind === "string" ? maybeKind : null;
-  if (rawKind == null || !MATCH_EVENT_KIND_SET.has(rawKind as MatchEventKind)) return null;
+  // Structural check only: the kind field must be present and be a
+  // non-empty string. Whether it's one of *this build's* MATCH_EVENT_KINDS
+  // is an additive-schema concern handled by callers (see isKnownEventKind
+  // below) — a stored/imported event with a kind this build doesn't
+  // recognise yet (e.g. logged by a newer build) is never treated as
+  // structurally malformed here.
+  if (rawKind == null || rawKind.trim().length === 0) return null;
   const parsedKind = rawKind as MatchEventKind;
   const parsedX = normalizeEventCoordinate(maybeX ?? maybeNx);
   const parsedY = normalizeEventCoordinate(maybeY ?? maybeNy);
@@ -686,6 +692,41 @@ function parseStoredLoggedMatchEvent(input: unknown): LoggedMatchEvent | null {
   return next;
 }
 
+/**
+ * Whether a structurally-valid parsed event's kind is one this build's
+ * schema recognises. A stored/imported match may legitimately contain
+ * events logged by a newer build with kinds this build doesn't know yet —
+ * those events are dropped individually (see call sites below) rather than
+ * invalidating the whole match/session.
+ */
+function isKnownEventKind(event: LoggedMatchEvent): boolean {
+  return MATCH_EVENT_KIND_SET.has(event.kind);
+}
+
+export type RestoredReviewSessionEvents = {
+  events: LoggedMatchEvent[];
+  /** false only when a structurally malformed event was found — the whole
+   *  review session should then be treated as unrestorable, same as before. */
+  ok: boolean;
+};
+
+/**
+ * Pure event-parsing step of applyRawReviewSession, split out so it can be
+ * unit-tested without rendering the component. Mirrors parseStoredSavedMatch's
+ * split: a malformed event fails the whole restore; an unrecognised kind is
+ * dropped on its own.
+ */
+export function parseRestoredReviewSessionEvents(events: readonly unknown[]): RestoredReviewSessionEvents {
+  const parsedEvents = events.map((event) => parseStoredLoggedMatchEvent(event));
+  if (parsedEvents.some((event) => event == null)) {
+    return { events: [], ok: false };
+  }
+  const known = parsedEvents
+    .filter((event): event is LoggedMatchEvent => event != null)
+    .filter(isKnownEventKind);
+  return { events: known, ok: true };
+}
+
 function parseStoredSavedMatch(input: unknown): SavedMatch | null {
   if (!input || typeof input !== "object") return null;
   const maybeId = "id" in input ? input.id : null;
@@ -721,8 +762,14 @@ function parseStoredSavedMatch(input: unknown): SavedMatch | null {
   if (!Array.isArray(maybeEvents) || maybeEvents.length === 0) return null;
 
   const parsedEvents = maybeEvents.map((event) => parseStoredLoggedMatchEvent(event));
+  // A structurally malformed event (bad id, coordinates, half, etc.) still
+  // invalidates the whole match — that validation is unchanged. An event
+  // with an unrecognised kind is structurally fine and is dropped on its
+  // own below, so it never causes the match to fail to load.
   if (parsedEvents.some((event) => event == null)) return null;
-  const events = parsedEvents.filter((event): event is LoggedMatchEvent => event != null);
+  const events = parsedEvents
+    .filter((event): event is LoggedMatchEvent => event != null)
+    .filter(isKnownEventKind);
   if (events.length === 0) return null;
   const parsedEventCount =
     typeof maybeEventCount === "number" && Number.isFinite(maybeEventCount)
@@ -867,7 +914,7 @@ function parseSavedMatchRestoreContext(input: unknown): SavedMatchRestoreContext
   };
 }
 
-function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActiveMatchDraft | null; isCorrupt: boolean } {
+export function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActiveMatchDraft | null; isCorrupt: boolean } {
   if (!input) return { draft: null, isCorrupt: false };
   try {
     const parsed = JSON.parse(input);
@@ -903,6 +950,7 @@ function parseStoredActiveMatchDraft(input: string | null): { draft: StatsActive
       ? source.events
           .map((entry) => parseStoredLoggedMatchEvent(entry))
           .filter((entry): entry is LoggedMatchEvent => entry != null)
+          .filter(isKnownEventKind)
       : [];
     const parsedLiveSquads = parseSquadsArray(source.liveSquads);
     const restoredSquads = parsedLiveSquads.length > 0 ? ensureHomeAwaySquads(parsedLiveSquads) : null;
@@ -4886,10 +4934,8 @@ export default function StatsModeSurface() {
       return;
     }
 
-    const restoredEvents = restoredSession.events
-      .map((event) => parseStoredLoggedMatchEvent(event))
-      .filter((event): event is LoggedMatchEvent => event != null);
-    if (restoredEvents.length !== restoredSession.events.length) {
+    const { events: restoredEvents, ok: restoredEventsOk } = parseRestoredReviewSessionEvents(restoredSession.events);
+    if (!restoredEventsOk) {
       setSaveFeedback("Review session could not be restored");
       return;
     }

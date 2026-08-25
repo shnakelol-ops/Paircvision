@@ -1,4 +1,5 @@
 import type { ProTaggerSport } from "./pro-tagger-session";
+import { getDisciplineOptions, type ProTaggerDisciplineCardKind } from "./pro-tagger-discipline";
 
 export type ProTaggerFamilyId =
   | "GOAL"
@@ -25,6 +26,17 @@ export type ProTaggerTile = {
    * team's short name. Does not change the stored tile value/tag.
    */
   attributeOtherTeamOnOppositionRow?: boolean;
+  /**
+   * Per-tile colour override — used only where tiles within one family
+   * mean visibly different things (Discipline's Yellow/Sin Bin/Red).
+   * Overrides family.colour (FOR row fill) and family.textColour (FOR row
+   * text) for this tile only; falls back to the family's colours when
+   * absent, which is every tile in every other family. The OPP/minus row's
+   * outline also switches to this colour when present, replacing the
+   * universal opposition outline colour for that one tile only.
+   */
+  colour?: string;
+  textColour?: string;
 };
 
 export type ProTaggerFamily = {
@@ -42,9 +54,23 @@ export type ProTaggerFamily = {
    *  tapping a row records the restart as WON when that row matches the
    *  current owner, CONCEDED (attributed to the owner) otherwise. */
   hasOwnerToggle?: boolean;
+  /**
+   * Only meaningful alongside hasOwnerToggle. Suppresses the "OUR K/O /
+   * THEIR K/O"-style owner-toggle control in the header, and the tapped
+   * row's own side is used as the restart owner instead of a separately
+   * manipulated toggle — so tapping "Home Won" always means Home owns the
+   * restart, tapping "Away Won" always means Away does. This can only ever
+   * produce the WON outcome (owner === the tapped side, by construction);
+   * there is no way to record CONCEDED through this presentation. Used by
+   * 45/65 and Sideline, where the coach only needs to answer "who won it" —
+   * not by Kickout, which keeps the manipulable owner toggle because a
+   * kickout's owner (who is taking it) is a distinct fact from who wins the
+   * resulting break.
+   */
+  ownerImplicitFromTappedSide?: boolean;
   /** Rendered collapsed by default, behind a tap-to-expand header, so a rare
-   *  action (e.g. Discipline) never competes with the core tiles for visual
-   *  weight or thumb space. */
+   *  action never competes with the core tiles for visual weight or thumb
+   *  space. */
   secondary?: boolean;
 };
 
@@ -99,6 +125,13 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
     hasMinus: true,
   },
   {
+    // Non-scoring shot outcomes only. Deliberately excludes:
+    //  - "45" — a shot deflected out for a 45 is already captured as the
+    //    canonical FORTY_FIVE_WON restart-award event; a second "45" tag
+    //    here would be a duplicate semantic representation of the same fact.
+    //  - "Mark" — a Mark is a shot *source* (where the shot came from), not
+    //    a non-scoring outcome; Mark-sourced shots that score are already
+    //    captured via Goal/Point/2PT/Wide -> Mark.
     id: "SHOT",
     label: "Shot",
     colour: "#ca8a04",
@@ -107,8 +140,6 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
       { label: "Short" },
       { label: "Block/Save" },
       { label: "Post" },
-      FORTY_FIVE_TILE,
-      { label: "Mark" },
     ],
     hasMinus: true,
   },
@@ -145,8 +176,10 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
     // Restart award only — deliberately distinct from the existing "45"/"65"
     // tag on Goal/Point/Shot/Wide, which records the *outcome* of a shot
     // taken from a 45/65, not the restart being earned. Minimal granularity
-    // by design: a single "Won" tile, Won/Conceded derived the same way as
-    // Kickout via the shared owner toggle (see resolveRestartOutcome).
+    // by design: a single "Won" tile per side. Still resolves through the
+    // same owner-derived Won/Conceded pathway as Kickout (resolveRestartOutcome)
+    // underneath, but ownerImplicitFromTappedSide means the coach only ever
+    // answers "who won it" — no manipulable owner toggle, no CONCEDED shown.
     id: "FORTY_FIVE",
     label: "45",
     altLabel: "65",
@@ -158,6 +191,7 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
     ],
     hasMinus: true,
     hasOwnerToggle: true,
+    ownerImplicitFromTappedSide: true,
   },
   {
     id: "SIDELINE",
@@ -169,6 +203,7 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
     ],
     hasMinus: true,
     hasOwnerToggle: true,
+    ownerImplicitFromTappedSide: true,
   },
   {
     id: "TURNOVER",
@@ -196,28 +231,57 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
     hasMinus: false,
   },
   {
-    // Secondary/collapsed by default (see ProTaggerFamily.secondary) — a card
-    // is rare relative to scoring/turnover/restart taps and must not compete
-    // with them for thumb space. FOR/OPP records which team's player was
-    // sanctioned; Sin Bin is kept as its own distinct kind (not a Yellow
-    // alias) so a later pass can derive the resulting player-count window
-    // from it without re-tagging historical data.
+    // Always-expanded, first-class family — Discipline matters enough to
+    // stay visible, not hidden behind a collapse arrow. FOR/OPP records
+    // which team's player was sanctioned; Sin Bin is kept as its own
+    // distinct kind (not a Yellow alias) so a later pass can derive the
+    // resulting player-count window from it without re-tagging historical
+    // data. Per-tile colours (below) are the real sanction signal — the
+    // family-level colour/textColour here only back the small category dot
+    // next to the "DISCIPLINE" heading, never a tile.
     id: "DISCIPLINE",
     label: "Discipline",
-    colour: "#78716c",
+    colour: "#f59e0b",
     textColour: "#ffffff",
     tiles: [
-      { label: "Yellow" },
-      { label: "Sin Bin" },
-      { label: "Red" },
+      // Colours match the canonical per-kind colours already used for
+      // YELLOW_CARD/SIN_BIN/RED_CARD in reviewPdfExport.ts's EVENT_COLORS —
+      // same sanction, same colour, wherever it's shown.
+      { label: "Yellow", colour: "#facc15", textColour: "#422006" },
+      { label: "Sin Bin", colour: "#fb923c", textColour: "#431407" },
+      { label: "Red", colour: "#dc2626", textColour: "#ffffff" },
     ],
     hasMinus: true,
-    secondary: true,
   },
 ];
 
 export function getFamiliesForSport(sport: ProTaggerSport): readonly ProTaggerFamily[] {
   return PRO_TAGGER_FAMILIES.filter((f) => !f.hideForSports?.includes(sport));
+}
+
+// Maps the DISCIPLINE family's tile labels to the sanction kind
+// getDisciplineOptions() reasons about. Case matches tile.label exactly
+// (resolveKindAndSide upper-cases it separately for the stored tag).
+const DISCIPLINE_TILE_CARD_KIND: Record<string, ProTaggerDisciplineCardKind> = {
+  "Yellow": "YELLOW_CARD",
+  "Sin Bin": "SIN_BIN",
+  "Red": "RED_CARD",
+};
+
+/**
+ * A family's tiles for the given sport. Identical to family.tiles for every
+ * family except DISCIPLINE, whose tiles are filtered against
+ * getDisciplineOptions(sport) — e.g. Sin Bin never renders for Camogie.
+ * Non-destructive: PRO_TAGGER_FAMILIES itself is never mutated, so this must
+ * be called at render time by anything that iterates a family's tiles.
+ */
+export function getFamilyTiles(family: ProTaggerFamily, sport: ProTaggerSport): readonly ProTaggerTile[] {
+  if (family.id !== "DISCIPLINE") return family.tiles;
+  const allowed = getDisciplineOptions(sport);
+  return family.tiles.filter((tile) => {
+    const cardKind = DISCIPLINE_TILE_CARD_KIND[tile.label];
+    return cardKind == null || allowed.includes(cardKind);
+  });
 }
 
 export function getTileLabel(tile: ProTaggerTile, sport: ProTaggerSport): string {
@@ -252,6 +316,27 @@ export function getRestartAbbreviation(sport: ProTaggerSport): "K/O" | "P/O" {
 export function getRestartOwnerLabel(sport: ProTaggerSport, owner: "FOR" | "OPP"): string {
   const abbrev = getRestartAbbreviation(sport);
   return owner === "FOR" ? `OUR ${abbrev}` : `THEIR ${abbrev}`;
+}
+
+/**
+ * The restartOwner value ProTaggerFamilyGrid should pass to onTileTap for a
+ * tap on the given family + row. Three cases:
+ *  - No hasOwnerToggle at all (most families): undefined, unchanged.
+ *  - hasOwnerToggle + ownerImplicitFromTappedSide (45/65, Sideline): the
+ *    tapped row's own side IS the owner — the shared toggle value is never
+ *    consulted, so it's impossible to reach the CONCEDED branch of
+ *    resolveRestartOutcome from this presentation.
+ *  - hasOwnerToggle without that flag (Kickout): the shared toggle value,
+ *    exactly as before — unaffected by which row was tapped.
+ */
+export function resolveTileRestartOwner(
+  family: ProTaggerFamily,
+  tappedTeamSide: "FOR" | "OPP",
+  toggledOwner: "FOR" | "OPP",
+): "FOR" | "OPP" | undefined {
+  if (!family.hasOwnerToggle) return undefined;
+  if (family.ownerImplicitFromTappedSide) return tappedTeamSide;
+  return toggledOwner;
 }
 
 /**

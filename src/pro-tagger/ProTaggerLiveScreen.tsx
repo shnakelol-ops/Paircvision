@@ -7,6 +7,7 @@ import { PRO_TAGGER_FAMILIES, getFamilyLabel } from "./pro-tagger-families";
 import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
+import { buildDisciplineStatusMap } from "./pro-tagger-discipline";
 import { saveProTaggerMatch, saveProTaggerMatchFull } from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildStatsShareCardPng } from "../stats/statsShareCard";
@@ -103,6 +104,20 @@ export function resetClockForSecondHalf(
 ): void {
   clockSecondsRef.current = 0;
   setClockSeconds(0);
+}
+
+/**
+ * The clock-interval anchor formula shared by first-half start, second-half
+ * start, reload-after-resume, AND manual pause/resume: re-derive the
+ * timestamp the running interval measures elapsed time from, so ticking
+ * continues from clockSecondsSnapshot rather than jumping to whatever real
+ * time has passed. Manual pause clears the interval without touching
+ * clockSecondsRef, so calling this again on resume with the same (frozen)
+ * snapshot reanchors the clock exactly where it was paused — no wall-clock
+ * countdown model, no jump.
+ */
+export function computeClockStartTimestamp(nowMs: number, clockSecondsSnapshot: number): number {
+  return nowMs - clockSecondsSnapshot * 1000;
 }
 
 // Initialise live squad from session — always starts with starters 1–15 active.
@@ -302,6 +317,14 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [wrongWayActive, setWrongWayActive] = useState(false);
 
+  // ── Manual clock pause/resume ────────────────────────────────────────────
+  // Distinct from `clockRunning`/`needsClockResume` above, which represent the
+  // "reopened mid-half, clock never started this session" state and gate the
+  // MATCH REOPENED screen + block tagging. A manual pause must NOT trigger
+  // that screen and must NOT block tagging — so it gets its own flag.
+  const [isManuallyPaused, setIsManuallyPaused] = useState(false);
+  const isManuallyPausedRef = useRef(false);
+
   // ── Live squad state (substitutions) ─────────────────────────────────────
   const [homeSquadState, setHomeSquadState] = useState<ProTaggerSquadPlayer[]>(() =>
     restoreState ? restoreState.homeSquadLiveState : initSquad(session.homeSquad.players),
@@ -346,6 +369,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   useEffect(() => { loggedRef.current = loggedEvents; }, [loggedEvents]);
   useEffect(() => { matchStateRef.current = matchState; }, [matchState]);
   useEffect(() => { clockRunningRef.current = clockRunning; }, [clockRunning]);
+  useEffect(() => { isManuallyPausedRef.current = isManuallyPaused; }, [isManuallyPaused]);
   useEffect(() => { wrongWayActiveRef.current = wrongWayActive; }, [wrongWayActive]);
 
   useEffect(() => {
@@ -363,7 +387,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // Shared by first-half start, second-half start, and resume-after-reload —
   // the only three places the clock is allowed to begin ticking.
   function startClockInterval() {
-    clockStartRef.current = Date.now() - clockSecondsRef.current * 1000;
+    clockStartRef.current = computeClockStartTimestamp(Date.now(), clockSecondsRef.current);
     if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
     clockIntervalRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - clockStartRef.current!) / 1000);
@@ -382,6 +406,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     setHalf(1);
     matchStateRef.current = "FIRST_HALF";
     setMatchState("FIRST_HALF");
+    isManuallyPausedRef.current = false;
+    setIsManuallyPaused(false);
   }, []);
 
   function freezeMatch(nextState: "HALF_TIME" | "FULL_TIME") {
@@ -391,6 +417,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     }
     clockRunningRef.current = false;
     setClockRunning(false);
+    isManuallyPausedRef.current = false;
+    setIsManuallyPaused(false);
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     if (wrongWayTimerRef.current) { clearTimeout(wrongWayTimerRef.current); wrongWayTimerRef.current = null; }
     wrongWayActiveRef.current = false;
@@ -414,6 +442,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     setHalf(2);
     matchStateRef.current = "SECOND_HALF";
     setMatchState("SECOND_HALF");
+    isManuallyPausedRef.current = false;
+    setIsManuallyPaused(false);
   }, []);
 
   const handleFullTime = useCallback(() => {
@@ -425,6 +455,30 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // FIRST_HALF/SECOND_HALF but the clock interval was never started this
   // session). Continues ticking from the saved elapsed time — never resets it.
   const handleResumeClock = useCallback(() => {
+    startClockInterval();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Manual clock pause/resume ────────────────────────────────────────────
+  // Stops/restarts only the setInterval tick — deliberately does NOT touch
+  // clockRunning/clockRunningRef. clockRunning represents "has this session's
+  // clock been started at all" (it also gates the reload MATCH REOPENED
+  // screen and the tagging guard below); leaving it true across a manual
+  // pause means tagging stays usable and the reload screen never appears,
+  // while the frozen clockSeconds display and resume-with-no-jump behaviour
+  // fall out for free from the same mechanism handleResumeClock already uses.
+  const handlePauseClock = useCallback(() => {
+    if (clockIntervalRef.current) {
+      clearInterval(clockIntervalRef.current);
+      clockIntervalRef.current = null;
+    }
+    isManuallyPausedRef.current = true;
+    setIsManuallyPaused(true);
+  }, []);
+
+  const handleResumeFromManualPause = useCallback(() => {
+    isManuallyPausedRef.current = false;
+    setIsManuallyPaused(false);
     startClockInterval();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -837,6 +891,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     loggedRef.current = [];
     matchStateRef.current = "PRE_MATCH";
     wrongWayActiveRef.current = false;
+    isManuallyPausedRef.current = false;
     setLoggedEvents([]);
     setClockSeconds(0);
     setHalf(1);
@@ -845,6 +900,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     setPending(null);
     setFeedbackDot(null);
     setWrongWayActive(false);
+    setIsManuallyPaused(false);
     setSaveFeedback(null);
     setActionsFeedback(null);
     setResetConfirmOpen(false);
@@ -889,6 +945,13 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const forCts = ctsOpen ? computeProTaggerCounts(loggedEvents, "FOR") : null;
   const oppCts = ctsOpen ? computeProTaggerCounts(loggedEvents, "OPP") : null;
 
+  // Discipline player status — derived fresh from loggedEvents every render
+  // (no independent mutable state), so Undo/reload/restore all just work.
+  // Passed into the single shared ProTaggerPlayerPicker below so RED/SIN BIN
+  // apply automatically to every event family that reuses that picker —
+  // no per-family Red checks needed elsewhere.
+  const disciplineStatus = buildDisciplineStatusMap(loggedEvents, half === 1 ? "1H" : "2H", clockSeconds);
+
   return (
     <div style={S.shell}>
 
@@ -917,6 +980,12 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           {matchState === "PRE_MATCH" && (
             <button onClick={handleStartMatch} style={S.startBtn}>▶ Start</button>
           )}
+          {isActivePlaying && !needsClockResume && !isManuallyPaused && (
+            <button onClick={handlePauseClock} style={S.pauseBtn}>⏸ Pause</button>
+          )}
+          {isManuallyPaused && (
+            <button onClick={handleResumeFromManualPause} style={S.resumeClockBtn}>▶ Resume</button>
+          )}
           {matchState === "FIRST_HALF" && clockRunning && (
             <button onClick={() => setHtConfirmOpen(true)} style={S.htBtn}>HT</button>
           )}
@@ -933,18 +1002,6 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
             style={{ ...S.iconBtn, ...(!canUndo ? S.btnDisabled : {}) }}
           >
             ↩
-          </button>
-          <button
-            style={S.ctsBtn}
-            onClick={() => setCtsOpen(true)}
-          >
-            CTS
-          </button>
-          <button
-            style={S.actionsBtn}
-            onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
-          >
-            Actions
           </button>
         </div>
       </div>
@@ -974,10 +1031,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
             </button>
           )}
           <button
-            style={S.htActionsBtn}
+            style={S.breakOptionsBtn}
             onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
           >
-            Actions
+            ⋯ Options
           </button>
           {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
         </div>
@@ -1009,6 +1066,15 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               Event Map
             </button>
           )}
+          {/* FULL_TIME has no other route to Options (the footer strip that
+              normally carries it isn't rendered on break screens) — Save/
+              Share/PDF exports live there, so it must stay reachable. */}
+          <button
+            style={S.breakOptionsBtn}
+            onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
+          >
+            ⋯ Options
+          </button>
           {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
         </div>
       )}
@@ -1039,6 +1105,12 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               Event Map
             </button>
           )}
+          <button
+            style={S.breakOptionsBtn}
+            onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
+          >
+            ⋯ Options
+          </button>
         </div>
       )}
 
@@ -1057,7 +1129,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               />
               <div style={S.strip}>
                 {saveFeedback ? (
-                  <span style={S.saveFeedbackText}>{saveFeedback}</span>
+                  <span style={{ ...S.saveFeedbackText, ...S.stripStatusFlex }}>{saveFeedback}</span>
                 ) : matchState === "PRE_MATCH" ? (
                   <span style={S.eventCount}>Press ▶ Start to begin</span>
                 ) : (
@@ -1067,13 +1139,20 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                       : "Tap a tile to log an event"}
                   </span>
                 )}
-                <span style={{ flex: 1 }} />
-                <button
-                  style={S.voiceNotesBtn}
-                  onClick={() => setNotesOpen(true)}
-                >
-                  🎤 Voice Notes
-                </button>
+                <div style={S.stripActions}>
+                  <button
+                    style={S.stripOptionsBtn}
+                    onClick={() => { setActionsFeedback(null); setActionsOpen(true); }}
+                  >
+                    ⋯ Options
+                  </button>
+                  <button
+                    style={S.voiceNotesBtn}
+                    onClick={() => setNotesOpen(true)}
+                  >
+                    🎤 Voice Notes
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -1112,6 +1191,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                   secondaryColour={
                     pending.teamSide === "FOR" ? homeSecondaryColour : awaySecondaryColour
                   }
+                  disciplineStatus={disciplineStatus}
                   onSelect={handlePlayerSelect}
                 />
               </div>
@@ -1319,13 +1399,13 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         </div>
       )}
 
-      {/* ── Actions sheet ─────────────────────────────────────────── */}
+      {/* ── Options sheet ─────────────────────────────────────────── */}
       {actionsOpen && (
         <div style={AS.overlay} onClick={() => setActionsOpen(false)}>
           <div style={AS.sheet} onClick={(e) => e.stopPropagation()}>
 
             <div style={AS.header}>
-              <span style={AS.title}>Actions</span>
+              <span style={AS.title}>Options</span>
               <button style={AS.closeBtn} onClick={() => setActionsOpen(false)}>✕</button>
             </div>
 
@@ -1352,6 +1432,13 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
 
               <button style={AS.actionBtn} onClick={handleShare}>
                 Share Summary PNG
+              </button>
+
+              <button
+                style={AS.actionBtn}
+                onClick={() => { setActionsOpen(false); setCtsOpen(true); }}
+              >
+                Counts Sheet (CTS)
               </button>
 
               {(() => {
@@ -1661,6 +1748,34 @@ const S: Record<string, CSSProperties> = {
     flexShrink: 0,
     WebkitTapHighlightColor: "transparent",
   },
+  pauseBtn: {
+    background: "#21262d",
+    border: "1px solid #6e7681",
+    borderRadius: 6,
+    color: "#c9d1d9",
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: "0.04em",
+    padding: "4px 11px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
+  },
+  resumeClockBtn: {
+    background: "rgba(56,189,248,0.18)",
+    border: "1px solid #38bdf8",
+    borderRadius: 6,
+    color: "#7dd3fc",
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: "0.04em",
+    padding: "4px 11px",
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
+  },
   iconBtn: {
     background: "#21262d",
     border: "1px solid #30363d",
@@ -1673,32 +1788,6 @@ const S: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
   btnDisabled: { opacity: 0.35, cursor: "default" },
-  ctsBtn: {
-    background: "#21262d",
-    border: "1px solid #30363d",
-    borderRadius: 6,
-    color: "#8b949e",
-    fontSize: 11,
-    fontWeight: 700,
-    padding: "5px 9px",
-    cursor: "pointer",
-    outline: "none",
-    flexShrink: 0,
-    WebkitTapHighlightColor: "transparent",
-  },
-  actionsBtn: {
-    background: "#21262d",
-    border: "1px solid #388bfd",
-    borderRadius: 6,
-    color: "#79c0ff",
-    fontSize: 11,
-    fontWeight: 700,
-    padding: "5px 9px",
-    cursor: "pointer",
-    outline: "none",
-    flexShrink: 0,
-    WebkitTapHighlightColor: "transparent",
-  },
 
   // ── Break screens (HALF_TIME / FULL_TIME) ───────────────────────────────────
   breakScreen: {
@@ -1764,7 +1853,9 @@ const S: Record<string, CSSProperties> = {
     outline: "none",
     letterSpacing: "0.03em",
   },
-  htActionsBtn: {
+  // Break-screen Options entry point — shared by HALF_TIME, FULL_TIME and
+  // the reload-pending screen, none of which render the footer strip.
+  breakOptionsBtn: {
     background: "#21262d",
     border: "1px solid #388bfd",
     borderRadius: 8,
@@ -1790,15 +1881,58 @@ const S: Record<string, CSSProperties> = {
   },
 
   // ── IDLE: strip ─────────────────────────────────────────────────────────────
+  // Persistent footer: [event count/context — flexes & truncates first]
+  // [Options] [Voice Notes — both fixed-size, never shrink, never wrap].
   strip: {
-    padding: "7px 14px 9px",
+    padding: "7px 14px calc(9px + env(safe-area-inset-bottom, 0px))",
     background: "#0d1117",
     borderTop: "1px solid #21262d",
     flexShrink: 0,
     display: "flex",
     alignItems: "center",
+    gap: 8,
   },
-  eventCount:       { fontSize: 12, color: "#8b949e", fontVariantNumeric: "tabular-nums" },
+  eventCount:       {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 12,
+    color: "#8b949e",
+    fontVariantNumeric: "tabular-nums",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  },
+  // Row-flex override for the strip specifically (event count/status text
+  // flexes and truncates first; the action buttons never shrink).
+  stripStatusFlex: {
+    flex: 1,
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  },
+  // Right-side action group — never truncates or shrinks; the event count
+  // gives way first if width is genuinely constrained.
+  stripActions: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexShrink: 0,
+  },
+  stripOptionsBtn: {
+    background: "#21262d",
+    border: "1px solid #388bfd",
+    borderRadius: 999,
+    color: "#79c0ff",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "8px 12px",
+    minHeight: 36,
+    cursor: "pointer",
+    outline: "none",
+    flexShrink: 0,
+    WebkitTapHighlightColor: "transparent",
+  },
   voiceNotesBtn: {
     background: "transparent",
     border: "1px solid rgba(125,211,252,0.55)",

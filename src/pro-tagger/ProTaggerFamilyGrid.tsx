@@ -2,9 +2,11 @@ import { useState } from "react";
 import type { CSSProperties } from "react";
 import {
   getFamiliesForSport,
+  getFamilyTiles,
   getTileLabel,
   getFamilyLabel,
   getRestartOwnerLabel,
+  resolveTileRestartOwner,
   tileNeedsOppositionAttribution,
 } from "./pro-tagger-families";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
@@ -54,6 +56,10 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
 
         const isSecondary = family.secondary === true;
         const isExpanded = !isSecondary || expandedSecondary.has(family.id);
+        // Sport-filtered — identical to family.tiles except for DISCIPLINE,
+        // where a sanction not valid for this sport (e.g. Sin Bin in
+        // Camogie) is simply absent from the tile list, not shown disabled.
+        const tiles = getFamilyTiles(family, sport);
 
         return (
           <div key={family.id} style={isSecondary ? S.secondaryCard : S.card}>
@@ -68,8 +74,11 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
                 <span style={S.secondaryChevron}>{isExpanded ? "▾" : "▸"}</span>
               )}
 
-              {/* Restart ownership toggle — any hasOwnerToggle family */}
-              {hasOwnerToggle && isExpanded && (
+              {/* Restart ownership toggle — hasOwnerToggle families whose owner
+                  isn't already implied by which row was tapped (Kickout only;
+                  45/65 and Sideline derive it from the tapped side instead —
+                  see ownerImplicitFromTappedSide). */}
+              {hasOwnerToggle && !family.ownerImplicitFromTappedSide && isExpanded && (
                 <div style={S.ownerToggle}>
                   <button
                     style={{ ...S.ownerBtn, ...(restartOwner === "FOR" ? S.ownerBtnActive : {}) }}
@@ -92,13 +101,17 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
                 {/* FOR tile row — unchanged; the filled family colour already
                     reads as "this team" without needing a label. */}
                 <div style={S.tileRow}>
-                  {family.tiles.map((tile) => {
+                  {tiles.map((tile) => {
                     const label = getTileLabel(tile, sport);
                     return (
                       <button
                         key={label}
-                        style={{ ...S.tile, background: family.colour, color: family.textColour }}
-                        onClick={() => onTileTap(family.id, label, "FOR", hasOwnerToggle ? restartOwner : undefined)}
+                        style={{
+                          ...S.tile,
+                          background: tile.colour ?? family.colour,
+                          color: tile.textColour ?? family.textColour,
+                        }}
+                        onClick={() => onTileTap(family.id, label, "FOR", resolveTileRestartOwner(family, "FOR", restartOwner))}
                       >
                         {label}
                       </button>
@@ -115,7 +128,7 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
                   <div style={S.oppGroup}>
                     <span style={S.oppTeamLabel} title={awayShortLabel}>{awayShortLabel}</span>
                     <div style={S.tileRow}>
-                      {family.tiles.map((tile) => {
+                      {tiles.map((tile) => {
                         const label = getTileLabel(tile, sport);
                         // Display-only: name the team whose mistake this was on the
                         // opposition row. The tap always sends the original `label` —
@@ -127,8 +140,13 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
                         return (
                           <button
                             key={label}
-                            style={S.minusTile}
-                            onClick={() => onTileTap(family.id, label, "OPP", hasOwnerToggle ? restartOwner : undefined)}
+                            style={{
+                              ...S.minusTile,
+                              ...(tile.colour
+                                ? { borderColor: tile.colour, color: tile.colour }
+                                : {}),
+                            }}
+                            onClick={() => onTileTap(family.id, label, "OPP", resolveTileRestartOwner(family, "OPP", restartOwner))}
                             aria-label={`Opposition ${familyLabel} ${label}`}
                           >
                             {displayLabel}

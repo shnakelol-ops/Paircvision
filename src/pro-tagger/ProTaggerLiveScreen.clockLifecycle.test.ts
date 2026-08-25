@@ -19,7 +19,7 @@
 //      SECOND_HALF boundary) — proving events captured after that
 //      transition land in the correct 10-minute segment end-to-end.
 import { describe, it, expect } from "vitest";
-import { resetClockForSecondHalf } from "./ProTaggerLiveScreen";
+import { computeClockStartTimestamp, resetClockForSecondHalf } from "./ProTaggerLiveScreen";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
 
 function min(m: number): number {
@@ -139,6 +139,70 @@ describe("Event Stats (Pro Tagger): second-half clock reset", () => {
       expect(bySegment(4)).toBe(0);
       expect(bySegment(5)).toBe(0);
       expect(bySegment(6)).toBe(3);
+    });
+  });
+
+  describe("C. Manual pause/resume regression", () => {
+    // computeClockStartTimestamp is the exact anchor formula startClockInterval
+    // uses in production (handleResumeFromManualPause calls startClockInterval,
+    // same as match-start / second-half-start / reload-resume) — these tests
+    // exercise that real function, not a re-implementation of its arithmetic.
+
+    it("resume re-anchors the clock so the next tick reads the frozen (paused) value, not 0", () => {
+      const pausedAtSeconds = min(4) + 14; // paused at 04:14
+      const resumeNowMs = 1_000_000_000_000; // arbitrary wall-clock instant
+      const anchor = computeClockStartTimestamp(resumeNowMs, pausedAtSeconds);
+      const elapsedImmediatelyAfterResume = Math.floor((resumeNowMs - anchor) / 1000);
+      expect(elapsedImmediatelyAfterResume).toBe(pausedAtSeconds);
+    });
+
+    it("5 real minutes passing while paused does not add to the resumed clock — resume continues from the exact frozen value, not frozen + elapsed wall time", () => {
+      const pausedAtSeconds = min(4) + 14; // 04:14
+      const pauseNowMs = 1_000_000_000_000;
+      // Resume happens 5 real minutes later — but clockSecondsRef itself was
+      // never advanced while paused (the interval was cleared), so the
+      // snapshot handed to computeClockStartTimestamp on resume is still 04:14.
+      const resumeNowMs = pauseNowMs + min(5) * 1000;
+      const anchor = computeClockStartTimestamp(resumeNowMs, pausedAtSeconds);
+      const elapsedImmediatelyAfterResume = Math.floor((resumeNowMs - anchor) / 1000);
+      expect(elapsedImmediatelyAfterResume).toBe(pausedAtSeconds); // 04:14, not 09:14
+    });
+
+    it("ticking after resume continues forward normally from the frozen value", () => {
+      const pausedAtSeconds = min(10);
+      const resumeNowMs = 2_000_000_000_000;
+      const anchor = computeClockStartTimestamp(resumeNowMs, pausedAtSeconds);
+      const tenSecondsLater = resumeNowMs + 10_000;
+      const elapsed = Math.floor((tenSecondsLater - anchor) / 1000);
+      expect(elapsed).toBe(pausedAtSeconds + 10);
+    });
+
+    it("pause/resume in 2H uses the same anchor formula as 1H — no special-casing by half", () => {
+      const pausedAtSeconds = min(37); // well into 2H, period-relative post second-half-reset
+      const resumeNowMs = 3_000_000_000_000;
+      const anchor = computeClockStartTimestamp(resumeNowMs, pausedAtSeconds);
+      expect(Math.floor((resumeNowMs - anchor) / 1000)).toBe(pausedAtSeconds);
+    });
+
+    it("second-half reset is unaffected by a pause taken during 1H — still lands on exactly 0", () => {
+      // A pause during 1H leaves clockSecondsRef at whatever it was paused at;
+      // resetClockForSecondHalf must still zero it unconditionally at the
+      // HALF_TIME -> SECOND_HALF transition, same as the existing A. coverage.
+      const clockSecondsRef = { current: min(22) + 40 }; // paused at 22:40 in 1H
+      let clockSeconds = clockSecondsRef.current;
+      const setClockSeconds = (seconds: number) => { clockSeconds = seconds; };
+
+      resetClockForSecondHalf(clockSecondsRef, setClockSeconds);
+
+      expect(clockSecondsRef.current).toBe(0);
+      expect(clockSeconds).toBe(0);
+    });
+
+    it("reload-recovery (handleResumeClock) shares the identical anchor formula — a resumed-mid-half match also continues from its saved elapsed time, not 0", () => {
+      const savedElapsedSeconds = min(18) + 5; // match was saved mid-half at 18:05
+      const reloadNowMs = 4_000_000_000_000;
+      const anchor = computeClockStartTimestamp(reloadNowMs, savedElapsedSeconds);
+      expect(Math.floor((reloadNowMs - anchor) / 1000)).toBe(savedElapsedSeconds);
     });
   });
 });
