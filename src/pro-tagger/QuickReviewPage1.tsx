@@ -22,6 +22,15 @@ export interface QuickReviewPage1Props {
   awayColour: string;
 }
 
+/**
+ * "1 shot" / "0 shots" / "2 shots" — the one shared count/noun agreement
+ * helper for Quick Review's inline "{count} {noun}" strings (shots/scores).
+ * Exported only for pluralize.test.ts; not part of the component's public API.
+ */
+export function pluralize(count: number, singular: string, plural: string = `${singular}s`): string {
+  return count === 1 ? singular : plural;
+}
+
 const CLR = {
   cyan:   "#22d3ee", // Restart Won
   pink:   "#fb7185", // Restart Lost
@@ -75,16 +84,13 @@ export function QuickReviewPage1({ model, homeColour, awayColour }: QuickReviewP
           accent={CLR.cyan}
           shots={model.restarts.won.shots}
           scores={model.restarts.won.scores}
-          shotsSuffix="shots"
-          scoresSuffix="scores"
         />
         <ConsequenceRow
           label="Restart lost"
           accent={CLR.pink}
           shots={model.restarts.lost.shots}
           scores={model.restarts.lost.scores}
-          shotsSuffix="shots against"
-          scoresSuffix="scores against"
+          against
         />
       </section>
 
@@ -99,8 +105,6 @@ export function QuickReviewPage1({ model, homeColour, awayColour }: QuickReviewP
           accent={CLR.purple}
           shots={model.turnovers.won.shots}
           scores={model.turnovers.won.scores}
-          shotsSuffix="shots"
-          scoresSuffix="scores"
           compact
         />
 
@@ -111,8 +115,7 @@ export function QuickReviewPage1({ model, homeColour, awayColour }: QuickReviewP
           accent={CLR.orange}
           shots={model.turnovers.lost.shots}
           scores={model.turnovers.lost.scores}
-          shotsSuffix="shots against"
-          scoresSuffix="scores against"
+          against
           compact
         />
       </section>
@@ -156,25 +159,27 @@ function ConsequenceRow({
   accent,
   shots,
   scores,
-  shotsSuffix,
-  scoresSuffix,
+  against,
   compact,
 }: {
   label: string;
   accent: string;
   shots: number;
   scores: number;
-  shotsSuffix: string;
-  scoresSuffix: string;
+  /** Appends " against" to both nouns (restart/turnover LOST rows). */
+  against?: boolean;
   compact?: boolean;
 }) {
+  const suffix = against ? " against" : "";
+  const shotsText = `${shots} ${pluralize(shots, "shot")}${suffix}`;
+  const scoresText = `${scores} ${pluralize(scores, "score")}${suffix}`;
   return (
     <div style={compact ? S.consequenceRowCompact : S.consequenceRow}>
       {label && <span style={{ ...S.consequenceLabel, color: accent }}>{label}</span>}
       <span style={S.consequenceArrow}>→</span>
-      <span style={S.consequenceValue}>{shots} {shotsSuffix}</span>
+      <span style={S.consequenceValue}>{shotsText}</span>
       <span style={S.consequenceSep}>|</span>
-      <span style={S.consequenceValue}>{scores} {scoresSuffix}</span>
+      <span style={S.consequenceValue}>{scoresText}</span>
     </div>
   );
 }
