@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
+import EventStatsAtmosphere from "../components/EventStatsAtmosphere";
+import { usePortraitOrientation } from "../components/OrientationGate";
 import type {
   ProTaggerSession,
   ProTaggerSport,
@@ -52,6 +54,7 @@ const TARGET_ROWS: readonly TargetRow[] = [
 ];
 
 export function ProTaggerSetupScreen({ onContinue }: Props) {
+  const isPortrait = usePortraitOrientation();
   const [sport, setSport]             = useState<ProTaggerSport>("gaelic");
   const [homeTeam, setHomeTeam]       = useState("");
   const [awayTeam, setAwayTeam]       = useState("");
@@ -118,6 +121,7 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
 
   return (
     <div style={S.shell}>
+      <EventStatsAtmosphere variant="setup" portrait={isPortrait} />
       <div style={S.header}>
         <span style={S.title}>Event Stats</span>
         <span style={S.badge}>Setup</span>
@@ -311,6 +315,7 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
 
 const S: Record<string, CSSProperties> = {
   shell: {
+    position: "relative",
     display: "flex",
     flexDirection: "column",
     height: "100dvh",
@@ -322,6 +327,8 @@ const S: Record<string, CSSProperties> = {
     overflow: "hidden",
   },
   header: {
+    position: "relative",
+    zIndex: 1,
     display: "flex",
     alignItems: "center",
     gap: 8,
@@ -346,6 +353,8 @@ const S: Record<string, CSSProperties> = {
     padding: "3px 8px",
   },
   body: {
+    position: "relative",
+    zIndex: 1,
     flex: 1,
     overflowY: "auto",
     display: "flex",

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
+import EventStatsAtmosphere from "../components/EventStatsAtmosphere";
+import { usePortraitOrientation } from "../components/OrientationGate";
 import type { ProTaggerSession } from "./pro-tagger-session";
 import { ProTaggerSetupScreen } from "./ProTaggerSetupScreen";
 import { ProTaggerSquadScreen } from "./ProTaggerSquadScreen";
@@ -53,6 +55,7 @@ export default function ProTaggerPage() {
   const [savedCount, setSavedCount]     = useState(() => readProTaggerMatches().length);
   const [reviewMatch, setReviewMatch]   = useState<ProTaggerSavedMatch | null>(null);
   const [inProgressMatch, setInProgressMatch] = useState<ProTaggerSavedMatch | null>(() => findInProgressMatch());
+  const isPortrait = usePortraitOrientation();
 
   function resumeMatch(match: ProTaggerSavedMatch) {
     setDraftSession(savedMatchToSession(match));
@@ -65,6 +68,7 @@ export default function ProTaggerPage() {
   if (phase === "home") {
     return (
       <div style={H.shell}>
+        <EventStatsAtmosphere variant="landing" portrait={isPortrait} />
         <div style={H.header}>
           <span style={H.title}>Event Stats</span>
         </div>
@@ -196,6 +200,7 @@ export default function ProTaggerPage() {
 
 const H: Record<string, CSSProperties> = {
   shell: {
+    position: "relative",
     display: "flex",
     flexDirection: "column",
     height: "100dvh",
@@ -207,6 +212,8 @@ const H: Record<string, CSSProperties> = {
     overflow: "hidden",
   },
   header: {
+    position: "relative",
+    zIndex: 1,
     display: "flex",
     alignItems: "center",
     padding: "12px 16px 10px",
@@ -221,6 +228,8 @@ const H: Record<string, CSSProperties> = {
     flex: 1,
   },
   body: {
+    position: "relative",
+    zIndex: 1,
     flex: 1,
     display: "flex",
     flexDirection: "column",

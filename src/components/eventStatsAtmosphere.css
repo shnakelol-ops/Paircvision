@@ -1,0 +1,84 @@
+/*
+ * Event Stats atmosphere layer — the bundled scoreboard/pitch photograph used
+ * behind Landing / Setup / Squads / Saved Matches only. Live Capture and all
+ * modals/overlays never import this. Separation from content is achieved with
+ * background-position, opacity and layered navy gradients only — no blur or
+ * filter effects, which are expensive to composite full-screen on low-end
+ * tablets.
+ */
+
+.es-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.es-atmosphere__photo {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center 35%;
+}
+
+.es-atmosphere__scrim {
+  position: absolute;
+  inset: 0;
+}
+
+/* Landing — strongest expression of the identity. Photo reads clearly; only
+   the lower band is darkened enough to guarantee button contrast. */
+.es-atmosphere--landing .es-atmosphere__photo {
+  background-position: center 20%;
+  opacity: 1;
+}
+.es-atmosphere--landing .es-atmosphere__scrim {
+  background:
+    linear-gradient(180deg, rgba(13, 17, 23, 0.12) 0%, rgba(13, 17, 23, 0.30) 48%, rgba(9, 12, 17, 0.90) 100%),
+    linear-gradient(0deg, rgba(9, 12, 17, 0.55) 0%, rgba(9, 12, 17, 0) 26%);
+}
+
+/* Setup — heavily darkened while the scoreboard identity stays legible
+   behind the dense form controls. */
+.es-atmosphere--setup .es-atmosphere__photo {
+  background-position: center 55%;
+  opacity: 0.5;
+}
+.es-atmosphere--setup .es-atmosphere__scrim {
+  background: linear-gradient(180deg, rgba(9, 12, 17, 0.82) 0%, rgba(9, 12, 17, 0.90) 45%, rgba(7, 10, 14, 0.95) 100%);
+}
+
+/* Squads — heaviest suppression: perceived, not actively viewed. */
+.es-atmosphere--squads .es-atmosphere__photo {
+  background-position: center 70%;
+  opacity: 0.22;
+}
+.es-atmosphere--squads .es-atmosphere__scrim {
+  background: linear-gradient(180deg, rgba(7, 10, 14, 0.94) 0%, rgba(7, 10, 14, 0.97) 100%);
+}
+
+/* Saved Matches — medium treatment, legible behind list rows/cards. */
+.es-atmosphere--saved .es-atmosphere__photo {
+  background-position: center 42%;
+  opacity: 0.65;
+}
+.es-atmosphere--saved .es-atmosphere__scrim {
+  background: linear-gradient(180deg, rgba(9, 12, 17, 0.55) 0%, rgba(9, 12, 17, 0.75) 50%, rgba(7, 10, 14, 0.92) 100%);
+}
+
+/* Narrow portrait phones: pull the photo back slightly further so it never
+   competes with dense form/list content on a small screen. */
+@media (max-width: 700px) and (orientation: portrait) {
+  .es-atmosphere--setup .es-atmosphere__photo {
+    opacity: 0.42;
+  }
+  .es-atmosphere--squads .es-atmosphere__photo {
+    opacity: 0.16;
+  }
+}
+
+.es-atmosphere--portrait.es-atmosphere--landing .es-atmosphere__photo {
+  background-position: center 14%;
+}

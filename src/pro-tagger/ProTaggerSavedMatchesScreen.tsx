@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
 import type { CSSProperties } from "react";
+import EventStatsAtmosphere from "../components/EventStatsAtmosphere";
+import { usePortraitOrientation } from "../components/OrientationGate";
 import { readProTaggerMatches, deleteProTaggerMatch } from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import {
@@ -45,6 +47,7 @@ interface Props {
 }
 
 export function ProTaggerSavedMatchesScreen({ onOpen, onReview, onBack }: Props) {
+  const isPortrait = usePortraitOrientation();
   const [matches, setMatches]           = useState<ProTaggerSavedMatch[]>(() => readProTaggerMatches());
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -66,6 +69,7 @@ export function ProTaggerSavedMatchesScreen({ onOpen, onReview, onBack }: Props)
 
   return (
     <div style={S.shell}>
+      <EventStatsAtmosphere variant="saved" portrait={isPortrait} />
       {/* Header */}
       <div style={S.header}>
         <button style={S.backBtn} onClick={onBack}>← Back</button>
@@ -161,6 +165,7 @@ export function ProTaggerSavedMatchesScreen({ onOpen, onReview, onBack }: Props)
 
 const S: Record<string, CSSProperties> = {
   shell: {
+    position: "relative",
     display: "flex",
     flexDirection: "column",
     height: "100dvh",
@@ -172,6 +177,8 @@ const S: Record<string, CSSProperties> = {
     overflow: "hidden",
   },
   header: {
+    position: "relative",
+    zIndex: 1,
     display: "flex",
     alignItems: "center",
     gap: 10,
@@ -210,6 +217,8 @@ const S: Record<string, CSSProperties> = {
     flexShrink: 0,
   },
   list: {
+    position: "relative",
+    zIndex: 1,
     flex: 1,
     overflowY: "auto",
     display: "flex",

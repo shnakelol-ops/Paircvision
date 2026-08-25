@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
+import EventStatsAtmosphere from "../components/EventStatsAtmosphere";
+import { usePortraitOrientation } from "../components/OrientationGate";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 import type {
   ProTaggerSession,
@@ -32,6 +34,7 @@ function genId(): string {
 }
 
 export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
+  const isPortrait = usePortraitOrientation();
   const [activeTab, setActiveTab]     = useState<TeamTab>("home");
   const [homePlayers, setHomePlayers] = useState<ProTaggerSquadPlayer[]>(
     () => session.homeSquad.players.map((p) => ({ ...p })),
@@ -195,6 +198,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
 
   return (
     <div style={S.shell}>
+      <EventStatsAtmosphere variant="squads" portrait={isPortrait} />
 
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div style={S.header}>
@@ -404,6 +408,8 @@ const S: Record<string, CSSProperties> = {
 
   // ── Header ──────────────────────────────────────────────────────────────
   header: {
+    position: "relative",
+    zIndex: 1,
     display: "flex",
     alignItems: "center",
     gap: 8,
@@ -448,6 +454,8 @@ const S: Record<string, CSSProperties> = {
 
   // ── Tabs ────────────────────────────────────────────────────────────────
   tabs: {
+    position: "relative",
+    zIndex: 1,
     display: "flex",
     borderBottom: "1px solid #21262d",
     flexShrink: 0,
@@ -474,6 +482,8 @@ const S: Record<string, CSSProperties> = {
 
   // ── Library toolbar ──────────────────────────────────────────────────────
   libraryBar: {
+    position: "relative",
+    zIndex: 1,
     display: "flex",
     gap: 8,
     padding: "7px 12px",
@@ -497,6 +507,8 @@ const S: Record<string, CSSProperties> = {
 
   // ── List ────────────────────────────────────────────────────────────────
   list: {
+    position: "relative",
+    zIndex: 1,
     flex: 1,
     minHeight: 0,
     overflowY: "auto",
