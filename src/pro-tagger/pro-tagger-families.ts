@@ -125,6 +125,13 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
     hasMinus: true,
   },
   {
+    // Non-scoring shot outcomes only. Deliberately excludes:
+    //  - "45" — a shot deflected out for a 45 is already captured as the
+    //    canonical FORTY_FIVE_WON restart-award event; a second "45" tag
+    //    here would be a duplicate semantic representation of the same fact.
+    //  - "Mark" — a Mark is a shot *source* (where the shot came from), not
+    //    a non-scoring outcome; Mark-sourced shots that score are already
+    //    captured via Goal/Point/2PT/Wide -> Mark.
     id: "SHOT",
     label: "Shot",
     colour: "#ca8a04",
@@ -133,8 +140,6 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
       { label: "Short" },
       { label: "Block/Save" },
       { label: "Post" },
-      FORTY_FIVE_TILE,
-      { label: "Mark" },
     ],
     hasMinus: true,
   },

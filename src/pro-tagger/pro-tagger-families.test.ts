@@ -188,3 +188,25 @@ describe("Discipline is a permanently-expanded, first-class family", () => {
     }
   });
 });
+
+// ── SHOT: non-scoring shot outcomes only — "45" and "Mark" removed ──────────
+// "45": a shot deflected out for a 45 is already the canonical FORTY_FIVE_WON
+// restart-award event; a SHOT-family "45" tag would duplicate that fact.
+// "Mark": a shot *source*, not a non-scoring outcome — Mark-sourced scores
+// remain captured via Goal/Point/2PT/Wide -> Mark, untouched by this change.
+describe("SHOT exposes only non-scoring shot outcomes", () => {
+  it("SHOT tiles are exactly Short, Block/Save and Post — no 45, no Mark", () => {
+    const shot = familyById("SHOT");
+    expect(shot.tiles.map((t) => t.label)).toEqual(["Short", "Block/Save", "Post"]);
+  });
+
+  it("sport filtering doesn't add anything back — SHOT has no per-sport tile variation", () => {
+    for (const sport of ["gaelic", "ladies_football", "hurling", "camogie"] as const) {
+      expect(getFamilyTiles(familyById("SHOT"), sport).map((t) => t.label)).toEqual([
+        "Short",
+        "Block/Save",
+        "Post",
+      ]);
+    }
+  });
+});
