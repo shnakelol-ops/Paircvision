@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import type { CSSProperties } from "react";
+import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { readProTaggerMatches, deleteProTaggerMatch } from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import {
@@ -66,6 +67,8 @@ export function ProTaggerSavedMatchesScreen({ onOpen, onReview, onBack }: Props)
 
   return (
     <div style={S.shell}>
+      <VisionStadiumBackground variant="training" />
+      <div style={S.contentWrap}>
       {/* Header */}
       <div style={S.header}>
         <button style={S.backBtn} onClick={onBack}>← Back</button>
@@ -155,6 +158,7 @@ export function ProTaggerSavedMatchesScreen({ onOpen, onReview, onBack }: Props)
           </div>
         ))}
       </div>
+      </div>
     </div>
   );
 }
@@ -165,26 +169,35 @@ const S: Record<string, CSSProperties> = {
     flexDirection: "column",
     height: "100dvh",
     width: "100%",
-    background: "#0d1117",
-    color: "#e6edf3",
+    background: "#050c14",
+    color: "#dce8f4",
     fontFamily: "'Inter', 'Helvetica Neue', system-ui, sans-serif",
     userSelect: "none",
     overflow: "hidden",
+    position: "relative",
+  },
+  contentWrap: {
+    position: "relative",
+    zIndex: 1,
+    display: "flex",
+    flexDirection: "column",
+    flex: 1,
+    minHeight: 0,
   },
   header: {
     display: "flex",
     alignItems: "center",
     gap: 10,
     padding: "10px 14px 10px",
-    background: "#161b22",
-    borderBottom: "1px solid #21262d",
+    background: "#0a2134",
+    borderBottom: "1px solid #17324a",
     flexShrink: 0,
   },
   backBtn: {
     background: "transparent",
-    border: "1px solid #30363d",
+    border: "1px solid #1c3a52",
     borderRadius: 7,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 13,
     fontWeight: 600,
     padding: "5px 10px",
@@ -200,10 +213,10 @@ const S: Record<string, CSSProperties> = {
     letterSpacing: "-0.3px",
   },
   count: {
-    background: "#21262d",
-    border: "1px solid #30363d",
+    background: "#17324a",
+    border: "1px solid #1c3a52",
     borderRadius: 12,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 12,
     fontWeight: 700,
     padding: "2px 8px",
@@ -231,16 +244,16 @@ const S: Record<string, CSSProperties> = {
   emptyText: {
     fontSize: 15,
     fontWeight: 600,
-    color: "#e6edf3",
+    color: "#dce8f4",
   },
   emptyHint: {
     fontSize: 12,
-    color: "#6e7681",
+    color: "#5e7a8a",
     lineHeight: "1.5",
   },
   card: {
-    background: "#161b22",
-    border: "1px solid #21262d",
+    background: "#0a2134",
+    border: "1px solid #17324a",
     borderRadius: 10,
     overflow: "hidden",
     display: "flex",
@@ -262,12 +275,12 @@ const S: Record<string, CSSProperties> = {
   teamName: {
     fontSize: 14,
     fontWeight: 700,
-    color: "#e6edf3",
+    color: "#dce8f4",
   },
   vs: {
     fontSize: 11,
     fontWeight: 600,
-    color: "#6e7681",
+    color: "#5e7a8a",
   },
   meta: {
     display: "flex",
@@ -277,11 +290,11 @@ const S: Record<string, CSSProperties> = {
   },
   metaItem: {
     fontSize: 11,
-    color: "#8b949e",
+    color: "#7a95ad",
   },
   metaDot: {
     fontSize: 11,
-    color: "#30363d",
+    color: "#1c3a52",
   },
   scoreline: {
     fontSize: 12,
@@ -295,7 +308,7 @@ const S: Record<string, CSSProperties> = {
     justifyContent: "center",
     gap: 4,
     padding: "8px 10px",
-    borderLeft: "1px solid #21262d",
+    borderLeft: "1px solid #17324a",
     flexShrink: 0,
   },
   reviewBtn: {
@@ -313,7 +326,7 @@ const S: Record<string, CSSProperties> = {
   deleteBtn: {
     background: "transparent",
     border: "none",
-    color: "#6e7681",
+    color: "#5e7a8a",
     fontSize: 16,
     cursor: "pointer",
     padding: "4px 6px",
@@ -353,9 +366,9 @@ const S: Record<string, CSSProperties> = {
   },
   cancelDeleteBtn: {
     background: "transparent",
-    border: "1px solid #30363d",
+    border: "1px solid #1c3a52",
     borderRadius: 6,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 11,
     fontWeight: 600,
     padding: "5px 8px",

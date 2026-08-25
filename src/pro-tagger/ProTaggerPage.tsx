@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
+import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import type { ProTaggerSession } from "./pro-tagger-session";
 import { ProTaggerSetupScreen } from "./ProTaggerSetupScreen";
 import { ProTaggerSquadScreen } from "./ProTaggerSquadScreen";
@@ -65,44 +66,47 @@ export default function ProTaggerPage() {
   if (phase === "home") {
     return (
       <div style={H.shell}>
-        <div style={H.header}>
-          <span style={H.title}>Event Stats</span>
-        </div>
-
-        <div style={H.body}>
-          <div style={H.logoWrap}>
-            <img src="/pv-logo-icon.svg" alt="PáircVision" style={H.logo} />
+        <VisionStadiumBackground variant="training" />
+        <div style={H.contentWrap}>
+          <div style={H.header}>
+            <span style={H.title}>Event Stats</span>
           </div>
-          {inProgressMatch && (
-            <button
-              style={H.resumeBtn}
-              onClick={() => resumeMatch(inProgressMatch)}
-            >
-              <span>Resume in-progress match</span>
-              <small style={H.resumeSub}>
-                {inProgressMatch.scorelineSnapshot || `${inProgressMatch.homeTeamName} v ${inProgressMatch.awayTeamName}`}
-              </small>
-            </button>
-          )}
-          <button
-            style={H.primaryBtn}
-            onClick={() => setPhase("setup")}
-          >
-            New Match
-          </button>
-          <button
-            style={H.secondaryBtn}
-            onClick={() => {
-              setSavedCount(readProTaggerMatches().length);
-              setInProgressMatch(findInProgressMatch());
-              setPhase("saved-matches");
-            }}
-          >
-            Saved Matches
-            {savedCount > 0 && (
-              <span style={H.badge}>{savedCount}</span>
+
+          <div style={H.body}>
+            <div style={H.logoWrap}>
+              <img src="/pv-logo-icon.svg" alt="PáircVision" style={H.logo} />
+            </div>
+            {inProgressMatch && (
+              <button
+                style={H.resumeBtn}
+                onClick={() => resumeMatch(inProgressMatch)}
+              >
+                <span>Resume in-progress match</span>
+                <small style={H.resumeSub}>
+                  {inProgressMatch.scorelineSnapshot || `${inProgressMatch.homeTeamName} v ${inProgressMatch.awayTeamName}`}
+                </small>
+              </button>
             )}
-          </button>
+            <button
+              style={H.primaryBtn}
+              onClick={() => setPhase("setup")}
+            >
+              New Match
+            </button>
+            <button
+              style={H.secondaryBtn}
+              onClick={() => {
+                setSavedCount(readProTaggerMatches().length);
+                setInProgressMatch(findInProgressMatch());
+                setPhase("saved-matches");
+              }}
+            >
+              Saved Matches
+              {savedCount > 0 && (
+                <span style={H.badge}>{savedCount}</span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -200,18 +204,27 @@ const H: Record<string, CSSProperties> = {
     flexDirection: "column",
     height: "100dvh",
     width: "100%",
-    background: "#0d1117",
-    color: "#e6edf3",
+    background: "#050c14",
+    color: "#dce8f4",
     fontFamily: "'Inter', 'Helvetica Neue', system-ui, sans-serif",
     userSelect: "none",
     overflow: "hidden",
+    position: "relative",
+  },
+  contentWrap: {
+    position: "relative",
+    zIndex: 1,
+    display: "flex",
+    flexDirection: "column",
+    flex: 1,
+    minHeight: 0,
   },
   header: {
     display: "flex",
     alignItems: "center",
     padding: "12px 16px 10px",
-    background: "#161b22",
-    borderBottom: "1px solid #21262d",
+    background: "#0a2134",
+    borderBottom: "1px solid #17324a",
     flexShrink: 0,
   },
   title: {
@@ -261,7 +274,7 @@ const H: Record<string, CSSProperties> = {
   resumeSub: {
     fontSize: 12,
     fontWeight: 500,
-    color: "#8b949e",
+    color: "#7a95ad",
   },
   primaryBtn: {
     background: "#238636",
@@ -282,10 +295,10 @@ const H: Record<string, CSSProperties> = {
     gap: 8,
   },
   secondaryBtn: {
-    background: "#161b22",
-    border: "1px solid #30363d",
+    background: "#0a2134",
+    border: "1px solid #1c3a52",
     borderRadius: 12,
-    color: "#e6edf3",
+    color: "#dce8f4",
     fontSize: 17,
     fontWeight: 600,
     padding: "18px 0",
@@ -300,10 +313,10 @@ const H: Record<string, CSSProperties> = {
     gap: 10,
   },
   badge: {
-    background: "#21262d",
-    border: "1px solid #30363d",
+    background: "#17324a",
+    border: "1px solid #1c3a52",
     borderRadius: 10,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 12,
     fontWeight: 700,
     padding: "1px 7px",

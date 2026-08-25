@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import type { ChangeEvent, CSSProperties } from "react";
+import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
 import {
   proTaggerMatchToPdfInput,
@@ -505,6 +506,8 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
 
   return (
     <div style={S.shell}>
+      <VisionStadiumBackground variant="training" />
+      <div style={S.contentWrap}>
       {/* ── Header ───────────────────────────────────────────────────── */}
       <div style={S.header}>
         <button style={S.backBtn} onClick={onBack}>← Event Stats</button>
@@ -661,6 +664,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
         <span style={S.footNote}>
           PDF opens or downloads depending on your browser.
         </span>
+      </div>
       </div>
 
       {/* ── Full-screen Pixi board ───────────────────────────────────── */}
@@ -898,10 +902,10 @@ function ExportRow({
   label, description, loading, result, disabled, disabledReason, onClick,
 }: ExportRowProps) {
   let statusText  = "";
-  let statusColor = "#8b949e";
+  let statusColor = "#7a95ad";
   if (loading) {
     statusText  = "Exporting…";
-    statusColor = "#8b949e";
+    statusColor = "#7a95ad";
   } else if (result) {
     statusText  = result.text;
     statusColor = result.ok ? "#3fb950" : "#f85149";
@@ -943,26 +947,35 @@ const S: Record<string, CSSProperties> = {
     flexDirection: "column",
     height:        "100dvh",
     width:         "100%",
-    background:    "#0d1117",
-    color:         "#e6edf3",
+    background:    "#050c14",
+    color:         "#dce8f4",
     fontFamily:    "'Inter', 'Helvetica Neue', system-ui, sans-serif",
     userSelect:    "none",
     overflow:      "hidden",
+    position:      "relative",
+  },
+  contentWrap: {
+    position:      "relative",
+    zIndex:        1,
+    display:       "flex",
+    flexDirection: "column",
+    flex:          1,
+    minHeight:     0,
   },
   header: {
     display:       "flex",
     alignItems:    "center",
     gap:           10,
     padding:       "10px 14px",
-    background:    "#161b22",
-    borderBottom:  "1px solid #21262d",
+    background:    "#0a2134",
+    borderBottom:  "1px solid #17324a",
     flexShrink:    0,
   },
   backBtn: {
     background:   "transparent",
-    border:       "1px solid #30363d",
+    border:       "1px solid #1c3a52",
     borderRadius: 7,
-    color:        "#8b949e",
+    color:        "#7a95ad",
     fontSize:     13,
     fontWeight:   600,
     padding:      "5px 10px",
@@ -978,10 +991,10 @@ const S: Record<string, CSSProperties> = {
     letterSpacing: "-0.3px",
   },
   headerBadge: {
-    background:   "#21262d",
-    border:       "1px solid #30363d",
+    background:   "#17324a",
+    border:       "1px solid #1c3a52",
     borderRadius: 6,
-    color:        "#8b949e",
+    color:        "#7a95ad",
     fontSize:     11,
     fontWeight:   600,
     padding:      "3px 8px",
@@ -996,8 +1009,8 @@ const S: Record<string, CSSProperties> = {
     padding:       "16px 16px 48px",
   },
   matchCard: {
-    background:    "#161b22",
-    border:        "1px solid #21262d",
+    background:    "#0a2134",
+    border:        "1px solid #17324a",
     borderRadius:  10,
     padding:       "14px 16px",
     display:       "flex",
@@ -1012,13 +1025,13 @@ const S: Record<string, CSSProperties> = {
   teamName: {
     fontSize:      16,
     fontWeight:    700,
-    color:         "#e6edf3",
+    color:         "#dce8f4",
     letterSpacing: "-0.3px",
   },
   vs: {
     fontSize:  12,
     fontWeight: 600,
-    color:     "#6e7681",
+    color:     "#5e7a8a",
   },
   scoreline: {
     fontSize:      14,
@@ -1034,16 +1047,16 @@ const S: Record<string, CSSProperties> = {
   },
   metaItem: {
     fontSize:     11,
-    color:        "#8b949e",
-    background:   "#0d1117",
-    border:       "1px solid #21262d",
+    color:        "#7a95ad",
+    background:   "#050c14",
+    border:       "1px solid #17324a",
     borderRadius: 4,
     padding:      "1px 6px",
     whiteSpace:   "nowrap" as const,
   },
   eventCount: {
     fontSize:  11,
-    color:     "#6e7681",
+    color:     "#5e7a8a",
     marginTop: 2,
   },
   sectionLabel: {
@@ -1051,7 +1064,7 @@ const S: Record<string, CSSProperties> = {
     fontWeight:     600,
     letterSpacing:  "0.12em",
     textTransform:  "uppercase" as const,
-    color:          "#484f58",
+    color:          "#4a6070",
     marginTop:      4,
   },
 
@@ -1078,12 +1091,12 @@ const S: Record<string, CSSProperties> = {
   eventMapTitle: {
     fontSize:      16,
     fontWeight:    700,
-    color:         "#e6edf3",
+    color:         "#dce8f4",
     letterSpacing: "-0.3px",
   },
   eventMapDesc: {
     fontSize: 12,
-    color:    "#6e7681",
+    color:    "#5e7a8a",
   },
   eventMapArrow: {
     fontSize:   20,
@@ -1093,8 +1106,8 @@ const S: Record<string, CSSProperties> = {
 
   // ── Voice notes ─────────────────────────────────────────────────────────────
   voiceNotesCard: {
-    background:   "#0d1117",
-    border:       "1px solid #21262d",
+    background:   "#050c14",
+    border:       "1px solid #17324a",
     borderRadius: 12,
     overflow:     "hidden",
   },
@@ -1120,12 +1133,12 @@ const S: Record<string, CSSProperties> = {
   packTitle: {
     fontSize:      15,
     fontWeight:    700,
-    color:         "#e6edf3",
+    color:         "#dce8f4",
     letterSpacing: "-0.2px",
   },
   packDesc: {
     fontSize: 11,
-    color:    "#6e7681",
+    color:    "#5e7a8a",
   },
   packBtn: {
     background:    "#22c55e",
@@ -1154,10 +1167,10 @@ const S: Record<string, CSSProperties> = {
     gap:           5,
   },
   exportBtn: {
-    background:     "#161b22",
-    border:         "1px solid #30363d",
+    background:     "#0a2134",
+    border:         "1px solid #1c3a52",
     borderRadius:   10,
-    color:          "#e6edf3",
+    color:          "#dce8f4",
     fontSize:       15,
     fontWeight:     600,
     padding:        "14px 16px",
@@ -1196,7 +1209,7 @@ const S: Record<string, CSSProperties> = {
   },
   exportDesc: {
     fontSize: 11,
-    color:    "#6e7681",
+    color:    "#5e7a8a",
   },
   exportStatus: {
     fontSize:  11,
@@ -1205,7 +1218,7 @@ const S: Record<string, CSSProperties> = {
   },
   footNote: {
     fontSize:  11,
-    color:     "#484f58",
+    color:     "#4a6070",
     textAlign: "center" as const,
     marginTop: 8,
   },
@@ -1230,8 +1243,8 @@ const B: Record<string, CSSProperties> = {
     zIndex:        100,
     display:       "flex",
     flexDirection: "column",
-    background:    "#0d1117",
-    color:         "#e6edf3",
+    background:    "#050c14",
+    color:         "#dce8f4",
     fontFamily:    "'Inter', 'Helvetica Neue', system-ui, sans-serif",
     userSelect:    "none",
   },
@@ -1240,15 +1253,15 @@ const B: Record<string, CSSProperties> = {
     alignItems:   "center",
     gap:          10,
     padding:      "10px 14px",
-    background:   "#161b22",
-    borderBottom: "1px solid #21262d",
+    background:   "#0a2134",
+    borderBottom: "1px solid #17324a",
     flexShrink:   0,
   },
   backBtn: {
     background:   "transparent",
-    border:       "1px solid #30363d",
+    border:       "1px solid #1c3a52",
     borderRadius: 7,
-    color:        "#8b949e",
+    color:        "#7a95ad",
     fontSize:     13,
     fontWeight:   600,
     padding:      "5px 10px",
@@ -1267,7 +1280,7 @@ const B: Record<string, CSSProperties> = {
   headerTeams: {
     fontSize:      14,
     fontWeight:    700,
-    color:         "#e6edf3",
+    color:         "#dce8f4",
     letterSpacing: "-0.3px",
     overflow:      "hidden",
     textOverflow:  "ellipsis",
@@ -1275,7 +1288,7 @@ const B: Record<string, CSSProperties> = {
   },
   headerMeta: {
     fontSize:     11,
-    color:        "#6e7681",
+    color:        "#5e7a8a",
     overflow:     "hidden",
     textOverflow: "ellipsis",
     whiteSpace:   "nowrap" as const,
@@ -1288,14 +1301,14 @@ const B: Record<string, CSSProperties> = {
     overflowX:      "auto" as const,
     scrollbarWidth: "none" as const,
     flexShrink:     0,
-    background:     "#161b22",
-    borderBottom:   "1px solid #21262d",
+    background:     "#0a2134",
+    borderBottom:   "1px solid #17324a",
   },
   chip: {
-    background:    "#0d1117",
-    border:        "1px solid #30363d",
+    background:    "#050c14",
+    border:        "1px solid #1c3a52",
     borderRadius:  6,
-    color:         "#8b949e",
+    color:         "#7a95ad",
     fontSize:      11,
     fontWeight:    600,
     padding:       "6px 11px",
@@ -1314,7 +1327,7 @@ const B: Record<string, CSSProperties> = {
   chipSep: {
     width:      1,
     height:     16,
-    background: "#30363d",
+    background: "#1c3a52",
     flexShrink: 0,
     margin:     "0 4px",
   },
@@ -1328,9 +1341,9 @@ const B: Record<string, CSSProperties> = {
   footer: {
     padding:    "6px 14px",
     fontSize:   11,
-    color:      "#484f58",
-    background: "#161b22",
-    borderTop:  "1px solid #21262d",
+    color:      "#4a6070",
+    background: "#0a2134",
+    borderTop:  "1px solid #17324a",
     flexShrink: 0,
   },
 
@@ -1370,7 +1383,7 @@ const B: Record<string, CSSProperties> = {
     marginBottom:   2,
   },
   sheetTitle: {
-    color:         "#e6edf3",
+    color:         "#dce8f4",
     fontSize:      10,
     fontWeight:    700,
     letterSpacing: "0.18px",
@@ -1382,7 +1395,7 @@ const B: Record<string, CSSProperties> = {
     borderRadius: 999,
     border:       "1px solid rgba(148, 163, 184, 0.34)",
     background:   "rgba(15, 23, 42, 0.86)",
-    color:        "#e6edf3",
+    color:        "#dce8f4",
     fontSize:     13,
     lineHeight:   "1",
     display:      "inline-flex",
@@ -1396,7 +1409,7 @@ const B: Record<string, CSSProperties> = {
     alignItems:     "center",
     justifyContent: "space-between",
     gap:            10,
-    color:          "#e6edf3",
+    color:          "#dce8f4",
     fontSize:       11,
     minHeight:      22,
   },
@@ -1421,7 +1434,7 @@ const B: Record<string, CSSProperties> = {
     borderRadius: 10,
     border:       "1px solid rgba(148, 163, 184, 0.34)",
     background:   "rgba(30, 41, 59, 0.8)",
-    color:        "#e6edf3",
+    color:        "#dce8f4",
     fontSize:     12,
     fontWeight:   700,
     cursor:       "pointer",
@@ -1468,14 +1481,14 @@ const B: Record<string, CSSProperties> = {
     letterSpacing: "0.14px",
     textTransform: "uppercase" as const,
     opacity:       0.72,
-    color:         "#e6edf3",
+    color:         "#dce8f4",
   },
   editSelect: {
     minHeight:   34,
     borderRadius: 8,
     border:      "1px solid rgba(148, 163, 184, 0.38)",
     background:  "rgba(15, 23, 42, 0.86)",
-    color:       "#e6edf3",
+    color:       "#dce8f4",
     fontSize:    11,
     fontWeight:  600,
     padding:     "0 10px",
@@ -1487,7 +1500,7 @@ const B: Record<string, CSSProperties> = {
     borderRadius: 8,
     border:      "1px solid rgba(148, 163, 184, 0.38)",
     background:  "rgba(15, 23, 42, 0.86)",
-    color:       "#e6edf3",
+    color:       "#dce8f4",
     fontSize:    11,
     fontWeight:  600,
     padding:     "0 10px",
@@ -1505,7 +1518,7 @@ const B: Record<string, CSSProperties> = {
     borderRadius: 10,
     border:       "1px solid rgba(148, 163, 184, 0.34)",
     background:   "rgba(30, 41, 59, 0.8)",
-    color:        "#e6edf3",
+    color:        "#dce8f4",
     fontSize:     11,
     fontWeight:   700,
     cursor:       "pointer",
