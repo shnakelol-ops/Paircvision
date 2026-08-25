@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
+import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 import type {
   ProTaggerSession,
@@ -195,6 +196,8 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
 
   return (
     <div style={S.shell}>
+      <VisionStadiumBackground variant="training" />
+      <div style={S.contentWrap}>
 
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div style={S.header}>
@@ -318,6 +321,8 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
         </button>
       </div>
 
+      </div>
+
       {/* ── Library overlay (bottom sheet) ─────────────────────────── */}
       {libraryOpen && (
         <div style={S.overlay} onClick={closeLibrary}>
@@ -394,12 +399,20 @@ const S: Record<string, CSSProperties> = {
     flexDirection: "column",
     height: "100dvh",
     width: "100%",
-    background: "#0d1117",
-    color: "#e6edf3",
+    background: "#050c14",
+    color: "#dce8f4",
     fontFamily: "'Inter', 'Helvetica Neue', system-ui, sans-serif",
     userSelect: "none",
     overflow: "hidden",
     position: "relative",
+  },
+  contentWrap: {
+    position: "relative",
+    zIndex: 1,
+    display: "flex",
+    flexDirection: "column",
+    flex: 1,
+    minHeight: 0,
   },
 
   // ── Header ──────────────────────────────────────────────────────────────
@@ -408,15 +421,15 @@ const S: Record<string, CSSProperties> = {
     alignItems: "center",
     gap: 8,
     padding: "9px 12px 8px",
-    background: "#161b22",
-    borderBottom: "1px solid #21262d",
+    background: "#0a2134",
+    borderBottom: "1px solid #17324a",
     flexShrink: 0,
   },
   backBtn: {
     background: "transparent",
-    border: "1px solid #30363d",
+    border: "1px solid #1c3a52",
     borderRadius: 6,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 12,
     fontWeight: 600,
     padding: "4px 10px",
@@ -449,7 +462,7 @@ const S: Record<string, CSSProperties> = {
   // ── Tabs ────────────────────────────────────────────────────────────────
   tabs: {
     display: "flex",
-    borderBottom: "1px solid #21262d",
+    borderBottom: "1px solid #17324a",
     flexShrink: 0,
   },
   tab: {
@@ -457,7 +470,7 @@ const S: Record<string, CSSProperties> = {
     background: "transparent",
     border: "none",
     borderBottom: "2px solid transparent",
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 13,
     fontWeight: 600,
     padding: "10px 12px",
@@ -468,7 +481,7 @@ const S: Record<string, CSSProperties> = {
     textOverflow: "ellipsis",
   },
   tabOn: {
-    color: "#e6edf3",
+    color: "#dce8f4",
     borderBottomColor: "#2ea043",
   },
 
@@ -477,16 +490,16 @@ const S: Record<string, CSSProperties> = {
     display: "flex",
     gap: 8,
     padding: "7px 12px",
-    background: "#0d1117",
-    borderBottom: "1px solid #21262d",
+    background: "#050c14",
+    borderBottom: "1px solid #17324a",
     flexShrink: 0,
   },
   libBtn: {
     flex: 1,
-    background: "#21262d",
-    border: "1px solid #30363d",
+    background: "#17324a",
+    border: "1px solid #1c3a52",
     borderRadius: 6,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 12,
     fontWeight: 600,
     padding: "7px 10px",
@@ -512,7 +525,7 @@ const S: Record<string, CSSProperties> = {
   colourSection: {
     paddingBottom: 10,
     marginBottom: 8,
-    borderBottom: "1px solid #21262d",
+    borderBottom: "1px solid #17324a",
   },
   colourHeading: {
     display: "block",
@@ -520,7 +533,7 @@ const S: Record<string, CSSProperties> = {
     fontWeight: 700,
     letterSpacing: "0.08em",
     textTransform: "uppercase" as const,
-    color: "#8b949e",
+    color: "#7a95ad",
     padding: "6px 0 8px",
   },
   colourRow: {
@@ -536,14 +549,14 @@ const S: Record<string, CSSProperties> = {
   },
   colourItemLabel: {
     fontSize: 12,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontWeight: 500,
   },
   colourInput: {
     width: 36,
     height: 28,
     borderRadius: 6,
-    border: "1px solid #30363d",
+    border: "1px solid #1c3a52",
     background: "transparent",
     cursor: "pointer",
     padding: 0,
@@ -556,12 +569,12 @@ const S: Record<string, CSSProperties> = {
     alignItems: "center",
     gap: 8,
     padding: "5px 0",
-    borderBottom: "1px solid #21262d",
+    borderBottom: "1px solid #17324a",
   },
   number: {
     fontSize: 13,
     fontWeight: 700,
-    color: "#e6edf3",
+    color: "#dce8f4",
     minWidth: 22,
     textAlign: "right" as const,
     flexShrink: 0,
@@ -570,7 +583,7 @@ const S: Record<string, CSSProperties> = {
   position: {
     fontSize: 10,
     fontWeight: 700,
-    color: "#8b949e",
+    color: "#7a95ad",
     letterSpacing: "0.04em",
     minWidth: 30,
     flexShrink: 0,
@@ -579,8 +592,8 @@ const S: Record<string, CSSProperties> = {
     flex: 1,
     background: "transparent",
     border: "none",
-    borderBottom: "1px solid #30363d",
-    color: "#e6edf3",
+    borderBottom: "1px solid #1c3a52",
+    color: "#dce8f4",
     fontSize: 13,
     padding: "4px 2px",
     outline: "none",
@@ -595,9 +608,9 @@ const S: Record<string, CSSProperties> = {
     gap: 8,
     marginTop: 10,
     background: "transparent",
-    border: "1px dashed #30363d",
+    border: "1px dashed #1c3a52",
     borderRadius: 8,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 13,
     fontWeight: 600,
     padding: "10px 14px",
@@ -611,14 +624,14 @@ const S: Record<string, CSSProperties> = {
   addCount: {
     marginLeft: "auto",
     fontSize: 11,
-    color: "#6e7681",
+    color: "#5e7a8a",
     fontWeight: 400,
     fontVariantNumeric: "tabular-nums",
   },
   addMax: {
     marginTop: 10,
     fontSize: 12,
-    color: "#6e7681",
+    color: "#5e7a8a",
     textAlign: "center" as const,
     padding: "8px 0",
   },
@@ -631,8 +644,8 @@ const S: Record<string, CSSProperties> = {
     // Extra bottom padding + safe-area inset keeps the selector and the Go To
     // Game button clear of the Android nav bar / iOS home indicator.
     padding: "10px 12px calc(16px + env(safe-area-inset-bottom, 0px))",
-    background: "#0d1117",
-    borderTop: "1px solid #21262d",
+    background: "#050c14",
+    borderTop: "1px solid #17324a",
     flexShrink: 0,
   },
   directionSection: {
@@ -645,7 +658,7 @@ const S: Record<string, CSSProperties> = {
     fontWeight: 700,
     letterSpacing: "0.08em",
     textTransform: "uppercase" as const,
-    color: "#8b949e",
+    color: "#7a95ad",
   },
   directionChips: {
     display: "flex",
@@ -653,10 +666,10 @@ const S: Record<string, CSSProperties> = {
   },
   directionChip: {
     flex: 1,
-    background: "#21262d",
-    border: "1px solid #30363d",
+    background: "#17324a",
+    border: "1px solid #1c3a52",
     borderRadius: 8,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 13,
     fontWeight: 600,
     padding: "9px 12px",
@@ -701,7 +714,7 @@ const S: Record<string, CSSProperties> = {
 
   // ── Library sheet ─────────────────────────────────────────────────────────
   sheet: {
-    background: "#161b22",
+    background: "#0a2134",
     borderRadius: "14px 14px 0 0",
     maxHeight: "70vh",
     display: "flex",
@@ -713,19 +726,19 @@ const S: Record<string, CSSProperties> = {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "14px 16px 10px",
-    borderBottom: "1px solid #21262d",
+    borderBottom: "1px solid #17324a",
     flexShrink: 0,
   },
   sheetTitle: {
     fontSize: 14,
     fontWeight: 700,
-    color: "#e6edf3",
+    color: "#dce8f4",
     letterSpacing: "-0.2px",
   },
   sheetClose: {
     background: "transparent",
     border: "none",
-    color: "#6e7681",
+    color: "#5e7a8a",
     fontSize: 18,
     cursor: "pointer",
     padding: "0 2px",
@@ -737,7 +750,7 @@ const S: Record<string, CSSProperties> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    color: "#6e7681",
+    color: "#5e7a8a",
     fontSize: 13,
     padding: 32,
   },
@@ -750,7 +763,7 @@ const S: Record<string, CSSProperties> = {
     alignItems: "center",
     gap: 10,
     padding: "11px 16px",
-    borderBottom: "1px solid #21262d",
+    borderBottom: "1px solid #17324a",
   },
   colourDot: {
     width: 14,
@@ -769,14 +782,14 @@ const S: Record<string, CSSProperties> = {
   teamRowName: {
     fontSize: 13,
     fontWeight: 600,
-    color: "#e6edf3",
+    color: "#dce8f4",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap" as const,
   },
   teamRowMeta: {
     fontSize: 11,
-    color: "#6e7681",
+    color: "#5e7a8a",
   },
   loadBtn: {
     background: "#238636",
@@ -793,9 +806,9 @@ const S: Record<string, CSSProperties> = {
   },
   deleteBtn: {
     background: "transparent",
-    border: "1px solid #30363d",
+    border: "1px solid #1c3a52",
     borderRadius: 6,
-    color: "#6e7681",
+    color: "#5e7a8a",
     fontSize: 13,
     cursor: "pointer",
     padding: "5px 9px",
@@ -806,7 +819,7 @@ const S: Record<string, CSSProperties> = {
 
   // ── Save prompt ───────────────────────────────────────────────────────────
   savePrompt: {
-    background: "#161b22",
+    background: "#0a2134",
     borderRadius: "14px 14px 0 0",
     padding: "20px 16px 36px",
     display: "flex",
@@ -814,10 +827,10 @@ const S: Record<string, CSSProperties> = {
     gap: 14,
   },
   saveNameInput: {
-    background: "#0d1117",
-    border: "1px solid #30363d",
+    background: "#050c14",
+    border: "1px solid #1c3a52",
     borderRadius: 8,
-    color: "#e6edf3",
+    color: "#dce8f4",
     fontSize: 15,
     padding: "12px 12px",
     outline: "none",
@@ -842,10 +855,10 @@ const S: Record<string, CSSProperties> = {
   },
   cancelBtn: {
     flex: 1,
-    background: "#21262d",
-    border: "1px solid #30363d",
+    background: "#17324a",
+    border: "1px solid #1c3a52",
     borderRadius: 8,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 14,
     fontWeight: 600,
     padding: "12px",

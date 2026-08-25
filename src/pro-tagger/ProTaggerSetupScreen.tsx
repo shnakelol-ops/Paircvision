@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
+import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import type {
   ProTaggerSession,
   ProTaggerSport,
@@ -118,6 +119,8 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
 
   return (
     <div style={S.shell}>
+      <VisionStadiumBackground variant="training" />
+      <div style={S.contentWrap}>
       <div style={S.header}>
         <span style={S.title}>Event Stats</span>
         <span style={S.badge}>Setup</span>
@@ -305,6 +308,7 @@ export function ProTaggerSetupScreen({ onContinue }: Props) {
           Continue → Squads
         </button>
       </div>
+      </div>
     </div>
   );
 }
@@ -315,19 +319,28 @@ const S: Record<string, CSSProperties> = {
     flexDirection: "column",
     height: "100dvh",
     width: "100%",
-    background: "#0d1117",
-    color: "#e6edf3",
+    background: "#050c14",
+    color: "#dce8f4",
     fontFamily: "'Inter', 'Helvetica Neue', system-ui, sans-serif",
     userSelect: "none",
     overflow: "hidden",
+    position: "relative",
+  },
+  contentWrap: {
+    position: "relative",
+    zIndex: 1,
+    display: "flex",
+    flexDirection: "column",
+    flex: 1,
+    minHeight: 0,
   },
   header: {
     display: "flex",
     alignItems: "center",
     gap: 8,
     padding: "10px 14px 8px",
-    background: "#161b22",
-    borderBottom: "1px solid #21262d",
+    background: "#0a2134",
+    borderBottom: "1px solid #17324a",
     flexShrink: 0,
   },
   title: {
@@ -337,10 +350,10 @@ const S: Record<string, CSSProperties> = {
     flex: 1,
   },
   badge: {
-    background: "#21262d",
-    border: "1px solid #30363d",
+    background: "#17324a",
+    border: "1px solid #1c3a52",
     borderRadius: 6,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 11,
     fontWeight: 600,
     padding: "3px 8px",
@@ -358,20 +371,20 @@ const S: Record<string, CSSProperties> = {
     fontWeight: 600,
     letterSpacing: "0.07em",
     textTransform: "uppercase" as const,
-    color: "#8b949e",
+    color: "#7a95ad",
     marginTop: 4,
   },
   optional: {
     fontWeight: 400,
     textTransform: "none" as const,
     letterSpacing: 0,
-    color: "#6e7681",
+    color: "#5e7a8a",
   },
   input: {
-    background: "#161b22",
-    border: "1px solid #30363d",
+    background: "#0a2134",
+    border: "1px solid #1c3a52",
     borderRadius: 8,
-    color: "#e6edf3",
+    color: "#dce8f4",
     fontSize: 14,
     padding: "10px 12px",
     outline: "none",
@@ -385,10 +398,10 @@ const S: Record<string, CSSProperties> = {
     gap: 7,
   },
   chip: {
-    background: "#21262d",
-    border: "1px solid #30363d",
+    background: "#17324a",
+    border: "1px solid #1c3a52",
     borderRadius: 8,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 13,
     fontWeight: 600,
     padding: "8px 13px",
@@ -406,10 +419,10 @@ const S: Record<string, CSSProperties> = {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    background: "#161b22",
-    border: "1px solid #30363d",
+    background: "#0a2134",
+    border: "1px solid #1c3a52",
     borderRadius: 8,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 11,
     fontWeight: 600,
     letterSpacing: "0.06em",
@@ -425,24 +438,24 @@ const S: Record<string, CSSProperties> = {
     textTransform: "uppercase" as const,
   },
   targetsBadge: {
-    background: "#21262d",
-    border: "1px solid #30363d",
+    background: "#17324a",
+    border: "1px solid #1c3a52",
     borderRadius: 5,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 10,
     fontWeight: 600,
     padding: "2px 7px",
   },
   targetsChevron: {
     fontSize: 9,
-    color: "#6e7681",
+    color: "#5e7a8a",
   },
   targetsPanel: {
     display: "flex",
     flexDirection: "column",
     gap: 8,
-    background: "#0d1117",
-    border: "1px solid #21262d",
+    background: "#050c14",
+    border: "1px solid #17324a",
     borderRadius: 8,
     padding: "12px 10px",
   },
@@ -452,10 +465,10 @@ const S: Record<string, CSSProperties> = {
     gap: 8,
   },
   toggleBtn: {
-    background: "#21262d",
-    border: "1px solid #30363d",
+    background: "#17324a",
+    border: "1px solid #1c3a52",
     borderRadius: 6,
-    color: "#6e7681",
+    color: "#5e7a8a",
     fontSize: 10,
     fontWeight: 700,
     padding: "4px 8px",
@@ -473,16 +486,16 @@ const S: Record<string, CSSProperties> = {
   targetLabel: {
     flex: 1,
     fontSize: 13,
-    color: "#c9d1d9",
+    color: "#dce8f4",
   },
   targetLabelOff: {
-    color: "#8b949e",
+    color: "#7a95ad",
   },
   dirBtn: {
-    background: "#21262d",
-    border: "1px solid #30363d",
+    background: "#17324a",
+    border: "1px solid #1c3a52",
     borderRadius: 6,
-    color: "#8b949e",
+    color: "#7a95ad",
     fontSize: 16,
     fontWeight: 600,
     padding: "2px 10px",
@@ -492,14 +505,14 @@ const S: Record<string, CSSProperties> = {
     textAlign: "center" as const,
   },
   dirBtnOff: {
-    color: "#484f58",
-    borderColor: "#21262d",
+    color: "#4a6070",
+    borderColor: "#17324a",
   },
   targetInput: {
-    background: "#161b22",
-    border: "1px solid #30363d",
+    background: "#0a2134",
+    border: "1px solid #1c3a52",
     borderRadius: 6,
-    color: "#e6edf3",
+    color: "#dce8f4",
     fontSize: 14,
     fontWeight: 600,
     padding: "5px 8px",
@@ -509,12 +522,12 @@ const S: Record<string, CSSProperties> = {
     textAlign: "right" as const,
   },
   targetInputOff: {
-    color: "#484f58",
-    borderColor: "#21262d",
+    color: "#4a6070",
+    borderColor: "#17324a",
   },
   targetUnit: {
     fontSize: 13,
-    color: "#8b949e",
+    color: "#7a95ad",
     minWidth: 14,
   },
   startBtn: {
