@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, TouchEvent as ReactTouchEvent } from "react";
 import { NotesQuickPanel } from "../features/notes";
 import type { ProTaggerSession, ProTaggerSquadPlayer } from "./pro-tagger-session";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
@@ -22,6 +22,8 @@ import { ProTaggerPitchView } from "./ProTaggerPitchView";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 import { ProTaggerReviewScreen } from "./ProTaggerReviewScreen";
 import { computeScoreSide, fmtGP, fmtScore } from "./pro-tagger-score";
+import { QuickReviewPage1 } from "./QuickReviewPage1";
+import { buildQuickReviewMatchOverview } from "../stats/reporting/quickReviewMatchOverview";
 
 export interface RestoreState {
   events: readonly LoggedMatchEvent[];
@@ -342,7 +344,14 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const [reviewMatch, setReviewMatch]           = useState<ProTaggerSavedMatch | null>(null);
 
   // ── CTS / Actions / Reset / Notes state ─────────────────────────────────────
+  // ctsOpen gates the Quick Review sheet reached via Options → "Counts Sheet
+  // (CTS)". It is a 2-page pager: Page 1 is the read-only Match Overview,
+  // Page 2 is this screen's full Counts Sheet (all rows, including 45/65,
+  // Sideline, and Discipline). Opening/paging/closing never touches capture,
+  // clock, or match state — it only reads loggedEvents at render time.
   const [ctsOpen, setCtsOpen]                   = useState(false);
+  const [quickReviewPage, setQuickReviewPage]   = useState<0 | 1>(0);
+  const quickReviewTouchRef                     = useRef<{ x: number; y: number } | null>(null);
   const [actionsOpen, setActionsOpen]           = useState(false);
   const [shareSheetOpen, setShareSheetOpen]     = useState(false);
   const [notesOpen, setNotesOpen]               = useState(false);
@@ -613,6 +622,35 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
 
   const undo = useCallback(() => {
     setLoggedEvents((prev) => prev.slice(0, -1));
+  }, []);
+
+  // Opens Quick Review to Page 1 (Match Overview) every time — read-only,
+  // does not touch capture/clock state.
+  const openQuickReview = useCallback(() => {
+    setQuickReviewPage(0);
+    setCtsOpen(true);
+  }, []);
+
+  // Horizontal swipe between Quick Review's two pages. Only touchstart/
+  // touchend are used (no preventDefault on touchmove), so vertical
+  // scrolling inside either page is unaffected. A swipe is only recognised
+  // when it's predominantly horizontal, so a vertical scroll gesture never
+  // gets misread as a page change.
+  const handleQuickReviewTouchStart = useCallback((e: ReactTouchEvent) => {
+    const t = e.touches[0];
+    quickReviewTouchRef.current = { x: t.clientX, y: t.clientY };
+  }, []);
+  const handleQuickReviewTouchEnd = useCallback((e: ReactTouchEvent) => {
+    const start = quickReviewTouchRef.current;
+    quickReviewTouchRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    const SWIPE_THRESHOLD = 40;
+    if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0) setQuickReviewPage(1);
+    else setQuickReviewPage(0);
   }, []);
 
   const openReview = useCallback(() => {
@@ -944,6 +982,14 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // CTS counts — only computed when CTS sheet is open.
   const forCts = ctsOpen ? computeProTaggerCounts(loggedEvents, "FOR") : null;
   const oppCts = ctsOpen ? computeProTaggerCounts(loggedEvents, "OPP") : null;
+  // Quick Review Page 1 model — built fresh every time the sheet is open (no
+  // caching), from the CURRENT loggedEvents, so an edit made in Event Map and
+  // then re-opening Quick Review reflects the latest state. Page 2 (Counts
+  // Sheet) keeps its own original computeProTaggerCounts values above; Page 1
+  // never reads from them — see quickReviewMatchOverview.ts.
+  const quickReviewModel = ctsOpen
+    ? buildQuickReviewMatchOverview(loggedEvents, homeLabel, awayLabel)
+    : null;
 
   // Discipline player status — derived fresh from loggedEvents every render
   // (no independent mutable state), so Undo/reload/restore all just work.
@@ -1327,51 +1373,112 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         </div>
       )}
 
-      {/* ── CTS sheet ─────────────────────────────────────────────── */}
-      {ctsOpen && forCts && oppCts && (
+      {/* ── Quick Review sheet (Page 1: Match Overview / Page 2: Counts Sheet) ── */}
+      {ctsOpen && forCts && oppCts && quickReviewModel && (
         <div style={CS.overlay} onClick={() => setCtsOpen(false)}>
           <div style={CS.sheet} onClick={(e) => e.stopPropagation()}>
 
             <div style={CS.header}>
-              <span style={CS.title}>Counts Sheet</span>
+              <span style={CS.title}>Quick Review</span>
+              <div style={CS.dots} role="tablist" aria-label="Quick Review pages">
+                <button
+                  role="tab"
+                  aria-selected={quickReviewPage === 0}
+                  aria-label="Page 1 of 2: Match Overview"
+                  style={{ ...CS.dot, ...(quickReviewPage === 0 ? CS.dotActive : {}) }}
+                  onClick={() => setQuickReviewPage(0)}
+                />
+                <button
+                  role="tab"
+                  aria-selected={quickReviewPage === 1}
+                  aria-label="Page 2 of 2: Counts Sheet"
+                  style={{ ...CS.dot, ...(quickReviewPage === 1 ? CS.dotActive : {}) }}
+                  onClick={() => setQuickReviewPage(1)}
+                />
+              </div>
+              <span style={CS.pageIndicator}>{quickReviewPage + 1} / 2</span>
               <button style={CS.closeBtn} onClick={() => setCtsOpen(false)}>✕</button>
             </div>
 
-            <div style={CS.body}>
-              {/* Column headers */}
-              <div style={CS.colRow}>
-                <span style={{ ...CS.colLabel, color: homeColour }}>{homeLabel}</span>
-                <span style={CS.colCenter} />
-                <span style={{ ...CS.colLabel, color: awayColour, textAlign: "right" as const }}>{awayLabel}</span>
-              </div>
+            <div
+              style={CS.pagerViewport}
+              onTouchStart={handleQuickReviewTouchStart}
+              onTouchEnd={handleQuickReviewTouchEnd}
+            >
+              <div style={{ ...CS.pagerTrack, transform: `translateX(-${quickReviewPage * 50}%)` }}>
 
-              {/* Rows */}
-              {([
-                ["Goals",          forCts.goals,        oppCts.goals],
-                ["Points",         forCts.points,       oppCts.points],
-                ...(!isHurlingOrCamogie ? [["2PT", forCts.twoPointers, oppCts.twoPointers] as [string, number, number]] : []),
-                ["Shots",          forCts.shots,        oppCts.shots],
-                ["Wides",          forCts.wides,        oppCts.wides],
-                ["Turnover Won",   forCts.turnoverWon,  oppCts.turnoverWon],
-                ["Turnover Lost",  oppCts.turnoverWon,  forCts.turnoverWon],
-                ["Kickout Won",    forCts.kickoutWon,   oppCts.kickoutWon],
-                ["Kickout Lost",   oppCts.kickoutWon,   forCts.kickoutWon],
-                ["Free Won",       forCts.freeWon,      forCts.freeConceded],
-                ["Free Conceded",  forCts.freeConceded, forCts.freeWon],
-                [`${restartTerm45} Won`,  forCts.fortyFiveWon, oppCts.fortyFiveWon],
-                [`${restartTerm45} Lost`, oppCts.fortyFiveWon, forCts.fortyFiveWon],
-                ["Sideline Won",   forCts.sidelineWon,  oppCts.sidelineWon],
-                ["Sideline Lost",  oppCts.sidelineWon,  forCts.sidelineWon],
-                ["Yellow Cards",   forCts.yellowCards,  oppCts.yellowCards],
-                ["Sin Bins",       forCts.sinBins,      oppCts.sinBins],
-                ["Red Cards",      forCts.redCards,     oppCts.redCards],
-              ] as [string, number, number][]).map(([label, fv, ov]) => (
-                <div key={label} style={CS.row}>
-                  <span style={CS.val}>{fv}</span>
-                  <span style={CS.rowLabel}>{label}</span>
-                  <span style={{ ...CS.val, textAlign: "right" as const }}>{ov}</span>
+                {/* ── Page 1: Match Overview ─────────────────────────────── */}
+                <div style={CS.pagePane}>
+                  <div style={CS.body}>
+                    <QuickReviewPage1
+                      model={quickReviewModel}
+                      homeColour={homeColour}
+                      awayColour={awayColour}
+                    />
+                  </div>
                 </div>
-              ))}
+
+                {/* ── Page 2: Counts Sheet (full row set, unchanged) ──────── */}
+                <div style={CS.pagePane}>
+                  <div style={CS.body}>
+                    <div style={CS.subheading}>Counts Sheet</div>
+
+                    {/* Column headers */}
+                    <div style={CS.colRow}>
+                      <span style={{ ...CS.colLabel, color: homeColour }}>{homeLabel}</span>
+                      <span style={CS.colCenter} />
+                      <span style={{ ...CS.colLabel, color: awayColour, textAlign: "right" as const }}>{awayLabel}</span>
+                    </div>
+
+                    {/* Rows */}
+                    {([
+                      ["Goals",          forCts.goals,        oppCts.goals],
+                      ["Points",         forCts.points,       oppCts.points],
+                      ...(!isHurlingOrCamogie ? [["2PT", forCts.twoPointers, oppCts.twoPointers] as [string, number, number]] : []),
+                      ["Shots",          forCts.shots,        oppCts.shots],
+                      ["Wides",          forCts.wides,        oppCts.wides],
+                      ["Turnover Won",   forCts.turnoverWon,  oppCts.turnoverWon],
+                      ["Turnover Lost",  oppCts.turnoverWon,  forCts.turnoverWon],
+                      ["Kickout Won",    forCts.kickoutWon,   oppCts.kickoutWon],
+                      ["Kickout Lost",   oppCts.kickoutWon,   forCts.kickoutWon],
+                      ["Free Won",       forCts.freeWon,      forCts.freeConceded],
+                      ["Free Conceded",  forCts.freeConceded, forCts.freeWon],
+                      [`${restartTerm45} Won`,  forCts.fortyFiveWon, oppCts.fortyFiveWon],
+                      [`${restartTerm45} Lost`, oppCts.fortyFiveWon, forCts.fortyFiveWon],
+                      ["Sideline Won",   forCts.sidelineWon,  oppCts.sidelineWon],
+                      ["Sideline Lost",  oppCts.sidelineWon,  forCts.sidelineWon],
+                      ["Yellow Cards",   forCts.yellowCards,  oppCts.yellowCards],
+                      ["Sin Bins",       forCts.sinBins,      oppCts.sinBins],
+                      ["Red Cards",      forCts.redCards,     oppCts.redCards],
+                    ] as [string, number, number][]).map(([label, fv, ov]) => (
+                      <div key={label} style={CS.row}>
+                        <span style={CS.val}>{fv}</span>
+                        <span style={CS.rowLabel}>{label}</span>
+                        <span style={{ ...CS.val, textAlign: "right" as const }}>{ov}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* ── Fallback (non-swipe) navigation ─────────────────────────── */}
+            <div style={CS.navRow}>
+              <button
+                style={{ ...CS.navBtn, ...(quickReviewPage === 0 ? CS.navBtnDisabled : {}) }}
+                disabled={quickReviewPage === 0}
+                onClick={() => setQuickReviewPage(0)}
+              >
+                ‹ Match Overview
+              </button>
+              <button
+                style={{ ...CS.navBtn, ...(quickReviewPage === 1 ? CS.navBtnDisabled : {}) }}
+                disabled={quickReviewPage === 1}
+                onClick={() => setQuickReviewPage(1)}
+              >
+                Counts Sheet ›
+              </button>
             </div>
 
           </div>
@@ -1436,9 +1543,9 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
 
               <button
                 style={AS.actionBtn}
-                onClick={() => { setActionsOpen(false); setCtsOpen(true); }}
+                onClick={() => { setActionsOpen(false); openQuickReview(); }}
               >
-                Counts Sheet (CTS)
+                Quick Review
               </button>
 
               {(() => {
@@ -2123,6 +2230,7 @@ const CS: Record<string, CSSProperties> = {
   header: {
     display: "flex",
     alignItems: "center",
+    gap: 10,
     padding: "12px 14px 10px",
     borderBottom: "1px solid #21262d",
     flexShrink: 0,
@@ -2134,6 +2242,34 @@ const CS: Record<string, CSSProperties> = {
     color: "#e6edf3",
     letterSpacing: "-0.2px",
   },
+  dots: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 0,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    minWidth: 8,
+    borderRadius: "50%",
+    background: "#30363d",
+    border: "none",
+    padding: 0,
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+  },
+  dotActive: {
+    background: "#2ea043",
+  },
+  pageIndicator: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: "#6e7681",
+    fontVariantNumeric: "tabular-nums",
+    flexShrink: 0,
+  },
   closeBtn: {
     background: "transparent",
     border: "none",
@@ -2144,9 +2280,54 @@ const CS: Record<string, CSSProperties> = {
     lineHeight: 1,
     outline: "none",
   },
-  body: {
+  pagerViewport: {
     flex: 1,
+    overflow: "hidden",
+    position: "relative",
+  },
+  pagerTrack: {
+    display: "flex",
+    width: "200%",
+    height: "100%",
+    transition: "transform 220ms ease",
+  },
+  pagePane: {
+    flex: "0 0 50%",
+    width: "50%",
+    minWidth: 0,
+    height: "100%",
     overflowY: "auto",
+    boxSizing: "border-box" as const,
+  },
+  subheading: {
+    fontSize: 11,
+    fontWeight: 800,
+    color: "#6e7681",
+    letterSpacing: "0.06em",
+    marginBottom: 6,
+  },
+  navRow: {
+    display: "flex",
+    borderTop: "1px solid #21262d",
+    flexShrink: 0,
+  },
+  navBtn: {
+    flex: 1,
+    background: "transparent",
+    border: "none",
+    color: "#58a6ff",
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "12px 8px",
+    cursor: "pointer",
+    outline: "none",
+    WebkitTapHighlightColor: "transparent",
+  },
+  navBtnDisabled: {
+    color: "#3d444d",
+    cursor: "default",
+  },
+  body: {
     padding: "10px 14px 20px",
     display: "flex",
     flexDirection: "column",
