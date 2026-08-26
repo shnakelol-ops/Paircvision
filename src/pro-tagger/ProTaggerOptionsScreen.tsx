@@ -27,9 +27,12 @@ type OptionsView = "menu" | "import" | "about";
 
 interface Props {
   onBack: () => void;
+  /** Called with the newly persisted match immediately after a successful import,
+   * so the caller can transition straight into that match's Review screen. */
+  onImported: (match: ProTaggerSavedMatch) => void;
 }
 
-export function ProTaggerOptionsScreen({ onBack }: Props) {
+export function ProTaggerOptionsScreen({ onBack, onImported }: Props) {
   const [view, setView] = useState<OptionsView>("menu");
   const [importResult, setImportResult] = useState<{ ok: boolean; text: string } | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
@@ -48,15 +51,12 @@ export function ProTaggerOptionsScreen({ onBack }: Props) {
         // Guard against a coincidental id collision with an unrelated saved
         // match (e.g. re-importing a file that was originally tagged on a
         // different deployment/origin) silently clobbering it.
-        const { match: toSave, idRewritten } = resolveImportIdCollision(parsed, readProTaggerMatches());
+        const { match: toSave } = resolveImportIdCollision(parsed, readProTaggerMatches());
 
         saveProTaggerMatchFull(toSave);
-        setImportResult({
-          ok:   true,
-          text: idRewritten
-            ? "Imported as a new match (id conflict avoided) — find it in Saved Matches"
-            : "Imported — find it in Saved Matches",
-        });
+        // Land straight on the imported match's Review screen instead of a
+        // status message — the caller owns navigation via onImported.
+        onImported(toSave);
       } catch (err) {
         setImportResult({
           ok:   false,

@@ -129,6 +129,10 @@ export default function ProTaggerPage() {
           setInProgressMatch(findInProgressMatch());
           setPhase("home");
         }}
+        onImported={(match) => {
+          setReviewMatch(match);
+          setPhase("review");
+        }}
       />
     );
   }
