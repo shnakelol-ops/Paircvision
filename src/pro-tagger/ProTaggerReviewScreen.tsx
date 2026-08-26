@@ -31,6 +31,7 @@ import type { PixiPitchSurfaceHandle } from "../core/pitch/create-pixi-pitch-sur
 // Event-Stats-specific zone logic exists or should be added here.
 import { selectZoneOverlayModel } from "../stats/zones/zone-selectors";
 import type { ZoneOverlayModel } from "../stats/zones/zone-types";
+import type { ZoneOverlayStyle } from "../core/stats/draw-stats-zone-overlay";
 import { ShareSheet } from "../features/shared/ShareSheet";
 import { MATCH_EVENT_KINDS, type MatchEventKind } from "../core/stats/stats-event-model";
 import { formatMatchClock } from "../core/match/match-state-store";
@@ -114,6 +115,35 @@ const FILTER_KINDS: Record<Exclude<ReviewCategory, "ALL">, readonly MatchEventKi
               "GOAL", "POINT", "TWO_POINTER", "FORTY_FIVE_TWO_POINT", "WIDE"],
 };
 
+// ── Event Map zone overlay presentation ────────────────────────────────────────
+// Event Stats Review-only override: passed to PixiPitchSurfaceHandle's
+// setZoneOverlayModel as its second argument. draw-stats-zone-overlay.ts's
+// DEFAULT_ZONE_OVERLAY_STYLE (what Match Stats' StatsModeSurface.tsx and
+// Rapid Capture's RapidReviewScreen.tsx get by omitting this argument) is
+// untouched and unaffected by this object. Roughly 2x the default boundary
+// strength (with the empty-zone floor raised the most, so the 3x3 grid reads
+// as nine areas even on a sparse filtered set), a more modest ~1.5x fill and
+// hotspot boost, and stronger badge contrast — presentation only, no change
+// to zone geometry/classification or to marker rendering.
+const EVENT_MAP_ZONE_OVERLAY_STYLE: Partial<ZoneOverlayStyle> = {
+  emptyBorderAlpha:            0.05,
+  emptyFillAlpha:               0.003,
+  borderAlphaBase:              0.09,
+  borderAlphaActivity:          0.22,
+  fillAlphaBase:                0.006,
+  fillAlphaActivity:            0.04,
+  hotspotBorderBoost:           0.08,
+  hotspotFillBoost:             0.02,
+  hotspotGlowBase:              0.032,
+  hotspotGlowActivity:          0.055,
+  hotspotRingBase:              0.16,
+  hotspotRingActivity:          0.1,
+  badgeBackgroundAlpha:         0.6,
+  badgeBackgroundAlphaHotspot:  0.72,
+  badgeBorderAlpha:             0.4,
+  badgeBorderAlphaHotspot:      0.5,
+};
+
 function isValidProMatch(obj: unknown): obj is ProTaggerSavedMatch {
   if (typeof obj !== "object" || obj === null) return false;
   const r = obj as Record<string, unknown>;
@@ -189,7 +219,7 @@ function PitchCanvas({
   }, [events]);
 
   useEffect(() => {
-    handleRef.current?.setZoneOverlayModel(zoneOverlayModel ?? null);
+    handleRef.current?.setZoneOverlayModel(zoneOverlayModel ?? null, EVENT_MAP_ZONE_OVERLAY_STYLE);
   }, [zoneOverlayModel]);
 
   return <div ref={hostRef} style={{ width: "100%", height: "100%", overflow: "hidden" }} />;

@@ -257,7 +257,11 @@ describe("Event Stats Review Zones — component reuse proof (no duplicate imple
   });
 
   it("the ZONES toggle does not alter the events prop passed to PitchCanvas — marker rendering is independent of the zone overlay", () => {
-    expect(proTaggerReviewSource).toContain("events={filteredEvents}");
+    // events prop is mapMarkerEvents (main's Kickout/Turnover outcome-colour
+    // fix — a fillOverride-only derivation of filteredEvents, keyed on
+    // reviewTeam), not showEventMapZones. The ZONES toggle only ever
+    // controls the separate zoneOverlayModel prop below.
+    expect(proTaggerReviewSource).toContain("events={mapMarkerEvents}");
     expect(proTaggerReviewSource).toMatch(
       /zoneOverlayModel=\{showEventMapZones \? eventMapZoneOverlayModel : null\}/,
     );
