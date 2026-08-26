@@ -11,6 +11,7 @@ import ProTaggerPage from "./pro-tagger/ProTaggerPage";
 import VisionTacticsShell from "./features/vision-tactics/VisionTacticsShell";
 import VisionTrainingShell from "./vision-training/VisionTrainingShell";
 import PitchFlowSettingsShell from "./pages/PitchFlowSettingsShell";
+import InternalLauncherPage from "./pages/InternalLauncherPage";
 
 const boardShell = () => <PitchFlowCoachShell initialTab="home" />;
 const VISION_BOARD_PATH = "/vision-board";
@@ -24,6 +25,7 @@ const PLAYER_PERFORMANCE_TRACKER_PATH = "/player-performance-tracker";
 const MOVEMENT_BOARD_LABS_PATH = "/movement-board-labs";
 const RAPID_CAPTURE_PATH = "/rapid-capture";
 const PRO_TAGGER_PATH    = "/pro-tagger";
+const INTERNAL_PATH      = "/internal";
 
 function redirectToBoard() {
   if (window.location.pathname !== "/board") {
@@ -120,6 +122,9 @@ function pickRootComponent() {
   }
   if (normalizedPath === SETTINGS_PATH) {
     return PitchFlowSettingsShell;
+  }
+  if (normalizedPath === INTERNAL_PATH) {
+    return InternalLauncherPage;
   }
   return redirectToBoard();
 }

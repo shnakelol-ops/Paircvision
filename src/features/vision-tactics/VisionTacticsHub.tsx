@@ -209,10 +209,6 @@ const HUB_CSS = `
 }
 
 @media (min-width: 600px) {
-  .vt-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .vt-card {
     min-height: 270px;
   }
@@ -277,21 +273,6 @@ export default function VisionTacticsHub() {
             Build tactical plans with players, arrows, movement, phases and visual coaching tools.
           </p>
           <span className="vt-card-cta" aria-hidden="true">Open Slate →</span>
-        </button>
-
-        <button
-          type="button"
-          className="vt-card vt-card--play"
-          onClick={() => navigate("/vision-tactics/play")}
-          aria-label="Open Tactical Play"
-        >
-          <p className="vt-card-mode">Tactical Play</p>
-          <h2 className="vt-card-title">Bring Your Vision<br />to Life</h2>
-          <p className="vt-card-sub">Movement, possession, behaviours &amp; scenarios</p>
-          <p className="vt-card-desc">
-            Visualise your ideas with coordinated movement, possession, passing and realistic game scenarios.
-          </p>
-          <span className="vt-card-cta" aria-hidden="true">Open Tactical Play →</span>
         </button>
       </div>
     </div>

@@ -27,7 +27,7 @@ type PitchFlowCoachShellProps = {
 };
 
 type BottomNavItem = {
-  id: "home" | "flowlab" | "flowstats" | "training" | "notes";
+  id: "home" | "flowlab" | "notes";
   label: string;
   short: string;
   path: string;
@@ -38,9 +38,7 @@ type QuickBrowseId = "systems" | "sessions" | "eight-week-plans" | "season-plans
 
 const BOTTOM_NAV_ITEMS: ReadonlyArray<BottomNavItem> = [
   { id: "home", label: "Home", short: "H", path: "/board" },
-  { id: "flowlab", label: "Board", short: "V", path: "/vision-board" },
-  { id: "flowstats", label: "Stats", short: "S", path: "/flowstats" },
-  { id: "training", label: "Training", short: "T", path: "/vision-training" },
+  { id: "flowlab", label: "Tactical Slate", short: "S", path: "/vision-board" },
   { id: "notes", label: "Notes", short: "N", path: "/notes" },
 ];
 
@@ -501,6 +499,10 @@ const SHELL_CSS = `
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.pf-home-secondary-grid--single {
+  grid-template-columns: 1fr;
+}
+
 .pf-home-secondary-btn {
   border-radius: 12px;
   border: 1px solid var(--pf-border);
@@ -801,7 +803,7 @@ const SHELL_CSS = `
   backdrop-filter: blur(12px);
   box-shadow: 0 14px 28px rgba(0,0,0,0.36);
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   padding: 5px;
   z-index: 50;
 }
@@ -981,37 +983,43 @@ function BoardPage({ onReplayTour }: { onReplayTour: () => void }) {
         </div>
         <p className="pf-subtitle">Gaelic Games Coaching Hub</p>
       </div>
-      <p className="pf-section-title pf-home-section-title-actions">Tools</p>
+
+      <p className="pf-section-title pf-home-section-title-actions">Plan</p>
       <div className="pf-card">
-        <div className="pf-home-secondary-grid">
-          <button type="button" className="pf-home-secondary-btn pf-home-tile--green" onClick={() => navigateTo("/vision-tactics")}>
-            <span className="pf-home-tile-name">Vision Tactics</span>
-            <small>Plan, explain and teach the game.</small>
+        <div className="pf-home-primary-wrap">
+          <button type="button" className="pf-home-primary-btn" onClick={() => navigateTo("/vision-tactics/slate")}>
+            <span className="pf-home-primary-label">Tactical Slate</span>
+            <span className="pf-home-primary-sub">Plan, explain and teach the game.</span>
           </button>
-          <button type="button" className="pf-home-secondary-btn pf-home-tile--orange" onClick={() => navigateTo("/vision-training")}>
-            <span className="pf-home-tile-name">Vision Training</span>
-            <small>Training Hub & Player Performance.</small>
+        </div>
+      </div>
+
+      <p className="pf-section-title pf-home-section-title-actions">Capture &amp; Understand</p>
+      <div className="pf-card">
+        <div className="pf-home-primary-wrap">
+          <button type="button" className="pf-home-primary-btn" onClick={() => navigateTo("/pro-tagger")}>
+            <span className="pf-home-primary-label">Event Stats</span>
+            <span className="pf-home-primary-sub">Live event capture with outcome-first tagging.</span>
           </button>
-          <button type="button" className="pf-home-secondary-btn pf-home-tile--blue" onClick={() => navigateTo("/flowstats")}>
-            <span className="pf-home-tile-name">Match Stats</span>
-            <small>Live event capture with pitch-first tagging.</small>
-          </button>
-          <button type="button" className="pf-home-secondary-btn pf-home-tile--amber" onClick={() => navigateTo("/pro-tagger")}>
-            <span className="pf-home-tile-name">Event Stats</span>
-            <small>Live event capture with outcome-first tagging.</small>
-          </button>
+        </div>
+      </div>
+
+      <p className="pf-section-title pf-home-section-title-actions">Remember</p>
+      <div className="pf-card">
+        <div className="pf-home-secondary-grid pf-home-secondary-grid--single">
           <button type="button" className="pf-home-secondary-btn pf-home-tile--purple" onClick={() => navigateTo("/notes")}>
             <span className="pf-home-tile-name">Notes</span>
             <small>Keep yourself organised.</small>
           </button>
         </div>
       </div>
-      <p className="pf-section-title pf-home-section-title-recent">Recent Boards</p>
+
+      <p className="pf-section-title pf-home-section-title-recent">Recent Slates</p>
       <div className="pf-card pf-card-soft">
-        <p className="pf-card-title">Recent Boards</p>
+        <p className="pf-card-title">Recent Slates</p>
         {recentBoards.length <= 0 ? (
           <p className="pf-card-text" style={{ marginTop: "10px" }}>
-            No saved boards yet. Save a board in PáircVision Board to see it here.
+            No saved slates yet. Save one in Tactical Slate to see it here.
           </p>
         ) : (
           <div className="pf-list">
@@ -1654,23 +1662,20 @@ export default function PitchFlowCoachShell({ initialTab }: PitchFlowCoachShellP
     normalizedPath === "/simulator" ||
     normalizedPath === "/tacticalpad-lite" ||
     normalizedPath === "/tacticalpad-lite-clean" ||
-    normalizedPath === "/whiteboard"
+    normalizedPath === "/whiteboard" ||
+    normalizedPath === "/vision-tactics" ||
+    normalizedPath.startsWith("/vision-tactics/")
       ? "flowlab"
-      : normalizedPath === "/flowstats" || normalizedPath === "/stats"
-        ? "flowstats"
-        : normalizedPath === "/player-performance-tracker" ||
-            normalizedPath.startsWith("/vision-training")
-          ? "training"
-        : normalizedPath === "/notes" ||
-            normalizedPath === "/library" ||
-            normalizedPath === "/sessions" ||
-            normalizedPath === "/plans" ||
-            initialTab === "notes" ||
-            initialTab === "library" ||
-            initialTab === "sessions" ||
-            initialTab === "plans"
-          ? "notes"
-          : "home";
+      : normalizedPath === "/notes" ||
+          normalizedPath === "/library" ||
+          normalizedPath === "/sessions" ||
+          normalizedPath === "/plans" ||
+          initialTab === "notes" ||
+          initialTab === "library" ||
+          initialTab === "sessions" ||
+          initialTab === "plans"
+        ? "notes"
+        : "home";
 
   const isHome = initialTab === "home";
   const [tourKey, setTourKey] = useState(0);

@@ -8,27 +8,22 @@ const STEPS: TourStep[] = [
   {
     icon: "🏟",
     title: "Welcome to PáircVision",
-    body: "PáircVision is built for Gaelic games coaches. Capture matches live, review reports at halftime, plan your tactics, bring your vision to life, and track your training — all in one place.",
-  },
-  {
-    icon: "📋",
-    title: "Match Stats",
-    body: "Log live match events as they happen — shots, kickouts, turnovers, frees, and more. PáircVision builds halftime snapshots and full match reports automatically.",
-  },
-  {
-    icon: "🔬",
-    title: "Event Stats",
-    body: "Live event capture with outcome-first tagging. Record players, team context and outcomes as they happen — PáircVision builds the same halftime snapshots and full match reports.",
+    body: "PáircVision is built for Gaelic games coaches. Plan your tactics, capture matches live, and keep the notes that matter — all in one place.",
   },
   {
     icon: "🎨",
-    title: "Tactical Slate & Tactical Play",
-    body: "Tactical Slate — plan and explain with players, drawings, phases and coaching tools. Tactical Play — bring your vision to life with coordinated movement, possession, passing and realistic game scenarios.",
+    title: "Plan — Tactical Slate",
+    body: "Build tactical plans with players, arrows, movement, phases and visual coaching tools.",
+  },
+  {
+    icon: "🔬",
+    title: "Capture & Understand — Event Stats",
+    body: "Live event capture with outcome-first tagging. Record players, team context and outcomes as they happen — PáircVision builds halftime snapshots and full match reports automatically.",
   },
   {
     icon: "📁",
-    title: "Training Tracker & Notes",
-    body: "Log training sessions, record attendance, track player workloads, and keep coaching notes and general observations organised across your season.",
+    title: "Remember — Notes",
+    body: "Keep coaching notes and general observations organised across your season.",
   },
   {
     icon: "📤",
