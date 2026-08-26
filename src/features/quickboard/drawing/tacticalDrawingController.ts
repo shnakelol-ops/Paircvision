@@ -207,7 +207,10 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
     },
     undo: () => {
       resetActiveDraft();
-      if (!store.deleteSelected()) {
+      // An eraser deletion is itself undoable: if the most recent drawing-store
+      // action was a delete (e.g. the eraser tool), restore it before falling
+      // back to the normal "undo last committed stroke" behaviour.
+      if (!store.restoreLastErased() && !store.deleteSelected()) {
         store.popLast();
       }
       renderCommittedDrawings();
