@@ -25,6 +25,12 @@ import { selectReviewEvents } from "../stats/review-selectors";
 import { resolveEventMapOutcomeFill } from "./pro-tagger-event-map-outcome-color";
 import { createPixiPitchSurface, exportPixiPitchSurfacePng } from "../core/pitch/create-pixi-pitch-surface";
 import type { PixiPitchSurfaceHandle } from "../core/pitch/create-pixi-pitch-surface";
+// Same shared engine Match Stats Review (StatsModeSurface.tsx) and Rapid
+// Review (RapidReviewScreen.tsx) use for their ZONES toggle — raw,
+// non-rotated classification of the already-filtered event set. No
+// Event-Stats-specific zone logic exists or should be added here.
+import { selectZoneOverlayModel } from "../stats/zones/zone-selectors";
+import type { ZoneOverlayModel } from "../stats/zones/zone-types";
 import { ShareSheet } from "../features/shared/ShareSheet";
 import { MATCH_EVENT_KINDS, type MatchEventKind } from "../core/stats/stats-event-model";
 import { formatMatchClock } from "../core/match/match-state-store";
@@ -128,11 +134,16 @@ function PitchCanvas({
   events,
   sport,
   onMarkerTap,
+  zoneOverlayModel,
   onHandleReady,
 }: {
   events: readonly LoggedMatchEvent[];
   sport: "gaelic" | "hurling" | "camogie" | "soccer";
   onMarkerTap?: (eventId: string) => void;
+  /** Same ZoneOverlayModel | null contract handleRef.setZoneOverlayModel takes
+   *  in StatsModeSurface.tsx's Match Stats Review / RapidReviewScreen.tsx's
+   *  Rapid Review — null hides the overlay. */
+  zoneOverlayModel?: ZoneOverlayModel | null;
   /** Exposes the underlying PixiPitchSurfaceHandle to the parent so it can
    * drive the unified Share sheet's capture adapter. */
   onHandleReady?: (handle: PixiPitchSurfaceHandle | null) => void;
@@ -177,6 +188,10 @@ function PitchCanvas({
     handleRef.current?.setEvents(events);
   }, [events]);
 
+  useEffect(() => {
+    handleRef.current?.setZoneOverlayModel(zoneOverlayModel ?? null);
+  }, [zoneOverlayModel]);
+
   return <div ref={hostRef} style={{ width: "100%", height: "100%", overflow: "hidden" }} />;
 }
 
@@ -215,6 +230,10 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
   const [reviewHalf,     setReviewHalf]     = useState<ReviewHalf>("FULL");
   const [reviewTeam,     setReviewTeam]     = useState<ReviewTeam>("ALL");
   const [reviewCategory, setReviewCategory] = useState<ReviewCategory>("ALL");
+  // Mirrors StatsModeSurface.tsx's showReviewZones / RapidReviewScreen.tsx's
+  // showReviewZones toggle exactly — same default (off), same scope (the
+  // currently filtered event set).
+  const [showEventMapZones, setShowEventMapZones] = useState(false);
 
   // ── Import state ───────────────────────────────────────────────────────────
   const [importedMatch, setImportedMatch]   = useState<ProTaggerSavedMatch | null>(null);
@@ -290,6 +309,14 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
       return fillOverride ? { ...event, fillOverride } : event;
     });
   }, [filteredEvents, reviewTeam]);
+
+  // Same call StatsModeSurface.tsx / RapidReviewScreen.tsx make for their
+  // zone overlay model — the already-filtered event set, no separate
+  // Event-Stats zone aggregation.
+  const eventMapZoneOverlayModel: ZoneOverlayModel = useMemo(
+    () => selectZoneOverlayModel(filteredEvents),
+    [filteredEvents],
+  );
 
   // ── Selected event derivations ─────────────────────────────────────────────
   const selectedMapEvent = selectedMapEventId == null
@@ -736,12 +763,23 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
                 {label}
               </button>
             ))}
+            <div style={B.chipSep} />
+            <button
+              type="button"
+              style={{ ...B.chip, ...(showEventMapZones ? B.chipActive : {}) }}
+              onClick={() => setShowEventMapZones((prev) => !prev)}
+              aria-pressed={showEventMapZones}
+              aria-label="Toggle event map zones overlay"
+            >
+              ZONES
+            </button>
           </div>
           <div style={B.pitchArea}>
             <PitchCanvas
               events={mapMarkerEvents}
               sport={pitchSport}
               onMarkerTap={(id) => setSelectedMapEventId(id)}
+              zoneOverlayModel={showEventMapZones ? eventMapZoneOverlayModel : null}
               onHandleReady={(h) => { pitchHandleRef.current = h; }}
             />
           </div>
