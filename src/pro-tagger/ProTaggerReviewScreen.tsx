@@ -1,21 +1,12 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import type { ChangeEvent, CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
 import {
   proTaggerMatchToPdfInput,
   proTaggerMatchToSnapshotInput,
 } from "./pro-tagger-review-adapter";
-import {
-  readProTaggerMatches,
-  resolveImportIdCollision,
-  saveProTaggerMatchFull,
-} from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
-import {
-  isCoordinateRepairApplied,
-  repairMirroredEventLocations,
-} from "./pro-tagger-coordinate-repair";
 import { buildIntelligencePack } from "../stats/intelligencePack";
 import type { IntelligencePack } from "../stats/intelligencePack";
 import { IntelligencePackPreview } from "../stats/IntelligencePackPreview";
@@ -58,18 +49,6 @@ const MATCH_TYPE_LABEL: Record<string, string> = {
   friendly:     "Friendly",
   training:     "Training",
 };
-
-const REPAIR_LOCATIONS_CONFIRM_MESSAGE =
-  "Repair mirrored locations?\n\n" +
-  "This flips ONLY the touchline (left/right sideline) axis of every event " +
-  "in this match back to where it was originally tagged. The length-of-" +
-  "pitch position, scores, players, teams, timestamps and halves are not " +
-  "changed.\n\n" +
-  "An untouched backup of the current match JSON will download first. " +
-  "This action is one-time — it cannot be applied twice, and running it " +
-  "again on an already-repaired match has no effect.\n\n" +
-  "Only apply this to a match you know was tagged with the old, mirrored " +
-  "Event Stats pitch view.";
 
 function fmtDate(ts: number): string {
   const d = new Date(ts);
@@ -143,20 +122,6 @@ const EVENT_MAP_ZONE_OVERLAY_STYLE: Partial<ZoneOverlayStyle> = {
   badgeBorderAlpha:             0.4,
   badgeBorderAlphaHotspot:      0.5,
 };
-
-function isValidProMatch(obj: unknown): obj is ProTaggerSavedMatch {
-  if (typeof obj !== "object" || obj === null) return false;
-  const r = obj as Record<string, unknown>;
-  return (
-    typeof r["id"] === "string" &&
-    typeof r["createdAt"] === "number" &&
-    typeof r["homeTeamName"] === "string" &&
-    typeof r["awayTeamName"] === "string" &&
-    Array.isArray(r["events"]) &&
-    typeof r["restoreContext"] === "object" &&
-    r["restoreContext"] !== null
-  );
-}
 
 // ── Pitch canvas sub-component ────────────────────────────────────────────────
 
@@ -265,14 +230,6 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
   // currently filtered event set).
   const [showEventMapZones, setShowEventMapZones] = useState(false);
 
-  // ── Import state ───────────────────────────────────────────────────────────
-  const [importedMatch, setImportedMatch]   = useState<ProTaggerSavedMatch | null>(null);
-  const [importResult,  setImportResult]    = useState<{ ok: boolean; text: string } | null>(null);
-  const importFileRef = useRef<HTMLInputElement>(null);
-
-  // ── Coordinate repair state ────────────────────────────────────────────────
-  const [repairFeedback, setRepairFeedback] = useState<ExportResult | undefined>(undefined);
-
   // ── Event Map marker tap state ─────────────────────────────────────────────
   const [selectedMapEventId,   setSelectedMapEventId]   = useState<string | null>(null);
   const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
@@ -281,23 +238,18 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
   const [proEditPlayerName,    setProEditPlayerName]    = useState("");
   const [proEditPlayerNumber,  setProEditPlayerNumber]  = useState("");
   // localMatch holds a mutated copy of the match after in-session edits/deletes.
-  // It shadows importedMatch and _match so every export path sees the same data.
+  // It shadows _match so every export path sees the same data.
   const [localMatch,           setLocalMatch]           = useState<ProTaggerSavedMatch | null>(null);
 
-  // Active match: localMatch (post-delete) > importedMatch > prop match.
+  // Active match: localMatch (post-delete) > prop match.
   // All exports, PDFs, snapshots, and Intelligence Pack read from this value.
-  const match = localMatch ?? importedMatch ?? _match;
+  const match = localMatch ?? _match;
 
-  const repairAlreadyApplied = isCoordinateRepairApplied(match);
-  const repairDisplayResult: ExportResult | undefined =
-    repairFeedback ?? (repairAlreadyApplied ? { ok: true, text: "✓ Repaired" } : undefined);
-
-  // Reset local-delete state when the underlying match changes (prop swap or import).
+  // Reset local-delete state when the underlying match changes (prop swap).
   useEffect(() => {
     setLocalMatch(null);
     setSelectedMapEventId(null);
-    setRepairFeedback(undefined);
-  }, [_match.id, importedMatch]);
+  }, [_match.id]);
 
   // Reset delete-confirm and edit state whenever the selected event changes.
   useEffect(() => {
@@ -500,61 +452,6 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
     downloadMatchJson(match);
   }
 
-  function handleImportFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const raw = evt.target?.result;
-        if (typeof raw !== "string") throw new Error("Could not read file");
-        const parsed: unknown = JSON.parse(raw);
-        if (!isValidProMatch(parsed)) throw new Error("Not a valid Event Stats match file");
-
-        // Guard against a coincidental id collision with an unrelated saved
-        // match (e.g. re-importing a file that was originally tagged on a
-        // different deployment/origin) silently clobbering it.
-        const { match: toSave, idRewritten } = resolveImportIdCollision(parsed, readProTaggerMatches());
-
-        saveProTaggerMatchFull(toSave);
-        setImportedMatch(toSave);
-        setImportResult({
-          ok:   true,
-          text: idRewritten ? "Imported as a new match (id conflict avoided)" : "Imported",
-        });
-      } catch (err) {
-        setImportResult({
-          ok:   false,
-          text: err instanceof Error ? err.message : "Import failed",
-        });
-      }
-      if (importFileRef.current) importFileRef.current.value = "";
-    };
-    reader.readAsText(file);
-  }
-
-  function handleRepairLocations() {
-    if (isCoordinateRepairApplied(match)) {
-      setRepairFeedback({ ok: false, text: "Already repaired" });
-      return;
-    }
-    if (!window.confirm(REPAIR_LOCATIONS_CONFIRM_MESSAGE)) return;
-
-    // Untouched backup of the pre-repair data, downloaded so it survives
-    // independent of this origin's localStorage — the match may only exist
-    // as an in-memory import, not (yet) a persisted Saved Match.
-    downloadMatchJson(match, "-PRE-REPAIR-BACKUP");
-
-    const result = repairMirroredEventLocations(match);
-    if (!result.ok) {
-      setRepairFeedback({ ok: false, text: "Already repaired" });
-      return;
-    }
-    setLocalMatch(result.match);
-    onMatchUpdate(result.match);
-    setRepairFeedback({ ok: true, text: "✓ Repaired — backup downloaded" });
-  }
-
   const metaParts: string[] = [
     SPORT_LABEL[match.sport]          ?? match.sport,
     MATCH_TYPE_LABEL[match.matchType] ?? match.matchType,
@@ -585,12 +482,6 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
         <span style={S.title}>Review</span>
         <span style={S.headerBadge}>Event</span>
       </div>
-
-      {importedMatch && (
-        <div style={S.importBanner}>
-          Viewing imported match · {importedMatch.homeTeamName || "Home"} v {importedMatch.awayTeamName || "Away"}
-        </div>
-      )}
 
       <div style={S.body}>
         {/* ── Match card ───────────────────────────────────────────────── */}
@@ -668,37 +559,6 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
           result={undefined}
           disabled={false}
           onClick={handleExportJson}
-        />
-
-        <div style={S.exportRow}>
-          <button style={S.exportBtn} onClick={() => importFileRef.current?.click()}>
-            <span style={S.exportBtnLabel}>Import Match JSON</span>
-          </button>
-          <div style={S.exportMeta}>
-            <span style={S.exportDesc}>Restore a previously exported Event Stats match</span>
-            {importResult && (
-              <span style={{ ...S.exportStatus, color: importResult.ok ? "#3fb950" : "#f85149" }}>
-                {importResult.text}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <input
-          ref={importFileRef}
-          type="file"
-          accept=".json,application/json"
-          style={{ display: "none" }}
-          onChange={handleImportFileChange}
-        />
-
-        <ExportRow
-          label="Repair mirrored locations"
-          description="One-time touchline-axis fix for matches tagged with the old Event Stats pitch view. Downloads a backup first."
-          loading={false}
-          result={repairDisplayResult}
-          disabled={repairAlreadyApplied}
-          onClick={handleRepairLocations}
         />
 
         {/* ── PDF Export (secondary) ────────────────────────────────────── */}
@@ -1303,16 +1163,6 @@ const S: Record<string, CSSProperties> = {
     color:     "#4a6070",
     textAlign: "center" as const,
     marginTop: 8,
-  },
-  importBanner: {
-    background:   "rgba(34,211,238,0.08)",
-    borderBottom: "1px solid rgba(34,211,238,0.2)",
-    color:        "#22d3ee",
-    fontSize:     11,
-    fontWeight:   600,
-    padding:      "6px 14px",
-    textAlign:    "center" as const,
-    flexShrink:   0,
   },
 };
 

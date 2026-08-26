@@ -8,10 +8,11 @@ import { ProTaggerLiveScreen } from "./ProTaggerLiveScreen";
 import type { RestoreState } from "./ProTaggerLiveScreen";
 import { ProTaggerSavedMatchesScreen } from "./ProTaggerSavedMatchesScreen";
 import { ProTaggerReviewScreen } from "./ProTaggerReviewScreen";
+import { ProTaggerOptionsScreen } from "./ProTaggerOptionsScreen";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { readProTaggerMatches, saveProTaggerMatchFull } from "./pro-tagger-storage";
 
-type AppPhase = "home" | "setup" | "squads" | "live" | "saved-matches" | "review";
+type AppPhase = "home" | "setup" | "squads" | "live" | "saved-matches" | "review" | "options";
 
 function savedMatchToSession(m: ProTaggerSavedMatch): ProTaggerSession {
   return {
@@ -106,9 +107,29 @@ export default function ProTaggerPage() {
                 <span style={H.badge}>{savedCount}</span>
               )}
             </button>
+            <button
+              style={H.secondaryBtn}
+              onClick={() => setPhase("options")}
+            >
+              Options
+            </button>
           </div>
         </div>
       </div>
+    );
+  }
+
+  // ── Options ─────────────────────────────────────────────────────────────────
+
+  if (phase === "options") {
+    return (
+      <ProTaggerOptionsScreen
+        onBack={() => {
+          setSavedCount(readProTaggerMatches().length);
+          setInProgressMatch(findInProgressMatch());
+          setPhase("home");
+        }}
+      />
     );
   }
 
