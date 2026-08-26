@@ -9,6 +9,7 @@ import {
 import { drawStatsMarkers } from "../stats/draw-stats-markers";
 import { drawStatsHeatmap } from "../stats/draw-stats-heatmap";
 import { drawStatsZoneOverlay } from "../stats/draw-stats-zone-overlay";
+import type { ZoneOverlayStyle } from "../stats/draw-stats-zone-overlay";
 import {
   createMatchEvent,
   type MatchEvent,
@@ -45,7 +46,11 @@ export type PixiPitchSurfaceHandle = {
   setShowPlayerInitials: (show: boolean) => void;
   setOnMarkerTap: (handler: ((eventId: string) => void) | null) => void;
   setHeatmapEnabled: (enabled: boolean) => void;
-  setZoneOverlayModel: (model: ZoneOverlayModel | null) => void;
+  /** style is optional and additive: omit it (as Match Stats' StatsModeSurface.tsx
+   *  and Rapid Capture's RapidReviewScreen.tsx both do) and the overlay renders
+   *  with its existing default appearance, unchanged. Only a caller that wants a
+   *  different presentation (e.g. Event Stats Review's stronger grid) passes one. */
+  setZoneOverlayModel: (model: ZoneOverlayModel | null, style?: Partial<ZoneOverlayStyle>) => void;
   setVisibleEventLimit: (limit: number | null) => void;
   undoLastEvent: () => void;
   /** Extracts the current pitch/marker/heatmap view as a still image,
@@ -139,6 +144,7 @@ export async function createPixiPitchSurface(
   let onMarkerTapState = options.onMarkerTap ?? null;
   let heatmapEnabledState = false;
   let zoneOverlayModelState: ZoneOverlayModel | null = null;
+  let zoneOverlayStyleState: Partial<ZoneOverlayStyle> | undefined;
   let visibleEventLimitState: number | null = null;
   const onEventLoggedState = options.onEventLogged;
   const onPitchTapState = options.onPitchTap;
@@ -155,7 +161,7 @@ export async function createPixiPitchSurface(
     } else {
       heatmapLayer.clear();
     }
-    drawStatsZoneOverlay(zoneOverlayLayer, zoneOverlayModelState);
+    drawStatsZoneOverlay(zoneOverlayLayer, zoneOverlayModelState, zoneOverlayStyleState);
     drawStatsMarkers(statsMarkers, renderableEvents, {
       worldToScreenScale: world.scale.x,
       maxScreenRadiusPx: 10,
@@ -250,8 +256,9 @@ export async function createPixiPitchSurface(
       heatmapEnabledState = enabled;
       redrawMarkers();
     },
-    setZoneOverlayModel: (model) => {
+    setZoneOverlayModel: (model, style) => {
       zoneOverlayModelState = model;
+      zoneOverlayStyleState = style;
       redrawMarkers();
     },
     setVisibleEventLimit: (limit) => {
