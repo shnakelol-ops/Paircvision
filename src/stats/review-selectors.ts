@@ -3,7 +3,7 @@ import { isFreeMiss, isFreeScore } from "./eventSource";
 import { deriveSegmentFromPeriodClock, periodFromHalf } from "./statsSegments";
 import type { ReviewEventFilters, ReviewSelectableEvent } from "./review-types";
 
-function normalizeReviewEventTeamSide(event: ReviewSelectableEvent): "FOR" | "OPP" {
+export function normalizeReviewEventTeamSide(event: ReviewSelectableEvent): "FOR" | "OPP" {
   if (event.teamSide === "FOR" || event.teamSide === "OPP") return event.teamSide;
   if (event.teamSide === "own") return "FOR";
   if (event.teamSide === "opposition") return "OPP";

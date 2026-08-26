@@ -10,6 +10,10 @@ type RenderableMatchEvent = MatchEvent & {
   playerNumber?: number;
   team?: "HOME" | "AWAY";
   renderAsSubtleDot?: boolean;
+  /** Review Event Map only: overrides the marker fill colour (a CSS rgba()
+   *  string) derived from the event kind's default style. Presentation-layer
+   *  only — leaves the event's kind, coordinates and stored data untouched. */
+  fillOverride?: string;
 };
 
 function clampByte(n: number): number {
@@ -150,7 +154,7 @@ export function drawStatsMarkers(
     const isScoring = SCORING_KINDS.has(event.kind);
     const styleRadius = isTwoPointer ? style.radius * 1.06 : style.radius;
     const radius = Math.min(Math.max(styleRadius, minWorldRadius), maxWorldRadius);
-    const fill = parseCssColorForPixi(style.fill);
+    const fill = parseCssColorForPixi(event.fillOverride ?? style.fill);
 
     const markerContainer = new Container();
     markerContainer.position.set(worldPoint.x, worldPoint.y);

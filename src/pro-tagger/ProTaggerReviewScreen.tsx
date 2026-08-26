@@ -22,6 +22,7 @@ import { IntelligencePackPreview } from "../stats/IntelligencePackPreview";
 import type { LoggedMatchEvent } from "../core/stats/saved-match";
 import { NotesQuickPanel, getMatchNotes } from "../features/notes";
 import { selectReviewEvents } from "../stats/review-selectors";
+import { resolveEventMapOutcomeFill } from "./pro-tagger-event-map-outcome-color";
 import { createPixiPitchSurface, exportPixiPitchSurfacePng } from "../core/pitch/create-pixi-pitch-surface";
 import type { PixiPitchSurfaceHandle } from "../core/pitch/create-pixi-pitch-surface";
 import { ShareSheet } from "../features/shared/ShareSheet";
@@ -276,6 +277,19 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
     }),
     [match.events, reviewHalf, reviewTeam, reviewCategory],
   );
+
+  // Event Map marker colour only: for Kickouts/Turnovers, distinguishes a
+  // won/retained outcome (purple) from a lost/conceded outcome (red) for
+  // whichever team the map is currently filtered to. No-op when the map
+  // isn't filtered to a single team, or for any other event kind.
+  const mapMarkerEvents = useMemo(() => {
+    const viewedTeam = reviewTeam === "FOR" || reviewTeam === "OPP" ? reviewTeam : null;
+    if (viewedTeam == null) return filteredEvents;
+    return filteredEvents.map((event) => {
+      const fillOverride = resolveEventMapOutcomeFill(event, viewedTeam);
+      return fillOverride ? { ...event, fillOverride } : event;
+    });
+  }, [filteredEvents, reviewTeam]);
 
   // ── Selected event derivations ─────────────────────────────────────────────
   const selectedMapEvent = selectedMapEventId == null
@@ -725,7 +739,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
           </div>
           <div style={B.pitchArea}>
             <PitchCanvas
-              events={filteredEvents}
+              events={mapMarkerEvents}
               sport={pitchSport}
               onMarkerTap={(id) => setSelectedMapEventId(id)}
               onHandleReady={(h) => { pitchHandleRef.current = h; }}
