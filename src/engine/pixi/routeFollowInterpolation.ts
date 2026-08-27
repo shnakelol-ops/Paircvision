@@ -51,11 +51,17 @@ export function interpolatePath(
       path = path.slice(firstAlignedIndex);
     }
     const firstPoint = path[0];
-    if (
-      !firstPoint ||
-      Math.hypot(firstPoint.x - fromPoint.x, firstPoint.y - fromPoint.y) >= BALL_PATH_MIN_POINT_DISTANCE
-    ) {
+    if (!firstPoint) {
       path.unshift(fromPoint);
+    } else if (Math.hypot(firstPoint.x - fromPoint.x, firstPoint.y - fromPoint.y) >= BALL_PATH_MIN_POINT_DISTANCE) {
+      // Replace the anomalous first sample — often just wherever the coach's
+      // finger first touched down while selecting the player, not the
+      // player's exact position — with the true segment origin. Prepending
+      // fromPoint here instead would draw a synthetic "correction" segment
+      // from the true start to that off-centre point before the walk ever
+      // proceeds toward the drawn route, which can visibly point backwards
+      // relative to the route's overall direction.
+      path[0] = fromPoint;
     }
   }
 
