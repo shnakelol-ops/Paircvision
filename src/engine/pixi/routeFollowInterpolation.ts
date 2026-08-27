@@ -212,32 +212,37 @@ export function resolveSegmentMaxMovementDistance(
   return maxDistance;
 }
 
-/** Distance (normalized units) at which the 1× baseline duration applies. */
-export const PHASE_SEGMENT_REFERENCE_DISTANCE = 18;
-/** Shortest a 1× normal phase segment may take, however little moves. */
-export const PHASE_SEGMENT_MIN_DURATION_MS = 900;
-/** Longest a 1× normal phase segment may take, however far something moves. */
-export const PHASE_SEGMENT_MAX_DURATION_MS = 2400;
 // Matches PLAY_DURATION_MS in createTacticalPadLiteSurface.ts — the same 1×
 // baseline the flat timing this formula replaces was built on, and the one
 // the existing possession-pass formula also scales from.
 const PHASE_SEGMENT_BASE_DURATION_MS = 1200;
+/**
+ * Distance (normalized units) up to which the 1× baseline duration applies
+ * unchanged — protects the short/normal range that already felt right.
+ */
+export const PHASE_SEGMENT_SHORT_DISTANCE_THRESHOLD = 20;
+/** ms added per normalized unit of movement beyond the short-distance threshold. */
+const PHASE_SEGMENT_DURATION_PER_EXTRA_UNIT_MS = 20;
+/** Longest a 1× normal phase segment may take, however far something moves. */
+export const PHASE_SEGMENT_MAX_DURATION_MS = 2800;
 
 /**
- * Converts a segment's largest movement demand into a shared duration:
- * clamp the distance-scaled 1× baseline first, then apply playback speed —
- * deliberately the opposite order from naive "divide by speed inside the
- * clamped range", so slow-motion (e.g. 0.25×) genuinely takes longer rather
- * than being capped at the same ceiling as 1×.
+ * Converts a segment's largest movement demand into a shared duration.
+ * Distances at or below the threshold keep the existing flat 1200ms pacing;
+ * beyond it, duration grows linearly with the extra distance, capped at a
+ * safety ceiling — then, and only then, playback speed is applied. Clamping
+ * before dividing by speed (not after) is deliberate: it's what makes
+ * slow-motion (e.g. 0.25×) genuinely take longer rather than being capped
+ * at the same ceiling as 1×.
  */
 export function resolvePhaseSegmentDurationMs(maxDistance: number, speedMultiplier: number): number {
   const safeDistance = Number.isFinite(maxDistance) && maxDistance > 0 ? maxDistance : 0;
-  const durationAt1x = Math.max(
-    PHASE_SEGMENT_MIN_DURATION_MS,
-    Math.min(
-      PHASE_SEGMENT_MAX_DURATION_MS,
-      PHASE_SEGMENT_BASE_DURATION_MS * (safeDistance / PHASE_SEGMENT_REFERENCE_DISTANCE),
-    ),
+  const durationAt1x = Math.min(
+    PHASE_SEGMENT_MAX_DURATION_MS,
+    safeDistance <= PHASE_SEGMENT_SHORT_DISTANCE_THRESHOLD
+      ? PHASE_SEGMENT_BASE_DURATION_MS
+      : PHASE_SEGMENT_BASE_DURATION_MS +
+          PHASE_SEGMENT_DURATION_PER_EXTRA_UNIT_MS * (safeDistance - PHASE_SEGMENT_SHORT_DISTANCE_THRESHOLD),
   );
   return durationAt1x / Math.max(0.01, speedMultiplier);
 }

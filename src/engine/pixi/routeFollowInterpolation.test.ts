@@ -4,8 +4,7 @@ import {
   getPlaybackEaseProgress,
   interpolatePath,
   PHASE_SEGMENT_MAX_DURATION_MS,
-  PHASE_SEGMENT_MIN_DURATION_MS,
-  PHASE_SEGMENT_REFERENCE_DISTANCE,
+  PHASE_SEGMENT_SHORT_DISTANCE_THRESHOLD,
   resolveMovementDistance,
   resolvePhaseSegmentDurationMs,
   resolveSegmentMaxMovementDistance,
@@ -241,64 +240,162 @@ describe("resolveSegmentMaxMovementDistance", () => {
 });
 
 describe("resolvePhaseSegmentDurationMs", () => {
-  it("short < medium (reference) < long at 1x speed", () => {
+  // Approved curve: distance <= 20 keeps the flat 1200ms baseline; beyond
+  // that, +20ms per extra normalized unit, capped at 2800ms — then, only
+  // then, playback speed is applied.
+
+  it("short movement (D=4) stays at the 1200ms baseline at 1x", () => {
+    expect(resolvePhaseSegmentDurationMs(4, 1)).toBe(1200);
+  });
+
+  it("normal movement (D=18) stays at the 1200ms baseline at 1x", () => {
+    expect(resolvePhaseSegmentDurationMs(18, 1)).toBe(1200);
+  });
+
+  it("exactly at the threshold (D=20) still stays at the 1200ms baseline at 1x", () => {
+    expect(resolvePhaseSegmentDurationMs(PHASE_SEGMENT_SHORT_DISTANCE_THRESHOLD, 1)).toBe(1200);
+    expect(resolvePhaseSegmentDurationMs(20, 1)).toBe(1200);
+  });
+
+  it("long movement (D=40) reaches 1600ms at 1x", () => {
+    expect(resolvePhaseSegmentDurationMs(40, 1)).toBe(1600);
+  });
+
+  it("longer movement (D=55) reaches 1900ms at 1x", () => {
+    expect(resolvePhaseSegmentDurationMs(55, 1)).toBe(1900);
+  });
+
+  it("very long movement (D=70) reaches 2200ms at 1x", () => {
+    expect(resolvePhaseSegmentDurationMs(70, 1)).toBe(2200);
+  });
+
+  it("hits the 2800ms safety ceiling at D=100, and stays there beyond it", () => {
+    expect(resolvePhaseSegmentDurationMs(100, 1)).toBe(PHASE_SEGMENT_MAX_DURATION_MS);
+    expect(resolvePhaseSegmentDurationMs(100, 1)).toBe(2800);
+    expect(resolvePhaseSegmentDurationMs(150, 1)).toBe(2800);
+    expect(resolvePhaseSegmentDurationMs(1000, 1)).toBe(2800);
+    expect(resolvePhaseSegmentDurationMs(Number.MAX_SAFE_INTEGER, 1)).toBe(2800);
+  });
+
+  it("short < normal-at-threshold < long < very-long, monotonically, at 1x", () => {
     const short = resolvePhaseSegmentDurationMs(4, 1);
-    const medium = resolvePhaseSegmentDurationMs(PHASE_SEGMENT_REFERENCE_DISTANCE, 1);
+    const atThreshold = resolvePhaseSegmentDurationMs(20, 1);
     const long = resolvePhaseSegmentDurationMs(55, 1);
-    expect(short).toBeLessThan(medium);
-    expect(medium).toBeLessThan(long);
+    const veryLong = resolvePhaseSegmentDurationMs(70, 1);
+    expect(short).toBe(atThreshold); // both within the flat 0-20 band
+    expect(atThreshold).toBeLessThan(long);
+    expect(long).toBeLessThan(veryLong);
   });
 
-  it("the reference distance (18 units) produces ~1200ms at 1x — unchanged common-case pacing", () => {
-    expect(resolvePhaseSegmentDurationMs(PHASE_SEGMENT_REFERENCE_DISTANCE, 1)).toBeCloseTo(1200, 6);
+  it("Draw Route duration is driven by actual arc length, not the shorter straight-line chord", () => {
+    // from (0,0) to (20,0): straight-line chord = 20 exactly. The stored
+    // route detours via (0,11) and (20,11): arc length = 11+20+11 = 42
+    // exactly, deliberately matching the audit's own "~20 chord / ~42 arc"
+    // illustration.
+    const from = { x: 0, y: 0 };
+    const to = {
+      x: 20,
+      y: 0,
+      path: [
+        { x: 0, y: 0 },
+        { x: 0, y: 11 },
+        { x: 20, y: 11 },
+        { x: 20, y: 0 },
+      ],
+    };
+    const straightLineChord = 20;
+    const distance = resolveMovementDistance(from, to);
+    expect(distance).toBe(42);
+    expect(distance).toBeGreaterThan(straightLineChord);
+
+    const duration = resolvePhaseSegmentDurationMs(distance, 1);
+    // 1200 + 20*(42-20) = 1640ms — not 1200ms, which is what the shorter
+    // chord distance (20) would have produced.
+    expect(duration).toBe(1640);
+    expect(duration).not.toBe(1200);
   });
 
-  it("clamps a short movement to the 900ms minimum at 1x", () => {
-    expect(resolvePhaseSegmentDurationMs(4, 1)).toBe(PHASE_SEGMENT_MIN_DURATION_MS);
-    expect(resolvePhaseSegmentDurationMs(4, 1)).toBe(900);
+  it("longest mover among several players determines the one shared phase duration", () => {
+    const fromSnapshot = {
+      players: [
+        { id: "short", x: 0, y: 0 },
+        { id: "medium", x: 0, y: 0 },
+        { id: "long", x: 0, y: 0 },
+      ],
+      football: [],
+    };
+    const toSnapshot = {
+      players: [
+        { id: "short", x: 4, y: 0 },
+        { id: "medium", x: 18, y: 0 },
+        { id: "long", x: 55, y: 0 },
+      ],
+      football: [],
+    };
+    const maxDistance = resolveSegmentMaxMovementDistance(fromSnapshot, toSnapshot);
+    expect(maxDistance).toBe(55);
+    expect(resolvePhaseSegmentDurationMs(maxDistance, 1)).toBe(1900); // the long mover's duration, not the short/medium ones' 1200ms
   });
 
-  it("clamps a long movement to the 2400ms maximum at 1x", () => {
-    expect(resolvePhaseSegmentDurationMs(55, 1)).toBe(PHASE_SEGMENT_MAX_DURATION_MS);
-    expect(resolvePhaseSegmentDurationMs(55, 1)).toBe(2400);
+  it("a free ball moving farther than every player determines the shared phase duration", () => {
+    const fromSnapshot = {
+      players: [{ id: "p1", x: 0, y: 0 }],
+      football: [{ id: "ball", x: 0, y: 0, isFree: true, attachedPlayerId: null }],
+    };
+    const toSnapshot = {
+      players: [{ id: "p1", x: 5, y: 0 }],
+      football: [{ id: "ball", x: 70, y: 0, isFree: true, attachedPlayerId: null }],
+    };
+    const maxDistance = resolveSegmentMaxMovementDistance(fromSnapshot, toSnapshot);
+    expect(maxDistance).toBe(70); // the ball's distance, not the player's 5
+    expect(resolvePhaseSegmentDurationMs(maxDistance, 1)).toBe(2200);
   });
 
-  it("never exceeds the maximum clamp however long the movement is", () => {
-    expect(resolvePhaseSegmentDurationMs(1000, 1)).toBe(2400);
-    expect(resolvePhaseSegmentDurationMs(Number.MAX_SAFE_INTEGER, 1)).toBe(2400);
+  it("an attached ball never inflates the shared duration beyond its holder's own movement", () => {
+    const fromSnapshot = {
+      players: [{ id: "p1", x: 0, y: 0 }],
+      football: [{ id: "ball", x: 0, y: 0, isFree: false, attachedPlayerId: "p1" }],
+    };
+    const toSnapshot = {
+      players: [{ id: "p1", x: 4, y: 0 }],
+      // Ball snapshot coordinates far away — irrelevant, since it's carried
+      // by p1 the whole segment and must not double-count or override p1's
+      // own (short) movement demand.
+      football: [{ id: "ball", x: 90, y: 0, isFree: false, attachedPlayerId: "p1" }],
+    };
+    const maxDistance = resolveSegmentMaxMovementDistance(fromSnapshot, toSnapshot);
+    expect(maxDistance).toBe(4);
+    expect(resolvePhaseSegmentDurationMs(maxDistance, 1)).toBe(1200); // still the short-movement baseline
   });
 
-  it("never drops below the minimum clamp however tiny the movement is", () => {
-    expect(resolvePhaseSegmentDurationMs(0.001, 1)).toBe(900);
+  it("applies the speed multiplier AFTER the distance curve and safety ceiling", () => {
+    // D=55 -> 1900ms base at 1x (from the curve, not re-derived here).
+    expect(resolvePhaseSegmentDurationMs(55, 1)).toBe(1900);
+    expect(resolvePhaseSegmentDurationMs(55, 0.25)).toBeCloseTo(7600, 6);
+    expect(resolvePhaseSegmentDurationMs(55, 0.5)).toBeCloseTo(3800, 6);
+    expect(resolvePhaseSegmentDurationMs(55, 1.5)).toBeCloseTo(1266.6667, 3);
   });
 
-  it("applies the speed multiplier AFTER clamping — the clamp governs 1x pacing, not the final duration", () => {
-    // A long (clamped-to-2400ms-at-1x) movement must still take 4x longer at
-    // 0.25x, not be re-capped at 2400ms — this is what gives the speed
-    // slider real meaning instead of flattening every long move to the
-    // same ceiling regardless of speed.
-    expect(resolvePhaseSegmentDurationMs(55, 0.25)).toBeCloseTo(9600, 6);
-    expect(resolvePhaseSegmentDurationMs(55, 1)).toBeCloseTo(2400, 6);
-    expect(resolvePhaseSegmentDurationMs(55, 1.5)).toBeCloseTo(1600, 6);
+  it("a ceiling-clamped movement still scales with speed instead of being re-capped", () => {
+    // D=100 clamps to 2800ms at 1x — slow motion must still take 4x longer,
+    // not stay pinned at 2800ms.
+    expect(resolvePhaseSegmentDurationMs(100, 0.25)).toBeCloseTo(11200, 6);
+    expect(resolvePhaseSegmentDurationMs(100, 1)).toBe(2800);
+    expect(resolvePhaseSegmentDurationMs(100, 1.5)).toBeCloseTo(1866.6667, 3);
   });
 
-  it("scales the reference (unclamped) duration correctly across speeds too", () => {
-    expect(resolvePhaseSegmentDurationMs(PHASE_SEGMENT_REFERENCE_DISTANCE, 0.25)).toBeCloseTo(4800, 6);
-    expect(resolvePhaseSegmentDurationMs(PHASE_SEGMENT_REFERENCE_DISTANCE, 1.5)).toBeCloseTo(800, 6);
-  });
-
-  it("never produces 0, NaN, or Infinity when nothing moves", () => {
+  it("no movement returns the current 1200ms baseline (divided by speed), never 0 or NaN", () => {
+    expect(resolvePhaseSegmentDurationMs(0, 1)).toBe(1200);
     const duration = resolvePhaseSegmentDurationMs(0, 1);
     expect(Number.isFinite(duration)).toBe(true);
     expect(duration).toBeGreaterThan(0);
-    expect(duration).toBe(900);
   });
 
   it("treats a non-finite or negative distance as zero movement rather than propagating NaN/Infinity", () => {
     for (const badDistance of [Number.NaN, -5, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
       const duration = resolvePhaseSegmentDurationMs(badDistance, 1);
       expect(Number.isFinite(duration)).toBe(true);
-      expect(duration).toBe(900);
+      expect(duration).toBe(1200);
     }
   });
 });
