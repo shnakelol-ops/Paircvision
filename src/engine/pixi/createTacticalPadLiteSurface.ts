@@ -42,6 +42,11 @@ import {
 } from "./shapeLockTranslation";
 import { computeChainTetherSegments, tensionToWidthScale } from "./shapeLinks";
 import {
+  BALL_PATH_MIN_POINT_DISTANCE,
+  getPlaybackEaseProgress,
+  interpolatePath,
+} from "./routeFollowInterpolation";
+import {
   createTacticalSlateDefaultPlayerSeeds,
   type TacticalSlateDefaultPlayerSeed,
 } from "./tacticalSlateDefaultPlayers";
@@ -313,7 +318,6 @@ const ATTACHED_BALL_FOLLOW_SMOOTHING = 0.28;
 const BALL_DRAG_DEADZONE_WORLD = 0.18;
 const BALL_DRAG_SMOOTHING = 0.4;
 const BALL_DRAG_FAST_FOLLOW_DISTANCE_WORLD = 1.6;
-const BALL_PATH_MIN_POINT_DISTANCE = 0.35;
 const POSSESSION_PASS_MIN_DURATION_MS = 900;
 const POSSESSION_PASS_MAX_DURATION_MS = 1800;
 const POSSESSION_PASS_REFERENCE_DISTANCE = 14;
@@ -1414,6 +1418,10 @@ export async function createTacticalPadLiteSurface(
   const players: TacticalPlayer[] = playerSeeds.map((seed) => createSurfacePlayer(seed));
 
   const PLAY_DURATION_MS = 1200;
+  // Committed annotation strokes fade (not hide) while playing/paused so the
+  // eye follows players/ball/Shape Links; restored once playback fully stops.
+  const WHITEBOARD_DRAWINGS_ALPHA_NORMAL = 1;
+  const WHITEBOARD_DRAWINGS_ALPHA_PLAYBACK = 0.35;
   let playbackSpeedMultiplier = DEFAULT_PLAYBACK_SPEED_MULTIPLIER;
   let isPlaying = false;
   let isPaused = false;
@@ -1488,6 +1496,10 @@ export async function createTacticalPadLiteSurface(
     if (!isPlaying && !isPaused) {
       renderShapeGuideGraphic();
     }
+    // Fade (never hide) committed Free Draw/annotation strokes while playing
+    // or paused; restore full opacity once playback stops/resets/completes.
+    whiteboardDrawingsLayer.alpha =
+      isPlaying || isPaused ? WHITEBOARD_DRAWINGS_ALPHA_PLAYBACK : WHITEBOARD_DRAWINGS_ALPHA_NORMAL;
     options.onPlaybackStateChange?.({ isPlaying, isPaused });
   }
 
@@ -3221,92 +3233,9 @@ export async function createTacticalPadLiteSurface(
     playSingleStartToCurrent();
   }
 
-  /**
-   * Shared Phase-engine interpolation: walks an optional stored freehand
-   * `path` proportionally by arc length, or falls back to a straight lerp
-   * when no path is present. Originally the football's own interpolation;
-   * kept generic (`{ x, y, path? }`) so any Phase-tracked object — not just
-   * the football — can reuse it.
-   */
-  function interpolatePath(
-    from: { x: number; y: number; path?: NormalizedPoint[] } | null,
-    to: { x: number; y: number; path?: NormalizedPoint[] },
-    progress: number,
-  ): NormalizedPoint {
-    const fallbackStart = from ?? to;
-    const fallbackPoint = {
-      x: fallbackStart.x + (to.x - fallbackStart.x) * progress,
-      y: fallbackStart.y + (to.y - fallbackStart.y) * progress,
-    };
-    const storedPath = to.path ?? [];
-    if (storedPath.length < 2) {
-      return fallbackPoint;
-    }
-
-    let path = storedPath.map((point) => ({
-      x: clampNormalizedValue(point.x),
-      y: clampNormalizedValue(point.y),
-    }));
-
-    if (from) {
-      const fromPoint = {
-        x: clampNormalizedValue(from.x),
-        y: clampNormalizedValue(from.y),
-      };
-      // Trim stale prefix points so each playback segment begins from the current segment origin.
-      const firstAlignedIndex = path.findIndex(
-        (point) => Math.hypot(point.x - fromPoint.x, point.y - fromPoint.y) < BALL_PATH_MIN_POINT_DISTANCE,
-      );
-      if (firstAlignedIndex > 0) {
-        path = path.slice(firstAlignedIndex);
-      }
-      const firstPoint = path[0];
-      if (
-        !firstPoint ||
-        Math.hypot(firstPoint.x - fromPoint.x, firstPoint.y - fromPoint.y) >= BALL_PATH_MIN_POINT_DISTANCE
-      ) {
-        path.unshift(fromPoint);
-      }
-    }
-
-    let totalDistance = 0;
-    for (let index = 1; index < path.length; index += 1) {
-      const previous = path[index - 1];
-      const current = path[index];
-      if (!previous || !current) continue;
-      totalDistance += Math.hypot(current.x - previous.x, current.y - previous.y);
-    }
-    if (totalDistance <= 0) {
-      return fallbackPoint;
-    }
-
-    const targetDistance = totalDistance * progress;
-    let traveledDistance = 0;
-    for (let index = 1; index < path.length; index += 1) {
-      const previous = path[index - 1];
-      const current = path[index];
-      if (!previous || !current) continue;
-      const segmentDistance = Math.hypot(current.x - previous.x, current.y - previous.y);
-      if (segmentDistance <= 0) continue;
-      if (traveledDistance + segmentDistance >= targetDistance) {
-        const segmentProgress = (targetDistance - traveledDistance) / segmentDistance;
-        return {
-          x: previous.x + (current.x - previous.x) * segmentProgress,
-          y: previous.y + (current.y - previous.y) * segmentProgress,
-        };
-      }
-      traveledDistance += segmentDistance;
-    }
-    return {
-      x: clampNormalizedValue(to.x),
-      y: clampNormalizedValue(to.y),
-    };
-  }
-
-  function getPlaybackEaseProgress(progress: number): number {
-    const clamped = Math.max(0, Math.min(1, progress));
-    return clamped * clamped * (3 - 2 * clamped);
-  }
+  // interpolatePath() and getPlaybackEaseProgress() now live in
+  // ./routeFollowInterpolation (imported above) so the route-follow easing
+  // fix has a focused, independently-testable home.
 
   function resolvePossessionPassSegmentDurationMs(fromSnapshot: PhaseSnapshot, toSnapshot: PhaseSnapshot): number {
     let maxBallDistance = 0;
@@ -3356,7 +3285,7 @@ export async function createTacticalPadLiteSurface(
         const toPoint = toPlayersById.get(player.id);
         if (!fromPoint || !toPoint) continue;
         player.current = toPoint.path?.length
-          ? interpolatePath(fromPoint, toPoint, progress)
+          ? interpolatePath(fromPoint, toPoint, easedProgress)
           : {
               x: fromPoint.x + (toPoint.x - fromPoint.x) * easedProgress,
               y: fromPoint.y + (toPoint.y - fromPoint.y) * easedProgress,
@@ -3405,7 +3334,7 @@ export async function createTacticalPadLiteSurface(
             item.y += (cappedY - item.y) * ATTACHED_BALL_FOLLOW_SMOOTHING;
           }
         } else {
-          const freePoint = interpolatePath(fromBall, toBall, progress);
+          const freePoint = interpolatePath(fromBall, toBall, easedProgress);
           state.attachedPlayerId = null;
           state.isFree = true;
           state.path = toBall.path?.map((pathPoint) => ({ x: pathPoint.x, y: pathPoint.y })) ?? [];

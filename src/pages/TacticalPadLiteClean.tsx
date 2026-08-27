@@ -2365,12 +2365,20 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const playbackSpeedMultiplierRef = useRef(playbackSpeedMultiplier);
   const boardBaselineSignatureRef = useRef<string | null>(null);
   const lastBoardDraftSignatureRef = useRef<string | null>(null);
+  // Save/autosave playback guard: a ref (not just isPlaying/isPaused state) so
+  // the autosave interval below — whose effect deps don't include play state —
+  // always reads the current lock, never a stale one captured at setup time.
+  const isPlaybackLockedRef = useRef(false);
 
   useScreenWakeLock(shouldKeepScreenAwakeForBoard);
 
   useEffect(() => {
     shouldBlockPortraitInputRef.current = shouldBlockPortraitInput;
   }, [shouldBlockPortraitInput]);
+
+  useEffect(() => {
+    isPlaybackLockedRef.current = isPlaying || isPaused;
+  }, [isPlaying, isPaused]);
 
   useEffect(() => {
     textAnnotationsRef.current = textAnnotations;
@@ -2836,6 +2844,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     const persistDraft = () => {
       const surface = surfaceRef.current;
       if (!surface) return;
+      // Playback guard: while playing or paused mid-segment, player/ball
+      // positions are live interpolated values, not a real phase state.
+      // Skip this tick — the next non-playback tick persists normally once
+      // playback stops (positions return to the last phase snapshot).
+      if (isPlaybackLockedRef.current) return;
       const snapshot = captureQuickBoardSnapshot(surface);
       if (!snapshot) return;
       const signature = serializeBoardState(snapshot);
@@ -3475,6 +3488,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     const surface = surfaceRef.current;
     if (!surface || isWhiteboardMode || isStatsMode) {
       showQuickBoardNotice("PáircVision Board not ready");
+      return;
+    }
+    if (isPlaybackLocked) {
+      showQuickBoardNotice("Stop playback before saving the board");
       return;
     }
     if (hasReachedQuickBoardSaveLimit()) {
@@ -4968,7 +4985,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               {([
                 { id: "move", label: "Move" },
                 { id: "ball", label: "Ball" },
-                { id: "freeDraw", label: "Free Draw" },
+                { id: "freeDraw", label: "Draw Route" },
               ] as const).map((option) => (
                 <button
                   key={option.id}
@@ -5033,7 +5050,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                   setConfirmSheet({
                     title: "Set current positions as the new starting shape?",
                     message:
-                      "This will:\n• Update the starting position for playback.\n• Clear all existing phases.\n• Remove Free Draw annotations.",
+                      "This will:\n• Update the starting position for playback.\n• Clear all existing phases.\n• Remove Draw Route paths.",
                     confirmLabel: "Set Start",
                     danger: true,
                     onConfirm: () => { setConfirmSheet(null); doSetStart(); },
@@ -5805,7 +5822,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           <div ref={myBoardsPopoverRef} style={myBoardsPopoverStyle} role="dialog" aria-modal="false" aria-label="My Boards">
             <div style={MY_BOARDS_HEADER_STYLE}>
               <p style={MY_BOARDS_TITLE_STYLE}>My Boards</p>
-              <button type="button" className="control-button" style={MY_BOARDS_SAVE_BUTTON_STYLE} onClick={handleSaveCurrentBoard}>
+              <button
+                type="button"
+                className="control-button"
+                style={isPlaybackLocked ? DISABLED_CONTROL_BUTTON_STYLE : MY_BOARDS_SAVE_BUTTON_STYLE}
+                disabled={isPlaybackLocked}
+                onClick={handleSaveCurrentBoard}
+              >
                 Save Current
               </button>
             </div>
