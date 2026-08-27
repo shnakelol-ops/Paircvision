@@ -45,6 +45,8 @@ import {
   BALL_PATH_MIN_POINT_DISTANCE,
   getPlaybackEaseProgress,
   interpolatePath,
+  resolvePhaseSegmentDurationMs,
+  resolveSegmentMaxMovementDistance,
 } from "./routeFollowInterpolation";
 import {
   createTacticalSlateDefaultPlayerSeeds,
@@ -1430,6 +1432,12 @@ export async function createTacticalPadLiteSurface(
   let activeSegmentIndex = 0;
   let playbackKind: PlaybackKind = "default";
   let playbackPossessionReceiverId: string | null = null;
+  // Per-segment distance-aware duration input for normal (non-possession-pass)
+  // playback, indexed the same way as playbackPath (entry i = the segment
+  // from playbackPath[i] to playbackPath[i+1]). Computed once when playback
+  // starts, not recomputed every animation frame; empty for possession-pass
+  // sessions, whose timing is entirely unrelated to this.
+  let segmentMaxMovementDistances: number[] = [];
   let singlePlayTargetSnapshot: PhaseSnapshot | null = null;
   let startPositions: PhaseSnapshot = {
     players: players.map((player) => ({ id: player.id, ...player.current })),
@@ -3162,6 +3170,7 @@ export async function createTacticalPadLiteSurface(
     activeSegmentIndex = 0;
     playbackKind = "default";
     playbackPossessionReceiverId = null;
+    segmentMaxMovementDistances = [];
     emitPlaybackStateChange();
   }
 
@@ -3177,6 +3186,13 @@ export async function createTacticalPadLiteSurface(
       playbackKind === "possession-pass"
         ? optionsForPlayback?.possessionReceiverId ?? null
         : null;
+    // Possession-pass timing is entirely distance-based already
+    // (resolvePossessionPassSegmentDurationMs, computed inline below) and
+    // never spans more than one segment — no need to precompute this.
+    segmentMaxMovementDistances =
+      playbackKind === "possession-pass"
+        ? []
+        : path.slice(0, -1).map((fromSnapshot, index) => resolveSegmentMaxMovementDistance(fromSnapshot, path[index + 1]!));
     applySnapshotToSurface(path[0]!);
     emitPlaybackStateChange();
   }
@@ -3271,7 +3287,10 @@ export async function createTacticalPadLiteSurface(
       const segmentDurationMs =
         playbackKind === "possession-pass"
           ? resolvePossessionPassSegmentDurationMs(fromSnapshot, toSnapshot)
-          : PLAY_DURATION_MS / playbackSpeedMultiplier;
+          : resolvePhaseSegmentDurationMs(
+              segmentMaxMovementDistances[activeSegmentIndex] ?? 0,
+              playbackSpeedMultiplier,
+            );
       const stepMs = Math.min(remainingMs, Math.max(0, segmentDurationMs - playElapsedMs));
       playElapsedMs += stepMs;
       remainingMs -= stepMs;
@@ -4207,12 +4226,22 @@ export async function createTacticalPadLiteSurface(
       const previousMultiplier = playbackSpeedMultiplier;
       playbackSpeedMultiplier = sanitizedMultiplier;
       if ((isPlaying || isPaused) && playbackPath.length >= 2) {
-        const previousSegmentDurationMs = PLAY_DURATION_MS / previousMultiplier;
+        // Possession-pass rescale intentionally keeps using the flat
+        // PLAY_DURATION_MS here, exactly as before — resolvePossessionPassSegmentDurationMs
+        // and its behaviour are untouched by this change.
+        const activeSegmentMaxDistance = segmentMaxMovementDistances[activeSegmentIndex] ?? 0;
+        const previousSegmentDurationMs =
+          playbackKind === "possession-pass"
+            ? PLAY_DURATION_MS / previousMultiplier
+            : resolvePhaseSegmentDurationMs(activeSegmentMaxDistance, previousMultiplier);
         const progress =
           previousSegmentDurationMs > 0
             ? Math.max(0, Math.min(1, playElapsedMs / previousSegmentDurationMs))
             : 0;
-        const nextSegmentDurationMs = PLAY_DURATION_MS / playbackSpeedMultiplier;
+        const nextSegmentDurationMs =
+          playbackKind === "possession-pass"
+            ? PLAY_DURATION_MS / playbackSpeedMultiplier
+            : resolvePhaseSegmentDurationMs(activeSegmentMaxDistance, playbackSpeedMultiplier);
         playElapsedMs = Math.max(0, Math.min(nextSegmentDurationMs, progress * nextSegmentDurationMs));
       }
     },
