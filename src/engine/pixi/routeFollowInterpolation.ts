@@ -107,3 +107,137 @@ export function getPlaybackEaseProgress(progress: number): number {
   const clamped = Math.max(0, Math.min(1, progress));
   return clamped * clamped * (3 - 2 * clamped);
 }
+
+// --- Distance-aware phase-segment timing ---------------------------------
+//
+// Normal (non-possession-pass) phase transitions previously always took a
+// flat PLAY_DURATION_MS regardless of how far anything actually had to
+// travel, which made long moves visibly "rocket" across the pitch. The
+// functions below compute one shared segment duration from the largest
+// movement demand in the segment (any player, or a freely-moving ball),
+// preserving the existing "a phase is a synchronized snapshot" semantic —
+// there is still exactly one duration/progress value per segment, just
+// derived instead of constant.
+
+/**
+ * Distance a single tracked entity (a player or the ball) travels between
+ * two snapshot positions: the recorded route's arc length when a Draw
+ * Route/path exists, otherwise straight-line displacement. Deliberately
+ * measures the *stored* path as-is (matching the "use the actual stored
+ * route arc length" spec) rather than re-deriving interpolatePath's
+ * playback-time first-point correction — the two differ by at most a small
+ * touch-selection offset, well within this formula's own tolerance, and
+ * this keeps the calculation fully independent of interpolatePath.
+ */
+export function resolveMovementDistance(
+  from: { x: number; y: number } | null,
+  to: { x: number; y: number; path?: NormalizedPoint[] },
+): number {
+  const storedPath = to.path;
+  if (storedPath && storedPath.length >= 2) {
+    let arcLength = 0;
+    for (let index = 1; index < storedPath.length; index += 1) {
+      const previous = storedPath[index - 1];
+      const current = storedPath[index];
+      if (!previous || !current) continue;
+      arcLength += Math.hypot(current.x - previous.x, current.y - previous.y);
+    }
+    if (arcLength > 0) {
+      return arcLength;
+    }
+  }
+  const fallbackStart = from ?? to;
+  return Math.hypot(to.x - fallbackStart.x, to.y - fallbackStart.y);
+}
+
+type MovementEntry = {
+  id: string;
+  x: number;
+  y: number;
+  path?: NormalizedPoint[];
+};
+
+type FreeBallMovementEntry = MovementEntry & {
+  isFree: boolean;
+  attachedPlayerId: string | null;
+};
+
+export type MovementSnapshot = {
+  players: readonly MovementEntry[];
+  football: readonly FreeBallMovementEntry[];
+};
+
+/**
+ * Largest movement demand across every player and any freely-moving ball
+ * transitioning from one phase snapshot to the next. A ball being carried
+ * by the same player throughout the segment is excluded — its motion is
+ * just that player's own hand-follow, already captured by the player's own
+ * distance, not a duration-driven animation. A ball that is free at either
+ * end, or that switches holders (a possession change captured as an
+ * ordinary phase edit rather than the dedicated tap-to-pass gesture), does
+ * move independently during the segment and participates in the max.
+ */
+export function resolveSegmentMaxMovementDistance(
+  fromSnapshot: MovementSnapshot,
+  toSnapshot: MovementSnapshot,
+): number {
+  let maxDistance = 0;
+
+  const fromPlayersById = new Map(fromSnapshot.players.map((entry) => [entry.id, entry] as const));
+  for (const toPlayer of toSnapshot.players) {
+    const fromPlayer = fromPlayersById.get(toPlayer.id);
+    if (!fromPlayer) continue;
+    const distance = resolveMovementDistance(fromPlayer, toPlayer);
+    if (distance > maxDistance) {
+      maxDistance = distance;
+    }
+  }
+
+  const fromBallsById = new Map(fromSnapshot.football.map((entry) => [entry.id, entry] as const));
+  for (const toBall of toSnapshot.football) {
+    const fromBall = fromBallsById.get(toBall.id);
+    if (!fromBall) continue;
+    const targetAttachedPlayerId = toBall.isFree ? null : toBall.attachedPlayerId ?? null;
+    const sourceAttachedPlayerId = fromBall.isFree ? null : fromBall.attachedPlayerId ?? null;
+    const isHolderSwitch =
+      sourceAttachedPlayerId != null && targetAttachedPlayerId != null && sourceAttachedPlayerId !== targetAttachedPlayerId;
+    const ballMovesIndependently = targetAttachedPlayerId == null || isHolderSwitch;
+    if (!ballMovesIndependently) continue;
+    const distance = resolveMovementDistance(fromBall, toBall);
+    if (distance > maxDistance) {
+      maxDistance = distance;
+    }
+  }
+
+  return maxDistance;
+}
+
+/** Distance (normalized units) at which the 1× baseline duration applies. */
+export const PHASE_SEGMENT_REFERENCE_DISTANCE = 18;
+/** Shortest a 1× normal phase segment may take, however little moves. */
+export const PHASE_SEGMENT_MIN_DURATION_MS = 900;
+/** Longest a 1× normal phase segment may take, however far something moves. */
+export const PHASE_SEGMENT_MAX_DURATION_MS = 2400;
+// Matches PLAY_DURATION_MS in createTacticalPadLiteSurface.ts — the same 1×
+// baseline the flat timing this formula replaces was built on, and the one
+// the existing possession-pass formula also scales from.
+const PHASE_SEGMENT_BASE_DURATION_MS = 1200;
+
+/**
+ * Converts a segment's largest movement demand into a shared duration:
+ * clamp the distance-scaled 1× baseline first, then apply playback speed —
+ * deliberately the opposite order from naive "divide by speed inside the
+ * clamped range", so slow-motion (e.g. 0.25×) genuinely takes longer rather
+ * than being capped at the same ceiling as 1×.
+ */
+export function resolvePhaseSegmentDurationMs(maxDistance: number, speedMultiplier: number): number {
+  const safeDistance = Number.isFinite(maxDistance) && maxDistance > 0 ? maxDistance : 0;
+  const durationAt1x = Math.max(
+    PHASE_SEGMENT_MIN_DURATION_MS,
+    Math.min(
+      PHASE_SEGMENT_MAX_DURATION_MS,
+      PHASE_SEGMENT_BASE_DURATION_MS * (safeDistance / PHASE_SEGMENT_REFERENCE_DISTANCE),
+    ),
+  );
+  return durationAt1x / Math.max(0.01, speedMultiplier);
+}
