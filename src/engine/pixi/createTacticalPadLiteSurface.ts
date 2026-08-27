@@ -329,7 +329,11 @@ const BASIC_ROUTE_MIN_POINT_DISTANCE = 0.9;
 const FREE_DRAW_PREVIEW_COLOR = 0x2dd4bf;
 const BASIC_ROUTE_SAMPLE_MIN_POINT_DISTANCE = 0.1;
 const BASIC_ROUTE_SAMPLES_PER_SEGMENT = 16;
-const BASIC_ROUTE_MIN_CORNER_TENSION_SCALE = 0.28;
+// Flat Catmull-Rom tension — matches Tactical Play's CATMULL_TENSION in
+// src/movement-board/routes/route-sampling.ts. Previously adaptive (lower
+// tension at sharper local turns), which preserved finger-drawn wobble too
+// faithfully on mobile; flat tension smooths over it the way Tactical Play does.
+const DRAW_ROUTE_CATMULL_TENSION = 1;
 const WHITEBOARD_DEFAULT_STROKE_COLOR = 0x111111;
 const WHITEBOARD_BLUE_START_X = 30;
 const WHITEBOARD_RED_START_X = 70;
@@ -531,26 +535,7 @@ function cubicBezierRoutePoint(p0: RoutePoint, c1: RoutePoint, c2: RoutePoint, p
   };
 }
 
-function clampBetween(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
-function routeCornerTensionScale(previous: RoutePoint, current: RoutePoint, next: RoutePoint): number {
-  const inX = current.x - previous.x;
-  const inY = current.y - previous.y;
-  const outX = next.x - current.x;
-  const outY = next.y - current.y;
-  const inLength = Math.hypot(inX, inY);
-  const outLength = Math.hypot(outX, outY);
-  if (inLength <= 0.0001 || outLength <= 0.0001) {
-    return BASIC_ROUTE_MIN_CORNER_TENSION_SCALE;
-  }
-  const dot = clampBetween((inX * outX + inY * outY) / (inLength * outLength), -1, 1);
-  const turnSharpness = (1 - dot) * 0.5;
-  return Math.max(BASIC_ROUTE_MIN_CORNER_TENSION_SCALE, 1 - turnSharpness * 0.9);
-}
-
-function sampleRoutePoints(points: readonly RoutePoint[]): RoutePoint[] {
+export function sampleRoutePoints(points: readonly RoutePoint[]): RoutePoint[] {
   const normalized = normalizeSampleRoutePoints(points);
   if (normalized.length <= 2) {
     return normalized.map((point) => cloneRoutePoint(point));
@@ -561,15 +546,13 @@ function sampleRoutePoints(points: readonly RoutePoint[]): RoutePoint[] {
     const p1 = normalized[index]!;
     const p2 = normalized[index + 1]!;
     const p3 = normalized[Math.min(normalized.length - 1, index + 2)]!;
-    const tensionAtP1 = routeCornerTensionScale(p0, p1, p2);
-    const tensionAtP2 = routeCornerTensionScale(p1, p2, p3);
     const c1: RoutePoint = {
-      x: p1.x + ((p2.x - p0.x) / 6) * tensionAtP1,
-      y: p1.y + ((p2.y - p0.y) / 6) * tensionAtP1,
+      x: p1.x + ((p2.x - p0.x) / 6) * DRAW_ROUTE_CATMULL_TENSION,
+      y: p1.y + ((p2.y - p0.y) / 6) * DRAW_ROUTE_CATMULL_TENSION,
     };
     const c2: RoutePoint = {
-      x: p2.x - ((p3.x - p1.x) / 6) * tensionAtP2,
-      y: p2.y - ((p3.y - p1.y) / 6) * tensionAtP2,
+      x: p2.x - ((p3.x - p1.x) / 6) * DRAW_ROUTE_CATMULL_TENSION,
+      y: p2.y - ((p3.y - p1.y) / 6) * DRAW_ROUTE_CATMULL_TENSION,
     };
     const sampleStart = index === 0 ? 0 : 1;
     for (let sample = sampleStart; sample <= BASIC_ROUTE_SAMPLES_PER_SEGMENT; sample += 1) {
