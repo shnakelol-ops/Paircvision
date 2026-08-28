@@ -121,6 +121,62 @@ describe("interpolatePath backward-start fix", () => {
     expect(interpolatePath(phaseA, to, 0.5)).toEqual({ x: 50, y: 50 });
     expect(interpolatePath(phaseA, to, 1)).toEqual({ x: 70, y: 50 });
   });
+
+  // A second, distinct defect found via a Tactical Slate flat-tension audit:
+  // a densely re-sampled Draw Route (16 Catmull-Rom samples per drawn
+  // segment) built from an off-centre first touch routinely has an early
+  // sample land JUST inside BALL_PATH_MIN_POINT_DISTANCE (0.35) of Phase A
+  // without ever landing exactly on it — unlike the coarse, hand-drawn
+  // fixture above, where a candidate point is either exactly aligned or
+  // clearly far off. The pre-fix guard (`>= BALL_PATH_MIN_POINT_DISTANCE`)
+  // treated "close enough" as good enough and left that near-miss sample in
+  // place, so progress=0 rendered slightly behind Phase A and the walk
+  // crossed back through the true start on the way forward — a small but
+  // real, human-visible backward twitch at the start of every Draw Route.
+  // This was present on `main` too (with the old adaptive tension it was
+  // ~0.24 units; flat tension widened it to ~0.31), so it predates and is
+  // independent of the flat-tension change — it's a gap in this fix's own
+  // tolerance, not a new smoothing defect.
+  describe("dense sampled-path near-miss (the flat-tension-exposed gap)", () => {
+    // (29.7, 50) sits 0.3 units from Phase A — inside the 0.35 tolerance,
+    // i.e. exactly the "close but not exact" case the old guard let through.
+    const nearMissPath = [
+      { x: 27, y: 50 },
+      { x: 29.7, y: 50 },
+      { x: 50, y: 50 },
+      { x: 70, y: 50 },
+    ];
+    const to = { x: 70, y: 50, path: nearMissPath };
+
+    it("still starts at progress=0 exactly at Phase A, not the 0.3-unit-off near-miss sample", () => {
+      // Proven to fail against the pre-fix guard: dist(29.7,50 → 30,50) = 0.3
+      // < BALL_PATH_MIN_POINT_DISTANCE (0.35), so the old `>=` check left
+      // path[0] at (29.7, 50) instead of replacing it.
+      expect(interpolatePath(phaseA, to, 0)).toEqual({ x: 30, y: 50 });
+    });
+
+    it("does not travel backwards at any point along the walk", () => {
+      // Proven to fail against the pre-fix guard: progress=0 alone was
+      // already 0.3 units behind Phase A, and the walk then had to cross
+      // back through x=30 on the way to (50,50) — a visible backward twitch.
+      let previousX = -Infinity;
+      for (let progress = 0; progress <= 1.0001; progress += 0.02) {
+        const point = interpolatePath(phaseA, to, Math.min(1, progress));
+        expect(point.x).toBeGreaterThanOrEqual(30 - 1e-9);
+        expect(point.x).toBeGreaterThanOrEqual(previousX - 1e-9);
+        previousX = point.x;
+      }
+    });
+
+    it("leaves every subsequent route point untouched — only path[0] is corrected", () => {
+      // Effective walked path after the fix is [phaseA(30,50), (50,50),
+      // (70,50)] — two 20-unit segments, total arc length 40. At
+      // progress=0.5 the walk lands exactly on (50,50), bit-for-bit,
+      // proving the fix never touches anything past index 0.
+      expect(interpolatePath(phaseA, to, 0.5)).toEqual({ x: 50, y: 50 });
+      expect(interpolatePath(phaseA, to, 1)).toEqual({ x: 70, y: 50 });
+    });
+  });
 });
 
 describe("resolveMovementDistance", () => {
