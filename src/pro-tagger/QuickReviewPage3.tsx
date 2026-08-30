@@ -41,6 +41,7 @@ const SEGMENT_HEADERS = ["Early", "Mid", "Late"] as const;
 export function QuickReviewPage3({ model, homeColour, awayColour }: QuickReviewPage3Props) {
   return (
     <div style={S.page}>
+      <div style={S.pageSubtitle}>Early 0–10 · Mid 10–20 · Late 20+</div>
       <TeamSection
         teamName={model.homeTeam}
         colour={homeColour}
@@ -150,6 +151,16 @@ const S: Record<string, CSSProperties> = {
     flexDirection: "column",
     gap: 10,
     padding: "2px 2px 4px",
+  },
+  // Matches QuickReviewPage1.tsx's S.subTitle muted-caption pattern (same
+  // dim colour, similar weight/size) — kept sentence case rather than that
+  // pattern's uppercase transform, since this is a short explanatory line,
+  // not a short label like "Shooting" or "Our kickouts".
+  pageSubtitle: {
+    fontSize: 10.5,
+    fontWeight: 500,
+    color: CLR.dim,
+    letterSpacing: "0.02em",
   },
   block: {
     background: CLR.panel,
