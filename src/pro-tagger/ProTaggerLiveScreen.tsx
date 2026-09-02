@@ -24,6 +24,8 @@ import { ProTaggerReviewScreen } from "./ProTaggerReviewScreen";
 import { computeScoreSide, fmtGP, fmtScore } from "./pro-tagger-score";
 import { QuickReviewPage1 } from "./QuickReviewPage1";
 import { buildQuickReviewMatchOverview } from "../stats/reporting/quickReviewMatchOverview";
+import { QuickReviewPage3 } from "./QuickReviewPage3";
+import { buildQuickReviewSegmentBreakdown } from "../stats/reporting/quickReviewSegmentBreakdown";
 
 export interface RestoreState {
   events: readonly LoggedMatchEvent[];
@@ -350,8 +352,24 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // Sideline, and Discipline). Opening/paging/closing never touches capture,
   // clock, or match state — it only reads loggedEvents at render time.
   const [ctsOpen, setCtsOpen]                   = useState(false);
-  const [quickReviewPage, setQuickReviewPage]   = useState<0 | 1>(0);
+  const [quickReviewPage, setQuickReviewPage]   = useState<0 | 1 | 2>(0);
   const quickReviewTouchRef                     = useRef<{ x: number; y: number } | null>(null);
+  // Quick Review Page 3 (Segment Comparison) unlocks once the first half is
+  // complete and never re-locks — matchState only moves forward, so this
+  // stays true for the rest of the match session once HT is reached.
+  // Derived here (not scattered as separate "2"/"3" constants) so the pager
+  // math, dots, counter and swipe/nav boundaries all agree with each other.
+  const quickReviewPage3Unlocked = matchState !== "PRE_MATCH" && matchState !== "FIRST_HALF";
+  const quickReviewPageCount     = quickReviewPage3Unlocked ? 3 : 2;
+  const quickReviewMaxPage       = (quickReviewPageCount - 1) as 0 | 1 | 2;
+  // Single source for the pager's track/pane/transform math so the 2-page
+  // state (50%/200%) and 3-page state (33.333%/300%) can never disagree with
+  // each other or with quickReviewPageCount — see the Page 3 audit's pager
+  // landmine findings (CS.pagerTrack/CS.pagePane below hardcode the 2-page
+  // case as defaults; these overrides are the only place page count changes
+  // the pager's geometry).
+  const quickReviewPaneWidthPct  = 100 / quickReviewPageCount;
+  const quickReviewTrackWidthPct = quickReviewPageCount * 100;
   const [actionsOpen, setActionsOpen]           = useState(false);
   const [shareSheetOpen, setShareSheetOpen]     = useState(false);
   const [notesOpen, setNotesOpen]               = useState(false);
@@ -649,9 +667,12 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     const dy = t.clientY - start.y;
     const SWIPE_THRESHOLD = 40;
     if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx < 0) setQuickReviewPage(1);
-    else setQuickReviewPage(0);
-  }, []);
+    // Relative stepping (not an absolute destination) so this scales past
+    // two pages: a left swipe always advances one page, capped at whichever
+    // page is currently last; a right swipe always retreats one, floored at 0.
+    if (dx < 0) setQuickReviewPage((p) => Math.min(p + 1, quickReviewMaxPage) as 0 | 1 | 2);
+    else setQuickReviewPage((p) => Math.max(p - 1, 0) as 0 | 1 | 2);
+  }, [quickReviewMaxPage]);
 
   const openReview = useCallback(() => {
     const events = loggedRef.current;
@@ -989,6 +1010,20 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // never reads from them — see quickReviewMatchOverview.ts.
   const quickReviewModel = ctsOpen
     ? buildQuickReviewMatchOverview(loggedEvents, homeLabel, awayLabel)
+    : null;
+
+  // Quick Review Page 3 model — same "build fresh, no caching" pattern as
+  // Page 1, only computed once the sheet is open AND Page 3 is unlocked.
+  // firstHalfAttackingDirection is normalised the same way
+  // buildLiveSnapshotInput already does elsewhere in this file — the match's
+  // real recorded direction, never guessed or independently re-derived.
+  const quickReviewSegmentModel = ctsOpen && quickReviewPage3Unlocked
+    ? buildQuickReviewSegmentBreakdown(
+        loggedEvents,
+        homeLabel,
+        awayLabel,
+        session.attackDirection === "left" ? "LEFT" : "RIGHT",
+      )
     : null;
 
   // Discipline player status — derived fresh from loggedEvents every render
@@ -1384,19 +1419,28 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 <button
                   role="tab"
                   aria-selected={quickReviewPage === 0}
-                  aria-label="Page 1 of 2: Match Overview"
+                  aria-label={`Page 1 of ${quickReviewPageCount}: Match Overview`}
                   style={{ ...CS.dot, ...(quickReviewPage === 0 ? CS.dotActive : {}) }}
                   onClick={() => setQuickReviewPage(0)}
                 />
                 <button
                   role="tab"
                   aria-selected={quickReviewPage === 1}
-                  aria-label="Page 2 of 2: Counts Sheet"
+                  aria-label={`Page 2 of ${quickReviewPageCount}: Counts Sheet`}
                   style={{ ...CS.dot, ...(quickReviewPage === 1 ? CS.dotActive : {}) }}
                   onClick={() => setQuickReviewPage(1)}
                 />
+                {quickReviewPage3Unlocked && (
+                  <button
+                    role="tab"
+                    aria-selected={quickReviewPage === 2}
+                    aria-label={`Page 3 of ${quickReviewPageCount}: Segment Comparison`}
+                    style={{ ...CS.dot, ...(quickReviewPage === 2 ? CS.dotActive : {}) }}
+                    onClick={() => setQuickReviewPage(2)}
+                  />
+                )}
               </div>
-              <span style={CS.pageIndicator}>{quickReviewPage + 1} / 2</span>
+              <span style={CS.pageIndicator}>{quickReviewPage + 1} / {quickReviewPageCount}</span>
               <button style={CS.closeBtn} onClick={() => setCtsOpen(false)}>✕</button>
             </div>
 
@@ -1405,10 +1449,16 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               onTouchStart={handleQuickReviewTouchStart}
               onTouchEnd={handleQuickReviewTouchEnd}
             >
-              <div style={{ ...CS.pagerTrack, transform: `translateX(-${quickReviewPage * 50}%)` }}>
+              <div
+                style={{
+                  ...CS.pagerTrack,
+                  width: `${quickReviewTrackWidthPct}%`,
+                  transform: `translateX(-${quickReviewPage * quickReviewPaneWidthPct}%)`,
+                }}
+              >
 
                 {/* ── Page 1: Match Overview ─────────────────────────────── */}
-                <div style={CS.pagePane}>
+                <div style={{ ...CS.pagePane, flex: `0 0 ${quickReviewPaneWidthPct}%`, width: `${quickReviewPaneWidthPct}%` }}>
                   <div style={CS.body}>
                     <QuickReviewPage1
                       model={quickReviewModel}
@@ -1419,7 +1469,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 </div>
 
                 {/* ── Page 2: Counts Sheet (full row set, unchanged) ──────── */}
-                <div style={CS.pagePane}>
+                <div style={{ ...CS.pagePane, flex: `0 0 ${quickReviewPaneWidthPct}%`, width: `${quickReviewPaneWidthPct}%` }}>
                   <div style={CS.body}>
                     <div style={CS.subheading}>Counts Sheet</div>
 
@@ -1460,24 +1510,39 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                   </div>
                 </div>
 
+                {/* ── Page 3: Segment Comparison (unlocked from HT onward) ── */}
+                {quickReviewPage3Unlocked && quickReviewSegmentModel && (
+                  <div style={{ ...CS.pagePane, flex: `0 0 ${quickReviewPaneWidthPct}%`, width: `${quickReviewPaneWidthPct}%` }}>
+                    <div style={CS.body}>
+                      <div style={CS.subheading}>Segment Comparison — First Half</div>
+                      <QuickReviewPage3
+                        model={quickReviewSegmentModel}
+                        homeColour={homeColour}
+                        awayColour={awayColour}
+                      />
+                    </div>
+                  </div>
+                )}
+
               </div>
             </div>
 
-            {/* ── Fallback (non-swipe) navigation ─────────────────────────── */}
+            {/* ── Fallback (non-swipe) navigation — generic Prev/Next so this
+                 scales past two pages without naming a fixed destination ── */}
             <div style={CS.navRow}>
               <button
                 style={{ ...CS.navBtn, ...(quickReviewPage === 0 ? CS.navBtnDisabled : {}) }}
                 disabled={quickReviewPage === 0}
-                onClick={() => setQuickReviewPage(0)}
+                onClick={() => setQuickReviewPage((p) => Math.max(p - 1, 0) as 0 | 1 | 2)}
               >
-                ‹ Match Overview
+                ‹ Prev
               </button>
               <button
-                style={{ ...CS.navBtn, ...(quickReviewPage === 1 ? CS.navBtnDisabled : {}) }}
-                disabled={quickReviewPage === 1}
-                onClick={() => setQuickReviewPage(1)}
+                style={{ ...CS.navBtn, ...(quickReviewPage === quickReviewMaxPage ? CS.navBtnDisabled : {}) }}
+                disabled={quickReviewPage === quickReviewMaxPage}
+                onClick={() => setQuickReviewPage((p) => Math.min(p + 1, quickReviewMaxPage) as 0 | 1 | 2)}
               >
-                Counts Sheet ›
+                Next ›
               </button>
             </div>
 
