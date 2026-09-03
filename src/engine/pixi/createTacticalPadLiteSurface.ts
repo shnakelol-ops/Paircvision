@@ -183,6 +183,14 @@ export type TacticalPadLiteSurface = {
   setPlaybackSpeedMultiplier: (multiplier: number) => void;
   setPossessionPassMode: (enabled: boolean) => void;
   freeBall: () => void;
+  /**
+   * Free Multi-Ball: removes exactly one item (ball or otherwise) by stable
+   * id. For a ball item, also prunes its id from startPositions.football and
+   * every phases[].football entry, so it cannot resurrect via phase
+   * navigation, playback, or save/reopen. No-op if the id doesn't exist, or
+   * during playback (matches the other item-mutating actions' guard).
+   */
+  deleteTacticalItemById: (id: string) => void;
   addTacticalPlayer: (team?: "BLUE" | "RED") => void;
   removeTacticalPlayer: (team?: "BLUE" | "RED") => void;
   getTacticalPlayer: (playerId: string) => TacticalPlayerKitSnapshot | null;
@@ -251,6 +259,8 @@ type TacticalPadLiteSurfaceOptions = {
   tacticalTokenStyle?: TacticalPlayerTokenStyle;
   compactPlayerTokens?: boolean;
   onItemMove?: (id: string, x: number, y: number) => void;
+  /** Free Multi-Ball: fires whenever the selected TacticalItem changes (ball or otherwise), including selection clearing (null). */
+  onSelectedItemChange?: (itemId: string | null) => void;
   onTacticalPlayerDoubleTap?: (payload: { playerId: string; clientX: number; clientY: number }) => void;
   onFreeDrawStateChange?: (state: { isFreeDrawCaptureMode: boolean }) => void;
   onShapeLockChange?: (state: { mode: ShapeLockMode; memberIds: string[] }) => void;
@@ -267,7 +277,7 @@ export type ShapeLinksState = {
   links: ShapeLinkSummary[];
 };
 
-type PhaseBallSnapshot = {
+export type PhaseBallSnapshot = {
   id: string;
   x: number;
   y: number;
@@ -293,7 +303,7 @@ type PhasePlayerSnapshot = {
   y: number;
   path?: NormalizedPoint[];
 };
-type PhaseSnapshot = {
+export type PhaseSnapshot = {
   players: PhasePlayerSnapshot[];
   football: PhaseBallSnapshot[];
 };
@@ -1021,7 +1031,7 @@ function normalizeTacticalItem(item: TacticalItem): TacticalItem {
   };
 }
 
-function isBallItem(item: Pick<TacticalItem, "type">): boolean {
+export function isBallItem(item: Pick<TacticalItem, "type">): boolean {
   return (
     item.type === "footballSmall" ||
     item.type === "football" ||
@@ -1030,6 +1040,64 @@ function isBallItem(item: Pick<TacticalItem, "type">): boolean {
     item.type === "sliotar" ||
     item.type === "sliotarLarge"
   );
+}
+
+/**
+ * Free Multi-Ball: pure counterpart of the engine's own
+ * pruneBallFromPhaseSnapshots (a thin closure-state wrapper around this).
+ * Removes one ball id from startPositions.football and every phases[].
+ * football entry. Exported/pure so this — the highest-risk new logic in the
+ * feature, per the design review that approved it — is genuinely unit
+ * testable without instantiating the Pixi surface itself.
+ */
+export function pruneBallIdFromPhases(
+  startPositions: PhaseSnapshot,
+  phases: readonly PhaseSnapshot[],
+  ballId: string,
+): { startPositions: PhaseSnapshot; phases: PhaseSnapshot[] } {
+  return {
+    startPositions: {
+      ...startPositions,
+      football: startPositions.football.filter((entry) => entry.id !== ballId),
+    },
+    phases: phases.map((phase) => ({
+      ...phase,
+      football: phase.football.filter((entry) => entry.id !== ballId),
+    })),
+  };
+}
+
+/**
+ * Free Multi-Ball: pure counterpart of the engine's own
+ * backfillNewBallIntoPhaseSnapshots (a thin closure-state wrapper around
+ * this). Adds a stationary entry for a newly-added ball to startPositions
+ * and every existing phase, skipping any snapshot that already has this id
+ * (idempotent). Mirrors normalizePhaseForRoster's existing "a newly added
+ * player falls back to their current position" precedent, applied to balls.
+ */
+export function backfillBallIntoPhases(
+  startPositions: PhaseSnapshot,
+  phases: readonly PhaseSnapshot[],
+  ballId: string,
+  position: NormalizedPoint,
+): { startPositions: PhaseSnapshot; phases: PhaseSnapshot[] } {
+  const makeEntry = (): PhaseBallSnapshot => ({
+    id: ballId,
+    x: position.x,
+    y: position.y,
+    attachedPlayerId: null,
+    isFree: true,
+  });
+  return {
+    startPositions: startPositions.football.some((ball) => ball.id === ballId)
+      ? startPositions
+      : { ...startPositions, football: [...startPositions.football, makeEntry()] },
+    phases: phases.map((phase) =>
+      phase.football.some((ball) => ball.id === ballId)
+        ? phase
+        : { ...phase, football: [...phase.football, makeEntry()] },
+    ),
+  };
 }
 
 function getStagePointFromEvent(
@@ -1709,10 +1777,45 @@ export async function createTacticalPadLiteSurface(
     state.path = [];
     ball.x = attachedPoint.x;
     ball.y = attachedPoint.y;
-    selectedItemId = null;
+    setSelectedItemId(null);
     setItemWorldPosition(ball, mapper);
     renderTacticalItems();
     syncWhiteboardTokenInputMode();
+  }
+
+  /**
+   * Free Multi-Ball: true once 2+ real balls exist on the board, at which
+   * point player-tap possession/attachment is disabled (see
+   * handlePlayerTapAction) and every ball is a free, independently
+   * phase-tracked object. Cheap short-circuiting scan — ball counts are tiny
+   * next to the player/item totals this file already handles every frame.
+   */
+  function hasMultipleRealBalls(): boolean {
+    let count = 0;
+    for (const item of tacticalItems) {
+      if (!isBallItem(item)) continue;
+      count += 1;
+      if (count > 1) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Free Multi-Ball: frees a specific ball item in place, mirroring
+   * detachPrimaryBall's own body exactly but scoped to a given item instead
+   * of findPrimaryBallItem()'s single-ball resolution. Idempotent — a no-op
+   * for a ball that's already free, so it's safe to call on every ball
+   * whenever a second real ball appears (see syncItems) without disturbing
+   * an in-progress free-drag path on balls that were already free.
+   */
+  function forceFreeBallItem(item: TacticalSurfaceItem): void {
+    applyBallRuntimeStateToItem(item);
+    const state = getBallRuntimeState(item);
+    if (state.isFree) return;
+    state.attachedPlayerId = null;
+    state.isFree = true;
+    state.path = [{ x: clampNormalizedValue(item.x), y: clampNormalizedValue(item.y) }];
+    setItemWorldPosition(item, mapper);
   }
 
   function handlePossessionPassTap(player: TacticalPlayer): void {
@@ -1877,7 +1980,7 @@ export async function createTacticalPadLiteSurface(
       item.graphic.cursor = isCurrentItemDragging ? "grabbing" : canInteractWithItem ? "grab" : "default";
     }
     if (!canInteractItems && selectedItemId !== null) {
-      selectedItemId = null;
+      setSelectedItemId(null);
       renderTacticalItems();
     }
     const canDragPlayers =
@@ -2658,7 +2761,7 @@ export async function createTacticalPadLiteSurface(
   function beginItemDrag(item: TacticalSurfaceItem, event: unknown): void {
     if (!canInteractWithTacticalItem(item)) return;
     if (activeDrag) return;
-    selectedItemId = item.id;
+    setSelectedItemId(item.id);
     const pointerId = getPointerIdFromEvent(event);
     const startStagePoint = getStagePointFromEvent(event, app.stage);
     const pointerNormalized = getBoundedNormalizedPointFromEvent(event);
@@ -2696,9 +2799,21 @@ export async function createTacticalPadLiteSurface(
     });
   }
 
+  /**
+   * Free Multi-Ball: the one place selectedItemId is mutated, so
+   * options.onSelectedItemChange always fires exactly when selection
+   * actually changes (used by the page to know which ball, if any, "Remove
+   * Ball" should target once 2+ real balls exist).
+   */
+  function setSelectedItemId(nextId: string | null): void {
+    if (selectedItemId === nextId) return;
+    selectedItemId = nextId;
+    options.onSelectedItemChange?.(selectedItemId);
+  }
+
   function clearSelectedItem(): void {
     if (selectedItemId == null) return;
-    selectedItemId = null;
+    setSelectedItemId(null);
     renderTacticalItems();
   }
 
@@ -2716,7 +2831,7 @@ export async function createTacticalPadLiteSurface(
       ballStatesByItemId.delete(item.id);
       tacticalItems.splice(index, 1);
       if (selectedItemId === item.id) {
-        selectedItemId = null;
+        setSelectedItemId(null);
       }
       if (activeDrag && activeDrag.type === "item" && activeDrag.itemId === item.id) {
         activeDrag = null;
@@ -2759,6 +2874,88 @@ export async function createTacticalPadLiteSurface(
 
     renderTacticalItems();
     syncWhiteboardTokenInputMode();
+  }
+
+  /**
+   * Free Multi-Ball: removes exactly one item by id, reusing
+   * upsertTacticalItems's own removal path (which already cleans up
+   * ballStatesByItemId/selectedItemId/activeDrag for the removed id) rather
+   * than duplicating it. For a ball, also prunes its id from every phase
+   * snapshot (see pruneBallFromPhaseSnapshots) — upsertTacticalItems has no
+   * knowledge of phases at all, so that step must happen explicitly here.
+   */
+  function deleteTacticalItemById(id: string): void {
+    if (surfaceVariant !== "tactical" || isPlaybackInputLocked()) return;
+    const item = findTacticalItemById(id);
+    if (!item) return;
+    const wasBall = isBallItem(item);
+    const remainingItems: TacticalItem[] = tacticalItems
+      .filter((candidate) => candidate.id !== id)
+      .map((candidate) => ({
+        id: candidate.id,
+        type: candidate.type,
+        x: candidate.x,
+        y: candidate.y,
+        rotation: candidate.rotation,
+        scale: candidate.scale,
+      }));
+    upsertTacticalItems(remainingItems);
+    if (wasBall) {
+      pruneBallFromPhaseSnapshots(id);
+    }
+  }
+
+  /**
+   * Free Multi-Ball: the public entry point for syncing the coach's live
+   * item-editor state (setItems below), as opposed to upsertTacticalItems,
+   * which is also called directly by importBoardState to restore a saved
+   * board verbatim. This is deliberately the one path where "2+ real balls
+   * now exist" rules apply, and only then (nextBallItems.length > 1) — with
+   * 0 or 1 real balls this is a plain pass-through to upsertTacticalItems,
+   * so adding the FIRST ball is untouched and matches legacy exactly (it
+   * still never touches startPositions/phases until an explicit Set
+   * Start/Add Phase, same as today). Once a second real ball exists:
+   *
+   *  - Any ball still attached is freed in place (see forceFreeBallItem) —
+   *    attachment only makes sense with one ball.
+   *  - A newly-added ball (an id in nextItems that wasn't in tacticalItems a
+   *    moment ago) is backfilled into startPositions and every existing
+   *    phase at its spawn position (see backfillNewBallIntoPhaseSnapshots),
+   *    the same "falls back to current position" precedent
+   *    normalizePhaseForRoster already applies to a newly added player.
+   *
+   * Loading a saved board never reaches either branch: importBoardState
+   * populates tacticalItems directly and synchronously, before the page's
+   * mirrored items-state update reaches this function on the next render, so
+   * the diff below always finds nothing "new" in that case.
+   */
+  function syncItems(nextItems: TacticalItem[]): void {
+    const previousBallIds = new Set(
+      tacticalItems.filter((item) => isBallItem(item)).map((item) => item.id),
+    );
+    const nextBallItems = nextItems.filter((item) => isBallItem(item));
+    const newlyAddedBallItems = nextBallItems.filter((item) => !previousBallIds.has(item.id));
+
+    upsertTacticalItems(nextItems);
+
+    // Scoped strictly to nextBallItems.length > 1: with 0 or 1 real balls
+    // this must be a no-op, so the legacy single-ball path (where adding the
+    // one ball never touches startPositions/phases until an explicit Set
+    // Start/Add Phase) is left byte-for-byte unchanged.
+    if (nextBallItems.length > 1) {
+      for (const item of tacticalItems) {
+        if (!isBallItem(item)) continue;
+        forceFreeBallItem(item);
+      }
+      for (const addedItem of newlyAddedBallItems) {
+        backfillNewBallIntoPhaseSnapshots(addedItem.id, {
+          x: clampNormalizedValue(addedItem.x),
+          y: clampNormalizedValue(addedItem.y),
+        });
+      }
+      renderTacticalItems();
+      syncWhiteboardTokenInputMode();
+    }
   }
 
   function updateDraggedItemFromEvent(event: unknown): void {
@@ -2992,6 +3189,34 @@ export async function createTacticalPadLiteSurface(
   function prunePlayerFromPhaseSnapshots(playerId: string): void {
     startPositions = { ...startPositions, players: startPositions.players.filter((entry) => entry.id !== playerId) };
     phases = phases.map((phase) => ({ ...phase, players: phase.players.filter((entry) => entry.id !== playerId) }));
+  }
+
+  /**
+   * Free Multi-Ball: the football-array counterpart of
+   * prunePlayerFromPhaseSnapshots, called explicitly from
+   * deleteTacticalItemById. Unlike a removed player (whose stale snapshot
+   * entries are already harmless dead weight), a deleted ball must never
+   * resurface — this guarantees goToPhase/undoPhase/Play/save-reopen have
+   * nothing left anywhere in phase data to read for that id.
+   */
+  function pruneBallFromPhaseSnapshots(ballId: string): void {
+    const next = pruneBallIdFromPhases(startPositions, phases, ballId);
+    startPositions = next.startPositions;
+    phases = next.phases;
+  }
+
+  /**
+   * Free Multi-Ball: when a coach adds a ball while phases already exist,
+   * backfills it into startPositions and every existing phase at its spawn
+   * position — stationary until the coach gives it movement in a later
+   * phase. Mirrors normalizePhaseForRoster's existing "newly added player
+   * falls back to their current position" behaviour for players, applied to
+   * balls. Idempotent per phase (skips a phase that already has this id).
+   */
+  function backfillNewBallIntoPhaseSnapshots(ballId: string, position: NormalizedPoint): void {
+    const next = backfillBallIntoPhases(startPositions, phases, ballId, position);
+    startPositions = next.startPositions;
+    phases = next.phases;
   }
 
   function captureCurrentSnapshot(): PhaseSnapshot {
@@ -3505,6 +3730,14 @@ export async function createTacticalPadLiteSurface(
    * possession model, not one per mode. isPossessionPassModeEnabled (the
    * "Ball" tool) no longer branches this: a plain tap always runs the same
    * possession logic regardless of which authoring mode is active.
+   *
+   * Free Multi-Ball: once 2+ real balls exist, possession/attachment is
+   * disabled — a plain tap does nothing but select/move the player, exactly
+   * as it always has. This is the only call site of handlePossessionPassTap
+   * in the whole file, so gating it here also makes the possession-pass
+   * reattach branch inside stepPlayback unreachable in Free Multi-Ball
+   * (playbackKind only ever becomes "possession-pass" from inside
+   * handlePossessionPassTap itself) — no separate guard is needed there.
    */
   function handlePlayerTapAction(player: TacticalPlayer, event: unknown): void {
     if (isShapeLinkSelectMode) {
@@ -3517,7 +3750,9 @@ export async function createTacticalPadLiteSurface(
       lastTappedPlayer = null;
       return;
     }
-    handlePossessionPassTap(player);
+    if (!hasMultipleRealBalls()) {
+      handlePossessionPassTap(player);
+    }
     emitPlayerDoubleTap(player, event);
   }
 
@@ -4234,13 +4469,12 @@ export async function createTacticalPadLiteSurface(
       lastTappedPlayer = null;
     },
     freeBall: detachPrimaryBall,
+    deleteTacticalItemById,
     addTacticalPlayer,
     removeTacticalPlayer: removeLastTacticalPlayer,
     getTacticalPlayer: getTacticalPlayerSnapshot,
     patchTacticalPlayer,
-    setItems: (items) => {
-      upsertTacticalItems(items);
-    },
+    setItems: syncItems,
     setItemMode: (mode) => {
       if (surfaceVariant !== "tactical") return;
       itemMode = mode;

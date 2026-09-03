@@ -2222,6 +2222,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const [whiteboardTool, setWhiteboardTool] = useState<WhiteboardToolControl>("move");
   const [tacticalTool, setTacticalTool] = useState<WhiteboardToolControl>("move");
   const [items, setItems] = useState<TacticalItem[]>([]);
+  // Free Multi-Ball: mirrors the engine's own selectedItemId (any TacticalItem,
+  // not just a ball) so the Ball popup's Remove Ball action can target the
+  // specific ball the coach selected once 2+ real balls exist. See isMultiBall.
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [itemMode, setItemMode] = useState<ItemMode>("locked");
   const [phaseCount, setPhaseCount] = useState(0);
   // Shape Lock — transient editor convenience (Tactical Slate only). Mirrors the
@@ -2716,6 +2720,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
           ),
         );
       },
+      onSelectedItemChange: (itemId) => {
+        if (disposed) return;
+        setSelectedItemId(itemId);
+      },
       onTacticalPlayerDoubleTap: ({ playerId, clientX, clientY }) => {
         if (disposed || isWhiteboardMode || shouldBlockPortraitInputRef.current) return;
         const player = surfaceRef.current?.getTacticalPlayer(playerId);
@@ -2917,6 +2925,16 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   const isPlaybackLocked = isPlaying || isPaused;
   const hasBallOnPitch = items.some((item) => isBallItemType(item.type));
+  // Free Multi-Ball: derived only, never persisted or toggled directly — the
+  // ball count itself is the single source of truth (see the Ball popup and
+  // onSelectBallSize below).
+  const realBallCount = items.filter((item) => isBallItemType(item.type)).length;
+  const isMultiBall = realBallCount > 1;
+  const selectedBallItemId =
+    selectedItemId != null &&
+    items.some((item) => item.id === selectedItemId && isBallItemType(item.type))
+      ? selectedItemId
+      : null;
   const isAddPhaseBlocked = isPlaybackLocked;
   const playbackSpeedOptionIndex = Math.max(
     0,
@@ -3980,17 +3998,20 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     setBallPopupStep((prev) => (prev === null ? "root" : null));
   };
 
+  // Free Multi-Ball: appends rather than replacing existing balls — the same
+  // Football/Sliotar -> size flow the coach already uses for the first ball
+  // is how a second, third, etc. real ball gets added. With zero or one ball
+  // present this produces the same board as before (nothing to append past).
   const onSelectBallSize = (type: TacticalItem["type"]) => {
     tacticalItemCounterRef.current += 1;
     const nextId = `item-${tacticalItemCounterRef.current}`;
     setItems((previous) => {
-      const withoutBalls = previous.filter((item) => !isBallItemType(item.type));
-      const index = withoutBalls.length;
+      const index = previous.length;
       const column = index % 3;
       const row = Math.floor(index / 3);
       const nextX = Math.min(78, 30 + column * 12);
       const nextY = Math.min(78, 26 + row * 10);
-      return [...withoutBalls, { id: nextId, type, x: nextX, y: nextY }];
+      return [...previous, { id: nextId, type, x: nextX, y: nextY }];
     });
     setBallPopupStep(null);
     applyMovementModePillSelection("ball");
@@ -3998,6 +4019,17 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
   const removeCurrentBall = () => {
     setItems((previous) => previous.filter((item) => !isBallItemType(item.type)));
+    setBallPopupStep(null);
+  };
+
+  // Free Multi-Ball: removes exactly the selected ball once 2+ real balls
+  // exist. Prunes the engine's phase data first (startPositions/every phase's
+  // football[]), then mirrors the same removal into the page's own items
+  // state so a later, unrelated items update can never resurrect it.
+  const deleteSelectedBall = () => {
+    if (!selectedBallItemId) return;
+    surfaceRef.current?.deleteTacticalItemById(selectedBallItemId);
+    setItems((previous) => previous.filter((item) => item.id !== selectedBallItemId));
     setBallPopupStep(null);
   };
 
@@ -4017,7 +4049,13 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       return;
     }
     setItemMode("locked");
-    freeBall();
+    // Free Multi-Ball: with 2+ real balls every ball is already free, and
+    // freeBall() would otherwise act on an arbitrary one (findPrimaryBallItem's
+    // single-ball fallback) — so this "Ball" mode pill only frees a ball when
+    // there's exactly one for it to unambiguously mean.
+    if (!isMultiBall) {
+      freeBall();
+    }
   };
 
   const handleWhiteboardBubblePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -4885,19 +4923,22 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
               <>
                 {hasBallOnPitch ? (
                   <>
+                    {!isMultiBall ? (
+                      <button
+                        type="button"
+                        className="control-button"
+                        style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                        onClick={() => { freeBall(); setBallPopupStep(null); }}
+                      >
+                        Free Ball
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="control-button"
                       style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
-                      onClick={() => { freeBall(); setBallPopupStep(null); }}
-                    >
-                      Free Ball
-                    </button>
-                    <button
-                      type="button"
-                      className="control-button"
-                      style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
-                      onClick={removeCurrentBall}
+                      disabled={isMultiBall && selectedBallItemId == null}
+                      onClick={isMultiBall ? deleteSelectedBall : removeCurrentBall}
                     >
                       🗑 Remove Ball
                     </button>
@@ -5413,7 +5454,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                         <button
                           type="button"
                           style={{ ...coachHubActionButtonStyle, gridColumn: "1 / -1" }}
-                          disabled={isPlaybackLocked}
+                          disabled={isPlaybackLocked || isMultiBall}
                           onClick={freeBall}
                         >
                           Free Ball
@@ -5691,7 +5732,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                   <button
                     type="button"
                     style={{ ...coachHubActionButtonStyle, gridColumn: "1 / -1" }}
-                    disabled={isPlaybackLocked}
+                    disabled={isPlaybackLocked || isMultiBall}
                     onClick={freeBall}
                   >
                     Free Ball
