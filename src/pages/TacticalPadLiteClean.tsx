@@ -18,7 +18,7 @@ import {
   sanitizeName,
 } from "../engine/pixi/createTacticalPadLiteSurface";
 import {
-  createTacticalSlateTeamFormationSeeds,
+  mergeTacticalSlateTeamRoster,
   TACTICAL_SLATE_FULL_TEAM_NUMBERS,
 } from "../engine/pixi/tacticalSlateDefaultPlayers";
 import StatsModeSurface from "../StatsModeSurface";
@@ -2673,6 +2673,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
 
     let disposed = false;
     let destroySurface: (() => void) | null = null;
+    let reflowRafId1: number | null = null;
+    let reflowRafId2: number | null = null;
 
     void createTacticalPadLiteSurface(host, {
       surfaceVariant: isWhiteboardMode ? "whiteboard" : "tactical",
@@ -2773,15 +2775,22 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       if (!isWhiteboardMode) {
         syncTeamCounts();
       }
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          surface.reflow();
+      // Use surfaceRef.current (not the captured `surface`) and guard on
+      // `disposed`, matching every other callback in this effect — prevents a
+      // stale reflow() call from reaching an already-destroyed renderer if
+      // cleanup runs before these two rAFs fire.
+      reflowRafId1 = window.requestAnimationFrame(() => {
+        reflowRafId2 = window.requestAnimationFrame(() => {
+          if (disposed) return;
+          surfaceRef.current?.reflow();
         });
       });
     });
 
     return () => {
       disposed = true;
+      if (reflowRafId1 != null) window.cancelAnimationFrame(reflowRafId1);
+      if (reflowRafId2 != null) window.cancelAnimationFrame(reflowRafId2);
       surfaceRef.current = null;
       // Shape Lock is per-surface transient state; clear it when the surface is
       // torn down so a fresh surface never inherits a stale selection panel.
@@ -3930,17 +3939,14 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (!surface || shouldBlockPortraitInput) return;
     const boardState = surface.exportBoardState();
     const teamColor = team === "BLUE" ? "blue" : "red";
-    const otherPlayers = (boardState.players as Array<Record<string, unknown>>).filter(
-      (p) => p.team !== team,
-    );
-    const teamPlayers = createTacticalSlateTeamFormationSeeds(team, Array.from(numbers)).map((seed) => ({
-      id: seed.id,
-      number: seed.number,
-      team: seed.team,
-      teamColor,
-      x: seed.position.x,
-      y: seed.position.y,
-    }));
+    const allPlayers = boardState.players as Array<Record<string, unknown>>;
+    const otherPlayers = allPlayers.filter((p) => p.team !== team);
+    const existingTeamPlayers = allPlayers.filter((p) => p.team === team);
+    // Players already on this team keep their exact live record (position, kit,
+    // label, name/initials) untouched — only a genuinely new number gets the
+    // default Gaelic formation spot. Prevents an unrelated number toggle from
+    // snapping already-positioned teammates back to formation defaults.
+    const teamPlayers = mergeTacticalSlateTeamRoster(team, Array.from(numbers), existingTeamPlayers, teamColor);
     surface.importBoardState({ ...boardState, players: [...otherPlayers, ...teamPlayers] });
     setKitEditorState(null);
     syncTeamCounts();
@@ -4017,7 +4023,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     applyMovementModePillSelection("ball");
   };
 
+  // Single-ball Remove Ball: routes through the same deleteTacticalItemById /
+  // pruneBallFromPhaseSnapshots path as the multi-ball deleteSelectedBall
+  // below, so a removed ball can never leave a stale id behind in
+  // startPositions/phases regardless of how many balls were on the board.
   const removeCurrentBall = () => {
+    const ballItem = items.find((item) => isBallItemType(item.type));
+    if (ballItem) {
+      surfaceRef.current?.deleteTacticalItemById(ballItem.id);
+    }
     setItems((previous) => previous.filter((item) => !isBallItemType(item.type)));
     setBallPopupStep(null);
   };
@@ -6094,6 +6108,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     className="control-button"
                     style={{ ...QUICK_SHARE_OPTION_BUTTON_STYLE, height: "28px" }}
                     onClick={slateDismissRecord}
+                    aria-label="Dismiss recording options"
+                    title="Dismiss recording options"
                   >
                     ✕
                   </button>

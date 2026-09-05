@@ -157,6 +157,33 @@ describe("backfillBallIntoPhases", () => {
   });
 });
 
+describe("single-ball Remove Ball uses the same prune path as multi-ball delete", () => {
+  // Regression coverage for the release-audit fix: the default/legacy
+  // "Remove Ball" control (used whenever there's only ever been one ball on
+  // the board) now calls deleteTacticalItemById -> pruneBallFromPhaseSnapshots
+  // just like the multi-ball selected-ball delete does, instead of only
+  // clearing the page's items state. This proves the underlying prune logic
+  // behaves identically for the exactly-one-ball case: nothing left behind in
+  // startPositions or any phase for save/reopen or phase navigation to read.
+  it("fully removes the only ball on the board from startPositions and every phase", () => {
+    const start = snapshot([ball("only-ball")]);
+    const phase1 = snapshot([ball("only-ball", { x: 40, y: 40 })]);
+    const phase2 = snapshot([ball("only-ball", { x: 60, y: 60 })]);
+
+    const { startPositions, phases } = pruneBallIdFromPhases(start, [phase1, phase2], "only-ball");
+
+    expect(startPositions.football).toEqual([]);
+    for (const phase of phases) {
+      expect(phase.football).toEqual([]);
+    }
+    // Re-reading every snapshot (what goToPhase/Play/save-reopen do) never
+    // finds the deleted ball again.
+    for (const visited of [startPositions, ...phases]) {
+      expect(visited.football.some((b) => b.id === "only-ball")).toBe(false);
+    }
+  });
+});
+
 describe("delete-then-navigate scenario (mirrors the required Scenario E: delete Ball B, A/C untouched)", () => {
   it("keeps a deleted ball gone after simulating phase navigation forward and back", () => {
     const start = snapshot([ball("A"), ball("B"), ball("C")]);

@@ -95,3 +95,42 @@ export function createTacticalSlateTeamFormationSeeds(
 export function createTacticalSlateDefaultPlayerSeeds(): TacticalSlateDefaultPlayerSeed[] {
   return createTacticalSlateTeamFormationSeeds("BLUE", TACTICAL_SLATE_FULL_TEAM_NUMBERS);
 }
+
+/**
+ * Merge a team's selected jersey numbers into its live roster.
+ *
+ * A player already on the team (matched by jersey number) keeps their exact
+ * existing record — live position, kit customization, label mode,
+ * name/initials — completely untouched. Only a number with no existing
+ * player gets a fresh default Gaelic formation seed. A number no longer in
+ * `numbers` is dropped (removed) as before.
+ *
+ * This is what the jersey-number toggle/fill/clear controls use so that
+ * changing one number never resets the rest of an already-positioned team
+ * back to formation defaults.
+ */
+export function mergeTacticalSlateTeamRoster(
+  team: TacticalSlateTeamSide,
+  numbers: ReadonlyArray<number>,
+  existingTeamPlayers: ReadonlyArray<Record<string, unknown>>,
+  teamColor: string,
+): Array<Record<string, unknown>> {
+  const existingByNumber = new Map<number, Record<string, unknown>>();
+  for (const player of existingTeamPlayers) {
+    if (typeof player.number === "number") {
+      existingByNumber.set(player.number, player);
+    }
+  }
+  return createTacticalSlateTeamFormationSeeds(team, numbers).map((seed) => {
+    const existing = existingByNumber.get(seed.number);
+    if (existing) return existing;
+    return {
+      id: seed.id,
+      number: seed.number,
+      team: seed.team,
+      teamColor,
+      x: seed.position.x,
+      y: seed.position.y,
+    };
+  });
+}
