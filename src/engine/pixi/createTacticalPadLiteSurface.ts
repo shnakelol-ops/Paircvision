@@ -42,7 +42,6 @@ import {
 } from "./shapeLockTranslation";
 import { computeChainTetherSegments, tensionToWidthScale } from "./shapeLinks";
 import {
-  BALL_PATH_MIN_POINT_DISTANCE,
   getPlaybackEaseProgress,
   interpolatePath,
   resolvePhaseSegmentDurationMs,
@@ -336,6 +335,18 @@ const POSSESSION_PASS_REFERENCE_DISTANCE = 14;
 // Reused by Free Draw's own capture dedup (appendFreeDrawPoint) and preview
 // smoothing (sampleRoutePoints) — Route-era names, still live dependencies.
 const BASIC_ROUTE_MIN_POINT_DISTANCE = 0.9;
+/**
+ * Authoring-only raw-capture threshold for a free ball's drag-drawn path —
+ * deliberately separate from BALL_PATH_MIN_POINT_DISTANCE (imported from
+ * routeFollowInterpolation.ts), which also drives the #307 endpoint fix's
+ * stale-prefix search radius at playback time. Changing that shared constant
+ * to fight touch jitter would silently change playback behaviour too, so
+ * this authoring-side value exists instead, in the same neighbourhood as the
+ * player route's own BASIC_ROUTE_MIN_POINT_DISTANCE (0.9) rather than the
+ * much finer 0.35 ball paths captured before this fix. Safe to retune after
+ * device QA — it has no other reader.
+ */
+export const BALL_PATH_CAPTURE_MIN_DISTANCE = 0.9;
 const FREE_DRAW_PREVIEW_COLOR = 0x2dd4bf;
 const BASIC_ROUTE_SAMPLE_MIN_POINT_DISTANCE = 0.1;
 const BASIC_ROUTE_SAMPLES_PER_SEGMENT = 16;
@@ -1100,6 +1111,42 @@ export function backfillBallIntoPhases(
   };
 }
 
+/**
+ * Touch jitter cleanup: pure counterpart of the exact decision
+ * appendBallMovementPathPoint makes for every raw drag sample of a free
+ * ball's path — true when the new sample is too close to the *last
+ * recorded* point to count as a distinct one yet (so it should be ignored),
+ * false when it's far enough to append as a new point. Extracted so the
+ * authoring capture pipeline is genuinely unit-testable without a live Pixi
+ * surface; appendBallMovementPathPoint is a behaviourally-identical thin
+ * wrapper around this.
+ *
+ * Deliberately ignores (drops) a too-close sample rather than overwriting
+ * the last recorded point with it — the same semantics
+ * appendFreeDrawPoint already uses for player Draw Run. This matters more
+ * than it looks: comparing every new sample against the last *recorded*
+ * point (not the last *raw* sample) lets small, genuine movement accumulate
+ * across many sub-threshold steps until it crosses the threshold, which is
+ * exactly what a slow, deliberate drag produces. Overwriting instead would
+ * keep resetting that reference on every sample, so a slow drag's distance
+ * from the (constantly-moving) reference point could never accumulate far
+ * enough to record a second point at all — collapsing an entire careful,
+ * intentional route into a single point. Confirmed empirically before this
+ * fix: replacing collapsed a 100-sample slow, shaky-but-real drag to 1
+ * stored point; dropping correctly retained 34 meaningfully-spaced points
+ * from the same input.
+ */
+export function isBallCaptureSampleTooClose(
+  lastRecordedPoint: NormalizedPoint | undefined,
+  nextPoint: NormalizedPoint,
+  minDistance: number,
+): boolean {
+  return (
+    lastRecordedPoint != null &&
+    Math.hypot(nextPoint.x - lastRecordedPoint.x, nextPoint.y - lastRecordedPoint.y) < minDistance
+  );
+}
+
 function getStagePointFromEvent(
   event: unknown,
   stage: Container,
@@ -1734,11 +1781,7 @@ export async function createTacticalPadLiteSurface(
       y: clampNormalizedValue(item.y),
     };
     const lastPoint = state.path[state.path.length - 1];
-    if (
-      lastPoint &&
-      Math.hypot(nextPoint.x - lastPoint.x, nextPoint.y - lastPoint.y) < BALL_PATH_MIN_POINT_DISTANCE
-    ) {
-      state.path[state.path.length - 1] = nextPoint;
+    if (isBallCaptureSampleTooClose(lastPoint, nextPoint, BALL_PATH_CAPTURE_MIN_DISTANCE)) {
       return;
     }
     state.path.push(nextPoint);
@@ -3030,6 +3073,21 @@ export async function createTacticalPadLiteSurface(
       const item = findTacticalItemById(activeDrag.itemId);
       if (item && isBallItem(item)) {
         appendBallMovementPathPoint(item);
+        // Touch jitter cleanup: smooth this ball's freshly-captured raw path
+        // once, here, at gesture end — the same sampleRoutePoints Catmull-Rom
+        // pass player Draw Run already applies at its own commit point.
+        // Per-ball: only the dragged item's own state.path is touched, never
+        // another ball's. Endpoint-safe: captureCurrentSnapshot always
+        // appends the ball's true live x/y as the final path element on top
+        // of whatever is stored here, so smoothing this interior can never
+        // shrink or overshoot the committed destination. A path with fewer
+        // than 2 points is left as-is — sampleRoutePoints has nothing
+        // meaningful to smooth yet, so a short, valid nudge is preserved
+        // rather than have geometry manufactured for it.
+        const state = getBallRuntimeState(item);
+        if (state.path.length >= 2) {
+          state.path = sampleRoutePoints(state.path);
+        }
       }
     }
     activeDrag = null;
