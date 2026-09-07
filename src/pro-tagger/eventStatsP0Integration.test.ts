@@ -1,22 +1,28 @@
 // Cross-P0 integration test (Event Stats P0 hardening pass).
 //
 // Exercises P0-2 (Review player correction resolves playerId against the
-// roster), P0-3 (Quick Review Shots reconciliation), P0-5 (Review team
-// filter symmetric FOR-side inference), and P0-6 (Player Influence team
-// attribution from roster, not raw event teamSide) together on one
-// realistic fixture, matching the brief's cross-P0 scenario:
+// roster, squadId-first), P0-3 (Quick Review Shots reconciliation), P0-5
+// (Review team filter symmetric FOR-side inference), and P0-6 (Player
+// Influence team attribution from roster, not raw event teamSide) together
+// on one realistic fixture, matching the brief's cross-P0 scenario:
 //
 //   - FOR and OPP squads share a duplicate jersey number (#9).
 //   - The opposition's own kickout is won back by FOR (an owner-reassigned
-//     KICKOUT_CONCEDED, tagged teamSide OPP even though FOR benefited).
+//     KICKOUT_CONCEDED, tagged teamSide OPP even though FOR benefited) —
+//     correctly tagged live (squadId already names the true HOME player).
 //   - A turnover-family event is initially mis-tagged to the wrong player,
-//     then corrected in Review — exercising the exact production
-//     resolution step (resolveRosterPlayerId) so the corrected playerId is
-//     authoritative going forward.
+//     stored with teamSide "FOR" (always — see pro-tagger-adapter.ts) even
+//     though the tagged player is on the AWAY squad — a genuine conflict
+//     between stored teamSide and the player's real squadId. It is then
+//     corrected in Review by calling the PRODUCTION P0-2 resolver
+//     (resolveRosterPlayerId) directly on that stored event, proving the
+//     fix resolves against the correct (squadId-named) roster despite the
+//     teamSide/squadId conflict — not a hand-inserted "already correct" id.
 //   - Quick Review is generated (shot totals reconcile across Page 1/2).
 //   - Review is filtered by FOR (the won-back kickout must be visible).
-//   - Player Influence is generated (the corrected player lands under the
-//     correct squad bucket, not merged with the same-numbered opponent).
+//   - Player Influence is generated from the resolver's actual output (the
+//     corrected player lands under the correct squad bucket, not merged
+//     with the same-numbered opponent).
 //
 // No score arithmetic, restart ownership, or event identity changes as a
 // side effect of any of this — asserted explicitly at the end.
@@ -66,53 +72,67 @@ const homeSquadLiveState: ProTaggerSquadPlayer[] = [
 ];
 const awaySquadLiveState: ProTaggerSquadPlayer[] = [
   player("away-9", 9, "Away Nine"),
+  player("away-4", 4, "Away Four"), // duplicate number with home-4
   player("away-7", 7, "Away Seven"),
 ];
 
-const rosterForP0_2: Pick<ProTaggerSavedMatch, "homeSquadLiveState" | "awaySquadLiveState"> = {
+const HOME_SQUAD_ID = "home-squad-id";
+const AWAY_SQUAD_ID = "away-squad-id";
+
+const rosterForP0_2: Pick<ProTaggerSavedMatch, "homeSquad" | "awaySquad" | "homeSquadLiveState" | "awaySquadLiveState"> = {
+  homeSquad: { id: HOME_SQUAD_ID, teamSide: "HOME", players: [] },
+  awaySquad: { id: AWAY_SQUAD_ID, teamSide: "AWAY", players: [] },
   homeSquadLiveState,
   awaySquadLiveState,
 };
 
 describe("Event Stats cross-P0 integration", () => {
   // 1. Opposition's own kickout, won back by FOR — owner-reassigned event:
-  //    teamSide is OPP (the owner who conceded it), not the winner.
+  //    teamSide is OPP (the owner who conceded it), not the winner. Tagged
+  //    correctly live: squadId already names the true fielding player's
+  //    squad (HOME), which is exactly why the picker's squadId — not raw
+  //    teamSide — must be what Review correction trusts too.
   const wonBackKickout = buildEvent({
     kind: "KICKOUT_CONCEDED",
     teamSide: "OPP",
     restartOwner: "OPP",
+    squadId: HOME_SQUAD_ID,
     playerId: "home-9", // the FOR player who fielded it
+    playerNumber: 9,
+    playerName: "Home Nine",
   });
 
   // 2. A turnover-family event, initially mis-tagged live to the WRONG
-  //    player (away-9's identity, picked by mistake — same jersey number as
-  //    home-9, different team), with teamSide "FOR" per the adapter's
-  //    single-perspective turnover convention (see pro-tagger-adapter.ts) —
-  //    the "awkward raw teamSide" the brief describes: this event's team
-  //    tag doesn't disambiguate which #9 was meant.
+  //    player. TURNOVER_LOST is always stored with teamSide "FOR" (see
+  //    pro-tagger-adapter.ts) regardless of which team actually forced the
+  //    turnover — here the tagged player is on the AWAY squad, so
+  //    event.teamSide ("FOR") directly conflicts with event.squadId
+  //    (AWAY_SQUAD_ID). A resolver that trusted raw teamSide would search
+  //    the home roster and either resolve the wrong player or nothing.
   const misTaggedTurnover = buildEvent({
-    kind: "TURNOVER_WON",
-    teamSide: "FOR",
-    playerId: "away-9", // WRONG — coach meant home-9
-    playerNumber: 9,
-    playerName: "Away Nine",
+    kind: "TURNOVER_LOST",
+    teamSide: "FOR", // fixed by the adapter — not the acting player's team
+    squadId: AWAY_SQUAD_ID, // the picker's own squad selection — authoritative
+    playerId: "away-4", // WRONG — coach meant away-7
+    playerNumber: 4,
+    playerName: "Away Four",
   });
 
-  // Review correction (P0-2): coach re-tags the turnover event to #9 on the
-  // home roster (the team the event itself belongs to — team-side editing
-  // stays out of scope). This is the exact call saveProEdit makes.
-  const correctedPlayerId = resolveRosterPlayerId(rosterForP0_2, misTaggedTurnover.teamSide, 9);
+  // Review correction (P0-2): call the PRODUCTION resolver directly on the
+  // stored event above (teamSide "FOR" vs squadId AWAY_SQUAD_ID conflict),
+  // exactly what saveProEdit does — not a hand-inserted "already correct" id.
+  const correctedPlayerId = resolveRosterPlayerId(rosterForP0_2, misTaggedTurnover, 7);
   const correctedTurnover: LoggedMatchEvent = {
     ...misTaggedTurnover,
-    playerNumber: 9,
-    playerName: "Home Nine",
+    playerNumber: 7,
+    playerName: "Away Seven",
     playerId: correctedPlayerId,
   };
 
   // 3. A few ordinary shot-attempt/score events to reconcile shot totals on.
   const forScoreEvent = buildEvent({ kind: "POINT", teamSide: "FOR", playerId: "home-4" });
   const forWideEvent = buildEvent({ kind: "WIDE", teamSide: "FOR", playerId: "home-4" });
-  const oppScoreEvent = buildEvent({ kind: "GOAL", teamSide: "OPP", playerId: "away-7" });
+  const oppScoreEvent = buildEvent({ kind: "GOAL", teamSide: "OPP", playerId: "away-9" });
 
   const finalEvents: LoggedMatchEvent[] = [
     wonBackKickout,
@@ -122,10 +142,21 @@ describe("Event Stats cross-P0 integration", () => {
     oppScoreEvent,
   ];
 
-  it("P0-2: the corrected playerId is authoritative and resolves to the intended (not the same-numbered opposing) player", () => {
-    expect(correctedPlayerId).toBe("home-9");
-    expect(correctedPlayerId).not.toBe("away-9");
-    expect(correctedTurnover.playerId).toBe("home-9");
+  it("P0-2: the production resolver, called on an event whose stored teamSide conflicts with its squadId, resolves against the squadId-named roster (not raw teamSide, not the same-numbered opponent)", () => {
+    expect(correctedPlayerId).toBe("away-7");
+    expect(correctedPlayerId).not.toBe("home-7"); // raw teamSide "FOR" would have implied the home roster
+    expect(correctedTurnover.playerId).toBe("away-7");
+    // Sanity: home has no #7 at all, so a teamSide-based (wrong-roster) resolution would have found nothing.
+    expect(homeSquadLiveState.some((p) => p.number === 7)).toBe(false);
+  });
+
+  it("P0-2: the same resolver call also correctly disambiguates the duplicate #4 shared by both squads via squadId, not teamSide", () => {
+    // Independent check using the wonBackKickout's own team pairing: a
+    // hypothetical correction to #4 on an OPP-teamSide/HOME-squadId event
+    // must land on home-4, never away-4.
+    const resolved = resolveRosterPlayerId(rosterForP0_2, wonBackKickout, 4);
+    expect(resolved).toBe("home-4");
+    expect(resolved).not.toBe("away-4");
   });
 
   it("P0-5: the opposition's own kickout won back by FOR is visible under the FOR review filter", () => {
@@ -150,12 +181,13 @@ describe("Event Stats cross-P0 integration", () => {
       homeSquadLiveState, awaySquadLiveState,
     );
 
-    const homeNine = influence.home.players.find((p) => p.key === "home-9");
-    const awayNine = influence.away.players.find((p) => p.key === "away-9");
-    expect(homeNine).toBeDefined();
-    expect(homeNine!.teamSide).toBe("FOR");
-    // The mis-tagged identity must not have left a phantom row on the away side.
-    expect(awayNine).toBeUndefined();
+    const awaySeven = influence.away.players.find((p) => p.key === "away-7");
+    const homeSeven = influence.home.players.find((p) => p.key === "away-7");
+    expect(awaySeven).toBeDefined();
+    expect(awaySeven!.teamSide).toBe("OPP");
+    // The mis-tagged identity must not have left a phantom row anywhere else.
+    expect(homeSeven).toBeUndefined();
+    expect(influence.home.players.find((p) => p.key === "away-4")).toBeUndefined();
   });
 
   it("P0-3: shot totals reconcile between Quick Review Page 1 and the Counts Sheet (Page 2) for the same events", () => {
@@ -180,7 +212,10 @@ describe("Event Stats cross-P0 integration", () => {
     expect(computeScoreSide(beforeCorrection, "OPP")).toEqual(computeScoreSide(afterCorrection, "OPP"));
   });
 
-  it("no event ID change: the corrected event keeps its original id", () => {
+  it("no event ID change: the corrected event keeps its original id, teamSide, and restartOwner", () => {
     expect(correctedTurnover.id).toBe(misTaggedTurnover.id);
+    expect(correctedTurnover.teamSide).toBe(misTaggedTurnover.teamSide);
+    expect(wonBackKickout.teamSide).toBe("OPP");
+    expect(wonBackKickout.restartOwner).toBe("OPP");
   });
 });

@@ -7,6 +7,7 @@ import {
   proTaggerMatchToSnapshotInput,
 } from "./pro-tagger-review-adapter";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
+import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
 import { buildIntelligencePack } from "../stats/intelligencePack";
 import type { IntelligencePack } from "../stats/intelligencePack";
 import { IntelligencePackPreview } from "../stats/IntelligencePackPreview";
@@ -41,22 +42,44 @@ function deriveStageLabel(
 // stable player id — never leave the pre-edit playerId in place once the
 // name/number it pointed at has changed underneath it, since that id also
 // drives discipline lockout, Player Influence, and corrected-event display
-// elsewhere. Team ownership of the event is fixed (Review has no team-side
-// edit UI), so only the roster of the event's existing team is searched —
-// live squad state, since that's the same source the live picker (see
-// ProTaggerPlayerPicker.tap) resolves playerId from, and it reflects
-// substitutions the original squad snapshot doesn't. Jersey number is the
-// stable, structured field the edit form exposes (unlike the free-text name
-// field), so it — not display text — is what's matched against the roster;
-// when no roster entry has that number, the id is cleared rather than left
-// stale.
+// elsewhere. Jersey number is the stable, structured field the edit form
+// exposes (unlike the free-text name field), so it — not display text — is
+// what's matched against the roster; when no roster entry has that number,
+// the id is cleared rather than left stale.
+//
+// DIFF-AUDIT FIX: the roster to search must NOT be chosen from the event's
+// raw teamSide. Several capture families store teamSide as something other
+// than the tagged player's own squad — a restart CONCEDED event stores the
+// restart OWNER's side (see resolveRestartOutcome, pro-tagger-adapter.ts),
+// and TURNOVER_LOST is deliberately always stored with teamSide "FOR"
+// regardless of which team actually lost the ball — so raw teamSide can
+// name the wrong team's roster entirely. The event's own squadId is
+// authoritative instead: the live player picker sets it from the squad it
+// was actually showing at selection time (ProTaggerPlayerPicker.tap, wired
+// from session.homeSquad.id / session.awaySquad.id in ProTaggerLiveScreen),
+// before any adapter-side ownership rewrite — so it always names the
+// player's real squad. Only when squadId is absent or matches neither saved
+// squad (a legacy event predating squadId) does this fall back to raw
+// teamSide, preserving the prior behaviour for that shape.
+function resolveEventRoster(
+  match: Pick<ProTaggerSavedMatch, "homeSquad" | "awaySquad" | "homeSquadLiveState" | "awaySquadLiveState">,
+  event: Pick<LoggedMatchEvent, "teamSide" | "squadId">,
+): readonly ProTaggerSquadPlayer[] {
+  if (event.squadId != null) {
+    if (event.squadId === match.homeSquad.id) return match.homeSquadLiveState;
+    if (event.squadId === match.awaySquad.id) return match.awaySquadLiveState;
+  }
+  // Legacy fallback — no usable squadId: the safest existing behaviour.
+  return event.teamSide === "FOR" ? match.homeSquadLiveState : match.awaySquadLiveState;
+}
+
 export function resolveRosterPlayerId(
-  match: Pick<ProTaggerSavedMatch, "homeSquadLiveState" | "awaySquadLiveState">,
-  eventTeamSide: "FOR" | "OPP",
+  match: Pick<ProTaggerSavedMatch, "homeSquad" | "awaySquad" | "homeSquadLiveState" | "awaySquadLiveState">,
+  event: Pick<LoggedMatchEvent, "teamSide" | "squadId">,
   editedPlayerNumber: number | undefined,
 ): string | undefined {
   if (editedPlayerNumber == null) return undefined;
-  const roster = eventTeamSide === "FOR" ? match.homeSquadLiveState : match.awaySquadLiveState;
+  const roster = resolveEventRoster(match, event);
   return roster.find((p) => p.number === editedPlayerNumber)?.id;
 }
 
@@ -392,8 +415,10 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
             playerNumber: resolvedNumber,
             // Resolve against the roster rather than carrying over the
             // pre-edit id — see resolveRosterPlayerId. Cleared (not stale)
-            // when the edited number matches no roster entry.
-            playerId:     resolveRosterPlayerId(match, e.teamSide, resolvedNumber),
+            // when the edited number matches no roster entry. Roster choice
+            // is squadId-first (falls back to raw teamSide only when
+            // squadId is unusable) — see resolveEventRoster.
+            playerId:     resolveRosterPlayerId(match, e, resolvedNumber),
           }
         : e,
     );
