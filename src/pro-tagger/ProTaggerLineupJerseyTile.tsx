@@ -9,6 +9,15 @@ interface Props {
   primary: string;
   secondary: string;
   size?: number;
+  /**
+   * Pins the number's font size independent of `size`. Use this whenever the
+   * jersey is tuned smaller (or larger) but the number must NOT scale with
+   * it — the visual tuning pass shrank the Starting 15 jersey ~20% while
+   * explicitly keeping the number at its prior, already-verified size (see
+   * ProTaggerLineupFormation.tsx). Falls back to the size-proportional
+   * default when omitted.
+   */
+  numberFontSize?: number;
 }
 
 // Read-only jersey-first tile for the Squad Setup lineup summary
@@ -26,7 +35,7 @@ interface Props {
 // solid circular badge sitting on top of it (that read as a Tactical
 // Slate/player-token marker, not a team sheet, and is deliberately not
 // used here).
-export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 40 }: Props) {
+export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 40, numberFontSize }: Props) {
   if (!player) {
     return (
       <div style={S.tile}>
@@ -38,15 +47,17 @@ export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 4
   }
 
   const name = player.name.trim();
-  // Font scales with the jersey so the number stays dominant and legible at
-  // every size this tile is actually rendered at (starters vs. the smaller
-  // subs row) — verified against 1, 8, 10, 11, 15, 27.
-  const numberFontSize = Math.max(15, Math.round(size * 0.5));
+  // Font scales with the jersey by default so the number stays dominant and
+  // legible at every size this tile could be rendered at — verified against
+  // 1, 8, 10, 11, 15, 27. Callers that shrink the jersey without wanting the
+  // number to shrink with it (see ProTaggerLineupFormation.tsx) pass an
+  // explicit numberFontSize instead, which wins over this default.
+  const resolvedNumberFontSize = numberFontSize ?? Math.max(15, Math.round(size * 0.5));
   return (
     <div style={S.tile}>
       <div style={{ ...S.jerseyWrap, width: size }}>
         <ProTaggerMiniJersey primary={primary} secondary={secondary} size={size} />
-        <span style={{ ...S.numberText, fontSize: numberFontSize }}>{player.number}</span>
+        <span style={{ ...S.numberText, fontSize: resolvedNumberFontSize }}>{player.number}</span>
       </div>
       {name && <span style={S.name}>{name}</span>}
     </div>
