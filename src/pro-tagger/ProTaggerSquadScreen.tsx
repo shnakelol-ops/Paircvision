@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
+import { ProTaggerLineupFormation } from "./ProTaggerLineupFormation";
 import type {
   ProTaggerSession,
   ProTaggerSquadPlayer,
@@ -70,6 +71,13 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
   const [saveOpen, setSaveOpen]       = useState(false);
   const [saveName, setSaveName]       = useState("");
   const [saveStatus, setSaveStatus]   = useState<SaveStatus>("idle");
+
+  // Visual lineup summary (read-only) is shown by default; the existing
+  // name-editing list — unchanged — is collapsed behind this toggle. There
+  // is still exactly one place names are edited: this reveals it, it does
+  // not duplicate it. Shared across both tabs (not per-team) — purely a
+  // display preference, not squad data.
+  const [showNameEditor, setShowNameEditor] = useState(false);
 
   const homeLabel     = session.homeTeamName.trim() || "Home";
   const awayLabel     = session.awayTeamName.trim() || "Away";
@@ -264,34 +272,59 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
             </div>
           </div>
 
-          {/* Player rows */}
-          {players.map((p, i) => (
-            <div key={p.id} style={S.row}>
-              <span style={S.number}>{p.number}</span>
-              <span style={S.position}>{p.position ?? "—"}</span>
-              <input
-                type="text"
-                placeholder={`#${p.number}`}
-                value={p.name}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setName(activeTab, i, e.target.value)
-                }
-                style={S.nameInput}
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-              />
-            </div>
-          ))}
+          {/* Visual lineup summary — read-only team sheet, Starting 15 in the
+              fixed GAA formation + substitutes below. Purely presentational:
+              names are still edited only via the list revealed below. */}
+          <ProTaggerLineupFormation
+            players={players}
+            primary={activeColours.primary}
+            secondary={activeColours.secondary}
+          />
 
-          {/* Add Player control */}
-          {players.length < 30 ? (
-            <button style={S.addBtn} onClick={addPlayer}>
-              + Add Player
-              <span style={S.addCount}>{players.length} / 30</span>
-            </button>
-          ) : (
-            <div style={S.addMax}>Squad full (30 / 30)</div>
+          {/* Edit Player Names — collapsed by default. Expanding reveals the
+              existing name-editing list unchanged; this is not a second
+              editing mechanism, just a show/hide toggle around the one that
+              already exists. */}
+          <button
+            style={S.editNamesToggle}
+            onClick={() => setShowNameEditor((v) => !v)}
+          >
+            <span>Edit Player Names</span>
+            <span style={S.editNamesChevron}>{showNameEditor ? "▲" : "▼"}</span>
+          </button>
+
+          {showNameEditor && (
+            <>
+              {/* Player rows */}
+              {players.map((p, i) => (
+                <div key={p.id} style={S.row}>
+                  <span style={S.number}>{p.number}</span>
+                  <span style={S.position}>{p.position ?? "—"}</span>
+                  <input
+                    type="text"
+                    placeholder={`#${p.number}`}
+                    value={p.name}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setName(activeTab, i, e.target.value)
+                    }
+                    style={S.nameInput}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                  />
+                </div>
+              ))}
+
+              {/* Add Player control */}
+              {players.length < 30 ? (
+                <button style={S.addBtn} onClick={addPlayer}>
+                  + Add Player
+                  <span style={S.addCount}>{players.length} / 30</span>
+                </button>
+              ) : (
+                <div style={S.addMax}>Squad full (30 / 30)</div>
+              )}
+            </>
           )}
 
         </div>
@@ -599,6 +632,30 @@ const S: Record<string, CSSProperties> = {
     outline: "none",
     fontFamily: "inherit",
     userSelect: "text",
+  },
+
+  // ── Edit Player Names toggle ───────────────────────────────────────────────
+  editNamesToggle: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+    background: "#17324a",
+    border: "1px solid #1c3a52",
+    borderRadius: 8,
+    color: "#dce8f4",
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "10px 14px",
+    cursor: "pointer",
+    outline: "none",
+    width: "100%",
+    boxSizing: "border-box" as const,
+    WebkitTapHighlightColor: "transparent",
+  },
+  editNamesChevron: {
+    fontSize: 10,
+    color: "#7a95ad",
   },
 
   // ── Add Player ───────────────────────────────────────────────────────────
