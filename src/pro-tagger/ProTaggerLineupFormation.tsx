@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { ProTaggerLineupJerseyTile } from "./ProTaggerLineupJerseyTile";
-import { FORMATION_ROWS } from "./ProTaggerPlayerPicker";
+import { ProTaggerLineupPitchBackground } from "./ProTaggerLineupPitchBackground";
+import { LINEUP_FORMATION_POSITIONS, LINEUP_PITCH_VIEWBOX } from "./pro-tagger-lineup-geometry";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
 
 interface Props {
@@ -35,31 +36,42 @@ export function deriveLineupSlots(players: readonly ProTaggerSquadPlayer[]): Lin
 }
 
 // Read-only visual team-sheet summary for Squad Setup (Option A from the
-// Event Stats visual lineup audit). Presentation only: no tap handlers, no
-// drag/reassignment, no formation editing. Player names are still edited
-// exclusively through ProTaggerSquadScreen's existing "Edit Player Names"
-// list — this component never writes to squad state.
+// Event Stats visual lineup audit), now rendered over a decorative static
+// pitch background (ProTaggerLineupPitchBackground) instead of a plain grid.
+// Presentation only: no tap handlers, no drag/reassignment, no formation
+// editing, and the pitch itself carries no coordinate/orientation semantics
+// — see that component's header. Player names are still edited exclusively
+// through ProTaggerSquadScreen's existing "Edit Player Names" list — this
+// component never writes to squad state.
+//
+// Formation slot positions come from pro-tagger-lineup-geometry.ts (plain
+// data, no React) rather than being computed here, so a future non-React
+// renderer (e.g. a canvas-based share-card export) can lay out the identical
+// team sheet from that one shared source of truth — see that file's header.
 export function ProTaggerLineupFormation({ players, primary, secondary }: Props) {
   const { starters, subs } = deriveLineupSlots(players);
 
   return (
     <div style={S.wrap}>
-      <div style={S.formation}>
-        {FORMATION_ROWS.map((slots, ri) => (
-          <div key={ri} style={S.row}>
-            {slots.map((slot) => {
-              const p = starters[slot - 1] ?? null;
-              return (
-                <ProTaggerLineupJerseyTile
-                  key={p?.id ?? `empty-${slot}`}
-                  player={p}
-                  primary={primary}
-                  secondary={secondary}
-                />
-              );
-            })}
-          </div>
-        ))}
+      <div
+        style={{
+          ...S.pitchBox,
+          aspectRatio: `${LINEUP_PITCH_VIEWBOX.w} / ${LINEUP_PITCH_VIEWBOX.h}`,
+        }}
+      >
+        <ProTaggerLineupPitchBackground />
+        {Object.entries(LINEUP_FORMATION_POSITIONS).map(([slotKey, pos]) => {
+          const slot = Number(slotKey);
+          const p = starters[slot - 1] ?? null;
+          return (
+            <div
+              key={p?.id ?? `empty-${slot}`}
+              style={{ ...S.slot, left: `${pos.x}%`, top: `${pos.y}%` }}
+            >
+              <ProTaggerLineupJerseyTile player={p} primary={primary} secondary={secondary} size={30} />
+            </div>
+          );
+        })}
       </div>
 
       {subs.length > 0 && (
@@ -86,18 +98,17 @@ const S: Record<string, CSSProperties> = {
     marginBottom: 10,
     borderBottom: "1px solid #17324a",
   },
-  formation: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 8,
+  pitchBox: {
+    position: "relative",
     width: "100%",
+    maxWidth: 320,
+    borderRadius: 10,
+    overflow: "hidden",
+    border: "1px solid #17324a",
   },
-  row: {
-    display: "flex",
-    justifyContent: "center",
-    gap: 8,
-    flexWrap: "wrap" as const,
+  slot: {
+    position: "absolute",
+    transform: "translate(-50%, -50%)",
   },
   subsDivider: {
     alignSelf: "flex-start",

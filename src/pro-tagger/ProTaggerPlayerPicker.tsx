@@ -29,10 +29,7 @@ interface Props {
 }
 
 // GAA formation: 1-based active slot numbers matching LiveScreen initialisation.
-// Exported for reuse by ProTaggerLineupFormation.tsx (Squad Setup's read-only
-// lineup summary) — same fixed shape, single source of truth. Read-only
-// export; this component's own behaviour is unchanged.
-export const FORMATION_ROWS: readonly (readonly number[])[] = [
+const FORMATION_ROWS: readonly (readonly number[])[] = [
   [1],            // #1  GK
   [2, 3, 4],      // #2  #3  #4  (RB FB LB)
   [5, 6, 7],      // #5  #6  #7  (RHB CHB LHB)
