@@ -61,12 +61,42 @@ describe("pro-tagger-lineup-geometry", () => {
           expect(y).toBeGreaterThanOrEqual(0);
           expect(y).toBeLessThanOrEqual(LINEUP_PITCH_VIEWBOX.h);
         }
-      } else {
+      } else if (mark.kind === "circle") {
         expect(mark.cx - mark.r).toBeGreaterThanOrEqual(0);
         expect(mark.cx + mark.r).toBeLessThanOrEqual(LINEUP_PITCH_VIEWBOX.w);
         expect(mark.cy - mark.r).toBeGreaterThanOrEqual(0);
         expect(mark.cy + mark.r).toBeLessThanOrEqual(LINEUP_PITCH_VIEWBOX.h);
+      } else {
+        // halfEllipse: its bounding box is the full ellipse's (the flat
+        // diameter plus the bulge in one y-direction only), so only check
+        // the side it actually bulges toward.
+        expect(mark.cx - mark.rx).toBeGreaterThanOrEqual(0);
+        expect(mark.cx + mark.rx).toBeLessThanOrEqual(LINEUP_PITCH_VIEWBOX.w);
+        if (mark.bulge === "up") {
+          expect(mark.cy - mark.ry).toBeGreaterThanOrEqual(0);
+        } else {
+          expect(mark.cy + mark.ry).toBeLessThanOrEqual(LINEUP_PITCH_VIEWBOX.h);
+        }
       }
+    }
+  });
+
+  it("the D-arc markings bulge toward their nearer goal line (top D bulges up, bottom D bulges down)", () => {
+    const halfEllipses = LINEUP_PITCH_MARKINGS.filter((m) => m.kind === "halfEllipse");
+    expect(halfEllipses).toHaveLength(2);
+    const top = halfEllipses.find((m) => m.cy < LINEUP_PITCH_VIEWBOX.h / 2)!;
+    const bottom = halfEllipses.find((m) => m.cy > LINEUP_PITCH_VIEWBOX.h / 2)!;
+    expect(top.bulge).toBe("up");
+    expect(bottom.bulge).toBe("down");
+  });
+
+  it("the large and small rectangles at each end are centred on the pitch's horizontal midline", () => {
+    const rects = LINEUP_PITCH_MARKINGS.filter((m) => m.kind === "rect");
+    // First rect is the outer boundary; the rest are the 4 end boxes.
+    const boxes = rects.slice(1);
+    expect(boxes).toHaveLength(4);
+    for (const box of boxes) {
+      expect(box.x + box.w / 2).toBeCloseTo(50, 1);
     }
   });
 

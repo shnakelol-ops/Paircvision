@@ -1,5 +1,18 @@
 import type { CSSProperties } from "react";
 import { LINEUP_PITCH_MARKINGS, LINEUP_PITCH_VIEWBOX } from "./pro-tagger-lineup-geometry";
+import type { LineupPitchMarking } from "./pro-tagger-lineup-geometry";
+
+// Derives an SVG arc path from a halfEllipse marking's plain (cx, cy, rx,
+// ry, bulge) data — kept out of the geometry file itself so that data stays
+// SVG-agnostic (see LineupPitchMarking's "halfEllipse" comment). "up" bulges
+// toward smaller y (the sweep-flag=1 direction from the left endpoint to the
+// right endpoint); "down" bulges toward larger y (sweep-flag=0).
+function halfEllipsePath(mark: Extract<LineupPitchMarking, { kind: "halfEllipse" }>): string {
+  const x1 = mark.cx - mark.rx;
+  const x2 = mark.cx + mark.rx;
+  const sweep = mark.bulge === "up" ? 1 : 0;
+  return `M ${x1} ${mark.cy} A ${mark.rx} ${mark.ry} 0 0 ${sweep} ${x2} ${mark.cy}`;
+}
 
 // Purely decorative static Gaelic pitch background for the Squad Setup
 // visual lineup (ProTaggerLineupFormation) — NOT the live-capture pitch.
@@ -39,10 +52,16 @@ export function ProTaggerLineupPitchBackground() {
             />
           );
         }
+        if (mark.kind === "circle") {
+          // The lone circle marking is the centre spot — a small solid dot,
+          // not a stroked ring (matching the real markings' own centre spot,
+          // not a soccer-style centre circle).
+          return <circle key={i} cx={mark.cx} cy={mark.cy} r={mark.r} fill="rgba(255,255,255,0.55)" />;
+        }
         return (
-          <circle
+          <path
             key={i}
-            cx={mark.cx} cy={mark.cy} r={mark.r}
+            d={halfEllipsePath(mark)}
             fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth={0.6}
           />
         );

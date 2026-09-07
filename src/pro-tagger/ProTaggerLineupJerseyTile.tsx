@@ -29,11 +29,21 @@ export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 3
   }
 
   const name = player.name.trim();
+  // Badge scales with the jersey rather than using a fixed size, so the
+  // number stays the dominant, legible element at every tile size this
+  // component is asked to render (starters vs. the smaller subs row).
+  // Floors guard 2-digit numbers (tested against 1, 8, 10, 11, 15, 27) at
+  // small sizes; a solid dark badge (not text-shadow alone) guarantees
+  // contrast regardless of the jersey's own primary colour.
+  const badgeSize = Math.max(18, Math.round(size * 0.68));
+  const numberFontSize = Math.max(10, Math.round(size * 0.38));
   return (
     <div style={S.tile}>
       <div style={{ ...S.jerseyWrap, width: size }}>
         <ProTaggerMiniJersey primary={primary} secondary={secondary} size={size} />
-        <span style={S.number}>{player.number}</span>
+        <div style={{ ...S.numberBadge, width: badgeSize, height: badgeSize }}>
+          <span style={{ ...S.numberText, fontSize: numberFontSize }}>{player.number}</span>
+        </div>
       </div>
       {name && <span style={S.name}>{name}</span>}
     </div>
@@ -45,8 +55,8 @@ const S: Record<string, CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 2,
-    width: 46,
+    gap: 3,
+    width: 72,
     flexShrink: 0,
   },
   jerseyWrap: {
@@ -55,24 +65,35 @@ const S: Record<string, CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
   },
-  number: {
+  // A solid, high-contrast circular badge behind the number — dominant on
+  // the jersey and legible against any user-chosen jersey colour, unlike
+  // text-shadow-only overlays which can wash out on light/pale primaries.
+  numberBadge: {
     position: "absolute",
     top: "44%",
     left: "50%",
     transform: "translate(-50%, -50%)",
-    fontSize: 11,
+    borderRadius: "50%",
+    background: "rgba(5, 12, 20, 0.85)",
+    boxShadow: "0 0 0 1px rgba(255,255,255,0.35)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    pointerEvents: "none",
+  },
+  numberText: {
     fontWeight: 800,
     color: "#ffffff",
-    textShadow: "0 1px 2px rgba(0,0,0,0.55)",
     fontVariantNumeric: "tabular-nums",
-    pointerEvents: "none",
+    letterSpacing: "-0.3px",
+    lineHeight: 1,
   },
   name: {
     fontSize: 10,
     fontWeight: 600,
     color: "#dce8f4",
     textAlign: "center" as const,
-    maxWidth: 48,
+    maxWidth: 68,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap" as const,
