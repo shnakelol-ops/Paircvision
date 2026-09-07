@@ -78,9 +78,26 @@ export function selectReviewEvents<TEvent extends ReviewSelectableEvent, TCatego
     const isInferredOppositionEvent =
       isForEvent &&
       (event.kind === "TURNOVER_LOST" || event.kind === "KICKOUT_CONCEDED" || event.kind === "FREE_CONCEDED");
+    // Symmetric counterpart of isInferredOppositionEvent above: a restart
+    // "owner" (see resolveRestartOutcome, pro-tagger-adapter.ts) can lose
+    // their own kickout/45/sideline to the other side, which is recorded as
+    // a *_CONCEDED event tagged under the OWNER's side, not the side that
+    // actually won it. When the owner is OPP, that CONCEDED event is tagged
+    // OPP even though FOR is the side that benefited (won back the
+    // opposition's own restart) — without this, that event is invisible
+    // under the FOR filter (audit: "winning back the opposition's own
+    // kickout can disappear when filtering Review to your own team").
+    // Turnovers/frees have no such owner concept (a single tap fully
+    // determines both sides — see pro-tagger-adapter.ts), so there is no
+    // OPP-tagged equivalent to infer FOR from for those kinds.
+    const isInferredForEvent =
+      isOppositionEvent &&
+      (event.kind === "KICKOUT_CONCEDED" ||
+        event.kind === "FORTY_FIVE_CONCEDED" ||
+        event.kind === "SIDELINE_CONCEDED");
 
     if (teamSideFilter != null) {
-      if (teamSideFilter === "FOR" && !isForEvent) return false;
+      if (teamSideFilter === "FOR" && !isForEvent && !isInferredForEvent) return false;
       if (teamSideFilter === "OPP" && !isOppositionEvent && !isInferredOppositionEvent) return false;
     }
 
@@ -103,6 +120,19 @@ export function selectReviewEvents<TEvent extends ReviewSelectableEvent, TCatego
         }
       }
     }
+
+    // No FOR-side mirror of the OPP category-narrowing block above: that
+    // block's FREES case narrows to a literal kind list, which is stricter
+    // than isFreeRelatedEvent (line ~72) and would incorrectly exclude a
+    // free-sourced GOAL/POINT/TWO_POINTER event — already correctly visible
+    // under the FOR filter via the base isForEvent check above — merely
+    // because it isn't FREE_WON/FREE_CONCEDED/FREE_SCORED/FREE_MISSED. The
+    // base-level isForEvent / isInferredForEvent check already produces the
+    // correct KICKOUTS/TURNOVERS/FREES membership for FOR with the
+    // categoryKinds sets Event Stats and Rapid Capture actually pass (both
+    // narrow enough that this block would only ever restate what the base
+    // check already decided) — so no additional narrowing is needed, and
+    // adding one here would only risk a regression for no behavioural gain.
 
     if (activePlayerOnly && activePlayerId != null && event.playerId !== activePlayerId) return false;
 

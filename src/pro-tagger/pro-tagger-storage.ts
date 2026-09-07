@@ -103,12 +103,33 @@ export type ProTaggerSavedMatch = {
   };
 };
 
+// Shared by the normal storage read path and file import (ProTaggerOptionsScreen)
+// so both reject the same malformed shapes. A record failing this check never
+// reaches restoreContext.matchState or other UI state that assumes it's present.
+export function isValidProMatch(obj: unknown): obj is ProTaggerSavedMatch {
+  if (typeof obj !== "object" || obj === null) return false;
+  const r = obj as Record<string, unknown>;
+  return (
+    typeof r["id"] === "string" &&
+    typeof r["createdAt"] === "number" &&
+    typeof r["homeTeamName"] === "string" &&
+    typeof r["awayTeamName"] === "string" &&
+    Array.isArray(r["events"]) &&
+    typeof r["restoreContext"] === "object" &&
+    r["restoreContext"] !== null
+  );
+}
+
 function readProTaggerMatchesRaw(): ProTaggerSavedMatch[] {
   const raw = safeRead(PRO_TAGGER_MATCHES_STORAGE_KEY);
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as ProTaggerSavedMatch[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    // A malformed record left over from a bad write (or a hand-edited/foreign
+    // localStorage blob) must not reach restoreContext.matchState during
+    // initial render — skip it, keep the valid siblings.
+    return parsed.filter(isValidProMatch);
   } catch {
     return [];
   }

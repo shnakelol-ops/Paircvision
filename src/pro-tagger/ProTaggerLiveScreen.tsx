@@ -26,6 +26,7 @@ import { QuickReviewPage1 } from "./QuickReviewPage1";
 import { buildQuickReviewMatchOverview } from "../stats/reporting/quickReviewMatchOverview";
 import { QuickReviewPage3 } from "./QuickReviewPage3";
 import { buildQuickReviewSegmentBreakdown } from "../stats/reporting/quickReviewSegmentBreakdown";
+import { SHOT_KINDS } from "../stats/reporting/teamStatsViews";
 
 export interface RestoreState {
   events: readonly LoggedMatchEvent[];
@@ -55,6 +56,27 @@ type MatchState =
   | "HALF_TIME"
   | "SECOND_HALF"
   | "FULL_TIME";
+
+// Shared with the manual Save failure paths (handleSaveMatch, handleSaveAndEnd)
+// so autosave surfaces the exact same wording through the exact same UI slot.
+const SAVE_FAILED_TEXT = "Save failed — storage unavailable.";
+
+// Decides whether the autosave-failure warning's shown/hidden state needs to
+// change after one save attempt (debounced autosave or the beforeunload
+// flush). Exported and pure so the "no repeated warning spam while storage
+// stays unavailable" guarantee is directly testable — ProTaggerLiveScreen has
+// no React rendering harness in this repo — rather than resting on an
+// assumption about React's setState-bailout behaviour. Both call sites only
+// invoke setAutosaveFailed when `changed` is true, so a run of consecutive
+// failures (or consecutive successes) triggers exactly one state update, not
+// one per debounce tick.
+export function deriveAutosaveWarningState(
+  currentlyShown: boolean,
+  saveSucceeded: boolean,
+): { nextShown: boolean; changed: boolean } {
+  const nextShown = !saveSucceeded;
+  return { nextShown, changed: nextShown !== currentlyShown };
+}
 
 const MATCH_STATE_LABEL: Record<MatchState, string> = {
   PRE_MATCH:   "PRE",
@@ -181,7 +203,10 @@ export function computeProTaggerCounts(events: readonly LoggedMatchEvent[], side
     goals:        s.filter((e) => e.kind === "GOAL").length,
     points:       s.filter((e) => e.kind === "POINT").length,
     twoPointers:  s.filter((e) => (["TWO_POINTER", "FORTY_FIVE_TWO_POINT"] as MatchEventKind[]).includes(e.kind)).length,
-    shots:        s.filter((e) => e.kind === "SHOT").length,
+    // Canonical full shot-attempt definition (P0-3) — same set Page 1
+    // (viewShootingConversion) and Page 3 (SHOT_ATTEMPT_KINDS) already use,
+    // not raw kind "SHOT" alone. One "Shots" meaning across all three pages.
+    shots:        s.filter((e) => SHOT_KINDS.includes(e.kind)).length,
     wides:        s.filter((e) => e.kind === "WIDE").length,
     // TURNOVER_LOST is only ever recorded with teamSide "FOR" (the side that
     // lost the ball — see pro-tagger-adapter.ts); it represents the *other*
@@ -319,6 +344,17 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const [clockRunning, setClockRunning] = useState(false);
   const [feedbackDot, setFeedbackDot]   = useState<{ nx: number; ny: number } | null>(null);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+  // Set when a background autosave (debounced or beforeunload) fails to write
+  // to storage, and cleared once a save succeeds again — persistent rather than
+  // timed, since the underlying storage problem persists until it doesn't.
+  // React bails out of re-rendering on a same-value setState, so re-asserting
+  // `true` on every failed debounce tick costs nothing extra — no spam.
+  const [autosaveFailed, setAutosaveFailed] = useState(false);
+  // Mirrors autosaveFailed for the debounce/beforeunload effects below, so
+  // deriveAutosaveWarningState can be checked without depending on React
+  // re-render timing (the effects don't depend on `autosaveFailed` itself,
+  // to avoid restarting the debounce timer on every warning-state change).
+  const autosaveFailedRef = useRef(false);
   const [wrongWayActive, setWrongWayActive] = useState(false);
 
   // ── Manual clock pause/resume ────────────────────────────────────────────
@@ -785,19 +821,32 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     if (matchState === "PRE_MATCH" && loggedEvents.length === 0) return;
     const timer = setTimeout(() => {
       const { fullRecord } = buildSaveRecords(loggedRef.current);
-      saveProTaggerMatchFull(fullRecord);
+      const ok = saveProTaggerMatchFull(fullRecord);
+      const { nextShown, changed } = deriveAutosaveWarningState(autosaveFailedRef.current, ok);
+      if (changed) {
+        autosaveFailedRef.current = nextShown;
+        setAutosaveFailed(nextShown);
+      }
     }, 1200);
     return () => clearTimeout(timer);
   }, [loggedEvents, matchState, half, buildSaveRecords]);
 
   // Best-effort synchronous flush right before the tab closes/refreshes/navigates
   // away, so the debounce window above can't silently drop the last few events.
+  // beforeunload fires as the page is going away, so there's no reliable way to
+  // render new UI in response to it — this can only set state for the case
+  // where the browser's "leave site?" prompt is declined and the screen stays up.
   useEffect(() => {
     const hasLiveMatchState = loggedEvents.length > 0 || matchState !== "PRE_MATCH";
     if (!hasLiveMatchState) return;
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       const { fullRecord } = buildSaveRecords(loggedRef.current);
-      saveProTaggerMatchFull(fullRecord);
+      const ok = saveProTaggerMatchFull(fullRecord);
+      const { nextShown, changed } = deriveAutosaveWarningState(autosaveFailedRef.current, ok);
+      if (changed) {
+        autosaveFailedRef.current = nextShown;
+        setAutosaveFailed(nextShown);
+      }
       event.preventDefault();
       event.returnValue = "Save match before leaving or refreshing.";
     };
@@ -818,7 +867,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     saveProTaggerMatch(record);
     const ok = saveProTaggerMatchFull(fullRecord);
     if (!ok) {
-      setSaveFeedback("Save failed — storage unavailable.");
+      setSaveFeedback(SAVE_FAILED_TEXT);
       setTimeout(() => setSaveFeedback(null), 3000);
       return;
     }
@@ -840,13 +889,17 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     saveProTaggerMatch(record);
     const ok = saveProTaggerMatchFull(fullRecord);
     if (!ok) {
-      setActionsFeedback("Save failed — storage unavailable.");
+      setActionsFeedback(SAVE_FAILED_TEXT);
       actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 3000);
       return;
     }
     setActionsFeedback("✓ Match saved");
     actionsFeedbackTimerRef.current = setTimeout(() => setActionsFeedback(null), 2500);
     setActionsOpen(false);
+    // A successful manual save confirms storage is available again — clear any
+    // lingering autosave-failure warning rather than waiting for the next tick.
+    autosaveFailedRef.current = false;
+    setAutosaveFailed(false);
   }, [buildSaveRecords]);
 
   // Actions → Share Summary PNG.
@@ -961,6 +1014,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     setWrongWayActive(false);
     setIsManuallyPaused(false);
     setSaveFeedback(null);
+    autosaveFailedRef.current = false;
+    setAutosaveFailed(false);
     setActionsFeedback(null);
     setResetConfirmOpen(false);
     setActionsOpen(false);
@@ -974,6 +1029,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   const awayLabel = session.awayTeamName.trim() || session.awaySquad.teamName?.trim() || "Away";
   const canUndo   = phase === "IDLE" && loggedEvents.length > 0;
   const canSave   = phase === "IDLE" && loggedEvents.length > 0;
+
+  // An explicit manual-save message (ephemeral) always takes priority; otherwise
+  // fall back to the persistent autosave-failure warning while it's active.
+  const displayedSaveFeedback = saveFeedback ?? (autosaveFailed ? SAVE_FAILED_TEXT : null);
 
   const forScore = computeScoreSide(loggedEvents, "FOR");
   const oppScore = computeScoreSide(loggedEvents, "OPP");
@@ -1117,7 +1176,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           >
             ⋯ Options
           </button>
-          {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
+          {displayedSaveFeedback && <span style={S.saveFeedbackText}>{displayedSaveFeedback}</span>}
         </div>
       )}
 
@@ -1156,7 +1215,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           >
             ⋯ Options
           </button>
-          {saveFeedback && <span style={S.saveFeedbackText}>{saveFeedback}</span>}
+          {displayedSaveFeedback && <span style={S.saveFeedbackText}>{displayedSaveFeedback}</span>}
         </div>
       )}
 
@@ -1209,8 +1268,8 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 onTileTap={handleTileTap}
               />
               <div style={S.strip}>
-                {saveFeedback ? (
-                  <span style={{ ...S.saveFeedbackText, ...S.stripStatusFlex }}>{saveFeedback}</span>
+                {displayedSaveFeedback ? (
+                  <span style={{ ...S.saveFeedbackText, ...S.stripStatusFlex }}>{displayedSaveFeedback}</span>
                 ) : matchState === "PRE_MATCH" ? (
                   <span style={S.eventCount}>Press ▶ Start to begin</span>
                 ) : (

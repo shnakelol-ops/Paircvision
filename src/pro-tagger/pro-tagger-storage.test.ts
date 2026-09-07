@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   PRO_TAGGER_MATCHES_STORAGE_KEY,
+  isValidProMatch,
   readProTaggerMatches,
   resolveImportIdCollision,
   saveProTaggerMatch,
@@ -167,6 +168,66 @@ function buildSharedMatch(n: number): SavedMatch {
     scorelineSnapshot: "0-01 (1) v 0-00 (0)",
   };
 }
+
+// P0-4: a malformed record left over from a bad write (or a hand-edited /
+// foreign localStorage blob) must not reach restoreContext.matchState during
+// initial render (ProTaggerPage's findInProgressMatch reads this array in a
+// useState initializer) — it must be skipped, not crash the read path.
+describe("readProTaggerMatches — malformed record safety (P0-4)", () => {
+  it("returns all records when every one is valid", () => {
+    saveProTaggerMatchFull(buildMatch({ id: "a" }));
+    saveProTaggerMatchFull(buildMatch({ id: "b" }));
+    expect(readProTaggerMatches()).toHaveLength(2);
+  });
+
+  it("skips one invalid record beside a valid one, keeping the valid one", () => {
+    const valid = buildMatch({ id: "valid-1" });
+    const invalid = { id: "broken-1" }; // missing createdAt, events, restoreContext, etc.
+    window.localStorage.setItem(
+      PRO_TAGGER_MATCHES_STORAGE_KEY,
+      JSON.stringify([invalid, valid]),
+    );
+    const stored = readProTaggerMatches();
+    expect(stored).toHaveLength(1);
+    expect(stored[0]!.id).toBe("valid-1");
+  });
+
+  it("returns an empty array when storage holds an object instead of an array", () => {
+    window.localStorage.setItem(
+      PRO_TAGGER_MATCHES_STORAGE_KEY,
+      JSON.stringify({ not: "an array" }),
+    );
+    expect(readProTaggerMatches()).toEqual([]);
+  });
+
+  it("skips a record with a malformed/missing nested restoreContext", () => {
+    const valid = buildMatch({ id: "valid-2" });
+    const invalid = { ...buildMatch({ id: "broken-2" }), restoreContext: null };
+    window.localStorage.setItem(
+      PRO_TAGGER_MATCHES_STORAGE_KEY,
+      JSON.stringify([invalid, valid]),
+    );
+    const stored = readProTaggerMatches();
+    expect(stored.map((m) => m.id)).toEqual(["valid-2"]);
+  });
+
+  it("never crashes reading a fully garbage payload, and does not delete/rewrite storage on read", () => {
+    const raw = JSON.stringify([{ garbage: true }, 42, "not a match", null]);
+    window.localStorage.setItem(PRO_TAGGER_MATCHES_STORAGE_KEY, raw);
+    expect(() => readProTaggerMatches()).not.toThrow();
+    expect(readProTaggerMatches()).toEqual([]);
+    // Reading must not mutate the underlying storage — the raw bytes are untouched.
+    expect(window.localStorage.getItem(PRO_TAGGER_MATCHES_STORAGE_KEY)).toBe(raw);
+  });
+
+  it("isValidProMatch rejects malformed shapes and accepts a well-formed match", () => {
+    expect(isValidProMatch(buildMatch())).toBe(true);
+    expect(isValidProMatch(null)).toBe(false);
+    expect(isValidProMatch("string")).toBe(false);
+    expect(isValidProMatch({ ...buildMatch(), events: "not-an-array" })).toBe(false);
+    expect(isValidProMatch({ ...buildMatch(), restoreContext: undefined })).toBe(false);
+  });
+});
 
 describe("saveProTaggerMatch — shared Match Stats archive, no eviction", () => {
   it("keeps all 12 matches saved through this path, with no cap", () => {

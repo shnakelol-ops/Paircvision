@@ -169,6 +169,19 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
   const numberAliasMap = buildPlayerNumberAliasMap(valid, rosters);
   const rosterLookup = buildPlayerRosterLookup(rosters);
 
+  // P0-6: a player's FOR/OPP bucket must come from squad membership, never
+  // from an arbitrary event's raw teamSide — some capture families (restart
+  // WON/CONCEDED, turnover LOST — see resolveRestartOutcome in
+  // pro-tagger-adapter.ts) deliberately encode teamSide as restart/turnover
+  // *ownership*, not the acting player's own team, so the first event a
+  // player happens to appear on can carry a teamSide that doesn't match
+  // which squad they're actually on. Roster membership is unambiguous and
+  // stable regardless of which event happens to be processed first.
+  const rosterTeamSideByKey = new Map<string, "FOR" | "OPP">();
+  for (const roster of rosters) {
+    for (const p of roster.players) rosterTeamSideByKey.set(p.id, roster.teamSide);
+  }
+
   // Player keying: an explicit playerId always wins; a number-only event
   // resolves through the alias map so it lands on the same row as any
   // playerId-tagged event OR roster entry for the same team+number — a
@@ -193,7 +206,11 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
       const eventNumber = typeof e.playerNumber === "number" ? e.playerNumber : null;
       p = {
         key,
-        teamSide: e.teamSide,
+        // Roster membership is authoritative when known for this key; only
+        // fall back to the event's own raw teamSide when no roster claims
+        // this player (e.g. no squad uploaded for either side) — same
+        // fallback shape as the name/number backfill just below.
+        teamSide: rosterTeamSideByKey.get(key) ?? e.teamSide,
         name: roster?.name ?? eventName,
         number: roster?.number ?? eventNumber,
         displayName: "", // resolved once, after all backfills, in the derived-metrics pass below

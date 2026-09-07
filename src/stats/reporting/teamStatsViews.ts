@@ -87,7 +87,14 @@ export function viewMirroredCountsForTeam<T extends ChainableEvent>(
 
 // ─── Shooting conversion ──────────────────────────────────────────────────────
 
-const SHOT_KINDS: MatchEventKind[] = [
+// The one canonical shot-attempt definition for Event Stats — every full
+// shot-attempt outcome (not just raw kind "SHOT", which on its own only
+// covers blocked/saved-type attempts). Quick Review Page 1 (via
+// viewShootingConversion below) and Page 3 (quickReviewSegmentBreakdown.ts's
+// SHOT_ATTEMPT_KINDS, kept identical to this set) both already use this
+// definition; the Counts Sheet ("Page 2") row previously used raw kind
+// "SHOT" alone, producing a different total for the same label — see P0-3.
+export const SHOT_KINDS: MatchEventKind[] = [
   "SHOT", "GOAL", "POINT", "WIDE", "TWO_POINTER",
   "FORTY_FIVE_TWO_POINT", "FREE_MISSED", "FREE_SCORED",
 ];

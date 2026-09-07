@@ -36,6 +36,30 @@ function deriveStageLabel(
   return matchState === "HALF_TIME" ? "Half Time" : "Full Time";
 }
 
+// P0-2: a Review player correction (saveProEdit) must resolve the edited
+// jersey number against the event's own team roster and write the matching
+// stable player id — never leave the pre-edit playerId in place once the
+// name/number it pointed at has changed underneath it, since that id also
+// drives discipline lockout, Player Influence, and corrected-event display
+// elsewhere. Team ownership of the event is fixed (Review has no team-side
+// edit UI), so only the roster of the event's existing team is searched —
+// live squad state, since that's the same source the live picker (see
+// ProTaggerPlayerPicker.tap) resolves playerId from, and it reflects
+// substitutions the original squad snapshot doesn't. Jersey number is the
+// stable, structured field the edit form exposes (unlike the free-text name
+// field), so it — not display text — is what's matched against the roster;
+// when no roster entry has that number, the id is cleared rather than left
+// stale.
+export function resolveRosterPlayerId(
+  match: Pick<ProTaggerSavedMatch, "homeSquadLiveState" | "awaySquadLiveState">,
+  eventTeamSide: "FOR" | "OPP",
+  editedPlayerNumber: number | undefined,
+): string | undefined {
+  if (editedPlayerNumber == null) return undefined;
+  const roster = eventTeamSide === "FOR" ? match.homeSquadLiveState : match.awaySquadLiveState;
+  return roster.find((p) => p.number === editedPlayerNumber)?.id;
+}
+
 const SPORT_LABEL: Record<string, string> = {
   gaelic:          "Gaelic Football",
   ladies_football: "Ladies Football",
@@ -357,6 +381,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
   const saveProEdit = () => {
     if (!selectedMapEventId) return;
     const num = parseInt(proEditPlayerNumber, 10);
+    const resolvedNumber = Number.isFinite(num) && num > 0 ? num : undefined;
     const updatedEvents = match.events.map((e) =>
       e.id === selectedMapEventId
         ? {
@@ -364,7 +389,11 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
             kind:         proEditKind,
             type:         proEditKind,
             playerName:   proEditPlayerName.trim() || undefined,
-            playerNumber: Number.isFinite(num) && num > 0 ? num : undefined,
+            playerNumber: resolvedNumber,
+            // Resolve against the roster rather than carrying over the
+            // pre-edit id — see resolveRosterPlayerId. Cleared (not stale)
+            // when the edited number matches no roster entry.
+            playerId:     resolveRosterPlayerId(match, e.teamSide, resolvedNumber),
           }
         : e,
     );
