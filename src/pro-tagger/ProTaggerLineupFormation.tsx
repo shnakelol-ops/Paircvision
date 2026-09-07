@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { ProTaggerLineupJerseyTile } from "./ProTaggerLineupJerseyTile";
-import { ProTaggerLineupPitchBackground } from "./ProTaggerLineupPitchBackground";
-import { LINEUP_FORMATION_POSITIONS, LINEUP_PITCH_VIEWBOX } from "./pro-tagger-lineup-geometry";
+import { ProTaggerLineupPitchBackground, LINEUP_PITCH_PORTRAIT_VIEWBOX } from "./ProTaggerLineupPitchBackground";
+import { LINEUP_FORMATION_POSITIONS } from "./pro-tagger-lineup-geometry";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
 
 interface Props {
@@ -36,12 +36,13 @@ export function deriveLineupSlots(players: readonly ProTaggerSquadPlayer[]): Lin
 }
 
 // Read-only visual team-sheet summary for Squad Setup (Option A from the
-// Event Stats visual lineup audit), now rendered over a decorative static
-// pitch background (ProTaggerLineupPitchBackground) instead of a plain grid.
-// Presentation only: no tap handlers, no drag/reassignment, no formation
-// editing, and the pitch itself carries no coordinate/orientation semantics
-// — see that component's header. Player names are still edited exclusively
-// through ProTaggerSquadScreen's existing "Edit Player Names" list — this
+// Event Stats visual lineup audit), rendered over a static reproduction of
+// the real Event Stats tagging pitch (ProTaggerLineupPitchBackground —
+// same marking data as ProTaggerPitchView.tsx, zero import of that
+// component or its coordinate-capture logic). Presentation only: no tap
+// handlers, no drag/reassignment, no formation editing — see that
+// component's header. Player names are still edited exclusively through
+// ProTaggerSquadScreen's existing "Edit Player Names" list — this
 // component never writes to squad state.
 //
 // Formation slot positions come from pro-tagger-lineup-geometry.ts (plain
@@ -56,7 +57,7 @@ export function ProTaggerLineupFormation({ players, primary, secondary }: Props)
       <div
         style={{
           ...S.pitchBox,
-          aspectRatio: `${LINEUP_PITCH_VIEWBOX.w} / ${LINEUP_PITCH_VIEWBOX.h}`,
+          aspectRatio: `${LINEUP_PITCH_PORTRAIT_VIEWBOX.w} / ${LINEUP_PITCH_PORTRAIT_VIEWBOX.h}`,
         }}
       >
         <ProTaggerLineupPitchBackground />
@@ -68,7 +69,7 @@ export function ProTaggerLineupFormation({ players, primary, secondary }: Props)
               key={p?.id ?? `empty-${slot}`}
               style={{ ...S.slot, left: `${pos.x}%`, top: `${pos.y}%` }}
             >
-              <ProTaggerLineupJerseyTile player={p} primary={primary} secondary={secondary} size={30} />
+              <ProTaggerLineupJerseyTile player={p} primary={primary} secondary={secondary} size={40} />
             </div>
           );
         })}
@@ -79,7 +80,7 @@ export function ProTaggerLineupFormation({ players, primary, secondary }: Props)
           <div style={S.subsDivider}>Substitutes</div>
           <div style={S.subsRow}>
             {subs.map((p) => (
-              <ProTaggerLineupJerseyTile key={p.id} player={p} primary={primary} secondary={secondary} size={28} />
+              <ProTaggerLineupJerseyTile key={p.id} player={p} primary={primary} secondary={secondary} size={34} />
             ))}
           </div>
         </>

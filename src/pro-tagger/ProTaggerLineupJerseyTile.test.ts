@@ -1,17 +1,16 @@
-// Visual correction regression coverage: jersey-number legibility. The
-// number badge must scale with the jersey (never a fixed tiny size) and
-// stay large enough to read a 2-digit number at every size this tile is
-// actually rendered at (34 for starters, 28-30 for substitutes).
+// Visual correction regression coverage: the previous black circular
+// number-badge treatment read as a Tactical Slate player-token marker, not
+// a team sheet, and made the jersey underneath look faint by comparison.
+// This corrects it: the jersey is the dominant shape (enlarged, not
+// shrunk), and the number is bold, high-contrast text directly on the
+// jersey (white fill + dark outline) — no shape drawn behind it.
 //
 // ProTaggerLineupJerseyTile.tsx has no React rendering harness in this repo
 // (see ProTaggerLiveScreen.clockLifecycle.test.ts for the same constraint),
-// so this suite exercises the exact badge/font sizing formula by reading it
-// out of the component's own source — the same approach
+// so this suite exercises the exact font-sizing formula by reading it out
+// of the component's own source — the same approach
 // QuickReviewPage1.wording.test.ts and ProTaggerSquadScreen.nameEditorToggle.test.ts
-// use for presentational checks with no harness available — plus a plain
-// re-implementation of the formula to assert numerically it never shrinks
-// below a legible floor for any of the sizes actually used in production
-// (ProTaggerLineupFormation.tsx passes 30 for starters, 28 for subs).
+// use for presentational checks with no harness available.
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -19,60 +18,62 @@ import { fileURLToPath } from "node:url";
 const source = readFileSync(fileURLToPath(new URL("./ProTaggerLineupJerseyTile.tsx", import.meta.url)), "utf8");
 
 // Mirrors the exact formula in ProTaggerLineupJerseyTile.tsx.
-function badgeSize(size: number): number {
-  return Math.max(18, Math.round(size * 0.68));
-}
 function numberFontSize(size: number): number {
-  return Math.max(10, Math.round(size * 0.38));
+  return Math.max(15, Math.round(size * 0.5));
 }
 
-describe("ProTaggerLineupJerseyTile — number legibility (visual correction)", () => {
-  it("renders the number inside a solid, high-contrast badge rather than bare text over the jersey", () => {
-    expect(source).toContain("numberBadge");
-    expect(source).toMatch(/background:\s*["']rgba\(5, 12, 20, 0\.85\)["']/);
+describe("ProTaggerLineupJerseyTile — no black circular badge (visual correction)", () => {
+  it("no longer renders a solid circular badge shape behind the number", () => {
+    expect(source).not.toContain("numberBadge");
+    expect(source).not.toMatch(/borderRadius:\s*["']50%["']/);
+    expect(source).not.toMatch(/rgba\(5,\s*12,\s*20/); // the old badge fill colour
   });
 
-  it("the badge is bold and white for maximum contrast against any jersey colour", () => {
-    expect(source).toMatch(/numberText[\s\S]*?fontWeight:\s*800/);
+  it("the number is bold, white, high-contrast text with an outline — not a filled shape", () => {
+    expect(source).toMatch(/numberText[\s\S]*?fontWeight:\s*900/);
     expect(source).toMatch(/numberText[\s\S]*?color:\s*["']#ffffff["']/);
+    expect(source).toMatch(/WebkitTextStroke/);
   });
 
-  const sizesUsedInProduction = [30, 28]; // ProTaggerLineupFormation.tsx: starters=30, subs=28
+  it("the number is overlaid directly on the jersey (absolutely positioned inside jerseyWrap), not inside a separate wrapper element", () => {
+    expect(source).toMatch(/<span style=\{\{ \.\.\.S\.numberText/);
+  });
+});
+
+describe("ProTaggerLineupJerseyTile — jersey is the dominant shape (visual correction)", () => {
+  const sizesUsedInProduction = [40, 34]; // ProTaggerLineupFormation.tsx: starters=40, subs=34
   const numbersToCheck = [1, 8, 10, 11, 15, 27];
 
-  it.each(sizesUsedInProduction)("at jersey size %ipx, the badge stays legible (>=18px) and the font floor holds (>=10px)", (size) => {
-    expect(badgeSize(size)).toBeGreaterThanOrEqual(18);
-    expect(numberFontSize(size)).toBeGreaterThanOrEqual(10);
-    // The badge must be comfortably wider than the font size so a 2-digit
-    // number (widest case: two glyphs side by side) has room to sit inside
-    // the circle without touching its edge.
-    expect(badgeSize(size)).toBeGreaterThan(numberFontSize(size) * 1.3);
+  it("the jersey was enlarged, not shrunk, to make room for the number (default size and production sizes both grew from the badge-era 34/30/28)", () => {
+    const defaultMatch = source.match(/size = (\d+)/);
+    expect(defaultMatch).not.toBeNull();
+    expect(Number(defaultMatch![1])).toBeGreaterThanOrEqual(38);
   });
 
-  it.each(numbersToCheck)("number %i renders as plain digits with no truncation or wrapping styling applied", (num) => {
-    // The badge/text styling is number-agnostic (no per-digit-count special
-    // casing) — this documents that 1-digit and 2-digit numbers (including
-    // the two-digit outlier 27) go through the exact same, single code path.
+  it.each(sizesUsedInProduction)("at jersey size %ipx, the number font floor holds (>=15px) so it reads at normal phone distance", (size) => {
+    expect(numberFontSize(size)).toBeGreaterThanOrEqual(15);
+  });
+
+  it.each(numbersToCheck)("number %i renders as plain digits through the same code path, no per-digit-count special casing", (num) => {
     const digits = String(num);
     expect(digits.length === 1 || digits.length === 2).toBe(true);
     expect(source).not.toMatch(/digits?\.length/i);
   });
 
-  it("the badge scales up, not down, as the jersey grows — larger starters tiles get a larger badge than smaller subs tiles", () => {
-    expect(badgeSize(34)).toBeGreaterThan(badgeSize(28));
-    expect(numberFontSize(34)).toBeGreaterThan(numberFontSize(28));
+  it("the number font scales up, not down, as the jersey grows — larger starters tiles get larger numbers than smaller subs tiles", () => {
+    expect(numberFontSize(40)).toBeGreaterThan(numberFontSize(34));
   });
 });
 
 describe("ProTaggerLineupJerseyTile — name label width (visual correction)", () => {
-  it("the name label's max width was widened well beyond the old cramped 48px", () => {
+  it("the name label's max width stays wide enough for ordinary GAA names before ellipsis", () => {
     const match = source.match(/name:\s*\{[\s\S]*?maxWidth:\s*(\d+)/);
     expect(match).not.toBeNull();
     const maxWidth = Number(match![1]);
     expect(maxWidth).toBeGreaterThanOrEqual(64);
   });
 
-  it("the tile's own width was widened to match, so the wider name isn't clipped by its parent", () => {
+  it("the tile's own width matches, so the name isn't clipped by its parent", () => {
     const match = source.match(/tile:\s*\{[\s\S]*?width:\s*(\d+)/);
     expect(match).not.toBeNull();
     const tileWidth = Number(match![1]);
