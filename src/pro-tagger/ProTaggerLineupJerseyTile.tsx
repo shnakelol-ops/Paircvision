@@ -73,11 +73,17 @@ const S: Record<string, CSSProperties> = {
     width: 76,
     flexShrink: 0,
   },
+  // A soft neutral halo behind the jersey silhouette — separates it from
+  // the pitch behind it (the pitch's grass/line colours vary in intensity
+  // under the jersey) without drawing any shape, badge, or card. This is
+  // the simplest contrast fix: one fixed stacked drop-shadow, the same for
+  // every team colour, not a per-shirt-colour computed treatment.
   jerseyWrap: {
     position: "relative",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    filter: "drop-shadow(0 0 2px rgba(4, 8, 14, 0.55)) drop-shadow(0 1px 3px rgba(4, 8, 14, 0.5))",
   },
   // Bold white number with a dark outline (WebkitTextStroke, with a
   // multi-directional text-shadow fallback for browsers without stroke

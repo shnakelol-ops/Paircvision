@@ -120,6 +120,30 @@ describe("ProTaggerLineupFormation — jersey shrunk ~20-25%, number size held (
   });
 });
 
+// MATCHDAY PITCH final visual polish pass: the jersey needs to read clearly
+// against the pitch behind it. The chosen fix is a neutral drop-shadow halo
+// on the jersey silhouette itself — not a badge, not a card, not a
+// per-colour luminance calculation — so this only asserts that one simple
+// treatment is present and that no shape/box/luminance logic crept back in.
+describe("ProTaggerLineupJerseyTile — MATCHDAY PITCH polish: neutral contrast halo (no badge/card)", () => {
+  it("applies a neutral drop-shadow halo behind the jersey silhouette", () => {
+    expect(tileSource).toMatch(/jerseyWrap[\s\S]*?filter:\s*["']drop-shadow\(/);
+  });
+
+  it("still renders no badge, card, or background shape behind the jersey (only a shadow filter, not a filled shape)", () => {
+    expect(tileSource).not.toContain("numberBadge");
+    expect(tileSource).not.toMatch(/jerseyWrap[\s\S]*?background(?:Color)?:/);
+    expect(tileSource).not.toMatch(/jerseyWrap[\s\S]*?boxShadow/);
+    expect(tileSource).not.toMatch(/jerseyWrap[\s\S]*?borderRadius/);
+  });
+
+  it("does not introduce a luminance/colour-contrast calculation — the halo is one fixed neutral treatment, not computed per team colour", () => {
+    expect(tileSource).not.toMatch(/luminance/i);
+    expect(tileSource).not.toMatch(/getContrast/i);
+    expect(tileSource).not.toMatch(/relativeLuminance/i);
+  });
+});
+
 describe("ProTaggerLineupJerseyTile — name label unchanged by the tuning pass", () => {
   it("the name label's font size and max width are untouched (still wide enough for ordinary GAA names before ellipsis)", () => {
     const fontMatch = tileSource.match(/name:\s*\{[\s\S]*?fontSize:\s*(\d+)/);

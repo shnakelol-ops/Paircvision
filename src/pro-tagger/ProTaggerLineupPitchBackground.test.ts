@@ -57,3 +57,29 @@ describe("ProTaggerLineupPitchBackground — reproduces the real tagging pitch (
     expect(source).toMatch(/export function ProTaggerLineupPitchBackground\(\)/);
   });
 });
+
+// MATCHDAY PITCH final visual polish pass: the pitch is slightly quietened
+// (fill/line opacity only) so the jerseys read as the focal point, with no
+// change to marking geometry, colours, or the real pitch-config data.
+describe("ProTaggerLineupPitchBackground — MATCHDAY PITCH polish: quietened, not redrawn", () => {
+  it("reduces the base grass fill's opacity and the markings' opacity rather than leaving both fully opaque", () => {
+    expect(source).toMatch(/fillOpacity=\{[\d.]+\}/);
+    const fillOpacityMatch = source.match(/fillOpacity=\{([\d.]+)\}/);
+    expect(fillOpacityMatch).not.toBeNull();
+    expect(Number(fillOpacityMatch![1])).toBeLessThan(1);
+    expect(Number(fillOpacityMatch![1])).toBeGreaterThan(0.5);
+
+    const groupOpacityMatch = source.match(/PORTRAIT_MARKINGS_TRANSFORM\}\s*opacity=\{([\d.]+)\}/);
+    expect(groupOpacityMatch).not.toBeNull();
+    expect(Number(groupOpacityMatch![1])).toBeLessThan(1);
+    expect(Number(groupOpacityMatch![1])).toBeGreaterThan(0.5);
+  });
+
+  it("still draws every real marking with no geometry/colour override — only an opacity change on the wrapping group", () => {
+    expect(source).toMatch(/GAELIC_PITCH_CONFIG\.markings\.map\(renderPitchMarking\)/);
+  });
+
+  it("the base grass colour itself is unchanged (still the real pitch green, only its opacity is reduced)", () => {
+    expect(source).toMatch(/fill="#166534"/);
+  });
+});

@@ -152,8 +152,11 @@ export function ProTaggerLineupPitchBackground() {
       style={S.svg}
       aria-hidden="true"
     >
-      <rect x={0} y={0} width={w} height={h} fill="#166534" />
-      <g transform={PORTRAIT_MARKINGS_TRANSFORM}>
+      {/* Slightly quietened vs. the live tagging pitch (fill/line opacity
+          only, no marking geometry change) — the jerseys are the focal
+          point here, not the pitch itself. */}
+      <rect x={0} y={0} width={w} height={h} fill="#166534" fillOpacity={0.9} />
+      <g transform={PORTRAIT_MARKINGS_TRANSFORM} opacity={0.82}>
         {GAELIC_PITCH_CONFIG.markings.map(renderPitchMarking)}
       </g>
     </svg>

@@ -11,8 +11,12 @@
 // ProTaggerLiveScreen.clockLifecycle.test.ts for the same constraint), so
 // this suite exercises the exported pure derivation directly.
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { deriveLineupSlots } from "./ProTaggerLineupFormation";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
+
+const formationSource = readFileSync(fileURLToPath(new URL("./ProTaggerLineupFormation.tsx", import.meta.url)), "utf8");
 
 function player(number: number, name = "", overrides: Partial<ProTaggerSquadPlayer> = {}): ProTaggerSquadPlayer {
   return { id: `p-${number}`, number, name, ...overrides };
@@ -88,5 +92,30 @@ describe("deriveLineupSlots (Event Stats visual lineup)", () => {
     const { starters } = deriveLineupSlots(roster);
     expect(starters[0]!.name).toBe("");
     expect(starters[1]!.name).toBe("Shane");
+  });
+});
+
+// MATCHDAY PITCH final visual polish pass: a restrained "Starting XV" label
+// above the pitch (mirroring the existing "Substitutes" label) and improved
+// visual separation for the Substitutes section. No React rendering harness
+// is available (see the header comment above), so this is a source-level
+// check of the same kind used for the earlier visual-correction passes.
+describe("ProTaggerLineupFormation — MATCHDAY PITCH polish: section labels & subs separation", () => {
+  it("renders a 'Starting XV' label above the pitch, using the shared section-label style", () => {
+    expect(formationSource).toMatch(/Starting XV/);
+    expect(formationSource).toMatch(/<div style=\{S\.sectionLabel\}>Starting XV<\/div>/);
+  });
+
+  it("the Substitutes label is unchanged in wording and still appears above the subs row", () => {
+    expect(formationSource).toMatch(/<div style=\{S\.subsDivider\}>Substitutes<\/div>/);
+  });
+
+  it("the Substitutes section has its own visual separation (a rule/border, not just the caption text)", () => {
+    expect(formationSource).toMatch(/subsSection[\s\S]*?borderTop/);
+  });
+
+  it("does not introduce a card, box-shadow, or background treatment around the pitch or subs (presentation stays restrained)", () => {
+    expect(formationSource).not.toMatch(/boxShadow/);
+    expect(formationSource).not.toMatch(/subsSection[\s\S]*?background/);
   });
 });

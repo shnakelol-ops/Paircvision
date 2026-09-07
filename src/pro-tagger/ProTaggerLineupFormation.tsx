@@ -67,6 +67,7 @@ export function ProTaggerLineupFormation({ players, primary, secondary }: Props)
 
   return (
     <div style={S.wrap}>
+      <div style={S.sectionLabel}>Starting XV</div>
       <div
         style={{
           ...S.pitchBox,
@@ -92,7 +93,7 @@ export function ProTaggerLineupFormation({ players, primary, secondary }: Props)
       </div>
 
       {subs.length > 0 && (
-        <>
+        <div style={S.subsSection}>
           <div style={S.subsDivider}>Substitutes</div>
           <div style={S.subsRow}>
             {subs.map((p) => (
@@ -102,7 +103,7 @@ export function ProTaggerLineupFormation({ players, primary, secondary }: Props)
               />
             ))}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -130,6 +131,30 @@ const S: Record<string, CSSProperties> = {
     position: "absolute",
     transform: "translate(-50%, -50%)",
   },
+  // Shared label treatment for both "Starting XV" (above the pitch) and
+  // "Substitutes" (above the subs row) — one restrained, uppercase caption
+  // style used consistently for both section headers.
+  sectionLabel: {
+    alignSelf: "flex-start",
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase" as const,
+    color: "#7a95ad",
+  },
+  // Subtle separation from the pitch above: a hairline rule plus its own
+  // top padding, rather than relying on the "Substitutes" caption alone to
+  // read as a section break.
+  subsSection: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 8,
+    width: "100%",
+    marginTop: 4,
+    paddingTop: 10,
+    borderTop: "1px solid #17324a",
+  },
   subsDivider: {
     alignSelf: "flex-start",
     fontSize: 10,
@@ -137,7 +162,6 @@ const S: Record<string, CSSProperties> = {
     letterSpacing: "0.08em",
     textTransform: "uppercase" as const,
     color: "#7a95ad",
-    marginTop: 4,
   },
   subsRow: {
     display: "flex",
