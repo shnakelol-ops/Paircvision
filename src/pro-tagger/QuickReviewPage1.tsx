@@ -80,13 +80,13 @@ export function QuickReviewPage1({ model, homeColour, awayColour }: QuickReviewP
         <div style={S.bigValue}>{model.restarts.theirs.text}</div>
 
         <ConsequenceRow
-          label="Restart won"
+          label="Our restart won"
           accent={CLR.cyan}
           shots={model.restarts.won.shots}
           scores={model.restarts.won.scores}
         />
         <ConsequenceRow
-          label="Restart lost"
+          label="Our restart lost"
           accent={CLR.pink}
           shots={model.restarts.lost.shots}
           scores={model.restarts.lost.scores}
@@ -98,7 +98,7 @@ export function QuickReviewPage1({ model, homeColour, awayColour }: QuickReviewP
       <section style={S.block}>
         <div style={{ ...S.blockTitle, color: CLR.text }}>TURNOVERS</div>
 
-        <div style={S.subTitle}>Won</div>
+        <div style={S.subTitle}>Our turnovers won</div>
         <div style={S.bigValue}>{model.turnovers.won.count}</div>
         <ConsequenceRow
           label=""
@@ -108,7 +108,7 @@ export function QuickReviewPage1({ model, homeColour, awayColour }: QuickReviewP
           compact
         />
 
-        <div style={S.subTitle}>Lost</div>
+        <div style={S.subTitle}>Our turnovers lost</div>
         <div style={S.bigValue}>{model.turnovers.lost.count}</div>
         <ConsequenceRow
           label=""

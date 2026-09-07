@@ -5,23 +5,9 @@ import {
   readProTaggerMatches,
   resolveImportIdCollision,
   saveProTaggerMatchFull,
+  isValidProMatch,
 } from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
-
-// Moved from ProTaggerReviewScreen.tsx as-is — validation logic unchanged.
-function isValidProMatch(obj: unknown): obj is ProTaggerSavedMatch {
-  if (typeof obj !== "object" || obj === null) return false;
-  const r = obj as Record<string, unknown>;
-  return (
-    typeof r["id"] === "string" &&
-    typeof r["createdAt"] === "number" &&
-    typeof r["homeTeamName"] === "string" &&
-    typeof r["awayTeamName"] === "string" &&
-    Array.isArray(r["events"]) &&
-    typeof r["restoreContext"] === "object" &&
-    r["restoreContext"] !== null
-  );
-}
 
 type OptionsView = "menu" | "import" | "about";
 

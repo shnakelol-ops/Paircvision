@@ -14,7 +14,9 @@ import { readProTaggerMatches, saveProTaggerMatchFull } from "./pro-tagger-stora
 
 type AppPhase = "home" | "setup" | "squads" | "live" | "saved-matches" | "review" | "options";
 
-function savedMatchToSession(m: ProTaggerSavedMatch): ProTaggerSession {
+// Exported only for ProTaggerPage.resumeTargets.test.ts's MatchTargets
+// round-trip coverage (P1-A); not part of this module's public API otherwise.
+export function savedMatchToSession(m: ProTaggerSavedMatch): ProTaggerSession {
   return {
     id:                  m.id,
     sport:               m.sport,
@@ -27,6 +29,11 @@ function savedMatchToSession(m: ProTaggerSavedMatch): ProTaggerSession {
     createdAt:           m.createdAt,
     homeSquad:           m.homeSquad,
     awaySquad:           m.awaySquad,
+    // P1-A: every subsequent save (autosave, manual Save, Save & Finish) writes
+    // session.targets back out (see buildSaveRecords, ProTaggerLiveScreen.tsx) —
+    // omitting it here silently dropped MatchTargets the moment a match was
+    // reopened (resume, or the saved-matches list).
+    targets:             m.targets,
   };
 }
 
