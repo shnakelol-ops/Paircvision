@@ -62,14 +62,12 @@ describe("ProTaggerPlayerPicker — reuses the approved Squad Setup jersey tile 
 });
 
 describe("ProTaggerPlayerPicker — jersey/number sizing matches Squad Setup's approved values", () => {
-  it("formation (starter) tiles use the approved 26px jersey / 13px number, same as ProTaggerLineupFormation.tsx", () => {
+  it("formation (starter) tiles use the approved 26px jersey, same as ProTaggerLineupFormation.tsx", () => {
     expect(source).toMatch(/FORMATION_JERSEY_SIZE = 26/);
-    expect(source).toMatch(/FORMATION_NUMBER_FONT_SIZE = 13/);
   });
 
-  it("bench tiles use the approved 22px jersey / 13px number, same as Squad Setup's subs", () => {
+  it("bench tiles use the approved 22px jersey, same as Squad Setup's subs", () => {
     expect(source).toMatch(/BENCH_JERSEY_SIZE = 22/);
-    expect(source).toMatch(/BENCH_NUMBER_FONT_SIZE = 13/);
   });
 
   it("formation tiles pass the formation size constants, bench tiles pass the bench size constants — not mixed up", () => {

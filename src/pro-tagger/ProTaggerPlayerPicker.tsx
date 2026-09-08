@@ -41,13 +41,20 @@ const FORMATION_ROWS: readonly (readonly number[])[] = [
 ];
 
 // Visual language alignment with the approved Squad Setup lineup tile
-// (ProTaggerLineupFormation.tsx) — same jersey/number sizes, so the live
-// picker and pre-match team sheet read as one consistent PáircVision
-// player marker rather than two different systems.
+// (ProTaggerLineupFormation.tsx) — same jersey sizes, so the live picker
+// and pre-match team sheet read as one consistent PáircVision player
+// marker rather than two different systems.
 const FORMATION_JERSEY_SIZE = 26;
-const FORMATION_NUMBER_FONT_SIZE = 13;
 const BENCH_JERSEY_SIZE = 22;
-const BENCH_NUMBER_FONT_SIZE = 13;
+// Number legibility pass: real-Android screenshots showed double-digit
+// numbers (10-15) reading soft/blurry at Squad Setup's 13px — the default
+// outline's stacked shadows are proportionally heavy against a glyph this
+// small. Bumped 1px (13 -> 14, the smallest useful step) and paired with
+// the jersey tile's lighter numberCrisp outline (below) rather than a
+// bigger jump. Squad Setup itself is untouched — it still passes 13 with
+// no numberCrisp, so this is picker-local only.
+const FORMATION_NUMBER_FONT_SIZE = 14;
+const BENCH_NUMBER_FONT_SIZE = 14;
 
 export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, onSelect, disciplineStatus }: Props) {
   const colour = teamColour ?? "#238636";
@@ -88,7 +95,7 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
       <>
         <ProTaggerLineupJerseyTile
           player={tilePlayer} primary={colour} secondary={secondaryColour ?? "#ffffff"}
-          size={size} numberFontSize={numberFontSize}
+          size={size} numberFontSize={numberFontSize} numberCrisp
         />
         {status === "RED" && <span style={S.statusRed}>RED</span>}
         {status === "SIN_BIN" && <span style={S.statusSinBin}>SIN BIN</span>}

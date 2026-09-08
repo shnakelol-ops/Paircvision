@@ -99,11 +99,9 @@ describe("ProTaggerPlayerPicker — formation coordinates/order/hit-targets are 
     expect(source).toMatch(/\[13, 14, 15\],/);
   });
 
-  it("jersey/number sizing constants are unchanged (26/13 starters, 22/13 bench)", () => {
+  it("jersey sizing constants are unchanged by adding the pitch (26 starters, 22 bench) — number size is covered by the dedicated legibility test suite", () => {
     expect(source).toMatch(/FORMATION_JERSEY_SIZE = 26/);
-    expect(source).toMatch(/FORMATION_NUMBER_FONT_SIZE = 13/);
     expect(source).toMatch(/BENCH_JERSEY_SIZE = 22/);
-    expect(source).toMatch(/BENCH_NUMBER_FONT_SIZE = 13/);
   });
 
   it("player hit-area (playerBtn/subBtn) dimensions are unchanged by this pass", () => {
