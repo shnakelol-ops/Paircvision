@@ -119,9 +119,7 @@ describe("ProTaggerLineupFormation — final tuning: jersey shrunk to an indicat
     expect(starterJerseySize).toBeLessThan(PRIOR_STARTER_SIZE);
   });
 
-  it("the starter number shrank to the 14-16px range, clearly smaller than the prior 20px", () => {
-    expect(starterNumberFontSize).toBeGreaterThanOrEqual(14);
-    expect(starterNumberFontSize).toBeLessThanOrEqual(16);
+  it("the starter number shrank below the prior 20px", () => {
     expect(starterNumberFontSize).toBeLessThan(PRIOR_STARTER_NUMBER);
   });
 
@@ -185,5 +183,60 @@ describe("ProTaggerLineupJerseyTile — final tuning: compact name plate (no car
     expect(tileSource).not.toMatch(/Player \$\{/);
     expect(tileSource).not.toMatch(/["']—["']/); // no placeholder dash
     expect(tileSource).toMatch(/const name = player\.name\.trim\(\)/);
+  });
+});
+
+// Final number positioning tune: the approved jersey size is untouched, but
+// the number is nudged a little smaller and moved down off the
+// collar/shoulders into the torso — a single shared rule (top offset on
+// S.numberText) applied to every jersey size and every number, one digit or
+// two, rather than per-number special-casing.
+describe("ProTaggerLineupJerseyTile — final number positioning tune (size + vertical centring)", () => {
+  const starterNumberFontSize = readConst(formationSource, "STARTER_NUMBER_FONT_SIZE");
+  const starterJerseySize = readConst(formationSource, "STARTER_JERSEY_SIZE");
+
+  it("the jersey size is untouched by this pass — still 26px", () => {
+    expect(starterJerseySize).toBe(26);
+  });
+
+  it("the starter number shrank a modest amount further (15 -> 13), not a large jump", () => {
+    expect(starterNumberFontSize).toBe(13);
+  });
+
+  it("the number's top offset was moved down from its prior 44% so it sits in the shirt body, not the collar/shoulders", () => {
+    const topMatch = tileSource.match(/numberText:\s*\{[\s\S]*?top:\s*["'](\d+)%["']/);
+    expect(topMatch).not.toBeNull();
+    const topPercent = Number(topMatch![1]);
+    expect(topPercent).toBeGreaterThan(44);
+    // Still comfortably short of the hem — centred in the body, not at the
+    // very bottom of the jersey.
+    expect(topPercent).toBeLessThanOrEqual(65);
+  });
+
+  it("uses one shared top offset for every number — no per-digit-count or per-value special casing", () => {
+    expect(tileSource).not.toMatch(/digits?\.length/i);
+    expect(tileSource).not.toMatch(/player\.number\s*[<>=]/);
+  });
+
+  it("the number stays horizontally centred (unchanged left/transform) — only the vertical offset moved", () => {
+    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?left:\s*["']50%["']/);
+    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?transform:\s*["']translate\(-50%, -50%\)["']/);
+  });
+
+  it("the outline was thinned alongside the smaller number, but contrast is still present (not removed entirely)", () => {
+    expect(tileSource).toMatch(/WebkitTextStroke:\s*["']0\.75px/);
+    expect(tileSource).toMatch(/WebkitTextStroke/); // still present, not deleted
+    expect(tileSource).toMatch(/textShadow/); // fallback contrast still present
+  });
+
+  it("subs' own number size is untouched by this pass (not called out as oversized)", () => {
+    const subNumberFontSize = readConst(formationSource, "SUB_NUMBER_FONT_SIZE");
+    expect(subNumberFontSize).toBe(13);
+  });
+
+  it("name plate, pitch, and formation code paths are all still present — this pass did not remove or restructure them", () => {
+    expect(tileSource).toMatch(/background:\s*["']rgba\(8, 20, 34, 0\.55\)["']/);
+    expect(formationSource).toMatch(/Starting XV/);
+    expect(formationSource).toMatch(/LINEUP_FORMATION_POSITIONS/);
   });
 });

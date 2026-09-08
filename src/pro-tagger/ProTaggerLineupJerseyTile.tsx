@@ -90,17 +90,20 @@ const S: Record<string, CSSProperties> = {
   // support) — no shape behind it. This is what keeps the number
   // high-contrast against any user-chosen jersey primary colour without
   // covering the jersey itself the way a solid badge did.
-  // Outline thinned from the prior 1.5px stroke — at the smaller ~15px
-  // number size a heavy outline started to read as a solid shape rather
-  // than text, overpowering the (now much smaller) jersey underneath it.
+  // Outline thinned again (1px -> 0.75px) alongside the smaller ~13px
+  // number size — a heavy outline started to read as a solid shape rather
+  // than text at this size, overpowering the jersey underneath it.
+  // top moved down from 44% to 56% (of the jersey's own rendered height) to
+  // pull the number off the collar/shoulders and into the torso — the same
+  // one rule for every jersey size and every number, one or two digits.
   numberText: {
     position: "absolute",
-    top: "44%",
+    top: "56%",
     left: "50%",
     transform: "translate(-50%, -50%)",
     fontWeight: 900,
     color: "#ffffff",
-    WebkitTextStroke: "1px rgba(6, 10, 16, 0.9)",
+    WebkitTextStroke: "0.75px rgba(6, 10, 16, 0.9)",
     textShadow: [
       "0 1px 1px rgba(0,0,0,0.6)",
       "-1px -1px 0 rgba(6,10,16,0.8)",
