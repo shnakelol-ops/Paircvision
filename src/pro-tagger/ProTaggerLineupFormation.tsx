@@ -125,10 +125,26 @@ const S: Record<string, CSSProperties> = {
     marginBottom: 10,
     borderBottom: "1px solid #17324a",
   },
+  // Whole-pitch viewport-fit pass: on every representative Android portrait
+  // width (360-430px) the surrounding padding leaves more than 320px of
+  // horizontal room, so this box has always rendered at the fixed 320px cap
+  // rather than shrinking to fit — leaving no bottom breathing margin before
+  // Substitutes/Edit Player Names and the Go To Game footer below them, so
+  // the pitch's own lower boundary sat flush against the edge of visible
+  // space. maxWidth 320 -> 300 (~6% reduction) shrinks the whole box as one
+  // unit; height follows automatically via the aspectRatio below (no
+  // transform:scale, no separate height rule), and every formation slot
+  // (percentage-positioned, see LINEUP_FORMATION_POSITIONS below) and the
+  // pitch SVG (which fills this box at 100% width/height) scale with it
+  // without any coordinate or geometry change. Player-tile size is an
+  // absolute prop (STARTER_JERSEY_SIZE etc., unchanged below) and does not
+  // scale with this box — that's expected, not a bug (see the viewport-fit
+  // audit: a modestly smaller pitch with the current, already-approved
+  // player markers is an acceptable and even preferable outcome).
   pitchBox: {
     position: "relative",
     width: "100%",
-    maxWidth: 320,
+    maxWidth: 300,
     borderRadius: 10,
     overflow: "hidden",
     border: "1px solid #17324a",

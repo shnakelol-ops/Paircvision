@@ -119,3 +119,48 @@ describe("ProTaggerLineupFormation — MATCHDAY PITCH polish: section labels & s
     expect(formationSource).not.toMatch(/subsSection[\s\S]*?background/);
   });
 });
+
+// Whole-pitch viewport-fit pass: on 360-430px Android portrait the pitch box
+// always rendered at its fixed maxWidth cap (never fluid-shrunk by the
+// viewport), leaving no bottom breathing margin before the footer. The fix
+// is a single reduction of that cap — everything else (aspect ratio, the
+// pitch SVG that fills the box, and every percentage-positioned formation
+// slot) follows automatically as one coherent unit; no transform:scale, no
+// separate height rule, no coordinate change.
+describe("ProTaggerLineupFormation — whole-pitch viewport-fit: pitch box scaled down as one unit", () => {
+  it("the pitch box's maxWidth was reduced by roughly 5-8% from its prior 320px cap", () => {
+    const maxWidthMatch = formationSource.match(/pitchBox:\s*\{[\s\S]*?maxWidth:\s*(\d+)/);
+    expect(maxWidthMatch).not.toBeNull();
+    const newMaxWidth = Number(maxWidthMatch![1]);
+    const PRIOR_MAX_WIDTH = 320;
+    const reduction = 1 - newMaxWidth / PRIOR_MAX_WIDTH;
+    expect(reduction).toBeGreaterThanOrEqual(0.05);
+    expect(reduction).toBeLessThanOrEqual(0.08);
+  });
+
+  it("stays fluid and centred (width: 100% up to the cap) rather than a fixed non-responsive box", () => {
+    const pitchBoxBlockMatch = formationSource.match(/pitchBox:\s*\{([\s\S]*?)\},/);
+    expect(pitchBoxBlockMatch).not.toBeNull();
+    expect(pitchBoxBlockMatch![1]).toMatch(/width:\s*["']100%["']/);
+  });
+
+  it("does not use transform: scale — the box's own rendered dimensions shrink, not a visual-only transform", () => {
+    expect(formationSource).not.toMatch(/transform:\s*["']scale/);
+  });
+
+  it("still derives height from the pitch's real aspect ratio (LINEUP_PITCH_PORTRAIT_VIEWBOX) rather than a hardcoded height", () => {
+    expect(formationSource).toMatch(/aspectRatio: `\$\{LINEUP_PITCH_PORTRAIT_VIEWBOX\.w\} \/ \$\{LINEUP_PITCH_PORTRAIT_VIEWBOX\.h\}`/);
+    expect(formationSource).not.toMatch(/pitchBox:\s*\{[\s\S]*?height:\s*\d/);
+  });
+
+  it("formation slots are still percentage-positioned (left/top in %), so they follow the smaller box automatically — no coordinate change", () => {
+    expect(formationSource).toMatch(/left: `\$\{pos\.x\}%`, top: `\$\{pos\.y\}%`/);
+  });
+
+  it("player-tile sizing constants are untouched by this pass — the approved player-tile design stays exactly as-is", () => {
+    expect(formationSource).toMatch(/STARTER_JERSEY_SIZE = 26/);
+    expect(formationSource).toMatch(/STARTER_NUMBER_FONT_SIZE = 13/);
+    expect(formationSource).toMatch(/SUB_JERSEY_SIZE = 22/);
+    expect(formationSource).toMatch(/SUB_NUMBER_FONT_SIZE = 13/);
+  });
+});
