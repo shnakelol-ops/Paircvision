@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 import { ProTaggerLineupJerseyTile } from "./ProTaggerLineupJerseyTile";
+import { ProTaggerLineupPitchBackground } from "./ProTaggerLineupPitchBackground";
 import type { DisciplinePlayerStatus } from "./pro-tagger-discipline";
 
 export type SelectedPlayer = {
@@ -106,26 +107,46 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
       {/* Scrollable formation + bench */}
       <div style={S.scroll}>
 
-        {/* Formation rows — slot-based */}
-        {FORMATION_ROWS.map((slots, ri) => (
-          <div key={ri} style={S.formRow}>
-            {slots.map((slot) => {
-              const p = findSlot(slot);
-              if (!p) return null;
-              const isRed = disciplineStatus?.get(p.id) === "RED";
-              return (
-                <button
-                  key={slot}
-                  disabled={isRed}
-                  style={{ ...S.playerBtn, ...(isRed ? S.playerBtnRed : {}) }}
-                  onClick={() => tap(p)}
-                >
-                  {renderTile(p, FORMATION_JERSEY_SIZE, FORMATION_NUMBER_FONT_SIZE)}
-                </button>
-              );
-            })}
+        {/* Static GAA pitch behind the formation only — spatial reference for
+            "these are the 15 players in their formation", not a redesign of
+            the capture flow. Reuses ProTaggerLineupPitchBackground exactly as
+            Squad Setup does (same component, unmodified): it takes no props,
+            has no pointer handlers, no coordinate/orientation/attacking-
+            direction logic, and is not ProTaggerPitchView.tsx (the live
+            capture pitch) — this is the dumb, purely decorative reproduction.
+            pointerEvents: "none" plus sitting behind the formation layer in
+            the stacking order (zIndex 0 vs 1) means it can never intercept a
+            player tap. The picker's own additional opacity dims it further
+            than the Squad Setup rendering — a busier, smaller live-capture
+            screen needs the jersey to stay dominant regardless of team
+            colour, without touching the shared component or team colours. */}
+        <div style={S.pitchArea}>
+          <div style={S.pitchLayer} aria-hidden="true">
+            <ProTaggerLineupPitchBackground />
           </div>
-        ))}
+          <div style={S.formationRows}>
+            {/* Formation rows — slot-based */}
+            {FORMATION_ROWS.map((slots, ri) => (
+              <div key={ri} style={S.formRow}>
+                {slots.map((slot) => {
+                  const p = findSlot(slot);
+                  if (!p) return null;
+                  const isRed = disciplineStatus?.get(p.id) === "RED";
+                  return (
+                    <button
+                      key={slot}
+                      disabled={isRed}
+                      style={{ ...S.playerBtn, ...(isRed ? S.playerBtnRed : {}) }}
+                      onClick={() => tap(p)}
+                    >
+                      {renderTile(p, FORMATION_JERSEY_SIZE, FORMATION_NUMBER_FONT_SIZE)}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Bench — active but not in formation */}
         {bench.length > 0 && (
@@ -199,6 +220,37 @@ const S: Record<string, CSSProperties> = {
     display: "flex",
     justifyContent: "center",
     gap: 6,
+  },
+  // Wraps only the formation-rows block (not the bench, not the header, not
+  // No player/Unknown) so the pitch belongs strictly to the 15-slot canvas.
+  // Purely a stacking/positioning container — no size, gap, or alignment
+  // change versus how these rows sat directly in .scroll before.
+  pitchArea: {
+    position: "relative",
+    width: "100%",
+  },
+  // Decorative pitch layer, absolutely filling pitchArea behind the
+  // formation. pointerEvents: "none" plus zIndex 0 (below formationRows'
+  // zIndex 1) is a double guarantee it can never intercept a player tap.
+  // The extra opacity here is picker-local — ProTaggerLineupPitchBackground
+  // itself is unmodified and untouched by this change.
+  pitchLayer: {
+    position: "absolute",
+    inset: 0,
+    pointerEvents: "none",
+    opacity: 0.55,
+    zIndex: 0,
+  },
+  // Same flex/gap/alignment the rows previously had as direct children of
+  // .scroll — formation row layout, spacing, and order are unchanged, only
+  // now stacked above the pitch layer instead of directly in .scroll.
+  formationRows: {
+    position: "relative",
+    zIndex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 5,
   },
   // Visual language alignment: a large, transparent tap target — no card
   // background/border around the player, matching Squad Setup's "jersey is

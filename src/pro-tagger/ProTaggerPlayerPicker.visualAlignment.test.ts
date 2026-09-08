@@ -17,7 +17,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const source = readFileSync(fileURLToPath(new URL("./ProTaggerPlayerPicker.tsx", import.meta.url)), "utf8");
-const codeOnly = source.replace(/\/\/.*$/gm, "");
+const codeOnly = source.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 describe("ProTaggerPlayerPicker — position abbreviations removed", () => {
   it("no longer renders a position-abbreviation fallback (the old p.position / fallbackPos stack)", () => {
@@ -122,8 +122,11 @@ describe("ProTaggerPlayerPicker — live-player derivation is unchanged (not rep
     expect(source).toMatch(/const bench = squad\.filter\(\(p\) => p\.isActive !== false && p\.activeSlot === undefined\);/);
   });
 
-  it("does not import the Squad Setup pitch background, geometry, or formation summary component — only the presentational jersey tile", () => {
-    expect(codeOnly).not.toMatch(/ProTaggerLineupPitchBackground/);
+  // ProTaggerLineupPitchBackground is now approved and reused (see the
+  // dedicated ProTaggerPlayerPicker.pitchBackground.test.ts suite) — this
+  // check narrows to what must still never be imported: Squad Setup's
+  // pre-match formation-slot geometry/derivation itself.
+  it("does not import the Squad Setup formation geometry or pre-match lineup summary component — only the presentational jersey tile and static pitch", () => {
     expect(codeOnly).not.toMatch(/pro-tagger-lineup-geometry/);
     expect(codeOnly).not.toMatch(/ProTaggerLineupFormation/);
   });
