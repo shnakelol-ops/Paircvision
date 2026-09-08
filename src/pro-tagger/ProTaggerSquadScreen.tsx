@@ -6,7 +6,6 @@ import { ProTaggerLineupFormation } from "./ProTaggerLineupFormation";
 import type {
   ProTaggerSession,
   ProTaggerSquadPlayer,
-  ProTaggerAttackDirection,
 } from "./pro-tagger-session";
 import {
   loadSavedTeams,
@@ -54,13 +53,6 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
   );
   const [awaySquadTeamName, setAwaySquadTeamName] = useState<string | undefined>(
     session.awaySquad.teamName,
-  );
-
-  // 1H attacking direction — seeded from the session (single source of truth,
-  // set to its default in Setup) and finalised back onto the session at Go To
-  // Game. Both Go To Game buttons on this screen read from this state.
-  const [attackDir, setAttackDir] = useState<ProTaggerAttackDirection>(
-    session.attackDirection,
   );
 
   // Library overlay
@@ -179,12 +171,17 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
     }
   }
 
-  // ── Start match ──────────────────────────────────────────────────────────
+  // ── Go to game ───────────────────────────────────────────────────────────
+  // 1H attacking direction is no longer chosen on this screen — it's now a
+  // mandatory step between here and the live screen (see the "direction"
+  // phase in ProTaggerPage.tsx / ProTaggerDirectionScreen.tsx), so this
+  // handler leaves session.attackDirection untouched: that screen always
+  // sets it explicitly before the match reaches live, regardless of
+  // whatever value is already on `session`.
 
   function handleStart() {
     onStart({
       ...session,
-      attackDirection: attackDir,
       homeSquad: {
         ...session.homeSquad,
         players:         homePlayers,
@@ -331,24 +328,11 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
       </div>
 
       {/* ── Footer ─────────────────────────────────────────────────── */}
+      {/* 1H Attacking Direction used to live here — it's now chosen on a
+          dedicated mandatory screen between Go To Game and the live screen
+          (see ProTaggerDirectionScreen.tsx), which frees this space for the
+          lineup above. */}
       <div style={S.footer}>
-        <div style={S.directionSection}>
-          <span style={S.directionLabel}>1H Attacking Direction</span>
-          <div style={S.directionChips}>
-            <button
-              onClick={() => setAttackDir("left")}
-              style={{ ...S.directionChip, ...(attackDir === "left" ? S.directionChipOn : {}) }}
-            >
-              ← Left
-            </button>
-            <button
-              onClick={() => setAttackDir("right")}
-              style={{ ...S.directionChip, ...(attackDir === "right" ? S.directionChipOn : {}) }}
-            >
-              Right →
-            </button>
-          </div>
-        </div>
         <button style={S.footerStartBtn} onClick={handleStart}>
           Go To Game
         </button>
@@ -704,41 +688,6 @@ const S: Record<string, CSSProperties> = {
     background: "#050c14",
     borderTop: "1px solid #17324a",
     flexShrink: 0,
-  },
-  directionSection: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-  },
-  directionLabel: {
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase" as const,
-    color: "#7a95ad",
-  },
-  directionChips: {
-    display: "flex",
-    gap: 8,
-  },
-  directionChip: {
-    flex: 1,
-    background: "#17324a",
-    border: "1px solid #1c3a52",
-    borderRadius: 8,
-    color: "#7a95ad",
-    fontSize: 13,
-    fontWeight: 600,
-    padding: "9px 12px",
-    cursor: "pointer",
-    outline: "none",
-    whiteSpace: "nowrap" as const,
-    WebkitTapHighlightColor: "transparent",
-  },
-  directionChipOn: {
-    background: "#238636",
-    borderColor: "#2ea043",
-    color: "#ffffff",
   },
   footerStartBtn: {
     background: "#238636",

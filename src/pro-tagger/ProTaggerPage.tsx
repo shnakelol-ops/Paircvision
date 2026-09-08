@@ -4,6 +4,7 @@ import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import type { ProTaggerSession } from "./pro-tagger-session";
 import { ProTaggerSetupScreen } from "./ProTaggerSetupScreen";
 import { ProTaggerSquadScreen } from "./ProTaggerSquadScreen";
+import { ProTaggerDirectionScreen } from "./ProTaggerDirectionScreen";
 import { ProTaggerLiveScreen } from "./ProTaggerLiveScreen";
 import type { RestoreState } from "./ProTaggerLiveScreen";
 import { ProTaggerSavedMatchesScreen } from "./ProTaggerSavedMatchesScreen";
@@ -12,7 +13,7 @@ import { ProTaggerOptionsScreen } from "./ProTaggerOptionsScreen";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { readProTaggerMatches, saveProTaggerMatchFull } from "./pro-tagger-storage";
 
-type AppPhase = "home" | "setup" | "squads" | "live" | "saved-matches" | "review" | "options";
+type AppPhase = "home" | "setup" | "squads" | "direction" | "live" | "saved-matches" | "review" | "options";
 
 // Exported only for ProTaggerPage.resumeTargets.test.ts's MatchTargets
 // round-trip coverage (P1-A); not part of this module's public API otherwise.
@@ -201,6 +202,24 @@ export default function ProTaggerPage() {
         onBack={() => setPhase("setup")}
         onStart={(finalSession) => {
           setDraftSession(finalSession);
+          setPhase("direction");
+        }}
+      />
+    );
+  }
+
+  // ── 1H Attacking Direction ────────────────────────────────────────────────
+  // Mandatory step between Squad Setup and live — see ProTaggerDirectionScreen.tsx.
+  // Every "squads" -> "live" transition passes through here; there is no path
+  // that sets phase to "live" from "squads" directly, so a stale/default
+  // attackDirection already on draftSession can never bypass this screen.
+
+  if (phase === "direction" && draftSession) {
+    return (
+      <ProTaggerDirectionScreen
+        onBack={() => setPhase("squads")}
+        onChoose={(direction) => {
+          setDraftSession((prev) => (prev ? { ...prev, attackDirection: direction } : prev));
           setPhase("live");
         }}
       />
