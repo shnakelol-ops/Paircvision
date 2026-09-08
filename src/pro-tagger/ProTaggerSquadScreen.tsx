@@ -2,10 +2,10 @@ import { useState, useCallback } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
+import { ProTaggerLineupFormation } from "./ProTaggerLineupFormation";
 import type {
   ProTaggerSession,
   ProTaggerSquadPlayer,
-  ProTaggerAttackDirection,
 } from "./pro-tagger-session";
 import {
   loadSavedTeams,
@@ -55,13 +55,6 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
     session.awaySquad.teamName,
   );
 
-  // 1H attacking direction — seeded from the session (single source of truth,
-  // set to its default in Setup) and finalised back onto the session at Go To
-  // Game. Both Go To Game buttons on this screen read from this state.
-  const [attackDir, setAttackDir] = useState<ProTaggerAttackDirection>(
-    session.attackDirection,
-  );
-
   // Library overlay
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [savedTeams, setSavedTeams]   = useState<SavedTeam[]>([]);
@@ -70,6 +63,13 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
   const [saveOpen, setSaveOpen]       = useState(false);
   const [saveName, setSaveName]       = useState("");
   const [saveStatus, setSaveStatus]   = useState<SaveStatus>("idle");
+
+  // Visual lineup summary (read-only) is shown by default; the existing
+  // name-editing list — unchanged — is collapsed behind this toggle. There
+  // is still exactly one place names are edited: this reveals it, it does
+  // not duplicate it. Shared across both tabs (not per-team) — purely a
+  // display preference, not squad data.
+  const [showNameEditor, setShowNameEditor] = useState(false);
 
   const homeLabel     = session.homeTeamName.trim() || "Home";
   const awayLabel     = session.awayTeamName.trim() || "Away";
@@ -171,12 +171,17 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
     }
   }
 
-  // ── Start match ──────────────────────────────────────────────────────────
+  // ── Go to game ───────────────────────────────────────────────────────────
+  // 1H attacking direction is no longer chosen on this screen — it's now a
+  // mandatory step between here and the live screen (see the "direction"
+  // phase in ProTaggerPage.tsx / ProTaggerDirectionScreen.tsx), so this
+  // handler leaves session.attackDirection untouched: that screen always
+  // sets it explicitly before the match reaches live, regardless of
+  // whatever value is already on `session`.
 
   function handleStart() {
     onStart({
       ...session,
-      attackDirection: attackDir,
       homeSquad: {
         ...session.homeSquad,
         players:         homePlayers,
@@ -264,58 +269,70 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
             </div>
           </div>
 
-          {/* Player rows */}
-          {players.map((p, i) => (
-            <div key={p.id} style={S.row}>
-              <span style={S.number}>{p.number}</span>
-              <span style={S.position}>{p.position ?? "—"}</span>
-              <input
-                type="text"
-                placeholder={`#${p.number}`}
-                value={p.name}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setName(activeTab, i, e.target.value)
-                }
-                style={S.nameInput}
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-              />
-            </div>
-          ))}
+          {/* Visual lineup summary — read-only team sheet, Starting 15 in the
+              fixed GAA formation + substitutes below. Purely presentational:
+              names are still edited only via the list revealed below. */}
+          <ProTaggerLineupFormation
+            players={players}
+            primary={activeColours.primary}
+            secondary={activeColours.secondary}
+          />
 
-          {/* Add Player control */}
-          {players.length < 30 ? (
-            <button style={S.addBtn} onClick={addPlayer}>
-              + Add Player
-              <span style={S.addCount}>{players.length} / 30</span>
-            </button>
-          ) : (
-            <div style={S.addMax}>Squad full (30 / 30)</div>
+          {/* Edit Player Names — collapsed by default. Expanding reveals the
+              existing name-editing list unchanged; this is not a second
+              editing mechanism, just a show/hide toggle around the one that
+              already exists. */}
+          <button
+            style={S.editNamesToggle}
+            onClick={() => setShowNameEditor((v) => !v)}
+          >
+            <span>Edit Player Names</span>
+            <span style={S.editNamesChevron}>{showNameEditor ? "▲" : "▼"}</span>
+          </button>
+
+          {showNameEditor && (
+            <>
+              {/* Player rows */}
+              {players.map((p, i) => (
+                <div key={p.id} style={S.row}>
+                  <span style={S.number}>{p.number}</span>
+                  <span style={S.position}>{p.position ?? "—"}</span>
+                  <input
+                    type="text"
+                    placeholder={`#${p.number}`}
+                    value={p.name}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setName(activeTab, i, e.target.value)
+                    }
+                    style={S.nameInput}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                  />
+                </div>
+              ))}
+
+              {/* Add Player control */}
+              {players.length < 30 ? (
+                <button style={S.addBtn} onClick={addPlayer}>
+                  + Add Player
+                  <span style={S.addCount}>{players.length} / 30</span>
+                </button>
+              ) : (
+                <div style={S.addMax}>Squad full (30 / 30)</div>
+              )}
+            </>
           )}
 
         </div>
       </div>
 
       {/* ── Footer ─────────────────────────────────────────────────── */}
+      {/* 1H Attacking Direction used to live here — it's now chosen on a
+          dedicated mandatory screen between Go To Game and the live screen
+          (see ProTaggerDirectionScreen.tsx), which frees this space for the
+          lineup above. */}
       <div style={S.footer}>
-        <div style={S.directionSection}>
-          <span style={S.directionLabel}>1H Attacking Direction</span>
-          <div style={S.directionChips}>
-            <button
-              onClick={() => setAttackDir("left")}
-              style={{ ...S.directionChip, ...(attackDir === "left" ? S.directionChipOn : {}) }}
-            >
-              ← Left
-            </button>
-            <button
-              onClick={() => setAttackDir("right")}
-              style={{ ...S.directionChip, ...(attackDir === "right" ? S.directionChipOn : {}) }}
-            >
-              Right →
-            </button>
-          </div>
-        </div>
         <button style={S.footerStartBtn} onClick={handleStart}>
           Go To Game
         </button>
@@ -601,6 +618,30 @@ const S: Record<string, CSSProperties> = {
     userSelect: "text",
   },
 
+  // ── Edit Player Names toggle ───────────────────────────────────────────────
+  editNamesToggle: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+    background: "#17324a",
+    border: "1px solid #1c3a52",
+    borderRadius: 8,
+    color: "#dce8f4",
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "10px 14px",
+    cursor: "pointer",
+    outline: "none",
+    width: "100%",
+    boxSizing: "border-box" as const,
+    WebkitTapHighlightColor: "transparent",
+  },
+  editNamesChevron: {
+    fontSize: 10,
+    color: "#7a95ad",
+  },
+
   // ── Add Player ───────────────────────────────────────────────────────────
   addBtn: {
     display: "flex",
@@ -647,41 +688,6 @@ const S: Record<string, CSSProperties> = {
     background: "#050c14",
     borderTop: "1px solid #17324a",
     flexShrink: 0,
-  },
-  directionSection: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-  },
-  directionLabel: {
-    fontSize: 10,
-    fontWeight: 700,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase" as const,
-    color: "#7a95ad",
-  },
-  directionChips: {
-    display: "flex",
-    gap: 8,
-  },
-  directionChip: {
-    flex: 1,
-    background: "#17324a",
-    border: "1px solid #1c3a52",
-    borderRadius: 8,
-    color: "#7a95ad",
-    fontSize: 13,
-    fontWeight: 600,
-    padding: "9px 12px",
-    cursor: "pointer",
-    outline: "none",
-    whiteSpace: "nowrap" as const,
-    WebkitTapHighlightColor: "transparent",
-  },
-  directionChipOn: {
-    background: "#238636",
-    borderColor: "#2ea043",
-    color: "#ffffff",
   },
   footerStartBtn: {
     background: "#238636",
