@@ -10,18 +10,17 @@ interface Props {
   secondary: string;
 }
 
-// Visual tuning pass: the Starting 15 jersey shrank ~20% (40 -> 32, close to
-// the Team Colours preview's own 32px jersey) and subs shrank by the same
-// ratio (34 -> 27). The number font sizes are pinned to their prior,
-// already-verified values (20 / 17) rather than left to scale with the
-// jersey — shrinking the jersey must not shrink the number, per the visual
-// tuning audit. Names are untouched (ProTaggerLineupJerseyTile's own fixed
-// 10px), and formation coordinates are untouched — smaller jerseys don't
-// expose any alignment issue that would call for moving them.
-const STARTER_JERSEY_SIZE = 32;
-const STARTER_NUMBER_FONT_SIZE = 20;
-const SUB_JERSEY_SIZE = 27;
-const SUB_NUMBER_FONT_SIZE = 17;
+// Final player-tile tuning pass: the jersey now reads as a small
+// positional/team-colour indicator (Gaelic Tracker's approach) rather than
+// the dominant graphic, so the Starting 15 jersey shrank again, 32 -> 26,
+// with the number shrinking proportionally alongside it (20 -> 15) instead
+// of holding its prior fixed size — the number should identify the player
+// without dominating the tile. Subs shrink by the same ratio (27 -> 22,
+// 17 -> 13). Formation coordinates are untouched.
+const STARTER_JERSEY_SIZE = 26;
+const STARTER_NUMBER_FONT_SIZE = 15;
+const SUB_JERSEY_SIZE = 22;
+const SUB_NUMBER_FONT_SIZE = 13;
 
 export type LineupSlots = {
   starters: ProTaggerSquadPlayer[];

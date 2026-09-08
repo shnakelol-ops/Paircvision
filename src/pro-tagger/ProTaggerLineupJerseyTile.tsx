@@ -90,6 +90,9 @@ const S: Record<string, CSSProperties> = {
   // support) — no shape behind it. This is what keeps the number
   // high-contrast against any user-chosen jersey primary colour without
   // covering the jersey itself the way a solid badge did.
+  // Outline thinned from the prior 1.5px stroke — at the smaller ~15px
+  // number size a heavy outline started to read as a solid shape rather
+  // than text, overpowering the (now much smaller) jersey underneath it.
   numberText: {
     position: "absolute",
     top: "44%",
@@ -97,28 +100,35 @@ const S: Record<string, CSSProperties> = {
     transform: "translate(-50%, -50%)",
     fontWeight: 900,
     color: "#ffffff",
-    WebkitTextStroke: "1.5px rgba(6, 10, 16, 0.92)",
+    WebkitTextStroke: "1px rgba(6, 10, 16, 0.9)",
     textShadow: [
-      "0 1px 2px rgba(0,0,0,0.65)",
-      "-1px -1px 0 rgba(6,10,16,0.85)",
-      "1px -1px 0 rgba(6,10,16,0.85)",
-      "-1px 1px 0 rgba(6,10,16,0.85)",
-      "1px 1px 0 rgba(6,10,16,0.85)",
+      "0 1px 1px rgba(0,0,0,0.6)",
+      "-1px -1px 0 rgba(6,10,16,0.8)",
+      "1px -1px 0 rgba(6,10,16,0.8)",
+      "-1px 1px 0 rgba(6,10,16,0.8)",
+      "1px 1px 0 rgba(6,10,16,0.8)",
     ].join(", "),
     fontVariantNumeric: "tabular-nums",
-    letterSpacing: "-0.5px",
+    letterSpacing: "-0.3px",
     lineHeight: 1,
     pointerEvents: "none",
   },
+  // A compact PáircVision name plate — a translucent navy surface just big
+  // enough for the text, not a card: no border, no glow, restrained corner
+  // radius. Only rendered when the player has a name (see the `name &&`
+  // guard above); a blank name renders no plate at all.
   name: {
-    fontSize: 10,
-    fontWeight: 600,
-    color: "#dce8f4",
+    fontSize: 9,
+    fontWeight: 700,
+    color: "#e7f0f8",
     textAlign: "center" as const,
-    maxWidth: 72,
+    maxWidth: 70,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap" as const,
-    lineHeight: 1.15,
+    lineHeight: 1.2,
+    background: "rgba(8, 20, 34, 0.55)",
+    borderRadius: 4,
+    padding: "1px 6px",
   },
 };
