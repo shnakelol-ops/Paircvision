@@ -14,6 +14,15 @@
 // change to jersey size, formation, pitch, hit areas, or any live-capture
 // semantics.
 //
+// Superseded: a later simplified-tagging-jersey experiment (see
+// ProTaggerPlayerPicker.simplifiedJersey.test.ts) replaced the picker's use
+// of numberCrisp with the broader livePicker variant, whose own number
+// treatment is simpler still (no stroke at all). The numberCrisp prop
+// itself remains on the shared tile, additive and default-preserving,
+// exactly as this suite already proves — only the picker's own call site
+// moved on to livePicker instead of requesting numberCrisp directly. The
+// 1px number-size bump (13 -> 14) this suite covers is still current.
+//
 // Neither ProTaggerPlayerPicker.tsx nor ProTaggerLineupJerseyTile.tsx has a
 // React rendering harness in this repo, so — as with every other
 // presentational/wiring suite this session — this exercises the exact
@@ -38,20 +47,20 @@ describe("ProTaggerPlayerPicker — number size bumped by exactly 1px (not a big
   });
 });
 
-describe("ProTaggerPlayerPicker — opts into the lighter numberCrisp outline", () => {
-  it("both formation and bench tiles pass numberCrisp", () => {
+describe("ProTaggerPlayerPicker — opts into a simplified live-tagging jersey/number treatment", () => {
+  it("both formation and bench tiles pass livePicker (superseding the earlier numberCrisp request)", () => {
     const jerseyTileCalls = pickerSource.match(/<ProTaggerLineupJerseyTile[\s\S]*?\/>/g) ?? [];
     expect(jerseyTileCalls.length).toBeGreaterThanOrEqual(1);
     for (const call of jerseyTileCalls) {
-      expect(call).toMatch(/numberCrisp/);
+      expect(call).toMatch(/livePicker/);
     }
   });
 });
 
-describe("ProTaggerLineupJerseyTile — numberCrisp is additive and default-preserving", () => {
-  it("numberCrisp is optional and Squad Setup's default outline is untouched when omitted", () => {
+describe("ProTaggerLineupJerseyTile — numberCrisp is still additive and default-preserving on the shared tile", () => {
+  it("numberCrisp remains optional and Squad Setup's default outline is untouched when omitted", () => {
     expect(tileSource).toMatch(/numberCrisp\?:\s*boolean/);
-    expect(tileSource).toMatch(/numberCrisp \? S\.numberOutlineCrisp : S\.numberOutlineDefault/);
+    expect(tileSource).toMatch(/numberCrisp\s*\?\s*S\.numberOutlineCrisp\s*:\s*S\.numberOutlineDefault/);
   });
 
   it("the default outline still has the exact same values as before this pass (0.75px stroke, 5-layer shadow)", () => {

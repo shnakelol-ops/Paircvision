@@ -29,6 +29,41 @@ interface Props {
    * Squad Setup's lineup tile passes nothing here and is unaffected.
    */
   numberCrisp?: boolean;
+  /**
+   * Live-tagging jersey experiment: renders a simplified jersey mark
+   * instead of ProTaggerMiniJersey — primary-coloured torso, secondary-
+   * coloured sleeves, NO secondary chest stripe, NO collar accent — plus a
+   * minimal number treatment (no stroke, one soft shadow) instead of
+   * numberCrisp/numberOutlineDefault. Built locally in this file rather
+   * than by modifying ProTaggerMiniJersey.tsx, which other screens (Squad
+   * Setup's Team Colours preview, its own lineup jerseys) still use
+   * unchanged. Omit (or false) to keep today's default jersey and number
+   * treatment exactly as-is — Squad Setup passes nothing here and is
+   * unaffected. See LivePickerJerseyMark below for the exact geometry.
+   */
+  livePicker?: boolean;
+}
+
+// Live-tagging jersey experiment (see the `livePicker` prop above): the
+// SAME body+sleeve silhouette ProTaggerMiniJersey draws — its single path
+// "M4,21 L4,8 L0,8 L0,4 L4,2 L7,5 L10,8 L13,5 L16,2 L20,4 L20,8 L16,8
+// L16,21 Z" — decomposed here into three sub-paths (two sleeves, one
+// torso) that share exact boundary coordinates with each other and with
+// that original outline, so the outer silhouette/size is pixel-identical;
+// only the internal fill split changes (secondary sleeves instead of one
+// primary body, no chest-stripe rect, no collar triangle). Deliberately no
+// stroke on any piece — a raglan-seam outline along the new internal sleeve
+// edges would read as unrequested kit detail; this is meant to stay a
+// plain information marker.
+function LivePickerJerseyMark({ primary, secondary, size }: { primary: string; secondary: string; size: number }) {
+  const h = Math.round((size * 22) / 20);
+  return (
+    <svg viewBox="0 0 20 22" width={size} height={h} style={{ display: "block", flexShrink: 0 }} aria-hidden="true">
+      <path d="M4,8 L0,8 L0,4 L4,2 L7,5 Z" fill={secondary} />
+      <path d="M16,8 L20,8 L20,4 L16,2 L13,5 Z" fill={secondary} />
+      <path d="M4,21 L4,8 L7,5 L10,8 L13,5 L16,8 L16,21 Z" fill={primary} />
+    </svg>
+  );
 }
 
 // Read-only jersey-first tile for the Squad Setup lineup summary
@@ -46,7 +81,7 @@ interface Props {
 // solid circular badge sitting on top of it (that read as a Tactical
 // Slate/player-token marker, not a team sheet, and is deliberately not
 // used here).
-export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 40, numberFontSize, numberCrisp }: Props) {
+export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 40, numberFontSize, numberCrisp, livePicker }: Props) {
   if (!player) {
     return (
       <div style={S.tile}>
@@ -64,11 +99,19 @@ export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 4
   // number to shrink with it (see ProTaggerLineupFormation.tsx) pass an
   // explicit numberFontSize instead, which wins over this default.
   const resolvedNumberFontSize = numberFontSize ?? Math.max(15, Math.round(size * 0.5));
-  const outlineStyle: CSSProperties = numberCrisp ? S.numberOutlineCrisp : S.numberOutlineDefault;
+  const outlineStyle: CSSProperties = livePicker
+    ? S.numberOutlineLivePicker
+    : numberCrisp
+      ? S.numberOutlineCrisp
+      : S.numberOutlineDefault;
   return (
     <div style={S.tile}>
       <div style={{ ...S.jerseyWrap, width: size }}>
-        <ProTaggerMiniJersey primary={primary} secondary={secondary} size={size} />
+        {livePicker ? (
+          <LivePickerJerseyMark primary={primary} secondary={secondary} size={size} />
+        ) : (
+          <ProTaggerMiniJersey primary={primary} secondary={secondary} size={size} />
+        )}
         <span style={{ ...S.numberText, ...outlineStyle, fontSize: resolvedNumberFontSize }}>{player.number}</span>
       </div>
       {name && <span style={S.name}>{name}</span>}
@@ -140,6 +183,15 @@ const S: Record<string, CSSProperties> = {
   numberOutlineCrisp: {
     WebkitTextStroke: "0.5px rgba(6, 10, 16, 0.85)",
     textShadow: "0 1px 1px rgba(0,0,0,0.5)",
+  },
+  // Live-tagging jersey experiment: no stroke at all — a clean white
+  // number with only one soft shadow for baseline contrast against an
+  // arbitrary (including pale) primary jersey colour. This is testing
+  // whether the uninterrupted primary chest plus a clean number (no
+  // outline "eating" the glyph) reads better than either outline variant
+  // above at live-picker scale.
+  numberOutlineLivePicker: {
+    textShadow: "0 1px 2px rgba(0,0,0,0.55)",
   },
   // A compact PáircVision name plate — a translucent navy surface just big
   // enough for the text, not a card: no border, no glow, restrained corner

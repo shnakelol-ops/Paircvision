@@ -47,12 +47,9 @@ const FORMATION_ROWS: readonly (readonly number[])[] = [
 const FORMATION_JERSEY_SIZE = 26;
 const BENCH_JERSEY_SIZE = 22;
 // Number legibility pass: real-Android screenshots showed double-digit
-// numbers (10-15) reading soft/blurry at Squad Setup's 13px — the default
-// outline's stacked shadows are proportionally heavy against a glyph this
-// small. Bumped 1px (13 -> 14, the smallest useful step) and paired with
-// the jersey tile's lighter numberCrisp outline (below) rather than a
-// bigger jump. Squad Setup itself is untouched — it still passes 13 with
-// no numberCrisp, so this is picker-local only.
+// numbers (10-15) reading soft/blurry at Squad Setup's 13px. Bumped 1px
+// (13 -> 14, the smallest useful step). Squad Setup itself is untouched —
+// it still passes 13, so this is picker-local only.
 const FORMATION_NUMBER_FONT_SIZE = 14;
 const BENCH_NUMBER_FONT_SIZE = 14;
 
@@ -78,13 +75,19 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
     });
   }
 
-  // Visual language alignment: jersey + centred number + optional compact
-  // name plate (ProTaggerLineupJerseyTile — the same presentational tile
-  // Squad Setup's approved lineup uses), no position abbreviations, no
-  // rectangular tile card. Status label still always replaces the name
-  // line (never colour alone) and the tile is disabled only for RED —
-  // SIN_BIN stays fully tappable; that rule is unchanged, just applied to
-  // the new tile instead of the old inline number/name/position stack.
+  // Visual language: jersey + centred number + optional compact name plate
+  // (ProTaggerLineupJerseyTile), no position abbreviations, no rectangular
+  // tile card. Status label still always replaces the name line (never
+  // colour alone) and the tile is disabled only for RED — SIN_BIN stays
+  // fully tappable; that rule is unchanged.
+  //
+  // Simplified tagging jersey experiment: passes livePicker to request the
+  // tile's live-tagging-only jersey variant (primary torso, secondary
+  // sleeves, no chest stripe) and its matching minimal number treatment,
+  // instead of the shared default jersey Squad Setup uses. This supersedes
+  // the previous numberCrisp request — livePicker's own number treatment
+  // is the thing being tested now. Squad Setup's own call site passes
+  // neither prop and is completely unaffected.
   function renderTile(p: ProTaggerSquadPlayer, size: number, numberFontSize: number) {
     const status = disciplineStatus?.get(p.id);
     // Suppress the tile's own name plate when a status label must show
@@ -95,7 +98,7 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
       <>
         <ProTaggerLineupJerseyTile
           player={tilePlayer} primary={colour} secondary={secondaryColour ?? "#ffffff"}
-          size={size} numberFontSize={numberFontSize} numberCrisp
+          size={size} numberFontSize={numberFontSize} livePicker
         />
         {status === "RED" && <span style={S.statusRed}>RED</span>}
         {status === "SIN_BIN" && <span style={S.statusSinBin}>SIN BIN</span>}
