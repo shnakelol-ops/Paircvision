@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
+import { ProTaggerLineupJerseyTile } from "./ProTaggerLineupJerseyTile";
 import type { DisciplinePlayerStatus } from "./pro-tagger-discipline";
 
 export type SelectedPlayer = {
@@ -38,6 +39,15 @@ const FORMATION_ROWS: readonly (readonly number[])[] = [
   [13, 14, 15],   // #13 #14 #15 (RF FF LF)
 ];
 
+// Visual language alignment with the approved Squad Setup lineup tile
+// (ProTaggerLineupFormation.tsx) — same jersey/number sizes, so the live
+// picker and pre-match team sheet read as one consistent PáircVision
+// player marker rather than two different systems.
+const FORMATION_JERSEY_SIZE = 26;
+const FORMATION_NUMBER_FONT_SIZE = 13;
+const BENCH_JERSEY_SIZE = 22;
+const BENCH_NUMBER_FONT_SIZE = 13;
+
 export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, onSelect, disciplineStatus }: Props) {
   const colour = teamColour ?? "#238636";
 
@@ -60,22 +70,27 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
     });
   }
 
-  // Status label always replaces the name/position line (never colour alone)
-  // and the tile is disabled only for RED — SIN_BIN stays fully tappable.
-  function renderTileContent(p: ProTaggerSquadPlayer, fallbackPos: string) {
+  // Visual language alignment: jersey + centred number + optional compact
+  // name plate (ProTaggerLineupJerseyTile — the same presentational tile
+  // Squad Setup's approved lineup uses), no position abbreviations, no
+  // rectangular tile card. Status label still always replaces the name
+  // line (never colour alone) and the tile is disabled only for RED —
+  // SIN_BIN stays fully tappable; that rule is unchanged, just applied to
+  // the new tile instead of the old inline number/name/position stack.
+  function renderTile(p: ProTaggerSquadPlayer, size: number, numberFontSize: number) {
     const status = disciplineStatus?.get(p.id);
+    // Suppress the tile's own name plate when a status label must show
+    // instead — ProTaggerLineupJerseyTile only renders a name when one is
+    // present, so a blank name here reproduces "no placeholder" for free.
+    const tilePlayer = status ? { ...p, name: "" } : p;
     return (
       <>
-        <span style={S.number}>{p.number}</span>
-        {status === "RED" ? (
-          <span style={S.statusRed}>RED</span>
-        ) : status === "SIN_BIN" ? (
-          <span style={S.statusSinBin}>SIN BIN</span>
-        ) : p.name.trim() ? (
-          <span style={S.name}>{p.name.trim()}</span>
-        ) : (
-          <span style={S.pos}>{p.position ?? fallbackPos}</span>
-        )}
+        <ProTaggerLineupJerseyTile
+          player={tilePlayer} primary={colour} secondary={secondaryColour ?? "#ffffff"}
+          size={size} numberFontSize={numberFontSize}
+        />
+        {status === "RED" && <span style={S.statusRed}>RED</span>}
+        {status === "SIN_BIN" && <span style={S.statusSinBin}>SIN BIN</span>}
       </>
     );
   }
@@ -102,14 +117,10 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
                 <button
                   key={slot}
                   disabled={isRed}
-                  style={{
-                    ...S.playerBtn,
-                    border: `1px solid ${colour}`,
-                    ...(isRed ? S.playerBtnRed : {}),
-                  }}
+                  style={{ ...S.playerBtn, ...(isRed ? S.playerBtnRed : {}) }}
                   onClick={() => tap(p)}
                 >
-                  {renderTileContent(p, "")}
+                  {renderTile(p, FORMATION_JERSEY_SIZE, FORMATION_NUMBER_FONT_SIZE)}
                 </button>
               );
             })}
@@ -130,7 +141,7 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
                     style={{ ...S.subBtn, ...(isRed ? S.playerBtnRed : {}) }}
                     onClick={() => tap(p)}
                   >
-                    {renderTileContent(p, "SUB")}
+                    {renderTile(p, BENCH_JERSEY_SIZE, BENCH_NUMBER_FONT_SIZE)}
                   </button>
                 );
               })}
@@ -189,18 +200,26 @@ const S: Record<string, CSSProperties> = {
     justifyContent: "center",
     gap: 6,
   },
+  // Visual language alignment: a large, transparent tap target — no card
+  // background/border around the player, matching Squad Setup's "jersey is
+  // the marker, not a rectangle" treatment (ProTaggerLineupJerseyTile is
+  // 76px wide regardless of jersey size, so this stays at least as wide as
+  // that; height comfortably fits jersey + optional name plate). The hit
+  // area is intentionally larger than the visible jersey — tapping near it,
+  // not precisely on the shirt, must still register.
   playerBtn: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    background: "#161b22",
+    background: "transparent",
+    border: "none",
     borderRadius: 8,
     cursor: "pointer",
     outline: "none",
-    width: 62,
-    minHeight: 54,
-    padding: "6px 4px 5px",
+    width: 80,
+    minHeight: 64,
+    padding: "4px 2px",
     WebkitTapHighlightColor: "transparent",
     flexShrink: 0,
   },
@@ -211,7 +230,6 @@ const S: Record<string, CSSProperties> = {
   playerBtnRed: {
     opacity: 0.45,
     cursor: "default",
-    borderColor: "#6e7681",
   },
 
   // ── Bench ──────────────────────────────────────────────────────────────────
@@ -238,44 +256,16 @@ const S: Record<string, CSSProperties> = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    background: "#0d1117",
-    border: "1px solid #30363d",
+    background: "transparent",
+    border: "none",
     borderRadius: 8,
     cursor: "pointer",
     outline: "none",
-    width: 58,
-    minHeight: 48,
-    padding: "5px 4px 4px",
+    width: 80,
+    minHeight: 58,
+    padding: "4px 2px",
     WebkitTapHighlightColor: "transparent",
     flexShrink: 0,
-  },
-
-  // ── Shared text ────────────────────────────────────────────────────────────
-  number: {
-    fontSize: 17,
-    fontWeight: 700,
-    color: "#e6edf3",
-    lineHeight: "1.1",
-    fontVariantNumeric: "tabular-nums",
-  },
-  name: {
-    fontSize: 9,
-    color: "#8b949e",
-    marginTop: 2,
-    textAlign: "center" as const,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap" as const,
-    maxWidth: 56,
-    lineHeight: "1.2",
-  },
-  pos: {
-    fontSize: 9,
-    color: "#6e7681",
-    marginTop: 2,
-    textAlign: "center" as const,
-    whiteSpace: "nowrap" as const,
-    lineHeight: "1.2",
   },
 
   // ── Discipline status labels — text, never colour alone ─────────────────────
