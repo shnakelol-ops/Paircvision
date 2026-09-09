@@ -290,12 +290,32 @@ export function createVisionV3PlayerToken({
   patternMask.circle(0, 0, innerRadius).fill({ color: 0xffffff });
   disc.mask = patternMask;
   disc.addChild(patternMask);
+  // This outer-radius stroke sits entirely beyond the innerRadius mask
+  // above, so it renders fully clipped either way — left on `disc`
+  // (unchanged from before) rather than moved, so nothing newly appears.
   disc
     .circle(0, 0, discRadius)
-    .stroke({ color: edgeColor, width: Math.max(0.22, discRadius * 0.13), alpha: 0.74, alignment: 0.5 })
+    .stroke({ color: edgeColor, width: Math.max(0.22, discRadius * 0.13), alpha: 0.74, alignment: 0.5 });
+  token.addChild(disc);
+
+  // PixiJS applies a container's `.mask` to its ENTIRE rendered output as one
+  // effect, independent of draw-call order — so this inner-edge stroke, when
+  // drawn on `disc` (as it previously was, even though added after the mask
+  // assignment above), was cut off by the same innerRadius mask that exists
+  // only to contain the kit-pattern accent. The stroke sits exactly on that
+  // mask boundary (alignment: 0.5, so half its width lands outside
+  // innerRadius), so its outer half was being clipped mid-antialias against
+  // the mask's own antialiased edge — two soft edges compounding into one
+  // blurry ring right where the token's visible boundary is. Drawing it on
+  // this separate, unmasked Graphics object instead (same colour, width,
+  // radius and alpha as before) lets it rasterise as one clean, fully
+  // antialiased stroke, at the same radius the mask already bounds the disc
+  // to — so the visible silhouette is unchanged, only its edge quality is.
+  const innerEdge = new Graphics();
+  innerEdge
     .circle(0, 0, innerRadius)
     .stroke({ color: mixColor(edgeColor, 0xffffff, 0.08), width: Math.max(0.12, discRadius * 0.06), alpha: 0.42, alignment: 0.5 });
-  token.addChild(disc);
+  token.addChild(innerEdge);
 
   const iconLayer = new Graphics();
   drawShirtGlyph(iconLayer, -innerRadius * 0.02, innerRadius * 0.98, 0xffffff);
