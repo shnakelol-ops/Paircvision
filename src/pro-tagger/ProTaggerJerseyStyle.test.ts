@@ -290,34 +290,48 @@ describe("ProTaggerJerseyStyle — Squad Setup state mirrors the existing colour
   });
 });
 
-describe("ProTaggerJerseyStyle — compact 3-tile selector in Squad Setup", () => {
-  it("renders exactly three tiles — chest, sleeves, collar — as a mapped row, not three separate hand-written blocks", () => {
-    expect(squadScreenSource).toMatch(/\(\["chest", "sleeves", "collar"\] as const\)\.map/);
+// UX correction: the original compact 3-tile visual selector (real mini
+// jersey previews per tile) consumed too much permanent vertical space in
+// Squad Setup, pushing the Starting XV pitch below the viewport on real
+// Android devices. Replaced with a single compact "Jersey Style [ Sleeves
+// ▾ ]" native dropdown row — the Starting XV immediately below is already
+// the live preview, so no permanent preview tiles are needed. See the
+// "COMPACT DROPDOWN UX CORRECTION" spec.
+describe("ProTaggerJerseyStyle — compact Jersey Style dropdown in Squad Setup (replaces the 3-tile selector)", () => {
+  it("the three permanent preview tiles (ProTaggerJerseyStyleSwatch, per-style buttons) are gone", () => {
+    expect(squadScreenSource).not.toMatch(/ProTaggerJerseyStyleSwatch/);
+    expect(squadScreenSource).not.toMatch(/\(\["chest", "sleeves", "collar"\] as const\)\.map/);
+    expect(squadScreenSource).not.toMatch(/jerseyStyleTile\b/);
+    expect(squadScreenSource).not.toMatch(/jerseyStyleTileOn/);
   });
 
-  it("each tile renders a real miniature jersey (ProTaggerJerseyStyleSwatch), not an emoji or text label alone", () => {
-    expect(squadScreenSource).toMatch(/<ProTaggerJerseyStyleSwatch/);
-    expect(squadScreenSource).toMatch(/jerseyStyle=\{style\}/);
-    expect(squadScreenSource).toMatch(/primary=\{activeColours\.primary\}/);
-    expect(squadScreenSource).toMatch(/secondary=\{activeColours\.secondary\}/);
+  it("a compact Jersey Style control exists, labelled and using a native <select>", () => {
+    expect(squadScreenSource).toMatch(/Jersey Style/);
+    expect(squadScreenSource).toMatch(/<select[\s\S]{0,120}value=\{activeJerseyStyle\}/);
   });
 
-  it("swatch size is compact (~36-40px), matching the ~36-40px visible-size requirement", () => {
-    const sizeMatch = squadScreenSource.match(/<ProTaggerJerseyStyleSwatch[\s\S]*?size=\{(\d+)\}/);
-    expect(sizeMatch).not.toBeNull();
-    const size = Number(sizeMatch![1]);
-    expect(size).toBeGreaterThanOrEqual(32);
-    expect(size).toBeLessThanOrEqual(40);
+  it("the options are exactly Chest, Sleeves, Collar (in that order, three only)", () => {
+    const selectMatch = squadScreenSource.match(/<select[\s\S]*?<\/select>/);
+    expect(selectMatch).not.toBeNull();
+    const optionValues = [...selectMatch![0].matchAll(/<option value="(\w+)">/g)].map((m) => m[1]);
+    expect(optionValues).toEqual(["chest", "sleeves", "collar"]);
+    const optionLabels = [...selectMatch![0].matchAll(/<option value="\w+">([^<]+)<\/option>/g)].map((m) => m[1]);
+    expect(optionLabels).toEqual(["Chest", "Sleeves", "Collar"]);
   });
 
-  it("selection has a clear visual state (a distinct style applied only to the active tile)", () => {
-    expect(squadScreenSource).toMatch(/activeJerseyStyle === style \? S\.jerseyStyleTileOn : \{\}/);
-    expect(squadScreenSource).toMatch(/jerseyStyleTileOn:\s*\{/);
+  it("the currently selected value is displayed (controlled select bound to activeJerseyStyle)", () => {
+    expect(squadScreenSource).toMatch(/<select\s+value=\{activeJerseyStyle\}/);
   });
 
-  it("selecting a tile calls handleJerseyStyleChange directly — no modal, no dropdown, no separate confirm step", () => {
-    expect(squadScreenSource).toMatch(/onClick=\{\(\) => handleJerseyStyleChange\(style\)\}/);
-    expect(squadScreenSource).not.toMatch(/jerseyStyle[\s\S]{0,80}<select/i);
+  it("choosing any option calls handleJerseyStyleChange with the new value — same generic handler used for all three", () => {
+    expect(squadScreenSource).toMatch(
+      /onChange=\{[\s\S]*?handleJerseyStyleChange\(e\.target\.value as ProTaggerJerseyStyle\)/,
+    );
+  });
+
+  it("no modal, bottom sheet, popover, or custom menu infrastructure was introduced — a plain native <select>", () => {
+    expect(squadScreenSource).not.toMatch(/jerseyStyle[\s\S]{0,200}(Modal|BottomSheet|Popover|Accordion)/i);
+    expect(squadScreenSource).toMatch(/<select/);
   });
 
   it("lives inside the existing Team Colours section, not a new screen/section", () => {
@@ -326,11 +340,38 @@ describe("ProTaggerJerseyStyle — compact 3-tile selector in Squad Setup", () =
     );
     expect(colourSectionMatch).not.toBeNull();
     expect(colourSectionMatch![1]).toMatch(/jerseyStyleRow/);
+    expect(colourSectionMatch![1]).toMatch(/<select/);
   });
 
   it("does not add a second/new Save or Go To Game control — the existing handleStart footer is unchanged", () => {
     const goToGameMatches = stripComments(squadScreenSource).match(/Go To Game/g) ?? [];
     expect(goToGameMatches.length).toBe(2); // header + footer buttons, unchanged from before this feature
+  });
+
+  it("Primary/Secondary colour controls and their behaviour are unchanged by this correction", () => {
+    expect(squadScreenSource).toMatch(/function handleColourChange\(type: "primary" \| "secondary", value: string\) \{/);
+    expect(squadScreenSource).toMatch(/type="color"/);
+    expect(squadScreenSource).toMatch(/value=\{activeColours\[type\]\}/);
+    expect(squadScreenSource).toMatch(/onChange=\{\(e: ChangeEvent<HTMLInputElement>\) =>\s*\n\s*handleColourChange\(type, e\.target\.value\)/);
+  });
+
+  it("the row's own vertical footprint is small: no extra wrapping elements or multi-line preview blocks", () => {
+    const rowMatch = squadScreenSource.match(/<div style=\{S\.jerseyStyleRow\}>([\s\S]*?)\n {12}<\/div>/);
+    expect(rowMatch).not.toBeNull();
+    // Exactly the label span and the select — nothing else nested inside.
+    expect((rowMatch![1].match(/<span/g) ?? []).length).toBe(1);
+    expect((rowMatch![1].match(/<select/g) ?? []).length).toBe(1);
+    expect(rowMatch![1]).not.toMatch(/<button/);
+    expect(rowMatch![1]).not.toMatch(/\.map\(/);
+  });
+
+  it("the select's own style targets a real but compact touch height (~40px), not a fixed large block", () => {
+    const styleBlock = squadScreenSource.match(/jerseyStyleSelect:\s*\{([\s\S]*?)\n {2}\}/)![1];
+    const heightMatch = styleBlock.match(/height:\s*(\d+)/);
+    expect(heightMatch).not.toBeNull();
+    const height = Number(heightMatch![1]);
+    expect(height).toBeGreaterThanOrEqual(36);
+    expect(height).toBeLessThanOrEqual(44);
   });
 });
 

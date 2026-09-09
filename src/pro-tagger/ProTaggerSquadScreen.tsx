@@ -2,7 +2,6 @@ import { useState, useCallback } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
-import { ProTaggerJerseyStyleSwatch } from "./ProTaggerLineupJerseyTile";
 import { ProTaggerLineupFormation } from "./ProTaggerLineupFormation";
 import type {
   ProTaggerJerseyStyle,
@@ -292,31 +291,24 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
             </div>
 
             {/* Jersey style — presentation only (where the secondary colour
-                appears). Compact 3-tile selector, live previews using the
-                current colours above; selection is independent per team
-                (see homeJerseyStyle/awayJerseyStyle). */}
+                appears). A compact dropdown, not a permanent visual
+                selector: the Starting XV immediately below is the live
+                preview, so this row doesn't need its own preview tiles.
+                Selection is independent per team (see
+                homeJerseyStyle/awayJerseyStyle). */}
             <div style={S.jerseyStyleRow}>
-              {(["chest", "sleeves", "collar"] as const).map((style) => (
-                <button
-                  key={style}
-                  type="button"
-                  style={{
-                    ...S.jerseyStyleTile,
-                    ...(activeJerseyStyle === style ? S.jerseyStyleTileOn : {}),
-                  }}
-                  onClick={() => handleJerseyStyleChange(style)}
-                >
-                  <ProTaggerJerseyStyleSwatch
-                    jerseyStyle={style}
-                    primary={activeColours.primary}
-                    secondary={activeColours.secondary}
-                    size={36}
-                  />
-                  <span style={S.jerseyStyleLabel}>
-                    {style === "chest" ? "Chest" : style === "sleeves" ? "Sleeves" : "Collar"}
-                  </span>
-                </button>
-              ))}
+              <span style={S.jerseyStyleRowLabel}>Jersey Style</span>
+              <select
+                value={activeJerseyStyle}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                  handleJerseyStyleChange(e.target.value as ProTaggerJerseyStyle)
+                }
+                style={S.jerseyStyleSelect}
+              >
+                <option value="chest">Chest</option>
+                <option value="sleeves">Sleeves</option>
+                <option value="collar">Collar</option>
+              </select>
             </div>
           </div>
 
@@ -633,36 +625,37 @@ const S: Record<string, CSSProperties> = {
   } as CSSProperties,
 
   // ── Jersey style selector ───────────────────────────────────────────────
+  // A single compact row (label + native <select>), not a permanent set of
+  // preview tiles — the Starting XV below is the live preview, so this row
+  // is kept as small as a reliable, accessible control allows (~40px tall
+  // + 8px top margin) to preserve as much vertical room for the pitch as
+  // possible.
   jerseyStyleRow: {
     display: "flex",
-    gap: 8,
-    marginTop: 10,
-  },
-  jerseyStyleTile: {
-    display: "flex",
-    flexDirection: "column",
     alignItems: "center",
-    gap: 2,
-    background: "transparent",
-    border: "1px solid #1c3a52",
-    borderRadius: 8,
-    padding: "3px 6px",
-    cursor: "pointer",
-    outline: "none",
-    minWidth: 52,
-    WebkitTapHighlightColor: "transparent",
+    justifyContent: "space-between",
+    gap: 10,
+    marginTop: 8,
   },
-  jerseyStyleTileOn: {
-    borderColor: "#2ea043",
-    background: "rgba(46, 160, 67, 0.14)",
-  },
-  jerseyStyleLabel: {
-    fontSize: 9,
-    fontWeight: 700,
-    letterSpacing: "0.04em",
-    textTransform: "uppercase" as const,
+  jerseyStyleRowLabel: {
+    fontSize: 12,
+    fontWeight: 600,
     color: "#7a95ad",
   },
+  jerseyStyleSelect: {
+    background: "#0a2134",
+    border: "1px solid #1c3a52",
+    borderRadius: 8,
+    color: "#dce8f4",
+    fontSize: 13,
+    fontWeight: 600,
+    padding: "0 10px",
+    height: 40,
+    minWidth: 130,
+    outline: "none",
+    cursor: "pointer",
+    WebkitTapHighlightColor: "transparent",
+  } as CSSProperties,
 
   // ── Player rows ──────────────────────────────────────────────────────────
   row: {
