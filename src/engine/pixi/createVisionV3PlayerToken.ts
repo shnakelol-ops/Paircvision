@@ -238,7 +238,13 @@ export function createVisionV3PlayerToken({
     ? Number(kitPatternColor)
     : (resolved.secondaryColor ?? mixColor(baseColor, 0xffffff, 0.3));
   const ringColor = mixColor(baseColor, accentColor, 0.3);
-  const coreColor = mixColor(baseColor, 0x020617, pitchBlendSensitivePalette ? 0.23 : 0.18);
+  // Phosphor/Pixi skip this shading step for high-luminance kit colours
+  // (relativeLuminance > 0.64 → 0 mix) so bright yellow stays bright instead
+  // of reading as mustard/olive. Vision V3 applied the mix unconditionally;
+  // match that behaviour for yellow only, leaving every other team colour's
+  // shading amount untouched.
+  const coreDarkenAmount = teamColor === "yellow" ? 0 : pitchBlendSensitivePalette ? 0.23 : 0.18;
+  const coreColor = mixColor(baseColor, 0x020617, coreDarkenAmount);
   const highlightColor = mixColor(coreColor, 0xffffff, 0.2);
   const edgeColor = mixColor(resolved.outlineColor, 0x000000, pitchBlendSensitivePalette ? 0.3 : 0.24);
 
