@@ -238,12 +238,25 @@ export function createVisionV3PlayerToken({
     ? Number(kitPatternColor)
     : (resolved.secondaryColor ?? mixColor(baseColor, 0xffffff, 0.3));
   const ringColor = mixColor(baseColor, accentColor, 0.3);
-  // Phosphor/Pixi skip this shading step for high-luminance kit colours
-  // (relativeLuminance > 0.64 → 0 mix) so bright yellow stays bright instead
-  // of reading as mustard/olive. Vision V3 applied the mix unconditionally;
-  // match that behaviour for yellow only, leaving every other team colour's
-  // shading amount untouched.
-  const coreDarkenAmount = teamColor === "yellow" ? 0 : pitchBlendSensitivePalette ? 0.23 : 0.18;
+  // Phosphor/Pixi skip this shading step for high-luminance fills
+  // (relativeLuminance > 0.64 → 0 mix) so a bright colour stays bright
+  // instead of reading as mustard/olive. Vision V3 applied the mix
+  // unconditionally, and — critically — callers can override `primaryColor`
+  // via `style` independently of `teamColor` (e.g. Tactical Slate's kit
+  // colour picker in createTacticalPadLiteSurface.ts always renders with
+  // teamColor "blue"/"red" while `style.primaryColor` carries the actual
+  // chosen kit colour), so gating the exception on `teamColor` never fired
+  // for a yellow *kit*. Gate on the resolved fill colour's own luminance
+  // instead, matching Phosphor's rule exactly, so it responds to whatever
+  // colour is actually being painted.
+  // pitchBlendSensitivePalette (green/white) keeps its dedicated, stronger
+  // darken amount regardless of luminance — that extra contrast against a
+  // green pitch is intentional and untouched here.
+  const coreDarkenAmount = pitchBlendSensitivePalette
+    ? 0.23
+    : luminance(baseColor) > 163
+      ? 0
+      : 0.18;
   const coreColor = mixColor(baseColor, 0x020617, coreDarkenAmount);
   const highlightColor = mixColor(coreColor, 0xffffff, 0.2);
   const edgeColor = mixColor(resolved.outlineColor, 0x000000, pitchBlendSensitivePalette ? 0.3 : 0.24);
