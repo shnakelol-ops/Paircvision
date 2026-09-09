@@ -2,8 +2,10 @@ import { useState, useCallback } from "react";
 import type { CSSProperties, ChangeEvent } from "react";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
+import { ProTaggerJerseyStyleSwatch } from "./ProTaggerLineupJerseyTile";
 import { ProTaggerLineupFormation } from "./ProTaggerLineupFormation";
 import type {
+  ProTaggerJerseyStyle,
   ProTaggerSession,
   ProTaggerSquadPlayer,
 } from "./pro-tagger-session";
@@ -48,6 +50,16 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
     primary:   session.awaySquad.primaryColour   ?? "#dc2626",
     secondary: session.awaySquad.secondaryColour ?? "#ffffff",
   });
+  // Jersey SHAPE only (chest/sleeves/collar) — mirrors the colour-state
+  // lifecycle above exactly (seeded from session with a "chest" fallback,
+  // edited locally, written back only through handleStart()'s spread).
+  // Independent per side: changing one never touches the other's state.
+  const [homeJerseyStyle, setHomeJerseyStyle] = useState<ProTaggerJerseyStyle>(
+    session.homeSquad.jerseyStyle ?? "chest",
+  );
+  const [awayJerseyStyle, setAwayJerseyStyle] = useState<ProTaggerJerseyStyle>(
+    session.awaySquad.jerseyStyle ?? "chest",
+  );
   const [homeSquadTeamName, setHomeSquadTeamName] = useState<string | undefined>(
     session.homeSquad.teamName,
   );
@@ -76,6 +88,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
   const activeLabel   = activeTab === "home" ? homeLabel : awayLabel;
   const players       = activeTab === "home" ? homePlayers : awayPlayers;
   const activeColours = activeTab === "home" ? homeColours : awayColours;
+  const activeJerseyStyle = activeTab === "home" ? homeJerseyStyle : awayJerseyStyle;
 
   const setName = useCallback(
     (team: TeamTab, index: number, name: string) => {
@@ -94,6 +107,14 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
       setHomeColours((prev) => ({ ...prev, [type]: value }));
     } else {
       setAwayColours((prev) => ({ ...prev, [type]: value }));
+    }
+  }
+
+  function handleJerseyStyleChange(style: ProTaggerJerseyStyle) {
+    if (activeTab === "home") {
+      setHomeJerseyStyle(style);
+    } else {
+      setAwayJerseyStyle(style);
     }
   }
 
@@ -188,6 +209,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
         primaryColour:   homeColours.primary,
         secondaryColour: homeColours.secondary,
         teamName:        homeSquadTeamName,
+        jerseyStyle:     homeJerseyStyle,
       },
       awaySquad: {
         ...session.awaySquad,
@@ -195,6 +217,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
         primaryColour:   awayColours.primary,
         secondaryColour: awayColours.secondary,
         teamName:        awaySquadTeamName,
+        jerseyStyle:     awayJerseyStyle,
       },
     });
   }
@@ -267,6 +290,34 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
                 </div>
               ))}
             </div>
+
+            {/* Jersey style — presentation only (where the secondary colour
+                appears). Compact 3-tile selector, live previews using the
+                current colours above; selection is independent per team
+                (see homeJerseyStyle/awayJerseyStyle). */}
+            <div style={S.jerseyStyleRow}>
+              {(["chest", "sleeves", "collar"] as const).map((style) => (
+                <button
+                  key={style}
+                  type="button"
+                  style={{
+                    ...S.jerseyStyleTile,
+                    ...(activeJerseyStyle === style ? S.jerseyStyleTileOn : {}),
+                  }}
+                  onClick={() => handleJerseyStyleChange(style)}
+                >
+                  <ProTaggerJerseyStyleSwatch
+                    jerseyStyle={style}
+                    primary={activeColours.primary}
+                    secondary={activeColours.secondary}
+                    size={36}
+                  />
+                  <span style={S.jerseyStyleLabel}>
+                    {style === "chest" ? "Chest" : style === "sleeves" ? "Sleeves" : "Collar"}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Visual lineup summary — read-only team sheet, Starting 15 in the
@@ -276,6 +327,7 @@ export function ProTaggerSquadScreen({ session, onBack, onStart }: Props) {
             players={players}
             primary={activeColours.primary}
             secondary={activeColours.secondary}
+            jerseyStyle={activeJerseyStyle}
           />
 
           {/* Edit Player Names — collapsed by default. Expanding reveals the
@@ -579,6 +631,38 @@ const S: Record<string, CSSProperties> = {
     padding: 0,
     WebkitAppearance: "none",
   } as CSSProperties,
+
+  // ── Jersey style selector ───────────────────────────────────────────────
+  jerseyStyleRow: {
+    display: "flex",
+    gap: 8,
+    marginTop: 10,
+  },
+  jerseyStyleTile: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 2,
+    background: "transparent",
+    border: "1px solid #1c3a52",
+    borderRadius: 8,
+    padding: "3px 6px",
+    cursor: "pointer",
+    outline: "none",
+    minWidth: 52,
+    WebkitTapHighlightColor: "transparent",
+  },
+  jerseyStyleTileOn: {
+    borderColor: "#2ea043",
+    background: "rgba(46, 160, 67, 0.14)",
+  },
+  jerseyStyleLabel: {
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: "0.04em",
+    textTransform: "uppercase" as const,
+    color: "#7a95ad",
+  },
 
   // ── Player rows ──────────────────────────────────────────────────────────
   row: {

@@ -46,9 +46,13 @@ describe("ProTaggerLineupJerseyTile — LivePickerJerseyMark geometry (req. 2, 3
   const markMatch = tileSource.match(/function LivePickerJerseyMark[\s\S]*?\n\}/);
   const mark = markMatch ? markMatch[0] : "";
 
-  it("exists and is used only when livePicker is requested", () => {
+  // Superseded by the jersey style selector (see ProTaggerJerseyStyle):
+  // shape is now gated on the resolved jerseyStyle ("sleeves" reuses this
+  // exact same mark), not on the livePicker boolean, which now controls
+  // only the number treatment — see the orthogonality tests below.
+  it("exists and is used when jerseyStyle resolves to \"sleeves\"", () => {
     expect(markMatch).not.toBeNull();
-    expect(tileSource).toMatch(/livePicker \? \(\s*<LivePickerJerseyMark/);
+    expect(tileSource).toMatch(/resolvedStyle === "sleeves"\) return <LivePickerJerseyMark/);
   });
 
   it("has NO secondary chest band — no <rect> element and no fill covering a horizontal stripe across the body", () => {
@@ -119,8 +123,12 @@ describe("Default Squad Setup rendering is unchanged unless livePicker is explic
     expect(formationSource).not.toMatch(/numberCrisp/);
   });
 
-  it("the tile falls back to ProTaggerMiniJersey and numberOutlineDefault whenever livePicker is falsy", () => {
-    expect(tileSource).toMatch(/\{livePicker \? \(/);
+  // Superseded: shape now falls back on an absent/legacy jerseyStyle
+  // (resolvedJerseyStyle = jerseyStyle ?? "chest"), independent of
+  // livePicker — the number treatment (numberOutlineDefault whenever
+  // livePicker is falsy) is unaffected and still checked here.
+  it("the tile falls back to ProTaggerMiniJersey (\"chest\") whenever jerseyStyle is omitted, and to numberOutlineDefault whenever livePicker is falsy", () => {
+    expect(tileSource).toMatch(/const resolvedJerseyStyle: ProTaggerJerseyStyle = jerseyStyle \?\? "chest";/);
     expect(tileSource).toMatch(/<ProTaggerMiniJersey primary=\{primary\} secondary=\{secondary\} size=\{size\} \/>/);
   });
 

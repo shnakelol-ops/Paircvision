@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
-import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
+import type { ProTaggerJerseyStyle, ProTaggerSquadPlayer } from "./pro-tagger-session";
 
 interface Props {
   /** Null renders a dimmed, numberless "ghost" jersey — a formation slot with
@@ -42,6 +42,19 @@ interface Props {
    * unaffected. See LivePickerJerseyMark below for the exact geometry.
    */
   livePicker?: boolean;
+  /**
+   * Jersey SHAPE only — where the secondary team colour appears: "chest"
+   * (ProTaggerMiniJersey's existing look, a secondary chest band), "sleeves"
+   * (LivePickerJerseyMark below, a secondary sleeves-only look), or "collar"
+   * (CollarJerseyMark below, a secondary collar/neck detail only). Defaults
+   * to "chest" when omitted, matching every caller's behaviour before this
+   * prop existed. Deliberately orthogonal to `livePicker`/`numberCrisp`,
+   * which control the NUMBER treatment only — a squad can pick any jersey
+   * shape while the live picker's own crisp number treatment stays exactly
+   * as it was. See pro-tagger-session.ts's ProTaggerJerseyStyle for the
+   * full rationale.
+   */
+  jerseyStyle?: ProTaggerJerseyStyle;
 }
 
 // Live-tagging jersey experiment (see the `livePicker` prop above): the
@@ -66,6 +79,38 @@ function LivePickerJerseyMark({ primary, secondary, size }: { primary: string; s
   );
 }
 
+// "collar" jersey style: reuses ProTaggerMiniJersey's own body+sleeve
+// outline path and collar path verbatim (see that file), omitting only its
+// chest-stripe rect — primary body and sleeves, secondary collar, no chest
+// band, no other decorative addition. Built locally rather than by editing
+// ProTaggerMiniJersey.tsx itself, which stays the unmodified "chest" shape
+// source of truth other screens keep using unchanged.
+function CollarJerseyMark({ primary, secondary, size }: { primary: string; secondary: string; size: number }) {
+  const h = Math.round((size * 22) / 20);
+  return (
+    <svg viewBox="0 0 20 22" width={size} height={h} style={{ display: "block", flexShrink: 0 }} aria-hidden="true">
+      <path
+        d="M4,21 L4,8 L0,8 L0,4 L4,2 L7,5 L10,8 L13,5 L16,2 L20,4 L20,8 L16,8 L16,21 Z"
+        fill={primary}
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth="0.75"
+        strokeLinejoin="round"
+      />
+      <path d="M7,5 L10,8 L13,5 Q10,2 7,5 Z" fill={secondary} />
+    </svg>
+  );
+}
+
+// Resolves the shape prop to a concrete style, defaulting absent/legacy
+// squads to "chest" — see ProTaggerJerseyStyle's own comment for why that's
+// the correct default (it's what every squad already looked like before
+// this prop existed).
+function renderJerseyShape(resolvedStyle: ProTaggerJerseyStyle, primary: string, secondary: string, size: number) {
+  if (resolvedStyle === "sleeves") return <LivePickerJerseyMark primary={primary} secondary={secondary} size={size} />;
+  if (resolvedStyle === "collar") return <CollarJerseyMark primary={primary} secondary={secondary} size={size} />;
+  return <ProTaggerMiniJersey primary={primary} secondary={secondary} size={size} />;
+}
+
 // Read-only jersey-first tile for the Squad Setup lineup summary
 // (ProTaggerLineupFormation). Composes the existing ProTaggerMiniJersey
 // rather than duplicating jersey art — this file only adds the number/name
@@ -81,12 +126,14 @@ function LivePickerJerseyMark({ primary, secondary, size }: { primary: string; s
 // solid circular badge sitting on top of it (that read as a Tactical
 // Slate/player-token marker, not a team sheet, and is deliberately not
 // used here).
-export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 40, numberFontSize, numberCrisp, livePicker }: Props) {
+export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 40, numberFontSize, numberCrisp, livePicker, jerseyStyle }: Props) {
+  const resolvedJerseyStyle: ProTaggerJerseyStyle = jerseyStyle ?? "chest";
+
   if (!player) {
     return (
       <div style={S.tile}>
         <div style={{ ...S.jerseyWrap, width: size }}>
-          <ProTaggerMiniJersey primary="#17324a" secondary="#1c3a52" size={size} />
+          {renderJerseyShape(resolvedJerseyStyle, "#17324a", "#1c3a52", size)}
         </div>
       </div>
     );
@@ -99,6 +146,9 @@ export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 4
   // number to shrink with it (see ProTaggerLineupFormation.tsx) pass an
   // explicit numberFontSize instead, which wins over this default.
   const resolvedNumberFontSize = numberFontSize ?? Math.max(15, Math.round(size * 0.5));
+  // Number treatment is deliberately independent of jerseyStyle — livePicker
+  // and numberCrisp are the only two inputs here, exactly as before this
+  // prop existed. See the jerseyStyle prop's own comment above.
   const outlineStyle: CSSProperties = livePicker
     ? S.numberOutlineLivePicker
     : numberCrisp
@@ -107,14 +157,34 @@ export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 4
   return (
     <div style={S.tile}>
       <div style={{ ...S.jerseyWrap, width: size }}>
-        {livePicker ? (
-          <LivePickerJerseyMark primary={primary} secondary={secondary} size={size} />
-        ) : (
-          <ProTaggerMiniJersey primary={primary} secondary={secondary} size={size} />
-        )}
+        {renderJerseyShape(resolvedJerseyStyle, primary, secondary, size)}
         <span style={{ ...S.numberText, ...outlineStyle, fontSize: resolvedNumberFontSize }}>{player.number}</span>
       </div>
       {name && <span style={S.name}>{name}</span>}
+    </div>
+  );
+}
+
+// Bare jersey-shape swatch — no number, no name plate — reusing the exact
+// same renderJerseyShape() the full tile above uses, so a selector preview
+// is pixel-identical in shape to what the same jerseyStyle renders
+// everywhere else. Built for Squad Setup's compact jersey-style selector
+// (see ProTaggerSquadScreen.tsx) rather than adding a fourth jersey
+// implementation there.
+export function ProTaggerJerseyStyleSwatch({
+  jerseyStyle,
+  primary,
+  secondary,
+  size = 36,
+}: {
+  jerseyStyle: ProTaggerJerseyStyle;
+  primary: string;
+  secondary: string;
+  size?: number;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {renderJerseyShape(jerseyStyle, primary, secondary, size)}
     </div>
   );
 }
