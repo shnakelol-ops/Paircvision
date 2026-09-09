@@ -1,6 +1,8 @@
 import type { CSSProperties } from "react";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
+import { ProTaggerLineupJerseyTile } from "./ProTaggerLineupJerseyTile";
+import { ProTaggerLineupPitchBackground } from "./ProTaggerLineupPitchBackground";
 import type { DisciplinePlayerStatus } from "./pro-tagger-discipline";
 
 export type SelectedPlayer = {
@@ -38,6 +40,19 @@ const FORMATION_ROWS: readonly (readonly number[])[] = [
   [13, 14, 15],   // #13 #14 #15 (RF FF LF)
 ];
 
+// Visual language alignment with the approved Squad Setup lineup tile
+// (ProTaggerLineupFormation.tsx) — same jersey sizes, so the live picker
+// and pre-match team sheet read as one consistent PáircVision player
+// marker rather than two different systems.
+const FORMATION_JERSEY_SIZE = 26;
+const BENCH_JERSEY_SIZE = 22;
+// Number legibility pass: real-Android screenshots showed double-digit
+// numbers (10-15) reading soft/blurry at Squad Setup's 13px. Bumped 1px
+// (13 -> 14, the smallest useful step). Squad Setup itself is untouched —
+// it still passes 13, so this is picker-local only.
+const FORMATION_NUMBER_FONT_SIZE = 14;
+const BENCH_NUMBER_FONT_SIZE = 14;
+
 export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, onSelect, disciplineStatus }: Props) {
   const colour = teamColour ?? "#238636";
 
@@ -60,22 +75,33 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
     });
   }
 
-  // Status label always replaces the name/position line (never colour alone)
-  // and the tile is disabled only for RED — SIN_BIN stays fully tappable.
-  function renderTileContent(p: ProTaggerSquadPlayer, fallbackPos: string) {
+  // Visual language: jersey + centred number + optional compact name plate
+  // (ProTaggerLineupJerseyTile), no position abbreviations, no rectangular
+  // tile card. Status label still always replaces the name line (never
+  // colour alone) and the tile is disabled only for RED — SIN_BIN stays
+  // fully tappable; that rule is unchanged.
+  //
+  // Simplified tagging jersey experiment: passes livePicker to request the
+  // tile's live-tagging-only jersey variant (primary torso, secondary
+  // sleeves, no chest stripe) and its matching minimal number treatment,
+  // instead of the shared default jersey Squad Setup uses. This supersedes
+  // the previous numberCrisp request — livePicker's own number treatment
+  // is the thing being tested now. Squad Setup's own call site passes
+  // neither prop and is completely unaffected.
+  function renderTile(p: ProTaggerSquadPlayer, size: number, numberFontSize: number) {
     const status = disciplineStatus?.get(p.id);
+    // Suppress the tile's own name plate when a status label must show
+    // instead — ProTaggerLineupJerseyTile only renders a name when one is
+    // present, so a blank name here reproduces "no placeholder" for free.
+    const tilePlayer = status ? { ...p, name: "" } : p;
     return (
       <>
-        <span style={S.number}>{p.number}</span>
-        {status === "RED" ? (
-          <span style={S.statusRed}>RED</span>
-        ) : status === "SIN_BIN" ? (
-          <span style={S.statusSinBin}>SIN BIN</span>
-        ) : p.name.trim() ? (
-          <span style={S.name}>{p.name.trim()}</span>
-        ) : (
-          <span style={S.pos}>{p.position ?? fallbackPos}</span>
-        )}
+        <ProTaggerLineupJerseyTile
+          player={tilePlayer} primary={colour} secondary={secondaryColour ?? "#ffffff"}
+          size={size} numberFontSize={numberFontSize} livePicker
+        />
+        {status === "RED" && <span style={S.statusRed}>RED</span>}
+        {status === "SIN_BIN" && <span style={S.statusSinBin}>SIN BIN</span>}
       </>
     );
   }
@@ -91,30 +117,46 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
       {/* Scrollable formation + bench */}
       <div style={S.scroll}>
 
-        {/* Formation rows — slot-based */}
-        {FORMATION_ROWS.map((slots, ri) => (
-          <div key={ri} style={S.formRow}>
-            {slots.map((slot) => {
-              const p = findSlot(slot);
-              if (!p) return null;
-              const isRed = disciplineStatus?.get(p.id) === "RED";
-              return (
-                <button
-                  key={slot}
-                  disabled={isRed}
-                  style={{
-                    ...S.playerBtn,
-                    border: `1px solid ${colour}`,
-                    ...(isRed ? S.playerBtnRed : {}),
-                  }}
-                  onClick={() => tap(p)}
-                >
-                  {renderTileContent(p, "")}
-                </button>
-              );
-            })}
+        {/* Static GAA pitch behind the formation only — spatial reference for
+            "these are the 15 players in their formation", not a redesign of
+            the capture flow. Reuses ProTaggerLineupPitchBackground exactly as
+            Squad Setup does (same component, unmodified): it takes no props,
+            has no pointer handlers, no coordinate/orientation/attacking-
+            direction logic, and is not ProTaggerPitchView.tsx (the live
+            capture pitch) — this is the dumb, purely decorative reproduction.
+            pointerEvents: "none" plus sitting behind the formation layer in
+            the stacking order (zIndex 0 vs 1) means it can never intercept a
+            player tap. The picker's own additional opacity dims it further
+            than the Squad Setup rendering — a busier, smaller live-capture
+            screen needs the jersey to stay dominant regardless of team
+            colour, without touching the shared component or team colours. */}
+        <div style={S.pitchArea}>
+          <div style={S.pitchLayer} aria-hidden="true">
+            <ProTaggerLineupPitchBackground />
           </div>
-        ))}
+          <div style={S.formationRows}>
+            {/* Formation rows — slot-based */}
+            {FORMATION_ROWS.map((slots, ri) => (
+              <div key={ri} style={S.formRow}>
+                {slots.map((slot) => {
+                  const p = findSlot(slot);
+                  if (!p) return null;
+                  const isRed = disciplineStatus?.get(p.id) === "RED";
+                  return (
+                    <button
+                      key={slot}
+                      disabled={isRed}
+                      style={{ ...S.playerBtn, ...(isRed ? S.playerBtnRed : {}) }}
+                      onClick={() => tap(p)}
+                    >
+                      {renderTile(p, FORMATION_JERSEY_SIZE, FORMATION_NUMBER_FONT_SIZE)}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Bench — active but not in formation */}
         {bench.length > 0 && (
@@ -130,7 +172,7 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
                     style={{ ...S.subBtn, ...(isRed ? S.playerBtnRed : {}) }}
                     onClick={() => tap(p)}
                   >
-                    {renderTileContent(p, "SUB")}
+                    {renderTile(p, BENCH_JERSEY_SIZE, BENCH_NUMBER_FONT_SIZE)}
                   </button>
                 );
               })}
@@ -189,18 +231,57 @@ const S: Record<string, CSSProperties> = {
     justifyContent: "center",
     gap: 6,
   },
+  // Wraps only the formation-rows block (not the bench, not the header, not
+  // No player/Unknown) so the pitch belongs strictly to the 15-slot canvas.
+  // Purely a stacking/positioning container — no size, gap, or alignment
+  // change versus how these rows sat directly in .scroll before.
+  pitchArea: {
+    position: "relative",
+    width: "100%",
+  },
+  // Decorative pitch layer, absolutely filling pitchArea behind the
+  // formation. pointerEvents: "none" plus zIndex 0 (below formationRows'
+  // zIndex 1) is a double guarantee it can never intercept a player tap.
+  // The extra opacity here is picker-local — ProTaggerLineupPitchBackground
+  // itself is unmodified and untouched by this change.
+  pitchLayer: {
+    position: "absolute",
+    inset: 0,
+    pointerEvents: "none",
+    opacity: 0.55,
+    zIndex: 0,
+  },
+  // Same flex/gap/alignment the rows previously had as direct children of
+  // .scroll — formation row layout, spacing, and order are unchanged, only
+  // now stacked above the pitch layer instead of directly in .scroll.
+  formationRows: {
+    position: "relative",
+    zIndex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 5,
+  },
+  // Visual language alignment: a large, transparent tap target — no card
+  // background/border around the player, matching Squad Setup's "jersey is
+  // the marker, not a rectangle" treatment (ProTaggerLineupJerseyTile is
+  // 76px wide regardless of jersey size, so this stays at least as wide as
+  // that; height comfortably fits jersey + optional name plate). The hit
+  // area is intentionally larger than the visible jersey — tapping near it,
+  // not precisely on the shirt, must still register.
   playerBtn: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    background: "#161b22",
+    background: "transparent",
+    border: "none",
     borderRadius: 8,
     cursor: "pointer",
     outline: "none",
-    width: 62,
-    minHeight: 54,
-    padding: "6px 4px 5px",
+    width: 80,
+    minHeight: 64,
+    padding: "4px 2px",
     WebkitTapHighlightColor: "transparent",
     flexShrink: 0,
   },
@@ -211,7 +292,6 @@ const S: Record<string, CSSProperties> = {
   playerBtnRed: {
     opacity: 0.45,
     cursor: "default",
-    borderColor: "#6e7681",
   },
 
   // ── Bench ──────────────────────────────────────────────────────────────────
@@ -238,44 +318,16 @@ const S: Record<string, CSSProperties> = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    background: "#0d1117",
-    border: "1px solid #30363d",
+    background: "transparent",
+    border: "none",
     borderRadius: 8,
     cursor: "pointer",
     outline: "none",
-    width: 58,
-    minHeight: 48,
-    padding: "5px 4px 4px",
+    width: 80,
+    minHeight: 58,
+    padding: "4px 2px",
     WebkitTapHighlightColor: "transparent",
     flexShrink: 0,
-  },
-
-  // ── Shared text ────────────────────────────────────────────────────────────
-  number: {
-    fontSize: 17,
-    fontWeight: 700,
-    color: "#e6edf3",
-    lineHeight: "1.1",
-    fontVariantNumeric: "tabular-nums",
-  },
-  name: {
-    fontSize: 9,
-    color: "#8b949e",
-    marginTop: 2,
-    textAlign: "center" as const,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap" as const,
-    maxWidth: 56,
-    lineHeight: "1.2",
-  },
-  pos: {
-    fontSize: 9,
-    color: "#6e7681",
-    marginTop: 2,
-    textAlign: "center" as const,
-    whiteSpace: "nowrap" as const,
-    lineHeight: "1.2",
   },
 
   // ── Discipline status labels — text, never colour alone ─────────────────────
