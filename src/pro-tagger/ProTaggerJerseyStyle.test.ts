@@ -15,6 +15,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { readableNumberColour } from "./ProTaggerLineupJerseyTile";
 
 const sessionSource   = readFileSync(fileURLToPath(new URL("./pro-tagger-session.ts", import.meta.url)), "utf8");
 const tileSource       = readFileSync(fileURLToPath(new URL("./ProTaggerLineupJerseyTile.tsx", import.meta.url)), "utf8");
@@ -68,11 +69,11 @@ describe("ProTaggerJerseyStyle — legacy fallback resolves to \"chest\" at ever
     );
   });
 
-  it("renderJerseyShape's own fallthrough (unrecognised/absent shape) renders the \"chest\" ProTaggerMiniJersey", () => {
+  it("renderJerseyShape's own fallthrough (unrecognised/absent shape) renders the \"chest\" mark", () => {
     const fnMatch = tileSource.match(/function renderJerseyShape\([\s\S]*?\n\}/);
     expect(fnMatch).not.toBeNull();
     expect(fnMatch![0]).toMatch(
-      /return <ProTaggerMiniJersey primary=\{primary\} secondary=\{secondary\} size=\{size\} \/>;/,
+      /return <ChestJerseyMark primary=\{primary\} secondary=\{secondary\} size=\{size\} \/>;/,
     );
   });
 });
@@ -114,34 +115,76 @@ describe("ProTaggerJerseyStyle — orthogonal to the Live Picker's number treatm
 
 // ── Shape rendering correctness ─────────────────────────────────────────────
 
-describe("ProTaggerJerseyStyle — \"chest\" renders the existing ProTaggerMiniJersey unchanged", () => {
-  it("renderJerseyShape's default branch is ProTaggerMiniJersey — no new geometry invented for chest", () => {
-    const fnMatch = tileSource.match(/function renderJerseyShape\([\s\S]*?\n\}/)![0];
-    expect(fnMatch).toMatch(/return <ProTaggerMiniJersey primary=\{primary\} secondary=\{secondary\} size=\{size\} \/>;/);
+// Silhouette refinement pass: chest/sleeves/collar were rebuilt on a single
+// shared, less-blocky base silhouette (JERSEY_BODY_PATH — sloped shoulders,
+// tapered/rounded sleeve tips, a smooth curved neckline) instead of each
+// reusing/duplicating ProTaggerMiniJersey's old squared-off path. See the
+// "JERSEY VISUAL REFINEMENT" spec. ProTaggerMiniJersey.tsx itself is now a
+// separate, untouched, out-of-scope decorative icon (used elsewhere, e.g.
+// the live picker's header and Squad Setup's colour preview) — the
+// jerseyStyle-driven shapes below no longer read its geometry at all.
+describe("ProTaggerJerseyStyle — one shared base silhouette for chest/sleeves/collar", () => {
+  it("JERSEY_BODY_PATH is defined once and is the single source of the outer silhouette", () => {
+    expect(tileSource).toMatch(/const JERSEY_BODY_PATH =\s*\n?\s*"[^"]+";/);
   });
 
-  it("ProTaggerMiniJersey.tsx itself is never modified by this feature (still the single \"chest\" shape source of truth)", () => {
+  it("ChestJerseyMark and CollarJerseyMark both render JERSEY_BODY_PATH directly — same outer shape, no per-style geometry", () => {
+    const chestMatch = tileSource.match(/function ChestJerseyMark[\s\S]*?\n\}/)![0];
+    const collarMatch = tileSource.match(/function CollarJerseyMark[\s\S]*?\n\}/)![0];
+    expect(chestMatch).toMatch(/d=\{JERSEY_BODY_PATH\}/);
+    expect(collarMatch).toMatch(/d=\{JERSEY_BODY_PATH\}/);
+  });
+
+  it("the \"sleeves\" decomposition (torso + 2 sleeves) is derived from the same silhouette, not an independently drawn shape (shared seam coordinates, verified in ProTaggerPlayerPicker.simplifiedJersey.test.ts)", () => {
+    expect(tileSource).toMatch(/const JERSEY_TORSO_PATH = "[^"]+";/);
+    expect(tileSource).toMatch(/const JERSEY_SLEEVE_LEFT_PATH = "[^"]+";/);
+    expect(tileSource).toMatch(/const JERSEY_SLEEVE_RIGHT_PATH = "[^"]+";/);
+  });
+
+  it("ProTaggerMiniJersey.tsx itself is untouched and no longer imported by this file — it is a separate, unrelated decorative icon", () => {
     const miniJerseySource = readFileSync(
       fileURLToPath(new URL("./ProTaggerMiniJersey.tsx", import.meta.url)),
       "utf8",
     );
     expect(miniJerseySource).toMatch(/Chest stripe/);
-    expect(miniJerseySource).toMatch(/<rect x="4" y="10" width="12" height="3" fill=\{secondary\} \/>/);
     expect(miniJerseySource).not.toMatch(/jerseyStyle/);
+    expect(tileSource).not.toMatch(/import.*ProTaggerMiniJersey/);
+    expect(tileSource).not.toMatch(/<ProTaggerMiniJersey/);
+  });
+
+  it("outer bounding box is unchanged: same viewBox and the same size->height formula every jersey shape has always used", () => {
+    expect(tileSource).toMatch(/viewBox="0 0 20 22"/);
+    const heightFormulaCount = (tileSource.match(/Math\.round\(\(size \* 22\) \/ 20\)/g) ?? []).length;
+    expect(heightFormulaCount).toBeGreaterThanOrEqual(3); // Chest, Sleeves(=Torso/sleeve), Collar all use it
   });
 });
 
-describe("ProTaggerJerseyStyle — \"sleeves\" reuses the existing LivePickerJerseyMark unchanged", () => {
+describe("ProTaggerJerseyStyle — \"chest\" style", () => {
+  it("renderJerseyShape's default branch renders ChestJerseyMark — the shared silhouette plus a secondary chest band", () => {
+    const fnMatch = tileSource.match(/function renderJerseyShape\([\s\S]*?\n\}/)![0];
+    expect(fnMatch).toMatch(/return <ChestJerseyMark primary=\{primary\} secondary=\{secondary\} size=\{size\} \/>;/);
+  });
+
+  it("ChestJerseyMark renders exactly one body path (primary) and one chest-band rect (secondary), nothing else", () => {
+    const mark = tileSource.match(/function ChestJerseyMark[\s\S]*?\n\}/)![0];
+    expect((mark.match(/<path/g) ?? []).length).toBe(1);
+    expect((mark.match(/<rect/g) ?? []).length).toBe(1);
+    expect(mark).toMatch(/fill=\{primary\}/);
+    expect(mark).toMatch(/fill=\{secondary\}/);
+  });
+});
+
+describe("ProTaggerJerseyStyle — \"sleeves\" style (LivePickerJerseyMark)", () => {
   const markMatch = tileSource.match(/function LivePickerJerseyMark[\s\S]*?\n\}/);
   const mark = markMatch ? markMatch[0] : "";
 
-  it("LivePickerJerseyMark itself is byte-identical geometry to before this feature: two secondary sleeves, one primary torso, no rect, no collar curve", () => {
+  it("renders exactly the two sleeve paths (secondary) and the torso path (primary) — no chest band, no collar accent", () => {
     expect(mark).not.toMatch(/<rect/);
-    expect(mark).not.toMatch(/\bQ\d/);
+    expect(mark).not.toMatch(/JERSEY_COLLAR_PATH/);
     const pathCount = (mark.match(/<path/g) ?? []).length;
     expect(pathCount).toBe(3);
     expect((mark.match(/fill=\{secondary\}/g) ?? []).length).toBe(2);
-    expect(mark).toMatch(/<path d="M4,21[^"]*" fill=\{primary\} \/>/);
+    expect(mark).toMatch(/d=\{JERSEY_TORSO_PATH\}\s+fill=\{primary\}/);
   });
 
   it("renderJerseyShape routes \"sleeves\" to this exact mark", () => {
@@ -150,38 +193,30 @@ describe("ProTaggerJerseyStyle — \"sleeves\" reuses the existing LivePickerJer
   });
 });
 
-describe("ProTaggerJerseyStyle — \"collar\" is newly built, reusing ProTaggerMiniJersey's own path geometry", () => {
+describe("ProTaggerJerseyStyle — \"collar\" style (CollarJerseyMark)", () => {
   const markMatch = tileSource.match(/function CollarJerseyMark[\s\S]*?\n\}/);
   const mark = markMatch ? markMatch[0] : "";
 
-  it("exists as its own local function (no fourth file, no new SVG geometry invented)", () => {
+  it("exists as its own local function (no fourth file, no per-style silhouette — see the shared-base describe block above)", () => {
     expect(markMatch).not.toBeNull();
   });
 
-  it("reuses ProTaggerMiniJersey's exact body+sleeve outline path verbatim", () => {
-    expect(mark).toContain(
-      "M4,21 L4,8 L0,8 L0,4 L4,2 L7,5 L10,8 L13,5 L16,2 L20,4 L20,8 L16,8 L16,21 Z",
-    );
-  });
-
-  it("reuses ProTaggerMiniJersey's exact collar path verbatim", () => {
-    expect(mark).toContain("M7,5 L10,8 L13,5 Q10,2 7,5 Z");
-  });
-
-  it("has no chest-stripe rect and no third (sleeve-decomposition) path — primary body, primary sleeves, secondary collar only", () => {
+  it("renders the shared body path (primary) plus the JERSEY_COLLAR_PATH neck band (secondary) only — no chest-stripe rect, no sleeve decomposition", () => {
+    expect(mark).toMatch(/d=\{JERSEY_BODY_PATH\}/);
+    expect(mark).toMatch(/d=\{JERSEY_COLLAR_PATH\}/);
     expect(mark).not.toMatch(/<rect/);
     const pathCount = (mark.match(/<path/g) ?? []).length;
-    expect(pathCount).toBe(2); // body+sleeve outline, collar — nothing else
+    expect(pathCount).toBe(2); // body silhouette, collar band — nothing else
   });
 
-  it("body path is primary-filled, collar path is secondary-filled — same fill convention as ProTaggerMiniJersey", () => {
+  it("body path is primary-filled, collar path is secondary-filled", () => {
     expect(mark).toMatch(/fill=\{primary\}/);
     expect(mark).toMatch(/fill=\{secondary\}/);
   });
 
-  it("uses the same viewBox/size formula as every other jersey shape (pixel-identical outer silhouette)", () => {
-    expect(mark).toMatch(/viewBox="0 0 20 22"/);
-    expect(mark).toMatch(/Math\.round\(\(size \* 22\) \/ 20\)/);
+  it("the collar band traces the same neckline curve JERSEY_BODY_PATH uses between its two shoulder points — not an independent shape", () => {
+    expect(tileSource).toMatch(/JERSEY_COLLAR_PATH = "M5,3[^"]*"/);
+    expect(tileSource).toMatch(/JERSEY_BODY_PATH =\s*\n?\s*"[^"]*5,3[^"]*"/);
   });
 
   it("renderJerseyShape routes \"collar\" to this exact mark", () => {
@@ -190,10 +225,122 @@ describe("ProTaggerJerseyStyle — \"collar\" is newly built, reusing ProTaggerM
   });
 });
 
+// Contrast refinement pass: a white/light primary jersey with a fixed
+// white number was unreadable (see the "JERSEY VISUAL REFINEMENT" spec's
+// Objective A). The number's fill colour now derives automatically from
+// the jersey's primary colour via readableNumberColour — real functional
+// tests against the exported function, not source-scanning, since the
+// correctness here is about actual luminance values, not just presence of
+// code patterns.
+describe("ProTaggerJerseyStyle — automatic number contrast (readableNumberColour)", () => {
+  it("white primary -> dark number", () => {
+    expect(readableNumberColour("#ffffff")).toBe("#0f172a");
+  });
+
+  it("near-white primary -> dark number", () => {
+    expect(readableNumberColour("#f5f5f5")).toBe("#0f172a");
+    expect(readableNumberColour("#eeeeee")).toBe("#0f172a");
+  });
+
+  it("yellow/light primary -> dark number", () => {
+    expect(readableNumberColour("#fde047")).toBe("#0f172a"); // light yellow
+    expect(readableNumberColour("#fef3c7")).toBe("#0f172a"); // pale cream
+  });
+
+  it("dark green primary -> white number", () => {
+    expect(readableNumberColour("#16a34a")).toBe("#ffffff");
+    expect(readableNumberColour("#14532d")).toBe("#ffffff");
+  });
+
+  it("dark blue primary -> white number", () => {
+    expect(readableNumberColour("#1e3a8a")).toBe("#ffffff");
+    expect(readableNumberColour("#1e40af")).toBe("#ffffff");
+  });
+
+  it("red primary -> white number", () => {
+    expect(readableNumberColour("#dc2626")).toBe("#ffffff");
+  });
+
+  it("black primary -> white number", () => {
+    expect(readableNumberColour("#000000")).toBe("#ffffff");
+  });
+
+  it("is a pure, deterministic function of the hex string alone — same input always yields the same output, no randomness/timing", () => {
+    const samples = ["#ffffff", "#000000", "#16a34a", "#dc2626", "#fde047", "#1e3a8a"];
+    for (const hex of samples) {
+      const first = readableNumberColour(hex);
+      const second = readableNumberColour(hex);
+      expect(first).toBe(second);
+    }
+  });
+
+  it("is implemented as a relative-luminance threshold, not hardcoded per-colour branches or canvas/DOM sampling", () => {
+    expect(tileSource).toMatch(/function relativeLuminance\(hex: string\): number \{/);
+    expect(tileSource).toMatch(/0\.2126.*0\.7152.*0\.0722/);
+    expect(tileSource).toMatch(/relativeLuminance\(primary\) > 0\.58/);
+    expect(tileSource).not.toMatch(/getContext\(["']2d["']\)/); // no canvas sampling
+    expect(tileSource).not.toMatch(/getComputedStyle/); // no DOM-dependent sampling
+  });
+
+  it("reuses the existing codebase convention (same formula/threshold as the pixi token helpers) rather than inventing a competing algorithm", () => {
+    expect(tileSource).toMatch(/relativeLuminance/);
+    expect(tileSource).toMatch(/> 0\.58/);
+  });
+
+  it("Chest/Sleeves/Collar all resolve the SAME number colour for the same primary — the contrast rule is keyed on primary alone, not on jerseyStyle", () => {
+    // The number's colour is computed once (readableNumberColour(primary))
+    // and applied to the single <span> shared by every jerseyStyle branch —
+    // there is exactly one call site, proving no per-style override exists.
+    const tileCodeOnly = stripComments(tileSource);
+    const callSites = tileCodeOnly.match(/readableNumberColour\(primary\)/g) ?? [];
+    expect(callSites.length).toBe(1);
+    expect(tileCodeOnly).not.toMatch(/jerseyStyle[\s\S]{0,120}readableNumberColour/);
+  });
+
+  it("Home and Away squads with different colours each get their own correctly-contrasted number independently", () => {
+    // White jersey (Home) -> dark number; navy jersey (Away) -> white
+    // number — computed independently per call, no shared/cached state.
+    const home = readableNumberColour("#ffffff");
+    const away = readableNumberColour("#1e3a8a");
+    expect(home).toBe("#0f172a");
+    expect(away).toBe("#ffffff");
+    expect(home).not.toBe(away);
+  });
+
+  it("unparsable/malformed hex input falls back to white rather than throwing", () => {
+    expect(() => readableNumberColour("not-a-colour")).not.toThrow();
+    expect(readableNumberColour("not-a-colour")).toBe("#ffffff");
+  });
+});
+
+describe("ProTaggerJerseyStyle — number positioning and outline treatment are unaffected by the contrast/silhouette refinement", () => {
+  it("the number stays centred (unchanged left/top/transform) — the refinement only changed jersey shape and number fill colour", () => {
+    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?top:\s*["']56%["']/);
+    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?left:\s*["']50%["']/);
+    expect(tileSource).toMatch(/numberText:\s*\{[\s\S]*?transform:\s*["']translate\(-50%, -50%\)["']/);
+  });
+
+  it("no heavy shadow was reintroduced: numberOutlineLivePicker/Crisp stay a single soft shadow / thin stroke, numberOutlineDefault's stack is untouched", () => {
+    const livePickerBlock = tileSource.match(/numberOutlineLivePicker:\s*\{([\s\S]*?)\n {2}\},/)![1];
+    expect(livePickerBlock).not.toMatch(/WebkitTextStroke/);
+    const shadowMatch = livePickerBlock.match(/textShadow:\s*["']([^"']+)["']/)![1];
+    expect(shadowMatch.replace(/rgba?\([^)]*\)/g, "rgba(...)")).not.toContain(",");
+    const crispBlock = tileSource.match(/numberOutlineCrisp:\s*\{([\s\S]*?)\n {2}\},/)![1];
+    expect(crispBlock).toMatch(/WebkitTextStroke:\s*["']0\.5px/);
+  });
+
+  it("the live picker's number treatment (numberOutlineLivePicker) still wins whenever livePicker is set, unaffected by the new colour override", () => {
+    expect(tileSource).toMatch(/livePicker\s*\n?\s*\?\s*S\.numberOutlineLivePicker/);
+    // The colour override is applied after spreading outlineStyle, so it
+    // never removes or replaces the stroke/shadow the outline style sets.
+    expect(tileSource).toMatch(/\.\.\.S\.numberText, \.\.\.outlineStyle, fontSize: resolvedNumberFontSize, color: numberColour/);
+  });
+});
+
 describe("ProTaggerJerseyStyle — no fourth jersey implementation", () => {
-  it("exactly three shape-rendering functions exist across the shared tile file: LivePickerJerseyMark, CollarJerseyMark, and the reused ProTaggerMiniJersey import", () => {
-    expect(tileSource.match(/^function \w*JerseyMark/gm)?.length ?? 0).toBe(2); // LivePickerJerseyMark + CollarJerseyMark
-    expect(tileSource).toMatch(/import \{ ProTaggerMiniJersey \} from "\.\/ProTaggerMiniJersey";/);
+  it("exactly three local shape-rendering functions exist, all built from the shared geometry constants — ProTaggerMiniJersey is no longer imported here at all", () => {
+    expect(tileSource.match(/^function (Chest|LivePicker|Collar)JerseyMark/gm)?.length ?? 0).toBe(3);
+    expect(tileSource).not.toMatch(/import.*ProTaggerMiniJersey/);
   });
 });
 

@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 import type { ProTaggerJerseyStyle, ProTaggerSquadPlayer } from "./pro-tagger-session";
 
 interface Props {
@@ -30,73 +29,151 @@ interface Props {
    */
   numberCrisp?: boolean;
   /**
-   * Live-tagging jersey experiment: renders a simplified jersey mark
-   * instead of ProTaggerMiniJersey — primary-coloured torso, secondary-
-   * coloured sleeves, NO secondary chest stripe, NO collar accent — plus a
-   * minimal number treatment (no stroke, one soft shadow) instead of
-   * numberCrisp/numberOutlineDefault. Built locally in this file rather
-   * than by modifying ProTaggerMiniJersey.tsx, which other screens (Squad
-   * Setup's Team Colours preview, its own lineup jerseys) still use
-   * unchanged. Omit (or false) to keep today's default jersey and number
+   * Number treatment ONLY (never jersey shape — see jerseyStyle below for
+   * that): swaps in a minimal outline (no stroke, one soft shadow) instead
+   * of numberCrisp/numberOutlineDefault, tuned for the live player picker's
+   * small/dense tiles. Omit (or false) to keep today's default number
    * treatment exactly as-is — Squad Setup passes nothing here and is
-   * unaffected. See LivePickerJerseyMark below for the exact geometry.
+   * unaffected.
    */
   livePicker?: boolean;
   /**
    * Jersey SHAPE only — where the secondary team colour appears: "chest"
-   * (ProTaggerMiniJersey's existing look, a secondary chest band), "sleeves"
+   * (ChestJerseyMark below, a secondary chest band), "sleeves"
    * (LivePickerJerseyMark below, a secondary sleeves-only look), or "collar"
-   * (CollarJerseyMark below, a secondary collar/neck detail only). Defaults
-   * to "chest" when omitted, matching every caller's behaviour before this
-   * prop existed. Deliberately orthogonal to `livePicker`/`numberCrisp`,
-   * which control the NUMBER treatment only — a squad can pick any jersey
-   * shape while the live picker's own crisp number treatment stays exactly
-   * as it was. See pro-tagger-session.ts's ProTaggerJerseyStyle for the
-   * full rationale.
+   * (CollarJerseyMark below, a secondary collar/neck detail only). All three
+   * are built from the one shared JERSEY_BODY_PATH silhouette — see its own
+   * comment. Defaults to "chest" when omitted, matching every caller's
+   * behaviour before this prop existed. Deliberately orthogonal to
+   * `livePicker`/`numberCrisp`, which control the NUMBER treatment only — a
+   * squad can pick any jersey shape while the live picker's own crisp number
+   * treatment stays exactly as it was. See pro-tagger-session.ts's
+   * ProTaggerJerseyStyle for the full rationale.
    */
   jerseyStyle?: ProTaggerJerseyStyle;
 }
 
-// Live-tagging jersey experiment (see the `livePicker` prop above): the
-// SAME body+sleeve silhouette ProTaggerMiniJersey draws — its single path
-// "M4,21 L4,8 L0,8 L0,4 L4,2 L7,5 L10,8 L13,5 L16,2 L20,4 L20,8 L16,8
-// L16,21 Z" — decomposed here into three sub-paths (two sleeves, one
-// torso) that share exact boundary coordinates with each other and with
-// that original outline, so the outer silhouette/size is pixel-identical;
-// only the internal fill split changes (secondary sleeves instead of one
-// primary body, no chest-stripe rect, no collar triangle). Deliberately no
-// stroke on any piece — a raglan-seam outline along the new internal sleeve
-// edges would read as unrequested kit detail; this is meant to stay a
-// plain information marker.
-function LivePickerJerseyMark({ primary, secondary, size }: { primary: string; secondary: string; size: number }) {
-  const h = Math.round((size * 22) / 20);
-  return (
-    <svg viewBox="0 0 20 22" width={size} height={h} style={{ display: "block", flexShrink: 0 }} aria-hidden="true">
-      <path d="M4,8 L0,8 L0,4 L4,2 L7,5 Z" fill={secondary} />
-      <path d="M16,8 L20,8 L20,4 L16,2 L13,5 Z" fill={secondary} />
-      <path d="M4,21 L4,8 L7,5 L10,8 L13,5 L16,8 L16,21 Z" fill={primary} />
-    </svg>
-  );
+// Shared base jersey silhouette (viewBox 0 0 20 22). Sloped shoulders,
+// tapered/rounded sleeve tips, a subtly tapered torso, and a smooth curved
+// neckline — replacing the earlier squared-off outline, which read as too
+// blocky at small sizes. Every jersey style (chest/sleeves/collar) below is
+// built from this ONE path (or, for "sleeves", the exact same silhouette
+// split into JERSEY_TORSO_PATH + the two JERSEY_SLEEVE_*_PATH pieces, whose
+// seams share exact coordinates with this outline) — so a style only ever
+// changes WHERE the secondary colour appears, never the outer shape.
+const JERSEY_BODY_PATH =
+  "M3.5,21 L4.5,9 Q2,8 1,6.5 Q0,5 1,3.5 Q3,2 5,3 Q7,5 10,6.5 Q13,5 15,3 Q17,2 19,3.5 Q20,5 19,6.5 Q18,8 15.5,9 L16.5,21 Z";
+
+// The same silhouette decomposed into a torso region and two sleeve
+// regions for the "sleeves" style — filling all three with the same colour
+// reproduces JERSEY_BODY_PATH pixel-for-pixel (the seams — the straight L
+// segments from each shoulder point down to the torso — are shared
+// boundaries, not independently drawn edges).
+const JERSEY_TORSO_PATH = "M3.5,21 L4.5,9 L5,3 Q7,5 10,6.5 Q13,5 15,3 L15.5,9 L16.5,21 Z";
+const JERSEY_SLEEVE_LEFT_PATH = "M5,3 L4.5,9 Q2,8 1,6.5 Q0,5 1,3.5 Q3,2 5,3 Z";
+const JERSEY_SLEEVE_RIGHT_PATH = "M15,3 L15.5,9 Q18,8 19,6.5 Q20,5 19,3.5 Q17,2 15,3 Z";
+
+// A thin collar/neck band for the "collar" style, tracing the exact same
+// neckline curve JERSEY_BODY_PATH draws between its two shoulder points
+// (5,3) and (15,3) — the only addition the "collar" style makes to the
+// shared silhouette.
+const JERSEY_COLLAR_PATH = "M5,3 Q7,5 10,6.5 Q13,5 15,3 Q13,4.1 10,4.6 Q7,4.1 5,3 Z";
+
+// ── Automatic number contrast ────────────────────────────────────────────
+// The jersey number's fill colour must stay readable against whatever
+// primary colour the coach picks — a white jersey with a white number is
+// unreadable. This codebase already has the same relative-luminance /
+// threshold approach in several PixiJS token renderers (e.g.
+// src/engine/pixi/createNamePillPlayerToken.ts's own relativeLuminance +
+// readableTextColor), but each of those keeps its own local copy rather
+// than sharing one canonical helper, and all of them operate on packed
+// 0xRRGGBB PixiJS colour numbers — a different representation from the
+// "#rrggbb" hex colour STRINGS every prop in this file already uses. This
+// is the same formula (standard perceived-brightness weights) and the same
+// 0.58 threshold, adapted for hex strings, rather than a new algorithm.
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const match = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!match) return null;
+  const int = parseInt(match[1], 16);
+  return { r: (int >> 16) & 0xff, g: (int >> 8) & 0xff, b: int & 0xff };
 }
 
-// "collar" jersey style: reuses ProTaggerMiniJersey's own body+sleeve
-// outline path and collar path verbatim (see that file), omitting only its
-// chest-stripe rect — primary body and sleeves, secondary collar, no chest
-// band, no other decorative addition. Built locally rather than by editing
-// ProTaggerMiniJersey.tsx itself, which stays the unmodified "chest" shape
-// source of truth other screens keep using unchanged.
-function CollarJerseyMark({ primary, secondary, size }: { primary: string; secondary: string; size: number }) {
+function relativeLuminance(hex: string): number {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return 0;
+  return (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255;
+}
+
+// Exported for direct testing. Dark ("#0f172a" — the same readable-dark
+// tone the existing pixi token helpers already use) on a light primary,
+// white on a dark primary. Deterministic and pure: no canvas sampling, no
+// CSS filters, no manual per-team configuration.
+export function readableNumberColour(primary: string): string {
+  return relativeLuminance(primary) > 0.58 ? "#0f172a" : "#ffffff";
+}
+
+// "chest" jersey style: the shared silhouette, primary-filled, with a
+// secondary chest band. This owns the jerseyStyle-driven "chest" shape —
+// ProTaggerMiniJersey.tsx (a similar-looking but separate decorative icon
+// used elsewhere, e.g. the live picker's header and Squad Setup's colour
+// preview) is untouched and unrelated, so refining this silhouette never
+// has to also touch that out-of-scope icon.
+function ChestJerseyMark({ primary, secondary, size }: { primary: string; secondary: string; size: number }) {
   const h = Math.round((size * 22) / 20);
   return (
     <svg viewBox="0 0 20 22" width={size} height={h} style={{ display: "block", flexShrink: 0 }} aria-hidden="true">
       <path
-        d="M4,21 L4,8 L0,8 L0,4 L4,2 L7,5 L10,8 L13,5 L16,2 L20,4 L20,8 L16,8 L16,21 Z"
+        d={JERSEY_BODY_PATH}
         fill={primary}
         stroke="rgba(255,255,255,0.15)"
         strokeWidth="0.75"
         strokeLinejoin="round"
       />
-      <path d="M7,5 L10,8 L13,5 Q10,2 7,5 Z" fill={secondary} />
+      <rect x="4.5" y="11" width="11" height="3" fill={secondary} />
+    </svg>
+  );
+}
+
+// "sleeves" jersey style: the shared silhouette split into JERSEY_TORSO_PATH
+// (primary) + the two JERSEY_SLEEVE_*_PATH pieces (secondary) — no chest
+// band, no collar accent. Filling all three regions the same colour
+// reproduces JERSEY_BODY_PATH exactly (see that constant's own comment),
+// so this is pixel-identical in outer shape to "chest"/"collar", only the
+// sleeves are secondary-filled instead of primary. Deliberately no stroke
+// on the sleeve pieces — a raglan-seam outline along the internal seams
+// would read as unrequested kit detail; this stays a plain colour marker.
+function LivePickerJerseyMark({ primary, secondary, size }: { primary: string; secondary: string; size: number }) {
+  const h = Math.round((size * 22) / 20);
+  return (
+    <svg viewBox="0 0 20 22" width={size} height={h} style={{ display: "block", flexShrink: 0 }} aria-hidden="true">
+      <path d={JERSEY_SLEEVE_LEFT_PATH} fill={secondary} />
+      <path d={JERSEY_SLEEVE_RIGHT_PATH} fill={secondary} />
+      <path
+        d={JERSEY_TORSO_PATH}
+        fill={primary}
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth="0.75"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+// "collar" jersey style: the shared silhouette (primary-filled body and
+// sleeves) plus the JERSEY_COLLAR_PATH neck band (secondary) — no chest
+// band, no other decorative addition.
+function CollarJerseyMark({ primary, secondary, size }: { primary: string; secondary: string; size: number }) {
+  const h = Math.round((size * 22) / 20);
+  return (
+    <svg viewBox="0 0 20 22" width={size} height={h} style={{ display: "block", flexShrink: 0 }} aria-hidden="true">
+      <path
+        d={JERSEY_BODY_PATH}
+        fill={primary}
+        stroke="rgba(255,255,255,0.15)"
+        strokeWidth="0.75"
+        strokeLinejoin="round"
+      />
+      <path d={JERSEY_COLLAR_PATH} fill={secondary} />
     </svg>
   );
 }
@@ -108,24 +185,26 @@ function CollarJerseyMark({ primary, secondary, size }: { primary: string; secon
 function renderJerseyShape(resolvedStyle: ProTaggerJerseyStyle, primary: string, secondary: string, size: number) {
   if (resolvedStyle === "sleeves") return <LivePickerJerseyMark primary={primary} secondary={secondary} size={size} />;
   if (resolvedStyle === "collar") return <CollarJerseyMark primary={primary} secondary={secondary} size={size} />;
-  return <ProTaggerMiniJersey primary={primary} secondary={secondary} size={size} />;
+  return <ChestJerseyMark primary={primary} secondary={secondary} size={size} />;
 }
 
 // Read-only jersey-first tile for the Squad Setup lineup summary
-// (ProTaggerLineupFormation). Composes the existing ProTaggerMiniJersey
-// rather than duplicating jersey art — this file only adds the number/name
-// overlay. No taps, no editing: player names are still changed exclusively
-// through ProTaggerSquadScreen's existing "Edit Player Names" list, which
-// this tile never reads from or writes to.
+// (ProTaggerLineupFormation) and the live Player Picker. Renders one of the
+// three shared-silhouette jersey marks above — this file only adds the
+// number/name overlay. No taps, no editing: player names are still changed
+// exclusively through ProTaggerSquadScreen's existing "Edit Player Names"
+// list, which this tile never reads from or writes to.
 //
 // Visual hierarchy is jersey -> number -> name, matching a real team sheet:
 // the jersey is the dominant shape (enlarged here, not shrunk to make room
 // for a badge), and the number sits directly on the jersey as bold,
-// high-contrast text — a white fill with a dark outline, the standard way a
-// printed jersey number stays legible against any shirt colour, not a
-// solid circular badge sitting on top of it (that read as a Tactical
-// Slate/player-token marker, not a team sheet, and is deliberately not
-// used here).
+// high-contrast text with a dark outline — the standard way a printed
+// jersey number stays legible against any shirt colour, not a solid
+// circular badge sitting on top of it (that read as a Tactical Slate/
+// player-token marker, not a team sheet, and is deliberately not used
+// here). The number's own FILL colour is computed from the jersey's
+// primary colour (see readableNumberColour above) rather than fixed white,
+// so a white/light jersey still gets a readable dark number.
 export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 40, numberFontSize, numberCrisp, livePicker, jerseyStyle }: Props) {
   const resolvedJerseyStyle: ProTaggerJerseyStyle = jerseyStyle ?? "chest";
 
@@ -154,11 +233,17 @@ export function ProTaggerLineupJerseyTile({ player, primary, secondary, size = 4
     : numberCrisp
       ? S.numberOutlineCrisp
       : S.numberOutlineDefault;
+  // Automatic contrast is a THIRD, independent axis from jerseyStyle
+  // (shape) and livePicker/numberCrisp (outline/shadow treatment) — it only
+  // overrides the base numberText.color, never the outline styles above.
+  const numberColour = readableNumberColour(primary);
   return (
     <div style={S.tile}>
       <div style={{ ...S.jerseyWrap, width: size }}>
         {renderJerseyShape(resolvedJerseyStyle, primary, secondary, size)}
-        <span style={{ ...S.numberText, ...outlineStyle, fontSize: resolvedNumberFontSize }}>{player.number}</span>
+        <span style={{ ...S.numberText, ...outlineStyle, fontSize: resolvedNumberFontSize, color: numberColour }}>
+          {player.number}
+        </span>
       </div>
       {name && <span style={S.name}>{name}</span>}
     </div>
@@ -210,12 +295,15 @@ const S: Record<string, CSSProperties> = {
     justifyContent: "center",
     filter: "drop-shadow(0 0 2px rgba(4, 8, 14, 0.55)) drop-shadow(0 1px 3px rgba(4, 8, 14, 0.5))",
   },
-  // Bold white number — no shape behind it, just an outline (either variant
+  // Bold number — no shape behind it, just an outline (either variant
   // below) to keep it high-contrast against any user-chosen jersey primary
   // colour without covering the jersey itself the way a solid badge did.
   // top moved down from 44% to 56% (of the jersey's own rendered height) to
   // pull the number off the collar/shoulders and into the torso — the same
   // one rule for every jersey size and every number, one or two digits.
+  // `color` here is only the fallback baseline (white) — the caller always
+  // overrides it inline with readableNumberColour(primary) above, which
+  // resolves to dark on light jerseys and white on dark ones.
   numberText: {
     position: "absolute",
     top: "56%",
