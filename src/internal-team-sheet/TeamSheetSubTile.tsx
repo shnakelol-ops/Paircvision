@@ -27,6 +27,7 @@ export function TeamSheetSubTile({ player, editable, size = 30, onNumberChange, 
     return (
       <div style={S.tile}>
         <img
+          className="ts-jersey-shadow"
           src={jerseySrc}
           alt={`#${player.number} jersey`}
           width={size}
@@ -44,6 +45,7 @@ export function TeamSheetSubTile({ player, editable, size = 30, onNumberChange, 
   return (
     <div style={S.row} onClick={(e) => e.stopPropagation()}>
       <img
+        className="ts-jersey-shadow"
         src={jerseySrc}
         alt={`#${player.number} jersey`}
         width={size}
