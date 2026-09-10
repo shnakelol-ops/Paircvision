@@ -12,6 +12,7 @@ import VisionTacticsShell from "./features/vision-tactics/VisionTacticsShell";
 import VisionTrainingShell from "./vision-training/VisionTrainingShell";
 import PitchFlowSettingsShell from "./pages/PitchFlowSettingsShell";
 import InternalLauncherPage from "./pages/InternalLauncherPage";
+import TeamSheetScreen from "./internal-team-sheet/TeamSheetScreen";
 
 const boardShell = () => <PitchFlowCoachShell initialTab="home" />;
 const VISION_BOARD_PATH = "/vision-board";
@@ -26,6 +27,7 @@ const MOVEMENT_BOARD_LABS_PATH = "/movement-board-labs";
 const RAPID_CAPTURE_PATH = "/rapid-capture";
 const PRO_TAGGER_PATH    = "/pro-tagger";
 const INTERNAL_PATH      = "/internal";
+const INTERNAL_TEAM_SHEET_PATH = "/internal/team-sheet";
 
 function redirectToBoard() {
   if (window.location.pathname !== "/board") {
@@ -125,6 +127,9 @@ function pickRootComponent() {
   }
   if (normalizedPath === INTERNAL_PATH) {
     return InternalLauncherPage;
+  }
+  if (normalizedPath === INTERNAL_TEAM_SHEET_PATH) {
+    return TeamSheetScreen;
   }
   return redirectToBoard();
 }
