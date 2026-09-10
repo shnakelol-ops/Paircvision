@@ -46,24 +46,34 @@ describe("ProTaggerLineupJerseyTile — LivePickerJerseyMark geometry (req. 2, 3
   const markMatch = tileSource.match(/function LivePickerJerseyMark[\s\S]*?\n\}/);
   const mark = markMatch ? markMatch[0] : "";
 
-  it("exists and is used only when livePicker is requested", () => {
+  // Superseded by the jersey style selector (see ProTaggerJerseyStyle):
+  // shape is now gated on the resolved jerseyStyle ("sleeves" reuses this
+  // exact same mark), not on the livePicker boolean, which now controls
+  // only the number treatment — see the orthogonality tests below.
+  it("exists and is used when jerseyStyle resolves to \"sleeves\"", () => {
     expect(markMatch).not.toBeNull();
-    expect(tileSource).toMatch(/livePicker \? \(\s*<LivePickerJerseyMark/);
+    expect(tileSource).toMatch(/resolvedStyle === "sleeves"\) return <LivePickerJerseyMark/);
   });
 
   it("has NO secondary chest band — no <rect> element and no fill covering a horizontal stripe across the body", () => {
     expect(mark).not.toMatch(/<rect/);
   });
 
-  it("has no collar accent either (no fourth path, no Q-curve collar shape)", () => {
+  // Silhouette refinement pass: the outline itself now legitimately uses
+  // quadratic (Q) curves for sloped shoulders and rounded sleeve tips —
+  // that is the shared base geometry, not a collar accent. What must still
+  // be true is that this mark has no <rect> (chest band) and no separate
+  // collar-band path — exactly the two pieces "collar"/"chest" add that
+  // "sleeves" must not have.
+  it("has no chest band and no collar accent — exactly the two sleeve paths plus the torso path, nothing else", () => {
     const pathCount = (mark.match(/<path/g) ?? []).length;
     expect(pathCount).toBe(3); // two sleeves + one torso, nothing else
-    expect(mark).not.toMatch(/\bQ\d/); // no quadratic-curve collar shape
+    expect(mark).not.toMatch(/<rect/);
+    expect(mark).not.toMatch(/JERSEY_COLLAR_PATH/);
   });
 
-  it("uses primary colour fill on the torso (body) path", () => {
-    const torsoPathMatch = mark.match(/<path d="M4,21[^"]*" fill=\{primary\} \/>/);
-    expect(torsoPathMatch).not.toBeNull();
+  it("uses primary colour fill on the torso (body) path, referencing the shared JERSEY_TORSO_PATH constant", () => {
+    expect(mark).toMatch(/<path\s+d=\{JERSEY_TORSO_PATH\}\s+fill=\{primary\}/);
   });
 
   it("uses secondary colour fill on both sleeve paths", () => {
@@ -71,15 +81,22 @@ describe("ProTaggerLineupJerseyTile — LivePickerJerseyMark geometry (req. 2, 3
     expect(secondaryFillCount).toBe(2); // left sleeve + right sleeve, nothing else secondary-filled
   });
 
-  it("the three sub-paths reconstruct the exact same outer silhouette ProTaggerMiniJersey draws (shared boundary coordinates, same viewBox/size formula)", () => {
+  it("the two sleeve paths plus the torso path all reference the shared JERSEY_*_PATH geometry constants, not inline/duplicated path data", () => {
+    expect(mark).toMatch(/d=\{JERSEY_SLEEVE_LEFT_PATH\}/);
+    expect(mark).toMatch(/d=\{JERSEY_SLEEVE_RIGHT_PATH\}/);
+    expect(mark).toMatch(/d=\{JERSEY_TORSO_PATH\}/);
     expect(mark).toMatch(/viewBox="0 0 20 22"/);
     expect(mark).toMatch(/Math\.round\(\(size \* 22\) \/ 20\)/);
-    // Every coordinate pair used by ProTaggerMiniJersey's single outline
-    // path must appear somewhere across the three decomposed sub-paths.
-    const originalPoints = ["4,21", "4,8", "0,8", "0,4", "4,2", "7,5", "10,8", "13,5", "16,2", "20,4", "20,8", "16,8", "16,21"];
-    for (const point of originalPoints) {
-      expect(mark).toContain(point);
-    }
+  });
+
+  it("the shared torso/sleeve constants' seams share exact boundary coordinates, so filling all three the same colour reproduces JERSEY_BODY_PATH exactly", () => {
+    // The seam endpoints (5,3) and (15,3)/(15.5,9) and (4.5,9) appear in
+    // both the torso path and its matching sleeve path — a shared,
+    // pixel-identical cut line, not two independently-drawn edges.
+    expect(tileSource).toMatch(/JERSEY_TORSO_PATH = "[^"]*4\.5,9[^"]*"/);
+    expect(tileSource).toMatch(/JERSEY_SLEEVE_LEFT_PATH = "[^"]*4\.5,9[^"]*"/);
+    expect(tileSource).toMatch(/JERSEY_TORSO_PATH = "[^"]*15,3[^"]*"/);
+    expect(tileSource).toMatch(/JERSEY_SLEEVE_RIGHT_PATH = "[^"]*15,3[^"]*"/);
   });
 });
 
@@ -119,9 +136,13 @@ describe("Default Squad Setup rendering is unchanged unless livePicker is explic
     expect(formationSource).not.toMatch(/numberCrisp/);
   });
 
-  it("the tile falls back to ProTaggerMiniJersey and numberOutlineDefault whenever livePicker is falsy", () => {
-    expect(tileSource).toMatch(/\{livePicker \? \(/);
-    expect(tileSource).toMatch(/<ProTaggerMiniJersey primary=\{primary\} secondary=\{secondary\} size=\{size\} \/>/);
+  // Superseded: shape now falls back on an absent/legacy jerseyStyle
+  // (resolvedJerseyStyle = jerseyStyle ?? "chest"), independent of
+  // livePicker — the number treatment (numberOutlineDefault whenever
+  // livePicker is falsy) is unaffected and still checked here.
+  it("the tile falls back to the \"chest\" shape whenever jerseyStyle is omitted, and to numberOutlineDefault whenever livePicker is falsy", () => {
+    expect(tileSource).toMatch(/const resolvedJerseyStyle: ProTaggerJerseyStyle = jerseyStyle \?\? "chest";/);
+    expect(tileSource).toMatch(/<ChestJerseyMark primary=\{primary\} secondary=\{secondary\} size=\{size\} \/>/);
   });
 
   it("ProTaggerMiniJersey.tsx itself is not referenced by name inside LivePickerJerseyMark — it's an independent local shape, not a wrapper around the shared component", () => {
