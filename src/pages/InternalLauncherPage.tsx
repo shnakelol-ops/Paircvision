@@ -131,6 +131,7 @@ const INTERNAL_TOOLS: readonly InternalTool[] = [
   { name: "Match Stats", sub: "Pitch-first live event capture", path: "/flowstats" },
   { name: "Vision Training", sub: "Training Hub & Player Performance", path: "/vision-training" },
   { name: "Rapid Capture", sub: "Experimental capture surface", path: "/rapid-capture" },
+  { name: "Team Sheet", sub: "Ballylanders starting XV — real jerseys", path: "/internal/team-sheet" },
 ];
 
 function navigate(path: string) {
