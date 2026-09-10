@@ -31,14 +31,37 @@ describe("computeScale", () => {
     expect(short).toBeCloseTo(tall, 10);
   });
 
-  it("clamps scale downward only once the pixel budget is actually at risk (mobile memory safety net)", () => {
-    const normalScale = computeScale({ offsetWidth: 380, scrollHeight: 900 });
-    const pathologicalScale = computeScale({ offsetWidth: 380, scrollHeight: 500_000 });
-    expect(pathologicalScale).toBeLessThan(normalScale);
-    // Never exceeds the 20MP output budget even after clamping.
-    const clampedHeight = 500_000 * pathologicalScale;
-    const clampedWidth = 380 * pathologicalScale;
-    expect(clampedWidth * clampedHeight).toBeLessThanOrEqual(20_000_000 + 1);
+  // Regression: substitutes must only add height, never shrink the Starting
+  // XV. A pixel-budget-based downscale used to kick in for a pathologically
+  // tall root (see the removed MAX_OUTPUT_PIXELS clamp) — that would have
+  // shrunk the whole canvas, pitch included, once enough substitute rows
+  // pushed height far enough. Scale must now be height-invariant at any
+  // height, including implausibly large ones, with no exception.
+  it("never reduces scale for a taller root, at any height, including implausibly large ones (no shrink-to-fit)", () => {
+    const baseline = computeScale({ offsetWidth: 380, scrollHeight: 700 }); // 0 subs
+    for (const scrollHeight of [700, 900, 2200, 500_000, 5_000_000]) {
+      expect(computeScale({ offsetWidth: 380, scrollHeight })).toBe(baseline);
+    }
+  });
+
+  // Exact matrix the acceptance criterion is framed around: 0, 1, 6, and 12
+  // substitutes, approximated by the roughly-proportional height each adds
+  // (0 subs = pitch only; each additional row of subs adds a fixed amount).
+  it("0/1/6/12 substitutes all yield the identical pitch scale at the same viewport width", () => {
+    const PITCH_ONLY_HEIGHT = 700;
+    const ROW_HEIGHT = 90;
+    const heightFor = (subCount: number) => {
+      const rows = subCount === 0 ? 0 : Math.ceil(subCount / 6);
+      return PITCH_ONLY_HEIGHT + rows * ROW_HEIGHT;
+    };
+    const scales = [0, 1, 6, 12].map((subCount) =>
+      computeScale({ offsetWidth: 380, scrollHeight: heightFor(subCount) }),
+    );
+    for (const scale of scales) {
+      expect(scale).toBe(scales[0]);
+    }
+    // And it's exactly the pure width-derived target — no other factor.
+    expect(scales[0]).toBeCloseTo(1080 / 380, 10);
   });
 
   it("throws rather than producing a zero/negative-size capture", () => {

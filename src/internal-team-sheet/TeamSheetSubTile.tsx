@@ -8,6 +8,17 @@ import { JERSEY_ASPECT, getJerseySrc } from "./team-sheet-jersey";
 // Same real jersey assets as the pitch (getJerseySrc): number 1 = GK
 // jersey, so marking a substitute goalkeeper is done by giving them squad
 // number 1, exactly like the Starting XV's own #1 slot.
+//
+// Two visually distinct layouts share this component, and only the
+// read-only one (`!editable`, used for Screenshot Mode / export) is tuned
+// for grid density — the editable list (a roomy one-per-line row, used only
+// while actively editing subs) is unaffected by COMPACT_TILE_WIDTH:
+// editing wants easy-to-tap full-width inputs, the export wants a dense
+// grid (see TeamSheetScreen.tsx's subsRow: this width lets up to 6 compact
+// tiles fit per row at the pitch's own 380px column width, matching the
+// "considerably smaller than a Starting XV jersey, up to 6 per row" target).
+const COMPACT_TILE_WIDTH = 54;
+const COMPACT_JERSEY_SIZE = 20;
 
 interface Props {
   player: TeamSheetPlayer;
@@ -18,20 +29,21 @@ interface Props {
   onRemove?: () => void;
 }
 
-export function TeamSheetSubTile({ player, editable, size = 30, onNumberChange, onNameChange, onRemove }: Props) {
+export function TeamSheetSubTile({ player, editable, size, onNumberChange, onNameChange, onRemove }: Props) {
   const jerseySrc = getJerseySrc(player.number);
-  const height = Math.round(size * JERSEY_ASPECT);
   const name = player.name.trim();
 
   if (!editable) {
+    const compactSize = size ?? COMPACT_JERSEY_SIZE;
+    const compactHeight = Math.round(compactSize * JERSEY_ASPECT);
     return (
       <div style={S.tile}>
         <img
           className="ts-jersey-shadow"
           src={jerseySrc}
           alt={`#${player.number} jersey`}
-          width={size}
-          height={height}
+          width={compactSize}
+          height={compactHeight}
           style={S.jerseyImg}
           draggable={false}
         />
@@ -42,14 +54,16 @@ export function TeamSheetSubTile({ player, editable, size = 30, onNumberChange, 
     );
   }
 
+  const rowSize = size ?? 30;
+  const rowHeight = Math.round(rowSize * JERSEY_ASPECT);
   return (
     <div style={S.row} onClick={(e) => e.stopPropagation()}>
       <img
         className="ts-jersey-shadow"
         src={jerseySrc}
         alt={`#${player.number} jersey`}
-        width={size}
-        height={height}
+        width={rowSize}
+        height={rowHeight}
         style={S.jerseyImg}
         draggable={false}
       />
@@ -83,7 +97,7 @@ const S: Record<string, CSSProperties> = {
     flexDirection: "column" as const,
     alignItems: "center",
     gap: 2,
-    width: 92,
+    width: COMPACT_TILE_WIDTH,
     flexShrink: 0,
   },
   jerseyImg: {
@@ -92,16 +106,18 @@ const S: Record<string, CSSProperties> = {
     pointerEvents: "none",
     filter: "drop-shadow(0 0 2px rgba(4, 8, 14, 0.5))",
   },
-  // Wraps to a second line rather than ellipsis-truncating — a sub's name
-  // is the whole point of this label, so a compact-but-readable two-line
-  // wrap beats clipping it to fit a fixed single-line width.
+  // Wraps to a second (or third) line rather than ellipsis-truncating — a
+  // sub's name is the whole point of this label, so a compact-but-readable
+  // multi-line wrap beats clipping it, and a FIXED width means a long name
+  // wraps taller rather than ever widening this tile (and so the grid it
+  // sits in) — long names can't expand the overall grid width.
   label: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 700,
     color: "#e7f0f8",
     textAlign: "center" as const,
-    width: 92,
-    lineHeight: 1.25,
+    width: COMPACT_TILE_WIDTH,
+    lineHeight: 1.2,
     wordBreak: "break-word" as const,
   },
   row: {

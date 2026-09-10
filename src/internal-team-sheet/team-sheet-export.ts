@@ -29,11 +29,6 @@ const EXPORT_BACKGROUND_COLOR = "#050c14";
 // grows the image exactly as it grows the on-screen page.
 const TARGET_OUTPUT_WIDTH = 1080;
 
-// Mobile canvas-memory safety net only — not a design target. 1080px wide
-// content only approaches this if the natural height is enormous (dozens of
-// substitute rows well beyond any real GAA panel size). See computeScale().
-const MAX_OUTPUT_PIXELS = 20_000_000;
-
 // The class every jersey element carrying the CSS `filter: drop-shadow(...)`
 // halo is marked with (TeamSheetJerseyTile.tsx, TeamSheetSubTile.tsx).
 // html2canvas has inconsistent `filter` support; rather than touch the real
@@ -69,18 +64,24 @@ async function waitForImagesDecoded(root: HTMLElement): Promise<void> {
 export type CaptureRootSize = { offsetWidth: number; scrollHeight: number };
 
 /** 1080px-wide target, scaled from the root's actual current CSS width —
- * never a hard-coded pixel size. Clamped only so a pathological content
- * height (far beyond any real substitutes list) can't produce a canvas
- * larger than mobile browsers reliably allocate. */
+ * never a hard-coded pixel size, and deliberately never a function of
+ * `height` either. A longer substitutes list must only make the exported
+ * canvas taller, never smaller — so the height a taller list produces is
+ * read only for the zero-height guard below, and otherwise has no effect
+ * on the returned scale. (An earlier revision additionally clamped scale
+ * downward once width*height crossed a fixed pixel budget, as a mobile
+ * canvas-memory safety net — but that meant a long enough substitutes list
+ * would eventually shrink the whole canvas, Starting XV included, which is
+ * exactly the behaviour this must never have. Real GAA-panel substitute
+ * counts never approach a size where memory is a real concern, so that
+ * clamp is removed rather than reworked.) */
 export function computeScale(root: CaptureRootSize): number {
   const width = root.offsetWidth;
   const height = root.scrollHeight;
   if (width <= 0 || height <= 0) {
     throw new Error("Team Sheet has no measurable size to capture");
   }
-  const widthScale = TARGET_OUTPUT_WIDTH / width;
-  const pixelBudgetScale = Math.sqrt(MAX_OUTPUT_PIXELS / (width * height));
-  return Math.min(widthScale, pixelBudgetScale);
+  return TARGET_OUTPUT_WIDTH / width;
 }
 
 function dataUrlToBlob(dataUrl: string): Blob | null {
