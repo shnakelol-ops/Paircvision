@@ -6,7 +6,8 @@ import {
 } from "../pro-tagger/ProTaggerLineupPitchBackground";
 import { LINEUP_FORMATION_POSITIONS } from "../pro-tagger/pro-tagger-lineup-geometry";
 import { TeamSheetJerseyTile } from "./TeamSheetJerseyTile";
-import { loadTeamSheet, saveTeamSheet } from "./team-sheet-storage";
+import { TeamSheetSubTile } from "./TeamSheetSubTile";
+import { buildSubstitute, loadTeamSheet, saveTeamSheet } from "./team-sheet-storage";
 import type { TeamSheetPlayer } from "./team-sheet-types";
 
 // Ballylanders internal Team Sheet — personal tool, not a public PáircVision
@@ -24,12 +25,14 @@ function navigateToInternal() {
 }
 
 export default function TeamSheetScreen() {
-  const [players, setPlayers] = useState<TeamSheetPlayer[]>(() => loadTeamSheet());
+  const initial = useState(() => loadTeamSheet())[0];
+  const [players, setPlayers] = useState<TeamSheetPlayer[]>(initial.players);
+  const [substitutes, setSubstitutes] = useState<TeamSheetPlayer[]>(initial.substitutes);
   const [screenshotMode, setScreenshotMode] = useState(false);
 
   useEffect(() => {
-    saveTeamSheet(players);
-  }, [players]);
+    saveTeamSheet({ players, substitutes });
+  }, [players, substitutes]);
 
   const setName = useCallback((slotIndex: number, name: string) => {
     setPlayers((prev) => {
@@ -38,6 +41,29 @@ export default function TeamSheetScreen() {
       return next;
     });
   }, []);
+
+  const addSubstitute = useCallback(() => {
+    setSubstitutes((prev) => {
+      const nextNumber = prev.length === 0 ? 16 : Math.max(...prev.map((s) => s.number)) + 1;
+      return [...prev, buildSubstitute(nextNumber)];
+    });
+  }, []);
+
+  const setSubNumber = useCallback((id: string, number: number) => {
+    setSubstitutes((prev) => prev.map((s) => (s.id === id ? { ...s, number } : s)));
+  }, []);
+
+  const setSubName = useCallback((id: string, name: string) => {
+    setSubstitutes((prev) => prev.map((s) => (s.id === id ? { ...s, name } : s)));
+  }, []);
+
+  const removeSubstitute = useCallback((id: string) => {
+    setSubstitutes((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+
+  // Screenshot Mode never shows a blank sub with no name typed in yet —
+  // only substitutes the coach actually entered appear in the capture.
+  const subsForScreenshot = substitutes.filter((s) => s.name.trim());
 
   return (
     <div
@@ -87,11 +113,48 @@ export default function TeamSheetScreen() {
                   editable={!screenshotMode}
                   size={JERSEY_SIZE}
                   onNameChange={(name) => setName(slot - 1, name)}
+                  showNumberOverlay={false}
                 />
               </div>
             );
           })}
         </div>
+
+        {screenshotMode ? (
+          subsForScreenshot.length > 0 && (
+            <div style={S.subsSection}>
+              <span style={S.subsLabel}>Substitutes</span>
+              <div style={S.subsRow}>
+                {subsForScreenshot.map((sub) => (
+                  <TeamSheetSubTile key={sub.id} player={sub} editable={false} />
+                ))}
+              </div>
+            </div>
+          )
+        ) : substitutes.length === 0 ? (
+          <button type="button" style={S.addSubsBtn} onClick={(e) => { e.stopPropagation(); addSubstitute(); }}>
+            + Add Subs
+          </button>
+        ) : (
+          <div style={S.subsSection} onClick={(e) => e.stopPropagation()}>
+            <span style={S.subsLabel}>Substitutes</span>
+            <div style={S.subsList}>
+              {substitutes.map((sub) => (
+                <TeamSheetSubTile
+                  key={sub.id}
+                  player={sub}
+                  editable
+                  onNumberChange={(number) => setSubNumber(sub.id, number)}
+                  onNameChange={(name) => setSubName(sub.id, name)}
+                  onRemove={() => removeSubstitute(sub.id)}
+                />
+              ))}
+            </div>
+            <button type="button" style={S.addSubBtn} onClick={addSubstitute}>
+              + Add Sub
+            </button>
+          </div>
+        )}
 
         {!screenshotMode && (
           <p style={S.hint}>Tap a name to edit it. Screenshot Mode hides every control — tap anywhere to exit it.</p>
@@ -201,5 +264,56 @@ const S: Record<string, CSSProperties> = {
     color: "#5e7a8a",
     textAlign: "center" as const,
     maxWidth: 300,
+  },
+  addSubsBtn: {
+    background: "transparent",
+    border: "1px dashed #1c3a52",
+    borderRadius: 8,
+    color: "#7a95ad",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "8px 16px",
+    cursor: "pointer",
+    outline: "none",
+  },
+  subsSection: {
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+    maxWidth: 380,
+  },
+  subsLabel: {
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase" as const,
+    color: "#7a95ad",
+  },
+  subsRow: {
+    display: "flex",
+    flexWrap: "wrap" as const,
+    justifyContent: "center",
+    gap: 10,
+    width: "100%",
+  },
+  subsList: {
+    display: "flex",
+    flexDirection: "column" as const,
+    width: "100%",
+  },
+  addSubBtn: {
+    marginTop: 6,
+    background: "transparent",
+    border: "1px dashed #1c3a52",
+    borderRadius: 8,
+    color: "#7a95ad",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "8px 16px",
+    cursor: "pointer",
+    outline: "none",
+    width: "100%",
   },
 };

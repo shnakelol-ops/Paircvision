@@ -5,6 +5,11 @@ import type { TeamSheetPlayer } from "./team-sheet-types";
 // with or corrupt real Event Stats saved squads.
 const TEAM_SHEET_STORAGE_KEY = "paircvision_internal_team_sheet_v1";
 
+export interface TeamSheetData {
+  players: TeamSheetPlayer[];
+  substitutes: TeamSheetPlayer[];
+}
+
 function newId(): string {
   const c = globalThis.crypto;
   if (c && typeof c.randomUUID === "function") return c.randomUUID();
@@ -17,6 +22,10 @@ export function buildDefaultTeamSheet(): TeamSheetPlayer[] {
     number: i + 1,
     name: "",
   }));
+}
+
+export function buildSubstitute(number: number): TeamSheetPlayer {
+  return { id: newId(), number, name: "" };
 }
 
 function safeRead(): string | null {
@@ -36,18 +45,32 @@ function safeWrite(value: string): boolean {
   }
 }
 
-export function loadTeamSheet(): TeamSheetPlayer[] {
+// Same key as the original V1 shape (a bare 15-player array, no
+// substitutes). Loading detects that legacy shape and upgrades it in
+// memory — existing saved Starting XVs keep loading unchanged, with
+// substitutes defaulting to []. Saves always write the current
+// {players, substitutes} shape.
+export function loadTeamSheet(): TeamSheetData {
   const raw = safeRead();
-  if (!raw) return buildDefaultTeamSheet();
+  if (!raw) return { players: buildDefaultTeamSheet(), substitutes: [] };
   try {
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length !== 15) return buildDefaultTeamSheet();
-    return parsed as TeamSheetPlayer[];
+    if (Array.isArray(parsed)) {
+      // Legacy V1 shape: a bare array of 15 players, no substitutes.
+      const players = parsed.length === 15 ? (parsed as TeamSheetPlayer[]) : buildDefaultTeamSheet();
+      return { players, substitutes: [] };
+    }
+    if (parsed && typeof parsed === "object" && Array.isArray(parsed.players)) {
+      const players = parsed.players.length === 15 ? (parsed.players as TeamSheetPlayer[]) : buildDefaultTeamSheet();
+      const substitutes = Array.isArray(parsed.substitutes) ? (parsed.substitutes as TeamSheetPlayer[]) : [];
+      return { players, substitutes };
+    }
+    return { players: buildDefaultTeamSheet(), substitutes: [] };
   } catch {
-    return buildDefaultTeamSheet();
+    return { players: buildDefaultTeamSheet(), substitutes: [] };
   }
 }
 
-export function saveTeamSheet(players: readonly TeamSheetPlayer[]): boolean {
-  return safeWrite(JSON.stringify(players));
+export function saveTeamSheet(data: TeamSheetData): boolean {
+  return safeWrite(JSON.stringify(data));
 }

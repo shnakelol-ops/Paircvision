@@ -1,24 +1,24 @@
 import type { CSSProperties } from "react";
 import type { TeamSheetPlayer } from "./team-sheet-types";
-
-// Real Ballylanders jersey photos (cropped/background-removed from the
-// club's o'neills.com product photos) — not the generic vector jersey used
-// elsewhere in the app. #1 is the keeper's black/pink jersey; #2-15 use the
-// yellow/green outfield jersey. Served from public/internal/ (static,
-// unbundled) since this tool is internal-only.
-const GK_JERSEY_SRC = "/internal/ballylanders-gk-jersey.webp";
-const OUTFIELD_JERSEY_SRC = "/internal/ballylanders-outfield-jersey.webp";
-const JERSEY_ASPECT = 369 / 300; // native height/width of the source images
+import { JERSEY_ASPECT, getJerseySrc } from "./team-sheet-jersey";
 
 interface Props {
   player: TeamSheetPlayer;
   editable: boolean;
   size?: number;
   onNameChange: (name: string) => void;
+  /**
+   * Starting XV jerseys no longer show the squad number over the shirt —
+   * pitch position identifies the player, so the overlay is unnecessary
+   * clutter. Presentation only: `player.number` is untouched and still
+   * drives GK-vs-outfield jersey selection. Defaults to true so any other
+   * caller keeps today's behaviour unless it explicitly opts out.
+   */
+  showNumberOverlay?: boolean;
 }
 
-export function TeamSheetJerseyTile({ player, editable, size = 54, onNameChange }: Props) {
-  const jerseySrc = player.number === 1 ? GK_JERSEY_SRC : OUTFIELD_JERSEY_SRC;
+export function TeamSheetJerseyTile({ player, editable, size = 54, onNameChange, showNumberOverlay = true }: Props) {
+  const jerseySrc = getJerseySrc(player.number);
   const height = Math.round(size * JERSEY_ASPECT);
   const name = player.name.trim();
 
@@ -33,7 +33,7 @@ export function TeamSheetJerseyTile({ player, editable, size = 54, onNameChange 
           style={S.jerseyImg}
           draggable={false}
         />
-        <span style={S.numberText}>{player.number}</span>
+        {showNumberOverlay && <span style={S.numberText}>{player.number}</span>}
       </div>
       {editable ? (
         <input
