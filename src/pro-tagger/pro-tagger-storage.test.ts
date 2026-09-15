@@ -227,6 +227,43 @@ describe("readProTaggerMatches — malformed record safety (P0-4)", () => {
     expect(isValidProMatch({ ...buildMatch(), events: "not-an-array" })).toBe(false);
     expect(isValidProMatch({ ...buildMatch(), restoreContext: undefined })).toBe(false);
   });
+
+  // P1-1: a record missing homeSquadLiveState/awaySquadLiveState (an older
+  // export shape, or a hand-edited/foreign import file) previously passed
+  // isValidProMatch — every other required field was present — and reached
+  // ProTaggerLiveScreen with homeSquadState/awaySquadState set to undefined,
+  // crashing on the very first render (subSquadState.filter(...) has no
+  // undefined guard) with no error boundary anywhere in the app to recover
+  // from it. Rejecting it here, at the storage/import boundary, keeps a
+  // record like this out of ProTaggerLiveScreen entirely.
+  it("isValidProMatch rejects a record missing homeSquadLiveState/awaySquadLiveState", () => {
+    const { homeSquadLiveState, ...missingHome } = buildMatch();
+    expect(isValidProMatch(missingHome)).toBe(false);
+
+    const { awaySquadLiveState, ...missingAway } = buildMatch();
+    expect(isValidProMatch(missingAway)).toBe(false);
+
+    expect(isValidProMatch({ ...buildMatch(), homeSquadLiveState: "not-an-array" })).toBe(false);
+  });
+
+  it("isValidProMatch rejects a record missing homeSquad/awaySquad or whose squad has no players array", () => {
+    const { homeSquad, ...missingHomeSquad } = buildMatch();
+    expect(isValidProMatch(missingHomeSquad)).toBe(false);
+
+    expect(isValidProMatch({ ...buildMatch(), awaySquad: { id: "away-squad", teamSide: "AWAY" } })).toBe(false);
+    expect(isValidProMatch({ ...buildMatch(), homeSquad: null })).toBe(false);
+  });
+
+  it("skips a record missing squad-live-state beside a valid one, keeping the valid one (storage read path)", () => {
+    const valid = buildMatch({ id: "valid-3" });
+    const { homeSquadLiveState, ...invalid } = { ...buildMatch({ id: "broken-3" }) };
+    window.localStorage.setItem(
+      PRO_TAGGER_MATCHES_STORAGE_KEY,
+      JSON.stringify([invalid, valid]),
+    );
+    const stored = readProTaggerMatches();
+    expect(stored.map((m) => m.id)).toEqual(["valid-3"]);
+  });
 });
 
 describe("saveProTaggerMatch — shared Match Stats archive, no eviction", () => {
@@ -249,5 +286,42 @@ describe("saveProTaggerMatch — shared Match Stats archive, no eviction", () =>
     const stored = JSON.parse(window.localStorage.getItem(SAVED_MATCHES_STORAGE_KEY) ?? "[]") as SavedMatch[];
     expect(stored).toHaveLength(12);
     expect(stored.some((m) => m.id === "match-stats-native-1")).toBe(true);
+  });
+});
+
+// P1-6: saveProTaggerMatchFull used to independently cap the full-restore
+// array at MAX_PRO_TAGGER_MATCHES (20) via its own .slice(), silently
+// dropping the OLDEST saved match the moment a 21st distinct match was
+// created — a completed match with a full season's stats, gone with no
+// warning. Regression coverage for that eviction (same root cause class as
+// the shared-key F03 fix above, on the dedicated Pro Tagger key instead).
+describe("saveProTaggerMatchFull — full-restore archive, no eviction (P1-6)", () => {
+  it("keeps all 21 matches — saving Match 21 must not silently delete Match 1", () => {
+    for (let n = 1; n <= 21; n++) {
+      saveProTaggerMatchFull(buildMatch({ id: `match-${n}`, createdAt: n * 1000 }));
+    }
+    const stored = readProTaggerMatches();
+    expect(stored).toHaveLength(21);
+    expect(stored.some((m) => m.id === "match-1")).toBe(true);
+    expect(stored.some((m) => m.id === "match-21")).toBe(true);
+  });
+
+  it("Match 1 survives with its original events intact after Match 21 is saved", () => {
+    const match1Events: LoggedMatchEvent[] = [buildSharedEvent()];
+    saveProTaggerMatchFull(buildMatch({ id: "match-1", createdAt: 1000, events: match1Events, eventCount: 1 }));
+    for (let n = 2; n <= 21; n++) {
+      saveProTaggerMatchFull(buildMatch({ id: `match-${n}`, createdAt: n * 1000 }));
+    }
+    const match1 = readProTaggerMatches().find((m) => m.id === "match-1");
+    expect(match1).toBeDefined();
+    expect(match1!.events).toHaveLength(1);
+  });
+
+  it("still upserts an existing match in place rather than duplicating it, with no cap involved", () => {
+    saveProTaggerMatchFull(buildMatch({ id: "match-1", eventCount: 0 }));
+    saveProTaggerMatchFull(buildMatch({ id: "match-1", eventCount: 5 }));
+    const stored = readProTaggerMatches();
+    expect(stored.filter((m) => m.id === "match-1")).toHaveLength(1);
+    expect(stored.find((m) => m.id === "match-1")!.eventCount).toBe(5);
   });
 });
