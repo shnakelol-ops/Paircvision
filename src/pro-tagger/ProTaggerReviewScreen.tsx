@@ -28,8 +28,18 @@ import { ShareSheet } from "../features/shared/ShareSheet";
 import { MATCH_EVENT_KINDS, type MatchEventKind } from "../core/stats/stats-event-model";
 import { formatMatchClock } from "../core/match/match-state-store";
 import { computeScoreSide, computeScorelineSnapshot } from "./pro-tagger-score";
+import { SAVE_FAILED_TEXT } from "./ProTaggerLiveScreen";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Exported for regression testing (P1-2): whether a Review edit/delete that
+// just changed the event log needs to warn the coach it wasn't actually
+// saved. Mirrors deriveAutosaveWarningState's role on the Live screen — a
+// tiny, pure, directly-testable seam for a component with no React
+// rendering harness in this repo.
+export function deriveReviewSaveFailedFeedback(persisted: boolean): string | null {
+  return persisted ? null : SAVE_FAILED_TEXT;
+}
 
 function deriveStageLabel(
   matchState: ProTaggerSavedMatch["restoreContext"]["matchState"],
@@ -252,8 +262,17 @@ interface Props {
    * while the saved-matches review screen has no live state and must write it to
    * storage itself. Without this, edits/deletes only ever lived in local component
    * state and vanished the moment Review was closed.
+   *
+   * Returns whether the correction was actually persisted. The embedded
+   * live-review overlay (ProTaggerLiveScreen) only updates in-memory state
+   * here and always returns true — its own already-hardened autosave path
+   * surfaces any storage failure separately. The standalone Saved Matches ->
+   * Review screen (ProTaggerPage) writes straight to storage and must return
+   * the real result, so a correction (e.g. fixing which player a card
+   * belongs to) that fails to persist is surfaced to the coach instead of
+   * silently discarded the moment they leave Review.
    */
-  onMatchUpdate: (updatedMatch: ProTaggerSavedMatch) => void;
+  onMatchUpdate: (updatedMatch: ProTaggerSavedMatch) => boolean;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -277,6 +296,12 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
   // currently filtered event set).
   const [showEventMapZones, setShowEventMapZones] = useState(false);
 
+  // Ephemeral warning shown when onMatchUpdate reports the correction did not
+  // actually persist (P1-2) — same wording/duration pattern as every other
+  // Event Stats save-failure surface (ProTaggerLiveScreen's SAVE_FAILED_TEXT).
+  const [saveFailedFeedback, setSaveFailedFeedback] = useState<string | null>(null);
+  const saveFailedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ── Event Map marker tap state ─────────────────────────────────────────────
   const [selectedMapEventId,   setSelectedMapEventId]   = useState<string | null>(null);
   const [deleteConfirmPending, setDeleteConfirmPending] = useState(false);
@@ -297,6 +322,12 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
     setLocalMatch(null);
     setSelectedMapEventId(null);
   }, [_match.id]);
+
+  useEffect(() => {
+    return () => {
+      if (saveFailedTimerRef.current) clearTimeout(saveFailedTimerRef.current);
+    };
+  }, []);
 
   // Reset delete-confirm and edit state whenever the selected event changes.
   useEffect(() => {
@@ -381,7 +412,16 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
       scorelineSnapshot: computeScorelineSnapshot(updatedEvents, match.homeTeamName, match.awayTeamName),
     };
     setLocalMatch(updated);
-    onMatchUpdate(updated);
+    const persisted = onMatchUpdate(updated);
+    if (saveFailedTimerRef.current) clearTimeout(saveFailedTimerRef.current);
+    // Nothing here rolls the local edit back on failure — the correction the
+    // coach just made is still correct in memory; this only warns that it
+    // was not saved, so leaving Review would silently discard it.
+    const feedback = deriveReviewSaveFailedFeedback(persisted);
+    setSaveFailedFeedback(feedback);
+    if (feedback) {
+      saveFailedTimerRef.current = setTimeout(() => setSaveFailedFeedback(null), 4000);
+    }
   }
 
   const deleteSelectedMapEvent = () => {
@@ -743,6 +783,9 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
           />
           <div style={B.footer}>
             {filteredEvents.length} event{filteredEvents.length !== 1 ? "s" : ""}
+            {saveFailedFeedback ? (
+              <span style={B.saveFailedText}>{saveFailedFeedback}</span>
+            ) : null}
           </div>
 
           {/* ── Event detail / edit card ──────────────────────────────── */}
@@ -1331,6 +1374,12 @@ const B: Record<string, CSSProperties> = {
     background: "#0a2134",
     borderTop:  "1px solid #17324a",
     flexShrink: 0,
+  },
+  saveFailedText: {
+    marginLeft: 10,
+    fontSize:   12,
+    color:      "#f85149",
+    fontWeight: 600,
   },
 
   // ── Event detail card (compact right-anchored) ────────────────────────────
