@@ -13,6 +13,7 @@ import VisionTrainingShell from "./vision-training/VisionTrainingShell";
 import PitchFlowSettingsShell from "./pages/PitchFlowSettingsShell";
 import InternalLauncherPage from "./pages/InternalLauncherPage";
 import TeamSheetScreen from "./internal-team-sheet/TeamSheetScreen";
+import { shouldExposeInternalRoute } from "./internal-route-gate";
 
 const boardShell = () => <PitchFlowCoachShell initialTab="home" />;
 const VISION_BOARD_PATH = "/vision-board";
@@ -125,10 +126,13 @@ function pickRootComponent() {
   if (normalizedPath === SETTINGS_PATH) {
     return PitchFlowSettingsShell;
   }
-  if (normalizedPath === INTERNAL_PATH) {
+  // Internal tools launcher + internal Team Sheet: development/personal use
+  // only — falls through to the normal home board exactly like any other
+  // unrecognised path when not allowed, with no trace that the route exists.
+  if (normalizedPath === INTERNAL_PATH && shouldExposeInternalRoute(import.meta.env.DEV)) {
     return InternalLauncherPage;
   }
-  if (normalizedPath === INTERNAL_TEAM_SHEET_PATH) {
+  if (normalizedPath === INTERNAL_TEAM_SHEET_PATH && shouldExposeInternalRoute(import.meta.env.DEV)) {
     return TeamSheetScreen;
   }
   return redirectToBoard();
