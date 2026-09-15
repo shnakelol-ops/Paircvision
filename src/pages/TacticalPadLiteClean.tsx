@@ -53,7 +53,7 @@ import VisionStadiumBackground from "../components/VisionStadiumBackground";
 import { exportBoardSetupAsPng } from "../features/quickboard/export/board-png-export";
 import { ShareSheet } from "../features/shared/ShareSheet";
 import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
-import { resolveSlateQuarterTurns } from "./tacticalSlateOrientation";
+import { resolveSlateQuarterTurns, shouldUseMobilePortraitToolsPanel } from "./tacticalSlateOrientation";
 import SlateBackgroundPositioner from "../features/quickboard/background/SlateBackgroundPositioner";
 import SlateLabelEntryModal from "../features/quickboard/annotations/SlateLabelEntryModal";
 import { type SlateTextAnnotation, type SlateTextFontSize } from "../features/quickboard/annotations/slateTextAnnotation";
@@ -462,6 +462,30 @@ const STADIUM_FLOODLIGHT_CSS = `
   border: 1px solid rgba(14, 20, 19, 0.8);
   background: #f8fbfa;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 2px 5px rgba(0, 0, 0, 0.34);
+}
+
+/* Mobile portrait Tools panel (phone held normally, board rotated to portrait
+   tactical mode). Kept out of the inline style objects so a plain vh value can
+   serve as the fallback for browsers without dvh support, per @supports below. */
+.mobile-portrait-tools-panel {
+  max-height: 74vh;
+}
+
+@supports (height: 100dvh) {
+  .mobile-portrait-tools-panel {
+    max-height: min(74dvh, calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 96px));
+  }
+}
+
+.mobile-portrait-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 349px) {
+  .mobile-portrait-tool-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 `;
@@ -1520,6 +1544,150 @@ const COACH_HUB_TAB_BUTTON_ACTIVE_STYLE: CSSProperties = {
   border: "1px solid rgba(125, 211, 252, 0.68)",
   background: "rgba(38, 72, 102, 0.72)",
   color: "#f7fcff",
+};
+
+// Mobile portrait Tools panel (real phone in the default, non-rotated-landscape
+// hold). COACH_HUB_PANEL_STYLE above is a desktop sidebar sized with
+// `clamp(112px, 13vw, 148px)` — on any phone-width viewport 13vw is far below
+// 112px, so it always clamps to the ~112-148px floor no matter how wide the
+// phone actually is. These styles give the panel real, viewport-relative room
+// instead, matching the pattern MOBILE_COACH_HUB_PANEL_STYLE already uses for
+// the landscape-compact case. max-height is intentionally left off the panel
+// style (set via the .mobile-portrait-tools-panel CSS class instead) so a
+// plain vh value can act as a fallback for browsers without dvh support.
+const MOBILE_PORTRAIT_COACH_HUB_PANEL_STYLE: CSSProperties = {
+  position: "fixed",
+  right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
+  bottom: "max(60px, calc(env(safe-area-inset-bottom, 0px) + 58px))",
+  width: "min(92vw, 360px)",
+  maxWidth: "calc(100dvw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px) - 16px)",
+  overflowY: "auto",
+  overflowX: "hidden",
+  overscrollBehavior: "contain",
+  display: "flex",
+  flexDirection: "column",
+  gap: "6px",
+  padding: "10px",
+  borderRadius: "14px",
+  border: "1px solid rgba(140, 171, 159, 0.26)",
+  background: "linear-gradient(180deg, rgba(12, 22, 24, 0.92) 0%, rgba(9, 16, 19, 0.95) 100%)",
+  boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 24px rgba(0, 0, 0, 0.32)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  zIndex: 20,
+};
+
+const MOBILE_PORTRAIT_SECTION_TITLE_STYLE: CSSProperties = {
+  ...COACH_HUB_SECTION_TITLE_STYLE,
+  fontSize: "10px",
+  letterSpacing: "0.16px",
+};
+
+const MOBILE_PORTRAIT_TAB_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: "6px",
+};
+
+const MOBILE_PORTRAIT_TAB_BUTTON_STYLE: CSSProperties = {
+  height: "42px",
+  minWidth: 0,
+  width: "100%",
+  maxWidth: "100%",
+  borderRadius: "10px",
+  fontSize: "11px",
+  fontWeight: 600,
+  fontFamily: "Inter, system-ui, sans-serif",
+  letterSpacing: "0.1px",
+  padding: "0 4px",
+  cursor: "pointer",
+  border: "1px solid rgba(121, 171, 208, 0.24)",
+  background: "rgba(17, 30, 40, 0.56)",
+  color: "#dbecfa",
+};
+
+const MOBILE_PORTRAIT_TAB_BUTTON_ACTIVE_STYLE: CSSProperties = {
+  ...MOBILE_PORTRAIT_TAB_BUTTON_STYLE,
+  border: "1px solid rgba(125, 211, 252, 0.68)",
+  background: "rgba(38, 72, 102, 0.72)",
+  color: "#f7fcff",
+};
+
+// No gridTemplateColumns here on purpose — the 3-col / 2-col switch is done in
+// CSS (see .mobile-portrait-tool-grid in STADIUM_FLOODLIGHT_CSS) via a media
+// query on the real viewport width, so it stays correct on resize/rotation
+// without an extra layer of JS state.
+const MOBILE_PORTRAIT_TOOL_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gap: "8px",
+};
+
+const MOBILE_PORTRAIT_TOOL_BUTTON_STYLE: CSSProperties = {
+  minHeight: "44px",
+  height: "auto",
+  minWidth: 0,
+  width: "100%",
+  maxWidth: "100%",
+  borderRadius: "10px",
+  fontSize: "12px",
+  fontWeight: 600,
+  fontFamily: "Inter, system-ui, sans-serif",
+  letterSpacing: "0.1px",
+  lineHeight: 1.15,
+  whiteSpace: "normal",
+  padding: "6px 6px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  cursor: "pointer",
+  border: "1px solid rgba(121, 171, 208, 0.24)",
+  background: "rgba(17, 30, 40, 0.56)",
+  color: "#dbecfa",
+};
+
+const MOBILE_PORTRAIT_TOOL_BUTTON_ACTIVE_STYLE: CSSProperties = {
+  ...MOBILE_PORTRAIT_TOOL_BUTTON_STYLE,
+  border: "1px solid rgba(125, 211, 252, 0.68)",
+  background: "rgba(38, 72, 102, 0.68)",
+  color: "#f7fcff",
+};
+
+const MOBILE_PORTRAIT_COLOR_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+  gap: "8px",
+};
+
+const MOBILE_PORTRAIT_COLOR_BUTTON_STYLE: CSSProperties = {
+  width: "100%",
+  height: "40px",
+  borderRadius: "999px",
+  border: "1px solid rgba(147, 173, 196, 0.28)",
+  background: "rgba(15, 25, 36, 0.58)",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  padding: 0,
+};
+
+const MOBILE_PORTRAIT_COLOR_SWATCH_STYLE: CSSProperties = {
+  width: "18px",
+  height: "18px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255, 255, 255, 0.44)",
+};
+
+const MOBILE_PORTRAIT_ACTION_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: "8px",
+};
+
+const MOBILE_PORTRAIT_ACTION_BUTTON_STYLE: CSSProperties = {
+  ...MOBILE_PORTRAIT_TOOL_BUTTON_STYLE,
+  minHeight: "42px",
 };
 
 const CONTROL_BUTTON_STYLE: CSSProperties = {
@@ -4209,6 +4377,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const isIphoneLandscapeTools = isCompactLandscapeTools && isIphoneLandscapeToolsMenu;
   const compactLandscapeViewportWidth = isCompactLandscapeTools ? getViewportRect().width : 0;
   const isTightCompactLandscapeTools = isCompactLandscapeTools && compactLandscapeViewportWidth <= 760;
+  // Real phone held normally (board rotated into portrait tactical mode), as
+  // opposed to isCompactLandscapeTools above which only covers a phone rotated
+  // to landscape.
+  const mobilePortraitViewportWidth = isPortrait ? getViewportRect().width : 0;
+  const isMobilePortraitTools = shouldUseMobilePortraitToolsPanel({
+    isWhiteboardMode,
+    isPortrait,
+    viewportWidth: mobilePortraitViewportWidth,
+  });
   const mobileCoachHubOverlayStyle = isIphoneLandscapeTools ? IPHONE_LANDSCAPE_TOOLS_OVERLAY_STYLE : MOBILE_COACH_HUB_OVERLAY_STYLE;
   const mobileCoachHubPanelStyle = isCompactLandscapeTools
     ? {
@@ -4233,7 +4410,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     zIndex: 25,
   };
   const toolsPortalPanelStyle: CSSProperties = {
-    ...COACH_HUB_PANEL_STYLE,
+    ...(isMobilePortraitTools ? MOBILE_PORTRAIT_COACH_HUB_PANEL_STYLE : COACH_HUB_PANEL_STYLE),
     pointerEvents: "auto",
     zIndex: 25,
   };
@@ -4246,6 +4423,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         color: "rgba(202, 222, 213, 0.86)",
         marginTop: "0px",
       }
+    : isMobilePortraitTools
+    ? MOBILE_PORTRAIT_SECTION_TITLE_STYLE
     : COACH_HUB_SECTION_TITLE_STYLE;
   const coachHubTabGridStyle = isCompactLandscapeTools
     ? {
@@ -4258,6 +4437,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         border: "1px solid rgba(129, 157, 144, 0.12)",
         background: "rgba(9, 16, 20, 0.44)",
       }
+    : isMobilePortraitTools
+    ? MOBILE_PORTRAIT_TAB_GRID_STYLE
     : COACH_HUB_TAB_GRID_STYLE;
   const coachHubTabButtonStyle = isCompactLandscapeTools
     ? {
@@ -4274,6 +4455,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         background: "rgba(13, 22, 25, 0.68)",
         color: "rgba(220, 235, 227, 0.9)",
       }
+    : isMobilePortraitTools
+    ? MOBILE_PORTRAIT_TAB_BUTTON_STYLE
     : COACH_HUB_TAB_BUTTON_STYLE;
   const coachHubTabButtonActiveStyle = isCompactLandscapeTools
     ? {
@@ -4282,7 +4465,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         background: "rgba(124, 255, 114, 0.12)",
         color: "#f1f7f0",
       }
+    : isMobilePortraitTools
+    ? MOBILE_PORTRAIT_TAB_BUTTON_ACTIVE_STYLE
     : COACH_HUB_TAB_BUTTON_ACTIVE_STYLE;
+  const coachHubToolGridStyle = isMobilePortraitTools ? MOBILE_PORTRAIT_TOOL_GRID_STYLE : COACH_HUB_TOOL_GRID_STYLE;
   const coachHubToolButtonStyle = isCompactLandscapeTools
     ? {
         ...COACH_HUB_TOOL_BUTTON_STYLE,
@@ -4297,6 +4483,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         background: "rgba(13, 22, 25, 0.68)",
         color: "#e6f0ea",
       }
+    : isMobilePortraitTools
+    ? MOBILE_PORTRAIT_TOOL_BUTTON_STYLE
     : COACH_HUB_TOOL_BUTTON_STYLE;
   const coachHubToolButtonActiveStyle = isCompactLandscapeTools
     ? {
@@ -4305,12 +4493,16 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         background: "rgba(124, 255, 114, 0.14)",
         color: "#f7fcff",
       }
+    : isMobilePortraitTools
+    ? MOBILE_PORTRAIT_TOOL_BUTTON_ACTIVE_STYLE
     : COACH_HUB_TOOL_BUTTON_ACTIVE_STYLE;
   const coachHubColorGridStyle = isCompactLandscapeTools
     ? {
         ...COACH_HUB_COLOR_GRID_STYLE,
         gap: isTightCompactLandscapeTools ? "1px" : "2px",
       }
+    : isMobilePortraitTools
+    ? MOBILE_PORTRAIT_COLOR_GRID_STYLE
     : COACH_HUB_COLOR_GRID_STYLE;
   const coachHubColorButtonStyle = isCompactLandscapeTools
     ? {
@@ -4319,6 +4511,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         border: "1px solid rgba(129, 157, 144, 0.22)",
         background: "rgba(10, 18, 22, 0.7)",
       }
+    : isMobilePortraitTools
+    ? MOBILE_PORTRAIT_COLOR_BUTTON_STYLE
     : COACH_HUB_COLOR_BUTTON_STYLE;
   const coachHubColorSwatchStyle = isCompactLandscapeTools
     ? {
@@ -4326,7 +4520,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         width: isTightCompactLandscapeTools ? "10px" : "11px",
         height: isTightCompactLandscapeTools ? "10px" : "11px",
       }
+    : isMobilePortraitTools
+    ? MOBILE_PORTRAIT_COLOR_SWATCH_STYLE
     : COACH_HUB_COLOR_SWATCH_STYLE;
+  const coachHubActionGridStyle = isMobilePortraitTools ? MOBILE_PORTRAIT_ACTION_GRID_STYLE : COACH_HUB_ACTION_GRID_STYLE;
   const coachHubActionButtonStyle = isCompactLandscapeTools
     ? {
         ...COACH_HUB_ACTION_BUTTON_STYLE,
@@ -4341,6 +4538,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         background: "rgba(13, 22, 25, 0.68)",
         color: "#e6f0ea",
       }
+    : isMobilePortraitTools
+    ? MOBILE_PORTRAIT_ACTION_BUTTON_STYLE
     : COACH_HUB_ACTION_BUTTON_STYLE;
   const pitchSurfaceStyle: CSSProperties =
     !isWhiteboardMode && toolsOpen
@@ -5525,6 +5724,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             <div style={TOOLS_PORTAL_BACKDROP_STYLE} role="presentation" onPointerDown={handleToolsBackdropPointerDown}>
               <div
                 ref={toolsMenuRef}
+                className={isMobilePortraitTools ? "mobile-portrait-tools-panel" : undefined}
                 style={toolsPortalPanelStyle}
                 role="dialog"
                 aria-modal="false"
@@ -5566,7 +5766,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             {activeToolsSection === "draw" ? (
               <div style={COACH_HUB_SECTION_STYLE}>
                 <p style={coachHubSectionTitleStyle}>Draw</p>
-                <div className="coach-hub-tool-grid" style={COACH_HUB_TOOL_GRID_STYLE}>
+                <div
+                  className={isMobilePortraitTools ? "mobile-portrait-tool-grid" : "coach-hub-tool-grid"}
+                  style={coachHubToolGridStyle}
+                >
                   <button
                     type="button"
                     style={tacticalTool === "move" && !textToolActive ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
@@ -5694,7 +5897,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     </button>
                   ))}
                 </div>
-                <div style={{ ...COACH_HUB_ACTION_GRID_STYLE, marginTop: 3 }}>
+                <div style={{ ...coachHubActionGridStyle, marginTop: 3 }}>
                   <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => fillTeam("BLUE")}>
                     Fill 15
                   </button>
@@ -5720,7 +5923,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     </button>
                   ))}
                 </div>
-                <div style={{ ...COACH_HUB_ACTION_GRID_STYLE, marginTop: 3 }}>
+                <div style={{ ...coachHubActionGridStyle, marginTop: 3 }}>
                   <button type="button" style={coachHubActionButtonStyle} disabled={isPlaybackLocked} onClick={() => fillTeam("RED")}>
                     Fill 15
                   </button>
@@ -5734,7 +5937,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             {activeToolsSection === "items" ? (
               <div style={COACH_HUB_SECTION_STYLE}>
                 <p style={coachHubSectionTitleStyle}>Items</p>
-                <div style={COACH_HUB_ACTION_GRID_STYLE}>
+                <div style={coachHubActionGridStyle}>
                   <button
                     type="button"
                     style={{ ...coachHubActionButtonStyle, gridColumn: "1 / -1" }}
@@ -5777,7 +5980,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
             {activeToolsSection === "board" ? (
               <div style={COACH_HUB_SECTION_STYLE}>
                 <p style={coachHubSectionTitleStyle}>Board</p>
-                <div style={COACH_HUB_ACTION_GRID_STYLE}>
+                <div style={coachHubActionGridStyle}>
                   <button type="button" style={coachHubActionButtonStyle} onClick={handleNewBoard}>
                     New Board
                   </button>

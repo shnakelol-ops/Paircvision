@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { createWorldViewport } from "../engine/pixi/createWorldViewport";
-import { resolveSlateQuarterTurns, SLATE_PORTRAIT_QUARTER_TURNS } from "./tacticalSlateOrientation";
+import {
+  MOBILE_PORTRAIT_TOOLS_MAX_WIDTH,
+  resolveSlateQuarterTurns,
+  shouldUseMobilePortraitToolsPanel,
+  SLATE_PORTRAIT_QUARTER_TURNS,
+} from "./tacticalSlateOrientation";
 
 // Canonical Slate pitch world and a representative phone-portrait host.
 const WORLD = { width: 160, height: 100 };
@@ -91,6 +96,45 @@ describe("Tactical Slate portrait pointer-to-world", () => {
     expect(rightGoal.y).toBeGreaterThan(centreY); // bottom
     // Both goals sit on the same vertical column (pitch runs vertically).
     expect(Math.abs(leftGoal.x - rightGoal.x)).toBeLessThanOrEqual(TOLERANCE);
+  });
+});
+
+describe("Tactical Slate mobile portrait Tools panel selection", () => {
+  it("selects the widened mobile panel for a real phone in portrait tactical mode", () => {
+    for (const width of [320, 340, 349, 360, 375, 390, 412]) {
+      expect(
+        shouldUseMobilePortraitToolsPanel({ isWhiteboardMode: false, isPortrait: true, viewportWidth: width }),
+      ).toBe(true);
+    }
+  });
+
+  it("keeps the compact desktop sidebar in landscape, even at a narrow width", () => {
+    expect(
+      shouldUseMobilePortraitToolsPanel({ isWhiteboardMode: false, isPortrait: false, viewportWidth: 360 }),
+    ).toBe(false);
+  });
+
+  it("keeps the compact desktop sidebar in whiteboard mode, even in portrait", () => {
+    expect(
+      shouldUseMobilePortraitToolsPanel({ isWhiteboardMode: true, isPortrait: true, viewportWidth: 360 }),
+    ).toBe(false);
+  });
+
+  it("falls back to the desktop sidebar above the phone/tablet width ceiling", () => {
+    expect(
+      shouldUseMobilePortraitToolsPanel({
+        isWhiteboardMode: false,
+        isPortrait: true,
+        viewportWidth: MOBILE_PORTRAIT_TOOLS_MAX_WIDTH,
+      }),
+    ).toBe(true);
+    expect(
+      shouldUseMobilePortraitToolsPanel({
+        isWhiteboardMode: false,
+        isPortrait: true,
+        viewportWidth: MOBILE_PORTRAIT_TOOLS_MAX_WIDTH + 1,
+      }),
+    ).toBe(false);
   });
 });
 
