@@ -28,6 +28,7 @@ import type {
   PossessionOutcomeSummary,
   PossessionResult,
 } from "./chain-types";
+import { resolveRestartOwner } from "../restarts/restartMetrics";
 
 // ─── Clock resolution (mirrors chain-engine.ts — kept independent) ────────────
 
@@ -318,19 +319,19 @@ export function buildPossessionOutcomeSummary<TEvent extends ChainableEvent>(
   const frees     = buildFamily<TEvent>("FREE",     freeResults);
 
   // 5. Ownership split: partition kickouts by restartOwner.
-  //    Legacy compatibility shim: when restartOwner is absent (pre-V1.2 match data),
-  //    derive the kicking team from kind + teamSide:
-  //      KICKOUT_CONCEDED → the conceding side took the kickout → restartOwner === teamSide
-  //      KICKOUT_WON      → the winning side did NOT take it   → restartOwner === opposite(teamSide)
-  //    When restartOwner is explicitly set (V1.2+ data) it is always used as-is.
-  const getRestartOwner = (r: PossessionResult<TEvent>): "FOR" | "OPP" =>
-    r.originEvent.restartOwner != null
-      ? r.originEvent.restartOwner
-      : r.originEvent.kind === "KICKOUT_CONCEDED"
-        ? r.originEvent.teamSide
-        : r.originEvent.teamSide === "FOR" ? "OPP" : "FOR";
-  const ourKickoutResults   = kickoutResults.filter((r) => getRestartOwner(r) === "FOR");
-  const theirKickoutResults = kickoutResults.filter((r) => getRestartOwner(r) === "OPP");
+  //    Uses restartMetrics.ts's resolveRestartOwner — the single canonical
+  //    source of truth for restart ownership (V1.2+ events carry an explicit
+  //    restartOwner that always wins; the legacy pre-V1.2 fallback is
+  //    owner = teamSide, the same convention selectRestartEventsByOwner and
+  //    every restart PDF page already use). This engine previously used a
+  //    different, inverted legacy fallback for bare KICKOUT_WON events
+  //    (owner = opposite of teamSide), which classified a self-retained
+  //    legacy kickout as if the opposition had won it back — a confirmed
+  //    ownership inversion for any pre-V1.2 saved match this summary is ever
+  //    built from. All V1.2+ data (every kind this engine sees with an
+  //    explicit restartOwner) is unaffected either way.
+  const ourKickoutResults   = kickoutResults.filter((r) => resolveRestartOwner(r.originEvent) === "FOR");
+  const theirKickoutResults = kickoutResults.filter((r) => resolveRestartOwner(r.originEvent) === "OPP");
   const ourKickouts   = ourKickoutResults.length   > 0
     ? buildFamily<TEvent>("KICKOUT", ourKickoutResults)   : null;
   const theirKickouts = theirKickoutResults.length > 0
