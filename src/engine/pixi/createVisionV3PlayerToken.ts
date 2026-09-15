@@ -36,7 +36,7 @@ const DEFAULT_STYLE_BY_TEAM: Record<VisionV3TeamColor, VisionV3PlayerTokenStyle>
     textColor: 0xffffff,
   },
   yellow: {
-    primaryColor: 0xfacc15,
+    primaryColor: 0xf2c94c,
     secondaryColor: 0xfde68a,
     badgeColor: 0xca8a04,
     outlineColor: 0x111827,
@@ -238,48 +238,55 @@ export function createVisionV3PlayerToken({
     ? Number(kitPatternColor)
     : (resolved.secondaryColor ?? mixColor(baseColor, 0xffffff, 0.3));
   const ringColor = mixColor(baseColor, accentColor, 0.3);
-  // Phosphor/Pixi skip this shading step for high-luminance fills
-  // (relativeLuminance > 0.64 → 0 mix) so a bright colour stays bright
-  // instead of reading as mustard/olive. Vision V3 applied the mix
-  // unconditionally, and — critically — callers can override `primaryColor`
-  // via `style` independently of `teamColor` (e.g. Tactical Slate's kit
-  // colour picker in createTacticalPadLiteSurface.ts always renders with
-  // teamColor "blue"/"red" while `style.primaryColor` carries the actual
-  // chosen kit colour), so gating the exception on `teamColor` never fired
-  // for a yellow *kit*. Gate on the resolved fill colour's own luminance
-  // instead, matching Phosphor's rule exactly, so it responds to whatever
-  // colour is actually being painted.
-  // pitchBlendSensitivePalette (green/white) keeps its dedicated, stronger
-  // darken amount regardless of luminance — that extra contrast against a
-  // green pitch is intentional and untouched here.
-  const coreDarkenAmount = pitchBlendSensitivePalette
-    ? 0.23
-    : luminance(baseColor) > 163
-      ? 0
-      : 0.18;
-  const coreColor = mixColor(baseColor, 0x020617, coreDarkenAmount);
-  const highlightColor = mixColor(coreColor, 0xffffff, 0.2);
   const edgeColor = mixColor(resolved.outlineColor, 0x000000, pitchBlendSensitivePalette ? 0.3 : 0.24);
 
+  // Crisp-depth treatment (root-cause fix for the residual soft edge):
+  // the earlier disc assigned `disc.mask = patternMask` (innerRadius) to a
+  // Graphics object that ALSO contained the outer rim fills — PixiJS clips
+  // a display object's ENTIRE rendered output to its mask regardless of
+  // draw order, so that outer rim (and the redundant stroke drawn after
+  // the mask assignment) was invisible dead code, and the token's real
+  // silhouette was only the innerRadius stroke. What read as "blur" was
+  // that crisp inner circle sitting inside a much larger (1.4x discRadius),
+  // low-alpha translucent halo circle from the old shadow graphic, bleeding
+  // through the gap where the rim should have been. No BlurFilter was ever
+  // involved — it was a masking scope bug plus an oversized soft halo.
+  //
+  // Fix: draw the rim as its own unmasked, fully opaque circle so it is
+  // never touched by the pattern mask, and give the core face its own
+  // mask scoped only to itself. The face keeps the team colour outright
+  // (no whole-disc darken — that 18% dark mix was why yellow lost its
+  // character); depth comes from two thin, low-alpha internal bands
+  // (lighter near the top, darker near the bottom) instead.
+  const coreColor = baseColor;
+  const topLight = mixColor(baseColor, 0xffffff, 0.18);
+  const bottomDark = mixColor(baseColor, 0x000000, pitchBlendSensitivePalette ? 0.16 : 0.13);
+  // Single thin rim (~1px at rendered size): one opaque ring, one edge —
+  // not a light ring stacked outside a separate semi-transparent stroke.
+  const rimColor = mixColor(baseColor, edgeColor, pitchBlendSensitivePalette ? 0.62 : 0.46);
+  const rimWidth = Math.max(0.16, discRadius * 0.045);
+  const coreVisualRadius = discRadius - rimWidth;
+
+  // Tiny, dark, low-opacity contact shadow only — no oversized translucent
+  // halo. This is the sole external effect; it must never touch the disc.
   const shadow = new Graphics();
   shadow
-    .circle(0, 0, discRadius * 1.4)
-    .fill({ color: ringColor, alpha: 0.1 })
-    .ellipse(0.2, discRadius * 1.04, discRadius * 0.98, discRadius * 0.26)
-    .fill({ color: 0x020617, alpha: 0.21 });
-  shadow.alpha = 0.24;
+    .ellipse(0.15, discRadius * 0.92, discRadius * 0.68, discRadius * 0.17)
+    .fill({ color: 0x020617, alpha: 0.22 });
   token.addChild(shadow);
+
+  const rim = new Graphics();
+  rim.circle(0, 0, discRadius).fill({ color: rimColor });
+  token.addChild(rim);
 
   const disc = new Graphics();
   disc
-    .circle(0, 0, discRadius)
-    .fill({ color: 0x0b1120 })
-    .circle(0, 0, discRadius - 0.08)
-    .fill({ color: ringColor })
-    .circle(0, 0, innerRadius)
+    .circle(0, 0, coreVisualRadius)
     .fill({ color: kitPattern === "gradient" ? mixColor(baseColor, 0xffffff, 0.12) : coreColor })
-    .ellipse(0, -innerRadius * 0.34, innerRadius * 0.72, innerRadius * 0.22)
-    .fill({ color: highlightColor, alpha: 0.3 });
+    .ellipse(0, -coreVisualRadius * 0.4, coreVisualRadius * 0.86, coreVisualRadius * 0.34)
+    .fill({ color: topLight, alpha: 0.22 })
+    .ellipse(0, coreVisualRadius * 0.62, coreVisualRadius * 0.92, coreVisualRadius * 0.3)
+    .fill({ color: bottomDark, alpha: 0.16 });
   drawPatternAccent(
     disc,
     kitPattern,
@@ -287,35 +294,10 @@ export function createVisionV3PlayerToken({
     innerRadius * 0.9,
   );
   const patternMask = new Graphics();
-  patternMask.circle(0, 0, innerRadius).fill({ color: 0xffffff });
+  patternMask.circle(0, 0, coreVisualRadius).fill({ color: 0xffffff });
   disc.mask = patternMask;
   disc.addChild(patternMask);
-  // This outer-radius stroke sits entirely beyond the innerRadius mask
-  // above, so it renders fully clipped either way — left on `disc`
-  // (unchanged from before) rather than moved, so nothing newly appears.
-  disc
-    .circle(0, 0, discRadius)
-    .stroke({ color: edgeColor, width: Math.max(0.22, discRadius * 0.13), alpha: 0.74, alignment: 0.5 });
   token.addChild(disc);
-
-  // PixiJS applies a container's `.mask` to its ENTIRE rendered output as one
-  // effect, independent of draw-call order — so this inner-edge stroke, when
-  // drawn on `disc` (as it previously was, even though added after the mask
-  // assignment above), was cut off by the same innerRadius mask that exists
-  // only to contain the kit-pattern accent. The stroke sits exactly on that
-  // mask boundary (alignment: 0.5, so half its width lands outside
-  // innerRadius), so its outer half was being clipped mid-antialias against
-  // the mask's own antialiased edge — two soft edges compounding into one
-  // blurry ring right where the token's visible boundary is. Drawing it on
-  // this separate, unmasked Graphics object instead (same colour, width,
-  // radius and alpha as before) lets it rasterise as one clean, fully
-  // antialiased stroke, at the same radius the mask already bounds the disc
-  // to — so the visible silhouette is unchanged, only its edge quality is.
-  const innerEdge = new Graphics();
-  innerEdge
-    .circle(0, 0, innerRadius)
-    .stroke({ color: mixColor(edgeColor, 0xffffff, 0.08), width: Math.max(0.12, discRadius * 0.06), alpha: 0.42, alignment: 0.5 });
-  token.addChild(innerEdge);
 
   const iconLayer = new Graphics();
   drawShirtGlyph(iconLayer, -innerRadius * 0.02, innerRadius * 0.98, 0xffffff);
