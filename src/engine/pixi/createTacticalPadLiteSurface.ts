@@ -334,7 +334,10 @@ const POSSESSION_PASS_MAX_DURATION_MS = 1800;
 const POSSESSION_PASS_REFERENCE_DISTANCE = 14;
 // Reused by Free Draw's own capture dedup (appendFreeDrawPoint) and preview
 // smoothing (sampleRoutePoints) — Route-era names, still live dependencies.
-const BASIC_ROUTE_MIN_POINT_DISTANCE = 0.9;
+// Exported so tests can replay the real player Draw Route capture-seed
+// decision (see drawRoutePlayerStart.test.ts) against the exact threshold
+// production code uses, instead of a hardcoded duplicate.
+export const BASIC_ROUTE_MIN_POINT_DISTANCE = 0.9;
 /**
  * Authoring-only raw-capture threshold for a free ball's drag-drawn path —
  * deliberately separate from BALL_PATH_MIN_POINT_DISTANCE (imported from
@@ -4398,10 +4401,30 @@ export async function createTacticalPadLiteSurface(
       freeDrawCapturePointerId = getPointerIdFromEvent(event);
       freeDrawDraftPlayerId = tappedPlayer.id;
       freeDrawDraftPoints = [];
-      const normalized = mapper.worldToNormalized(worldPoint);
+      // Seed the route at the player's own authoritative position, not
+      // wherever the finger/stylus happened to touch down. Touchdown only
+      // has to land within the touch-select radius (~4 normalized units)
+      // to pick the player, which is far outside interpolatePath's
+      // alignment tolerance (0.35) and produced a visible backward/sideways
+      // pre-movement at playback start (the coach's actual off-centre touch
+      // point survived as an early route sample even after #307/ec2a6ec
+      // pinned path[0] itself).
+      //
+      // Deliberately do NOT also record the raw touchdown coordinate here
+      // as a second point: doing so authors a real "start -> touchdown"
+      // segment into the route, which can itself point away from the
+      // drawn direction whenever touchdown lands anywhere other than
+      // dead ahead -- the exact synthetic-correction-segment failure mode
+      // 066e5b2's own history already rejected, just moved to capture time
+      // instead of playback time. Touchdown isn't authored movement; it's
+      // only how the player got selected. The very next pointermove sample
+      // (handleStagePointerMove, below) is deduped against this seeded
+      // start via the existing appendFreeDrawPoint threshold exactly as any
+      // other captured point is, so only genuine dragging away from the
+      // true start ever becomes part of the route.
       appendFreeDrawPoint({
-        x: clampNormalizedValue(normalized.x),
-        y: clampNormalizedValue(normalized.y),
+        x: clampNormalizedValue(tappedPlayer.current.x),
+        y: clampNormalizedValue(tappedPlayer.current.y),
       });
       return;
     }
