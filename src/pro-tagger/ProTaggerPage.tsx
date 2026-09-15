@@ -11,7 +11,7 @@ import { ProTaggerSavedMatchesScreen } from "./ProTaggerSavedMatchesScreen";
 import { ProTaggerReviewScreen } from "./ProTaggerReviewScreen";
 import { ProTaggerOptionsScreen } from "./ProTaggerOptionsScreen";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
-import { readProTaggerMatches, saveProTaggerMatchFull } from "./pro-tagger-storage";
+import { readProTaggerMatches, saveProTaggerMatchFull, deriveLastActivityAt } from "./pro-tagger-storage";
 
 type AppPhase = "home" | "setup" | "squads" | "direction" | "live" | "saved-matches" | "review" | "options";
 
@@ -38,7 +38,9 @@ export function savedMatchToSession(m: ProTaggerSavedMatch): ProTaggerSession {
   };
 }
 
-function savedMatchToRestoreState(m: ProTaggerSavedMatch): RestoreState {
+// Exported for ProTaggerLiveScreen.halfTimePersistence.test.ts's save->restore
+// round-trip coverage (P0-1), same rationale as savedMatchToSession above.
+export function savedMatchToRestoreState(m: ProTaggerSavedMatch): RestoreState {
   return {
     events:              m.events,
     homeSquadLiveState:  m.homeSquadLiveState,
@@ -52,8 +54,19 @@ function savedMatchToRestoreState(m: ProTaggerSavedMatch): RestoreState {
 // Autosave (see ProTaggerLiveScreen) keeps every in-progress match written to the
 // same store as manual Save Match, so recovery after a refresh/crash is just:
 // find the most recent match that hasn't reached Full Time and offer to resume it.
-function findInProgressMatch(): ProTaggerSavedMatch | null {
-  return readProTaggerMatches().find((m) => m.restoreContext.matchState !== "FULL_TIME") ?? null;
+// Exported for ProTaggerLiveScreen.resetPersistence.test.ts (P0-2) — the exact
+// resurrection check the Home screen and Saved Matches list both use.
+//
+// Picks the in-progress match most recently WORKED ON (deriveLastActivityAt),
+// not simply the first non-FULL_TIME entry in storage order — that order
+// only reflects which match was CREATED first (P1-4): starting a new match
+// after resuming an older one never moved the older one back to the front.
+export function findInProgressMatch(): ProTaggerSavedMatch | null {
+  const candidates = readProTaggerMatches().filter((m) => m.restoreContext.matchState !== "FULL_TIME");
+  if (candidates.length === 0) return null;
+  return candidates.reduce((latest, m) =>
+    deriveLastActivityAt(m) > deriveLastActivityAt(latest) ? m : latest,
+  );
 }
 
 export default function ProTaggerPage() {
@@ -172,8 +185,9 @@ export default function ProTaggerPage() {
         match={reviewMatch}
         onBack={() => setPhase("saved-matches")}
         onMatchUpdate={(updated) => {
-          saveProTaggerMatchFull(updated);
+          const ok = saveProTaggerMatchFull(updated);
           setReviewMatch(updated);
+          return ok;
         }}
       />
     );

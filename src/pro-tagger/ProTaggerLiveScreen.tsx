@@ -8,7 +8,7 @@ import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
 import { buildDisciplineStatusMap } from "./pro-tagger-discipline";
-import { saveProTaggerMatch, saveProTaggerMatchFull } from "./pro-tagger-storage";
+import { saveProTaggerMatch, saveProTaggerMatchFull, deleteProTaggerMatch } from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildStatsShareCardPng } from "../stats/statsShareCard";
 import { ShareSheet } from "../features/shared/ShareSheet";
@@ -50,7 +50,7 @@ const SCORING_FAMILY_IDS = new Set<ProTaggerFamilyId>([
 
 // ── Match state machine ───────────────────────────────────────────────────────
 
-type MatchState =
+export type MatchState =
   | "PRE_MATCH"
   | "FIRST_HALF"
   | "HALF_TIME"
@@ -59,7 +59,10 @@ type MatchState =
 
 // Shared with the manual Save failure paths (handleSaveMatch, handleSaveAndEnd)
 // so autosave surfaces the exact same wording through the exact same UI slot.
-const SAVE_FAILED_TEXT = "Save failed — storage unavailable.";
+// Exported so ProTaggerReviewScreen's standalone (Saved Matches -> Review)
+// edit/delete save-failure warning uses the exact same wording as every
+// other Event Stats save-failure surface, rather than inventing new copy.
+export const SAVE_FAILED_TEXT = "Save failed — storage unavailable.";
 
 // Decides whether the autosave-failure warning's shown/hidden state needs to
 // change after one save attempt (debounced autosave or the beforeunload
@@ -144,6 +147,27 @@ export function resetClockForSecondHalf(
  */
 export function computeClockStartTimestamp(nowMs: number, clockSecondsSnapshot: number): number {
   return nowMs - clockSecondsSnapshot * 1000;
+}
+
+/**
+ * The match phase buildSaveRecords persists into restoreContext.matchState,
+ * for both the shared `record` and the full-restore `fullRecord`. Exported
+ * (and factored out as its own step) so the HALF_TIME persistence regression
+ * is directly testable: the previous implementation re-derived this from
+ * halfRef.current (`halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF"`,
+ * with a FULL_TIME special case) instead of trusting matchStateRef.current
+ * directly. halfRef only advances to 2 once "Start Second Half" is pressed,
+ * so for the entire length of every half-time break (matchStateRef.current
+ * === "HALF_TIME", halfRef.current still 1) that re-derivation silently
+ * collapsed the persisted phase to "FIRST_HALF". Autosave/beforeunload fire
+ * during that window on every real match, so a reload taken during a half-time
+ * break resumed as if the match were still mid-first-half with the clock
+ * frozen at ~30:00 — and every event tagged after that resumed as half 1,
+ * even though it was really half 2. The fix is simply: persist the real
+ * current match state, unchanged.
+ */
+export function deriveSaveRestoreMatchState(currentMatchState: MatchState): MatchState {
+  return currentMatchState;
 }
 
 // Initialise live squad from session — always starts with starters 1–15 active.
@@ -756,10 +780,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     const home  = session.homeTeamName.trim() || "Team A";
     const away  = session.awayTeamName.trim() || "Team B";
     const venue = session.venue.trim() || "Unknown venue";
-    const currentMatchState = matchStateRef.current;
-    const restoreMatchState = currentMatchState === "FULL_TIME"
-      ? "FULL_TIME"
-      : halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF";
+    const restoreMatchState = deriveSaveRestoreMatchState(matchStateRef.current);
 
     const forScore = computeScoreSide(events, "FOR");
     const oppScore = computeScoreSide(events, "OPP");
@@ -993,7 +1014,13 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   }, [session, pdfExporting]);
 
   // Actions → Reset Match (called after confirm).
+  // The confirm dialog tells the coach the logged events will be permanently
+  // deleted — that must also be true of the autosaved copy already sitting in
+  // storage under this session's id, otherwise the "deleted" match silently
+  // resurrects the next time the app is reopened (findInProgressMatch reads
+  // it straight back as an in-progress match to resume).
   const handleReset = useCallback(() => {
+    deleteProTaggerMatch(session.id);
     if (clockIntervalRef.current) { clearInterval(clockIntervalRef.current); clockIntervalRef.current = null; }
     if (feedbackTimerRef.current) { clearTimeout(feedbackTimerRef.current); feedbackTimerRef.current = null; }
     if (wrongWayTimerRef.current) { clearTimeout(wrongWayTimerRef.current); wrongWayTimerRef.current = null; }
@@ -1757,7 +1784,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
           <ProTaggerReviewScreen
             match={reviewMatch}
             onBack={() => setReviewOpen(false)}
-            onMatchUpdate={(updated) => setLoggedEvents(updated.events)}
+            onMatchUpdate={(updated) => { setLoggedEvents(updated.events); return true; }}
           />
         </div>
       )}
