@@ -58,7 +58,13 @@ describe("buildGaaGoalMarkings", () => {
       const l = left[i]!;
       const r = right[i]!;
       expect(l.kind).toBe(r.kind);
-      expect(l.strokeWidth).toBe(r.strokeWidth);
+      // Every kind buildGaaGoalMarkings actually produces (line/rect, per the
+      // "only produces line and rect markings" test above) carries
+      // strokeWidth — only the unrelated TextSpec variant of the wider
+      // PitchMarking union doesn't, so narrow it away before comparing.
+      if (l.kind !== "text" && r.kind !== "text") {
+        expect(l.strokeWidth).toBe(r.strokeWidth);
+      }
 
       if (l.kind === "line" && r.kind === "line") {
         // Mirrored across x = 80 (pitch centre): x -> 160 - x, y unchanged.

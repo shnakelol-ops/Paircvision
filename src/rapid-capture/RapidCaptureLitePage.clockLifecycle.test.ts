@@ -97,6 +97,7 @@ describe("Rapid Capture: second-half clock reset", () => {
       // "Start Second Half" tap:
       resetClockForSecondHalf(clockSecondsRef, setClockSeconds);
       expect(clockSecondsRef.current).toBe(0);
+      expect(clockSeconds).toBe(0);
 
       // Later, separate "play" tap (toggleClock's resume branch) — mirrors
       // clockStartRef.current = Date.now() - clockSecondsRef.current * 1000.

@@ -1562,7 +1562,6 @@ export async function createTacticalPadLiteSurface(
   const shapeLinkSelectionOrder: string[] = [];
   let shapeLinkSelectionClosed = false;
   let shapeLinkCounter = 0;
-  let isPossessionPassModeEnabled = false;
   // Free Draw authoring: committed paths write straight into
   // PhasePlayerSnapshot.path via captureCurrentSnapshot, consumed by the
   // Phase engine itself.
@@ -4546,7 +4545,11 @@ export async function createTacticalPadLiteSurface(
     },
     setPossessionPassMode: (enabled) => {
       if (surfaceVariant !== "tactical") return;
-      isPossessionPassModeEnabled = Boolean(enabled);
+      // See handlePossessionPassTap's own comment: a plain tap no longer
+      // branches on this flag, so there is nothing left to store it in —
+      // `enabled` is kept only because callers still pass it through the
+      // existing setPossessionPassMode(enabled) surface API.
+      void enabled;
       lastTappedPlayer = null;
     },
     freeBall: detachPrimaryBall,
