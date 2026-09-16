@@ -21,6 +21,7 @@ import {
   createTacticalPitchVisualRoot,
   type TacticalPitchTheme,
 } from "../../tactical-lite/pixi/renderTacticalPitch";
+import { type PitchSport } from "../../core/pitch/pitch-config";
 import {
   NORMALIZED_MAX,
   NORMALIZED_MIN,
@@ -51,6 +52,8 @@ import {
   createTacticalSlateDefaultPlayerSeeds,
   type TacticalSlateDefaultPlayerSeed,
 } from "./tacticalSlateDefaultPlayers";
+
+export type { PitchSport };
 
 /**
  * Shape Lock is an editing-only convenience for Tactical Slate. It is never
@@ -129,7 +132,8 @@ export type FlowItemType =
   | "footballLarge"
   | "sliotarSmall"
   | "sliotar"
-  | "sliotarLarge";
+  | "sliotarLarge"
+  | "rugbyBall";
 export type ItemMode = "edit" | "locked";
 export type TacticalItem = {
   id: string;
@@ -245,6 +249,8 @@ export type TacticalPadLiteSurface = {
 type TacticalPadLiteSurfaceOptions = {
   onPhaseCountChange?: (count: number) => void;
   onPlaybackStateChange?: (state: { isPlaying: boolean; isPaused: boolean }) => void;
+  /** Defaults to "gaelic" — the public Tactical Slate never passes this. */
+  sport?: PitchSport;
   surfaceVariant?: "tactical" | "whiteboard";
   whiteboardTeamCounts?: {
     blue: number;
@@ -770,7 +776,8 @@ function sanitizeTacticalItemCandidate(input: unknown): TacticalItem | null {
     type !== "footballLarge" &&
     type !== "sliotarSmall" &&
     type !== "sliotar" &&
-    type !== "sliotarLarge"
+    type !== "sliotarLarge" &&
+    type !== "rugbyBall"
   ) {
     return null;
   }
@@ -961,11 +968,17 @@ function mapSlateDefaultSeedToPlayerSeed(
   };
 }
 
+/** Resolves the effective Slate sport — "gaelic" whenever the caller omits it, so every existing caller is unaffected. */
+export function resolveTacticalSlateSport(sport?: PitchSport): PitchSport {
+  return sport ?? "gaelic";
+}
+
 /** Canonical tactical new-board roster (Team A × 15, Team B empty). */
 function createTacticalDefaultPlayerSeeds(
   colors: NonNullable<TacticalPadLiteSurfaceOptions["whiteboardTeamColors"]>,
+  sport: PitchSport,
 ): PlayerSeed[] {
-  return createTacticalSlateDefaultPlayerSeeds().map((seed) =>
+  return createTacticalSlateDefaultPlayerSeeds(sport).map((seed) =>
     mapSlateDefaultSeedToPlayerSeed(seed, colors),
   );
 }
@@ -1052,7 +1065,8 @@ export function isBallItem(item: Pick<TacticalItem, "type">): boolean {
     item.type === "footballLarge" ||
     item.type === "sliotarSmall" ||
     item.type === "sliotar" ||
-    item.type === "sliotarLarge"
+    item.type === "sliotarLarge" ||
+    item.type === "rugbyBall"
   );
 }
 
@@ -1208,9 +1222,10 @@ export async function createTacticalPadLiteSurface(
   app.stage.addChild(world);
 
   const surfaceVariant = options.surfaceVariant ?? "tactical";
+  const sport = resolveTacticalSlateSport(options.sport);
   const pitchTheme: TacticalPitchTheme =
     surfaceVariant === "whiteboard" ? "whiteboard" : "default";
-  const pitchMount = createTacticalPitchVisualRoot("gaelic", { theme: pitchTheme });
+  const pitchMount = createTacticalPitchVisualRoot(sport, { theme: pitchTheme });
   world.addChild(pitchMount.root);
   let backgroundSprite: Sprite | null = null;
   let backgroundImageDataUrl: string | null = null;
@@ -1314,7 +1329,7 @@ export async function createTacticalPadLiteSurface(
   const playerSeeds =
     surfaceVariant === "whiteboard"
       ? createWhiteboardPlayerSeeds(options.whiteboardTeamCounts, options.whiteboardTeamColors)
-      : createTacticalDefaultPlayerSeeds(tacticalTeamColors);
+      : createTacticalDefaultPlayerSeeds(tacticalTeamColors, sport);
 
   function getTeamKitForTeam(team: "BLUE" | "RED"): TacticalTeamKitState {
     return team === "BLUE" ? tacticalTeamKits.A : tacticalTeamKits.B;
@@ -2618,6 +2633,66 @@ export async function createTacticalPadLiteSurface(
       .stroke({ color: 0xfde68a, width: seamRidgeStroke, alpha: 0.22, cap: "round", join: "round" });
   }
 
+  // Rugby ball cosmetic (V0): a different visual representation of the same
+  // Slate ball entity as drawPremiumFootball/drawPremiumSliotar — same
+  // attachment, carry, and pass mechanics, just a prolate-spheroid shape
+  // with a central lace panel instead of a round shell.
+  function drawPremiumRugbyBall(graphic: Graphics, radius: number): void {
+    const rx = radius * 1.35;
+    const ry = radius * 0.72;
+    const shellStroke = clampStrokeWidth(radius * 0.13, 0.2, 0.32);
+    const laceStroke = clampStrokeWidth(radius * 0.11, 0.17, 0.24);
+
+    drawBallGroundingShadows(graphic, radius, {
+      castYOffset: 0.62,
+      castXScale: 1.1,
+      castYScale: 0.32,
+      castAlpha: 0.12,
+      contactYOffset: 0.84,
+      contactXScale: 0.82,
+      contactYScale: 0.22,
+      contactAlpha: 0.2,
+    });
+
+    graphic
+      .ellipse(0, 0, rx, ry)
+      .fill(0x7c4a24)
+      .ellipse(0, -ry * 0.06, rx * 0.9, ry * 0.88)
+      .fill(0x9a5f30)
+      .stroke({ color: 0x4a2c14, width: shellStroke, alpha: 0.9, alignment: 0.5 });
+
+    graphic
+      .ellipse(-rx * 0.25, -ry * 0.32, rx * 0.34, ry * 0.22)
+      .fill({ color: 0xffffff, alpha: 0.32 });
+
+    // Central seam along the long axis.
+    graphic
+      .moveTo(-rx * 0.78, 0)
+      .lineTo(rx * 0.78, 0)
+      .stroke({ color: 0xf5efe0, width: laceStroke, alpha: 0.55, cap: "round" });
+
+    // Lace ticks at the centre, like a real rugby ball's lace panel.
+    const laceHalfWidth = ry * 0.42;
+    const laceSpacing = rx * 0.11;
+    for (let i = -2; i <= 2; i += 1) {
+      const x = i * laceSpacing;
+      graphic
+        .moveTo(x, -laceHalfWidth * 0.5)
+        .lineTo(x, laceHalfWidth * 0.5)
+        .stroke({ color: 0xf5efe0, width: laceStroke * 0.7, alpha: 0.5, cap: "round" });
+    }
+
+    // Two curved panel seams either side of centre.
+    graphic
+      .moveTo(-rx * 0.7, -ry * 0.05)
+      .quadraticCurveTo(-rx * 0.35, -ry * 0.5, 0, -ry * 0.02)
+      .stroke({ color: 0x4a2c14, width: laceStroke * 0.6, alpha: 0.35, cap: "round" });
+    graphic
+      .moveTo(rx * 0.7, ry * 0.05)
+      .quadraticCurveTo(rx * 0.35, ry * 0.5, 0, ry * 0.02)
+      .stroke({ color: 0x4a2c14, width: laceStroke * 0.6, alpha: 0.35, cap: "round" });
+  }
+
   function drawTacticalItemGraphic(graphic: Graphics, item: TacticalItem): void {
     graphic.clear();
     const shadowColor = 0x020617;
@@ -2770,6 +2845,10 @@ export async function createTacticalPadLiteSurface(
     if (item.type === "sliotarSmall" || item.type === "sliotar" || item.type === "sliotarLarge") {
       const radius = TACTICAL_ITEM_HALF_SIZE * (item.type === "sliotarSmall" ? 0.6 : item.type === "sliotarLarge" ? 0.9 : 0.74);
       drawPremiumSliotar(graphic, radius);
+      return;
+    }
+    if (item.type === "rugbyBall") {
+      drawPremiumRugbyBall(graphic, TACTICAL_ITEM_HALF_SIZE * 0.9);
       return;
     }
   }
@@ -4134,7 +4213,7 @@ export async function createTacticalPadLiteSurface(
           color: player.teamColor,
           position: { x: player.x, y: player.y },
         }))
-      : createTacticalDefaultPlayerSeeds(tacticalTeamColors);
+      : createTacticalDefaultPlayerSeeds(tacticalTeamColors, sport);
 
     for (let index = 0; index < playerSeeds.length; index += 1) {
       const seed = playerSeeds[index];

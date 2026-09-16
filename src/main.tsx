@@ -28,6 +28,7 @@ const RAPID_CAPTURE_PATH = "/rapid-capture";
 const PRO_TAGGER_PATH    = "/pro-tagger";
 const INTERNAL_PATH      = "/internal";
 const INTERNAL_TEAM_SHEET_PATH = "/internal/team-sheet";
+const INTERNAL_SLATE_RUGBY_PATH = "/internal/slate/rugby";
 
 function redirectToBoard() {
   if (window.location.pathname !== "/board") {
@@ -130,6 +131,9 @@ function pickRootComponent() {
   }
   if (normalizedPath === INTERNAL_TEAM_SHEET_PATH) {
     return TeamSheetScreen;
+  }
+  if (normalizedPath === INTERNAL_SLATE_RUGBY_PATH) {
+    return () => <TacticalPadLiteClean sport="rugby" />;
   }
   return redirectToBoard();
 }

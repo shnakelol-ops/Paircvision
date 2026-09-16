@@ -1,7 +1,7 @@
 import { PITCH_STYLE_TOKENS } from "./pitch-style-tokens";
 import { BOARD_PITCH_VIEWBOX } from "./pitch-space";
 
-export type PitchSport = "soccer" | "gaelic" | "hurling" | "camogie";
+export type PitchSport = "soccer" | "gaelic" | "hurling" | "camogie" | "rugby";
 
 const Lg = PITCH_STYLE_TOKENS.lines.gaelic;
 
@@ -370,11 +370,73 @@ const hurlingCamogieLandscapeMarkings: PitchMarking[] = (() => {
   ];
 })();
 
+// Rugby Union landscape markings — internal-only (/internal/slate/rugby).
+// Total modelled length includes both in-goal areas: 100m try-line-to-try-line
+// + 10m in-goal depth at each end. Same shared inner box (156x96) as every
+// other sport here, so real-world aspect ratio never has to match GAA's.
+const RUGBY_TOTAL_LEN_M = 120;
+const RUGBY_IN_GOAL_DEPTH_M = 10;
+const RUGBY_22M_LINE_M = 22;
+const RUGBY_10M_LINE_M = 10;
+const RUGBY_PITCH_LEFT = 2;
+const RUGBY_PITCH_TOP = 2;
+const RUGBY_PITCH_WIDTH = 156;
+const RUGBY_PITCH_HEIGHT = 96;
+
+function rugbyXAt(metersFromLeftDeadBallLine: number): number {
+  return RUGBY_PITCH_LEFT + (metersFromLeftDeadBallLine / RUGBY_TOTAL_LEN_M) * RUGBY_PITCH_WIDTH;
+}
+
+/**
+ * Try line X positions (shared viewbox units). Exported so the Rugby posts
+ * marking module (under src/tactics/pitch/) can place the posts exactly on
+ * the try line without re-deriving the pitch's meters-to-viewbox scale.
+ */
+export const RUGBY_TRY_LINE_LEFT_X = rugbyXAt(RUGBY_IN_GOAL_DEPTH_M);
+export const RUGBY_TRY_LINE_RIGHT_X = rugbyXAt(RUGBY_TOTAL_LEN_M - RUGBY_IN_GOAL_DEPTH_M);
+
+function buildRugbyUnionLandscapeMarkings(): PitchMarking[] {
+  const pitchRight = RUGBY_PITCH_LEFT + RUGBY_PITCH_WIDTH;
+  const pitchBottom = RUGBY_PITCH_TOP + RUGBY_PITCH_HEIGHT;
+
+  const wTouch = 0.52;
+  const wHalf = 0.6;
+  const w22 = 0.54;
+  const w10 = 0.42;
+  const wTry = 0.54;
+
+  const xTryL = RUGBY_TRY_LINE_LEFT_X;
+  const xTryR = RUGBY_TRY_LINE_RIGHT_X;
+  const x22L = rugbyXAt(RUGBY_IN_GOAL_DEPTH_M + RUGBY_22M_LINE_M);
+  const x22R = rugbyXAt(RUGBY_TOTAL_LEN_M - RUGBY_IN_GOAL_DEPTH_M - RUGBY_22M_LINE_M);
+  const xHalf = rugbyXAt(RUGBY_TOTAL_LEN_M / 2);
+  const x10L = rugbyXAt(RUGBY_TOTAL_LEN_M / 2 - RUGBY_10M_LINE_M);
+  const x10R = rugbyXAt(RUGBY_TOTAL_LEN_M / 2 + RUGBY_10M_LINE_M);
+
+  return [
+    { kind: "rect", x: RUGBY_PITCH_LEFT, y: RUGBY_PITCH_TOP, w: RUGBY_PITCH_WIDTH, h: RUGBY_PITCH_HEIGHT, stroke: Lg.lineGridStrong, strokeWidth: wTouch },
+    // In-goal area fills, dead-ball line to try line at each end.
+    { kind: "rect", x: RUGBY_PITCH_LEFT, y: RUGBY_PITCH_TOP, w: xTryL - RUGBY_PITCH_LEFT, h: RUGBY_PITCH_HEIGHT, stroke: "none", strokeWidth: 0, fill: "rgba(255,255,255,0.035)" },
+    { kind: "rect", x: xTryR, y: RUGBY_PITCH_TOP, w: pitchRight - xTryR, h: RUGBY_PITCH_HEIGHT, stroke: "none", strokeWidth: 0, fill: "rgba(255,255,255,0.035)" },
+    { kind: "line", x1: xTryL, y1: RUGBY_PITCH_TOP, x2: xTryL, y2: pitchBottom, stroke: Lg.lineScoringEnd, strokeWidth: wTry },
+    { kind: "line", x1: xTryR, y1: RUGBY_PITCH_TOP, x2: xTryR, y2: pitchBottom, stroke: Lg.lineScoringEnd, strokeWidth: wTry },
+    { kind: "line", x1: x22L, y1: RUGBY_PITCH_TOP, x2: x22L, y2: pitchBottom, stroke: Lg.lineGridStrong, strokeWidth: w22 },
+    { kind: "line", x1: x22R, y1: RUGBY_PITCH_TOP, x2: x22R, y2: pitchBottom, stroke: Lg.lineGridStrong, strokeWidth: w22 },
+    { kind: "line", x1: x10L, y1: RUGBY_PITCH_TOP, x2: x10L, y2: pitchBottom, stroke: Lg.lineGridMid, strokeWidth: w10, strokeDasharray: "1.4 1.1" },
+    { kind: "line", x1: x10R, y1: RUGBY_PITCH_TOP, x2: x10R, y2: pitchBottom, stroke: Lg.lineGridMid, strokeWidth: w10, strokeDasharray: "1.4 1.1" },
+    { kind: "line", x1: xHalf, y1: RUGBY_PITCH_TOP, x2: xHalf, y2: pitchBottom, stroke: Lg.lineCentre, strokeWidth: wHalf },
+    { kind: "circle", cx: xHalf, cy: RUGBY_PITCH_TOP + RUGBY_PITCH_HEIGHT / 2, r: 0.85, fill: Lg.spot },
+  ];
+}
+
+const rugbyLandscapeMarkings = buildRugbyUnionLandscapeMarkings();
+
 export const pitchConfig: Record<PitchSport, PitchConfig> = {
   soccer: { viewBox: BOARD_PITCH_VIEWBOX, inner: { x: 2, y: 2, w: 156, h: 96 }, markings: soccerMarkings },
   gaelic: { viewBox: BOARD_PITCH_VIEWBOX, inner: { x: 2, y: 2, w: 156, h: 96 }, markings: gaelicLandscapeMarkings },
   hurling: { viewBox: BOARD_PITCH_VIEWBOX, inner: { x: 2, y: 2, w: 156, h: 96 }, markings: hurlingCamogieLandscapeMarkings },
   camogie: { viewBox: BOARD_PITCH_VIEWBOX, inner: { x: 2, y: 2, w: 156, h: 96 }, markings: hurlingCamogieLandscapeMarkings },
+  rugby: { viewBox: BOARD_PITCH_VIEWBOX, inner: { x: 2, y: 2, w: 156, h: 96 }, markings: rugbyLandscapeMarkings },
 };
 
 export function getPitchConfig(sport: PitchSport): PitchConfig {

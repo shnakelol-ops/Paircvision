@@ -4,9 +4,11 @@ import {
   createTacticalSlateDefaultPlayerSeeds,
   createTacticalSlateTeamFormationSeeds,
   getTacticalSlateGaelicFormationPos,
+  getTacticalSlateRugbyFormationPos,
   mergeTacticalSlateTeamRoster,
   TACTICAL_SLATE_FULL_TEAM_NUMBERS,
   TACTICAL_SLATE_GAELIC_FORMATION_BASE,
+  TACTICAL_SLATE_RUGBY_FORMATION_BASE,
 } from "./tacticalSlateDefaultPlayers";
 
 describe("tacticalSlateDefaultPlayers", () => {
@@ -18,6 +20,40 @@ describe("tacticalSlateDefaultPlayers", () => {
     expect(seeds.map((seed) => seed.id)).toEqual(
       TACTICAL_SLATE_FULL_TEAM_NUMBERS.map((number) => `B${number}`),
     );
+  });
+
+  it("defaults to the Gaelic formation when no sport is passed (public Slate behaviour unchanged)", () => {
+    const noArg = createTacticalSlateDefaultPlayerSeeds();
+    const explicitGaelic = createTacticalSlateDefaultPlayerSeeds("gaelic");
+    expect(noArg).toEqual(explicitGaelic);
+    for (const base of TACTICAL_SLATE_GAELIC_FORMATION_BASE) {
+      const seed = noArg.find((entry) => entry.number === base.number);
+      expect(seed?.position).toEqual({ x: base.x, y: base.y });
+    }
+  });
+
+  it("seeds a valid Rugby XV (15 players, 1–15, Team A only) for sport='rugby'", () => {
+    const seeds = createTacticalSlateDefaultPlayerSeeds("rugby");
+    expect(seeds).toHaveLength(15);
+    expect(seeds.every((seed) => seed.team === "BLUE")).toBe(true);
+    expect(seeds.map((seed) => seed.number).sort((a, b) => a - b)).toEqual([
+      ...TACTICAL_SLATE_FULL_TEAM_NUMBERS,
+    ]);
+    expect(seeds.map((seed) => seed.id).sort()).toEqual(
+      [...TACTICAL_SLATE_FULL_TEAM_NUMBERS].map((number) => `B${number}`).sort(),
+    );
+    // Every seed's position matches the Rugby table for its number — proof
+    // this reads TACTICAL_SLATE_RUGBY_FORMATION_BASE, not the Gaelic table.
+    for (const base of TACTICAL_SLATE_RUGBY_FORMATION_BASE) {
+      const seed = seeds.find((entry) => entry.number === base.number);
+      expect(seed?.position).toEqual({ x: base.x, y: base.y });
+    }
+  });
+
+  it("mirrors Rugby Team B formation across the pitch midline, independent of Gaelic", () => {
+    const home = getTacticalSlateRugbyFormationPos("BLUE", 10);
+    const away = getTacticalSlateRugbyFormationPos("RED", 10);
+    expect(away).toEqual({ x: 100 - home.x, y: home.y });
   });
 
   it("uses the canonical Gaelic formation coordinates for Team A", () => {

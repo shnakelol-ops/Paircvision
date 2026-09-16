@@ -22,6 +22,21 @@ export type QuickBoardActiveDraft = {
   boardState: QuickBoardBoardState;
 };
 
+/**
+ * Sport storage isolation (Rugby/Soccer internal Slate routes).
+ *
+ * The public GAA Tactical Slate always calls every function below with no
+ * namespace (or ""), which resolves to the exact base key strings above —
+ * byte-for-byte unchanged from before this was added. An internal sport
+ * route (e.g. "rugby") passes its sport as the namespace, producing a
+ * separate `${baseKey}:${namespace}` key so its autosave draft and saved
+ * boards can never load into, or overwrite, the coach's real GAA state.
+ */
+function namespacedKey(baseKey: string, namespace: string): string {
+  const trimmed = namespace.trim();
+  return trimmed.length > 0 ? `${baseKey}:${trimmed}` : baseKey;
+}
+
 function createBoardId(): string {
   const c = globalThis.crypto;
   if (c && "randomUUID" in c && typeof c.randomUUID === "function") {
@@ -35,10 +50,10 @@ type ReadBoardsResult = {
   isCorrupt: boolean;
 };
 
-function readBoardsFromStorage(): ReadBoardsResult {
+function readBoardsFromStorage(namespace: string): ReadBoardsResult {
   if (typeof window === "undefined") return { boards: [], isCorrupt: false };
   try {
-    const raw = window.localStorage.getItem(QUICKBOARD_STORAGE_KEY);
+    const raw = window.localStorage.getItem(namespacedKey(QUICKBOARD_STORAGE_KEY, namespace));
     if (!raw) return { boards: [], isCorrupt: false };
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return { boards: [], isCorrupt: true };
@@ -55,20 +70,20 @@ function readBoardsFromStorage(): ReadBoardsResult {
   }
 }
 
-function readWritableBoardsFromStorage(): SavedQuickBoard[] | null {
-  const result = readBoardsFromStorage();
+function readWritableBoardsFromStorage(namespace: string): SavedQuickBoard[] | null {
+  const result = readBoardsFromStorage(namespace);
   if (!result.isCorrupt) return result.boards;
   console.warn("[quickboard-storage] Saved boards storage is corrupt; refusing to overwrite.", {
-    key: QUICKBOARD_STORAGE_KEY,
+    key: namespacedKey(QUICKBOARD_STORAGE_KEY, namespace),
   });
   return null;
 }
 
-function writeBoardsToStorage(boards: SavedQuickBoard[]): boolean {
+function writeBoardsToStorage(boards: SavedQuickBoard[], namespace: string): boolean {
   if (typeof window === "undefined") return false;
   try {
     window.localStorage.setItem(
-      QUICKBOARD_STORAGE_KEY,
+      namespacedKey(QUICKBOARD_STORAGE_KEY, namespace),
       JSON.stringify(
         boards
           .slice(0, MAX_QUICKBOARD_SAVES)
@@ -84,24 +99,24 @@ function writeBoardsToStorage(boards: SavedQuickBoard[]): boolean {
   }
 }
 
-export function loadAllBoards(): SavedQuickBoard[] {
-  return readBoardsFromStorage().boards;
+export function loadAllBoards(namespace: string = ""): SavedQuickBoard[] {
+  return readBoardsFromStorage(namespace).boards;
 }
 
-export function loadBoard(boardId: string): SavedQuickBoard | null {
+export function loadBoard(boardId: string, namespace: string = ""): SavedQuickBoard | null {
   const normalizedId = boardId.trim();
   if (normalizedId.length <= 0) return null;
-  return readBoardsFromStorage().boards.find((board) => board.id === normalizedId) ?? null;
+  return readBoardsFromStorage(namespace).boards.find((board) => board.id === normalizedId) ?? null;
 }
 
-export function hasReachedQuickBoardSaveLimit(): boolean {
-  return readBoardsFromStorage().boards.length >= MAX_QUICKBOARD_SAVES;
+export function hasReachedQuickBoardSaveLimit(namespace: string = ""): boolean {
+  return readBoardsFromStorage(namespace).boards.length >= MAX_QUICKBOARD_SAVES;
 }
 
-export function saveBoard(input: SaveBoardInput): SavedQuickBoard | null {
+export function saveBoard(input: SaveBoardInput, namespace: string = ""): SavedQuickBoard | null {
   const boardState = sanitizeQuickBoardState(input.boardState);
   if (!boardState) return null;
-  const existingBoards = readWritableBoardsFromStorage();
+  const existingBoards = readWritableBoardsFromStorage(namespace);
   if (!existingBoards) return null;
   if (existingBoards.length >= MAX_QUICKBOARD_SAVES) return null;
   const now = Date.now();
@@ -114,14 +129,14 @@ export function saveBoard(input: SaveBoardInput): SavedQuickBoard | null {
     boardState: cloneQuickBoardState(boardState),
   };
   const boards = [nextBoard, ...existingBoards].slice(0, MAX_QUICKBOARD_SAVES);
-  if (!writeBoardsToStorage(boards)) return null;
+  if (!writeBoardsToStorage(boards, namespace)) return null;
   return nextBoard;
 }
 
-export function renameBoard(boardId: string, nextName: string): SavedQuickBoard | null {
+export function renameBoard(boardId: string, nextName: string, namespace: string = ""): SavedQuickBoard | null {
   const normalizedId = boardId.trim();
   if (normalizedId.length <= 0) return null;
-  const boards = readWritableBoardsFromStorage();
+  const boards = readWritableBoardsFromStorage(namespace);
   if (!boards) return null;
   const boardIndex = boards.findIndex((board) => board.id === normalizedId);
   if (boardIndex < 0) return null;
@@ -134,14 +149,14 @@ export function renameBoard(boardId: string, nextName: string): SavedQuickBoard 
   };
   boards.splice(boardIndex, 1, renamed);
   boards.sort((a, b) => b.updatedAt - a.updatedAt);
-  if (!writeBoardsToStorage(boards)) return null;
+  if (!writeBoardsToStorage(boards, namespace)) return null;
   return renamed;
 }
 
-export function duplicateBoard(boardId: string): SavedQuickBoard | null {
-  const source = loadBoard(boardId);
+export function duplicateBoard(boardId: string, namespace: string = ""): SavedQuickBoard | null {
+  const source = loadBoard(boardId, namespace);
   if (!source) return null;
-  const existingBoards = readWritableBoardsFromStorage();
+  const existingBoards = readWritableBoardsFromStorage(namespace);
   if (!existingBoards) return null;
   if (existingBoards.length >= MAX_QUICKBOARD_SAVES) return null;
   const now = Date.now();
@@ -154,25 +169,25 @@ export function duplicateBoard(boardId: string): SavedQuickBoard | null {
     boardState: cloneQuickBoardState(source.boardState),
   };
   const boards = [duplicate, ...existingBoards].slice(0, MAX_QUICKBOARD_SAVES);
-  if (!writeBoardsToStorage(boards)) return null;
+  if (!writeBoardsToStorage(boards, namespace)) return null;
   return duplicate;
 }
 
-export function deleteBoard(boardId: string): boolean {
+export function deleteBoard(boardId: string, namespace: string = ""): boolean {
   const normalizedId = boardId.trim();
   if (normalizedId.length <= 0) return false;
-  const boards = readWritableBoardsFromStorage();
+  const boards = readWritableBoardsFromStorage(namespace);
   if (!boards) return false;
   const filtered = boards.filter((board) => board.id !== normalizedId);
   if (filtered.length === boards.length) return false;
-  return writeBoardsToStorage(filtered);
+  return writeBoardsToStorage(filtered, namespace);
 }
 
-export function setBoardThumbnail(boardId: string, thumbnail: string): SavedQuickBoard | null {
+export function setBoardThumbnail(boardId: string, thumbnail: string, namespace: string = ""): SavedQuickBoard | null {
   if (typeof thumbnail !== "string" || !thumbnail.startsWith("data:image/")) return null;
   const normalizedId = boardId.trim();
   if (normalizedId.length <= 0) return null;
-  const boards = readWritableBoardsFromStorage();
+  const boards = readWritableBoardsFromStorage(namespace);
   if (!boards) return null;
   const boardIndex = boards.findIndex((board) => board.id === normalizedId);
   if (boardIndex < 0) return null;
@@ -184,7 +199,7 @@ export function setBoardThumbnail(boardId: string, thumbnail: string): SavedQuic
   };
   boards.splice(boardIndex, 1, updated);
   boards.sort((a, b) => b.updatedAt - a.updatedAt);
-  if (!writeBoardsToStorage(boards)) return null;
+  if (!writeBoardsToStorage(boards, namespace)) return null;
   return updated;
 }
 
@@ -200,10 +215,12 @@ export function formatBoardUpdatedAt(updatedAt: number): string {
   return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
 
-export function loadQuickBoardDraft(): { draft: QuickBoardActiveDraft | null; isCorrupt: boolean } {
+export function loadQuickBoardDraft(
+  namespace: string = "",
+): { draft: QuickBoardActiveDraft | null; isCorrupt: boolean } {
   if (typeof window === "undefined") return { draft: null, isCorrupt: false };
   try {
-    const raw = window.localStorage.getItem(QUICKBOARD_ACTIVE_DRAFT_STORAGE_KEY);
+    const raw = window.localStorage.getItem(namespacedKey(QUICKBOARD_ACTIVE_DRAFT_STORAGE_KEY, namespace));
     if (!raw) return { draft: null, isCorrupt: false };
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return { draft: null, isCorrupt: true };
@@ -227,7 +244,7 @@ export function loadQuickBoardDraft(): { draft: QuickBoardActiveDraft | null; is
   }
 }
 
-export function saveQuickBoardDraft(boardState: QuickBoardBoardState): boolean {
+export function saveQuickBoardDraft(boardState: QuickBoardBoardState, namespace: string = ""): boolean {
   if (typeof window === "undefined") return false;
   const sanitized = sanitizeQuickBoardState(boardState);
   if (!sanitized) return false;
@@ -237,17 +254,17 @@ export function saveQuickBoardDraft(boardState: QuickBoardBoardState): boolean {
       updatedAt: Date.now(),
       boardState: cloneQuickBoardState(sanitized),
     };
-    window.localStorage.setItem(QUICKBOARD_ACTIVE_DRAFT_STORAGE_KEY, JSON.stringify(payload));
+    window.localStorage.setItem(namespacedKey(QUICKBOARD_ACTIVE_DRAFT_STORAGE_KEY, namespace), JSON.stringify(payload));
     return true;
   } catch {
     return false;
   }
 }
 
-export function clearQuickBoardDraft(): void {
+export function clearQuickBoardDraft(namespace: string = ""): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(QUICKBOARD_ACTIVE_DRAFT_STORAGE_KEY);
+    window.localStorage.removeItem(namespacedKey(QUICKBOARD_ACTIVE_DRAFT_STORAGE_KEY, namespace));
   } catch {
     // Ignore storage cleanup failures.
   }

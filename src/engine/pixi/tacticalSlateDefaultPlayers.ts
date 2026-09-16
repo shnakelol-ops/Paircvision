@@ -1,3 +1,5 @@
+import type { PitchSport } from "../../core/pitch/pitch-config";
+
 /**
  * Canonical Tactical Slate default player placement.
  *
@@ -6,7 +8,8 @@
  * - New Board / pristine restore
  * - Fill 15 formation geometry (via getTacticalSlateGaelicFormationPos)
  *
- * Team A opens in the standard Gaelic 15. Team B is empty.
+ * Team A opens in the standard Gaelic 15 (or the Rugby 15 for
+ * sport="rugby" — see TACTICAL_SLATE_RUGBY_FORMATION_BASE). Team B is empty.
  * Saved-board load paths must not use this factory when players are present.
  */
 
@@ -54,6 +57,37 @@ export const TACTICAL_SLATE_FULL_TEAM_NUMBERS: ReadonlyArray<number> = [
   1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 ];
 
+/**
+ * Default Rugby Union XV starting shape — internal-only (/internal/slate/rugby).
+ *
+ * Same normalised [0,100] coords and coach-view convention as the Gaelic
+ * table above (own goal at low x, attack toward high x). Not a formation
+ * library: just a sensible, non-overlapping starting spread (front five
+ * packed deep, back row and half-backs progressively higher up the pitch,
+ * wings out wide, fullback deep and central) that a coach can immediately
+ * drag into whatever shape they actually want to show.
+ *
+ * Kept fully separate from TACTICAL_SLATE_GAELIC_FORMATION_BASE — edit this
+ * table only for Rugby changes, never the Gaelic one.
+ */
+export const TACTICAL_SLATE_RUGBY_FORMATION_BASE: ReadonlyArray<TacticalSlateFormationPoint> = [
+  { number: 1, x: 10, y: 40 },
+  { number: 2, x: 10, y: 50 },
+  { number: 3, x: 10, y: 60 },
+  { number: 4, x: 18, y: 44 },
+  { number: 5, x: 18, y: 56 },
+  { number: 6, x: 26, y: 32 },
+  { number: 7, x: 26, y: 68 },
+  { number: 8, x: 26, y: 50 },
+  { number: 9, x: 34, y: 50 },
+  { number: 10, x: 44, y: 50 },
+  { number: 11, x: 58, y: 85 },
+  { number: 12, x: 52, y: 60 },
+  { number: 13, x: 52, y: 40 },
+  { number: 14, x: 58, y: 15 },
+  { number: 15, x: 22, y: 50 },
+];
+
 export type TacticalSlateDefaultPlayerSeed = {
   id: string;
   number: number;
@@ -91,8 +125,52 @@ export function createTacticalSlateTeamFormationSeeds(
     });
 }
 
-/** Canonical new-board roster: Team A × 15 Gaelic formation, Team B empty. */
-export function createTacticalSlateDefaultPlayerSeeds(): TacticalSlateDefaultPlayerSeed[] {
+/** Rugby counterpart of getTacticalSlateGaelicFormationPos — reads from TACTICAL_SLATE_RUGBY_FORMATION_BASE only. */
+export function getTacticalSlateRugbyFormationPos(
+  team: TacticalSlateTeamSide,
+  number: number,
+): { x: number; y: number } {
+  const base = TACTICAL_SLATE_RUGBY_FORMATION_BASE.find((point) => point.number === number);
+  if (!base) {
+    return { x: team === "BLUE" ? 30 : 70, y: 50 };
+  }
+  return team === "RED" ? { x: 100 - base.x, y: base.y } : { x: base.x, y: base.y };
+}
+
+/** Rugby counterpart of createTacticalSlateTeamFormationSeeds — reads from the Rugby table only. */
+function createRugbyTeamFormationSeeds(
+  team: TacticalSlateTeamSide,
+  numbers: ReadonlyArray<number>,
+): TacticalSlateDefaultPlayerSeed[] {
+  const prefix = team === "RED" ? "R" : "B";
+  return [...numbers]
+    .filter((number) => Number.isFinite(number) && number >= 1 && number <= 15)
+    .sort((a, b) => a - b)
+    .map((number) => {
+      const position = getTacticalSlateRugbyFormationPos(team, number);
+      return {
+        id: `${prefix}${number}`,
+        number,
+        team,
+        position: { x: position.x, y: position.y },
+      };
+    });
+}
+
+/**
+ * Canonical new-board roster: Team A × 15, Team B empty.
+ *
+ * Defaults to Gaelic (unchanged behaviour for every existing caller). Pass
+ * sport="rugby" to seed the Rugby XV instead — the only other supported
+ * value today; every other sport still falls back to the Gaelic table so
+ * the public Tactical Slate is unaffected.
+ */
+export function createTacticalSlateDefaultPlayerSeeds(
+  sport: PitchSport = "gaelic",
+): TacticalSlateDefaultPlayerSeed[] {
+  if (sport === "rugby") {
+    return createRugbyTeamFormationSeeds("BLUE", TACTICAL_SLATE_FULL_TEAM_NUMBERS);
+  }
   return createTacticalSlateTeamFormationSeeds("BLUE", TACTICAL_SLATE_FULL_TEAM_NUMBERS);
 }
 

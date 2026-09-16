@@ -14,6 +14,7 @@ import {
   type TacticalItem,
   type WhiteboardTokenColor,
   type ShapeLinksState,
+  type PitchSport,
   sanitizeInitials,
   sanitizeName,
 } from "../engine/pixi/createTacticalPadLiteSurface";
@@ -63,6 +64,8 @@ import CoachingClipPanel from "../features/quickboard/clips/CoachingClipPanel";
 type PadMode = "tactical" | "stats" | "whiteboard";
 type TacticalPadLiteCleanProps = {
   initialMode?: PadMode;
+  /** Defaults to "gaelic" — the public /vision-board Slate never passes this. */
+  sport?: PitchSport;
 };
 
 const CAN_USE_CSS_SUPPORTS = typeof window !== "undefined" && typeof window.CSS !== "undefined";
@@ -134,7 +137,8 @@ function isBallItemType(type: TacticalItem["type"]): boolean {
     type === "footballLarge" ||
     type === "sliotarSmall" ||
     type === "sliotar" ||
-    type === "sliotarLarge"
+    type === "sliotarLarge" ||
+    type === "rugbyBall"
   );
 }
 const ORIENTATION_SETTLE_DEBOUNCE_MS = 140;
@@ -2326,7 +2330,11 @@ const WHITEBOARD_HOME_CONFIRM_GO_BUTTON_STYLE: CSSProperties = {
   color: "#ffe5e5",
 };
 
-export default function TacticalPadLiteClean({ initialMode = "tactical" }: TacticalPadLiteCleanProps) {
+export default function TacticalPadLiteClean({ initialMode = "tactical", sport = "gaelic" }: TacticalPadLiteCleanProps) {
+  // Sport storage isolation: "" preserves the exact existing GAA key strings;
+  // any other sport (e.g. "rugby") gets its own namespaced draft/My Boards
+  // keys so it can never load into or overwrite the coach's real GAA state.
+  const boardStorageNamespace = sport === "gaelic" ? "" : sport;
   const overlayPortalRoot = useOverlayPortalRoot();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const surfaceRef = useRef<TacticalPadLiteSurface | null>(null);
@@ -2579,15 +2587,15 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (typeof window === "undefined") return;
     const seen = safeReadLocalStorageFlag(QUICK_SHARE_ONBOARDING_STORAGE_KEY);
     setQuickShareOnboardingSeen(seen);
-    setSavedBoards(loadAllBoards());
-    const { draft, isCorrupt } = loadQuickBoardDraft();
+    setSavedBoards(loadAllBoards(boardStorageNamespace));
+    const { draft, isCorrupt } = loadQuickBoardDraft(boardStorageNamespace);
     if (draft) {
       setPendingRecoveredBoardDraft(cloneBoardStateForDraft(draft.boardState));
       setIsRecoveredBoardPromptVisible(false);
       lastBoardDraftSignatureRef.current = serializeBoardState(draft.boardState);
     } else if (isCorrupt) {
       showQuickBoardNotice("Recovered board draft was invalid and ignored.");
-      clearQuickBoardDraft();
+      clearQuickBoardDraft(boardStorageNamespace);
       setIsRecoveredBoardPromptVisible(false);
     } else {
       setIsRecoveredBoardPromptVisible(false);
@@ -2807,7 +2815,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     if (isStatsMode || isWhiteboardMode) return;
 
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      const hasActiveDraft = loadQuickBoardDraft().draft != null;
+      const hasActiveDraft = loadQuickBoardDraft(boardStorageNamespace).draft != null;
       const shouldWarn = hasActiveDraft || hasUnsavedBoardChanges();
       if (!shouldWarn) return;
       event.preventDefault();
@@ -2845,6 +2853,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     let reflowRafId2: number | null = null;
 
     void createTacticalPadLiteSurface(host, {
+      sport,
       surfaceVariant: isWhiteboardMode ? "whiteboard" : "tactical",
       whiteboardTeamCounts: isWhiteboardMode ? whiteboardCountsRef.current : undefined,
       whiteboardTeamColors: whiteboardTeamColorsRef.current,
@@ -2930,7 +2939,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
         boardBaselineSignatureRef.current = serializeBoardState(initialSnapshot);
         const query = new URLSearchParams(window.location.search);
         const boardIdFromQuery = query.get("boardId")?.trim() ?? "";
-        const hasRecoverableDraft = loadQuickBoardDraft().draft != null;
+        const hasRecoverableDraft = loadQuickBoardDraft(boardStorageNamespace).draft != null;
         if (boardIdFromQuery.length > 0 && !hasRecoverableDraft) {
           handleOpenSavedBoard(boardIdFromQuery);
           query.delete("boardId");
@@ -3051,7 +3060,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       const snapshotFull = currentAnnotations.length > 0
         ? { ...snapshot, textAnnotations: currentAnnotations }
         : snapshot;
-      const persisted = saveQuickBoardDraft(snapshotFull);
+      const persisted = saveQuickBoardDraft(snapshotFull, boardStorageNamespace);
       if (!persisted) return;
       lastBoardDraftSignatureRef.current = draftKey;
     };
@@ -3427,7 +3436,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
   const phaseItems = Array.from({ length: phaseCount }, (_, index) => index + 1);
   const activeTacticalPenColor = tacticalPenColor;
   const refreshSavedBoards = () => {
-    setSavedBoards(loadAllBoards());
+    setSavedBoards(loadAllBoards(boardStorageNamespace));
   };
   const showQuickBoardNotice = (message: string) => {
     if (quickBoardFeedbackTimerRef.current !== null) {
@@ -3457,7 +3466,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     return JSON.stringify(textAnnotations) !== textAnnotationsBaselineRef.current;
   };
   const clearActiveBoardDraft = () => {
-    clearQuickBoardDraft();
+    clearQuickBoardDraft(boardStorageNamespace);
     lastBoardDraftSignatureRef.current = null;
   };
   const extractItemsFromBoardState = (boardState: QuickBoardBoardState): TacticalItem[] =>
@@ -3487,7 +3496,8 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                 type !== "footballLarge" &&
                 type !== "sliotarSmall" &&
                 type !== "sliotar" &&
-                type !== "sliotarLarge")
+                type !== "sliotarLarge" &&
+                type !== "rugbyBall")
             ) {
               return null;
             }
@@ -3689,7 +3699,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       showQuickBoardNotice("Stop playback before saving the board");
       return;
     }
-    if (hasReachedQuickBoardSaveLimit()) {
+    if (hasReachedQuickBoardSaveLimit(boardStorageNamespace)) {
       showQuickBoardNotice(
         `Board limit reached (${MAX_QUICKBOARD_SAVES}).\nDelete old boards or export/share important ones.`,
       );
@@ -3712,7 +3722,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     const boardStateToSave = textAnnotations.length > 0
       ? { ...snapshot, textAnnotations }
       : snapshot;
-    const saved = saveBoard({ name: fallbackName, boardState: boardStateToSave });
+    const saved = saveBoard({ name: fallbackName, boardState: boardStateToSave }, boardStorageNamespace);
     if (!saved) {
       showQuickBoardNotice("Save failed");
       return;
@@ -3729,7 +3739,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     void generateQuickBoardThumbnail(surface).then((thumbnail) => {
       if (!thumbnail) return;
       if (thumbnailSaveToken !== latestThumbnailSaveTokenRef.current) return;
-      const updated = setBoardThumbnail(saved.id, thumbnail);
+      const updated = setBoardThumbnail(saved.id, thumbnail, boardStorageNamespace);
       if (!updated) return;
       refreshSavedBoards();
     });
@@ -3741,7 +3751,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       return;
     }
     withDiscardConfirm("load", () => {
-    const saved = loadBoard(boardId);
+    const saved = loadBoard(boardId, boardStorageNamespace);
     if (!saved) {
       showQuickBoardNotice("Board not found");
       refreshSavedBoards();
@@ -3782,7 +3792,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       onConfirm: (drafted) => {
         setConfirmSheet(null);
         if (!drafted?.trim()) return;
-        const renamed = renameBoard(boardId, sanitizeBoardName(drafted));
+        const renamed = renameBoard(boardId, sanitizeBoardName(drafted), boardStorageNamespace);
         if (!renamed) { showQuickBoardNotice("Rename failed"); return; }
         refreshSavedBoards();
         showQuickBoardNotice("Board renamed");
@@ -3791,7 +3801,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
     });
   };
   const handleDuplicateBoard = (boardId: string) => {
-    const duplicated = duplicateBoard(boardId);
+    const duplicated = duplicateBoard(boardId, boardStorageNamespace);
     if (!duplicated) {
       showQuickBoardNotice("Duplicate failed");
       return;
@@ -3806,7 +3816,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
       danger: true,
       onConfirm: () => {
         setConfirmSheet(null);
-        const deleted = deleteBoard(boardId);
+        const deleted = deleteBoard(boardId, boardStorageNamespace);
         if (!deleted) { showQuickBoardNotice("Delete failed"); return; }
         refreshSavedBoards();
         showQuickBoardNotice("Board deleted");
@@ -5157,22 +5167,35 @@ export default function TacticalPadLiteClean({ initialMode = "tactical" }: Tacti
                     </button>
                   </>
                 ) : null}
-                <button
-                  type="button"
-                  className="control-button"
-                  style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
-                  onClick={() => setBallPopupStep("football-size")}
-                >
-                  ⚽ Football
-                </button>
-                <button
-                  type="button"
-                  className="control-button"
-                  style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
-                  onClick={() => setBallPopupStep("sliotar-size")}
-                >
-                  🥎 Sliotar
-                </button>
+                {sport === "rugby" ? (
+                  <button
+                    type="button"
+                    className="control-button"
+                    style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                    onClick={() => onSelectBallSize("rugbyBall")}
+                  >
+                    🏉 Rugby Ball
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="control-button"
+                      style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                      onClick={() => setBallPopupStep("football-size")}
+                    >
+                      ⚽ Football
+                    </button>
+                    <button
+                      type="button"
+                      className="control-button"
+                      style={MOVEMENT_MODE_PILL_BUTTON_STYLE}
+                      onClick={() => setBallPopupStep("sliotar-size")}
+                    >
+                      🥎 Sliotar
+                    </button>
+                  </>
+                )}
               </>
             ) : null}
             {ballPopupStep === "football-size" ? (
