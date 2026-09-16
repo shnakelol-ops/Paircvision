@@ -18,8 +18,9 @@ import { createTrainingItemLayer } from "../items/item-layer";
 import { createPitchRoot } from "../pitch/create-pitch-root";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
 import { createBallLayer } from "../ball/ball-layer";
-import { applyCarrierOffset } from "../ball/carried-ball-position";
+import { applyCarrierOffset, BALL_CARRIER_OFFSET_X, BALL_CARRIER_OFFSET_Y } from "../ball/carried-ball-position";
 import { computePassEffectiveTarget, computePassPositionProgress } from "../ball/pass-trajectory";
+import { computeMovementDirection, computeReceivePoint } from "../ball/receive-point";
 import { createPlaybackOrchestrator } from "../playback/playback-orchestrator";
 import { createZoneLayer } from "../zones/zone-layer";
 import { routeStyleForToken } from "../routes/route-colors";
@@ -361,6 +362,27 @@ export async function createMovementCanvasShell(
   const PASS_MAX_DURATION_MS = 1800;
   const PASS_SPEED_PX_PER_MS = 0.067;
 
+  // Token-scale receive/attachment offset — a moving receiver should run
+  // onto the ball rather than be struck from behind. Deliberately matches
+  // the carried-ball attachment distance (not an independent tuning knob)
+  // so the ball never visibly jumps size/distance at the moment of
+  // possession transfer, only its direction rotates to face-of-travel.
+  const PASS_RECEIVE_OFFSET_WORLD = Math.hypot(BALL_CARRIER_OFFSET_X, BALL_CARRIER_OFFSET_Y);
+
+  // Last observed world position per token, used only to derive a
+  // frame-to-frame movement direction for the receive/attachment offset
+  // above. Keyed by tokenId (not by role) so a receiver's sample history
+  // carries over seamlessly into carrier tracking the instant possession
+  // transfers — that continuity is what prevents the ball from visibly
+  // jumping between the pre-landing receive point and the post-landing
+  // carried position.
+  const lastKnownTokenWorldPos = new Map<string, { x: number; y: number }>();
+  const sampleTokenMovementDirection = (tokenId: string, currentWorldPos: { x: number; y: number }) => {
+    const previous = lastKnownTokenWorldPos.get(tokenId) ?? null;
+    lastKnownTokenWorldPos.set(tokenId, { x: currentWorldPos.x, y: currentWorldPos.y });
+    return computeMovementDirection(currentWorldPos, previous);
+  };
+
   // Canonical currently-visible carried-ball world position: a player's raw
   // world position plus the same carrier offset the idle carry render uses.
   // Every place that needs "where the ball is right now while carried" —
@@ -411,11 +433,19 @@ export async function createMovementCanvasShell(
         const positionProgress = isPass ? computePassPositionProgress(t) : shotEasedProgress;
         const arcY = -Math.sin(Math.PI * t) * PASS_ARC_HEIGHT_PX;
         // Shots (toWorld set, fixed target) are unaffected — they have no
-        // toWorldAtStart and always fly straight at toWorldPos as before.
+        // toWorldAtStart, never sample a receive-point direction, and
+        // always fly straight at toWorldPos as before.
+        const receiverDirection = isPass ? sampleTokenMovementDirection(activeBallPass.toPlayerId, toWorldPos) : null;
+        // Moving receiver: the live target the ball is blending toward is
+        // a small point ahead of them in their current direction of
+        // travel, not their raw centre — they run onto the ball rather
+        // than being struck from behind. Stationary receiver: direction is
+        // null, so this resolves to exactly toWorldPos, unchanged.
+        const liveTarget = isPass ? computeReceivePoint(toWorldPos, receiverDirection, PASS_RECEIVE_OFFSET_WORLD) : toWorldPos;
         const effectiveTarget =
           isPass && activeBallPass.toWorldAtStart
-            ? computePassEffectiveTarget(activeBallPass.toWorldAtStart, toWorldPos, t)
-            : toWorldPos;
+            ? computePassEffectiveTarget(activeBallPass.toWorldAtStart, liveTarget, t)
+            : liveTarget;
         const worldX = activeBallPass.fromWorld.x + (effectiveTarget.x - activeBallPass.fromWorld.x) * positionProgress;
         const worldY = activeBallPass.fromWorld.y + (effectiveTarget.y - activeBallPass.fromWorld.y) * positionProgress + arcY;
         ballLayer.setBallType(activeBallPass.ballType);
@@ -436,11 +466,22 @@ export async function createMovementCanvasShell(
     let worldY: number;
 
     if (ballState.carrierId) {
-      const carriedPos = getVisibleCarriedBallWorldPosition(ballState.carrierId);
-      if (!carriedPos) {
+      const carrierWorldPos = tokenLayer.getTokenWorldPosition(ballState.carrierId);
+      if (!carrierWorldPos) {
         ballLayer.setVisible(false);
         return;
       }
+      // Same token-scale directional offset as the in-flight receive point
+      // (and the same tracked position history — see
+      // sampleTokenMovementDirection), so a receiver who is still moving
+      // the instant possession transfers keeps an unbroken, unchanged
+      // offset rather than jumping to the fixed carried-ball offset.
+      // A stationary (or newly-tracked) carrier falls back to exactly the
+      // existing fixed-offset behaviour via applyCarrierOffset, unchanged.
+      const carrierDirection = sampleTokenMovementDirection(ballState.carrierId, carrierWorldPos);
+      const carriedPos = carrierDirection
+        ? computeReceivePoint(carrierWorldPos, carrierDirection, PASS_RECEIVE_OFFSET_WORLD)
+        : applyCarrierOffset(carrierWorldPos);
       worldX = carriedPos.x;
       worldY = carriedPos.y;
     } else {
