@@ -19,6 +19,7 @@ import { createPitchRoot } from "../pitch/create-pitch-root";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
 import { createBallLayer } from "../ball/ball-layer";
 import { applyCarrierOffset } from "../ball/carried-ball-position";
+import { computePassEffectiveTarget } from "../ball/pass-trajectory";
 import { createPlaybackOrchestrator } from "../playback/playback-orchestrator";
 import { createZoneLayer } from "../zones/zone-layer";
 import { routeStyleForToken } from "../routes/route-colors";
@@ -83,6 +84,10 @@ type ActiveBallPass = {
   fromWorld: { x: number; y: number };
   toPlayerId: string;
   toWorld?: { x: number; y: number };
+  // Receiver's world position at the moment a player-to-player pass was
+  // released (undefined for shots, which target a fixed toWorld instead).
+  // Used to blend the live-retargeted flight — see computePassEffectiveTarget.
+  toWorldAtStart?: { x: number; y: number };
   elapsedMs: number;
   durationMs: number;
   ballType: BallType;
@@ -382,6 +387,9 @@ export async function createMovementCanvasShell(
     activeBallPass = {
       fromWorld: getVisibleCarriedBallWorldPosition(fromPlayerId) ?? { x: WORLD_SIZE.width / 2, y: WORLD_SIZE.height / 2 },
       toPlayerId,
+      // Reuses the toWorldPos already looked up above for the duration calc —
+      // no extra token/world-position lookup — see computePassEffectiveTarget.
+      toWorldAtStart: toWorldPos ?? undefined,
       elapsedMs: 0,
       durationMs,
       ballType: ballState.ballType ?? "footballSmall",
@@ -398,8 +406,14 @@ export async function createMovementCanvasShell(
         const t = Math.min(1, activeBallPass.elapsedMs / activeBallPass.durationMs);
         const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
         const arcY = -Math.sin(Math.PI * t) * PASS_ARC_HEIGHT_PX;
-        const worldX = activeBallPass.fromWorld.x + (toWorldPos.x - activeBallPass.fromWorld.x) * eased;
-        const worldY = activeBallPass.fromWorld.y + (toWorldPos.y - activeBallPass.fromWorld.y) * eased + arcY;
+        // Shots (toWorld set, fixed target) are unaffected — they have no
+        // toWorldAtStart and always fly straight at toWorldPos as before.
+        const effectiveTarget =
+          activeBallPass.toWorld == null && activeBallPass.toWorldAtStart
+            ? computePassEffectiveTarget(activeBallPass.toWorldAtStart, toWorldPos, t)
+            : toWorldPos;
+        const worldX = activeBallPass.fromWorld.x + (effectiveTarget.x - activeBallPass.fromWorld.x) * eased;
+        const worldY = activeBallPass.fromWorld.y + (effectiveTarget.y - activeBallPass.fromWorld.y) * eased + arcY;
         ballLayer.setBallType(activeBallPass.ballType);
         ballLayer.setVisible(true);
         ballLayer.setBallPosition(worldX, worldY);
@@ -1363,7 +1377,14 @@ export async function createMovementCanvasShell(
       const dy = toWorldPos.y - fromWorldPos.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const durationMs = Math.max(PASS_MIN_DURATION_MS, Math.min(PASS_MAX_DURATION_MS, dist / PASS_SPEED_PX_PER_MS));
-      activeBallPass = { fromWorld: fromWorldPos, toPlayerId: targetPlayerId, elapsedMs: 0, durationMs, ballType: ballState.ballType ?? "footballSmall" };
+      activeBallPass = {
+        fromWorld: fromWorldPos,
+        toPlayerId: targetPlayerId,
+        toWorldAtStart: toWorldPos,
+        elapsedMs: 0,
+        durationMs,
+        ballType: ballState.ballType ?? "footballSmall",
+      };
       ballState = { ballType: ballState.ballType };
       tokenLayer.setBallCarrier(null);
       emitBallState();
