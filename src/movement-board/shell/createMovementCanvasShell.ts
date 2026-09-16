@@ -19,7 +19,7 @@ import { createPitchRoot } from "../pitch/create-pitch-root";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
 import { createBallLayer } from "../ball/ball-layer";
 import { applyCarrierOffset } from "../ball/carried-ball-position";
-import { computePassEffectiveTarget } from "../ball/pass-trajectory";
+import { computePassEffectiveTarget, computePassPositionProgress } from "../ball/pass-trajectory";
 import { createPlaybackOrchestrator } from "../playback/playback-orchestrator";
 import { createZoneLayer } from "../zones/zone-layer";
 import { routeStyleForToken } from "../routes/route-colors";
@@ -404,16 +404,20 @@ export async function createMovementCanvasShell(
       const toWorldPos = activeBallPass.toWorld ?? tokenLayer.getTokenWorldPosition(activeBallPass.toPlayerId);
       if (toWorldPos) {
         const t = Math.min(1, activeBallPass.elapsedMs / activeBallPass.durationMs);
-        const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        const isPass = activeBallPass.toWorld == null;
+        // Shots keep the original ease-in-out positional progress and fly
+        // straight at a fixed toWorld — untouched by this pass-only change.
+        const shotEasedProgress = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        const positionProgress = isPass ? computePassPositionProgress(t) : shotEasedProgress;
         const arcY = -Math.sin(Math.PI * t) * PASS_ARC_HEIGHT_PX;
         // Shots (toWorld set, fixed target) are unaffected — they have no
         // toWorldAtStart and always fly straight at toWorldPos as before.
         const effectiveTarget =
-          activeBallPass.toWorld == null && activeBallPass.toWorldAtStart
+          isPass && activeBallPass.toWorldAtStart
             ? computePassEffectiveTarget(activeBallPass.toWorldAtStart, toWorldPos, t)
             : toWorldPos;
-        const worldX = activeBallPass.fromWorld.x + (effectiveTarget.x - activeBallPass.fromWorld.x) * eased;
-        const worldY = activeBallPass.fromWorld.y + (effectiveTarget.y - activeBallPass.fromWorld.y) * eased + arcY;
+        const worldX = activeBallPass.fromWorld.x + (effectiveTarget.x - activeBallPass.fromWorld.x) * positionProgress;
+        const worldY = activeBallPass.fromWorld.y + (effectiveTarget.y - activeBallPass.fromWorld.y) * positionProgress + arcY;
         ballLayer.setBallType(activeBallPass.ballType);
         ballLayer.setVisible(true);
         ballLayer.setBallPosition(worldX, worldY);

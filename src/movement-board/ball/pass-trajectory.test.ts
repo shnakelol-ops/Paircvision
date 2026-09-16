@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computePassEffectiveTarget } from "./pass-trajectory";
+import { computePassEffectiveTarget, computePassPositionProgress } from "./pass-trajectory";
 
 describe("computePassEffectiveTarget", () => {
   const targetAtStart = { x: 20, y: 50 };
@@ -74,5 +74,45 @@ describe("computePassEffectiveTarget", () => {
 
     expect(start).toEqual(startCopy);
     expect(live).toEqual(liveCopy);
+  });
+});
+
+describe("computePassPositionProgress", () => {
+  // Ease-out-quad (2t - t^2): fastest at release, decelerating into arrival
+  // — investigation finding was that the prior ease-in-out curve made the
+  // ball appear to hesitate at the passer's foot and trail the receiver
+  // through the first ~30% of the flight regardless of target-blend choice.
+  it("locks the exact ease-out-quad values at t=0/.25/.5/.75/1", () => {
+    expect(computePassPositionProgress(0)).toBe(0);
+    expect(computePassPositionProgress(0.25)).toBeCloseTo(0.4375, 10);
+    expect(computePassPositionProgress(0.5)).toBeCloseTo(0.75, 10);
+    expect(computePassPositionProgress(0.75)).toBeCloseTo(0.9375, 10);
+    expect(computePassPositionProgress(1)).toBe(1);
+  });
+
+  it("passProgress(0) = 0 and passProgress(1) = 1 — the arrival-guarantee invariant", () => {
+    expect(computePassPositionProgress(0)).toBe(0);
+    expect(computePassPositionProgress(1)).toBe(1);
+  });
+
+  it("is monotonically increasing across the flight (no reversal/wobble)", () => {
+    const samples = [0, 0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9, 1].map(computePassPositionProgress);
+    for (let i = 1; i < samples.length; i += 1) {
+      expect(samples[i]).toBeGreaterThan(samples[i - 1]);
+    }
+  });
+
+  it("progresses faster than elapsed time early (immediate departure), slower late (decelerating arrival)", () => {
+    // Distinguishes this from linear (progress === t) and from the old
+    // ease-in-out curve (which is *slower* than t for t<0.5).
+    expect(computePassPositionProgress(0.25)).toBeGreaterThan(0.25);
+    expect(computePassPositionProgress(0.75)).toBeGreaterThan(0.75);
+  });
+
+  it("differs from the old ease-in-out curve at the same t (confirms the swap took effect)", () => {
+    const oldEaseInOut = (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
+    for (const t of [0.1, 0.25, 0.4, 0.6, 0.75, 0.9]) {
+      expect(computePassPositionProgress(t)).not.toBeCloseTo(oldEaseInOut(t), 5);
+    }
   });
 });

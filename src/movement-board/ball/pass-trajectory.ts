@@ -30,3 +30,23 @@ export function computePassEffectiveTarget(targetAtStart: WorldPoint, liveTarget
     y: targetAtStart.y + (liveTarget.y - targetAtStart.y) * liveWeight,
   };
 }
+
+/**
+ * Positional progress (how far along the fromWorld->effectiveTarget
+ * interpolation the ball is) for player-to-player PASS flight only — an
+ * ease-out curve (fastest at release, decelerating into arrival), not the
+ * ease-in-out curve shot flight still uses.
+ *
+ * Investigation finding: the prior ease-in-out curve (slow-fast-slow) made
+ * the ball appear to hesitate at the passer's foot, then visibly trail the
+ * moving receiver for the first ~30% of the flight regardless of target-
+ * blend choice (eased(0.28)≈0.157 — the ball had covered under a sixth of
+ * its journey at over a quarter of the elapsed time). A real struck pass
+ * leaves at or near peak velocity and decelerates, not the other way
+ * round. This curve fixes that read without touching target-blend,
+ * duration, or the arc: passProgress(0)=0, passProgress(1)=1 exactly, so
+ * the live-receiver arrival guarantee at t=1 is unaffected.
+ */
+export function computePassPositionProgress(t: number): number {
+  return 2 * t - t * t;
+}
