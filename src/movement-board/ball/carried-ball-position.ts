@@ -1,18 +1,53 @@
 import type { WorldPoint } from "../coordinates/coordinates";
 
-/**
- * World-space offset applied so a carried ball renders beside its carrier
- * rather than dead-centre on the token. Canonical values — every carried-ball
- * position (idle render, pass flight origin, shot flight origin) must go
- * through applyCarrierOffset below so they can never disagree with each other.
- */
-export const BALL_CARRIER_OFFSET_X = 3.5;
-export const BALL_CARRIER_OFFSET_Y = -2.5;
+export type WorldSize = { width: number; height: number };
 
-/** Pure coordinate math: the world position a carried ball is actually rendered at. */
-export function applyCarrierOffset(carrierWorldPos: WorldPoint): WorldPoint {
+/**
+ * Candidate world-space offsets from a player's centre, tried in priority
+ * order until one lands inside the pitch. Mirrors Standard Slate's
+ * ATTACHED_BALL_OFFSETS_WORLD / getAttachedBallPositionForPlayer edge-aware
+ * attachment (createTacticalPadLiteSurface.ts) — reproduced here rather than
+ * imported/shared, since Standard Slate is frozen and must not be touched,
+ * but Game Timing's carried-ball behaviour should match it exactly.
+ */
+export const BALL_ATTACHMENT_OFFSETS_WORLD: ReadonlyArray<Readonly<WorldPoint>> = [
+  { x: 4.0, y: -3.2 },
+  { x: 4.0, y: 3.2 },
+  { x: -4.0, y: -3.2 },
+  { x: -4.0, y: 3.2 },
+  { x: 4.7, y: 0 },
+  { x: -4.7, y: 0 },
+];
+
+function clampWorldValue(value: number, max: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (value < 0) return 0;
+  if (value > max) return max;
+  return value;
+}
+
+/**
+ * The world position a carried/attached ball renders at for a player centred
+ * at `centreWorld`: the first candidate offset that lands inside the pitch
+ * bounds, or the first candidate clamped onto the pitch when every candidate
+ * would otherwise fall outside it (e.g. right on a touchline).
+ *
+ * This single function must be used both to compute a pass's fixed
+ * reception target (predicted receiver position + this offset, taken once at
+ * release) and to render the steady-state carried ball after possession
+ * transfer — so a pass's flight destination and the carried-ball position it
+ * hands off to always agree exactly, with no visible jump on arrival.
+ */
+export function computeBallAttachmentPoint(centreWorld: WorldPoint, worldSize: WorldSize): WorldPoint {
+  for (const offset of BALL_ATTACHMENT_OFFSETS_WORLD) {
+    const candidate = { x: centreWorld.x + offset.x, y: centreWorld.y + offset.y };
+    if (candidate.x >= 0 && candidate.x <= worldSize.width && candidate.y >= 0 && candidate.y <= worldSize.height) {
+      return candidate;
+    }
+  }
+  const fallbackOffset = BALL_ATTACHMENT_OFFSETS_WORLD[0] ?? { x: 6.4, y: -5.4 };
   return {
-    x: carrierWorldPos.x + BALL_CARRIER_OFFSET_X,
-    y: carrierWorldPos.y + BALL_CARRIER_OFFSET_Y,
+    x: clampWorldValue(centreWorld.x + fallbackOffset.x, worldSize.width),
+    y: clampWorldValue(centreWorld.y + fallbackOffset.y, worldSize.height),
   };
 }

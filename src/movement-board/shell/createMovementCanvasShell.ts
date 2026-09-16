@@ -18,7 +18,8 @@ import { createTrainingItemLayer } from "../items/item-layer";
 import { createPitchRoot } from "../pitch/create-pitch-root";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
 import { createBallLayer } from "../ball/ball-layer";
-import { applyCarrierOffset } from "../ball/carried-ball-position";
+import { computeBallAttachmentPoint } from "../ball/carried-ball-position";
+import { computePassPositionProgress } from "../ball/pass-trajectory";
 import { createPlaybackOrchestrator } from "../playback/playback-orchestrator";
 import { createZoneLayer } from "../zones/zone-layer";
 import { routeStyleForToken } from "../routes/route-colors";
@@ -83,6 +84,16 @@ type ActiveBallPass = {
   fromWorld: { x: number; y: number };
   toPlayerId: string;
   toWorld?: { x: number; y: number };
+  /**
+   * Fixed reception point for a player-to-player pass, in world space:
+   * computed once at release from a forward prediction of the receiver's own
+   * route-follow, then held immutable for the entire flight. Undefined for a
+   * shot, which already flies to a fixed `toWorld` (the goal) and never had
+   * this problem. Never recomputed per frame — the receiver keeps moving
+   * along their own route independently; this is where the flight ends, not
+   * where the player currently is.
+   */
+  passTargetWorld?: { x: number; y: number };
   elapsedMs: number;
   durationMs: number;
   ballType: BallType;
@@ -363,7 +374,7 @@ export async function createMovementCanvasShell(
   // this so they can never disagree (see BALL_CARRIER_OFFSET pop audit).
   const getVisibleCarriedBallWorldPosition = (playerId: string): { x: number; y: number } | null => {
     const worldPos = tokenLayer.getTokenWorldPosition(playerId);
-    return worldPos ? applyCarrierOffset(worldPos) : null;
+    return worldPos ? computeBallAttachmentPoint(worldPos, WORLD_SIZE) : null;
   };
 
   // Start pass flight animation. Safe to call only when ballState.carrierId === fromPlayerId.
@@ -377,11 +388,21 @@ export async function createMovementCanvasShell(
       const dist = Math.sqrt(dx * dx + dy * dy);
       durationMs = Math.max(PASS_MIN_DURATION_MS, Math.min(PASS_MAX_DURATION_MS, dist / PASS_SPEED_PX_PER_MS));
     }
+    // Fixed reception point: predict once, at release, where the receiver's
+    // own route-follow will actually have them after this flight's duration
+    // — then never touch that target again for the rest of the flight. The
+    // receiver keeps running their own route independently the whole time;
+    // the ball has an appointment with where that route will be, not with
+    // wherever the player happens to be on any later frame.
+    const predictedNormalized = orchestrator.predictTokenPositionAfter(toPlayerId, durationMs);
+    const predictedWorld = mapper.normalizedToWorld(predictedNormalized);
+    const passTargetWorld = computeBallAttachmentPoint(predictedWorld, WORLD_SIZE);
     // Flight must start from the ball's currently visible (carrier-offset)
     // position, not the carrier's raw centre — see getVisibleCarriedBallWorldPosition.
     activeBallPass = {
       fromWorld: getVisibleCarriedBallWorldPosition(fromPlayerId) ?? { x: WORLD_SIZE.width / 2, y: WORLD_SIZE.height / 2 },
       toPlayerId,
+      passTargetWorld,
       elapsedMs: 0,
       durationMs,
       ballType: ballState.ballType ?? "footballSmall",
@@ -393,10 +414,17 @@ export async function createMovementCanvasShell(
 
   const syncBallPosition = () => {
     if (activeBallPass) {
-      const toWorldPos = activeBallPass.toWorld ?? tokenLayer.getTokenWorldPosition(activeBallPass.toPlayerId);
+      const isShot = activeBallPass.toWorld != null;
+      const toWorldPos = isShot ? activeBallPass.toWorld : activeBallPass.passTargetWorld;
       if (toWorldPos) {
         const t = Math.min(1, activeBallPass.elapsedMs / activeBallPass.durationMs);
-        const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        // Shots keep their original, untouched ease-in-out-quad progression.
+        // Passes use the validated ease-out-quad progression toward the
+        // fixed reception point — immediate departure velocity, no late
+        // catch-up spike, and (deliberately) no live target correction of
+        // any kind: the path is a straight line, release point to immutable
+        // reception point.
+        const eased = isShot ? (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t) : computePassPositionProgress(t);
         const arcY = -Math.sin(Math.PI * t) * PASS_ARC_HEIGHT_PX;
         const worldX = activeBallPass.fromWorld.x + (toWorldPos.x - activeBallPass.fromWorld.x) * eased;
         const worldY = activeBallPass.fromWorld.y + (toWorldPos.y - activeBallPass.fromWorld.y) * eased + arcY;
@@ -405,7 +433,8 @@ export async function createMovementCanvasShell(
         ballLayer.setBallPosition(worldX, worldY);
         return;
       }
-      // Target token gone — cancel pass, fall through to normal
+      // Should not happen — a pass always gets passTargetWorld at release and
+      // a shot always gets toWorld — but fall through safely if it ever does.
       activeBallPass = null;
     }
 
@@ -1363,7 +1392,17 @@ export async function createMovementCanvasShell(
       const dy = toWorldPos.y - fromWorldPos.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       const durationMs = Math.max(PASS_MIN_DURATION_MS, Math.min(PASS_MAX_DURATION_MS, dist / PASS_SPEED_PX_PER_MS));
-      activeBallPass = { fromWorld: fromWorldPos, toPlayerId: targetPlayerId, elapsedMs: 0, durationMs, ballType: ballState.ballType ?? "footballSmall" };
+      const predictedNormalized = orchestrator.predictTokenPositionAfter(targetPlayerId, durationMs);
+      const predictedWorld = mapper.normalizedToWorld(predictedNormalized);
+      const passTargetWorld = computeBallAttachmentPoint(predictedWorld, WORLD_SIZE);
+      activeBallPass = {
+        fromWorld: fromWorldPos,
+        toPlayerId: targetPlayerId,
+        passTargetWorld,
+        elapsedMs: 0,
+        durationMs,
+        ballType: ballState.ballType ?? "footballSmall",
+      };
       ballState = { ballType: ballState.ballType };
       tokenLayer.setBallCarrier(null);
       emitBallState();

@@ -1,38 +1,51 @@
 import { describe, expect, it } from "vitest";
 
-import { applyCarrierOffset, BALL_CARRIER_OFFSET_X, BALL_CARRIER_OFFSET_Y } from "./carried-ball-position";
+import { BALL_ATTACHMENT_OFFSETS_WORLD, computeBallAttachmentPoint } from "./carried-ball-position";
 
-describe("applyCarrierOffset", () => {
-  it("adds the canonical carrier offset to the carrier's world position", () => {
-    expect(applyCarrierOffset({ x: 100, y: 50 })).toEqual({
-      x: 100 + BALL_CARRIER_OFFSET_X,
-      y: 50 + BALL_CARRIER_OFFSET_Y,
+const WORLD_SIZE = { width: 160, height: 100 };
+
+describe("computeBallAttachmentPoint", () => {
+  it("uses the first candidate offset when it lands inside the pitch", () => {
+    const centre = { x: 80, y: 50 };
+    const firstOffset = BALL_ATTACHMENT_OFFSETS_WORLD[0]!;
+    expect(computeBallAttachmentPoint(centre, WORLD_SIZE)).toEqual({
+      x: centre.x + firstOffset.x,
+      y: centre.y + firstOffset.y,
     });
   });
 
-  it("matches the audited offset values exactly (do not change these)", () => {
-    expect(BALL_CARRIER_OFFSET_X).toBe(3.5);
-    expect(BALL_CARRIER_OFFSET_Y).toBe(-2.5);
+  it("falls through to the next candidate when the first would fall off the pitch", () => {
+    // Near the right touchline: the first offset (+4.0 x) would push off the
+    // pitch edge (x > 160) only very close to it — pick a centre where the
+    // +x candidates are off-pitch but a -x candidate (index 2) lands inside.
+    const centre = { x: 159, y: 50 };
+    const result = computeBallAttachmentPoint(centre, WORLD_SIZE);
+    const thirdOffset = BALL_ATTACHMENT_OFFSETS_WORLD[2]!;
+    expect(result).toEqual({
+      x: centre.x + thirdOffset.x,
+      y: centre.y + thirdOffset.y,
+    });
   });
 
-  it("produces the same result for the same input regardless of call site (single source of truth)", () => {
-    const carrierWorldPos = { x: 42, y: 17 };
-
-    // Simulates the three call sites (idle carry render, pass origin, shot
-    // origin) all resolving the carrier's world position independently and
-    // then computing the visible carried-ball position from it — they must
-    // agree exactly, since a discrepancy here is the audited defect.
-    const fromIdleRender = applyCarrierOffset(carrierWorldPos);
-    const fromPassOrigin = applyCarrierOffset(carrierWorldPos);
-    const fromShotOrigin = applyCarrierOffset(carrierWorldPos);
-
-    expect(fromPassOrigin).toEqual(fromIdleRender);
-    expect(fromShotOrigin).toEqual(fromIdleRender);
+  it("clamps onto the pitch using the first candidate when every candidate would fall outside it", () => {
+    const centre = { x: 0, y: 0 };
+    const result = computeBallAttachmentPoint(centre, WORLD_SIZE);
+    expect(result.x).toBeGreaterThanOrEqual(0);
+    expect(result.x).toBeLessThanOrEqual(WORLD_SIZE.width);
+    expect(result.y).toBeGreaterThanOrEqual(0);
+    expect(result.y).toBeLessThanOrEqual(WORLD_SIZE.height);
   });
 
   it("does not mutate its input", () => {
-    const carrierWorldPos = { x: 10, y: 10 };
-    applyCarrierOffset(carrierWorldPos);
-    expect(carrierWorldPos).toEqual({ x: 10, y: 10 });
+    const centre = { x: 10, y: 10 };
+    computeBallAttachmentPoint(centre, WORLD_SIZE);
+    expect(centre).toEqual({ x: 10, y: 10 });
+  });
+
+  it("produces the same result for the same input regardless of call site (single source of truth)", () => {
+    const centre = { x: 42, y: 17 };
+    const fromIdleRender = computeBallAttachmentPoint(centre, WORLD_SIZE);
+    const fromPassTargetPrediction = computeBallAttachmentPoint(centre, WORLD_SIZE);
+    expect(fromPassTargetPrediction).toEqual(fromIdleRender);
   });
 });

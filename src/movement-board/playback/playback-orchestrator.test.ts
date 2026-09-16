@@ -203,6 +203,112 @@ describe("createPlaybackOrchestrator — solo delayed pass stays playing through
   });
 });
 
+describe("createPlaybackOrchestrator — predictTokenPositionAfter (fixed reception point support)", () => {
+  const ROUTE = [
+    { x: 0, y: 0 },
+    { x: 80, y: 0 },
+  ];
+
+  it("returns the current position for a token with no route at all (stationary)", () => {
+    const callbacks = makeCallbacks({
+      getTokens: () => [{ id: "p1", position: { x: 33, y: 44 } }],
+      getRoute: () => null,
+      getStartPosition: () => null,
+    });
+    const orchestrator = createPlaybackOrchestrator("normal", callbacks);
+    orchestrator.start();
+
+    expect(orchestrator.predictTokenPositionAfter("p1", 900)).toEqual({ x: 33, y: 44 });
+  });
+
+  it("falls back to current position when the token id has no run and isn't in getTokens either", () => {
+    const callbacks = makeCallbacks();
+    const orchestrator = createPlaybackOrchestrator("normal", callbacks);
+    orchestrator.start();
+
+    expect(orchestrator.predictTokenPositionAfter("ghost", 900)).toEqual({ x: 50, y: 50 });
+  });
+
+  it("accounts for remaining delay before movement begins: gameTimeMs at or under the delay returns the start position unmoved", () => {
+    const callbacks = makeCallbacks({
+      getTokens: () => [{ id: "p1", position: { x: 0, y: 0 } }],
+      getRoute: () => ROUTE,
+      getStartPosition: () => ({ x: 0, y: 0 }),
+      getRouteMeta: () => ({ delayMs: 300 }),
+    });
+    const orchestrator = createPlaybackOrchestrator("normal", callbacks);
+    orchestrator.start();
+
+    expect(orchestrator.predictTokenPositionAfter("p1", 100)).toEqual({ x: 0, y: 0 });
+    expect(orchestrator.predictTokenPositionAfter("p1", 300)).toEqual({ x: 0, y: 0 });
+  });
+
+  it("worked example: pass duration 900ms with 300ms remaining delay predicts exactly 600ms of movement", () => {
+    const callbacks = makeCallbacks({
+      getTokens: () => [
+        { id: "delayed", position: { x: 0, y: 0 } },
+        { id: "immediate", position: { x: 0, y: 0 } },
+      ],
+      getRoute: () => ROUTE,
+      getStartPosition: () => ({ x: 0, y: 0 }),
+      getRouteMeta: (tokenId) => ({ delayMs: tokenId === "delayed" ? 300 : 0 }),
+    });
+    const orchestrator = createPlaybackOrchestrator("normal", callbacks);
+    orchestrator.start();
+
+    // "delayed" waits 300ms then moves for 600ms; "immediate" (0 delay) moves
+    // for 600ms starting from the same identical route/start — the two must
+    // predict to the exact same point, proving the delay is subtracted
+    // before delegating to the shared route-follow prediction math.
+    const delayedPrediction = orchestrator.predictTokenPositionAfter("delayed", 900);
+    const immediatePrediction = orchestrator.predictTokenPositionAfter("immediate", 600);
+    expect(delayedPrediction).toEqual(immediatePrediction);
+    // And it must actually have moved off the start position.
+    expect(delayedPrediction).not.toEqual({ x: 0, y: 0 });
+  });
+
+  it("does not mutate real progress, delay, or route state when predicting", () => {
+    const onTokenStep = vi.fn();
+    const callbacks = makeCallbacks({
+      getTokens: () => [{ id: "p1", position: { x: 0, y: 0 } }],
+      getRoute: () => ROUTE,
+      getStartPosition: () => ({ x: 0, y: 0 }),
+      getRouteMeta: () => ({ delayMs: 0 }),
+      onTokenStep,
+    });
+    const orchestrator = createPlaybackOrchestrator("normal", callbacks);
+    orchestrator.start();
+
+    orchestrator.predictTokenPositionAfter("p1", 5000);
+    orchestrator.predictTokenPositionAfter("p1", 1);
+    orchestrator.predictTokenPositionAfter("p1", 12345);
+
+    // No prediction call should have advanced real playback — onTokenStep is
+    // only ever invoked from the real step() loop.
+    expect(onTokenStep).not.toHaveBeenCalled();
+    expect(orchestrator.predictTokenPositionAfter("p1", 0)).toEqual({ x: 0, y: 0 });
+  });
+
+  it("uses a one-time fixed fallback (current position at release) for a token pending on another's triggered run, not chained prediction", () => {
+    const callbacks = makeCallbacks({
+      getTokens: () => [
+        { id: "trigger", position: { x: 0, y: 0 } },
+        { id: "chained", position: { x: 70, y: 20 } },
+      ],
+      getRoute: (tokenId) => (tokenId === "trigger" ? ROUTE : [{ x: 70, y: 20 }, { x: 90, y: 20 }]),
+      getStartPosition: (tokenId) => (tokenId === "trigger" ? { x: 0, y: 0 } : { x: 70, y: 20 }),
+      getRouteMeta: (tokenId) => (tokenId === "chained" ? { triggeredBy: "trigger" } : null),
+    });
+    const orchestrator = createPlaybackOrchestrator("normal", callbacks);
+    orchestrator.start();
+
+    // "chained" never actually starts moving in this test (its trigger never
+    // completes) — prediction must return its release-time position, fixed,
+    // rather than attempting to resolve the chain.
+    expect(orchestrator.predictTokenPositionAfter("chained", 2000)).toEqual({ x: 70, y: 20 });
+  });
+});
+
 describe("createPlaybackOrchestrator — deferred pass/shot queue counts as work", () => {
   // Regression (Phase A): the shell's hasActiveBallAnimation callback used to
   // report only `activeBallPass !== null`, so a pass or shot that got queued
