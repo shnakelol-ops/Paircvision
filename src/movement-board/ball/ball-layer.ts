@@ -2,8 +2,15 @@ import { Circle, Container, Graphics } from "pixi.js";
 
 import type { BallType } from "../shell/types";
 
-const BALL_RADIUS_SMALL = 2.3;
-const BALL_RADIUS_MEDIUM = 3.1;
+// Presentation-only alignment with Standard Slate's production ball sizing
+// (createTacticalPadLiteSurface.ts: TACTICAL_ITEM_HALF_SIZE=2.2, football
+// factors 0.72/0.9, sliotar factors 0.6/0.74). Slate uses different sizes
+// for football vs. sliotar; Game Timing previously used one shared radius
+// per size tier for both, which rendered noticeably larger than Slate.
+export const FOOTBALL_RADIUS_SMALL = 1.584;
+export const FOOTBALL_RADIUS_MEDIUM = 1.98;
+export const SLIOTAR_RADIUS_SMALL = 1.32;
+export const SLIOTAR_RADIUS_MEDIUM = 1.628;
 
 export type BallLayerHandle = {
   setBallPosition: (worldX: number, worldY: number) => void;
@@ -16,8 +23,12 @@ export type BallLayerHandle = {
   destroy: () => void;
 };
 
-function ballRadius(ballType: BallType): number {
-  return ballType.endsWith("Medium") ? BALL_RADIUS_MEDIUM : BALL_RADIUS_SMALL;
+export function ballRadius(ballType: BallType): number {
+  const isMedium = ballType.endsWith("Medium");
+  if (ballType.startsWith("sliotar")) {
+    return isMedium ? SLIOTAR_RADIUS_MEDIUM : SLIOTAR_RADIUS_SMALL;
+  }
+  return isMedium ? FOOTBALL_RADIUS_MEDIUM : FOOTBALL_RADIUS_SMALL;
 }
 
 function clampStrokeWidth(value: number, min: number, max: number): number {

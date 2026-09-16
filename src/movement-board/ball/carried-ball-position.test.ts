@@ -10,9 +10,11 @@ describe("applyCarrierOffset", () => {
     });
   });
 
-  it("matches the audited offset values exactly (do not change these)", () => {
-    expect(BALL_CARRIER_OFFSET_X).toBe(3.5);
-    expect(BALL_CARRIER_OFFSET_Y).toBe(-2.5);
+  it("matches Standard Slate's default carried-ball attachment offset (presentation alignment)", () => {
+    // Slate source of truth: createTacticalPadLiteSurface.ts
+    // ATTACHED_BALL_OFFSETS_WORLD[0] = { x: 4.0, y: -3.2 }.
+    expect(BALL_CARRIER_OFFSET_X).toBe(4.0);
+    expect(BALL_CARRIER_OFFSET_Y).toBe(-3.2);
   });
 
   it("produces the same result for the same input regardless of call site (single source of truth)", () => {
