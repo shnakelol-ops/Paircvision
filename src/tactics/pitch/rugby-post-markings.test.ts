@@ -89,9 +89,9 @@ describe("buildRugbyPostMarkings", () => {
       const l = left[i]!;
       const r = right[i]!;
       expect(l.kind).toBe(r.kind);
-      expect(l.strokeWidth).toBe(r.strokeWidth);
 
       if (l.kind === "line" && r.kind === "line") {
+        expect(l.strokeWidth).toBe(r.strokeWidth);
         expect(160 - l.x1).toBeCloseTo(r.x1, 6);
         expect(160 - l.x2).toBeCloseTo(r.x2, 6);
         expect(l.y1).toBeCloseTo(r.y1, 6);
@@ -99,6 +99,7 @@ describe("buildRugbyPostMarkings", () => {
       }
 
       if (l.kind === "rect" && r.kind === "rect") {
+        expect(l.strokeWidth).toBe(r.strokeWidth);
         expect(160 - (l.x + l.w)).toBeCloseTo(r.x, 6);
         expect(l.y).toBeCloseTo(r.y, 6);
         expect(l.w).toBeCloseTo(r.w, 6);
