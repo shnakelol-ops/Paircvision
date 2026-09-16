@@ -3,6 +3,29 @@ import { Container, FillGradient, Graphics, GraphicsPath, Sprite, Texture, Tilin
 import { getPitchConfig, type PitchMarking, type PitchSport } from "../../core/pitch/pitch-config";
 import { BOARD_PITCH_VIEWBOX } from "../../core/pitch/pitch-space";
 import { buildGaaGoalMarkings } from "../../tactics/pitch/gaa-goal-markings";
+import { buildRugbyPostMarkings } from "../../tactics/pitch/rugby-post-markings";
+
+/**
+ * Goal/post overlay selection — explicit per sport rather than a soccer/
+ * not-soccer boolean, so adding a third overlay (Rugby posts) never risks
+ * re-widening the old `!isSoccer` check to something it wasn't meant for.
+ * Soccer returns null because its goals are drawn inline as part of
+ * pitchConfig's own soccerMarkings, not this overlay.
+ */
+function buildGoalOverlayMarkings(sport: PitchSport): PitchMarking[] | null {
+  switch (sport) {
+    case "gaelic":
+    case "hurling":
+    case "camogie":
+      return buildGaaGoalMarkings();
+    case "rugby":
+      return buildRugbyPostMarkings();
+    case "soccer":
+      return null;
+    default:
+      return null;
+  }
+}
 
 export type TacticalPitchVisualMount = {
   root: Container;
@@ -511,12 +534,12 @@ export function createTacticalPitchVisualRoot(
   }
   face.addChild(markingsClarity);
 
-  // Tactics-only GAA goal graphic (Tactical Slate). Drawn from a dedicated
+  // Tactics-only goal/post graphic (Tactical Slate). Drawn from a dedicated
   // tactics-only marking set — never the shared pitchConfig markings — so it
   // stays out of Stats Mode, Pro Tagger, and every review/PDF export. See
-  // src/tactics/pitch/gaa-goal-markings.ts.
-  if (!isSoccer) {
-    const goalMarkings = buildGaaGoalMarkings();
+  // src/tactics/pitch/gaa-goal-markings.ts and rugby-post-markings.ts.
+  const goalMarkings = buildGoalOverlayMarkings(sport);
+  if (goalMarkings) {
     const goalGraphics = new Graphics();
     goalGraphics.zIndex = 4.5;
     drawMarkings(goalGraphics, goalMarkings);

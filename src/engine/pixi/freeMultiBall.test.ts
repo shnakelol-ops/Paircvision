@@ -44,6 +44,10 @@ describe("isBallItem", () => {
     expect(isBallItem({ type: "sliotarLarge" })).toBe(true);
   });
 
+  it("is true for the Rugby ball cosmetic", () => {
+    expect(isBallItem({ type: "rugbyBall" })).toBe(true);
+  });
+
   it("is false for non-ball equipment", () => {
     expect(isBallItem({ type: "cone" })).toBe(false);
     expect(isBallItem({ type: "mannequin" })).toBe(false);
