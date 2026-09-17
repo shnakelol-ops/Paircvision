@@ -15,3 +15,35 @@ export function computePassPositionProgress(t: number): number {
   const clamped = Math.max(0, Math.min(1, t));
   return 2 * clamped - clamped * clamped;
 }
+
+/** Shot flight keeps its own original, untouched ease-in-out-quad progression. */
+export function computeShotPositionProgress(t: number): number {
+  const clamped = Math.max(0, Math.min(1, t));
+  return clamped < 0.5 ? 2 * clamped * clamped : -1 + (4 - 2 * clamped) * clamped;
+}
+
+export type BallFlightWorldPoint = { x: number; y: number };
+
+/**
+ * The ball's world position at progress `t` of a flight from `fromWorld` to
+ * `toWorld`. Passes travel a strictly straight XY line (temporal easing
+ * only) — a top-down 2D board has no orthographic way to represent a real
+ * ball's aerial height, and rendering that height as sideways curvature is
+ * exactly the visual defect a straight path avoids. Shots keep their
+ * original arc, unchanged, via `shotArcHeightPx`.
+ */
+export function computeBallFlightWorldPosition(params: {
+  fromWorld: BallFlightWorldPoint;
+  toWorld: BallFlightWorldPoint;
+  t: number;
+  isShot: boolean;
+  shotArcHeightPx: number;
+}): BallFlightWorldPoint {
+  const { fromWorld, toWorld, t, isShot, shotArcHeightPx } = params;
+  const eased = isShot ? computeShotPositionProgress(t) : computePassPositionProgress(t);
+  const arcY = isShot ? -Math.sin(Math.PI * t) * shotArcHeightPx : 0;
+  return {
+    x: fromWorld.x + (toWorld.x - fromWorld.x) * eased,
+    y: fromWorld.y + (toWorld.y - fromWorld.y) * eased + arcY,
+  };
+}

@@ -19,7 +19,7 @@ import { createPitchRoot } from "../pitch/create-pitch-root";
 import { BOARD_PITCH_VIEWBOX } from "../pitch/pitch-space";
 import { createBallLayer } from "../ball/ball-layer";
 import { computeBallAttachmentPoint } from "../ball/carried-ball-position";
-import { computePassPositionProgress } from "../ball/pass-trajectory";
+import { computeBallFlightWorldPosition } from "../ball/pass-trajectory";
 import { createPlaybackOrchestrator } from "../playback/playback-orchestrator";
 import { createZoneLayer } from "../zones/zone-layer";
 import { routeStyleForToken } from "../routes/route-colors";
@@ -362,9 +362,16 @@ export async function createMovementCanvasShell(
   let deferredPasses: DeferredPass[] = [];
   let deferredShots: string[] = [];
 
-  const PASS_ARC_HEIGHT_PX = 10;
+  // Shots only — kept at their exact original value/behaviour, untouched.
+  // Normal passes on a top-down 2D board deliberately fly a straight XY
+  // line: a real ball's aerial height has no orthographic representation
+  // here, and rendering it as sideways curvature is exactly the visual
+  // defect this constant no longer contributes to for passes.
+  const SHOT_ARC_HEIGHT_PX = 10;
   const PASS_MIN_DURATION_MS = 850;
   const PASS_MAX_DURATION_MS = 1800;
+  // See BALL_LANDING_EPSILON_MS usage in tick() below.
+  const BALL_LANDING_EPSILON_MS = 1e-6;
   const PASS_SPEED_PX_PER_MS = 0.067;
 
   // Canonical currently-visible carried-ball world position: a player's raw
@@ -418,16 +425,13 @@ export async function createMovementCanvasShell(
       const toWorldPos = isShot ? activeBallPass.toWorld : activeBallPass.passTargetWorld;
       if (toWorldPos) {
         const t = Math.min(1, activeBallPass.elapsedMs / activeBallPass.durationMs);
-        // Shots keep their original, untouched ease-in-out-quad progression.
-        // Passes use the validated ease-out-quad progression toward the
-        // fixed reception point — immediate departure velocity, no late
-        // catch-up spike, and (deliberately) no live target correction of
-        // any kind: the path is a straight line, release point to immutable
-        // reception point.
-        const eased = isShot ? (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t) : computePassPositionProgress(t);
-        const arcY = -Math.sin(Math.PI * t) * PASS_ARC_HEIGHT_PX;
-        const worldX = activeBallPass.fromWorld.x + (toWorldPos.x - activeBallPass.fromWorld.x) * eased;
-        const worldY = activeBallPass.fromWorld.y + (toWorldPos.y - activeBallPass.fromWorld.y) * eased + arcY;
+        const { x: worldX, y: worldY } = computeBallFlightWorldPosition({
+          fromWorld: activeBallPass.fromWorld,
+          toWorld: toWorldPos,
+          t,
+          isShot,
+          shotArcHeightPx: SHOT_ARC_HEIGHT_PX,
+        });
         ballLayer.setBallType(activeBallPass.ballType);
         ballLayer.setVisible(true);
         ballLayer.setBallPosition(worldX, worldY);
@@ -1140,7 +1144,13 @@ export async function createMovementCanvasShell(
     // permanently stranding anything gated on that pass (e.g. a shot).
     if (activeBallPass && orchestrator.getState().isPlaying) {
       activeBallPass.elapsedMs += app.ticker.deltaMS * orchestrator.getSpeedMultiplier();
-      if (activeBallPass.elapsedMs >= activeBallPass.durationMs) {
+      // Epsilon guards against IEEE-754 summation noise landing the
+      // accumulated elapsedMs a hair under durationMs at an exact frame-
+      // count boundary (e.g. 51 frames of 1000/60 sums to 849.9999999999994,
+      // not 850) — without it, landing can be pushed a whole extra render
+      // frame late purely from floating-point rounding, independent of and
+      // in addition to the route-follow determinism fix below.
+      if (activeBallPass.elapsedMs >= activeBallPass.durationMs - BALL_LANDING_EPSILON_MS) {
         const toPlayerId = activeBallPass.toPlayerId;
         const wasShot = activeBallPass.toWorld != null;
         activeBallPass = null;
