@@ -2,12 +2,15 @@ import type { CSSProperties } from "react";
 import { ProTaggerLineupJerseyTile } from "./ProTaggerLineupJerseyTile";
 import { ProTaggerLineupPitchBackground, LINEUP_PITCH_PORTRAIT_VIEWBOX } from "./ProTaggerLineupPitchBackground";
 import { LINEUP_FORMATION_POSITIONS } from "./pro-tagger-lineup-geometry";
-import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
+import type { ProTaggerJerseyStyle, ProTaggerSquadPlayer } from "./pro-tagger-session";
 
 interface Props {
   players: readonly ProTaggerSquadPlayer[];
   primary: string;
   secondary: string;
+  /** Jersey shape (chest/sleeves/collar) — forwarded verbatim into every
+   *  tile below. Omit to default to "chest", same as every tile already does. */
+  jerseyStyle?: ProTaggerJerseyStyle;
 }
 
 // Final player-tile tuning pass: the jersey now reads as a small
@@ -68,7 +71,7 @@ export function deriveLineupSlots(players: readonly ProTaggerSquadPlayer[]): Lin
 // data, no React) rather than being computed here, so a future non-React
 // renderer (e.g. a canvas-based share-card export) can lay out the identical
 // team sheet from that one shared source of truth — see that file's header.
-export function ProTaggerLineupFormation({ players, primary, secondary }: Props) {
+export function ProTaggerLineupFormation({ players, primary, secondary, jerseyStyle }: Props) {
   const { starters, subs } = deriveLineupSlots(players);
 
   return (
@@ -92,6 +95,7 @@ export function ProTaggerLineupFormation({ players, primary, secondary }: Props)
               <ProTaggerLineupJerseyTile
                 player={p} primary={primary} secondary={secondary}
                 size={STARTER_JERSEY_SIZE} numberFontSize={STARTER_NUMBER_FONT_SIZE}
+                jerseyStyle={jerseyStyle}
               />
             </div>
           );
@@ -106,6 +110,7 @@ export function ProTaggerLineupFormation({ players, primary, secondary }: Props)
               <ProTaggerLineupJerseyTile
                 key={p.id} player={p} primary={primary} secondary={secondary}
                 size={SUB_JERSEY_SIZE} numberFontSize={SUB_NUMBER_FONT_SIZE}
+                jerseyStyle={jerseyStyle}
               />
             ))}
           </div>
