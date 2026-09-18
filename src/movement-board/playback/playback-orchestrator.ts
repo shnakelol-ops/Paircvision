@@ -108,6 +108,21 @@ export type PlaybackOrchestrator = {
   getSpeed: () => MovementPlaybackSpeed;
   /** Returns the numeric multiplier currently in effect (e.g. 0.15, 0.5, 1.0). */
   getSpeedMultiplier: () => number;
+  /**
+   * Deterministically predicts where `tokenId` will be after `gameTimeMs`
+   * more of game time (the same multiplier-adjusted clock a ball flight's own
+   * elapsedMs accumulates on), without mutating that token's real playback
+   * progress, delay, or route. Used once at pass release to compute a fixed
+   * reception point — never call this on every frame to re-target a flight.
+   *
+   * - Token already running: advances from its current real route progress.
+   * - Token delayed: accounts for remaining delay before movement begins.
+   * - Token stationary / no run built for it: returns its current position.
+   * - Token waiting on another token's triggered run: deterministic chain
+   *   prediction is out of scope — returns a one-time fixed fallback (its
+   *   position at the moment of this call), not continuous live retargeting.
+   */
+  predictTokenPositionAfter: (tokenId: string, gameTimeMs: number) => NormalizedPoint;
 };
 
 function clonePoint(point: NormalizedPoint): NormalizedPoint {
@@ -425,6 +440,34 @@ export function createPlaybackOrchestrator(
     }
   };
 
+  const predictTokenPositionAfter = (tokenId: string, gameTimeMs: number): NormalizedPoint => {
+    const activeRun = activePlaybackRuns.get(tokenId);
+    if (activeRun) {
+      if (!Number.isFinite(gameTimeMs) || gameTimeMs <= activeRun.delayMs) {
+        return clonePoint(activeRun.targetPoint);
+      }
+      const movementTimeMs = gameTimeMs - activeRun.delayMs;
+      return activeRun.session.predictPositionAfter(movementTimeMs);
+    }
+
+    // Waiting on another token's run to complete before this one even builds
+    // a session — deliberately out of scope for chained/recursive prediction.
+    // One-time fixed fallback: the position captured for its own eventual
+    // start, held immutable for the flight rather than resolved later.
+    const pendingRun = pendingTriggerRuns.get(tokenId);
+    if (pendingRun) {
+      return clonePoint(pendingRun.startPosition);
+    }
+
+    // No run exists for this token at all (stationary, or playback isn't
+    // active) — its current position is the correct prediction.
+    const token = callbacks.getTokens().find((t) => t.id === tokenId);
+    if (token) {
+      return clonePoint(token.position);
+    }
+    return { x: 50, y: 50 };
+  };
+
   return {
     start,
     pause,
@@ -439,5 +482,6 @@ export function createPlaybackOrchestrator(
     setSpeedMultiplier: (n) => { speedMultiplierOverride = n; },
     getSpeed: () => playbackSpeed,
     getSpeedMultiplier: () => speedMultiplierOverride,
+    predictTokenPositionAfter,
   };
 }

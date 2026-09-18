@@ -2,8 +2,14 @@ import { Circle, Container, Graphics } from "pixi.js";
 
 import type { BallType } from "../shell/types";
 
-const BALL_RADIUS_SMALL = 2.3;
-const BALL_RADIUS_MEDIUM = 3.1;
+// Matches Standard Slate's on-pitch ball radii exactly (createTacticalPadLiteSurface.ts:
+// TACTICAL_ITEM_HALF_SIZE(2.2) * per-type factor — footballSmall 0.72, football/"medium" 0.9,
+// sliotarSmall 0.6, sliotar/"medium" 0.74). Reproduced as literal values rather than shared
+// code, since Standard Slate is frozen and must not be touched.
+const FOOTBALL_RADIUS_SMALL = 1.584;
+const FOOTBALL_RADIUS_MEDIUM = 1.98;
+const SLIOTAR_RADIUS_SMALL = 1.32;
+const SLIOTAR_RADIUS_MEDIUM = 1.628;
 
 export type BallLayerHandle = {
   setBallPosition: (worldX: number, worldY: number) => void;
@@ -17,7 +23,11 @@ export type BallLayerHandle = {
 };
 
 function ballRadius(ballType: BallType): number {
-  return ballType.endsWith("Medium") ? BALL_RADIUS_MEDIUM : BALL_RADIUS_SMALL;
+  const isMedium = ballType.endsWith("Medium");
+  if (ballType.startsWith("sliotar")) {
+    return isMedium ? SLIOTAR_RADIUS_MEDIUM : SLIOTAR_RADIUS_SMALL;
+  }
+  return isMedium ? FOOTBALL_RADIUS_MEDIUM : FOOTBALL_RADIUS_SMALL;
 }
 
 function clampStrokeWidth(value: number, min: number, max: number): number {
