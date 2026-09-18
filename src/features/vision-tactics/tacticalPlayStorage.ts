@@ -1,6 +1,7 @@
 import type { BallState, MovementBoardRoute, MovementBoardToken, MovementPlaybackSpeed, TacticalPassEvent, TacticalShotEvent, TacticalTrainingItem, ZoneRecord } from "../../movement-board/shell/types";
 import type { TacticalUnit } from "./tacticalUnitTypes";
 import type { SlateTextAnnotation } from "../../components/annotations/textAnnotation";
+import type { TeamKit } from "./teamKit";
 
 const STORAGE_KEY = "paircvision-tp-scenarios";
 const MAX_SCENARIOS = 20;
@@ -19,6 +20,14 @@ export type TacticalScenario = {
   zones?: ZoneRecord[];
   items?: TacticalTrainingItem[];
   textAnnotations?: SlateTextAnnotation[];
+  // Team-kit model (KIT belongs to TEAM, not player — see teamKit.ts).
+  // Undefined on any scenario saved before this existed; onLoadScenario in
+  // TacticalPlaySurface.tsx applies the same sensible defaults teamKit.ts
+  // itself exports, exactly like every other optional field above — no
+  // migration function, just `?? default` at load time.
+  ourTeamKit?: TeamKit;
+  goalkeeperKit?: TeamKit;
+  bibKit?: TeamKit;
 };
 
 export function listScenarios(): TacticalScenario[] {
@@ -52,6 +61,9 @@ export function saveScenario(
   zones?: ZoneRecord[],
   items?: TacticalTrainingItem[],
   textAnnotations?: SlateTextAnnotation[],
+  ourTeamKit?: TeamKit,
+  goalkeeperKit?: TeamKit,
+  bibKit?: TeamKit,
 ): TacticalScenario {
   const scenario: TacticalScenario = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -67,6 +79,9 @@ export function saveScenario(
     zones,
     items,
     textAnnotations: textAnnotations && textAnnotations.length > 0 ? textAnnotations : undefined,
+    ourTeamKit,
+    goalkeeperKit,
+    bibKit,
   };
   persistList([scenario, ...listScenarios()].slice(0, MAX_SCENARIOS));
   return scenario;

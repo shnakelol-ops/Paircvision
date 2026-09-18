@@ -17,7 +17,6 @@ import type {
   MovementBoardMode,
   MovementBoardRoute,
   MovementBoardToken,
-  MovementBoardTokenLabelMode,
   MovementCanvasShellHandle,
   MovementConcept,
   MovementRouteEditState,
@@ -40,7 +39,15 @@ import {
   PLAYER_KIT_EDITOR_MAX_HEIGHT_RATIO,
 } from "../../components/player-kit/PlayerKitEditor";
 import { FULL_VISION_PATTERNS, PLAYER_KIT_PATTERN_LABEL } from "../../components/player-kit/playerKitPatterns";
-import { sanitizeInitials, sanitizeName } from "../../engine/pixi/createTacticalPadLiteSurface";
+import {
+  type TeamKit,
+  DEFAULT_OUR_TEAM_KIT,
+  DEFAULT_GOALKEEPER_KIT,
+  DEFAULT_BIB_KIT,
+  applyTeamKitsToTokens,
+  deriveLegacyTeamKit,
+  isOppositionToken,
+} from "./teamKit";
 import { FOOTBALL_ZONE_TEMPLATES, HURLING_ZONE_TEMPLATES, type TacticalZoneTemplate } from "./tacticalZoneTemplates";
 import { ZONE_COLOR_CSS, ZONE_COLOR_OPTIONS } from "./tacticalZoneTypes";
 import {
@@ -807,72 +814,46 @@ const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
 ];
 
 // Reuses the same 8-colour palette/hex values already shown in the "Our
-// Team"/"Bib Players" swatch rows below (TOKEN_COLOR_BG) — no new colour
-// list. Serves both PlayerKitEditor's base-colour tab (mapped to the
-// existing per-token `color` field) and its pattern-colour tab (mapped to
-// the new `kitPatternColor` field).
-const GAME_TIMING_KIT_COLOR_OPTIONS: readonly PlayerKitColorOption[] = ALL_TOKEN_COLORS.map((id) => ({
+// Team"/"Bib Players" swatch rows previously in this panel (TOKEN_COLOR_BG)
+// — no new colour list. Serves both PlayerKitEditor's base-colour tab and
+// its pattern-colour tab for all three team-kit editors (Our Team,
+// Goalkeeper, Bib/Opposition).
+const TEAM_KIT_COLOR_OPTIONS: readonly PlayerKitColorOption[] = ALL_TOKEN_COLORS.map((id) => ({
   id,
   cssColor: TOKEN_COLOR_BG[id],
 }));
 
-export type TokenKitPatch = Partial<
-  Pick<MovementBoardToken, "color" | "kitPattern" | "kitPatternColor" | "labelMode" | "initials" | "label">
->;
+/** Which of the three team-kit editors (if any) is currently open. */
+export type KitEditorTarget = "ourTeam" | "goalkeeper" | "bib" | null;
 
 /**
- * Patches exactly one token by id, leaving every other token in the array
- * untouched (same array elements by reference for every non-matching
- * token). This is the entire per-player-appearance guarantee: Game Timing
- * appearance editing is genuinely per player — deliberately NOT Standard
- * Slate's known team-wide kit-patch behaviour — because this function can
- * only ever touch the one id it's given. Exported as a standalone pure
- * function (rather than left inline in onSetSelectedTokenKit's closure)
- * specifically so that guarantee is directly unit-testable.
+ * Resolves a TeamKit into PlayerKitEditor's display-value shape. Unlike
+ * Standard Slate's or PR2B's per-player resolvers, there is no fallback
+ * logic to compute here — a TeamKit's three fields are always fully
+ * defined already (see DEFAULT_OUR_TEAM_KIT etc. in teamKit.ts), so this is
+ * a pure reshape, not a resolution. labelMode/initials/name are omitted
+ * entirely (all optional on PlayerKitEditorValue): the Label tab is hidden
+ * for every team-kit editor (`tabs={["base", "pattern"]}` below) since
+ * identity belongs to the player, never the team.
  */
-export function patchTokenKit(
-  tokens: readonly MovementBoardToken[],
-  tokenId: string,
-  patch: TokenKitPatch,
-): MovementBoardToken[] {
-  return tokens.map((t) => (t.id === tokenId ? { ...t, ...patch } : t));
-}
-
-/**
- * Resolves a token's fully-computed PlayerKitEditor display value. Game
- * Timing's own equivalent of Standard Slate's resolveActiveKitEditorValue
- * (TacticalPadLiteClean.tsx) — deliberately a separate, local function
- * rather than a shared import: Slate is frozen/protected, and the two
- * surfaces' underlying player types (TacticalPlayerKitSnapshot vs
- * MovementBoardToken) differ, so there is nothing meaningful to share
- * beyond the fallback shape, which is small enough to duplicate rather than
- * force an artificial coupling between a protected surface and this one.
- *
- * `color` (existing field, always defined) is reused directly as kit base
- * colour, so unlike Slate there is no base-colour fallback to compute here.
- * `label` (existing nickname field) is reused as PlayerKitEditor's `name`.
- */
-export function resolveGameTimingKitEditorValue(token: MovementBoardToken) {
+export function resolveTeamKitEditorValue(kit: TeamKit) {
   return {
-    baseColor: token.color,
-    pattern: token.kitPattern ?? "plain",
-    patternColor: token.kitPatternColor ?? (token.color === "white" ? "black" : "white"),
-    labelMode: token.labelMode ?? "name",
-    initials: token.initials ?? "",
-    name: token.label ?? "",
+    baseColor: kit.baseColor,
+    pattern: kit.pattern,
+    patternColor: kit.patternColor,
   };
 }
 
 /**
- * Positions the appearance overlay centered in the viewport, clamped so it
+ * Positions the kit editor overlay centered in the viewport, clamped so it
  * always stays fully on-screen (including at the 320px-wide end of the
  * required mobile range). Unlike Standard Slate's clampKitEditorPosition,
- * there is no pitch-tap point to anchor near — Game Timing's editor opens
+ * there is no pitch-tap point to anchor near — Game Timing's editors open
  * from the Setup -> Players panel, not a pitch double-tap — so this simply
  * centers it. Uses PlayerKitEditor's own exported sizing constants so the
  * clamp math always matches whatever the component actually renders at.
  */
-export function computeAppearanceEditorPosition(viewport?: { width: number; height: number }): {
+export function computeKitEditorPosition(viewport?: { width: number; height: number }): {
   left: number;
   top: number;
 } {
@@ -980,29 +961,22 @@ export default function TacticalPlaySurface() {
   const [saveFlash, setSaveFlash] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [playersOpen, setPlayersOpen] = useState(false);
-  // PR2B: Setup -> Players -> selected player's PlayerKitEditor overlay.
-  // Independent of setupOpen/playersOpen so closing/reopening Setup doesn't
-  // fight over one boolean; closed automatically whenever selection changes
-  // (see the effect near onSelectedTokenChange wiring) so it never shows
-  // stale controls for a token that's no longer selected.
-  const [appearanceEditorOpen, setAppearanceEditorOpen] = useState(false);
-  const [appearanceEditorTab, setAppearanceEditorTab] = useState<PlayerKitEditorTab>("base");
-  // Closes the appearance overlay whenever the selected token identity
-  // changes (including to null) — prevents it from ever showing stale
-  // controls for a player who is no longer selected.
-  useEffect(() => {
-    setAppearanceEditorOpen(false);
-  }, [selectedToken?.id]);
+  // Team-kit model (replaces PR2B's per-player Appearance editor): kit
+  // belongs to the TEAM, not the player. Three kit slots — Our Team,
+  // Goalkeeper (optional override), Bib/Opposition — each edited through
+  // the shared PlayerKitEditor (appearance tabs only; identity stays with
+  // the existing per-player Nickname field, see onSetSelectedTokenName).
+  const [ourTeamKit, setOurTeamKit] = useState<TeamKit>(DEFAULT_OUR_TEAM_KIT);
+  const [goalkeeperKit, setGoalkeeperKit] = useState<TeamKit | undefined>(DEFAULT_GOALKEEPER_KIT);
+  const [bibKit, setBibKit] = useState<TeamKit>(DEFAULT_BIB_KIT);
+  const [activeKitEditor, setActiveKitEditor] = useState<KitEditorTarget>(null);
+  const [kitEditorTab, setKitEditorTab] = useState<PlayerKitEditorTab>("base");
   const [activeSetupSport, setActiveSetupSport] = useState<SetupSport>("football");
   const [activeSetupSituation, setActiveSetupSituation] = useState<TacticalTemplateSituation | null>(null);
   const [tokenSizeState, setTokenSizeState] = useState<TokenSize>("medium");
   const [, setTokenRendererState] = useState<TokenRendererName>("vision");
-  const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
   const [, setAwayColorState] = useState<PremiumPlayerTokenColor>("red");
   const [awayTokenIds, setAwayTokenIds] = useState<Set<string>>(() => new Set());
-  // Bib Players (training role, players #16-31 by default) — colour is
-  // independent of the team colour above and never touched by onSetPrimaryColor.
-  const [bibColor, setBibColorState] = useState<PremiumPlayerTokenColor>("yellow");
   const [bibTokenIds, setBibTokenIds] = useState<Set<string>>(() => new Set());
   const [routes, setRoutes] = useState<MovementBoardRoute[]>([]);
   const [tokenNumberById, setTokenNumberById] = useState<Record<string, number>>({});
@@ -1603,22 +1577,6 @@ export default function TacticalPlaySurface() {
     setSetupOpen(false);
   };
 
-  const onSetPrimaryColor = (color: PremiumPlayerTokenColor) => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    shell.setTokens(
-      shell.getTokens().map((t) => (t.team === "away" || t.playerRole === "bib" ? t : { ...t, color })),
-    );
-    setPrimaryColorState(color);
-  };
-
-  const onSetBibColor = (color: PremiumPlayerTokenColor) => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    shell.setTokens(shell.getTokens().map((t) => (t.playerRole === "bib" ? { ...t, color } : t)));
-    setBibColorState(color);
-  };
-
   const onSetSelectedTokenName = (rawValue: string) => {
     const shell = shellRef.current;
     if (!shell || !selectedToken) return;
@@ -1633,28 +1591,33 @@ export default function TacticalPlaySurface() {
   };
 
   /**
-   * PR2B per-player kit patch. Deliberately mirrors onSetSelectedTokenName's
-   * exact idiom (map only the one matching `t.id`) rather than
-   * onSetPrimaryColor/onSetBibColor's team-wide idiom above — Game Timing
-   * appearance editing is genuinely per player by design: patching #8 can
-   * never touch #9, because only the token whose id equals
-   * selectedToken.id is ever replaced in the array.
+   * Applies a patch to whichever team-kit is currently open in the editor,
+   * then re-derives every token's rendered kit fields from the full,
+   * updated kit set via applyTeamKitsToTokens (teamKit.ts) — the one and
+   * only place kit state ever reaches a token. Editing Our Team's kit
+   * updates every Our Team outfield token; editing the Goalkeeper kit
+   * updates only the goalkeeper token; editing Bib/Opposition updates only
+   * that side. Never a per-player patch — there is no "selected player" in
+   * this flow at all, matching the locked product model (kit belongs to
+   * the team, identity belongs to the player).
    */
-  const onSetSelectedTokenKit = (patch: TokenKitPatch) => {
+  const onKitPatch = (patch: Partial<TeamKit>) => {
     const shell = shellRef.current;
-    if (!shell || !selectedToken) return;
-    shell.setTokens(patchTokenKit(shell.getTokens(), selectedToken.id, patch));
-    setSelectedToken((previous) =>
-      previous && previous.id === selectedToken.id ? { ...previous, ...patch } : previous,
+    if (!shell || activeKitEditor == null) return;
+    const nextOurTeamKit = activeKitEditor === "ourTeam" ? { ...ourTeamKit, ...patch } : ourTeamKit;
+    const nextGoalkeeperKit =
+      activeKitEditor === "goalkeeper" ? { ...(goalkeeperKit ?? ourTeamKit), ...patch } : goalkeeperKit;
+    const nextBibKit = activeKitEditor === "bib" ? { ...bibKit, ...patch } : bibKit;
+    setOurTeamKit(nextOurTeamKit);
+    setGoalkeeperKit(nextGoalkeeperKit);
+    setBibKit(nextBibKit);
+    shell.setTokens(
+      applyTeamKitsToTokens(shell.getTokens(), {
+        ourTeamKit: nextOurTeamKit,
+        goalkeeperKit: nextGoalkeeperKit,
+        bibKit: nextBibKit,
+      }),
     );
-  };
-
-  const onSetSelectedTokenInitials = (rawValue: string) => {
-    onSetSelectedTokenKit({ initials: sanitizeInitials(rawValue) ?? undefined });
-  };
-
-  const onSetSelectedTokenNickname = (rawValue: string) => {
-    onSetSelectedTokenKit({ label: sanitizeName(rawValue) ?? undefined });
   };
 
   const onSelectBallType = (ballType: BallType) => {
@@ -1823,7 +1786,25 @@ export default function TacticalPlaySurface() {
     const shell = shellRef.current;
     if (!shell) return;
     setPlaysOpen(false);
-    shell.setTokens(scenario.tokens);
+    setActiveKitEditor(null);
+    // Team-kit load: a scenario saved before team kits existed (no
+    // ourTeamKit/goalkeeperKit/bibKit at all) gets sensible defaults seeded
+    // from whatever colour its existing tokens already show, rather than a
+    // migration or a reset — see deriveLegacyTeamKit in teamKit.ts.
+    const loadedOurTeamKit =
+      scenario.ourTeamKit ?? deriveLegacyTeamKit(scenario.tokens, (t) => !isOppositionToken(t), DEFAULT_OUR_TEAM_KIT);
+    const loadedGoalkeeperKit = scenario.goalkeeperKit ?? DEFAULT_GOALKEEPER_KIT;
+    const loadedBibKit = scenario.bibKit ?? deriveLegacyTeamKit(scenario.tokens, isOppositionToken, DEFAULT_BIB_KIT);
+    setOurTeamKit(loadedOurTeamKit);
+    setGoalkeeperKit(loadedGoalkeeperKit);
+    setBibKit(loadedBibKit);
+    shell.setTokens(
+      applyTeamKitsToTokens(scenario.tokens, {
+        ourTeamKit: loadedOurTeamKit,
+        goalkeeperKit: loadedGoalkeeperKit,
+        bibKit: loadedBibKit,
+      }),
+    );
     shell.setRoutes(scenario.routes);
     if (scenario.ballState.carrierId) {
       shell.giveBall(scenario.ballState.carrierId);
@@ -1866,8 +1847,6 @@ export default function TacticalPlaySurface() {
     // load with zero bib players, exactly as before.
     const loadedBibIds = new Set(scenario.tokens.filter((t) => t.playerRole === "bib").map((t) => t.id));
     setBibTokenIds(loadedBibIds);
-    const firstBib = scenario.tokens.find((t) => t.playerRole === "bib");
-    if (firstBib) setBibColorState(firstBib.color);
     const loadedNums: Record<string, number> = {};
     for (const t of scenario.tokens) loadedNums[t.id] = t.number;
     setTokenNumberById(loadedNums);
@@ -1906,6 +1885,9 @@ export default function TacticalPlaySurface() {
       shell.getZones(),
       shell.getTrainingItems(),
       textAnnotations.length > 0 ? textAnnotations : undefined,
+      ourTeamKit,
+      goalkeeperKit,
+      bibKit,
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
@@ -2008,7 +1990,7 @@ export default function TacticalPlaySurface() {
       newTokens.push({
         id,
         number: n,
-        color: primaryColor,
+        color: ourTeamKit.baseColor,
         position: getFormationPos("home", n),
         team: "home",
         playerRole: "team",
@@ -2016,7 +1998,11 @@ export default function TacticalPlaySurface() {
       newNums[id] = n;
     }
     if (newTokens.length === 0) return;
-    shell.setTokens([...tokens, ...newTokens]);
+    // Re-derive kit fields for the combined array (not just append raw
+    // tokens): a newly-filled #1 must immediately wear the goalkeeper kit,
+    // not Our Team's, and every new outfield token gets the team's current
+    // pattern/pattern-colour rather than defaulting to plain.
+    shell.setTokens(applyTeamKitsToTokens([...tokens, ...newTokens], { ourTeamKit, goalkeeperKit, bibKit }));
     setTokenNumberById((prev) => ({ ...prev, ...newNums }));
   };
 
@@ -2044,12 +2030,12 @@ export default function TacticalPlaySurface() {
     const newToken: MovementBoardToken = {
       id: `token-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       number: nextNumber,
-      color: isBib ? bibColor : primaryColor,
+      color: isBib ? bibKit.baseColor : ourTeamKit.baseColor,
       position: { x: 25, y: 50 },
       team: "home",
       playerRole: isBib ? "bib" : "team",
     };
-    shell.setTokens([...tokens, newToken]);
+    shell.setTokens(applyTeamKitsToTokens([...tokens, newToken], { ourTeamKit, goalkeeperKit, bibKit }));
     setTokenNumberById((prev) => ({ ...prev, [newToken.id]: nextNumber }));
     if (isBib) {
       setBibTokenIds((prev) => new Set(prev).add(newToken.id));
@@ -2105,7 +2091,13 @@ export default function TacticalPlaySurface() {
 
     shell.reset();
     const defaultTokens = buildDefaultTokens();
-    shell.setTokens(defaultTokens);
+    shell.setTokens(
+      applyTeamKitsToTokens(defaultTokens, {
+        ourTeamKit: DEFAULT_OUR_TEAM_KIT,
+        goalkeeperKit: DEFAULT_GOALKEEPER_KIT,
+        bibKit: DEFAULT_BIB_KIT,
+      }),
+    );
     shell.setRoutes([]);
     shell.setPassEvents([]);
     for (const shot of shell.getShotEvents()) shell.removeShotEvent(shot.id);
@@ -2125,9 +2117,10 @@ export default function TacticalPlaySurface() {
     setPlaybackSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
     setTokenRendererState("vision");
     setTokenSizeState("medium");
-    setPrimaryColorState("blue");
+    setOurTeamKit(DEFAULT_OUR_TEAM_KIT);
+    setGoalkeeperKit(DEFAULT_GOALKEEPER_KIT);
+    setBibKit(DEFAULT_BIB_KIT);
     setAwayColorState("red");
-    setBibColorState("yellow");
     setSelectedToken(null);
     setRouteCount(0);
     setRoutes([]);
@@ -2152,6 +2145,7 @@ export default function TacticalPlaySurface() {
     setTokenNumberById(Object.fromEntries(defaultTokens.map((token) => [token.id, token.number])));
     setTextAnnotations([]);
     setLabelToolActive(false);
+    setActiveKitEditor(null);
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
@@ -3310,9 +3304,39 @@ export default function TacticalPlaySurface() {
                     Compact
                   </button>
                 </div>
+                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Our Team ({homePlayerCount})</span>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill Our Team</button>
+                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>Clear</button>
+                  <button
+                    type="button"
+                    style={activeKitEditor === "ourTeam" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                    onClick={() => {
+                      setKitEditorTab("base");
+                      setActiveKitEditor((current) => (current === "ourTeam" ? null : "ourTeam"));
+                    }}
+                  >
+                    {activeKitEditor === "ourTeam" ? "Close Kit Editor" : "Edit Kit"}
+                  </button>
+                </div>
+
+                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Goalkeeper</span>
+                  <button
+                    type="button"
+                    style={activeKitEditor === "goalkeeper" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                    onClick={() => {
+                      setKitEditorTab("base");
+                      setActiveKitEditor((current) => (current === "goalkeeper" ? null : "goalkeeper"));
+                    }}
+                  >
+                    {activeKitEditor === "goalkeeper" ? "Close Kit Editor" : "Edit GK Kit"}
+                  </button>
+                </div>
+
                 {selectedToken ? (
                   <div style={MP_ROW}>
-                    <span style={MP_ROW_LABEL}>Nickname (P{selectedToken.number})</span>
+                    <span style={MP_ROW_LABEL}>Player identity (P{selectedToken.number})</span>
                     <input
                       style={{ ...PLAYS_INPUT_STYLE, flex: 1, height: "26px", fontSize: "9px" }}
                       type="text"
@@ -3323,74 +3347,19 @@ export default function TacticalPlaySurface() {
                     />
                   </div>
                 ) : null}
-                {selectedToken ? (
-                  <div style={MP_ROW}>
-                    <span style={MP_ROW_LABEL}>Appearance (P{selectedToken.number})</span>
-                    <button
-                      type="button"
-                      style={appearanceEditorOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                      onClick={() => {
-                        setAppearanceEditorTab("base");
-                        setAppearanceEditorOpen((open) => !open);
-                      }}
-                    >
-                      {appearanceEditorOpen ? "Close Kit Editor" : "Edit Kit"}
-                    </button>
-                  </div>
-                ) : null}
+
                 <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Our Team ({homePlayerCount})</span>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill Our Team</button>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>Clear</button>
-                  {ALL_TOKEN_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      aria-label={c}
-                      style={{
-                        width: "26px",
-                        height: "26px",
-                        minWidth: "26px",
-                        borderRadius: "50%",
-                        background: TOKEN_COLOR_BG[c],
-                        border: "none",
-                        cursor: "pointer",
-                        padding: 0,
-                        flexShrink: 0,
-                        outline: primaryColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
-                        outlineOffset: primaryColor === c ? "2px" : "1px",
-                        boxShadow: primaryColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
-                        transition: "outline-width 0.1s, outline-offset 0.1s",
-                      }}
-                      onClick={() => onSetPrimaryColor(c)}
-                    />
-                  ))}
-                </div>
-                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Bib Players ({bibTokenIds.size})</span>
-                  {ALL_TOKEN_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      aria-label={`Bib ${c}`}
-                      style={{
-                        width: "26px",
-                        height: "26px",
-                        minWidth: "26px",
-                        borderRadius: "50%",
-                        background: TOKEN_COLOR_BG[c],
-                        border: "none",
-                        cursor: "pointer",
-                        padding: 0,
-                        flexShrink: 0,
-                        outline: bibColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
-                        outlineOffset: bibColor === c ? "2px" : "1px",
-                        boxShadow: bibColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
-                        transition: "outline-width 0.1s, outline-offset 0.1s",
-                      }}
-                      onClick={() => onSetBibColor(c)}
-                    />
-                  ))}
+                  <span style={SETUP_SECTION_LABEL_STYLE}>Bib / Opposition ({bibTokenIds.size})</span>
+                  <button
+                    type="button"
+                    style={activeKitEditor === "bib" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                    onClick={() => {
+                      setKitEditorTab("base");
+                      setActiveKitEditor((current) => (current === "bib" ? null : "bib"));
+                    }}
+                  >
+                    {activeKitEditor === "bib" ? "Close Kit Editor" : "Edit Kit"}
+                  </button>
                 </div>
               </>
             ) : null}
@@ -3723,30 +3692,38 @@ export default function TacticalPlaySurface() {
           );
         })() : null}
 
-        {/* PR2B: per-player appearance editor. Reached only via Setup ->
-            Players -> Appearance (the toggle button next to the Nickname
-            field) — never via a pitch tap/double-tap/long-press, so it
-            cannot interfere with the normal tap-to-Movement-Card
-            (PlayerActionSheet) interaction above. */}
-        {appearanceEditorOpen && selectedToken ? (
+        {/* Team-kit editor: Our Team / Goalkeeper / Bib-Opposition. Reached
+            only via Setup -> Players -> Edit Kit — never via a pitch
+            tap/double-tap/long-press, so it cannot interfere with the
+            normal tap-to-Movement-Card (PlayerActionSheet) interaction
+            above. Label tab is hidden (tabs=["base","pattern"]) — identity
+            belongs to the player (see the Player identity Nickname field),
+            never to a kit, so onLabelModeChange/onInitialsChange/
+            onNameChange are unreachable no-ops here. */}
+        {activeKitEditor != null ? (
           <PlayerKitEditor
-            editorKey={selectedToken.id}
-            position={computeAppearanceEditorPosition()}
-            activeTab={appearanceEditorTab}
-            onTabChange={setAppearanceEditorTab}
-            value={resolveGameTimingKitEditorValue(selectedToken)}
-            colorOptions={GAME_TIMING_KIT_COLOR_OPTIONS}
+            editorKey={activeKitEditor}
+            position={computeKitEditorPosition()}
+            activeTab={kitEditorTab}
+            onTabChange={setKitEditorTab}
+            tabs={["base", "pattern"]}
+            value={resolveTeamKitEditorValue(
+              activeKitEditor === "ourTeam"
+                ? ourTeamKit
+                : activeKitEditor === "goalkeeper"
+                  ? goalkeeperKit ?? ourTeamKit
+                  : bibKit,
+            )}
+            colorOptions={TEAM_KIT_COLOR_OPTIONS}
             allowedPatterns={FULL_VISION_PATTERNS}
             patternLabels={PLAYER_KIT_PATTERN_LABEL}
-            onBaseColorChange={(color) => onSetSelectedTokenKit({ color: color as PremiumPlayerTokenColor })}
-            onPatternChange={(pattern) => onSetSelectedTokenKit({ kitPattern: pattern })}
-            onPatternColorChange={(color) =>
-              onSetSelectedTokenKit({ kitPatternColor: color as PremiumPlayerTokenColor })
-            }
-            onLabelModeChange={(mode) => onSetSelectedTokenKit({ labelMode: mode as MovementBoardTokenLabelMode })}
-            onInitialsChange={onSetSelectedTokenInitials}
-            onNameChange={onSetSelectedTokenNickname}
-            onClose={() => setAppearanceEditorOpen(false)}
+            onBaseColorChange={(color) => onKitPatch({ baseColor: color as PremiumPlayerTokenColor })}
+            onPatternChange={(pattern) => onKitPatch({ pattern })}
+            onPatternColorChange={(color) => onKitPatch({ patternColor: color as PremiumPlayerTokenColor })}
+            onLabelModeChange={() => {}}
+            onInitialsChange={() => {}}
+            onNameChange={() => {}}
+            onClose={() => setActiveKitEditor(null)}
           />
         ) : null}
 

@@ -17,16 +17,6 @@ export type BallState = {
   ballType?: BallType;
 };
 
-/**
- * Label displayed on a token when `labelMode` is set. Mirrors
- * PlayerKitEditor's own PlayerKitLabelMode structurally (same 3 literal
- * values) — not imported from it deliberately: this is a shell/engine-layer
- * type and PlayerKitEditor is a UI component one layer up, so duplicating
- * the 3-value literal union here avoids an upward dependency. TypeScript's
- * structural typing means the two stay interchangeable at every call site.
- */
-export type MovementBoardTokenLabelMode = "number" | "initials" | "name";
-
 export type MovementBoardToken = {
   id: string;
   number: number;
@@ -39,23 +29,22 @@ export type MovementBoardToken = {
   team?: "home" | "away";
   // Training role, independent of `team`. Undefined behaves exactly like
   // "team" (today's behaviour) so existing saved Tactical Plays are
-  // unaffected. Bib Players keep a fixed bib colour and are excluded from
-  // team-colour changes — see onSetPrimaryColor in TacticalPlaySurface.
+  // unaffected.
   playerRole?: "team" | "bib";
-  // PR2B kit-appearance fields (PáircVision Vision V3 visual language).
-  // Deliberately per-token, not team-scoped: unlike Standard Slate's known
-  // team-wide kit-patch behaviour, Game Timing's appearance editing patches
-  // exactly one token by id (see onSetSelectedTokenKit in
-  // TacticalPlaySurface.tsx). `color` (above, existing field) already
-  // doubles as kit base colour — no separate kitBaseColor field needed.
-  // `kitPattern` is the canonical 6-value union re-exported from
+  // Kit-appearance fields (PáircVision Vision V3 visual language). Product
+  // model: KIT belongs to the TEAM, not the player — these fields are never
+  // edited per-token by a coach. They are derived, kept in sync with
+  // whichever team-level kit currently applies (Our Team / Goalkeeper
+  // override / Bib-Opposition — see applyTeamKitsToTokens in
+  // features/vision-tactics/teamKit.ts), and exist here only because the
+  // renderer operates per-token. `color` (above, existing field) doubles as
+  // kit base colour, kept in sync the same way — no separate kitBaseColor
+  // field. `kitPattern` is the canonical 6-value union re-exported from
   // createVisionV3PlayerToken.ts (the actual renderer's own type), never
-  // duplicated. All fields optional and additive: a token with none of them
-  // set renders exactly as it did before this feature existed.
+  // duplicated. Both optional and additive: a token with neither set
+  // renders exactly as it did before this feature existed.
   kitPattern?: VisionV3KitPattern;
   kitPatternColor?: PremiumPlayerTokenColor;
-  labelMode?: MovementBoardTokenLabelMode;
-  initials?: string;
 };
 
 export type MovementCanvasTapPayload = {

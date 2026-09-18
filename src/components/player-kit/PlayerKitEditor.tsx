@@ -34,6 +34,15 @@ export type PlayerKitEditorProps<TPattern extends PlayerKitPattern = PlayerKitPa
   position: { left: number; top: number };
   activeTab: PlayerKitEditorTab;
   onTabChange: (tab: PlayerKitEditorTab) => void;
+  /**
+   * Which tabs to show, in order. Optional and additive — every existing
+   * caller (Standard Slate) omits it and keeps rendering all three tabs
+   * exactly as before. Added for callers whose `value`/callbacks represent
+   * something with no per-item identity to label (e.g. a team-level kit,
+   * not a single player) — passing `["base", "pattern"]` hides the Label
+   * tab entirely rather than wiring it to something it doesn't mean.
+   */
+  tabs?: readonly PlayerKitEditorTab[];
   value: PlayerKitEditorValue<TPattern>;
   colorOptions: readonly PlayerKitColorOption[];
   allowedPatterns: readonly TPattern[];
@@ -226,6 +235,7 @@ export function PlayerKitEditor<TPattern extends PlayerKitPattern = PlayerKitPat
   position,
   activeTab,
   onTabChange,
+  tabs,
   value,
   colorOptions,
   allowedPatterns,
@@ -238,6 +248,7 @@ export function PlayerKitEditor<TPattern extends PlayerKitPattern = PlayerKitPat
   onNameChange,
   onClose,
 }: PlayerKitEditorProps<TPattern>) {
+  const visibleTabs = tabs ? TABS.filter((tab) => tabs.includes(tab.id)) : TABS;
   return (
     <div
       style={{ ...EDITOR_STYLE, left: `${position.left}px`, top: `${position.top}px` }}
@@ -248,8 +259,8 @@ export function PlayerKitEditor<TPattern extends PlayerKitPattern = PlayerKitPat
       aria-label="Player kit editor"
     >
       <div style={HEADER_STYLE}>
-        <div style={TAB_ROW_STYLE}>
-          {TABS.map((tab) => (
+        <div style={{ ...TAB_ROW_STYLE, gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
+          {visibleTabs.map((tab) => (
             <button
               key={`kit-editor-tab-${tab.id}`}
               type="button"

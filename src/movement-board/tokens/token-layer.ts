@@ -17,10 +17,9 @@ import {
   createVisionV3Token,
   createUnderPillToken,
 } from "./createCleanTokenAdapters";
-import type { MovementBoardToken, MovementBoardTokenLabelMode } from "../shell/types";
+import type { MovementBoardToken } from "../shell/types";
 import { UNDER_PILL_NORMAL_SHRINK } from "../../engine/pixi/createNamePillPlayerToken";
 import { FULL_VISION_PATTERNS } from "../../components/player-kit/playerKitPatterns";
-import { sanitizeInitials } from "../../engine/pixi/createTacticalPadLiteSurface";
 import type { VisionV3KitPattern } from "../../engine/pixi/createVisionV3PlayerToken";
 
 export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor" | "pill-under";
@@ -120,18 +119,21 @@ function isVisionKitPattern(value: unknown): value is VisionV3KitPattern {
   return typeof value === "string" && (FULL_VISION_PATTERNS as readonly string[]).includes(value);
 }
 
-function sanitizeLabelMode(value: unknown): MovementBoardTokenLabelMode | undefined {
-  return value === "number" || value === "initials" || value === "name" ? value : undefined;
-}
-
 export function sanitizeToken(token: MovementBoardToken): MovementBoardToken {
   return {
     id: token.id.trim(),
     number: Number.isFinite(token.number) ? Math.max(1, Math.floor(token.number)) : 1,
-    // Unchanged from before PR2B: intentionally permissive (trim only), not
-    // sanitizeName's stricter [A-Za-z' -.] charset — existing scenarios'
-    // nickname data predates that charset and must not be silently altered.
+    // Identity field — plain trim only, no charset restriction. Player
+    // identity (number/name/nickname) is never part of a kit; this is the
+    // one place it's edited (see onSetSelectedTokenName in
+    // TacticalPlaySurface.tsx).
     label: token.label?.trim() || undefined,
+    // Kit base colour. Product model: KIT belongs to the TEAM — this field
+    // is never edited per-token by a coach, only kept in sync with
+    // whichever team-level kit currently applies (see applyTeamKitsToTokens
+    // in features/vision-tactics/teamKit.ts). Still sanitized here like
+    // every other field, since this function is the single choke point
+    // every token passes through before rendering.
     color: sanitizeTokenColor(token.color),
     secondaryColor: token.secondaryColor ? sanitizeTokenColor(token.secondaryColor) : undefined,
     position: clampNormalizedPoint(token.position),
@@ -139,56 +141,32 @@ export function sanitizeToken(token: MovementBoardToken): MovementBoardToken {
     isGhost: token.isGhost === true,
     // Pre-existing gap: this function previously dropped `team` on every
     // setTokens() round-trip, silently breaking away-team tracking. Preserved
-    // here (plus the new `playerRole`) since both are plain app-level data —
-    // the renderer below never reads either field.
+    // here (plus `playerRole`) since both are plain app-level data — the
+    // renderer below never reads either field.
     team: token.team === "away" || token.team === "home" ? token.team : undefined,
     playerRole: token.playerRole === "bib" || token.playerRole === "team" ? token.playerRole : undefined,
-    // PR2B kit-appearance fields. Each is whitelisted and sanitized here
-    // exactly like every other field above — this function runs on every
-    // setTokens() round-trip (rebuild/createVisual/setRenderer), and any
-    // field left out gets silently stripped on the very next render pass
-    // (see the `team` comment above, which documents this exact failure
-    // mode from before PR2B). `initials` uses the same sanitizeInitials
-    // Standard Slate's own Kit Editor already relies on (imported, not
-    // duplicated, from createTacticalPadLiteSurface.ts) so the two surfaces
-    // cap/clean initials identically. `label` (above) intentionally keeps
-    // its pre-PR2B, more permissive sanitization — see its own comment.
+    // Kit pattern/pattern-colour — same team-derived, never-per-token-edited
+    // status as `color` above. Whitelisted here for the same reason: a
+    // field left out of this function is silently stripped on the very
+    // next render pass (see the `team` comment above, which documents this
+    // exact failure mode).
     kitPattern: isVisionKitPattern(token.kitPattern) ? token.kitPattern : undefined,
     kitPatternColor: token.kitPatternColor ? sanitizeTokenColor(token.kitPatternColor) : undefined,
-    labelMode: sanitizeLabelMode(token.labelMode),
-    initials: sanitizeInitials(token.initials),
   };
 }
 
-// Defensive upper bound only — never a claim that this much actually
-// renders on the disc. createVisionV3PlayerToken.ts (the shared, protected
-// renderer) caps its own drawn text to 3 characters regardless of mode
-// (safeLabel = label.trim().slice(0, 3) || "?", unchanged by PR2B — exactly
-// Standard Slate's own current on-disc behaviour too). This just keeps an
-// arbitrarily long stored name from being handed to the renderer at all.
-const DISPLAY_NAME_MAX_LENGTH = 20;
-
 /**
  * Resolves what string a token's renderer should actually draw as its
- * label, given `labelMode`. This is deliberately a token-layer (i.e.
- * presentation-boundary) concern, not something createVisionV3Token/
- * createVisionV3PlayerToken compute — mirrors Standard Slate's own
- * resolvePlayerLabel, which lives in the surface file, not the renderer.
- *
- * Legacy default (labelMode undefined, i.e. every token saved before PR2B):
- * treated as "name" — sourced from the existing `label` (nickname) field,
- * same as it always was. No stored data changes and nothing is migrated.
- * Note this does NOT mean the disc shows more than before: the renderer's
- * own 3-character cap (see above) still applies, so a legacy token showing
- * "Doz" on its disc today keeps showing "Doz" — this only decides which
- * field feeds those characters (name vs initials vs number), matching
- * exactly what Standard Slate's own default already resolves to.
+ * label. Deliberately a token-layer (presentation-boundary) concern, not
+ * something createVisionV3Token/createVisionV3PlayerToken compute — mirrors
+ * Standard Slate's own resolvePlayerLabel, which lives in the surface file,
+ * not the renderer. Falling back to "" (rather than the number itself) is
+ * intentional: every renderer's own `label || String(number)` fallback
+ * already shows the jersey number for an empty label, so this only ever
+ * needs to supply what's actually been typed.
  */
 export function resolveTokenDisplayLabel(token: MovementBoardToken): string {
-  const mode = token.labelMode ?? "name";
-  if (mode === "number") return "";
-  if (mode === "initials") return token.initials ?? "";
-  return (token.label ?? "").slice(0, DISPLAY_NAME_MAX_LENGTH);
+  return token.label?.trim() ?? "";
 }
 
 export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {

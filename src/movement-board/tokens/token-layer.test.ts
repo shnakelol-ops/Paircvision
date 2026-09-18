@@ -4,11 +4,16 @@ import { sanitizeToken, resolveTokenDisplayLabel } from "./token-layer";
 import type { MovementBoardToken } from "../shell/types";
 
 /**
- * PR2B coverage for the token-layer presentation boundary: sanitizeToken's
- * whitelist (the exact class of bug documented inline for `team` before
- * this PR — a field left out of sanitizeToken is silently stripped on every
- * setTokens() round-trip) and resolveTokenDisplayLabel's labelMode
- * resolution, including the legacy-scenario default.
+ * Coverage for the token-layer presentation boundary: sanitizeToken's
+ * whitelist (the exact class of bug documented inline for `team` — a field
+ * left out of sanitizeToken is silently stripped on every setTokens()
+ * round-trip) and resolveTokenDisplayLabel's identity-string resolution.
+ *
+ * kitPattern/kitPatternColor are team-derived (see
+ * features/vision-tactics/teamKit.ts) — never edited directly on a token by
+ * a coach — but still whitelisted here since this function is the one
+ * choke point every token passes through before rendering, regardless of
+ * where its fields came from.
  */
 function makeToken(overrides: Partial<MovementBoardToken> = {}): MovementBoardToken {
   return {
@@ -20,7 +25,7 @@ function makeToken(overrides: Partial<MovementBoardToken> = {}): MovementBoardTo
   };
 }
 
-describe("sanitizeToken — PR2B kit-appearance field whitelist", () => {
+describe("sanitizeToken — kit-appearance field whitelist", () => {
   it("preserves a valid kitPattern", () => {
     expect(sanitizeToken(makeToken({ kitPattern: "slash" })).kitPattern).toBe("slash");
   });
@@ -44,35 +49,17 @@ describe("sanitizeToken — PR2B kit-appearance field whitelist", () => {
     expect(sanitizeToken(makeToken()).kitPatternColor).toBeUndefined();
   });
 
-  it("preserves each valid labelMode", () => {
-    for (const mode of ["number", "initials", "name"] as const) {
-      expect(sanitizeToken(makeToken({ labelMode: mode })).labelMode).toBe(mode);
-    }
-  });
-
-  it("drops an invalid labelMode to undefined", () => {
-    expect(sanitizeToken(makeToken({ labelMode: "nickname" as never })).labelMode).toBeUndefined();
-  });
-
-  it("sanitizes initials the same way Standard Slate's Kit Editor does (uppercase, letters only, capped at 3)", () => {
-    expect(sanitizeToken(makeToken({ initials: "  ab1! " })).initials).toBe("AB");
-  });
-
-  it("leaves a token with none of the PR2B fields set producing them all as undefined (legacy scenario shape)", () => {
+  it("leaves a token with neither kit field set producing both as undefined (legacy scenario shape)", () => {
     const sanitized = sanitizeToken(makeToken());
     expect(sanitized.kitPattern).toBeUndefined();
     expect(sanitized.kitPatternColor).toBeUndefined();
-    expect(sanitized.labelMode).toBeUndefined();
-    expect(sanitized.initials).toBeUndefined();
   });
 
-  it("does not alter the pre-existing, more permissive label sanitization (backward compatibility)", () => {
-    // Pre-PR2B behaviour: trim only, no charset restriction — must stay
-    // exactly this permissive so older stored nicknames are never altered.
+  it("label (player identity, never part of a kit) keeps its permissive, charset-unrestricted sanitization — trim only", () => {
     expect(sanitizeToken(makeToken({ label: "  Dozer 123!  " })).label).toBe("Dozer 123!");
   });
 
-  it("still preserves `team` (the pre-existing gap this function's own comment documents) alongside the new fields", () => {
+  it("still preserves `team` (the pre-existing gap this function's own comment documents) alongside the kit fields", () => {
     expect(sanitizeToken(makeToken({ team: "away" })).team).toBe("away");
   });
 
@@ -80,8 +67,6 @@ describe("sanitizeToken — PR2B kit-appearance field whitelist", () => {
     const token = makeToken({
       kitPattern: "hoops",
       kitPatternColor: "black",
-      labelMode: "name",
-      initials: "DZ",
       label: "Dozer",
     });
     const roundTripped = JSON.parse(JSON.stringify(token)) as MovementBoardToken;
@@ -89,36 +74,12 @@ describe("sanitizeToken — PR2B kit-appearance field whitelist", () => {
   });
 });
 
-describe("resolveTokenDisplayLabel — labelMode resolution", () => {
-  it("number mode returns empty string (renderer's own fallback then shows the jersey number)", () => {
-    expect(resolveTokenDisplayLabel(makeToken({ labelMode: "number", label: "Dozer" }))).toBe("");
+describe("resolveTokenDisplayLabel", () => {
+  it("returns the trimmed label", () => {
+    expect(resolveTokenDisplayLabel(makeToken({ label: "Dozer" }))).toBe("Dozer");
   });
 
-  it("initials mode returns the initials field, ignoring label", () => {
-    expect(resolveTokenDisplayLabel(makeToken({ labelMode: "initials", initials: "DZ", label: "Dozer" }))).toBe("DZ");
-  });
-
-  it("initials mode with no initials set returns empty string (falls back to number, same as number mode)", () => {
-    expect(resolveTokenDisplayLabel(makeToken({ labelMode: "initials" }))).toBe("");
-  });
-
-  it("name mode returns the full label field", () => {
-    expect(resolveTokenDisplayLabel(makeToken({ labelMode: "name", label: "Dozer" }))).toBe("Dozer");
-  });
-
-  it("name mode caps at 20 characters (display-time only, never mutates stored data)", () => {
-    const longName = "A".repeat(30);
-    const token = makeToken({ labelMode: "name", label: longName });
-    expect(resolveTokenDisplayLabel(token)).toHaveLength(20);
-    expect(token.label).toHaveLength(30); // stored value itself is untouched
-  });
-
-  it("legacy default (labelMode undefined) shows the existing label in full — not the old 3-character truncation", () => {
-    const legacyToken = makeToken({ label: "Dozer" }); // no labelMode at all, as every pre-PR2B token has
-    expect(resolveTokenDisplayLabel(legacyToken)).toBe("Dozer");
-  });
-
-  it("legacy default with no label at all returns empty string (renderer falls back to the jersey number)", () => {
+  it("returns empty string when there is no label (renderer's own fallback then shows the jersey number)", () => {
     expect(resolveTokenDisplayLabel(makeToken())).toBe("");
   });
 });

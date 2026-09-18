@@ -206,3 +206,26 @@ describe("PlayerKitEditor — reflects current value / owns no state of its own"
     expect(screen.getByText(PLAYER_KIT_PATTERN_LABEL.plain)).toBeTruthy();
   });
 });
+
+describe("PlayerKitEditor — tabs prop (Game Timing team-kit configurability)", () => {
+  it("omitting `tabs` renders all three tabs, exactly as every existing caller (Standard Slate) already gets", () => {
+    render(<PlayerKitEditor {...baseProps({ activeTab: "base" })} />);
+    expect(screen.getByText("Base")).toBeTruthy();
+    expect(screen.getByText("Pattern")).toBeTruthy();
+    expect(screen.getByText("Label")).toBeTruthy();
+  });
+
+  it("passing tabs=['base','pattern'] hides the Label tab entirely — no tab button, no way to reach its content", () => {
+    render(<PlayerKitEditor {...baseProps({ activeTab: "base", tabs: ["base", "pattern"] })} />);
+    expect(screen.getByText("Base")).toBeTruthy();
+    expect(screen.getByText("Pattern")).toBeTruthy();
+    expect(screen.queryByText("Label")).toBeNull();
+  });
+
+  it("a narrower tab set does not affect the callbacks the remaining tabs use", () => {
+    const props = baseProps({ activeTab: "base", tabs: ["base", "pattern"] });
+    render(<PlayerKitEditor {...props} />);
+    fireEvent.click(screen.getByLabelText("Set base colour red"));
+    expect(props.onBaseColorChange).toHaveBeenCalledWith("red");
+  });
+});
