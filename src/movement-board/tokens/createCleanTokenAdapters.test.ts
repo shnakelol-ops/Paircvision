@@ -132,10 +132,28 @@ describe("createVisionV3Token — kitPattern / kitPatternColor reach the Vision 
     const blackAccent = colorsFor("black");
     // Different kitPatternColor inputs must produce different rendered
     // colour sets — proves the parameter reaches the renderer and actually
-    // participates in the draw, without pinning to the exact blended hex
-    // (drawPatternAccent mixes the resolved accent colour toward white
-    // before drawing, so the raw input hex is never drawn unmixed).
+    // participates in the draw.
     expect(whiteAccent).not.toEqual(blackAccent);
+  });
+
+  it("draws an authored kitPatternColor unmixed and fully opaque — a coach's colour pick, not a lighting cue (PR2B pattern-fidelity fix)", () => {
+    // Green is the pitch-blend-sensitive team colour that used to trigger
+    // an extra 20% mix-toward-white on top of the pattern's own 72% alpha,
+    // which is what produced the reported "washed out" pattern. Both must
+    // be gone for an explicit kitPatternColor.
+    const { token } = createVisionV3Token({
+      color: "green",
+      number: 10,
+      radius: TOKEN_RADIUS,
+      kitPattern: "slash",
+      kitPatternColor: "white",
+    });
+    const instructions = token.children
+      .filter((c): c is Graphics => c instanceof Graphics)
+      .flatMap((g) => instructionsOf(g));
+    const whiteFill = instructions.find((inst) => inst.data?.style?.color === 0xffffff);
+    expect(whiteFill).toBeDefined();
+    expect(whiteFill?.data?.style?.alpha).toBe(1);
   });
 });
 

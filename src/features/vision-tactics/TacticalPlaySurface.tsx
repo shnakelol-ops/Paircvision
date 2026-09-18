@@ -418,6 +418,26 @@ const PLAYERS_CARD_TITLE_STYLE: CSSProperties = {
   padding: "0 2px 4px",
 };
 
+// Same "<- Title" back-affordance convention as PlayerKitEditor's own
+// title prop (component-internal, not reused directly here since this
+// button sits in TacticalPlaySurface's own JSX, not inside PlayerKitEditor).
+const PLAYERS_BACK_TO_SETUP_STYLE: CSSProperties = {
+  display: "block",
+  width: "100%",
+  textAlign: "left",
+  background: "none",
+  border: "none",
+  padding: "0 2px 4px",
+  margin: 0,
+  color: "rgba(220, 235, 255, 0.72)",
+  fontSize: "9px",
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  cursor: "pointer",
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
 const PLAYERS_SECTION_STYLE: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -3325,57 +3345,72 @@ export default function TacticalPlaySurface() {
               ))}
             </div>
 
-            <div style={WRAP_PANEL_ROW_STYLE}>
-              <button
-                type="button"
-                style={playersOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => {
-                  setActiveSetupSituation(null);
-                  setPlayersOpen((prev) => {
-                    const next = !prev;
-                    if (!next) setActiveKitEditor(null);
-                    return next;
-                  });
-                }}
-              >
-                Players
-              </button>
-              {SETUP_SITUATIONS.map((situation) => (
-                <button
-                  key={situation.id}
-                  type="button"
-                  style={activeSetupSituation === situation.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => {
-                    setPlayersOpen(false);
-                    setActiveSetupSituation((prev) => prev === situation.id ? null : situation.id);
-                  }}
-                >
-                  {situationDisplayLabel(situation, activeSetupSport)}
-                </button>
-              ))}
-            </div>
-
-            {activeSetupSituation !== null ? (
-              <div style={PANEL_ROW_STYLE}>
-                {TACTICAL_TEMPLATES.filter((t) => (
-                  t.situation === activeSetupSituation &&
-                  (t.sport === activeSetupSport || t.sport === "both")
-                )).map((tmpl) => (
+            {/* Players becomes a focused sub-view: once open, the situation
+                row (Kickout/Attack/Defence/Press) and its templates row are
+                hidden entirely — never shown stacked above/below the
+                Players card — restored only via the card's own "<- Setup"
+                back control. The Sport toggle above stays visible either
+                way, per the requested hierarchy. */}
+            {!playersOpen ? (
+              <>
+                <div style={WRAP_PANEL_ROW_STYLE}>
                   <button
-                    key={tmpl.id}
                     type="button"
                     style={TOOL_BUTTON_STYLE}
-                    onClick={() => onLoadTemplate(tmpl)}
+                    onClick={() => {
+                      setActiveSetupSituation(null);
+                      setPlayersOpen(true);
+                    }}
                   >
-                    {tmpl.name}
+                    Players
                   </button>
-                ))}
-              </div>
-            ) : null}
+                  {SETUP_SITUATIONS.map((situation) => (
+                    <button
+                      key={situation.id}
+                      type="button"
+                      style={activeSetupSituation === situation.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                      onClick={() => {
+                        setPlayersOpen(false);
+                        setActiveSetupSituation((prev) => prev === situation.id ? null : situation.id);
+                      }}
+                    >
+                      {situationDisplayLabel(situation, activeSetupSport)}
+                    </button>
+                  ))}
+                </div>
 
+                {activeSetupSituation !== null ? (
+                  <div style={PANEL_ROW_STYLE}>
+                    {TACTICAL_TEMPLATES.filter((t) => (
+                      t.situation === activeSetupSituation &&
+                      (t.sport === activeSetupSport || t.sport === "both")
+                    )).map((tmpl) => (
+                      <button
+                        key={tmpl.id}
+                        type="button"
+                        style={TOOL_BUTTON_STYLE}
+                        onClick={() => onLoadTemplate(tmpl)}
+                      >
+                        {tmpl.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
 
             {playersOpen && activeKitEditor == null ? (
               <div style={PLAYERS_CARD_STYLE}>
+                <button
+                  type="button"
+                  style={PLAYERS_BACK_TO_SETUP_STYLE}
+                  onClick={() => {
+                    setPlayersOpen(false);
+                    setActiveKitEditor(null);
+                  }}
+                >
+                  ← Setup
+                </button>
                 <span style={PLAYERS_CARD_TITLE_STYLE}>Players</span>
 
                     <div style={PLAYERS_SECTION_STYLE}>
