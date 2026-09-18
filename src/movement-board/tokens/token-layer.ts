@@ -17,12 +17,29 @@ import {
   createVisionV3Token,
   createUnderPillToken,
 } from "./createCleanTokenAdapters";
-import type { MovementBoardToken } from "../shell/types";
+import type { MovementBoardToken, MovementBoardTokenLabelMode } from "../shell/types";
 import { UNDER_PILL_NORMAL_SHRINK } from "../../engine/pixi/createNamePillPlayerToken";
+import { FULL_VISION_PATTERNS } from "../../components/player-kit/playerKitPatterns";
+import { sanitizeInitials } from "../../engine/pixi/createTacticalPadLiteSurface";
+import type { VisionV3KitPattern } from "../../engine/pixi/createVisionV3PlayerToken";
 
 export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor" | "pill-under";
 
-type AnyRendererFn = typeof createJerseyTokenV2;
+// Explicit shared input shape (rather than `typeof createJerseyTokenV2`,
+// which was too narrow) — PR2B added kitPattern/kitPatternColor, consumed
+// only by createVisionV3Token; every other renderer's own declared
+// parameter type simply omits them, which is fine since they're optional
+// here and those renderers never destructure them.
+type RendererInput = {
+  color: PremiumPlayerTokenColor;
+  secondaryColor?: PremiumPlayerTokenColor;
+  number: number;
+  label?: string;
+  radius: number;
+  kitPattern?: VisionV3KitPattern;
+  kitPatternColor?: PremiumPlayerTokenColor;
+};
+type AnyRendererFn = (input: RendererInput) => ReturnType<typeof createJerseyTokenV2>;
 
 const RENDERER_MAP: Record<TokenRendererName, AnyRendererFn> = {
   pixi:            createPixiToken as AnyRendererFn,
@@ -99,10 +116,21 @@ function sanitizeTokenColor(input: PremiumPlayerTokenColor | string): PremiumPla
   return "blue";
 }
 
-function sanitizeToken(token: MovementBoardToken): MovementBoardToken {
+function isVisionKitPattern(value: unknown): value is VisionV3KitPattern {
+  return typeof value === "string" && (FULL_VISION_PATTERNS as readonly string[]).includes(value);
+}
+
+function sanitizeLabelMode(value: unknown): MovementBoardTokenLabelMode | undefined {
+  return value === "number" || value === "initials" || value === "name" ? value : undefined;
+}
+
+export function sanitizeToken(token: MovementBoardToken): MovementBoardToken {
   return {
     id: token.id.trim(),
     number: Number.isFinite(token.number) ? Math.max(1, Math.floor(token.number)) : 1,
+    // Unchanged from before PR2B: intentionally permissive (trim only), not
+    // sanitizeName's stricter [A-Za-z' -.] charset — existing scenarios'
+    // nickname data predates that charset and must not be silently altered.
     label: token.label?.trim() || undefined,
     color: sanitizeTokenColor(token.color),
     secondaryColor: token.secondaryColor ? sanitizeTokenColor(token.secondaryColor) : undefined,
@@ -115,7 +143,52 @@ function sanitizeToken(token: MovementBoardToken): MovementBoardToken {
     // the renderer below never reads either field.
     team: token.team === "away" || token.team === "home" ? token.team : undefined,
     playerRole: token.playerRole === "bib" || token.playerRole === "team" ? token.playerRole : undefined,
+    // PR2B kit-appearance fields. Each is whitelisted and sanitized here
+    // exactly like every other field above — this function runs on every
+    // setTokens() round-trip (rebuild/createVisual/setRenderer), and any
+    // field left out gets silently stripped on the very next render pass
+    // (see the `team` comment above, which documents this exact failure
+    // mode from before PR2B). `initials` uses the same sanitizeInitials
+    // Standard Slate's own Kit Editor already relies on (imported, not
+    // duplicated, from createTacticalPadLiteSurface.ts) so the two surfaces
+    // cap/clean initials identically. `label` (above) intentionally keeps
+    // its pre-PR2B, more permissive sanitization — see its own comment.
+    kitPattern: isVisionKitPattern(token.kitPattern) ? token.kitPattern : undefined,
+    kitPatternColor: token.kitPatternColor ? sanitizeTokenColor(token.kitPatternColor) : undefined,
+    labelMode: sanitizeLabelMode(token.labelMode),
+    initials: sanitizeInitials(token.initials),
   };
+}
+
+// Defensive upper bound only — never a claim that this much actually
+// renders on the disc. createVisionV3PlayerToken.ts (the shared, protected
+// renderer) caps its own drawn text to 3 characters regardless of mode
+// (safeLabel = label.trim().slice(0, 3) || "?", unchanged by PR2B — exactly
+// Standard Slate's own current on-disc behaviour too). This just keeps an
+// arbitrarily long stored name from being handed to the renderer at all.
+const DISPLAY_NAME_MAX_LENGTH = 20;
+
+/**
+ * Resolves what string a token's renderer should actually draw as its
+ * label, given `labelMode`. This is deliberately a token-layer (i.e.
+ * presentation-boundary) concern, not something createVisionV3Token/
+ * createVisionV3PlayerToken compute — mirrors Standard Slate's own
+ * resolvePlayerLabel, which lives in the surface file, not the renderer.
+ *
+ * Legacy default (labelMode undefined, i.e. every token saved before PR2B):
+ * treated as "name" — sourced from the existing `label` (nickname) field,
+ * same as it always was. No stored data changes and nothing is migrated.
+ * Note this does NOT mean the disc shows more than before: the renderer's
+ * own 3-character cap (see above) still applies, so a legacy token showing
+ * "Doz" on its disc today keeps showing "Doz" — this only decides which
+ * field feeds those characters (name vs initials vs number), matching
+ * exactly what Standard Slate's own default already resolves to.
+ */
+export function resolveTokenDisplayLabel(token: MovementBoardToken): string {
+  const mode = token.labelMode ?? "name";
+  if (mode === "number") return "";
+  if (mode === "initials") return token.initials ?? "";
+  return (token.label ?? "").slice(0, DISPLAY_NAME_MAX_LENGTH);
 }
 
 export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
@@ -230,8 +303,10 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
       color: nextToken.color,
       secondaryColor: nextToken.secondaryColor,
       number: nextToken.number,
-      label: nextToken.label,
+      label: resolveTokenDisplayLabel(nextToken),
       radius: TOKEN_RADIUS,
+      kitPattern: nextToken.kitPattern,
+      kitPatternColor: nextToken.kitPatternColor,
     });
     const { token: node, body, shadow, ballMarker } = result;
     const numberLabel = "numberLabel" in result ? result.numberLabel : null;

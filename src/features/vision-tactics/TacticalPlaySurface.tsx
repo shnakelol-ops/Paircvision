@@ -17,6 +17,7 @@ import type {
   MovementBoardMode,
   MovementBoardRoute,
   MovementBoardToken,
+  MovementBoardTokenLabelMode,
   MovementCanvasShellHandle,
   MovementConcept,
   MovementRouteEditState,
@@ -30,6 +31,16 @@ import type {
   ZoneColor,
   ZoneRecord,
 } from "../../movement-board/shell/types";
+import {
+  PlayerKitEditor,
+  type PlayerKitEditorTab,
+  type PlayerKitColorOption,
+  PLAYER_KIT_EDITOR_MARGIN,
+  PLAYER_KIT_EDITOR_MAX_WIDTH,
+  PLAYER_KIT_EDITOR_MAX_HEIGHT_RATIO,
+} from "../../components/player-kit/PlayerKitEditor";
+import { FULL_VISION_PATTERNS, PLAYER_KIT_PATTERN_LABEL } from "../../components/player-kit/playerKitPatterns";
+import { sanitizeInitials, sanitizeName } from "../../engine/pixi/createTacticalPadLiteSurface";
 import { FOOTBALL_ZONE_TEMPLATES, HURLING_ZONE_TEMPLATES, type TacticalZoneTemplate } from "./tacticalZoneTemplates";
 import { ZONE_COLOR_CSS, ZONE_COLOR_OPTIONS } from "./tacticalZoneTypes";
 import {
@@ -795,6 +806,91 @@ const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
   "blue", "red", "green", "yellow", "orange", "purple", "black", "white",
 ];
 
+// Reuses the same 8-colour palette/hex values already shown in the "Our
+// Team"/"Bib Players" swatch rows below (TOKEN_COLOR_BG) — no new colour
+// list. Serves both PlayerKitEditor's base-colour tab (mapped to the
+// existing per-token `color` field) and its pattern-colour tab (mapped to
+// the new `kitPatternColor` field).
+const GAME_TIMING_KIT_COLOR_OPTIONS: readonly PlayerKitColorOption[] = ALL_TOKEN_COLORS.map((id) => ({
+  id,
+  cssColor: TOKEN_COLOR_BG[id],
+}));
+
+export type TokenKitPatch = Partial<
+  Pick<MovementBoardToken, "color" | "kitPattern" | "kitPatternColor" | "labelMode" | "initials" | "label">
+>;
+
+/**
+ * Patches exactly one token by id, leaving every other token in the array
+ * untouched (same array elements by reference for every non-matching
+ * token). This is the entire per-player-appearance guarantee: Game Timing
+ * appearance editing is genuinely per player — deliberately NOT Standard
+ * Slate's known team-wide kit-patch behaviour — because this function can
+ * only ever touch the one id it's given. Exported as a standalone pure
+ * function (rather than left inline in onSetSelectedTokenKit's closure)
+ * specifically so that guarantee is directly unit-testable.
+ */
+export function patchTokenKit(
+  tokens: readonly MovementBoardToken[],
+  tokenId: string,
+  patch: TokenKitPatch,
+): MovementBoardToken[] {
+  return tokens.map((t) => (t.id === tokenId ? { ...t, ...patch } : t));
+}
+
+/**
+ * Resolves a token's fully-computed PlayerKitEditor display value. Game
+ * Timing's own equivalent of Standard Slate's resolveActiveKitEditorValue
+ * (TacticalPadLiteClean.tsx) — deliberately a separate, local function
+ * rather than a shared import: Slate is frozen/protected, and the two
+ * surfaces' underlying player types (TacticalPlayerKitSnapshot vs
+ * MovementBoardToken) differ, so there is nothing meaningful to share
+ * beyond the fallback shape, which is small enough to duplicate rather than
+ * force an artificial coupling between a protected surface and this one.
+ *
+ * `color` (existing field, always defined) is reused directly as kit base
+ * colour, so unlike Slate there is no base-colour fallback to compute here.
+ * `label` (existing nickname field) is reused as PlayerKitEditor's `name`.
+ */
+export function resolveGameTimingKitEditorValue(token: MovementBoardToken) {
+  return {
+    baseColor: token.color,
+    pattern: token.kitPattern ?? "plain",
+    patternColor: token.kitPatternColor ?? (token.color === "white" ? "black" : "white"),
+    labelMode: token.labelMode ?? "name",
+    initials: token.initials ?? "",
+    name: token.label ?? "",
+  };
+}
+
+/**
+ * Positions the appearance overlay centered in the viewport, clamped so it
+ * always stays fully on-screen (including at the 320px-wide end of the
+ * required mobile range). Unlike Standard Slate's clampKitEditorPosition,
+ * there is no pitch-tap point to anchor near — Game Timing's editor opens
+ * from the Setup -> Players panel, not a pitch double-tap — so this simply
+ * centers it. Uses PlayerKitEditor's own exported sizing constants so the
+ * clamp math always matches whatever the component actually renders at.
+ */
+export function computeAppearanceEditorPosition(viewport?: { width: number; height: number }): {
+  left: number;
+  top: number;
+} {
+  const fallbackWidth = PLAYER_KIT_EDITOR_MAX_WIDTH + PLAYER_KIT_EDITOR_MARGIN * 2;
+  const viewportWidth = viewport?.width ?? (typeof window !== "undefined" ? window.innerWidth : fallbackWidth);
+  const viewportHeight = viewport?.height ?? (typeof window !== "undefined" ? window.innerHeight : 640);
+  const editorWidth = Math.min(PLAYER_KIT_EDITOR_MAX_WIDTH, Math.max(0, viewportWidth - PLAYER_KIT_EDITOR_MARGIN * 2));
+  const editorHeight = Math.max(0, viewportHeight * PLAYER_KIT_EDITOR_MAX_HEIGHT_RATIO);
+  const minLeft = PLAYER_KIT_EDITOR_MARGIN;
+  const maxLeft = Math.max(minLeft, viewportWidth - PLAYER_KIT_EDITOR_MARGIN - editorWidth);
+  const minTop = PLAYER_KIT_EDITOR_MARGIN;
+  const maxTop = Math.max(minTop, viewportHeight - PLAYER_KIT_EDITOR_MARGIN - editorHeight);
+  return {
+    left: Math.min(Math.max((viewportWidth - editorWidth) / 2, minLeft), maxLeft),
+    top: Math.min(Math.max(viewportHeight * 0.16, minTop), maxTop),
+  };
+}
+
 // Matches GAELIC_HOME_POSITIONS in movement-board/tokens/default-tokens.ts and
 // TACTICAL_SLATE_GAELIC_FORMATION_BASE in tacticalSlateDefaultPlayers.ts — keep
 // all three in sync if positions are ever adjusted.
@@ -884,10 +980,23 @@ export default function TacticalPlaySurface() {
   const [saveFlash, setSaveFlash] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [playersOpen, setPlayersOpen] = useState(false);
+  // PR2B: Setup -> Players -> selected player's PlayerKitEditor overlay.
+  // Independent of setupOpen/playersOpen so closing/reopening Setup doesn't
+  // fight over one boolean; closed automatically whenever selection changes
+  // (see the effect near onSelectedTokenChange wiring) so it never shows
+  // stale controls for a token that's no longer selected.
+  const [appearanceEditorOpen, setAppearanceEditorOpen] = useState(false);
+  const [appearanceEditorTab, setAppearanceEditorTab] = useState<PlayerKitEditorTab>("base");
+  // Closes the appearance overlay whenever the selected token identity
+  // changes (including to null) — prevents it from ever showing stale
+  // controls for a player who is no longer selected.
+  useEffect(() => {
+    setAppearanceEditorOpen(false);
+  }, [selectedToken?.id]);
   const [activeSetupSport, setActiveSetupSport] = useState<SetupSport>("football");
   const [activeSetupSituation, setActiveSetupSituation] = useState<TacticalTemplateSituation | null>(null);
   const [tokenSizeState, setTokenSizeState] = useState<TokenSize>("medium");
-  const [, setTokenRendererState] = useState<TokenRendererName>("pixi");
+  const [, setTokenRendererState] = useState<TokenRendererName>("vision");
   const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
   const [, setAwayColorState] = useState<PremiumPlayerTokenColor>("red");
   const [awayTokenIds, setAwayTokenIds] = useState<Set<string>>(() => new Set());
@@ -1140,7 +1249,12 @@ export default function TacticalPlaySurface() {
         shellRef.current = shell;
         setMenuMode(toMenuMode(shell.getMode()));
         shell.setSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
-        shell.setTokenRenderer("pixi");
+        // PR2B: activates the already-audited Vision V3 renderer path
+        // (createVisionV3Token, wired but previously never selected) —
+        // brings Game Timing into the PáircVision visual language used by
+        // Standard Slate. Size-matched via GAME_TIMING_VISION_VISUAL_SCALE
+        // in createCleanTokenAdapters.ts; see that file for the derivation.
+        shell.setTokenRenderer("vision");
         shell.setTokenSize("medium");
         setTokenSizeState(shell.getTokenSize());
         const initialRoutes = shell.getRoutes();
@@ -1516,6 +1630,31 @@ export default function TacticalPlaySurface() {
     setSelectedToken((previous) =>
       previous && previous.id === selectedToken.id ? { ...previous, label: nextLabel } : previous,
     );
+  };
+
+  /**
+   * PR2B per-player kit patch. Deliberately mirrors onSetSelectedTokenName's
+   * exact idiom (map only the one matching `t.id`) rather than
+   * onSetPrimaryColor/onSetBibColor's team-wide idiom above — Game Timing
+   * appearance editing is genuinely per player by design: patching #8 can
+   * never touch #9, because only the token whose id equals
+   * selectedToken.id is ever replaced in the array.
+   */
+  const onSetSelectedTokenKit = (patch: TokenKitPatch) => {
+    const shell = shellRef.current;
+    if (!shell || !selectedToken) return;
+    shell.setTokens(patchTokenKit(shell.getTokens(), selectedToken.id, patch));
+    setSelectedToken((previous) =>
+      previous && previous.id === selectedToken.id ? { ...previous, ...patch } : previous,
+    );
+  };
+
+  const onSetSelectedTokenInitials = (rawValue: string) => {
+    onSetSelectedTokenKit({ initials: sanitizeInitials(rawValue) ?? undefined });
+  };
+
+  const onSetSelectedTokenNickname = (rawValue: string) => {
+    onSetSelectedTokenKit({ label: sanitizeName(rawValue) ?? undefined });
   };
 
   const onSelectBallType = (ballType: BallType) => {
@@ -1977,14 +2116,14 @@ export default function TacticalPlaySurface() {
     shell.setSelectedZoneId(null);
     shell.setSelectedTrainingItemId(null);
     shell.setMode("setup");
-    shell.setTokenRenderer("pixi");
+    shell.setTokenRenderer("vision");
     shell.setTokenSize("medium");
     shell.setSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
     shell.setStartPositions();
 
     setMenuMode("move");
     setPlaybackSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
-    setTokenRendererState("pixi");
+    setTokenRendererState("vision");
     setTokenSizeState("medium");
     setPrimaryColorState("blue");
     setAwayColorState("red");
@@ -3184,6 +3323,21 @@ export default function TacticalPlaySurface() {
                     />
                   </div>
                 ) : null}
+                {selectedToken ? (
+                  <div style={MP_ROW}>
+                    <span style={MP_ROW_LABEL}>Appearance (P{selectedToken.number})</span>
+                    <button
+                      type="button"
+                      style={appearanceEditorOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                      onClick={() => {
+                        setAppearanceEditorTab("base");
+                        setAppearanceEditorOpen((open) => !open);
+                      }}
+                    >
+                      {appearanceEditorOpen ? "Close Kit Editor" : "Edit Kit"}
+                    </button>
+                  </div>
+                ) : null}
                 <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
                   <span style={SETUP_SECTION_LABEL_STYLE}>Our Team ({homePlayerCount})</span>
                   <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill Our Team</button>
@@ -3568,6 +3722,34 @@ export default function TacticalPlaySurface() {
             />
           );
         })() : null}
+
+        {/* PR2B: per-player appearance editor. Reached only via Setup ->
+            Players -> Appearance (the toggle button next to the Nickname
+            field) — never via a pitch tap/double-tap/long-press, so it
+            cannot interfere with the normal tap-to-Movement-Card
+            (PlayerActionSheet) interaction above. */}
+        {appearanceEditorOpen && selectedToken ? (
+          <PlayerKitEditor
+            editorKey={selectedToken.id}
+            position={computeAppearanceEditorPosition()}
+            activeTab={appearanceEditorTab}
+            onTabChange={setAppearanceEditorTab}
+            value={resolveGameTimingKitEditorValue(selectedToken)}
+            colorOptions={GAME_TIMING_KIT_COLOR_OPTIONS}
+            allowedPatterns={FULL_VISION_PATTERNS}
+            patternLabels={PLAYER_KIT_PATTERN_LABEL}
+            onBaseColorChange={(color) => onSetSelectedTokenKit({ color: color as PremiumPlayerTokenColor })}
+            onPatternChange={(pattern) => onSetSelectedTokenKit({ kitPattern: pattern })}
+            onPatternColorChange={(color) =>
+              onSetSelectedTokenKit({ kitPatternColor: color as PremiumPlayerTokenColor })
+            }
+            onLabelModeChange={(mode) => onSetSelectedTokenKit({ labelMode: mode as MovementBoardTokenLabelMode })}
+            onInitialsChange={onSetSelectedTokenInitials}
+            onNameChange={onSetSelectedTokenNickname}
+            onClose={() => setAppearanceEditorOpen(false)}
+          />
+        ) : null}
+
         {confirmSheet && <ConfirmSheet {...confirmSheet} />}
       </div>
     </OrientationGate>

@@ -8,6 +8,7 @@ import { createNamePillPlayerToken } from "../../engine/pixi/createNamePillPlaye
 import {
   createVisionV3PlayerToken,
   type VisionV3TeamColor,
+  type VisionV3KitPattern,
 } from "../../engine/pixi/createVisionV3PlayerToken";
 import type { PremiumPlayerTokenColor } from "./createPremiumPlayerToken";
 
@@ -52,6 +53,12 @@ type CleanAdapterInput = {
   number: number;
   label?: string;
   radius: number;
+  // PR2B: consumed only by createVisionV3Token below. The other adapters in
+  // this file (pixi/phosphor/pill-under) simply don't destructure these, so
+  // they are unaffected — Standard Slate never calls through this file at
+  // all (it calls createVisionV3PlayerToken directly).
+  kitPattern?: VisionV3KitPattern;
+  kitPatternColor?: PremiumPlayerTokenColor;
 };
 
 type CleanAdapterOutput = {
@@ -109,17 +116,64 @@ export function createUnderPillToken({ color, number, label, radius }: CleanAdap
   return { token, body: token, shadow, ballMarker };
 }
 
-export function createVisionV3Token({ color, secondaryColor, number, label, radius }: CleanAdapterInput): CleanAdapterOutput {
-  const safeLabel = (label?.trim().slice(0, 3) ?? "") || String(number);
+// Game Timing's Vision V3 tokens are corrected here to match Standard
+// Slate's exact on-screen token size. Both surfaces share the identical
+// underlying geometry constants (Game Timing's TOKEN_RADIUS in
+// token-layer.ts and Slate's PLAYER_RADIUS are both 4.1; both go through
+// the same createVisionV3PlayerToken, whose internal VISION_V3_SIZE_SCALE
+// is 1.06 either way) — so reusing Slate's own visual-scale correction
+// (TACTICAL_PLAYER_VISUAL_SCALE = 0.8 in createTacticalPadLiteSurface.ts,
+// applied identically to both `radius` and `scale`) reproduces Slate's
+// rendered size exactly, by construction, not approximation:
+//   naive (radius=4.1, scale=1):      max(2.8,4.1)*1.06*1        = 4.346
+//   Slate (radius=4.1*0.8, scale=0.8): max(2.8,3.28)*1.06*0.8    = 2.781
+//   Game Timing with this constant:   max(2.8,4.1*0.8)*1.06*0.8 = 2.781
+// i.e. naively activating Vision V3 without this constant would render
+// Game Timing's tokens ~56% larger in radius than Standard Slate's (4.346
+// vs 2.781). This is a presentation-layer-only correction: it does not
+// touch TOKEN_RADIUS, hit-testing (setTouchHitArea in token-layer.ts
+// derives its hit radius from the unscaled TOKEN_RADIUS constant,
+// independent of this value), the small/medium/large size-mode
+// multiplier, or any world coordinate.
+const GAME_TIMING_VISION_VISUAL_SCALE = 0.8;
+
+export function createVisionV3Token({
+  color,
+  secondaryColor,
+  number,
+  label,
+  radius,
+  kitPattern,
+  kitPatternColor,
+}: CleanAdapterInput): CleanAdapterOutput {
+  // No length slice here (unlike the other adapters in this file) — not
+  // because the disc shows more text, but because createVisionV3PlayerToken
+  // itself already caps its drawn text to 3 characters
+  // (safeLabel = label.trim().slice(0, 3) || "?", untouched by PR2B — the
+  // same limit Standard Slate's own Vision V3 tokens have always rendered
+  // under). Re-slicing here would just be redundant. The caller
+  // (token-layer.ts's resolveTokenDisplayLabel) applies its own bound
+  // before this adapter is ever reached, purely as a defensive cap on an
+  // arbitrarily long stored name — not a claim that more of it renders.
+  const safeLabel = label?.trim() || String(number);
   const teamColor = V3_TEAM_COLOR[color];
   const secHex = secondaryColor != null ? V3_SECONDARY_HEX[secondaryColor] : undefined;
+  const kitPatternColorHex = kitPatternColor != null ? V3_SECONDARY_HEX[kitPatternColor] : undefined;
+  const visualRadius = radius * GAME_TIMING_VISION_VISUAL_SCALE;
   const { token, shadow } = createVisionV3PlayerToken({
     label: safeLabel,
     teamColor,
     style: secHex != null ? { secondaryColor: secHex } : undefined,
-    radius,
+    radius: visualRadius,
+    scale: GAME_TIMING_VISION_VISUAL_SCALE,
+    kitPattern,
+    kitPatternColor: kitPatternColorHex,
   });
-  const safeRadius = Math.max(2.8, radius);
+  // Ball marker geometry uses the same corrected radius so it stays
+  // correctly proportioned/positioned relative to the (now Slate-matched)
+  // disc — it is added as a child of `token` below, so it is carried by
+  // the same outer container scale automatically.
+  const safeRadius = Math.max(2.8, visualRadius);
   const discRadius = safeRadius * 1.06;
   const ballMarker = new Graphics();
   ballMarker

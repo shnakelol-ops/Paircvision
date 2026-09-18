@@ -3,6 +3,7 @@ import type { NormalizedPoint } from "../coordinates/normalization";
 import type { PremiumPlayerTokenColor } from "../tokens/createPremiumPlayerToken";
 import type { TokenSize, TokenRendererName } from "../tokens/token-layer";
 import type { RouteVisibilityMode } from "../routes/route-visibility";
+import type { VisionV3KitPattern } from "../../engine/pixi/createVisionV3PlayerToken";
 
 export type { PremiumPlayerTokenColor };
 export type { TokenSize, TokenRendererName };
@@ -15,6 +16,16 @@ export type BallState = {
   position?: NormalizedPoint;
   ballType?: BallType;
 };
+
+/**
+ * Label displayed on a token when `labelMode` is set. Mirrors
+ * PlayerKitEditor's own PlayerKitLabelMode structurally (same 3 literal
+ * values) — not imported from it deliberately: this is a shell/engine-layer
+ * type and PlayerKitEditor is a UI component one layer up, so duplicating
+ * the 3-value literal union here avoids an upward dependency. TypeScript's
+ * structural typing means the two stay interchangeable at every call site.
+ */
+export type MovementBoardTokenLabelMode = "number" | "initials" | "name";
 
 export type MovementBoardToken = {
   id: string;
@@ -31,6 +42,20 @@ export type MovementBoardToken = {
   // unaffected. Bib Players keep a fixed bib colour and are excluded from
   // team-colour changes — see onSetPrimaryColor in TacticalPlaySurface.
   playerRole?: "team" | "bib";
+  // PR2B kit-appearance fields (PáircVision Vision V3 visual language).
+  // Deliberately per-token, not team-scoped: unlike Standard Slate's known
+  // team-wide kit-patch behaviour, Game Timing's appearance editing patches
+  // exactly one token by id (see onSetSelectedTokenKit in
+  // TacticalPlaySurface.tsx). `color` (above, existing field) already
+  // doubles as kit base colour — no separate kitBaseColor field needed.
+  // `kitPattern` is the canonical 6-value union re-exported from
+  // createVisionV3PlayerToken.ts (the actual renderer's own type), never
+  // duplicated. All fields optional and additive: a token with none of them
+  // set renders exactly as it did before this feature existed.
+  kitPattern?: VisionV3KitPattern;
+  kitPatternColor?: PremiumPlayerTokenColor;
+  labelMode?: MovementBoardTokenLabelMode;
+  initials?: string;
 };
 
 export type MovementCanvasTapPayload = {
