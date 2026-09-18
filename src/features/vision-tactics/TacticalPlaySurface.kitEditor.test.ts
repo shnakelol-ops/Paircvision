@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveTeamKitEditorValue, computeKitEditorPosition } from "./TacticalPlaySurface";
+import { resolveTeamKitEditorValue, computeKitEditorPosition, TEAM_KIT_COLOR_OPTIONS } from "./TacticalPlaySurface";
+import { KIT_COLOR_NUMERIC } from "../../engine/pixi/createTacticalPadLiteSurface";
 import type { TeamKit } from "./teamKit";
 
 /**
@@ -33,6 +34,32 @@ describe("resolveTeamKitEditorValue — pure reshape, no fallback logic", () => 
     expect(value).not.toHaveProperty("labelMode");
     expect(value).not.toHaveProperty("initials");
     expect(value).not.toHaveProperty("name");
+  });
+});
+
+describe("TEAM_KIT_COLOR_OPTIONS — swatch preview colours (PR2B revision 4 forensic-audit fix)", () => {
+  // Forensic audit proved the Kit Editor's own swatch preview colours (fed
+  // to PlayerKitEditor via TEAM_KIT_COLOR_OPTIONS' cssColor, for BOTH the
+  // base-colour and pattern-colour grids — one shared source) used to carry
+  // baked-in alpha (0.78-0.90 on every entry), which composited against the
+  // app's own opaque page background and read as a dark/muted palette even
+  // though the underlying RGB was otherwise correct. This guards against
+  // that regressing: every swatch colour must be a fully opaque `#rrggbb`
+  // string with no alpha channel, and must match Standard Slate's own
+  // canonical KIT_COLOR_NUMERIC value exactly — one PáircVision palette,
+  // not a second, independently-drifting one.
+  it("every swatch colour is an opaque #rrggbb hex string — no rgba(), no alpha channel", () => {
+    for (const option of TEAM_KIT_COLOR_OPTIONS) {
+      expect(option.cssColor).toMatch(/^#[0-9a-f]{6}$/i);
+    }
+  });
+
+  it("every swatch colour matches Standard Slate's canonical KIT_COLOR_NUMERIC value exactly", () => {
+    for (const option of TEAM_KIT_COLOR_OPTIONS) {
+      const canonical = KIT_COLOR_NUMERIC[option.id as keyof typeof KIT_COLOR_NUMERIC];
+      const expectedHex = `#${canonical.toString(16).padStart(6, "0")}`;
+      expect(option.cssColor.toLowerCase()).toBe(expectedHex);
+    }
   });
 });
 

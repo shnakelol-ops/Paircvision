@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
+import { KIT_COLOR_NUMERIC } from "../../engine/pixi/createTacticalPadLiteSurface";
 import OrientationGate, { usePortraitOrientation } from "../../components/OrientationGate";
 import VisionStadiumBackground from "../../components/VisionStadiumBackground";
 import { PitchWatermark } from "../../components/PitchWatermark";
@@ -529,15 +530,32 @@ const EDIT_RUN_DONE_STYLE: CSSProperties = {
 };
 
 
+function kitColorNumericToCssHex(value: number): string {
+  return `#${value.toString(16).padStart(6, "0")}`;
+}
+
+// Forensic audit (PR2B revision 4): this used to be a hand-maintained table
+// of translucent rgba(...) values (alpha 0.78-0.90 on every entry),
+// completely separate from — and never touched by — the Vision V3 pitch-
+// token colour fix in revision 3. Composited against the app's own opaque
+// page background (#root), that baked-in alpha was the entire cause of the
+// Kit Editor's swatches (both base-colour and pattern-colour, since both
+// grids read from TEAM_KIT_COLOR_OPTIONS below) reading visibly darker/
+// muted than the pitch tokens and than Standard Slate's own Kit Editor,
+// which has never had alpha in its swatch source. Deriving this from the
+// same canonical KIT_COLOR_NUMERIC palette Standard Slate and the (already
+// fixed) Vision V3 pitch-token adapter both use — opaque, zero alpha —
+// keeps exactly one PáircVision palette feeding all three: canonical kit
+// colour -> pitch Vision token AND Kit Editor swatch, same underlying RGB.
 const TOKEN_COLOR_BG: Record<PremiumPlayerTokenColor, string> = {
-  blue:   "rgba(37, 99, 235, 0.78)",
-  red:    "rgba(220, 38, 38, 0.78)",
-  yellow: "rgba(242, 201, 76, 0.88)",
-  black:  "rgba(17, 24, 39, 0.90)",
-  green:  "rgba(22, 163, 74, 0.78)",
-  orange: "rgba(234, 88, 12, 0.78)",
-  purple: "rgba(124, 58, 237, 0.78)",
-  white:  "rgba(241, 245, 249, 0.88)",
+  blue:   kitColorNumericToCssHex(KIT_COLOR_NUMERIC.blue),
+  red:    kitColorNumericToCssHex(KIT_COLOR_NUMERIC.red),
+  yellow: kitColorNumericToCssHex(KIT_COLOR_NUMERIC.yellow),
+  black:  kitColorNumericToCssHex(KIT_COLOR_NUMERIC.black),
+  green:  kitColorNumericToCssHex(KIT_COLOR_NUMERIC.green),
+  orange: kitColorNumericToCssHex(KIT_COLOR_NUMERIC.orange),
+  purple: kitColorNumericToCssHex(KIT_COLOR_NUMERIC.purple),
+  white:  kitColorNumericToCssHex(KIT_COLOR_NUMERIC.white),
 };
 
 const SEQ_PANEL_STYLE: CSSProperties = {
@@ -861,7 +879,7 @@ const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
 // — no new colour list. Serves both PlayerKitEditor's base-colour tab and
 // its pattern-colour tab for all three team-kit editors (Our Team,
 // Goalkeeper, Bib/Opposition).
-const TEAM_KIT_COLOR_OPTIONS: readonly PlayerKitColorOption[] = ALL_TOKEN_COLORS.map((id) => ({
+export const TEAM_KIT_COLOR_OPTIONS: readonly PlayerKitColorOption[] = ALL_TOKEN_COLORS.map((id) => ({
   id,
   cssColor: TOKEN_COLOR_BG[id],
 }));
