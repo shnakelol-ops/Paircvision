@@ -374,7 +374,13 @@ const PLAYER_ORIGIN_LINE_COLOR_BY_TEAM: Record<WhiteboardTokenColor, number> = {
   yellow: 0xfacc15,
   black: 0x94a3b8,
 };
-const KIT_COLOR_NAMES = [
+// Exported (additive-only, zero Slate behavior change) so Game Timing's
+// Vision V3 adapter (createCleanTokenAdapters.ts) can consume the exact same
+// canonical numeric values Slate itself always passes as explicit style
+// overrides — instead of silently falling back to Vision's own internal
+// per-team defaults, which don't match this palette. See PR2B colour-fidelity
+// audit: this is the single source of truth both surfaces must render from.
+export const KIT_COLOR_NAMES = [
   "navy",
   "blue",
   "sky",
@@ -391,7 +397,7 @@ const KIT_COLOR_NAMES = [
   "grey",
   "black",
 ] as const;
-const KIT_COLOR_NUMERIC: Record<(typeof KIT_COLOR_NAMES)[number], number> = {
+export const KIT_COLOR_NUMERIC: Record<(typeof KIT_COLOR_NAMES)[number], number> = {
   navy: 0x1e3a8a,
   blue: 0x2563eb,
   sky: 0x0ea5e9,

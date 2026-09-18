@@ -388,6 +388,49 @@ const WRAP_PANEL_ROW_STYLE: CSSProperties = {
   borderRadius: "18px",
 };
 
+// PR2B revision 3: the Players section used to be a stack of independent
+// floating pill rows (each its own PANEL_ROW_STYLE/WRAP_PANEL_ROW_STYLE),
+// which read as visually fragmented on mobile. This is one bounded card —
+// a single border/background/shadow around every Players sub-section —
+// with the sub-sections as plain internal rows separated by a hairline
+// divider, not separate floating pieces. Same visual language
+// (colour/blur/radius family) as PANEL_ROW_STYLE, just applied once to the
+// whole card instead of per-row.
+const PLAYERS_CARD_STYLE: CSSProperties = {
+  borderRadius: "16px",
+  border: "1px solid rgba(180, 210, 255, 0.18)",
+  background: "rgba(6, 14, 30, 0.86)",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+  boxShadow: "0 10px 24px rgba(0, 4, 14, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+  display: "grid",
+  gap: "2px",
+  padding: "8px",
+};
+
+const PLAYERS_CARD_TITLE_STYLE: CSSProperties = {
+  fontSize: "9px",
+  fontWeight: 800,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+  color: "rgba(220, 235, 255, 0.78)",
+  padding: "0 2px 4px",
+};
+
+const PLAYERS_SECTION_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "5px",
+  flexWrap: "wrap",
+  padding: "5px 2px",
+};
+
+const PLAYERS_SECTION_DIVIDER_STYLE: CSSProperties = {
+  height: "1px",
+  background: "rgba(180, 210, 255, 0.10)",
+  margin: "1px 0",
+};
+
 const TOOL_BUTTON_STYLE: CSSProperties = {
   height: "40px",
   minWidth: "68px",
@@ -845,13 +888,17 @@ export function resolveTeamKitEditorValue(kit: TeamKit) {
 }
 
 /**
- * Positions the kit editor overlay centered in the viewport, clamped so it
- * always stays fully on-screen (including at the 320px-wide end of the
- * required mobile range). Unlike Standard Slate's clampKitEditorPosition,
- * there is no pitch-tap point to anchor near — Game Timing's editors open
- * from the Setup -> Players panel, not a pitch double-tap — so this simply
- * centers it. Uses PlayerKitEditor's own exported sizing constants so the
- * clamp math always matches whatever the component actually renders at.
+ * Positions the kit editor so it lands in the same bottom-right corner as
+ * the Setup -> Players card it is nested inside of (PR2B revision 3),
+ * clamped so it always stays fully on-screen (including at the 320px-wide
+ * end of the required mobile range). Unlike Standard Slate's
+ * clampKitEditorPosition, there is no pitch-tap point to anchor near —
+ * Game Timing's editors open from the Setup -> Players panel, not a pitch
+ * double-tap — so this anchors to that panel's own corner instead of
+ * centering, so the editor reads as continuing from where it was opened
+ * rather than an unrelated popup. Uses PlayerKitEditor's own exported
+ * sizing constants so the clamp math always matches whatever the
+ * component actually renders at.
  */
 export function computeKitEditorPosition(viewport?: { width: number; height: number }): {
   left: number;
@@ -866,9 +913,18 @@ export function computeKitEditorPosition(viewport?: { width: number; height: num
   const maxLeft = Math.max(minLeft, viewportWidth - PLAYER_KIT_EDITOR_MARGIN - editorWidth);
   const minTop = PLAYER_KIT_EDITOR_MARGIN;
   const maxTop = Math.max(minTop, viewportHeight - PLAYER_KIT_EDITOR_MARGIN - editorHeight);
+  // Same corner SETUP_PANEL_STYLE opens from (right/bottom-anchored); the
+  // extra 46px above the bottom clamp leaves room for the Setup toggle row
+  // and playback controls below, matching that panel's own bottom offset.
+  // The extra 16px pulled in from maxLeft is a safety margin for
+  // PlayerKitEditor's own padding+border (12px + 2px = 14px), which
+  // `editorWidth` above doesn't include — flush-anchoring to the exact
+  // computed edge measurably clipped the editor's true rendered box by
+  // ~14px in Playwright QA (verified: 320-412px widths all overflowed by
+  // 4-14px before this margin was added).
   return {
-    left: Math.min(Math.max((viewportWidth - editorWidth) / 2, minLeft), maxLeft),
-    top: Math.min(Math.max(viewportHeight * 0.16, minTop), maxTop),
+    left: Math.max(minLeft, maxLeft - 16),
+    top: Math.min(Math.max(maxTop - 46, minTop), maxTop),
   };
 }
 
@@ -1540,7 +1596,15 @@ export default function TacticalPlaySurface() {
 
   const onSetupPress = () => {
     setIsControlsOpen(false);
-    setSetupOpen((prev) => !prev);
+    const next = !setupOpen;
+    setSetupOpen(next);
+    if (!next) {
+      // Collapsing Setup entirely closes whatever was nested inside
+      // Players too — the kit editor never outlives the panel it's
+      // nested inside of (PR2B revision 3).
+      setPlayersOpen(false);
+      setActiveKitEditor(null);
+    }
     setPlaysOpen(false);
   };
 
@@ -3249,7 +3313,11 @@ export default function TacticalPlaySurface() {
                 style={playersOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                 onClick={() => {
                   setActiveSetupSituation(null);
-                  setPlayersOpen((prev) => !prev);
+                  setPlayersOpen((prev) => {
+                    const next = !prev;
+                    if (!next) setActiveKitEditor(null);
+                    return next;
+                  });
                 }}
               >
                 Players
@@ -3288,82 +3356,148 @@ export default function TacticalPlaySurface() {
             ) : null}
 
 
-            {playersOpen ? (
-              <>
-                <div style={PANEL_ROW_STYLE}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Token Size</span>
-                  <button
-                    type="button"
-                    style={tokenSizeState === "small" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                    onClick={() => {
-                      const next: TokenSize = tokenSizeState === "small" ? "medium" : "small";
-                      shellRef.current?.setTokenSize(next);
-                      setTokenSizeState(next);
-                    }}
-                  >
-                    Compact
-                  </button>
-                </div>
-                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Our Team ({homePlayerCount})</span>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill Our Team</button>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>Clear</button>
-                  <button
-                    type="button"
-                    style={activeKitEditor === "ourTeam" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                    onClick={() => {
-                      setKitEditorTab("base");
-                      setActiveKitEditor((current) => (current === "ourTeam" ? null : "ourTeam"));
-                    }}
-                  >
-                    {activeKitEditor === "ourTeam" ? "Close Kit Editor" : "Edit Kit"}
-                  </button>
-                </div>
+            {playersOpen && activeKitEditor == null ? (
+              <div style={PLAYERS_CARD_STYLE}>
+                <span style={PLAYERS_CARD_TITLE_STYLE}>Players</span>
 
-                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Goalkeeper</span>
-                  <button
-                    type="button"
-                    style={activeKitEditor === "goalkeeper" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                    onClick={() => {
-                      setKitEditorTab("base");
-                      setActiveKitEditor((current) => (current === "goalkeeper" ? null : "goalkeeper"));
-                    }}
-                  >
-                    {activeKitEditor === "goalkeeper" ? "Close Kit Editor" : "Edit GK Kit"}
-                  </button>
-                </div>
+                    <div style={PLAYERS_SECTION_STYLE}>
+                      <span style={SETUP_SECTION_LABEL_STYLE}>Our Team ({homePlayerCount})</span>
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill Our Team</button>
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>Clear</button>
+                      <button
+                        type="button"
+                        style={TOOL_BUTTON_STYLE}
+                        onClick={() => {
+                          setKitEditorTab("base");
+                          setActiveKitEditor("ourTeam");
+                        }}
+                      >
+                        Edit Kit
+                      </button>
+                    </div>
+                    <div style={PLAYERS_SECTION_DIVIDER_STYLE} />
 
-                {selectedToken ? (
-                  <div style={MP_ROW}>
-                    <span style={MP_ROW_LABEL}>Player identity (P{selectedToken.number})</span>
-                    <input
-                      style={{ ...PLAYS_INPUT_STYLE, flex: 1, height: "26px", fontSize: "9px" }}
-                      type="text"
-                      placeholder="Jordan, Dozer, Pat…"
-                      value={selectedToken.label ?? ""}
-                      maxLength={20}
-                      onChange={(e) => onSetSelectedTokenName(e.target.value)}
-                    />
-                  </div>
-                ) : null}
+                    <div style={PLAYERS_SECTION_STYLE}>
+                      <span style={SETUP_SECTION_LABEL_STYLE}>Goalkeeper</span>
+                      <button
+                        type="button"
+                        style={TOOL_BUTTON_STYLE}
+                        onClick={() => {
+                          setKitEditorTab("base");
+                          setActiveKitEditor("goalkeeper");
+                        }}
+                      >
+                        Edit GK Kit
+                      </button>
+                    </div>
+                    <div style={PLAYERS_SECTION_DIVIDER_STYLE} />
 
-                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Bib / Opposition ({bibTokenIds.size})</span>
-                  <button
-                    type="button"
-                    style={activeKitEditor === "bib" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                    onClick={() => {
-                      setKitEditorTab("base");
-                      setActiveKitEditor((current) => (current === "bib" ? null : "bib"));
-                    }}
-                  >
-                    {activeKitEditor === "bib" ? "Close Kit Editor" : "Edit Kit"}
-                  </button>
-                </div>
-              </>
+                    {selectedToken ? (
+                      <>
+                        <div style={{ ...MP_ROW, padding: "5px 2px" }}>
+                          <span style={MP_ROW_LABEL}>Player identity (P{selectedToken.number})</span>
+                          <input
+                            style={{ ...PLAYS_INPUT_STYLE, flex: 1, height: "26px", fontSize: "9px" }}
+                            type="text"
+                            placeholder="Jordan, Dozer, Pat…"
+                            value={selectedToken.label ?? ""}
+                            maxLength={20}
+                            onChange={(e) => onSetSelectedTokenName(e.target.value)}
+                          />
+                        </div>
+                        <div style={PLAYERS_SECTION_DIVIDER_STYLE} />
+                      </>
+                    ) : null}
+
+                    <div style={PLAYERS_SECTION_STYLE}>
+                      <span style={SETUP_SECTION_LABEL_STYLE}>Bib / Opposition ({bibTokenIds.size})</span>
+                      <button
+                        type="button"
+                        style={TOOL_BUTTON_STYLE}
+                        onClick={() => {
+                          setKitEditorTab("base");
+                          setActiveKitEditor("bib");
+                        }}
+                      >
+                        Edit Kit
+                      </button>
+                    </div>
+                    <div style={PLAYERS_SECTION_DIVIDER_STYLE} />
+
+                    <div style={PLAYERS_SECTION_STYLE}>
+                      <span style={SETUP_SECTION_LABEL_STYLE}>Token Size</span>
+                      <button
+                        type="button"
+                        style={tokenSizeState === "small" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                        onClick={() => {
+                          const next: TokenSize = tokenSizeState === "small" ? "medium" : "small";
+                          shellRef.current?.setTokenSize(next);
+                          setTokenSizeState(next);
+                        }}
+                      >
+                        Compact
+                      </button>
+                    </div>
+              </div>
             ) : null}
           </div>
+        ) : null}
+
+        {/* Nested team-kit editor (Our Team / Goalkeeper / Bib-Opposition).
+            Reached only via Setup -> Players -> Edit Kit, and only ever
+            shown in place of the Players row-list above, never alongside
+            it (the row-list's own `div` above is gated on
+            `activeKitEditor == null`, this one on `activeKitEditor !=
+            null` — mutually exclusive by construction). Deliberately
+            rendered as a sibling here rather than as a DOM child of
+            PLAYERS_CARD_STYLE: that card uses `backdropFilter`, which (like
+            `transform`) establishes a new containing block for
+            `position:fixed` descendants — nesting this editor inside it
+            broke its fixed positioning relative to the real viewport
+            (confirmed via Playwright: computed `top` matched
+            computeKitEditorPosition's value exactly, but the rendered
+            on-screen position was offset by the card's own scroll
+            container). Rendering it here, in a plain (non-filtered)
+            ancestor, keeps it correctly viewport-anchored while still
+            reading as "replacing the Players body" to the coach, since the
+            two are never visible at once and computeKitEditorPosition
+            anchors it to the same bottom-right corner the Players card
+            itself opens from. Label tab is hidden (tabs=["base","pattern"])
+            — identity belongs to the player (see the Player identity
+            Nickname field), never to a kit, so onLabelModeChange/
+            onInitialsChange/onNameChange are unreachable no-ops here. */}
+        {playersOpen && activeKitEditor != null ? (
+          <PlayerKitEditor
+            editorKey={activeKitEditor}
+            position={computeKitEditorPosition()}
+            activeTab={kitEditorTab}
+            onTabChange={setKitEditorTab}
+            tabs={["base", "pattern"]}
+            title={
+              activeKitEditor === "ourTeam"
+                ? "Our Team Kit"
+                : activeKitEditor === "goalkeeper"
+                  ? "Goalkeeper Kit"
+                  : "Bib / Opposition Kit"
+            }
+            value={resolveTeamKitEditorValue(
+              activeKitEditor === "ourTeam"
+                ? ourTeamKit
+                : activeKitEditor === "goalkeeper"
+                  ? goalkeeperKit ?? ourTeamKit
+                  : bibKit,
+            )}
+            colorOptions={TEAM_KIT_COLOR_OPTIONS}
+            allowedPatterns={FULL_VISION_PATTERNS}
+            patternLabels={PLAYER_KIT_PATTERN_LABEL}
+            onBaseColorChange={(color) => onKitPatch({ baseColor: color as PremiumPlayerTokenColor })}
+            onPatternChange={(pattern) => onKitPatch({ pattern })}
+            onPatternColorChange={(color) => onKitPatch({ patternColor: color as PremiumPlayerTokenColor })}
+            onLabelModeChange={() => {}}
+            onInitialsChange={() => {}}
+            onNameChange={() => {}}
+            onClose={() => setActiveKitEditor(null)}
+          />
         ) : null}
 
         {/* Persistent Play/Reset controls are hidden in portrait only, to free
@@ -3692,40 +3826,12 @@ export default function TacticalPlaySurface() {
           );
         })() : null}
 
-        {/* Team-kit editor: Our Team / Goalkeeper / Bib-Opposition. Reached
-            only via Setup -> Players -> Edit Kit — never via a pitch
-            tap/double-tap/long-press, so it cannot interfere with the
-            normal tap-to-Movement-Card (PlayerActionSheet) interaction
-            above. Label tab is hidden (tabs=["base","pattern"]) — identity
-            belongs to the player (see the Player identity Nickname field),
-            never to a kit, so onLabelModeChange/onInitialsChange/
-            onNameChange are unreachable no-ops here. */}
-        {activeKitEditor != null ? (
-          <PlayerKitEditor
-            editorKey={activeKitEditor}
-            position={computeKitEditorPosition()}
-            activeTab={kitEditorTab}
-            onTabChange={setKitEditorTab}
-            tabs={["base", "pattern"]}
-            value={resolveTeamKitEditorValue(
-              activeKitEditor === "ourTeam"
-                ? ourTeamKit
-                : activeKitEditor === "goalkeeper"
-                  ? goalkeeperKit ?? ourTeamKit
-                  : bibKit,
-            )}
-            colorOptions={TEAM_KIT_COLOR_OPTIONS}
-            allowedPatterns={FULL_VISION_PATTERNS}
-            patternLabels={PLAYER_KIT_PATTERN_LABEL}
-            onBaseColorChange={(color) => onKitPatch({ baseColor: color as PremiumPlayerTokenColor })}
-            onPatternChange={(pattern) => onKitPatch({ pattern })}
-            onPatternColorChange={(color) => onKitPatch({ patternColor: color as PremiumPlayerTokenColor })}
-            onLabelModeChange={() => {}}
-            onInitialsChange={() => {}}
-            onNameChange={() => {}}
-            onClose={() => setActiveKitEditor(null)}
-          />
-        ) : null}
+        {/* Team-kit editor (Our Team / Goalkeeper / Bib-Opposition) now
+            renders nested inside the Setup -> Players card itself (see
+            playersOpen block above) rather than as a separate floating
+            layer here — it replaces the Players row-list in place, per the
+            PR2B revision-3 "Setup -> Players -> Kit -> Back" nesting
+            request. Nothing left to render at this level. */}
 
         {confirmSheet && <ConfirmSheet {...confirmSheet} />}
       </div>

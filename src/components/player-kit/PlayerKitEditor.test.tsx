@@ -207,6 +207,24 @@ describe("PlayerKitEditor — reflects current value / owns no state of its own"
   });
 });
 
+describe("PlayerKitEditor — title prop (PR2B revision 3 nested-panel back affordance)", () => {
+  it("omitting `title` renders no back row, exactly as every existing caller (Standard Slate) already gets", () => {
+    render(<PlayerKitEditor {...baseProps()} />);
+    expect(screen.queryByRole("button", { name: /^Back from/ })).toBeNull();
+  });
+
+  it("passing `title` renders a '← <title>' back button that calls onClose, the same handler as the '×' button", () => {
+    const props = baseProps({ title: "Our Team Kit" });
+    render(<PlayerKitEditor {...props} />);
+
+    const backButton = screen.getByLabelText("Back from Our Team Kit");
+    expect(backButton.textContent).toBe("← Our Team Kit");
+
+    fireEvent.click(backButton);
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("PlayerKitEditor — tabs prop (Game Timing team-kit configurability)", () => {
   it("omitting `tabs` renders all three tabs, exactly as every existing caller (Standard Slate) already gets", () => {
     render(<PlayerKitEditor {...baseProps({ activeTab: "base" })} />);

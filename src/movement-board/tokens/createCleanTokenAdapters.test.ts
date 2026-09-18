@@ -139,6 +139,59 @@ describe("createVisionV3Token — kitPattern / kitPatternColor reach the Vision 
   });
 });
 
+function fillColorsOf(token: { children: unknown[] }): number[] {
+  return token.children
+    .filter((c): c is Graphics => c instanceof Graphics)
+    .flatMap((g) => instructionsOf(g))
+    .flatMap((inst) => [inst.data?.style?.color])
+    .filter((c): c is number => c != null);
+}
+
+// Standard Slate's canonical KIT_COLOR_NUMERIC values (createTacticalPadLiteSurface.ts),
+// duplicated here as the audit's proven-correct reference — not re-imported,
+// so this test fails loudly if the adapter and Slate's palette ever drift
+// apart rather than silently passing because both sides import the same
+// (possibly wrong) constant.
+const SLATE_CANONICAL = {
+  orange: 0xf97316,
+  purple: 0x7c3aed,
+  yellow: 0xfacc15,
+  white: 0xffffff,
+} as const;
+
+describe("createVisionV3Token — colour fidelity (PR2B revision 3 audit fix)", () => {
+  it("paints the disc in Slate's exact canonical primaryColor, not Vision's own internal per-team default", () => {
+    const { token } = createVisionV3Token({ color: "yellow", number: 9, radius: TOKEN_RADIUS });
+    // Plain pattern: the disc's core fill is the unmixed primaryColor
+    // exactly (createVisionV3PlayerToken.ts: `coreColor = baseColor`).
+    expect(fillColorsOf(token)).toContain(SLATE_CANONICAL.yellow);
+  });
+
+  it("no longer collapses orange to Vision's default red — renders orange's true canonical hue", () => {
+    const { token } = createVisionV3Token({ color: "orange", number: 9, radius: TOKEN_RADIUS });
+    expect(fillColorsOf(token)).toContain(SLATE_CANONICAL.orange);
+  });
+
+  it("no longer collapses purple to Vision's default blue — renders purple's true canonical hue", () => {
+    const { token } = createVisionV3Token({ color: "purple", number: 9, radius: TOKEN_RADIUS });
+    expect(fillColorsOf(token)).toContain(SLATE_CANONICAL.purple);
+  });
+
+  it("resolves kitPatternColor from Slate's canonical palette, not the pastel V3_SECONDARY_HEX accent table", () => {
+    // White mixed toward white stays exactly white — a precise, unambiguous
+    // probe: the old V3_SECONDARY_HEX.white (0x9aa3b5, blue-grey) would mix
+    // toward white but never actually reach 0xffffff.
+    const { token } = createVisionV3Token({
+      color: "blue",
+      number: 9,
+      radius: TOKEN_RADIUS,
+      kitPattern: "chestDash",
+      kitPatternColor: "white",
+    });
+    expect(fillColorsOf(token)).toContain(0xffffff);
+  });
+});
+
 describe("createVisionV3Token — label passthrough matches Standard Slate's own on-disc limit", () => {
   it("this adapter itself does not re-truncate the label (removed the redundant slice(0, 3) the other adapters still have)", () => {
     // createCleanTokenAdapters.ts's createVisionV3Token passes label

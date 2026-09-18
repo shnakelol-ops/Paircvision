@@ -10,6 +10,7 @@ import {
   type VisionV3TeamColor,
   type VisionV3KitPattern,
 } from "../../engine/pixi/createVisionV3PlayerToken";
+import { KIT_COLOR_NUMERIC } from "../../engine/pixi/createTacticalPadLiteSurface";
 import type { PremiumPlayerTokenColor } from "./createPremiumPlayerToken";
 
 const PALETTE: Record<PremiumPlayerTokenColor, CleanTacticalPlayerTokenStyle> = {
@@ -158,12 +159,22 @@ export function createVisionV3Token({
   const safeLabel = label?.trim() || String(number);
   const teamColor = V3_TEAM_COLOR[color];
   const secHex = secondaryColor != null ? V3_SECONDARY_HEX[secondaryColor] : undefined;
-  const kitPatternColorHex = kitPatternColor != null ? V3_SECONDARY_HEX[kitPatternColor] : undefined;
+  // Colour-fidelity fix (PR2B revision 3): the disc's own primary colour and
+  // its pattern-accent colour must be Slate's canonical, true hex value —
+  // never Vision's own internal per-team default (silently duller/darker,
+  // see KIT_COLOR_NUMERIC vs DEFAULT_STYLE_BY_TEAM) and never
+  // V3_SECONDARY_HEX (a pastel *accent*-tint table, not a true-colour table
+  // — using it for kitPatternColor was why patterns rendered as a muddy
+  // grey/green smear instead of the selected colour). V3_SECONDARY_HEX is
+  // kept only for `secondaryColor` above, an accent field team-kit tokens
+  // never actually populate today.
+  const primaryColorHex = KIT_COLOR_NUMERIC[color];
+  const kitPatternColorHex = kitPatternColor != null ? KIT_COLOR_NUMERIC[kitPatternColor] : undefined;
   const visualRadius = radius * GAME_TIMING_VISION_VISUAL_SCALE;
   const { token, shadow } = createVisionV3PlayerToken({
     label: safeLabel,
     teamColor,
-    style: secHex != null ? { secondaryColor: secHex } : undefined,
+    style: { primaryColor: primaryColorHex, ...(secHex != null ? { secondaryColor: secHex } : null) },
     radius: visualRadius,
     scale: GAME_TIMING_VISION_VISUAL_SCALE,
     kitPattern,
