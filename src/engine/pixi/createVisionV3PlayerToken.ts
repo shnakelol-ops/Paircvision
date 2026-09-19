@@ -89,10 +89,9 @@ function drawPatternAccent(
   pattern: VisionV3KitPattern,
   accentColor: number,
   innerRadius: number,
+  alpha: number,
 ): void {
   if (pattern === "plain" || pattern === "gradient") return;
-
-  const alpha = 0.72;
 
   if (pattern === "hoops") {
     const bandH = innerRadius * 0.28;
@@ -234,7 +233,13 @@ export function createVisionV3PlayerToken({
       ? resolved.secondaryColor
       : resolved.primaryColor;
   const pitchBlendSensitivePalette = teamColor === "green" || teamColor === "white";
-  const accentColor = Number.isFinite(kitPatternColor)
+  // An explicit kitPatternColor is an authored kit colour, not a lighting
+  // cue — a coach who picks white expects white, not white blended toward
+  // the base team colour. Only the no-kitPatternColor fallback (accent
+  // derived from the team's own secondary/default colour, never a coach
+  // selection) keeps the softened treatment below.
+  const hasAuthoredPatternColor = Number.isFinite(kitPatternColor);
+  const accentColor = hasAuthoredPatternColor
     ? Number(kitPatternColor)
     : (resolved.secondaryColor ?? mixColor(baseColor, 0xffffff, 0.3));
   const ringColor = mixColor(baseColor, accentColor, 0.3);
@@ -290,8 +295,9 @@ export function createVisionV3PlayerToken({
   drawPatternAccent(
     disc,
     kitPattern,
-    mixColor(accentColor, 0xffffff, pitchBlendSensitivePalette ? 0.2 : 0.1),
+    hasAuthoredPatternColor ? accentColor : mixColor(accentColor, 0xffffff, pitchBlendSensitivePalette ? 0.2 : 0.1),
     innerRadius * 0.9,
+    hasAuthoredPatternColor ? 1 : 0.72,
   );
   const patternMask = new Graphics();
   patternMask.circle(0, 0, coreVisualRadius).fill({ color: 0xffffff });

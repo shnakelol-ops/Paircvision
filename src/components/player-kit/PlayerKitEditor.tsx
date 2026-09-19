@@ -34,6 +34,25 @@ export type PlayerKitEditorProps<TPattern extends PlayerKitPattern = PlayerKitPa
   position: { left: number; top: number };
   activeTab: PlayerKitEditorTab;
   onTabChange: (tab: PlayerKitEditorTab) => void;
+  /**
+   * Which tabs to show, in order. Optional and additive — every existing
+   * caller (Standard Slate) omits it and keeps rendering all three tabs
+   * exactly as before. Added for callers whose `value`/callbacks represent
+   * something with no per-item identity to label (e.g. a team-level kit,
+   * not a single player) — passing `["base", "pattern"]` hides the Label
+   * tab entirely rather than wiring it to something it doesn't mean.
+   */
+  tabs?: readonly PlayerKitEditorTab[];
+  /**
+   * Optional "← TITLE" back-affordance rendered above the tab row, in place
+   * of relying on the "×" close button alone. Additive and off by default —
+   * every existing caller (Standard Slate) omits it and renders exactly as
+   * before. Added for callers presenting this editor as a nested state
+   * (e.g. "Setup → Players → Our Team Kit → Back") rather than a
+   * free-floating popover: clicking it calls `onClose`, the same handler
+   * the "×" button already uses, so there is no new close semantic.
+   */
+  title?: string;
   value: PlayerKitEditorValue<TPattern>;
   colorOptions: readonly PlayerKitColorOption[];
   allowedPatterns: readonly TPattern[];
@@ -212,6 +231,23 @@ const INPUT_STYLE: CSSProperties = {
 
 const ACTIVE_SWATCH_RING: CSSProperties = { boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.95)" };
 
+const BACK_TITLE_STYLE: CSSProperties = {
+  display: "block",
+  width: "100%",
+  textAlign: "left",
+  background: "none",
+  border: "none",
+  padding: 0,
+  margin: 0,
+  color: "#dbe7f5",
+  fontSize: "10px",
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  cursor: "pointer",
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
 /**
  * Presentational player-appearance editor shared by Standard Slate and Game
  * Timing. Owns no player/team/persistence/renderer state of any kind — it
@@ -226,6 +262,8 @@ export function PlayerKitEditor<TPattern extends PlayerKitPattern = PlayerKitPat
   position,
   activeTab,
   onTabChange,
+  tabs,
+  title,
   value,
   colorOptions,
   allowedPatterns,
@@ -238,6 +276,7 @@ export function PlayerKitEditor<TPattern extends PlayerKitPattern = PlayerKitPat
   onNameChange,
   onClose,
 }: PlayerKitEditorProps<TPattern>) {
+  const visibleTabs = tabs ? TABS.filter((tab) => tabs.includes(tab.id)) : TABS;
   return (
     <div
       style={{ ...EDITOR_STYLE, left: `${position.left}px`, top: `${position.top}px` }}
@@ -247,9 +286,14 @@ export function PlayerKitEditor<TPattern extends PlayerKitPattern = PlayerKitPat
       aria-modal="false"
       aria-label="Player kit editor"
     >
+      {title ? (
+        <button type="button" style={BACK_TITLE_STYLE} onClick={onClose} aria-label={`Back from ${title}`}>
+          ← {title}
+        </button>
+      ) : null}
       <div style={HEADER_STYLE}>
-        <div style={TAB_ROW_STYLE}>
-          {TABS.map((tab) => (
+        <div style={{ ...TAB_ROW_STYLE, gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}>
+          {visibleTabs.map((tab) => (
             <button
               key={`kit-editor-tab-${tab.id}`}
               type="button"

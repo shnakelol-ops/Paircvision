@@ -19,10 +19,26 @@ import {
 } from "./createCleanTokenAdapters";
 import type { MovementBoardToken } from "../shell/types";
 import { UNDER_PILL_NORMAL_SHRINK } from "../../engine/pixi/createNamePillPlayerToken";
+import { FULL_VISION_PATTERNS } from "../../components/player-kit/playerKitPatterns";
+import type { VisionV3KitPattern } from "../../engine/pixi/createVisionV3PlayerToken";
 
 export type TokenRendererName = "pixi" | "vision" | "jersey" | "phosphor" | "pill-under";
 
-type AnyRendererFn = typeof createJerseyTokenV2;
+// Explicit shared input shape (rather than `typeof createJerseyTokenV2`,
+// which was too narrow) — PR2B added kitPattern/kitPatternColor, consumed
+// only by createVisionV3Token; every other renderer's own declared
+// parameter type simply omits them, which is fine since they're optional
+// here and those renderers never destructure them.
+type RendererInput = {
+  color: PremiumPlayerTokenColor;
+  secondaryColor?: PremiumPlayerTokenColor;
+  number: number;
+  label?: string;
+  radius: number;
+  kitPattern?: VisionV3KitPattern;
+  kitPatternColor?: PremiumPlayerTokenColor;
+};
+type AnyRendererFn = (input: RendererInput) => ReturnType<typeof createJerseyTokenV2>;
 
 const RENDERER_MAP: Record<TokenRendererName, AnyRendererFn> = {
   pixi:            createPixiToken as AnyRendererFn,
@@ -99,11 +115,25 @@ function sanitizeTokenColor(input: PremiumPlayerTokenColor | string): PremiumPla
   return "blue";
 }
 
-function sanitizeToken(token: MovementBoardToken): MovementBoardToken {
+function isVisionKitPattern(value: unknown): value is VisionV3KitPattern {
+  return typeof value === "string" && (FULL_VISION_PATTERNS as readonly string[]).includes(value);
+}
+
+export function sanitizeToken(token: MovementBoardToken): MovementBoardToken {
   return {
     id: token.id.trim(),
     number: Number.isFinite(token.number) ? Math.max(1, Math.floor(token.number)) : 1,
+    // Identity field — plain trim only, no charset restriction. Player
+    // identity (number/name/nickname) is never part of a kit; this is the
+    // one place it's edited (see onSetSelectedTokenName in
+    // TacticalPlaySurface.tsx).
     label: token.label?.trim() || undefined,
+    // Kit base colour. Product model: KIT belongs to the TEAM — this field
+    // is never edited per-token by a coach, only kept in sync with
+    // whichever team-level kit currently applies (see applyTeamKitsToTokens
+    // in features/vision-tactics/teamKit.ts). Still sanitized here like
+    // every other field, since this function is the single choke point
+    // every token passes through before rendering.
     color: sanitizeTokenColor(token.color),
     secondaryColor: token.secondaryColor ? sanitizeTokenColor(token.secondaryColor) : undefined,
     position: clampNormalizedPoint(token.position),
@@ -111,11 +141,32 @@ function sanitizeToken(token: MovementBoardToken): MovementBoardToken {
     isGhost: token.isGhost === true,
     // Pre-existing gap: this function previously dropped `team` on every
     // setTokens() round-trip, silently breaking away-team tracking. Preserved
-    // here (plus the new `playerRole`) since both are plain app-level data —
-    // the renderer below never reads either field.
+    // here (plus `playerRole`) since both are plain app-level data — the
+    // renderer below never reads either field.
     team: token.team === "away" || token.team === "home" ? token.team : undefined,
     playerRole: token.playerRole === "bib" || token.playerRole === "team" ? token.playerRole : undefined,
+    // Kit pattern/pattern-colour — same team-derived, never-per-token-edited
+    // status as `color` above. Whitelisted here for the same reason: a
+    // field left out of this function is silently stripped on the very
+    // next render pass (see the `team` comment above, which documents this
+    // exact failure mode).
+    kitPattern: isVisionKitPattern(token.kitPattern) ? token.kitPattern : undefined,
+    kitPatternColor: token.kitPatternColor ? sanitizeTokenColor(token.kitPatternColor) : undefined,
   };
+}
+
+/**
+ * Resolves what string a token's renderer should actually draw as its
+ * label. Deliberately a token-layer (presentation-boundary) concern, not
+ * something createVisionV3Token/createVisionV3PlayerToken compute — mirrors
+ * Standard Slate's own resolvePlayerLabel, which lives in the surface file,
+ * not the renderer. Falling back to "" (rather than the number itself) is
+ * intentional: every renderer's own `label || String(number)` fallback
+ * already shows the jersey number for an empty label, so this only ever
+ * needs to supply what's actually been typed.
+ */
+export function resolveTokenDisplayLabel(token: MovementBoardToken): string {
+  return token.label?.trim() ?? "";
 }
 
 export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
@@ -230,8 +281,10 @@ export function createTokenLayer(options: CreateTokenLayerOptions): TokenLayer {
       color: nextToken.color,
       secondaryColor: nextToken.secondaryColor,
       number: nextToken.number,
-      label: nextToken.label,
+      label: resolveTokenDisplayLabel(nextToken),
       radius: TOKEN_RADIUS,
+      kitPattern: nextToken.kitPattern,
+      kitPatternColor: nextToken.kitPatternColor,
     });
     const { token: node, body, shadow, ballMarker } = result;
     const numberLabel = "numberLabel" in result ? result.numberLabel : null;

@@ -3,6 +3,7 @@ import type { NormalizedPoint } from "../coordinates/normalization";
 import type { PremiumPlayerTokenColor } from "../tokens/createPremiumPlayerToken";
 import type { TokenSize, TokenRendererName } from "../tokens/token-layer";
 import type { RouteVisibilityMode } from "../routes/route-visibility";
+import type { VisionV3KitPattern } from "../../engine/pixi/createVisionV3PlayerToken";
 
 export type { PremiumPlayerTokenColor };
 export type { TokenSize, TokenRendererName };
@@ -28,9 +29,22 @@ export type MovementBoardToken = {
   team?: "home" | "away";
   // Training role, independent of `team`. Undefined behaves exactly like
   // "team" (today's behaviour) so existing saved Tactical Plays are
-  // unaffected. Bib Players keep a fixed bib colour and are excluded from
-  // team-colour changes — see onSetPrimaryColor in TacticalPlaySurface.
+  // unaffected.
   playerRole?: "team" | "bib";
+  // Kit-appearance fields (PáircVision Vision V3 visual language). Product
+  // model: KIT belongs to the TEAM, not the player — these fields are never
+  // edited per-token by a coach. They are derived, kept in sync with
+  // whichever team-level kit currently applies (Our Team / Goalkeeper
+  // override / Bib-Opposition — see applyTeamKitsToTokens in
+  // features/vision-tactics/teamKit.ts), and exist here only because the
+  // renderer operates per-token. `color` (above, existing field) doubles as
+  // kit base colour, kept in sync the same way — no separate kitBaseColor
+  // field. `kitPattern` is the canonical 6-value union re-exported from
+  // createVisionV3PlayerToken.ts (the actual renderer's own type), never
+  // duplicated. Both optional and additive: a token with neither set
+  // renders exactly as it did before this feature existed.
+  kitPattern?: VisionV3KitPattern;
+  kitPatternColor?: PremiumPlayerTokenColor;
 };
 
 export type MovementCanvasTapPayload = {

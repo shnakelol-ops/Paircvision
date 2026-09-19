@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
+import { KIT_COLOR_NUMERIC } from "../../engine/pixi/createTacticalPadLiteSurface";
 import OrientationGate, { usePortraitOrientation } from "../../components/OrientationGate";
 import VisionStadiumBackground from "../../components/VisionStadiumBackground";
 import { PitchWatermark } from "../../components/PitchWatermark";
@@ -30,6 +31,24 @@ import type {
   ZoneColor,
   ZoneRecord,
 } from "../../movement-board/shell/types";
+import {
+  PlayerKitEditor,
+  type PlayerKitEditorTab,
+  type PlayerKitColorOption,
+  PLAYER_KIT_EDITOR_MARGIN,
+  PLAYER_KIT_EDITOR_MAX_WIDTH,
+  PLAYER_KIT_EDITOR_MAX_HEIGHT_RATIO,
+} from "../../components/player-kit/PlayerKitEditor";
+import { FULL_VISION_PATTERNS, PLAYER_KIT_PATTERN_LABEL } from "../../components/player-kit/playerKitPatterns";
+import {
+  type TeamKit,
+  DEFAULT_OUR_TEAM_KIT,
+  DEFAULT_GOALKEEPER_KIT,
+  DEFAULT_BIB_KIT,
+  applyTeamKitsToTokens,
+  deriveLegacyTeamKit,
+  isOppositionToken,
+} from "./teamKit";
 import { FOOTBALL_ZONE_TEMPLATES, HURLING_ZONE_TEMPLATES, type TacticalZoneTemplate } from "./tacticalZoneTemplates";
 import { ZONE_COLOR_CSS, ZONE_COLOR_OPTIONS } from "./tacticalZoneTypes";
 import {
@@ -370,6 +389,69 @@ const WRAP_PANEL_ROW_STYLE: CSSProperties = {
   borderRadius: "18px",
 };
 
+// PR2B revision 3: the Players section used to be a stack of independent
+// floating pill rows (each its own PANEL_ROW_STYLE/WRAP_PANEL_ROW_STYLE),
+// which read as visually fragmented on mobile. This is one bounded card —
+// a single border/background/shadow around every Players sub-section —
+// with the sub-sections as plain internal rows separated by a hairline
+// divider, not separate floating pieces. Same visual language
+// (colour/blur/radius family) as PANEL_ROW_STYLE, just applied once to the
+// whole card instead of per-row.
+const PLAYERS_CARD_STYLE: CSSProperties = {
+  borderRadius: "16px",
+  border: "1px solid rgba(180, 210, 255, 0.18)",
+  background: "rgba(6, 14, 30, 0.86)",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+  boxShadow: "0 10px 24px rgba(0, 4, 14, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.12)",
+  display: "grid",
+  gap: "2px",
+  padding: "8px",
+};
+
+const PLAYERS_CARD_TITLE_STYLE: CSSProperties = {
+  fontSize: "9px",
+  fontWeight: 800,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
+  color: "rgba(220, 235, 255, 0.78)",
+  padding: "0 2px 4px",
+};
+
+// Same "<- Title" back-affordance convention as PlayerKitEditor's own
+// title prop (component-internal, not reused directly here since this
+// button sits in TacticalPlaySurface's own JSX, not inside PlayerKitEditor).
+const PLAYERS_BACK_TO_SETUP_STYLE: CSSProperties = {
+  display: "block",
+  width: "100%",
+  textAlign: "left",
+  background: "none",
+  border: "none",
+  padding: "0 2px 4px",
+  margin: 0,
+  color: "rgba(220, 235, 255, 0.72)",
+  fontSize: "9px",
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  cursor: "pointer",
+  fontFamily: "Inter, system-ui, sans-serif",
+};
+
+const PLAYERS_SECTION_STYLE: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "5px",
+  flexWrap: "wrap",
+  padding: "5px 2px",
+};
+
+const PLAYERS_SECTION_DIVIDER_STYLE: CSSProperties = {
+  height: "1px",
+  background: "rgba(180, 210, 255, 0.10)",
+  margin: "1px 0",
+};
+
 const TOOL_BUTTON_STYLE: CSSProperties = {
   height: "40px",
   minWidth: "68px",
@@ -468,15 +550,32 @@ const EDIT_RUN_DONE_STYLE: CSSProperties = {
 };
 
 
+function kitColorNumericToCssHex(value: number): string {
+  return `#${value.toString(16).padStart(6, "0")}`;
+}
+
+// Forensic audit (PR2B revision 4): this used to be a hand-maintained table
+// of translucent rgba(...) values (alpha 0.78-0.90 on every entry),
+// completely separate from — and never touched by — the Vision V3 pitch-
+// token colour fix in revision 3. Composited against the app's own opaque
+// page background (#root), that baked-in alpha was the entire cause of the
+// Kit Editor's swatches (both base-colour and pattern-colour, since both
+// grids read from TEAM_KIT_COLOR_OPTIONS below) reading visibly darker/
+// muted than the pitch tokens and than Standard Slate's own Kit Editor,
+// which has never had alpha in its swatch source. Deriving this from the
+// same canonical KIT_COLOR_NUMERIC palette Standard Slate and the (already
+// fixed) Vision V3 pitch-token adapter both use — opaque, zero alpha —
+// keeps exactly one PáircVision palette feeding all three: canonical kit
+// colour -> pitch Vision token AND Kit Editor swatch, same underlying RGB.
 const TOKEN_COLOR_BG: Record<PremiumPlayerTokenColor, string> = {
-  blue:   "rgba(37, 99, 235, 0.78)",
-  red:    "rgba(220, 38, 38, 0.78)",
-  yellow: "rgba(242, 201, 76, 0.88)",
-  black:  "rgba(17, 24, 39, 0.90)",
-  green:  "rgba(22, 163, 74, 0.78)",
-  orange: "rgba(234, 88, 12, 0.78)",
-  purple: "rgba(124, 58, 237, 0.78)",
-  white:  "rgba(241, 245, 249, 0.88)",
+  blue:   kitColorNumericToCssHex(KIT_COLOR_NUMERIC.blue),
+  red:    kitColorNumericToCssHex(KIT_COLOR_NUMERIC.red),
+  yellow: kitColorNumericToCssHex(KIT_COLOR_NUMERIC.yellow),
+  black:  kitColorNumericToCssHex(KIT_COLOR_NUMERIC.black),
+  green:  kitColorNumericToCssHex(KIT_COLOR_NUMERIC.green),
+  orange: kitColorNumericToCssHex(KIT_COLOR_NUMERIC.orange),
+  purple: kitColorNumericToCssHex(KIT_COLOR_NUMERIC.purple),
+  white:  kitColorNumericToCssHex(KIT_COLOR_NUMERIC.white),
 };
 
 const SEQ_PANEL_STYLE: CSSProperties = {
@@ -795,6 +894,78 @@ const ALL_TOKEN_COLORS: PremiumPlayerTokenColor[] = [
   "blue", "red", "green", "yellow", "orange", "purple", "black", "white",
 ];
 
+// Reuses the same 8-colour palette/hex values already shown in the "Our
+// Team"/"Bib Players" swatch rows previously in this panel (TOKEN_COLOR_BG)
+// — no new colour list. Serves both PlayerKitEditor's base-colour tab and
+// its pattern-colour tab for all three team-kit editors (Our Team,
+// Goalkeeper, Bib/Opposition).
+export const TEAM_KIT_COLOR_OPTIONS: readonly PlayerKitColorOption[] = ALL_TOKEN_COLORS.map((id) => ({
+  id,
+  cssColor: TOKEN_COLOR_BG[id],
+}));
+
+/** Which of the three team-kit editors (if any) is currently open. */
+export type KitEditorTarget = "ourTeam" | "goalkeeper" | "bib" | null;
+
+/**
+ * Resolves a TeamKit into PlayerKitEditor's display-value shape. Unlike
+ * Standard Slate's or PR2B's per-player resolvers, there is no fallback
+ * logic to compute here — a TeamKit's three fields are always fully
+ * defined already (see DEFAULT_OUR_TEAM_KIT etc. in teamKit.ts), so this is
+ * a pure reshape, not a resolution. labelMode/initials/name are omitted
+ * entirely (all optional on PlayerKitEditorValue): the Label tab is hidden
+ * for every team-kit editor (`tabs={["base", "pattern"]}` below) since
+ * identity belongs to the player, never the team.
+ */
+export function resolveTeamKitEditorValue(kit: TeamKit) {
+  return {
+    baseColor: kit.baseColor,
+    pattern: kit.pattern,
+    patternColor: kit.patternColor,
+  };
+}
+
+/**
+ * Positions the kit editor so it lands in the same bottom-right corner as
+ * the Setup -> Players card it is nested inside of (PR2B revision 3),
+ * clamped so it always stays fully on-screen (including at the 320px-wide
+ * end of the required mobile range). Unlike Standard Slate's
+ * clampKitEditorPosition, there is no pitch-tap point to anchor near —
+ * Game Timing's editors open from the Setup -> Players panel, not a pitch
+ * double-tap — so this anchors to that panel's own corner instead of
+ * centering, so the editor reads as continuing from where it was opened
+ * rather than an unrelated popup. Uses PlayerKitEditor's own exported
+ * sizing constants so the clamp math always matches whatever the
+ * component actually renders at.
+ */
+export function computeKitEditorPosition(viewport?: { width: number; height: number }): {
+  left: number;
+  top: number;
+} {
+  const fallbackWidth = PLAYER_KIT_EDITOR_MAX_WIDTH + PLAYER_KIT_EDITOR_MARGIN * 2;
+  const viewportWidth = viewport?.width ?? (typeof window !== "undefined" ? window.innerWidth : fallbackWidth);
+  const viewportHeight = viewport?.height ?? (typeof window !== "undefined" ? window.innerHeight : 640);
+  const editorWidth = Math.min(PLAYER_KIT_EDITOR_MAX_WIDTH, Math.max(0, viewportWidth - PLAYER_KIT_EDITOR_MARGIN * 2));
+  const editorHeight = Math.max(0, viewportHeight * PLAYER_KIT_EDITOR_MAX_HEIGHT_RATIO);
+  const minLeft = PLAYER_KIT_EDITOR_MARGIN;
+  const maxLeft = Math.max(minLeft, viewportWidth - PLAYER_KIT_EDITOR_MARGIN - editorWidth);
+  const minTop = PLAYER_KIT_EDITOR_MARGIN;
+  const maxTop = Math.max(minTop, viewportHeight - PLAYER_KIT_EDITOR_MARGIN - editorHeight);
+  // Same corner SETUP_PANEL_STYLE opens from (right/bottom-anchored); the
+  // extra 46px above the bottom clamp leaves room for the Setup toggle row
+  // and playback controls below, matching that panel's own bottom offset.
+  // The extra 16px pulled in from maxLeft is a safety margin for
+  // PlayerKitEditor's own padding+border (12px + 2px = 14px), which
+  // `editorWidth` above doesn't include — flush-anchoring to the exact
+  // computed edge measurably clipped the editor's true rendered box by
+  // ~14px in Playwright QA (verified: 320-412px widths all overflowed by
+  // 4-14px before this margin was added).
+  return {
+    left: Math.max(minLeft, maxLeft - 16),
+    top: Math.min(Math.max(maxTop - 46, minTop), maxTop),
+  };
+}
+
 // Matches GAELIC_HOME_POSITIONS in movement-board/tokens/default-tokens.ts and
 // TACTICAL_SLATE_GAELIC_FORMATION_BASE in tacticalSlateDefaultPlayers.ts — keep
 // all three in sync if positions are ever adjusted.
@@ -884,16 +1055,22 @@ export default function TacticalPlaySurface() {
   const [saveFlash, setSaveFlash] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
   const [playersOpen, setPlayersOpen] = useState(false);
+  // Team-kit model (replaces PR2B's per-player Appearance editor): kit
+  // belongs to the TEAM, not the player. Three kit slots — Our Team,
+  // Goalkeeper (optional override), Bib/Opposition — each edited through
+  // the shared PlayerKitEditor (appearance tabs only; identity stays with
+  // the existing per-player Nickname field, see onSetSelectedTokenName).
+  const [ourTeamKit, setOurTeamKit] = useState<TeamKit>(DEFAULT_OUR_TEAM_KIT);
+  const [goalkeeperKit, setGoalkeeperKit] = useState<TeamKit | undefined>(DEFAULT_GOALKEEPER_KIT);
+  const [bibKit, setBibKit] = useState<TeamKit>(DEFAULT_BIB_KIT);
+  const [activeKitEditor, setActiveKitEditor] = useState<KitEditorTarget>(null);
+  const [kitEditorTab, setKitEditorTab] = useState<PlayerKitEditorTab>("base");
   const [activeSetupSport, setActiveSetupSport] = useState<SetupSport>("football");
   const [activeSetupSituation, setActiveSetupSituation] = useState<TacticalTemplateSituation | null>(null);
   const [tokenSizeState, setTokenSizeState] = useState<TokenSize>("medium");
-  const [, setTokenRendererState] = useState<TokenRendererName>("pixi");
-  const [primaryColor, setPrimaryColorState] = useState<PremiumPlayerTokenColor>("blue");
+  const [, setTokenRendererState] = useState<TokenRendererName>("vision");
   const [, setAwayColorState] = useState<PremiumPlayerTokenColor>("red");
   const [awayTokenIds, setAwayTokenIds] = useState<Set<string>>(() => new Set());
-  // Bib Players (training role, players #16-31 by default) — colour is
-  // independent of the team colour above and never touched by onSetPrimaryColor.
-  const [bibColor, setBibColorState] = useState<PremiumPlayerTokenColor>("yellow");
   const [bibTokenIds, setBibTokenIds] = useState<Set<string>>(() => new Set());
   const [routes, setRoutes] = useState<MovementBoardRoute[]>([]);
   const [tokenNumberById, setTokenNumberById] = useState<Record<string, number>>({});
@@ -1140,7 +1317,12 @@ export default function TacticalPlaySurface() {
         shellRef.current = shell;
         setMenuMode(toMenuMode(shell.getMode()));
         shell.setSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
-        shell.setTokenRenderer("pixi");
+        // PR2B: activates the already-audited Vision V3 renderer path
+        // (createVisionV3Token, wired but previously never selected) —
+        // brings Game Timing into the PáircVision visual language used by
+        // Standard Slate. Size-matched via GAME_TIMING_VISION_VISUAL_SCALE
+        // in createCleanTokenAdapters.ts; see that file for the derivation.
+        shell.setTokenRenderer("vision");
         shell.setTokenSize("medium");
         setTokenSizeState(shell.getTokenSize());
         const initialRoutes = shell.getRoutes();
@@ -1452,7 +1634,15 @@ export default function TacticalPlaySurface() {
 
   const onSetupPress = () => {
     setIsControlsOpen(false);
-    setSetupOpen((prev) => !prev);
+    const next = !setupOpen;
+    setSetupOpen(next);
+    if (!next) {
+      // Collapsing Setup entirely closes whatever was nested inside
+      // Players too — the kit editor never outlives the panel it's
+      // nested inside of (PR2B revision 3).
+      setPlayersOpen(false);
+      setActiveKitEditor(null);
+    }
     setPlaysOpen(false);
   };
 
@@ -1489,22 +1679,6 @@ export default function TacticalPlaySurface() {
     setSetupOpen(false);
   };
 
-  const onSetPrimaryColor = (color: PremiumPlayerTokenColor) => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    shell.setTokens(
-      shell.getTokens().map((t) => (t.team === "away" || t.playerRole === "bib" ? t : { ...t, color })),
-    );
-    setPrimaryColorState(color);
-  };
-
-  const onSetBibColor = (color: PremiumPlayerTokenColor) => {
-    const shell = shellRef.current;
-    if (!shell) return;
-    shell.setTokens(shell.getTokens().map((t) => (t.playerRole === "bib" ? { ...t, color } : t)));
-    setBibColorState(color);
-  };
-
   const onSetSelectedTokenName = (rawValue: string) => {
     const shell = shellRef.current;
     if (!shell || !selectedToken) return;
@@ -1515,6 +1689,36 @@ export default function TacticalPlaySurface() {
     );
     setSelectedToken((previous) =>
       previous && previous.id === selectedToken.id ? { ...previous, label: nextLabel } : previous,
+    );
+  };
+
+  /**
+   * Applies a patch to whichever team-kit is currently open in the editor,
+   * then re-derives every token's rendered kit fields from the full,
+   * updated kit set via applyTeamKitsToTokens (teamKit.ts) — the one and
+   * only place kit state ever reaches a token. Editing Our Team's kit
+   * updates every Our Team outfield token; editing the Goalkeeper kit
+   * updates only the goalkeeper token; editing Bib/Opposition updates only
+   * that side. Never a per-player patch — there is no "selected player" in
+   * this flow at all, matching the locked product model (kit belongs to
+   * the team, identity belongs to the player).
+   */
+  const onKitPatch = (patch: Partial<TeamKit>) => {
+    const shell = shellRef.current;
+    if (!shell || activeKitEditor == null) return;
+    const nextOurTeamKit = activeKitEditor === "ourTeam" ? { ...ourTeamKit, ...patch } : ourTeamKit;
+    const nextGoalkeeperKit =
+      activeKitEditor === "goalkeeper" ? { ...(goalkeeperKit ?? ourTeamKit), ...patch } : goalkeeperKit;
+    const nextBibKit = activeKitEditor === "bib" ? { ...bibKit, ...patch } : bibKit;
+    setOurTeamKit(nextOurTeamKit);
+    setGoalkeeperKit(nextGoalkeeperKit);
+    setBibKit(nextBibKit);
+    shell.setTokens(
+      applyTeamKitsToTokens(shell.getTokens(), {
+        ourTeamKit: nextOurTeamKit,
+        goalkeeperKit: nextGoalkeeperKit,
+        bibKit: nextBibKit,
+      }),
     );
   };
 
@@ -1684,7 +1888,25 @@ export default function TacticalPlaySurface() {
     const shell = shellRef.current;
     if (!shell) return;
     setPlaysOpen(false);
-    shell.setTokens(scenario.tokens);
+    setActiveKitEditor(null);
+    // Team-kit load: a scenario saved before team kits existed (no
+    // ourTeamKit/goalkeeperKit/bibKit at all) gets sensible defaults seeded
+    // from whatever colour its existing tokens already show, rather than a
+    // migration or a reset — see deriveLegacyTeamKit in teamKit.ts.
+    const loadedOurTeamKit =
+      scenario.ourTeamKit ?? deriveLegacyTeamKit(scenario.tokens, (t) => !isOppositionToken(t), DEFAULT_OUR_TEAM_KIT);
+    const loadedGoalkeeperKit = scenario.goalkeeperKit ?? DEFAULT_GOALKEEPER_KIT;
+    const loadedBibKit = scenario.bibKit ?? deriveLegacyTeamKit(scenario.tokens, isOppositionToken, DEFAULT_BIB_KIT);
+    setOurTeamKit(loadedOurTeamKit);
+    setGoalkeeperKit(loadedGoalkeeperKit);
+    setBibKit(loadedBibKit);
+    shell.setTokens(
+      applyTeamKitsToTokens(scenario.tokens, {
+        ourTeamKit: loadedOurTeamKit,
+        goalkeeperKit: loadedGoalkeeperKit,
+        bibKit: loadedBibKit,
+      }),
+    );
     shell.setRoutes(scenario.routes);
     if (scenario.ballState.carrierId) {
       shell.giveBall(scenario.ballState.carrierId);
@@ -1727,8 +1949,6 @@ export default function TacticalPlaySurface() {
     // load with zero bib players, exactly as before.
     const loadedBibIds = new Set(scenario.tokens.filter((t) => t.playerRole === "bib").map((t) => t.id));
     setBibTokenIds(loadedBibIds);
-    const firstBib = scenario.tokens.find((t) => t.playerRole === "bib");
-    if (firstBib) setBibColorState(firstBib.color);
     const loadedNums: Record<string, number> = {};
     for (const t of scenario.tokens) loadedNums[t.id] = t.number;
     setTokenNumberById(loadedNums);
@@ -1767,6 +1987,9 @@ export default function TacticalPlaySurface() {
       shell.getZones(),
       shell.getTrainingItems(),
       textAnnotations.length > 0 ? textAnnotations : undefined,
+      ourTeamKit,
+      goalkeeperKit,
+      bibKit,
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
@@ -1869,7 +2092,7 @@ export default function TacticalPlaySurface() {
       newTokens.push({
         id,
         number: n,
-        color: primaryColor,
+        color: ourTeamKit.baseColor,
         position: getFormationPos("home", n),
         team: "home",
         playerRole: "team",
@@ -1877,7 +2100,11 @@ export default function TacticalPlaySurface() {
       newNums[id] = n;
     }
     if (newTokens.length === 0) return;
-    shell.setTokens([...tokens, ...newTokens]);
+    // Re-derive kit fields for the combined array (not just append raw
+    // tokens): a newly-filled #1 must immediately wear the goalkeeper kit,
+    // not Our Team's, and every new outfield token gets the team's current
+    // pattern/pattern-colour rather than defaulting to plain.
+    shell.setTokens(applyTeamKitsToTokens([...tokens, ...newTokens], { ourTeamKit, goalkeeperKit, bibKit }));
     setTokenNumberById((prev) => ({ ...prev, ...newNums }));
   };
 
@@ -1905,12 +2132,12 @@ export default function TacticalPlaySurface() {
     const newToken: MovementBoardToken = {
       id: `token-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       number: nextNumber,
-      color: isBib ? bibColor : primaryColor,
+      color: isBib ? bibKit.baseColor : ourTeamKit.baseColor,
       position: { x: 25, y: 50 },
       team: "home",
       playerRole: isBib ? "bib" : "team",
     };
-    shell.setTokens([...tokens, newToken]);
+    shell.setTokens(applyTeamKitsToTokens([...tokens, newToken], { ourTeamKit, goalkeeperKit, bibKit }));
     setTokenNumberById((prev) => ({ ...prev, [newToken.id]: nextNumber }));
     if (isBib) {
       setBibTokenIds((prev) => new Set(prev).add(newToken.id));
@@ -1966,7 +2193,13 @@ export default function TacticalPlaySurface() {
 
     shell.reset();
     const defaultTokens = buildDefaultTokens();
-    shell.setTokens(defaultTokens);
+    shell.setTokens(
+      applyTeamKitsToTokens(defaultTokens, {
+        ourTeamKit: DEFAULT_OUR_TEAM_KIT,
+        goalkeeperKit: DEFAULT_GOALKEEPER_KIT,
+        bibKit: DEFAULT_BIB_KIT,
+      }),
+    );
     shell.setRoutes([]);
     shell.setPassEvents([]);
     for (const shot of shell.getShotEvents()) shell.removeShotEvent(shot.id);
@@ -1977,18 +2210,19 @@ export default function TacticalPlaySurface() {
     shell.setSelectedZoneId(null);
     shell.setSelectedTrainingItemId(null);
     shell.setMode("setup");
-    shell.setTokenRenderer("pixi");
+    shell.setTokenRenderer("vision");
     shell.setTokenSize("medium");
     shell.setSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
     shell.setStartPositions();
 
     setMenuMode("move");
     setPlaybackSpeedMultiplier(TP_DEFAULT_SPEED_MULTIPLIER);
-    setTokenRendererState("pixi");
+    setTokenRendererState("vision");
     setTokenSizeState("medium");
-    setPrimaryColorState("blue");
+    setOurTeamKit(DEFAULT_OUR_TEAM_KIT);
+    setGoalkeeperKit(DEFAULT_GOALKEEPER_KIT);
+    setBibKit(DEFAULT_BIB_KIT);
     setAwayColorState("red");
-    setBibColorState("yellow");
     setSelectedToken(null);
     setRouteCount(0);
     setRoutes([]);
@@ -2013,6 +2247,7 @@ export default function TacticalPlaySurface() {
     setTokenNumberById(Object.fromEntries(defaultTokens.map((token) => [token.id, token.number])));
     setTextAnnotations([]);
     setLabelToolActive(false);
+    setActiveKitEditor(null);
   };
 
   const modeIsPlaybackLocked = isPlaying || isPaused;
@@ -3110,137 +3345,212 @@ export default function TacticalPlaySurface() {
               ))}
             </div>
 
-            <div style={WRAP_PANEL_ROW_STYLE}>
-              <button
-                type="button"
-                style={playersOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => {
-                  setActiveSetupSituation(null);
-                  setPlayersOpen((prev) => !prev);
-                }}
-              >
-                Players
-              </button>
-              {SETUP_SITUATIONS.map((situation) => (
-                <button
-                  key={situation.id}
-                  type="button"
-                  style={activeSetupSituation === situation.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => {
-                    setPlayersOpen(false);
-                    setActiveSetupSituation((prev) => prev === situation.id ? null : situation.id);
-                  }}
-                >
-                  {situationDisplayLabel(situation, activeSetupSport)}
-                </button>
-              ))}
-            </div>
-
-            {activeSetupSituation !== null ? (
-              <div style={PANEL_ROW_STYLE}>
-                {TACTICAL_TEMPLATES.filter((t) => (
-                  t.situation === activeSetupSituation &&
-                  (t.sport === activeSetupSport || t.sport === "both")
-                )).map((tmpl) => (
+            {/* Players becomes a focused sub-view: once open, the situation
+                row (Kickout/Attack/Defence/Press) and its templates row are
+                hidden entirely — never shown stacked above/below the
+                Players card — restored only via the card's own "<- Setup"
+                back control. The Sport toggle above stays visible either
+                way, per the requested hierarchy. */}
+            {!playersOpen ? (
+              <>
+                <div style={WRAP_PANEL_ROW_STYLE}>
                   <button
-                    key={tmpl.id}
                     type="button"
                     style={TOOL_BUTTON_STYLE}
-                    onClick={() => onLoadTemplate(tmpl)}
-                  >
-                    {tmpl.name}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-
-
-            {playersOpen ? (
-              <>
-                <div style={PANEL_ROW_STYLE}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Token Size</span>
-                  <button
-                    type="button"
-                    style={tokenSizeState === "small" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
                     onClick={() => {
-                      const next: TokenSize = tokenSizeState === "small" ? "medium" : "small";
-                      shellRef.current?.setTokenSize(next);
-                      setTokenSizeState(next);
+                      setActiveSetupSituation(null);
+                      setPlayersOpen(true);
                     }}
                   >
-                    Compact
+                    Players
                   </button>
+                  {SETUP_SITUATIONS.map((situation) => (
+                    <button
+                      key={situation.id}
+                      type="button"
+                      style={activeSetupSituation === situation.id ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                      onClick={() => {
+                        setPlayersOpen(false);
+                        setActiveSetupSituation((prev) => prev === situation.id ? null : situation.id);
+                      }}
+                    >
+                      {situationDisplayLabel(situation, activeSetupSport)}
+                    </button>
+                  ))}
                 </div>
-                {selectedToken ? (
-                  <div style={MP_ROW}>
-                    <span style={MP_ROW_LABEL}>Nickname (P{selectedToken.number})</span>
-                    <input
-                      style={{ ...PLAYS_INPUT_STYLE, flex: 1, height: "26px", fontSize: "9px" }}
-                      type="text"
-                      placeholder="Jordan, Dozer, Pat…"
-                      value={selectedToken.label ?? ""}
-                      maxLength={20}
-                      onChange={(e) => onSetSelectedTokenName(e.target.value)}
-                    />
+
+                {activeSetupSituation !== null ? (
+                  <div style={PANEL_ROW_STYLE}>
+                    {TACTICAL_TEMPLATES.filter((t) => (
+                      t.situation === activeSetupSituation &&
+                      (t.sport === activeSetupSport || t.sport === "both")
+                    )).map((tmpl) => (
+                      <button
+                        key={tmpl.id}
+                        type="button"
+                        style={TOOL_BUTTON_STYLE}
+                        onClick={() => onLoadTemplate(tmpl)}
+                      >
+                        {tmpl.name}
+                      </button>
+                    ))}
                   </div>
                 ) : null}
-                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Our Team ({homePlayerCount})</span>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill Our Team</button>
-                  <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>Clear</button>
-                  {ALL_TOKEN_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      aria-label={c}
-                      style={{
-                        width: "26px",
-                        height: "26px",
-                        minWidth: "26px",
-                        borderRadius: "50%",
-                        background: TOKEN_COLOR_BG[c],
-                        border: "none",
-                        cursor: "pointer",
-                        padding: 0,
-                        flexShrink: 0,
-                        outline: primaryColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
-                        outlineOffset: primaryColor === c ? "2px" : "1px",
-                        boxShadow: primaryColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
-                        transition: "outline-width 0.1s, outline-offset 0.1s",
-                      }}
-                      onClick={() => onSetPrimaryColor(c)}
-                    />
-                  ))}
-                </div>
-                <div style={{ ...PANEL_ROW_STYLE, gap: "5px", padding: "4px 6px", flexWrap: "wrap" }}>
-                  <span style={SETUP_SECTION_LABEL_STYLE}>Bib Players ({bibTokenIds.size})</span>
-                  {ALL_TOKEN_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      aria-label={`Bib ${c}`}
-                      style={{
-                        width: "26px",
-                        height: "26px",
-                        minWidth: "26px",
-                        borderRadius: "50%",
-                        background: TOKEN_COLOR_BG[c],
-                        border: "none",
-                        cursor: "pointer",
-                        padding: 0,
-                        flexShrink: 0,
-                        outline: bibColor === c ? "2.5px solid #ffffff" : "2px solid rgba(255,255,255,0.18)",
-                        outlineOffset: bibColor === c ? "2px" : "1px",
-                        boxShadow: bibColor === c ? "0 0 0 1px rgba(0,0,0,0.5)" : "0 1px 3px rgba(0,0,0,0.40)",
-                        transition: "outline-width 0.1s, outline-offset 0.1s",
-                      }}
-                      onClick={() => onSetBibColor(c)}
-                    />
-                  ))}
-                </div>
               </>
             ) : null}
+
+            {playersOpen && activeKitEditor == null ? (
+              <div style={PLAYERS_CARD_STYLE}>
+                <button
+                  type="button"
+                  style={PLAYERS_BACK_TO_SETUP_STYLE}
+                  onClick={() => {
+                    setPlayersOpen(false);
+                    setActiveKitEditor(null);
+                  }}
+                >
+                  ← Setup
+                </button>
+                <span style={PLAYERS_CARD_TITLE_STYLE}>Players</span>
+
+                    <div style={PLAYERS_SECTION_STYLE}>
+                      <span style={SETUP_SECTION_LABEL_STYLE}>Our Team ({homePlayerCount})</span>
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={fillHomeTeam}>Fill Our Team</button>
+                      <button type="button" style={TOOL_BUTTON_STYLE} onClick={clearHomeTeam}>Clear</button>
+                      <button
+                        type="button"
+                        style={TOOL_BUTTON_STYLE}
+                        onClick={() => {
+                          setKitEditorTab("base");
+                          setActiveKitEditor("ourTeam");
+                        }}
+                      >
+                        Edit Kit
+                      </button>
+                    </div>
+                    <div style={PLAYERS_SECTION_DIVIDER_STYLE} />
+
+                    <div style={PLAYERS_SECTION_STYLE}>
+                      <span style={SETUP_SECTION_LABEL_STYLE}>Goalkeeper</span>
+                      <button
+                        type="button"
+                        style={TOOL_BUTTON_STYLE}
+                        onClick={() => {
+                          setKitEditorTab("base");
+                          setActiveKitEditor("goalkeeper");
+                        }}
+                      >
+                        Edit GK Kit
+                      </button>
+                    </div>
+                    <div style={PLAYERS_SECTION_DIVIDER_STYLE} />
+
+                    {selectedToken ? (
+                      <>
+                        <div style={{ ...MP_ROW, padding: "5px 2px" }}>
+                          <span style={MP_ROW_LABEL}>Player identity (P{selectedToken.number})</span>
+                          <input
+                            style={{ ...PLAYS_INPUT_STYLE, flex: 1, height: "26px", fontSize: "9px" }}
+                            type="text"
+                            placeholder="Jordan, Dozer, Pat…"
+                            value={selectedToken.label ?? ""}
+                            maxLength={20}
+                            onChange={(e) => onSetSelectedTokenName(e.target.value)}
+                          />
+                        </div>
+                        <div style={PLAYERS_SECTION_DIVIDER_STYLE} />
+                      </>
+                    ) : null}
+
+                    <div style={PLAYERS_SECTION_STYLE}>
+                      <span style={SETUP_SECTION_LABEL_STYLE}>Bib / Opposition ({bibTokenIds.size})</span>
+                      <button
+                        type="button"
+                        style={TOOL_BUTTON_STYLE}
+                        onClick={() => {
+                          setKitEditorTab("base");
+                          setActiveKitEditor("bib");
+                        }}
+                      >
+                        Edit Kit
+                      </button>
+                    </div>
+                    <div style={PLAYERS_SECTION_DIVIDER_STYLE} />
+
+                    <div style={PLAYERS_SECTION_STYLE}>
+                      <span style={SETUP_SECTION_LABEL_STYLE}>Token Size</span>
+                      <button
+                        type="button"
+                        style={tokenSizeState === "small" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                        onClick={() => {
+                          const next: TokenSize = tokenSizeState === "small" ? "medium" : "small";
+                          shellRef.current?.setTokenSize(next);
+                          setTokenSizeState(next);
+                        }}
+                      >
+                        Compact
+                      </button>
+                    </div>
+              </div>
+            ) : null}
           </div>
+        ) : null}
+
+        {/* Nested team-kit editor (Our Team / Goalkeeper / Bib-Opposition).
+            Reached only via Setup -> Players -> Edit Kit, and only ever
+            shown in place of the Players row-list above, never alongside
+            it (the row-list's own `div` above is gated on
+            `activeKitEditor == null`, this one on `activeKitEditor !=
+            null` — mutually exclusive by construction). Deliberately
+            rendered as a sibling here rather than as a DOM child of
+            PLAYERS_CARD_STYLE: that card uses `backdropFilter`, which (like
+            `transform`) establishes a new containing block for
+            `position:fixed` descendants — nesting this editor inside it
+            broke its fixed positioning relative to the real viewport
+            (confirmed via Playwright: computed `top` matched
+            computeKitEditorPosition's value exactly, but the rendered
+            on-screen position was offset by the card's own scroll
+            container). Rendering it here, in a plain (non-filtered)
+            ancestor, keeps it correctly viewport-anchored while still
+            reading as "replacing the Players body" to the coach, since the
+            two are never visible at once and computeKitEditorPosition
+            anchors it to the same bottom-right corner the Players card
+            itself opens from. Label tab is hidden (tabs=["base","pattern"])
+            — identity belongs to the player (see the Player identity
+            Nickname field), never to a kit, so onLabelModeChange/
+            onInitialsChange/onNameChange are unreachable no-ops here. */}
+        {playersOpen && activeKitEditor != null ? (
+          <PlayerKitEditor
+            editorKey={activeKitEditor}
+            position={computeKitEditorPosition()}
+            activeTab={kitEditorTab}
+            onTabChange={setKitEditorTab}
+            tabs={["base", "pattern"]}
+            title={
+              activeKitEditor === "ourTeam"
+                ? "Our Team Kit"
+                : activeKitEditor === "goalkeeper"
+                  ? "Goalkeeper Kit"
+                  : "Bib / Opposition Kit"
+            }
+            value={resolveTeamKitEditorValue(
+              activeKitEditor === "ourTeam"
+                ? ourTeamKit
+                : activeKitEditor === "goalkeeper"
+                  ? goalkeeperKit ?? ourTeamKit
+                  : bibKit,
+            )}
+            colorOptions={TEAM_KIT_COLOR_OPTIONS}
+            allowedPatterns={FULL_VISION_PATTERNS}
+            patternLabels={PLAYER_KIT_PATTERN_LABEL}
+            onBaseColorChange={(color) => onKitPatch({ baseColor: color as PremiumPlayerTokenColor })}
+            onPatternChange={(pattern) => onKitPatch({ pattern })}
+            onPatternColorChange={(color) => onKitPatch({ patternColor: color as PremiumPlayerTokenColor })}
+            onLabelModeChange={() => {}}
+            onInitialsChange={() => {}}
+            onNameChange={() => {}}
+            onClose={() => setActiveKitEditor(null)}
+          />
         ) : null}
 
         {/* Persistent Play/Reset controls are hidden in portrait only, to free
@@ -3568,6 +3878,14 @@ export default function TacticalPlaySurface() {
             />
           );
         })() : null}
+
+        {/* Team-kit editor (Our Team / Goalkeeper / Bib-Opposition) now
+            renders nested inside the Setup -> Players card itself (see
+            playersOpen block above) rather than as a separate floating
+            layer here — it replaces the Players row-list in place, per the
+            PR2B revision-3 "Setup -> Players -> Kit -> Back" nesting
+            request. Nothing left to render at this level. */}
+
         {confirmSheet && <ConfirmSheet {...confirmSheet} />}
       </div>
     </OrientationGate>
