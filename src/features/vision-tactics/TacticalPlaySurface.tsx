@@ -505,19 +505,26 @@ const DRAW_PANEL_GRID_STYLE: CSSProperties = {
   flexWrap: "wrap",
   gap: "4px",
 };
-const DRAW_COLOR_BUTTON_STYLE: CSSProperties = {
+// Transparent, not a dark/translucent fill — same fix PlayerKitEditor's
+// COLOR_BUTTON_STYLE already uses. A filled button background here paints
+// a visible dark ring around the smaller swatch circle inside it, which
+// reads as the colour sample itself being tinted/contaminated even though
+// colorSwatch's own background (the canonical hex) is fully opaque. The
+// button contributes only its border and, when active, a box-shadow ring;
+// the swatch span is the only paint a coach actually sees.
+export const DRAW_COLOR_BUTTON_STYLE: CSSProperties = {
   width: "40px",
   height: "40px",
   borderRadius: "999px",
   border: "1px solid rgba(180, 210, 255, 0.22)",
-  background: "rgba(10, 18, 38, 0.72)",
+  background: "transparent",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   cursor: "pointer",
   padding: 0,
 };
-const DRAW_COLOR_BUTTON_ACTIVE_STYLE: CSSProperties = {
+export const DRAW_COLOR_BUTTON_ACTIVE_STYLE: CSSProperties = {
   ...DRAW_COLOR_BUTTON_STYLE,
   border: "1px solid rgba(124, 255, 114, 0.68)",
   boxShadow: "0 0 0 2px rgba(124, 255, 114, 0.35)",

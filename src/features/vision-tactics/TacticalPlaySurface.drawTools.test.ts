@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { buildGameTimingDrawToolOptions, buildGameTimingDrawColorOptions } from "./TacticalPlaySurface";
+import {
+  buildGameTimingDrawToolOptions,
+  buildGameTimingDrawColorOptions,
+  DRAW_COLOR_BUTTON_STYLE,
+  DRAW_COLOR_BUTTON_ACTIVE_STYLE,
+} from "./TacticalPlaySurface";
 
 /**
  * Draw integration coverage for Game Timing (PR4). These are the two pure
@@ -88,5 +93,28 @@ describe("buildGameTimingDrawColorOptions — reuses Standard Slate's exact pale
     options.find((o) => o.label === "Red")?.onSelect();
     expect(onSelectColor).toHaveBeenCalledTimes(1);
     expect(onSelectColor).toHaveBeenCalledWith(0xdc2626);
+  });
+});
+
+describe("DRAW_COLOR_BUTTON_STYLE — swatch presentation regression lock", () => {
+  // A mobile visual bug (dark/translucent ring around each colour swatch)
+  // traced to this button having its own opaque-ish fill behind the
+  // smaller swatch circle — the colour sample's own background was always
+  // correct (see buildGameTimingDrawColorOptions tests above), the button
+  // chrome around it was compositing a visible dark halo. Fixed the same
+  // way PlayerKitEditor's COLOR_BUTTON_STYLE already does it: transparent
+  // button background, so the swatch span is the only paint. This locks
+  // that specific property against regressing back to a filled background.
+  it("has a transparent background — no fill that could ring/tint the swatch inside it", () => {
+    expect(DRAW_COLOR_BUTTON_STYLE.background).toBe("transparent");
+  });
+
+  it("the active (selected) state does not reintroduce a filled background either", () => {
+    expect(DRAW_COLOR_BUTTON_ACTIVE_STYLE.background).toBe("transparent");
+  });
+
+  it("the active state's selection indicator is a border/box-shadow ring only, not a background change", () => {
+    expect(DRAW_COLOR_BUTTON_ACTIVE_STYLE.boxShadow).toBeTruthy();
+    expect(DRAW_COLOR_BUTTON_ACTIVE_STYLE.background).toBe(DRAW_COLOR_BUTTON_STYLE.background);
   });
 });
