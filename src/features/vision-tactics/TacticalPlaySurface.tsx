@@ -22,6 +22,7 @@ import type {
   MovementConcept,
   MovementRouteEditState,
   PremiumPlayerTokenColor,
+  TacticalDrawingTool,
   TacticalPassEvent,
   TacticalShotEvent,
   TacticalTrainingItem,
@@ -31,6 +32,12 @@ import type {
   ZoneColor,
   ZoneRecord,
 } from "../../movement-board/shell/types";
+import {
+  DrawToolPanel,
+  type DrawToolPanelOption,
+  type DrawColorPanelOption,
+} from "../../components/draw-tools/DrawToolPanel";
+import { WHITEBOARD_PEN_COLOR_CHOICES } from "../../components/draw-tools/drawColorPalette";
 import {
   PlayerKitEditor,
   type PlayerKitEditorTab,
@@ -484,6 +491,42 @@ const TOOL_DISABLED_STYLE: CSSProperties = {
   opacity: 0.45,
   boxShadow: "inset 0 1px 1px rgba(255, 255, 255, 0.08)",
   cursor: "not-allowed",
+};
+
+// PR4 — Draw panel styles for the shared DrawToolPanel (PR3). Same "one
+// bounded card" visual language as PLAYERS_CARD_STYLE; tool/colour buttons
+// reuse the existing TOOL_BUTTON_STYLE family rather than a second button style.
+const DRAW_PANEL_SECTION_STYLE: CSSProperties = {
+  ...PLAYERS_CARD_STYLE,
+  gap: "6px",
+};
+const DRAW_PANEL_GRID_STYLE: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "4px",
+};
+const DRAW_COLOR_BUTTON_STYLE: CSSProperties = {
+  width: "40px",
+  height: "40px",
+  borderRadius: "999px",
+  border: "1px solid rgba(180, 210, 255, 0.22)",
+  background: "rgba(10, 18, 38, 0.72)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  padding: 0,
+};
+const DRAW_COLOR_BUTTON_ACTIVE_STYLE: CSSProperties = {
+  ...DRAW_COLOR_BUTTON_STYLE,
+  border: "1px solid rgba(124, 255, 114, 0.68)",
+  boxShadow: "0 0 0 2px rgba(124, 255, 114, 0.35)",
+};
+const DRAW_COLOR_SWATCH_STYLE: CSSProperties = {
+  width: "22px",
+  height: "22px",
+  borderRadius: "999px",
+  border: "1px solid rgba(255, 255, 255, 0.28)",
 };
 
 const COLLAPSE_BUTTON_STYLE: CSSProperties = {
@@ -1014,15 +1057,64 @@ function multiplierToPlaybackSpeed(n: number): "slow" | "normal" | "fast" {
   return "normal";
 }
 
+// PR4: Game Timing's Draw tool order/labels. Deliberately the V1 subset —
+// no Move (Draw is its own top-level mode; exiting it means leaving Draw
+// entirely, not picking a "move" tool inside it) and no Label (Game Timing
+// already has its own separate Labels/text system — see textAnnotations —
+// which this does not replace or duplicate).
+const GAME_TIMING_DRAW_TOOL_ORDER: readonly { id: TacticalDrawingTool; label: string }[] = [
+  { id: "plain-line", label: "Plain" },
+  { id: "straight-arrow", label: "Straight" },
+  { id: "curved-arrow", label: "Curved" },
+  { id: "dashed-arrow", label: "Dashed" },
+  { id: "wavy-line", label: "Wavy" },
+  { id: "free-pen", label: "Free Pen" },
+  { id: "rectangle-zone", label: "Rect Zone" },
+  { id: "circle-zone", label: "Circle Zone" },
+  { id: "eraser", label: "Eraser" },
+];
+
+/**
+ * Builds Game Timing's Draw-tab tool list for the shared DrawToolPanel —
+ * same generic {id,label,active,onSelect} reshape PR3 established for
+ * Standard Slate, over the same underlying TacticalDrawingTool vocabulary
+ * (no second tool-id union invented for Game Timing).
+ */
+export function buildGameTimingDrawToolOptions(params: {
+  activeTool: TacticalDrawingTool;
+  onSelectTool: (tool: TacticalDrawingTool) => void;
+}): DrawToolPanelOption[] {
+  return GAME_TIMING_DRAW_TOOL_ORDER.map(({ id, label }) => ({
+    id,
+    label,
+    active: params.activeTool === id,
+    onSelect: () => params.onSelectTool(id),
+  }));
+}
+
+/** Builds Game Timing's Draw-tab colour list — the same canonical palette Standard Slate uses, not a duplicate. */
+export function buildGameTimingDrawColorOptions(params: {
+  activeColor: number;
+  onSelectColor: (color: number) => void;
+}): DrawColorPanelOption[] {
+  return WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => ({
+    label: choice.label,
+    value: choice.value,
+    css: choice.css,
+    active: params.activeColor === choice.value,
+    ariaLabel: `Set tactical drawing colour ${choice.label}`,
+    onSelect: () => params.onSelectColor(choice.value),
+  }));
+}
 
 export default function TacticalPlaySurface() {
-  type MovementMenuMode = "move" | "route" | "ball" | "play";
+  type MovementMenuMode = "move" | "route" | "ball" | "play" | "draw";
 
   const toShellMode = (menuMode: MovementMenuMode): MovementBoardMode =>
-    menuMode === "route" ? "route" : menuMode === "play" ? "play" : "setup";
+    menuMode === "route" ? "route" : menuMode === "play" ? "play" : menuMode === "draw" ? "draw" : "setup";
 
   const toMenuMode = (shellMode: MovementBoardMode): MovementMenuMode =>
-    shellMode === "route" ? "route" : shellMode === "play" ? "play" : "move";
+    shellMode === "route" ? "route" : shellMode === "play" ? "play" : shellMode === "draw" ? "draw" : "move";
 
   const isPortrait = usePortraitOrientation();
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -1110,6 +1202,13 @@ export default function TacticalPlaySurface() {
   const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
   const [textAnnotations, setTextAnnotations] = useState<SlateTextAnnotation[]>([]);
   const [labelToolActive, setLabelToolActive] = useState(false);
+  // Tactical drawing (PR4) — same shared engine/tool vocabulary as Standard
+  // Slate's Draw tab (src/features/quickboard/drawing), reused via the
+  // shell's setDrawingTool/setDrawingColor. No Label tool here (intentional
+  // V1 omission — Game Timing already has its own separate Labels/text
+  // system above, textAnnotations/labelToolActive).
+  const [gtDrawTool, setGtDrawTool] = useState<TacticalDrawingTool>("plain-line");
+  const [gtDrawColor, setGtDrawColor] = useState<number>(WHITEBOARD_PEN_COLOR_CHOICES[0]?.value ?? 0x111111);
   const editRunPlayerIdRef = useRef<string | null>(null);
   // Ref bridge so the stale mount-time closure in the shell useEffect can read
   // the latest units value (needed for WebGL context-loss restore).
@@ -1237,6 +1336,8 @@ export default function TacticalPlaySurface() {
         // Portrait is now a fully editable orientation (end-line view), so drag
         // is enabled in both orientations; the pitch rotates via setOrientation.
         dragEnabled: true,
+        initialDrawingTool: gtDrawTool,
+        initialDrawingColor: gtDrawColor,
         onTokenMove: (token) => {
           setSelectedToken((previous) => (previous?.id === token.id ? token : previous));
         },
@@ -1529,6 +1630,7 @@ export default function TacticalPlaySurface() {
     route: "Route",
     ball: "Ball",
     play: "Play",
+    draw: "Draw",
   };
 
   const selectedHasBall = selectedToken != null && selectedToken.id === ballCarrierId;
@@ -1940,6 +2042,10 @@ export default function TacticalPlaySurface() {
     setSelectedTrainingItemId(null);
     setTextAnnotations(scenario.textAnnotations ?? []);
     setLabelToolActive(false);
+    // Tactical drawings (PR4) — undefined on any scenario saved before this
+    // existed, defaulted to [] exactly like every other optional field on
+    // this scenario (zones/items/textAnnotations above).
+    shell.setDrawings(scenario.drawings ?? []);
     const loadedAwayIds = new Set(scenario.tokens.filter((t) => t.team === "away").map((t) => t.id));
     setAwayTokenIds(loadedAwayIds);
     const firstAway = scenario.tokens.find((t) => t.team === "away");
@@ -1990,6 +2096,7 @@ export default function TacticalPlaySurface() {
       ourTeamKit,
       goalkeeperKit,
       bibKit,
+      shell.getDrawings(),
     );
     setScenarios(listScenarios());
     setPlaysNameDraft("");
@@ -2204,6 +2311,7 @@ export default function TacticalPlaySurface() {
     shell.setPassEvents([]);
     for (const shot of shell.getShotEvents()) shell.removeShotEvent(shot.id);
     shell.removeBall();
+    shell.clearDrawings();
     shell.setZones([]);
     shell.setTrainingItems([]);
     shell.setSelectedToken(null);
@@ -2823,21 +2931,25 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
-            {/* Row 3: Always-visible board operations */}
+            {/* Row 3: Always-visible board operations.
+                PR4: "Move as 1" and "Labels" are hidden here (superseded
+                product surface — see Phase 7 of the PR4 report). Their
+                underlying state/panels/shell integration are untouched,
+                just unreachable from this row now. "Draw" replaces them:
+                tactical annotation now lives in its own top-level mode,
+                separate from the Player Movement Card's route/timing/ball
+                actions. */}
             <div style={PANEL_ROW_STYLE}>
               <button
                 type="button"
-                style={unitsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => { setUnitsOpen((prev) => !prev); setIsControlsOpen(false); }}
+                style={menuMode === "draw" ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                disabled={modeIsPlaybackLocked}
+                onClick={() => {
+                  setPlayerSheetId(null);
+                  setMenuMode((prev) => (prev === "draw" ? "move" : "draw"));
+                }}
               >
-                Move as 1
-              </button>
-              <button
-                type="button"
-                style={labelToolActive && !isPlaying && !isPaused ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => setLabelToolActive((prev) => !prev)}
-              >
-                Labels{textAnnotations.length > 0 ? ` (${textAnnotations.length})` : ""}
+                Draw
               </button>
               <button
                 type="button"
@@ -2851,6 +2963,43 @@ export default function TacticalPlaySurface() {
                 Hide
               </button>
             </div>
+
+            {/* Draw panel — the shared DrawToolPanel (PR3), reused unmodified.
+                Mounted only while menuMode === "draw" (the shell's pitch
+                pointer is exclusively owned by the drawing controller in
+                that mode — see createMovementCanvasShell.ts). */}
+            {menuMode === "draw" ? (
+              <DrawToolPanel
+                title="Draw"
+                tools={buildGameTimingDrawToolOptions({
+                  activeTool: gtDrawTool,
+                  onSelectTool: (tool) => {
+                    setGtDrawTool(tool);
+                    shellRef.current?.setDrawingTool(tool);
+                  },
+                })}
+                colors={buildGameTimingDrawColorOptions({
+                  activeColor: gtDrawColor,
+                  onSelectColor: (color) => {
+                    setGtDrawColor(color);
+                    shellRef.current?.setDrawingColor(color);
+                  },
+                })}
+                styles={{
+                  section: DRAW_PANEL_SECTION_STYLE,
+                  sectionTitle: SETUP_SECTION_LABEL_STYLE,
+                  toolGrid: DRAW_PANEL_GRID_STYLE,
+                  toolButton: TOOL_BUTTON_STYLE,
+                  toolButtonActive: TOOL_ACTIVE_STYLE,
+                  colorGrid: DRAW_PANEL_GRID_STYLE,
+                  colorButton: DRAW_COLOR_BUTTON_STYLE,
+                  colorButtonActive: DRAW_COLOR_BUTTON_ACTIVE_STYLE,
+                  colorSwatch: DRAW_COLOR_SWATCH_STYLE,
+                }}
+                showColorSectionTitle
+                colorSectionTitle="Colour"
+              />
+            ) : null}
 
             {/* Row 3b: Route visibility — its own row so the full mode name
                 (e.g. "Selected Player") always has room and never competes
@@ -2898,30 +3047,18 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
-            {/* Row 4: Advanced drawer (Move as 1 promoted to Row 3) */}
+            {/* Row 4: Advanced drawer.
+                PR4: Sequence/Zones/Items are hidden here (superseded
+                product surface — see Phase 7 of the PR4 report). Their
+                underlying state, shell integration (zoneLayer/
+                trainingItemLayer) and persistence fields are untouched —
+                only these toggle buttons are gone, so the panels below are
+                simply unreachable now, not removed. Reset Board is kept:
+                it clears zones/items/drawings/kit/token-size/speed, which
+                Reset Play does not touch (see Phase 9 of the PR4 report),
+                so it still does something Reset Play cannot. */}
             {advancedOpen ? (
               <div style={PANEL_ROW_STYLE}>
-                <button
-                  type="button"
-                  style={sequenceOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => setSequenceOpen((prev) => !prev)}
-                >
-                  Sequence
-                </button>
-                <button
-                  type="button"
-                  style={zonesOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => { setZonesOpen((prev) => !prev); setItemsOpen(false); setIsControlsOpen(false); }}
-                >
-                  Zones{zones.length > 0 ? ` (${zones.length})` : ""}
-                </button>
-                <button
-                  type="button"
-                  style={itemsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                  onClick={() => { setItemsOpen((prev) => !prev); setZonesOpen(false); setIsControlsOpen(false); }}
-                >
-                  Items{trainingItems.length > 0 ? ` (${trainingItems.length})` : ""}
-                </button>
                 <button
                   type="button"
                   style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 190, 150, 0.90)" }}
@@ -3780,7 +3917,7 @@ export default function TacticalPlaySurface() {
         ) : null}
 
         {/* Player Action Sheet — tap-player bottom sheet (additive, TOOLS remains fallback) */}
-        {playerSheetId != null && !modeIsPlaybackLocked && menuMode !== "route" ? (() => {
+        {playerSheetId != null && !modeIsPlaybackLocked && menuMode !== "route" && menuMode !== "draw" ? (() => {
           const sheetNum = tokenNumberById[playerSheetId] ?? 0;
           const sheetHasBall = ballCarrierId === playerSheetId;
           const sheetRoute = routes.find((r) => r.playerId === playerSheetId) ?? null;

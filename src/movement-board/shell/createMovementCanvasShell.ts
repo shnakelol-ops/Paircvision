@@ -1,5 +1,6 @@
-import { Application, Container } from "pixi.js";
+import { Application, Container, Graphics } from "pixi.js";
 import { flushDeferredPasses, type DeferredPass } from "./flushDeferredPasses";
+import { createTacticalDrawingController } from "../../features/quickboard/drawing/tacticalDrawingController";
 
 import { clampNormalizedPoint, type NormalizedPoint } from "../coordinates/normalization";
 import {
@@ -47,6 +48,12 @@ const WORLD_SIZE = {
   width: BOARD_PITCH_VIEWBOX.w,
   height: BOARD_PITCH_VIEWBOX.h,
 } as const;
+
+// Tactical-drawing playback fade (PR4) — same values as Standard Slate's
+// WHITEBOARD_DRAWINGS_ALPHA_NORMAL/PLAYBACK in createTacticalPadLiteSurface.ts,
+// so drawings fade identically on both surfaces during playback.
+const DRAWINGS_ALPHA_NORMAL = 1;
+const DRAWINGS_ALPHA_PLAYBACK = 0.35;
 
 const ROUTE_MIN_POINT_DISTANCE = 0.9;
 const POSITION_EPSILON = 0.0001;
@@ -183,6 +190,22 @@ export async function createMovementCanvasShell(
   pitchMount.root.zIndex = 0;
   world.addChild(pitchMount.root);
 
+  // Tactical drawings (PR4) render above the pitch but below every
+  // interactive layer (items/routes/zones/ball/tokens) — the same
+  // behind-tokens convention Standard Slate's whiteboardDrawingsLayer
+  // uses. Never interactive themselves: pitch pointer ownership while
+  // mode === "draw" is handled entirely by the existing centralized
+  // app.stage pointer handlers below, not by these layers' own hit-testing.
+  const drawingsLayerContainer = new Container();
+  drawingsLayerContainer.zIndex = 5;
+  drawingsLayerContainer.eventMode = "none";
+  world.addChild(drawingsLayerContainer);
+
+  const drawingsPreviewGraphic = new Graphics();
+  drawingsPreviewGraphic.zIndex = 6;
+  drawingsPreviewGraphic.eventMode = "none";
+  world.addChild(drawingsPreviewGraphic);
+
   const itemLayerContainer = new Container();
   itemLayerContainer.zIndex = 11;
   world.addChild(itemLayerContainer);
@@ -261,6 +284,23 @@ export async function createMovementCanvasShell(
     onSelectionChange: (id) => options.onTrainingItemSelectionChange?.(id),
   });
 
+  // Tactical drawing (PR4) — the exact same shared controller Standard
+  // Slate uses (src/features/quickboard/drawing/tacticalDrawingController),
+  // reused unmodified. Only the host layers/mapper differ; tool semantics,
+  // rendering, and persistence shape are identical, so there is a single
+  // source of truth for drawing behaviour across both surfaces.
+  const drawingController = createTacticalDrawingController({
+    drawingsLayer: drawingsLayerContainer,
+    previewGraphic: drawingsPreviewGraphic,
+    mapperProvider: () => mapper,
+    initialTool: options.initialDrawingTool ?? "plain-line",
+    initialColor: options.initialDrawingColor ?? 0x111111,
+    createDrawingId: () => `gt-drawing-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  });
+  if (options.initialDrawings && options.initialDrawings.length > 0) {
+    drawingController.importSnapshots(options.initialDrawings);
+  }
+
   tokenLayer.setTokens(options.initialTokens ?? buildDefaultTokens());
   for (const token of tokenLayer.getTokens()) {
     startPositionByTokenId.set(token.id, clonePoint(token.position));
@@ -316,10 +356,12 @@ export async function createMovementCanvasShell(
       // locked — refreshRouteLayer() re-evaluates isPlaybackLocked() itself,
       // so this is the single place that needs to react to state changes.
       refreshRouteLayer();
-      zoneLayer.setInteractive(!state.isPlaying && !state.isPaused);
+      zoneLayer.setInteractive(mode !== "draw" && !state.isPlaying && !state.isPaused);
       trainingItemLayer.setInteractive(mode === "setup" && dragEnabled && !state.isPlaying && !state.isPaused);
       if (state.isPlaying || state.isPaused) activeBallDrag = null;
       syncBallInteraction();
+      drawingsLayerContainer.alpha = state.isPlaying || state.isPaused ? DRAWINGS_ALPHA_PLAYBACK : DRAWINGS_ALPHA_NORMAL;
+      drawingsPreviewGraphic.alpha = drawingsLayerContainer.alpha;
       options.onPlaybackStateChange?.(state);
     },
     onPassStart: (fromPlayerId, toPlayerId) => {
@@ -483,6 +525,7 @@ export async function createMovementCanvasShell(
   trainingItemLayer.setInteractive(canInteractWithTrainingItems());
 
   const canDragFreeBall = () =>
+    mode !== "draw" &&
     !!ballState.position && !ballState.carrierId && dragEnabled && !orchestrator.getState().isPlaying;
 
   const syncBallInteraction = () => {
@@ -659,14 +702,23 @@ export async function createMovementCanvasShell(
   const canDragTokens = () => dragEnabled && mode === "setup" && !isPlaybackLocked();
 
   const setModeState = (nextMode: MovementBoardMode) => {
+    const previousMode = mode;
     mode = nextMode;
     trainingItemLayer.setInteractive(canInteractWithTrainingItems());
+    zoneLayer.setInteractive(mode !== "draw" && !isPlaybackLocked());
+    syncBallInteraction();
     releaseDrag();
     releaseRouteHandleDrag();
     activeBallDrag = null;
     clearRouteDraft();
     if (mode !== "route") {
       setSelectedWaypoint(null);
+    }
+    // Leaving Draw mid-stroke must not leave a half-drawn shape behind —
+    // same "cancel, don't commit" behaviour as Standard Slate's
+    // resetActiveWhiteboardDrawing when its own drawer closes.
+    if (previousMode === "draw" && nextMode !== "draw") {
+      drawingController.cancelActiveDraft();
     }
     // Leaving/entering Route mode changes what "active movement" means for
     // the selected player, so "active" mode needs to be re-evaluated.
@@ -868,7 +920,9 @@ export async function createMovementCanvasShell(
   };
 
   tokenLayer.setOnTokenPointerDown((tokenId, event) => {
-    if (mode === "route") return;
+    // Draw owns the pitch exclusively: tokens must not select (accidentally
+    // or otherwise) while the coach is drawing over/near them.
+    if (mode === "route" || mode === "draw") return;
     (event as { stopPropagation?: () => void }).stopPropagation?.();
     setSelectedToken(tokenId);
     const tapStagePoint = getStagePointFromEvent(event, app.stage);
@@ -981,6 +1035,21 @@ export async function createMovementCanvasShell(
   };
 
   const handleStagePointerMove = (event: unknown) => {
+    // Draw owns the pitch pointer exclusively while active — checked first,
+    // ahead of every other in-progress gesture. In practice none of those
+    // other gestures can be mid-flight here anyway (mode === "draw" already
+    // makes canDragTokens()/canDragFreeBall() false and skips the route
+    // branch in the pointerdown handler below), but the early, unconditional
+    // check keeps that guarantee explicit rather than implicit.
+    if (mode === "draw") {
+      if (drawingController.hasActiveDraft()) {
+        const worldPoint = getWorldPointFromEvent(event, app.stage, mapper);
+        if (worldPoint) {
+          drawingController.handlePointerMove(worldPoint, getPointerIdFromEvent(event));
+        }
+      }
+      return;
+    }
     // Cancel long-press if the finger has moved beyond the tap threshold.
     if (longPressTimer !== null && tokenTapStart) {
       const movePoint = getStagePointFromEvent(event, app.stage);
@@ -1021,6 +1090,13 @@ export async function createMovementCanvasShell(
   };
 
   const handlePointerRelease = (event: unknown) => {
+    if (mode === "draw") {
+      if (drawingController.hasActiveDraft()) {
+        const worldPoint = getWorldPointFromEvent(event, app.stage, mapper);
+        drawingController.handlePointerUp(worldPoint, getPointerIdFromEvent(event));
+      }
+      return;
+    }
     if (longPressTimer !== null) { clearTimeout(longPressTimer); longPressTimer = null; }
     if (longPressTriggered) { longPressTriggered = false; tokenTapStart = null; return; }
     if (tokenTapStart && (mode === "setup" || mode === "route") && !isPlaybackLocked()) {
@@ -1068,6 +1144,13 @@ export async function createMovementCanvasShell(
   app.stage.on("pointerdown", (event) => {
     const worldPoint = getWorldPointFromEvent(event, app.stage, mapper);
     if (!worldPoint || !isWorldPointInsidePitch(worldPoint)) return;
+
+    if (mode === "draw") {
+      if (!isPlaybackLocked()) {
+        drawingController.handlePointerDown(worldPoint, getPointerIdFromEvent(event));
+      }
+      return;
+    }
 
     if (mode === "route" && !isPlaybackLocked() && selectedTokenId) {
       const route = routeByTokenId.get(selectedTokenId);
@@ -1499,6 +1582,14 @@ export async function createMovementCanvasShell(
       orientationQuarterTurns = next;
       syncToHost();
     },
+    setDrawingTool: (tool) => drawingController.setTool(tool),
+    getDrawingTool: () => drawingController.getTool(),
+    setDrawingColor: (color) => drawingController.setColor(color),
+    getDrawingColor: () => drawingController.getColor(),
+    getDrawings: () => drawingController.exportSnapshots(),
+    setDrawings: (drawings) => drawingController.importSnapshots(drawings),
+    eraseLastDrawing: () => drawingController.deleteSelectedOrLast(),
+    clearDrawings: () => drawingController.clear(),
     destroy: () => {
       orchestrator.stop();
       resizeObserver.disconnect();

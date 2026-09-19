@@ -4,6 +4,12 @@ import type { PremiumPlayerTokenColor } from "../tokens/createPremiumPlayerToken
 import type { TokenSize, TokenRendererName } from "../tokens/token-layer";
 import type { RouteVisibilityMode } from "../routes/route-visibility";
 import type { VisionV3KitPattern } from "../../engine/pixi/createVisionV3PlayerToken";
+import type {
+  TacticalDrawingTool,
+  TacticalDrawingSnapshot,
+} from "../../features/quickboard/drawing/tacticalDrawingTypes";
+
+export type { TacticalDrawingTool, TacticalDrawingSnapshot };
 
 export type { PremiumPlayerTokenColor };
 export type { TokenSize, TokenRendererName };
@@ -51,7 +57,13 @@ export type MovementCanvasTapPayload = {
   point: NormalizedPoint;
 };
 
-export type MovementBoardMode = "setup" | "route" | "play";
+// "draw" is Game Timing's tactical-annotation authoring mode (PR4) — the
+// pitch pointer is owned exclusively by the shared drawing controller while
+// active, mutually exclusive with "setup" (token/ball interaction) and
+// "route" (Draw Run / Edit Run route authoring). Standard Slate does not use
+// this shell/mode; its own drawing system is wired directly in
+// createTacticalPadLiteSurface.ts and is unaffected by this addition.
+export type MovementBoardMode = "setup" | "route" | "play" | "draw";
 
 export type MovementPlaybackSpeed = "slow" | "normal" | "fast";
 
@@ -152,6 +164,10 @@ export type MovementCanvasShellOptions = {
   onTrainingItemSelectionChange?: (id: string | null) => void;
   onTokenTap?: (tokenId: string) => void;
   onTokenLongPress?: (tokenId: string) => void;
+  /** Initial tactical-drawing tool/colour and any previously-saved drawings to restore on mount. */
+  initialDrawingTool?: TacticalDrawingTool;
+  initialDrawingColor?: number;
+  initialDrawings?: readonly TacticalDrawingSnapshot[];
 };
 
 export type MovementCanvasShellHandle = {
@@ -219,6 +235,18 @@ export type MovementCanvasShellHandle = {
    * counter-rotate; coordinates, routes, timeline and saves are unaffected.
    */
   setOrientation: (quarterTurns: number) => void;
+  // Tactical drawing (PR4) — thin pass-through to the same shared
+  // src/features/quickboard/drawing/tacticalDrawingController used by
+  // Standard Slate. Pointer routing into it (while mode === "draw") lives
+  // inside the shell; these are just the tool/colour/persistence surface.
+  setDrawingTool: (tool: TacticalDrawingTool) => void;
+  getDrawingTool: () => TacticalDrawingTool;
+  setDrawingColor: (color: number) => void;
+  getDrawingColor: () => number;
+  getDrawings: () => TacticalDrawingSnapshot[];
+  setDrawings: (drawings: readonly TacticalDrawingSnapshot[]) => void;
+  eraseLastDrawing: () => void;
+  clearDrawings: () => void;
   destroy: () => void;
 };
 

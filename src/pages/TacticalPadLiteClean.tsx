@@ -31,6 +31,7 @@ import {
   type DrawColorPanelOption,
   type DrawToolPanelStyles,
 } from "../components/draw-tools/DrawToolPanel";
+import { WHITEBOARD_PEN_COLOR_CHOICES } from "../components/draw-tools/drawColorPalette";
 import {
   mergeTacticalSlateTeamRoster,
   TACTICAL_SLATE_FULL_TEAM_NUMBERS,
@@ -109,13 +110,6 @@ const WHITEBOARD_PLAYER_COLOR_CHOICES: ReadonlyArray<{
   { value: "red", css: "#dc2626" },
   { value: "yellow", css: "#facc15" },
   { value: "black", css: "#1f2937" },
-];
-const WHITEBOARD_PEN_COLOR_CHOICES: ReadonlyArray<{ label: string; value: number; css: string }> = [
-  { label: "Black", value: 0x111111, css: "#111111" },
-  { label: "White", value: 0xffffff, css: "#ffffff" },
-  { label: "Yellow", value: 0xfacc15, css: "#facc15" },
-  { label: "Red", value: 0xdc2626, css: "#dc2626" },
-  { label: "Blue", value: 0x2563eb, css: "#2563eb" },
 ];
 const WHITEBOARD_DRAW_COLOR = WHITEBOARD_PEN_COLOR_CHOICES[0]?.value ?? 0x111111;
 const PLAYBACK_SPEED_OPTIONS: ReadonlyArray<{ multiplier: number; label: string }> = [
