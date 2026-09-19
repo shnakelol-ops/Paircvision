@@ -26,6 +26,12 @@ import {
 } from "../components/player-kit/PlayerKitEditor";
 import { SLATE_V1_PATTERNS, PLAYER_KIT_PATTERN_LABEL } from "../components/player-kit/playerKitPatterns";
 import {
+  DrawToolPanel,
+  type DrawToolPanelOption,
+  type DrawColorPanelOption,
+  type DrawToolPanelStyles,
+} from "../components/draw-tools/DrawToolPanel";
+import {
   mergeTacticalSlateTeamRoster,
   TACTICAL_SLATE_FULL_TEAM_NUMBERS,
 } from "../engine/pixi/tacticalSlateDefaultPlayers";
@@ -161,6 +167,115 @@ type WhiteboardToolControl =
   | "circleZone"
   | "eraser";
 type WhiteboardToolAction = WhiteboardToolControl;
+
+// PR3: Draw tool label text, extracted verbatim from the two Tools-hub
+// layout branches this fed before the shared DrawToolPanel existed. The two
+// sets genuinely differ today (compact-landscape says "Line"/"Arrow"/"Dash"/
+// "Pen"; portrait/default says "Plain"/"Straight"/"Dashed"/"Wavy") — a
+// pre-existing inconsistency between Slate's own two layouts, not something
+// this extraction introduces or corrects. Preserved exactly so neither
+// layout's rendered text changes.
+type TacticalDrawToolLabels = Record<Exclude<WhiteboardToolControl, "move">, string> & { move: string };
+const COMPACT_LANDSCAPE_DRAW_TOOL_LABELS: TacticalDrawToolLabels = {
+  move: "Move",
+  line: "Line",
+  arrow: "Arrow",
+  curved: "Curved",
+  dashed: "Dash",
+  wavy: "Pen",
+  freePen: "Free Pen",
+  rectangleZone: "Rect Zone",
+  circleZone: "Circle Zone",
+  eraser: "Eraser",
+};
+const DEFAULT_DRAW_TOOL_LABELS: TacticalDrawToolLabels = {
+  move: "Move",
+  line: "Plain",
+  arrow: "Straight",
+  curved: "Curved",
+  dashed: "Dashed",
+  wavy: "Wavy",
+  freePen: "Free Pen",
+  rectangleZone: "Rect Zone",
+  circleZone: "Circle Zone",
+  eraser: "Eraser",
+};
+// Order the Draw tool grid has always rendered in: Move, then Label
+// (inserted second, see buildTacticalDrawToolOptions below), then the nine
+// drawing tools in this exact sequence.
+const TACTICAL_DRAW_TOOL_ORDER: readonly Exclude<WhiteboardToolControl, "move">[] = [
+  "line",
+  "arrow",
+  "curved",
+  "dashed",
+  "wavy",
+  "freePen",
+  "rectangleZone",
+  "circleZone",
+  "eraser",
+];
+
+/**
+ * Builds the ordered Draw-tab tool list (Move, Label, then the nine drawing
+ * tools) for the shared DrawToolPanel — pure reshape of existing state into
+ * the panel's generic `{id, label, active, onSelect}` shape, no new
+ * behaviour. "Move"'s active check (`tacticalTool === "move" && !textToolActive`)
+ * and "Label"'s (`textToolActive`) are exactly what the original inline JSX
+ * computed; extracting them here does not change either expression.
+ */
+export function buildTacticalDrawToolOptions(params: {
+  labels: TacticalDrawToolLabels;
+  tacticalTool: WhiteboardToolControl;
+  textToolActive: boolean;
+  onSelectTool: (tool: WhiteboardToolControl) => void;
+  onSelectLabel: () => void;
+}): DrawToolPanelOption[] {
+  const { labels, tacticalTool, textToolActive, onSelectTool, onSelectLabel } = params;
+  const options: DrawToolPanelOption[] = [
+    {
+      id: "move",
+      label: labels.move,
+      active: tacticalTool === "move" && !textToolActive,
+      onSelect: () => onSelectTool("move"),
+    },
+    {
+      id: "label",
+      label: "Label",
+      active: textToolActive,
+      onSelect: onSelectLabel,
+    },
+  ];
+  for (const id of TACTICAL_DRAW_TOOL_ORDER) {
+    options.push({
+      id,
+      label: labels[id],
+      active: tacticalTool === id,
+      onSelect: () => onSelectTool(id),
+    });
+  }
+  return options;
+}
+
+/**
+ * Builds the Draw-tab colour swatch list for the shared DrawToolPanel —
+ * pure reshape of WHITEBOARD_PEN_COLOR_CHOICES (the one existing colour
+ * palette both Whiteboard mode and Tactical mode already share) into the
+ * panel's generic shape. Does not duplicate the palette itself.
+ */
+export function buildTacticalDrawColorOptions(params: {
+  activeColor: number;
+  onSelectColor: (color: number) => void;
+}): DrawColorPanelOption[] {
+  return WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => ({
+    label: choice.label,
+    value: choice.value,
+    css: choice.css,
+    active: params.activeColor === choice.value,
+    ariaLabel: `Set tactical drawing colour ${choice.label}`,
+    onSelect: () => params.onSelectColor(choice.value),
+  }));
+}
+
 type MovementModePillOption = "move" | "ball" | "freeDraw";
 const WHITEBOARD_BUBBLE_SIZE = 36;
 const WHITEBOARD_BUBBLE_MARGIN = 12;
@@ -4419,6 +4534,28 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
     : isMobilePortraitTools
     ? MOBILE_PORTRAIT_COLOR_SWATCH_STYLE
     : COACH_HUB_COLOR_SWATCH_STYLE;
+  // PR3: the shared DrawToolPanel renders whatever styles it's given rather
+  // than knowing about compact-landscape/mobile-portrait layout modes
+  // itself — this is that existing per-mode style resolution (unchanged
+  // above) reshaped into the panel's prop shape. The active colour swatch's
+  // ring (colorButtonActive) was an inline-merged literal in the original
+  // JSX, identical at both call sites in every layout mode; preserved
+  // verbatim here rather than turned into a new per-mode style branch.
+  const tacticalDrawToolPanelStyles: DrawToolPanelStyles = {
+    section: COACH_HUB_SECTION_STYLE,
+    sectionTitle: coachHubSectionTitleStyle,
+    toolGrid: coachHubToolGridStyle,
+    toolButton: coachHubToolButtonStyle,
+    toolButtonActive: coachHubToolButtonActiveStyle,
+    colorGrid: coachHubColorGridStyle,
+    colorButton: coachHubColorButtonStyle,
+    colorButtonActive: {
+      ...coachHubColorButtonStyle,
+      boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.88)",
+      border: "1px solid rgba(125, 211, 252, 0.8)",
+    },
+    colorSwatch: coachHubColorSwatchStyle,
+  };
   const coachHubActionGridStyle = isMobilePortraitTools ? MOBILE_PORTRAIT_ACTION_GRID_STYLE : COACH_HUB_ACTION_GRID_STYLE;
   const coachHubActionButtonStyle = isCompactLandscapeTools
     ? {
@@ -5272,113 +5409,23 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
                   </div>
 
                   {activeToolsSection === "draw" ? (
-                    <div style={COACH_HUB_SECTION_STYLE}>
-                      <p style={coachHubSectionTitleStyle}>Draw</p>
-                      <div className="coach-hub-tool-grid" style={COACH_HUB_TOOL_GRID_STYLE}>
-                        <button
-                          type="button"
-                          style={tacticalTool === "move" && !textToolActive ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                          onClick={() => applyTacticalToolFromMenu("move")}
-                        >
-                          Move
-                        </button>
-                        <button
-                          type="button"
-                          style={textToolActive ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                          onClick={activateTextTool}
-                        >
-                          Label
-                        </button>
-                        <button
-                          type="button"
-                          style={tacticalTool === "line" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                          onClick={() => applyTacticalToolFromMenu("line")}
-                        >
-                          Line
-                        </button>
-                        <button
-                          type="button"
-                          style={tacticalTool === "arrow" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                          onClick={() => applyTacticalToolFromMenu("arrow")}
-                        >
-                          Arrow
-                        </button>
-                        <button
-                          type="button"
-                          style={tacticalTool === "curved" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                          onClick={() => applyTacticalToolFromMenu("curved")}
-                        >
-                          Curved
-                        </button>
-                        <button
-                          type="button"
-                          style={tacticalTool === "dashed" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                          onClick={() => applyTacticalToolFromMenu("dashed")}
-                        >
-                          Dash
-                        </button>
-                        <button
-                          type="button"
-                          style={tacticalTool === "wavy" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                          onClick={() => applyTacticalToolFromMenu("wavy")}
-                        >
-                          Pen
-                        </button>
-                        <button
-                          type="button"
-                          style={tacticalTool === "freePen" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                          onClick={() => applyTacticalToolFromMenu("freePen")}
-                        >
-                          Free Pen
-                        </button>
-                        <button
-                          type="button"
-                          style={tacticalTool === "rectangleZone" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                          onClick={() => applyTacticalToolFromMenu("rectangleZone")}
-                        >
-                          Rect Zone
-                        </button>
-                        <button
-                          type="button"
-                          style={tacticalTool === "circleZone" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                          onClick={() => applyTacticalToolFromMenu("circleZone")}
-                        >
-                          Circle Zone
-                        </button>
-                        <button
-                          type="button"
-                          style={tacticalTool === "eraser" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                          onClick={() => applyTacticalToolFromMenu("eraser")}
-                        >
-                          Eraser
-                        </button>
-                      </div>
-                      {isCompactLandscapeTools ? <p style={coachHubSectionTitleStyle}>Colour</p> : null}
-                      <div style={coachHubColorGridStyle}>
-                        {WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => {
-                          const isActive = activeTacticalPenColor === choice.value;
-                          return (
-                            <button
-                              key={`tactical-color-${choice.label.toLowerCase()}`}
-                              type="button"
-                              aria-label={`Set tactical drawing colour ${choice.label}`}
-                              style={{
-                                ...coachHubColorButtonStyle,
-                                ...(isActive
-                                  ? {
-                                      boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.88)",
-                                      border: "1px solid rgba(125, 211, 252, 0.8)",
-                                    }
-                                  : null),
-                              }}
-                              onClick={() => applyTacticalPenColor(choice.value)}
-                            >
-                              <span style={{ ...coachHubColorSwatchStyle, background: choice.css }} />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
+                    <DrawToolPanel
+                      title="Draw"
+                      tools={buildTacticalDrawToolOptions({
+                        labels: COMPACT_LANDSCAPE_DRAW_TOOL_LABELS,
+                        tacticalTool,
+                        textToolActive,
+                        onSelectTool: applyTacticalToolFromMenu,
+                        onSelectLabel: activateTextTool,
+                      })}
+                      colors={buildTacticalDrawColorOptions({
+                        activeColor: activeTacticalPenColor,
+                        onSelectColor: applyTacticalPenColor,
+                      })}
+                      styles={tacticalDrawToolPanelStyles}
+                      toolGridClassName="coach-hub-tool-grid"
+                      showColorSectionTitle={isCompactLandscapeTools}
+                    />
                   ) : null}
 
                   {activeToolsSection === "teams" ? (
@@ -5551,116 +5598,23 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
             </div>
 
             {activeToolsSection === "draw" ? (
-              <div style={COACH_HUB_SECTION_STYLE}>
-                <p style={coachHubSectionTitleStyle}>Draw</p>
-                <div
-                  className={isMobilePortraitTools ? "mobile-portrait-tool-grid" : "coach-hub-tool-grid"}
-                  style={coachHubToolGridStyle}
-                >
-                  <button
-                    type="button"
-                    style={tacticalTool === "move" && !textToolActive ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                    onClick={() => applyTacticalToolFromMenu("move")}
-                  >
-                    Move
-                  </button>
-                  <button
-                    type="button"
-                    style={textToolActive ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                    onClick={activateTextTool}
-                  >
-                    Label
-                  </button>
-                  <button
-                    type="button"
-                    style={tacticalTool === "line" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                    onClick={() => applyTacticalToolFromMenu("line")}
-                  >
-                    Plain
-                  </button>
-                  <button
-                    type="button"
-                    style={tacticalTool === "arrow" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                    onClick={() => applyTacticalToolFromMenu("arrow")}
-                  >
-                    Straight
-                  </button>
-                  <button
-                    type="button"
-                    style={tacticalTool === "curved" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                    onClick={() => applyTacticalToolFromMenu("curved")}
-                  >
-                    Curved
-                  </button>
-                  <button
-                    type="button"
-                    style={tacticalTool === "dashed" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                    onClick={() => applyTacticalToolFromMenu("dashed")}
-                  >
-                    Dashed
-                  </button>
-                  <button
-                    type="button"
-                    style={tacticalTool === "wavy" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                    onClick={() => applyTacticalToolFromMenu("wavy")}
-                  >
-                    Wavy
-                  </button>
-                  <button
-                    type="button"
-                    style={tacticalTool === "freePen" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                    onClick={() => applyTacticalToolFromMenu("freePen")}
-                  >
-                    Free Pen
-                  </button>
-                  <button
-                    type="button"
-                    style={tacticalTool === "rectangleZone" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                    onClick={() => applyTacticalToolFromMenu("rectangleZone")}
-                  >
-                    Rect Zone
-                  </button>
-                  <button
-                    type="button"
-                    style={tacticalTool === "circleZone" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                    onClick={() => applyTacticalToolFromMenu("circleZone")}
-                  >
-                    Circle Zone
-                  </button>
-                  <button
-                    type="button"
-                    style={tacticalTool === "eraser" ? coachHubToolButtonActiveStyle : coachHubToolButtonStyle}
-                    onClick={() => applyTacticalToolFromMenu("eraser")}
-                  >
-                    Eraser
-                  </button>
-                </div>
-                {isCompactLandscapeTools ? <p style={coachHubSectionTitleStyle}>Colour</p> : null}
-                <div style={coachHubColorGridStyle}>
-                  {WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => {
-                    const isActive = activeTacticalPenColor === choice.value;
-                    return (
-                      <button
-                        key={`tactical-color-${choice.label.toLowerCase()}`}
-                        type="button"
-                        aria-label={`Set tactical drawing colour ${choice.label}`}
-                        style={{
-                          ...coachHubColorButtonStyle,
-                          ...(isActive
-                            ? {
-                                boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.88)",
-                                border: "1px solid rgba(125, 211, 252, 0.8)",
-                              }
-                            : null),
-                        }}
-                        onClick={() => applyTacticalPenColor(choice.value)}
-                      >
-                        <span style={{ ...coachHubColorSwatchStyle, background: choice.css }} />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <DrawToolPanel
+                title="Draw"
+                tools={buildTacticalDrawToolOptions({
+                  labels: DEFAULT_DRAW_TOOL_LABELS,
+                  tacticalTool,
+                  textToolActive,
+                  onSelectTool: applyTacticalToolFromMenu,
+                  onSelectLabel: activateTextTool,
+                })}
+                colors={buildTacticalDrawColorOptions({
+                  activeColor: activeTacticalPenColor,
+                  onSelectColor: applyTacticalPenColor,
+                })}
+                styles={tacticalDrawToolPanelStyles}
+                toolGridClassName={isMobilePortraitTools ? "mobile-portrait-tool-grid" : "coach-hub-tool-grid"}
+                showColorSectionTitle={isCompactLandscapeTools}
+              />
             ) : null}
 
             {activeToolsSection === "teams" ? (
