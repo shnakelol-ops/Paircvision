@@ -1192,7 +1192,6 @@ export default function TacticalPlaySurface() {
   const [unitNameDraft, setUnitNameDraft] = useState("");
   const [unitEditingId, setUnitEditingId] = useState<string | null>(null);
   const [unitDrawingId, setUnitDrawingId] = useState<string | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [speedOpen, setSpeedOpen] = useState(false);
   const [itemsOpen, setItemsOpen] = useState(false);
   const [trainingItems, setTrainingItems] = useState<TacticalTrainingItem[]>([]);
@@ -1578,7 +1577,6 @@ export default function TacticalPlaySurface() {
       setBallMenuStep(null);
       setPlaysOpen(false);
       setUnitsOpen(false);
-      setAdvancedOpen(false);
       setSpeedOpen(false);
       setRoutesMenuOpen(false);
       setItemsOpen(false);
@@ -2945,7 +2943,17 @@ export default function TacticalPlaySurface() {
                 just unreachable from this row now. "Draw" replaces them:
                 tactical annotation now lives in its own top-level mode,
                 separate from the Player Movement Card's route/timing/ball
-                actions. */}
+                actions.
+                PR4 UI cleanup: the "Advanced" disclosure is gone — once
+                Sequence/Zones/Items were hidden, Reset Board was the only
+                thing left behind it, so it's promoted directly into this
+                row (target hierarchy: Draw · Speed · Reset Board). Reset
+                Board's own behaviour (onResetBoard/doResetBoard) is
+                unchanged. Set Start / +Player / Routes visibility are
+                genuinely still needed for the core workflow (see the PR4
+                UI cleanup report) and were never behind Advanced to begin
+                with — Row 2 and Row 3b, both unconditionally reachable,
+                already hold them and are untouched by this change. */}
             <div style={PANEL_ROW_STYLE}>
               <button
                 type="button"
@@ -2958,14 +2966,14 @@ export default function TacticalPlaySurface() {
               >
                 Draw
               </button>
+              {SpeedButton}
               <button
                 type="button"
-                style={advancedOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
-                onClick={() => setAdvancedOpen((prev) => !prev)}
+                style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 190, 150, 0.90)" }}
+                onClick={onResetBoard}
               >
-                Advanced {advancedOpen ? "▲" : "▾"}
+                Reset Board
               </button>
-              {SpeedButton}
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
               </button>
@@ -3051,28 +3059,6 @@ export default function TacticalPlaySurface() {
                     {opt.label}
                   </button>
                 ))}
-              </div>
-            ) : null}
-
-            {/* Row 4: Advanced drawer.
-                PR4: Sequence/Zones/Items are hidden here (superseded
-                product surface — see Phase 7 of the PR4 report). Their
-                underlying state, shell integration (zoneLayer/
-                trainingItemLayer) and persistence fields are untouched —
-                only these toggle buttons are gone, so the panels below are
-                simply unreachable now, not removed. Reset Board is kept:
-                it clears zones/items/drawings/kit/token-size/speed, which
-                Reset Play does not touch (see Phase 9 of the PR4 report),
-                so it still does something Reset Play cannot. */}
-            {advancedOpen ? (
-              <div style={PANEL_ROW_STYLE}>
-                <button
-                  type="button"
-                  style={{ ...TOOL_BUTTON_STYLE, color: "rgba(255, 190, 150, 0.90)" }}
-                  onClick={onResetBoard}
-                >
-                  Reset Board
-                </button>
               </div>
             ) : null}
 
