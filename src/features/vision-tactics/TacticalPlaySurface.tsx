@@ -2452,7 +2452,11 @@ export default function TacticalPlaySurface() {
         <VisionStadiumBackground variant="play" portrait={isPortrait} />
         <div style={isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
           <div ref={hostRef} style={PITCH_STYLE} />
-          <PitchWatermark portrait={isPortrait} />
+          {/* `lowered` matches Tactical Slate's exact watermark position
+              (TacticalPadLiteClean.tsx) — see PitchWatermark.tsx: without it,
+              portrait mode uses the higher "Tactical Play" default offset
+              instead of the endline-relative position Slate already uses. */}
+          <PitchWatermark portrait={isPortrait} lowered />
           <TextAnnotationOverlay
             annotations={textAnnotations}
             active={labelToolActive && !isPlaying && !isPaused && editRunPlayerId === null}
