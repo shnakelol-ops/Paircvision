@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
+
+const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 export interface ConfirmSheetProps {
   message: string;
@@ -128,29 +130,69 @@ export function ConfirmSheet({
 }: ConfirmSheetProps) {
   const [inputValue, setInputValue] = useState(promptDefault);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cancelBtnRef = useRef<HTMLButtonElement>(null);
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const isAlert = variant === "alert";
   const isPrompt = variant === "prompt";
+  const titleId = useId();
+  const messageId = useId();
 
   useEffect(() => {
     setInputValue(promptDefault ?? "");
   }, [promptDefault]);
 
+  // Move focus into the dialog on open, and restore it to whatever triggered
+  // the dialog once it closes (confirm, cancel, Escape, or backdrop click all
+  // unmount this component the same way, so one mount/unmount pair covers
+  // every close path). Intentionally runs once per mount: variant/isPrompt/
+  // isAlert are fixed for the lifetime of a given ConfirmSheet instance.
   useEffect(() => {
-    if (isPrompt) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }
-  }, [isPrompt]);
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const initialTarget = isPrompt ? inputRef.current : isAlert ? confirmBtnRef.current : cancelBtnRef.current;
+    initialTarget?.focus();
+    if (isPrompt) inputRef.current?.select();
+    return () => {
+      previouslyFocused?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const container = containerRef.current;
       if (e.key === "Escape" && !isAlert) {
         e.preventDefault();
         onCancel();
+        return;
       }
       if (e.key === "Enter" && !isPrompt) {
-        e.preventDefault();
-        onConfirm();
+        if (!container || container.contains(document.activeElement)) {
+          e.preventDefault();
+          onConfirm();
+        }
+        return;
+      }
+      if (e.key === "Tab" && container) {
+        const focusable = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+          (el) => !el.hasAttribute("disabled")
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const current = document.activeElement;
+        // Trap Tab/Shift+Tab within the dialog so background content behind
+        // the backdrop is never reachable while it's open.
+        if (e.shiftKey && current === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && current === last) {
+          e.preventDefault();
+          first.focus();
+        } else if (!container.contains(current)) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     document.addEventListener("keydown", onKey);
@@ -171,9 +213,22 @@ export function ConfirmSheet({
 
   return (
     <div style={BACKDROP} onClick={handleBackdropClick}>
-      <div style={CARD} role="dialog" aria-modal="true">
-        {title && <p style={TITLE_STYLE}>{title}</p>}
-        <p style={MESSAGE_STYLE}>{message}</p>
+      <div
+        ref={containerRef}
+        style={CARD}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : messageId}
+        aria-describedby={title ? messageId : undefined}
+      >
+        {title && (
+          <p id={titleId} style={TITLE_STYLE}>
+            {title}
+          </p>
+        )}
+        <p id={messageId} style={MESSAGE_STYLE}>
+          {message}
+        </p>
         {isPrompt && (
           <input
             ref={inputRef}
@@ -192,11 +247,12 @@ export function ConfirmSheet({
         )}
         <div style={BTN_ROW}>
           {!isAlert && (
-            <button type="button" style={CANCEL_BTN} onClick={onCancel}>
+            <button ref={cancelBtnRef} type="button" style={CANCEL_BTN} onClick={onCancel}>
               {cancelLabel}
             </button>
           )}
           <button
+            ref={confirmBtnRef}
             type="button"
             style={confirmBtnStyle(danger)}
             onClick={handleConfirm}
