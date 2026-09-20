@@ -404,12 +404,6 @@ export async function createMovementCanvasShell(
   let deferredPasses: DeferredPass[] = [];
   let deferredShots: string[] = [];
 
-  // Shots only — kept at their exact original value/behaviour, untouched.
-  // Normal passes on a top-down 2D board deliberately fly a straight XY
-  // line: a real ball's aerial height has no orthographic representation
-  // here, and rendering it as sideways curvature is exactly the visual
-  // defect this constant no longer contributes to for passes.
-  const SHOT_ARC_HEIGHT_PX = 10;
   const PASS_MIN_DURATION_MS = 850;
   const PASS_MAX_DURATION_MS = 1800;
   // See BALL_LANDING_EPSILON_MS usage in tick() below.
@@ -467,12 +461,14 @@ export async function createMovementCanvasShell(
       const toWorldPos = isShot ? activeBallPass.toWorld : activeBallPass.passTargetWorld;
       if (toWorldPos) {
         const t = Math.min(1, activeBallPass.elapsedMs / activeBallPass.durationMs);
+        // Shots and passes share the exact same straight-line ease-out
+        // flight primitive — see pass-trajectory.ts. `isShot` still
+        // decides which fixed target field to fly to (toWorld vs
+        // passTargetWorld) above; it no longer changes the geometry.
         const { x: worldX, y: worldY } = computeBallFlightWorldPosition({
           fromWorld: activeBallPass.fromWorld,
           toWorld: toWorldPos,
           t,
-          isShot,
-          shotArcHeightPx: SHOT_ARC_HEIGHT_PX,
         });
         ballLayer.setBallType(activeBallPass.ballType);
         ballLayer.setVisible(true);
