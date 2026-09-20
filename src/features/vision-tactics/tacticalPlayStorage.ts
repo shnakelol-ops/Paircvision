@@ -1,4 +1,4 @@
-import type { BallState, MovementBoardRoute, MovementBoardToken, MovementPlaybackSpeed, TacticalPassEvent, TacticalShotEvent, TacticalTrainingItem, ZoneRecord } from "../../movement-board/shell/types";
+import type { BallState, MovementBoardRoute, MovementBoardToken, MovementPlaybackSpeed, TacticalDrawingSnapshot, TacticalPassEvent, TacticalShotEvent, TacticalTrainingItem, ZoneRecord } from "../../movement-board/shell/types";
 import type { TacticalUnit } from "./tacticalUnitTypes";
 import type { SlateTextAnnotation } from "../../components/annotations/textAnnotation";
 import type { TeamKit } from "./teamKit";
@@ -20,6 +20,11 @@ export type TacticalScenario = {
   zones?: ZoneRecord[];
   items?: TacticalTrainingItem[];
   textAnnotations?: SlateTextAnnotation[];
+  // Game Timing tactical drawings (PR4) — the same shared drawing engine
+  // Standard Slate uses. Undefined on any scenario saved before this
+  // existed; onLoadScenario applies `?? []`, exactly like every other
+  // optional field here. Never read by Standard Slate's own storage.
+  drawings?: TacticalDrawingSnapshot[];
   // Team-kit model (KIT belongs to TEAM, not player — see teamKit.ts).
   // Undefined on any scenario saved before this existed; onLoadScenario in
   // TacticalPlaySurface.tsx applies the same sensible defaults teamKit.ts
@@ -64,6 +69,7 @@ export function saveScenario(
   ourTeamKit?: TeamKit,
   goalkeeperKit?: TeamKit,
   bibKit?: TeamKit,
+  drawings?: TacticalDrawingSnapshot[],
 ): TacticalScenario {
   const scenario: TacticalScenario = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -82,6 +88,7 @@ export function saveScenario(
     ourTeamKit,
     goalkeeperKit,
     bibKit,
+    drawings: drawings && drawings.length > 0 ? drawings : undefined,
   };
   persistList([scenario, ...listScenarios()].slice(0, MAX_SCENARIOS));
   return scenario;
