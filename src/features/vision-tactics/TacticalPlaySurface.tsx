@@ -2972,6 +2972,20 @@ export default function TacticalPlaySurface() {
               >
                 Reset Board
               </button>
+              {/* Items — restored (final release). Same toggle/onClick the
+                  pre-PR4 "Advanced" drawer used (setZonesOpen(false) kept
+                  even though Zones stays hidden: harmless, zonesOpen can
+                  never be true to begin with). The Items panel below
+                  (itemsOpen block) and onAddTrainingItem/onDuplicateTrainingItem/
+                  onDeleteTrainingItem/onClearAllTrainingItems and shell
+                  persistence are all untouched — only this trigger returns. */}
+              <button
+                type="button"
+                style={itemsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                onClick={() => { setItemsOpen((prev) => !prev); setZonesOpen(false); setIsControlsOpen(false); }}
+              >
+                Items{trainingItems.length > 0 ? ` (${trainingItems.length})` : ""}
+              </button>
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
               </button>
