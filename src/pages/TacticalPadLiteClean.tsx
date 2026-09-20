@@ -882,6 +882,35 @@ const ACTIONS_MENU_BUTTON_STYLE: CSSProperties = {
   boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.12)",
 };
 
+// Tactical Sequence — approved coach-facing product identity for the
+// existing Game Timing experience, and the route it already lives at
+// (TacticalPlaySurface.tsx via VisionTacticsShell.tsx's resolveView —
+// unchanged). Exported so the copy/route this menu entry uses is directly
+// testable, the same way GAME_TIMING_DRAW_TOOL_ORDER etc. are elsewhere.
+export const TACTICAL_SEQUENCE_ROUTE = "/vision-tactics/play";
+export const TACTICAL_SEQUENCE_MENU_LABEL = "Tactical Sequence";
+export const TACTICAL_SEQUENCE_MENU_SUBTITLE = "Build in-game movement and timing";
+
+// One entry in the Menu popout needs a second, smaller line of supporting
+// copy (the approved "Tactical Sequence" product copy) — every other entry
+// here is a single fixed-height label, so this is a dedicated two-line
+// variant of ACTIONS_MENU_BUTTON_STYLE rather than a change to it.
+const ACTIONS_MENU_TWO_LINE_BUTTON_STYLE: CSSProperties = {
+  ...ACTIONS_MENU_BUTTON_STYLE,
+  height: "auto",
+  minHeight: "30px",
+  padding: "6px 9px",
+  display: "grid",
+  gap: "1px",
+};
+const ACTIONS_MENU_BUTTON_SUBTITLE_STYLE: CSSProperties = {
+  display: "block",
+  fontSize: "8.5px",
+  fontWeight: 500,
+  letterSpacing: "0.1px",
+  opacity: 0.68,
+};
+
 const TOKEN_STYLE_MENU_SECTION_STYLE: CSSProperties = {
   borderRadius: "8px",
   border: "1px solid rgba(224, 236, 248, 0.22)",
@@ -3563,6 +3592,17 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
     closeActionsMenu();
     window.location.assign("/board");
   };
+  // Tactical Sequence — the coach-facing name for the existing, already
+  // audited Game Timing experience (src/features/vision-tactics/
+  // TacticalPlaySurface.tsx, route unchanged). A capability reached from
+  // within Tactical Slate, not a separate Home module — see goHome above
+  // for the identical navigation pattern this mirrors. No Slate state is
+  // translated or shared; this is a plain full-page navigation, same as
+  // every other entry in this menu.
+  const goToTacticalSequence = () => {
+    closeActionsMenu();
+    window.location.assign(TACTICAL_SEQUENCE_ROUTE);
+  };
   const closeQuickShareMenu = () => setQuickShareOpen(false);
   const showShareTip = (message: string) => {
     if (shareTipTimerRef.current !== null) {
@@ -5808,6 +5848,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
             </button>
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={goHome}>
               Home
+            </button>
+            <button type="button" className="control-button" style={ACTIONS_MENU_TWO_LINE_BUTTON_STYLE} onClick={goToTacticalSequence}>
+              <span>{TACTICAL_SEQUENCE_MENU_LABEL}</span>
+              <span style={ACTIONS_MENU_BUTTON_SUBTITLE_STYLE}>{TACTICAL_SEQUENCE_MENU_SUBTITLE}</span>
             </button>
           </div>
         ) : null}

@@ -232,29 +232,6 @@ const BACK_BUTTON_STYLE: CSSProperties = {
   boxShadow: "0 8px 20px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.10)",
 };
 
-const SHARE_IMAGE_BUTTON_STYLE: CSSProperties = {
-  position: "fixed",
-  right: "max(10px, calc(env(safe-area-inset-right, 0px) + 8px))",
-  top: "max(10px, calc(env(safe-area-inset-top, 0px) + 8px))",
-  zIndex: 13,
-  height: "34px",
-  minWidth: "58px",
-  borderRadius: "999px",
-  border: "1px solid rgba(180, 210, 255, 0.22)",
-  background: "rgba(6, 12, 26, 0.82)",
-  color: "#e8f0ff",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "10px",
-  fontWeight: 700,
-  letterSpacing: "0.03em",
-  textTransform: "uppercase",
-  padding: "0 12px",
-  cursor: "pointer",
-  backdropFilter: "blur(10px)",
-  WebkitBackdropFilter: "blur(10px)",
-  boxShadow: "0 8px 20px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.10)",
-};
-
 const TOOLS_BUBBLE_STYLE: CSSProperties = {
   position: "fixed",
   left: "max(10px, calc(env(safe-area-inset-left, 0px) + 8px))",
@@ -2475,7 +2452,11 @@ export default function TacticalPlaySurface() {
         <VisionStadiumBackground variant="play" portrait={isPortrait} />
         <div style={isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
           <div ref={hostRef} style={PITCH_STYLE} />
-          <PitchWatermark portrait={isPortrait} />
+          {/* `lowered` matches Tactical Slate's exact watermark position
+              (TacticalPadLiteClean.tsx) — see PitchWatermark.tsx: without it,
+              portrait mode uses the higher "Tactical Play" default offset
+              instead of the endline-relative position Slate already uses. */}
+          <PitchWatermark portrait={isPortrait} lowered />
           <TextAnnotationOverlay
             annotations={textAnnotations}
             active={labelToolActive && !isPlaying && !isPaused && editRunPlayerId === null}
@@ -2485,18 +2466,15 @@ export default function TacticalPlaySurface() {
         </div>
 
         <button type="button" style={BACK_BUTTON_STYLE} onClick={goBack}>
-          Vision Tactics
+          Tactical Slate
         </button>
 
-        <button
-          type="button"
-          style={SHARE_IMAGE_BUTTON_STYLE}
-          onClick={() => setImageShareOpen(true)}
-          aria-label="Share board image"
-        >
-          Share
-        </button>
-
+        {/* Consolidated Share entry point: the top-right image-share trigger
+            that used to live here is gone — Share Image is now one of the
+            two output actions inside the bottom-right Share & Save panel
+            (see playsOpen below). This ShareSheet instance, its getBlob
+            handler, and imageShareOpen state are all unchanged; only the
+            trigger moved. */}
         <ShareSheet
           open={imageShareOpen}
           onClose={() => setImageShareOpen(false)}
@@ -2993,6 +2971,20 @@ export default function TacticalPlaySurface() {
                 onClick={onResetBoard}
               >
                 Reset Board
+              </button>
+              {/* Items — restored (final release). Same toggle/onClick the
+                  pre-PR4 "Advanced" drawer used (setZonesOpen(false) kept
+                  even though Zones stays hidden: harmless, zonesOpen can
+                  never be true to begin with). The Items panel below
+                  (itemsOpen block) and onAddTrainingItem/onDuplicateTrainingItem/
+                  onDeleteTrainingItem/onClearAllTrainingItems and shell
+                  persistence are all untouched — only this trigger returns. */}
+              <button
+                type="button"
+                style={itemsOpen ? TOOL_ACTIVE_STYLE : TOOL_BUTTON_STYLE}
+                onClick={() => { setItemsOpen((prev) => !prev); setZonesOpen(false); setIsControlsOpen(false); }}
+              >
+                Items{trainingItems.length > 0 ? ` (${trainingItems.length})` : ""}
               </button>
               <button type="button" style={COLLAPSE_BUTTON_STYLE} onClick={() => setIsControlsOpen(false)}>
                 Hide
@@ -3854,29 +3846,47 @@ export default function TacticalPlaySurface() {
               </span>
             )}
 
-            {/* ── Record & Share ── */}
+            {/* ── Share & Record output actions ──
+                Two consolidated output actions, replacing the standalone
+                top-right image-share button that used to float over the
+                board. Share Image reuses the exact same imageShareOpen
+                state / ShareSheet instance that button used to trigger
+                (see the ShareSheet render near the top of this component —
+                unchanged). Record Video reuses the exact same canRecord/
+                setRecordPhase("panel") trigger this button already had;
+                only its label changed, to match "RECORD VIDEO" below. */}
             <div style={{ height: "1px", background: "rgba(180, 210, 255, 0.08)", margin: "4px 0 2px" }} />
 
             {(recordPhase === "idle" || recordPhase === "done") ? (
-              <button
-                type="button"
-                style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(255, 80, 80, 0.38)", color: "rgba(255, 190, 190, 0.95)", width: "100%", justifyContent: "center", height: "30px" }}
-                onClick={() => {
-                  if (!canRecord()) {
-                    setConfirmSheet({
-                      variant: "alert",
-                      message: "Recording is not supported in this browser.\n\niPhone: use Screen Recording from Control Centre.\nAndroid: use Chrome for full recording support.",
-                      confirmLabel: "OK",
-                      onConfirm: () => setConfirmSheet(null),
-                      onCancel: () => setConfirmSheet(null),
-                    });
-                    return;
-                  }
-                  setRecordPhase("panel");
-                }}
-              >
-                🎥 Record
-              </button>
+              <div style={{ display: "flex", gap: "4px" }}>
+                <button
+                  type="button"
+                  style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(100, 160, 255, 0.45)", color: "rgba(180, 222, 255, 0.96)", flex: 1, justifyContent: "center", height: "30px" }}
+                  onClick={() => setImageShareOpen(true)}
+                  aria-label="Share board image"
+                >
+                  🖼 Share Image
+                </button>
+                <button
+                  type="button"
+                  style={{ ...PLAYS_ACTION_BTN, border: "1px solid rgba(255, 80, 80, 0.38)", color: "rgba(255, 190, 190, 0.95)", flex: 1, justifyContent: "center", height: "30px" }}
+                  onClick={() => {
+                    if (!canRecord()) {
+                      setConfirmSheet({
+                        variant: "alert",
+                        message: "Recording is not supported in this browser.\n\niPhone: use Screen Recording from Control Centre.\nAndroid: use Chrome for full recording support.",
+                        confirmLabel: "OK",
+                        onConfirm: () => setConfirmSheet(null),
+                        onCancel: () => setConfirmSheet(null),
+                      });
+                      return;
+                    }
+                    setRecordPhase("panel");
+                  }}
+                >
+                  🎥 Record Video
+                </button>
+              </div>
             ) : null}
 
             {recordPhase === "panel" ? (
