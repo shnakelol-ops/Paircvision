@@ -529,11 +529,31 @@ export const DRAW_COLOR_BUTTON_ACTIVE_STYLE: CSSProperties = {
   border: "1px solid rgba(124, 255, 114, 0.68)",
   boxShadow: "0 0 0 2px rgba(124, 255, 114, 0.35)",
 };
-const DRAW_COLOR_SWATCH_STYLE: CSSProperties = {
+// Forensic diff against PlayerKitEditor's already-correct COLOR_SWATCH_STYLE
+// (src/components/player-kit/PlayerKitEditor.tsx): both swatches sit inside
+// a translucent `backdropFilter: blur(...)` card (PLAYERS_CARD_STYLE, reused
+// by DRAW_PANEL_SECTION_STYLE above), and both compute a fully opaque,
+// canonical-hex background with no ancestor opacity/filter/mix-blend-mode —
+// confirmed live via getComputedStyle + document.elementFromPoint (nothing
+// paints above the swatch). The one structural difference: PlayerKitEditor's
+// blurred card is `position: fixed` (EDITOR_STYLE), giving it its own
+// unambiguous compositing layer, while DRAW_PANEL_SECTION_STYLE is
+// `position: static`, nested inside this panel's own `position: fixed`
+// ancestor (the TOOLS drawer) — a backdrop-filter context sitting inside
+// another positioned ancestor rather than establishing its own top-level
+// one. On WebKit this nested-backdrop arrangement is a known source of
+// backdrop-filter bleeding into descendant paint even though every computed
+// value here is already correct, which is why the swatch renders dark on a
+// real device despite matching PlayerKitEditor's CSS pattern otherwise.
+// `isolation: isolate` forces the swatch onto its own independent
+// compositing layer, immune to that ancestor bleed, without touching the
+// panel's own translucency/blur or any palette value.
+export const DRAW_COLOR_SWATCH_STYLE: CSSProperties = {
   width: "22px",
   height: "22px",
   borderRadius: "999px",
   border: "1px solid rgba(255, 255, 255, 0.28)",
+  isolation: "isolate",
 };
 
 const COLLAPSE_BUTTON_STYLE: CSSProperties = {

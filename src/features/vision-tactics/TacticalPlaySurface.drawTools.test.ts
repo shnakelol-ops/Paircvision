@@ -5,6 +5,7 @@ import {
   buildGameTimingDrawColorOptions,
   DRAW_COLOR_BUTTON_STYLE,
   DRAW_COLOR_BUTTON_ACTIVE_STYLE,
+  DRAW_COLOR_SWATCH_STYLE,
 } from "./TacticalPlaySurface";
 
 /**
@@ -116,5 +117,39 @@ describe("DRAW_COLOR_BUTTON_STYLE — swatch presentation regression lock", () =
   it("the active state's selection indicator is a border/box-shadow ring only, not a background change", () => {
     expect(DRAW_COLOR_BUTTON_ACTIVE_STYLE.boxShadow).toBeTruthy();
     expect(DRAW_COLOR_BUTTON_ACTIVE_STYLE.background).toBe(DRAW_COLOR_BUTTON_STYLE.background);
+  });
+});
+
+describe("DRAW_COLOR_SWATCH_STYLE — ancestor backdrop-filter compositing regression lock", () => {
+  // Second darkening regression, post-4ba0c16. Forensics (getComputedStyle +
+  // document.elementFromPoint on a live render) proved the swatch's own
+  // background was already the exact canonical hex, fully opaque, with no
+  // darkening opacity/filter/mixBlendMode anywhere in its own style or its
+  // button's — i.e. this was never the DRAW_COLOR_BUTTON_STYLE bug returning.
+  // The one real difference from PlayerKitEditor's already-correct
+  // COLOR_SWATCH_STYLE: PlayerKitEditor's translucent `backdropFilter` card
+  // (EDITOR_STYLE) is itself `position: fixed`, giving it its own
+  // unambiguous compositing layer; DRAW_PANEL_SECTION_STYLE (the Draw
+  // panel's equivalent card, built from the same PLAYERS_CARD_STYLE) is
+  // `position: static`, nested inside this panel's own `position: fixed`
+  // ancestor — a backdrop-filter context sitting inside another positioned
+  // ancestor instead of establishing its own top-level one. That nested
+  // arrangement is a known source of a WebKit ancestor compositing bug that
+  // visually darkens fully-opaque static descendants despite every computed
+  // value being correct — exactly the "appears dark on screen but computes
+  // correct" signature this regression showed. These tests lock the actual
+  // fix (isolating the swatch onto its own compositing layer) rather than
+  // re-asserting the palette hex values already covered above.
+  it("is isolated onto its own compositing layer, immune to an ancestor backdrop-filter's compositing", () => {
+    expect(DRAW_COLOR_SWATCH_STYLE.isolation).toBe("isolate");
+  });
+
+  it("declares no opacity, filter, or blend-mode of its own that could dim the colour sample", () => {
+    expect(DRAW_COLOR_SWATCH_STYLE.opacity).toBeUndefined();
+    expect(DRAW_COLOR_SWATCH_STYLE.filter).toBeUndefined();
+    expect(DRAW_COLOR_SWATCH_STYLE.mixBlendMode).toBeUndefined();
+    expect(DRAW_COLOR_BUTTON_STYLE.opacity).toBeUndefined();
+    expect(DRAW_COLOR_BUTTON_STYLE.filter).toBeUndefined();
+    expect(DRAW_COLOR_BUTTON_STYLE.mixBlendMode).toBeUndefined();
   });
 });
