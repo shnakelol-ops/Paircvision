@@ -94,7 +94,7 @@ const SPORT_FILTER_VIEW_LABELS: Record<SportFilter, string> = {
   camogie: "Camogie",
 };
 
-type WrittenNote = {
+export type WrittenNote = {
   id: string;
   title: string;
   body: string;
@@ -103,8 +103,15 @@ type WrittenNote = {
   selectedDate?: string;
 };
 
-const WRITTEN_NOTES_STORAGE_KEY = "pitchflow_written_notes_v1";
+export const WRITTEN_NOTES_STORAGE_KEY = "pitchflow_written_notes_v1";
 const MAX_WRITTEN_NOTES = 200;
+// Raised from the original 80/2000 caps (which silently truncated on save with no
+// warning). 200/10,000 gives a full post-match debrief room while keeping the
+// worst case (200 notes at the cap) to a low-single-digit-MB share of the
+// origin's localStorage quota, which this feature shares with every other
+// PáircVision local-storage domain.
+export const MAX_NOTE_TITLE_LENGTH = 200;
+export const MAX_NOTE_BODY_LENGTH = 10000;
 
 function newWrittenNoteId(): string {
   const c = globalThis.crypto;
@@ -121,12 +128,12 @@ function normalizeWrittenNoteDate(value: unknown): string | undefined {
   return trimmed;
 }
 
-function sanitizeWrittenNotes(notes: readonly WrittenNote[]): WrittenNote[] {
+export function sanitizeWrittenNotes(notes: readonly WrittenNote[]): WrittenNote[] {
   const normalized = notes
     .filter((note) => typeof note.id === "string" && note.id.trim().length > 0)
     .map((note) => {
-      const title = note.title.trim().slice(0, 80);
-      const body = note.body.trim().slice(0, 2000);
+      const title = note.title.trim().slice(0, MAX_NOTE_TITLE_LENGTH);
+      const body = note.body.trim().slice(0, MAX_NOTE_BODY_LENGTH);
       const createdAt = Number.isFinite(note.createdAt) ? Math.max(0, Math.floor(note.createdAt)) : Date.now();
       const updatedAt = Number.isFinite(note.updatedAt) ? Math.max(createdAt, Math.floor(note.updatedAt)) : createdAt;
       return {
@@ -152,7 +159,7 @@ function sanitizeWrittenNotes(notes: readonly WrittenNote[]): WrittenNote[] {
     .slice(0, MAX_WRITTEN_NOTES);
 }
 
-function parseStoredWrittenNotes(input: string | null): WrittenNote[] {
+export function parseStoredWrittenNotes(input: string | null): WrittenNote[] {
   if (!input) return [];
   try {
     const parsed = JSON.parse(input);
@@ -187,9 +194,166 @@ function parseStoredWrittenNotes(input: string | null): WrittenNote[] {
   }
 }
 
-function persistWrittenNotes(notes: readonly WrittenNote[]): void {
+/**
+ * Returns false (never throws) on write failure — e.g. QuotaExceededError, or
+ * Safari Private Browsing where localStorage.setItem throws. Callers must not
+ * report a save as successful, and must not clear editor state, when this
+ * returns false.
+ */
+export function persistWrittenNotes(notes: readonly WrittenNote[]): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    window.localStorage.setItem(WRITTEN_NOTES_STORAGE_KEY, JSON.stringify(sanitizeWrittenNotes(notes)));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// --- Unsaved-draft cache -----------------------------------------------
+// A small, best-effort local cache of in-progress (unsaved) editor text, kept
+// separate from the real notes list above. It exists purely so a coach who
+// gets interrupted mid-thought (navigates away, taps another note, taps
+// "+ New Note") doesn't lose what they typed. It never substitutes for a real
+// save: only pressing "Save Note" writes into WRITTEN_NOTES_STORAGE_KEY.
+//
+// Drafts are keyed by note id, or NEW_NOTE_DRAFT_KEY for a not-yet-saved note,
+// so a draft for one note can never be shown against another. Failures here
+// are swallowed: losing the draft cache is acceptable, crashing the page is not.
+export const NOTES_DRAFT_STORAGE_KEY = "pitchflow_written_notes_draft_v1";
+export const NEW_NOTE_DRAFT_KEY = "__new__";
+const MAX_DRAFT_ENTRIES = 50;
+
+export type NoteDraftEntry = {
+  title: string;
+  body: string;
+  selectedDate: string;
+  updatedAt: number;
+};
+
+export type NoteDraftStore = {
+  activeKey: string | null;
+  drafts: Record<string, NoteDraftEntry>;
+};
+
+export function loadDraftStore(): NoteDraftStore {
+  if (typeof window === "undefined") return { activeKey: null, drafts: {} };
+  try {
+    const raw = window.localStorage.getItem(NOTES_DRAFT_STORAGE_KEY);
+    if (!raw) return { activeKey: null, drafts: {} };
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return { activeKey: null, drafts: {} };
+    const rawDrafts = (parsed as Record<string, unknown>).drafts;
+    const drafts: Record<string, NoteDraftEntry> = {};
+    if (rawDrafts && typeof rawDrafts === "object") {
+      for (const [key, value] of Object.entries(rawDrafts as Record<string, unknown>)) {
+        if (!value || typeof value !== "object") continue;
+        const v = value as Record<string, unknown>;
+        if (typeof v.title !== "string" || typeof v.body !== "string") continue;
+        drafts[key] = {
+          title: v.title,
+          body: v.body,
+          selectedDate: typeof v.selectedDate === "string" ? v.selectedDate : "",
+          updatedAt: typeof v.updatedAt === "number" ? v.updatedAt : 0,
+        };
+      }
+    }
+    const rawActiveKey = (parsed as Record<string, unknown>).activeKey;
+    return { activeKey: typeof rawActiveKey === "string" ? rawActiveKey : null, drafts };
+  } catch {
+    return { activeKey: null, drafts: {} };
+  }
+}
+
+export function saveDraftStore(store: NoteDraftStore): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(WRITTEN_NOTES_STORAGE_KEY, JSON.stringify(sanitizeWrittenNotes(notes)));
+  try {
+    const entries = Object.entries(store.drafts)
+      .sort((a, b) => b[1].updatedAt - a[1].updatedAt)
+      .slice(0, MAX_DRAFT_ENTRIES);
+    window.localStorage.setItem(
+      NOTES_DRAFT_STORAGE_KEY,
+      JSON.stringify({ activeKey: store.activeKey, drafts: Object.fromEntries(entries) })
+    );
+  } catch {
+    // Draft caching is best-effort: a failure here must never surface to the
+    // user or interrupt typing. The real save path (persistWrittenNotes) is
+    // what's required to work, and reports its own failures separately.
+  }
+}
+
+type DraftFields = { title: string; body: string; selectedDate: string };
+
+/** Pure dirty-check: has the editor diverged from what's actually saved? */
+export function isNoteDraftDirty(draft: DraftFields, baseline: DraftFields): boolean {
+  return draft.title !== baseline.title || draft.body !== baseline.body || draft.selectedDate !== baseline.selectedDate;
+}
+
+/**
+ * What should show in the editor when opening `note`: its own pending draft
+ * if one exists (identity-safe — keyed by note.id, so it can never be another
+ * note's text), otherwise the note's saved content.
+ */
+export function pickDraftForOpen(store: NoteDraftStore, note: WrittenNote): DraftFields {
+  const draft = store.drafts[note.id];
+  if (draft) return { title: draft.title, body: draft.body, selectedDate: draft.selectedDate };
+  return { title: note.title, body: note.body, selectedDate: note.selectedDate ?? "" };
+}
+
+/** What should show in the editor when starting a new note: any abandoned unsaved new-note draft, else blank. */
+export function pickDraftForNew(store: NoteDraftStore): DraftFields {
+  const draft = store.drafts[NEW_NOTE_DRAFT_KEY];
+  if (draft) return { title: draft.title, body: draft.body, selectedDate: draft.selectedDate };
+  return { title: "", body: "", selectedDate: "" };
+}
+
+/** Pure update: record (or clear) the draft for `key` without touching any other note's entry. */
+export function withDraftPersisted(store: NoteDraftStore, key: string, dirty: boolean, fields: DraftFields): NoteDraftStore {
+  const drafts = { ...store.drafts };
+  if (dirty) {
+    drafts[key] = { ...fields, updatedAt: Date.now() };
+  } else {
+    delete drafts[key];
+  }
+  return { activeKey: key, drafts };
+}
+
+/** Pure update: a note at `key` is now safely saved (or deleted), so its draft no longer applies. */
+export function withDraftResolved(store: NoteDraftStore, key: string): NoteDraftStore {
+  const drafts = { ...store.drafts };
+  delete drafts[key];
+  return { activeKey: store.activeKey === key ? null : store.activeKey, drafts };
+}
+
+/**
+ * Builds the WrittenNote that "Save Note" should persist, or null when there's
+ * nothing worth saving (both fields empty). Title/body are capped here too as
+ * a defensive backstop — the editor's own onChange handlers already prevent
+ * typing past the limit, so this should be a no-op in practice, never a
+ * surprise truncation.
+ */
+export function buildNoteToSave(params: {
+  activeNoteId: string | null;
+  existingNote: WrittenNote | null;
+  titleDraft: string;
+  bodyDraft: string;
+  dateDraft: string;
+  now: number;
+}): WrittenNote | null {
+  const title = params.titleDraft.trim().slice(0, MAX_NOTE_TITLE_LENGTH);
+  const body = params.bodyDraft.trim().slice(0, MAX_NOTE_BODY_LENGTH);
+  if (title.length === 0 && body.length === 0) return null;
+  const selectedDate = normalizeWrittenNoteDate(params.dateDraft);
+  const id = params.activeNoteId ?? newWrittenNoteId();
+  const createdAt = params.existingNote?.createdAt ?? params.now;
+  return {
+    id,
+    title,
+    body,
+    createdAt,
+    updatedAt: params.now,
+    ...(selectedDate ? { selectedDate } : {}),
+  };
 }
 
 function formatWrittenNoteTimestamp(timestamp: number): string {
@@ -1059,22 +1223,59 @@ function BoardPage({ onReplayTour }: { onReplayTour: () => void }) {
   );
 }
 
+export function resolveInitialNotesPageState(): {
+  notes: WrittenNote[];
+  activeNoteId: string | null;
+  titleDraft: string;
+  bodyDraft: string;
+  dateDraft: string;
+  draftStore: NoteDraftStore;
+} {
+  const notes =
+    typeof window === "undefined" ? [] : parseStoredWrittenNotes(window.localStorage.getItem(WRITTEN_NOTES_STORAGE_KEY));
+  const draftStore = loadDraftStore();
+  const key = draftStore.activeKey;
+  const draft = key ? draftStore.drafts[key] : undefined;
+  if (draft && key === NEW_NOTE_DRAFT_KEY) {
+    return { notes, activeNoteId: null, titleDraft: draft.title, bodyDraft: draft.body, dateDraft: draft.selectedDate, draftStore };
+  }
+  if (draft && key && notes.some((note) => note.id === key)) {
+    return { notes, activeNoteId: key, titleDraft: draft.title, bodyDraft: draft.body, dateDraft: draft.selectedDate, draftStore };
+  }
+  return { notes, activeNoteId: null, titleDraft: "", bodyDraft: "", dateDraft: "", draftStore };
+}
+
 function NotesPage() {
-  const [notes, setNotes] = useState<WrittenNote[]>(() => {
-    if (typeof window === "undefined") return [];
-    return parseStoredWrittenNotes(window.localStorage.getItem(WRITTEN_NOTES_STORAGE_KEY));
-  });
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
-  const [titleDraft, setTitleDraft] = useState("");
-  const [bodyDraft, setBodyDraft] = useState("");
-  const [dateDraft, setDateDraft] = useState("");
+  const [initial] = useState(resolveInitialNotesPageState);
+  const [notes, setNotes] = useState<WrittenNote[]>(initial.notes);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(initial.activeNoteId);
+  const [titleDraft, setTitleDraft] = useState(initial.titleDraft);
+  const [bodyDraft, setBodyDraft] = useState(initial.bodyDraft);
+  const [dateDraft, setDateDraft] = useState(initial.dateDraft);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [confirmSheet, setConfirmSheet] = useState<ConfirmSheetProps | null>(null);
   const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const draftStoreRef = useRef<NoteDraftStore>(initial.draftStore);
 
+  const draftKey = activeNoteId ?? NEW_NOTE_DRAFT_KEY;
+  const activeSavedNote = activeNoteId ? notes.find((note) => note.id === activeNoteId) ?? null : null;
+  const isDirty = isNoteDraftDirty(
+    { title: titleDraft, body: bodyDraft, selectedDate: dateDraft },
+    { title: activeSavedNote?.title ?? "", body: activeSavedNote?.body ?? "", selectedDate: activeSavedNote?.selectedDate ?? "" }
+  );
+
+  // Keep the unsaved-draft cache in sync with what's on screen so accidental
+  // navigation, switching notes, or tapping "+ New Note" can never silently
+  // wipe typed text. This cache is separate from the real notes list — only
+  // Save Note ever writes there.
   useEffect(() => {
-    persistWrittenNotes(notes);
-  }, [notes]);
+    draftStoreRef.current = withDraftPersisted(draftStoreRef.current, draftKey, isDirty, {
+      title: titleDraft,
+      body: bodyDraft,
+      selectedDate: dateDraft,
+    });
+    saveDraftStore(draftStoreRef.current);
+  }, [draftKey, titleDraft, bodyDraft, dateDraft, isDirty]);
 
   useEffect(() => {
     if (!saveFeedback) return;
@@ -1087,47 +1288,58 @@ function NotesPage() {
   }, [saveFeedback]);
 
   const startNewNote = () => {
+    if (activeNoteId === null && isDirty) {
+      // Already composing an unsaved new note — switching to "new" again
+      // must not reset it out from under the coach.
+      window.requestAnimationFrame(() => titleInputRef.current?.focus());
+      return;
+    }
+    const draft = pickDraftForNew(draftStoreRef.current);
     setActiveNoteId(null);
-    setTitleDraft("");
-    setBodyDraft("");
-    setDateDraft("");
+    setTitleDraft(draft.title);
+    setBodyDraft(draft.body);
+    setDateDraft(draft.selectedDate);
+    setSaveFeedback(null);
     window.requestAnimationFrame(() => {
       titleInputRef.current?.focus();
     });
   };
 
   const openNote = (note: WrittenNote) => {
+    if (note.id === activeNoteId) {
+      titleInputRef.current?.focus();
+      return;
+    }
+    const draft = pickDraftForOpen(draftStoreRef.current, note);
     setActiveNoteId(note.id);
-    setTitleDraft(note.title);
-    setBodyDraft(note.body);
-    setDateDraft(note.selectedDate ?? "");
+    setTitleDraft(draft.title);
+    setBodyDraft(draft.body);
+    setDateDraft(draft.selectedDate);
     setSaveFeedback(null);
   };
 
   const saveNote = () => {
-    const nextTitle = titleDraft.trim().slice(0, 80);
-    const nextBody = bodyDraft.trim().slice(0, 2000);
-    const nextDate = normalizeWrittenNoteDate(dateDraft);
-    if (nextTitle.length === 0 && nextBody.length === 0) {
+    const nextNote = buildNoteToSave({
+      activeNoteId,
+      existingNote: activeSavedNote,
+      titleDraft,
+      bodyDraft,
+      dateDraft,
+      now: Date.now(),
+    });
+    if (!nextNote) {
       setSaveFeedback("Add a title or note before saving.");
       return;
     }
-    const now = Date.now();
-    setNotes((previous) => {
-      const existing = activeNoteId ? previous.find((note) => note.id === activeNoteId) : null;
-      const id = existing?.id ?? newWrittenNoteId();
-      const createdAt = existing?.createdAt ?? now;
-      const nextNote: WrittenNote = {
-        id,
-        title: nextTitle,
-        body: nextBody,
-        createdAt,
-        updatedAt: now,
-        ...(nextDate ? { selectedDate: nextDate } : {}),
-      };
-      setActiveNoteId(id);
-      return sanitizeWrittenNotes([nextNote, ...previous.filter((note) => note.id !== id)]);
-    });
+    const nextNotes = sanitizeWrittenNotes([nextNote, ...notes.filter((note) => note.id !== nextNote.id)]);
+    if (!persistWrittenNotes(nextNotes)) {
+      setSaveFeedback("Couldn't save — your device's storage is full or unavailable. Your text is still here, so try again in a moment.");
+      return;
+    }
+    setNotes(nextNotes);
+    setActiveNoteId(nextNote.id);
+    draftStoreRef.current = withDraftResolved(draftStoreRef.current, draftKey);
+    saveDraftStore(draftStoreRef.current);
     setSaveFeedback("Note saved");
   };
 
@@ -1135,19 +1347,48 @@ function NotesPage() {
     if (!activeNoteId) return;
     const selected = notes.find((note) => note.id === activeNoteId);
     if (!selected) return;
+    const idToDelete = activeNoteId;
     setConfirmSheet({
       message: `Delete "${selected.title || "Untitled note"}"?`,
       confirmLabel: "Delete",
       danger: true,
       onConfirm: () => {
         setConfirmSheet(null);
-        setNotes((previous) => previous.filter((note) => note.id !== activeNoteId));
+        const nextNotes = notes.filter((note) => note.id !== idToDelete);
+        if (!persistWrittenNotes(nextNotes)) {
+          setSaveFeedback("Couldn't delete — your device's storage is unavailable. Please try again.");
+          return;
+        }
+        setNotes(nextNotes);
+        draftStoreRef.current = withDraftResolved(draftStoreRef.current, idToDelete);
+        saveDraftStore(draftStoreRef.current);
         startNewNote();
         setSaveFeedback("Note deleted");
       },
       onCancel: () => setConfirmSheet(null),
     });
   };
+
+  const handleTitleChange = (value: string) => {
+    if (value.length > MAX_NOTE_TITLE_LENGTH) {
+      setTitleDraft(value.slice(0, MAX_NOTE_TITLE_LENGTH));
+      setSaveFeedback(`Title trimmed to the ${MAX_NOTE_TITLE_LENGTH}-character limit.`);
+    } else {
+      setTitleDraft(value);
+    }
+  };
+
+  const handleBodyChange = (value: string) => {
+    if (value.length > MAX_NOTE_BODY_LENGTH) {
+      setBodyDraft(value.slice(0, MAX_NOTE_BODY_LENGTH));
+      setSaveFeedback(`Note trimmed to the ${MAX_NOTE_BODY_LENGTH.toLocaleString()}-character limit.`);
+    } else {
+      setBodyDraft(value);
+    }
+  };
+
+  const showTitleCounter = titleDraft.length >= MAX_NOTE_TITLE_LENGTH * 0.8;
+  const showBodyCounter = bodyDraft.length >= MAX_NOTE_BODY_LENGTH * 0.8;
 
   return (
     <>
@@ -1186,11 +1427,11 @@ function NotesPage() {
                   onClick={() => openNote(note)}
                 >
                   <strong style={{ fontSize: "13px" }}>{note.title || "Untitled note"}</strong>
-                  <span style={{ fontSize: "11px", color: "var(--pf-text-muted)" }}>
+                  <span style={{ fontSize: "11px", color: "#A9B8B0" }}>
                     {dateLabel ? `${dateLabel} · ` : ""}
                     Created {formatWrittenNoteTimestamp(note.createdAt)}
                   </span>
-                  <span style={{ fontSize: "11px", color: "var(--pf-text-dim)" }}>
+                  <span style={{ fontSize: "11px", color: "#A9B8B0" }}>
                     {preview.length > 0 ? `${preview.slice(0, 96)}${preview.length > 96 ? "…" : ""}` : "No body text"}
                   </span>
                 </button>
@@ -1207,14 +1448,21 @@ function NotesPage() {
         }}
       >
         <p className="pf-card-title">{activeNoteId ? "Edit Note" : "New Note"}</p>
-        <input
-          ref={titleInputRef}
-          className="pf-search"
-          placeholder="Title"
-          value={titleDraft}
-          onChange={(event) => setTitleDraft(event.target.value)}
-          style={{ marginTop: "10px" }}
-        />
+        <label style={{ display: "grid", gap: "6px", marginTop: "10px", fontSize: "12px", color: "var(--pf-text-muted)" }}>
+          Title
+          <input
+            ref={titleInputRef}
+            className="pf-search"
+            placeholder="Title"
+            value={titleDraft}
+            onChange={(event) => handleTitleChange(event.target.value)}
+          />
+          {showTitleCounter ? (
+            <span style={{ fontSize: "10px", color: "#A9B8B0", justifySelf: "end" }}>
+              {titleDraft.length} / {MAX_NOTE_TITLE_LENGTH}
+            </span>
+          ) : null}
+        </label>
         <label style={{ display: "grid", gap: "6px", marginTop: "10px", fontSize: "12px", color: "var(--pf-text-muted)" }}>
           Optional date
           <input
@@ -1228,7 +1476,7 @@ function NotesPage() {
           Note
           <textarea
             value={bodyDraft}
-            onChange={(event) => setBodyDraft(event.target.value)}
+            onChange={(event) => handleBodyChange(event.target.value)}
             placeholder="Write your match or training notes..."
             rows={7}
             style={{
@@ -1243,6 +1491,11 @@ function NotesPage() {
               resize: "vertical",
             }}
           />
+          {showBodyCounter ? (
+            <span style={{ fontSize: "10px", color: "#A9B8B0", justifySelf: "end" }}>
+              {bodyDraft.length.toLocaleString()} / {MAX_NOTE_BODY_LENGTH.toLocaleString()}
+            </span>
+          ) : null}
         </label>
         <div style={{ display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap" }}>
           <button type="button" className="pf-btn" onClick={saveNote}>
