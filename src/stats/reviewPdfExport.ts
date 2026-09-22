@@ -436,6 +436,30 @@ function countKinds(evts: readonly PdfExportEvent[], ...kinds: MatchEventKind[])
   return evts.filter((e) => set.has(e.kind)).length;
 }
 
+export type DisciplineCounts = {
+  yellowCards: number;
+  sinBins:     number;
+  redCards:    number;
+};
+
+/**
+ * Per-team Yellow/Sin Bin/Red counts for the Intelligence Summary's Team
+ * Comparison card. Factual only — no interpretation, no combined "discipline
+ * score". Exported and pure so the counts are directly unit-testable without
+ * rendering the canvas page they're drawn on.
+ */
+export function computeDisciplineCounts(
+  events: readonly PdfExportEvent[],
+  teamSide: "FOR" | "OPP",
+): DisciplineCounts {
+  const teamEvents = events.filter((e) => e.teamSide === teamSide);
+  return {
+    yellowCards: countKinds(teamEvents, "YELLOW_CARD"),
+    sinBins:     countKinds(teamEvents, "SIN_BIN"),
+    redCards:    countKinds(teamEvents, "RED_CARD"),
+  };
+}
+
 // ─── Team name display helper ────────────────────────────────────────────────
 
 /**
@@ -4004,6 +4028,13 @@ export function makeTacticalIntelligencePage(
   const tvToScore   = sm.byRule["TURNOVER_TO_SCORE"] ?? 0;
   const freeToGoal  = sm.byRule["FREE_WON_TO_GOAL"]  ?? 0;
 
+  // Discipline — factual per-team counts only (no interpretation). Captured
+  // live (pro-tagger-discipline.ts) but previously absent from every PDF
+  // page; report.events is the same scoped event list every other metric on
+  // this page is derived from.
+  const forDiscipline = computeDisciplineCounts(report.events, "FOR");
+  const oppDiscipline = computeDisciplineCounts(report.events, "OPP");
+
   // ── Local helpers ──────────────────────────────────────────────────────────
 
   function drawCardBg(x: number, y: number, w: number, h: number, accentColor: string): void {
@@ -4337,6 +4368,29 @@ export function makeTacticalIntelligencePage(
       oppVal:   `${sm.oppChains}`,
       forColor: sm.forChains >= sm.oppChains ? "#22d3ee" : "#94a3b8",
       oppColor: sm.oppChains >  sm.forChains ? "#fb7185" : "#94a3b8",
+    },
+    // Discipline — plain fact, not a comparison: both columns share the same
+    // sanction colour rather than the "win/lose" cyan/pink used above.
+    {
+      label:    "Yellow cards",
+      forVal:   `${forDiscipline.yellowCards}`,
+      oppVal:   `${oppDiscipline.yellowCards}`,
+      forColor: "#facc15",
+      oppColor: "#facc15",
+    },
+    {
+      label:    "Sin bins",
+      forVal:   `${forDiscipline.sinBins}`,
+      oppVal:   `${oppDiscipline.sinBins}`,
+      forColor: "#fb923c",
+      oppColor: "#fb923c",
+    },
+    {
+      label:    "Red cards",
+      forVal:   `${forDiscipline.redCards}`,
+      oppVal:   `${oppDiscipline.redCards}`,
+      forColor: "#dc2626",
+      oppColor: "#dc2626",
     },
   ];
 

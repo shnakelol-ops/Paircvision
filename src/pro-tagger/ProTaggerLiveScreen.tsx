@@ -8,7 +8,7 @@ import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
 import { buildDisciplineStatusMap } from "./pro-tagger-discipline";
-import { saveProTaggerMatch, saveProTaggerMatchFull } from "./pro-tagger-storage";
+import { saveProTaggerMatch, saveProTaggerMatchFull, deleteProTaggerMatch } from "./pro-tagger-storage";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import { buildStatsShareCardPng } from "../stats/statsShareCard";
 import { ShareSheet } from "../features/shared/ShareSheet";
@@ -130,6 +130,26 @@ export function resetClockForSecondHalf(
 ): void {
   clockSecondsRef.current = 0;
   setClockSeconds(0);
+}
+
+/**
+ * The persisted-state truth buildSaveRecords writes into restoreContext.
+ * matchState. The live state machine (matchStateRef) already knows the exact
+ * current state, including the paused HALF_TIME break — this must reflect
+ * that truth directly rather than re-deriving it from `half`, which used to
+ * collapse HALF_TIME into FIRST_HALF/SECOND_HALF (whichever `half` happened
+ * to be) and made a reload during the half-time interval restore into the
+ * wrong, still-running half instead of the Half Time break screen. Pure and
+ * framework-free so this decision is directly unit-testable — ProTaggerLiveScreen
+ * has no React rendering harness in this repo.
+ */
+export function deriveRestoreMatchState(
+  currentMatchState: MatchState,
+  half: 1 | 2,
+): "FIRST_HALF" | "HALF_TIME" | "SECOND_HALF" | "FULL_TIME" {
+  if (currentMatchState === "FULL_TIME") return "FULL_TIME";
+  if (currentMatchState === "HALF_TIME") return "HALF_TIME";
+  return half === 2 ? "SECOND_HALF" : "FIRST_HALF";
 }
 
 /**
@@ -757,9 +777,7 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     const away  = session.awayTeamName.trim() || "Team B";
     const venue = session.venue.trim() || "Unknown venue";
     const currentMatchState = matchStateRef.current;
-    const restoreMatchState = currentMatchState === "FULL_TIME"
-      ? "FULL_TIME"
-      : halfRef.current === 2 ? "SECOND_HALF" : "FIRST_HALF";
+    const restoreMatchState = deriveRestoreMatchState(currentMatchState, halfRef.current);
 
     const forScore = computeScoreSide(events, "FOR");
     const oppScore = computeScoreSide(events, "OPP");
@@ -993,7 +1011,17 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   }, [session, pdfExporting]);
 
   // Actions → Reset Match (called after confirm).
+  //
+  // The confirm dialog promises the logged events are "permanently deleted" —
+  // clearing only in-memory state left the stale pre-reset record sitting in
+  // storage (autosave's own PRE_MATCH/empty-events guard means it's never
+  // overwritten after a reset), so a "deleted" match could resurrect via the
+  // Home resume banner or the Saved Matches list. Delete the persisted record
+  // through the same storage function explicit Saved Match deletion uses,
+  // before clearing in-memory state.
   const handleReset = useCallback(() => {
+    const hadLiveMatchState = matchStateRef.current !== "PRE_MATCH" || loggedRef.current.length > 0;
+    const deleted = hadLiveMatchState ? deleteProTaggerMatch(session.id) : true;
     if (clockIntervalRef.current) { clearInterval(clockIntervalRef.current); clockIntervalRef.current = null; }
     if (feedbackTimerRef.current) { clearTimeout(feedbackTimerRef.current); feedbackTimerRef.current = null; }
     if (wrongWayTimerRef.current) { clearTimeout(wrongWayTimerRef.current); wrongWayTimerRef.current = null; }
@@ -1014,13 +1042,18 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
     setWrongWayActive(false);
     setIsManuallyPaused(false);
     setSaveFeedback(null);
-    autosaveFailedRef.current = false;
-    setAutosaveFailed(false);
     setActionsFeedback(null);
     setResetConfirmOpen(false);
     setActionsOpen(false);
     setHomeSquadState(initSquad(session.homeSquad.players));
     setAwaySquadState(initSquad(session.awaySquad.players));
+    // A genuine storage failure (not the ordinary "nothing to delete yet"
+    // case) leaves the pre-reset record sitting in storage despite the
+    // in-memory screen showing PRE_MATCH — surface the same persistent
+    // storage-unavailable warning autosave already uses, rather than
+    // silently claiming the reset fully succeeded.
+    autosaveFailedRef.current = !deleted;
+    setAutosaveFailed(!deleted);
   }, [session]);
 
   // ── Render ────────────────────────────────────────────────────────────────

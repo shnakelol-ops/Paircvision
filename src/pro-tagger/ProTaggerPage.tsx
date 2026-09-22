@@ -11,7 +11,7 @@ import { ProTaggerSavedMatchesScreen } from "./ProTaggerSavedMatchesScreen";
 import { ProTaggerReviewScreen } from "./ProTaggerReviewScreen";
 import { ProTaggerOptionsScreen } from "./ProTaggerOptionsScreen";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
-import { readProTaggerMatches, saveProTaggerMatchFull } from "./pro-tagger-storage";
+import { readProTaggerMatches, saveProTaggerMatchFull, selectMostRecentInProgressMatch } from "./pro-tagger-storage";
 
 type AppPhase = "home" | "setup" | "squads" | "direction" | "live" | "saved-matches" | "review" | "options";
 
@@ -51,9 +51,11 @@ function savedMatchToRestoreState(m: ProTaggerSavedMatch): RestoreState {
 
 // Autosave (see ProTaggerLiveScreen) keeps every in-progress match written to the
 // same store as manual Save Match, so recovery after a refresh/crash is just:
-// find the most recent match that hasn't reached Full Time and offer to resume it.
+// find the most recently active match that hasn't reached Full Time and offer
+// to resume it — selectMostRecentInProgressMatch sorts by updatedAt rather
+// than trusting array order (see its own docs in pro-tagger-storage.ts).
 function findInProgressMatch(): ProTaggerSavedMatch | null {
-  return readProTaggerMatches().find((m) => m.restoreContext.matchState !== "FULL_TIME") ?? null;
+  return selectMostRecentInProgressMatch(readProTaggerMatches());
 }
 
 export default function ProTaggerPage() {

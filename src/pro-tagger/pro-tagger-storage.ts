@@ -65,6 +65,12 @@ export type ProTaggerSavedMatch = {
   // Identity
   id: string;
   createdAt: number;
+  // Stamped by saveProTaggerMatchFull on every write (autosave, manual save,
+  // import, coordinate repair) — the trustworthy "last touched" signal
+  // findInProgressMatch sorts by, since array position reflects creation
+  // order (upsert-in-place), not last activity. Absent on a record saved
+  // before this field existed; treat as absent, never guess a value.
+  updatedAt?: number;
 
   // Match metadata
   homeTeamName: string;
@@ -141,14 +147,19 @@ export function readProTaggerMatches(): ProTaggerSavedMatch[] {
 
 export function saveProTaggerMatchFull(record: ProTaggerSavedMatch): boolean {
   const existing = readProTaggerMatchesRaw();
+  const stamped: ProTaggerSavedMatch = { ...record, updatedAt: Date.now() };
   // Upsert: if a record with same id exists, replace it; otherwise prepend.
+  // Array position is left untouched on an update (existing behaviour) —
+  // findInProgressMatch sorts by updatedAt itself rather than relying on
+  // array order, so this stays a narrow fix with no archive-ordering blast
+  // radius for every other reader of readProTaggerMatches().
   const idx = existing.findIndex((m) => m.id === record.id);
   let next: ProTaggerSavedMatch[];
   if (idx !== -1) {
     next = [...existing];
-    next[idx] = record;
+    next[idx] = stamped;
   } else {
-    next = [record, ...existing].slice(0, MAX_PRO_TAGGER_MATCHES);
+    next = [stamped, ...existing].slice(0, MAX_PRO_TAGGER_MATCHES);
   }
   return safeWrite(PRO_TAGGER_MATCHES_STORAGE_KEY, JSON.stringify(next));
 }
@@ -183,6 +194,26 @@ export function resolveImportIdCollision(
     match: { ...candidate, id: `${candidate.id}-imported-${Date.now()}` },
     idRewritten: true,
   };
+}
+
+/**
+ * Selects the most recently active unfinished match for the Home "Resume
+ * in-progress match" banner. Sorts by updatedAt (stamped by every
+ * saveProTaggerMatchFull write) rather than trusting array position — an
+ * existing match updated in place keeps its original array slot (creation
+ * order), so array position alone can point at a stale match instead of the
+ * one actually being played. Falls back to createdAt for a record saved
+ * before updatedAt existed, so a legacy record still sorts deterministically.
+ */
+export function selectMostRecentInProgressMatch(
+  matches: readonly ProTaggerSavedMatch[],
+): ProTaggerSavedMatch | null {
+  const inProgress = matches.filter((m) => m.restoreContext.matchState !== "FULL_TIME");
+  if (inProgress.length === 0) return null;
+  function lastTouched(m: ProTaggerSavedMatch): number {
+    return typeof m.updatedAt === "number" && Number.isFinite(m.updatedAt) ? m.updatedAt : m.createdAt;
+  }
+  return inProgress.reduce((best, m) => (lastTouched(m) > lastTouched(best) ? m : best));
 }
 
 export function deleteProTaggerMatch(id: string): boolean {

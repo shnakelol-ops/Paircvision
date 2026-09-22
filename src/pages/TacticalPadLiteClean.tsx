@@ -417,6 +417,22 @@ export function resolveActiveKitEditorValue(player: TacticalPlayerKitSnapshot) {
   };
 }
 
+/**
+ * Whether withDiscardConfirm must show the confirm sheet before running its
+ * action. Reset always requires confirmation, regardless of the board's
+ * dirty state — even a "clean" board (unchanged since the last save/open) is
+ * still visibly populated and about to be wiped with no undo, matching Game
+ * Timing's own Reset Board (TacticalPlaySurface.tsx), which always confirms
+ * unconditionally. Load only needs confirmation when there is something
+ * unsaved to discard. Exported and pure so this decision is directly
+ * testable — a live createTacticalPadLiteSurface() instance cannot be
+ * constructed in this test environment (no jsdom/canvas).
+ */
+export function shouldConfirmDiscard(reason: "load" | "reset", hasUnsavedChanges: boolean): boolean {
+  if (reason === "reset") return true;
+  return hasUnsavedChanges;
+}
+
 function shouldUseCompactLandscapeToolsMenu(viewport: ViewportRect): boolean {
   return viewport.width > viewport.height && viewport.width <= COMPACT_LANDSCAPE_TOOLS_MAX_WIDTH;
 }
@@ -3528,11 +3544,11 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
           .filter((entry): entry is TacticalItem => entry != null)
       : [];
   const withDiscardConfirm = (reason: "load" | "reset", action: () => void) => {
-    if (!hasUnsavedBoardChanges()) { action(); return; }
+    if (!shouldConfirmDiscard(reason, hasUnsavedBoardChanges())) { action(); return; }
     const message =
       reason === "load"
         ? "Load this board and discard unsaved changes on the current board?"
-        : "Reset this board and discard unsaved changes?";
+        : "Reset this board? Everything on it will be cleared.";
     setConfirmSheet({
       message,
       confirmLabel: "Discard & Continue",
