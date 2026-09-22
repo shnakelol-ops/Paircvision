@@ -104,12 +104,12 @@ export type WrittenNote = {
 };
 
 export const WRITTEN_NOTES_STORAGE_KEY = "pitchflow_written_notes_v1";
-const MAX_WRITTEN_NOTES = 200;
 // Raised from the original 80/2000 caps (which silently truncated on save with no
-// warning). 200/10,000 gives a full post-match debrief room while keeping the
-// worst case (200 notes at the cap) to a low-single-digit-MB share of the
-// origin's localStorage quota, which this feature shares with every other
-// PáircVision local-storage domain.
+// warning). 200/10,000 gives a full post-match debrief room. There is no cap on
+// the number of saved notes — sanitizeWrittenNotes used to silently drop the
+// oldest notes past 200 with no warning (the exact bug class the character caps
+// above were raised to avoid); a coach's saved notes are never discarded merely
+// for crossing a count threshold.
 export const MAX_NOTE_TITLE_LENGTH = 200;
 export const MAX_NOTE_BODY_LENGTH = 10000;
 
@@ -150,13 +150,11 @@ export function sanitizeWrittenNotes(notes: readonly WrittenNote[]): WrittenNote
     .sort((a, b) => b.updatedAt - a.updatedAt);
 
   const seenIds = new Set<string>();
-  return normalized
-    .filter((note) => {
-      if (seenIds.has(note.id)) return false;
-      seenIds.add(note.id);
-      return true;
-    })
-    .slice(0, MAX_WRITTEN_NOTES);
+  return normalized.filter((note) => {
+    if (seenIds.has(note.id)) return false;
+    seenIds.add(note.id);
+    return true;
+  });
 }
 
 export function parseStoredWrittenNotes(input: string | null): WrittenNote[] {

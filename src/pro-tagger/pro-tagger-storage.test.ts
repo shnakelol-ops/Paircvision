@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   PRO_TAGGER_MATCHES_STORAGE_KEY,
   isValidProMatch,
@@ -6,6 +6,7 @@ import {
   resolveImportIdCollision,
   saveProTaggerMatch,
   saveProTaggerMatchFull,
+  selectMostRecentInProgressMatch,
   type ProTaggerSavedMatch,
 } from "./pro-tagger-storage";
 import { SAVED_MATCHES_STORAGE_KEY, type LoggedMatchEvent, type SavedMatch } from "../core/stats/saved-match";
@@ -126,6 +127,109 @@ describe("saveProTaggerMatchFull / readProTaggerMatches", () => {
   it("stores under the dedicated Pro Tagger key", () => {
     saveProTaggerMatchFull(buildMatch());
     expect(window.localStorage.getItem(PRO_TAGGER_MATCHES_STORAGE_KEY)).not.toBeNull();
+  });
+
+  it("stamps updatedAt on every write, including an in-place update of an existing record", () => {
+    saveProTaggerMatchFull(buildMatch({ id: "stamped" }));
+    const first = readProTaggerMatches().find((m) => m.id === "stamped")!;
+    expect(typeof first.updatedAt).toBe("number");
+
+    saveProTaggerMatchFull({ ...first, eventCount: 3 });
+    const second = readProTaggerMatches().find((m) => m.id === "stamped")!;
+    expect(typeof second.updatedAt).toBe("number");
+    expect(second.eventCount).toBe(3);
+  });
+});
+
+// P1-3 (final release hardening): Home's "Resume in-progress match" must
+// select the most recently ACTIVE unfinished match — not simply the first
+// unfinished record in array/creation order. saveProTaggerMatchFull's
+// upsert-in-place never reorders the archive on an update, only a brand-new
+// id gets prepended, so array order reflects creation order, not last
+// activity. selectMostRecentInProgressMatch sorts by updatedAt instead.
+describe("selectMostRecentInProgressMatch (P1-3)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("resumes the match that was updated later, even though it was created first and sits later in array order", () => {
+    // Deterministic clock: saveProTaggerMatchFull stamps updatedAt from
+    // Date.now(), so real-clock timing could tie two saves made moments
+    // apart in the same millisecond — control time explicitly instead.
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+
+    // Match A created first (prepended first, ends up last in array order
+    // once B is also prepended).
+    saveProTaggerMatchFull(buildMatch({ id: "match-a", createdAt: 1, restoreContext: {
+      matchState: "FIRST_HALF", currentHalf: 1, matchTimeSeconds: 0, firstHalfAttackingDirection: "right",
+    } }));
+
+    vi.setSystemTime(1_000_100);
+    saveProTaggerMatchFull(buildMatch({ id: "match-b", createdAt: 2, restoreContext: {
+      matchState: "FIRST_HALF", currentHalf: 1, matchTimeSeconds: 0, firstHalfAttackingDirection: "right",
+    } }));
+
+    // Array order right now: [match-b, match-a] (B prepended after A).
+    const beforeResume = readProTaggerMatches();
+    expect(beforeResume[0]!.id).toBe("match-b");
+
+    // Coach explicitly resumes and plays match-a later — every autosave
+    // upserts it in place, never moving its array position.
+    vi.setSystemTime(1_000_200);
+    saveProTaggerMatchFull({ ...readProTaggerMatches().find((m) => m.id === "match-a")!, eventCount: 5 });
+    const afterUpdate = readProTaggerMatches();
+    expect(afterUpdate[0]!.id).toBe("match-b"); // array order unchanged — confirms this fix has no reordering blast radius
+
+    // But match-a was touched more recently, so Home must offer match-a.
+    const resumed = selectMostRecentInProgressMatch(afterUpdate);
+    expect(resumed?.id).toBe("match-a");
+  });
+
+  it("when the newest match reaches FULL_TIME, the newest remaining unfinished match is selected", () => {
+    saveProTaggerMatchFull(buildMatch({ id: "old-unfinished", createdAt: 1, restoreContext: {
+      matchState: "FIRST_HALF", currentHalf: 1, matchTimeSeconds: 0, firstHalfAttackingDirection: "right",
+    } }));
+    saveProTaggerMatchFull(buildMatch({ id: "newest-finished", createdAt: 2, restoreContext: {
+      matchState: "FULL_TIME", currentHalf: 2, matchTimeSeconds: 0, firstHalfAttackingDirection: "right",
+    } }));
+
+    const resumed = selectMostRecentInProgressMatch(readProTaggerMatches());
+    expect(resumed?.id).toBe("old-unfinished");
+  });
+
+  it("returns null when there are no unfinished matches", () => {
+    saveProTaggerMatchFull(buildMatch({ id: "done-1", restoreContext: {
+      matchState: "FULL_TIME", currentHalf: 2, matchTimeSeconds: 0, firstHalfAttackingDirection: "right",
+    } }));
+    expect(selectMostRecentInProgressMatch(readProTaggerMatches())).toBeNull();
+  });
+
+  it("returns null on an empty archive", () => {
+    expect(selectMostRecentInProgressMatch([])).toBeNull();
+  });
+
+  const inProgressContext = {
+    matchState: "FIRST_HALF" as const, currentHalf: 1 as const, matchTimeSeconds: 0, firstHalfAttackingDirection: "right" as const,
+  };
+
+  it("falls back to createdAt for a legacy record saved before updatedAt existed, without crashing", () => {
+    // buildMatch's base shape has no updatedAt field at all — exactly what a
+    // record persisted before this fix looks like.
+    const legacyRecord = buildMatch({ id: "legacy", createdAt: 500, restoreContext: inProgressContext });
+    expect(legacyRecord.updatedAt).toBeUndefined();
+    const modernRecord = buildMatch({ id: "modern", createdAt: 100, updatedAt: 9999, restoreContext: inProgressContext });
+
+    const matches = [legacyRecord, modernRecord];
+    expect(() => selectMostRecentInProgressMatch(matches)).not.toThrow();
+    // modern's updatedAt (9999) beats legacy's createdAt-fallback (500).
+    expect(selectMostRecentInProgressMatch(matches)?.id).toBe("modern");
+  });
+
+  it("a legacy record with no updatedAt still beats an even-older legacy record via the createdAt fallback", () => {
+    const older = buildMatch({ id: "older-legacy", createdAt: 100, restoreContext: inProgressContext });
+    const newer = buildMatch({ id: "newer-legacy", createdAt: 200, restoreContext: inProgressContext });
+    expect(selectMostRecentInProgressMatch([older, newer])?.id).toBe("newer-legacy");
   });
 });
 

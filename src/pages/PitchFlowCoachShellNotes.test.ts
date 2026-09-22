@@ -263,6 +263,67 @@ describe("P0.3 — title/body limits are enforced without silently destroying en
   });
 });
 
+// P1 (final release hardening): sanitizeWrittenNotes used to silently drop
+// the oldest notes once the collection exceeded MAX_WRITTEN_NOTES (200) via
+// `.slice(0, MAX_WRITTEN_NOTES)` — the exact silent-data-loss bug class the
+// P0.3 character caps above were raised to avoid, but left unfixed for note
+// *count*. There is no cap any more: a coach's saved notes are never
+// discarded merely for crossing a count threshold.
+describe("P1 — a collection exceeding 200 valid notes never silently loses the oldest ones", () => {
+  function makeManyNotes(count: number): WrittenNote[] {
+    return Array.from({ length: count }, (_, i) =>
+      makeNote({
+        id: `note-${i}`,
+        title: `Note ${i}`,
+        // Distinct updatedAt per note so sanitizeWrittenNotes' newest-first
+        // sort has a deterministic, verifiable order.
+        createdAt: 1000 + i,
+        updatedAt: 1000 + i,
+      }),
+    );
+  }
+
+  it("sanitizeWrittenNotes keeps all 250 notes — the oldest is not dropped", () => {
+    const notes = makeManyNotes(250);
+    const sanitized = sanitizeWrittenNotes(notes);
+    expect(sanitized).toHaveLength(250);
+    expect(sanitized.some((n) => n.id === "note-0")).toBe(true); // the oldest
+    expect(sanitized.some((n) => n.id === "note-249")).toBe(true); // the newest
+  });
+
+  it("an ordinary save/sanitise/persist cycle with 210 existing notes plus one new save keeps all 211", () => {
+    const existing = makeManyNotes(210);
+    persistWrittenNotes(existing);
+    const stored = JSON.parse(window.localStorage.getItem(WRITTEN_NOTES_STORAGE_KEY)!) as WrittenNote[];
+    expect(stored).toHaveLength(210);
+
+    const withOneMore = [
+      ...existing,
+      makeNote({ id: "brand-new", title: "One more note", createdAt: 5000, updatedAt: 5000 }),
+    ];
+    const ok = persistWrittenNotes(withOneMore);
+    expect(ok).toBe(true);
+    const restored = JSON.parse(window.localStorage.getItem(WRITTEN_NOTES_STORAGE_KEY)!) as WrittenNote[];
+    expect(restored).toHaveLength(211);
+    expect(restored.some((n) => n.id === "note-0")).toBe(true);
+    expect(restored.some((n) => n.id === "brand-new")).toBe(true);
+  });
+
+  it("parseStoredWrittenNotes also preserves more than 200 stored notes on read", () => {
+    const notes = makeManyNotes(220);
+    const parsed = parseStoredWrittenNotes(JSON.stringify(notes));
+    expect(parsed).toHaveLength(220);
+  });
+
+  it("malformed-data protection is unaffected by removing the count cap — invalid entries are still dropped, valid ones kept", () => {
+    const valid = makeManyNotes(205);
+    const malformed = [{ id: "broken", title: 123, body: null }];
+    const parsed = parseStoredWrittenNotes(JSON.stringify([...malformed, ...valid]));
+    expect(parsed).toHaveLength(205);
+    expect(parsed.every((n) => typeof n.title === "string")).toBe(true);
+  });
+});
+
 describe("existing notes still load correctly (no regression to the read path)", () => {
   it("round-trips a normal set of previously-saved notes", () => {
     const notes = [makeNote({ id: "1", title: "One" }), makeNote({ id: "2", title: "Two", updatedAt: 2000 })];
