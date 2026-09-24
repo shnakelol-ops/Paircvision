@@ -29,6 +29,9 @@ Every substantive statement carries one of these labels:
 
 ---
 
+
+> **Correction (added with files 03–06).** Two Gaelic SSG studies were mixed up in the first version of this report. The 40×20 / 60×20 / 80×20 m, 34-player, 60×20 m-HSR result is **Mangan, Collins, Burns & O'Neill (2019), IJPAS 19(6)**, not Malone & Collins (2016). The small/medium/large technical profile (more hand passes on small pitches, more kick passes on large) comes from a **separate study of 16 inter-county minor players** (22×37, 30×48 and 35×58 m; [ResearchGate 332112580](https://www.researchgate.net/publication/332112580_The_Physical_and_Technical_Demands_of_Gaelic_Football_Small-Sided_Games)), not from the 2019 IJPAS paper. Malone, Solan & Collins (2016), IJPAS 16(1), also used 80×20 / 60×20 / 40×20 m, but its detailed results were not accessible. See [`04-evidence-ledger.md`](./04-evidence-ledger.md), entries GA1–GA3.
+
 ## 1. Executive summary
 
 1. **Games do improve decision-making, but the evidence is moderate and varied.** [E]
@@ -44,7 +47,7 @@ Every substantive statement carries one of these labels:
    - In every sport studied, player numbers, area per player, target type, numerical balance, floaters, touch/dribble limits and scoring rewards reliably change physical load and technical counts [E].
    - Their effect on *tactical learning* is much less well documented [E]: [Ometto et al., 2018](https://journals.sagepub.com/doi/10.1177/1747954118769183) and the touch-restriction review by [Rumpf et al., 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12558969/).
 5. **Gaelic football-specific SSG data exist.** [E]
-   - On Gaelic football SSG pitches, **smaller pitches gave more possessions, hand passes, tackles and points**. **Larger pitches gave more kick passes, higher goal conversion and more high-speed running** ([Physical and technical demands of Gaelic football SSGs, IJPAS 2019](https://www.tandfonline.com/doi/full/10.1080/24748668.2019.1689003)).
+   - On Gaelic football SSG pitches, **smaller pitches gave more possessions, hand passes, tackles and points**. **Larger pitches gave more kick passes, higher goal conversion and more high-speed running** ([Physical and technical demands of Gaelic football SSGs, inter-county minors](https://www.researchgate.net/publication/332112580_The_Physical_and_Technical_Demands_of_Gaelic_Football_Small-Sided_Games); see correction note).
    - This matters because the elite game had drifted to a hand-pass-dominant style: 3.2 hand passes per kick pass in 2023, against 2:1 in 2011 ([RTÉ, 2023](https://www.rte.ie/sport/football/2023/0928/1407954-new-study-outlines-stark-extent-of-possession-football/)).
 6. **Representativeness can't be assumed, even in "games".** [E]
    - In elite Australian football, SSGs were *less* representative of match pressure and time in possession than match simulations. Disposals were more effective in SSGs than in matches, which suggests that SSGs under-supplied pressure ([Browne et al., 2020, *PLOS ONE*](https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0242336)).
@@ -171,8 +174,8 @@ This is the core of the report. For each variable: what it reliably changes, the
 
 | Finding | Sport | Label and source |
 |---|---|---|
-| 4v4 on 40×20, 60×20 and 80×20 m: the **60×20 m pitch** gave the most high-speed running and sprinting (non-linear). Pitch size had trivial effects on HR. | Gaelic football (sub-elite adult, n = 34) | [E] [Malone & Collins, 2016, IJPAS](https://www.tandfonline.com/doi/abs/10.1080/24748668.2016.11868874) |
-| Smallest pitch → more possessions, **hand passes, tackles, points**, accelerations. Largest pitch → more **kick passes**, higher goal conversion, more distance and HSR. | Gaelic football | [E] [IJPAS 2019](https://www.tandfonline.com/doi/full/10.1080/24748668.2019.1689003); [ResearchGate record](https://www.researchgate.net/publication/332112580_The_Physical_and_Technical_Demands_of_Gaelic_Football_Small-Sided_Games) |
+| 4v4 on 40×20, 60×20 and 80×20 m: the **60×20 m pitch** gave the most high-speed running and sprinting (non-linear). Pitch size had trivial effects on HR. | Gaelic football (sub-elite adult, n = 34) | [E] [Mangan et al., 2019, IJPAS](https://www.tandfonline.com/doi/full/10.1080/24748668.2019.1689003) (corrected) |
+| Smallest pitch → more possessions, **hand passes, tackles, points**, accelerations. Largest pitch → more **kick passes**, higher goal conversion, more distance and HSR. | Gaelic football (inter-county minors, n = 16) | [E] [ResearchGate record](https://www.researchgate.net/publication/332112580_The_Physical_and_Technical_Demands_of_Gaelic_Football_Small-Sided_Games) |
 | Larger hurling SSG pitches → higher %HRmax, TRIMP and RPE | Hurling | [E] [Malone & Collins, 2017, *JSCR*](https://www.researchgate.net/publication/308275235_The_Influence_of_Pitch_Size_on_Running_Performance_and_Physiological_Responses_During_Hurling-Specific_Small-Sided_Games) |
 | Long and wide pitch configurations → more counter-attacks, deeper offensive penetration and more goal-scoring opportunities than the standard shape | Soccer (youth) | [E] [Different pitch configurations…, 2021](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8507751/) |
 | Higher density (less space) → fewer unsuccessful dribbles and more high-intensity running and sprinting | Field hockey (youth) | [E] [Timmerman et al., 2017](https://www.researchgate.net/publication/319214746_The_effect_of_manipulating_task_constraints_on_game_performance_in_youth_field_hockey) |
@@ -334,7 +337,7 @@ In October 2025 a Special Congress passed a further package of motions for 2026 
 
 Each concept is **[I] interpretation**, with the underlying evidence cited. These are *design principles to test*, not new games.
 
-1. **Area per player as the kick/hand-pass dial.** GF SSG data show that small pitches produce hand passing and large pitches produce kicking ([IJPAS 2019](https://www.tandfonline.com/doi/full/10.1080/24748668.2019.1689003)). Choose pitch length for the passing behaviour you want *before* adding any rule.
+1. **Area per player as the kick/hand-pass dial.** GF SSG data show that small pitches produce hand passing and large pitches produce kicking ([minor-grade GF SSG study](https://www.researchgate.net/publication/332112580_The_Physical_and_Technical_Demands_of_Gaelic_Football_Small-Sided_Games)). Choose pitch length for the passing behaviour you want *before* adding any rule.
 2. **The scoring system as a decision source.** Reward rules change behaviour and affect in basketball ([PLOS ONE 2024](https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0313656)). The 3/2/1 structure is the Gaelic football equivalent and should appear in games wherever shooting is involved.
 3. **Local overload, not gifted overload.** In Australian football matches, numerical advantage entering the scoring zone predicts scoring, but crowding reduces it ([PLOS ONE 2021](https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0254591)). Use imbalanced starts (S4/S5) that decay into equal numbers as recovering defenders arrive.
 4. **Transitions as the default event.** Almost half of elite possessions start with a turnover ([IJPAS 2023](https://www.tandfonline.com/doi/full/10.1080/24748668.2023.2250972)). Continuous-wave structures (basketball 4v3 continuous, S5) are the most direct template.

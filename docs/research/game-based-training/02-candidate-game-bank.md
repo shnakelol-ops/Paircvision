@@ -1,5 +1,7 @@
 # Candidate Game Bank: Sourced Invasion-Sport Training Games
 
+> **Superseded for design decisions.** The tier ratings below were an early step. Evidence is now rated **by relationship** in [`03-manipulation-behaviour-matrix.md`](./03-manipulation-behaviour-matrix.md). G1/G2 citations have been corrected.
+
 **Companion to:** [`01-research-report.md`](./01-research-report.md). Evidence labels (**[E] [GB] [C] [I]**) and the source-access limitation are explained in §0 of the report.
 
 ## Inclusion rules
@@ -54,7 +56,7 @@ Structure codes (S1–S9) refer to the taxonomy in report §5.
 ## Gaelic games
 
 ### G1 — Gaelic football 4v4 pitch-length ladder · Tier A
-- **Source.** [E] Malone & Collins (2016), *IJPAS* 16(1) ([T&F](https://www.tandfonline.com/doi/abs/10.1080/24748668.2016.11868874); [ResearchGate](https://www.researchgate.net/publication/299437604_The_Influence_of_pitch_size_on_running_performance_during_Gaelic_football_small_sided_games)).
+- **Source (corrected).** [E] Mangan, Collins, Burns & O'Neill (2019), *IJPAS* 19(6) ([T&F](https://www.tandfonline.com/doi/full/10.1080/24748668.2019.1689003)). The first version wrongly credited this to Malone & Collins (2016). See ledger GA1–GA2.
 - **Structure.** 4v4. Pitches 40×20, 60×20 and 80×20 m (width fixed, length varied). Participants were 34 sub-elite adult male players. Scoring rules and bout durations are not in the abstract.
 - **Reported behaviour.** The 60×20 m pitch produced the most high-speed running (>17 km/h) and sprinting (>22 km/h), more than both 40×20 and 80×20. HR effects were trivial.
 - **Why it works [I].**
@@ -65,7 +67,7 @@ Structure codes (S1–S9) refer to the taxonomy in report §5.
 - **Limitations.** Physical outcomes only. No learning or decision outcomes. Sub-elite adults. Pre-2025 rules.
 
 ### G2 — Gaelic football SSG, small vs large pitch (technical profile) · Tier A
-- **Source.** [E] *IJPAS* 19(6), 2019 ([T&F](https://www.tandfonline.com/doi/full/10.1080/24748668.2019.1689003); [ResearchGate](https://www.researchgate.net/publication/332112580_The_Physical_and_Technical_Demands_of_Gaelic_Football_Small-Sided_Games)).
+- **Source (corrected).** [E] Separate study of 16 inter-county minor players on 22×37, 30×48 and 35×58 m pitches, 3 × 4 min ([ResearchGate 332112580](https://www.researchgate.net/publication/332112580_The_Physical_and_Technical_Demands_of_Gaelic_Football_Small-Sided_Games)). Authors and venue could not be confirmed. See ledger GA3.
 - **Structure.** The same Gaelic football SSG played on small, medium and large pitches. Exact dimensions and numbers are not captured in the retrieved abstract. **Check the full text.**
 - **Reported behaviour.**
   - Smallest pitch: more possessions, **hand passes, tackles** and **points**, and the most accelerations.
