@@ -2,7 +2,7 @@
 
 **Type:** Evidence review. Research only: no software, drills, sessions or UI.
 **Companion documents:** [Lever 01 SPACE review](./phase1-lever-01-space.md) · [Lever 01 SPACE final gate](./phase1-lever-01-space-final-gate.md)
-**Status:** v1, September 2026
+**Status:** v1, September 2026. **Superseded in part by the [NUMBERS Final Evidence & Falsification Gate](./phase1-lever-02-numbers-final-gate.md).** The gate corrects citations, reverses part of the "inferiority → work harder" verdict, clarifies the exploration findings, and sets what PáircVision may and may not claim. **Where the two documents differ, the final gate wins.**
 
 > **Carried forward from SPACE.** Constraints change the *probabilities and opportunities* players experience. A behaviour **produced** inside a constrained game is not proof it has been **learned**. This document uses "produced / appeared" for what happens during a practice game. It uses "learned" only where retention or transfer was actually measured.
 >
@@ -66,7 +66,7 @@ Format: **MANIPULATION → OBSERVED/EXPECTED EFFECT → MECHANISM → EVIDENCE �
   - Field hockey: fewer players increased technical actions per player (Timmerman et al., 2019).
   - Youth soccer competition: 5v5 > 7v7 in ball contacts and involvement at U9 (German J Exerc Sport Res, 2021). In 4v4 vs 7v7, non-dominant children increased their actions more (+143%) than dominant children (+72%) (PLoS ONE, 2021, "How to improve technical and tactical actions of dominant and non-dominant players in children's football?" †).
   - Youth ice hockey: roughly 2× puck touches and 6× shots in small-area games (**PRACTITIONER OPINION**: federation / NHL analytics).
-- With **fixed dimensions**, fewer players → higher external running load, because ApP is larger (**RESEARCH EVIDENCE**: rugby SSG literature summarised in Zanin et al., 2021; hurling 4-a-side had the highest relative intensity, Malone et al., JSCR, doi …1628 †).
+- With **fixed dimensions**, fewer players → higher external running load, because ApP is larger (**RESEARCH EVIDENCE**: rugby SSG literature summarised in Zanin et al., 2021; hurling 4-a-side had the highest relative intensity, Malone & Collins, 2017, *JSCR* 31(6):1493–1499).
 
 **Mechanism.** Fewer players means each player is closer to the ball more often, has fewer teammates to "hide" behind, and must cover more roles. At constant ApP, fewer players also means shorter distances between everyone and more duels per minute.
 
@@ -406,13 +406,13 @@ The same measurement could be applied to competition, *if* local numerical relat
 | **"Small-sided games increase involvement."** | **Supported (High).** | Consistent across soccer, basketball, hockey and youth formats, especially for less dominant children. Involvement is not learning. |
 | **"Fewer players means more touches and decisions."** | **Touches: supported (High). Decision *opportunities*: supported. Faster / better / learned decisions: not shown.** | Per-player actions rise. Decision quality was not measured in most studies, and higher intensity may lower quality. |
 | **"Numerical superiority creates more space."** | **Partially supported; context-dependent.** | Superior teams expand and there is more free space around players when numbers are manipulated (Silva et al., 2015). But in the AFL, more bodies in the scoring zone ↓ scoring despite advantage. Superiority into a congested area can *reduce* useful space. |
-| **"Numerical inferiority teaches players to work harder."** | **Not supported; partly contradicted.** | Inferior teams often *reduce* physical output and exploratory movement, especially in high inferiority. They compact and protect rather than work harder. No learning evidence. In real matches, numerical inferiority (red card) lowers the penalised team's scoring rate and raises the opponent's (Ridder et al., 1994). |
+| **"Numerical inferiority teaches players to work harder."** | **Revised at final gate:** outnumbered players often *do* work harder physically (acutely), except under extreme inferiority. "Teaches" remains unknown. *Original v1 verdict: Not supported; partly contradicted.* | Inferior teams often *reduce* physical output and exploratory movement, especially in high inferiority. They compact and protect rather than work harder. No learning evidence. In real matches, numerical inferiority (red card) lowers the penalised team's scoring rate and raises the opponent's (Ridder et al., 1994). |
 
 ---
 
 ## 10. Contradictions
 
-1. **Exploration and imbalance.** Temporary imbalances ↑ exploratory breadth in adults (Canton et al., 2019). The 2026 synthesis reports ↓ exploratory behaviour for superior teams and under high inferiority. **Temporary vs permanent** imbalance and **age** may explain the difference. Unresolved.
+1. **Exploration and imbalance.** Temporary imbalances ↑ exploratory breadth in adults (Canton et al., 2019). The 2026 synthesis reports ↓ exploratory behaviour for superior teams and under high inferiority. **Temporary vs permanent** imbalance and **age** may explain the difference. *Final gate: Torrents et al. (2016) confirm that permanent advantage reduces exploration (especially 7v4); partly resolved as permanent vs temporary.*
 2. **Superiority and space.** Superiority expands the superior team and creates free space (SSG evidence), but more bodies inside 50 reduced AFL scoring probability despite advantage (match evidence).
 3. **Floaters.** They ↑ possession-type actions but ↓ penetration. What they "improve" depends on the target.
 4. **Goalkeeper presence and HR.** Opposite directions across studies.
@@ -478,7 +478,7 @@ The same measurement could be applied to competition, *if* local numerical relat
 - Canton, A., Torrents, C., Ric, A., Gonçalves, B., Sampaio, J., & Hristovski, R. (2019). Effects of temporary numerical imbalances on collective exploratory behavior of young and professional football players. *Frontiers in Psychology*, 10, 1968.
 - Castellano, J., Puente, A., Echeazarra, I., Usabiaga, O., & Casamichana, D. (2016). Number of players and relative pitch area per player: comparing their influence on heart rate and physical demands in under-12 and under-13 football players. *PLoS ONE*, 11(1), e0127505.
 - Castellano, J., Silva, P., Usabiaga, O., & Barreira, D. (2016). The influence of scoring targets and outer-floaters on attacking and defending team dispersion, shape and creation of space during small-sided soccer games. *Journal of Human Kinetics*, 51, 153–163.
-- Effect of outside floaters on soccer players' tactical behaviour in small-sided conditioned games (2021). 54 Brazilian academy players, FUT-SAT. †
+- Carvalho, F. M., Clemente, F. M., Praça, G. M., & Teoldo, I. (2021). Effect of outside floaters on soccer players' tactical behaviour in small-sided conditioned games. *Retos*, 42, 767–773. 54 Brazilian academy players, FUT-SAT. (Attribution via index; see final gate.)
 - Gonçalves, B., Marcelino, R., Torres-Ronda, L., Torrents, C., & Sampaio, J. (2016). Effects of emphasising opposition and cooperation on collective movement behaviour during football small-sided games. *Journal of Sports Sciences*, 34(14), 1346–1354.
 - Hill-Haas, S. V., Dawson, B. T., Coutts, A. J., & Rowsell, G. J. (2009). Physiological responses and time–motion characteristics of various small-sided soccer games in youth players. *Journal of Sports Sciences*, 27(1), 1–8.
 - Jones, S., & Drust, B. (2007). Physiological and technical demands of 4 v 4 and 8 v 8 games in elite youth soccer players. *Kinesiology*, 39(2), 150–156.
@@ -516,7 +516,7 @@ The same measurement could be applied to competition, *if* local numerical relat
 - Timmerman, E. A., Savelsbergh, G. J. P., & Farrow, D. (2019). Creating appropriate training environments to improve technical, decision-making, and physical skills in field hockey. *Research Quarterly for Exercise and Sport*, 90(2), 180–189.
 - Zanin, M., et al. (2021). A systematic review of small sided games within rugby: acute and chronic effects of constraints manipulation. *Journal of Sports Sciences*. doi:10.1080/02640414.2021.1891723 †
 - Designing a small-sided game to elicit attacking tactical behaviour in professional rugby union forwards (2022). *Journal of Sports Sciences*. doi:10.1080/02640414.2022.2156101 †
-- Malone, S., & Collins, K. (2017). *JSCR* 31(6), 1518–1524 (hurling pitch size); Malone, S., et al. *JSCR*, doi:10.1519/JSC.0000000000001628 (hurling game design, goal type, player numbers) †
+- Malone, S., & Collins, K. (2017). *JSCR* 31(6), 1518–1524 (hurling pitch size); Malone, S., & Collins, K. (2017). *JSCR* 31(6), 1493–1499, doi:10.1519/JSC.0000000000001628 (hurling game design, goal type, player numbers)
 - Evolution of attack in handball when playing 7 vs. 6 with empty goal between 2020 and 2023 (2024). *Frontiers in Sports and Active Living*. PMC10973547 †
 - Playing without goalkeeper: the use of an empty goal in high-performance men's handball (2024). *International Journal of Performance Analysis in Sport*. †
 
