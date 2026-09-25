@@ -91,10 +91,17 @@ describe("ProTaggerLineupJerseyTile — MATCHDAY PITCH polish: neutral contrast 
     expect(jerseyWrapBlock).not.toMatch(/borderRadius/);
   });
 
-  it("does not introduce a luminance/colour-contrast calculation — the halo is one fixed neutral treatment, not computed per team colour", () => {
-    expect(tileSource).not.toMatch(/luminance/i);
-    expect(tileSource).not.toMatch(/getContrast/i);
-    expect(tileSource).not.toMatch(/relativeLuminance/i);
+  // The halo itself stays a fixed neutral treatment, not computed per team
+  // colour — even though a LATER pass (see ProTaggerJerseyStyle.test.ts's
+  // automatic number-contrast suite) legitimately added a luminance-based
+  // computation elsewhere in this file for the NUMBER's fill colour. This
+  // narrows to the jerseyWrap style block specifically, rather than
+  // asserting the whole file never mentions luminance.
+  it("the halo (jerseyWrap) itself is not computed per team colour — no luminance/contrast calculation inside its own style block", () => {
+    const jerseyWrapBlock = tileSource.match(/jerseyWrap:\s*\{([^}]*)\}/)![1];
+    expect(jerseyWrapBlock).not.toMatch(/luminance/i);
+    expect(jerseyWrapBlock).not.toMatch(/getContrast/i);
+    expect(jerseyWrapBlock).not.toMatch(/relativeLuminance/i);
   });
 });
 

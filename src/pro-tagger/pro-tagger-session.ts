@@ -6,6 +6,13 @@ export type ProTaggerMatchType = "league" | "championship" | "friendly" | "train
 
 export type ProTaggerAttackDirection = "left" | "right";
 
+// Where the secondary team colour appears on the jersey — a presentation
+// choice only (see ProTaggerLineupJerseyTile.tsx, the one shared renderer
+// for all three). Never read by capture, scoring, substitutions, discipline,
+// Review, or reporting — those all operate on ProTaggerSquadPlayer or event
+// data, neither of which this field touches.
+export type ProTaggerJerseyStyle = "chest" | "sleeves" | "collar";
+
 export type ProTaggerSquadPlayer = {
   id: string;
   number: number;
@@ -23,6 +30,12 @@ export type ProTaggerSquad = {
   teamName?: string;
   primaryColour?: string;
   secondaryColour?: string;
+  // Presentation only — where the secondary colour appears on the jersey.
+  // Optional/defaulted: absent on every squad saved before this field
+  // existed, and every read site falls back to "chest" (jerseyStyle ??
+  // "chest"), which is exactly what those older squads already looked
+  // like. No migration, no schema-version bump.
+  jerseyStyle?: ProTaggerJerseyStyle;
 };
 
 export interface ProTaggerSession {
