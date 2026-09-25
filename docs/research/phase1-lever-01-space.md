@@ -2,7 +2,7 @@
 
 **Type:** Evidence review (research only — no software, no drill library)
 **Scope:** Gaelic football, hurling, soccer, rugby (union and league), basketball, field hockey, ice hockey, Australian football (AFL), futsal and related invasion games
-**Status:** v1, September 2026
+**Status:** v1, September 2026. **Superseded in part by the [Final Evidence & Falsification Gate](./phase1-lever-01-space-final-gate.md)**, which verifies the † citations, records contradictions (notably between Gaelic football studies) and sets what PáircVision may and may not claim. Where the two documents differ, the final gate takes precedence.
 
 > **North star:** PáircVision helps people coach the game. That means understanding what they are trying to teach and the game behaviours behind it, changing the practice environment on purpose, understanding why those changes work, and recognising whether players are actually learning.
 
@@ -91,12 +91,12 @@ Format for each: **MANIPULATION → OBSERVED/EXPECTED EFFECT → MECHANISM → E
 ### 2.1 Total area and area-per-player (ApP)
 
 **Observed effects: increasing ApP (same numbers, bigger pitch)**
-- ↑ total distance, high-speed running (HSR) and sprinting; ↑ heart rate (HR) and RPE, fairly consistently. **[R] – High.** The Praça et al. (2022) meta-analysis concluded that larger relative areas produce higher physical and physiological responses. Supporting studies include Rampinini et al. (2007), Casamichana & Castellano (2010), Castellano et al. (2015), Riboli et al. (2020) and Hill-Haas et al. (2011, review). Hurling 4v4: HSR distance rose from ≈198 m (small) to ≈254 m (medium) to ≈354 m (large pitch), with higher physiological and perceptual demands on the large pitch (Malone et al., hurling-specific SSGs, *JSCR*). Rugby league: moving juniors from 400 m² to 2,800 m² increased distance covered by ≈15 m·min⁻¹ (Gabbett, Abernethy & Jenkins, 2012).
+- ↑ total distance, high-speed running (HSR) and sprinting; ↑ heart rate (HR) and RPE, fairly consistently. **[R] – High.** The Praça et al. (2022) meta-analysis concluded that larger relative areas produce higher physical and physiological responses. Supporting studies include Rampinini et al. (2007), Casamichana & Castellano (2010), Castellano et al. (2015), Riboli et al. (2020) and Hill-Haas et al. (2011, review). Hurling 4v4: HSR distance rose from ≈198 m (small) to ≈254 m (medium) to ≈354 m (large pitch), with higher physiological and perceptual demands on the large pitch (Malone & Collins, 2017, *JSCR* 31(6):1518–1524; abstract-level). Rugby league: moving juniors from 400 m² to 2,800 m² increased distance covered by ≈15 m·min⁻¹ (Gabbett, Abernethy & Jenkins, 2012).
 - ↑ passing success / ball retention. **[R] – Moderate.** Vilar et al. (2014) reported that pitch size changed the local opportunities to keep possession, pass and shoot. A 2025 study of 3v3 in youth soccer (J Sports Sci Med 24:522–531) found higher passing success on larger areas (75–125 m²/player).
 - ↑ team dispersion (stretch, length, width) and inter-player distances. **[R] – Moderate** (soccer positional data: Frencken et al., 2013; Silva et al., 2014; Olthof et al., 2018).
 
 **Observed effects: decreasing ApP**
-- ↑ ball involvements per player, ↑ contested possessions and tackles, ↑ shots / scores per team. **[R] – Moderate.** Kelly & Drust (2009): more tackles and shots on smaller pitches. Adult Gaelic 4v4: the smallest pitch (40×20 m) produced more scores per team, more "no-score entries" and more possessions per team (Int J Perf Anal Sport, 2019, 19(6)). Elite adolescent Gaelic: the smallest pitch gave more possessions, hand passes, tackles and points scored (Gaelic football SSG study, ≈2019). Fleay et al. (2018) found that AFL field size changed both technical and physical profiles (see full text for variable-level results).
+- ↑ ball involvements per player, ↑ contested possessions and tackles, ↑ shots / scores per team. **[R] – Moderate.** Kelly & Drust (2009): more tackles and shots on smaller pitches. Adult Gaelic 4v4: the smallest pitch (40×20 m) produced more scores per team, more "no-score entries" and more possessions per team (Mangan, Collins, Burns & O'Neill, 2019, *IJPAS* 19(6):971–984). Elite adolescent Gaelic: the smallest pitch gave more possessions, hand passes, tackles and points scored (2019 **conference abstract** — not a verified full paper; see final gate). Fleay et al. (2018) found that AFL field size changed both technical and physical profiles (see full text for variable-level results).
 - ↑ accelerations / decelerations (mechanical load), even though HSR falls. **[R] – Low–Moderate** (elite adolescent Gaelic SSG study; the soccer evidence is mixed — see Hodgson et al., 2014, where small pitches limited the chance to accelerate to high speed).
 - ↓ **decision-making quality and shooting effectiveness** alongside ↑ dribbling success. **[R] – Low** (single study: J Sports Sci Med, 2025, 3v3 youth soccer. Its authors caution that the correlations with physiological strain are moderate and not generalisable).
 - ↑ scanning frequency. **[R] – Low** (U12 English academy study comparing 7v7, 9v9 and 11v11: scanning rose as format size fell. The authors note that the *situations* scanned in small formats may not match the full game).
@@ -104,7 +104,7 @@ Format for each: **MANIPULATION → OBSERVED/EXPECTED EFFECT → MECHANISM → E
 **Mechanism.** Smaller ApP shortens interpersonal distances and time-to-contact. The ball carrier gets less time, pressure arrives sooner, and more players are within the "zone of influence" of the ball. More involvements follow almost by arithmetic. Larger ApP lengthens run-ups and passing lanes. It affords HSR, long passes and switching, and gives defenders more space to cover.
 
 **Counterintuitive and negative findings**
-- In the adult Gaelic 4v4 study, **HSR and sprinting peaked on the *medium* pitch (60×20 m), not the largest (80×20 m)**, and **average and peak HR differed only trivially** across pitch sizes. This contradicts the simple "bigger = harder" rule. A plausible explanation (**[H]**) is that on very long, narrow pitches, play becomes stop–start or players stop committing to long recovery runs.
+- In the sub-elite adult Gaelic 4v4 study (Mangan et al., 2019), **HSR and sprinting peaked on the *medium* pitch (60×20 m), not the largest (80×20 m)**, and **average and peak HR differed only trivially** across pitch sizes. This contradicts the simple "bigger = harder" rule. A plausible explanation (**[H]**) is that on very long, narrow pitches, play becomes stop–start or players stop committing to long recovery runs. **Contradiction (added at final gate):** on the *same* 40/60/80×20 m pitches, *elite* Gaelic players covered the most distance in all speed bands on the largest pitch (Malone, Solan & Collins, 2016). The non-linear result may be level-specific and is unresolved.
 - More involvements do not mean better learning. Smaller spaces raise the *frequency* of actions but may lower their *quality* and the *representativeness* of the decision context ([R]-Low + [E]).
 - Olthof et al. (2019) found that SSGs played at a match-derived ApP were **more tactically representative** of the 11v11 match than the conventional small SSGs most coaches use. A common default ("small is better for skill") may make practice *less* like the game ([R] – Low–Moderate).
 
@@ -140,7 +140,7 @@ Format for each: **MANIPULATION → OBSERVED/EXPECTED EFFECT → MECHANISM → E
 
 **Mechanism.** Length sets the distance between scoring targets. That shapes how long transitions last and whether defending teams can stay compact vertically.
 
-**Evidence.** Frencken et al. (2013) (see crossover above). A study of pitch length in youth soccer (*Anales de Psicología*, 2017, 33(3), "Influence of pitch length on inter- and intra-team behaviors in youth soccer") exists; full-text results should be confirmed before use. The adult Gaelic 4v4 study varied *only length* (40, 60, 80 m at 20 m width) and found the non-linear HSR peak described above. **[R] – Low.**
+**Evidence.** Frencken et al. (2013) (see crossover above). A study of pitch length in youth soccer (*Anales de Psicología*, 2017, 33(3), "Influence of pitch length on inter- and intra-team behaviors in youth soccer") (Castellano et al., 2017) found that lengthening the pitch (width fixed) increased team length, convex hull and stretch index, with little change in team width. That contrasts with Frencken's crossover effect (abstract-level). The adult Gaelic 4v4 study varied *only length* (40, 60, 80 m at 20 m width) and found the non-linear HSR peak described above. **[R] – Low.**
 
 **Side effects.** Long, narrow pitches may turn practice into straight-line running races. Short pitches may reward shooting from anywhere, which does not represent shot selection in the full game.
 
@@ -389,7 +389,7 @@ Methods established in adjacent literatures (motor learning, RLD, positional-dat
 
 ## 6. Cross-cutting counterintuitive and negative findings
 
-1. **Bigger is not always harder.** Adult Gaelic 4v4 HSR peaked at medium length. HR differences across pitch sizes were trivial ([R]).
+1. **Bigger is not always harder.** Sub-elite adult Gaelic 4v4 HSR peaked at medium length (Mangan et al., 2019), although elite players on the same pitch sizes ran most on the largest (Malone et al., 2016). HR differences across pitch sizes were trivial ([R]).
 2. **Smaller is not always "more skill".** More actions, but decision quality and shooting effectiveness can fall ([R]-Low).
 3. **Conventional small SSGs may be *less* game-like tactically** than larger, match-derived ones (Olthof et al., 2019) ([R]).
 4. **Zones can suppress the co-adaptation coaches want** (Gonçalves et al., 2017) ([R]).
@@ -517,10 +517,10 @@ These need resolving before PáircVision should *teach* coaches to use space as 
 - Scanning differences between small-sided and full-sized games in elite youth footballers. *International Journal of Physical Education, Fitness and Sports* (U12, 7v7/9v9/11v11). †
 
 **Gaelic football and hurling**
-- An investigation into the physical, physiological and technical demands of small sided games using varying pitch dimensions in Gaelic football (2019). *International Journal of Performance Analysis in Sport*, 19(6). doi:10.1080/24748668.2019.1689003 †
-- The influence of pitch size on running performance during Gaelic football small sided games (2016). *International Journal of Performance Analysis in Sport*, 16(1). doi:10.1080/24748668.2016.11868874 †
-- The physical and technical demands of Gaelic football small-sided games (elite adolescent intercounty minor players; small 22×37 m, medium 30×48 m, large 35×58 m). †
-- Malone, S., et al. The influence of pitch size on running performance and physiological responses during hurling-specific small-sided games. *Journal of Strength and Conditioning Research*. doi:10.1519/JSC.0000000000001624 †
+- Mangan, S., Collins, K., Burns, C., & O'Neill, C. (2019). An investigation into the physical, physiological and technical demands of small sided games using varying pitch dimensions in Gaelic football. *International Journal of Performance Analysis in Sport*, 19(6), 971–984. doi:10.1080/24748668.2019.1689003
+- Malone, S., Solan, B., & Collins, K. (2016). The influence of pitch size on running performance during Gaelic football small sided games. *International Journal of Performance Analysis in Sport*, 16(1). doi:10.1080/24748668.2016.11868874
+- The physical and technical demands of Gaelic football small-sided games (elite adolescent intercounty minor players; small 22×37 m, medium 30×48 m, large 35×58 m). **Conference abstract (2019); authors unverified. Downgraded to [C] at the final gate.** †
+- Malone, S., & Collins, K. (2017). The influence of pitch size on running performance and physiological responses during hurling-specific small-sided games. *Journal of Strength and Conditioning Research*, 31(6), 1518–1524. doi:10.1519/JSC.0000000000001624
 - Malone, S., et al. Effect of game design, goal type, and player numbers on the physiological and physical demands of hurling-specific small-sided games. *Journal of Strength and Conditioning Research*. doi:10.1519/JSC.0000000000001628 †
 - GAA Football Review Committee (2024–25). Playing-rule changes for 2025 (half-restriction, kickout arc, two-point arc). Governing-body documentation. [P]
 
