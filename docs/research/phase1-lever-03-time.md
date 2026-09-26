@@ -6,7 +6,7 @@
 - [NUMBERS review](./phase1-lever-02-numbers.md) + [NUMBERS final gate](./phase1-lever-02-numbers-final-gate.md)
 
 The final gates override the earlier reviews where they differ.
-**Status:** v1 review, September 2026. A final falsification gate is expected to follow, as with Levers 01 and 02.
+**Status:** v1 review, September 2026. A final falsification gate is expected to follow, as with Levers 01 and 02. **§16 adds a Cognitive Load Theory audit** (what CLT does and does not add to TIME).
 
 > **Central question.** What actually happens when a coach changes the time available to perceive, decide, act, recover or exploit an opportunity?
 >
@@ -188,7 +188,7 @@ See the deep dive in §3. Summary: more passes, higher intensity in adults, mixe
 | Transition | Fast counter-attacks effective in soccer; **longer possessions associated with scoring in Gaelic** | RESEARCH EVIDENCE | M |
 | Communication | Not studied | — | VL |
 | Physical load | Touch limits ↑ intensity in adults (review); **↓ distance in one youth study**; time pressure: no physical difference (soccer), ↑ jumps (basketball) | RESEARCH EVIDENCE | M (contradictory) |
-| Cognitive load | 2-touch ↑ acute executive-function performance and BDNF vs free play (Birinci et al., 2026) | RESEARCH EVIDENCE | L |
+| Cognitive load | 2-touch ↑ acute executive-function performance and BDNF vs free play (Birinci et al., 2026). Less available time and pass restrictions ↑ *perceived* mental effort and fatigue (see §16.3) | RESEARCH EVIDENCE | L–M |
 | Involvement | ↑ passes per player with touch limits | RESEARCH EVIDENCE | M |
 | Enjoyment / anxiety | Not studied for temporal constraints in invasion SSGs | — | VL |
 
@@ -513,6 +513,208 @@ Key:
 > - **What you see isn't what they've learned.** If players get the shot off inside your countdown, the game is working. To see whether they've *learned*, take the clock away and watch a normal game next week: do they spot when to go fast and when to keep the ball?
 
 ---
+
+## 16. TIME audit addendum: Cognitive Load Theory (CLT)
+
+> **Purpose.** To test whether CLT legitimately explains temporal constraints, *not* to adopt it as PáircVision's foundation. Same access limits as §0.2: all abstract-level or index-level. † = unresolved.
+
+### 16.0 Classification labels used in this section
+
+| Label | Meaning |
+|---|---|
+| **DIRECT SPORT EVIDENCE** | Experiments or observations in sport populations or tasks |
+| **EDUCATIONAL-PSYCHOLOGY TRANSFER** | Classroom, laboratory or instructional-design evidence applied to sport by analogy |
+| **THEORETICAL INTERPRETATION** | Explaining sport findings in CLT terms without a test |
+| **PRACTITIONER HEURISTIC** | Coaching media, frameworks without validation data |
+| **PÁIRCVISION HYPOTHESIS** | Our own inference |
+
+### 16.1 What contemporary CLT actually claims (and its scope)
+
+- **Core architecture.** Novel information is processed in a capacity- and duration-limited working memory. Once organised as schemas in long-term memory, those limits largely disappear. Instruction should manage load accordingly (Sweller, van Merriënboer & Paas, 2019, *Educ Psychol Rev* 31:261–292). **EDUCATIONAL-PSYCHOLOGY TRANSFER.**
+- **The three-part load model has been revised.** The traditional intrinsic / extraneous / germane split was challenged: germane load was argued to be "essentially indistinguishable from intrinsic load" and possibly redundant, having been added "based on theoretical considerations rather than specific empirical results" (Kalyuga, 2011, *Educ Psychol Rev* 23:1–19). Contemporary accounts treat load as **intrinsic** (driven by element interactivity relative to the learner's knowledge) and **extraneous** (driven by design). "Germane" is recast as the working-memory resources devoted to intrinsic load, not a third additive load (Sweller et al., 2019; the reformulation's detail is summarised from secondary descriptions †). **PáircVision should not use the traditional three-way split as if it were settled.**
+- **Scope limit (important).** CLT was amended on evolutionary grounds. Its architecture applies to **biologically secondary** knowledge (culturally taught, e.g., school subjects). **Biologically primary** capacities, including aspects of the human motor system, can be used to *support* learning of secondary knowledge (Paas & Sweller, 2012, *Educ Psychol Rev* 24:27–45).
+  - **Open question (THEORETICAL INTERPRETATION):** perceiving and acting on affordances in a live invasion game is not obviously "secondary, instructed information". Tactical rules and set-plays may be; reading a defender's approach may not be. CLT's reach into on-field perception–action is **unestablished**.
+- **Time is formally linked to load in one line of work.** The **Time-Based Resource-Sharing (TBRS)** model defines cognitive load as the *proportion of time* attention is captured, so time pressure raises load (Barrouillet, Bernardin & Camos, 2004; Barrouillet et al., 2007). It has been proposed as a way to bring time into CLT; pace effects depend on prior knowledge (Puma, Matton, Paubel & Tricot, 2018, *Educ Psychol Rev* 30:1199–1214). **EDUCATIONAL-PSYCHOLOGY TRANSFER** (working-memory span tasks, instructional pacing).
+
+### 16.2 Direct sport evidence that applies CLT to invasion-sport learning
+
+| Study | What was learned | Manipulation | Finding | Status |
+|---|---|---|---|---|
+| Khacharem, Zoudji, Ripoll & Kalyuga (2013), *JSEP* 35(3):260 † (authors beyond first) | Memorising / understanding **soccer tactical animations** | Sequential vs concurrent presentation | **Expertise reversal:** sequential better for novices; concurrent better for experts | **DIRECT SPORT EVIDENCE** (instructional media) |
+| Khacharem et al. (2013), *Psych Sport Exerc* (segmentation) † | Animated soccer scenes | Segmentation | Segmentation helped novices, not experts | DIRECT SPORT EVIDENCE |
+| Khacharem, Zoudji & Kalyuga (2014), *Comput Hum Behav*; (2015), *Br J Educ Technol* † | Animated soccer scenes | Instructional formats | Expertise reversal across formats | DIRECT SPORT EVIDENCE |
+| "Effects of time on memorization of soccer scenes: presentation formats and expertise reversal effect" † | Soccer scenes | **Presentation time / pace** | Time effects moderated by expertise (detail †) | DIRECT SPORT EVIDENCE: the only CLT-framed *time* study found, and it concerns **viewing instruction, not playing** |
+
+**Verdict.** Direct CLT experiments in sport exist, but they concern **learning from tactical diagrams and animations** (coach-to-player instruction). **No CLT-framed experiment was found that manipulates on-field temporal constraints** (countdowns, touch limits, time on ball) and measures learning.
+
+### 16.3 Does time pressure increase measurable cognitive load in sport?
+
+| Evidence | Finding | Measure | Status |
+|---|---|---|---|
+| *Psychology of Sport and Exercise* (2022) † authors: "How does the manipulation of time pressure during soccer tasks influence physical load and mental fatigue?" | 48 semi-professional players, 2 sessions × 4 tasks, more vs less time. **Less time → higher mental effort, physical effort and perceived time pressure**, especially in possession tasks | Adapted NASA-TLX, VAS mental fatigue, GPS | **DIRECT SPORT EVIDENCE** (acute, self-report) |
+| IJERPH (2021) 18(8):4313 † authors: pass-decision rule restrictions | 40 semi-professional players. Restrictions → higher speeds, RPE and **mental fatigue** in possession games | RPE, mental fatigue scales | DIRECT SPORT EVIDENCE (acute, pilot) |
+| *Sport Sciences for Health* (2026): 8v8 on 40×20 vs 30×15 m, U14 | **Smaller pitch → higher mental workload**; larger pitch → higher RPE | NASA-TLX | DIRECT SPORT EVIDENCE: **SPACE also raises load** |
+| Birinci et al. (2026) | 2-touch vs free play: ↑ BDNF and Stroop performance; mental effort measured with RSME (RSME result detail †) | Biochemical, cognitive test, RSME | DIRECT SPORT EVIDENCE (acute) |
+| Cognitive load in team sports review (*PeerJ*, 2021) | NASA-TLX, VAS mental fatigue and cognitive RPE considered valid; **induced mental fatigue impairs decision-making** | Review | DIRECT SPORT EVIDENCE (review) |
+
+**Caveat.** What sport studies measure is **perceived mental effort, workload or fatigue**. These are subjective indices, not CLT's intrinsic/extraneous working-memory load. **"Time pressure raises perceived mental demand" is supported. "Time pressure raises CLT load" is THEORETICAL INTERPRETATION.**
+
+### 16.4 Is the effect different for novices and experts?
+
+- **Yes, consistently, but mostly without CLT framing.**
+  - Expertise reversal in soccer instructional media (Khacharem et al.; **DIRECT SPORT EVIDENCE**, CLT-framed).
+  - Experienced soccer players dribbled **faster under a secondary verbal task** (dominant foot), while skill-focused attention hurt experts but not novices (Beilock, Carr, MacMahon & Starkes, 2002, *J Exp Psychol Appl* 8(1):6–16) (**DIRECT SPORT EVIDENCE**; attention / automaticity framework, not CLT).
+  - Novices' decision accuracy fell under time pressure; experts maintained it (basketball, 2025) (**DIRECT SPORT EVIDENCE**, lab / video).
+  - Experts pick up cues faster (Mann et al., 2007).
+  - Scanning training helped elite but not grassroots U19 players (Heads Up Girls!, 2025).
+- **Interpretation:** the expertise-reversal principle, that support helping novices can hinder experts and vice versa, is the most defensible CLT contribution to TIME. It supports **calibrating temporal constraints to capability** (**EDUCATIONAL-PSYCHOLOGY TRANSFER + DIRECT SPORT EVIDENCE**, instruction domain).
+
+### 16.5 Does excessive temporal pressure harm *learning* (not just acute performance)?
+
+- **Sport: no direct evidence.** Time pressure lowers acute decision quality (Rochael & Praça, 2024) and increases perceived mental demand (PSE, 2022). No study tests retention or transfer after high vs moderate temporal pressure. **UNKNOWN.**
+- **Education:** added difficulty becomes **undesirable** when working memory is already stretched by high-element-interactivity material (Chen, Castro-Alonso, Paas & Sweller, 2018, *Front Psychol* 9:1483). **EDUCATIONAL-PSYCHOLOGY TRANSFER.** Applying this to novices under countdowns is a **PÁIRCVISION HYPOTHESIS**.
+
+### 16.6 Does progressively increasing temporal pressure improve retention or transfer?
+
+- **Sport (invasion games): no evidence found. UNKNOWN.**
+- **Motor-learning lab:** individually adjusted **progressive difficulty** (not time pressure specifically) produced about 2× performance at an advanced level vs constant practice, maintained at 8 days, but **equal at 14 months** (*Scientific Reports*, 2020, visuomotor task). **EDUCATIONAL-PSYCHOLOGY TRANSFER** (motor lab).
+- **Challenge Point Framework** (Guadagnoli & Lee, 2004, *J Mot Behav* 36(2):212–224) distinguishes **nominal** difficulty (the task) from **functional** difficulty (the task relative to the learner and conditions). A 2025 scoping review describes favourable use but acknowledged limits, including a lack of practical application research. **THEORETICAL INTERPRETATION.** The nominal / functional distinction parallels PáircVision's **clock vs functional time** (§1.1). It is a useful conceptual ally, **not** evidence that progressive countdowns work.
+
+### 16.7 Can CLT legitimately explain touch restrictions, countdowns and constraint stacking?
+
+| Constraint | CLT-based claim often made | Status |
+|---|---|---|
+| Touch limits | "Increase cognitive load, so better decision-makers" | **PRACTITIONER EXTRAPOLATION.** Sport data show ↑ perceived mental effort / fatigue with pass restrictions and acute Stroop changes with 2-touch, but **no CLT test and no learning outcome** |
+| Countdowns | "Add load to train speed of thought" | **PRACTITIONER EXTRAPOLATION.** Acute ↑ perceived demand and ↓ decision quality |
+| Constraint stacking | "Progress load level by level" (e.g., the CLS levels, §16.8) | **PRACTITIONER HEURISTIC.** "Increasing rules manipulations" was associated with ↓ exploratory team behaviour (*Front Psychol*, 2019, from the SPACE gate: DIRECT SPORT EVIDENCE, not CLT) |
+
+**A tension practitioners miss (THEORETICAL INTERPRETATION).** Strictly in CLT terms, a rule-imposed demand that is not part of the target game would be classed as **extraneous** load, which CLT recommends *reducing*. On that reading, CLT argues **against** stacking artificial constraints. That is closer to representative learning design than to "add more load". Citing CLT to justify *adding* arbitrary load inverts the theory.
+
+### 16.8 The football "Cognitive Load Scale" (CLS): verification
+
+| Item | Finding |
+|---|---|
+| Source | Pedrosa, R., & Tavares, R. (2025). Training spatial intelligence in football through the cognitive load scale. *Frontiers in Sports and Active Living*. doi:10.3389/fspor.2025.1628561. Preprint on PsyArXiv, 14 May 2025 |
+| What it is | A **five-level framework to classify and adapt drills** by cognitive demand across four dimensions (working memory, decision making, technical complexity, reaction time), using modifiable variables (space, duration, number of players, spatial awareness, feedback intensity, conditions, visual cues) |
+| Validation status | **Not validated.** No reliability, factor structure, criterion validity or intervention outcomes were found at abstract or index level. The article itself states that **anecdotal feedback** highlights its potential and that such observations should **guide future empirical validation** (index-level) |
+| Population / methodology | No empirical sample identified; the paper presents drill examples across levels. It is a conceptual / practical framework (†: full-text confirmation needed) |
+| Name | "Scale" suggests a measurement instrument. It is a **design taxonomy**, not a validated measure of load |
+| Outcome claims | The title claims "training spatial intelligence". **No outcome data support that claim.** **Claims exceed the evidence.** |
+| Classification | **PRACTITIONER HEURISTIC / THEORETICAL INTERPRETATION** (peer-reviewed venue, but not evidence of effect). Must not be cited to coaches as a validated tool. |
+
+### 16.9 CLT vs ecological dynamics / Constraints-Led Approach: incompatible assumptions
+
+| Dimension | CLT | Ecological dynamics / CLA | Compatible? |
+|---|---|---|---|
+| What is learned | Schemas stored in long-term memory (representations) | Attunement to information, calibration of action to affordances; no need for stored representations to guide action (Araújo, Davids & Hristovski, 2006) | **Incompatible at the level of theory** |
+| Where the bottleneck is | Working-memory capacity inside the learner | Performer–environment fit; information is in the environment | **Incompatible** |
+| Role of instruction | Central: worked examples, segmenting, guidance (especially novices) | Minimal explicit instruction; guided discovery via constraints | **Largely opposed** for on-field skill |
+| Difficulty / variability | Manage and often reduce load; added difficulty can be undesirable for novices | Deliberately destabilise through variability and perturbation (e.g., differential learning) | **Tension**; possibly reconcilable via expertise |
+| Scope | Biologically secondary, instructed knowledge | Perception–action in natural environments | **Different domains** |
+| Where they may overlap | Novices need task simplification; experts need less support (expertise reversal) | Scale constraints to individual capability; representative simplification | **Overlapping practical prediction**, from different mechanisms |
+
+**Conclusion.** They are **not simply complementary**.
+- CLT is best supported for **instructional communication** (coach explanations, video, diagrams). There it has DIRECT SPORT EVIDENCE.
+- Ecological dynamics is PáircVision's working frame for **designing play environments**.
+- Using CLT to explain on-field temporal constraints requires treating in-game perception as working-memory-limited information processing, an assumption ecological dynamics rejects. PáircVision should record the disagreement rather than blend the theories.
+
+### 16.10 Is "desirable difficulty" misattributed to CLT?
+
+**Yes, frequently.**
+- "Desirable difficulties" come from **Bjork's memory research (1994)**. The motor-learning counterpart is **contextual interference** (Shea & Morgan, 1979), where harder random practice impairs acquisition but improves retention and transfer.
+- CLT's original prescription is to **reduce** unnecessary load. CLT authors have argued that difficulty is **undesirable** under high element interactivity (Chen et al., 2018).
+- A 2024–25 comparative analysis treats the two as distinct frameworks with differing predictions ("Does difficulty moderate learning?", PMC12432286 †).
+- In motor learning, difficulties must be task-relevant, novel and solvable to be desirable (Hodges & Lohse, 2020, *J Appl Res Mem Cogn* 9(4):455–460).
+- **"Make it harder so they learn more — CLT" is a misattribution.**
+
+### 16.11 Does CLT support "speed of action" vs "speed of play"?
+
+**No.**
+- CLT offers no evidence distinguishing how fast an action is executed from how fast a team's play progresses.
+- A theoretical story is possible (automated schemas free capacity, allowing earlier perception) but untested in games.
+- Related sport evidence (faster expert cue pick-up, Mann et al., 2007; intuitive fast-and-good decisions, Raab & Laborde, 2011) comes from **other** frameworks.
+- **Keep "speed of action ≠ speed of play" as a separate PÁIRCVISION HYPOTHESIS.**
+
+### 16.12 Do SPACE / NUMBERS create more representative temporal pressure than countdowns?
+
+**Not established. It remains a PÁIRCVISION HYPOTHESIS.**
+- Both routes raise perceived load: smaller pitch ↑ NASA-TLX (*Sport Sci Health*, 2026); less time ↑ mental effort (PSE, 2022).
+- No study compares **natural** (space / opponent) pressure with **clock** pressure on representativeness, decision quality, retention or transfer.
+- The argument rests on representative learning design theory: natural pressure keeps defender-approach information, while a clock substitutes non-game information. That is a **THEORETICAL INTERPRETATION**, not evidence. §2.9's hypothesis stands but is not upgraded.
+
+### 16.13 Cognitive Load, Expertise and Temporal Constraint Calibration
+
+| # | Conclusion | Label | Conf. |
+|---|---|---|---|
+| 1 | Reducing available time (or adding pass / touch restrictions) **raises players' perceived mental effort and fatigue acutely** | DIRECT SPORT EVIDENCE | L–M |
+| 2 | Shrinking space **also** raises perceived mental workload; temporal demand is not only a clock issue | DIRECT SPORT EVIDENCE | L |
+| 3 | The same temporal demand affects **novices more than experts** (decision accuracy, dual-task, instructional formats) | DIRECT SPORT EVIDENCE | M |
+| 4 | Support or constraints that help novices can be neutral or harmful for experts (**expertise reversal**) | EDUCATIONAL-PSYCHOLOGY TRANSFER + DIRECT SPORT EVIDENCE (instruction media) | M |
+| 5 | Difficulty should be judged as **functional** (task relative to learner), not nominal (the rule itself). This parallels clock vs functional time | THEORETICAL INTERPRETATION (Challenge Point) + PÁIRCVISION HYPOTHESIS | L |
+| 6 | Excessive temporal pressure may harm **learning** for novices (undesirable difficulty) | EDUCATIONAL-PSYCHOLOGY TRANSFER → **UNKNOWN in sport** | VL |
+| 7 | Progressively increasing temporal pressure improves retention or transfer | **UNKNOWN in sport**; motor lab: short-term advantage, no long-term advantage | VL |
+| 8 | Induced mental fatigue impairs decision-making. Long, stacked, high-demand bouts may degrade decision practice | DIRECT SPORT EVIDENCE (review) | L–M |
+| 9 | Artificial, non-game constraints can be viewed as **extraneous** load that CLT would reduce | THEORETICAL INTERPRETATION | L |
+| 10 | CLT is **not** a validated explanation of how on-field temporal constraints produce learning | — | — |
+
+**What CLT legitimately adds to TIME**
+1. A vocabulary and evidence base for **expertise-dependent calibration** (expertise reversal), including direct soccer studies of tactical instruction.
+2. Guidance for **coach instruction and video** (segmenting, pacing and sequencing explanations for novices), where it has DIRECT SPORT EVIDENCE.
+3. A laboratory link between **time and load** (TBRS): less time means a greater proportion of attention captured.
+
+**What CLT does not add**
+- Evidence that countdowns, touch limits or constraint stacking produce learning.
+- Support for "desirable difficulty".
+- A foundation for PáircVision's design of play environments.
+
+**Additions to "must NOT claim" (§14)**
+- ❌ "Cognitive Load Theory shows touch limits / countdowns build better decision-makers."
+- ❌ "CLT says make practice harder" (desirable difficulty is a different framework).
+- ❌ The football "Cognitive Load Scale" as a validated measurement tool, or evidence that it trains spatial intelligence.
+- ❌ Intrinsic / extraneous / germane as a settled three-part model.
+- ❌ "CLT and the constraints-led approach are the same thing" or "fully complementary".
+- ❌ "Natural pressure is proven more representative than a clock."
+
+### 16.14 References for this addendum
+
+- Barrouillet, P., Bernardin, S., & Camos, V. (2004). Time constraints and resource sharing in adults' working memory spans. *Journal of Experimental Psychology: General*, 133(1), 83–100.
+- Barrouillet, P., Bernardin, S., Portrat, S., Vergauwe, E., & Camos, V. (2007). Time and cognitive load in working memory. *Journal of Experimental Psychology: Learning, Memory, and Cognition*, 33(3), 570–585.
+- Beilock, S. L., Carr, T. H., MacMahon, C., & Starkes, J. L. (2002). When paying attention becomes counterproductive: impact of divided versus skill-focused attention on novice and experienced performance of sensorimotor skills. *Journal of Experimental Psychology: Applied*, 8(1), 6–16.
+- Bjork, R. A. (1994). Memory and metamemory considerations in the training of human beings. In J. Metcalfe & A. Shimamura (Eds.), *Metacognition: Knowing about Knowing* (pp. 185–205). MIT Press.
+- Chen, O., Castro-Alonso, J. C., Paas, F., & Sweller, J. (2018). Undesirable difficulty effects in the learning of high-element interactivity materials. *Frontiers in Psychology*, 9, 1483.
+- Does difficulty moderate learning? A comparative analysis of the desirable difficulties framework and cognitive load theory (2024–25). PMC12432286. † (authors / venue)
+- Evaluation of cognitive load in team sports: literature review (2021). *PeerJ*, 9, e12045. † (authors)
+- Guadagnoli, M. A., & Lee, T. D. (2004). Challenge point: a framework for conceptualizing the effects of various practice conditions in motor learning. *Journal of Motor Behavior*, 36(2), 212–224.
+- Challenge accepted: a systematic scoping review of the applications of the Challenge Point Framework (2025). *Journal of Motor Behavior*. doi:10.1080/00222895.2025.2508283 †
+- Hodges, N. J., & Lohse, K. R. (2020). Difficulty is a real challenge: a perspective on the role of cognitive effort in motor skill learning. *Journal of Applied Research in Memory and Cognition*, 9(4), 455–460.
+- How does the manipulation of time pressure during soccer tasks influence physical load and mental fatigue? (2022). *Psychology of Sport and Exercise*. † (authors)
+- Can rules in technical-tactical decisions influence on physical and mental load during soccer training? A pilot study (2021). *IJERPH*, 18(8), 4313. † (authors)
+- Kalyuga, S. (2011). Cognitive load theory: how many types of load does it really need? *Educational Psychology Review*, 23(1), 1–19.
+- Khacharem, A., Zoudji, B., Kalyuga, S., et al. (2013–2015). Expertise reversal in dynamic soccer visualizations (sequential presentation, *JSEP* 35(3):260–269; segmentation, *Psych Sport Exerc*; *Computers in Human Behavior* 2014; *British Journal of Educational Technology* 2015). † (exact author lists per paper)
+- Long-term motor skill training with individually adjusted progressive difficulty enhances learning and promotes corticospinal plasticity (2020). *Scientific Reports*, 10. † (authors)
+- Paas, F., & Sweller, J. (2012). An evolutionary upgrade of cognitive load theory: using the human motor system and collaboration to support the learning of complex cognitive tasks. *Educational Psychology Review*, 24(1), 27–45.
+- Pedrosa, R., & Tavares, R. (2025). Training spatial intelligence in football through the cognitive load scale. *Frontiers in Sports and Active Living*. doi:10.3389/fspor.2025.1628561
+- Puma, S., Matton, N., Paubel, P.-V., & Tricot, A. (2018). Cognitive load theory and time considerations: using the time-based resource sharing model. *Educational Psychology Review*, 30, 1199–1214.
+- Shea, J. B., & Morgan, R. L. (1979). Contextual interference effects on the acquisition, retention, and transfer of a motor skill. *Journal of Experimental Psychology: Human Learning and Memory*, 5(2), 179–187.
+- Sweller, J., van Merriënboer, J. J. G., & Paas, F. (2019). Cognitive architecture and instructional design: 20 years later. *Educational Psychology Review*, 31(2), 261–292.
+- The physical and mental workload of small-sided football games: the influence of pitch size and the importance of effective monitoring and control (2026). *Sport Sciences for Health*. doi:10.1007/s11332-026-01739-0 † (authors)
+
+**Sources consulted for the addendum:**
+- [Pedrosa & Tavares 2025 (Frontiers)](https://www.frontiersin.org/journals/sports-and-active-living/articles/10.3389/fspor.2025.1628561/full)
+- [Khacharem et al. 2013 (JSEP)](https://journals.humankinetics.com/view/journals/jsep/35/3/article-p260.xml) · [2014 (CHB)](https://www.sciencedirect.com/science/article/abs/pii/S0747563214001435) · [segmentation (PSE)](https://www.sciencedirect.com/science/article/abs/pii/S1469029212001161)
+- [Sweller et al. 2019](https://link.springer.com/article/10.1007/s10648-019-09465-5) · [Kalyuga 2011](https://link.springer.com/article/10.1007/s10648-010-9150-7) · [Paas & Sweller 2012](https://link.springer.com/article/10.1007/s10648-011-9179-2)
+- [Puma et al. 2018 (TBRS in CLT)](https://link.springer.com/article/10.1007/s10648-018-9438-6) · [Barrouillet et al. 2007 (PubMed)](https://pubmed.ncbi.nlm.nih.gov/17470006/)
+- [Time pressure & mental fatigue in soccer (PSE 2022)](https://www.sciencedirect.com/science/article/abs/pii/S1469029222001212) · [Pass-rule mental load pilot (IJERPH 2021)](https://pmc.ncbi.nlm.nih.gov/articles/PMC8072652/) · [Pitch size & NASA-TLX (Sport Sci Health 2026)](https://link.springer.com/article/10.1007/s11332-026-01739-0)
+- [Cognitive load in team sports review (PeerJ)](https://peerj.com/articles/12045/)
+- [Chen et al. 2018 undesirable difficulty](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6099118/) · [DDF vs CLT comparative analysis](https://pmc.ncbi.nlm.nih.gov/articles/PMC12432286/)
+- [Guadagnoli & Lee 2004](https://www.researchgate.net/publication/8574634_Challenge_Point_A_Framework_for_Conceptualizing_the_Effects_of_Various_Practice_Conditions_in_Motor_Learning) · [CPF scoping review 2025](https://www.tandfonline.com/doi/full/10.1080/00222895.2025.2508283)
+- [Hodges & Lohse 2020](https://www.researchgate.net/publication/347803028_Difficulty_is_a_Real_Challenge_A_Perspective_on_the_Role_of_Cognitive_Effort_in_Motor_Skill_Learning)
+- [Progressive difficulty motor learning (Sci Rep 2020)](https://www.nature.com/articles/s41598-020-72139-8)
+- [Beilock et al. 2002](https://www.researchgate.net/publication/11362554_When_paying_attention_becomes_counterproductive_Impact_of_divided_versus_skill-focused_attention_on_novice_and_experienced_performance_of_sensorimotor_skills)
+- [Shea & Morgan 1979](https://www.semanticscholar.org/paper/Contextual-interference-effects-on-the-acquisition,-Shea-Morgan/dbcdc235f1b0bb971bfd18f602766caee6fffecf)
+
+---
+
 
 ## References
 
