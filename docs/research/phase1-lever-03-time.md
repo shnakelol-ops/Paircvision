@@ -6,7 +6,7 @@
 - [NUMBERS review](./phase1-lever-02-numbers.md) + [NUMBERS final gate](./phase1-lever-02-numbers-final-gate.md)
 
 The final gates override the earlier reviews where they differ.
-**Status:** v1 review, September 2026. A final falsification gate is expected to follow, as with Levers 01 and 02. **§16 adds a Cognitive Load Theory audit** (what CLT does and does not add to TIME).
+**Status:** v1 review, September 2026. **Superseded in part by the [TIME Final Evidence & Falsification Gate](./phase1-lever-03-time-final-gate.md). Where the two documents differ, the final gate wins.** Notable gate changes: "creating time" is downgraded to coaching language; the scanning intervention increased scanning but not passing success; touch limits move primarily to RULES (cross-linked to TIME); corrected Gaelic and scanning citations. **§16 adds a Cognitive Load Theory audit** (what CLT does and does not add to TIME).
 
 > **Central question.** What actually happens when a coach changes the time available to perceive, decide, act, recover or exploit an opportunity?
 >
