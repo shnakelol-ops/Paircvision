@@ -3,6 +3,7 @@
 **Type:** Scientific evidence audit. Research only: no drills, sessions, UI, product features or production code.
 **Frozen context:** [SPACE gate](./phase1-lever-01-space-final-gate.md) · [NUMBERS gate](./phase1-lever-02-numbers-final-gate.md) · [TIME gate](./phase1-lever-03-time-final-gate.md)
 **Status:** v1 audit, September 2026. A separate Final Evidence & Falsification Gate is expected to follow.
+**Companion:** [DIRECTION practitioner & coaching intelligence audit](./phase1-lever-04-direction-practitioner-audit.md).
 
 > **Central question.** What actually happens when a coach gives a practice a meaningful direction or destination? How does adding, removing, reversing or manipulating direction change what players perceive, where they move, what decisions they have, and what they may ultimately learn?
 >
