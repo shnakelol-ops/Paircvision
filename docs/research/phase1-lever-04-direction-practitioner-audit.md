@@ -3,7 +3,7 @@
 **Type:** Practitioner and coaching-intelligence audit. Research only: no drills library, sessions, UI, product features or production code.
 **Companion to:** [DIRECTION scientific audit](./phase1-lever-04-direction.md). This document does not repeat that review. Where it uses science, it points to it (candidates **D1–D12**).
 **Frozen context:** [SPACE gate](./phase1-lever-01-space-final-gate.md) · [NUMBERS gate](./phase1-lever-02-numbers-final-gate.md) · [TIME gate](./phase1-lever-03-time-final-gate.md)
-**Status:** v1 practitioner audit, September 2026. A DIRECTION Final Evidence & Falsification Gate is expected to follow and will take precedence over this document.
+**Status:** v1 practitioner audit, September 2026. See the [DIRECTION Final Evidence & Falsification Gate](./phase1-lever-04-direction-final-gate.md), which governs PáircVision V1 where the two differ.
 
 > **Question.** Why do coaches give practice a meaningful direction, and when do they deliberately take it away?
 > More precisely: *what does changing the objective make players more likely to perceive and do, and what does that manipulation remove or distort?*

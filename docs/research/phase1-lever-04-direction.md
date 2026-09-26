@@ -2,7 +2,7 @@
 
 **Type:** Scientific evidence audit. Research only: no drills, sessions, UI, product features or production code.
 **Frozen context:** [SPACE gate](./phase1-lever-01-space-final-gate.md) · [NUMBERS gate](./phase1-lever-02-numbers-final-gate.md) · [TIME gate](./phase1-lever-03-time-final-gate.md)
-**Status:** v1 audit, September 2026. A separate Final Evidence & Falsification Gate is expected to follow.
+**Status:** v1 audit, September 2026. **Superseded in part by the [DIRECTION Final Evidence & Falsification Gate](./phase1-lever-04-direction-final-gate.md). Where the original audit and final gate differ, the final gate governs PáircVision V1.** Notable gate changes: DIRECTION narrowed to *target structure* ("what counts as progress" becomes an evaluation, not a manipulation); D1–D12 reduced to four frozen principles (DIR-1–DIR-4); exact review percentages downgraded (derivation unresolved); "improve the picture" and Through / Around / Over classed as coaching heuristics only.
 **Companion:** [DIRECTION practitioner & coaching intelligence audit](./phase1-lever-04-direction-practitioner-audit.md).
 
 > **Central question.** What actually happens when a coach gives a practice a meaningful direction or destination? How does adding, removing, reversing or manipulating direction change what players perceive, where they move, what decisions they have, and what they may ultimately learn?
