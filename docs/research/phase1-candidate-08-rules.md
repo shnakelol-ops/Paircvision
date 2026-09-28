@@ -11,7 +11,7 @@
 - [GAME MOMENT](./phase1-lever-06-initial-state-final-gate.md)
 - [Candidate 07: DECISION ALLOCATION lens + CF-1 v2](./phase1-candidate-07-responsibility-allocation-final-gate.md)
 
-**Status:** v1 audit, September 2026. A practitioner audit and a Final Evidence & Falsification Gate are expected to follow.
+**Status:** v1 audit, September 2026. See the [RULES practitioner audit](./phase1-candidate-08-rules-practitioner-audit.md) and the [Candidate 08 Final Gate](./phase1-candidate-08-rules-final-gate.md). **Where this audit and the final gate differ, the final gate governs PáircVision V1.** (Final verdict: RULES dissolves as a lever; the residue survives as **ACTIONS**, not "ACTION ALLOWANCES".)
 
 > ### ⚠️ ACCESS LIMITATION
 > - No full text was accessible: publishers, PMC and GAA / FIFA documents were refused by the proxy.
