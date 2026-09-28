@@ -3,7 +3,7 @@
 **Type:** Practitioner and coaching-intelligence audit. Research only: no production code, sessions, drills, UI or product design.
 **Companion to:** [PLAYER ROLES scientific audit](./phase1-candidate-07-player-roles.md). Its verdict was *D, split*, with RESPONSIBILITY ALLOCATION as the surviving candidate.
 **Frozen context:** [SPACE](./phase1-lever-01-space-final-gate.md) · [NUMBERS](./phase1-lever-02-numbers-final-gate.md) · [TIME](./phase1-lever-03-time-final-gate.md) · [DIRECTION](./phase1-lever-04-direction-final-gate.md) · [SCORING](./phase1-lever-05-scoring-final-gate.md) · [GAME MOMENT + CF-1](./phase1-lever-06-initial-state-final-gate.md)
-**Status:** v1 practitioner audit, September 2026. A Final Evidence & Falsification Gate is expected to follow and will govern where the documents differ.
+**Status:** v1 practitioner audit, September 2026. See the [Candidate 07 Final Gate](./phase1-candidate-07-responsibility-allocation-final-gate.md). **Where this audit and the final gate differ, the final gate governs PáircVision V1.**
 
 > ### ⚠️ ACCESS CAVEAT (read first)
 >

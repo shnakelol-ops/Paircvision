@@ -10,7 +10,7 @@
 - [SCORING](./phase1-lever-05-scoring-final-gate.md)
 - [GAME MOMENT](./phase1-lever-06-initial-state-final-gate.md)
 
-**Status:** v1 audit, September 2026. **Companion:** [RESPONSIBILITY ALLOCATION practitioner audit](./phase1-candidate-07-responsibility-allocation-practitioner-audit.md). A Final Evidence & Falsification Gate is expected to follow.
+**Status:** v1 audit, September 2026. **Companion:** [RESPONSIBILITY ALLOCATION practitioner audit](./phase1-candidate-07-responsibility-allocation-practitioner-audit.md). Superseded in part by the [Candidate 07 Final Gate](./phase1-candidate-07-responsibility-allocation-final-gate.md). **Where this audit and the final gate differ, the final gate governs PáircVision V1.** Gate outcome: PLAYER ROLES dissolved; DECISION ALLOCATION frozen as a cross-framework lens (who / what / when / how); CF-1 expanded to CF-1 v2.
 
 > **Central question.** What does assigning a player a role actually manipulate in a practice? Does a role:
 > - create a useful game problem;
