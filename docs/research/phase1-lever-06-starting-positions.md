@@ -2,7 +2,7 @@
 
 **Type:** Scientific evidence audit. Research only: no drills, sessions, UI, product features or production code.
 **Frozen context (V1):** [SPACE](./phase1-lever-01-space-final-gate.md) · [NUMBERS](./phase1-lever-02-numbers-final-gate.md) · [TIME](./phase1-lever-03-time-final-gate.md) · [DIRECTION](./phase1-lever-04-direction-final-gate.md) · [SCORING](./phase1-lever-05-scoring-final-gate.md)
-**Status:** v1 audit, September 2026. **Companion:** [INITIAL STATE practitioner audit](./phase1-lever-06-initial-state-practitioner-audit.md). A Final Evidence & Falsification Gate is expected to follow.
+**Status:** v1 audit, September 2026. **Companion:** [INITIAL STATE practitioner audit](./phase1-lever-06-initial-state-practitioner-audit.md). Superseded in part by the [INITIAL STATE Final Evidence & Falsification Gate](./phase1-lever-06-initial-state-final-gate.md). **Where this audit and the final gate differ, the final gate governs PáircVision V1.** Notable gate changes: starting configuration absorbed into SPACE / NUMBERS / TIME / DIRECTION; the surviving concept renamed **GAME MOMENT** and classified as a task-selection decision, not a constraint lever; supplied-vs-created moved to cross-framework principle CF-1.
 
 > **Central question.** What changes when a coach manipulates where players begin a practice episode, and is that manipulation genuinely distinct from SPACE, NUMBERS, TIME and DIRECTION?
 >

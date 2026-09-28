@@ -3,7 +3,7 @@
 **Type:** Practitioner and coaching-intelligence audit. Research only: no production code, drills, sessions, UI or product design.
 **Companion to:** [STARTING POSITIONS scientific audit](./phase1-lever-06-starting-positions.md). Its provisional verdict was *YES BUT NARROWED → INITIAL STATE*.
 **Frozen context:** [SPACE](./phase1-lever-01-space-final-gate.md) · [NUMBERS](./phase1-lever-02-numbers-final-gate.md) · [TIME](./phase1-lever-03-time-final-gate.md) · [DIRECTION](./phase1-lever-04-direction-final-gate.md) · [SCORING](./phase1-lever-05-scoring-final-gate.md)
-**Status:** v1 practitioner audit, September 2026. A Final Evidence & Falsification Gate is expected to follow and will govern where the documents differ.
+**Status:** v1 practitioner audit, September 2026. See the [INITIAL STATE Final Evidence & Falsification Gate](./phase1-lever-06-initial-state-final-gate.md). **Where this audit and the final gate differ, the final gate governs PáircVision V1.**
 
 > **Central practitioner question.** When good coaches deliberately manufacture the beginning of an activity, what part of the game problem are they supplying, and what part are they still asking players to perceive and solve?
 >
