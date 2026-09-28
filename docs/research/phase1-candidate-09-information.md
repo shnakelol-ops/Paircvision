@@ -7,7 +7,7 @@
 - [Candidate 07: DECISION ALLOCATION + CF-1 v2](./phase1-candidate-07-responsibility-allocation-final-gate.md)
 - [Candidate 08: RULES → ACTIONS](./phase1-candidate-08-rules-final-gate.md)
 
-**Status:** v1 audit, September 2026. A practitioner audit and a Final Evidence & Falsification Gate are expected to follow.
+**Status:** v1 audit, September 2026. See the [INFORMATION practitioner audit](./phase1-candidate-09-information-practitioner-audit.md) and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md). **Where this audit and the final gate differ, the final gate governs PáircVision V1.** (Final verdict: D — INFORMATION dissolves; coach-supplied information and feedback move to a deferred COACH INTERVENTION framework; GI-1 and GI-2 frozen.)
 
 > ### ⚠️ ACCESS LIMITATION
 > - **No full text was accessible.** Publishers, PMC pages, federation documents, podcasts and coaching sites were refused by the network proxy.
