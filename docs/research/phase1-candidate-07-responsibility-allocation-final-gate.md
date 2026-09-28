@@ -208,6 +208,11 @@ The lens is **not rejected**. It is modified (WHETHER → WHAT).
 - explicit vs implicit instruction effects (U-20 study; *RQES* 2024);
 - whether coach-preference signalling (SCORING §20) belongs there.
 
+> **Later taxonomy clarification (Candidate 09).** Candidate 09 subsequently dissolved INFORMATION as a Phase 1 family. Where this document and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - Instructions, cues, questions, demonstrations and relational instructions provisionally sent to INFORMATION now belong to **COACH INTERVENTION** (deferred; pending research, not a completed framework).
+> - The level-of-analysis distinction above stands: DECISION ALLOCATION remains a **cross-framework lens** describing which decisions the coach has supplied and which remain with players. CF-1 v2 is **unchanged**.
+
 ---
 
 ## 11. Interaction with frozen levers
@@ -414,6 +419,11 @@ CROSS-FRAMEWORK
 - The third family is no longer "CF-1 + possibly DECISION ALLOCATION".
 - DECISION ALLOCATION and CF-1 v2 move to a **cross-framework layer**.
 - The third family keeps **INFORMATION** (pending) as its manipulation content.
+
+> **Later taxonomy clarification (Candidate 09).** Candidate 09 subsequently dissolved INFORMATION as a Phase 1 family. Where this document and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - The pending INFORMATION family is removed from Phase 1. Instructions, cues, questions, demonstrations and feedback move to **COACH INTERVENTION** (deferred; pending research, not a completed framework).
+> - DECISION ALLOCATION and CF-1 v2 stay in the cross-framework layer, unchanged. Candidate 09's GI-2 and internal INFORMATION CHECK are framework logic only, not coach-facing questions or product layers.
 
 **No symmetry forced.**
 

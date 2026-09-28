@@ -369,6 +369,10 @@ Folded into **AC-4**.
 - **Decision: do not freeze in Candidate 08.** Intervention concerns what the coach **says and does**, which is **INFORMATION (Candidate 09)** and later coaching-process work. Freezing it here would duplicate that work.
 - **Recorded for Candidate 09:** "the condition does not do the teaching alone" is **MULTIPLE-PRACTITIONER SUPPORT**.
 
+> **Later taxonomy clarification (Candidate 09).** Candidate 09 subsequently dissolved INFORMATION as a Phase 1 family. Where this document and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - Coach intervention (what the coach says and does) was not housed in an INFORMATION family; it belongs to **COACH INTERVENTION** (deferred; pending research, not a completed framework).
+
 ---
 
 ## 18. Reconciliation: RU-1–RU-10 and RP-1–RP-16 → four principles

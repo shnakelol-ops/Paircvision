@@ -375,6 +375,14 @@ Status: **LOGICAL DESIGN PRINCIPLE**, not evidence-tested.
 - **Provisional classification: INFORMATION (primary), interacting with SCORING and TIME.**
   - Where a scenario changes the **win condition** ("a draw is enough", "next score wins"), it touches SCORING × CONSEQUENCES.
 - **UNRESOLVED.** Re-examine at the INFORMATION audit.
+
+> **Later taxonomy clarification (Candidate 09).** Candidate 09 subsequently dissolved INFORMATION as a Phase 1 family. Where this document and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - Selecting a score / time scenario (e.g., "four up, three minutes left") → **GAME MOMENT**.
+> - Manipulating actual available time (a countdown) → **TIME**.
+> - Whether score / time is visible or announced → an **internal information consideration only**, not a category. No GAME STATE category was created.
+> - Win-condition changes ("a draw is enough", "next score wins") remain SCORING × CONSEQUENCES as stated above.
+
 - High-performance Gaelic coaches' scenario practice (*Sports Coaching Review* 2021, 2025) is the main practitioner evidence (AO / SIO).
 
 ---
@@ -682,6 +690,12 @@ This happens through players' and opponents' responses (§2). **Status: SUPPORTE
 | What happens next (possession, restarts, overloads after an outcome) | **CONSEQUENCES** (provisional) |
 | Competing to win; stakes; winners and losers | **Separate property** (research debt) |
 | The resulting movement of players and opening of lanes | **Emergent behaviour**, not the manipulation |
+
+> **Later taxonomy clarification (Candidate 09).** Candidate 09 subsequently dissolved INFORMATION as a Phase 1 family. Where this document and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - Score state: a selected scenario → **GAME MOMENT**; score / time visibility → an internal information consideration only (§18 note).
+> - Cues, instructions, and how a coach explains or signals a bonus → **COACH INTERVENTION** (deferred; pending research, not a completed framework). The research questions in §J.1 remain open there.
+> - Candidate 08 separately re-homed the RULES row above (validity rules → SCORING; action requirements → ACTIONS).
 
 ### H. Transfer verdict
 

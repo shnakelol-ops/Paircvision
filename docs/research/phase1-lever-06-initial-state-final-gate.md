@@ -109,6 +109,11 @@
   - the **signal-source** aspect goes to INFORMATION (consistent with DIRECTION §2: a coach call is INFORMATION; a game event is DIRECTION polarity / game structure);
   - the **agency** aspect becomes a **cross-framework principle** (§7).
 
+> **Later taxonomy clarification (Candidate 09).** Candidate 09 subsequently dissolved INFORMATION as a Phase 1 family. Where this document and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - A **coach-called moment** is classified as **GAME MOMENT** (the selected starting / event situation). The call itself belongs to **COACH INTERVENTION** (deferred; pending research, not a completed framework), not to an INFORMATION category.
+> - What that does to recognition is read through CF-1 v2 (unchanged) and the Candidate 09 gate; no new coach-facing question or product layer is added.
+
 ---
 
 ## 5. Starting configuration
@@ -141,6 +146,12 @@
 - A **starting** orientation is an initial value of a **perceptual / relational condition**.
 - **Provisional home: INFORMATION** (what the player can see at t0), with relational effects under SPACE / DIRECTION.
 - **Re-examine at the INFORMATION audit.** It does not justify a lever.
+
+> **Later taxonomy clarification (Candidate 09).** Candidate 09 subsequently dissolved INFORMATION as a Phase 1 family. Where this document and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - A **preset starting body orientation** belongs to **GAME MOMENT** where it defines the situation players begin from.
+> - Body orientation **encountered during play** (an opponent's or teammate's) may be something players can perceive, but it does **not** create an INFORMATION category.
+> - A player's own receiving shape is execution; requiring an orientation is **ACTIONS** (Candidate 08).
 
 ---
 
@@ -313,6 +324,13 @@
 | Identical scenario repeated | **GAME MOMENT** (repetition) + configuration fixed | Predictability → INFORMATION | Fixed-vs-variable effects UNKNOWN |
 | Same game moment, varied configuration | **GAME MOMENT** constant; configuration varied across SPACE / NUMBERS / TIME | INFORMATION (unpredictability) | Variation effects UNKNOWN |
 
+> **Later taxonomy clarification (Candidate 09).** Candidate 09 subsequently dissolved INFORMATION as a Phase 1 family. Where this document and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - Turnover start (coach-called): **GAME MOMENT**; the coach cue belongs to **COACH INTERVENTION** (deferred; pending research, not a completed framework).
+> - Naturally occurring turnover: unchanged; what players can perceive is an internal information consideration, not a category.
+> - Player back-to-goal (preset): **GAME MOMENT** configuration; relational effects under SPACE / DIRECTION unchanged.
+> - Predictability / variation of configuration: **GAME MOMENT** (repetition vs variation); effects remain **UNKNOWN**.
+
 ---
 
 ## 16. Cross-framework principle: "A coach can supply the problem without supplying the solution"
@@ -448,6 +466,13 @@
 | Supplied vs recognised vs created | **Cross-framework principle CF-1** |
 | Predictability / variation of configuration | INFORMATION (unpredictability) × GAME MOMENT (repetition); effects UNKNOWN |
 
+> **Later taxonomy clarification (Candidate 09).** Candidate 09 subsequently dissolved INFORMATION as a Phase 1 family. Where this document and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - Coach-called vs game-generated moment: **GAME MOMENT** for the selected situation; the call itself → **COACH INTERVENTION** (deferred; pending research, not a completed framework).
+> - Initial orientation: **GAME MOMENT** where preset.
+> - Score-time scenarios (e.g., "two down, three minutes remaining"): **GAME MOMENT**. Manipulating actual available time (a countdown) is **TIME**. Whether score / time can be seen is an internal information consideration only.
+> - Predictability / variation: **GAME MOMENT**; effects **UNKNOWN**.
+
 ---
 
 ## 22. Framework implication
@@ -463,6 +488,11 @@
 3. **Coach control of information and agency: what the coach supplies versus what players must detect or create.**
    - Called moments, cues, instructions, visible rewards, placed positions.
    - Largely the territory of **INFORMATION**, plus the cross-framework principle **CF-1**.
+
+> **Later taxonomy clarification (Candidate 09).** Candidate 09 subsequently dissolved INFORMATION as a Phase 1 family. Where this document and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - Called moments, cues and instructions now belong to **COACH INTERVENTION** (deferred; pending research, not a completed framework). Placed positions and selected moments remain **GAME MOMENT**.
+> - DECISION ALLOCATION remains the cross-framework lens for which decisions the coach has supplied and which remain with players; CF-1 v2 is unchanged.
 
 **Conclusion.**
 - We are discovering **multiple families of practice-design decisions**, not one family of ten parallel levers.

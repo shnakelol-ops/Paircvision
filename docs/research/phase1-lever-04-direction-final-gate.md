@@ -128,6 +128,11 @@
 > - Target structure (presence, number, location, form and polarity of targets) remains **DIRECTION**.
 > - Offside, as a practice manipulation, is homed in **SPACE**; player confinement to a channel remains **SPACE** (Candidate 08 Final Gate §2).
 
+> **Later taxonomy clarification (Candidate 09).** Candidate 09 subsequently dissolved INFORMATION as a Phase 1 family. Where this document and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - A **target switched by coach call or external cue** keeps its underlying **DIRECTION / TARGET STRUCTURE** classification where the target set or polarity changes; the call itself belongs to **COACH INTERVENTION** (deferred; pending research, not a completed framework).
+> - "Coach calls, cues or signals that switch targets; instructions; feedback" (§G below) likewise move to **COACH INTERVENTION** (deferred; pending research, not a completed framework).
+
 ---
 
 ## 3. D1–D12 execution table
@@ -814,6 +819,11 @@ Goal-side positioning, forcing wide, screening and pressing direction remain **p
 | The direction the ball or players travel | **Outcome**, not a lever |
 | "Progress" | **Evaluation** relative to the target (DIR-3), not a manipulation |
 | Through / Around / Over | **Observation vocabulary** |
+
+> **Later taxonomy clarification (Candidate 09).** Candidate 09 subsequently dissolved INFORMATION as a Phase 1 family. Where this document and the [Candidate 09 Final Gate](./phase1-candidate-09-information-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - Coach calls, cues or signals that switch targets, instructions and feedback belong to **COACH INTERVENTION** (deferred; pending research, not a completed framework). Where a switch changes the target set or polarity, that underlying change remains **DIRECTION / TARGET STRUCTURE**.
+> - Candidate 08 separately re-homed the RULES row above to **ACTIONS** / **SPACE**.
 
 ### H. Transfer verdict
 
