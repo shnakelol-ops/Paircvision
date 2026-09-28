@@ -3,7 +3,7 @@
 **Type:** Practitioner and coaching-intelligence audit. Research only: no drills, sessions, UI, product features or production code.
 **Companion to:** [SCORING scientific audit](./phase1-lever-05-scoring.md). Candidates there are SCO-1 to SCO-9.
 **Frozen context:** [SPACE gate](./phase1-lever-01-space-final-gate.md) · [NUMBERS gate](./phase1-lever-02-numbers-final-gate.md) · [TIME gate](./phase1-lever-03-time-final-gate.md) · [DIRECTION gate](./phase1-lever-04-direction-final-gate.md)
-**Status:** v1 practitioner audit, September 2026. A SCORING Final Evidence & Falsification Gate is expected to follow and will govern where the documents differ.
+**Status:** v1 practitioner audit, September 2026. See the [SCORING Final Evidence & Falsification Gate](./phase1-lever-05-scoring-final-gate.md). **Where either audit and the final gate differ, the final gate governs PáircVision V1.**
 
 > **What this audit is not.** It does not fill the scientific gap. No invasion-sport study rewards a behaviour, removes the reward, and tests whether the behaviour persists. Nothing a practitioner says changes that.
 >

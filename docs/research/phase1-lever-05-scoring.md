@@ -8,7 +8,7 @@
 - [DIRECTION gate](./phase1-lever-04-direction-final-gate.md)
 
 The DIRECTION gate left the DIRECTION / SCORING boundary provisional (its §2). This audit is where that boundary is tested.
-**Status:** v1 audit, September 2026. **Companion:** [SCORING practitioner & cross-sport audit](./phase1-lever-05-scoring-practitioner-audit.md). A Final Evidence & Falsification Gate is expected to follow.
+**Status:** v1 audit, September 2026. **Companion:** [SCORING practitioner & cross-sport audit](./phase1-lever-05-scoring-practitioner-audit.md). Superseded in part by the [SCORING Final Evidence & Falsification Gate](./phase1-lever-05-scoring-final-gate.md). **Where either audit and the final gate differ, the final gate governs PáircVision V1.** Notable gate changes: SCORING narrowed to assigned value (validity conditions → RULES; competition, score state and consequences moved out); SCO-1–SCO-9 reduced to four frozen principles (SC-1–SC-4); "rewarded behaviour ≠ learned behaviour" reworded to avoid implying non-learning; the zero-point boundary corrected.
 
 > **Central questions (kept separate):**
 > 1. What happens when a coach changes what is rewarded in a practice game?
