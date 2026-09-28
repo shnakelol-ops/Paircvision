@@ -558,6 +558,11 @@ REFERENCE
 8. CONSEQUENCES (e.g., "lose a player after an error") remains **unaudited**.
 9. Everything above is **constrained by abstract / search-level access**.
 
+> **Later taxonomy clarification (Candidate 10).** Candidate 10 subsequently dissolved CONSEQUENCES as a Phase 1 property. Where this document and the [Candidate 10 Final Gate](./phase1-candidate-10-consequences-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - Item 8 is resolved: CONSEQUENCES was audited and dissolved. "Lose a player after an error" is **NUMBERS**, event-contingent. "pending: CONSEQUENCES" in the architecture above is likewise resolved.
+
+
 ---
 
 ## Final output summary

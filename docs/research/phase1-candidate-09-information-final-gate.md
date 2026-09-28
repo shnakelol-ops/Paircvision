@@ -509,6 +509,11 @@ REFERENCE
 
 **CHECK THE PROBLEM** is **not** frozen as a named layer. The INFORMATION CHECK sits in the cross-framework layer as internal logic, beside CF-1 v2, because it is an inference limit plus a design check, not a manipulation.
 
+> **Later taxonomy clarification (Candidate 10).** Candidate 10 subsequently dissolved CONSEQUENCES as a Phase 1 property. Where this document and the [Candidate 10 Final Gate](./phase1-candidate-10-consequences-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - "pending: CONSEQUENCES" in the architecture above is resolved: CONSEQUENCES dissolved. Any CHANGE THE PROBLEM property may be event-contingent (internal notation), and GAME MOMENT's scope is clarified to include follow-up moments. GI-2 is strengthened by Candidate 10's worked examples but **not amended**.
+
+
 **Changes from the Candidate 08 architecture:**
 - The pending "WHAT THE COACH SUPPLIES / INFORMATION" family is **removed** from Phase 1.
 - **COACH INTERVENTION** is recorded as a **deferred** framework.

@@ -410,6 +410,14 @@ Status: **LOGICAL DESIGN PRINCIPLE**, not evidence-tested.
 
 **PROVISIONAL.** Not frozen until CONSEQUENCES is audited.
 
+> **Later taxonomy clarification (Candidate 10).** Candidate 10 subsequently dissolved CONSEQUENCES as a Phase 1 property. Where this document and the [Candidate 10 Final Gate](./phase1-candidate-10-consequences-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - The boundary is now **frozen**: changing what an outcome is worth is **SCORING**; changing another property after the outcome is that property, event-contingently.
+> - Regain = immediate 5v3 → **NUMBERS** (event-contingent; + GAME MOMENT if it starts a new episode). Score = retain possession → **GAME MOMENT** (next start). Turnover = opposition starts near your goal → **GAME MOMENT + SPACE**.
+> - Bundled rewards (+1 and ball back) → **SCORING + GAME MOMENT** (confounded). Win conditions ("next goal wins") → **SCORING**; ending the episode is GAME MOMENT.
+> - Post-game stakes (losers run) and competition formats (e.g., winner-stays-on) → **outside Phase 1**; any practice effects (who plays, next episode) are classified by existing properties.
+
+
 ---
 
 ## 20. SCORING vs DIRECTION: re-check
@@ -696,6 +704,11 @@ This happens through players' and opponents' responses (§2). **Status: SUPPORTE
 > - Score state: a selected scenario → **GAME MOMENT**; score / time visibility → an internal information consideration only (§18 note).
 > - Cues, instructions, and how a coach explains or signals a bonus → **COACH INTERVENTION** (deferred; pending research, not a completed framework). The research questions in §J.1 remain open there.
 > - Candidate 08 separately re-homed the RULES row above (validity rules → SCORING; action requirements → ACTIONS).
+
+> **Later taxonomy clarification (Candidate 10).** Candidate 10 subsequently dissolved CONSEQUENCES as a Phase 1 property. Where this document and the [Candidate 10 Final Gate](./phase1-candidate-10-consequences-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - "What happens next (possession, restarts, overloads after an outcome)" → the relevant existing property (GAME MOMENT, NUMBERS, SPACE, TIME, DIRECTION, ACTIONS), event-contingently. CONSEQUENCES is no longer a pending home.
+
 
 ### H. Transfer verdict
 

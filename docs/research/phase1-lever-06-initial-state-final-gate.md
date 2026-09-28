@@ -473,6 +473,12 @@
 > - Score-time scenarios (e.g., "two down, three minutes remaining"): **GAME MOMENT**. Manipulating actual available time (a countdown) is **TIME**. Whether score / time can be seen is an internal information consideration only.
 > - Predictability / variation: **GAME MOMENT**; effects **UNKNOWN**.
 
+> **Later taxonomy clarification (Candidate 10).** Candidate 10 subsequently dissolved CONSEQUENCES as a Phase 1 property. Where this document and the [Candidate 10 Final Gate](./phase1-candidate-10-consequences-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - Clarification to the frozen definition (scope clarified, not expanded): **the situations players meet include those that follow an event within an episode. Whether a follow-up moment arises through continued play, a reset, a coach feed or a deliberately manufactured change is part of the coach's GAME MOMENT choice.**
+> - GAME MOMENT still chooses the problem; it does not become a CHANGE THE PROBLEM lever or a sequencing engine. Whether players must recognise the moment is governed by GI-2 (Candidate 09).
+
+
 ---
 
 ## 22. Framework implication
@@ -499,6 +505,11 @@
 - The original ten-item list **mixed** task constraints (SPACE, NUMBERS, TIME, DIRECTION, SCORING) with a task-selection decision (STARTING POSITIONS → GAME MOMENT).
 - PLAYER ROLES, RULES, INFORMATION and CONSEQUENCES should each be audited with that question in mind: **constraint, selection, or control?**
 - **Conceptual honesty beats taxonomic symmetry.**
+
+> **Later taxonomy clarification (Candidate 10).** Candidate 10 subsequently dissolved CONSEQUENCES as a Phase 1 property. Where this document and the [Candidate 10 Final Gate](./phase1-candidate-10-consequences-final-gate.md) differ on classification, **that gate governs**. The original finding above and its evidence status are unchanged.
+>
+> - "Likely later: RULES and CONSEQUENCES" is resolved: RULES → ACTIONS (Candidate 08); CONSEQUENCES dissolved. Coach-made follow-ups are existing levers applied after an event (internal notation: event-contingent). No candidates from the original ten remain pending.
+
 
 ---
 

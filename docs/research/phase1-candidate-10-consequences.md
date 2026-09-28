@@ -6,7 +6,7 @@
 - [SPACE](./phase1-lever-01-space-final-gate.md) · [NUMBERS](./phase1-lever-02-numbers-final-gate.md) · [TIME](./phase1-lever-03-time-final-gate.md) · [DIRECTION](./phase1-lever-04-direction-final-gate.md) · [SCORING](./phase1-lever-05-scoring-final-gate.md) · [GAME MOMENT + CF-1](./phase1-lever-06-initial-state-final-gate.md)
 - [Candidate 07: DECISION ALLOCATION + CF-1 v2](./phase1-candidate-07-responsibility-allocation-final-gate.md) · [Candidate 08: ACTIONS](./phase1-candidate-08-rules-final-gate.md) · [Candidate 09: INFORMATION dissolved; GI-1, GI-2](./phase1-candidate-09-information-final-gate.md)
 
-**Status:** v1 audit, September 2026. A practitioner audit and a Final Evidence & Falsification Gate are expected to follow.
+**Status:** v1 audit, September 2026. See the [CONSEQUENCES practitioner audit](./phase1-candidate-10-consequences-practitioner-audit.md) and the [Candidate 10 Final Gate](./phase1-candidate-10-consequences-final-gate.md). **Where this audit and the final gate differ, the final gate governs PáircVision V1.** (Final verdict: C — CONSEQUENCES dissolves; event-contingent is internal notation; GAME MOMENT clarified; CO-1 and CO-2 frozen.)
 
 > ### ⚠️ ACCESS LIMITATION
 > - **No full text was accessible.** Publishers, PMC pages, federation documents and coaching sites were refused by the proxy.
