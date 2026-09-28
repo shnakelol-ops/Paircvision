@@ -8,7 +8,7 @@
 - [DIRECTION gate](./phase1-lever-04-direction-final-gate.md)
 
 The DIRECTION gate left the DIRECTION / SCORING boundary provisional (its §2). This audit is where that boundary is tested.
-**Status:** v1 audit, September 2026. A practitioner audit and a Final Evidence & Falsification Gate are expected to follow.
+**Status:** v1 audit, September 2026. **Companion:** [SCORING practitioner & cross-sport audit](./phase1-lever-05-scoring-practitioner-audit.md). A Final Evidence & Falsification Gate is expected to follow.
 
 > **Central questions (kept separate):**
 > 1. What happens when a coach changes what is rewarded in a practice game?
