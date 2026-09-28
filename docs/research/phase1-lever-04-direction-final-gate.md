@@ -122,6 +122,12 @@
 
 **Note on SCORING and INFORMATION.** Neither has yet been audited as a PáircVision lever. These boundaries must be **re-checked** when they are. If SCORING is not adopted as its own lever, value manipulations should sit under **RULES**, not DIRECTION.
 
+> **Later taxonomy clarification (Candidate 08).** Candidate 08 subsequently dissolved RULES as a peer lever. Where this document and the [Candidate 08 Final Gate](./phase1-candidate-08-rules-final-gate.md) differ on classification, **that gate governs**. The findings and evidence statuses above are unchanged.
+>
+> - Forward-only, no-back-pass, must-switch, must-use-wing (ball route), must-cross-within-X-passes and similar requirements specifying permitted or required actions belong to **ACTIONS**, with DIRECTION as a secondary effect where defined relative to the target.
+> - Target structure (presence, number, location, form and polarity of targets) remains **DIRECTION**.
+> - Offside, as a practice manipulation, is homed in **SPACE**; player confinement to a channel remains **SPACE** (Candidate 08 Final Gate §2).
+
 ---
 
 ## 3. D1–D12 execution table

@@ -68,6 +68,11 @@
 
 **Test of "touch restrictions → primarily RULES, with a TIME interaction": SUPPORTED** (§5).
 
+> **Later taxonomy clarification (Candidate 08).** Candidate 08 subsequently dissolved RULES as a peer lever. Where this document and the [Candidate 08 Final Gate](./phase1-candidate-08-rules-final-gate.md) differ on classification, **that gate governs**. The findings and evidence statuses above are unchanged.
+>
+> - Touch / action restrictions do not belong to TIME merely because they may alter tempo. Restrictions specifying which actions players may, may not or must perform belong to **ACTIONS**; references to "RULES" as their home here and in §5 should be read as ACTIONS.
+> - Genuine clock / deadline manipulations (countdowns, possession limits) remain **TIME**.
+
 ### T3. Less time does not necessarily produce better or faster perception
 
 | Sub-claim | Verdict | Basis |
@@ -267,6 +272,8 @@
 **Recommendation: CROSS-LINK TIME ↔ RULES, with RULES as the primary home.**
 - TIME retains only: *touch limits indirectly shorten time on the ball, and their effect on usable time depends on space and density* (Jäger et al., 2026: touch × player-number interaction).
 - All other touch-limit content belongs to the future RULES lever.
+
+> **Later taxonomy clarification (Candidate 08).** The "future RULES lever" was not adopted: Candidate 08 dissolved RULES as a peer lever. Touch-limit content belongs to **ACTIONS**, with TIME as a secondary effect. See the [Candidate 08 Final Gate](./phase1-candidate-08-rules-final-gate.md), which governs classification where the documents differ. The evidence above is unchanged.
 
 ---
 

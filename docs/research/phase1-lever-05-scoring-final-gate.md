@@ -135,6 +135,12 @@ Status: **PÁIRCVISION INTERPRETATION (taxonomy)**. It is consistent with the ev
 | Scores only allowed from a zone | Scoring elsewhere invalid | **RULES × SPACE** | — |
 | Score from a zone worth more | Legal | **SCORING × SPACE** | — |
 
+> **Later taxonomy clarification (Candidate 08).** Candidate 08 subsequently dissolved RULES as a peer lever. Where this document and the [Candidate 08 Final Gate](./phase1-candidate-08-rules-final-gate.md) differ on classification, **that gate governs**. The findings and evidence statuses above are unchanged.
+>
+> - **"Only counts if" (validity) conditions belong to SCORING** when the action remains legal but its scoring value becomes zero (e.g., "score only counts after a switch"; "scores only allowed from a zone").
+> - Rules that make an action itself illegal or compulsory ("must switch before scoring"; "N passes before you may shoot") belong to **ACTIONS** (Candidate 08 Final Gate §2).
+> - The same applies to "validity rule (RULES)" in §5 below.
+
 ---
 
 ## 5. The zero-point problem
