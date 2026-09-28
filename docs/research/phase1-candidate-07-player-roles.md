@@ -10,7 +10,7 @@
 - [SCORING](./phase1-lever-05-scoring-final-gate.md)
 - [GAME MOMENT](./phase1-lever-06-initial-state-final-gate.md)
 
-**Status:** v1 audit, September 2026. A practitioner audit and a Final Evidence & Falsification Gate are expected to follow.
+**Status:** v1 audit, September 2026. **Companion:** [RESPONSIBILITY ALLOCATION practitioner audit](./phase1-candidate-07-responsibility-allocation-practitioner-audit.md). A Final Evidence & Falsification Gate is expected to follow.
 
 > **Central question.** What does assigning a player a role actually manipulate in a practice? Does a role:
 > - create a useful game problem;
