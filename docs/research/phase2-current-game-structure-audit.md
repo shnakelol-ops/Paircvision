@@ -93,6 +93,14 @@
 | **Black card / sin-bin** | Updates referenced but not detailed in accessible sources | — | **UNKNOWN** | Numbers-down situations interact with 4v3 (reduced teams still keep 3 forward). |
 | **Not current (trials only)** | Ryan Cup 2026 (Expert Advisory Group): fisted-points ban, backcourt rule, three-consecutive-handpass limit. FRC suggested a youth handpass trial. The four-point goal was deferred. | RTÉ Brainstorm (2026); Irish Times (Sep 2025) | SIO | **Excluded from the reference game.** Watch. |
 
+> **Later correction (Player Behaviour Audit 02):** the kickout-mark row above describes the March 2025 version.
+>
+> - In **June 2025**, Central Council voted 38–1 to **scrap the 50 m advance** for fouling a kickout-mark catcher. It was replaced by a free from where the offence occurred; the fouled player may instead take the free from the mark or a solo-and-go.
+> - The 2026 permanent text is assumed to carry the June 2025 version, but this is **not verified**.
+> - 2025 kickout data therefore span two mark regimes.
+>
+> The original row and its evidence status are otherwise preserved. See [Audit 02 §1.2](./phase2-player-behaviour-02-kickout-contest-breaking-ball.md).
+
 ### 1.3 Rule vs interpretation
 
 The right-hand column above is **RULE LOGIC** unless a later section cites measurement. Rules make things *possible or impossible*; they do not show what teams *do*. §3 separates the two.
