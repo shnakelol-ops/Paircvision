@@ -24,21 +24,23 @@
  * QUICK_REVIEW_SEGMENT_FORBIDDEN_KEYS below and its provenance test.
  *
  * Segmentation: delegates entirely to each event's own already-assigned
- * `segment` field (1 = 1H Early, 2 = 1H Mid, 3 = 1H Late — the same
- * canonical buckets produced by statsSegments.ts's
- * deriveSegmentFromPeriodClock()). This file does not re-derive segment
- * boundaries and does not fork segmentation logic.
+ * `segment` field (1/2/3 = 1H Early/Mid/Late, 4/5/6 = 2H Early/Mid/Late —
+ * the same canonical buckets produced by statsSegments.ts's
+ * deriveSegmentFromPeriodClock(), which applies the 0–10 / 10–20 / 20+
+ * boundaries to each half's own clock). This file does not re-derive
+ * segment boundaries and does not fork segmentation logic.
  *
- * Scope: first half only, by product decision (see the Page 3 audit) —
- * this keeps the page small and avoids a stale-page-index class of bug.
- * Second-half events are filtered out up front and never contribute to
- * any figure below.
+ * Scope: one half per model. The default (half = 1) is the first half
+ * only, exactly as before; the screen builds a second model with half = 2
+ * at Full Time. Events from the other half are filtered out up front and
+ * never contribute to any figure below.
  *
  * The React component (QuickReviewPage3.tsx) performs no calculation —
  * every field on the returned model is already display-ready.
  */
 
 import type { LoggedMatchEvent } from "../../core/stats/saved-match";
+import type { MatchEventSegment } from "../../core/stats/stats-event-model";
 import { computeScoreSide, fmtGP } from "../../pro-tagger/pro-tagger-score";
 import { resolveRestartOwner } from "../restarts/restartMetrics";
 import {
@@ -118,7 +120,8 @@ export type QuickReviewSegmentSideStats = {
 };
 
 export type QuickReviewSegmentEntry = {
-  segment: 1 | 2 | 3;
+  /** Canonical event segment: 1/2/3 for the first half, 4/5/6 for the second. */
+  segment: MatchEventSegment;
   label: QuickReviewSegmentLabel;
   home: QuickReviewSegmentSideStats;
   away: QuickReviewSegmentSideStats;
@@ -127,7 +130,9 @@ export type QuickReviewSegmentEntry = {
 export type QuickReviewSegmentBreakdown = {
   homeTeam: string;
   awayTeam: string;
-  /** Exactly the three first-half segments — Early, Mid, Late. */
+  /** Which half this model covers. */
+  half: 1 | 2;
+  /** Exactly the three segments of that half — Early, Mid, Late. */
   segments: readonly [QuickReviewSegmentEntry, QuickReviewSegmentEntry, QuickReviewSegmentEntry];
 };
 
@@ -271,6 +276,8 @@ function buildSideStats(
 
 // ─── Public entry point ──────────────────────────────────────────────────────
 
+// First-half segments; the second half's are these + 3 (4/5/6), matching
+// deriveSegmentFromPeriodClock().
 const SEGMENT_DEFS: readonly { segment: 1 | 2 | 3; label: QuickReviewSegmentLabel }[] = [
   { segment: 1, label: "EARLY" },
   { segment: 2, label: "MID" },
@@ -283,18 +290,26 @@ const SEGMENT_DEFS: readonly { segment: 1 | 2 | 3; label: QuickReviewSegmentLabe
  * `firstHalfAttackingDirection` must be the match's real recorded first-half
  * attacking direction (e.g. `session.attackDirection === "left" ? "LEFT" : "RIGHT"`,
  * the same normalisation ProTaggerLiveScreen.tsx already applies elsewhere) —
- * never guessed, never independently re-derived.
+ * never guessed, never independently re-derived. Second-half turnover
+ * territory is still classified correctly because toTeamRelativeZoneEvent()
+ * flips direction by each event's own `period`.
+ *
+ * `half` selects which half the model covers (default 1 = first half).
  */
 export function buildQuickReviewSegmentBreakdown(
   events: readonly LoggedMatchEvent[],
   homeTeam: string,
   awayTeam: string,
   firstHalfAttackingDirection: AttackingDirection,
+  half: 1 | 2 = 1,
 ): QuickReviewSegmentBreakdown {
-  const firstHalfEvents = events.filter((e) => e.period === "1H");
+  const period = half === 2 ? "2H" : "1H";
+  const segmentOffset = half === 2 ? 3 : 0;
+  const halfEvents = events.filter((e) => e.period === period);
 
-  const segments = SEGMENT_DEFS.map(({ segment, label }) => {
-    const segmentEvents = firstHalfEvents.filter((e) => e.segment === segment);
+  const segments = SEGMENT_DEFS.map(({ segment: halfSegment, label }) => {
+    const segment = (halfSegment + segmentOffset) as MatchEventSegment;
+    const segmentEvents = halfEvents.filter((e) => e.segment === segment);
     return {
       segment,
       label,
@@ -303,5 +318,5 @@ export function buildQuickReviewSegmentBreakdown(
     };
   }) as [QuickReviewSegmentEntry, QuickReviewSegmentEntry, QuickReviewSegmentEntry];
 
-  return { homeTeam, awayTeam, segments };
+  return { homeTeam, awayTeam, half, segments };
 }

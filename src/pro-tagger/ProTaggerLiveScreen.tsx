@@ -1117,6 +1117,19 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
         session.attackDirection === "left" ? "LEFT" : "RIGHT",
       )
     : null;
+  // At Full Time Page 3 also shows the second half (segments 4/5/6), built
+  // the same way from second-half events only. At Half Time (and during the
+  // second half) Page 3 stays first-half only, unchanged.
+  const quickReviewPage3FullTime = matchState === "FULL_TIME";
+  const quickReviewSecondHalfSegmentModel = quickReviewSegmentModel && quickReviewPage3FullTime
+    ? buildQuickReviewSegmentBreakdown(
+        loggedEvents,
+        homeLabel,
+        awayLabel,
+        session.attackDirection === "left" ? "LEFT" : "RIGHT",
+        2,
+      )
+    : null;
 
   // Discipline player status — derived fresh from loggedEvents every render
   // (no independent mutable state), so Undo/reload/restore all just work.
@@ -1606,9 +1619,12 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
                 {quickReviewPage3Unlocked && quickReviewSegmentModel && (
                   <div style={{ ...CS.pagePane, flex: `0 0 ${quickReviewPaneWidthPct}%`, width: `${quickReviewPaneWidthPct}%` }}>
                     <div style={CS.body}>
-                      <div style={CS.subheading}>Segment Comparison — First Half</div>
+                      <div style={CS.subheading}>
+                        {quickReviewPage3FullTime ? "Segment Comparison — Full Time" : "Segment Comparison — First Half"}
+                      </div>
                       <QuickReviewPage3
                         model={quickReviewSegmentModel}
+                        secondHalfModel={quickReviewSecondHalfSegmentModel}
                         homeColour={homeColour}
                         awayColour={awayColour}
                       />
