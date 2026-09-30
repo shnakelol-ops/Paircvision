@@ -11266,13 +11266,10 @@ export function makeOppShotProfilePage(
   const freeConcededEvts = events.filter(
     (e) => e.teamSide === "FOR" && e.kind === "FREE_CONCEDED",
   );
-  // OPP placed-ball counts — source-tag aware
-  const oppFreeScored = events.filter(
-    (e) => e.teamSide === "OPP" && isFreeScore(e),
-  ).length;
-  const oppFreeMissed = events.filter(
-    (e) => e.teamSide === "OPP" && isFreeMiss(e),
-  ).length;
+  // OPP placed-ball counts — canonical ledger classification (free + 45/65 +
+  // penalty + mark), the same figure the Snapshot Dashboard reports.
+  const oppFreeScored = report.placedBalls.opp.scores;
+  const oppFreeMissed = report.placedBalls.opp.misses;
 
   // ── Zone counts (for headline + hotspot highlight) ────────────────────────
   const scoreCounts = pdfZoneCounts(oppScoreEvts, homeAttackingDirection, "OPP");
