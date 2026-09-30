@@ -11114,13 +11114,10 @@ export function makeOurShotProfilePage(
   const freeWonEvts = events.filter(
     (e) => e.teamSide === "FOR" && e.kind === "FREE_WON",
   );
-  // Placed-ball counts — source-tag aware
-  const forFreeScored = events.filter(
-    (e) => e.teamSide === "FOR" && isFreeScore(e),
-  ).length;
-  const forFreeMissed = events.filter(
-    (e) => e.teamSide === "FOR" && isFreeMiss(e),
-  ).length;
+  // Placed-ball counts — canonical ledger classification (free + 45/65 +
+  // penalty + mark), the same figure the Snapshot Dashboard reports.
+  const forFreeScored = report.placedBalls.for.scores;
+  const forFreeMissed = report.placedBalls.for.misses;
 
   // ── Zone counts (for headline + hotspot highlight) ────────────────────────
   const scoreCounts = pdfZoneCounts(forScoreEvts, homeAttackingDirection);
