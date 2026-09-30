@@ -186,7 +186,7 @@ export type ReviewPdfExportInput = {
  * Lightweight report mode.
  * - HALF_TIME_SNAPSHOT: first-half events only; 5 visual/spatial pages for a
  *   90-second sideline intervention. VISION FIRST — spatial before statistical.
- * - FULL_TIME_SNAPSHOT: full-match events; 10 pages for concise post-match debrief.
+ * - FULL_TIME_SNAPSHOT: full-match events; 8 pages for concise post-match debrief.
  */
 export type SnapshotMode = "HALF_TIME_SNAPSHOT" | "FULL_TIME_SNAPSHOT";
 
@@ -12064,6 +12064,14 @@ function renderTurnoverTerritoryMarkers(
  * a chain/origin figure to attach to. The former "Consequence" panel (which
  * showed chain-origin wonToScore/lostAllowedScore) has been removed; that
  * question belongs to Game Origin Analysis / Full Review, not Snapshot.
+ *
+ * Plotted markers are normalised with toTeamRelativeZoneEvent() (the same
+ * team-relative rotation the hotspot callouts use), so the home team always
+ * attacks left → right: Defensive → Middle → Attacking, whichever physical
+ * end they attacked in each half. Stored events are never modified.
+ *
+ * `half` (FT only) labels the page "First Half" / "Second Half"; the caller
+ * pre-filters events to that half. Omitted at HT.
  */
 export function makeTurnoverTerritoryPage(
   events: readonly PdfExportEvent[],
@@ -12073,6 +12081,7 @@ export function makeTurnoverTerritoryPage(
   pageNum: number,
   totalPages: number,
   homeAttackingDirection: AttackingDirection = "RIGHT",
+  half?: "1H" | "2H",
 ): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width  = CANVAS_W;
@@ -12082,7 +12091,18 @@ export function makeTurnoverTerritoryPage(
 
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
-  drawPageHeader(ctx, "Turnover & Territory", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
+  const pageTitle = half === "1H"
+    ? "Turnover & Territory – First Half"
+    : half === "2H"
+      ? "Turnover & Territory – Second Half"
+      : "Turnover & Territory";
+  drawPageHeader(
+    ctx,
+    pageTitle,
+    `${homeTeam} v ${awayTeam} · ${truncTeam(homeTeam, 18)} attacking → · Defensive → Middle → Attacking`,
+    pageNum,
+    totalPages,
+  );
 
   // ── Event subsets ─────────────────────────────────────────────────────────
   const wonEvts = events.filter(
@@ -12097,7 +12117,14 @@ export function makeTurnoverTerritoryPage(
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
 
   // ── Event markers — outcome colours (won = purple · lost = orange) ────────
-  renderTurnoverTerritoryMarkers(ctx, wonEvts, lostEvts, inner);
+  // Team-relative display copies (REPORT perspective, same as the hotspot
+  // callouts below) so dots and "Most Turnovers Won/Lost" zones agree.
+  renderTurnoverTerritoryMarkers(
+    ctx,
+    wonEvts.map((e) => toTeamRelativeZoneEvent(e, homeAttackingDirection)),
+    lostEvts.map((e) => toTeamRelativeZoneEvent(e, homeAttackingDirection)),
+    inner,
+  );
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
@@ -12998,11 +13025,11 @@ function makeSnapshotDashboardPage(
 //   2. Our Shot Profile       5. Turnover & Territory
 //   3. Opposition Shot Profile
 //
-// FT Snapshot (7 pages) — full-match events:
+// FT Snapshot (8 pages) — full-match events:
 //   1. Dashboard                     5. Restart Battle – Second Half
-//   2. Our Shot Profile              6. Turnover & Territory
-//   3. Opposition Shot Profile       7. Shot & Scoring Efficiency
-//   4. Restart Battle – First Half
+//   2. Our Shot Profile              6. Turnover & Territory – First Half
+//   3. Opposition Shot Profile       7. Turnover & Territory – Second Half
+//   4. Restart Battle – First Half   8. Shot & Scoring Efficiency
 //
 // Chain Patterns, Tactical Match Summary, Where the Points Went / The Ledger
 // So Far, Turnover Punishment, Attack Corridors, Restart Escape Routes,
@@ -13052,7 +13079,7 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
   // snapshotDashboardModel.ts for the provenance boundary.
   const dashboardModel = buildSnapshotDashboardModel(report, isHT ? "HT" : "FT");
 
-  const TOTAL_PAGES = (isHT ? 5 : 7) + (hasTargets ? 1 : 0);
+  const TOTAL_PAGES = (isHT ? 5 : 8) + (hasTargets ? 1 : 0);
 
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const PW = 297; // A4 landscape mm
@@ -13124,11 +13151,11 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "STATISTICS",
     );
   } else {
-    // ── FT Snapshot ── 7 pages, factual, full-match events ────────────────────
+    // ── FT Snapshot ── 8 pages, factual, full-match events ────────────────────
     //
     // Approved composition: Dashboard → Our Shots → Their Shots →
-    // Restart Battle (1H) → Restart Battle (2H) → Turnover & Territory →
-    // Shot & Scoring Efficiency. No chain/origin content.
+    // Restart Battle (1H) → Restart Battle (2H) → Turnover & Territory (1H) →
+    // Turnover & Territory (2H) → Shot & Scoring Efficiency. No chain/origin content.
 
     // 1. Dashboard — "What happened?"
     addPage(
@@ -13176,17 +13203,31 @@ export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<
       "STATISTICS",
     );
 
-    // 6. Turnover & Territory
+    // 6. Turnover & Territory – First Half
     addPage(
-      makeTurnoverTerritoryPage(events, sport, home, away, 6, TOTAL_PAGES, homeAttackingDirection),
+      makeTurnoverTerritoryPage(
+        events.filter((e) => e.period === "1H"),
+        sport, home, away, 6, TOTAL_PAGES, homeAttackingDirection, "1H",
+      ),
       true,
-      "Turnover & Territory",
+      "Turnover & Territory – 1st Half",
       "STATISTICS",
     );
 
-    // 7. Shot & Scoring Efficiency
+    // 7. Turnover & Territory – Second Half
     addPage(
-      makeShotEfficiencyPage(events, report, home, away, 7, TOTAL_PAGES, sport),
+      makeTurnoverTerritoryPage(
+        events.filter((e) => e.period === "2H"),
+        sport, home, away, 7, TOTAL_PAGES, homeAttackingDirection, "2H",
+      ),
+      true,
+      "Turnover & Territory – 2nd Half",
+      "STATISTICS",
+    );
+
+    // 8. Shot & Scoring Efficiency
+    addPage(
+      makeShotEfficiencyPage(events, report, home, away, 8, TOTAL_PAGES, sport),
       true,
       "Shot Efficiency",
       "STATISTICS",

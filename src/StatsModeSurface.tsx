@@ -5106,7 +5106,7 @@ export default function StatsModeSurface() {
       });
   };
 
-  /** Exports a 10-page Full Time Snapshot PDF (full-match events). */
+  /** Exports an 8-page Full Time Snapshot PDF (full-match events). */
   const handleExportFtSnapshot = () => {
     if (snapshotExporting !== null || isPdfExporting) return;
     if (loggedEvents.length === 0) {
@@ -7843,7 +7843,7 @@ export default function StatsModeSurface() {
             className="review-strip-chip"
             onClick={handleExportFtSnapshot}
             disabled={snapshotExporting !== null || isPdfExporting}
-            aria-label="Export Full Time Snapshot PDF — 10 pages, full match"
+            aria-label="Export Full Time Snapshot PDF — 8 pages, full match"
             style={
               snapshotExporting === "FT"
                 ? { opacity: 0.6, cursor: "wait" }

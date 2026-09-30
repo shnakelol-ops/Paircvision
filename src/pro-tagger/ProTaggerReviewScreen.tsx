@@ -639,7 +639,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
 
         <ExportRow
           label="FT Snapshot PDF"
-          description="10 pages · full-match summary"
+          description="8 pages · full-match summary"
           loading={exporting === "ft"}
           result={results.ft}
           disabled={busy && exporting !== "ft"}
