@@ -16,11 +16,18 @@ import type { QuickReviewSegmentBreakdown, QuickReviewSegmentSideStats } from ".
 // scroll — no horizontal scrolling, no nested scroll mechanics, matching the
 // mobile-layout constraint from the Page 3 audit.
 //
+// At Full Time a second-half model is also passed: the page then stacks a
+// "First Half" section and a "Second Half" section vertically, each with the
+// same Home/Away Early/Mid/Late tables. Without it (Half Time) the output is
+// exactly the original first-half-only page.
+//
 // Colours follow CLAUDE.md's locked event-family palette: Turnover Won
 // purple (#a78bfa), Turnover Lost orange (#f97316).
 
 export interface QuickReviewPage3Props {
   model: QuickReviewSegmentBreakdown;
+  /** Full Time only — when present, renders First Half + Second Half sections. */
+  secondHalfModel?: QuickReviewSegmentBreakdown | null;
   homeColour: string;
   awayColour: string;
 }
@@ -38,10 +45,35 @@ const CLR = {
 
 const SEGMENT_HEADERS = ["Early", "Mid", "Late"] as const;
 
-export function QuickReviewPage3({ model, homeColour, awayColour }: QuickReviewPage3Props) {
+export function QuickReviewPage3({ model, secondHalfModel, homeColour, awayColour }: QuickReviewPage3Props) {
   return (
     <div style={S.page}>
       <div style={S.pageSubtitle}>Early 0–10 · Mid 10–20 · Late 20+</div>
+      {secondHalfModel && <div style={S.halfTitle}>First Half</div>}
+      <HalfSections model={model} homeColour={homeColour} awayColour={awayColour} />
+      {secondHalfModel && (
+        <>
+          <div style={S.halfTitle}>Second Half</div>
+          <HalfSections model={secondHalfModel} homeColour={homeColour} awayColour={awayColour} />
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── One half: Home section, then Away section ───────────────────────────────
+
+function HalfSections({
+  model,
+  homeColour,
+  awayColour,
+}: {
+  model: QuickReviewSegmentBreakdown;
+  homeColour: string;
+  awayColour: string;
+}) {
+  return (
+    <>
       <TeamSection
         teamName={model.homeTeam}
         colour={homeColour}
@@ -52,7 +84,7 @@ export function QuickReviewPage3({ model, homeColour, awayColour }: QuickReviewP
         colour={awayColour}
         rows={model.segments.map((s) => s.away)}
       />
-    </div>
+    </>
   );
 }
 
@@ -161,6 +193,14 @@ const S: Record<string, CSSProperties> = {
     fontWeight: 500,
     color: CLR.dim,
     letterSpacing: "0.02em",
+  },
+  halfTitle: {
+    fontSize: 11,
+    fontWeight: 800,
+    color: CLR.muted,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase" as const,
+    marginTop: 4,
   },
   block: {
     background: CLR.panel,
