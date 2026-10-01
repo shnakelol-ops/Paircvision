@@ -19,6 +19,7 @@ import {
 import type { PdfExportEvent } from "../reviewPdfExport";
 import { mkAdareEvent } from "./adare-mungret-fixture";
 import { ZONE_MAP_V1_NINE_GRID } from "../zones/zone-maps";
+import { resolveForAttackingDirection } from "../zones/zone-orientation";
 
 const PURPLE = "#a78bfa";
 const ORANGE = "#f97316";
@@ -337,4 +338,79 @@ describe("Turnover & Territory — three-third overlay", () => {
     expect(lastLabel).toBeGreaterThanOrEqual(0);
     expect(firstMarker).toBeGreaterThan(lastLabel);
   });
+});
+
+describe("Turnover & Territory — direction derived generically from recorded 1H direction + half", () => {
+  const STARTS = ["LEFT", "RIGHT"] as const;
+  const HALVES = ["1H", "2H"] as const;
+  const opposite = (d: "LEFT" | "RIGHT") => (d === "LEFT" ? "RIGHT" : "LEFT");
+  /** Physical nx deep in an end, given which way the home team attacks. Never hard-coded per half. */
+  const attackingEndNx = (dir: "LEFT" | "RIGHT") => (dir === "RIGHT" ? 0.9 : 0.1);
+  const defensiveEndNx = (dir: "LEFT" | "RIGHT") => 1 - attackingEndNx(dir);
+
+  it("resolver: 1H is the recorded direction and 2H always reverses it, for both starting directions", () => {
+    for (const start of STARTS) {
+      expect(resolveForAttackingDirection("1H", start)).toBe(start);
+      expect(resolveForAttackingDirection("2H", start)).toBe(opposite(start));
+    }
+  });
+
+  for (const start of STARTS) {
+    it(`FT export, recorded 1H direction ${start}: each half page reads Defensive → Attacking left to right`, async () => {
+      const events: PdfExportEvent[] = HALVES.flatMap((half) => {
+        const dir = resolveForAttackingDirection(half, start);
+        return [
+          ev("TURNOVER_WON", "FOR", half, attackingEndNx(dir)),
+          ev("TURNOVER_LOST", "FOR", half, defensiveEndNx(dir)),
+        ];
+      });
+      await exportSnapshotPdf({
+        events,
+        homeTeamName: HOME,
+        awayTeamName: AWAY,
+        sport: "gaelic",
+        homeAttackingDirection: start,
+        snapshotMode: "FULL_TIME_SNAPSHOT",
+      });
+      for (const title of ["Turnover & Territory – First Half", "Turnover & Territory – Second Half"]) {
+        const ctx = captured.find((c) => c.ctx.title === title)!.ctx;
+        const [b1, b2] = ctx.boundaries;
+        const won = ctx.markers.filter((m) => m.fill === PURPLE);
+        const lost = ctx.markers.filter((m) => m.fill === ORANGE);
+        expect(won).toHaveLength(1);
+        expect(lost).toHaveLength(1);
+        expect(won[0].x).toBeGreaterThan(b2); // attacking third, on the right
+        expect(lost[0].x).toBeLessThan(b1); // defensive third, on the left
+        const texts = panelTexts(ctx);
+        expect(texts.some((t) => t.startsWith("Attacking"))).toBe(true); // Most Turnovers Won
+        expect(texts.some((t) => t.startsWith("Defensive"))).toBe(true); // Most Turnovers Lost
+      }
+    });
+
+    it(`HT export, recorded 1H direction ${start}: reads Defensive → Attacking left to right`, async () => {
+      const dir = resolveForAttackingDirection("1H", start);
+      await exportSnapshotPdf({
+        events: [
+          ev("TURNOVER_WON", "FOR", "1H", attackingEndNx(dir)),
+          ev("TURNOVER_LOST", "FOR", "1H", defensiveEndNx(dir)),
+        ],
+        homeTeamName: HOME,
+        awayTeamName: AWAY,
+        sport: "gaelic",
+        homeAttackingDirection: start,
+        snapshotMode: "HALF_TIME_SNAPSHOT",
+      });
+      const ctx = captured.find((c) => c.ctx.title === "Turnover & Territory")!.ctx;
+      const [b1, b2] = ctx.boundaries;
+      expect(ctx.markers.find((m) => m.fill === PURPLE)!.x).toBeGreaterThan(b2);
+      expect(ctx.markers.find((m) => m.fill === ORANGE)!.x).toBeLessThan(b1);
+    });
+
+    it(`recorded 1H direction ${start}: the same physical spot plots mirrored between 1H and 2H pages (2H reverses 1H)`, () => {
+      const first = displayPositions(render([ev("TURNOVER_WON", "FOR", "1H", 0.2, 0.3)], start, "1H"))[0];
+      const second = displayPositions(render([ev("TURNOVER_WON", "FOR", "2H", 0.2, 0.3)], start, "2H"))[0];
+      expect(second.nx).toBeCloseTo(1 - first.nx, 6);
+      expect(second.ny).toBeCloseTo(1 - first.ny, 6);
+    });
+  }
 });
