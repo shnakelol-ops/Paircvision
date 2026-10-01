@@ -12039,7 +12039,7 @@ export const TURNOVER_TERRITORY_THIRD_BOUNDARY_COLOR = "rgba(226,232,240,0.30)";
 const TURNOVER_TERRITORY_THIRD_LABEL_COLOR = "rgba(226,232,240,0.50)";
 
 /**
- * Subtle three-third overlay — faint alternating band, dashed boundaries and
+ * Subtle three-third overlay — faint middle-third band, dashed boundaries and
  * small uppercase labels along the top touchline. Drawn before the markers
  * so it never covers them; not a heatmap (no count-driven colour).
  */
