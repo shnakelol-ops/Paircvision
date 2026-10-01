@@ -11,9 +11,14 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { existsSync, unlinkSync } from "node:fs";
-import { exportSnapshotPdf, makeTurnoverTerritoryPage } from "../reviewPdfExport";
+import {
+  exportSnapshotPdf,
+  makeTurnoverTerritoryPage,
+  TURNOVER_TERRITORY_THIRD_BOUNDARY_COLOR,
+} from "../reviewPdfExport";
 import type { PdfExportEvent } from "../reviewPdfExport";
 import { mkAdareEvent } from "./adare-mungret-fixture";
+import { ZONE_MAP_V1_NINE_GRID } from "../zones/zone-maps";
 
 const PURPLE = "#a78bfa";
 const ORANGE = "#f97316";
@@ -30,19 +35,26 @@ class CaptureCanvasContext {
   textAlign = "left";
   globalAlpha = 1;
   markers: Marker[] = [];
-  texts: Array<{ text: string; font: string }> = [];
+  texts: Array<{ text: string; font: string; x: number; y: number }> = [];
+  /** Vertical boundary lines drawn in the thirds-overlay colour. */
+  boundaries: number[] = [];
+  /** Draw order: "text:<label>" / "marker". */
+  order: string[] = [];
   private pendingArc: { x: number; y: number } | null = null;
 
   save() {}
   restore() {}
   fillRect() {}
   strokeRect() {}
-  fillText(text: string) {
-    this.texts.push({ text, font: this.font });
+  fillText(text: string, x = 0, y = 0) {
+    this.texts.push({ text, font: this.font, x, y });
+    this.order.push(`text:${text}`);
   }
   stroke() {}
   beginPath() {}
-  moveTo() {}
+  moveTo(x: number) {
+    if (this.strokeStyle === TURNOVER_TERRITORY_THIRD_BOUNDARY_COLOR) this.boundaries.push(x);
+  }
   lineTo() {}
   arc(x: number, y: number) {
     this.pendingArc = { x, y };
@@ -53,6 +65,7 @@ class CaptureCanvasContext {
   fill() {
     if (this.pendingArc && (this.fillStyle === PURPLE || this.fillStyle === ORANGE)) {
       this.markers.push({ fill: this.fillStyle, ...this.pendingArc });
+      this.order.push("marker");
     }
     this.pendingArc = null;
   }
@@ -201,12 +214,13 @@ describe("Turnover & Territory — direction normalisation (Defensive → Middle
     expect(displayPositions(ctx2H)).toEqual([{ fill: ORANGE, nx: 0.8, ny: 0.7 }]);
   });
 
-  it("header names the home team's direction; HT keeps the unsuffixed title", () => {
-    const ctx = render([], "LEFT");
-    expect(ctx.title).toBe("Turnover & Territory");
-    expect(panelTexts(ctx)).toContain(
-      "Ballylanders v Galbally · Ballylanders attacking → · Defensive → Middle → Attacking",
-    );
+  it("subtitle is a neutral team-relative label with no physical-direction claim; HT keeps the unsuffixed title", () => {
+    for (const half of [undefined, "1H", "2H"] as const) {
+      const ctx = render([], "LEFT", half);
+      expect(panelTexts(ctx)).toContain("Ballylanders v Galbally · Team-relative view");
+      expect(panelTexts(ctx).some((t) => /attacking\s*[→←]|[→←]\s*attacking/i.test(t))).toBe(false);
+    }
+    expect(render([], "LEFT").title).toBe("Turnover & Territory");
     expect(render([], "RIGHT", "1H").title).toBe("Turnover & Territory – First Half");
     expect(render([], "RIGHT", "2H").title).toBe("Turnover & Territory – Second Half");
   });
@@ -263,5 +277,64 @@ describe("Snapshot export — Turnover & Territory pages", () => {
     expect(second.markers).toHaveLength(0);
     expect(panelTexts(second)).toContain("No turnovers recorded");
     expect(page("Turnover & Territory – First Half").markers).toHaveLength(3);
+  });
+});
+
+describe("Turnover & Territory — three-third overlay", () => {
+  const LABELS = ["DEFENSIVE THIRD", "MIDDLE THIRD", "ATTACKING THIRD"];
+
+  function labelDraws(ctx: CaptureCanvasContext) {
+    return ctx.texts.filter((t) => LABELS.includes(t.text));
+  }
+
+  it("labels Defensive, Middle, Attacking thirds left to right on HT and both FT half pages, whatever the direction", () => {
+    for (const [dir, half] of [["RIGHT", undefined], ["LEFT", undefined], ["RIGHT", "1H"], ["LEFT", "2H"]] as const) {
+      const draws = labelDraws(render([], dir, half));
+      expect(draws.map((d) => d.text)).toEqual(LABELS);
+      expect(draws[0].x).toBeLessThan(draws[1].x);
+      expect(draws[1].x).toBeLessThan(draws[2].x);
+    }
+  });
+
+  it("boundaries sit exactly on the zone engine's third boundaries (ZONE_MAP_V1_NINE_GRID)", () => {
+    const c = calibrate();
+    const toPx = (v: number) => c.x0 + (v / 100) * (c.x1 - c.x0);
+    const xMins = ["MIDDLE_CENTRE", "ATTACKING_CENTRE"].map(
+      (id) => ZONE_MAP_V1_NINE_GRID.zones.find((z) => z.id === id)!.bounds.xMin,
+    );
+    const ctx = render([], "RIGHT");
+    expect(ctx.boundaries).toHaveLength(2);
+    ctx.boundaries.forEach((x, i) => expect(x).toBeCloseTo(toPx(xMins[i]), 6));
+  });
+
+  it("each label is centred in its own third", () => {
+    const c = calibrate();
+    const ctx = render([], "RIGHT");
+    const draws = labelDraws(ctx);
+    const disp = draws.map((d) => (d.x - c.x0) / (c.x1 - c.x0));
+    expect(disp[0]).toBeCloseTo(1 / 6, 6);
+    expect(disp[1]).toBeCloseTo(1 / 2, 6);
+    expect(disp[2]).toBeCloseTo(5 / 6, 6);
+  });
+
+  it("a marker in each third falls between that third's boundaries, matching the callout zone", () => {
+    const ctx = render(
+      [ev("TURNOVER_WON", "FOR", "1H", 0.2), ev("TURNOVER_WON", "FOR", "1H", 0.5), ev("TURNOVER_WON", "FOR", "1H", 0.8)],
+      "RIGHT",
+    );
+    const [b1, b2] = ctx.boundaries;
+    const xs = ctx.markers.map((m) => m.x);
+    expect(xs[0]).toBeLessThan(b1);
+    expect(xs[1]).toBeGreaterThan(b1);
+    expect(xs[1]).toBeLessThan(b2);
+    expect(xs[2]).toBeGreaterThan(b2);
+  });
+
+  it("overlay is drawn before the markers so it never covers them", () => {
+    const ctx = render([ev("TURNOVER_WON", "FOR", "1H", 0.2), ev("TURNOVER_LOST", "FOR", "1H", 0.9)], "RIGHT");
+    const lastLabel = ctx.order.lastIndexOf("text:ATTACKING THIRD");
+    const firstMarker = ctx.order.indexOf("marker");
+    expect(lastLabel).toBeGreaterThanOrEqual(0);
+    expect(firstMarker).toBeGreaterThan(lastLabel);
   });
 });

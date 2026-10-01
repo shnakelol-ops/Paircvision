@@ -76,6 +76,7 @@ import {
 } from "./zones/zone-orientation";
 import type { AttackingDirection, ZoneLabelPerspective } from "./zones/zone-orientation";
 import type { ZoneCount } from "./zones/zone-types";
+import { ZONE_MAP_V1_NINE_GRID } from "./zones/zone-maps";
 import { eventSource, isFreeScore, isFreeMiss } from "./eventSource";
 import type { ScoreSource } from "./eventSource";
 import {
@@ -12024,6 +12025,52 @@ const TURNOVER_TERRITORY_WON_COLOR  = "#a78bfa";
 const TURNOVER_TERRITORY_LOST_COLOR = "#f97316";
 
 /**
+ * Defensive / Middle / Attacking thirds for the Turnover & Territory pitch.
+ * Bounds come straight from ZONE_MAP_V1_NINE_GRID (the zone engine's own
+ * map, via each third's centre-channel zone) so the drawn thirds and the
+ * hotspot callouts can never disagree. Always left → right: the plotted
+ * markers are already team-relative (home attacking right).
+ */
+const TURNOVER_TERRITORY_THIRDS = (["DEFENSIVE", "MIDDLE", "ATTACKING"] as const).map((third) => {
+  const zone = ZONE_MAP_V1_NINE_GRID.zones.find((z) => z.id === `${third}_CENTRE`)!;
+  return { label: `${third} THIRD`, xMin: zone.bounds.xMin, xMax: zone.bounds.xMax };
+});
+export const TURNOVER_TERRITORY_THIRD_BOUNDARY_COLOR = "rgba(226,232,240,0.30)";
+const TURNOVER_TERRITORY_THIRD_LABEL_COLOR = "rgba(226,232,240,0.50)";
+
+/**
+ * Subtle three-third overlay — faint alternating band, dashed boundaries and
+ * small uppercase labels along the top touchline. Drawn before the markers
+ * so it never covers them; not a heatmap (no count-driven colour).
+ */
+function renderTurnoverTerritoryThirds(ctx: CanvasRenderingContext2D, inner: InnerPitch): void {
+  ctx.save();
+  TURNOVER_TERRITORY_THIRDS.forEach((third, i) => {
+    const rect = zonePixelRect({ xMin: third.xMin, xMax: third.xMax, yMin: 0, yMax: 100 }, inner);
+    if (i === 1) {
+      ctx.fillStyle = "rgba(255,255,255,0.025)";
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    }
+    if (i > 0) {
+      ctx.strokeStyle = TURNOVER_TERRITORY_THIRD_BOUNDARY_COLOR;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 8]);
+      ctx.beginPath();
+      ctx.moveTo(rect.x, rect.y);
+      ctx.lineTo(rect.x, rect.y + rect.h);
+      ctx.stroke();
+    }
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillStyle = TURNOVER_TERRITORY_THIRD_LABEL_COLOR;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText(third.label, rect.x + rect.w / 2, rect.y + 10);
+  });
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+/**
  * Turnover & Territory markers — outcome colours, not raw event kind.
  * wonEvts / lostEvts match the Territory Balance card; opposition gains logged
  * as TURNOVER_WON/OPP must render orange, not purple.
@@ -12099,7 +12146,7 @@ export function makeTurnoverTerritoryPage(
   drawPageHeader(
     ctx,
     pageTitle,
-    `${homeTeam} v ${awayTeam} · ${truncTeam(homeTeam, 18)} attacking → · Defensive → Middle → Attacking`,
+    `${homeTeam} v ${awayTeam} · Team-relative view`,
     pageNum,
     totalPages,
   );
@@ -12115,6 +12162,7 @@ export function makeTurnoverTerritoryPage(
 
   // ── Pitch ─────────────────────────────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
+  renderTurnoverTerritoryThirds(ctx, inner);
 
   // ── Event markers — outcome colours (won = purple · lost = orange) ────────
   // Team-relative display copies (REPORT perspective, same as the hotspot
