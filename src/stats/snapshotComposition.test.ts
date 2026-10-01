@@ -4,7 +4,7 @@
  * Regression coverage for the HT/FT Snapshot factual-report redesign:
  *
  *   1. HT page composition — exactly 5 pages, in the approved order.
- *   2. FT page composition — exactly 7 pages, in the approved order.
+ *   2. FT page composition — exactly 8 pages, in the approved order.
  *   3. Provenance guard — no chain/origin/possession page ever renders
  *      inside a Snapshot export (structural, via page-title capture —
  *      not just "we didn't see it in a screenshot").
@@ -172,7 +172,7 @@ describe("exportSnapshotPdf — HT/FT factual composition", () => {
     ]);
   });
 
-  it("FT Snapshot renders exactly the 7 approved pages, in order", async () => {
+  it("FT Snapshot renders exactly the 8 approved pages, in order", async () => {
     await exportSnapshotPdf({ ...base, snapshotMode: "FULL_TIME_SNAPSHOT" });
     expect(pageTitles()).toEqual([
       "Full-Time Dashboard",
@@ -180,7 +180,8 @@ describe("exportSnapshotPdf — HT/FT factual composition", () => {
       "Opposition Shot Profile",
       "Restart Battle – First Half",
       "Restart Battle – Second Half",
-      "Turnover & Territory",
+      "Turnover & Territory – First Half",
+      "Turnover & Territory – Second Half",
       "Shot & Scoring Efficiency",
     ]);
   });
@@ -307,11 +308,11 @@ describe("exportSnapshotPdf — empty / low-data match", () => {
     expect(capturedCanvases).toHaveLength(5);
   });
 
-  it("FT Snapshot does not throw and still renders 7 pages with no events", async () => {
+  it("FT Snapshot does not throw and still renders 8 pages with no events", async () => {
     await expect(
       exportSnapshotPdf({ ...emptyBase, snapshotMode: "FULL_TIME_SNAPSHOT" }),
     ).resolves.toBeUndefined();
-    expect(capturedCanvases).toHaveLength(7);
+    expect(capturedCanvases).toHaveLength(8);
   });
 
   it("dashboard model produces 0/0 percentages, never NaN or Infinity, with no events", () => {
