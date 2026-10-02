@@ -150,7 +150,7 @@ function calibrate(): { x0: number; x1: number; y0: number; y1: number } {
   return { x0: a.x, x1: b.x, y0: a.y, y1: b.y };
 }
 
-/** Marker positions back in 0..1 display space (home always attacking →). */
+/** Marker positions back in 0..1 pitch space — the raw stored physical coordinates. */
 function displayPositions(ctx: CaptureCanvasContext): Array<{ fill: string; nx: number; ny: number }> {
   const c = calibrate();
   return ctx.markers.map((m) => ({
@@ -164,62 +164,76 @@ function panelTexts(ctx: CaptureCanvasContext): string[] {
   return ctx.texts.map((t) => t.text);
 }
 
-describe("Turnover & Territory — direction normalisation (Defensive → Middle → Attacking)", () => {
-  it("HT, home attacking RIGHT: plotted as recorded", () => {
+const THIRD_LABELS = ["DEFENSIVE THIRD", "MIDDLE THIRD", "ATTACKING THIRD"];
+
+/** Overlay label draws, left to right on the page. */
+function labelDraws(ctx: CaptureCanvasContext) {
+  return ctx.texts.filter((t) => THIRD_LABELS.includes(t.text)).sort((a, b) => a.x - b.x);
+}
+
+/** The overlay label of the third containing pixel x on this page. */
+function thirdLabelAt(ctx: CaptureCanvasContext, x: number): string {
+  const [b1, b2] = [...ctx.boundaries].sort((a, b) => a - b);
+  const index = x < b1 ? 0 : x < b2 ? 1 : 2;
+  return labelDraws(ctx)[index].text;
+}
+
+const opposite = (d: "LEFT" | "RIGHT") => (d === "LEFT" ? "RIGHT" : "LEFT");
+
+describe("Turnover & Territory — raw physical plotting", () => {
+  it("HT, home attacking RIGHT: plotted at the stored coordinates", () => {
     const ctx = render([ev("TURNOVER_WON", "FOR", "1H", 0.2, 0.3)], "RIGHT");
     expect(displayPositions(ctx)).toEqual([{ fill: PURPLE, nx: 0.2, ny: 0.3 }]);
   });
 
-  it("HT, home attacking LEFT: rotated so the home team reads left → right", () => {
+  it("HT, home attacking LEFT: still plotted at the stored coordinates (no rotation)", () => {
     const ctx = render([ev("TURNOVER_WON", "FOR", "1H", 0.2, 0.3)], "LEFT");
-    expect(displayPositions(ctx)).toEqual([{ fill: PURPLE, nx: 0.8, ny: 0.7 }]);
+    expect(displayPositions(ctx)).toEqual([{ fill: PURPLE, nx: 0.2, ny: 0.3 }]);
   });
 
-  it("2H: ends swap, so a 2H event is rotated when the home team attacked RIGHT in 1H", () => {
-    const ctx = render([ev("TURNOVER_WON", "FOR", "2H", 0.2, 0.3)], "RIGHT", "2H");
-    expect(displayPositions(ctx)).toEqual([{ fill: PURPLE, nx: 0.8, ny: 0.7 }]);
-    const ctxLeft = render([ev("TURNOVER_WON", "FOR", "2H", 0.2, 0.3)], "LEFT", "2H");
-    expect(displayPositions(ctxLeft)).toEqual([{ fill: PURPLE, nx: 0.2, ny: 0.3 }]);
+  it("2H pages plot at the stored coordinates, for both recorded starting directions", () => {
+    for (const start of ["LEFT", "RIGHT"] as const) {
+      const ctx = render([ev("TURNOVER_WON", "FOR", "2H", 0.2, 0.3)], start, "2H");
+      expect(displayPositions(ctx)).toEqual([{ fill: PURPLE, nx: 0.2, ny: 0.3 }]);
+    }
   });
 
-  it("a turnover won deep in the home team's attacking end plots on the right and the callout names an Attacking zone — in every half/direction", () => {
-    // Physically the home team's attacking end for each (period, direction).
-    const cases: Array<{ period: "1H" | "2H"; dir: "LEFT" | "RIGHT"; nx: number }> = [
-      { period: "1H", dir: "RIGHT", nx: 0.9 },
-      { period: "1H", dir: "LEFT", nx: 0.1 },
-      { period: "2H", dir: "RIGHT", nx: 0.1 },
-      { period: "2H", dir: "LEFT", nx: 0.9 },
-    ];
-    for (const { period, dir, nx } of cases) {
-      const ctx = render([ev("TURNOVER_WON", "FOR", period, nx)], dir, period);
-      const [pos] = displayPositions(ctx);
-      expect(pos.nx).toBeGreaterThan(2 / 3);
-      expect(panelTexts(ctx).some((t) => t.startsWith("Attacking"))).toBe(true);
+  it("a turnover won deep in the home team's attacking end lies in the third labelled ATTACKING and the callout names an Attacking zone — every half/direction", () => {
+    for (const start of ["LEFT", "RIGHT"] as const) {
+      for (const half of ["1H", "2H"] as const) {
+        const dir = resolveForAttackingDirection(half, start);
+        const ctx = render([ev("TURNOVER_WON", "FOR", half, dir === "RIGHT" ? 0.9 : 0.1)], start, half);
+        expect(thirdLabelAt(ctx, ctx.markers[0].x)).toBe("ATTACKING THIRD");
+        expect(panelTexts(ctx).some((t) => t.startsWith("Attacking"))).toBe(true);
+      }
     }
   });
 
   it("dots and 'Most Turnovers Lost' callout agree for a defensive-third loss in 2H", () => {
-    // 1H RIGHT → 2H home attacks LEFT, so its defensive end is physically the right (nx 0.9).
+    // Recorded 1H RIGHT → 2H home attacks LEFT, so its defensive end is physically the right.
     const ctx = render([ev("TURNOVER_LOST", "FOR", "2H", 0.9)], "RIGHT", "2H");
-    const [pos] = displayPositions(ctx);
-    expect(pos.fill).toBe(ORANGE);
-    expect(pos.nx).toBeLessThan(1 / 3);
+    expect(ctx.markers[0].fill).toBe(ORANGE);
+    expect(thirdLabelAt(ctx, ctx.markers[0].x)).toBe("DEFENSIVE THIRD");
     expect(panelTexts(ctx).some((t) => t.startsWith("Defensive"))).toBe(true);
   });
 
-  it("opposition-logged turnovers are orange (home lost) and normalised the same way", () => {
+  it("opposition-logged turnovers are orange (home lost) at their raw position", () => {
     // OPP TURNOVER_WON = home lost (the page's existing lost definition).
     const ctx = render([ev("TURNOVER_WON", "OPP", "1H", 0.2, 0.3)], "LEFT");
-    expect(displayPositions(ctx)).toEqual([{ fill: ORANGE, nx: 0.8, ny: 0.7 }]);
+    expect(displayPositions(ctx)).toEqual([{ fill: ORANGE, nx: 0.2, ny: 0.3 }]);
     const ctx2H = render([ev("TURNOVER_WON", "OPP", "2H", 0.2, 0.3)], "RIGHT", "2H");
-    expect(displayPositions(ctx2H)).toEqual([{ fill: ORANGE, nx: 0.8, ny: 0.7 }]);
+    expect(displayPositions(ctx2H)).toEqual([{ fill: ORANGE, nx: 0.2, ny: 0.3 }]);
   });
 
-  it("subtitle is a neutral team-relative label with no physical-direction claim; HT keeps the unsuffixed title", () => {
-    for (const half of [undefined, "1H", "2H"] as const) {
-      const ctx = render([], "LEFT", half);
-      expect(panelTexts(ctx)).toContain("Ballylanders v Galbally · Team-relative view");
-      expect(panelTexts(ctx).some((t) => /attacking\s*[→←]|[→←]\s*attacking/i.test(t))).toBe(false);
+  it("subtitle arrow names the home team and follows the resolver for each page; HT keeps the unsuffixed title", () => {
+    for (const start of ["LEFT", "RIGHT"] as const) {
+      for (const half of [undefined, "1H", "2H"] as const) {
+        const dir = resolveForAttackingDirection(half ?? "1H", start);
+        const expected = dir === "RIGHT"
+          ? "Ballylanders v Galbally · Ballylanders attacking →"
+          : "Ballylanders v Galbally · ← Ballylanders attacking";
+        expect(panelTexts(render([], start, half))).toContain(expected);
+      }
     }
     expect(render([], "LEFT").title).toBe("Turnover & Territory");
     expect(render([], "RIGHT", "1H").title).toBe("Turnover & Territory – First Half");
@@ -281,38 +295,43 @@ describe("Snapshot export — Turnover & Territory pages", () => {
   });
 });
 
-describe("Turnover & Territory — three-third overlay", () => {
-  const LABELS = ["DEFENSIVE THIRD", "MIDDLE THIRD", "ATTACKING THIRD"];
+describe("Turnover & Territory — half-aware three-third overlay", () => {
+  const RIGHT_ORDER = ["DEFENSIVE THIRD", "MIDDLE THIRD", "ATTACKING THIRD"];
+  const LEFT_ORDER = ["ATTACKING THIRD", "MIDDLE THIRD", "DEFENSIVE THIRD"];
 
-  function labelDraws(ctx: CaptureCanvasContext) {
-    return ctx.texts.filter((t) => LABELS.includes(t.text));
-  }
-
-  it("labels Defensive, Middle, Attacking thirds left to right on HT and both FT half pages, whatever the direction", () => {
-    for (const [dir, half] of [["RIGHT", undefined], ["LEFT", undefined], ["RIGHT", "1H"], ["LEFT", "2H"]] as const) {
-      const draws = labelDraws(render([], dir, half));
-      expect(draws.map((d) => d.text)).toEqual(LABELS);
-      expect(draws[0].x).toBeLessThan(draws[1].x);
-      expect(draws[1].x).toBeLessThan(draws[2].x);
+  it("label order follows resolveForAttackingDirection(half, recorded 1H direction) on HT and both FT pages", () => {
+    const expected: Array<[start: "LEFT" | "RIGHT", half: "1H" | "2H" | undefined, order: string[]]> = [
+      ["RIGHT", undefined, RIGHT_ORDER],
+      ["RIGHT", "1H", RIGHT_ORDER],
+      ["RIGHT", "2H", LEFT_ORDER],
+      ["LEFT", undefined, LEFT_ORDER],
+      ["LEFT", "1H", LEFT_ORDER],
+      ["LEFT", "2H", RIGHT_ORDER],
+    ];
+    for (const [start, half, order] of expected) {
+      const dir = resolveForAttackingDirection(half ?? "1H", start);
+      expect(dir === "RIGHT" ? RIGHT_ORDER : LEFT_ORDER).toEqual(order);
+      expect(labelDraws(render([], start, half)).map((d) => d.text)).toEqual(order);
     }
   });
 
-  it("boundaries sit exactly on the zone engine's third boundaries (ZONE_MAP_V1_NINE_GRID)", () => {
+  it("boundaries are identical on RIGHT and LEFT pages and sit on the zone engine's third boundaries (ZONE_MAP_V1_NINE_GRID)", () => {
     const c = calibrate();
     const toPx = (v: number) => c.x0 + (v / 100) * (c.x1 - c.x0);
     const xMins = ["MIDDLE_CENTRE", "ATTACKING_CENTRE"].map(
       (id) => ZONE_MAP_V1_NINE_GRID.zones.find((z) => z.id === id)!.bounds.xMin,
     );
-    const ctx = render([], "RIGHT");
-    expect(ctx.boundaries).toHaveLength(2);
-    ctx.boundaries.forEach((x, i) => expect(x).toBeCloseTo(toPx(xMins[i]), 6));
+    const right = [...render([], "RIGHT").boundaries].sort((a, b) => a - b);
+    const left = [...render([], "LEFT").boundaries].sort((a, b) => a - b);
+    expect(right).toHaveLength(2);
+    right.forEach((x, i) => expect(x).toBeCloseTo(toPx(xMins[i]), 6));
+    left.forEach((x, i) => expect(x).toBeCloseTo(right[i], 6));
   });
 
   it("each label is centred in its own third", () => {
     const c = calibrate();
     const ctx = render([], "RIGHT");
-    const draws = labelDraws(ctx);
-    const disp = draws.map((d) => (d.x - c.x0) / (c.x1 - c.x0));
+    const disp = labelDraws(ctx).map((d) => (d.x - c.x0) / (c.x1 - c.x0));
     expect(disp[0]).toBeCloseTo(1 / 6, 6);
     expect(disp[1]).toBeCloseTo(1 / 2, 6);
     expect(disp[2]).toBeCloseTo(5 / 6, 6);
@@ -333,17 +352,30 @@ describe("Turnover & Territory — three-third overlay", () => {
 
   it("overlay is drawn before the markers so it never covers them", () => {
     const ctx = render([ev("TURNOVER_WON", "FOR", "1H", 0.2), ev("TURNOVER_LOST", "FOR", "1H", 0.9)], "RIGHT");
-    const lastLabel = ctx.order.lastIndexOf("text:ATTACKING THIRD");
+    const lastLabel = Math.max(...THIRD_LABELS.map((l) => ctx.order.lastIndexOf(`text:${l}`)));
     const firstMarker = ctx.order.indexOf("marker");
     expect(lastLabel).toBeGreaterThanOrEqual(0);
     expect(firstMarker).toBeGreaterThan(lastLabel);
+  });
+
+  it("drawn marker coordinates equal the stored coordinates on every page (no rotation)", () => {
+    const c = calibrate();
+    for (const start of ["LEFT", "RIGHT"] as const) {
+      for (const half of [undefined, "1H", "2H"] as const) {
+        const period = half ?? "1H";
+        const ctx = render([ev("TURNOVER_WON", "FOR", period, 0.15, 0.85), ev("TURNOVER_LOST", "FOR", period, 0.7, 0.2)], start, half);
+        expect(ctx.markers.map((m) => [m.x, m.y])).toEqual([
+          [c.x0 + 0.15 * (c.x1 - c.x0), c.y0 + 0.85 * (c.y1 - c.y0)],
+          [c.x0 + 0.7 * (c.x1 - c.x0), c.y0 + 0.2 * (c.y1 - c.y0)],
+        ]);
+      }
+    }
   });
 });
 
 describe("Turnover & Territory — direction derived generically from recorded 1H direction + half", () => {
   const STARTS = ["LEFT", "RIGHT"] as const;
   const HALVES = ["1H", "2H"] as const;
-  const opposite = (d: "LEFT" | "RIGHT") => (d === "LEFT" ? "RIGHT" : "LEFT");
   /** Physical nx deep in an end, given which way the home team attacks. Never hard-coded per half. */
   const attackingEndNx = (dir: "LEFT" | "RIGHT") => (dir === "RIGHT" ? 0.9 : 0.1);
   const defensiveEndNx = (dir: "LEFT" | "RIGHT") => 1 - attackingEndNx(dir);
@@ -356,7 +388,7 @@ describe("Turnover & Territory — direction derived generically from recorded 1
   });
 
   for (const start of STARTS) {
-    it(`FT export, recorded 1H direction ${start}: each half page reads Defensive → Attacking left to right`, async () => {
+    it(`FT export, recorded 1H direction ${start}: on each half page the won dot lies in the third labelled ATTACKING, the lost dot in DEFENSIVE`, async () => {
       const events: PdfExportEvent[] = HALVES.flatMap((half) => {
         const dir = resolveForAttackingDirection(half, start);
         return [
@@ -374,20 +406,19 @@ describe("Turnover & Territory — direction derived generically from recorded 1
       });
       for (const title of ["Turnover & Territory – First Half", "Turnover & Territory – Second Half"]) {
         const ctx = captured.find((c) => c.ctx.title === title)!.ctx;
-        const [b1, b2] = ctx.boundaries;
         const won = ctx.markers.filter((m) => m.fill === PURPLE);
         const lost = ctx.markers.filter((m) => m.fill === ORANGE);
         expect(won).toHaveLength(1);
         expect(lost).toHaveLength(1);
-        expect(won[0].x).toBeGreaterThan(b2); // attacking third, on the right
-        expect(lost[0].x).toBeLessThan(b1); // defensive third, on the left
+        expect(thirdLabelAt(ctx, won[0].x)).toBe("ATTACKING THIRD");
+        expect(thirdLabelAt(ctx, lost[0].x)).toBe("DEFENSIVE THIRD");
         const texts = panelTexts(ctx);
         expect(texts.some((t) => t.startsWith("Attacking"))).toBe(true); // Most Turnovers Won
         expect(texts.some((t) => t.startsWith("Defensive"))).toBe(true); // Most Turnovers Lost
       }
     });
 
-    it(`HT export, recorded 1H direction ${start}: reads Defensive → Attacking left to right`, async () => {
+    it(`HT export, recorded 1H direction ${start}: won dot in the third labelled ATTACKING, lost dot in DEFENSIVE`, async () => {
       const dir = resolveForAttackingDirection("1H", start);
       await exportSnapshotPdf({
         events: [
@@ -401,16 +432,25 @@ describe("Turnover & Territory — direction derived generically from recorded 1
         snapshotMode: "HALF_TIME_SNAPSHOT",
       });
       const ctx = captured.find((c) => c.ctx.title === "Turnover & Territory")!.ctx;
-      const [b1, b2] = ctx.boundaries;
-      expect(ctx.markers.find((m) => m.fill === PURPLE)!.x).toBeGreaterThan(b2);
-      expect(ctx.markers.find((m) => m.fill === ORANGE)!.x).toBeLessThan(b1);
+      expect(thirdLabelAt(ctx, ctx.markers.find((m) => m.fill === PURPLE)!.x)).toBe("ATTACKING THIRD");
+      expect(thirdLabelAt(ctx, ctx.markers.find((m) => m.fill === ORANGE)!.x)).toBe("DEFENSIVE THIRD");
     });
 
-    it(`recorded 1H direction ${start}: the same physical spot plots mirrored between 1H and 2H pages (2H reverses 1H)`, () => {
-      const first = displayPositions(render([ev("TURNOVER_WON", "FOR", "1H", 0.2, 0.3)], start, "1H"))[0];
-      const second = displayPositions(render([ev("TURNOVER_WON", "FOR", "2H", 0.2, 0.3)], start, "2H"))[0];
-      expect(second.nx).toBeCloseTo(1 - first.nx, 6);
-      expect(second.ny).toBeCloseTo(1 - first.ny, 6);
+    it(`recorded 1H direction ${start}: the same raw coordinate renders at the same x/y on 1H and 2H pages, while its third flips when ends switch`, () => {
+      const first = render([ev("TURNOVER_WON", "FOR", "1H", 0.9, 0.3)], start, "1H");
+      const second = render([ev("TURNOVER_WON", "FOR", "2H", 0.9, 0.3)], start, "2H");
+      expect(second.markers[0].x).toBeCloseTo(first.markers[0].x, 6);
+      expect(second.markers[0].y).toBeCloseTo(first.markers[0].y, 6);
+
+      const firstThird = thirdLabelAt(first, first.markers[0].x);
+      const secondThird = thirdLabelAt(second, second.markers[0].x);
+      // nx 0.9 is the home team's attacking end in whichever half it attacks RIGHT.
+      expect(firstThird).toBe(resolveForAttackingDirection("1H", start) === "RIGHT" ? "ATTACKING THIRD" : "DEFENSIVE THIRD");
+      expect(secondThird).toBe(firstThird === "ATTACKING THIRD" ? "DEFENSIVE THIRD" : "ATTACKING THIRD");
+      // Callout classification flips with it.
+      const calloutPrefix = (t: string) => (t === "ATTACKING THIRD" ? "Attacking" : "Defensive");
+      expect(panelTexts(first).some((t) => t.startsWith(calloutPrefix(firstThird)))).toBe(true);
+      expect(panelTexts(second).some((t) => t.startsWith(calloutPrefix(secondThird)))).toBe(true);
     });
   }
 });

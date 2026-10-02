@@ -72,6 +72,7 @@ import {
   getTeamRelativeZoneCounts,
   getTeamRelativeZoneDisplayBounds,
   getTeamRelativeZoneHotspots,
+  resolveForAttackingDirection,
   toTeamRelativeZoneEvent,
 } from "./zones/zone-orientation";
 import type { AttackingDirection, ZoneLabelPerspective } from "./zones/zone-orientation";
@@ -12028,8 +12029,9 @@ const TURNOVER_TERRITORY_LOST_COLOR = "#f97316";
  * Defensive / Middle / Attacking thirds for the Turnover & Territory pitch.
  * Bounds come straight from ZONE_MAP_V1_NINE_GRID (the zone engine's own
  * map, via each third's centre-channel zone) so the drawn thirds and the
- * hotspot callouts can never disagree. Always left → right: the plotted
- * markers are already team-relative (home attacking right).
+ * hotspot callouts can never disagree. Listed in home-attacking-RIGHT
+ * order; renderTurnoverTerritoryThirds() reflects them for a page on which
+ * the home team attacks LEFT.
  */
 const TURNOVER_TERRITORY_THIRDS = (["DEFENSIVE", "MIDDLE", "ATTACKING"] as const).map((third) => {
   const zone = ZONE_MAP_V1_NINE_GRID.zones.find((z) => z.id === `${third}_CENTRE`)!;
@@ -12042,10 +12044,21 @@ const TURNOVER_TERRITORY_THIRD_LABEL_COLOR = "rgba(226,232,240,0.50)";
  * Subtle three-third overlay — faint middle-third band, dashed boundaries and
  * small uppercase labels along the top touchline. Drawn before the markers
  * so it never covers them; not a heatmap (no count-driven colour).
+ *
+ * `pageDir` is the home team's physical attacking direction on this page:
+ * RIGHT → DEFENSIVE | MIDDLE | ATTACKING, LEFT → ATTACKING | MIDDLE | DEFENSIVE
+ * (each third's bounds reflected), matching the raw physical markers.
  */
-function renderTurnoverTerritoryThirds(ctx: CanvasRenderingContext2D, inner: InnerPitch): void {
+function renderTurnoverTerritoryThirds(
+  ctx: CanvasRenderingContext2D,
+  inner: InnerPitch,
+  pageDir: AttackingDirection,
+): void {
+  const thirds = pageDir === "RIGHT"
+    ? TURNOVER_TERRITORY_THIRDS
+    : [...TURNOVER_TERRITORY_THIRDS].reverse().map((t) => ({ ...t, xMin: 100 - t.xMax, xMax: 100 - t.xMin }));
   ctx.save();
-  TURNOVER_TERRITORY_THIRDS.forEach((third, i) => {
+  thirds.forEach((third, i) => {
     const rect = zonePixelRect({ xMin: third.xMin, xMax: third.xMax, yMin: 0, yMax: 100 }, inner);
     if (i === 1) {
       ctx.fillStyle = "rgba(255,255,255,0.025)";
@@ -12112,13 +12125,16 @@ function renderTurnoverTerritoryMarkers(
  * showed chain-origin wonToScore/lostAllowedScore) has been removed; that
  * question belongs to Game Origin Analysis / Full Review, not Snapshot.
  *
- * Plotted markers are normalised with toTeamRelativeZoneEvent() (the same
- * team-relative rotation the hotspot callouts use), so the home team always
- * attacks left → right: Defensive → Middle → Attacking, whichever physical
- * end they attacked in each half. Stored events are never modified.
+ * Markers are plotted at their raw stored physical coordinates. The page's
+ * attacking direction — resolveForAttackingDirection(half ?? "1H",
+ * homeAttackingDirection) — orients the three-third overlay and the
+ * subtitle's attacking-direction arrow. Hotspot callouts stay team-relative
+ * (classified per event period by the same resolver), so a dot inside the
+ * third labelled ATTACKING is classified Attacking.
  *
  * `half` (FT only) labels the page "First Half" / "Second Half"; the caller
- * pre-filters events to that half. Omitted at HT.
+ * pre-filters events to that half. Omitted at HT, which means a first-half
+ * page.
  */
 export function makeTurnoverTerritoryPage(
   events: readonly PdfExportEvent[],
@@ -12136,6 +12152,10 @@ export function makeTurnoverTerritoryPage(
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
 
+  const pageDir = resolveForAttackingDirection(half ?? "1H", homeAttackingDirection);
+  const home = truncTeam(homeTeam, 18);
+  const arrow = pageDir === "RIGHT" ? `${home} attacking →` : `← ${home} attacking`;
+
   fillDarkBg(ctx);
   drawTopAccentBar(ctx);
   const pageTitle = half === "1H"
@@ -12146,7 +12166,7 @@ export function makeTurnoverTerritoryPage(
   drawPageHeader(
     ctx,
     pageTitle,
-    `${homeTeam} v ${awayTeam} · Team-relative view`,
+    `${homeTeam} v ${awayTeam} · ${arrow}`,
     pageNum,
     totalPages,
   );
@@ -12162,17 +12182,11 @@ export function makeTurnoverTerritoryPage(
 
   // ── Pitch ─────────────────────────────────────────────────────────────────
   const inner = renderPitch(ctx, sport, HT_PITCH_AREA);
-  renderTurnoverTerritoryThirds(ctx, inner);
+  renderTurnoverTerritoryThirds(ctx, inner, pageDir);
 
   // ── Event markers — outcome colours (won = purple · lost = orange) ────────
-  // Team-relative display copies (REPORT perspective, same as the hotspot
-  // callouts below) so dots and "Most Turnovers Won/Lost" zones agree.
-  renderTurnoverTerritoryMarkers(
-    ctx,
-    wonEvts.map((e) => toTeamRelativeZoneEvent(e, homeAttackingDirection)),
-    lostEvts.map((e) => toTeamRelativeZoneEvent(e, homeAttackingDirection)),
-    inner,
-  );
+  // Raw stored physical coordinates.
+  renderTurnoverTerritoryMarkers(ctx, wonEvts, lostEvts, inner);
 
   // ── Right-side legend ─────────────────────────────────────────────────────
   const lx = CANVAS_W - 158;
