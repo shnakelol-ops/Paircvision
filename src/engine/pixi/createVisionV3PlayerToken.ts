@@ -202,6 +202,7 @@ export function createVisionV3PlayerToken({
   radius,
   kitPattern = "plain",
   kitPatternColor,
+  showLabel = true,
 }: {
   label: string;
   teamColor: VisionV3TeamColor;
@@ -210,6 +211,8 @@ export function createVisionV3PlayerToken({
   radius?: number;
   kitPattern?: VisionV3KitPattern;
   kitPatternColor?: number;
+  /** false draws the token without its identity label (Tactical Slate Practice presentation). */
+  showLabel?: boolean;
 }): { token: Container; shadow: Graphics } {
   const defaults = DEFAULT_STYLE_BY_TEAM[teamColor];
   const resolved: VisionV3PlayerTokenStyle = {
@@ -320,6 +323,10 @@ export function createVisionV3PlayerToken({
     .roundRect(-innerRadius * 0.16, -discRadius + ringWidth * 0.16, innerRadius * 0.32, Math.max(0.2, discRadius * 0.14), innerRadius * 0.08)
     .fill({ color: mixColor(ringColor, 0xffffff, 0.16), alpha: 0.36 });
   token.addChild(orientationTick);
+
+  if (!showLabel) {
+    return { token, shadow };
+  }
 
   const safeLabel = label.trim().slice(0, 3) || "?";
   const isNumericLabel = /^\d+$/.test(safeLabel);

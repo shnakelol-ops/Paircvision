@@ -60,6 +60,7 @@ import {
   MAX_QUICKBOARD_SAVES,
   sanitizeBoardName,
   withQuickBoardSurface,
+  withTrainingPresentationDefault,
   type QuickBoardBoardState,
   type SavedQuickBoard,
 } from "../features/quickboard/storage/quickboard-types";
@@ -71,13 +72,22 @@ import { ShareSheet } from "../features/shared/ShareSheet";
 import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
 import { resolveSlateQuarterTurns, shouldUseMobilePortraitToolsPanel } from "./tacticalSlateOrientation";
 import {
+  PLAYER_PRESENTATION_CHOICES,
   TACTICAL_SLATE_SURFACES,
   TACTICAL_SLATE_SURFACE_LABELS,
   TACTICAL_SLATE_SURFACE_ROUTES,
   resolveBoardStorageNamespace,
+  resolveSurfaceDefaultPlayerPresentation,
+  resolveSurfaceInitialRoster,
   resolveSurfacePitchTheme,
+  surfaceUsesPlayerPresentation,
   type TacticalSlateSurface,
 } from "./tacticalSlateSurface";
+import {
+  playerPresentationFlags,
+  resolvePlayerPresentation,
+  type TacticalPlayerPresentation,
+} from "../engine/pixi/playerPresentation";
 import SlateBackgroundPositioner from "../features/quickboard/background/SlateBackgroundPositioner";
 import SlateLabelEntryModal from "../features/quickboard/annotations/SlateLabelEntryModal";
 import { type SlateTextAnnotation, type SlateTextFontSize } from "../features/quickboard/annotations/slateTextAnnotation";
@@ -1240,6 +1250,8 @@ function serializeBoardState(state: QuickBoardBoardState | null): string | null 
     ...(state.teamState !== undefined ? { teamState: state.teamState } : {}),
     ...(state.startSnapshot !== undefined ? { startSnapshot: state.startSnapshot } : {}),
     ...(state.backgroundImage !== undefined ? { backgroundImage: state.backgroundImage } : {}),
+    // Training only — Pitch/Whiteboard states never carry it, so their signatures are unchanged.
+    ...(state.playerPresentation !== undefined ? { playerPresentation: state.playerPresentation } : {}),
   };
   try {
     return JSON.stringify(recoverableState);
@@ -2471,6 +2483,21 @@ export default function TacticalPadLiteClean({
   const [isShapeLinksPanelOpen, setIsShapeLinksPanelOpen] = useState(false);
   const [tacticalTokenStyle, setTacticalTokenStyle] = useState<TacticalPlayerTokenStyle>("vision-v3");
   const [isCompactPlayerTokens, setIsCompactPlayerTokens] = useState(false);
+  // Training's Practice presentation (fixed Vision V3, Compact scale, no
+  // identity label). Always false on Pitch and Whiteboard.
+  const [isPracticePlayerTokens, setIsPracticePlayerTokens] = useState(
+    () => resolveSurfaceDefaultPlayerPresentation(slateSurface) === "practice",
+  );
+  const usesPlayerPresentation = surfaceUsesPlayerPresentation(slateSurface);
+  const playerPresentation = resolvePlayerPresentation({
+    compact: isCompactPlayerTokens,
+    practice: isPracticePlayerTokens,
+  });
+  const applyPlayerPresentation = (presentation: TacticalPlayerPresentation) => {
+    const flags = playerPresentationFlags(presentation);
+    setIsCompactPlayerTokens(flags.compact);
+    setIsPracticePlayerTokens(flags.practice);
+  };
   const [playerTokensSubmenuOpen, setPlayerTokensSubmenuOpen] = useState(false);
   const [surfaceSubmenuOpen, setSurfaceSubmenuOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -2910,6 +2937,13 @@ export default function TacticalPadLiteClean({
       whiteboardDrawColor: isWhiteboardMode ? whiteboardPenColor : tacticalPenColor,
       tacticalTokenStyle,
       compactPlayerTokens: isCompactPlayerTokens,
+      practicePlayerTokens: isPracticePlayerTokens,
+      persistPlayerPresentation: usesPlayerPresentation,
+      initialRoster: resolveSurfaceInitialRoster(slateSurface),
+      onPlayerPresentationChange: (presentation) => {
+        if (disposed) return;
+        applyPlayerPresentation(presentation);
+      },
       onPhaseCountChange: (count) => {
         if (!disposed) {
           setPhaseCount(count);
@@ -3078,6 +3112,11 @@ export default function TacticalPadLiteClean({
   }, [isStatsMode, isWhiteboardMode, isCompactPlayerTokens]);
 
   useEffect(() => {
+    if (isStatsMode || isWhiteboardMode) return;
+    surfaceRef.current?.setPracticePlayerTokens(isPracticePlayerTokens);
+  }, [isStatsMode, isWhiteboardMode, isPracticePlayerTokens]);
+
+  useEffect(() => {
     if (!actionsOpen) {
       setPlayerTokensSubmenuOpen(false);
       setSurfaceSubmenuOpen(false);
@@ -3139,7 +3178,7 @@ export default function TacticalPadLiteClean({
     }
     const currentSignature = captureCurrentBoardSignature();
     if (!currentSignature) return;
-    const draftSignature = serializeBoardState(pendingRecoveredBoardDraft);
+    const draftSignature = serializeBoardState(withTrainingPresentationDefault(pendingRecoveredBoardDraft, slateSurface));
     if (!draftSignature || draftSignature === currentSignature) {
       clearActiveBoardDraft();
       setPendingRecoveredBoardDraft(null);
@@ -3751,7 +3790,7 @@ export default function TacticalPadLiteClean({
     setIsPlaying(false);
     setIsPaused(false);
     setLoadedBoardName("Recovered draft");
-    const draftSignature = serializeBoardState(draft);
+    const draftSignature = serializeBoardState(withTrainingPresentationDefault(draft, slateSurface));
     boardBaselineSignatureRef.current = draftSignature;
     textAnnotationsBaselineRef.current = JSON.stringify(recoveredAnnotations);
     lastBoardDraftSignatureRef.current = draftSignature;
@@ -3852,7 +3891,7 @@ export default function TacticalPadLiteClean({
     setMyBoardsOpen(false);
     setActionsOpen(false);
     setQuickShareOpen(false);
-    boardBaselineSignatureRef.current = serializeBoardState(saved.boardState);
+    boardBaselineSignatureRef.current = serializeBoardState(withTrainingPresentationDefault(saved.boardState, slateSurface));
     textAnnotationsBaselineRef.current = JSON.stringify(loadedAnnotations);
     clearActiveBoardDraft();
     setPendingRecoveredBoardDraft(null);
@@ -5846,12 +5885,58 @@ export default function TacticalPadLiteClean({
               >
                 <span style={PLAYER_TOKENS_MENU_TRIGGER_TITLE_ROW_STYLE}>Player Tokens</span>
                 <span style={PLAYER_TOKENS_MENU_TRIGGER_CURRENT_STYLE}>
-                  Current: {TOKEN_STYLE_CHOICES.find((choice) => choice.value === tacticalTokenStyle)?.label ?? ""}
+                  Current:{" "}
+                  {usesPlayerPresentation && isPracticePlayerTokens
+                    ? "Practice"
+                    : TOKEN_STYLE_CHOICES.find((choice) => choice.value === tacticalTokenStyle)?.label ?? ""}
                   {" "}
                   {playerTokensSubmenuOpen ? "⌄" : "›"}
                 </span>
               </button>
-              {playerTokensSubmenuOpen ? (
+              {playerTokensSubmenuOpen && usesPlayerPresentation ? (
+                // Training only: Normal | Compact | Practice replaces the
+                // Compact checkbox, and is saved with the board. Practice is a
+                // fixed Vision V3 representation, so Style is hidden while on.
+                <div style={PLAYER_TOKENS_SUBMENU_STYLE}>
+                  <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Size</p>
+                  <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
+                    {PLAYER_PRESENTATION_CHOICES.map((choice) => (
+                      <button
+                        key={`player-presentation-${choice.value}`}
+                        type="button"
+                        className="control-button"
+                        style={playerPresentation === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
+                        aria-pressed={playerPresentation === choice.value}
+                        onClick={() => applyPlayerPresentation(choice.value)}
+                      >
+                        {playerPresentation === choice.value ? "✓ " : ""}
+                        {choice.label}
+                      </button>
+                    ))}
+                  </div>
+                  {!isPracticePlayerTokens ? (
+                    <>
+                      <div style={PLAYER_TOKENS_SUBMENU_DIVIDER_STYLE} />
+                      <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Style</p>
+                      <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
+                        {TOKEN_STYLE_CHOICES.map((choice) => (
+                          <button
+                            key={`token-style-${choice.value}`}
+                            type="button"
+                            className="control-button"
+                            style={tacticalTokenStyle === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
+                            onClick={() => setTacticalTokenStyle(choice.value)}
+                          >
+                            {tacticalTokenStyle === choice.value ? "✓ " : ""}
+                            {choice.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+              {playerTokensSubmenuOpen && !usesPlayerPresentation ? (
                 <div style={PLAYER_TOKENS_SUBMENU_STYLE}>
                   <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Style</p>
                   <div style={TOKEN_STYLE_MENU_ROW_STYLE}>

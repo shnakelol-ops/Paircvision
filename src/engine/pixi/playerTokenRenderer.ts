@@ -28,6 +28,12 @@ export type PlayerTokenRendererInput = {
   kitPattern: MicroAthleteKitPattern;
   kitPatternColor: number;
   radius: number;
+  /**
+   * Draw the identity label (number / initials / name). Defaults to true.
+   * Only VisionV3Renderer honours false — used solely by the Training
+   * Practice presentation, which always renders Vision V3.
+   */
+  showLabel?: boolean;
 };
 
 export type PlayerTokenRendererOutput = {
@@ -102,6 +108,7 @@ export const VisionV3Renderer: PlayerTokenRenderer = ({
   kitPattern,
   kitPatternColor,
   radius,
+  showLabel,
 }) =>
   createVisionV3PlayerToken({
     label,
@@ -111,6 +118,7 @@ export const VisionV3Renderer: PlayerTokenRenderer = ({
     style,
     kitPattern,
     kitPatternColor,
+    ...(showLabel === false ? { showLabel: false } : {}),
   });
 
 export const ProceduralPixiRenderer: PlayerTokenRenderer = ({

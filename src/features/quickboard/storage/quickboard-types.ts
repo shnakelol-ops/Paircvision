@@ -1,4 +1,9 @@
 import { type SlateTextAnnotation, sanitizeTextAnnotations } from "../annotations/slateTextAnnotation";
+import {
+  DEFAULT_TRAINING_PLAYER_PRESENTATION,
+  sanitizePlayerPresentation,
+  type TacticalPlayerPresentation,
+} from "../../../engine/pixi/playerPresentation";
 
 export const QUICKBOARD_STORAGE_KEY = "pitchflow_quickboard_boards_v1";
 const MAX_BOARD_NAME_LENGTH = 48;
@@ -35,6 +40,8 @@ export type QuickBoardBoardState = {
   shapeLinksVisible?: unknown;
   /** Work surface metadata; absent means "pitch". Only "training" / "whiteboard" are ever stored. */
   surface?: Exclude<QuickBoardSurface, "pitch">;
+  /** Training player presentation (Normal / Compact / Practice). Never written for Pitch or Whiteboard. */
+  playerPresentation?: TacticalPlayerPresentation;
 };
 
 export type SavedQuickBoard = {
@@ -77,9 +84,25 @@ export function withQuickBoardSurface(state: QuickBoardBoardState, surface: Quic
   return { ...state, surface };
 }
 
+/**
+ * Training boards saved before player presentation existed carry no
+ * `playerPresentation`, yet open as Practice. Comparing a stored Training
+ * state against the live board therefore needs that default filled in, or a
+ * just-opened legacy board would immediately read as unsaved. Pitch and
+ * Whiteboard states are returned untouched.
+ */
+export function withTrainingPresentationDefault(
+  state: QuickBoardBoardState,
+  surface: QuickBoardSurface,
+): QuickBoardBoardState {
+  if (surface !== "training" || state.playerPresentation !== undefined) return state;
+  return { ...state, playerPresentation: DEFAULT_TRAINING_PLAYER_PRESENTATION };
+}
+
 export function sanitizeQuickBoardState(value: unknown): QuickBoardBoardState | null {
   if (!isRecord(value)) return null;
   const surface = sanitizeStoredBoardSurface(value.surface);
+  const playerPresentation = sanitizePlayerPresentation(value.playerPresentation);
   return {
     players: sanitizeArray(value.players),
     items: sanitizeArray(value.items),
@@ -98,6 +121,7 @@ export function sanitizeQuickBoardState(value: unknown): QuickBoardBoardState | 
     ...(value.shapeLinks !== undefined ? { shapeLinks: value.shapeLinks } : {}),
     ...(value.shapeLinksVisible !== undefined ? { shapeLinksVisible: value.shapeLinksVisible } : {}),
     ...(surface ? { surface } : {}),
+    ...(playerPresentation ? { playerPresentation } : {}),
     textAnnotations: sanitizeTextAnnotations(value.textAnnotations),
     ...(typeof value.backgroundImage === "string" && value.backgroundImage.startsWith("data:image/")
       ? { backgroundImage: value.backgroundImage }
