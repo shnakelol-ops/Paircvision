@@ -4,6 +4,7 @@ import { getPitchConfig, type PitchMarking, type PitchSport } from "../../core/p
 import { BOARD_PITCH_VIEWBOX } from "../../core/pitch/pitch-space";
 import { buildGaaGoalMarkings } from "../../tactics/pitch/gaa-goal-markings";
 import { buildRugbyPostMarkings } from "../../tactics/pitch/rugby-post-markings";
+import { resolveTacticalPitchThemeLayers, type TacticalPitchTheme } from "./tacticalPitchTheme";
 
 /**
  * Goal/post overlay selection — explicit per sport rather than a soccer/
@@ -32,7 +33,7 @@ export type TacticalPitchVisualMount = {
   dispose: () => void;
 };
 
-export type TacticalPitchTheme = "default" | "whiteboard";
+export type { TacticalPitchTheme } from "./tacticalPitchTheme";
 
 function createStripeTexture(sport: PitchSport): Texture {
   const canvas = document.createElement("canvas");
@@ -368,7 +369,8 @@ export function createTacticalPitchVisualRoot(
   const disposers: Array<() => void> = [];
   const { w: vbW, h: vbH } = BOARD_PITCH_VIEWBOX;
   const theme = options.theme ?? "default";
-  const isWhiteboardTheme = theme === "whiteboard";
+  const layers = resolveTacticalPitchThemeLayers(theme);
+  const isWhiteboardTheme = layers.face === "whiteboard";
 
   const panel = new Container();
   root.addChild(panel);
@@ -508,37 +510,41 @@ export function createTacticalPitchVisualRoot(
     }
   }
 
-  const markingsGraphics = new Graphics();
-  markingsGraphics.zIndex = 4;
-  const { markings } = getPitchConfig(sport);
-  drawMarkings(markingsGraphics, markings);
-  if (isWhiteboardTheme) {
-    markingsGraphics.tint = 0x0b1219;
-    markingsGraphics.alpha = 1;
-  } else if (!isSoccer) {
-    markingsGraphics.tint = 0xffffff;
-  }
-  face.addChild(markingsGraphics);
+  // Training Grass ("grass") keeps the identical turf but omits every
+  // pitch line marking; see tacticalPitchTheme.ts.
+  if (layers.markings) {
+    const markingsGraphics = new Graphics();
+    markingsGraphics.zIndex = 4;
+    const { markings } = getPitchConfig(sport);
+    drawMarkings(markingsGraphics, markings);
+    if (isWhiteboardTheme) {
+      markingsGraphics.tint = 0x0b1219;
+      markingsGraphics.alpha = 1;
+    } else if (!isSoccer) {
+      markingsGraphics.tint = 0xffffff;
+    }
+    face.addChild(markingsGraphics);
 
-  const markingsClarity = new Graphics();
-  markingsClarity.zIndex = 5;
-  drawMarkings(markingsClarity, markings, { skipLineGlowMarked: true });
-  if (isWhiteboardTheme) {
-    markingsClarity.tint = 0x050b12;
-    markingsClarity.blendMode = "normal";
-    markingsClarity.alpha = 0.26;
-  } else {
-    if (!isSoccer) markingsClarity.tint = 0xffffff;
-    markingsClarity.blendMode = "screen";
-    markingsClarity.alpha = isSoccer ? 0.20 : 0.18;
+    const markingsClarity = new Graphics();
+    markingsClarity.zIndex = 5;
+    drawMarkings(markingsClarity, markings, { skipLineGlowMarked: true });
+    if (isWhiteboardTheme) {
+      markingsClarity.tint = 0x050b12;
+      markingsClarity.blendMode = "normal";
+      markingsClarity.alpha = 0.26;
+    } else {
+      if (!isSoccer) markingsClarity.tint = 0xffffff;
+      markingsClarity.blendMode = "screen";
+      markingsClarity.alpha = isSoccer ? 0.20 : 0.18;
+    }
+    face.addChild(markingsClarity);
   }
-  face.addChild(markingsClarity);
 
   // Tactics-only goal/post graphic (Tactical Slate). Drawn from a dedicated
   // tactics-only marking set — never the shared pitchConfig markings — so it
   // stays out of Stats Mode, Pro Tagger, and every review/PDF export. See
   // src/tactics/pitch/gaa-goal-markings.ts and rugby-post-markings.ts.
-  const goalMarkings = buildGoalOverlayMarkings(sport);
+  const goalMarkings = layers.goals ? buildGoalOverlayMarkings(sport) : null;
   if (goalMarkings) {
     const goalGraphics = new Graphics();
     goalGraphics.zIndex = 4.5;
@@ -547,7 +553,7 @@ export function createTacticalPitchVisualRoot(
     face.addChild(goalGraphics);
   }
 
-  if (!isWhiteboardTheme) {
+  if (layers.glass) {
     const sheen = new FillGradient({
       type: "linear",
       start: { x: 0.5, y: 0 },
