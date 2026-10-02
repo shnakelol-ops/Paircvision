@@ -10,6 +10,8 @@ import { SAVED_MATCHES_STORAGE_KEY, SAVED_SQUADS_STORAGE_KEY } from "../core/sta
 import { PRO_TAGGER_MATCHES_STORAGE_KEY } from "../pro-tagger/pro-tagger-storage";
 import { RAPID_CAPTURE_MATCHES_STORAGE_KEY } from "../rapid-capture/rapid-capture-storage";
 import { QUICKBOARD_STORAGE_KEY } from "../features/quickboard/storage/quickboard-types";
+import { saveBoard, loadAllBoards } from "../features/quickboard/storage/quickboard-storage";
+import { resolveBoardStorageNamespace } from "../pages/tacticalSlateSurface";
 
 import { saveScenario, listScenarios } from "../features/vision-tactics/tacticalPlayStorage";
 import { upsertSession, loadSessions, upsertTrainingHubSquad, loadTrainingHubSquads } from "../vision-training/trainingStorage";
@@ -70,6 +72,26 @@ describe("registered storage keys match their real owning module (exported const
 });
 
 describe("registered storage keys match their real owning module (round-tripped through the real save function)", () => {
+  it.each([
+    ["quickboardTrainingBoards", resolveBoardStorageNamespace("gaelic", "training")],
+    ["quickboardWhiteboardBoards", resolveBoardStorageNamespace("gaelic", "whiteboard")],
+    ["quickboardRugbyBoards", resolveBoardStorageNamespace("rugby", "pitch")],
+  ])("%s: saveBoard in the Slate's own namespace writes to the registered key", (domainId, namespace) => {
+    const boardState = { players: [], items: [], drawings: [], phases: [], movementPaths: [] };
+    saveBoard({ name: "Board", boardState }, namespace);
+    expect(loadAllBoards(namespace)).toHaveLength(1);
+    const domain = findBackupDomain(domainId)!;
+    expect(JSON.parse(window.localStorage.getItem(domain.storageKey)!)).toHaveLength(1);
+  });
+
+  it("the public GAA board library is still covered by the original quickboardBoards key", () => {
+    const boardState = { players: [], items: [], drawings: [], phases: [], movementPaths: [] };
+    saveBoard({ name: "Board", boardState }, resolveBoardStorageNamespace("gaelic", "pitch"));
+    const domain = findBackupDomain("quickboardBoards")!;
+    expect(domain.storageKey).toBe(QUICKBOARD_STORAGE_KEY);
+    expect(JSON.parse(window.localStorage.getItem(domain.storageKey)!)).toHaveLength(1);
+  });
+
   it("tacticalPlayScenarios: saveScenario writes to the registered key", () => {
     const ballState = { x: 0.5, y: 0.5 } as unknown as Parameters<typeof saveScenario>[3];
     saveScenario("Kickout press", [], [], ballState, [], []);

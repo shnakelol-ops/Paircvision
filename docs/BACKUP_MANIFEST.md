@@ -34,6 +34,9 @@ unsupported — never a surprise either way.
 | `proTaggerMatches` | `pitchflow_pro_tagger_matches_v1` | JSON array | `pro-tagger/pro-tagger-storage.ts` |
 | `rapidCaptureMatches` | `paircvision_rapid_capture_matches_v1` | JSON array | `rapid-capture/rapid-capture-storage.ts` |
 | `quickboardBoards` | `pitchflow_quickboard_boards_v1` | JSON array | `features/quickboard/storage/quickboard-types.ts` |
+| `quickboardTrainingBoards` | `pitchflow_quickboard_boards_v1:training` | JSON array | `features/quickboard/storage/quickboard-storage.ts` (Tactical Slate Training Grass library; namespace from `pages/tacticalSlateSurface.ts`) |
+| `quickboardWhiteboardBoards` | `pitchflow_quickboard_boards_v1:whiteboard` | JSON array | `features/quickboard/storage/quickboard-storage.ts` (Tactical Slate Whiteboard library) |
+| `quickboardRugbyBoards` | `pitchflow_quickboard_boards_v1:rugby` | JSON array | `features/quickboard/storage/quickboard-storage.ts` (internal Rugby Slate library) |
 | `tacticalPlayScenarios` | `paircvision-tp-scenarios` | JSON array | `features/vision-tactics/tacticalPlayStorage.ts` |
 | `trainingSessions` | `paircvision_training_sessions_v1` | JSON array | `vision-training/trainingStorage.ts` |
 | `trainingSavedSquads` | `paircvision_training_saved_squads_v1` | JSON array | `vision-training/trainingStorage.ts` |
@@ -56,6 +59,7 @@ unsupported — never a surprise either way.
 | `paircvision_stats_active_draft_v1` | Match Stats in-progress crash-recovery draft — transient session state for the current session on this device |
 | `paircvision_rapid_capture_active_v1` | Rapid Capture in-progress session — same reasoning |
 | `paircvision_board_active_draft_v1` | QuickBoard in-progress autosave draft — same reasoning |
+| `paircvision_board_active_draft_v1:<namespace>` | The Training Grass, Whiteboard and Rugby Slate autosave drafts (`:training`, `:whiteboard`, `:rugby`) — same reasoning as the GAA draft |
 | `paircvision_training_active_session_v1` | Training Tracker in-progress session pointer — same reasoning |
 | `pitchside.player-performance-tracker.v1` | Player Performance's *current in-progress* tracking session (`hasStarted`/`isRunning`/`logs`) — same reasoning; distinct from the durable season table and squads keys above |
 | `paircvision.reviewSession.v1.last` | Write-only cache (`StatsModeSurface.tsx`) — written once on export, never read back anywhere in the app; functionally inert |
@@ -93,3 +97,9 @@ domains, unset for flag-style domains. This is one consistent rule applied
 uniformly, not mixed per-domain behaviour: restoring an old backup made
 before a domain existed resets that domain to empty on this device, exactly
 as if the coach had never used that feature. See `backup-restore.ts`.
+
+The namespaced Tactical Slate libraries follow the same rule. Training Grass
+and Whiteboard boards are new, so no existing data changes. The internal
+Rugby library previously sat outside backups entirely; it is now backed up,
+and restoring a backup made before it was registered resets it to empty
+(the safety backup generated before every restore still holds it).

@@ -83,6 +83,33 @@ export const BACKUP_DOMAINS: readonly BackupDomainDescriptor[] = [
     kind: "json-array",
     noun: ["board", "boards"],
   },
+  // features/quickboard/storage/quickboard-storage.ts — namespacedKey(QUICKBOARD_STORAGE_KEY, …)
+  // Tactical Slate's other board libraries. Each sport/surface namespace is
+  // a separate `${QUICKBOARD_STORAGE_KEY}:${namespace}` key (namespaces from
+  // pages/tacticalSlateSurface.ts resolveBoardStorageNamespace), which the
+  // base quickboardBoards entry above never covered. Their autosave drafts
+  // stay excluded, exactly like the GAA draft.
+  {
+    id: "quickboardTrainingBoards",
+    label: "Tactical Slate Training Grass boards",
+    storageKey: "pitchflow_quickboard_boards_v1:training",
+    kind: "json-array",
+    noun: ["board", "boards"],
+  },
+  {
+    id: "quickboardWhiteboardBoards",
+    label: "Tactical Slate Whiteboard boards",
+    storageKey: "pitchflow_quickboard_boards_v1:whiteboard",
+    kind: "json-array",
+    noun: ["board", "boards"],
+  },
+  {
+    id: "quickboardRugbyBoards",
+    label: "Tactical Slate Rugby boards",
+    storageKey: "pitchflow_quickboard_boards_v1:rugby",
+    kind: "json-array",
+    noun: ["board", "boards"],
+  },
   // features/vision-tactics/tacticalPlayStorage.ts — STORAGE_KEY
   {
     id: "tacticalPlayScenarios",

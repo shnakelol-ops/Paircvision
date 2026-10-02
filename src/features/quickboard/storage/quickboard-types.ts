@@ -4,6 +4,14 @@ export const QUICKBOARD_STORAGE_KEY = "pitchflow_quickboard_boards_v1";
 const MAX_BOARD_NAME_LENGTH = 48;
 export const MAX_QUICKBOARD_SAVES = 100;
 
+/**
+ * The Tactical Slate work surface a board was created on. "pitch" is the
+ * public Gaelic Pitch and is never written: a board with no `surface` field
+ * (every board saved before surfaces existed) is a Pitch board, so existing
+ * GAA boards stay byte-for-byte unchanged.
+ */
+export type QuickBoardSurface = "pitch" | "training" | "whiteboard";
+
 export type QuickBoardBoardState = {
   players: unknown[];
   items: unknown[];
@@ -25,6 +33,8 @@ export type QuickBoardBoardState = {
   /** Shape Links (Tactical Slate presentation feature). Deep validation happens in createTacticalPadLiteSurface.ts. */
   shapeLinks?: unknown;
   shapeLinksVisible?: unknown;
+  /** Work surface metadata; absent means "pitch". Only "training" / "whiteboard" are ever stored. */
+  surface?: Exclude<QuickBoardSurface, "pitch">;
 };
 
 export type SavedQuickBoard = {
@@ -52,8 +62,24 @@ export function sanitizeBoardName(value: string | undefined): string {
   return trimmed.slice(0, MAX_BOARD_NAME_LENGTH);
 }
 
+function sanitizeStoredBoardSurface(value: unknown): Exclude<QuickBoardSurface, "pitch"> | null {
+  return value === "training" || value === "whiteboard" ? value : null;
+}
+
+/**
+ * Returns the state to persist for a board on `surface`. Pitch boards are
+ * returned untouched (no `surface` field is ever added), so the public GAA
+ * board/draft payloads are unchanged; Training and Whiteboard boards are
+ * stamped so the board itself records where it belongs.
+ */
+export function withQuickBoardSurface(state: QuickBoardBoardState, surface: QuickBoardSurface): QuickBoardBoardState {
+  if (surface === "pitch") return state;
+  return { ...state, surface };
+}
+
 export function sanitizeQuickBoardState(value: unknown): QuickBoardBoardState | null {
   if (!isRecord(value)) return null;
+  const surface = sanitizeStoredBoardSurface(value.surface);
   return {
     players: sanitizeArray(value.players),
     items: sanitizeArray(value.items),
@@ -71,6 +97,7 @@ export function sanitizeQuickBoardState(value: unknown): QuickBoardBoardState | 
     ...(value.itemMode !== undefined ? { itemMode: value.itemMode } : {}),
     ...(value.shapeLinks !== undefined ? { shapeLinks: value.shapeLinks } : {}),
     ...(value.shapeLinksVisible !== undefined ? { shapeLinksVisible: value.shapeLinksVisible } : {}),
+    ...(surface ? { surface } : {}),
     textAnnotations: sanitizeTextAnnotations(value.textAnnotations),
     ...(typeof value.backgroundImage === "string" && value.backgroundImage.startsWith("data:image/")
       ? { backgroundImage: value.backgroundImage }

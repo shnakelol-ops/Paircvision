@@ -252,6 +252,12 @@ type TacticalPadLiteSurfaceOptions = {
   /** Defaults to "gaelic" — the public Tactical Slate never passes this. */
   sport?: PitchSport;
   surfaceVariant?: "tactical" | "whiteboard";
+  /**
+   * Visual pitch surface only (turf / markings / goals) — never behaviour.
+   * Omitted, it resolves exactly as before: "whiteboard" for the legacy
+   * surfaceVariant, otherwise "default" (the public Gaelic Pitch).
+   */
+  pitchTheme?: TacticalPitchTheme;
   whiteboardTeamCounts?: {
     blue: number;
     red: number;
@@ -1230,7 +1236,7 @@ export async function createTacticalPadLiteSurface(
   const surfaceVariant = options.surfaceVariant ?? "tactical";
   const sport = resolveTacticalSlateSport(options.sport);
   const pitchTheme: TacticalPitchTheme =
-    surfaceVariant === "whiteboard" ? "whiteboard" : "default";
+    options.pitchTheme ?? (surfaceVariant === "whiteboard" ? "whiteboard" : "default");
   const pitchMount = createTacticalPitchVisualRoot(sport, { theme: pitchTheme });
   world.addChild(pitchMount.root);
   let backgroundSprite: Sprite | null = null;

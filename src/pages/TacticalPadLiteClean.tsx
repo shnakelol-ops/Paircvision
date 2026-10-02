@@ -59,6 +59,7 @@ import {
 import {
   MAX_QUICKBOARD_SAVES,
   sanitizeBoardName,
+  withQuickBoardSurface,
   type QuickBoardBoardState,
   type SavedQuickBoard,
 } from "../features/quickboard/storage/quickboard-types";
@@ -69,6 +70,14 @@ import { exportBoardSetupAsPng } from "../features/quickboard/export/board-png-e
 import { ShareSheet } from "../features/shared/ShareSheet";
 import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
 import { resolveSlateQuarterTurns, shouldUseMobilePortraitToolsPanel } from "./tacticalSlateOrientation";
+import {
+  TACTICAL_SLATE_SURFACES,
+  TACTICAL_SLATE_SURFACE_LABELS,
+  TACTICAL_SLATE_SURFACE_ROUTES,
+  resolveBoardStorageNamespace,
+  resolveSurfacePitchTheme,
+  type TacticalSlateSurface,
+} from "./tacticalSlateSurface";
 import SlateBackgroundPositioner from "../features/quickboard/background/SlateBackgroundPositioner";
 import SlateLabelEntryModal from "../features/quickboard/annotations/SlateLabelEntryModal";
 import { type SlateTextAnnotation, type SlateTextFontSize } from "../features/quickboard/annotations/slateTextAnnotation";
@@ -80,6 +89,8 @@ type TacticalPadLiteCleanProps = {
   initialMode?: PadMode;
   /** Defaults to "gaelic" — the public /vision-board Slate never passes this. */
   sport?: PitchSport;
+  /** Defaults to "pitch" — the public /vision-board Slate never passes this. See tacticalSlateSurface.ts. */
+  surface?: TacticalSlateSurface;
 };
 
 const CAN_USE_CSS_SUPPORTS = typeof window !== "undefined" && typeof window.CSS !== "undefined";
@@ -2361,11 +2372,17 @@ const WHITEBOARD_HOME_CONFIRM_GO_BUTTON_STYLE: CSSProperties = {
   color: "#ffe5e5",
 };
 
-export default function TacticalPadLiteClean({ initialMode = "tactical", sport = "gaelic" }: TacticalPadLiteCleanProps) {
-  // Sport storage isolation: "" preserves the exact existing GAA key strings;
-  // any other sport (e.g. "rugby") gets its own namespaced draft/My Boards
-  // keys so it can never load into or overwrite the coach's real GAA state.
-  const boardStorageNamespace = sport === "gaelic" ? "" : sport;
+export default function TacticalPadLiteClean({
+  initialMode = "tactical",
+  sport = "gaelic",
+  surface: slateSurface = "pitch",
+}: TacticalPadLiteCleanProps) {
+  // Sport/surface storage isolation: the Gaelic Pitch resolves to "", which
+  // preserves the exact existing GAA key strings; any other sport (e.g.
+  // "rugby") or surface (Training Grass, Whiteboard) gets its own namespaced
+  // draft/My Boards keys so it can never load into or overwrite the coach's
+  // real GAA state.
+  const boardStorageNamespace = resolveBoardStorageNamespace(sport, slateSurface);
   const overlayPortalRoot = useOverlayPortalRoot();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const surfaceRef = useRef<TacticalPadLiteSurface | null>(null);
@@ -2455,6 +2472,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
   const [tacticalTokenStyle, setTacticalTokenStyle] = useState<TacticalPlayerTokenStyle>("vision-v3");
   const [isCompactPlayerTokens, setIsCompactPlayerTokens] = useState(false);
   const [playerTokensSubmenuOpen, setPlayerTokensSubmenuOpen] = useState(false);
+  const [surfaceSubmenuOpen, setSurfaceSubmenuOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [movementModePillSelection, setMovementModePillSelection] = useState<MovementModePillOption>("move");
@@ -2886,6 +2904,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
     void createTacticalPadLiteSurface(host, {
       sport,
       surfaceVariant: isWhiteboardMode ? "whiteboard" : "tactical",
+      pitchTheme: isWhiteboardMode ? undefined : resolveSurfacePitchTheme(slateSurface),
       whiteboardTeamCounts: isWhiteboardMode ? whiteboardCountsRef.current : undefined,
       whiteboardTeamColors: whiteboardTeamColorsRef.current,
       whiteboardDrawColor: isWhiteboardMode ? whiteboardPenColor : tacticalPenColor,
@@ -3059,7 +3078,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
   }, [isStatsMode, isWhiteboardMode, isCompactPlayerTokens]);
 
   useEffect(() => {
-    if (!actionsOpen) setPlayerTokensSubmenuOpen(false);
+    if (!actionsOpen) {
+      setPlayerTokensSubmenuOpen(false);
+      setSurfaceSubmenuOpen(false);
+    }
   }, [actionsOpen]);
 
   useEffect(() => {
@@ -3091,7 +3113,7 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
       const snapshotFull = currentAnnotations.length > 0
         ? { ...snapshot, textAnnotations: currentAnnotations }
         : snapshot;
-      const persisted = saveQuickBoardDraft(snapshotFull, boardStorageNamespace);
+      const persisted = saveQuickBoardDraft(withQuickBoardSurface(snapshotFull, slateSurface), boardStorageNamespace);
       if (!persisted) return;
       lastBoardDraftSignatureRef.current = draftKey;
     };
@@ -3619,6 +3641,19 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
     closeActionsMenu();
     window.location.assign(TACTICAL_SEQUENCE_ROUTE);
   };
+  // Surface switching is route-based (the same full-page navigation as Home
+  // and Tactical Sequence above), never an in-place Pixi rebuild: each
+  // surface mounts a fresh Slate with its own isolated board library and
+  // autosave draft, so the board being left is preserved as that surface's
+  // draft and recovered on return.
+  const goToSurface = (targetSurface: TacticalSlateSurface) => {
+    if (targetSurface === slateSurface) {
+      setSurfaceSubmenuOpen(false);
+      return;
+    }
+    closeActionsMenu();
+    window.location.assign(TACTICAL_SLATE_SURFACE_ROUTES[targetSurface]);
+  };
   const closeQuickShareMenu = () => setQuickShareOpen(false);
   const showShareTip = (message: string) => {
     if (shareTipTimerRef.current !== null) {
@@ -3764,7 +3799,10 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
     const boardStateToSave = textAnnotations.length > 0
       ? { ...snapshot, textAnnotations }
       : snapshot;
-    const saved = saveBoard({ name: fallbackName, boardState: boardStateToSave }, boardStorageNamespace);
+    const saved = saveBoard(
+      { name: fallbackName, boardState: withQuickBoardSurface(boardStateToSave, slateSurface) },
+      boardStorageNamespace,
+    );
     if (!saved) {
       showQuickBoardNotice("Save failed");
       return;
@@ -5842,6 +5880,43 @@ export default function TacticalPadLiteClean({ initialMode = "tactical", sport =
                 </div>
               ) : null}
             </div>
+            {sport === "gaelic" ? (
+              <div style={TOKEN_STYLE_MENU_SECTION_STYLE}>
+                <button
+                  type="button"
+                  className="control-button"
+                  style={PLAYER_TOKENS_MENU_TRIGGER_STYLE}
+                  aria-expanded={surfaceSubmenuOpen}
+                  onClick={() => setSurfaceSubmenuOpen((open) => !open)}
+                >
+                  <span style={PLAYER_TOKENS_MENU_TRIGGER_TITLE_ROW_STYLE}>Surface</span>
+                  <span style={PLAYER_TOKENS_MENU_TRIGGER_CURRENT_STYLE}>
+                    Current: {TACTICAL_SLATE_SURFACE_LABELS[slateSurface]}
+                    {" "}
+                    {surfaceSubmenuOpen ? "⌄" : "›"}
+                  </span>
+                </button>
+                {surfaceSubmenuOpen ? (
+                  <div style={PLAYER_TOKENS_SUBMENU_STYLE}>
+                    <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
+                      {TACTICAL_SLATE_SURFACES.map((choice) => (
+                        <button
+                          key={`surface-${choice}`}
+                          type="button"
+                          className="control-button"
+                          style={slateSurface === choice ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
+                          aria-current={slateSurface === choice ? "true" : undefined}
+                          onClick={() => goToSurface(choice)}
+                        >
+                          {slateSurface === choice ? "✓ " : ""}
+                          {TACTICAL_SLATE_SURFACE_LABELS[choice]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <button type="button" className="control-button" style={ACTIONS_MENU_BUTTON_STYLE} onClick={openQuickShareEntry}>
               Share Board
             </button>

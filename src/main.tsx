@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { OverlayPortalProvider } from "./overlay/OverlayPortalContext";
 import PitchFlowCoachShell from "./pages/PitchFlowCoachShell";
 import TacticalPadLiteClean from "./pages/TacticalPadLiteClean";
+import { TACTICAL_SLATE_SURFACE_ROUTES } from "./pages/tacticalSlateSurface";
 import PlayerPerformanceTracker from "./pages/PlayerPerformanceTracker";
 import MovementBoardCanvasShellPage from "./pages/MovementBoardCanvasShellPage";
 import RapidCaptureLitePage from "./rapid-capture/RapidCaptureLitePage";
@@ -65,6 +66,12 @@ function pickRootComponent() {
   }
   if (normalizedPath === VISION_BOARD_PATH) {
     return TacticalPadLiteClean;
+  }
+  if (normalizedPath === TACTICAL_SLATE_SURFACE_ROUTES.training) {
+    return () => <TacticalPadLiteClean surface="training" />;
+  }
+  if (normalizedPath === TACTICAL_SLATE_SURFACE_ROUTES.whiteboard) {
+    return () => <TacticalPadLiteClean surface="whiteboard" />;
   }
   if (normalizedPath === QUICK_BOARD_PATH) {
     return redirectToVisionBoard();
