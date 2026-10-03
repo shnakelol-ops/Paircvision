@@ -11,6 +11,7 @@ import {
   resolveSurfaceInitialRoster,
   resolveSurfacePitchTheme,
   surfaceUsesPlayerPresentation,
+  surfaceUsesPracticeAreas,
 } from "./tacticalSlateSurface";
 
 describe("Tactical Slate surfaces — routes and labels", () => {
@@ -104,5 +105,13 @@ describe("player presentation by surface", () => {
 
   it("offers Normal | Compact | Practice in that order", () => {
     expect(PLAYER_PRESENTATION_CHOICES.map((choice) => choice.label)).toEqual(["Normal", "Compact", "Practice"]);
+  });
+});
+
+describe("Practice Areas by surface", () => {
+  it("only Training Grass turns rectangles into Practice Areas; Pitch and Whiteboard keep filled tactical zones", () => {
+    expect(surfaceUsesPracticeAreas("training")).toBe(true);
+    expect(surfaceUsesPracticeAreas("pitch")).toBe(false);
+    expect(surfaceUsesPracticeAreas("whiteboard")).toBe(false);
   });
 });

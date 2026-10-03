@@ -9,6 +9,12 @@ export type TacticalDrawingStore = {
   replaceAll: (drawings: readonly TacticalDrawingSnapshot[]) => void;
   append: (drawing: TacticalDrawingRecord) => void;
   removeById: (id: string) => boolean;
+  /**
+   * Replaces one drawing in place (same id, same position in the list) —
+   * used to move / resize / restyle a Training Practice Area without
+   * re-creating it. Returns false if no drawing has that id.
+   */
+  updateById: (id: string, next: TacticalDrawingRecord) => boolean;
   popLast: () => TacticalDrawingRecord | null;
   clear: () => void;
   select: (id: string | null) => void;
@@ -59,6 +65,12 @@ export function createTacticalDrawingStore(): TacticalDrawingStore {
       selectedId = null;
     },
     removeById,
+    updateById: (id, next) => {
+      const index = drawings.findIndex((drawing) => drawing.id === id);
+      if (index < 0) return false;
+      drawings[index] = cloneDrawingSnapshot({ ...next, id });
+      return true;
+    },
     popLast: () => {
       lastErased = null;
       if (drawings.length <= 0) return null;

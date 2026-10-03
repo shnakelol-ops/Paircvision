@@ -29,9 +29,24 @@ import {
 } from "../shared/normalization";
 import { createTacticalDrawingController } from "../../features/quickboard/drawing/tacticalDrawingController";
 import {
+  PRACTICE_AREA_EDGE_TOUCH_PX,
+  PRACTICE_AREA_HANDLE_TOUCH_PX,
+  duplicatePracticeRect,
+  findPracticeAreaAt,
+  findPracticeRectCornerAt,
+  practiceRectCorners,
+  practiceRectFromPoints,
+  practiceRectToPoints,
+  resizePracticeRectCorner,
+  translatePracticeRect,
+  type PracticeRect,
+  type PracticeRectCorner,
+} from "../../features/quickboard/drawing/practiceAreaGeometry";
+import {
   drawingToolToWhiteboardTool,
   sanitizeDrawingSnapshot,
   sanitizeDrawingTool,
+  type TacticalDrawingRecord,
   type TacticalDrawingSnapshot,
   type WhiteboardDrawTool,
 } from "../../features/quickboard/drawing/tacticalDrawingTypes";
@@ -176,6 +191,15 @@ export type TacticalBoardState = {
   playerPresentation?: unknown;
 };
 
+/** The selected Training Practice Area, as the page's contextual bar needs it. */
+export type PracticeAreaSelection = {
+  id: string;
+  color: number;
+  isDeadZone: boolean;
+  /** The area's on-screen box (viewport CSS px), so the page can place its bar clear of it. */
+  screenBounds: { left: number; top: number; right: number; bottom: number } | null;
+};
+
 export type TacticalPadLiteSurface = {
   setStart: () => void;
   addPhase: () => void;
@@ -233,6 +257,12 @@ export type TacticalPadLiteSurface = {
   setCompactPlayerTokens: (enabled: boolean) => void;
   /** Practice presentation (Training): fixed Vision V3, Compact scale, no identity label. */
   setPracticePlayerTokens: (enabled: boolean) => void;
+  /** Training Practice Areas (practiceAreas option only): act on the selected area. */
+  setPracticeAreaColor: (color: number) => void;
+  setPracticeAreaDeadZone: (isDeadZone: boolean) => void;
+  duplicatePracticeArea: () => void;
+  deletePracticeArea: () => void;
+  clearPracticeAreaSelection: () => void;
   setWhiteboardDrawTool: (tool: WhiteboardDrawTool) => void;
   setWhiteboardDrawColor: (color: number) => void;
   eraseWhiteboardPenStroke: () => void;
@@ -292,6 +322,15 @@ type TacticalPadLiteSurfaceOptions = {
   onPlayerPresentationChange?: (presentation: TacticalPlayerPresentation) => void;
   /** Roster for a brand-new board / an imported board with no players. Default "formation". */
   initialRoster?: TacticalSlateInitialRoster;
+  /**
+   * Training only: rectangle zones are Practice Areas — transparent outlines
+   * (or Dead Zones) that stay fully visible during playback and can be
+   * selected, moved, resized, duplicated, recoloured and deleted in Move
+   * mode. Off (Pitch, Whiteboard, Rugby): drawings behave exactly as before.
+   */
+  practiceAreas?: boolean;
+  /** Fires whenever the selected Practice Area changes, or its colour/style does (practiceAreas only). */
+  onPracticeAreaSelectionChange?: (selection: PracticeAreaSelection | null) => void;
   onItemMove?: (id: string, x: number, y: number) => void;
   /** Free Multi-Ball: fires whenever the selected TacticalItem changes (ball or otherwise), including selection clearing (null). */
   onSelectedItemChange?: (itemId: string | null) => void;
@@ -1648,6 +1687,21 @@ export async function createTacticalPadLiteSurface(
   itemSelectionLayer.eventMode = "none";
   world.addChild(itemSelectionLayer);
   let whiteboardDrawingCounter = 0;
+  // Training Practice Areas get their own layer directly beneath the other
+  // drawings: it never takes part in the playback fade applied to
+  // whiteboardDrawingsLayer, and the selection handles sit in the
+  // (unfaded) preview layer. Neither exists on Pitch/Whiteboard.
+  const practiceAreasEnabled = options.practiceAreas === true && surfaceVariant === "tactical";
+  let practiceAreasLayer: Container | null = null;
+  let practiceAreaHandlesGraphic: Graphics | null = null;
+  if (practiceAreasEnabled) {
+    practiceAreasLayer = new Container();
+    practiceAreasLayer.eventMode = "none";
+    world.addChildAt(practiceAreasLayer, world.getChildIndex(whiteboardDrawingsLayer));
+    practiceAreaHandlesGraphic = new Graphics();
+    practiceAreaHandlesGraphic.eventMode = "none";
+    whiteboardPreviewLayer.addChild(practiceAreaHandlesGraphic);
+  }
   const tacticalDrawingController = createTacticalDrawingController({
     drawingsLayer: whiteboardDrawingsLayer,
     previewGraphic: whiteboardPreviewGraphic,
@@ -1658,7 +1712,207 @@ export async function createTacticalPadLiteSurface(
       whiteboardDrawingCounter += 1;
       return `qb-drawing-${whiteboardDrawingCounter}`;
     },
+    // Stroke-first eraser: a stroke inside a zone is erasable; the zone's
+    // interior is only a fallback target (Tactical Slate, every surface).
+    strokeFirstEraser: true,
+    ...(practiceAreasLayer ? { practiceAreasLayer } : {}),
   });
+
+  // ---- Training Practice Area selection / move / resize -------------------
+  type PracticeAreaGesture = {
+    kind: "move" | "resize";
+    areaId: string;
+    pointerId: number | null;
+    startStagePoint: { x: number; y: number } | null;
+    startRect: PracticeRect;
+    startPointer: { x: number; y: number };
+    corner: PracticeRectCorner | null;
+    hasCrossedThreshold: boolean;
+  };
+  let selectedPracticeAreaId: string | null = null;
+  let practiceAreaGesture: PracticeAreaGesture | null = null;
+  const PRACTICE_AREA_HANDLE_VISIBLE_PX = 7;
+
+  function findPracticeAreaDrawing(id: string | null): TacticalDrawingRecord | null {
+    if (!id) return null;
+    const drawing = tacticalDrawingController.getDrawings().find((entry) => entry.id === id);
+    return drawing && drawing.kind === "rectangle-zone" ? drawing : null;
+  }
+
+  function practiceAreaWorldRects(): Array<{ id: string; rect: PracticeRect }> {
+    const areas: Array<{ id: string; rect: PracticeRect }> = [];
+    for (const drawing of tacticalDrawingController.getDrawings()) {
+      if (drawing.kind !== "rectangle-zone") continue;
+      const rect = practiceRectFromPoints(drawing.points.map((point) => mapper.normalizedToWorld(point)));
+      if (rect) areas.push({ id: drawing.id, rect });
+    }
+    return areas;
+  }
+
+  function canEditPracticeAreas(): boolean {
+    return (
+      practiceAreasEnabled &&
+      activeWhiteboardTool === "move" &&
+      !isFreeDrawCaptureMode &&
+      shapeLockMode === "off" &&
+      !isShapeLinkSelectMode &&
+      !isPossessionPassModeEnabled &&
+      !isPlaybackInputLocked()
+    );
+  }
+
+  function renderPracticeAreaHandles(): void {
+    if (!practiceAreaHandlesGraphic) return;
+    practiceAreaHandlesGraphic.clear();
+    const drawing = findPracticeAreaDrawing(selectedPracticeAreaId);
+    if (!drawing) return;
+    const rect = practiceRectFromPoints(drawing.points.map((point) => mapper.normalizedToWorld(point)));
+    if (!rect) return;
+    const scale = Math.max(0.0001, mapper.transform.scale);
+    const radius = PRACTICE_AREA_HANDLE_VISIBLE_PX / scale;
+    const corners = practiceRectCorners(rect);
+    for (const corner of ["tl", "tr", "bl", "br"] as const) {
+      practiceAreaHandlesGraphic
+        .circle(corners[corner].x, corners[corner].y, radius)
+        .fill({ color: 0xffffff, alpha: 0.96 })
+        .stroke({ color: 0x0f172a, alpha: 0.85, width: 1.5 / scale });
+    }
+  }
+
+  function practiceAreaScreenBounds(drawing: TacticalDrawingRecord): PracticeAreaSelection["screenBounds"] {
+    const canvasElement = app.canvas as HTMLCanvasElement | undefined;
+    if (!canvasElement || typeof canvasElement.getBoundingClientRect !== "function") return null;
+    const canvasRect = canvasElement.getBoundingClientRect();
+    // World -> screen through the world container, so portrait rotation is respected.
+    const screenPoints = drawing.points.map((point) => world.toGlobal(mapper.normalizedToWorld(point)));
+    const box = practiceRectFromPoints(screenPoints);
+    if (!box) return null;
+    return {
+      left: canvasRect.left + box.left,
+      top: canvasRect.top + box.top,
+      right: canvasRect.left + box.right,
+      bottom: canvasRect.top + box.bottom,
+    };
+  }
+
+  function emitPracticeAreaSelection(): void {
+    const drawing = findPracticeAreaDrawing(selectedPracticeAreaId);
+    options.onPracticeAreaSelectionChange?.(
+      drawing
+        ? {
+            id: drawing.id,
+            color: drawing.color,
+            isDeadZone: drawing.zoneStyle === "dead",
+            screenBounds: practiceAreaScreenBounds(drawing),
+          }
+        : null,
+    );
+  }
+
+  function setSelectedPracticeArea(id: string | null): void {
+    if (!practiceAreasEnabled) return;
+    const nextId = findPracticeAreaDrawing(id) ? id : null;
+    if (nextId === selectedPracticeAreaId) return;
+    selectedPracticeAreaId = nextId;
+    practiceAreaGesture = null;
+    tacticalDrawingController.setHighlightedDrawingId(nextId);
+    renderPracticeAreaHandles();
+    emitPracticeAreaSelection();
+  }
+
+  /** Drops the selection if its drawing no longer exists (undo / clear / erase / import). */
+  function syncPracticeAreaSelection(): void {
+    if (selectedPracticeAreaId && !findPracticeAreaDrawing(selectedPracticeAreaId)) {
+      setSelectedPracticeArea(null);
+    }
+  }
+
+  function updateSelectedPracticeArea(patch: (drawing: TacticalDrawingRecord) => TacticalDrawingRecord): void {
+    const drawing = findPracticeAreaDrawing(selectedPracticeAreaId);
+    if (!drawing) return;
+    tacticalDrawingController.updateDrawing(drawing.id, patch(drawing));
+    renderPracticeAreaHandles();
+  }
+
+  /**
+   * Move-mode tap on the board that no player, ball or item claimed.
+   * Selected area: corner handle → resize; inside/outline → move (after the
+   * drag threshold). Otherwise the first tap only selects (or clears).
+   */
+  function handlePracticeAreaPointerDown(event: unknown): void {
+    if (!canEditPracticeAreas()) return;
+    const worldPoint = getBoundedWorldPointFromEvent(event);
+    if (!worldPoint) return;
+    const scale = Math.max(0.0001, mapper.transform.scale);
+    const areas = practiceAreaWorldRects();
+    const selectedArea = areas.find((area) => area.id === selectedPracticeAreaId) ?? null;
+    const selectedDrawing = findPracticeAreaDrawing(selectedPracticeAreaId);
+    const beginGesture = (kind: "move" | "resize", corner: PracticeRectCorner | null) => {
+      const startRect = selectedDrawing ? practiceRectFromPoints(selectedDrawing.points) : null;
+      if (!selectedDrawing || !startRect) return;
+      practiceAreaGesture = {
+        kind,
+        areaId: selectedDrawing.id,
+        pointerId: getPointerIdFromEvent(event),
+        startStagePoint: getStagePointFromEvent(event, app.stage),
+        startRect,
+        startPointer: mapper.worldToNormalized(worldPoint),
+        corner,
+        hasCrossedThreshold: false,
+      };
+    };
+    if (selectedArea) {
+      const corner = findPracticeRectCornerAt(selectedArea.rect, worldPoint, (PRACTICE_AREA_HANDLE_TOUCH_PX * 0.5) / scale);
+      if (corner) {
+        beginGesture("resize", corner);
+        return;
+      }
+    }
+    const hitId = findPracticeAreaAt(areas, worldPoint, PRACTICE_AREA_EDGE_TOUCH_PX / scale);
+    if (hitId && hitId === selectedPracticeAreaId) {
+      beginGesture("move", null);
+      return;
+    }
+    setSelectedPracticeArea(hitId);
+  }
+
+  function updatePracticeAreaGesture(event: unknown): void {
+    const gesture = practiceAreaGesture;
+    if (!gesture) return;
+    const pointerId = getPointerIdFromEvent(event);
+    if (gesture.pointerId != null && pointerId != null && pointerId !== gesture.pointerId) return;
+    if (!gesture.hasCrossedThreshold) {
+      const stagePoint = getStagePointFromEvent(event, app.stage);
+      if (!stagePoint || !gesture.startStagePoint) return;
+      const moved = Math.hypot(stagePoint.x - gesture.startStagePoint.x, stagePoint.y - gesture.startStagePoint.y);
+      if (moved < TACTICAL_ITEM_DRAG_THRESHOLD_PX) return;
+      gesture.hasCrossedThreshold = true;
+    }
+    const worldPoint = getBoundedWorldPointFromEvent(event);
+    if (!worldPoint) return;
+    const pointer = mapper.worldToNormalized(worldPoint);
+    const nextRect =
+      gesture.kind === "resize" && gesture.corner
+        ? resizePracticeRectCorner(gesture.startRect, gesture.corner, pointer)
+        : translatePracticeRect(gesture.startRect, pointer.x - gesture.startPointer.x, pointer.y - gesture.startPointer.y);
+    const drawing = findPracticeAreaDrawing(gesture.areaId);
+    if (!drawing) {
+      practiceAreaGesture = null;
+      return;
+    }
+    tacticalDrawingController.updateDrawing(drawing.id, { ...drawing, points: practiceRectToPoints(nextRect) });
+    renderPracticeAreaHandles();
+  }
+
+  function endPracticeAreaGesture(event: unknown): void {
+    const gesture = practiceAreaGesture;
+    if (!gesture) return;
+    const pointerId = getPointerIdFromEvent(event);
+    if (gesture.pointerId != null && pointerId != null && pointerId !== gesture.pointerId) return;
+    practiceAreaGesture = null;
+    // The area may have moved: let the page re-place its bar.
+    if (gesture.hasCrossedThreshold) emitPracticeAreaSelection();
+  }
   let lastTappedPlayer: { playerId: string; atMs: number } | null = null;
 
   function emitPlaybackStateChange(): void {
@@ -2195,6 +2449,7 @@ export async function createTacticalPadLiteSurface(
     setShapeLinkSelectModeInternal(false);
     releaseActiveDrag();
     clearSelectedItem();
+    setSelectedPracticeArea(null);
     shapeLockMode = mode;
     shapeDragStart = null;
     renderShapeGuideGraphic();
@@ -2382,6 +2637,7 @@ export async function createTacticalPadLiteSurface(
       releaseShapeLock();
       releaseActiveDrag();
       clearSelectedItem();
+      setSelectedPracticeArea(null);
     } else {
       shapeLinkSelectionOrder.length = 0;
       shapeLinkSelectionClosed = false;
@@ -3229,6 +3485,9 @@ export async function createTacticalPadLiteSurface(
   function renderAllWhiteboardDrawings(): void {
     if (!isDrawingEnabledSurface) return;
     tacticalDrawingController.render();
+    renderPracticeAreaHandles();
+    // Resize / rotation moves the area on screen: keep the page's bar placement current.
+    if (selectedPracticeAreaId && !practiceAreaGesture) emitPracticeAreaSelection();
   }
 
   function resetActiveWhiteboardDrawing(): void {
@@ -3553,6 +3812,8 @@ export async function createTacticalPadLiteSurface(
     isFreeDrawCaptureMode = next;
     if (!isFreeDrawCaptureMode) {
       clearFreeDrawDraft();
+    } else {
+      setSelectedPracticeArea(null);
     }
     syncWhiteboardTokenInputMode();
     options.onFreeDrawStateChange?.({ isFreeDrawCaptureMode });
@@ -3626,6 +3887,8 @@ export async function createTacticalPadLiteSurface(
   }
 
   function handlePlay(): void {
+    // Handles never appear in playback or a recorded clip.
+    setSelectedPracticeArea(null);
     releaseActiveDrag();
     clearSelectedItem();
     // Shape Lock guides are editing-only; hide them for the duration of playback.
@@ -4303,6 +4566,7 @@ export async function createTacticalPadLiteSurface(
     upsertTacticalItems(parsedItems);
 
     tacticalDrawingController.importSnapshots(parsedDrawings);
+    syncPracticeAreaSelection();
     const parsedMaxDrawingSerial = parsedDrawings.reduce<number>((maxValue, drawing) => {
       const match = /(\d+)$/.exec(drawing.id);
       const serial = match?.[1] ? Number(match[1]) : Number.NaN;
@@ -4457,6 +4721,10 @@ export async function createTacticalPadLiteSurface(
   syncPlayersToViewport();
 
   function handleStagePointerMove(event: unknown): void {
+    if (practiceAreaGesture) {
+      updatePracticeAreaGesture(event);
+      return;
+    }
     if (isFreeDrawCaptureMode && !isPlaybackInputLocked() && freeDrawCapturePointerId !== null) {
       const pointerId = getPointerIdFromEvent(event);
       if (pointerId == null || pointerId === freeDrawCapturePointerId) {
@@ -4477,6 +4745,10 @@ export async function createTacticalPadLiteSurface(
   }
 
   function handleStagePointerUp(event: unknown): void {
+    if (practiceAreaGesture) {
+      endPracticeAreaGesture(event);
+      return;
+    }
     if (isFreeDrawCaptureMode && !isPlaybackInputLocked()) {
       const pointerId = getPointerIdFromEvent(event);
       if (freeDrawCapturePointerId == null || pointerId == null || pointerId === freeDrawCapturePointerId) {
@@ -4536,6 +4808,9 @@ export async function createTacticalPadLiteSurface(
       if (stagePoint) {
         clearSelectedItem();
       }
+      // Nothing interactive (player, ball, unlocked item) claimed this tap —
+      // only now may a Training Practice Area take it.
+      handlePracticeAreaPointerDown(event);
     }
   });
   whiteboardInputLayer.on("pointerdown", (event) => {
@@ -4697,6 +4972,7 @@ export async function createTacticalPadLiteSurface(
       if (surfaceVariant !== "tactical") return;
       isPossessionPassModeEnabled = Boolean(enabled);
       lastTappedPlayer = null;
+      if (isPossessionPassModeEnabled) setSelectedPracticeArea(null);
     },
     freeBall: detachPrimaryBall,
     deleteTacticalItemById,
@@ -4796,6 +5072,7 @@ export async function createTacticalPadLiteSurface(
       if (tool !== "move") {
         releaseActiveDrag();
         clearSelectedItem();
+        setSelectedPracticeArea(null);
       }
       activeWhiteboardTool = tool;
       tacticalDrawingController.setTool(sanitizeDrawingTool(tool) ?? "move");
@@ -4811,15 +5088,50 @@ export async function createTacticalPadLiteSurface(
     eraseWhiteboardPenStroke: () => {
       if (!isDrawingEnabledSurface) return;
       eraseLastPenStroke();
+      syncPracticeAreaSelection();
     },
     undoWhiteboardStroke: () => {
       if (!isDrawingEnabledSurface) return;
       tacticalDrawingController.undo();
+      syncPracticeAreaSelection();
     },
     clearWhiteboardStrokes: () => {
       if (!isDrawingEnabledSurface) return;
       tacticalDrawingController.clear();
+      syncPracticeAreaSelection();
     },
+    setPracticeAreaColor: (color) => {
+      if (!Number.isFinite(color)) return;
+      updateSelectedPracticeArea((drawing) => ({ ...drawing, color: Math.floor(color) }));
+      emitPracticeAreaSelection();
+    },
+    setPracticeAreaDeadZone: (isDeadZone) => {
+      updateSelectedPracticeArea((drawing) => {
+        const { zoneStyle: _previous, ...rest } = drawing;
+        return isDeadZone ? { ...rest, zoneStyle: "dead" } : rest;
+      });
+      emitPracticeAreaSelection();
+    },
+    duplicatePracticeArea: () => {
+      const drawing = findPracticeAreaDrawing(selectedPracticeAreaId);
+      const rect = drawing ? practiceRectFromPoints(drawing.points) : null;
+      if (!drawing || !rect) return;
+      const copy: TacticalDrawingRecord = {
+        ...drawing,
+        id: tacticalDrawingController.createDrawingId(),
+        points: practiceRectToPoints(duplicatePracticeRect(rect)),
+        createdAt: Date.now(),
+      };
+      tacticalDrawingController.appendDrawing(copy);
+      setSelectedPracticeArea(copy.id);
+    },
+    deletePracticeArea: () => {
+      const id = selectedPracticeAreaId;
+      if (!id) return;
+      setSelectedPracticeArea(null);
+      tacticalDrawingController.removeDrawing(id);
+    },
+    clearPracticeAreaSelection: () => setSelectedPracticeArea(null),
     setBackgroundImage: (dataUrl: string | null) => {
       applyBackgroundImage(dataUrl);
     },
@@ -4832,6 +5144,8 @@ export async function createTacticalPadLiteSurface(
       fitToHost();
     },
     exportImageCanvas: () => {
+      // Handles / selection halo never appear in an exported image.
+      setSelectedPracticeArea(null);
       const rendererWithExtract = app.renderer as typeof app.renderer & {
         extract?: {
           canvas?: (target: unknown) => unknown;

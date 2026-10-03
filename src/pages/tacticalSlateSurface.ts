@@ -88,3 +88,12 @@ export const PLAYER_PRESENTATION_CHOICES: ReadonlyArray<{ value: TacticalPlayerP
   { value: "compact", label: "Compact" },
   { value: "practice", label: "Practice" },
 ];
+
+/**
+ * Training Grass rectangles are Practice Areas: transparent boundaries that
+ * can be selected, moved, resized, duplicated, recoloured, made Dead Zones
+ * and deleted. Pitch and Whiteboard keep today's filled tactical zones.
+ */
+export function surfaceUsesPracticeAreas(surface: TacticalSlateSurface): boolean {
+  return surface === "training";
+}
