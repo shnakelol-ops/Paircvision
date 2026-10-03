@@ -1,6 +1,11 @@
 import type { PitchSport } from "../core/pitch/pitch-config";
 import type { QuickBoardSurface } from "../features/quickboard/storage/quickboard-types";
 import type { TacticalPitchTheme } from "../tactical-lite/pixi/tacticalPitchTheme";
+import type { TacticalSlateInitialRoster } from "../engine/pixi/tacticalSlateDefaultPlayers";
+import {
+  DEFAULT_TRAINING_PLAYER_PRESENTATION,
+  type TacticalPlayerPresentation,
+} from "../engine/pixi/playerPresentation";
 
 /**
  * Tactical Slate work surfaces. All three run the same tactical engine
@@ -54,3 +59,32 @@ export function resolveBoardStorageNamespace(sport: PitchSport, surface: Tactica
   if (surface !== "pitch") parts.push(surface);
   return parts.join(":");
 }
+
+/**
+ * Training Grass opens empty — a practice is built up with the Teams
+ * controls rather than cleared down from the Gaelic XV. Every other surface
+ * keeps the formation exactly as before.
+ */
+export function resolveSurfaceInitialRoster(surface: TacticalSlateSurface): TacticalSlateInitialRoster {
+  return surface === "training" ? "empty" : "formation";
+}
+
+/**
+ * Only Training boards save their player presentation (Normal / Compact /
+ * Practice) and offer Practice; Pitch and Whiteboard keep today's
+ * session-only Player Tokens behaviour and unchanged board payloads.
+ */
+export function surfaceUsesPlayerPresentation(surface: TacticalSlateSurface): boolean {
+  return surface === "training";
+}
+
+/** Presentation a fresh board opens with: Practice on Training, Normal elsewhere (today's default). */
+export function resolveSurfaceDefaultPlayerPresentation(surface: TacticalSlateSurface): TacticalPlayerPresentation {
+  return surfaceUsesPlayerPresentation(surface) ? DEFAULT_TRAINING_PLAYER_PRESENTATION : "normal";
+}
+
+export const PLAYER_PRESENTATION_CHOICES: ReadonlyArray<{ value: TacticalPlayerPresentation; label: string }> = [
+  { value: "normal", label: "Normal" },
+  { value: "compact", label: "Compact" },
+  { value: "practice", label: "Practice" },
+];

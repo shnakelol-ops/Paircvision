@@ -15,6 +15,7 @@ import {
   sanitizeQuickBoardState,
   sanitizeSavedQuickBoard,
   withQuickBoardSurface,
+  withTrainingPresentationDefault,
   type QuickBoardBoardState,
 } from "./quickboard-types";
 import { resolveBoardStorageNamespace } from "../../../pages/tacticalSlateSurface";
@@ -160,5 +161,49 @@ describe("surface storage isolation", () => {
     expect(loadQuickBoardDraft(TRAINING_NS).draft?.boardState.players).toEqual([{ id: "training-draft" }]);
     expect(loadQuickBoardDraft(TRAINING_NS).draft?.boardState.surface).toBe("training");
     expect(loadQuickBoardDraft(WHITEBOARD_NS).draft).toBeNull();
+  });
+});
+
+describe("Training player presentation persistence", () => {
+  it("the strict sanitiser preserves each presentation", () => {
+    for (const playerPresentation of ["normal", "compact", "practice"] as const) {
+      expect(sanitizeQuickBoardState({ ...board("t"), playerPresentation })?.playerPresentation).toBe(playerPresentation);
+    }
+  });
+
+  it("drops missing or invalid presentation values", () => {
+    for (const playerPresentation of [undefined, "Practice", "small", 3, null]) {
+      const sanitized = sanitizeQuickBoardState({ ...board("t"), playerPresentation })!;
+      expect("playerPresentation" in sanitized).toBe(false);
+    }
+  });
+
+  it("a Training board saved as Compact reopens as Compact, through rename and duplicate too", () => {
+    const state = withQuickBoardSurface({ ...board("t"), playerPresentation: "compact" }, "training");
+    const saved = saveBoard({ name: "Rondo", boardState: state }, TRAINING_NS)!;
+    expect(loadBoard(saved.id, TRAINING_NS)?.boardState.playerPresentation).toBe("compact");
+    renameBoard(saved.id, "Rondo 2", TRAINING_NS);
+    expect(loadBoard(saved.id, TRAINING_NS)?.boardState.playerPresentation).toBe("compact");
+    const copy = duplicateBoard(saved.id, TRAINING_NS)!;
+    expect(loadBoard(copy.id, TRAINING_NS)?.boardState.playerPresentation).toBe("compact");
+  });
+
+  it("a recovered Training draft keeps its presentation", () => {
+    saveQuickBoardDraft(withQuickBoardSurface({ ...board("t"), playerPresentation: "normal" }, "training"), TRAINING_NS);
+    expect(loadQuickBoardDraft(TRAINING_NS).draft?.boardState.playerPresentation).toBe("normal");
+  });
+
+  it("a legacy Training board with no presentation is compared as Practice", () => {
+    const legacy = withQuickBoardSurface(board("t"), "training");
+    expect(withTrainingPresentationDefault(legacy, "training").playerPresentation).toBe("practice");
+    const saved = { ...legacy, playerPresentation: "normal" as const };
+    expect(withTrainingPresentationDefault(saved, "training")).toBe(saved);
+  });
+
+  it("Pitch and Whiteboard states are never given a presentation", () => {
+    const pitch = board("p");
+    expect(withTrainingPresentationDefault(pitch, "pitch")).toBe(pitch);
+    const whiteboard = withQuickBoardSurface(board("w"), "whiteboard");
+    expect(withTrainingPresentationDefault(whiteboard, "whiteboard")).toBe(whiteboard);
   });
 });

@@ -175,6 +175,23 @@ export function createTacticalSlateDefaultPlayerSeeds(
 }
 
 /**
+ * What a brand-new board (first launch, New Board, or an imported board with
+ * no players) starts with:
+ *  - "formation" — the canonical roster above (Pitch, Whiteboard, Rugby).
+ *  - "empty"     — no players at all (Training Grass), so a practice is
+ *                  built up from the Teams controls instead of cleared down.
+ */
+export type TacticalSlateInitialRoster = "formation" | "empty";
+
+export function createTacticalSlateInitialPlayerSeeds(
+  sport: PitchSport = "gaelic",
+  roster: TacticalSlateInitialRoster = "formation",
+): TacticalSlateDefaultPlayerSeed[] {
+  if (roster === "empty") return [];
+  return createTacticalSlateDefaultPlayerSeeds(sport);
+}
+
+/**
  * Merge a team's selected jersey numbers into its live roster.
  *
  * A player already on the team (matched by jersey number) keeps their exact

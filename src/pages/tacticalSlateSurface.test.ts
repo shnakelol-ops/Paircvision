@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import type { PitchSport } from "../core/pitch/pitch-config";
 import {
+  PLAYER_PRESENTATION_CHOICES,
   TACTICAL_SLATE_SURFACES,
   TACTICAL_SLATE_SURFACE_LABELS,
   TACTICAL_SLATE_SURFACE_ROUTES,
   resolveBoardStorageNamespace,
+  resolveSurfaceDefaultPlayerPresentation,
+  resolveSurfaceInitialRoster,
   resolveSurfacePitchTheme,
+  surfaceUsesPlayerPresentation,
 } from "./tacticalSlateSurface";
 
 describe("Tactical Slate surfaces — routes and labels", () => {
@@ -74,5 +78,31 @@ describe("resolveBoardStorageNamespace", () => {
       resolveBoardStorageNamespace("rugby", "training"),
     ];
     expect(new Set(namespaces).size).toBe(namespaces.length);
+  });
+});
+
+describe("Training starting roster", () => {
+  it("only Training Grass starts empty; Pitch and Whiteboard keep the formation", () => {
+    expect(resolveSurfaceInitialRoster("training")).toBe("empty");
+    expect(resolveSurfaceInitialRoster("pitch")).toBe("formation");
+    expect(resolveSurfaceInitialRoster("whiteboard")).toBe("formation");
+  });
+});
+
+describe("player presentation by surface", () => {
+  it("only Training offers and saves Normal / Compact / Practice", () => {
+    expect(surfaceUsesPlayerPresentation("training")).toBe(true);
+    expect(surfaceUsesPlayerPresentation("pitch")).toBe(false);
+    expect(surfaceUsesPlayerPresentation("whiteboard")).toBe(false);
+  });
+
+  it("Training defaults to Practice; Pitch and Whiteboard keep today's Normal default", () => {
+    expect(resolveSurfaceDefaultPlayerPresentation("training")).toBe("practice");
+    expect(resolveSurfaceDefaultPlayerPresentation("pitch")).toBe("normal");
+    expect(resolveSurfaceDefaultPlayerPresentation("whiteboard")).toBe("normal");
+  });
+
+  it("offers Normal | Compact | Practice in that order", () => {
+    expect(PLAYER_PRESENTATION_CHOICES.map((choice) => choice.label)).toEqual(["Normal", "Compact", "Practice"]);
   });
 });
