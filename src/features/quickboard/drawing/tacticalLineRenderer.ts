@@ -398,6 +398,93 @@ function drawCircleZone(
     .stroke(borderStyle);
 }
 
+// ---------------------------------------------------------------------------
+// Training Practice Areas (rectangle zones on Training Grass only).
+//
+// A Practice Area is a boundary laid out on grass, not painted territory:
+// outline only, in the coach's chosen colour, with the grass inside left
+// completely untouched (no fill of any kind). A Dead Zone is the one
+// deliberate exception — a subtle charcoal shade + hatch inside a dashed
+// outline, so the grass stays recognisable underneath. Pitch and Whiteboard
+// never take this path: their rectangle zones keep drawRectangleZone above.
+// ---------------------------------------------------------------------------
+const PRACTICE_AREA_STROKE_SCALE = 1.35;
+const PRACTICE_AREA_CORNER_RADIUS = 0.3;
+const DEAD_ZONE_SHADE = { color: 0x1f2933, alpha: 0.12 } as const;
+const DEAD_ZONE_HATCH = { color: 0x111827, alpha: 0.32, width: 0.32, spacing: 2.4 } as const;
+const PRACTICE_AREA_HALO = { color: 0xffffff, alpha: 0.42, extraWidth: 1.4 } as const;
+
+export type TacticalDrawingRenderOptions = {
+  /** Render rectangle zones as Training Practice Areas (outline only / Dead Zone). */
+  practiceArea?: boolean;
+};
+
+export function isPracticeAreaDrawing(drawing: Pick<TacticalDrawingRecord, "kind">): boolean {
+  return drawing.kind === "rectangle-zone";
+}
+
+function drawDeadZoneHatch(graphics: Graphics, bounds: ZoneBounds): void {
+  // 45° lines clipped analytically to the rectangle: a line starting at
+  // (c, bottom) rises to (c + height, top); keep only the part with
+  // left <= x <= right.
+  const { left, right, bottom, height } = bounds;
+  const { spacing } = DEAD_ZONE_HATCH;
+  for (let c = left - height + spacing * 0.5; c < right; c += spacing) {
+    const t0 = Math.max(0, (left - c) / height);
+    const t1 = Math.min(1, (right - c) / height);
+    if (t1 <= t0) continue;
+    graphics.moveTo(c + t0 * height, bottom - t0 * height);
+    graphics.lineTo(c + t1 * height, bottom - t1 * height);
+  }
+  graphics.stroke({
+    color: DEAD_ZONE_HATCH.color,
+    alpha: DEAD_ZONE_HATCH.alpha,
+    width: DEAD_ZONE_HATCH.width,
+    cap: "butt",
+  });
+}
+
+function drawPracticeAreaRectangle(
+  graphics: Graphics,
+  drawing: TacticalDrawingRecord,
+  bounds: ZoneBounds,
+  isSelected: boolean,
+): void {
+  const strokeStyle = createTacticalStrokeStyle(drawing);
+  const outlineStyle = {
+    ...strokeStyle,
+    width: Math.max(0.6, strokeStyle.width * PRACTICE_AREA_STROKE_SCALE),
+    alpha: Math.max(0.85, strokeStyle.alpha),
+  };
+  const { left, top, width, height } = bounds;
+
+  if (isSelected) {
+    graphics.roundRect(left, top, width, height, PRACTICE_AREA_CORNER_RADIUS).stroke({
+      color: PRACTICE_AREA_HALO.color,
+      alpha: PRACTICE_AREA_HALO.alpha,
+      width: outlineStyle.width + PRACTICE_AREA_HALO.extraWidth,
+      join: "round",
+    });
+  }
+
+  if (drawing.zoneStyle === "dead") {
+    graphics.rect(left, top, width, height).fill(DEAD_ZONE_SHADE);
+    drawDeadZoneHatch(graphics, bounds);
+    const outline: WorldPoint[] = [
+      { x: left, y: top },
+      { x: left + width, y: top },
+      { x: left + width, y: top + height },
+      { x: left, y: top + height },
+      { x: left, y: top },
+    ];
+    drawDashedPolyline(graphics, outline, outlineStyle);
+    return;
+  }
+
+  // Normal Practice Area: outline only. No .fill() — the grass inside stays exactly as it is.
+  graphics.roundRect(left, top, width, height, PRACTICE_AREA_CORNER_RADIUS).stroke(outlineStyle);
+}
+
 function sampleWavyPath(path: readonly WorldPoint[], width: number): WorldPoint[] {
   if (path.length < 2) return path.slice();
   const style = getWavyStyle(width);
@@ -517,11 +604,16 @@ export function renderTacticalDrawing(
   drawing: TacticalDrawingRecord,
   mapper: Pick<WorldViewportMapper, "normalizedToWorld">,
   isSelected = false,
+  renderOptions: TacticalDrawingRenderOptions = {},
 ): void {
   if (drawing.kind === "rectangle-zone" || drawing.kind === "circle-zone") {
     const zonePath = toWorldPoints(drawing.points, mapper);
     const zoneBounds = getZoneBounds(zonePath);
     if (!zoneBounds) return;
+    if (renderOptions.practiceArea && isPracticeAreaDrawing(drawing)) {
+      drawPracticeAreaRectangle(graphics, drawing, zoneBounds, isSelected);
+      return;
+    }
     if (drawing.kind === "rectangle-zone") {
       drawRectangleZone(graphics, drawing, zoneBounds, isSelected);
       return;
@@ -613,11 +705,94 @@ function distanceFromPointToPath(point: WorldPoint, path: readonly WorldPoint[])
   return best;
 }
 
+export type DrawingEraserHitOptions = {
+  /**
+   * Stroke-first eraser (Tactical Slate). A zone's interior is only a
+   * fallback target: any stroke — or zone outline — within reach wins first,
+   * so a line drawn inside a zone can be erased without the zone swallowing
+   * the tap. A tap inside a zone with nothing else in reach still erases the
+   * zone (most recently drawn first), exactly as before.
+   */
+  strokeFirst?: boolean;
+  /**
+   * Training: a normal Practice Area's interior is plain grass, so it is
+   * never an eraser target — only its outline is. A Dead Zone's shaded
+   * interior stays a fallback target.
+   */
+  practiceAreas?: boolean;
+};
+
+function distanceFromPointToZoneOutline(
+  point: WorldPoint,
+  bounds: ZoneBounds,
+  kind: "rectangle-zone" | "circle-zone",
+): { distance: number; inside: boolean } {
+  if (kind === "rectangle-zone") {
+    const inside =
+      point.x >= bounds.left && point.x <= bounds.right && point.y >= bounds.top && point.y <= bounds.bottom;
+    if (!inside) return { distance: distanceFromPointToRectangleZone(point, bounds), inside };
+    return {
+      distance: Math.min(point.x - bounds.left, bounds.right - point.x, point.y - bounds.top, bounds.bottom - point.y),
+      inside,
+    };
+  }
+  const outside = distanceFromPointToCircleZone(point, bounds);
+  if (outside > 0) return { distance: outside, inside: false };
+  if (bounds.radiusX <= 1e-4 || bounds.radiusY <= 1e-4) return { distance: 0, inside: true };
+  const normalized = Math.hypot(
+    (point.x - bounds.centerX) / bounds.radiusX,
+    (point.y - bounds.centerY) / bounds.radiusY,
+  );
+  return { distance: (1 - normalized) * Math.min(bounds.radiusX, bounds.radiusY), inside: true };
+}
+
+function findStrokeFirstDrawingId(
+  drawings: readonly TacticalDrawingRecord[],
+  worldPoint: WorldPoint,
+  mapper: Pick<WorldViewportMapper, "normalizedToWorld">,
+  practiceAreas: boolean,
+): string | null {
+  let bestId: string | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  let fallbackId: string | null = null;
+  for (let index = drawings.length - 1; index >= 0; index -= 1) {
+    const drawing = drawings[index]!;
+    if (drawing.kind === "rectangle-zone" || drawing.kind === "circle-zone") {
+      const zoneBounds = getZoneBounds(toWorldPoints(drawing.points, mapper));
+      if (!zoneBounds) continue;
+      const hitRadius = Math.max(2.4, getDeleteHitRadius(drawing.width));
+      const { distance: outlineDistance, inside } = distanceFromPointToZoneOutline(worldPoint, zoneBounds, drawing.kind);
+      if (outlineDistance <= hitRadius) {
+        if (outlineDistance < bestDistance) {
+          bestDistance = outlineDistance;
+          bestId = drawing.id;
+        }
+        continue;
+      }
+      const interiorIsGrass = practiceAreas && isPracticeAreaDrawing(drawing) && drawing.zoneStyle !== "dead";
+      if (inside && !interiorIsGrass && fallbackId == null) {
+        fallbackId = drawing.id;
+      }
+      continue;
+    }
+    const candidateDistance = distanceFromPointToPath(worldPoint, getDrawingPathWorld(drawing, mapper));
+    if (candidateDistance <= getDeleteHitRadius(drawing.width) && candidateDistance < bestDistance) {
+      bestDistance = candidateDistance;
+      bestId = drawing.id;
+    }
+  }
+  return bestId ?? fallbackId;
+}
+
 export function findClosestDrawingIdAtWorldPoint(
   drawings: readonly TacticalDrawingRecord[],
   worldPoint: WorldPoint,
   mapper: Pick<WorldViewportMapper, "normalizedToWorld">,
+  hitOptions: DrawingEraserHitOptions = {},
 ): string | null {
+  if (hitOptions.strokeFirst) {
+    return findStrokeFirstDrawingId(drawings, worldPoint, mapper, hitOptions.practiceAreas === true);
+  }
   let bestId: string | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (let index = drawings.length - 1; index >= 0; index -= 1) {

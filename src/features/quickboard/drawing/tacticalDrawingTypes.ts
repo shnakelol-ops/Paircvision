@@ -37,6 +37,11 @@ export type TacticalDrawingRecord = {
   width: number;
   opacity: number;
   createdAt: number;
+  /**
+   * Training Practice Areas only: "dead" marks a rectangle as a Dead Zone.
+   * Absent on every other drawing (and never written by Pitch/Whiteboard).
+   */
+  zoneStyle?: "dead";
 };
 
 export type TacticalDrawingSnapshot = TacticalDrawingRecord;
@@ -246,6 +251,7 @@ function sanitizeNormalizedSnapshot(input: unknown): TacticalDrawingSnapshot | n
     width: sanitizeWidth(input.width),
     opacity: sanitizeOpacity(input.opacity),
     createdAt: sanitizeCreatedAt(input.createdAt),
+    ...(kind === "rectangle-zone" && input.zoneStyle === "dead" ? { zoneStyle: "dead" as const } : {}),
   };
 }
 
