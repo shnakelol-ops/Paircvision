@@ -217,6 +217,7 @@ const DEFAULT_DRAW_TOOL_LABELS: TacticalDrawToolLabels = {
   circleZone: "Circle Zone",
   eraser: "Eraser",
 };
+export const PRACTICE_AREA_DRAW_TOOL_LABEL = "Practice Area";
 // Order the Draw tool grid has always rendered in: Move, then Label
 // (inserted second, see buildTacticalDrawToolOptions below), then the nine
 // drawing tools in this exact sequence.
@@ -246,8 +247,14 @@ export function buildTacticalDrawToolOptions(params: {
   textToolActive: boolean;
   onSelectTool: (tool: WhiteboardToolControl) => void;
   onSelectLabel: () => void;
+  /**
+   * Training Grass: the rectangle tool is the coach-facing "Practice Area"
+   * and Circle Zone is not offered (circle Practice Areas are deferred).
+   * Off by default, so Pitch and Whiteboard keep Rect Zone / Circle Zone.
+   */
+  practiceAreas?: boolean;
 }): DrawToolPanelOption[] {
-  const { labels, tacticalTool, textToolActive, onSelectTool, onSelectLabel } = params;
+  const { labels, tacticalTool, textToolActive, onSelectTool, onSelectLabel, practiceAreas = false } = params;
   const options: DrawToolPanelOption[] = [
     {
       id: "move",
@@ -263,9 +270,10 @@ export function buildTacticalDrawToolOptions(params: {
     },
   ];
   for (const id of TACTICAL_DRAW_TOOL_ORDER) {
+    if (practiceAreas && id === "circleZone") continue;
     options.push({
       id,
-      label: labels[id],
+      label: practiceAreas && id === "rectangleZone" ? PRACTICE_AREA_DRAW_TOOL_LABEL : labels[id],
       active: tacticalTool === id,
       onSelect: () => onSelectTool(id),
     });
@@ -2103,9 +2111,16 @@ const PRACTICE_AREA_BAR_ROW_STYLE: CSSProperties = {
   alignItems: "center",
 };
 
+const PRACTICE_AREA_BAR_CAPTION_STYLE: CSSProperties = {
+  fontSize: "12px",
+  fontWeight: 600,
+  color: "rgba(203, 213, 225, 0.85)",
+  marginRight: "2px",
+};
+
 const PRACTICE_AREA_SWATCH_BUTTON_STYLE: CSSProperties = {
-  width: "32px",
-  height: "32px",
+  width: "36px",
+  height: "36px",
   borderRadius: "999px",
   border: "1px solid rgba(130, 150, 170, 0.4)",
   background: "rgba(15, 23, 42, 0.52)",
@@ -5123,6 +5138,7 @@ export default function TacticalPadLiteClean({
               {practiceAreaSelection.isDeadZone ? "Dead Zone" : "Practice Area"}
             </div>
             <div style={PRACTICE_AREA_BAR_ROW_STYLE}>
+              <span style={PRACTICE_AREA_BAR_CAPTION_STYLE}>Colour</span>
               {WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => (
                 <button
                   key={`practice-area-color-${choice.label.toLowerCase()}`}
@@ -5151,7 +5167,7 @@ export default function TacticalPadLiteClean({
                 style={SHAPE_LOCK_BUTTON_STYLE}
                 onClick={() => surfaceRef.current?.setPracticeAreaDeadZone(!practiceAreaSelection.isDeadZone)}
               >
-                {practiceAreaSelection.isDeadZone ? "Normal" : "Dead Zone"}
+                {practiceAreaSelection.isDeadZone ? "Normal Area" : "Dead Zone"}
               </button>
               <button
                 type="button"
@@ -5670,6 +5686,7 @@ export default function TacticalPadLiteClean({
                         textToolActive,
                         onSelectTool: applyTacticalToolFromMenu,
                         onSelectLabel: activateTextTool,
+                        practiceAreas: surfaceUsesPracticeAreas(slateSurface),
                       })}
                       colors={buildTacticalDrawColorOptions({
                         activeColor: activeTacticalPenColor,
@@ -5859,6 +5876,7 @@ export default function TacticalPadLiteClean({
                   textToolActive,
                   onSelectTool: applyTacticalToolFromMenu,
                   onSelectLabel: activateTextTool,
+                  practiceAreas: surfaceUsesPracticeAreas(slateSurface),
                 })}
                 colors={buildTacticalDrawColorOptions({
                   activeColor: activeTacticalPenColor,

@@ -1731,7 +1731,7 @@ export async function createTacticalPadLiteSurface(
   };
   let selectedPracticeAreaId: string | null = null;
   let practiceAreaGesture: PracticeAreaGesture | null = null;
-  const PRACTICE_AREA_HANDLE_VISIBLE_PX = 7;
+  const PRACTICE_AREA_HANDLE_VISIBLE_PX = 10;
 
   function findPracticeAreaDrawing(id: string | null): TacticalDrawingRecord | null {
     if (!id) return null;

@@ -212,3 +212,36 @@ describe("buildTacticalDrawColorOptions — colour palette parity", () => {
     expect(onSelectColor).toHaveBeenCalledWith(0xfacc15);
   });
 });
+
+describe("buildTacticalDrawToolOptions — Training Practice Areas", () => {
+  const build = (practiceAreas: boolean | undefined, labels: typeof DEFAULT_LABELS | typeof COMPACT_LANDSCAPE_LABELS = DEFAULT_LABELS) =>
+    buildTacticalDrawToolOptions({
+      labels,
+      tacticalTool: "rectangleZone",
+      textToolActive: false,
+      onSelectTool: vi.fn(),
+      onSelectLabel: vi.fn(),
+      ...(practiceAreas === undefined ? {} : { practiceAreas }),
+    });
+
+  it("Training shows Practice Area in place of Rect Zone and offers no Circle Zone, in both layouts", () => {
+    for (const labels of [DEFAULT_LABELS, COMPACT_LANDSCAPE_LABELS]) {
+      const options = build(true, labels);
+      expect(options.map((o) => o.label)).toContain("Practice Area");
+      expect(options.map((o) => o.label)).not.toContain("Rect Zone");
+      expect(options.map((o) => o.id)).not.toContain("circleZone");
+      const area = options.find((o) => o.id === "rectangleZone");
+      expect(area?.label).toBe("Practice Area");
+      expect(area?.active).toBe(true);
+    }
+  });
+
+  it("Pitch and Whiteboard (practiceAreas off or omitted) keep Rect Zone and Circle Zone exactly", () => {
+    for (const flag of [false, undefined]) {
+      const options = build(flag);
+      expect(options.map((o) => o.label)).toEqual([
+        "Move", "Label", "Plain", "Straight", "Curved", "Dashed", "Wavy", "Free Pen", "Rect Zone", "Circle Zone", "Eraser",
+      ]);
+    }
+  });
+});
