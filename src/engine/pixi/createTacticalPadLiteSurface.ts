@@ -34,6 +34,7 @@ import {
   duplicatePracticeRect,
   findPracticeAreaAt,
   findPracticeRectCornerAt,
+  isPointOnPracticeRect,
   practiceRectCorners,
   practiceRectFromPoints,
   practiceRectToPoints,
@@ -1868,7 +1869,14 @@ export async function createTacticalPadLiteSurface(
         return;
       }
     }
-    const hitId = findPracticeAreaAt(areas, worldPoint, PRACTICE_AREA_EDGE_TOUCH_PX / scale);
+    const edgeTolerance = PRACTICE_AREA_EDGE_TOUCH_PX / scale;
+    // The selected area keeps the gesture wherever it is touched, even where it
+    // overlaps another area (e.g. a fresh Duplicate sitting on its original).
+    if (selectedArea && isPointOnPracticeRect(selectedArea.rect, worldPoint, edgeTolerance)) {
+      beginGesture("move", null);
+      return;
+    }
+    const hitId = findPracticeAreaAt(areas, worldPoint, edgeTolerance);
     if (hitId && hitId === selectedPracticeAreaId) {
       beginGesture("move", null);
       return;

@@ -6,6 +6,7 @@ import {
   duplicatePracticeRect,
   findPracticeAreaAt,
   findPracticeRectCornerAt,
+  isPointOnPracticeRect,
   practiceRectFromPoints,
   practiceRectToPoints,
   resizePracticeRectCorner,
@@ -108,5 +109,11 @@ describe("hit testing", () => {
   it("an outline within tolerance beats a containing interior", () => {
     expect(findPracticeAreaAt([small, big], { x: 99.5, y: 50 }, 1)).toBe("big");
     expect(findPracticeAreaAt([big, small], { x: 40.5, y: 50 }, 1)).toBe("small");
+  });
+
+  it("a point inside or on the outline of a rectangle is on it, so a selected duplicate keeps its drag over the original", () => {
+    expect(isPointOnPracticeRect(rect, { x: 35, y: 45 }, 1)).toBe(true);
+    expect(isPointOnPracticeRect(rect, { x: 50.5, y: 45 }, 1)).toBe(true);
+    expect(isPointOnPracticeRect(rect, { x: 52, y: 45 }, 1)).toBe(false);
   });
 });

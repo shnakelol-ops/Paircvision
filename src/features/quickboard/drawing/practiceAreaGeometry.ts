@@ -140,6 +140,11 @@ export function distanceToPracticeRectEdge(rect: PracticeRect, point: Point): nu
   return Math.hypot(dx, dy);
 }
 
+/** True when `point` is inside the rectangle or within `edgeTolerance` of its outline. */
+export function isPointOnPracticeRect(rect: PracticeRect, point: Point, edgeTolerance: number): boolean {
+  return containsPoint(rect, point) || distanceToPracticeRectEdge(rect, point) <= edgeTolerance;
+}
+
 /**
  * Which Practice Area a tap at `point` (world space) belongs to.
  * Deterministic for overlapping areas:
