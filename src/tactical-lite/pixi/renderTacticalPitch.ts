@@ -4,7 +4,12 @@ import { getPitchConfig, type PitchMarking, type PitchSport } from "../../core/p
 import { BOARD_PITCH_VIEWBOX } from "../../core/pitch/pitch-space";
 import { buildGaaGoalMarkings } from "../../tactics/pitch/gaa-goal-markings";
 import { buildRugbyPostMarkings } from "../../tactics/pitch/rugby-post-markings";
-import { resolveTacticalPitchThemeLayers, trainingGrassBands, type TacticalPitchTheme } from "./tacticalPitchTheme";
+import {
+  markingAlignedGrassBands,
+  resolveTacticalPitchThemeLayers,
+  trainingGrassBands,
+  type TacticalPitchTheme,
+} from "./tacticalPitchTheme";
 
 /**
  * Goal/post overlay selection — explicit per sport rather than a soccer/
@@ -397,12 +402,16 @@ export function createTacticalPitchVisualRoot(
       alpha: 1,
     });
     face.addChild(whiteboardFace);
-  } else if (layers.face === "trainingBands") {
-    // Training Grass and Gaelic Pitch B: flat mown bands only — none of the
-    // turf wash, stripe texture, grain, vignette or centre lift below.
+  } else if (layers.face === "trainingBands" || layers.face === "markingBands") {
+    // Training Grass (even bands) and Gaelic Pitch B (bands edged on the
+    // transverse pitch lines): flat mown bands only — none of the turf wash,
+    // stripe texture, grain, vignette or centre lift below.
     const bands = new Graphics();
     bands.zIndex = 0;
-    for (const band of trainingGrassBands(vbW)) {
+    const { markings, inner } = getPitchConfig(sport);
+    const bandList =
+      layers.face === "markingBands" ? markingAlignedGrassBands(vbW, markings, inner.h) : trainingGrassBands(vbW);
+    for (const band of bandList) {
       // A hair of overlap so no seam shows between neighbouring bands.
       bands.rect(band.x, 0, band.width + 0.01, vbH).fill({ color: band.color, alpha: 1 });
     }
