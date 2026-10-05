@@ -4,13 +4,13 @@ import { normalizedToWorld } from "../shared/coordinates";
 import { DIRECTIONAL_PASS_ANCHOR_RADIUS_WORLD } from "./createTacticalPadLiteSurface";
 import {
   computeDirectionalPassAnchors,
-  computeDirectionalPassBallWorldPosition,
+  computeDirectionalPassBallFrame,
   DIRECTIONAL_PASS_FALLBACK_DISTANCE_WORLD,
-  DIRECTIONAL_PASS_MAX_TRANSITION_FRACTION,
   DIRECTIONAL_PASS_MIN_FLIGHT_GAP_WORLD,
-  DIRECTIONAL_PASS_TRANSITION_MS,
+  DIRECTIONAL_PASS_TRANSITION_FRACTION,
+  isDirectionalPassInTransition,
   resolveDirectionalPassParticipants,
-  resolveDirectionalPassTransitionFraction,
+  type DirectionalPassBallFrame,
   type DirectionalPassWorldPoint,
 } from "./directionalPassAnchors";
 import { getPlaybackEaseProgress } from "./routeFollowInterpolation";
@@ -21,20 +21,18 @@ const R = DIRECTIONAL_PASS_ANCHOR_RADIUS_WORLD;
 // carried ball's upper-right spot used everywhere away from the pitch edge.
 const CARRIED_OFFSET = { x: 4.0, y: -3.2 };
 const PASSER = { x: 80, y: 50 };
-// A typical 1× phase segment (PHASE_SEGMENT_BASE_DURATION_MS).
-const SEGMENT_MS = 1200;
-const WINDOW = resolveDirectionalPassTransitionFraction(SEGMENT_MS);
+const WINDOW = DIRECTIONAL_PASS_TRANSITION_FRACTION;
 
 function carried(centre: DirectionalPassWorldPoint): DirectionalPassWorldPoint {
   return { x: centre.x + CARRIED_OFFSET.x, y: centre.y + CARRIED_OFFSET.y };
 }
 
-function ballAt(
+function frameAt(
   passerCentre: DirectionalPassWorldPoint,
   receiverCentre: DirectionalPassWorldPoint,
   progress: number,
-): DirectionalPassWorldPoint {
-  return computeDirectionalPassBallWorldPosition({
+): DirectionalPassBallFrame {
+  return computeDirectionalPassBallFrame({
     passerCentre,
     receiverCentre,
     passerCarried: carried(passerCentre),
@@ -43,8 +41,15 @@ function ballAt(
     progress,
     easedProgress: getPlaybackEaseProgress(progress),
     worldSize: WORLD,
-    transitionFraction: WINDOW,
   });
+}
+
+function ballAt(
+  passerCentre: DirectionalPassWorldPoint,
+  receiverCentre: DirectionalPassWorldPoint,
+  progress: number,
+): DirectionalPassWorldPoint {
+  return frameAt(passerCentre, receiverCentre, progress).position;
 }
 
 function dist(a: DirectionalPassWorldPoint, b: DirectionalPassWorldPoint): number {
@@ -107,28 +112,81 @@ describe("directional anchors — every direction", () => {
       expect(dist(ballAt(PASSER, receiver, 1 - 1e-6), carried(receiver))).toBeLessThan(1e-3);
     });
 
-    it(`${name}: release/receive swings stay outside the token and never jump`, () => {
+    it(`${name}: no jumps, and the ball renders beneath the players exactly during the transitions`, () => {
       const receiver = { x: PASSER.x + dx * 30, y: PASSER.y + dy * 30 };
       let previous = ballAt(PASSER, receiver, 0);
       const steps = 4000;
       for (let i = 1; i <= steps; i += 1) {
         const p = i / steps;
-        const ball = ballAt(PASSER, receiver, p);
+        const frame = frameAt(PASSER, receiver, p);
         // Fine sampling: no per-sample step anywhere near a teleport.
-        expect(dist(ball, previous)).toBeLessThan(0.25);
-        if (p <= WINDOW) {
-          // Never cuts through the passer token (carried ball already sits at ~R).
-          expect(dist(ball, PASSER)).toBeGreaterThan(R * 0.9);
-        }
-        if (p >= 1 - WINDOW) {
-          expect(dist(ball, receiver)).toBeGreaterThan(R * 0.9);
-        }
-        previous = ball;
+        expect(dist(frame.position, previous)).toBeLessThan(0.25);
+        const inTransition = p > 0 && p < 1 && (p < WINDOW || p > 1 - WINDOW);
+        expect(frame.occludedByPlayers).toBe(inTransition);
+        previous = frame.position;
       }
+      expect(frameAt(PASSER, receiver, 0).occludedByPlayers).toBe(false);
+      expect(frameAt(PASSER, receiver, 1).occludedByPlayers).toBe(false);
+    });
+
+    it(`${name}: the release/receive legs are direct, never an orbit round the token`, () => {
+      const receiver = { x: PASSER.x + dx * 30, y: PASSER.y + dy * 30 };
+      const anchors = computeDirectionalPassAnchors({ passerCentre: PASSER, receiverCentre: receiver, anchorRadius: R })!;
+      // Path length travelled during each window is (within the small
+      // concurrent flight advance) the straight carried ↔ edge distance —
+      // a perimeter swing for an opposite-side pass would be ~1.5× longer.
+      const pathLength = (from: number, to: number) => {
+        let length = 0;
+        let prev = ballAt(PASSER, receiver, from);
+        for (let i = 1; i <= 400; i += 1) {
+          const next = ballAt(PASSER, receiver, from + ((to - from) * i) / 400);
+          length += dist(prev, next);
+          prev = next;
+        }
+        return length;
+      };
+      const flightLength = dist(anchors.release, anchors.receive);
+      const flightAdvance = flightLength * getPlaybackEaseProgress(WINDOW);
+      expect(pathLength(0, WINDOW)).toBeLessThanOrEqual(dist(carried(PASSER), anchors.release) + flightAdvance + 1e-6);
+      expect(pathLength(1 - WINDOW, 1)).toBeLessThanOrEqual(
+        dist(anchors.receive, carried(receiver)) + (flightLength - flightLength * getPlaybackEaseProgress(1 - WINDOW)) + 1e-6,
+      );
     });
   }
 
-  it("the release swing is finished by the end of the release window", () => {
+  it("an opposite-side (backward) release goes in behind the passer, hidden by the token, then out the passing side", () => {
+    // Carried spot is upper-right; a down-left pass is ~174° away from it.
+    const receiver = { x: PASSER.x - 21, y: PASSER.y + 21 };
+    const VISION_V3_TOKEN_RADIUS = 3.28 * 1.06;
+    let closest = Infinity;
+    for (let i = 1; i < 200; i += 1) {
+      const frame = frameAt(PASSER, receiver, (WINDOW * i) / 200);
+      const d = dist(frame.position, PASSER);
+      closest = Math.min(closest, d);
+      // Whenever the ball is inside the token's footprint it is beneath the players.
+      if (d < VISION_V3_TOKEN_RADIUS) expect(frame.occludedByPlayers).toBe(true);
+    }
+    // The straight leg runs close to the token centre: the token hides the turn.
+    expect(closest).toBeLessThan(1.5);
+  });
+
+  it("an opposite-side receive comes in on the incoming edge and tucks behind the receiver to its carry spot", () => {
+    // Pass travels up-right into the receiver: incoming edge is lower-left,
+    // the receiver's carried spot is upper-right — the leg crosses under the token.
+    const receiver = { x: PASSER.x + 21, y: PASSER.y - 21 };
+    const anchors = computeDirectionalPassAnchors({ passerCentre: PASSER, receiverCentre: receiver, anchorRadius: R })!;
+    expect(anchors.receive.x).toBeLessThan(receiver.x);
+    expect(anchors.receive.y).toBeGreaterThan(receiver.y);
+    let closest = Infinity;
+    for (let i = 1; i < 200; i += 1) {
+      const frame = frameAt(PASSER, receiver, 1 - (WINDOW * i) / 200);
+      closest = Math.min(closest, dist(frame.position, receiver));
+      expect(frame.occludedByPlayers).toBe(true);
+    }
+    expect(closest).toBeLessThan(1.5);
+  });
+
+  it("the release transition is finished by the end of the release window", () => {
     // Backward (down) pass: carried spot is upper-right, release is straight down.
     const receiver = { x: PASSER.x, y: PASSER.y + 30 };
     const anchors = computeDirectionalPassAnchors({ passerCentre: PASSER, receiverCentre: receiver, anchorRadius: R })!;
@@ -145,25 +203,33 @@ describe("directional anchors — every direction", () => {
 });
 
 describe("release/receive window", () => {
-  it("is a fixed real-time flick, independent of playback speed", () => {
-    // 1× and 0.25× of the same 1200ms pass: the swing lasts the same real time.
-    const at1x = resolveDirectionalPassTransitionFraction(1200);
-    const atQuarter = resolveDirectionalPassTransitionFraction(1200 / 0.25);
-    expect(at1x * 1200).toBeCloseTo(DIRECTIONAL_PASS_TRANSITION_MS, 9);
-    expect(atQuarter * 4800).toBeCloseTo(DIRECTIONAL_PASS_TRANSITION_MS, 9);
+  it("is a share of progress, so it slows down with playback speed (0.25× = 4× longer)", () => {
+    // Same pass at 1× and 0.25×: the transition covers the same share of
+    // progress, i.e. four times the real time at quarter speed.
+    const at1xMs = WINDOW * 1200;
+    const atQuarterMs = WINDOW * (1200 / 0.25);
+    expect(atQuarterMs / at1xMs).toBeCloseTo(4, 9);
+    const receiver = { x: PASSER.x - 21, y: PASSER.y + 21 };
+    // Halfway through the release window: identical position at either speed.
+    expect(ballAt(PASSER, receiver, WINDOW / 2)).toEqual(ballAt(PASSER, receiver, (0.5 * WINDOW * 4800) / 4800));
   });
 
-  it("never exceeds the maximum share of a pass, even for very fast passes", () => {
-    for (const ms of [1, 100, 400, 600, 800]) {
-      expect(resolveDirectionalPassTransitionFraction(ms)).toBeLessThanOrEqual(DIRECTIONAL_PASS_MAX_TRANSITION_FRACTION);
-    }
-    expect(resolveDirectionalPassTransitionFraction(0)).toBe(DIRECTIONAL_PASS_MAX_TRANSITION_FRACTION);
-    expect(resolveDirectionalPassTransitionFraction(Number.NaN)).toBe(DIRECTIONAL_PASS_MAX_TRANSITION_FRACTION);
+  it("is a conservative share of the pass", () => {
+    expect(WINDOW).toBeGreaterThan(0);
+    expect(WINDOW).toBeLessThanOrEqual(0.15);
   });
 
-  it("is short enough to read as a release, not an orbit", () => {
-    expect(DIRECTIONAL_PASS_TRANSITION_MS).toBeLessThanOrEqual(120);
-    expect(DIRECTIONAL_PASS_MAX_TRANSITION_FRACTION).toBeLessThanOrEqual(0.1);
+  it("isDirectionalPassInTransition: true strictly inside either window, false at both ends and mid-flight", () => {
+    expect(isDirectionalPassInTransition(0)).toBe(false);
+    expect(isDirectionalPassInTransition(1)).toBe(false);
+    expect(isDirectionalPassInTransition(0.5)).toBe(false);
+    expect(isDirectionalPassInTransition(WINDOW / 2)).toBe(true);
+    expect(isDirectionalPassInTransition(1 - WINDOW / 2)).toBe(true);
+    expect(isDirectionalPassInTransition(WINDOW + 1e-6)).toBe(false);
+    expect(isDirectionalPassInTransition(1 - WINDOW - 1e-6)).toBe(false);
+    expect(isDirectionalPassInTransition(-1)).toBe(false);
+    expect(isDirectionalPassInTransition(2)).toBe(false);
+    expect(isDirectionalPassInTransition(Number.NaN)).toBe(false);
   });
 });
 
@@ -233,7 +299,10 @@ describe("short passes", () => {
         const eased = getPlaybackEaseProgress(p);
         const from = carried(PASSER);
         const to = carried(receiver);
-        const ball = ballAt(PASSER, receiver, p);
+        const frame = frameAt(PASSER, receiver, p);
+        const ball = frame.position;
+        // Legacy flight: never rendered beneath the players.
+        expect(frame.occludedByPlayers).toBe(false);
         expect(ball.x).toBeCloseTo(from.x + (to.x - from.x) * eased, 12);
         expect(ball.y).toBeCloseTo(from.y + (to.y - from.y) * eased, 12);
       }
@@ -249,7 +318,7 @@ describe("touchline / clamping", () => {
     const receiver = { x: 90, y: 0.5 };
     for (let i = 0; i <= 500; i += 1) {
       const p = i / 500;
-      const ball = computeDirectionalPassBallWorldPosition({
+      const ball = computeDirectionalPassBallFrame({
         passerCentre: passer,
         receiverCentre: receiver,
         passerCarried: { x: passer.x + 4, y: passer.y + 3.2 },
@@ -258,8 +327,7 @@ describe("touchline / clamping", () => {
         progress: p,
         easedProgress: getPlaybackEaseProgress(p),
         worldSize: WORLD,
-        transitionFraction: WINDOW,
-      });
+      }).position;
       expect(ball.y).toBeGreaterThanOrEqual(0);
       expect(ball.y).toBeLessThanOrEqual(WORLD.height);
       expect(ball.x).toBeGreaterThanOrEqual(0);
@@ -398,7 +466,7 @@ describe("resolveDirectionalPassParticipants — which ball transitions are play
     const world = (p: { x: number; y: number }) => normalizedToWorld(p, WORLD);
     const ball = (s: typeof s0) => world({ x: s.football[0]!.x, y: s.football[0]!.y });
     const run = (from: typeof s0, to: typeof s0, participants: typeof first, p: number) =>
-      computeDirectionalPassBallWorldPosition({
+      computeDirectionalPassBallFrame({
         passerCentre: world(participants.passerCentre),
         receiverCentre: world(participants.receiverCentre),
         passerCarried: ball(from),
@@ -407,8 +475,7 @@ describe("resolveDirectionalPassParticipants — which ball transitions are play
         progress: p,
         easedProgress: getPlaybackEaseProgress(p),
         worldSize: WORLD,
-        transitionFraction: WINDOW,
-      });
+      }).position;
     // Segment 1 ends exactly where segment 2 begins: B's carried point.
     expect(run(s0, s1, first, 1)).toEqual(ball(s1));
     expect(run(s1, s2, second, 0)).toEqual(ball(s1));

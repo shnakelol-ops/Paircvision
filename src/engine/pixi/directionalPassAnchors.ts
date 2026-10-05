@@ -11,9 +11,16 @@
  * ball(1) = receiver's carried point) and only changes what happens in
  * between:
  *
- *   carry → short swing to the passer's perimeter facing the receiver
- *         → the existing straight flight, perimeter to perimeter
- *         → short swing from the receiver's incoming side to its carry point
+ *   carry → inward, behind the passer → out at the passer's edge facing
+ *   the receiver → the existing straight flight, edge to edge → in at the
+ *   receiver's incoming edge → behind the receiver → carry
+ *
+ * The inward legs are straight lines between the carried point and the
+ * directional edge. For a pass to the side opposite the carried spot that
+ * line runs under the token, so the caller renders the ball beneath the
+ * player layer during those legs (see isDirectionalPassInTransition): the
+ * token itself hides the ball's turn, instead of the ball visibly orbiting
+ * the token.
  *
  * Everything happens inside the existing pass duration and is a pure
  * function of segment progress, so pause/resume, playback speed, Reset Play
@@ -27,32 +34,14 @@ export type DirectionalPassWorldPoint = { x: number; y: number };
 export type DirectionalPassWorldSize = { width: number; height: number };
 
 /**
- * Real (on-screen) duration of each of the release and receive swings, in
- * milliseconds. Deliberately short and deliberately NOT scaled by playback
- * speed: the intended read is "the ball leaves from the correct side of the
- * player", never "the ball orbits the player before the pass" — and a swing
- * that slowed down with 0.25× playback (up to ~180° round the token for a
- * pass to the side opposite the carried spot) would read exactly as an
- * orbit. Tune from real-device acceptance; changing it alters nothing but
- * how quickly the ball reaches the perimeter anchor.
+ * Share of the pass's linear progress spent on each of the release (start)
+ * and receive (end) transitions. A share of progress, so it slows with
+ * playback speed exactly like the rest of the pass: 0.25× shows a genuine
+ * slow-motion turn. Conservative initial value — tune from device
+ * acceptance; it changes nothing but how long the ball spends moving
+ * between its carried spot and the directional edge.
  */
-export const DIRECTIONAL_PASS_TRANSITION_MS = 80;
-
-/**
- * Upper bound on each swing as a share of the pass's linear progress, so
- * the swings stay a small part of even the shortest/fastest pass.
- */
-export const DIRECTIONAL_PASS_MAX_TRANSITION_FRACTION = 0.1;
-
-/**
- * Share of the pass's linear progress spent on each of the release and
- * receive swings for a pass segment lasting `segmentDurationMs` of real
- * time (already divided by the playback speed multiplier).
- */
-export function resolveDirectionalPassTransitionFraction(segmentDurationMs: number): number {
-  if (!Number.isFinite(segmentDurationMs) || segmentDurationMs <= 0) return DIRECTIONAL_PASS_MAX_TRANSITION_FRACTION;
-  return Math.min(DIRECTIONAL_PASS_MAX_TRANSITION_FRACTION, DIRECTIONAL_PASS_TRANSITION_MS / segmentDurationMs);
-}
+export const DIRECTIONAL_PASS_TRANSITION_FRACTION = 0.1;
 
 /**
  * Minimum straight perimeter-to-perimeter flight kept between the release
@@ -85,39 +74,13 @@ function clampToWorld(point: DirectionalPassWorldPoint, worldSize: DirectionalPa
   };
 }
 
-/**
- * Point between `from` and `to` around `centre`, interpolated in polar
- * coordinates (angle the short way round, radius linearly). Keeps a swing on
- * or near the token's perimeter instead of cutting through the token. The
- * exact-180° tie goes anticlockwise in screen space (negative delta), which
- * is deterministic.
- */
-function swingAroundCentre(
-  centre: DirectionalPassWorldPoint,
+function lerpPoint(
   from: DirectionalPassWorldPoint,
   to: DirectionalPassWorldPoint,
   weight: number,
 ): DirectionalPassWorldPoint {
   const w = clamp01(weight);
-  if (w <= 0) return { x: from.x, y: from.y };
-  if (w >= 1) return { x: to.x, y: to.y };
-  const fromDx = from.x - centre.x;
-  const fromDy = from.y - centre.y;
-  const toDx = to.x - centre.x;
-  const toDy = to.y - centre.y;
-  const fromRadius = Math.hypot(fromDx, fromDy);
-  const toRadius = Math.hypot(toDx, toDy);
-  if (fromRadius <= 1e-9 || toRadius <= 1e-9) {
-    return { x: from.x + (to.x - from.x) * w, y: from.y + (to.y - from.y) * w };
-  }
-  const fromAngle = Math.atan2(fromDy, fromDx);
-  let delta = Math.atan2(toDy, toDx) - fromAngle;
-  while (delta > Math.PI) delta -= 2 * Math.PI;
-  while (delta <= -Math.PI) delta += 2 * Math.PI;
-  if (Math.abs(delta - Math.PI) < 1e-9) delta = -Math.PI;
-  const angle = fromAngle + delta * w;
-  const radius = fromRadius + (toRadius - fromRadius) * w;
-  return { x: centre.x + Math.cos(angle) * radius, y: centre.y + Math.sin(angle) * radius };
+  return { x: from.x + (to.x - from.x) * w, y: from.y + (to.y - from.y) * w };
 }
 
 export type DirectionalPassAnchors = {
@@ -164,21 +127,47 @@ export function computeDirectionalPassAnchors(params: {
 }
 
 /**
- * The ball's world position during a player-to-player pass.
+ * Whether `progress` falls strictly inside the release or receive
+ * transition of a pass. The ball is exactly on its carried point at
+ * progress 0 and 1, so both ends are outside — the ball is always back in
+ * its normal render state at a pass's boundaries.
+ */
+export function isDirectionalPassInTransition(
+  progress: number,
+  transitionFraction: number = DIRECTIONAL_PASS_TRANSITION_FRACTION,
+): boolean {
+  if (!Number.isFinite(progress) || progress <= 0 || progress >= 1) return false;
+  const window = Math.max(0, Math.min(0.5, transitionFraction));
+  return progress < window || progress > 1 - window;
+}
+
+export type DirectionalPassBallFrame = {
+  position: DirectionalPassWorldPoint;
+  /**
+   * True while the ball is moving between a carried spot and a directional
+   * edge — render it beneath the player tokens so the passer/receiver
+   * occludes it. False everywhere else, including both ends of the pass.
+   */
+  occludedByPlayers: boolean;
+};
+
+/**
+ * The ball's world position (and render occlusion) during a
+ * player-to-player pass.
  *
  * - `progress` is the segment's linear elapsed/duration ratio — it times the
- *   release/receive swings (each lasts `transitionFraction` of the pass).
+ *   release/receive transitions.
  * - `easedProgress` is the existing flight easing value the legacy lerp
  *   already used — the flight's timing curve is unchanged.
  *
- * ball = lerp(origin, destination, easedProgress), where origin swings from
- * the passer's carried point to the release anchor during the first window
- * and destination swings from the receive anchor to the receiver's carried
- * point during the last. Exactly `passerCarried` at progress 0 and exactly
- * `receiverCarried` at progress 1; identical to the legacy straight lerp
- * when no anchors apply.
+ * ball = lerp(origin, destination, easedProgress), where origin moves in a
+ * straight line from the passer's carried point to the release edge during
+ * the first window and destination moves from the receive edge to the
+ * receiver's carried point during the last. Exactly `passerCarried` at
+ * progress 0 and exactly `receiverCarried` at progress 1; identical to the
+ * legacy straight lerp (and never occluded) when no anchors apply.
  */
-export function computeDirectionalPassBallWorldPosition(params: {
+export function computeDirectionalPassBallFrame(params: {
   passerCentre: DirectionalPassWorldPoint;
   receiverCentre: DirectionalPassWorldPoint;
   passerCarried: DirectionalPassWorldPoint;
@@ -187,14 +176,13 @@ export function computeDirectionalPassBallWorldPosition(params: {
   progress: number;
   easedProgress: number;
   worldSize: DirectionalPassWorldSize;
-  /** Share of progress per swing — see resolveDirectionalPassTransitionFraction. */
-  transitionFraction: number;
-}): DirectionalPassWorldPoint {
+  transitionFraction?: number;
+}): DirectionalPassBallFrame {
   const { passerCentre, receiverCentre, passerCarried, receiverCarried, worldSize } = params;
   const progress = clamp01(params.progress);
   const eased = clamp01(params.easedProgress);
-  if (progress <= 0) return { x: passerCarried.x, y: passerCarried.y };
-  if (progress >= 1) return { x: receiverCarried.x, y: receiverCarried.y };
+  if (progress <= 0) return { position: { x: passerCarried.x, y: passerCarried.y }, occludedByPlayers: false };
+  if (progress >= 1) return { position: { x: receiverCarried.x, y: receiverCarried.y }, occludedByPlayers: false };
 
   const anchors = computeDirectionalPassAnchors({
     passerCentre,
@@ -202,27 +190,23 @@ export function computeDirectionalPassBallWorldPosition(params: {
     anchorRadius: params.anchorRadius,
   });
   if (!anchors) {
-    return clampToWorld(
-      {
-        x: passerCarried.x + (receiverCarried.x - passerCarried.x) * eased,
-        y: passerCarried.y + (receiverCarried.y - passerCarried.y) * eased,
-      },
-      worldSize,
-    );
+    return { position: clampToWorld(lerpPoint(passerCarried, receiverCarried, eased), worldSize), occludedByPlayers: false };
   }
 
-  const window = Math.max(1e-6, Math.min(0.5, params.transitionFraction));
+  const transitionFraction = params.transitionFraction ?? DIRECTIONAL_PASS_TRANSITION_FRACTION;
+  const window = Math.max(1e-6, Math.min(0.5, transitionFraction));
   const releaseWeight = smoothstep01(progress / window);
   const receiveWeight = 1 - smoothstep01((progress - (1 - window)) / window);
-  const origin = swingAroundCentre(passerCentre, passerCarried, anchors.release, releaseWeight * anchors.strength);
-  const destination = swingAroundCentre(receiverCentre, receiverCarried, anchors.receive, receiveWeight * anchors.strength);
-  return clampToWorld(
-    {
-      x: origin.x + (destination.x - origin.x) * eased,
-      y: origin.y + (destination.y - origin.y) * eased,
-    },
-    worldSize,
-  );
+  // Short passes fade the directional anchors in (strength < 1) by pulling
+  // them back toward the carried points.
+  const release = lerpPoint(passerCarried, anchors.release, anchors.strength);
+  const receive = lerpPoint(receiverCarried, anchors.receive, anchors.strength);
+  const origin = lerpPoint(passerCarried, release, releaseWeight);
+  const destination = lerpPoint(receiverCarried, receive, receiveWeight);
+  return {
+    position: clampToWorld(lerpPoint(origin, destination, eased), worldSize),
+    occludedByPlayers: isDirectionalPassInTransition(progress, transitionFraction),
+  };
 }
 
 type DirectionalPassSnapshotPlayer = { id: string; x: number; y: number };
