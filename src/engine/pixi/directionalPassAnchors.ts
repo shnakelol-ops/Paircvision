@@ -18,9 +18,9 @@
  * Each leg adapts to how far the ball has to turn round its player (the
  * angle at the player's centre between the carried spot and the edge):
  *
- * - a small turn takes the short direct way along the token's perimeter —
+ * - a small turn (up to 75°) takes the short direct way along the token's perimeter —
  *   no detour toward the centre, never beneath the token;
- * - a large or opposite turn takes the straight line in behind the token
+ * - a large or opposite turn (135° and beyond) takes the straight line in behind the token
  *   and out the other side, rendered beneath the player layer so the token
  *   itself hides the turn instead of the ball visibly orbiting the token;
  * - in between, the two paths blend continuously (no visual step at any
@@ -51,14 +51,14 @@ export const DIRECTIONAL_PASS_TRANSITION_FRACTION = 0.1;
  * Turn angle (at the player's centre) up to which a release/receive leg
  * stays entirely on the perimeter — the short direct move.
  */
-export const DIRECTIONAL_PASS_PERIMETER_MAX_TURN_RADIANS = Math.PI / 3;
+export const DIRECTIONAL_PASS_PERIMETER_MAX_TURN_RADIANS = (75 * Math.PI) / 180;
 
 /**
  * Turn angle from which a leg is the full inward line behind the token.
  * Between this and DIRECTIONAL_PASS_PERIMETER_MAX_TURN_RADIANS the two
  * paths blend smoothly.
  */
-export const DIRECTIONAL_PASS_INWARD_MIN_TURN_RADIANS = (2 * Math.PI) / 3;
+export const DIRECTIONAL_PASS_INWARD_MIN_TURN_RADIANS = (135 * Math.PI) / 180;
 
 /**
  * A leg renders beneath the player tokens only if its path actually dips

@@ -229,12 +229,12 @@ describe("adaptive release/receive legs (by turn angle at the player)", () => {
   const receiveWindowFrames = (passer: DirectionalPassWorldPoint) =>
     Array.from({ length: 199 }, (_, i) => frameAt(passer, RECEIVER, 1 - (WINDOW * (i + 1)) / 200));
 
-  it("blend: pure perimeter up to 60°, pure inward line from 120°, smooth in between", () => {
+  it("blend: pure perimeter up to 75°, pure inward line from 135°, smooth in between", () => {
     expect(resolveDirectionalPassInwardBlend(0)).toBe(0);
-    expect(resolveDirectionalPassInwardBlend(60 * DEG)).toBe(0);
-    expect(resolveDirectionalPassInwardBlend(-60 * DEG)).toBe(0);
-    expect(resolveDirectionalPassInwardBlend(90 * DEG)).toBeCloseTo(0.5, 9);
-    expect(resolveDirectionalPassInwardBlend(120 * DEG)).toBe(1);
+    expect(resolveDirectionalPassInwardBlend(75 * DEG)).toBeCloseTo(0, 12);
+    expect(resolveDirectionalPassInwardBlend(-75 * DEG)).toBeCloseTo(0, 12);
+    expect(resolveDirectionalPassInwardBlend(105 * DEG)).toBeCloseTo(0.5, 9);
+    expect(resolveDirectionalPassInwardBlend(135 * DEG)).toBeCloseTo(1, 12);
     expect(resolveDirectionalPassInwardBlend(Math.PI)).toBe(1);
     for (let deg = 0; deg < 180; deg += 0.25) {
       const step = Math.abs(resolveDirectionalPassInwardBlend((deg + 0.25) * DEG) - resolveDirectionalPassInwardBlend(deg * DEG));
@@ -266,18 +266,22 @@ describe("adaptive release/receive legs (by turn angle at the player)", () => {
     });
   }
 
-  it("90° lateral: halfway blend — stays outside the token's core, eases slightly inside the perimeter", () => {
-    const receiver = receiverForReleaseTurn(90 * DEG);
-    const leg = resolveDirectionalPassLeg(
-      PASSER,
-      carried(PASSER),
-      computeDirectionalPassAnchors({ passerCentre: PASSER, receiverCentre: receiver, anchorRadius: R })!.release,
-    );
-    expect(leg.inwardBlend).toBeCloseTo(0.5, 6);
-    const minRadius = Math.min(...releaseWindowFrames(receiver).map((f) => dist(f.position, PASSER)));
-    expect(minRadius).toBeGreaterThan(R * Math.cos(Math.PI / 4) - 1e-6); // never deeper than the pure inward line
-    expect(minRadius).toBeLessThan(R);
-  });
+  for (const turnDeg of [90, -90]) {
+    it(`${turnDeg}° lateral: mostly a perimeter roll — stays near the edge, not beneath the token`, () => {
+      const receiver = receiverForReleaseTurn(turnDeg * DEG);
+      const leg = resolveDirectionalPassLeg(
+        PASSER,
+        carried(PASSER),
+        computeDirectionalPassAnchors({ passerCentre: PASSER, receiverCentre: receiver, anchorRadius: R })!.release,
+      );
+      expect(leg.inwardBlend).toBeLessThan(0.2);
+      expect(leg.occluded).toBe(false);
+      const frames = releaseWindowFrames(receiver);
+      expect(frames.every((f) => !f.occludedByPlayers)).toBe(true);
+      const minRadius = Math.min(...frames.map((f) => dist(f.position, PASSER)));
+      expect(minRadius).toBeGreaterThan(R - 0.5);
+    });
+  }
 
   for (const [label, turnDeg] of [["back diagonal (135°)", 135], ["opposite (180°)", 180], ["opposite (−170°)", -170]] as const) {
     it(`release ${label}: goes in behind the passer, beneath the token`, () => {
