@@ -56,6 +56,7 @@ function board(label: string): QuickBoardBoardState {
 }
 
 const PITCH_NS = resolveBoardStorageNamespace("gaelic", "pitch");
+const PITCH_B_NS = resolveBoardStorageNamespace("gaelic", "pitchB");
 const TRAINING_NS = resolveBoardStorageNamespace("gaelic", "training");
 const WHITEBOARD_NS = resolveBoardStorageNamespace("gaelic", "whiteboard");
 
@@ -71,6 +72,20 @@ describe("board surface metadata", () => {
     expect(withQuickBoardSurface(state, "training").surface).toBe("training");
     expect(withQuickBoardSurface(state, "whiteboard").surface).toBe("whiteboard");
     expect("surface" in state).toBe(false);
+  });
+
+  it("stamps Gaelic Pitch B boards and the strict sanitiser keeps the stamp", () => {
+    const state = board("b");
+    expect(withQuickBoardSurface(state, "pitchB").surface).toBe("pitchB");
+    expect("surface" in state).toBe(false);
+    expect(sanitizeQuickBoardState({ ...board("b"), surface: "pitchB" })?.surface).toBe("pitchB");
+  });
+
+  it("a board with no surface metadata still reads as the original Gaelic Pitch (nothing is migrated)", () => {
+    const sanitized = sanitizeQuickBoardState(board("legacy"));
+    expect(sanitized).not.toBeNull();
+    expect("surface" in sanitized!).toBe(false);
+    expect(sanitizeQuickBoardState({ ...board("odd"), surface: "pitch" })?.surface).toBeUndefined();
   });
 
   it("the strict sanitiser preserves training/whiteboard metadata", () => {
@@ -146,6 +161,21 @@ describe("surface storage isolation", () => {
 
     const copy = duplicateBoard(saved.id, TRAINING_NS)!;
     expect(loadBoard(copy.id, TRAINING_NS)?.boardState.surface).toBe("training");
+  });
+
+  it("Gaelic Pitch B boards and drafts live under :pitchB, never the Gaelic Pitch keys, and reopen as Pitch B", () => {
+    saveBoard({ name: "Gaelic", boardState: board("p") }, PITCH_NS);
+    const saved = saveBoard({ name: "Kickout", boardState: withQuickBoardSurface(board("b"), "pitchB") }, PITCH_B_NS)!;
+    saveQuickBoardDraft(withQuickBoardSurface(board("b-draft"), "pitchB"), PITCH_B_NS);
+
+    expect(JSON.parse(memoryStorage.getItem(`${QUICKBOARD_STORAGE_KEY}:pitchB`)!)).toHaveLength(1);
+    expect(memoryStorage.getItem(`${QUICKBOARD_ACTIVE_DRAFT_STORAGE_KEY}:pitchB`)).not.toBeNull();
+    expect(loadAllBoards(PITCH_NS).map((b) => b.name)).toEqual(["Gaelic"]);
+    expect("surface" in loadAllBoards(PITCH_NS)[0]!.boardState).toBe(false);
+    expect(loadAllBoards(PITCH_B_NS).map((b) => b.name)).toEqual(["Kickout"]);
+    expect(loadBoard(saved.id, PITCH_B_NS)?.boardState.surface).toBe("pitchB");
+    expect(loadQuickBoardDraft(PITCH_NS).draft).toBeNull();
+    expect(loadQuickBoardDraft(PITCH_B_NS).draft?.boardState.surface).toBe("pitchB");
   });
 
   it("Whiteboard save -> reopen keeps its surface metadata", () => {

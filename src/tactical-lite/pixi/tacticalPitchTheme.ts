@@ -10,10 +10,12 @@
  *  - "grass"      — Training Grass: a flat, stylised mown surface of broad
  *                   alternating bands (TRAINING_GRASS_BANDS), with no pitch
  *                   markings and no goals/posts.
+ *  - "gaelicBands" — Gaelic Pitch B: the Training Grass mown bands with the
+ *                   full Gaelic markings, goals and glass.
  *  - "whiteboard" — the existing whiteboard face (dark-ink markings on an
  *                   off-white board), unchanged from the dormant legacy mode.
  */
-export type TacticalPitchTheme = "default" | "grass" | "whiteboard";
+export type TacticalPitchTheme = "default" | "gaelicBands" | "grass" | "whiteboard";
 
 export type TacticalPitchThemeLayers = {
   /** Which face fill is painted under everything else. */
@@ -30,6 +32,8 @@ export function resolveTacticalPitchThemeLayers(theme: TacticalPitchTheme = "def
   switch (theme) {
     case "whiteboard":
       return { face: "whiteboard", markings: true, goals: true, glass: false };
+    case "gaelicBands":
+      return { face: "trainingBands", markings: true, goals: true, glass: true };
     case "grass":
       return { face: "trainingBands", markings: false, goals: false, glass: true };
     case "default":

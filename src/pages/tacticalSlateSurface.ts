@@ -8,11 +8,14 @@ import {
 } from "../engine/pixi/playerPresentation";
 
 /**
- * Tactical Slate work surfaces. All three run the same tactical engine
+ * Tactical Slate work surfaces. All of them run the same tactical engine
  * (surfaceVariant "tactical"); a surface only chooses the pitch visuals and
  * which isolated board library/draft the page reads and writes.
  *
  *  - "pitch"      — the public Gaelic Pitch at /vision-board (the default).
+ *  - "pitchB"     — Gaelic Pitch B: the same Gaelic markings and goals on the
+ *                   Training Grass mown bands. An optional second look; the
+ *                   Gaelic Pitch itself is unchanged.
  *  - "training"   — Training Grass: the same turf without markings or goals.
  *  - "whiteboard" — the existing whiteboard renderer theme. This is NOT the
  *                   dormant legacy Whiteboard mode (PadMode "whiteboard"),
@@ -20,22 +23,26 @@ import {
  */
 export type TacticalSlateSurface = QuickBoardSurface;
 
-export const TACTICAL_SLATE_SURFACES: readonly TacticalSlateSurface[] = ["pitch", "training", "whiteboard"];
+export const TACTICAL_SLATE_SURFACES: readonly TacticalSlateSurface[] = ["pitch", "pitchB", "training", "whiteboard"];
 
 export const TACTICAL_SLATE_SURFACE_ROUTES: Readonly<Record<TacticalSlateSurface, string>> = {
   pitch: "/vision-board",
+  pitchB: "/vision-board/pitch-b",
   training: "/vision-board/training",
   whiteboard: "/vision-board/whiteboard",
 };
 
 export const TACTICAL_SLATE_SURFACE_LABELS: Readonly<Record<TacticalSlateSurface, string>> = {
   pitch: "Gaelic Pitch",
+  pitchB: "Gaelic Pitch B",
   training: "Training Grass",
   whiteboard: "Whiteboard",
 };
 
 export function resolveSurfacePitchTheme(surface: TacticalSlateSurface): TacticalPitchTheme {
   switch (surface) {
+    case "pitchB":
+      return "gaelicBands";
     case "training":
       return "grass";
     case "whiteboard":

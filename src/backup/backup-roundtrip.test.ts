@@ -55,6 +55,7 @@ describe("full round trip: populate -> backup -> clear -> restore -> compare", (
       proTaggerMatches: JSON.stringify([{ id: "pt1", homeTeamName: "Na Fianna" }]),
       rapidCaptureMatches: JSON.stringify([{ id: "rc1", session: { forTeamName: "Ballyboden" } }]),
       quickboardBoards: JSON.stringify([{ id: "b1", name: "Kickout press" }]),
+      quickboardPitchBBoards: JSON.stringify([{ id: "pb1", name: "Kickout shape", boardState: { surface: "pitchB" } }]),
       quickboardTrainingBoards: JSON.stringify([{ id: "tb1", name: "Rondo 4v2", boardState: { surface: "training" } }]),
       quickboardWhiteboardBoards: JSON.stringify([{ id: "wb1", name: "Kickout sketch", boardState: { surface: "whiteboard" } }]),
       quickboardRugbyBoards: JSON.stringify([{ id: "rb1", name: "Lineout" }]),

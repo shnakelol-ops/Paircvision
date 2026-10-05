@@ -73,6 +73,7 @@ describe("registered storage keys match their real owning module (exported const
 
 describe("registered storage keys match their real owning module (round-tripped through the real save function)", () => {
   it.each([
+    ["quickboardPitchBBoards", resolveBoardStorageNamespace("gaelic", "pitchB")],
     ["quickboardTrainingBoards", resolveBoardStorageNamespace("gaelic", "training")],
     ["quickboardWhiteboardBoards", resolveBoardStorageNamespace("gaelic", "whiteboard")],
     ["quickboardRugbyBoards", resolveBoardStorageNamespace("rugby", "pitch")],

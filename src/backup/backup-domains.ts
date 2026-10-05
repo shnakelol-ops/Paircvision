@@ -90,6 +90,13 @@ export const BACKUP_DOMAINS: readonly BackupDomainDescriptor[] = [
   // base quickboardBoards entry above never covered. Their autosave drafts
   // stay excluded, exactly like the GAA draft.
   {
+    id: "quickboardPitchBBoards",
+    label: "Tactical Slate Gaelic Pitch B boards",
+    storageKey: "pitchflow_quickboard_boards_v1:pitchB",
+    kind: "json-array",
+    noun: ["board", "boards"],
+  },
+  {
     id: "quickboardTrainingBoards",
     label: "Tactical Slate Training Grass boards",
     storageKey: "pitchflow_quickboard_boards_v1:training",
