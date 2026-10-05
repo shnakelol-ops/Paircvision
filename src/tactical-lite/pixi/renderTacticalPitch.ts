@@ -4,7 +4,7 @@ import { getPitchConfig, type PitchMarking, type PitchSport } from "../../core/p
 import { BOARD_PITCH_VIEWBOX } from "../../core/pitch/pitch-space";
 import { buildGaaGoalMarkings } from "../../tactics/pitch/gaa-goal-markings";
 import { buildRugbyPostMarkings } from "../../tactics/pitch/rugby-post-markings";
-import { resolveTacticalPitchThemeLayers, type TacticalPitchTheme } from "./tacticalPitchTheme";
+import { resolveTacticalPitchThemeLayers, trainingGrassBands, type TacticalPitchTheme } from "./tacticalPitchTheme";
 
 /**
  * Goal/post overlay selection — explicit per sport rather than a soccer/
@@ -397,6 +397,16 @@ export function createTacticalPitchVisualRoot(
       alpha: 1,
     });
     face.addChild(whiteboardFace);
+  } else if (layers.face === "trainingBands") {
+    // Training Grass: flat mown bands only — none of the turf wash, stripe
+    // texture, grain, vignette or centre lift below.
+    const bands = new Graphics();
+    bands.zIndex = 0;
+    for (const band of trainingGrassBands(vbW)) {
+      // A hair of overlap so no seam shows between neighbouring bands.
+      bands.rect(band.x, 0, band.width + 0.01, vbH).fill({ color: band.color, alpha: 1 });
+    }
+    face.addChild(bands);
   } else {
     const washTex = bakeTurfWashTexture(sport);
     disposers.push(() => washTex.destroy());
@@ -510,8 +520,8 @@ export function createTacticalPitchVisualRoot(
     }
   }
 
-  // Training Grass ("grass") keeps the identical turf but omits every
-  // pitch line marking; see tacticalPitchTheme.ts.
+  // Training Grass ("grass") omits every pitch line marking; see
+  // tacticalPitchTheme.ts.
   if (layers.markings) {
     const markingsGraphics = new Graphics();
     markingsGraphics.zIndex = 4;
