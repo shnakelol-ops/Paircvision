@@ -11,16 +11,20 @@
  * ball(1) = receiver's carried point) and only changes what happens in
  * between:
  *
- *   carry → inward, behind the passer → out at the passer's edge facing
- *   the receiver → the existing straight flight, edge to edge → in at the
- *   receiver's incoming edge → behind the receiver → carry
+ *   carry → [release leg] → passer's edge facing the receiver → the
+ *   existing straight flight, edge to edge → receiver's incoming edge →
+ *   [receive leg] → carry
  *
- * The inward legs are straight lines between the carried point and the
- * directional edge. For a pass to the side opposite the carried spot that
- * line runs under the token, so the caller renders the ball beneath the
- * player layer during those legs (see isDirectionalPassInTransition): the
- * token itself hides the ball's turn, instead of the ball visibly orbiting
- * the token.
+ * Each leg adapts to how far the ball has to turn round its player (the
+ * angle at the player's centre between the carried spot and the edge):
+ *
+ * - a small turn takes the short direct way along the token's perimeter —
+ *   no detour toward the centre, never beneath the token;
+ * - a large or opposite turn takes the straight line in behind the token
+ *   and out the other side, rendered beneath the player layer so the token
+ *   itself hides the turn instead of the ball visibly orbiting the token;
+ * - in between, the two paths blend continuously (no visual step at any
+ *   angle).
  *
  * Everything happens inside the existing pass duration and is a pure
  * function of segment progress, so pause/resume, playback speed, Reset Play
@@ -42,6 +46,26 @@ export type DirectionalPassWorldSize = { width: number; height: number };
  * between its carried spot and the directional edge.
  */
 export const DIRECTIONAL_PASS_TRANSITION_FRACTION = 0.1;
+
+/**
+ * Turn angle (at the player's centre) up to which a release/receive leg
+ * stays entirely on the perimeter — the short direct move.
+ */
+export const DIRECTIONAL_PASS_PERIMETER_MAX_TURN_RADIANS = Math.PI / 3;
+
+/**
+ * Turn angle from which a leg is the full inward line behind the token.
+ * Between this and DIRECTIONAL_PASS_PERIMETER_MAX_TURN_RADIANS the two
+ * paths blend smoothly.
+ */
+export const DIRECTIONAL_PASS_INWARD_MIN_TURN_RADIANS = (2 * Math.PI) / 3;
+
+/**
+ * A leg renders beneath the player tokens only if its path actually dips
+ * this far (world units) inside the radius it starts/ends at — i.e. when
+ * the ball genuinely goes in behind the token, not for a perimeter move.
+ */
+export const DIRECTIONAL_PASS_OCCLUSION_DEPTH_WORLD = 0.75;
 
 /**
  * Minimum straight perimeter-to-perimeter flight kept between the release
@@ -81,6 +105,85 @@ function lerpPoint(
 ): DirectionalPassWorldPoint {
   const w = clamp01(weight);
   return { x: from.x + (to.x - from.x) * w, y: from.y + (to.y - from.y) * w };
+}
+
+/** Signed shortest angle from `from` to `to` around `centre`, in (−π, π]. */
+function turnAngle(
+  centre: DirectionalPassWorldPoint,
+  from: DirectionalPassWorldPoint,
+  to: DirectionalPassWorldPoint,
+): number {
+  let delta =
+    Math.atan2(to.y - centre.y, to.x - centre.x) - Math.atan2(from.y - centre.y, from.x - centre.x);
+  while (delta > Math.PI) delta -= 2 * Math.PI;
+  while (delta <= -Math.PI) delta += 2 * Math.PI;
+  return delta;
+}
+
+/**
+ * A release/receive leg around one player: from `from` to `to` (both near
+ * the token perimeter). Small turns follow the perimeter (angle and radius
+ * interpolated); large turns take the straight line in behind the token;
+ * the two blend smoothly in between.
+ */
+export type DirectionalPassLeg = {
+  centre: DirectionalPassWorldPoint;
+  from: DirectionalPassWorldPoint;
+  to: DirectionalPassWorldPoint;
+  /** Signed turn at the centre, (−π, π]. */
+  turn: number;
+  /** 0 = pure perimeter move, 1 = pure inward line. */
+  inwardBlend: number;
+  /** True when the path goes in behind the token (render beneath players). */
+  occluded: boolean;
+};
+
+export function resolveDirectionalPassInwardBlend(turnRadians: number): number {
+  const turn = Math.abs(turnRadians);
+  const span = DIRECTIONAL_PASS_INWARD_MIN_TURN_RADIANS - DIRECTIONAL_PASS_PERIMETER_MAX_TURN_RADIANS;
+  return smoothstep01((turn - DIRECTIONAL_PASS_PERIMETER_MAX_TURN_RADIANS) / span);
+}
+
+export function sampleDirectionalPassLeg(leg: DirectionalPassLeg, weight: number): DirectionalPassWorldPoint {
+  const w = clamp01(weight);
+  if (w <= 0) return { x: leg.from.x, y: leg.from.y };
+  if (w >= 1) return { x: leg.to.x, y: leg.to.y };
+  const inward = lerpPoint(leg.from, leg.to, w);
+  if (leg.inwardBlend >= 1) return inward;
+  const fromRadius = Math.hypot(leg.from.x - leg.centre.x, leg.from.y - leg.centre.y);
+  const toRadius = Math.hypot(leg.to.x - leg.centre.x, leg.to.y - leg.centre.y);
+  if (fromRadius <= 1e-9 || toRadius <= 1e-9) return inward;
+  const angle = Math.atan2(leg.from.y - leg.centre.y, leg.from.x - leg.centre.x) + leg.turn * w;
+  const radius = fromRadius + (toRadius - fromRadius) * w;
+  const perimeter = { x: leg.centre.x + Math.cos(angle) * radius, y: leg.centre.y + Math.sin(angle) * radius };
+  return lerpPoint(perimeter, inward, leg.inwardBlend);
+}
+
+export function resolveDirectionalPassLeg(
+  centre: DirectionalPassWorldPoint,
+  from: DirectionalPassWorldPoint,
+  to: DirectionalPassWorldPoint,
+): DirectionalPassLeg {
+  const turn = turnAngle(centre, from, to);
+  const leg: DirectionalPassLeg = {
+    centre,
+    from,
+    to,
+    turn,
+    inwardBlend: resolveDirectionalPassInwardBlend(turn),
+    occluded: false,
+  };
+  // Occlude only when the path genuinely goes in behind the token: its
+  // midpoint (the deepest point of either path shape) sits clearly inside
+  // the radius the leg starts and ends at.
+  const mid = sampleDirectionalPassLeg(leg, 0.5);
+  const midRadius = Math.hypot(mid.x - centre.x, mid.y - centre.y);
+  const endRadius = Math.min(
+    Math.hypot(from.x - centre.x, from.y - centre.y),
+    Math.hypot(to.x - centre.x, to.y - centre.y),
+  );
+  leg.occluded = midRadius < endRadius - DIRECTIONAL_PASS_OCCLUSION_DEPTH_WORLD;
+  return leg;
 }
 
 export type DirectionalPassAnchors = {
@@ -144,9 +247,10 @@ export function isDirectionalPassInTransition(
 export type DirectionalPassBallFrame = {
   position: DirectionalPassWorldPoint;
   /**
-   * True while the ball is moving between a carried spot and a directional
-   * edge — render it beneath the player tokens so the passer/receiver
-   * occludes it. False everywhere else, including both ends of the pass.
+   * True only while the ball is on a release/receive leg that goes in
+   * behind the token (a large turn) — render it beneath the player tokens
+   * so the passer/receiver occludes it. False for perimeter legs, mid-flight
+   * and at both ends of the pass.
    */
   occludedByPlayers: boolean;
 };
@@ -160,10 +264,10 @@ export type DirectionalPassBallFrame = {
  * - `easedProgress` is the existing flight easing value the legacy lerp
  *   already used — the flight's timing curve is unchanged.
  *
- * ball = lerp(origin, destination, easedProgress), where origin moves in a
- * straight line from the passer's carried point to the release edge during
- * the first window and destination moves from the receive edge to the
- * receiver's carried point during the last. Exactly `passerCarried` at
+ * ball = lerp(origin, destination, easedProgress), where origin follows the
+ * release leg (passer's carried point → release edge) during the first
+ * window and destination follows the receive leg (receive edge →
+ * receiver's carried point) during the last — see resolveDirectionalPassLeg. Exactly `passerCarried` at
  * progress 0 and exactly `receiverCarried` at progress 1; identical to the
  * legacy straight lerp (and never occluded) when no anchors apply.
  */
@@ -201,11 +305,17 @@ export function computeDirectionalPassBallFrame(params: {
   // them back toward the carried points.
   const release = lerpPoint(passerCarried, anchors.release, anchors.strength);
   const receive = lerpPoint(receiverCarried, anchors.receive, anchors.strength);
-  const origin = lerpPoint(passerCarried, release, releaseWeight);
-  const destination = lerpPoint(receiverCarried, receive, receiveWeight);
+  const releaseLeg = resolveDirectionalPassLeg(passerCentre, passerCarried, release);
+  // Walked backwards in time: at receiveWeight 1 the ball is on the receive
+  // edge, at 0 on the receiver's carried point.
+  const receiveLeg = resolveDirectionalPassLeg(receiverCentre, receiverCarried, receive);
+  const origin = sampleDirectionalPassLeg(releaseLeg, releaseWeight);
+  const destination = sampleDirectionalPassLeg(receiveLeg, receiveWeight);
+  const inTransition = isDirectionalPassInTransition(progress, transitionFraction);
+  const inReleaseWindow = inTransition && progress < 0.5;
   return {
     position: clampToWorld(lerpPoint(origin, destination, eased), worldSize),
-    occludedByPlayers: isDirectionalPassInTransition(progress, transitionFraction),
+    occludedByPlayers: inTransition && (inReleaseWindow ? releaseLeg.occluded : receiveLeg.occluded),
   };
 }
 

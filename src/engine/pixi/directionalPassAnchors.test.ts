@@ -9,6 +9,8 @@ import {
   DIRECTIONAL_PASS_MIN_FLIGHT_GAP_WORLD,
   DIRECTIONAL_PASS_TRANSITION_FRACTION,
   isDirectionalPassInTransition,
+  resolveDirectionalPassInwardBlend,
+  resolveDirectionalPassLeg,
   resolveDirectionalPassParticipants,
   type DirectionalPassBallFrame,
   type DirectionalPassWorldPoint,
@@ -112,7 +114,7 @@ describe("directional anchors — every direction", () => {
       expect(dist(ballAt(PASSER, receiver, 1 - 1e-6), carried(receiver))).toBeLessThan(1e-3);
     });
 
-    it(`${name}: no jumps, and the ball renders beneath the players exactly during the transitions`, () => {
+    it(`${name}: no jumps; beneath the players only inside a transition window`, () => {
       const receiver = { x: PASSER.x + dx * 30, y: PASSER.y + dy * 30 };
       let previous = ballAt(PASSER, receiver, 0);
       const steps = 4000;
@@ -122,19 +124,16 @@ describe("directional anchors — every direction", () => {
         // Fine sampling: no per-sample step anywhere near a teleport.
         expect(dist(frame.position, previous)).toBeLessThan(0.25);
         const inTransition = p > 0 && p < 1 && (p < WINDOW || p > 1 - WINDOW);
-        expect(frame.occludedByPlayers).toBe(inTransition);
+        if (!inTransition) expect(frame.occludedByPlayers).toBe(false);
         previous = frame.position;
       }
       expect(frameAt(PASSER, receiver, 0).occludedByPlayers).toBe(false);
       expect(frameAt(PASSER, receiver, 1).occludedByPlayers).toBe(false);
     });
 
-    it(`${name}: the release/receive legs are direct, never an orbit round the token`, () => {
+    it(`${name}: the release/receive legs never take a longer way than the perimeter or the inward line`, () => {
       const receiver = { x: PASSER.x + dx * 30, y: PASSER.y + dy * 30 };
       const anchors = computeDirectionalPassAnchors({ passerCentre: PASSER, receiverCentre: receiver, anchorRadius: R })!;
-      // Path length travelled during each window is (within the small
-      // concurrent flight advance) the straight carried ↔ edge distance —
-      // a perimeter swing for an opposite-side pass would be ~1.5× longer.
       const pathLength = (from: number, to: number) => {
         let length = 0;
         let prev = ballAt(PASSER, receiver, from);
@@ -145,11 +144,18 @@ describe("directional anchors — every direction", () => {
         }
         return length;
       };
+      // Length of a blend of two paths ≤ the same blend of their lengths.
+      const legBound = (centre: DirectionalPassWorldPoint, a: DirectionalPassWorldPoint, b: DirectionalPassWorldPoint) => {
+        const leg = resolveDirectionalPassLeg(centre, a, b);
+        const arc = Math.abs(leg.turn) * Math.max(dist(a, centre), dist(b, centre));
+        return (1 - leg.inwardBlend) * arc + leg.inwardBlend * dist(a, b);
+      };
       const flightLength = dist(anchors.release, anchors.receive);
-      const flightAdvance = flightLength * getPlaybackEaseProgress(WINDOW);
-      expect(pathLength(0, WINDOW)).toBeLessThanOrEqual(dist(carried(PASSER), anchors.release) + flightAdvance + 1e-6);
+      const releaseAdvance = flightLength * getPlaybackEaseProgress(WINDOW);
+      const receiveAdvance = flightLength - flightLength * getPlaybackEaseProgress(1 - WINDOW);
+      expect(pathLength(0, WINDOW)).toBeLessThanOrEqual(legBound(PASSER, carried(PASSER), anchors.release) + releaseAdvance + 1e-6);
       expect(pathLength(1 - WINDOW, 1)).toBeLessThanOrEqual(
-        dist(anchors.receive, carried(receiver)) + (flightLength - flightLength * getPlaybackEaseProgress(1 - WINDOW)) + 1e-6,
+        legBound(receiver, anchors.receive, carried(receiver)) + receiveAdvance + 1e-6,
       );
     });
   }
@@ -199,6 +205,105 @@ describe("directional anchors — every direction", () => {
     const ball = ballAt(PASSER, receiver, p);
     expect(ball.x).toBeCloseTo(expected.x, 9);
     expect(ball.y).toBeCloseTo(expected.y, 9);
+  });
+});
+
+describe("adaptive release/receive legs (by turn angle at the player)", () => {
+  // The carried spot's direction from the player centre (upper-right).
+  const CARRIED_ANGLE = Math.atan2(CARRIED_OFFSET.y, CARRIED_OFFSET.x);
+  const DEG = Math.PI / 180;
+  // Receiver placed so the RELEASE edge is `turn` away from the carried spot.
+  const receiverForReleaseTurn = (turn: number) => ({
+    x: PASSER.x + Math.cos(CARRIED_ANGLE + turn) * 30,
+    y: PASSER.y + Math.sin(CARRIED_ANGLE + turn) * 30,
+  });
+  // Passer placed so the RECEIVE edge (incoming side) is `turn` away from
+  // the receiver's carried spot: the pass arrives from that direction.
+  const RECEIVER = { x: 80, y: 50 };
+  const passerForReceiveTurn = (turn: number) => ({
+    x: RECEIVER.x + Math.cos(CARRIED_ANGLE + turn) * 30,
+    y: RECEIVER.y + Math.sin(CARRIED_ANGLE + turn) * 30,
+  });
+  const releaseWindowFrames = (receiver: DirectionalPassWorldPoint) =>
+    Array.from({ length: 199 }, (_, i) => frameAt(PASSER, receiver, (WINDOW * (i + 1)) / 200));
+  const receiveWindowFrames = (passer: DirectionalPassWorldPoint) =>
+    Array.from({ length: 199 }, (_, i) => frameAt(passer, RECEIVER, 1 - (WINDOW * (i + 1)) / 200));
+
+  it("blend: pure perimeter up to 60°, pure inward line from 120°, smooth in between", () => {
+    expect(resolveDirectionalPassInwardBlend(0)).toBe(0);
+    expect(resolveDirectionalPassInwardBlend(60 * DEG)).toBe(0);
+    expect(resolveDirectionalPassInwardBlend(-60 * DEG)).toBe(0);
+    expect(resolveDirectionalPassInwardBlend(90 * DEG)).toBeCloseTo(0.5, 9);
+    expect(resolveDirectionalPassInwardBlend(120 * DEG)).toBe(1);
+    expect(resolveDirectionalPassInwardBlend(Math.PI)).toBe(1);
+    for (let deg = 0; deg < 180; deg += 0.25) {
+      const step = Math.abs(resolveDirectionalPassInwardBlend((deg + 0.25) * DEG) - resolveDirectionalPassInwardBlend(deg * DEG));
+      expect(step).toBeLessThan(0.02);
+    }
+  });
+
+  for (const [label, turnDeg] of [["toward the carried side (0°)", 0], ["+20°", 20], ["−20°", -20]] as const) {
+    it(`release ${label}: short direct perimeter move — never toward the centre, never beneath the token`, () => {
+      const receiver = receiverForReleaseTurn(turnDeg * DEG);
+      const carriedRadius = Math.hypot(CARRIED_OFFSET.x, CARRIED_OFFSET.y);
+      for (const frame of releaseWindowFrames(receiver)) {
+        expect(frame.occludedByPlayers).toBe(false);
+        expect(dist(frame.position, PASSER)).toBeGreaterThanOrEqual(Math.min(carriedRadius, R) - 1e-6);
+      }
+      // Toward the carried side the ball barely repositions at all.
+      if (turnDeg === 0) {
+        const anchors = computeDirectionalPassAnchors({ passerCentre: PASSER, receiverCentre: receiver, anchorRadius: R })!;
+        expect(dist(carried(PASSER), anchors.release)).toBeLessThan(1e-6);
+      }
+    });
+
+    it(`receive ${label}: short direct perimeter move into the carry spot, never beneath the token`, () => {
+      const passer = passerForReceiveTurn(turnDeg * DEG);
+      for (const frame of receiveWindowFrames(passer)) {
+        expect(frame.occludedByPlayers).toBe(false);
+        expect(dist(frame.position, RECEIVER)).toBeGreaterThanOrEqual(R - 1e-6);
+      }
+    });
+  }
+
+  it("90° lateral: halfway blend — stays outside the token's core, eases slightly inside the perimeter", () => {
+    const receiver = receiverForReleaseTurn(90 * DEG);
+    const leg = resolveDirectionalPassLeg(
+      PASSER,
+      carried(PASSER),
+      computeDirectionalPassAnchors({ passerCentre: PASSER, receiverCentre: receiver, anchorRadius: R })!.release,
+    );
+    expect(leg.inwardBlend).toBeCloseTo(0.5, 6);
+    const minRadius = Math.min(...releaseWindowFrames(receiver).map((f) => dist(f.position, PASSER)));
+    expect(minRadius).toBeGreaterThan(R * Math.cos(Math.PI / 4) - 1e-6); // never deeper than the pure inward line
+    expect(minRadius).toBeLessThan(R);
+  });
+
+  for (const [label, turnDeg] of [["back diagonal (135°)", 135], ["opposite (180°)", 180], ["opposite (−170°)", -170]] as const) {
+    it(`release ${label}: goes in behind the passer, beneath the token`, () => {
+      const receiver = receiverForReleaseTurn(turnDeg * DEG);
+      const frames = releaseWindowFrames(receiver);
+      expect(frames.every((f) => f.occludedByPlayers)).toBe(true);
+      const minRadius = Math.min(...frames.map((f) => dist(f.position, PASSER)));
+      expect(minRadius).toBeLessThan(R * Math.cos((Math.abs(turnDeg) * DEG) / 2) + 0.8);
+    });
+
+    it(`receive ${label}: comes in on the incoming edge and tucks behind the receiver`, () => {
+      const passer = passerForReceiveTurn(turnDeg * DEG);
+      const frames = receiveWindowFrames(passer);
+      expect(frames.every((f) => f.occludedByPlayers)).toBe(true);
+      const minRadius = Math.min(...frames.map((f) => dist(f.position, RECEIVER)));
+      expect(minRadius).toBeLessThan(R * Math.cos((Math.abs(turnDeg) * DEG) / 2) + 0.8);
+    });
+  }
+
+  it("no visual step across turn angles: the mid-window position varies continuously with pass direction", () => {
+    let previous: DirectionalPassWorldPoint | null = null;
+    for (let deg = -180; deg <= 180; deg += 0.25) {
+      const position = ballAt(PASSER, receiverForReleaseTurn(deg * DEG), WINDOW / 2);
+      if (previous) expect(dist(position, previous)).toBeLessThan(0.2);
+      previous = position;
+    }
   });
 });
 
