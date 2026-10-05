@@ -264,6 +264,12 @@ export type TacticalPadLiteSurface = {
   duplicatePracticeArea: () => void;
   deletePracticeArea: () => void;
   clearPracticeAreaSelection: () => void;
+  /**
+   * Clip recording: while suspended no Practice Area can be selected, and
+   * suspending clears any selection, so handles never reach a recorded frame.
+   * Resuming does not restore the previous selection.
+   */
+  setPracticeAreaEditingSuspended: (suspended: boolean) => void;
   setWhiteboardDrawTool: (tool: WhiteboardDrawTool) => void;
   setWhiteboardDrawColor: (color: number) => void;
   eraseWhiteboardPenStroke: () => void;
@@ -1732,6 +1738,7 @@ export async function createTacticalPadLiteSurface(
   };
   let selectedPracticeAreaId: string | null = null;
   let practiceAreaGesture: PracticeAreaGesture | null = null;
+  let practiceAreaEditingSuspended = false;
   const PRACTICE_AREA_HANDLE_VISIBLE_PX = 10;
 
   function findPracticeAreaDrawing(id: string | null): TacticalDrawingRecord | null {
@@ -1753,6 +1760,7 @@ export async function createTacticalPadLiteSurface(
   function canEditPracticeAreas(): boolean {
     return (
       practiceAreasEnabled &&
+      !practiceAreaEditingSuspended &&
       activeWhiteboardTool === "move" &&
       !isFreeDrawCaptureMode &&
       shapeLockMode === "off" &&
@@ -5140,6 +5148,10 @@ export async function createTacticalPadLiteSurface(
       tacticalDrawingController.removeDrawing(id);
     },
     clearPracticeAreaSelection: () => setSelectedPracticeArea(null),
+    setPracticeAreaEditingSuspended: (suspended) => {
+      practiceAreaEditingSuspended = suspended;
+      if (suspended) setSelectedPracticeArea(null);
+    },
     setBackgroundImage: (dataUrl: string | null) => {
       applyBackgroundImage(dataUrl);
     },

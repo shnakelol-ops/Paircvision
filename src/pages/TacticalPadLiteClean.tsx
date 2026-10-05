@@ -40,7 +40,7 @@ import {
 import StatsModeSurface from "../StatsModeSurface";
 import OrientationGate, { usePortraitOrientation } from "../components/OrientationGate";
 import { PitchWatermark } from "../components/PitchWatermark";
-import { useCanvasRecorder } from "../features/shared/useCanvasRecorder";
+import { useCanvasRecorder, type RecordPhase } from "../features/shared/useCanvasRecorder";
 import { captureQuickBoardSnapshot, restoreQuickBoardSnapshot } from "../features/quickboard/storage/quickboard-snapshot";
 import { generateQuickBoardThumbnail } from "../features/quickboard/storage/quickboard-thumbnail";
 import {
@@ -218,6 +218,11 @@ const DEFAULT_DRAW_TOOL_LABELS: TacticalDrawToolLabels = {
   eraser: "Eraser",
 };
 export const PRACTICE_AREA_DRAW_TOOL_LABEL = "Practice Area";
+
+/** Practice Area selection is off from the record countdown until the clip stops. */
+export function recordPhaseSuspendsPracticeAreas(phase: RecordPhase): boolean {
+  return phase === "countdown" || phase === "recording";
+}
 // Order the Draw tool grid has always rendered in: Move, then Label
 // (inserted second, see buildTacticalDrawToolOptions below), then the nine
 // drawing tools in this exact sequence.
@@ -2576,10 +2581,18 @@ export default function TacticalPadLiteClean({
     shareClip: slateShareClip,
   } = useCanvasRecorder({
     getCanvas: () => surfaceRef.current?.getCanvas() ?? null,
-    onBeforeCountdown: () => setQuickShareOpen(false),
+    onBeforeCountdown: () => {
+      // Clear any Practice Area selection before the countdown, so no recorded frame shows handles.
+      surfaceRef.current?.setPracticeAreaEditingSuspended(true);
+      setQuickShareOpen(false);
+    },
     onComplete: () => setQuickShareOpen(true),
   });
   // slateRecordElapsed holds the final elapsed value after stop — used as the clip duration display.
+  const practiceAreasSuspendedForRecording = recordPhaseSuspendsPracticeAreas(slateRecordPhase);
+  useEffect(() => {
+    surfaceRef.current?.setPracticeAreaEditingSuspended(practiceAreasSuspendedForRecording);
+  }, [practiceAreasSuspendedForRecording]);
   const coachingClip = useCoachingClip();
 
   type SlateClipDiag = { events: string[]; rs: number; ns: number; src: string; dur: number; vw: number; vh: number; err: string | null; seeked: boolean };
