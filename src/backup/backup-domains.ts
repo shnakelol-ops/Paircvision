@@ -97,6 +97,13 @@ export const BACKUP_DOMAINS: readonly BackupDomainDescriptor[] = [
     noun: ["board", "boards"],
   },
   {
+    id: "quickboardTacticalBoardBoards",
+    label: "Tactical Slate Tactical Board boards",
+    storageKey: "pitchflow_quickboard_boards_v1:tacticalBoard",
+    kind: "json-array",
+    noun: ["board", "boards"],
+  },
+  {
     id: "quickboardWhiteboardBoards",
     label: "Tactical Slate Whiteboard boards",
     storageKey: "pitchflow_quickboard_boards_v1:whiteboard",

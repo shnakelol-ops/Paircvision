@@ -15,16 +15,17 @@ import {
 } from "./tacticalSlateSurface";
 
 describe("Tactical Slate surfaces — routes and labels", () => {
-  it("lists the three surfaces in Options order, Gaelic Pitch first", () => {
-    expect(TACTICAL_SLATE_SURFACES).toEqual(["pitch", "training", "whiteboard"]);
+  it("lists the four surfaces in Options order, Gaelic Pitch first", () => {
+    expect(TACTICAL_SLATE_SURFACES).toEqual(["pitch", "training", "tacticalBoard", "whiteboard"]);
   });
 
   it("keeps the public Gaelic Pitch on the existing /vision-board route", () => {
     expect(TACTICAL_SLATE_SURFACE_ROUTES.pitch).toBe("/vision-board");
   });
 
-  it("puts Training Grass and Whiteboard on their own /vision-board sub-routes", () => {
+  it("puts Training Grass, Tactical Board and Whiteboard on their own /vision-board sub-routes", () => {
     expect(TACTICAL_SLATE_SURFACE_ROUTES.training).toBe("/vision-board/training");
+    expect(TACTICAL_SLATE_SURFACE_ROUTES.tacticalBoard).toBe("/vision-board/tactical");
     expect(TACTICAL_SLATE_SURFACE_ROUTES.whiteboard).toBe("/vision-board/whiteboard");
   });
 
@@ -36,14 +37,21 @@ describe("Tactical Slate surfaces — routes and labels", () => {
     expect(TACTICAL_SLATE_SURFACE_LABELS).toEqual({
       pitch: "Gaelic Pitch",
       training: "Training Grass",
+      tacticalBoard: "Tactical Board",
       whiteboard: "Whiteboard",
     });
   });
 });
 
 describe("resolveSurfacePitchTheme", () => {
-  it("maps Pitch to the unchanged default renderer", () => {
-    expect(resolveSurfacePitchTheme("pitch")).toBe("default");
+  it("maps the Gaelic Pitch to the mown-band Gaelic theme", () => {
+    expect(resolveSurfacePitchTheme("pitch")).toBe("gaelicBands");
+    expect(resolveSurfacePitchTheme("pitch", "gaelic")).toBe("gaelicBands");
+  });
+
+  it("keeps the original turf for Tactical Board and for any non-Gaelic sport on the Pitch surface (Rugby)", () => {
+    expect(resolveSurfacePitchTheme("tacticalBoard")).toBe("default");
+    expect(resolveSurfacePitchTheme("pitch", "rugby")).toBe("default");
   });
 
   it("maps Training to grass and Whiteboard to the existing whiteboard theme", () => {
@@ -65,6 +73,10 @@ describe("resolveBoardStorageNamespace", () => {
     }
   });
 
+  it("gives Tactical Board its own namespace", () => {
+    expect(resolveBoardStorageNamespace("gaelic", "tacticalBoard")).toBe("tacticalBoard");
+  });
+
   it("gives Training Grass and Whiteboard their own namespaces", () => {
     expect(resolveBoardStorageNamespace("gaelic", "training")).toBe("training");
     expect(resolveBoardStorageNamespace("gaelic", "whiteboard")).toBe("whiteboard");
@@ -74,6 +86,7 @@ describe("resolveBoardStorageNamespace", () => {
     const namespaces = [
       resolveBoardStorageNamespace("gaelic", "pitch"),
       resolveBoardStorageNamespace("gaelic", "training"),
+      resolveBoardStorageNamespace("gaelic", "tacticalBoard"),
       resolveBoardStorageNamespace("gaelic", "whiteboard"),
       resolveBoardStorageNamespace("rugby", "pitch"),
       resolveBoardStorageNamespace("rugby", "training"),
@@ -86,6 +99,7 @@ describe("Training starting roster", () => {
   it("only Training Grass starts empty; Pitch and Whiteboard keep the formation", () => {
     expect(resolveSurfaceInitialRoster("training")).toBe("empty");
     expect(resolveSurfaceInitialRoster("pitch")).toBe("formation");
+    expect(resolveSurfaceInitialRoster("tacticalBoard")).toBe("formation");
     expect(resolveSurfaceInitialRoster("whiteboard")).toBe("formation");
   });
 });
@@ -94,6 +108,7 @@ describe("player presentation by surface", () => {
   it("only Training offers and saves Normal / Compact / Practice", () => {
     expect(surfaceUsesPlayerPresentation("training")).toBe(true);
     expect(surfaceUsesPlayerPresentation("pitch")).toBe(false);
+    expect(surfaceUsesPlayerPresentation("tacticalBoard")).toBe(false);
     expect(surfaceUsesPlayerPresentation("whiteboard")).toBe(false);
   });
 
@@ -112,6 +127,7 @@ describe("Practice Areas by surface", () => {
   it("only Training Grass turns rectangles into Practice Areas; Pitch and Whiteboard keep filled tactical zones", () => {
     expect(surfaceUsesPracticeAreas("training")).toBe(true);
     expect(surfaceUsesPracticeAreas("pitch")).toBe(false);
+    expect(surfaceUsesPracticeAreas("tacticalBoard")).toBe(false);
     expect(surfaceUsesPracticeAreas("whiteboard")).toBe(false);
   });
 });

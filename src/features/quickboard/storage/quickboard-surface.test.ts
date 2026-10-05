@@ -57,6 +57,7 @@ function board(label: string): QuickBoardBoardState {
 
 const PITCH_NS = resolveBoardStorageNamespace("gaelic", "pitch");
 const TRAINING_NS = resolveBoardStorageNamespace("gaelic", "training");
+const TACTICAL_BOARD_NS = resolveBoardStorageNamespace("gaelic", "tacticalBoard");
 const WHITEBOARD_NS = resolveBoardStorageNamespace("gaelic", "whiteboard");
 
 describe("board surface metadata", () => {
@@ -71,6 +72,35 @@ describe("board surface metadata", () => {
     expect(withQuickBoardSurface(state, "training").surface).toBe("training");
     expect(withQuickBoardSurface(state, "whiteboard").surface).toBe("whiteboard");
     expect("surface" in state).toBe(false);
+  });
+
+  it("stamps Tactical Board boards and the strict sanitiser keeps the stamp", () => {
+    const state = board("tb");
+    expect(withQuickBoardSurface(state, "tacticalBoard").surface).toBe("tacticalBoard");
+    expect("surface" in state).toBe(false);
+    expect(sanitizeQuickBoardState({ ...board("tb"), surface: "tacticalBoard" })?.surface).toBe("tacticalBoard");
+  });
+
+  it("a board with no surface metadata reads as a Gaelic Pitch board", () => {
+    const sanitized = sanitizeQuickBoardState(board("legacy"));
+    expect(sanitized).not.toBeNull();
+    expect("surface" in sanitized!).toBe(false);
+    expect(sanitizeQuickBoardState({ ...board("odd"), surface: "pitch" })?.surface).toBeUndefined();
+  });
+
+  it("Tactical Board boards and drafts live under :tacticalBoard, never the Gaelic Pitch keys, and reopen there", () => {
+    saveBoard({ name: "Gaelic", boardState: board("p") }, PITCH_NS);
+    const saved = saveBoard({ name: "Press", boardState: withQuickBoardSurface(board("tb"), "tacticalBoard") }, TACTICAL_BOARD_NS)!;
+    saveQuickBoardDraft(withQuickBoardSurface(board("tb-draft"), "tacticalBoard"), TACTICAL_BOARD_NS);
+
+    expect(JSON.parse(memoryStorage.getItem(`${QUICKBOARD_STORAGE_KEY}:tacticalBoard`)!)).toHaveLength(1);
+    expect(memoryStorage.getItem(`${QUICKBOARD_ACTIVE_DRAFT_STORAGE_KEY}:tacticalBoard`)).not.toBeNull();
+    expect(loadAllBoards(PITCH_NS).map((b) => b.name)).toEqual(["Gaelic"]);
+    expect("surface" in loadAllBoards(PITCH_NS)[0]!.boardState).toBe(false);
+    expect(loadAllBoards(TACTICAL_BOARD_NS).map((b) => b.name)).toEqual(["Press"]);
+    expect(loadBoard(saved.id, TACTICAL_BOARD_NS)?.boardState.surface).toBe("tacticalBoard");
+    expect(loadQuickBoardDraft(PITCH_NS).draft).toBeNull();
+    expect(loadQuickBoardDraft(TACTICAL_BOARD_NS).draft?.boardState.surface).toBe("tacticalBoard");
   });
 
   it("the strict sanitiser preserves training/whiteboard metadata", () => {

@@ -2992,7 +2992,7 @@ export default function TacticalPadLiteClean({
     void createTacticalPadLiteSurface(host, {
       sport,
       surfaceVariant: isWhiteboardMode ? "whiteboard" : "tactical",
-      pitchTheme: isWhiteboardMode ? undefined : resolveSurfacePitchTheme(slateSurface),
+      pitchTheme: isWhiteboardMode ? undefined : resolveSurfacePitchTheme(slateSurface, sport),
       whiteboardTeamCounts: isWhiteboardMode ? whiteboardCountsRef.current : undefined,
       whiteboardTeamColors: whiteboardTeamColorsRef.current,
       whiteboardDrawColor: isWhiteboardMode ? whiteboardPenColor : tacticalPenColor,
