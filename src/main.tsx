@@ -67,9 +67,6 @@ function pickRootComponent() {
   if (normalizedPath === VISION_BOARD_PATH) {
     return TacticalPadLiteClean;
   }
-  if (normalizedPath === TACTICAL_SLATE_SURFACE_ROUTES.pitchB) {
-    return () => <TacticalPadLiteClean surface="pitchB" />;
-  }
   if (normalizedPath === TACTICAL_SLATE_SURFACE_ROUTES.training) {
     return () => <TacticalPadLiteClean surface="training" />;
   }

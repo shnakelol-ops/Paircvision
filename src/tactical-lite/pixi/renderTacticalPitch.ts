@@ -398,8 +398,8 @@ export function createTacticalPitchVisualRoot(
     });
     face.addChild(whiteboardFace);
   } else if (layers.face === "trainingBands") {
-    // Training Grass and Gaelic Pitch B: flat mown bands only — none of the
-    // turf wash, stripe texture, grain, vignette or centre lift below.
+    // Training Grass: flat mown bands only — none of the turf wash, stripe
+    // texture, grain, vignette or centre lift below.
     const bands = new Graphics();
     bands.zIndex = 0;
     for (const band of trainingGrassBands(vbW)) {
