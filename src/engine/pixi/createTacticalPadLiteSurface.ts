@@ -66,6 +66,11 @@ import {
   resolveSegmentMaxMovementDistance,
 } from "./routeFollowInterpolation";
 import {
+  computeDirectionalPassBallWorldPosition,
+  resolveDirectionalPassParticipants,
+  resolveDirectionalPassTransitionFraction,
+} from "./directionalPassAnchors";
+import {
   createTacticalSlateInitialPlayerSeeds,
   type TacticalSlateDefaultPlayerSeed,
   type TacticalSlateInitialRoster,
@@ -412,6 +417,17 @@ const ATTACHED_BALL_OFFSETS_WORLD: ReadonlyArray<Readonly<NormalizedPoint>> = [
   { x: 4.7, y: 0 },
   { x: -4.7, y: 0 },
 ];
+/**
+ * Radius of a pass's directional release/receive anchors around the passer
+ * and receiver centres (see directionalPassAnchors.ts): the same distance
+ * the primary carried-ball offset already sits at, so a ball leaving or
+ * arriving on any side keeps exactly the clearance the carried ball has in
+ * every player presentation (Normal, Compact, Practice).
+ */
+export const DIRECTIONAL_PASS_ANCHOR_RADIUS_WORLD = Math.hypot(
+  ATTACHED_BALL_OFFSETS_WORLD[0]?.x ?? 0,
+  ATTACHED_BALL_OFFSETS_WORLD[0]?.y ?? 0,
+);
 const ATTACHED_BALL_FOLLOW_MAX_LEAD_WORLD = 0.6;
 const ATTACHED_BALL_FOLLOW_SMOOTHING = 0.28;
 const BALL_DRAG_DEADZONE_WORLD = 0.18;
@@ -3956,6 +3972,44 @@ export async function createTacticalPadLiteSurface(
     );
   }
 
+  /**
+   * Directional release/receive for a player-to-player pass segment (a
+   * recorded holder switch, or the tap-to-pass gesture). Returns the ball's
+   * normalized position, or null when this ball transition is not a
+   * player-to-player pass — the caller then keeps its existing behaviour.
+   * Pure in (snapshots, progress): no extra playback state.
+   */
+  function resolveDirectionalPassBallPoint(
+    fromSnapshot: PhaseSnapshot,
+    toSnapshot: PhaseSnapshot,
+    fromBall: PhaseBallSnapshot,
+    toBall: PhaseBallSnapshot,
+    progress: number,
+    easedProgress: number,
+    segmentDurationMs: number,
+  ): NormalizedPoint | null {
+    const participants = resolveDirectionalPassParticipants({
+      fromSnapshot,
+      toSnapshot,
+      ballId: toBall.id,
+      possessionReceiverId: playbackKind === "possession-pass" ? playbackPossessionReceiverId : null,
+    });
+    if (!participants) return null;
+    const world = computeDirectionalPassBallWorldPosition({
+      passerCentre: mapper.normalizedToWorld(participants.passerCentre),
+      receiverCentre: mapper.normalizedToWorld(participants.receiverCentre),
+      passerCarried: mapper.normalizedToWorld({ x: fromBall.x, y: fromBall.y }),
+      receiverCarried: mapper.normalizedToWorld({ x: toBall.x, y: toBall.y }),
+      anchorRadius: DIRECTIONAL_PASS_ANCHOR_RADIUS_WORLD,
+      progress,
+      easedProgress,
+      worldSize: WORLD_SIZE,
+      transitionFraction: resolveDirectionalPassTransitionFraction(segmentDurationMs),
+    });
+    const normalized = mapper.worldToNormalized(world);
+    return { x: clampNormalizedValue(normalized.x), y: clampNormalizedValue(normalized.y) };
+  }
+
   function stepPlayback(deltaMs: number): void {
     if (!isPlaying || playbackPath.length < 2) return;
 
@@ -4013,8 +4067,17 @@ export async function createTacticalPadLiteSurface(
             state.attachedPlayerId = null;
             state.isFree = true;
             state.path = [];
-            item.x = clampNormalizedValue(fromBall.x + (toBall.x - fromBall.x) * easedProgress);
-            item.y = clampNormalizedValue(fromBall.y + (toBall.y - fromBall.y) * easedProgress);
+            const passPoint = resolveDirectionalPassBallPoint(
+              fromSnapshot,
+              toSnapshot,
+              fromBall,
+              toBall,
+              progress,
+              easedProgress,
+              segmentDurationMs,
+            );
+            item.x = passPoint?.x ?? clampNormalizedValue(fromBall.x + (toBall.x - fromBall.x) * easedProgress);
+            item.y = passPoint?.y ?? clampNormalizedValue(fromBall.y + (toBall.y - fromBall.y) * easedProgress);
             setItemWorldPosition(item, mapper);
             continue;
           }
@@ -4037,7 +4100,21 @@ export async function createTacticalPadLiteSurface(
             item.y += (cappedY - item.y) * ATTACHED_BALL_FOLLOW_SMOOTHING;
           }
         } else {
-          const freePoint = interpolatePath(fromBall, toBall, easedProgress);
+          // Tap-to-pass flies as a free ball toward the receiver's carried
+          // point; give it the same directional release/receive as a
+          // recorded holder switch. Every other free-ball move is unchanged.
+          const freePoint =
+            (fromBall && playbackKind === "possession-pass"
+              ? resolveDirectionalPassBallPoint(
+                  fromSnapshot,
+                  toSnapshot,
+                  fromBall,
+                  toBall,
+                  progress,
+                  easedProgress,
+                  segmentDurationMs,
+                )
+              : null) ?? interpolatePath(fromBall, toBall, easedProgress);
           state.attachedPlayerId = null;
           state.isFree = true;
           state.path = toBall.path?.map((pathPoint) => ({ x: pathPoint.x, y: pathPoint.y })) ?? [];
