@@ -68,7 +68,10 @@ import {
 import { useOverlayPortalRoot } from "../overlay/OverlayPortalContext";
 import { useScreenWakeLock } from "../hooks/useScreenWakeLock";
 import VisionStadiumBackground from "../components/VisionStadiumBackground";
-import { exportBoardSetupAsPng } from "../features/quickboard/export/board-png-export";
+import {
+  BOARD_PNG_WATERMARK_DARK_COLOR,
+  exportBoardSetupAsPng,
+} from "../features/quickboard/export/board-png-export";
 import { ShareSheet } from "../features/shared/ShareSheet";
 import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
 import { resolveSlateQuarterTurns, shouldUseMobilePortraitToolsPanel } from "./tacticalSlateOrientation";
@@ -82,6 +85,7 @@ import {
   resolveSurfaceInitialRoster,
   resolveSurfacePitchTheme,
   surfaceUsesPlayerPresentation,
+  surfaceUsesDarkWatermark,
   surfaceUsesPracticeAreas,
   type TacticalSlateSurface,
 } from "./tacticalSlateSurface";
@@ -3784,7 +3788,10 @@ export default function TacticalPadLiteClean({
       throw new Error("Board not ready");
     }
     surface.pausePlayback();
-    const file = await exportBoardSetupAsPng(surface, { textAnnotations: textAnnotationsRef.current });
+    const file = await exportBoardSetupAsPng(surface, {
+      textAnnotations: textAnnotationsRef.current,
+      ...(surfaceUsesDarkWatermark(slateSurface) ? { watermarkColor: BOARD_PNG_WATERMARK_DARK_COLOR } : {}),
+    });
     if (!file) {
       throw new Error("Could not generate board image");
     }
@@ -4824,7 +4831,9 @@ export default function TacticalPadLiteClean({
         {!isWhiteboardMode ? <VisionStadiumBackground variant="board" portrait={isPortrait} /> : null}
         <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
           <div ref={hostRef} style={pitchSurfaceStyle} />
-          {!isWhiteboardMode ? <PitchWatermark portrait={isPortrait} lowered /> : null}
+          {!isWhiteboardMode ? (
+            <PitchWatermark portrait={isPortrait} lowered dark={surfaceUsesDarkWatermark(slateSurface)} />
+          ) : null}
           {!isWhiteboardMode && shouldBlockPortraitInput ? <div style={PORTRAIT_INTERACTION_SHIELD_STYLE} aria-hidden="true" /> : null}
           {!isWhiteboardMode && !shouldBlockPortraitInput ? (
             <SlateTextOverlay

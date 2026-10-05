@@ -37,11 +37,15 @@ const PORTRAIT_SLATE_PITCH_WATERMARK_STYLE: CSSProperties = {
   bottom: "5%",
 };
 
-export function PitchWatermark({ portrait, lowered }: { portrait: boolean; lowered?: boolean }) {
+// Tactical Slate Whiteboard only: the same watermark (position, size, font,
+// opacity, shadow) in black, so it reads on the pale whiteboard face.
+export const PITCH_WATERMARK_DARK_COLOR = "rgba(0, 0, 0, 0.22)";
+
+export function PitchWatermark({ portrait, lowered, dark }: { portrait: boolean; lowered?: boolean; dark?: boolean }) {
   const style = portrait
     ? lowered
       ? PORTRAIT_SLATE_PITCH_WATERMARK_STYLE
       : PORTRAIT_PITCH_WATERMARK_STYLE
     : PITCH_WATERMARK_STYLE;
-  return <div style={style}>PáircVision</div>;
+  return <div style={dark ? { ...style, color: PITCH_WATERMARK_DARK_COLOR } : style}>PáircVision</div>;
 }

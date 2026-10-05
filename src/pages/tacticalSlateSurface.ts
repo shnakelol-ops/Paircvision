@@ -102,6 +102,14 @@ export const PLAYER_PRESENTATION_CHOICES: ReadonlyArray<{ value: TacticalPlayerP
 ];
 
 /**
+ * The PáircVision watermark is drawn in black only on the Whiteboard, whose
+ * face is pale; every other surface keeps the standard light watermark.
+ */
+export function surfaceUsesDarkWatermark(surface: TacticalSlateSurface): boolean {
+  return surface === "whiteboard";
+}
+
+/**
  * Training Grass rectangles are Practice Areas: transparent boundaries that
  * can be selected, moved, resized, duplicated, recoloured, made Dead Zones
  * and deleted. Pitch and Whiteboard keep today's filled tactical zones.

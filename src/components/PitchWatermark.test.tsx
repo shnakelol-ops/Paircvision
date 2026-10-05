@@ -48,3 +48,37 @@ describe("PitchWatermark — Tactical Slate / Tactical Sequence position parity"
     expect(withLowered).toBe("14px");
   });
 });
+
+describe("PitchWatermark — Whiteboard black watermark", () => {
+  const read = (props: { portrait: boolean; lowered?: boolean; dark?: boolean }) => {
+    render(<PitchWatermark {...props} />);
+    const node = screen.getByText("PáircVision");
+    const style = {
+      color: node.style.color,
+      bottom: node.style.bottom,
+      right: node.style.right,
+      fontSize: node.style.fontSize,
+      fontFamily: node.style.fontFamily,
+      fontWeight: node.style.fontWeight,
+      letterSpacing: node.style.letterSpacing,
+      textShadow: node.style.textShadow,
+      zIndex: node.style.zIndex,
+    };
+    cleanup();
+    return style;
+  };
+
+  it("without `dark` keeps the existing light watermark colour", () => {
+    expect(read({ portrait: false }).color).toBe("rgba(220, 235, 255, 0.22)");
+    expect(read({ portrait: true, lowered: true }).color).toBe("rgba(220, 235, 255, 0.22)");
+  });
+
+  it("`dark` changes only the colour, to black at the same opacity, in landscape and portrait", () => {
+    for (const layout of [{ portrait: false }, { portrait: true, lowered: true }]) {
+      const standard = read(layout);
+      const dark = read({ ...layout, dark: true });
+      expect(dark.color).toBe("rgba(0, 0, 0, 0.22)");
+      expect({ ...dark, color: standard.color }).toEqual(standard);
+    }
+  });
+});

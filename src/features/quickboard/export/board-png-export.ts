@@ -6,7 +6,13 @@ type BoardPngExportOptions = {
   boardBackground?: string;
   /** Text annotations to composite onto the exported image. */
   textAnnotations?: SlateTextAnnotation[];
+  /** Watermark colour. Defaults to the standard light watermark; Whiteboard passes black. */
+  watermarkColor?: string;
 };
+
+export const BOARD_PNG_WATERMARK_COLOR = "rgba(255, 255, 255, 0.42)";
+/** Same opacity as the standard PNG watermark, in black (Tactical Slate Whiteboard). */
+export const BOARD_PNG_WATERMARK_DARK_COLOR = "rgba(0, 0, 0, 0.42)";
 
 function nextFrame(): Promise<void> {
   return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
@@ -108,7 +114,7 @@ export async function exportBoardSetupAsPng(
   ctx.font = `600 ${fontSize}px Inter, "Arial Narrow", Arial, sans-serif`;
   ctx.textAlign = "right";
   ctx.textBaseline = "bottom";
-  ctx.fillStyle = "rgba(255, 255, 255, 0.42)";
+  ctx.fillStyle = options.watermarkColor ?? BOARD_PNG_WATERMARK_COLOR;
   const pad = Math.round(height * 0.016);
   ctx.fillText("PáircVision", width - pad, height - pad);
   ctx.restore();
