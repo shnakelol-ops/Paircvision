@@ -11,11 +11,10 @@ export const MAX_QUICKBOARD_SAVES = 100;
 
 /**
  * The Tactical Slate work surface a board was created on. "pitch" is the
- * public Gaelic Pitch and is never written: a board with no `surface` field
- * (every board saved before surfaces existed) is a Pitch board, so existing
- * GAA boards stay byte-for-byte unchanged.
+ * default Gaelic Pitch and is never written: a board with no `surface` field
+ * is a Gaelic Pitch board, so its payload carries no surface metadata.
  */
-export type QuickBoardSurface = "pitch" | "training" | "whiteboard";
+export type QuickBoardSurface = "pitch" | "training" | "tacticalBoard" | "whiteboard";
 
 export type QuickBoardBoardState = {
   players: unknown[];
@@ -38,7 +37,7 @@ export type QuickBoardBoardState = {
   /** Shape Links (Tactical Slate presentation feature). Deep validation happens in createTacticalPadLiteSurface.ts. */
   shapeLinks?: unknown;
   shapeLinksVisible?: unknown;
-  /** Work surface metadata; absent means "pitch". Only "training" / "whiteboard" are ever stored. */
+  /** Work surface metadata; absent means "pitch". Only "training" / "tacticalBoard" / "whiteboard" are ever stored. */
   surface?: Exclude<QuickBoardSurface, "pitch">;
   /** Training player presentation (Normal / Compact / Practice). Never written for Pitch or Whiteboard. */
   playerPresentation?: TacticalPlayerPresentation;
@@ -70,14 +69,14 @@ export function sanitizeBoardName(value: string | undefined): string {
 }
 
 function sanitizeStoredBoardSurface(value: unknown): Exclude<QuickBoardSurface, "pitch"> | null {
-  return value === "training" || value === "whiteboard" ? value : null;
+  return value === "training" || value === "tacticalBoard" || value === "whiteboard" ? value : null;
 }
 
 /**
  * Returns the state to persist for a board on `surface`. Pitch boards are
  * returned untouched (no `surface` field is ever added), so the public GAA
- * board/draft payloads are unchanged; Training and Whiteboard boards are
- * stamped so the board itself records where it belongs.
+ * board/draft payloads are unchanged; Training, Tactical Board and Whiteboard
+ * boards are stamped so the board itself records where it belongs.
  */
 export function withQuickBoardSurface(state: QuickBoardBoardState, surface: QuickBoardSurface): QuickBoardBoardState {
   if (surface === "pitch") return state;

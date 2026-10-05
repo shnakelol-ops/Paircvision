@@ -70,6 +70,9 @@ function pickRootComponent() {
   if (normalizedPath === TACTICAL_SLATE_SURFACE_ROUTES.training) {
     return () => <TacticalPadLiteClean surface="training" />;
   }
+  if (normalizedPath === TACTICAL_SLATE_SURFACE_ROUTES.tacticalBoard) {
+    return () => <TacticalPadLiteClean surface="tacticalBoard" />;
+  }
   if (normalizedPath === TACTICAL_SLATE_SURFACE_ROUTES.whiteboard) {
     return () => <TacticalPadLiteClean surface="whiteboard" />;
   }

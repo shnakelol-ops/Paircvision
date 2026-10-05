@@ -8,39 +8,51 @@ import {
 } from "../engine/pixi/playerPresentation";
 
 /**
- * Tactical Slate work surfaces. All three run the same tactical engine
+ * Tactical Slate work surfaces. All of them run the same tactical engine
  * (surfaceVariant "tactical"); a surface only chooses the pitch visuals and
  * which isolated board library/draft the page reads and writes.
  *
- *  - "pitch"      — the public Gaelic Pitch at /vision-board (the default).
- *  - "training"   — Training Grass: the same turf without markings or goals.
+ *  - "pitch"         — Gaelic Pitch at /vision-board (the default): Gaelic
+ *                      markings and goals on the mown bands.
+ *  - "training"      — Training Grass: mown bands without markings or goals.
+ *  - "tacticalBoard" — Tactical Board: the Gaelic pitch on the original dark
+ *                      turf (gradient, glow and vignette).
  *  - "whiteboard" — the existing whiteboard renderer theme. This is NOT the
  *                   dormant legacy Whiteboard mode (PadMode "whiteboard"),
  *                   which stays unreachable.
  */
 export type TacticalSlateSurface = QuickBoardSurface;
 
-export const TACTICAL_SLATE_SURFACES: readonly TacticalSlateSurface[] = ["pitch", "training", "whiteboard"];
+export const TACTICAL_SLATE_SURFACES: readonly TacticalSlateSurface[] = ["pitch", "training", "tacticalBoard", "whiteboard"];
 
 export const TACTICAL_SLATE_SURFACE_ROUTES: Readonly<Record<TacticalSlateSurface, string>> = {
   pitch: "/vision-board",
   training: "/vision-board/training",
+  tacticalBoard: "/vision-board/tactical",
   whiteboard: "/vision-board/whiteboard",
 };
 
 export const TACTICAL_SLATE_SURFACE_LABELS: Readonly<Record<TacticalSlateSurface, string>> = {
   pitch: "Gaelic Pitch",
   training: "Training Grass",
+  tacticalBoard: "Tactical Board",
   whiteboard: "Whiteboard",
 };
 
-export function resolveSurfacePitchTheme(surface: TacticalSlateSurface): TacticalPitchTheme {
+/**
+ * Pitch theme for a surface. The mown-band Gaelic Pitch is Gaelic only: any
+ * other sport on the Pitch surface (the internal Rugby Slate) keeps the
+ * original turf, exactly as before.
+ */
+export function resolveSurfacePitchTheme(surface: TacticalSlateSurface, sport: PitchSport = "gaelic"): TacticalPitchTheme {
   switch (surface) {
+    case "pitch":
+      return sport === "gaelic" ? "gaelicBands" : "default";
     case "training":
       return "grass";
     case "whiteboard":
       return "whiteboard";
-    case "pitch":
+    case "tacticalBoard":
     default:
       return "default";
   }

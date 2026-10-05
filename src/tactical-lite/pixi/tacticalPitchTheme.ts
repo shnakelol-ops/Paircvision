@@ -6,14 +6,17 @@
  * pure, directly unit-testable function — the renderer itself cannot be
  * constructed in the test environment (no canvas/WebGL).
  *
- *  - "default"    — the existing public Gaelic Pitch: turf + markings + goals.
+ *  - "default"    — the original turf (gradient, glow, vignette) + markings +
+ *                   goals: Tactical Board, and the internal Rugby Slate.
+ *  - "gaelicBands" — Gaelic Pitch (the default surface): the Training Grass
+ *                   mown bands with the full Gaelic markings, goals and glass.
  *  - "grass"      — Training Grass: a flat, stylised mown surface of broad
  *                   alternating bands (TRAINING_GRASS_BANDS), with no pitch
  *                   markings and no goals/posts.
  *  - "whiteboard" — the existing whiteboard face (dark-ink markings on an
  *                   off-white board), unchanged from the dormant legacy mode.
  */
-export type TacticalPitchTheme = "default" | "grass" | "whiteboard";
+export type TacticalPitchTheme = "default" | "gaelicBands" | "grass" | "whiteboard";
 
 export type TacticalPitchThemeLayers = {
   /** Which face fill is painted under everything else. */
@@ -30,6 +33,8 @@ export function resolveTacticalPitchThemeLayers(theme: TacticalPitchTheme = "def
   switch (theme) {
     case "whiteboard":
       return { face: "whiteboard", markings: true, goals: true, glass: false };
+    case "gaelicBands":
+      return { face: "trainingBands", markings: true, goals: true, glass: true };
     case "grass":
       return { face: "trainingBands", markings: false, goals: false, glass: true };
     case "default":

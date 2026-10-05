@@ -74,6 +74,7 @@ describe("registered storage keys match their real owning module (exported const
 describe("registered storage keys match their real owning module (round-tripped through the real save function)", () => {
   it.each([
     ["quickboardTrainingBoards", resolveBoardStorageNamespace("gaelic", "training")],
+    ["quickboardTacticalBoardBoards", resolveBoardStorageNamespace("gaelic", "tacticalBoard")],
     ["quickboardWhiteboardBoards", resolveBoardStorageNamespace("gaelic", "whiteboard")],
     ["quickboardRugbyBoards", resolveBoardStorageNamespace("rugby", "pitch")],
   ])("%s: saveBoard in the Slate's own namespace writes to the registered key", (domainId, namespace) => {

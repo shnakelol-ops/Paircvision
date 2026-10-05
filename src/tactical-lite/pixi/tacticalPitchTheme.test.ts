@@ -28,6 +28,15 @@ describe("resolveTacticalPitchThemeLayers", () => {
     });
   });
 
+  it("gaelicBands (Gaelic Pitch) paints the Training Grass mown bands with the full Gaelic markings, goals and glass", () => {
+    expect(resolveTacticalPitchThemeLayers("gaelicBands")).toEqual({
+      face: "trainingBands",
+      markings: true,
+      goals: true,
+      glass: true,
+    });
+  });
+
   it("whiteboard keeps the existing legacy whiteboard rendering: white face, ink markings and goals, no turf glass", () => {
     expect(resolveTacticalPitchThemeLayers("whiteboard")).toEqual({
       face: "whiteboard",
