@@ -6,6 +6,7 @@ import {
 } from "./tacticalLineStyles";
 import {
   findClosestDrawingIdAtWorldPoint,
+  isPracticeAreaDrawing,
   normalizeDraftPoints,
   renderTacticalDrawing,
 } from "./tacticalLineRenderer";
@@ -27,6 +28,16 @@ type TacticalDrawingControllerOptions = {
   initialTool?: TacticalDrawingTool;
   initialColor?: number;
   createDrawingId?: () => string;
+  /**
+   * Training Practice Areas. When set, rectangle zones render as Practice
+   * Areas (outline only / Dead Zone) into this layer instead of
+   * drawingsLayer — so they can stay fully visible while drawingsLayer fades
+   * during playback. Omitted (Pitch, Whiteboard, Tactical Sequence): every
+   * drawing renders exactly as before.
+   */
+  practiceAreasLayer?: Container;
+  /** Stroke-first eraser hit rule (Tactical Slate). Omitted: the original rule (Tactical Sequence). */
+  strokeFirstEraser?: boolean;
 };
 
 type ActiveDraft = {
@@ -55,6 +66,21 @@ export type TacticalDrawingController = {
   clear: () => void;
   deleteSelectedOrLast: () => void;
   render: () => void;
+  /** Live drawing list (read-only) — used by Training Practice Area editing. */
+  getDrawings: () => readonly TacticalDrawingRecord[];
+  /** Replaces one drawing in place (move / resize / restyle). */
+  updateDrawing: (id: string, next: TacticalDrawingRecord) => boolean;
+  /** Appends a complete drawing (Duplicate); Undo removes it like any newest drawing. */
+  appendDrawing: (drawing: TacticalDrawingRecord) => void;
+  /** Deletes one drawing by id; Undo restores it, exactly as after the eraser. */
+  removeDrawing: (id: string) => boolean;
+  /** A fresh drawing id from the same source new strokes use. */
+  createDrawingId: () => string;
+  /**
+   * Practice Area selection highlight. Deliberately separate from the store's
+   * own selection, which Undo treats as "delete the selected drawing".
+   */
+  setHighlightedDrawingId: (id: string | null) => void;
 };
 
 export function createTacticalDrawingController(options: TacticalDrawingControllerOptions): TacticalDrawingController {
@@ -64,6 +90,8 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
   let activeColor = options.initialColor ?? 0x111111;
   let activeDraft: ActiveDraft | null = null;
   let activePointerId: number | null = null;
+  let highlightedDrawingId: string | null = null;
+  const practiceAreasLayer = options.practiceAreasLayer ?? null;
 
   function clearPreview(): void {
     options.previewGraphic.clear();
@@ -74,10 +102,21 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
     for (const child of existing) {
       child.destroy({ children: true });
     }
+    if (practiceAreasLayer) {
+      for (const child of practiceAreasLayer.removeChildren()) {
+        child.destroy({ children: true });
+      }
+    }
     const selectedId = store.getSelectedId();
     for (const drawing of store.getAll()) {
       const graphic = new Graphics();
       graphic.eventMode = "none";
+      if (practiceAreasLayer && isPracticeAreaDrawing(drawing)) {
+        const isHighlighted = drawing.id === selectedId || drawing.id === highlightedDrawingId;
+        renderTacticalDrawing(graphic, drawing, options.mapperProvider(), isHighlighted, { practiceArea: true });
+        practiceAreasLayer.addChild(graphic);
+        continue;
+      }
       renderTacticalDrawing(graphic, drawing, options.mapperProvider(), drawing.id === selectedId);
       options.drawingsLayer.addChild(graphic);
     }
@@ -97,7 +136,9 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
       opacity: activeDraft.opacity,
       createdAt: activeDraft.createdAt,
     };
-    renderTacticalDrawing(options.previewGraphic, draftShape, options.mapperProvider(), false);
+    renderTacticalDrawing(options.previewGraphic, draftShape, options.mapperProvider(), false, {
+      practiceArea: practiceAreasLayer != null,
+    });
   }
 
   function resetActiveDraft(): void {
@@ -141,7 +182,10 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
     handlePointerDown: (worldPoint, pointerId) => {
       if (activeTool === "move") return;
       if (activeTool === "eraser") {
-        const targetId = findClosestDrawingIdAtWorldPoint(store.getAll(), worldPoint, options.mapperProvider());
+        const targetId = findClosestDrawingIdAtWorldPoint(store.getAll(), worldPoint, options.mapperProvider(), {
+          strokeFirst: options.strokeFirstEraser === true,
+          practiceAreas: practiceAreasLayer != null,
+        });
         if (targetId) {
           store.select(targetId);
           store.deleteSelected();
@@ -230,6 +274,27 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
     render: () => {
       renderCommittedDrawings();
       renderPreviewDraft();
+    },
+    getDrawings: () => store.getAll(),
+    updateDrawing: (id, next) => {
+      const updated = store.updateById(id, next);
+      if (updated) renderCommittedDrawings();
+      return updated;
+    },
+    appendDrawing: (drawing) => {
+      store.append(drawing);
+      renderCommittedDrawings();
+    },
+    removeDrawing: (id) => {
+      const removed = store.removeById(id);
+      if (removed) renderCommittedDrawings();
+      return removed;
+    },
+    createDrawingId: () => createId(),
+    setHighlightedDrawingId: (id) => {
+      if (highlightedDrawingId === id) return;
+      highlightedDrawingId = id;
+      renderCommittedDrawings();
     },
   };
 }

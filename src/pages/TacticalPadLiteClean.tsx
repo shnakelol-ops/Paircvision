@@ -9,6 +9,7 @@ import {
   type TacticalPlayerKitPatch,
   type TacticalPlayerKitSnapshot,
   type TacticalPadLiteSurface,
+  type PracticeAreaSelection,
   type TacticalItem,
   type WhiteboardTokenColor,
   type ShapeLinksState,
@@ -39,7 +40,7 @@ import {
 import StatsModeSurface from "../StatsModeSurface";
 import OrientationGate, { usePortraitOrientation } from "../components/OrientationGate";
 import { PitchWatermark } from "../components/PitchWatermark";
-import { useCanvasRecorder } from "../features/shared/useCanvasRecorder";
+import { useCanvasRecorder, type RecordPhase } from "../features/shared/useCanvasRecorder";
 import { captureQuickBoardSnapshot, restoreQuickBoardSnapshot } from "../features/quickboard/storage/quickboard-snapshot";
 import { generateQuickBoardThumbnail } from "../features/quickboard/storage/quickboard-thumbnail";
 import {
@@ -81,6 +82,7 @@ import {
   resolveSurfaceInitialRoster,
   resolveSurfacePitchTheme,
   surfaceUsesPlayerPresentation,
+  surfaceUsesPracticeAreas,
   type TacticalSlateSurface,
 } from "./tacticalSlateSurface";
 import {
@@ -215,6 +217,12 @@ const DEFAULT_DRAW_TOOL_LABELS: TacticalDrawToolLabels = {
   circleZone: "Circle Zone",
   eraser: "Eraser",
 };
+export const PRACTICE_AREA_DRAW_TOOL_LABEL = "Practice Area";
+
+/** Practice Area selection is off from the record countdown until the clip stops. */
+export function recordPhaseSuspendsPracticeAreas(phase: RecordPhase): boolean {
+  return phase === "countdown" || phase === "recording";
+}
 // Order the Draw tool grid has always rendered in: Move, then Label
 // (inserted second, see buildTacticalDrawToolOptions below), then the nine
 // drawing tools in this exact sequence.
@@ -244,8 +252,14 @@ export function buildTacticalDrawToolOptions(params: {
   textToolActive: boolean;
   onSelectTool: (tool: WhiteboardToolControl) => void;
   onSelectLabel: () => void;
+  /**
+   * Training Grass: the rectangle tool is the coach-facing "Practice Area"
+   * and Circle Zone is not offered (circle Practice Areas are deferred).
+   * Off by default, so Pitch and Whiteboard keep Rect Zone / Circle Zone.
+   */
+  practiceAreas?: boolean;
 }): DrawToolPanelOption[] {
-  const { labels, tacticalTool, textToolActive, onSelectTool, onSelectLabel } = params;
+  const { labels, tacticalTool, textToolActive, onSelectTool, onSelectLabel, practiceAreas = false } = params;
   const options: DrawToolPanelOption[] = [
     {
       id: "move",
@@ -261,9 +275,10 @@ export function buildTacticalDrawToolOptions(params: {
     },
   ];
   for (const id of TACTICAL_DRAW_TOOL_ORDER) {
+    if (practiceAreas && id === "circleZone") continue;
     options.push({
       id,
-      label: labels[id],
+      label: practiceAreas && id === "rectangleZone" ? PRACTICE_AREA_DRAW_TOOL_LABEL : labels[id],
       active: tacticalTool === id,
       onSelect: () => onSelectTool(id),
     });
@@ -2091,6 +2106,42 @@ const PORTRAIT_SHAPE_LINKS_PANEL_STYLE: CSSProperties = {
   bottom: "max(64px, calc(env(safe-area-inset-bottom, 0px) + 60px))",
 };
 
+// Training Practice Area contextual bar: same bottom-centre placement as the
+// Shape Links panel (never over the board's middle, where a small practice
+// area usually sits), so it doesn't cover the area being edited.
+const PRACTICE_AREA_BAR_ROW_STYLE: CSSProperties = {
+  display: "flex",
+  gap: "6px",
+  flexWrap: "wrap",
+  alignItems: "center",
+};
+
+const PRACTICE_AREA_BAR_CAPTION_STYLE: CSSProperties = {
+  fontSize: "12px",
+  fontWeight: 600,
+  color: "rgba(203, 213, 225, 0.85)",
+  marginRight: "2px",
+};
+
+const PRACTICE_AREA_SWATCH_BUTTON_STYLE: CSSProperties = {
+  width: "36px",
+  height: "36px",
+  borderRadius: "999px",
+  border: "1px solid rgba(130, 150, 170, 0.4)",
+  background: "rgba(15, 23, 42, 0.52)",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  padding: 0,
+};
+
+const PRACTICE_AREA_SWATCH_ACTIVE_STYLE: CSSProperties = {
+  ...PRACTICE_AREA_SWATCH_BUTTON_STYLE,
+  boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.9)",
+  border: "1px solid rgba(125, 211, 252, 0.75)",
+};
+
 const SHAPE_LINKS_LIST_STYLE: CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -2500,6 +2551,8 @@ export default function TacticalPadLiteClean({
   };
   const [playerTokensSubmenuOpen, setPlayerTokensSubmenuOpen] = useState(false);
   const [surfaceSubmenuOpen, setSurfaceSubmenuOpen] = useState(false);
+  // Training Practice Area currently selected on the board (null when none).
+  const [practiceAreaSelection, setPracticeAreaSelection] = useState<PracticeAreaSelection | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [movementModePillSelection, setMovementModePillSelection] = useState<MovementModePillOption>("move");
@@ -2528,10 +2581,18 @@ export default function TacticalPadLiteClean({
     shareClip: slateShareClip,
   } = useCanvasRecorder({
     getCanvas: () => surfaceRef.current?.getCanvas() ?? null,
-    onBeforeCountdown: () => setQuickShareOpen(false),
+    onBeforeCountdown: () => {
+      // Clear any Practice Area selection before the countdown, so no recorded frame shows handles.
+      surfaceRef.current?.setPracticeAreaEditingSuspended(true);
+      setQuickShareOpen(false);
+    },
     onComplete: () => setQuickShareOpen(true),
   });
   // slateRecordElapsed holds the final elapsed value after stop — used as the clip duration display.
+  const practiceAreasSuspendedForRecording = recordPhaseSuspendsPracticeAreas(slateRecordPhase);
+  useEffect(() => {
+    surfaceRef.current?.setPracticeAreaEditingSuspended(practiceAreasSuspendedForRecording);
+  }, [practiceAreasSuspendedForRecording]);
   const coachingClip = useCoachingClip();
 
   type SlateClipDiag = { events: string[]; rs: number; ns: number; src: string; dur: number; vw: number; vh: number; err: string | null; seeked: boolean };
@@ -2940,6 +3001,11 @@ export default function TacticalPadLiteClean({
       practicePlayerTokens: isPracticePlayerTokens,
       persistPlayerPresentation: usesPlayerPresentation,
       initialRoster: resolveSurfaceInitialRoster(slateSurface),
+      practiceAreas: surfaceUsesPracticeAreas(slateSurface),
+      onPracticeAreaSelectionChange: (selection) => {
+        if (disposed) return;
+        setPracticeAreaSelection(selection);
+      },
       onPlayerPresentationChange: (presentation) => {
         if (disposed) return;
         applyPlayerPresentation(presentation);
@@ -3067,6 +3133,7 @@ export default function TacticalPadLiteClean({
         links: [],
       });
       setIsShapeLinksPanelOpen(false);
+      setPracticeAreaSelection(null);
       destroySurface?.();
     };
   }, [isStatsMode, isWhiteboardMode]);
@@ -4506,6 +4573,32 @@ export default function TacticalPadLiteClean({
   const myBoardsPopoverStyle = isPortrait ? PORTRAIT_MY_BOARDS_POPOUT_STYLE : MY_BOARDS_POPOUT_STYLE;
   const controlsPopoutStyle = isPortrait ? PORTRAIT_CONTROLS_POPOUT_STYLE : CONTROLS_POPOUT_STYLE;
   const shapeLinksPanelStyle = isPortrait ? PORTRAIT_SHAPE_LINKS_PANEL_STYLE : SHAPE_LINKS_PANEL_STYLE;
+  // The Practice Area bar sits in the screen corner diagonally away from the
+  // selected area, so it stays clear of the corner handles being dragged:
+  //  - vertically: whichever of top/bottom has more room beside the area
+  //    (bottom — the Shape Links position — when equal or no bounds);
+  //  - horizontally (landscape only; in portrait the bar spans the width):
+  //    the half of the screen the area's centre is not in.
+  const practiceAreaBounds = practiceAreaSelection?.screenBounds ?? null;
+  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 0;
+  const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 0;
+  const isPracticeAreaBarAtTop =
+    practiceAreaBounds != null && viewportHeight - practiceAreaBounds.bottom < practiceAreaBounds.top;
+  const practiceAreaBarHorizontal: CSSProperties =
+    practiceAreaBounds == null || isPortrait
+      ? {}
+      : (practiceAreaBounds.left + practiceAreaBounds.right) / 2 < viewportWidth / 2
+        ? { left: "auto", right: "max(12px, calc(env(safe-area-inset-right, 0px) + 10px))", transform: "none" }
+        : { left: "max(60px, calc(env(safe-area-inset-left, 0px) + 58px))", right: "auto", transform: "none" };
+  const practiceAreaBarStyle: CSSProperties = {
+    ...shapeLinksPanelStyle,
+    // A fixed width (the Shape Links maximum) keeps the five swatches on one
+    // row instead of shrink-wrapping into a tall stack on phones.
+    width: "min(calc(100vw - 24px), 320px)",
+    boxSizing: "border-box",
+    ...(isPracticeAreaBarAtTop ? { top: "max(12px, calc(env(safe-area-inset-top, 0px) + 10px))", bottom: "auto" } : {}),
+    ...practiceAreaBarHorizontal,
+  };
   const movementModeControlsWrapStyle = isPortrait
     ? PORTRAIT_MOVEMENT_MODE_CONTROLS_WRAP_STYLE
     : MOVEMENT_MODE_CONTROLS_WRAP_STYLE;
@@ -5046,6 +5139,68 @@ export default function TacticalPadLiteClean({
             </div>
           </div>
         ) : null}
+        {!isWhiteboardMode &&
+        practiceAreaSelection &&
+        !isPlaybackLocked &&
+        !controlsOpen &&
+        !toolsOpen &&
+        !actionsOpen &&
+        !isShapeLinksPanelOpen ? (
+          <div style={practiceAreaBarStyle} role="group" aria-label="Practice Area">
+            <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>
+              {practiceAreaSelection.isDeadZone ? "Dead Zone" : "Practice Area"}
+            </div>
+            <div style={PRACTICE_AREA_BAR_ROW_STYLE}>
+              <span style={PRACTICE_AREA_BAR_CAPTION_STYLE}>Colour</span>
+              {WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => (
+                <button
+                  key={`practice-area-color-${choice.label.toLowerCase()}`}
+                  type="button"
+                  aria-label={`Outline colour ${choice.label}`}
+                  aria-pressed={practiceAreaSelection.color === choice.value}
+                  style={practiceAreaSelection.color === choice.value ? PRACTICE_AREA_SWATCH_ACTIVE_STYLE : PRACTICE_AREA_SWATCH_BUTTON_STYLE}
+                  onClick={() => surfaceRef.current?.setPracticeAreaColor(choice.value)}
+                >
+                  <span style={{ ...WHITEBOARD_TOKEN_COLOR_SWATCH_STYLE, background: choice.css }} />
+                </button>
+              ))}
+            </div>
+            <div style={SHAPE_LOCK_PANEL_ACTIONS_STYLE}>
+              <button
+                type="button"
+                className="control-button"
+                style={SHAPE_LOCK_BUTTON_STYLE}
+                onClick={() => surfaceRef.current?.duplicatePracticeArea()}
+              >
+                Duplicate
+              </button>
+              <button
+                type="button"
+                className="control-button"
+                style={SHAPE_LOCK_BUTTON_STYLE}
+                onClick={() => surfaceRef.current?.setPracticeAreaDeadZone(!practiceAreaSelection.isDeadZone)}
+              >
+                {practiceAreaSelection.isDeadZone ? "Normal Area" : "Dead Zone"}
+              </button>
+              <button
+                type="button"
+                className="control-button"
+                style={SHAPE_LOCK_BUTTON_STYLE}
+                onClick={() => surfaceRef.current?.deletePracticeArea()}
+              >
+                Delete
+              </button>
+              <button
+                type="button"
+                className="control-button"
+                style={CONTROL_BUTTON_STYLE}
+                onClick={() => surfaceRef.current?.clearPracticeAreaSelection()}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        ) : null}
         {!isWhiteboardMode && isShapeLinksPanelOpen ? (
           <div style={shapeLinksPanelStyle} role="group" aria-label="Shape Links">
             <div style={SHAPE_LINKS_PANEL_HEADER_STYLE}>
@@ -5544,6 +5699,7 @@ export default function TacticalPadLiteClean({
                         textToolActive,
                         onSelectTool: applyTacticalToolFromMenu,
                         onSelectLabel: activateTextTool,
+                        practiceAreas: surfaceUsesPracticeAreas(slateSurface),
                       })}
                       colors={buildTacticalDrawColorOptions({
                         activeColor: activeTacticalPenColor,
@@ -5733,6 +5889,7 @@ export default function TacticalPadLiteClean({
                   textToolActive,
                   onSelectTool: applyTacticalToolFromMenu,
                   onSelectLabel: activateTextTool,
+                  practiceAreas: surfaceUsesPracticeAreas(slateSurface),
                 })}
                 colors={buildTacticalDrawColorOptions({
                   activeColor: activeTacticalPenColor,
