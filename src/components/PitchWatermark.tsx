@@ -37,11 +37,41 @@ const PORTRAIT_SLATE_PITCH_WATERMARK_STYLE: CSSProperties = {
   bottom: "5%",
 };
 
-export function PitchWatermark({ portrait, lowered }: { portrait: boolean; lowered?: boolean }) {
-  const style = portrait
+// Tactical Slate Whiteboard only: clean black type in the same position, size,
+// font and weight — solid black, no shadow/glow (the grass watermark's dark
+// text-shadow would smear into a grey halo on the white board).
+export const PITCH_WATERMARK_DARK_COLOR = "rgb(0, 0, 0)";
+const PITCH_WATERMARK_DARK_OVERRIDES: CSSProperties = { color: PITCH_WATERMARK_DARK_COLOR, textShadow: "none" };
+
+export function PitchWatermark({
+  portrait,
+  lowered,
+  dark,
+  hidden,
+}: {
+  portrait: boolean;
+  lowered?: boolean;
+  dark?: boolean;
+  /**
+   * Keeps the element's box (so it can still be measured) but stops painting
+   * it — used while a Tactical Slate clip records, when the same watermark is
+   * drawn into the recorded canvas instead (never two visible watermarks).
+   */
+  hidden?: boolean;
+}) {
+  const base = portrait
     ? lowered
       ? PORTRAIT_SLATE_PITCH_WATERMARK_STYLE
       : PORTRAIT_PITCH_WATERMARK_STYLE
     : PITCH_WATERMARK_STYLE;
-  return <div style={style}>PáircVision</div>;
+  const style: CSSProperties = {
+    ...base,
+    ...(dark ? PITCH_WATERMARK_DARK_OVERRIDES : {}),
+    ...(hidden ? { visibility: "hidden" } : {}),
+  };
+  return (
+    <div style={style} data-pitch-watermark="">
+      PáircVision
+    </div>
+  );
 }

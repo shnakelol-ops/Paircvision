@@ -10,6 +10,7 @@ import {
   resolveSurfaceDefaultPlayerPresentation,
   resolveSurfaceInitialRoster,
   resolveSurfacePitchTheme,
+  surfaceUsesDarkWatermark,
   surfaceUsesPlayerPresentation,
   surfaceUsesPracticeAreas,
 } from "./tacticalSlateSurface";
@@ -129,5 +130,14 @@ describe("Practice Areas by surface", () => {
     expect(surfaceUsesPracticeAreas("pitch")).toBe(false);
     expect(surfaceUsesPracticeAreas("tacticalBoard")).toBe(false);
     expect(surfaceUsesPracticeAreas("whiteboard")).toBe(false);
+  });
+});
+
+describe("watermark by surface", () => {
+  it("only the Whiteboard uses the black watermark; Gaelic Pitch, Training Grass and Tactical Board keep the standard one", () => {
+    expect(surfaceUsesDarkWatermark("whiteboard")).toBe(true);
+    expect(surfaceUsesDarkWatermark("pitch")).toBe(false);
+    expect(surfaceUsesDarkWatermark("training")).toBe(false);
+    expect(surfaceUsesDarkWatermark("tacticalBoard")).toBe(false);
   });
 });

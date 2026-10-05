@@ -48,3 +48,55 @@ describe("PitchWatermark — Tactical Slate / Tactical Sequence position parity"
     expect(withLowered).toBe("14px");
   });
 });
+
+describe("PitchWatermark — Whiteboard black watermark", () => {
+  const read = (props: { portrait: boolean; lowered?: boolean; dark?: boolean }) => {
+    render(<PitchWatermark {...props} />);
+    const node = screen.getByText("PáircVision");
+    const style = {
+      color: node.style.color,
+      bottom: node.style.bottom,
+      right: node.style.right,
+      fontSize: node.style.fontSize,
+      fontFamily: node.style.fontFamily,
+      fontWeight: node.style.fontWeight,
+      letterSpacing: node.style.letterSpacing,
+      textShadow: node.style.textShadow,
+      zIndex: node.style.zIndex,
+    };
+    cleanup();
+    return style;
+  };
+
+  it("without `dark` keeps the existing light watermark colour", () => {
+    expect(read({ portrait: false }).color).toBe("rgba(220, 235, 255, 0.22)");
+    expect(read({ portrait: true, lowered: true }).color).toBe("rgba(220, 235, 255, 0.22)");
+  });
+
+  it("`dark` is clean solid black type with no shadow, in the same position, size, font, weight, spacing and layer", () => {
+    for (const layout of [{ portrait: false }, { portrait: true, lowered: true }]) {
+      const standard = read(layout);
+      const dark = read({ ...layout, dark: true });
+      expect(dark.color).toBe("rgb(0, 0, 0)");
+      expect(dark.textShadow).toBe("none");
+      expect(standard.textShadow).not.toBe("none");
+      expect({ ...dark, color: standard.color, textShadow: standard.textShadow }).toEqual(standard);
+    }
+  });
+});
+
+describe("PitchWatermark — hidden while a clip records", () => {
+  it("`hidden` only stops painting it; the box (and so its measured position) is unchanged", () => {
+    render(<PitchWatermark portrait lowered dark />);
+    const shown = screen.getByText("PáircVision");
+    const shownStyle = shown.getAttribute("style");
+    expect(shown.style.visibility).toBe("");
+    expect(shown.hasAttribute("data-pitch-watermark")).toBe(true);
+    cleanup();
+    render(<PitchWatermark portrait lowered dark hidden />);
+    const hidden = screen.getByText("PáircVision");
+    expect(hidden.style.visibility).toBe("hidden");
+    hidden.style.visibility = "";
+    expect(hidden.getAttribute("style")).toBe(shownStyle);
+  });
+});
