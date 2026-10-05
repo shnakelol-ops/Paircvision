@@ -73,12 +73,14 @@ describe("PitchWatermark — Whiteboard black watermark", () => {
     expect(read({ portrait: true, lowered: true }).color).toBe("rgba(220, 235, 255, 0.22)");
   });
 
-  it("`dark` changes only the colour, to black at the same opacity, in landscape and portrait", () => {
+  it("`dark` is clean solid black type with no shadow, in the same position, size, font, weight, spacing and layer", () => {
     for (const layout of [{ portrait: false }, { portrait: true, lowered: true }]) {
       const standard = read(layout);
       const dark = read({ ...layout, dark: true });
-      expect(dark.color).toBe("rgba(0, 0, 0, 0.22)");
-      expect({ ...dark, color: standard.color }).toEqual(standard);
+      expect(dark.color).toBe("rgb(0, 0, 0)");
+      expect(dark.textShadow).toBe("none");
+      expect(standard.textShadow).not.toBe("none");
+      expect({ ...dark, color: standard.color, textShadow: standard.textShadow }).toEqual(standard);
     }
   });
 });

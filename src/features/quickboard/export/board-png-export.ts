@@ -11,8 +11,8 @@ type BoardPngExportOptions = {
 };
 
 export const BOARD_PNG_WATERMARK_COLOR = "rgba(255, 255, 255, 0.42)";
-/** Same opacity as the standard PNG watermark, in black (Tactical Slate Whiteboard). */
-export const BOARD_PNG_WATERMARK_DARK_COLOR = "rgba(0, 0, 0, 0.42)";
+/** Tactical Slate Whiteboard: clean solid black, matching the on-board Whiteboard watermark. */
+export const BOARD_PNG_WATERMARK_DARK_COLOR = "rgb(0, 0, 0)";
 
 function nextFrame(): Promise<void> {
   return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));

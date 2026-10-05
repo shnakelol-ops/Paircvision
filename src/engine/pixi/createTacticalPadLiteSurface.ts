@@ -5175,8 +5175,9 @@ export async function createTacticalPadLiteSurface(
           fontFamily: spec.fontFamily,
           fontWeight: spec.fontWeight as "600",
           letterSpacing: spec.letterSpacing,
-          // The overlay's text-shadow (0 1px 4px rgba(0,0,0,0.55)).
-          dropShadow: { color: 0x000000, alpha: 0.55, blur: 4, distance: 1, angle: Math.PI / 2 },
+          // The standard overlay's text-shadow (0 1px 4px rgba(0,0,0,0.55));
+          // none for the Whiteboard's clean black type.
+          ...(spec.shadow ? { dropShadow: { color: 0x000000, alpha: 0.55, blur: 4, distance: 1, angle: Math.PI / 2 } } : {}),
         },
         resolution: Math.min(2, window.devicePixelRatio || 1),
       });

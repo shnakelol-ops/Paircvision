@@ -2713,6 +2713,7 @@ export default function TacticalPadLiteClean({
             fontFamily: computed.fontFamily,
             fontWeight: computed.fontWeight,
             letterSpacing: computed.letterSpacing,
+            textShadow: computed.textShadow,
           },
         }),
       );

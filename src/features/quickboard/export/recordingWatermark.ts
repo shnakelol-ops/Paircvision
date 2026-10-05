@@ -25,6 +25,8 @@ export type RecordingWatermarkSpec = {
   color: number;
   /** Fill opacity, 0–1. */
   alpha: number;
+  /** The overlay has a text-shadow (standard watermark); false for the Whiteboard's clean black type. */
+  shadow: boolean;
 };
 
 /** Parses a computed CSS colour (`rgb(...)` / `rgba(...)`) into a 0xRRGGBB colour and an alpha. */
@@ -46,7 +48,7 @@ export function buildRecordingWatermarkSpec(input: {
   text: string;
   elementRect: { right: number; bottom: number };
   canvasRect: { left: number; top: number };
-  style: { color: string; fontSize: string; fontFamily: string; fontWeight: string; letterSpacing: string };
+  style: { color: string; fontSize: string; fontFamily: string; fontWeight: string; letterSpacing: string; textShadow: string };
 }): RecordingWatermarkSpec | null {
   const colour = parseCssColor(input.style.color);
   const fontSize = px(input.style.fontSize);
@@ -61,5 +63,6 @@ export function buildRecordingWatermarkSpec(input: {
     letterSpacing: input.style.letterSpacing === "normal" ? 0 : px(input.style.letterSpacing),
     color: colour.color,
     alpha: colour.alpha,
+    shadow: input.style.textShadow.trim() !== "" && input.style.textShadow.trim() !== "none",
   };
 }

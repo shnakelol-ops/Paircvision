@@ -37,9 +37,11 @@ const PORTRAIT_SLATE_PITCH_WATERMARK_STYLE: CSSProperties = {
   bottom: "5%",
 };
 
-// Tactical Slate Whiteboard only: the same watermark (position, size, font,
-// opacity, shadow) in black, so it reads on the pale whiteboard face.
-export const PITCH_WATERMARK_DARK_COLOR = "rgba(0, 0, 0, 0.22)";
+// Tactical Slate Whiteboard only: clean black type in the same position, size,
+// font and weight — solid black, no shadow/glow (the grass watermark's dark
+// text-shadow would smear into a grey halo on the white board).
+export const PITCH_WATERMARK_DARK_COLOR = "rgb(0, 0, 0)";
+const PITCH_WATERMARK_DARK_OVERRIDES: CSSProperties = { color: PITCH_WATERMARK_DARK_COLOR, textShadow: "none" };
 
 export function PitchWatermark({
   portrait,
@@ -64,7 +66,7 @@ export function PitchWatermark({
     : PITCH_WATERMARK_STYLE;
   const style: CSSProperties = {
     ...base,
-    ...(dark ? { color: PITCH_WATERMARK_DARK_COLOR } : {}),
+    ...(dark ? PITCH_WATERMARK_DARK_OVERRIDES : {}),
     ...(hidden ? { visibility: "hidden" } : {}),
   };
   return (

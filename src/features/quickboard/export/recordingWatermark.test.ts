@@ -22,6 +22,7 @@ describe("buildRecordingWatermarkSpec", () => {
     fontFamily: "Inter, system-ui, sans-serif",
     fontWeight: "600",
     letterSpacing: "1.32px",
+    textShadow: "rgba(0, 0, 0, 0.55) 0px 1px 4px, rgba(0, 0, 0, 0.35) 0px 0px 12px",
   };
 
   it("places the text at the overlay's bottom-right corner, in canvas coordinates", () => {
@@ -41,18 +42,20 @@ describe("buildRecordingWatermarkSpec", () => {
       letterSpacing: 1.32,
       color: 0xdcebff,
       alpha: 0.22,
+      shadow: true,
     });
   });
 
-  it("carries the Whiteboard's black watermark through unchanged", () => {
+  it("carries the Whiteboard's clean black watermark through: solid black, no shadow", () => {
     const spec = buildRecordingWatermarkSpec({
       text: "PáircVision",
       elementRect: { right: 100, bottom: 100 },
       canvasRect: { left: 0, top: 0 },
-      style: { ...style, color: "rgba(0, 0, 0, 0.22)" },
+      style: { ...style, color: "rgb(0, 0, 0)", textShadow: "none" },
     });
     expect(spec?.color).toBe(0x000000);
-    expect(spec?.alpha).toBe(0.22);
+    expect(spec?.alpha).toBe(1);
+    expect(spec?.shadow).toBe(false);
   });
 
   it("treats `normal` letter spacing as none and refuses unusable input", () => {
