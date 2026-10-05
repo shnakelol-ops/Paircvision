@@ -82,3 +82,19 @@ describe("PitchWatermark — Whiteboard black watermark", () => {
     }
   });
 });
+
+describe("PitchWatermark — hidden while a clip records", () => {
+  it("`hidden` only stops painting it; the box (and so its measured position) is unchanged", () => {
+    render(<PitchWatermark portrait lowered dark />);
+    const shown = screen.getByText("PáircVision");
+    const shownStyle = shown.getAttribute("style");
+    expect(shown.style.visibility).toBe("");
+    expect(shown.hasAttribute("data-pitch-watermark")).toBe(true);
+    cleanup();
+    render(<PitchWatermark portrait lowered dark hidden />);
+    const hidden = screen.getByText("PáircVision");
+    expect(hidden.style.visibility).toBe("hidden");
+    hidden.style.visibility = "";
+    expect(hidden.getAttribute("style")).toBe(shownStyle);
+  });
+});

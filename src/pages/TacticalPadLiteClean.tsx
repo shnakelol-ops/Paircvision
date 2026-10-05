@@ -72,6 +72,7 @@ import {
   BOARD_PNG_WATERMARK_DARK_COLOR,
   exportBoardSetupAsPng,
 } from "../features/quickboard/export/board-png-export";
+import { buildRecordingWatermarkSpec } from "../features/quickboard/export/recordingWatermark";
 import { ShareSheet } from "../features/shared/ShareSheet";
 import SlateTextOverlay from "../features/quickboard/annotations/SlateTextOverlay";
 import { resolveSlateQuarterTurns, shouldUseMobilePortraitToolsPanel } from "./tacticalSlateOrientation";
@@ -222,6 +223,11 @@ const DEFAULT_DRAW_TOOL_LABELS: TacticalDrawToolLabels = {
   eraser: "Eraser",
 };
 export const PRACTICE_AREA_DRAW_TOOL_LABEL = "Practice Area";
+
+/** The watermark is drawn into the recorded canvas from the record countdown until the clip stops. */
+export function recordPhaseCapturesWatermark(phase: RecordPhase): boolean {
+  return phase === "countdown" || phase === "recording";
+}
 
 /** Practice Area selection is off from the record countdown until the clip stops. */
 export function recordPhaseSuspendsPracticeAreas(phase: RecordPhase): boolean {
@@ -2680,6 +2686,53 @@ export default function TacticalPadLiteClean({
     isPortraitOrientation,
   });
   const isPortrait = portraitQuarterTurns !== 0;
+  // From the countdown until the clip stops, the PáircVision watermark moves
+  // from its DOM overlay into the recorded canvas: measured from the overlay
+  // itself (position, font, colour — so Whiteboard stays black), drawn by the
+  // engine, overlay hidden meanwhile. Re-measured if the board resizes/rotates.
+  const recordingWatermarkActive = recordPhaseCapturesWatermark(slateRecordPhase);
+  useEffect(() => {
+    const surface = surfaceRef.current;
+    if (!recordingWatermarkActive || !surface) return;
+    const apply = () => {
+      const element = document.querySelector<HTMLElement>("[data-pitch-watermark]");
+      const canvas = surface.getCanvas();
+      if (!element || !canvas) {
+        surface.setRecordingWatermark(null);
+        return;
+      }
+      const computed = window.getComputedStyle(element);
+      surface.setRecordingWatermark(
+        buildRecordingWatermarkSpec({
+          text: element.textContent ?? "",
+          elementRect: element.getBoundingClientRect(),
+          canvasRect: canvas.getBoundingClientRect(),
+          style: {
+            color: computed.color,
+            fontSize: computed.fontSize,
+            fontFamily: computed.fontFamily,
+            fontWeight: computed.fontWeight,
+            letterSpacing: computed.letterSpacing,
+          },
+        }),
+      );
+    };
+    apply();
+    // After a resize/rotation the board refits on the next frame; measure after it.
+    let frame = 0;
+    const onResize = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        frame = window.requestAnimationFrame(apply);
+      });
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.cancelAnimationFrame(frame);
+      surface.setRecordingWatermark(null);
+    };
+  }, [recordingWatermarkActive, isPortrait, slateSurface]);
   const shouldBlockPortraitInput = false;
   const shouldBlockPortraitInputRef = useRef(shouldBlockPortraitInput);
   const shouldKeepScreenAwakeForBoard = !isStatsMode && !isWhiteboardMode;
@@ -4832,7 +4885,12 @@ export default function TacticalPadLiteClean({
         <div style={isWhiteboardMode ? WHITEBOARD_CONTENT_STYLE : isPortrait ? PORTRAIT_CONTENT_STYLE : CONTENT_STYLE}>
           <div ref={hostRef} style={pitchSurfaceStyle} />
           {!isWhiteboardMode ? (
-            <PitchWatermark portrait={isPortrait} lowered dark={surfaceUsesDarkWatermark(slateSurface)} />
+            <PitchWatermark
+              portrait={isPortrait}
+              lowered
+              dark={surfaceUsesDarkWatermark(slateSurface)}
+              hidden={recordingWatermarkActive}
+            />
           ) : null}
           {!isWhiteboardMode && shouldBlockPortraitInput ? <div style={PORTRAIT_INTERACTION_SHIELD_STYLE} aria-hidden="true" /> : null}
           {!isWhiteboardMode && !shouldBlockPortraitInput ? (

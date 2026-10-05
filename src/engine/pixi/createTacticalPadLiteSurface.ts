@@ -28,6 +28,7 @@ import {
   type NormalizedPoint,
 } from "../shared/normalization";
 import { createTacticalDrawingController } from "../../features/quickboard/drawing/tacticalDrawingController";
+import type { RecordingWatermarkSpec } from "../../features/quickboard/export/recordingWatermark";
 import {
   PRACTICE_AREA_EDGE_TOUCH_PX,
   PRACTICE_AREA_HANDLE_TOUCH_PX,
@@ -276,6 +277,12 @@ export type TacticalPadLiteSurface = {
   undoWhiteboardStroke: () => void;
   clearWhiteboardStrokes: () => void;
   setBackgroundImage: (dataUrl: string | null) => void;
+  /**
+   * Clip recording: draws the PáircVision watermark into the canvas (top of
+   * the stage, screen space) so the recorded stream carries it; null removes
+   * it. Never included in exportImageCanvas (PNG adds its own watermark).
+   */
+  setRecordingWatermark: (spec: RecordingWatermarkSpec | null) => void;
   exportBoardState: () => TacticalBoardState;
   importBoardState: (state: TacticalBoardState) => boolean;
   exportImageCanvas: () => HTMLCanvasElement | null;
@@ -1302,6 +1309,8 @@ export async function createTacticalPadLiteSurface(
 
   const world = new Container();
   app.stage.addChild(world);
+  // Screen-space PáircVision watermark, present only while a clip records.
+  let recordingWatermarkText: Text | null = null;
 
   const surfaceVariant = options.surfaceVariant ?? "tactical";
   const sport = resolveTacticalSlateSport(options.sport);
@@ -5152,6 +5161,32 @@ export async function createTacticalPadLiteSurface(
       practiceAreaEditingSuspended = suspended;
       if (suspended) setSelectedPracticeArea(null);
     },
+    setRecordingWatermark: (spec) => {
+      if (recordingWatermarkText) {
+        recordingWatermarkText.destroy();
+        recordingWatermarkText = null;
+      }
+      if (!spec) return;
+      const text = new Text({
+        text: spec.text,
+        style: {
+          fill: spec.color,
+          fontSize: spec.fontSize,
+          fontFamily: spec.fontFamily,
+          fontWeight: spec.fontWeight as "600",
+          letterSpacing: spec.letterSpacing,
+          // The overlay's text-shadow (0 1px 4px rgba(0,0,0,0.55)).
+          dropShadow: { color: 0x000000, alpha: 0.55, blur: 4, distance: 1, angle: Math.PI / 2 },
+        },
+        resolution: Math.min(2, window.devicePixelRatio || 1),
+      });
+      text.alpha = spec.alpha;
+      text.anchor.set(1, 1);
+      text.position.set(spec.right, spec.bottom);
+      text.eventMode = "none";
+      app.stage.addChild(text);
+      recordingWatermarkText = text;
+    },
     setBackgroundImage: (dataUrl: string | null) => {
       applyBackgroundImage(dataUrl);
     },
@@ -5184,8 +5219,10 @@ export async function createTacticalPadLiteSurface(
       // appear in an exported image/screenshot.
       const guideWasVisible = shapeGuideGraphic.visible;
       const originWasVisible = playerOriginGraphic.visible;
+      const recordingWatermarkWasVisible = recordingWatermarkText?.visible ?? false;
       shapeGuideGraphic.visible = false;
       playerOriginGraphic.visible = false;
+      if (recordingWatermarkText) recordingWatermarkText.visible = false;
       try {
         try {
           const extractedFromStage = resolveHtmlCanvas(extract.canvas(app.stage));
@@ -5207,6 +5244,7 @@ export async function createTacticalPadLiteSurface(
       } finally {
         shapeGuideGraphic.visible = guideWasVisible;
         playerOriginGraphic.visible = originWasVisible;
+        if (recordingWatermarkText) recordingWatermarkText.visible = recordingWatermarkWasVisible;
       }
     },
     getCanvas: () => canvas as HTMLCanvasElement,
