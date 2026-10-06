@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { NormalizedPoint } from "../shared/normalization";
+import { resolveBallDrawRadius } from "./createTacticalPadLiteSurface";
+import { resolveVisionV3DiscRadius } from "./createVisionV3PlayerToken";
 import {
   buildCarryAngleTrack,
+  CARRY_BALL_OVERLAP_FRACTION,
   CARRY_TURN_TIME_CONSTANT_MS,
   evaluateCarryAngle,
   resolveDefaultCarryAngle,
+  resolvePresentedCarryDistance,
   resolvePresentedCarryPoint,
   SLATE_CARRY_RADIUS_WORLD,
 } from "./slateCarryPresentation";
@@ -333,5 +337,52 @@ describe("direction-aware carry during playback", () => {
     for (let ms = 0; ms <= timeline.totalDurationMs; ms += 25) sampleSlatePlaybackTimeline(timeline, ms);
     resolveFinalCarryAngles(timeline);
     expect(JSON.stringify(path)).toBe(before);
+  });
+});
+
+describe("presentation carry distance (player radius + ball radius − overlap)", () => {
+  // Rendered Vision V3 disc radius: Normal at token scale 1, Compact/Practice at 0.75.
+  const visionV3Normal = resolveVisionV3DiscRadius(4.1 * 0.8);
+  const visionV3Compact = visionV3Normal * 0.75;
+
+  it("matches the measured rendered radii", () => {
+    expect(visionV3Normal).toBeCloseTo(3.4768, 4);
+    expect(visionV3Compact).toBeCloseTo(2.6076, 4);
+    expect(resolveBallDrawRadius("football")).toBeCloseTo(1.98, 9);
+  });
+
+  it("overlaps by a quarter of the ball's radius", () => {
+    expect(CARRY_BALL_OVERLAP_FRACTION).toBe(0.25);
+    const overlap = (player: number, ball: number) => player + ball - resolvePresentedCarryDistance(player, ball);
+    const football = resolveBallDrawRadius("football")!;
+    // ~0.5 world units for a football, in every Vision V3 mode.
+    expect(overlap(visionV3Normal, football)).toBeCloseTo(0.495, 9);
+    expect(overlap(visionV3Compact, football)).toBeCloseTo(0.495, 9);
+    expect(resolvePresentedCarryDistance(visionV3Normal, football)).toBeCloseTo(4.962, 3);
+    expect(resolvePresentedCarryDistance(visionV3Compact, football)).toBeCloseTo(4.093, 3);
+    // Smaller balls overlap proportionally less, larger ones more.
+    const sizes = ["footballSmall", "football", "footballLarge", "sliotarSmall", "sliotar", "sliotarLarge"] as const;
+    for (const type of sizes) {
+      const ball = resolveBallDrawRadius(type)!;
+      expect(overlap(visionV3Compact, ball)).toBeCloseTo(ball * 0.25, 12);
+    }
+    expect(overlap(visionV3Compact, resolveBallDrawRadius("footballSmall")!)).toBeLessThan(
+      overlap(visionV3Compact, resolveBallDrawRadius("football")!),
+    );
+  });
+
+  it("is used by playback for that ball, leaving the carry angle unchanged", () => {
+    const path = board({ p: [{ x: 20, y: 50 }, { x: 40, y: 30 }] }, [held("p", { x: 20, y: 50 }), held("p", { x: 40, y: 30 })]);
+    const plain = compileSlatePlaybackTimeline(path);
+    const tuned = compileSlatePlaybackTimeline(path, "default", undefined, { distanceByBallId: new Map([["ball", 4.093]]) });
+    for (const ms of [0, 300, 900, plain.totalDurationMs - 1]) {
+      expect(sideOf(tuned, "p", ms)).toBeCloseTo(sideOf(plain, "p", ms), 9);
+      expect(worldDistance(ballAt(tuned, ms), playerAt(tuned, "p", ms))).toBeCloseTo(4.093, 6);
+      expect(worldDistance(ballAt(plain, ms), playerAt(plain, "p", ms))).toBeCloseTo(SLATE_CARRY_RADIUS_WORLD, 6);
+      expect(playerAt(tuned, "p", ms)).toEqual(playerAt(plain, "p", ms));
+    }
+    expect(JSON.stringify(path)).toBe(
+      JSON.stringify(board({ p: [{ x: 20, y: 50 }, { x: 40, y: 30 }] }, [held("p", { x: 20, y: 50 }), held("p", { x: 40, y: 30 })])),
+    );
   });
 });

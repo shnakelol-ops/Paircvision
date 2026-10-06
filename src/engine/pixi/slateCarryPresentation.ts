@@ -39,8 +39,29 @@ export const SLATE_CARRY_OFFSETS_WORLD: ReadonlyArray<Readonly<{ x: number; y: n
   { x: -4.7, y: 0 },
 ];
 
-/** Distance (world units) from the holder's centre to a presented carried ball. */
+/**
+ * Fallback distance (world units) from the holder's centre to a presented
+ * carried ball — the canonical offset's length — used wherever the holder's
+ * rendered token size is not known (see resolvePresentedCarryDistance).
+ */
 export const SLATE_CARRY_RADIUS_WORLD = Math.hypot(SLATE_CARRY_OFFSETS_WORLD[0]!.x, SLATE_CARRY_OFFSETS_WORLD[0]!.y);
+
+/**
+ * Share of the ball's rendered radius that overlaps the player's token when
+ * carried: a subtle overlap that reads as the ball being at the player's
+ * feet, proportional so small and large balls look alike.
+ */
+export const CARRY_BALL_OVERLAP_FRACTION = 0.25;
+
+/**
+ * Presentation distance (world units) between a holder's centre and the
+ * carried ball's centre: player rendered radius + ball rendered radius −
+ * CARRY_BALL_OVERLAP_FRACTION × ball rendered radius. Presentation only —
+ * snapshots keep the canonical offsets.
+ */
+export function resolvePresentedCarryDistance(playerRenderedRadius: number, ballRenderedRadius: number): number {
+  return playerRenderedRadius + ballRenderedRadius * (1 - CARRY_BALL_OVERLAP_FRACTION);
+}
 
 /**
  * Time constant (1× ms) of the carried ball's turn toward a new direction of

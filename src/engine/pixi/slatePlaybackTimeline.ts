@@ -152,6 +152,8 @@ export type SlatePlaybackTimeline = {
    * (tap-to-pass only), so a pass leaves from where the ball was drawn.
    */
   initialCarryAngleByBallId: ReadonlyMap<string, number>;
+  /** Presentation carry distance per ball (see SlateCarryOptions.distanceByBallId). */
+  carryDistanceByBallId: ReadonlyMap<string, number>;
 };
 
 export type SlateCarrySpan = {
@@ -164,6 +166,11 @@ export type SlateCarrySpan = {
 export type SlateCarryOptions = {
   world?: CarryWorld;
   initialAngleByBallId?: ReadonlyMap<string, number>;
+  /**
+   * Presentation carry distance (world units) per ball, from the rendered
+   * player and ball sizes; a ball without an entry uses world.radiusWorld.
+   */
+  distanceByBallId?: ReadonlyMap<string, number>;
 };
 
 export function compileSlatePlaybackTimeline(
@@ -200,6 +207,7 @@ export function compileSlatePlaybackTimeline(
     carrySpans,
     carryWorld,
     initialCarryAngleByBallId: carry.initialAngleByBallId ?? new Map(),
+    carryDistanceByBallId: carry.distanceByBallId ?? new Map(),
   };
 }
 
@@ -461,7 +469,11 @@ export function sampleSlatePlaybackTimeline(
   const segment = timeline.segments[position.segmentIndex]!;
   const timeMs = segment.startMs + position.progress * segment.durationMs;
   const sampledPlayersById = new Map(players.map((entry) => [entry.id, entry] as const));
-  const world = timeline.carryWorld;
+  // Carry geometry for one ball: the presentation distance for that ball.
+  const worldFor = (ballId: string): CarryWorld => {
+    const distance = timeline.carryDistanceByBallId.get(ballId);
+    return distance === undefined ? timeline.carryWorld : { ...timeline.carryWorld, radiusWorld: distance };
+  };
 
   // Where a ball leaving its holder at this segment's start was drawn: the
   // passer's presented carry point (its carry span ends here), the carry
@@ -470,9 +482,9 @@ export function sampleSlatePlaybackTimeline(
     const passer = fromPlayersById.get(passerId);
     if (passer) {
       const span = findCarrySpan(timeline, ballId, passerId, segment.startMs);
-      if (span) return resolvePresentedCarryPoint(passer, evaluateCarryAngle(span.track, segment.startMs), world);
+      if (span) return resolvePresentedCarryPoint(passer, evaluateCarryAngle(span.track, segment.startMs), worldFor(ballId));
       const initialAngle = position.segmentIndex === 0 ? timeline.initialCarryAngleByBallId.get(ballId) : undefined;
-      if (initialAngle !== undefined) return resolvePresentedCarryPoint(passer, initialAngle, world);
+      if (initialAngle !== undefined) return resolvePresentedCarryPoint(passer, initialAngle, worldFor(ballId));
     }
     return { x: fromBall.x, y: fromBall.y };
   };
@@ -489,7 +501,11 @@ export function sampleSlatePlaybackTimeline(
         const start = releasePoint(toBall.id, fromBall, sourceAttachedPlayerId);
         const receiverEnd = toSnapshot.players.find((entry) => entry.id === targetAttachedPlayerId);
         const end = receiverEnd
-          ? resolvePresentedCarryPoint(receiverEnd, resolveCarryAngleTo(receiverEnd, toBall, world), world)
+          ? resolvePresentedCarryPoint(
+              receiverEnd,
+              resolveCarryAngleTo(receiverEnd, toBall, timeline.carryWorld),
+              worldFor(toBall.id),
+            )
           : { x: toBall.x, y: toBall.y };
         balls.push({
           id: toBall.id,
@@ -503,7 +519,7 @@ export function sampleSlatePlaybackTimeline(
       const span = findCarrySpan(timeline, toBall.id, targetAttachedPlayerId, timeMs);
       if (!holder || !span) continue;
       const carryAngle = evaluateCarryAngle(span.track, timeMs);
-      const carried = resolvePresentedCarryPoint(holder, carryAngle, world);
+      const carried = resolvePresentedCarryPoint(holder, carryAngle, worldFor(toBall.id));
       if (fromBall && sourceAttachedPlayerId == null) {
         const remainingFraction = resolvePickupRemainingFraction(position.progress * segment.durationMs);
         balls.push({

@@ -13,6 +13,16 @@ export type VisionV3TeamColor = "blue" | "red" | "green" | "yellow" | "black" | 
 export type VisionV3KitPattern = "plain" | "hoops" | "stripes" | "slash" | "chestDash" | "gradient";
 const VISION_V3_SIZE_SCALE = 1.06;
 
+/**
+ * Radius of the drawn Vision V3 disc (rim outer edge) in token-local units,
+ * for a requested token `radius`. The surface multiplies it by the token's
+ * current scale to get the on-pitch size.
+ */
+export function resolveVisionV3DiscRadius(radius?: number): number {
+  const baseDiscRadius = Number.isFinite(radius) ? Math.max(2.8, Number(radius)) : 3.66;
+  return baseDiscRadius * VISION_V3_SIZE_SCALE;
+}
+
 const DEFAULT_STYLE_BY_TEAM: Record<VisionV3TeamColor, VisionV3PlayerTokenStyle> = {
   blue: {
     primaryColor: 0x2563eb,
@@ -227,8 +237,7 @@ export function createVisionV3PlayerToken({
   token.cursor = "grab";
   token.scale.set(scale ?? 1);
 
-  const baseDiscRadius = Number.isFinite(radius) ? Math.max(2.8, Number(radius)) : 3.66;
-  const discRadius = baseDiscRadius * VISION_V3_SIZE_SCALE;
+  const discRadius = resolveVisionV3DiscRadius(radius);
   const ringWidth = Math.max(0.58, discRadius * 0.2);
   const innerRadius = discRadius - ringWidth;
   const baseColor =

@@ -66,11 +66,13 @@ import {
   type SlatePlaybackTimeline,
 } from "./slatePlaybackTimeline";
 import {
+  resolvePresentedCarryDistance,
   resolvePresentedCarryPoint,
   SLATE_CARRY_OFFSETS_WORLD,
   SLATE_CARRY_RADIUS_WORLD,
   type CarryWorld,
 } from "./slateCarryPresentation";
+import { resolveVisionV3DiscRadius } from "./createVisionV3PlayerToken";
 import {
   createTacticalSlateInitialPlayerSeeds,
   type TacticalSlateDefaultPlayerSeed,
@@ -1144,6 +1146,32 @@ function normalizeTacticalItem(item: TacticalItem): TacticalItem {
   };
 }
 
+/**
+ * Radius (world units, before the item's own scale) a ball is drawn at —
+ * the single source for both drawing and carried-ball presentation. Null
+ * for non-ball items.
+ */
+export function resolveBallDrawRadius(type: TacticalItem["type"]): number | null {
+  switch (type) {
+    case "footballSmall":
+      return TACTICAL_ITEM_HALF_SIZE * 0.72;
+    case "football":
+      return TACTICAL_ITEM_HALF_SIZE * 0.9;
+    case "footballLarge":
+      return TACTICAL_ITEM_HALF_SIZE * 1.12;
+    case "sliotarSmall":
+      return TACTICAL_ITEM_HALF_SIZE * 0.6;
+    case "sliotar":
+      return TACTICAL_ITEM_HALF_SIZE * 0.74;
+    case "sliotarLarge":
+      return TACTICAL_ITEM_HALF_SIZE * 0.9;
+    case "rugbyBall":
+      return TACTICAL_ITEM_HALF_SIZE * 0.9;
+    default:
+      return null;
+  }
+}
+
 export function isBallItem(item: Pick<TacticalItem, "type">): boolean {
   return (
     item.type === "footballSmall" ||
@@ -2104,7 +2132,43 @@ export async function createTacticalPadLiteSurface(
     if (carryAngle === undefined || !playerId) return getAttachedBallPositionForPlayerId(playerId);
     const player = players.find((entry) => entry.id === playerId);
     if (!player) return null;
-    return resolvePresentedCarryPoint(player.current, carryAngle, carryWorld);
+    const ball = findTacticalItemById(ballId);
+    const distance = ball ? resolveCarryDistanceForBall(ball) : carryWorld.radiusWorld;
+    return resolvePresentedCarryPoint(player.current, carryAngle, { ...carryWorld, radiusWorld: distance });
+  }
+
+  /**
+   * Rendered radius (world units) of a player's token disc, where the
+   * renderer's geometry is known: Vision V3 — always used by Practice, and
+   * the default style for Normal/Compact. Null for other token styles, whose
+   * carried ball keeps the canonical-length presentation distance.
+   */
+  function resolveRenderedPlayerDiscRadius(): number | null {
+    const usesVisionV3 = isPracticePlayerTokens || tacticalTokenStyle === "vision-v3";
+    if (!usesVisionV3) return null;
+    return resolveVisionV3DiscRadius(PLAYER_RADIUS * TACTICAL_PLAYER_VISUAL_SCALE) * getIdlePlayerTokenScale();
+  }
+
+  /**
+   * Presentation distance from holder centre to carried-ball centre: player
+   * disc radius + ball radius − overlap (see resolvePresentedCarryDistance),
+   * or the canonical offset length when the player's rendered size is unknown.
+   */
+  function resolveCarryDistanceForBall(item: TacticalSurfaceItem): number {
+    const playerRadius = resolveRenderedPlayerDiscRadius();
+    const ballDrawRadius = resolveBallDrawRadius(item.type);
+    if (playerRadius === null || ballDrawRadius === null) return SLATE_CARRY_RADIUS_WORLD;
+    return resolvePresentedCarryDistance(playerRadius, ballDrawRadius * (item.scale ?? 1));
+  }
+
+  /** Re-places balls drawn on a presented carry side (e.g. after a token-size change). */
+  function refreshPresentedCarriedBalls(): void {
+    for (const ballId of presentedCarryAngleByBallId.keys()) {
+      const item = findTacticalItemById(ballId);
+      if (!item || !isBallItem(item)) continue;
+      applyBallRuntimeStateToItem(item);
+      setItemWorldPosition(item, mapper);
+    }
   }
 
   function applyBallRuntimeStateToItem(item: TacticalSurfaceItem): void {
@@ -3193,17 +3257,15 @@ export async function createTacticalPadLiteSurface(
       return;
     }
     if (item.type === "footballSmall" || item.type === "football" || item.type === "footballLarge") {
-      const radius = TACTICAL_ITEM_HALF_SIZE * (item.type === "footballSmall" ? 0.72 : item.type === "footballLarge" ? 1.12 : 0.9);
-      drawPremiumFootball(graphic, radius);
+      drawPremiumFootball(graphic, resolveBallDrawRadius(item.type)!);
       return;
     }
     if (item.type === "sliotarSmall" || item.type === "sliotar" || item.type === "sliotarLarge") {
-      const radius = TACTICAL_ITEM_HALF_SIZE * (item.type === "sliotarSmall" ? 0.6 : item.type === "sliotarLarge" ? 0.9 : 0.74);
-      drawPremiumSliotar(graphic, radius);
+      drawPremiumSliotar(graphic, resolveBallDrawRadius(item.type)!);
       return;
     }
     if (item.type === "rugbyBall") {
-      drawPremiumRugbyBall(graphic, TACTICAL_ITEM_HALF_SIZE * 0.9);
+      drawPremiumRugbyBall(graphic, resolveBallDrawRadius(item.type)!);
       return;
     }
   }
@@ -3901,9 +3963,14 @@ export async function createTacticalPadLiteSurface(
       playbackKind === "possession-pass"
         ? optionsForPlayback?.possessionReceiverId ?? null
         : null;
+    const carryDistanceByBallId = new Map<string, number>();
+    for (const item of tacticalItems) {
+      if (isBallItem(item)) carryDistanceByBallId.set(item.id, resolveCarryDistanceForBall(item));
+    }
     playbackTimeline = compileSlatePlaybackTimeline(path, playbackKind, carryWorld.scale, {
       world: carryWorld,
       initialAngleByBallId: optionsForPlayback?.initialCarryAngleByBallId,
+      distanceByBallId: carryDistanceByBallId,
     });
     playbackTimelineMs = 0;
     applySnapshotToSurface(path[0]!);
@@ -5020,6 +5087,7 @@ export async function createTacticalPadLiteSurface(
       const prevStyle = tacticalTokenStyle;
       tacticalTokenStyle = nextStyle;
       rerenderAllTacticalPlayers();
+      refreshPresentedCarriedBalls();
       // Under-Pill compensates Compact Mode's scale multiplier (see
       // compactScaleFactor above), so a switch into or out of it must refresh
       // the idle/drag scale target immediately rather than waiting for the
@@ -5036,6 +5104,7 @@ export async function createTacticalPadLiteSurface(
       const nextEnabled = Boolean(enabled);
       if (nextEnabled === isCompactPlayerTokens) return;
       isCompactPlayerTokens = nextEnabled;
+      refreshPresentedCarriedBalls();
       for (const player of players) {
         const isDraggingThisPlayer =
           activeDrag !== null && activeDrag.type === "player" && activeDrag.playerId === player.id;
@@ -5050,6 +5119,7 @@ export async function createTacticalPadLiteSurface(
       // Practice swaps the renderer (fixed Vision V3, no label) as well as the
       // scale, so every token is rebuilt, then its scale target refreshed.
       rerenderAllTacticalPlayers();
+      refreshPresentedCarriedBalls();
       for (const player of players) {
         const isDraggingThisPlayer =
           activeDrag !== null && activeDrag.type === "player" && activeDrag.playerId === player.id;
