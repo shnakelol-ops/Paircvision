@@ -9,7 +9,9 @@ import {
 } from "./slatePlaybackTimeline";
 import {
   measurePlayerWalk,
+  isReversalTurn,
   PLAYER_CONTINUITY_REVERSAL_THRESHOLD_DEGREES,
+  PLAYER_CONTINUITY_TURN_TOLERANCE_DEGREES,
   resolveContinuityProgress,
   resolveTurnDegrees,
 } from "./slatePlayerContinuity";
@@ -135,9 +137,9 @@ describe("player continuity across phase boundaries", () => {
     expectContinuous(timeline, "p", 1);
   });
 
-  it("~119° still carries speed; ~121° is a reversal and stops at the boundary", () => {
-    const at = (degrees: number) => {
-      // Second leg turns `degrees` away from the first (measured in world space).
+  describe("reversal threshold (150°)", () => {
+    // Second leg turns `degrees` away from the first, measured in world space.
+    const turnBoard = (degrees: number) => {
       const radians = (degrees * Math.PI) / 180;
       const dx = Math.cos(radians) * 20;
       const dy = Math.sin(radians) * 20;
@@ -145,17 +147,57 @@ describe("player continuity across phase boundaries", () => {
         board({ p: [{ x: 20, y: 50 }, { x: 52, y: 50 }, { x: 52 + dx / WORLD.x, y: 50 + dy / WORLD.y }] }),
       );
     };
-    const gentle = at(119);
-    const sharp = at(121);
-    const turn = (timeline: SlatePlaybackTimeline) => {
+    const measuredTurn = (timeline: SlatePlaybackTimeline) => {
       const [p0, p1, p2] = timeline.path.map((snapshot) => snapshot.players[0]!);
       return resolveTurnDegrees(measurePlayerWalk(p0!, p1!)!.endDirection, measurePlayerWalk(p1!, p2!)!.startDirection);
     };
-    expect(turn(gentle)).toBeCloseTo(119, 6);
-    expect(turn(sharp)).toBeCloseTo(121, 6);
-    expect(PLAYER_CONTINUITY_REVERSAL_THRESHOLD_DEGREES).toBe(120);
-    expectContinuous(gentle, "p", 1);
-    expectStopped(sharp, "p", 1);
+
+    it("is an explicit tunable constant", () => {
+      expect(PLAYER_CONTINUITY_REVERSAL_THRESHOLD_DEGREES).toBe(150);
+    });
+
+    for (const degrees of [90, 120, 135, 149]) {
+      it(`${degrees}° carries speed through the boundary`, () => {
+        const timeline = turnBoard(degrees);
+        expect(measuredTurn(timeline)).toBeCloseTo(degrees, 6);
+        expectContinuous(timeline, "p", 1);
+      });
+    }
+
+    for (const degrees of [150, 180]) {
+      it(`${degrees}° is a reversal and stops at the boundary`, () => {
+        const timeline = turnBoard(degrees);
+        expect(measuredTurn(timeline)).toBeCloseTo(degrees, 6);
+        expectStopped(timeline, "p", 1);
+      });
+    }
+
+    it("120° (an equilateral-triangle corner) behaves the same at every boundary", () => {
+      const legs = [0, 120, 240, 360, 480, 600].map((heading) => (heading * Math.PI) / 180);
+      const track = [{ x: 40, y: 50 }];
+      for (const heading of legs) {
+        const last = track[track.length - 1]!;
+        track.push({ x: last.x + (Math.cos(heading) * 6) / WORLD.x, y: last.y + Math.sin(heading) * 6 });
+      }
+      const timeline = compileSlatePlaybackTimeline(board({ p: track }));
+      for (const index of [1, 2, 3, 4, 5]) expectContinuous(timeline, "p", index);
+    });
+
+    it("boundary semantics: at or above 150° stops, including float noise just under it", () => {
+      expect(isReversalTurn(150)).toBe(true);
+      expect(isReversalTurn(180)).toBe(true);
+      expect(isReversalTurn(150 - 1e-9)).toBe(true);
+      expect(isReversalTurn(150 - PLAYER_CONTINUITY_TURN_TOLERANCE_DEGREES)).toBe(true);
+      expect(isReversalTurn(150 - 1e-4)).toBe(false);
+      expect(isReversalTurn(149)).toBe(false);
+      // A 150° turn built from several float-noisy constructions always stops.
+      for (const start of [0, 17, 33.3, 91, 211.7]) {
+        const a = (start * Math.PI) / 180;
+        const b = ((start + 150) * Math.PI) / 180;
+        const turn = resolveTurnDegrees({ x: Math.cos(a), y: Math.sin(a) }, { x: Math.cos(b), y: Math.sin(b) });
+        expect(isReversalTurn(turn)).toBe(true);
+      }
+    });
   });
 
   it("180° reversal stops at the boundary", () => {

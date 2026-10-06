@@ -26,12 +26,33 @@ import { resolveStoredRoutePolyline } from "./routeFollowInterpolation";
  */
 
 /**
- * Largest change of direction (degrees, between the end of one segment's
- * walk and the start of the next) that still carries speed through the
- * boundary. A sharper turn — a reversal — stops the player at the boundary
- * (boundary speed 0), so they decelerate, turn and accelerate again.
+ * Change of direction (degrees, between the end of one segment's walk and the
+ * start of the next) at which a player stops at the boundary instead of
+ * carrying speed through it. A turn of this size or more — a reversal —
+ * stops the player (boundary speed 0), so they decelerate, turn and
+ * accelerate again; anything sharper than a right angle but below it (the
+ * 120°–150° cuts common in practice diagrams) changes direction at speed.
  */
-export const PLAYER_CONTINUITY_REVERSAL_THRESHOLD_DEGREES = 120;
+export const PLAYER_CONTINUITY_REVERSAL_THRESHOLD_DEGREES = 150;
+
+/**
+ * Measurement tolerance (degrees) for the reversal threshold: a turn
+ * authored at exactly the threshold can measure a hair under it in floating
+ * point, so turns within this tolerance below the threshold count as
+ * reaching it. See isReversalTurn.
+ */
+export const PLAYER_CONTINUITY_TURN_TOLERANCE_DEGREES = 1e-6;
+
+/**
+ * Whether a boundary turn is a reversal (the player stops). Boundary
+ * semantics: a turn at or above PLAYER_CONTINUITY_REVERSAL_THRESHOLD_DEGREES
+ * stops, including a turn that measures within
+ * PLAYER_CONTINUITY_TURN_TOLERANCE_DEGREES below it; anything smaller
+ * carries speed through.
+ */
+export function isReversalTurn(turnDegrees: number): boolean {
+  return turnDegrees >= PLAYER_CONTINUITY_REVERSAL_THRESHOLD_DEGREES - PLAYER_CONTINUITY_TURN_TOLERANCE_DEGREES;
+}
 
 /** A segment walk shorter than this (world units) counts as standing still. */
 export const PLAYER_CONTINUITY_MIN_MOVEMENT_WORLD = 0.25;
@@ -179,7 +200,7 @@ export function resolveBoundaryWorldSpeed(
   if (!before?.walk || !after?.walk) return 0;
   if (before.durationMs <= 0 || after.durationMs <= 0) return 0;
   const turn = resolveTurnDegrees(before.walk.endDirection, after.walk.startDirection);
-  if (turn > PLAYER_CONTINUITY_REVERSAL_THRESHOLD_DEGREES) return 0;
+  if (isReversalTurn(turn)) return 0;
   return Math.min(before.walk.worldLength / before.durationMs, after.walk.worldLength / after.durationMs);
 }
 
