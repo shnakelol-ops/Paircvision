@@ -70,6 +70,13 @@ import {
   resolveDirectionalPassParticipants,
 } from "./directionalPassAnchors";
 import {
+  buildPossessionPlan,
+  possessionSegmentKind,
+  samplePossessionFrame,
+  type PossessionPlan,
+} from "./possessionPresentation";
+import { computePassPositionProgress } from "../../movement-board/ball/pass-trajectory";
+import {
   createTacticalSlateInitialPlayerSeeds,
   type TacticalSlateDefaultPlayerSeed,
   type TacticalSlateInitialRoster,
@@ -1680,6 +1687,11 @@ export async function createTacticalPadLiteSurface(
   // starts, not recomputed every animation frame; empty for possession-pass
   // sessions, whose timing is entirely unrelated to this.
   let segmentMaxMovementDistances: number[] = [];
+  // Direction-aware possession presentation for phase playback, one plan per
+  // ball: derived once from the playback's snapshots at startPlayback (pure
+  // data, never written back), so every frame is a pure function of
+  // (segment, progress). Empty for tap-to-pass and when not playing.
+  let possessionPlans = new Map<string, PossessionPlan>();
   let singlePlayTargetSnapshot: PhaseSnapshot | null = null;
   let startPositions: PhaseSnapshot = {
     players: players.map((player) => ({ id: player.id, ...player.current })),
@@ -2098,8 +2110,14 @@ export async function createTacticalPadLiteSurface(
     }
   }
 
-  function getAttachedBallPositionForPlayer(player: TacticalPlayer): NormalizedPoint {
-    const playerWorld = mapper.normalizedToWorld(player.current);
+  /**
+   * The fixed carried anchor (world) for a holder centred at `playerWorld`:
+   * the first ATTACHED_BALL_OFFSETS_WORLD candidate that lands on the pitch.
+   * This is the stored carry position — snapshots, durations and the static
+   * board all use it; phase playback's direction-aware presentation
+   * (possessionPresentation.ts) starts and ends on it.
+   */
+  function getAttachedBallWorldPointForCentre(playerWorld: { x: number; y: number }): { x: number; y: number } {
     for (const offset of ATTACHED_BALL_OFFSETS_WORLD) {
       const worldPoint = {
         x: playerWorld.x + offset.x,
@@ -2111,20 +2129,18 @@ export async function createTacticalPadLiteSurface(
         worldPoint.y >= 0 &&
         worldPoint.y <= WORLD_SIZE.height
       ) {
-        const normalized = mapper.worldToNormalized(worldPoint);
-        return {
-          x: clampNormalizedValue(normalized.x),
-          y: clampNormalizedValue(normalized.y),
-        };
+        return worldPoint;
       }
     }
-
     const fallbackOffset = ATTACHED_BALL_OFFSETS_WORLD[0] ?? { x: 6.4, y: -5.4 };
-    const boundedWorld = {
+    return {
       x: clampWorld(playerWorld.x + fallbackOffset.x, WORLD_SIZE.width),
       y: clampWorld(playerWorld.y + fallbackOffset.y, WORLD_SIZE.height),
     };
-    const normalized = mapper.worldToNormalized(boundedWorld);
+  }
+
+  function getAttachedBallPositionForPlayer(player: TacticalPlayer): NormalizedPoint {
+    const normalized = mapper.worldToNormalized(getAttachedBallWorldPointForCentre(mapper.normalizedToWorld(player.current)));
     return {
       x: clampNormalizedValue(normalized.x),
       y: clampNormalizedValue(normalized.y),
@@ -3905,6 +3921,7 @@ export async function createTacticalPadLiteSurface(
     playbackKind = "default";
     playbackPossessionReceiverId = null;
     segmentMaxMovementDistances = [];
+    possessionPlans = new Map();
     emitPlaybackStateChange();
   }
 
@@ -3927,6 +3944,20 @@ export async function createTacticalPadLiteSurface(
       playbackKind === "possession-pass"
         ? []
         : path.slice(0, -1).map((fromSnapshot, index) => resolveSegmentMaxMovementDistance(fromSnapshot, path[index + 1]!));
+    possessionPlans = new Map();
+    if (playbackKind === "default") {
+      for (const ball of path[0]!.football) {
+        possessionPlans.set(
+          ball.id,
+          buildPossessionPlan(path, ball.id, {
+            toWorld: (point) => mapper.normalizedToWorld(point),
+            anchorPointForCentre: getAttachedBallWorldPointForCentre,
+            worldSize: WORLD_SIZE,
+            carryRadius: DIRECTIONAL_PASS_ANCHOR_RADIUS_WORLD,
+          }),
+        );
+      }
+    }
     applySnapshotToSurface(path[0]!);
     emitPlaybackStateChange();
   }
@@ -4009,13 +4040,12 @@ export async function createTacticalPadLiteSurface(
   }
 
   /**
-   * Directional release/receive for a player-to-player pass segment (a
-   * recorded holder switch, or the tap-to-pass gesture). Returns the ball's
-   * normalized position and whether it is inside a release/receive
-   * transition (rendered beneath the players), or null when this ball
-   * transition is not a player-to-player pass — the caller then keeps its
-   * existing behaviour. Pure in (snapshots, progress): no extra playback
-   * state.
+   * Tap-to-pass fallback: directional release/receive turns for a pass from
+   * a standing start, where nothing can be anticipated. (Phase playback uses
+   * the direction-aware possession plan instead — possessionPresentation.ts.)
+   * Returns the ball's normalized position and whether it is inside a
+   * release/receive turn (rendered beneath the players), or null when this
+   * is not a player-to-player pass. Pure in (snapshots, progress).
    */
   function resolveDirectionalPassBallFrame(
     fromSnapshot: PhaseSnapshot,
@@ -4104,6 +4134,30 @@ export async function createTacticalPadLiteSurface(
           sourceAttachedPlayerId != null &&
           targetAttachedPlayerId != null &&
           sourceAttachedPlayerId !== targetAttachedPlayerId;
+        // Phase playback: player-to-player possession (a carry or a pass) is
+        // drawn by the direction-aware presentation. Ownership state is set
+        // exactly as before; only the drawn position differs from the fixed
+        // anchor, and it is never written into a snapshot.
+        const possessionPlan = possessionPlans.get(toBall.id);
+        const possessionFrame = possessionPlan
+          ? samplePossessionFrame(possessionPlan, activeSegmentIndex, progress)
+          : null;
+        if (possessionPlan && possessionFrame) {
+          if (possessionSegmentKind(possessionPlan, activeSegmentIndex) === "pass") {
+            state.attachedPlayerId = null;
+            state.isFree = true;
+          } else {
+            state.attachedPlayerId = targetAttachedPlayerId;
+            state.isFree = false;
+          }
+          state.path = [];
+          const possessionPoint = mapper.worldToNormalized(possessionFrame.position);
+          item.x = clampNormalizedValue(possessionPoint.x);
+          item.y = clampNormalizedValue(possessionPoint.y);
+          setBallOccludedByPlayers(item, possessionFrame.occludedByPlayers);
+          setItemWorldPosition(item, mapper);
+          continue;
+        }
         if (targetAttachedPlayerId) {
           if (isAttachedToAttachedPassTransition && fromBall) {
             // Replay holder-switch transitions using the recorded snapshot endpoints.
@@ -4111,17 +4165,9 @@ export async function createTacticalPadLiteSurface(
             state.attachedPlayerId = null;
             state.isFree = true;
             state.path = [];
-            const passFrame = resolveDirectionalPassBallFrame(
-              fromSnapshot,
-              toSnapshot,
-              fromBall,
-              toBall,
-              progress,
-              easedProgress,
-            );
-            item.x = passFrame?.point.x ?? clampNormalizedValue(fromBall.x + (toBall.x - fromBall.x) * easedProgress);
-            item.y = passFrame?.point.y ?? clampNormalizedValue(fromBall.y + (toBall.y - fromBall.y) * easedProgress);
-            setBallOccludedByPlayers(item, passFrame?.occludedByPlayers ?? false);
+            item.x = clampNormalizedValue(fromBall.x + (toBall.x - fromBall.x) * easedProgress);
+            item.y = clampNormalizedValue(fromBall.y + (toBall.y - fromBall.y) * easedProgress);
+            setBallOccludedByPlayers(item, false);
             setItemWorldPosition(item, mapper);
             continue;
           }
@@ -4145,12 +4191,20 @@ export async function createTacticalPadLiteSurface(
             item.y += (cappedY - item.y) * ATTACHED_BALL_FOLLOW_SMOOTHING;
           }
         } else {
-          // Tap-to-pass flies as a free ball toward the receiver's carried
-          // point; give it the same directional release/receive as a
-          // recorded holder switch. Every other free-ball move is unchanged.
+          // Tap-to-pass: a pass from a standing start with no look-ahead, so it
+          // keeps the short release/receive turns (directionalPassAnchors.ts)
+          // and the same ease-out flight as phase passes. Every other
+          // free-ball move is unchanged.
           const passFrame =
             fromBall && playbackKind === "possession-pass"
-              ? resolveDirectionalPassBallFrame(fromSnapshot, toSnapshot, fromBall, toBall, progress, easedProgress)
+              ? resolveDirectionalPassBallFrame(
+                  fromSnapshot,
+                  toSnapshot,
+                  fromBall,
+                  toBall,
+                  progress,
+                  computePassPositionProgress(progress),
+                )
               : null;
           const freePoint = passFrame?.point ?? interpolatePath(fromBall, toBall, easedProgress);
           setBallOccludedByPlayers(item, passFrame?.occludedByPlayers ?? false);
