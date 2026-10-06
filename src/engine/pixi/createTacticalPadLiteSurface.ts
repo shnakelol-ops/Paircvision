@@ -62,6 +62,7 @@ import { computeChainTetherSegments, tensionToWidthScale } from "./shapeLinks";
 import {
   compileSlatePlaybackTimeline,
   resolveFinalCarryAngles,
+  resolveTapPassReceptionAngles,
   sampleSlatePlaybackTimeline,
   type SlatePlaybackTimeline,
 } from "./slatePlaybackTimeline";
@@ -3971,6 +3972,7 @@ export async function createTacticalPadLiteSurface(
       world: carryWorld,
       initialAngleByBallId: optionsForPlayback?.initialCarryAngleByBallId,
       distanceByBallId: carryDistanceByBallId,
+      tapPassReceiverId: playbackPossessionReceiverId,
     });
     playbackTimelineMs = 0;
     applySnapshotToSurface(path[0]!);
@@ -4064,6 +4066,12 @@ export async function createTacticalPadLiteSurface(
         const receiver = players.find((entry) => entry.id === possessionReceiverId);
         if (receiver) {
           attachPrimaryBallToPlayer(receiver);
+          // Tap-to-pass: the receiver keeps the ball on the side it arrived
+          // on (presentation only), as after a recorded pass.
+          for (const [ballId, carryAngle] of resolveTapPassReceptionAngles(timeline)) {
+            presentedCarryAngleByBallId.set(ballId, carryAngle);
+          }
+          refreshPresentedCarriedBalls();
         }
       }
       return;

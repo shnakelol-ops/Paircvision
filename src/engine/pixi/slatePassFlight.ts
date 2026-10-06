@@ -132,3 +132,47 @@ export function solvePassInterception(params: {
   }
   return arrive(high);
 }
+
+/** Flight time (1× ms) for `distanceWorld` at the pass speed. */
+export function resolvePassFlightDurationMs(distanceWorld: number, speedWorldPerS: number = SLATE_PASS_SPEED_WORLD_PER_S): number {
+  return (Math.max(0, distanceWorld) / speedWorldPerS) * 1000;
+}
+
+/**
+ * A pass to a receiver who stands still for the whole flight (tap-to-pass):
+ * a straight line from `start` toward the receiver, received at the carry
+ * distance short of their centre, at constant pass speed — the same flight
+ * a recorded pass makes to a stationary receiver, without the moving-receiver
+ * solve. A start already within the carry distance is received at once.
+ */
+export function buildStationaryReceiverPassFlight(params: {
+  ballId: string;
+  passerId: string;
+  receiverId: string;
+  launchMs: number;
+  start: NormalizedPoint;
+  receiver: NormalizedPoint;
+  carryDistanceWorld: number;
+  scale: WorldScale;
+  speedWorldPerS?: number;
+}): SlatePassFlight {
+  const startWorld = toWorldPoint(params.start, params.scale);
+  const receiverWorld = toWorldPoint(params.receiver, params.scale);
+  const dx = receiverWorld.x - startWorld.x;
+  const dy = receiverWorld.y - startWorld.y;
+  const length = Math.hypot(dx, dy);
+  const flown = Math.max(0, length - params.carryDistanceWorld);
+  const end =
+    length > 1e-9
+      ? toNormalizedPoint({ x: startWorld.x + (dx / length) * flown, y: startWorld.y + (dy / length) * flown }, params.scale)
+      : { x: params.start.x, y: params.start.y };
+  return {
+    ballId: params.ballId,
+    passerId: params.passerId,
+    receiverId: params.receiverId,
+    launchMs: params.launchMs,
+    arrivalMs: params.launchMs + resolvePassFlightDurationMs(flown, params.speedWorldPerS),
+    start: { x: params.start.x, y: params.start.y },
+    end,
+  };
+}

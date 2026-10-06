@@ -9,10 +9,7 @@ import {
   compileSlatePlaybackTimeline,
   locateSlateTimelinePosition,
   PICKUP_CONVERGENCE_TIME_CONSTANT_MS,
-  POSSESSION_PASS_MAX_DURATION_MS,
-  POSSESSION_PASS_MIN_DURATION_MS,
   resolvePickupRemainingFraction,
-  resolvePossessionPassDurationMs,
   sampleSlatePlaybackTimeline,
   type SlatePlaybackKind,
   type TimelineSnapshot,
@@ -274,15 +271,6 @@ describe("compileSlatePlaybackTimeline", () => {
     expect(timeline.totalDurationMs).toBe(expectedStart);
   });
 
-  it("keeps the 900–1800ms tap-to-pass window at 1×", () => {
-    const short = resolvePossessionPassDurationMs(START, { ...START, football: [ball({ x: 24, y: 45 })] });
-    const long = resolvePossessionPassDurationMs(START, { ...START, football: [ball({ x: 95, y: 95 })] });
-    const mid = resolvePossessionPassDurationMs(START, { ...START, football: [ball({ x: 22.5 + 14, y: 44.9 })] });
-    expect(short).toBe(POSSESSION_PASS_MIN_DURATION_MS);
-    expect(long).toBe(POSSESSION_PASS_MAX_DURATION_MS);
-    expect(mid).toBeCloseTo(1200, 6);
-  });
-
   it("returns an empty, already-complete timeline for fewer than two snapshots", () => {
     const timeline = compileSlatePlaybackTimeline([START]);
     expect(timeline.totalDurationMs).toBe(0);
@@ -431,23 +419,6 @@ describe("equivalence with the frame-stepped engine on main", () => {
       timelineMs += delta * speed;
       expectFramesMatch(legacy.frame, describeSample(BOARD, timelineMs), { ballCoordinates: false });
     });
-    expect(legacy.playing).toBe(false);
-  });
-
-  it("matches a tap-to-pass at 1× frame for frame", () => {
-    const passTarget: TimelineSnapshot = {
-      players: START.players,
-      football: [ball({ x: 62.5, y: 34.9, path: [{ x: 22.5, y: 44.9 }, { x: 62.5, y: 34.9 }] })],
-    };
-    const path = [START, passTarget];
-    const legacy = createLegacyEngine(path, "possession-pass", 1);
-    let timelineMs = 0;
-    for (const delta of frameDeltas(1000, 5)) {
-      legacy.step(delta);
-      if (!legacy.playing) break;
-      timelineMs += delta;
-      expectFramesMatch(legacy.frame, describeSample(path, timelineMs, "possession-pass"));
-    }
     expect(legacy.playing).toBe(false);
   });
 

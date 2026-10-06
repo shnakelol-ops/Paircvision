@@ -19,6 +19,7 @@ import {
   type CarryWorld,
 } from "./slateCarryPresentation";
 import {
+  buildStationaryReceiverPassFlight,
   resolvePassFlightPoint,
   resolvePassPhaseMinimumMs,
   solvePassInterception,
@@ -86,36 +87,6 @@ export type TimelineSnapshot = {
 };
 
 export type SlatePlaybackKind = "default" | "possession-pass";
-
-// Tap-to-pass timing (the possession-pass playback kind). Values unchanged
-// from the previous engine; see resolvePossessionPassDurationMs.
-export const POSSESSION_PASS_BASE_DURATION_MS = 1200;
-export const POSSESSION_PASS_MIN_DURATION_MS = 900;
-export const POSSESSION_PASS_MAX_DURATION_MS = 1800;
-export const POSSESSION_PASS_REFERENCE_DISTANCE = 14;
-
-/**
- * Tap-to-pass segment duration at 1× speed, from the largest ball
- * displacement in the segment. The clamp is applied at 1× and the result is
- * then scaled by playback speed like every other segment (the old engine
- * clamped after dividing by speed, so at 0.25×–1.5× a tap pass could be held
- * to the 900–1800ms window regardless of speed).
- */
-export function resolvePossessionPassDurationMs(
-  fromSnapshot: TimelineSnapshot,
-  toSnapshot: TimelineSnapshot,
-): number {
-  let maxBallDistance = 0;
-  for (const toBall of toSnapshot.football) {
-    const fromBall = fromSnapshot.football.find((point) => point.id === toBall.id);
-    if (!fromBall) continue;
-    const distance = Math.hypot(toBall.x - fromBall.x, toBall.y - fromBall.y);
-    if (distance > maxBallDistance) maxBallDistance = distance;
-  }
-  const distanceBasedDuration =
-    POSSESSION_PASS_BASE_DURATION_MS * (Math.max(0, maxBallDistance) / POSSESSION_PASS_REFERENCE_DISTANCE);
-  return Math.max(POSSESSION_PASS_MIN_DURATION_MS, Math.min(POSSESSION_PASS_MAX_DURATION_MS, distanceBasedDuration));
-}
 
 /**
  * The old lag-follow moved an attached ball 28% of the remaining distance per
@@ -192,6 +163,8 @@ export type SlateCarryOptions = {
   distanceByBallId?: ReadonlyMap<string, number>;
   /** Player-to-player pass speed, world units per second (SLATE_PASS_SPEED_WORLD_PER_S). */
   passSpeedWorldPerS?: number;
+  /** Tap-to-pass (possession-pass kind): the player the ball is passed to. */
+  tapPassReceiverId?: string | null;
 };
 
 export function compileSlatePlaybackTimeline(
@@ -210,7 +183,8 @@ export function compileSlatePlaybackTimeline(
     const toSnapshot = path[index + 1]!;
     let durationMs =
       kind === "possession-pass"
-        ? resolvePossessionPassDurationMs(fromSnapshot, toSnapshot)
+        ? // Tap-to-pass lasts exactly as long as its flight (set below).
+          0
         : resolvePhaseSegmentDurationMs(resolveSegmentMaxMovementDistance(fromSnapshot, toSnapshot), 1);
     if (kind === "default") {
       // A pass never spills into the next phase: a phase holding a pass
@@ -222,6 +196,17 @@ export function compileSlatePlaybackTimeline(
     }
     segments.push({ startMs, durationMs });
     startMs += durationMs;
+  }
+  const tapPassFlights =
+    kind === "possession-pass"
+      ? compileTapPassFlights(path, carryWorld, distanceByBallId, passSpeedWorldPerS, carry.initialAngleByBallId, carry.tapPassReceiverId)
+      : new Map<string, SlatePassFlight>();
+  if (kind === "possession-pass" && segments[0]) {
+    let flightMs = 0;
+    for (const flight of tapPassFlights.values()) flightMs = Math.max(flightMs, flight.arrivalMs - flight.launchMs);
+    // Never a zero-length segment (a ball already at the receiver's feet).
+    segments[0] = { startMs: 0, durationMs: Math.max(1, flightMs) };
+    startMs = segments[0].durationMs;
   }
   const playerSlopes = compilePlayerContinuitySlopes(
     path,
@@ -246,8 +231,75 @@ export function compileSlatePlaybackTimeline(
     carryWorld,
     initialCarryAngleByBallId: carry.initialAngleByBallId ?? new Map(),
     carryDistanceByBallId: distanceByBallId,
-    passFlights,
+    passFlights: kind === "possession-pass" ? tapPassFlights : passFlights,
   };
+}
+
+/**
+ * Tap-to-pass flights: the ball leaves from where it is drawn (its retained
+ * presented carry side, or the snapshot point) and flies straight, at the
+ * pass speed, to the stationary receiver's carry distance on the side it
+ * arrives from. Players do not move in a tap-to-pass playback.
+ */
+function compileTapPassFlights(
+  path: readonly TimelineSnapshot[],
+  world: CarryWorld,
+  distanceByBallId: ReadonlyMap<string, number>,
+  passSpeedWorldPerS: number,
+  initialAngleByBallId: ReadonlyMap<string, number> | undefined,
+  receiverId: string | null | undefined,
+): Map<string, SlatePassFlight> {
+  const flights = new Map<string, SlatePassFlight>();
+  const fromSnapshot = path[0];
+  const toSnapshot = path[1];
+  if (!fromSnapshot || !toSnapshot) return flights;
+  for (const toBall of toSnapshot.football) {
+    const fromBall = fromSnapshot.football.find((entry) => entry.id === toBall.id);
+    const passerId = fromBall && !fromBall.isFree ? fromBall.attachedPlayerId ?? null : null;
+    if (!fromBall || !passerId) continue;
+    const carryDistance = distanceByBallId.get(toBall.id) ?? world.radiusWorld;
+    const passer = fromSnapshot.players.find((entry) => entry.id === passerId);
+    const initialAngle = initialAngleByBallId?.get(toBall.id);
+    const start =
+      passer && initialAngle !== undefined
+        ? resolvePresentedCarryPoint(passer, initialAngle, { ...world, radiusWorld: carryDistance })
+        : { x: fromBall.x, y: fromBall.y };
+    const receiver = receiverId ? fromSnapshot.players.find((entry) => entry.id === receiverId) : undefined;
+    flights.set(
+      passFlightKey(0, toBall.id),
+      buildStationaryReceiverPassFlight({
+        ballId: toBall.id,
+        passerId,
+        receiverId: receiverId ?? "",
+        launchMs: 0,
+        start,
+        // Without a known receiver, fly to the recorded target point itself.
+        receiver: receiver ?? { x: toBall.x, y: toBall.y },
+        carryDistanceWorld: receiver ? carryDistance : 0,
+        scale: world.scale,
+        speedWorldPerS: passSpeedWorldPerS,
+      }),
+    );
+  }
+  return flights;
+}
+
+/**
+ * The side (world angle) each tap-passed ball arrives on at its receiver, so
+ * the surface can keep that presented carry side once the receiver takes the
+ * ball — no snap to the canonical offset.
+ */
+export function resolveTapPassReceptionAngles(timeline: SlatePlaybackTimeline): Map<string, number> {
+  const angles = new Map<string, number>();
+  if (timeline.kind !== "possession-pass") return angles;
+  const fromSnapshot = timeline.path[0];
+  if (!fromSnapshot) return angles;
+  for (const flight of timeline.passFlights.values()) {
+    const receiver = fromSnapshot.players.find((entry) => entry.id === flight.receiverId);
+    if (!receiver) continue;
+    angles.set(flight.ballId, resolveCarryAngleTo(receiver, flight.end, timeline.carryWorld));
+  }
+  return angles;
 }
 
 /** The holder switches (player-to-player passes) between two snapshots. */
@@ -737,6 +789,22 @@ export function sampleSlatePlaybackTimeline(
         x: carried.x,
         y: carried.y,
         carryAngle,
+      });
+      continue;
+    }
+    const tapPassFlight =
+      timeline.kind === "possession-pass"
+        ? timeline.passFlights.get(passFlightKey(position.segmentIndex, toBall.id))
+        : undefined;
+    if (tapPassFlight) {
+      // Tap-to-pass: the same locked, constant-speed flight as a recorded pass.
+      const point = resolvePassFlightPoint(tapPassFlight, timeMs);
+      balls.push({
+        id: toBall.id,
+        kind: "free",
+        x: point.x,
+        y: point.y,
+        path: toBall.path?.map((pathPoint) => ({ x: pathPoint.x, y: pathPoint.y })) ?? [],
       });
       continue;
     }
