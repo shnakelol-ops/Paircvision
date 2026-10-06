@@ -19,6 +19,15 @@ import {
   type CarryWorld,
 } from "./slateCarryPresentation";
 import {
+  resolvePassFlightPoint,
+  resolvePassPhaseMinimumMs,
+  solvePassInterception,
+  SLATE_PASS_SPEED_WORLD_PER_S,
+  toNormalizedPoint,
+  toWorldPoint,
+  type SlatePassFlight,
+} from "./slatePassFlight";
+import {
   compilePlayerContinuitySlopes,
   measurePlayerWalk,
   resolveContinuityProgress,
@@ -154,7 +163,17 @@ export type SlatePlaybackTimeline = {
   initialCarryAngleByBallId: ReadonlyMap<string, number>;
   /** Presentation carry distance per ball (see SlateCarryOptions.distanceByBallId). */
   carryDistanceByBallId: ReadonlyMap<string, number>;
+  /**
+   * Player-to-player passes, keyed by passFlightKey(segmentIndex, ballId):
+   * each recorded holder switch played as a locked, constant-speed flight
+   * (see slatePassFlight.ts).
+   */
+  passFlights: ReadonlyMap<string, SlatePassFlight>;
 };
+
+export function passFlightKey(segmentIndex: number, ballId: string): string {
+  return `${segmentIndex}:${ballId}`;
+}
 
 export type SlateCarrySpan = {
   holderId: string;
@@ -171,6 +190,8 @@ export type SlateCarryOptions = {
    * player and ball sizes; a ball without an entry uses world.radiusWorld.
    */
   distanceByBallId?: ReadonlyMap<string, number>;
+  /** Player-to-player pass speed, world units per second (SLATE_PASS_SPEED_WORLD_PER_S). */
+  passSpeedWorldPerS?: number;
 };
 
 export function compileSlatePlaybackTimeline(
@@ -179,15 +200,26 @@ export function compileSlatePlaybackTimeline(
   worldScale: WorldScale = SLATE_WORLD_SCALE,
   carry: SlateCarryOptions = {},
 ): SlatePlaybackTimeline {
+  const carryWorld = carry.world ?? { ...SLATE_CARRY_WORLD, scale: worldScale };
+  const distanceByBallId = carry.distanceByBallId ?? new Map<string, number>();
+  const passSpeedWorldPerS = carry.passSpeedWorldPerS ?? SLATE_PASS_SPEED_WORLD_PER_S;
   const segments: SlatePlaybackSegment[] = [];
   let startMs = 0;
   for (let index = 0; index < path.length - 1; index += 1) {
     const fromSnapshot = path[index]!;
     const toSnapshot = path[index + 1]!;
-    const durationMs =
+    let durationMs =
       kind === "possession-pass"
         ? resolvePossessionPassDurationMs(fromSnapshot, toSnapshot)
         : resolvePhaseSegmentDurationMs(resolveSegmentMaxMovementDistance(fromSnapshot, toSnapshot), 1);
+    if (kind === "default") {
+      // A pass never spills into the next phase: a phase holding a pass
+      // lasts at least long enough for the ball to reach the receiver.
+      durationMs = Math.max(
+        durationMs,
+        resolvePassPhaseFloorMs(fromSnapshot, toSnapshot, carryWorld, distanceByBallId, passSpeedWorldPerS),
+      );
+    }
     segments.push({ startMs, durationMs });
     startMs += durationMs;
   }
@@ -196,8 +228,14 @@ export function compileSlatePlaybackTimeline(
     segments.map((segment) => segment.durationMs),
     worldScale,
   );
-  const carryWorld = carry.world ?? { ...SLATE_CARRY_WORLD, scale: worldScale };
-  const carrySpans = compileCarrySpans(path, segments, playerSlopes, carryWorld);
+  const { spans: carrySpans, flights: passFlights } = compileCarrySpans(
+    path,
+    segments,
+    playerSlopes,
+    carryWorld,
+    distanceByBallId,
+    passSpeedWorldPerS,
+  );
   return {
     kind,
     path,
@@ -207,8 +245,82 @@ export function compileSlatePlaybackTimeline(
     carrySpans,
     carryWorld,
     initialCarryAngleByBallId: carry.initialAngleByBallId ?? new Map(),
-    carryDistanceByBallId: carry.distanceByBallId ?? new Map(),
+    carryDistanceByBallId: distanceByBallId,
+    passFlights,
   };
+}
+
+/** The holder switches (player-to-player passes) between two snapshots. */
+function resolveHolderSwitches(
+  fromSnapshot: TimelineSnapshot,
+  toSnapshot: TimelineSnapshot,
+): { fromBall: TimelineBallSnapshot; toBall: TimelineBallSnapshot; passerId: string; receiverId: string }[] {
+  const switches = [];
+  for (const toBall of toSnapshot.football) {
+    const fromBall = fromSnapshot.football.find((entry) => entry.id === toBall.id);
+    if (!fromBall) continue;
+    const receiverId = toBall.isFree ? null : toBall.attachedPlayerId ?? null;
+    const passerId = fromBall.isFree ? null : fromBall.attachedPlayerId ?? null;
+    if (!receiverId || !passerId || receiverId === passerId) continue;
+    switches.push({ fromBall, toBall, passerId, receiverId });
+  }
+  return switches;
+}
+
+/**
+ * Shortest duration a phase needs so each pass in it reaches its receiver
+ * before the phase ends (0 when it has no pass). Decided from authored
+ * positions only, so it is known before any movement is compiled.
+ */
+function resolvePassPhaseFloorMs(
+  fromSnapshot: TimelineSnapshot,
+  toSnapshot: TimelineSnapshot,
+  world: CarryWorld,
+  distanceByBallId: ReadonlyMap<string, number>,
+  passSpeedWorldPerS: number,
+): number {
+  let floorMs = 0;
+  for (const { fromBall, toBall, passerId, receiverId } of resolveHolderSwitches(fromSnapshot, toSnapshot)) {
+    const passer = fromSnapshot.players.find((entry) => entry.id === passerId);
+    const receiver = toSnapshot.players.find((entry) => entry.id === receiverId);
+    if (!passer || !receiver) continue;
+    const passerWorld = toWorldPoint(passer, world.scale);
+    const carryDistance = distanceByBallId.get(toBall.id) ?? world.radiusWorld;
+    // The ball leaves from the passer's presented carry point, or from the
+    // snapshot point when the passer has no carry span yet.
+    const snapshotOffset = Math.hypot(
+      fromBall.x * world.scale.x - passerWorld.x,
+      fromBall.y * world.scale.y - passerWorld.y,
+    );
+    floorMs = Math.max(
+      floorMs,
+      resolvePassPhaseMinimumMs({
+        passerStartWorld: passerWorld,
+        receiverEndWorld: toWorldPoint(receiver, world.scale),
+        releaseOffsetWorld: Math.max(carryDistance, snapshotOffset),
+        carryDistanceWorld: carryDistance,
+        speedWorldPerS: passSpeedWorldPerS,
+      }),
+    );
+  }
+  return floorMs;
+}
+
+/** Where a player is (normalized) at linear `progress` through segment `index` — exactly what the sampler draws. */
+function resolvePlayerPointInSegment(
+  path: readonly TimelineSnapshot[],
+  playerSlopes: readonly ReadonlyMap<string, PlayerSegmentSlopes>[],
+  index: number,
+  playerId: string,
+  progress: number,
+): NormalizedPoint | null {
+  const fromPoint = path[index]?.players.find((entry) => entry.id === playerId);
+  const toPoint = path[index + 1]?.players.find((entry) => entry.id === playerId);
+  if (!fromPoint || !toPoint) return null;
+  const share = playerShare(playerSlopes[index]?.get(playerId))(Math.max(0, Math.min(1, progress)));
+  return toPoint.path?.length
+    ? interpolatePath(fromPoint, toPoint, share)
+    : { x: fromPoint.x + (toPoint.x - fromPoint.x) * share, y: fromPoint.y + (toPoint.y - fromPoint.y) * share };
 }
 
 /** Linear segment progress → share of a player's walk completed (Stage 1 curve, or smoothstep). */
@@ -240,10 +352,13 @@ function compileCarrySpans(
   segments: readonly SlatePlaybackSegment[],
   playerSlopes: readonly ReadonlyMap<string, PlayerSegmentSlopes>[],
   world: CarryWorld,
-): Map<string, SlateCarrySpan[]> {
+  distanceByBallId: ReadonlyMap<string, number>,
+  passSpeedWorldPerS: number,
+): { spans: Map<string, SlateCarrySpan[]>; flights: Map<string, SlatePassFlight> } {
   const ballIds = new Set<string>();
   for (const snapshot of path) for (const ball of snapshot.football) ballIds.add(ball.id);
   const spansByBall = new Map<string, SlateCarrySpan[]>();
+  const flights = new Map<string, SlatePassFlight>();
 
   const playerAt = (index: number, id: string) => path[index]?.players.find((entry) => entry.id === id) ?? null;
   const walkEvents = (index: number, holderId: string): CarryDirectionEvent[] => {
@@ -297,6 +412,33 @@ function compileCarrySpans(
       }
       if (fromBall && source != null && source !== target) {
         close(segment.startMs);
+        const flight = compilePassFlight(index, ballId, source, target, fromBall, spans);
+        if (flight) {
+          // Received mid-phase, possibly on the run: the receiver carries the
+          // ball from the side it arrived on, turning toward where they are
+          // heading at that moment and then following their later turns.
+          flights.set(passFlightKey(index, ballId), flight);
+          const receiverAtArrival = resolvePlayerPointInSegment(
+            path,
+            playerSlopes,
+            index,
+            target,
+            (flight.arrivalMs - segment.startMs) / segment.durationMs,
+          )!;
+          const events = walkEvents(index, target);
+          const current = events.filter((event) => event.timeMs <= flight.arrivalMs).pop();
+          open = {
+            holderId: target,
+            startMs: flight.arrivalMs,
+            initialAngle: resolveCarryAngleTo(receiverAtArrival, flight.end, world),
+            initialHolderPoint: receiverAtArrival,
+            events: [
+              ...(current ? [{ timeMs: flight.arrivalMs, angle: current.angle }] : []),
+              ...events.filter((event) => event.timeMs > flight.arrivalMs),
+            ],
+          };
+          return;
+        }
         const receiverEnd = playerAt(index + 1, target);
         if (!receiverEnd) return;
         open = {
@@ -332,7 +474,50 @@ function compileCarrySpans(
     close(segments.length > 0 ? segments[segments.length - 1]!.startMs + segments[segments.length - 1]!.durationMs : 0);
     if (spans.length > 0) spansByBall.set(ballId, spans);
   }
-  return spansByBall;
+  return { spans: spansByBall, flights };
+
+  /**
+   * The pass in segment `index`: launched at the segment start from the
+   * passer's presented carry point (their carry span ends there) or the
+   * snapshot point, aimed at the receiver's solved meeting point.
+   */
+  function compilePassFlight(
+    index: number,
+    ballId: string,
+    passerId: string,
+    receiverId: string,
+    fromBall: TimelineBallSnapshot,
+    passerSpans: readonly SlateCarrySpan[],
+  ): SlatePassFlight | null {
+    const segment = segments[index]!;
+    const passer = playerAt(index, passerId);
+    if (!passer || !playerAt(index, receiverId) || !playerAt(index + 1, receiverId)) return null;
+    const carryDistance = distanceByBallId.get(ballId) ?? world.radiusWorld;
+    const ballWorld = { ...world, radiusWorld: carryDistance };
+    const passerSpan = [...passerSpans]
+      .reverse()
+      .find((span) => span.holderId === passerId && span.endMs === segment.startMs);
+    const start = passerSpan
+      ? resolvePresentedCarryPoint(passer, evaluateCarryAngle(passerSpan.track, segment.startMs), ballWorld)
+      : { x: fromBall.x, y: fromBall.y };
+    const solved = solvePassInterception({
+      startWorld: toWorldPoint(start, world.scale),
+      receiverWorldAt: (ms) =>
+        toWorldPoint(resolvePlayerPointInSegment(path, playerSlopes, index, receiverId, ms / segment.durationMs)!, world.scale),
+      carryDistanceWorld: carryDistance,
+      maxMs: segment.durationMs,
+      speedWorldPerS: passSpeedWorldPerS,
+    });
+    return {
+      ballId,
+      passerId,
+      receiverId,
+      launchMs: segment.startMs,
+      arrivalMs: segment.startMs + solved.flightMs,
+      start,
+      end: toNormalizedPoint(solved.arrivalWorld, world.scale),
+    };
+  }
 }
 
 /** The carry span of `ballId` held by `holderId` that covers `timeMs` (inclusive at both ends). */
@@ -495,9 +680,19 @@ export function sampleSlatePlaybackTimeline(
     const targetAttachedPlayerId = toBall.isFree ? null : toBall.attachedPlayerId ?? null;
     const sourceAttachedPlayerId = fromBall?.isFree ? null : fromBall?.attachedPlayerId ?? null;
     if (targetAttachedPlayerId) {
-      if (fromBall && sourceAttachedPlayerId != null && sourceAttachedPlayerId !== targetAttachedPlayerId) {
-        // Holder switch: the recorded pass, from where the passer was carrying
-        // the ball to the side of the receiver it arrives on.
+      const flight =
+        fromBall && sourceAttachedPlayerId != null && sourceAttachedPlayerId !== targetAttachedPlayerId
+          ? timeline.passFlights.get(passFlightKey(position.segmentIndex, toBall.id))
+          : undefined;
+      if (flight && timeMs < flight.arrivalMs) {
+        // Player-to-player pass in flight: locked straight line, constant speed.
+        const point = resolvePassFlightPoint(flight, timeMs);
+        balls.push({ id: toBall.id, kind: "holder-switch", x: point.x, y: point.y });
+        continue;
+      }
+      if (!flight && fromBall && sourceAttachedPlayerId != null && sourceAttachedPlayerId !== targetAttachedPlayerId) {
+        // A holder switch with no solvable pass (a player missing from a
+        // snapshot): the recorded endpoints, eased, as before.
         const start = releasePoint(toBall.id, fromBall, sourceAttachedPlayerId);
         const receiverEnd = toSnapshot.players.find((entry) => entry.id === targetAttachedPlayerId);
         const end = receiverEnd

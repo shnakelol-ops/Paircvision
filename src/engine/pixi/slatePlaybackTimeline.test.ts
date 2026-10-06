@@ -218,9 +218,9 @@ function expectFramesMatch(
   legacy: { players: Map<string, { x: number; y: number }>; balls: Map<string, string> },
   timeline: { players: Map<string, { x: number; y: number }>; balls: Map<string, string> },
   // Stage 2 (direction-aware carry) starts a pass/release from the passer's
-  // presented carry side, so for boards with a carried ball only the ball's
-  // kind is compared here (its positions are covered by
-  // slateCarryPresentation.test.ts).
+  // presented carry side and Stage 3 flies passes at constant speed, so for
+  // boards with a carried ball only the ball's kind is compared here (its
+  // positions are covered by slateCarryPresentation/slatePassFlight tests).
   { ballCoordinates = true }: { ballCoordinates?: boolean } = {},
 ) {
   expect([...timeline.players.keys()].sort()).toEqual([...legacy.players.keys()].sort());
@@ -237,6 +237,9 @@ function expectFramesMatch(
     }
     const [tag, coords] = value.split(":");
     const [sampledTag, sampledCoords] = sampled.split(":");
+    // Stage 3: a pass (holder switch) is received mid-phase, after which the
+    // receiver carries the ball for the rest of that phase.
+    if (!ballCoordinates && tag === "switch" && sampledTag === "held") continue;
     expect(sampledTag).toBe(tag);
     if (!ballCoordinates) continue;
     const [x, y] = coords!.split(",").map(Number);
