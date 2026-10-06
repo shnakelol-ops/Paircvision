@@ -217,6 +217,11 @@ function describeSample(path: TimelineSnapshot[], timelineMs: number, kind: Slat
 function expectFramesMatch(
   legacy: { players: Map<string, { x: number; y: number }>; balls: Map<string, string> },
   timeline: { players: Map<string, { x: number; y: number }>; balls: Map<string, string> },
+  // Stage 2 (direction-aware carry) starts a pass/release from the passer's
+  // presented carry side, so for boards with a carried ball only the ball's
+  // kind is compared here (its positions are covered by
+  // slateCarryPresentation.test.ts).
+  { ballCoordinates = true }: { ballCoordinates?: boolean } = {},
 ) {
   expect([...timeline.players.keys()].sort()).toEqual([...legacy.players.keys()].sort());
   for (const [id, point] of legacy.players) {
@@ -233,6 +238,7 @@ function expectFramesMatch(
     const [tag, coords] = value.split(":");
     const [sampledTag, sampledCoords] = sampled.split(":");
     expect(sampledTag).toBe(tag);
+    if (!ballCoordinates) continue;
     const [x, y] = coords!.split(",").map(Number);
     const [sx, sy] = sampledCoords!.split(",").map(Number);
     expect(Math.abs(sx! - x!)).toBeLessThan(1e-4);
@@ -398,7 +404,7 @@ describe("equivalence with the frame-stepped engine on main", () => {
         legacy.step(delta);
         if (!legacy.playing) break;
         timelineMs += delta * speed;
-        expectFramesMatch(legacy.frame, describeSample(BOARD, timelineMs));
+        expectFramesMatch(legacy.frame, describeSample(BOARD, timelineMs), { ballCoordinates: false });
         frames += 1;
       }
       expect(legacy.playing).toBe(false);
@@ -420,7 +426,7 @@ describe("equivalence with the frame-stepped engine on main", () => {
       legacy.step(delta);
       if (!legacy.playing) return;
       timelineMs += delta * speed;
-      expectFramesMatch(legacy.frame, describeSample(BOARD, timelineMs));
+      expectFramesMatch(legacy.frame, describeSample(BOARD, timelineMs), { ballCoordinates: false });
     });
     expect(legacy.playing).toBe(false);
   });

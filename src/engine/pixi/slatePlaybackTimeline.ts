@@ -4,9 +4,23 @@ import {
   interpolatePath,
   resolvePhaseSegmentDurationMs,
   resolveSegmentMaxMovementDistance,
+  resolveStoredRoutePolyline,
 } from "./routeFollowInterpolation";
 import {
+  buildCarryAngleTrack,
+  collectWalkDirectionEvents,
+  evaluateCarryAngle,
+  resolveCarryAngleTo,
+  resolveDefaultCarryAngle,
+  resolvePresentedCarryPoint,
+  SLATE_CARRY_WORLD,
+  type CarryAngleTrack,
+  type CarryDirectionEvent,
+  type CarryWorld,
+} from "./slateCarryPresentation";
+import {
   compilePlayerContinuitySlopes,
+  measurePlayerWalk,
   resolveContinuityProgress,
   SLATE_WORLD_SCALE,
   type PlayerSegmentSlopes,
@@ -127,12 +141,36 @@ export type SlatePlaybackTimeline = {
    * with no entry walks the segment with the plain smoothstep.
    */
   playerSlopes: readonly ReadonlyMap<string, PlayerSegmentSlopes>[];
+  /**
+   * Per ball: the spans during which a player carries it, each with its
+   * direction-aware carry-angle track (see slateCarryPresentation.ts).
+   */
+  carrySpans: ReadonlyMap<string, readonly SlateCarrySpan[]>;
+  carryWorld: CarryWorld;
+  /**
+   * Presented carry angle of each ball when this playback was started
+   * (tap-to-pass only), so a pass leaves from where the ball was drawn.
+   */
+  initialCarryAngleByBallId: ReadonlyMap<string, number>;
+};
+
+export type SlateCarrySpan = {
+  holderId: string;
+  startMs: number;
+  endMs: number;
+  track: CarryAngleTrack;
+};
+
+export type SlateCarryOptions = {
+  world?: CarryWorld;
+  initialAngleByBallId?: ReadonlyMap<string, number>;
 };
 
 export function compileSlatePlaybackTimeline(
   path: readonly TimelineSnapshot[],
   kind: SlatePlaybackKind = "default",
   worldScale: WorldScale = SLATE_WORLD_SCALE,
+  carry: SlateCarryOptions = {},
 ): SlatePlaybackTimeline {
   const segments: SlatePlaybackSegment[] = [];
   let startMs = 0;
@@ -151,7 +189,174 @@ export function compileSlatePlaybackTimeline(
     segments.map((segment) => segment.durationMs),
     worldScale,
   );
-  return { kind, path, segments, totalDurationMs: startMs, playerSlopes };
+  const carryWorld = carry.world ?? { ...SLATE_CARRY_WORLD, scale: worldScale };
+  const carrySpans = compileCarrySpans(path, segments, playerSlopes, carryWorld);
+  return {
+    kind,
+    path,
+    segments,
+    totalDurationMs: startMs,
+    playerSlopes,
+    carrySpans,
+    carryWorld,
+    initialCarryAngleByBallId: carry.initialAngleByBallId ?? new Map(),
+  };
+}
+
+/** Linear segment progress → share of a player's walk completed (Stage 1 curve, or smoothstep). */
+function playerShare(slopes: PlayerSegmentSlopes | undefined): (progress: number) => number {
+  return slopes ? (progress) => resolveContinuityProgress(progress, slopes) : getPlaybackEaseProgress;
+}
+
+type CarrySpanDraft = {
+  holderId: string;
+  startMs: number;
+  /** null: take the holder's first direction of movement in the span (or the canonical side). */
+  initialAngle: number | null;
+  initialHolderPoint: NormalizedPoint;
+  events: CarryDirectionEvent[];
+};
+
+/**
+ * The spans in which each ball is carried, built from the same transitions
+ * the sampler animates: a ball held by the same player across segments is
+ * one span; a pickup starts a span at the segment start (ball on the side it
+ * was picked up from); a holder switch ends the passer's span at the segment
+ * start and starts the receiver's at the segment end (ball on the side it
+ * arrived from). A span that starts with the ball already carried begins on
+ * the holder's first direction of movement, so Play does not open with a
+ * default→movement turn.
+ */
+function compileCarrySpans(
+  path: readonly TimelineSnapshot[],
+  segments: readonly SlatePlaybackSegment[],
+  playerSlopes: readonly ReadonlyMap<string, PlayerSegmentSlopes>[],
+  world: CarryWorld,
+): Map<string, SlateCarrySpan[]> {
+  const ballIds = new Set<string>();
+  for (const snapshot of path) for (const ball of snapshot.football) ballIds.add(ball.id);
+  const spansByBall = new Map<string, SlateCarrySpan[]>();
+
+  const playerAt = (index: number, id: string) => path[index]?.players.find((entry) => entry.id === id) ?? null;
+  const walkEvents = (index: number, holderId: string): CarryDirectionEvent[] => {
+    const from = playerAt(index, holderId);
+    const to = playerAt(index + 1, holderId);
+    const segment = segments[index];
+    if (!from || !to || !segment) return [];
+    if (!measurePlayerWalk(from, to, world.scale)) return [];
+    const polyline = resolveStoredRoutePolyline(from, to) ?? [
+      { x: from.x, y: from.y },
+      { x: to.x, y: to.y },
+    ];
+    return collectWalkDirectionEvents(
+      polyline,
+      segment.startMs,
+      segment.durationMs,
+      playerShare(playerSlopes[index]?.get(holderId)),
+      world,
+    );
+  };
+
+  for (const ballId of ballIds) {
+    const spans: SlateCarrySpan[] = [];
+    let open: CarrySpanDraft | null = null;
+    const close = (endMs: number) => {
+      if (!open) return;
+      const draft: CarrySpanDraft = open;
+      const initialAngle =
+        draft.initialAngle ?? draft.events[0]?.angle ?? resolveDefaultCarryAngle(draft.initialHolderPoint, world);
+      spans.push({
+        holderId: draft.holderId,
+        startMs: draft.startMs,
+        endMs,
+        track: buildCarryAngleTrack(draft.startMs, initialAngle, draft.events),
+      });
+      open = null;
+    };
+    segments.forEach((segment, index) => {
+      const fromBall = path[index]!.football.find((entry) => entry.id === ballId) ?? null;
+      const toBall = path[index + 1]!.football.find((entry) => entry.id === ballId) ?? null;
+      const segmentEndMs = segment.startMs + segment.durationMs;
+      if (!toBall) {
+        close(segment.startMs);
+        return;
+      }
+      const target = toBall.isFree ? null : toBall.attachedPlayerId ?? null;
+      const source = fromBall?.isFree ? null : fromBall?.attachedPlayerId ?? null;
+      if (!target) {
+        close(segment.startMs);
+        return;
+      }
+      if (fromBall && source != null && source !== target) {
+        close(segment.startMs);
+        const receiverEnd = playerAt(index + 1, target);
+        if (!receiverEnd) return;
+        open = {
+          holderId: target,
+          startMs: segmentEndMs,
+          initialAngle: resolveCarryAngleTo(receiverEnd, toBall, world),
+          initialHolderPoint: receiverEnd,
+          events: [],
+        };
+        return;
+      }
+      if (fromBall && source == null) {
+        close(segment.startMs);
+        const holderStart = playerAt(index, target) ?? playerAt(index + 1, target);
+        if (!holderStart) return;
+        open = {
+          holderId: target,
+          startMs: segment.startMs,
+          initialAngle: resolveCarryAngleTo(holderStart, fromBall, world),
+          initialHolderPoint: holderStart,
+          events: walkEvents(index, target),
+        };
+        return;
+      }
+      if (!open || open.holderId !== target) {
+        close(segment.startMs);
+        const holderStart = playerAt(index, target) ?? playerAt(index + 1, target);
+        if (!holderStart) return;
+        open = { holderId: target, startMs: segment.startMs, initialAngle: null, initialHolderPoint: holderStart, events: [] };
+      }
+      open.events.push(...walkEvents(index, target));
+    });
+    close(segments.length > 0 ? segments[segments.length - 1]!.startMs + segments[segments.length - 1]!.durationMs : 0);
+    if (spans.length > 0) spansByBall.set(ballId, spans);
+  }
+  return spansByBall;
+}
+
+/** The carry span of `ballId` held by `holderId` that covers `timeMs` (inclusive at both ends). */
+function findCarrySpan(
+  timeline: SlatePlaybackTimeline,
+  ballId: string,
+  holderId: string,
+  timeMs: number,
+): SlateCarrySpan | null {
+  const spans = timeline.carrySpans.get(ballId);
+  if (!spans) return null;
+  for (const span of spans) {
+    if (span.holderId === holderId && span.startMs <= timeMs && timeMs <= span.endMs) return span;
+  }
+  return null;
+}
+
+/**
+ * Presented carry angle of every ball still carried when the timeline ends,
+ * so the surface can keep the final carry side after playback.
+ */
+export function resolveFinalCarryAngles(timeline: SlatePlaybackTimeline): Map<string, number> {
+  const angles = new Map<string, number>();
+  const last = timeline.path[timeline.path.length - 1];
+  if (!last) return angles;
+  for (const ball of last.football) {
+    const holderId = ball.isFree ? null : ball.attachedPlayerId ?? null;
+    if (!holderId) continue;
+    const span = findCarrySpan(timeline, ball.id, holderId, timeline.totalDurationMs);
+    if (span) angles.set(ball.id, evaluateCarryAngle(span.track, timeline.totalDurationMs));
+  }
+  return angles;
 }
 
 export type SlateTimelinePosition = {
@@ -192,21 +397,23 @@ export function locateSlateTimelinePosition(
 export type SlateTimelinePlayerSample = { id: string; x: number; y: number };
 
 /**
- * A ball's sampled state. "attached" balls are positioned by the caller at
- * the holder's carried point, after the players have been placed, because
- * that point depends on presentation geometry (world bounds, token mode)
- * this pure module deliberately knows nothing about.
+ * A ball's sampled state, with the point to draw it at. A carried ball
+ * ("attached", "pickup") also reports its presented carry angle (world
+ * radians) so the surface can keep that side once playback stops.
  */
 export type SlateTimelineBallSample =
-  | { id: string; kind: "attached"; attachedPlayerId: string }
+  | { id: string; kind: "attached"; attachedPlayerId: string; x: number; y: number; carryAngle: number }
   /**
    * A ball that was loose at the segment start and is attached at its end:
-   * drawn at fromX/fromY + (carried point − from) × (1 − remainingFraction).
+   * drawn at from + (presented carry point − from) × (1 − remainingFraction).
    */
   | {
       id: string;
       kind: "pickup";
       attachedPlayerId: string;
+      x: number;
+      y: number;
+      carryAngle: number;
       fromX: number;
       fromY: number;
       remainingFraction: number;
@@ -251,6 +458,25 @@ export function sampleSlatePlaybackTimeline(
     players.push({ id: toPoint.id, x: point.x, y: point.y });
   }
 
+  const segment = timeline.segments[position.segmentIndex]!;
+  const timeMs = segment.startMs + position.progress * segment.durationMs;
+  const sampledPlayersById = new Map(players.map((entry) => [entry.id, entry] as const));
+  const world = timeline.carryWorld;
+
+  // Where a ball leaving its holder at this segment's start was drawn: the
+  // passer's presented carry point (its carry span ends here), the carry
+  // side the ball had when a tap-to-pass started, or the snapshot point.
+  const releasePoint = (ballId: string, fromBall: TimelineBallSnapshot, passerId: string): NormalizedPoint => {
+    const passer = fromPlayersById.get(passerId);
+    if (passer) {
+      const span = findCarrySpan(timeline, ballId, passerId, segment.startMs);
+      if (span) return resolvePresentedCarryPoint(passer, evaluateCarryAngle(span.track, segment.startMs), world);
+      const initialAngle = position.segmentIndex === 0 ? timeline.initialCarryAngleByBallId.get(ballId) : undefined;
+      if (initialAngle !== undefined) return resolvePresentedCarryPoint(passer, initialAngle, world);
+    }
+    return { x: fromBall.x, y: fromBall.y };
+  };
+
   const balls: SlateTimelineBallSample[] = [];
   for (const toBall of toSnapshot.football) {
     const fromBall = fromSnapshot.football.find((point) => point.id === toBall.id) ?? null;
@@ -258,39 +484,64 @@ export function sampleSlatePlaybackTimeline(
     const sourceAttachedPlayerId = fromBall?.isFree ? null : fromBall?.attachedPlayerId ?? null;
     if (targetAttachedPlayerId) {
       if (fromBall && sourceAttachedPlayerId != null && sourceAttachedPlayerId !== targetAttachedPlayerId) {
-        // Holder switch: replays the recorded snapshot endpoints, as before.
+        // Holder switch: the recorded pass, from where the passer was carrying
+        // the ball to the side of the receiver it arrives on.
+        const start = releasePoint(toBall.id, fromBall, sourceAttachedPlayerId);
+        const receiverEnd = toSnapshot.players.find((entry) => entry.id === targetAttachedPlayerId);
+        const end = receiverEnd
+          ? resolvePresentedCarryPoint(receiverEnd, resolveCarryAngleTo(receiverEnd, toBall, world), world)
+          : { x: toBall.x, y: toBall.y };
         balls.push({
           id: toBall.id,
           kind: "holder-switch",
-          x: fromBall.x + (toBall.x - fromBall.x) * easedProgress,
-          y: fromBall.y + (toBall.y - fromBall.y) * easedProgress,
+          x: start.x + (end.x - start.x) * easedProgress,
+          y: start.y + (end.y - start.y) * easedProgress,
         });
         continue;
       }
+      const holder = sampledPlayersById.get(targetAttachedPlayerId);
+      const span = findCarrySpan(timeline, toBall.id, targetAttachedPlayerId, timeMs);
+      if (!holder || !span) continue;
+      const carryAngle = evaluateCarryAngle(span.track, timeMs);
+      const carried = resolvePresentedCarryPoint(holder, carryAngle, world);
       if (fromBall && sourceAttachedPlayerId == null) {
-        const segment = timeline.segments[position.segmentIndex]!;
+        const remainingFraction = resolvePickupRemainingFraction(position.progress * segment.durationMs);
         balls.push({
           id: toBall.id,
           kind: "pickup",
           attachedPlayerId: targetAttachedPlayerId,
+          x: carried.x + (fromBall.x - carried.x) * remainingFraction,
+          y: carried.y + (fromBall.y - carried.y) * remainingFraction,
+          carryAngle,
           fromX: fromBall.x,
           fromY: fromBall.y,
-          remainingFraction: resolvePickupRemainingFraction(position.progress * segment.durationMs),
+          remainingFraction,
         });
         continue;
       }
-      balls.push({ id: toBall.id, kind: "attached", attachedPlayerId: targetAttachedPlayerId });
+      balls.push({
+        id: toBall.id,
+        kind: "attached",
+        attachedPlayerId: targetAttachedPlayerId,
+        x: carried.x,
+        y: carried.y,
+        carryAngle,
+      });
       continue;
     }
     const freePoint = interpolatePath(fromBall, toBall, easedProgress);
+    // A ball released into space leaves from where it was drawn being
+    // carried; the offset from the snapshot point fades out over the segment.
+    const release =
+      fromBall && sourceAttachedPlayerId != null ? releasePoint(toBall.id, fromBall, sourceAttachedPlayerId) : null;
+    const fade = 1 - easedProgress;
     balls.push({
       id: toBall.id,
       kind: "free",
-      x: freePoint.x,
-      y: freePoint.y,
+      x: freePoint.x + (release && fromBall ? (release.x - fromBall.x) * fade : 0),
+      y: freePoint.y + (release && fromBall ? (release.y - fromBall.y) * fade : 0),
       path: toBall.path?.map((pathPoint) => ({ x: pathPoint.x, y: pathPoint.y })) ?? [],
     });
   }
-
   return { ...position, players, balls };
 }

@@ -61,9 +61,16 @@ import {
 import { computeChainTetherSegments, tensionToWidthScale } from "./shapeLinks";
 import {
   compileSlatePlaybackTimeline,
+  resolveFinalCarryAngles,
   sampleSlatePlaybackTimeline,
   type SlatePlaybackTimeline,
 } from "./slatePlaybackTimeline";
+import {
+  resolvePresentedCarryPoint,
+  SLATE_CARRY_OFFSETS_WORLD,
+  SLATE_CARRY_RADIUS_WORLD,
+  type CarryWorld,
+} from "./slateCarryPresentation";
 import {
   createTacticalSlateInitialPlayerSeeds,
   type TacticalSlateDefaultPlayerSeed,
@@ -403,14 +410,8 @@ const COMPACT_PLAYER_TOKEN_SCALE_FACTOR = 0.75;
 const TACTICAL_ITEM_HALF_SIZE = 2.2;
 const TACTICAL_ITEM_DRAG_THRESHOLD_PX = 5;
 const TACTICAL_ITEM_TOUCH_HIT_DIAMETER_PX = 46;
-const ATTACHED_BALL_OFFSETS_WORLD: ReadonlyArray<Readonly<NormalizedPoint>> = [
-  { x: 4.0, y: -3.2 },
-  { x: 4.0, y: 3.2 },
-  { x: -4.0, y: -3.2 },
-  { x: -4.0, y: 3.2 },
-  { x: 4.7, y: 0 },
-  { x: -4.7, y: 0 },
-];
+// Canonical carried-ball offsets — what snapshots store (see slateCarryPresentation.ts).
+const ATTACHED_BALL_OFFSETS_WORLD: ReadonlyArray<Readonly<NormalizedPoint>> = SLATE_CARRY_OFFSETS_WORLD;
 const BALL_DRAG_DEADZONE_WORLD = 0.18;
 const BALL_DRAG_SMOOTHING = 0.4;
 const BALL_DRAG_FAST_FOLLOW_DISTANCE_WORLD = 1.6;
@@ -521,6 +522,8 @@ type PlaybackKind = "default" | "possession-pass";
 type PlaybackStartOptions = {
   kind?: PlaybackKind;
   possessionReceiverId?: string | null;
+  /** Presented carry sides when the playback starts (tap-to-pass). */
+  initialCarryAngleByBallId?: ReadonlyMap<string, number>;
 };
 
 type TacticalSurfaceItem = TacticalItem & {
@@ -1690,6 +1693,17 @@ export async function createTacticalPadLiteSurface(
   let activeWhiteboardColor = options.whiteboardDrawColor ?? WHITEBOARD_DEFAULT_STROKE_COLOR;
   const tacticalItems: TacticalSurfaceItem[] = [];
   const ballStatesByItemId = new Map<string, BallRuntimeState>();
+  // Direction-aware carry (presentation only, never captured or persisted):
+  // the side, as a world angle, each attached ball is drawn on. Set by
+  // playback and kept after it ends; cleared whenever the board is restored
+  // from a snapshot or a ball's possession changes.
+  const presentedCarryAngleByBallId = new Map<string, number>();
+  const carryWorld: CarryWorld = {
+    scale: { x: WORLD_SIZE.width / 100, y: WORLD_SIZE.height / 100 },
+    size: { width: WORLD_SIZE.width, height: WORLD_SIZE.height },
+    radiusWorld: SLATE_CARRY_RADIUS_WORLD,
+    offsetsWorld: ATTACHED_BALL_OFFSETS_WORLD,
+  };
   const itemSelectionLayer = new Container();
   itemSelectionLayer.eventMode = "none";
   world.addChild(itemSelectionLayer);
@@ -2079,11 +2093,25 @@ export async function createTacticalPadLiteSurface(
     return getAttachedBallPositionForPlayer(player);
   }
 
+  /**
+   * Where an attached ball is drawn: on its presented carry side when one is
+   * held (during playback, and after it until the board is next restored
+   * from a snapshot), otherwise at the canonical offset. Display only —
+   * captureCurrentSnapshot always records the canonical point.
+   */
+  function getDisplayedAttachedBallPosition(ballId: string, playerId: string | null): NormalizedPoint | null {
+    const carryAngle = presentedCarryAngleByBallId.get(ballId);
+    if (carryAngle === undefined || !playerId) return getAttachedBallPositionForPlayerId(playerId);
+    const player = players.find((entry) => entry.id === playerId);
+    if (!player) return null;
+    return resolvePresentedCarryPoint(player.current, carryAngle, carryWorld);
+  }
+
   function applyBallRuntimeStateToItem(item: TacticalSurfaceItem): void {
     if (!isBallItem(item)) return;
     const state = getBallRuntimeState(item);
     if (state.isFree) return;
-    const attachedPoint = getAttachedBallPositionForPlayerId(state.attachedPlayerId);
+    const attachedPoint = getDisplayedAttachedBallPosition(item.id, state.attachedPlayerId);
     if (!attachedPoint) {
       state.attachedPlayerId = null;
       state.isFree = true;
@@ -2136,6 +2164,7 @@ export async function createTacticalPadLiteSurface(
     const ball = findPrimaryBallItem();
     if (!ball) return;
     applyBallRuntimeStateToItem(ball);
+    presentedCarryAngleByBallId.delete(ball.id);
     const state = getBallRuntimeState(ball);
     state.attachedPlayerId = null;
     state.isFree = true;
@@ -2150,6 +2179,7 @@ export async function createTacticalPadLiteSurface(
     const ball = findPrimaryBallItem();
     if (!ball) return;
     const attachedPoint = getAttachedBallPositionForPlayer(player);
+    presentedCarryAngleByBallId.delete(ball.id);
     const state = getBallRuntimeState(ball);
     state.attachedPlayerId = player.id;
     state.isFree = false;
@@ -2189,6 +2219,7 @@ export async function createTacticalPadLiteSurface(
    */
   function forceFreeBallItem(item: TacticalSurfaceItem): void {
     applyBallRuntimeStateToItem(item);
+    presentedCarryAngleByBallId.delete(item.id);
     const state = getBallRuntimeState(item);
     if (state.isFree) return;
     state.attachedPlayerId = null;
@@ -2217,9 +2248,12 @@ export async function createTacticalPadLiteSurface(
       attachPrimaryBallToPlayer(player);
       return;
     }
+    // Snapshots stay canonical; the presented carry side is handed to the
+    // timeline separately so the pass still leaves from where the ball is drawn.
+    const canonicalStart = getAttachedBallPositionForPlayerId(currentHolderPlayerId) ?? { x: ball.x, y: ball.y };
     const passStartPoint = {
-      x: clampNormalizedValue(ball.x),
-      y: clampNormalizedValue(ball.y),
+      x: clampNormalizedValue(canonicalStart.x),
+      y: clampNormalizedValue(canonicalStart.y),
     };
     const passTargetPoint = {
       x: clampNormalizedValue(receiverAttachedPoint.x),
@@ -2233,6 +2267,7 @@ export async function createTacticalPadLiteSurface(
     startPlayback([passStartSnapshot, passTargetSnapshot], {
       kind: "possession-pass",
       possessionReceiverId: player.id,
+      initialCarryAngleByBallId: new Map(presentedCarryAngleByBallId),
     });
   }
 
@@ -3455,6 +3490,7 @@ export async function createTacticalPadLiteSurface(
       const state = getBallRuntimeState(item);
       state.attachedPlayerId = null;
       state.isFree = true;
+      presentedCarryAngleByBallId.delete(item.id);
       appendBallMovementPathPoint(item);
     }
     setItemWorldPosition(item, mapper);
@@ -3700,9 +3736,14 @@ export async function createTacticalPadLiteSurface(
         .map((item) => {
           applyBallRuntimeStateToItem(item);
           const state = getBallRuntimeState(item);
+          // Snapshots always record the canonical carried point, never the
+          // presented (direction-aware) one.
+          const recorded = state.isFree
+            ? { x: item.x, y: item.y }
+            : getAttachedBallPositionForPlayerId(state.attachedPlayerId) ?? { x: item.x, y: item.y };
           const point = {
-            x: clampNormalizedValue(item.x),
-            y: clampNormalizedValue(item.y),
+            x: clampNormalizedValue(recorded.x),
+            y: clampNormalizedValue(recorded.y),
           };
           const path =
             state.isFree && state.path.length > 0
@@ -3724,6 +3765,8 @@ export async function createTacticalPadLiteSurface(
   }
 
   function applySnapshotToSurface(snapshot: PhaseSnapshot): void {
+    // Restoring a snapshot restores the canonical carried-ball presentation.
+    presentedCarryAngleByBallId.clear();
     const snapshotPlayersById = new Map(snapshot.players.map((entry) => [entry.id, entry] as const));
     for (const player of players) {
       const point = snapshotPlayersById.get(player.id);
@@ -3858,7 +3901,10 @@ export async function createTacticalPadLiteSurface(
       playbackKind === "possession-pass"
         ? optionsForPlayback?.possessionReceiverId ?? null
         : null;
-    playbackTimeline = compileSlatePlaybackTimeline(path, playbackKind, { x: WORLD_SIZE.width / 100, y: WORLD_SIZE.height / 100 });
+    playbackTimeline = compileSlatePlaybackTimeline(path, playbackKind, carryWorld.scale, {
+      world: carryWorld,
+      initialAngleByBallId: optionsForPlayback?.initialCarryAngleByBallId,
+    });
     playbackTimelineMs = 0;
     applySnapshotToSurface(path[0]!);
     emitPlaybackStateChange();
@@ -3938,6 +3984,14 @@ export async function createTacticalPadLiteSurface(
     if (sample.isComplete) {
       const possessionReceiverId =
         playbackKind === "possession-pass" ? playbackPossessionReceiverId : null;
+      // Keep the final presented carry side after playback ends.
+      for (const [ballId, carryAngle] of resolveFinalCarryAngles(timeline)) {
+        presentedCarryAngleByBallId.set(ballId, carryAngle);
+        const item = findTacticalItemById(ballId);
+        if (!item || !isBallItem(item)) continue;
+        applyBallRuntimeStateToItem(item);
+        setItemWorldPosition(item, mapper);
+      }
       cancelPlaybackAnimation();
       if (possessionReceiverId) {
         const receiver = players.find((entry) => entry.id === possessionReceiverId);
@@ -3960,12 +4014,14 @@ export async function createTacticalPadLiteSurface(
       if (!item || !isBallItem(item)) continue;
       const state = getBallRuntimeState(item);
       if (ballSample.kind === "holder-switch") {
+        presentedCarryAngleByBallId.delete(item.id);
         state.attachedPlayerId = null;
         state.isFree = true;
         state.path = [];
         item.x = clampNormalizedValue(ballSample.x);
         item.y = clampNormalizedValue(ballSample.y);
       } else if (ballSample.kind === "free") {
+        presentedCarryAngleByBallId.delete(item.id);
         state.attachedPlayerId = null;
         state.isFree = true;
         state.path = ballSample.path;
@@ -3975,13 +4031,9 @@ export async function createTacticalPadLiteSurface(
         state.attachedPlayerId = ballSample.attachedPlayerId;
         state.isFree = false;
         state.path = [];
-        const attachedPoint = getAttachedBallPositionForPlayerId(ballSample.attachedPlayerId);
-        if (!attachedPoint) continue;
-        const remainingFraction = ballSample.kind === "pickup" ? ballSample.remainingFraction : 0;
-        const fromX = ballSample.kind === "pickup" ? ballSample.fromX : attachedPoint.x;
-        const fromY = ballSample.kind === "pickup" ? ballSample.fromY : attachedPoint.y;
-        item.x = attachedPoint.x + (fromX - attachedPoint.x) * remainingFraction;
-        item.y = attachedPoint.y + (fromY - attachedPoint.y) * remainingFraction;
+        presentedCarryAngleByBallId.set(item.id, ballSample.carryAngle);
+        item.x = clampNormalizedValue(ballSample.x);
+        item.y = clampNormalizedValue(ballSample.y);
       }
       setItemWorldPosition(item, mapper);
     }
@@ -4290,6 +4342,20 @@ export async function createTacticalPadLiteSurface(
     img.src = dataUrl;
   }
 
+  /**
+   * An item's saved position. A carried ball is saved at its canonical
+   * carried point, never at the presented (direction-aware) side it may be
+   * drawn on after playback.
+   */
+  function persistedItemPosition(item: TacticalSurfaceItem): { x: number; y: number } {
+    if (isBallItem(item)) {
+      const state = getBallRuntimeState(item);
+      const canonicalPoint = state.isFree ? null : getAttachedBallPositionForPlayerId(state.attachedPlayerId);
+      if (canonicalPoint) return { x: clampNormalizedValue(canonicalPoint.x), y: clampNormalizedValue(canonicalPoint.y) };
+    }
+    return { x: clampNormalizedValue(item.x), y: clampNormalizedValue(item.y) };
+  }
+
   function captureBoardState(): TacticalBoardState {
     const playerStates: TacticalBoardPlayerState[] = players.map((player) => ({
       id: player.id,
@@ -4319,8 +4385,7 @@ export async function createTacticalPadLiteSurface(
     const itemStates: TacticalItem[] = tacticalItems.map((item) => ({
       id: item.id,
       type: item.type,
-      x: clampNormalizedValue(item.x),
-      y: clampNormalizedValue(item.y),
+      ...persistedItemPosition(item),
       ...(Number.isFinite(item.rotation) ? { rotation: Number(item.rotation) } : {}),
       ...(Number.isFinite(item.scale) ? { scale: Number(item.scale) } : {}),
     }));
@@ -4397,6 +4462,7 @@ export async function createTacticalPadLiteSurface(
   function importBoardState(state: TacticalBoardState): boolean {
     if (surfaceVariant !== "tactical") return false;
     if (!isRecord(state)) return false;
+    presentedCarryAngleByBallId.clear();
     // Player identities are rebuilt on import, so any Shape Lock selection would
     // reference stale tokens. Release it (covers newBoard, which imports too).
     releaseShapeLock();
@@ -4635,10 +4701,11 @@ export async function createTacticalPadLiteSurface(
     if (lastTappedPlayer?.playerId === removedPlayer.id) {
       lastTappedPlayer = null;
     }
-    for (const ballState of ballStatesByItemId.values()) {
+    for (const [ballId, ballState] of ballStatesByItemId) {
       if (ballState.attachedPlayerId !== removedPlayer.id) continue;
       ballState.attachedPlayerId = null;
       ballState.isFree = true;
+      presentedCarryAngleByBallId.delete(ballId);
     }
     if (shapeLinkSelectionOrder.includes(removedPlayer.id)) {
       // An in-progress selection referencing a just-removed player is reset
