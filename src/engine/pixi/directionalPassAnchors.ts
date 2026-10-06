@@ -41,11 +41,12 @@ export type DirectionalPassWorldSize = { width: number; height: number };
  * Share of the pass's linear progress spent on each of the release (start)
  * and receive (end) transitions. A share of progress, so it slows with
  * playback speed exactly like the rest of the pass: 0.25× shows a genuine
- * slow-motion turn. Conservative initial value — tune from device
- * acceptance; it changes nothing but how long the ball spends moving
- * between its carried spot and the directional edge.
+ * slow-motion turn. Tuned on Android: 0.1 read as a small wind-up before
+ * the pass; 0.05 keeps the release continuous with the flight. Changing it
+ * alters nothing but how long the ball spends moving between its carried
+ * spot and the directional edge.
  */
-export const DIRECTIONAL_PASS_TRANSITION_FRACTION = 0.1;
+export const DIRECTIONAL_PASS_TRANSITION_FRACTION = 0.05;
 
 /**
  * Turn angle (at the player's centre) up to which a release/receive leg
