@@ -5,6 +5,13 @@ import {
   resolvePhaseSegmentDurationMs,
   resolveSegmentMaxMovementDistance,
 } from "./routeFollowInterpolation";
+import {
+  compilePlayerContinuitySlopes,
+  resolveContinuityProgress,
+  SLATE_WORLD_SCALE,
+  type PlayerSegmentSlopes,
+  type WorldScale,
+} from "./slatePlayerContinuity";
 
 /**
  * Tactical Slate's playback timeline: a pure, compiled description of a
@@ -19,9 +26,12 @@ import {
  * - a playback-speed change needs no rescaling — only the rate at which the
  *   timeline position advances changes.
  *
- * Every position here is a function of (segment, progress) with exactly the
- * same interpolation, easing and per-segment durations as the previous
- * frame-stepped engine. The single presentation difference is the old
+ * Every position here is a function of (segment, progress) with the same
+ * interpolation geometry and per-segment durations as the previous
+ * frame-stepped engine. Players who keep moving through a phase boundary
+ * carry their speed across it (slatePlayerContinuity.ts) instead of easing to
+ * a stop and starting again; everyone else, and every ball, keeps the
+ * per-segment smoothstep. The other difference from the old engine is the
  * frame-rate-dependent lag-follow of an attached ball, which is replaced by:
  *
  * - a ball carried by the same player for the whole segment is drawn exactly
@@ -111,11 +121,18 @@ export type SlatePlaybackTimeline = {
   /** segments[i] runs from path[i] to path[i + 1]. */
   segments: readonly SlatePlaybackSegment[];
   totalDurationMs: number;
+  /**
+   * playerSlopes[i]: Hermite boundary slopes for each player who keeps moving
+   * through a boundary of segment i (see slatePlayerContinuity.ts). A player
+   * with no entry walks the segment with the plain smoothstep.
+   */
+  playerSlopes: readonly ReadonlyMap<string, PlayerSegmentSlopes>[];
 };
 
 export function compileSlatePlaybackTimeline(
   path: readonly TimelineSnapshot[],
   kind: SlatePlaybackKind = "default",
+  worldScale: WorldScale = SLATE_WORLD_SCALE,
 ): SlatePlaybackTimeline {
   const segments: SlatePlaybackSegment[] = [];
   let startMs = 0;
@@ -129,7 +146,12 @@ export function compileSlatePlaybackTimeline(
     segments.push({ startMs, durationMs });
     startMs += durationMs;
   }
-  return { kind, path, segments, totalDurationMs: startMs };
+  const playerSlopes = compilePlayerContinuitySlopes(
+    path,
+    segments.map((segment) => segment.durationMs),
+    worldScale,
+  );
+  return { kind, path, segments, totalDurationMs: startMs, playerSlopes };
 }
 
 export type SlateTimelinePosition = {
@@ -213,15 +235,18 @@ export function sampleSlatePlaybackTimeline(
   const easedProgress = getPlaybackEaseProgress(position.progress);
 
   const fromPlayersById = new Map(fromSnapshot.players.map((entry) => [entry.id, entry] as const));
+  const segmentPlayerSlopes = timeline.playerSlopes[position.segmentIndex];
   const players: SlateTimelinePlayerSample[] = [];
   for (const toPoint of toSnapshot.players) {
     const fromPoint = fromPlayersById.get(toPoint.id);
     if (!fromPoint) continue;
+    const slopes = segmentPlayerSlopes?.get(toPoint.id);
+    const walkedShare = slopes ? resolveContinuityProgress(position.progress, slopes) : easedProgress;
     const point = toPoint.path?.length
-      ? interpolatePath(fromPoint, toPoint, easedProgress)
+      ? interpolatePath(fromPoint, toPoint, walkedShare)
       : {
-          x: fromPoint.x + (toPoint.x - fromPoint.x) * easedProgress,
-          y: fromPoint.y + (toPoint.y - fromPoint.y) * easedProgress,
+          x: fromPoint.x + (toPoint.x - fromPoint.x) * walkedShare,
+          y: fromPoint.y + (toPoint.y - fromPoint.y) * walkedShare,
         };
     players.push({ id: toPoint.id, x: point.x, y: point.y });
   }

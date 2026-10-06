@@ -3858,7 +3858,7 @@ export async function createTacticalPadLiteSurface(
       playbackKind === "possession-pass"
         ? optionsForPlayback?.possessionReceiverId ?? null
         : null;
-    playbackTimeline = compileSlatePlaybackTimeline(path, playbackKind);
+    playbackTimeline = compileSlatePlaybackTimeline(path, playbackKind, { x: WORLD_SIZE.width / 100, y: WORLD_SIZE.height / 100 });
     playbackTimelineMs = 0;
     applySnapshotToSurface(path[0]!);
     emitPlaybackStateChange();

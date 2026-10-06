@@ -17,6 +17,7 @@ import {
   type SlatePlaybackKind,
   type TimelineSnapshot,
 } from "./slatePlaybackTimeline";
+import { resolveContinuityProgress } from "./slatePlayerContinuity";
 
 type Ball = TimelineSnapshot["football"][number];
 
@@ -98,7 +99,15 @@ const BOARD = [START, PHASE_1, PHASE_2, PHASE_3, PHASE_4];
  * holder only — their rendered point (and the old lag-follow) belongs to the
  * surface and is the one intended difference.
  */
-function createLegacyEngine(path: TimelineSnapshot[], kind: SlatePlaybackKind, speed: number) {
+function createLegacyEngine(
+  path: TimelineSnapshot[],
+  kind: SlatePlaybackKind,
+  speed: number,
+  // Stage 1 (player continuity) only changes how far along its walk a
+  // player is; injecting that share keeps every other part of the old loop
+  // (geometry, durations, frame slicing, speed handling) as the reference.
+  playerShare?: (segment: number, playerId: string, progress: number) => number,
+) {
   let multiplier = speed;
   let segment = 0;
   let elapsed = 0;
@@ -128,11 +137,12 @@ function createLegacyEngine(path: TimelineSnapshot[], kind: SlatePlaybackKind, s
     for (const toPoint of to.players) {
       const fromPoint = from.players.find((entry) => entry.id === toPoint.id);
       if (!fromPoint) continue;
+      const share = playerShare ? playerShare(segment, toPoint.id, progress) : eased;
       frame.players.set(
         toPoint.id,
         toPoint.path?.length
-          ? interpolatePath(fromPoint, toPoint, eased)
-          : { x: fromPoint.x + (toPoint.x - fromPoint.x) * eased, y: fromPoint.y + (toPoint.y - fromPoint.y) * eased },
+          ? interpolatePath(fromPoint, toPoint, share)
+          : { x: fromPoint.x + (toPoint.x - fromPoint.x) * share, y: fromPoint.y + (toPoint.y - fromPoint.y) * share },
       );
     }
     for (const toBall of to.football) {
@@ -364,10 +374,24 @@ describe("pickup convergence (replaces the frame-dependent lag-follow)", () => {
   });
 });
 
+// The share each player walks per segment under Stage 1 player continuity.
+function continuityShare(path: TimelineSnapshot[]) {
+  const timeline = compileSlatePlaybackTimeline(path);
+  return (segment: number, playerId: string, progress: number) => {
+    const slopes = timeline.playerSlopes[segment]?.get(playerId);
+    return slopes ? resolveContinuityProgress(progress, slopes) : getPlaybackEaseProgress(progress);
+  };
+}
+
 describe("equivalence with the frame-stepped engine on main", () => {
+  it("exercises continuity on the reference board (some players carry speed through boundaries)", () => {
+    const timeline = compileSlatePlaybackTimeline(BOARD);
+    expect(timeline.playerSlopes.some((segment) => segment.size > 0)).toBe(true);
+  });
+
   for (const speed of [1, 0.25, 0.5, 1.5]) {
     it(`matches every frame of a jittery-frame-rate playback at ${speed}×`, () => {
-      const legacy = createLegacyEngine(BOARD, "default", speed);
+      const legacy = createLegacyEngine(BOARD, "default", speed, continuityShare(BOARD));
       let timelineMs = 0;
       let frames = 0;
       for (const delta of frameDeltas(5000, 11 + speed * 100)) {
@@ -383,7 +407,7 @@ describe("equivalence with the frame-stepped engine on main", () => {
   }
 
   it("matches a phase playback across repeated mid-segment speed changes", () => {
-    const legacy = createLegacyEngine(BOARD, "default", 1);
+    const legacy = createLegacyEngine(BOARD, "default", 1, continuityShare(BOARD));
     let speed = 1;
     let timelineMs = 0;
     const speeds = [0.25, 1.5, 0.5, 1, 1.25];
