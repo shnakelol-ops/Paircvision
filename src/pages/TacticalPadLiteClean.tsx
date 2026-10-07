@@ -765,14 +765,6 @@ const PORTRAIT_INTERACTION_SHIELD_STYLE: CSSProperties = {
   touchAction: "pan-x pan-y pinch-zoom",
 };
 
-// Full View is presentation-only: same shield slot as portrait blocking, but
-// invisible and swallowing every gesture (no pan/zoom, no board input).
-const FULL_VIEW_INTERACTION_SHIELD_STYLE: CSSProperties = {
-  ...PORTRAIT_INTERACTION_SHIELD_STYLE,
-  background: "transparent",
-  touchAction: "none",
-};
-
 const BUBBLE_BASE_STYLE: CSSProperties = {
   position: "fixed",
   width: "40px",
@@ -2616,9 +2608,6 @@ export default function TacticalPadLiteClean({
   });
   // slateRecordElapsed holds the final elapsed value after stop — used as the clip duration display.
   const practiceAreasSuspendedForRecording = recordPhaseSuspendsPracticeAreas(slateRecordPhase);
-  useEffect(() => {
-    surfaceRef.current?.setPracticeAreaEditingSuspended(practiceAreasSuspendedForRecording);
-  }, [practiceAreasSuspendedForRecording]);
   const coachingClip = useCoachingClip();
 
   type SlateClipDiag = { events: string[]; rs: number; ns: number; src: string; dur: number; vw: number; vh: number; err: string | null; seeked: boolean };
@@ -2690,6 +2679,17 @@ export default function TacticalPadLiteClean({
 
   const isStatsMode = mode === "stats";
   const isWhiteboardMode = mode === "whiteboard";
+  const isFullViewActive = isFullView && !isWhiteboardMode;
+  // Practice Area selection/handles are authoring UI: suspended while a clip
+  // records (no handles in recorded frames) and while in Full View.
+  const practiceAreasSuspended = practiceAreasSuspendedForRecording || isFullViewActive;
+  // Full View is for demonstrating, not authoring: the board runs on the Move
+  // tool (drag players/ball/items) without changing the editor's selected
+  // tool, which is restored on exit.
+  const effectiveTacticalTool: WhiteboardToolControl = isFullViewActive ? "move" : tacticalTool;
+  useEffect(() => {
+    surfaceRef.current?.setPracticeAreaEditingSuspended(practiceAreasSuspended);
+  }, [practiceAreasSuspended]);
   // PR-2: Portrait is a genuine editable orientation. The old single
   // `shouldBlockPortraitInput` flag conflated two concerns, so it is split into two
   // narrow flags:
@@ -3228,11 +3228,11 @@ export default function TacticalPadLiteClean({
     if (isStatsMode) return;
     const surface = surfaceRef.current;
     if (!surface) return;
-    const activeDrawTool = isWhiteboardMode ? whiteboardTool : tacticalTool;
+    const activeDrawTool = isWhiteboardMode ? whiteboardTool : effectiveTacticalTool;
     const activeDrawColor = isWhiteboardMode ? whiteboardPenColor : tacticalPenColor;
     surface.setWhiteboardDrawTool(activeDrawTool);
     surface.setWhiteboardDrawColor(activeDrawColor);
-  }, [isStatsMode, isWhiteboardMode, whiteboardTool, whiteboardPenColor, tacticalTool, tacticalPenColor]);
+  }, [isStatsMode, isWhiteboardMode, whiteboardTool, whiteboardPenColor, effectiveTacticalTool, tacticalPenColor]);
 
   useEffect(() => {
     if (isStatsMode) return;
@@ -3379,7 +3379,7 @@ export default function TacticalPadLiteClean({
     "--speed-track": `linear-gradient(90deg, rgba(34, 197, 94, 0.95) 0%, rgba(34, 197, 94, 0.95) ${playbackSpeedTrackFillPercent}%, rgba(255, 255, 255, 0.9) ${playbackSpeedTrackFillPercent}%, rgba(255, 255, 255, 0.9) 100%)`,
   } as CSSProperties;
   const effectiveItemMode: ItemMode =
-    shouldBlockPortraitInput || (itemMode !== "edit" || tacticalTool !== "move" || isPlaybackLocked)
+    shouldBlockPortraitInput || (itemMode !== "edit" || effectiveTacticalTool !== "move" || isPlaybackLocked)
       ? "locked"
       : "edit";
 
@@ -3664,14 +3664,18 @@ export default function TacticalPadLiteClean({
     setControlsOpen(false);
   };
 
-  // Full View: presentation-only control surface over the same live board.
+  // Full View: the same live board with the editor chrome removed. Players,
+  // ball and items stay directly draggable under the normal engine rules;
+  // authoring states are cleared on entry and their UI stays hidden.
   // Entering/exiting only toggles page UI; it never touches board state.
-  const isCanvasRecordingActive = slateRecordPhase === "countdown" || slateRecordPhase === "recording";
+  const isCanvasRecordingActive = recordPhaseSuspendsPracticeAreas(slateRecordPhase);
   const enterFullView = () => {
+    // Blocked while recording: entering resizes the recorded canvas.
     if (isWhiteboardMode || isCanvasRecordingActive || isFullViewRef.current) return;
     const surface = surfaceRef.current;
     surface?.cancelActiveInteraction();
     surface?.clearPracticeAreaSelection();
+    surface?.setFreeDrawCaptureMode(false);
     if (shapeLockMode !== "off") surface?.setShapeLockMode("off");
     if (shapeLinksState.isSelectMode) surface?.setShapeLinkSelectMode(false);
     setIsShapeLinksPanelOpen(false);
@@ -3702,7 +3706,14 @@ export default function TacticalPadLiteClean({
       fullViewHistoryRef.current = true;
     }
   };
+  // Leaving resizes the canvas, so a clip in progress is finished first
+  // (or a countdown cancelled) rather than recorded across the resize.
+  const finishRecordingBeforeResize = () => {
+    if (slateRecordPhase === "recording") slateStopRecording();
+    else if (slateRecordPhase === "countdown") slateDismissRecord();
+  };
   const exitFullView = () => {
+    finishRecordingBeforeResize();
     isFullViewRef.current = false;
     setIsFullView(false);
     if (fullViewHistoryRef.current) {
@@ -4238,12 +4249,15 @@ export default function TacticalPadLiteClean({
     if (!isFullView) return;
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      // Escape first closes the clip result popover (its own handler).
+      if (quickShareOpen) return;
       event.preventDefault();
       exitFullView();
     };
     // Android/browser back pops the Full View entry pushed on enter.
     const handlePopState = () => {
       if (!fullViewHistoryRef.current) return;
+      finishRecordingBeforeResize();
       fullViewHistoryRef.current = false;
       isFullViewRef.current = false;
       setIsFullView(false);
@@ -4254,7 +4268,7 @@ export default function TacticalPadLiteClean({
       window.removeEventListener("keydown", handleEscape);
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [isFullView]);
+  }, [isFullView, quickShareOpen, slateRecordPhase]);
 
   useEffect(() => {
     if (!controlsOpen) setBallPopupStep(null);
@@ -4962,7 +4976,6 @@ export default function TacticalPadLiteClean({
       : isWhiteboardMode
         ? PITCH_WHITEBOARD_STYLE
         : PITCH_STYLE;
-  const isFullViewActive = isFullView && !isWhiteboardMode;
   const rootShellStyle: CSSProperties = {
     ...(isWhiteboardMode ? ROOT_WHITEBOARD_STYLE : ROOT_STYLE),
     ...(isFullViewActive ? FULL_VIEW_ROOT_PADDING : null),
@@ -5006,13 +5019,7 @@ export default function TacticalPadLiteClean({
               hidden={recordingWatermarkActive}
             />
           ) : null}
-          {!isWhiteboardMode && (shouldBlockPortraitInput || isFullViewActive) ? (
-            <div
-              style={isFullViewActive ? FULL_VIEW_INTERACTION_SHIELD_STYLE : PORTRAIT_INTERACTION_SHIELD_STYLE}
-              aria-hidden="true"
-              data-slate-input-shield={isFullViewActive ? "full-view" : "portrait"}
-            />
-          ) : null}
+          {!isWhiteboardMode && shouldBlockPortraitInput ? <div style={PORTRAIT_INTERACTION_SHIELD_STYLE} aria-hidden="true" /> : null}
           {!isWhiteboardMode && !shouldBlockPortraitInput ? (
             <SlateTextOverlay
               annotations={textAnnotations}
@@ -6587,14 +6594,21 @@ export default function TacticalPadLiteClean({
             </div>
           </div>
         ) : null}
-        {!isWhiteboardMode && quickShareOpen ? (
+        </>) : null}
+        {/* Existing recording UI, shared with Full View: the clip result
+            (Share popover, only once a clip is ready), countdown and REC. */}
+        {!isWhiteboardMode && quickShareOpen && (!isFullViewActive || slateRecordBlob) ? (
           <div ref={quickSharePopoverRef} style={quickSharePopoverStyle} role="dialog" aria-modal="false" aria-label="Share Board">
             <p style={QUICK_SHARE_TITLE_STYLE}>Share Board</p>
-            <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareSnapshot}>
-              <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>📸 Snapshot</span>
-              <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Save or share the current board.</span>
-            </button>
-            <div style={{ height: "1px", background: "rgba(212, 228, 244, 0.12)", margin: "1px 0" }} />
+            {!isFullViewActive ? (
+              <>
+                <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareSnapshot}>
+                  <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>📸 Snapshot</span>
+                  <span style={QUICK_SHARE_OPTION_SUBTITLE_STYLE}>Save or share the current board.</span>
+                </button>
+                <div style={{ height: "1px", background: "rgba(212, 228, 244, 0.12)", margin: "1px 0" }} />
+              </>
+            ) : null}
             {slateRecordPhase === "idle" ? (
               <button type="button" className="control-button" style={QUICK_SHARE_OPTION_BUTTON_STYLE} onClick={handleQuickShareRecordClip}>
                 <span style={QUICK_SHARE_OPTION_TITLE_STYLE}>🎥 Record</span>
@@ -6833,6 +6847,7 @@ export default function TacticalPadLiteClean({
             </div>
           );
         })() : null}
+        {!isFullViewActive ? (<>
         {!isWhiteboardMode && shareTipMessage ? (
           <div style={SHARE_TIP_TOAST_STYLE} role="status" aria-live="polite">
             <p style={SHARE_TIP_TEXT_STYLE}>{shareTipMessage}</p>
@@ -6932,6 +6947,11 @@ export default function TacticalPadLiteClean({
             onPlay={handlePlayPress}
             onPause={handlePausePress}
             onExit={exitFullView}
+            recordPhase={slateRecordPhase}
+            recordCountdown={slateRecordCountdown}
+            canRecord={slateCanRecord()}
+            onStartRecording={slateStartCountdown}
+            onStopRecording={slateStopRecording}
           />
         ) : null}
       </div>

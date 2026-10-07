@@ -1,14 +1,15 @@
 import type { CSSProperties } from "react";
 
 import type { TacticalPadLiteSurface } from "../../../engine/pixi/createTacticalPadLiteSurface";
+import type { RecordPhase } from "../../shared/useCanvasRecorder";
 import { resolveFullViewPhaseView } from "./fullViewPresentation";
 
-// Minimal Full View presentation controller:  ‹  Phase N/M  ▶/⏸  ›  ✕
+// Minimal Full View controller:  ‹  Phase N/M  ▶/⏸  ›  ●  ✕
 //
-// Another control surface over the existing Slate engine — it owns no phase
-// or playback state. Everything it shows comes from props mirrored from the
-// engine (phase cursor/count, play state), and every action calls an
-// existing surface method or the page's existing play/pause handlers.
+// Another control surface over the existing Slate engine and the existing
+// canvas recorder — it owns no phase, playback or recording state. Everything
+// it shows comes from props mirrored from those systems, and every action
+// calls an existing surface method or the page's existing handlers.
 
 export type SlateFullViewControllerSurface = Pick<TacticalPadLiteSurface, "goToPhase" | "reset">;
 
@@ -20,6 +21,12 @@ export type SlateFullViewControllerProps = {
   onPlay: () => void;
   onPause: () => void;
   onExit: () => void;
+  /** Existing Slate recorder state (useCanvasRecorder). */
+  recordPhase: RecordPhase;
+  recordCountdown: number;
+  canRecord: boolean;
+  onStartRecording: () => void;
+  onStopRecording: () => void;
 };
 
 const BAR_STYLE: CSSProperties = {
@@ -76,6 +83,22 @@ const LABEL_STYLE: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
+const RECORD_DOT_STYLE: CSSProperties = {
+  width: "14px",
+  height: "14px",
+  borderRadius: "50%",
+  background: "#ff3030",
+  boxShadow: "0 0 6px 1px rgba(255, 48, 48, 0.55)",
+};
+
+const STOP_SQUARE_STYLE: CSSProperties = {
+  width: "13px",
+  height: "13px",
+  borderRadius: "2px",
+  background: "#ff3030",
+  animation: "tp-rec-pulse 1.1s ease-in-out infinite",
+};
+
 const DIVIDER_STYLE: CSSProperties = {
   width: "1px",
   height: "22px",
@@ -91,8 +114,15 @@ export default function SlateFullViewController({
   onPlay,
   onPause,
   onExit,
+  recordPhase,
+  recordCountdown,
+  canRecord,
+  onStartRecording,
+  onStopRecording,
 }: SlateFullViewControllerProps) {
   const view = resolveFullViewPhaseView(phaseCursor, phaseCount);
+  const isRecording = recordPhase === "recording";
+  const isCountingDown = recordPhase === "countdown";
 
   const goPrevious = () => {
     const surface = getSurface();
@@ -142,6 +172,26 @@ export default function SlateFullViewController({
         ›
       </button>
       <span style={DIVIDER_STYLE} aria-hidden="true" />
+      {isRecording ? (
+        <button type="button" style={BUTTON_STYLE} aria-label="Stop recording" onClick={onStopRecording}>
+          <span style={STOP_SQUARE_STYLE} />
+        </button>
+      ) : isCountingDown ? (
+        <button type="button" style={DISABLED_BUTTON_STYLE} aria-label="Recording starts soon" disabled>
+          {recordCountdown}
+        </button>
+      ) : (
+        <button
+          type="button"
+          style={canRecord ? BUTTON_STYLE : DISABLED_BUTTON_STYLE}
+          aria-label="Start recording"
+          title={canRecord ? "Record the board" : "Recording not supported in this browser"}
+          disabled={!canRecord}
+          onClick={onStartRecording}
+        >
+          <span style={RECORD_DOT_STYLE} />
+        </button>
+      )}
       <button type="button" style={BUTTON_STYLE} aria-label="Exit Full View" onClick={onExit}>
         ✕
       </button>

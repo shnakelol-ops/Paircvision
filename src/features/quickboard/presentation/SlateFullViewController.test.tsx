@@ -18,6 +18,11 @@ function setup(overrides: Partial<SlateFullViewControllerProps> = {}) {
     onPlay: vi.fn(),
     onPause: vi.fn(),
     onExit: vi.fn(),
+    recordPhase: "idle",
+    recordCountdown: 3,
+    canRecord: true,
+    onStartRecording: vi.fn(),
+    onStopRecording: vi.fn(),
     ...overrides,
   };
   const view = render(<SlateFullViewController {...props} />);
@@ -67,6 +72,33 @@ describe("SlateFullViewController", () => {
     const second = setup({ isPlaying: true });
     fireEvent.click(screen.getByRole("button", { name: "Pause" }));
     expect(second.props.onPause).toHaveBeenCalledTimes(1);
+  });
+
+  it("record button mirrors the existing recorder phase and calls its handlers", () => {
+    const idle = setup({ recordPhase: "idle" });
+    fireEvent.click(screen.getByRole("button", { name: "Start recording" }));
+    expect(idle.props.onStartRecording).toHaveBeenCalledTimes(1);
+    cleanup();
+    setup({ recordPhase: "countdown", recordCountdown: 2 });
+    const pending = screen.getByRole("button", { name: "Recording starts soon" }) as HTMLButtonElement;
+    expect(pending.disabled).toBe(true);
+    expect(pending.textContent).toBe("2");
+    cleanup();
+    const live = setup({ recordPhase: "recording" });
+    fireEvent.click(screen.getByRole("button", { name: "Stop recording" }));
+    expect(live.props.onStopRecording).toHaveBeenCalledTimes(1);
+    cleanup();
+    // After a clip ("done") the coach can record again.
+    setup({ recordPhase: "done" });
+    expect(screen.getByRole("button", { name: "Start recording" })).toBeTruthy();
+  });
+
+  it("disables recording where the browser cannot capture the canvas", () => {
+    const { props } = setup({ canRecord: false });
+    const button = screen.getByRole("button", { name: "Start recording" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(props.onStartRecording).not.toHaveBeenCalled();
   });
 
   it("✕ calls onExit", () => {
