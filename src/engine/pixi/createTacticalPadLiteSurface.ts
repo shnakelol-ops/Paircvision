@@ -2,6 +2,7 @@ import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js
 
 import { createWorldViewport } from "./createWorldViewport";
 import { quarterTurnRadians } from "./orientation";
+import { nextPhaseCursor, PHASE_CURSOR_START, type PhaseCursorEvent } from "./phaseCursor";
 import {
   createPremiumPlayerToken,
   PREMIUM_TOKEN_DRAG_SCALE,
@@ -307,11 +308,22 @@ export type TacticalPadLiteSurface = {
   deleteShapeLink: (shapeLinkId: string) => void;
   setShapeLinksVisible: (visible: boolean) => void;
   getShapeLinksState: () => ShapeLinksState;
+  /**
+   * Ends any in-progress gesture (drag, drawing draft, Draw Route draft)
+   * exactly as Play/goToPhase already do. Changes no tool, mode or phase.
+   */
+  cancelActiveInteraction: () => void;
   destroy: () => void;
 };
 
 type TacticalPadLiteSurfaceOptions = {
   onPhaseCountChange?: (count: number) => void;
+  /**
+   * Read-only phase cursor (see ./phaseCursor): the last applied phase
+   * position — PHASE_CURSOR_START (-1) for Start, otherwise a 0-based phase
+   * index. Reported for presentation (Full View); never drives the engine.
+   */
+  onPhaseCursorChange?: (cursor: number) => void;
   onPlaybackStateChange?: (state: { isPlaying: boolean; isPaused: boolean }) => void;
   /** Defaults to "gaelic" — the public Tactical Slate never passes this. */
   sport?: PitchSport;
@@ -527,6 +539,8 @@ type PlaybackStartOptions = {
   possessionReceiverId?: string | null;
   /** Presented carry sides when the playback starts (tap-to-pass). */
   initialCarryAngleByBallId?: ReadonlyMap<string, number>;
+  /** True only for start → saved phases playback, whose segments land on phases. */
+  tracksPhaseCursor?: boolean;
 };
 
 type TacticalSurfaceItem = TacticalItem & {
@@ -1680,6 +1694,10 @@ export async function createTacticalPadLiteSurface(
   // playbackTimelineMs advances, so a speed change needs no rescaling.
   let playbackTimeline: SlatePlaybackTimeline | null = null;
   let playbackTimelineMs = 0;
+  let playbackTracksPhaseCursor = false;
+  // Read-only presentation cursor: last applied phase position. Updated only
+  // via applyPhaseCursorEvent() at the points that already apply snapshots.
+  let phaseCursor = PHASE_CURSOR_START;
   let singlePlayTargetSnapshot: PhaseSnapshot | null = null;
   let startPositions: PhaseSnapshot = {
     players: players.map((player) => ({ id: player.id, ...player.current })),
@@ -1973,6 +1991,13 @@ export async function createTacticalPadLiteSurface(
     if (gesture.hasCrossedThreshold) emitPracticeAreaSelection();
   }
   let lastTappedPlayer: { playerId: string; atMs: number } | null = null;
+
+  function applyPhaseCursorEvent(event: PhaseCursorEvent): void {
+    const next = nextPhaseCursor(phaseCursor, event);
+    if (next === phaseCursor) return;
+    phaseCursor = next;
+    options.onPhaseCursorChange?.(phaseCursor);
+  }
 
   function emitPlaybackStateChange(): void {
     syncWhiteboardTokenInputMode();
@@ -3950,6 +3975,7 @@ export async function createTacticalPadLiteSurface(
     playbackPossessionReceiverId = null;
     playbackTimeline = null;
     playbackTimelineMs = 0;
+    playbackTracksPhaseCursor = false;
     emitPlaybackStateChange();
   }
 
@@ -3975,7 +4001,11 @@ export async function createTacticalPadLiteSurface(
       tapPassReceiverId: playbackPossessionReceiverId,
     });
     playbackTimelineMs = 0;
+    playbackTracksPhaseCursor = optionsForPlayback?.tracksPhaseCursor === true;
     applySnapshotToSurface(path[0]!);
+    if (playbackTracksPhaseCursor) {
+      applyPhaseCursorEvent({ type: "phasePlaybackStart" });
+    }
     emitPlaybackStateChange();
   }
 
@@ -4008,7 +4038,7 @@ export async function createTacticalPadLiteSurface(
 
   function playSavedPhaseSequence(): void {
     const sequence = [cloneSnapshot(startPositions), ...phases.map((phase) => cloneSnapshot(phase))];
-    startPlayback(sequence);
+    startPlayback(sequence, { tracksPhaseCursor: true });
   }
 
   function handlePlay(): void {
@@ -4049,6 +4079,14 @@ export async function createTacticalPadLiteSurface(
     while (activeSegmentIndex < reachedSegmentIndex) {
       activeSegmentIndex += 1;
       applySnapshotToSurface(playbackPath[activeSegmentIndex]!);
+      if (playbackTracksPhaseCursor) {
+        // playbackPath = [start, phase0, phase1, …]: completed segment i lands on phase i.
+        applyPhaseCursorEvent({
+          type: "phasePlaybackSegmentComplete",
+          segmentIndex: activeSegmentIndex - 1,
+          phaseCount: phases.length,
+        });
+      }
     }
     if (sample.isComplete) {
       const possessionReceiverId =
@@ -4660,6 +4698,7 @@ export async function createTacticalPadLiteSurface(
     startPositions = nextStartSnapshot;
     phases = parsedPhases.map((phase) => normalizePhaseForRoster(phase));
     options.onPhaseCountChange?.(phases.length);
+    applyPhaseCursorEvent({ type: "start" });
 
     // Drop any member no longer present in the rebuilt roster, and any link
     // left with fewer than 2 resolvable members.
@@ -4952,6 +4991,7 @@ export async function createTacticalPadLiteSurface(
   resizeObserver.observe(host);
   fitToHost();
   options.onPhaseCountChange?.(0);
+  options.onPhaseCursorChange?.(phaseCursor);
   emitPlaybackStateChange();
   const pristineBoardState = cloneBoardStateSnapshot(captureBoardState());
 
@@ -4967,6 +5007,7 @@ export async function createTacticalPadLiteSurface(
       resetAllBallMovementPaths();
       freeDrawPathByPlayerId.clear();
       options.onPhaseCountChange?.(0);
+      applyPhaseCursorEvent({ type: "start" });
     },
     addPhase: () => {
       releaseActiveDrag();
@@ -4978,6 +5019,7 @@ export async function createTacticalPadLiteSurface(
       resetAllBallMovementPaths();
       freeDrawPathByPlayerId.clear();
       options.onPhaseCountChange?.(phases.length);
+      applyPhaseCursorEvent({ type: "addPhase", phaseCount: phases.length });
     },
     undoPhase: () => {
       releaseActiveDrag();
@@ -4990,6 +5032,7 @@ export async function createTacticalPadLiteSurface(
       const previousSnapshot = phases[phases.length - 1] ?? startPositions;
       applySnapshotToSurface(previousSnapshot);
       options.onPhaseCountChange?.(phases.length);
+      applyPhaseCursorEvent({ type: "undoPhase", phaseCount: phases.length });
     },
     goToPhase: (index: number) => {
       if (index < 0 || index >= phases.length) return;
@@ -5003,6 +5046,7 @@ export async function createTacticalPadLiteSurface(
       cancelPlaybackAnimation();
       singlePlayTargetSnapshot = null;
       applySnapshotToSurface(phases[index]!);
+      applyPhaseCursorEvent({ type: "goToPhase", index, phaseCount: phases.length });
     },
     newBoard: () => {
       if (surfaceVariant !== "tactical") return;
@@ -5072,6 +5116,7 @@ export async function createTacticalPadLiteSurface(
       releaseActiveDrag();
       cancelPlaybackAnimation();
       applySnapshotToSurface(startPositions);
+      applyPhaseCursorEvent({ type: "start" });
     },
     reflow: () => {
       fitToHost();
@@ -5310,6 +5355,11 @@ export async function createTacticalPadLiteSurface(
         closed: link.closed,
       })),
     }),
+    cancelActiveInteraction: () => {
+      releaseActiveDrag();
+      resetActiveWhiteboardDrawing();
+      clearFreeDrawDraft();
+    },
     destroy: () => {
       resizeObserver.disconnect();
       canvas.removeEventListener("webglcontextlost", handleContextLost);
