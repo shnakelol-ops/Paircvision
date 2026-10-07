@@ -1244,6 +1244,26 @@ export function backfillBallIntoPhases(
 }
 
 /**
+ * Page → engine item sync (syncItems): the items the page passes, with every
+ * item the live board already holds keeping its live position. The page's
+ * own item list is only updated by drags, so after an engine-side move
+ * (Reset, playback, Undo Phase, Go to Phase, Set Start after playback, or
+ * opening a board saved at a later phase) its positions for untouched items
+ * are stale; pushing them would snap those items back. Only a genuinely new
+ * item id takes the position the page supplies. Board import/restore does
+ * not go through this and still sets every position.
+ */
+export function preserveLiveItemPositions<T extends { id: string; x: number; y: number }>(
+  nextItems: readonly T[],
+  livePositionById: ReadonlyMap<string, NormalizedPoint>,
+): T[] {
+  return nextItems.map((item) => {
+    const live = livePositionById.get(item.id);
+    return live ? { ...item, x: live.x, y: live.y } : item;
+  });
+}
+
+/**
  * Touch jitter cleanup: pure counterpart of the exact decision
  * appendBallMovementPathPoint makes for every raw drag sample of a free
  * ball's path — true when the new sample is too close to the *last
@@ -3479,7 +3499,10 @@ export async function createTacticalPadLiteSurface(
     const nextBallItems = nextItems.filter((item) => isBallItem(item));
     const newlyAddedBallItems = nextBallItems.filter((item) => !previousBallIds.has(item.id));
 
-    upsertTacticalItems(nextItems);
+    // Items already on the board keep their live position (see preserveLiveItemPositions).
+    upsertTacticalItems(
+      preserveLiveItemPositions(nextItems, new Map(tacticalItems.map((item) => [item.id, { x: item.x, y: item.y }] as const))),
+    );
 
     // Scoped strictly to nextBallItems.length > 1: with 0 or 1 real balls
     // this must be a no-op, so the legacy single-ball path (where adding the
