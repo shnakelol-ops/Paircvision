@@ -28,9 +28,59 @@ export function interpolatePath(
     x: fallbackStart.x + (to.x - fallbackStart.x) * progress,
     y: fallbackStart.y + (to.y - fallbackStart.y) * progress,
   };
+  const path = resolveStoredRoutePolyline(from, to);
+  if (!path) {
+    return fallbackPoint;
+  }
+
+  let totalDistance = 0;
+  for (let index = 1; index < path.length; index += 1) {
+    const previous = path[index - 1];
+    const current = path[index];
+    if (!previous || !current) continue;
+    totalDistance += Math.hypot(current.x - previous.x, current.y - previous.y);
+  }
+  if (totalDistance <= 0) {
+    return fallbackPoint;
+  }
+
+  const targetDistance = totalDistance * progress;
+  let traveledDistance = 0;
+  for (let index = 1; index < path.length; index += 1) {
+    const previous = path[index - 1];
+    const current = path[index];
+    if (!previous || !current) continue;
+    const segmentDistance = Math.hypot(current.x - previous.x, current.y - previous.y);
+    if (segmentDistance <= 0) continue;
+    if (traveledDistance + segmentDistance >= targetDistance) {
+      const segmentProgress = (targetDistance - traveledDistance) / segmentDistance;
+      return {
+        x: previous.x + (current.x - previous.x) * segmentProgress,
+        y: previous.y + (current.y - previous.y) * segmentProgress,
+      };
+    }
+    traveledDistance += segmentDistance;
+  }
+  return {
+    x: clampNormalizedValue(to.x),
+    y: clampNormalizedValue(to.y),
+  };
+}
+
+/**
+ * The polyline interpolatePath walks for a stored route (2+ path points),
+ * after clamping, trimming the stale prefix and pinning the first point to
+ * the segment origin; null when there is no stored route (interpolatePath
+ * then lerps straight from `from` to `to`). Exposed so playback can measure
+ * exactly the geometry interpolatePath will walk.
+ */
+export function resolveStoredRoutePolyline(
+  from: { x: number; y: number } | null,
+  to: { x: number; y: number; path?: NormalizedPoint[] },
+): NormalizedPoint[] | null {
   const storedPath = to.path ?? [];
   if (storedPath.length < 2) {
-    return fallbackPoint;
+    return null;
   }
 
   let path = storedPath.map((point) => ({
@@ -66,39 +116,7 @@ export function interpolatePath(
       path[0] = fromPoint;
     }
   }
-
-  let totalDistance = 0;
-  for (let index = 1; index < path.length; index += 1) {
-    const previous = path[index - 1];
-    const current = path[index];
-    if (!previous || !current) continue;
-    totalDistance += Math.hypot(current.x - previous.x, current.y - previous.y);
-  }
-  if (totalDistance <= 0) {
-    return fallbackPoint;
-  }
-
-  const targetDistance = totalDistance * progress;
-  let traveledDistance = 0;
-  for (let index = 1; index < path.length; index += 1) {
-    const previous = path[index - 1];
-    const current = path[index];
-    if (!previous || !current) continue;
-    const segmentDistance = Math.hypot(current.x - previous.x, current.y - previous.y);
-    if (segmentDistance <= 0) continue;
-    if (traveledDistance + segmentDistance >= targetDistance) {
-      const segmentProgress = (targetDistance - traveledDistance) / segmentDistance;
-      return {
-        x: previous.x + (current.x - previous.x) * segmentProgress,
-        y: previous.y + (current.y - previous.y) * segmentProgress,
-      };
-    }
-    traveledDistance += segmentDistance;
-  }
-  return {
-    x: clampNormalizedValue(to.x),
-    y: clampNormalizedValue(to.y),
-  };
+  return path;
 }
 
 /**
