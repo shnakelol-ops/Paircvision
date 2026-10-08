@@ -177,3 +177,103 @@ export function findPracticeAreaAt(
   }
   return edgeId ?? containerId;
 }
+
+// ---- Smart alignment ------------------------------------------------------
+//
+// While a Practice Area is moved or resized, an edge that lands within a small
+// tolerance of another area's edge snaps onto it: matching edges (left–left,
+// top–top …) and opposing edges (left–right, top–bottom …). Each axis snaps
+// independently; outside the tolerance the result is returned untouched.
+// Tolerances are normalised units per axis (the board is not square), derived
+// by the caller from a screen-pixel distance.
+
+/** Screen-pixel distance within which an edge snaps; small enough to stay out of the way. */
+export const PRACTICE_AREA_SNAP_PX = 8;
+
+export type PracticeSnapTolerance = { x: number; y: number };
+
+/**
+ * Smallest correction that brings any of `moving` onto any of `targets`
+ * within `tolerance`, or null when nothing is that close.
+ */
+function nearestSnapDelta(moving: readonly number[], targets: readonly number[], tolerance: number): number | null {
+  let best: number | null = null;
+  for (const edge of moving) {
+    for (const target of targets) {
+      const delta = target - edge;
+      if (Math.abs(delta) <= tolerance && (best === null || Math.abs(delta) < Math.abs(best))) best = delta;
+    }
+  }
+  return best;
+}
+
+function xEdges(rects: readonly PracticeRect[]): number[] {
+  return rects.flatMap((rect) => [rect.left, rect.right]);
+}
+
+function yEdges(rects: readonly PracticeRect[]): number[] {
+  return rects.flatMap((rect) => [rect.top, rect.bottom]);
+}
+
+/**
+ * Snaps an already-translated rectangle to `others`. Size is preserved; an
+ * axis whose snap would push the rectangle off the board is left as-is.
+ */
+export function snapTranslatedPracticeRect(
+  rect: PracticeRect,
+  others: readonly PracticeRect[],
+  tolerance: PracticeSnapTolerance,
+): PracticeRect {
+  if (others.length === 0) return rect;
+  let { left, top, right, bottom } = rect;
+  const dx = nearestSnapDelta([left, right], xEdges(others), tolerance.x);
+  if (dx !== null && left + dx >= BOARD_MIN && right + dx <= BOARD_MAX) {
+    left += dx;
+    right += dx;
+  }
+  const dy = nearestSnapDelta([top, bottom], yEdges(others), tolerance.y);
+  if (dy !== null && top + dy >= BOARD_MIN && bottom + dy <= BOARD_MAX) {
+    top += dy;
+    bottom += dy;
+  }
+  return { left, top, right, bottom };
+}
+
+/**
+ * Snaps the two edges a corner resize moved (the dragged corner's x and y
+ * edges) to `others`. The fixed edges never move; a snap that would breach
+ * the minimum size or the board is skipped on that axis.
+ */
+export function snapResizedPracticeRect(
+  rect: PracticeRect,
+  corner: PracticeRectCorner,
+  others: readonly PracticeRect[],
+  tolerance: PracticeSnapTolerance,
+  minSize: number = PRACTICE_AREA_MIN_SIZE,
+): PracticeRect {
+  if (others.length === 0) return rect;
+  let { left, top, right, bottom } = rect;
+  const movesLeft = corner === "tl" || corner === "bl";
+  const movesTop = corner === "tl" || corner === "tr";
+  const dx = nearestSnapDelta([movesLeft ? left : right], xEdges(others), tolerance.x);
+  if (dx !== null) {
+    if (movesLeft) {
+      const next = left + dx;
+      if (next >= BOARD_MIN && right - next >= minSize) left = next;
+    } else {
+      const next = right + dx;
+      if (next <= BOARD_MAX && next - left >= minSize) right = next;
+    }
+  }
+  const dy = nearestSnapDelta([movesTop ? top : bottom], yEdges(others), tolerance.y);
+  if (dy !== null) {
+    if (movesTop) {
+      const next = top + dy;
+      if (next >= BOARD_MIN && bottom - next >= minSize) top = next;
+    } else {
+      const next = bottom + dy;
+      if (next <= BOARD_MAX && next - top >= minSize) bottom = next;
+    }
+  }
+  return { left, top, right, bottom };
+}

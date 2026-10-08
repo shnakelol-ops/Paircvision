@@ -33,6 +33,7 @@ import type { RecordingWatermarkSpec } from "../../features/quickboard/export/re
 import {
   PRACTICE_AREA_EDGE_TOUCH_PX,
   PRACTICE_AREA_HANDLE_TOUCH_PX,
+  PRACTICE_AREA_SNAP_PX,
   duplicatePracticeRect,
   findPracticeAreaAt,
   findPracticeRectCornerAt,
@@ -41,9 +42,12 @@ import {
   practiceRectFromPoints,
   practiceRectToPoints,
   resizePracticeRectCorner,
+  snapResizedPracticeRect,
+  snapTranslatedPracticeRect,
   translatePracticeRect,
   type PracticeRect,
   type PracticeRectCorner,
+  type PracticeSnapTolerance,
 } from "../../features/quickboard/drawing/practiceAreaGeometry";
 import {
   drawingToolToWhiteboardTool,
@@ -1838,6 +1842,25 @@ export async function createTacticalPadLiteSurface(
     return areas;
   }
 
+  /** Every other Practice Area in stored (normalised) space — the smart-alignment targets. */
+  function practiceAreaNormalizedRects(excludeId: string): PracticeRect[] {
+    const rects: PracticeRect[] = [];
+    for (const drawing of tacticalDrawingController.getDrawings()) {
+      if (drawing.kind !== "rectangle-zone" || drawing.id === excludeId) continue;
+      const rect = practiceRectFromPoints(drawing.points);
+      if (rect) rects.push(rect);
+    }
+    return rects;
+  }
+
+  /** The screen-pixel snap distance in normalised units per axis (the board is not square). */
+  function practiceAreaSnapTolerance(): PracticeSnapTolerance {
+    const worldTolerance = PRACTICE_AREA_SNAP_PX / Math.max(0.0001, mapper.transform.scale);
+    const origin = mapper.worldToNormalized({ x: 0, y: 0 });
+    const offset = mapper.worldToNormalized({ x: worldTolerance, y: worldTolerance });
+    return { x: Math.abs(offset.x - origin.x), y: Math.abs(offset.y - origin.y) };
+  }
+
   function canEditPracticeAreas(): boolean {
     return (
       practiceAreasEnabled &&
@@ -1988,10 +2011,21 @@ export async function createTacticalPadLiteSurface(
     const worldPoint = getBoundedWorldPointFromEvent(event);
     if (!worldPoint) return;
     const pointer = mapper.worldToNormalized(worldPoint);
+    const others = practiceAreaNormalizedRects(gesture.areaId);
+    const snapTolerance = practiceAreaSnapTolerance();
     const nextRect =
       gesture.kind === "resize" && gesture.corner
-        ? resizePracticeRectCorner(gesture.startRect, gesture.corner, pointer)
-        : translatePracticeRect(gesture.startRect, pointer.x - gesture.startPointer.x, pointer.y - gesture.startPointer.y);
+        ? snapResizedPracticeRect(
+            resizePracticeRectCorner(gesture.startRect, gesture.corner, pointer),
+            gesture.corner,
+            others,
+            snapTolerance,
+          )
+        : snapTranslatedPracticeRect(
+            translatePracticeRect(gesture.startRect, pointer.x - gesture.startPointer.x, pointer.y - gesture.startPointer.y),
+            others,
+            snapTolerance,
+          );
     const drawing = findPracticeAreaDrawing(gesture.areaId);
     if (!drawing) {
       practiceAreaGesture = null;
