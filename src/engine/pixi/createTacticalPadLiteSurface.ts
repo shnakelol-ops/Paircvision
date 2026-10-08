@@ -29,7 +29,7 @@ import {
   type NormalizedPoint,
 } from "../shared/normalization";
 import { createTacticalDrawingController } from "../../features/quickboard/drawing/tacticalDrawingController";
-import { drawGaaGoalItem } from "./gaaGoalItemGraphic";
+import { drawGaaGoalItem, gaaGoalOuterRadius } from "./gaaGoalItemGraphic";
 import type { RecordingWatermarkSpec } from "../../features/quickboard/export/recordingWatermark";
 import {
   PRACTICE_AREA_EDGE_TOUCH_PX,
@@ -1138,7 +1138,9 @@ function setItemTouchHitArea(
 ): void {
   const touchRadiusInWorld = (TACTICAL_ITEM_TOUCH_HIT_DIAMETER_PX * 0.5) / mapper.transform.scale;
   const itemVisualRadius =
-    item.type === "miniGoal" || item.type === "gaaGoal"
+    item.type === "gaaGoal"
+      ? gaaGoalOuterRadius(TACTICAL_ITEM_HALF_SIZE)
+      : item.type === "miniGoal"
       ? TACTICAL_ITEM_HALF_SIZE * 1.9
       : item.type === "mannequin"
         ? TACTICAL_ITEM_HALF_SIZE * 1.75
@@ -3357,11 +3359,11 @@ export async function createTacticalPadLiteSurface(
     }
   }
 
-  function drawSelectedItemGraphic(graphic: Graphics, selected: boolean): void {
+  function drawSelectedItemGraphic(graphic: Graphics, selected: boolean, radius = TACTICAL_ITEM_HALF_SIZE * 1.45): void {
     graphic.clear();
     if (!selected) return;
     graphic
-      .circle(0, 0, TACTICAL_ITEM_HALF_SIZE * 1.45)
+      .circle(0, 0, radius)
       .stroke({ color: 0x7dd3fc, alpha: 0.92, width: 0.42 });
   }
 
@@ -3372,7 +3374,11 @@ export async function createTacticalPadLiteSurface(
       applyBallRuntimeStateToItem(item);
       setItemWorldPosition(item, mapper);
       drawTacticalItemGraphic(item.graphic, item);
-      drawSelectedItemGraphic(item.selectionGraphic, item.id === selectedItemId);
+      drawSelectedItemGraphic(
+        item.selectionGraphic,
+        item.id === selectedItemId,
+        item.type === "gaaGoal" ? gaaGoalOuterRadius(TACTICAL_ITEM_HALF_SIZE) : undefined,
+      );
     }
   }
 

@@ -9,9 +9,11 @@ import { isBallItem, resolveBallDrawRadius, sanitizeTacticalItemCandidate } from
 import {
   GAA_GOAL_BOTTOM_FACTOR,
   GAA_GOAL_CROSSBAR_FACTOR,
+  GAA_GOAL_SIZE_FACTOR,
   GAA_GOAL_TOP_FACTOR,
   GAA_GOAL_WIDTH_FACTOR,
   drawGaaGoalItem,
+  gaaGoalOuterRadius,
 } from "./gaaGoalItemGraphic";
 
 type Instruction = { action: string; data?: { style?: { color?: number; alpha?: number }; path?: unknown } };
@@ -20,6 +22,8 @@ function instructionsOf(g: Graphics): Instruction[] {
 }
 
 const SLATE_HALF_SIZE = 2.2;
+// The goal's own drawing unit: the host's item half-size × the GAA Goal size factor.
+const GOAL_H = SLATE_HALF_SIZE * GAA_GOAL_SIZE_FACTOR;
 
 describe("GAA Goal drawing", () => {
   it("is native vector: fills and strokes only, no texture", () => {
@@ -53,21 +57,40 @@ describe("GAA Goal drawing", () => {
     const g = new Graphics();
     drawGaaGoalItem(g, SLATE_HALF_SIZE);
     const bounds = g.getLocalBounds();
-    const crossbarY = SLATE_HALF_SIZE * GAA_GOAL_CROSSBAR_FACTOR;
+    const crossbarY = GOAL_H * GAA_GOAL_CROSSBAR_FACTOR;
     // Upright tops sit well above the crossbar (outline adds a hair of stroke).
-    expect(bounds.minY).toBeLessThan(crossbarY - SLATE_HALF_SIZE);
-    expect(bounds.minY).toBeCloseTo(SLATE_HALF_SIZE * GAA_GOAL_TOP_FACTOR, 0);
-    expect(bounds.maxY).toBeGreaterThan(SLATE_HALF_SIZE * GAA_GOAL_BOTTOM_FACTOR);
-    expect(bounds.maxX - bounds.minX).toBeCloseTo(SLATE_HALF_SIZE * GAA_GOAL_WIDTH_FACTOR, 0);
+    expect(bounds.minY).toBeLessThan(crossbarY - GOAL_H);
+    expect(bounds.minY).toBeCloseTo(GOAL_H * GAA_GOAL_TOP_FACTOR, 0);
+    expect(bounds.maxY).toBeGreaterThan(GOAL_H * GAA_GOAL_BOTTOM_FACTOR);
+    expect(bounds.maxX - bounds.minX).toBeCloseTo(GOAL_H * GAA_GOAL_WIDTH_FACTOR, 0);
   });
 
-  it("stays compact: about the Mini Goal's footprint so it reads at mobile scale", () => {
+  it("draws at 200% of the original size, every part scaled together", () => {
+    expect(GAA_GOAL_SIZE_FACTOR).toBe(2);
     const g = new Graphics();
     drawGaaGoalItem(g, SLATE_HALF_SIZE);
     const bounds = g.getLocalBounds();
-    // Mini Goal is 2.8h wide; the touch/hit radius both goals share is 1.9h.
-    expect(bounds.maxX - bounds.minX).toBeLessThanOrEqual(SLATE_HALF_SIZE * 2.8);
-    expect(Math.max(-bounds.minY, bounds.maxY)).toBeLessThanOrEqual(SLATE_HALF_SIZE * 1.9);
+    // Original width was 2.5 × item half-size (5.5 world units on the Slate); now 11.
+    expect(bounds.maxX - bounds.minX).toBeCloseTo(2 * 2.5 * SLATE_HALF_SIZE, 0);
+    // Original upright height was 2.4 × item half-size; now doubled.
+    expect(-bounds.minY + GOAL_H * GAA_GOAL_BOTTOM_FACTOR).toBeCloseTo(2 * 2.4 * SLATE_HALF_SIZE, 0);
+    // Frame thickness and mesh line widths scale too (no thin-line drift).
+    const widths = instructionsOf(g)
+      .filter((inst) => inst.action === "stroke")
+      .map((inst) => (inst.data?.style as { width?: number }).width ?? 0);
+    expect(Math.min(...widths)).toBeCloseTo(GOAL_H * 0.045, 6);
+  });
+
+  it("its touch/selection radius encloses the whole larger goal", () => {
+    const g = new Graphics();
+    drawGaaGoalItem(g, SLATE_HALF_SIZE);
+    const bounds = g.getLocalBounds();
+    const farthestCorner = Math.hypot(Math.max(-bounds.minX, bounds.maxX), -bounds.minY);
+    expect(gaaGoalOuterRadius(SLATE_HALF_SIZE)).toBeGreaterThan(farthestCorner);
+    // …but stays snug (no oversized dead zone around it).
+    expect(gaaGoalOuterRadius(SLATE_HALF_SIZE)).toBeLessThan(farthestCorner * 1.15);
+    // Larger than the Mini Goal's 1.9h, matching the larger drawing.
+    expect(gaaGoalOuterRadius(SLATE_HALF_SIZE)).toBeGreaterThan(SLATE_HALF_SIZE * 1.9 * 1.9);
   });
 
   it("scales with the host's item size (movement board uses a larger half-size)", () => {
@@ -96,6 +119,15 @@ describe("GAA Goal on the Tactical Slate Items menu", () => {
 });
 
 describe("GAA Goal persistence", () => {
+  it("boards saved before the size change load unchanged (size is render-only)", () => {
+    // No stored field was added; an older saved goal with or without a scale
+    // comes back identical and simply renders at the new size.
+    const legacy = { id: "old", type: "gaaGoal", x: 30, y: 50 };
+    expect(sanitizeTacticalItemCandidate(legacy)).toEqual(legacy);
+    const legacyScaled = { id: "old2", type: "gaaGoal", x: 30, y: 50, rotation: 0.5, scale: 0.75 };
+    expect(sanitizeTacticalItemCandidate(legacyScaled)).toEqual(legacyScaled);
+  });
+
   it("round-trips through the board import sanitiser with rotation and scale", () => {
     const saved = { id: "item-1", type: "gaaGoal", x: 42, y: 18, rotation: Math.PI / 2, scale: 1.5 };
     const loaded = sanitizeTacticalItemCandidate(JSON.parse(JSON.stringify(saved)));

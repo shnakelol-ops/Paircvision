@@ -7,10 +7,16 @@ import type { Graphics } from "pixi.js";
  * space, sized from the host's item half-size so the Tactical Slate and the
  * movement board share one drawing.
  *
- * Proportions (h = halfSize): 2.5h wide; uprights from −1.3h to the ground line
- * at +1.1h; crossbar at −0.2h; the net fills the mouth below the crossbar, with
- * an inset back frame and corner lines giving it depth.
+ * The goal is drawn at GAA_GOAL_SIZE_FACTOR × the host's item half-size so it
+ * reads clearly on a phone. This is a rendering size, not a stored value: saved
+ * items are untouched and any per-item scale still multiplies on top.
+ *
+ * Proportions (h = item half-size × GAA_GOAL_SIZE_FACTOR): 2.5h wide; uprights
+ * from −1.3h to the ground line at +1.1h; crossbar at −0.2h; the net fills the
+ * mouth below the crossbar, with an inset back frame and corner lines giving it
+ * depth.
  */
+export const GAA_GOAL_SIZE_FACTOR = 2;
 export const GAA_GOAL_WIDTH_FACTOR = 2.5;
 export const GAA_GOAL_TOP_FACTOR = -1.3;
 export const GAA_GOAL_CROSSBAR_FACTOR = -0.2;
@@ -22,7 +28,16 @@ const NET_FRAME = 0x94a3b8;
 const NET_MESH = 0xcbd5e1;
 const SHADOW = 0x020617;
 
-export function drawGaaGoalItem(graphic: Graphics, halfSize: number): void {
+/**
+ * Touch and selection radius for a GAA Goal, in the item's own space: clears
+ * the upright tips (≈1.8h from centre) with a little margin.
+ */
+export function gaaGoalOuterRadius(itemHalfSize: number): number {
+  return itemHalfSize * GAA_GOAL_SIZE_FACTOR * 1.95;
+}
+
+export function drawGaaGoalItem(graphic: Graphics, itemHalfSize: number): void {
+  const halfSize = itemHalfSize * GAA_GOAL_SIZE_FACTOR;
   const width = halfSize * GAA_GOAL_WIDTH_FACTOR;
   const top = halfSize * GAA_GOAL_TOP_FACTOR;
   const crossbarY = halfSize * GAA_GOAL_CROSSBAR_FACTOR;
