@@ -24,7 +24,7 @@ export function TeamSheetJerseyTile({ player, editable, size = 54, onNameChange,
 
   return (
     <div style={S.tile}>
-      <div style={{ ...S.jerseyWrap, width: size, height }}>
+      <div className="ts-jersey-shadow" style={{ ...S.jerseyWrap, width: size, height }}>
         <img
           src={jerseySrc}
           alt={`#${player.number} jersey`}
@@ -55,6 +55,13 @@ export function TeamSheetJerseyTile({ player, editable, size = 54, onNameChange,
 }
 
 const S: Record<string, CSSProperties> = {
+  // overflow:hidden is a no-op on-screen (the name-plate's own maxWidth +
+  // ellipsis already keep it within this 84px width in every real browser)
+  // but gives html2canvas's export capture a second, simpler fixed-width
+  // clip boundary — a corner slot's name-plate (e.g. #15, nearest the pitch
+  // edge) was observed rendering un-truncated and spilling out to be
+  // clipped by the far-away pitch box edge instead, in the html2canvas
+  // capture only. See team-sheet-export.test.ts / the Phase 1 spike report.
   tile: {
     display: "flex",
     flexDirection: "column" as const,
@@ -62,7 +69,12 @@ const S: Record<string, CSSProperties> = {
     gap: 3,
     width: 84,
     flexShrink: 0,
+    overflow: "hidden" as const,
   },
+  // The "ts-jersey-shadow" className (not this filter itself) is what
+  // team-sheet-export.ts's html2canvas onclone hook targets to swap this
+  // CSS `filter` for an equivalent `boxShadow` on the captured clone only —
+  // see that file's header comment. Normal on-screen rendering is untouched.
   jerseyWrap: {
     position: "relative",
     display: "flex",
