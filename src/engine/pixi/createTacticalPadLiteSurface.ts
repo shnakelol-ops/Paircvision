@@ -29,6 +29,7 @@ import {
   type NormalizedPoint,
 } from "../shared/normalization";
 import { createTacticalDrawingController } from "../../features/quickboard/drawing/tacticalDrawingController";
+import { drawGaaGoalItem } from "./gaaGoalItemGraphic";
 import type { RecordingWatermarkSpec } from "../../features/quickboard/export/recordingWatermark";
 import {
   PRACTICE_AREA_EDGE_TOUCH_PX,
@@ -161,6 +162,7 @@ export type FlowItemType =
   | "discCone"
   | "pole"
   | "miniGoal"
+  | "gaaGoal"
   | "mannequin"
   | "ladder"
   | "hurdle"
@@ -863,7 +865,7 @@ function sanitizeBoardPlayerState(input: unknown): TacticalBoardPlayerState | nu
   };
 }
 
-function sanitizeTacticalItemCandidate(input: unknown): TacticalItem | null {
+export function sanitizeTacticalItemCandidate(input: unknown): TacticalItem | null {
   if (!isRecord(input)) return null;
   const id = typeof input.id === "string" ? input.id.trim() : "";
   if (id.length <= 0) return null;
@@ -873,6 +875,7 @@ function sanitizeTacticalItemCandidate(input: unknown): TacticalItem | null {
     type !== "discCone" &&
     type !== "pole" &&
     type !== "miniGoal" &&
+    type !== "gaaGoal" &&
     type !== "mannequin" &&
     type !== "ladder" &&
     type !== "hurdle" &&
@@ -1135,7 +1138,7 @@ function setItemTouchHitArea(
 ): void {
   const touchRadiusInWorld = (TACTICAL_ITEM_TOUCH_HIT_DIAMETER_PX * 0.5) / mapper.transform.scale;
   const itemVisualRadius =
-    item.type === "miniGoal"
+    item.type === "miniGoal" || item.type === "gaaGoal"
       ? TACTICAL_ITEM_HALF_SIZE * 1.9
       : item.type === "mannequin"
         ? TACTICAL_ITEM_HALF_SIZE * 1.75
@@ -3304,6 +3307,10 @@ export async function createTacticalPadLiteSurface(
           .lineTo(left + width - postThickness, y)
           .stroke({ color: 0xcbd5e1, width: 0.1, alpha: 0.72 });
       }
+      return;
+    }
+    if (item.type === "gaaGoal") {
+      drawGaaGoalItem(graphic, TACTICAL_ITEM_HALF_SIZE);
       return;
     }
     if (item.type === "mannequin") {

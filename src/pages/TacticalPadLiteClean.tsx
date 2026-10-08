@@ -155,11 +155,12 @@ const PLAYBACK_SPEED_OPTIONS: ReadonlyArray<{ multiplier: number; label: string 
   { multiplier: 1.5, label: "1.5x" },
 ];
 const DEFAULT_PLAYBACK_SPEED_MULTIPLIER = 1.0;
-const TACTICAL_ITEM_CHOICES: ReadonlyArray<{ label: string; type: TacticalItem["type"] }> = [
+export const TACTICAL_ITEM_CHOICES: ReadonlyArray<{ label: string; type: TacticalItem["type"] }> = [
   { label: "Cone", type: "cone" },
   { label: "Disc Cone", type: "discCone" },
   { label: "Pole", type: "pole" },
   { label: "Mini Goal", type: "miniGoal" },
+  { label: "GAA Goal", type: "gaaGoal" },
   { label: "Mannequin", type: "mannequin" },
   { label: "Ladder", type: "ladder" },
   { label: "Hurdle", type: "hurdle" },
@@ -3791,6 +3792,7 @@ export default function TacticalPadLiteClean({
                 type !== "discCone" &&
                 type !== "pole" &&
                 type !== "miniGoal" &&
+                type !== "gaaGoal" &&
                 type !== "mannequin" &&
                 type !== "ladder" &&
                 type !== "hurdle" &&

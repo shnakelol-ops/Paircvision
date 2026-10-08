@@ -1,5 +1,6 @@
 import { Container, Graphics } from "pixi.js";
 
+import { drawGaaGoalItem } from "../../engine/pixi/gaaGoalItemGraphic";
 import type { WorldViewportMapper } from "../coordinates/viewport";
 import { quarterTurnCounterRotationRadians } from "../coordinates/viewport";
 import { getPointerIdFromEvent, getStagePointFromEvent } from "../input/pointer-controller";
@@ -135,6 +136,11 @@ export function createTrainingItemLayer(options: CreateTrainingItemLayerOptions)
         const y = top + post + ((height - post) * i) / 3;
         graphic.moveTo(left + post, y).lineTo(left + width - post, y).stroke({ color: 0xcbd5e1, width: 0.1, alpha: 0.72 });
       }
+      return;
+    }
+
+    if (item.type === "gaaGoal") {
+      drawGaaGoalItem(graphic, ITEM_HALF_SIZE);
       return;
     }
 
