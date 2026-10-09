@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { TRAINING_GRASS_BANDS, resolveTacticalPitchThemeLayers, trainingGrassBands } from "./tacticalPitchTheme";
+import {
+  TACTICAL_BOARD_TURF_BASE,
+  TRAINING_GRASS_BANDS,
+  rebaseTurfWash,
+  resolveTacticalPitchThemeLayers,
+  resolveTacticalPitchTurfBase,
+  trainingGrassBands,
+} from "./tacticalPitchTheme";
 
 // createTacticalPitchVisualRoot() needs a real canvas/WebGL context, which
 // this environment does not have, so the per-theme layer decision it reads
@@ -66,5 +73,39 @@ describe("Training Grass mown bands", () => {
   it("only Training Grass uses the bands — Gaelic Pitch keeps the turf and Whiteboard its board face", () => {
     expect(resolveTacticalPitchThemeLayers("default").face).toBe("turf");
     expect(resolveTacticalPitchThemeLayers("whiteboard").face).toBe("whiteboard");
+  });
+});
+
+describe("Tactical Board Colour C turf (research trial)", () => {
+  it("is #589d6d", () => {
+    expect(TACTICAL_BOARD_TURF_BASE).toBe("#589d6d");
+    expect(resolveTacticalPitchTurfBase("tacticalBoard")).toBe("#589d6d");
+  });
+
+  it("keeps exactly the default turf layers — markings, line goals and glass are unchanged", () => {
+    expect(resolveTacticalPitchThemeLayers("tacticalBoard")).toEqual(resolveTacticalPitchThemeLayers("default"));
+  });
+
+  it("leaves default, Gaelic Pitch, Training Grass and Whiteboard without a turf override", () => {
+    expect(resolveTacticalPitchTurfBase()).toBeNull();
+    expect(resolveTacticalPitchTurfBase("default")).toBeNull();
+    expect(resolveTacticalPitchTurfBase("gaelicBands")).toBeNull();
+    expect(resolveTacticalPitchTurfBase("grass")).toBeNull();
+    expect(resolveTacticalPitchTurfBase("whiteboard")).toBeNull();
+  });
+
+  it("re-bases the wash so the brightest stop is the base and the shading proportions hold", () => {
+    const wash = [
+      { t: 0, c: "#0c291d" },
+      { t: 0.46, c: "#2d825b" },
+      { t: 1, c: "#103629" },
+    ];
+    const rebased = rebaseTurfWash(wash, "#589d6d");
+    expect(rebased.map((stop) => stop.t)).toEqual([0, 0.46, 1]);
+    expect(rebased[1]!.c).toBe("#589d6d");
+    // Edges stay darker than the centre, in the original order.
+    const lum = (hex: string) => Number.parseInt(hex.slice(3, 5), 16);
+    expect(lum(rebased[0]!.c)).toBeLessThan(lum(rebased[2]!.c));
+    expect(lum(rebased[2]!.c)).toBeLessThan(lum(rebased[1]!.c));
   });
 });

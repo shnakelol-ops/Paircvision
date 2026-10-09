@@ -15,8 +15,9 @@ import {
  *  - "pitch"         — Gaelic Pitch at /vision-board (the default): Gaelic
  *                      markings and goals on the mown bands.
  *  - "training"      — Training Grass: mown bands without markings or goals.
- *  - "tacticalBoard" — Tactical Board: the Gaelic pitch on the original dark
- *                      turf (gradient, glow and vignette).
+ *  - "tacticalBoard" — Tactical Board: the Gaelic pitch on the original turf
+ *                      (gradient, glow and vignette), re-based onto Colour C
+ *                      via its own "tacticalBoard" pitch theme.
  *  - "whiteboard" — the existing whiteboard renderer theme. This is NOT the
  *                   dormant legacy Whiteboard mode (PadMode "whiteboard"),
  *                   which stays unreachable.
@@ -53,6 +54,7 @@ export function resolveSurfacePitchTheme(surface: TacticalSlateSurface, sport: P
     case "whiteboard":
       return "whiteboard";
     case "tacticalBoard":
+      return "tacticalBoard";
     default:
       return "default";
   }
