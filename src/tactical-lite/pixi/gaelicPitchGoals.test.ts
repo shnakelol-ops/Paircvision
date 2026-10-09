@@ -18,6 +18,8 @@ import {
   GAELIC_PITCH_GOAL_LINE_WEIGHT,
   gaelicPitchGoalOutwardReach,
   gaelicPitchGoalPlacements,
+  gaelicPitchGoalWidth,
+  gaelicSmallRectWidth,
 } from "./gaelicPitchGoals";
 import { resolveTacticalPitchThemeLayers, type TacticalPitchTheme } from "./tacticalPitchTheme";
 
@@ -59,15 +61,71 @@ describe("Gaelic Pitch permanent goals — placement", () => {
 
   it("the drawn goal structure stays outside the endline and inside the board frame", () => {
     const g = new Graphics();
-    drawGaaGoalItem(g, GAELIC_PITCH_GOAL_ITEM_HALF_SIZE, { lineWeight: GAELIC_PITCH_GOAL_LINE_WEIGHT });
+    drawGaaGoalItem(g, GAELIC_PITCH_GOAL_ITEM_HALF_SIZE, {
+      lineWeight: GAELIC_PITCH_GOAL_LINE_WEIGHT,
+      width: gaelicPitchGoalWidth(),
+    });
     const bounds = g.getLocalBounds();
     // Local −y is outward. Upright tips (minY, incl. stroke) stay within the frame margin.
     const leftTip = toPitch(left, { x: 0, y: bounds.minY }).x;
     const rightTip = toPitch(right, { x: 0, y: bounds.minY }).x;
     expect(leftTip).toBeGreaterThan(-GAELIC_PITCH_FRAME_MARGIN);
     expect(rightTip).toBeLessThan(160 + GAELIC_PITCH_FRAME_MARGIN);
-    // Width across the endline stays a compact goal, well inside the small rectangle.
-    expect(bounds.maxX - bounds.minX).toBeLessThan(6);
+    // Never wider than the small rectangle it stands in front of.
+    expect(bounds.maxX - bounds.minX).toBeLessThan(gaelicSmallRectWidth());
+  });
+});
+
+describe("Gaelic Pitch permanent goals — official proportions", () => {
+  // Post/crossbar outline stroke, half of which sits outside each post's outer edge.
+  const outline = GAELIC_PITCH_GOAL_ITEM_HALF_SIZE * GAA_GOAL_SIZE_FACTOR * 0.055 * GAELIC_PITCH_GOAL_LINE_WEIGHT;
+  const drawPitchGoal = () => {
+    const g = new Graphics();
+    drawGaaGoalItem(g, GAELIC_PITCH_GOAL_ITEM_HALF_SIZE, {
+      lineWeight: GAELIC_PITCH_GOAL_LINE_WEIGHT,
+      width: gaelicPitchGoalWidth(),
+    });
+    return g;
+  };
+
+  it("reads the small rectangle from the pitch's own markings (14 m of 90 m on the 96-unit pitch)", () => {
+    expect(gaelicSmallRectWidth()).toBeCloseTo((14 / 90) * 96, 9);
+  });
+
+  it("goalWidth = smallRectWidth × (6.5 / 14)", () => {
+    expect(gaelicPitchGoalWidth()).toBeCloseTo(gaelicSmallRectWidth() * (6.5 / 14), 9);
+    expect(gaelicPitchGoalWidth() / gaelicSmallRectWidth()).toBeCloseTo(6.5 / 14, 9); // ≈ 46%, not ~30%
+  });
+
+  it("the drawn posts span exactly goalWidth, centred on each endline", () => {
+    const bounds = drawPitchGoal().getLocalBounds();
+    const postSpan = bounds.maxX - bounds.minX - outline; // outer post edge to outer post edge
+    expect(postSpan).toBeCloseTo(gaelicPitchGoalWidth(), 6);
+    const half = gaelicPitchGoalWidth() / 2;
+    for (const placement of gaelicPitchGoalPlacements()) {
+      const ends = [toPitch(placement, { x: -half, y: 0 }).y, toPitch(placement, { x: half, y: 0 }).y].sort((a, b) => a - b);
+      expect(ends[0]).toBeCloseTo(CENTRE_Y - half, 9);
+      expect(ends[1]).toBeCloseTo(CENTRE_Y + half, 9);
+    }
+  });
+
+  it("only the width changes: net depth, crossbar and upright length are preserved", () => {
+    const natural = new Graphics();
+    drawGaaGoalItem(natural, GAELIC_PITCH_GOAL_ITEM_HALF_SIZE, { lineWeight: GAELIC_PITCH_GOAL_LINE_WEIGHT });
+    const widened = drawPitchGoal();
+    expect(widened.getLocalBounds().minY).toBeCloseTo(natural.getLocalBounds().minY, 9);
+    expect(widened.getLocalBounds().maxY).toBeCloseTo(natural.getLocalBounds().maxY, 9);
+    // Net base still on the endline and uprights still within the frame (Option B kept).
+    const [left] = gaelicPitchGoalPlacements();
+    expect(toPitch(left, { x: 0, y: GAELIC_PITCH_GOAL_ITEM_HALF_SIZE * GAA_GOAL_SIZE_FACTOR * GAA_GOAL_BOTTOM_FACTOR }).x).toBeCloseTo(LEFT_ENDLINE_X, 9);
+  });
+
+  it("the movable item is unaffected: no width option means the original 2.5h width", () => {
+    const item = new Graphics();
+    drawGaaGoalItem(item, 2.2);
+    const bounds = item.getLocalBounds();
+    const itemOutline = 2.2 * GAA_GOAL_SIZE_FACTOR * 0.055;
+    expect(bounds.maxX - bounds.minX - itemOutline).toBeCloseTo(2.2 * GAA_GOAL_SIZE_FACTOR * GAA_GOAL_WIDTH_FACTOR, 6);
   });
 });
 

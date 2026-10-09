@@ -9,6 +9,7 @@ import {
   GAELIC_PITCH_GOAL_ITEM_HALF_SIZE,
   GAELIC_PITCH_GOAL_LINE_WEIGHT,
   gaelicPitchGoalPlacements,
+  gaelicPitchGoalWidth,
 } from "./gaelicPitchGoals";
 import { resolveTacticalPitchThemeLayers, trainingGrassBands, type TacticalPitchTheme } from "./tacticalPitchTheme";
 
@@ -568,7 +569,10 @@ export function createTacticalPitchVisualRoot(
       const goal = new Graphics();
       goal.zIndex = 4.5;
       goal.eventMode = "none";
-      drawGaaGoalItem(goal, GAELIC_PITCH_GOAL_ITEM_HALF_SIZE, { lineWeight: GAELIC_PITCH_GOAL_LINE_WEIGHT });
+      drawGaaGoalItem(goal, GAELIC_PITCH_GOAL_ITEM_HALF_SIZE, {
+        lineWeight: GAELIC_PITCH_GOAL_LINE_WEIGHT,
+        width: gaelicPitchGoalWidth(),
+      });
       goal.position.set(placement.x, placement.y);
       goal.rotation = placement.rotation;
       face.addChild(goal);
