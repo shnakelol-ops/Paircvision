@@ -11,7 +11,7 @@ import {
   PREMIUM_TOKEN_IDLE_SHADOW_ALPHA,
   type PremiumPlayerTokenColor,
 } from "./createPremiumPlayerToken";
-import type { MicroAthleteKitPattern } from "./createMicroAthleteToken";
+import { FULL_VISION_PATTERNS, type PlayerKitPattern } from "../../components/player-kit/playerKitPatterns";
 import {
   resolvePlayerTokenRenderer,
   sanitizePlayerTokenStyle,
@@ -130,7 +130,10 @@ export type ShapeLinkRecord = {
 /** Mirrors Shape Lock's cap — a Shape Link can span at most one full team. */
 const SHAPE_LINK_MAX_MEMBERS = SHAPE_LOCK_MAX_MEMBERS;
 
-export type TacticalKitPattern = MicroAthleteKitPattern;
+// Same six-pattern union Tactical Sequence uses (Vision V3 is the renderer
+// that draws all six; legacy token styles degrade chestDash/gradient to plain
+// in playerTokenRenderer.ts).
+export type TacticalKitPattern = PlayerKitPattern;
 export type TacticalLabelMode = "number" | "initials" | "name";
 export type TacticalPlayerTokenStyle = PlayerTokenStyle;
 export type TacticalPlayerKitFields = {
@@ -719,10 +722,9 @@ function sanitizeKitColor(value: string | undefined): TacticalKitColor | undefin
   return undefined;
 }
 
-function sanitizeKitPattern(value: TacticalKitPattern | undefined): TacticalKitPattern | undefined {
+export function sanitizeKitPattern(value: TacticalKitPattern | undefined): TacticalKitPattern | undefined {
   if (!value) return undefined;
-  if (value === "plain" || value === "hoops" || value === "slash" || value === "stripes") return value;
-  return undefined;
+  return (FULL_VISION_PATTERNS as readonly string[]).includes(value) ? value : undefined;
 }
 
 function sanitizeLabelMode(value: TacticalLabelMode | undefined): TacticalLabelMode | undefined {
