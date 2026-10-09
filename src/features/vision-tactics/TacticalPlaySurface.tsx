@@ -99,6 +99,7 @@ const TRAINING_ITEM_CHOICES: ReadonlyArray<{ type: TacticalTrainingItemType; lab
   { type: "pole", label: "Pole" },
   { type: "mannequin", label: "Mannequin" },
   { type: "miniGoal", label: "Mini Goal" },
+  { type: "gaaGoal", label: "GAA Goal" },
   { type: "hoop", label: "Hoop" },
 ];
 
@@ -108,6 +109,7 @@ const TRAINING_ITEM_LABEL: Record<TacticalTrainingItemType, string> = {
   pole: "Pole",
   mannequin: "Mannequin",
   miniGoal: "Mini Goal",
+  gaaGoal: "GAA Goal",
   hoop: "Hoop",
 };
 

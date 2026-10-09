@@ -122,6 +122,7 @@ export type TacticalTrainingItemType =
   | "pole"
   | "mannequin"
   | "miniGoal"
+  | "gaaGoal"
   | "hoop";
 
 export type TacticalTrainingItem = {

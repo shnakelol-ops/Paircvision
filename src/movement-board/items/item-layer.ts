@@ -1,5 +1,6 @@
 import { Container, Graphics } from "pixi.js";
 
+import { drawGaaGoalItem, gaaGoalOuterRadius } from "../../engine/pixi/gaaGoalItemGraphic";
 import type { WorldViewportMapper } from "../coordinates/viewport";
 import { quarterTurnCounterRotationRadians } from "../coordinates/viewport";
 import { getPointerIdFromEvent, getStagePointFromEvent } from "../input/pointer-controller";
@@ -138,6 +139,11 @@ export function createTrainingItemLayer(options: CreateTrainingItemLayerOptions)
       return;
     }
 
+    if (item.type === "gaaGoal") {
+      drawGaaGoalItem(graphic, ITEM_HALF_SIZE);
+      return;
+    }
+
     if (item.type === "mannequin") {
       const bodyWidth = ITEM_HALF_SIZE * 1.18;
       const bodyHeight = ITEM_HALF_SIZE * 2.35;
@@ -158,10 +164,16 @@ export function createTrainingItemLayer(options: CreateTrainingItemLayerOptions)
     }
   };
 
-  const drawSelection = (selection: Graphics, selected: boolean) => {
+  // The GAA Goal draws larger than other equipment; its ring and touch area follow.
+  const selectionRadiusFor = (item: TacticalTrainingItem) =>
+    item.type === "gaaGoal" ? gaaGoalOuterRadius(ITEM_HALF_SIZE) : ITEM_HALF_SIZE * 1.55;
+  const hitRadiusFor = (item: TacticalTrainingItem) =>
+    item.type === "gaaGoal" ? gaaGoalOuterRadius(ITEM_HALF_SIZE) : ITEM_HALF_SIZE * 1.6;
+
+  const drawSelection = (selection: Graphics, selected: boolean, radius: number) => {
     selection.clear();
     if (!selected) return;
-    selection.circle(0, 0, ITEM_HALF_SIZE * 1.55).stroke({ color: 0x7dd3fc, alpha: 0.94, width: 0.42 });
+    selection.circle(0, 0, radius).stroke({ color: 0x7dd3fc, alpha: 0.94, width: 0.42 });
   };
 
   const syncVisual = (visual: TrainingItemVisual) => {
@@ -170,11 +182,11 @@ export function createTrainingItemLayer(options: CreateTrainingItemLayerOptions)
     // Keep equipment upright while the world rotates in portrait (0 in landscape).
     visual.container.rotation = quarterTurnCounterRotationRadians(getMapper().transform.quarterTurns);
     drawItemGraphic(visual.graphic, visual.item);
-    drawSelection(visual.selection, visual.item.id === selectedItemId);
+    drawSelection(visual.selection, visual.item.id === selectedItemId, selectionRadiusFor(visual.item));
     const touchRadiusWorld = ITEM_TOUCH_RADIUS_PX / Math.max(0.001, getMapper().transform.scale);
     visual.container.hitArea = {
       contains: (lx: number, ly: number) => {
-        const radius = Math.max(ITEM_HALF_SIZE * 1.6, touchRadiusWorld);
+        const radius = Math.max(hitRadiusFor(visual.item), touchRadiusWorld);
         return lx * lx + ly * ly <= radius * radius;
       },
     };
@@ -184,7 +196,7 @@ export function createTrainingItemLayer(options: CreateTrainingItemLayerOptions)
     if (selectedItemId === id) return;
     selectedItemId = id;
     for (const visual of visuals.values()) {
-      drawSelection(visual.selection, visual.item.id === selectedItemId);
+      drawSelection(visual.selection, visual.item.id === selectedItemId, selectionRadiusFor(visual.item));
     }
     options.onSelectionChange?.(id);
   };
@@ -307,7 +319,7 @@ export function createTrainingItemLayer(options: CreateTrainingItemLayerOptions)
       if (!enabled) activeDrag = null;
       for (const visual of visuals.values()) {
         visual.container.eventMode = enabled ? "static" : "none";
-        drawSelection(visual.selection, visual.item.id === selectedItemId);
+        drawSelection(visual.selection, visual.item.id === selectedItemId, selectionRadiusFor(visual.item));
       }
     },
     syncToMapper: () => {
