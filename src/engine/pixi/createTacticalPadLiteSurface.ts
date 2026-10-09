@@ -30,6 +30,10 @@ import {
 } from "../shared/normalization";
 import { createTacticalDrawingController } from "../../features/quickboard/drawing/tacticalDrawingController";
 import { drawGaaGoalItem, gaaGoalOuterRadius } from "./gaaGoalItemGraphic";
+import {
+  isPracticeAreaEditorToggleTap,
+  practiceAreaEditorOpenAfterSelection,
+} from "../../features/quickboard/drawing/practiceAreaEditorToggle";
 import type { RecordingWatermarkSpec } from "../../features/quickboard/export/recordingWatermark";
 import {
   PRACTICE_AREA_EDGE_TOUCH_PX,
@@ -216,6 +220,11 @@ export type PracticeAreaSelection = {
   isDeadZone: boolean;
   /** The area's on-screen box (viewport CSS px), so the page can place its bar clear of it. */
   screenBounds: { left: number; top: number; right: number; bottom: number } | null;
+  /**
+   * Selection-first editing: the property toolbar is open only after a
+   * deliberate tap on the already-selected area (and closes on the next one).
+   */
+  editorOpen: boolean;
 };
 
 export type TacticalPadLiteSurface = {
@@ -1827,6 +1836,7 @@ export async function createTacticalPadLiteSurface(
     hasCrossedThreshold: boolean;
   };
   let selectedPracticeAreaId: string | null = null;
+  let practiceAreaEditorOpen = false;
   let practiceAreaGesture: PracticeAreaGesture | null = null;
   let practiceAreaEditingSuspended = false;
   const PRACTICE_AREA_HANDLE_VISIBLE_PX = 10;
@@ -1922,15 +1932,20 @@ export async function createTacticalPadLiteSurface(
             color: drawing.color,
             isDeadZone: drawing.zoneStyle === "dead",
             screenBounds: practiceAreaScreenBounds(drawing),
+            editorOpen: practiceAreaEditorOpen,
           }
         : null,
     );
   }
 
-  function setSelectedPracticeArea(id: string | null): void {
+  function setSelectedPracticeArea(id: string | null, options: { keepEditorOpen?: boolean } = {}): void {
     if (!practiceAreasEnabled) return;
     const nextId = findPracticeAreaDrawing(id) ? id : null;
     if (nextId === selectedPracticeAreaId) return;
+    practiceAreaEditorOpen = practiceAreaEditorOpenAfterSelection(nextId, {
+      keepEditorOpen: options.keepEditorOpen,
+      wasOpen: practiceAreaEditorOpen,
+    });
     selectedPracticeAreaId = nextId;
     practiceAreaGesture = null;
     tacticalDrawingController.setHighlightedDrawingId(nextId);
@@ -1955,7 +1970,9 @@ export async function createTacticalPadLiteSurface(
   /**
    * Move-mode tap on the board that no player, ball or item claimed.
    * Selected area: corner handle → resize; inside/outline → move (after the
-   * drag threshold). Otherwise the first tap only selects (or clears).
+   * drag threshold), or — released without dragging — toggle the property
+   * toolbar. Otherwise the first tap only selects (handles, no toolbar) or
+   * clears the selection.
    */
   function handlePracticeAreaPointerDown(event: unknown): void {
     if (!canEditPracticeAreas()) return;
@@ -2047,7 +2064,26 @@ export async function createTacticalPadLiteSurface(
     if (gesture.pointerId != null && pointerId != null && pointerId !== gesture.pointerId) return;
     practiceAreaGesture = null;
     // The area may have moved: let the page re-place its bar.
-    if (gesture.hasCrossedThreshold) emitPracticeAreaSelection();
+    if (gesture.hasCrossedThreshold) {
+      emitPracticeAreaSelection();
+      return;
+    }
+    // A tap on the selected area (never a drag release or a corner tap)
+    // toggles the property toolbar; the selection stays.
+    const releasePoint = getStagePointFromEvent(event, app.stage);
+    const isToggleTap = isPracticeAreaEditorToggleTap({
+      kind: gesture.kind,
+      hasCrossedThreshold: gesture.hasCrossedThreshold,
+      releaseDistancePx:
+        releasePoint && gesture.startStagePoint
+          ? Math.hypot(releasePoint.x - gesture.startStagePoint.x, releasePoint.y - gesture.startStagePoint.y)
+          : null,
+      dragThresholdPx: TACTICAL_ITEM_DRAG_THRESHOLD_PX,
+    });
+    if (isToggleTap && gesture.areaId === selectedPracticeAreaId) {
+      practiceAreaEditorOpen = !practiceAreaEditorOpen;
+      emitPracticeAreaSelection();
+    }
   }
   let lastTappedPlayer: { playerId: string; atMs: number } | null = null;
 
@@ -5305,7 +5341,8 @@ export async function createTacticalPadLiteSurface(
         createdAt: Date.now(),
       };
       tacticalDrawingController.appendDrawing(copy);
-      setSelectedPracticeArea(copy.id);
+      // Duplicate is a toolbar action: the toolbar stays open on the copy.
+      setSelectedPracticeArea(copy.id, { keepEditorOpen: true });
     },
     deletePracticeArea: () => {
       const id = selectedPracticeAreaId;

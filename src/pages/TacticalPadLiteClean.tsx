@@ -5339,7 +5339,7 @@ export default function TacticalPadLiteClean({
           </div>
         ) : null}
         {!isWhiteboardMode &&
-        practiceAreaSelection &&
+        practiceAreaSelection?.editorOpen &&
         !isPlaybackLocked &&
         !controlsOpen &&
         !toolsOpen &&
