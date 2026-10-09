@@ -36,15 +36,25 @@ export function gaaGoalOuterRadius(itemHalfSize: number): number {
   return itemHalfSize * GAA_GOAL_SIZE_FACTOR * 1.95;
 }
 
-export function drawGaaGoalItem(graphic: Graphics, itemHalfSize: number): void {
+export type GaaGoalDrawOptions = {
+  /**
+   * Multiplies post, outline and mesh thickness without changing the goal's
+   * overall size. The movable item uses 1; the permanent Gaelic Pitch goals
+   * draw small and need heavier lines to stay visible on a phone.
+   */
+  lineWeight?: number;
+};
+
+export function drawGaaGoalItem(graphic: Graphics, itemHalfSize: number, options: GaaGoalDrawOptions = {}): void {
+  const lineWeight = options.lineWeight ?? 1;
   const halfSize = itemHalfSize * GAA_GOAL_SIZE_FACTOR;
   const width = halfSize * GAA_GOAL_WIDTH_FACTOR;
   const top = halfSize * GAA_GOAL_TOP_FACTOR;
   const crossbarY = halfSize * GAA_GOAL_CROSSBAR_FACTOR;
   const bottom = halfSize * GAA_GOAL_BOTTOM_FACTOR;
-  const post = halfSize * 0.12;
-  const outline = halfSize * 0.055;
-  const mesh = halfSize * 0.045;
+  const post = halfSize * 0.12 * lineWeight;
+  const outline = halfSize * 0.055 * lineWeight;
+  const mesh = halfSize * 0.045 * lineWeight;
   const left = -width / 2;
   const right = width / 2;
 

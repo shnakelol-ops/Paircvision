@@ -10,7 +10,7 @@ describe("resolveTacticalPitchThemeLayers", () => {
     expect(resolveTacticalPitchThemeLayers("default")).toEqual({
       face: "turf",
       markings: true,
-      goals: true,
+      goals: "lines",
       glass: true,
     });
   });
@@ -28,11 +28,11 @@ describe("resolveTacticalPitchThemeLayers", () => {
     });
   });
 
-  it("gaelicBands (Gaelic Pitch) paints the Training Grass mown bands with the full Gaelic markings, goals and glass", () => {
+  it("gaelicBands (Gaelic Pitch) paints the Training Grass mown bands with the full Gaelic markings, artwork goals and glass", () => {
     expect(resolveTacticalPitchThemeLayers("gaelicBands")).toEqual({
       face: "trainingBands",
       markings: true,
-      goals: true,
+      goals: "artwork",
       glass: true,
     });
   });
@@ -41,7 +41,7 @@ describe("resolveTacticalPitchThemeLayers", () => {
     expect(resolveTacticalPitchThemeLayers("whiteboard")).toEqual({
       face: "whiteboard",
       markings: true,
-      goals: true,
+      goals: "lines",
       glass: false,
     });
   });
