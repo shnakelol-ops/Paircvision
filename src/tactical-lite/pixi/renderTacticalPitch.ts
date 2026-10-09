@@ -11,7 +11,13 @@ import {
   gaelicPitchGoalPlacements,
   gaelicPitchGoalWidth,
 } from "./gaelicPitchGoals";
-import { resolveTacticalPitchThemeLayers, trainingGrassBands, type TacticalPitchTheme } from "./tacticalPitchTheme";
+import {
+  rebaseTurfWash,
+  resolveTacticalPitchThemeLayers,
+  resolveTacticalPitchTurfBase,
+  trainingGrassBands,
+  type TacticalPitchTheme,
+} from "./tacticalPitchTheme";
 
 /**
  * Goal/post overlay selection — explicit per sport rather than a soccer/
@@ -145,8 +151,10 @@ function createUltraSubtleTurfGrainTexture(): Texture {
   return tex;
 }
 
-function bakeTurfWashTexture(sport: PitchSport): Texture {
+function bakeTurfWashTexture(sport: PitchSport, turfBase: string | null = null): Texture {
   const recipe = turfRecipe(sport);
+  // Surface-scoped base colour (Tactical Board only); null keeps the recipe wash.
+  const wash = turfBase ? rebaseTurfWash(recipe.wash, turfBase) : recipe.wash;
   const W = 640;
   const H = Math.max(64, Math.round(W * (100 / 160)));
   const canvas = document.createElement("canvas");
@@ -156,7 +164,7 @@ function bakeTurfWashTexture(sport: PitchSport): Texture {
   if (!ctx) return Texture.WHITE;
 
   const lg = ctx.createLinearGradient(0, 0, W, H);
-  for (const stop of recipe.wash) lg.addColorStop(stop.t, stop.c);
+  for (const stop of wash) lg.addColorStop(stop.t, stop.c);
   ctx.fillStyle = lg;
   ctx.fillRect(0, 0, W, H);
 
@@ -415,7 +423,7 @@ export function createTacticalPitchVisualRoot(
     }
     face.addChild(bands);
   } else {
-    const washTex = bakeTurfWashTexture(sport);
+    const washTex = bakeTurfWashTexture(sport, resolveTacticalPitchTurfBase(theme));
     disposers.push(() => washTex.destroy());
     const wash = new Sprite(washTex);
     wash.width = vbW;

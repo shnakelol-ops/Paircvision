@@ -50,9 +50,22 @@ describe("resolveSurfacePitchTheme", () => {
     expect(resolveSurfacePitchTheme("pitch", "gaelic")).toBe("gaelicBands");
   });
 
-  it("keeps the original turf for Tactical Board and for any non-Gaelic sport on the Pitch surface (Rugby)", () => {
-    expect(resolveSurfacePitchTheme("tacticalBoard")).toBe("default");
+  it("gives Tactical Board its own Colour C theme, for every sport", () => {
+    expect(resolveSurfacePitchTheme("tacticalBoard")).toBe("tacticalBoard");
+    expect(resolveSurfacePitchTheme("tacticalBoard", "rugby")).toBe("tacticalBoard");
+  });
+
+  it("keeps the original turf for any non-Gaelic sport on the Pitch surface (Rugby)", () => {
     expect(resolveSurfacePitchTheme("pitch", "rugby")).toBe("default");
+  });
+
+  it("only Tactical Board resolves to the tacticalBoard theme", () => {
+    const sports: PitchSport[] = ["gaelic", "hurling", "camogie", "soccer", "rugby"];
+    for (const sport of sports) {
+      expect(resolveSurfacePitchTheme("pitch", sport)).not.toBe("tacticalBoard");
+      expect(resolveSurfacePitchTheme("training", sport)).toBe("grass");
+      expect(resolveSurfacePitchTheme("whiteboard", sport)).toBe("whiteboard");
+    }
   });
 
   it("maps Training to grass and Whiteboard to the existing whiteboard theme", () => {
