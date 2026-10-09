@@ -4,6 +4,13 @@ import { getPitchConfig, type PitchMarking, type PitchSport } from "../../core/p
 import { BOARD_PITCH_VIEWBOX } from "../../core/pitch/pitch-space";
 import { buildGaaGoalMarkings } from "../../tactics/pitch/gaa-goal-markings";
 import { buildRugbyPostMarkings } from "../../tactics/pitch/rugby-post-markings";
+import { drawGaaGoalItem } from "../../engine/pixi/gaaGoalItemGraphic";
+import {
+  GAELIC_PITCH_GOAL_ITEM_HALF_SIZE,
+  GAELIC_PITCH_GOAL_LINE_WEIGHT,
+  gaelicPitchGoalPlacements,
+  gaelicPitchGoalWidth,
+} from "./gaelicPitchGoals";
 import { resolveTacticalPitchThemeLayers, trainingGrassBands, type TacticalPitchTheme } from "./tacticalPitchTheme";
 
 /**
@@ -554,7 +561,24 @@ export function createTacticalPitchVisualRoot(
   // tactics-only marking set — never the shared pitchConfig markings — so it
   // stays out of Stats Mode, Pro Tagger, and every review/PDF export. See
   // src/tactics/pitch/gaa-goal-markings.ts and rugby-post-markings.ts.
-  const goalMarkings = layers.goals ? buildGoalOverlayMarkings(sport) : null;
+  if (layers.goals === "artwork") {
+    // Gaelic Pitch: the GAA Goal item artwork, fixed outside each endline.
+    // Part of the pitch face (rotates with it in portrait, included in every
+    // stage export/recording); not an item and never interactive.
+    for (const placement of gaelicPitchGoalPlacements()) {
+      const goal = new Graphics();
+      goal.zIndex = 4.5;
+      goal.eventMode = "none";
+      drawGaaGoalItem(goal, GAELIC_PITCH_GOAL_ITEM_HALF_SIZE, {
+        lineWeight: GAELIC_PITCH_GOAL_LINE_WEIGHT,
+        width: gaelicPitchGoalWidth(),
+      });
+      goal.position.set(placement.x, placement.y);
+      goal.rotation = placement.rotation;
+      face.addChild(goal);
+    }
+  }
+  const goalMarkings = layers.goals === "lines" ? buildGoalOverlayMarkings(sport) : null;
   if (goalMarkings) {
     const goalGraphics = new Graphics();
     goalGraphics.zIndex = 4.5;

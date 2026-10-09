@@ -36,15 +36,35 @@ export function gaaGoalOuterRadius(itemHalfSize: number): number {
   return itemHalfSize * GAA_GOAL_SIZE_FACTOR * 1.95;
 }
 
-export function drawGaaGoalItem(graphic: Graphics, itemHalfSize: number): void {
+export type GaaGoalDrawOptions = {
+  /**
+   * Multiplies post, outline and mesh thickness without changing the goal's
+   * overall size. The movable item uses 1; the permanent Gaelic Pitch goals
+   * draw small and need heavier lines to stay visible on a phone.
+   */
+  lineWeight?: number;
+  /**
+   * Overrides the goal's width (outer edge to outer edge of the posts) while
+   * keeping its depth: the posts move apart and the net's horizontal geometry
+   * stretches with them; uprights, crossbar height, net depth and line
+   * thickness are unchanged. The permanent Gaelic Pitch goals use this to sit
+   * at the official 6.5 m : 14 m ratio to the small rectangle.
+   */
+  width?: number;
+};
+
+export function drawGaaGoalItem(graphic: Graphics, itemHalfSize: number, options: GaaGoalDrawOptions = {}): void {
+  const lineWeight = options.lineWeight ?? 1;
   const halfSize = itemHalfSize * GAA_GOAL_SIZE_FACTOR;
-  const width = halfSize * GAA_GOAL_WIDTH_FACTOR;
+  const defaultWidth = halfSize * GAA_GOAL_WIDTH_FACTOR;
+  const width = options.width ?? defaultWidth;
+  const widthScale = width / defaultWidth;
   const top = halfSize * GAA_GOAL_TOP_FACTOR;
   const crossbarY = halfSize * GAA_GOAL_CROSSBAR_FACTOR;
   const bottom = halfSize * GAA_GOAL_BOTTOM_FACTOR;
-  const post = halfSize * 0.12;
-  const outline = halfSize * 0.055;
-  const mesh = halfSize * 0.045;
+  const post = halfSize * 0.12 * lineWeight;
+  const outline = halfSize * 0.055 * lineWeight;
+  const mesh = halfSize * 0.045 * lineWeight;
   const left = -width / 2;
   const right = width / 2;
 
@@ -54,8 +74,9 @@ export function drawGaaGoalItem(graphic: Graphics, itemHalfSize: number): void {
   // corner lines tying the frame back to the posts and crossbar.
   const netTop = crossbarY + post;
   const inset = halfSize * 0.32;
-  const backLeft = left + post + inset;
-  const backRight = right - post - inset;
+  const insetX = inset * widthScale;
+  const backLeft = left + post + insetX;
+  const backRight = right - post - insetX;
   const backTop = netTop + inset * 0.7;
   const backBottom = bottom - inset * 0.35;
   graphic.rect(left + post, netTop, width - post * 2, bottom - netTop).fill({ color: POST_FILL, alpha: 0.08 });

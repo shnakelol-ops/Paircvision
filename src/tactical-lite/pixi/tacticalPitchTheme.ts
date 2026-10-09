@@ -10,6 +10,8 @@
  *                   goals: Tactical Board, and the internal Rugby Slate.
  *  - "gaelicBands" — Gaelic Pitch (the default surface): the Training Grass
  *                   mown bands with the full Gaelic markings, goals and glass.
+ *                   Its goals are the GAA Goal item artwork (gaelicPitchGoals.ts)
+ *                   rather than the minimal line overlay.
  *  - "grass"      — Training Grass: a flat, stylised mown surface of broad
  *                   alternating bands (TRAINING_GRASS_BANDS), with no pitch
  *                   markings and no goals/posts.
@@ -23,8 +25,12 @@ export type TacticalPitchThemeLayers = {
   face: "turf" | "whiteboard" | "trainingBands";
   /** Pitch line markings (and their clarity pass) from pitchConfig. */
   markings: boolean;
-  /** Tactics-only goal/post overlay. */
-  goals: boolean;
+  /**
+   * Tactics-only goal/post overlay: false for none, "lines" for the minimal
+   * line overlay (gaa-goal-markings / rugby posts), "artwork" for the GAA Goal
+   * item artwork (Gaelic Pitch only).
+   */
+  goals: false | "lines" | "artwork";
   /** Turf glass sheen — only meaningful over the turf face. */
   glass: boolean;
 };
@@ -32,14 +38,14 @@ export type TacticalPitchThemeLayers = {
 export function resolveTacticalPitchThemeLayers(theme: TacticalPitchTheme = "default"): TacticalPitchThemeLayers {
   switch (theme) {
     case "whiteboard":
-      return { face: "whiteboard", markings: true, goals: true, glass: false };
+      return { face: "whiteboard", markings: true, goals: "lines", glass: false };
     case "gaelicBands":
-      return { face: "trainingBands", markings: true, goals: true, glass: true };
+      return { face: "trainingBands", markings: true, goals: "artwork", glass: true };
     case "grass":
       return { face: "trainingBands", markings: false, goals: false, glass: true };
     case "default":
     default:
-      return { face: "turf", markings: true, goals: true, glass: true };
+      return { face: "turf", markings: true, goals: "lines", glass: true };
   }
 }
 

@@ -6,6 +6,8 @@ import type { PitchMarking } from "../../core/pitch/pitch-config";
  * Consumed exclusively by:
  *   - src/tactical-lite/pixi/renderTacticalPitch.ts (Tactical Slate)
  *   - src/movement-board/pitch/create-pitch-root.ts (Tactical Play)
+ *   - src/tactical-lite/pixi/gaelicPitchGoals.ts (endline/centre positions only,
+ *     for the Gaelic Pitch surface's artwork goals)
  *
  * This module must never be imported by src/core/pitch/**, src/pro-tagger/**,
  * src/stats/**, or src/rapid-capture/** — those surfaces render from
@@ -14,9 +16,9 @@ import type { PitchMarking } from "../../core/pitch/pitch-config";
  */
 
 // Tactics viewbox — matches BOARD_PITCH_VIEWBOX used by both consuming renderers.
-const LEFT_ENDLINE_X = 2;
-const RIGHT_ENDLINE_X = 158;
-const CENTRE_Y = 50;
+export const LEFT_ENDLINE_X = 2;
+export const RIGHT_ENDLINE_X = 158;
+export const CENTRE_Y = 50;
 
 // Normalized goal dimensions (viewbox units). Deliberately compressed relative
 // to real GAA measurements — see the goalposts audit — to fit the turf margin
