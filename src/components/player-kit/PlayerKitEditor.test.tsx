@@ -3,7 +3,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 import { PlayerKitEditor, type PlayerKitEditorValue } from "./PlayerKitEditor";
-import { FULL_VISION_PATTERNS, PLAYER_KIT_PATTERN_LABEL, SLATE_V1_PATTERNS } from "./playerKitPatterns";
+import { FULL_VISION_PATTERNS, PLAYER_KIT_PATTERN_LABEL } from "./playerKitPatterns";
+
+// A literal prefix of FULL_VISION_PATTERNS — exercises the editor's
+// subset-configurability independently of any one product surface.
+const FOUR_PATTERN_SUBSET = ["plain", "hoops", "stripes", "slash"] as const;
 
 afterEach(() => {
   cleanup();
@@ -16,7 +20,7 @@ const COLOR_OPTIONS = [
 ];
 
 function baseProps(overrides?: Partial<Parameters<typeof PlayerKitEditor>[0]>) {
-  const value: PlayerKitEditorValue<(typeof SLATE_V1_PATTERNS)[number]> = {
+  const value: PlayerKitEditorValue<(typeof FULL_VISION_PATTERNS)[number]> = {
     baseColor: "blue",
     pattern: "hoops",
     patternColor: "white",
@@ -31,7 +35,7 @@ function baseProps(overrides?: Partial<Parameters<typeof PlayerKitEditor>[0]>) {
     onTabChange: vi.fn(),
     value,
     colorOptions: COLOR_OPTIONS,
-    allowedPatterns: SLATE_V1_PATTERNS,
+    allowedPatterns: FULL_VISION_PATTERNS,
     patternLabels: PLAYER_KIT_PATTERN_LABEL,
     onBaseColorChange: vi.fn(),
     onPatternChange: vi.fn(),
@@ -136,11 +140,11 @@ describe("PlayerKitEditor — callbacks", () => {
 });
 
 describe("PlayerKitEditor — pattern-set configurability (PR2A vs PR2B)", () => {
-  it("Standard Slate's configuration renders exactly its existing four patterns, no more", () => {
-    const props = baseProps({ activeTab: "pattern", allowedPatterns: SLATE_V1_PATTERNS });
+  it("a four-pattern subset configuration renders exactly those four patterns, no more", () => {
+    const props = baseProps({ activeTab: "pattern", allowedPatterns: FOUR_PATTERN_SUBSET });
     render(<PlayerKitEditor {...props} />);
 
-    for (const pattern of SLATE_V1_PATTERNS) {
+    for (const pattern of FOUR_PATTERN_SUBSET) {
       expect(screen.getByText(PLAYER_KIT_PATTERN_LABEL[pattern])).toBeTruthy();
     }
     expect(screen.queryByText(PLAYER_KIT_PATTERN_LABEL.chestDash)).toBeNull();
@@ -164,6 +168,20 @@ describe("PlayerKitEditor — pattern-set configurability (PR2A vs PR2B)", () =>
 
     fireEvent.click(screen.getByText(PLAYER_KIT_PATTERN_LABEL.gradient));
     expect(props.onPatternChange).toHaveBeenCalledWith("gradient");
+  });
+});
+
+describe("PlayerKitEditor — Tactical Slate / Tactical Sequence pattern parity", () => {
+  it("offers the six patterns in the canonical order: Plain, Hoops, Stripes, Slash, Chest Dash, Gradient", () => {
+    const props = baseProps({ activeTab: "pattern", allowedPatterns: FULL_VISION_PATTERNS });
+    render(<PlayerKitEditor {...props} />);
+    const labels = FULL_VISION_PATTERNS.map((pattern) => PLAYER_KIT_PATTERN_LABEL[pattern]);
+    expect(labels).toEqual(["Plain", "Hoops", "Stripes", "Slash", "Chest Dash", "Gradient"]);
+    const rendered = screen
+      .getAllByRole("button")
+      .map((button) => button.textContent?.trim() ?? "")
+      .filter((text) => labels.includes(text));
+    expect(rendered).toEqual(labels);
   });
 });
 

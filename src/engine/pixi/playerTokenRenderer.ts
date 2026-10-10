@@ -8,7 +8,7 @@ import { createMicroAthleteToken, type MicroAthleteKitPattern, type MicroAthlete
 import { createNamePillPlayerToken } from "./createNamePillPlayerToken";
 import { createPremiumGlowPlayerToken } from "./createPremiumGlowPlayerToken";
 import { createHeroiconUserCircleToken } from "./createHeroiconUserCircleToken";
-import { createVisionV3PlayerToken } from "./createVisionV3PlayerToken";
+import { createVisionV3PlayerToken, type VisionV3KitPattern } from "./createVisionV3PlayerToken";
 import type { PremiumPlayerTokenColor } from "./createPremiumPlayerToken";
 
 export type PlayerTokenStyle =
@@ -25,7 +25,11 @@ export type PlayerTokenRendererInput = {
   teamColor: PremiumPlayerTokenColor;
   scale: number;
   style: Partial<MicroAthleteStyle>;
-  kitPattern: MicroAthleteKitPattern;
+  /**
+   * Full six-pattern set. Only VisionV3Renderer draws chestDash/gradient;
+   * every other renderer receives toLegacyKitPattern(kitPattern).
+   */
+  kitPattern: VisionV3KitPattern;
   kitPatternColor: number;
   radius: number;
   /**
@@ -43,6 +47,15 @@ export type PlayerTokenRendererOutput = {
 
 export type PlayerTokenRenderer = (input: PlayerTokenRendererInput) => PlayerTokenRendererOutput;
 
+/**
+ * Legacy token styles only know the original four patterns. Chest Dash and
+ * Gradient (Vision V3 only) render as plain on them rather than being
+ * silently mis-drawn; the player's stored pattern is untouched.
+ */
+export function toLegacyKitPattern(pattern: VisionV3KitPattern): MicroAthleteKitPattern {
+  return pattern === "chestDash" || pattern === "gradient" ? "plain" : pattern;
+}
+
 export const ClassicRingRenderer: PlayerTokenRenderer = ({
   label,
   teamColor,
@@ -56,7 +69,7 @@ export const ClassicRingRenderer: PlayerTokenRenderer = ({
     teamColor,
     scale,
     style,
-    kitPattern,
+    kitPattern: toLegacyKitPattern(kitPattern),
     kitPatternColor,
   });
 
@@ -76,7 +89,7 @@ export const PremiumGlowRenderer: PlayerTokenRenderer = ({
     teamColor,
     scale,
     style,
-    kitPattern,
+    kitPattern: toLegacyKitPattern(kitPattern),
     kitPatternColor,
   });
 
@@ -96,7 +109,7 @@ export const HeroiconUserCircleRenderer: PlayerTokenRenderer = ({
     teamColor,
     scale,
     style,
-    kitPattern,
+    kitPattern: toLegacyKitPattern(kitPattern),
     kitPatternColor,
   });
 
@@ -133,7 +146,7 @@ export const ProceduralPixiRenderer: PlayerTokenRenderer = ({
     label,
     style: style as Partial<CleanTacticalPlayerTokenStyle>,
     radius,
-    kitPattern,
+    kitPattern: toLegacyKitPattern(kitPattern),
     kitPatternColor,
     variant: "pixi",
   });
@@ -153,7 +166,7 @@ export const PhosphorRenderer: PlayerTokenRenderer = ({
     label,
     style: style as Partial<CleanTacticalPlayerTokenStyle>,
     radius,
-    kitPattern,
+    kitPattern: toLegacyKitPattern(kitPattern),
     kitPatternColor,
     variant: "phosphor",
   });
@@ -175,7 +188,7 @@ export const UnderNamePillRenderer: PlayerTokenRenderer = ({
     style: style as Partial<CleanTacticalPlayerTokenStyle>,
     radius,
     number,
-    kitPattern,
+    kitPattern: toLegacyKitPattern(kitPattern),
     kitPatternColor,
   });
   token.scale.set(scale);

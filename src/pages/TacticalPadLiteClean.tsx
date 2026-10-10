@@ -25,7 +25,7 @@ import {
   PLAYER_KIT_EDITOR_MAX_WIDTH,
   PLAYER_KIT_EDITOR_MAX_HEIGHT_RATIO,
 } from "../components/player-kit/PlayerKitEditor";
-import { SLATE_V1_PATTERNS, PLAYER_KIT_PATTERN_LABEL } from "../components/player-kit/playerKitPatterns";
+import { FULL_VISION_PATTERNS, PLAYER_KIT_PATTERN_LABEL } from "../components/player-kit/playerKitPatterns";
 import {
   DrawToolPanel,
   type DrawToolPanelOption,
@@ -4686,11 +4686,8 @@ export default function TacticalPadLiteClean({
 
   // Deliberately not type-annotated with PlayerKitEditorValue<...> here: the
   // inferred `pattern: TacticalKitPattern` (from resolveActiveKitEditorValue
-  // below) is what lets <PlayerKitEditor>'s generic infer to Slate's real,
-  // narrow 4-pattern type end-to-end — annotating this with the wider
-  // PlayerKitPattern would silently widen onPatternChange's callback type
-  // and break the (correct) compile error that catches a 5th/6th pattern
-  // value ever reaching applyPlayerKitPatch's narrower TacticalKitPattern.
+  // below) lets <PlayerKitEditor>'s generic infer to Slate's real pattern
+  // type end-to-end — the same six-pattern union Tactical Sequence offers.
   const kitEditorValue = activeKitPlayer == null ? null : resolveActiveKitEditorValue(activeKitPlayer);
 
   const applyPlayerKitPatch = (patch: TacticalPlayerKitPatch) => {
@@ -5043,7 +5040,7 @@ export default function TacticalPadLiteClean({
             onTabChange={setKitEditorTab}
             value={kitEditorValue}
             colorOptions={KIT_COLOR_OPTIONS}
-            allowedPatterns={SLATE_V1_PATTERNS}
+            allowedPatterns={FULL_VISION_PATTERNS}
             patternLabels={PLAYER_KIT_PATTERN_LABEL}
             onBaseColorChange={(color) => applyPlayerKitPatch({ kitBaseColor: color })}
             onPatternChange={(pattern) => applyPlayerKitPatch({ kitPattern: pattern })}
