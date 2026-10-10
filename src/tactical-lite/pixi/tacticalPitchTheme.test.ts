@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import {
   TACTICAL_BOARD_TURF_BASE,
+  TACTICAL_BOARD_TURF_SHADING,
   TRAINING_GRASS_BANDS,
   rebaseTurfWash,
   resolveTacticalPitchThemeLayers,
   resolveTacticalPitchTurfBase,
+  resolveTacticalPitchTurfWash,
   trainingGrassBands,
+  type TacticalPitchTheme,
 } from "./tacticalPitchTheme";
 
 // createTacticalPitchVisualRoot() needs a real canvas/WebGL context, which
@@ -76,10 +79,21 @@ describe("Training Grass mown bands", () => {
   });
 });
 
-describe("Tactical Board Colour C turf (research trial)", () => {
-  it("is #589d6d", () => {
-    expect(TACTICAL_BOARD_TURF_BASE).toBe("#589d6d");
-    expect(resolveTacticalPitchTurfBase("tacticalBoard")).toBe("#589d6d");
+describe("Tactical Board Traditional GAA Green turf (research trial)", () => {
+  const recipeWash = [
+    { t: 0, c: "#0c291d" },
+    { t: 0.24, c: "#1a6143" },
+    { t: 0.46, c: "#2d825b" },
+    { t: 0.62, c: "#277351" },
+    { t: 0.8, c: "#1f5e42" },
+    { t: 1, c: "#103629" },
+  ];
+  const lum = (hex: string) => Number.parseInt(hex.slice(3, 5), 16);
+
+  it("is #235431, replacing the Colour C trial", () => {
+    expect(TACTICAL_BOARD_TURF_BASE).toBe("#235431");
+    expect(resolveTacticalPitchTurfBase("tacticalBoard")).toBe("#235431");
+    expect(TACTICAL_BOARD_TURF_BASE).not.toBe("#589d6d");
   });
 
   it("keeps exactly the default turf layers — markings, line goals and glass are unchanged", () => {
@@ -94,18 +108,40 @@ describe("Tactical Board Colour C turf (research trial)", () => {
     expect(resolveTacticalPitchTurfBase("whiteboard")).toBeNull();
   });
 
-  it("re-bases the wash so the brightest stop is the base and the shading proportions hold", () => {
-    const wash = [
-      { t: 0, c: "#0c291d" },
-      { t: 0.46, c: "#2d825b" },
-      { t: 1, c: "#103629" },
-    ];
-    const rebased = rebaseTurfWash(wash, "#589d6d");
-    expect(rebased.map((stop) => stop.t)).toEqual([0, 0.46, 1]);
-    expect(rebased[1]!.c).toBe("#589d6d");
-    // Edges stay darker than the centre, in the original order.
-    const lum = (hex: string) => Number.parseInt(hex.slice(3, 5), 16);
-    expect(lum(rebased[0]!.c)).toBeLessThan(lum(rebased[2]!.c));
-    expect(lum(rebased[2]!.c)).toBeLessThan(lum(rebased[1]!.c));
+  it("never leaks into another surface's turf wash — every other theme paints the untouched recipe wash", () => {
+    const others: TacticalPitchTheme[] = ["default", "gaelicBands", "grass", "whiteboard"];
+    for (const theme of others) {
+      const wash = resolveTacticalPitchTurfWash(theme, recipeWash);
+      expect(wash).toBe(recipeWash);
+      expect(wash.map((stop) => stop.c)).not.toContain(TACTICAL_BOARD_TURF_BASE);
+    }
+    // ...while the Tactical Board itself does get the override.
+    expect(resolveTacticalPitchTurfWash("tacticalBoard", recipeWash).map((stop) => stop.c)).toContain(
+      TACTICAL_BOARD_TURF_BASE,
+    );
+  });
+
+  it("paints the Tactical Board wash close to #235431 edge to edge, keeping softened shading", () => {
+    const wash = resolveTacticalPitchTurfWash("tacticalBoard", recipeWash);
+    expect(wash.map((stop) => stop.t)).toEqual(recipeWash.map((stop) => stop.t));
+    expect(wash[2]!.c).toBe("#235431");
+    const base = lum(TACTICAL_BOARD_TURF_BASE);
+    for (const stop of wash) {
+      expect(lum(stop.c)).toBeLessThanOrEqual(base);
+      // The darkest edge keeps at least ~75% of the base brightness — never near-black.
+      expect(lum(stop.c)).toBeGreaterThanOrEqual(Math.floor(base * 0.75));
+    }
+    // Edges still sit darker than the centre, in the original order.
+    expect(lum(wash[0]!.c)).toBeLessThan(lum(wash[5]!.c));
+    expect(lum(wash[5]!.c)).toBeLessThan(lum(wash[2]!.c));
+    expect(TACTICAL_BOARD_TURF_SHADING).toBeGreaterThan(0);
+    expect(TACTICAL_BOARD_TURF_SHADING).toBeLessThan(1);
+  });
+
+  it("re-bases with the full original shading by default, and flat at shading 0", () => {
+    const full = rebaseTurfWash(recipeWash, "#589d6d");
+    expect(full[2]!.c).toBe("#589d6d");
+    expect(lum(full[0]!.c)).toBeLessThan(lum(full[5]!.c));
+    expect(rebaseTurfWash(recipeWash, "#235431", 0).every((stop) => stop.c === "#235431")).toBe(true);
   });
 });

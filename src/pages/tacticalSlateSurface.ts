@@ -16,7 +16,7 @@ import {
  *                      markings and goals on the mown bands.
  *  - "training"      — Training Grass: mown bands without markings or goals.
  *  - "tacticalBoard" — Tactical Board: the Gaelic pitch on the original turf
- *                      (gradient, glow and vignette), re-based onto Colour C
+ *                      (gradient, glow and vignette), re-based onto Traditional GAA Green (#235431)
  *                      via its own "tacticalBoard" pitch theme.
  *  - "whiteboard" — the existing whiteboard renderer theme. This is NOT the
  *                   dormant legacy Whiteboard mode (PadMode "whiteboard"),
