@@ -19,7 +19,7 @@
  *                   off-white board), unchanged from the dormant legacy mode.
  *  - "tacticalBoard" — Tactical Board surface only (research trial): exactly
  *                   the "default" layers, with the turf wash re-based onto
- *                   TACTICAL_BOARD_TURF_BASE. "default" itself is untouched.
+ *                   TACTICAL_BOARD_TURF_BASE (Traditional GAA Green). "default" itself is untouched.
  */
 export type TacticalPitchTheme = "default" | "gaelicBands" | "grass" | "whiteboard" | "tacticalBoard";
 
@@ -77,8 +77,20 @@ export function trainingGrassBands(faceWidth: number): TrainingGrassBand[] {
   }));
 }
 
-/** Tactical Board turf base colour — Colour C research trial. */
-export const TACTICAL_BOARD_TURF_BASE = "#589d6d";
+/**
+ * Tactical Board turf base colour — Traditional GAA Green research trial,
+ * after the classic green magnetic tactics board. Replaces the Colour C
+ * (#589d6d) trial.
+ */
+export const TACTICAL_BOARD_TURF_BASE = "#235431";
+
+/**
+ * How much of the recipe wash's edge-to-centre shading the Tactical Board
+ * keeps (see rebaseTurfWash). The full recipe shading takes a base this dark
+ * almost to black at the edges, so the board keeps a softer share of it and
+ * stays close to TACTICAL_BOARD_TURF_BASE across the whole face.
+ */
+export const TACTICAL_BOARD_TURF_SHADING = 0.3;
 
 /**
  * Turf base colour override for a theme, or null to keep the renderer's own
@@ -107,13 +119,28 @@ function toHex(channels: number[]): string {
  * Re-bases a turf wash gradient onto a new colour while keeping its shading:
  * each stop becomes `base` scaled by that stop's brightness relative to the
  * brightest stop, so the brightest stop is exactly `base` and the darker
- * edge stops keep their original proportions.
+ * edge stops keep their original proportions. `shading` (0–1) scales how
+ * much of that darkening is kept: 1 is the full original shading, 0 a flat
+ * `base`.
  */
-export function rebaseTurfWash(wash: readonly TurfWashStop[], base: string): TurfWashStop[] {
+export function rebaseTurfWash(wash: readonly TurfWashStop[], base: string, shading = 1): TurfWashStop[] {
   const baseRgb = parseHex(base);
   const peak = Math.max(...wash.map((stop) => luminance(parseHex(stop.c))));
   return wash.map((stop) => {
     const k = peak > 0 ? luminance(parseHex(stop.c)) / peak : 1;
-    return { t: stop.t, c: toHex(baseRgb.map((v) => v * k)) };
+    const scale = 1 - shading * (1 - k);
+    return { t: stop.t, c: toHex(baseRgb.map((v) => v * scale)) };
   });
+}
+
+/**
+ * The turf wash a theme paints: the recipe wash itself (same reference) for
+ * every theme without a turf override, or the Tactical Board re-base.
+ */
+export function resolveTacticalPitchTurfWash(
+  theme: TacticalPitchTheme,
+  wash: readonly TurfWashStop[],
+): readonly TurfWashStop[] {
+  const base = resolveTacticalPitchTurfBase(theme);
+  return base ? rebaseTurfWash(wash, base, TACTICAL_BOARD_TURF_SHADING) : wash;
 }
