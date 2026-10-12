@@ -77,6 +77,14 @@ import type { TacticalUnit } from "./tacticalUnitTypes";
 import { buildMemberRoutes } from "./tacticalUnitHelpers";
 import type { NormalizedPoint } from "../../movement-board/coordinates/normalization";
 import PlayerActionSheet from "./PlayerActionSheet";
+// EXPERIMENTAL Goal View — every use below is gated by GOAL_VIEW_EXPERIMENT_ENABLED
+// (false in normal production builds). Rollback: delete these lines.
+import {
+  GOAL_VIEW_EXPERIMENT_ENABLED,
+  GoalViewModeRow,
+  GoalViewReadOnlyShield,
+  useSequenceGoalView,
+} from "../../experimental/goal-view/sequenceGoalView";
 import {
   SETUP_SITUATIONS,
   TP_SPEED_OPTIONS,
@@ -1125,6 +1133,10 @@ export default function TacticalPlaySurface() {
   const isPortrait = usePortraitOrientation();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const shellRef = useRef<MovementCanvasShellHandle | null>(null);
+  // EXPERIMENTAL Goal View: the live shell (only tracked when the flag is on).
+  const [goalViewShell, setGoalViewShell] = useState<MovementCanvasShellHandle | null>(null);
+  const goalView = useSequenceGoalView(goalViewShell);
+  const releaseGoalViewRef = useRef(goalView.releaseBeforeShellDestroy);
   const [menuMode, setMenuMode] = useState<MovementMenuMode>("move");
   const [imageShareOpen, setImageShareOpen] = useState(false);
   const [playbackSpeedMultiplier, setPlaybackSpeedMultiplier] = useState<number>(TP_DEFAULT_SPEED_MULTIPLIER);
@@ -1453,6 +1465,15 @@ export default function TacticalPlaySurface() {
         setZones(shell.getZones());
         setTrainingItems(shell.getTrainingItems());
         destroyShell = shell.destroy;
+        if (GOAL_VIEW_EXPERIMENT_ENABLED) {
+          // The lens must hand the world back before the shell is destroyed
+          // (unmount or WebGL-loss remount); a remount re-attaches it.
+          destroyShell = () => {
+            releaseGoalViewRef.current();
+            shell.destroy();
+          };
+          setGoalViewShell(shell);
+        }
 
         // After a WebGL context-loss remount, restore the full board state that
         // was captured before the dead shell was destroyed.
@@ -1554,8 +1575,10 @@ export default function TacticalPlaySurface() {
     // Portrait is editable in both orientations; only the board orientation
     // changes when the device rotates. setOrientation is idempotent (no-op if
     // unchanged) and only re-fits — it never touches board state or saves.
+    // (EXPERIMENTAL Goal View owns orientation while a goal view is active.)
+    if (goalView.isGoalView) return;
     shellRef.current?.setOrientation(isPortrait ? 1 : 0);
-  }, [isPortrait]);
+  }, [isPortrait, goalView.isGoalView]);
 
   useEffect(() => {
     shellRef.current?.setMode(toShellMode(menuMode));
@@ -2459,12 +2482,17 @@ export default function TacticalPlaySurface() {
               portrait mode uses the higher "Tactical Play" default offset
               instead of the endline-relative position Slate already uses. */}
           <PitchWatermark portrait={isPortrait} lowered />
-          <TextAnnotationOverlay
-            annotations={textAnnotations}
-            active={labelToolActive && !isPlaying && !isPaused && editRunPlayerId === null}
-            onAnnotationsChange={setTextAnnotations}
-            showFormatting={false}
-          />
+          {/* DOM text labels are flat-board positioned, so they are hidden
+              while an (experimental) goal view is showing. */}
+          {goalView.isGoalView ? null : (
+            <TextAnnotationOverlay
+              annotations={textAnnotations}
+              active={labelToolActive && !isPlaying && !isPaused && editRunPlayerId === null}
+              onAnnotationsChange={setTextAnnotations}
+              showFormatting={false}
+            />
+          )}
+          {goalView.isGoalView ? <GoalViewReadOnlyShield mode={goalView.mode} /> : null}
         </div>
 
         <button type="button" style={BACK_BUTTON_STYLE} onClick={goBack}>
@@ -3055,6 +3083,17 @@ export default function TacticalPlaySurface() {
                   </button>
                 ))}
               </div>
+            ) : null}
+
+            {GOAL_VIEW_EXPERIMENT_ENABLED ? (
+              <GoalViewModeRow
+                mode={goalView.mode}
+                onChange={goalView.setMode}
+                rowStyle={WRAP_PANEL_ROW_STYLE}
+                labelStyle={SETUP_SECTION_LABEL_STYLE}
+                buttonStyle={TOOL_BUTTON_STYLE}
+                activeButtonStyle={TOOL_ACTIVE_STYLE}
+              />
             ) : null}
 
             {/* Speed presets — expanded from the Speed button. Full-size tap

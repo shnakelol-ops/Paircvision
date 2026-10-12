@@ -87,3 +87,45 @@ so goals never obscure tactical movement.
 - Ball has no height (data has none); passes read as ground passes.
 - DOM overlays (text labels, watermark) are not projected; the input layer is
   blocked by a DOM overlay in Goal View (read-only).
+
+## Tactical Sequence integration (experimental, flag-gated)
+
+Goal View is reachable inside the real Tactical Sequence
+(`/vision-tactics/play`) under **TOOLS → Goal View (beta)**: Top-Down,
+Left End, Right End. It shows the coach's actual board (saved plays, players,
+ball, drawings, items, playback) through the same lens and camera C defaults.
+
+**Flag.** Off unless one of these is true:
+
+- built or served with `VITE_EXPERIMENTAL_GOAL_VIEW=true`
+  (e.g. a Vercel *Preview* environment variable), or
+- a dev build (`npm run dev`) opened with `?goalview` in the URL.
+
+In a normal production build the flag is the literal `false`: the control,
+shield and lens import are removed from the bundle (verified by grepping the
+built assets).
+
+**Behaviour while a goal view is active**
+
+- Read-only: a DOM shield over the pitch blocks pitch input (taps, drags,
+  route/draw gestures); a badge says how to get back to editing. Play, pause,
+  reset, record, share and all panels keep working.
+- Goal View owns the shell orientation (quarter-turn 3 or 1); Top-Down
+  restores the normal portrait/landscape rule.
+- DOM text labels are hidden (they are flat-board positioned).
+- Share Image and recordings capture the perspective canvas.
+- WebGL context-loss remount: the lens is released before the old shell is
+  destroyed and re-attached to the new one.
+- Nothing is persisted; saved plays are unchanged.
+
+**Changed outside this folder:** `src/features/vision-tactics/TacticalPlaySurface.tsx`
+(one import block, three state/ref lines, a flag-gated destroy wrapper, one
+guard in the orientation effect, the text-overlay/shield JSX, and the TOOLS row).
+
+### Rollback
+
+1. Instant, no code change: unset `VITE_EXPERIMENTAL_GOAL_VIEW` (or never set
+   it) and redeploy — the feature is compiled out.
+2. Code: `git revert` the integration commit; or delete the lines in
+   `TacticalPlaySurface.tsx` marked "EXPERIMENTAL Goal View" and the
+   `sequenceGoalView*` files. No data migration is needed in either case.
