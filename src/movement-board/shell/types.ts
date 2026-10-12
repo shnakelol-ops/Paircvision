@@ -1,3 +1,5 @@
+import type { Application, Container } from "pixi.js";
+
 import type { PitchSport } from "../pitch/pitch-config";
 import type { NormalizedPoint } from "../coordinates/normalization";
 import type { PremiumPlayerTokenColor } from "../tokens/createPremiumPlayerToken";
@@ -143,6 +145,13 @@ export type MovementRouteEditState = {
   canRemoveSelectedWaypoint: boolean;
 };
 
+export type MovementCanvasExperimentalRenderTargets = {
+  app: Application;
+  world: Container;
+  tokenLayer: Container;
+  ballLayer: Container;
+};
+
 export type MovementCanvasShellOptions = {
   sport?: PitchSport;
   mode?: MovementBoardMode;
@@ -236,6 +245,14 @@ export type MovementCanvasShellHandle = {
    * counter-rotate; coordinates, routes, timeline and saves are unaffected.
    */
   setOrientation: (quarterTurns: number) => void;
+  /**
+   * EXPERIMENTAL — consumed only by the internal Goal View prototype
+   * (src/experimental/goal-view). Exposes the shell's Pixi application and
+   * layer containers so a read-only presentation lens can re-project the
+   * finished board. Read-only access: no production surface calls this, and
+   * nothing about the shell's own rendering or state changes because it exists.
+   */
+  getExperimentalRenderTargets: () => MovementCanvasExperimentalRenderTargets;
   // Tactical drawing (PR4) — thin pass-through to the same shared
   // src/features/quickboard/drawing/tacticalDrawingController used by
   // Standard Slate. Pointer routing into it (while mode === "draw") lives

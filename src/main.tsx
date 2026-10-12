@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 
 import { OverlayPortalProvider } from "./overlay/OverlayPortalContext";
@@ -30,6 +30,10 @@ const PRO_TAGGER_PATH    = "/pro-tagger";
 const INTERNAL_PATH      = "/internal";
 const INTERNAL_TEAM_SHEET_PATH = "/internal/team-sheet";
 const INTERNAL_SLATE_RUGBY_PATH = "/internal/slate/rugby";
+// EXPERIMENTAL Goal View prototype — internal URL only, lazy-loaded so the
+// prototype is never part of any production surface's bundle path.
+const INTERNAL_GOAL_VIEW_PATH = "/internal/goal-view";
+const GoalViewPrototypePage = lazy(() => import("./experimental/goal-view/GoalViewPrototypePage"));
 
 function redirectToBoard() {
   if (window.location.pathname !== "/board") {
@@ -141,6 +145,13 @@ function pickRootComponent() {
   }
   if (normalizedPath === INTERNAL_TEAM_SHEET_PATH) {
     return TeamSheetScreen;
+  }
+  if (normalizedPath === INTERNAL_GOAL_VIEW_PATH) {
+    return () => (
+      <Suspense fallback={null}>
+        <GoalViewPrototypePage />
+      </Suspense>
+    );
   }
   if (normalizedPath === INTERNAL_SLATE_RUGBY_PATH) {
     return () => <TacticalPadLiteClean sport="rugby" />;

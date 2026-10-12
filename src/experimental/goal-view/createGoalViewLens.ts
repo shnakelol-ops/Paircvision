@@ -1,0 +1,493 @@
+// EXPERIMENTAL — Goal View prototype (internal only, /internal/goal-view).
+//
+// A read-only presentation "lens" over an existing Tactical Sequence shell.
+// The shell keeps simulating and drawing its flat board exactly as it does
+// today; the lens re-renders that finished board into an offscreen texture
+// each frame and displays it on a PerspectiveMesh. No movement, playback,
+// routing or storage logic is duplicated or touched.
+//
+// Two strategies for keeping the flat board out of the main pass are
+// implemented so they can be compared experimentally (see runDiagnostics):
+//
+//   "wrapper" — the shell's world container is reparented into an offscreen
+//               wrapper that is NOT on the stage. The main pass draws only the
+//               mesh; the wrapper is rendered to the texture.
+//   "alpha"   — world stays on the stage with alpha 0 for the main pass and is
+//               rendered directly to the texture with alpha 1 in between.
+//
+// Top-Down ("detach") restores the exact pre-lens scene graph.
+
+import {
+  Container,
+  Graphics,
+  Matrix,
+  PerspectiveMesh,
+  RenderTexture,
+  UPDATE_PRIORITY,
+  type Application,
+} from "pixi.js";
+
+import {
+  DEFAULT_GOAL_VIEW_CAMERA,
+  GOAL_VIEW_BOARD_LENGTH,
+  GOAL_VIEW_BOARD_WIDTH,
+  GOAL_VIEW_GOAL,
+  boardToWorld,
+  createGoalViewProjection,
+  worldToBoard,
+  worldToTextureMatrix,
+  type BoardPoint,
+  type GoalViewCameraParams,
+  type GoalViewEnd,
+  type GoalViewProjection,
+} from "./goalViewCamera";
+
+export type GoalViewLensStrategy = "wrapper" | "alpha";
+
+export type GoalViewLensOptions = {
+  strategy: GoalViewLensStrategy;
+  /** Texture pixels per world unit (board is 100×160 units). */
+  textureScale: number;
+  /** Stretch players/ball vertically so they read upright instead of flattened. */
+  billboards: boolean;
+  /** Draw upright 3D goalposts (near: screen overlay, far: ground-projected decal). */
+  uprightGoals: boolean;
+  /** Draw nearer players over farther ones while the lens renders. */
+  depthSort: boolean;
+  camera: GoalViewCameraParams;
+};
+
+export const DEFAULT_GOAL_VIEW_LENS_OPTIONS: GoalViewLensOptions = {
+  strategy: "wrapper",
+  textureScale: 8,
+  billboards: true,
+  uprightGoals: true,
+  depthSort: true,
+  camera: DEFAULT_GOAL_VIEW_CAMERA,
+};
+
+export type GoalViewLensMetrics = {
+  end: GoalViewEnd | null;
+  strategy: GoalViewLensStrategy;
+  textureWidth: number;
+  textureHeight: number;
+  /** Colour-buffer bytes for the offscreen texture (RGBA8). Excludes MSAA/driver overhead. */
+  textureBytes: number;
+  /** Rolling mean CPU ms spent submitting the offscreen pass (GPU time is not measurable here). */
+  offscreenPassMs: number;
+  frames: number;
+  /** Device pixels per texture pixel at the near/far centre — >1 means the texture is being magnified (soft). */
+  nearMagnification: number;
+  farMagnification: number;
+};
+
+export type GoalViewDiagnostics = {
+  strategy: GoalViewLensStrategy;
+  /** Non-transparent pixels the MAIN pass produces from the board alone (mesh/overlays hidden). 0 = correctly hidden. */
+  mainPassBoardPixels: number;
+  /** Non-transparent pixels in the offscreen texture. >0 = offscreen render works. */
+  offscreenTexturePixels: number;
+  /** Pixi hit-test at a player's flat (top-down) screen position while the lens is active. */
+  hitTestAtFlatPlayerPosition: string;
+  /** True if the board can still be hit-tested even though it is invisible ("ghost" input). */
+  ghostHitTargets: boolean;
+  /** True if the mesh is (illegally) inside the subtree rendered into its own texture. */
+  feedbackLoop: boolean;
+  /** Whether Pixi permanently promoted the shell's world container to a render group. */
+  worldBecameRenderGroup: boolean;
+  /** Children on the stage during the main pass. */
+  stageChildren: string[];
+};
+
+export type GoalViewLens = {
+  setEnd: (end: GoalViewEnd | null) => void;
+  setOptions: (patch: Partial<GoalViewLensOptions>) => void;
+  getOptions: () => GoalViewLensOptions;
+  getMetrics: () => GoalViewLensMetrics;
+  getProjection: () => GoalViewProjection | null;
+  runDiagnostics: () => GoalViewDiagnostics;
+  destroy: () => void;
+};
+
+type SavedNodeState = { node: Container; scaleX: number; scaleY: number; zIndex: number };
+type SavedFrame = { nodes: SavedNodeState[]; order: Container[] };
+
+export function createGoalViewLens(targets: {
+  app: Application;
+  world: Container;
+  tokenLayer: Container;
+  ballLayer: Container;
+}): GoalViewLens {
+  const { app, world, tokenLayer, ballLayer } = targets;
+  let options: GoalViewLensOptions = { ...DEFAULT_GOAL_VIEW_LENS_OPTIONS };
+  let end: GoalViewEnd | null = null;
+  let activeStrategy: GoalViewLensStrategy | null = null;
+  let projection: GoalViewProjection | null = null;
+  let renderTexture: RenderTexture | null = null;
+  let mesh: PerspectiveMesh | null = null;
+  let worldIndexOnStage = 0;
+  let worldAlphaBeforeLens = 1;
+  const worldWasRenderGroup = world.isRenderGroup;
+
+  // Offscreen root used by the "wrapper" strategy. Rendering IT (not `world`)
+  // keeps Pixi's enableRenderGroup() side effect off the shell's container.
+  const wrapper = new Container();
+  wrapper.label = "goal-view-offscreen-wrapper";
+
+  // Far goal: drawn in WORLD space as a ground "shadow" of the 3D goal, so it
+  // projects to an upright goal and is correctly occluded by players in front.
+  const farGoalDecal = new Graphics();
+  farGoalDecal.label = "goal-view-far-goal-decal";
+  farGoalDecal.eventMode = "none";
+  farGoalDecal.zIndex = 9; // above drawings (5–6), below items (11) / tokens (20)
+
+  // Near goal: closest object to the camera, so a plain screen-space overlay
+  // above the mesh is the correct occlusion.
+  const nearGoalOverlay = new Graphics();
+  nearGoalOverlay.label = "goal-view-near-goal-overlay";
+  nearGoalOverlay.eventMode = "none";
+
+  const textureTransform = new Matrix();
+  const inverseWorld = new Matrix();
+  let passMsEma = 0;
+  let frames = 0;
+
+  const textureSize = () => ({
+    width: Math.round(GOAL_VIEW_BOARD_WIDTH * options.textureScale),
+    height: Math.round(GOAL_VIEW_BOARD_LENGTH * options.textureScale),
+  });
+
+  const ensureTexture = () => {
+    const { width, height } = textureSize();
+    if (renderTexture) {
+      // Resize in place. Swapping mesh.texture and destroying the old texture
+      // in the same frame crashes Pixi (the mesh's cached bind group still
+      // references the destroyed source — observed: BindGroup.setResource null).
+      if (renderTexture.width !== width || renderTexture.height !== height) {
+        renderTexture.resize(width, height);
+      }
+      return;
+    }
+    renderTexture = RenderTexture.create({ width, height, resolution: 1, antialias: true });
+  };
+
+  const recomputeProjection = () => {
+    if (!end) return;
+    projection = createGoalViewProjection(options.camera, {
+      width: app.screen.width,
+      height: app.screen.height,
+    });
+    if (mesh) {
+      const [tl, tr, br, bl] = projection.corners;
+      mesh.setCorners(tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y);
+    }
+    drawGoals();
+  };
+
+  const strokeSegment = (
+    g: Graphics,
+    p: { x: number; y: number } | null,
+    q: { x: number; y: number } | null,
+    width: number,
+    color: number,
+    alpha: number,
+  ) => {
+    if (!p || !q) return;
+    g.moveTo(p.x, p.y).lineTo(q.x, q.y).stroke({ width, color, alpha, cap: "round" });
+  };
+
+  /** 3D goal frame as board-space segments: [from(a,b,h), to(a,b,h), kind]. */
+  const goalSegments = (endlineB: number, outward: 1 | -1) => {
+    const G = GOAL_VIEW_GOAL;
+    const l = GOAL_VIEW_BOARD_WIDTH / 2 - G.halfWidth;
+    const r = GOAL_VIEW_BOARD_WIDTH / 2 + G.halfWidth;
+    const backGround = endlineB + outward * G.netDepthGround;
+    const backBar = endlineB + outward * G.netDepthCrossbar;
+    type P = [number, number, number];
+    const seg = (p: P, q: P, kind: "post" | "net") => ({ p, q, kind });
+    return [
+      // Net (drawn first so posts sit on top).
+      seg([l, backGround, 0], [r, backGround, 0], "net"),
+      seg([l, backBar, G.crossbarHeight], [r, backBar, G.crossbarHeight], "net"),
+      seg([l, backBar, G.crossbarHeight], [l, backGround, 0], "net"),
+      seg([r, backBar, G.crossbarHeight], [r, backGround, 0], "net"),
+      seg([l, endlineB, G.crossbarHeight], [l, backBar, G.crossbarHeight], "net"),
+      seg([r, endlineB, G.crossbarHeight], [r, backBar, G.crossbarHeight], "net"),
+      seg([l, endlineB, 0], [l, backGround, 0], "net"),
+      seg([r, endlineB, 0], [r, backGround, 0], "net"),
+      // Frame.
+      seg([l, endlineB, 0], [l, endlineB, G.postHeight], "post"),
+      seg([r, endlineB, 0], [r, endlineB, G.postHeight], "post"),
+      seg([l, endlineB, G.crossbarHeight], [r, endlineB, G.crossbarHeight], "post"),
+    ];
+  };
+
+  const drawGoals = () => {
+    nearGoalOverlay.clear();
+    farGoalDecal.clear();
+    if (!end || !projection || !options.uprightGoals) return;
+    const proj = projection;
+    const inset = GOAL_VIEW_GOAL.endlineInset;
+
+    // Near goal → screen space.
+    const nearB = GOAL_VIEW_BOARD_LENGTH - inset;
+    const nearScale = proj.groundScale(GOAL_VIEW_BOARD_WIDTH / 2, nearB).across;
+    for (const s of goalSegments(nearB, 1)) {
+      strokeSegment(
+        nearGoalOverlay,
+        proj.project(...s.p),
+        proj.project(...s.q),
+        s.kind === "post" ? Math.max(1.5, nearScale * 0.28) : Math.max(0.75, nearScale * 0.07),
+        0xffffff,
+        s.kind === "post" ? 0.96 : 0.45,
+      );
+    }
+
+    // Far goal → ground shadow in WORLD units inside the shell's world.
+    const farB = inset;
+    const toWorld = (p: [number, number, number]) => {
+      const g: BoardPoint = proj.groundShadowOf(p[0], p[1], p[2]);
+      return boardToWorld(end!, g);
+    };
+    for (const s of goalSegments(farB, -1)) {
+      strokeSegment(
+        farGoalDecal,
+        toWorld(s.p),
+        toWorld(s.q),
+        s.kind === "post" ? 0.55 : 0.16,
+        0xffffff,
+        s.kind === "post" ? 0.98 : 0.5,
+      );
+    }
+  };
+
+  /** Presentation-only per-frame tweaks; returns a restore list. Never outlives one offscreen pass. */
+  const applyBillboardsAndDepth = (): SavedFrame => {
+    const saved: SavedNodeState[] = [];
+    // Sorting by zIndex reorders the layer's children array itself, so the
+    // original order must be restored too or Top-Down draw order would leak.
+    const order = [...tokenLayer.children];
+    if (!end || !projection || (!options.billboards && !options.depthSort)) return { nodes: saved, order };
+    const proj = projection;
+    const m = worldToTextureMatrix(end, 1);
+    const textureRotation = Math.atan2(m.b, m.a);
+    for (const layer of [tokenLayer, ballLayer]) {
+      for (const node of layer.children) {
+        if (!node.visible) continue;
+        saved.push({ node, scaleX: node.scale.x, scaleY: node.scale.y, zIndex: node.zIndex });
+        const board = worldToBoard(end, { x: node.position.x, y: node.position.y });
+        if (options.billboards) {
+          const s = proj.groundScale(board.a, board.b);
+          const stretch = Math.min(4, Math.max(1, s.across / Math.max(1e-6, s.along)));
+          // Stretch whichever of the node's local axes lands on texture-vertical.
+          const total = textureRotation + node.rotation;
+          const verticalIsLocalX = Math.abs(Math.sin(total)) > 0.5;
+          if (verticalIsLocalX) node.scale.x *= stretch;
+          else node.scale.y *= stretch;
+        }
+        if (options.depthSort && layer === tokenLayer) {
+          node.zIndex = board.b; // larger b = nearer = drawn later
+        }
+      }
+    }
+    return { nodes: saved, order };
+  };
+
+  const restoreNodes = (saved: SavedFrame) => {
+    for (const s of saved.nodes) {
+      s.node.scale.set(s.scaleX, s.scaleY);
+      if (s.node.zIndex !== s.zIndex) s.node.zIndex = s.zIndex;
+    }
+    saved.order.forEach((node, index) => {
+      if (node.parent === tokenLayer && tokenLayer.getChildIndex(node) !== index) {
+        tokenLayer.setChildIndex(node, index);
+      }
+    });
+  };
+
+  // Runs after the shell's own tick (NORMAL) and before Pixi's render (LOW).
+  const onTick = () => {
+    if (!end || !renderTexture || !activeStrategy) return;
+    const t0 = performance.now();
+    const m = worldToTextureMatrix(end, options.textureScale);
+    const saved = applyBillboardsAndDepth();
+    if (activeStrategy === "wrapper") {
+      // wrapper·world·local = M  ⇒  wrapper transform = M · world⁻¹.
+      world.updateLocalTransform();
+      inverseWorld.copyFrom(world.localTransform).invert();
+      textureTransform.set(m.a, m.b, m.c, m.d, m.tx, m.ty).append(inverseWorld);
+      app.renderer.render({ container: wrapper, target: renderTexture, clear: true, transform: textureTransform });
+    } else {
+      textureTransform.set(m.a, m.b, m.c, m.d, m.tx, m.ty);
+      world.alpha = 1;
+      app.renderer.render({ container: world, target: renderTexture, clear: true, transform: textureTransform });
+      world.alpha = 0;
+    }
+    restoreNodes(saved);
+    const dt = performance.now() - t0;
+    passMsEma = frames === 0 ? dt : passMsEma * 0.95 + dt * 0.05;
+    frames += 1;
+  };
+
+  const onResize = () => recomputeProjection();
+
+  const attach = (strategy: GoalViewLensStrategy) => {
+    ensureTexture();
+    worldIndexOnStage = Math.max(0, app.stage.getChildIndex(world));
+    if (strategy === "wrapper") {
+      wrapper.addChild(world);
+    } else {
+      worldAlphaBeforeLens = world.alpha;
+    }
+    world.addChild(farGoalDecal);
+    world.sortChildren();
+    mesh = new PerspectiveMesh({ texture: renderTexture!, verticesX: 32, verticesY: 32 });
+    mesh.label = "goal-view-mesh";
+    mesh.eventMode = "none";
+    app.stage.addChild(mesh);
+    app.stage.addChild(nearGoalOverlay);
+    app.ticker.add(onTick, undefined, UPDATE_PRIORITY.LOW + 1);
+    app.renderer.on("resize", onResize);
+    activeStrategy = strategy;
+  };
+
+  const detach = () => {
+    if (!activeStrategy) return;
+    app.ticker.remove(onTick);
+    app.renderer.off("resize", onResize);
+    if (mesh) {
+      app.stage.removeChild(mesh);
+      mesh.destroy();
+      mesh = null;
+    }
+    app.stage.removeChild(nearGoalOverlay);
+    world.removeChild(farGoalDecal);
+    if (activeStrategy === "wrapper") {
+      wrapper.removeChild(world);
+      app.stage.addChildAt(world, Math.min(worldIndexOnStage, app.stage.children.length));
+    } else {
+      world.alpha = worldAlphaBeforeLens;
+    }
+    activeStrategy = null;
+    projection = null;
+  };
+
+  const countOpaque = (pixels: Uint8ClampedArray | Uint8Array) => {
+    let n = 0;
+    for (let i = 3; i < pixels.length; i += 4) if (pixels[i] > 0) n += 1;
+    return n;
+  };
+
+  const describe = (node: Container | null | undefined): string => {
+    if (!node) return "nothing";
+    const chain: string[] = [];
+    let cur: Container | null = node;
+    while (cur && chain.length < 6) {
+      chain.push(cur === app.stage ? "stage" : cur.label || cur.constructor.name);
+      cur = cur.parent;
+    }
+    return chain.join(" ← ");
+  };
+
+  return {
+    setEnd: (next) => {
+      if (next === end) return;
+      end = next;
+      if (!end) {
+        detach();
+        return;
+      }
+      if (!activeStrategy) attach(options.strategy);
+      recomputeProjection();
+    },
+    setOptions: (patch) => {
+      const strategyChanged = patch.strategy && patch.strategy !== options.strategy;
+      options = { ...options, ...patch, camera: { ...options.camera, ...(patch.camera ?? {}) } };
+      if (!end) return;
+      if (strategyChanged) {
+        detach();
+        attach(options.strategy);
+      }
+      ensureTexture();
+      recomputeProjection();
+    },
+    getOptions: () => options,
+    getProjection: () => projection,
+    getMetrics: () => {
+      const { width, height } = textureSize();
+      const dpr = app.renderer.resolution;
+      let near = 0;
+      let far = 0;
+      if (projection) {
+        const n = projection.groundScale(GOAL_VIEW_BOARD_WIDTH / 2, GOAL_VIEW_BOARD_LENGTH - 5);
+        const f = projection.groundScale(GOAL_VIEW_BOARD_WIDTH / 2, 5);
+        near = (Math.max(n.across, n.along) * dpr) / options.textureScale;
+        far = (Math.max(f.across, f.along) * dpr) / options.textureScale;
+      }
+      return {
+        end,
+        strategy: options.strategy,
+        textureWidth: width,
+        textureHeight: height,
+        textureBytes: width * height * 4,
+        offscreenPassMs: passMsEma,
+        frames,
+        nearMagnification: near,
+        farMagnification: far,
+      };
+    },
+    runDiagnostics: () => {
+      const strategy = activeStrategy ?? options.strategy;
+      // 1. Main pass with only the board: hide lens-owned display objects.
+      const meshVisible = mesh?.visible ?? false;
+      if (mesh) mesh.visible = false;
+      nearGoalOverlay.visible = false;
+      const mainPixels = app.renderer.extract.pixels({ target: app.stage }).pixels;
+      if (mesh) mesh.visible = meshVisible;
+      nearGoalOverlay.visible = true;
+      // 2. Offscreen texture content.
+      const texPixels = renderTexture ? app.renderer.extract.pixels({ target: renderTexture }).pixels : new Uint8ClampedArray();
+      // 3. Hit test where a player sits on the FLAT board (what top-down input would target).
+      const firstToken = tokenLayer.children.find((c) => c.visible) ?? null;
+      let hitDescription = "no players";
+      let ghost = false;
+      if (firstToken) {
+        world.updateLocalTransform();
+        const flat = world.localTransform.apply(firstToken.position);
+        const boundary = app.renderer.events.rootBoundary;
+        boundary.rootTarget = app.stage;
+        const hit = boundary.hitTest(flat.x, flat.y);
+        hitDescription = `${describe(hit)} @ (${flat.x.toFixed(0)},${flat.y.toFixed(0)})`;
+        let cur: Container | null = hit;
+        while (cur) {
+          if (cur === world) ghost = true;
+          cur = cur.parent;
+        }
+      }
+      let feedback = false;
+      let cur: Container | null = mesh;
+      while (cur) {
+        if (cur === wrapper || (strategy === "alpha" && cur === world)) feedback = true;
+        cur = cur.parent;
+      }
+      return {
+        strategy,
+        mainPassBoardPixels: countOpaque(mainPixels),
+        offscreenTexturePixels: countOpaque(texPixels),
+        hitTestAtFlatPlayerPosition: hitDescription,
+        ghostHitTargets: ghost,
+        feedbackLoop: feedback,
+        worldBecameRenderGroup: !worldWasRenderGroup && world.isRenderGroup,
+        stageChildren: app.stage.children.map((c) => c.label || c.constructor.name),
+      };
+    },
+    destroy: () => {
+      detach();
+      renderTexture?.destroy(true);
+      renderTexture = null;
+      farGoalDecal.destroy();
+      nearGoalOverlay.destroy();
+      wrapper.destroy();
+    },
+  };
+}
