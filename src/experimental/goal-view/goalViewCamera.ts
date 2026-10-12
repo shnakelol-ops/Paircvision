@@ -42,11 +42,15 @@ export type GoalViewCameraParams = {
   nearCropUnits: number;
 };
 
+// Configuration C ("DSS-inspired"): reproduces the DSS Coaching reference's
+// proportions — far endline 52% of the near endline's width, halfway line 34%
+// of the way down from the far end. A gentler, more tactical perspective than
+// a dramatic behind-the-goal camera. All four values stay slider-adjustable.
 export const DEFAULT_GOAL_VIEW_CAMERA: GoalViewCameraParams = {
-  heightUnits: 90,
-  distanceBehindUnits: 26,
+  heightUnits: 112,
+  distanceBehindUnits: 92,
   lookAtUnits: 80,
-  nearCropUnits: 20,
+  nearCropUnits: 30,
 };
 
 /**
@@ -86,15 +90,27 @@ export function worldToTextureMatrix(
     : { a: 0, b: scale, c: -scale, d: 0, tx: GOAL_VIEW_BOARD_WIDTH * scale, ty: 0 };
 }
 
-/** Real-world GAA goal approximated in world units (1 unit ≈ 0.9 m). */
+/**
+ * Metres per world unit along the pitch: the board's endlines are 156 units
+ * apart (x = 2 … 158) and represent a 145 m GAA pitch.
+ */
+export const GOAL_VIEW_METRES_PER_UNIT = 145 / 156;
+const m = (metres: number) => metres / GOAL_VIEW_METRES_PER_UNIT;
+
+/**
+ * GAA goal in world units, from the playing-rules dimensions: uprights 6.5 m
+ * apart, crossbar 2.5 m above the ground, uprights at least 7 m high (so they
+ * extend well above the crossbar). The net is attached to the crossbar and
+ * runs back to the ground behind the goal line.
+ */
 export const GOAL_VIEW_GOAL = {
   /** Endline offset from each board edge (gaa-goal-markings LEFT/RIGHT_ENDLINE_X). */
   endlineInset: 2,
-  halfWidth: 3.6,
-  crossbarHeight: 2.8,
-  postHeight: 7.8,
-  netDepthGround: 2.2,
-  netDepthCrossbar: 1.0,
+  halfWidth: m(6.5 / 2),
+  crossbarHeight: m(2.5),
+  postHeight: m(7),
+  netDepthGround: m(2),
+  netDepthCrossbar: m(1),
 } as const;
 
 export type GoalViewProjection = {

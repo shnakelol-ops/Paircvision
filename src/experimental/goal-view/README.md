@@ -24,12 +24,37 @@ Views: **Top-Down** (unchanged production path), **Left End**, **Right End**.
 |---|---|
 | `goalViewCamera.ts` | Pure camera maths: world↔board frames, world→texture matrix, projection, fit, ground-shadow of 3D points. |
 | `goalViewCamera.test.ts` | Unit tests (frames round-trip, token upright invariant, perspective shape, crop, 3D→ground consistency). |
+| `goalViewGoalGeometry.ts` | Pure 3D GAA goal geometry (uprights, crossbar, net panels and mesh lines) for near and far goals. |
+| `goalViewGoalGeometry.test.ts` | Unit tests (rules dimensions, uprights above crossbar, net behind the line, near/far symmetry, decal ≡ underlay, default camera ≡ DSS proportions). |
 | `createGoalViewLens.ts` | Pixi lens: offscreen pass, mesh, upright-player stretch, depth sort, upright goals, diagnostics. |
 | `GoalViewPrototypePage.tsx` | Internal page: view switcher, playback, recording (production `useCanvasRecorder`), camera sliders, metrics. |
 
 Production code touched: one additive, read-only getter
 (`getExperimentalRenderTargets`) on the shell handle, and the internal route
 in `main.tsx`.
+
+## Default camera — configuration C ("DSS-inspired")
+
+Height 112 · Behind 92 · Aim 80 · Near crop 30 (all still slider-adjustable).
+Reproduces the DSS Coaching reference's proportions: far endline 52% of the
+near endline's width, halfway line 34% down from the far end.
+
+## Upright goals
+
+GAA rules dimensions (6.5 m between uprights, crossbar at 2.5 m, uprights
+7 m), converted at 145 m per 156 board units. Each goal is drawn twice from the
+same 3D geometry:
+
+- **Decal** — the goal's ground shadow (camera → ground central projection),
+  drawn inside the board texture at zIndex 9, so the mesh projects it back to
+  an upright goal. Below items, routes, zones, ball and players.
+- **Underlay** — the same geometry projected straight to screen, drawn beneath
+  the mesh, so the parts that fall outside the pitch quad (posts rising above
+  the far end, net behind the near end) are still visible.
+
+Design choice: players always draw over both goals (including a goalkeeper
+standing in front of the near goal, who physically would be behind its frame)
+so goals never obscure tactical movement.
 
 ## Verified experimentally (headless Chromium, SwiftShader)
 
@@ -55,8 +80,9 @@ in `main.tsx`.
   8 px/unit is slightly soft at the near end on 2× screens.
 - Portrait phones leave the top ~40% of the canvas empty: a long pitch seen
   end-on is wide and short. Near crop helps; landscape fills ~93% height.
-- Near goal art reads as a "ladder"; far goal is tiny. The flat top-down goal
-  markings still render on the turf underneath.
+- The flat top-down goal markings (pitch renderer) still render on the turf
+  under the upright goals; they are inside the shell's pitch root, which the
+  lens does not modify.
 - Far-end players are small on phones (~12–15 px).
 - Ball has no height (data has none); passes read as ground passes.
 - DOM overlays (text labels, watermark) are not projected; the input layer is

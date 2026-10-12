@@ -27,16 +27,15 @@ import {
   type Application,
 } from "pixi.js";
 
+import { buildGoalGeometry, type Point3, type Segment3 } from "./goalViewGoalGeometry";
 import {
   DEFAULT_GOAL_VIEW_CAMERA,
   GOAL_VIEW_BOARD_LENGTH,
   GOAL_VIEW_BOARD_WIDTH,
-  GOAL_VIEW_GOAL,
   boardToWorld,
   createGoalViewProjection,
   worldToBoard,
   worldToTextureMatrix,
-  type BoardPoint,
   type GoalViewCameraParams,
   type GoalViewEnd,
   type GoalViewProjection,
@@ -97,6 +96,8 @@ export type GoalViewDiagnostics = {
   worldBecameRenderGroup: boolean;
   /** Children on the stage during the main pass. */
   stageChildren: string[];
+  /** Goal decal draws below players/ball/routes and the underlay draws below the mesh. */
+  goalsBelowPlayers: boolean;
 };
 
 export type GoalViewLens = {
@@ -134,18 +135,24 @@ export function createGoalViewLens(targets: {
   const wrapper = new Container();
   wrapper.label = "goal-view-offscreen-wrapper";
 
-  // Far goal: drawn in WORLD space as a ground "shadow" of the 3D goal, so it
-  // projects to an upright goal and is correctly occluded by players in front.
-  const farGoalDecal = new Graphics();
-  farGoalDecal.label = "goal-view-far-goal-decal";
-  farGoalDecal.eventMode = "none";
-  farGoalDecal.zIndex = 9; // above drawings (5–6), below items (11) / tokens (20)
+  // Upright goals are drawn twice from the same 3D geometry so they line up
+  // exactly and never cover players:
+  //  - goalDecal: the part that lands on the pitch, drawn INSIDE the board
+  //    texture as the goal's ground shadow (camera → ground central
+  //    projection), so the mesh projects it back to an upright goal. It sits
+  //    above drawings (5–6) but below items (11), routes (12), zones (13),
+  //    ball (15) and players (20), so tactical movement always reads on top.
+  //  - goalUnderlay: the part that projects beyond the pitch quad (posts rising
+  //    above the far end, net behind the near end), drawn in screen space
+  //    BENEATH the mesh, so wherever the pitch is drawn the decal shows instead.
+  const goalDecal = new Graphics();
+  goalDecal.label = "goal-view-goal-decal";
+  goalDecal.eventMode = "none";
+  goalDecal.zIndex = 9;
 
-  // Near goal: closest object to the camera, so a plain screen-space overlay
-  // above the mesh is the correct occlusion.
-  const nearGoalOverlay = new Graphics();
-  nearGoalOverlay.label = "goal-view-near-goal-overlay";
-  nearGoalOverlay.eventMode = "none";
+  const goalUnderlay = new Graphics();
+  goalUnderlay.label = "goal-view-goal-underlay";
+  goalUnderlay.eventMode = "none";
 
   const textureTransform = new Matrix();
   const inverseWorld = new Matrix();
@@ -184,80 +191,65 @@ export function createGoalViewLens(targets: {
     drawGoals();
   };
 
-  const strokeSegment = (
-    g: Graphics,
-    p: { x: number; y: number } | null,
-    q: { x: number; y: number } | null,
-    width: number,
-    color: number,
-    alpha: number,
-  ) => {
-    if (!p || !q) return;
-    g.moveTo(p.x, p.y).lineTo(q.x, q.y).stroke({ width, color, alpha, cap: "round" });
-  };
-
-  /** 3D goal frame as board-space segments: [from(a,b,h), to(a,b,h), kind]. */
-  const goalSegments = (endlineB: number, outward: 1 | -1) => {
-    const G = GOAL_VIEW_GOAL;
-    const l = GOAL_VIEW_BOARD_WIDTH / 2 - G.halfWidth;
-    const r = GOAL_VIEW_BOARD_WIDTH / 2 + G.halfWidth;
-    const backGround = endlineB + outward * G.netDepthGround;
-    const backBar = endlineB + outward * G.netDepthCrossbar;
-    type P = [number, number, number];
-    const seg = (p: P, q: P, kind: "post" | "net") => ({ p, q, kind });
-    return [
-      // Net (drawn first so posts sit on top).
-      seg([l, backGround, 0], [r, backGround, 0], "net"),
-      seg([l, backBar, G.crossbarHeight], [r, backBar, G.crossbarHeight], "net"),
-      seg([l, backBar, G.crossbarHeight], [l, backGround, 0], "net"),
-      seg([r, backBar, G.crossbarHeight], [r, backGround, 0], "net"),
-      seg([l, endlineB, G.crossbarHeight], [l, backBar, G.crossbarHeight], "net"),
-      seg([r, endlineB, G.crossbarHeight], [r, backBar, G.crossbarHeight], "net"),
-      seg([l, endlineB, 0], [l, backGround, 0], "net"),
-      seg([r, endlineB, 0], [r, backGround, 0], "net"),
-      // Frame.
-      seg([l, endlineB, 0], [l, endlineB, G.postHeight], "post"),
-      seg([r, endlineB, 0], [r, endlineB, G.postHeight], "post"),
-      seg([l, endlineB, G.crossbarHeight], [r, endlineB, G.crossbarHeight], "post"),
-    ];
-  };
-
   const drawGoals = () => {
-    nearGoalOverlay.clear();
-    farGoalDecal.clear();
+    goalDecal.clear();
+    goalUnderlay.clear();
     if (!end || !projection || !options.uprightGoals) return;
     const proj = projection;
-    const inset = GOAL_VIEW_GOAL.endlineInset;
+    const currentEnd = end;
 
-    // Near goal → screen space.
-    const nearB = GOAL_VIEW_BOARD_LENGTH - inset;
-    const nearScale = proj.groundScale(GOAL_VIEW_BOARD_WIDTH / 2, nearB).across;
-    for (const s of goalSegments(nearB, 1)) {
-      strokeSegment(
-        nearGoalOverlay,
-        proj.project(...s.p),
-        proj.project(...s.q),
-        s.kind === "post" ? Math.max(1.5, nearScale * 0.28) : Math.max(0.75, nearScale * 0.07),
-        0xffffff,
-        s.kind === "post" ? 0.96 : 0.45,
-      );
-    }
-
-    // Far goal → ground shadow in WORLD units inside the shell's world.
-    const farB = inset;
-    const toWorld = (p: [number, number, number]) => {
-      const g: BoardPoint = proj.groundShadowOf(p[0], p[1], p[2]);
-      return boardToWorld(end!, g);
+    // Screen px per board unit (across) at a 3D point: drives every width so
+    // goals thin out with distance exactly like the pitch does.
+    const screenScaleAt = (p: Point3) => {
+      const q0 = proj.project(p[0], p[1], p[2]);
+      const q1 = proj.project(p[0] + 0.5, p[1], p[2]);
+      return q0 && q1 ? Math.hypot(q1.x - q0.x, q1.y - q0.y) / 0.5 : 0;
     };
-    for (const s of goalSegments(farB, -1)) {
-      strokeSegment(
-        farGoalDecal,
-        toWorld(s.p),
-        toWorld(s.q),
-        s.kind === "post" ? 0.55 : 0.16,
-        0xffffff,
-        s.kind === "post" ? 0.98 : 0.5,
-      );
+    const shadowWorld = (p: Point3) => boardToWorld(currentEnd, proj.groundShadowOf(p[0], p[1], p[2]));
+    const mid = (s: Segment3): Point3 => [
+      (s.from[0] + s.to[0]) / 2,
+      (s.from[1] + s.to[1]) / 2,
+      (s.from[2] + s.to[2]) / 2,
+    ];
+
+    type Stroke = { color: number; alpha: number; units: number; minPx: number };
+    const stroke = (s: Segment3, style: Stroke) => {
+      const m = mid(s);
+      const px = Math.max(style.minPx, screenScaleAt(m) * style.units);
+      // Underlay: straight screen-space projection.
+      const p = proj.project(...s.from);
+      const q = proj.project(...s.to);
+      if (p && q) {
+        goalUnderlay.moveTo(p.x, p.y).lineTo(q.x, q.y).stroke({ width: px, color: style.color, alpha: style.alpha, cap: "round" });
+      }
+      // Decal: ground shadow, width converted back to world units at the shadow.
+      const g = proj.groundShadowOf(m[0], m[1], m[2]);
+      const groundPx = proj.groundScale(g.a, g.b).across;
+      const w0 = shadowWorld(s.from);
+      const w1 = shadowWorld(s.to);
+      goalDecal
+        .moveTo(w0.x, w0.y)
+        .lineTo(w1.x, w1.y)
+        .stroke({ width: px / Math.max(1e-6, groundPx), color: style.color, alpha: style.alpha, cap: "round" });
+    };
+    const fillPanel = (panel: Point3[], color: number, alpha: number) => {
+      const screen = panel.map((p) => proj.project(...p));
+      if (screen.every((p) => p)) {
+        goalUnderlay.poly(screen.flatMap((p) => [p!.x, p!.y])).fill({ color, alpha });
+      }
+      goalDecal.poly(panel.flatMap((p) => { const w = shadowWorld(p); return [w.x, w.y]; })).fill({ color, alpha });
+    };
+
+    const NET_LINE: Stroke = { color: 0xe8eef4, alpha: 0.5, units: 0.05, minPx: 0.6 };
+    const FRAME_OUTLINE: Stroke = { color: 0x07170f, alpha: 0.45, units: 0.5, minPx: 2.2 };
+    const FRAME: Stroke = { color: 0xfbfdff, alpha: 1, units: 0.28, minPx: 1.3 };
+
+    for (const goal of [buildGoalGeometry("far"), buildGoalGeometry("near")]) {
+      for (const panel of goal.netPanels) fillPanel(panel, 0xffffff, 0.13);
+      for (const line of goal.netLines) stroke(line, NET_LINE);
+      const frame = [...goal.uprights, goal.crossbar];
+      for (const part of frame) stroke(part, FRAME_OUTLINE);
+      for (const part of frame) stroke(part, FRAME);
     }
   };
 
@@ -339,13 +331,13 @@ export function createGoalViewLens(targets: {
     } else {
       worldAlphaBeforeLens = world.alpha;
     }
-    world.addChild(farGoalDecal);
+    world.addChild(goalDecal);
     world.sortChildren();
     mesh = new PerspectiveMesh({ texture: renderTexture!, verticesX: 32, verticesY: 32 });
     mesh.label = "goal-view-mesh";
     mesh.eventMode = "none";
     app.stage.addChild(mesh);
-    app.stage.addChild(nearGoalOverlay);
+    app.stage.addChildAt(goalUnderlay, app.stage.getChildIndex(mesh));
     app.ticker.add(onTick, undefined, UPDATE_PRIORITY.LOW + 1);
     app.renderer.on("resize", onResize);
     activeStrategy = strategy;
@@ -360,8 +352,8 @@ export function createGoalViewLens(targets: {
       mesh.destroy();
       mesh = null;
     }
-    app.stage.removeChild(nearGoalOverlay);
-    world.removeChild(farGoalDecal);
+    app.stage.removeChild(goalUnderlay);
+    world.removeChild(goalDecal);
     if (activeStrategy === "wrapper") {
       wrapper.removeChild(world);
       app.stage.addChildAt(world, Math.min(worldIndexOnStage, app.stage.children.length));
@@ -441,10 +433,10 @@ export function createGoalViewLens(targets: {
       // 1. Main pass with only the board: hide lens-owned display objects.
       const meshVisible = mesh?.visible ?? false;
       if (mesh) mesh.visible = false;
-      nearGoalOverlay.visible = false;
+      goalUnderlay.visible = false;
       const mainPixels = app.renderer.extract.pixels({ target: app.stage }).pixels;
       if (mesh) mesh.visible = meshVisible;
-      nearGoalOverlay.visible = true;
+      goalUnderlay.visible = true;
       // 2. Offscreen texture content.
       const texPixels = renderTexture ? app.renderer.extract.pixels({ target: renderTexture }).pixels : new Uint8ClampedArray();
       // 3. Hit test where a player sits on the FLAT board (what top-down input would target).
@@ -479,14 +471,19 @@ export function createGoalViewLens(targets: {
         feedbackLoop: feedback,
         worldBecameRenderGroup: !worldWasRenderGroup && world.isRenderGroup,
         stageChildren: app.stage.children.map((c) => c.label || c.constructor.name),
+        goalsBelowPlayers:
+          goalDecal.parent === world &&
+          goalDecal.zIndex < tokenLayer.zIndex &&
+          goalDecal.zIndex < ballLayer.zIndex &&
+          (!mesh || app.stage.getChildIndex(goalUnderlay) < app.stage.getChildIndex(mesh)),
       };
     },
     destroy: () => {
       detach();
       renderTexture?.destroy(true);
       renderTexture = null;
-      farGoalDecal.destroy();
-      nearGoalOverlay.destroy();
+      goalDecal.destroy();
+      goalUnderlay.destroy();
       wrapper.destroy();
     },
   };
