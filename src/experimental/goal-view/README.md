@@ -271,3 +271,53 @@ It needs `createGoalViewProjection` to accept an aim point and distance
 instead of Camera C's fixed centre. The rest of the lens is unchanged.
 Bounding boxes must be recomputed when content moves; freeze the box during
 playback so the camera doesn't drift.
+
+## Orbit camera — Phase 2: Tactical Slate and Tactical Sequence (experimental, flag-gated)
+
+Both boards use the same implementation: the shared `useGoalView` hook,
+`GoalViewReadOnlyShield` and `GoalViewQuickToggle` in `sequenceGoalView.tsx`.
+Each board passes `camera={goalView.camera}` to those two components; nothing
+else on the boards changed.
+
+- **Gestures (on the read-only shield):** one-finger horizontal drag rotates
+  360°; vertical drag tilts (20°–75°); a 6 px dead zone means taps do
+  nothing; a second finger ends the drag. Updates are coalesced to one per
+  animation frame. There is no inertia and no automatic rotation.
+- **Controls:** two 44 px buttons beside the View selector, outside the pitch
+  (above it, or under the selector in compact landscape Sequence):
+  - **Fit pitch:** a single fixed zoom, computed once, at which the whole
+    pitch and both goals fit at every yaw. Solves side-view goal cropping on
+    portrait phones without any zoom change while rotating. Tap again for
+    Camera C framing.
+  - **Reset Camera:** back to Camera C for the selected end. Disabled when
+    nothing has moved.
+  
+  Choosing Left End or Right End always starts from that end's preset.
+- **Read-only:** editing stays in Top-Down. Sequence's editing status pill
+  ("Ball Assigned · Moves 3") is hidden while a goal view shows, because it
+  covered the camera controls on 360 px phones.
+- **Lens:** a camera update that changes nothing is ignored (no goal
+  rebuild); the board texture is never regenerated because of the camera.
+- **Sampling** stays experimental and off by default. On the flagged preview
+  only, `?goalviewSampling=mip` or `?goalviewSampling=mip-aniso` lets you test
+  it on real devices.
+- **Internal route:** `/internal/goal-view` is registered only when the
+  experiment flag is on (branch preview, or a dev build with `?goalview`).
+  Production builds contain no route, chunk, lens or camera controls.
+
+### Content-centred framing for small training areas (follow-up, not built)
+
+Safest approach:
+1. Compute an aim box only when entering a goal view or pressing Fit: the
+   selected practice area, else the bounding box of players, items and
+   drawings, with a margin. Freeze it during playback so the camera never
+   drifts.
+2. Pass that box to `createGoalViewProjection` as the aim point plus an eye
+   distance that fits the box's circumscribed circle at the current tilt.
+   That stays constant across yaw, so there is still no breathing.
+3. Optionally render only the box into the texture at a higher px/unit, for
+   sharper drills at the same cost.
+4. Draw goals only when the box includes an endline.
+
+It changes only the camera inputs; the lens, gestures and boards are
+unaffected.

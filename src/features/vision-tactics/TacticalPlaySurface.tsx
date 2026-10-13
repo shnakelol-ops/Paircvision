@@ -2538,7 +2538,9 @@ export default function TacticalPlaySurface() {
           }}
         />
 
-        <div style={INFO_PILL_STYLE}>{coachInfoLabel}</div>
+        {/* Editing status; hidden in the read-only (experimental) goal view,
+            where it would cover the camera controls on 360px phones. */}
+        {goalView.isGoalView ? null : <div style={INFO_PILL_STYLE}>{coachInfoLabel}</div>}
 
         <button
           type="button"
