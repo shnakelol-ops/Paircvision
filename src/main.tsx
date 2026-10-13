@@ -14,6 +14,7 @@ import VisionTrainingShell from "./vision-training/VisionTrainingShell";
 import PitchFlowSettingsShell from "./pages/PitchFlowSettingsShell";
 import InternalLauncherPage from "./pages/InternalLauncherPage";
 import TeamSheetScreen from "./internal-team-sheet/TeamSheetScreen";
+import { GOAL_VIEW_EXPERIMENT_ENABLED } from "./experimental/goal-view/sequenceGoalView";
 
 const boardShell = () => <PitchFlowCoachShell initialTab="home" />;
 const VISION_BOARD_PATH = "/vision-board";
@@ -30,10 +31,14 @@ const PRO_TAGGER_PATH    = "/pro-tagger";
 const INTERNAL_PATH      = "/internal";
 const INTERNAL_TEAM_SHEET_PATH = "/internal/team-sheet";
 const INTERNAL_SLATE_RUGBY_PATH = "/internal/slate/rugby";
-// EXPERIMENTAL Goal View prototype — internal URL only, lazy-loaded so the
-// prototype is never part of any production surface's bundle path.
+// EXPERIMENTAL Goal View prototype — internal URL only, and only where the
+// Goal View experiment flag is on (the experimental branch preview, or a dev
+// build with ?goalview). The flag is a literal false in production builds, so
+// the route and its lazy chunk are compiled out there.
 const INTERNAL_GOAL_VIEW_PATH = "/internal/goal-view";
-const GoalViewPrototypePage = lazy(() => import("./experimental/goal-view/GoalViewPrototypePage"));
+const GoalViewPrototypePage = GOAL_VIEW_EXPERIMENT_ENABLED
+  ? lazy(() => import("./experimental/goal-view/GoalViewPrototypePage"))
+  : null;
 
 function redirectToBoard() {
   if (window.location.pathname !== "/board") {
@@ -146,7 +151,7 @@ function pickRootComponent() {
   if (normalizedPath === INTERNAL_TEAM_SHEET_PATH) {
     return TeamSheetScreen;
   }
-  if (normalizedPath === INTERNAL_GOAL_VIEW_PATH) {
+  if (GoalViewPrototypePage && normalizedPath === INTERNAL_GOAL_VIEW_PATH) {
     return () => (
       <Suspense fallback={null}>
         <GoalViewPrototypePage />

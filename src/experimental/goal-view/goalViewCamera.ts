@@ -354,3 +354,41 @@ export function createGoalViewProjection(
 
   return { camera, screen, project, corners, groundScale, groundShadowOf, orbit, yawRad, cameraGroundScale, depthOf };
 }
+
+/**
+ * One fixed zoom (≤ 1) at which the whole pitch and both goals stay on screen
+ * at EVERY yaw for the given tilt. Used by the explicit "Fit pitch" control:
+ * the zoom is chosen once, then stays constant while rotating (no breathing).
+ * Portrait side views otherwise crop the goals at Camera C's framing.
+ */
+export function wholePitchFitZoom(
+  camera: GoalViewCameraParams,
+  screen: { width: number; height: number },
+  elevationDeg: number | null,
+  paddingPx = 12,
+): number {
+  const W = GOAL_VIEW_BOARD_WIDTH;
+  const L = GOAL_VIEW_BOARD_LENGTH;
+  const G = GOAL_VIEW_GOAL;
+  const points: Array<[number, number, number]> = [[0, 0, 0], [W, 0, 0], [W, L, 0], [0, L, 0]];
+  for (const b of [G.endlineInset, L - G.endlineInset]) {
+    for (const a of [W / 2 - G.halfWidth, W / 2 + G.halfWidth]) points.push([a, b, G.postHeight]);
+  }
+  const limit = (anchor: number, value: number, max: number) => {
+    const d = value - anchor;
+    if (Math.abs(d) < 1e-9) return Infinity;
+    return d > 0 ? (max - paddingPx - anchor) / d : (paddingPx - anchor) / d;
+  };
+  let zoom = 1;
+  for (let yaw = 0; yaw < 360; yaw += 5) {
+    const p = createGoalViewProjection(camera, screen, { orbit: { yawDeg: yaw, elevationDeg, zoom: 1 } });
+    const anchor = p.project(W / 2, L - camera.lookAtUnits);
+    if (!anchor) continue;
+    for (const [a, b, h] of points) {
+      const q = p.project(a, b, h);
+      if (!q) continue;
+      zoom = Math.min(zoom, limit(anchor.x, q.x, screen.width), limit(anchor.y, q.y, screen.height));
+    }
+  }
+  return Math.max(GOAL_VIEW_ORBIT_LIMITS.minZoom, Math.min(1, zoom));
+}

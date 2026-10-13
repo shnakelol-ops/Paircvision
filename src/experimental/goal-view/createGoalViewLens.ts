@@ -164,6 +164,11 @@ export type GoalViewRenderTargets = {
   extraBillboardLayers?: readonly GoalViewBillboardLayer[];
 };
 
+function sameOrbit(a: GoalViewOrbit | null, b: GoalViewOrbit | null): boolean {
+  if (isIdentityOrbit(a) && isIdentityOrbit(b)) return true;
+  return !!a && !!b && a.yawDeg === b.yawDeg && a.elevationDeg === b.elevationDeg && a.zoom === b.zoom;
+}
+
 export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens {
   const { app, world, tokenLayer, ballLayer } = targets;
   const extraBillboardLayers = targets.extraBillboardLayers ?? [];
@@ -514,6 +519,10 @@ export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens
       recomputeProjection();
     },
     setOptions: (patch) => {
+      // A camera move that changes nothing (e.g. a drag inside the dead zone,
+      // or a clamped tilt) must not rebuild goals or touch the texture.
+      const keys = Object.keys(patch) as Array<keyof GoalViewLensOptions>;
+      if (keys.length === 1 && keys[0] === "orbit" && sameOrbit(patch.orbit ?? null, options.orbit)) return;
       const strategyChanged = patch.strategy && patch.strategy !== options.strategy;
       options = { ...options, ...patch, camera: { ...options.camera, ...(patch.camera ?? {}) } };
       if (!end) return;

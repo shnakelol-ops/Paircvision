@@ -10,16 +10,41 @@
 //     the lens before the shell is destroyed (unmount or WebGL remount).
 //   - GoalViewModeRow / GoalViewReadOnlyShield: TOOLS-panel control and the
 //     pitch-input shield (read-only; playback and recording stay available).
+//     With a camera, the shield is also the one-finger orbit surface.
+//   - GoalViewCameraControls: Fit pitch + Reset Camera, beside the selector.
 //
 // Enable: automatically on the experimental branch's Vercel preview (any of
 // its URLs); VITE_EXPERIMENTAL_GOAL_VIEW=true at build time; or `?goalview` in
 // a dev build (`npm run dev`). Never persisted; no saved-board fields are read
 // or written.
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 import type { GoalViewLens, GoalViewLensOptions, GoalViewRenderTargets } from "./createGoalViewLens";
-import { quarterTurnsForMode, type GoalViewMode } from "./goalViewCamera";
+import {
+  DEFAULT_GOAL_VIEW_CAMERA,
+  DEFAULT_GOAL_VIEW_ORBIT,
+  isIdentityOrbit,
+  quarterTurnsForMode,
+  wholePitchFitZoom,
+  type GoalViewMode,
+  type GoalViewOrbit,
+} from "./goalViewCamera";
+import {
+  IDLE_ORBIT_GESTURE,
+  orbitGestureDown,
+  orbitGestureMove,
+  orbitGestureUp,
+  type OrbitGestureState,
+} from "./goalViewOrbitGesture";
 
 /**
  * The experimental branch's Vercel preview (branch alias). Goal View can be
@@ -97,6 +122,27 @@ export const GOAL_VIEW_MODE_OPTIONS: ReadonlyArray<{ id: GoalViewMode; label: st
   { id: "right-end", label: "Right End" },
 ];
 
+/** Pointer handlers for the Goal View shield: one-finger orbit. */
+export type GoalViewOrbitSurfaceProps = {
+  onPointerDown: (e: ReactPointerEvent<HTMLElement>) => void;
+  onPointerMove: (e: ReactPointerEvent<HTMLElement>) => void;
+  onPointerUp: (e: ReactPointerEvent<HTMLElement>) => void;
+  onPointerCancel: (e: ReactPointerEvent<HTMLElement>) => void;
+};
+
+export type GoalViewCamera = {
+  /** Presentation-only camera state; never part of any board data. */
+  orbit: GoalViewOrbit;
+  /** False while the selected end's Camera C preset is showing. */
+  moved: boolean;
+  /** True while "Fit pitch" (one fixed zoom-out) is on. */
+  fitted: boolean;
+  reset: () => void;
+  /** Toggles one fixed zoom at which the whole pitch fits at every angle. */
+  toggleFit: () => void;
+  surfaceProps: GoalViewOrbitSurfaceProps;
+};
+
 export type SequenceGoalView = {
   mode: GoalViewMode;
   setMode: (mode: GoalViewMode) => void;
@@ -104,7 +150,20 @@ export type SequenceGoalView = {
   isGoalView: boolean;
   /** Must run before the shell it is attached to is destroyed. Stable identity. */
   releaseBeforeShellDestroy: () => void;
+  camera: GoalViewCamera;
 };
+
+/**
+ * Experimental sampling override for real-device testing on the flagged
+ * preview only: `?goalviewSampling=mip` or `=mip-aniso`. Default off.
+ */
+function readSamplingOverride(): Partial<GoalViewLensOptions> {
+  if (typeof window === "undefined") return {};
+  const value = new URLSearchParams(window.location.search).get("goalviewSampling");
+  if (value === "mip") return { mipmaps: true, anisotropy: 1 };
+  if (value === "mip-aniso") return { mipmaps: true, anisotropy: 8 };
+  return {};
+}
 
 /**
  * Anything the shared lens can attach to: the Tactical Sequence shell handle
@@ -119,15 +178,25 @@ export type GoalViewHost = {
 
 export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
   const [mode, setModeState] = useState<GoalViewMode>("top-down");
+  const [orbit, setOrbit] = useState<GoalViewOrbit>(DEFAULT_GOAL_VIEW_ORBIT);
   const lensRef = useRef<{ lens: GoalViewLens; shell: GoalViewHost } | null>(null);
+  const orbitRef = useRef(orbit);
+  orbitRef.current = orbit;
+  const gestureRef = useRef<OrbitGestureState>(IDLE_ORBIT_GESTURE);
+  const pendingOrbitRef = useRef<GoalViewOrbit | null>(null);
+  const frameRef = useRef(0);
 
   const release = useCallback(() => {
     lensRef.current?.lens.destroy();
     lensRef.current = null;
   }, []);
 
+  // Choosing a view always starts from that end's Camera C preset.
   const setMode = useCallback((next: GoalViewMode) => {
-    if (GOAL_VIEW_EXPERIMENT_ENABLED) setModeState(next);
+    if (!GOAL_VIEW_EXPERIMENT_ENABLED) return;
+    gestureRef.current = IDLE_ORBIT_GESTURE;
+    setOrbit(DEFAULT_GOAL_VIEW_ORBIT);
+    setModeState(next);
   }, []);
 
   useEffect(() => {
@@ -146,17 +215,93 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
       if (cancelled) return;
       if (!lensRef.current) {
         const lens = createGoalViewLens(shell.getExperimentalRenderTargets());
-        if (shell.lensOptions) lens.setOptions(shell.lensOptions);
+        lens.setOptions({ ...shell.lensOptions, ...readSamplingOverride() });
         lensRef.current = { lens, shell };
       }
       lensRef.current.lens.setEnd(mode);
+      lensRef.current.lens.setOptions({ orbit: orbitRef.current });
     });
     return () => {
       cancelled = true;
     };
   }, [shell, mode, release]);
 
-  return { mode, setMode, isGoalView: GOAL_VIEW_EXPERIMENT_ENABLED && mode !== "top-down", releaseBeforeShellDestroy: release };
+  if (import.meta.env.DEV && typeof window !== "undefined") {
+    // Dev-server test hook only (compiled out of every build): browser tests
+    // read token positions and the camera state to drive real gestures.
+    (window as unknown as { __goalViewDebug?: unknown }).__goalViewDebug = {
+      getTargets: () => shell?.getExperimentalRenderTargets() ?? null,
+      getOrbit: () => orbitRef.current,
+      getMetrics: () => lensRef.current?.lens.getMetrics() ?? null,
+    };
+  }
+
+  // Camera moves only change the lens's projection: never the board.
+  useEffect(() => {
+    if (!GOAL_VIEW_EXPERIMENT_ENABLED) return;
+    lensRef.current?.lens.setOptions({ orbit });
+  }, [orbit]);
+
+  useEffect(() => () => cancelAnimationFrame(frameRef.current), []);
+
+  const reset = useCallback(() => {
+    gestureRef.current = IDLE_ORBIT_GESTURE;
+    setOrbit(DEFAULT_GOAL_VIEW_ORBIT);
+  }, []);
+
+  const toggleFit = useCallback(() => {
+    const current = orbitRef.current;
+    if (current.zoom !== 1) {
+      setOrbit({ ...current, zoom: 1 });
+      return;
+    }
+    const screen = lensRef.current?.lens.getProjection()?.screen;
+    if (!screen) return;
+    setOrbit({ ...current, zoom: wholePitchFitZoom(DEFAULT_GOAL_VIEW_CAMERA, screen, current.elevationDeg) });
+  }, []);
+
+  const surfaceProps = useMemo<GoalViewOrbitSurfaceProps>(() => {
+    // One state update per animation frame, however fast pointer events arrive.
+    const queue = (next: GoalViewOrbit) => {
+      pendingOrbitRef.current = next;
+      if (frameRef.current) return;
+      frameRef.current = requestAnimationFrame(() => {
+        frameRef.current = 0;
+        const pending = pendingOrbitRef.current;
+        pendingOrbitRef.current = null;
+        if (pending) setOrbit(pending);
+      });
+    };
+    const end = (e: ReactPointerEvent<HTMLElement>) => {
+      gestureRef.current = orbitGestureUp(gestureRef.current, { id: e.pointerId });
+    };
+    return {
+      onPointerDown: (e) => {
+        gestureRef.current = orbitGestureDown(gestureRef.current, { id: e.pointerId, x: e.clientX, y: e.clientY }, orbitRef.current);
+        if (gestureRef.current.pointerId === e.pointerId) e.currentTarget.setPointerCapture?.(e.pointerId);
+      },
+      onPointerMove: (e) => {
+        const result = orbitGestureMove(gestureRef.current, { id: e.pointerId, x: e.clientX, y: e.clientY }, DEFAULT_GOAL_VIEW_CAMERA);
+        gestureRef.current = result.state;
+        if (result.orbit) queue(result.orbit);
+      },
+      onPointerUp: end,
+      onPointerCancel: end,
+    };
+  }, []);
+
+  const camera = useMemo<GoalViewCamera>(
+    () => ({ orbit, moved: !isIdentityOrbit(orbit), fitted: orbit.zoom !== 1, reset, toggleFit, surfaceProps }),
+    [orbit, reset, toggleFit, surfaceProps],
+  );
+
+  return {
+    mode,
+    setMode,
+    isGoalView: GOAL_VIEW_EXPERIMENT_ENABLED && mode !== "top-down",
+    releaseBeforeShellDestroy: release,
+    camera,
+  };
 }
 
 /** Tactical Sequence's name for the shared hook (unchanged behaviour). */
@@ -247,12 +392,17 @@ export function GoalViewQuickToggle(props: {
   mode: GoalViewMode;
   onChange: (mode: GoalViewMode) => void;
   placement?: "above" | "side";
+  /** Shows the camera controls (Fit pitch, Reset Camera) beside the selector in a goal view. */
+  camera?: GoalViewCamera;
 }) {
   const index = GOAL_VIEW_MODE_OPTIONS.findIndex((o) => o.id === props.mode);
   const current = GOAL_VIEW_MODE_OPTIONS[index] ?? GOAL_VIEW_MODE_OPTIONS[0];
   const next = GOAL_VIEW_MODE_OPTIONS[(index + 1) % GOAL_VIEW_MODE_OPTIONS.length];
   const placement = props.placement ?? "above";
+  const camera = props.mode !== "top-down" ? props.camera : undefined;
   return (
+    <>
+    {camera ? <GoalViewCameraControls camera={camera} placement={placement} /> : null}
     <button
       type="button"
       style={{ ...QUICK_TOGGLE_BUTTON_STYLE, ...QUICK_TOGGLE_PLACEMENT[placement] }}
@@ -263,6 +413,73 @@ export function GoalViewQuickToggle(props: {
     >
       <span style={QUICK_TOGGLE_PILL_STYLE}>View: {current.label} ▸</span>
     </button>
+    </>
+  );
+}
+
+// Camera controls: two 44px icon buttons in the same row as the selector,
+// directly to its left ("above"), or directly under it ("side"). Outside the
+// pitch box, like the selector.
+const CAMERA_BUTTON_SIZE = 44;
+const CAMERA_CONTROLS_PLACEMENT: Record<"above" | "side", CSSProperties> = {
+  above: { right: QUICK_TOGGLE_WIDTH + 4, bottom: "calc(100% + 2px)", flexDirection: "row" },
+  side: { left: "calc(100% + 6px)", top: QUICK_TOGGLE_HIT_HEIGHT + 2, flexDirection: "row" },
+};
+const CAMERA_CONTROLS_STYLE: CSSProperties = {
+  position: "absolute",
+  zIndex: 3,
+  display: "flex",
+  gap: 4,
+};
+const CAMERA_BUTTON_STYLE: CSSProperties = {
+  width: CAMERA_BUTTON_SIZE,
+  height: CAMERA_BUTTON_SIZE,
+  padding: 0,
+  margin: 0,
+  border: "none",
+  background: "transparent",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  touchAction: "manipulation",
+  WebkitTapHighlightColor: "transparent",
+};
+const CAMERA_PILL_STYLE: CSSProperties = {
+  ...QUICK_TOGGLE_PILL_STYLE,
+  width: 36,
+  padding: 0,
+  fontSize: 16,
+};
+
+export function GoalViewCameraControls({ camera, placement }: { camera: GoalViewCamera; placement: "above" | "side" }) {
+  const activePill = (on: boolean): CSSProperties =>
+    on ? { ...CAMERA_PILL_STYLE, background: "rgba(124, 255, 114, 0.9)", color: "#06150F" } : CAMERA_PILL_STYLE;
+  return (
+    <div style={{ ...CAMERA_CONTROLS_STYLE, ...CAMERA_CONTROLS_PLACEMENT[placement] }} data-experimental="goal-view-camera-controls">
+      <button
+        type="button"
+        style={CAMERA_BUTTON_STYLE}
+        aria-label={camera.fitted ? "Fit pitch: on. Tap for the normal framing" : "Fit pitch: show the whole pitch at every angle"}
+        aria-pressed={camera.fitted}
+        title="Fit pitch"
+        data-action="goal-view-fit"
+        onClick={camera.toggleFit}
+      >
+        <span style={activePill(camera.fitted)} aria-hidden="true">⤢</span>
+      </button>
+      <button
+        type="button"
+        style={{ ...CAMERA_BUTTON_STYLE, opacity: camera.moved ? 1 : 0.45 }}
+        aria-label="Reset Camera"
+        title="Reset Camera"
+        data-action="goal-view-reset-camera"
+        disabled={!camera.moved}
+        onClick={camera.reset}
+      >
+        <span style={CAMERA_PILL_STYLE} aria-hidden="true">⟲</span>
+      </button>
+    </div>
   );
 }
 
@@ -297,11 +514,18 @@ const BADGE_STYLE: CSSProperties = {
  * Playback, recording and all panel controls sit outside the pitch box and
  * keep working.
  */
-export function GoalViewReadOnlyShield({ mode }: { mode: GoalViewMode }) {
+export function GoalViewReadOnlyShield({ mode, camera }: { mode: GoalViewMode; camera?: GoalViewCamera }) {
   const label = GOAL_VIEW_MODE_OPTIONS.find((o) => o.id === mode)?.label ?? "Goal View";
   return (
-    <div style={SHIELD_STYLE} data-experimental="goal-view-shield" aria-hidden="true">
-      <div style={BADGE_STYLE}>{label} · view only — switch to Top-Down to edit</div>
+    <div
+      style={camera ? { ...SHIELD_STYLE, cursor: "grab" } : SHIELD_STYLE}
+      data-experimental="goal-view-shield"
+      aria-hidden="true"
+      {...camera?.surfaceProps}
+    >
+      <div style={BADGE_STYLE}>
+        {camera ? `${label} · drag to rotate · Top-Down to edit` : `${label} · view only — switch to Top-Down to edit`}
+      </div>
     </div>
   );
 }

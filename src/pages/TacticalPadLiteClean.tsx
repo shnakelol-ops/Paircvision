@@ -5090,11 +5090,12 @@ export default function TacticalPadLiteClean({
               onPlacementDone={handleLabelPlacementDone}
             />
           ) : null}
-          {goalViewActive ? <GoalViewReadOnlyShield mode={goalView.mode} /> : null}
+          {goalViewActive ? <GoalViewReadOnlyShield mode={goalView.mode} camera={goalView.camera} /> : null}
           {goalViewSupported && !isFullViewActive ? (
             <GoalViewQuickToggle
               mode={goalView.mode}
               onChange={goalView.setMode}
+              camera={goalView.camera}
             />
           ) : null}
         </div>

@@ -11,6 +11,7 @@ import {
   clampOrbit,
   createGoalViewProjection,
   isIdentityOrbit,
+  wholePitchFitZoom,
   worldToBoard,
   type GoalViewOrbit,
 } from "./goalViewCamera";
@@ -231,5 +232,37 @@ describe("orbit gesture", () => {
     expect(orbitGestureMove(s, { id: 2, x: 400, y: 300 }, CAMERA).orbit).toBeNull();
     expect(orbitGestureUp(s, { id: 2 })).toEqual(IDLE_ORBIT_GESTURE);
     expect(orbitGestureMove(down(), { id: 9, x: 400, y: 100 }, CAMERA).orbit).toBeNull();
+  });
+});
+
+describe("Fit pitch (one fixed zoom for every angle)", () => {
+  const W2 = W / 2;
+  const tops: Point3[] = [];
+  for (const b of [2, L - 2]) for (const a of [W2 - 3.5, W2 + 3.5]) tops.push([a, b, 7.5]);
+
+  it.each([
+    { width: 360, height: 560 },
+    { width: 375, height: 600 },
+    { width: 390, height: 640 },
+  ])("portrait %o: whole pitch and both goals stay on screen at every yaw, with one zoom", (screen) => {
+    for (const elevation of [null, 25, 50, 75]) {
+      const zoom = wholePitchFitZoom(CAMERA, screen, elevation);
+      expect(zoom).toBeLessThan(1);
+      expect(zoom).toBeGreaterThanOrEqual(GOAL_VIEW_ORBIT_LIMITS.minZoom);
+      for (let yaw = 0; yaw < 360; yaw += 10) {
+        const p = createGoalViewProjection(CAMERA, screen, { orbit: orbitAt(yaw, elevation, zoom) });
+        for (const point of [[0, 0, 0], [W, 0, 0], [W, L, 0], [0, L, 0], ...tops] as Point3[]) {
+          const q = p.project(...point)!;
+          expect(q.x).toBeGreaterThanOrEqual(11);
+          expect(q.x).toBeLessThanOrEqual(screen.width - 11);
+          expect(q.y).toBeGreaterThanOrEqual(11);
+          expect(q.y).toBeLessThanOrEqual(screen.height - 11);
+        }
+      }
+    }
+  });
+
+  it("never zooms in", () => {
+    expect(wholePitchFitZoom(CAMERA, { width: 2000, height: 2000 }, null)).toBeLessThanOrEqual(1);
   });
 });

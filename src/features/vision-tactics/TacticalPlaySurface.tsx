@@ -2506,12 +2506,13 @@ export default function TacticalPlaySurface() {
               showFormatting={false}
             />
           )}
-          {goalView.isGoalView ? <GoalViewReadOnlyShield mode={goalView.mode} /> : null}
+          {goalView.isGoalView ? <GoalViewReadOnlyShield mode={goalView.mode} camera={goalView.camera} /> : null}
           {GOAL_VIEW_EXPERIMENT_ENABLED ? (
             <GoalViewQuickToggle
               mode={goalView.mode}
               onChange={goalView.setMode}
               placement={compactLandscapeControls ? "side" : "above"}
+              camera={goalView.camera}
             />
           ) : null}
         </div>

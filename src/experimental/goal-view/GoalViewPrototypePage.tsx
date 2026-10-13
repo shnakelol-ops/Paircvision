@@ -487,7 +487,7 @@ export default function GoalViewPrototypePage() {
               ? `camera yaw ${orbit.yawDeg.toFixed(0)}° · tilt ${(orbit.elevationDeg ?? baseElevationDeg(lensOptions.camera)).toFixed(1)}°${orbit.elevationDeg == null ? " (C)" : ""} · zoom ${orbit.zoom.toFixed(2)}× · ${SAMPLING[sampling].label} · drag to orbit`
               : null,
             metrics && isGoalView
-              ? `tex ${metrics.textureWidth}×${metrics.textureHeight} (${(metrics.textureBytes / 1048576).toFixed(1)} MB) · pass ${metrics.offscreenPassMs.toFixed(2)} ms · mag near ${metrics.nearMagnification.toFixed(2)} far ${metrics.farMagnification.toFixed(2)}`
+              ? `tex ${metrics.textureWidth}×${metrics.textureHeight} (${(metrics.textureBytes / 1048576).toFixed(1)} MB) · pass ${metrics.offscreenPassMs.toFixed(2)} ms · camera ${metrics.cameraUpdateMs.toFixed(2)} ms · mag near ${metrics.nearMagnification.toFixed(2)} far ${metrics.farMagnification.toFixed(2)}`
               : null,
             diagnostics ? JSON.stringify(diagnostics, null, 1) : null,
           ]

@@ -12,7 +12,9 @@ import {
   GoalViewQuickToggle,
   GoalViewReadOnlyShield,
   useSequenceGoalView,
+  type GoalViewCamera,
 } from "./sequenceGoalView";
+import { DEFAULT_GOAL_VIEW_ORBIT } from "./goalViewCamera";
 
 afterEach(() => cleanup());
 
@@ -41,6 +43,15 @@ describe("Goal View experiment flag", () => {
     expect(shell.setOrientation).not.toHaveBeenCalled();
     expect(shell.getExperimentalRenderTargets).not.toHaveBeenCalled();
     expect(() => result.current.releaseBeforeShellDestroy()).not.toThrow();
+  });
+
+  it("with the flag off the camera is inert: Camera C preset, nothing moved", () => {
+    const { result } = renderHook(() => useSequenceGoalView(null));
+    expect(result.current.camera.orbit).toEqual(DEFAULT_GOAL_VIEW_ORBIT);
+    expect(result.current.camera.moved).toBe(false);
+    act(() => result.current.camera.reset());
+    act(() => result.current.camera.toggleFit());
+    expect(result.current.camera.orbit).toEqual(DEFAULT_GOAL_VIEW_ORBIT);
   });
 
   it("release handle is stable across renders (safe to capture in mount effects)", () => {
@@ -133,5 +144,46 @@ describe("Goal View controls", () => {
   it("read-only shield names the active view", () => {
     render(<GoalViewReadOnlyShield mode="right-end" />);
     expect(screen.getByText(/Right End · view only/)).toBeTruthy();
+  });
+
+  const fakeCamera = (patch: Partial<GoalViewCamera> = {}): GoalViewCamera => ({
+    orbit: DEFAULT_GOAL_VIEW_ORBIT,
+    moved: false,
+    fitted: false,
+    reset: vi.fn(),
+    toggleFit: vi.fn(),
+    surfaceProps: { onPointerDown: vi.fn(), onPointerMove: vi.fn(), onPointerUp: vi.fn(), onPointerCancel: vi.fn() },
+    ...patch,
+  });
+
+  it("camera controls appear beside the selector only in a goal view", () => {
+    const camera = fakeCamera();
+    const { rerender } = render(<GoalViewQuickToggle mode="top-down" onChange={vi.fn()} camera={camera} />);
+    expect(screen.queryByRole("button", { name: "Reset Camera" })).toBeNull();
+    rerender(<GoalViewQuickToggle mode="left-end" onChange={vi.fn()} camera={camera} />);
+    const reset = screen.getByRole("button", { name: "Reset Camera" }) as HTMLButtonElement;
+    expect(reset.disabled).toBe(true); // nothing to reset at the preset
+    expect(reset.style.height).toBe("44px");
+    screen.getByRole("button", { name: /Fit pitch/ }).click();
+    expect(camera.toggleFit).toHaveBeenCalledTimes(1);
+  });
+
+  it("Reset Camera is enabled once the camera has moved", () => {
+    const camera = fakeCamera({ moved: true });
+    render(<GoalViewQuickToggle mode="right-end" onChange={vi.fn()} camera={camera} placement="side" />);
+    const reset = screen.getByRole("button", { name: "Reset Camera" }) as HTMLButtonElement;
+    expect(reset.disabled).toBe(false);
+    reset.click();
+    expect(camera.reset).toHaveBeenCalledTimes(1);
+  });
+
+  it("with a camera, the shield is the orbit surface and says how to use it", () => {
+    const camera = fakeCamera();
+    const { container } = render(<GoalViewReadOnlyShield mode="left-end" camera={camera} />);
+    expect(screen.getByText(/Left End · drag to rotate · Top-Down to edit/)).toBeTruthy();
+    const shield = container.querySelector('[data-experimental="goal-view-shield"]') as HTMLElement;
+    expect(shield.style.touchAction).toBe("none");
+    shield.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    expect(camera.surfaceProps.onPointerDown).toHaveBeenCalled();
   });
 });
