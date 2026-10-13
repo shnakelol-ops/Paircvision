@@ -191,3 +191,83 @@ the shield/selector JSX, the PNG label guard and the layout reserve).
 `git revert` the Slate commit; or remove the "EXPERIMENTAL Goal View" lines in
 `TacticalPadLiteClean.tsx`, the getter in `createTacticalPadLiteSurface.ts` and
 `slateGoalView*`. Nothing is persisted, so no data migration is needed.
+
+## Orbit camera — Phase 1 internal prototype (`/internal/goal-view` only)
+
+Not wired into Tactical Slate or Tactical Sequence. Open `/internal/goal-view`
+(Sequence engine) or `/internal/goal-view?board=slate` (Slate engine, mounted
+read-only through its existing experimental getter, for equipment checks).
+
+- **Controls:**
+  - one-finger horizontal drag rotates 360° (the pitch follows the finger);
+  - vertical drag tilts (drag down = higher camera), limited to 20°–75°;
+  - **Reset Camera** returns to Camera C;
+  - angle buttons (0/45/90/135/180/270/360°), a zoom slider (0.6–2×) and a sampling selector (mipmaps off / mipmaps / mipmaps + 8× anisotropic).
+  
+  Choosing Left End or Right End always resets the camera.
+- **Camera:** `goalViewCamera.ts` orbits the point Camera C already aims at
+  (the pitch centre) at a constant eye distance, in the selected end's frame.
+  Framing (scale and screen anchor) always comes from the base camera, so
+  there is no zoom "breathing" while rotating or tilting.
+- **Exact preservation:** the identity orbit (yaw 0/360, Camera C tilt, zoom 1)
+  takes the original code path. Left End, Right End and Top-Down were
+  byte-identical to the previous commit on the prototype, Sequence and Slate
+  (browser screenshots).
+- **Lens (`createGoalViewLens.ts`, backward-compatible, default off):**
+  - `orbit`: projects through the orbit camera; upright nodes turn with the
+    camera yaw so numbers stay upright; stretch is applied along the camera's
+    own ground axes; depth sorting uses camera distance;
+  - `mipmaps` and `anisotropy`: mipmapped offscreen texture, regenerated after
+    each pass.
+  
+  Slate and Sequence keep the defaults (`orbit: null`, `mipmaps: false`).
+- **Gesture:** `goalViewOrbitGesture.ts` is pure and unit-tested.
+  - 6 px dead zone, so taps never move the camera.
+  - It follows only the first finger; a second finger ends the drag, so the camera never jumps.
+  - The prototype coalesces updates to one per animation frame.
+- **State separation:** camera state lives only in the prototype page and the
+  lens. Board data (tokens, Slate board state) was compared before and after
+  orbit sessions: unchanged.
+
+### Mipmaps
+
+| Sampling | Far pitch at side views | Cost |
+|---|---|---|
+| Off (current) | Sharp but aliased; most shimmer while rotating | none |
+| Mipmaps | Smooth, but blurs numbers and lines along the viewing direction | +33% texture memory, mip generation every frame |
+| Mipmaps + 8× anisotropic | Sharp and smooth (best) | as above, plus anisotropic sampling |
+
+Container numbers come from SwiftShader (a software GPU, ~3 fps even in
+Top-Down). They are not evidence of device performance. Real-device
+measurements are required before choosing a default.
+
+### Known limitations
+
+- Fixed framing means side views (90°/270°) crop the goals on a portrait
+  phone; zoom out (0.6×) to see the whole pitch.
+- Upright players are stretched flat sprites, not 3D. Tokens far to the
+  side lean with the perspective, exactly as in the fixed end views.
+  Upright equipment (cones, hurdles) turns to face the camera, so a hurdle's
+  placed orientation is not kept.
+- Goals are drawn below players, so they never hide a player, even when the
+  near goal stands between the camera and play.
+- Sequence-engine equipment stays flat (it never had upright equipment);
+  Slate-engine equipment stands up.
+
+### Future: content-centred orbit (not implemented)
+
+For small training areas, orbit around the content instead of the pitch
+centre:
+1. The aim point and eye distance come from a bounding box: the selected
+   practice area, or else all players, items and drawings, with a margin.
+2. The camera orbits that point at a distance that fits the box's
+   circumscribed circle for the chosen tilt. This is constant across yaw,
+   so there is still no breathing.
+3. The board texture can be cropped to the box (a sub-rectangle render with
+   a higher px/unit), giving sharper drills at the same cost.
+4. Goals are drawn only when the box includes an endline.
+
+It needs `createGoalViewProjection` to accept an aim point and distance
+instead of Camera C's fixed centre. The rest of the lens is unchanged.
+Bounding boxes must be recomputed when content moves; freeze the box during
+playback so the camera doesn't drift.

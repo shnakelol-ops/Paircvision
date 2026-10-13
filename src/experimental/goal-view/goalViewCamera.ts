@@ -54,6 +54,78 @@ export const DEFAULT_GOAL_VIEW_CAMERA: GoalViewCameraParams = {
 };
 
 /**
+ * Interactive orbit (prototype). Presentation-only camera state: it never
+ * touches board coordinates, tokens, phases or saved plays.
+ *
+ * The camera orbits the point it already aims at — the pitch centre for
+ * Camera C (lookAtUnits 80 of 160) — at a constant eye distance, so the
+ * selected end's view is the yaw-0 member of the orbit:
+ *  - yawDeg: rotation of the camera around the pitch, in the selected end's
+ *    frame (0 = that end's view, 180 = the opposite end, 90/270 = touchlines).
+ *  - elevationDeg: camera angle above the turf; null keeps the base camera's
+ *    own angle (Camera C ≈ 33.1°) exactly.
+ *  - zoom: multiplies the base framing. Framing never depends on yaw or
+ *    elevation, so the pitch does not "breathe" while rotating.
+ */
+export type GoalViewOrbit = {
+  yawDeg: number;
+  elevationDeg: number | null;
+  zoom: number;
+};
+
+export const DEFAULT_GOAL_VIEW_ORBIT: GoalViewOrbit = { yawDeg: 0, elevationDeg: null, zoom: 1 };
+
+/** Tilt and zoom limits. Below ~20° players overlap heavily and the far pitch is undersampled. */
+export const GOAL_VIEW_ORBIT_LIMITS = {
+  minElevationDeg: 20,
+  maxElevationDeg: 75,
+  minZoom: 0.6,
+  maxZoom: 2,
+} as const;
+
+export function normalizeYawDeg(yawDeg: number): number {
+  const y = yawDeg % 360;
+  return y < 0 ? y + 360 : y;
+}
+
+export function clampOrbit(orbit: GoalViewOrbit): GoalViewOrbit {
+  const L = GOAL_VIEW_ORBIT_LIMITS;
+  return {
+    yawDeg: normalizeYawDeg(Number.isFinite(orbit.yawDeg) ? orbit.yawDeg : 0),
+    elevationDeg:
+      orbit.elevationDeg == null || !Number.isFinite(orbit.elevationDeg)
+        ? null
+        : Math.min(L.maxElevationDeg, Math.max(L.minElevationDeg, orbit.elevationDeg)),
+    zoom: Math.min(L.maxZoom, Math.max(L.minZoom, Number.isFinite(orbit.zoom) ? orbit.zoom : 1)),
+  };
+}
+
+/** True when the orbit changes nothing: the existing fixed-end view is used exactly. */
+export function isIdentityOrbit(orbit: GoalViewOrbit | null | undefined): boolean {
+  return !orbit || (normalizeYawDeg(orbit.yawDeg) === 0 && orbit.elevationDeg == null && orbit.zoom === 1);
+}
+
+/** The base camera's own elevation angle (Camera C ≈ 33.07°). */
+export function baseElevationDeg(camera: GoalViewCameraParams): number {
+  return (Math.atan2(camera.heightUnits, camera.distanceBehindUnits + camera.lookAtUnits) * 180) / Math.PI;
+}
+
+/**
+ * Same look-at point and eye distance as `camera`, at a new elevation. Exact
+ * identity when elevationDeg is null.
+ */
+export function cameraAtElevation(camera: GoalViewCameraParams, elevationDeg: number | null): GoalViewCameraParams {
+  if (elevationDeg == null) return camera;
+  const eyeDistance = Math.hypot(camera.heightUnits, camera.distanceBehindUnits + camera.lookAtUnits);
+  const e = (elevationDeg * Math.PI) / 180;
+  return {
+    ...camera,
+    heightUnits: eyeDistance * Math.sin(e),
+    distanceBehindUnits: eyeDistance * Math.cos(e) - camera.lookAtUnits,
+  };
+}
+
+/**
  * Quarter-turn count the shell must be set to so its existing token/ball
  * counter-rotation keeps numbers upright in the board frame. Matches
  * engine/pixi/orientation.ts conventions: 1 puts the left goal at the top
@@ -124,6 +196,18 @@ export type GoalViewProjection = {
   groundScale: (a: number, b: number) => { across: number; along: number };
   /** Ground point (board frame) whose screen position matches the 3D point (a, b, h). */
   groundShadowOf: (a: number, b: number, h: number) => BoardPoint;
+  /** Orbit in effect (clamped), or null for the plain fixed-end view. */
+  readonly orbit: GoalViewOrbit | null;
+  /** Camera yaw in radians (0 without an orbit). */
+  readonly yawRad: number;
+  /**
+   * Screen px per board unit along the camera's own ground axes at (a, b):
+   * across = camera-right, along = camera-forward. Equals groundScale when
+   * there is no orbit.
+   */
+  cameraGroundScale: (a: number, b: number) => { across: number; along: number };
+  /** Distance towards the camera along its ground axis: larger = nearer. Equals b without an orbit. */
+  depthOf: (a: number, b: number) => number;
 };
 
 type Basis = { cos: number; sin: number };
@@ -153,7 +237,7 @@ function projectRaw(
 export function createGoalViewProjection(
   camera: GoalViewCameraParams,
   screen: { width: number; height: number },
-  options: { paddingPx?: number } = {},
+  options: { paddingPx?: number; orbit?: GoalViewOrbit | null } = {},
 ): GoalViewProjection {
   const basis = cameraBasis(camera);
   const padding = options.paddingPx ?? 12;
@@ -189,9 +273,33 @@ export function createGoalViewProjection(
   const ox = (screen.width - (maxX - minX) * k) / 2 - minX * k;
   const oy = (screen.height - (maxY - minY) * k) / 2 - minY * k;
 
+  // Orbit: the framing (k, ox, oy) above always comes from the BASE camera,
+  // so it is independent of yaw and elevation (no zoom breathing). The orbit
+  // camera aims at the same point from the same distance, so that point stays
+  // at (ox, oy) with the same scale. Without an orbit this is the old code path.
+  const orbit = isIdentityOrbit(options.orbit) ? null : clampOrbit(options.orbit!);
+  const view = orbit ? cameraAtElevation(camera, orbit.elevationDeg) : camera;
+  const viewBasis = orbit ? cameraBasis(view) : basis;
+  const yawRad = orbit ? (orbit.yawDeg * Math.PI) / 180 : 0;
+  const cosY = Math.cos(yawRad);
+  const sinY = Math.sin(yawRad);
+  const kView = orbit ? k * orbit.zoom : k;
+  const centreA = W / 2;
+  const centreB = L - camera.lookAtUnits;
+  const rotateYaw = yawRad !== 0;
+
   const project = (a: number, b: number, h = 0): Vec2 | null => {
-    const p = projectRaw(camera, basis, a, b, h);
-    return p ? { x: p.x * k + ox, y: p.y * k + oy } : null;
+    let pa = a;
+    let pb = b;
+    if (rotateYaw) {
+      // Rotating the pitch by −yaw about the aim point ≡ orbiting the camera by +yaw.
+      const da = a - centreA;
+      const db = b - centreB;
+      pa = centreA + da * cosY + db * sinY;
+      pb = centreB - da * sinY + db * cosY;
+    }
+    const p = projectRaw(view, viewBasis, pa, pb, h);
+    return p ? { x: p.x * kView + ox, y: p.y * kView + oy } : null;
   };
 
   const must = (p: Vec2 | null): Vec2 => p ?? { x: Number.NaN, y: Number.NaN };
@@ -213,15 +321,36 @@ export function createGoalViewProjection(
     };
   };
 
+  // Camera eye on the ground plane (board frame). Without an orbit it sits at
+  // (W/2, L + D); with one, the base position orbited by +yaw about the aim point.
+  const eyeReach = view.distanceBehindUnits + view.lookAtUnits;
+  const eyeA = orbit ? centreA - eyeReach * sinY : W / 2;
+  const eyeB = orbit ? centreB + eyeReach * cosY : L + camera.distanceBehindUnits;
+
   const groundShadowOf = (a: number, b: number, h: number): BoardPoint => {
-    // Camera sits at board (W/2, L + D, H). The ray camera→P meets h=0 at
-    // t = H / (H - h); clamp so points at/above camera height stay finite.
-    const H = camera.heightUnits;
+    // The ray camera→P meets h=0 at t = H / (H - h); clamp so points at/above
+    // camera height stay finite.
+    const H = view.heightUnits;
     const t = H / Math.max(1e-3, H - h);
-    const ca = W / 2;
-    const cb = L + camera.distanceBehindUnits;
-    return { a: ca + t * (a - ca), b: cb + t * (b - cb) };
+    return { a: eyeA + t * (a - eyeA), b: eyeB + t * (b - eyeB) };
   };
 
-  return { camera, screen, project, corners, groundScale, groundShadowOf };
+  // Camera axes on the ground (board frame): right = (cos, sin), towards the
+  // camera = (−sin, cos). Yaw 0: right = +a, towards camera = +b.
+  const cameraGroundScale = (a: number, b: number) => {
+    if (!orbit) return groundScale(a, b);
+    const e = 0.5;
+    const p = must(project(a, b));
+    const pr = must(project(a + e * cosY, b + e * sinY));
+    const pn = must(project(a - e * sinY, b + e * cosY));
+    return {
+      across: Math.hypot(pr.x - p.x, pr.y - p.y) / e,
+      along: Math.hypot(pn.x - p.x, pn.y - p.y) / e,
+    };
+  };
+
+  const depthOf = (a: number, b: number) =>
+    orbit ? (b - centreB) * cosY - (a - centreA) * sinY : b;
+
+  return { camera, screen, project, corners, groundScale, groundShadowOf, orbit, yawRad, cameraGroundScale, depthOf };
 }

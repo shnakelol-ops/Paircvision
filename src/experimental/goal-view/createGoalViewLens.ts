@@ -36,8 +36,10 @@ import {
   createGoalViewProjection,
   worldToBoard,
   worldToTextureMatrix,
+  isIdentityOrbit,
   type GoalViewCameraParams,
   type GoalViewEnd,
+  type GoalViewOrbit,
   type GoalViewProjection,
 } from "./goalViewCamera";
 
@@ -62,6 +64,18 @@ export type GoalViewLensOptions = {
    * the dark page.
    */
   goalDecalColor?: number;
+  /**
+   * Interactive orbit camera (prototype only). null = the fixed end view,
+   * rendered by exactly the pre-orbit code path.
+   */
+  orbit: GoalViewOrbit | null;
+  /**
+   * Mipmapped offscreen texture (regenerated after every offscreen pass), so
+   * the far pitch is minified cleanly instead of shimmering at oblique angles.
+   */
+  mipmaps: boolean;
+  /** Anisotropic filtering level (1 = off). Only effective with mipmaps. */
+  anisotropy: number;
 };
 
 export const DEFAULT_GOAL_VIEW_LENS_OPTIONS: GoalViewLensOptions = {
@@ -71,6 +85,9 @@ export const DEFAULT_GOAL_VIEW_LENS_OPTIONS: GoalViewLensOptions = {
   uprightGoals: true,
   depthSort: true,
   camera: DEFAULT_GOAL_VIEW_CAMERA,
+  orbit: null,
+  mipmaps: false,
+  anisotropy: 1,
 };
 
 export type GoalViewLensMetrics = {
@@ -78,11 +95,15 @@ export type GoalViewLensMetrics = {
   strategy: GoalViewLensStrategy;
   textureWidth: number;
   textureHeight: number;
-  /** Colour-buffer bytes for the offscreen texture (RGBA8). Excludes MSAA/driver overhead. */
+  /** Colour-buffer bytes for the offscreen texture (RGBA8, incl. mip chain). Excludes the MSAA buffer and driver overhead. */
   textureBytes: number;
   /** Rolling mean CPU ms spent submitting the offscreen pass (GPU time is not measurable here). */
   offscreenPassMs: number;
   frames: number;
+  /** Rolling mean CPU ms per camera update (projection + goal redraw). Paid on each orbit move. */
+  cameraUpdateMs: number;
+  /** Camera updates since the lens was created. */
+  cameraUpdates: number;
   /** Device pixels per texture pixel at the near/far centre — >1 means the texture is being magnified (soft). */
   nearMagnification: number;
   farMagnification: number;
@@ -118,7 +139,7 @@ export type GoalViewLens = {
   destroy: () => void;
 };
 
-type SavedNodeState = { node: Container; scaleX: number; scaleY: number; zIndex: number };
+type SavedNodeState = { node: Container; scaleX: number; scaleY: number; zIndex: number; rotation: number };
 type SavedFrame = { nodes: SavedNodeState[]; order: Container[]; tokenLayerSortable: boolean };
 
 /**
@@ -184,14 +205,34 @@ export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens
   const inverseWorld = new Matrix();
   let passMsEma = 0;
   let frames = 0;
+  let cameraMsEma = 0;
+  let cameraUpdates = 0;
 
   const textureSize = () => ({
     width: Math.round(GOAL_VIEW_BOARD_WIDTH * options.textureScale),
     height: Math.round(GOAL_VIEW_BOARD_LENGTH * options.textureScale),
   });
 
+  // Sampling settings the current texture was created with (mip levels are
+  // fixed at creation, so changing them means a new texture).
+  let textureSampling = { mipmaps: false, anisotropy: 1 };
+  let samplingStyleApplied = false;
+
   const ensureTexture = () => {
     const { width, height } = textureSize();
+    if (renderTexture && (textureSampling.mipmaps !== options.mipmaps || textureSampling.anisotropy !== options.anisotropy)) {
+      // Swap safely: the mesh holding the old texture is rebuilt by the caller
+      // (detach/attach), and the old texture is destroyed a few frames later.
+      const old = renderTexture;
+      renderTexture = null;
+      let framesLeft = 3;
+      const later = () => {
+        framesLeft -= 1;
+        if (framesLeft > 0) requestAnimationFrame(later);
+        else old.destroy(true);
+      };
+      requestAnimationFrame(later);
+    }
     if (renderTexture) {
       // Resize in place. Swapping mesh.texture and destroying the old texture
       // in the same frame crashes Pixi (the mesh's cached bind group still
@@ -201,20 +242,38 @@ export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens
       }
       return;
     }
-    renderTexture = RenderTexture.create({ width, height, resolution: 1, antialias: true });
+    renderTexture = options.mipmaps
+      ? RenderTexture.create({
+          width,
+          height,
+          resolution: 1,
+          antialias: true,
+          autoGenerateMipmaps: true,
+          scaleMode: "linear",
+          mipmapFilter: "linear",
+          maxAnisotropy: Math.max(1, options.anisotropy),
+        })
+      : RenderTexture.create({ width, height, resolution: 1, antialias: true });
+    textureSampling = { mipmaps: options.mipmaps, anisotropy: options.anisotropy };
+    samplingStyleApplied = false;
   };
 
   const recomputeProjection = () => {
     if (!end) return;
-    projection = createGoalViewProjection(options.camera, {
-      width: app.screen.width,
-      height: app.screen.height,
-    });
+    const t0 = performance.now();
+    projection = createGoalViewProjection(
+      options.camera,
+      { width: app.screen.width, height: app.screen.height },
+      isIdentityOrbit(options.orbit) ? {} : { orbit: options.orbit },
+    );
     if (mesh) {
       const [tl, tr, br, bl] = projection.corners;
       mesh.setCorners(tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y);
     }
     drawGoals();
+    const dt = performance.now() - t0;
+    cameraMsEma = cameraUpdates === 0 ? dt : cameraMsEma * 0.9 + dt * 0.1;
+    cameraUpdates += 1;
   };
 
   const drawGoals = () => {
@@ -304,19 +363,23 @@ export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens
     for (const { layer, isUpright } of layers) {
       for (const node of layer.children) {
         if (!node.visible || !isUpright(node)) continue;
-        saved.push({ node, scaleX: node.scale.x, scaleY: node.scale.y, zIndex: node.zIndex });
+        saved.push({ node, scaleX: node.scale.x, scaleY: node.scale.y, zIndex: node.zIndex, rotation: node.rotation });
         const board = worldToBoard(end, { x: node.position.x, y: node.position.y });
         if (options.billboards) {
-          const s = proj.groundScale(board.a, board.b);
+          // Orbit: turn the node with the camera so numbers stay upright on
+          // screen, and stretch along the camera's own ground axes. Without an
+          // orbit yawRad is 0 and cameraGroundScale is groundScale (old path).
+          const s = proj.cameraGroundScale(board.a, board.b);
           const stretch = Math.min(4, Math.max(1, s.across / Math.max(1e-6, s.along)));
           // Stretch whichever of the node's local axes lands on texture-vertical.
           const total = textureRotation + node.rotation;
           const verticalIsLocalX = Math.abs(Math.sin(total)) > 0.5;
+          if (proj.yawRad !== 0) node.rotation += proj.yawRad;
           if (verticalIsLocalX) node.scale.x *= stretch;
           else node.scale.y *= stretch;
         }
         if (options.depthSort && layer === tokenLayer) {
-          node.zIndex = board.b; // larger b = nearer = drawn later
+          node.zIndex = proj.depthOf(board.a, board.b); // larger = nearer = drawn later
         }
       }
     }
@@ -326,6 +389,7 @@ export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens
   const restoreNodes = (saved: SavedFrame) => {
     for (const s of saved.nodes) {
       s.node.scale.set(s.scaleX, s.scaleY);
+      if (s.node.rotation !== s.rotation) s.node.rotation = s.rotation;
       if (s.node.zIndex !== s.zIndex) s.node.zIndex = s.zIndex;
     }
     saved.order.forEach((node, index) => {
@@ -357,6 +421,14 @@ export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens
       world.alpha = 0;
     }
     restoreNodes(saved);
+    if (textureSampling.mipmaps && renderTexture) {
+      if (!samplingStyleApplied) {
+        // Pixi skips the trilinear min filter on first upload; re-apply once.
+        renderTexture.source.style.update();
+        samplingStyleApplied = true;
+      }
+      renderTexture.source.updateMipmaps();
+    }
     const dt = performance.now() - t0;
     passMsEma = frames === 0 ? dt : passMsEma * 0.95 + dt * 0.05;
     frames += 1;
@@ -445,7 +517,9 @@ export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens
       const strategyChanged = patch.strategy && patch.strategy !== options.strategy;
       options = { ...options, ...patch, camera: { ...options.camera, ...(patch.camera ?? {}) } };
       if (!end) return;
-      if (strategyChanged) {
+      const samplingChanged =
+        textureSampling.mipmaps !== options.mipmaps || textureSampling.anisotropy !== options.anisotropy;
+      if (strategyChanged || samplingChanged) {
         detach();
         attach(options.strategy);
       }
@@ -470,9 +544,12 @@ export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens
         strategy: options.strategy,
         textureWidth: width,
         textureHeight: height,
-        textureBytes: width * height * 4,
+        // A full mip chain adds about one third.
+        textureBytes: Math.round(width * height * 4 * (textureSampling.mipmaps ? 4 / 3 : 1)),
         offscreenPassMs: passMsEma,
         frames,
+        cameraUpdateMs: cameraMsEma,
+        cameraUpdates,
         nearMagnification: near,
         farMagnification: far,
       };
