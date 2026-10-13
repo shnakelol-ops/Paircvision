@@ -1,4 +1,4 @@
-# Goal View — experimental prototype (Tactical Sequence only)
+# Goal View — experimental prototype (Tactical Sequence and Tactical Slate)
 
 **Status:** internal proof of concept. Not linked from any production surface.
 Do not merge without approval.
@@ -146,3 +146,48 @@ guard in the orientation effect, the text-overlay/shield JSX, and the TOOLS row)
 2. Code: `git revert` the integration commit; or delete the lines in
    `TacticalPlaySurface.tsx` marked "EXPERIMENTAL Goal View" and the
    `sequenceGoalView*` files. No data migration is needed in either case.
+
+## Tactical Slate integration (experimental, flag-gated)
+
+Same flag and access rules as Sequence (`GOAL_VIEW_EXPERIMENT_ENABLED`). Routes:
+`/vision-board` (pitch), `/vision-board/training`, `/vision-board/tactical`,
+`/vision-board/whiteboard`. Not offered in Whiteboard mode or Stats mode.
+
+**One renderer.** Slate attaches to the same shared lens (`createGoalViewLens`)
+through `slateGoalView.ts`. Slate's own engine keeps drawing everything (players,
+opposition, ball, equipment, practice areas, zones, drawings, phase playback);
+the lens only re-projects that frame. No movement or playback code is copied.
+
+- **Engine hook (additive only):** `createTacticalPadLiteSurface` gains
+  `getExperimentalRenderTargets()` (app, world, players/ball/items layers and an
+  item-type lookup). Nothing else in Slate's renderer changed.
+- **Lens changes (backward-compatible, Sequence unaffected):**
+  - optional `goalDecalBefore`: Slate's world is drawn in insertion order, so
+    the goal decal is inserted directly beneath the equipment layer instead of
+    using zIndex sorting;
+  - optional `extraBillboardLayers`: upright equipment (cone, pole, mannequin,
+    hurdle, tackle bag) stands up like players do. Disc cones, ladders and the
+    mini-goal/GAA-goal items stay flat on the turf (their art is top-down);
+    nothing is hidden;
+  - optional `goalDecalColor` (dark on-pitch goal lines on the whiteboard theme);
+  - the token layer's `sortableChildren` is restored after each pass.
+- **Upright goals follow the board:** shown on themes that draw goals, and not
+  on the Training (grass) board, which has none.
+- **Read-only in Goal View:** the shield blocks input, text labels are hidden,
+  and orientation changes wait until Top-Down. Editing happens in Top-Down.
+- **Recording and PNG export** capture the Goal View frame. Text labels are left
+  out of a Goal View PNG because they are positioned in top-down space.
+- **Selector:** a dedicated row directly above the pitch, right-aligned. In
+  landscape and desktop layouts, a 48px row is reserved above the
+  aspect-locked box. Hidden in Full View; Goal View itself persists there.
+
+**Changed outside this folder:** `src/engine/pixi/createTacticalPadLiteSurface.ts`
+(the getter) and `src/pages/TacticalPadLiteClean.tsx` (imports, state lines, a
+gated preload before surface creation, a destroy wrapper, an orientation guard,
+the shield/selector JSX, the PNG label guard and the layout reserve).
+
+### Slate rollback
+
+`git revert` the Slate commit; or remove the "EXPERIMENTAL Goal View" lines in
+`TacticalPadLiteClean.tsx`, the getter in `createTacticalPadLiteSurface.ts` and
+`slateGoalView*`. Nothing is persisted, so no data migration is needed.

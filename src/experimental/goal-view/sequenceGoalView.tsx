@@ -18,8 +18,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
-import type { MovementCanvasShellHandle } from "../../movement-board/shell/types";
-import type { GoalViewLens } from "./createGoalViewLens";
+import type { GoalViewLens, GoalViewLensOptions, GoalViewRenderTargets } from "./createGoalViewLens";
 import { quarterTurnsForMode, type GoalViewMode } from "./goalViewCamera";
 
 /**
@@ -107,9 +106,20 @@ export type SequenceGoalView = {
   releaseBeforeShellDestroy: () => void;
 };
 
-export function useSequenceGoalView(shell: MovementCanvasShellHandle | null): SequenceGoalView {
+/**
+ * Anything the shared lens can attach to: the Tactical Sequence shell handle
+ * as-is, or a Tactical Slate surface via createSlateGoalViewHost.
+ */
+export type GoalViewHost = {
+  setOrientation: (quarterTurns: number) => void;
+  getExperimentalRenderTargets: () => GoalViewRenderTargets;
+  /** Board-specific lens options (e.g. no upright goals on a goal-less board). */
+  lensOptions?: Partial<GoalViewLensOptions>;
+};
+
+export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
   const [mode, setModeState] = useState<GoalViewMode>("top-down");
-  const lensRef = useRef<{ lens: GoalViewLens; shell: MovementCanvasShellHandle } | null>(null);
+  const lensRef = useRef<{ lens: GoalViewLens; shell: GoalViewHost } | null>(null);
 
   const release = useCallback(() => {
     lensRef.current?.lens.destroy();
@@ -135,7 +145,9 @@ export function useSequenceGoalView(shell: MovementCanvasShellHandle | null): Se
     void loadGoalViewLensModule().then(({ createGoalViewLens }) => {
       if (cancelled) return;
       if (!lensRef.current) {
-        lensRef.current = { lens: createGoalViewLens(shell.getExperimentalRenderTargets()), shell };
+        const lens = createGoalViewLens(shell.getExperimentalRenderTargets());
+        if (shell.lensOptions) lens.setOptions(shell.lensOptions);
+        lensRef.current = { lens, shell };
       }
       lensRef.current.lens.setEnd(mode);
     });
@@ -146,6 +158,9 @@ export function useSequenceGoalView(shell: MovementCanvasShellHandle | null): Se
 
   return { mode, setMode, isGoalView: GOAL_VIEW_EXPERIMENT_ENABLED && mode !== "top-down", releaseBeforeShellDestroy: release };
 }
+
+/** Tactical Sequence's name for the shared hook (unchanged behaviour). */
+export const useSequenceGoalView = useGoalView;
 
 export function GoalViewModeRow(props: {
   mode: GoalViewMode;
@@ -201,7 +216,7 @@ const QUICK_TOGGLE_BUTTON_STYLE: CSSProperties = {
 
 const QUICK_TOGGLE_PLACEMENT: Record<"above" | "side", CSSProperties> = {
   above: { right: 0, bottom: "calc(100% + 2px)" },
-  side: { left: "calc(100% + 6px)", top: -6, justifyContent: "flex-start" },
+  side: { left: "calc(100% + 6px)", top: 0, justifyContent: "flex-start" },
 };
 
 const QUICK_TOGGLE_PILL_STYLE: CSSProperties = {

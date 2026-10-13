@@ -54,6 +54,14 @@ export type GoalViewLensOptions = {
   /** Draw nearer players over farther ones while the lens renders. */
   depthSort: boolean;
   camera: GoalViewCameraParams;
+  /**
+   * Colour for the part of each goal drawn ON the pitch surface (the decal).
+   * Omitted: same light colour as the part outside the pitch. Boards with a
+   * light surface (Slate's whiteboard theme) pass a dark colour so goals stay
+   * visible; the part rising above the pitch keeps the light colour against
+   * the dark page.
+   */
+  goalDecalColor?: number;
 };
 
 export const DEFAULT_GOAL_VIEW_LENS_OPTIONS: GoalViewLensOptions = {
@@ -111,15 +119,33 @@ export type GoalViewLens = {
 };
 
 type SavedNodeState = { node: Container; scaleX: number; scaleY: number; zIndex: number };
-type SavedFrame = { nodes: SavedNodeState[]; order: Container[] };
+type SavedFrame = { nodes: SavedNodeState[]; order: Container[]; tokenLayerSortable: boolean };
 
-export function createGoalViewLens(targets: {
+/**
+ * Extra layers whose children may be stood upright like players (e.g. Tactical
+ * Slate equipment). Only nodes accepted by `isUpright` are stretched; the rest
+ * stay flat on the turf. Never depth-sorted.
+ */
+export type GoalViewBillboardLayer = { layer: Container; isUpright: (node: Container) => boolean };
+
+export type GoalViewRenderTargets = {
   app: Application;
   world: Container;
   tokenLayer: Container;
   ballLayer: Container;
-}): GoalViewLens {
+  /**
+   * Where the far goal's ground decal goes inside `world`. Omitted: zIndex 9
+   * plus a world sort (Tactical Sequence, whose world is zIndex-sorted). Given:
+   * inserted directly before this child, for worlds ordered by insertion
+   * (Tactical Slate), so goals stay below equipment, ball and players.
+   */
+  goalDecalBefore?: Container;
+  extraBillboardLayers?: readonly GoalViewBillboardLayer[];
+};
+
+export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens {
   const { app, world, tokenLayer, ballLayer } = targets;
+  const extraBillboardLayers = targets.extraBillboardLayers ?? [];
   let options: GoalViewLensOptions = { ...DEFAULT_GOAL_VIEW_LENS_OPTIONS };
   let end: GoalViewEnd | null = null;
   let activeStrategy: GoalViewLensStrategy | null = null;
@@ -230,14 +256,18 @@ export function createGoalViewLens(targets: {
       goalDecal
         .moveTo(w0.x, w0.y)
         .lineTo(w1.x, w1.y)
-        .stroke({ width: px / Math.max(1e-6, groundPx), color: style.color, alpha: style.alpha, cap: "round" });
+        .stroke({ width: px / Math.max(1e-6, groundPx), color: decalColor(style.color), alpha: style.alpha, cap: "round" });
     };
+    // The dark frame outline (0x07170f) is kept; light frame/net colours swap
+    // to goalDecalColor on the pitch surface when one is set.
+    const decalColor = (color: number) =>
+      options.goalDecalColor != null && color !== 0x07170f ? options.goalDecalColor : color;
     const fillPanel = (panel: Point3[], color: number, alpha: number) => {
       const screen = panel.map((p) => proj.project(...p));
       if (screen.every((p) => p)) {
         goalUnderlay.poly(screen.flatMap((p) => [p!.x, p!.y])).fill({ color, alpha });
       }
-      goalDecal.poly(panel.flatMap((p) => { const w = shadowWorld(p); return [w.x, w.y]; })).fill({ color, alpha });
+      goalDecal.poly(panel.flatMap((p) => { const w = shadowWorld(p); return [w.x, w.y]; })).fill({ color: decalColor(color), alpha });
     };
 
     const NET_LINE: Stroke = { color: 0xe8eef4, alpha: 0.5, units: 0.05, minPx: 0.6 };
@@ -259,13 +289,21 @@ export function createGoalViewLens(targets: {
     // Sorting by zIndex reorders the layer's children array itself, so the
     // original order must be restored too or Top-Down draw order would leak.
     const order = [...tokenLayer.children];
-    if (!end || !projection || (!options.billboards && !options.depthSort)) return { nodes: saved, order };
+    // Setting zIndex flips the parent's sortableChildren on permanently in
+    // Pixi; remember it so a layer that was never sorted is left that way.
+    const tokenLayerSortable = tokenLayer.sortableChildren;
+    if (!end || !projection || (!options.billboards && !options.depthSort)) return { nodes: saved, order, tokenLayerSortable };
     const proj = projection;
     const m = worldToTextureMatrix(end, 1);
     const textureRotation = Math.atan2(m.b, m.a);
-    for (const layer of [tokenLayer, ballLayer]) {
+    const layers: Array<{ layer: Container; isUpright: (node: Container) => boolean }> = [
+      { layer: tokenLayer, isUpright: () => true },
+      { layer: ballLayer, isUpright: () => true },
+      ...extraBillboardLayers,
+    ];
+    for (const { layer, isUpright } of layers) {
       for (const node of layer.children) {
-        if (!node.visible) continue;
+        if (!node.visible || !isUpright(node)) continue;
         saved.push({ node, scaleX: node.scale.x, scaleY: node.scale.y, zIndex: node.zIndex });
         const board = worldToBoard(end, { x: node.position.x, y: node.position.y });
         if (options.billboards) {
@@ -282,7 +320,7 @@ export function createGoalViewLens(targets: {
         }
       }
     }
-    return { nodes: saved, order };
+    return { nodes: saved, order, tokenLayerSortable };
   };
 
   const restoreNodes = (saved: SavedFrame) => {
@@ -295,6 +333,9 @@ export function createGoalViewLens(targets: {
         tokenLayer.setChildIndex(node, index);
       }
     });
+    if (tokenLayer.sortableChildren !== saved.tokenLayerSortable) {
+      tokenLayer.sortableChildren = saved.tokenLayerSortable;
+    }
   };
 
   // Runs after the shell's own tick (NORMAL) and before Pixi's render (LOW).
@@ -331,8 +372,16 @@ export function createGoalViewLens(targets: {
     } else {
       worldAlphaBeforeLens = world.alpha;
     }
-    world.addChild(goalDecal);
-    world.sortChildren();
+    if (targets.goalDecalBefore && targets.goalDecalBefore.parent === world) {
+      // zIndex 0: adding a child with a non-zero zIndex would switch the
+      // insertion-ordered world into zIndex sorting (Pixi addChild side effect).
+      goalDecal.zIndex = 0;
+      world.addChildAt(goalDecal, world.getChildIndex(targets.goalDecalBefore));
+    } else {
+      goalDecal.zIndex = 9;
+      world.addChild(goalDecal);
+      world.sortChildren();
+    }
     mesh = new PerspectiveMesh({ texture: renderTexture!, verticesX: 32, verticesY: 32 });
     mesh.label = "goal-view-mesh";
     mesh.eventMode = "none";
@@ -471,11 +520,22 @@ export function createGoalViewLens(targets: {
         feedbackLoop: feedback,
         worldBecameRenderGroup: !worldWasRenderGroup && world.isRenderGroup,
         stageChildren: app.stage.children.map((c) => c.label || c.constructor.name),
-        goalsBelowPlayers:
-          goalDecal.parent === world &&
-          goalDecal.zIndex < tokenLayer.zIndex &&
-          goalDecal.zIndex < ballLayer.zIndex &&
-          (!mesh || app.stage.getChildIndex(goalUnderlay) < app.stage.getChildIndex(mesh)),
+        goalsBelowPlayers: (() => {
+          if (goalDecal.parent !== world) return false;
+          // Compare real draw order inside the world (sorted or not).
+          if (world.sortableChildren) world.sortChildren();
+          const indexInWorld = (node: Container) => {
+            let cur: Container | null = node;
+            while (cur && cur.parent !== world) cur = cur.parent;
+            return cur ? world.getChildIndex(cur) : -1;
+          };
+          const decalIndex = world.getChildIndex(goalDecal);
+          return (
+            decalIndex < indexInWorld(tokenLayer) &&
+            decalIndex < indexInWorld(ballLayer) &&
+            (!mesh || app.stage.getChildIndex(goalUnderlay) < app.stage.getChildIndex(mesh))
+          );
+        })(),
       };
     },
     destroy: () => {
