@@ -114,6 +114,22 @@ describe("Goal View controls", () => {
     expect(onChange).toHaveBeenLastCalledWith("top-down");
   });
 
+  it("quick toggle sits outside the pitch box: above it by default, beside it on short landscape", () => {
+    const { rerender } = render(<GoalViewQuickToggle mode="top-down" onChange={vi.fn()} />);
+    const button = screen.getByRole("button");
+    expect(button.getAttribute("data-placement")).toBe("above");
+    expect(button.style.bottom).toBe("calc(100% + 2px)");
+    expect(button.style.right).toBe("0px");
+    expect(button.style.top).toBe("");
+    // Comfortable, stable touch target: same size for every label.
+    expect(button.style.height).toBe("44px");
+    expect(button.style.width).toBe("136px");
+    rerender(<GoalViewQuickToggle mode="right-end" onChange={vi.fn()} placement="side" />);
+    expect(screen.getByRole("button").getAttribute("data-placement")).toBe("side");
+    expect(screen.getByRole("button").style.left).toBe("calc(100% + 6px)");
+    expect(screen.getByRole("button").style.width).toBe("136px");
+  });
+
   it("read-only shield names the active view", () => {
     render(<GoalViewReadOnlyShield mode="right-end" />);
     expect(screen.getByText(/Right End · view only/)).toBeTruthy();

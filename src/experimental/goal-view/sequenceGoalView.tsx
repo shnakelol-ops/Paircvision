@@ -173,41 +173,80 @@ export function GoalViewModeRow(props: {
   );
 }
 
-const QUICK_TOGGLE_STYLE: CSSProperties = {
+// The selector sits OUTSIDE the pitch box (never over markings, players, goals
+// or equipment) and takes no layout space, so the pitch is not shrunk:
+// "above" anchors it right-aligned just above the pitch's top edge; "side"
+// (short landscape screens with no room above) anchors it just right of the
+// pitch's top-right corner. The 44px-tall button is the touch target; the
+// visible pill inside it stays compact.
+const QUICK_TOGGLE_HIT_HEIGHT = 44;
+const QUICK_TOGGLE_WIDTH = 136;
+
+const QUICK_TOGGLE_BUTTON_STYLE: CSSProperties = {
   position: "absolute",
-  top: 8,
-  right: 8,
   zIndex: 3,
-  padding: "6px 12px",
+  width: QUICK_TOGGLE_WIDTH,
+  height: QUICK_TOGGLE_HIT_HEIGHT,
+  padding: 0,
+  margin: 0,
+  border: "none",
+  background: "transparent",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-end",
+  cursor: "pointer",
+  touchAction: "manipulation",
+  WebkitTapHighlightColor: "transparent",
+};
+
+const QUICK_TOGGLE_PLACEMENT: Record<"above" | "side", CSSProperties> = {
+  above: { right: 0, bottom: "calc(100% + 2px)" },
+  side: { left: "calc(100% + 6px)", top: -6, justifyContent: "flex-start" },
+};
+
+const QUICK_TOGGLE_PILL_STYLE: CSSProperties = {
+  boxSizing: "border-box",
+  width: "100%",
+  height: 32,
+  padding: "0 12px",
   borderRadius: 999,
   background: "rgba(6, 21, 15, 0.86)",
   border: "1px solid rgba(124, 255, 114, 0.6)",
   color: "#E9FBE7",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  whiteSpace: "nowrap",
   fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
   fontSize: 12,
   fontWeight: 700,
   letterSpacing: 0.2,
-  cursor: "pointer",
-  touchAction: "manipulation",
 };
 
 /**
- * On-pitch Goal View switch: one tap cycles Top-Down → Left End → Right End.
- * Sits above the read-only shield so it works in every view.
+ * Goal View switch shown outside the pitch box: one tap cycles
+ * Top-Down → Left End → Right End. Must be rendered inside the pitch box's
+ * positioned container (it is anchored to that box's edges).
  */
-export function GoalViewQuickToggle(props: { mode: GoalViewMode; onChange: (mode: GoalViewMode) => void }) {
+export function GoalViewQuickToggle(props: {
+  mode: GoalViewMode;
+  onChange: (mode: GoalViewMode) => void;
+  placement?: "above" | "side";
+}) {
   const index = GOAL_VIEW_MODE_OPTIONS.findIndex((o) => o.id === props.mode);
   const current = GOAL_VIEW_MODE_OPTIONS[index] ?? GOAL_VIEW_MODE_OPTIONS[0];
   const next = GOAL_VIEW_MODE_OPTIONS[(index + 1) % GOAL_VIEW_MODE_OPTIONS.length];
+  const placement = props.placement ?? "above";
   return (
     <button
       type="button"
-      style={QUICK_TOGGLE_STYLE}
+      style={{ ...QUICK_TOGGLE_BUTTON_STYLE, ...QUICK_TOGGLE_PLACEMENT[placement] }}
       data-experimental="goal-view-quick-toggle"
+      data-placement={placement}
       aria-label={`Goal View: ${current.label}. Tap for ${next.label}`}
       onClick={() => props.onChange(next.id)}
     >
-      View: {current.label} ▸
+      <span style={QUICK_TOGGLE_PILL_STYLE}>View: {current.label} ▸</span>
     </button>
   );
 }

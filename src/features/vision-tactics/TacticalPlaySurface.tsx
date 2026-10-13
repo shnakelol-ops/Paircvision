@@ -2507,7 +2507,13 @@ export default function TacticalPlaySurface() {
             />
           )}
           {goalView.isGoalView ? <GoalViewReadOnlyShield mode={goalView.mode} /> : null}
-          {GOAL_VIEW_EXPERIMENT_ENABLED ? <GoalViewQuickToggle mode={goalView.mode} onChange={goalView.setMode} /> : null}
+          {GOAL_VIEW_EXPERIMENT_ENABLED ? (
+            <GoalViewQuickToggle
+              mode={goalView.mode}
+              onChange={goalView.setMode}
+              placement={compactLandscapeControls ? "side" : "above"}
+            />
+          ) : null}
         </div>
 
         <button type="button" style={BACK_BUTTON_STYLE} onClick={goBack}>
