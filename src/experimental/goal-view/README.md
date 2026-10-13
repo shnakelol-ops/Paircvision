@@ -95,22 +95,31 @@ Goal View is reachable inside the real Tactical Sequence
 Left End, Right End. It shows the coach's actual board (saved plays, players,
 ball, drawings, items, playback) through the same lens and camera C defaults.
 
-**Flag.** Off unless one of these is true:
+**Access.** On automatically in the experimental branch's Vercel preview
+(any of its URLs, no query needed), e.g.
+`https://paircvision-git-claude-paircvision-g-916a4b-shnakelol-pitchisde.vercel.app/vision-tactics/play`.
+Also on with `VITE_EXPERIMENTAL_GOAL_VIEW=true` at build time, or `?goalview`
+in a dev build (`npm run dev`).
 
-- built or served with `VITE_EXPERIMENTAL_GOAL_VIEW=true`
-  (e.g. a Vercel *Preview* environment variable), or
-- a dev build (`npm run dev`) opened with `?goalview` in the URL, or
-- the experimental branch's own Vercel preview opened with `?goalview`:
-  `https://paircvision-git-claude-paircvision-g-916a4b-shnakelol-pitchisde.vercel.app/vision-tactics/play?goalview`
+Gating (`vite.config.ts` + `sequenceGoalView.tsx`):
 
-The preview path is gated twice: `vite.config.ts` compiles the feature out of
-Vercel production builds and of previews of any other branch (`VERCEL_ENV`,
-`VERCEL_GIT_COMMIT_REF`), and at runtime `?goalview` only works on that exact
-preview host (`GOAL_VIEW_PREVIEW_HOST`).
+- Vercel production builds and previews of any other branch compile the
+  feature out entirely (`VERCEL_ENV`, `VERCEL_GIT_COMMIT_REF`).
+- If Vercel's build variables are absent, the runtime still requires the
+  experimental preview's exact host (`GOAL_VIEW_PREVIEW_HOST`).
+- The experimental preview build uses vite-plugin-pwa `selfDestroying`, so a
+  phone that cached an older build unregisters the old service worker, clears
+  its cache and reloads onto the current build automatically.
 
-In a normal production build the flag is the literal `false`: the control,
-shield and lens import are removed from the bundle (verified by grepping the
-built assets).
+Production-build requirement: Pixi registers its mesh render pipe when the
+Mesh module first loads, and only renderers created afterwards get it. The
+lens is a lazy chunk, so Tactical Sequence awaits
+`preloadGoalViewBeforeShell()` before creating its shell while the experiment
+is enabled — otherwise the perspective mesh has no pipe and the Goal View pitch
+renders blank. (The dev server pre-bundles all of Pixi, which hid this.)
+
+Controls: the on-pitch **View** button (top-right; one tap cycles Top-Down →
+Left End → Right End) and the **TOOLS → Goal View (beta)** row.
 
 **Behaviour while a goal view is active**
 
@@ -131,9 +140,9 @@ guard in the orientation effect, the text-overlay/shield JSX, and the TOOLS row)
 
 ### Rollback
 
-1. Instant: stop using `?goalview` (nothing persists). To remove preview
-   access entirely, delete the `define` block in `vite.config.ts` and
-   `GOAL_VIEW_PREVIEW_HOST` usage; `VITE_EXPERIMENTAL_GOAL_VIEW` is never set.
+1. Preview access only: revert the vite.config.ts Goal View block (the
+   `define` entries and `selfDestroying`); the feature then compiles out of
+   every Vercel build. Nothing persists, so no cleanup is needed.
 2. Code: `git revert` the integration commit; or delete the lines in
    `TacticalPlaySurface.tsx` marked "EXPERIMENTAL Goal View" and the
    `sequenceGoalView*` files. No data migration is needed in either case.

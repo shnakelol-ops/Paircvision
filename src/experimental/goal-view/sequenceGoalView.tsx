@@ -11,10 +11,10 @@
 //   - GoalViewModeRow / GoalViewReadOnlyShield: TOOLS-panel control and the
 //     pitch-input shield (read-only; playback and recording stay available).
 //
-// Enable: VITE_EXPERIMENTAL_GOAL_VIEW=true at build/dev time; or `?goalview`
-// in the URL of a dev build (`npm run dev`); or `?goalview` on the experimental
-// branch's own Vercel preview host (GOAL_VIEW_PREVIEW_HOST). Never persisted;
-// no saved-board fields are read or written.
+// Enable: automatically on the experimental branch's Vercel preview (any of
+// its URLs); VITE_EXPERIMENTAL_GOAL_VIEW=true at build time; or `?goalview` in
+// a dev build (`npm run dev`). Never persisted; no saved-board fields are read
+// or written.
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
@@ -33,33 +33,64 @@ export const GOAL_VIEW_PREVIEW_HOST = "paircvision-git-claude-paircvision-g-916a
 // for previews of any other branch, so the feature is compiled out there.
 // Undefined under vitest (no vite.config define), hence the typeof guard.
 declare const __GOAL_VIEW_PREVIEW_ELIGIBLE__: boolean;
+declare const __GOAL_VIEW_BRANCH_PREVIEW__: boolean;
 const PREVIEW_ELIGIBLE_BUILD: boolean =
   typeof __GOAL_VIEW_PREVIEW_ELIGIBLE__ !== "undefined" && __GOAL_VIEW_PREVIEW_ELIGIBLE__;
+// Vercel confirmed at build time: a preview of the experimental branch. Such a
+// bundle is only ever served from that branch's deployments.
+const BRANCH_PREVIEW_BUILD: boolean =
+  typeof __GOAL_VIEW_BRANCH_PREVIEW__ !== "undefined" && __GOAL_VIEW_BRANCH_PREVIEW__;
 
 export function computeGoalViewExperimentEnabled(input: {
   envFlag: string | undefined;
   isDevBuild: boolean;
+  branchPreviewBuild: boolean;
   previewEligibleBuild: boolean;
   hostname: string;
   search: string;
 }): boolean {
   if (input.envFlag === "true") return true;
-  if (!new URLSearchParams(input.search).has("goalview")) return false;
-  if (input.isDevBuild) return true;
-  return input.previewEligibleBuild && input.hostname === GOAL_VIEW_PREVIEW_HOST;
+  // The experimental branch's preview: always on, on any of its URLs.
+  if (input.branchPreviewBuild) return true;
+  if (input.previewEligibleBuild && input.hostname === GOAL_VIEW_PREVIEW_HOST) return true;
+  return input.isDevBuild && new URLSearchParams(input.search).has("goalview");
 }
 
 export const GOAL_VIEW_EXPERIMENT_ENABLED: boolean =
   import.meta.env.VITE_EXPERIMENTAL_GOAL_VIEW === "true" ||
-  ((import.meta.env.DEV || PREVIEW_ELIGIBLE_BUILD) &&
+  ((import.meta.env.DEV || PREVIEW_ELIGIBLE_BUILD || BRANCH_PREVIEW_BUILD) &&
     typeof window !== "undefined" &&
     computeGoalViewExperimentEnabled({
       envFlag: import.meta.env.VITE_EXPERIMENTAL_GOAL_VIEW,
       isDevBuild: import.meta.env.DEV,
+      branchPreviewBuild: BRANCH_PREVIEW_BUILD,
       previewEligibleBuild: PREVIEW_ELIGIBLE_BUILD,
       hostname: window.location.hostname,
       search: window.location.search,
     }));
+
+// One shared load of the lens module. Loading it also registers Pixi's mesh
+// render pipe (pixi.js Mesh.mjs imports scene/mesh/init as a side effect).
+// Pixi only gives a renderer the pipes registered BEFORE it is created, so in
+// production builds (where the lens is a lazy chunk) this module must be
+// loaded before the Sequence shell creates its renderer — otherwise the
+// perspective mesh has no pipe and the Goal View pitch renders blank.
+let lensModulePromise: Promise<typeof import("./createGoalViewLens")> | null = null;
+function loadGoalViewLensModule() {
+  lensModulePromise ??= import("./createGoalViewLens");
+  return lensModulePromise;
+}
+
+/**
+ * Call (and await) before creating the Sequence shell while the experiment is
+ * enabled. Always resolves — a failed load must never stop the board mounting.
+ */
+export function preloadGoalViewBeforeShell(): Promise<void> {
+  return loadGoalViewLensModule().then(
+    () => undefined,
+    () => undefined,
+  );
+}
 
 export const GOAL_VIEW_MODE_OPTIONS: ReadonlyArray<{ id: GoalViewMode; label: string }> = [
   { id: "top-down", label: "Top-Down" },
@@ -101,7 +132,7 @@ export function useSequenceGoalView(shell: MovementCanvasShellHandle | null): Se
     // existing token/ball counter-rotation needs for this end.
     shell.setOrientation(quarterTurnsForMode(mode));
     let cancelled = false;
-    void import("./createGoalViewLens").then(({ createGoalViewLens }) => {
+    void loadGoalViewLensModule().then(({ createGoalViewLens }) => {
       if (cancelled) return;
       if (!lensRef.current) {
         lensRef.current = { lens: createGoalViewLens(shell.getExperimentalRenderTargets()), shell };
@@ -139,6 +170,45 @@ export function GoalViewModeRow(props: {
         </button>
       ))}
     </div>
+  );
+}
+
+const QUICK_TOGGLE_STYLE: CSSProperties = {
+  position: "absolute",
+  top: 8,
+  right: 8,
+  zIndex: 3,
+  padding: "6px 12px",
+  borderRadius: 999,
+  background: "rgba(6, 21, 15, 0.86)",
+  border: "1px solid rgba(124, 255, 114, 0.6)",
+  color: "#E9FBE7",
+  fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: 0.2,
+  cursor: "pointer",
+  touchAction: "manipulation",
+};
+
+/**
+ * On-pitch Goal View switch: one tap cycles Top-Down → Left End → Right End.
+ * Sits above the read-only shield so it works in every view.
+ */
+export function GoalViewQuickToggle(props: { mode: GoalViewMode; onChange: (mode: GoalViewMode) => void }) {
+  const index = GOAL_VIEW_MODE_OPTIONS.findIndex((o) => o.id === props.mode);
+  const current = GOAL_VIEW_MODE_OPTIONS[index] ?? GOAL_VIEW_MODE_OPTIONS[0];
+  const next = GOAL_VIEW_MODE_OPTIONS[(index + 1) % GOAL_VIEW_MODE_OPTIONS.length];
+  return (
+    <button
+      type="button"
+      style={QUICK_TOGGLE_STYLE}
+      data-experimental="goal-view-quick-toggle"
+      aria-label={`Goal View: ${current.label}. Tap for ${next.label}`}
+      onClick={() => props.onChange(next.id)}
+    >
+      View: {current.label} ▸
+    </button>
   );
 }
 

@@ -82,7 +82,9 @@ import PlayerActionSheet from "./PlayerActionSheet";
 import {
   GOAL_VIEW_EXPERIMENT_ENABLED,
   GoalViewModeRow,
+  GoalViewQuickToggle,
   GoalViewReadOnlyShield,
+  preloadGoalViewBeforeShell,
   useSequenceGoalView,
 } from "../../experimental/goal-view/sequenceGoalView";
 import {
@@ -1347,7 +1349,19 @@ export default function TacticalPlaySurface() {
       units: TacticalUnit[];
     } | null = null;
 
+    // EXPERIMENTAL Goal View: its module must load before the shell creates
+    // its Pixi renderer (see preloadGoalViewBeforeShell). Compiled out when
+    // the flag is off.
+    let goalViewModuleReady = false;
+
     const mountShell = () => {
+      if (GOAL_VIEW_EXPERIMENT_ENABLED && !goalViewModuleReady) {
+        void preloadGoalViewBeforeShell().then(() => {
+          goalViewModuleReady = true;
+          if (!disposed) mountShell();
+        });
+        return;
+      }
       void createMovementCanvasShell(host, {
         mode: toShellMode(menuMode),
         // Portrait is now a fully editable orientation (end-line view), so drag
@@ -2493,6 +2507,7 @@ export default function TacticalPlaySurface() {
             />
           )}
           {goalView.isGoalView ? <GoalViewReadOnlyShield mode={goalView.mode} /> : null}
+          {GOAL_VIEW_EXPERIMENT_ENABLED ? <GoalViewQuickToggle mode={goalView.mode} onChange={goalView.setMode} /> : null}
         </div>
 
         <button type="button" style={BACK_BUTTON_STYLE} onClick={goBack}>

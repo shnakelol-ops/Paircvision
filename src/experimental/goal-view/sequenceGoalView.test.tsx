@@ -9,6 +9,7 @@ import {
   GOAL_VIEW_EXPERIMENT_ENABLED,
   GOAL_VIEW_MODE_OPTIONS,
   GoalViewModeRow,
+  GoalViewQuickToggle,
   GoalViewReadOnlyShield,
   useSequenceGoalView,
 } from "./sequenceGoalView";
@@ -51,18 +52,20 @@ describe("Goal View experiment flag", () => {
 });
 
 describe("Goal View access gate", () => {
-  const base = { envFlag: undefined, isDevBuild: false, previewEligibleBuild: true, hostname: GOAL_VIEW_PREVIEW_HOST, search: "?goalview" };
+  const base = { envFlag: undefined, isDevBuild: false, branchPreviewBuild: false, previewEligibleBuild: true, hostname: GOAL_VIEW_PREVIEW_HOST, search: "" };
 
-  it("unlocks with ?goalview on the experimental branch's preview host", () => {
+  it("is always on in the experimental branch's preview build, on any of its URLs, no query needed", () => {
+    for (const hostname of [GOAL_VIEW_PREVIEW_HOST, "paircvision-3izvi8n2q-shnakelol-pitchisde.vercel.app"]) {
+      expect(computeGoalViewExperimentEnabled({ ...base, branchPreviewBuild: true, hostname })).toBe(true);
+    }
+  });
+
+  it("falls back to the exact preview host when Vercel's build variables are unavailable", () => {
     expect(computeGoalViewExperimentEnabled(base)).toBe(true);
+    expect(computeGoalViewExperimentEnabled({ ...base, search: "?goalview" })).toBe(true);
   });
 
-  it("stays off on that preview without ?goalview", () => {
-    expect(computeGoalViewExperimentEnabled({ ...base, search: "" })).toBe(false);
-    expect(computeGoalViewExperimentEnabled({ ...base, search: "?diag" })).toBe(false);
-  });
-
-  it("stays off on production and on other hosts, even with ?goalview", () => {
+  it("stays off on production and on other hosts", () => {
     for (const hostname of [
       "paircvision.vercel.app",
       "www.paircvision.ie",
@@ -71,17 +74,18 @@ describe("Goal View access gate", () => {
       "paircvision-git-some-other-branch-shnakelol-pitchisde.vercel.app",
       `evil.${GOAL_VIEW_PREVIEW_HOST}`,
     ]) {
-      expect(computeGoalViewExperimentEnabled({ ...base, hostname })).toBe(false);
+      expect(computeGoalViewExperimentEnabled({ ...base, hostname, search: "?goalview" })).toBe(false);
     }
   });
 
   it("stays off when the build is not eligible (Vercel production or another branch)", () => {
-    expect(computeGoalViewExperimentEnabled({ ...base, previewEligibleBuild: false })).toBe(false);
+    expect(computeGoalViewExperimentEnabled({ ...base, previewEligibleBuild: false, search: "?goalview" })).toBe(false);
   });
 
-  it("dev builds still accept ?goalview anywhere; the env flag always wins", () => {
-    expect(computeGoalViewExperimentEnabled({ ...base, isDevBuild: true, hostname: "localhost", previewEligibleBuild: false })).toBe(true);
-    expect(computeGoalViewExperimentEnabled({ ...base, envFlag: "true", search: "", hostname: "x", previewEligibleBuild: false })).toBe(true);
+  it("dev builds accept ?goalview anywhere; the env flag always wins", () => {
+    expect(computeGoalViewExperimentEnabled({ ...base, isDevBuild: true, hostname: "localhost", previewEligibleBuild: false, search: "?goalview" })).toBe(true);
+    expect(computeGoalViewExperimentEnabled({ ...base, isDevBuild: true, hostname: "localhost", previewEligibleBuild: false })).toBe(false);
+    expect(computeGoalViewExperimentEnabled({ ...base, envFlag: "true", hostname: "x", previewEligibleBuild: false })).toBe(true);
   });
 });
 
@@ -95,6 +99,19 @@ describe("Goal View controls", () => {
     expect(screen.getByRole("button", { name: "Top-Down" }).getAttribute("aria-pressed")).toBe("true");
     screen.getByRole("button", { name: "Left End" }).click();
     expect(onChange).toHaveBeenCalledWith("left-end");
+  });
+
+  it("on-pitch quick toggle cycles Top-Down → Left End → Right End → Top-Down", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<GoalViewQuickToggle mode="top-down" onChange={onChange} />);
+    screen.getByRole("button").click();
+    expect(onChange).toHaveBeenLastCalledWith("left-end");
+    rerender(<GoalViewQuickToggle mode="left-end" onChange={onChange} />);
+    screen.getByRole("button").click();
+    expect(onChange).toHaveBeenLastCalledWith("right-end");
+    rerender(<GoalViewQuickToggle mode="right-end" onChange={onChange} />);
+    screen.getByRole("button").click();
+    expect(onChange).toHaveBeenLastCalledWith("top-down");
   });
 
   it("read-only shield names the active view", () => {
