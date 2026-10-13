@@ -11,9 +11,10 @@
 //   - GoalViewModeRow / GoalViewReadOnlyShield: TOOLS-panel control and the
 //     pitch-input shield (read-only; playback and recording stay available).
 //
-// Enable: VITE_EXPERIMENTAL_GOAL_VIEW=true at build/dev time, or `?goalview`
-// in the URL of a dev build (`npm run dev`). Never persisted; no saved-board
-// fields are read or written.
+// Enable: VITE_EXPERIMENTAL_GOAL_VIEW=true at build/dev time; or `?goalview`
+// in the URL of a dev build (`npm run dev`); or `?goalview` on the experimental
+// branch's own Vercel preview host (GOAL_VIEW_PREVIEW_HOST). Never persisted;
+// no saved-board fields are read or written.
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
@@ -21,13 +22,44 @@ import type { MovementCanvasShellHandle } from "../../movement-board/shell/types
 import type { GoalViewLens } from "./createGoalViewLens";
 import { quarterTurnsForMode, type GoalViewMode } from "./goalViewCamera";
 
-function devQueryFlag(): boolean {
-  if (typeof window === "undefined") return false;
-  return new URLSearchParams(window.location.search).has("goalview");
+/**
+ * The experimental branch's Vercel preview (branch alias). Goal View can be
+ * switched on with `?goalview` on this exact host only — never on production,
+ * on per-commit deployment URLs or on any other branch's preview.
+ */
+export const GOAL_VIEW_PREVIEW_HOST = "paircvision-git-claude-paircvision-g-916a4b-shnakelol-pitchisde.vercel.app";
+
+// Injected by vite.config.ts (`define`). False for Vercel production builds and
+// for previews of any other branch, so the feature is compiled out there.
+// Undefined under vitest (no vite.config define), hence the typeof guard.
+declare const __GOAL_VIEW_PREVIEW_ELIGIBLE__: boolean;
+const PREVIEW_ELIGIBLE_BUILD: boolean =
+  typeof __GOAL_VIEW_PREVIEW_ELIGIBLE__ !== "undefined" && __GOAL_VIEW_PREVIEW_ELIGIBLE__;
+
+export function computeGoalViewExperimentEnabled(input: {
+  envFlag: string | undefined;
+  isDevBuild: boolean;
+  previewEligibleBuild: boolean;
+  hostname: string;
+  search: string;
+}): boolean {
+  if (input.envFlag === "true") return true;
+  if (!new URLSearchParams(input.search).has("goalview")) return false;
+  if (input.isDevBuild) return true;
+  return input.previewEligibleBuild && input.hostname === GOAL_VIEW_PREVIEW_HOST;
 }
 
 export const GOAL_VIEW_EXPERIMENT_ENABLED: boolean =
-  import.meta.env.VITE_EXPERIMENTAL_GOAL_VIEW === "true" || (import.meta.env.DEV && devQueryFlag());
+  import.meta.env.VITE_EXPERIMENTAL_GOAL_VIEW === "true" ||
+  ((import.meta.env.DEV || PREVIEW_ELIGIBLE_BUILD) &&
+    typeof window !== "undefined" &&
+    computeGoalViewExperimentEnabled({
+      envFlag: import.meta.env.VITE_EXPERIMENTAL_GOAL_VIEW,
+      isDevBuild: import.meta.env.DEV,
+      previewEligibleBuild: PREVIEW_ELIGIBLE_BUILD,
+      hostname: window.location.hostname,
+      search: window.location.search,
+    }));
 
 export const GOAL_VIEW_MODE_OPTIONS: ReadonlyArray<{ id: GoalViewMode; label: string }> = [
   { id: "top-down", label: "Top-Down" },

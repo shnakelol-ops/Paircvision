@@ -99,7 +99,14 @@ ball, drawings, items, playback) through the same lens and camera C defaults.
 
 - built or served with `VITE_EXPERIMENTAL_GOAL_VIEW=true`
   (e.g. a Vercel *Preview* environment variable), or
-- a dev build (`npm run dev`) opened with `?goalview` in the URL.
+- a dev build (`npm run dev`) opened with `?goalview` in the URL, or
+- the experimental branch's own Vercel preview opened with `?goalview`:
+  `https://paircvision-git-claude-paircvision-g-916a4b-shnakelol-pitchisde.vercel.app/vision-tactics/play?goalview`
+
+The preview path is gated twice: `vite.config.ts` compiles the feature out of
+Vercel production builds and of previews of any other branch (`VERCEL_ENV`,
+`VERCEL_GIT_COMMIT_REF`), and at runtime `?goalview` only works on that exact
+preview host (`GOAL_VIEW_PREVIEW_HOST`).
 
 In a normal production build the flag is the literal `false`: the control,
 shield and lens import are removed from the bundle (verified by grepping the
@@ -124,8 +131,9 @@ guard in the orientation effect, the text-overlay/shield JSX, and the TOOLS row)
 
 ### Rollback
 
-1. Instant, no code change: unset `VITE_EXPERIMENTAL_GOAL_VIEW` (or never set
-   it) and redeploy — the feature is compiled out.
+1. Instant: stop using `?goalview` (nothing persists). To remove preview
+   access entirely, delete the `define` block in `vite.config.ts` and
+   `GOAL_VIEW_PREVIEW_HOST` usage; `VITE_EXPERIMENTAL_GOAL_VIEW` is never set.
 2. Code: `git revert` the integration commit; or delete the lines in
    `TacticalPlaySurface.tsx` marked "EXPERIMENTAL Goal View" and the
    `sequenceGoalView*` files. No data migration is needed in either case.
