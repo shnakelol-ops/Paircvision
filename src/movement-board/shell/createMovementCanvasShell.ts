@@ -1578,6 +1578,12 @@ export async function createMovementCanvasShell(
       orientationQuarterTurns = next;
       syncToHost();
     },
+    getExperimentalRenderTargets: () => ({
+      app,
+      world,
+      tokenLayer: tokenLayerContainer,
+      ballLayer: ballLayerContainer,
+    }),
     setDrawingTool: (tool) => drawingController.setTool(tool),
     getDrawingTool: () => drawingController.getTool(),
     setDrawingColor: (color) => drawingController.setColor(color),

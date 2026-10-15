@@ -182,6 +182,17 @@ export type FlowItemType =
   | "sliotarLarge"
   | "rugbyBall";
 export type ItemMode = "edit" | "locked";
+
+/** See TacticalPadLiteSurface.getExperimentalRenderTargets (experimental Goal View only). */
+export type TacticalPadLiteExperimentalRenderTargets = {
+  app: Application;
+  world: Container;
+  playersLayer: Container;
+  ballLayer: Container;
+  itemsLayer: Container;
+  /** The equipment type a child of itemsLayer/ballLayer draws, or null. */
+  getItemTypeForNode: (node: Container) => FlowItemType | null;
+};
 export type TacticalItem = {
   id: string;
   type: FlowItemType;
@@ -279,6 +290,14 @@ export type TacticalPadLiteSurface = {
    * stay upright.
    */
   setOrientation: (quarterTurns: number) => void;
+  /**
+   * EXPERIMENTAL — consumed only by the flag-gated Goal View experiment
+   * (src/experimental/goal-view). Read-only access to the Pixi application and
+   * layer containers so the presentation lens can re-project the finished
+   * board; nothing about the surface's own rendering or state changes because
+   * it exists.
+   */
+  getExperimentalRenderTargets: () => TacticalPadLiteExperimentalRenderTargets;
   setWhiteboardTeamConfig: (config: {
     counts: { blue: number; red: number };
     colors: { blue: WhiteboardTokenColor; red: WhiteboardTokenColor };
@@ -5395,6 +5414,14 @@ export async function createTacticalPadLiteSurface(
       orientationQuarterTurns = next;
       fitToHost();
     },
+    getExperimentalRenderTargets: () => ({
+      app,
+      world,
+      playersLayer,
+      ballLayer,
+      itemsLayer,
+      getItemTypeForNode: (node) => tacticalItems.find((item) => item.graphic === node)?.type ?? null,
+    }),
     exportImageCanvas: () => {
       // Handles / selection halo never appear in an exported image.
       setSelectedPracticeArea(null);

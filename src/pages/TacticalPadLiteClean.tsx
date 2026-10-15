@@ -101,6 +101,17 @@ import { type SlateTextAnnotation, type SlateTextFontSize } from "../features/qu
 import { useCoachingClip } from "../features/quickboard/clips/useCoachingClip";
 import CoachingClipPanel from "../features/quickboard/clips/CoachingClipPanel";
 import SlateFullViewController from "../features/quickboard/presentation/SlateFullViewController";
+// EXPERIMENTAL Goal View — every use below is gated by GOAL_VIEW_EXPERIMENT_ENABLED
+// (false in production builds). Rollback: delete the "EXPERIMENTAL Goal View" lines.
+import {
+  GOAL_VIEW_EXPERIMENT_ENABLED,
+  GoalViewQuickToggle,
+  GoalViewReadOnlyShield,
+  preloadGoalViewBeforeShell,
+  useGoalView,
+  type GoalViewHost,
+} from "../experimental/goal-view/sequenceGoalView";
+import { createSlateGoalViewHost } from "../experimental/goal-view/slateGoalView";
 import {
   FULL_VIEW_ROOT_PADDING,
   resolveFullViewContentStyle,
@@ -2681,6 +2692,16 @@ export default function TacticalPadLiteClean({
   const isStatsMode = mode === "stats";
   const isWhiteboardMode = mode === "whiteboard";
   const isFullViewActive = isFullView && !isWhiteboardMode;
+  // EXPERIMENTAL Goal View (flag-gated). Pitch surfaces only — never the plain
+  // whiteboard or stats modes. Read-only: editing stays in Top-Down.
+  const goalViewSupported = GOAL_VIEW_EXPERIMENT_ENABLED && !isWhiteboardMode && !isStatsMode;
+  const [goalViewHost, setGoalViewHost] = useState<GoalViewHost | null>(null);
+  const goalView = useGoalView(goalViewSupported ? goalViewHost : null);
+  const goalViewActive = goalViewSupported && goalView.isGoalView;
+  const releaseGoalViewRef = useRef(goalView.releaseBeforeShellDestroy);
+  useEffect(() => {
+    if (!goalViewSupported && goalView.mode !== "top-down") goalView.setMode("top-down");
+  }, [goalViewSupported, goalView.mode, goalView.setMode]);
   // Practice Area selection/handles are authoring UI: suspended while a clip
   // records (no handles in recorded frames) and while in Full View.
   const practiceAreasSuspended = practiceAreasSuspendedForRecording || isFullViewActive;
@@ -3071,6 +3092,7 @@ export default function TacticalPadLiteClean({
     let reflowRafId1: number | null = null;
     let reflowRafId2: number | null = null;
 
+    const mountSurface = () => {
     void createTacticalPadLiteSurface(host, {
       sport,
       surfaceVariant: isWhiteboardMode ? "whiteboard" : "tactical",
@@ -3159,6 +3181,14 @@ export default function TacticalPadLiteClean({
       }
       surfaceRef.current = surface;
       destroySurface = surface.destroy;
+      if (GOAL_VIEW_EXPERIMENT_ENABLED && !isWhiteboardMode) {
+        // The lens must hand the world back before the surface is destroyed.
+        destroySurface = () => {
+          releaseGoalViewRef.current();
+          surface.destroy();
+        };
+        setGoalViewHost(createSlateGoalViewHost(surface, resolveSurfacePitchTheme(slateSurface, sport)));
+      }
       const initialDrawTool = isWhiteboardMode ? whiteboardTool : tacticalTool;
       const initialDrawColor = isWhiteboardMode ? whiteboardPenColor : tacticalPenColor;
       surface.setPlaybackSpeedMultiplier(playbackSpeedMultiplierRef.current);
@@ -3200,6 +3230,17 @@ export default function TacticalPadLiteClean({
         });
       });
     });
+    };
+    // EXPERIMENTAL Goal View: its module must load before the surface creates
+    // its Pixi renderer (Pixi's mesh pipe is only given to renderers created
+    // after it registers). Compiled out when the flag is off.
+    if (GOAL_VIEW_EXPERIMENT_ENABLED) {
+      void preloadGoalViewBeforeShell().then(() => {
+        if (!disposed) mountSurface();
+      });
+    } else {
+      mountSurface();
+    }
 
     return () => {
       disposed = true;
@@ -3221,6 +3262,7 @@ export default function TacticalPadLiteClean({
       });
       setIsShapeLinksPanelOpen(false);
       setPracticeAreaSelection(null);
+      if (GOAL_VIEW_EXPERIMENT_ENABLED) setGoalViewHost(null);
       destroySurface?.();
     };
   }, [isStatsMode, isWhiteboardMode]);
@@ -3403,8 +3445,10 @@ export default function TacticalPadLiteClean({
   // state, so rotating the device cannot erase, duplicate or reset the board.
   useEffect(() => {
     if (isStatsMode || isWhiteboardMode) return;
+    // EXPERIMENTAL Goal View owns the orientation while a goal view is active.
+    if (goalViewActive) return;
     surfaceRef.current?.setOrientation(portraitQuarterTurns);
-  }, [portraitQuarterTurns, boardSurfaceReadyNonce, isStatsMode, isWhiteboardMode]);
+  }, [portraitQuarterTurns, boardSurfaceReadyNonce, isStatsMode, isWhiteboardMode, goalViewActive]);
 
   useEffect(() => {
     if (isStatsMode || isWhiteboardMode) return;
@@ -3932,7 +3976,9 @@ export default function TacticalPadLiteClean({
     }
     surface.pausePlayback();
     const file = await exportBoardSetupAsPng(surface, {
-      textAnnotations: textAnnotationsRef.current,
+      // DOM text labels are flat-board positioned and hidden in (experimental)
+      // Goal View, so a Goal View export leaves them out too.
+      textAnnotations: goalViewActive ? [] : textAnnotationsRef.current,
       ...(surfaceUsesDarkWatermark(slateSurface) ? { watermarkColor: BOARD_PNG_WATERMARK_DARK_COLOR } : {}),
     });
     if (!file) {
@@ -4993,6 +5039,22 @@ export default function TacticalPadLiteClean({
       : isPortrait
         ? PORTRAIT_CONTENT_STYLE
         : CONTENT_STYLE;
+  // EXPERIMENTAL Goal View selector (flag-gated): a dedicated row directly
+  // above the pitch, right-aligned. Portrait already has that room above the
+  // box. Landscape/desktop boxes reach the top of the screen and the side
+  // gutters are too narrow for the selector on phones (an overflowing button
+  // also made the page scroll sideways when tapped), so reserve a 48px row
+  // above the box there; the box is centred and aspect-locked, so it only
+  // shrinks when height-limited.
+  const boardContentStyle: CSSProperties =
+    goalViewSupported && !isFullViewActive && !isPortrait
+      ? {
+          ...contentStyle,
+          marginTop: 48,
+          width: `min(${CONTENT_WIDTH_EXPR}, calc((${CONTENT_MAX_HEIGHT_EXPR} - 48px) * 1.6))`,
+          maxHeight: `calc(${CONTENT_MAX_HEIGHT_EXPR} - 48px)`,
+        }
+      : contentStyle;
 
   if (isStatsMode) {
     return (
@@ -5008,7 +5070,7 @@ export default function TacticalPadLiteClean({
         <style>{`@keyframes tp-rec-pulse{0%,100%{opacity:1}50%{opacity:0.30}}`}</style>
         {!isWhiteboardMode ? <style>{STADIUM_FLOODLIGHT_CSS}</style> : null}
         {!isWhiteboardMode && !isFullViewActive ? <VisionStadiumBackground variant="board" portrait={isPortrait} /> : null}
-        <div style={contentStyle} data-slate-board-content="true">
+        <div style={boardContentStyle} data-slate-board-content="true">
           <div ref={hostRef} style={pitchSurfaceStyle} />
           {!isWhiteboardMode ? (
             <PitchWatermark
@@ -5019,13 +5081,21 @@ export default function TacticalPadLiteClean({
             />
           ) : null}
           {!isWhiteboardMode && shouldBlockPortraitInput ? <div style={PORTRAIT_INTERACTION_SHIELD_STYLE} aria-hidden="true" /> : null}
-          {!isWhiteboardMode && !shouldBlockPortraitInput ? (
+          {!isWhiteboardMode && !shouldBlockPortraitInput && !goalViewActive ? (
             <SlateTextOverlay
               annotations={textAnnotations}
               active={textToolActive && !toolsOpen && !isPlaybackLocked && !isFullViewActive}
               onAnnotationsChange={setTextAnnotations}
               placementDraft={pendingLabelDraft}
               onPlacementDone={handleLabelPlacementDone}
+            />
+          ) : null}
+          {goalViewActive ? <GoalViewReadOnlyShield mode={goalView.mode} camera={goalView.camera} /> : null}
+          {goalViewSupported && !isFullViewActive ? (
+            <GoalViewQuickToggle
+              mode={goalView.mode}
+              onChange={goalView.setMode}
+              camera={goalView.camera}
             />
           ) : null}
         </div>
