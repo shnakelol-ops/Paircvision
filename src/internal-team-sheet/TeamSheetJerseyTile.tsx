@@ -1,12 +1,13 @@
 import type { CSSProperties } from "react";
 import type { TeamSheetPlayer } from "./team-sheet-types";
-import { JERSEY_ASPECT, getJerseySrc, type OutfieldJerseyId } from "./team-sheet-jersey";
+import { JERSEY_ASPECT, getJerseySrc } from "./team-sheet-jersey";
+import type { TeamSheetKitSrcs } from "./team-sheet-kits";
 
 interface Props {
   player: TeamSheetPlayer;
   editable: boolean;
-  /** Selected outfield kit; squad number 1 always gets the GK jersey. */
-  outfieldJersey?: OutfieldJerseyId;
+  /** Resolved outfield/GK kit images; squad number 1 gets the GK kit. */
+  kitSrcs?: TeamSheetKitSrcs;
   size?: number;
   onNameChange: (name: string) => void;
   /**
@@ -19,8 +20,8 @@ interface Props {
   showNumberOverlay?: boolean;
 }
 
-export function TeamSheetJerseyTile({ player, editable, outfieldJersey, size = 54, onNameChange, showNumberOverlay = true }: Props) {
-  const jerseySrc = getJerseySrc(player.number, outfieldJersey);
+export function TeamSheetJerseyTile({ player, editable, kitSrcs, size = 54, onNameChange, showNumberOverlay = true }: Props) {
+  const jerseySrc = getJerseySrc(player.number, kitSrcs);
   const height = Math.round(size * JERSEY_ASPECT);
   const name = player.name.trim();
 
