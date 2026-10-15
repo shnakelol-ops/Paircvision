@@ -159,6 +159,59 @@ describe("automatic background removal", () => {
   });
 });
 
+describe("white parts of the jersey touching its outline (e.g. white sleeves)", () => {
+  // Body is green; sleeves stick out to the photo's sides in the given colour.
+  function withSleeves(backdrop: RGB, sleeve: (x: number) => RGB, outline?: RGB): PixelImage {
+    const img = solid(160, 150, backdrop);
+    fillRect(img, 45, 20, 70, 115, () => [40, 140, 70]);
+    for (const x0 of [15, 115]) {
+      fillRect(img, x0, 25, 30, 40, (x) => sleeve(x));
+      if (outline) {
+        fillRect(img, x0, 25, 30, 1, () => outline);
+        fillRect(img, x0, 64, 30, 1, () => outline);
+        fillRect(img, x0 === 15 ? 15 : 144, 25, 1, 40, () => outline);
+      }
+    }
+    return img;
+  }
+  const sleeveKept = (img: PixelImage, mask: Uint8Array) => at(mask, img, 25, 40) === 1 && at(mask, img, 135, 40) === 1;
+
+  it("shaded white sleeves on a white backdrop: removal is not trusted, nothing is cut", () => {
+    const img = withSleeves([255, 255, 255], (x) => {
+      const v = Math.round(250 - (x % 30) * 0.85);
+      return [v, v, v];
+    });
+    expect(assessRemoval(img).confident).toBe(false);
+  });
+
+  it("white sleeves with an outline on a white backdrop: trusted and the sleeves are kept", () => {
+    const img = withSleeves([255, 255, 255], () => [252, 252, 252], [170, 170, 170]);
+    const r = assessRemoval(img);
+    expect(r.confident).toBe(true);
+    expect(sleeveKept(img, r.mask)).toBe(true);
+  });
+
+  it("white sleeves on a light grey backdrop: removal is not trusted", () => {
+    expect(assessRemoval(withSleeves([233, 233, 233], () => [255, 255, 255])).confident).toBe(false);
+  });
+
+  it("KNOWN LIMIT — flat white sleeves identical to a white backdrop can't be told apart by colour, so the result is flagged as a light backdrop for the coach to check", () => {
+    for (const shade of [255, 248]) {
+      const img = withSleeves([255, 255, 255], () => [shade, shade, shade]);
+      const r = assessRemoval(img);
+      expect(r.confident).toBe(true);
+      expect(sleeveKept(img, r.mask)).toBe(false); // documents the limit honestly
+      if (r.confident) expect(r.lightBackdrop).toBe(true); // → the sheet warns and offers Show original / Restore
+    }
+  });
+
+  it("a dark or coloured backdrop is not flagged as light", () => {
+    const r = assessRemoval(jerseyWithWhiteDetails([30, 30, 30], [40, 140, 70]));
+    expect(r.confident).toBe(true);
+    if (r.confident) expect(r.lightBackdrop).toBe(false);
+  });
+});
+
 describe("real Ballylanders photos (256px fixtures of the club's product shots)", () => {
   it("green/yellow on white: confident, backdrop removed, jersey core and white crest kept", () => {
     const img = loadFixture("jersey-green-on-white");

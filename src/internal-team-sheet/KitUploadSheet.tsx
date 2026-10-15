@@ -65,6 +65,12 @@ function statusMessage(loaded: Loaded, removeOn: boolean): { text: string; tone:
       tone: "warn",
     };
   }
+  if (removeOn && a?.confident && a.lightBackdrop) {
+    return {
+      text: "Background removed. Check white parts of the jersey that touch its outline, like white sleeves or trim — they can look the same as a white background. Use Show original to compare, and Restore to bring back anything missing.",
+      tone: "warn",
+    };
+  }
   if (removeOn) return { text: "Background removed. Check the edges, then use Erase or Restore to fix anything missed.", tone: "ok" };
   return { text: "Background removal is off. The whole photo will be used.", tone: "ok" };
 }
@@ -77,6 +83,7 @@ export function KitUploadSheet({ file, teamId, defaultName, codec, backend, onSa
   const manualRef = useRef<Uint8Array | null>(null);
   const [manualVersion, setManualVersion] = useState(0);
   const [brush, setBrush] = useState<Brush>("none");
+  const [showOriginal, setShowOriginal] = useState(false);
   const [name, setName] = useState(defaultName);
   const [role, setRole] = useState<KitRole>("outfield");
   const [saving, setSaving] = useState(false);
@@ -123,13 +130,16 @@ export function KitUploadSheet({ file, teamId, defaultName, codec, backend, onSa
     [loaded, autoMask, manualVersion],
   );
 
+  // "Show original" paints the untouched photo so the coach can compare.
+  const opaque = useMemo(() => (loaded ? buildAlpha(loaded.img, null, new Uint8Array(loaded.img.width * loaded.img.height)) : null), [loaded]);
+
   useEffect(() => {
     if (!loaded || !alpha) return;
-    if (previewRef.current) codec.paint(previewRef.current, loaded.img, alpha);
+    if (previewRef.current) codec.paint(previewRef.current, loaded.img, showOriginal && opaque ? opaque : alpha);
     if (tileRef.current) {
       codec.paint(tileRef.current, loaded.img, alpha, { width: TILE_SIZE, height: Math.round(TILE_SIZE * JERSEY_ASPECT) });
     }
-  }, [loaded, alpha, codec]);
+  }, [loaded, alpha, codec, showOriginal, opaque]);
 
   const paintAt = (e: ReactPointerEvent<HTMLCanvasElement>) => {
     if (!loaded || !manualRef.current || brush === "none") return;
@@ -289,6 +299,14 @@ export function KitUploadSheet({ file, teamId, defaultName, codec, backend, onSa
                   Clear fixes
                 </button>
               </div>
+              <button
+                type="button"
+                aria-pressed={showOriginal}
+                style={showOriginal ? { ...S.choiceBtn, ...S.choiceOn } : S.choiceBtn}
+                onClick={() => setShowOriginal((v) => !v)}
+              >
+                {showOriginal ? "Showing original photo" : "Show original"}
+              </button>
             </div>
 
             <div style={S.section}>

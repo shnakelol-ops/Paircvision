@@ -196,8 +196,19 @@ function centreKeptRatio(mask: Uint8Array, width: number, height: number): numbe
 // ── Confidence ───────────────────────────────────────────────────────────
 
 export type RemovalAssessment =
-  | { confident: true; mask: Uint8Array }
+  | { confident: true; mask: Uint8Array; lightBackdrop: boolean }
   | { confident: false; mask: Uint8Array; reason: "busy-background" | "similar-colours" | "nothing-found" };
+
+/**
+ * A light (white/pale) backdrop. Removal can be trusted there and still be
+ * unable to tell a FLAT white jersey part that touches the edge (e.g. plain
+ * white sleeves) from the backdrop — colour alone cannot separate them — so
+ * the UI asks the coach to check white areas whenever this is true.
+ */
+export function isLightBackdrop(backdrop: Backdrop): boolean {
+  const [r, g, b] = backdrop.color;
+  return 0.299 * r + 0.587 * g + 0.114 * b > 200;
+}
 
 /**
  * Whether automatic removal can be trusted for this photo. A plain backdrop
@@ -225,7 +236,7 @@ export function assessRemoval(img: PixelImage, tolerance = DEFAULT_TOLERANCE): R
   if (growsIntoJersey || centreKeptRatio(mask, img.width, img.height) < 0.97) {
     return { confident: false, mask, reason: "similar-colours" };
   }
-  return { confident: true, mask };
+  return { confident: true, mask, lightBackdrop: isLightBackdrop(backdrop) };
 }
 
 // ── Manual correction ────────────────────────────────────────────────────
