@@ -191,13 +191,22 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
     lensRef.current = null;
   }, []);
 
+  // Drop a drag update still queued for the next frame, so it can never land
+  // after Reset Camera or a view change.
+  const cancelPendingOrbit = useCallback(() => {
+    cancelAnimationFrame(frameRef.current);
+    frameRef.current = 0;
+    pendingOrbitRef.current = null;
+  }, []);
+
   // Choosing a view always starts from that end's Camera C preset.
   const setMode = useCallback((next: GoalViewMode) => {
     if (!GOAL_VIEW_EXPERIMENT_ENABLED) return;
+    cancelPendingOrbit();
     gestureRef.current = IDLE_ORBIT_GESTURE;
     setOrbit(DEFAULT_GOAL_VIEW_ORBIT);
     setModeState(next);
-  }, []);
+  }, [cancelPendingOrbit]);
 
   useEffect(() => {
     if (!GOAL_VIEW_EXPERIMENT_ENABLED || !shell) return;
@@ -245,9 +254,10 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
   useEffect(() => () => cancelAnimationFrame(frameRef.current), []);
 
   const reset = useCallback(() => {
+    cancelPendingOrbit();
     gestureRef.current = IDLE_ORBIT_GESTURE;
     setOrbit(DEFAULT_GOAL_VIEW_ORBIT);
-  }, []);
+  }, [cancelPendingOrbit]);
 
   const toggleFit = useCallback(() => {
     const current = orbitRef.current;

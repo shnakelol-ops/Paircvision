@@ -246,11 +246,13 @@ export type MovementCanvasShellHandle = {
    */
   setOrientation: (quarterTurns: number) => void;
   /**
-   * EXPERIMENTAL — consumed only by the internal Goal View prototype
-   * (src/experimental/goal-view). Exposes the shell's Pixi application and
+   * EXPERIMENTAL — consumed only by the Goal View experiment
+   * (src/experimental/goal-view): the internal prototype and the flag-gated
+   * Goal View in Tactical Sequence. Exposes the shell's Pixi application and
    * layer containers so a read-only presentation lens can re-project the
-   * finished board. Read-only access: no production surface calls this, and
-   * nothing about the shell's own rendering or state changes because it exists.
+   * finished board. Read-only access: it is only called while the experiment
+   * flag is on, and nothing about the shell's own rendering or state changes
+   * because it exists.
    */
   getExperimentalRenderTargets: () => MovementCanvasExperimentalRenderTargets;
   // Tactical drawing (PR4) — thin pass-through to the same shared
