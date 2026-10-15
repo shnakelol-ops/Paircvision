@@ -8,7 +8,10 @@ import { LINEUP_FORMATION_POSITIONS } from "../pro-tagger/pro-tagger-lineup-geom
 import { TeamSheetJerseyTile } from "./TeamSheetJerseyTile";
 import { TeamSheetSubTile } from "./TeamSheetSubTile";
 import { buildSubstitute, loadTeamSheet, saveTeamSheet } from "./team-sheet-storage";
-import { JERSEY_ASPECT, OUTFIELD_JERSEYS, type OutfieldJerseyId } from "./team-sheet-jersey";
+import { JERSEY_ASPECT } from "./team-sheet-jersey";
+import { kitsForRole, PRESET_KITS, resolveKit, type TeamSheetKit } from "./team-sheet-kits";
+import { loadUserKitRecords, userKitRecordToKit } from "./team-sheet-kit-store";
+import { useKitImageSrc } from "./useKitImageSrc";
 import type { TeamSheetPlayer } from "./team-sheet-types";
 
 // Ballylanders internal Team Sheet — personal tool, not a public PáircVision
@@ -29,12 +32,19 @@ export default function TeamSheetScreen() {
   const initial = useState(() => loadTeamSheet())[0];
   const [players, setPlayers] = useState<TeamSheetPlayer[]>(initial.players);
   const [substitutes, setSubstitutes] = useState<TeamSheetPlayer[]>(initial.substitutes);
-  const [outfieldJersey, setOutfieldJersey] = useState<OutfieldJerseyId>(initial.outfieldJersey);
+  const [team] = useState(initial.team);
+  const [kitSelection, setKitSelection] = useState(initial.kits);
+  // Presets plus any user kits saved on this device (none until the Kit
+  // Builder lands). Metadata is synchronous; images resolve per kit below.
+  const [allKits] = useState<TeamSheetKit[]>(() => [...PRESET_KITS, ...loadUserKitRecords().map(userKitRecordToKit)]);
+  const outfieldKit = resolveKit(allKits, kitSelection.outfieldKitId, "outfield");
+  const gkKit = resolveKit(allKits, kitSelection.gkKitId, "gk");
+  const kitSrcs = { outfield: useKitImageSrc(outfieldKit), gk: useKitImageSrc(gkKit) };
   const [screenshotMode, setScreenshotMode] = useState(false);
 
   useEffect(() => {
-    saveTeamSheet({ players, substitutes, outfieldJersey });
-  }, [players, substitutes, outfieldJersey]);
+    saveTeamSheet({ players, substitutes, team, kits: kitSelection });
+  }, [players, substitutes, team, kitSelection]);
 
   const setName = useCallback((slotIndex: number, name: string) => {
     setPlayers((prev) => {
@@ -93,28 +103,25 @@ export default function TeamSheetScreen() {
 
       <div style={S.content}>
         <div style={S.heading}>
-          <span style={S.headingClub}>BALLYLANDERS</span>
+          <span style={S.headingClub}>{team.name}</span>
           <span style={S.headingSub}>Starting XV</span>
         </div>
 
         {!screenshotMode && (
-          <div style={S.jerseyPicker} role="radiogroup" aria-label="Outfield jersey">
-            {OUTFIELD_JERSEYS.map((j) => {
-              const selected = j.id === outfieldJersey;
-              return (
-                <button
-                  key={j.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  style={selected ? { ...S.jerseyOption, ...S.jerseyOptionSelected } : S.jerseyOption}
-                  onClick={() => setOutfieldJersey(j.id)}
-                >
-                  <img src={j.src} alt="" width={22} height={Math.round(22 * JERSEY_ASPECT)} style={S.jerseyOptionImg} draggable={false} />
-                  {j.label}
-                </button>
-              );
-            })}
+          <div style={S.kitPickers}>
+            <KitPicker
+              label="Outfield jersey"
+              kits={kitsForRole(allKits, team.id, "outfield")}
+              selectedId={outfieldKit.id}
+              onSelect={(id) => setKitSelection((prev) => ({ ...prev, outfieldKitId: id }))}
+            />
+            <KitPicker
+              label="Goalkeeper jersey"
+              caption="GK"
+              kits={kitsForRole(allKits, team.id, "gk")}
+              selectedId={gkKit.id}
+              onSelect={(id) => setKitSelection((prev) => ({ ...prev, gkKitId: id }))}
+            />
           </div>
         )}
 
@@ -134,7 +141,7 @@ export default function TeamSheetScreen() {
                 <TeamSheetJerseyTile
                   player={player}
                   editable={!screenshotMode}
-                  outfieldJersey={outfieldJersey}
+                  kitSrcs={kitSrcs}
                   size={JERSEY_SIZE}
                   onNameChange={(name) => setName(slot - 1, name)}
                   showNumberOverlay={false}
@@ -150,7 +157,7 @@ export default function TeamSheetScreen() {
               <span style={S.subsLabel}>Substitutes</span>
               <div style={S.subsRow}>
                 {subsForScreenshot.map((sub) => (
-                  <TeamSheetSubTile key={sub.id} player={sub} editable={false} outfieldJersey={outfieldJersey} />
+                  <TeamSheetSubTile key={sub.id} player={sub} editable={false} kitSrcs={kitSrcs} />
                 ))}
               </div>
             </div>
@@ -168,7 +175,7 @@ export default function TeamSheetScreen() {
                   key={sub.id}
                   player={sub}
                   editable
-                  outfieldJersey={outfieldJersey}
+                  kitSrcs={kitSrcs}
                   onNumberChange={(number) => setSubNumber(sub.id, number)}
                   onNameChange={(name) => setSubName(sub.id, name)}
                   onRemove={() => removeSubstitute(sub.id)}
@@ -186,6 +193,45 @@ export default function TeamSheetScreen() {
         )}
       </div>
     </div>
+  );
+}
+
+function KitPicker({
+  label,
+  caption,
+  kits,
+  selectedId,
+  onSelect,
+}: {
+  label: string;
+  caption?: string;
+  kits: TeamSheetKit[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div style={S.jerseyPicker} role="radiogroup" aria-label={label}>
+      {caption && <span style={S.jerseyPickerCaption}>{caption}</span>}
+      {kits.map((kit) => (
+        <KitOption key={kit.id} kit={kit} selected={kit.id === selectedId} onSelect={onSelect} />
+      ))}
+    </div>
+  );
+}
+
+function KitOption({ kit, selected, onSelect }: { kit: TeamSheetKit; selected: boolean; onSelect: (id: string) => void }) {
+  const src = useKitImageSrc(kit);
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      style={selected ? { ...S.jerseyOption, ...S.jerseyOptionSelected } : S.jerseyOption}
+      onClick={() => onSelect(kit.id)}
+    >
+      <img src={src} alt="" width={22} height={Math.round(22 * JERSEY_ASPECT)} style={S.jerseyOptionImg} draggable={false} />
+      {kit.name}
+    </button>
   );
 }
 
@@ -263,6 +309,7 @@ const S: Record<string, CSSProperties> = {
     fontWeight: 900,
     letterSpacing: "0.04em",
     color: "#f1f7f0",
+    textTransform: "uppercase" as const,
   },
   headingSub: {
     fontSize: 11,
@@ -271,11 +318,29 @@ const S: Record<string, CSSProperties> = {
     textTransform: "uppercase" as const,
     color: "#7a95ad",
   },
-  jerseyPicker: {
+  kitPickers: {
     display: "flex",
+    flexDirection: "column" as const,
     gap: 6,
     width: "100%",
     maxWidth: 380,
+  },
+  jerseyPicker: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    width: "100%",
+  },
+  // flex: 2 + the gap keeps a lone GK option aligned under the third
+  // outfield option rather than stretching across the row.
+  jerseyPickerCaption: {
+    flex: 2,
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    color: "#7a95ad",
+    textAlign: "right" as const,
+    paddingRight: 4,
   },
   jerseyOption: {
     flex: 1,
