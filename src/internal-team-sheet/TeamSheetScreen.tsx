@@ -8,6 +8,7 @@ import { LINEUP_FORMATION_POSITIONS } from "../pro-tagger/pro-tagger-lineup-geom
 import { TeamSheetJerseyTile } from "./TeamSheetJerseyTile";
 import { TeamSheetSubTile } from "./TeamSheetSubTile";
 import { buildSubstitute, loadTeamSheet, saveTeamSheet } from "./team-sheet-storage";
+import { JERSEY_ASPECT, OUTFIELD_JERSEYS, type OutfieldJerseyId } from "./team-sheet-jersey";
 import type { TeamSheetPlayer } from "./team-sheet-types";
 
 // Ballylanders internal Team Sheet — personal tool, not a public PáircVision
@@ -28,11 +29,12 @@ export default function TeamSheetScreen() {
   const initial = useState(() => loadTeamSheet())[0];
   const [players, setPlayers] = useState<TeamSheetPlayer[]>(initial.players);
   const [substitutes, setSubstitutes] = useState<TeamSheetPlayer[]>(initial.substitutes);
+  const [outfieldJersey, setOutfieldJersey] = useState<OutfieldJerseyId>(initial.outfieldJersey);
   const [screenshotMode, setScreenshotMode] = useState(false);
 
   useEffect(() => {
-    saveTeamSheet({ players, substitutes });
-  }, [players, substitutes]);
+    saveTeamSheet({ players, substitutes, outfieldJersey });
+  }, [players, substitutes, outfieldJersey]);
 
   const setName = useCallback((slotIndex: number, name: string) => {
     setPlayers((prev) => {
@@ -95,6 +97,27 @@ export default function TeamSheetScreen() {
           <span style={S.headingSub}>Starting XV</span>
         </div>
 
+        {!screenshotMode && (
+          <div style={S.jerseyPicker} role="radiogroup" aria-label="Outfield jersey">
+            {OUTFIELD_JERSEYS.map((j) => {
+              const selected = j.id === outfieldJersey;
+              return (
+                <button
+                  key={j.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  style={selected ? { ...S.jerseyOption, ...S.jerseyOptionSelected } : S.jerseyOption}
+                  onClick={() => setOutfieldJersey(j.id)}
+                >
+                  <img src={j.src} alt="" width={22} height={Math.round(22 * JERSEY_ASPECT)} style={S.jerseyOptionImg} draggable={false} />
+                  {j.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <div
           style={{
             ...S.pitchBox,
@@ -111,6 +134,7 @@ export default function TeamSheetScreen() {
                 <TeamSheetJerseyTile
                   player={player}
                   editable={!screenshotMode}
+                  outfieldJersey={outfieldJersey}
                   size={JERSEY_SIZE}
                   onNameChange={(name) => setName(slot - 1, name)}
                   showNumberOverlay={false}
@@ -126,7 +150,7 @@ export default function TeamSheetScreen() {
               <span style={S.subsLabel}>Substitutes</span>
               <div style={S.subsRow}>
                 {subsForScreenshot.map((sub) => (
-                  <TeamSheetSubTile key={sub.id} player={sub} editable={false} />
+                  <TeamSheetSubTile key={sub.id} player={sub} editable={false} outfieldJersey={outfieldJersey} />
                 ))}
               </div>
             </div>
@@ -144,6 +168,7 @@ export default function TeamSheetScreen() {
                   key={sub.id}
                   player={sub}
                   editable
+                  outfieldJersey={outfieldJersey}
                   onNumberChange={(number) => setSubNumber(sub.id, number)}
                   onNameChange={(name) => setSubName(sub.id, name)}
                   onRemove={() => removeSubstitute(sub.id)}
@@ -245,6 +270,39 @@ const S: Record<string, CSSProperties> = {
     letterSpacing: "0.1em",
     textTransform: "uppercase" as const,
     color: "#7a95ad",
+  },
+  jerseyPicker: {
+    display: "flex",
+    gap: 6,
+    width: "100%",
+    maxWidth: 380,
+  },
+  jerseyOption: {
+    flex: 1,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    background: "transparent",
+    border: "1px solid #1c3a52",
+    borderRadius: 8,
+    color: "#7a95ad",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "4px 8px",
+    cursor: "pointer",
+    outline: "none",
+    fontFamily: "inherit",
+  },
+  jerseyOptionSelected: {
+    background: "#0a2134",
+    border: "1px solid #2ea043",
+    color: "#ffffff",
+  },
+  jerseyOptionImg: {
+    display: "block",
+    objectFit: "contain" as const,
+    pointerEvents: "none",
   },
   pitchBox: {
     position: "relative",
