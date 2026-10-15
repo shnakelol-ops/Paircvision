@@ -73,36 +73,88 @@ export interface KitImageBackend {
   delete(id: string): Promise<void>;
 }
 
-function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error("IndexedDB request failed"));
+// Resolves only once the transaction commits (oncomplete). A request can
+// succeed and its transaction still abort afterwards — e.g. QuotaExceeded
+// at commit — so request.onsuccess alone must never be reported as saved.
+function runInTransaction<T>(tx: IDBTransaction, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const request = run(tx.objectStore(KIT_IMAGES_STORE_NAME));
+    tx.oncomplete = () => resolve(request.result);
+    tx.onabort = () => reject(tx.error ?? request.error ?? new Error("Kit image transaction aborted"));
+    tx.onerror = () => reject(tx.error ?? request.error ?? new Error("Kit image transaction failed"));
   });
 }
 
-export function createIndexedDbKitImageBackend(): KitImageBackend {
+/**
+ * IndexedDB-backed image store. One cached connection, dropped whenever it
+ * stops being usable so the next call reopens cleanly:
+ *  - versionchange (another tab upgrading/deleting the DB): close and step
+ *    aside rather than blocking that tab;
+ *  - close (browser shut the connection, e.g. storage cleared/evicted);
+ *  - a transaction that throws on a dead connection is retried once on a
+ *    fresh one;
+ *  - a blocked open rejects instead of hanging, and a late success of that
+ *    abandoned request is closed so it can't leak.
+ */
+export function createIndexedDbKitImageBackend(getFactory: () => IDBFactory = () => window.indexedDB): KitImageBackend {
   let dbPromise: Promise<IDBDatabase> | null = null;
+
+  function forget(promise: Promise<IDBDatabase>) {
+    if (dbPromise === promise) dbPromise = null;
+  }
+
   function openDb(): Promise<IDBDatabase> {
-    if (!dbPromise) {
-      dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
-        const request = window.indexedDB.open(TEAM_SHEET_KIT_IMAGES_DB_NAME, KIT_IMAGES_DB_VERSION);
-        request.onupgradeneeded = () => {
-          const db = request.result;
-          if (!db.objectStoreNames.contains(KIT_IMAGES_STORE_NAME)) db.createObjectStore(KIT_IMAGES_STORE_NAME);
+    if (dbPromise) return dbPromise;
+    const opening: Promise<IDBDatabase> = new Promise<IDBDatabase>((resolve, reject) => {
+      let abandoned = false;
+      const request = getFactory().open(TEAM_SHEET_KIT_IMAGES_DB_NAME, KIT_IMAGES_DB_VERSION);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(KIT_IMAGES_STORE_NAME)) db.createObjectStore(KIT_IMAGES_STORE_NAME);
+      };
+      request.onsuccess = () => {
+        const db = request.result;
+        if (abandoned) {
+          db.close();
+          return;
+        }
+        db.onversionchange = () => {
+          db.close();
+          forget(opening);
         };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => {
-          dbPromise = null;
-          reject(request.error ?? new Error("Failed to open kit image database"));
-        };
-      });
-    }
-    return dbPromise;
+        db.onclose = () => forget(opening);
+        resolve(db);
+      };
+      request.onerror = () => reject(request.error ?? new Error("Failed to open kit image database"));
+      request.onblocked = () => {
+        abandoned = true;
+        reject(new Error("Kit image database is blocked by another open tab"));
+      };
+    });
+    dbPromise = opening;
+    // Any failed open (including a synchronous throw, e.g. no IndexedDB)
+    // must not stay cached, or every later call would fail forever.
+    opening.catch(() => forget(opening));
+    return opening;
   }
+
   async function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-    const db = await openDb();
-    return requestToPromise(run(db.transaction(KIT_IMAGES_STORE_NAME, mode).objectStore(KIT_IMAGES_STORE_NAME)));
+    for (let attempt = 0; ; attempt++) {
+      const promise = openDb();
+      const db = await promise;
+      let tx: IDBTransaction;
+      try {
+        tx = db.transaction(KIT_IMAGES_STORE_NAME, mode);
+      } catch (err) {
+        // InvalidStateError: the connection closed without telling us.
+        forget(promise);
+        if (attempt === 0) continue;
+        throw err;
+      }
+      return runInTransaction(tx, run);
+    }
   }
+
   return {
     async put(id, blob) {
       await withStore("readwrite", (s) => s.put(blob, id));

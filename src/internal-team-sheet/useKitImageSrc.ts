@@ -24,7 +24,13 @@ export function useKitImageSrc(kit: TeamSheetKit, backend?: KitImageBackend): st
     });
     return () => {
       cancelled = true;
-      if (url) URL.revokeObjectURL(url);
+      if (url) {
+        const revoked = url;
+        URL.revokeObjectURL(revoked);
+        // Forget the URL we just revoked, so switching back to this kit
+        // shows the fallback while it reloads — never a dead blob: URL.
+        setUserSrc((prev) => (prev && prev.url === revoked ? null : prev));
+      }
     };
   }, [kit.id, kit.source, backend]);
 
