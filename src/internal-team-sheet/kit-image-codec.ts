@@ -94,6 +94,33 @@ export async function decodeToPixels(file: File, maxEdge = MAX_WORKING_EDGE): Pr
   try {
     if (!source.width || !source.height) throw new Error("This photo couldn't be opened.");
     const target = fitWithin(source.width, source.height, maxEdge);
+    // Fast path: let the browser resize while decoding (~5x faster than
+    // drawing a 48MP photo through canvases on a phone). Browsers that
+    // ignore the resize options return the full size, and fall through to
+    // the stepwise canvas path below.
+    if (typeof createImageBitmap === "function" && typeof ImageBitmap !== "undefined" && source.image instanceof ImageBitmap) {
+      try {
+        const resized = await createImageBitmap(source.image, {
+          resizeWidth: target.width,
+          resizeHeight: target.height,
+          resizeQuality: "high",
+        });
+        try {
+          if (resized.width === target.width && resized.height === target.height) {
+            source.release();
+            const out = makeCanvas(target.width, target.height);
+            const ctx = context2d(out);
+            ctx.drawImage(resized, 0, 0);
+            const { data } = ctx.getImageData(0, 0, target.width, target.height);
+            return { data, width: target.width, height: target.height };
+          }
+        } finally {
+          resized.close();
+        }
+      } catch {
+        // resize options unsupported — use the canvas path
+      }
+    }
     let current: CanvasImageSource = source.image;
     let w = source.width;
     let h = source.height;

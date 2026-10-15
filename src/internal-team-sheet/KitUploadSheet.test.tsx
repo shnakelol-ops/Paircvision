@@ -203,6 +203,9 @@ describe("KitUploadSheet", () => {
     await screen.findByText(/Background removed|too close/);
     if (!removeSwitch().checked) fireEvent.click(removeSwitch());
     fireEvent.change(within(dialog()).getByRole("slider", { name: "Tolerance" }), { target: { value: "8" } });
+    // Save waits for the debounced recompute, so it can never save a stale mask.
+    expect(saveBtn()).toHaveProperty("disabled", true);
+    await waitFor(() => expect(saveBtn()).toHaveProperty("disabled", false));
     fireEvent.click(saveBtn());
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
     expect(alphaAt(encoded[0], img, 25, 75)).toBe(255); // pale strip kept at low tolerance

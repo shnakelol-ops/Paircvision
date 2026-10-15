@@ -80,6 +80,14 @@ export function KitUploadSheet({ file, teamId, defaultName, codec, backend, onSa
   const [loadError, setLoadError] = useState<string | null>(null);
   const [removeOn, setRemoveOn] = useState(false);
   const [tolerance, setTolerance] = useState(DEFAULT_TOLERANCE);
+  // The slider moves instantly; the (heavier) mask recompute follows once
+  // the finger settles, so dragging stays smooth on slower phones.
+  const [toleranceInput, setToleranceInput] = useState(DEFAULT_TOLERANCE);
+  useEffect(() => {
+    if (toleranceInput === tolerance) return;
+    const id = setTimeout(() => setTolerance(toleranceInput), 150);
+    return () => clearTimeout(id);
+  }, [toleranceInput, tolerance]);
   const manualRef = useRef<Uint8Array | null>(null);
   const [manualVersion, setManualVersion] = useState(0);
   const [brush, setBrush] = useState<Brush>("none");
@@ -159,7 +167,7 @@ export function KitUploadSheet({ file, teamId, defaultName, codec, backend, onSa
   };
 
   const save = async () => {
-    if (!loaded || !alpha || saving) return;
+    if (!loaded || !alpha || saving || toleranceInput !== tolerance) return;
     setSaving(true);
     setSaveError(null);
     let image: Blob;
@@ -272,8 +280,8 @@ export function KitUploadSheet({ file, teamId, defaultName, codec, backend, onSa
                     type="range"
                     min={MIN_TOLERANCE}
                     max={MAX_TOLERANCE}
-                    value={tolerance}
-                    onChange={(e) => setTolerance(Number(e.target.value))}
+                    value={toleranceInput}
+                    onChange={(e) => setToleranceInput(Number(e.target.value))}
                     style={S.slider}
                     aria-label="Tolerance"
                   />
@@ -343,7 +351,7 @@ export function KitUploadSheet({ file, teamId, defaultName, codec, backend, onSa
               </p>
             )}
 
-            <button type="button" style={S.saveBtn} onClick={save} disabled={saving}>
+            <button type="button" style={S.saveBtn} onClick={save} disabled={saving || toleranceInput !== tolerance}>
               {saving ? "Saving…" : "Save jersey"}
             </button>
           </>
