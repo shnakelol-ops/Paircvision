@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { TeamSheetPlayer } from "./team-sheet-types";
-import { JERSEY_ASPECT, getJerseySrc } from "./team-sheet-jersey";
+import { JERSEY_ASPECT, getJerseySrc, type OutfieldJerseyId } from "./team-sheet-jersey";
 
 // Compact substitute tile — smaller jersey than the Starting XV, no number
 // overlaid on the shirt (pitch position isn't available to identify a sub,
@@ -12,14 +12,16 @@ import { JERSEY_ASPECT, getJerseySrc } from "./team-sheet-jersey";
 interface Props {
   player: TeamSheetPlayer;
   editable: boolean;
+  /** Selected outfield kit; squad number 1 always gets the GK jersey. */
+  outfieldJersey?: OutfieldJerseyId;
   size?: number;
   onNumberChange?: (number: number) => void;
   onNameChange?: (name: string) => void;
   onRemove?: () => void;
 }
 
-export function TeamSheetSubTile({ player, editable, size = 30, onNumberChange, onNameChange, onRemove }: Props) {
-  const jerseySrc = getJerseySrc(player.number);
+export function TeamSheetSubTile({ player, editable, outfieldJersey, size = 30, onNumberChange, onNameChange, onRemove }: Props) {
+  const jerseySrc = getJerseySrc(player.number, outfieldJersey);
   const height = Math.round(size * JERSEY_ASPECT);
   const name = player.name.trim();
 
