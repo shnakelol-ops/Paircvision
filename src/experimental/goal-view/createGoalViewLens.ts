@@ -169,7 +169,15 @@ function sameOrbit(a: GoalViewOrbit | null, b: GoalViewOrbit | null): boolean {
   return !!a && !!b && a.yawDeg === b.yawDeg && a.elevationDeg === b.elevationDeg && a.zoom === b.zoom;
 }
 
-export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens {
+export function createGoalViewLens(
+  targets: GoalViewRenderTargets,
+  /**
+   * Called once if the per-frame offscreen pass fails after Goal View has
+   * started (e.g. a GPU/driver failure). By then the lens has already detached
+   * itself, restoring the board's own scene, so the board keeps rendering.
+   */
+  onFailure?: (error: unknown) => void,
+): GoalViewLens {
   const { app, world, tokenLayer, ballLayer } = targets;
   const extraBillboardLayers = targets.extraBillboardLayers ?? [];
   let options: GoalViewLensOptions = { ...DEFAULT_GOAL_VIEW_LENS_OPTIONS };
@@ -408,24 +416,47 @@ export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens
   };
 
   // Runs after the shell's own tick (NORMAL) and before Pixi's render (LOW).
+  let failed = false;
+
+  // Runs inside Pixi's ticker. An exception escaping here would stop the
+  // app's ticker for good (the whole board, Top-Down included, would freeze),
+  // so a failing pass is contained: per-frame node tweaks are always undone,
+  // and the lens detaches itself outside the ticker, then reports the failure.
   const onTick = () => {
+    if (failed || !end || !renderTexture || !activeStrategy) return;
+    try {
+      renderOffscreenPass();
+    } catch (error) {
+      failed = true;
+      setTimeout(() => {
+        end = null;
+        detach();
+        onFailure?.(error);
+      }, 0);
+    }
+  };
+
+  const renderOffscreenPass = () => {
     if (!end || !renderTexture || !activeStrategy) return;
     const t0 = performance.now();
     const m = worldToTextureMatrix(end, options.textureScale);
     const saved = applyBillboardsAndDepth();
-    if (activeStrategy === "wrapper") {
-      // wrapper·world·local = M  ⇒  wrapper transform = M · world⁻¹.
-      world.updateLocalTransform();
-      inverseWorld.copyFrom(world.localTransform).invert();
-      textureTransform.set(m.a, m.b, m.c, m.d, m.tx, m.ty).append(inverseWorld);
-      app.renderer.render({ container: wrapper, target: renderTexture, clear: true, transform: textureTransform });
-    } else {
-      textureTransform.set(m.a, m.b, m.c, m.d, m.tx, m.ty);
-      world.alpha = 1;
-      app.renderer.render({ container: world, target: renderTexture, clear: true, transform: textureTransform });
-      world.alpha = 0;
+    try {
+      if (activeStrategy === "wrapper") {
+        // wrapper·world·local = M  ⇒  wrapper transform = M · world⁻¹.
+        world.updateLocalTransform();
+        inverseWorld.copyFrom(world.localTransform).invert();
+        textureTransform.set(m.a, m.b, m.c, m.d, m.tx, m.ty).append(inverseWorld);
+        app.renderer.render({ container: wrapper, target: renderTexture, clear: true, transform: textureTransform });
+      } else {
+        textureTransform.set(m.a, m.b, m.c, m.d, m.tx, m.ty);
+        world.alpha = 1;
+        app.renderer.render({ container: world, target: renderTexture, clear: true, transform: textureTransform });
+        world.alpha = 0;
+      }
+    } finally {
+      restoreNodes(saved);
     }
-    restoreNodes(saved);
     if (textureSampling.mipmaps && renderTexture) {
       if (!samplingStyleApplied) {
         // Pixi skips the trilinear min filter on first upload; re-apply once.

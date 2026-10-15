@@ -215,6 +215,25 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
     pendingOrbitRef.current = null;
   }, []);
 
+  // Safe fallback: if the lens cannot load or attach, or fails after Goal View
+  // has started (e.g. limited graphics), release it (which restores the
+  // board's own scene) and return to Top-Down.
+  const fallBackToTopDown = useCallback(
+    (error: unknown) => {
+      console.warn("[GoalView] unavailable, staying in Top-Down", error);
+      try {
+        release();
+      } catch {
+        // The board must never be left half-attached; nothing else to undo.
+      }
+      cancelPendingOrbit();
+      gestureRef.current = IDLE_ORBIT_GESTURE;
+      setOrbit(DEFAULT_GOAL_VIEW_ORBIT);
+      setModeState("top-down");
+    },
+    [release, cancelPendingOrbit],
+  );
+
   // Choosing a view always starts from that end's Camera C preset.
   const setMode = useCallback((next: GoalViewMode) => {
     if (!GOAL_VIEW_ENABLED) return;
@@ -236,39 +255,27 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
     // existing token/ball counter-rotation needs for this end.
     shell.setOrientation(quarterTurnsForMode(mode));
     let cancelled = false;
-    // Safe fallback: if the lens cannot load or attach (e.g. limited graphics),
-    // release it (which restores the board's own scene) and return to Top-Down.
-    const fallBackToTopDown = (error: unknown) => {
-      if (cancelled) return;
-      console.warn("[GoalView] unavailable, staying in Top-Down", error);
-      try {
-        release();
-      } catch {
-        // The board must never be left half-attached; nothing else to undo.
-      }
-      cancelPendingOrbit();
-      gestureRef.current = IDLE_ORBIT_GESTURE;
-      setOrbit(DEFAULT_GOAL_VIEW_ORBIT);
-      setModeState("top-down");
+    const fail = (error: unknown) => {
+      if (!cancelled) fallBackToTopDown(error);
     };
     void loadGoalViewLensModule().then(({ createGoalViewLens }) => {
       if (cancelled) return;
       try {
         if (!lensRef.current) {
-          const lens = createGoalViewLens(shell.getExperimentalRenderTargets());
+          const lens = createGoalViewLens(shell.getExperimentalRenderTargets(), fallBackToTopDown);
           lensRef.current = { lens, shell };
           lens.setOptions({ ...shell.lensOptions, ...readSamplingOverride() });
         }
         lensRef.current.lens.setEnd(mode);
         lensRef.current.lens.setOptions({ orbit: orbitRef.current });
       } catch (error) {
-        fallBackToTopDown(error);
+        fail(error);
       }
-    }, fallBackToTopDown);
+    }, fail);
     return () => {
       cancelled = true;
     };
-  }, [shell, mode, release, cancelPendingOrbit]);
+  }, [shell, mode, release, fallBackToTopDown]);
 
   if (import.meta.env.DEV && typeof window !== "undefined") {
     // Dev-server test hook only (compiled out of every build): browser tests

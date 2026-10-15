@@ -56,4 +56,26 @@ describe("Goal View safe fallback", () => {
     await waitFor(() => expect(result.current.mode).toBe("top-down"));
     expect(result.current.isGoalView).toBe(false);
   });
+
+  it("returns to Top-Down when the lens reports a failure after Goal View has started", async () => {
+    vi.resetModules();
+    const destroy = vi.fn();
+    let reportFailure: ((error: unknown) => void) | undefined;
+    vi.doMock("./createGoalViewLens", () => ({
+      createGoalViewLens: (_targets: unknown, onFailure?: (error: unknown) => void) => {
+        reportFailure = onFailure;
+        return { setEnd: () => {}, setOptions: () => {}, destroy };
+      },
+    }));
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { useGoalView } = await import("./sequenceGoalView");
+    const { result } = renderHook(() => useGoalView(fakeHost()));
+    act(() => result.current.setMode("left-end"));
+    await waitFor(() => expect(reportFailure).toBeTypeOf("function"));
+    expect(result.current.mode).toBe("left-end"); // started normally
+    act(() => reportFailure!(new Error("GPU failure mid-session")));
+    expect(result.current.mode).toBe("top-down");
+    expect(result.current.isGoalView).toBe(false);
+    expect(destroy).toHaveBeenCalledTimes(1);
+  });
 });

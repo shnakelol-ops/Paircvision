@@ -340,11 +340,41 @@ Unchanged in this phase:
   Vercel preview (`vite.config.ts`). Production keeps the normal service worker.
 - Mipmaps and anisotropic filtering stay off; the override is internal-only.
 
-**Safe fallback:** if the Goal View renderer cannot load or attach (for
-example, limited graphics), the shared hook releases it, which restores the
-board's own scene, and returns to Top-Down. The board is never left
-half-attached.
+**Safe fallback (both boards, one hook):**
+- *Initialisation:* if the Goal View code cannot load, or the lens cannot
+  attach (e.g. limited graphics), the hook releases the lens, which restores
+  the board's own scene, and returns to Top-Down. The lens marks itself active
+  before touching the scene graph, so a partial attach is always undone.
+- *After Goal View has started:* a failing per-frame offscreen pass is caught
+  inside the lens. Without that, an exception in Pixi's ticker would stop the
+  whole board rendering, Top-Down included, until a reload. The temporary
+  per-frame node tweaks are always undone; the lens detaches itself outside
+  the ticker and reports the failure; the hook returns to Top-Down.
+- *WebGL context loss:* Pixi restores the context and Goal View keeps
+  rendering (verified on both boards).
 
-**Rollback:** set `VITE_GOAL_VIEW_PUBLIC=false` in the build environment and
-redeploy. Goal View disappears from both boards; internal testing builds keep
-it.
+### Rollback procedure
+
+`VITE_GOAL_VIEW_PUBLIC` is read at **build time** (Vite inlines it into the
+bundle), so changing it has no effect until a **new production build** is
+deployed:
+
+1. Vercel → Project → Settings → Environment Variables → add
+   `VITE_GOAL_VIEW_PUBLIC` = `false` for **Production** only.
+2. Vercel → Deployments → the current production deployment → **Redeploy**.
+   Don't reuse the existing build output; the variable must reach a fresh
+   build.
+3. Check the new production deployment: both boards show no View selector, and
+   Top-Down works as before.
+4. Installed PWAs pick up the new build when their service worker updates (the
+   next visit or reload; the SW uses `cleanupOutdatedCaches`). Until then a
+   phone may still show the previous build.
+
+Alternative (code rollback): revert the release PR on `main`; Vercel builds
+and deploys `main` as usual.
+
+To re-enable: remove the variable (or set it to anything other than `false`)
+and redeploy.
+
+The kill switch only hides Goal View. Nothing is persisted by Goal View, so
+no data migration or clean-up is ever needed.
