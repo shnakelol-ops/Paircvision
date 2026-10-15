@@ -286,7 +286,7 @@ export function buildAlpha(img: PixelImage, autoMask: Uint8Array | null, manual:
 }
 
 /** RGB copied verbatim; only alpha changes. */
-export function composeRgba(img: PixelImage, alpha: Uint8ClampedArray): Uint8ClampedArray {
+export function composeRgba(img: PixelImage, alpha: Uint8ClampedArray): Uint8ClampedArray<ArrayBuffer> {
   const out = new Uint8ClampedArray(img.data);
   for (let p = 0; p < alpha.length; p++) out[p * 4 + 3] = alpha[p];
   return out;
@@ -320,7 +320,7 @@ export function alphaBounds(alpha: Uint8ClampedArray, width: number, height: num
 }
 
 /** Where the trimmed jersey goes in the saved frame: contained and centred, never upscaled past 2x. */
-export function fitIntoFrame(bounds: Bounds, frame = KIT_FRAME): Bounds {
+export function fitIntoFrame(bounds: Bounds, frame: { width: number; height: number } = KIT_FRAME): Bounds {
   const scale = Math.min(frame.width / bounds.width, frame.height / bounds.height, 2);
   const width = Math.round(bounds.width * scale);
   const height = Math.round(bounds.height * scale);
