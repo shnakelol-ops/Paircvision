@@ -14,7 +14,7 @@ import VisionTrainingShell from "./vision-training/VisionTrainingShell";
 import PitchFlowSettingsShell from "./pages/PitchFlowSettingsShell";
 import InternalLauncherPage from "./pages/InternalLauncherPage";
 import TeamSheetScreen from "./internal-team-sheet/TeamSheetScreen";
-import { GOAL_VIEW_EXPERIMENT_ENABLED } from "./experimental/goal-view/sequenceGoalView";
+import { GOAL_VIEW_INTERNAL_TOOLS_ENABLED } from "./experimental/goal-view/sequenceGoalView";
 
 const boardShell = () => <PitchFlowCoachShell initialTab="home" />;
 const VISION_BOARD_PATH = "/vision-board";
@@ -31,12 +31,12 @@ const PRO_TAGGER_PATH    = "/pro-tagger";
 const INTERNAL_PATH      = "/internal";
 const INTERNAL_TEAM_SHEET_PATH = "/internal/team-sheet";
 const INTERNAL_SLATE_RUGBY_PATH = "/internal/slate/rugby";
-// EXPERIMENTAL Goal View prototype — internal URL only, and only where the
-// Goal View experiment flag is on (the experimental branch preview, or a dev
-// build with ?goalview). The flag is a literal false in production builds, so
-// the route and its lazy chunk are compiled out there.
+// Goal View prototype — internal testing only (the experimental branch
+// preview, or a dev build with ?goalview). The internal-tools gate is a literal
+// false in production builds, so the route and its lazy chunk are compiled out
+// there, even though Goal View itself is public on the boards.
 const INTERNAL_GOAL_VIEW_PATH = "/internal/goal-view";
-const GoalViewPrototypePage = GOAL_VIEW_EXPERIMENT_ENABLED
+const GoalViewPrototypePage = GOAL_VIEW_INTERNAL_TOOLS_ENABLED
   ? lazy(() => import("./experimental/goal-view/GoalViewPrototypePage"))
   : null;
 

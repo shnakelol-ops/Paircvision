@@ -6,8 +6,10 @@ import type { MovementCanvasShellHandle } from "../../movement-board/shell/types
 import {
   GOAL_VIEW_PREVIEW_HOST,
   computeGoalViewExperimentEnabled,
-  GOAL_VIEW_EXPERIMENT_ENABLED,
+  GOAL_VIEW_ENABLED,
+  GOAL_VIEW_INTERNAL_TOOLS_ENABLED,
   GOAL_VIEW_MODE_OPTIONS,
+  GOAL_VIEW_PUBLIC_ENABLED,
   GoalViewModeRow,
   GoalViewQuickToggle,
   GoalViewReadOnlyShield,
@@ -28,15 +30,35 @@ function fakeShell() {
   };
 }
 
-describe("Goal View experiment flag", () => {
-  it("is off without VITE_EXPERIMENTAL_GOAL_VIEW or a ?goalview dev query", () => {
+describe("Goal View release gating", () => {
+  it("public release is on by default; internal testing tools are off without ?goalview", () => {
+    expect(import.meta.env.VITE_GOAL_VIEW_PUBLIC).toBeUndefined();
+    expect(GOAL_VIEW_PUBLIC_ENABLED).toBe(true);
+    expect(GOAL_VIEW_ENABLED).toBe(true);
     expect(import.meta.env.VITE_EXPERIMENTAL_GOAL_VIEW).toBeUndefined();
-    expect(GOAL_VIEW_EXPERIMENT_ENABLED).toBe(false);
+    expect(GOAL_VIEW_INTERNAL_TOOLS_ENABLED).toBe(false);
   });
 
-  it("with the flag off the hook is inert: never a goal view, never touches the shell", () => {
+  // Kill switch: VITE_GOAL_VIEW_PUBLIC=false at build time.
+  async function loadWithPublicDisabled() {
+    vi.resetModules();
+    vi.stubEnv("VITE_GOAL_VIEW_PUBLIC", "false");
+    const mod = await import("./sequenceGoalView");
+    vi.unstubAllEnvs();
+    return mod;
+  }
+
+  it("kill switch turns Goal View off on the boards (internal tools stay off too)", async () => {
+    const mod = await loadWithPublicDisabled();
+    expect(mod.GOAL_VIEW_PUBLIC_ENABLED).toBe(false);
+    expect(mod.GOAL_VIEW_ENABLED).toBe(false);
+    expect(mod.GOAL_VIEW_INTERNAL_TOOLS_ENABLED).toBe(false);
+  });
+
+  it("with Goal View off the hook is inert: never a goal view, never touches the shell", async () => {
+    const { useGoalView } = await loadWithPublicDisabled();
     const shell = fakeShell();
-    const { result } = renderHook(() => useSequenceGoalView(shell));
+    const { result } = renderHook(() => useGoalView(shell));
     act(() => result.current.setMode("right-end"));
     expect(result.current.mode).toBe("top-down");
     expect(result.current.isGoalView).toBe(false);
@@ -45,13 +67,20 @@ describe("Goal View experiment flag", () => {
     expect(() => result.current.releaseBeforeShellDestroy()).not.toThrow();
   });
 
-  it("with the flag off the camera is inert: Camera C preset, nothing moved", () => {
-    const { result } = renderHook(() => useSequenceGoalView(null));
+  it("with Goal View off the camera is inert: Camera C preset, nothing moved", async () => {
+    const { useGoalView } = await loadWithPublicDisabled();
+    const { result } = renderHook(() => useGoalView(null));
     expect(result.current.camera.orbit).toEqual(DEFAULT_GOAL_VIEW_ORBIT);
     expect(result.current.camera.moved).toBe(false);
     act(() => result.current.camera.reset());
     act(() => result.current.camera.toggleFit());
     expect(result.current.camera.orbit).toEqual(DEFAULT_GOAL_VIEW_ORBIT);
+  });
+
+  it("Top-Down is the default view", () => {
+    const { result } = renderHook(() => useSequenceGoalView(null));
+    expect(result.current.mode).toBe("top-down");
+    expect(result.current.isGoalView).toBe(false);
   });
 
   it("release handle is stable across renders (safe to capture in mount effects)", () => {
@@ -62,7 +91,7 @@ describe("Goal View experiment flag", () => {
   });
 });
 
-describe("Goal View access gate", () => {
+describe("Internal testing tools access gate", () => {
   const base = { envFlag: undefined, isDevBuild: false, branchPreviewBuild: false, previewEligibleBuild: true, hostname: GOAL_VIEW_PREVIEW_HOST, search: "" };
 
   it("is always on in the experimental branch's preview build, on any of its URLs, no query needed", () => {

@@ -101,10 +101,10 @@ import { type SlateTextAnnotation, type SlateTextFontSize } from "../features/qu
 import { useCoachingClip } from "../features/quickboard/clips/useCoachingClip";
 import CoachingClipPanel from "../features/quickboard/clips/CoachingClipPanel";
 import SlateFullViewController from "../features/quickboard/presentation/SlateFullViewController";
-// EXPERIMENTAL Goal View — every use below is gated by GOAL_VIEW_EXPERIMENT_ENABLED
-// (false in production builds). Rollback: delete the "EXPERIMENTAL Goal View" lines.
+// Goal View — every use below is gated by GOAL_VIEW_ENABLED (public release;
+// kill switch: VITE_GOAL_VIEW_PUBLIC=false at build time). Rollback: delete the "EXPERIMENTAL Goal View" lines.
 import {
-  GOAL_VIEW_EXPERIMENT_ENABLED,
+  GOAL_VIEW_ENABLED,
   GoalViewQuickToggle,
   GoalViewReadOnlyShield,
   preloadGoalViewBeforeShell,
@@ -2694,7 +2694,7 @@ export default function TacticalPadLiteClean({
   const isFullViewActive = isFullView && !isWhiteboardMode;
   // EXPERIMENTAL Goal View (flag-gated). Pitch surfaces only — never the plain
   // whiteboard or stats modes. Read-only: editing stays in Top-Down.
-  const goalViewSupported = GOAL_VIEW_EXPERIMENT_ENABLED && !isWhiteboardMode && !isStatsMode;
+  const goalViewSupported = GOAL_VIEW_ENABLED && !isWhiteboardMode && !isStatsMode;
   const [goalViewHost, setGoalViewHost] = useState<GoalViewHost | null>(null);
   const goalView = useGoalView(goalViewSupported ? goalViewHost : null);
   const goalViewActive = goalViewSupported && goalView.isGoalView;
@@ -3181,7 +3181,7 @@ export default function TacticalPadLiteClean({
       }
       surfaceRef.current = surface;
       destroySurface = surface.destroy;
-      if (GOAL_VIEW_EXPERIMENT_ENABLED && !isWhiteboardMode) {
+      if (GOAL_VIEW_ENABLED && !isWhiteboardMode) {
         // The lens must hand the world back before the surface is destroyed.
         destroySurface = () => {
           releaseGoalViewRef.current();
@@ -3234,7 +3234,7 @@ export default function TacticalPadLiteClean({
     // EXPERIMENTAL Goal View: its module must load before the surface creates
     // its Pixi renderer (Pixi's mesh pipe is only given to renderers created
     // after it registers). Compiled out when the flag is off.
-    if (GOAL_VIEW_EXPERIMENT_ENABLED) {
+    if (GOAL_VIEW_ENABLED) {
       void preloadGoalViewBeforeShell().then(() => {
         if (!disposed) mountSurface();
       });
@@ -3262,7 +3262,7 @@ export default function TacticalPadLiteClean({
       });
       setIsShapeLinksPanelOpen(false);
       setPracticeAreaSelection(null);
-      if (GOAL_VIEW_EXPERIMENT_ENABLED) setGoalViewHost(null);
+      if (GOAL_VIEW_ENABLED) setGoalViewHost(null);
       destroySurface?.();
     };
   }, [isStatsMode, isWhiteboardMode]);

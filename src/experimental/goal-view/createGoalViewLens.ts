@@ -444,6 +444,9 @@ export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens
   const attach = (strategy: GoalViewLensStrategy) => {
     ensureTexture();
     worldIndexOnStage = Math.max(0, app.stage.getChildIndex(world));
+    // Marked active before the scene graph changes, so detach() can undo a
+    // partial attach if any later step throws (e.g. limited graphics).
+    activeStrategy = strategy;
     if (strategy === "wrapper") {
       wrapper.addChild(world);
     } else {
@@ -466,7 +469,6 @@ export function createGoalViewLens(targets: GoalViewRenderTargets): GoalViewLens
     app.stage.addChildAt(goalUnderlay, app.stage.getChildIndex(mesh));
     app.ticker.add(onTick, undefined, UPDATE_PRIORITY.LOW + 1);
     app.renderer.on("resize", onResize);
-    activeStrategy = strategy;
   };
 
   const detach = () => {

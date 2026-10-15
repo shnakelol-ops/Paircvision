@@ -1,10 +1,12 @@
-// EXPERIMENTAL — Goal View inside the real Tactical Sequence surface.
+// Goal View inside the real Tactical Sequence and Tactical Slate surfaces.
 //
-// Everything Tactical Sequence needs for the experiment lives here so the
-// surface itself only carries a handful of flag-gated lines:
-//   - GOAL_VIEW_EXPERIMENT_ENABLED: build-time flag. Off in normal production
-//     builds (a literal `false` after Vite's env replacement, so the gated JSX
-//     and the dynamic lens import are dropped from the bundle).
+// Everything the boards need lives here so each surface only carries a
+// handful of gated lines:
+//   - GOAL_VIEW_ENABLED: Goal View on the boards. Public release
+//     (GOAL_VIEW_PUBLIC_ENABLED) or an internal testing build.
+//   - GOAL_VIEW_INTERNAL_TOOLS_ENABLED: internal testing only (the
+//     /internal/goal-view prototype route and the ?goalviewSampling override).
+//     A literal `false` in production builds, so those are compiled out.
 //   - useSequenceGoalView: attaches the existing read-only lens to the live
 //     shell, owns board orientation while a goal view is active, and releases
 //     the lens before the shell is destroyed (unmount or WebGL remount).
@@ -13,10 +15,10 @@
 //     With a camera, the shield is also the one-finger orbit surface.
 //   - GoalViewCameraControls: Fit pitch + Reset Camera, beside the selector.
 //
-// Enable: automatically on the experimental branch's Vercel preview (any of
-// its URLs); VITE_EXPERIMENTAL_GOAL_VIEW=true at build time; or `?goalview` in
-// a dev build (`npm run dev`). Never persisted; no saved-board fields are read
-// or written.
+// Internal tools: automatically on the experimental branch's Vercel preview
+// (any of its URLs); VITE_EXPERIMENTAL_GOAL_VIEW=true at build time; or
+// `?goalview` in a dev build (`npm run dev`). Never persisted; no saved-board
+// fields are read or written.
 
 import {
   useCallback,
@@ -80,7 +82,11 @@ export function computeGoalViewExperimentEnabled(input: {
   return input.isDevBuild && new URLSearchParams(input.search).has("goalview");
 }
 
-export const GOAL_VIEW_EXPERIMENT_ENABLED: boolean =
+/**
+ * Internal testing gate: the /internal/goal-view prototype route and the
+ * ?goalviewSampling override. False in production builds.
+ */
+export const GOAL_VIEW_INTERNAL_TOOLS_ENABLED: boolean =
   import.meta.env.VITE_EXPERIMENTAL_GOAL_VIEW === "true" ||
   ((import.meta.env.DEV || PREVIEW_ELIGIBLE_BUILD || BRANCH_PREVIEW_BUILD) &&
     typeof window !== "undefined" &&
@@ -92,6 +98,16 @@ export const GOAL_VIEW_EXPERIMENT_ENABLED: boolean =
       hostname: window.location.hostname,
       search: window.location.search,
     }));
+
+/**
+ * Public release gate: Goal View in Tactical Slate and Tactical Sequence.
+ * On in every build. Rollback without a code change: build with
+ * VITE_GOAL_VIEW_PUBLIC=false (then only internal testing builds show it).
+ */
+export const GOAL_VIEW_PUBLIC_ENABLED: boolean = import.meta.env.VITE_GOAL_VIEW_PUBLIC !== "false";
+
+/** Goal View on the boards: the public release, or an internal testing build. */
+export const GOAL_VIEW_ENABLED: boolean = GOAL_VIEW_PUBLIC_ENABLED || GOAL_VIEW_INTERNAL_TOOLS_ENABLED;
 
 // One shared load of the lens module. Loading it also registers Pixi's mesh
 // render pipe (pixi.js Mesh.mjs imports scene/mesh/init as a side effect).
@@ -154,11 +170,11 @@ export type SequenceGoalView = {
 };
 
 /**
- * Experimental sampling override for real-device testing on the flagged
- * preview only: `?goalviewSampling=mip` or `=mip-aniso`. Default off.
+ * Sampling override for real-device testing in internal testing builds only:
+ * `?goalviewSampling=mip` or `=mip-aniso`. Default (and production): off.
  */
 function readSamplingOverride(): Partial<GoalViewLensOptions> {
-  if (typeof window === "undefined") return {};
+  if (!GOAL_VIEW_INTERNAL_TOOLS_ENABLED || typeof window === "undefined") return {};
   const value = new URLSearchParams(window.location.search).get("goalviewSampling");
   if (value === "mip") return { mipmaps: true, anisotropy: 1 };
   if (value === "mip-aniso") return { mipmaps: true, anisotropy: 8 };
@@ -201,7 +217,7 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
 
   // Choosing a view always starts from that end's Camera C preset.
   const setMode = useCallback((next: GoalViewMode) => {
-    if (!GOAL_VIEW_EXPERIMENT_ENABLED) return;
+    if (!GOAL_VIEW_ENABLED) return;
     cancelPendingOrbit();
     gestureRef.current = IDLE_ORBIT_GESTURE;
     setOrbit(DEFAULT_GOAL_VIEW_ORBIT);
@@ -209,7 +225,7 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
   }, [cancelPendingOrbit]);
 
   useEffect(() => {
-    if (!GOAL_VIEW_EXPERIMENT_ENABLED || !shell) return;
+    if (!GOAL_VIEW_ENABLED || !shell) return;
     // A lens bound to a previous shell must never be reused.
     if (lensRef.current && lensRef.current.shell !== shell) release();
     if (mode === "top-down") {
@@ -220,20 +236,39 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
     // existing token/ball counter-rotation needs for this end.
     shell.setOrientation(quarterTurnsForMode(mode));
     let cancelled = false;
+    // Safe fallback: if the lens cannot load or attach (e.g. limited graphics),
+    // release it (which restores the board's own scene) and return to Top-Down.
+    const fallBackToTopDown = (error: unknown) => {
+      if (cancelled) return;
+      console.warn("[GoalView] unavailable, staying in Top-Down", error);
+      try {
+        release();
+      } catch {
+        // The board must never be left half-attached; nothing else to undo.
+      }
+      cancelPendingOrbit();
+      gestureRef.current = IDLE_ORBIT_GESTURE;
+      setOrbit(DEFAULT_GOAL_VIEW_ORBIT);
+      setModeState("top-down");
+    };
     void loadGoalViewLensModule().then(({ createGoalViewLens }) => {
       if (cancelled) return;
-      if (!lensRef.current) {
-        const lens = createGoalViewLens(shell.getExperimentalRenderTargets());
-        lens.setOptions({ ...shell.lensOptions, ...readSamplingOverride() });
-        lensRef.current = { lens, shell };
+      try {
+        if (!lensRef.current) {
+          const lens = createGoalViewLens(shell.getExperimentalRenderTargets());
+          lensRef.current = { lens, shell };
+          lens.setOptions({ ...shell.lensOptions, ...readSamplingOverride() });
+        }
+        lensRef.current.lens.setEnd(mode);
+        lensRef.current.lens.setOptions({ orbit: orbitRef.current });
+      } catch (error) {
+        fallBackToTopDown(error);
       }
-      lensRef.current.lens.setEnd(mode);
-      lensRef.current.lens.setOptions({ orbit: orbitRef.current });
-    });
+    }, fallBackToTopDown);
     return () => {
       cancelled = true;
     };
-  }, [shell, mode, release]);
+  }, [shell, mode, release, cancelPendingOrbit]);
 
   if (import.meta.env.DEV && typeof window !== "undefined") {
     // Dev-server test hook only (compiled out of every build): browser tests
@@ -247,7 +282,7 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
 
   // Camera moves only change the lens's projection: never the board.
   useEffect(() => {
-    if (!GOAL_VIEW_EXPERIMENT_ENABLED) return;
+    if (!GOAL_VIEW_ENABLED) return;
     lensRef.current?.lens.setOptions({ orbit });
   }, [orbit]);
 
@@ -308,7 +343,7 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
   return {
     mode,
     setMode,
-    isGoalView: GOAL_VIEW_EXPERIMENT_ENABLED && mode !== "top-down",
+    isGoalView: GOAL_VIEW_ENABLED && mode !== "top-down",
     releaseBeforeShellDestroy: release,
     camera,
   };

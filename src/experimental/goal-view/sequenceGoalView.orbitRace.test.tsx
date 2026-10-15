@@ -20,7 +20,7 @@ async function loadHookWithFlagOn(): Promise<Hook> {
   vi.resetModules();
   vi.stubEnv("VITE_EXPERIMENTAL_GOAL_VIEW", "true");
   const mod = await import("./sequenceGoalView");
-  expect(mod.GOAL_VIEW_EXPERIMENT_ENABLED).toBe(true);
+  expect(mod.GOAL_VIEW_ENABLED).toBe(true);
   return mod;
 }
 

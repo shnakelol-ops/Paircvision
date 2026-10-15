@@ -321,3 +321,30 @@ Safest approach:
 
 It changes only the camera inputs; the lens, gestures and boards are
 unaffected.
+
+## Public release (Phase 3)
+
+Goal View on the boards is now gated separately from the internal testing
+tools, in `sequenceGoalView.tsx`:
+
+| Gate | Controls | Production |
+|---|---|---|
+| `GOAL_VIEW_PUBLIC_ENABLED` | the public release | **on**, unless built with `VITE_GOAL_VIEW_PUBLIC=false` (kill switch) |
+| `GOAL_VIEW_INTERNAL_TOOLS_ENABLED` | `/internal/goal-view` prototype route, `?goalviewSampling` override | **off**; a literal `false` in production builds, so both are compiled out |
+| `GOAL_VIEW_ENABLED` = public ∥ internal | Goal View on Tactical Slate and Tactical Sequence (selector, Left End / Right End, orbit, Reset Camera, Fit pitch) | on |
+
+Unchanged in this phase:
+- Dev-server test hooks (`__goalViewDebug`, `__goalViewSlateTargets`) only
+  exist under `import.meta.env.DEV`.
+- The self-destroying service worker only applies to the experimental branch's
+  Vercel preview (`vite.config.ts`). Production keeps the normal service worker.
+- Mipmaps and anisotropic filtering stay off; the override is internal-only.
+
+**Safe fallback:** if the Goal View renderer cannot load or attach (for
+example, limited graphics), the shared hook releases it, which restores the
+board's own scene, and returns to Top-Down. The board is never left
+half-attached.
+
+**Rollback:** set `VITE_GOAL_VIEW_PUBLIC=false` in the build environment and
+redeploy. Goal View disappears from both boards; internal testing builds keep
+it.

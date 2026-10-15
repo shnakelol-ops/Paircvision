@@ -77,10 +77,10 @@ import type { TacticalUnit } from "./tacticalUnitTypes";
 import { buildMemberRoutes } from "./tacticalUnitHelpers";
 import type { NormalizedPoint } from "../../movement-board/coordinates/normalization";
 import PlayerActionSheet from "./PlayerActionSheet";
-// EXPERIMENTAL Goal View — every use below is gated by GOAL_VIEW_EXPERIMENT_ENABLED
-// (false in normal production builds). Rollback: delete these lines.
+// Goal View — every use below is gated by GOAL_VIEW_ENABLED (public release;
+// kill switch: VITE_GOAL_VIEW_PUBLIC=false at build time). Rollback: delete these lines.
 import {
-  GOAL_VIEW_EXPERIMENT_ENABLED,
+  GOAL_VIEW_ENABLED,
   GoalViewModeRow,
   GoalViewQuickToggle,
   GoalViewReadOnlyShield,
@@ -1355,7 +1355,7 @@ export default function TacticalPlaySurface() {
     let goalViewModuleReady = false;
 
     const mountShell = () => {
-      if (GOAL_VIEW_EXPERIMENT_ENABLED && !goalViewModuleReady) {
+      if (GOAL_VIEW_ENABLED && !goalViewModuleReady) {
         void preloadGoalViewBeforeShell().then(() => {
           goalViewModuleReady = true;
           if (!disposed) mountShell();
@@ -1479,7 +1479,7 @@ export default function TacticalPlaySurface() {
         setZones(shell.getZones());
         setTrainingItems(shell.getTrainingItems());
         destroyShell = shell.destroy;
-        if (GOAL_VIEW_EXPERIMENT_ENABLED) {
+        if (GOAL_VIEW_ENABLED) {
           // The lens must hand the world back before the shell is destroyed
           // (unmount or WebGL-loss remount); a remount re-attaches it.
           destroyShell = () => {
@@ -2507,7 +2507,7 @@ export default function TacticalPlaySurface() {
             />
           )}
           {goalView.isGoalView ? <GoalViewReadOnlyShield mode={goalView.mode} camera={goalView.camera} /> : null}
-          {GOAL_VIEW_EXPERIMENT_ENABLED ? (
+          {GOAL_VIEW_ENABLED ? (
             <GoalViewQuickToggle
               mode={goalView.mode}
               onChange={goalView.setMode}
@@ -3109,7 +3109,7 @@ export default function TacticalPlaySurface() {
               </div>
             ) : null}
 
-            {GOAL_VIEW_EXPERIMENT_ENABLED ? (
+            {GOAL_VIEW_ENABLED ? (
               <GoalViewModeRow
                 mode={goalView.mode}
                 onChange={goalView.setMode}
