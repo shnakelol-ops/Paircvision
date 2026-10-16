@@ -29,6 +29,12 @@ const INK = "#05080e";
 const WHITE = "#f8fafc";
 
 const W = COVER_WIDTH;
+// Small-print sizes, chosen for a phone: the 1080px cover is usually seen
+// ~390pt wide (×0.36), so these land at roughly 8.5–9.5pt — the smallest
+// that stays comfortably readable in a feed.
+export const DETAIL_LABEL_SIZE = 26;
+export const SPONSOR_CAPTION_SIZE = 24;
+export const CREDIT_SIZE = 24;
 const H = COVER_HEIGHT;
 const MARGIN = 64;
 
@@ -185,11 +191,14 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
   ctx.closePath();
 }
 
+/** Contains the image's visible part (its crop, else the whole image) in a
+ * w×h box centred on (cx, cy), preserving its aspect ratio. */
 function drawContained(ctx: CanvasRenderingContext2D, img: CoverImage, cx: number, cy: number, w: number, h: number): void {
-  const scale = Math.min(w / img.width, h / img.height);
-  const dw = img.width * scale;
-  const dh = img.height * scale;
-  ctx.drawImage(img.source, cx - dw / 2, cy - dh / 2, dw, dh);
+  const src = img.crop ?? { x: 0, y: 0, width: img.width, height: img.height };
+  const scale = Math.min(w / src.width, h / src.height);
+  const dw = src.width * scale;
+  const dh = src.height * scale;
+  ctx.drawImage(img.source, src.x, src.y, src.width, src.height, cx - dw / 2, cy - dh / 2, dw, dh);
 }
 
 // ── Background ──────────────────────────────────────────────────────────────
@@ -684,11 +693,11 @@ function drawDetails(ctx: CanvasRenderingContext2D, pack: MatchdayPackV1, layout
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = GOLD;
-    ctx.font = textFont(17);
-    drawTracked(ctx, col.label.toUpperCase(), mid, y + 46, 4);
+    ctx.font = textFont(DETAIL_LABEL_SIZE);
+    drawTracked(ctx, col.label.toUpperCase(), mid, y + 50, 5);
 
-    const valueZoneTop = y + 62;
-    const valueZoneH = h - 62 - 16;
+    const valueZoneTop = y + 64;
+    const valueZoneH = h - 64 - 14;
     const fit = fitText(measurer(ctx, (s) => displayFont(s, 800)), col.value.toUpperCase(), {
       maxWidth: cw - 36,
       maxSize: 48,
@@ -732,11 +741,11 @@ function drawSponsors(
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "#64748b";
-  ctx.font = textFont(15);
-  drawTracked(ctx, "PROUDLY SUPPORTED BY", W / 2, top + 38, 4);
+  ctx.font = textFont(SPONSOR_CAPTION_SIZE);
+  drawTracked(ctx, "PROUDLY SUPPORTED BY", W / 2, top + 44, 5);
 
-  const slotTop = top + 54;
-  const slotH = h - 54 - 34;
+  const slotTop = top + 60;
+  const slotH = h - 60 - 44;
   const slotW = (W - MARGIN * 2) / sponsors.length;
   sponsors.forEach((sponsor, i) => {
     const sx = MARGIN + slotW * i;
@@ -768,17 +777,17 @@ function drawSponsors(
     }
   });
 
-  ctx.fillStyle = "#94a3b8";
-  ctx.font = textFont(13);
-  drawTracked(ctx, "MADE WITH PÁIRCVISION", W / 2, H - 16, 3);
+  ctx.fillStyle = "#64748b";
+  ctx.font = textFont(CREDIT_SIZE);
+  drawTracked(ctx, "MADE WITH PÁIRCVISION", W / 2, H - 13, 4);
 }
 
 function drawCredit(ctx: CanvasRenderingContext2D): void {
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "rgba(255, 255, 255, 0.38)";
-  ctx.font = textFont(15);
-  drawTracked(ctx, "MADE WITH PÁIRCVISION", W / 2, H - 36, 4);
+  ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+  ctx.font = textFont(CREDIT_SIZE);
+  drawTracked(ctx, "MADE WITH PÁIRCVISION", W / 2, H - 34, 5);
 }
 
 // ── Public API ──────────────────────────────────────────────────────────────

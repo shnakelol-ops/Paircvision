@@ -4,6 +4,9 @@ import { COVER_SCENARIOS } from "./matchday-cover-fixtures";
 import {
   COVER_HEIGHT,
   COVER_WIDTH,
+  CREDIT_SIZE,
+  DETAIL_LABEL_SIZE,
+  SPONSOR_CAPTION_SIZE,
   MAX_JERSEY_HEIGHT,
   computeCoverLayout,
   coverDetailColumns,
@@ -69,6 +72,33 @@ describe("renderMatchdayCover", () => {
     const home = jersey("home");
     const { images } = render(scenario("missing-kit"), { homeJersey: home, awayJersey: null });
     expect(images.map((i) => i.source)).toEqual([home.source]);
+  });
+
+  it("draws a padded uploaded kit at the same apparent size as a tight preset", () => {
+    // Preset: 300×356, jersey fills it. Upload: Kit Builder 600×738 frame with
+    // the jersey (same 300×356 shape) centred in a transparent margin.
+    const preset: CoverImage = { ...jersey("preset"), width: 300, height: 356, crop: { x: 0, y: 0, width: 300, height: 356 } };
+    const upload: CoverImage = { ...jersey("upload"), width: 600, height: 738, crop: { x: 150, y: 191, width: 300, height: 356 } };
+    const { images } = render(scenario("championship"), { homeJersey: preset, awayJersey: upload });
+    const [home, away] = images;
+    expect(away.crop).toEqual(upload.crop); // only the visible jersey is sampled
+    expect(away.w).toBeCloseTo(home.w, 5);
+    expect(away.h).toBeCloseTo(home.h, 5);
+  });
+
+  it("keeps a jersey's aspect ratio when containing it", () => {
+    const wide: CoverImage = { ...jersey("wide"), width: 600, height: 738, crop: { x: 20, y: 300, width: 560, height: 200 } };
+    const { images } = render(scenario("championship"), { homeJersey: wide, awayJersey: null });
+    expect(images[0].w / images[0].h).toBeCloseTo(560 / 200, 5);
+  });
+
+  it("sets small print at phone-legible sizes", () => {
+    expect(DETAIL_LABEL_SIZE).toBeGreaterThanOrEqual(24);
+    expect(SPONSOR_CAPTION_SIZE).toBeGreaterThanOrEqual(22);
+    expect(CREDIT_SIZE).toBeGreaterThanOrEqual(22);
+    const { texts } = render(scenario("championship"));
+    const smallest = Math.min(...texts.map((t) => t.size));
+    expect(smallest).toBeGreaterThanOrEqual(22);
   });
 
   it("sets sponsor names in type when no logo is available", () => {

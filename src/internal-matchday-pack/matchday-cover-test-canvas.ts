@@ -19,6 +19,8 @@ export interface TextCall {
 
 export interface ImageCall {
   source: unknown;
+  /** Source rectangle (9-argument drawImage), if any. */
+  crop: { x: number; y: number; width: number; height: number } | null;
   x: number;
   y: number;
   w: number;
@@ -62,8 +64,14 @@ export function createRecordingContext() {
       const left = align === "center" ? ax - width / 2 : align === "right" || align === "end" ? ax - width : ax;
       texts.push({ text, x: ax, y: y + ty, size, font: String(state.font), width, left, right: left + width });
     },
-    drawImage: (source: unknown, x: number, y: number, w: number, h: number) => {
-      images.push({ source, x: x + tx, y: y + ty, w, h });
+    drawImage: (source: unknown, ...n: number[]) => {
+      if (n.length === 8) {
+        const [sx, sy, sw, sh, dx, dy, dw, dh] = n;
+        images.push({ source, crop: { x: sx, y: sy, width: sw, height: sh }, x: dx + tx, y: dy + ty, w: dw, h: dh });
+      } else {
+        const [dx, dy, dw, dh] = n;
+        images.push({ source, crop: null, x: dx + tx, y: dy + ty, w: dw, h: dh });
+      }
     },
     createLinearGradient: gradient,
     createRadialGradient: gradient,

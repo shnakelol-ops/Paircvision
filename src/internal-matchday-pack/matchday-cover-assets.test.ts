@@ -1,7 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import { PRESET_KITS, type TeamSheetKit } from "../internal-team-sheet/team-sheet-kits";
 import { createMemoryKitImageBackend } from "../internal-team-sheet/team-sheet-kit-store";
-import { clearDetachedSpecks, loadCoverJersey, resolveCoverJersey, type CoverImage } from "./matchday-cover-assets";
+import {
+  clearPresetSpecks,
+  loadCoverJersey,
+  resolveCoverJersey,
+  visibleBounds,
+  type CoverImage,
+  type JerseyKind,
+} from "./matchday-cover-assets";
 import type { MatchdaySide } from "./matchday-pack-types";
 
 const ballylanders: MatchdaySide = {
@@ -57,7 +64,7 @@ describe("loadCoverJersey", () => {
     const blob = new Blob(["png"], { type: "image/png" });
     await backend.put(opponentKit.id, blob);
     const loadBlob = vi.fn(async () => fakeImage);
-    const img = await loadCoverJersey({ kind: "user", kitId: opponentKit.id }, { backend, loadBlob, clean: identity });
+    const img = await loadCoverJersey({ kind: "user", kitId: opponentKit.id }, { backend, loadBlob, prepare: identity });
     expect(img).toBe(fakeImage);
     expect(loadBlob).toHaveBeenCalledWith(blob);
   });
@@ -66,7 +73,7 @@ describe("loadCoverJersey", () => {
     const loadUrl = vi.fn(async () => fakeImage);
     const img = await loadCoverJersey(
       { kind: "user", kitId: "user:evicted" },
-      { backend: createMemoryKitImageBackend(), loadUrl, clean: identity },
+      { backend: createMemoryKitImageBackend(), loadUrl, prepare: identity },
     );
     expect(img).toBeNull();
     expect(loadUrl).not.toHaveBeenCalled();
@@ -87,52 +94,73 @@ describe("loadCoverJersey", () => {
     expect(await loadCoverJersey({ kind: "none" })).toBeNull();
   });
 
-  it("passes every loaded jersey through speck cleaning", async () => {
-    const cleaned: CoverImage = { ...fakeImage, width: 301 };
-    const clean = vi.fn(() => cleaned);
-    const img = await loadCoverJersey({ kind: "preset", kitId: "p", src: "/x.webp" }, { loadUrl: async () => fakeImage, clean });
-    expect(clean).toHaveBeenCalledWith(fakeImage);
-    expect(img).toBe(cleaned);
+  it("prepares presets as presets and uploaded kits as uploads — never the other way round", async () => {
+    const prepare = vi.fn((img: CoverImage, _kind: JerseyKind) => img);
+    await loadCoverJersey({ kind: "preset", kitId: "p", src: "/x.webp" }, { loadUrl: async () => fakeImage, prepare });
+    const backend = createMemoryKitImageBackend();
+    await backend.put(opponentKit.id, new Blob(["png"]));
+    await loadCoverJersey({ kind: "user", kitId: opponentKit.id }, { backend, loadBlob: async () => fakeImage, prepare });
+    expect(prepare.mock.calls.map((c) => c[1])).toEqual(["preset", "user"]);
+  });
+
+  it("treats a jersey with no visible pixels as missing", async () => {
+    const img = await loadCoverJersey({ kind: "preset", kitId: "p", src: "/x.webp" }, { loadUrl: async () => fakeImage, prepare: () => null });
+    expect(img).toBeNull();
   });
 });
 
-describe("clearDetachedSpecks", () => {
-  function image(width: number, height: number, opaque: (x: number, y: number) => boolean) {
-    const data = new Uint8ClampedArray(width * height * 4);
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const i = (y * width + x) * 4;
-        data[i] = 200;
-        data[i + 1] = 150;
-        data[i + 2] = 40;
-        data[i + 3] = opaque(x, y) ? 255 : 0;
-      }
+function rgba(width: number, height: number, alphaAt: (x: number, y: number) => number) {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      data.set([200, 150, 40, alphaAt(x, y)], i);
     }
-    return data;
   }
+  return data;
+}
 
-  it("clears small detached islands and keeps the jersey untouched", () => {
-    // 40×40 "jersey" block + a 2×2 speck in the corner.
-    const data = image(60, 60, (x, y) => (x >= 10 && x < 50 && y >= 5 && y < 45) || (x >= 55 && y >= 55 && x < 57 && y < 57));
+describe("clearPresetSpecks (presets only — reuses the Kit Builder's keepLargestComponent)", () => {
+  it("clears a detached speck and keeps the jersey and every colour byte", () => {
+    const inJersey = (x: number, y: number) => x >= 10 && x < 50 && y >= 5 && y < 45;
+    const data = rgba(60, 60, (x, y) => (inJersey(x, y) || (x >= 55 && x < 57 && y >= 55 && y < 57) ? 255 : 0));
     const before = data.slice();
-    expect(clearDetachedSpecks(data, 60, 60)).toBe(4);
-    for (let p = 0; p < 60 * 60; p++) {
+    expect(clearPresetSpecks(data, 60, 60)).toBe(4);
+    for (let p = 0; p < 3600; p++) {
       const x = p % 60;
       const y = Math.floor(p / 60);
-      const inJersey = x >= 10 && x < 50 && y >= 5 && y < 45;
-      expect(data[p * 4 + 3]).toBe(inJersey ? 255 : 0);
-      // Colour channels are never changed.
+      expect(data[p * 4 + 3]).toBe(inJersey(x, y) ? 255 : 0);
       expect([data[p * 4], data[p * 4 + 1], data[p * 4 + 2]]).toEqual([before[p * 4], before[p * 4 + 1], before[p * 4 + 2]]);
     }
   });
 
-  it("keeps detached parts that are a meaningful size", () => {
-    // Two equal blocks — e.g. a split image — both survive.
-    const data = image(40, 20, (x) => x < 15 || x >= 25);
-    expect(clearDetachedSpecks(data, 40, 20)).toBe(0);
+  it("is a no-op on a clean or empty image", () => {
+    expect(clearPresetSpecks(rgba(20, 20, (x) => (x < 10 ? 255 : 0)), 20, 20)).toBe(0);
+    expect(clearPresetSpecks(new Uint8ClampedArray(16 * 4), 4, 4)).toBe(0);
+  });
+});
+
+describe("visibleBounds — trims margin only", () => {
+  it("finds the jersey inside a padded Kit Builder frame", () => {
+    // 60×74 frame (the 600×738 kit frame at 1/10) with the jersey centred.
+    const data = rgba(60, 74, (x, y) => (x >= 15 && x < 45 && y >= 18 && y < 55 ? 255 : 0));
+    expect(visibleBounds(data, 60, 74)).toEqual({ x: 15, y: 18, width: 30, height: 37 });
   });
 
-  it("is a no-op on a fully transparent image", () => {
-    expect(clearDetachedSpecks(new Uint8ClampedArray(16 * 4), 4, 4)).toBe(0);
+  it("keeps even the faintest visible edge pixel (alpha 1)", () => {
+    const data = rgba(20, 20, (x, y) => (x === 2 && y === 3 ? 1 : x >= 8 && x < 12 && y >= 8 && y < 12 ? 255 : 0));
+    expect(visibleBounds(data, 20, 20)).toEqual({ x: 2, y: 3, width: 10, height: 9 });
+  });
+
+  it("keeps detached manual Restore strokes inside the bounds (uploads are never cleaned)", () => {
+    // A detached 2×2 island far from the jersey — on an upload it stays visible and in frame.
+    const data = rgba(40, 40, (x, y) => ((x >= 10 && x < 30 && y >= 10 && y < 30) || (x >= 36 && x < 38 && y >= 36 && y < 38) ? 255 : 0));
+    const before = data.slice();
+    expect(visibleBounds(data, 40, 40)).toEqual({ x: 10, y: 10, width: 28, height: 28 });
+    expect(data).toEqual(before);
+  });
+
+  it("returns null when nothing is visible", () => {
+    expect(visibleBounds(new Uint8ClampedArray(8 * 8 * 4), 8, 8)).toBeNull();
   });
 });
