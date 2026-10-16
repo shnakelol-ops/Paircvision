@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { Graphics } from "pixi.js";
+import { Container, Graphics, Text } from "pixi.js";
 
-import { createVisionV3PlayerToken } from "./createVisionV3PlayerToken";
+import { VISION_V3_SLATE_ART_SCALE, createVisionV3PlayerToken } from "./createVisionV3PlayerToken";
+import { VisionV3Renderer } from "./playerTokenRenderer";
 
 type DrawInstruction = {
   action: string;
@@ -197,5 +198,124 @@ describe("createVisionV3PlayerToken — authored kitPatternColor is a kit colour
       (inst) => inst.data?.style?.color === 0xffffff && inst.data?.style?.alpha === 1,
     );
     expect(opaqueWhite).toBeUndefined();
+  });
+});
+
+describe("createVisionV3PlayerToken — Slate supersampled art (artScale)", () => {
+  const K = VISION_V3_SLATE_ART_SCALE;
+  // The Slate's real token radius (PLAYER_RADIUS * TACTICAL_PLAYER_VISUAL_SCALE)
+  // plus 2.8, where the rim-width and person-stroke minimum floors are the
+  // binding values — the floors must scale with the art too.
+  const radii = [4.1 * 0.8, 2.8, 10];
+
+  function artOf(token: Container): Container {
+    expect(token.children).toHaveLength(1);
+    const art = token.children[0] as Container;
+    expect(art).toBeInstanceOf(Container);
+    expect(art).not.toBeInstanceOf(Graphics);
+    return art;
+  }
+
+  it("keeps the outer token contract: scale, interaction mode and cursor are untouched; only the inner art is scaled by 1/K", () => {
+    const legacy = createVisionV3PlayerToken({ label: "11", teamColor: "blue", radius: 3.28, scale: 0.8 });
+    const hi = createVisionV3PlayerToken({ label: "11", teamColor: "blue", radius: 3.28, scale: 0.8, artScale: K });
+    expect(hi.token.scale.x).toBe(legacy.token.scale.x);
+    expect(hi.token.eventMode).toBe(legacy.token.eventMode);
+    expect(hi.token.cursor).toBe(legacy.token.cursor);
+    expect(hi.token.position.x).toBe(0);
+    expect(hi.token.position.y).toBe(0);
+    const art = artOf(hi.token);
+    expect(art.scale.x).toBeCloseTo(1 / K, 12);
+    expect(art.scale.y).toBeCloseTo(1 / K, 12);
+    // The returned shadow is the art's own shadow graphic, so the surface's
+    // drag-shadow alpha animation still drives it.
+    expect(art.children).toContain(hi.shadow);
+  });
+
+  it("draws every shape at exactly K times the legacy geometry (so the on-board size is unchanged), floors included", () => {
+    for (const radius of radii) {
+      for (const kitPattern of ["plain", "hoops", "stripes", "slash", "chestDash", "gradient"] as const) {
+        const legacy = createVisionV3PlayerToken({ label: "8", teamColor: "green", radius, kitPattern, kitPatternColor: 0xffffff });
+        const hi = createVisionV3PlayerToken({ label: "8", teamColor: "green", radius, kitPattern, kitPatternColor: 0xffffff, artScale: K });
+        const legacyNodes = legacy.token.children;
+        const hiNodes = artOf(hi.token).children;
+        expect(hiNodes.length).toBe(legacyNodes.length);
+        hiNodes.forEach((node, i) => {
+          const before = legacyNodes[i]!;
+          expect(node.constructor).toBe(before.constructor);
+          expect(node.position.x / K).toBeCloseTo(before.position.x, 9);
+          expect(node.position.y / K).toBeCloseTo(before.position.y, 9);
+          if (node instanceof Graphics) {
+            const a = (before as Graphics).getLocalBounds();
+            const b = node.getLocalBounds();
+            expect(b.minX / K).toBeCloseTo(a.minX, 6);
+            expect(b.minY / K).toBeCloseTo(a.minY, 6);
+            expect(b.maxX / K).toBeCloseTo(a.maxX, 6);
+            expect(b.maxY / K).toBeCloseTo(a.maxY, 6);
+            // Same fills/strokes in the same order: colours and alphas intact.
+            const styles = (g: Graphics) => instructionsOf(g).map((inst) => [inst.action, inst.data?.style?.color, inst.data?.style?.alpha]);
+            expect(styles(node)).toEqual(styles(before as Graphics));
+          }
+        });
+      }
+    }
+  });
+
+  it("scales label font size, outline width, letter spacing and shadow offset by K (numbers, initials)", () => {
+    for (const radius of radii) {
+      for (const label of ["7", "11", "JD"]) {
+        const legacyTexts = createVisionV3PlayerToken({ label, teamColor: "yellow", radius }).token.children.filter(
+          (c): c is Text => c instanceof Text,
+        );
+        const hiTexts = artOf(createVisionV3PlayerToken({ label, teamColor: "yellow", radius, artScale: K }).token).children.filter(
+          (c): c is Text => c instanceof Text,
+        );
+        expect(hiTexts.map((t) => t.text)).toEqual(legacyTexts.map((t) => t.text));
+        hiTexts.forEach((text, i) => {
+          const before = legacyTexts[i]!;
+          expect(Number(text.style.fontSize) / K).toBeCloseTo(Number(before.style.fontSize), 9);
+          expect(text.style.letterSpacing / K).toBeCloseTo(before.style.letterSpacing, 9);
+          expect((text.style.stroke as { width?: number } | null)?.width ?? 0).toBeCloseTo(
+            ((before.style.stroke as { width?: number } | null)?.width ?? 0) * K,
+            9,
+          );
+          expect(text.position.y / K).toBeCloseTo(before.position.y, 9);
+          expect(text.style.fill).toEqual(before.style.fill);
+          expect(text.alpha).toBe(before.alpha);
+        });
+      }
+    }
+  });
+
+  it("gives the disc rim enough local radius for Pixi to tessellate a smooth circle (>= 64 segments)", () => {
+    const hi = createVisionV3PlayerToken({ label: "9", teamColor: "blue", radius: 4.1 * 0.8, artScale: K });
+    const rimRadius = Math.max(...artOf(hi.token).children.filter((c): c is Graphics => c instanceof Graphics).flatMap(circleRadii));
+    // Pixi v8 buildCircle: segments = 4 * ceil(2.3 * sqrt(rx + ry)).
+    expect(4 * Math.ceil(2.3 * Math.sqrt(rimRadius * 2))).toBeGreaterThanOrEqual(64);
+  });
+
+  it("Practice (showLabel:false) keeps the supersampled art with no label", () => {
+    const hi = createVisionV3PlayerToken({ label: "9", teamColor: "blue", radius: 3.28, artScale: K, showLabel: false });
+    expect(artOf(hi.token).children.some((c) => c instanceof Text)).toBe(false);
+  });
+
+  it("artScale 1 (the default, used by movement-board) draws straight into the token as before", () => {
+    const { token } = createVisionV3PlayerToken({ label: "9", teamColor: "blue", radius: 3.28 });
+    expect(token.children.some((c) => c instanceof Text)).toBe(true);
+    expect(token.children.every((c) => c instanceof Graphics || c instanceof Text)).toBe(true);
+  });
+
+  it("the Tactical Slate's VisionV3Renderer opts into the supersampled art", () => {
+    const { token } = VisionV3Renderer({
+      label: "7",
+      number: 7,
+      teamColor: "blue",
+      scale: 0.8,
+      style: {},
+      kitPattern: "plain",
+      kitPatternColor: 0xffffff,
+      radius: 4.1 * 0.8,
+    });
+    expect(artOf(token).scale.x).toBeCloseTo(1 / K, 12);
   });
 });

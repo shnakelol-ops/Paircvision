@@ -11,8 +11,19 @@ import { VisionV3Renderer, resolvePlayerTokenRenderer } from "./playerTokenRende
 import { createVisionV3PlayerToken } from "./createVisionV3PlayerToken";
 import { createTacticalSlateDefaultPlayerSeeds, createTacticalSlateInitialPlayerSeeds } from "./tacticalSlateDefaultPlayers";
 
+// Walks the whole token tree: the Slate's Vision V3 draws into an inner art
+// container (see VISION_V3_SLATE_ART_SCALE), so labels are not always direct
+// children of the token.
 function textsOf(token: { children: unknown[] }): string[] {
-  return token.children.filter((child): child is Text => child instanceof Text).map((t) => t.text);
+  const texts: string[] = [];
+  const walk = (node: { children?: unknown[] }) => {
+    for (const child of node.children ?? []) {
+      if (child instanceof Text) texts.push(child.text);
+      walk(child as { children?: unknown[] });
+    }
+  };
+  walk(token);
+  return texts;
 }
 
 const rendererInput = {
