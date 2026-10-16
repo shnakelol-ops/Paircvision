@@ -46,11 +46,17 @@ export type GoalViewCameraParams = {
 // proportions — far endline 52% of the near endline's width, halfway line 34%
 // of the way down from the far end. A gentler, more tactical perspective than
 // a dramatic behind-the-goal camera. All four values stay slider-adjustable.
+//
+// Framing: nearCropUnits 0 fits the full near endline (with the 12px padding),
+// so the whole pitch and both goals are visible at Left End / Right End on
+// portrait phones. On portrait phones that is 0.846× the previous near-crop-30
+// framing, about 60% of the way from Fit Pitch to it. Height, distance and
+// aim point (so elevation and perspective) are unchanged.
 export const DEFAULT_GOAL_VIEW_CAMERA: GoalViewCameraParams = {
   heightUnits: 112,
   distanceBehindUnits: 92,
   lookAtUnits: 80,
-  nearCropUnits: 30,
+  nearCropUnits: 0,
 };
 
 /**

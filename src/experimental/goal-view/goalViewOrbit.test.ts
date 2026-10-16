@@ -266,3 +266,56 @@ describe("Fit pitch (one fixed zoom for every angle)", () => {
     expect(wholePitchFitZoom(CAMERA, { width: 2000, height: 2000 }, null)).toBeLessThanOrEqual(1);
   });
 });
+
+describe("default framing (Left End / Right End presets on portrait phones)", () => {
+  // Real portrait canvas sizes of both boards at 360 / 375 / 390 px wide.
+  const PORTRAIT = [
+    { width: 352, height: 563 },
+    { width: 367, height: 587 },
+    { width: 382, height: 611 },
+  ];
+  const PREVIOUS = { ...CAMERA, nearCropUnits: 30 };
+  const allPoints = (): Point3[] => [[0, 0, 0], [W, 0, 0], [W, L, 0], [0, L, 0], ...goalPoints()];
+  const centreScale = (p: ReturnType<typeof createGoalViewProjection>) => p.groundScale(W / 2, L - CAMERA.lookAtUnits).across;
+
+  it.each(PORTRAIT)("%o: whole pitch and both goals (posts and nets) are on screen", (screen) => {
+    const p = createGoalViewProjection(CAMERA, screen);
+    for (const point of allPoints()) {
+      const q = p.project(...point)!;
+      expect(q.x).toBeGreaterThanOrEqual(0);
+      expect(q.x).toBeLessThanOrEqual(screen.width);
+      expect(q.y).toBeGreaterThanOrEqual(0);
+      expect(q.y).toBeLessThanOrEqual(screen.height);
+    }
+  });
+
+  it.each(PORTRAIT)("%o: about 60% of the way from Fit Pitch to the previous framing", (screen) => {
+    const before = createGoalViewProjection(PREVIOUS, screen);
+    const fitBefore = createGoalViewProjection(PREVIOUS, screen, { orbit: orbitAt(0, null, wholePitchFitZoom(PREVIOUS, screen, null)) });
+    const now = createGoalViewProjection(CAMERA, screen);
+    const t = (centreScale(now) - centreScale(fitBefore)) / (centreScale(before) - centreScale(fitBefore));
+    expect(t).toBeGreaterThan(0.55);
+    expect(t).toBeLessThan(0.65);
+  });
+
+  it.each(PORTRAIT)("%o: Fit Pitch keeps the same on-screen size as before", (screen) => {
+    const fitBefore = createGoalViewProjection(PREVIOUS, screen, { orbit: orbitAt(0, null, wholePitchFitZoom(PREVIOUS, screen, null)) });
+    const fitNow = createGoalViewProjection(CAMERA, screen, { orbit: orbitAt(0, null, wholePitchFitZoom(CAMERA, screen, null)) });
+    expect(centreScale(fitNow)).toBeCloseTo(centreScale(fitBefore), 6);
+  });
+
+  it("elevation and perspective proportions are unchanged (framing only)", () => {
+    expect(baseElevationDeg(CAMERA)).toBeCloseTo(baseElevationDeg(PREVIOUS), 12);
+    const screen = PORTRAIT[2];
+    const proportions = [CAMERA, PREVIOUS].map((cam) => {
+      const p = createGoalViewProjection(cam, screen);
+      const y = (b: number) => p.project(W / 2, b)!.y;
+      return {
+        farOverNear: (p.project(W, 0)!.x - p.project(0, 0)!.x) / (p.project(W, L)!.x - p.project(0, L)!.x),
+        halfwayDown: (y(L / 2) - y(0)) / (y(L) - y(0)),
+      };
+    });
+    expect(proportions[0].farOverNear).toBeCloseTo(proportions[1].farOverNear, 12);
+    expect(proportions[0].halfwayDown).toBeCloseTo(proportions[1].halfwayDown, 12);
+  });
+});
