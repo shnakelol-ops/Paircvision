@@ -25,6 +25,8 @@ export interface UserKitRecord {
   name: string;
   role: KitRole;
   createdAt: number;
+  /** True when the (resized) source photo was kept alongside the processed image. */
+  hasOriginal?: boolean;
 }
 
 function isUserKitRecord(value: unknown): value is UserKitRecord {
@@ -197,11 +199,20 @@ function newUserKitId(): string {
   return `user:${suffix}`;
 }
 
-// ── Public API (used by the Kit Builder in a later PR) ───────────────────────
+// ── Public API ───────────────────────────────────────────────────────────────
 
-/** Stores the image first, then the metadata — a kit is never listed without its image. */
+/** The source photo (resized) is stored under its own key next to the processed image. */
+export function originalImageKey(id: string): string {
+  return `${id}:original`;
+}
+
+/**
+ * Stores the images first, then the metadata — a kit is never listed
+ * without its image. Any failure rolls back whatever was written, so a
+ * failed save leaves nothing behind.
+ */
 export async function saveUserKit(
-  input: { teamId: string; name: string; role: KitRole; image: Blob },
+  input: { teamId: string; name: string; role: KitRole; image: Blob; original?: Blob },
   backend: KitImageBackend = getDefaultBackend(),
 ): Promise<UserKitRecord> {
   const record: UserKitRecord = {
@@ -210,19 +221,35 @@ export async function saveUserKit(
     name: input.name.trim() || "Kit",
     role: input.role,
     createdAt: Date.now(),
+    hasOriginal: Boolean(input.original),
   };
-  await backend.put(record.id, input.image);
+  const rollBack = async () => {
+    await backend.delete(record.id).catch(() => undefined);
+    await backend.delete(originalImageKey(record.id)).catch(() => undefined);
+  };
+  try {
+    await backend.put(record.id, input.image);
+    if (input.original) await backend.put(originalImageKey(record.id), input.original);
+  } catch (err) {
+    await rollBack();
+    throw err;
+  }
   if (!saveUserKitRecords([...loadUserKitRecords(), record])) {
-    await backend.delete(record.id);
+    await rollBack();
     throw new Error("Couldn't save the kit on this device.");
   }
   return record;
 }
 
-/** Removes the metadata first, then the image — a listed kit always has an image. */
+/** Removes the metadata first, then the images — a listed kit always has an image. */
 export async function deleteUserKit(id: string, backend: KitImageBackend = getDefaultBackend()): Promise<void> {
   saveUserKitRecords(loadUserKitRecords().filter((r) => r.id !== id));
-  await backend.delete(id);
+  await backend.delete(id).catch(() => undefined);
+  await backend.delete(originalImageKey(id)).catch(() => undefined);
+}
+
+export function loadUserKitOriginal(id: string, backend: KitImageBackend = getDefaultBackend()): Promise<Blob | null> {
+  return backend.get(originalImageKey(id)).catch(() => null);
 }
 
 export function loadUserKitImage(id: string, backend: KitImageBackend = getDefaultBackend()): Promise<Blob | null> {

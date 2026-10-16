@@ -6,6 +6,8 @@ import {
   createMemoryKitImageBackend,
   deleteUserKit,
   loadUserKitImage,
+  loadUserKitOriginal,
+  originalImageKey,
   loadUserKitRecords,
   saveUserKit,
   userKitRecordToKit,
@@ -66,6 +68,39 @@ describe("User kit store", () => {
     expect(loadUserKitRecords().map((r) => r.id)).toEqual(["user:1"]);
     window.localStorage.setItem(TEAM_SHEET_KITS_STORAGE_KEY, "{oops");
     expect(loadUserKitRecords()).toEqual([]);
+  });
+
+  it("stores the original photo next to the processed image and deletes both", async () => {
+    const backend = createMemoryKitImageBackend();
+    const processed = image();
+    const original = new Blob(["jpeg-bytes"], { type: "image/jpeg" });
+    const record = await saveUserKit({ teamId: "t", name: "Home", role: "outfield", image: processed, original }, backend);
+    expect(record.hasOriginal).toBe(true);
+    expect(await loadUserKitImage(record.id, backend)).toBe(processed);
+    expect(await loadUserKitOriginal(record.id, backend)).toBe(original);
+    await deleteUserKit(record.id, backend);
+    expect(await backend.get(record.id)).toBeNull();
+    expect(await backend.get(originalImageKey(record.id))).toBeNull();
+  });
+
+  it("rolls back the processed image and lists nothing if storing the original fails", async () => {
+    const backend = createMemoryKitImageBackend();
+    const written: string[] = [];
+    const failing = {
+      ...backend,
+      put: (id: string, blob: Blob) => {
+        if (id.endsWith(":original")) return Promise.reject(new DOMException("full", "QuotaExceededError"));
+        written.push(id);
+        return backend.put(id, blob);
+      },
+    };
+    await expect(
+      saveUserKit({ teamId: "t", name: "Home", role: "outfield", image: image(), original: image() }, failing),
+    ).rejects.toMatchObject({ name: "QuotaExceededError" });
+    expect(loadUserKitRecords()).toEqual([]);
+    // Nothing orphaned: the processed image that did land was rolled back.
+    expect(written).toHaveLength(1);
+    expect(await backend.get(written[0])).toBeNull();
   });
 
   it("returns null instead of throwing when the image backend fails", async () => {

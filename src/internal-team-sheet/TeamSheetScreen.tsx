@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import {
   ProTaggerLineupPitchBackground,
@@ -9,9 +9,17 @@ import { TeamSheetJerseyTile } from "./TeamSheetJerseyTile";
 import { TeamSheetSubTile } from "./TeamSheetSubTile";
 import { buildSubstitute, loadTeamSheet, saveTeamSheet } from "./team-sheet-storage";
 import { JERSEY_ASPECT } from "./team-sheet-jersey";
-import { kitsForRole, PRESET_KITS, resolveKit, type TeamSheetKit } from "./team-sheet-kits";
-import { loadUserKitRecords, userKitRecordToKit } from "./team-sheet-kit-store";
-import { useKitImageSrc } from "./useKitImageSrc";
+import { DEFAULT_KIT_SELECTION, kitsForRole, PRESET_KITS, resolveKit, type KitRole, type TeamSheetKit } from "./team-sheet-kits";
+import {
+  deleteUserKit,
+  loadUserKitRecords,
+  userKitRecordToKit,
+  type KitImageBackend,
+  type UserKitRecord,
+} from "./team-sheet-kit-store";
+import { useKitImage, useKitImageSrc } from "./useKitImageSrc";
+import { ACCEPT_ATTRIBUTE, browserKitImageCodec, type KitImageCodec } from "./kit-image-codec";
+import { KitUploadSheet } from "./KitUploadSheet";
 import type { TeamSheetPlayer } from "./team-sheet-types";
 
 // Ballylanders internal Team Sheet — personal tool, not a public PáircVision
@@ -28,19 +36,56 @@ function navigateToInternal() {
   if (typeof window !== "undefined") window.location.assign("/internal");
 }
 
-export default function TeamSheetScreen() {
+interface TeamSheetScreenProps {
+  /** Test seams; the app uses IndexedDB and the real canvas codec. */
+  kitImageBackend?: KitImageBackend;
+  kitImageCodec?: KitImageCodec;
+}
+
+export default function TeamSheetScreen({ kitImageBackend, kitImageCodec = browserKitImageCodec }: TeamSheetScreenProps = {}) {
   const initial = useState(() => loadTeamSheet())[0];
   const [players, setPlayers] = useState<TeamSheetPlayer[]>(initial.players);
   const [substitutes, setSubstitutes] = useState<TeamSheetPlayer[]>(initial.substitutes);
   const [team] = useState(initial.team);
   const [kitSelection, setKitSelection] = useState(initial.kits);
-  // Presets plus any user kits saved on this device (none until the Kit
-  // Builder lands). Metadata is synchronous; images resolve per kit below.
-  const [allKits] = useState<TeamSheetKit[]>(() => [...PRESET_KITS, ...loadUserKitRecords().map(userKitRecordToKit)]);
+  // Presets plus user kits saved on this device. Metadata is synchronous;
+  // images resolve per kit below.
+  const [allKits, setAllKits] = useState<TeamSheetKit[]>(() => [...PRESET_KITS, ...loadUserKitRecords().map(userKitRecordToKit)]);
   const outfieldKit = resolveKit(allKits, kitSelection.outfieldKitId, "outfield");
   const gkKit = resolveKit(allKits, kitSelection.gkKitId, "gk");
-  const kitSrcs = { outfield: useKitImageSrc(outfieldKit), gk: useKitImageSrc(gkKit) };
+  const outfieldImage = useKitImage(outfieldKit, kitImageBackend);
+  const gkImage = useKitImage(gkKit, kitImageBackend);
+  const kitSrcs = { outfield: outfieldImage.src, gk: gkImage.src };
   const [screenshotMode, setScreenshotMode] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const userKitCount = allKits.filter((k) => k.source === "user").length;
+
+  const onKitSaved = useCallback((record: UserKitRecord) => {
+    const kit = userKitRecordToKit(record);
+    setAllKits((prev) => [...prev, kit]);
+    setKitSelection((prev) => (kit.role === "gk" ? { ...prev, gkKitId: kit.id } : { ...prev, outfieldKitId: kit.id }));
+    setUploadFile(null);
+  }, []);
+
+  const removeUserKit = useCallback(
+    (kit: TeamSheetKit) => {
+      setAllKits((prev) => prev.filter((k) => k.id !== kit.id));
+      setKitSelection((prev) =>
+        kit.role === "gk"
+          ? { ...prev, gkKitId: prev.gkKitId === kit.id ? DEFAULT_KIT_SELECTION.gkKitId : prev.gkKitId }
+          : { ...prev, outfieldKitId: prev.outfieldKitId === kit.id ? DEFAULT_KIT_SELECTION.outfieldKitId : prev.outfieldKitId },
+      );
+      void deleteUserKit(kit.id, kitImageBackend);
+    },
+    [kitImageBackend],
+  );
+
+  // Selected uploaded kits, with whether their saved image could be loaded.
+  const selectedUserKits = [
+    { kit: outfieldKit, status: outfieldImage.status },
+    { kit: gkKit, status: gkImage.status },
+  ].filter((entry) => entry.kit.source === "user");
 
   useEffect(() => {
     saveTeamSheet({ players, substitutes, team, kits: kitSelection });
@@ -111,6 +156,7 @@ export default function TeamSheetScreen() {
           <div style={S.kitPickers}>
             <KitPicker
               label="Outfield jersey"
+              backend={kitImageBackend}
               kits={kitsForRole(allKits, team.id, "outfield")}
               selectedId={outfieldKit.id}
               onSelect={(id) => setKitSelection((prev) => ({ ...prev, outfieldKitId: id }))}
@@ -118,10 +164,42 @@ export default function TeamSheetScreen() {
             <KitPicker
               label="Goalkeeper jersey"
               caption="GK"
+              backend={kitImageBackend}
               kits={kitsForRole(allKits, team.id, "gk")}
               selectedId={gkKit.id}
               onSelect={(id) => setKitSelection((prev) => ({ ...prev, gkKitId: id }))}
             />
+            <button type="button" style={S.addKitBtn} onClick={() => fileInputRef.current?.click()}>
+              + Add jersey
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPT_ATTRIBUTE}
+              style={{ display: "none" }}
+              data-testid="kit-file-input"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) setUploadFile(file);
+              }}
+            />
+            {selectedUserKits.map(({ kit, status }) => (
+              <div
+                key={kit.id}
+                style={status === "missing" ? { ...S.kitNotice, ...S.kitNoticeWarn } : S.kitNotice}
+                role={status === "missing" ? "alert" : undefined}
+              >
+                <span>
+                  {status === "missing"
+                    ? `The saved image for “${kit.name}” is missing on this device, so the default ${roleLabel(kit.role)} jersey is shown.`
+                    : `“${kit.name}” is your ${roleLabel(kit.role)} jersey.`}
+                </span>
+                <button type="button" style={S.kitNoticeBtn} onClick={() => removeUserKit(kit)}>
+                  Remove kit
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
@@ -192,45 +270,82 @@ export default function TeamSheetScreen() {
           <p style={S.hint}>Tap a name to edit it. Screenshot Mode hides every control — tap anywhere to exit it.</p>
         )}
       </div>
+
+      {uploadFile && (
+        <KitUploadSheet
+          file={uploadFile}
+          teamId={team.id}
+          defaultName={`Kit ${userKitCount + 1}`}
+          codec={kitImageCodec}
+          backend={kitImageBackend}
+          onSaved={onKitSaved}
+          onClose={() => setUploadFile(null)}
+        />
+      )}
     </div>
   );
+}
+
+function roleLabel(role: KitRole): string {
+  return role === "gk" ? "goalkeeper" : "outfield";
 }
 
 function KitPicker({
   label,
   caption,
+  backend,
   kits,
   selectedId,
   onSelect,
 }: {
   label: string;
   caption?: string;
+  backend?: KitImageBackend;
   kits: TeamSheetKit[];
   selectedId: string;
   onSelect: (id: string) => void;
 }) {
   return (
-    <div style={S.jerseyPicker} role="radiogroup" aria-label={label}>
+    <div style={caption ? S.jerseyPickerCaptioned : S.jerseyPicker} role="radiogroup" aria-label={label}>
       {caption && <span style={S.jerseyPickerCaption}>{caption}</span>}
       {kits.map((kit) => (
-        <KitOption key={kit.id} kit={kit} selected={kit.id === selectedId} onSelect={onSelect} />
+        <KitOption
+          key={kit.id}
+          kit={kit}
+          backend={backend}
+          inGrid={!caption}
+          selected={kit.id === selectedId}
+          onSelect={onSelect}
+        />
       ))}
     </div>
   );
 }
 
-function KitOption({ kit, selected, onSelect }: { kit: TeamSheetKit; selected: boolean; onSelect: (id: string) => void }) {
-  const src = useKitImageSrc(kit);
+function KitOption({
+  kit,
+  backend,
+  inGrid,
+  selected,
+  onSelect,
+}: {
+  kit: TeamSheetKit;
+  backend?: KitImageBackend;
+  inGrid: boolean;
+  selected: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const src = useKitImageSrc(kit, backend);
   return (
     <button
       type="button"
       role="radio"
       aria-checked={selected}
-      style={selected ? { ...S.jerseyOption, ...S.jerseyOptionSelected } : S.jerseyOption}
+      style={{ ...S.jerseyOption, ...(inGrid ? S.jerseyOptionInGrid : null), ...(selected ? S.jerseyOptionSelected : null) }}
       onClick={() => onSelect(kit.id)}
     >
       <img src={src} alt="" width={22} height={Math.round(22 * JERSEY_ASPECT)} style={S.jerseyOptionImg} draggable={false} />
-      {kit.name}
+      <span style={S.jerseyOptionName}>{kit.name}</span>
     </button>
   );
 }
@@ -325,8 +440,20 @@ const S: Record<string, CSSProperties> = {
     width: "100%",
     maxWidth: 380,
   },
+  // Three equal columns — exactly the preset layout — so uploaded kits add
+  // rows in the same columns instead of squeezing or stretching options.
   jerseyPicker: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    alignItems: "center",
+    gap: 6,
+    width: "100%",
+  },
+  // The captioned GK row keeps its original flex layout (pixel-identical to
+  // before uploads existed); extra GK kits wrap onto a new line.
+  jerseyPickerCaptioned: {
     display: "flex",
+    flexWrap: "wrap" as const,
     alignItems: "center",
     gap: 6,
     width: "100%",
@@ -353,6 +480,52 @@ const S: Record<string, CSSProperties> = {
     borderRadius: 8,
     color: "#7a95ad",
     fontSize: 12,
+    fontWeight: 600,
+    padding: "4px 8px",
+    cursor: "pointer",
+    outline: "none",
+    fontFamily: "inherit",
+  },
+  // Lets a long kit name ellipsise inside its grid column instead of overflowing it.
+  jerseyOptionInGrid: {
+    minWidth: 0,
+  },
+  jerseyOptionName: {
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  },
+  addKitBtn: {
+    alignSelf: "flex-end",
+    background: "transparent",
+    border: "1px dashed #1c3a52",
+    borderRadius: 8,
+    color: "#7a95ad",
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "6px 12px",
+    cursor: "pointer",
+    outline: "none",
+    fontFamily: "inherit",
+  },
+  kitNotice: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: 11,
+    lineHeight: 1.35,
+    color: "#7a95ad",
+  },
+  kitNoticeWarn: {
+    color: "#fbbf24",
+  },
+  kitNoticeBtn: {
+    flexShrink: 0,
+    background: "transparent",
+    border: "1px solid #1c3a52",
+    borderRadius: 6,
+    color: "#7a95ad",
+    fontSize: 11,
     fontWeight: 600,
     padding: "4px 8px",
     cursor: "pointer",
