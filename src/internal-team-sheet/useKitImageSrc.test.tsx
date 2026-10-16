@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 
-import { useKitImageSrc } from "./useKitImageSrc";
+import { useKitImage, useKitImageSrc } from "./useKitImageSrc";
 import { createMemoryKitImageBackend, type KitImageBackend } from "./team-sheet-kit-store";
 import { PRESET_KITS, type TeamSheetKit } from "./team-sheet-kits";
 
@@ -99,5 +99,31 @@ describe("useKitImageSrc", () => {
     await act(async () => {});
     expect(probe.renders.every((r) => r.src === GK_PRESET.src)).toBe(true);
     expect(created).toHaveLength(0);
+  });
+});
+
+describe("useKitImage status", () => {
+  function StatusProbe({ kit, backend, out }: { kit: TeamSheetKit; backend: KitImageBackend; out: string[] }) {
+    const { status } = useKitImage(kit, backend);
+    out.push(status);
+    return null;
+  }
+
+  it("is ready for presets, loading then ready for a stored kit, and missing when the image is gone", async () => {
+    const backend = await backendWith("user:a");
+    const preset: string[] = [];
+    render(<StatusProbe kit={GK_PRESET} backend={backend} out={preset} />);
+    expect(preset.at(-1)).toBe("ready");
+    cleanup();
+
+    const stored: string[] = [];
+    render(<StatusProbe kit={userKit("user:a")} backend={backend} out={stored} />);
+    expect(stored[0]).toBe("loading");
+    await waitFor(() => expect(stored.at(-1)).toBe("ready"));
+    cleanup();
+
+    const missing: string[] = [];
+    render(<StatusProbe kit={userKit("user:gone")} backend={backend} out={missing} />);
+    await waitFor(() => expect(missing.at(-1)).toBe("missing"));
   });
 });
