@@ -13,7 +13,8 @@
 //   - GoalViewModeRow / GoalViewReadOnlyShield: TOOLS-panel control and the
 //     pitch-input shield (read-only; playback and recording stay available).
 //     With a camera, the shield is also the one-finger orbit surface.
-//   - GoalViewCameraControls: Fit pitch + Reset Camera, beside the selector.
+//   - GoalViewCameraControls: camera distance, Fit pitch and Reset Camera,
+//     beside the selector.
 //
 // Internal tools: automatically on the experimental branch's Vercel preview
 // (any of its URLs); VITE_EXPERIMENTAL_GOAL_VIEW=true at build time; or
@@ -33,10 +34,14 @@ import {
 import type { GoalViewLens, GoalViewLensOptions, GoalViewRenderTargets } from "./createGoalViewLens";
 import {
   DEFAULT_GOAL_VIEW_CAMERA,
+  DEFAULT_GOAL_VIEW_DISTANCE,
   DEFAULT_GOAL_VIEW_ORBIT,
+  GOAL_VIEW_DISTANCES,
+  cameraForDistance,
   isIdentityOrbit,
   quarterTurnsForMode,
   wholePitchFitZoom,
+  type GoalViewDistance,
   type GoalViewMode,
   type GoalViewOrbit,
 } from "./goalViewCamera";
@@ -156,6 +161,10 @@ export type GoalViewCamera = {
   reset: () => void;
   /** Toggles one fixed zoom at which the whole pitch fits at every angle. */
   toggleFit: () => void;
+  /** Camera distance preset (Wide / Balanced / Near). Kept across Reset Camera and view changes. */
+  distance: GoalViewDistance;
+  /** Next distance preset; keeps the current camera direction and tilt. */
+  cycleDistance: () => void;
   surfaceProps: GoalViewOrbitSurfaceProps;
 };
 
@@ -195,6 +204,10 @@ export type GoalViewHost = {
 export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
   const [mode, setModeState] = useState<GoalViewMode>("top-down");
   const [orbit, setOrbit] = useState<GoalViewOrbit>(DEFAULT_GOAL_VIEW_ORBIT);
+  // Presentation-only, like the orbit: never saved with the board.
+  const [distance, setDistance] = useState<GoalViewDistance>(DEFAULT_GOAL_VIEW_DISTANCE);
+  const distanceRef = useRef(distance);
+  distanceRef.current = distance;
   const lensRef = useRef<{ lens: GoalViewLens; shell: GoalViewHost } | null>(null);
   const orbitRef = useRef(orbit);
   orbitRef.current = orbit;
@@ -264,7 +277,7 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
         if (!lensRef.current) {
           const lens = createGoalViewLens(shell.getExperimentalRenderTargets(), fallBackToTopDown);
           lensRef.current = { lens, shell };
-          lens.setOptions({ ...shell.lensOptions, ...readSamplingOverride() });
+          lens.setOptions({ ...shell.lensOptions, ...readSamplingOverride(), camera: cameraForDistance(distanceRef.current) });
         }
         lensRef.current.lens.setEnd(mode);
         lensRef.current.lens.setOptions({ orbit: orbitRef.current });
@@ -283,6 +296,7 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
     (window as unknown as { __goalViewDebug?: unknown }).__goalViewDebug = {
       getTargets: () => shell?.getExperimentalRenderTargets() ?? null,
       getOrbit: () => orbitRef.current,
+      getDistance: () => distanceRef.current,
       getMetrics: () => lensRef.current?.lens.getMetrics() ?? null,
     };
   }
@@ -292,6 +306,12 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
     if (!GOAL_VIEW_ENABLED) return;
     lensRef.current?.lens.setOptions({ orbit });
   }, [orbit]);
+
+  // Distance only changes the framing; the orbit (direction, tilt) is untouched.
+  useEffect(() => {
+    if (!GOAL_VIEW_ENABLED) return;
+    lensRef.current?.lens.setOptions({ camera: cameraForDistance(distance) });
+  }, [distance]);
 
   useEffect(() => () => cancelAnimationFrame(frameRef.current), []);
 
@@ -309,7 +329,20 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
     }
     const screen = lensRef.current?.lens.getProjection()?.screen;
     if (!screen) return;
-    setOrbit({ ...current, zoom: wholePitchFitZoom(DEFAULT_GOAL_VIEW_CAMERA, screen, current.elevationDeg) });
+    setOrbit({ ...current, zoom: wholePitchFitZoom(cameraForDistance(distanceRef.current), screen, current.elevationDeg) });
+  }, []);
+
+  const cycleDistance = useCallback(() => {
+    const index = GOAL_VIEW_DISTANCES.findIndex((d) => d.id === distanceRef.current);
+    const next = GOAL_VIEW_DISTANCES[(index + 1) % GOAL_VIEW_DISTANCES.length].id;
+    setDistance(next);
+    // Fit Pitch stays a whole-pitch fit: its zoom is relative to the framing,
+    // so recompute it for the new distance. Direction and tilt are unchanged.
+    const current = orbitRef.current;
+    const screen = lensRef.current?.lens.getProjection()?.screen;
+    if (current.zoom !== 1 && screen) {
+      setOrbit({ ...current, zoom: wholePitchFitZoom(cameraForDistance(next), screen, current.elevationDeg) });
+    }
   }, []);
 
   const surfaceProps = useMemo<GoalViewOrbitSurfaceProps>(() => {
@@ -343,8 +376,8 @@ export function useGoalView(shell: GoalViewHost | null): SequenceGoalView {
   }, []);
 
   const camera = useMemo<GoalViewCamera>(
-    () => ({ orbit, moved: !isIdentityOrbit(orbit), fitted: orbit.zoom !== 1, reset, toggleFit, surfaceProps }),
-    [orbit, reset, toggleFit, surfaceProps],
+    () => ({ orbit, moved: !isIdentityOrbit(orbit), fitted: orbit.zoom !== 1, reset, toggleFit, distance, cycleDistance, surfaceProps }),
+    [orbit, reset, toggleFit, distance, cycleDistance, surfaceProps],
   );
 
   return {
@@ -390,9 +423,16 @@ export function GoalViewModeRow(props: {
 // "above" anchors it right-aligned just above the pitch's top edge; "side"
 // (short landscape screens with no room above) anchors it just right of the
 // pitch's top-right corner. The 44px-tall button is the touch target; the
-// visible pill inside it stays compact.
+// visible pill inside it stays compact. In a goal view the selector drops the
+// "View:" prefix ("Left End ▸") and is narrower, leaving room for the camera
+// controls beside it without reaching the board's top-left buttons. On a
+// height-limited portrait phone the (centred) pitch is narrower than the
+// screen, so in a goal view the "above" row also moves up to 24px into the
+// free margin right of the pitch, stopping 4px from the screen edge.
 const QUICK_TOGGLE_HIT_HEIGHT = 44;
 const QUICK_TOGGLE_WIDTH = 136;
+const QUICK_TOGGLE_GOAL_VIEW_WIDTH = 92;
+const GOAL_VIEW_ROW_RIGHT = "max(-24px, min(0px, calc((100% - 100vw) / 2 + 4px)))";
 
 const QUICK_TOGGLE_BUTTON_STYLE: CSSProperties = {
   position: "absolute",
@@ -435,6 +475,11 @@ const QUICK_TOGGLE_PILL_STYLE: CSSProperties = {
   letterSpacing: 0.2,
 };
 
+const QUICK_TOGGLE_GOAL_VIEW_PILL_STYLE: CSSProperties = {
+  ...QUICK_TOGGLE_PILL_STYLE,
+  padding: "0 8px",
+};
+
 /**
  * Goal View switch shown outside the pitch box: one tap cycles
  * Top-Down → Left End → Right End. Must be rendered inside the pitch box's
@@ -451,41 +496,52 @@ export function GoalViewQuickToggle(props: {
   const current = GOAL_VIEW_MODE_OPTIONS[index] ?? GOAL_VIEW_MODE_OPTIONS[0];
   const next = GOAL_VIEW_MODE_OPTIONS[(index + 1) % GOAL_VIEW_MODE_OPTIONS.length];
   const placement = props.placement ?? "above";
-  const camera = props.mode !== "top-down" ? props.camera : undefined;
+  const goalView = props.mode !== "top-down";
+  const camera = goalView ? props.camera : undefined;
   return (
     <>
     {camera ? <GoalViewCameraControls camera={camera} placement={placement} /> : null}
     <button
       type="button"
-      style={{ ...QUICK_TOGGLE_BUTTON_STYLE, ...QUICK_TOGGLE_PLACEMENT[placement] }}
+      style={{
+        ...QUICK_TOGGLE_BUTTON_STYLE,
+        ...QUICK_TOGGLE_PLACEMENT[placement],
+        ...(goalView ? { width: QUICK_TOGGLE_GOAL_VIEW_WIDTH } : null),
+        ...(goalView && placement === "above" ? { right: GOAL_VIEW_ROW_RIGHT } : null),
+      }}
       data-experimental="goal-view-quick-toggle"
       data-placement={placement}
       aria-label={`Goal View: ${current.label}. Tap for ${next.label}`}
       onClick={() => props.onChange(next.id)}
     >
-      <span style={QUICK_TOGGLE_PILL_STYLE}>View: {current.label} ▸</span>
+      <span style={goalView ? QUICK_TOGGLE_GOAL_VIEW_PILL_STYLE : QUICK_TOGGLE_PILL_STYLE}>
+        {goalView ? current.label : `View: ${current.label}`} ▸
+      </span>
     </button>
     </>
   );
 }
 
-// Camera controls: two 44px icon buttons in the same row as the selector,
-// directly to its left ("above"), or directly under it ("side"). Outside the
-// pitch box, like the selector.
-const CAMERA_BUTTON_SIZE = 44;
+// Camera controls: distance, Fit pitch and Reset Camera as three compact
+// buttons (44×44px touch targets) in the same row as the selector, directly
+// to its left ("above"), or directly under it ("side"). Outside the pitch
+// box, like the selector; the row stays clear of the board's top-left
+// buttons on a 360px phone.
+const CAMERA_BUTTON_WIDTH = 44;
+const CAMERA_BUTTON_HEIGHT = 44;
 const CAMERA_CONTROLS_PLACEMENT: Record<"above" | "side", CSSProperties> = {
-  above: { right: QUICK_TOGGLE_WIDTH + 4, bottom: "calc(100% + 2px)", flexDirection: "row" },
+  above: { right: `calc(${GOAL_VIEW_ROW_RIGHT} + ${QUICK_TOGGLE_GOAL_VIEW_WIDTH + 2}px)`, bottom: "calc(100% + 2px)", flexDirection: "row" },
   side: { left: "calc(100% + 6px)", top: QUICK_TOGGLE_HIT_HEIGHT + 2, flexDirection: "row" },
 };
 const CAMERA_CONTROLS_STYLE: CSSProperties = {
   position: "absolute",
   zIndex: 3,
   display: "flex",
-  gap: 4,
+  gap: 0,
 };
 const CAMERA_BUTTON_STYLE: CSSProperties = {
-  width: CAMERA_BUTTON_SIZE,
-  height: CAMERA_BUTTON_SIZE,
+  width: CAMERA_BUTTON_WIDTH,
+  height: CAMERA_BUTTON_HEIGHT,
   padding: 0,
   margin: 0,
   border: "none",
@@ -504,11 +560,31 @@ const CAMERA_PILL_STYLE: CSSProperties = {
   fontSize: 16,
 };
 
+const DISTANCE_PILL_STYLE: CSSProperties = {
+  ...CAMERA_PILL_STYLE,
+  fontSize: 10,
+  letterSpacing: 0,
+};
+
 export function GoalViewCameraControls({ camera, placement }: { camera: GoalViewCamera; placement: "above" | "side" }) {
+  const distanceIndex = Math.max(0, GOAL_VIEW_DISTANCES.findIndex((d) => d.id === camera.distance));
+  const distanceInfo = GOAL_VIEW_DISTANCES[distanceIndex];
+  const nextDistance = GOAL_VIEW_DISTANCES[(distanceIndex + 1) % GOAL_VIEW_DISTANCES.length];
   const activePill = (on: boolean): CSSProperties =>
     on ? { ...CAMERA_PILL_STYLE, background: "rgba(124, 255, 114, 0.9)", color: "#06150F" } : CAMERA_PILL_STYLE;
   return (
     <div style={{ ...CAMERA_CONTROLS_STYLE, ...CAMERA_CONTROLS_PLACEMENT[placement] }} data-experimental="goal-view-camera-controls">
+      <button
+        type="button"
+        style={CAMERA_BUTTON_STYLE}
+        aria-label={`Camera distance: ${distanceInfo.label}. Tap for ${nextDistance.label}`}
+        title={`Camera distance: ${distanceInfo.label}`}
+        data-action="goal-view-distance"
+        data-distance={camera.distance}
+        onClick={camera.cycleDistance}
+      >
+        <span style={DISTANCE_PILL_STYLE} aria-hidden="true">{distanceInfo.short}</span>
+      </button>
       <button
         type="button"
         style={CAMERA_BUTTON_STYLE}

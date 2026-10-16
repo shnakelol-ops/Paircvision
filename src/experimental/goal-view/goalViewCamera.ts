@@ -46,18 +46,38 @@ export type GoalViewCameraParams = {
 // proportions — far endline 52% of the near endline's width, halfway line 34%
 // of the way down from the far end. A gentler, more tactical perspective than
 // a dramatic behind-the-goal camera. All four values stay slider-adjustable.
-//
-// Framing: nearCropUnits 0 fits the full near endline (with the 12px padding),
-// so the whole pitch and both goals are visible at Left End / Right End on
-// portrait phones. On portrait phones that is 0.846× the previous near-crop-30
-// framing, about 60% of the way from Fit Pitch to it. Height, distance and
-// aim point (so elevation and perspective) are unchanged.
+// This is the "Balanced" camera distance and the initial default.
 export const DEFAULT_GOAL_VIEW_CAMERA: GoalViewCameraParams = {
   heightUnits: 112,
   distanceBehindUnits: 92,
   lookAtUnits: 80,
-  nearCropUnits: 0,
+  nearCropUnits: 30,
 };
+
+/**
+ * Camera distance presets. All three keep Camera C's position, elevation and
+ * perspective exactly; only the framing (how much of the near pitch may run
+ * off-screen) changes. On portrait phones:
+ *  - wide: the whole pitch and both goals fit (12px padding), 0.846× Balanced.
+ *  - balanced: Camera C exactly (the initial default), 1.000×.
+ *  - near: one equal step closer again, ≈1.18× Balanced.
+ * Landscape/desktop framing is height-limited, so it is the same for all three.
+ */
+export type GoalViewDistance = "wide" | "balanced" | "near";
+export const GOAL_VIEW_DISTANCES: ReadonlyArray<{ id: GoalViewDistance; label: string; short: string; nearCropUnits: number }> = [
+  { id: "wide", label: "Wide", short: "Wide", nearCropUnits: 0 },
+  { id: "balanced", label: "Balanced", short: "Bal", nearCropUnits: DEFAULT_GOAL_VIEW_CAMERA.nearCropUnits },
+  { id: "near", label: "Near", short: "Near", nearCropUnits: 65 },
+];
+export const DEFAULT_GOAL_VIEW_DISTANCE: GoalViewDistance = "balanced";
+
+/** Camera C at the given distance preset (only the framing differs). */
+export function cameraForDistance(distance: GoalViewDistance): GoalViewCameraParams {
+  const preset = GOAL_VIEW_DISTANCES.find((d) => d.id === distance) ?? GOAL_VIEW_DISTANCES[1];
+  return preset.nearCropUnits === DEFAULT_GOAL_VIEW_CAMERA.nearCropUnits
+    ? DEFAULT_GOAL_VIEW_CAMERA
+    : { ...DEFAULT_GOAL_VIEW_CAMERA, nearCropUnits: preset.nearCropUnits };
+}
 
 /**
  * Interactive orbit (prototype). Presentation-only camera state: it never
@@ -85,7 +105,8 @@ export const DEFAULT_GOAL_VIEW_ORBIT: GoalViewOrbit = { yawDeg: 0, elevationDeg:
 export const GOAL_VIEW_ORBIT_LIMITS = {
   minElevationDeg: 20,
   maxElevationDeg: 75,
-  minZoom: 0.6,
+  // Low enough for Fit Pitch from the Near distance (≈0.52 on portrait phones).
+  minZoom: 0.4,
   maxZoom: 2,
 } as const;
 
