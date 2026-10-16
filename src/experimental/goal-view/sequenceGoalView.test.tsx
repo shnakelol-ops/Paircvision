@@ -6,8 +6,10 @@ import type { MovementCanvasShellHandle } from "../../movement-board/shell/types
 import {
   GOAL_VIEW_PREVIEW_HOST,
   computeGoalViewExperimentEnabled,
-  GOAL_VIEW_EXPERIMENT_ENABLED,
+  GOAL_VIEW_ENABLED,
+  GOAL_VIEW_INTERNAL_TOOLS_ENABLED,
   GOAL_VIEW_MODE_OPTIONS,
+  GOAL_VIEW_PUBLIC_ENABLED,
   GoalViewModeRow,
   GoalViewQuickToggle,
   GoalViewReadOnlyShield,
@@ -28,15 +30,35 @@ function fakeShell() {
   };
 }
 
-describe("Goal View experiment flag", () => {
-  it("is off without VITE_EXPERIMENTAL_GOAL_VIEW or a ?goalview dev query", () => {
+describe("Goal View release gating", () => {
+  it("public release is on by default; internal testing tools are off without ?goalview", () => {
+    expect(import.meta.env.VITE_GOAL_VIEW_PUBLIC).toBeUndefined();
+    expect(GOAL_VIEW_PUBLIC_ENABLED).toBe(true);
+    expect(GOAL_VIEW_ENABLED).toBe(true);
     expect(import.meta.env.VITE_EXPERIMENTAL_GOAL_VIEW).toBeUndefined();
-    expect(GOAL_VIEW_EXPERIMENT_ENABLED).toBe(false);
+    expect(GOAL_VIEW_INTERNAL_TOOLS_ENABLED).toBe(false);
   });
 
-  it("with the flag off the hook is inert: never a goal view, never touches the shell", () => {
+  // Kill switch: VITE_GOAL_VIEW_PUBLIC=false at build time.
+  async function loadWithPublicDisabled() {
+    vi.resetModules();
+    vi.stubEnv("VITE_GOAL_VIEW_PUBLIC", "false");
+    const mod = await import("./sequenceGoalView");
+    vi.unstubAllEnvs();
+    return mod;
+  }
+
+  it("kill switch turns Goal View off on the boards (internal tools stay off too)", async () => {
+    const mod = await loadWithPublicDisabled();
+    expect(mod.GOAL_VIEW_PUBLIC_ENABLED).toBe(false);
+    expect(mod.GOAL_VIEW_ENABLED).toBe(false);
+    expect(mod.GOAL_VIEW_INTERNAL_TOOLS_ENABLED).toBe(false);
+  });
+
+  it("with Goal View off the hook is inert: never a goal view, never touches the shell", async () => {
+    const { useGoalView } = await loadWithPublicDisabled();
     const shell = fakeShell();
-    const { result } = renderHook(() => useSequenceGoalView(shell));
+    const { result } = renderHook(() => useGoalView(shell));
     act(() => result.current.setMode("right-end"));
     expect(result.current.mode).toBe("top-down");
     expect(result.current.isGoalView).toBe(false);
@@ -45,13 +67,20 @@ describe("Goal View experiment flag", () => {
     expect(() => result.current.releaseBeforeShellDestroy()).not.toThrow();
   });
 
-  it("with the flag off the camera is inert: Camera C preset, nothing moved", () => {
-    const { result } = renderHook(() => useSequenceGoalView(null));
+  it("with Goal View off the camera is inert: Camera C preset, nothing moved", async () => {
+    const { useGoalView } = await loadWithPublicDisabled();
+    const { result } = renderHook(() => useGoalView(null));
     expect(result.current.camera.orbit).toEqual(DEFAULT_GOAL_VIEW_ORBIT);
     expect(result.current.camera.moved).toBe(false);
     act(() => result.current.camera.reset());
     act(() => result.current.camera.toggleFit());
     expect(result.current.camera.orbit).toEqual(DEFAULT_GOAL_VIEW_ORBIT);
+  });
+
+  it("Top-Down is the default view", () => {
+    const { result } = renderHook(() => useSequenceGoalView(null));
+    expect(result.current.mode).toBe("top-down");
+    expect(result.current.isGoalView).toBe(false);
   });
 
   it("release handle is stable across renders (safe to capture in mount effects)", () => {
@@ -62,7 +91,7 @@ describe("Goal View experiment flag", () => {
   });
 });
 
-describe("Goal View access gate", () => {
+describe("Internal testing tools access gate", () => {
   const base = { envFlag: undefined, isDevBuild: false, branchPreviewBuild: false, previewEligibleBuild: true, hostname: GOAL_VIEW_PREVIEW_HOST, search: "" };
 
   it("is always on in the experimental branch's preview build, on any of its URLs, no query needed", () => {
@@ -138,7 +167,28 @@ describe("Goal View controls", () => {
     rerender(<GoalViewQuickToggle mode="right-end" onChange={vi.fn()} placement="side" />);
     expect(screen.getByRole("button").getAttribute("data-placement")).toBe("side");
     expect(screen.getByRole("button").style.left).toBe("calc(100% + 6px)");
-    expect(screen.getByRole("button").style.width).toBe("136px");
+    expect(screen.getByRole("button").style.width).toBe("92px");
+  });
+
+  it("in a goal view the selector drops the 'View:' prefix; Top-Down keeps it", () => {
+    const { rerender } = render(<GoalViewQuickToggle mode="top-down" onChange={vi.fn()} />);
+    expect(screen.getByRole("button").textContent).toBe("View: Top-Down ▸");
+    rerender(<GoalViewQuickToggle mode="left-end" onChange={vi.fn()} />);
+    expect(screen.getByRole("button").textContent).toBe("Left End ▸");
+    expect(screen.getByRole("button").style.width).toBe("92px");
+    rerender(<GoalViewQuickToggle mode="right-end" onChange={vi.fn()} />);
+    expect(screen.getByRole("button").textContent).toBe("Right End ▸");
+    // Accessible name still says what it is and what a tap does.
+    expect(screen.getByRole("button").getAttribute("aria-label")).toBe("Goal View: Right End. Tap for Top-Down");
+  });
+
+  it("every camera control is at least a 44×44px touch target", () => {
+    render(<GoalViewQuickToggle mode="left-end" onChange={vi.fn()} camera={fakeCamera()} />);
+    for (const name of [/Camera distance/, /Fit pitch/, /Reset Camera/]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.style.width).toBe("44px");
+      expect(button.style.height).toBe("44px");
+    }
   });
 
   it("read-only shield names the active view", () => {
@@ -152,6 +202,8 @@ describe("Goal View controls", () => {
     fitted: false,
     reset: vi.fn(),
     toggleFit: vi.fn(),
+    distance: "balanced",
+    cycleDistance: vi.fn(),
     surfaceProps: { onPointerDown: vi.fn(), onPointerMove: vi.fn(), onPointerUp: vi.fn(), onPointerCancel: vi.fn() },
     ...patch,
   });
@@ -185,5 +237,44 @@ describe("Goal View controls", () => {
     expect(shield.style.touchAction).toBe("none");
     shield.dispatchEvent(new Event("pointerdown", { bubbles: true }));
     expect(camera.surfaceProps.onPointerDown).toHaveBeenCalled();
+  });
+
+  it("distance control shows the current preset and cycles on tap", () => {
+    const camera = fakeCamera();
+    const { rerender } = render(<GoalViewQuickToggle mode="left-end" onChange={vi.fn()} camera={camera} />);
+    const button = screen.getByRole("button", { name: /Camera distance: Balanced\. Tap for Near/ });
+    expect(button.getAttribute("data-distance")).toBe("balanced");
+    expect(button.style.height).toBe("44px");
+    button.click();
+    expect(camera.cycleDistance).toHaveBeenCalledTimes(1);
+    rerender(<GoalViewQuickToggle mode="left-end" onChange={vi.fn()} camera={fakeCamera({ distance: "near" })} />);
+    expect(screen.getByRole("button", { name: /Camera distance: Near\. Tap for Wide/ })).toBeTruthy();
+  });
+});
+
+describe("camera distance presets (shared hook)", () => {
+  it("Balanced is the initial default; cycling goes Wide → Balanced → Near", () => {
+    const { result } = renderHook(() => useSequenceGoalView(null));
+    expect(result.current.camera.distance).toBe("balanced");
+    act(() => result.current.camera.cycleDistance());
+    expect(result.current.camera.distance).toBe("near");
+    act(() => result.current.camera.cycleDistance());
+    expect(result.current.camera.distance).toBe("wide");
+    act(() => result.current.camera.cycleDistance());
+    expect(result.current.camera.distance).toBe("balanced");
+  });
+
+  it("Reset Camera and view changes keep the selected distance; distance changes keep the orbit", () => {
+    const { result } = renderHook(() => useSequenceGoalView(null));
+    act(() => result.current.setMode("left-end"));
+    act(() => result.current.camera.cycleDistance()); // near
+    act(() => result.current.camera.reset());
+    expect(result.current.camera.distance).toBe("near");
+    act(() => result.current.setMode("right-end"));
+    expect(result.current.camera.distance).toBe("near");
+    expect(result.current.camera.orbit).toEqual(DEFAULT_GOAL_VIEW_ORBIT);
+    act(() => result.current.camera.cycleDistance()); // wide
+    expect(result.current.camera.orbit).toEqual(DEFAULT_GOAL_VIEW_ORBIT);
+    expect(result.current.camera.moved).toBe(false); // a distance is not a "moved" camera
   });
 });
