@@ -235,6 +235,13 @@ export type GoalViewProjection = {
   cameraGroundScale: (a: number, b: number) => { across: number; along: number };
   /** Distance towards the camera along its ground axis: larger = nearer. Equals b without an orbit. */
   depthOf: (a: number, b: number) => number;
+  /**
+   * Camera-space depth of the board point (a, b, h) in world units: > 0 in
+   * front of the camera, <= 0 at or behind it (where `project` returns null).
+   * Affine in (a, b) at a fixed h, so ground polygons can be clipped against
+   * the near plane exactly by linear interpolation.
+   */
+  cameraDepth: (a: number, b: number, h?: number) => number;
 };
 
 type Basis = { cos: number; sin: number };
@@ -245,6 +252,12 @@ function cameraBasis(camera: GoalViewCameraParams): Basis {
 }
 
 /** Unscaled image-plane projection; null when the point is at/behind the camera plane. */
+function cameraDepthRaw(camera: GoalViewCameraParams, basis: Basis, b: number, h: number): number {
+  const yRel = h - camera.heightUnits;
+  const z = GOAL_VIEW_BOARD_LENGTH - b + camera.distanceBehindUnits;
+  return z * basis.cos - yRel * basis.sin;
+}
+
 function projectRaw(
   camera: GoalViewCameraParams,
   basis: Basis,
@@ -329,6 +342,12 @@ export function createGoalViewProjection(
     return p ? { x: p.x * kView + ox, y: p.y * kView + oy } : null;
   };
 
+  // Same rotation as `project`; only b (along) affects depth.
+  const cameraDepth = (a: number, b: number, h = 0): number => {
+    const pb = rotateYaw ? centreB - (a - centreA) * sinY + (b - centreB) * cosY : b;
+    return cameraDepthRaw(view, viewBasis, pb, h);
+  };
+
   const must = (p: Vec2 | null): Vec2 => p ?? { x: Number.NaN, y: Number.NaN };
   const corners = [
     must(project(0, 0)),
@@ -379,7 +398,7 @@ export function createGoalViewProjection(
   const depthOf = (a: number, b: number) =>
     orbit ? (b - centreB) * cosY - (a - centreA) * sinY : b;
 
-  return { camera, screen, project, corners, groundScale, groundShadowOf, orbit, yawRad, cameraGroundScale, depthOf };
+  return { camera, screen, project, corners, groundScale, groundShadowOf, orbit, yawRad, cameraGroundScale, depthOf, cameraDepth };
 }
 
 /**

@@ -22,12 +22,14 @@ import {
   Graphics,
   Matrix,
   PerspectiveMesh,
+  Rectangle,
   RenderTexture,
   UPDATE_PRIORITY,
   type Application,
 } from "pixi.js";
 
 import { buildGoalGeometry, type Point3, type Segment3 } from "./goalViewGoalGeometry";
+import { projectSurround, type BoardSurroundCell, type GoalViewSurround, type SurroundPolygon } from "./goalViewSurround";
 import {
   DEFAULT_GOAL_VIEW_CAMERA,
   GOAL_VIEW_BOARD_LENGTH,
@@ -76,6 +78,12 @@ export type GoalViewLensOptions = {
   mipmaps: boolean;
   /** Anisotropic filtering level (1 = off). Only effective with mipmaps. */
   anisotropy: number;
+  /**
+   * Grass beyond the pitch (internal prototype only, goalViewSurround.ts).
+   * null = no surround: nothing is added to the stage, exactly as before.
+   * Redrawn only when the camera, screen, end or surround changes.
+   */
+  surround: GoalViewSurround | null;
 };
 
 export const DEFAULT_GOAL_VIEW_LENS_OPTIONS: GoalViewLensOptions = {
@@ -88,6 +96,7 @@ export const DEFAULT_GOAL_VIEW_LENS_OPTIONS: GoalViewLensOptions = {
   orbit: null,
   mipmaps: false,
   anisotropy: 1,
+  surround: null,
 };
 
 export type GoalViewLensMetrics = {
@@ -107,6 +116,12 @@ export type GoalViewLensMetrics = {
   /** Device pixels per texture pixel at the near/far centre — >1 means the texture is being magnified (soft). */
   nearMagnification: number;
   farMagnification: number;
+  /** Surround cells in the source list, polygon clips tried, and polygons actually drawn (0 when off). */
+  surroundCells: number;
+  surroundClipCalls: number;
+  surroundPolygons: number;
+  /** CPU ms of the last surround redraw (clip + project + Graphics rebuild). Paid per camera update, never per frame. */
+  surroundMs: number;
 };
 
 export type GoalViewDiagnostics = {
@@ -127,6 +142,8 @@ export type GoalViewDiagnostics = {
   stageChildren: string[];
   /** Goal decal draws below players/ball/routes and the underlay draws below the mesh. */
   goalsBelowPlayers: boolean;
+  /** Surround grass (when present) draws below the goal underlay and the pitch mesh; true when there is none. */
+  surroundBelowPitch: boolean;
 };
 
 export type GoalViewLens = {
@@ -214,6 +231,35 @@ export function createGoalViewLens(
   goalUnderlay.label = "goal-view-goal-underlay";
   goalUnderlay.eventMode = "none";
 
+  // Grass beyond the pitch: screen-space polygons beneath the goal underlay
+  // (so far posts and the near net still show over it) and beneath the mesh.
+  // Only on the stage while a surround is set.
+  const grassUnderlay = new Graphics();
+  grassUnderlay.label = "goal-view-grass-underlay";
+  grassUnderlay.eventMode = "none";
+  let surroundCache: { surround: GoalViewSurround; end: GoalViewEnd; cells: BoardSurroundCell[] } | null = null;
+  let surroundPolygons = 0;
+  let surroundClipCalls = 0;
+  let surroundMs = 0;
+  // While a surround is shown, the stage's measured bounds are pinned to the
+  // canvas (Pixi boundsArea), so a stage export (Share Image) is exactly the
+  // canvas: the pitch mesh can hang off-canvas in Goal View, which would
+  // otherwise widen the PNG around the grass. Restored when the surround goes.
+  const NOT_PINNED = Symbol("not-pinned");
+  let stageBoundsAreaBefore: Rectangle | undefined | typeof NOT_PINNED = NOT_PINNED;
+
+  const removeSurround = () => {
+    if (grassUnderlay.parent) grassUnderlay.parent.removeChild(grassUnderlay);
+    grassUnderlay.clear();
+    surroundPolygons = 0;
+    surroundClipCalls = 0;
+    surroundMs = 0;
+    if (stageBoundsAreaBefore !== NOT_PINNED) {
+      app.stage.boundsArea = stageBoundsAreaBefore as Rectangle;
+      stageBoundsAreaBefore = NOT_PINNED;
+    }
+  };
+
   const textureTransform = new Matrix();
   const inverseWorld = new Matrix();
   let passMsEma = 0;
@@ -283,10 +329,62 @@ export function createGoalViewLens(
       const [tl, tr, br, bl] = projection.corners;
       mesh.setCorners(tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y);
     }
+    drawSurround();
     drawGoals();
     const dt = performance.now() - t0;
     cameraMsEma = cameraUpdates === 0 ? dt : cameraMsEma * 0.9 + dt * 0.1;
     cameraUpdates += 1;
+  };
+
+  const drawSurround = () => {
+    const surround = options.surround;
+    if (!end || !projection || !surround || !activeStrategy) {
+      removeSurround();
+      return;
+    }
+    const t0 = performance.now();
+    if (grassUnderlay.parent !== app.stage) {
+      app.stage.addChildAt(grassUnderlay, app.stage.getChildIndex(goalUnderlay));
+    }
+    if (stageBoundsAreaBefore === NOT_PINNED) stageBoundsAreaBefore = app.stage.boundsArea;
+    app.stage.boundsArea = new Rectangle(0, 0, app.screen.width, app.screen.height);
+    // World → board conversion depends only on the surround and the end.
+    if (!surroundCache || surroundCache.surround !== surround || surroundCache.end !== end) {
+      const currentEnd = end;
+      surroundCache = {
+        surround,
+        end: currentEnd,
+        cells: surround.cells.map((cell) => ({
+          poly: cell.poly.map((p) => worldToBoard(currentEnd, p)),
+          color: cell.color,
+          alpha: cell.alpha,
+        })),
+      };
+    }
+    grassUnderlay.clear();
+    const screen = { width: app.screen.width, height: app.screen.height };
+    if (surround.backdrop != null) grassUnderlay.rect(0, 0, screen.width, screen.height).fill({ color: surround.backdrop, alpha: 1 });
+    // Depth fade: cells are cut into camera-depth slabs (iso-depth lines are
+    // straight on the ground), so far grass dissolves like fog while grass
+    // near the camera stays solid at every angle and tilt.
+    const { polygons, clipCalls } = projectSurround(surroundCache.cells, surround.depthFade, projection, screen);
+    // Grass polygons never overlap (cells and depth slabs partition the
+    // ground), so each colour/alpha group is one path with one fill: a few
+    // dozen fill instructions per rebuild instead of one per polygon.
+    const groups = new Map<string, SurroundPolygon[]>();
+    for (const polygon of polygons) {
+      const key = `${polygon.color}:${polygon.alpha}`;
+      const group = groups.get(key);
+      if (group) group.push(polygon);
+      else groups.set(key, [polygon]);
+    }
+    for (const group of groups.values()) {
+      for (const polygon of group) grassUnderlay.poly(polygon.flat);
+      grassUnderlay.fill({ color: group[0].color, alpha: group[0].alpha });
+    }
+    surroundPolygons = polygons.length;
+    surroundClipCalls = clipCalls;
+    surroundMs = performance.now() - t0;
   };
 
   const drawGoals = () => {
@@ -512,6 +610,7 @@ export function createGoalViewLens(
       mesh = null;
     }
     app.stage.removeChild(goalUnderlay);
+    removeSurround();
     world.removeChild(goalDecal);
     if (activeStrategy === "wrapper") {
       wrapper.removeChild(world);
@@ -594,6 +693,10 @@ export function createGoalViewLens(
         cameraUpdates,
         nearMagnification: near,
         farMagnification: far,
+        surroundCells: options.surround?.cells.length ?? 0,
+        surroundClipCalls,
+        surroundPolygons,
+        surroundMs,
       };
     },
     runDiagnostics: () => {
@@ -602,9 +705,11 @@ export function createGoalViewLens(
       const meshVisible = mesh?.visible ?? false;
       if (mesh) mesh.visible = false;
       goalUnderlay.visible = false;
+      grassUnderlay.visible = false;
       const mainPixels = app.renderer.extract.pixels({ target: app.stage }).pixels;
       if (mesh) mesh.visible = meshVisible;
       goalUnderlay.visible = true;
+      grassUnderlay.visible = true;
       // 2. Offscreen texture content.
       const texPixels = renderTexture ? app.renderer.extract.pixels({ target: renderTexture }).pixels : new Uint8ClampedArray();
       // 3. Hit test where a player sits on the FLAT board (what top-down input would target).
@@ -655,6 +760,12 @@ export function createGoalViewLens(
             (!mesh || app.stage.getChildIndex(goalUnderlay) < app.stage.getChildIndex(mesh))
           );
         })(),
+        // Everything on the board (markings, equipment, players, goal decal)
+        // is inside the mesh's texture, so grass below the mesh is below all of it.
+        surroundBelowPitch:
+          grassUnderlay.parent !== app.stage ||
+          (app.stage.getChildIndex(grassUnderlay) < app.stage.getChildIndex(goalUnderlay) &&
+            (!mesh || app.stage.getChildIndex(grassUnderlay) < app.stage.getChildIndex(mesh))),
       };
     },
     destroy: () => {
@@ -663,6 +774,8 @@ export function createGoalViewLens(
       renderTexture = null;
       goalDecal.destroy();
       goalUnderlay.destroy();
+      grassUnderlay.destroy();
+      surroundCache = null;
       wrapper.destroy();
     },
   };

@@ -9,8 +9,9 @@ import type {
   TacticalPadLiteExperimentalRenderTargets,
 } from "../../engine/pixi/createTacticalPadLiteSurface";
 import type { TacticalPitchTheme } from "../../tactical-lite/pixi/tacticalPitchTheme";
-import { resolveTacticalPitchThemeLayers } from "../../tactical-lite/pixi/tacticalPitchTheme";
+import { TRAINING_GRASS_BANDS, resolveTacticalPitchThemeLayers } from "../../tactical-lite/pixi/tacticalPitchTheme";
 import type { GoalViewLensOptions, GoalViewRenderTargets } from "./createGoalViewLens";
+import { FADED_SURROUND_OPTIONS, buildBandSurround, withBackdrop, type GoalViewSurround } from "./goalViewSurround";
 
 /**
  * Equipment that physically stands up and is drawn as an upright-readable icon,
@@ -57,15 +58,49 @@ export function toSlateGoalViewTargets(targets: TacticalPadLiteExperimentalRende
 }
 
 /**
+ * The Slate pitch panel colour behind the canvas (TacticalPadLiteClean
+ * PITCH_STYLE background, also the Share Image fill in board-png-export.ts).
+ * Painted opaque under the grass so the fade blends into exactly what the
+ * coach sees around the pitch, and recordings (which drop alpha) match.
+ */
+export const SLATE_GOAL_VIEW_PANEL_BACKGROUND = 0x13221d;
+
+let bandSurround: GoalViewSurround | null = null;
+
+/**
+ * Grass beyond the pitch in Goal View: the board's own flat mown bands
+ * (TRAINING_GRASS_BANDS, 16 units each) continued past the endlines and
+ * touchlines, fading with distance from the camera. Only the two banded
+ * boards get it — Gaelic Pitch ("gaelicBands") and Training Grass ("grass")
+ * share the same bands. Turf themes (Tactical Board, default) and the
+ * Whiteboard keep the plain Goal View. Built once and shared (the lens caches
+ * its projection input by identity).
+ */
+export function slateGoalViewSurround(theme: TacticalPitchTheme): GoalViewSurround | null {
+  if (theme !== "gaelicBands" && theme !== "grass") return null;
+  if (!bandSurround) {
+    const { count, light, dark } = TRAINING_GRASS_BANDS;
+    bandSurround = withBackdrop(
+      buildBandSurround({ bandWidth: 160 / count, colors: [light, dark] }, FADED_SURROUND_OPTIONS),
+      SLATE_GOAL_VIEW_PANEL_BACKGROUND,
+    );
+  }
+  return bandSurround;
+}
+
+/**
  * Goal View presents only what the board shows: upright goals appear only on
  * pitch themes that draw goals (none on the Training grass board), and on the
  * light Whiteboard theme the on-pitch part of each goal uses the board's own
- * dark goal tint (renderTacticalPitch: 0x0b1219) so it stays visible.
+ * dark goal tint (renderTacticalPitch: 0x0b1219) so it stays visible. The
+ * banded boards also get the grass surround (slateGoalViewSurround).
  */
 export function slateGoalViewLensOptions(theme: TacticalPitchTheme): Partial<GoalViewLensOptions> {
+  const surround = slateGoalViewSurround(theme);
   return {
     uprightGoals: resolveTacticalPitchThemeLayers(theme).goals !== false,
     ...(theme === "whiteboard" ? { goalDecalColor: 0x0b1219 } : {}),
+    ...(surround ? { surround } : {}),
   };
 }
 

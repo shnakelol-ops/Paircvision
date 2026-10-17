@@ -6,10 +6,14 @@ import type {
 } from "../../engine/pixi/createTacticalPadLiteSurface";
 import {
   GOAL_VIEW_UPRIGHT_ITEM_TYPES,
+  SLATE_GOAL_VIEW_PANEL_BACKGROUND,
   createSlateGoalViewHost,
   slateGoalViewLensOptions,
+  slateGoalViewSurround,
   toSlateGoalViewTargets,
 } from "./slateGoalView";
+import { TRAINING_GRASS_BANDS } from "../../tactical-lite/pixi/tacticalPitchTheme";
+import { DEFAULT_SURROUND_DEPTH_FADE } from "./goalViewSurround";
 
 // Plain stand-ins: the adapter only passes containers through and asks the
 // surface which equipment type a node draws.
@@ -67,7 +71,29 @@ describe("Slate → shared Goal View lens adapter", () => {
     const host = createSlateGoalViewHost(surface, "grass");
     host.setOrientation(3);
     expect(surface.setOrientation).toHaveBeenCalledWith(3);
-    expect(host.lensOptions).toEqual({ uprightGoals: false });
+    expect(host.lensOptions).toEqual({ uprightGoals: false, surround: slateGoalViewSurround("grass") });
     expect(host.getExperimentalRenderTargets().goalDecalBefore).toBeDefined();
+  });
+
+  it("adds the grass surround (bands + fade) on Gaelic Pitch and Training Grass only", () => {
+    const gaelic = slateGoalViewSurround("gaelicBands");
+    expect(gaelic).not.toBeNull();
+    // One shared, immutable surround: the lens caches by identity.
+    expect(slateGoalViewSurround("grass")).toBe(gaelic);
+    expect(slateGoalViewLensOptions("gaelicBands").surround).toBe(gaelic);
+    expect(gaelic!.depthFade).toEqual(DEFAULT_SURROUND_DEPTH_FADE);
+    expect(gaelic!.backdrop).toBe(SLATE_GOAL_VIEW_PANEL_BACKGROUND);
+    // The board's own two band colours, nothing else.
+    expect(new Set(gaelic!.cells.map((c) => c.color))).toEqual(new Set([TRAINING_GRASS_BANDS.light, TRAINING_GRASS_BANDS.dark]));
+  });
+
+  it("leaves every other theme's lens options exactly as before (no surround key at all)", () => {
+    expect(slateGoalViewLensOptions("tacticalBoard")).toEqual({ uprightGoals: true });
+    expect(slateGoalViewLensOptions("default")).toEqual({ uprightGoals: true });
+    expect(slateGoalViewLensOptions("whiteboard")).toEqual({ uprightGoals: true, goalDecalColor: 0x0b1219 });
+    for (const theme of ["tacticalBoard", "default", "whiteboard"] as const) {
+      expect(slateGoalViewSurround(theme)).toBeNull();
+      expect("surround" in slateGoalViewLensOptions(theme)).toBe(false);
+    }
   });
 });

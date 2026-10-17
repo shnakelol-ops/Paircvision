@@ -378,3 +378,63 @@ and redeploy.
 
 The kill switch only hides Goal View. Nothing is persisted by Goal View, so
 no data migration or clean-up is ever needed.
+
+## Grass surround (Tactical Slate: Gaelic Pitch and Training Grass)
+
+In Goal View, the pitch sits in a larger mown field instead of floating on the
+dark panel: the board's own bands continue past every boundary and fade with
+distance from the camera ("Grass bands + fade"). Automatic, no new controls.
+
+**Where it applies** (`slateGoalView.ts`, `slateGoalViewSurround`):
+
+| Board / theme | Surround |
+|---|---|
+| Slate Gaelic Pitch (`gaelicBands`), Training Grass (`grass`) | The board's own flat mown bands (`TRAINING_GRASS_BANDS`, 16 units), continued past the endlines and straight on past the touchlines, over an opaque `#13221d` backdrop (the Slate pitch panel colour) |
+| Slate Tactical Board, default turf, Whiteboard | None (lens options unchanged) |
+| Tactical Sequence | None. An edge-sampled turf continuation is an internal investigation only (`/internal/goal-view`) |
+
+**How it works** (`goalViewSurround.ts`, pure and unit-tested):
+- The surround is one flat-coloured ground rectangle per band per side, out to
+  360 units beyond every boundary, starting 2 units inside it (hidden under
+  the opaque pitch mesh, so no gap can open) and leaving the rest of the pitch
+  interior out (no overdraw). About 160 cells.
+- The lens projects each cell through the same Goal View projection as the
+  pitch mesh. Ground lines project to lines, so each cell is an exact
+  quadrilateral: crisp band edges at any zoom and no texture memory.
+- **Fade:** camera-depth (fog-like). Grass is solid up to 8 units beyond the
+  farthest pitch corner's camera depth and eases to nothing 120 units further,
+  in 20 slabs. Grass near the camera never fades at any angle or tilt, and the
+  grass next to the far boundary is always solid (no seam). The 360-unit outer
+  edge is never on screen before the fade removes it (tested: every preset,
+  Fit, tilt 20–75°, all yaws, phone and desktop canvases).
+- **Clipping:** each cell is clipped against the camera near plane (on the
+  ground, where depth is affine), cut into the depth slabs it overlaps, and
+  clipped to the canvas rectangle. Cells behind the camera, beyond the fade or
+  entirely off-canvas are skipped before any slab cut.
+- **Layering:** one Graphics layer, `goal-view-grass-underlay`, beneath the
+  goal underlay and the pitch mesh. Markings, equipment, players and the goal
+  decal are all inside the mesh's texture, so they always draw over the grass
+  (`runDiagnostics().surroundBelowPitch`).
+- **Cost:** rebuilt only on a camera, screen, end or surround change (orbit
+  drag, preset, Fit, Reset, resize), never per frame. No textures.
+- **Share Image / recording:** while a surround is shown, the lens pins
+  `app.stage.boundsArea` to the canvas, so the stage export (and the PNG built
+  from it) is exactly the canvas, even where the pitch mesh hangs off-canvas.
+  Restored when the surround goes (Top-Down, Tactical Board…). The opaque
+  backdrop makes recordings (which drop alpha) match the screen.
+
+**Rollback:** delete the `surround` entry in `slateGoalViewLensOptions`
+(`slateGoalView.ts`); the lens default is `null`, so everything else is inert.
+The `VITE_GOAL_VIEW_PUBLIC=false` kill switch still hides Goal View entirely.
+
+**Internal prototype** (`/internal/goal-view`, compiled out of production):
+Surround off / Grass bands (hard edge, 140 units) / Grass bands + fade (the
+production surround), Wide / Balanced / Near, Tilt.
+`?board=slate&theme=gaelicBands|grass|whiteboard|tacticalBoard` picks the Slate
+pitch theme; `?capture` hides every control row and the HUD for screenshots.
+The Sequence engine shows the edge-sampled turf investigation
+(`goalViewSurroundSampling.ts`): a throwaway copy of the same pitch renderer,
+stripes hidden, is drawn once offscreen; the colour just inside each boundary
+is read back and continued outwards, with the stripes redrawn in phase. The
+boundary matches, but the gradient and vignette continue as faint radiating
+wedges, so it is not used on the board.
