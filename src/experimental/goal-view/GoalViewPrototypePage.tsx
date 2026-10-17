@@ -2,7 +2,8 @@
 // (/internal/goal-view), lazy-loaded so none of this ships in the main bundle
 // path of any production surface. Read-only: no editing, no saved-board fields.
 
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { Rectangle } from "pixi.js";
 
 import { createMovementCanvasShell } from "../../movement-board/shell/createMovementCanvasShell";
 import { buildDefaultTokens } from "../../movement-board/tokens/default-tokens";
@@ -19,11 +20,24 @@ import {
   type TacticalPadLiteSurface,
 } from "../../engine/pixi/createTacticalPadLiteSurface";
 import { slateGoalViewLensOptions, toSlateGoalViewTargets } from "./slateGoalView";
+import { TRAINING_GRASS_BANDS, type TacticalPitchTheme } from "../../tactical-lite/pixi/tacticalPitchTheme";
+import {
+  FADED_SURROUND_OPTIONS,
+  buildBandSurround,
+  buildEdgeSampledSurround,
+  withBackdrop,
+  type GoalViewSurround,
+} from "./goalViewSurround";
+import { SEQUENCE_GAA_STRIPES, samplePitchEdges } from "./goalViewSurroundSampling";
 import { usePortraitOrientation } from "../../components/OrientationGate";
 import {
   DEFAULT_GOAL_VIEW_ORBIT,
+  GOAL_VIEW_DISTANCES,
+  GOAL_VIEW_ORBIT_LIMITS,
   baseElevationDeg,
+  cameraForDistance,
   clampOrbit,
+  type GoalViewDistance,
   quarterTurnsForMode,
   type GoalViewMode,
   type GoalViewOrbit,
@@ -99,6 +113,52 @@ type BoardKind = "sequence" | "slate";
 const readBoardKind = (): BoardKind =>
   new URLSearchParams(window.location.search).get("board") === "slate" ? "slate" : "sequence";
 
+// Slate pitch theme (?theme=…), Gaelic Pitch by default.
+const SLATE_THEMES: readonly TacticalPitchTheme[] = ["gaelicBands", "grass", "whiteboard", "tacticalBoard", "default"];
+const readSlateTheme = (): TacticalPitchTheme => {
+  const value = new URLSearchParams(window.location.search).get("theme") as TacticalPitchTheme | null;
+  return value && SLATE_THEMES.includes(value) ? value : "gaelicBands";
+};
+// ?capture hides the control rows and HUD so screenshots show only the canvas.
+const readCaptureMode = () => new URLSearchParams(window.location.search).has("capture");
+
+// Grass surround prototype (goalViewSurround.ts). Never used by the boards.
+type SurroundMode = "off" | "bands" | "fade";
+// The page colour behind the canvas (root style below). Painted opaque under
+// the grass so recordings and PNGs match the screen (they drop or expose alpha).
+const PAGE_BACKGROUND = 0x06150f;
+const SURROUND_LABELS: Record<SurroundMode, string> = {
+  off: "Surround off",
+  bands: "Grass bands",
+  fade: "Grass bands + fade",
+};
+
+/**
+ * The surround each board/theme gets. Only surfaces whose grass can be
+ * continued faithfully get one; nothing else is forced onto a theme:
+ *  - Slate Gaelic Pitch and Training Grass: the same flat mown bands, continued.
+ *  - Sequence turf: edge-sampled continuation (investigation).
+ *  - Whiteboard, and Slate's turf themes (Tactical Board, default): none.
+ */
+function buildSurround(
+  boardKind: BoardKind,
+  theme: TacticalPitchTheme,
+  mode: SurroundMode,
+  app: Parameters<typeof samplePitchEdges>[0] | null,
+): GoalViewSurround | null {
+  if (mode === "off") return null;
+  // "bands": solid grass to a hard edge 140 units out; "fade": the approved
+  // production surround (wide margin + camera-depth fade).
+  const options = mode === "fade" ? FADED_SURROUND_OPTIONS : { margin: 140, depthFade: null };
+  if (boardKind === "slate") {
+    if (theme !== "gaelicBands" && theme !== "grass") return null;
+    const { count, light, dark } = TRAINING_GRASS_BANDS;
+    return withBackdrop(buildBandSurround({ bandWidth: 160 / count, colors: [light, dark] }, options), PAGE_BACKGROUND);
+  }
+  if (!app) return null;
+  return withBackdrop(buildEdgeSampledSurround(samplePitchEdges(app, "gaelic"), SEQUENCE_GAA_STRIPES, options), PAGE_BACKGROUND);
+}
+
 const VIEW_LABELS: Record<GoalViewMode, string> = {
   "top-down": "Top-Down",
   "left-end": "Left End",
@@ -134,6 +194,10 @@ export default function GoalViewPrototypePage() {
   const shellRef = useRef<MovementCanvasShellHandle | null>(null);
   const slateRef = useRef<TacticalPadLiteSurface | null>(null);
   const [boardKind] = useState<BoardKind>(readBoardKind);
+  const [slateTheme] = useState<TacticalPitchTheme>(readSlateTheme);
+  const [captureMode] = useState(readCaptureMode);
+  const [surroundMode, setSurroundMode] = useState<SurroundMode>("off");
+  const [distance, setDistance] = useState<GoalViewDistance>("balanced");
   const lensRef = useRef<GoalViewLens | null>(null);
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<GoalViewMode>("top-down");
@@ -163,7 +227,7 @@ export default function GoalViewPrototypePage() {
     if (!host) return;
     let disposed = false;
     if (boardKind === "slate") {
-      void createTacticalPadLiteSurface(host, { sport: "gaelic", pitchTheme: "gaelicBands", initialRoster: "formation" }).then((surface) => {
+      void createTacticalPadLiteSurface(host, { sport: "gaelic", pitchTheme: slateTheme, initialRoster: "formation" }).then((surface) => {
         if (disposed) {
           surface.destroy();
           return;
@@ -172,7 +236,7 @@ export default function GoalViewPrototypePage() {
         surface.setItemMode("locked");
         slateRef.current = surface;
         lensRef.current = createGoalViewLens(toSlateGoalViewTargets(surface.getExperimentalRenderTargets()));
-        lensRef.current.setOptions(slateGoalViewLensOptions("gaelicBands"));
+        lensRef.current.setOptions(slateGoalViewLensOptions(slateTheme));
         setReady(true);
       });
       return () => {
@@ -218,7 +282,7 @@ export default function GoalViewPrototypePage() {
       shellRef.current?.destroy();
       shellRef.current = null;
     };
-  }, [boardKind]);
+  }, [boardKind, slateTheme]);
 
   // Apply view: orientation (token counter-rotation) + lens.
   useEffect(() => {
@@ -229,14 +293,29 @@ export default function GoalViewPrototypePage() {
     lens.setEnd(view === "top-down" ? null : view);
   }, [view, ready, isPortrait]);
 
+  // Built once per board/theme/mode (the lens caches it by identity).
+  const surround = useMemo(
+    () =>
+      ready
+        ? buildSurround(boardKind, slateTheme, surroundMode, (shellRef.current ?? slateRef.current)?.getExperimentalRenderTargets().app ?? null)
+        : null,
+    [ready, boardKind, slateTheme, surroundMode],
+  );
+
   useEffect(() => {
     lensRef.current?.setOptions({
       ...lensOptions,
       orbit: orbitRef.current,
       ...SAMPLING[sampling],
-      ...(boardKind === "slate" ? slateGoalViewLensOptions("gaelicBands") : {}),
+      ...(boardKind === "slate" ? slateGoalViewLensOptions(slateTheme) : {}),
+      surround,
     });
-  }, [lensOptions, ready, sampling, boardKind]);
+  }, [lensOptions, ready, sampling, boardKind, slateTheme, surround]);
+
+  // Distance presets change only the framing (Camera C's nearCropUnits).
+  useEffect(() => {
+    setLensOptions((o) => ({ ...o, camera: cameraForDistance(distance) }));
+  }, [distance]);
 
   useEffect(() => {
     lensRef.current?.setOptions({ orbit });
@@ -323,6 +402,30 @@ export default function GoalViewPrototypePage() {
       resetCamera: () => setOrbit(DEFAULT_GOAL_VIEW_ORBIT),
       getOrbit: () => orbitRef.current,
       setSampling: (value: Sampling) => setSampling(value),
+      setSurround: (mode: SurroundMode) => setSurroundMode(mode),
+      setDistance: (value: GoalViewDistance) => setDistance(value),
+      // Share Image as the boards do it today (stage bounds), and a canvas-framed
+      // variant: in Goal View the mesh can hang off the canvas, so the stage
+      // bounds export is wider than the canvas; framing it to the canvas keeps
+      // the PNG exactly canvas-sized and fully covered by grass.
+      exportFramedSize: () => {
+        const app = (shellRef.current ?? slateRef.current)?.getExperimentalRenderTargets().app;
+        if (!app) return null;
+        const canvas = app.renderer.extract.canvas({
+          target: app.stage,
+          frame: new Rectangle(0, 0, app.screen.width, app.screen.height),
+        }) as HTMLCanvasElement;
+        return { width: canvas.width, height: canvas.height, dataUrl: canvas.toDataURL("image/png") };
+      },
+      exportImageSize: () => {
+        const canvas = (shellRef.current ?? slateRef.current)?.exportImageCanvas() ?? null;
+        const own = (shellRef.current ?? slateRef.current)?.getCanvas() ?? null;
+        return canvas
+          ? { width: canvas.width, height: canvas.height, canvasWidth: own?.width ?? 0, canvasHeight: own?.height ?? 0, dataUrl: canvas.toDataURL("image/png") }
+          : null;
+      },
+      // Screen position (CSS px) of a board point (a across, b along), for seam measurements.
+      projectBoard: (a: number, b: number) => lensRef.current?.getProjection()?.project(a, b) ?? null,
       getProjection: () => {
         const p = lensRef.current?.getProjection();
         return p ? { corners: p.corners, yawRad: p.yawRad, orbit: p.orbit } : null;
@@ -357,8 +460,8 @@ export default function GoalViewPrototypePage() {
     setLensOptions((o) => ({ ...o, [key]: !o[key] }));
 
   return (
-    <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: "#06150F", color: "#F1F7F0", fontFamily: "Inter, system-ui, sans-serif" }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: 8, alignItems: "center", borderBottom: "1px solid #275C3B" }}>
+    <div style={{ position: "fixed", inset: 0, display: "flex", flexDirection: "column", background: `#${PAGE_BACKGROUND.toString(16).padStart(6, "0")}`, color: "#F1F7F0", fontFamily: "Inter, system-ui, sans-serif" }}>
+      {!captureMode && <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: 8, alignItems: "center", borderBottom: "1px solid #275C3B" }}>
         <strong style={{ fontSize: 12, marginRight: 4 }}>Goal View PoC · internal · {boardKind === "slate" ? "Slate engine" : "Sequence engine"}</strong>
         {(Object.keys(VIEW_LABELS) as GoalViewMode[]).map((v) => (
           <button key={v} type="button" style={view === v ? BTN_ON : BTN} onClick={() => chooseView(v)} data-view={v}>
@@ -381,9 +484,38 @@ export default function GoalViewPrototypePage() {
         {recorder.recordBlobUrl && (
           <a href={recorder.recordBlobUrl} download="goal-view-clip" style={{ ...BTN, textDecoration: "none" }}>Download clip</a>
         )}
-      </div>
+      </div>}
 
-      {isGoalView && (
+      {isGoalView && !captureMode && (
+        <div data-row="surround-controls" style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "6px 8px", alignItems: "center", fontSize: 11, borderBottom: "1px solid #275C3B" }}>
+          {(Object.keys(SURROUND_LABELS) as SurroundMode[]).map((m) => (
+            <button key={m} type="button" style={surroundMode === m ? BTN_ON : BTN} onClick={() => setSurroundMode(m)} data-surround={m}>
+              {SURROUND_LABELS[m]}
+            </button>
+          ))}
+          {surroundMode !== "off" && !surround && <span>No surround for this theme</span>}
+          <span style={{ width: 8 }} />
+          {GOAL_VIEW_DISTANCES.map((d) => (
+            <button key={d.id} type="button" style={distance === d.id ? BTN_ON : BTN} onClick={() => setDistance(d.id)} data-distance={d.id}>
+              {d.label}
+            </button>
+          ))}
+          <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            Tilt
+            <input
+              type="range"
+              min={GOAL_VIEW_ORBIT_LIMITS.minElevationDeg}
+              max={GOAL_VIEW_ORBIT_LIMITS.maxElevationDeg}
+              value={Math.round(orbit.elevationDeg ?? baseElevationDeg(lensOptions.camera))}
+              onChange={(e) => setOrbit((o) => clampOrbit({ ...o, elevationDeg: Number(e.target.value) }))}
+            />
+            {(orbit.elevationDeg ?? baseElevationDeg(lensOptions.camera)).toFixed(0)}°
+          </label>
+          {boardKind === "slate" && <span>theme: {slateTheme} (?theme=gaelicBands|grass|whiteboard|tacticalBoard)</span>}
+        </div>
+      )}
+
+      {isGoalView && !captureMode && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "6px 8px", alignItems: "center", fontSize: 11, borderBottom: "1px solid #275C3B" }}>
           <button type="button" style={lensOptions.billboards ? BTN_ON : BTN} onClick={() => toggle("billboards")}>Upright players</button>
           <button type="button" style={lensOptions.uprightGoals ? BTN_ON : BTN} onClick={() => toggle("uprightGoals")}>Upright goals</button>
@@ -433,7 +565,7 @@ export default function GoalViewPrototypePage() {
         </div>
       )}
 
-      {isGoalView && (
+      {isGoalView && !captureMode && (
         <div data-row="orbit-controls" style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "6px 8px", alignItems: "center", fontSize: 11, borderBottom: "1px solid #275C3B" }}>
           <button type="button" style={BTN_ON} onClick={resetCamera} data-action="reset-camera">Reset Camera</button>
           <span>Angle</span>
@@ -480,7 +612,7 @@ export default function GoalViewPrototypePage() {
             {...shieldHandlers}
           />
         )}
-        <pre style={{ position: "absolute", left: 6, bottom: 6, margin: 0, padding: 6, fontSize: 10, lineHeight: 1.35, background: "rgba(3,16,11,0.78)", borderRadius: 6, pointerEvents: "none", maxWidth: "calc(100% - 12px)", whiteSpace: "pre-wrap" }}>
+        {!captureMode && <pre style={{ position: "absolute", left: 6, bottom: 6, margin: 0, padding: 6, fontSize: 10, lineHeight: 1.35, background: "rgba(3,16,11,0.78)", borderRadius: 6, pointerEvents: "none", maxWidth: "calc(100% - 12px)", whiteSpace: "pre-wrap" }}>
           {[
             `${VIEW_LABELS[view]} · ${frameStats.fps.toFixed(0)} fps · p95 ${frameStats.frameMsP95.toFixed(1)} ms`,
             isGoalView
@@ -489,11 +621,14 @@ export default function GoalViewPrototypePage() {
             metrics && isGoalView
               ? `tex ${metrics.textureWidth}×${metrics.textureHeight} (${(metrics.textureBytes / 1048576).toFixed(1)} MB) · pass ${metrics.offscreenPassMs.toFixed(2)} ms · camera ${metrics.cameraUpdateMs.toFixed(2)} ms · mag near ${metrics.nearMagnification.toFixed(2)} far ${metrics.farMagnification.toFixed(2)}`
               : null,
+            metrics && isGoalView && metrics.surroundCells > 0
+              ? `surround ${metrics.surroundPolygons}/${metrics.surroundCells} polys · redraw ${metrics.surroundMs.toFixed(2)} ms (camera changes only)`
+              : null,
             diagnostics ? JSON.stringify(diagnostics, null, 1) : null,
           ]
             .filter(Boolean)
             .join("\n")}
-        </pre>
+        </pre>}
       </div>
     </div>
   );
