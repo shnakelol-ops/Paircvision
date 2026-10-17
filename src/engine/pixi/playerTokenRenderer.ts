@@ -8,7 +8,11 @@ import { createMicroAthleteToken, type MicroAthleteKitPattern, type MicroAthlete
 import { createNamePillPlayerToken } from "./createNamePillPlayerToken";
 import { createPremiumGlowPlayerToken } from "./createPremiumGlowPlayerToken";
 import { createHeroiconUserCircleToken } from "./createHeroiconUserCircleToken";
-import { createVisionV3PlayerToken, type VisionV3KitPattern } from "./createVisionV3PlayerToken";
+import {
+  VISION_V3_SLATE_ART_SCALE,
+  createVisionV3PlayerToken,
+  type VisionV3KitPattern,
+} from "./createVisionV3PlayerToken";
 import type { PremiumPlayerTokenColor } from "./createPremiumPlayerToken";
 
 export type PlayerTokenStyle =
@@ -132,6 +136,10 @@ export const VisionV3Renderer: PlayerTokenRenderer = ({
     kitPattern,
     kitPatternColor,
     ...(showLabel === false ? { showLabel: false } : {}),
+    // Slate-only supersampling: sharp numbers and smooth rims at desktop
+    // zoom. Movement-board calls createVisionV3PlayerToken directly and
+    // keeps the default (1).
+    artScale: VISION_V3_SLATE_ART_SCALE,
   });
 
 export const ProceduralPixiRenderer: PlayerTokenRenderer = ({

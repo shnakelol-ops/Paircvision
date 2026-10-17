@@ -14,6 +14,25 @@ export type VisionV3KitPattern = "plain" | "hoops" | "stripes" | "slash" | "ches
 const VISION_V3_SIZE_SCALE = 1.06;
 
 /**
+ * Supersampling factor for the Tactical Slate's Vision V3 tokens.
+ *
+ * The Slate's board is only 160x100 world units and the whole world container
+ * is scaled 3.6-8x to fit the screen, so a token drawn at its real board size
+ * (disc radius ~3.5 units) gets its jersey number rasterised from a ~3.2px
+ * font into an ~8x16 texel texture, then magnified 4-10x on laptops — the
+ * blurry numbers. Pixi also tessellates circles from their LOCAL radius, so
+ * the same tiny radius left the disc rim with only ~24-28 segments (visible
+ * faceting at desktop DPR 2).
+ *
+ * With artScale > 1 every shape and label is authored artScale times larger
+ * inside an inner "art" container scaled back by 1/artScale. The outer token
+ * container (position, rotation, drag scale, hit area, event mode) is
+ * untouched, so on-board size and behaviour are identical; only the raster
+ * and tessellation density go up.
+ */
+export const VISION_V3_SLATE_ART_SCALE = 8;
+
+/**
  * Radius of the drawn Vision V3 disc (rim outer edge) in token-local units,
  * for a requested token `radius`. The surface multiplies it by the token's
  * current scale to get the on-pitch size.
@@ -194,10 +213,10 @@ function drawShirtGlyph(target: Graphics, centerY: number, size: number, color: 
     .fill({ color, alpha: 0.18 });
 }
 
-function drawPersonCircleGlyph(target: Graphics, radius: number, color: number): void {
+function drawPersonCircleGlyph(target: Graphics, radius: number, color: number, unit: number): void {
   target
     .circle(0, 0, radius)
-    .stroke({ color, width: Math.max(0.14, radius * 0.12), alpha: 0.2, alignment: 0.5 })
+    .stroke({ color, width: Math.max(0.14 * unit, radius * 0.12), alpha: 0.2, alignment: 0.5 })
     .circle(0, -radius * 0.18, radius * 0.26)
     .fill({ color, alpha: 0.16 })
     .roundRect(-radius * 0.44, radius * 0.06, radius * 0.88, radius * 0.46, radius * 0.22)
@@ -213,6 +232,7 @@ export function createVisionV3PlayerToken({
   kitPattern = "plain",
   kitPatternColor,
   showLabel = true,
+  artScale = 1,
 }: {
   label: string;
   teamColor: VisionV3TeamColor;
@@ -223,6 +243,12 @@ export function createVisionV3PlayerToken({
   kitPatternColor?: number;
   /** false draws the token without its identity label (Tactical Slate Practice presentation). */
   showLabel?: boolean;
+  /**
+   * Supersampling factor (see VISION_V3_SLATE_ART_SCALE). 1 (the default)
+   * draws straight into the token exactly as before; the Tactical Slate
+   * passes VISION_V3_SLATE_ART_SCALE.
+   */
+  artScale?: number;
 }): { token: Container; shadow: Graphics } {
   const defaults = DEFAULT_STYLE_BY_TEAM[teamColor];
   const resolved: VisionV3PlayerTokenStyle = {
@@ -237,8 +263,19 @@ export function createVisionV3PlayerToken({
   token.cursor = "grab";
   token.scale.set(scale ?? 1);
 
-  const discRadius = resolveVisionV3DiscRadius(radius);
-  const ringWidth = Math.max(0.58, discRadius * 0.2);
+  // Every board-unit length below (radii and the absolute floors/offsets
+  // alike) is multiplied by `unit`, and the art container scales it back by
+  // 1/unit — so the drawn geometry in token space is unchanged.
+  const unit = Number.isFinite(artScale) && artScale > 1 ? artScale : 1;
+  let art: Container = token;
+  if (unit > 1) {
+    art = new Container();
+    art.scale.set(1 / unit);
+    token.addChild(art);
+  }
+
+  const discRadius = resolveVisionV3DiscRadius(radius) * unit;
+  const ringWidth = Math.max(0.58 * unit, discRadius * 0.2);
   const innerRadius = discRadius - ringWidth;
   const baseColor =
     resolved.goalkeeper && resolved.secondaryColor != null
@@ -281,20 +318,20 @@ export function createVisionV3PlayerToken({
   // Single thin rim (~1px at rendered size): one opaque ring, one edge —
   // not a light ring stacked outside a separate semi-transparent stroke.
   const rimColor = mixColor(baseColor, edgeColor, pitchBlendSensitivePalette ? 0.62 : 0.46);
-  const rimWidth = Math.max(0.16, discRadius * 0.045);
+  const rimWidth = Math.max(0.16 * unit, discRadius * 0.045);
   const coreVisualRadius = discRadius - rimWidth;
 
   // Tiny, dark, low-opacity contact shadow only — no oversized translucent
   // halo. This is the sole external effect; it must never touch the disc.
   const shadow = new Graphics();
   shadow
-    .ellipse(0.15, discRadius * 0.92, discRadius * 0.68, discRadius * 0.17)
+    .ellipse(0.15 * unit, discRadius * 0.92, discRadius * 0.68, discRadius * 0.17)
     .fill({ color: 0x020617, alpha: 0.22 });
-  token.addChild(shadow);
+  art.addChild(shadow);
 
   const rim = new Graphics();
   rim.circle(0, 0, discRadius).fill({ color: rimColor });
-  token.addChild(rim);
+  art.addChild(rim);
 
   const disc = new Graphics();
   disc
@@ -315,23 +352,23 @@ export function createVisionV3PlayerToken({
   patternMask.circle(0, 0, coreVisualRadius).fill({ color: 0xffffff });
   disc.mask = patternMask;
   disc.addChild(patternMask);
-  token.addChild(disc);
+  art.addChild(disc);
 
   const iconLayer = new Graphics();
   drawShirtGlyph(iconLayer, -innerRadius * 0.02, innerRadius * 0.98, 0xffffff);
   iconLayer.position.y = -innerRadius * 0.06;
-  token.addChild(iconLayer);
+  art.addChild(iconLayer);
 
   const personLayer = new Graphics();
-  drawPersonCircleGlyph(personLayer, innerRadius * 0.42, 0xffffff);
+  drawPersonCircleGlyph(personLayer, innerRadius * 0.42, 0xffffff, unit);
   personLayer.position.y = -innerRadius * 0.62;
-  token.addChild(personLayer);
+  art.addChild(personLayer);
 
   const orientationTick = new Graphics();
   orientationTick
-    .roundRect(-innerRadius * 0.16, -discRadius + ringWidth * 0.16, innerRadius * 0.32, Math.max(0.2, discRadius * 0.14), innerRadius * 0.08)
+    .roundRect(-innerRadius * 0.16, -discRadius + ringWidth * 0.16, innerRadius * 0.32, Math.max(0.2 * unit, discRadius * 0.14), innerRadius * 0.08)
     .fill({ color: mixColor(ringColor, 0xffffff, 0.16), alpha: 0.36 });
-  token.addChild(orientationTick);
+  art.addChild(orientationTick);
 
   if (!showLabel) {
     return { token, shadow };
@@ -347,7 +384,7 @@ export function createVisionV3PlayerToken({
     ? safeLabel.length >= 2 ? innerRadius * 1.16 : innerRadius * 1.32
     : innerRadius * 0.86;
   const labelBaseY = isNumericLabel ? innerRadius * 0.03 : 0;
-  const labelLetterSpacing = isNumericLabel && safeLabel.length >= 2 ? 0 : 0.04;
+  const labelLetterSpacing = isNumericLabel && safeLabel.length >= 2 ? 0 : 0.04 * unit;
   const textResolution =
     typeof window !== "undefined" ? Math.max(2, Math.min(3, window.devicePixelRatio || 1)) : 2;
 
@@ -362,7 +399,7 @@ export function createVisionV3PlayerToken({
     )
     .fill({ color: mixColor(coreColor, 0x020617, 0.46), alpha: 0.24 });
   labelPlate.position.y = labelBaseY;
-  token.addChild(labelPlate);
+  art.addChild(labelPlate);
 
   const labelShadow = new Text({
     text: safeLabel,
@@ -376,11 +413,11 @@ export function createVisionV3PlayerToken({
     },
   });
   labelShadow.anchor.set(0.5);
-  labelShadow.position.y = labelBaseY + 0.09;
+  labelShadow.position.y = labelBaseY + 0.09 * unit;
   labelShadow.alpha = isNumericLabel ? 0.36 : 0.3;
   labelShadow.resolution = textResolution;
   labelShadow.roundPixels = true;
-  token.addChild(labelShadow);
+  art.addChild(labelShadow);
 
   const labelText = new Text({
     text: safeLabel,
@@ -393,7 +430,7 @@ export function createVisionV3PlayerToken({
       letterSpacing: labelLetterSpacing,
       stroke: {
         color: labelStroke,
-        width: isNumericLabel ? Math.max(0.46, innerRadius * 0.22) : Math.max(0.32, innerRadius * 0.14),
+        width: isNumericLabel ? Math.max(0.46 * unit, innerRadius * 0.22) : Math.max(0.32 * unit, innerRadius * 0.14),
         join: "round",
       },
     },
@@ -402,7 +439,7 @@ export function createVisionV3PlayerToken({
   labelText.position.y = labelBaseY;
   labelText.resolution = textResolution;
   labelText.roundPixels = true;
-  token.addChild(labelText);
+  art.addChild(labelText);
 
   return { token, shadow };
 }
