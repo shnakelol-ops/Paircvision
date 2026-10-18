@@ -12,6 +12,13 @@ export interface FitOptions {
   /** Font size under which a two-line break is preferred over shrinking. */
   wrapBelow?: number;
   step?: number;
+  /**
+   * Prefer breaking two lines right after this character (e.g. "," so
+   * "Páirc Uí Chaoimh, Corcaigh" breaks at the comma) as long as that costs
+   * at most `preferSlack` px of font size versus the best balanced break.
+   */
+  preferBreakAfter?: string;
+  preferSlack?: number;
 }
 
 export interface FittedText {
@@ -73,11 +80,21 @@ export function fitText(measure: MeasureText, rawText: string, opts: FitOptions)
     if (measure(text, size) <= opts.maxWidth) return { size, lines: [text], truncated: false };
   }
   if (maxLines === 2) {
+    const fitsAt = (splits: [string, string][]): FittedText | null => {
+      for (let size = opts.maxSize; size >= opts.minSize; size -= step) {
+        const fit = splits.find(([a, b]) => measure(a, size) <= opts.maxWidth && measure(b, size) <= opts.maxWidth);
+        if (fit) return { size, lines: [fit[0], fit[1]], truncated: false };
+      }
+      return null;
+    };
     const splits = twoLineSplits(text);
-    for (let size = opts.maxSize; size >= opts.minSize; size -= step) {
-      const fit = splits.find(([a, b]) => measure(a, size) <= opts.maxWidth && measure(b, size) <= opts.maxWidth);
-      if (fit) return { size, lines: [fit[0], fit[1]], truncated: false };
+    const balanced = fitsAt(splits);
+    if (opts.preferBreakAfter) {
+      const mark = opts.preferBreakAfter;
+      const preferred = fitsAt(splits.filter(([a]) => a.endsWith(mark)));
+      if (preferred && (!balanced || preferred.size >= balanced.size - (opts.preferSlack ?? 6))) return preferred;
     }
+    if (balanced) return balanced;
   }
   for (let size = wrapBelow - step; size >= opts.minSize; size -= step) {
     if (measure(text, size) <= opts.maxWidth) return { size, lines: [text], truncated: false };

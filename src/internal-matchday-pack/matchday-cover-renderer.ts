@@ -641,7 +641,7 @@ function drawClubName(ctx: CanvasRenderingContext2D, side: MatchdaySide, cx: num
 
 // ── Fixture details ─────────────────────────────────────────────────────────
 
-interface DetailColumn {
+export interface DetailColumn {
   label: string;
   value: string;
   weight: number;
@@ -655,6 +655,41 @@ export function coverDetailColumns(pack: MatchdayPackV1): DetailColumn[] {
   if (time) cols.push({ label: "Throw-in", value: time, weight: 0.8 });
   if (pack.fixture.venue) cols.push({ label: "Venue", value: pack.fixture.venue, weight: 1.6 });
   return cols;
+}
+
+const DETAIL_VALUE_SIZE = 46;
+const DETAIL_PAD = 30; // clear space each side of a value, inside its column
+const LABEL_TRACKING = 5;
+/** Smallest venue size: ~10pt when the cover is seen ~390pt wide on a phone. */
+export const VENUE_MIN_SIZE = 28;
+const VENUE_MIN_SHARE = 0.45;
+
+/**
+ * Column widths for the details panel. With a venue, DATE and THROW-IN take
+ * only the width their own (short) value and label need, and the venue gets
+ * the rest — at least VENUE_MIN_SHARE of the panel — so long venue names have
+ * room. Without a venue the original proportional weights are kept.
+ * Pure: `need(col)` returns a column's content width.
+ */
+export function detailColumnWidths(
+  cols: readonly DetailColumn[],
+  totalWidth: number,
+  need: (col: DetailColumn) => number,
+): number[] {
+  const venueIndex = cols.findIndex((c) => c.label === "Venue");
+  if (venueIndex === -1 || cols.length === 1) {
+    const total = cols.reduce((sum, c) => sum + c.weight, 0);
+    return cols.map((c) => (totalWidth * c.weight) / total);
+  }
+  const widths = cols.map((c, i) => (i === venueIndex ? 0 : need(c) + DETAIL_PAD * 2));
+  const fixed = widths.reduce((a, b) => a + b, 0);
+  const maxFixed = totalWidth * (1 - VENUE_MIN_SHARE);
+  if (fixed > maxFixed) {
+    const scale = maxFixed / fixed;
+    for (let i = 0; i < widths.length; i++) widths[i] *= scale;
+  }
+  widths[venueIndex] = totalWidth - widths.reduce((a, b) => a + b, 0);
+  return widths;
 }
 
 function drawDetails(ctx: CanvasRenderingContext2D, pack: MatchdayPackV1, layout: CoverLayout): void {
@@ -681,10 +716,16 @@ function drawDetails(ctx: CanvasRenderingContext2D, pack: MatchdayPackV1, layout
   ctx.fillRect(x, y, w, 3);
   ctx.restore();
 
-  const total = cols.reduce((s, c) => s + c.weight, 0);
+  const widths = detailColumnWidths(cols, w, (col) => {
+    ctx.font = displayFont(DETAIL_VALUE_SIZE, 800);
+    const value = ctx.measureText(col.value.toUpperCase()).width;
+    ctx.font = textFont(DETAIL_LABEL_SIZE);
+    return Math.max(value, trackedWidth(ctx, col.label.toUpperCase(), LABEL_TRACKING));
+  });
   let cx0 = x;
   cols.forEach((col, i) => {
-    const cw = (w * col.weight) / total;
+    const cw = widths[i];
+    const isVenue = col.label === "Venue";
     const mid = cx0 + cw / 2;
     if (i > 0) {
       ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
@@ -694,22 +735,24 @@ function drawDetails(ctx: CanvasRenderingContext2D, pack: MatchdayPackV1, layout
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = GOLD;
     ctx.font = textFont(DETAIL_LABEL_SIZE);
-    drawTracked(ctx, col.label.toUpperCase(), mid, y + 50, 5);
+    drawTracked(ctx, col.label.toUpperCase(), mid, y + 50, LABEL_TRACKING);
 
-    const valueZoneTop = y + 64;
-    const valueZoneH = h - 64 - 14;
+    const valueZoneTop = y + 62;
+    const valueZoneH = h - 62 - 12;
     const fit = fitText(measurer(ctx, (s) => displayFont(s, 800)), col.value.toUpperCase(), {
-      maxWidth: cw - 36,
-      maxSize: 48,
-      minSize: 24,
+      maxWidth: cw - DETAIL_PAD * 2,
+      maxSize: DETAIL_VALUE_SIZE,
+      minSize: isVenue ? VENUE_MIN_SIZE : 24,
       maxLines: 2,
-      wrapBelow: 36,
+      wrapBelow: isVenue ? 40 : 36,
+      preferBreakAfter: isVenue ? "," : undefined,
     });
-    // Two lines must also fit the zone's height, not just its width.
-    const size = fit.lines.length === 2 ? Math.min(fit.size, Math.floor(valueZoneH / 1.66)) : fit.size;
+    // Two lines get roomier spacing and must fit the zone's height too.
+    const lineGap = fit.lines.length === 2 ? 1.0 : 0.92;
+    const size = fit.lines.length === 2 ? Math.min(fit.size, Math.floor(valueZoneH / (0.74 + lineGap + 0.04))) : fit.size;
     ctx.font = displayFont(size, 800);
     ctx.fillStyle = WHITE;
-    const lineH = size * 0.92;
+    const lineH = size * lineGap;
     const blockH = size * 0.74 + lineH * (fit.lines.length - 1);
     let vy = valueZoneTop + (valueZoneH - blockH) / 2 + size * 0.74;
     for (const line of fit.lines) {
