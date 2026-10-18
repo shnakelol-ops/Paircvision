@@ -30,6 +30,11 @@ const RAPID_CAPTURE_PATH = "/rapid-capture";
 const PRO_TAGGER_PATH    = "/pro-tagger";
 const INTERNAL_PATH      = "/internal";
 const INTERNAL_TEAM_SHEET_PATH = "/internal/team-sheet";
+// Internal Matchday Cover screen — reachable in production from the /internal
+// launcher (not the public home screen). Lazy so its code and fonts load
+// only when the screen is opened.
+const INTERNAL_MATCHDAY_PACK_PATH = "/internal/matchday-pack";
+const MatchdayPackScreen = lazy(() => import("./internal-matchday-pack/MatchdayPackScreen"));
 const INTERNAL_SLATE_RUGBY_PATH = "/internal/slate/rugby";
 // Goal View prototype — internal testing only (the experimental branch
 // preview, or a dev build with ?goalview). The internal-tools gate is a literal
@@ -158,6 +163,13 @@ function pickRootComponent() {
   }
   if (normalizedPath === INTERNAL_TEAM_SHEET_PATH) {
     return TeamSheetScreen;
+  }
+  if (normalizedPath === INTERNAL_MATCHDAY_PACK_PATH) {
+    return () => (
+      <Suspense fallback={null}>
+        <MatchdayPackScreen />
+      </Suspense>
+    );
   }
   if (GoalViewPrototypePage && normalizedPath === INTERNAL_GOAL_VIEW_PATH) {
     return () => (

@@ -132,6 +132,7 @@ const INTERNAL_TOOLS: readonly InternalTool[] = [
   { name: "Vision Training", sub: "Training Hub & Player Performance", path: "/vision-training" },
   { name: "Rapid Capture", sub: "Experimental capture surface", path: "/rapid-capture" },
   { name: "Team Sheet", sub: "Ballylanders starting XV — real jerseys", path: "/internal/team-sheet" },
+  { name: "Matchday Cover", sub: "Matchday poster — two clubs, real jerseys", path: "/internal/matchday-pack" },
   { name: "Rugby Slate", sub: "Tactical Slate — Rugby Union pitch (V0)", path: "/internal/slate/rugby" },
 ];
 
