@@ -40,6 +40,14 @@ const GoalViewPrototypePage = GOAL_VIEW_INTERNAL_TOOLS_ENABLED
   ? lazy(() => import("./experimental/goal-view/GoalViewPrototypePage"))
   : null;
 
+// Matchday Cover renderer preview — developer builds only. import.meta.env.DEV
+// is a literal false in production builds, so the route and its lazy chunk
+// are compiled out there.
+const INTERNAL_MATCHDAY_COVER_PREVIEW_PATH = "/internal/matchday-cover-preview";
+const MatchdayCoverPreviewPage = import.meta.env.DEV
+  ? lazy(() => import("./internal-matchday-pack/MatchdayCoverPreviewPage"))
+  : null;
+
 function redirectToBoard() {
   if (window.location.pathname !== "/board") {
     window.history.replaceState(null, "", "/board");
@@ -155,6 +163,13 @@ function pickRootComponent() {
     return () => (
       <Suspense fallback={null}>
         <GoalViewPrototypePage />
+      </Suspense>
+    );
+  }
+  if (MatchdayCoverPreviewPage && normalizedPath === INTERNAL_MATCHDAY_COVER_PREVIEW_PATH) {
+    return () => (
+      <Suspense fallback={null}>
+        <MatchdayCoverPreviewPage />
       </Suspense>
     );
   }

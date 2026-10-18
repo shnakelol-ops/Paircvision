@@ -134,7 +134,7 @@ export function computeAutoMask(
   return largestOnly ? keepLargestComponent(keep, width, height) : keep;
 }
 
-function keepLargestComponent(mask: Uint8Array, width: number, height: number): Uint8Array {
+export function keepLargestComponent(mask: Uint8Array, width: number, height: number): Uint8Array {
   const n = width * height;
   const label = new Int32Array(n);
   const queue = new Int32Array(n);
