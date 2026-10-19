@@ -9,9 +9,10 @@
 // Correct reading: channels run across the WIDTH (ny), seen from the
 // opposition's own attacking direction for that half. In canonical
 // RIGHT-attacking space high ny is the attacker's Right (zone-maps.ts).
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   deriveOppositionScoreChannel,
+  exportReviewPdf,
   makeOppositionFactsPage,
   type PdfExportEvent,
 } from "../reviewPdfExport";
@@ -157,22 +158,60 @@ describe("Opposition Facts page — Score zone row", () => {
 
 // ── Saved-match compatibility ────────────────────────────────────────────────
 
+function savedEventStatsMatch(events: PdfExportEvent[], firstHalfAttackingDirection: "left" | "right"): ProTaggerSavedMatch {
+  return {
+    id: "m1", createdAt: 1, homeTeamName: "Ballyboden", awayTeamName: "Na Fianna",
+    venue: "", sport: "gaelic", matchType: "league", halfDurationMinutes: 30,
+    scorelineSnapshot: "", eventCount: events.length,
+    events: JSON.parse(JSON.stringify(events)),
+    homeSquad: { id: "h", teamSide: "HOME", players: [] },
+    awaySquad: { id: "a", teamSide: "AWAY", players: [] },
+    homeSquadLiveState: [], awaySquadLiveState: [],
+    restoreContext: { matchState: "FULL_TIME", currentHalf: 2, matchTimeSeconds: 3600, firstHalfAttackingDirection },
+  } as unknown as ProTaggerSavedMatch;
+}
+
 describe("Saved Event Stats match → Opposition Facts input", () => {
   it("uses the match's stored 1H attacking direction", () => {
     const events = [oppScore("LEFT", 1, "Right"), oppScore("LEFT", 2, "Right")];
-    const saved = {
-      id: "m1", createdAt: 1, homeTeamName: "Ballyboden", awayTeamName: "Na Fianna",
-      venue: "", sport: "gaelic", matchType: "league", halfDurationMinutes: 30,
-      scorelineSnapshot: "", eventCount: events.length,
-      events: JSON.parse(JSON.stringify(events)),
-      homeSquad: { id: "h", teamSide: "HOME", players: [] },
-      awaySquad: { id: "a", teamSide: "AWAY", players: [] },
-      homeSquadLiveState: [], awaySquadLiveState: [],
-      restoreContext: { matchState: "FULL_TIME", currentHalf: 2, matchTimeSeconds: 3600, firstHalfAttackingDirection: "left" },
-    } as unknown as ProTaggerSavedMatch;
-    const input = proTaggerMatchToPdfInput(saved);
+    const input = proTaggerMatchToPdfInput(savedEventStatsMatch(events, "left"));
     expect(input.homeAttackingDirection).toBe("LEFT");
     expect(deriveOppositionScoreChannel(input.events as unknown as PdfExportEvent[], input.homeAttackingDirection))
       .toBe("Right Channel");
+  });
+});
+
+describe("exportReviewPdf → Opposition Facts — stored 1H direction reaches the page", () => {
+  // Every canvas the full export draws, so the Opposition Facts page can be
+  // picked out by its own header text.
+  const canvases: CaptureCanvas[] = [];
+
+  beforeEach(() => {
+    canvases.length = 0;
+    class MockPath2D {
+      constructor(_d?: string) {}
+    }
+    (globalThis as unknown as { Path2D: typeof MockPath2D }).Path2D = MockPath2D;
+    (globalThis as { document?: unknown }).document = {
+      createElement(tag: string) {
+        if (tag !== "canvas") return {};
+        const canvas = new CaptureCanvas();
+        canvases.push(canvas);
+        return canvas;
+      },
+    };
+  });
+
+  it("prints the opposition's channel from the saved match's direction, in both halves", async () => {
+    // Home attacked LEFT first. Both scores are from the opposition's Right;
+    // read with the default RIGHT instead, both would print "Left Channel".
+    const events = [oppScore("LEFT", 1, "Right"), oppScore("LEFT", 2, "Right", "GOAL")];
+    await exportReviewPdf(proTaggerMatchToPdfInput(savedEventStatsMatch(events, "left")));
+
+    const page = canvases.find((c) => c.ctx.texts.includes("Score zone (avg position)"));
+    expect(page, "Opposition Facts page not rendered").toBeDefined();
+    expect(page!.ctx.texts).toContain("Opposition Facts");
+    expect(page!.ctx.texts).toContain("Right Channel");
+    expect(page!.ctx.texts).not.toContain("Left Channel");
   });
 });

@@ -4,8 +4,15 @@
 // resolveRestartOutcome in pro-tagger-adapter.ts). Event Stats tags the
 // player on the row that was tapped — the team that won the ball — so an
 // opposition player who wins our kickout sits on a KICKOUT_CONCEDED event
-// with teamSide "FOR", and an opposition player who wins a turnover sits on
-// a TURNOVER_LOST event with teamSide "FOR".
+// with teamSide "FOR".
+//
+// Turnovers: saved Event Stats matches can likewise hold an opposition
+// ball-winner on a TURNOVER_LOST event with teamSide "FOR", because the
+// opposition row has so far opened the opposition picker. That is
+// historical saved-data behaviour, not the intended capture workflow —
+// Turnover Lost is meant to tag OUR player who lost the ball. Those cases
+// are covered here so already-saved matches report truthfully whichever
+// player they carry.
 //
 // Both player aggregators (collectPlayerStats → Player Breakdown pages;
 // buildInfluenceAnalysis → Player Contributions, Player Chain Involvement,
@@ -51,7 +58,9 @@ function rosterPlayer(side: Side, number: 4 | 8) {
 }
 
 /** One Event Stats tap, exactly as ProTaggerLiveScreen.handlePitchTap builds it:
- *  the player always comes from the TAPPED row's squad. */
+ *  the player always comes from the TAPPED row's squad. For an opposition-row
+ *  turnover that reproduces historical saved data (an opposition
+ *  ball-winner), not the intended Turnover Lost capture. */
 function proTap(
   action: Pick<ProTaggerAction, "familyId" | "tileLabel" | "teamSide" | "restartOwner">,
   number: 4 | 8,
@@ -148,7 +157,7 @@ describe("Event Stats kickouts — the player who won the ball is credited with 
   }
 });
 
-describe("Event Stats turnovers — the player who won the ball is credited with the win", () => {
+describe("Event Stats turnovers (incl. historical opposition-winner tags) — a tagged ball-winner is credited with the win", () => {
   for (const half of [1, 2] as const) {
     for (const winner of ["FOR", "OPP"] as const) {
       it(`${half === 1 ? "1H" : "2H"}: turnover won by ${winner} #4`, () => {
