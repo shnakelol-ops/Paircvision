@@ -53,8 +53,9 @@ export type PlayerTokenRendererInput = {
   scale: number;
   style: Partial<MicroAthleteStyle>;
   /**
-   * Full six-pattern set. Only VisionV3Renderer draws chestDash/gradient;
-   * every other renderer receives toLegacyKitPattern(kitPattern).
+   * Full six-pattern set. Vision V3, Pixi, Phosphor and Name Badge draw all
+   * six (the last three via kitPatternAccent.ts, Vision V3's geometry); the
+   * retired Classic and Heroicon renderers receive toLegacyKitPattern(kitPattern).
    */
   kitPattern: VisionV3KitPattern;
   kitPatternColor: number;
@@ -75,8 +76,9 @@ export type PlayerTokenRendererOutput = {
 export type PlayerTokenRenderer = (input: PlayerTokenRendererInput) => PlayerTokenRendererOutput;
 
 /**
- * Legacy token styles only know the original four patterns. Chest Dash and
- * Gradient (Vision V3 only) render as plain on them rather than being
+ * The retired Classic and Heroicon token styles (and the unused Premium
+ * Glow) only know the original four patterns. Chest Dash and
+ * Gradient render as plain on them rather than being
  * silently mis-drawn; the player's stored pattern is untouched.
  */
 export function toLegacyKitPattern(pattern: VisionV3KitPattern): MicroAthleteKitPattern {
@@ -182,7 +184,7 @@ export const ProceduralPixiRenderer: PlayerTokenRenderer = ({
     label,
     style: style as Partial<CleanTacticalPlayerTokenStyle>,
     radius,
-    kitPattern: toLegacyKitPattern(kitPattern),
+    kitPattern,
     kitPatternColor,
     variant: "pixi",
     artScale: SLATE_TOKEN_ART_SCALE,
@@ -203,7 +205,7 @@ export const PhosphorRenderer: PlayerTokenRenderer = ({
     label,
     style: style as Partial<CleanTacticalPlayerTokenStyle>,
     radius,
-    kitPattern: toLegacyKitPattern(kitPattern),
+    kitPattern,
     kitPatternColor,
     variant: "phosphor",
     artScale: SLATE_TOKEN_ART_SCALE,
@@ -226,7 +228,7 @@ export const UnderNamePillRenderer: PlayerTokenRenderer = ({
     style: style as Partial<CleanTacticalPlayerTokenStyle>,
     radius,
     number,
-    kitPattern: toLegacyKitPattern(kitPattern),
+    kitPattern,
     kitPatternColor,
     artScale: SLATE_TOKEN_ART_SCALE,
   });

@@ -55,7 +55,7 @@ const K = VISION_V3_SLATE_ART_SCALE;
 // The Slate's real token radius (PLAYER_RADIUS * TACTICAL_PLAYER_VISUAL_SCALE),
 // the 2.8 radius floor (where the absolute stroke floors bind) and a large one.
 const RADII = [4.1 * 0.8, 2.8, 10];
-const PATTERNS = ["plain", "hoops", "stripes", "slash"] as const;
+const PATTERNS = ["plain", "hoops", "stripes", "slash", "chestDash", "gradient"] as const;
 const STYLE = { primaryColor: 0x2563eb, secondaryColor: 0x2563eb, badgeColor: 0x2563eb };
 
 type Factory = (opts: { label: string; radius: number; kitPattern: (typeof PATTERNS)[number]; artScale?: number }) => {

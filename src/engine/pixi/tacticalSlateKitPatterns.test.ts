@@ -47,7 +47,8 @@ describe("Tactical Slate kit patterns — renderers", () => {
   });
 
   // "premium" (Heroicon) and "pill-under" measure text via the DOM, which
-  // this node test environment lacks; they share toLegacyKitPattern above.
+  // this node test environment lacks. Heroicon shares toLegacyKitPattern
+  // above; Name Badge's six patterns are covered in kitPatternAccent.test.ts.
   const styles: PlayerTokenStyle[] = ["vision-v3", "classic", "pixi", "phosphor"];
   for (const style of styles) {
     it(`${style} renders every one of the six patterns without throwing`, () => {
