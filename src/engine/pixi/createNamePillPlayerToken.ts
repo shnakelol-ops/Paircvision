@@ -99,10 +99,11 @@ function drawKitPatternAccent(
   radius: number,
   centerX: number,
   centerY: number,
+  unit: number,
 ): void {
   if (pattern === "plain") return;
   const patternRadius = radius * 0.7;
-  const strokeWidth = Math.max(radius * 0.15, 0.5);
+  const strokeWidth = Math.max(radius * 0.15, 0.5 * unit);
 
   if (pattern === "hoops") {
     for (const yOffset of [-0.28, 0, 0.28]) {
@@ -136,6 +137,7 @@ function drawNumberCircle(
   borderColor: number,
   borderWidth: number,
   numberLabel: string,
+  unit: number,
   pattern?: MicroAthleteKitPattern,
   patternColor?: number,
 ): void {
@@ -144,7 +146,7 @@ function drawNumberCircle(
   circle.circle(centerX, centerY, circleRadius).fill({ color: fillColor });
   if (pattern && pattern !== "plain") {
     const accentColor = Number.isFinite(patternColor) ? Number(patternColor) : mixColor(fillColor, 0xffffff, 0.3);
-    drawKitPatternAccent(circle, pattern, accentColor, circleRadius, centerX, centerY);
+    drawKitPatternAccent(circle, pattern, accentColor, circleRadius, centerX, centerY, unit);
   }
   circle
     .circle(centerX, centerY, circleRadius)
@@ -188,6 +190,7 @@ export function createNamePillPlayerToken({
   number,
   kitPattern,
   kitPatternColor,
+  artScale = 1,
 }: {
   label: string;
   style?: Partial<CleanTacticalPlayerTokenStyle>;
@@ -195,13 +198,23 @@ export function createNamePillPlayerToken({
   number?: number;
   kitPattern?: MicroAthleteKitPattern;
   kitPatternColor?: number;
+  /**
+   * Supersampling factor (see VISION_V3_SLATE_ART_SCALE). 1 (the default,
+   * used by movement-board) draws straight into the token exactly as before;
+   * the Tactical Slate's Name Badge renderer passes VISION_V3_SLATE_ART_SCALE.
+   */
+  artScale?: number;
 }): { token: Container; shadow: Graphics } {
   const fillColor = safeColor(style?.primaryColor, FALLBACK_PRIMARY_COLOR);
   const outlineColor = safeColor(style?.outlineColor, FALLBACK_OUTLINE_COLOR);
   const textColor = safeColor(style?.textColor, readableTextColor(fillColor));
   const borderColor = mixColor(outlineColor, fillColor, 0.5);
 
-  const safeRadius = Math.max(2.8, radius);
+  // Every board-unit length below (radii and the absolute floors/offsets
+  // alike) is multiplied by `unit`, and the art container scales it back by
+  // 1/unit — so the drawn geometry in token space is unchanged.
+  const unit = Number.isFinite(artScale) && artScale > 1 ? artScale : 1;
+  const safeRadius = Math.max(2.8, radius) * unit;
   const numberLabel = Number.isFinite(number) ? String(Math.max(0, Math.trunc(Number(number)))) : "";
   const hasNumber = numberLabel.length > 0;
   // The under-pill's complete assembly (circle + gap + pill) scales off this
@@ -212,29 +225,36 @@ export function createNamePillPlayerToken({
   const pillHeight = underRadius * UNDER_PILL_HEIGHT_RATIO;
   const cornerRadius = pillHeight / 2;
   const paddingX = underRadius * UNDER_PILL_PADDING_X_RATIO;
-  const borderWidth = Math.max(underRadius * 0.04, 0.1);
+  const borderWidth = Math.max(underRadius * 0.04, 0.1 * unit);
   const maxPillWidth = pillHeight * MAX_PILL_WIDTH_RATIO;
 
   const token = new Container();
   token.eventMode = "static";
   token.cursor = "grab";
 
+  let art: Container = token;
+  if (unit > 1) {
+    art = new Container();
+    art.scale.set(1 / unit);
+    token.addChild(art);
+  }
+
   const shadow = new Graphics();
   if (hasNumber) {
     // The circle is the visual anchor here, so it carries the (only) contact shadow.
     shadow
-      .ellipse(0.14, underRadius * 1.02, underRadius * 0.82, underRadius * 0.22)
+      .ellipse(0.14 * unit, underRadius * 1.02, underRadius * 0.82, underRadius * 0.22)
       .fill({ color: 0x020617, alpha: 0.18 });
   } else {
     // Light two-layer shadow — tight contact plus a faint wider halo — kept
     // subtle so the pill reads as a label, not an elevated UI chip.
     shadow
-      .ellipse(0.14, pillHeight * 0.56, pillHeight * 0.68, pillHeight * 0.22)
+      .ellipse(0.14 * unit, pillHeight * 0.56, pillHeight * 0.68, pillHeight * 0.22)
       .fill({ color: 0x020617, alpha: 0.08 })
-      .ellipse(0.1, pillHeight * 0.52, pillHeight * 0.46, pillHeight * 0.15)
+      .ellipse(0.1 * unit, pillHeight * 0.52, pillHeight * 0.46, pillHeight * 0.15)
       .fill({ color: 0x020617, alpha: 0.12 });
   }
-  token.addChild(shadow);
+  art.addChild(shadow);
 
   const safeLabel = label.trim() || "?";
   const baseFontSize = pillHeight * UNDER_PILL_FONT_TO_HEIGHT_RATIO;
@@ -247,7 +267,7 @@ export function createNamePillPlayerToken({
       fontWeight: "700",
       fontFamily: FONT_FAMILY,
       align: "center",
-      letterSpacing: 0.02,
+      letterSpacing: 0.02 * unit,
     },
   });
   labelText.resolution = textResolution();
@@ -275,20 +295,20 @@ export function createNamePillPlayerToken({
     .fill({ color: fillColor })
     .roundRect(-halfWidth, pillCenterY - halfHeight, pillWidth, pillHeight, cornerRadius)
     .stroke({ color: borderColor, width: borderWidth, alignment: 1, alpha: 0.45 });
-  token.addChild(capsule);
+  art.addChild(capsule);
 
   // Mathematically centred on both axes — text anchor 0.5/0.5 at the
   // capsule's own centre point.
   labelText.anchor.set(0.5, 0.5);
   labelText.position.set(0, pillCenterY);
-  token.addChild(labelText);
+  art.addChild(labelText);
 
   if (hasNumber) {
     // The circle is the tactical anchor — always draw it at the full token
     // radius (same as the standalone circle-only styles), reduced only by
     // the same Normal-Mode assembly shrink applied to the rest of the
     // token. Never shrink it relative to the pill; the pill is secondary.
-    drawNumberCircle(token, 0, 0, underRadius, fillColor, borderColor, borderWidth, numberLabel, kitPattern, kitPatternColor);
+    drawNumberCircle(art, 0, 0, underRadius, fillColor, borderColor, borderWidth, numberLabel, unit, kitPattern, kitPatternColor);
   }
 
   return { token, shadow };

@@ -117,6 +117,7 @@ import {
   resolveFullViewContentStyle,
 } from "../features/quickboard/presentation/fullViewPresentation";
 import { PHASE_CURSOR_START } from "../engine/pixi/phaseCursor";
+import { SELECTABLE_PLAYER_TOKEN_STYLES } from "../engine/pixi/playerTokenRenderer";
 
 type PadMode = "tactical" | "stats" | "whiteboard";
 type TacticalPadLiteCleanProps = {
@@ -375,14 +376,18 @@ const KIT_COLOR_OPTIONS: readonly PlayerKitColorOption[] = KIT_COLOR_CHOICES.map
   id: color,
   cssColor: KIT_COLOR_CSS[color],
 }));
-const TOKEN_STYLE_CHOICES: ReadonlyArray<{ value: TacticalPlayerTokenStyle; label: string }> = [
-  { value: "vision-v3", label: "Vision V3" },
-  { value: "classic", label: "Classic" },
-  { value: "premium", label: "Heroicon" },
-  { value: "pixi", label: "Pixi" },
-  { value: "phosphor", label: "Phosphor" },
-  { value: "pill-under", label: "Name Badge" },
-];
+const TOKEN_STYLE_LABEL: Readonly<Record<TacticalPlayerTokenStyle, string>> = {
+  "vision-v3": "Vision V3",
+  pixi: "Pixi",
+  phosphor: "Phosphor",
+  "pill-under": "Name Badge",
+  // Retired from the menu (see SELECTABLE_PLAYER_TOKEN_STYLES); labels kept
+  // so "Current:" still names one if it is ever active.
+  classic: "Classic",
+  premium: "Heroicon",
+};
+const TOKEN_STYLE_CHOICES: ReadonlyArray<{ value: TacticalPlayerTokenStyle; label: string }> =
+  SELECTABLE_PLAYER_TOKEN_STYLES.map((value) => ({ value, label: TOKEN_STYLE_LABEL[value] }));
 
 type KitEditorState = {
   playerId: string;
@@ -6311,7 +6316,7 @@ export default function TacticalPadLiteClean({
                   Current:{" "}
                   {usesPlayerPresentation && isPracticePlayerTokens
                     ? "Practice"
-                    : TOKEN_STYLE_CHOICES.find((choice) => choice.value === tacticalTokenStyle)?.label ?? ""}
+                    : TOKEN_STYLE_LABEL[tacticalTokenStyle] ?? ""}
                   {" "}
                   {playerTokensSubmenuOpen ? "⌄" : "›"}
                 </span>

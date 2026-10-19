@@ -23,6 +23,29 @@ export type PlayerTokenStyle =
   | "phosphor"
   | "pill-under";
 
+/**
+ * Styles a coach can pick in the Tactical Slate's Player Tokens menu, in
+ * menu order. "classic" (Classic) and "premium" (Heroicon) are retired from
+ * the menu but stay valid PlayerTokenStyle values: sanitizePlayerTokenStyle
+ * still accepts them and resolvePlayerTokenRenderer still draws them with
+ * their original renderers, so nothing that carries one stops rendering and
+ * no stored value is rewritten.
+ */
+export const SELECTABLE_PLAYER_TOKEN_STYLES: readonly PlayerTokenStyle[] = [
+  "vision-v3",
+  "pixi",
+  "phosphor",
+  "pill-under",
+];
+
+/**
+ * Supersampling factor for the Tactical Slate's upgraded token styles
+ * (Vision V3, Pixi, Phosphor, Name Badge) — the same factor, and the same
+ * inner-art-container approach, as VISION_V3_SLATE_ART_SCALE. Movement-board
+ * calls the token factories directly and keeps their default of 1.
+ */
+const SLATE_TOKEN_ART_SCALE = VISION_V3_SLATE_ART_SCALE;
+
 export type PlayerTokenRendererInput = {
   label: string;
   number: number;
@@ -60,6 +83,9 @@ export function toLegacyKitPattern(pattern: VisionV3KitPattern): MicroAthleteKit
   return pattern === "chestDash" || pattern === "gradient" ? "plain" : pattern;
 }
 
+// "Classic" — retired from the Player Tokens menu; still drawn for the
+// "classic" style value and the fallback below (see
+// SELECTABLE_PLAYER_TOKEN_STYLES).
 export const ClassicRingRenderer: PlayerTokenRenderer = ({
   label,
   teamColor,
@@ -97,7 +123,9 @@ export const PremiumGlowRenderer: PlayerTokenRenderer = ({
     kitPatternColor,
   });
 
-// "Heroicon" — official token style built from the Heroicons "user-circle"
+// "Heroicon" — retired from the Player Tokens menu; still drawn for the
+// "premium" style value (see SELECTABLE_PLAYER_TOKEN_STYLES). Formerly the
+// official token style built from the Heroicons "user-circle"
 // pictogram (MIT). See createHeroiconUserCircleToken.ts for the source
 // verification trail.
 export const HeroiconUserCircleRenderer: PlayerTokenRenderer = ({
@@ -157,6 +185,7 @@ export const ProceduralPixiRenderer: PlayerTokenRenderer = ({
     kitPattern: toLegacyKitPattern(kitPattern),
     kitPatternColor,
     variant: "pixi",
+    artScale: SLATE_TOKEN_ART_SCALE,
   });
   token.scale.set(scale);
   return { token, shadow };
@@ -177,6 +206,7 @@ export const PhosphorRenderer: PlayerTokenRenderer = ({
     kitPattern: toLegacyKitPattern(kitPattern),
     kitPatternColor,
     variant: "phosphor",
+    artScale: SLATE_TOKEN_ART_SCALE,
   });
   token.scale.set(scale);
   return { token, shadow };
@@ -198,6 +228,7 @@ export const UnderNamePillRenderer: PlayerTokenRenderer = ({
     number,
     kitPattern: toLegacyKitPattern(kitPattern),
     kitPatternColor,
+    artScale: SLATE_TOKEN_ART_SCALE,
   });
   token.scale.set(scale);
   return { token, shadow };
