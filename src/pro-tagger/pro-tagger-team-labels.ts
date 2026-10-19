@@ -1,5 +1,5 @@
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
-import { getRestartTerm, tileNeedsOppositionAttribution } from "./pro-tagger-families";
+import { getRestartTerm, getTileRowLabelFor } from "./pro-tagger-families";
 import type { ProTaggerSport } from "./pro-tagger-session";
 
 // Display-only helpers for naming teams unambiguously in the Turnover and
@@ -43,7 +43,7 @@ export type PendingWinnerSummaryInput = {
 
 /**
  * Builds a plain-English "who won" sentence for the Turnover and Restart
- * families only (e.g. "Rathkeale won turnover · Ballylanders HP Error",
+ * families only (e.g. "Ballylanders lost turnover · HP Error",
  * "Ballylanders won their kickout · Break"). Returns null for every other
  * family, so callers fall back to their existing summary rendering.
  */
@@ -52,14 +52,12 @@ export function buildPendingWinnerSummary(input: PendingWinnerSummaryInput): str
   const away = resolveTeamDisplayName(input.awayTeamName, "Away");
   const winner = input.teamSide === "FOR" ? home : away;
 
+  // Turnover rows are OUR turnovers won (FOR) / lost (OPP), so the sentence
+  // always names our team, with the tile's row label.
   if (input.familyId === "TURNOVER") {
-    const needsAttribution =
-      input.teamSide === "OPP" &&
-      tileNeedsOppositionAttribution(input.familyId, input.tileLabel, input.sport);
-    const tileText = needsAttribution
-      ? `${getShortTeamName(input.homeTeamName, "Home")} ${input.tileLabel}`
-      : input.tileLabel;
-    return `${winner} won turnover · ${tileText}`;
+    const outcome = input.teamSide === "FOR" ? "won" : "lost";
+    const tileText = getTileRowLabelFor(input.familyId, input.tileLabel, input.sport, input.teamSide);
+    return `${home} ${outcome} turnover · ${tileText}`;
   }
 
   if (input.familyId === "RESTART") {

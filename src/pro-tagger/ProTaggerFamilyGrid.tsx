@@ -6,8 +6,8 @@ import {
   getTileLabel,
   getFamilyLabel,
   getRestartOwnerLabel,
+  getTileRowLabel,
   resolveTileRestartOwner,
-  tileNeedsOppositionAttribution,
 } from "./pro-tagger-families";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
 import type { ProTaggerSport } from "./pro-tagger-session";
@@ -15,12 +15,11 @@ import { getShortTeamName } from "./pro-tagger-team-labels";
 
 interface Props {
   sport: ProTaggerSport;
-  homeTeamName: string;
   awayTeamName: string;
   onTileTap: (familyId: ProTaggerFamilyId, tileLabel: string, teamSide: "FOR" | "OPP", restartOwner?: "FOR" | "OPP") => void;
 }
 
-export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileTap }: Props) {
+export function ProTaggerFamilyGrid({ sport, awayTeamName, onTileTap }: Props) {
   const families = getFamiliesForSport(sport);
   // One owner value per hasOwnerToggle family (Kickout, 45/65, Sideline can
   // each have a different answer to "whose restart is this" in flight at
@@ -30,9 +29,8 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
   // in place on tap rather than always occupying primary-grid space.
   const [expandedSecondary, setExpandedSecondary] = useState<Set<string>>(new Set());
 
-  // Short team names for the opposition-row label and the Turnover
-  // opponent-error attribution. Falls back to "Home"/"Away" for a blank name.
-  const homeShortLabel = getShortTeamName(homeTeamName, "Home");
+  // Short team name for the opposition-row label. Falls back to "Away" for
+  // a blank name.
   const awayShortLabel = getShortTeamName(awayTeamName, "Away");
 
   function toggleSecondaryExpanded(familyId: string) {
@@ -49,7 +47,7 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
       {families.map((family) => {
         const familyLabel = getFamilyLabel(family, sport);
         const hasOwnerToggle = family.hasOwnerToggle === true;
-        const isTurnover = family.id === "TURNOVER";
+        const headings = family.rowHeadings;
         const restartOwner = restartOwnerByFamily[family.id] ?? "FOR";
         const setRestartOwner = (owner: "FOR" | "OPP") =>
           setRestartOwnerByFamily((prev) => ({ ...prev, [family.id]: owner }));
@@ -98,45 +96,61 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
 
             {isExpanded && (
               <>
-                {/* FOR tile row — unchanged; the filled family colour already
-                    reads as "this team" without needing a label. */}
-                <div style={S.tileRow}>
-                  {tiles.map((tile) => {
-                    const label = getTileLabel(tile, sport);
-                    return (
-                      <button
-                        key={label}
-                        style={{
-                          ...S.tile,
-                          background: tile.colour ?? family.colour,
-                          color: tile.textColour ?? family.textColour,
-                        }}
-                        onClick={() => onTileTap(family.id, label, "FOR", resolveTileRestartOwner(family, "FOR", restartOwner))}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
+                {/* FOR tile row — the filled family colour already reads as
+                    "this team", so it carries no label unless the family names
+                    its rows (Turnover: OUR TURNOVERS WON), in which case the
+                    heading is grouped with the row exactly like the OPP row's. */}
+                {(() => {
+                  const forRow = (
+                    <div style={S.tileRow}>
+                      {tiles.map((tile) => {
+                        const label = getTileLabel(tile, sport);
+                        const displayLabel = getTileRowLabel(tile, sport, "FOR");
+                        return (
+                          <button
+                            key={label}
+                            style={{
+                              ...S.tile,
+                              background: tile.colour ?? family.colour,
+                              color: tile.textColour ?? family.textColour,
+                            }}
+                            onClick={() => onTileTap(family.id, label, "FOR", resolveTileRestartOwner(family, "FOR", restartOwner))}
+                            aria-label={headings ? `${headings.for}: ${displayLabel}` : undefined}
+                          >
+                            {displayLabel}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                  if (!headings) return forRow;
+                  return (
+                    <div style={S.oppGroup}>
+                      <span style={{ ...S.oppTeamLabel, color: headings.forColour }}>{headings.for}</span>
+                      {forRow}
+                    </div>
+                  );
+                })()}
 
-                {/* OPP minus row — a compact team-name label sits on its own thin
-                    line directly above the row (not inline with the tiles, so it
+                {/* OPP minus row — a compact label (the opposition's name, or the
+                    family's own OPP-row heading) sits on its own thin line
+                    directly above the row (not inline with the tiles, so it
                     never competes with them for width and can't force a wrap). It
                     is grouped with its row in one flex child so it doesn't cost an
                     extra card-level gap. */}
                 {family.hasMinus && (
                   <div style={S.oppGroup}>
-                    <span style={S.oppTeamLabel} title={awayShortLabel}>{awayShortLabel}</span>
+                    {headings ? (
+                      <span style={{ ...S.oppTeamLabel, color: headings.oppColour }}>{headings.opp}</span>
+                    ) : (
+                      <span style={S.oppTeamLabel} title={awayShortLabel}>{awayShortLabel}</span>
+                    )}
                     <div style={S.tileRow}>
                       {tiles.map((tile) => {
                         const label = getTileLabel(tile, sport);
-                        // Display-only: name the team whose mistake this was on the
-                        // opposition row. The tap always sends the original `label` —
-                        // the stored tile value/tag is never affected.
-                        const displayLabel =
-                          isTurnover && tileNeedsOppositionAttribution(family.id, label, sport)
-                            ? `${homeShortLabel} ${label}`
-                            : label;
+                        // Display-only row label. The tap always sends the original
+                        // `label` — the stored tile value/tag is never affected.
+                        const displayLabel = getTileRowLabel(tile, sport, "OPP");
                         return (
                           <button
                             key={label}
@@ -147,7 +161,7 @@ export function ProTaggerFamilyGrid({ sport, homeTeamName, awayTeamName, onTileT
                                 : {}),
                             }}
                             onClick={() => onTileTap(family.id, label, "OPP", resolveTileRestartOwner(family, "OPP", restartOwner))}
-                            aria-label={`Opposition ${familyLabel} ${label}`}
+                            aria-label={headings ? `${headings.opp}: ${displayLabel}` : `Opposition ${familyLabel} ${label}`}
                           >
                             {displayLabel}
                           </button>
