@@ -45,6 +45,7 @@ import {
   type PlayerRosterEntry,
   type TeamRoster,
 } from "../player-display";
+import { resolvePlayerPossessionCredit } from "./player-possession-credit";
 
 export type { PlayerRosterEntry } from "../player-display";
 
@@ -250,10 +251,13 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
       else p.points += scoreValueOf(e.kind);
     }
     if (SHOT_KINDS.has(e.kind))         p.shots++;
-    if (e.kind === "TURNOVER_WON")      p.toWon++;
-    if (e.kind === "TURNOVER_LOST")     p.toLost++;
-    if (e.kind === "KICKOUT_WON")       p.koWon++;
-    if (e.kind === "KICKOUT_CONCEDED")  p.koLost++;
+    // Turnover/kickout teamSide is possession ownership, not the player's
+    // team — credit relative to the player's own (roster) team.
+    const credit = resolvePlayerPossessionCredit(e.kind, e.teamSide, p.teamSide);
+    if (credit === "TURNOVER_WON")      p.toWon++;
+    if (credit === "TURNOVER_LOST")     p.toLost++;
+    if (credit === "KICKOUT_WON")       p.koWon++;
+    if (credit === "KICKOUT_LOST")      p.koLost++;
     if (e.kind === "FREE_WON")          p.freesWon++;
     if (e.kind === "FREE_CONCEDED")     p.freesConceded++;
   }
@@ -296,9 +300,11 @@ export function buildInfluenceAnalysis<TEvent extends InfluenceEvent>(
     }
     for (const chain of chainsByScoreId.get(score.id) ?? []) {
       for (const ce of chain.events) {
-        if (ce.teamSide !== score.teamSide) continue;
+        // Filter on the player's own team, not ce.teamSide: a kickout or
+        // turnover event's teamSide names the possession owner, which can
+        // be the other team from the player who won the ball.
         const p = getPlayer(ce);
-        if (!p) continue;
+        if (!p || p.teamSide !== score.teamSide) continue;
         if (!involved.has(p.key)) {
           involved.set(p.key, { player: p, scoredIt: ce.id === score.id });
         }

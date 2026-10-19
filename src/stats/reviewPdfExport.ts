@@ -108,6 +108,7 @@ import {
   influenceEvidenceLine,
   type TeamInfluence,
 } from "./players/influence";
+import { resolvePlayerPossessionCredit } from "./players/player-possession-credit";
 import { viewScoringPossessionOrigins } from "./reporting/scoringBreakdownViews";
 import { formatScoringBreakdownOrDash, scoringBreakdownTotal, type ScoringBreakdown } from "./reporting/scoringBreakdownFormat";
 import type { ProvenanceRow } from "./reporting/reportProvenance";
@@ -1471,10 +1472,13 @@ export function collectPlayerStats(
     else if (e.kind === "POINT")                                               { ps.scorePoints += 1; ps.scoreTotal += 1; }
     if (PDF_KIND_SETS.SHOTS.has(e.kind)) ps.shots++;
     if (e.kind === "WIDE")               ps.wides++;
-    if (e.kind === "TURNOVER_WON")       ps.toWon++;
-    if (e.kind === "TURNOVER_LOST")      ps.toLost++;
-    if (e.kind === "KICKOUT_WON")        ps.koWon++;
-    if (e.kind === "KICKOUT_CONCEDED")   ps.koCon++;
+    // Turnover/kickout teamSide is possession ownership, not the player's
+    // team — credit relative to the row's team (squad membership).
+    const credit = resolvePlayerPossessionCredit(e.kind, e.teamSide, ps.teamSide);
+    if (credit === "TURNOVER_WON")       ps.toWon++;
+    if (credit === "TURNOVER_LOST")      ps.toLost++;
+    if (credit === "KICKOUT_WON")        ps.koWon++;
+    if (credit === "KICKOUT_LOST")       ps.koCon++;
     if (e.kind === "FREE_WON")           ps.freesWon++;
     if (e.kind === "FREE_CONCEDED")      ps.freesCon++;
   }
@@ -4689,6 +4693,32 @@ const OPPOSITION_FACTS_LABELS = [
   "Restart Share", "Turnovers Gifted",
 ] as const;
 
+/**
+ * "Score zone (avg position)" on Opposition Facts — the channel the
+ * opposition's scores came from, read from THEIR attacking direction.
+ *
+ * Channels run across the pitch width (ny), not its length (nx). Each score
+ * is first rotated into the opposition's own attacking frame for its half
+ * (toTeamRelativeZoneEvent, "OPP" perspective), so the ends swapping at
+ * half-time never mixes their left with their right. In that frame high ny
+ * is the attacker's Right channel — the same convention ZONE_MAP_V1_NINE_GRID
+ * uses. "—" when no opposition score has a recorded position.
+ */
+export function deriveOppositionScoreChannel(
+  events: readonly PdfExportEvent[],
+  homeAttackingDirection: AttackingDirection = "RIGHT",
+): "Left Channel" | "Right Channel" | "Central" | "—" {
+  const oppScoreEvts = events.filter(
+    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind) && isFinite(e.ny),
+  );
+  if (oppScoreEvts.length === 0) return "—";
+  const avgNy = oppScoreEvts.reduce(
+    (sum, e) => sum + toTeamRelativeZoneEvent(e, homeAttackingDirection, "OPP").ny,
+    0,
+  ) / oppScoreEvts.length;
+  return avgNy < 0.35 ? "Left Channel" : avgNy > 0.65 ? "Right Channel" : "Central";
+}
+
 export function buildOppositionFactsRows(): ProvenanceRow[] {
   return [
     ...OPPOSITION_FACTS_LABELS.filter((l) => l !== "Restart Share").map((label) => ({ label, provenance: "match-fact" as const })),
@@ -4704,6 +4734,7 @@ export function makeOppositionFactsPage(
   pageNum: number,
   totalPages: number,
   sport: PitchSport = "gaelic",
+  homeAttackingDirection: AttackingDirection = "RIGHT",
 ): HTMLCanvasElement {
   const analysis = report.chain;
   const canvas = document.createElement("canvas");
@@ -4734,14 +4765,7 @@ export function makeOppositionFactsPage(
   const oppShotsAll = events.filter((e) => e.teamSide === "OPP" && PDF_KIND_SETS.SHOTS.has(e.kind)).length;
   const oppScoreConversion = viewShootingConversionPct(report, "OPP");
 
-  const oppScoreEvts = events.filter(
-    (e) => e.teamSide === "OPP" && PDF_KIND_SETS.SCORES.has(e.kind) && isFinite(e.nx),
-  );
-  let scoreZoneLabel = "—";
-  if (oppScoreEvts.length > 0) {
-    const avgNx = oppScoreEvts.reduce((sum, e) => sum + e.nx, 0) / oppScoreEvts.length;
-    scoreZoneLabel = avgNx < 0.35 ? "Left Channel" : avgNx > 0.65 ? "Right Channel" : "Central";
-  }
+  const scoreZoneLabel = deriveOppositionScoreChannel(events, homeAttackingDirection);
 
   const ko = analysis.kickouts;
   const oppRestartShare = viewRestartShareOpposition(report);
@@ -7764,7 +7788,7 @@ export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void
 
   // p.14+N — Opposition Facts (match-fact + possession-fact only)
   try {
-    const c = makeOppositionFactsPage(events, report, homeTeamName, awayTeamName, p_ch2div + 1, TOTAL_PAGES, sport);
+    const c = makeOppositionFactsPage(events, report, homeTeamName, awayTeamName, p_ch2div + 1, TOTAL_PAGES, sport, homeAttackingDirection);
     stampLayerBadge(c, "STATISTICS");
     addCanvasPage(c, true, "Opposition Facts");
   } catch (err) {
