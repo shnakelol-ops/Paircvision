@@ -2194,7 +2194,10 @@ export async function createTacticalPadLiteSurface(
   const angledZoneEditingEnabled = surfaceVariant === "tactical";
   const angledZoneHandlesGraphic = new Graphics();
   angledZoneHandlesGraphic.eventMode = "none";
-  whiteboardPreviewLayer.addChild(angledZoneHandlesGraphic);
+  // Top of the world, above player and ball tokens, so a corner handle under
+  // a token stays visible while editing (tokens take no input then). Never
+  // present outside editing, so exports, playback and recording are unaffected.
+  world.addChild(angledZoneHandlesGraphic);
 
   function angledZoneHandleTouchMarginWorld(): number {
     return (ANGLED_ZONE_HANDLE_TOUCH_PX * 0.5) / Math.max(0.0001, mapper.transform.scale);
