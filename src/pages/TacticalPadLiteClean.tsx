@@ -34,7 +34,10 @@ import {
   type DrawColorPanelOption,
   type DrawToolPanelStyles,
 } from "../components/draw-tools/DrawToolPanel";
-import { WHITEBOARD_PEN_COLOR_CHOICES } from "../components/draw-tools/drawColorPalette";
+import {
+  TACTICAL_SLATE_PEN_COLOR_CHOICES,
+  WHITEBOARD_PEN_COLOR_CHOICES,
+} from "../components/draw-tools/drawColorPalette";
 import {
   mergeTacticalSlateTeamRoster,
   TACTICAL_SLATE_FULL_TEAM_NUMBERS,
@@ -430,15 +433,15 @@ export function buildTacticalDrawToolOptions(params: {
 
 /**
  * Builds the Draw-tab colour swatch list for the shared DrawToolPanel —
- * pure reshape of WHITEBOARD_PEN_COLOR_CHOICES (the one existing colour
- * palette both Whiteboard mode and Tactical mode already share) into the
- * panel's generic shape. Does not duplicate the palette itself.
+ * pure reshape of TACTICAL_SLATE_PEN_COLOR_CHOICES (the shared five-colour
+ * palette, unchanged, plus Green) into the panel's generic shape. Does not
+ * duplicate the palette itself.
  */
 export function buildTacticalDrawColorOptions(params: {
   activeColor: number;
   onSelectColor: (color: number) => void;
 }): DrawColorPanelOption[] {
-  return WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => ({
+  return TACTICAL_SLATE_PEN_COLOR_CHOICES.map((choice) => ({
     label: choice.label,
     value: choice.value,
     css: choice.css,
@@ -1710,10 +1713,13 @@ const COACH_HUB_TOOL_BUTTON_ACTIVE_STYLE: CSSProperties = {
   color: "#f7fcff",
 };
 
+// One row for the whole Draw palette (six colours incl. Green).
 const COACH_HUB_COLOR_GRID_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+  gridTemplateColumns: `repeat(${TACTICAL_SLATE_PEN_COLOR_CHOICES.length}, minmax(0, 1fr))`,
   gap: "2px",
+  // Room for the 2px selected ring at the row's ends (the panel clips its content).
+  padding: "3px",
 };
 
 const COACH_HUB_COLOR_BUTTON_STYLE: CSSProperties = {
@@ -1874,15 +1880,17 @@ const MOBILE_PORTRAIT_TOOL_BUTTON_ACTIVE_STYLE: CSSProperties = {
   color: "#f7fcff",
 };
 
+// Six colours in one row down to a 320px phone: a tighter gap keeps every
+// button at least 44px wide and 44px tall, with a ~30px visible swatch.
 const MOBILE_PORTRAIT_COLOR_GRID_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-  gap: "8px",
+  gridTemplateColumns: `repeat(${TACTICAL_SLATE_PEN_COLOR_CHOICES.length}, minmax(0, 1fr))`,
+  gap: "4px",
 };
 
 const MOBILE_PORTRAIT_COLOR_BUTTON_STYLE: CSSProperties = {
   width: "100%",
-  height: "40px",
+  height: "44px",
   borderRadius: "999px",
   border: "1px solid rgba(147, 173, 196, 0.28)",
   background: "rgba(15, 25, 36, 0.58)",
@@ -1894,8 +1902,8 @@ const MOBILE_PORTRAIT_COLOR_BUTTON_STYLE: CSSProperties = {
 };
 
 const MOBILE_PORTRAIT_COLOR_SWATCH_STYLE: CSSProperties = {
-  width: "18px",
-  height: "18px",
+  width: "28px",
+  height: "28px",
   borderRadius: "999px",
   border: "1px solid rgba(255, 255, 255, 0.44)",
 };

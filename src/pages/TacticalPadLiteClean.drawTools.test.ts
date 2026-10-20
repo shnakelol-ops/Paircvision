@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { buildTacticalDrawToolOptions, buildTacticalDrawColorOptions } from "./TacticalPadLiteClean";
+import { WHITEBOARD_PEN_COLOR_CHOICES } from "../components/draw-tools/drawColorPalette";
 
 /**
  * Parity/regression lock for Standard Slate's Draw tab (PR3 extraction).
@@ -190,11 +191,32 @@ describe("buildTacticalDrawToolOptions — callbacks reach the exact existing Sl
 });
 
 describe("buildTacticalDrawColorOptions — colour palette parity", () => {
-  it("exposes exactly the five existing WHITEBOARD_PEN_COLOR_CHOICES entries, unmodified", () => {
+  it("exposes the five existing colours, unmodified and in order, then Green as the sixth", () => {
     const options = buildTacticalDrawColorOptions({ activeColor: 0x111111, onSelectColor: vi.fn() });
-    expect(options.map((o) => o.label)).toEqual(["Black", "White", "Yellow", "Red", "Blue"]);
-    expect(options.map((o) => o.value)).toEqual([0x111111, 0xffffff, 0xfacc15, 0xdc2626, 0x2563eb]);
-    expect(options.map((o) => o.css)).toEqual(["#111111", "#ffffff", "#facc15", "#dc2626", "#2563eb"]);
+    expect(options.map((o) => o.label)).toEqual(["Black", "White", "Yellow", "Red", "Blue", "Green"]);
+    expect(options.map((o) => o.value)).toEqual([0x111111, 0xffffff, 0xfacc15, 0xdc2626, 0x2563eb, 0x19b77a]);
+    expect(options.map((o) => o.css)).toEqual(["#111111", "#ffffff", "#facc15", "#dc2626", "#2563eb", "#19b77a"]);
+  });
+
+  it("the first five are exactly the shared palette (Tactical Sequence keeps those five only)", () => {
+    const options = buildTacticalDrawColorOptions({ activeColor: 0x111111, onSelectColor: vi.fn() });
+    expect(options.slice(0, 5).map(({ label, value, css }) => ({ label, value, css }))).toEqual([...WHITEBOARD_PEN_COLOR_CHOICES]);
+    expect(WHITEBOARD_PEN_COLOR_CHOICES).toHaveLength(5);
+  });
+
+  it("Green is selectable and marked active like any other colour", () => {
+    const onSelectColor = vi.fn();
+    const options = buildTacticalDrawColorOptions({ activeColor: 0x19b77a, onSelectColor });
+    const green = options.find((o) => o.label === "Green");
+    expect(green?.active).toBe(true);
+    expect(options.filter((o) => o.active)).toHaveLength(1);
+    expect(green?.ariaLabel).toBe("Set tactical drawing colour Green");
+    green?.onSelect();
+    expect(onSelectColor).toHaveBeenCalledWith(0x19b77a);
+  });
+
+  it("Black stays the first colour (the existing default)", () => {
+    expect(buildTacticalDrawColorOptions({ activeColor: 0x111111, onSelectColor: vi.fn() })[0]?.value).toBe(0x111111);
   });
 
   it("marks exactly the colour matching activeColor as active", () => {
