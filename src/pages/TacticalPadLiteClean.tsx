@@ -295,6 +295,73 @@ export function resolveContextualBarPlacement(params: {
   return { atTop, horizontal };
 }
 
+type ScreenPoint = { x: number; y: number };
+
+/**
+ * Where the Angled Zone toolbar sits (viewport CSS px). Candidate spots run
+ * along the screen edges — the preferred corner first (the same diagonal-
+ * corner rule as the Practice Area bar), then the other edge corners, then
+ * stepping inward along each edge — and the first one that keeps clear of
+ * every corner handle's touch target wins. So the toolbar never covers a
+ * handle, even when the zone fills most of the pitch; if no spot is fully
+ * clear, the one covering the fewest handles is used.
+ */
+export function resolveAngledZoneBarPosition(params: {
+  handles: readonly ScreenPoint[];
+  bounds: { left: number; top: number; right: number; bottom: number } | null;
+  viewportWidth: number;
+  viewportHeight: number;
+  barWidth: number;
+  barHeight: number;
+  isPortrait: boolean;
+  handleClearancePx?: number;
+}): { left: number; top: number } {
+  const { handles, viewportWidth, viewportHeight, barWidth, barHeight, isPortrait } = params;
+  const clearance = params.handleClearancePx ?? ANGLED_ZONE_BAR_HANDLE_CLEARANCE_PX;
+  const preferred = resolveContextualBarPlacement({ bounds: params.bounds, viewportWidth, viewportHeight, isPortrait });
+  const edge = 12;
+  // The same insets the contextual bars already respect: left-rail controls
+  // in landscape, the bottom-centre Actions bubble in portrait.
+  const leftX = isPortrait ? edge : 60;
+  const rightX = viewportWidth - edge - barWidth;
+  const centreX = (viewportWidth - barWidth) / 2;
+  const topY = edge;
+  const bottomY = viewportHeight - (isPortrait ? 64 : edge) - barHeight;
+  const xs = isPortrait
+    ? [centreX, leftX, rightX]
+    : preferred.horizontal === "left"
+      ? [leftX, rightX]
+      : [rightX, leftX];
+  const [firstY, lastY] = preferred.atTop ? [topY, bottomY] : [bottomY, topY];
+  const ys = [firstY, lastY];
+  const step = 8;
+  const span = Math.abs(lastY - firstY);
+  for (let offset = step; offset < span; offset += step) {
+    ys.push(firstY + Math.sign(lastY - firstY) * offset, lastY - Math.sign(lastY - firstY) * offset);
+  }
+  const clamp = (value: number, max: number) => Math.max(0, Math.min(value, Math.max(0, max)));
+  const coveredHandles = (left: number, top: number) =>
+    handles.filter((handle) => {
+      const nearestX = Math.max(left, Math.min(handle.x, left + barWidth));
+      const nearestY = Math.max(top, Math.min(handle.y, top + barHeight));
+      return Math.hypot(handle.x - nearestX, handle.y - nearestY) < clearance;
+    }).length;
+  let best: { left: number; top: number; covered: number } | null = null;
+  for (const y of ys) {
+    for (const x of xs) {
+      const left = clamp(x, viewportWidth - barWidth);
+      const top = clamp(y, viewportHeight - barHeight);
+      const covered = coveredHandles(left, top);
+      if (covered === 0) return { left, top };
+      if (!best || covered < best.covered) best = { left, top, covered };
+    }
+  }
+  return best ? { left: best.left, top: best.top } : { left: clamp(xs[0]!, viewportWidth - barWidth), top: clamp(firstY, viewportHeight - barHeight) };
+}
+
+/** Half the 46px corner-handle touch target: the toolbar keeps at least this far from a handle centre. */
+export const ANGLED_ZONE_BAR_HANDLE_CLEARANCE_PX = 23;
+
 const CONTEXTUAL_BAR_HORIZONTAL_STYLES: Record<"default" | "right" | "left", CSSProperties> = {
   default: {},
   right: { left: "auto", right: "max(12px, calc(env(safe-area-inset-right, 0px) + 10px))", transform: "none" },
@@ -2636,6 +2703,15 @@ export default function TacticalPadLiteClean({
   const [practiceAreaSelection, setPracticeAreaSelection] = useState<PracticeAreaSelection | null>(null);
   // Angled Zone being edited (corner handles shown); null when none.
   const [angledZoneEdit, setAngledZoneEdit] = useState<AngledZoneEditState | null>(null);
+  // Measured toolbar size (an estimate until first shown), for handle-clear placement.
+  const [angledZoneBarSize, setAngledZoneBarSize] = useState({ width: 200, height: 134 });
+  const measureAngledZoneBar = (element: HTMLDivElement | null) => {
+    if (!element) return;
+    const { offsetWidth: width, offsetHeight: height } = element;
+    if (width > 0 && height > 0 && (width !== angledZoneBarSize.width || height !== angledZoneBarSize.height)) {
+      setAngledZoneBarSize({ width, height });
+    }
+  };
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [movementModePillSelection, setMovementModePillSelection] = useState<MovementModePillOption>("move");
@@ -4878,19 +4954,25 @@ export default function TacticalPadLiteClean({
     ...(practiceAreaBarPlacement.atTop ? CONTEXTUAL_BAR_TOP_STYLE : {}),
     ...CONTEXTUAL_BAR_HORIZONTAL_STYLES[practiceAreaBarPlacement.horizontal],
   };
-  // The Angled Zone bar uses the same diagonal-corner placement, away from its handles.
-  const angledZoneBarPlacement = resolveContextualBarPlacement({
+  // The Angled Zone toolbar is placed clear of every corner handle (measured size).
+  const angledZoneBarPosition = resolveAngledZoneBarPosition({
+    handles: angledZoneEdit?.handleScreenPoints ?? [],
     bounds: angledZoneEdit?.screenBounds ?? null,
     viewportWidth,
     viewportHeight,
+    barWidth: angledZoneBarSize.width,
+    barHeight: angledZoneBarSize.height,
     isPortrait,
   });
   const angledZoneBarStyle: CSSProperties = {
     ...shapeLinksPanelStyle,
     width: "auto",
     boxSizing: "border-box",
-    ...(angledZoneBarPlacement.atTop ? CONTEXTUAL_BAR_TOP_STYLE : {}),
-    ...CONTEXTUAL_BAR_HORIZONTAL_STYLES[angledZoneBarPlacement.horizontal],
+    left: `${angledZoneBarPosition.left}px`,
+    top: `${angledZoneBarPosition.top}px`,
+    right: "auto",
+    bottom: "auto",
+    transform: "none",
   };
   const movementModeControlsWrapStyle = isPortrait
     ? PORTRAIT_MOVEMENT_MODE_CONTROLS_WRAP_STYLE
@@ -5542,8 +5624,13 @@ export default function TacticalPadLiteClean({
             </div>
           </div>
         ) : null}
-        {!isWhiteboardMode && angledZoneEdit && !isPlaybackLocked && !controlsOpen && !toolsOpen && !actionsOpen ? (
-          <div style={angledZoneBarStyle} role="group" aria-label="Angled Zone">
+        {!isWhiteboardMode &&
+        angledZoneEdit?.editorOpen &&
+        !isPlaybackLocked &&
+        !controlsOpen &&
+        !toolsOpen &&
+        !actionsOpen ? (
+          <div ref={measureAngledZoneBar} style={angledZoneBarStyle} role="group" aria-label="Angled Zone">
             <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>Angled Zone</div>
             <div style={PRACTICE_AREA_BAR_ROW_STYLE} role="group" aria-label="Fill">
               <span style={PRACTICE_AREA_BAR_CAPTION_STYLE}>Fill</span>
