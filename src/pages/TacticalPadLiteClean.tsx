@@ -2292,6 +2292,22 @@ const PRACTICE_AREA_SWATCH_BUTTON_STYLE: CSSProperties = {
   padding: 0,
 };
 
+// The six Practice Area colours (Slate palette incl. Green) in one even row
+// under the "Colour" caption, so they never wrap on a 320px phone. With the
+// bar's 8px side padding every cell stays at least 44×44px down to 320px,
+// and the 2px selected ring sits inside the grid's padding.
+const PRACTICE_AREA_SWATCH_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: `repeat(${TACTICAL_SLATE_PEN_COLOR_CHOICES.length}, minmax(0, 1fr))`,
+  gap: "2px",
+  padding: "2px",
+};
+
+const PRACTICE_AREA_SWATCH_CELL_STYLE: CSSProperties = {
+  width: "100%",
+  height: "44px",
+};
+
 const PRACTICE_AREA_SWATCH_ACTIVE_STYLE: CSSProperties = {
   ...PRACTICE_AREA_SWATCH_BUTTON_STYLE,
   boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.9)",
@@ -4955,10 +4971,12 @@ export default function TacticalPadLiteClean({
   });
   const practiceAreaBarStyle: CSSProperties = {
     ...shapeLinksPanelStyle,
-    // A fixed width (the Shape Links maximum) keeps the five swatches on one
+    // A fixed width (the Shape Links maximum) keeps the six swatches on one
     // row instead of shrink-wrapping into a tall stack on phones.
     width: "min(calc(100vw - 24px), 320px)",
     boxSizing: "border-box",
+    // Slightly narrower side padding keeps each of the six swatches ≥44px wide at 320px.
+    padding: "9px 8px",
     ...(practiceAreaBarPlacement.atTop ? CONTEXTUAL_BAR_TOP_STYLE : {}),
     ...CONTEXTUAL_BAR_HORIZONTAL_STYLES[practiceAreaBarPlacement.horizontal],
   };
@@ -5583,15 +5601,20 @@ export default function TacticalPadLiteClean({
             <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>
               {practiceAreaSelection.isDeadZone ? "Dead Zone" : "Practice Area"}
             </div>
-            <div style={PRACTICE_AREA_BAR_ROW_STYLE}>
-              <span style={PRACTICE_AREA_BAR_CAPTION_STYLE}>Colour</span>
-              {WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => (
+            <span style={PRACTICE_AREA_BAR_CAPTION_STYLE}>Colour</span>
+            <div style={PRACTICE_AREA_SWATCH_GRID_STYLE}>
+              {TACTICAL_SLATE_PEN_COLOR_CHOICES.map((choice) => (
                 <button
                   key={`practice-area-color-${choice.label.toLowerCase()}`}
                   type="button"
                   aria-label={`Outline colour ${choice.label}`}
                   aria-pressed={practiceAreaSelection.color === choice.value}
-                  style={practiceAreaSelection.color === choice.value ? PRACTICE_AREA_SWATCH_ACTIVE_STYLE : PRACTICE_AREA_SWATCH_BUTTON_STYLE}
+                  style={{
+                    ...(practiceAreaSelection.color === choice.value
+                      ? PRACTICE_AREA_SWATCH_ACTIVE_STYLE
+                      : PRACTICE_AREA_SWATCH_BUTTON_STYLE),
+                    ...PRACTICE_AREA_SWATCH_CELL_STYLE,
+                  }}
                   onClick={() => surfaceRef.current?.setPracticeAreaColor(choice.value)}
                 >
                   <span style={{ ...WHITEBOARD_TOKEN_COLOR_SWATCH_STYLE, background: choice.css }} />
