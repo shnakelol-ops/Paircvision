@@ -95,6 +95,35 @@ describe("resolveAngledZoneBarPosition — never over a corner handle", () => {
     expect(clearOf(pos, handles)).toBe(true);
   });
 
+  it("zone filling the landscape pitch: clear of every handle AND of the TOOLS / Phases / Actions bubbles", () => {
+    const handles = [{ x: 205, y: 63 }, { x: 658, y: 63 }, { x: 658, y: 344 }, { x: 205, y: 344 }];
+    // Pixel 7 landscape bubbles: TOOLS bottom-right, Phases bottom-left, Actions mid-left.
+    const avoidRects = [
+      { left: 800, top: 290, right: 852, bottom: 352 },
+      { left: 12, top: 310, right: 52, bottom: 350 },
+      { left: 12, top: 160, right: 52, bottom: 200 },
+    ];
+    const pos = resolveAngledZoneBarPosition({
+      handles, bounds: boundsOf(handles), viewportWidth: 863, viewportHeight: 360, isPortrait: false, avoidRects, ...bar,
+    });
+    expect(clearOf(pos, handles)).toBe(true);
+    for (const rect of avoidRects) {
+      const overlaps = pos.left < rect.right && pos.left + bar.barWidth > rect.left && pos.top < rect.bottom && pos.top + bar.barHeight > rect.top;
+      expect(overlaps).toBe(false);
+    }
+  });
+
+  it("handles outrank controls when both cannot be cleared", () => {
+    // A control covering the whole right column and handles down the left column:
+    // the bar may sit over the control, never over a handle.
+    const handles = [{ x: 100, y: 60 }, { x: 100, y: 180 }, { x: 100, y: 300 }];
+    const avoidRects = [{ left: 0, top: 0, right: 863, bottom: 360 }];
+    const pos = resolveAngledZoneBarPosition({
+      handles, bounds: boundsOf(handles), viewportWidth: 863, viewportHeight: 360, isPortrait: false, avoidRects, ...bar,
+    });
+    expect(clearOf(pos, handles)).toBe(true);
+  });
+
   it("stays on screen even when no spot is fully clear", () => {
     const handles = Array.from({ length: 40 }, (_, i) => ({ x: (i % 8) * 50 + 10, y: Math.floor(i / 8) * 60 + 20 }));
     const pos = resolveAngledZoneBarPosition({ handles, bounds: boundsOf(handles), viewportWidth: 400, viewportHeight: 300, isPortrait: true, ...bar });

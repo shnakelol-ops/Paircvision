@@ -305,9 +305,11 @@ type ScreenPoint = { x: number; y: number };
  * along the screen edges — the preferred corner first (the same diagonal-
  * corner rule as the Practice Area bar), then the other edge corners, then
  * stepping inward along each edge — and the first one that keeps clear of
- * every corner handle's touch target wins. So the toolbar never covers a
- * handle, even when the zone fills most of the pitch; if no spot is fully
- * clear, the one covering the fewest handles is used.
+ * every corner handle's touch target and every on-screen control in
+ * `avoidRects` (the TOOLS, Phases and Actions bubbles) wins. So the toolbar
+ * never covers a handle or those controls, even when the zone fills most of
+ * the pitch; if no spot is fully clear, handles are protected first, then
+ * the controls.
  */
 export function resolveAngledZoneBarPosition(params: {
   handles: readonly ScreenPoint[];
@@ -318,9 +320,12 @@ export function resolveAngledZoneBarPosition(params: {
   barHeight: number;
   isPortrait: boolean;
   handleClearancePx?: number;
+  avoidRects?: ReadonlyArray<{ left: number; top: number; right: number; bottom: number }>;
 }): { left: number; top: number } {
   const { handles, viewportWidth, viewportHeight, barWidth, barHeight, isPortrait } = params;
   const clearance = params.handleClearancePx ?? ANGLED_ZONE_BAR_HANDLE_CLEARANCE_PX;
+  const avoidRects = params.avoidRects ?? [];
+  const avoidGap = 4;
   const preferred = resolveContextualBarPlacement({ bounds: params.bounds, viewportWidth, viewportHeight, isPortrait });
   const edge = 12;
   // The same insets the contextual bars already respect: left-rail controls
@@ -330,11 +335,13 @@ export function resolveAngledZoneBarPosition(params: {
   const centreX = (viewportWidth - barWidth) / 2;
   const topY = edge;
   const bottomY = viewportHeight - (isPortrait ? 64 : edge) - barHeight;
+  // Landscape keeps to the side columns first; the centre is a last resort
+  // (it may cover the zone's middle, never a handle or a control).
   const xs = isPortrait
     ? [centreX, leftX, rightX]
     : preferred.horizontal === "left"
-      ? [leftX, rightX]
-      : [rightX, leftX];
+      ? [leftX, rightX, centreX]
+      : [rightX, leftX, centreX];
   const [firstY, lastY] = preferred.atTop ? [topY, bottomY] : [bottomY, topY];
   const ys = [firstY, lastY];
   const step = 8;
@@ -349,14 +356,23 @@ export function resolveAngledZoneBarPosition(params: {
       const nearestY = Math.max(top, Math.min(handle.y, top + barHeight));
       return Math.hypot(handle.x - nearestX, handle.y - nearestY) < clearance;
     }).length;
-  let best: { left: number; top: number; covered: number } | null = null;
+  const blockedControls = (left: number, top: number) =>
+    avoidRects.filter(
+      (rect) =>
+        left < rect.right + avoidGap &&
+        left + barWidth > rect.left - avoidGap &&
+        top < rect.bottom + avoidGap &&
+        top + barHeight > rect.top - avoidGap,
+    ).length;
+  // Handles outrank controls: a spot covering a handle is always worse.
+  let best: { left: number; top: number; score: number } | null = null;
   for (const y of ys) {
     for (const x of xs) {
       const left = clamp(x, viewportWidth - barWidth);
       const top = clamp(y, viewportHeight - barHeight);
-      const covered = coveredHandles(left, top);
-      if (covered === 0) return { left, top };
-      if (!best || covered < best.covered) best = { left, top, covered };
+      const score = coveredHandles(left, top) * 100 + blockedControls(left, top);
+      if (score === 0) return { left, top };
+      if (!best || score < best.score) best = { left, top, score };
     }
   }
   return best ? { left: best.left, top: best.top } : { left: clamp(xs[0]!, viewportWidth - barWidth), top: clamp(firstY, viewportHeight - barHeight) };
@@ -364,6 +380,18 @@ export function resolveAngledZoneBarPosition(params: {
 
 /** Half the 46px corner-handle touch target: the toolbar keeps at least this far from a handle centre. */
 export const ANGLED_ZONE_BAR_HANDLE_CLEARANCE_PX = 23;
+
+/**
+ * On-screen boxes of the floating TOOLS / Phases / Actions bubbles and the
+ * View (Top-Down / Goal View) toggle — empty outside the browser.
+ */
+function readFloatingBubbleRects(): Array<{ left: number; top: number; right: number; bottom: number }> {
+  if (typeof document === "undefined") return [];
+  return Array.from(document.querySelectorAll<HTMLElement>('.floating-bubble, button[aria-label^="Goal View:"]'))
+    .map((element) => element.getBoundingClientRect())
+    .filter((rect) => rect.width > 0 && rect.height > 0)
+    .map((rect) => ({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }));
+}
 
 const CONTEXTUAL_BAR_HORIZONTAL_STYLES: Record<"default" | "right" | "left", CSSProperties> = {
   default: {},
@@ -4989,6 +5017,9 @@ export default function TacticalPadLiteClean({
     barWidth: angledZoneBarSize.width,
     barHeight: angledZoneBarSize.height,
     isPortrait,
+    // Keep TOOLS, Phases and the Actions bubble reachable (fixed-position, so
+    // their on-screen boxes are read directly while the toolbar is open).
+    avoidRects: angledZoneEdit?.editorOpen ? readFloatingBubbleRects() : [],
   });
   const angledZoneBarStyle: CSSProperties = {
     ...shapeLinksPanelStyle,
