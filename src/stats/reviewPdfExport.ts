@@ -1499,6 +1499,102 @@ export function collectPlayerStats(
   });
 }
 
+// ─── Frees Conceded by Player ranking ────────────────────────────────────────
+
+export type FreesConcededSplit = { h1: number; h2: number; total: number };
+
+export type FreesConcededPlayerRow = FreesConcededSplit & {
+  id: string;
+  number: number | null;
+  name: string | null;
+};
+
+export type FreesConcededRanking = {
+  teamSide: "FOR" | "OPP";
+  /** Up to `limit` players, most frees conceded first. */
+  top: FreesConcededPlayerRow[];
+  /** Every other player of this team with at least one free conceded. */
+  otherPlayers: FreesConcededSplit;
+  /** Team frees conceded with no player attached — "No player" tags, and
+   *  the other team's FREE_WON (whose fouler is never recorded). */
+  unattributed: FreesConcededSplit;
+  /** Equals Free Kick Analysis' possession frees won by the other team. */
+  teamTotal: FreesConcededSplit;
+};
+
+/**
+ * Frees conceded per player for one team, split by half and ranked by
+ * full-match total, then second-half count, then jersey number. Player
+ * counts come from collectPlayerStats (the Player Breakdown aggregation),
+ * run on the whole match and on each half; the team total uses Free Kick
+ * Analysis' own formula. top + otherPlayers + unattributed = teamTotal in
+ * every column.
+ */
+export function rankFreesConcededByPlayer(
+  events: readonly PdfExportEvent[],
+  teamSide: "FOR" | "OPP",
+  homeSquad?: readonly PdfSquadPlayer[],
+  awaySquad?: readonly PdfSquadPlayer[],
+  limit = 5,
+): FreesConcededRanking {
+  const otherSide = teamSide === "FOR" ? "OPP" : "FOR";
+  const valid = events.filter((e) => !e.id.includes("-instant-score-"));
+  const halfEvents = {
+    h1: valid.filter((e) => e.period === "1H"),
+    h2: valid.filter((e) => e.period === "2H"),
+    total: valid,
+  };
+
+  // Same formula as Free Kick Analysis: frees conceded by this team = its
+  // FREE_CONCEDED + the other team's FREE_WON.
+  const teamTotalOf = (evts: readonly PdfExportEvent[]) =>
+    countKinds(evts.filter((e) => e.teamSide === teamSide), "FREE_CONCEDED")
+    + countKinds(evts.filter((e) => e.teamSide === otherSide), "FREE_WON");
+
+  const fullRows = collectPlayerStats(halfEvents.total, homeSquad, awaySquad)
+    .filter((p) => p.teamSide === teamSide && p.freesCon > 0);
+  const rows: FreesConcededPlayerRow[] = fullRows.map((p) => ({
+    id: p.id, number: p.number, name: p.name, h1: 0, h2: 0, total: p.freesCon,
+  }));
+
+  // Half counts from the same aggregation on each half's events. A half
+  // row is matched to its full-match row by id, falling back to jersey
+  // number (a number-only tag can resolve to a different key when a half
+  // holds fewer of that player's events).
+  for (const half of ["h1", "h2"] as const) {
+    for (const p of collectPlayerStats(halfEvents[half], homeSquad, awaySquad)) {
+      if (p.teamSide !== teamSide || p.freesCon === 0) continue;
+      const row = rows.find((r) => r.id === p.id)
+        ?? rows.find((r) => r.number != null && r.number === p.number);
+      if (row) row[half] += p.freesCon;
+    }
+  }
+
+  rows.sort((a, b) =>
+    b.total - a.total
+    || b.h2 - a.h2
+    || (a.number ?? Number.MAX_SAFE_INTEGER) - (b.number ?? Number.MAX_SAFE_INTEGER)
+    || (a.name ?? "").localeCompare(b.name ?? ""),
+  );
+
+  const sum = (list: readonly FreesConcededPlayerRow[], key: keyof FreesConcededSplit) =>
+    list.reduce((n, r) => n + r[key], 0);
+  const top = rows.slice(0, limit);
+  const rest = rows.slice(limit);
+  const teamTotal: FreesConcededSplit = {
+    h1: teamTotalOf(halfEvents.h1),
+    h2: teamTotalOf(halfEvents.h2),
+    total: teamTotalOf(halfEvents.total),
+  };
+  const otherPlayers: FreesConcededSplit = { h1: sum(rest, "h1"), h2: sum(rest, "h2"), total: sum(rest, "total") };
+  const unattributed: FreesConcededSplit = {
+    h1: teamTotal.h1 - sum(rows, "h1"),
+    h2: teamTotal.h2 - sum(rows, "h2"),
+    total: teamTotal.total - sum(rows, "total"),
+  };
+  return { teamSide, top, otherPlayers, unattributed, teamTotal };
+}
+
 /**
  * Pre-computes how many player breakdown pages will be needed.
  * Mirrors the exact page-break logic in makePlayerPages — must stay in sync.
@@ -1897,8 +1993,78 @@ export function makePlayerContributionsPage(
     }
   }
 
+  // Frees Conceded by Player — below the table, at a fixed position: the
+  // table above shows at most 12 rows and ends by y≈536.
+  const FREES_TOP = 560;
+
+  function drawFreesConceded(colX: number, teamName: string, ranking: FreesConcededRanking, accent: string): void {
+    let cy = FREES_TOP;
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(colX, cy, COL_W, 36);
+    ctx.fillStyle = accent;
+    ctx.fillRect(colX, cy, 3, 36);
+    ctx.font = "bold 15px sans-serif";
+    ctx.fillStyle = accent;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText("FREES CONCEDED BY PLAYER", colX + 14, cy + 18);
+    cy += 44;
+
+    const cols: Array<[string, number]> = [["PLAYER", 0], ["1H", 620], ["2H", 740], ["TOTAL", 860]];
+    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    ctx.fillRect(colX, cy, COL_W, 26);
+    ctx.font = "bold 12px sans-serif";
+    ctx.fillStyle = "#64748b";
+    for (const [label, off] of cols) {
+      ctx.textAlign = off === 0 ? "left" : "center";
+      ctx.fillText(label, colX + 14 + off, cy + 13);
+    }
+    cy += 26;
+
+    const drawRow = (label: string, split: FreesConcededSplit, colour: string, bold: boolean): void => {
+      const mid = cy + 15;
+      ctx.font = `${bold ? "bold " : ""}16px sans-serif`;
+      ctx.fillStyle = colour;
+      ctx.textAlign = "left";
+      let text = label;
+      if (ctx.measureText(text).width > 560) {
+        while (text.length > 1 && ctx.measureText(`${text}…`).width > 560) text = text.slice(0, -1);
+        text = `${text.trimEnd()}…`;
+      }
+      ctx.fillText(text, colX + 14, mid);
+      ctx.textAlign = "center";
+      ctx.fillText(String(split.h1), colX + 14 + 620, mid);
+      ctx.fillText(String(split.h2), colX + 14 + 740, mid);
+      ctx.fillText(String(split.total), colX + 14 + 860, mid);
+      cy += 30;
+    };
+
+    if (ranking.top.length === 0) {
+      ctx.font = "16px sans-serif";
+      ctx.fillStyle = "#64748b";
+      ctx.textAlign = "left";
+      ctx.fillText(`No frees conceded attributed to a ${teamName} player`, colX + 14, cy + 15);
+      cy += 30;
+    }
+    for (const p of ranking.top) {
+      const label = p.number != null
+        ? (p.name ? `#${p.number} ${p.name}` : `#${p.number}`)
+        : (p.name ?? "Unnamed player");
+      drawRow(label, p, "#e2e8f0", false);
+    }
+    if (ranking.otherPlayers.total > 0) drawRow("Other players", ranking.otherPlayers, "#94a3b8", false);
+    drawRow("Not attributed to a player", ranking.unattributed, "#94a3b8", false);
+
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.fillRect(colX, cy + 2, COL_W, 1);
+    cy += 4;
+    drawRow(`${teamName} total`, ranking.teamTotal, accent, true);
+  }
+
   drawTeamColumn(L_COL_X, influence.home, "#7dd3fc");
   drawTeamColumn(R_COL_X, influence.away, "#fb7185");
+  drawFreesConceded(L_COL_X, homeTeam, rankFreesConcededByPlayer(events, "FOR", homeSquadPlayers, awaySquadPlayers), "#7dd3fc");
+  drawFreesConceded(R_COL_X, awayTeam, rankFreesConcededByPlayer(events, "OPP", homeSquadPlayers, awaySquadPlayers), "#fb7185");
 
   ctx.fillStyle = "rgba(255,255,255,0.07)";
   ctx.fillRect(R_COL_X - 20, CONTENT_TOP, 1, CANVAS_H - 60 - CONTENT_TOP);
