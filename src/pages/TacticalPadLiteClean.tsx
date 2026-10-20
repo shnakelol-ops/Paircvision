@@ -4237,6 +4237,9 @@ export default function TacticalPadLiteClean({
       setPendingRecoveredBoardDraft(null);
       return;
     }
+    // A recovered board opens on Move, matching the Draw panel: the draw tool
+    // saved with the board (still kept in its data) is not re-activated.
+    applyTacticalTool("move");
     const recoveredAnnotations = draft.textAnnotations ?? [];
     setItems(extractItemsFromBoardState(draft));
     setPhaseCount(Array.isArray(draft.phases) ? draft.phases.length : 0);
@@ -4336,6 +4339,9 @@ export default function TacticalPadLiteClean({
       showQuickBoardNotice("Load failed");
       return;
     }
+    // A reopened board opens on Move, matching the Draw panel: the draw tool
+    // saved with the board (still kept in its data) is not re-activated.
+    applyTacticalTool("move");
     const loadedAnnotations = saved.boardState.textAnnotations ?? [];
     setItems(extractItemsFromBoardState(saved.boardState));
     setPhaseCount(Array.isArray(saved.boardState.phases) ? saved.boardState.phases.length : 0);
