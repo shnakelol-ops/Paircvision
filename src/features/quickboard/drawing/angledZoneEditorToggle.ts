@@ -66,3 +66,36 @@ export function angledZoneEditorOpenAfterSelection(nextId: string | null): boole
 export function angledZoneOutsideTapAction(editorOpen: boolean): "close-toolbar" | "end-edit" {
   return editorOpen ? "close-toolbar" : "end-edit";
 }
+
+// ---- Angled Zone tool: who owns a press ----------------------------------
+//
+// Zone editing belongs to the Angled Zone tool only (Move mode never selects
+// or edits a zone). Under the tool, a press on the selected zone's corner or
+// body is handled by the editor above. Any other press — on another existing
+// zone or on empty pitch — waits until it is clearly a tap or a drag:
+//  - a drag past the movement threshold always draws a new zone from the
+//    press point (so selection never makes creating zones harder, even
+//    inside an existing or pitch-sized zone);
+//  - a tap on an existing zone selects it (handles only, toolbar closed);
+//  - a tap on empty pitch closes an open toolbar, otherwise deselects.
+
+export type AngledToolPendingRelease = {
+  /** The press travelled past the drag threshold. */
+  hasCrossedThreshold: boolean;
+  /** The topmost existing zone under the press (not the selected one), or null. */
+  zoneUnderPressId: string | null;
+  /** A zone is currently selected for editing. */
+  isEditing: boolean;
+  /** Its appearance toolbar is open. */
+  editorOpen: boolean;
+};
+
+export type AngledToolPendingAction = "draw" | "select" | "close-toolbar" | "end-edit" | "none";
+
+/** What a pending Angled Zone tool press resolves to. */
+export function resolveAngledToolPendingPress(input: AngledToolPendingRelease): AngledToolPendingAction {
+  if (input.hasCrossedThreshold) return "draw";
+  if (input.zoneUnderPressId != null) return "select";
+  if (!input.isEditing) return "none";
+  return angledZoneOutsideTapAction(input.editorOpen);
+}

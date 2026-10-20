@@ -6,6 +6,7 @@ import {
   angledZoneOutsideTapAction,
   angledZonePressIsInteriorTap,
   isAngledZoneEditorToggleTap,
+  resolveAngledToolPendingPress,
 } from "./angledZoneEditorToggle";
 
 const THRESHOLD = 5;
@@ -60,5 +61,28 @@ describe("Angled Zone toolbar — Practice Area interaction rules", () => {
       angledZonePressIsInteriorTap({ onCornerTarget: true, cornerDistancePx: ANGLED_ZONE_HANDLE_CORE_PX, insideZone: true }),
     ).toBe(false);
     expect(angledZonePressIsInteriorTap({ onCornerTarget: false, cornerDistancePx: 0, insideZone: true })).toBe(true);
+  });
+});
+
+describe("Angled Zone tool — tap vs drag for presses off the selected zone", () => {
+  const base = { hasCrossedThreshold: false, zoneUnderPressId: null, isEditing: false, editorOpen: false };
+
+  it("a drag always draws a new zone — on empty pitch, inside an unselected zone, or while one is selected", () => {
+    expect(resolveAngledToolPendingPress({ ...base, hasCrossedThreshold: true })).toBe("draw");
+    expect(resolveAngledToolPendingPress({ ...base, hasCrossedThreshold: true, zoneUnderPressId: "z1" })).toBe("draw");
+    expect(
+      resolveAngledToolPendingPress({ ...base, hasCrossedThreshold: true, zoneUnderPressId: "z1", isEditing: true, editorOpen: true }),
+    ).toBe("draw");
+  });
+
+  it("a tap on an existing zone selects it (also switching from another selected zone)", () => {
+    expect(resolveAngledToolPendingPress({ ...base, zoneUnderPressId: "z1" })).toBe("select");
+    expect(resolveAngledToolPendingPress({ ...base, zoneUnderPressId: "z2", isEditing: true, editorOpen: true })).toBe("select");
+  });
+
+  it("a tap on empty pitch closes an open toolbar, then deselects; with nothing selected it does nothing", () => {
+    expect(resolveAngledToolPendingPress({ ...base, isEditing: true, editorOpen: true })).toBe("close-toolbar");
+    expect(resolveAngledToolPendingPress({ ...base, isEditing: true, editorOpen: false })).toBe("end-edit");
+    expect(resolveAngledToolPendingPress(base)).toBe("none");
   });
 });
