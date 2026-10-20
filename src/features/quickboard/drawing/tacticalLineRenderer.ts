@@ -14,6 +14,7 @@ import {
 import type { TacticalDrawingKind, TacticalDrawingRecord } from "./tacticalDrawingTypes";
 import {
   angledZoneCornersFromDrag,
+  angledZoneHatchSegments,
   distanceToAngledZoneOutline,
   isPointInAngledZone,
 } from "./angledZoneGeometry";
@@ -437,16 +438,62 @@ function drawCircleZone(graphics: Graphics, bounds: ZoneBounds, paint: ZonePaint
     .stroke(paint.border);
 }
 
+/**
+ * Angled Zone "Hatched" fill: thin diagonal lines in the zone's own colour,
+ * clipped exactly to the polygon, over a lighter fill so grass and pitch
+ * markings stay visible. Spacing and width are screen pixels when the host
+ * supplies a zone scale (Tactical Slate), so the hatch reads the same at any
+ * board size; otherwise world units close to the Dead Zone hatch.
+ */
+export const ANGLED_ZONE_HATCH = {
+  alpha: 0.3,
+  spacingScreenPx: 9,
+  widthScreenPx: 1.25,
+  fillAlphaScale: 0.5,
+  worldSpacing: 2.4,
+  worldWidth: 0.32,
+} as const;
+
+type ZoneHatch = { color: number; alpha: number; spacing: number; width: number };
+
+function resolveAngledZoneHatch(drawing: TacticalDrawingRecord, refined: TacticalZoneRenderStyle | undefined): ZoneHatch | null {
+  if (drawing.fillStyle !== "hatched") return null;
+  const px = refined && Number.isFinite(refined.worldUnitsPerScreenPx) && refined.worldUnitsPerScreenPx > 0
+    ? refined.worldUnitsPerScreenPx
+    : null;
+  return {
+    color: drawing.color,
+    alpha: ANGLED_ZONE_HATCH.alpha,
+    spacing: px != null ? ANGLED_ZONE_HATCH.spacingScreenPx * px : ANGLED_ZONE_HATCH.worldSpacing,
+    width: px != null ? ANGLED_ZONE_HATCH.widthScreenPx * px : ANGLED_ZONE_HATCH.worldWidth,
+  };
+}
+
 // Angled Zone: the same fill / border / selected-halo conventions as a
-// rectangle zone, drawn as the record's four-corner polygon.
-function drawAngledZone(graphics: Graphics, corners: readonly WorldPoint[], paint: ZonePaint): void {
+// rectangle zone, drawn as the record's four-corner polygon. A hatched zone
+// draws its clipped hatch between the (lighter) fill and the border.
+function drawAngledZone(graphics: Graphics, corners: readonly WorldPoint[], paint: ZonePaint, hatch: ZoneHatch | null): void {
   const flat = corners.flatMap((corner) => [corner.x, corner.y]);
 
   if (paint.halo) {
     graphics.poly(flat, true).stroke(paint.halo);
   }
 
-  graphics.poly(flat, true).fill(paint.fill).stroke(paint.border);
+  if (!hatch) {
+    graphics.poly(flat, true).fill(paint.fill).stroke(paint.border);
+    return;
+  }
+
+  graphics.poly(flat, true).fill({ ...paint.fill, alpha: paint.fill.alpha * ANGLED_ZONE_HATCH.fillAlphaScale });
+  const segments = angledZoneHatchSegments(corners, hatch.spacing);
+  if (segments.length > 0) {
+    for (const segment of segments) {
+      graphics.moveTo(segment.from.x, segment.from.y);
+      graphics.lineTo(segment.to.x, segment.to.y);
+    }
+    graphics.stroke({ color: hatch.color, alpha: hatch.alpha, width: hatch.width, cap: "butt" });
+  }
+  graphics.poly(flat, true).stroke(paint.border);
 }
 
 export function isAngledZoneDrawing(drawing: Pick<TacticalDrawingRecord, "kind">): boolean {
@@ -670,7 +717,12 @@ export function renderTacticalDrawing(
 ): void {
   if (drawing.kind === "angled-zone") {
     if (drawing.points.length < 3) return;
-    drawAngledZone(graphics, toWorldPoints(drawing.points, mapper), resolveZonePaint(drawing, isSelected, renderOptions.zoneStyle));
+    drawAngledZone(
+      graphics,
+      toWorldPoints(drawing.points, mapper),
+      resolveZonePaint(drawing, isSelected, renderOptions.zoneStyle),
+      resolveAngledZoneHatch(drawing, renderOptions.zoneStyle),
+    );
     return;
   }
   if (drawing.kind === "rectangle-zone" || drawing.kind === "circle-zone") {

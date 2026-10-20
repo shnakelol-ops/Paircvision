@@ -45,7 +45,14 @@ export type TacticalDrawingRecord = {
    * Absent on every other drawing (and never written by Pitch/Whiteboard).
    */
   zoneStyle?: "dead";
+  /**
+   * Angled Zones only: "hatched" adds diagonal hatch lines inside the zone.
+   * Absent means the normal fill (every zone saved before this existed).
+   */
+  fillStyle?: "hatched";
 };
+
+export type AngledZoneFillStyle = "normal" | "hatched";
 
 export type TacticalDrawingSnapshot = TacticalDrawingRecord;
 
@@ -269,6 +276,8 @@ function sanitizeNormalizedSnapshot(input: unknown): TacticalDrawingSnapshot | n
     opacity: sanitizeOpacity(input.opacity),
     createdAt: sanitizeCreatedAt(input.createdAt),
     ...(kind === "rectangle-zone" && input.zoneStyle === "dead" ? { zoneStyle: "dead" as const } : {}),
+    // Unknown or malformed fill styles fall back to normal (property omitted).
+    ...(kind === "angled-zone" && input.fillStyle === "hatched" ? { fillStyle: "hatched" as const } : {}),
   };
 }
 

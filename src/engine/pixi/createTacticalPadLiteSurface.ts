@@ -68,6 +68,7 @@ import {
   drawingToolToWhiteboardTool,
   sanitizeDrawingSnapshot,
   sanitizeDrawingTool,
+  type AngledZoneFillStyle,
   type TacticalDrawingRecord,
   type TacticalDrawingSnapshot,
   type WhiteboardDrawTool,
@@ -258,6 +259,8 @@ export type AngledZoneEditState = {
   screenBounds: { left: number; top: number; right: number; bottom: number } | null;
   /** True when Undo can revert a completed corner drag / move of this zone. */
   canUndo: boolean;
+  /** The zone's appearance: the normal fill, or hatched. */
+  fillStyle: AngledZoneFillStyle;
 };
 
 export type TacticalPadLiteSurface = {
@@ -341,6 +344,8 @@ export type TacticalPadLiteSurface = {
   finishAngledZoneEdit: () => void;
   /** Angled Zone: reverts the edited zone's latest corner drag / move (one step; never deletes it). */
   undoAngledZoneEdit: () => void;
+  /** Angled Zone: sets the edited zone's fill (Normal / Hatched). Appearance only — not a geometry undo step. */
+  setAngledZoneFillStyle: (fillStyle: AngledZoneFillStyle) => void;
   /**
    * While suspended (clip recording, Full View, Goal View) no Angled Zone can
    * be edited, and suspending ends any edit, so handles never reach a
@@ -2243,6 +2248,7 @@ export async function createTacticalPadLiteSurface(
             id: drawing.id,
             screenBounds: angledZoneScreenBounds(drawing),
             canUndo: tacticalDrawingController.hasGeometryEdit(drawing.id),
+            fillStyle: drawing.fillStyle === "hatched" ? "hatched" : "normal",
           }
         : null,
     );
@@ -5696,6 +5702,15 @@ export async function createTacticalPadLiteSurface(
       if (!id || angledZoneGesture) return;
       if (!tacticalDrawingController.undoGeometryEdit(id)) return;
       renderAngledZoneHandles();
+      emitAngledZoneEdit();
+    },
+    setAngledZoneFillStyle: (fillStyle) => {
+      const drawing = findAngledZoneDrawing(editingAngledZoneId);
+      if (!drawing || angledZoneGesture) return;
+      const { fillStyle: _previous, ...rest } = drawing;
+      const next: TacticalDrawingRecord = fillStyle === "hatched" ? { ...rest, fillStyle: "hatched" } : rest;
+      if ((drawing.fillStyle ?? "normal") === (next.fillStyle ?? "normal")) return;
+      tacticalDrawingController.updateDrawing(drawing.id, next);
       emitAngledZoneEdit();
     },
     setAngledZoneEditingSuspended: (suspended) => {

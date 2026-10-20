@@ -233,3 +233,42 @@ export function findAngledZoneAt(
 export function sameAngledZoneCorners(a: readonly Point[], b: readonly Point[]): boolean {
   return a.length === b.length && a.every((point, index) => point.x === b[index]!.x && point.y === b[index]!.y);
 }
+
+export type HatchSegment = { from: Point; to: Point };
+
+/**
+ * Diagonal hatch lines (x + y = c, i.e. rising to the right on a y-down
+ * board, like the Dead Zone hatch) clipped exactly to the polygon, convex or
+ * concave. `spacing` is the perpendicular distance between lines, in the
+ * same space as `points`. For each line, the crossings with the polygon's
+ * edges are sorted and paired (even-odd), so only the parts inside are kept.
+ * The half-open crossing rule counts a line through a vertex once.
+ */
+export function angledZoneHatchSegments(points: readonly Point[], spacing: number): HatchSegment[] {
+  if (points.length < 3 || !(spacing > 0) || !points.every(isFinitePoint)) return [];
+  const sums = points.map((point) => point.x + point.y);
+  const minSum = Math.min(...sums);
+  const maxSum = Math.max(...sums);
+  // Moving one line's perpendicular distance changes x + y by spacing·√2.
+  const step = spacing * Math.SQRT2;
+  const segments: HatchSegment[] = [];
+  for (let c = minSum + step * 0.5; c < maxSum; c += step) {
+    const crossings: number[] = [];
+    for (let index = 0; index < points.length; index += 1) {
+      const a = points[index]!;
+      const b = points[(index + 1) % points.length]!;
+      const fa = a.x + a.y - c;
+      const fb = b.x + b.y - c;
+      if (fa > 0 === fb > 0) continue;
+      crossings.push(a.x + ((b.x - a.x) * fa) / (fa - fb));
+    }
+    crossings.sort((left, right) => left - right);
+    for (let index = 0; index + 1 < crossings.length; index += 2) {
+      const x0 = crossings[index]!;
+      const x1 = crossings[index + 1]!;
+      if (x1 - x0 <= EPSILON) continue;
+      segments.push({ from: { x: x0, y: c - x0 }, to: { x: x1, y: c - x1 } });
+    }
+  }
+  return segments;
+}

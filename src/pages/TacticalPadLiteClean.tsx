@@ -18,6 +18,7 @@ import {
   sanitizeInitials,
   sanitizeName,
 } from "../engine/pixi/createTacticalPadLiteSurface";
+import type { AngledZoneFillStyle } from "../features/quickboard/drawing/tacticalDrawingTypes";
 import {
   PlayerKitEditor,
   type PlayerKitEditorTab,
@@ -301,6 +302,15 @@ const CONTEXTUAL_BAR_HORIZONTAL_STYLES: Record<"default" | "right" | "left", CSS
 };
 // Angled Zone bar buttons keep a 44px phone touch target.
 const ANGLED_ZONE_BAR_BUTTON_SIZE: CSSProperties = { height: "44px", minWidth: "72px" };
+const ANGLED_ZONE_FILL_CHOICES: ReadonlyArray<{ value: AngledZoneFillStyle; label: string }> = [
+  { value: "normal", label: "Normal" },
+  { value: "hatched", label: "Hatched" },
+];
+// Same selected ring as the Practice Area colour swatches.
+const ANGLED_ZONE_FILL_ACTIVE_STYLE: CSSProperties = {
+  boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.9)",
+  border: "1px solid rgba(125, 211, 252, 0.75)",
+};
 const CONTEXTUAL_BAR_TOP_STYLE: CSSProperties = { top: "max(12px, calc(env(safe-area-inset-top, 0px) + 10px))", bottom: "auto" };
 
 /**
@@ -5535,6 +5545,28 @@ export default function TacticalPadLiteClean({
         {!isWhiteboardMode && angledZoneEdit && !isPlaybackLocked && !controlsOpen && !toolsOpen && !actionsOpen ? (
           <div style={angledZoneBarStyle} role="group" aria-label="Angled Zone">
             <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>Angled Zone</div>
+            <div style={PRACTICE_AREA_BAR_ROW_STYLE} role="group" aria-label="Fill">
+              <span style={PRACTICE_AREA_BAR_CAPTION_STYLE}>Fill</span>
+              {ANGLED_ZONE_FILL_CHOICES.map((choice) => {
+                const isActive = angledZoneEdit.fillStyle === choice.value;
+                return (
+                  <button
+                    key={`angled-zone-fill-${choice.value}`}
+                    type="button"
+                    className="control-button"
+                    aria-pressed={isActive}
+                    style={{
+                      ...SHAPE_LOCK_BUTTON_STYLE,
+                      ...ANGLED_ZONE_BAR_BUTTON_SIZE,
+                      ...(isActive ? ANGLED_ZONE_FILL_ACTIVE_STYLE : {}),
+                    }}
+                    onClick={() => surfaceRef.current?.setAngledZoneFillStyle(choice.value)}
+                  >
+                    {choice.label}
+                  </button>
+                );
+              })}
+            </div>
             <div style={SHAPE_LOCK_PANEL_ACTIONS_STYLE}>
               <button
                 type="button"
