@@ -5118,10 +5118,12 @@ export default function TacticalPadLiteClean({
     : isMobilePortraitTools
     ? MOBILE_PORTRAIT_COLOR_GRID_STYLE
     : COACH_HUB_COLOR_GRID_STYLE;
+  // Compact landscape colour buttons keep a 44px touch target (each is already
+  // ≥44px wide in the six-colour row); the panel scrolls, as it already does.
   const coachHubColorButtonStyle = isCompactLandscapeTools
     ? {
         ...COACH_HUB_COLOR_BUTTON_STYLE,
-        height: isTightCompactLandscapeTools ? "18px" : "20px",
+        height: "44px",
         border: "1px solid rgba(129, 157, 144, 0.22)",
         background: "rgba(10, 18, 22, 0.7)",
       }
@@ -5131,8 +5133,8 @@ export default function TacticalPadLiteClean({
   const coachHubColorSwatchStyle = isCompactLandscapeTools
     ? {
         ...COACH_HUB_COLOR_SWATCH_STYLE,
-        width: isTightCompactLandscapeTools ? "10px" : "11px",
-        height: isTightCompactLandscapeTools ? "10px" : "11px",
+        width: "18px",
+        height: "18px",
       }
     : isMobilePortraitTools
     ? MOBILE_PORTRAIT_COLOR_SWATCH_STYLE
