@@ -55,9 +55,27 @@ import {
   type PracticeSnapTolerance,
 } from "../../features/quickboard/drawing/practiceAreaGeometry";
 import {
+  ANGLED_ZONE_EDGE_TOUCH_PX,
+  ANGLED_ZONE_HANDLE_TOUCH_PX,
+  findAngledZoneAt,
+  findAngledZoneCornerAt,
+  isPointInAngledZone,
+  isPointOnAngledZone,
+  moveAngledZoneCorner,
+  sameAngledZoneCorners,
+  translateAngledZone,
+} from "../../features/quickboard/drawing/angledZoneGeometry";
+import {
+  angledZoneEditorOpenAfterSelection,
+  angledZonePressIsInteriorTap,
+  isAngledZoneEditorToggleTap,
+  resolveAngledToolPendingPress,
+} from "../../features/quickboard/drawing/angledZoneEditorToggle";
+import {
   drawingToolToWhiteboardTool,
   sanitizeDrawingSnapshot,
   sanitizeDrawingTool,
+  type AngledZoneFillStyle,
   type TacticalDrawingRecord,
   type TacticalDrawingSnapshot,
   type WhiteboardDrawTool,
@@ -241,6 +259,25 @@ export type PracticeAreaSelection = {
   editorOpen: boolean;
 };
 
+/** The Angled Zone being edited (corner handles shown), as the page's Done bar needs it. */
+export type AngledZoneEditState = {
+  id: string;
+  /** The zone's on-screen box (viewport CSS px), so the page can place its bar clear of the handles. */
+  screenBounds: { left: number; top: number; right: number; bottom: number } | null;
+  /** True when Undo can revert a completed corner drag / move of this zone. */
+  canUndo: boolean;
+  /** The zone's appearance: the normal fill, or hatched. */
+  fillStyle: AngledZoneFillStyle;
+  /**
+   * Selection-first editing: the appearance toolbar is open only after a
+   * stationary tap inside the zone (and closes on the next one, or on a tap
+   * outside). Corner handles alone are shown otherwise.
+   */
+  editorOpen: boolean;
+  /** Corner handle centres on screen (viewport CSS px), so the toolbar can stay clear of them. */
+  handleScreenPoints: Array<{ x: number; y: number }>;
+};
+
 export type TacticalPadLiteSurface = {
   setStart: () => void;
   addPhase: () => void;
@@ -318,6 +355,18 @@ export type TacticalPadLiteSurface = {
    * Resuming does not restore the previous selection.
    */
   setPracticeAreaEditingSuspended: (suspended: boolean) => void;
+  /** Angled Zone: leaves edit mode (hides the handles). The Done control. */
+  finishAngledZoneEdit: () => void;
+  /** Angled Zone: reverts the edited zone's latest corner drag / move (one step; never deletes it). */
+  undoAngledZoneEdit: () => void;
+  /** Angled Zone: sets the edited zone's fill (Normal / Hatched). Appearance only — not a geometry undo step. */
+  setAngledZoneFillStyle: (fillStyle: AngledZoneFillStyle) => void;
+  /**
+   * While suspended (clip recording, Full View, Goal View) no Angled Zone can
+   * be edited, and suspending ends any edit, so handles never reach a
+   * recorded or presented frame.
+   */
+  setAngledZoneEditingSuspended: (suspended: boolean) => void;
   setWhiteboardDrawTool: (tool: WhiteboardDrawTool) => void;
   setWhiteboardDrawColor: (color: number) => void;
   eraseWhiteboardPenStroke: () => void;
@@ -403,6 +452,8 @@ type TacticalPadLiteSurfaceOptions = {
   practiceAreas?: boolean;
   /** Fires whenever the selected Practice Area changes, or its colour/style does (practiceAreas only). */
   onPracticeAreaSelectionChange?: (selection: PracticeAreaSelection | null) => void;
+  /** Fires when an Angled Zone enters / leaves edit mode, or its geometry or undo state changes. */
+  onAngledZoneEditChange?: (state: AngledZoneEditState | null) => void;
   onItemMove?: (id: string, x: number, y: number) => void;
   /** Free Multi-Ball: fires whenever the selected TacticalItem changes (ball or otherwise), including selection clearing (null). */
   onSelectedItemChange?: (itemId: string | null) => void;
@@ -1491,8 +1542,12 @@ export async function createTacticalPadLiteSurface(
   const whiteboardInputLayer = new Container();
   whiteboardInputLayer.eventMode = "none";
   whiteboardInputLayer.hitArea = {
-    contains: (x: number, y: number) =>
-      x >= 0 && y >= 0 && x <= WORLD_SIZE.width && y <= WORLD_SIZE.height,
+    contains: (x: number, y: number) => {
+      // While an Angled Zone is edited, a corner handle on the board edge
+      // keeps its full touch target: the press is clamped onto the board.
+      const margin = editingAngledZoneId != null ? angledZoneHandleTouchMarginWorld() : 0;
+      return x >= -margin && y >= -margin && x <= WORLD_SIZE.width + margin && y <= WORLD_SIZE.height + margin;
+    },
   };
   world.addChild(whiteboardInputLayer);
 
@@ -1842,6 +1897,8 @@ export async function createTacticalPadLiteSurface(
     // Stroke-first eraser: a stroke inside a zone is erasable; the zone's
     // interior is only a fallback target (Tactical Slate, every surface).
     strokeFirstEraser: true,
+    // Refined zone look (Rect / Circle / Angled Zone): ~2px border at any board size.
+    zoneStyleProvider: () => ({ worldUnitsPerScreenPx: 1 / Math.max(0.0001, mapper.transform.scale) }),
     ...(practiceAreasLayer ? { practiceAreasLayer } : {}),
   });
 
@@ -2106,6 +2163,349 @@ export async function createTacticalPadLiteSurface(
       emitPracticeAreaSelection();
     }
   }
+
+  // ---- Angled Zone editing (every Tactical Slate surface) -----------------
+  //
+  // Zone editing belongs to the Angled Zone tool only: Move mode never
+  // selects, moves or resizes a zone, so players and the ball move freely.
+  // Under the tool, a zone enters edit mode when it is drawn or tapped,
+  // showing its four corner handles only. A corner handle drag reshapes, an
+  // interior drag moves, and the appearance toolbar follows the Practice Area
+  // rules (angledZoneEditorToggle): only a stationary tap inside the selected
+  // zone toggles it, and a drag closes it. Any other press waits for tap vs
+  // drag (resolveAngledToolPendingPress): a drag always draws a new zone, a
+  // tap selects the zone under it or, on empty pitch, closes the toolbar /
+  // deselects. Done, a tool change, playback, export and suspension end the
+  // edit; the tool itself stays as it is.
+  type AngledZoneGesture = {
+    kind: "corner" | "move";
+    zoneId: string;
+    pointerId: number | null;
+    startStagePoint: { x: number; y: number } | null;
+    startPoints: NormalizedPoint[];
+    startPointer: NormalizedPoint;
+    cornerIndex: number | null;
+    hasCrossedThreshold: boolean;
+    /** A stationary release toggles the toolbar (an interior tap, never a handle tap). */
+    isInteriorPress: boolean;
+  };
+  let editingAngledZoneId: string | null = null;
+  let angledZoneEditorOpen = false;
+  /** An Angled Zone tool press not on the selected zone, until it is clearly a tap or a drag. */
+  let angledToolPendingPress: {
+    pointerId: number | null;
+    startStagePoint: { x: number; y: number } | null;
+    startWorld: { x: number; y: number };
+    zoneUnderPressId: string | null;
+  } | null = null;
+  let angledZoneGesture: AngledZoneGesture | null = null;
+  let angledZoneEditingSuspended = false;
+  const angledZoneEditingEnabled = surfaceVariant === "tactical";
+  const angledZoneHandlesGraphic = new Graphics();
+  angledZoneHandlesGraphic.eventMode = "none";
+  // Top of the world, above player and ball tokens, so a corner handle under
+  // a token stays visible while editing (tokens take no input then). Never
+  // present outside editing, so exports, playback and recording are unaffected.
+  world.addChild(angledZoneHandlesGraphic);
+
+  function angledZoneHandleTouchMarginWorld(): number {
+    return (ANGLED_ZONE_HANDLE_TOUCH_PX * 0.5) / Math.max(0.0001, mapper.transform.scale);
+  }
+
+  function findAngledZoneDrawing(id: string | null): TacticalDrawingRecord | null {
+    if (!id) return null;
+    const drawing = tacticalDrawingController.getDrawings().find((entry) => entry.id === id);
+    return drawing && drawing.kind === "angled-zone" ? drawing : null;
+  }
+
+  function angledZoneWorldShapes(): Array<{ id: string; points: Array<{ x: number; y: number }> }> {
+    const zones: Array<{ id: string; points: Array<{ x: number; y: number }> }> = [];
+    for (const drawing of tacticalDrawingController.getDrawings()) {
+      if (drawing.kind !== "angled-zone") continue;
+      zones.push({ id: drawing.id, points: drawing.points.map((point) => mapper.normalizedToWorld(point)) });
+    }
+    return zones;
+  }
+
+  function canEditAngledZones(): boolean {
+    return (
+      angledZoneEditingEnabled &&
+      isDrawingEnabledSurface &&
+      !angledZoneEditingSuspended &&
+      !practiceAreaEditingSuspended &&
+      !isFreeDrawCaptureMode &&
+      shapeLockMode === "off" &&
+      !isShapeLinkSelectMode &&
+      !isPossessionPassModeEnabled &&
+      !isPlaybackInputLocked()
+    );
+  }
+
+  function renderAngledZoneHandles(): void {
+    angledZoneHandlesGraphic.clear();
+    const drawing = findAngledZoneDrawing(editingAngledZoneId);
+    if (!drawing) return;
+    const scale = Math.max(0.0001, mapper.transform.scale);
+    // Same handle look as Practice Areas (10px visible, 46px touch target).
+    const radius = PRACTICE_AREA_HANDLE_VISIBLE_PX / scale;
+    for (const point of drawing.points) {
+      const corner = mapper.normalizedToWorld(point);
+      angledZoneHandlesGraphic
+        .circle(corner.x, corner.y, radius)
+        .fill({ color: 0xffffff, alpha: 0.96 })
+        .stroke({ color: 0x0f172a, alpha: 0.85, width: 1.5 / scale });
+    }
+  }
+
+  function angledZoneHandleScreenPoints(drawing: TacticalDrawingRecord): AngledZoneEditState["handleScreenPoints"] {
+    const canvasElement = app.canvas as HTMLCanvasElement | undefined;
+    if (!canvasElement || typeof canvasElement.getBoundingClientRect !== "function") return [];
+    const canvasRect = canvasElement.getBoundingClientRect();
+    return drawing.points.map((point) => {
+      const screen = world.toGlobal(mapper.normalizedToWorld(point));
+      return { x: canvasRect.left + screen.x, y: canvasRect.top + screen.y };
+    });
+  }
+
+  function angledZoneScreenBounds(drawing: TacticalDrawingRecord): AngledZoneEditState["screenBounds"] {
+    const canvasElement = app.canvas as HTMLCanvasElement | undefined;
+    if (!canvasElement || typeof canvasElement.getBoundingClientRect !== "function") return null;
+    const canvasRect = canvasElement.getBoundingClientRect();
+    // World -> screen through the world container, so portrait rotation is respected.
+    const screenPoints = drawing.points.map((point) => world.toGlobal(mapper.normalizedToWorld(point)));
+    const xs = screenPoints.map((point) => point.x);
+    const ys = screenPoints.map((point) => point.y);
+    return {
+      left: canvasRect.left + Math.min(...xs),
+      top: canvasRect.top + Math.min(...ys),
+      right: canvasRect.left + Math.max(...xs),
+      bottom: canvasRect.top + Math.max(...ys),
+    };
+  }
+
+  function emitAngledZoneEdit(): void {
+    const drawing = findAngledZoneDrawing(editingAngledZoneId);
+    options.onAngledZoneEditChange?.(
+      drawing
+        ? {
+            id: drawing.id,
+            screenBounds: angledZoneScreenBounds(drawing),
+            canUndo: tacticalDrawingController.hasGeometryEdit(drawing.id),
+            fillStyle: drawing.fillStyle === "hatched" ? "hatched" : "normal",
+            editorOpen: angledZoneEditorOpen,
+            handleScreenPoints: angledZoneHandleScreenPoints(drawing),
+          }
+        : null,
+    );
+  }
+
+  function beginAngledZoneEdit(id: string): void {
+    if (!canEditAngledZones() || !findAngledZoneDrawing(id)) return;
+    if (editingAngledZoneId === id) return;
+    // Mutually exclusive with every other selection on the board.
+    setSelectedPracticeArea(null);
+    releaseActiveDrag();
+    clearSelectedItem();
+    editingAngledZoneId = id;
+    // Handles only: the toolbar waits for a deliberate tap inside the zone.
+    angledZoneEditorOpen = angledZoneEditorOpenAfterSelection(id);
+    angledZoneGesture = null;
+    tacticalDrawingController.setHighlightedDrawingId(id);
+    renderAngledZoneHandles();
+    syncWhiteboardTokenInputMode();
+    emitAngledZoneEdit();
+  }
+
+  function endAngledZoneEdit(): void {
+    angledToolPendingPress = null;
+    if (editingAngledZoneId == null && angledZoneGesture == null) return;
+    editingAngledZoneId = null;
+    angledZoneEditorOpen = false;
+    angledZoneGesture = null;
+    tacticalDrawingController.setHighlightedDrawingId(null);
+    renderAngledZoneHandles();
+    syncWhiteboardTokenInputMode();
+    emitAngledZoneEdit();
+  }
+
+  /** Ends the edit if its zone no longer exists (undo / clear / erase / import). */
+  function syncAngledZoneEdit(): void {
+    if (editingAngledZoneId && !findAngledZoneDrawing(editingAngledZoneId)) {
+      endAngledZoneEdit();
+    } else if (editingAngledZoneId) {
+      renderAngledZoneHandles();
+      emitAngledZoneEdit();
+    }
+  }
+
+  /**
+   * A press under the Angled Zone tool (or while a zone is edited). The
+   * selected zone's corner handle → reshape (priority); its body → move, or
+   * a stationary tap toggles the toolbar. Anything else — another existing
+   * zone or empty pitch — waits for tap vs drag (see angledToolPendingPress).
+   * Never reaches players, balls or items.
+   */
+  function handleAngledToolPointerDown(event: unknown): void {
+    if (!canEditAngledZones()) {
+      endAngledZoneEdit();
+      startWhiteboardDrawing(event);
+      return;
+    }
+    const worldPoint = getBoundedWorldPointFromEvent(event);
+    if (!worldPoint) return;
+    const scale = Math.max(0.0001, mapper.transform.scale);
+    const edgeTolerance = ANGLED_ZONE_EDGE_TOUCH_PX / scale;
+    const drawing = findAngledZoneDrawing(editingAngledZoneId);
+    if (drawing) {
+      const worldCorners = drawing.points.map((point) => mapper.normalizedToWorld(point));
+      const beginGesture = (kind: AngledZoneGesture["kind"], cornerIndex: number | null, isInteriorPress: boolean) => {
+        angledZoneGesture = {
+          kind,
+          zoneId: drawing.id,
+          pointerId: getPointerIdFromEvent(event),
+          startStagePoint: getStagePointFromEvent(event, app.stage),
+          startPoints: drawing.points.map((point) => ({ x: point.x, y: point.y })),
+          startPointer: mapper.worldToNormalized(worldPoint),
+          cornerIndex,
+          hasCrossedThreshold: false,
+          isInteriorPress,
+        };
+      };
+      // Corner handles take priority over the interior.
+      const cornerIndex = findAngledZoneCornerAt(worldCorners, worldPoint, (ANGLED_ZONE_HANDLE_TOUCH_PX * 0.5) / scale);
+      if (cornerIndex != null) {
+        const corner = worldCorners[cornerIndex]!;
+        beginGesture(
+          "corner",
+          cornerIndex,
+          angledZonePressIsInteriorTap({
+            onCornerTarget: true,
+            cornerDistancePx: Math.hypot(worldPoint.x - corner.x, worldPoint.y - corner.y) * scale,
+            insideZone: isPointInAngledZone(worldCorners, worldPoint),
+          }),
+        );
+        return;
+      }
+      if (isPointOnAngledZone(worldCorners, worldPoint, edgeTolerance)) {
+        beginGesture("move", null, true);
+        return;
+      }
+    }
+    // Another existing zone (topmost first) or empty pitch: decide on release / drag.
+    const otherZones = angledZoneWorldShapes().filter((zone) => zone.id !== editingAngledZoneId);
+    angledToolPendingPress = {
+      pointerId: getPointerIdFromEvent(event),
+      startStagePoint: getStagePointFromEvent(event, app.stage),
+      startWorld: worldPoint,
+      zoneUnderPressId: findAngledZoneAt(otherZones, worldPoint, edgeTolerance),
+    };
+  }
+
+  /** A pending press that crosses the drag threshold always draws a new zone from the press point. */
+  function updateAngledToolPendingPress(event: unknown): void {
+    const pending = angledToolPendingPress;
+    if (!pending) return;
+    const pointerId = getPointerIdFromEvent(event);
+    if (pending.pointerId != null && pointerId != null && pointerId !== pending.pointerId) return;
+    const stagePoint = getStagePointFromEvent(event, app.stage);
+    if (!stagePoint || !pending.startStagePoint) return;
+    const moved = Math.hypot(stagePoint.x - pending.startStagePoint.x, stagePoint.y - pending.startStagePoint.y);
+    if (moved < TACTICAL_ITEM_DRAG_THRESHOLD_PX) return;
+    angledToolPendingPress = null;
+    if (editingAngledZoneId != null) endAngledZoneEdit();
+    tacticalDrawingController.handlePointerDown(pending.startWorld, pending.pointerId);
+    updateWhiteboardDrawing(event);
+  }
+
+  /** A pending press released without dragging: select / close the toolbar / deselect. */
+  function endAngledToolPendingPress(event: unknown): void {
+    const pending = angledToolPendingPress;
+    if (!pending) return;
+    const pointerId = getPointerIdFromEvent(event);
+    if (pending.pointerId != null && pointerId != null && pointerId !== pending.pointerId) return;
+    angledToolPendingPress = null;
+    const action = resolveAngledToolPendingPress({
+      hasCrossedThreshold: false,
+      zoneUnderPressId: pending.zoneUnderPressId,
+      isEditing: editingAngledZoneId != null,
+      editorOpen: angledZoneEditorOpen,
+    });
+    if (action === "select" && pending.zoneUnderPressId) {
+      beginAngledZoneEdit(pending.zoneUnderPressId);
+    } else if (action === "close-toolbar") {
+      angledZoneEditorOpen = false;
+      emitAngledZoneEdit();
+    } else if (action === "end-edit") {
+      endAngledZoneEdit();
+    }
+  }
+
+  function updateAngledZoneGesture(event: unknown): void {
+    const gesture = angledZoneGesture;
+    if (!gesture) return;
+    const pointerId = getPointerIdFromEvent(event);
+    if (gesture.pointerId != null && pointerId != null && pointerId !== gesture.pointerId) return;
+    if (!gesture.hasCrossedThreshold) {
+      const stagePoint = getStagePointFromEvent(event, app.stage);
+      if (!stagePoint || !gesture.startStagePoint) return;
+      const moved = Math.hypot(stagePoint.x - gesture.startStagePoint.x, stagePoint.y - gesture.startStagePoint.y);
+      if (moved < TACTICAL_ITEM_DRAG_THRESHOLD_PX) return;
+      gesture.hasCrossedThreshold = true;
+      // A drag (corner or interior) clears the pitch: an open toolbar closes
+      // and stays closed after the release; a tap inside reopens it.
+      if (angledZoneEditorOpen) {
+        angledZoneEditorOpen = false;
+        emitAngledZoneEdit();
+      }
+    }
+    const worldPoint = getBoundedWorldPointFromEvent(event);
+    const drawing = findAngledZoneDrawing(gesture.zoneId);
+    if (!drawing) {
+      angledZoneGesture = null;
+      return;
+    }
+    if (!worldPoint) return;
+    const pointer = mapper.worldToNormalized(worldPoint);
+    // A corner drag starts from the current (last valid) shape, so an invalid
+    // position leaves the corner where it last was valid.
+    const nextPoints =
+      gesture.kind === "corner" && gesture.cornerIndex != null
+        ? moveAngledZoneCorner(drawing.points, gesture.cornerIndex, pointer)
+        : translateAngledZone(gesture.startPoints, pointer.x - gesture.startPointer.x, pointer.y - gesture.startPointer.y);
+    if (sameAngledZoneCorners(nextPoints, drawing.points)) return;
+    tacticalDrawingController.updateDrawing(drawing.id, { ...drawing, points: nextPoints });
+    renderAngledZoneHandles();
+  }
+
+  function endAngledZoneGesture(event: unknown): void {
+    const gesture = angledZoneGesture;
+    if (!gesture) return;
+    const pointerId = getPointerIdFromEvent(event);
+    if (gesture.pointerId != null && pointerId != null && pointerId !== gesture.pointerId) return;
+    angledZoneGesture = null;
+    const drawing = findAngledZoneDrawing(gesture.zoneId);
+    // One undo step per completed corner drag or move that changed the shape.
+    if (drawing && gesture.hasCrossedThreshold && !sameAngledZoneCorners(drawing.points, gesture.startPoints)) {
+      tacticalDrawingController.recordGeometryEdit(drawing.id, gesture.startPoints);
+    }
+    // Only a stationary tap inside the zone toggles the toolbar — never a
+    // corner tap, and never the release of a drag.
+    const releasePoint = getStagePointFromEvent(event, app.stage);
+    const isToggleTap = isAngledZoneEditorToggleTap({
+      isInteriorPress: gesture.isInteriorPress,
+      hasCrossedThreshold: gesture.hasCrossedThreshold,
+      releaseDistancePx:
+        releasePoint && gesture.startStagePoint
+          ? Math.hypot(releasePoint.x - gesture.startStagePoint.x, releasePoint.y - gesture.startStagePoint.y)
+          : null,
+      dragThresholdPx: TACTICAL_ITEM_DRAG_THRESHOLD_PX,
+    });
+    if (isToggleTap && drawing && gesture.zoneId === editingAngledZoneId) {
+      angledZoneEditorOpen = !angledZoneEditorOpen;
+    }
+    emitAngledZoneEdit();
+  }
+
   let lastTappedPlayer: { playerId: string; atMs: number } | null = null;
 
   function applyPhaseCursorEvent(event: PhaseCursorEvent): void {
@@ -2583,8 +2983,11 @@ export async function createTacticalPadLiteSurface(
   function syncWhiteboardTokenInputMode(): void {
     if (!isDrawingEnabledSurface) return;
     const canInteractItems = isItemInteractionEnabled();
+    // While an Angled Zone is edited the input layer takes every press, so
+    // players, balls and items can never be moved by accident.
+    const isAngledZoneEditing = editingAngledZoneId != null;
     const isDrawingInteractionActive =
-      (activeWhiteboardTool !== "move" || isFreeDrawCaptureMode) && !isPlaybackInputLocked();
+      (activeWhiteboardTool !== "move" || isFreeDrawCaptureMode || isAngledZoneEditing) && !isPlaybackInputLocked();
     let draggingItemId: string | null = null;
     let draggingPlayerId: string | null = null;
     if (activeDrag && activeDrag.type === "item" && activeDrag.hasCrossedThreshold) {
@@ -2595,7 +2998,7 @@ export async function createTacticalPadLiteSurface(
     }
     for (const item of tacticalItems) {
       const isCurrentItemDragging = draggingItemId === item.id;
-      const canInteractWithItem = canInteractWithTacticalItem(item);
+      const canInteractWithItem = canInteractWithTacticalItem(item) && !isAngledZoneEditing;
       item.graphic.eventMode = canInteractWithItem ? "static" : "none";
       item.graphic.cursor = isCurrentItemDragging ? "grabbing" : canInteractWithItem ? "grab" : "default";
     }
@@ -2604,7 +3007,7 @@ export async function createTacticalPadLiteSurface(
       renderTacticalItems();
     }
     const canDragPlayers =
-      activeWhiteboardTool === "move" && !isPlaybackInputLocked() && !isFreeDrawCaptureMode;
+      activeWhiteboardTool === "move" && !isPlaybackInputLocked() && !isFreeDrawCaptureMode && !isAngledZoneEditing;
     const canSelectFreeDrawPlayers = surfaceVariant === "tactical" && isFreeDrawCaptureMode && !isPlaybackInputLocked();
     for (const player of players) {
       const isCurrentPlayerDragging = draggingPlayerId === player.id;
@@ -3753,6 +4156,8 @@ export async function createTacticalPadLiteSurface(
     if (!isDrawingEnabledSurface) return;
     tacticalDrawingController.render();
     renderPracticeAreaHandles();
+    renderAngledZoneHandles();
+    if (editingAngledZoneId && !angledZoneGesture) emitAngledZoneEdit();
     // Resize / rotation moves the area on screen: keep the page's bar placement current.
     if (selectedPracticeAreaId && !practiceAreaGesture) emitPracticeAreaSelection();
   }
@@ -3781,7 +4186,12 @@ export async function createTacticalPadLiteSurface(
     if (!isDrawingEnabledSurface || isPlaybackInputLocked() || activeDrag) return;
     if (activeWhiteboardTool === "move") return;
     const worldPoint = event == null ? null : getBoundedWorldPointFromEvent(event);
-    tacticalDrawingController.handlePointerUp(worldPoint, event == null ? null : getPointerIdFromEvent(event));
+    const committed = tacticalDrawingController.handlePointerUp(
+      worldPoint,
+      event == null ? null : getPointerIdFromEvent(event),
+    );
+    // A new Angled Zone shows its corner handles straight away.
+    if (committed?.kind === "angled-zone" && event != null) beginAngledZoneEdit(committed.id);
   }
 
   function eraseLastPenStroke(): void {
@@ -4171,6 +4581,7 @@ export async function createTacticalPadLiteSurface(
   function handlePlay(): void {
     // Handles never appear in playback or a recorded clip.
     setSelectedPracticeArea(null);
+    endAngledZoneEdit();
     releaseActiveDrag();
     clearSelectedItem();
     // Shape Lock guides are editing-only; hide them for the duration of playback.
@@ -4813,6 +5224,7 @@ export async function createTacticalPadLiteSurface(
 
     tacticalDrawingController.importSnapshots(parsedDrawings);
     syncPracticeAreaSelection();
+    endAngledZoneEdit();
     const parsedMaxDrawingSerial = parsedDrawings.reduce<number>((maxValue, drawing) => {
       const match = /(\d+)$/.exec(drawing.id);
       const serial = match?.[1] ? Number(match[1]) : Number.NaN;
@@ -4969,6 +5381,14 @@ export async function createTacticalPadLiteSurface(
   syncPlayersToViewport();
 
   function handleStagePointerMove(event: unknown): void {
+    if (angledToolPendingPress) {
+      updateAngledToolPendingPress(event);
+      return;
+    }
+    if (angledZoneGesture) {
+      updateAngledZoneGesture(event);
+      return;
+    }
     if (practiceAreaGesture) {
       updatePracticeAreaGesture(event);
       return;
@@ -4993,6 +5413,14 @@ export async function createTacticalPadLiteSurface(
   }
 
   function handleStagePointerUp(event: unknown): void {
+    if (angledToolPendingPress) {
+      endAngledToolPendingPress(event);
+      return;
+    }
+    if (angledZoneGesture) {
+      endAngledZoneGesture(event);
+      return;
+    }
     if (practiceAreaGesture) {
       endPracticeAreaGesture(event);
       return;
@@ -5046,6 +5474,8 @@ export async function createTacticalPadLiteSurface(
   app.stage.on("pointerup", handleStagePointerUp);
   app.stage.on("pointerupoutside", handleStagePointerUp);
   app.stage.on("pointerdown", (event) => {
+    // The Angled Zone tool already handled this press on the input layer.
+    if (editingAngledZoneId != null || angledZoneGesture != null || angledToolPendingPress != null) return;
     if (
       activeDrag == null &&
       activeWhiteboardTool === "move" &&
@@ -5057,11 +5487,17 @@ export async function createTacticalPadLiteSurface(
         clearSelectedItem();
       }
       // Nothing interactive (player, ball, unlocked item) claimed this tap —
-      // only now may a Training Practice Area take it.
+      // only now may a Training Practice Area take it. Angled Zones are
+      // locked in Move mode (edited with the Angled Zone tool only).
       handlePracticeAreaPointerDown(event);
     }
   });
   whiteboardInputLayer.on("pointerdown", (event) => {
+    // The Angled Zone tool owns zone selection and editing.
+    if (activeWhiteboardTool === "angledZone" || editingAngledZoneId != null) {
+      handleAngledToolPointerDown(event);
+      return;
+    }
     if (isFreeDrawCaptureMode && !isPlaybackInputLocked()) {
       releaseActiveDrag();
       clearSelectedItem();
@@ -5207,7 +5643,10 @@ export async function createTacticalPadLiteSurface(
       if (surfaceVariant !== "tactical") return;
       isPossessionPassModeEnabled = Boolean(enabled);
       lastTappedPlayer = null;
-      if (isPossessionPassModeEnabled) setSelectedPracticeArea(null);
+      if (isPossessionPassModeEnabled) {
+        setSelectedPracticeArea(null);
+        endAngledZoneEdit();
+      }
     },
     freeBall: detachPrimaryBall,
     deleteTacticalItemById,
@@ -5231,6 +5670,7 @@ export async function createTacticalPadLiteSurface(
       if (enabled) {
         releaseActiveDrag();
         clearSelectedItem();
+        endAngledZoneEdit();
       }
       setFreeDrawCaptureModeState(enabled);
       if (enabled && activeWhiteboardTool !== "move") {
@@ -5308,6 +5748,7 @@ export async function createTacticalPadLiteSurface(
     },
     setWhiteboardDrawTool: (tool) => {
       if (!isDrawingEnabledSurface) return;
+      endAngledZoneEdit();
       if (tool !== "move") {
         releaseActiveDrag();
         clearSelectedItem();
@@ -5328,16 +5769,19 @@ export async function createTacticalPadLiteSurface(
       if (!isDrawingEnabledSurface) return;
       eraseLastPenStroke();
       syncPracticeAreaSelection();
+      syncAngledZoneEdit();
     },
     undoWhiteboardStroke: () => {
       if (!isDrawingEnabledSurface) return;
       tacticalDrawingController.undo();
       syncPracticeAreaSelection();
+      syncAngledZoneEdit();
     },
     clearWhiteboardStrokes: () => {
       if (!isDrawingEnabledSurface) return;
       tacticalDrawingController.clear();
       syncPracticeAreaSelection();
+      syncAngledZoneEdit();
     },
     setPracticeAreaColor: (color) => {
       if (!Number.isFinite(color)) return;
@@ -5375,6 +5819,29 @@ export async function createTacticalPadLiteSurface(
     setPracticeAreaEditingSuspended: (suspended) => {
       practiceAreaEditingSuspended = suspended;
       if (suspended) setSelectedPracticeArea(null);
+      // Recording / Full View suspend all authoring handles, Angled Zones included.
+      if (suspended) endAngledZoneEdit();
+    },
+    finishAngledZoneEdit: () => endAngledZoneEdit(),
+    undoAngledZoneEdit: () => {
+      const id = editingAngledZoneId;
+      if (!id || angledZoneGesture) return;
+      if (!tacticalDrawingController.undoGeometryEdit(id)) return;
+      renderAngledZoneHandles();
+      emitAngledZoneEdit();
+    },
+    setAngledZoneFillStyle: (fillStyle) => {
+      const drawing = findAngledZoneDrawing(editingAngledZoneId);
+      if (!drawing || angledZoneGesture) return;
+      const { fillStyle: _previous, ...rest } = drawing;
+      const next: TacticalDrawingRecord = fillStyle === "hatched" ? { ...rest, fillStyle: "hatched" } : rest;
+      if ((drawing.fillStyle ?? "normal") === (next.fillStyle ?? "normal")) return;
+      tacticalDrawingController.updateDrawing(drawing.id, next);
+      emitAngledZoneEdit();
+    },
+    setAngledZoneEditingSuspended: (suspended) => {
+      angledZoneEditingSuspended = suspended;
+      if (suspended) endAngledZoneEdit();
     },
     setRecordingWatermark: (spec) => {
       if (recordingWatermarkText) {
@@ -5425,6 +5892,7 @@ export async function createTacticalPadLiteSurface(
     exportImageCanvas: () => {
       // Handles / selection halo never appear in an exported image.
       setSelectedPracticeArea(null);
+      endAngledZoneEdit();
       const rendererWithExtract = app.renderer as typeof app.renderer & {
         extract?: {
           canvas?: (target: unknown) => unknown;
@@ -5472,10 +5940,16 @@ export async function createTacticalPadLiteSurface(
       }
     },
     getCanvas: () => canvas as HTMLCanvasElement,
-    setShapeLockMode: (mode) => setShapeLockModeInternal(mode),
+    setShapeLockMode: (mode) => {
+      if (mode !== "off") endAngledZoneEdit();
+      setShapeLockModeInternal(mode);
+    },
     getShapeLockState: () => ({ mode: shapeLockMode, memberIds: [...shapeMemberIds] }),
     hasFreeDrawContent: () => freeDrawPathByPlayerId.size > 0,
-    setShapeLinkSelectMode: (enabled) => setShapeLinkSelectModeInternal(enabled),
+    setShapeLinkSelectMode: (enabled) => {
+      if (enabled) endAngledZoneEdit();
+      setShapeLinkSelectModeInternal(enabled);
+    },
     createShapeLinkFromSelection: () => createShapeLinkFromSelectionInternal(),
     deleteShapeLink: (shapeLinkId) => deleteShapeLinkInternal(shapeLinkId),
     setShapeLinksVisible: (visible) => setShapeLinksVisibleInternal(visible),
@@ -5492,6 +5966,8 @@ export async function createTacticalPadLiteSurface(
       })),
     }),
     cancelActiveInteraction: () => {
+      angledZoneGesture = null;
+      angledToolPendingPress = null;
       releaseActiveDrag();
       resetActiveWhiteboardDrawing();
       clearFreeDrawDraft();

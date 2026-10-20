@@ -20,3 +20,15 @@ export const WHITEBOARD_PEN_COLOR_CHOICES: readonly DrawPenColorChoice[] = [
   { label: "Red", value: 0xdc2626, css: "#dc2626" },
   { label: "Blue", value: 0x2563eb, css: "#2563eb" },
 ];
+
+/**
+ * Tactical Slate's Draw palette: the shared five, values and order
+ * unchanged (Black stays first and the default), plus Green. Slate only —
+ * Tactical Sequence keeps the shared five.
+ */
+export const TACTICAL_SLATE_GREEN: DrawPenColorChoice = { label: "Green", value: 0x19b77a, css: "#19b77a" };
+
+export const TACTICAL_SLATE_PEN_COLOR_CHOICES: readonly DrawPenColorChoice[] = [
+  ...WHITEBOARD_PEN_COLOR_CHOICES,
+  TACTICAL_SLATE_GREEN,
+];

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { buildTacticalDrawToolOptions, buildTacticalDrawColorOptions } from "./TacticalPadLiteClean";
+import { WHITEBOARD_PEN_COLOR_CHOICES } from "../components/draw-tools/drawColorPalette";
 
 /**
  * Parity/regression lock for Standard Slate's Draw tab (PR3 extraction).
@@ -25,6 +26,7 @@ const COMPACT_LANDSCAPE_LABELS = {
   freePen: "Free Pen",
   rectangleZone: "Rect Zone",
   circleZone: "Circle Zone",
+  angledZone: "Angled Zone",
   eraser: "Eraser",
 } as const;
 
@@ -38,11 +40,12 @@ const DEFAULT_LABELS = {
   freePen: "Free Pen",
   rectangleZone: "Rect Zone",
   circleZone: "Circle Zone",
+  angledZone: "Angled Zone",
   eraser: "Eraser",
 } as const;
 
 describe("buildTacticalDrawToolOptions — tool set and order", () => {
-  it("exposes exactly the eleven current Slate Draw-tab entries, in the existing button order", () => {
+  it("exposes exactly the twelve current Slate Draw-tab entries, in the existing button order", () => {
     const options = buildTacticalDrawToolOptions({
       labels: DEFAULT_LABELS,
       tacticalTool: "move",
@@ -61,6 +64,7 @@ describe("buildTacticalDrawToolOptions — tool set and order", () => {
       "freePen",
       "rectangleZone",
       "circleZone",
+      "angledZone",
       "eraser",
     ]);
   });
@@ -85,6 +89,7 @@ describe("buildTacticalDrawToolOptions — tool set and order", () => {
       freePen: "Free Pen",
       rectangleZone: "Rect Zone",
       circleZone: "Circle Zone",
+      angledZone: "Angled Zone",
       eraser: "Eraser",
     });
   });
@@ -135,7 +140,7 @@ describe("buildTacticalDrawToolOptions — active-state parity with the original
   });
 
   it("every regular drawing tool is active exactly when tacticalTool equals its own id", () => {
-    for (const id of ["line", "arrow", "curved", "dashed", "wavy", "freePen", "rectangleZone", "circleZone", "eraser"] as const) {
+    for (const id of ["line", "arrow", "curved", "dashed", "wavy", "freePen", "rectangleZone", "circleZone", "angledZone", "eraser"] as const) {
       const options = buildTacticalDrawToolOptions({
         labels: DEFAULT_LABELS, tacticalTool: id, textToolActive: false,
         onSelectTool: vi.fn(), onSelectLabel: vi.fn(),
@@ -186,11 +191,32 @@ describe("buildTacticalDrawToolOptions — callbacks reach the exact existing Sl
 });
 
 describe("buildTacticalDrawColorOptions — colour palette parity", () => {
-  it("exposes exactly the five existing WHITEBOARD_PEN_COLOR_CHOICES entries, unmodified", () => {
+  it("exposes the five existing colours, unmodified and in order, then Green as the sixth", () => {
     const options = buildTacticalDrawColorOptions({ activeColor: 0x111111, onSelectColor: vi.fn() });
-    expect(options.map((o) => o.label)).toEqual(["Black", "White", "Yellow", "Red", "Blue"]);
-    expect(options.map((o) => o.value)).toEqual([0x111111, 0xffffff, 0xfacc15, 0xdc2626, 0x2563eb]);
-    expect(options.map((o) => o.css)).toEqual(["#111111", "#ffffff", "#facc15", "#dc2626", "#2563eb"]);
+    expect(options.map((o) => o.label)).toEqual(["Black", "White", "Yellow", "Red", "Blue", "Green"]);
+    expect(options.map((o) => o.value)).toEqual([0x111111, 0xffffff, 0xfacc15, 0xdc2626, 0x2563eb, 0x19b77a]);
+    expect(options.map((o) => o.css)).toEqual(["#111111", "#ffffff", "#facc15", "#dc2626", "#2563eb", "#19b77a"]);
+  });
+
+  it("the first five are exactly the shared palette (Tactical Sequence keeps those five only)", () => {
+    const options = buildTacticalDrawColorOptions({ activeColor: 0x111111, onSelectColor: vi.fn() });
+    expect(options.slice(0, 5).map(({ label, value, css }) => ({ label, value, css }))).toEqual([...WHITEBOARD_PEN_COLOR_CHOICES]);
+    expect(WHITEBOARD_PEN_COLOR_CHOICES).toHaveLength(5);
+  });
+
+  it("Green is selectable and marked active like any other colour", () => {
+    const onSelectColor = vi.fn();
+    const options = buildTacticalDrawColorOptions({ activeColor: 0x19b77a, onSelectColor });
+    const green = options.find((o) => o.label === "Green");
+    expect(green?.active).toBe(true);
+    expect(options.filter((o) => o.active)).toHaveLength(1);
+    expect(green?.ariaLabel).toBe("Set tactical drawing colour Green");
+    green?.onSelect();
+    expect(onSelectColor).toHaveBeenCalledWith(0x19b77a);
+  });
+
+  it("Black stays the first colour (the existing default)", () => {
+    expect(buildTacticalDrawColorOptions({ activeColor: 0x111111, onSelectColor: vi.fn() })[0]?.value).toBe(0x111111);
   });
 
   it("marks exactly the colour matching activeColor as active", () => {
@@ -240,8 +266,19 @@ describe("buildTacticalDrawToolOptions — Training Practice Areas", () => {
     for (const flag of [false, undefined]) {
       const options = build(flag);
       expect(options.map((o) => o.label)).toEqual([
-        "Move", "Label", "Plain", "Straight", "Curved", "Dashed", "Wavy", "Free Pen", "Rect Zone", "Circle Zone", "Eraser",
+        "Move", "Label", "Plain", "Straight", "Curved", "Dashed", "Wavy", "Free Pen", "Rect Zone", "Circle Zone", "Angled Zone", "Eraser",
       ]);
+    }
+  });
+
+  it("Angled Zone is offered on every surface — Training included — right after the other zones", () => {
+    for (const flag of [true, false, undefined]) {
+      for (const labels of [DEFAULT_LABELS, COMPACT_LANDSCAPE_LABELS]) {
+        const ids = build(flag, labels).map((o) => o.id);
+        expect(ids).toContain("angledZone");
+        expect(ids.indexOf("angledZone")).toBe(ids.indexOf("eraser") - 1);
+        expect(build(flag, labels).find((o) => o.id === "angledZone")?.label).toBe("Angled Zone");
+      }
     }
   });
 });

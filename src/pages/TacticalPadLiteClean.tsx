@@ -10,6 +10,7 @@ import {
   type TacticalPlayerKitSnapshot,
   type TacticalPadLiteSurface,
   type PracticeAreaSelection,
+  type AngledZoneEditState,
   type TacticalItem,
   type WhiteboardTokenColor,
   type ShapeLinksState,
@@ -17,6 +18,7 @@ import {
   sanitizeInitials,
   sanitizeName,
 } from "../engine/pixi/createTacticalPadLiteSurface";
+import type { AngledZoneFillStyle } from "../features/quickboard/drawing/tacticalDrawingTypes";
 import {
   PlayerKitEditor,
   type PlayerKitEditorTab,
@@ -32,7 +34,10 @@ import {
   type DrawColorPanelOption,
   type DrawToolPanelStyles,
 } from "../components/draw-tools/DrawToolPanel";
-import { WHITEBOARD_PEN_COLOR_CHOICES } from "../components/draw-tools/drawColorPalette";
+import {
+  TACTICAL_SLATE_PEN_COLOR_CHOICES,
+  WHITEBOARD_PEN_COLOR_CHOICES,
+} from "../components/draw-tools/drawColorPalette";
 import {
   mergeTacticalSlateTeamRoster,
   TACTICAL_SLATE_FULL_TEAM_NUMBERS,
@@ -206,6 +211,7 @@ type WhiteboardToolControl =
   | "freePen"
   | "rectangleZone"
   | "circleZone"
+  | "angledZone"
   | "eraser";
 type WhiteboardToolAction = WhiteboardToolControl;
 
@@ -227,6 +233,7 @@ const COMPACT_LANDSCAPE_DRAW_TOOL_LABELS: TacticalDrawToolLabels = {
   freePen: "Free Pen",
   rectangleZone: "Rect Zone",
   circleZone: "Circle Zone",
+  angledZone: "Angled Zone",
   eraser: "Eraser",
 };
 const DEFAULT_DRAW_TOOL_LABELS: TacticalDrawToolLabels = {
@@ -239,6 +246,7 @@ const DEFAULT_DRAW_TOOL_LABELS: TacticalDrawToolLabels = {
   freePen: "Free Pen",
   rectangleZone: "Rect Zone",
   circleZone: "Circle Zone",
+  angledZone: "Angled Zone",
   eraser: "Eraser",
 };
 export const PRACTICE_AREA_DRAW_TOOL_LABEL = "Practice Area";
@@ -252,9 +260,9 @@ export function recordPhaseCapturesWatermark(phase: RecordPhase): boolean {
 export function recordPhaseSuspendsPracticeAreas(phase: RecordPhase): boolean {
   return phase === "countdown" || phase === "recording";
 }
-// Order the Draw tool grid has always rendered in: Move, then Label
-// (inserted second, see buildTacticalDrawToolOptions below), then the nine
-// drawing tools in this exact sequence.
+// Order the Draw tool grid renders in: Move, then Label (inserted second,
+// see buildTacticalDrawToolOptions below), then the drawing tools in this
+// exact sequence. Angled Zone sits beside the other zones, before Eraser.
 const TACTICAL_DRAW_TOOL_ORDER: readonly Exclude<WhiteboardToolControl, "move">[] = [
   "line",
   "arrow",
@@ -264,8 +272,144 @@ const TACTICAL_DRAW_TOOL_ORDER: readonly Exclude<WhiteboardToolControl, "move">[
   "freePen",
   "rectangleZone",
   "circleZone",
+  "angledZone",
   "eraser",
 ];
+
+/**
+ * Where a contextual editing bar (Practice Area, Angled Zone) sits: the
+ * screen corner diagonally away from the shape being edited, so it stays
+ * clear of the corner handles being dragged.
+ *  - vertically: whichever of top/bottom has more room beside the shape
+ *    (bottom — the Shape Links position — when equal or no bounds);
+ *  - horizontally (landscape only; in portrait the bar spans the width):
+ *    the half of the screen the shape's centre is not in.
+ */
+export function resolveContextualBarPlacement(params: {
+  bounds: { left: number; top: number; right: number; bottom: number } | null;
+  viewportWidth: number;
+  viewportHeight: number;
+  isPortrait: boolean;
+}): { atTop: boolean; horizontal: "default" | "right" | "left" } {
+  const { bounds, viewportWidth, viewportHeight, isPortrait } = params;
+  const atTop = bounds != null && viewportHeight - bounds.bottom < bounds.top;
+  const horizontal =
+    bounds == null || isPortrait ? "default" : (bounds.left + bounds.right) / 2 < viewportWidth / 2 ? "right" : "left";
+  return { atTop, horizontal };
+}
+
+type ScreenPoint = { x: number; y: number };
+
+/**
+ * Where the Angled Zone toolbar sits (viewport CSS px). Candidate spots run
+ * along the screen edges — the preferred corner first (the same diagonal-
+ * corner rule as the Practice Area bar), then the other edge corners, then
+ * stepping inward along each edge — and the first one that keeps clear of
+ * every corner handle's touch target and every on-screen control in
+ * `avoidRects` (the TOOLS, Phases and Actions bubbles) wins. So the toolbar
+ * never covers a handle or those controls, even when the zone fills most of
+ * the pitch; if no spot is fully clear, handles are protected first, then
+ * the controls.
+ */
+export function resolveAngledZoneBarPosition(params: {
+  handles: readonly ScreenPoint[];
+  bounds: { left: number; top: number; right: number; bottom: number } | null;
+  viewportWidth: number;
+  viewportHeight: number;
+  barWidth: number;
+  barHeight: number;
+  isPortrait: boolean;
+  handleClearancePx?: number;
+  avoidRects?: ReadonlyArray<{ left: number; top: number; right: number; bottom: number }>;
+}): { left: number; top: number } {
+  const { handles, viewportWidth, viewportHeight, barWidth, barHeight, isPortrait } = params;
+  const clearance = params.handleClearancePx ?? ANGLED_ZONE_BAR_HANDLE_CLEARANCE_PX;
+  const avoidRects = params.avoidRects ?? [];
+  const avoidGap = 4;
+  const preferred = resolveContextualBarPlacement({ bounds: params.bounds, viewportWidth, viewportHeight, isPortrait });
+  const edge = 12;
+  // The same insets the contextual bars already respect: left-rail controls
+  // in landscape, the bottom-centre Actions bubble in portrait.
+  const leftX = isPortrait ? edge : 60;
+  const rightX = viewportWidth - edge - barWidth;
+  const centreX = (viewportWidth - barWidth) / 2;
+  const topY = edge;
+  const bottomY = viewportHeight - (isPortrait ? 64 : edge) - barHeight;
+  // Landscape keeps to the side columns first; the centre is a last resort
+  // (it may cover the zone's middle, never a handle or a control).
+  const xs = isPortrait
+    ? [centreX, leftX, rightX]
+    : preferred.horizontal === "left"
+      ? [leftX, rightX, centreX]
+      : [rightX, leftX, centreX];
+  const [firstY, lastY] = preferred.atTop ? [topY, bottomY] : [bottomY, topY];
+  const ys = [firstY, lastY];
+  const step = 8;
+  const span = Math.abs(lastY - firstY);
+  for (let offset = step; offset < span; offset += step) {
+    ys.push(firstY + Math.sign(lastY - firstY) * offset, lastY - Math.sign(lastY - firstY) * offset);
+  }
+  const clamp = (value: number, max: number) => Math.max(0, Math.min(value, Math.max(0, max)));
+  const coveredHandles = (left: number, top: number) =>
+    handles.filter((handle) => {
+      const nearestX = Math.max(left, Math.min(handle.x, left + barWidth));
+      const nearestY = Math.max(top, Math.min(handle.y, top + barHeight));
+      return Math.hypot(handle.x - nearestX, handle.y - nearestY) < clearance;
+    }).length;
+  const blockedControls = (left: number, top: number) =>
+    avoidRects.filter(
+      (rect) =>
+        left < rect.right + avoidGap &&
+        left + barWidth > rect.left - avoidGap &&
+        top < rect.bottom + avoidGap &&
+        top + barHeight > rect.top - avoidGap,
+    ).length;
+  // Handles outrank controls: a spot covering a handle is always worse.
+  let best: { left: number; top: number; score: number } | null = null;
+  for (const y of ys) {
+    for (const x of xs) {
+      const left = clamp(x, viewportWidth - barWidth);
+      const top = clamp(y, viewportHeight - barHeight);
+      const score = coveredHandles(left, top) * 100 + blockedControls(left, top);
+      if (score === 0) return { left, top };
+      if (!best || score < best.score) best = { left, top, score };
+    }
+  }
+  return best ? { left: best.left, top: best.top } : { left: clamp(xs[0]!, viewportWidth - barWidth), top: clamp(firstY, viewportHeight - barHeight) };
+}
+
+/** Half the 46px corner-handle touch target: the toolbar keeps at least this far from a handle centre. */
+export const ANGLED_ZONE_BAR_HANDLE_CLEARANCE_PX = 23;
+
+/**
+ * On-screen boxes of the floating TOOLS / Phases / Actions bubbles and the
+ * View (Top-Down / Goal View) toggle — empty outside the browser.
+ */
+function readFloatingBubbleRects(): Array<{ left: number; top: number; right: number; bottom: number }> {
+  if (typeof document === "undefined") return [];
+  return Array.from(document.querySelectorAll<HTMLElement>('.floating-bubble, button[aria-label^="Goal View:"]'))
+    .map((element) => element.getBoundingClientRect())
+    .filter((rect) => rect.width > 0 && rect.height > 0)
+    .map((rect) => ({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }));
+}
+
+const CONTEXTUAL_BAR_HORIZONTAL_STYLES: Record<"default" | "right" | "left", CSSProperties> = {
+  default: {},
+  right: { left: "auto", right: "max(12px, calc(env(safe-area-inset-right, 0px) + 10px))", transform: "none" },
+  left: { left: "max(60px, calc(env(safe-area-inset-left, 0px) + 58px))", right: "auto", transform: "none" },
+};
+// Angled Zone bar buttons keep a 44px phone touch target.
+const ANGLED_ZONE_BAR_BUTTON_SIZE: CSSProperties = { height: "44px", minWidth: "72px" };
+const ANGLED_ZONE_FILL_CHOICES: ReadonlyArray<{ value: AngledZoneFillStyle; label: string }> = [
+  { value: "normal", label: "Normal" },
+  { value: "hatched", label: "Hatched" },
+];
+// Same selected ring as the Practice Area colour swatches.
+const ANGLED_ZONE_FILL_ACTIVE_STYLE: CSSProperties = {
+  boxShadow: "0 0 0 2px rgba(125, 211, 252, 0.9)",
+  border: "1px solid rgba(125, 211, 252, 0.75)",
+};
+const CONTEXTUAL_BAR_TOP_STYLE: CSSProperties = { top: "max(12px, calc(env(safe-area-inset-top, 0px) + 10px))", bottom: "auto" };
 
 /**
  * Builds the ordered Draw-tab tool list (Move, Label, then the nine drawing
@@ -317,15 +461,15 @@ export function buildTacticalDrawToolOptions(params: {
 
 /**
  * Builds the Draw-tab colour swatch list for the shared DrawToolPanel —
- * pure reshape of WHITEBOARD_PEN_COLOR_CHOICES (the one existing colour
- * palette both Whiteboard mode and Tactical mode already share) into the
- * panel's generic shape. Does not duplicate the palette itself.
+ * pure reshape of TACTICAL_SLATE_PEN_COLOR_CHOICES (the shared five-colour
+ * palette, unchanged, plus Green) into the panel's generic shape. Does not
+ * duplicate the palette itself.
  */
 export function buildTacticalDrawColorOptions(params: {
   activeColor: number;
   onSelectColor: (color: number) => void;
 }): DrawColorPanelOption[] {
-  return WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => ({
+  return TACTICAL_SLATE_PEN_COLOR_CHOICES.map((choice) => ({
     label: choice.label,
     value: choice.value,
     css: choice.css,
@@ -1597,10 +1741,13 @@ const COACH_HUB_TOOL_BUTTON_ACTIVE_STYLE: CSSProperties = {
   color: "#f7fcff",
 };
 
+// One row for the whole Draw palette (six colours incl. Green).
 const COACH_HUB_COLOR_GRID_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+  gridTemplateColumns: `repeat(${TACTICAL_SLATE_PEN_COLOR_CHOICES.length}, minmax(0, 1fr))`,
   gap: "2px",
+  // Room for the 2px selected ring at the row's ends (the panel clips its content).
+  padding: "3px",
 };
 
 const COACH_HUB_COLOR_BUTTON_STYLE: CSSProperties = {
@@ -1761,15 +1908,17 @@ const MOBILE_PORTRAIT_TOOL_BUTTON_ACTIVE_STYLE: CSSProperties = {
   color: "#f7fcff",
 };
 
+// Six colours in one row down to a 320px phone: a tighter gap keeps every
+// button at least 44px wide and 44px tall, with a ~30px visible swatch.
 const MOBILE_PORTRAIT_COLOR_GRID_STYLE: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-  gap: "8px",
+  gridTemplateColumns: `repeat(${TACTICAL_SLATE_PEN_COLOR_CHOICES.length}, minmax(0, 1fr))`,
+  gap: "4px",
 };
 
 const MOBILE_PORTRAIT_COLOR_BUTTON_STYLE: CSSProperties = {
   width: "100%",
-  height: "40px",
+  height: "44px",
   borderRadius: "999px",
   border: "1px solid rgba(147, 173, 196, 0.28)",
   background: "rgba(15, 25, 36, 0.58)",
@@ -1781,8 +1930,8 @@ const MOBILE_PORTRAIT_COLOR_BUTTON_STYLE: CSSProperties = {
 };
 
 const MOBILE_PORTRAIT_COLOR_SWATCH_STYLE: CSSProperties = {
-  width: "18px",
-  height: "18px",
+  width: "28px",
+  height: "28px",
   borderRadius: "999px",
   border: "1px solid rgba(255, 255, 255, 0.44)",
 };
@@ -2169,6 +2318,22 @@ const PRACTICE_AREA_SWATCH_BUTTON_STYLE: CSSProperties = {
   justifyContent: "center",
   cursor: "pointer",
   padding: 0,
+};
+
+// The six Practice Area colours (Slate palette incl. Green) in one even row
+// under the "Colour" caption, so they never wrap on a 320px phone. With the
+// bar's 8px side padding every cell stays at least 44×44px down to 320px,
+// and the 2px selected ring sits inside the grid's padding.
+const PRACTICE_AREA_SWATCH_GRID_STYLE: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: `repeat(${TACTICAL_SLATE_PEN_COLOR_CHOICES.length}, minmax(0, 1fr))`,
+  gap: "2px",
+  padding: "2px",
+};
+
+const PRACTICE_AREA_SWATCH_CELL_STYLE: CSSProperties = {
+  width: "100%",
+  height: "44px",
 };
 
 const PRACTICE_AREA_SWATCH_ACTIVE_STYLE: CSSProperties = {
@@ -2588,6 +2753,17 @@ export default function TacticalPadLiteClean({
   const [surfaceSubmenuOpen, setSurfaceSubmenuOpen] = useState(false);
   // Training Practice Area currently selected on the board (null when none).
   const [practiceAreaSelection, setPracticeAreaSelection] = useState<PracticeAreaSelection | null>(null);
+  // Angled Zone being edited (corner handles shown); null when none.
+  const [angledZoneEdit, setAngledZoneEdit] = useState<AngledZoneEditState | null>(null);
+  // Measured toolbar size (an estimate until first shown), for handle-clear placement.
+  const [angledZoneBarSize, setAngledZoneBarSize] = useState({ width: 200, height: 134 });
+  const measureAngledZoneBar = (element: HTMLDivElement | null) => {
+    if (!element) return;
+    const { offsetWidth: width, offsetHeight: height } = element;
+    if (width > 0 && height > 0 && (width !== angledZoneBarSize.width || height !== angledZoneBarSize.height)) {
+      setAngledZoneBarSize({ width, height });
+    }
+  };
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [movementModePillSelection, setMovementModePillSelection] = useState<MovementModePillOption>("move");
@@ -2619,6 +2795,7 @@ export default function TacticalPadLiteClean({
     onBeforeCountdown: () => {
       // Clear any Practice Area selection before the countdown, so no recorded frame shows handles.
       surfaceRef.current?.setPracticeAreaEditingSuspended(true);
+      surfaceRef.current?.setAngledZoneEditingSuspended(true);
       setQuickShareOpen(false);
     },
     onComplete: () => setQuickShareOpen(true),
@@ -2717,6 +2894,12 @@ export default function TacticalPadLiteClean({
   useEffect(() => {
     surfaceRef.current?.setPracticeAreaEditingSuspended(practiceAreasSuspended);
   }, [practiceAreasSuspended]);
+  // Angled Zone handles are authoring UI too: suspended with Practice Areas
+  // and also while Goal View presents the board.
+  const angledZonesSuspended = practiceAreasSuspended || goalViewActive;
+  useEffect(() => {
+    surfaceRef.current?.setAngledZoneEditingSuspended(angledZonesSuspended);
+  }, [angledZonesSuspended]);
   // PR-2: Portrait is a genuine editable orientation. The old single
   // `shouldBlockPortraitInput` flag conflated two concerns, so it is split into two
   // narrow flags:
@@ -3114,6 +3297,10 @@ export default function TacticalPadLiteClean({
       onPracticeAreaSelectionChange: (selection) => {
         if (disposed) return;
         setPracticeAreaSelection(selection);
+      },
+      onAngledZoneEditChange: (state) => {
+        if (disposed) return;
+        setAngledZoneEdit(state);
       },
       onPlayerPresentationChange: (presentation) => {
         if (disposed) return;
@@ -4050,6 +4237,9 @@ export default function TacticalPadLiteClean({
       setPendingRecoveredBoardDraft(null);
       return;
     }
+    // A recovered board opens on Move, matching the Draw panel: the draw tool
+    // saved with the board (still kept in its data) is not re-activated.
+    applyTacticalTool("move");
     const recoveredAnnotations = draft.textAnnotations ?? [];
     setItems(extractItemsFromBoardState(draft));
     setPhaseCount(Array.isArray(draft.phases) ? draft.phases.length : 0);
@@ -4149,6 +4339,9 @@ export default function TacticalPadLiteClean({
       showQuickBoardNotice("Load failed");
       return;
     }
+    // A reopened board opens on Move, matching the Draw panel: the draw tool
+    // saved with the board (still kept in its data) is not re-activated.
+    applyTacticalTool("move");
     const loadedAnnotations = saved.boardState.textAnnotations ?? [];
     setItems(extractItemsFromBoardState(saved.boardState));
     setPhaseCount(Array.isArray(saved.boardState.phases) ? saved.boardState.phases.length : 0);
@@ -4802,25 +4995,47 @@ export default function TacticalPadLiteClean({
   //    (bottom — the Shape Links position — when equal or no bounds);
   //  - horizontally (landscape only; in portrait the bar spans the width):
   //    the half of the screen the area's centre is not in.
-  const practiceAreaBounds = practiceAreaSelection?.screenBounds ?? null;
   const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 0;
   const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 0;
-  const isPracticeAreaBarAtTop =
-    practiceAreaBounds != null && viewportHeight - practiceAreaBounds.bottom < practiceAreaBounds.top;
-  const practiceAreaBarHorizontal: CSSProperties =
-    practiceAreaBounds == null || isPortrait
-      ? {}
-      : (practiceAreaBounds.left + practiceAreaBounds.right) / 2 < viewportWidth / 2
-        ? { left: "auto", right: "max(12px, calc(env(safe-area-inset-right, 0px) + 10px))", transform: "none" }
-        : { left: "max(60px, calc(env(safe-area-inset-left, 0px) + 58px))", right: "auto", transform: "none" };
+  const practiceAreaBarPlacement = resolveContextualBarPlacement({
+    bounds: practiceAreaSelection?.screenBounds ?? null,
+    viewportWidth,
+    viewportHeight,
+    isPortrait,
+  });
   const practiceAreaBarStyle: CSSProperties = {
     ...shapeLinksPanelStyle,
-    // A fixed width (the Shape Links maximum) keeps the five swatches on one
+    // A fixed width (the Shape Links maximum) keeps the six swatches on one
     // row instead of shrink-wrapping into a tall stack on phones.
     width: "min(calc(100vw - 24px), 320px)",
     boxSizing: "border-box",
-    ...(isPracticeAreaBarAtTop ? { top: "max(12px, calc(env(safe-area-inset-top, 0px) + 10px))", bottom: "auto" } : {}),
-    ...practiceAreaBarHorizontal,
+    // Slightly narrower side padding keeps each of the six swatches ≥44px wide at 320px.
+    padding: "9px 8px",
+    ...(practiceAreaBarPlacement.atTop ? CONTEXTUAL_BAR_TOP_STYLE : {}),
+    ...CONTEXTUAL_BAR_HORIZONTAL_STYLES[practiceAreaBarPlacement.horizontal],
+  };
+  // The Angled Zone toolbar is placed clear of every corner handle (measured size).
+  const angledZoneBarPosition = resolveAngledZoneBarPosition({
+    handles: angledZoneEdit?.handleScreenPoints ?? [],
+    bounds: angledZoneEdit?.screenBounds ?? null,
+    viewportWidth,
+    viewportHeight,
+    barWidth: angledZoneBarSize.width,
+    barHeight: angledZoneBarSize.height,
+    isPortrait,
+    // Keep TOOLS, Phases and the Actions bubble reachable (fixed-position, so
+    // their on-screen boxes are read directly while the toolbar is open).
+    avoidRects: angledZoneEdit?.editorOpen ? readFloatingBubbleRects() : [],
+  });
+  const angledZoneBarStyle: CSSProperties = {
+    ...shapeLinksPanelStyle,
+    width: "auto",
+    boxSizing: "border-box",
+    left: `${angledZoneBarPosition.left}px`,
+    top: `${angledZoneBarPosition.top}px`,
+    right: "auto",
+    bottom: "auto",
+    transform: "none",
   };
   const movementModeControlsWrapStyle = isPortrait
     ? PORTRAIT_MOVEMENT_MODE_CONTROLS_WRAP_STYLE
@@ -4958,10 +5173,12 @@ export default function TacticalPadLiteClean({
     : isMobilePortraitTools
     ? MOBILE_PORTRAIT_COLOR_GRID_STYLE
     : COACH_HUB_COLOR_GRID_STYLE;
+  // Compact landscape colour buttons keep a 44px touch target (each is already
+  // ≥44px wide in the six-colour row); the panel scrolls, as it already does.
   const coachHubColorButtonStyle = isCompactLandscapeTools
     ? {
         ...COACH_HUB_COLOR_BUTTON_STYLE,
-        height: isTightCompactLandscapeTools ? "18px" : "20px",
+        height: "44px",
         border: "1px solid rgba(129, 157, 144, 0.22)",
         background: "rgba(10, 18, 22, 0.7)",
       }
@@ -4971,8 +5188,8 @@ export default function TacticalPadLiteClean({
   const coachHubColorSwatchStyle = isCompactLandscapeTools
     ? {
         ...COACH_HUB_COLOR_SWATCH_STYLE,
-        width: isTightCompactLandscapeTools ? "10px" : "11px",
-        height: isTightCompactLandscapeTools ? "10px" : "11px",
+        width: "18px",
+        height: "18px",
       }
     : isMobilePortraitTools
     ? MOBILE_PORTRAIT_COLOR_SWATCH_STYLE
@@ -5421,15 +5638,20 @@ export default function TacticalPadLiteClean({
             <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>
               {practiceAreaSelection.isDeadZone ? "Dead Zone" : "Practice Area"}
             </div>
-            <div style={PRACTICE_AREA_BAR_ROW_STYLE}>
-              <span style={PRACTICE_AREA_BAR_CAPTION_STYLE}>Colour</span>
-              {WHITEBOARD_PEN_COLOR_CHOICES.map((choice) => (
+            <span style={PRACTICE_AREA_BAR_CAPTION_STYLE}>Colour</span>
+            <div style={PRACTICE_AREA_SWATCH_GRID_STYLE}>
+              {TACTICAL_SLATE_PEN_COLOR_CHOICES.map((choice) => (
                 <button
                   key={`practice-area-color-${choice.label.toLowerCase()}`}
                   type="button"
                   aria-label={`Outline colour ${choice.label}`}
                   aria-pressed={practiceAreaSelection.color === choice.value}
-                  style={practiceAreaSelection.color === choice.value ? PRACTICE_AREA_SWATCH_ACTIVE_STYLE : PRACTICE_AREA_SWATCH_BUTTON_STYLE}
+                  style={{
+                    ...(practiceAreaSelection.color === choice.value
+                      ? PRACTICE_AREA_SWATCH_ACTIVE_STYLE
+                      : PRACTICE_AREA_SWATCH_BUTTON_STYLE),
+                    ...PRACTICE_AREA_SWATCH_CELL_STYLE,
+                  }}
                   onClick={() => surfaceRef.current?.setPracticeAreaColor(choice.value)}
                 >
                   <span style={{ ...WHITEBOARD_TOKEN_COLOR_SWATCH_STYLE, background: choice.css }} />
@@ -5466,6 +5688,60 @@ export default function TacticalPadLiteClean({
                 className="control-button"
                 style={CONTROL_BUTTON_STYLE}
                 onClick={() => surfaceRef.current?.clearPracticeAreaSelection()}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {!isWhiteboardMode &&
+        angledZoneEdit?.editorOpen &&
+        !isPlaybackLocked &&
+        !controlsOpen &&
+        !toolsOpen &&
+        !actionsOpen ? (
+          <div ref={measureAngledZoneBar} style={angledZoneBarStyle} role="group" aria-label="Angled Zone">
+            <div style={SHAPE_LOCK_PANEL_TITLE_STYLE}>Angled Zone</div>
+            <div style={PRACTICE_AREA_BAR_ROW_STYLE} role="group" aria-label="Fill">
+              <span style={PRACTICE_AREA_BAR_CAPTION_STYLE}>Fill</span>
+              {ANGLED_ZONE_FILL_CHOICES.map((choice) => {
+                const isActive = angledZoneEdit.fillStyle === choice.value;
+                return (
+                  <button
+                    key={`angled-zone-fill-${choice.value}`}
+                    type="button"
+                    className="control-button"
+                    aria-pressed={isActive}
+                    style={{
+                      ...SHAPE_LOCK_BUTTON_STYLE,
+                      ...ANGLED_ZONE_BAR_BUTTON_SIZE,
+                      ...(isActive ? ANGLED_ZONE_FILL_ACTIVE_STYLE : {}),
+                    }}
+                    onClick={() => surfaceRef.current?.setAngledZoneFillStyle(choice.value)}
+                  >
+                    {choice.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={SHAPE_LOCK_PANEL_ACTIONS_STYLE}>
+              <button
+                type="button"
+                className="control-button"
+                style={{
+                  ...(angledZoneEdit.canUndo ? SHAPE_LOCK_BUTTON_STYLE : DISABLED_CONTROL_BUTTON_STYLE),
+                  ...ANGLED_ZONE_BAR_BUTTON_SIZE,
+                }}
+                disabled={!angledZoneEdit.canUndo}
+                onClick={() => surfaceRef.current?.undoAngledZoneEdit()}
+              >
+                Undo
+              </button>
+              <button
+                type="button"
+                className="control-button"
+                style={{ ...CONTROL_BUTTON_STYLE, ...ANGLED_ZONE_BAR_BUTTON_SIZE }}
+                onClick={() => surfaceRef.current?.finishAngledZoneEdit()}
               >
                 Done
               </button>

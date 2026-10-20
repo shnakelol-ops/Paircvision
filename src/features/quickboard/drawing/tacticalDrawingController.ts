@@ -5,12 +5,15 @@ import {
   DEFAULT_TACTICAL_DRAWING_WIDTH,
 } from "./tacticalLineStyles";
 import {
+  type TacticalZoneRenderStyle,
   findClosestDrawingIdAtWorldPoint,
+  isAngledZoneDrawing,
   isPracticeAreaDrawing,
   normalizeDraftPoints,
   renderTacticalDrawing,
 } from "./tacticalLineRenderer";
 import { createTacticalDrawingStore } from "./tacticalDrawingStore";
+import { isValidAngledZone } from "./angledZoneGeometry";
 import type {
   TacticalDrawingKind,
   TacticalDrawingRecord,
@@ -18,6 +21,7 @@ import type {
   TacticalDrawingTool,
 } from "./tacticalDrawingTypes";
 import type { WorldViewportMapper } from "../../../engine/pixi/createWorldViewport";
+import type { NormalizedPoint } from "../../../engine/shared/normalization";
 
 type Mapper = Pick<WorldViewportMapper, "normalizedToWorld" | "worldToNormalized">;
 
@@ -38,6 +42,12 @@ type TacticalDrawingControllerOptions = {
   practiceAreasLayer?: Container;
   /** Stroke-first eraser hit rule (Tactical Slate). Omitted: the original rule (Tactical Sequence). */
   strokeFirstEraser?: boolean;
+  /**
+   * Refined Rect / Circle / Angled Zone look (Tactical Slate), read on every
+   * render so screen-pixel border widths follow the board scale. Omitted
+   * (Tactical Sequence): zones render exactly as before.
+   */
+  zoneStyleProvider?: () => TacticalZoneRenderStyle;
 };
 
 type ActiveDraft = {
@@ -57,7 +67,8 @@ export type TacticalDrawingController = {
   getColor: () => number;
   handlePointerDown: (worldPoint: { x: number; y: number }, pointerId: number | null) => void;
   handlePointerMove: (worldPoint: { x: number; y: number }, pointerId: number | null) => void;
-  handlePointerUp: (worldPoint: { x: number; y: number } | null, pointerId: number | null) => void;
+  /** Returns the drawing the gesture committed, or null if none was added. */
+  handlePointerUp: (worldPoint: { x: number; y: number } | null, pointerId: number | null) => TacticalDrawingRecord | null;
   cancelActiveDraft: () => void;
   hasActiveDraft: () => boolean;
   exportSnapshots: () => TacticalDrawingSnapshot[];
@@ -81,6 +92,12 @@ export type TacticalDrawingController = {
    * own selection, which Undo treats as "delete the selected drawing".
    */
   setHighlightedDrawingId: (id: string | null) => void;
+  /** Angled Zone editing: records one completed corner drag / move as an undo step. */
+  recordGeometryEdit: (id: string, beforePoints: readonly NormalizedPoint[]) => void;
+  /** Angled Zone editing: true if `id` has a geometry edit Undo can revert. */
+  hasGeometryEdit: (id: string) => boolean;
+  /** Angled Zone editing: reverts `id`'s latest geometry edit (never deletes it). */
+  undoGeometryEdit: (id: string) => boolean;
 };
 
 export function createTacticalDrawingController(options: TacticalDrawingControllerOptions): TacticalDrawingController {
@@ -92,6 +109,10 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
   let activePointerId: number | null = null;
   let highlightedDrawingId: string | null = null;
   const practiceAreasLayer = options.practiceAreasLayer ?? null;
+
+  function zoneRenderOptions(): { zoneStyle?: TacticalZoneRenderStyle } {
+    return options.zoneStyleProvider ? { zoneStyle: options.zoneStyleProvider() } : {};
+  }
 
   function clearPreview(): void {
     options.previewGraphic.clear();
@@ -117,7 +138,14 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
         practiceAreasLayer.addChild(graphic);
         continue;
       }
-      renderTacticalDrawing(graphic, drawing, options.mapperProvider(), drawing.id === selectedId);
+      const isEditedAngledZone = isAngledZoneDrawing(drawing) && drawing.id === highlightedDrawingId;
+      renderTacticalDrawing(
+        graphic,
+        drawing,
+        options.mapperProvider(),
+        drawing.id === selectedId || isEditedAngledZone,
+        zoneRenderOptions(),
+      );
       options.drawingsLayer.addChild(graphic);
     }
   }
@@ -138,6 +166,7 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
     };
     renderTacticalDrawing(options.previewGraphic, draftShape, options.mapperProvider(), false, {
       practiceArea: practiceAreasLayer != null,
+      ...zoneRenderOptions(),
     });
   }
 
@@ -218,14 +247,18 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
       renderPreviewDraft();
     },
     handlePointerUp: (worldPoint, pointerId) => {
-      if (!activeDraft) return;
-      if (activePointerId != null && pointerId != null && pointerId !== activePointerId) return;
+      if (!activeDraft) return null;
+      if (activePointerId != null && pointerId != null && pointerId !== activePointerId) return null;
       if (worldPoint) {
         appendPointToDraft(worldPoint);
       }
       const normalizedPoints = normalizeDraftPoints(activeDraft.kind, activeDraft.points);
-      if (normalizedPoints.length >= 2) {
-        store.append({
+      // An Angled Zone too small (or degenerate) to edit is not created.
+      const isCommittable =
+        activeDraft.kind === "angled-zone" ? isValidAngledZone(normalizedPoints) : normalizedPoints.length >= 2;
+      let committed: TacticalDrawingRecord | null = null;
+      if (isCommittable) {
+        committed = {
           id: activeDraft.id,
           kind: activeDraft.kind,
           points: normalizedPoints,
@@ -233,10 +266,12 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
           width: activeDraft.width,
           opacity: activeDraft.opacity,
           createdAt: activeDraft.createdAt,
-        });
+        };
+        store.append(committed);
       }
       resetActiveDraft();
       renderCommittedDrawings();
+      return committed;
     },
     cancelActiveDraft: () => {
       resetActiveDraft();
@@ -254,7 +289,9 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
       // An eraser deletion is itself undoable: if the most recent drawing-store
       // action was a delete (e.g. the eraser tool), restore it before falling
       // back to the normal "undo last committed stroke" behaviour.
-      if (!store.restoreLastErased() && !store.deleteSelected()) {
+      // A recorded Angled Zone geometry edit newer than anything else is
+      // reverted first, so Undo never deletes a zone the coach just reshaped.
+      if (!store.undoGeometryEditIfNewest() && !store.restoreLastErased() && !store.deleteSelected()) {
         store.popLast();
       }
       renderCommittedDrawings();
@@ -295,6 +332,13 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
       if (highlightedDrawingId === id) return;
       highlightedDrawingId = id;
       renderCommittedDrawings();
+    },
+    recordGeometryEdit: (id, beforePoints) => store.recordGeometryEdit(id, beforePoints),
+    hasGeometryEdit: (id) => store.hasGeometryEdit(id),
+    undoGeometryEdit: (id) => {
+      const undone = store.undoGeometryEdit(id);
+      if (undone) renderCommittedDrawings();
+      return undone;
     },
   };
 }
