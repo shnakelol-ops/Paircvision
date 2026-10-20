@@ -12,6 +12,11 @@ import {
   getWavyStyle,
 } from "./tacticalLineStyles";
 import type { TacticalDrawingKind, TacticalDrawingRecord } from "./tacticalDrawingTypes";
+import {
+  angledZoneCornersFromDrag,
+  distanceToAngledZoneOutline,
+  isPointInAngledZone,
+} from "./angledZoneGeometry";
 
 type WorldPoint = { x: number; y: number };
 type ZoneBounds = {
@@ -398,6 +403,38 @@ function drawCircleZone(
     .stroke(borderStyle);
 }
 
+// Angled Zone: the same fill / border / selected-halo conventions as a
+// rectangle zone, drawn as the record's four-corner polygon.
+function drawAngledZone(
+  graphics: Graphics,
+  drawing: TacticalDrawingRecord,
+  corners: readonly WorldPoint[],
+  isSelected: boolean,
+): void {
+  const strokeStyle = createTacticalStrokeStyle(drawing);
+  const borderStyle = {
+    ...strokeStyle,
+    width: Math.max(0.45, strokeStyle.width * 1.12),
+    alpha: Math.max(0.48, Math.min(1, drawing.opacity * 0.92)),
+  };
+  const fillAlpha = Math.max(0.12, Math.min(0.42, drawing.opacity * 0.3));
+  const flat = corners.flatMap((corner) => [corner.x, corner.y]);
+
+  if (isSelected) {
+    graphics.poly(flat, true).stroke({
+      ...borderStyle,
+      width: borderStyle.width + 0.8,
+      alpha: Math.min(0.92, borderStyle.alpha * 0.46),
+    });
+  }
+
+  graphics.poly(flat, true).fill({ color: drawing.color, alpha: fillAlpha }).stroke(borderStyle);
+}
+
+export function isAngledZoneDrawing(drawing: Pick<TacticalDrawingRecord, "kind">): boolean {
+  return drawing.kind === "angled-zone";
+}
+
 // ---------------------------------------------------------------------------
 // Training Practice Areas (rectangle zones on Training Grass only).
 //
@@ -584,6 +621,11 @@ export function normalizeDraftPoints(kind: TacticalDrawingKind, points: readonly
   if (kind === "wavy-line") {
     return smoothed.length >= 2 ? smoothed : cleaned;
   }
+  if (kind === "angled-zone") {
+    // Drawn like a rectangle zone (drag corner to corner), stored as four corners.
+    if (smoothed.length < 2) return [];
+    return angledZoneCornersFromDrag(smoothed[0]!, smoothed[smoothed.length - 1]!);
+  }
   if (kind === "curved-arrow") {
     const sourcePoints = smoothed.length >= 2 ? smoothed : cleaned;
     if (sourcePoints.length < 2) return sourcePoints;
@@ -606,6 +648,11 @@ export function renderTacticalDrawing(
   isSelected = false,
   renderOptions: TacticalDrawingRenderOptions = {},
 ): void {
+  if (drawing.kind === "angled-zone") {
+    if (drawing.points.length < 3) return;
+    drawAngledZone(graphics, drawing, toWorldPoints(drawing.points, mapper), isSelected);
+    return;
+  }
   if (drawing.kind === "rectangle-zone" || drawing.kind === "circle-zone") {
     const zonePath = toWorldPoints(drawing.points, mapper);
     const zoneBounds = getZoneBounds(zonePath);
@@ -757,6 +804,23 @@ function findStrokeFirstDrawingId(
   let fallbackId: string | null = null;
   for (let index = drawings.length - 1; index >= 0; index -= 1) {
     const drawing = drawings[index]!;
+    if (drawing.kind === "angled-zone") {
+      const corners = toWorldPoints(drawing.points, mapper);
+      if (corners.length < 3) continue;
+      const hitRadius = Math.max(2.4, getDeleteHitRadius(drawing.width));
+      const outlineDistance = distanceToAngledZoneOutline(corners, worldPoint);
+      if (outlineDistance <= hitRadius) {
+        if (outlineDistance < bestDistance) {
+          bestDistance = outlineDistance;
+          bestId = drawing.id;
+        }
+        continue;
+      }
+      if (fallbackId == null && isPointInAngledZone(corners, worldPoint)) {
+        fallbackId = drawing.id;
+      }
+      continue;
+    }
     if (drawing.kind === "rectangle-zone" || drawing.kind === "circle-zone") {
       const zoneBounds = getZoneBounds(toWorldPoints(drawing.points, mapper));
       if (!zoneBounds) continue;
@@ -798,7 +862,11 @@ export function findClosestDrawingIdAtWorldPoint(
   for (let index = drawings.length - 1; index >= 0; index -= 1) {
     const drawing = drawings[index]!;
     let candidateDistance = Number.POSITIVE_INFINITY;
-    if (drawing.kind === "rectangle-zone" || drawing.kind === "circle-zone") {
+    if (drawing.kind === "angled-zone") {
+      const corners = toWorldPoints(drawing.points, mapper);
+      if (corners.length < 3) continue;
+      candidateDistance = isPointInAngledZone(corners, worldPoint) ? 0 : distanceToAngledZoneOutline(corners, worldPoint);
+    } else if (drawing.kind === "rectangle-zone" || drawing.kind === "circle-zone") {
       const zoneBounds = getZoneBounds(toWorldPoints(drawing.points, mapper));
       if (!zoneBounds) continue;
       candidateDistance =
@@ -810,7 +878,7 @@ export function findClosestDrawingIdAtWorldPoint(
       candidateDistance = distanceFromPointToPath(worldPoint, path);
     }
     const hitRadius =
-      drawing.kind === "rectangle-zone" || drawing.kind === "circle-zone"
+      drawing.kind === "rectangle-zone" || drawing.kind === "circle-zone" || drawing.kind === "angled-zone"
         ? Math.max(2.4, getDeleteHitRadius(drawing.width))
         : getDeleteHitRadius(drawing.width);
     if (candidateDistance <= hitRadius && candidateDistance < bestDistance) {

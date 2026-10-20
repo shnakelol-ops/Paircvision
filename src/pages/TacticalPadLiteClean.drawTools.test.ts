@@ -25,6 +25,7 @@ const COMPACT_LANDSCAPE_LABELS = {
   freePen: "Free Pen",
   rectangleZone: "Rect Zone",
   circleZone: "Circle Zone",
+  angledZone: "Angled Zone",
   eraser: "Eraser",
 } as const;
 
@@ -38,11 +39,12 @@ const DEFAULT_LABELS = {
   freePen: "Free Pen",
   rectangleZone: "Rect Zone",
   circleZone: "Circle Zone",
+  angledZone: "Angled Zone",
   eraser: "Eraser",
 } as const;
 
 describe("buildTacticalDrawToolOptions — tool set and order", () => {
-  it("exposes exactly the eleven current Slate Draw-tab entries, in the existing button order", () => {
+  it("exposes exactly the twelve current Slate Draw-tab entries, in the existing button order", () => {
     const options = buildTacticalDrawToolOptions({
       labels: DEFAULT_LABELS,
       tacticalTool: "move",
@@ -61,6 +63,7 @@ describe("buildTacticalDrawToolOptions — tool set and order", () => {
       "freePen",
       "rectangleZone",
       "circleZone",
+      "angledZone",
       "eraser",
     ]);
   });
@@ -85,6 +88,7 @@ describe("buildTacticalDrawToolOptions — tool set and order", () => {
       freePen: "Free Pen",
       rectangleZone: "Rect Zone",
       circleZone: "Circle Zone",
+      angledZone: "Angled Zone",
       eraser: "Eraser",
     });
   });
@@ -135,7 +139,7 @@ describe("buildTacticalDrawToolOptions — active-state parity with the original
   });
 
   it("every regular drawing tool is active exactly when tacticalTool equals its own id", () => {
-    for (const id of ["line", "arrow", "curved", "dashed", "wavy", "freePen", "rectangleZone", "circleZone", "eraser"] as const) {
+    for (const id of ["line", "arrow", "curved", "dashed", "wavy", "freePen", "rectangleZone", "circleZone", "angledZone", "eraser"] as const) {
       const options = buildTacticalDrawToolOptions({
         labels: DEFAULT_LABELS, tacticalTool: id, textToolActive: false,
         onSelectTool: vi.fn(), onSelectLabel: vi.fn(),
@@ -240,8 +244,19 @@ describe("buildTacticalDrawToolOptions — Training Practice Areas", () => {
     for (const flag of [false, undefined]) {
       const options = build(flag);
       expect(options.map((o) => o.label)).toEqual([
-        "Move", "Label", "Plain", "Straight", "Curved", "Dashed", "Wavy", "Free Pen", "Rect Zone", "Circle Zone", "Eraser",
+        "Move", "Label", "Plain", "Straight", "Curved", "Dashed", "Wavy", "Free Pen", "Rect Zone", "Circle Zone", "Angled Zone", "Eraser",
       ]);
+    }
+  });
+
+  it("Angled Zone is offered on every surface — Training included — right after the other zones", () => {
+    for (const flag of [true, false, undefined]) {
+      for (const labels of [DEFAULT_LABELS, COMPACT_LANDSCAPE_LABELS]) {
+        const ids = build(flag, labels).map((o) => o.id);
+        expect(ids).toContain("angledZone");
+        expect(ids.indexOf("angledZone")).toBe(ids.indexOf("eraser") - 1);
+        expect(build(flag, labels).find((o) => o.id === "angledZone")?.label).toBe("Angled Zone");
+      }
     }
   });
 });

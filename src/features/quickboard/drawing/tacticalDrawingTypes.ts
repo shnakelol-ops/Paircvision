@@ -1,4 +1,5 @@
 import type { WorldViewportMapper } from "../../../engine/pixi/createWorldViewport";
+import { ANGLED_ZONE_CORNER_COUNT, isAngledZoneSelfIntersecting, angledZoneArea } from "./angledZoneGeometry";
 import {
   clampNormalized,
   type NormalizedPoint,
@@ -12,7 +13,8 @@ export type TacticalDrawingKind =
   | "wavy-line"
   | "free-pen"
   | "rectangle-zone"
-  | "circle-zone";
+  | "circle-zone"
+  | "angled-zone";
 
 export type TacticalDrawingTool = "move" | TacticalDrawingKind | "eraser";
 
@@ -26,6 +28,7 @@ export type WhiteboardDrawTool =
   | "freePen"
   | "rectangleZone"
   | "circleZone"
+  | "angledZone"
   | "pen"
   | "eraser";
 
@@ -56,6 +59,7 @@ const LEGACY_TO_KIND: Record<Exclude<WhiteboardDrawTool, "move" | "eraser">, Tac
   freePen: "free-pen",
   rectangleZone: "rectangle-zone",
   circleZone: "circle-zone",
+  angledZone: "angled-zone",
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -77,7 +81,8 @@ export function sanitizeDrawingTool(value: unknown): TacticalDrawingTool | null 
     value === "wavy-line" ||
     value === "free-pen" ||
     value === "rectangle-zone" ||
-    value === "circle-zone"
+    value === "circle-zone" ||
+    value === "angled-zone"
   ) {
     return value;
   }
@@ -90,7 +95,8 @@ export function sanitizeDrawingTool(value: unknown): TacticalDrawingTool | null 
     value === "pen" ||
     value === "freePen" ||
     value === "rectangleZone" ||
-    value === "circleZone"
+    value === "circleZone" ||
+    value === "angledZone"
   ) {
     return LEGACY_TO_KIND[value];
   }
@@ -116,6 +122,8 @@ export function drawingToolToWhiteboardTool(tool: TacticalDrawingTool): Whiteboa
       return "rectangleZone";
     case "circle-zone":
       return "circleZone";
+    case "angled-zone":
+      return "angledZone";
     default:
       return "line";
   }
@@ -137,7 +145,8 @@ function sanitizeDrawingKind(value: unknown): TacticalDrawingKind | null {
     value === "wavy-line" ||
     value === "free-pen" ||
     value === "rectangle-zone" ||
-    value === "circle-zone"
+    value === "circle-zone" ||
+    value === "angled-zone"
   ) {
     return value;
   }
@@ -150,7 +159,8 @@ function sanitizeDrawingKind(value: unknown): TacticalDrawingKind | null {
     value === "pen" ||
     value === "freePen" ||
     value === "rectangleZone" ||
-    value === "circleZone"
+    value === "circleZone" ||
+    value === "angledZone"
   ) {
     return LEGACY_TO_KIND[value];
   }
@@ -215,6 +225,13 @@ function sanitizeDrawingIdentity(value: unknown): string | null {
 
 function normalizeKindPoints(kind: TacticalDrawingKind, points: NormalizedPoint[]): NormalizedPoint[] {
   if (kind === "wavy-line" || kind === "free-pen") return points;
+  if (kind === "angled-zone") {
+    // Exactly four corners forming a simple (non-self-intersecting) polygon
+    // with some area; anything else is dropped rather than guessed at.
+    if (points.length !== ANGLED_ZONE_CORNER_COUNT) return [];
+    if (isAngledZoneSelfIntersecting(points) || angledZoneArea(points) <= 0) return [];
+    return points;
+  }
   if (kind === "curved-arrow") {
     if (points.length >= 3) {
       return [points[0]!, points[1]!, points[points.length - 1]!];
