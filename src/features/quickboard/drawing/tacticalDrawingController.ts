@@ -5,6 +5,7 @@ import {
   DEFAULT_TACTICAL_DRAWING_WIDTH,
 } from "./tacticalLineStyles";
 import {
+  type TacticalZoneRenderStyle,
   findClosestDrawingIdAtWorldPoint,
   isAngledZoneDrawing,
   isPracticeAreaDrawing,
@@ -41,6 +42,12 @@ type TacticalDrawingControllerOptions = {
   practiceAreasLayer?: Container;
   /** Stroke-first eraser hit rule (Tactical Slate). Omitted: the original rule (Tactical Sequence). */
   strokeFirstEraser?: boolean;
+  /**
+   * Refined Rect / Circle / Angled Zone look (Tactical Slate), read on every
+   * render so screen-pixel border widths follow the board scale. Omitted
+   * (Tactical Sequence): zones render exactly as before.
+   */
+  zoneStyleProvider?: () => TacticalZoneRenderStyle;
 };
 
 type ActiveDraft = {
@@ -103,6 +110,10 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
   let highlightedDrawingId: string | null = null;
   const practiceAreasLayer = options.practiceAreasLayer ?? null;
 
+  function zoneRenderOptions(): { zoneStyle?: TacticalZoneRenderStyle } {
+    return options.zoneStyleProvider ? { zoneStyle: options.zoneStyleProvider() } : {};
+  }
+
   function clearPreview(): void {
     options.previewGraphic.clear();
   }
@@ -128,7 +139,13 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
         continue;
       }
       const isEditedAngledZone = isAngledZoneDrawing(drawing) && drawing.id === highlightedDrawingId;
-      renderTacticalDrawing(graphic, drawing, options.mapperProvider(), drawing.id === selectedId || isEditedAngledZone);
+      renderTacticalDrawing(
+        graphic,
+        drawing,
+        options.mapperProvider(),
+        drawing.id === selectedId || isEditedAngledZone,
+        zoneRenderOptions(),
+      );
       options.drawingsLayer.addChild(graphic);
     }
   }
@@ -149,6 +166,7 @@ export function createTacticalDrawingController(options: TacticalDrawingControll
     };
     renderTacticalDrawing(options.previewGraphic, draftShape, options.mapperProvider(), false, {
       practiceArea: practiceAreasLayer != null,
+      ...zoneRenderOptions(),
     });
   }
 

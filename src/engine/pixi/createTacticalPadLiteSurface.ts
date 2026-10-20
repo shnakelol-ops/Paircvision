@@ -1877,6 +1877,8 @@ export async function createTacticalPadLiteSurface(
     // Stroke-first eraser: a stroke inside a zone is erasable; the zone's
     // interior is only a fallback target (Tactical Slate, every surface).
     strokeFirstEraser: true,
+    // Refined zone look (Rect / Circle / Angled Zone): ~2px border at any board size.
+    zoneStyleProvider: () => ({ worldUnitsPerScreenPx: 1 / Math.max(0.0001, mapper.transform.scale) }),
     ...(practiceAreasLayer ? { practiceAreasLayer } : {}),
   });
 

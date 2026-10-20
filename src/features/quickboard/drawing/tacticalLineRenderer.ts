@@ -346,89 +346,107 @@ function getZoneBounds(path: readonly WorldPoint[]): ZoneBounds | null {
   };
 }
 
-function drawRectangleZone(
-  graphics: Graphics,
+type ZoneStrokeStyle = ReturnType<typeof createTacticalStrokeStyle>;
+type ZonePaint = {
+  fill: { color: number; alpha: number };
+  border: ZoneStrokeStyle;
+  /** Outer selection halo, drawn beneath the zone; null when not selected. */
+  halo: ZoneStrokeStyle | null;
+};
+
+/**
+ * Tactical Slate zone look (Rect, Circle and Angled Zone alike): a light fill
+ * and a thin, softer border so player tokens and pitch markings stay legible,
+ * with stronger feedback only while the zone is selected for editing. Widths
+ * are screen pixels, converted per render so they hold at any board size.
+ * Colours come from the record; only how strongly they are painted changes.
+ */
+export const TACTICAL_ZONE_STYLE = {
+  fillAlpha: 0.14,
+  borderAlpha: 0.55,
+  borderScreenPx: 2,
+  selectedFillAlpha: 0.18,
+  selectedBorderAlpha: 0.9,
+  selectedBorderScreenPx: 2.5,
+  haloAlpha: 0.32,
+  haloExtraScreenPx: 4,
+} as const;
+
+/**
+ * Opt-in refined zone rendering (Tactical Slate only). `worldUnitsPerScreenPx`
+ * converts the screen-pixel border widths into world units at the current
+ * board scale. Omitted (Tactical Sequence and every other host), zones render
+ * exactly as before.
+ */
+export type TacticalZoneRenderStyle = { worldUnitsPerScreenPx: number };
+
+function resolveZonePaint(
   drawing: TacticalDrawingRecord,
-  bounds: ZoneBounds,
   isSelected: boolean,
-): void {
+  refined: TacticalZoneRenderStyle | undefined,
+): ZonePaint {
   const strokeStyle = createTacticalStrokeStyle(drawing);
-  const borderStyle = {
+  if (refined && Number.isFinite(refined.worldUnitsPerScreenPx) && refined.worldUnitsPerScreenPx > 0) {
+    const px = refined.worldUnitsPerScreenPx;
+    const style = TACTICAL_ZONE_STYLE;
+    const border = {
+      ...strokeStyle,
+      width: (isSelected ? style.selectedBorderScreenPx : style.borderScreenPx) * px,
+      alpha: isSelected ? style.selectedBorderAlpha : style.borderAlpha,
+    };
+    return {
+      fill: { color: drawing.color, alpha: isSelected ? style.selectedFillAlpha : style.fillAlpha },
+      border,
+      halo: isSelected ? { ...border, width: border.width + style.haloExtraScreenPx * px, alpha: style.haloAlpha } : null,
+    };
+  }
+  // Original zone look, unchanged.
+  const border = {
     ...strokeStyle,
     width: Math.max(0.45, strokeStyle.width * 1.12),
     alpha: Math.max(0.48, Math.min(1, drawing.opacity * 0.92)),
   };
-  const fillAlpha = Math.max(0.12, Math.min(0.42, drawing.opacity * 0.3));
+  return {
+    fill: { color: drawing.color, alpha: Math.max(0.12, Math.min(0.42, drawing.opacity * 0.3)) },
+    border,
+    halo: isSelected ? { ...border, width: border.width + 0.8, alpha: Math.min(0.92, border.alpha * 0.46) } : null,
+  };
+}
+
+function drawRectangleZone(graphics: Graphics, bounds: ZoneBounds, paint: ZonePaint): void {
   const cornerRadius = Math.min(2.6, Math.max(0.28, Math.min(bounds.width, bounds.height) * 0.08));
 
-  if (isSelected) {
-    graphics.roundRect(bounds.left, bounds.top, bounds.width, bounds.height, cornerRadius).stroke({
-      ...borderStyle,
-      width: borderStyle.width + 0.8,
-      alpha: Math.min(0.92, borderStyle.alpha * 0.46),
-    });
+  if (paint.halo) {
+    graphics.roundRect(bounds.left, bounds.top, bounds.width, bounds.height, cornerRadius).stroke(paint.halo);
   }
 
   graphics
     .roundRect(bounds.left, bounds.top, bounds.width, bounds.height, cornerRadius)
-    .fill({ color: drawing.color, alpha: fillAlpha })
-    .stroke(borderStyle);
+    .fill(paint.fill)
+    .stroke(paint.border);
 }
 
-function drawCircleZone(
-  graphics: Graphics,
-  drawing: TacticalDrawingRecord,
-  bounds: ZoneBounds,
-  isSelected: boolean,
-): void {
-  const strokeStyle = createTacticalStrokeStyle(drawing);
-  const borderStyle = {
-    ...strokeStyle,
-    width: Math.max(0.45, strokeStyle.width * 1.12),
-    alpha: Math.max(0.48, Math.min(1, drawing.opacity * 0.92)),
-  };
-  const fillAlpha = Math.max(0.12, Math.min(0.42, drawing.opacity * 0.3));
-
-  if (isSelected) {
-    graphics.ellipse(bounds.centerX, bounds.centerY, bounds.radiusX, bounds.radiusY).stroke({
-      ...borderStyle,
-      width: borderStyle.width + 0.8,
-      alpha: Math.min(0.92, borderStyle.alpha * 0.46),
-    });
+function drawCircleZone(graphics: Graphics, bounds: ZoneBounds, paint: ZonePaint): void {
+  if (paint.halo) {
+    graphics.ellipse(bounds.centerX, bounds.centerY, bounds.radiusX, bounds.radiusY).stroke(paint.halo);
   }
 
   graphics
     .ellipse(bounds.centerX, bounds.centerY, bounds.radiusX, bounds.radiusY)
-    .fill({ color: drawing.color, alpha: fillAlpha })
-    .stroke(borderStyle);
+    .fill(paint.fill)
+    .stroke(paint.border);
 }
 
 // Angled Zone: the same fill / border / selected-halo conventions as a
 // rectangle zone, drawn as the record's four-corner polygon.
-function drawAngledZone(
-  graphics: Graphics,
-  drawing: TacticalDrawingRecord,
-  corners: readonly WorldPoint[],
-  isSelected: boolean,
-): void {
-  const strokeStyle = createTacticalStrokeStyle(drawing);
-  const borderStyle = {
-    ...strokeStyle,
-    width: Math.max(0.45, strokeStyle.width * 1.12),
-    alpha: Math.max(0.48, Math.min(1, drawing.opacity * 0.92)),
-  };
-  const fillAlpha = Math.max(0.12, Math.min(0.42, drawing.opacity * 0.3));
+function drawAngledZone(graphics: Graphics, corners: readonly WorldPoint[], paint: ZonePaint): void {
   const flat = corners.flatMap((corner) => [corner.x, corner.y]);
 
-  if (isSelected) {
-    graphics.poly(flat, true).stroke({
-      ...borderStyle,
-      width: borderStyle.width + 0.8,
-      alpha: Math.min(0.92, borderStyle.alpha * 0.46),
-    });
+  if (paint.halo) {
+    graphics.poly(flat, true).stroke(paint.halo);
   }
 
-  graphics.poly(flat, true).fill({ color: drawing.color, alpha: fillAlpha }).stroke(borderStyle);
+  graphics.poly(flat, true).fill(paint.fill).stroke(paint.border);
 }
 
 export function isAngledZoneDrawing(drawing: Pick<TacticalDrawingRecord, "kind">): boolean {
@@ -454,6 +472,8 @@ const PRACTICE_AREA_HALO = { color: 0xffffff, alpha: 0.42, extraWidth: 1.4 } as 
 export type TacticalDrawingRenderOptions = {
   /** Render rectangle zones as Training Practice Areas (outline only / Dead Zone). */
   practiceArea?: boolean;
+  /** Refined Rect / Circle / Angled Zone look (Tactical Slate). Practice Areas are unaffected. */
+  zoneStyle?: TacticalZoneRenderStyle;
 };
 
 export function isPracticeAreaDrawing(drawing: Pick<TacticalDrawingRecord, "kind">): boolean {
@@ -650,7 +670,7 @@ export function renderTacticalDrawing(
 ): void {
   if (drawing.kind === "angled-zone") {
     if (drawing.points.length < 3) return;
-    drawAngledZone(graphics, drawing, toWorldPoints(drawing.points, mapper), isSelected);
+    drawAngledZone(graphics, toWorldPoints(drawing.points, mapper), resolveZonePaint(drawing, isSelected, renderOptions.zoneStyle));
     return;
   }
   if (drawing.kind === "rectangle-zone" || drawing.kind === "circle-zone") {
@@ -661,11 +681,12 @@ export function renderTacticalDrawing(
       drawPracticeAreaRectangle(graphics, drawing, zoneBounds, isSelected);
       return;
     }
+    const paint = resolveZonePaint(drawing, isSelected, renderOptions.zoneStyle);
     if (drawing.kind === "rectangle-zone") {
-      drawRectangleZone(graphics, drawing, zoneBounds, isSelected);
+      drawRectangleZone(graphics, zoneBounds, paint);
       return;
     }
-    drawCircleZone(graphics, drawing, zoneBounds, isSelected);
+    drawCircleZone(graphics, zoneBounds, paint);
     return;
   }
 
