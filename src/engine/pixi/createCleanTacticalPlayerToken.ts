@@ -1,6 +1,12 @@
 import { Container, Graphics, Text } from "pixi.js";
 
-import type { MicroAthleteKitPattern } from "./createMicroAthleteToken";
+import type { VisionV3KitPattern } from "./createVisionV3PlayerToken";
+import {
+  KIT_GRADIENT_FACE_LIGHTEN,
+  createKitPatternLayer,
+  kitPatternHasBands,
+  resolveKitPatternPaint,
+} from "./kitPatternAccent";
 
 export type CleanTacticalPlayerTokenStyle = {
   primaryColor: number;
@@ -50,55 +56,6 @@ function safeColor(value: number | undefined, fallback: number): number {
   return Number.isFinite(value) ? Number(value) : fallback;
 }
 
-function lineHalfExtentAtOffset(radius: number, offset: number): number {
-  const inside = radius * radius - offset * offset;
-  if (inside <= 0) return 0;
-  return Math.sqrt(inside);
-}
-
-function drawKitPattern(
-  target: Graphics,
-  pattern: MicroAthleteKitPattern,
-  accentColor: number,
-  radius: number,
-  variant: CleanTokenVariant,
-): void {
-  if (pattern === "plain") return;
-
-  const patternRadius = radius * 0.7;
-  const thickStroke = Math.max(radius * 0.16, 0.54);
-  const crispStroke = Math.max(radius * 0.13, 0.46);
-  const strokeWidth = variant === "phosphor" ? crispStroke : thickStroke;
-  const strokeAlpha = variant === "phosphor" ? 0.96 : 0.9;
-
-  if (pattern === "hoops") {
-    for (const yOffset of [-0.28, 0, 0.28]) {
-      const y = patternRadius * yOffset;
-      const halfSpan = lineHalfExtentAtOffset(patternRadius, y);
-      target.moveTo(-halfSpan, y).lineTo(halfSpan, y);
-    }
-  } else if (pattern === "stripes") {
-    for (const xOffset of [-0.34, 0, 0.34]) {
-      const x = patternRadius * xOffset;
-      const halfSpan = lineHalfExtentAtOffset(patternRadius, x);
-      target.moveTo(x, -halfSpan).lineTo(x, halfSpan);
-    }
-  } else if (pattern === "slash") {
-    const angle = -Math.PI * 0.22;
-    const dx = Math.cos(angle) * patternRadius;
-    const dy = Math.sin(angle) * patternRadius;
-    target.moveTo(-dx, -dy).lineTo(dx, dy);
-  }
-
-  target.stroke({
-    color: accentColor,
-    width: strokeWidth,
-    alpha: strokeAlpha,
-    cap: "round",
-    join: "round",
-  });
-}
-
 export function createCleanTacticalPlayerToken({
   label,
   style,
@@ -106,20 +63,33 @@ export function createCleanTacticalPlayerToken({
   kitPattern = "plain",
   kitPatternColor,
   variant,
+  artScale = 1,
 }: {
   label: string;
   style?: Partial<CleanTacticalPlayerTokenStyle>;
   radius: number;
-  kitPattern?: MicroAthleteKitPattern;
+  /** All six Vision V3 patterns, drawn with Vision V3's band geometry (see kitPatternAccent.ts). */
+  kitPattern?: VisionV3KitPattern;
   kitPatternColor?: number;
   variant: CleanTokenVariant;
+  /**
+   * Supersampling factor (see VISION_V3_SLATE_ART_SCALE). 1 (the default)
+   * draws straight into the token exactly as before; the Tactical Slate's
+   * Pixi and Phosphor renderers pass VISION_V3_SLATE_ART_SCALE.
+   */
+  artScale?: number;
 }): { token: Container; shadow: Graphics } {
   const primaryColor = safeColor(style?.primaryColor, FALLBACK_PRIMARY_COLOR);
+  const hasAuthoredPatternColor = Number.isFinite(kitPatternColor);
   const accentColor = safeColor(kitPatternColor ?? style?.secondaryColor, FALLBACK_ACCENT_COLOR);
   const outlineColor = safeColor(style?.outlineColor, FALLBACK_OUTLINE_COLOR);
   const labelColor = safeColor(style?.textColor, readableTextColor(primaryColor));
   const labelStrokeColor = labelColor === 0xffffff ? 0x020617 : 0xffffff;
-  const safeRadius = Math.max(2.8, radius);
+  // Every board-unit length below (radii and the absolute floors/offsets
+  // alike) is multiplied by `unit`, and the art container scales it back by
+  // 1/unit — so the drawn geometry in token space is unchanged.
+  const unit = Number.isFinite(artScale) && artScale > 1 ? artScale : 1;
+  const safeRadius = Math.max(2.8, radius) * unit;
   const ringColor =
     variant === "phosphor" ? mixColor(accentColor, 0xffffff, 0.2) : mixColor(primaryColor, accentColor, 0.26);
   const innerRadius = safeRadius * 0.82;
@@ -128,13 +98,27 @@ export function createCleanTacticalPlayerToken({
   token.eventMode = "static";
   token.cursor = "grab";
 
+  let art: Container = token;
+  if (unit > 1) {
+    art = new Container();
+    art.scale.set(1 / unit);
+    token.addChild(art);
+  }
+
   const shadow = new Graphics();
   shadow
-    .ellipse(0.18, safeRadius * 0.96, safeRadius * 0.84, safeRadius * 0.24)
+    .ellipse(0.18 * unit, safeRadius * 0.96, safeRadius * 0.84, safeRadius * 0.24)
     .fill({ color: 0x020617, alpha: 0.24 });
-  token.addChild(shadow);
+  art.addChild(shadow);
 
+  // Face fill, then Vision V3's kit bands clipped to the face (innerRadius),
+  // then this style's own rim/outline strokes on top. Plain draws no bands,
+  // so `rings` is the disc itself and the token is drawn exactly as before.
+  const hasBands = kitPatternHasBands(kitPattern);
   const disc = new Graphics();
+  const rings = hasBands ? new Graphics() : disc;
+  const lighten = (face: number) =>
+    kitPattern === "gradient" ? mixColor(face, 0xffffff, KIT_GRADIENT_FACE_LIGHTEN) : face;
   if (variant === "phosphor") {
     const innerFill = mixColor(primaryColor, 0xffffff, relativeLuminance(primaryColor) > 0.64 ? 0 : 0.08);
     disc
@@ -143,13 +127,12 @@ export function createCleanTacticalPlayerToken({
       .circle(0, 0, safeRadius)
       .fill({ color: mixColor(primaryColor, 0x000000, 0.05), alpha: 0.98 })
       .circle(0, 0, innerRadius)
-      .fill({ color: innerFill, alpha: 0.98 });
-    drawKitPattern(disc, kitPattern, accentColor, innerRadius, variant);
-    disc
+      .fill({ color: lighten(innerFill), alpha: 0.98 });
+    rings
       .circle(0, 0, safeRadius)
-      .stroke({ color: ringColor, width: Math.max(safeRadius * 0.13, 0.44), alpha: 0.95, alignment: 0.5 })
+      .stroke({ color: ringColor, width: Math.max(safeRadius * 0.13, 0.44 * unit), alpha: 0.95, alignment: 0.5 })
       .circle(0, 0, innerRadius)
-      .stroke({ color: mixColor(outlineColor, ringColor, 0.34), width: Math.max(safeRadius * 0.05, 0.2), alpha: 0.78 });
+      .stroke({ color: mixColor(outlineColor, ringColor, 0.34), width: Math.max(safeRadius * 0.05, 0.2 * unit), alpha: 0.78 });
   } else {
     disc
       .circle(0, 0, safeRadius)
@@ -157,15 +140,20 @@ export function createCleanTacticalPlayerToken({
       .circle(0, 0, safeRadius * 0.9)
       .fill({ color: ringColor })
       .circle(0, 0, innerRadius)
-      .fill({ color: primaryColor });
-    drawKitPattern(disc, kitPattern, accentColor, innerRadius, variant);
-    disc
+      .fill({ color: lighten(primaryColor) });
+    rings
       .circle(0, 0, safeRadius)
-      .stroke({ color: mixColor(outlineColor, 0x000000, 0.24), width: Math.max(safeRadius * 0.09, 0.34), alpha: 0.88 })
+      .stroke({ color: mixColor(outlineColor, 0x000000, 0.24), width: Math.max(safeRadius * 0.09, 0.34 * unit), alpha: 0.88 })
       .circle(0, 0, innerRadius)
-      .stroke({ color: mixColor(primaryColor, 0x000000, 0.38), width: Math.max(safeRadius * 0.045, 0.18), alpha: 0.54 });
+      .stroke({ color: mixColor(primaryColor, 0x000000, 0.38), width: Math.max(safeRadius * 0.045, 0.18 * unit), alpha: 0.54 });
   }
-  token.addChild(disc);
+  art.addChild(disc);
+  const paint = resolveKitPatternPaint(accentColor, hasAuthoredPatternColor, mixColor);
+  const patternLayer = createKitPatternLayer(kitPattern, paint.color, paint.alpha, innerRadius);
+  if (patternLayer) {
+    art.addChild(patternLayer);
+    art.addChild(rings);
+  }
 
   const safeLabel = label.trim().slice(0, 3) || "?";
   const isNumericLabel = /^\d+$/.test(safeLabel);
@@ -180,7 +168,7 @@ export function createCleanTacticalPlayerToken({
       fontWeight: "900",
       fontFamily: "\"Barlow Condensed\", \"Inter Tight\", Inter, system-ui, sans-serif",
       align: "center",
-      letterSpacing: isNumericLabel && safeLabel.length >= 2 ? 0 : 0.08,
+      letterSpacing: isNumericLabel && safeLabel.length >= 2 ? 0 : 0.08 * unit,
       stroke: {
         color: labelStrokeColor,
         width: isNumericLabel ? safeRadius * 0.2 : safeRadius * 0.15,
@@ -192,7 +180,7 @@ export function createCleanTacticalPlayerToken({
   labelText.position.y = isNumericLabel ? safeRadius * 0.02 : 0;
   labelText.resolution = textResolution;
   labelText.roundPixels = true;
-  token.addChild(labelText);
+  art.addChild(labelText);
 
   return { token, shadow };
 }
