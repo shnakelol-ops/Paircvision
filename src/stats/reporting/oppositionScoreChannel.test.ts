@@ -9,7 +9,9 @@
 // Correct reading: channels run across the WIDTH (ny), seen from the
 // opposition's own attacking direction for that half. In canonical
 // RIGHT-attacking space high ny is the attacker's Right (zone-maps.ts).
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { rmSync, statSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   deriveOppositionScoreChannel,
   exportReviewPdf,
@@ -185,6 +187,21 @@ describe("exportReviewPdf → Opposition Facts — stored 1H direction reaches t
   // Every canvas the full export draws, so the Opposition Facts page can be
   // picked out by its own header text.
   const canvases: CaptureCanvas[] = [];
+
+  // exportReviewPdf saves "<home>_v_<away>_review.pdf" into the working
+  // directory (jsPDF writes synchronously under Node). Remove that one file
+  // after each test, pass or fail — but only when this test created or
+  // rewrote it, so an unrelated file of the same name is never touched.
+  const EXPORTED_PDF = resolve("Ballyboden_v_Na_Fianna_review.pdf");
+  const pdfMtime = () => statSync(EXPORTED_PDF, { throwIfNoEntry: false })?.mtimeMs;
+  let mtimeBefore: number | undefined;
+  beforeEach(() => {
+    mtimeBefore = pdfMtime();
+  });
+  afterEach(() => {
+    const after = pdfMtime();
+    if (after !== undefined && after !== mtimeBefore) rmSync(EXPORTED_PDF, { force: true });
+  });
 
   beforeEach(() => {
     canvases.length = 0;

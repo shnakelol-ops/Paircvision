@@ -6,7 +6,9 @@
 // team total uses Free Kick Analysis' formula. These tests check the ranking
 // and its reconciliation, and that the rendered PDF agrees with the Player
 // Breakdown and Free Kick Analysis pages of the same export.
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { rmSync, statSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   collectPlayerStats,
   exportReviewPdf,
@@ -250,6 +252,21 @@ describe("Player Contributions page — Frees Conceded by Player block", () => {
 });
 
 describe("Full Match Review PDF export — ranking agrees with Player Breakdown and Free Kick Analysis", () => {
+  // exportReviewPdf saves "<home>_v_<away>_review.pdf" into the working
+  // directory (jsPDF writes synchronously under Node). Remove that one file
+  // after each test, pass or fail — but only when this test created or
+  // rewrote it, so an unrelated file of the same name is never touched.
+  const EXPORTED_PDF = resolve(`${HOME}_v_${AWAY.replace(/\s+/g, "_")}_review.pdf`);
+  const pdfMtime = () => statSync(EXPORTED_PDF, { throwIfNoEntry: false })?.mtimeMs;
+  let mtimeBefore: number | undefined;
+  beforeEach(() => {
+    mtimeBefore = pdfMtime();
+  });
+  afterEach(() => {
+    const after = pdfMtime();
+    if (after !== undefined && after !== mtimeBefore) rmSync(EXPORTED_PDF, { force: true });
+  });
+
   it("one export: same totals on all three pages, no extra page", async () => {
     const input = proTaggerMatchToPdfInput({
       id: "m1", createdAt: 1, homeTeamName: HOME, awayTeamName: AWAY, venue: "", sport: "gaelic",
