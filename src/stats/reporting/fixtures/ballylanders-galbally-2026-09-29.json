@@ -1,0 +1,1938 @@
+{
+ "_provenance": "Real Pro Tagger event log, Ballylanders v Galbally (friendly, 29 Sep 2026), exported via Pro Tagger Export JSON. Anonymised: player names, player/squad UUIDs and capture timestamps removed; player ids replaced with home-<number>/away-<number>; event ids renumbered. Kinds, tags, coordinates, clocks, periods, segments, sides, restart owners and shirt numbers are unchanged.",
+ "homeTeamName": "Ballylanders",
+ "awayTeamName": "Galbally",
+ "sport": "gaelic",
+ "halfDurationMinutes": 35,
+ "scorelineSnapshot": "Ballylanders 2-08 (14) v Galbally 0-10 (10)",
+ "firstHalfAttackingDirection": "right",
+ "homeSquad": {
+  "teamSide": "HOME",
+  "players": [
+   {
+    "id": "home-1",
+    "number": 1
+   },
+   {
+    "id": "home-2",
+    "number": 2
+   },
+   {
+    "id": "home-3",
+    "number": 3
+   },
+   {
+    "id": "home-4",
+    "number": 4
+   },
+   {
+    "id": "home-5",
+    "number": 5
+   },
+   {
+    "id": "home-6",
+    "number": 6
+   },
+   {
+    "id": "home-7",
+    "number": 7
+   },
+   {
+    "id": "home-8",
+    "number": 8
+   },
+   {
+    "id": "home-9",
+    "number": 9
+   },
+   {
+    "id": "home-10",
+    "number": 10
+   },
+   {
+    "id": "home-11",
+    "number": 11
+   },
+   {
+    "id": "home-12",
+    "number": 12
+   },
+   {
+    "id": "home-13",
+    "number": 13
+   },
+   {
+    "id": "home-14",
+    "number": 14
+   },
+   {
+    "id": "home-15",
+    "number": 15
+   },
+   {
+    "id": "home-16",
+    "number": 16
+   },
+   {
+    "id": "home-17",
+    "number": 17
+   },
+   {
+    "id": "home-18",
+    "number": 18
+   },
+   {
+    "id": "home-19",
+    "number": 19
+   },
+   {
+    "id": "home-20",
+    "number": 20
+   },
+   {
+    "id": "home-21",
+    "number": 21
+   },
+   {
+    "id": "home-22",
+    "number": 22
+   },
+   {
+    "id": "home-23",
+    "number": 23
+   },
+   {
+    "id": "home-24",
+    "number": 24
+   },
+   {
+    "id": "home-25",
+    "number": 25
+   },
+   {
+    "id": "home-26",
+    "number": 26
+   },
+   {
+    "id": "home-27",
+    "number": 27
+   },
+   {
+    "id": "home-28",
+    "number": 28
+   },
+   {
+    "id": "home-29",
+    "number": 29
+   },
+   {
+    "id": "home-30",
+    "number": 30
+   }
+  ]
+ },
+ "awaySquad": {
+  "teamSide": "AWAY",
+  "players": [
+   {
+    "id": "away-1",
+    "number": 1
+   },
+   {
+    "id": "away-2",
+    "number": 2
+   },
+   {
+    "id": "away-3",
+    "number": 3
+   },
+   {
+    "id": "away-4",
+    "number": 4
+   },
+   {
+    "id": "away-5",
+    "number": 5
+   },
+   {
+    "id": "away-6",
+    "number": 6
+   },
+   {
+    "id": "away-7",
+    "number": 7
+   },
+   {
+    "id": "away-8",
+    "number": 8
+   },
+   {
+    "id": "away-9",
+    "number": 9
+   },
+   {
+    "id": "away-10",
+    "number": 10
+   },
+   {
+    "id": "away-11",
+    "number": 11
+   },
+   {
+    "id": "away-12",
+    "number": 12
+   },
+   {
+    "id": "away-13",
+    "number": 13
+   },
+   {
+    "id": "away-14",
+    "number": 14
+   },
+   {
+    "id": "away-15",
+    "number": 15
+   },
+   {
+    "id": "away-16",
+    "number": 16
+   },
+   {
+    "id": "away-17",
+    "number": 17
+   },
+   {
+    "id": "away-18",
+    "number": 18
+   },
+   {
+    "id": "away-19",
+    "number": 19
+   },
+   {
+    "id": "away-20",
+    "number": 20
+   }
+  ]
+ },
+ "events": [
+  {
+   "id": "bvg-000",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.502974805367123,
+   "ny": 0.841694067445209,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 14,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 8,
+   "playerId": "home-8"
+  },
+  {
+   "id": "bvg-001",
+   "kind": "WIDE",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.8887584160302,
+   "ny": 0.3276498931436829,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 37,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 15,
+   "playerId": "home-15"
+  },
+  {
+   "id": "bvg-002",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.5324096112954313,
+   "ny": 0.728464063133114,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 47,
+   "segment": 1,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 8,
+   "playerId": "away-8"
+  },
+  {
+   "id": "bvg-003",
+   "kind": "POINT",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.07397840652015433,
+   "ny": 0.5521058472589493,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 67,
+   "segment": 1,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 14,
+   "playerId": "away-14"
+  },
+  {
+   "id": "bvg-004",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.300062619984233,
+   "ny": 0.364725224078971,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 113,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 6,
+   "playerId": "home-6"
+  },
+  {
+   "id": "bvg-005",
+   "kind": "TURNOVER_LOST",
+   "tags": [
+    "INTERCEPTION"
+   ],
+   "nx": 0.49170191812437725,
+   "ny": 0.5971974392326256,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 122,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 8,
+   "playerId": "away-8"
+  },
+  {
+   "id": "bvg-006",
+   "kind": "TURNOVER_WON",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.4309535186039864,
+   "ny": 0.907828393022684,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 127,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 10,
+   "playerId": "home-10"
+  },
+  {
+   "id": "bvg-007",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.8204947583479785,
+   "ny": 0.8867856486682121,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 137,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 13,
+   "playerId": "home-13"
+  },
+  {
+   "id": "bvg-008",
+   "kind": "TWO_POINTER",
+   "tags": [
+    "FREE"
+   ],
+   "nx": 0.7547362225552781,
+   "ny": 0.7795678616362547,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 151,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 11,
+   "playerId": "home-11"
+  },
+  {
+   "id": "bvg-009",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "BREAK"
+   ],
+   "nx": 0.6219664825183838,
+   "ny": 0.19938932950523366,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 166,
+   "segment": 1,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 7,
+   "playerId": "away-7"
+  },
+  {
+   "id": "bvg-010",
+   "kind": "SIDELINE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.6207139753269898,
+   "ny": 0.03705966720430794,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 176,
+   "segment": 1,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 12,
+   "playerId": "away-12"
+  },
+  {
+   "id": "bvg-011",
+   "kind": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.06458430694118296,
+   "ny": 0.23746675219902344,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 189,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 4,
+   "playerId": "home-4"
+  },
+  {
+   "id": "bvg-012",
+   "kind": "POINT",
+   "tags": [
+    "FREE"
+   ],
+   "nx": 0.060200397387887405,
+   "ny": 0.2534992742757997,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 197,
+   "segment": 1,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 13,
+   "playerId": "away-13"
+  },
+  {
+   "id": "bvg-013",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.2674964654473898,
+   "ny": 0.7334742424081164,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 203,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 6,
+   "playerId": "home-6"
+  },
+  {
+   "id": "bvg-014",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.5555816662533032,
+   "ny": 0.7785658343817927,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 227,
+   "segment": 1,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 8,
+   "playerId": "away-8"
+  },
+  {
+   "id": "bvg-015",
+   "kind": "TURNOVER_WON",
+   "tags": [
+    "KP ERROR"
+   ],
+   "nx": 0.517379041218404,
+   "ny": 0.7374823729273104,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 236,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME"
+  },
+  {
+   "id": "bvg-016",
+   "kind": "WIDE",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.8355252746716394,
+   "ny": 0.6352747759210291,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 271,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 11,
+   "playerId": "home-11"
+  },
+  {
+   "id": "bvg-017",
+   "kind": "KICKOUT_CONCEDED",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.5612180829979929,
+   "ny": 0.3607170720584304,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 327,
+   "segment": 1,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 9,
+   "playerId": "home-9"
+  },
+  {
+   "id": "bvg-018",
+   "kind": "GOAL",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.9626585442104775,
+   "ny": 0.46492876657632876,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 337,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 13,
+   "playerId": "home-13"
+  },
+  {
+   "id": "bvg-019",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.5925317303434421,
+   "ny": 0.6603256507946952,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 362,
+   "segment": 1,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 11,
+   "playerId": "away-11"
+  },
+  {
+   "id": "bvg-020",
+   "kind": "TURNOVER_WON",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.5023485248947428,
+   "ny": 0.7364803456728487,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 370,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 8,
+   "playerId": "home-8"
+  },
+  {
+   "id": "bvg-021",
+   "kind": "TURNOVER_LOST",
+   "tags": [
+    "HP ERROR"
+   ],
+   "nx": 0.4810552576006454,
+   "ny": 0.7114294492978359,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 384,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME"
+  },
+  {
+   "id": "bvg-022",
+   "kind": "WIDE",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.17167684325400087,
+   "ny": 0.7224518566036494,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 400,
+   "segment": 1,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 12,
+   "playerId": "away-12"
+  },
+  {
+   "id": "bvg-023",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "BREAK"
+   ],
+   "nx": 0.42531704810593024,
+   "ny": 0.3426803664646508,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 408,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 9,
+   "playerId": "home-9"
+  },
+  {
+   "id": "bvg-024",
+   "kind": "POINT",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.8480507766125122,
+   "ny": 0.5370752449299019,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 428,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 11,
+   "playerId": "home-11"
+  },
+  {
+   "id": "bvg-025",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.6607953880256636,
+   "ny": 0.7294660903875757,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 440,
+   "segment": 1,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 8,
+   "playerId": "away-8"
+  },
+  {
+   "id": "bvg-026",
+   "kind": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.43596376238302864,
+   "ny": 0.32063563785841,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 449,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 7,
+   "playerId": "home-7"
+  },
+  {
+   "id": "bvg-027",
+   "kind": "YELLOW_CARD",
+   "tags": [
+    "YELLOW"
+   ],
+   "nx": 0.30820415861844386,
+   "ny": 0.18936901395792163,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 455,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 7,
+   "playerId": "home-7"
+  },
+  {
+   "id": "bvg-028",
+   "kind": "TWO_POINTER",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.2862846646053326,
+   "ny": 0.3837638924231727,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 479,
+   "segment": 1,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 8,
+   "playerId": "away-8"
+  },
+  {
+   "id": "bvg-029",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.46164083172368875,
+   "ny": 0.7525129107523182,
+   "half": 1,
+   "period": "1H",
+   "matchClockSeconds": 487,
+   "segment": 1,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 9,
+   "playerId": "home-9"
+  },
+  {
+   "id": "bvg-030",
+   "kind": "SIDELINE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.4290746771868455,
+   "ny": 0.9859871585357712,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 14,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP"
+  },
+  {
+   "id": "bvg-031",
+   "kind": "TURNOVER_WON",
+   "tags": [
+    "KP ERROR"
+   ],
+   "nx": 0.6639267366341985,
+   "ny": 0.2695318823579625,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 36,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 5,
+   "playerId": "home-5"
+  },
+  {
+   "id": "bvg-032",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.32636607730400635,
+   "ny": 0.18736491644630476,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 45,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 12,
+   "playerId": "home-12"
+  },
+  {
+   "id": "bvg-033",
+   "kind": "TURNOVER_LOST",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.10153439790800498,
+   "ny": 0.5140284675678527,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 56,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 3,
+   "playerId": "away-3"
+  },
+  {
+   "id": "bvg-034",
+   "kind": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.8818693845873833,
+   "ny": 0.7134335253081062,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 82,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 4,
+   "playerId": "home-4"
+  },
+  {
+   "id": "bvg-035",
+   "kind": "POINT",
+   "tags": [
+    "FREE"
+   ],
+   "nx": 0.8449194280039773,
+   "ny": 0.6092218522915543,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 89,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 10,
+   "playerId": "away-10"
+  },
+  {
+   "id": "bvg-036",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.5875215403177662,
+   "ny": 0.5060122065294644,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 103,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 9,
+   "playerId": "home-9"
+  },
+  {
+   "id": "bvg-037",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.33137621357631575,
+   "ny": 0.3386723004494965,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 115,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 12,
+   "playerId": "home-12"
+  },
+  {
+   "id": "bvg-038",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.09026145691189275,
+   "ny": 0.8256615023657394,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 123,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 13,
+   "playerId": "home-13"
+  },
+  {
+   "id": "bvg-039",
+   "kind": "POINT",
+   "tags": [
+    "FREE"
+   ],
+   "nx": 0.08525129376290012,
+   "ny": 0.7174416773286469,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 134,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 13,
+   "playerId": "home-13"
+  },
+  {
+   "id": "bvg-040",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "BREAK"
+   ],
+   "nx": 0.46665102174936457,
+   "ny": 0.5130264618147373,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 156,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 9,
+   "playerId": "away-9"
+  },
+  {
+   "id": "bvg-041",
+   "kind": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.4466103154000277,
+   "ny": 0.4669328210852525,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 163,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 9,
+   "playerId": "home-9"
+  },
+  {
+   "id": "bvg-042",
+   "kind": "FORTY_FIVE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.16353530461979007,
+   "ny": 0.3567089200378896,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 192,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 14,
+   "playerId": "home-14"
+  },
+  {
+   "id": "bvg-043",
+   "kind": "TWO_POINTER",
+   "tags": [
+    "45"
+   ],
+   "nx": 0.32072960680595025,
+   "ny": 0.5961953904768171,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 206,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 11,
+   "playerId": "home-11"
+  },
+  {
+   "id": "bvg-044",
+   "kind": "KICKOUT_CONCEDED",
+   "tags": [
+    "FOUL"
+   ],
+   "nx": 0.39462973498622783,
+   "ny": 0.4348676909263135,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 220,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 10,
+   "playerId": "home-10"
+  },
+  {
+   "id": "bvg-045",
+   "kind": "TURNOVER_LOST",
+   "tags": [
+    "HP ERROR"
+   ],
+   "nx": 0.2956787104309375,
+   "ny": 0.2915766109642031,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 239,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 7,
+   "playerId": "away-7"
+  },
+  {
+   "id": "bvg-046",
+   "kind": "TURNOVER_WON",
+   "tags": [
+    "INTERCEPTION"
+   ],
+   "nx": 0.33763896454675213,
+   "ny": 0.8246594321085844,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 254,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 8,
+   "playerId": "home-8"
+  },
+  {
+   "id": "bvg-047",
+   "kind": "TURNOVER_LOST",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.43909505723819714,
+   "ny": 0.6733521126094325,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 260,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 11,
+   "playerId": "away-11"
+  },
+  {
+   "id": "bvg-048",
+   "kind": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.4466103154000277,
+   "ny": 0.5771567221326154,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 266,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 9,
+   "playerId": "home-9"
+  },
+  {
+   "id": "bvg-049",
+   "kind": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.8092218173518662,
+   "ny": 0.5851729831710035,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 275,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 3,
+   "playerId": "home-3"
+  },
+  {
+   "id": "bvg-050",
+   "kind": "POINT",
+   "tags": [
+    "FREE"
+   ],
+   "nx": 0.8186160781909368,
+   "ny": 0.5290590268942068,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 284,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 12,
+   "playerId": "away-12"
+  },
+  {
+   "id": "bvg-051",
+   "kind": "KICKOUT_CONCEDED",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.507984995392799,
+   "ny": 0.4448880494763186,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 296,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 6,
+   "playerId": "away-6"
+  },
+  {
+   "id": "bvg-052",
+   "kind": "POINT",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.9250822534013249,
+   "ny": 0.5470956034799069,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 310,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 14,
+   "playerId": "away-14"
+  },
+  {
+   "id": "bvg-053",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.6413810159020734,
+   "ny": 0.6974009602286366,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 320,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 8,
+   "playerId": "home-8"
+  },
+  {
+   "id": "bvg-054",
+   "kind": "SIDELINE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.4397213377105775,
+   "ny": 0.012008620319869151,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 353,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP"
+  },
+  {
+   "id": "bvg-055",
+   "kind": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.785423481921614,
+   "ny": 0.1051980365400334,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 361,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 2,
+   "playerId": "home-2"
+  },
+  {
+   "id": "bvg-056",
+   "kind": "WIDE",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.9106779637966775,
+   "ny": 0.14628151949586227,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 369,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 15,
+   "playerId": "away-15"
+  },
+  {
+   "id": "bvg-057",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.6488962203105375,
+   "ny": 0.32965390464991345,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 380,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 11,
+   "playerId": "home-11"
+  },
+  {
+   "id": "bvg-058",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.585016525934978,
+   "ny": 0.40280256076737453,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 387,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 11,
+   "playerId": "home-11"
+  },
+  {
+   "id": "bvg-059",
+   "kind": "SHOT",
+   "tags": [
+    "SHORT"
+   ],
+   "nx": 0.3056991442356556,
+   "ny": 0.539079385444212,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 399,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 8,
+   "playerId": "home-8"
+  },
+  {
+   "id": "bvg-060",
+   "kind": "TURNOVER_WON",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.06395805334548589,
+   "ny": 0.5831689286620798,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 406,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 14,
+   "playerId": "home-14"
+  },
+  {
+   "id": "bvg-061",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.04329106652376872,
+   "ny": 0.48997964144999495,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 419,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 14,
+   "playerId": "home-14"
+  },
+  {
+   "id": "bvg-062",
+   "kind": "GOAL",
+   "tags": [
+    "PENALTY"
+   ],
+   "nx": 0.040785971510930795,
+   "ny": 0.4849694406736458,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 440,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 13,
+   "playerId": "home-13"
+  },
+  {
+   "id": "bvg-063",
+   "kind": "KICKOUT_CONCEDED",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.3413965936276674,
+   "ny": 0.19137311146953861,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 450,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 8,
+   "playerId": "home-8"
+  },
+  {
+   "id": "bvg-064",
+   "kind": "TURNOVER_LOST",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.12094879690827838,
+   "ny": 0.42985744714727125,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 464,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 3,
+   "playerId": "away-3"
+  },
+  {
+   "id": "bvg-065",
+   "kind": "TURNOVER_WON",
+   "tags": [
+    "KP ERROR"
+   ],
+   "nx": 0.8298888041735835,
+   "ny": 0.5511037985031407,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 490,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 3,
+   "playerId": "home-3"
+  },
+  {
+   "id": "bvg-066",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.7722718607684602,
+   "ny": 0.4809613316557983,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 494,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 3,
+   "playerId": "home-3"
+  },
+  {
+   "id": "bvg-067",
+   "kind": "TURNOVER_LOST",
+   "tags": [
+    "HP ERROR"
+   ],
+   "nx": 0.48982307670723646,
+   "ny": 0.12223260737261825,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 509,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME"
+  },
+  {
+   "id": "bvg-068",
+   "kind": "POINT",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.9125567514604521,
+   "ny": 0.28255834417269965,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 516,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 15,
+   "playerId": "away-15"
+  },
+  {
+   "id": "bvg-069",
+   "kind": "KICKOUT_CONCEDED",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.6332394772678626,
+   "ny": 0.45891647404147806,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 526,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 9,
+   "playerId": "away-9"
+  },
+  {
+   "id": "bvg-070",
+   "kind": "TWO_POINTER",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.7121496879670831,
+   "ny": 0.386769995687905,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 532,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 11,
+   "playerId": "away-11"
+  },
+  {
+   "id": "bvg-071",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.7829184675388258,
+   "ny": 0.12022859586638773,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 547,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 2,
+   "playerId": "home-2"
+  },
+  {
+   "id": "bvg-072",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.52301551171646,
+   "ny": 0.23045249691375047,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 556,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 9,
+   "playerId": "home-9"
+  },
+  {
+   "id": "bvg-073",
+   "kind": "YELLOW_CARD",
+   "tags": [
+    "YELLOW"
+   ],
+   "nx": 0.5399248694572619,
+   "ny": 0.12323465612842668,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 568,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 9,
+   "playerId": "away-9"
+  },
+  {
+   "id": "bvg-074",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.11531235328690548,
+   "ny": 0.5651323090736865,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 580,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 13,
+   "playerId": "home-13"
+  },
+  {
+   "id": "bvg-075",
+   "kind": "POINT",
+   "tags": [
+    "FREE"
+   ],
+   "nx": 0.21989979458688547,
+   "ny": 0.5340691416651696,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 586,
+   "segment": 4,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 13,
+   "playerId": "home-13"
+  },
+  {
+   "id": "bvg-076",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.3507906932066388,
+   "ny": 0.721449807847841,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 598,
+   "segment": 4,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 11,
+   "playerId": "away-11"
+  },
+  {
+   "id": "bvg-077",
+   "kind": "WIDE",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.8424143061144562,
+   "ny": 0.6583215962857714,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 620,
+   "segment": 5,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 14,
+   "playerId": "away-14"
+  },
+  {
+   "id": "bvg-078",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "BREAK"
+   ],
+   "nx": 0.5010959639499822,
+   "ny": 0.21542193758739628,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 631,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 12,
+   "playerId": "home-12"
+  },
+  {
+   "id": "bvg-079",
+   "kind": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.3720839067473698,
+   "ny": 0.21842799784943537,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 637,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 16,
+   "playerId": "home-16"
+  },
+  {
+   "id": "bvg-080",
+   "kind": "TURNOVER_WON",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.6664318047703532,
+   "ny": 0.8497103499849438,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 652,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 7,
+   "playerId": "home-7"
+  },
+  {
+   "id": "bvg-081",
+   "kind": "SIDELINE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.41467049508893117,
+   "ny": 0.9629403435463655,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 661,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 7,
+   "playerId": "home-7"
+  },
+  {
+   "id": "bvg-082",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.26186004870270013,
+   "ny": 0.7314701663978461,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 680,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 16,
+   "playerId": "home-16"
+  },
+  {
+   "id": "bvg-083",
+   "kind": "YELLOW_CARD",
+   "tags": [
+    "YELLOW"
+   ],
+   "nx": 0.2944262032395434,
+   "ny": 0.7204477805933791,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 686,
+   "segment": 5,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 2,
+   "playerId": "away-2"
+  },
+  {
+   "id": "bvg-084",
+   "kind": "POINT",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.18921245459049987,
+   "ny": 0.5511037985031407,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 697,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 13,
+   "playerId": "home-13"
+  },
+  {
+   "id": "bvg-085",
+   "kind": "KICKOUT_CONCEDED",
+   "tags": [
+    "BREAK"
+   ],
+   "nx": 0.45913576358753405,
+   "ny": 0.6963989329741749,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 725,
+   "segment": 5,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 6,
+   "playerId": "home-6"
+  },
+  {
+   "id": "bvg-086",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.45600446873236555,
+   "ny": 0.7675434485773258,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 729,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 6,
+   "playerId": "home-6"
+  },
+  {
+   "id": "bvg-087",
+   "kind": "TURNOVER_LOST",
+   "tags": [
+    "OVERCARRIED"
+   ],
+   "nx": 0.6802098139026201,
+   "ny": 0.5250508748736662,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 743,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME"
+  },
+  {
+   "id": "bvg-088",
+   "kind": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.29818383232045864,
+   "ny": 0.3236416981204491,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 759,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 4,
+   "playerId": "home-4"
+  },
+  {
+   "id": "bvg-089",
+   "kind": "WIDE",
+   "tags": [
+    "FREE"
+   ],
+   "nx": 0.7146548098566042,
+   "ny": 0.3366682029378795,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 772,
+   "segment": 5,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "playerNumber": 14,
+   "playerId": "away-14"
+  },
+  {
+   "id": "bvg-090",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "CLEAN"
+   ],
+   "nx": 0.6701894338512685,
+   "ny": 0.8737591761028014,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 787,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "restartOwner": "FOR",
+   "playerNumber": 7,
+   "playerId": "home-7"
+  },
+  {
+   "id": "bvg-091",
+   "kind": "TURNOVER_LOST",
+   "tags": [
+    "INTERCEPTION"
+   ],
+   "nx": 0.07961485014152724,
+   "ny": 0.5170345708325849,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 805,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 3,
+   "playerId": "away-3"
+  },
+  {
+   "id": "bvg-092",
+   "kind": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.2574761391494046,
+   "ny": 0.5601221082973374,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 811,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 14,
+   "playerId": "home-14"
+  },
+  {
+   "id": "bvg-093",
+   "kind": "TURNOVER_WON",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.5900266084539209,
+   "ny": 0.5831689286620798,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 830,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 9,
+   "playerId": "home-9"
+  },
+  {
+   "id": "bvg-094",
+   "kind": "TURNOVER_LOST",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.4372162158210563,
+   "ny": 0.6312666239004884,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 836,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 8,
+   "playerId": "away-8"
+  },
+  {
+   "id": "bvg-095",
+   "kind": "FREE_CONCEDED",
+   "tags": [
+    "CONCEDED"
+   ],
+   "nx": 0.8280100165098089,
+   "ny": 0.6052137002710137,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 848,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 3,
+   "playerId": "home-3"
+  },
+  {
+   "id": "bvg-096",
+   "kind": "FREE_WON",
+   "tags": [
+    "WON"
+   ],
+   "nx": 0.9563958469934075,
+   "ny": 0.4849694406736458,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 857,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 1,
+   "playerId": "home-1"
+  },
+  {
+   "id": "bvg-097",
+   "kind": "WIDE",
+   "tags": [
+    "PLAY"
+   ],
+   "nx": 0.1854548255095846,
+   "ny": 0.5711445156031509,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 904,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 11,
+   "playerId": "home-11"
+  },
+  {
+   "id": "bvg-098",
+   "kind": "KICKOUT_WON",
+   "tags": [
+    "FOUL"
+   ],
+   "nx": 0.26687018497500953,
+   "ny": 0.18435885618426567,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 912,
+   "segment": 5,
+   "teamSide": "OPP",
+   "team": "AWAY",
+   "restartOwner": "OPP",
+   "playerNumber": 7,
+   "playerId": "away-7"
+  },
+  {
+   "id": "bvg-099",
+   "kind": "TURNOVER_WON",
+   "tags": [
+    "TACKLE"
+   ],
+   "nx": 0.669563260885621,
+   "ny": 0.23045249691375047,
+   "half": 2,
+   "period": "2H",
+   "matchClockSeconds": 929,
+   "segment": 5,
+   "teamSide": "FOR",
+   "team": "HOME",
+   "playerNumber": 5,
+   "playerId": "home-5"
+  }
+ ]
+}

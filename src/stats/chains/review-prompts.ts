@@ -3,7 +3,7 @@
  *
  * Pure deterministic factual-observation generation for PáircVision.
  *
- * Entry point: deriveReviewPrompts(analysis, homeTeam, awayTeam)
+ * Entry point: deriveReviewPrompts(analysis, homeTeam, awayTeam, sport?, halfCoverage?)
  *
  * Returns an array of ReviewPrompt objects — each containing a category,
  * a coach-readable text string, and an evidence tag that traces the
@@ -11,7 +11,8 @@
  *
  * Design constraints:
  *   - Pure TypeScript — no canvas, DOM, jsPDF, React, Pixi, or browser APIs.
- *   - Imports ONLY from ./chain-types.
+ *   - Imports only chain types, the evidence gates and the scoring-breakdown
+ *     views (no circular import with reviewPdfExport).
  *   - All observations are deterministic threshold evaluations — no inference.
  *   - Every observation is a bare fact: PáircVision records, connects and
  *     surfaces; it does not diagnose, prescribe, or recommend a coaching
@@ -27,6 +28,16 @@
  *      calculations can prove, and nothing more
  *   ✓  Every text string contains at least one numeric value from the analysis
  *   ✓  The coach owns interpretation; PáircVision owns the evidence
+ *
+ * Attribution guardrails:
+ *   ✗  Never compare chain-rule counts between teams or between rule types,
+ *      and never call rule matches "possession sequences". A kickout win can
+ *      match either kickout rule depending on how it was logged, and the
+ *      turnover rules cannot see turnover wins logged as the other team's
+ *      loss — the counts are not a like-for-like comparison.
+ *   ✗  Never compare halves unless evidence-gates.halfComparisonVerdict()
+ *      allows it. Without coverage information, half comparisons are
+ *      suppressed.
  */
 
 import type {
@@ -38,7 +49,11 @@ import {
   fmtRestartOriginScoredFor,
   fmtTurnoverOriginConcededFor,
   fmtTurnoverOriginScoredFor,
+  viewTurnoverOriginConcededFor,
+  viewTurnoverOriginScoredFor,
 } from "../reporting/scoringBreakdownViews";
+import type { ScoringBreakdown } from "../reporting/scoringBreakdownFormat";
+import { halfComparisonVerdict, type HalfCoverage } from "./evidence-gates";
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -86,12 +101,17 @@ const MAX_PROMPTS = 10;
  * Prompts are ordered: KICKOUT → TURNOVER → MOMENTUM → CHAIN → GENERAL.
  * Within each category, the most numerically significant observation is first.
  * If total candidates exceed MAX_PROMPTS the first N in priority order are kept.
+ *
+ * `halfCoverage` (from evidence-gates.measureHalfCoverage) enables the
+ * first-half vs second-half comparisons. When it is absent, or the gate
+ * cannot establish that both halves were fully logged, they are suppressed.
  */
 export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   analysis: ChainAnalysis<TEvent>,
   homeTeam: string,
   awayTeam: string,
   sport?: PitchSport,
+  halfCoverage?: HalfCoverage | null,
 ): readonly ReviewPrompt[] {
   // Truncate team names to a safe display length
   const home = homeTeam.slice(0, 18) || "Home";
@@ -127,6 +147,9 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   // Restart Share observation (always generated when sample is sufficient).
   // Canonical vocabulary: the all-restarts figure is ALWAYS "Restart Share"
   // (see src/stats/restarts/restartMetrics.ts). Never call it retention.
+  // restartConvStated: the 45–60% sentence already carries the restart-origin
+  // conversion, so the standalone conversion sentence below must not repeat it.
+  let restartConvStated = false;
   if (koTotal >= 3) {
     if (koWinPct >= 60 || koWinPct < 45) {
       push(
@@ -140,6 +163,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
         `${home} held ${koWinPct}% Restart Share (${koWon} of ${koTotal}) — ${koConvPct}% of won ${koTermS} produced restart-origin point value (${fmtRestartOriginScoredFor(analysis)}).`,
         `kickout:restartShare=${koWinPct}`,
       );
+      restartConvStated = true;
     }
   }
 
@@ -150,7 +174,7 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
       `${koConvPct}% of ${home}'s ${koTerm} wins produced restart-origin point value; ${koExpPct}% of their losses produced restart-origin point value for ${away}.`,
       `kickout:netAdv=${koNetAdv}`,
     );
-  } else if (koWon >= 3 && koConvPct >= 40) {
+  } else if (!restartConvStated && koWon >= 3 && koConvPct >= 40) {
     // Positive conversion rate — worth flagging as a repeatable pattern
     push(
       "KICKOUT",
@@ -159,21 +183,19 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     );
   }
 
-  // Half-split kickout win rate (minimum 3 outcomes per half for meaningful comparison)
+  // Half-split Restart Share — rise or fall, only when the half-comparison
+  // gate (coverage, sample size, one-event sensitivity) allows it.
   const h1KoOut = ko.outcomes.filter((o) => o.kickoutEvent.period === "1H");
   const h2KoOut = ko.outcomes.filter((o) => o.kickoutEvent.period === "2H");
-  if (h1KoOut.length >= 3 && h2KoOut.length >= 3) {
-    const h1Win = h1KoOut.filter((o) => o.winningSide === "FOR").length;
-    const h2Win = h2KoOut.filter((o) => o.winningSide === "FOR").length;
-    const h1Pct = Math.round((h1Win / h1KoOut.length) * 100);
-    const h2Pct = Math.round((h2Win / h2KoOut.length) * 100);
-    if (h2Pct < h1Pct - 12) {
-      push(
-        "KICKOUT",
-        `${home}'s Restart Share dropped in the second half (${h2Pct}% vs ${h1Pct}% in the first half).`,
-        `kickout:h2RestartShare=${h2Pct},h1RestartShare=${h1Pct}`,
-      );
-    }
+  const h1Ko = { total: h1KoOut.length, successes: h1KoOut.filter((o) => o.winningSide === "FOR").length };
+  const h2Ko = { total: h2KoOut.length, successes: h2KoOut.filter((o) => o.winningSide === "FOR").length };
+  const koHalves = halfComparisonVerdict(halfCoverage, h1Ko, h2Ko, 12);
+  if (koHalves.show) {
+    push(
+      "KICKOUT",
+      `${home}'s Restart Share ${koHalves.direction === "UP" ? "rose" : "fell"} to ${koHalves.h2Pct}% in the second half (${h2Ko.successes} of ${h2Ko.total}) from ${koHalves.h1Pct}% in the first half (${h1Ko.successes} of ${h1Ko.total}).`,
+      `kickout:h2RestartShare=${koHalves.h2Pct},h1RestartShare=${koHalves.h1Pct}`,
+    );
   }
 
   // ── TURNOVER ─────────────────────────────────────────────────────────────────
@@ -188,12 +210,23 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     ? Math.round((tv.lostAllowedScore / tvLost) * 100)
     : 0;
 
+  // The scored/conceded breakdowns only see turnovers logged by the home
+  // side, while the percentages use every turnover by acting side. Print a
+  // breakdown only when it covers the same scores as the percentage beside
+  // it; otherwise print the counts alone.
+  const tvScoredDetail = breakdownScoreCount(viewTurnoverOriginScoredFor(analysis)) === tv.wonToScore
+    ? `${fmtTurnoverOriginScoredFor(analysis)} from ${tvWon} wins`
+    : `${tv.wonToScore} of ${tvWon} wins`;
+  const tvConcededDetail = breakdownScoreCount(viewTurnoverOriginConcededFor(analysis)) === tv.lostAllowedScore
+    ? `${fmtTurnoverOriginConcededFor(analysis)} from ${tvLost} losses`
+    : `${tv.lostAllowedScore} of ${tvLost} losses`;
+
   // Turnover conversion observation (always when sample is sufficient)
   if (tvTotal >= 3) {
     if (tvConvPct >= 35) {
       push(
         "TURNOVER",
-        `${tvConvPct}% of ${home}'s won turnovers produced turnover-origin point value (${fmtTurnoverOriginScoredFor(analysis)} from ${tvWon} wins).`,
+        `${tvConvPct}% of ${home}'s won turnovers produced turnover-origin point value (${tvScoredDetail}).`,
         `turnover:convPct=${tvConvPct}`,
       );
     } else if (tvConvPct < 20 && tvWon >= 3) {
@@ -215,46 +248,40 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   if (tvLost >= 3 && tvLostAllowPct > 45) {
     push(
       "TURNOVER",
-      `${tvLostAllowPct}% of the turnovers ${away} won against ${home} produced turnover-origin point value (${fmtTurnoverOriginConcededFor(analysis)} from ${tvLost} losses).`,
+      `${tvLostAllowPct}% of the turnovers ${away} won against ${home} produced turnover-origin point value (${tvConcededDetail}).`,
       `turnover:lostAllowedPct=${tvLostAllowPct}`,
     );
   }
 
-  // Unconverted attacks: won turnovers where no shot or score followed
-  // (possession was recovered but the attack did not reach the forward line)
-  const unconvertedWins = tv.outcomes.filter(
-    (o) => o.direction === "WON" &&
-            o.nextEvent !== null &&
-            !o.resultedInScore &&
-            !o.resultedInShot,
-  ).length;
-  if (unconvertedWins >= 3) {
+  // Won turnovers with no shot — the same figure the Turnover Analysis card
+  // prints as "Won → No shot" (won − wonToShot), so the two never disagree.
+  const tvWonNoShot = Math.max(0, tvWon - tv.wonToShot);
+  if (tvWonNoShot >= 3) {
     push(
       "TURNOVER",
-      `${home} won ${unconvertedWins} turnovers that didn't lead to a shot.`,
-      `turnover:unconvertedWithFollowup=${unconvertedWins}`,
+      `${home} won ${tvWon} turnovers; ${tvWonNoShot} did not lead to a shot.`,
+      `turnover:wonNoShot=${tvWonNoShot},won=${tvWon}`,
     );
   }
 
-  // Half-split turnover conversion
-  const h1TvOut = tv.outcomes.filter((o) => o.turnoverEvent.period === "1H");
-  const h2TvOut = tv.outcomes.filter((o) => o.turnoverEvent.period === "2H");
-  const h1TvWon = h1TvOut.filter((o) => o.direction === "WON");
-  const h2TvWon = h2TvOut.filter((o) => o.direction === "WON");
-  if (h1TvWon.length >= 3 && h2TvWon.length >= 3) {
-    const h1Conv = Math.round((h1TvWon.filter((o) => o.resultedInScore).length / h1TvWon.length) * 100);
-    const h2Conv = Math.round((h2TvWon.filter((o) => o.resultedInScore).length / h2TvWon.length) * 100);
-    const diff   = Math.abs(h2Conv - h1Conv);
-    if (diff >= 15) {
-      const halfLabel = h2Conv > h1Conv
-        ? `higher in the second half (${h2Conv}% vs ${h1Conv}% in the first)`
-        : `lower in the second half (${h2Conv}% vs ${h1Conv}% in the first)`;
-      push(
-        "TURNOVER",
-        `${home}'s turnover conversion was ${halfLabel}.`,
-        `turnover:h2ConvPct=${h2Conv},h1ConvPct=${h1Conv}`,
-      );
-    }
+  // Half-split turnover conversion — turnovers the home side won, by acting
+  // side (a home win may be logged as the home side's TURNOVER_WON or the
+  // opposition's TURNOVER_LOST), matching the Turnover Chain page's by-half
+  // rows. Printed only when the half-comparison gate allows it.
+  const homeWonTv = tv.outcomes.filter(
+    (o) => (o.direction === "WON") === (o.turnoverEvent.teamSide === "FOR"),
+  );
+  const h1TvWon = homeWonTv.filter((o) => o.turnoverEvent.period === "1H");
+  const h2TvWon = homeWonTv.filter((o) => o.turnoverEvent.period === "2H");
+  const h1Tv = { total: h1TvWon.length, successes: h1TvWon.filter((o) => o.resultedInScore).length };
+  const h2Tv = { total: h2TvWon.length, successes: h2TvWon.filter((o) => o.resultedInScore).length };
+  const tvHalves = halfComparisonVerdict(halfCoverage, h1Tv, h2Tv, 15);
+  if (tvHalves.show) {
+    push(
+      "TURNOVER",
+      `${home}'s turnover conversion was ${tvHalves.direction === "UP" ? "higher" : "lower"} in the second half (${h2Tv.successes} of ${h2Tv.total}, ${tvHalves.h2Pct}%) than in the first half (${h1Tv.successes} of ${h1Tv.total}, ${tvHalves.h1Pct}%).`,
+      `turnover:h2ConvPct=${tvHalves.h2Pct},h1ConvPct=${tvHalves.h1Pct}`,
+    );
   }
 
   // ── MOMENTUM ─────────────────────────────────────────────────────────────────
@@ -316,49 +343,16 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
   }
 
   // ── CHAIN ────────────────────────────────────────────────────────────────────
+  //
+  // Only the home side's own rule matches are stated, never compared with the
+  // opposition's or with another rule type, and never called "possession
+  // sequences" (see the attribution guardrails in the file header). Chain
+  // share, kickout-vs-turnover chain and half-split chain sentences are
+  // deliberately not generated.
 
-  const sm         = analysis.summary;
-  const chainTotal  = sm.totalChains;
-  const chainForPct = chainTotal > 0 ? Math.round((sm.forChains / chainTotal) * 100) : 0;
-  const koToScore   = sm.byRule["KICKOUT_TO_SCORE"]  ?? 0;
-  const tvToScore   = sm.byRule["TURNOVER_TO_SCORE"] ?? 0;
-  const freeToGoal  = sm.byRule["FREE_WON_TO_GOAL"]  ?? 0;
+  const freeToGoal = (analysis.byRule["FREE_WON_TO_GOAL"] ?? [])
+    .filter((c) => c.teamSide === "FOR").length;
 
-  // Chain efficiency (only flag notable imbalances)
-  if (chainTotal >= 6) {
-    if (chainForPct <= 40) {
-      push(
-        "CHAIN",
-        `${away} won more possession sequences (${100 - chainForPct}% vs ${chainForPct}% for ${home} — ${chainTotal} total).`,
-        `chain:forPct=${chainForPct}`,
-      );
-    } else if (chainForPct >= 60) {
-      push(
-        "CHAIN",
-        `${home} won ${chainForPct}% of all possession sequences (${sm.forChains} of ${chainTotal}).`,
-        `chain:forPct=${chainForPct}`,
-      );
-    }
-  }
-
-  // Kickout vs turnover chain comparison
-  if (koToScore >= 2 && tvToScore >= 2) {
-    if (koToScore > tvToScore) {
-      push(
-        "CHAIN",
-        `${home} had more ${koTerm}-to-score chains (${koToScore}) than turnover-to-score chains (${tvToScore}) — both are chain rule matches, not scoring totals.`,
-        `chain:koToScore=${koToScore},tvToScore=${tvToScore}`,
-      );
-    } else if (tvToScore > koToScore) {
-      push(
-        "CHAIN",
-        `${home} had more turnover-to-score chains (${tvToScore}) than ${koTerm}-to-score chains (${koToScore}) — both are chain rule matches, not scoring totals.`,
-        `chain:tvToScore=${tvToScore},koToScore=${koToScore}`,
-      );
-    }
-  }
-
-  // Free kicks to goal
   if (freeToGoal >= 2) {
     push(
       "CHAIN",
@@ -367,43 +361,16 @@ export function deriveReviewPrompts<TEvent extends ChainableEvent>(
     );
   }
 
-  // Half-split chain efficiency
-  const h1Chains = analysis.byPeriod["1H"] ?? [];
-  const h2Chains = analysis.byPeriod["2H"] ?? [];
-  if (h1Chains.length >= 4 && h2Chains.length >= 4) {
-    const h1ForPct = Math.round((h1Chains.filter((c) => c.teamSide === "FOR").length / h1Chains.length) * 100);
-    const h2ForPct = Math.round((h2Chains.filter((c) => c.teamSide === "FOR").length / h2Chains.length) * 100);
-    if (Math.abs(h2ForPct - h1ForPct) >= 15) {
-      const halfLabel = h2ForPct > h1ForPct
-        ? `higher in the second half (${h2ForPct}% vs ${h1ForPct}% in the first)`
-        : `lower in the second half (${h2ForPct}% vs ${h1ForPct}% in the first)`;
-      push(
-        "CHAIN",
-        `${home}'s possession sequence win rate was ${halfLabel}.`,
-        `chain:h1ForPct=${h1ForPct},h2ForPct=${h2ForPct}`,
-      );
-    }
-  }
-
   // ── GENERAL ──────────────────────────────────────────────────────────────────
-
-  // Closely contested match — near 50/50 chain balance
-  if (chainTotal >= 12 && chainForPct >= 47 && chainForPct <= 53) {
-    push(
-      "GENERAL",
-      `Possession sequences were closely contested — ${home} won ${sm.forChains} and ${away} won ${sm.oppChains} from ${chainTotal} total.`,
-      `general:totalChains=${chainTotal},forPct=${chainForPct}`,
-    );
-  } else if (chainTotal < 6 && analysis.totalEventsAnalysed >= 20) {
-    // Few sequences detected despite reasonable event volume — worth flagging
-    push(
-      "GENERAL",
-      `Only ${chainTotal} possession sequences were detected.`,
-      `general:totalChains=${chainTotal}`,
-    );
-  }
+  //
+  // No GENERAL observations are generated: the former ones were chain-share
+  // comparisons. The category is kept for consumers that group by it.
 
   // ── Cap and return ────────────────────────────────────────────────────────────
 
   return candidates.slice(0, MAX_PROMPTS);
+}
+
+function breakdownScoreCount(b: ScoringBreakdown): number {
+  return b.goals + b.points + b.twoPointers;
 }
