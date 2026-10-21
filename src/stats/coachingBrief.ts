@@ -91,6 +91,7 @@ type ScoringRun = {
   startMin: number;
   endMin: number;
   period: 1 | 2;
+  endPeriod: 1 | 2;
 };
 
 // ─── Event helpers ────────────────────────────────────────────────────────────
@@ -250,45 +251,18 @@ function appendPlayerNotes(
     lines.push({ type: "body", text: `Most ${restartWord}s won — ${topKickouts.label} (${topKickouts.kickoutsWon})` });
   }
   if (topFrees) {
-    lines.push({ type: "body", text: `Most placed balls won — ${topFrees.label} (${topFrees.freesWon})` });
+    lines.push({ type: "body", text: `Most possession frees won — ${topFrees.label} (${topFrees.freesWon})` });
   }
 }
 
-// ─── Match pattern / story ────────────────────────────────────────────────────
+// ─── Scoring run clock label ─────────────────────────────────────────────────
 
-function deriveMatchPattern(
-  homeScore: TeamScore,
-  awayScore: TeamScore,
-  homeTeam: string,
-  awayTeam: string,
-): string | null {
-  const total = homeScore.total + awayScore.total;
-  if (total < 4) return null;
-  const diff = homeScore.total - awayScore.total;
-
-  if (diff === 0) return "The teams are level — the second half is an open contest.";
-  if (diff > 5) return `${homeTeam} led throughout and controlled the tempo.`;
-  if (diff < -5) return `${awayTeam} led throughout — ${homeTeam} needs a fast response.`;
-  if (diff > 0) return `${homeTeam} edged ahead — a close contest that could go either way.`;
-  return `${awayTeam} led at the break — ${homeTeam} must improve in the second half.`;
-}
-
-function deriveMatchStory(
-  homeScore: TeamScore,
-  awayScore: TeamScore,
-  homeTeam: string,
-  awayTeam: string,
-): string | null {
-  const total = homeScore.total + awayScore.total;
-  if (total < 4) return null;
-  const diff = homeScore.total - awayScore.total;
-
-  if (diff > 7) return `${homeTeam} controlled the contest and won convincingly.`;
-  if (diff >= 3) return `${homeTeam} led for most of the match and managed the game well.`;
-  if (diff > 0) return `It was a close contest — ${homeTeam} edged it in the end.`;
-  if (diff === 0) return "The teams were evenly matched and shared the spoils.";
-  if (diff >= -3) return `It was a close contest — ${awayTeam} took it by the narrowest of margins.`;
-  return `${awayTeam} controlled the contest and ran out clear winners.`;
+/** "1H 2'–9'", or "1H 33'–2H 0'" for a run that continues past half-time —
+ *  the same convention as the Full Report's run labels. */
+function fmtRunWindow(run: ScoringRun): string {
+  const start = `${run.period === 1 ? "1H" : "2H"} ${run.startMin}'`;
+  if (run.endPeriod !== run.period) return `${start}–${run.endPeriod === 1 ? "1H" : "2H"} ${run.endMin}'`;
+  return run.startMin === run.endMin ? start : `${start}–${run.endMin}'`;
 }
 
 // ─── Shot map builder ─────────────────────────────────────────────────────────
@@ -358,7 +332,7 @@ function deriveHalftimeNotes(
       const alreadyCovered = positives.some((p) =>
         (intel.bestAttackInsight!.includes(restartWord) && p.includes(restartWord)) ||
         (intel.bestAttackInsight!.includes("turnover") && p.includes("turnover")) ||
-        (intel.bestAttackInsight!.includes("placed") && p.includes("placed"))
+        (intel.bestAttackInsight!.includes("free") && p.includes("free"))
       );
       if (!alreadyCovered) positives.push(intel.bestAttackInsight);
     }
@@ -374,10 +348,10 @@ function deriveHalftimeNotes(
     positives.push(`${homeTeam} won the turnover battle ${s.turnoversWon}–${s.turnoversLost}`);
   }
   if (positives.length < 3 && s.freesWon - s.freesConceded >= 4) {
-    positives.push(`${homeTeam} earned ${s.freesWon} placed balls — getting into the right positions`);
+    positives.push(`${homeTeam} won ${s.freesWon} possession frees to ${awayTeam}'s ${s.freesConceded}`);
   }
   if (positives.length < 3 && s.goals >= 1) {
-    positives.push(`${homeTeam} found the net ${s.goals === 1 ? "once" : `${s.goals} times`} — taking the big chances`);
+    positives.push(`${homeTeam} found the net ${s.goals === 1 ? "once" : `${s.goals} times`}`);
   }
   if (positives.length === 0) {
     if (diff > 0) {
@@ -429,7 +403,7 @@ function deriveHalftimeNotes(
   const concerns: string[] = [];
 
   if (s.wides >= 4) {
-    concerns.push(`${homeTeam} missed ${s.wides} shots wide — shot selection`);
+    concerns.push(`${homeTeam} missed ${s.wides} shots wide`);
   }
   if (s.kickoutTotal >= 5 && s.kickoutPct <= 45) {
     concerns.push(`${homeTeam} held only ${s.kickoutPct}% Restart Share — ${awayTeam} winning this battle`);
@@ -438,7 +412,7 @@ function deriveHalftimeNotes(
     concerns.push(`${homeTeam} lost the turnover battle ${s.turnoversLost}–${s.turnoversWon}`);
   }
   if (s.freesConceded >= 8) {
-    concerns.push(`${homeTeam} conceded ${s.freesConceded} placed balls — discipline`);
+    concerns.push(`${homeTeam} conceded ${s.freesConceded} possession frees`);
   }
   const { longestOpp } = deriveScoringRuns(events, homeTeam, awayTeam, "1H");
   if (longestOpp && longestOpp.count >= 3) {
@@ -492,13 +466,9 @@ function deriveHalftimeNotes(
   lines.push({ type: "section", text: "SHOT MAPS" });
   lines.push({ type: "miniShotMaps", homeTeam, awayTeam, data: buildMiniShotMapData(events) });
 
-  // MATCH PATTERN
-  const pattern = deriveMatchPattern(s.homeScore, s.awayScore, homeTeam, awayTeam);
-  if (pattern) {
-    lines.push({ type: "spacer" });
-    lines.push({ type: "section", text: "MATCH PATTERN" });
-    lines.push({ type: "body", text: pattern });
-  }
+  // No MATCH PATTERN section: its sentences ("led throughout", "controlled
+  // the tempo") were inferred from the half-time margin alone. The margin
+  // itself is already stated under SITUATION.
 
   // PLAYER NOTES
   appendPlayerNotes(buildPlayerNotes(events), lines, restartWord);
@@ -537,17 +507,15 @@ function deriveFullTimeSummary(
   } else if (intel && !intel.lowSampleWarning && intel.overallInsight) {
     biggestPositive = intel.overallInsight + ".";
   } else if (s.kickoutTotal >= 5 && s.kickoutPct >= 60) {
-    biggestPositive = `${homeTeam} held ${s.kickoutPct}% Restart Share (${s.kickoutsWon} of ${s.kickoutTotal} ${restartWord}s) — controlled the restarts throughout.`;
+    biggestPositive = `${homeTeam} held ${s.kickoutPct}% Restart Share (${s.kickoutsWon} of ${s.kickoutTotal} ${restartWord}s).`;
   } else if (s.attempts >= 5 && s.conversionPct >= 65) {
     biggestPositive = `${homeTeam} converted ${s.conversionPct}% of shots — clinical in front of goal.`;
   } else if (s.turnoversWon - s.turnoversLost >= 3) {
-    biggestPositive = `${homeTeam} won the turnover battle ${s.turnoversWon}–${s.turnoversLost} — controlled possession.`;
+    biggestPositive = `${homeTeam} won the turnover battle ${s.turnoversWon}–${s.turnoversLost}.`;
   } else if (s.freesWon - s.freesConceded >= 4) {
-    biggestPositive = `${homeTeam} earned ${s.freesWon} placed balls to ${awayTeam}'s ${s.freesConceded} — a territory advantage all day.`;
+    biggestPositive = `${homeTeam} won ${s.freesWon} possession frees to ${awayTeam}'s ${s.freesConceded}.`;
   } else if (s.goals >= 1) {
-    biggestPositive = `${homeTeam} found the net ${s.goals === 1 ? "once" : `${s.goals} times`} and took the big chances when they came.`;
-  } else if (diff > 0) {
-    biggestPositive = `${homeTeam} managed the game well and earned the result.`;
+    biggestPositive = `${homeTeam} found the net ${s.goals === 1 ? "once" : `${s.goals} times`}.`;
   }
 
   if (biggestPositive) {
@@ -559,15 +527,15 @@ function deriveFullTimeSummary(
   // BIGGEST CONCERN
   let biggestConcern: string | null = null;
   if (s.wides >= 5) {
-    biggestConcern = `${homeTeam} missed ${s.wides} shots wide — shot selection and accuracy must improve.`;
+    biggestConcern = `${homeTeam} missed ${s.wides} shots wide.`;
   } else if (s.kickoutTotal >= 5 && s.kickoutPct <= 45) {
     biggestConcern = `${homeTeam} held only ${s.kickoutPct}% Restart Share — ${awayTeam} controlled the restarts.`;
   } else if (s.turnoversLost - s.turnoversWon >= 3) {
     biggestConcern = `${homeTeam} lost the turnover battle ${s.turnoversLost}–${s.turnoversWon} — possession discipline is a priority.`;
   } else if (s.freesConceded >= 8) {
-    biggestConcern = `${homeTeam} conceded ${s.freesConceded} placed balls — the foul count cannot continue at this level.`;
+    biggestConcern = `${homeTeam} conceded ${s.freesConceded} possession frees.`;
   } else if (s.attempts >= 5 && s.conversionPct <= 45) {
-    biggestConcern = `${homeTeam} converted only ${s.conversionPct}% of shots — the scoring did not reflect the work rate.`;
+    biggestConcern = `${homeTeam} converted only ${s.conversionPct}% of shots.`;
   }
 
   if (biggestConcern) {
@@ -606,31 +574,30 @@ function deriveFullTimeSummary(
     }
   }
 
-  // TURNING POINT — only shown when ≥3 consecutive scores found
+  // LONGEST SCORING RUN — only shown when ≥3 consecutive scores found.
+  // Both teams are named when their longest runs are the same length.
   const { longestFor, longestOpp } = deriveScoringRuns(events, homeTeam, awayTeam, "FULL");
-  const topRun =
-    longestFor && longestOpp
-      ? longestFor.count >= longestOpp.count ? longestFor : longestOpp
-      : longestFor ?? longestOpp;
+  const runs = [longestFor, longestOpp]
+    .filter((r): r is NonNullable<typeof r> => r != null && r.count >= 3);
+  const topCount = Math.max(0, ...runs.map((r) => r.count));
+  const topRuns = runs.filter((r) => r.count === topCount);
 
-  if (topRun && topRun.count >= 3) {
-    const runTeamName = topRun.team === "HOME" ? homeTeam : awayTeam;
-    const periodStr = topRun.period === 1 ? "first half" : "second half";
+  if (topRuns.length > 0) {
+    const runText = (r: (typeof topRuns)[number]) =>
+      `${r.team === "HOME" ? homeTeam : awayTeam} ${fmtRunWindow(r)}`;
     lines.push({ type: "spacer" });
-    lines.push({ type: "section", text: "TURNING POINT" });
+    lines.push({ type: "section", text: "LONGEST SCORING RUN" });
     lines.push({
       type: "body",
-      text: `${runTeamName} hit ${topRun.count} unanswered scores in the ${periodStr} (${topRun.startMin}th–${topRun.endMin}th min).`,
+      text: topRuns.length === 2
+        ? `${homeTeam} and ${awayTeam} each hit ${topCount} unanswered scores (${runText(topRuns[0])}; ${runText(topRuns[1])}).`
+        : `${topRuns[0].team === "HOME" ? homeTeam : awayTeam} hit ${topCount} unanswered scores (${fmtRunWindow(topRuns[0])}).`,
     });
   }
 
-  // MATCH STORY
-  const story = deriveMatchStory(s.homeScore, s.awayScore, homeTeam, awayTeam);
-  if (story) {
-    lines.push({ type: "spacer" });
-    lines.push({ type: "section", text: "MATCH STORY" });
-    lines.push({ type: "body", text: story });
-  }
+  // No MATCH STORY section: its sentences ("led for most of the match",
+  // "managed the game well") were inferred from the final margin alone. The
+  // result and margin are already stated under FINAL RESULT.
 
   // COACHING PRIORITIES — intelligence first, basic stats fill remainder
   const priorities: string[] = [];
@@ -657,7 +624,7 @@ function deriveFullTimeSummary(
     priorities.push("Maintain the turnover intensity — this is a competitive edge");
   }
   if (priorities.length < 3 && s.conversionPct >= 65 && s.attempts >= 5) {
-    priorities.push("Keep the shot quality high — the conversion rate is winning games");
+    priorities.push("Keep the shot quality high");
   }
   // Fallbacks
   const priorityFallbacks = [

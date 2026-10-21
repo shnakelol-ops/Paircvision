@@ -13,6 +13,7 @@ import type { PdfExportEvent } from "../reviewPdfExport";
 import { buildMatchReport } from "./matchReport";
 import { buildGoldenReportingFixture, GOLDEN_TEAMS } from "./golden-fixture";
 import { containsDirectLanguage } from "./reportProvenance";
+import { buildRathkealeOolaChainFixture, RATHKEALE_OOLA_TEAMS } from "./rathkeale-oola-chain-fixture";
 
 class CaptureCanvasContext {
   fillStyle = "";
@@ -105,5 +106,43 @@ describe("Tactical Review Guide — Part 3 content", () => {
       ["KICKOUT", "TURNOVER", "MOMENTUM", "CHAIN", "GENERAL"].includes(t),
     );
     expect(categoryChip).toBeDefined();
+  });
+});
+
+describe("Intelligence Summary — chain rule matches (Stage 1 accuracy)", () => {
+  function render() {
+    installDomMocks();
+    const events = buildRathkealeOolaChainFixture() as unknown as PdfExportEvent[];
+    const report = buildMatchReport<PdfExportEvent>({
+      events, homeTeam: RATHKEALE_OOLA_TEAMS.home, awayTeam: RATHKEALE_OOLA_TEAMS.away,
+    });
+    const canvas = makeTacticalIntelligencePage(
+      report, RATHKEALE_OOLA_TEAMS.home, RATHKEALE_OOLA_TEAMS.away, 1, 7,
+    ) as unknown as CaptureCanvas;
+    return canvas.ctx.texts;
+  }
+
+  it("shows home-side rule matches only, never as a share or as possessions", () => {
+    const texts = render();
+    const hero = texts.indexOf("RATHKEALE CHAIN RULE MATCHES  (OVERLAPPING — NOT UNIQUE POSSESSIONS)");
+    expect(hero).toBeGreaterThan(0);
+    expect(texts[hero - 1]).toBe("24");
+    expect(texts.some((t) => /%/.test(t) && /chain/i.test(t))).toBe(false);
+  });
+
+  it("states each Chain Sequences row with the home team's count, not both teams' (was: Kickout → score 5)", () => {
+    const texts = render();
+    const row = texts.indexOf("Kickout → score chains (rule match)");
+    expect(texts[row + 1]).toBe("2");
+  });
+
+  it("shows the opposition's rule matches as '—' in Team Comparison, never as a count", () => {
+    const texts = render();
+    const row = texts.indexOf("Chain rule matches");
+    expect(texts.slice(row + 1, row + 3)).toEqual(["24", "—"]);
+  });
+
+  it("names both teams when their longest runs are equal", () => {
+    expect(render()).toContain("Rathkeale and Oola each recorded a 4-score unanswered run.");
   });
 });

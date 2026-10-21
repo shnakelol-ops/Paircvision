@@ -94,6 +94,7 @@ export function rapidSessionToReviewPdfInput(match: RapidSavedMatch): ReviewPdfE
     homeSquadPlayers: toSquadPlayers(session.forSquad),
     awaySquadPlayers: toSquadPlayers(session.oppSquad),
     homeAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
+    halfDurationMinutes: session.halfDurationMinutes,
   };
 }
 

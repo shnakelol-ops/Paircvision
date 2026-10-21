@@ -25,6 +25,7 @@ export function proTaggerMatchToPdfInput(m: ProTaggerSavedMatch): ReviewPdfExpor
     awaySquadPlayers: toSquadPlayers(m.awaySquad),
     targets:          m.targets,
     homeAttackingDirection: rawDir === "left" ? "LEFT" : "RIGHT",
+    halfDurationMinutes: m.halfDurationMinutes,
   };
 }
 
@@ -54,6 +55,7 @@ export function buildLivePdfInput(
     awaySquadPlayers: toSquadPlayers(session.awaySquad),
     targets:          session.targets,
     homeAttackingDirection: session.attackDirection === "left" ? "LEFT" : "RIGHT",
+    halfDurationMinutes: session.halfDurationMinutes,
   };
 }
 

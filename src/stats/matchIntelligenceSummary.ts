@@ -102,6 +102,17 @@ export function buildMatchIntelligenceSummary(
   const koRetainedScoringPct = poss.ourKickouts?.retained.scoringPct ?? poss.kickouts.retained.scoringPct;
   const koConcededDamagePct  = poss.ourKickouts?.damagePct ?? poss.kickouts.damagePct;
 
+  // With the restartOwner split (V1.2+) every kickout figure above covers
+  // OUR kickouts only, so the wording must say so; the V1.1 fallback covers
+  // every kickout and keeps the general wording.
+  const ownSplit = poss.ourKickouts != null;
+  const koTheyWon = (won: number) => ownSplit
+    ? `the ${won} ${homeTeam} ${restartWord}s they won`
+    : `${won} ${restartWord}s they won`;
+  const koWeKept = (kept: number) => ownSplit
+    ? `${kept} own ${restartWord}s retained`
+    : `${kept} ${restartWord} wins`;
+
   // ── Turnover consequence numbers — possession-outcomes-engine is the source of truth ──
   // Aligns with Turnover & Free Outcomes card exactly.
   // No restartOwner split for turnovers — use the unified family directly.
@@ -114,7 +125,7 @@ export function buildMatchIntelligenceSummary(
   const dangerInsights: string[] = [];
   if (koConcededScores >= 2 && koConcededCount >= 2) {
     dangerInsights.push(
-      `${awayTeam} scored from ${koConcededScores} of ${koConcededCount} ${restartWord}s they won`,
+      `${awayTeam} scored from ${koConcededScores} of ${koTheyWon(koConcededCount)}`,
     );
   }
   if (toConcededScores >= 2 && poss.turnovers.concededCount >= 2) {
@@ -129,7 +140,7 @@ export function buildMatchIntelligenceSummary(
   const weaponInsights: string[] = [];
   if (koRetainedScores >= 2 && koRetainedCount >= 2) {
     weaponInsights.push(
-      `${homeTeam} scored from ${koRetainedScores} of ${koRetainedCount} ${restartWord} wins`,
+      `${homeTeam} scored from ${koRetainedScores} of ${koWeKept(koRetainedCount)}`,
     );
   }
   if (toRetainedScores >= 2 && poss.turnovers.retainedCount >= 2) {
@@ -185,9 +196,9 @@ export function buildMatchIntelligenceSummary(
   // ── Best attack source ────────────────────────────────────────────────────
   let bestAttackInsight: string | null = null;
   const attackFamilies: Array<{ label: string; pct: number; count: number }> = [
-    { label: `${restartWord} wins`, pct: koRetainedScoringPct, count: koRetainedCount },
+    { label: ownSplit ? `own ${restartWord}s retained` : `${restartWord} wins`, pct: koRetainedScoringPct, count: koRetainedCount },
     { label: "turnover wins",       pct: poss.turnovers.retained.scoringPct, count: poss.turnovers.retainedCount },
-    { label: "placed balls",        pct: poss.frees.retained.scoringPct, count: poss.frees.retainedCount },
+    { label: "possession frees",    pct: poss.frees.retained.scoringPct, count: poss.frees.retainedCount },
   ].filter((f) => f.count >= 4);
   if (attackFamilies.length > 0) {
     const best = attackFamilies.reduce((a, b) => (b.pct > a.pct ? b : a));
@@ -199,9 +210,9 @@ export function buildMatchIntelligenceSummary(
   // ── Worst defensive exposure ──────────────────────────────────────────────
   let worstExposureInsight: string | null = null;
   const exposureFamilies = [
-    { label: `${restartWord}s they won`, pct: koConcededDamagePct, count: koConcededCount },
+    { label: ownSplit ? `${homeTeam} ${restartWord}s they won` : `${restartWord}s they won`, pct: koConcededDamagePct, count: koConcededCount },
     { label: "turnover wins",            pct: poss.turnovers.damagePct, count: poss.turnovers.concededCount },
-    { label: "placed balls won",         pct: poss.frees.damagePct, count: poss.frees.concededCount },
+    { label: "possession frees won",     pct: poss.frees.damagePct, count: poss.frees.concededCount },
   ].filter((f) => f.count >= 3 && f.pct >= 50);
   if (exposureFamilies.length > 0) {
     const worst = exposureFamilies.reduce((a, b) => (b.pct > a.pct ? b : a));
@@ -230,12 +241,12 @@ export function buildMatchIntelligenceSummary(
   }
   if (koConcededScores >= 2 && koConcededCount >= 2 && coachingPriorities.length < 3) {
     coachingPriorities.push(
-      `Win the ${restartWord} — ${awayTeam} scored from ${koConcededScores} conceded`,
+      `Win the ${restartWord} — ${awayTeam} scored from ${koConcededScores} of ${koTheyWon(koConcededCount)}`,
     );
   }
   if (koRetainedScores >= 2 && koRetainedCount >= 2 && coachingPriorities.length < 3) {
     coachingPriorities.push(
-      `Keep winning ${restartWord}s — converting ${koRetainedScores} of ${koRetainedCount} to scores`,
+      `Keep winning ${restartWord}s — ${homeTeam} scored from ${koRetainedScores} of ${koWeKept(koRetainedCount)}`,
     );
   }
   if (toRetainedScores >= 2 && poss.turnovers.retainedCount >= 2 && coachingPriorities.length < 3) {

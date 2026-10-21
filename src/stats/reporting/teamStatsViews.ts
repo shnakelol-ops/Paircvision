@@ -544,21 +544,33 @@ export function viewCoachingBriefStats<T extends ChainableEvent>(
 export type CoachingScoringRun = {
   team: "HOME" | "AWAY";
   count: number;
+  /** Minute within the run's first half, as the PDF prints it (1H 2' = 2:xx). */
   startMin: number;
+  /** Minute within the half the run's last score is in. */
   endMin: number;
+  /** Half the run started in. */
   period: 1 | 2;
+  /** Half the run's last score is in — differs from `period` when the run
+   *  continues past half-time. */
+  endPeriod: 1 | 2;
 };
 
 export function viewCoachingScoringRuns<T extends ChainableEvent>(
   report: MatchReport<T>,
 ): { longestFor: CoachingScoringRun | null; longestOpp: CoachingScoringRun | null } {
   const sr = report.chain.scoringRuns;
+  // Run clocks carry the chain engine's 3600 s second-half sort offset;
+  // minutes are shown within each end's own half.
+  const minuteInHalf = (clock: number, half: 1 | 2) =>
+    Math.floor(Math.max(0, half === 2 ? clock - 3600 : clock) / 60);
   const mapRun = (run: typeof sr.longestRunFor, team: "HOME" | "AWAY"): CoachingScoringRun | null => {
     if (run == null) return null;
     const period = run.period === "1H" ? 1 : 2;
-    const startMin = Math.max(1, Math.floor(run.startClockSeconds / 60) + 1);
-    const endMin = Math.max(1, Math.floor(run.endClockSeconds / 60) + 1);
-    return { team, count: run.count, startMin, endMin, period };
+    const lastPeriod = run.events.length > 0 ? run.events[run.events.length - 1].period : run.period;
+    const endPeriod = lastPeriod === "1H" ? 1 : 2;
+    const startMin = minuteInHalf(run.startClockSeconds, period);
+    const endMin = minuteInHalf(run.endClockSeconds, endPeriod);
+    return { team, count: run.count, startMin, endMin, period, endPeriod };
   };
   return {
     longestFor: mapRun(sr.longestRunFor, "HOME"),
