@@ -5,7 +5,7 @@ import {
   resolveTeamDisplayName,
 } from "./pro-tagger-team-labels";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
-import { tileNeedsOppositionAttribution, getRestartOwnerLabel } from "./pro-tagger-families";
+import { getTileRowLabelFor, getRestartOwnerLabel } from "./pro-tagger-families";
 
 const HOME = "Ballylanders";
 const AWAY = "Rathkeale";
@@ -39,8 +39,8 @@ describe("resolveTeamDisplayName", () => {
   });
 });
 
-describe("buildPendingWinnerSummary — Turnover", () => {
-  it("home team won turnover, plain tile — no attribution needed", () => {
+describe("buildPendingWinnerSummary — Turnover (our turnovers won / lost)", () => {
+  it("our turnover won from an opposition error names our team and the opposition error", () => {
     const summary = buildPendingWinnerSummary({
       familyId: "TURNOVER",
       tileLabel: "HP Error",
@@ -49,10 +49,10 @@ describe("buildPendingWinnerSummary — Turnover", () => {
       homeTeamName: HOME,
       awayTeamName: AWAY,
     });
-    expect(summary).toBe("Ballylanders won turnover · HP Error");
+    expect(summary).toBe("Ballylanders won turnover · Opposition HP Error");
   });
 
-  it("away team won turnover on a home-team error tile — names the team that erred", () => {
+  it("our turnover lost from our own error names our team, never the opposition", () => {
     const summary = buildPendingWinnerSummary({
       familyId: "TURNOVER",
       tileLabel: "HP Error",
@@ -61,10 +61,10 @@ describe("buildPendingWinnerSummary — Turnover", () => {
       homeTeamName: HOME,
       awayTeamName: AWAY,
     });
-    expect(summary).toBe("Rathkeale won turnover · Ballylanders HP Error");
+    expect(summary).toBe("Ballylanders lost turnover · HP Error");
   });
 
-  it("away team won turnover via their own tackle — no attribution on Tackle", () => {
+  it("our turnover lost to a tackle reads as Dispossessed", () => {
     const summary = buildPendingWinnerSummary({
       familyId: "TURNOVER",
       tileLabel: "Tackle",
@@ -73,7 +73,7 @@ describe("buildPendingWinnerSummary — Turnover", () => {
       homeTeamName: HOME,
       awayTeamName: AWAY,
     });
-    expect(summary).toBe("Rathkeale won turnover · Tackle");
+    expect(summary).toBe("Ballylanders lost turnover · Dispossessed");
   });
 });
 
@@ -168,7 +168,7 @@ describe("buildPendingWinnerSummary — other families are untouched", () => {
   });
 });
 
-describe("pro-tagger-families — restart terminology and attribution lookup", () => {
+describe("pro-tagger-families — restart terminology and row labels", () => {
   it("labels the restart-owner toggle with K/O for football and P/O for hurling/camogie", () => {
     expect(getRestartOwnerLabel("gaelic", "FOR")).toBe("OUR K/O");
     expect(getRestartOwnerLabel("gaelic", "OPP")).toBe("THEIR K/O");
@@ -176,17 +176,11 @@ describe("pro-tagger-families — restart terminology and attribution lookup", (
     expect(getRestartOwnerLabel("camogie", "OPP")).toBe("THEIR P/O");
   });
 
-  it("flags only the opponent-error turnover tiles for opposition-row attribution", () => {
-    expect(tileNeedsOppositionAttribution("TURNOVER", "Tackle", "gaelic")).toBe(false);
-    expect(tileNeedsOppositionAttribution("TURNOVER", "HP Error", "gaelic")).toBe(true);
-    expect(tileNeedsOppositionAttribution("TURNOVER", "KP Error", "gaelic")).toBe(true);
-    expect(tileNeedsOppositionAttribution("TURNOVER", "Overcarried", "gaelic")).toBe(true);
-  });
-
-  it("does not flag any Restart tiles for attribution", () => {
-    expect(tileNeedsOppositionAttribution("RESTART", "Clean", "gaelic")).toBe(false);
-    expect(tileNeedsOppositionAttribution("RESTART", "Break", "gaelic")).toBe(false);
-    expect(tileNeedsOppositionAttribution("RESTART", "Foul", "gaelic")).toBe(false);
+  it("Restart tiles show their plain label on both rows", () => {
+    for (const label of ["Clean", "Break", "Foul"]) {
+      expect(getTileRowLabelFor("RESTART", label, "gaelic", "FOR")).toBe(label);
+      expect(getTileRowLabelFor("RESTART", label, "gaelic", "OPP")).toBe(label);
+    }
   });
 });
 
@@ -198,9 +192,9 @@ describe("regression — display label changes never alter the stored event payl
   // TURNOVER_WON/teamSide "OPP", which left TURNOVER_LOST-dependent chain and
   // report logic permanently starved of data. The tile tag itself is
   // unaffected either way, which is what this test guards.
-  it("an OPP-row turnover tap stores TURNOVER_LOST with teamSide FOR and the plain tile tag, unaffected by the display prefix", () => {
+  it("an OPP-row turnover tap stores TURNOVER_LOST with teamSide FOR and the plain tile tag, unaffected by the row display label", () => {
     // This is exactly the label the FamilyGrid taps with — the raw tile label,
-    // never the "Ballylanders HP Error" display string.
+    // never a row display label such as "Dispossessed".
     const event = adaptProTaggerAction({
       familyId: "TURNOVER",
       tileLabel: "HP Error",

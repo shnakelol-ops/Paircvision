@@ -3,7 +3,7 @@ import type { CSSProperties, TouchEvent as ReactTouchEvent } from "react";
 import { NotesQuickPanel } from "../features/notes";
 import type { ProTaggerSession, ProTaggerSquadPlayer } from "./pro-tagger-session";
 import type { ProTaggerFamilyId } from "./pro-tagger-families";
-import { PRO_TAGGER_FAMILIES, getFamilyLabel } from "./pro-tagger-families";
+import { PRO_TAGGER_FAMILIES, getFamilyLabel, resolvePickerTeamSide } from "./pro-tagger-families";
 import type { LoggedMatchEvent, SavedMatch } from "../core/stats/saved-match";
 import type { MatchEventKind } from "../core/stats/stats-event-model";
 import { adaptProTaggerAction } from "./pro-tagger-adapter";
@@ -1138,6 +1138,10 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
   // no per-family Red checks needed elsewhere.
   const disciplineStatus = buildDisciplineStatusMap(loggedEvents, half === 1 ? "1H" : "2H", clockSeconds);
 
+  // Whose squad the player picker opens: the tapped row's team, except
+  // Turnover, where both rows tag OUR player (see resolvePickerTeamSide).
+  const pickerTeamSide = pending ? resolvePickerTeamSide(pending.familyId, pending.teamSide) : "FOR";
+
   return (
     <div style={S.shell}>
 
@@ -1309,7 +1313,6 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
             <>
               <ProTaggerFamilyGrid
                 sport={session.sport}
-                homeTeamName={homeLabel}
                 awayTeamName={awayLabel}
                 onTileTap={handleTileTap}
               />
@@ -1357,25 +1360,25 @@ export function ProTaggerLiveScreen({ session, onEnd, restoreState }: Props) {
               <div style={S.pickerWrap}>
                 <ProTaggerPlayerPicker
                   teamLabel={
-                    pending.teamSide === "FOR"
+                    pickerTeamSide === "FOR"
                       ? (session.homeTeamName.trim() || "Home")
                       : (session.awayTeamName.trim() || "Away")
                   }
                   squad={
-                    pending.teamSide === "FOR"
+                    pickerTeamSide === "FOR"
                       ? homeSquadState
                       : awaySquadState
                   }
                   squadId={
-                    pending.teamSide === "FOR"
+                    pickerTeamSide === "FOR"
                       ? session.homeSquad.id
                       : session.awaySquad.id
                   }
                   teamColour={
-                    pending.teamSide === "FOR" ? homeColour : awayColour
+                    pickerTeamSide === "FOR" ? homeColour : awayColour
                   }
                   secondaryColour={
-                    pending.teamSide === "FOR" ? homeSecondaryColour : awaySecondaryColour
+                    pickerTeamSide === "FOR" ? homeSecondaryColour : awaySecondaryColour
                   }
                   disciplineStatus={disciplineStatus}
                   onSelect={handlePlayerSelect}

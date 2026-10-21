@@ -19,13 +19,14 @@ export type ProTaggerTile = {
   altLabel?: string;
   altForSports?: readonly ProTaggerSport[];
   /**
-   * Display-only. On the opposition (minus) row, this tile represents a
-   * mistake made by the *other* team (not the row's own team) — e.g. an
-   * opposition-row "HP Error" only makes sense once you know whose handpass
-   * error it was. When true, the rendered label is prefixed with the other
-   * team's short name. Does not change the stored tile value/tag.
+   * Display-only labels for the FOR row and the OPP (minus) row, used where
+   * one stored tile value reads differently depending on which row it sits
+   * on (Turnover: "Tackle" is our Tackle when we win the ball, "Dispossessed"
+   * when we lose it). The tap always sends `label` — the stored tile
+   * value/tag is never affected. Falls back to the sport-resolved label.
    */
-  attributeOtherTeamOnOppositionRow?: boolean;
+  forRowLabel?: string;
+  oppRowLabel?: string;
   /**
    * Per-tile colour override — used only where tiles within one family
    * mean visibly different things (Discipline's Yellow/Sin Bin/Red).
@@ -72,6 +73,13 @@ export type ProTaggerFamily = {
    *  action never competes with the core tiles for visual weight or thumb
    *  space. */
   secondary?: boolean;
+  /** Display-only headings for the FOR and OPP rows. When absent, the FOR
+   *  row has no heading and the OPP row is headed by the opposition's name. */
+  rowHeadings?: { for: string; opp: string; forColour: string; oppColour: string };
+  /** Both rows open OUR (home) player picker instead of the tapped row's
+   *  team — the row only decides the outcome (Turnover Won / Turnover Lost),
+   *  never whose player is tagged. See resolvePickerTeamSide. */
+  pickerAlwaysFor?: boolean;
 };
 
 const FORTY_FIVE_TILE: ProTaggerTile = {
@@ -210,14 +218,23 @@ export const PRO_TAGGER_FAMILIES: readonly ProTaggerFamily[] = [
     label: "Turnover",
     colour: "#ea580c",
     textColour: "#ffffff",
+    // FOR row = our turnovers won, OPP row = our turnovers lost, and both
+    // tag OUR player (who regained / who lost possession). Stored tile
+    // values — and so the TACKLE / INTERCEPTION / HP ERROR / KP ERROR /
+    // OVERCARRIED tags — are unchanged; only the row labels differ. The
+    // adapter still stores the OPP row as TURNOVER_LOST with teamSide "FOR",
+    // so the opposition's turnover is derived from the same event.
     tiles: [
-      { label: "Tackle" },
-      { label: "Interception" },
-      { label: "HP Error", attributeOtherTeamOnOppositionRow: true },
-      { label: "KP Error", attributeOtherTeamOnOppositionRow: true },
-      { label: "Overcarried", attributeOtherTeamOnOppositionRow: true },
+      { label: "Tackle",       forRowLabel: "Tackle",                 oppRowLabel: "Dispossessed" },
+      { label: "Interception", forRowLabel: "Interception",           oppRowLabel: "Intercepted" },
+      { label: "HP Error",     forRowLabel: "Opposition HP Error",    oppRowLabel: "HP Error" },
+      { label: "KP Error",     forRowLabel: "Opposition KP Error",    oppRowLabel: "KP Error" },
+      { label: "Overcarried",  forRowLabel: "Opposition Overcarried", oppRowLabel: "Overcarried" },
     ],
     hasMinus: true,
+    // Heading colours: CLAUDE.md's canonical Turnover Won / Turnover Lost.
+    rowHeadings: { for: "OUR TURNOVERS WON", opp: "OUR TURNOVERS LOST", forColour: "#a78bfa", oppColour: "#f97316" },
+    pickerAlwaysFor: true,
   },
   {
     id: "FREE",
@@ -340,17 +357,36 @@ export function resolveTileRestartOwner(
 }
 
 /**
- * Display-only lookup: does this tile, when shown on the opposition (minus)
- * row, need its label prefixed with the *other* team's name to stay
- * unambiguous? Looked up by resolved tile label so callers never have to
- * duplicate the family/tile data. Never affects the stored tile value.
+ * Display-only: the label a tile shows on the given row — its forRowLabel /
+ * oppRowLabel when it has one, otherwise the sport-resolved label. Never
+ * affects the stored tile value.
  */
-export function tileNeedsOppositionAttribution(
+export function getTileRowLabel(tile: ProTaggerTile, sport: ProTaggerSport, row: "FOR" | "OPP"): string {
+  const rowLabel = row === "FOR" ? tile.forRowLabel : tile.oppRowLabel;
+  return rowLabel ?? getTileLabel(tile, sport);
+}
+
+/**
+ * getTileRowLabel looked up by family + resolved tile label (the value the
+ * grid taps with), for callers that only hold the pending action.
+ */
+export function getTileRowLabelFor(
   familyId: ProTaggerFamilyId,
   tileLabel: string,
   sport: ProTaggerSport,
-): boolean {
+  row: "FOR" | "OPP",
+): string {
   const family = PRO_TAGGER_FAMILIES.find((f) => f.id === familyId);
   const tile = family?.tiles.find((t) => getTileLabel(t, sport) === tileLabel);
-  return tile?.attributeOtherTeamOnOppositionRow === true;
+  return tile ? getTileRowLabel(tile, sport, row) : tileLabel;
+}
+
+/**
+ * Whose squad the player picker opens for a tap on `tappedRow`. The tapped
+ * row's own team for every family, except those with pickerAlwaysFor
+ * (Turnover), where both rows tag OUR player.
+ */
+export function resolvePickerTeamSide(familyId: ProTaggerFamilyId, tappedRow: "FOR" | "OPP"): "FOR" | "OPP" {
+  const family = PRO_TAGGER_FAMILIES.find((f) => f.id === familyId);
+  return family?.pickerAlwaysFor ? "FOR" : tappedRow;
 }
