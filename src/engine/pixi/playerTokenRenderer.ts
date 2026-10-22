@@ -21,7 +21,8 @@ export type PlayerTokenStyle =
   | "premium"
   | "pixi"
   | "phosphor"
-  | "pill-under";
+  | "pill-under"
+  | "bib";
 
 /**
  * Styles a coach can pick in the Tactical Slate's Player Tokens menu, in
@@ -36,6 +37,7 @@ export const SELECTABLE_PLAYER_TOKEN_STYLES: readonly PlayerTokenStyle[] = [
   "pixi",
   "phosphor",
   "pill-under",
+  "bib",
 ];
 
 /**
@@ -172,6 +174,30 @@ export const VisionV3Renderer: PlayerTokenRenderer = ({
     artScale: VISION_V3_SLATE_ART_SCALE,
   });
 
+// Bib Token — the Vision V3 disc in its "bib" variant: same geometry, team
+// colour and kit pattern, with the number (and every other label) hidden.
+// The player's number/label fields are untouched; only the drawing omits them.
+export const BibTokenRenderer: PlayerTokenRenderer = ({
+  label,
+  teamColor,
+  scale,
+  style,
+  kitPattern,
+  kitPatternColor,
+  radius,
+}) =>
+  createVisionV3PlayerToken({
+    label,
+    teamColor,
+    radius,
+    scale,
+    style,
+    kitPattern,
+    kitPatternColor,
+    variant: "bib",
+    artScale: VISION_V3_SLATE_ART_SCALE,
+  });
+
 export const ProceduralPixiRenderer: PlayerTokenRenderer = ({
   label,
   scale,
@@ -245,6 +271,7 @@ export function resolvePlayerTokenRenderer(style: PlayerTokenStyle): PlayerToken
   if (style === "pixi") return ProceduralPixiRenderer;
   if (style === "phosphor") return PhosphorRenderer;
   if (style === "pill-under") return UnderNamePillRenderer;
+  if (style === "bib") return BibTokenRenderer;
   return ClassicRingRenderer;
 }
 
@@ -255,7 +282,8 @@ export function sanitizePlayerTokenStyle(value: unknown): PlayerTokenStyle {
     value === "premium" ||
     value === "pixi" ||
     value === "phosphor" ||
-    value === "pill-under"
+    value === "pill-under" ||
+    value === "bib"
   ) {
     return value;
   }

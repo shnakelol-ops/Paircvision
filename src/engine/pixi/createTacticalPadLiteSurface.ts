@@ -113,6 +113,7 @@ import {
   sanitizePlayerPresentation,
   type TacticalPlayerPresentation,
 } from "./playerPresentation";
+import { MINI_TOKEN_SIZE_RATIO, isMiniTokenSizeActive } from "./playerTokenSize";
 
 export type { PitchSport };
 
@@ -341,6 +342,11 @@ export type TacticalPadLiteSurface = {
   }) => void;
   setTacticalTokenStyle: (style: TacticalPlayerTokenStyle) => void;
   setCompactPlayerTokens: (enabled: boolean) => void;
+  /**
+   * Bib Token Mini size (see playerTokenSize.ts). Only drawn while the style
+   * is "bib" and Practice is off; otherwise ignored in favour of Compact.
+   */
+  setMiniPlayerTokens: (enabled: boolean) => void;
   /** Practice presentation (Training): fixed Vision V3, Compact scale, no identity label. */
   setPracticePlayerTokens: (enabled: boolean) => void;
   /** Training Practice Areas (practiceAreas option only): act on the selected area. */
@@ -431,6 +437,8 @@ type TacticalPadLiteSurfaceOptions = {
   whiteboardDrawColor?: number;
   tacticalTokenStyle?: TacticalPlayerTokenStyle;
   compactPlayerTokens?: boolean;
+  /** Bib Token Mini size at creation (see setMiniPlayerTokens). Default off. */
+  miniPlayerTokens?: boolean;
   /** Practice presentation at creation (see setPracticePlayerTokens). Default off. */
   practicePlayerTokens?: boolean;
   /**
@@ -1192,12 +1200,18 @@ function teamColor(
   return colors?.blue ?? "blue";
 }
 
+/**
+ * `sizeCompensation` enlarges the token-local hit radius for sizes drawn
+ * smaller than Compact (Bib Mini), so their touch target stays the Compact
+ * one instead of shrinking with the art. 1 leaves every other size as is.
+ */
 function setPlayerTouchHitArea(
   player: TacticalPlayer,
   mapper: ReturnType<typeof createWorldViewport>,
+  sizeCompensation = 1,
 ): void {
   const touchRadiusInWorld = (PLAYER_TOUCH_HIT_DIAMETER_PX * 0.5) / mapper.transform.scale;
-  const hitRadius = Math.max(PLAYER_RADIUS, touchRadiusInWorld);
+  const hitRadius = Math.max(PLAYER_RADIUS, touchRadiusInWorld) * sizeCompensation;
   const hitRadiusSquared = hitRadius * hitRadius;
   player.token.hitArea = {
     contains: (x: number, y: number) => x * x + y * y <= hitRadiusSquared,
@@ -1770,6 +1784,20 @@ export async function createTacticalPadLiteSurface(
   // hit-area change — and always renders the fixed Vision V3 token.
   let isPracticePlayerTokens = options.practicePlayerTokens === true;
   const persistPlayerPresentation = options.persistPlayerPresentation === true;
+  // Bib Token Mini: a further MINI_TOKEN_SIZE_RATIO on top of Compact. Only
+  // drawn for the "bib" style outside Practice (isMiniPlayerTokenSize).
+  let isMiniPlayerTokens = options.miniPlayerTokens === true;
+  function isMiniPlayerTokenSize(): boolean {
+    return isMiniTokenSizeActive({
+      compact: isCompactPlayerTokens,
+      mini: isMiniPlayerTokens,
+      practice: isPracticePlayerTokens,
+      style: tacticalTokenStyle,
+    });
+  }
+  function playerHitAreaSizeCompensation(): number {
+    return isMiniPlayerTokenSize() ? 1 / MINI_TOKEN_SIZE_RATIO : 1;
+  }
   // Under-Pill's own assembly renders UNDER_PILL_NORMAL_SHRINK smaller than the raw
   // token radius in Normal Mode (see createNamePillPlayerToken.ts). Compact Mode's
   // multiplier is compensated here so its on-screen size stays exactly what it was
@@ -1780,11 +1808,13 @@ export async function createTacticalPadLiteSurface(
       : COMPACT_PLAYER_TOKEN_SCALE_FACTOR;
   }
   function getIdlePlayerTokenScale(): number {
+    if (isMiniPlayerTokenSize()) return PREMIUM_TOKEN_IDLE_SCALE * compactScaleFactor() * MINI_TOKEN_SIZE_RATIO;
     return isCompactPlayerTokens || isPracticePlayerTokens
       ? PREMIUM_TOKEN_IDLE_SCALE * compactScaleFactor()
       : PREMIUM_TOKEN_IDLE_SCALE;
   }
   function getDragPlayerTokenScale(): number {
+    if (isMiniPlayerTokenSize()) return PREMIUM_TOKEN_DRAG_SCALE * compactScaleFactor() * MINI_TOKEN_SIZE_RATIO;
     return isCompactPlayerTokens || isPracticePlayerTokens
       ? PREMIUM_TOKEN_DRAG_SCALE * compactScaleFactor()
       : PREMIUM_TOKEN_DRAG_SCALE;
@@ -2582,7 +2612,7 @@ export async function createTacticalPadLiteSurface(
     }
 
     for (const player of players) {
-      setPlayerTouchHitArea(player, mapper);
+      setPlayerTouchHitArea(player, mapper, playerHitAreaSizeCompensation());
       setTokenWorldPositionForPoint(player, player.current, mapper);
       // Counter-rotate so numbers/name badges stay upright while the pitch rotates.
       player.token.rotation = -worldRotationRadians;
@@ -2682,11 +2712,13 @@ export async function createTacticalPadLiteSurface(
   /**
    * Rendered radius (world units) of a player's token disc, where the
    * renderer's geometry is known: Vision V3 — always used by Practice, and
-   * the default style for Normal/Compact. Null for other token styles, whose
+   * the default style for Normal/Compact — and the Bib Token, which shares
+   * Vision V3's disc. Null for other token styles, whose
    * carried ball keeps the canonical-length presentation distance.
    */
   function resolveRenderedPlayerDiscRadius(): number | null {
-    const usesVisionV3 = isPracticePlayerTokens || tacticalTokenStyle === "vision-v3";
+    const usesVisionV3 =
+      isPracticePlayerTokens || tacticalTokenStyle === "vision-v3" || tacticalTokenStyle === "bib";
     if (!usesVisionV3) return null;
     return resolveVisionV3DiscRadius(PLAYER_RADIUS * TACTICAL_PLAYER_VISUAL_SCALE) * getIdlePlayerTokenScale();
   }
@@ -4730,7 +4762,7 @@ export async function createTacticalPadLiteSurface(
     previousToken.removeAllListeners();
     previousToken.destroy({ children: true });
     bindPlayerTokenInteraction(player);
-    setPlayerTouchHitArea(player, mapper);
+    setPlayerTouchHitArea(player, mapper, playerHitAreaSizeCompensation());
     syncWhiteboardTokenInputMode();
   }
 
@@ -4888,7 +4920,7 @@ export async function createTacticalPadLiteSurface(
 
   function syncPlayersToViewport(): void {
     for (const player of players) {
-      setPlayerTouchHitArea(player, mapper);
+      setPlayerTouchHitArea(player, mapper, playerHitAreaSizeCompensation());
       setTokenWorldPositionForPoint(player, player.current, mapper);
     }
     renderTacticalItems();
@@ -5705,14 +5737,16 @@ export async function createTacticalPadLiteSurface(
       const nextStyle = sanitizePlayerTokenStyle(style);
       if (nextStyle === tacticalTokenStyle) return;
       const prevStyle = tacticalTokenStyle;
+      const wasMini = isMiniPlayerTokenSize();
       tacticalTokenStyle = nextStyle;
       rerenderAllTacticalPlayers();
       refreshPresentedCarriedBalls();
       // Under-Pill compensates Compact Mode's scale multiplier (see
       // compactScaleFactor above), so a switch into or out of it must refresh
       // the idle/drag scale target immediately rather than waiting for the
-      // next drag/toggle. No other style transition needs this.
-      if (prevStyle === "pill-under" || nextStyle === "pill-under") {
+      // next drag/toggle. Entering or leaving Bib Mini changes the scale
+      // too. No other style transition needs this.
+      if (prevStyle === "pill-under" || nextStyle === "pill-under" || wasMini !== isMiniPlayerTokenSize()) {
         for (const tacticalPlayer of players) {
           const isDraggingThisPlayer =
             activeDrag !== null && activeDrag.type === "player" && activeDrag.playerId === tacticalPlayer.id;
@@ -5723,12 +5757,29 @@ export async function createTacticalPadLiteSurface(
     setCompactPlayerTokens: (enabled) => {
       const nextEnabled = Boolean(enabled);
       if (nextEnabled === isCompactPlayerTokens) return;
+      const wasMini = isMiniPlayerTokenSize();
       isCompactPlayerTokens = nextEnabled;
+      refreshPresentedCarriedBalls();
+      const miniChanged = wasMini !== isMiniPlayerTokenSize();
+      for (const player of players) {
+        const isDraggingThisPlayer =
+          activeDrag !== null && activeDrag.type === "player" && activeDrag.playerId === player.id;
+        setPlayerDragVisualTarget(player, isDraggingThisPlayer);
+        if (miniChanged) setPlayerTouchHitArea(player, mapper, playerHitAreaSizeCompensation());
+      }
+    },
+    setMiniPlayerTokens: (enabled) => {
+      const nextEnabled = Boolean(enabled);
+      if (nextEnabled === isMiniPlayerTokens) return;
+      const wasMini = isMiniPlayerTokenSize();
+      isMiniPlayerTokens = nextEnabled;
+      if (wasMini === isMiniPlayerTokenSize()) return;
       refreshPresentedCarriedBalls();
       for (const player of players) {
         const isDraggingThisPlayer =
           activeDrag !== null && activeDrag.type === "player" && activeDrag.playerId === player.id;
         setPlayerDragVisualTarget(player, isDraggingThisPlayer);
+        setPlayerTouchHitArea(player, mapper, playerHitAreaSizeCompensation());
       }
     },
     setPracticePlayerTokens: (enabled) => {

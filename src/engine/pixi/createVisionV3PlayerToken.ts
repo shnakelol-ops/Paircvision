@@ -184,7 +184,7 @@ function drawPatternAccent(
   }
 }
 
-function drawShirtGlyph(target: Graphics, centerY: number, size: number, color: number): void {
+function drawShirtGlyph(target: Graphics, centerY: number, size: number, color: number, alpha = 0.18): void {
   const top = centerY - size * 0.5;
   const bottom = centerY + size * 0.5;
   target
@@ -210,7 +210,7 @@ function drawShirtGlyph(target: Graphics, centerY: number, size: number, color: 
       -size * 0.42,
       top + size * 0.5,
     ])
-    .fill({ color, alpha: 0.18 });
+    .fill({ color, alpha });
 }
 
 function drawPersonCircleGlyph(target: Graphics, radius: number, color: number, unit: number): void {
@@ -223,6 +223,17 @@ function drawPersonCircleGlyph(target: Graphics, radius: number, color: number, 
     .fill({ color, alpha: 0.12 });
 }
 
+/**
+ * "standard" is the Vision V3 token. "bib" is the Bib Token: the same disc,
+ * rim, team colour and kit pattern, but no identity label, no contact
+ * shadow, no person glyph and no orientation tick — only the jersey glyph,
+ * drawn stronger so the bib reads on its own at Compact and Mini sizes.
+ */
+export type VisionV3TokenVariant = "standard" | "bib";
+
+/** Jersey glyph opacity on the Bib Token (Vision V3's own glyph is 0.18). */
+export const BIB_TOKEN_SHIRT_GLYPH_ALPHA = 0.5;
+
 export function createVisionV3PlayerToken({
   label,
   teamColor,
@@ -232,6 +243,7 @@ export function createVisionV3PlayerToken({
   kitPattern = "plain",
   kitPatternColor,
   showLabel = true,
+  variant = "standard",
   artScale = 1,
 }: {
   label: string;
@@ -243,6 +255,8 @@ export function createVisionV3PlayerToken({
   kitPatternColor?: number;
   /** false draws the token without its identity label (Tactical Slate Practice presentation). */
   showLabel?: boolean;
+  /** "bib" draws the Bib Token (never labelled); see VisionV3TokenVariant. */
+  variant?: VisionV3TokenVariant;
   /**
    * Supersampling factor (see VISION_V3_SLATE_ART_SCALE). 1 (the default)
    * draws straight into the token exactly as before; the Tactical Slate
@@ -323,10 +337,15 @@ export function createVisionV3PlayerToken({
 
   // Tiny, dark, low-opacity contact shadow only — no oversized translucent
   // halo. This is the sole external effect; it must never touch the disc.
+  // The Bib Token keeps an empty shadow graphic so the surface's drag-lift
+  // alpha animation still has a target, but draws nothing into it.
+  const isBib = variant === "bib";
   const shadow = new Graphics();
-  shadow
-    .ellipse(0.15 * unit, discRadius * 0.92, discRadius * 0.68, discRadius * 0.17)
-    .fill({ color: 0x020617, alpha: 0.22 });
+  if (!isBib) {
+    shadow
+      .ellipse(0.15 * unit, discRadius * 0.92, discRadius * 0.68, discRadius * 0.17)
+      .fill({ color: 0x020617, alpha: 0.22 });
+  }
   art.addChild(shadow);
 
   const rim = new Graphics();
@@ -353,6 +372,15 @@ export function createVisionV3PlayerToken({
   disc.mask = patternMask;
   disc.addChild(patternMask);
   art.addChild(disc);
+
+  if (isBib) {
+    // Light kits get a dark jersey glyph, so the bib never vanishes on white.
+    const glyphColor = luminance(baseColor) > 170 ? 0x0f172a : 0xffffff;
+    const bibLayer = new Graphics();
+    drawShirtGlyph(bibLayer, 0, innerRadius * 1.24, glyphColor, BIB_TOKEN_SHIRT_GLYPH_ALPHA);
+    art.addChild(bibLayer);
+    return { token, shadow };
+  }
 
   const iconLayer = new Graphics();
   drawShirtGlyph(iconLayer, -innerRadius * 0.02, innerRadius * 0.98, 0xffffff);
