@@ -8,8 +8,10 @@ import {
   DETAIL_LABEL_SIZE,
   SPONSOR_CAPTION_SIZE,
   MAX_JERSEY_HEIGHT,
+  VENUE_MIN_SIZE,
   computeCoverLayout,
   coverDetailColumns,
+  detailColumnWidths,
   glowColour,
   planHeader,
   renderMatchdayCover,
@@ -137,6 +139,62 @@ describe("renderMatchdayCover", () => {
     const base = scenario("championship");
     expect(coverDetailColumns({ ...base, fixture: { ...base.fixture, date: "", throwIn: "" } }).map((c) => c.label)).toEqual(["Venue"]);
     expect(coverDetailColumns({ ...base, fixture: { ...base.fixture, venue: "" } }).map((c) => c.label)).toEqual(["Date", "Throw-in"]);
+  });
+});
+
+describe("venue fitting in the details panel", () => {
+  const withVenue = (venue: string) => {
+    const base = scenario("missing-kit");
+    return { ...base, fixture: { ...base.fixture, venue } };
+  };
+  const venueLines = (venue: string) => {
+    const { texts } = render(withVenue(venue));
+    // The venue value is drawn in the right-hand column, below its label.
+    return texts.filter((t) => t.text.length > 1 && t.x > 560 && t.y > 1150 && t.y < 1260);
+  };
+
+  it.each([
+    "Bruff",
+    "Castletown Ballyagran",
+    "Kilmallock GAA Grounds",
+    "TUS Gaelic Grounds, Limerick",
+    "Páirc Uí Chaoimh, Baile an Chollaigh, Corcaigh",
+    "Páirc Mhic Diarmada, Cora Droma Rúisc, Co. Liatroma",
+    "Ballinagarde Ballinvreena Kilteely Dromkeen Hospital Herbertstown Memorial Park",
+  ])("%s stays inside its column at a readable size", (venue) => {
+    const lines = venueLines(venue);
+    expect(lines.length).toBeGreaterThan(0);
+    expect(lines.length).toBeLessThanOrEqual(2);
+    for (const l of lines) {
+      expect(l.size).toBeGreaterThanOrEqual(VENUE_MIN_SIZE);
+      expect(l.left).toBeGreaterThan(560);
+      expect(l.right).toBeLessThanOrEqual(COVER_WIDTH - 56);
+    }
+    if (lines.length === 2) expect(lines[1].y - lines[0].y).toBeGreaterThanOrEqual(lines[0].size * 0.99); // roomy line gap
+  });
+
+  it("keeps the DATE / THROW-IN / VENUE order and drops the venue column when empty", () => {
+    expect(coverDetailColumns(withVenue("Bruff")).map((c) => c.label)).toEqual(["Date", "Throw-in", "Venue"]);
+    expect(coverDetailColumns(withVenue("")).map((c) => c.label)).toEqual(["Date", "Throw-in"]);
+  });
+
+  it("gives the venue the width DATE and THROW-IN don't need", () => {
+    const cols = coverDetailColumns(withVenue("Castletown Ballyagran"));
+    const widths = detailColumnWidths(cols, 968, (c) => (c.label === "Venue" ? 0 : 150));
+    expect(widths.slice(0, 2)).toEqual([210, 210]);
+    expect(widths[2]).toBe(968 - 420);
+    expect(widths.reduce((a, b) => a + b)).toBeCloseTo(968, 6);
+  });
+
+  it("never squeezes the venue below 45% of the panel", () => {
+    const cols = coverDetailColumns(withVenue("X"));
+    const widths = detailColumnWidths(cols, 1000, () => 400);
+    expect(widths[2]).toBeCloseTo(450, 6);
+  });
+
+  it("keeps the original proportions when there is no venue", () => {
+    const cols = coverDetailColumns(withVenue(""));
+    expect(detailColumnWidths(cols, 900, () => 1)).toEqual([500, 400]);
   });
 });
 
