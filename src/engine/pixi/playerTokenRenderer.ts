@@ -64,8 +64,8 @@ export type PlayerTokenRendererInput = {
   radius: number;
   /**
    * Draw the identity label (number / initials / name). Defaults to true.
-   * Only VisionV3Renderer honours false — used solely by the Training
-   * Practice presentation, which always renders Vision V3.
+   * Only VisionV3Renderer honours false. It was used solely by Training's
+   * retired Practice presentation; the Slate no longer passes it.
    */
   showLabel?: boolean;
 };
@@ -273,6 +273,15 @@ export function resolvePlayerTokenRenderer(style: PlayerTokenStyle): PlayerToken
   if (style === "pill-under") return UnderNamePillRenderer;
   if (style === "bib") return BibTokenRenderer;
   return ClassicRingRenderer;
+}
+
+/**
+ * A token style stored with a board, or null when the value is missing or
+ * unknown (the caller picks the fallback). Unlike sanitizePlayerTokenStyle,
+ * it never maps legacy values or defaults.
+ */
+export function sanitizeStoredPlayerTokenStyle(value: unknown): PlayerTokenStyle | null {
+  return typeof value === "string" && sanitizePlayerTokenStyle(value) === value ? (value as PlayerTokenStyle) : null;
 }
 
 export function sanitizePlayerTokenStyle(value: unknown): PlayerTokenStyle {

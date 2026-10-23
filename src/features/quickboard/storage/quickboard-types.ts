@@ -1,9 +1,10 @@
 import { type SlateTextAnnotation, sanitizeTextAnnotations } from "../annotations/slateTextAnnotation";
 import {
-  DEFAULT_TRAINING_PLAYER_PRESENTATION,
+  resolveStoredTrainingTokenSettings,
   sanitizePlayerPresentation,
   type TacticalPlayerPresentation,
 } from "../../../engine/pixi/playerPresentation";
+import { sanitizeStoredPlayerTokenStyle, type PlayerTokenStyle } from "../../../engine/pixi/playerTokenRenderer";
 
 export const QUICKBOARD_STORAGE_KEY = "pitchflow_quickboard_boards_v1";
 const MAX_BOARD_NAME_LENGTH = 48;
@@ -39,8 +40,10 @@ export type QuickBoardBoardState = {
   shapeLinksVisible?: unknown;
   /** Work surface metadata; absent means "pitch". Only "training" / "tacticalBoard" / "whiteboard" are ever stored. */
   surface?: Exclude<QuickBoardSurface, "pitch">;
-  /** Training player presentation (Normal / Compact / Practice). Never written for Pitch or Whiteboard. */
+  /** Training player-token size (legacy boards may hold "practice"). Never written for Pitch or Whiteboard. */
   playerPresentation?: TacticalPlayerPresentation;
+  /** Training player-token style. Never written for Pitch or Whiteboard. */
+  playerTokenStyle?: PlayerTokenStyle;
 };
 
 export type SavedQuickBoard = {
@@ -84,24 +87,30 @@ export function withQuickBoardSurface(state: QuickBoardBoardState, surface: Quic
 }
 
 /**
- * Training boards saved before player presentation existed carry no
- * `playerPresentation`, yet open as Practice. Comparing a stored Training
- * state against the live board therefore needs that default filled in, or a
- * just-opened legacy board would immediately read as unsaved. Pitch and
- * Whiteboard states are returned untouched.
+ * Training boards open with the token style and size resolved from their
+ * stored fields (resolveStoredTrainingTokenSettings): legacy Practice boards
+ * and boards saved before presentations existed open as Bib Token at
+ * Compact, and older Normal / Compact boards without a style as Vision V3.
+ * Comparing a stored Training state against the live board therefore needs
+ * those same values filled in, or a just-opened legacy board would
+ * immediately read as unsaved. Only the in-memory copy used for comparison
+ * is changed — the stored board is never rewritten. Pitch and Whiteboard
+ * states are returned untouched.
  */
 export function withTrainingPresentationDefault(
   state: QuickBoardBoardState,
   surface: QuickBoardSurface,
 ): QuickBoardBoardState {
-  if (surface !== "training" || state.playerPresentation !== undefined) return state;
-  return { ...state, playerPresentation: DEFAULT_TRAINING_PLAYER_PRESENTATION };
+  if (surface !== "training") return state;
+  const settings = resolveStoredTrainingTokenSettings(state);
+  return { ...state, playerPresentation: settings.size, playerTokenStyle: settings.style };
 }
 
 export function sanitizeQuickBoardState(value: unknown): QuickBoardBoardState | null {
   if (!isRecord(value)) return null;
   const surface = sanitizeStoredBoardSurface(value.surface);
   const playerPresentation = sanitizePlayerPresentation(value.playerPresentation);
+  const playerTokenStyle = sanitizeStoredPlayerTokenStyle(value.playerTokenStyle);
   return {
     players: sanitizeArray(value.players),
     items: sanitizeArray(value.items),
@@ -121,6 +130,7 @@ export function sanitizeQuickBoardState(value: unknown): QuickBoardBoardState | 
     ...(value.shapeLinksVisible !== undefined ? { shapeLinksVisible: value.shapeLinksVisible } : {}),
     ...(surface ? { surface } : {}),
     ...(playerPresentation ? { playerPresentation } : {}),
+    ...(playerTokenStyle ? { playerTokenStyle } : {}),
     textAnnotations: sanitizeTextAnnotations(value.textAnnotations),
     ...(typeof value.backgroundImage === "string" && value.backgroundImage.startsWith("data:image/")
       ? { backgroundImage: value.backgroundImage }

@@ -88,12 +88,11 @@ import {
   type PlayerTokenSize,
 } from "../engine/pixi/playerTokenSize";
 import {
-  PLAYER_PRESENTATION_CHOICES,
   TACTICAL_SLATE_SURFACES,
   TACTICAL_SLATE_SURFACE_LABELS,
   TACTICAL_SLATE_SURFACE_ROUTES,
   resolveBoardStorageNamespace,
-  resolveSurfaceDefaultPlayerPresentation,
+  resolveSurfaceDefaultTokenSettings,
   resolveSurfaceInitialRoster,
   resolveSurfacePitchTheme,
   surfaceUsesPlayerPresentation,
@@ -101,11 +100,6 @@ import {
   surfaceUsesPracticeAreas,
   type TacticalSlateSurface,
 } from "./tacticalSlateSurface";
-import {
-  playerPresentationFlags,
-  resolvePlayerPresentation,
-  type TacticalPlayerPresentation,
-} from "../engine/pixi/playerPresentation";
 import SlateBackgroundPositioner from "../features/quickboard/background/SlateBackgroundPositioner";
 import SlateLabelEntryModal from "../features/quickboard/annotations/SlateLabelEntryModal";
 import { type SlateTextAnnotation, type SlateTextFontSize } from "../features/quickboard/annotations/slateTextAnnotation";
@@ -1441,6 +1435,7 @@ export function serializeBoardState(state: QuickBoardBoardState | null): string 
     ...(state.backgroundImage !== undefined ? { backgroundImage: state.backgroundImage } : {}),
     // Training only — Pitch/Whiteboard states never carry it, so their signatures are unchanged.
     ...(state.playerPresentation !== undefined ? { playerPresentation: state.playerPresentation } : {}),
+    ...(state.playerTokenStyle !== undefined ? { playerTokenStyle: state.playerTokenStyle } : {}),
   };
   try {
     return JSON.stringify(recoverableState);
@@ -2727,28 +2722,17 @@ export default function TacticalPadLiteClean({
   // Independent of showShapeLinks (the tethers' own visibility on the
   // surface) — closing this panel (e.g. during playback) never touches them.
   const [isShapeLinksPanelOpen, setIsShapeLinksPanelOpen] = useState(false);
-  const [tacticalTokenStyle, setTacticalTokenStyle] = useState<TacticalPlayerTokenStyle>("vision-v3");
-  const [isCompactPlayerTokens, setIsCompactPlayerTokens] = useState(false);
-  // Mini size (every style) — set together with Compact (see
-  // playerTokenSize.ts). Saved only on Training, as its "mini" presentation.
-  const [isMiniPlayerTokens, setIsMiniPlayerTokens] = useState(false);
-  // Training's Practice presentation (fixed Vision V3, Compact scale, no
-  // identity label). Always false on Pitch and Whiteboard.
-  const [isPracticePlayerTokens, setIsPracticePlayerTokens] = useState(
-    () => resolveSurfaceDefaultPlayerPresentation(slateSurface) === "practice",
+  // Fresh-board token style and size: Vision V3 at Normal, or Bib Token at
+  // Compact on Training. Training boards then carry their own (see
+  // persistPlayerPresentation); Pitch and Whiteboard keep them per session.
+  const [defaultTokenSettings] = useState(() => resolveSurfaceDefaultTokenSettings(slateSurface));
+  const [tacticalTokenStyle, setTacticalTokenStyle] = useState<TacticalPlayerTokenStyle>(defaultTokenSettings.style);
+  const [isCompactPlayerTokens, setIsCompactPlayerTokens] = useState(
+    () => playerTokenSizeFlags(defaultTokenSettings.size).compact,
   );
+  // Mini size (every style) — set together with Compact (see playerTokenSize.ts).
+  const [isMiniPlayerTokens, setIsMiniPlayerTokens] = useState(() => playerTokenSizeFlags(defaultTokenSettings.size).mini);
   const usesPlayerPresentation = surfaceUsesPlayerPresentation(slateSurface);
-  const playerPresentation = resolvePlayerPresentation({
-    compact: isCompactPlayerTokens,
-    mini: isMiniPlayerTokens,
-    practice: isPracticePlayerTokens,
-  });
-  const applyPlayerPresentation = (presentation: TacticalPlayerPresentation) => {
-    const flags = playerPresentationFlags(presentation);
-    setIsCompactPlayerTokens(flags.compact);
-    setIsMiniPlayerTokens(flags.mini);
-    setIsPracticePlayerTokens(flags.practice);
-  };
   const playerTokenSize = resolvePlayerTokenSize({
     compact: isCompactPlayerTokens,
     mini: isMiniPlayerTokens,
@@ -3300,7 +3284,6 @@ export default function TacticalPadLiteClean({
       tacticalTokenStyle,
       compactPlayerTokens: isCompactPlayerTokens,
       miniPlayerTokens: isMiniPlayerTokens,
-      practicePlayerTokens: isPracticePlayerTokens,
       persistPlayerPresentation: usesPlayerPresentation,
       initialRoster: resolveSurfaceInitialRoster(slateSurface),
       practiceAreas: surfaceUsesPracticeAreas(slateSurface),
@@ -3312,9 +3295,10 @@ export default function TacticalPadLiteClean({
         if (disposed) return;
         setAngledZoneEdit(state);
       },
-      onPlayerPresentationChange: (presentation) => {
+      onPlayerTokenSettingsChange: (settings) => {
         if (disposed) return;
-        applyPlayerPresentation(presentation);
+        setTacticalTokenStyle(settings.style);
+        applyPlayerTokenSize(settings.size);
       },
       onPhaseCountChange: (count) => {
         if (!disposed) {
@@ -3513,11 +3497,6 @@ export default function TacticalPadLiteClean({
     if (isStatsMode || isWhiteboardMode) return;
     surfaceRef.current?.setMiniPlayerTokens(isMiniPlayerTokens);
   }, [isStatsMode, isWhiteboardMode, isMiniPlayerTokens]);
-
-  useEffect(() => {
-    if (isStatsMode || isWhiteboardMode) return;
-    surfaceRef.current?.setPracticePlayerTokens(isPracticePlayerTokens);
-  }, [isStatsMode, isWhiteboardMode, isPracticePlayerTokens]);
 
   useEffect(() => {
     if (!actionsOpen) {
@@ -6604,58 +6583,15 @@ export default function TacticalPadLiteClean({
               >
                 <span style={PLAYER_TOKENS_MENU_TRIGGER_TITLE_ROW_STYLE}>Player Tokens</span>
                 <span style={PLAYER_TOKENS_MENU_TRIGGER_CURRENT_STYLE}>
-                  Current:{" "}
-                  {usesPlayerPresentation && isPracticePlayerTokens
-                    ? "Practice"
-                    : TOKEN_STYLE_LABEL[tacticalTokenStyle] ?? ""}
+                  Current: {TOKEN_STYLE_LABEL[tacticalTokenStyle] ?? ""} ·{" "}
+                  {PLAYER_TOKEN_SIZE_CHOICES.find((choice) => choice.value === playerTokenSize)?.label ?? ""}
                   {" "}
                   {playerTokensSubmenuOpen ? "⌄" : "›"}
                 </span>
               </button>
-              {playerTokensSubmenuOpen && usesPlayerPresentation ? (
-                // Training: Normal | Compact | Mini | Practice, saved with the
-                // board (Pitch has Normal | Compact | Mini below). Practice is a
-                // fixed Vision V3 representation, so Style is hidden while on.
-                <div style={PLAYER_TOKENS_SUBMENU_STYLE}>
-                  <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Size</p>
-                  <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
-                    {PLAYER_PRESENTATION_CHOICES.map((choice) => (
-                      <button
-                        key={`player-presentation-${choice.value}`}
-                        type="button"
-                        className="control-button"
-                        style={playerPresentation === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
-                        aria-pressed={playerPresentation === choice.value}
-                        onClick={() => applyPlayerPresentation(choice.value)}
-                      >
-                        {playerPresentation === choice.value ? "✓ " : ""}
-                        {choice.label}
-                      </button>
-                    ))}
-                  </div>
-                  {!isPracticePlayerTokens ? (
-                    <>
-                      <div style={PLAYER_TOKENS_SUBMENU_DIVIDER_STYLE} />
-                      <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Style</p>
-                      <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
-                        {TOKEN_STYLE_CHOICES.map((choice) => (
-                          <button
-                            key={`token-style-${choice.value}`}
-                            type="button"
-                            className="control-button"
-                            style={tacticalTokenStyle === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
-                            onClick={() => setTacticalTokenStyle(choice.value)}
-                          >
-                            {tacticalTokenStyle === choice.value ? "✓ " : ""}
-                            {choice.label}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              ) : null}
-              {playerTokensSubmenuOpen && !usesPlayerPresentation ? (
+              {playerTokensSubmenuOpen ? (
+                // Style, then Size — the same five styles and three sizes on
+                // every surface. Training saves both with the board.
                 <div style={PLAYER_TOKENS_SUBMENU_STYLE}>
                   <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Style</p>
                   <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
@@ -6665,6 +6601,7 @@ export default function TacticalPadLiteClean({
                         type="button"
                         className="control-button"
                         style={tacticalTokenStyle === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
+                        aria-pressed={tacticalTokenStyle === choice.value}
                         onClick={() => setTacticalTokenStyle(choice.value)}
                       >
                         {tacticalTokenStyle === choice.value ? "✓ " : ""}

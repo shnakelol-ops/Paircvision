@@ -4,11 +4,10 @@
  *
  * The engine keeps Compact as its own flag and Mini as a second flag on top of
  * it, so Mini always also sets Compact and never draws on its own: a board
- * switched or loaded to Normal draws Normal, and Training's Practice
- * presentation always wins.
+ * switched or loaded to Normal draws Normal.
  *
  * Pitch and Whiteboard keep size as session state, exactly as the Compact
- * Tokens checkbox did. Training saves it as its player presentation (see
+ * Tokens checkbox did. Training saves it with each board (see
  * playerPresentation.ts).
  */
 export type PlayerTokenSize = "normal" | "compact" | "mini";
@@ -23,8 +22,8 @@ export const PLAYER_TOKEN_SIZE_CHOICES: ReadonlyArray<{ value: PlayerTokenSize; 
 ];
 
 /** Whether Mini is what the board actually draws. */
-export function isMiniTokenSizeActive(flags: { compact: boolean; mini: boolean; practice: boolean }): boolean {
-  return flags.compact && flags.mini && !flags.practice;
+export function isMiniTokenSizeActive(flags: { compact: boolean; mini: boolean }): boolean {
+  return flags.compact && flags.mini;
 }
 
 export function resolvePlayerTokenSize(flags: { compact: boolean; mini: boolean }): PlayerTokenSize {

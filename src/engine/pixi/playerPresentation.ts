@@ -1,47 +1,51 @@
-/**
- * Tactical Slate player presentation — how every player token on a board is
- * drawn. Purely visual: a player's id, team, number, kit, label fields,
- * phases, ball possession and Shape Links are never touched by it.
- *
- *  - "normal"   — the selected token style at full size (today's default).
- *  - "compact"  — the selected token style at the existing Compact scale.
- *  - "mini"     — the selected token style at Mini (80% of Compact; see
- *                 playerTokenSize.ts).
- *  - "practice" — Training Grass only: a fixed Vision V3 token at the same
- *                 Compact scale with no identity label (no number, initials
- *                 or name). Switching back reveals the unchanged label.
- *
- * Only Training boards persist a presentation (see persistPlayerPresentation
- * in createTacticalPadLiteSurface.ts); Pitch and Whiteboard payloads never
- * carry one.
- */
-export type TacticalPlayerPresentation = "normal" | "compact" | "mini" | "practice";
+import { sanitizeStoredPlayerTokenStyle, type PlayerTokenStyle } from "./playerTokenRenderer";
+import type { PlayerTokenSize } from "./playerTokenSize";
 
-/** What a Training board without presentation metadata (incl. legacy boards) opens with. */
-export const DEFAULT_TRAINING_PLAYER_PRESENTATION: TacticalPlayerPresentation = "practice";
+/**
+ * Training Grass player-token settings, saved per board. Purely visual: a
+ * player's id, team, number, kit, label fields, phases, ball possession and
+ * Shape Links are never touched by them.
+ *
+ * Only Training boards persist them (see persistPlayerPresentation in
+ * createTacticalPadLiteSurface.ts): `playerPresentation` holds the size and
+ * `playerTokenStyle` the style. Pitch and Whiteboard payloads carry neither.
+ *
+ * `playerPresentation` is read as stored, including two legacy shapes that
+ * are never written any more:
+ *  - "practice" — the retired Practice presentation (a numberless Vision V3
+ *    token at the Compact scale).
+ *  - absent — every Training board saved before presentations existed, which
+ *    opened as Practice.
+ * Both open as Bib Token at Compact: the same diameter, still numberless.
+ * The stored board is never rewritten; it only changes if the coach saves.
+ */
+export type TacticalPlayerPresentation = PlayerTokenSize | "practice";
+
+export type TrainingTokenSettings = { style: PlayerTokenStyle; size: PlayerTokenSize };
+
+/** What a new Training board, and a legacy Practice board, opens with. */
+export const DEFAULT_TRAINING_TOKEN_SETTINGS: Readonly<TrainingTokenSettings> = { style: "bib", size: "compact" };
+
+/**
+ * Style for a Normal / Compact / Mini Training board saved before the style
+ * was stored: the app's default style — never whatever board was open before,
+ * so one board's style cannot leak into another.
+ */
+export const LEGACY_TRAINING_TOKEN_STYLE: PlayerTokenStyle = "vision-v3";
 
 export function sanitizePlayerPresentation(value: unknown): TacticalPlayerPresentation | null {
   return value === "normal" || value === "compact" || value === "mini" || value === "practice" ? value : null;
 }
 
-export function resolvePlayerPresentation(flags: {
-  compact: boolean;
-  mini: boolean;
-  practice: boolean;
-}): TacticalPlayerPresentation {
-  if (flags.practice) return "practice";
-  if (!flags.compact) return "normal";
-  return flags.mini ? "mini" : "compact";
-}
-
-export function playerPresentationFlags(presentation: TacticalPlayerPresentation): {
-  compact: boolean;
-  mini: boolean;
-  practice: boolean;
-} {
+/** What a stored Training board opens with. Pure: reads the fields, never writes them. */
+export function resolveStoredTrainingTokenSettings(state: {
+  playerPresentation?: unknown;
+  playerTokenStyle?: unknown;
+}): TrainingTokenSettings {
+  const presentation = sanitizePlayerPresentation(state.playerPresentation);
+  if (presentation === null || presentation === "practice") return { ...DEFAULT_TRAINING_TOKEN_SETTINGS };
   return {
-    compact: presentation === "compact" || presentation === "mini",
-    mini: presentation === "mini",
-    practice: presentation === "practice",
+    style: sanitizeStoredPlayerTokenStyle(state.playerTokenStyle) ?? LEGACY_TRAINING_TOKEN_STYLE,
+    size: presentation,
   };
 }

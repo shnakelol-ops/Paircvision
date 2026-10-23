@@ -2,10 +2,7 @@ import type { PitchSport } from "../core/pitch/pitch-config";
 import type { QuickBoardSurface } from "../features/quickboard/storage/quickboard-types";
 import type { TacticalPitchTheme } from "../tactical-lite/pixi/tacticalPitchTheme";
 import type { TacticalSlateInitialRoster } from "../engine/pixi/tacticalSlateDefaultPlayers";
-import {
-  DEFAULT_TRAINING_PLAYER_PRESENTATION,
-  type TacticalPlayerPresentation,
-} from "../engine/pixi/playerPresentation";
+import { DEFAULT_TRAINING_TOKEN_SETTINGS, type TrainingTokenSettings } from "../engine/pixi/playerPresentation";
 
 /**
  * Tactical Slate work surfaces. All of them run the same tactical engine
@@ -84,25 +81,23 @@ export function resolveSurfaceInitialRoster(surface: TacticalSlateSurface): Tact
 }
 
 /**
- * Only Training boards save their player presentation (Normal / Compact /
- * Practice) and offer Practice; Pitch and Whiteboard keep today's
- * session-only Player Tokens behaviour and unchanged board payloads.
+ * Only Training boards save their player-token style and size with the board;
+ * Pitch and Whiteboard keep today's session-only Player Tokens behaviour and
+ * unchanged board payloads.
  */
 export function surfaceUsesPlayerPresentation(surface: TacticalSlateSurface): boolean {
   return surface === "training";
 }
 
-/** Presentation a fresh board opens with: Practice on Training, Normal elsewhere (today's default). */
-export function resolveSurfaceDefaultPlayerPresentation(surface: TacticalSlateSurface): TacticalPlayerPresentation {
-  return surfaceUsesPlayerPresentation(surface) ? DEFAULT_TRAINING_PLAYER_PRESENTATION : "normal";
+/**
+ * Token style and size a fresh board opens with: Bib Token at Compact on
+ * Training, Vision V3 at Normal elsewhere (today's default).
+ */
+export function resolveSurfaceDefaultTokenSettings(surface: TacticalSlateSurface): TrainingTokenSettings {
+  return surfaceUsesPlayerPresentation(surface)
+    ? { ...DEFAULT_TRAINING_TOKEN_SETTINGS }
+    : { style: "vision-v3", size: "normal" };
 }
-
-export const PLAYER_PRESENTATION_CHOICES: ReadonlyArray<{ value: TacticalPlayerPresentation; label: string }> = [
-  { value: "normal", label: "Normal" },
-  { value: "compact", label: "Compact" },
-  { value: "mini", label: "Mini" },
-  { value: "practice", label: "Practice" },
-];
 
 /**
  * The PáircVision watermark is drawn in black only on the Whiteboard, whose

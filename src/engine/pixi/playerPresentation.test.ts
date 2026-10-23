@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { Text } from "pixi.js";
 
 import {
-  DEFAULT_TRAINING_PLAYER_PRESENTATION,
-  playerPresentationFlags,
-  resolvePlayerPresentation,
+  DEFAULT_TRAINING_TOKEN_SETTINGS,
+  LEGACY_TRAINING_TOKEN_STYLE,
+  resolveStoredTrainingTokenSettings,
   sanitizePlayerPresentation,
 } from "./playerPresentation";
 import { VisionV3Renderer, resolvePlayerTokenRenderer } from "./playerTokenRenderer";
@@ -37,12 +37,12 @@ const rendererInput = {
   radius: 4.1 * 0.8,
 };
 
-describe("player presentation state", () => {
-  it("new Training boards (and legacy ones with no metadata) default to Practice", () => {
-    expect(DEFAULT_TRAINING_PLAYER_PRESENTATION).toBe("practice");
+describe("Training token settings", () => {
+  it("new Training boards default to Bib Token at Compact", () => {
+    expect(DEFAULT_TRAINING_TOKEN_SETTINGS).toEqual({ style: "bib", size: "compact" });
   });
 
-  it("sanitises to the four presentations only", () => {
+  it("sanitises the stored sizes, including the legacy 'practice' value", () => {
     expect(sanitizePlayerPresentation("normal")).toBe("normal");
     expect(sanitizePlayerPresentation("compact")).toBe("compact");
     expect(sanitizePlayerPresentation("mini")).toBe("mini");
@@ -52,21 +52,49 @@ describe("player presentation state", () => {
     }
   });
 
-  it("round-trips between the presentation and the engine's compact/mini/practice flags", () => {
-    for (const presentation of ["normal", "compact", "mini", "practice"] as const) {
-      expect(resolvePlayerPresentation(playerPresentationFlags(presentation))).toBe(presentation);
+  it("legacy Practice boards open as Bib Token at Compact — the same diameter, still numberless", () => {
+    expect(resolveStoredTrainingTokenSettings({ playerPresentation: "practice" })).toEqual({ style: "bib", size: "compact" });
+    // even if some later field were present alongside it
+    expect(resolveStoredTrainingTokenSettings({ playerPresentation: "practice", playerTokenStyle: "pixi" })).toEqual({
+      style: "bib",
+      size: "compact",
+    });
+  });
+
+  it("boards saved before presentations existed (they opened as Practice) open as Bib Token at Compact", () => {
+    expect(resolveStoredTrainingTokenSettings({})).toEqual({ style: "bib", size: "compact" });
+    expect(resolveStoredTrainingTokenSettings({ playerPresentation: "bogus" })).toEqual({ style: "bib", size: "compact" });
+  });
+
+  it("legacy Normal / Compact / Mini boards with no stored style open as Vision V3", () => {
+    expect(LEGACY_TRAINING_TOKEN_STYLE).toBe("vision-v3");
+    for (const size of ["normal", "compact", "mini"] as const) {
+      expect(resolveStoredTrainingTokenSettings({ playerPresentation: size })).toEqual({ style: "vision-v3", size });
+      expect(resolveStoredTrainingTokenSettings({ playerPresentation: size, playerTokenStyle: "nope" })).toEqual({
+        style: "vision-v3",
+        size,
+      });
     }
-    // Mini is Compact plus the Mini flag.
-    expect(playerPresentationFlags("mini")).toEqual({ compact: true, mini: true, practice: false });
-    // Practice wins even if Compact (or Mini) were also set — it already uses the Compact scale.
-    expect(resolvePlayerPresentation({ compact: true, mini: false, practice: true })).toBe("practice");
-    expect(resolvePlayerPresentation({ compact: true, mini: true, practice: true })).toBe("practice");
-    // Mini never draws without Compact.
-    expect(resolvePlayerPresentation({ compact: false, mini: true, practice: false })).toBe("normal");
+  });
+
+  it("current boards open with exactly their stored style and size", () => {
+    for (const style of ["vision-v3", "pixi", "phosphor", "pill-under", "bib"] as const) {
+      for (const size of ["normal", "compact", "mini"] as const) {
+        expect(resolveStoredTrainingTokenSettings({ playerPresentation: size, playerTokenStyle: style })).toEqual({ style, size });
+      }
+    }
+  });
+
+  it("is pure: the result depends only on the board passed in, so one board's style never leaks into another", () => {
+    const practiceBoard = { playerPresentation: "practice" };
+    const olderCompactBoard = { playerPresentation: "compact" };
+    resolveStoredTrainingTokenSettings(practiceBoard);
+    expect(resolveStoredTrainingTokenSettings(olderCompactBoard)).toEqual({ style: "vision-v3", size: "compact" });
+    expect(practiceBoard).toEqual({ playerPresentation: "practice" });
   });
 });
 
-describe("Practice token rendering (Vision V3, no identity label)", () => {
+describe("Vision V3 showLabel:false (retained renderer option)", () => {
   it("Normal/Compact Vision V3 still draws the number exactly as before", () => {
     const { token } = createVisionV3PlayerToken({ label: "7", teamColor: "blue", radius: 4 });
     expect(textsOf(token)).toEqual(["7", "7"]); // shadow + label text

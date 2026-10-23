@@ -24,11 +24,10 @@ import {
   resolvePlayerTokenSize,
   type PlayerTokenSize,
 } from "./playerTokenSize";
-import { playerPresentationFlags, resolvePlayerPresentation } from "./playerPresentation";
+import { resolveStoredTrainingTokenSettings } from "./playerPresentation";
 import { resolvePlayerHitAreaSizeCompensation, resolvePlayerTokenSizeScale } from "./createTacticalPadLiteSurface";
 import { UNDER_PILL_NORMAL_SHRINK } from "./createNamePillPlayerToken";
-import { sanitizeQuickBoardState, withTrainingPresentationDefault } from "../../features/quickboard/storage/quickboard-types";
-import { PLAYER_PRESENTATION_CHOICES } from "../../pages/tacticalSlateSurface";
+import { sanitizeQuickBoardState } from "../../features/quickboard/storage/quickboard-types";
 
 type PathInstruction = { action: string; data: number[] };
 type DrawInstruction = {
@@ -248,14 +247,14 @@ describe("universal Normal / Compact / Mini sizes", () => {
 
   it("Mini refines Compact: with Compact off (e.g. a board loaded at Normal) the board draws Normal", () => {
     expect(resolvePlayerTokenSize({ compact: false, mini: true })).toBe("normal");
-    expect(isMiniTokenSizeActive({ compact: false, mini: true, practice: false })).toBe(false);
+    expect(isMiniTokenSizeActive({ compact: false, mini: true })).toBe(false);
   });
 
   // All 15 selectable style/size combinations.
   for (const style of STYLES) {
     for (const size of SIZES) {
       it(`${style} at ${size}: scale and touch target`, () => {
-        const flags = { ...playerTokenSizeFlags(size), practice: false, style };
+        const flags = { ...playerTokenSizeFlags(size), style };
         const compactFactor = style === "pill-under" ? 0.75 / UNDER_PILL_NORMAL_SHRINK : 0.75;
         const expected = size === "normal" ? 1 : size === "compact" ? compactFactor : compactFactor * 0.8;
         expect(resolvePlayerTokenSizeScale(flags)).toBeCloseTo(expected, 12);
@@ -267,57 +266,46 @@ describe("universal Normal / Compact / Mini sizes", () => {
   }
 
   it("Normal and Compact keep their existing scales (1 and 0.75; Name Badge's compensated Compact)", () => {
-    expect(resolvePlayerTokenSizeScale({ compact: false, mini: false, practice: false, style: "vision-v3" })).toBe(1);
-    expect(resolvePlayerTokenSizeScale({ compact: true, mini: false, practice: false, style: "pixi" })).toBe(0.75);
-    expect(resolvePlayerTokenSizeScale({ compact: true, mini: false, practice: false, style: "pill-under" })).toBe(
+    expect(resolvePlayerTokenSizeScale({ compact: false, mini: false, style: "vision-v3" })).toBe(1);
+    expect(resolvePlayerTokenSizeScale({ compact: true, mini: false, style: "pixi" })).toBe(0.75);
+    expect(resolvePlayerTokenSizeScale({ compact: true, mini: false, style: "pill-under" })).toBe(
       0.75 / UNDER_PILL_NORMAL_SHRINK,
     );
   });
-
-  it("Practice always draws plain Compact, whatever the style or Mini flag", () => {
-    for (const style of STYLES) {
-      for (const mini of [false, true]) {
-        const flags = { compact: false, mini, practice: true, style };
-        expect(resolvePlayerTokenSizeScale(flags)).toBe(0.75);
-        expect(resolvePlayerHitAreaSizeCompensation(flags)).toBe(1);
-      }
-    }
-  });
 });
 
-describe("size persistence", () => {
-  it("Training offers Normal, Compact, Mini and Practice", () => {
-    expect(PLAYER_PRESENTATION_CHOICES.map((choice) => choice.value)).toEqual(["normal", "compact", "mini", "practice"]);
+describe("legacy Practice → Bib Token at Compact", () => {
+  // The retired Practice presentation drew a numberless Vision V3 token at the
+  // plain Compact scale (0.75, no hit-area change, for every style).
+  const PRACTICE_SCALE = 0.75;
+
+  it("a legacy Practice board resolves to Bib Token at Compact", () => {
+    expect(resolveStoredTrainingTokenSettings({ playerPresentation: "practice" })).toEqual({ style: "bib", size: "compact" });
   });
 
-  it("a Training board saved at Mini stores and restores 'mini'", () => {
-    const saved = resolvePlayerPresentation({ ...playerTokenSizeFlags("mini"), practice: false });
-    expect(saved).toBe("mini");
-    const stored = sanitizeQuickBoardState({ players: [], items: [], drawings: [], phases: [], movementPaths: [], playerPresentation: saved });
-    expect(stored?.playerPresentation).toBe("mini");
-    expect(playerPresentationFlags(stored!.playerPresentation!)).toEqual({ compact: true, mini: true, practice: false });
+  it("keeps the Practice diameter: same disc radius as Vision V3, at the same Compact scale", () => {
+    const flags = { ...playerTokenSizeFlags("compact"), style: "bib" as const };
+    expect(resolvePlayerTokenSizeScale(flags)).toBe(PRACTICE_SCALE);
+    expect(resolvePlayerHitAreaSizeCompensation(flags)).toBe(1);
+    const bib = largestCircleRadius(BibTokenRenderer(rendererInput).token);
+    const v3 = largestCircleRadius(VisionV3Renderer({ ...rendererInput, showLabel: false }).token);
+    expect(bib).toBeCloseTo(v3, 9);
   });
 
-  it("existing boards keep what they had: saved presentations are unchanged and legacy Training boards still open as Practice", () => {
-    for (const presentation of ["normal", "compact", "practice"] as const) {
-      const stored = sanitizeQuickBoardState({ players: [], items: [], drawings: [], phases: [], movementPaths: [], playerPresentation: presentation });
-      expect(stored?.playerPresentation).toBe(presentation);
-    }
-    const legacy = sanitizeQuickBoardState({ players: [], items: [], drawings: [], phases: [], movementPaths: [] })!;
-    expect(legacy.playerPresentation).toBeUndefined();
-    expect(withTrainingPresentationDefault(legacy, "training").playerPresentation).toBe("practice");
-    expect(withTrainingPresentationDefault(legacy, "pitch").playerPresentation).toBeUndefined();
+  it("stays numberless", () => {
+    expect(allNodes(BibTokenRenderer(rendererInput).token).some((node) => node instanceof Text)).toBe(false);
   });
 
-  it("saved boards carry no token style, so existing boards are never rewritten to Bib", () => {
+  it("a Training board saved at Mini stores 'mini' with its style", () => {
     const stored = sanitizeQuickBoardState({
       players: [],
       items: [],
       drawings: [],
       phases: [],
       movementPaths: [],
-      tacticalTokenStyle: "bib",
-    });
-    expect(stored).not.toHaveProperty("tacticalTokenStyle");
+      playerPresentation: "mini",
+      playerTokenStyle: "phosphor",
+    })!;
+    expect(resolveStoredTrainingTokenSettings(stored)).toEqual({ style: "phosphor", size: "mini" });
   });
 });

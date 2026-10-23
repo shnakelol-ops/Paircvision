@@ -107,14 +107,13 @@ import {
   type TacticalSlateDefaultPlayerSeed,
   type TacticalSlateInitialRoster,
 } from "./tacticalSlateDefaultPlayers";
+import { resolveStoredTrainingTokenSettings, type TrainingTokenSettings } from "./playerPresentation";
 import {
-  DEFAULT_TRAINING_PLAYER_PRESENTATION,
-  playerPresentationFlags,
-  resolvePlayerPresentation,
-  sanitizePlayerPresentation,
-  type TacticalPlayerPresentation,
-} from "./playerPresentation";
-import { MINI_TOKEN_SIZE_RATIO, isMiniTokenSizeActive } from "./playerTokenSize";
+  MINI_TOKEN_SIZE_RATIO,
+  isMiniTokenSizeActive,
+  playerTokenSizeFlags,
+  resolvePlayerTokenSize,
+} from "./playerTokenSize";
 
 export type { PitchSport };
 
@@ -243,8 +242,10 @@ export type TacticalBoardState = {
   /** Shape Links (Tactical Slate presentation feature). Persisted, unlike Shape Lock. */
   shapeLinks?: unknown;
   shapeLinksVisible?: unknown;
-  /** Player presentation — only written when persistPlayerPresentation is set (Training). */
+  /** Player-token size — only written when persistPlayerPresentation is set (Training). */
   playerPresentation?: unknown;
+  /** Player-token style — only written when persistPlayerPresentation is set (Training). */
+  playerTokenStyle?: unknown;
 };
 
 /** The selected Training Practice Area, as the page's contextual bar needs it. */
@@ -345,11 +346,9 @@ export type TacticalPadLiteSurface = {
   setCompactPlayerTokens: (enabled: boolean) => void;
   /**
    * Mini size (see playerTokenSize.ts), for every style. Only drawn while
-   * Compact is on and Practice is off.
+   * Compact is on.
    */
   setMiniPlayerTokens: (enabled: boolean) => void;
-  /** Practice presentation (Training): fixed Vision V3, Compact scale, no identity label. */
-  setPracticePlayerTokens: (enabled: boolean) => void;
   /** Training Practice Areas (practiceAreas option only): act on the selected area. */
   setPracticeAreaColor: (color: number) => void;
   setPracticeAreaDeadZone: (isDeadZone: boolean) => void;
@@ -440,16 +439,15 @@ type TacticalPadLiteSurfaceOptions = {
   compactPlayerTokens?: boolean;
   /** Mini size at creation (see setMiniPlayerTokens). Default off. */
   miniPlayerTokens?: boolean;
-  /** Practice presentation at creation (see setPracticePlayerTokens). Default off. */
-  practicePlayerTokens?: boolean;
   /**
-   * Training only: export the board's player presentation and re-apply it on
-   * import (a board without one opens as Practice). Off — Pitch, Whiteboard,
-   * Rugby — the exported board state is exactly as before.
+   * Training only: export the board's player-token style and size and
+   * re-apply them on import (see resolveStoredTrainingTokenSettings for
+   * legacy boards). Off — Pitch, Whiteboard, Rugby — the exported board
+   * state is exactly as before and an import never touches style or size.
    */
   persistPlayerPresentation?: boolean;
-  /** Fires after an import applied a persisted presentation (persistPlayerPresentation only). */
-  onPlayerPresentationChange?: (presentation: TacticalPlayerPresentation) => void;
+  /** Fires after an import applied a board's style and size (persistPlayerPresentation only). */
+  onPlayerTokenSettingsChange?: (settings: TrainingTokenSettings) => void;
   /** Roster for a brand-new board / an imported board with no players. Default "formation". */
   initialRoster?: TacticalSlateInitialRoster;
   /**
@@ -1204,25 +1202,23 @@ function teamColor(
 type PlayerTokenSizeFlags = {
   compact: boolean;
   mini: boolean;
-  practice: boolean;
   style: TacticalPlayerTokenStyle;
 };
 
 /**
  * Size multiplier on a player token's idle/drag scale for the board's
- * Normal / Compact / Mini / Practice state, for every token style.
+ * Normal / Compact / Mini size, for every token style.
  *
  * Under-Pill's own assembly renders UNDER_PILL_NORMAL_SHRINK smaller than the
  * raw token radius in Normal Mode (see createNamePillPlayerToken.ts). Its
  * Compact multiplier is compensated so its on-screen size stays exactly what
  * it was before that reduction — every other style is untouched. Mini is
- * MINI_TOKEN_SIZE_RATIO of each style's own Compact. Practice always draws
- * Vision V3 at plain Compact.
+ * MINI_TOKEN_SIZE_RATIO of each style's own Compact.
  */
 export function resolvePlayerTokenSizeScale(flags: PlayerTokenSizeFlags): number {
-  if (!flags.compact && !flags.practice) return 1;
+  if (!flags.compact) return 1;
   const compact =
-    !flags.practice && flags.style === "pill-under"
+    flags.style === "pill-under"
       ? COMPACT_PLAYER_TOKEN_SCALE_FACTOR / UNDER_PILL_NORMAL_SHRINK
       : COMPACT_PLAYER_TOKEN_SCALE_FACTOR;
   return isMiniTokenSizeActive(flags) ? compact * MINI_TOKEN_SIZE_RATIO : compact;
@@ -1740,12 +1736,8 @@ export async function createTacticalPadLiteSurface(
     const pattern = getEffectiveKitPattern(player);
     const patternColor = getEffectiveKitPatternColor(player);
     const label = resolvePlayerLabel(player);
-    // Practice is one fixed representation: Vision V3 with the whole identity
-    // label (number, initials or name) hidden. The player's label fields are
-    // untouched, so leaving Practice shows the same label again.
-    const renderToken = resolvePlayerTokenRenderer(isPracticePlayerTokens ? "vision-v3" : tacticalTokenStyle);
+    const renderToken = resolvePlayerTokenRenderer(tacticalTokenStyle);
     return renderToken({
-      ...(isPracticePlayerTokens ? { showLabel: false } : {}),
       label,
       number: player.number,
       teamColor: player.teamColor,
@@ -1813,19 +1805,12 @@ export async function createTacticalPadLiteSurface(
   // Compact Tokens shrinks the idle/drag scale target by the same factor Tactical Play
   // uses for its "small" token size (see movement-board/tokens/token-layer.ts SIZE_FACTOR.small).
   let isCompactPlayerTokens = options.compactPlayerTokens === true;
-  // Practice (Training) reuses the Compact scale exactly — no new size, no
-  // hit-area change — and always renders the fixed Vision V3 token.
-  let isPracticePlayerTokens = options.practicePlayerTokens === true;
   const persistPlayerPresentation = options.persistPlayerPresentation === true;
   // Mini: a further MINI_TOKEN_SIZE_RATIO on top of Compact, for every
-  // style. Only drawn while Compact is on and Practice is off.
+  // style. Only drawn while Compact is on.
   let isMiniPlayerTokens = options.miniPlayerTokens === true;
   function isMiniPlayerTokenSize(): boolean {
-    return isMiniTokenSizeActive({
-      compact: isCompactPlayerTokens,
-      mini: isMiniPlayerTokens,
-      practice: isPracticePlayerTokens,
-    });
+    return isMiniTokenSizeActive({ compact: isCompactPlayerTokens, mini: isMiniPlayerTokens });
   }
   function playerHitAreaSizeCompensation(): number {
     return resolvePlayerHitAreaSizeCompensation(currentTokenSizeFlags());
@@ -1834,7 +1819,6 @@ export async function createTacticalPadLiteSurface(
     return {
       compact: isCompactPlayerTokens,
       mini: isMiniPlayerTokens,
-      practice: isPracticePlayerTokens,
       style: tacticalTokenStyle,
     };
   }
@@ -2736,14 +2720,12 @@ export async function createTacticalPadLiteSurface(
 
   /**
    * Rendered radius (world units) of a player's token disc, where the
-   * renderer's geometry is known: Vision V3 — always used by Practice, and
-   * the default style for Normal/Compact — and the Bib Token, which shares
+   * renderer's geometry is known: Vision V3 and the Bib Token, which shares
    * Vision V3's disc. Null for other token styles, whose
    * carried ball keeps the canonical-length presentation distance.
    */
   function resolveRenderedPlayerDiscRadius(): number | null {
-    const usesVisionV3 =
-      isPracticePlayerTokens || tacticalTokenStyle === "vision-v3" || tacticalTokenStyle === "bib";
+    const usesVisionV3 = tacticalTokenStyle === "vision-v3" || tacticalTokenStyle === "bib";
     if (!usesVisionV3) return null;
     return resolveVisionV3DiscRadius(PLAYER_RADIUS * TACTICAL_PLAYER_VISUAL_SCALE) * getIdlePlayerTokenScale();
   }
@@ -5151,11 +5133,8 @@ export async function createTacticalPadLiteSurface(
       shapeLinksVisible: showShapeLinks,
       ...(persistPlayerPresentation
         ? {
-            playerPresentation: resolvePlayerPresentation({
-              compact: isCompactPlayerTokens,
-              mini: isMiniPlayerTokens,
-              practice: isPracticePlayerTokens,
-            }),
+            playerPresentation: resolvePlayerTokenSize({ compact: isCompactPlayerTokens, mini: isMiniPlayerTokens }),
+            playerTokenStyle: tacticalTokenStyle,
           }
         : {}),
     };
@@ -5233,17 +5212,16 @@ export async function createTacticalPadLiteSurface(
     resetActiveWhiteboardDrawing();
     lastTappedPlayer = null;
 
-    // Training boards carry their presentation; one without it (incl. every
-    // board saved before this existed) opens as Practice. Applied before the
-    // roster is rebuilt below so new tokens render in it directly.
-    const importedPresentation = persistPlayerPresentation
-      ? sanitizePlayerPresentation(state.playerPresentation) ?? DEFAULT_TRAINING_PLAYER_PRESENTATION
-      : null;
-    if (importedPresentation) {
-      const importedFlags = playerPresentationFlags(importedPresentation);
-      isCompactPlayerTokens = importedFlags.compact;
-      isMiniPlayerTokens = importedFlags.mini;
-      isPracticePlayerTokens = importedFlags.practice;
+    // Training boards carry their own token style and size; legacy Practice
+    // boards (and older boards with neither) open as Bib Token at Compact.
+    // Applied before the roster is rebuilt below so new tokens render in it
+    // directly. Nothing is written back to the stored board.
+    const importedTokenSettings = persistPlayerPresentation ? resolveStoredTrainingTokenSettings(state) : null;
+    if (importedTokenSettings) {
+      const sizeFlags = playerTokenSizeFlags(importedTokenSettings.size);
+      isCompactPlayerTokens = sizeFlags.compact;
+      isMiniPlayerTokens = sizeFlags.mini;
+      tacticalTokenStyle = importedTokenSettings.style;
     }
 
     for (const player of players) {
@@ -5335,8 +5313,8 @@ export async function createTacticalPadLiteSurface(
     tacticalDrawingController.setTool(sanitizeDrawingTool(activeWhiteboardTool) ?? "move");
     renderAllWhiteboardDrawings();
     emitShapeLinksChange();
-    if (importedPresentation) {
-      options.onPlayerPresentationChange?.(importedPresentation);
+    if (importedTokenSettings) {
+      options.onPlayerTokenSettingsChange?.(importedTokenSettings);
     }
     return true;
   }
@@ -5674,7 +5652,10 @@ export async function createTacticalPadLiteSurface(
     newBoard: () => {
       if (surfaceVariant !== "tactical") return;
       singlePlayTargetSnapshot = null;
-      importBoardState(cloneBoardStateSnapshot(pristineBoardState));
+      // A new board never inherits the creation-time token settings: on
+      // Training it opens at DEFAULT_TRAINING_TOKEN_SETTINGS (Pitch ignores them).
+      const { playerPresentation: _size, playerTokenStyle: _style, ...pristine } = cloneBoardStateSnapshot(pristineBoardState);
+      importBoardState(pristine);
     },
     play: handlePlay,
     pausePlayback: () => {
@@ -5806,21 +5787,6 @@ export async function createTacticalPadLiteSurface(
           activeDrag !== null && activeDrag.type === "player" && activeDrag.playerId === player.id;
         setPlayerDragVisualTarget(player, isDraggingThisPlayer);
         setPlayerTouchHitArea(player, mapper, playerHitAreaSizeCompensation());
-      }
-    },
-    setPracticePlayerTokens: (enabled) => {
-      if (surfaceVariant !== "tactical") return;
-      const nextEnabled = Boolean(enabled);
-      if (nextEnabled === isPracticePlayerTokens) return;
-      isPracticePlayerTokens = nextEnabled;
-      // Practice swaps the renderer (fixed Vision V3, no label) as well as the
-      // scale, so every token is rebuilt, then its scale target refreshed.
-      rerenderAllTacticalPlayers();
-      refreshPresentedCarriedBalls();
-      for (const player of players) {
-        const isDraggingThisPlayer =
-          activeDrag !== null && activeDrag.type === "player" && activeDrag.playerId === player.id;
-        setPlayerDragVisualTarget(player, isDraggingThisPlayer);
       }
     },
     setWhiteboardDrawTool: (tool) => {

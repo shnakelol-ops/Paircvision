@@ -320,7 +320,7 @@ export function createVisionV3PlayerToken({
   radius?: number;
   kitPattern?: VisionV3KitPattern;
   kitPatternColor?: number;
-  /** false draws the token without its identity label (Tactical Slate Practice presentation). */
+  /** false draws the token without its identity label (was used by the retired Training Practice presentation). */
   showLabel?: boolean;
   /** "bib" draws the Bib Token (never labelled); see VisionV3TokenVariant. */
   variant?: VisionV3TokenVariant;
