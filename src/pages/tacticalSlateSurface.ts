@@ -2,7 +2,7 @@ import type { PitchSport } from "../core/pitch/pitch-config";
 import type { QuickBoardSurface } from "../features/quickboard/storage/quickboard-types";
 import type { TacticalPitchTheme } from "../tactical-lite/pixi/tacticalPitchTheme";
 import type { TacticalSlateInitialRoster } from "../engine/pixi/tacticalSlateDefaultPlayers";
-import { DEFAULT_TRAINING_TOKEN_SETTINGS, type TrainingTokenSettings } from "../engine/pixi/playerPresentation";
+
 
 /**
  * Tactical Slate work surfaces. All of them run the same tactical engine
@@ -81,23 +81,10 @@ export function resolveSurfaceInitialRoster(surface: TacticalSlateSurface): Tact
 }
 
 /**
- * Only Training boards save their player-token style and size with the board;
- * Pitch and Whiteboard keep today's session-only Player Tokens behaviour and
- * unchanged board payloads.
- */
-export function surfaceUsesPlayerPresentation(surface: TacticalSlateSurface): boolean {
-  return surface === "training";
-}
-
-/**
  * Token style and size a fresh board opens with: Bib Token at Compact on
  * Training, Vision V3 at Normal elsewhere (today's default).
  */
-export function resolveSurfaceDefaultTokenSettings(surface: TacticalSlateSurface): TrainingTokenSettings {
-  return surfaceUsesPlayerPresentation(surface)
-    ? { ...DEFAULT_TRAINING_TOKEN_SETTINGS }
-    : { style: "vision-v3", size: "normal" };
-}
+export { resolveSurfaceDefaultTokenSettings } from "../engine/pixi/playerPresentation";
 
 /**
  * The PáircVision watermark is drawn in black only on the Whiteboard, whose

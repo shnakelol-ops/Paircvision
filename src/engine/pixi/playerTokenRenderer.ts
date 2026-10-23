@@ -62,12 +62,6 @@ export type PlayerTokenRendererInput = {
   kitPattern: VisionV3KitPattern;
   kitPatternColor: number;
   radius: number;
-  /**
-   * Draw the identity label (number / initials / name). Defaults to true.
-   * Only VisionV3Renderer honours false. It was used solely by Training's
-   * retired Practice presentation; the Slate no longer passes it.
-   */
-  showLabel?: boolean;
 };
 
 export type PlayerTokenRendererOutput = {
@@ -157,7 +151,6 @@ export const VisionV3Renderer: PlayerTokenRenderer = ({
   kitPattern,
   kitPatternColor,
   radius,
-  showLabel,
 }) =>
   createVisionV3PlayerToken({
     label,
@@ -167,7 +160,6 @@ export const VisionV3Renderer: PlayerTokenRenderer = ({
     style,
     kitPattern,
     kitPatternColor,
-    ...(showLabel === false ? { showLabel: false } : {}),
     // Slate-only supersampling: sharp numbers and smooth rims at desktop
     // zoom. Movement-board calls createVisionV3PlayerToken directly and
     // keeps the default (1).

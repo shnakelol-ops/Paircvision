@@ -66,7 +66,7 @@ import {
   MAX_QUICKBOARD_SAVES,
   sanitizeBoardName,
   withQuickBoardSurface,
-  withTrainingPresentationDefault,
+  withTokenSettingsDefault,
   type QuickBoardBoardState,
   type SavedQuickBoard,
 } from "../features/quickboard/storage/quickboard-types";
@@ -95,7 +95,6 @@ import {
   resolveSurfaceDefaultTokenSettings,
   resolveSurfaceInitialRoster,
   resolveSurfacePitchTheme,
-  surfaceUsesPlayerPresentation,
   surfaceUsesDarkWatermark,
   surfaceUsesPracticeAreas,
   type TacticalSlateSurface,
@@ -1225,6 +1224,82 @@ const PLAYER_TOKENS_SUBMENU_DIVIDER_STYLE: CSSProperties = {
   background: "rgba(224, 236, 248, 0.16)",
   margin: "1px 0",
 };
+
+/**
+ * The one Player Tokens selector, used unchanged on every Tactical Slate
+ * surface: Style (the five selectable styles), then Size (Normal / Compact /
+ * Mini). Both are saved with the board.
+ */
+export function PlayerTokensSelector({
+  style,
+  size,
+  open,
+  onToggle,
+  onStyleChange,
+  onSizeChange,
+}: {
+  style: TacticalPlayerTokenStyle;
+  size: PlayerTokenSize;
+  open: boolean;
+  onToggle: () => void;
+  onStyleChange: (style: TacticalPlayerTokenStyle) => void;
+  onSizeChange: (size: PlayerTokenSize) => void;
+}) {
+  const sizeLabel = PLAYER_TOKEN_SIZE_CHOICES.find((choice) => choice.value === size)?.label ?? "";
+  return (
+    <div style={TOKEN_STYLE_MENU_SECTION_STYLE}>
+      <button
+        type="button"
+        className="control-button"
+        style={PLAYER_TOKENS_MENU_TRIGGER_STYLE}
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        <span style={PLAYER_TOKENS_MENU_TRIGGER_TITLE_ROW_STYLE}>Player Tokens</span>
+        <span style={PLAYER_TOKENS_MENU_TRIGGER_CURRENT_STYLE}>
+          Current: {TOKEN_STYLE_LABEL[style] ?? ""} · {sizeLabel} {open ? "⌄" : "›"}
+        </span>
+      </button>
+      {open ? (
+        <div style={PLAYER_TOKENS_SUBMENU_STYLE}>
+          <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Style</p>
+          <div style={TOKEN_STYLE_MENU_ROW_STYLE} role="group" aria-label="Player token style">
+            {TOKEN_STYLE_CHOICES.map((choice) => (
+              <button
+                key={`token-style-${choice.value}`}
+                type="button"
+                className="control-button"
+                style={style === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
+                aria-pressed={style === choice.value}
+                onClick={() => onStyleChange(choice.value)}
+              >
+                {style === choice.value ? "✓ " : ""}
+                {choice.label}
+              </button>
+            ))}
+          </div>
+          <div style={PLAYER_TOKENS_SUBMENU_DIVIDER_STYLE} />
+          <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Size</p>
+          <div style={TOKEN_STYLE_MENU_ROW_STYLE} role="group" aria-label="Player token size">
+            {PLAYER_TOKEN_SIZE_CHOICES.map((choice) => (
+              <button
+                key={`player-token-size-${choice.value}`}
+                type="button"
+                className="control-button"
+                style={size === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
+                aria-pressed={size === choice.value}
+                onClick={() => onSizeChange(choice.value)}
+              >
+                {size === choice.value ? "✓ " : ""}
+                {choice.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function formatRecordTime(secs: number): string {
   const m = Math.floor(secs / 60);
@@ -2723,8 +2798,8 @@ export default function TacticalPadLiteClean({
   // surface) — closing this panel (e.g. during playback) never touches them.
   const [isShapeLinksPanelOpen, setIsShapeLinksPanelOpen] = useState(false);
   // Fresh-board token style and size: Vision V3 at Normal, or Bib Token at
-  // Compact on Training. Training boards then carry their own (see
-  // persistPlayerPresentation); Pitch and Whiteboard keep them per session.
+  // Compact on Training. Every board then carries its own (see
+  // tokenSettingsSurface), so switching surfaces and back restores them.
   const [defaultTokenSettings] = useState(() => resolveSurfaceDefaultTokenSettings(slateSurface));
   const [tacticalTokenStyle, setTacticalTokenStyle] = useState<TacticalPlayerTokenStyle>(defaultTokenSettings.style);
   const [isCompactPlayerTokens, setIsCompactPlayerTokens] = useState(
@@ -2732,7 +2807,6 @@ export default function TacticalPadLiteClean({
   );
   // Mini size (every style) — set together with Compact (see playerTokenSize.ts).
   const [isMiniPlayerTokens, setIsMiniPlayerTokens] = useState(() => playerTokenSizeFlags(defaultTokenSettings.size).mini);
-  const usesPlayerPresentation = surfaceUsesPlayerPresentation(slateSurface);
   const playerTokenSize = resolvePlayerTokenSize({
     compact: isCompactPlayerTokens,
     mini: isMiniPlayerTokens,
@@ -3284,7 +3358,7 @@ export default function TacticalPadLiteClean({
       tacticalTokenStyle,
       compactPlayerTokens: isCompactPlayerTokens,
       miniPlayerTokens: isMiniPlayerTokens,
-      persistPlayerPresentation: usesPlayerPresentation,
+      tokenSettingsSurface: slateSurface,
       initialRoster: resolveSurfaceInitialRoster(slateSurface),
       practiceAreas: surfaceUsesPracticeAreas(slateSurface),
       onPracticeAreaSelectionChange: (selection) => {
@@ -3560,7 +3634,7 @@ export default function TacticalPadLiteClean({
     }
     const currentSignature = captureCurrentBoardSignature();
     if (!currentSignature) return;
-    const draftSignature = serializeBoardState(withTrainingPresentationDefault(pendingRecoveredBoardDraft, slateSurface));
+    const draftSignature = serializeBoardState(withTokenSettingsDefault(pendingRecoveredBoardDraft, slateSurface));
     if (!draftSignature || draftSignature === currentSignature) {
       clearActiveBoardDraft();
       setPendingRecoveredBoardDraft(null);
@@ -4242,7 +4316,7 @@ export default function TacticalPadLiteClean({
     setIsPlaying(false);
     setIsPaused(false);
     setLoadedBoardName("Recovered draft");
-    const draftSignature = serializeBoardState(withTrainingPresentationDefault(draft, slateSurface));
+    const draftSignature = serializeBoardState(withTokenSettingsDefault(draft, slateSurface));
     boardBaselineSignatureRef.current = draftSignature;
     textAnnotationsBaselineRef.current = JSON.stringify(recoveredAnnotations);
     lastBoardDraftSignatureRef.current = draftSignature;
@@ -4346,7 +4420,7 @@ export default function TacticalPadLiteClean({
     setMyBoardsOpen(false);
     setActionsOpen(false);
     setQuickShareOpen(false);
-    boardBaselineSignatureRef.current = serializeBoardState(withTrainingPresentationDefault(saved.boardState, slateSurface));
+    boardBaselineSignatureRef.current = serializeBoardState(withTokenSettingsDefault(saved.boardState, slateSurface));
     textAnnotationsBaselineRef.current = JSON.stringify(loadedAnnotations);
     clearActiveBoardDraft();
     setPendingRecoveredBoardDraft(null);
@@ -6573,62 +6647,14 @@ export default function TacticalPadLiteClean({
           : null}
         {!isWhiteboardMode && actionsOpen ? (
           <div ref={actionsMenuRef} style={actionsPopoutStyle}>
-            <div style={TOKEN_STYLE_MENU_SECTION_STYLE}>
-              <button
-                type="button"
-                className="control-button"
-                style={PLAYER_TOKENS_MENU_TRIGGER_STYLE}
-                aria-expanded={playerTokensSubmenuOpen}
-                onClick={() => setPlayerTokensSubmenuOpen((open) => !open)}
-              >
-                <span style={PLAYER_TOKENS_MENU_TRIGGER_TITLE_ROW_STYLE}>Player Tokens</span>
-                <span style={PLAYER_TOKENS_MENU_TRIGGER_CURRENT_STYLE}>
-                  Current: {TOKEN_STYLE_LABEL[tacticalTokenStyle] ?? ""} ·{" "}
-                  {PLAYER_TOKEN_SIZE_CHOICES.find((choice) => choice.value === playerTokenSize)?.label ?? ""}
-                  {" "}
-                  {playerTokensSubmenuOpen ? "⌄" : "›"}
-                </span>
-              </button>
-              {playerTokensSubmenuOpen ? (
-                // Style, then Size — the same five styles and three sizes on
-                // every surface. Training saves both with the board.
-                <div style={PLAYER_TOKENS_SUBMENU_STYLE}>
-                  <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Style</p>
-                  <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
-                    {TOKEN_STYLE_CHOICES.map((choice) => (
-                      <button
-                        key={`token-style-${choice.value}`}
-                        type="button"
-                        className="control-button"
-                        style={tacticalTokenStyle === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
-                        aria-pressed={tacticalTokenStyle === choice.value}
-                        onClick={() => setTacticalTokenStyle(choice.value)}
-                      >
-                        {tacticalTokenStyle === choice.value ? "✓ " : ""}
-                        {choice.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div style={PLAYER_TOKENS_SUBMENU_DIVIDER_STYLE} />
-                  <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Size</p>
-                  <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
-                    {PLAYER_TOKEN_SIZE_CHOICES.map((choice) => (
-                      <button
-                        key={`player-token-size-${choice.value}`}
-                        type="button"
-                        className="control-button"
-                        style={playerTokenSize === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
-                        aria-pressed={playerTokenSize === choice.value}
-                        onClick={() => applyPlayerTokenSize(choice.value)}
-                      >
-                        {playerTokenSize === choice.value ? "✓ " : ""}
-                        {choice.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
+            <PlayerTokensSelector
+              style={tacticalTokenStyle}
+              size={playerTokenSize}
+              open={playerTokensSubmenuOpen}
+              onToggle={() => setPlayerTokensSubmenuOpen((open) => !open)}
+              onStyleChange={setTacticalTokenStyle}
+              onSizeChange={applyPlayerTokenSize}
+            />
             {sport === "gaelic" ? (
               <div style={TOKEN_STYLE_MENU_SECTION_STYLE}>
                 <button

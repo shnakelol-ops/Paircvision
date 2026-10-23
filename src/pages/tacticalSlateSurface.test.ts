@@ -10,7 +10,6 @@ import {
   resolveSurfaceInitialRoster,
   resolveSurfacePitchTheme,
   surfaceUsesDarkWatermark,
-  surfaceUsesPlayerPresentation,
   surfaceUsesPracticeAreas,
 } from "./tacticalSlateSurface";
 
@@ -118,17 +117,11 @@ describe("Training starting roster", () => {
 });
 
 describe("player presentation by surface", () => {
-  it("only Training saves its token style and size with the board", () => {
-    expect(surfaceUsesPlayerPresentation("training")).toBe(true);
-    expect(surfaceUsesPlayerPresentation("pitch")).toBe(false);
-    expect(surfaceUsesPlayerPresentation("tacticalBoard")).toBe(false);
-    expect(surfaceUsesPlayerPresentation("whiteboard")).toBe(false);
-  });
-
   it("Training defaults to Bib Token at Compact; Pitch and Whiteboard keep today's Vision V3 at Normal", () => {
     expect(resolveSurfaceDefaultTokenSettings("training")).toEqual({ style: "bib", size: "compact" });
     expect(resolveSurfaceDefaultTokenSettings("pitch")).toEqual({ style: "vision-v3", size: "normal" });
     expect(resolveSurfaceDefaultTokenSettings("whiteboard")).toEqual({ style: "vision-v3", size: "normal" });
+    expect(resolveSurfaceDefaultTokenSettings("tacticalBoard")).toEqual({ style: "vision-v3", size: "normal" });
   });
 });
 

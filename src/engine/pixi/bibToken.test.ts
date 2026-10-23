@@ -24,7 +24,7 @@ import {
   resolvePlayerTokenSize,
   type PlayerTokenSize,
 } from "./playerTokenSize";
-import { resolveStoredTrainingTokenSettings } from "./playerPresentation";
+import { resolveStoredTokenSettings } from "./playerPresentation";
 import { resolvePlayerHitAreaSizeCompensation, resolvePlayerTokenSizeScale } from "./createTacticalPadLiteSurface";
 import { UNDER_PILL_NORMAL_SHRINK } from "./createNamePillPlayerToken";
 import { sanitizeQuickBoardState } from "../../features/quickboard/storage/quickboard-types";
@@ -280,7 +280,7 @@ describe("legacy Practice → Bib Token at Compact", () => {
   const PRACTICE_SCALE = 0.75;
 
   it("a legacy Practice board resolves to Bib Token at Compact", () => {
-    expect(resolveStoredTrainingTokenSettings({ playerPresentation: "practice" })).toEqual({ style: "bib", size: "compact" });
+    expect(resolveStoredTokenSettings({ playerPresentation: "practice" }, "training")).toEqual({ style: "bib", size: "compact" });
   });
 
   it("keeps the Practice diameter: same disc radius as Vision V3, at the same Compact scale", () => {
@@ -288,7 +288,7 @@ describe("legacy Practice → Bib Token at Compact", () => {
     expect(resolvePlayerTokenSizeScale(flags)).toBe(PRACTICE_SCALE);
     expect(resolvePlayerHitAreaSizeCompensation(flags)).toBe(1);
     const bib = largestCircleRadius(BibTokenRenderer(rendererInput).token);
-    const v3 = largestCircleRadius(VisionV3Renderer({ ...rendererInput, showLabel: false }).token);
+    const v3 = largestCircleRadius(VisionV3Renderer(rendererInput).token);
     expect(bib).toBeCloseTo(v3, 9);
   });
 
@@ -306,6 +306,6 @@ describe("legacy Practice → Bib Token at Compact", () => {
       playerPresentation: "mini",
       playerTokenStyle: "phosphor",
     })!;
-    expect(resolveStoredTrainingTokenSettings(stored)).toEqual({ style: "phosphor", size: "mini" });
+    expect(resolveStoredTokenSettings(stored, "pitch")).toEqual({ style: "phosphor", size: "mini" });
   });
 });

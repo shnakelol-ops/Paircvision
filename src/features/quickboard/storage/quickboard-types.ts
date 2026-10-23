@@ -1,6 +1,6 @@
 import { type SlateTextAnnotation, sanitizeTextAnnotations } from "../annotations/slateTextAnnotation";
 import {
-  resolveStoredTrainingTokenSettings,
+  resolveStoredTokenSettings,
   sanitizePlayerPresentation,
   type TacticalPlayerPresentation,
 } from "../../../engine/pixi/playerPresentation";
@@ -40,9 +40,9 @@ export type QuickBoardBoardState = {
   shapeLinksVisible?: unknown;
   /** Work surface metadata; absent means "pitch". Only "training" / "tacticalBoard" / "whiteboard" are ever stored. */
   surface?: Exclude<QuickBoardSurface, "pitch">;
-  /** Training player-token size (legacy boards may hold "practice"). Never written for Pitch or Whiteboard. */
+  /** Player-token size (legacy Training boards may hold "practice"). Absent on boards saved before it was stored. */
   playerPresentation?: TacticalPlayerPresentation;
-  /** Training player-token style. Never written for Pitch or Whiteboard. */
+  /** Player-token style. Absent on boards saved before it was stored. */
   playerTokenStyle?: PlayerTokenStyle;
 };
 
@@ -87,22 +87,16 @@ export function withQuickBoardSurface(state: QuickBoardBoardState, surface: Quic
 }
 
 /**
- * Training boards open with the token style and size resolved from their
- * stored fields (resolveStoredTrainingTokenSettings): legacy Practice boards
- * and boards saved before presentations existed open as Bib Token at
- * Compact, and older Normal / Compact boards without a style as Vision V3.
- * Comparing a stored Training state against the live board therefore needs
- * those same values filled in, or a just-opened legacy board would
- * immediately read as unsaved. Only the in-memory copy used for comparison
- * is changed — the stored board is never rewritten. Pitch and Whiteboard
- * states are returned untouched.
+ * Boards open with the token style and size resolved from their stored fields
+ * (resolveStoredTokenSettings): older boards without them open with their
+ * surface's default, legacy Practice boards as Bib Token at Compact, and
+ * sizes without a style as Vision V3. Comparing a stored state against the
+ * live board therefore needs those same values filled in, or a just-opened
+ * older board would immediately read as unsaved. Only the in-memory copy used
+ * for comparison is changed — the stored board is never rewritten.
  */
-export function withTrainingPresentationDefault(
-  state: QuickBoardBoardState,
-  surface: QuickBoardSurface,
-): QuickBoardBoardState {
-  if (surface !== "training") return state;
-  const settings = resolveStoredTrainingTokenSettings(state);
+export function withTokenSettingsDefault(state: QuickBoardBoardState, surface: QuickBoardSurface): QuickBoardBoardState {
+  const settings = resolveStoredTokenSettings(state, surface);
   return { ...state, playerPresentation: settings.size, playerTokenStyle: settings.style };
 }
 

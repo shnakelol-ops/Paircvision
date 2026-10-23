@@ -107,7 +107,11 @@ import {
   type TacticalSlateDefaultPlayerSeed,
   type TacticalSlateInitialRoster,
 } from "./tacticalSlateDefaultPlayers";
-import { resolveStoredTrainingTokenSettings, type TrainingTokenSettings } from "./playerPresentation";
+import {
+  resolveStoredTokenSettings,
+  type PlayerTokenSettings,
+  type TokenSurfaceKind,
+} from "./playerPresentation";
 import {
   MINI_TOKEN_SIZE_RATIO,
   isMiniTokenSizeActive,
@@ -242,9 +246,9 @@ export type TacticalBoardState = {
   /** Shape Links (Tactical Slate presentation feature). Persisted, unlike Shape Lock. */
   shapeLinks?: unknown;
   shapeLinksVisible?: unknown;
-  /** Player-token size — only written when persistPlayerPresentation is set (Training). */
+  /** Player-token size — written when tokenSettingsSurface is set. */
   playerPresentation?: unknown;
-  /** Player-token style — only written when persistPlayerPresentation is set (Training). */
+  /** Player-token style — written when tokenSettingsSurface is set. */
   playerTokenStyle?: unknown;
 };
 
@@ -440,14 +444,16 @@ type TacticalPadLiteSurfaceOptions = {
   /** Mini size at creation (see setMiniPlayerTokens). Default off. */
   miniPlayerTokens?: boolean;
   /**
-   * Training only: export the board's player-token style and size and
-   * re-apply them on import (see resolveStoredTrainingTokenSettings for
-   * legacy boards). Off — Pitch, Whiteboard, Rugby — the exported board
-   * state is exactly as before and an import never touches style or size.
+   * The board's surface, for its player-token style and size: when set, they
+   * are exported with the board and re-applied on import, with older boards
+   * read through resolveStoredTokenSettings (that surface's defaults, legacy
+   * Practice as Bib Token at Compact). Unset — the legacy Whiteboard mode —
+   * the exported board state is exactly as before and an import never
+   * touches style or size.
    */
-  persistPlayerPresentation?: boolean;
-  /** Fires after an import applied a board's style and size (persistPlayerPresentation only). */
-  onPlayerTokenSettingsChange?: (settings: TrainingTokenSettings) => void;
+  tokenSettingsSurface?: TokenSurfaceKind;
+  /** Fires after an import applied a board's style and size (tokenSettingsSurface only). */
+  onPlayerTokenSettingsChange?: (settings: PlayerTokenSettings) => void;
   /** Roster for a brand-new board / an imported board with no players. Default "formation". */
   initialRoster?: TacticalSlateInitialRoster;
   /**
@@ -1802,10 +1808,10 @@ export async function createTacticalPadLiteSurface(
     };
   }
 
-  // Compact Tokens shrinks the idle/drag scale target by the same factor Tactical Play
+  // Compact shrinks the idle/drag scale target by the same factor Tactical Play
   // uses for its "small" token size (see movement-board/tokens/token-layer.ts SIZE_FACTOR.small).
   let isCompactPlayerTokens = options.compactPlayerTokens === true;
-  const persistPlayerPresentation = options.persistPlayerPresentation === true;
+  const tokenSettingsSurface = surfaceVariant === "tactical" ? options.tokenSettingsSurface ?? null : null;
   // Mini: a further MINI_TOKEN_SIZE_RATIO on top of Compact, for every
   // style. Only drawn while Compact is on.
   let isMiniPlayerTokens = options.miniPlayerTokens === true;
@@ -5131,7 +5137,7 @@ export async function createTacticalPadLiteSurface(
         closed: link.closed,
       })),
       shapeLinksVisible: showShapeLinks,
-      ...(persistPlayerPresentation
+      ...(tokenSettingsSurface
         ? {
             playerPresentation: resolvePlayerTokenSize({ compact: isCompactPlayerTokens, mini: isMiniPlayerTokens }),
             playerTokenStyle: tacticalTokenStyle,
@@ -5212,11 +5218,11 @@ export async function createTacticalPadLiteSurface(
     resetActiveWhiteboardDrawing();
     lastTappedPlayer = null;
 
-    // Training boards carry their own token style and size; legacy Practice
-    // boards (and older boards with neither) open as Bib Token at Compact.
-    // Applied before the roster is rebuilt below so new tokens render in it
-    // directly. Nothing is written back to the stored board.
-    const importedTokenSettings = persistPlayerPresentation ? resolveStoredTrainingTokenSettings(state) : null;
+    // Boards carry their own token style and size; older boards open through
+    // the compatibility mapping (resolveStoredTokenSettings). Applied before
+    // the roster is rebuilt below so new tokens render in it directly.
+    // Nothing is written back to the stored board.
+    const importedTokenSettings = tokenSettingsSurface ? resolveStoredTokenSettings(state, tokenSettingsSurface) : null;
     if (importedTokenSettings) {
       const sizeFlags = playerTokenSizeFlags(importedTokenSettings.size);
       isCompactPlayerTokens = sizeFlags.compact;
@@ -5652,8 +5658,8 @@ export async function createTacticalPadLiteSurface(
     newBoard: () => {
       if (surfaceVariant !== "tactical") return;
       singlePlayTargetSnapshot = null;
-      // A new board never inherits the creation-time token settings: on
-      // Training it opens at DEFAULT_TRAINING_TOKEN_SETTINGS (Pitch ignores them).
+      // A new board never inherits the creation-time token settings: it opens
+      // at its surface's defaults (resolveSurfaceDefaultTokenSettings).
       const { playerPresentation: _size, playerTokenStyle: _style, ...pristine } = cloneBoardStateSnapshot(pristineBoardState);
       importBoardState(pristine);
     },

@@ -309,7 +309,6 @@ export function createVisionV3PlayerToken({
   radius,
   kitPattern = "plain",
   kitPatternColor,
-  showLabel = true,
   variant = "standard",
   artScale = 1,
 }: {
@@ -320,8 +319,6 @@ export function createVisionV3PlayerToken({
   radius?: number;
   kitPattern?: VisionV3KitPattern;
   kitPatternColor?: number;
-  /** false draws the token without its identity label (was used by the retired Training Practice presentation). */
-  showLabel?: boolean;
   /** "bib" draws the Bib Token (never labelled); see VisionV3TokenVariant. */
   variant?: VisionV3TokenVariant;
   /**
@@ -459,10 +456,6 @@ export function createVisionV3PlayerToken({
     .roundRect(-innerRadius * 0.16, -discRadius + ringWidth * 0.16, innerRadius * 0.32, Math.max(0.2 * unit, discRadius * 0.14), innerRadius * 0.08)
     .fill({ color: mixColor(ringColor, 0xffffff, 0.16), alpha: 0.36 });
   art.addChild(orientationTick);
-
-  if (!showLabel) {
-    return { token, shadow };
-  }
 
   const safeLabel = label.trim().slice(0, 3) || "?";
   const isNumericLabel = /^\d+$/.test(safeLabel);

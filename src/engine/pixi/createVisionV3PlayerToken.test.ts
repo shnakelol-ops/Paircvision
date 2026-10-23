@@ -294,11 +294,6 @@ describe("createVisionV3PlayerToken — Slate supersampled art (artScale)", () =
     expect(4 * Math.ceil(2.3 * Math.sqrt(rimRadius * 2))).toBeGreaterThanOrEqual(64);
   });
 
-  it("Practice (showLabel:false) keeps the supersampled art with no label", () => {
-    const hi = createVisionV3PlayerToken({ label: "9", teamColor: "blue", radius: 3.28, artScale: K, showLabel: false });
-    expect(artOf(hi.token).children.some((c) => c instanceof Text)).toBe(false);
-  });
-
   it("artScale 1 (the default, used by movement-board) draws straight into the token as before", () => {
     const { token } = createVisionV3PlayerToken({ label: "9", teamColor: "blue", radius: 3.28 });
     expect(token.children.some((c) => c instanceof Text)).toBe(true);
