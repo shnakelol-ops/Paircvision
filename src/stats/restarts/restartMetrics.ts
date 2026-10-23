@@ -174,11 +174,14 @@ export function fmtFractionPct(f: RestartFraction): string {
 // ─── Ownership resolution ─────────────────────────────────────────────────────
 
 /**
- * Who physically took a restart.
+ * Who physically took a restart, or null when that is not known.
  *
  * V1.2+ events carry an explicit restartOwner that always wins.
- * Legacy fallback (pre-V1.2 events): owner = teamSide — the convention used
- * by selectRestartEventsByOwner and every restart PDF page.
+ * restartOwner "UNKNOWN" → null: the record does not establish the owner
+ * (historical Event Stats data), so no own-restart metric may count it.
+ * Legacy fallback (pre-V1.2 Match Stats / Rapid Capture events, whose capture
+ * always stored the kicking team as teamSide): owner = teamSide — the
+ * convention used by selectRestartEventsByOwner and every restart PDF page.
  *
  * KNOWN INCONSISTENCY (flagged, not silently patched):
  * possession-outcomes-engine.ts uses a different legacy fallback for
@@ -186,11 +189,31 @@ export function fmtFractionPct(f: RestartFraction): string {
  * conventions can classify the same KICKOUT_WON event differently. All
  * V1.2+ data is unaffected because restartOwner is explicit.
  */
-export function resolveRestartOwner(event: ChainableEvent): "FOR" | "OPP" {
+export function resolveRestartOwner(event: Pick<ChainableEvent, "restartOwner" | "teamSide">): "FOR" | "OPP" | null {
   if (event.restartOwner === "FOR" || event.restartOwner === "OPP") {
     return event.restartOwner;
   }
+  if (event.restartOwner === "UNKNOWN") return null;
   return event.teamSide;
+}
+
+/** Which side won possession from a kickout/puckout event (mirrored convention). */
+export function restartWinningSide(event: Pick<ChainableEvent, "kind" | "teamSide">): "FOR" | "OPP" {
+  if (event.kind === "KICKOUT_WON") return event.teamSide;
+  return event.teamSide === "FOR" ? "OPP" : "FOR";
+}
+
+/**
+ * "Clean Won / Break Won / Foul Won" on own-restart panels: a restart this
+ * team TOOK (owner recorded) and KEPT. Own restarts lost are excluded, and
+ * restarts with an unknown owner never qualify.
+ */
+export function isOwnRestartRetained(
+  event: Pick<ChainableEvent, "kind" | "teamSide" | "restartOwner">,
+  team: "FOR" | "OPP",
+): boolean {
+  if (event.kind !== "KICKOUT_WON" && event.kind !== "KICKOUT_CONCEDED") return false;
+  return resolveRestartOwner(event) === team && restartWinningSide(event) === team;
 }
 
 // ─── Computation ──────────────────────────────────────────────────────────────

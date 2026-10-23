@@ -323,8 +323,12 @@ export function buildPossessionOutcomeSummary<TEvent extends ChainableEvent>(
   //      KICKOUT_CONCEDED → the conceding side took the kickout → restartOwner === teamSide
   //      KICKOUT_WON      → the winning side did NOT take it   → restartOwner === opposite(teamSide)
   //    When restartOwner is explicitly set (V1.2+ data) it is always used as-is.
-  const getRestartOwner = (r: PossessionResult<TEvent>): "FOR" | "OPP" =>
-    r.originEvent.restartOwner != null
+  //    restartOwner "UNKNOWN" (record does not establish the kicker) → neither
+  //    family: such kickouts stay in the combined `kickouts` family only.
+  const getRestartOwner = (r: PossessionResult<TEvent>): "FOR" | "OPP" | null =>
+    r.originEvent.restartOwner === "UNKNOWN"
+      ? null
+      : r.originEvent.restartOwner != null
       ? r.originEvent.restartOwner
       : r.originEvent.kind === "KICKOUT_CONCEDED"
         ? r.originEvent.teamSide

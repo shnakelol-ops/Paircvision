@@ -40,6 +40,7 @@
  */
 
 import type { LoggedMatchEvent } from "../../core/stats/saved-match";
+import type { RestartOwnerValue } from "../chains/chain-types";
 import type { MatchEventSegment } from "../../core/stats/stats-event-model";
 import { computeScoreSide, fmtGP } from "../../pro-tagger/pro-tagger-score";
 import { resolveRestartOwner } from "../restarts/restartMetrics";
@@ -48,6 +49,10 @@ import {
   type AttackingDirection,
   type ZoneLabelPerspective,
 } from "../zones/zone-orientation";
+
+/** A logged event as the report layer sees it: restart owner may be the
+ *  report-time "UNKNOWN" state (see RestartOwnerValue). */
+type SegmentEvent = Omit<LoggedMatchEvent, "restartOwner"> & { restartOwner?: RestartOwnerValue | null };
 
 // ─── Forbidden-field guard ──────────────────────────────────────────────────
 //
@@ -152,7 +157,7 @@ function otherSide(side: "FOR" | "OPP"): "FOR" | "OPP" {
   return side === "FOR" ? "OPP" : "FOR";
 }
 
-function countKind(events: readonly LoggedMatchEvent[], kinds: ReadonlySet<LoggedMatchEvent["kind"]>): number {
+function countKind(events: readonly SegmentEvent[], kinds: ReadonlySet<LoggedMatchEvent["kind"]>): number {
   let n = 0;
   for (const e of events) if (kinds.has(e.kind)) n++;
   return n;
@@ -174,7 +179,7 @@ function countKind(events: readonly LoggedMatchEvent[], kinds: ReadonlySet<Logge
 // comment for why teamSide is not the input that decides this.
 
 function classifyHalf(
-  event: LoggedMatchEvent,
+  event: SegmentEvent,
   firstHalfAttackingDirection: AttackingDirection,
   perspective: ZoneLabelPerspective,
 ): "OWN" | "OPPOSITION" {
@@ -183,7 +188,7 @@ function classifyHalf(
 }
 
 function turnoverHalfSplit(
-  events: readonly LoggedMatchEvent[],
+  events: readonly SegmentEvent[],
   firstHalfAttackingDirection: AttackingDirection,
   perspective: ZoneLabelPerspective,
 ): QuickReviewTurnoverHalfSplit {
@@ -212,7 +217,7 @@ function turnoverHalfSplit(
 
 const KICKOUT_KINDS = new Set<LoggedMatchEvent["kind"]>(["KICKOUT_WON", "KICKOUT_CONCEDED"]);
 
-function kickoutWinningSide(event: LoggedMatchEvent): "FOR" | "OPP" {
+function kickoutWinningSide(event: SegmentEvent): "FOR" | "OPP" {
   return event.kind === "KICKOUT_WON" ? event.teamSide : otherSide(event.teamSide);
 }
 
@@ -222,7 +227,7 @@ function formatRetention(retained: number, taken: number): QuickReviewKickoutRet
   return { retained, taken, text: `${retained}/${taken} (${pct}%)` };
 }
 
-function kickoutRetention(segmentEvents: readonly LoggedMatchEvent[], side: "FOR" | "OPP"): QuickReviewKickoutRetention {
+function kickoutRetention(segmentEvents: readonly SegmentEvent[], side: "FOR" | "OPP"): QuickReviewKickoutRetention {
   const taken = segmentEvents.filter((e) => KICKOUT_KINDS.has(e.kind) && resolveRestartOwner(e) === side);
   const retained = taken.filter((e) => kickoutWinningSide(e) === side).length;
   return formatRetention(retained, taken.length);
@@ -231,7 +236,7 @@ function kickoutRetention(segmentEvents: readonly LoggedMatchEvent[], side: "FOR
 // ─── Per-side, per-segment assembly ─────────────────────────────────────────
 
 function buildSideStats(
-  segmentEvents: readonly LoggedMatchEvent[],
+  segmentEvents: readonly SegmentEvent[],
   side: "FOR" | "OPP",
   firstHalfAttackingDirection: AttackingDirection,
   perspective: ZoneLabelPerspective,
@@ -297,7 +302,7 @@ const SEGMENT_DEFS: readonly { segment: 1 | 2 | 3; label: QuickReviewSegmentLabe
  * `half` selects which half the model covers (default 1 = first half).
  */
 export function buildQuickReviewSegmentBreakdown(
-  events: readonly LoggedMatchEvent[],
+  events: readonly SegmentEvent[],
   homeTeam: string,
   awayTeam: string,
   firstHalfAttackingDirection: AttackingDirection,

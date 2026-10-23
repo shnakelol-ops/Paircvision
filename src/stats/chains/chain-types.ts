@@ -40,9 +40,19 @@ export type ChainableEvent = {
   ny: number;
   tags?: string[] | null;
   /** Who took this restart (kickout/puckout/45/sideline). "FOR" = we took it; "OPP" = they took it.
+   *  "UNKNOWN" = the record does not establish who took it (see RestartOwnerValue).
    *  Absent on non-restart events and on matches recorded before V1.2. */
-  restartOwner?: "FOR" | "OPP" | null;
+  restartOwner?: RestartOwnerValue | null;
 };
+
+/**
+ * Restart ownership as the report layer sees it. "UNKNOWN" is an explicit
+ * report-time state for restarts whose stored record does not establish who
+ * took them (historical Event Stats data stored the WINNER in teamSide and no
+ * owner). It is never written to stored matches — see
+ * pro-tagger-review-adapter.ts → toEventStatsReportEvents.
+ */
+export type RestartOwnerValue = "FOR" | "OPP" | "UNKNOWN";
 
 // ─── Rule Identification ──────────────────────────────────────────────────────
 

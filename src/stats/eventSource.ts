@@ -14,13 +14,16 @@ export function eventSource(event: EventLike): ScoreSource {
 
   // Stats Lite uses SOURCE_* prefix; Stats Pro uses bare labels.
   // Pro JSON can emit FORTY_FIVE, which should display in the "45" source row.
+  // Event Stats stores hurling/camogie's 45-equivalent as "65" (the 45 tile's
+  // sport label) — the same placed-ball restart, so it shares the "45" source.
   if (tags.includes("SOURCE_FREE")    || tags.includes("FREE"))    return "FREE";
   if (tags.includes("SOURCE_PLAY")    || tags.includes("PLAY"))    return "PLAY";
   if (tags.includes("SOURCE_MARK")    || tags.includes("MARK"))    return "MARK";
   if (
     tags.includes("SOURCE_45") ||
     tags.includes("45") ||
-    tags.includes("FORTY_FIVE")
+    tags.includes("FORTY_FIVE") ||
+    tags.includes("65")
   ) return "45";
   if (tags.includes("SOURCE_PENALTY") || tags.includes("PENALTY")) return "PENALTY";
   return "UNKNOWN";

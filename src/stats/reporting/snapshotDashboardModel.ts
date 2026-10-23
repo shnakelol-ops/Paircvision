@@ -33,6 +33,10 @@ export type SnapshotDashboardTeam = {
   score: SnapshotDashboardScoreLine;
   shooting: MetricFraction;
   ownKickouts: { retained: number; total: number; lost: number; pct: number };
+  /** Restarts in scope whose taker was not recorded (historical data). With
+   *  ownKickouts.total 0 this means own-kickout retention is unavailable,
+   *  not 0/0. */
+  restartOwnerUnknown: number;
   turnovers: { won: number; lost: number };
   placed: { scores: number; attempts: number };
 };
@@ -52,6 +56,7 @@ export type SnapshotDashboardModel = {
 function teamModel(
   block: ReturnType<typeof buildTeamSummaryBlock>,
   shooting: MetricFraction,
+  ownerUnknown: number,
 ): SnapshotDashboardTeam {
   const total = block.ownRestartsRetained + block.ownRestartsLost;
   return {
@@ -63,6 +68,7 @@ function teamModel(
       lost: block.ownRestartsLost,
       pct: fraction(block.ownRestartsRetained, total).pct,
     },
+    restartOwnerUnknown: ownerUnknown,
     turnovers: { won: block.toWon, lost: block.toLost },
     placed: { scores: block.placedScores, attempts: block.placedAttempts },
   };
@@ -86,8 +92,8 @@ export function buildSnapshotDashboardModel<TEvent extends ChainableEvent>(
     period,
     homeTeam: report.homeTeam,
     awayTeam: report.awayTeam,
-    us: teamModel(forBlock, forShooting),
-    them: teamModel(oppBlock, oppShooting),
+    us: teamModel(forBlock, forShooting, report.restartTeams.for.unknownOwnerRestarts),
+    them: teamModel(oppBlock, oppShooting, report.restartTeams.opp.unknownOwnerRestarts),
     eventCount: report.events.length,
   };
 }

@@ -24,6 +24,9 @@ export type TeamRestartCounts = {
   ownRestartsRetained: number;
   /** Own kickouts where this team lost possession. */
   ownRestartsLost: number;
+  /** Restarts in scope whose owner is not recorded ("UNKNOWN") — counted in
+   *  Restart Share, never in either team's own-kickout figures. */
+  unknownOwnerRestarts: number;
 };
 
 export type RestartTeamMetrics = {
@@ -41,6 +44,7 @@ export function computeRestartTeamMetrics<TEvent extends ChainableEvent>(
   const forOwn = outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === "FOR");
   const oppOwn = outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === "OPP");
 
+  const unknownOwner = outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === null).length;
   const forOwnRetained = forOwn.filter((o) => o.winningSide === "FOR").length;
   const oppOwnRetained = oppOwn.filter((o) => o.winningSide === "OPP").length;
 
@@ -52,6 +56,7 @@ export function computeRestartTeamMetrics<TEvent extends ChainableEvent>(
       ownRestartsTaken: forOwn.length,
       ownRestartsRetained: forOwnRetained,
       ownRestartsLost: forOwn.length - forOwnRetained,
+      unknownOwnerRestarts: unknownOwner,
     },
     opp: {
       restartShareWon: oppShareWon,
@@ -60,6 +65,7 @@ export function computeRestartTeamMetrics<TEvent extends ChainableEvent>(
       ownRestartsTaken: oppOwn.length,
       ownRestartsRetained: oppOwnRetained,
       ownRestartsLost: oppOwn.length - oppOwnRetained,
+      unknownOwnerRestarts: unknownOwner,
     },
   };
 }
@@ -71,7 +77,11 @@ export function formatOwnKickoutsLost(
   sport?: "gaelic" | "hurling" | "camogie" | "ladies_football",
 ): string {
   const ko = sport === "hurling" || sport === "camogie" ? "puckouts" : "kickouts";
-  if (counts.ownRestartsTaken === 0) return `${team} took no own ${ko}`;
+  if (counts.ownRestartsTaken === 0) {
+    return counts.unknownOwnerRestarts > 0
+      ? `${team}'s own ${ko} were not recorded`
+      : `${team} took no own ${ko}`;
+  }
   return `${team} lost ${counts.ownRestartsLost} of ${counts.ownRestartsTaken} own ${ko}`;
 }
 

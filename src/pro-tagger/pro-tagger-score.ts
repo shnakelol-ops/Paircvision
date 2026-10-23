@@ -15,7 +15,7 @@ import { SCORE_KINDS, scoreValue } from "../stats/ledger/scoreLedger";
 export type SideScore = { goals: number; points: number; total: number };
 
 export function computeScoreSide(
-  events: readonly LoggedMatchEvent[],
+  events: readonly Pick<LoggedMatchEvent, "teamSide" | "kind">[],
   side: "FOR" | "OPP",
 ): SideScore {
   let goals = 0;

@@ -5,6 +5,7 @@ import { exportReviewPdf, exportSnapshotPdf } from "../stats/reviewPdfExport";
 import {
   proTaggerMatchToPdfInput,
   proTaggerMatchToSnapshotInput,
+  toEventStatsReportEvents,
 } from "./pro-tagger-review-adapter";
 import type { ProTaggerSavedMatch } from "./pro-tagger-storage";
 import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
@@ -478,7 +479,7 @@ export function ProTaggerReviewScreen({ match: _match, onBack, onMatchUpdate }: 
       clockLabel:   stageLabel,
       homeScore,
       awayScore,
-      events:       match.events,
+      events:       toEventStatsReportEvents(match.events),
     })
       .then((result) => {
         setPack(result);

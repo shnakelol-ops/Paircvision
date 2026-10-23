@@ -5,7 +5,7 @@
  */
 
 import type { MatchEventKind, MatchEventPeriod, MatchEventSegment } from "../../core/stats/stats-event-model";
-import type { ChainableEvent } from "../chains/chain-types";
+import type { ChainableEvent, RestartOwnerValue } from "../chains/chain-types";
 
 export type AdaptableEvent = {
   id: string;
@@ -19,7 +19,7 @@ export type AdaptableEvent = {
   nx?: number;
   ny?: number;
   segment?: MatchEventSegment;
-  restartOwner?: "FOR" | "OPP" | null;
+  restartOwner?: RestartOwnerValue | null;
   tags?: string[] | null;
 };
 

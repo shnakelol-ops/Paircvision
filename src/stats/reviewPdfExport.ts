@@ -20,7 +20,7 @@ import type {
   MatchEventPeriod,
   MatchEventSegment,
 } from "../core/stats/stats-event-model";
-import type { ChainAnalysis, ChainRuleId } from "./chains/chain-types";
+import type { ChainAnalysis, ChainRuleId, RestartOwnerValue } from "./chains/chain-types";
 import { buildMatchReport, type MatchReport } from "./reporting/matchReport";
 import { buildTeamSummaryBlock, viewShootingConversion } from "./reporting/teamStatsViews";
 import {
@@ -58,6 +58,8 @@ import {
 } from "./reporting/scoringBreakdownViews";
 import {
   RESTART_ORIGIN_HEADING,
+  isOwnRestartRetained,
+  resolveRestartOwner,
   restartOriginExplanation,
 } from "./restarts/restartMetrics";
 import {
@@ -120,6 +122,7 @@ import { viewScoringPossessionOrigins } from "./reporting/scoringBreakdownViews"
 import { formatScoringBreakdownOrDash, scoringBreakdownTotal, type ScoringBreakdown } from "./reporting/scoringBreakdownFormat";
 import type { ProvenanceRow } from "./reporting/reportProvenance";
 import { GAME_ORIGIN_EXPLANATION, PART_QUESTIONS } from "./reporting/fullReviewCopy";
+import { isBlockedOrSavedAttempt, normalizeEventsForReporting } from "./reporting/eventTagClassification";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -153,8 +156,9 @@ export type PdfExportEvent = {
   playerName?: string | null;
   playerNumber?: number | null;
   squadId?: string | null;
-  /** V1.2+: which team took this restart. Absent on pre-V1.2 events; derived by legacy fallback when missing. */
-  restartOwner?: "FOR" | "OPP" | null;
+  /** V1.2+: which team took this restart. "UNKNOWN" when the record does not
+   *  establish it; absent on pre-V1.2 events (legacy fallback = teamSide). */
+  restartOwner?: RestartOwnerValue | null;
 };
 
 /** Minimal squad-player shape needed by the PDF export to seed the player report. */
@@ -2759,7 +2763,7 @@ function makeChainSummaryPage(
  * Layout mirrors makeChainSummaryPage (3 × 606 px columns, 24 px gaps).
  * All ctx.fillRect() — ctx.roundRect() is intentionally absent (Safari < 15.4).
  */
-function makeKickoutChainPage(
+export function makeKickoutChainPage(
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
@@ -2905,9 +2909,10 @@ function makeKickoutChainPage(
     return sub.filter((o) => tags.some((t) => o.kickoutEvent.tags?.includes(t))).length;
   }
 
-  // FOR own kickout sub-slices
-  const forKoWonOut  = outcomes.filter((o) => o.kickoutEvent.kind === "KICKOUT_WON"      && o.kickoutEvent.teamSide === "FOR");
-  const forKoConOut  = outcomes.filter((o) => o.kickoutEvent.kind === "KICKOUT_CONCEDED"  && o.kickoutEvent.teamSide === "FOR");
+  // FOR own kickout sub-slices — owner from the canonical resolver, so a
+  // restart whose taker was not recorded is never presented as "own".
+  const forKoWonOut  = outcomes.filter((o) => isOwnRestartRetained(o.kickoutEvent, "FOR"));
+  const forKoConOut  = outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === "FOR" && o.winningSide === "OPP");
   const forCleanWon  = countOutcomeTag(forKoWonOut,  "CLEAN");
   const forBreakWon  = countOutcomeTag(forKoWonOut,  "BREAK");
   const forFoulWon   = countOutcomeTag(forKoWonOut,  "FOUL_WON");
@@ -2915,13 +2920,20 @@ function makeKickoutChainPage(
   const forBreakLost = countOutcomeTag(forKoConOut,  "BREAK");
   const forFoulCon   = countOutcomeTag(forKoConOut,  "FOUL_CONCEDED");
   const forKickedDead = countOutcomeTag(
-    outcomes.filter((o) => o.kickoutEvent.teamSide === "FOR"),
+    outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === "FOR"),
     "KICKED_DEAD",
   );
 
+  // Restarts whose taker was not recorded (legacy Event Stats) — an empty
+  // own-kickout panel then means "unknown", not "none".
+  const unknownOwnerOutcomes = outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === null).length;
+  const noOwnKickoutsLine = unknownOwnerOutcomes > 0
+    ? "Restart taker not recorded"
+    : `No ${koLabelPluralLC(sport)} recorded`;
+
   // OPP own kickout sub-slices
-  const oppKoWonOut  = outcomes.filter((o) => o.kickoutEvent.kind === "KICKOUT_WON"      && o.kickoutEvent.teamSide === "OPP");
-  const oppKoConOut  = outcomes.filter((o) => o.kickoutEvent.kind === "KICKOUT_CONCEDED"  && o.kickoutEvent.teamSide === "OPP");
+  const oppKoWonOut  = outcomes.filter((o) => isOwnRestartRetained(o.kickoutEvent, "OPP"));
+  const oppKoConOut  = outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === "OPP" && o.winningSide === "FOR");
   const oppCleanWon  = countOutcomeTag(oppKoWonOut,  "CLEAN");
   const oppBreakWon  = countOutcomeTag(oppKoWonOut,  "BREAK");
   const oppFoulWon   = countOutcomeTag(oppKoWonOut,  "FOUL_WON");
@@ -2929,7 +2941,7 @@ function makeKickoutChainPage(
   const oppBreakLost = countOutcomeTag(oppKoConOut,  "BREAK");
   const oppFoulCon   = countOutcomeTag(oppKoConOut,  "FOUL_CONCEDED");
   const oppKickedDead = countOutcomeTag(
-    outcomes.filter((o) => o.kickoutEvent.teamSide === "OPP"),
+    outcomes.filter((o) => resolveRestartOwner(o.kickoutEvent) === "OPP"),
     "KICKED_DEAD",
   );
 
@@ -3041,7 +3053,7 @@ function makeKickoutChainPage(
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
-      ctx.fillText(`No ${koLabelPluralLC(sport)} recorded`, COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
+      ctx.fillText(noOwnKickoutsLine, COL2_X + COL_W / 2, PANEL_Y1 + HALF_H / 2);
       ctx.restore();
     } else {
       ctx.save();
@@ -3085,7 +3097,7 @@ function makeKickoutChainPage(
       ctx.font = "16px sans-serif";
       ctx.textBaseline = "middle";
       ctx.textAlign = "center";
-      ctx.fillText(`No ${koLabelPluralLC(sport)} recorded`, COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
+      ctx.fillText(noOwnKickoutsLine, COL2_X + COL_W / 2, PANEL_Y2 + HALF_H / 2);
       ctx.restore();
     } else {
       ctx.save();
@@ -6029,7 +6041,7 @@ function makeMatchSwingTimelinePage(
  *
  * All division guarded. No ctx.roundRect() — fillRect/strokeRect only.
  */
-function makeShotEfficiencyPage(
+export function makeShotEfficiencyPage(
   events: readonly PdfExportEvent[],
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
@@ -6107,7 +6119,7 @@ function makeShotEfficiencyPage(
     const totalSc   = scores.length;
     const convPct   = totalAtt > 0 ? Math.round((totalSc  / totalAtt) * 100) : 0;
     const wides     = evts.filter((e) => e.kind === "WIDE").length;
-    const blocked   = evts.filter((e) => e.kind === "SHOT").length;
+    const blocked   = evts.filter(isBlockedOrSavedAttempt).length;
 
     // "Unclassified" appears only when it has attempts — sources default to
     // "Open Play" at tag time, so it now only shows for legacy matches or
@@ -7092,7 +7104,7 @@ function dpIntelligencePanel(
  *
  * The Kickout Chain Analysis detail page (p.6) is retained as a companion.
  */
-function makeRestartVisualPage(
+export function makeRestartVisualPage(
   events: readonly PdfExportEvent[],
   sport: PitchSport,
   report: MatchReport<PdfExportEvent>,
@@ -7113,9 +7125,8 @@ function makeRestartVisualPage(
   drawTopAccentBar(ctx);
   drawPageHeader(ctx, "Restart Analysis", `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
-  // ── Ownership helpers (V1.2+ explicit; legacy fallback = teamSide) ─────────
-  const getOwner = (e: PdfExportEvent): "FOR" | "OPP" =>
-    e.restartOwner != null ? e.restartOwner : e.teamSide as "FOR" | "OPP";
+  // ── Ownership (canonical resolver: explicit owner, legacy teamSide, or unknown) ─
+  const getOwner = resolveRestartOwner;
 
   // ── Event subsets — ownership-based (who physically took the restart) ────
   const forOwnedEvts = events.filter(
@@ -7147,8 +7158,10 @@ function makeRestartVisualPage(
   const h1Opp = h1Out.length - h1For;
   const h2For = h2Out.filter((o) => o.winningSide === "FOR").length;
   const h2Opp = h2Out.length - h2For;
-  // Tag counts scoped to our owned restarts only
-  const forKoEvts = forOwnedEvts;
+  // "HOW WON" = how we RETAINED our own restarts: own restarts we kept,
+  // split by method (Clean / Break / Foul won). Own restarts we lost are
+  // excluded — they are counted as losses, never as "won".
+  const forKoEvts = forOwnedEvts.filter((e) => isOwnRestartRetained(e, "FOR"));
   function countKoTag(tag: string): number {
     return forKoEvts.filter((e) => e.tags?.includes(tag)).length;
   }
@@ -7198,10 +7211,10 @@ function makeRestartVisualPage(
     cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "H1 — Won / Lost", `${h1For} / ${h1Opp}`, "#e2e8f0", false);
     cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "H2 — Won / Lost", `${h2For} / ${h2Opp}`, "#e2e8f0", true);
     cy += 2;
-    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "HOW WON", "#22d3ee");
-    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Clean Won", String(countKoTag("CLEAN")),    shareBarFromCounts(countKoTag("CLEAN"), ko.won), "#4ade80", "#4ade80", false);
-    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Break Won", String(countKoTag("BREAK")),    shareBarFromCounts(countKoTag("BREAK"), ko.won), "#e2e8f0", "#e2e8f0", true);
-    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Foul Won",  String(countKoTag("FOUL_WON")), shareBarFromCounts(countKoTag("FOUL_WON"), ko.won), "#fbbf24", "#fbbf24", false);
+    cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, `HOW WON — OWN ${koLabelPlural(sport).toUpperCase()} RETAINED (${forKoEvts.length})`, "#22d3ee");
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Clean Won", String(countKoTag("CLEAN")),    shareBarFromCounts(countKoTag("CLEAN"), forKoEvts.length), "#4ade80", "#4ade80", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Break Won", String(countKoTag("BREAK")),    shareBarFromCounts(countKoTag("BREAK"), forKoEvts.length), "#e2e8f0", "#e2e8f0", true);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, "Foul Won",  String(countKoTag("FOUL_WON")), shareBarFromCounts(countKoTag("FOUL_WON"), forKoEvts.length), "#fbbf24", "#fbbf24", false);
     // Dead-ball wins aren't split out in this own-restart type mix — they're
     // already inside the Won total above (Restart Summary / Match Summary).
     // Footnote, not a fabricated row, since this panel's tag mix isn't scoped
@@ -7731,8 +7744,10 @@ void makeOppRestartPlatformPage;
  * Total pages = 36 + N  (N ≥ 1 → minimum 37 pages).
  */
 export async function exportReviewPdf(input: ReviewPdfExportInput): Promise<void> {
+  // Pages below read events directly as well as through `report`, so the
+  // canonical report tags are applied once here (eventTagClassification.ts).
+  const events = normalizeEventsForReporting(input.events);
   const {
-    events,
     homeTeamName,
     awayTeamName,
     venueName,
@@ -8260,7 +8275,7 @@ const HT_MARKER_COLORS: Partial<Record<MatchEventKind, string>> = {
  *   SCORE (GOAL, POINT, FREE_SCORED…) — filled coloured circle; GOAL is 38% larger
  *   WIDE / FREE_MISSED                — red ✕              (possession wasted)
  *   KICKOUT_CONCEDED                  — pink ✕             (restart territory lost)
- *   SHOT + BLOCK_SAVE tag             — grey hollow ring    (keeper stopped it)
+ *   SHOT blocked / saved              — grey hollow ring    (isBlockedOrSavedAttempt)
  *   SHOT + SHORT tag                  — grey ↓             (possession ceded short)
  *   SHOT (other)                      — grey filled circle  (neutral / blocked attempt)
  *   KICKOUT_WON / TURNOVER… / etc.   — filled coloured circle
@@ -8309,8 +8324,8 @@ function renderHtMarkers(
       ctx.beginPath(); ctx.moveTo(cx - sz, cy - sz); ctx.lineTo(cx + sz, cy + sz); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(cx + sz, cy - sz); ctx.lineTo(cx - sz, cy + sz); ctx.stroke();
 
-    } else if (kind === "SHOT" && tags.includes("BLOCK_SAVE")) {
-      // Grey hollow ring — keeper save
+    } else if (kind === "SHOT" && isBlockedOrSavedAttempt(event)) {
+      // Grey hollow ring — blocked / saved (one shared definition)
       ctx.save();
       ctx.globalAlpha = 0.22;
       ctx.beginPath(); ctx.arc(cx, cy, r + 5, 0, Math.PI * 2);
@@ -11661,8 +11676,7 @@ function makeOurRestartPlatformPage(
   drawPageHeader(ctx, restartTitle, `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Ownership helpers (V1.2+ explicit; legacy fallback = teamSide) ─────────
-  const getOwnerOur = (e: PdfExportEvent): "FOR" | "OPP" =>
-    e.restartOwner != null ? e.restartOwner : e.teamSide as "FOR" | "OPP";
+  const getOwnerOur = resolveRestartOwner;
   const getWinnerOur = (e: PdfExportEvent): "FOR" | "OPP" =>
     e.kind === "KICKOUT_WON"
       ? e.teamSide as "FOR" | "OPP"
@@ -11838,8 +11852,7 @@ function makeOppRestartPlatformPage(
   drawPageHeader(ctx, restartTitle, `${homeTeam} v ${awayTeam}`, pageNum, totalPages);
 
   // ── Ownership helpers (V1.2+ explicit; legacy fallback = teamSide) ─────────
-  const getOwnerOpp = (e: PdfExportEvent): "FOR" | "OPP" =>
-    e.restartOwner != null ? e.restartOwner : e.teamSide as "FOR" | "OPP";
+  const getOwnerOpp = resolveRestartOwner;
   const getWinnerOpp = (e: PdfExportEvent): "FOR" | "OPP" =>
     e.kind === "KICKOUT_WON"
       ? e.teamSide as "FOR" | "OPP"
@@ -12103,8 +12116,9 @@ function makeRestartBattlePage(
   // Legacy single-perspective logging: both KICKOUT_WON and KICKOUT_CONCEDED are
   // logged by the team that kicked out, so teamSide always identifies the kicker.
   // V1.2+ events carry an explicit restartOwner field that takes priority.
-  const getOwner = (e: PdfExportEvent): "FOR" | "OPP" =>
-    e.restartOwner != null ? e.restartOwner : e.teamSide;
+  // resolveRestartOwner returns null for "UNKNOWN" owners, which then
+  // belong to neither team's restart pitch.
+  const getOwner = resolveRestartOwner;
 
   // Concept 2: who WON POSSESSION from the restart.
   // KICKOUT_WON → the logging team retained/won the ball.
@@ -12116,6 +12130,8 @@ function makeRestartBattlePage(
 
   const homeRestarts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwner(e) === "FOR");
   const awayRestarts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwner(e) === "OPP");
+  const unknownOwnerRestarts = events.filter((e) => PDF_KIND_SETS.KICKOUTS.has(e.kind) && getOwner(e) === null).length;
+  const noOwnRestartsLine = unknownOwnerRestarts > 0 ? "Restart taker not recorded" : `No ${restartTermLC} logged`;
   const homeRetained = homeRestarts.filter((e) => getWinner(e) === "FOR");
   const homeLost     = homeRestarts.filter((e) => getWinner(e) !== "FOR");
   const awayRetained = awayRestarts.filter((e) => getWinner(e) === "OPP");
@@ -12236,7 +12252,7 @@ function makeRestartBattlePage(
       lines: [
         homeTotal > 0
           ? `${truncTeam(homeTeam, 14)} retained ${homeRetCount}/${homeTotal} (${homePct}%)`
-          : `No ${restartTermLC} logged`,
+          : noOwnRestartsLine,
       ],
       color: "#22c55e",
     },
@@ -12245,7 +12261,7 @@ function makeRestartBattlePage(
       lines: [
         awayTotal > 0
           ? `${truncTeam(awayTeam, 14)} retained ${awayRetCount}/${awayTotal} (${awayPct}%)`
-          : `No ${restartTermLC} logged`,
+          : noOwnRestartsLine,
       ],
       color: "#ef4444",
     },
@@ -13140,20 +13156,23 @@ function drawDashboardKickoutPanel(
   x: number, y: number, w: number, h: number,
   heading: string, accent: string,
   kickouts: SnapshotDashboardTeam["ownKickouts"],
+  restartOwnerUnknown: number,
 ): void {
   const contentY = dashboardPanelChrome(ctx, x, y, w, h, accent, heading);
   ctx.save();
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
+  // Restart taker not recorded (historical data): unavailable, not 0/0.
+  const unavailable = kickouts.total === 0 && restartOwnerUnknown > 0;
   ctx.font = "bold 44px sans-serif";
   ctx.fillStyle = "#f8fafc";
-  ctx.fillText(kickouts.total > 0 ? `${kickouts.retained}/${kickouts.total}` : "0/0", x + 22, contentY + 40);
+  ctx.fillText(kickouts.total > 0 ? `${kickouts.retained}/${kickouts.total}` : unavailable ? "—" : "0/0", x + 22, contentY + 40);
   ctx.font = "600 26px sans-serif";
   ctx.fillStyle = accent;
   ctx.fillText(kickouts.total > 0 ? `${kickouts.pct}%` : "—", x + 22, contentY + 92);
   ctx.font = "20px sans-serif";
   ctx.fillStyle = "#94a3b8";
-  ctx.fillText(`Lost ${kickouts.lost}/${kickouts.total}`, x + 22, contentY + 136);
+  ctx.fillText(unavailable ? "Restart taker not recorded" : `Lost ${kickouts.lost}/${kickouts.total}`, x + 22, contentY + 136);
   ctx.restore();
 }
 
@@ -13244,8 +13263,8 @@ function makeSnapshotDashboardPage(
   const panelW = Math.floor((CANVAS_W - PAD_X * 2 - GAP * 3) / 4);
 
   drawDashboardShootingPanel(ctx, PAD_X + 0 * (panelW + GAP), panelY, panelW, panelH, homeTeam, awayTeam, us.shooting, them.shooting);
-  drawDashboardKickoutPanel(ctx, PAD_X + 1 * (panelW + GAP), panelY, panelW, panelH, "OUR KICKOUTS", "#4ade80", us.ownKickouts);
-  drawDashboardKickoutPanel(ctx, PAD_X + 2 * (panelW + GAP), panelY, panelW, panelH, "THEIR KICKOUTS", "#f87171", them.ownKickouts);
+  drawDashboardKickoutPanel(ctx, PAD_X + 1 * (panelW + GAP), panelY, panelW, panelH, "OUR KICKOUTS", "#4ade80", us.ownKickouts, us.restartOwnerUnknown);
+  drawDashboardKickoutPanel(ctx, PAD_X + 2 * (panelW + GAP), panelY, panelW, panelH, "THEIR KICKOUTS", "#f87171", them.ownKickouts, them.restartOwnerUnknown);
   drawDashboardTurnoverPanel(ctx, PAD_X + 3 * (panelW + GAP), panelY, panelW, panelH, us.turnovers);
 
   // ── Placed balls — reuses the two-column strip used on Restart Battle ─────
@@ -13293,8 +13312,8 @@ function makeSnapshotDashboardPage(
 // exportReviewPdf (Full Review) where applicable — nothing was deleted.
 
 export async function exportSnapshotPdf(input: SnapshotPdfExportInput): Promise<void> {
+  const allEvents = normalizeEventsForReporting(input.events);
   const {
-    events: allEvents,
     homeTeamName,
     awayTeamName,
     sport = "gaelic",
