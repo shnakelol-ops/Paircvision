@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { ProTaggerSquadPlayer } from "./pro-tagger-session";
+import type { ProTaggerJerseyStyle, ProTaggerSquadPlayer } from "./pro-tagger-session";
 import { ProTaggerMiniJersey } from "./ProTaggerMiniJersey";
 import { ProTaggerLineupJerseyTile } from "./ProTaggerLineupJerseyTile";
 import { ProTaggerLineupPitchBackground } from "./ProTaggerLineupPitchBackground";
@@ -18,6 +18,14 @@ interface Props {
   squadId: string;
   teamColour?: string;
   secondaryColour?: string;
+  /**
+   * Jersey SHAPE only (chest/sleeves/collar) — see ProTaggerJerseyStyle.
+   * Forwarded verbatim into every tile's own `jerseyStyle` prop. Omit (or
+   * leave undefined) to fall back to "chest", exactly as every tile already
+   * does. Deliberately independent of the `livePicker` flag this component
+   * always passes to its tiles, which controls only the number treatment.
+   */
+  jerseyStyle?: ProTaggerJerseyStyle;
   onSelect: (player: SelectedPlayer | null) => void;
   /**
    * Per-player Discipline status (derived from event history — see
@@ -53,7 +61,7 @@ const BENCH_JERSEY_SIZE = 22;
 const FORMATION_NUMBER_FONT_SIZE = 14;
 const BENCH_NUMBER_FONT_SIZE = 14;
 
-export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, onSelect, disciplineStatus }: Props) {
+export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, secondaryColour, jerseyStyle, onSelect, disciplineStatus }: Props) {
   const colour = teamColour ?? "#238636";
 
   // Active players in formation slots (1–15).
@@ -81,13 +89,14 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
   // colour alone) and the tile is disabled only for RED — SIN_BIN stays
   // fully tappable; that rule is unchanged.
   //
-  // Simplified tagging jersey experiment: passes livePicker to request the
-  // tile's live-tagging-only jersey variant (primary torso, secondary
-  // sleeves, no chest stripe) and its matching minimal number treatment,
-  // instead of the shared default jersey Squad Setup uses. This supersedes
-  // the previous numberCrisp request — livePicker's own number treatment
-  // is the thing being tested now. Squad Setup's own call site passes
-  // neither prop and is completely unaffected.
+  // Jersey shape (chest/sleeves/collar) is caller-controlled via jerseyStyle
+  // — passed straight through to the tile, defaulting to "chest" same as
+  // every other caller. `livePicker` stays hardcoded true here regardless
+  // of shape: it controls only the tile's number treatment (its minimal,
+  // no-stroke outline tuned for this picker's small/dense tiles), which is
+  // orthogonal to jerseyStyle and must keep applying to whichever shape is
+  // selected. Squad Setup's own call site passes neither livePicker nor
+  // (previously) any shape override and is completely unaffected.
   function renderTile(p: ProTaggerSquadPlayer, size: number, numberFontSize: number) {
     const status = disciplineStatus?.get(p.id);
     // Suppress the tile's own name plate when a status label must show
@@ -98,7 +107,7 @@ export function ProTaggerPlayerPicker({ teamLabel, squad, squadId, teamColour, s
       <>
         <ProTaggerLineupJerseyTile
           player={tilePlayer} primary={colour} secondary={secondaryColour ?? "#ffffff"}
-          size={size} numberFontSize={numberFontSize} livePicker
+          size={size} numberFontSize={numberFontSize} jerseyStyle={jerseyStyle} livePicker
         />
         {status === "RED" && <span style={S.statusRed}>RED</span>}
         {status === "SIN_BIN" && <span style={S.statusSinBin}>SIN BIN</span>}
