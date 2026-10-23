@@ -1,0 +1,51 @@
+[
+ {
+  "turnover": "C-053",
+  "wonBy": "OPP",
+  "refNext": "C-055",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "C-054:FREE/FOR/Conceded@1282",
+   "C-055:TURNOVER/FOR/Tackle@1307"
+  ]
+ },
+ {
+  "turnover": "C-154",
+  "wonBy": "OPP",
+  "refNext": "C-155",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "C-155:TURNOVER/FOR/Tackle@1591",
+   "C-156:TURNOVER/OPP/Interception@1611",
+   "C-X02:DISCIPLINE/OPP/Red@1630"
+  ]
+ },
+ {
+  "turnover": "C-156",
+  "wonBy": "OPP",
+  "refNext": "C-157",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "C-X02:DISCIPLINE/OPP/Red@1630",
+   "C-157:TURNOVER/FOR/Tackle@1637",
+   "C-158:POINT/FOR/Play@1664"
+  ]
+ },
+ {
+  "turnover": "C-171",
+  "wonBy": "OPP",
+  "refNext": "C-172",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "C-172:TURNOVER/FOR/Interception@2012"
+  ]
+ }
+]

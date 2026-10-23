@@ -1,0 +1,1733 @@
+[
+ {
+  "id": "e6735ebb-91ae-41ba-9346-3dc9970837f0",
+  "createdAt": 1792764002174,
+  "homeTeamName": "Kilmacud Crokes",
+  "awayTeamName": "St Brigid's",
+  "venue": "Glenalbyn",
+  "sport": "gaelic",
+  "matchType": "championship",
+  "halfDurationMinutes": 35,
+  "scorelineSnapshot": "Kilmacud Crokes 0-01 (1) v St Brigid's 1-04 (7)",
+  "eventCount": 45,
+  "events": [
+   {
+    "id": "fab4823a-7592-4807-bd57-8ed5255dafe1",
+    "kind": "FREE_WON",
+    "type": "FREE_WON",
+    "tags": [
+     "WON"
+    ],
+    "nx": 0.40800001454907797,
+    "ny": 0.36500002838844475,
+    "x": 0.40800001454907797,
+    "y": 0.36500002838844475,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 38,
+    "matchClockSeconds": 38,
+    "createdAt": 1792764043004,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 38,
+    "halfSegment": 1,
+    "team": "HOME"
+   },
+   {
+    "id": "963c1b6e-314a-4810-a4b6-6a644e3b29f1",
+    "kind": "TURNOVER_LOST",
+    "type": "TURNOVER_LOST",
+    "tags": [
+     "TACKLE"
+    ],
+    "nx": 0.5820000227107559,
+    "ny": 0.7770000014194223,
+    "x": 0.5820000227107559,
+    "y": 0.7770000014194223,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 46,
+    "matchClockSeconds": 46,
+    "createdAt": 1792764051016,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 46,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "c2b6aeb7-b436-4539-afdf-a71a6dc48cf9",
+    "playerName": "Hugh Kenny",
+    "playerNumber": 15,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "833ae452-1b2e-4c0e-a7db-90beb8d10447",
+    "kind": "SHOT",
+    "type": "SHOT",
+    "tags": [
+     "SHORT"
+    ],
+    "nx": 0.900000017742778,
+    "ny": 0.325,
+    "x": 0.900000017742778,
+    "y": 0.325,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 54,
+    "matchClockSeconds": 54,
+    "createdAt": 1792764058995,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 54,
+    "halfSegment": 1,
+    "team": "AWAY",
+    "playerId": "ac1dd188-3cb1-41e2-bd2a-ff577e334648",
+    "playerName": "#11",
+    "playerNumber": 11,
+    "squadId": "3e0f3c78-2039-49a4-89a4-8bcf17c743fa"
+   },
+   {
+    "id": "2f8f7d04-5002-4bd3-a4b7-61d812dd8d0b",
+    "kind": "TURNOVER_LOST",
+    "type": "TURNOVER_LOST",
+    "tags": [
+     "HP ERROR"
+    ],
+    "nx": 0.27000001419422237,
+    "ny": 0.47299999858057773,
+    "x": 0.27000001419422237,
+    "y": 0.47299999858057773,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 60,
+    "matchClockSeconds": 60,
+    "createdAt": 1792764064988,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 60,
+    "halfSegment": 1,
+    "team": "HOME"
+   },
+   {
+    "id": "396d29c2-6f29-4f35-b846-0e7b86d2a9f2",
+    "kind": "FREE_CONCEDED",
+    "type": "FREE_CONCEDED",
+    "tags": [
+     "CONCEDED"
+    ],
+    "nx": 0.6679999772892442,
+    "ny": 0.2900000283884448,
+    "x": 0.6679999772892442,
+    "y": 0.2900000283884448,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 69,
+    "matchClockSeconds": 69,
+    "createdAt": 1792764073972,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 69,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "fdc4ea06-e6bb-4816-aa70-a9b42a85e477",
+    "playerName": "Theo Clancy",
+    "playerNumber": 5,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "01a6026b-7063-4468-89ea-d4b279c4030d",
+    "kind": "TURNOVER_WON",
+    "type": "TURNOVER_WON",
+    "tags": [
+     "HP ERROR"
+    ],
+    "nx": 0.7659999936126,
+    "ny": 0.23300000567768892,
+    "x": 0.7659999936126,
+    "y": 0.23300000567768892,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 83,
+    "matchClockSeconds": 83,
+    "createdAt": 1792764087947,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 83,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "ac42a761-85a8-443b-b7cf-26fc4c71c71f",
+    "playerName": "Andrew McGowan",
+    "playerNumber": 4,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "d9c3f711-83ad-4091-910b-6445e67e5882",
+    "kind": "TURNOVER_LOST",
+    "type": "TURNOVER_LOST",
+    "tags": [
+     "KP ERROR"
+    ],
+    "nx": 0.47999998580577763,
+    "ny": 0.6209999971611555,
+    "x": 0.47999998580577763,
+    "y": 0.6209999971611555,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 98,
+    "matchClockSeconds": 98,
+    "createdAt": 1792764102937,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 98,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "c2b6aeb7-b436-4539-afdf-a71a6dc48cf9",
+    "playerName": "Hugh Kenny",
+    "playerNumber": 15,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "38e430c0-6b01-43bd-8340-f481896ccce5",
+    "kind": "POINT",
+    "type": "POINT",
+    "tags": [
+     "PLAY"
+    ],
+    "nx": 0.7440000134845113,
+    "ny": 0.425,
+    "x": 0.7440000134845113,
+    "y": 0.425,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 109,
+    "matchClockSeconds": 109,
+    "createdAt": 1792764113950,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 109,
+    "halfSegment": 1,
+    "team": "AWAY",
+    "playerId": "ac1dd188-3cb1-41e2-bd2a-ff577e334648",
+    "playerName": "#11",
+    "playerNumber": 11,
+    "squadId": "3e0f3c78-2039-49a4-89a4-8bcf17c743fa"
+   },
+   {
+    "id": "7afce26b-ab58-48c9-94d7-48e1c13d32bf",
+    "kind": "KICKOUT_WON",
+    "type": "KICKOUT_WON",
+    "tags": [
+     "FOUL"
+    ],
+    "nx": 0.6009999652241552,
+    "ny": 0.6689999957417334,
+    "x": 0.6009999652241552,
+    "y": 0.6689999957417334,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 131,
+    "matchClockSeconds": 131,
+    "createdAt": 1792764135996,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 131,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "497b947a-2d52-4656-847d-82d8e4e86b04",
+    "playerName": "Craig Dias",
+    "playerNumber": 8,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49",
+    "restartOwner": "FOR"
+   },
+   {
+    "id": "68dda265-3e99-4503-9054-0d296d0969da",
+    "kind": "WIDE",
+    "type": "WIDE",
+    "tags": [
+     "PLAY"
+    ],
+    "nx": 0.10599999095118325,
+    "ny": 0.4560000042582667,
+    "x": 0.10599999095118325,
+    "y": 0.4560000042582667,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 145,
+    "matchClockSeconds": 145,
+    "createdAt": 1792764149975,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 145,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "c2b6aeb7-b436-4539-afdf-a71a6dc48cf9",
+    "playerName": "Hugh Kenny",
+    "playerNumber": 15,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "28ac211f-a0f0-490a-ac64-0312f72a62bd",
+    "kind": "KICKOUT_CONCEDED",
+    "type": "KICKOUT_CONCEDED",
+    "tags": [
+     "CLEAN"
+    ],
+    "nx": 0.43200000496797786,
+    "ny": 0.6439999957417334,
+    "x": 0.43200000496797786,
+    "y": 0.6439999957417334,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 169,
+    "matchClockSeconds": 169,
+    "createdAt": 1792764174006,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 169,
+    "halfSegment": 1,
+    "team": "AWAY",
+    "playerId": "cb2454c1-addb-40db-a6f8-5207ecce282f",
+    "playerName": "Tom Fox",
+    "playerNumber": 11,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49",
+    "restartOwner": "OPP"
+   },
+   {
+    "id": "2267458a-eaa5-4c79-92f5-50a7ff36b229",
+    "kind": "TURNOVER_LOST",
+    "type": "TURNOVER_LOST",
+    "tags": [
+     "INTERCEPTION"
+    ],
+    "nx": 0.3740000170330669,
+    "ny": 0.6,
+    "x": 0.3740000170330669,
+    "y": 0.6,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 180,
+    "matchClockSeconds": 180,
+    "createdAt": 1792764184973,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 180,
+    "halfSegment": 1,
+    "team": "HOME"
+   },
+   {
+    "id": "fb4c15cd-3bbb-49e5-b55b-3483d4796019",
+    "kind": "TURNOVER_WON",
+    "type": "TURNOVER_WON",
+    "tags": [
+     "INTERCEPTION"
+    ],
+    "nx": 0.24499999645144444,
+    "ny": 0.6100000070971112,
+    "x": 0.24499999645144444,
+    "y": 0.6100000070971112,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 193,
+    "matchClockSeconds": 193,
+    "createdAt": 1792764197972,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 193,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "fdc4ea06-e6bb-4816-aa70-a9b42a85e477",
+    "playerName": "Theo Clancy",
+    "playerNumber": 5,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "259e9100-6dbe-4cfb-b475-2a56d5b3c0c3",
+    "kind": "TURNOVER_LOST",
+    "type": "TURNOVER_LOST",
+    "tags": [
+     "TACKLE"
+    ],
+    "nx": 0.5369999907737555,
+    "ny": 0.716999994322311,
+    "x": 0.5369999907737555,
+    "y": 0.716999994322311,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 203,
+    "matchClockSeconds": 203,
+    "createdAt": 1792764207959,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 203,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "15b3228a-7088-4db1-b7c8-d3fdd892c62b",
+    "playerName": "Aidan Jones",
+    "playerNumber": 12,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "eb44913d-0681-46dd-abad-29a5f965ffb8",
+    "kind": "TURNOVER_WON",
+    "type": "TURNOVER_WON",
+    "tags": [
+     "HP ERROR"
+    ],
+    "nx": 0.12700001029081123,
+    "ny": 0.6140000099359556,
+    "x": 0.12700001029081123,
+    "y": 0.6140000099359556,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 214,
+    "matchClockSeconds": 214,
+    "createdAt": 1792764218923,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 214,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "eb33bd40-a248-4107-9ef1-e803cfe84205",
+    "playerName": "Paul Mannion",
+    "playerNumber": 7,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "8672caa8-0bbc-406a-b6de-06f81d2ed947",
+    "kind": "WIDE",
+    "type": "WIDE",
+    "tags": [
+     "PLAY"
+    ],
+    "nx": 0.20699997835381087,
+    "ny": 0.6990000170330668,
+    "x": 0.20699997835381087,
+    "y": 0.6990000170330668,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 228,
+    "matchClockSeconds": 228,
+    "createdAt": 1792764233011,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 228,
+    "halfSegment": 1,
+    "team": "HOME"
+   },
+   {
+    "id": "822ab647-2705-49bc-936b-25baf831c3ee",
+    "kind": "KICKOUT_CONCEDED",
+    "type": "KICKOUT_CONCEDED",
+    "tags": [
+     "BREAK"
+    ],
+    "nx": 0.458000005677689,
+    "ny": 0.23700000851653344,
+    "x": 0.458000005677689,
+    "y": 0.23700000851653344,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 246,
+    "matchClockSeconds": 246,
+    "createdAt": 1792764251029,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 246,
+    "halfSegment": 1,
+    "team": "AWAY",
+    "playerId": "497b947a-2d52-4656-847d-82d8e4e86b04",
+    "playerName": "Craig Dias",
+    "playerNumber": 8,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49",
+    "restartOwner": "OPP"
+   },
+   {
+    "id": "63695c26-865e-4c0a-82e1-aae778e35190",
+    "kind": "FREE_WON",
+    "type": "FREE_WON",
+    "tags": [
+     "WON"
+    ],
+    "nx": 0.49499999645144444,
+    "ny": 0.4120000085165334,
+    "x": 0.49499999645144444,
+    "y": 0.4120000085165334,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 255,
+    "matchClockSeconds": 255,
+    "createdAt": 1792764259986,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 255,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "ecf399e9-c1d9-421f-b500-f27081424a9d",
+    "playerName": "Pat Burke",
+    "playerNumber": 13,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "53ec2fb0-b4a6-4714-8eb7-dfe6180e90d7",
+    "kind": "SHOT",
+    "type": "SHOT",
+    "tags": [
+     "POST"
+    ],
+    "nx": 0.07400000372598338,
+    "ny": 0.5049999858057777,
+    "x": 0.07400000372598338,
+    "y": 0.5049999858057777,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 261,
+    "matchClockSeconds": 261,
+    "createdAt": 1792764265976,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 261,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "7b6fee20-f201-4869-916c-b9d0a7f5a481",
+    "playerName": "Callum Pearson",
+    "playerNumber": 14,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "0cbf5daf-ff8f-40d4-a57a-3a0c4aa827c6",
+    "kind": "TURNOVER_WON",
+    "type": "TURNOVER_WON",
+    "tags": [
+     "TACKLE"
+    ],
+    "nx": 0.2719999801280887,
+    "ny": 0.25099998296693316,
+    "x": 0.2719999801280887,
+    "y": 0.25099998296693316,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 266,
+    "matchClockSeconds": 266,
+    "createdAt": 1792764270978,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 266,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "45ec89b5-917c-4332-8c9a-a96827e62ab5",
+    "playerName": "Rory O'Carroll",
+    "playerNumber": 3,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "b9ec8003-3b56-4812-b8d0-b1c5f28ed51e",
+    "kind": "TURNOVER_LOST",
+    "type": "TURNOVER_LOST",
+    "tags": [
+     "HP ERROR"
+    ],
+    "nx": 0.8070000049679779,
+    "ny": 0.42400001703306683,
+    "x": 0.8070000049679779,
+    "y": 0.42400001703306683,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 276,
+    "matchClockSeconds": 276,
+    "createdAt": 1792764280943,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 276,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "a043150d-536a-4bc8-8115-ac70a43af7dc",
+    "playerName": "Shane Walsh",
+    "playerNumber": 10,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "854c285a-e0f4-4e72-87bf-e896dab9a054",
+    "kind": "FREE_CONCEDED",
+    "type": "FREE_CONCEDED",
+    "tags": [
+     "CONCEDED"
+    ],
+    "nx": 0.775000017742778,
+    "ny": 0.3330000056776889,
+    "x": 0.775000017742778,
+    "y": 0.3330000056776889,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 281,
+    "matchClockSeconds": 281,
+    "createdAt": 1792764436053,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 281,
+    "halfSegment": 1,
+    "team": "HOME"
+   },
+   {
+    "id": "e1821e47-3361-47f5-bd52-f27900cf77fa",
+    "kind": "POINT",
+    "type": "POINT",
+    "tags": [
+     "FREE"
+    ],
+    "nx": 0.775000017742778,
+    "ny": 0.3389999744503997,
+    "x": 0.775000017742778,
+    "y": 0.3389999744503997,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 307,
+    "matchClockSeconds": 307,
+    "createdAt": 1792764462030,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 307,
+    "halfSegment": 1,
+    "team": "AWAY",
+    "playerId": "ac1dd188-3cb1-41e2-bd2a-ff577e334648",
+    "playerName": "#11",
+    "playerNumber": 11,
+    "squadId": "3e0f3c78-2039-49a4-89a4-8bcf17c743fa"
+   },
+   {
+    "id": "ff8b0e70-6b25-4466-aba4-a60c7123ba0b",
+    "kind": "KICKOUT_WON",
+    "type": "KICKOUT_WON",
+    "tags": [
+     "BREAK"
+    ],
+    "nx": 0.6660000113553779,
+    "ny": 0.6009999829669331,
+    "x": 0.6660000113553779,
+    "y": 0.6009999829669331,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 320,
+    "matchClockSeconds": 320,
+    "createdAt": 1792764475059,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 320,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "958e2997-3880-4303-bbd0-e9a63f9769d4",
+    "playerName": "Ben Shovlin",
+    "playerNumber": 9,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49",
+    "restartOwner": "FOR"
+   },
+   {
+    "id": "7deba741-eaa5-4f0f-9be0-4cdbbd2f037e",
+    "kind": "TURNOVER_LOST",
+    "type": "TURNOVER_LOST",
+    "tags": [
+     "KP ERROR"
+    ],
+    "nx": 0.532999970192133,
+    "ny": 0.24900001703306684,
+    "x": 0.532999970192133,
+    "y": 0.24900001703306684,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 328,
+    "matchClockSeconds": 328,
+    "createdAt": 1792764483034,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 328,
+    "halfSegment": 1,
+    "team": "HOME"
+   },
+   {
+    "id": "421a3a42-2cd8-4121-ad97-da38a14375da",
+    "kind": "POINT",
+    "type": "POINT",
+    "tags": [
+     "PLAY"
+    ],
+    "nx": 0.7869999907737555,
+    "ny": 0.5990000170330668,
+    "x": 0.7869999907737555,
+    "y": 0.5990000170330668,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 343,
+    "matchClockSeconds": 343,
+    "createdAt": 1792764498016,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 343,
+    "halfSegment": 1,
+    "team": "AWAY",
+    "playerId": "ddf7d219-d03b-41be-9d44-166331b05a7d",
+    "playerName": "#12",
+    "playerNumber": 12,
+    "squadId": "3e0f3c78-2039-49a4-89a4-8bcf17c743fa"
+   },
+   {
+    "id": "08a3625c-e99f-4ca8-984d-78b615ffee42",
+    "kind": "KICKOUT_WON",
+    "type": "KICKOUT_WON",
+    "tags": [
+     "CLEAN"
+    ],
+    "nx": 0.7669999765795331,
+    "ny": 0.22599998296693313,
+    "x": 0.7669999765795331,
+    "y": 0.22599998296693313,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 358,
+    "matchClockSeconds": 358,
+    "createdAt": 1792764513042,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 358,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "a043150d-536a-4bc8-8115-ac70a43af7dc",
+    "playerName": "Shane Walsh",
+    "playerNumber": 10,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49",
+    "restartOwner": "FOR"
+   },
+   {
+    "id": "2af764f2-1f17-45cf-aaea-43a3b5c9731b",
+    "kind": "TURNOVER_LOST",
+    "type": "TURNOVER_LOST",
+    "tags": [
+     "HP ERROR"
+    ],
+    "nx": 0.7270000369049783,
+    "ny": 0.27800001987191136,
+    "x": 0.7270000369049783,
+    "y": 0.27800001987191136,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 370,
+    "matchClockSeconds": 370,
+    "createdAt": 1792764525022,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 370,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "ecf399e9-c1d9-421f-b500-f27081424a9d",
+    "playerName": "Pat Burke",
+    "playerNumber": 13,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "41e9bde5-7e6b-4b7d-b68c-d135153fc066",
+    "kind": "TURNOVER_WON",
+    "type": "TURNOVER_WON",
+    "tags": [
+     "TACKLE"
+    ],
+    "nx": 0.8420000298078671,
+    "ny": 0.43100000425826673,
+    "x": 0.8420000298078671,
+    "y": 0.43100000425826673,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 384,
+    "matchClockSeconds": 384,
+    "createdAt": 1792764539010,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 384,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "497b947a-2d52-4656-847d-82d8e4e86b04",
+    "playerName": "Craig Dias",
+    "playerNumber": 8,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "9466e843-aa28-4155-8da1-6539cb45cbf2",
+    "kind": "TURNOVER_LOST",
+    "type": "TURNOVER_LOST",
+    "tags": [
+     "OVERCARRIED"
+    ],
+    "nx": 0.6369999730309776,
+    "ny": 0.7590000063874001,
+    "x": 0.6369999730309776,
+    "y": 0.7590000063874001,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 393,
+    "matchClockSeconds": 393,
+    "createdAt": 1792764548087,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 393,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "497b947a-2d52-4656-847d-82d8e4e86b04",
+    "playerName": "Craig Dias",
+    "playerNumber": 8,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "25a0e3de-b0b8-4d9c-bde3-c6b574c349fb",
+    "kind": "POINT",
+    "type": "POINT",
+    "tags": [
+     "PLAY"
+    ],
+    "nx": 0.8100000425826671,
+    "ny": 0.24900001703306684,
+    "x": 0.8100000425826671,
+    "y": 0.24900001703306684,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 403,
+    "matchClockSeconds": 403,
+    "createdAt": 1792764558067,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 403,
+    "halfSegment": 1,
+    "team": "AWAY",
+    "playerId": "d6085558-32d8-4f7f-a582-253dd94878e6",
+    "playerName": "#14",
+    "playerNumber": 14,
+    "squadId": "3e0f3c78-2039-49a4-89a4-8bcf17c743fa"
+   },
+   {
+    "id": "ea2139d8-8afa-4529-83b2-882b6890794c",
+    "kind": "KICKOUT_CONCEDED",
+    "type": "KICKOUT_CONCEDED",
+    "tags": [
+     "BREAK"
+    ],
+    "nx": 0.7459999794183776,
+    "ny": 0.5279999843863553,
+    "x": 0.7459999794183776,
+    "y": 0.5279999843863553,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 425,
+    "matchClockSeconds": 425,
+    "createdAt": 1792764580098,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 425,
+    "halfSegment": 1,
+    "team": "HOME",
+    "restartOwner": "FOR"
+   },
+   {
+    "id": "5c8794a8-8a28-43d6-be73-02a253096316",
+    "kind": "WIDE",
+    "type": "WIDE",
+    "tags": [
+     "PLAY"
+    ],
+    "nx": 0.7259999652241552,
+    "ny": 0.6609999900640443,
+    "x": 0.7259999652241552,
+    "y": 0.6609999900640443,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 438,
+    "matchClockSeconds": 438,
+    "createdAt": 1792764593069,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 438,
+    "halfSegment": 1,
+    "team": "AWAY",
+    "playerId": "ddf7d219-d03b-41be-9d44-166331b05a7d",
+    "playerName": "#12",
+    "playerNumber": 12,
+    "squadId": "3e0f3c78-2039-49a4-89a4-8bcf17c743fa"
+   },
+   {
+    "id": "0a3479fd-06ea-4f49-9fe4-02a1ee9fc7f7",
+    "kind": "KICKOUT_WON",
+    "type": "KICKOUT_WON",
+    "tags": [
+     "CLEAN"
+    ],
+    "nx": 0.6350000070971112,
+    "ny": 0.2570000227107558,
+    "x": 0.6350000070971112,
+    "y": 0.2570000227107558,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 459,
+    "matchClockSeconds": 459,
+    "createdAt": 1792764614091,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 459,
+    "halfSegment": 1,
+    "team": "HOME",
+    "restartOwner": "FOR"
+   },
+   {
+    "id": "2c08c9e6-3c9e-4460-af00-255fd7d6bdf8",
+    "kind": "TURNOVER_LOST",
+    "type": "TURNOVER_LOST",
+    "tags": [
+     "INTERCEPTION"
+    ],
+    "nx": 0.3099999982257222,
+    "ny": 0.4700000141942223,
+    "x": 0.3099999982257222,
+    "y": 0.4700000141942223,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 466,
+    "matchClockSeconds": 466,
+    "createdAt": 1792764621057,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 466,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "cb2454c1-addb-40db-a6f8-5207ecce282f",
+    "playerName": "Tom Fox",
+    "playerNumber": 11,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "e7471a00-6390-417b-9e3d-2f8b6ed4d77d",
+    "kind": "WIDE",
+    "type": "WIDE",
+    "tags": [
+     "PLAY"
+    ],
+    "nx": 0.8070000049679779,
+    "ny": 0.6549999858057777,
+    "x": 0.8070000049679779,
+    "y": 0.6549999858057777,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 477,
+    "matchClockSeconds": 477,
+    "createdAt": 1792764632042,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 477,
+    "halfSegment": 1,
+    "team": "AWAY"
+   },
+   {
+    "id": "566b5d56-9647-4820-8df9-e98d8918367c",
+    "kind": "KICKOUT_WON",
+    "type": "KICKOUT_WON",
+    "tags": [
+     "CLEAN"
+    ],
+    "nx": 0.6099999893543332,
+    "ny": 0.4080000056776889,
+    "x": 0.6099999893543332,
+    "y": 0.4080000056776889,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 495,
+    "matchClockSeconds": 495,
+    "createdAt": 1792764650094,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 495,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "15b3228a-7088-4db1-b7c8-d3fdd892c62b",
+    "playerName": "Aidan Jones",
+    "playerNumber": 12,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49",
+    "restartOwner": "FOR"
+   },
+   {
+    "id": "d7abd553-fff1-454b-b65f-598bf3f18f1a",
+    "kind": "FREE_WON",
+    "type": "FREE_WON",
+    "tags": [
+     "WON"
+    ],
+    "nx": 0.25,
+    "ny": 0.5029999843863553,
+    "x": 0.25,
+    "y": 0.5029999843863553,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 503,
+    "matchClockSeconds": 503,
+    "createdAt": 1792764658110,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 503,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "c2b6aeb7-b436-4539-afdf-a71a6dc48cf9",
+    "playerName": "Hugh Kenny",
+    "playerNumber": 15,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "cad0d05e-2f2e-4394-a13e-78815e918e96",
+    "kind": "YELLOW_CARD",
+    "type": "YELLOW_CARD",
+    "tags": [
+     "YELLOW"
+    ],
+    "nx": 0.25,
+    "ny": 0.5029999843863553,
+    "x": 0.25,
+    "y": 0.5029999843863553,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 506,
+    "matchClockSeconds": 506,
+    "createdAt": 1792764661020,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 506,
+    "halfSegment": 1,
+    "team": "AWAY",
+    "playerId": "ae13c7d2-0808-457e-973b-a65da568864c",
+    "playerName": "#4",
+    "playerNumber": 4,
+    "squadId": "3e0f3c78-2039-49a4-89a4-8bcf17c743fa"
+   },
+   {
+    "id": "cc2985eb-7db7-4581-9108-7f1cb6115125",
+    "kind": "POINT",
+    "type": "POINT",
+    "tags": [
+     "FREE"
+    ],
+    "nx": 0.25,
+    "ny": 0.5080000056776889,
+    "x": 0.25,
+    "y": 0.5080000056776889,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 529,
+    "matchClockSeconds": 529,
+    "createdAt": 1792764684044,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 529,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "15b3228a-7088-4db1-b7c8-d3fdd892c62b",
+    "playerName": "Aidan Jones",
+    "playerNumber": 12,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "5a219f30-3ac6-4536-bcae-162df076e036",
+    "kind": "KICKOUT_WON",
+    "type": "KICKOUT_WON",
+    "tags": [
+     "BREAK"
+    ],
+    "nx": 0.4569999783538109,
+    "ny": 0.775,
+    "x": 0.4569999783538109,
+    "y": 0.775,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 552,
+    "matchClockSeconds": 552,
+    "createdAt": 1792764707054,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 552,
+    "halfSegment": 1,
+    "team": "AWAY",
+    "restartOwner": "OPP"
+   },
+   {
+    "id": "f2c5937c-9c20-46c3-906b-ae937825f8d5",
+    "kind": "TURNOVER_WON",
+    "type": "TURNOVER_WON",
+    "tags": [
+     "INTERCEPTION"
+    ],
+    "nx": 0.45300000212913333,
+    "ny": 0.4299999858057776,
+    "x": 0.45300000212913333,
+    "y": 0.4299999858057776,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 566,
+    "matchClockSeconds": 566,
+    "createdAt": 1792764721037,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 566,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "45ec89b5-917c-4332-8c9a-a96827e62ab5",
+    "playerName": "Rory O'Carroll",
+    "playerNumber": 3,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "f78934cf-28bc-4e3c-a58f-e4562fabbdcb",
+    "kind": "TURNOVER_LOST",
+    "type": "TURNOVER_LOST",
+    "tags": [
+     "INTERCEPTION"
+    ],
+    "nx": 0.23900000993595566,
+    "ny": 0.5080000056776889,
+    "x": 0.23900000993595566,
+    "y": 0.5080000056776889,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 576,
+    "matchClockSeconds": 576,
+    "createdAt": 1792764731005,
+    "segment": 1,
+    "teamSide": "FOR",
+    "matchTimeSeconds": 576,
+    "halfSegment": 1,
+    "team": "HOME",
+    "playerId": "15b3228a-7088-4db1-b7c8-d3fdd892c62b",
+    "playerName": "Aidan Jones",
+    "playerNumber": 12,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49"
+   },
+   {
+    "id": "0b319989-4d01-4a63-aa9e-38e85a1dfd22",
+    "kind": "GOAL",
+    "type": "GOAL",
+    "tags": [
+     "PLAY"
+    ],
+    "nx": 0.9429999950320221,
+    "ny": 0.5299999858057776,
+    "x": 0.9429999950320221,
+    "y": 0.5299999858057776,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 588,
+    "matchClockSeconds": 588,
+    "createdAt": 1792764743052,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 588,
+    "halfSegment": 1,
+    "team": "AWAY",
+    "playerId": "ac1dd188-3cb1-41e2-bd2a-ff577e334648",
+    "playerName": "#11",
+    "playerNumber": 11,
+    "squadId": "3e0f3c78-2039-49a4-89a4-8bcf17c743fa"
+   },
+   {
+    "id": "083f60fb-28a2-4e0c-86c2-c25d7702264d",
+    "kind": "KICKOUT_CONCEDED",
+    "type": "KICKOUT_CONCEDED",
+    "tags": [
+     "CLEAN"
+    ],
+    "nx": 0.615999975869822,
+    "ny": 0.5770000014194222,
+    "x": 0.615999975869822,
+    "y": 0.5770000014194222,
+    "half": 1,
+    "period": "1H",
+    "timestamp": 589,
+    "matchClockSeconds": 589,
+    "createdAt": 1792764744051,
+    "segment": 1,
+    "teamSide": "OPP",
+    "matchTimeSeconds": 589,
+    "halfSegment": 1,
+    "team": "AWAY",
+    "playerId": "497b947a-2d52-4656-847d-82d8e4e86b04",
+    "playerName": "Craig Dias",
+    "playerNumber": 8,
+    "squadId": "a285b7be-5e74-4cf7-afac-2baed38c8c49",
+    "restartOwner": "OPP"
+   }
+  ],
+  "homeSquad": {
+   "id": "a285b7be-5e74-4cf7-afac-2baed38c8c49",
+   "teamSide": "HOME",
+   "players": [
+    {
+     "id": "4705f67a-5b79-4e29-b872-50a9e89b5f56",
+     "number": 1,
+     "name": "Shane O'Rourke",
+     "position": "GK"
+    },
+    {
+     "id": "9d5c9a0a-61df-4322-a8aa-fd9d8418ea9b",
+     "number": 2,
+     "name": "Dan O'Brien",
+     "position": "RB"
+    },
+    {
+     "id": "45ec89b5-917c-4332-8c9a-a96827e62ab5",
+     "number": 3,
+     "name": "Rory O'Carroll",
+     "position": "FB"
+    },
+    {
+     "id": "ac42a761-85a8-443b-b7cf-26fc4c71c71f",
+     "number": 4,
+     "name": "Andrew McGowan",
+     "position": "LB"
+    },
+    {
+     "id": "fdc4ea06-e6bb-4816-aa70-a9b42a85e477",
+     "number": 5,
+     "name": "Theo Clancy",
+     "position": "RHB"
+    },
+    {
+     "id": "37ce95b0-3696-436e-a016-17519081b36c",
+     "number": 6,
+     "name": "Dara Mullin",
+     "position": "CHB"
+    },
+    {
+     "id": "eb33bd40-a248-4107-9ef1-e803cfe84205",
+     "number": 7,
+     "name": "Paul Mannion",
+     "position": "LHB"
+    },
+    {
+     "id": "497b947a-2d52-4656-847d-82d8e4e86b04",
+     "number": 8,
+     "name": "Craig Dias",
+     "position": "MF"
+    },
+    {
+     "id": "958e2997-3880-4303-bbd0-e9a63f9769d4",
+     "number": 9,
+     "name": "Ben Shovlin",
+     "position": "MF"
+    },
+    {
+     "id": "a043150d-536a-4bc8-8115-ac70a43af7dc",
+     "number": 10,
+     "name": "Shane Walsh",
+     "position": "RHF"
+    },
+    {
+     "id": "cb2454c1-addb-40db-a6f8-5207ecce282f",
+     "number": 11,
+     "name": "Tom Fox",
+     "position": "CHF"
+    },
+    {
+     "id": "15b3228a-7088-4db1-b7c8-d3fdd892c62b",
+     "number": 12,
+     "name": "Aidan Jones",
+     "position": "LHF"
+    },
+    {
+     "id": "ecf399e9-c1d9-421f-b500-f27081424a9d",
+     "number": 13,
+     "name": "Pat Burke",
+     "position": "RF"
+    },
+    {
+     "id": "7b6fee20-f201-4869-916c-b9d0a7f5a481",
+     "number": 14,
+     "name": "Callum Pearson",
+     "position": "FF"
+    },
+    {
+     "id": "c2b6aeb7-b436-4539-afdf-a71a6dc48cf9",
+     "number": 15,
+     "name": "Hugh Kenny",
+     "position": "LF"
+    },
+    {
+     "id": "ae5cbd13-28c8-4be5-a375-2fdf1c6963fd",
+     "number": 16,
+     "name": "",
+     "position": "SUB"
+    },
+    {
+     "id": "194e195a-60e9-45dc-95e5-86dc5d148a6b",
+     "number": 17,
+     "name": "",
+     "position": "SUB"
+    },
+    {
+     "id": "78cc99f5-c24e-4a74-a59f-9c1adaedb260",
+     "number": 18,
+     "name": "",
+     "position": "SUB"
+    },
+    {
+     "id": "8e9152ac-09d4-4733-af5c-cc9af9c600ac",
+     "number": 19,
+     "name": "",
+     "position": "SUB"
+    },
+    {
+     "id": "c5be896e-0138-4584-b190-b1bff0e09027",
+     "number": 20,
+     "name": "",
+     "position": "SUB"
+    }
+   ],
+   "primaryColour": "#16a34a",
+   "secondaryColour": "#ffffff"
+  },
+  "awaySquad": {
+   "id": "3e0f3c78-2039-49a4-89a4-8bcf17c743fa",
+   "teamSide": "AWAY",
+   "players": [
+    {
+     "id": "2fa42ab6-9cda-4d01-8e0a-764ea7d7ebe5",
+     "number": 1,
+     "name": "",
+     "position": "GK"
+    },
+    {
+     "id": "729956a6-49e9-41d3-baba-ed7dedefc43b",
+     "number": 2,
+     "name": "",
+     "position": "RB"
+    },
+    {
+     "id": "ac9856e6-7193-4a65-a899-bbcf85e54974",
+     "number": 3,
+     "name": "",
+     "position": "FB"
+    },
+    {
+     "id": "ae13c7d2-0808-457e-973b-a65da568864c",
+     "number": 4,
+     "name": "",
+     "position": "LB"
+    },
+    {
+     "id": "7b66fd90-9fa7-4375-adc6-27c4f315c698",
+     "number": 5,
+     "name": "",
+     "position": "RHB"
+    },
+    {
+     "id": "efd456f3-78be-4f14-8e22-26093fe28e00",
+     "number": 6,
+     "name": "",
+     "position": "CHB"
+    },
+    {
+     "id": "ec030f9e-cdb5-4b48-88cf-75bb59962a6a",
+     "number": 7,
+     "name": "",
+     "position": "LHB"
+    },
+    {
+     "id": "be6cc777-f6a2-41fd-a057-e732f0983bc6",
+     "number": 8,
+     "name": "",
+     "position": "MF"
+    },
+    {
+     "id": "ccbd69e1-86ea-4567-8d79-089bb7c61a2a",
+     "number": 9,
+     "name": "",
+     "position": "MF"
+    },
+    {
+     "id": "1f950cb7-c064-488b-820c-dddf9b88b427",
+     "number": 10,
+     "name": "",
+     "position": "RHF"
+    },
+    {
+     "id": "ac1dd188-3cb1-41e2-bd2a-ff577e334648",
+     "number": 11,
+     "name": "",
+     "position": "CHF"
+    },
+    {
+     "id": "ddf7d219-d03b-41be-9d44-166331b05a7d",
+     "number": 12,
+     "name": "",
+     "position": "LHF"
+    },
+    {
+     "id": "e639b951-a8ca-40c8-8996-64ad595dffb2",
+     "number": 13,
+     "name": "",
+     "position": "RF"
+    },
+    {
+     "id": "d6085558-32d8-4f7f-a582-253dd94878e6",
+     "number": 14,
+     "name": "",
+     "position": "FF"
+    },
+    {
+     "id": "9d5dd473-4c04-4fc6-bd01-c9334996eee0",
+     "number": 15,
+     "name": "",
+     "position": "LF"
+    },
+    {
+     "id": "9c99fd86-b4f9-4a7f-9e9f-438fd6a5e73f",
+     "number": 16,
+     "name": "",
+     "position": "SUB"
+    },
+    {
+     "id": "131b301e-286c-40e6-b51b-ac8c572d200a",
+     "number": 17,
+     "name": "",
+     "position": "SUB"
+    },
+    {
+     "id": "85606774-6ea8-475d-a6f7-211b16ae7205",
+     "number": 18,
+     "name": "",
+     "position": "SUB"
+    },
+    {
+     "id": "330c2649-f554-461c-a8c6-28c414ce1311",
+     "number": 19,
+     "name": "",
+     "position": "SUB"
+    },
+    {
+     "id": "d0b72387-9786-4a07-b629-959d33d64c4f",
+     "number": 20,
+     "name": "",
+     "position": "SUB"
+    }
+   ],
+   "primaryColour": "#dc2626",
+   "secondaryColour": "#ffffff"
+  },
+  "homeSquadLiveState": [
+   {
+    "id": "4705f67a-5b79-4e29-b872-50a9e89b5f56",
+    "number": 1,
+    "name": "Shane O'Rourke",
+    "position": "GK",
+    "isActive": true,
+    "activeSlot": 1
+   },
+   {
+    "id": "9d5c9a0a-61df-4322-a8aa-fd9d8418ea9b",
+    "number": 2,
+    "name": "Dan O'Brien",
+    "position": "RB",
+    "isActive": true,
+    "activeSlot": 2
+   },
+   {
+    "id": "45ec89b5-917c-4332-8c9a-a96827e62ab5",
+    "number": 3,
+    "name": "Rory O'Carroll",
+    "position": "FB",
+    "isActive": true,
+    "activeSlot": 3
+   },
+   {
+    "id": "ac42a761-85a8-443b-b7cf-26fc4c71c71f",
+    "number": 4,
+    "name": "Andrew McGowan",
+    "position": "LB",
+    "isActive": true,
+    "activeSlot": 4
+   },
+   {
+    "id": "fdc4ea06-e6bb-4816-aa70-a9b42a85e477",
+    "number": 5,
+    "name": "Theo Clancy",
+    "position": "RHB",
+    "isActive": true,
+    "activeSlot": 5
+   },
+   {
+    "id": "37ce95b0-3696-436e-a016-17519081b36c",
+    "number": 6,
+    "name": "Dara Mullin",
+    "position": "CHB",
+    "isActive": true,
+    "activeSlot": 6
+   },
+   {
+    "id": "eb33bd40-a248-4107-9ef1-e803cfe84205",
+    "number": 7,
+    "name": "Paul Mannion",
+    "position": "LHB",
+    "isActive": true,
+    "activeSlot": 7
+   },
+   {
+    "id": "497b947a-2d52-4656-847d-82d8e4e86b04",
+    "number": 8,
+    "name": "Craig Dias",
+    "position": "MF",
+    "isActive": true,
+    "activeSlot": 8
+   },
+   {
+    "id": "958e2997-3880-4303-bbd0-e9a63f9769d4",
+    "number": 9,
+    "name": "Ben Shovlin",
+    "position": "MF",
+    "isActive": true,
+    "activeSlot": 9
+   },
+   {
+    "id": "a043150d-536a-4bc8-8115-ac70a43af7dc",
+    "number": 10,
+    "name": "Shane Walsh",
+    "position": "RHF",
+    "isActive": true,
+    "activeSlot": 10
+   },
+   {
+    "id": "cb2454c1-addb-40db-a6f8-5207ecce282f",
+    "number": 11,
+    "name": "Tom Fox",
+    "position": "CHF",
+    "isActive": true,
+    "activeSlot": 11
+   },
+   {
+    "id": "15b3228a-7088-4db1-b7c8-d3fdd892c62b",
+    "number": 12,
+    "name": "Aidan Jones",
+    "position": "LHF",
+    "isActive": true,
+    "activeSlot": 12
+   },
+   {
+    "id": "ecf399e9-c1d9-421f-b500-f27081424a9d",
+    "number": 13,
+    "name": "Pat Burke",
+    "position": "RF",
+    "isActive": true,
+    "activeSlot": 13
+   },
+   {
+    "id": "7b6fee20-f201-4869-916c-b9d0a7f5a481",
+    "number": 14,
+    "name": "Callum Pearson",
+    "position": "FF",
+    "isActive": true,
+    "activeSlot": 14
+   },
+   {
+    "id": "c2b6aeb7-b436-4539-afdf-a71a6dc48cf9",
+    "number": 15,
+    "name": "Hugh Kenny",
+    "position": "LF",
+    "isActive": true,
+    "activeSlot": 15
+   },
+   {
+    "id": "ae5cbd13-28c8-4be5-a375-2fdf1c6963fd",
+    "number": 16,
+    "name": "",
+    "position": "SUB",
+    "isActive": false
+   },
+   {
+    "id": "194e195a-60e9-45dc-95e5-86dc5d148a6b",
+    "number": 17,
+    "name": "",
+    "position": "SUB",
+    "isActive": false
+   },
+   {
+    "id": "78cc99f5-c24e-4a74-a59f-9c1adaedb260",
+    "number": 18,
+    "name": "",
+    "position": "SUB",
+    "isActive": false
+   },
+   {
+    "id": "8e9152ac-09d4-4733-af5c-cc9af9c600ac",
+    "number": 19,
+    "name": "",
+    "position": "SUB",
+    "isActive": false
+   },
+   {
+    "id": "c5be896e-0138-4584-b190-b1bff0e09027",
+    "number": 20,
+    "name": "",
+    "position": "SUB",
+    "isActive": false
+   }
+  ],
+  "awaySquadLiveState": [
+   {
+    "id": "2fa42ab6-9cda-4d01-8e0a-764ea7d7ebe5",
+    "number": 1,
+    "name": "",
+    "position": "GK",
+    "isActive": true,
+    "activeSlot": 1
+   },
+   {
+    "id": "729956a6-49e9-41d3-baba-ed7dedefc43b",
+    "number": 2,
+    "name": "",
+    "position": "RB",
+    "isActive": true,
+    "activeSlot": 2
+   },
+   {
+    "id": "ac9856e6-7193-4a65-a899-bbcf85e54974",
+    "number": 3,
+    "name": "",
+    "position": "FB",
+    "isActive": true,
+    "activeSlot": 3
+   },
+   {
+    "id": "ae13c7d2-0808-457e-973b-a65da568864c",
+    "number": 4,
+    "name": "",
+    "position": "LB",
+    "isActive": true,
+    "activeSlot": 4
+   },
+   {
+    "id": "7b66fd90-9fa7-4375-adc6-27c4f315c698",
+    "number": 5,
+    "name": "",
+    "position": "RHB",
+    "isActive": true,
+    "activeSlot": 5
+   },
+   {
+    "id": "efd456f3-78be-4f14-8e22-26093fe28e00",
+    "number": 6,
+    "name": "",
+    "position": "CHB",
+    "isActive": true,
+    "activeSlot": 6
+   },
+   {
+    "id": "ec030f9e-cdb5-4b48-88cf-75bb59962a6a",
+    "number": 7,
+    "name": "",
+    "position": "LHB",
+    "isActive": true,
+    "activeSlot": 7
+   },
+   {
+    "id": "be6cc777-f6a2-41fd-a057-e732f0983bc6",
+    "number": 8,
+    "name": "",
+    "position": "MF",
+    "isActive": true,
+    "activeSlot": 8
+   },
+   {
+    "id": "ccbd69e1-86ea-4567-8d79-089bb7c61a2a",
+    "number": 9,
+    "name": "",
+    "position": "MF",
+    "isActive": true,
+    "activeSlot": 9
+   },
+   {
+    "id": "1f950cb7-c064-488b-820c-dddf9b88b427",
+    "number": 10,
+    "name": "",
+    "position": "RHF",
+    "isActive": true,
+    "activeSlot": 10
+   },
+   {
+    "id": "ac1dd188-3cb1-41e2-bd2a-ff577e334648",
+    "number": 11,
+    "name": "",
+    "position": "CHF",
+    "isActive": true,
+    "activeSlot": 11
+   },
+   {
+    "id": "ddf7d219-d03b-41be-9d44-166331b05a7d",
+    "number": 12,
+    "name": "",
+    "position": "LHF",
+    "isActive": true,
+    "activeSlot": 12
+   },
+   {
+    "id": "e639b951-a8ca-40c8-8996-64ad595dffb2",
+    "number": 13,
+    "name": "",
+    "position": "RF",
+    "isActive": true,
+    "activeSlot": 13
+   },
+   {
+    "id": "d6085558-32d8-4f7f-a582-253dd94878e6",
+    "number": 14,
+    "name": "",
+    "position": "FF",
+    "isActive": true,
+    "activeSlot": 14
+   },
+   {
+    "id": "9d5dd473-4c04-4fc6-bd01-c9334996eee0",
+    "number": 15,
+    "name": "",
+    "position": "LF",
+    "isActive": true,
+    "activeSlot": 15
+   },
+   {
+    "id": "9c99fd86-b4f9-4a7f-9e9f-438fd6a5e73f",
+    "number": 16,
+    "name": "",
+    "position": "SUB",
+    "isActive": false
+   },
+   {
+    "id": "131b301e-286c-40e6-b51b-ac8c572d200a",
+    "number": 17,
+    "name": "",
+    "position": "SUB",
+    "isActive": false
+   },
+   {
+    "id": "85606774-6ea8-475d-a6f7-211b16ae7205",
+    "number": 18,
+    "name": "",
+    "position": "SUB",
+    "isActive": false
+   },
+   {
+    "id": "330c2649-f554-461c-a8c6-28c414ce1311",
+    "number": 19,
+    "name": "",
+    "position": "SUB",
+    "isActive": false
+   },
+   {
+    "id": "d0b72387-9786-4a07-b629-959d33d64c4f",
+    "number": 20,
+    "name": "",
+    "position": "SUB",
+    "isActive": false
+   }
+  ],
+  "restoreContext": {
+   "matchState": "FIRST_HALF",
+   "currentHalf": 1,
+   "matchTimeSeconds": 591,
+   "firstHalfAttackingDirection": "left"
+  },
+  "updatedAt": 1792764746374
+ }
+]

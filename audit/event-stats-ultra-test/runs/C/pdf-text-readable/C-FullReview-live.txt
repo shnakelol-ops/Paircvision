@@ -1,0 +1,2428 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Match Summary
+ 1896    38  1 / 30
+   24    62  PáircVision Report  ·  Nowlan Park
+  496   118  Ballyhale Shamrocks
+ 1424   118  Na Piarsaigh
+  960   158  v
+  496   198  1-19 (22)
+ 1424   198  2-21 (27)
+   88   258  Ballyhale Shamrocks
+  960   258  v
+ 1016   258  Na Piarsaigh
+   88   284  SCORING
+ 1016   284  SCORING
+   84   303  Goals
+  910   303  1
+ 1012   303  Goals
+ 1838   303  2
+   84   322  Points
+  910   322  19
+ 1012   322  Points
+ 1838   322  21
+   84   341  2-Pointers
+  910   341  0
+ 1012   341  2-Pointers
+ 1838   341  0
+   84   360  Total Score
+  910   360  22
+ 1012   360  Total Score
+ 1838   360  27
+   84   379  Shots
+  910   379  30
+ 1012   379  Shots
+ 1838   379  36
+   84   398  Wides
+  910   398  7
+ 1012   398  Wides
+ 1838   398  5
+   84   417  Conversion
+  910   417  67%
+ 1012   417  Conversion
+ 1838   417  64%
+   88   438  SHOT DETAIL
+ 1016   438  SHOT DETAIL
+   84   457  Short
+  910   457  0
+ 1012   457  Short
+ 1838   457  2
+   84   476  Post
+  910   476  1
+ 1012   476  Post
+ 1838   476  3
+   84   495  45
+  910   495  0
+ 1012   495  45
+ 1838   495  0
+   84   514  Block / Save
+  910   514  0
+ 1012   514  Block / Save
+ 1838   514  0
+   88   535  PUCKOUTS
+ 1016   535  PUCKOUTS
+   84   554  Restart Share Won
+  910   554  24
+ 1012   554  Restart Share Won
+ 1838   554  30
+   84   573  Restart Share Conceded
+  910   573  30
+ 1012   573  Restart Share Conceded
+ 1838   573  24
+   84   592  Restart Share
+  910   592  44%
+ 1012   592  Restart Share
+ 1838   592  56%
+   84   611  Clean Won
+  910   611  7
+ 1012   611  Clean Won
+ 1838   611  11
+   84   630  Break Won
+  910   630  15
+ 1012   630  Break Won
+ 1838   630  15
+   84   649  Foul Won
+  910   649  0
+ 1012   649  Foul Won
+ 1838   649  0
+   84   668  Dead Ball Won
+  910   668  0
+ 1012   668  Dead Ball Won
+ 1838   668  0
+   84   687  Clean Lost
+  910   687  11
+ 1012   687  Clean Lost
+ 1838   687  7
+   84   706  Break Lost
+  910   706  15
+ 1012   706  Break Lost
+ 1838   706  15
+   84   725  Foul Conceded
+  910   725  0
+ 1012   725  Foul Conceded
+ 1838   725  0
+   84   744  Kicked Dead
+  910   744  0
+ 1012   744  Kicked Dead
+ 1838   744  0
+   88   765  TURNOVERS
+ 1016   765  TURNOVERS
+   84   784  T/O Won
+  910   784  14
+ 1012   784  T/O Won
+ 1838   784  15
+   84   803  T/O Lost
+  910   803  15
+ 1012   803  T/O Lost
+ 1838   803  14
+   84   822  Net T/O
+  910   822  -1
+ 1012   822  Net T/O
+ 1838   822  +1
+   84   841  Tackle / Press
+  910   841  5
+ 1012   841  Tackle / Press
+ 1838   841  5
+   84   860  Swarm / Int.
+  910   860  0
+ 1012   860  Swarm / Int.
+ 1838   860  0
+   84   879  Unforced
+  910   879  0
+ 1012   879  Unforced
+ 1838   879  0
+   84   898  Slack KP / HP
+  910   898  0
+ 1012   898  Slack KP / HP
+ 1838   898  0
+   84   917  OC / Stripped
+  910   917  0
+ 1012   917  OC / Stripped
+ 1838   917  1
+   88   938  FREES
+ 1016   938  FREES
+   84   957  Frees Won
+  910   957  4
+ 1012   957  Frees Won
+ 1838   957  10
+   84   976  Frees Conceded
+  910   976  10
+ 1012   976  Frees Conceded
+ 1838   976  4
+   84   995  Placed Attempts
+  910   995  4
+ 1012   995  Placed Attempts
+ 1838   995  6
+   84  1014  Placed Scores
+  910  1014  3
+ 1012  1014  Placed Scores
+ 1838  1014  6
+   84  1033  Placed Points
+  910  1033  5
+ 1012  1033  Placed Points
+ 1838  1033  6
+   84  1052  Placed Misses
+  910  1052  1
+ 1012  1052  Placed Misses
+ 1838  1052  0
+ 1896  1060  176 total events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Understanding PáircVision Analytics
+ 1896    38  2 / 30
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+  112   152  PART 1 — MATCH FACTS
+  702   152  PART 2 — POSSESSION FACTS
+ 1292   152  PART 3 — GAME ORIGIN / CHAIN ANALYSIS
+  112   188  What happened?
+  702   188  What did we win/lose and where?
+ 1292   188  What happened after those possessions
+ 1292   216  began?
+  112   244  "Raw match events, exactly as they were recorded."
+  702   244  "Every restart, turnover and free is followed to its
+  702   268  immediate outcome."
+ 1292   272  "Where did the possessions that eventually produced
+  112   282  Scores, shots, puckouts, turnovers and frees — the
+ 1292   296  scores begin?"
+  112   304  numbers you would record on a clipboard.
+  702   306  Each possession is tracked from its start to its immediate
+  702   328  result — a score, a wide, or possession lost. This is the
+ 1292   334  A chain traces a full attack, even when it spans multiple
+  702   350  official source of truth for what we won or lost, and where.
+ 1292   356  possessions. A turnover → free won → score is one chain.
+  112   366  FOUND IN THIS REPORT
+ 1292   378  This layer shows where scoring possessions began — it
+  112   390  · Scoring Breakdown
+ 1292   400  does not establish tactical causation. If a restart isn't logged
+  112   412  · Match Swing Timeline
+  702   412  FOUND IN THIS REPORT
+ 1292   422  live, the next score attributes to From General Play —
+  112   434  · Game Segments
+  702   436  · Opposition Facts
+ 1292   444  origin chains only know what was captured.
+  112   456  · Player Breakdown
+  702   458  · Restart Analysis
+  112   478  · Shot Pitch Maps
+  702   480  · Turnover Analysis
+  112   500  · Shot Efficiency
+  702   502  · Free Kick Analysis
+ 1292   506  FOUND IN THIS REPORT
+  112   522  · Zone Analysis
+ 1292   530  · Scoring Possession Origins
+  112   544  · Pitch Overviews
+ 1292   552  · Player Chain Involvement
+ 1292   574  · Opposition Origin & Chain Analysis
+ 1292   596  · Intelligence Summary
+ 1292   618  · Match Markers
+ 1292   640  · Chain Intelligence
+ 1292   662  · Restart Chain Analysis
+ 1292   684  · Turnover Chain Analysis
+ 1292   706  · Scoring Momentum
+  960  1022  Restart-origin counts every score in a possession that began with a puckout, including frees won during it. Direct restart scores attribute placed balls separately, so ledger sources sum to the final margin.
+  960  1044  Restart Share counts every puckout in the game. Own Puckout Retention counts only our own.
+
+===== PAGE 3 (1920x1080) =====
+ 1896    38  3 / 30
+   80   180  CHAPTER 1
+   80   230  PART 1 — MATCH FACTS
+   80   318  What happened?
+   80   398  "Raw match events and direct event-source classification exactly as they were recorded."
+   80   448  Coach question answered: "What happened?"
+   80   508  THIS CHAPTER CONTAINS
+   80   536  · Scoring Breakdown
+   80   564  · Match Swing Timeline
+   80   592  · Game Segments
+   80   620  · Player Breakdown
+   80   648  · Player Contributions
+   80   676  · Shot Pitch Maps
+   80   704  · Shot & Scoring Efficiency
+   80   732  · Zone Analysis
+   80   760  · 1H & 2H Pitch Overviews
+ 1896  1056  PÁIRCVISION
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Scoring Breakdown
+ 1896    38  4 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   24    86  How was the score recorded? Direct event classification only — no restart or turnover attribution.
+  960   150  Ballyhale Shamrocks  1-19 (22)   v   2-21 (27)  Na Piarsaigh
+  960   200  Na Piarsaigh by 5
+  234   273  SOURCE
+  900   273  BALLYHALE…
+ 1260   273  NA PIARSAIGH
+ 1575   273  NET
+  234   327  From general play
+  900   327  0-16 (16 pts)
+ 1260   327  2-12 (18 pts)
+ 1575   327  -2
+  234   389  Placed balls
+  900   389  3/4 scored · 5 pts
+ 1260   389  6/6 scored · 6 pts
+ 1575   389  -1
+  234   451  Unattributed
+  900   451  0-01 (1 pts)
+ 1260   451  0-03 (3 pts)
+ 1575   451  -2
+ 1710   512  Source nets sum to the final margin: -5
+ 1710   534  Where a scoring possession began is a different question — see Game Origin Analysis (Part 3).
+ 1896  1060  176 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Match Swing Timeline
+ 1896    38  5 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   40   104  FIRST HALF
+  984   104  SECOND HALF
+  132   145  Ballyhale Shamrocks took the lead — 0-01 v 0-00
+ 1076   145  Ballyhale Shamrocks converted 2 kickouts into scores
+  104   155  1H 1'
+ 1048   155  2H 1'
+  132   167  LEAD CHANGE
+ 1076   167  PUCKOUT
+  132   210  Na Piarsaigh converted 2 kickouts into scores
+ 1076   210  Ballyhale Shamrocks scored 2 unanswered
+  104   220  1H 3'
+ 1048   220  2H 2'–3'
+  132   232  PUCKOUT
+ 1076   232  SCORING RUN
+  132   275  Scores level — 0-01 v 0-01
+ 1076   275  Scores level — 0-11 v 0-11
+  104   285  1H 3'
+ 1048   285  2H 3'
+  132   297  EQUALISED
+ 1076   297  EQUALISED
+  132   340  Na Piarsaigh took the lead — 0-01 v 0-02
+ 1076   340  Na Piarsaigh converted 3 kickouts into scores
+  104   350  1H 5'
+ 1048   350  2H 3'
+  132   362  LEAD CHANGE
+ 1076   362  PUCKOUT
+  132   405  Scores level — 0-02 v 0-02
+ 1076   405  Na Piarsaigh took the lead — 0-11 v 0-12
+  104   415  1H 7'
+ 1048   415  2H 3'
+  132   427  EQUALISED
+ 1076   427  LEAD CHANGE
+  132   470  Na Piarsaigh took the lead — 0-02 v 0-03
+ 1076   470  Scores level — 0-12 v 0-12
+  104   480  1H 9'
+ 1048   480  2H 5'
+  132   492  LEAD CHANGE
+ 1076   492  EQUALISED
+  132   535  Scores level — 0-03 v 0-03
+ 1076   535  Na Piarsaigh turnovers led to scores
+  104   545  1H 10'
+ 1048   545  2H 6'
+  132   557  EQUALISED
+ 1076   557  TURNOVER
+  132   600  Na Piarsaigh took the lead — 0-03 v 0-04
+ 1076   600  Na Piarsaigh scored 3 unanswered
+  104   610  1H 10'
+ 1048   610  2H 7'–8'
+  132   622  LEAD CHANGE
+ 1076   622  SCORING RUN
+  132   665  Scores level — 0-04 v 0-04
+ 1076   665  Na Piarsaigh took the lead — 0-12 v 0-13
+  104   675  1H 11'
+ 1048   675  2H 7'
+  132   687  EQUALISED
+ 1076   687  LEAD CHANGE
+  132   730  Na Piarsaigh took the lead — 0-04 v 0-05
+ 1076   730  Scores level — 1-16 v 0-19
+  104   740  1H 13'
+ 1048   740  2H 20'
+  132   752  LEAD CHANGE
+ 1076   752  EQUALISED
+  132   795  Scores level — 0-05 v 0-05
+ 1076   795  Na Piarsaigh scored 3 unanswered
+  104   805  1H 13'
+ 1048   805  2H 22'–24'
+  132   817  EQUALISED
+ 1076   817  SCORING RUN
+  132   860  Na Piarsaigh scored 3 unanswered
+ 1076   860  Na Piarsaigh took the lead — 1-16 v 0-20
+  104   870  1H 16'–19'
+ 1048   870  2H 22'
+  132   882  SCORING RUN
+ 1076   882  LEAD CHANGE
+  132   925  Na Piarsaigh took the lead — 0-05 v 0-06
+ 1076   925  Ballyhale Shamrocks turnovers led to scores
+  104   935  1H 16'
+ 1048   935  2H 27'
+  132   947  LEAD CHANGE
+ 1076   947  TURNOVER
+ 1896  1060  176 events
+
+===== PAGE 6 (1920x1080) =====
+   24    38  Game Segments Breakdown
+ 1896    38  6 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+  298    99  FIRST HALF
+  290   130  SEGMENT
+  740   130  Ballyhale Shamrocks
+ 1340   130  Na Piarsaigh
+  525   157  Score
+  665   157  Shots/W
+  780   157  Puckout W-L
+  880   157  Net T/O
+  980   157  Frees W/C
+ 1125   157  Score
+ 1265   157  Shots/W
+ 1380   157  Puckout W-L
+ 1480   157  Net T/O
+ 1580   157  Frees W/C
+  290   197  Early (0–10)
+  525   197  0-02 (2)
+  665   197  4 / 1
+  780   197  2-4
+  880   197  +0
+  980   197  1 / 3
+ 1125   197  0-03 (3)
+ 1265   197  5 / 0
+ 1380   197  4-2
+ 1480   197  +0
+ 1580   197  3 / 1
+  290   251  Mid  (11–20)
+  525   251  0-03 (3)
+  665   251  4 / 1
+  780   251  3-6
+  880   251  -1
+  980   251  0 / 1
+ 1125   251  0-05 (5)
+ 1265   251  8 / 0
+ 1380   251  6-3
+ 1480   251  +1
+ 1580   251  1 / 0
+  290   305  Late (21–30+)
+  525   305  0-04 (4)
+  665   305  7 / 2
+  780   305  6-6
+  880   305  -2
+  980   305  1 / 2
+ 1125   305  0-02 (2)
+ 1265   305  7 / 4
+ 1380   305  6-6
+ 1480   305  +2
+ 1580   305  2 / 1
+  290   359  TOTAL
+  525   359  0-09 (9)
+  665   359  15 / 4
+  780   359  11-16
+  880   359  -3
+  980   359  2 / 6
+ 1125   359  0-10 (10)
+ 1265   359  20 / 4
+ 1380   359  16-11
+ 1480   359  +3
+ 1580   359  6 / 2
+  298   453  SECOND HALF
+  290   484  SEGMENT
+  740   484  Ballyhale Shamrocks
+ 1340   484  Na Piarsaigh
+  525   511  Score
+  665   511  Shots/W
+  780   511  Puckout W-L
+  880   511  Net T/O
+  980   511  Frees W/C
+ 1125   511  Score
+ 1265   511  Shots/W
+ 1380   511  Puckout W-L
+ 1480   511  Net T/O
+ 1580   511  Frees W/C
+  290   551  Early (0–10)
+  525   551  0-03 (3)
+  665   551  4 / 1
+  780   551  4-5
+  880   551  +0
+  980   551  0 / 2
+ 1125   551  0-05 (5)
+ 1265   551  6 / 0
+ 1380   551  5-4
+ 1480   551  +0
+ 1580   551  2 / 0
+  290   605  Mid  (11–20)
+  525   605  0-04 (4)
+  665   605  5 / 1
+  780   605  4-4
+  880   605  +0
+  980   605  2 / 2
+ 1125   605  0-04 (4)
+ 1265   605  4 / 0
+ 1380   605  4-4
+ 1480   605  +0
+ 1580   605  2 / 2
+  290   659  Late (21–30+)
+  525   659  1-03 (6)
+  665   659  6 / 1
+  780   659  5-5
+  880   659  +2
+  980   659  0 / 0
+ 1125   659  2-02 (8)
+ 1265   659  6 / 1
+ 1380   659  5-5
+ 1480   659  -2
+ 1580   659  0 / 0
+  290   713  TOTAL
+  525   713  1-10 (13)
+  665   713  15 / 3
+  780   713  13-14
+  880   713  +2
+  980   713  2 / 4
+ 1125   713  2-11 (17)
+ 1265   713  16 / 1
+ 1380   713  14-13
+ 1480   713  -2
+ 1580   713  4 / 2
+
+===== PAGE 7 (1920x1080) =====
+   24    38  Player Breakdown
+ 1896    38  7 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+  270    93  Player totals include only identified receivers.
+  270   115  Player stats show only events logged with a selected player.
+  278   153  #
+  343   153  Name
+  640   153  Score
+  765   153  Shots
+  853   153  Wides
+  940   153  T/O Won
+ 1040   153  T/O Lost
+ 1130   153  Net T/O
+ 1220   153  Puckout Won
+ 1320   153  Puckout Lost
+ 1415   153  Frees Won
+ 1505   153  Frees Con
+ 1600   153  Actions
+  282   198  Ballyhale Shamrocks
+  278   245  #1
+  343   245  Dean Mason
+  640   245  —
+  765   245  —
+  853   245  —
+  940   245  —
+ 1040   245  —
+ 1130   245  —
+ 1220   245  —
+ 1320   245  —
+ 1415   245  —
+ 1505   245  —
+ 1600   245  —
+  278   303  #2
+  343   303  Darren Mullen
+  640   303  —
+  765   303  —
+  853   303  —
+  940   303  —
+ 1040   303  —
+ 1130   303  —
+ 1220   303  —
+ 1320   303  —
+ 1415   303  —
+ 1505   303  —
+ 1600   303  —
+  278   361  #3
+  343   361  Joey Holden
+  640   361  0-00 (0)
+  765   361  0
+  853   361  0
+  940   361  4
+ 1040   361  0
+ 1130   361  +4
+ 1220   361  0
+ 1320   361  0
+ 1415   361  0
+ 1505   361  2
+ 1600   361  6
+  278   419  #4
+  343   419  Evan Cody
+  640   419  0-00 (0)
+  765   419  0
+  853   419  0
+  940   419  0
+ 1040   419  0
+ 1130   419  +0
+ 1220   419  0
+ 1320   419  0
+ 1415   419  0
+ 1505   419  0
+ 1600   419  1
+  278   477  #5
+  343   477  Richie Reid
+  640   477  0-00 (0)
+  765   477  0
+  853   477  0
+  940   477  1
+ 1040   477  0
+ 1130   477  +1
+ 1220   477  0
+ 1320   477  0
+ 1415   477  0
+ 1505   477  2
+ 1600   477  3
+  278   535  #6
+  343   535  Michael Fennelly
+  640   535  0-00 (0)
+  765   535  0
+  853   535  0
+  940   535  1
+ 1040   535  0
+ 1130   535  +1
+ 1220   535  0
+ 1320   535  0
+ 1415   535  0
+ 1505   535  2
+ 1600   535  3
+  278   593  #7
+  343   593  Brian Cody
+  640   593  0-00 (0)
+  765   593  0
+  853   593  0
+  940   593  3
+ 1040   593  0
+ 1130   593  +3
+ 1220   593  0
+ 1320   593  0
+ 1415   593  0
+ 1505   593  2
+ 1600   593  6
+  278   651  #8
+  343   651  Ronan Corcoran
+  640   651  0-01 (1)
+  765   651  2
+  853   651  1
+  940   651  1
+ 1040   651  2
+ 1130   651  -1
+ 1220   651  5
+ 1320   651  0
+ 1415   651  0
+ 1505   651  0
+ 1600   651  10
+  278   709  #9
+  343   709  Darragh Corcoran
+  640   709  0-01 (1)
+  765   709  2
+  853   709  1
+  940   709  3
+ 1040   709  0
+ 1130   709  +3
+ 1220   709  6
+ 1320   709  0
+ 1415   709  1
+ 1505   709  1
+ 1600   709  13
+  278   767  #10
+  343   767  Eoin Cody
+  640   767  0-01 (1)
+  765   767  2
+  853   767  0
+  940   767  0
+ 1040   767  1
+ 1130   767  -1
+ 1220   767  2
+ 1320   767  0
+ 1415   767  1
+ 1505   767  0
+ 1600   767  6
+  278   825  #11
+  343   825  TJ Reid
+  640   825  0-02 (2)
+  765   825  3
+  853   825  1
+  940   825  0
+ 1040   825  4
+ 1130   825  -4
+ 1220   825  5
+ 1320   825  0
+ 1415   825  1
+ 1505   825  0
+ 1600   825  15
+  278   883  #12
+  343   883  Colin Fennelly
+  640   883  1-04 (7)
+  765   883  6
+  853   883  1
+  940   883  0
+ 1040   883  1
+ 1130   883  -1
+ 1220   883  3
+ 1320   883  0
+ 1415   883  0
+ 1505   883  0
+ 1600   883  10
+  278   941  #13
+  343   941  Adrian Mullen
+  640   941  0-04 (4)
+  765   941  6
+  853   941  1
+  940   941  0
+ 1040   941  1
+ 1130   941  -1
+ 1220   941  0
+ 1320   941  0
+ 1415   941  0
+ 1505   941  0
+ 1600   941  7
+  278   999  #14
+  343   999  Eoin Reid
+  640   999  0-02 (2)
+  765   999  4
+  853   999  1
+  940   999  0
+ 1040   999  1
+ 1130   999  -1
+ 1220   999  0
+ 1320   999  0
+ 1415   999  0
+ 1505   999  0
+ 1600   999  5
+
+===== PAGE 8 (1920x1080) =====
+   24    38  Player Breakdown
+ 1896    38  8 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+  270    93  Player totals include only identified receivers.
+  270   115  Player stats show only events logged with a selected player.
+  278   153  #
+  343   153  Name
+  640   153  Score
+  765   153  Shots
+  853   153  Wides
+  940   153  T/O Won
+ 1040   153  T/O Lost
+ 1130   153  Net T/O
+ 1220   153  Puckout Won
+ 1320   153  Puckout Lost
+ 1415   153  Frees Won
+ 1505   153  Frees Con
+ 1600   153  Actions
+  282   198  Ballyhale Shamrocks
+  278   245  #15
+  343   245  Niall Shortall
+  640   245  0-04 (4)
+  765   245  5
+  853   245  1
+  940   245  0
+ 1040   245  5
+ 1130   245  -5
+ 1220   245  0
+ 1320   245  0
+ 1415   245  0
+ 1505   245  0
+ 1600   245  10
+  278   303  #16
+  343   303  Liam Barron
+  640   303  —
+  765   303  —
+  853   303  —
+  940   303  —
+ 1040   303  —
+ 1130   303  —
+ 1220   303  —
+ 1320   303  —
+ 1415   303  —
+ 1505   303  —
+ 1600   303  —
+  278   361  #17
+  343   361  Kevin Mullen
+  640   361  —
+  765   361  —
+  853   361  —
+  940   361  —
+ 1040   361  —
+ 1130   361  —
+ 1220   361  —
+ 1320   361  —
+ 1415   361  —
+ 1505   361  —
+ 1600   361  —
+  278   419  #18
+  343   419  Brian Butler
+  640   419  —
+  765   419  —
+  853   419  —
+  940   419  —
+ 1040   419  —
+ 1130   419  —
+ 1220   419  —
+ 1320   419  —
+ 1415   419  —
+ 1505   419  —
+ 1600   419  —
+  278   477  #19
+  343   477  Paddy Mullen
+  640   477  —
+  765   477  —
+  853   477  —
+  940   477  —
+ 1040   477  —
+ 1130   477  —
+ 1220   477  —
+ 1320   477  —
+ 1415   477  —
+ 1505   477  —
+ 1600   477  —
+  278   535  #20
+  343   535  Jack Holden
+  640   535  —
+  765   535  —
+  853   535  —
+  940   535  —
+ 1040   535  —
+ 1130   535  —
+ 1220   535  —
+ 1320   535  —
+ 1415   535  —
+ 1505   535  —
+ 1600   535  —
+  282   582  Na Piarsaigh
+  278   629  #2
+  343   629  #2
+  640   629  0-00 (0)
+  765   629  0
+  853   629  0
+  940   629  0
+ 1040   629  0
+ 1130   629  +0
+ 1220   629  0
+ 1320   629  0
+ 1415   629  0
+ 1505   629  0
+ 1600   629  1
+  278   687  #3
+  343   687  #3
+  640   687  0-00 (0)
+  765   687  0
+  853   687  0
+  940   687  0
+ 1040   687  0
+ 1130   687  +0
+ 1220   687  0
+ 1320   687  0
+ 1415   687  0
+ 1505   687  0
+ 1600   687  2
+  278   745  #6
+  343   745  #6
+  640   745  0-00 (0)
+  765   745  0
+  853   745  0
+  940   745  0
+ 1040   745  0
+ 1130   745  +0
+ 1220   745  0
+ 1320   745  0
+ 1415   745  0
+ 1505   745  0
+ 1600   745  1
+  278   803  #8
+  343   803  #8
+  640   803  0-00 (0)
+  765   803  0
+  853   803  0
+  940   803  0
+ 1040   803  0
+ 1130   803  +0
+ 1220   803  5
+ 1320   803  0
+ 1415   803  0
+ 1505   803  0
+ 1600   803  5
+  278   861  #9
+  343   861  #9
+  640   861  0-00 (0)
+  765   861  0
+  853   861  0
+  940   861  0
+ 1040   861  0
+ 1130   861  +0
+ 1220   861  15
+ 1320   861  0
+ 1415   861  0
+ 1505   861  0
+ 1600   861  17
+  278   919  #10
+  343   919  #10
+  640   919  0-11 (11)
+  765   919  13
+  853   919  1
+  940   919  0
+ 1040   919  0
+ 1130   919  +0
+ 1220   919  1
+ 1320   919  0
+ 1415   919  0
+ 1505   919  0
+ 1600   919  14
+  278   977  #11
+  343   977  #11
+  640   977  0-01 (1)
+  765   977  3
+  853   977  2
+  940   977  0
+ 1040   977  0
+ 1130   977  +0
+ 1220   977  1
+ 1320   977  0
+ 1415   977  0
+ 1505   977  0
+ 1600   977  4
+
+===== PAGE 9 (1920x1080) =====
+   24    38  Player Breakdown
+ 1896    38  9 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+  270    93  Player totals include only identified receivers.
+  270   115  Player stats show only events logged with a selected player.
+  278   153  #
+  343   153  Name
+  640   153  Score
+  765   153  Shots
+  853   153  Wides
+  940   153  T/O Won
+ 1040   153  T/O Lost
+ 1130   153  Net T/O
+ 1220   153  Puckout Won
+ 1320   153  Puckout Lost
+ 1415   153  Frees Won
+ 1505   153  Frees Con
+ 1600   153  Actions
+  282   198  Na Piarsaigh
+  278   245  #12
+  343   245  #12
+  640   245  0-01 (1)
+  765   245  1
+  853   245  0
+  940   245  0
+ 1040   245  0
+ 1130   245  +0
+ 1220   245  2
+ 1320   245  0
+ 1415   245  0
+ 1505   245  0
+ 1600   245  3
+  278   303  #13
+  343   303  #13
+  640   303  2-01 (7)
+  765   303  7
+  853   303  1
+  940   303  0
+ 1040   303  0
+ 1130   303  +0
+ 1220   303  0
+ 1320   303  0
+ 1415   303  0
+ 1505   303  0
+ 1600   303  8
+  278   361  #14
+  343   361  #14
+  640   361  0-05 (5)
+  765   361  8
+  853   361  0
+  940   361  0
+ 1040   361  0
+ 1130   361  +0
+ 1220   361  0
+ 1320   361  0
+ 1415   361  0
+ 1505   361  0
+ 1600   361  8
+  278   419  #15
+  343   419  #15
+  640   419  0-00 (0)
+  765   419  1
+  853   419  1
+  940   419  0
+ 1040   419  0
+ 1130   419  +0
+ 1220   419  0
+ 1320   419  0
+ 1415   419  0
+ 1505   419  0
+ 1600   419  2
+
+===== PAGE 10 (1920x1080) =====
+   24    38  Player Contributions
+ 1896    38  10 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   24    86  Raw per-player counts — scoring, shooting, restarts, turnovers and frees. Ranked by score value.
+   38   124  BALLYHALE SHAMROCKS
+  982   124  NA PIARSAIGH
+   38   163  PLAYER
+  338   163  SCORE
+  438   163  SHARE
+  538   163  SHOTS
+  658   163  T/O W-L
+  778   163  KO W-L
+  898   163  NET BALL
+  982   163  PLAYER
+ 1282   163  SCORE
+ 1382   163  SHARE
+ 1482   163  SHOTS
+ 1602   163  T/O W-L
+ 1722   163  KO W-L
+ 1842   163  NET BALL
+   38   191  Colin Fennelly
+  338   191  1-04
+  438   191  32%
+  538   191  5/6
+  658   191  0-1
+  778   191  3-0
+  898   191  +2
+  982   191  #10
+ 1282   191  0-11
+ 1382   191  41%
+ 1482   191  11/13
+ 1602   191  0-0
+ 1722   191  1-0
+ 1842   191  +1
+   38   221  Adrian Mullen
+  338   221  0-04
+  438   221  18%
+  538   221  4/6
+  658   221  0-1
+  778   221  0-0
+  898   221  -1
+  982   221  #13
+ 1282   221  2-01
+ 1382   221  26%
+ 1482   221  3/7
+ 1602   221  0-0
+ 1722   221  0-0
+ 1842   221  0
+   38   251  Niall Shortall
+  338   251  0-04
+  438   251  18%
+  538   251  4/5
+  658   251  0-5
+  778   251  0-0
+  898   251  -5
+  982   251  #14
+ 1282   251  0-05
+ 1382   251  19%
+ 1482   251  5/8
+ 1602   251  0-0
+ 1722   251  0-0
+ 1842   251  0
+   38   281  TJ Reid
+  338   281  0-02
+  438   281  9%
+  538   281  2/3
+  658   281  0-4
+  778   281  5-0
+  898   281  +2
+  982   281  #12
+ 1282   281  0-01
+ 1382   281  4%
+ 1482   281  1/1
+ 1602   281  0-0
+ 1722   281  2-0
+ 1842   281  +2
+   38   311  Eoin Reid
+  338   311  0-02
+  438   311  9%
+  538   311  2/4
+  658   311  0-1
+  778   311  0-0
+  898   311  -1
+  982   311  #11
+ 1282   311  0-01
+ 1382   311  4%
+ 1482   311  1/3
+ 1602   311  0-0
+ 1722   311  1-0
+ 1842   311  +1
+   38   341  Darragh Corcoran
+  338   341  0-01
+  438   341  5%
+  538   341  1/2
+  658   341  3-0
+  778   341  6-0
+  898   341  +9
+  982   341  #9
+ 1282   341  —
+ 1382   341  —
+ 1482   341  —
+ 1602   341  0-0
+ 1722   341  15-0
+ 1842   341  +15
+   38   371  Ronan Corcoran
+  338   371  0-01
+  438   371  5%
+  538   371  1/2
+  658   371  1-2
+  778   371  5-0
+  898   371  +4
+  982   371  #8
+ 1282   371  —
+ 1382   371  —
+ 1482   371  —
+ 1602   371  0-0
+ 1722   371  5-0
+ 1842   371  +5
+   38   401  Eoin Cody
+  338   401  0-01
+  438   401  5%
+  538   401  1/2
+  658   401  0-1
+  778   401  2-0
+  898   401  +2
+  982   401  #2
+ 1282   401  —
+ 1382   401  —
+ 1482   401  —
+ 1602   401  0-0
+ 1722   401  0-0
+ 1842   401  0
+   38   431  Joey Holden
+  338   431  —
+  438   431  —
+  538   431  —
+  658   431  4-0
+  778   431  0-0
+  898   431  +2
+  982   431  #3
+ 1282   431  —
+ 1382   431  —
+ 1482   431  —
+ 1602   431  0-0
+ 1722   431  0-0
+ 1842   431  0
+   38   461  Brian Cody
+  338   461  —
+  438   461  —
+  538   461  —
+  658   461  3-0
+  778   461  0-0
+  898   461  +1
+  982   461  #6
+ 1282   461  —
+ 1382   461  —
+ 1482   461  —
+ 1602   461  0-0
+ 1722   461  0-0
+ 1842   461  0
+   38   491  Evan Cody
+  338   491  —
+  438   491  —
+  538   491  —
+  658   491  0-0
+  778   491  0-0
+  898   491  0
+  982   491  #15
+ 1282   491  —
+ 1382   491  —
+ 1482   491  0/1
+ 1602   491  0-0
+ 1722   491  0-0
+ 1842   491  0
+   38   521  Richie Reid
+  338   521  —
+  438   521  —
+  538   521  —
+  658   521  1-0
+  778   521  0-0
+  898   521  -1
+   38   578  FREES CONCEDED BY PLAYER
+  982   578  FREES CONCEDED BY PLAYER
+   38   617  PLAYER
+  658   617  1H
+  778   617  2H
+  898   617  TOTAL
+  982   617  PLAYER
+ 1602   617  1H
+ 1722   617  2H
+ 1842   617  TOTAL
+   38   645  #5 Richie Reid
+  658   645  0
+  778   645  2
+  898   645  2
+  982   645  No frees conceded attributed to a Na Piarsaigh player
+   38   675  #3 Joey Holden
+  658   675  1
+  778   675  1
+  898   675  2
+  982   675  Not attributed to a player
+ 1602   675  2
+ 1722   675  2
+ 1842   675  4
+   38   705  #7 Brian Cody
+  658   705  1
+  778   705  1
+  898   705  2
+  982   709  Na Piarsaigh total
+ 1602   709  2
+ 1722   709  2
+ 1842   709  4
+   38   735  #6 Michael Fennelly
+  658   735  2
+  778   735  0
+  898   735  2
+   38   765  #9 Darragh Corcoran
+  658   765  1
+  778   765  0
+  898   765  1
+   38   795  Not attributed to a player
+  658   795  1
+  778   795  0
+  898   795  1
+   38   829  Ballyhale Shamrocks total
+  658   829  6
+  778   829  4
+  898   829  10
+  960  1040  Direct event counts only. Chain involvement and net influence ranking appear in Game Origin Analysis (Part 3).
+ 1896  1060  176 events
+
+===== PAGE 11 (1920x1080) =====
+   24    38  Shot Pitch Maps
+ 1896    38  11 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   24   110  1H — BALLYHALE SHAMROCKS SHOTS
+  945   110  15
+  977   110  1H — NA PIARSAIGH SHOTS
+ 1898   110  20
+   24   583  2H — BALLYHALE SHAMROCKS SHOTS
+  945   583  15
+  977   583  2H — NA PIARSAIGH SHOTS
+ 1898   583  16
+ 1896  1060  66 events
+
+===== PAGE 12 (1920x1080) =====
+   24    38  Shot & Scoring Efficiency
+ 1896    38  12 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   38   104  FOR — BALLYHALE SHAMROCKS
+  982   104  OPP — NA PIARSAIGH
+   38   143  OVERALL CONVERSION
+  982   143  OVERALL CONVERSION
+   38   172  Attempts
+  940   172  30
+  982   172  Attempts
+ 1884   172  36
+   38   204  Scores
+  940   204  20
+  982   204  Scores
+ 1884   204  23
+   38   236  Conversion
+  940   236  67%
+  982   236  Conversion
+ 1884   236  64%
+   38   268  Wides
+  940   268  7
+  982   268  Wides
+ 1884   268  5
+   38   300  Blocked / Saved
+  940   300  3
+  982   300  Blocked / Saved
+ 1884   300  8
+   38   349  SOURCE BREAKDOWN
+  982   349  SOURCE BREAKDOWN
+   38   373  SOURCE
+  544   373  ATT
+  664   373  SC
+  780   373  MISS
+  940   373  CONV%
+  982   373  SOURCE
+ 1488   373  ATT
+ 1608   373  SC
+ 1724   373  MISS
+ 1884   373  CONV%
+   38   400  Open Play
+  544   400  22
+  664   400  16
+  780   400  6
+  940   400  73%
+  982   400  Open Play
+ 1488   400  19
+ 1608   400  14
+ 1724   400  5
+ 1884   400  74%
+   38   432  Free
+  544   432  3
+  664   432  2
+  780   432  1
+  940   432  67%
+  982   432  Free
+ 1488   432  6
+ 1608   432  6
+ 1724   432  0
+ 1884   432  100%
+   38   464  Mark
+  544   464  —
+  664   464  —
+  780   464  —
+  940   464  —
+  982   464  Mark
+ 1488   464  —
+ 1608   464  —
+ 1724   464  —
+ 1884   464  —
+   38   496  45
+  544   496  —
+  664   496  —
+  780   496  —
+  940   496  —
+  982   496  45
+ 1488   496  —
+ 1608   496  —
+ 1724   496  —
+ 1884   496  —
+   38   528  Penalty
+  544   528  1
+  664   528  1
+  780   528  0
+  940   528  100%
+  982   528  Penalty
+ 1488   528  —
+ 1608   528  —
+ 1724   528  —
+ 1884   528  —
+   38   560  Unclassified
+  544   560  4
+  664   560  1
+  780   560  3
+  940   560  25%
+  982   560  Unclassified
+ 1488   560  11
+ 1608   560  3
+ 1724   560  8
+ 1884   560  27%
+   38   587  4 shots logged without a source
+  982   587  11 shots logged without a source
+   38   631  2-POINT PROFILE
+  982   631  2-POINT PROFILE
+   38   660  TWO_POINTER Scores
+  940   660  0
+  982   660  TWO_POINTER Scores
+ 1884   660  0
+   38   692  45+2 Scores
+  940   692  0
+  982   692  45+2 Scores
+ 1884   692  0
+   38   724  Total 2PT Scores
+  940   724  0
+  982   724  Total 2PT Scores
+ 1884   724  0
+   38   756  Total 2PT Pts Value
+  940   756  0
+  982   756  Total 2PT Pts Value
+ 1884   756  0
+   38   805  FREE CONVERSION
+  982   805  FREE CONVERSION
+   38   834  Placed Scored
+  940   834  3
+  982   834  Placed Scored
+ 1884   834  6
+   38   866  Placed Missed
+  940   866  1
+  982   866  Placed Missed
+ 1884   866  0
+   38   898  Placed Conv %
+  940   898  75%
+  982   898  Placed Conv %
+ 1884   898  100%
+ 1896  1060  176 events
+
+===== PAGE 13 (1920x1080) =====
+   24    38  Zone Analysis
+ 1896    38  13 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   28    95  BALLYHALE SHAMROCKS ATTACKING ACTIVITY — SCORES + TURNOVERS WON
+  944    95  34 events
+  978    95  NA PIARSAIGH ATTACKING ACTIVITY — SCORES + TURNOVERS WON
+ 1894    95  38 events
+   42   128  Most scoring: Attacking Right
+  992   128  Opposition scoring: Defensive Centre
+   42   156  Turnovers won: Middle Centre
+  992   156  Opposition gains: Middle Left
+   42   178  20 scoring events recorded
+  992   178  23 opposition scoring events
+  485   462  11
+ 1130   462  13
+  485   482  Middle Centre
+ 1130   482  Defensive Centre
+   30   768  ZONE SUMMARY
+  663   768  KEY ZONES
+ 1296   768  ZONE INTELLIGENCE
+ 1297   796  Most scores for: Attacking Right (7)
+  661   798  TOP SCORING ZONES — SCORES ONLY
+   28   814  Ballyhale…  47%
+  625   814  53%  Na…
+  659   821  Ballyhale… hotspot
+ 1262   821  Attacking Right (7)
+   28   838  Ballyhale… ACTIVITY
+  659   847  Na Piarsaigh hotspot
+ 1262   847  Defensive Centre (10)
+ 1297   852  Most turnovers won: Middle Centre (8)
+   26   861  Scores
+  629   861  20
+  661   872  TURNOVER ZONES
+   26   887  Turnovers Won
+  629   887  14
+  659   895  Ballyhale… won in
+ 1262   895  Middle Centre (8)
+ 1297   908  Most opposition scores: Defensive Centre (10)
+   28   912  Na Piarsaigh ACTIVITY
+  659   921  Opposition gained in
+ 1262   921  Middle Left (5)
+   26   935  Scores Against
+  629   935  23
+   26   961  Opposition Gains
+  629   961  15
+ 1297   964  Highest concentration of opposition gains: Middle Left (5)
+ 1896  1060  176 events
+
+===== PAGE 14 (1920x1080) =====
+   24    38  1H Pitch Overview
+ 1896    38  14 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   24   110  1H — ALL EVENTS
+  945   110  87
+  977   110  1H — SCORES
+ 1898   110  19
+   24   583  1H — BALLYHALE SHAMROCKS SHOTS
+  945   583  15
+  977   583  1H — NA PIARSAIGH SHOTS
+ 1898   583  20
+ 1896  1060  87 events
+
+===== PAGE 15 (1920x1080) =====
+   24    38  2H Pitch Overview
+ 1896    38  15 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   24   110  2H — ALL EVENTS
+  945   110  89
+  977   110  2H — SCORES
+ 1898   110  24
+   24   583  2H — BALLYHALE SHAMROCKS SHOTS
+  945   583  15
+  977   583  2H — NA PIARSAIGH SHOTS
+ 1898   583  16
+ 1896  1060  89 events
+
+===== PAGE 16 (1920x1080) =====
+ 1896    38  16 / 30
+   80   180  CHAPTER 2
+   80   230  PART 2 — POSSESSION FACTS
+   80   318  What did we win/lose and where?
+   80   398  "Every restart, turnover and free is followed to its immediate outcome — what we won or lost, and where."
+   80   448  Coach question answered: "What did we win/lose and where?"
+   80   508  THIS CHAPTER CONTAINS
+   80   536  · Opposition Facts
+   80   564  · Restart Analysis
+   80   592  · Turnover Analysis
+   80   620  · Free Kick Analysis
+ 1896  1056  PÁIRCVISION
+
+===== PAGE 17 (1920x1080) =====
+   24    38  Opposition Facts
+ 1896    38  17 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   40   100  NA PIARSAIGH — SCORING PROFILE
+  984   100  PUCKOUTS — RESTART SHARE
+   44   162  2-21 (27)
+  988   162  56%
+   44   179  FULL MATCH SCORE LINE
+  988   179  OPP RESTART SHARE
+   40   207  1st Half
+  938   207  0-10 (10)
+  984   207  Restart Share won by OPP
+ 1882   207  30 of 54
+   40   237  2nd Half
+  938   237  2-11 (17)
+   40   267  Goals
+  938   267  2
+   40   297  Points (incl. frees & 2-pointers)
+  938   297  21
+   40   327  Score Conversion
+  938   327  64%
+   40   357  Score zone (avg position)
+  938   357  Central
+  984   551  TURNOVERS GIFTED
+  988   613  15
+  988   630  TURNOVERS GIFTED TO OPPOSITION
+ 1896  1060  176 events
+
+===== PAGE 18 (1920x1080) =====
+   24    38  Restart Analysis
+ 1896    38  18 / 30
+ 1803    59  POSSESSION
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   28    95  RESTART POSSESSION — BALLYHALE SHAMROCKS
+  944    95  28 events
+  978    95  RESTART POSSESSION — NA PIARSAIGH
+ 1894    95  26 events
+   42   128  Ballyhale Shamrocks won 24 of 54 restarts
+  992   128  Na Piarsaigh won 30 of 54 restarts
+   42   156  Ballyhale Shamrocks: 7 Points (7 pts)
+  992   156  Na Piarsaigh: 1 Goal, 14 Points (17 pts)
+   42   178  H1: 11–16 / H2: 13–14
+  992   178  H1: 16–11 / H2: 14–13
+   30   768  RESTART SUMMARY
+  663   768  CHAIN OUTCOMES
+ 1296   768  RESTART INTELLIGENCE
+ 1297   796  Ballyhale Shamrock held 44% Restart Share (24 of 54).
+  661   798  Ballyhale… WON POSSESSION
+   28   814  Ballyhale…  44%
+  625   814  56%  Na…
+  659   821  Won → Score (origin)
+ 1262   821  7 (29%)
+   26   839  Ballyhale… Won
+  629   839  24 (44%)
+  659   847  Won → Shot attempt
+ 1262   847  13 (54%)
+ 1297   852  29% of Ballyhale Shamrock's puckout wins produced restart-origin point value; 50% of their
+   26   865  Na Piarsaigh Won
+  629   865  30 (56%)
+ 1297   868  losses produced restart-origin point value for Na Piarsaigh.
+  659   873  Won → No shot
+ 1262   873  11
+   28   890  BY HALF
+  661   898  Na Piarsaigh WON POSSESSION
+   26   913  H1 — Won / Lost
+  629   913  11 / 16
+  659   921  Lost → Score against (origin)
+ 1262   921  15 (50%)
+   26   939  H2 — Won / Lost
+  629   939  13 / 14
+  659   947  Lost → No score
+ 1262   947  15
+   28   964  HOW WON
+  661   972  OVERALL
+   26   987  Clean Won
+  629   987  10
+  659   995  Restart Share
+ 1262   995  44% (24 of 54)
+   26  1013  Break Won
+  629  1013  15
+  659  1021  Own Puckout Retention
+ 1262  1021  43% (12 of 28)
+   26  1039  Foul Won
+  629  1039  0
+  659  1047  Avg secs to score (won)
+ 1262  1047  36s
+ 1294  1050  Origin possessions include 5 placed frees won during kickout-origin possessions (Ballyhale Sham 1 · Na Piarsaigh 4) — the scoring ledger attributes those scores to placed balls.
+   26  1059  Excludes dead-ball restarts, already counted in Won above.
+ 1896  1060  54 events
+
+===== PAGE 19 (1920x1080) =====
+   24    38  Turnover Analysis
+ 1896    38  19 / 30
+ 1803    59  POSSESSION
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   28    95  TURNOVERS WON — BALLYHALE SHAMROCKS
+  944    95  14 events
+  978    95  TURNOVERS LOST — BALLYHALE SHAMROCKS
+ 1894    95  15 events
+   42   128  Won 14 turnovers
+  992   128  Opposition won 15 turnovers
+   42   156  8 led to scores
+  992   156  4 scores conceded
+   42   178  11 led to shots
+  992   178  10 shots against
+   30   768  TURNOVER SUMMARY
+  663   768  CONSEQUENCES
+ 1296   768  TURNOVER INTELLIGENCE
+ 1297   796  57% of Ballyhale Shamrock's won turnovers produced turnover-origin point value (8 Points (8
+  661   798  Ballyhale… ATTACKED
+ 1297   812  pts) from 14 wins).
+   28   814  Ballyhale…  48%
+  625   814  52%  Na…
+  659   821  Won → Score (origin)
+ 1262   821  8 (57%)
+   26   839  Ballyhale… Won
+  629   839  14
+  659   847  Won → Shot attempt
+ 1262   847  11 (79%)
+ 1297   852  Ballyhale Shamrock won 14 turnovers; 3 did not lead to a shot.
+   26   865  Na Piarsaigh Won
+  629   865  15
+  659   873  Won → No shot
+ 1262   873  3
+   26   891  Net Turnover
+  629   891  -1
+  661   898  DAMAGE CONCEDED
+   28   916  HOW WON
+  659   921  Lost → Score against (origin)
+ 1262   921  4 (27%)
+   26   939  Tackle / Press
+  629   939  5
+  659   947  Lost → Shot against
+ 1262   947  10 (67%)
+   26   965  Swarm / Intercept
+  629   965  0
+  661   972  Na Piarsaigh ATTACKED
+   26   991  Unforced error
+  629   991  0
+  659   995  Won → Score (origin)
+ 1262   995  4 (27%)
+   26  1017  Slack pass
+  629  1017  0
+  659  1021  Won → Shot attempt
+ 1262  1021  10 (67%)
+ 1896  1060  29 events
+
+===== PAGE 20 (1920x1080) =====
+   24    38  Free Kick Analysis
+ 1896    38  20 / 30
+ 1803    59  POSSESSION
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   28    95  OUR FREES — BALLYHALE SHAMROCKS
+  944    95  7 events
+  978    95  OPPOSITION FREES — NA PIARSAIGH
+ 1894    95  16 events
+   42   128  Won 4 possession frees
+  992   128  Opposition won 10 possession frees
+   42   156  0 free-won → goal chains (rule match)
+  992   156  Free-won → goal chains (rule match): —
+   42   178  Direct placed-ball scoring: 3/4 scored
+  992   178  Direct placed-ball scoring: 6/6 scored
+   30   768  FREE SUMMARY
+  663   768  FREE OUTCOMES
+ 1296   768  FREE INTELLIGENCE
+  661   798  CONVERSION COMPARISON
+   28   814  Ballyhale…  29%
+  625   814  71%  Na…
+  659   821  Ballyhale… Conversion
+ 1262   821  75%
+   26   839  Ballyhale… Frees Won
+  629   839  4
+  659   847  Na Piarsaigh Conversion
+ 1262   847  100%
+   26   865  Na Piarsaigh Frees Won
+  629   865  10
+  661   872  Na Piarsaigh PLACED BALLS
+   26   891  Advantage
+  629   891  -6
+  659   895  Placed Scored
+ 1262   895  6
+   28   916  Ballyhale… PLACED BALLS
+  659   921  Placed Missed
+ 1262   921  0
+ 1593   922  No observation met the reporting threshold.
+   26   939  Placed Scored
+  629   939  3
+  659   947  Conversion
+ 1262   947  100%
+   26   965  Placed Missed
+  629   965  1
+  661   972  ALL FREES COMBINED
+   26   991  Conversion
+  629   991  75%
+  659   995  Total scored
+ 1262   995  9
+  659  1021  Total missed
+ 1262  1021  1
+  659  1047  Overall conv.
+ 1262  1047  90%
+ 1896  1060  23 events
+
+===== PAGE 21 (1920x1080) =====
+ 1896    38  21 / 30
+   80   180  CHAPTER 3
+   80   230  PART 3 — GAME ORIGIN / CHAIN ANALYSIS
+   80   318  What happened after those possessions began?
+   80   398  "Traces the possession beyond the initial event — where scoring possessions began, followed forward."
+   80   448  Coach question answered: "What happened after those possessions began?"
+   80   508  THIS CHAPTER CONTAINS
+   80   536  · Scoring Possession Origins
+   80   564  · Player Chain Involvement
+   80   592  · Opposition Origin & Chain Analysis
+   80   620  · Intelligence Summary
+   80   648  · Match Markers
+   80   676  · Chain Intelligence
+   80   704  · Restart Chain Analysis
+   80   732  · Turnover Chain Analysis
+   80   760  · Scoring Momentum
+ 1896  1056  PÁIRCVISION
+
+===== PAGE 22 (1920x1080) =====
+   24    38  Scoring Possession Origins
+ 1896    38  22 / 30
+ 1847    59  CHAIN
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   24    88  Game Origin Analysis looks at where a scoring possession began, not how the final score was recorded. A point scored from a free may also count here as a restart-origin score, if the possession it came from started at a kickout — the two figures are answering
+   24   110  different questions, not disagreeing with each other. Use Scoring Breakdown (Part 1) for what was scored, and Game Origin Analysis (Part 3) for where the pressure that led to it began.
+  234   185  POSSESSION ORIGIN
+  900   185  BALLYHALE…
+ 1260   185  NA PIARSAIGH
+  234   242  Restart-origin scores
+  900   242  7 Points (7 pts)
+ 1260   242  1 Goal, 13 Points (16 pts)
+  234   310  Turnover-origin scores
+  900   310  8 Points (8 pts)
+ 1260   310  1 Goal, 3 Points (6 pts)
+  210   370  Origin possessions include 5 placed frees won during kickout-origin possessions (Ballyhale Sham 1 · Na Piarsaigh 4) — the scoring ledger attributes those scores to placed balls.
+  210   402  Only restart and turnover origins are currently tracked — a score with neither origin has no row here.
+ 1896  1060  176 events
+
+===== PAGE 23 (1920x1080) =====
+   24    38  Player Chain Involvement
+ 1896    38  23 / 30
+ 1847    59  CHAIN
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   24    86  Scoring-chain involvement and recorded ball actions, ranked by most scoring-chain involvements.
+   38   124  BALLYHALE SHAMROCKS
+  982   124  NA PIARSAIGH
+   38   158  MOST SCORING-CHAIN INVOLVEMENTS
+  982   158  MOST SCORING-CHAIN INVOLVEMENTS
+   38   188  1. Colin Fennelly
+  938   188  7 of 20 chains
+  982   188  1. #10
+ 1882   188  11 of 23 chains
+   50   214  Colin Fennelly: 1-04 (32% of Ballyhale Shamrock total) · from 6 shots · +2 net ball impact
+  994   214  #10: 0-11 (41% of Na Piarsaigh total) · from 13 shots · +1 net ball impact
+   38   248  2. Adrian Mullen
+  938   248  4 of 20 chains
+  982   248  2. #9
+ 1882   248  9 of 23 chains
+   50   274  Adrian Mullen: 0-04 (18% of Ballyhale Shamrock total) · from 6 shots · -1 net ball impact
+  994   274  #9: in 9 of 23 scoring chains · +15 net ball impact
+   38   308  3. Niall Shortall
+  938   308  4 of 20 chains
+  982   308  3. #14
+ 1882   308  5 of 23 chains
+   50   334  Niall Shortall: 0-04 (18% of Ballyhale Shamrock total) · from 5 shots · -5 net ball impact
+  994   334  #14: 0-05 (19% of Na Piarsaigh total) · from 8 shots
+   38   377  PLAYER
+  378   377  SCORE
+  498   377  SHARE
+  618   377  SHOTS
+  758   377  CHAIN INV
+  898   377  NET BALL
+  982   377  PLAYER
+ 1322   377  SCORE
+ 1442   377  SHARE
+ 1562   377  SHOTS
+ 1702   377  CHAIN INV
+ 1842   377  NET BALL
+   38   405  Colin Fennelly
+  378   405  1-04
+  498   405  32%
+  618   405  5/6
+  758   405  7/20
+  898   405  +2
+  982   405  #10
+ 1322   405  0-11
+ 1442   405  41%
+ 1562   405  11/13
+ 1702   405  11/23
+ 1842   405  +1
+   38   435  Adrian Mullen
+  378   435  0-04
+  498   435  18%
+  618   435  4/6
+  758   435  4/20
+  898   435  -1
+  982   435  #9
+ 1322   435  —
+ 1442   435  —
+ 1562   435  —
+ 1702   435  9/23
+ 1842   435  +15
+   38   465  Niall Shortall
+  378   465  0-04
+  498   465  18%
+  618   465  4/5
+  758   465  4/20
+  898   465  -5
+  982   465  #14
+ 1322   465  0-05
+ 1442   465  19%
+ 1562   465  5/8
+ 1702   465  5/23
+ 1842   465  0
+   38   495  Ronan Corcoran
+  378   495  0-01
+  498   495  5%
+  618   495  1/2
+  758   495  4/20
+  898   495  +4
+  982   495  #13
+ 1322   495  2-01
+ 1442   495  26%
+ 1562   495  3/7
+ 1702   495  3/23
+ 1842   495  0
+   38   525  TJ Reid
+  378   525  0-02
+  498   525  9%
+  618   525  2/3
+  758   525  3/20
+  898   525  +2
+  982   525  #12
+ 1322   525  0-01
+ 1442   525  4%
+ 1562   525  1/1
+ 1702   525  3/23
+ 1842   525  +2
+   38   555  Joey Holden
+  378   555  —
+  498   555  —
+  618   555  —
+  758   555  3/20
+  898   555  +2
+  982   555  #8
+ 1322   555  —
+ 1442   555  —
+ 1562   555  —
+ 1702   555  3/23
+ 1842   555  +5
+   38   585  Brian Cody
+  378   585  —
+  498   585  —
+  618   585  —
+  758   585  3/20
+  898   585  +1
+  982   585  #11
+ 1322   585  0-01
+ 1442   585  4%
+ 1562   585  1/3
+ 1702   585  1/23
+ 1842   585  +1
+   38   615  Eoin Reid
+  378   615  0-02
+  498   615  9%
+  618   615  2/4
+  758   615  2/20
+  898   615  -1
+  982   615  #2
+ 1322   615  —
+ 1442   615  —
+ 1562   615  —
+ 1702   615  —
+ 1842   615  0
+   38   645  Darragh Corcoran
+  378   645  0-01
+  498   645  5%
+  618   645  1/2
+  758   645  2/20
+  898   645  +9
+  982   645  #3
+ 1322   645  —
+ 1442   645  —
+ 1562   645  —
+ 1702   645  —
+ 1842   645  0
+   38   682  RECORDED PATTERNS
+  982   682  RECORDED PATTERNS
+   50   712  Ballyhale Shamrock top scorer share was 32%.
+  994   712  #10 (Na Piarsaigh) scored 0-11 of 2-21 (41% of team score).
+   50   746  Joey Holden (Ballyhale Shamrock) appeared in 3 of 20 Ballyhale Shamrock scoring chains without shooting.
+  994   746  #11 (Na Piarsaigh) recorded 1 from 3 shot attempts.
+  994   780  #9 (Na Piarsaigh) appeared in 9 of 23 Na Piarsaigh scoring chains without shooting.
+ 1896  1060  176 events
+
+===== PAGE 24 (1920x1080) =====
+   24    38  Opposition Origin & Chain Analysis
+ 1896    38  24 / 30
+ 1847    59  CHAIN
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   40   100  RESTART ORIGIN (PUCKOUTS)
+  984   100  MOMENTUM SPELL
+   40   131  Restart-origin scores for OPP
+  938   131  1 Goal, 13 Points (16 pts)
+   40   161  Restart-origin scores conceded
+  938   161  1 Goal, 14 Points (17 pts)  (50%)
+  988   162  3
+  988   179  LONGEST UNANSWERED RUN — 1H ~16'
+   40   191  Restart-origin scores from our puckout losses
+  938   191  1 Goal, 6 Points (9 pts)
+  984   207  Total OPP runs ≥ 2
+ 1882   207  5
+  984   237  Half of peak run
+ 1882   237  1H
+  984   360  CHAIN RATE
+  988   422  —
+  988   439  CHAIN SHARE NOT SHOWN — RULE MATCHES ARE NOT UNIQUE POSSESSIONS
+  984   467  OPP rule matches — 1st Half
+ 1882   467  —
+  984   497  OPP rule matches — 2nd Half
+ 1882   497  —
+  984   527  Busiest OPP segment
+ 1882   527  —
+   40   580  TURNOVER ORIGIN
+   40   611  Turnover-origin scores for OPP
+  938   611  1 Goal, 3 Points (6 pts)
+  984   620  OPPOSITION MARKERS
+   40   641  Turnover-origin scores conceded
+  938   641  4
+   40   671  Turnover-origin punishment rate
+  938   671  27%
+  988   682  #10  0-11
+  988   699  41% OF NA PIARSAIGH SCORE · 11/13 SHOOTING
+   40   701  Turnover wins → shot
+  938   701  10
+  984   727  Longest unanswered run
+ 1882   727  3 scores
+  984   757  Restart-origin scoring
+ 1882   757  1 Goal, 13 Points (16 pts)
+  984   787  Turnover-origin scoring
+ 1882   787  1 Goal, 3 Points (6 pts)
+  984   817  Chain share
+ 1882   817  —
+ 1896  1060  176 events
+
+===== PAGE 25 (1920x1080) =====
+   24    38  Intelligence Summary
+ 1896    38  25 / 30
+ 1847    59  CHAIN
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   40   100  PUCKOUT PLATFORM
+  984   100  SCORING RUNS
+   44   162  44%
+  988   162  4 / 5
+   44   179  RESTART SHARE  (24 WON OF 54 TOTAL)
+  988   179  SCORING RUNS  (RUNS OF ≥2 CONSECUTIVE SCORES)
+   40   207  Puckout wins → origin score
+  938   207  29%
+  984   207  Ballyhale Shamrocks longest burst
+ 1882   207  2 scores
+   40   237  Puckout losses → origin score against
+  938   237  50%
+  984   237  Na Piarsaigh longest burst
+ 1882   237  3 scores
+   40   267  Net puckout advantage (%pt)
+  938   267  -21 %pt
+  984   267  Ballyhale Shamrocks max consecutive
+ 1882   267  2
+  984   297  Na Piarsaigh max consecutive
+ 1882   297  3
+   40   400  TURNOVER BATTLE
+  984   400  CHAIN SEQUENCES
+   44   462  48%
+  988   462  27
+   44   479  TURNOVER SHARE  (14 WON OF 29 TOTAL)
+  988   479  BALLYHALE SHAMROCKS CHAIN RULE MATCHES  (OVERLAPPING — NOT UNIQUE POSSESSIONS)
+   40   507  Turnover wins → origin score
+  938   507  57%
+  984   507  Puckout → score chains (rule match)
+ 1882   507  5
+   40   537  Turnover wins → shot, no score
+  938   537  21%
+  984   537  Turnover → score chains (rule match)
+ 1882   537  8
+   40   567  Turnover losses → origin score against
+  938   567  27%
+  984   567  Placed ball → goal chains (rule match)
+ 1882   567  0
+   40   700  MATCH INTELLIGENCE
+  984   700  TEAM COMPARISON
+   40   726  Ballyhale… held only 44% Restart Share (24 of 54); 50% of Na Piarsaigh's wins produced restart-origin point value (1 Goal, …
+  984   740  METRIC
+ 1618   740  Ballyhale…
+ 1785   740  Na…
+   40   758  57% of Ballyhale…'s won turnovers produced turnover-origin point value (8 Points (8 pts)).
+  984   767  Restart Share
+ 1618   767  44%
+ 1785   767  56%
+   40   790  Na Piarsaigh recorded a 3-score unanswered run.
+  984   797  Turnover conversion rate
+ 1618   797  57%
+ 1785   797  27%
+  984   827  Longest scoring run
+ 1618   827  2
+ 1785   827  3
+  984   857  Chain rule matches
+ 1618   857  27
+ 1785   857  —
+  984   887  Yellow cards
+ 1618   887  1
+ 1785   887  1
+  984   917  Sin bins
+ 1618   917  0
+ 1785   917  0
+  984   947  Red cards
+ 1618   947  0
+ 1785   947  1
+   50  1004  Puckout Net <−10%pt
+  211  1004  Turnover Conversion ≥35%
+ 1896  1060  176 events
+
+===== PAGE 26 (1920x1080) =====
+   24    38  Match Markers
+ 1896    38  26 / 30
+ 1847    59  CHAIN
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   35   101  KICKOUT  2
+  143   101  TURNOVER  2
+  264   101  MOMENTUM  2
+   47   154  KICKOUT
+  125   154  Ballyhale Shamrock held 44% Restart Share (24 of 54).
+   47   228  KICKOUT
+  125   228  29% of Ballyhale Shamrock's puckout wins produced restart-origin point value; 50% of their losses produced restart-origin point value for Na Piarsaigh.
+   47   302  TURNOVER
+  137   302  57% of Ballyhale Shamrock's won turnovers produced turnover-origin point value (8 Points (8 pts) from 14 wins).
+   47   376  TURNOVER
+  137   376  Ballyhale Shamrock won 14 turnovers; 3 did not lead to a shot.
+   47   450  MOMENTUM
+  142   450  Na Piarsaigh had a 3-score unanswered spell.
+   47   524  MOMENTUM
+  142   524  Na Piarsaigh recorded more scoring runs than Ballyhale Shamrock (5 vs 4).
+ 1896  1060  176 events
+
+===== PAGE 27 (1920x1080) =====
+   24    38  Chain Intelligence
+ 1896    38  27 / 30
+ 1847    59  CHAIN
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   40    99  CHAIN PATTERNS
+  670    99  PUCKOUT CHAINS
+ 1300    99  SCORING MOMENTUM
+   38   124  PATTERN
+  376   124  Ballyhale…
+  620   124  Na Piarsaigh
+ 1298   124  Ballyhale… — Best Run
+  668   127  Total puckouts
+ 1250   127  54
+   38   147  Puckout Won → Score (rule match)
+  376   147  5
+  620   147  8
+ 1298   147  Consecutive scores
+ 1880   147  2
+  668   153  Won
+ 1250   153  24
+   38   173  Other team lost puckout → Score (rule match)
+  376   173  3
+  620   173  8
+ 1298   173  Period / Segment
+ 1880   173  1H · Seg 3
+  668   179  Lost / Conceded
+ 1250   179  30
+   38   199  Turnover Won → Score (rule match)
+  376   199  8
+  620   199  —
+ 1298   204  Na Piarsaigh — Best Run
+  668   211  Won → Origin score
+ 1250   211  7 (29%)
+   38   225  Turnover Won → Shot
+  376   225  11
+  620   225  —
+ 1298   227  Consecutive scores
+ 1880   227  3
+  668   237  Lost → Origin score against
+ 1250   237  15 (50%)
+   38   251  Free Won → Goal
+  376   251  0
+  620   251  —
+ 1298   253  Period / Segment
+ 1880   253  1H · Seg 2
+  957   282  Possession rate: 44%
+ 1298   288  ALL SCORING RUNS (9 total)
+   38   294  TOTAL RULE MATCHES
+  376   294  27
+  620   294  —
+ 1298   311  Ballyhale…  ×2  2H S6
+ 1880   311  2 pts
+   38   320  (rule match) counts exact rule matches. The origin panels follow the full possession.
+ 1298   337  Na…  ×3  2H S6
+ 1880   337  3 pts
+   38   338  — not measurable: those wins were logged as the other team's loss or concession.
+ 1298   363  Ballyhale…  ×2  2H S5
+ 1880   363  2 pts
+   38   374  SCORING RUNS (≥2 consecutive)
+ 1298   389  Na…  ×2  2H S5
+ 1880   389  2 pts
+   38   397  Longest run (For)
+  620   397  2 pts
+ 1298   415  Na…  ×3  2H S4
+ 1880   415  3 pts
+   38   423  Longest run (Opp)
+  620   423  3 pts
+ 1298   441  Ballyhale…  ×2  2H S4
+ 1880   441  2 pts
+   38   449  Total runs detected
+  620   449  9
+ 1298   467  Ballyhale…  ×2  1H S3
+ 1880   467  2 pts
+ 1298   493  Na…  ×3  1H S2
+ 1880   493  3 pts
+ 1298   519  Na…  ×2  1H S1
+ 1880   519  2 pts
+  666   543  Origin possessions include 5 placed frees won during kickout-origin possessions (Ballyhale Sham 1 · Na Piarsaigh 4) — the scoring ledger attributes those scores to placed balls.
+  670   586  TURNOVER CHAINS
+  668   614  Total turnovers
+ 1250   614  29
+  668   640  Won
+ 1250   640  14
+  668   666  Lost
+ 1250   666  15
+  668   698  Won → Origin score
+ 1250   698  8 (57%)
+  668   724  Won → Shot
+ 1250   724  3 (21%)
+  668   750  Lost → Origin score against
+ 1250   750  4
+ 1896  1060  176 events
+
+===== PAGE 28 (1920x1080) =====
+   24    38  Restart Chain Analysis
+ 1896    38  28 / 30
+ 1847    59  CHAIN
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   40    99  PUCKOUT POSSESSION OVERVIEW
+  670    99  BALLYHALE… — PUCKOUT TYPES
+ 1300    99  PUCKOUT CHAIN OUTCOMES
+  668   124  OWN PUCKOUTS RETAINED
+ 1298   124  CHAIN RULE MATCHES
+   36   146  Ballyhale… 44%
+  618   146  56% Na Piarsaigh
+  668   147  Clean Won
+ 1250   147  4
+ 1298   147  Won → Score (rule match) — Ballyhale…
+ 1880   147  5
+  668   173  Break Won
+ 1250   173  7
+ 1298   173  Won → Score (rule match) — Na…
+ 1880   173  8
+   38   177  Total puckout events
+  620   177  54
+  668   199  Foul Won
+ 1250   199  0
+ 1298   199  Other team lost → Score (rule match) — Ballyha…
+ 1880   199  3
+   38   203  Ballyhale… won
+  620   203  24
+ 1298   225  Other team lost → Score (rule match) — Na…
+ 1880   225  8
+   38   229  Na Piarsaigh won
+  620   229  30
+  668   230  OWN PUCKOUTS CONCEDED
+  668   253  Clean Lost
+ 1250   253  6
+ 1298   260  RESTART ORIGIN
+   38   263  Won → Score (origin)
+  620   263  7 (29%)
+ 1298   278  Scores that started from a puckout.
+  668   279  Break Lost
+ 1250   279  8
+   38   289  Lost → Score Against (origin)
+  620   289  15 (50%)
+ 1298   301  Ballyhale… — Restart Origin
+ 1880   301  7 Points (7 pts)
+  668   305  Foul Conceded
+ 1250   305  0
+   38   320  BY HALF
+ 1298   327  Ballyhale… — Shots from Kickout
+ 1880   327  13
+  668   331  Kicked Dead
+ 1250   331  0
+   38   343  1H — Won / Lost
+  620   343  11 / 16
+ 1298   353  Na Piarsaigh — Restart Origin
+ 1880   353  1 Goal, 14 Points (17 pts)
+   38   369  1H — Restart Share
+  620   369  41%
+ 1298   388  Ballyhale… POSSESSION OUTCOMES
+   38   395  1H — Won → Score (origin)
+  620   395  4
+ 1298   411  Won puckouts total
+ 1880   411  24
+   38   421  2H — Won / Lost
+  620   421  13 / 14
+ 1298   437  → Generated a shot
+ 1880   437  13 (54%)
+   38   447  2H — Restart Share
+  620   447  48%
+ 1298   463  → Restart Origin
+ 1880   463  7 Points (7 pts) (29% of wins)
+   38   473  2H — Won → Score (origin)
+  620   473  3
+ 1298   489  → No shot attempt
+ 1880   489  11
+   38   507  Avg secs to score (won Puckout)
+  620   507  36s
+ 1298   523  Avg time to score (Puckout)
+ 1880   523  36s avg
+   38   532  Origin possessions include 5 placed frees won during kickout-origin possessions (Ballyhale Sham 1 · Na Piarsaigh 4) — the scoring ledger attributes those scores to placed balls.
+ 1298   552  OVERALL POSSESSION RATE
+  670   586  NA PIARSAIGH — PUCKOUT TYPES
+ 1296   592  Ballyhale… 44%
+ 1878   592  56% Na…
+  668   611  OWN PUCKOUTS RETAINED
+  668   634  Clean Won
+ 1250   634  5
+  668   660  Break Won
+ 1250   660  7
+  668   686  Foul Won
+ 1250   686  0
+  668   717  OWN PUCKOUTS CONCEDED
+  668   740  Clean Lost
+ 1250   740  3
+  668   766  Break Lost
+ 1250   766  8
+  668   792  Foul Conceded
+ 1250   792  0
+  668   818  Kicked Dead
+ 1250   818  0
+ 1896  1060  176 events
+
+===== PAGE 29 (1920x1080) =====
+   24    38  Turnover Chain Analysis
+ 1896    38  29 / 30
+ 1847    59  CHAIN
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   40    99  BALLYHALE… — TURNOVER ATTACK
+  670    99  NA PIARSAIGH — TURNOVER ATTACK
+ 1300    99  TURNOVER PUNISHMENT SUMMARY
+ 1298   124  ORIGIN SCORES FROM WON TURNOVERS
+   38   127  Turnovers won / gained
+  620   127  14
+  668   127  Turnovers won / gained
+ 1250   127  15
+   38   153  → Origin score
+  620   153  8 (57%)
+  668   153  → Origin score
+ 1250   153  4 (27%)
+ 1296   160  Ballyhale… 67%
+ 1878   160  33% Na…
+   38   179  → Shot / wide, no score
+  620   179  3 (21%)
+  668   179  → Shot / wide, no score
+ 1250   179  6 (40%)
+ 1298   191  Ballyhale… — Won → Origin score %
+ 1880   191  57%
+   38   205  → No shot attempt
+  620   205  3 (21%)
+  668   205  → No shot attempt
+ 1250   205  5 (33%)
+ 1298   217  Na Piarsaigh — Won → Origin score %
+ 1880   217  27%
+   38   231  → Attack immediately lost
+  620   231  3 (21%)
+  668   231  → Attack immediately lost
+ 1250   231  0 (0%)
+ 1298   243  Ballyhale… — Won → Shot %
+ 1880   243  79%
+   38   257  Avg time to outcome
+  620   257  26s
+  668   257  Avg time to outcome
+ 1250   257  27s
+ 1298   269  Na Piarsaigh — Won → Shot %
+ 1880   269  67%
+   38   288  BY HALF
+  668   288  BY HALF
+ 1298   302  CHAIN RULE MATCHES
+   38   311  1H — Turnovers won
+  620   311  4
+  668   311  1H — Turnovers won
+ 1250   311  7
+ 1298   325  T/O Won → Score (rule match) — Ballyhale…
+ 1880   325  8
+   38   337  1H — Scored
+  620   337  2 (50%)
+  668   337  1H — Scored
+ 1250   337  1 (14%)
+ 1298   351  T/O Won → Score (rule match) — Na…
+ 1880   351  —
+   38   363  2H — Turnovers won
+  620   363  10
+  668   363  2H — Turnovers won
+ 1250   363  8
+ 1298   377  T/O Won → Shot   (Ballyhale…)
+ 1880   377  11
+   38   389  2H — Scored
+  620   389  6 (60%)
+  668   389  2H — Scored
+ 1250   389  3 (38%)
+ 1298   403  T/O Won → Shot   (Na…)
+ 1880   403  —
+   38   420  HOW TURNOVERS WERE WON / GAINED
+  668   420  HOW TURNOVERS WERE WON / GAINED
+ 1298   436  DAMAGE CONCEDED FROM TURNOVERS LOST
+   38   443  Tackle / Press
+  620   443  5
+  668   443  Tackle / Press
+ 1250   443  5
+ 1298   459  Ballyhale… lost → OPP scored
+ 1880   459  4 (27%)
+   38   469  Swarm / Intercept
+  620   469  0
+  668   469  Swarm / Intercept
+ 1250   469  0
+ 1298   485  Ballyhale… lost → OPP shot
+ 1880   485  10 (67%)
+   38   495  Opposition unforced error
+  620   495  0
+  668   495  Opposition unforced error
+ 1250   495  0
+ 1298   511  Na Piarsaigh lost → FOR scored
+ 1880   511  —
+   38   521  Opposition slack pass
+  620   521  0
+  668   521  Opposition slack pass
+ 1250   521  0
+ 1298   537  Na Piarsaigh lost → FOR shot
+ 1880   537  —
+ 1298   570  NET TURNOVER PRESSURE
+ 1298   593  Score differential from T/Os
+ 1880   593  +4 Ballyhale…
+ 1298   619  Shot differential from T/Os
+ 1880   619  +1 Ballyhale…
+ 1298   652  TURNOVER OUTCOMES (BOTH TEAMS)
+ 1298   675  Total turnovers gained
+ 1880   675  29
+ 1298   701  Led to score
+ 1880   701  12 (41%)
+ 1298   727  Led to shot (no score)
+ 1880   727  9 (31%)
+ 1298   753  Attack immediately lost
+ 1880   753  3 (10%)
+ 1298   779  No shot generated
+ 1880   779  8 (28%)
+ 1298   818  POSSESSION CHAIN INSIGHTS
+ 1298   841  • Restarts Won → Scores: 7 of 24 won restarts produced restart-origin point value (7 Points (7 pts), 29%)
+ 1298   867  • Conceded restarts produced restart-origin point value for the opposition (1 Goal, 14 Points (17 pts)) in 50% of cases (15 of 30)
+ 1298   893  • Turnover wins produced turnover-origin point value (8 Points (8 pts), 57% conversion)
+ 1896  1060  176 events
+
+===== PAGE 30 (1920x1080) =====
+   24    38  Scoring Momentum
+ 1896    38  30 / 30
+ 1847    59  CHAIN
+   24    62  Ballyhale Shamrocks v Na Piarsaigh
+ 1896    62  PáircVision
+   40    99  UNANSWERED SCORING RUNS (≥2 CONSECUTIVE)
+  670    99  FIRST HALF — SCORING RUNS
+ 1300    99  RUN QUALITY & SEGMENT DETAIL
+   38   124  TEAM  ×SCORES  WHEN  SCORE VALUE
+ 1298   124  BEST SCORING RUNS
+  668   127  Ballyhale… runs (≥2)
+ 1250   127  1
+   38   147  Na Piarsaigh
+  214   147  ×2
+  284   147  1H 3'–5'
+  620   147  0-02 (2)
+ 1298   147  Ballyhale… longest
+ 1880   147  ×2  1H 33'  0-02 (2)
+  668   153  Ballyhale… run-scores
+ 1250   153  2
+   38   173  Na Piarsaigh
+  214   173  ×3
+  284   173  1H 16'–19'
+  620   173  0-03 (3)
+ 1298   173  Na Piarsaigh longest
+ 1880   173  ×3  1H 16'–19'  0-03 (3)
+  668   179  Na Piarsaigh runs (≥2)
+ 1250   179  2
+   38   199  Ballyhale…
+  214   199  ×2
+  284   199  1H 33'
+  620   199  0-02 (2)
+ 1298   199  Ballyhale… total runs
+ 1880   199  4
+  668   205  Na Piarsaigh run-scores
+ 1250   205  5
+   38   225  Ballyhale…
+  214   225  ×2
+  284   225  2H 2'–3'
+  620   225  0-02 (2)
+ 1298   225  Na Piarsaigh total runs
+ 1880   225  5
+  668   237  Longest 1H run
+ 1250   237  Na Piarsaigh ×3  1H 16'–19'
+   38   251  Na Piarsaigh
+  214   251  ×3
+  284   251  2H 7'–8'
+  620   251  0-03 (3)
+ 1298   251  Ballyhale… total run-scores
+ 1880   251  8
+  668   263  1H momentum edge
+ 1250   263  Na Piarsaigh
+   38   277  Na Piarsaigh
+  214   277  ×2
+  284   277  2H 17'–18'
+  620   277  0-02 (2)
+ 1298   277  Na Piarsaigh total run-scores
+ 1880   277  13
+  668   295  1H late burst (seg 3)
+ 1250   295  Ballyhale…: 2 pts  Na…: 0 pts
+   38   303  Ballyhale…
+  214   303  ×2
+  284   303  2H 19'–20'
+  620   303  1-01 (4)
+ 1298   303  Net run-score advantage
+ 1880   303  -5 Na…
+   38   329  Na Piarsaigh
+  214   329  ×3
+  284   329  2H 22'–24'
+  620   329  2-01 (7)
+ 1298   336  RESPONSE AFTER OPPOSITION RUN
+   38   355  Ballyhale…
+  214   355  ×2
+  284   355  2H 32'–34'
+  620   355  0-02 (2)
+ 1298   359  Ballyhale… avg response
+ 1880   359  7m 39s
+ 1298   385  Ballyhale… fastest response
+ 1880   385  1m 3s
+ 1298   411  Na Piarsaigh avg response
+ 1880   411  2m 48s
+ 1298   437  Na Piarsaigh fastest response
+ 1880   437  1m 53s
+ 1298   470  RUN-SCORES BY SEGMENT
+ 1298   493  1H Early (0–10)
+ 1880   493  Na… +2
+ 1298   519  1H Mid   (11–20)
+ 1880   519  Na… +3
+ 1298   545  1H Late  (21–30+)
+ 1880   545  Ballyhale… +2
+ 1298   571  2H Early (0–10)
+ 1880   571  Na… +1
+  670   586  SECOND HALF — SCORING RUNS
+ 1298   597  2H Mid   (11–20)
+ 1880   597  Level
+  668   614  Ballyhale… runs (≥2)
+ 1250   614  3
+ 1298   623  2H Late  (21–30+)
+ 1880   623  Na… +1
+  668   640  Ballyhale… run-scores
+ 1250   640  6
+  668   666  Na Piarsaigh runs (≥2)
+ 1250   666  3
+  668   692  Na Piarsaigh run-scores
+ 1250   692  8
+  668   724  Longest 2H run
+ 1250   724  Na Piarsaigh ×3  2H 7'–8'
+  668   750  2H momentum edge
+ 1250   750  Na Piarsaigh
+  668   782  2H late burst (seg 6)
+ 1250   782  Ballyhale…: 2 pts  Na…: 3 pts
+ 1896  1060  176 events

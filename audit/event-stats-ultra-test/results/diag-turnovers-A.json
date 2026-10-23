@@ -1,0 +1,25 @@
+[
+ {
+  "turnover": "A-019",
+  "wonBy": "OPP",
+  "refNext": "A-020",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "A-020:TURNOVER/FOR/HP Error@559",
+   "A-021:WIDE/FOR/Play@593"
+  ]
+ },
+ {
+  "turnover": "A-030",
+  "wonBy": "OPP",
+  "refNext": "A-031",
+  "refScore": false,
+  "prodNext": null,
+  "prodScore": false,
+  "eventsInWindow": [
+   "A-031:TURNOVER/FOR/Tackle@902"
+  ]
+ }
+]
