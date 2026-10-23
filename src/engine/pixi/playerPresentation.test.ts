@@ -42,21 +42,27 @@ describe("player presentation state", () => {
     expect(DEFAULT_TRAINING_PLAYER_PRESENTATION).toBe("practice");
   });
 
-  it("sanitises to the three presentations only", () => {
+  it("sanitises to the four presentations only", () => {
     expect(sanitizePlayerPresentation("normal")).toBe("normal");
     expect(sanitizePlayerPresentation("compact")).toBe("compact");
+    expect(sanitizePlayerPresentation("mini")).toBe("mini");
     expect(sanitizePlayerPresentation("practice")).toBe("practice");
-    for (const bad of [undefined, null, "", "Practice", "small", 1, {}]) {
+    for (const bad of [undefined, null, "", "Practice", "Mini", "small", 1, {}]) {
       expect(sanitizePlayerPresentation(bad)).toBeNull();
     }
   });
 
-  it("round-trips between the presentation and the engine's compact/practice flags", () => {
-    for (const presentation of ["normal", "compact", "practice"] as const) {
+  it("round-trips between the presentation and the engine's compact/mini/practice flags", () => {
+    for (const presentation of ["normal", "compact", "mini", "practice"] as const) {
       expect(resolvePlayerPresentation(playerPresentationFlags(presentation))).toBe(presentation);
     }
-    // Practice wins even if Compact were also set — it already uses the Compact scale.
-    expect(resolvePlayerPresentation({ compact: true, practice: true })).toBe("practice");
+    // Mini is Compact plus the Mini flag.
+    expect(playerPresentationFlags("mini")).toEqual({ compact: true, mini: true, practice: false });
+    // Practice wins even if Compact (or Mini) were also set — it already uses the Compact scale.
+    expect(resolvePlayerPresentation({ compact: true, mini: false, practice: true })).toBe("practice");
+    expect(resolvePlayerPresentation({ compact: true, mini: true, practice: true })).toBe("practice");
+    // Mini never draws without Compact.
+    expect(resolvePlayerPresentation({ compact: false, mini: true, practice: false })).toBe("normal");
   });
 });
 

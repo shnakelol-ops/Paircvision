@@ -132,8 +132,8 @@ describe("player presentation by surface", () => {
     expect(resolveSurfaceDefaultPlayerPresentation("whiteboard")).toBe("normal");
   });
 
-  it("offers Normal | Compact | Practice in that order", () => {
-    expect(PLAYER_PRESENTATION_CHOICES.map((choice) => choice.label)).toEqual(["Normal", "Compact", "Practice"]);
+  it("offers Normal | Compact | Mini | Practice in that order", () => {
+    expect(PLAYER_PRESENTATION_CHOICES.map((choice) => choice.label)).toEqual(["Normal", "Compact", "Mini", "Practice"]);
   });
 });
 

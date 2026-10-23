@@ -85,7 +85,6 @@ import {
   PLAYER_TOKEN_SIZE_CHOICES,
   playerTokenSizeFlags,
   resolvePlayerTokenSize,
-  tokenStyleSupportsMini,
   type PlayerTokenSize,
 } from "../engine/pixi/playerTokenSize";
 import {
@@ -1231,18 +1230,6 @@ const PLAYER_TOKENS_SUBMENU_DIVIDER_STYLE: CSSProperties = {
   height: "1px",
   background: "rgba(224, 236, 248, 0.16)",
   margin: "1px 0",
-};
-
-const COMPACT_TOKENS_TOGGLE_ROW_STYLE: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "7px",
-  color: "rgba(232, 241, 249, 0.95)",
-  fontFamily: "Inter, system-ui, sans-serif",
-  fontSize: "10px",
-  fontWeight: 620,
-  cursor: "pointer",
-  padding: "3px 2px",
 };
 
 function formatRecordTime(secs: number): string {
@@ -2742,8 +2729,8 @@ export default function TacticalPadLiteClean({
   const [isShapeLinksPanelOpen, setIsShapeLinksPanelOpen] = useState(false);
   const [tacticalTokenStyle, setTacticalTokenStyle] = useState<TacticalPlayerTokenStyle>("vision-v3");
   const [isCompactPlayerTokens, setIsCompactPlayerTokens] = useState(false);
-  // Bib Token's Mini size — set together with Compact (see playerTokenSize.ts),
-  // so any style without Mini falls back to Compact. Never saved with a board.
+  // Mini size (every style) — set together with Compact (see
+  // playerTokenSize.ts). Saved only on Training, as its "mini" presentation.
   const [isMiniPlayerTokens, setIsMiniPlayerTokens] = useState(false);
   // Training's Practice presentation (fixed Vision V3, Compact scale, no
   // identity label). Always false on Pitch and Whiteboard.
@@ -2753,30 +2740,23 @@ export default function TacticalPadLiteClean({
   const usesPlayerPresentation = surfaceUsesPlayerPresentation(slateSurface);
   const playerPresentation = resolvePlayerPresentation({
     compact: isCompactPlayerTokens,
+    mini: isMiniPlayerTokens,
     practice: isPracticePlayerTokens,
   });
   const applyPlayerPresentation = (presentation: TacticalPlayerPresentation) => {
     const flags = playerPresentationFlags(presentation);
     setIsCompactPlayerTokens(flags.compact);
+    setIsMiniPlayerTokens(flags.mini);
     setIsPracticePlayerTokens(flags.practice);
   };
-  // A coach's own Normal / Compact / Practice pick leaves Mini; a board load
-  // (applyPlayerPresentation alone) keeps it, as it keeps the token style.
-  const selectPlayerPresentation = (presentation: TacticalPlayerPresentation) => {
-    applyPlayerPresentation(presentation);
-    setIsMiniPlayerTokens(false);
-  };
-  const tokenStyleHasMini = tokenStyleSupportsMini(tacticalTokenStyle);
   const playerTokenSize = resolvePlayerTokenSize({
     compact: isCompactPlayerTokens,
     mini: isMiniPlayerTokens,
-    style: tacticalTokenStyle,
   });
   const applyPlayerTokenSize = (size: PlayerTokenSize) => {
     const flags = playerTokenSizeFlags(size);
     setIsCompactPlayerTokens(flags.compact);
     setIsMiniPlayerTokens(flags.mini);
-    setIsPracticePlayerTokens(false);
   };
   const [playerTokensSubmenuOpen, setPlayerTokensSubmenuOpen] = useState(false);
   const [surfaceSubmenuOpen, setSurfaceSubmenuOpen] = useState(false);
@@ -6633,46 +6613,25 @@ export default function TacticalPadLiteClean({
                 </span>
               </button>
               {playerTokensSubmenuOpen && usesPlayerPresentation ? (
-                // Training only: Normal | Compact | Practice replaces the
-                // Compact checkbox, and is saved with the board. Practice is a
+                // Training: Normal | Compact | Mini | Practice, saved with the
+                // board (Pitch has Normal | Compact | Mini below). Practice is a
                 // fixed Vision V3 representation, so Style is hidden while on.
-                // Bib Token adds Mini after Compact (saved as Compact).
                 <div style={PLAYER_TOKENS_SUBMENU_STYLE}>
                   <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Size</p>
                   <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
-                    {PLAYER_PRESENTATION_CHOICES.flatMap((choice) => {
-                      const isActive =
-                        playerPresentation === choice.value && !(choice.value === "compact" && playerTokenSize === "mini");
-                      const presentationButton = (
-                        <button
-                          key={`player-presentation-${choice.value}`}
-                          type="button"
-                          className="control-button"
-                          style={isActive ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
-                          aria-pressed={isActive}
-                          onClick={() => selectPlayerPresentation(choice.value)}
-                        >
-                          {isActive ? "✓ " : ""}
-                          {choice.label}
-                        </button>
-                      );
-                      if (choice.value !== "compact" || !tokenStyleHasMini) return [presentationButton];
-                      const isMiniActive = !isPracticePlayerTokens && playerTokenSize === "mini";
-                      return [
-                        presentationButton,
-                        <button
-                          key="player-presentation-mini"
-                          type="button"
-                          className="control-button"
-                          style={isMiniActive ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
-                          aria-pressed={isMiniActive}
-                          onClick={() => applyPlayerTokenSize("mini")}
-                        >
-                          {isMiniActive ? "✓ " : ""}
-                          Mini
-                        </button>,
-                      ];
-                    })}
+                    {PLAYER_PRESENTATION_CHOICES.map((choice) => (
+                      <button
+                        key={`player-presentation-${choice.value}`}
+                        type="button"
+                        className="control-button"
+                        style={playerPresentation === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
+                        aria-pressed={playerPresentation === choice.value}
+                        onClick={() => applyPlayerPresentation(choice.value)}
+                      >
+                        {playerPresentation === choice.value ? "✓ " : ""}
+                        {choice.label}
+                      </button>
+                    ))}
                   </div>
                   {!isPracticePlayerTokens ? (
                     <>
@@ -6714,37 +6673,22 @@ export default function TacticalPadLiteClean({
                     ))}
                   </div>
                   <div style={PLAYER_TOKENS_SUBMENU_DIVIDER_STYLE} />
-                  {tokenStyleHasMini ? (
-                    // Bib Token only: Normal | Compact | Mini replaces the
-                    // Compact checkbox. Every other style keeps the checkbox.
-                    <>
-                      <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Size</p>
-                      <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
-                        {PLAYER_TOKEN_SIZE_CHOICES.map((choice) => (
-                          <button
-                            key={`player-token-size-${choice.value}`}
-                            type="button"
-                            className="control-button"
-                            style={playerTokenSize === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
-                            aria-pressed={playerTokenSize === choice.value}
-                            onClick={() => applyPlayerTokenSize(choice.value)}
-                          >
-                            {playerTokenSize === choice.value ? "✓ " : ""}
-                            {choice.label}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  ) : (
-                    <label style={COMPACT_TOKENS_TOGGLE_ROW_STYLE}>
-                      <input
-                        type="checkbox"
-                        checked={isCompactPlayerTokens}
-                        onChange={(event) => setIsCompactPlayerTokens(event.target.checked)}
-                      />
-                      Compact Tokens
-                    </label>
-                  )}
+                  <p style={TOKEN_STYLE_MENU_LABEL_STYLE}>Size</p>
+                  <div style={TOKEN_STYLE_MENU_ROW_STYLE}>
+                    {PLAYER_TOKEN_SIZE_CHOICES.map((choice) => (
+                      <button
+                        key={`player-token-size-${choice.value}`}
+                        type="button"
+                        className="control-button"
+                        style={playerTokenSize === choice.value ? TOKEN_STYLE_MENU_BUTTON_ACTIVE_STYLE : TOKEN_STYLE_MENU_BUTTON_STYLE}
+                        aria-pressed={playerTokenSize === choice.value}
+                        onClick={() => applyPlayerTokenSize(choice.value)}
+                      >
+                        {playerTokenSize === choice.value ? "✓ " : ""}
+                        {choice.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : null}
             </div>

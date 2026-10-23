@@ -184,33 +184,105 @@ function drawPatternAccent(
   }
 }
 
-function drawShirtGlyph(target: Graphics, centerY: number, size: number, color: number, alpha = 0.18): void {
+function shirtGlyphPoints(centerY: number, size: number): number[] {
   const top = centerY - size * 0.5;
   const bottom = centerY + size * 0.5;
-  target
-    .poly([
-      -size * 0.64,
-      top + size * 0.16,
-      -size * 0.3,
-      top,
-      -size * 0.12,
-      top + size * 0.14,
-      size * 0.12,
-      top + size * 0.14,
-      size * 0.3,
-      top,
-      size * 0.64,
-      top + size * 0.16,
-      size * 0.42,
-      top + size * 0.5,
-      size * 0.38,
-      bottom,
-      -size * 0.38,
-      bottom,
-      -size * 0.42,
-      top + size * 0.5,
-    ])
-    .fill({ color, alpha });
+  return [
+    -size * 0.64,
+    top + size * 0.16,
+    -size * 0.3,
+    top,
+    -size * 0.12,
+    top + size * 0.14,
+    size * 0.12,
+    top + size * 0.14,
+    size * 0.3,
+    top,
+    size * 0.64,
+    top + size * 0.16,
+    size * 0.42,
+    top + size * 0.5,
+    size * 0.38,
+    bottom,
+    -size * 0.38,
+    bottom,
+    -size * 0.42,
+    top + size * 0.5,
+  ];
+}
+
+function drawShirtGlyph(target: Graphics, centerY: number, size: number, color: number): void {
+  target.poly(shirtGlyphPoints(centerY, size)).fill({ color, alpha: 0.18 });
+}
+
+/** Bib Token jersey height as a share of Vision V3's innerRadius. */
+const BIB_JERSEY_SIZE = 1.55;
+/** Bib Token backdrop: the team colour darkened this far toward slate. */
+const BIB_BACKDROP_DARKEN = 0.5;
+/** Bib Token Gradient kit: three flat bands, lightest at the top. */
+export const BIB_GRADIENT_BAND_LIGHTEN = [0.32, 0.16, 0] as const;
+
+/**
+ * The Bib Token: flat, numberless. A disc in a darkened shade of the team
+ * colour with a subtle rim, and a clean jersey silhouette in the kit itself.
+ * The kit pattern is Vision V3's own drawPatternAccent, clipped to the
+ * jersey instead of the disc so the bands stay large and high-contrast at
+ * Mini. No gloss bands, translucent glyph, shadow, label or tick.
+ */
+function drawBibToken(
+  art: Container,
+  {
+    discRadius,
+    rimWidth,
+    innerRadius,
+    baseColor,
+    kitPattern,
+    patternColor,
+    patternAlpha,
+  }: {
+    discRadius: number;
+    rimWidth: number;
+    innerRadius: number;
+    baseColor: number;
+    kitPattern: VisionV3KitPattern;
+    patternColor: number;
+    patternAlpha: number;
+  },
+): void {
+  const rim = new Graphics();
+  rim.circle(0, 0, discRadius).fill({ color: mixColor(baseColor, 0x0f172a, 0.35) });
+  art.addChild(rim);
+
+  const backdrop = new Graphics();
+  backdrop.circle(0, 0, discRadius - rimWidth).fill({ color: mixColor(baseColor, 0x0f172a, BIB_BACKDROP_DARKEN) });
+  art.addChild(backdrop);
+
+  const jerseySize = innerRadius * BIB_JERSEY_SIZE;
+  const jerseyY = innerRadius * 0.04;
+  const jerseyPoints = shirtGlyphPoints(jerseyY, jerseySize);
+  const jersey = new Graphics();
+  jersey.poly(jerseyPoints).fill({ color: baseColor });
+  if (kitPattern === "gradient") {
+    const top = jerseyY - jerseySize / 2;
+    const bandH = jerseySize / BIB_GRADIENT_BAND_LIGHTEN.length;
+    BIB_GRADIENT_BAND_LIGHTEN.forEach((amount, index) => {
+      jersey
+        .rect(-jerseySize, top + bandH * index, jerseySize * 2, bandH)
+        .fill({ color: mixColor(baseColor, 0xffffff, amount) });
+    });
+  }
+  drawPatternAccent(jersey, kitPattern, patternColor, jerseySize * 0.62, patternAlpha);
+  const jerseyMask = new Graphics();
+  jerseyMask.poly(jerseyPoints).fill({ color: 0xffffff });
+  jersey.mask = jerseyMask;
+  jersey.addChild(jerseyMask);
+  art.addChild(jersey);
+
+  const jerseyEdge = new Graphics();
+  jerseyEdge
+    .poly(jerseyPoints)
+    .stroke({ color: mixColor(baseColor, 0xffffff, 0.35), width: innerRadius * 0.08, join: "round" });
+  art.addChild(jerseyEdge);
 }
 
 function drawPersonCircleGlyph(target: Graphics, radius: number, color: number, unit: number): void {
@@ -224,15 +296,10 @@ function drawPersonCircleGlyph(target: Graphics, radius: number, color: number, 
 }
 
 /**
- * "standard" is the Vision V3 token. "bib" is the Bib Token: the same disc,
- * rim, team colour and kit pattern, but no identity label, no contact
- * shadow, no person glyph and no orientation tick — only the jersey glyph,
- * drawn stronger so the bib reads on its own at Compact and Mini sizes.
+ * "standard" is the Vision V3 token. "bib" is the flat Bib Token (see
+ * drawBibToken): the same disc diameter and kit, no label.
  */
 export type VisionV3TokenVariant = "standard" | "bib";
-
-/** Jersey glyph opacity on the Bib Token (Vision V3's own glyph is 0.18). */
-export const BIB_TOKEN_SHIRT_GLYPH_ALPHA = 0.5;
 
 export function createVisionV3PlayerToken({
   label,
@@ -348,6 +415,16 @@ export function createVisionV3PlayerToken({
   }
   art.addChild(shadow);
 
+  const patternColor = hasAuthoredPatternColor
+    ? accentColor
+    : mixColor(accentColor, 0xffffff, pitchBlendSensitivePalette ? 0.2 : 0.1);
+  const patternAlpha = hasAuthoredPatternColor ? 1 : 0.72;
+
+  if (isBib) {
+    drawBibToken(art, { discRadius, rimWidth, innerRadius, baseColor, kitPattern, patternColor, patternAlpha });
+    return { token, shadow };
+  }
+
   const rim = new Graphics();
   rim.circle(0, 0, discRadius).fill({ color: rimColor });
   art.addChild(rim);
@@ -360,27 +437,12 @@ export function createVisionV3PlayerToken({
     .fill({ color: topLight, alpha: 0.22 })
     .ellipse(0, coreVisualRadius * 0.62, coreVisualRadius * 0.92, coreVisualRadius * 0.3)
     .fill({ color: bottomDark, alpha: 0.16 });
-  drawPatternAccent(
-    disc,
-    kitPattern,
-    hasAuthoredPatternColor ? accentColor : mixColor(accentColor, 0xffffff, pitchBlendSensitivePalette ? 0.2 : 0.1),
-    innerRadius * 0.9,
-    hasAuthoredPatternColor ? 1 : 0.72,
-  );
+  drawPatternAccent(disc, kitPattern, patternColor, innerRadius * 0.9, patternAlpha);
   const patternMask = new Graphics();
   patternMask.circle(0, 0, coreVisualRadius).fill({ color: 0xffffff });
   disc.mask = patternMask;
   disc.addChild(patternMask);
   art.addChild(disc);
-
-  if (isBib) {
-    // Light kits get a dark jersey glyph, so the bib never vanishes on white.
-    const glyphColor = luminance(baseColor) > 170 ? 0x0f172a : 0xffffff;
-    const bibLayer = new Graphics();
-    drawShirtGlyph(bibLayer, 0, innerRadius * 1.24, glyphColor, BIB_TOKEN_SHIRT_GLYPH_ALPHA);
-    art.addChild(bibLayer);
-    return { token, shadow };
-  }
 
   const iconLayer = new Graphics();
   drawShirtGlyph(iconLayer, -innerRadius * 0.02, innerRadius * 0.98, 0xffffff);

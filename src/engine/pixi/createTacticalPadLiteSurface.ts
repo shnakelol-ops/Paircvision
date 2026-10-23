@@ -109,6 +109,7 @@ import {
 } from "./tacticalSlateDefaultPlayers";
 import {
   DEFAULT_TRAINING_PLAYER_PRESENTATION,
+  playerPresentationFlags,
   resolvePlayerPresentation,
   sanitizePlayerPresentation,
   type TacticalPlayerPresentation,
@@ -343,8 +344,8 @@ export type TacticalPadLiteSurface = {
   setTacticalTokenStyle: (style: TacticalPlayerTokenStyle) => void;
   setCompactPlayerTokens: (enabled: boolean) => void;
   /**
-   * Bib Token Mini size (see playerTokenSize.ts). Only drawn while the style
-   * is "bib" and Practice is off; otherwise ignored in favour of Compact.
+   * Mini size (see playerTokenSize.ts), for every style. Only drawn while
+   * Compact is on and Practice is off.
    */
   setMiniPlayerTokens: (enabled: boolean) => void;
   /** Practice presentation (Training): fixed Vision V3, Compact scale, no identity label. */
@@ -437,7 +438,7 @@ type TacticalPadLiteSurfaceOptions = {
   whiteboardDrawColor?: number;
   tacticalTokenStyle?: TacticalPlayerTokenStyle;
   compactPlayerTokens?: boolean;
-  /** Bib Token Mini size at creation (see setMiniPlayerTokens). Default off. */
+  /** Mini size at creation (see setMiniPlayerTokens). Default off. */
   miniPlayerTokens?: boolean;
   /** Practice presentation at creation (see setPracticePlayerTokens). Default off. */
   practicePlayerTokens?: boolean;
@@ -1200,10 +1201,42 @@ function teamColor(
   return colors?.blue ?? "blue";
 }
 
+type PlayerTokenSizeFlags = {
+  compact: boolean;
+  mini: boolean;
+  practice: boolean;
+  style: TacticalPlayerTokenStyle;
+};
+
+/**
+ * Size multiplier on a player token's idle/drag scale for the board's
+ * Normal / Compact / Mini / Practice state, for every token style.
+ *
+ * Under-Pill's own assembly renders UNDER_PILL_NORMAL_SHRINK smaller than the
+ * raw token radius in Normal Mode (see createNamePillPlayerToken.ts). Its
+ * Compact multiplier is compensated so its on-screen size stays exactly what
+ * it was before that reduction — every other style is untouched. Mini is
+ * MINI_TOKEN_SIZE_RATIO of each style's own Compact. Practice always draws
+ * Vision V3 at plain Compact.
+ */
+export function resolvePlayerTokenSizeScale(flags: PlayerTokenSizeFlags): number {
+  if (!flags.compact && !flags.practice) return 1;
+  const compact =
+    !flags.practice && flags.style === "pill-under"
+      ? COMPACT_PLAYER_TOKEN_SCALE_FACTOR / UNDER_PILL_NORMAL_SHRINK
+      : COMPACT_PLAYER_TOKEN_SCALE_FACTOR;
+  return isMiniTokenSizeActive(flags) ? compact * MINI_TOKEN_SIZE_RATIO : compact;
+}
+
+/** Hit-radius multiplier for setPlayerTouchHitArea: Mini keeps Compact's touch target. */
+export function resolvePlayerHitAreaSizeCompensation(flags: PlayerTokenSizeFlags): number {
+  return isMiniTokenSizeActive(flags) ? 1 / MINI_TOKEN_SIZE_RATIO : 1;
+}
+
 /**
  * `sizeCompensation` enlarges the token-local hit radius for sizes drawn
- * smaller than Compact (Bib Mini), so their touch target stays the Compact
- * one instead of shrinking with the art. 1 leaves every other size as is.
+ * smaller than Compact (Mini), so their touch target stays the Compact one
+ * instead of shrinking with the art. 1 leaves every other size as is.
  */
 function setPlayerTouchHitArea(
   player: TacticalPlayer,
@@ -1784,40 +1817,32 @@ export async function createTacticalPadLiteSurface(
   // hit-area change — and always renders the fixed Vision V3 token.
   let isPracticePlayerTokens = options.practicePlayerTokens === true;
   const persistPlayerPresentation = options.persistPlayerPresentation === true;
-  // Bib Token Mini: a further MINI_TOKEN_SIZE_RATIO on top of Compact. Only
-  // drawn for the "bib" style outside Practice (isMiniPlayerTokenSize).
+  // Mini: a further MINI_TOKEN_SIZE_RATIO on top of Compact, for every
+  // style. Only drawn while Compact is on and Practice is off.
   let isMiniPlayerTokens = options.miniPlayerTokens === true;
   function isMiniPlayerTokenSize(): boolean {
     return isMiniTokenSizeActive({
       compact: isCompactPlayerTokens,
       mini: isMiniPlayerTokens,
       practice: isPracticePlayerTokens,
-      style: tacticalTokenStyle,
     });
   }
   function playerHitAreaSizeCompensation(): number {
-    return isMiniPlayerTokenSize() ? 1 / MINI_TOKEN_SIZE_RATIO : 1;
+    return resolvePlayerHitAreaSizeCompensation(currentTokenSizeFlags());
   }
-  // Under-Pill's own assembly renders UNDER_PILL_NORMAL_SHRINK smaller than the raw
-  // token radius in Normal Mode (see createNamePillPlayerToken.ts). Compact Mode's
-  // multiplier is compensated here so its on-screen size stays exactly what it was
-  // before that reduction — every other style is untouched.
-  function compactScaleFactor(): number {
-    return !isPracticePlayerTokens && tacticalTokenStyle === "pill-under"
-      ? COMPACT_PLAYER_TOKEN_SCALE_FACTOR / UNDER_PILL_NORMAL_SHRINK
-      : COMPACT_PLAYER_TOKEN_SCALE_FACTOR;
+  function currentTokenSizeFlags() {
+    return {
+      compact: isCompactPlayerTokens,
+      mini: isMiniPlayerTokens,
+      practice: isPracticePlayerTokens,
+      style: tacticalTokenStyle,
+    };
   }
   function getIdlePlayerTokenScale(): number {
-    if (isMiniPlayerTokenSize()) return PREMIUM_TOKEN_IDLE_SCALE * compactScaleFactor() * MINI_TOKEN_SIZE_RATIO;
-    return isCompactPlayerTokens || isPracticePlayerTokens
-      ? PREMIUM_TOKEN_IDLE_SCALE * compactScaleFactor()
-      : PREMIUM_TOKEN_IDLE_SCALE;
+    return PREMIUM_TOKEN_IDLE_SCALE * resolvePlayerTokenSizeScale(currentTokenSizeFlags());
   }
   function getDragPlayerTokenScale(): number {
-    if (isMiniPlayerTokenSize()) return PREMIUM_TOKEN_DRAG_SCALE * compactScaleFactor() * MINI_TOKEN_SIZE_RATIO;
-    return isCompactPlayerTokens || isPracticePlayerTokens
-      ? PREMIUM_TOKEN_DRAG_SCALE * compactScaleFactor()
-      : PREMIUM_TOKEN_DRAG_SCALE;
+    return PREMIUM_TOKEN_DRAG_SCALE * resolvePlayerTokenSizeScale(currentTokenSizeFlags());
   }
 
   const players: TacticalPlayer[] = playerSeeds.map((seed) => createSurfacePlayer(seed));
@@ -5128,6 +5153,7 @@ export async function createTacticalPadLiteSurface(
         ? {
             playerPresentation: resolvePlayerPresentation({
               compact: isCompactPlayerTokens,
+              mini: isMiniPlayerTokens,
               practice: isPracticePlayerTokens,
             }),
           }
@@ -5214,8 +5240,10 @@ export async function createTacticalPadLiteSurface(
       ? sanitizePlayerPresentation(state.playerPresentation) ?? DEFAULT_TRAINING_PLAYER_PRESENTATION
       : null;
     if (importedPresentation) {
-      isCompactPlayerTokens = importedPresentation === "compact";
-      isPracticePlayerTokens = importedPresentation === "practice";
+      const importedFlags = playerPresentationFlags(importedPresentation);
+      isCompactPlayerTokens = importedFlags.compact;
+      isMiniPlayerTokens = importedFlags.mini;
+      isPracticePlayerTokens = importedFlags.practice;
     }
 
     for (const player of players) {
@@ -5737,16 +5765,14 @@ export async function createTacticalPadLiteSurface(
       const nextStyle = sanitizePlayerTokenStyle(style);
       if (nextStyle === tacticalTokenStyle) return;
       const prevStyle = tacticalTokenStyle;
-      const wasMini = isMiniPlayerTokenSize();
       tacticalTokenStyle = nextStyle;
       rerenderAllTacticalPlayers();
       refreshPresentedCarriedBalls();
       // Under-Pill compensates Compact Mode's scale multiplier (see
       // compactScaleFactor above), so a switch into or out of it must refresh
       // the idle/drag scale target immediately rather than waiting for the
-      // next drag/toggle. Entering or leaving Bib Mini changes the scale
-      // too. No other style transition needs this.
-      if (prevStyle === "pill-under" || nextStyle === "pill-under" || wasMini !== isMiniPlayerTokenSize()) {
+      // next drag/toggle. No other style transition needs this.
+      if (prevStyle === "pill-under" || nextStyle === "pill-under") {
         for (const tacticalPlayer of players) {
           const isDraggingThisPlayer =
             activeDrag !== null && activeDrag.type === "player" && activeDrag.playerId === tacticalPlayer.id;

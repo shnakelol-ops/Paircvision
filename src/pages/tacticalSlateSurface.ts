@@ -100,6 +100,7 @@ export function resolveSurfaceDefaultPlayerPresentation(surface: TacticalSlateSu
 export const PLAYER_PRESENTATION_CHOICES: ReadonlyArray<{ value: TacticalPlayerPresentation; label: string }> = [
   { value: "normal", label: "Normal" },
   { value: "compact", label: "Compact" },
+  { value: "mini", label: "Mini" },
   { value: "practice", label: "Practice" },
 ];
 

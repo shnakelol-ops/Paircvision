@@ -174,8 +174,8 @@ export const VisionV3Renderer: PlayerTokenRenderer = ({
     artScale: VISION_V3_SLATE_ART_SCALE,
   });
 
-// Bib Token — the Vision V3 disc in its "bib" variant: same geometry, team
-// colour and kit pattern, with the number (and every other label) hidden.
+// Bib Token — Vision V3's renderer in its flat "bib" variant: the same disc
+// diameter, with a numberless jersey in the team's kit (all six patterns).
 // The player's number/label fields are untouched; only the drawing omits them.
 export const BibTokenRenderer: PlayerTokenRenderer = ({
   label,

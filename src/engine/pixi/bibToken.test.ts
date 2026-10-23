@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import { Container, Graphics, Text } from "pixi.js";
 
 import {
-  BIB_TOKEN_SHIRT_GLYPH_ALPHA,
+  BIB_GRADIENT_BAND_LIGHTEN,
   VISION_V3_SLATE_ART_SCALE,
   createVisionV3PlayerToken,
   resolveVisionV3DiscRadius,
+  type VisionV3KitPattern,
 } from "./createVisionV3PlayerToken";
+import { drawKitPatternAccent } from "./kitPatternAccent";
 import {
   BibTokenRenderer,
   SELECTABLE_PLAYER_TOKEN_STYLES,
@@ -20,21 +22,43 @@ import {
   isMiniTokenSizeActive,
   playerTokenSizeFlags,
   resolvePlayerTokenSize,
-  tokenStyleSupportsMini,
+  type PlayerTokenSize,
 } from "./playerTokenSize";
 import { playerPresentationFlags, resolvePlayerPresentation } from "./playerPresentation";
-import { sanitizeQuickBoardState } from "../../features/quickboard/storage/quickboard-types";
+import { resolvePlayerHitAreaSizeCompensation, resolvePlayerTokenSizeScale } from "./createTacticalPadLiteSurface";
+import { UNDER_PILL_NORMAL_SHRINK } from "./createNamePillPlayerToken";
+import { sanitizeQuickBoardState, withTrainingPresentationDefault } from "../../features/quickboard/storage/quickboard-types";
+import { PLAYER_PRESENTATION_CHOICES } from "../../pages/tacticalSlateSurface";
 
+type PathInstruction = { action: string; data: number[] };
 type DrawInstruction = {
   action: string;
   data?: {
-    path?: { instructions?: { action: string; data: number[] }[] };
+    path?: { instructions?: PathInstruction[] };
     style?: { color?: number; alpha?: number };
   };
 };
 
 function instructionsOf(g: Graphics): DrawInstruction[] {
   return (g.context as unknown as { instructions: DrawInstruction[] }).instructions;
+}
+
+const SHAPE_ACTIONS = new Set(["rect", "poly", "circle", "ellipse", "roundRect"]);
+
+function shapesOf(g: Graphics): PathInstruction[] {
+  return instructionsOf(g)
+    .flatMap((inst) => inst.data?.path?.instructions ?? [])
+    .filter((p) => SHAPE_ACTIONS.has(p.action));
+}
+
+function pathActions(g: Graphics): string[] {
+  return shapesOf(g).map((p) => p.action);
+}
+
+function fillColors(g: Graphics): number[] {
+  return instructionsOf(g)
+    .filter((inst) => inst.action === "fill")
+    .map((inst) => inst.data!.style!.color!);
 }
 
 function allNodes(root: Container): Container[] {
@@ -60,6 +84,10 @@ function largestCircleRadius(root: Container): number {
   );
 }
 
+const PATTERNS: VisionV3KitPattern[] = ["plain", "hoops", "stripes", "slash", "chestDash", "gradient"];
+const STYLES = ["vision-v3", "pixi", "phosphor", "pill-under", "bib"] as const;
+const SIZES: PlayerTokenSize[] = ["normal", "compact", "mini"];
+
 const rendererInput = {
   label: "7",
   number: 7,
@@ -70,6 +98,21 @@ const rendererInput = {
   kitPatternColor: 0xffffff,
   radius: 4.1 * 0.8,
 };
+
+/** The flat Bib Token's jersey: the masked Graphics in the art container. */
+function bibParts(pattern: VisionV3KitPattern, base = 0x2563eb, accent = 0xffffff) {
+  const { token, shadow } = createVisionV3PlayerToken({
+    label: "7",
+    teamColor: "blue",
+    radius: 10,
+    style: { primaryColor: base, secondaryColor: base, badgeColor: base },
+    kitPattern: pattern,
+    kitPatternColor: accent,
+    variant: "bib",
+  });
+  const jersey = token.children.find((child) => child instanceof Graphics && (child as Graphics).mask) as Graphics;
+  return { token, shadow, jersey };
+}
 
 describe("Bib Token style registration", () => {
   it("is selectable, after every existing style, which keep their order", () => {
@@ -94,7 +137,7 @@ describe("Bib Token style registration", () => {
   });
 });
 
-describe("Bib Token rendering", () => {
+describe("flat Bib Token rendering", () => {
   it("draws no label at all — number, initials and names stay hidden", () => {
     for (const label of ["7", "14", "JD", "Sam"]) {
       const { token } = BibTokenRenderer({ ...rendererInput, label });
@@ -116,91 +159,154 @@ describe("Bib Token rendering", () => {
     expect(token.children[0]!.scale.x).toBeCloseTo(1 / VISION_V3_SLATE_ART_SCALE, 9);
   });
 
-  it("keeps the team colour and kit pattern (masked face, pattern accent drawn)", () => {
-    const { token } = createVisionV3PlayerToken({
-      label: "7",
-      teamColor: "blue",
-      radius: 10,
-      kitPattern: "hoops",
-      kitPatternColor: 0xffffff,
-      variant: "bib",
+  it("is flat: no gloss ellipses, no translucent glyph, an empty shadow — only rim, backdrop, jersey and jersey edge", () => {
+    const { token, shadow } = bibParts("plain");
+    expect(instructionsOf(shadow)).toHaveLength(0);
+    // shadow (empty), rim, backdrop, jersey (masked), jersey edge
+    expect(token.children).toHaveLength(5);
+    for (const node of allNodes(token)) {
+      if (!(node instanceof Graphics)) continue;
+      expect(pathActions(node)).not.toContain("ellipse");
+      for (const inst of instructionsOf(node)) {
+        if (inst.action === "fill") expect(inst.data?.style?.alpha ?? 1).toBe(1);
+      }
+    }
+  });
+
+  it("keeps the team colour: a darker shade of it behind a jersey in the kit colour itself", () => {
+    const { token, jersey } = bibParts("plain");
+    const [rim, backdrop] = token.children.slice(1, 3) as Graphics[];
+    expect(fillColors(jersey)[0]).toBe(0x2563eb);
+    for (const g of [rim!, backdrop!]) {
+      const color = fillColors(g)[0]!;
+      expect(color).not.toBe(0x2563eb);
+      // still blue-dominant — a shade of the team colour, not a neutral grey
+      expect(color & 0xff).toBeGreaterThan((color >> 16) & 0xff);
+    }
+  });
+
+  it("clips the kit to the jersey silhouette, not to the disc", () => {
+    const { jersey } = bibParts("hoops");
+    expect(pathActions(jersey.mask as Graphics)).toEqual(["poly"]);
+  });
+
+  it("draws every banded kit with Vision V3's own pattern geometry (shared drawKitPatternAccent), at full opacity for a picked colour", () => {
+    for (const pattern of ["hoops", "stripes", "slash", "chestDash"] as const) {
+      const { jersey } = bibParts(pattern);
+      const reference = new Graphics();
+      drawKitPatternAccent(reference, pattern, 0xffffff, 1, 1);
+      const accentFills = instructionsOf(jersey).filter(
+        (inst) => inst.action === "fill" && inst.data?.style?.color === 0xffffff,
+      );
+      expect(accentFills.length).toBe(instructionsOf(reference).filter((inst) => inst.action === "fill").length);
+      expect(accentFills.every((inst) => inst.data?.style?.alpha === 1)).toBe(true);
+      expect(pathActions(jersey).slice(1)).toEqual(pathActions(reference));
+    }
+  });
+
+  it("plain draws only the kit colour; gradient draws three flat bands lightest at the top, so it never reads as plain", () => {
+    expect(fillColors(bibParts("plain").jersey)).toEqual([0x2563eb]);
+    const gradient = fillColors(bibParts("gradient").jersey);
+    expect(gradient).toHaveLength(1 + BIB_GRADIENT_BAND_LIGHTEN.length);
+    const [top, middle, bottom] = gradient.slice(1);
+    const brightness = (c: number) => ((c >> 16) & 0xff) + ((c >> 8) & 0xff) + (c & 0xff);
+    expect(brightness(top!)).toBeGreaterThan(brightness(middle!));
+    expect(brightness(middle!)).toBeGreaterThan(brightness(bottom!));
+    expect(bottom).toBe(0x2563eb);
+  });
+
+  it("renders all six kit patterns distinctly", () => {
+    const signatures = PATTERNS.map((pattern) => {
+      const { jersey } = bibParts(pattern);
+      return JSON.stringify([fillColors(jersey), shapesOf(jersey).map((p) => [p.action, ...p.data.filter((n) => typeof n === "number")])]);
     });
-    const face = token.children.find((child) => child instanceof Graphics && (child as Graphics).mask) as Graphics;
-    const fills = instructionsOf(face).filter((inst) => inst.action === "fill");
-    expect(fills[0]!.data?.style?.color).toBe(0x2563eb);
-    expect(fills.some((inst) => inst.data?.style?.color === 0xffffff && inst.data?.style?.alpha === 1)).toBe(true);
+    expect(new Set(signatures).size).toBe(PATTERNS.length);
   });
 
-  it("drops the contact shadow drawing, the person glyph and the orientation tick", () => {
-    const bib = createVisionV3PlayerToken({ label: "7", teamColor: "blue", radius: 10, variant: "bib" });
-    const v3 = createVisionV3PlayerToken({ label: "7", teamColor: "blue", radius: 10, showLabel: false });
-    expect(instructionsOf(bib.shadow)).toHaveLength(0);
-    expect(instructionsOf(v3.shadow).length).toBeGreaterThan(0);
-    // shadow, rim, face, jersey glyph — versus Vision V3's shadow, rim, face,
-    // shirt glyph, person glyph and orientation tick.
-    expect(bib.token.children).toHaveLength(4);
-    expect(v3.token.children).toHaveLength(6);
-  });
-
-  it("draws the jersey glyph stronger than Vision V3, and dark on light kits", () => {
-    const glyphFill = (teamColor: "blue" | "white") => {
-      const { token } = createVisionV3PlayerToken({ label: "7", teamColor, radius: 10, variant: "bib" });
-      const glyph = token.children[token.children.length - 1] as Graphics;
-      return instructionsOf(glyph).find((inst) => inst.action === "fill")!.data!.style!;
-    };
-    expect(glyphFill("blue")).toMatchObject({ color: 0xffffff, alpha: BIB_TOKEN_SHIRT_GLYPH_ALPHA });
-    expect(glyphFill("white")).toMatchObject({ color: 0x0f172a, alpha: BIB_TOKEN_SHIRT_GLYPH_ALPHA });
-    expect(BIB_TOKEN_SHIRT_GLYPH_ALPHA).toBeGreaterThan(0.18);
-  });
-
-  it("leaves the standard Vision V3 token untouched (label still drawn by default)", () => {
-    const { token } = VisionV3Renderer(rendererInput);
+  it("leaves the standard Vision V3 token untouched (label, glyphs and gloss still drawn)", () => {
+    const { token } = createVisionV3PlayerToken({ label: "7", teamColor: "blue", radius: 10 });
     expect(allNodes(token).filter((node) => node instanceof Text).map((node) => (node as Text).text)).toContain("7");
+    // shadow, rim, face, shirt glyph, person glyph, tick, label plate, label shadow, label
+    expect(token.children).toHaveLength(9);
+    const face = token.children.find((child) => child instanceof Graphics && (child as Graphics).mask) as Graphics;
+    expect(pathActions(face).filter((a) => a === "ellipse")).toHaveLength(2);
   });
 });
 
-describe("Bib Token sizes", () => {
+describe("universal Normal / Compact / Mini sizes", () => {
   it("offers Normal, Compact and Mini, with Mini at 80% of Compact", () => {
     expect(PLAYER_TOKEN_SIZE_CHOICES.map((choice) => choice.label)).toEqual(["Normal", "Compact", "Mini"]);
     expect(MINI_TOKEN_SIZE_RATIO).toBe(0.8);
   });
 
-  it("only the Bib Token supports Mini", () => {
-    expect(tokenStyleSupportsMini("bib")).toBe(true);
-    for (const style of ["vision-v3", "classic", "premium", "pixi", "phosphor", "pill-under"] as const) {
-      expect(tokenStyleSupportsMini(style)).toBe(false);
-    }
-  });
-
   it("round-trips every size through the engine's compact/mini flags", () => {
-    for (const size of ["normal", "compact", "mini"] as const) {
-      expect(resolvePlayerTokenSize({ ...playerTokenSizeFlags(size), style: "bib" })).toBe(size);
+    for (const size of SIZES) {
+      expect(resolvePlayerTokenSize(playerTokenSizeFlags(size))).toBe(size);
     }
     expect(playerTokenSizeFlags("mini")).toEqual({ compact: true, mini: true });
   });
 
-  it("a style without Mini falls back to Compact, never Normal", () => {
-    const flags = playerTokenSizeFlags("mini");
-    expect(resolvePlayerTokenSize({ ...flags, style: "vision-v3" })).toBe("compact");
-    expect(isMiniTokenSizeActive({ compact: true, mini: true, practice: false, style: "pixi" })).toBe(false);
-  });
-
   it("Mini refines Compact: with Compact off (e.g. a board loaded at Normal) the board draws Normal", () => {
-    expect(resolvePlayerTokenSize({ compact: false, mini: true, style: "bib" })).toBe("normal");
-    expect(isMiniTokenSizeActive({ compact: false, mini: true, practice: false, style: "bib" })).toBe(false);
-    expect(isMiniTokenSizeActive({ compact: true, mini: true, practice: false, style: "bib" })).toBe(true);
+    expect(resolvePlayerTokenSize({ compact: false, mini: true })).toBe("normal");
+    expect(isMiniTokenSizeActive({ compact: false, mini: true, practice: false })).toBe(false);
   });
 
-  it("Practice always wins over Mini", () => {
-    expect(isMiniTokenSizeActive({ compact: true, mini: true, practice: true, style: "bib" })).toBe(false);
+  // All 15 selectable style/size combinations.
+  for (const style of STYLES) {
+    for (const size of SIZES) {
+      it(`${style} at ${size}: scale and touch target`, () => {
+        const flags = { ...playerTokenSizeFlags(size), practice: false, style };
+        const compactFactor = style === "pill-under" ? 0.75 / UNDER_PILL_NORMAL_SHRINK : 0.75;
+        const expected = size === "normal" ? 1 : size === "compact" ? compactFactor : compactFactor * 0.8;
+        expect(resolvePlayerTokenSizeScale(flags)).toBeCloseTo(expected, 12);
+        // On-screen touch radius = local hit radius × token scale: Mini keeps Compact's.
+        const touchScale = resolvePlayerTokenSizeScale(flags) * resolvePlayerHitAreaSizeCompensation(flags);
+        expect(touchScale).toBeCloseTo(size === "normal" ? 1 : compactFactor, 12);
+      });
+    }
+  }
+
+  it("Normal and Compact keep their existing scales (1 and 0.75; Name Badge's compensated Compact)", () => {
+    expect(resolvePlayerTokenSizeScale({ compact: false, mini: false, practice: false, style: "vision-v3" })).toBe(1);
+    expect(resolvePlayerTokenSizeScale({ compact: true, mini: false, practice: false, style: "pixi" })).toBe(0.75);
+    expect(resolvePlayerTokenSizeScale({ compact: true, mini: false, practice: false, style: "pill-under" })).toBe(
+      0.75 / UNDER_PILL_NORMAL_SHRINK,
+    );
+  });
+
+  it("Practice always draws plain Compact, whatever the style or Mini flag", () => {
+    for (const style of STYLES) {
+      for (const mini of [false, true]) {
+        const flags = { compact: false, mini, practice: true, style };
+        expect(resolvePlayerTokenSizeScale(flags)).toBe(0.75);
+        expect(resolvePlayerHitAreaSizeCompensation(flags)).toBe(1);
+      }
+    }
   });
 });
 
-describe("Bib Token persistence", () => {
-  it("a Training board saved at Mini stores the existing 'compact' presentation (no new value)", () => {
-    const flags = playerTokenSizeFlags("mini");
-    expect(resolvePlayerPresentation({ compact: flags.compact, practice: false })).toBe("compact");
-    expect(playerPresentationFlags("compact")).toEqual({ compact: true, practice: false });
+describe("size persistence", () => {
+  it("Training offers Normal, Compact, Mini and Practice", () => {
+    expect(PLAYER_PRESENTATION_CHOICES.map((choice) => choice.value)).toEqual(["normal", "compact", "mini", "practice"]);
+  });
+
+  it("a Training board saved at Mini stores and restores 'mini'", () => {
+    const saved = resolvePlayerPresentation({ ...playerTokenSizeFlags("mini"), practice: false });
+    expect(saved).toBe("mini");
+    const stored = sanitizeQuickBoardState({ players: [], items: [], drawings: [], phases: [], movementPaths: [], playerPresentation: saved });
+    expect(stored?.playerPresentation).toBe("mini");
+    expect(playerPresentationFlags(stored!.playerPresentation!)).toEqual({ compact: true, mini: true, practice: false });
+  });
+
+  it("existing boards keep what they had: saved presentations are unchanged and legacy Training boards still open as Practice", () => {
+    for (const presentation of ["normal", "compact", "practice"] as const) {
+      const stored = sanitizeQuickBoardState({ players: [], items: [], drawings: [], phases: [], movementPaths: [], playerPresentation: presentation });
+      expect(stored?.playerPresentation).toBe(presentation);
+    }
+    const legacy = sanitizeQuickBoardState({ players: [], items: [], drawings: [], phases: [], movementPaths: [] })!;
+    expect(legacy.playerPresentation).toBeUndefined();
+    expect(withTrainingPresentationDefault(legacy, "training").playerPresentation).toBe("practice");
+    expect(withTrainingPresentationDefault(legacy, "pitch").playerPresentation).toBeUndefined();
   });
 
   it("saved boards carry no token style, so existing boards are never rewritten to Bib", () => {
@@ -211,10 +317,7 @@ describe("Bib Token persistence", () => {
       phases: [],
       movementPaths: [],
       tacticalTokenStyle: "bib",
-      tokenSize: "mini",
     });
-    expect(stored).not.toBeNull();
     expect(stored).not.toHaveProperty("tacticalTokenStyle");
-    expect(stored).not.toHaveProperty("tokenSize");
   });
 });
