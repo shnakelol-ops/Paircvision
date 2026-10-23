@@ -1,0 +1,126 @@
+{
+ "counts": {
+  "FAIL→PASS": 17
+ },
+ "changes": [
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot FT PDF ¦ p8 Shot & Scoring Efficiency ¦ FULL ¦ blocked / saved ¦ FOR",
+   "expected": "5",
+   "beforeActual": "6",
+   "afterActual": "5"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Block / Save ¦ FOR",
+   "expected": "5",
+   "beforeActual": "0",
+   "afterActual": "5"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Foul Won ¦ FOR",
+   "expected": "3",
+   "beforeActual": "0",
+   "afterActual": "3"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Foul Conceded ¦ FOR",
+   "expected": "3",
+   "beforeActual": "0",
+   "afterActual": "3"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Swarm / Int. ¦ FOR",
+   "expected": "3",
+   "beforeActual": "0",
+   "afterActual": "3"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Slack KP / HP ¦ FOR",
+   "expected": "8",
+   "beforeActual": "0",
+   "afterActual": "8"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Foul Won ¦ OPP",
+   "expected": "3",
+   "beforeActual": "0",
+   "afterActual": "3"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Foul Conceded ¦ OPP",
+   "expected": "3",
+   "beforeActual": "0",
+   "afterActual": "3"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Swarm / Int. ¦ OPP",
+   "expected": "1",
+   "beforeActual": "0",
+   "afterActual": "1"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Slack KP / HP ¦ OPP",
+   "expected": "5",
+   "beforeActual": "0",
+   "afterActual": "5"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Shot & Scoring Efficiency ¦ FULL ¦ blocked / saved ¦ FOR",
+   "expected": "5",
+   "beforeActual": "6",
+   "afterActual": "5"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ HOW WON — Clean Won (own restarts retained clean) ¦ FOR",
+   "expected": "7",
+   "beforeActual": "9",
+   "afterActual": "7"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ HOW WON — Break Won (own restarts retained on the break) ¦ FOR",
+   "expected": "7",
+   "beforeActual": "12",
+   "afterActual": "7"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ HOW WON — Foul Won (own restarts retained via foul) ¦ FOR",
+   "expected": "2",
+   "beforeActual": "0",
+   "afterActual": "2"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Turnover Analysis ¦ FULL ¦ HOW WON — Swarm / Intercept ¦ FOR",
+   "expected": "3",
+   "beforeActual": "0",
+   "afterActual": "3"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Turnover Analysis ¦ FULL ¦ HOW WON — Unforced error + Slack pass (opposition HP/KP errors) ¦ FOR",
+   "expected": "5",
+   "beforeActual": "0",
+   "afterActual": "5"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Cross-page ¦ Match Summary vs Shot Efficiency ¦ FULL ¦ Ballyboden blocked/saved shots agree ¦ FOR",
+   "expected": "5",
+   "beforeActual": "6",
+   "afterActual": "5"
+  }
+ ]
+}

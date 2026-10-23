@@ -1,0 +1,274 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Full-Time Dashboard
+ 1896    38  1 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+  496   118  Ballyboden
+ 1424   118  Na Fianna
+  960   150  v
+  496   190  1-16 (19)
+ 1424   190  3-25 (34)
+  960   244  Na Fianna lead by 15
+   86   316  SHOOTING
+  540   316  OUR KICKOUTS
+  994   316  THEIR KICKOUTS
+ 1448   316  TURNOVERS
+ 1448   358  Won
+   86   374  Ballyboden
+  540   394  —
+  994   394  —
+ 1448   402  13
+   86   416  14/27
+  540   446  —
+  994   446  —
+   86   452  52%
+ 1448   470  Lost
+  540   490  Restart taker not recorded
+  994   490  Restart taker not recorded
+ 1448   514  13
+   86   534  Na Fianna
+   86   576  22/27
+   86   612  81%
+   46   928  Ballyboden placed balls
+  992   928  Na Fianna placed balls
+   46   956  4/4 scored
+  992   956  5/7 scored
+ 1896  1060  152 events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Our Shot Profile
+ 1896    38  2 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   54   125  14 scores from 27 shots · 52% efficiency · Best zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Our scores
+ 1784   232  Our wides
+ 1784   258  Free won
+  475   594  ↓
+  477   595  ↓
+   46   972  Ballyboden shots: 14 scored from 27 attempts · …
+  676   972  Ballyboden: 4 placed-ball scores
+ 1306   972  Ballyboden best zone: Attacking Centre (5)
+ 1896  1060  27 shot attempts
+
+===== PAGE 3 (1920x1080) =====
+   24    38  Opposition Shot Profile
+ 1896    38  3 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   54   125  22 scores from 27 shots · 81% efficiency · Most scoring zone: Attacking Centre
+ 1762   180  LEGEND
+ 1784   206  Their scores
+ 1784   232  Their wides
+ 1784   258  Free conceded
+   46   972  Na Fianna shots: 22 scored from 27 attempts · 5…
+  676   972  Na Fianna: 5 placed-ball scores · 2 placed-ball w…
+ 1306   972  Na Fianna best scoring zone: Attacking Centre (…
+ 1896  1060  27 shot attempts
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Restart Battle – First Half
+ 1896    38  4 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+  486    95  1st Half
+ 1434    95  1st Half
+  486   118  Ballyboden Kickouts
+ 1434   118  Na Fianna Kickouts
+  486   139  Attacking →
+ 1434   139  ← Attacking
+   46   928  Ballyboden Kickouts
+  992   928  Na Fianna Kickouts
+   46   956  Restart taker not recorded
+  992   956  Restart taker not recorded
+ 1896  1060  0 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Restart Battle – Second Half
+ 1896    38  5 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+  486    95  2nd Half
+ 1434    95  2nd Half
+  486   118  Ballyboden Kickouts
+ 1434   118  Na Fianna Kickouts
+  486   139  ← Attacking
+ 1434   139  Attacking →
+   46   928  Ballyboden Kickouts
+  992   928  Na Fianna Kickouts
+   46   956  Restart taker not recorded
+  992   956  Restart taker not recorded
+ 1896  1060  0 events
+
+===== PAGE 6 (1920x1080) =====
+   24    38  Turnover & Territory – First Half
+ 1896    38  6 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna · Ballyboden attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 8 · Lost 8 (50% won)
+  676   972  Middle Left
+ 1306   972  Middle Centre
+ 1896  1060  16 events
+
+===== PAGE 7 (1920x1080) =====
+   24    38  Turnover & Territory – Second Half
+ 1896    38  7 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna · Ballyboden attacking → · Defensive → Middle → Attacking
+ 1896    62  PáircVision
+ 1762    90  LEGEND
+ 1784   116  Turnover Won
+ 1784   142  Turnover Lost
+   46   947  Territory Balance
+  676   947  Most Turnovers Won
+ 1306   947  Most Turnovers Lost
+   46   972  Won 5 · Lost 5 (50% won)
+  676   972  Middle Centre
+ 1306   972  Middle Centre
+ 1896  1060  10 events
+
+===== PAGE 8 (1920x1080) =====
+   24    38  Shot & Scoring Efficiency
+ 1896    38  8 / 8
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   38   104  FOR — BALLYBODEN
+  982   104  OPP — NA FIANNA
+   38   143  OVERALL CONVERSION
+  982   143  OVERALL CONVERSION
+   38   172  Attempts
+  940   172  27
+  982   172  Attempts
+ 1884   172  27
+   38   204  Scores
+  940   204  14
+  982   204  Scores
+ 1884   204  22
+   38   236  Conversion
+  940   236  52%
+  982   236  Conversion
+ 1884   236  81%
+   38   268  Wides
+  940   268  7
+  982   268  Wides
+ 1884   268  5
+   38   300  Blocked / Saved
+  940   300  5
+  982   300  Blocked / Saved
+ 1884   300  0
+   38   349  SOURCE BREAKDOWN
+  982   349  SOURCE BREAKDOWN
+   38   373  SOURCE
+  544   373  ATT
+  664   373  SC
+  780   373  MISS
+  940   373  CONV%
+  982   373  SOURCE
+ 1488   373  ATT
+ 1608   373  SC
+ 1724   373  MISS
+ 1884   373  CONV%
+   38   400  Open Play
+  544   400  17
+  664   400  10
+  780   400  7
+  940   400  59%
+  982   400  Open Play
+ 1488   400  20
+ 1608   400  17
+ 1724   400  3
+ 1884   400  85%
+   38   432  Free
+  544   432  1
+  664   432  1
+  780   432  0
+  940   432  100%
+  982   432  Free
+ 1488   432  6
+ 1608   432  4
+ 1724   432  2
+ 1884   432  67%
+   38   464  Mark
+  544   464  1
+  664   464  1
+  780   464  0
+  940   464  100%
+  982   464  Mark
+ 1488   464  —
+ 1608   464  —
+ 1724   464  —
+ 1884   464  —
+   38   496  45
+  544   496  2
+  664   496  2
+  780   496  0
+  940   496  100%
+  982   496  45
+ 1488   496  —
+ 1608   496  —
+ 1724   496  —
+ 1884   496  —
+   38   528  Penalty
+  544   528  —
+  664   528  —
+  780   528  —
+  940   528  —
+  982   528  Penalty
+ 1488   528  1
+ 1608   528  1
+ 1724   528  0
+ 1884   528  100%
+   38   560  Unclassified
+  544   560  6
+  664   560  —
+  780   560  6
+  940   560  0%
+  982   577  2-POINT PROFILE
+   38   587  6 shots logged without a source
+  982   606  TWO_POINTER Scores
+ 1884   606  6
+   38   631  2-POINT PROFILE
+  982   638  45+2 Scores
+ 1884   638  0
+   38   660  TWO_POINTER Scores
+  940   660  1
+  982   670  Total 2PT Scores
+ 1884   670  6
+   38   692  45+2 Scores
+  940   692  2
+  982   702  Total 2PT Pts Value
+ 1884   702  12
+   38   724  Total 2PT Scores
+  940   724  3
+  982   751  FREE CONVERSION
+   38   756  Total 2PT Pts Value
+  940   756  6
+  982   780  Placed Scored
+ 1884   780  5
+   38   805  FREE CONVERSION
+  982   812  Placed Missed
+ 1884   812  2
+   38   834  Placed Scored
+  940   834  4
+  982   844  Placed Conv %
+ 1884   844  71%
+   38   866  Placed Missed
+  940   866  0
+   38   898  Placed Conv %
+  940   898  100%
+ 1896  1060  152 events

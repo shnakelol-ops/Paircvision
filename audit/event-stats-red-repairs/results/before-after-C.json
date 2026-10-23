@@ -1,0 +1,357 @@
+{
+ "counts": {
+  "FAIL→PASS": 50
+ },
+ "changes": [
+  {
+   "change": "FAIL→PASS",
+   "key": "Quick Review p1 (Overview) ¦ HT ¦ 1H ¦ placed balls ¦ FOR",
+   "expected": "1/2 scored",
+   "beforeActual": "0/1 scored",
+   "afterActual": "1/2 scored"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Quick Review p1 (Overview) ¦ FT ¦ FULL ¦ placed balls ¦ FOR",
+   "expected": "4/5 scored",
+   "beforeActual": "3/4 scored",
+   "afterActual": "4/5 scored"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot HT PDF ¦ p1 Dashboard ¦ 1H ¦ placed balls ¦ FOR",
+   "expected": "1/2 scored",
+   "beforeActual": "0/1 scored",
+   "afterActual": "1/2 scored"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot HT PDF ¦ p1 Dashboard ¦ 1H ¦ placed balls ¦ OPP",
+   "expected": "5/5 scored",
+   "beforeActual": "3/3 scored",
+   "afterActual": "5/5 scored"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot HT PDF ¦ p2 Our Shot Profile ¦ 1H ¦ placed-ball scores ¦ FOR",
+   "expected": "1 placed-ball score",
+   "beforeActual": "1 placed-ball wide",
+   "afterActual": "1 placed-ball score"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot FT PDF ¦ p1 Dashboard ¦ FULL ¦ placed balls ¦ FOR",
+   "expected": "4/5 scored",
+   "beforeActual": "3/4 scored",
+   "afterActual": "4/5 scored"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot FT PDF ¦ p1 Dashboard ¦ FULL ¦ placed balls ¦ OPP",
+   "expected": "9/9 scored",
+   "beforeActual": "6/6 scored",
+   "afterActual": "9/9 scored"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot FT PDF ¦ p2 Our Shot Profile ¦ FULL ¦ placed-ball scores ¦ FOR",
+   "expected": "4 placed-ball scores",
+   "beforeActual": "3 placed-ball scores",
+   "afterActual": "4 placed-ball scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot FT PDF ¦ p8 Shot & Scoring Efficiency ¦ FULL ¦ blocked / saved ¦ FOR",
+   "expected": "2",
+   "beforeActual": "3",
+   "afterActual": "2"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot FT PDF ¦ p8 Shot & Scoring Efficiency ¦ FULL ¦ source Unclassified: ATT|SC|MISS|CONV ¦ FOR",
+   "expected": "3 | — | 3 | 0%",
+   "beforeActual": "4 | 1 | 3 | 25%",
+   "afterActual": "3 | — | 3 | 0%"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot FT PDF ¦ p8 Shot & Scoring Efficiency ¦ FULL ¦ placed scored ¦ FOR",
+   "expected": "4",
+   "beforeActual": "3",
+   "afterActual": "4"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot FT PDF ¦ p8 Shot & Scoring Efficiency ¦ FULL ¦ placed conv % ¦ FOR",
+   "expected": "80%",
+   "beforeActual": "75%",
+   "afterActual": "80%"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot FT PDF ¦ p8 Shot & Scoring Efficiency ¦ FULL ¦ blocked / saved ¦ OPP",
+   "expected": "3",
+   "beforeActual": "8",
+   "afterActual": "3"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot FT PDF ¦ p8 Shot & Scoring Efficiency ¦ FULL ¦ source Unclassified: ATT|SC|MISS|CONV ¦ OPP",
+   "expected": "8 | — | 8 | 0%",
+   "beforeActual": "11 | 3 | 8 | 27%",
+   "afterActual": "8 | — | 8 | 0%"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Snapshot FT PDF ¦ p8 Shot & Scoring Efficiency ¦ FULL ¦ placed scored ¦ OPP",
+   "expected": "9",
+   "beforeActual": "6",
+   "afterActual": "9"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Block / Save ¦ FOR",
+   "expected": "2",
+   "beforeActual": "0",
+   "afterActual": "2"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Foul Won ¦ FOR",
+   "expected": "2",
+   "beforeActual": "0",
+   "afterActual": "2"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Foul Conceded ¦ FOR",
+   "expected": "4",
+   "beforeActual": "0",
+   "afterActual": "4"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Swarm / Int. ¦ FOR",
+   "expected": "3",
+   "beforeActual": "0",
+   "afterActual": "3"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Slack KP / HP ¦ FOR",
+   "expected": "7",
+   "beforeActual": "0",
+   "afterActual": "7"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Placed Attempts ¦ FOR",
+   "expected": "5",
+   "beforeActual": "4",
+   "afterActual": "5"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Placed Scores ¦ FOR",
+   "expected": "4",
+   "beforeActual": "3",
+   "afterActual": "4"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Placed Points ¦ FOR",
+   "expected": "6",
+   "beforeActual": "5",
+   "afterActual": "6"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Block / Save ¦ OPP",
+   "expected": "3",
+   "beforeActual": "0",
+   "afterActual": "3"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Foul Won ¦ OPP",
+   "expected": "4",
+   "beforeActual": "0",
+   "afterActual": "4"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Foul Conceded ¦ OPP",
+   "expected": "2",
+   "beforeActual": "0",
+   "afterActual": "2"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Swarm / Int. ¦ OPP",
+   "expected": "3",
+   "beforeActual": "0",
+   "afterActual": "3"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Slack KP / HP ¦ OPP",
+   "expected": "5",
+   "beforeActual": "0",
+   "afterActual": "5"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Placed Attempts ¦ OPP",
+   "expected": "9",
+   "beforeActual": "6",
+   "afterActual": "9"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Placed Scores ¦ OPP",
+   "expected": "9",
+   "beforeActual": "6",
+   "afterActual": "9"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ Placed Points ¦ OPP",
+   "expected": "9",
+   "beforeActual": "6",
+   "afterActual": "9"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p4 Scoring Breakdown ¦ FULL ¦ placed balls ¦ FOR",
+   "expected": "4/5 scored · 6 pts",
+   "beforeActual": "3/4 scored · 5 pts",
+   "afterActual": "4/5 scored · 6 pts"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p4 Scoring Breakdown ¦ FULL ¦ placed balls ¦ OPP",
+   "expected": "9/9 scored · 9 pts",
+   "beforeActual": "6/6 scored · 6 pts",
+   "afterActual": "9/9 scored · 9 pts"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Shot & Scoring Efficiency ¦ FULL ¦ blocked / saved ¦ FOR",
+   "expected": "2",
+   "beforeActual": "3",
+   "afterActual": "2"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Shot & Scoring Efficiency ¦ FULL ¦ source Unclassified: ATT|SC|MISS|CONV ¦ FOR",
+   "expected": "3 | — | 3 | 0%",
+   "beforeActual": "4 | 1 | 3 | 25%",
+   "afterActual": "3 | — | 3 | 0%"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Shot & Scoring Efficiency ¦ FULL ¦ placed scored ¦ FOR",
+   "expected": "4",
+   "beforeActual": "3",
+   "afterActual": "4"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Shot & Scoring Efficiency ¦ FULL ¦ placed conv % ¦ FOR",
+   "expected": "80%",
+   "beforeActual": "75%",
+   "afterActual": "80%"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Shot & Scoring Efficiency ¦ FULL ¦ blocked / saved ¦ OPP",
+   "expected": "3",
+   "beforeActual": "8",
+   "afterActual": "3"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Shot & Scoring Efficiency ¦ FULL ¦ source Unclassified: ATT|SC|MISS|CONV ¦ OPP",
+   "expected": "8 | — | 8 | 0%",
+   "beforeActual": "11 | 3 | 8 | 27%",
+   "afterActual": "8 | — | 8 | 0%"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Shot & Scoring Efficiency ¦ FULL ¦ placed scored ¦ OPP",
+   "expected": "9",
+   "beforeActual": "6",
+   "afterActual": "9"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ HOW WON — Clean Won (own restarts retained clean) ¦ FOR",
+   "expected": "4",
+   "beforeActual": "10",
+   "afterActual": "4"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ HOW WON — Break Won (own restarts retained on the break) ¦ FOR",
+   "expected": "7",
+   "beforeActual": "15",
+   "afterActual": "7"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ HOW WON — Foul Won (own restarts retained via foul) ¦ FOR",
+   "expected": "1",
+   "beforeActual": "0",
+   "afterActual": "1"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Turnover Analysis ¦ FULL ¦ HOW WON — Swarm / Intercept ¦ FOR",
+   "expected": "3",
+   "beforeActual": "0",
+   "afterActual": "3"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Turnover Analysis ¦ FULL ¦ HOW WON — Unforced error + Slack pass (opposition HP/KP errors) ¦ FOR",
+   "expected": "5",
+   "beforeActual": "0",
+   "afterActual": "5"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Free Kick Analysis ¦ FULL ¦ direct placed-ball scoring ¦ FOR",
+   "expected": "Direct placed-ball scoring: 4/5 scored",
+   "beforeActual": "Direct placed-ball scoring: 3/4 scored",
+   "afterActual": "Direct placed-ball scoring: 4/5 scored"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Free Kick Analysis ¦ FULL ¦ direct placed-ball scoring ¦ OPP",
+   "expected": "Direct placed-ball scoring: 9/9 scored",
+   "beforeActual": "Direct placed-ball scoring: 6/6 scored",
+   "afterActual": "Direct placed-ball scoring: 9/9 scored"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Free Kick Analysis ¦ FULL ¦ all placed balls scored ¦ ",
+   "expected": "13",
+   "beforeActual": "9",
+   "afterActual": "13"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Free Kick Analysis ¦ FULL ¦ overall placed conversion ¦ ",
+   "expected": "93%",
+   "beforeActual": "90%",
+   "afterActual": "93%"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Cross-page ¦ Match Summary vs Shot Efficiency ¦ FULL ¦ Ballyhale Shamrocks blocked/saved shots agree ¦ FOR",
+   "expected": "2",
+   "beforeActual": "3",
+   "afterActual": "2"
+  }
+ ]
+}

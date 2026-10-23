@@ -1,0 +1,4591 @@
+[
+ {
+  "path": "A-live|1H.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-live|1H.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-live|1H.core.summaryFOR.koFoulCon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-live|1H.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-live|1H.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-live|1H.core.summaryOPP.koFoulWon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-live|1H.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-live|1H.core.summaryOPP.toSwarmInt",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-live|1H.core.summaryOPP.toSlackKpHp",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-live|1H.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "A-live|1H.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "A-live|1H.intelligence.turnoverDataset.outcomes[5].nextEvent",
+  "main": null,
+  "repair": "#85f94ccc-0693-45fd-bd3f-8db523a8e7b1"
+ },
+ {
+  "path": "A-live|1H.intelligence.turnoverDataset.outcomes[5].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "A-live|1H.intelligence.turnoverDataset.outcomes[7].nextEvent",
+  "main": null,
+  "repair": "#1a2e7631-8dd7-4438-8980-9bf6e68a4b95"
+ },
+ {
+  "path": "A-live|1H.intelligence.turnoverDataset.outcomes[7].secondsToOutcome",
+  "main": null,
+  "repair": 40
+ },
+ {
+  "path": "A-live|FULL.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 5
+ },
+ {
+  "path": "A-live|FULL.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-live|FULL.core.summaryFOR.koFoulCon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-live|FULL.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-live|FULL.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 8
+ },
+ {
+  "path": "A-live|FULL.core.summaryOPP.koFoulWon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-live|FULL.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-live|FULL.core.summaryOPP.toSwarmInt",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-live|FULL.core.summaryOPP.toSlackKpHp",
+  "main": 0,
+  "repair": 5
+ },
+ {
+  "path": "A-live|FULL.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "A-live|FULL.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "A-live|FULL.intelligence.turnoverDataset.outcomes[5].nextEvent",
+  "main": null,
+  "repair": "#85f94ccc-0693-45fd-bd3f-8db523a8e7b1"
+ },
+ {
+  "path": "A-live|FULL.intelligence.turnoverDataset.outcomes[5].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "A-live|FULL.intelligence.turnoverDataset.outcomes[7].nextEvent",
+  "main": null,
+  "repair": "#1a2e7631-8dd7-4438-8980-9bf6e68a4b95"
+ },
+ {
+  "path": "A-live|FULL.intelligence.turnoverDataset.outcomes[7].secondsToOutcome",
+  "main": null,
+  "repair": 40
+ },
+ {
+  "path": "B-live|1H.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-live|1H.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-live|1H.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 6
+ },
+ {
+  "path": "B-live|1H.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 12
+ },
+ {
+  "path": "B-live|1H.core.summaryOPP.shotBlock",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-live|1H.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-live|1H.core.summaryOPP.toSwarmInt",
+  "main": 0,
+  "repair": 5
+ },
+ {
+  "path": "B-live|1H.core.summaryOPP.toSlackKpHp",
+  "main": 0,
+  "repair": 10
+ },
+ {
+  "path": "B-live|1H.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "B-live|1H.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.lostAllowedScore",
+  "main": 14,
+  "repair": 10
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[1].nextEvent",
+  "main": "#b611963e-8cae-423e-b4c3-877ec35e0258",
+  "repair": "#dfaeebb2-4466-40d6-922e-cdca554d0e74"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[1].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[1].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[1].secondsToOutcome",
+  "main": 49,
+  "repair": 23
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[4].nextEvent",
+  "main": null,
+  "repair": "#1f3832ac-b3bd-4870-b97a-0553a2666566"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[4].secondsToOutcome",
+  "main": null,
+  "repair": 13
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[6].nextEvent",
+  "main": null,
+  "repair": "#3d665d49-d299-4138-a27a-1038f1a2a867"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[6].secondsToOutcome",
+  "main": null,
+  "repair": 11
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[11].nextEvent",
+  "main": "#b84c13bb-2bc1-4a04-ab1b-f3c4f5698131",
+  "repair": "#6e7d59de-fc5b-42d6-9209-4590e1b04b61"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[11].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[11].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[11].secondsToOutcome",
+  "main": 33,
+  "repair": 14
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[18].nextEvent",
+  "main": "#3b125535-15bf-4aeb-8bbf-7175e79ac9a3",
+  "repair": "#3354155c-e743-45b2-b0f5-22a4d2846bd7"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[18].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[18].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[18].secondsToOutcome",
+  "main": 48,
+  "repair": 6
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[23].nextEvent",
+  "main": null,
+  "repair": "#50a3b5d4-227d-44be-a9f5-3dbb194f69f7"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[23].secondsToOutcome",
+  "main": null,
+  "repair": 24
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[25].nextEvent",
+  "main": null,
+  "repair": "#cf60f070-b130-49b0-8313-49ca8c91dd04"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[25].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[31].nextEvent",
+  "main": null,
+  "repair": "#1cf38d5d-1aac-4f69-9219-ad732da50fb1"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[31].secondsToOutcome",
+  "main": null,
+  "repair": 11
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[33].nextEvent",
+  "main": null,
+  "repair": "#3c64ac23-97e6-43d9-a32c-0bbd14ac866b"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[33].secondsToOutcome",
+  "main": null,
+  "repair": 23
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[35].nextEvent",
+  "main": null,
+  "repair": "#d7b069bc-af0f-47d3-a8e3-312ffb8e9adb"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[35].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[40].nextEvent",
+  "main": null,
+  "repair": "#2c39e4cf-d9e1-4a3b-9446-e775abfb0252"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[40].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[43].nextEvent",
+  "main": "#595b1a16-e825-4336-8cdb-0e04a7835cb3",
+  "repair": "#1c064a08-2667-46d6-ba66-116bc366064c"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[43].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[43].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[43].secondsToOutcome",
+  "main": 31,
+  "repair": 8
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[46].nextEvent",
+  "main": null,
+  "repair": "#9ef0e3d1-c496-4d8d-866e-766def513a08"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[46].secondsToOutcome",
+  "main": null,
+  "repair": 12
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[48].nextEvent",
+  "main": null,
+  "repair": "#67519243-2c4c-4f38-be79-e5783b69c32b"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[48].secondsToOutcome",
+  "main": null,
+  "repair": 7
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[53].nextEvent",
+  "main": "#f058279f-7714-4f74-a27d-d384fbd5c43e",
+  "repair": "#da2aa63d-e29c-444a-8326-6ac4d8bfe652"
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[53].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|1H.intelligence.turnoverDataset.outcomes[53].secondsToOutcome",
+  "main": 39,
+  "repair": 10
+ },
+ {
+  "path": "B-live|1H.intelligence.turnovers.turnoverLossPunishment.num",
+  "main": 14,
+  "repair": 10
+ },
+ {
+  "path": "B-live|1H.intelligence.turnovers.turnoverLossPunishment.pct",
+  "main": 45,
+  "repair": 32
+ },
+ {
+  "path": "B-live|FULL.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "B-live|FULL.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "B-live|FULL.core.summaryFOR.koFoulCon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "B-live|FULL.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 8
+ },
+ {
+  "path": "B-live|FULL.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 20
+ },
+ {
+  "path": "B-live|FULL.core.summaryOPP.shotBlock",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-live|FULL.core.summaryOPP.koFoulWon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "B-live|FULL.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "B-live|FULL.core.summaryOPP.toSwarmInt",
+  "main": 0,
+  "repair": 6
+ },
+ {
+  "path": "B-live|FULL.core.summaryOPP.toSlackKpHp",
+  "main": 0,
+  "repair": 18
+ },
+ {
+  "path": "B-live|FULL.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "B-live|FULL.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.lostAllowedScore",
+  "main": 25,
+  "repair": 18
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[1].nextEvent",
+  "main": "#b611963e-8cae-423e-b4c3-877ec35e0258",
+  "repair": "#dfaeebb2-4466-40d6-922e-cdca554d0e74"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[1].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[1].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[1].secondsToOutcome",
+  "main": 49,
+  "repair": 23
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[4].nextEvent",
+  "main": null,
+  "repair": "#1f3832ac-b3bd-4870-b97a-0553a2666566"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[4].secondsToOutcome",
+  "main": null,
+  "repair": 13
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[6].nextEvent",
+  "main": null,
+  "repair": "#3d665d49-d299-4138-a27a-1038f1a2a867"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[6].secondsToOutcome",
+  "main": null,
+  "repair": 11
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[11].nextEvent",
+  "main": "#b84c13bb-2bc1-4a04-ab1b-f3c4f5698131",
+  "repair": "#6e7d59de-fc5b-42d6-9209-4590e1b04b61"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[11].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[11].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[11].secondsToOutcome",
+  "main": 33,
+  "repair": 14
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[18].nextEvent",
+  "main": "#3b125535-15bf-4aeb-8bbf-7175e79ac9a3",
+  "repair": "#3354155c-e743-45b2-b0f5-22a4d2846bd7"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[18].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[18].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[18].secondsToOutcome",
+  "main": 48,
+  "repair": 6
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[23].nextEvent",
+  "main": null,
+  "repair": "#50a3b5d4-227d-44be-a9f5-3dbb194f69f7"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[23].secondsToOutcome",
+  "main": null,
+  "repair": 24
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[25].nextEvent",
+  "main": null,
+  "repair": "#cf60f070-b130-49b0-8313-49ca8c91dd04"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[25].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[31].nextEvent",
+  "main": null,
+  "repair": "#1cf38d5d-1aac-4f69-9219-ad732da50fb1"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[31].secondsToOutcome",
+  "main": null,
+  "repair": 11
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[33].nextEvent",
+  "main": null,
+  "repair": "#3c64ac23-97e6-43d9-a32c-0bbd14ac866b"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[33].secondsToOutcome",
+  "main": null,
+  "repair": 23
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[35].nextEvent",
+  "main": null,
+  "repair": "#d7b069bc-af0f-47d3-a8e3-312ffb8e9adb"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[35].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[40].nextEvent",
+  "main": null,
+  "repair": "#2c39e4cf-d9e1-4a3b-9446-e775abfb0252"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[40].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[43].nextEvent",
+  "main": "#595b1a16-e825-4336-8cdb-0e04a7835cb3",
+  "repair": "#1c064a08-2667-46d6-ba66-116bc366064c"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[43].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[43].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[43].secondsToOutcome",
+  "main": 31,
+  "repair": 8
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[46].nextEvent",
+  "main": null,
+  "repair": "#9ef0e3d1-c496-4d8d-866e-766def513a08"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[46].secondsToOutcome",
+  "main": null,
+  "repair": 12
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[48].nextEvent",
+  "main": null,
+  "repair": "#67519243-2c4c-4f38-be79-e5783b69c32b"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[48].secondsToOutcome",
+  "main": null,
+  "repair": 7
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[53].nextEvent",
+  "main": "#f058279f-7714-4f74-a27d-d384fbd5c43e",
+  "repair": "#da2aa63d-e29c-444a-8326-6ac4d8bfe652"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[53].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[53].secondsToOutcome",
+  "main": 39,
+  "repair": 10
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[60].nextEvent",
+  "main": "#eff019d0-f065-4015-a28c-b3096bf36ac9",
+  "repair": "#86053a64-f01d-4fe9-8ffd-7f78ca3fc961"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[60].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[60].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[60].secondsToOutcome",
+  "main": 45,
+  "repair": 5
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[76].nextEvent",
+  "main": "#1cf620d4-5b3c-4fdb-bd48-a7be4c0a35ff",
+  "repair": "#c3709931-7d1e-4e72-80b7-480a502abcd3"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[76].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[76].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[76].secondsToOutcome",
+  "main": 28,
+  "repair": 9
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[82].nextEvent",
+  "main": "#713d3c16-03da-41e6-8919-43746b191762",
+  "repair": "#848b30a2-efa6-4501-938c-cba9b0e500c5"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[82].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[82].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[82].secondsToOutcome",
+  "main": 45,
+  "repair": 6
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[85].nextEvent",
+  "main": null,
+  "repair": "#183d9979-969f-43b7-8254-42e6d9fd8c70"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[85].secondsToOutcome",
+  "main": null,
+  "repair": 4
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[87].nextEvent",
+  "main": null,
+  "repair": "#fb8bfe56-a06f-4a72-a129-1205b3deed38"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[87].secondsToOutcome",
+  "main": null,
+  "repair": 8
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[91].nextEvent",
+  "main": null,
+  "repair": "#658cd867-3f44-4921-80c7-d4e4c1336c43"
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnoverDataset.outcomes[91].secondsToOutcome",
+  "main": null,
+  "repair": 5
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnovers.turnoverLossPunishment.num",
+  "main": 25,
+  "repair": 18
+ },
+ {
+  "path": "B-live|FULL.intelligence.turnovers.turnoverLossPunishment.pct",
+  "main": 56,
+  "repair": 40
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.rows[0].them.scores",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.rows[0].them.value",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.rows[0].net",
+  "main": -1,
+  "repair": -2
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.rows[3].them.scores",
+  "main": 16,
+  "repair": 15
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.rows[3].them.value",
+  "main": 21,
+  "repair": 20
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.rows[3].net",
+  "main": -12,
+  "repair": -11
+ },
+ {
+  "path": "B-live|FULL.intelligence.ledger.verdicts[0]",
+  "main": "Turnover exchanges netted -12 for Kilmacud Crokes: 9 points from 48 turnovers won against 21 conceded from 45 lost. Worth reviewing transition structure.",
+  "repair": "Turnover exchanges netted -11 for Kilmacud Crokes: 9 points from 48 turnovers won against 20 conceded from 45 lost. Worth reviewing transition structure."
+ },
+ {
+  "path": "B-live|FULL.intelligence.prompts",
+  "main": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 54% Restart Share (41 of 76) — 27% of won kickouts produced restart-origin point value (2 Goals, 9 Points (15 pts)).",
+    "evidenceTag": "kickout:restartShare=54"
+   },
+   {
+    "category": "KICKOUT",
+    "text": "27% of Kilmacud Crokes's kickout wins produced restart-origin point value; 51% of their losses produced restart-origin point value for St Brigid's.",
+    "evidenceTag": "kickout:netAdv=-24"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 52% of turnovers (48 of 93); 23% of wins produced turnover-origin point value, against 56% for St Brigid's.",
+    "evidenceTag": "turnover:winPct=52,convPct=23"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "56% of the turnovers St Brigid's won against Kilmacud Crokes produced turnover-origin point value (2 Goals, 21 Points & 2 Two-Point scores (31 pts) from 45 losses).",
+    "evidenceTag": "turnover:lostAllowedPct=56"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 48 turnovers; 25 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=25,won=48"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "Kilmacud Crokes had a 3-score unanswered spell.",
+    "evidenceTag": "momentum:maxConsFor=3"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (8 vs 5).",
+    "evidenceTag": "momentum:runsOpp=8,runsFor=5"
+   }
+  ],
+  "repair": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 54% Restart Share (41 of 76) — 27% of won kickouts produced restart-origin point value (2 Goals, 9 Points (15 pts)).",
+    "evidenceTag": "kickout:restartShare=54"
+   },
+   {
+    "category": "KICKOUT",
+    "text": "27% of Kilmacud Crokes's kickout wins produced restart-origin point value; 51% of their losses produced restart-origin point value for St Brigid's.",
+    "evidenceTag": "kickout:netAdv=-24"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 52% of turnovers (48 of 93); 23% of wins produced turnover-origin point value, against 40% for St Brigid's.",
+    "evidenceTag": "turnover:winPct=52,convPct=23"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 48 turnovers; 25 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=25,won=48"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "Kilmacud Crokes had a 3-score unanswered spell.",
+    "evidenceTag": "momentum:maxConsFor=3"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (8 vs 5).",
+    "evidenceTag": "momentum:runsOpp=8,runsFor=5"
+   }
+  ]
+ },
+ {
+  "path": "C-live|1H.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-live|1H.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-live|1H.core.summaryFOR.koFoulCon",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-live|1H.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-live|1H.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 5
+ },
+ {
+  "path": "C-live|1H.core.summaryFOR.placedAttempts",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "C-live|1H.core.summaryFOR.placedScores",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-live|1H.core.summaryFOR.placedPoints",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-live|1H.core.summaryFOR.freeScored",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-live|1H.core.summaryOPP.shotBlock",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-live|1H.core.summaryOPP.koFoulWon",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-live|1H.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-live|1H.core.summaryOPP.placedAttempts",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-live|1H.core.summaryOPP.placedScores",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-live|1H.core.summaryOPP.placedPoints",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-live|1H.core.summaryOPP.freeScored",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-live|1H.core.direct.rows",
+  "main": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 8,
+     "goals": 0,
+     "value": 8
+    },
+    "them": {
+     "scores": 5,
+     "goals": 0,
+     "value": 5
+    },
+    "net": 3
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "attempts": 1
+    },
+    "them": {
+     "scores": 3,
+     "goals": 0,
+     "value": 3,
+     "attempts": 3
+    },
+    "net": -3
+   },
+   {
+    "id": "UNATTRIBUTED",
+    "label": "Unattributed",
+    "us": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "them": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2
+    },
+    "net": -1
+   }
+  ],
+  "repair": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 8,
+     "goals": 0,
+     "value": 8
+    },
+    "them": {
+     "scores": 5,
+     "goals": 0,
+     "value": 5
+    },
+    "net": 3
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1,
+     "attempts": 2
+    },
+    "them": {
+     "scores": 5,
+     "goals": 0,
+     "value": 5,
+     "attempts": 5
+    },
+    "net": -4
+   }
+  ]
+ },
+ {
+  "path": "C-live|1H.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "C-live|1H.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "C-live|1H.core.placedBalls.for.attempts",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "C-live|1H.core.placedBalls.for.scores",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-live|1H.core.placedBalls.for.points",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-live|1H.core.placedBalls.opp.attempts",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-live|1H.core.placedBalls.opp.scores",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-live|1H.core.placedBalls.opp.points",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-live|1H.intelligence.turnoverDataset.outcomes[5].nextEvent",
+  "main": null,
+  "repair": "#a6527b7d-f6ea-40e9-951a-b6a08de79103"
+ },
+ {
+  "path": "C-live|1H.intelligence.turnoverDataset.outcomes[5].secondsToOutcome",
+  "main": null,
+  "repair": 53
+ },
+ {
+  "path": "C-live|1H.intelligence.ledger.rows",
+  "main": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2
+    },
+    "them": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0
+    },
+    "net": 2
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "attempts": 1
+    },
+    "them": {
+     "scores": 3,
+     "goals": 0,
+     "value": 3,
+     "attempts": 3
+    },
+    "net": -3
+   },
+   {
+    "id": "RESTART_WON",
+    "label": "Direct scores attributed to restarts",
+    "us": {
+     "scores": 4,
+     "goals": 0,
+     "value": 4
+    },
+    "them": {
+     "scores": 4,
+     "goals": 0,
+     "value": 4
+    },
+    "net": 0
+   },
+   {
+    "id": "TURNOVER_WON",
+    "label": "Direct scores attributed to turnovers",
+    "us": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2
+    },
+    "them": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "net": 1
+   },
+   {
+    "id": "UNATTRIBUTED",
+    "label": "Unattributed",
+    "us": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "them": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2
+    },
+    "net": -1
+   }
+  ],
+  "repair": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2
+    },
+    "them": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0
+    },
+    "net": 2
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1,
+     "attempts": 2
+    },
+    "them": {
+     "scores": 5,
+     "goals": 0,
+     "value": 5,
+     "attempts": 5
+    },
+    "net": -4
+   },
+   {
+    "id": "RESTART_WON",
+    "label": "Direct scores attributed to restarts",
+    "us": {
+     "scores": 4,
+     "goals": 0,
+     "value": 4
+    },
+    "them": {
+     "scores": 4,
+     "goals": 0,
+     "value": 4
+    },
+    "net": 0
+   },
+   {
+    "id": "TURNOVER_WON",
+    "label": "Direct scores attributed to turnovers",
+    "us": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2
+    },
+    "them": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "net": 1
+   }
+  ]
+ },
+ {
+  "path": "C-live|1H.intelligence.ledger.verdicts[0]",
+  "main": "The placed-ball battle cost Ballyhale Shamrock 3 points: Ballyhale Shamrock scored 0/1 against Na Piarsaigh's 3/3. Worth reviewing free-taking options.",
+  "repair": "The placed-ball battle cost Ballyhale Shamrock 4 points: Ballyhale Shamrock scored 1/2 against Na Piarsaigh's 5/5. Worth reviewing free-taking options."
+ },
+ {
+  "path": "C-live|FULL.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-live|FULL.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-live|FULL.core.summaryFOR.koFoulCon",
+  "main": 0,
+  "repair": 4
+ },
+ {
+  "path": "C-live|FULL.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "C-live|FULL.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 7
+ },
+ {
+  "path": "C-live|FULL.core.summaryFOR.placedAttempts",
+  "main": 4,
+  "repair": 5
+ },
+ {
+  "path": "C-live|FULL.core.summaryFOR.placedScores",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "C-live|FULL.core.summaryFOR.placedPoints",
+  "main": 5,
+  "repair": 6
+ },
+ {
+  "path": "C-live|FULL.core.summaryFOR.freeScored",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "C-live|FULL.core.summaryOPP.shotBlock",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "C-live|FULL.core.summaryOPP.koFoulWon",
+  "main": 0,
+  "repair": 4
+ },
+ {
+  "path": "C-live|FULL.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-live|FULL.core.summaryOPP.toSwarmInt",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "C-live|FULL.core.summaryOPP.toSlackKpHp",
+  "main": 0,
+  "repair": 5
+ },
+ {
+  "path": "C-live|FULL.core.summaryOPP.placedAttempts",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-live|FULL.core.summaryOPP.placedScores",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-live|FULL.core.summaryOPP.placedPoints",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-live|FULL.core.summaryOPP.freeScored",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-live|FULL.core.direct.rows",
+  "main": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 16,
+     "goals": 0,
+     "value": 16
+    },
+    "them": {
+     "scores": 14,
+     "goals": 2,
+     "value": 18
+    },
+    "net": -2
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 3,
+     "goals": 1,
+     "value": 5,
+     "attempts": 4
+    },
+    "them": {
+     "scores": 6,
+     "goals": 0,
+     "value": 6,
+     "attempts": 6
+    },
+    "net": -1
+   },
+   {
+    "id": "UNATTRIBUTED",
+    "label": "Unattributed",
+    "us": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "them": {
+     "scores": 3,
+     "goals": 0,
+     "value": 3
+    },
+    "net": -2
+   }
+  ],
+  "repair": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 16,
+     "goals": 0,
+     "value": 16
+    },
+    "them": {
+     "scores": 14,
+     "goals": 2,
+     "value": 18
+    },
+    "net": -2
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 4,
+     "goals": 1,
+     "value": 6,
+     "attempts": 5
+    },
+    "them": {
+     "scores": 9,
+     "goals": 0,
+     "value": 9,
+     "attempts": 9
+    },
+    "net": -3
+   }
+  ]
+ },
+ {
+  "path": "C-live|FULL.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "C-live|FULL.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "C-live|FULL.core.placedBalls.for.attempts",
+  "main": 4,
+  "repair": 5
+ },
+ {
+  "path": "C-live|FULL.core.placedBalls.for.scores",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "C-live|FULL.core.placedBalls.for.points",
+  "main": 5,
+  "repair": 6
+ },
+ {
+  "path": "C-live|FULL.core.placedBalls.opp.attempts",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-live|FULL.core.placedBalls.opp.scores",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-live|FULL.core.placedBalls.opp.points",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-live|FULL.intelligence.turnoverDataset.outcomes[5].nextEvent",
+  "main": null,
+  "repair": "#a6527b7d-f6ea-40e9-951a-b6a08de79103"
+ },
+ {
+  "path": "C-live|FULL.intelligence.turnoverDataset.outcomes[5].secondsToOutcome",
+  "main": null,
+  "repair": 53
+ },
+ {
+  "path": "C-live|FULL.intelligence.turnoverDataset.outcomes[21].nextEvent",
+  "main": null,
+  "repair": "#57e1afff-16ef-4e04-95af-f761ccfe6c60"
+ },
+ {
+  "path": "C-live|FULL.intelligence.turnoverDataset.outcomes[21].secondsToOutcome",
+  "main": null,
+  "repair": 19
+ },
+ {
+  "path": "C-live|FULL.intelligence.turnoverDataset.outcomes[23].nextEvent",
+  "main": null,
+  "repair": "#d8f81fb7-fe57-48b3-b87c-1ac550ccfbee"
+ },
+ {
+  "path": "C-live|FULL.intelligence.turnoverDataset.outcomes[23].secondsToOutcome",
+  "main": null,
+  "repair": 26
+ },
+ {
+  "path": "C-live|FULL.intelligence.turnoverDataset.outcomes[27].nextEvent",
+  "main": null,
+  "repair": "#4fee9dc8-465d-4c5e-8c1a-d152343c79fa"
+ },
+ {
+  "path": "C-live|FULL.intelligence.turnoverDataset.outcomes[27].secondsToOutcome",
+  "main": null,
+  "repair": 31
+ },
+ {
+  "path": "C-live|FULL.intelligence.ledger.rows",
+  "main": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 3,
+     "goals": 0,
+     "value": 3
+    },
+    "them": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "net": 2
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 3,
+     "goals": 1,
+     "value": 5,
+     "attempts": 4
+    },
+    "them": {
+     "scores": 6,
+     "goals": 0,
+     "value": 6,
+     "attempts": 6
+    },
+    "net": -1
+   },
+   {
+    "id": "RESTART_WON",
+    "label": "Direct scores attributed to restarts",
+    "us": {
+     "scores": 6,
+     "goals": 0,
+     "value": 6
+    },
+    "them": {
+     "scores": 10,
+     "goals": 1,
+     "value": 12
+    },
+    "net": -6
+   },
+   {
+    "id": "TURNOVER_WON",
+    "label": "Direct scores attributed to turnovers",
+    "us": {
+     "scores": 7,
+     "goals": 0,
+     "value": 7
+    },
+    "them": {
+     "scores": 3,
+     "goals": 1,
+     "value": 5
+    },
+    "net": 2
+   },
+   {
+    "id": "UNATTRIBUTED",
+    "label": "Unattributed",
+    "us": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "them": {
+     "scores": 3,
+     "goals": 0,
+     "value": 3
+    },
+    "net": -2
+   }
+  ],
+  "repair": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 3,
+     "goals": 0,
+     "value": 3
+    },
+    "them": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "net": 2
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 4,
+     "goals": 1,
+     "value": 6,
+     "attempts": 5
+    },
+    "them": {
+     "scores": 9,
+     "goals": 0,
+     "value": 9,
+     "attempts": 9
+    },
+    "net": -3
+   },
+   {
+    "id": "RESTART_WON",
+    "label": "Direct scores attributed to restarts",
+    "us": {
+     "scores": 6,
+     "goals": 0,
+     "value": 6
+    },
+    "them": {
+     "scores": 10,
+     "goals": 1,
+     "value": 12
+    },
+    "net": -6
+   },
+   {
+    "id": "TURNOVER_WON",
+    "label": "Direct scores attributed to turnovers",
+    "us": {
+     "scores": 7,
+     "goals": 0,
+     "value": 7
+    },
+    "them": {
+     "scores": 3,
+     "goals": 1,
+     "value": 5
+    },
+    "net": 2
+   }
+  ]
+ },
+ {
+  "path": "A-final|1H.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-final|1H.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-final|1H.core.summaryFOR.koFoulCon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-final|1H.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-final|1H.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-final|1H.core.summaryOPP.koFoulWon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-final|1H.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-final|1H.core.summaryOPP.toSwarmInt",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-final|1H.core.summaryOPP.toSlackKpHp",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-final|1H.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "A-final|1H.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "A-final|1H.intelligence.turnoverDataset.outcomes[5].nextEvent",
+  "main": null,
+  "repair": "#85f94ccc-0693-45fd-bd3f-8db523a8e7b1"
+ },
+ {
+  "path": "A-final|1H.intelligence.turnoverDataset.outcomes[5].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "A-final|1H.intelligence.turnoverDataset.outcomes[7].nextEvent",
+  "main": null,
+  "repair": "#1a2e7631-8dd7-4438-8980-9bf6e68a4b95"
+ },
+ {
+  "path": "A-final|1H.intelligence.turnoverDataset.outcomes[7].secondsToOutcome",
+  "main": null,
+  "repair": 40
+ },
+ {
+  "path": "A-final|FULL.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 5
+ },
+ {
+  "path": "A-final|FULL.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-final|FULL.core.summaryFOR.koFoulCon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-final|FULL.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-final|FULL.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 8
+ },
+ {
+  "path": "A-final|FULL.core.summaryOPP.koFoulWon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-final|FULL.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-final|FULL.core.summaryOPP.toSwarmInt",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-final|FULL.core.summaryOPP.toSlackKpHp",
+  "main": 0,
+  "repair": 5
+ },
+ {
+  "path": "A-final|FULL.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "A-final|FULL.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "A-final|FULL.intelligence.turnoverDataset.outcomes[5].nextEvent",
+  "main": null,
+  "repair": "#85f94ccc-0693-45fd-bd3f-8db523a8e7b1"
+ },
+ {
+  "path": "A-final|FULL.intelligence.turnoverDataset.outcomes[5].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "A-final|FULL.intelligence.turnoverDataset.outcomes[7].nextEvent",
+  "main": null,
+  "repair": "#1a2e7631-8dd7-4438-8980-9bf6e68a4b95"
+ },
+ {
+  "path": "A-final|FULL.intelligence.turnoverDataset.outcomes[7].secondsToOutcome",
+  "main": null,
+  "repair": 40
+ },
+ {
+  "path": "B-final|1H.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-final|1H.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-final|1H.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 6
+ },
+ {
+  "path": "B-final|1H.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 13
+ },
+ {
+  "path": "B-final|1H.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-final|1H.core.summaryOPP.toSwarmInt",
+  "main": 0,
+  "repair": 5
+ },
+ {
+  "path": "B-final|1H.core.summaryOPP.toSlackKpHp",
+  "main": 0,
+  "repair": 9
+ },
+ {
+  "path": "B-final|1H.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.lostAllowedScore",
+  "main": 16,
+  "repair": 11
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[1].nextEvent",
+  "main": "#b611963e-8cae-423e-b4c3-877ec35e0258",
+  "repair": "#dfaeebb2-4466-40d6-922e-cdca554d0e74"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[1].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[1].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[1].secondsToOutcome",
+  "main": 49,
+  "repair": 23
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[2].nextEvent",
+  "main": "#b611963e-8cae-423e-b4c3-877ec35e0258",
+  "repair": "#d88529f3-7ba4-435d-96bf-6541aadf6634"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[2].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[2].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[2].secondsToOutcome",
+  "main": 26,
+  "repair": 15
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[4].nextEvent",
+  "main": null,
+  "repair": "#1f3832ac-b3bd-4870-b97a-0553a2666566"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[4].secondsToOutcome",
+  "main": null,
+  "repair": 13
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[6].nextEvent",
+  "main": null,
+  "repair": "#3d665d49-d299-4138-a27a-1038f1a2a867"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[6].secondsToOutcome",
+  "main": null,
+  "repair": 11
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[11].nextEvent",
+  "main": "#b84c13bb-2bc1-4a04-ab1b-f3c4f5698131",
+  "repair": "#6e7d59de-fc5b-42d6-9209-4590e1b04b61"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[11].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[11].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[11].secondsToOutcome",
+  "main": 33,
+  "repair": 14
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[18].nextEvent",
+  "main": "#3b125535-15bf-4aeb-8bbf-7175e79ac9a3",
+  "repair": "#3354155c-e743-45b2-b0f5-22a4d2846bd7"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[18].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[18].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[18].secondsToOutcome",
+  "main": 48,
+  "repair": 6
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[23].nextEvent",
+  "main": null,
+  "repair": "#50a3b5d4-227d-44be-a9f5-3dbb194f69f7"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[23].secondsToOutcome",
+  "main": null,
+  "repair": 24
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[25].nextEvent",
+  "main": null,
+  "repair": "#cf60f070-b130-49b0-8313-49ca8c91dd04"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[25].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[31].nextEvent",
+  "main": null,
+  "repair": "#1cf38d5d-1aac-4f69-9219-ad732da50fb1"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[31].secondsToOutcome",
+  "main": null,
+  "repair": 11
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[33].nextEvent",
+  "main": null,
+  "repair": "#3c64ac23-97e6-43d9-a32c-0bbd14ac866b"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[33].secondsToOutcome",
+  "main": null,
+  "repair": 23
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[35].nextEvent",
+  "main": null,
+  "repair": "#d7b069bc-af0f-47d3-a8e3-312ffb8e9adb"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[35].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[40].nextEvent",
+  "main": null,
+  "repair": "#2c39e4cf-d9e1-4a3b-9446-e775abfb0252"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[40].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[43].nextEvent",
+  "main": "#595b1a16-e825-4336-8cdb-0e04a7835cb3",
+  "repair": "#1c064a08-2667-46d6-ba66-116bc366064c"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[43].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[43].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[43].secondsToOutcome",
+  "main": 31,
+  "repair": 8
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[46].nextEvent",
+  "main": null,
+  "repair": "#9ef0e3d1-c496-4d8d-866e-766def513a08"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[46].secondsToOutcome",
+  "main": null,
+  "repair": 12
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[48].nextEvent",
+  "main": null,
+  "repair": "#67519243-2c4c-4f38-be79-e5783b69c32b"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[48].secondsToOutcome",
+  "main": null,
+  "repair": 7
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[53].nextEvent",
+  "main": "#f058279f-7714-4f74-a27d-d384fbd5c43e",
+  "repair": "#da2aa63d-e29c-444a-8326-6ac4d8bfe652"
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[53].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|1H.intelligence.turnoverDataset.outcomes[53].secondsToOutcome",
+  "main": 39,
+  "repair": 10
+ },
+ {
+  "path": "B-final|1H.intelligence.turnovers.turnoverLossPunishment.num",
+  "main": 16,
+  "repair": 11
+ },
+ {
+  "path": "B-final|1H.intelligence.turnovers.turnoverLossPunishment.pct",
+  "main": 50,
+  "repair": 34
+ },
+ {
+  "path": "B-final|1H.intelligence.prompts",
+  "main": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 59% Restart Share (20 of 34) — 25% of won kickouts produced restart-origin point value (1 Goal, 4 Points (7 pts)).",
+    "evidenceTag": "kickout:restartShare=59"
+   },
+   {
+    "category": "KICKOUT",
+    "text": "25% of Kilmacud Crokes's kickout wins produced restart-origin point value; 50% of their losses produced restart-origin point value for St Brigid's.",
+    "evidenceTag": "kickout:netAdv=-25"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 28 turnovers but only 11% produced turnover-origin point value.",
+    "evidenceTag": "turnover:convPct=11"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "50% of the turnovers St Brigid's won against Kilmacud Crokes produced turnover-origin point value (1 Goal, 15 Points (18 pts) from 32 losses).",
+    "evidenceTag": "turnover:lostAllowedPct=50"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 28 turnovers; 16 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=16,won=28"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (3 vs 1).",
+    "evidenceTag": "momentum:runsOpp=3,runsFor=1"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "The final scoring run of the match was by St Brigid's (2 scores).",
+    "evidenceTag": "momentum:latestRunOpp=2"
+   }
+  ],
+  "repair": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 59% Restart Share (20 of 34) — 25% of won kickouts produced restart-origin point value (1 Goal, 4 Points (7 pts)).",
+    "evidenceTag": "kickout:restartShare=59"
+   },
+   {
+    "category": "KICKOUT",
+    "text": "25% of Kilmacud Crokes's kickout wins produced restart-origin point value; 50% of their losses produced restart-origin point value for St Brigid's.",
+    "evidenceTag": "kickout:netAdv=-25"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 28 turnovers but only 11% produced turnover-origin point value.",
+    "evidenceTag": "turnover:convPct=11"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 28 turnovers; 16 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=16,won=28"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (3 vs 1).",
+    "evidenceTag": "momentum:runsOpp=3,runsFor=1"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "The final scoring run of the match was by St Brigid's (2 scores).",
+    "evidenceTag": "momentum:latestRunOpp=2"
+   }
+  ]
+ },
+ {
+  "path": "B-final|FULL.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "B-final|FULL.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "B-final|FULL.core.summaryFOR.koFoulCon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "B-final|FULL.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 8
+ },
+ {
+  "path": "B-final|FULL.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 21
+ },
+ {
+  "path": "B-final|FULL.core.summaryOPP.koFoulWon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "B-final|FULL.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "B-final|FULL.core.summaryOPP.toSwarmInt",
+  "main": 0,
+  "repair": 6
+ },
+ {
+  "path": "B-final|FULL.core.summaryOPP.toSlackKpHp",
+  "main": 0,
+  "repair": 17
+ },
+ {
+  "path": "B-final|FULL.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "B-final|FULL.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.lostAllowedScore",
+  "main": 26,
+  "repair": 18
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[1].nextEvent",
+  "main": "#b611963e-8cae-423e-b4c3-877ec35e0258",
+  "repair": "#dfaeebb2-4466-40d6-922e-cdca554d0e74"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[1].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[1].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[1].secondsToOutcome",
+  "main": 49,
+  "repair": 23
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[2].nextEvent",
+  "main": "#b611963e-8cae-423e-b4c3-877ec35e0258",
+  "repair": "#d88529f3-7ba4-435d-96bf-6541aadf6634"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[2].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[2].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[2].secondsToOutcome",
+  "main": 26,
+  "repair": 15
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[4].nextEvent",
+  "main": null,
+  "repair": "#1f3832ac-b3bd-4870-b97a-0553a2666566"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[4].secondsToOutcome",
+  "main": null,
+  "repair": 13
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[6].nextEvent",
+  "main": null,
+  "repair": "#3d665d49-d299-4138-a27a-1038f1a2a867"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[6].secondsToOutcome",
+  "main": null,
+  "repair": 11
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[11].nextEvent",
+  "main": "#b84c13bb-2bc1-4a04-ab1b-f3c4f5698131",
+  "repair": "#6e7d59de-fc5b-42d6-9209-4590e1b04b61"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[11].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[11].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[11].secondsToOutcome",
+  "main": 33,
+  "repair": 14
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[18].nextEvent",
+  "main": "#3b125535-15bf-4aeb-8bbf-7175e79ac9a3",
+  "repair": "#3354155c-e743-45b2-b0f5-22a4d2846bd7"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[18].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[18].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[18].secondsToOutcome",
+  "main": 48,
+  "repair": 6
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[23].nextEvent",
+  "main": null,
+  "repair": "#50a3b5d4-227d-44be-a9f5-3dbb194f69f7"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[23].secondsToOutcome",
+  "main": null,
+  "repair": 24
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[25].nextEvent",
+  "main": null,
+  "repair": "#cf60f070-b130-49b0-8313-49ca8c91dd04"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[25].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[31].nextEvent",
+  "main": null,
+  "repair": "#1cf38d5d-1aac-4f69-9219-ad732da50fb1"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[31].secondsToOutcome",
+  "main": null,
+  "repair": 11
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[33].nextEvent",
+  "main": null,
+  "repair": "#3c64ac23-97e6-43d9-a32c-0bbd14ac866b"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[33].secondsToOutcome",
+  "main": null,
+  "repair": 23
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[35].nextEvent",
+  "main": null,
+  "repair": "#d7b069bc-af0f-47d3-a8e3-312ffb8e9adb"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[35].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[40].nextEvent",
+  "main": null,
+  "repair": "#2c39e4cf-d9e1-4a3b-9446-e775abfb0252"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[40].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[43].nextEvent",
+  "main": "#595b1a16-e825-4336-8cdb-0e04a7835cb3",
+  "repair": "#1c064a08-2667-46d6-ba66-116bc366064c"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[43].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[43].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[43].secondsToOutcome",
+  "main": 31,
+  "repair": 8
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[46].nextEvent",
+  "main": null,
+  "repair": "#9ef0e3d1-c496-4d8d-866e-766def513a08"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[46].secondsToOutcome",
+  "main": null,
+  "repair": 12
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[48].nextEvent",
+  "main": null,
+  "repair": "#67519243-2c4c-4f38-be79-e5783b69c32b"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[48].secondsToOutcome",
+  "main": null,
+  "repair": 7
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[53].nextEvent",
+  "main": "#f058279f-7714-4f74-a27d-d384fbd5c43e",
+  "repair": "#da2aa63d-e29c-444a-8326-6ac4d8bfe652"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[53].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[53].secondsToOutcome",
+  "main": 39,
+  "repair": 10
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[60].nextEvent",
+  "main": "#eff019d0-f065-4015-a28c-b3096bf36ac9",
+  "repair": "#86053a64-f01d-4fe9-8ffd-7f78ca3fc961"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[60].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[60].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[60].secondsToOutcome",
+  "main": 45,
+  "repair": 5
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[76].nextEvent",
+  "main": "#1cf620d4-5b3c-4fdb-bd48-a7be4c0a35ff",
+  "repair": "#c3709931-7d1e-4e72-80b7-480a502abcd3"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[76].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[76].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[76].secondsToOutcome",
+  "main": 28,
+  "repair": 9
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[82].nextEvent",
+  "main": "#713d3c16-03da-41e6-8919-43746b191762",
+  "repair": "#848b30a2-efa6-4501-938c-cba9b0e500c5"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[82].resultedInScore",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[82].resultedInShot",
+  "main": true,
+  "repair": false
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[82].secondsToOutcome",
+  "main": 45,
+  "repair": 6
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[85].nextEvent",
+  "main": null,
+  "repair": "#183d9979-969f-43b7-8254-42e6d9fd8c70"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[85].secondsToOutcome",
+  "main": null,
+  "repair": 4
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[87].nextEvent",
+  "main": null,
+  "repair": "#fb8bfe56-a06f-4a72-a129-1205b3deed38"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[87].secondsToOutcome",
+  "main": null,
+  "repair": 8
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[91].nextEvent",
+  "main": null,
+  "repair": "#658cd867-3f44-4921-80c7-d4e4c1336c43"
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnoverDataset.outcomes[91].secondsToOutcome",
+  "main": null,
+  "repair": 5
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnovers.turnoverLossPunishment.num",
+  "main": 26,
+  "repair": 18
+ },
+ {
+  "path": "B-final|FULL.intelligence.turnovers.turnoverLossPunishment.pct",
+  "main": 57,
+  "repair": 39
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.rows[0].them.scores",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.rows[0].them.value",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.rows[0].net",
+  "main": -1,
+  "repair": -2
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.rows[3].them.scores",
+  "main": 16,
+  "repair": 15
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.rows[3].them.value",
+  "main": 21,
+  "repair": 20
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.rows[3].net",
+  "main": -12,
+  "repair": -11
+ },
+ {
+  "path": "B-final|FULL.intelligence.ledger.verdicts[0]",
+  "main": "Turnover exchanges netted -12 for Kilmacud Crokes: 9 points from 47 turnovers won against 21 conceded from 46 lost. Worth reviewing transition structure.",
+  "repair": "Turnover exchanges netted -11 for Kilmacud Crokes: 9 points from 47 turnovers won against 20 conceded from 46 lost. Worth reviewing transition structure."
+ },
+ {
+  "path": "B-final|FULL.intelligence.prompts",
+  "main": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 53% Restart Share (40 of 76) — 30% of won kickouts produced restart-origin point value (2 Goals, 10 Points (16 pts)).",
+    "evidenceTag": "kickout:restartShare=53"
+   },
+   {
+    "category": "KICKOUT",
+    "text": "30% of Kilmacud Crokes's kickout wins produced restart-origin point value; 56% of their losses produced restart-origin point value for St Brigid's.",
+    "evidenceTag": "kickout:netAdv=-26"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 51% of turnovers (47 of 93); 23% of wins produced turnover-origin point value, against 57% for St Brigid's.",
+    "evidenceTag": "turnover:winPct=51,convPct=23"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "57% of the turnovers St Brigid's won against Kilmacud Crokes produced turnover-origin point value (2 Goals, 22 Points & 2 Two-Point scores (32 pts) from 46 losses).",
+    "evidenceTag": "turnover:lostAllowedPct=57"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 47 turnovers; 24 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=24,won=47"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "Kilmacud Crokes recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsFor=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (9 vs 5).",
+    "evidenceTag": "momentum:runsOpp=9,runsFor=5"
+   }
+  ],
+  "repair": [
+   {
+    "category": "KICKOUT",
+    "text": "Kilmacud Crokes held 53% Restart Share (40 of 76) — 30% of won kickouts produced restart-origin point value (2 Goals, 10 Points (16 pts)).",
+    "evidenceTag": "kickout:restartShare=53"
+   },
+   {
+    "category": "KICKOUT",
+    "text": "30% of Kilmacud Crokes's kickout wins produced restart-origin point value; 56% of their losses produced restart-origin point value for St Brigid's.",
+    "evidenceTag": "kickout:netAdv=-26"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 51% of turnovers (47 of 93); 23% of wins produced turnover-origin point value, against 39% for St Brigid's.",
+    "evidenceTag": "turnover:winPct=51,convPct=23"
+   },
+   {
+    "category": "TURNOVER",
+    "text": "Kilmacud Crokes won 47 turnovers; 24 did not lead to a shot.",
+    "evidenceTag": "turnover:wonNoShot=24,won=47"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsOpp=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "Kilmacud Crokes recorded a 4-score unanswered run.",
+    "evidenceTag": "momentum:maxConsFor=4"
+   },
+   {
+    "category": "MOMENTUM",
+    "text": "St Brigid's recorded more scoring runs than Kilmacud Crokes (9 vs 5).",
+    "evidenceTag": "momentum:runsOpp=9,runsFor=5"
+   }
+  ]
+ },
+ {
+  "path": "C-final|1H.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-final|1H.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-final|1H.core.summaryFOR.koFoulCon",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-final|1H.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-final|1H.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 5
+ },
+ {
+  "path": "C-final|1H.core.summaryFOR.placedAttempts",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "C-final|1H.core.summaryFOR.placedScores",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-final|1H.core.summaryFOR.placedPoints",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-final|1H.core.summaryFOR.freeScored",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-final|1H.core.summaryOPP.shotBlock",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-final|1H.core.summaryOPP.koFoulWon",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-final|1H.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-final|1H.core.summaryOPP.placedAttempts",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-final|1H.core.summaryOPP.placedScores",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-final|1H.core.summaryOPP.placedPoints",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-final|1H.core.summaryOPP.freeScored",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-final|1H.core.direct.rows",
+  "main": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 8,
+     "goals": 0,
+     "value": 8
+    },
+    "them": {
+     "scores": 5,
+     "goals": 0,
+     "value": 5
+    },
+    "net": 3
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "attempts": 1
+    },
+    "them": {
+     "scores": 3,
+     "goals": 0,
+     "value": 3,
+     "attempts": 3
+    },
+    "net": -3
+   },
+   {
+    "id": "UNATTRIBUTED",
+    "label": "Unattributed",
+    "us": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "them": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2
+    },
+    "net": -1
+   }
+  ],
+  "repair": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 8,
+     "goals": 0,
+     "value": 8
+    },
+    "them": {
+     "scores": 5,
+     "goals": 0,
+     "value": 5
+    },
+    "net": 3
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1,
+     "attempts": 2
+    },
+    "them": {
+     "scores": 5,
+     "goals": 0,
+     "value": 5,
+     "attempts": 5
+    },
+    "net": -4
+   }
+  ]
+ },
+ {
+  "path": "C-final|1H.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "C-final|1H.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "C-final|1H.core.placedBalls.for.attempts",
+  "main": 1,
+  "repair": 2
+ },
+ {
+  "path": "C-final|1H.core.placedBalls.for.scores",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-final|1H.core.placedBalls.for.points",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-final|1H.core.placedBalls.opp.attempts",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-final|1H.core.placedBalls.opp.scores",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-final|1H.core.placedBalls.opp.points",
+  "main": 3,
+  "repair": 5
+ },
+ {
+  "path": "C-final|1H.intelligence.turnoverDataset.outcomes[5].nextEvent",
+  "main": null,
+  "repair": "#a6527b7d-f6ea-40e9-951a-b6a08de79103"
+ },
+ {
+  "path": "C-final|1H.intelligence.turnoverDataset.outcomes[5].secondsToOutcome",
+  "main": null,
+  "repair": 53
+ },
+ {
+  "path": "C-final|1H.intelligence.ledger.rows",
+  "main": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2
+    },
+    "them": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0
+    },
+    "net": 2
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0,
+     "attempts": 1
+    },
+    "them": {
+     "scores": 3,
+     "goals": 0,
+     "value": 3,
+     "attempts": 3
+    },
+    "net": -3
+   },
+   {
+    "id": "RESTART_WON",
+    "label": "Direct scores attributed to restarts",
+    "us": {
+     "scores": 4,
+     "goals": 0,
+     "value": 4
+    },
+    "them": {
+     "scores": 4,
+     "goals": 0,
+     "value": 4
+    },
+    "net": 0
+   },
+   {
+    "id": "TURNOVER_WON",
+    "label": "Direct scores attributed to turnovers",
+    "us": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2
+    },
+    "them": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "net": 1
+   },
+   {
+    "id": "UNATTRIBUTED",
+    "label": "Unattributed",
+    "us": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "them": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2
+    },
+    "net": -1
+   }
+  ],
+  "repair": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2
+    },
+    "them": {
+     "scores": 0,
+     "goals": 0,
+     "value": 0
+    },
+    "net": 2
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1,
+     "attempts": 2
+    },
+    "them": {
+     "scores": 5,
+     "goals": 0,
+     "value": 5,
+     "attempts": 5
+    },
+    "net": -4
+   },
+   {
+    "id": "RESTART_WON",
+    "label": "Direct scores attributed to restarts",
+    "us": {
+     "scores": 4,
+     "goals": 0,
+     "value": 4
+    },
+    "them": {
+     "scores": 4,
+     "goals": 0,
+     "value": 4
+    },
+    "net": 0
+   },
+   {
+    "id": "TURNOVER_WON",
+    "label": "Direct scores attributed to turnovers",
+    "us": {
+     "scores": 2,
+     "goals": 0,
+     "value": 2
+    },
+    "them": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "net": 1
+   }
+  ]
+ },
+ {
+  "path": "C-final|1H.intelligence.ledger.verdicts[0]",
+  "main": "The placed-ball battle cost Ballyhale Shamrock 3 points: Ballyhale Shamrock scored 0/1 against Na Piarsaigh's 3/3. Worth reviewing free-taking options.",
+  "repair": "The placed-ball battle cost Ballyhale Shamrock 4 points: Ballyhale Shamrock scored 1/2 against Na Piarsaigh's 5/5. Worth reviewing free-taking options."
+ },
+ {
+  "path": "C-final|FULL.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-final|FULL.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-final|FULL.core.summaryFOR.koFoulCon",
+  "main": 0,
+  "repair": 4
+ },
+ {
+  "path": "C-final|FULL.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "C-final|FULL.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 7
+ },
+ {
+  "path": "C-final|FULL.core.summaryFOR.placedAttempts",
+  "main": 4,
+  "repair": 5
+ },
+ {
+  "path": "C-final|FULL.core.summaryFOR.placedScores",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "C-final|FULL.core.summaryFOR.placedPoints",
+  "main": 5,
+  "repair": 6
+ },
+ {
+  "path": "C-final|FULL.core.summaryFOR.freeScored",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "C-final|FULL.core.summaryOPP.shotBlock",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "C-final|FULL.core.summaryOPP.koFoulWon",
+  "main": 0,
+  "repair": 4
+ },
+ {
+  "path": "C-final|FULL.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-final|FULL.core.summaryOPP.toSwarmInt",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "C-final|FULL.core.summaryOPP.toSlackKpHp",
+  "main": 0,
+  "repair": 5
+ },
+ {
+  "path": "C-final|FULL.core.summaryOPP.placedAttempts",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-final|FULL.core.summaryOPP.placedScores",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-final|FULL.core.summaryOPP.placedPoints",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-final|FULL.core.summaryOPP.freeScored",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-final|FULL.core.direct.rows",
+  "main": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 16,
+     "goals": 0,
+     "value": 16
+    },
+    "them": {
+     "scores": 14,
+     "goals": 2,
+     "value": 18
+    },
+    "net": -2
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 3,
+     "goals": 1,
+     "value": 5,
+     "attempts": 4
+    },
+    "them": {
+     "scores": 6,
+     "goals": 0,
+     "value": 6,
+     "attempts": 6
+    },
+    "net": -1
+   },
+   {
+    "id": "UNATTRIBUTED",
+    "label": "Unattributed",
+    "us": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "them": {
+     "scores": 3,
+     "goals": 0,
+     "value": 3
+    },
+    "net": -2
+   }
+  ],
+  "repair": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 16,
+     "goals": 0,
+     "value": 16
+    },
+    "them": {
+     "scores": 14,
+     "goals": 2,
+     "value": 18
+    },
+    "net": -2
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 4,
+     "goals": 1,
+     "value": 6,
+     "attempts": 5
+    },
+    "them": {
+     "scores": 9,
+     "goals": 0,
+     "value": 9,
+     "attempts": 9
+    },
+    "net": -3
+   }
+  ]
+ },
+ {
+  "path": "C-final|FULL.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "C-final|FULL.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 0
+ },
+ {
+  "path": "C-final|FULL.core.placedBalls.for.attempts",
+  "main": 4,
+  "repair": 5
+ },
+ {
+  "path": "C-final|FULL.core.placedBalls.for.scores",
+  "main": 3,
+  "repair": 4
+ },
+ {
+  "path": "C-final|FULL.core.placedBalls.for.points",
+  "main": 5,
+  "repair": 6
+ },
+ {
+  "path": "C-final|FULL.core.placedBalls.opp.attempts",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-final|FULL.core.placedBalls.opp.scores",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-final|FULL.core.placedBalls.opp.points",
+  "main": 6,
+  "repair": 9
+ },
+ {
+  "path": "C-final|FULL.intelligence.turnoverDataset.outcomes[5].nextEvent",
+  "main": null,
+  "repair": "#a6527b7d-f6ea-40e9-951a-b6a08de79103"
+ },
+ {
+  "path": "C-final|FULL.intelligence.turnoverDataset.outcomes[5].secondsToOutcome",
+  "main": null,
+  "repair": 53
+ },
+ {
+  "path": "C-final|FULL.intelligence.turnoverDataset.outcomes[21].nextEvent",
+  "main": null,
+  "repair": "#57e1afff-16ef-4e04-95af-f761ccfe6c60"
+ },
+ {
+  "path": "C-final|FULL.intelligence.turnoverDataset.outcomes[21].secondsToOutcome",
+  "main": null,
+  "repair": 19
+ },
+ {
+  "path": "C-final|FULL.intelligence.turnoverDataset.outcomes[23].nextEvent",
+  "main": null,
+  "repair": "#d8f81fb7-fe57-48b3-b87c-1ac550ccfbee"
+ },
+ {
+  "path": "C-final|FULL.intelligence.turnoverDataset.outcomes[23].secondsToOutcome",
+  "main": null,
+  "repair": 26
+ },
+ {
+  "path": "C-final|FULL.intelligence.turnoverDataset.outcomes[27].nextEvent",
+  "main": null,
+  "repair": "#4fee9dc8-465d-4c5e-8c1a-d152343c79fa"
+ },
+ {
+  "path": "C-final|FULL.intelligence.turnoverDataset.outcomes[27].secondsToOutcome",
+  "main": null,
+  "repair": 31
+ },
+ {
+  "path": "C-final|FULL.intelligence.ledger.rows",
+  "main": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 3,
+     "goals": 0,
+     "value": 3
+    },
+    "them": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "net": 2
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 3,
+     "goals": 1,
+     "value": 5,
+     "attempts": 4
+    },
+    "them": {
+     "scores": 6,
+     "goals": 0,
+     "value": 6,
+     "attempts": 6
+    },
+    "net": -1
+   },
+   {
+    "id": "RESTART_WON",
+    "label": "Direct scores attributed to restarts",
+    "us": {
+     "scores": 6,
+     "goals": 0,
+     "value": 6
+    },
+    "them": {
+     "scores": 10,
+     "goals": 1,
+     "value": 12
+    },
+    "net": -6
+   },
+   {
+    "id": "TURNOVER_WON",
+    "label": "Direct scores attributed to turnovers",
+    "us": {
+     "scores": 7,
+     "goals": 0,
+     "value": 7
+    },
+    "them": {
+     "scores": 3,
+     "goals": 1,
+     "value": 5
+    },
+    "net": 2
+   },
+   {
+    "id": "UNATTRIBUTED",
+    "label": "Unattributed",
+    "us": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "them": {
+     "scores": 3,
+     "goals": 0,
+     "value": 3
+    },
+    "net": -2
+   }
+  ],
+  "repair": [
+   {
+    "id": "FROM_PLAY",
+    "label": "From general play",
+    "us": {
+     "scores": 3,
+     "goals": 0,
+     "value": 3
+    },
+    "them": {
+     "scores": 1,
+     "goals": 0,
+     "value": 1
+    },
+    "net": 2
+   },
+   {
+    "id": "PLACED",
+    "label": "Placed balls",
+    "us": {
+     "scores": 4,
+     "goals": 1,
+     "value": 6,
+     "attempts": 5
+    },
+    "them": {
+     "scores": 9,
+     "goals": 0,
+     "value": 9,
+     "attempts": 9
+    },
+    "net": -3
+   },
+   {
+    "id": "RESTART_WON",
+    "label": "Direct scores attributed to restarts",
+    "us": {
+     "scores": 6,
+     "goals": 0,
+     "value": 6
+    },
+    "them": {
+     "scores": 10,
+     "goals": 1,
+     "value": 12
+    },
+    "net": -6
+   },
+   {
+    "id": "TURNOVER_WON",
+    "label": "Direct scores attributed to turnovers",
+    "us": {
+     "scores": 7,
+     "goals": 0,
+     "value": 7
+    },
+    "them": {
+     "scores": 3,
+     "goals": 1,
+     "value": 5
+    },
+    "net": 2
+   }
+  ]
+ },
+ {
+  "path": "A-legacy|1H.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-legacy|1H.core.summaryFOR.ownRestartsRetained",
+  "main": 13,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-legacy|1H.core.summaryFOR.koFoulCon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-legacy|1H.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-legacy|1H.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-legacy|1H.core.summaryOPP.ownRestartsRetained",
+  "main": 8,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.summaryOPP.koFoulWon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-legacy|1H.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-legacy|1H.core.summaryOPP.toSwarmInt",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-legacy|1H.core.summaryOPP.toSlackKpHp",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-legacy|1H.core.restarts.ownKickoutRetention.full.num",
+  "main": 13,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.restarts.ownKickoutRetention.full.den",
+  "main": 13,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.restarts.ownKickoutRetention.full.pct",
+  "main": 100,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.restarts.ownKickoutRetention.h1.num",
+  "main": 13,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.restarts.ownKickoutRetention.h1.den",
+  "main": 13,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.restarts.ownKickoutRetention.h1.pct",
+  "main": 100,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.restarts.oppKickoutWinRate.full.den",
+  "main": 8,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.restarts.oppKickoutWinRate.h1.den",
+  "main": 8,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.restartTeams.for.ownRestartsTaken",
+  "main": 13,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.restartTeams.for.ownRestartsRetained",
+  "main": 13,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 21
+ },
+ {
+  "path": "A-legacy|1H.core.restartTeams.opp.ownRestartsTaken",
+  "main": 8,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.restartTeams.opp.ownRestartsRetained",
+  "main": 8,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|1H.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 21
+ },
+ {
+  "path": "A-legacy|1H.intelligence.turnoverDataset.outcomes[0].nextEvent",
+  "main": null,
+  "repair": "#65968d43-f22b-4908-a4bd-83912e3478d6"
+ },
+ {
+  "path": "A-legacy|1H.intelligence.turnoverDataset.outcomes[0].secondsToOutcome",
+  "main": null,
+  "repair": 36
+ },
+ {
+  "path": "A-legacy|1H.intelligence.turnoverDataset.outcomes[4].nextEvent",
+  "main": "#85f94ccc-0693-45fd-bd3f-8db523a8e7b1",
+  "repair": "#9055138b-95e7-4f70-be35-af3aae377267"
+ },
+ {
+  "path": "A-legacy|1H.intelligence.turnoverDataset.outcomes[4].secondsToOutcome",
+  "main": 40,
+  "repair": 25
+ },
+ {
+  "path": "A-legacy|1H.intelligence.turnoverDataset.outcomes[5].nextEvent",
+  "main": null,
+  "repair": "#85f94ccc-0693-45fd-bd3f-8db523a8e7b1"
+ },
+ {
+  "path": "A-legacy|1H.intelligence.turnoverDataset.outcomes[5].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "A-legacy|1H.intelligence.turnoverDataset.outcomes[7].nextEvent",
+  "main": null,
+  "repair": "#1a2e7631-8dd7-4438-8980-9bf6e68a4b95"
+ },
+ {
+  "path": "A-legacy|1H.intelligence.turnoverDataset.outcomes[7].secondsToOutcome",
+  "main": null,
+  "repair": 40
+ },
+ {
+  "path": "A-legacy|1H.intelligence.turnoverDataset.outcomes[12].nextEvent",
+  "main": null,
+  "repair": "#c882a787-b1f7-4f9f-8ffb-47a48b5bcfd0"
+ },
+ {
+  "path": "A-legacy|1H.intelligence.turnoverDataset.outcomes[12].secondsToOutcome",
+  "main": null,
+  "repair": 27
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.ourKickouts",
+  "main": {
+   "originKind": "KICKOUT",
+   "total": 8,
+   "retainedCount": 0,
+   "concededCount": 8,
+   "retentionPct": 0,
+   "stealPct": 100,
+   "retained": {
+    "count": 0,
+    "goals": 0,
+    "points": 0,
+    "wides": 0,
+    "turnovers": 0,
+    "recycled": 0,
+    "scoreValue": 0,
+    "scoringPct": 0
+   },
+   "conceded": {
+    "count": 8,
+    "goals": 0,
+    "points": 3,
+    "wides": 1,
+    "turnovers": 3,
+    "recycled": 1,
+    "scoreValue": 3,
+    "scoringPct": 38
+   },
+   "damagePct": 38,
+   "escapePct": 62,
+   "netOutcome": -3,
+   "netLabel": "-3",
+   "results": [
+    {
+     "originEvent": "#42253845-f7fc-455c-8d8a-7c9da97b2c04",
+     "actingSide": "OPP",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#b3154b18-6dd8-4c1e-8b13-5e04cdf67ae6",
+     "actingSide": "OPP",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#8e325fd2-5e0f-4f7a-91e1-fc07f369ef20",
+     "secondsToOutcome": 24,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#c7c97330-2091-4db2-b2ba-4623bb88501c",
+     "actingSide": "OPP",
+     "outcome": "POINT",
+     "outcomingEvent": "#165b9473-9db3-4bc3-9c26-090c105244ca",
+     "secondsToOutcome": 17,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#0369362f-f42c-4e70-a78e-b949826fc029",
+     "actingSide": "OPP",
+     "outcome": "WIDE",
+     "outcomingEvent": "#24345300-79d4-4610-9dce-54e72f3a8de9",
+     "secondsToOutcome": 32,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#8e95270e-0340-4774-81ed-4e8250d33ced",
+     "actingSide": "OPP",
+     "outcome": "POINT",
+     "outcomingEvent": "#4382ed1a-5866-4c69-9469-a4d59184d44a",
+     "secondsToOutcome": 26,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#9f8a7c79-dc4f-42fa-a358-976970900ff3",
+     "actingSide": "OPP",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#a70e638b-4acc-4fd1-8dc3-41901b2f73fe",
+     "secondsToOutcome": 38,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#b4947ece-d53d-4af9-b591-09918dd37d64",
+     "actingSide": "OPP",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#8ee23d5b-bb3c-4943-aab8-b233f3ba69dc",
+     "secondsToOutcome": 40,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#6307c4ce-5007-4f7c-8441-38ca5e61bb96",
+     "actingSide": "OPP",
+     "outcome": "POINT",
+     "outcomingEvent": "#b1d1c591-7427-4898-a870-9d576b379816",
+     "secondsToOutcome": 30,
+     "goals": 0,
+     "points": 1
+    }
+   ]
+  },
+  "repair": null
+ },
+ {
+  "path": "A-legacy|1H.intelligence.possessions.theirKickouts",
+  "main": {
+   "originKind": "KICKOUT",
+   "total": 13,
+   "retainedCount": 13,
+   "concededCount": 0,
+   "retentionPct": 100,
+   "stealPct": 0,
+   "retained": {
+    "count": 13,
+    "goals": 1,
+    "points": 4,
+    "wides": 1,
+    "turnovers": 4,
+    "recycled": 3,
+    "scoreValue": 7,
+    "scoringPct": 38
+   },
+   "conceded": {
+    "count": 0,
+    "goals": 0,
+    "points": 0,
+    "wides": 0,
+    "turnovers": 0,
+    "recycled": 0,
+    "scoreValue": 0,
+    "scoringPct": 0
+   },
+   "damagePct": 0,
+   "escapePct": 100,
+   "netOutcome": 7,
+   "netLabel": "+7",
+   "results": [
+    {
+     "originEvent": "#1f23df60-f429-4465-b13e-61a16a51be35",
+     "actingSide": "FOR",
+     "outcome": "POINT",
+     "outcomingEvent": "#32ae6f6b-cb36-428c-83d7-5558b9181bde",
+     "secondsToOutcome": 62,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#cb3460ac-a15f-47b8-bf44-690bb7391f76",
+     "actingSide": "FOR",
+     "outcome": "SHOT",
+     "outcomingEvent": "#2e20eadc-ebbc-4ff5-b0e2-98a92a700eb5",
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#081b7a77-0b3a-48f7-8d3e-252b740a2628",
+     "actingSide": "FOR",
+     "outcome": "POINT",
+     "outcomingEvent": "#a599015a-c010-48b6-b401-520c92585009",
+     "secondsToOutcome": 37,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#44304d99-6f2c-45bb-af29-9d54e2b0e3e1",
+     "actingSide": "FOR",
+     "outcome": "POINT",
+     "outcomingEvent": "#5724aa2d-d089-4313-84fb-45b2bafe0ebe",
+     "secondsToOutcome": 32,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#cc99feed-77d6-40f4-8b74-ee35af161273",
+     "actingSide": "FOR",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#c61b0cf6-ad69-4340-8167-fb678140a311",
+     "actingSide": "FOR",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#5f631ba9-1c72-41d8-81d8-5337971b8f20",
+     "secondsToOutcome": 33,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#47bb73cd-c026-4a3f-917f-5aaaea7ab24e",
+     "actingSide": "FOR",
+     "outcome": "POINT",
+     "outcomingEvent": "#d5c78cfd-8eb9-4d29-8fe7-d3b878c96dd2",
+     "secondsToOutcome": 20,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#da796840-b50e-4b32-aa1c-56c867966093",
+     "actingSide": "FOR",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#005acc7e-25c8-4de3-aa0f-cdeb1991d32f",
+     "secondsToOutcome": 21,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#ad9ef3dd-0440-4a77-9942-55e1acbf17c3",
+     "actingSide": "FOR",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#3a8a0143-d077-4683-abd8-fa7a67fb8203",
+     "secondsToOutcome": 35,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#ee576247-45b9-44e1-a920-e6e6161a7f1f",
+     "actingSide": "FOR",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#6dd3d84a-9465-410f-8739-4200976cead1",
+     "secondsToOutcome": 39,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#5633ba06-49b3-4a8c-8d2e-840e4b81604a",
+     "actingSide": "FOR",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#5ae50a72-805f-4fe6-81b7-95425380fa9b",
+     "actingSide": "FOR",
+     "outcome": "GOAL",
+     "outcomingEvent": "#242676e5-4ce7-4fd0-88a6-919e1a2a0524",
+     "secondsToOutcome": 14,
+     "goals": 1,
+     "points": 0
+    },
+    {
+     "originEvent": "#c71fe3ab-ec39-4ad6-945a-2ab87e14531a",
+     "actingSide": "FOR",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    }
+   ]
+  },
+  "repair": null
+ },
+ {
+  "path": "A-legacy|1H.intelligence.intelligenceSummary.dangerInsights[0]",
+  "main": "Na Fianna scored from 3 of the 8 Ballyboden Kickouts they won",
+  "repair": "Na Fianna scored from 3 of 8 Kickouts they won"
+ },
+ {
+  "path": "A-legacy|1H.intelligence.intelligenceSummary.weaponInsights",
+  "main": [],
+  "repair": [
+   "Ballyboden scored from 5 of 13 Kickout wins"
+  ]
+ },
+ {
+  "path": "A-legacy|1H.intelligence.intelligenceSummary.coachingPriorities",
+  "main": [
+   "Protect possession — Na Fianna scoring from Ballyboden turnovers",
+   "Win the Kickout — Na Fianna scored from 3 of the 8 Ballyboden Kickouts they won"
+  ],
+  "repair": [
+   "Protect possession — Na Fianna scoring from Ballyboden turnovers",
+   "Win the Kickout — Na Fianna scored from 3 of 8 Kickouts they won",
+   "Keep winning Kickouts — Ballyboden scored from 5 of 13 Kickout wins"
+  ]
+ },
+ {
+  "path": "A-legacy|FULL.core.summaryFOR.shotBlock",
+  "main": 0,
+  "repair": 5
+ },
+ {
+  "path": "A-legacy|FULL.core.summaryFOR.ownRestartsRetained",
+  "main": 27,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.summaryFOR.koFoulWon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-legacy|FULL.core.summaryFOR.koFoulCon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-legacy|FULL.core.summaryFOR.toSwarmInt",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-legacy|FULL.core.summaryFOR.toSlackKpHp",
+  "main": 0,
+  "repair": 8
+ },
+ {
+  "path": "A-legacy|FULL.core.summaryOPP.ownRestartsRetained",
+  "main": 19,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.summaryOPP.koFoulWon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-legacy|FULL.core.summaryOPP.koFoulCon",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "A-legacy|FULL.core.summaryOPP.toSwarmInt",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-legacy|FULL.core.summaryOPP.toSlackKpHp",
+  "main": 0,
+  "repair": 5
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.ownKickoutRetention.full.num",
+  "main": 27,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.ownKickoutRetention.full.den",
+  "main": 27,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.ownKickoutRetention.full.pct",
+  "main": 100,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.ownKickoutRetention.h1.num",
+  "main": 13,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.ownKickoutRetention.h1.den",
+  "main": 13,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.ownKickoutRetention.h1.pct",
+  "main": 100,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.ownKickoutRetention.h2.num",
+  "main": 14,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.ownKickoutRetention.h2.den",
+  "main": 14,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.ownKickoutRetention.h2.pct",
+  "main": 100,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.oppKickoutWinRate.full.den",
+  "main": 19,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.oppKickoutWinRate.h1.den",
+  "main": 8,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.oppKickoutWinRate.h2.den",
+  "main": 11,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restartTeams.for.ownRestartsTaken",
+  "main": 27,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restartTeams.for.ownRestartsRetained",
+  "main": 27,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restartTeams.for.unknownOwnerRestarts",
+  "repair": 46
+ },
+ {
+  "path": "A-legacy|FULL.core.restartTeams.opp.ownRestartsTaken",
+  "main": 19,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restartTeams.opp.ownRestartsRetained",
+  "main": 19,
+  "repair": 0
+ },
+ {
+  "path": "A-legacy|FULL.core.restartTeams.opp.unknownOwnerRestarts",
+  "repair": 46
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[0].nextEvent",
+  "main": null,
+  "repair": "#65968d43-f22b-4908-a4bd-83912e3478d6"
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[0].secondsToOutcome",
+  "main": null,
+  "repair": 36
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[4].nextEvent",
+  "main": "#85f94ccc-0693-45fd-bd3f-8db523a8e7b1",
+  "repair": "#9055138b-95e7-4f70-be35-af3aae377267"
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[4].secondsToOutcome",
+  "main": 40,
+  "repair": 25
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[5].nextEvent",
+  "main": null,
+  "repair": "#85f94ccc-0693-45fd-bd3f-8db523a8e7b1"
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[5].secondsToOutcome",
+  "main": null,
+  "repair": 15
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[7].nextEvent",
+  "main": null,
+  "repair": "#1a2e7631-8dd7-4438-8980-9bf6e68a4b95"
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[7].secondsToOutcome",
+  "main": null,
+  "repair": 40
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[12].nextEvent",
+  "main": null,
+  "repair": "#c882a787-b1f7-4f9f-8ffb-47a48b5bcfd0"
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[12].secondsToOutcome",
+  "main": null,
+  "repair": 27
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[20].nextEvent",
+  "main": null,
+  "repair": "#e2db5299-95b4-4bff-bfd0-4811f0365d3b"
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[20].secondsToOutcome",
+  "main": null,
+  "repair": 25
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[24].nextEvent",
+  "main": null,
+  "repair": "#7f87e871-d919-4acb-b7b0-94b2b1e8b11d"
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.turnoverDataset.outcomes[24].secondsToOutcome",
+  "main": null,
+  "repair": 38
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.ourKickouts",
+  "main": {
+   "originKind": "KICKOUT",
+   "total": 19,
+   "retainedCount": 0,
+   "concededCount": 19,
+   "retentionPct": 0,
+   "stealPct": 100,
+   "retained": {
+    "count": 0,
+    "goals": 0,
+    "points": 0,
+    "wides": 0,
+    "turnovers": 0,
+    "recycled": 0,
+    "scoreValue": 0,
+    "scoringPct": 0
+   },
+   "conceded": {
+    "count": 19,
+    "goals": 2,
+    "points": 7,
+    "wides": 1,
+    "turnovers": 7,
+    "recycled": 2,
+    "scoreValue": 13,
+    "scoringPct": 47
+   },
+   "damagePct": 47,
+   "escapePct": 53,
+   "netOutcome": -13,
+   "netLabel": "-13",
+   "results": [
+    {
+     "originEvent": "#42253845-f7fc-455c-8d8a-7c9da97b2c04",
+     "actingSide": "OPP",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#b3154b18-6dd8-4c1e-8b13-5e04cdf67ae6",
+     "actingSide": "OPP",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#8e325fd2-5e0f-4f7a-91e1-fc07f369ef20",
+     "secondsToOutcome": 24,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#c7c97330-2091-4db2-b2ba-4623bb88501c",
+     "actingSide": "OPP",
+     "outcome": "POINT",
+     "outcomingEvent": "#165b9473-9db3-4bc3-9c26-090c105244ca",
+     "secondsToOutcome": 17,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#0369362f-f42c-4e70-a78e-b949826fc029",
+     "actingSide": "OPP",
+     "outcome": "WIDE",
+     "outcomingEvent": "#24345300-79d4-4610-9dce-54e72f3a8de9",
+     "secondsToOutcome": 32,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#8e95270e-0340-4774-81ed-4e8250d33ced",
+     "actingSide": "OPP",
+     "outcome": "POINT",
+     "outcomingEvent": "#4382ed1a-5866-4c69-9469-a4d59184d44a",
+     "secondsToOutcome": 26,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#9f8a7c79-dc4f-42fa-a358-976970900ff3",
+     "actingSide": "OPP",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#a70e638b-4acc-4fd1-8dc3-41901b2f73fe",
+     "secondsToOutcome": 38,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#b4947ece-d53d-4af9-b591-09918dd37d64",
+     "actingSide": "OPP",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#8ee23d5b-bb3c-4943-aab8-b233f3ba69dc",
+     "secondsToOutcome": 40,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#6307c4ce-5007-4f7c-8441-38ca5e61bb96",
+     "actingSide": "OPP",
+     "outcome": "POINT",
+     "outcomingEvent": "#b1d1c591-7427-4898-a870-9d576b379816",
+     "secondsToOutcome": 30,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#c7ce4538-d5ed-4c46-9309-ae046e9f893e",
+     "actingSide": "OPP",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#1004a336-6430-451f-a34f-8a471867edb1",
+     "secondsToOutcome": 19,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#82636f14-bcd8-4f13-81e0-0ba1d3d82c01",
+     "actingSide": "OPP",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#0c13cd08-cd2b-4f07-9f3a-ada221b8c641",
+     "secondsToOutcome": 30,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#af72de59-7997-4df5-bb35-e7e97f948c8d",
+     "actingSide": "OPP",
+     "outcome": "POINT",
+     "outcomingEvent": "#c2c819c1-f399-4064-9b81-c6ac539b6207",
+     "secondsToOutcome": 15,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#10fb23af-fe76-413b-9cd8-8c73f5c0a251",
+     "actingSide": "OPP",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#f8d59a43-f917-4c4a-865c-bb6583083f73",
+     "secondsToOutcome": 16,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#25e90196-3516-4bcb-9271-b7107e393db7",
+     "actingSide": "OPP",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#cf0dc6e6-c0af-49ab-acb9-59a947d3dce8",
+     "actingSide": "OPP",
+     "outcome": "GOAL",
+     "outcomingEvent": "#41daa759-c233-494c-8875-59aa66be7429",
+     "secondsToOutcome": 40,
+     "goals": 1,
+     "points": 0
+    },
+    {
+     "originEvent": "#e2021eb5-a71f-40d3-845c-e6a79fb1fe70",
+     "actingSide": "OPP",
+     "outcome": "POINT",
+     "outcomingEvent": "#22e3c32d-a32f-403d-b0e5-0c4d3a0bef27",
+     "secondsToOutcome": 15,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#b2908a4b-7ee1-45b0-85a1-03cd9aff017d",
+     "actingSide": "OPP",
+     "outcome": "GOAL",
+     "outcomingEvent": "#9e677e17-1b3f-4711-a664-44165ed0f262",
+     "secondsToOutcome": 28,
+     "goals": 1,
+     "points": 0
+    },
+    {
+     "originEvent": "#b279e443-7602-44bf-9484-6506d0c8684e",
+     "actingSide": "OPP",
+     "outcome": "POINT",
+     "outcomingEvent": "#bb33f5ab-03f4-4ef1-bc83-e4079fd9d0ea",
+     "secondsToOutcome": 40,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#b34b9efb-f9c8-4cc0-880e-656579018e60",
+     "actingSide": "OPP",
+     "outcome": "POINT",
+     "outcomingEvent": "#2688f8dc-8676-47c8-b8d5-753b32eb142c",
+     "secondsToOutcome": 31,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#6a090006-dc76-4ce5-929e-b43c42dea5e7",
+     "actingSide": "OPP",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#1c43ec78-8327-4be3-a345-aa28bc7cfdeb",
+     "secondsToOutcome": 24,
+     "goals": 0,
+     "points": 0
+    }
+   ]
+  },
+  "repair": null
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.possessions.theirKickouts",
+  "main": {
+   "originKind": "KICKOUT",
+   "total": 27,
+   "retainedCount": 27,
+   "concededCount": 0,
+   "retentionPct": 100,
+   "stealPct": 0,
+   "retained": {
+    "count": 27,
+    "goals": 1,
+    "points": 8,
+    "wides": 5,
+    "turnovers": 6,
+    "recycled": 7,
+    "scoreValue": 11,
+    "scoringPct": 33
+   },
+   "conceded": {
+    "count": 0,
+    "goals": 0,
+    "points": 0,
+    "wides": 0,
+    "turnovers": 0,
+    "recycled": 0,
+    "scoreValue": 0,
+    "scoringPct": 0
+   },
+   "damagePct": 0,
+   "escapePct": 100,
+   "netOutcome": 11,
+   "netLabel": "+11",
+   "results": [
+    {
+     "originEvent": "#1f23df60-f429-4465-b13e-61a16a51be35",
+     "actingSide": "FOR",
+     "outcome": "POINT",
+     "outcomingEvent": "#32ae6f6b-cb36-428c-83d7-5558b9181bde",
+     "secondsToOutcome": 62,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#cb3460ac-a15f-47b8-bf44-690bb7391f76",
+     "actingSide": "FOR",
+     "outcome": "SHOT",
+     "outcomingEvent": "#2e20eadc-ebbc-4ff5-b0e2-98a92a700eb5",
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#081b7a77-0b3a-48f7-8d3e-252b740a2628",
+     "actingSide": "FOR",
+     "outcome": "POINT",
+     "outcomingEvent": "#a599015a-c010-48b6-b401-520c92585009",
+     "secondsToOutcome": 37,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#44304d99-6f2c-45bb-af29-9d54e2b0e3e1",
+     "actingSide": "FOR",
+     "outcome": "POINT",
+     "outcomingEvent": "#5724aa2d-d089-4313-84fb-45b2bafe0ebe",
+     "secondsToOutcome": 32,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#cc99feed-77d6-40f4-8b74-ee35af161273",
+     "actingSide": "FOR",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#c61b0cf6-ad69-4340-8167-fb678140a311",
+     "actingSide": "FOR",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#5f631ba9-1c72-41d8-81d8-5337971b8f20",
+     "secondsToOutcome": 33,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#47bb73cd-c026-4a3f-917f-5aaaea7ab24e",
+     "actingSide": "FOR",
+     "outcome": "POINT",
+     "outcomingEvent": "#d5c78cfd-8eb9-4d29-8fe7-d3b878c96dd2",
+     "secondsToOutcome": 20,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#da796840-b50e-4b32-aa1c-56c867966093",
+     "actingSide": "FOR",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#005acc7e-25c8-4de3-aa0f-cdeb1991d32f",
+     "secondsToOutcome": 21,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#ad9ef3dd-0440-4a77-9942-55e1acbf17c3",
+     "actingSide": "FOR",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#3a8a0143-d077-4683-abd8-fa7a67fb8203",
+     "secondsToOutcome": 35,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#ee576247-45b9-44e1-a920-e6e6161a7f1f",
+     "actingSide": "FOR",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#6dd3d84a-9465-410f-8739-4200976cead1",
+     "secondsToOutcome": 39,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#5633ba06-49b3-4a8c-8d2e-840e4b81604a",
+     "actingSide": "FOR",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#5ae50a72-805f-4fe6-81b7-95425380fa9b",
+     "actingSide": "FOR",
+     "outcome": "GOAL",
+     "outcomingEvent": "#242676e5-4ce7-4fd0-88a6-919e1a2a0524",
+     "secondsToOutcome": 14,
+     "goals": 1,
+     "points": 0
+    },
+    {
+     "originEvent": "#c71fe3ab-ec39-4ad6-945a-2ab87e14531a",
+     "actingSide": "FOR",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#2fca2b19-9fe0-4e7e-b2e7-960daa201042",
+     "actingSide": "FOR",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#d1c7cd23-e5cf-47e9-a8e0-963f615d63e0",
+     "actingSide": "FOR",
+     "outcome": "WIDE",
+     "outcomingEvent": "#bd8b70f4-cffa-43c9-9d0f-25393696aaed",
+     "secondsToOutcome": 33,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#35cefae5-e0b0-4402-9914-0ad12cd3ce19",
+     "actingSide": "FOR",
+     "outcome": "POINT",
+     "outcomingEvent": "#020fd988-215f-4a4a-aa06-5024354ded39",
+     "secondsToOutcome": 24,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#0caeeddf-0814-4b45-802f-c01b2991fb46",
+     "actingSide": "FOR",
+     "outcome": "WIDE",
+     "outcomingEvent": "#00224e3c-5937-4f35-8243-e9e64c434ac3",
+     "secondsToOutcome": 33,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#08813934-d75b-462b-ab09-f7ef62ceca55",
+     "actingSide": "FOR",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#56835bba-cf12-466e-a698-c2eaa70d0432",
+     "actingSide": "FOR",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#86da21bb-acc6-477b-9674-9ebbbc109a8e",
+     "secondsToOutcome": 31,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#894ed6ab-47f5-4e86-a799-9f8f44c94f8d",
+     "actingSide": "FOR",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#e61c2afa-29fc-477b-b0da-c1dbeec5ab30",
+     "actingSide": "FOR",
+     "outcome": "WIDE",
+     "outcomingEvent": "#25ad4bdf-7b83-4505-aa0c-9f2c5ad68feb",
+     "secondsToOutcome": 27,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#012ac1e5-d1bd-42d6-9818-ee74daba6aac",
+     "actingSide": "FOR",
+     "outcome": "WIDE",
+     "outcomingEvent": "#875df254-2c17-42c3-b2bf-0a7798cbd6e6",
+     "secondsToOutcome": 39,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#1175841c-2ee0-4667-9f30-c1bbbf84eac9",
+     "actingSide": "FOR",
+     "outcome": "RECYCLED",
+     "outcomingEvent": null,
+     "secondsToOutcome": null,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#744580a7-6e59-4106-8cd6-0711d5fd6fde",
+     "actingSide": "FOR",
+     "outcome": "TURNOVER",
+     "outcomingEvent": "#0748ab79-a680-4d71-9fa7-c8aaac80b1db",
+     "secondsToOutcome": 39,
+     "goals": 0,
+     "points": 0
+    },
+    {
+     "originEvent": "#c8e75ef9-3743-43c5-b226-a955e0e699c0",
+     "actingSide": "FOR",
+     "outcome": "POINT",
+     "outcomingEvent": "#b0d2e5f0-f4cf-4a7b-9f5a-7c9a06cad15a",
+     "secondsToOutcome": 19,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#769621c9-d745-465e-95a1-2aeee210b956",
+     "actingSide": "FOR",
+     "outcome": "POINT",
+     "outcomingEvent": "#c8abea13-4c09-4669-98b0-f35cd0bb03ba",
+     "secondsToOutcome": 54,
+     "goals": 0,
+     "points": 1
+    },
+    {
+     "originEvent": "#6497a805-7ce4-4b28-8c85-3f52b9f340d0",
+     "actingSide": "FOR",
+     "outcome": "POINT",
+     "outcomingEvent": "#65406355-31e6-4816-9664-262f6b989e79",
+     "secondsToOutcome": 31,
+     "goals": 0,
+     "points": 1
+    }
+   ]
+  },
+  "repair": null
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.intelligenceSummary.dangerInsights[0]",
+  "main": "Na Fianna scored from 9 of the 19 Ballyboden Kickouts they won",
+  "repair": "Na Fianna scored from 9 of 19 Kickouts they won"
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.intelligenceSummary.weaponInsights",
+  "main": [],
+  "repair": [
+   "Ballyboden scored from 9 of 27 Kickout wins"
+  ]
+ },
+ {
+  "path": "A-legacy|FULL.intelligence.intelligenceSummary.coachingPriorities",
+  "main": [
+   "Protect possession — Na Fianna scoring from Ballyboden turnovers",
+   "Win the Kickout — Na Fianna scored from 9 of the 19 Ballyboden Kickouts they won"
+  ],
+  "repair": [
+   "Protect possession — Na Fianna scoring from Ballyboden turnovers",
+   "Win the Kickout — Na Fianna scored from 9 of 19 Kickouts they won",
+   "Keep winning Kickouts — Ballyboden scored from 9 of 27 Kickout wins"
+  ]
+ }
+]

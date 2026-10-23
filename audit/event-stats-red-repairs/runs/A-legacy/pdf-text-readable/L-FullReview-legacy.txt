@@ -1,0 +1,2502 @@
+
+===== PAGE 1 (1920x1080) =====
+   24    38  Match Summary
+ 1896    38  1 / 30
+   24    62  PáircVision Report  ·  Parnell Park
+  496   118  Ballyboden
+ 1424   118  Na Fianna
+  960   158  v
+  496   198  1-16 (19)
+ 1424   198  3-25 (34)
+   88   258  Ballyboden
+  960   258  v
+ 1016   258  Na Fianna
+   88   284  SCORING
+ 1016   284  SCORING
+   84   303  Goals
+  910   303  1
+ 1012   303  Goals
+ 1838   303  3
+   84   322  Points
+  910   322  16
+ 1012   322  Points
+ 1838   322  25
+   84   341  2-Pointers
+  910   341  3
+ 1012   341  2-Pointers
+ 1838   341  6
+   84   360  Total Score
+  910   360  19
+ 1012   360  Total Score
+ 1838   360  34
+   84   379  Shots
+  910   379  27
+ 1012   379  Shots
+ 1838   379  27
+   84   398  Wides
+  910   398  7
+ 1012   398  Wides
+ 1838   398  5
+   84   417  Conversion
+  910   417  52%
+ 1012   417  Conversion
+ 1838   417  81%
+   88   438  SHOT DETAIL
+ 1016   438  SHOT DETAIL
+   84   457  Short
+  910   457  1
+ 1012   457  Short
+ 1838   457  0
+   84   476  Post
+  910   476  0
+ 1012   476  Post
+ 1838   476  0
+   84   495  45
+  910   495  0
+ 1012   495  45
+ 1838   495  0
+   84   514  Block / Save
+  910   514  5
+ 1012   514  Block / Save
+ 1838   514  0
+   88   535  KICKOUTS
+ 1016   535  KICKOUTS
+   84   554  Restart Share Won
+  910   554  27
+ 1012   554  Restart Share Won
+ 1838   554  19
+   84   573  Restart Share Conceded
+  910   573  19
+ 1012   573  Restart Share Conceded
+ 1838   573  27
+   84   592  Restart Share
+  910   592  59%
+ 1012   592  Restart Share
+ 1838   592  41%
+   84   611  Clean Won
+  910   611  10
+ 1012   611  Clean Won
+ 1838   611  9
+   84   630  Break Won
+  910   630  14
+ 1012   630  Break Won
+ 1838   630  7
+   84   649  Foul Won
+  910   649  3
+ 1012   649  Foul Won
+ 1838   649  3
+   84   668  Dead Ball Won
+  910   668  0
+ 1012   668  Dead Ball Won
+ 1838   668  0
+   84   687  Clean Lost
+  910   687  9
+ 1012   687  Clean Lost
+ 1838   687  10
+   84   706  Break Lost
+  910   706  7
+ 1012   706  Break Lost
+ 1838   706  14
+   84   725  Foul Conceded
+  910   725  3
+ 1012   725  Foul Conceded
+ 1838   725  3
+   84   744  Kicked Dead
+  910   744  0
+ 1012   744  Kicked Dead
+ 1838   744  0
+   88   765  TURNOVERS
+ 1016   765  TURNOVERS
+   84   784  T/O Won
+  910   784  13
+ 1012   784  T/O Won
+ 1838   784  13
+   84   803  T/O Lost
+  910   803  13
+ 1012   803  T/O Lost
+ 1838   803  13
+   84   822  Net T/O
+  910   822  +0
+ 1012   822  Net T/O
+ 1838   822  +0
+   84   841  Tackle / Press
+  910   841  3
+ 1012   841  Tackle / Press
+ 1838   841  4
+   84   860  Swarm / Int.
+  910   860  3
+ 1012   860  Swarm / Int.
+ 1838   860  1
+   84   879  Unforced
+  910   879  0
+ 1012   879  Unforced
+ 1838   879  0
+   84   898  Slack KP / HP
+  910   898  8
+ 1012   898  Slack KP / HP
+ 1838   898  5
+   84   917  OC / Stripped
+  910   917  0
+ 1012   917  OC / Stripped
+ 1838   917  2
+   88   938  FREES
+ 1016   938  FREES
+   84   957  Frees Won
+  910   957  11
+ 1012   957  Frees Won
+ 1838   957  6
+   84   976  Frees Conceded
+  910   976  6
+ 1012   976  Frees Conceded
+ 1838   976  11
+   84   995  Placed Attempts
+  910   995  4
+ 1012   995  Placed Attempts
+ 1838   995  7
+   84  1014  Placed Scores
+  910  1014  4
+ 1012  1014  Placed Scores
+ 1838  1014  5
+   84  1033  Placed Points
+  910  1033  6
+ 1012  1033  Placed Points
+ 1838  1033  8
+   84  1052  Placed Misses
+  910  1052  0
+ 1012  1052  Placed Misses
+ 1838  1052  2
+ 1896  1060  152 total events
+
+===== PAGE 2 (1920x1080) =====
+   24    38  Understanding PáircVision Analytics
+ 1896    38  2 / 30
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+  112   152  PART 1 — MATCH FACTS
+  702   152  PART 2 — POSSESSION FACTS
+ 1292   152  PART 3 — GAME ORIGIN / CHAIN ANALYSIS
+  112   188  What happened?
+  702   188  What did we win/lose and where?
+ 1292   188  What happened after those possessions
+ 1292   216  began?
+  112   244  "Raw match events, exactly as they were recorded."
+  702   244  "Every restart, turnover and free is followed to its
+  702   268  immediate outcome."
+ 1292   272  "Where did the possessions that eventually produced
+  112   282  Scores, shots, kickouts, turnovers and frees — the
+ 1292   296  scores begin?"
+  112   304  numbers you would record on a clipboard.
+  702   306  Each possession is tracked from its start to its immediate
+  702   328  result — a score, a wide, or possession lost. This is the
+ 1292   334  A chain traces a full attack, even when it spans multiple
+  702   350  official source of truth for what we won or lost, and where.
+ 1292   356  possessions. A turnover → free won → score is one chain.
+  112   366  FOUND IN THIS REPORT
+ 1292   378  This layer shows where scoring possessions began — it
+  112   390  · Scoring Breakdown
+ 1292   400  does not establish tactical causation. If a restart isn't logged
+  112   412  · Match Swing Timeline
+  702   412  FOUND IN THIS REPORT
+ 1292   422  live, the next score attributes to From General Play —
+  112   434  · Game Segments
+  702   436  · Opposition Facts
+ 1292   444  origin chains only know what was captured.
+  112   456  · Player Breakdown
+  702   458  · Restart Analysis
+  112   478  · Shot Pitch Maps
+  702   480  · Turnover Analysis
+  112   500  · Shot Efficiency
+  702   502  · Free Kick Analysis
+ 1292   506  FOUND IN THIS REPORT
+  112   522  · Zone Analysis
+ 1292   530  · Scoring Possession Origins
+  112   544  · Pitch Overviews
+ 1292   552  · Player Chain Involvement
+ 1292   574  · Opposition Origin & Chain Analysis
+ 1292   596  · Intelligence Summary
+ 1292   618  · Match Markers
+ 1292   640  · Chain Intelligence
+ 1292   662  · Restart Chain Analysis
+ 1292   684  · Turnover Chain Analysis
+ 1292   706  · Scoring Momentum
+  960  1022  Restart-origin counts every score in a possession that began with a kickout, including frees won during it. Direct restart scores attribute placed balls separately, so ledger sources sum to the final margin.
+  960  1044  Restart Share counts every kickout in the game. Own Kickout Retention counts only our own.
+
+===== PAGE 3 (1920x1080) =====
+ 1896    38  3 / 30
+   80   180  CHAPTER 1
+   80   230  PART 1 — MATCH FACTS
+   80   318  What happened?
+   80   398  "Raw match events and direct event-source classification exactly as they were recorded."
+   80   448  Coach question answered: "What happened?"
+   80   508  THIS CHAPTER CONTAINS
+   80   536  · Scoring Breakdown
+   80   564  · Match Swing Timeline
+   80   592  · Game Segments
+   80   620  · Player Breakdown
+   80   648  · Player Contributions
+   80   676  · Shot Pitch Maps
+   80   704  · Shot & Scoring Efficiency
+   80   732  · Zone Analysis
+   80   760  · 1H & 2H Pitch Overviews
+ 1896  1056  PÁIRCVISION
+
+===== PAGE 4 (1920x1080) =====
+   24    38  Scoring Breakdown
+ 1896    38  4 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   24    86  How was the score recorded? Direct event classification only — no restart or turnover attribution.
+  960   150  Ballyboden  1-16 (19)   v   3-25 (34)  Na Fianna
+  960   200  Na Fianna by 15
+  234   273  SOURCE
+  900   273  BALLYBODEN
+ 1260   273  NA FIANNA
+ 1575   273  NET
+  234   327  From general play
+  900   327  1-10 (13 pts)
+ 1260   327  2-20 (26 pts)
+ 1575   327  -13
+  234   389  Placed balls
+  900   389  4/4 scored · 6 pts
+ 1260   389  5/7 scored · 8 pts
+ 1575   389  -2
+ 1710   450  Source nets sum to the final margin: -15
+ 1710   472  Where a scoring possession began is a different question — see Game Origin Analysis (Part 3).
+ 1896  1060  152 events
+
+===== PAGE 5 (1920x1080) =====
+   24    38  Match Swing Timeline
+ 1896    38  5 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   40   104  FIRST HALF
+  984   104  SECOND HALF
+  132   145  Na Fianna converted 1 kickout into score
+ 1076   145  Na Fianna scored 2 unanswered
+  104   155  1H 2'
+ 1048   155  2H 3'–5'
+  132   167  KICKOUT
+ 1076   167  SCORING RUN
+  132   210  Na Fianna took the lead — 0-00 v 0-01
+ 1076   210  Na Fianna turnover led to score
+  104   220  1H 3'
+ 1048   220  2H 4'
+  132   232  LEAD CHANGE
+ 1076   232  TURNOVER
+  132   275  Ballyboden converted 1 kickout into score
+ 1076   275  Ballyboden converted 1 kickout into score
+  104   285  1H 3'
+ 1048   285  2H 6'
+  132   297  KICKOUT
+ 1076   297  KICKOUT
+  132   340  Ballyboden scored 3 unanswered
+ 1076   340  Na Fianna scored 4 unanswered
+  104   350  1H 4'–11'
+ 1048   350  2H 11'–16'
+  132   362  SCORING RUN
+ 1076   362  SCORING RUN
+  132   405  Scores level — 0-01 v 0-01
+ 1076   405  Na Fianna converted 2 kickouts into scores
+  104   415  1H 4'
+ 1048   415  2H 12'
+  132   427  EQUALISED
+ 1076   427  KICKOUT
+  132   470  Ballyboden took the lead — 0-02 v 0-01
+ 1076   470  Na Fianna turnovers led to scores
+  104   480  1H 6'
+ 1048   480  2H 13'
+  132   492  LEAD CHANGE
+ 1076   492  TURNOVER
+  132   535  Na Fianna turnovers led to scores
+ 1076   535  Ballyboden converted 1 kickout into score
+  104   545  1H 17'
+ 1048   545  2H 17'
+  132   557  TURNOVER
+ 1076   557  KICKOUT
+  132   600  Ballyboden scored 2 unanswered
+ 1076   600  Na Fianna converted 3 kickouts into scores
+  104   610  1H 18'–19'
+ 1048   610  2H 19'
+  132   622  SCORING RUN
+ 1076   622  KICKOUT
+  132   665  Na Fianna scored 2 unanswered
+ 1076   665  Na Fianna scored 4 unanswered
+  104   675  1H 20'–21'
+ 1048   675  2H 20'–25'
+  132   687  SCORING RUN
+ 1076   687  SCORING RUN
+  132   730  Na Fianna took the lead — 0-06 v 0-07
+ 1076   730  Ballyboden converted 1 kickout into score
+  104   740  1H 21'
+ 1048   740  2H 24'
+  132   752  LEAD CHANGE
+ 1076   752  KICKOUT
+  132   795  Ballyboden took the lead — 0-08 v 0-07
+ 1076   795  Na Fianna scored 2 unanswered
+  104   805  1H 23'
+ 1048   805  2H 26'–28'
+  132   817  LEAD CHANGE
+ 1076   817  SCORING RUN
+  132   860  Na Fianna scored 3 unanswered
+ 1076   860  Ballyboden converted 2 kickouts into scores
+  104   870  1H 27'–32'
+ 1048   870  2H 28'
+  132   882  SCORING RUN
+ 1076   882  KICKOUT
+  132   925  Na Fianna took the lead — 0-08 v 0-09
+ 1076   925  Ballyboden scored 2 unanswered
+  104   935  1H 27'
+ 1048   935  2H 28'–29'
+  132   947  LEAD CHANGE
+ 1076   947  SCORING RUN
+ 1896  1060  152 events
+
+===== PAGE 6 (1920x1080) =====
+   24    38  Game Segments Breakdown
+ 1896    38  6 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+  298    99  FIRST HALF
+  290   130  SEGMENT
+  740   130  Ballyboden
+ 1340   130  Na Fianna
+  525   157  Score
+  665   157  Shots/W
+  780   157  Kickout W-L
+  880   157  Net T/O
+  980   157  Frees W/C
+ 1125   157  Score
+ 1265   157  Shots/W
+ 1380   157  Kickout W-L
+ 1480   157  Net T/O
+ 1580   157  Frees W/C
+  290   197  Early (0–10)
+  525   197  0-02 (2)
+  665   197  5 / 1
+  780   197  2-2
+  880   197  +3
+  980   197  1 / 1
+ 1125   197  0-01 (1)
+ 1265   197  2 / 1
+ 1380   197  2-2
+ 1480   197  -3
+ 1580   197  1 / 1
+  290   251  Mid  (11–20)
+  525   251  0-04 (4)
+  665   251  5 / 1
+  780   251  5-2
+  880   251  -1
+  980   251  2 / 0
+ 1125   251  0-02 (2)
+ 1265   251  3 / 1
+ 1380   251  2-5
+ 1480   251  +1
+ 1580   251  0 / 2
+  290   305  Late (21–30+)
+  525   305  1-02 (5)
+  665   305  3 / 0
+  780   305  6-4
+  880   305  -2
+  980   305  2 / 2
+ 1125   305  0-09 (9)
+ 1265   305  7 / 2
+ 1380   305  4-6
+ 1480   305  +2
+ 1580   305  2 / 2
+  290   359  TOTAL
+  525   359  1-08 (11)
+  665   359  13 / 2
+  780   359  13-8
+  880   359  +0
+  980   359  5 / 3
+ 1125   359  0-12 (12)
+ 1265   359  12 / 4
+ 1380   359  8-13
+ 1480   359  +0
+ 1580   359  3 / 5
+  298   453  SECOND HALF
+  290   484  SEGMENT
+  740   484  Ballyboden
+ 1340   484  Na Fianna
+  525   511  Score
+  665   511  Shots/W
+  780   511  Kickout W-L
+  880   511  Net T/O
+  980   511  Frees W/C
+ 1125   511  Score
+ 1265   511  Shots/W
+ 1380   511  Kickout W-L
+ 1480   511  Net T/O
+ 1580   511  Frees W/C
+  290   551  Early (0–10)
+  525   551  0-01 (1)
+  665   551  4 / 2
+  780   551  4-2
+  880   551  +1
+  980   551  2 / 2
+ 1125   551  0-02 (2)
+ 1265   551  3 / 1
+ 1380   551  2-4
+ 1480   551  -1
+ 1580   551  2 / 2
+  290   605  Mid  (11–20)
+  525   605  0-01 (1)
+  665   605  4 / 2
+  780   605  4-3
+  880   605  +0
+  980   605  3 / 0
+ 1125   605  0-05 (5)
+ 1265   605  4 / 0
+ 1380   605  3-4
+ 1480   605  +0
+ 1580   605  0 / 3
+  290   659  Late (21–30+)
+  525   659  0-06 (6)
+  665   659  6 / 1
+  780   659  6-6
+  880   659  -1
+  980   659  1 / 1
+ 1125   659  3-06 (15)
+ 1265   659  8 / 0
+ 1380   659  6-6
+ 1480   659  +1
+ 1580   659  1 / 1
+  290   713  TOTAL
+  525   713  0-08 (8)
+  665   713  14 / 5
+  780   713  14-11
+  880   713  +0
+  980   713  6 / 3
+ 1125   713  3-13 (22)
+ 1265   713  15 / 1
+ 1380   713  11-14
+ 1480   713  +0
+ 1580   713  3 / 6
+
+===== PAGE 7 (1920x1080) =====
+   24    38  Player Breakdown
+ 1896    38  7 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+  270    93  Player totals include only identified receivers.
+  270   115  Player stats show only events logged with a selected player.
+  278   153  #
+  343   153  Name
+  640   153  Score
+  765   153  Shots
+  853   153  Wides
+  940   153  T/O Won
+ 1040   153  T/O Lost
+ 1130   153  Net T/O
+ 1220   153  Kickout Won
+ 1320   153  Kickout Lost
+ 1415   153  Frees Won
+ 1505   153  Frees Con
+ 1600   153  Actions
+  282   198  Ballyboden
+  278   245  #1
+  343   245  Paddy Durcan
+  640   245  —
+  765   245  —
+  853   245  —
+  940   245  —
+ 1040   245  —
+ 1130   245  —
+ 1220   245  —
+ 1320   245  —
+ 1415   245  —
+ 1505   245  —
+ 1600   245  —
+  278   303  #2
+  343   303  Darragh Ryan
+  640   303  0-00 (0)
+  765   303  0
+  853   303  0
+  940   303  0
+ 1040   303  0
+ 1130   303  +0
+ 1220   303  0
+ 1320   303  0
+ 1415   303  0
+ 1505   303  1
+ 1600   303  1
+  278   361  #3
+  343   361  Eoin O'Hara
+  640   361  0-00 (0)
+  765   361  0
+  853   361  0
+  940   361  6
+ 1040   361  0
+ 1130   361  +6
+ 1220   361  0
+ 1320   361  0
+ 1415   361  0
+ 1505   361  1
+ 1600   361  8
+  278   419  #4
+  343   419  Ross Kelly
+  640   419  0-00 (0)
+  765   419  0
+  853   419  0
+  940   419  2
+ 1040   419  0
+ 1130   419  +2
+ 1220   419  0
+ 1320   419  0
+ 1415   419  0
+ 1505   419  1
+ 1600   419  3
+  278   477  #5
+  343   477  Ciaran Hogan
+  640   477  —
+  765   477  —
+  853   477  —
+  940   477  —
+ 1040   477  —
+ 1130   477  —
+ 1220   477  —
+ 1320   477  —
+ 1415   477  —
+ 1505   477  —
+ 1600   477  —
+  278   535  #6
+  343   535  Alan Byrne
+  640   535  0-00 (0)
+  765   535  0
+  853   535  0
+  940   535  1
+ 1040   535  0
+ 1130   535  +1
+ 1220   535  0
+ 1320   535  0
+ 1415   535  0
+ 1505   535  2
+ 1600   535  3
+  278   593  #7
+  343   593  Shane Clarke
+  640   593  0-00 (0)
+  765   593  0
+  853   593  0
+  940   593  1
+ 1040   593  0
+ 1130   593  +1
+ 1220   593  0
+ 1320   593  0
+ 1415   593  0
+ 1505   593  0
+ 1600   593  1
+  278   651  #8
+  343   651  Brian Fenton
+  640   651  0-01 (1)
+  765   651  2
+  853   651  1
+  940   651  2
+ 1040   651  0
+ 1130   651  +2
+ 1220   651  6
+ 1320   651  0
+ 1415   651  0
+ 1505   651  1
+ 1600   651  12
+  278   709  #9
+  343   709  Cian Murphy
+  640   709  0-02 (2)
+  765   709  2
+  853   709  0
+  940   709  1
+ 1040   709  0
+ 1130   709  +1
+ 1220   709  8
+ 1320   709  0
+ 1415   709  2
+ 1505   709  0
+ 1600   709  13
+  278   767  #10
+  343   767  Ronan Doyle
+  640   767  0-02 (2)
+  765   767  2
+  853   767  1
+  940   767  0
+ 1040   767  0
+ 1130   767  +0
+ 1220   767  1
+ 1320   767  0
+ 1415   767  0
+ 1505   767  0
+ 1600   767  3
+  278   825  #11
+  343   825  Conor Keane
+  640   825  0-07 (7)
+  765   825  7
+  853   825  1
+  940   825  0
+ 1040   825  0
+ 1130   825  +0
+ 1220   825  5
+ 1320   825  0
+ 1415   825  2
+ 1505   825  0
+ 1600   825  14
+  278   883  #12
+  343   883  Sean Bugler
+  640   883  0-00 (0)
+  765   883  1
+  853   883  0
+  940   883  0
+ 1040   883  0
+ 1130   883  +0
+ 1220   883  1
+ 1320   883  0
+ 1415   883  0
+ 1505   883  0
+ 1600   883  2
+  278   941  #13
+  343   941  Aaron Lyons
+  640   941  0-03 (3)
+  765   941  6
+  853   941  1
+  940   941  0
+ 1040   941  0
+ 1130   941  +0
+ 1220   941  0
+ 1320   941  0
+ 1415   941  0
+ 1505   941  0
+ 1600   941  7
+  278   999  #14
+  343   999  Colm Basquel
+  640   999  0-00 (0)
+  765   999  3
+  853   999  1
+  940   999  0
+ 1040   999  0
+ 1130   999  +0
+ 1220   999  0
+ 1320   999  0
+ 1415   999  3
+ 1505   999  0
+ 1600   999  6
+
+===== PAGE 8 (1920x1080) =====
+   24    38  Player Breakdown
+ 1896    38  8 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+  270    93  Player totals include only identified receivers.
+  270   115  Player stats show only events logged with a selected player.
+  278   153  #
+  343   153  Name
+  640   153  Score
+  765   153  Shots
+  853   153  Wides
+  940   153  T/O Won
+ 1040   153  T/O Lost
+ 1130   153  Net T/O
+ 1220   153  Kickout Won
+ 1320   153  Kickout Lost
+ 1415   153  Frees Won
+ 1505   153  Frees Con
+ 1600   153  Actions
+  282   198  Ballyboden
+  278   245  #15
+  343   245  Dara Kearns
+  640   245  1-01 (4)
+  765   245  4
+  853   245  2
+  940   245  0
+ 1040   245  0
+ 1130   245  +0
+ 1220   245  0
+ 1320   245  0
+ 1415   245  4
+ 1505   245  0
+ 1600   245  10
+  278   303  #16
+  343   303  Luke Ward
+  640   303  —
+  765   303  —
+  853   303  —
+  940   303  —
+ 1040   303  —
+ 1130   303  —
+ 1220   303  —
+ 1320   303  —
+ 1415   303  —
+ 1505   303  —
+ 1600   303  —
+  278   361  #17
+  343   361  Niall Coakley
+  640   361  —
+  765   361  —
+  853   361  —
+  940   361  —
+ 1040   361  —
+ 1130   361  —
+ 1220   361  —
+ 1320   361  —
+ 1415   361  —
+ 1505   361  —
+ 1600   361  —
+  278   419  #18
+  343   419  Rob McDaid
+  640   419  —
+  765   419  —
+  853   419  —
+  940   419  —
+ 1040   419  —
+ 1130   419  —
+ 1220   419  —
+ 1320   419  —
+ 1415   419  —
+ 1505   419  —
+ 1600   419  —
+  278   477  #19
+  343   477  Ian Kelly
+  640   477  —
+  765   477  —
+  853   477  —
+  940   477  —
+ 1040   477  —
+ 1130   477  —
+ 1220   477  —
+ 1320   477  —
+ 1415   477  —
+ 1505   477  —
+ 1600   477  —
+  278   535  #20
+  343   535  Tom Rice
+  640   535  —
+  765   535  —
+  853   535  —
+  940   535  —
+ 1040   535  —
+ 1130   535  —
+ 1220   535  —
+ 1320   535  —
+ 1415   535  —
+ 1505   535  —
+ 1600   535  —
+  282   582  Na Fianna
+  278   629  #1
+  343   629  Mark Gaffney
+  640   629  —
+  765   629  —
+  853   629  —
+  940   629  —
+ 1040   629  —
+ 1130   629  —
+ 1220   629  —
+ 1320   629  —
+ 1415   629  —
+ 1505   629  —
+ 1600   629  —
+  278   687  #2
+  343   687  Ger Brennan
+  640   687  0-00 (0)
+  765   687  0
+  853   687  0
+  940   687  0
+ 1040   687  0
+ 1130   687  +0
+ 1220   687  0
+ 1320   687  0
+ 1415   687  0
+ 1505   687  0
+ 1600   687  1
+  278   745  #3
+  343   745  Joe Fogarty
+  640   745  —
+  765   745  —
+  853   745  —
+  940   745  —
+ 1040   745  —
+ 1130   745  —
+ 1220   745  —
+ 1320   745  —
+ 1415   745  —
+ 1505   745  —
+ 1600   745  —
+  278   803  #4
+  343   803  Kev Doran
+  640   803  —
+  765   803  —
+  853   803  —
+  940   803  —
+ 1040   803  —
+ 1130   803  —
+ 1220   803  —
+ 1320   803  —
+ 1415   803  —
+ 1505   803  —
+ 1600   803  —
+  278   861  #5
+  343   861  Jack Walsh
+  640   861  —
+  765   861  —
+  853   861  —
+  940   861  —
+ 1040   861  —
+ 1130   861  —
+ 1220   861  —
+ 1320   861  —
+ 1415   861  —
+ 1505   861  —
+ 1600   861  —
+  278   919  #6
+  343   919  Liam Hayes
+  640   919  0-00 (0)
+  765   919  0
+  853   919  0
+  940   919  0
+ 1040   919  0
+ 1130   919  +0
+ 1220   919  0
+ 1320   919  0
+ 1415   919  0
+ 1505   919  0
+ 1600   919  1
+  278   977  #7
+  343   977  Matt Ryan
+  640   977  —
+  765   977  —
+  853   977  —
+  940   977  —
+ 1040   977  —
+ 1130   977  —
+ 1220   977  —
+ 1320   977  —
+ 1415   977  —
+ 1505   977  —
+ 1600   977  —
+
+===== PAGE 9 (1920x1080) =====
+   24    38  Player Breakdown
+ 1896    38  9 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+  270    93  Player totals include only identified receivers.
+  270   115  Player stats show only events logged with a selected player.
+  278   153  #
+  343   153  Name
+  640   153  Score
+  765   153  Shots
+  853   153  Wides
+  940   153  T/O Won
+ 1040   153  T/O Lost
+ 1130   153  Net T/O
+ 1220   153  Kickout Won
+ 1320   153  Kickout Lost
+ 1415   153  Frees Won
+ 1505   153  Frees Con
+ 1600   153  Actions
+  282   198  Na Fianna
+  278   245  #8
+  343   245  Gareth Quinn
+  640   245  0-02 (2)
+  765   245  2
+  853   245  0
+  940   245  0
+ 1040   245  0
+ 1130   245  +0
+ 1220   245  7
+ 1320   245  0
+ 1415   245  0
+ 1505   245  0
+ 1600   245  9
+  278   303  #9
+  343   303  Ciaran Dowd
+  640   303  0-03 (3)
+  765   303  2
+  853   303  0
+  940   303  0
+ 1040   303  0
+ 1130   303  +0
+ 1220   303  4
+ 1320   303  0
+ 1415   303  0
+ 1505   303  0
+ 1600   303  8
+  278   361  #10
+  343   361  Eoin Lowry
+  640   361  0-00 (0)
+  765   361  0
+  853   361  0
+  940   361  0
+ 1040   361  0
+ 1130   361  +0
+ 1220   361  1
+ 1320   361  0
+ 1415   361  0
+ 1505   361  0
+ 1600   361  1
+  278   419  #11
+  343   419  Tom Kelly
+  640   419  0-02 (2)
+  765   419  2
+  853   419  0
+  940   419  0
+ 1040   419  0
+ 1130   419  +0
+ 1220   419  1
+ 1320   419  0
+ 1415   419  0
+ 1505   419  0
+ 1600   419  3
+  278   477  #12
+  343   477  Paul Kirwan
+  640   477  0-01 (1)
+  765   477  1
+  853   477  0
+  940   477  0
+ 1040   477  0
+ 1130   477  +0
+ 1220   477  3
+ 1320   477  0
+ 1415   477  0
+ 1505   477  0
+ 1600   477  4
+  278   535  #13
+  343   535  Dan Byrne
+  640   535  0-06 (6)
+  765   535  4
+  853   535  0
+  940   535  0
+ 1040   535  0
+ 1130   535  +0
+ 1220   535  0
+ 1320   535  0
+ 1415   535  0
+ 1505   535  0
+ 1600   535  4
+  278   593  #14
+  343   593  Sam Hughes
+  640   593  1-09 (12)
+  765   593  10
+  853   593  2
+  940   593  0
+ 1040   593  0
+ 1130   593  +0
+ 1220   593  0
+ 1320   593  0
+ 1415   593  0
+ 1505   593  0
+ 1600   593  10
+  278   651  #15
+  343   651  Kieran Mahon
+  640   651  2-02 (8)
+  765   651  5
+  853   651  2
+  940   651  0
+ 1040   651  0
+ 1130   651  +0
+ 1220   651  0
+ 1320   651  0
+ 1415   651  0
+ 1505   651  0
+ 1600   651  5
+  278   709  #16
+  343   709  Ed Nolan
+  640   709  —
+  765   709  —
+  853   709  —
+  940   709  —
+ 1040   709  —
+ 1130   709  —
+ 1220   709  —
+ 1320   709  —
+ 1415   709  —
+ 1505   709  —
+ 1600   709  —
+  278   767  #17
+  343   767  Fergal Tuite
+  640   767  —
+  765   767  —
+  853   767  —
+  940   767  —
+ 1040   767  —
+ 1130   767  —
+ 1220   767  —
+ 1320   767  —
+ 1415   767  —
+ 1505   767  —
+ 1600   767  —
+  278   825  #18
+  343   825  Hugh Doyle
+  640   825  —
+  765   825  —
+  853   825  —
+  940   825  —
+ 1040   825  —
+ 1130   825  —
+ 1220   825  —
+ 1320   825  —
+ 1415   825  —
+ 1505   825  —
+ 1600   825  —
+  278   883  #19
+  343   883  Pat Lyons
+  640   883  —
+  765   883  —
+  853   883  —
+  940   883  —
+ 1040   883  —
+ 1130   883  —
+ 1220   883  —
+ 1320   883  —
+ 1415   883  —
+ 1505   883  —
+ 1600   883  —
+  278   941  #20
+  343   941  Dave Shiels
+  640   941  —
+  765   941  —
+  853   941  —
+  940   941  —
+ 1040   941  —
+ 1130   941  —
+ 1220   941  —
+ 1320   941  —
+ 1415   941  —
+ 1505   941  —
+ 1600   941  —
+
+===== PAGE 10 (1920x1080) =====
+   24    38  Player Contributions
+ 1896    38  10 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   24    86  Raw per-player counts — scoring, shooting, restarts, turnovers and frees. Ranked by score value.
+   38   124  BALLYBODEN
+  982   124  NA FIANNA
+   38   163  PLAYER
+  338   163  SCORE
+  438   163  SHARE
+  538   163  SHOTS
+  658   163  T/O W-L
+  778   163  KO W-L
+  898   163  NET BALL
+  982   163  PLAYER
+ 1282   163  SCORE
+ 1382   163  SHARE
+ 1482   163  SHOTS
+ 1602   163  T/O W-L
+ 1722   163  KO W-L
+ 1842   163  NET BALL
+   38   191  Conor Keane
+  338   191  0-07
+  438   191  37%
+  538   191  5/7
+  658   191  0-0
+  778   191  5-0
+  898   191  +7
+  982   191  Sam Hughes
+ 1282   191  1-09
+ 1382   191  35%
+ 1482   191  8/10
+ 1602   191  0-0
+ 1722   191  0-0
+ 1842   191  0
+   38   221  Dara Kearns
+  338   221  1-01
+  438   221  21%
+  538   221  2/4
+  658   221  0-0
+  778   221  0-0
+  898   221  +4
+  982   221  Kieran Mahon
+ 1282   221  2-02
+ 1382   221  24%
+ 1482   221  3/5
+ 1602   221  0-0
+ 1722   221  0-0
+ 1842   221  0
+   38   251  Aaron Lyons
+  338   251  0-03
+  438   251  16%
+  538   251  3/6
+  658   251  0-0
+  778   251  0-0
+  898   251  0
+  982   251  Dan Byrne
+ 1282   251  0-06
+ 1382   251  18%
+ 1482   251  4/4
+ 1602   251  0-0
+ 1722   251  0-0
+ 1842   251  0
+   38   281  Cian Murphy
+  338   281  0-02
+  438   281  11%
+  538   281  2/2
+  658   281  1-0
+  778   281  8-0
+  898   281  +11
+  982   281  Ciaran Dowd
+ 1282   281  0-03
+ 1382   281  9%
+ 1482   281  2/2
+ 1602   281  0-0
+ 1722   281  4-0
+ 1842   281  +4
+   38   311  Ronan Doyle
+  338   311  0-02
+  438   311  11%
+  538   311  1/2
+  658   311  0-0
+  778   311  1-0
+  898   311  +1
+  982   311  Gareth Quinn
+ 1282   311  0-02
+ 1382   311  6%
+ 1482   311  2/2
+ 1602   311  0-0
+ 1722   311  7-0
+ 1842   311  +7
+   38   341  Brian Fenton
+  338   341  0-01
+  438   341  5%
+  538   341  1/2
+  658   341  2-0
+  778   341  6-0
+  898   341  +7
+  982   341  Tom Kelly
+ 1282   341  0-02
+ 1382   341  6%
+ 1482   341  2/2
+ 1602   341  0-0
+ 1722   341  1-0
+ 1842   341  +1
+   38   371  Eoin O'Hara
+  338   371  —
+  438   371  —
+  538   371  —
+  658   371  6-0
+  778   371  0-0
+  898   371  +5
+  982   371  Paul Kirwan
+ 1282   371  0-01
+ 1382   371  3%
+ 1482   371  1/1
+ 1602   371  0-0
+ 1722   371  3-0
+ 1842   371  +3
+   38   401  Colm Basquel
+  338   401  —
+  438   401  —
+  538   401  0/3
+  658   401  0-0
+  778   401  0-0
+  898   401  +3
+  982   401  Eoin Lowry
+ 1282   401  —
+ 1382   401  —
+ 1482   401  —
+ 1602   401  0-0
+ 1722   401  1-0
+ 1842   401  +1
+   38   431  Ross Kelly
+  338   431  —
+  438   431  —
+  538   431  —
+  658   431  2-0
+  778   431  0-0
+  898   431  +1
+  982   431  Ger Brennan
+ 1282   431  —
+ 1382   431  —
+ 1482   431  —
+ 1602   431  0-0
+ 1722   431  0-0
+ 1842   431  0
+   38   461  Shane Clarke
+  338   461  —
+  438   461  —
+  538   461  —
+  658   461  1-0
+  778   461  0-0
+  898   461  +1
+  982   461  Liam Hayes
+ 1282   461  —
+ 1382   461  —
+ 1482   461  —
+ 1602   461  0-0
+ 1722   461  0-0
+ 1842   461  0
+   38   491  Sean Bugler
+  338   491  —
+  438   491  —
+  538   491  0/1
+  658   491  0-0
+  778   491  1-0
+  898   491  +1
+   38   521  Darragh Ryan
+  338   521  —
+  438   521  —
+  538   521  —
+  658   521  0-0
+  778   521  0-0
+  898   521  -1
+   38   578  FREES CONCEDED BY PLAYER
+  982   578  FREES CONCEDED BY PLAYER
+   38   617  PLAYER
+  658   617  1H
+  778   617  2H
+  898   617  TOTAL
+  982   617  PLAYER
+ 1602   617  1H
+ 1722   617  2H
+ 1842   617  TOTAL
+   38   645  #6 Alan Byrne
+  658   645  1
+  778   645  1
+  898   645  2
+  982   645  No frees conceded attributed to a Na Fianna player
+   38   675  #3 Eoin O'Hara
+  658   675  0
+  778   675  1
+  898   675  1
+  982   675  Not attributed to a player
+ 1602   675  5
+ 1722   675  6
+ 1842   675  11
+   38   705  #8 Brian Fenton
+  658   705  0
+  778   705  1
+  898   705  1
+  982   709  Na Fianna total
+ 1602   709  5
+ 1722   709  6
+ 1842   709  11
+   38   735  #2 Darragh Ryan
+  658   735  1
+  778   735  0
+  898   735  1
+   38   765  #4 Ross Kelly
+  658   765  1
+  778   765  0
+  898   765  1
+   38   795  Not attributed to a player
+  658   795  0
+  778   795  0
+  898   795  0
+   38   829  Ballyboden total
+  658   829  3
+  778   829  3
+  898   829  6
+  960  1040  Direct event counts only. Chain involvement and net influence ranking appear in Game Origin Analysis (Part 3).
+ 1896  1060  152 events
+
+===== PAGE 11 (1920x1080) =====
+   24    38  Shot Pitch Maps
+ 1896    38  11 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   24   110  1H — BALLYBODEN SHOTS
+  945   110  13
+  977   110  1H — NA FIANNA SHOTS
+ 1898   110  12
+   24   583  2H — BALLYBODEN SHOTS
+  945   583  14
+  977   583  2H — NA FIANNA SHOTS
+ 1898   583  15
+ 1896  1060  54 events
+
+===== PAGE 12 (1920x1080) =====
+   24    38  Shot & Scoring Efficiency
+ 1896    38  12 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   38   104  FOR — BALLYBODEN
+  982   104  OPP — NA FIANNA
+   38   143  OVERALL CONVERSION
+  982   143  OVERALL CONVERSION
+   38   172  Attempts
+  940   172  27
+  982   172  Attempts
+ 1884   172  27
+   38   204  Scores
+  940   204  14
+  982   204  Scores
+ 1884   204  22
+   38   236  Conversion
+  940   236  52%
+  982   236  Conversion
+ 1884   236  81%
+   38   268  Wides
+  940   268  7
+  982   268  Wides
+ 1884   268  5
+   38   300  Blocked / Saved
+  940   300  5
+  982   300  Blocked / Saved
+ 1884   300  0
+   38   349  SOURCE BREAKDOWN
+  982   349  SOURCE BREAKDOWN
+   38   373  SOURCE
+  544   373  ATT
+  664   373  SC
+  780   373  MISS
+  940   373  CONV%
+  982   373  SOURCE
+ 1488   373  ATT
+ 1608   373  SC
+ 1724   373  MISS
+ 1884   373  CONV%
+   38   400  Open Play
+  544   400  17
+  664   400  10
+  780   400  7
+  940   400  59%
+  982   400  Open Play
+ 1488   400  20
+ 1608   400  17
+ 1724   400  3
+ 1884   400  85%
+   38   432  Free
+  544   432  1
+  664   432  1
+  780   432  0
+  940   432  100%
+  982   432  Free
+ 1488   432  6
+ 1608   432  4
+ 1724   432  2
+ 1884   432  67%
+   38   464  Mark
+  544   464  1
+  664   464  1
+  780   464  0
+  940   464  100%
+  982   464  Mark
+ 1488   464  —
+ 1608   464  —
+ 1724   464  —
+ 1884   464  —
+   38   496  45
+  544   496  2
+  664   496  2
+  780   496  0
+  940   496  100%
+  982   496  45
+ 1488   496  —
+ 1608   496  —
+ 1724   496  —
+ 1884   496  —
+   38   528  Penalty
+  544   528  —
+  664   528  —
+  780   528  —
+  940   528  —
+  982   528  Penalty
+ 1488   528  1
+ 1608   528  1
+ 1724   528  0
+ 1884   528  100%
+   38   560  Unclassified
+  544   560  6
+  664   560  —
+  780   560  6
+  940   560  0%
+  982   577  2-POINT PROFILE
+   38   587  6 shots logged without a source
+  982   606  TWO_POINTER Scores
+ 1884   606  6
+   38   631  2-POINT PROFILE
+  982   638  45+2 Scores
+ 1884   638  0
+   38   660  TWO_POINTER Scores
+  940   660  1
+  982   670  Total 2PT Scores
+ 1884   670  6
+   38   692  45+2 Scores
+  940   692  2
+  982   702  Total 2PT Pts Value
+ 1884   702  12
+   38   724  Total 2PT Scores
+  940   724  3
+  982   751  FREE CONVERSION
+   38   756  Total 2PT Pts Value
+  940   756  6
+  982   780  Placed Scored
+ 1884   780  5
+   38   805  FREE CONVERSION
+  982   812  Placed Missed
+ 1884   812  2
+   38   834  Placed Scored
+  940   834  4
+  982   844  Placed Conv %
+ 1884   844  71%
+   38   866  Placed Missed
+  940   866  0
+   38   898  Placed Conv %
+  940   898  100%
+ 1896  1060  152 events
+
+===== PAGE 13 (1920x1080) =====
+   24    38  Zone Analysis
+ 1896    38  13 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   28    95  BALLYBODEN ATTACKING ACTIVITY — SCORES + TURNOVERS WON
+  944    95  27 events
+  978    95  NA FIANNA ATTACKING ACTIVITY — SCORES + TURNOVERS WON
+ 1894    95  22 events
+   42   128  Most scoring: Attacking Centre
+  992   128  Opposition scoring: Defensive Centre
+   42   156  Turnovers won: Middle Left
+  992   156  Opposition gains: No data
+   42   178  14 scoring events recorded
+  992   178  22 opposition scoring events
+  790   462  6
+ 1130   462  12
+  790   482  Attacking Centre
+ 1130   482  Defensive Centre
+  790   635  6
+  790   655  Attacking Right
+   30   768  ZONE SUMMARY
+  663   768  KEY ZONES
+ 1296   768  ZONE INTELLIGENCE
+ 1297   796  Most scores for: Attacking Centre (5)
+  661   798  TOP SCORING ZONES — SCORES ONLY
+   28   814  Ballyboden  55%
+  625   814  45%  Na Fianna
+  659   821  Ballyboden hotspot
+ 1262   821  Attacking Centre (5)
+   28   838  Ballyboden ACTIVITY
+  659   847  Na Fianna hotspot
+ 1262   847  Defensive Centre (12)
+ 1297   852  Most turnovers won: Middle Left (5)
+   26   861  Scores
+  629   861  14
+  661   872  TURNOVER ZONES
+   26   887  Turnovers Won
+  629   887  13
+  659   895  Ballyboden won in
+ 1262   895  Middle Left (5)
+ 1297   908  Most opposition scores: Defensive Centre (12)
+   28   912  Na Fianna ACTIVITY
+  659   921  Opposition gained in
+ 1262   921  —
+   26   935  Scores Against
+  629   935  22
+   26   961  Opposition Gains
+  629   961  0
+ 1896  1060  152 events
+
+===== PAGE 14 (1920x1080) =====
+   24    38  1H Pitch Overview
+ 1896    38  14 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   24   110  1H — ALL EVENTS
+  945   110  75
+  977   110  1H — SCORES
+ 1898   110  16
+   24   583  1H — BALLYBODEN SHOTS
+  945   583  13
+  977   583  1H — NA FIANNA SHOTS
+ 1898   583  12
+ 1896  1060  75 events
+
+===== PAGE 15 (1920x1080) =====
+   24    38  2H Pitch Overview
+ 1896    38  15 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   24   110  2H — ALL EVENTS
+  945   110  77
+  977   110  2H — SCORES
+ 1898   110  20
+   24   583  2H — BALLYBODEN SHOTS
+  945   583  14
+  977   583  2H — NA FIANNA SHOTS
+ 1898   583  15
+ 1896  1060  77 events
+
+===== PAGE 16 (1920x1080) =====
+ 1896    38  16 / 30
+   80   180  CHAPTER 2
+   80   230  PART 2 — POSSESSION FACTS
+   80   318  What did we win/lose and where?
+   80   398  "Every restart, turnover and free is followed to its immediate outcome — what we won or lost, and where."
+   80   448  Coach question answered: "What did we win/lose and where?"
+   80   508  THIS CHAPTER CONTAINS
+   80   536  · Opposition Facts
+   80   564  · Restart Analysis
+   80   592  · Turnover Analysis
+   80   620  · Free Kick Analysis
+ 1896  1056  PÁIRCVISION
+
+===== PAGE 17 (1920x1080) =====
+   24    38  Opposition Facts
+ 1896    38  17 / 30
+ 1814    59  STATISTICS
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   40   100  NA FIANNA — SCORING PROFILE
+  984   100  KICKOUTS — RESTART SHARE
+   44   162  3-25 (34)
+  988   162  41%
+   44   179  FULL MATCH SCORE LINE
+  988   179  OPP RESTART SHARE
+   40   207  1st Half
+  938   207  0-12 (12)
+  984   207  Restart Share won by OPP
+ 1882   207  19 of 46
+   40   237  2nd Half
+  938   237  3-13 (22)
+   40   267  Goals
+  938   267  3
+   40   297  Points (incl. frees & 2-pointers)
+  938   297  25
+   40   327  Score Conversion
+  938   327  81%
+   40   357  Score zone (avg position)
+  938   357  Central
+  984   551  TURNOVERS GIFTED
+  988   613  13
+  988   630  TURNOVERS GIFTED TO OPPOSITION
+ 1896  1060  152 events
+
+===== PAGE 18 (1920x1080) =====
+   24    38  Restart Analysis
+ 1896    38  18 / 30
+ 1803    59  POSSESSION
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   28    95  RESTART POSSESSION — BALLYBODEN
+  944    95  0 events
+  978    95  RESTART POSSESSION — NA FIANNA
+ 1894    95  0 events
+   42   128  Ballyboden won 27 of 46 restarts
+  992   128  Na Fianna won 19 of 46 restarts
+   42   156  Ballyboden: 1 Goal, 8 Points & 2 Two-Point scores (15 pts)
+  992   156  Na Fianna: 2 Goals, 7 Points & 3 Two-Point scores (19 pts)
+   42   178  H1: 13–8 / H2: 14–11
+  992   178  H1: 8–13 / H2: 11–14
+   30   768  RESTART SUMMARY
+  663   768  CHAIN OUTCOMES
+ 1296   768  RESTART INTELLIGENCE
+ 1297   796  Ballyboden held 59% Restart Share (27 of 46) — 41% of won kickouts produced restart-origin
+  661   798  Ballyboden WON POSSESSION
+ 1297   812  point value (1 Goal, 8 Points & 2 Two-Point scores (15 pts)).
+   28   814  Ballyboden  59%
+  625   814  41%  Na Fianna
+  659   821  Won → Score (origin)
+ 1262   821  11 (41%)
+   26   839  Ballyboden Won
+  629   839  27 (59%)
+  659   847  Won → Shot attempt
+ 1262   847  17 (63%)
+ 1297   852  41% of Ballyboden's kickout wins produced restart-origin point value; 63% of their losses
+   26   865  Na Fianna Won
+  629   865  19 (41%)
+ 1297   868  produced restart-origin point value for Na Fianna.
+  659   873  Won → No shot
+ 1262   873  10
+   28   890  BY HALF
+  661   898  Na Fianna WON POSSESSION
+   26   913  H1 — Won / Lost
+  629   913  13 / 8
+  659   921  Lost → Score against (origin)
+ 1262   921  12 (63%)
+   26   939  H2 — Won / Lost
+  629   939  14 / 11
+  659   947  Lost → No score
+ 1262   947  7
+   28   964  HOW WON — OWN KICKOUTS RETAINED (0)
+  661   972  OVERALL
+   26   987  Clean Won
+  629   987  0
+  659   995  Restart Share
+ 1262   995  59% (27 of 46)
+   26  1013  Break Won
+  629  1013  0
+  659  1021  Own Kickout Retention
+ 1262  1021  —
+   26  1039  Foul Won
+  629  1039  0
+  659  1047  Avg secs to score (won)
+ 1262  1047  36s
+ 1294  1050  Origin possessions include 3 placed frees won during kickout-origin possessions (Ballyboden 1 · Na Fianna 2) — the scoring ledger attributes those scores to placed balls.
+   26  1059  Excludes dead-ball restarts, already counted in Won above.
+ 1896  1060  0 events
+
+===== PAGE 19 (1920x1080) =====
+   24    38  Turnover Analysis
+ 1896    38  19 / 30
+ 1803    59  POSSESSION
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   28    95  TURNOVERS WON — BALLYBODEN
+  944    95  13 events
+  978    95  TURNOVERS LOST — BALLYBODEN
+ 1894    95  13 events
+   42   128  Won 13 turnovers
+  992   128  Opposition won 13 turnovers
+   42   156  1 led to score
+  992   156  7 scores conceded
+   42   178  6 led to shots
+  992   178  9 shots against
+   30   768  TURNOVER SUMMARY
+  663   768  CONSEQUENCES
+ 1296   768  TURNOVER INTELLIGENCE
+ 1297   796  Ballyboden won 13 turnovers but only 8% produced turnover-origin point value.
+  661   798  Ballyboden ATTACKED
+   28   814  Ballyboden  50%
+  625   814  50%  Na Fianna
+  659   821  Won → Score (origin)
+ 1262   821  1 (8%)
+   26   839  Ballyboden Won
+  629   839  13
+  659   847  Won → Shot attempt
+ 1262   847  6 (46%)
+ 1297   852  54% of the turnovers Na Fianna won against Ballyboden produced turnover-origin point value (7
+   26   865  Na Fianna Won
+  629   865  13
+ 1297   868  of 13 losses).
+  659   873  Won → No shot
+ 1262   873  7
+   26   891  Net Turnover
+  629   891  0
+  661   898  DAMAGE CONCEDED
+ 1297   908  Ballyboden won 13 turnovers; 7 did not lead to a shot.
+   28   916  HOW WON
+  659   921  Lost → Score against (origin)
+ 1262   921  0
+   26   939  Tackle / Press
+  629   939  3
+  659   947  Lost → Shot against
+ 1262   947  0
+   26   965  Swarm / Intercept
+  629   965  3
+  661   972  Na Fianna ATTACKED
+   26   991  Unforced error
+  629   991  0
+  659   995  Won → Score (origin)
+ 1262   995  7 (54%)
+   26  1017  Slack pass
+  629  1017  5
+  659  1021  Won → Shot attempt
+ 1262  1021  9 (69%)
+ 1896  1060  26 events
+
+===== PAGE 20 (1920x1080) =====
+   24    38  Free Kick Analysis
+ 1896    38  20 / 30
+ 1803    59  POSSESSION
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   28    95  OUR FREES — BALLYBODEN
+  944    95  12 events
+  978    95  OPPOSITION FREES — NA FIANNA
+ 1894    95  12 events
+   42   128  Won 11 possession frees
+  992   128  Opposition won 6 possession frees
+   42   156  0 free-won → goal chains (rule match)
+  992   156  Free-won → goal chains (rule match): —
+   42   178  Direct placed-ball scoring: 4/4 scored
+  992   178  Direct placed-ball scoring: 5/7 scored
+   30   768  FREE SUMMARY
+  663   768  FREE OUTCOMES
+ 1296   768  FREE INTELLIGENCE
+  661   798  CONVERSION COMPARISON
+   28   814  Ballyboden  65%
+  625   814  35%  Na Fianna
+  659   821  Ballyboden Conversion
+ 1262   821  100%
+   26   839  Ballyboden Frees Won
+  629   839  11
+  659   847  Na Fianna Conversion
+ 1262   847  71%
+   26   865  Na Fianna Frees Won
+  629   865  6
+  661   872  Na Fianna PLACED BALLS
+   26   891  Advantage
+  629   891  +5
+  659   895  Placed Scored
+ 1262   895  5
+   28   916  Ballyboden PLACED BALLS
+  659   921  Placed Missed
+ 1262   921  2
+ 1593   922  No observation met the reporting threshold.
+   26   939  Placed Scored
+  629   939  4
+  659   947  Conversion
+ 1262   947  71%
+   26   965  Placed Missed
+  629   965  0
+  661   972  ALL FREES COMBINED
+   26   991  Conversion
+  629   991  100%
+  659   995  Total scored
+ 1262   995  9
+  659  1021  Total missed
+ 1262  1021  2
+  659  1047  Overall conv.
+ 1262  1047  82%
+ 1896  1060  24 events
+
+===== PAGE 21 (1920x1080) =====
+ 1896    38  21 / 30
+   80   180  CHAPTER 3
+   80   230  PART 3 — GAME ORIGIN / CHAIN ANALYSIS
+   80   318  What happened after those possessions began?
+   80   398  "Traces the possession beyond the initial event — where scoring possessions began, followed forward."
+   80   448  Coach question answered: "What happened after those possessions began?"
+   80   508  THIS CHAPTER CONTAINS
+   80   536  · Scoring Possession Origins
+   80   564  · Player Chain Involvement
+   80   592  · Opposition Origin & Chain Analysis
+   80   620  · Intelligence Summary
+   80   648  · Match Markers
+   80   676  · Chain Intelligence
+   80   704  · Restart Chain Analysis
+   80   732  · Turnover Chain Analysis
+   80   760  · Scoring Momentum
+ 1896  1056  PÁIRCVISION
+
+===== PAGE 22 (1920x1080) =====
+   24    38  Scoring Possession Origins
+ 1896    38  22 / 30
+ 1847    59  CHAIN
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   24    88  Game Origin Analysis looks at where a scoring possession began, not how the final score was recorded. A point scored from a free may also count here as a restart-origin score, if the possession it came from started at a kickout — the two figures are answering
+   24   110  different questions, not disagreeing with each other. Use Scoring Breakdown (Part 1) for what was scored, and Game Origin Analysis (Part 3) for where the pressure that led to it began.
+  234   185  POSSESSION ORIGIN
+  900   185  BALLYBODEN
+ 1260   185  NA FIANNA
+  234   242  Restart-origin scores
+  900   242  1 Goal, 8 Points & 2 Two-Point scores (15 pts)
+ 1260   242  2 Goals, 7 Points & 2 Two-Point scores (17 pts)
+  234   310  Turnover-origin scores
+  900   310  1 Point (1 pts)
+ 1260   310  4 Points & 3 Two-Point scores (10 pts)
+  210   370  Origin possessions include 3 placed frees won during kickout-origin possessions (Ballyboden 1 · Na Fianna 2) — the scoring ledger attributes those scores to placed balls.
+  210   402  Only restart and turnover origins are currently tracked — a score with neither origin has no row here.
+ 1896  1060  152 events
+
+===== PAGE 23 (1920x1080) =====
+   24    38  Player Chain Involvement
+ 1896    38  23 / 30
+ 1847    59  CHAIN
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   24    86  Scoring-chain involvement and recorded ball actions, ranked by most scoring-chain involvements.
+   38   124  BALLYBODEN
+  982   124  NA FIANNA
+   38   158  MOST SCORING-CHAIN INVOLVEMENTS
+  982   158  MOST SCORING-CHAIN INVOLVEMENTS
+   38   188  1. Conor Keane
+  938   188  6 of 14 chains
+  982   188  1. Sam Hughes
+ 1882   188  8 of 22 chains
+   50   214  Conor Keane: 0-07 (37% of Ballyboden total) · from 7 shots · +7 net ball impact
+  994   214  Sam Hughes: 1-09 (35% of Na Fianna total) · from 10 shots
+   38   248  2. Cian Murphy
+  938   248  5 of 14 chains
+  982   248  2. Gareth Quinn
+ 1882   248  6 of 22 chains
+   50   274  Cian Murphy: 0-02 (11% of Ballyboden total) · from 2 shots · +11 net ball impact
+  994   274  Gareth Quinn: 0-02 (6% of Na Fianna total) · from 2 shots · +7 net ball impact
+   38   308  3. Aaron Lyons
+  938   308  3 of 14 chains
+  982   308  3. Dan Byrne
+ 1882   308  4 of 22 chains
+   50   334  Aaron Lyons: 0-03 (16% of Ballyboden total) · from 6 shots
+  994   334  Dan Byrne: 0-06 (18% of Na Fianna total) · from 4 shots
+   38   377  PLAYER
+  378   377  SCORE
+  498   377  SHARE
+  618   377  SHOTS
+  758   377  CHAIN INV
+  898   377  NET BALL
+  982   377  PLAYER
+ 1322   377  SCORE
+ 1442   377  SHARE
+ 1562   377  SHOTS
+ 1702   377  CHAIN INV
+ 1842   377  NET BALL
+   38   405  Conor Keane
+  378   405  0-07
+  498   405  37%
+  618   405  5/7
+  758   405  6/14
+  898   405  +7
+  982   405  Sam Hughes
+ 1322   405  1-09
+ 1442   405  35%
+ 1562   405  8/10
+ 1702   405  8/22
+ 1842   405  0
+   38   435  Cian Murphy
+  378   435  0-02
+  498   435  11%
+  618   435  2/2
+  758   435  5/14
+  898   435  +11
+  982   435  Gareth Quinn
+ 1322   435  0-02
+ 1442   435  6%
+ 1562   435  2/2
+ 1702   435  6/22
+ 1842   435  +7
+   38   465  Aaron Lyons
+  378   465  0-03
+  498   465  16%
+  618   465  3/6
+  758   465  3/14
+  898   465  0
+  982   465  Dan Byrne
+ 1322   465  0-06
+ 1442   465  18%
+ 1562   465  4/4
+ 1702   465  4/22
+ 1842   465  0
+   38   495  Brian Fenton
+  378   495  0-01
+  498   495  5%
+  618   495  1/2
+  758   495  3/14
+  898   495  +7
+  982   495  Kieran Mahon
+ 1322   495  2-02
+ 1442   495  24%
+ 1562   495  3/5
+ 1702   495  3/22
+ 1842   495  0
+   38   525  Dara Kearns
+  378   525  1-01
+  498   525  21%
+  618   525  2/4
+  758   525  2/14
+  898   525  +4
+  982   525  Ciaran Dowd
+ 1322   525  0-03
+ 1442   525  9%
+ 1562   525  2/2
+ 1702   525  3/22
+ 1842   525  +4
+   38   555  Ronan Doyle
+  378   555  0-02
+  498   555  11%
+  618   555  1/2
+  758   555  2/14
+  898   555  +1
+  982   555  Tom Kelly
+ 1322   555  0-02
+ 1442   555  6%
+ 1562   555  2/2
+ 1702   555  3/22
+ 1842   555  +1
+   38   585  Eoin O'Hara
+  378   585  —
+  498   585  —
+  618   585  —
+  758   585  1/14
+  898   585  +5
+  982   585  Paul Kirwan
+ 1322   585  0-01
+ 1442   585  3%
+ 1562   585  1/1
+ 1702   585  3/22
+ 1842   585  +3
+   38   615  Darragh Ryan
+  378   615  —
+  498   615  —
+  618   615  —
+  758   615  —
+  898   615  -1
+  982   615  Ger Brennan
+ 1322   615  —
+ 1442   615  —
+ 1562   615  —
+ 1702   615  —
+ 1842   615  0
+   38   645  Ross Kelly
+  378   645  —
+  498   645  —
+  618   645  —
+  758   645  —
+  898   645  +1
+  982   645  Liam Hayes
+ 1322   645  —
+ 1442   645  —
+ 1562   645  —
+ 1702   645  —
+ 1842   645  0
+   38   682  RECORDED PATTERNS
+  982   682  RECORDED PATTERNS
+   50   712  Ballyboden top scorer share was 37%.
+  994   712  Na Fianna top scorer share was 35%.
+   50   746  Colm Basquel (Ballyboden) recorded 0 from 3 shot attempts.
+   50   780  Eoin O'Hara (Ballyboden) appeared in 1 of 14 Ballyboden scoring chains without shooting.
+ 1896  1060  152 events
+
+===== PAGE 24 (1920x1080) =====
+   24    38  Opposition Origin & Chain Analysis
+ 1896    38  24 / 30
+ 1847    59  CHAIN
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   40   100  RESTART ORIGIN (KICKOUTS)
+  984   100  MOMENTUM SPELL
+   40   131  Restart-origin scores for OPP
+  938   131  2 Goals, 7 Points & 2 Two-Point scores (17 pts)
+   40   161  Restart-origin scores conceded
+  938   161  2 Goals, 7 Points & 3 Two-Point scores (19 pts)  (63%)
+  988   162  4
+  988   179  LONGEST UNANSWERED RUN — 2H ~11'
+   40   191  Restart-origin scores from our kickout losses
+  938   191  —
+  984   207  Total OPP runs ≥ 2
+ 1882   207  6
+  984   237  Half of peak run
+ 1882   237  2H
+  984   360  CHAIN RATE
+  988   422  —
+  988   439  CHAIN SHARE NOT SHOWN — RULE MATCHES ARE NOT UNIQUE POSSESSIONS
+  984   467  OPP rule matches — 1st Half
+ 1882   467  —
+  984   497  OPP rule matches — 2nd Half
+ 1882   497  —
+  984   527  Busiest OPP segment
+ 1882   527  —
+   40   580  TURNOVER ORIGIN
+   40   611  Turnover-origin scores for OPP
+  938   611  4 Points & 3 Two-Point scores (10 pts)
+  984   620  OPPOSITION MARKERS
+   40   641  Turnover-origin scores conceded
+  938   641  7
+   40   671  Turnover-origin punishment rate
+  938   671  54%
+  988   682  Sam Hughes  1-09
+  988   699  35% OF NA FIANNA SCORE · 8/10 SHOOTING
+   40   701  Turnover wins → shot
+  938   701  9
+  984   727  Longest unanswered run
+ 1882   727  4 scores
+  984   757  Restart-origin scoring
+ 1882   757  2 Goals, 7 Points & 2 Two-Point scores (17 pts)
+  984   787  Turnover-origin scoring
+ 1882   787  4 Points & 3 Two-Point scores (10 pts)
+  984   817  Chain share
+ 1882   817  —
+ 1896  1060  152 events
+
+===== PAGE 25 (1920x1080) =====
+   24    38  Intelligence Summary
+ 1896    38  25 / 30
+ 1847    59  CHAIN
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   40   100  KICKOUT PLATFORM
+  984   100  SCORING RUNS
+   44   162  59%
+  988   162  3 / 6
+   44   179  RESTART SHARE  (27 WON OF 46 TOTAL)
+  988   179  SCORING RUNS  (RUNS OF ≥2 CONSECUTIVE SCORES)
+   40   207  Kickout wins → origin score
+  938   207  41%
+  984   207  Ballyboden longest burst
+ 1882   207  3 scores
+   40   237  Kickout losses → origin score against
+  938   237  63%
+  984   237  Na Fianna longest burst
+ 1882   237  4 scores
+   40   267  Net kickout advantage (%pt)
+  938   267  -22 %pt
+  984   267  Ballyboden max consecutive
+ 1882   267  3
+  984   297  Na Fianna max consecutive
+ 1882   297  4
+   40   400  TURNOVER BATTLE
+  984   400  CHAIN SEQUENCES
+   44   462  50%
+  988   462  20
+   44   479  TURNOVER SHARE  (13 WON OF 26 TOTAL)
+  988   479  BALLYBODEN CHAIN RULE MATCHES  (OVERLAPPING — NOT UNIQUE POSSESSIONS)
+   40   507  Turnover wins → origin score
+  938   507  8%
+  984   507  Kickout → score chains (rule match)
+ 1882   507  12
+   40   537  Turnover wins → shot, no score
+  938   537  38%
+  984   537  Turnover → score chains (rule match)
+ 1882   537  2
+   40   567  Turnover losses → origin score against
+  938   567  54%
+  984   567  Placed ball → goal chains (rule match)
+ 1882   567  0
+   40   700  MATCH INTELLIGENCE
+  984   700  TEAM COMPARISON
+   40   726  Ballyboden held 59% Restart Share (27 of 46) — 41% produced restart-origin point value (1 Goal, 8 Points & 2 Two-Point sc…
+  984   740  METRIC
+ 1618   740  Ballyboden
+ 1785   740  Na Fianna
+   40   758  Ballyboden won 13/26 turnovers but only 8% produced turnover-origin point value (1 Point (1 pts)).
+  984   767  Restart Share
+ 1618   767  59%
+ 1785   767  41%
+   40   790  Na Fianna recorded a 4-score unanswered run.
+  984   797  Turnover conversion rate
+ 1618   797  8%
+ 1785   797  54%
+  984   827  Longest scoring run
+ 1618   827  3
+ 1785   827  4
+  984   857  Chain rule matches
+ 1618   857  20
+ 1785   857  —
+  984   887  Yellow cards
+ 1618   887  1
+ 1785   887  1
+  984   917  Sin bins
+ 1618   917  0
+ 1785   917  1
+  984   947  Red cards
+ 1618   947  0
+ 1785   947  0
+   50  1004  Kickout Share ≥55%
+  202  1004  Kickout Net <−10%pt
+  360  1004  Turnover Concession >40%
+  557  1004  Na Fianna Run ≥4
+ 1896  1060  152 events
+
+===== PAGE 26 (1920x1080) =====
+   24    38  Match Markers
+ 1896    38  26 / 30
+ 1847    59  CHAIN
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   35   101  KICKOUT  2
+  143   101  TURNOVER  3
+  264   101  MOMENTUM  3
+   47   154  KICKOUT
+  125   154  Ballyboden held 59% Restart Share (27 of 46) — 41% of won kickouts produced restart-origin point value (1 Goal, 8 Points & 2 Two-Point scores (15 pts)).
+   47   228  KICKOUT
+  125   228  41% of Ballyboden's kickout wins produced restart-origin point value; 63% of their losses produced restart-origin point value for Na Fianna.
+   47   302  TURNOVER
+  137   302  Ballyboden won 13 turnovers but only 8% produced turnover-origin point value.
+   47   376  TURNOVER
+  137   376  54% of the turnovers Na Fianna won against Ballyboden produced turnover-origin point value (7 of 13 losses).
+   47   450  TURNOVER
+  137   450  Ballyboden won 13 turnovers; 7 did not lead to a shot.
+   47   524  MOMENTUM
+  142   524  Na Fianna recorded a 4-score unanswered run.
+   47   598  MOMENTUM
+  142   598  Ballyboden had a 3-score unanswered spell.
+   47   672  MOMENTUM
+  142   672  Na Fianna recorded more scoring runs than Ballyboden (6 vs 3).
+ 1896  1060  152 events
+
+===== PAGE 27 (1920x1080) =====
+   24    38  Chain Intelligence
+ 1896    38  27 / 30
+ 1847    59  CHAIN
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   40    99  CHAIN PATTERNS
+  670    99  KICKOUT CHAINS
+ 1300    99  SCORING MOMENTUM
+   38   124  PATTERN
+  376   124  Ballyboden
+  620   124  Na Fianna
+ 1298   124  Ballyboden — Best Run
+  668   127  Total kickouts
+ 1250   127  46
+   38   147  Kickout Won → Score (rule match)
+  376   147  12
+  620   147  12
+ 1298   147  Consecutive scores
+ 1880   147  3
+  668   153  Won
+ 1250   153  27
+   38   173  Other team lost kickout → Score (rule match)
+  376   173  0
+  620   173  0
+ 1298   173  Period / Segment
+ 1880   173  1H · Seg 1
+  668   179  Lost / Conceded
+ 1250   179  19
+   38   199  Turnover Won → Score (rule match)
+  376   199  2
+  620   199  7
+ 1298   204  Na Fianna — Best Run
+  668   211  Won → Origin score
+ 1250   211  11 (41%)
+   38   225  Turnover Won → Shot
+  376   225  6
+  620   225  9
+ 1298   227  Consecutive scores
+ 1880   227  4
+  668   237  Lost → Origin score against
+ 1250   237  12 (63%)
+   38   251  Free Won → Goal
+  376   251  0
+  620   251  —
+ 1298   253  Period / Segment
+ 1880   253  2H · Seg 5
+  957   282  Possession rate: 59%
+ 1298   288  ALL SCORING RUNS (9 total)
+   38   294  TOTAL RULE MATCHES
+  376   294  20
+  620   294  —
+ 1298   311  Ballyboden  ×2  2H S6
+ 1880   311  2 pts
+   38   320  (rule match) counts exact rule matches. The origin panels follow the full possession.
+ 1298   337  Na Fianna  ×2  2H S6
+ 1880   337  2 pts
+   38   338  — not measurable: those wins were logged as the other team's loss or concession.
+ 1298   363  Na Fianna  ×4  2H S6
+ 1880   363  4 pts
+   38   374  SCORING RUNS (≥2 consecutive)
+ 1298   389  Na Fianna  ×4  2H S5
+ 1880   389  4 pts
+   38   397  Longest run (For)
+  620   397  3 pts
+ 1298   415  Na Fianna  ×2  2H S4
+ 1880   415  2 pts
+   38   423  Longest run (Opp)
+  620   423  4 pts
+ 1298   441  Na Fianna  ×3  1H S3
+ 1880   441  3 pts
+   38   449  Total runs detected
+  620   449  9
+ 1298   467  Na Fianna  ×2  1H S3
+ 1880   467  2 pts
+ 1298   493  Ballyboden  ×2  1H S2
+ 1880   493  2 pts
+ 1298   519  Ballyboden  ×3  1H S1
+ 1880   519  3 pts
+  666   543  Origin possessions include 3 placed frees won during kickout-origin possessions (Ballyboden 1 · Na Fianna 2) — the scoring ledger attributes those scores to placed balls.
+  670   586  TURNOVER CHAINS
+  668   614  Total turnovers
+ 1250   614  26
+  668   640  Won
+ 1250   640  13
+  668   666  Lost
+ 1250   666  13
+  668   698  Won → Origin score
+ 1250   698  1 (8%)
+  668   724  Won → Shot
+ 1250   724  5 (38%)
+  668   750  Lost → Origin score against
+ 1250   750  7
+ 1896  1060  152 events
+
+===== PAGE 28 (1920x1080) =====
+   24    38  Restart Chain Analysis
+ 1896    38  28 / 30
+ 1847    59  CHAIN
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   40    99  KICKOUT POSSESSION OVERVIEW
+  670    99  BALLYBODEN — KICKOUT TYPES
+ 1300    99  KICKOUT CHAIN OUTCOMES
+ 1298   124  CHAIN RULE MATCHES
+   36   146  Ballyboden 59%
+  618   146  41% Na Fianna
+ 1298   147  Won → Score (rule match) — Ballyboden
+ 1880   147  12
+ 1298   173  Won → Score (rule match) — Na Fianna
+ 1880   173  12
+   38   177  Total kickout events
+  620   177  46
+ 1298   199  Other team lost → Score (rule match) — Ballybo…
+ 1880   199  0
+   38   203  Ballyboden won
+  620   203  27
+ 1298   225  Other team lost → Score (rule match) — Na…
+ 1880   225  0
+   38   229  Na Fianna won
+  620   229  19
+ 1298   260  RESTART ORIGIN
+   38   263  Won → Score (origin)
+  620   263  11 (41%)
+ 1298   278  Scores that started from a kickout.
+   38   289  Lost → Score Against (origin)
+  620   289  12 (63%)
+ 1298   301  Ballyboden — Restart Origin
+ 1880   301  1 Goal, 8 Points & 2 Two-Point scores (15 pts)
+   38   320  BY HALF
+  957   322  Restart taker not recorded
+ 1298   327  Ballyboden — Shots from Kickout
+ 1880   327  17
+   38   343  1H — Won / Lost
+  620   343  13 / 8
+ 1298   353  Na Fianna — Restart Origin
+ 1880   353  2 Goals, 7 Points & 3 Two-Point scores (19 pts)
+   38   369  1H — Restart Share
+  620   369  62%
+ 1298   388  Ballyboden POSSESSION OUTCOMES
+   38   395  1H — Won → Score (origin)
+  620   395  5
+ 1298   411  Won kickouts total
+ 1880   411  27
+   38   421  2H — Won / Lost
+  620   421  14 / 11
+ 1298   437  → Generated a shot
+ 1880   437  17 (63%)
+   38   447  2H — Restart Share
+  620   447  56%
+ 1298   463  → Restart Origin
+ 1880   463  1 Goal, 8 Points & 2 Two-Point scores (15 pts) (41% of wins)
+   38   473  2H — Won → Score (origin)
+  620   473  6
+ 1298   489  → No shot attempt
+ 1880   489  10
+   38   507  Avg secs to score (won Kickout)
+  620   507  36s
+ 1298   523  Avg time to score (Kickout)
+ 1880   523  36s avg
+   38   532  Origin possessions include 3 placed frees won during kickout-origin possessions (Ballyboden 1 · Na Fianna 2) — the scoring ledger attributes those scores to placed balls.
+ 1298   552  OVERALL POSSESSION RATE
+  670   586  NA FIANNA — KICKOUT TYPES
+ 1296   592  Ballyboden 59%
+ 1878   592  41% Na Fianna
+  957   809  Restart taker not recorded
+ 1896  1060  152 events
+
+===== PAGE 29 (1920x1080) =====
+   24    38  Turnover Chain Analysis
+ 1896    38  29 / 30
+ 1847    59  CHAIN
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   40    99  BALLYBODEN — TURNOVER ATTACK
+  670    99  NA FIANNA — TURNOVER ATTACK
+ 1300    99  TURNOVER PUNISHMENT SUMMARY
+ 1298   124  ORIGIN SCORES FROM WON TURNOVERS
+   38   127  Turnovers won / gained
+  620   127  13
+  668   127  Turnovers won / gained
+ 1250   127  13
+   38   153  → Origin score
+  620   153  1 (8%)
+  668   153  → Origin score
+ 1250   153  7 (54%)
+ 1296   160  Ballyboden 13%
+ 1878   160  88% Na Fianna
+   38   179  → Shot / wide, no score
+  620   179  5 (38%)
+  668   179  → Shot / wide, no score
+ 1250   179  2 (15%)
+ 1298   191  Ballyboden — Won → Origin score %
+ 1880   191  8%
+   38   205  → No shot attempt
+  620   205  7 (54%)
+  668   205  → No shot attempt
+ 1250   205  4 (31%)
+ 1298   217  Na Fianna — Won → Origin score %
+ 1880   217  54%
+   38   231  → Attack immediately lost
+  620   231  5 (38%)
+  668   231  → Attack immediately lost
+ 1250   231  2 (15%)
+ 1298   243  Ballyboden — Won → Shot %
+ 1880   243  46%
+   38   257  Avg time to outcome
+  620   257  36s
+  668   257  Avg time to outcome
+ 1250   257  29s
+ 1298   269  Na Fianna — Won → Shot %
+ 1880   269  69%
+   38   288  BY HALF
+  668   288  BY HALF
+ 1298   302  CHAIN RULE MATCHES
+   38   311  1H — Turnovers won
+  620   311  8
+  668   311  1H — Turnovers won
+ 1250   311  8
+ 1298   325  T/O Won → Score (rule match) — Ballyboden
+ 1880   325  2
+   38   337  1H — Scored
+  620   337  1 (13%)
+  668   337  1H — Scored
+ 1250   337  3 (38%)
+ 1298   351  T/O Won → Score (rule match) — Na Fianna
+ 1880   351  7
+   38   363  2H — Turnovers won
+  620   363  5
+  668   363  2H — Turnovers won
+ 1250   363  5
+ 1298   377  T/O Won → Shot   (Ballyboden)
+ 1880   377  6
+   38   389  2H — Scored
+  620   389  0 (0%)
+  668   389  2H — Scored
+ 1250   389  4 (80%)
+ 1298   403  T/O Won → Shot   (Na Fianna)
+ 1880   403  9
+   38   420  HOW TURNOVERS WERE WON / GAINED
+  668   420  HOW TURNOVERS WERE WON / GAINED
+ 1298   436  DAMAGE CONCEDED FROM TURNOVERS LOST
+   38   443  Tackle / Press
+  620   443  3
+  668   443  Tackle / Press
+ 1250   443  4
+ 1298   459  Ballyboden lost → OPP scored
+ 1880   459  —
+   38   469  Swarm / Intercept
+  620   469  3
+  668   469  Swarm / Intercept
+ 1250   469  1
+ 1298   485  Ballyboden lost → OPP shot
+ 1880   485  —
+   38   495  Opposition unforced error
+  620   495  0
+  668   495  Opposition unforced error
+ 1250   495  0
+ 1298   511  Na Fianna lost → FOR scored
+ 1880   511  —
+   38   521  Opposition slack pass
+  620   521  5
+  668   521  Opposition slack pass
+ 1250   521  8
+ 1298   537  Na Fianna lost → FOR shot
+ 1880   537  —
+ 1298   570  NET TURNOVER PRESSURE
+ 1298   593  Score differential from T/Os
+ 1880   593  -6 Na Fianna
+ 1298   619  Shot differential from T/Os
+ 1880   619  -3 Na Fianna
+ 1298   652  TURNOVER OUTCOMES (BOTH TEAMS)
+ 1298   675  Total turnovers gained
+ 1880   675  26
+ 1298   701  Led to score
+ 1880   701  8 (31%)
+ 1298   727  Led to shot (no score)
+ 1880   727  7 (27%)
+ 1298   753  Attack immediately lost
+ 1880   753  7 (27%)
+ 1298   779  No shot generated
+ 1880   779  11 (42%)
+ 1298   818  POSSESSION CHAIN INSIGHTS
+ 1298   841  • Restarts Won → Scores: 11 of 27 won restarts produced restart-origin point value (1 Goal, 8 Points & 2 Two-Point scores (15 pts), 41%)
+ 1298   867  • Conceded restarts produced restart-origin point value for the opposition (2 Goals, 7 Points & 3 Two-Point scores (19 pts)) in 63% of cases (12 of 19)
+ 1298   893  • Turnover wins produced turnover-origin point value (1 Point (1 pts), 8% conversion)
+ 1896  1060  152 events
+
+===== PAGE 30 (1920x1080) =====
+   24    38  Scoring Momentum
+ 1896    38  30 / 30
+ 1847    59  CHAIN
+   24    62  Ballyboden v Na Fianna
+ 1896    62  PáircVision
+   40    99  UNANSWERED SCORING RUNS (≥2 CONSECUTIVE)
+  670    99  FIRST HALF — SCORING RUNS
+ 1300    99  RUN QUALITY & SEGMENT DETAIL
+   38   124  TEAM  ×SCORES  WHEN  SCORE VALUE
+ 1298   124  BEST SCORING RUNS
+  668   127  Ballyboden runs (≥2)
+ 1250   127  2
+   38   147  Ballyboden
+  214   147  ×3
+  284   147  1H 4'–11'
+  620   147  0-03 (3)
+ 1298   147  Ballyboden longest
+ 1880   147  ×3  1H 4'–11'  0-03 (3)
+  668   153  Ballyboden run-scores
+ 1250   153  5
+   38   173  Ballyboden
+  214   173  ×2
+  284   173  1H 18'–19'
+  620   173  0-02 (2)
+ 1298   173  Na Fianna longest
+ 1880   173  ×4  2H 11'–16'  0-05 (5)
+  668   179  Na Fianna runs (≥2)
+ 1250   179  2
+   38   199  Na Fianna
+  214   199  ×2
+  284   199  1H 20'–21'
+  620   199  0-04 (4)
+ 1298   199  Ballyboden total runs
+ 1880   199  3
+  668   205  Na Fianna run-scores
+ 1250   205  5
+   38   225  Na Fianna
+  214   225  ×3
+  284   225  1H 27'–32'
+  620   225  0-05 (5)
+ 1298   225  Na Fianna total runs
+ 1880   225  6
+  668   237  Longest 1H run
+ 1250   237  Ballyboden ×3  1H 4'–11'
+   38   251  Na Fianna
+  214   251  ×2
+  284   251  2H 3'–5'
+  620   251  0-02 (2)
+ 1298   251  Ballyboden total run-scores
+ 1880   251  7
+  668   263  1H momentum edge
+ 1250   263  Level
+   38   277  Na Fianna
+  214   277  ×4
+  284   277  2H 11'–16'
+  620   277  0-05 (5)
+ 1298   277  Na Fianna total run-scores
+ 1880   277  17
+  668   295  1H late burst (seg 3)
+ 1250   295  Ballyboden: 0 pts  Na Fianna: 5 pts
+   38   303  Na Fianna
+  214   303  ×4
+  284   303  2H 20'–25'
+  620   303  2-03 (9)
+ 1298   303  Net run-score advantage
+ 1880   303  -10 Na Fianna
+   38   329  Na Fianna
+  214   329  ×2
+  284   329  2H 26'–28'
+  620   329  1-01 (4)
+ 1298   336  RESPONSE AFTER OPPOSITION RUN
+   38   355  Ballyboden
+  214   355  ×2
+  284   355  2H 28'–29'
+  620   355  0-04 (4)
+ 1298   359  Ballyboden avg response
+ 1880   359  41s — single instance
+ 1298   385  Na Fianna avg response
+ 1880   385  1m 8s — single instance
+ 1298   418  RUN-SCORES BY SEGMENT
+ 1298   441  1H Early (0–10)
+ 1880   441  Ballyboden +3
+ 1298   467  1H Mid   (11–20)
+ 1880   467  Ballyboden +2
+ 1298   493  1H Late  (21–30+)
+ 1880   493  Na Fianna +5
+ 1298   519  2H Early (0–10)
+ 1880   519  Na Fianna +2
+ 1298   545  2H Mid   (11–20)
+ 1880   545  Na Fianna +4
+ 1298   571  2H Late  (21–30+)
+ 1880   571  Na Fianna +4
+  670   586  SECOND HALF — SCORING RUNS
+  668   614  Ballyboden runs (≥2)
+ 1250   614  1
+  668   640  Ballyboden run-scores
+ 1250   640  2
+  668   666  Na Fianna runs (≥2)
+ 1250   666  4
+  668   692  Na Fianna run-scores
+ 1250   692  12
+  668   724  Longest 2H run
+ 1250   724  Na Fianna ×4  2H 11'–16'
+  668   750  2H momentum edge
+ 1250   750  Na Fianna
+  668   782  2H late burst (seg 6)
+ 1250   782  Ballyboden: 2 pts  Na Fianna: 6 pts
+ 1896  1060  152 events

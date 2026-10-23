@@ -1,0 +1,184 @@
+{
+ "summary": {
+  "total": 25,
+  "pass": 12,
+  "fail": 13
+ },
+ "checks": [
+  {
+   "surface": "Snapshot FT (legacy import) — Dashboard",
+   "stat": "score FOR",
+   "expected": "1-16 (19)",
+   "actual": "1-16 (19)",
+   "status": "PASS"
+  },
+  {
+   "surface": "Snapshot FT (legacy import) — Dashboard",
+   "stat": "score OPP",
+   "expected": "3-25 (34)",
+   "actual": "3-25 (34)",
+   "status": "PASS"
+  },
+  {
+   "surface": "Snapshot FT (legacy import) — Dashboard",
+   "stat": "OUR KICKOUTS value (owner not recorded → unavailable)",
+   "expected": "—",
+   "actual": "27/27",
+   "status": "FAIL"
+  },
+  {
+   "surface": "Snapshot FT (legacy import) — Dashboard",
+   "stat": "OUR KICKOUTS note",
+   "expected": "Restart taker not recorded",
+   "actual": "Lost 0/27",
+   "status": "FAIL"
+  },
+  {
+   "surface": "Snapshot FT (legacy import) — Dashboard",
+   "stat": "THEIR KICKOUTS value (owner not recorded → unavailable)",
+   "expected": "—",
+   "actual": "19/19",
+   "status": "FAIL"
+  },
+  {
+   "surface": "Snapshot FT (legacy import) — Dashboard",
+   "stat": "turnovers won",
+   "expected": "13",
+   "actual": "13",
+   "status": "PASS"
+  },
+  {
+   "surface": "Snapshot FT (legacy import) — Dashboard",
+   "stat": "turnovers lost",
+   "expected": "13",
+   "actual": "13",
+   "status": "PASS"
+  },
+  {
+   "surface": "Snapshot FT (legacy import) — Dashboard",
+   "stat": "no fabricated 100% own retention",
+   "expected": "0",
+   "actual": "2",
+   "status": "FAIL"
+  },
+  {
+   "surface": "Snapshot FT (legacy) — Restart Battle – First Half",
+   "stat": "own-restart lines",
+   "expected": "Restart taker not recorded | Restart taker not recorded",
+   "actual": "Ballyboden retained 13/13 (100%) | Na Fianna retained 8/8 (100%)",
+   "status": "FAIL"
+  },
+  {
+   "surface": "Snapshot FT (legacy) — Restart Battle – Second Half",
+   "stat": "own-restart lines",
+   "expected": "Restart taker not recorded | Restart taker not recorded",
+   "actual": "Ballyboden retained 14/14 (100%) | Na Fianna retained 11/11 (100%)",
+   "status": "FAIL"
+  },
+  {
+   "surface": "Snapshot HT (legacy import) — Dashboard",
+   "stat": "score FOR",
+   "expected": "1-08 (11)",
+   "actual": "1-08 (11)",
+   "status": "PASS"
+  },
+  {
+   "surface": "Snapshot HT (legacy import) — Dashboard",
+   "stat": "score OPP",
+   "expected": "0-12 (12)",
+   "actual": "0-12 (12)",
+   "status": "PASS"
+  },
+  {
+   "surface": "Snapshot HT (legacy import) — Dashboard",
+   "stat": "OUR KICKOUTS value (owner not recorded → unavailable)",
+   "expected": "—",
+   "actual": "13/13",
+   "status": "FAIL"
+  },
+  {
+   "surface": "Snapshot HT (legacy import) — Dashboard",
+   "stat": "OUR KICKOUTS note",
+   "expected": "Restart taker not recorded",
+   "actual": "Lost 0/13",
+   "status": "FAIL"
+  },
+  {
+   "surface": "Snapshot HT (legacy import) — Dashboard",
+   "stat": "THEIR KICKOUTS value (owner not recorded → unavailable)",
+   "expected": "—",
+   "actual": "8/8",
+   "status": "FAIL"
+  },
+  {
+   "surface": "Snapshot HT (legacy import) — Dashboard",
+   "stat": "turnovers won",
+   "expected": "8",
+   "actual": "8",
+   "status": "PASS"
+  },
+  {
+   "surface": "Snapshot HT (legacy import) — Dashboard",
+   "stat": "turnovers lost",
+   "expected": "8",
+   "actual": "8",
+   "status": "PASS"
+  },
+  {
+   "surface": "Snapshot HT (legacy import) — Dashboard",
+   "stat": "no fabricated 100% own retention",
+   "expected": "0",
+   "actual": "2",
+   "status": "FAIL"
+  },
+  {
+   "surface": "Snapshot HT (legacy) — Restart Battle – First Half",
+   "stat": "own-restart lines",
+   "expected": "Restart taker not recorded | Restart taker not recorded",
+   "actual": "Ballyboden retained 13/13 (100%) | Na Fianna retained 8/8 (100%)",
+   "status": "FAIL"
+  },
+  {
+   "surface": "Full Review (legacy) — Match Summary",
+   "stat": "score FOR",
+   "expected": "1-16 (19)",
+   "actual": "1-16 (19)",
+   "status": "PASS"
+  },
+  {
+   "surface": "Full Review (legacy) — Match Summary",
+   "stat": "Restart Share FOR",
+   "expected": "59%",
+   "actual": "59%",
+   "status": "PASS"
+  },
+  {
+   "surface": "Full Review (legacy) — Match Summary",
+   "stat": "T/O Won FOR",
+   "expected": "13",
+   "actual": "13",
+   "status": "PASS"
+  },
+  {
+   "surface": "Full Review (legacy) — Restart Analysis",
+   "stat": "Own Kickout Retention (unavailable)",
+   "expected": "—",
+   "actual": "100% (27 of 27)",
+   "status": "FAIL"
+  },
+  {
+   "surface": "Full Review (legacy) — Restart Analysis",
+   "stat": "Restart Share",
+   "expected": "59% (27 of 46)",
+   "actual": "59% (27 of 46)",
+   "status": "PASS"
+  },
+  {
+   "surface": "Full Review (legacy) — all pages",
+   "stat": "no 'retention 100% (27 of 27)'-style fabricated own figure",
+   "expected": "0",
+   "actual": "1",
+   "status": "FAIL"
+  }
+ ]
+}
