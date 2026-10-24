@@ -860,13 +860,17 @@ function drawSummaryStatsTable(
           { label: "Restart Share Won",      value: String(st.restartShareWon) },
           { label: "Restart Share Conceded", value: String(st.restartShareConceded) },
           { label: "Restart Share", value: st.koPct },
-          { label: "Clean Won",      value: String(st.koCleanWon) },
-          { label: "Break Won",      value: String(st.koBreakWon) },
-          { label: "Foul Won",       value: String(st.koFoulWon) },
+          // Method rows count ALL restarts this team won / lost (the Restart
+          // Share population), so they are named as such: the own-kickout
+          // panels (Restart Analysis, Restart Chain) use "Clean Won" etc. for
+          // own kickouts retained / conceded only.
+          { label: "Restart Share — Clean Won",     value: String(st.koCleanWon) },
+          { label: "Restart Share — Break Won",     value: String(st.koBreakWon) },
+          { label: "Restart Share — Foul Won",      value: String(st.koFoulWon) },
           { label: "Dead Ball Won",  value: String(st.koDeadWon) },
-          { label: "Clean Lost",     value: String(st.koCleanLost) },
-          { label: "Break Lost",     value: String(st.koBreakLost) },
-          { label: "Foul Conceded",  value: String(st.koFoulCon) },
+          { label: "Restart Share — Clean Lost",    value: String(st.koCleanLost) },
+          { label: "Restart Share — Break Lost",    value: String(st.koBreakLost) },
+          { label: "Restart Share — Foul Conceded", value: String(st.koFoulCon) },
           { label: "Kicked Dead",    value: String(st.koKickedDead) },
         ],
       },
@@ -973,7 +977,7 @@ function drawSummaryStatsTable(
 }
 
 /** Builds the Match Summary canvas (page 1). */
-function makeSummaryPage(
+export function makeSummaryPage(
   events: readonly PdfExportEvent[],
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,

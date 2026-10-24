@@ -19,6 +19,7 @@ import {
   makeKickoutChainPage,
   makeRestartVisualPage,
   makeShotEfficiencyPage,
+  makeSummaryPage,
   type PdfExportEvent,
 } from "../reviewPdfExport";
 import { isOwnRestartRetained } from "../restarts/restartMetrics";
@@ -169,6 +170,23 @@ describe("Full Review PDF prints the core definitions (F-01 / F-04 / F-05 / F-06
     expect(home.koCleanWon).toBe(5); // 2 own kept + 3 of Na Fianna's won
     expect(home.koCleanLost).toBe(2);
     expect(home.koFoulWon).toBe(1);
+  });
+
+  it("F-05 labels: Match Summary names the Restart Share population; own panels keep 'Clean Won'", () => {
+    const { events, report } = pdfInput(fixture());
+    const home = buildTeamSummaryBlock(report, "FOR");
+    const summary = texts(makeSummaryPage(events, report, HOME, AWAY, undefined, 1));
+    // Two values per row (one per team): Ballyboden's comes first.
+    expect(after(summary, "Restart Share — Clean Won")).toBe(String(home.koCleanWon));
+    expect(after(summary, "Restart Share — Break Won")).toBe(String(home.koBreakWon));
+    expect(after(summary, "Restart Share — Foul Won")).toBe(String(home.koFoulWon));
+    expect(after(summary, "Restart Share — Clean Lost")).toBe(String(home.koCleanLost));
+    for (const ambiguous of ["Clean Won", "Break Won", "Foul Won", "Clean Lost", "Break Lost", "Foul Conceded"]) {
+      expect(summary).not.toContain(ambiguous);
+    }
+    // The own-kickout panel keeps the short label for the own-retained population.
+    const chain = texts(makeKickoutChainPage(report, HOME, AWAY, 1, 1));
+    expect(after(chain, "Clean Won", 0)).toBe("2");
   });
 
   it("F-04 Restart Chain Analysis: owner not recorded → 'Restart taker not recorded', no own counts", () => {
