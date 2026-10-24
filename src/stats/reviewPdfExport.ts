@@ -123,6 +123,7 @@ import { formatScoringBreakdownOrDash, scoringBreakdownTotal, type ScoringBreakd
 import type { ProvenanceRow } from "./reporting/reportProvenance";
 import { GAME_ORIGIN_EXPLANATION, PART_QUESTIONS } from "./reporting/fullReviewCopy";
 import { isBlockedOrSavedAttempt, normalizeEventsForReporting } from "./reporting/eventTagClassification";
+import { splitPercentages } from "./reporting/splitPercentages";
 
 // ─── Input type ──────────────────────────────────────────────────────────────
 
@@ -272,6 +273,19 @@ function isFreeRelatedPdfEvent(event: PdfExportEvent): boolean {
 
 function isPuck(sport: PitchSport): boolean {
   return sport === "hurling" || sport === "camogie";
+}
+
+/**
+ * A scoring run's length: the number of scoring events (a goal, point or
+ * two-pointer each counts once), never scoreboard points. "1 score", "4 scores".
+ */
+function fmtScoreCount(n: number): string {
+  return `${n} score${n === 1 ? "" : "s"}`;
+}
+
+/** "45" (football) or "65" (hurling, camogie): the placed restart from the end line. */
+function fortyFiveLabel(sport: PitchSport): string {
+  return isPuck(sport) ? "65" : "45";
 }
 
 /** "Kickout" or "Puckout" (title case) */
@@ -850,7 +864,7 @@ function drawSummaryStatsTable(
         rows: [
           { label: "Short",          value: String(st.shotShort) },
           { label: "Post",           value: String(st.shotPost) },
-          { label: "45",             value: String(st.shot45) },
+          { label: fortyFiveLabel(sport), value: String(st.shot45) },
           { label: "Block / Save",   value: String(st.shotBlock) },
         ],
       },
@@ -2333,7 +2347,7 @@ export function makePlayerInfluencePage(
  * Future chain pages (kickout analysis, turnover punishment, momentum) will
  * each be separate builder functions that consume the same ChainAnalysis arg.
  */
-function makeChainSummaryPage(
+export function makeChainSummaryPage(
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
@@ -2585,8 +2599,8 @@ function makeChainSummaryPage(
     cy += 20;
 
     const { scoringRuns } = analysis;
-    cy = drawStatRow(COL1_X, cy, COL_W, "Longest run (For)", `${scoringRuns.maxConsecutiveFor} pts`, "#7dd3fc", false);
-    cy = drawStatRow(COL1_X, cy, COL_W, "Longest run (Opp)", `${scoringRuns.maxConsecutiveOpp} pts`, "#fb7185", true);
+    cy = drawStatRow(COL1_X, cy, COL_W, "Longest run (For)", fmtScoreCount(scoringRuns.maxConsecutiveFor), "#7dd3fc", false);
+    cy = drawStatRow(COL1_X, cy, COL_W, "Longest run (Opp)", fmtScoreCount(scoringRuns.maxConsecutiveOpp), "#fb7185", true);
     cy = drawStatRow(COL1_X, cy, COL_W, "Total runs detected", val(scoringRuns.runs.length), "#e2e8f0", false);
   }
 
@@ -2743,7 +2757,7 @@ function makeChainSummaryPage(
         cy = drawStatRow(
           COL3_X, cy, COL_W,
           `${sideLabel}  ×${run.count}  ${timeLabel}`,
-          `${run.count} pts`,
+          fmtScoreCount(run.count),
           color,
           i % 2 === 0,
         );
@@ -2878,10 +2892,11 @@ export function makeKickoutChainPage(
       const labelY = cy + barH + 12;
       ctx.fillStyle = "#22d3ee";
       ctx.textAlign = "left";
-      ctx.fillText(`${forLabel} ${Math.round(forFrac * 100)}%`, barX, labelY);
+      const [forPct, oppPct] = splitPercentages([forCount, oppCount]) ?? [0, 0];
+      ctx.fillText(`${forLabel} ${forPct}%`, barX, labelY);
       ctx.fillStyle = "#fb7185";
       ctx.textAlign = "right";
-      ctx.fillText(`${Math.round((1 - forFrac) * 100)}% ${oppLabel}`, barX + barW, labelY);
+      ctx.fillText(`${oppPct}% ${oppLabel}`, barX + barW, labelY);
     } else {
       ctx.fillStyle = "#64748b";
       ctx.font = "13px sans-serif";
@@ -2956,11 +2971,9 @@ export function makeKickoutChainPage(
   const forRestartOriginFmt = fmtRestartOriginScoredFor(analysis);
   const oppRestartOriginFmt = fmtRestartOriginScoredOpp(analysis);
 
-  // Average seconds to score across all kickouts that led to a score
-  const scoringOuts    = outcomes.filter((o) => o.secondsToScore !== null);
-  const avgSecsToScore = scoringOuts.length > 0
-    ? Math.round(scoringOuts.reduce((s, o) => s + (o.secondsToScore ?? 0), 0) / scoringOuts.length)
-    : null;
+  // Average seconds to score — restarts the home team won only
+  // (restartMetrics.avgSecondsToScore, one definition for every page).
+  const avgSecsToScore = report.restarts.avgSecondsToScore.FOR;
 
   // Chain rule matches
   const koToScoreChains   = analysis.byRule["KICKOUT_TO_SCORE"]               ?? [];
@@ -3249,7 +3262,7 @@ export function makeKickoutChainPage(
  * Important: wonToShot in the dataset INCLUDES scores. "Shot but no score"
  * must be computed as wonToShot - wonToScore, never as raw wonToShot.
  */
-function makeTurnoverPunishmentPage(
+export function makeTurnoverPunishmentPage(
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
@@ -3373,10 +3386,11 @@ function makeTurnoverPunishmentPage(
       ctx.textBaseline = "middle";
       ctx.fillStyle = accentFor;
       ctx.textAlign = "left";
-      ctx.fillText(`${forLabel} ${Math.round(forFrac * 100)}%`, barX, labelY);
+      const [forPct, oppPct] = splitPercentages([forVal, oppVal]) ?? [0, 0];
+      ctx.fillText(`${forLabel} ${forPct}%`, barX, labelY);
       ctx.fillStyle = accentOpp;
       ctx.textAlign = "right";
-      ctx.fillText(`${Math.round((1 - forFrac) * 100)}% ${oppLabel}`, barX + barW, labelY);
+      ctx.fillText(`${oppPct}% ${oppLabel}`, barX + barW, labelY);
     } else {
       const labelY = cy + barH + 12;
       ctx.font = "13px sans-serif";
@@ -3680,7 +3694,7 @@ function makeTurnoverPunishmentPage(
  * so every entry in scoringRuns.runs is already an unanswered burst.
  * Single isolated scores between bursts are absent by design.
  */
-function makeMomentumRunsPage(
+export function makeMomentumRunsPage(
   report: MatchReport<PdfExportEvent>,
   homeTeam: string,
   awayTeam: string,
@@ -4013,7 +4027,7 @@ function makeMomentumRunsPage(
       const h1LateOpp = h1LateRuns.filter((r) => r.teamSide === "OPP").reduce((s, r) => s + r.count, 0);
       const h1LateStr = h1LateRuns.length === 0
         ? "No burst in 1H closing phase"
-        : `${truncTeam(homeTeam, 10)}: ${h1LateFor} pts  ${truncTeam(awayTeam, 10)}: ${h1LateOpp} pts`;
+        : `${truncTeam(homeTeam, 10)}: ${fmtScoreCount(h1LateFor)}  ${truncTeam(awayTeam, 10)}: ${fmtScoreCount(h1LateOpp)}`;
       const h1LateCol = h1LateRuns.length === 0 ? "#64748b" : "#fbbf24";
       drawStatRow(COL2_X, cy, COL_W, "1H late burst (seg 3)", h1LateStr, h1LateCol, false);
     }
@@ -4052,7 +4066,7 @@ function makeMomentumRunsPage(
       const h2LateOpp = h2LateRuns.filter((r) => r.teamSide === "OPP").reduce((s, r) => s + r.count, 0);
       const h2LateStr = h2LateRuns.length === 0
         ? "No burst in 2H closing phase"
-        : `${truncTeam(homeTeam, 10)}: ${h2LateFor} pts  ${truncTeam(awayTeam, 10)}: ${h2LateOpp} pts`;
+        : `${truncTeam(homeTeam, 10)}: ${fmtScoreCount(h2LateFor)}  ${truncTeam(awayTeam, 10)}: ${fmtScoreCount(h2LateOpp)}`;
       const h2LateCol = h2LateRuns.length === 0 ? "#64748b" : "#fbbf24";
       drawStatRow(COL2_X, cy, COL_W, "2H late burst (seg 6)", h2LateStr, h2LateCol, false);
     }
@@ -6111,7 +6125,7 @@ export function makeShotEfficiencyPage(
     PLAY:    "Open Play",
     FREE:    "Free",
     MARK:    "Mark",
-    "45":    "45",
+    "45":    fortyFiveLabel(sport),
     PENALTY: "Penalty",
     UNKNOWN: "Unclassified",
   };
@@ -7003,10 +7017,11 @@ function dpPossessionBar(
     ctx.textBaseline = "middle";
     ctx.fillStyle = forAccent;
     ctx.textAlign = "left";
-    ctx.fillText(`${forLabel}  ${Math.round(forFrac * 100)}%`, barX, labelY);
+    const [forPct, oppPct] = splitPercentages([forCount, oppCount]) ?? [0, 0];
+    ctx.fillText(`${forLabel}  ${forPct}%`, barX, labelY);
     ctx.fillStyle = oppAccent;
     ctx.textAlign = "right";
-    ctx.fillText(`${Math.round((1 - forFrac) * 100)}%  ${oppLabel}`, barX + barW, labelY);
+    ctx.fillText(`${oppPct}%  ${oppLabel}`, barX + barW, labelY);
   } else {
     ctx.fillStyle = "#64748b";
     ctx.font = "12px sans-serif";
@@ -7152,10 +7167,8 @@ export function makeRestartVisualPage(
   const oppScoredFromKo = outcomes.filter((o) => o.winningSide === "OPP" && o.nextScore      !== null).length;
   const forRestartOriginFmt = fmtRestartOriginScoredFor(analysis);
   const oppRestartOriginFmt = fmtRestartOriginScoredOpp(analysis);
-  const scoringOuts    = outcomes.filter((o) => o.secondsToScore !== null);
-  const avgSecsToScore = scoringOuts.length > 0
-    ? Math.round(scoringOuts.reduce((s, o) => s + (o.secondsToScore ?? 0), 0) / scoringOuts.length)
-    : null;
+  // Restarts the home team won only (restartMetrics.avgSecondsToScore).
+  const avgSecsToScore = report.restarts.avgSecondsToScore.FOR;
   const h1Out = outcomes.filter((o) => o.kickoutEvent.period === "1H");
   const h2Out = outcomes.filter((o) => o.kickoutEvent.period === "2H");
   const h1For = h1Out.filter((o) => o.winningSide === "FOR").length;
@@ -7208,8 +7221,11 @@ export function makeRestartVisualPage(
       truncTeam(homeTeam, 10), truncTeam(awayTeam, 10),
       "#22d3ee", "#fb7185",
     );
-    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14)} Won`, `${ko.won} (${fractionPctLabel(ko.won, totalKO)})`,  shareBarFromCounts(ko.won, totalKO), "#22d3ee", "#22d3ee", false);
-    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14)} Won`, `${ko.lost} (${fractionPctLabel(ko.lost, totalKO)})`, shareBarFromCounts(ko.lost, totalKO), "#fb7185", "#fb7185", true);
+    // Same partition as the bar above, so the same whole-number split.
+    const shareSplit = splitPercentages([ko.won, ko.lost]);
+    const wonLabel = (n: number, pct: number | undefined) => (shareSplit ? `${n} (${pct}%)` : `${n} (—)`);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${truncTeam(homeTeam, 14)} Won`, wonLabel(ko.won, shareSplit?.[0]),  shareBarFromCounts(ko.won, totalKO), "#22d3ee", "#22d3ee", false);
+    cy = dpMiniBarRow(ctx, DP_P1_X, cy, DP_PANEL_W, `${truncTeam(awayTeam, 14)} Won`, wonLabel(ko.lost, shareSplit?.[1]), shareBarFromCounts(ko.lost, totalKO), "#fb7185", "#fb7185", true);
     cy += 2;
     cy = dpSubHeader(ctx, DP_P1_X, cy, DP_PANEL_W, "BY HALF", "#22d3ee");
     cy = dpStatRow(ctx, DP_P1_X, cy, DP_PANEL_W, "H1 — Won / Lost", `${h1For} / ${h1Opp}`, "#e2e8f0", false);
