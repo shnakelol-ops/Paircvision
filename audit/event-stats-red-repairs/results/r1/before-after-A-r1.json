@@ -1,6 +1,7 @@
 {
  "counts": {
-  "FAIL→PASS": 14
+  "FAIL→PASS": 15,
+  "MISSING→PASS": 3
  },
  "changes": [
   {
@@ -16,6 +17,34 @@
    "expected": "36s",
    "beforeActual": "33s",
    "afterActual": "36s"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores for OPP (headline) ¦ OPP",
+   "expected": "2 Goals, 7 Points, 2 Two-Point scores (17 pts) (58%)",
+   "beforeActual": "(not found)",
+   "afterActual": "2 Goals, 7 Points, 2 Two-Point scores (17 pts) (58%)"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ restart-loss % denominator line ¦ FOR",
+   "expected": "% = Ballyboden restarts lost that led to a Na Fianna score (11 of 19)",
+   "beforeActual": "(not found)",
+   "afterActual": "% = Ballyboden restarts lost that led to a Na Fianna score (11 of 19)"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores from our kickout losses (subset) ¦ OPP",
+   "expected": "3 Points, 2 Two-Point scores (7 pts)",
+   "beforeActual": "(not found)",
+   "afterActual": "3 Points, 2 Two-Point scores (7 pts)"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ duplicate restart-origin row removed ¦ ",
+   "expected": "0",
+   "beforeActual": "3",
+   "afterActual": "0"
   },
   {
    "change": "FAIL→PASS",

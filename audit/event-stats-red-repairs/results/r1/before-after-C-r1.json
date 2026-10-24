@@ -1,7 +1,7 @@
 {
  "counts": {
-  "MISSING→PASS": 4,
-  "FAIL→PASS": 16
+  "MISSING→PASS": 7,
+  "FAIL→PASS": 17
  },
  "changes": [
   {
@@ -66,6 +66,34 @@
    "expected": "30s",
    "beforeActual": "34s",
    "afterActual": "30s"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores for OPP (headline) ¦ OPP",
+   "expected": "1 Goal, 13 Points (16 pts) (47%)",
+   "beforeActual": "(not found)",
+   "afterActual": "1 Goal, 13 Points (16 pts) (47%)"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ restart-loss % denominator line ¦ FOR",
+   "expected": "% = Ballyhale Shamrocks restarts lost that led to a Na Piarsaigh score (14 of 30)",
+   "beforeActual": "(not found)",
+   "afterActual": "% = Ballyhale Shamrocks restarts lost that led to a Na Piarsaigh score (14 of 30)"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores from our kickout losses (subset) ¦ OPP",
+   "expected": "1 Goal, 6 Points (9 pts)",
+   "beforeActual": "(not found)",
+   "afterActual": "1 Goal, 6 Points (9 pts)"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ duplicate restart-origin row removed ¦ ",
+   "expected": "0",
+   "beforeActual": "3",
+   "afterActual": "0"
   },
   {
    "change": "FAIL→PASS",

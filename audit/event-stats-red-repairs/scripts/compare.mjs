@@ -31,6 +31,12 @@ const checks = [];
 const gp = (s) => `${s.goals}-${String(s.points).padStart(2, "0")}`;
 const gpt = (s) => `${gp(s)} (${s.total})`;
 const pctS = (f) => (f.den > 0 ? `${f.pct}%` : "—");
+/** The report's truncTeam (reviewPdfExport.ts) — team names on compact lines. */
+const truncTeamPdf = (name, max) => {
+  if (name.length <= max) return name;
+  const cut = name.lastIndexOf(" ", max - 2);
+  return cut > 0 ? `${name.slice(0, cut)}…` : `${name.slice(0, max - 1)}…`;
+};
 // Formatting-only normalisation: whitespace, and the "A, B & C" vs "A, B" list joiner.
 const norm = (v) => (v == null ? "∅" : String(v).replace(/\s+/g, " ").replace(/ & /g, ", ").trim());
 
@@ -532,9 +538,15 @@ function originsPages(pages, surf) {
   const q = byTitle(pages, "Opposition Origin & Chain Analysis");
   if (q) {
     const o = S.chains.OPP, f = S.chains.FOR;
-    check(surf, "Opposition Origin", "FULL", "restart-origin scores for OPP", "OPP", fmtBreakdown(o.origins.restartOrigin), val(q, "Restart-origin scores for OPP", { maxDx: 920 }));
-    check(surf, "Opposition Origin", "FULL", "restart-origin scores conceded", "OPP", `${fmtBreakdown(f.restartLostScoreBreakdown)} (${pctS(f.restartLostToScoreAgainst)})`, val(q, "Restart-origin scores conceded", { maxDx: 920 }), "same quantity as the row above — consistency check");
-    check(surf, "Opposition Origin", "FULL", "restart-origin scores from our kickout losses", "OPP", fmtBreakdown(f.ownRestartLostScoreBreakdown), val(q, hurling ? "Restart-origin scores from our puckout losses" : "Restart-origin scores from our kickout losses", { maxDx: 920 }));
+    // R1: the former "Restart-origin scores for OPP" and "…conceded" rows (the
+    // same statistic) are one headline; the % keeps its definition (restarts
+    // lost → opposition origin score ÷ restarts lost) and names its denominator.
+    const headline = val(q, "Opposition scores from restart-origin attacks", { maxDx: 920 });
+    check(surf, "Opposition Origin", "FULL", "restart-origin scores for OPP (headline)", "OPP", `${fmtBreakdown(o.origins.restartOrigin)}${f.restartLostToScoreAgainst.den > 0 ? ` (${pctS(f.restartLostToScoreAgainst)})` : ""}`, headline);
+    check(surf, "Opposition Origin", "FULL", "restart-origin headline = restart-loss score breakdown (ledger consistency)", "OPP", fmtBreakdown(f.restartLostScoreBreakdown), fmtBreakdown(o.origins.restartOrigin));
+    check(surf, "Opposition Origin", "FULL", "restart-loss % denominator line", "FOR", `% = ${truncTeamPdf(HOME, 24)} restarts lost that led to a ${truncTeamPdf(AWAY, 24)} score (${f.restartLostToScoreAgainst.num} of ${f.restartLostToScoreAgainst.den})`, q.texts.find((t) => t.t.startsWith("% = "))?.t);
+    check(surf, "Opposition Origin", "FULL", "restart-origin scores from our kickout losses (subset)", "OPP", fmtBreakdown(f.ownRestartLostScoreBreakdown), val(q, hurling ? "Of which: from our puckout losses" : "Of which: from our kickout losses", { maxDx: 920 }));
+    check(surf, "Opposition Origin", "FULL", "duplicate restart-origin row removed", null, 0, q.texts.filter((t) => t.t.startsWith("Restart-origin scores")).length);
     check(surf, "Opposition Origin", "FULL", "turnover-origin scores for OPP", "OPP", fmtBreakdown(o.origins.turnoverOrigin), val(q, "Turnover-origin scores for OPP", { maxDx: 920 }));
     check(surf, "Opposition Origin", "FULL", "turnover-origin scores conceded", "OPP", f.turnoverLostToScoreAgainst.num, val(q, "Turnover-origin scores conceded", { maxDx: 920 }));
     check(surf, "Opposition Origin", "FULL", "turnover-origin punishment rate", "OPP", pctS(f.turnoverLostToScoreAgainst), val(q, "Turnover-origin punishment rate", { maxDx: 920 }));

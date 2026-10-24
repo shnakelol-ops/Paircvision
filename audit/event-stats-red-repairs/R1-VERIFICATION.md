@@ -1,6 +1,6 @@
 # R1 — Event Stats Statistical Accuracy Repairs: verification
 
-- Branch: `claude/event-stats-r1-accuracy`, one commit on top of main `f3b9a05`.
+- Branch: `claude/event-stats-r1-accuracy`, three commits on top of main `f3b9a05`: `43c488e` (statistical repairs), `8be0b3f` (Opposition Origin correction, approved after review) and `38e0e25` (full team names on its denominator line). The verified head is `38e0e25`.
 - Expected values come from the independent reference ledgers. Neither ledger set was edited:
   - `expected/` is byte-identical to audit commit a8581a5;
   - `expected-authoritative/` uses the approved possession-based kickout-origin definition.
@@ -14,7 +14,7 @@
 | F-10 45 / 65 reporting | The "45" row (`shot45`) only counted shots tagged `FORTY_FIVE` (Match Stats tags). Event Stats records the award as `FORTY_FIVE_WON` / `FORTY_FIVE_CONCEDED`, and the count ignored those, so every Event Stats match printed 0. Hurling and camogie also printed "45" instead of "65". | `shot45` now adds the awards owned by the team (`resolveRestartOwner`, the same owner rule as kickouts). Shots tagged `FORTY_FIVE` keep counting, so historical Match Stats data still works. The award record and the score record are different events, so a placed score is never counted twice: the award is counted once in "45" and the score once in the scoreboard. A test covers this. The label is "65" for hurling and camogie (`fortyFiveLabel`), both on Match Summary and in the efficiency source rows. |
 | Scoring runs | Run length counts **scoring events** (a goal, a point or a two-pointer each count as 1), but five sites labelled it "pts". | The unit is now "N score(s)" (`fmtScoreCount`) on: Longest run (For/Opp), the run rows, and the 1H and 2H late-burst lines. Scoreboard points are unchanged. |
 | Split rounding (101 %) | Each part of a two-way split was rounded on its own. 1 vs 7 printed 13 % + 88 % = 101 %. | New `splitPercentages()` (one shared helper). It starts from each part's own `Math.round`, then corrects the part with the largest rounding error until the parts sum to 100, with deterministic tie rules. Zero total returns null, shown as "—". Raw counts are not changed. Used by: `drawPossessionBar`, `drawComparisonBar`, `dpPossessionBar` and the Restart Summary "Won" rows. For two parts, the first part always equals its standalone figure; this was tested exhaustively for 0–60. |
-| Opposition Origin rows | **Not changed. A proposal is below.** | — |
+| Opposition Origin rows | Two rows printed the same statistic (§2). | After approval, they are merged into one headline plus the genuine subset (§2a). Values are unchanged. |
 
 ## 2. Opposition Origin — the two restart-origin rows (audit only)
 
@@ -34,9 +34,39 @@ Findings:
 
 **Conclusion:** "Restart-origin scores for OPP" and "Restart-origin scores conceded" are the same statistic printed twice. Both figures are correct, and neither label is false. The duplication suggests to a coach that there are two different measures.
 
-**Proposed correction (not implemented; awaiting approval):** keep one row, "Restart-origin scores for OPP" with its %. Remove the "conceded" duplicate, and keep "…from our kickout losses" as an indented subset.
+**Proposed correction (approved and implemented in `8be0b3f` / `38e0e25`, see §2a):** keep one row, "Restart-origin scores for OPP" with its %. Remove the "conceded" duplicate, and keep "…from our kickout losses" as an indented subset.
 
-A related observation, also not changed: the turnover-origin scan does not stop at the next kickout. In a constructed example, a turnover can claim a score that comes after a later kickout. This does not happen in any fixture or in the real match. It should be reviewed with the Intelligence boundary work in a later round.
+### 2a. Correction as implemented
+
+The Restart Origin card on the Opposition Origin & Chain Analysis page now shows:
+
+| Row | Value | Source |
+|---|---|---|
+| **Opposition scores from restart-origin attacks** | breakdown `(pct%)`, e.g. A: "2 Goals, 7 Points & 2 Two-Point scores (17 pts)  (58%)" | breakdown: de-duplicated origins (unchanged). %: `restartLossPunishment` (unchanged definition). |
+| (small line) | "% = Ballyboden restarts lost that led to a Na Fianna score (11 of 19)" | names the numerator and the denominator |
+| **Of which: from our kickout losses** (puckout in hurling) | e.g. A: "3 Points & 2 Two-Point scores (7 pts)" | `viewOwnKickoutLossOriginConcededFor` (unchanged) |
+
+- Both figures use the same scoring units (`formatScoringBreakdownOrDash`).
+- No statistical value changed.
+- The removed row's only unique content was its %. That % now sits on the headline, with its denominator stated.
+- The card keeps its geometry: two rows plus a 22 px caption, in place of three rows.
+
+**Regression tests** (`r1StatisticalAccuracy.test.ts`) check that:
+- the headline equals the raw "conceded" view;
+- the headline's score count equals the restart-loss numerator (one restart produces at most one origin score);
+- the subset is contained in the headline in every category.
+
+They run on the real Ballylanders v Galbally match, on a constructed co-claim, and on a hand-worked case (1-1-1 against 1-0-0, 3 of 4 = 75 %, puckout wording in hurling).
+
+**Ledger checks:** the harness checks the headline, the ledger consistency (headline = restart-loss breakdown), the denominator line, the subset, and that the duplicate row is gone. They all pass in A, B and C, live and reopened:
+
+| Match | Headline | Denominator | Subset |
+|---|---|---|---|
+| A | 17 pts (58 %) | 11 of 19 | 7 pts |
+| B | 11 pts (23 %) | 8 of 35 (reopened: 22 %, 8 of 36) | 8 pts |
+| C | 16 pts (47 %) | 14 of 30 | 9 pts |
+
+A related observation, not changed: the turnover-origin scan does not stop at the next kickout. In a constructed example, a turnover can claim a score that comes after a later kickout. This does not happen in any fixture or in the real match. It should be reviewed with the Intelligence boundary work in a later round.
 
 ## 3. Before → after (636-event fixtures, values printed in the PDF)
 
@@ -57,7 +87,7 @@ A related observation, also not changed: the turnover-origin scan does not stop 
 | | main `f3b9a05` | R1 |
 |---|---|---|
 | Test files | 218 passed | 220 passed |
-| Tests | 2990 passed | **3011 passed** (+21: 13 R1 + 8 split) |
+| Tests | 2990 passed | **3012 passed** (+22: 14 R1 + 8 split) |
 | tsc (pre-existing error files) | 14 | 14 (identical list) |
 | vite build | ✓ | ✓ |
 
@@ -67,9 +97,11 @@ A related observation, also not changed: the turnover-origin scan does not stop 
 
 | Match | main baseline PASS / FAIL | R1 PASS / FAIL |
 |---|---|---|
-| A — football | 567 / 23 | **581 / 9** |
-| B — football | 939 / 46 | **973 / 12** |
-| C — hurling | 534 / 44 (+4 missing) | **554 / 28** (+0 missing) |
+| A — football | 565 / 24 (+3 missing) | **583 / 9** (+0 missing) |
+| B — football | 935 / 48 (+6 missing) | **977 / 12** (+0 missing) |
+| C — hurling | 532 / 45 (+7 missing) | **556 / 28** (+0 missing) |
+
+These figures are for the final head `38e0e25`. Main was re-scored with the same final harness, including the new Opposition Origin checks; main fails the duplicate-row check and is missing the new labels.
 
 - Every change is FAIL→PASS or MISSING→PASS. No check went from PASS to FAIL.
 - Legacy import: 28/28. Cross-page consistency: 27/27.
@@ -82,6 +114,7 @@ A related observation, also not changed: the turnover-origin scan does not stop 
 
 - **Run-row check fixed.** The regex `/×\d+ (1H|2H) S\d$/` never matched the double-spaced run labels, so on main the run rows were silently unchecked. The fixed check compares each row with the ledger's run length in **scores** (approved decision 5).
 - **New checks:** "longest scoring run (scores)" for FOR and OPP, and "two-way split bars total 100 %".
+- **Opposition Origin checks:** after the approved correction, they read the new labels and add three checks: ledger consistency, the denominator line, and duplicate-row removal. The expected values still come from the unchanged ledgers.
 - **Reading changes:** the harness now reads `EXPECTED_DIR` / `RESULTS_SUFFIX` and the "Restart Share — <method>" labels.
 
 The baseline above is main re-scored with this same harness, so the comparison is like for like.

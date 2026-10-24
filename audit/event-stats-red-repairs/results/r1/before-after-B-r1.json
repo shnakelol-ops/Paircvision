@@ -1,6 +1,7 @@
 {
  "counts": {
-  "FAIL→PASS": 34
+  "FAIL→PASS": 36,
+  "MISSING→PASS": 6
  },
  "changes": [
   {
@@ -23,6 +24,34 @@
    "expected": "19s",
    "beforeActual": "20s",
    "afterActual": "19s"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores for OPP (headline) ¦ OPP",
+   "expected": "5 Points, 3 Two-Point scores (11 pts) (23%)",
+   "beforeActual": "(not found)",
+   "afterActual": "5 Points, 3 Two-Point scores (11 pts) (23%)"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ restart-loss % denominator line ¦ FOR",
+   "expected": "% = Kilmacud Crokes restarts lost that led to a St Brigid's score (8 of 35)",
+   "beforeActual": "(not found)",
+   "afterActual": "% = Kilmacud Crokes restarts lost that led to a St Brigid's score (8 of 35)"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores from our kickout losses (subset) ¦ OPP",
+   "expected": "2 Points, 3 Two-Point scores (8 pts)",
+   "beforeActual": "(not found)",
+   "afterActual": "2 Points, 3 Two-Point scores (8 pts)"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Opposition Origin ¦ FULL ¦ duplicate restart-origin row removed ¦ ",
+   "expected": "0",
+   "beforeActual": "3",
+   "afterActual": "0"
   },
   {
    "change": "FAIL→PASS",
@@ -142,6 +171,34 @@
    "expected": "19s",
    "beforeActual": "20s",
    "afterActual": "19s"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores for OPP (headline) ¦ OPP",
+   "expected": "5 Points, 3 Two-Point scores (11 pts) (22%)",
+   "beforeActual": "(not found)",
+   "afterActual": "5 Points, 3 Two-Point scores (11 pts) (22%)"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Opposition Origin ¦ FULL ¦ restart-loss % denominator line ¦ FOR",
+   "expected": "% = Kilmacud Crokes restarts lost that led to a St Brigid's score (8 of 36)",
+   "beforeActual": "(not found)",
+   "afterActual": "% = Kilmacud Crokes restarts lost that led to a St Brigid's score (8 of 36)"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Opposition Origin ¦ FULL ¦ restart-origin scores from our kickout losses (subset) ¦ OPP",
+   "expected": "2 Points, 3 Two-Point scores (8 pts)",
+   "beforeActual": "(not found)",
+   "afterActual": "2 Points, 3 Two-Point scores (8 pts)"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Opposition Origin ¦ FULL ¦ duplicate restart-origin row removed ¦ ",
+   "expected": "0",
+   "beforeActual": "3",
+   "afterActual": "0"
   },
   {
    "change": "FAIL→PASS",
