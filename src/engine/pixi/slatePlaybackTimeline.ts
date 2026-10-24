@@ -55,7 +55,9 @@ import {
  * frame-stepped engine. Players who keep moving through a phase boundary
  * carry their speed across it (slatePlayerContinuity.ts) instead of easing to
  * a stop and starting again; everyone else, and every ball, keeps the
- * per-segment smoothstep. The other difference from the old engine is the
+ * per-segment smoothstep. A phase that is only a pass lasts as long as its
+ * flight plus a short settle (PASS_ONLY_PHASE_SETTLE_MS) instead of the full
+ * phase minimum. The other difference from the old engine is the
  * frame-rate-dependent lag-follow of an attached ball, which is replaced by:
  *
  * - a ball carried by the same player for the whole segment is drawn exactly
@@ -176,8 +178,7 @@ export function compileSlatePlaybackTimeline(
   const carryWorld = carry.world ?? { ...SLATE_CARRY_WORLD, scale: worldScale };
   const distanceByBallId = carry.distanceByBallId ?? new Map<string, number>();
   const passSpeedWorldPerS = carry.passSpeedWorldPerS ?? SLATE_PASS_SPEED_WORLD_PER_S;
-  const segments: SlatePlaybackSegment[] = [];
-  let startMs = 0;
+  const durationsMs: number[] = [];
   for (let index = 0; index < path.length - 1; index += 1) {
     const fromSnapshot = path[index]!;
     const toSnapshot = path[index + 1]!;
@@ -194,45 +195,121 @@ export function compileSlatePlaybackTimeline(
         resolvePassPhaseFloorMs(fromSnapshot, toSnapshot, carryWorld, distanceByBallId, passSpeedWorldPerS),
       );
     }
-    segments.push({ startMs, durationMs });
-    startMs += durationMs;
+    durationsMs.push(durationMs);
   }
   const tapPassFlights =
     kind === "possession-pass"
       ? compileTapPassFlights(path, carryWorld, distanceByBallId, passSpeedWorldPerS, carry.initialAngleByBallId, carry.tapPassReceiverId)
       : new Map<string, SlatePassFlight>();
-  if (kind === "possession-pass" && segments[0]) {
+  if (kind === "possession-pass" && durationsMs.length > 0) {
     let flightMs = 0;
     for (const flight of tapPassFlights.values()) flightMs = Math.max(flightMs, flight.arrivalMs - flight.launchMs);
     // Never a zero-length segment (a ball already at the receiver's feet).
-    segments[0] = { startMs: 0, durationMs: Math.max(1, flightMs) };
-    startMs = segments[0].durationMs;
+    durationsMs[0] = Math.max(1, flightMs);
   }
-  const playerSlopes = compilePlayerContinuitySlopes(
-    path,
-    segments.map((segment) => segment.durationMs),
-    worldScale,
-  );
-  const { spans: carrySpans, flights: passFlights } = compileCarrySpans(
-    path,
-    segments,
-    playerSlopes,
-    carryWorld,
-    distanceByBallId,
-    passSpeedWorldPerS,
-  );
+  const compileMovement = (durations: readonly number[]) => {
+    const segments: SlatePlaybackSegment[] = [];
+    let startMs = 0;
+    for (const durationMs of durations) {
+      segments.push({ startMs, durationMs });
+      startMs += durationMs;
+    }
+    const playerSlopes = compilePlayerContinuitySlopes(path, durations, worldScale);
+    const { spans, flights } = compileCarrySpans(
+      path,
+      segments,
+      playerSlopes,
+      carryWorld,
+      distanceByBallId,
+      passSpeedWorldPerS,
+    );
+    return { segments, totalDurationMs: startMs, playerSlopes, carrySpans: spans, passFlights: flights };
+  };
+  let movement = compileMovement(durationsMs);
+  if (kind === "default") {
+    // A pass-only phase lasts as long as its pass plus a short settle. No
+    // player walks in it, so this changes no player's slopes or the passes'
+    // flight times — only when later phases start.
+    const settledDurationsMs = resolvePassOnlyPhaseDurations(path, durationsMs, movement.passFlights, worldScale);
+    if (settledDurationsMs) movement = compileMovement(settledDurationsMs);
+  }
   return {
     kind,
     path,
-    segments,
-    totalDurationMs: startMs,
-    playerSlopes,
-    carrySpans,
+    segments: movement.segments,
+    totalDurationMs: movement.totalDurationMs,
+    playerSlopes: movement.playerSlopes,
+    carrySpans: movement.carrySpans,
     carryWorld,
     initialCarryAngleByBallId: carry.initialAngleByBallId ?? new Map(),
     carryDistanceByBallId: distanceByBallId,
-    passFlights: kind === "possession-pass" ? tapPassFlights : passFlights,
+    passFlights: kind === "possession-pass" ? tapPassFlights : movement.passFlights,
   };
+}
+
+/**
+ * How long the ball rests with the receiver in a pass-only phase before the
+ * next phase starts (1× ms). The smallest settle that still shows at least 5
+ * still frames per reception in a 30fps clip at every playback speed (1.5×:
+ * ~167ms real): measured on back-to-back rondo passes, 2–3 still frames
+ * read as a deflection rather than a reception, and 200ms leaves 4 at 1.5×.
+ */
+export const PASS_ONLY_PHASE_SETTLE_MS = 250;
+
+/**
+ * Whether a phase is a pass and nothing else: at least one ball changes
+ * holder, every other ball stays with the same holder, no player walks, and
+ * no ball is loose at either end (a Free Ball phase keeps its timing).
+ */
+export function isPassOnlyPhase(
+  fromSnapshot: TimelineSnapshot,
+  toSnapshot: TimelineSnapshot,
+  worldScale: WorldScale = SLATE_WORLD_SCALE,
+): boolean {
+  if (resolveHolderSwitches(fromSnapshot, toSnapshot).length === 0) return false;
+  const fromPlayersById = new Map(fromSnapshot.players.map((entry) => [entry.id, entry] as const));
+  for (const toPlayer of toSnapshot.players) {
+    const fromPlayer = fromPlayersById.get(toPlayer.id);
+    if (fromPlayer && measurePlayerWalk(fromPlayer, toPlayer, worldScale)) return false;
+  }
+  for (const toBall of toSnapshot.football) {
+    const fromBall = fromSnapshot.football.find((entry) => entry.id === toBall.id);
+    if (!fromBall || fromBall.isFree || toBall.isFree || !fromBall.attachedPlayerId || !toBall.attachedPlayerId) {
+      return false;
+    }
+  }
+  return fromSnapshot.football.every((fromBall) => toSnapshot.football.some((entry) => entry.id === fromBall.id));
+}
+
+/**
+ * Durations with each pass-only phase cut to its longest pass flight plus
+ * PASS_ONLY_PHASE_SETTLE_MS, never longer than it was; null when no phase
+ * changes. Without this a short pass in its own phase took the full 1200ms
+ * phase minimum, leaving the whole board motionless for most of it. A phase
+ * whose pass could not be compiled as a flight keeps its duration.
+ */
+function resolvePassOnlyPhaseDurations(
+  path: readonly TimelineSnapshot[],
+  durationsMs: readonly number[],
+  passFlights: ReadonlyMap<string, SlatePassFlight>,
+  worldScale: WorldScale,
+): number[] | null {
+  let changed = false;
+  const settled = durationsMs.map((durationMs, index) => {
+    const fromSnapshot = path[index]!;
+    const toSnapshot = path[index + 1]!;
+    if (!isPassOnlyPhase(fromSnapshot, toSnapshot, worldScale)) return durationMs;
+    let flightMs = 0;
+    for (const { toBall } of resolveHolderSwitches(fromSnapshot, toSnapshot)) {
+      const flight = passFlights.get(passFlightKey(index, toBall.id));
+      if (!flight) return durationMs;
+      flightMs = Math.max(flightMs, flight.arrivalMs - flight.launchMs);
+    }
+    const next = Math.min(durationMs, flightMs + PASS_ONLY_PHASE_SETTLE_MS);
+    if (next !== durationMs) changed = true;
+    return next;
+  });
+  return changed ? settled : null;
 }
 
 /**

@@ -16,7 +16,8 @@ import { resolveStoredRoutePolyline } from "./routeFollowInterpolation";
  * player used before, so a player who stops at a boundary still eases out
  * and one who starts from rest still eases in. Where a player keeps moving
  * through a boundary, α/β carry a shared non-zero speed across it instead of
- * forcing zero velocity there.
+ * forcing zero velocity there. That shared speed is the geometric mean of
+ * the two segments' average speeds (see resolveBoundaryWorldSpeed).
  *
  * Boundary speeds are matched in world units (the 160×100 world, where
  * normalized x is stretched 1.6× relative to y), so a corner from a
@@ -190,8 +191,15 @@ export function resolveTurnDegrees(a: { x: number; y: number }, b: { x: number; 
 /**
  * World speed (world units per 1× ms) a player carries through the boundary
  * between two consecutive walks: 0 unless they move on both sides without
- * reversing; otherwise the slower of the two segments' average speeds, so
- * neither segment has to rush to meet it.
+ * reversing; otherwise the geometric mean of the two segments' average
+ * speeds, so each side changes speed by the same ratio to meet it.
+ *
+ * The slower segment's average (the earlier rule) made a player who speeds
+ * up across a boundary slow down into it first and then surge through the
+ * faster segment; the geometric mean speeds up (or slows down) through the
+ * boundary instead. It is capped so neither walk's boundary slope exceeds
+ * MAX_BOUNDARY_SLOPE (beyond a 4× speed ratio on a straight walk), which
+ * keeps both curves monotonic and the speed identical on both sides.
  */
 export function resolveBoundaryWorldSpeed(
   before: { walk: PlayerWalkGeometry | null; durationMs: number } | null,
@@ -201,7 +209,16 @@ export function resolveBoundaryWorldSpeed(
   if (before.durationMs <= 0 || after.durationMs <= 0) return 0;
   const turn = resolveTurnDegrees(before.walk.endDirection, after.walk.startDirection);
   if (isReversalTurn(turn)) return 0;
-  return Math.min(before.walk.worldLength / before.durationMs, after.walk.worldLength / after.durationMs);
+  const meanSpeed = Math.sqrt(
+    (before.walk.worldLength / before.durationMs) * (after.walk.worldLength / after.durationMs),
+  );
+  // Largest speed each side can take at this boundary within MAX_BOUNDARY_SLOPE
+  // (the inverse of the slope conversion in compilePlayerContinuitySlopes).
+  const beforeLimit =
+    (MAX_BOUNDARY_SLOPE * before.walk.normalizedLength * before.walk.endWorldPerNormalized) / before.durationMs;
+  const afterLimit =
+    (MAX_BOUNDARY_SLOPE * after.walk.normalizedLength * after.walk.startWorldPerNormalized) / after.durationMs;
+  return Math.min(meanSpeed, beforeLimit, afterLimit);
 }
 
 function clampSlope(value: number): number {

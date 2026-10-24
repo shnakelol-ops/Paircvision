@@ -5,6 +5,7 @@ import { SLATE_CARRY_RADIUS_WORLD } from "./slateCarryPresentation";
 import { SLATE_PASS_SPEED_WORLD_PER_S, solvePassInterception } from "./slatePassFlight";
 import {
   compileSlatePlaybackTimeline,
+  PASS_ONLY_PHASE_SETTLE_MS,
   passFlightKey,
   resolveFinalCarryAngles,
   sampleSlatePlaybackTimeline,
@@ -129,11 +130,11 @@ describe("player-to-player pass flight in playback", () => {
     });
   }
 
-  it("no 900/1200ms floor on the flight itself: a short pass lands well before the phase ends", () => {
+  it("no 900/1200ms floor on the flight itself: a short pass lands, then its pass-only phase settles and ends", () => {
     const timeline = pass({ x: 30, y: 50 });
     const flight = flightOf(timeline, 0);
     expect(flight.arrivalMs - flight.launchMs).toBeLessThan(300);
-    expect(timeline.segments[0]!.durationMs).toBe(1200);
+    expect(timeline.segments[0]!.durationMs).toBeCloseTo(flight.arrivalMs - flight.launchMs + PASS_ONLY_PHASE_SETTLE_MS, 9);
   });
 
   it("moving receiver: received on the run, before they stop, at their carry distance", () => {
@@ -206,10 +207,17 @@ describe("player-to-player pass flight in playback", () => {
   it("at the default speed, extension only applies beyond the 2800ms phase cap", () => {
     const authored = (path: TimelineSnapshot[], index: number) =>
       resolvePhaseSegmentDurationMs(resolveSegmentMaxMovementDistance(path[index]!, path[index + 1]!), 1);
-    // Near full width (~150 world units): the authored duration already fits.
+    // Near full width (~150 world units): the authored duration already fits,
+    // so the phase is not extended (as a pass-only phase it ends once the
+    // ball has landed and settled, which is sooner).
     const across = board({ a: [{ x: 3, y: 50 }, { x: 3, y: 50 }], b: [{ x: 97, y: 50 }] }, ["a", "a", "b"]);
     const acrossTimeline = compileSlatePlaybackTimeline(across);
-    expect(acrossTimeline.segments[1]!.durationMs).toBe(authored(across, 1));
+    const acrossFlight = flightOf(acrossTimeline, 1);
+    expect(acrossTimeline.segments[1]!.durationMs).toBeLessThanOrEqual(authored(across, 1));
+    expect(acrossTimeline.segments[1]!.durationMs).toBeCloseTo(
+      Math.min(authored(across, 1), acrossFlight.arrivalMs - acrossFlight.launchMs + PASS_ONLY_PHASE_SETTLE_MS),
+      9,
+    );
     // Corner to corner (~185 world units): longer than the 2800ms cap allows, so that phase extends.
     const corner = board({ a: [{ x: 1, y: 1 }, { x: 1, y: 1 }], b: [{ x: 99, y: 99 }] }, ["a", "a", "b"]);
     const cornerTimeline = compileSlatePlaybackTimeline(corner);
