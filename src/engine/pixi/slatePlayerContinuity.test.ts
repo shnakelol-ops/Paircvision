@@ -301,17 +301,28 @@ describe("player continuity across phase boundaries", () => {
     });
   });
 
-  it("phases of different lengths: carries the slower segment's average speed, still continuous", () => {
-    // Short hop then a long run (longer run → longer phase duration).
+  it("phases of different lengths: carries the geometric mean of the two average speeds, still continuous", () => {
+    // Short hop then a longer run (longer run → longer phase duration),
+    // within the 4× speed ratio the slope cap allows.
+    const timeline = compileSlatePlaybackTimeline(
+      board({ p: [{ x: 10, y: 50 }, { x: 18, y: 50 }, { x: 45, y: 50 }] }),
+    );
+    expectContinuous(timeline, "p", 1);
+    const { before } = speedAround(timeline, "p", boundaryMs(timeline, 1));
+    expect(before).toBeCloseTo(
+      Math.sqrt(averageSpeed(timeline, "p", 0) * averageSpeed(timeline, "p", 1)),
+      4,
+    );
+  });
+
+  it("phases of very different lengths: the boundary speed is capped at twice the slower average, still continuous", () => {
     const timeline = compileSlatePlaybackTimeline(
       board({ p: [{ x: 10, y: 50 }, { x: 18, y: 50 }, { x: 70, y: 50 }] }),
     );
     expectContinuous(timeline, "p", 1);
     const { before } = speedAround(timeline, "p", boundaryMs(timeline, 1));
-    expect(before).toBeCloseTo(
-      Math.min(averageSpeed(timeline, "p", 0), averageSpeed(timeline, "p", 1)),
-      4,
-    );
+    expect(averageSpeed(timeline, "p", 1) / averageSpeed(timeline, "p", 0)).toBeGreaterThan(4);
+    expect(before).toBeCloseTo(2 * averageSpeed(timeline, "p", 0), 4);
   });
 });
 
