@@ -577,14 +577,21 @@ function intelligencePages(pages, surf) {
     check(surf, pg, "FULL", hurling ? "total puckouts" : "total kickouts", null, S.FOR.restartsWon + S.FOR.restartsLost, v(hurling ? "Total puckouts" : "Total kickouts"));
     check(surf, pg, "FULL", "Won → Origin score", "FOR", `${f.restartWonToScore.num} (${pctS(f.restartWonToScore)})`, val(ci, "Won → Origin score", { maxDx: 600 }));
     check(surf, pg, "FULL", "turnovers: Won → Shot (label) vs shot-without-score value", "FOR", `${f.turnoverWonToAttempt.num} (${pctS(f.turnoverWonToAttempt)})`, val(ci, "Won → Shot", { maxDx: 600 }), "label says 'Won → Shot'");
-    const runRows = ci.texts.filter((t) => /×\d+ (1H|2H) S\d$/.test(t.t));
+    // R1: the run label is drawn with double spaces ("Team  ×4  2H S6"), which
+    // the original single-space pattern never matched, so these rows went
+    // unchecked. Run length is the number of scoring events (approved unit:
+    // "scores"); the ledger's `scores` field is that count.
+    const scoresLabel = (n) => `${n} score${n === 1 ? "" : "s"}`;
+    const runRows = ci.texts.filter((t) => /×\d+\s+(1H|2H) S\d$/.test(t.t));
     for (const r of runRows) {
-      const m = r.t.match(/^(.*) ×(\d+) (1H|2H) S(\d)$/);
-      const team = m[1] === HOME ? "FOR" : "OPP";
+      const m = r.t.match(/^(.*?)\s+×(\d+)\s+(1H|2H) S(\d)$/);
+      const team = HOME.startsWith(m[1].replace(/…$/, "")) ? "FOR" : "OPP";
       const value = ci.texts.find((t) => Math.abs(t.y - r.y) <= 2 && t.x > r.x + 300)?.t;
       const ref = S.scoringRuns.find((x) => x.team === team && x.scores === +m[2] && `${x.startHalf}H` === m[3] && (x.startMin < 10 ? 1 : x.startMin < 20 ? 2 : 3) + (x.startHalf === 2 ? 3 : 0) === +m[4]);
-      check(surf, pg, "FULL", `scoring run ${r.t}: value`, team, ref ? `${ref.value} pts` : "(run not in reference)", value);
+      check(surf, pg, "FULL", `scoring run ${r.t.replace(/\s+/g, " ")}: length`, team, ref ? scoresLabel(ref.scores) : "(run not in reference)", value);
     }
+    check(surf, pg, "FULL", "longest scoring run (scores)", "FOR", scoresLabel(S.longestRun.FOR), val(ci, "Longest run (For)", { maxDx: 600 }));
+    check(surf, pg, "FULL", "longest scoring run (scores)", "OPP", scoresLabel(S.longestRun.OPP), val(ci, "Longest run (Opp)", { maxDx: 600 }));
   }
 }
 
@@ -621,6 +628,19 @@ function presentation(pages, label) {
     if (p.index > 1 && /v/.test(header) && !(header.includes(HOME) && header.includes(AWAY)) && !/·/.test(header)) nameIssues.push({ page: p.index, header });
   }
   check(surf, "all pages", "—", "text running off the page edge", null, 0, clipped.length, JSON.stringify(clipped));
+  // R1: two-way split bars ("Team 13%" … "87% Team" on one line) must total 100.
+  const splitBad = [];
+  for (const p of pages) {
+    for (const l of p.texts) {
+      const a = l.t.match(/^(.+?)\s+(\d+)%$/);
+      if (!a) continue;
+      const r = p.texts.find((t) => t !== l && Math.abs(t.y - l.y) <= 2 && t.x > l.x && /^(\d+)%\s+\S/.test(t.t));
+      if (!r) continue;
+      const total = +a[2] + +r.t.match(/^(\d+)%/)[1];
+      if (total !== 100) splitBad.push({ page: p.index, title: p.title, left: l.t, right: r.t, total });
+    }
+  }
+  check(surf, "all pages", "—", "two-way split bars total 100%", null, 0, splitBad.length, JSON.stringify(splitBad));
   check(surf, "all pages", "—", "overlapping text boxes (>25% of smaller box)", null, 0, overlaps.length, JSON.stringify(overlaps));
   check(surf, "all pages", "—", "internal enum names shown", null, 0, enumLeak.length, JSON.stringify(enumLeak.slice(0, 4)));
   check(surf, "all pages", "—", "undefined/NaN/null text", null, 0, undefinedLeak.length, JSON.stringify(undefinedLeak.slice(0, 4)));

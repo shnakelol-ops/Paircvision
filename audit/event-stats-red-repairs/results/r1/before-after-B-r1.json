@@ -1,0 +1,245 @@
+{
+ "counts": {
+  "FAIL→PASS": 34
+ },
+ "changes": [
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ 45 ¦ FOR",
+   "expected": "2",
+   "beforeActual": "0",
+   "afterActual": "2"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ 45 ¦ OPP",
+   "expected": "1",
+   "beforeActual": "0",
+   "afterActual": "1"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ Avg secs to score (won) ¦ FOR",
+   "expected": "19s",
+   "beforeActual": "20s",
+   "afterActual": "19s"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Kilmacud… ×3 2H S6: length ¦ FOR",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Kilmacud… ×3 2H S6: length ¦ FOR",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×3 2H S6: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×3 2H S5: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Kilmacud… ×2 2H S5: length ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×3 2H S5: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Kilmacud… ×2 2H S5: length ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×3 2H S4: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×4 2H S4: length ¦ OPP",
+   "expected": "4 scores",
+   "beforeActual": "4 pts",
+   "afterActual": "4 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×2 1H S3: length ¦ OPP",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Kilmacud… ×2 1H S2: length ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×2 1H S2: length ¦ OPP",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ longest scoring run (scores) ¦ FOR",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ longest scoring run (scores) ¦ OPP",
+   "expected": "4 scores",
+   "beforeActual": "4 pts",
+   "afterActual": "4 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ p1 Match Summary ¦ FULL ¦ 45 ¦ FOR",
+   "expected": "2",
+   "beforeActual": "0",
+   "afterActual": "2"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ p1 Match Summary ¦ FULL ¦ 45 ¦ OPP",
+   "expected": "1",
+   "beforeActual": "0",
+   "afterActual": "1"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Restart Analysis ¦ FULL ¦ Avg secs to score (won) ¦ FOR",
+   "expected": "19s",
+   "beforeActual": "20s",
+   "afterActual": "19s"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ scoring run Kilmacud… ×3 2H S6: length ¦ FOR",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ scoring run Kilmacud… ×4 2H S6: length ¦ FOR",
+   "expected": "4 scores",
+   "beforeActual": "4 pts",
+   "afterActual": "4 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×3 2H S6: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×3 2H S5: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ scoring run Kilmacud… ×2 2H S5: length ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×3 2H S5: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ scoring run Kilmacud… ×2 2H S5: length ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×3 2H S4: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×3 2H S4: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×2 1H S3: length ¦ OPP",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ scoring run St… ×2 1H S3: length ¦ OPP",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ scoring run Kilmacud… ×2 1H S2: length ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ longest scoring run (scores) ¦ FOR",
+   "expected": "4 scores",
+   "beforeActual": "4 pts",
+   "afterActual": "4 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (reopened after review edits) ¦ Chain Intelligence ¦ FULL ¦ longest scoring run (scores) ¦ OPP",
+   "expected": "4 scores",
+   "beforeActual": "4 pts",
+   "afterActual": "4 scores"
+  }
+ ]
+}

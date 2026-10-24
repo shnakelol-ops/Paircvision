@@ -1,0 +1,4 @@
+core.restarts.avgSecondsToScore                                A-live|1H A-live|FULL B-live|1H B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+core.summaryFOR.shot45                                         A-live|1H A-live|FULL B-live|FULL C-live|1H C-live|FULL A-final|1H A-final|FULL B-final|FULL C-final|1H C-final|FULL A-legacy|1H A-legacy|FULL
+core.summaryOPP.shot45                                         B-live|1H B-live|FULL C-live|1H C-live|FULL B-final|1H B-final|FULL C-final|1H C-final|FULL
+leaf diffs: 34

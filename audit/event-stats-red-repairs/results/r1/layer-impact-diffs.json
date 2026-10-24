@@ -1,0 +1,200 @@
+[
+ {
+  "path": "A-live|1H.core.summaryFOR.shot45",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-live|1H.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 33,
+   "OPP": 31
+  }
+ },
+ {
+  "path": "A-live|FULL.core.summaryFOR.shot45",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "A-live|FULL.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 36,
+   "OPP": 31
+  }
+ },
+ {
+  "path": "B-live|1H.core.summaryOPP.shot45",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-live|1H.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 22,
+   "OPP": null
+  }
+ },
+ {
+  "path": "B-live|FULL.core.summaryFOR.shot45",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "B-live|FULL.core.summaryOPP.shot45",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-live|FULL.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 19,
+   "OPP": 21
+  }
+ },
+ {
+  "path": "C-live|1H.core.summaryFOR.shot45",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-live|1H.core.summaryOPP.shot45",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-live|1H.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 27,
+   "OPP": 39
+  }
+ },
+ {
+  "path": "C-live|FULL.core.summaryFOR.shot45",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-live|FULL.core.summaryOPP.shot45",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "C-live|FULL.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 30,
+   "OPP": 36
+  }
+ },
+ {
+  "path": "A-final|1H.core.summaryFOR.shot45",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-final|1H.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 33,
+   "OPP": 31
+  }
+ },
+ {
+  "path": "A-final|FULL.core.summaryFOR.shot45",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "A-final|FULL.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 36,
+   "OPP": 31
+  }
+ },
+ {
+  "path": "B-final|1H.core.summaryOPP.shot45",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-final|1H.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 22,
+   "OPP": null
+  }
+ },
+ {
+  "path": "B-final|FULL.core.summaryFOR.shot45",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "B-final|FULL.core.summaryOPP.shot45",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "B-final|FULL.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 19,
+   "OPP": 21
+  }
+ },
+ {
+  "path": "C-final|1H.core.summaryFOR.shot45",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-final|1H.core.summaryOPP.shot45",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "C-final|1H.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 27,
+   "OPP": 39
+  }
+ },
+ {
+  "path": "C-final|FULL.core.summaryFOR.shot45",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "C-final|FULL.core.summaryOPP.shot45",
+  "main": 0,
+  "repair": 3
+ },
+ {
+  "path": "C-final|FULL.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 30,
+   "OPP": 36
+  }
+ },
+ {
+  "path": "A-legacy|1H.core.summaryFOR.shot45",
+  "main": 0,
+  "repair": 1
+ },
+ {
+  "path": "A-legacy|1H.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 33,
+   "OPP": 31
+  }
+ },
+ {
+  "path": "A-legacy|FULL.core.summaryFOR.shot45",
+  "main": 0,
+  "repair": 2
+ },
+ {
+  "path": "A-legacy|FULL.core.restarts.avgSecondsToScore",
+  "repair": {
+   "FOR": 36,
+   "OPP": 31
+  }
+ }
+]

@@ -1,0 +1,105 @@
+{
+ "counts": {
+  "FAIL→PASS": 14
+ },
+ "changes": [
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ 45 ¦ FOR",
+   "expected": "2",
+   "beforeActual": "0",
+   "afterActual": "2"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ Avg secs to score (won) ¦ FOR",
+   "expected": "36s",
+   "beforeActual": "33s",
+   "afterActual": "36s"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Ballyboden ×2 2H S6: length ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Na Fianna ×2 2H S6: length ¦ OPP",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Na Fianna ×4 2H S6: length ¦ OPP",
+   "expected": "4 scores",
+   "beforeActual": "4 pts",
+   "afterActual": "4 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Na Fianna ×4 2H S5: length ¦ OPP",
+   "expected": "4 scores",
+   "beforeActual": "4 pts",
+   "afterActual": "4 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Na Fianna ×2 2H S4: length ¦ OPP",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Na Fianna ×3 1H S3: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Na Fianna ×2 1H S3: length ¦ OPP",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Ballyboden ×2 1H S2: length ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Ballyboden ×3 1H S1: length ¦ FOR",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ longest scoring run (scores) ¦ FOR",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ longest scoring run (scores) ¦ OPP",
+   "expected": "4 scores",
+   "beforeActual": "4 pts",
+   "afterActual": "4 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "PDF Full Review ¦ all pages ¦ — ¦ two-way split bars total 100% ¦ ",
+   "expected": "0",
+   "beforeActual": "1",
+   "afterActual": "0"
+  }
+ ]
+}

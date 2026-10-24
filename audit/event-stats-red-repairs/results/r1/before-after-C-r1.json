@@ -1,0 +1,148 @@
+{
+ "counts": {
+  "MISSING→PASS": 4,
+  "FAIL→PASS": 16
+ },
+ "changes": [
+  {
+   "change": "MISSING→PASS",
+   "key": "Snapshot FT PDF ¦ p8 Shot & Scoring Efficiency ¦ FULL ¦ source 65: ATT|SC|MISS|CONV ¦ FOR",
+   "expected": "1 | 1 | 0 | 100%",
+   "beforeActual": "(not found)",
+   "afterActual": "1 | 1 | 0 | 100%"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Snapshot FT PDF ¦ p8 Shot & Scoring Efficiency ¦ FULL ¦ source 65: ATT|SC|MISS|CONV ¦ OPP",
+   "expected": "3 | 3 | 0 | 100%",
+   "beforeActual": "(not found)",
+   "afterActual": "3 | 3 | 0 | 100%"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ terminology: shot-detail row says '65' in hurling ¦ FOR",
+   "expected": "65",
+   "beforeActual": "45",
+   "afterActual": "65"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ 65 (row) ¦ FOR",
+   "expected": "1",
+   "beforeActual": "0",
+   "afterActual": "1"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ terminology: shot-detail row says '65' in hurling ¦ OPP",
+   "expected": "65",
+   "beforeActual": "45",
+   "afterActual": "65"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ p1 Match Summary ¦ FULL ¦ 65 (row) ¦ OPP",
+   "expected": "3",
+   "beforeActual": "0",
+   "afterActual": "3"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (live) ¦ Shot & Scoring Efficiency ¦ FULL ¦ source 65: ATT|SC|MISS|CONV ¦ FOR",
+   "expected": "1 | 1 | 0 | 100%",
+   "beforeActual": "(not found)",
+   "afterActual": "1 | 1 | 0 | 100%"
+  },
+  {
+   "change": "MISSING→PASS",
+   "key": "Full Review PDF (live) ¦ Shot & Scoring Efficiency ¦ FULL ¦ source 65: ATT|SC|MISS|CONV ¦ OPP",
+   "expected": "3 | 3 | 0 | 100%",
+   "beforeActual": "(not found)",
+   "afterActual": "3 | 3 | 0 | 100%"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Restart Analysis ¦ FULL ¦ Avg secs to score (won) ¦ FOR",
+   "expected": "30s",
+   "beforeActual": "34s",
+   "afterActual": "30s"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Ballyhale… ×2 2H S6: length ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Na… ×3 2H S6: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Ballyhale… ×2 2H S5: length ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Na… ×2 2H S5: length ¦ OPP",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Na… ×3 2H S4: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Ballyhale… ×2 2H S4: length ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Ballyhale… ×2 1H S3: length ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Na… ×3 1H S2: length ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ scoring run Na… ×2 1H S1: length ¦ OPP",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ longest scoring run (scores) ¦ FOR",
+   "expected": "2 scores",
+   "beforeActual": "2 pts",
+   "afterActual": "2 scores"
+  },
+  {
+   "change": "FAIL→PASS",
+   "key": "Full Review PDF (live) ¦ Chain Intelligence ¦ FULL ¦ longest scoring run (scores) ¦ OPP",
+   "expected": "3 scores",
+   "beforeActual": "3 pts",
+   "afterActual": "3 scores"
+  }
+ ]
+}
