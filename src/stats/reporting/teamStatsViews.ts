@@ -12,6 +12,7 @@ import type { MatchReport } from "./matchReport";
 import type { MetricFraction } from "./report-types";
 import { fraction } from "./report-types";
 import { isBlockedOrSavedAttempt } from "./eventTagClassification";
+import { resolveRestartOwner } from "../restarts/restartMetrics";
 import {
   viewMirroredPossessionCounts,
   viewRestartShare,
@@ -141,6 +142,18 @@ function countTagOnKinds(
   return evts.filter((e) => set.has(e.kind) && hasTag(e.tags, tag)).length;
 }
 
+/**
+ * 45 / 65 restarts awarded to `team` (Event Stats records them like a
+ * kickout: teamSide / restartOwner = the team awarded the restart, *_WON or
+ * *_CONCEDED = whether it kept the ball). Each award counts once, whatever
+ * happened next.
+ */
+function countFortyFivesAwarded(evts: readonly ChainableEvent[], team: "FOR" | "OPP"): number {
+  return evts.filter(
+    (e) => (e.kind === "FORTY_FIVE_WON" || e.kind === "FORTY_FIVE_CONCEDED") && resolveRestartOwner(e) === team,
+  ).length;
+}
+
 function countKindWithAnyTag(
   evts: readonly TaggedEvent[],
   kind: MatchEventKind,
@@ -176,6 +189,12 @@ export type TeamSummaryBlock = {
   conv: string;
   shotShort: number;
   shotPost: number;
+  /**
+   * 45s (football) / 65s (hurling, camogie) awarded to this team: Event
+   * Stats' FORTY_FIVE_WON / FORTY_FIVE_CONCEDED records whose owner is this
+   * team, plus shots tagged FORTY_FIVE by Match Stats. Awards, not scores —
+   * a score from the 45 / 65 is counted once, under Placed balls.
+   */
   shot45: number;
   shotBlock: number;
   /** Restart Share won (all-match restarts this team won). */
@@ -255,7 +274,7 @@ export function buildTeamSummaryBlock<T extends ChainableEvent>(
     conv: viewShootingConversionLabel(viewShootingConversion(report, team)),
     shotShort: countTagOnKinds(ownEvts, "SHORT", ...SHOT_KINDS),
     shotPost: countTagOnKinds(ownEvts, "POST", ...SHOT_KINDS),
-    shot45: countTagOnKinds(ownEvts, "FORTY_FIVE", ...SHOT_KINDS),
+    shot45: countTagOnKinds(ownEvts, "FORTY_FIVE", ...SHOT_KINDS) + countFortyFivesAwarded(report.events, team),
     shotBlock: ownEvts.filter(isBlockedOrSavedAttempt).length,
     restartShareWon,
     restartShareConceded,

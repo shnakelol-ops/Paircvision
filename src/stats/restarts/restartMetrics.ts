@@ -157,6 +157,12 @@ export type RestartMetrics = {
   restartToScore: RestartFraction;
   /** Opposition scores from restarts we lost ÷ restarts we lost. */
   restartLossPunishment: RestartFraction;
+  /**
+   * Average seconds from a restart to the kickout-origin score it produced,
+   * per team that WON the restart (see avgSecondsToScore). null when the team
+   * has no qualifying restart.
+   */
+  avgSecondsToScore: { FOR: number | null; OPP: number | null };
 };
 
 // ─── Formatting helpers ───────────────────────────────────────────────────────
@@ -265,7 +271,38 @@ export function computeRestartMetrics<TEvent extends ChainableEvent>(
       restartsLost.filter((o) => o.nextScore !== null).length,
       restartsLost.length,
     ),
+    avgSecondsToScore: {
+      FOR: avgSecondsToScore(outcomes, "FOR"),
+      OPP: avgSecondsToScore(outcomes, "OPP"),
+    },
   };
+}
+
+/**
+ * "Avg secs to score (won)": the mean time from a restart `team` WON to the
+ * kickout-origin score that possession produced (chains/kickout-phase.ts),
+ * rounded to the nearest second.
+ *
+ * Qualifying restarts: won by `team`, ended in a score, both the restart and
+ * the score carry a recorded match clock, and both are in the same half.
+ * Restarts without a score, without real clock times, or that would span
+ * half-time are excluded rather than estimated. Times are match-clock
+ * seconds, so a paused clock adds nothing. The other team's restarts never
+ * count.
+ */
+export function avgSecondsToScore<TEvent extends ChainableEvent>(
+  outcomes: readonly KickoutOutcome<TEvent>[],
+  team: "FOR" | "OPP",
+): number | null {
+  const secs = outcomes
+    .filter((o) =>
+      o.winningSide === team &&
+      o.nextScore !== null &&
+      o.secondsToScore !== null &&
+      o.nextScore.period === o.kickoutEvent.period,
+    )
+    .map((o) => o.secondsToScore as number);
+  return secs.length > 0 ? Math.round(secs.reduce((a, b) => a + b, 0) / secs.length) : null;
 }
 
 // ─── Canonical insight sentence templates ────────────────────────────────────
